@@ -29,7 +29,7 @@ Several system operations need to run automatically without user interaction: sy
 | SendSurveyReminderJob | Daily 9:00 AM | Send 7-day reminder to survey invitees who haven't responded |
 | SendAdminDailyDigestJob | Daily | Email digest to Admin: sync health, anomalies |
 | SendBoardDailyDigestJob | Every other day 2:00 AM | Email digest to Board: pending signups, applications |
-| CleanupNotificationsJob | Daily | Delete resolved notifications older than 7 days |
+| CleanupNotificationsJob | Daily | Delete resolved (>7 days), stale informational (>30 days), and retired-source unresolved notifications |
 | SystemTeamSyncJob | **DISABLED** | Sync system team membership + Google permissions |
 | GoogleResourceReconciliationJob | **DISABLED** | Full Google resource reconciliation |
 | DriveActivityMonitorJob | Hourly | Check Drive Activity API for anomalous permission changes |

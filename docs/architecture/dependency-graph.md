@@ -362,6 +362,8 @@ graph LR
     Onboard --> User
     Onboard --> AppDec
     Onboard --> MembershipCalc
+    Onboard --> Consent
+    Onboard --> HumanLifecycle
     Onboard --> Email
     Onboard --> NotifEmitter
     Onboard --> Audit
@@ -478,6 +480,7 @@ graph LR
     Issues --> Role
     Issues --> Email
     Issues --> NotifEmitter
+    Issues --> NotifInbox
     Issues --> Audit
     Store --> Camp
     Store --> Team
@@ -561,12 +564,12 @@ graph LR
     %% dashed arrows pop visually against eager solid arrows. The first lazy
     %% edge in this diagram is the (N+1)-th link after the eager arrows
     %% above; recompute the index range whenever edges are added or removed.
-    %% Eager count: 275 eager links, indices 0..274. (Net +1 vs prior sweep's 274:
-    %% -OnsiteRoster → ShiftMgmt (OnsiteRosterService ctor does not inject ShiftMgmt);
-    %% +EventSvc → User (EventService injects IUserServiceRead for display-name stitching);
-    %% +EventSvc → Email (EventService injects IEmailService for attendee emails).)
-    %% The 19 lazy edges are indices 275..293.
-    linkStyle 275,276,277,278,279,280,281,282,283,284,285,286,287,288,289,290,291,292,293 stroke:#f97316,stroke-width:2.5px
+    %% Eager count: 278 eager links, indices 0..277. (Net +3 vs prior sweep's 275:
+    %% +Issues → NotifInbox (IssuesService now injects INotificationInboxService);
+    %% +Onboard → Consent (OnboardingService injects IConsentServiceRead);
+    %% +Onboard → HumanLifecycle (OnboardingService injects IHumanLifecycleService).)
+    %% The 19 lazy edges are indices 278..296.
+    linkStyle 278,279,280,281,282,283,284,285,286,287,288,289,290,291,292,293,294,295,296 stroke:#f97316,stroke-width:2.5px
 ```
 
 ## Cycles broken by lazy-resolution
@@ -614,6 +617,7 @@ Threshold: services with >= 3 incoming edges (eager + lazy combined). Counts are
 | `BudgetService` | 4 | 0 | Read by TicketQ, TicketBudget, ExpenseReport, and now `HoldedFinanceService` (Finance section). |
 | `AdminAuthorizationService` | 4 | 0 | Admin-gate guard injected by User/Team/ShiftMgmt/ShiftSign. Reads `IRoleAssignmentRepository` + `ICurrentUserContext` only — zero outbound service edges. |
 | `LegalDocumentSyncService` | 3 | 0 | Required-docs snapshot for Membership + Consent + AdminLegal. |
+| `NotificationInboxService` | 3 | 0 | In-app inbox read/write; injected by Consent, HumanLifecycle, and IssuesService (added this sweep). |
 | `TicketQueryService` | 3 | 2 | `ITicketServiceRead` — read by Dash, AcctDel, and now `TicketingBudgetService` (which reads paid orders via the read interface after the #815 budget-repo removal). Lazy-in from ShiftMgmt + UEmail cycles. |
 
 Below the >= 3 threshold but tracked for narrative continuity:
@@ -641,7 +645,7 @@ Below the >= 3 threshold but tracked for narrative continuity:
   - `GoogleSyncOutboxService` (GoogleIntegration) is the transactional-outbox owner over `IGoogleSyncOutboxRepository` — no outbound service edges. `TeamService` lazy-resolves `IGoogleSyncOutboxService` (`IServiceProvider.GetRequiredService<T>()`) to enqueue Google-sync outbox events on membership/role changes — new dashed `Team → GSyncOutbox` edge.
 - **#894** — Camps compliance role-staffing matrix: the redesign moved into `CampComplianceController` plus supporting read types (`CampDirectoryRoleSummary`) and trimmed `CampRoleService` (the old `CampRoleComplianceReport` DTO was deleted). No service→service edges changed — `CampRoleService`/`CampService` ctor dependencies are unchanged (`CampRole → Camp/User/UEmail/NotifEmitter/Audit`, `Camp -. lazy .-> CampRole`).
 - **#899** — Account-merge consolidation moved Profiles → Users: `AccountMergeService` and `DuplicateAccountService` relocated from `Application/Services/Profiles` to `Application/Services/Users` (now `:::users` in the diagram). Edges are otherwise stable except `DuplicateAccountService` dropped its `IAuditLogService` dependency (`DupAcct → Audit` removed); it now injects only `IUserService`/`ITeamService`/`IRoleAssignmentService`. `AccountMergeService` keeps `Merge → User/Role/Notif/Audit` and remains the sole consumer of the full `INotificationService`. The `UEmail -. lazy .-> Merge` reparenting edge is unchanged.
-- **#881** — HumanLifecycle/Consent/Onboarding wiring: `ConsentService` now eagerly injects `IHumanLifecycleService` for consent-suspension restore (new eager `Consent → HumanLifecycle` edge). `OnboardingService` dropped `IHumansMetrics` (eager `Onboard → Metrics` removed; Metrics fan-in 5 → 4). `UserStateClassifier` (added in #881) is a domain helper, not a service — no node. `HumanLifecycleService` ctor unchanged (`HumanLifecycle → User/NotifEmitter/NotifInbox/Audit/Metrics`).
+- **#881** — HumanLifecycle/Consent/Onboarding wiring: `ConsentService` now eagerly injects `IHumanLifecycleService` for consent-suspension restore (new eager `Consent → HumanLifecycle` edge). `OnboardingService` dropped `IHumansMetrics` (eager `Onboard → Metrics` removed; Metrics fan-in 5 → 4) and gained `IConsentServiceRead` + `IHumanLifecycleService` dependencies (new eager `Onboard → Consent` and `Onboard → HumanLifecycle` edges added in the current sweep — these were present in code but missing from the prior diagram). `UserStateClassifier` (added in #881) is a domain helper, not a service — no node. `HumanLifecycleService` ctor unchanged (`HumanLifecycle → User/NotifEmitter/NotifInbox/Audit/Metrics`).
 - **#898** — Shift Summary by Camp (read-only): `ShiftManagementService` gained summary methods that lazy-resolve `ICampServiceRead` via `IServiceProvider` (new dashed `ShiftMgmt -. lazy .-> Camp` edge; CampService lazy-in 1 → 2). The ctor is unchanged — no new eager edges.
 - New thin sections since the previous sweep: **Cantina** (`CantinaRosterService` reads ShiftMgmt + User), **EarlyEntry** (`EarlyEntryService` fans an `IEnumerable<IEarlyEntryProvider>` — no eager service edges), **Workload** (`WorkloadService` reads Team + User via ShiftView), **RotaCoordinatorMessage/VolunteerTrackingExport** (new Shifts services; `GeneralAvailabilityService` was later deleted in #820), **SystemSettings** (`SystemSettingsService` — see #889 above). None take dependencies beyond existing service interfaces.
 - **ICalFeed section** (`ICalFeedService` — iCal personal feed): orchestrator that fans `IEnumerable<ICalendarFeedContributor>` into one VCALENDAR. Implemented contributors: `EventService` (favourited approved events, with recurrence expansion) and `ShiftSignupService` (signed-up shifts). The fan-out interface pattern means `ICalFeedService` has no direct eager edges to those services — only `ICalFeedService → User` (token validation via `IUserServiceRead`). Same pattern as `EarlyEntryService`.

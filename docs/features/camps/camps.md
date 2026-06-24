@@ -55,7 +55,7 @@ Nobodies Collective organizes camping areas ("barrios") at Nowhere and related e
 - Contact email is hidden — replaced with facilitated "Contact this camp" button (login required)
 - Displays current season data (vibes, kids policy, performance space, etc.)
 - Shows leads with display names (authenticated users only)
-- Signed-in users see an **Events** card (between the roster and the description) listing the camp's approved events for the edition — title, category, time/duration, venue, host, description — with a per-row favourite heart that posts to `/Events/Barrio/{slug}/Favourite/{eventId}` and redirects back to the camp page. Hidden for anonymous visitors, when the camp has no approved events, or when the Events feature is off.
+- Signed-in users see an **Events** card (between the roster and the description) listing the camp's approved events for the edition — title, category, time/duration, venue, host, description — with a per-row favourite heart that toggles in place via the JSON favourites API (`POST /api/events/favourites/{eventId}`, no page reload). Hidden for anonymous visitors, when the camp has no approved events, or when the Events feature is off.
 - Shows historical names if any (hidden when camp has `HideHistoricalNames` enabled)
 - Leads and admins see edit link
 
@@ -195,7 +195,7 @@ Nobodies Collective organizes camping areas ("barrios") at Nowhere and related e
 - Copy on the request card explicitly states that this does NOT join you to the camp — do that through the camp's own process first.
 - A pending request can be withdrawn by the requester; an active membership can be left by the member.
 - Membership state (Pending / Active) is never rendered on anonymous views.
-- Leads and CampAdmin see pending requests on the camp Members page (`/Camps/{slug}/Edit/Members`) with Approve / Reject buttons, and active members with a Remove button. The active-members header carries an `EE: {granted}/{slots}` badge (issue nobodies-collective/Humans#858) showing Early Entry slots granted vs. the camp's `EeSlotCount` allocation for the season.
+- Leads and CampAdmin see pending requests on the camp Members page (`/Camps/{slug}/Edit/Members`) with Approve / Reject buttons, and active members with a Remove button. The active-members header carries an `EE: {granted}/{slots}` badge (issue nobodies-collective/Humans#858) showing Early Entry slots granted vs. the camp's `EeSlotCount` allocation for the season. Each active member row also shows a shift-signup count badge (sourced from `IShiftView.GetUsersAsync`) — the number of active (pending or confirmed) shift signups for the current event — colour-coded by count.
 - Approve / Reject mutations are scoped to the authorizing camp — a lead of camp A cannot mutate camp B's memberships by submitting a crafted member id.
 - Concurrent duplicate "request" submissions resolve idempotently — the second one returns the winning row instead of a 500.
 - When a season is rejected or withdrawn, pending requesters receive a notification. Pending rows are left as-is (so if the season is later reactivated, the request is still live).

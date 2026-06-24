@@ -123,6 +123,8 @@ UserEmail
 ├── Email: string (256)
 ├── IsVerified: bool
 ├── IsOAuth: bool (cannot be deleted)
+├── IsGoogle: bool (user-controlled; Google sync target)
+├── GoogleEmailStatus: GoogleEmailStatus (per-address sync status; default Unknown)
 ├── IsNotificationTarget: bool (exactly one per user)
 ├── Visibility: ContactFieldVisibility? (null = hidden)
 ├── VerificationSentAt: Instant? (rate limiting)
@@ -194,7 +196,7 @@ Uses ASP.NET Identity's built-in token providers:
 
 When `FullProfile.GoogleEmail` differs from the OAuth email (e.g., after linking a @nobodies.team address), `AddUserToTeamResourcesAsync` proactively removes the old OAuth email from Google Groups to prevent duplicate email delivery. This means the cleanup is immediate rather than waiting for the daily reconciliation cycle.
 
-Users with `GoogleEmailStatus == Rejected` are excluded from all sync paths (reconciliation, outbox, direct add). A 403 "Permission denied" from the Groups API — typically because the email address does not have a Google account associated with it — is treated as a permanent rejection.
+Addresses with `UserEmail.GoogleEmailStatus == Rejected` are excluded from all sync paths (reconciliation, outbox, direct add). A 403 "Permission denied" from the Groups API — typically because the email address does not have a Google account associated with it — is treated as a permanent rejection. Because the status lives on the `UserEmail` row rather than the user, selecting a different Google email (a fresh row with status `Unknown`) automatically resumes sync (#687).
 
 ### Background Jobs
 These jobs use `FullProfile.PrimaryEmail` (the `UserEmail` row with `IsPrimary = true`) to send to the notification target:

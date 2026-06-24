@@ -210,7 +210,7 @@ Inbound (other sections → Users) — the typical direction:
   - `tests/Humans.Application.Tests/Architecture/AccountDeletionArchitectureTests.cs` — pins AccountDeletionService namespace and ensures it owns no tables (no DbContext, no IDbContextFactory).
   - `tests/Humans.Application.Tests/Architecture/UserEmailLegacyFieldRestrictionsTests.cs` — IL scan ensuring no Application/Web code references the deleted shadow properties (`User.GoogleEmail`, `UserEmail.IsOAuth`, `UserEmail.DisplayOrder`).
   - `tests/Humans.Application.Tests/Architecture/IdentityFindByEmailRestrictionsTests.cs` — enforces that application code routes through `IUserEmailService.FindVerifiedEmailWithUserAsync` rather than `UserManager.FindByEmailAsync` / `FindByNameAsync`.
-- The original Option A (no decorator) decision is documented in `docs/superpowers/specs/2026-04-21-issue-511-user-migration.md`; it was reversed by issue nobodies-collective/Humans#703 (2026-05-13) when measured read traffic on the `users` table exceeded the `Profile` decorator's traffic by ~7×.
+- The original Option A (no decorator) decision was reversed by issue nobodies-collective/Humans#703 (2026-05-13) when measured read traffic on the `users` table exceeded the `Profile` decorator's traffic by ~7×.
 
 ### Touch-and-clean guidance
 

@@ -78,7 +78,7 @@ Every human-admin action writes an audit entry with your user as the actor.
 
 ### Triage the notification inbox
 
-`/Notifications` is your shared "what needs my attention" view. Actionable notifications targeted at the Admin role (sync errors, consent reviews, tier application submissions) appear under **Needs attention**. When a group notification targets all Admins or all Coordinators of a team, **any recipient can resolve it for all** — the resolver's name is shown so no one duplicates work. Informational notifications (team changes, workspace credentials ready, drift fixes) fall under **Recent**. The bell icon shows a red count for actionable items and a green dot for informational-only.
+`/Notifications` is your shared "what needs my attention" view. Actionable notifications targeted at you personally appear under **Needs attention**; work-queue counts (consent reviews pending, applications awaiting your vote, failed Google sync events, and similar) appear as **Work queues** meters below. When a group notification targets all Admins or all Coordinators of a team, **any recipient can resolve it for all** — the resolver's name is shown so no one duplicates work. Informational notifications (team changes, workspace credentials ready, drift fixes) fall under **Recent**. The bell icon shows a red count for actionable items and a green dot for informational-only.
 
 ### Configure Google sync
 

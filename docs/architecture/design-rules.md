@@ -265,7 +265,7 @@ Each section's service owns these tables. Cross-service access goes through the 
 | **Shifts** | `ShiftManagementService`, `ShiftSignupService`, `GeneralAvailabilityService`, `VolunteerTrackingService` | `rotas`, `shifts`, `shift_signups`, `event_settings`, `general_availability`, `volunteer_event_profiles`, `volunteer_build_statuses`, `shift_tags`, `volunteer_tag_preferences`, `rota_shift_tags` |
 | **Budget** | `BudgetService` | `budget_years`, `budget_groups`, `budget_categories`, `budget_line_items`, `budget_audit_logs`, `ticketing_projections` |
 | **Expenses** | `ExpenseReportService` | `expense_reports`, `expense_lines`, `expense_attachments`, `holded_expense_outbox_events` |
-| **Finance** | `HoldedFinanceService` | `holded_expense_docs`, `holded_category_map`, `holded_creditor_balances`, `holded_payments`, `holded_sync_states` |
+| **Finance** | `HoldedFinanceService` | `holded_expense_docs`, `holded_category_map`, `holded_ledger_lines`, `holded_creditor_contacts`, `holded_sync_states` |
 | **Tickets** | `TicketQueryService`, `TicketSyncService`, `TicketingBudgetService`, `TicketTransferService` | `ticket_orders`, `ticket_attendees`, `ticket_sync_states`, `ticket_transfer_requests` |
 | **Store** | `StoreService` | `store_products`, `store_orders`, `store_order_lines`, `store_payments`, `store_invoices`, `store_treasury_sync_state` |
 | **Scanner** | none (no business logic — `ScannerController` reads via `ITicketServiceRead`) | none |

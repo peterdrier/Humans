@@ -233,6 +233,8 @@ UserEmail
 ├── Email: string (256)
 ├── IsVerified: bool
 ├── IsOAuth: bool               ← true for login email, not deletable
+├── IsGoogle: bool              ← user-controlled; Google sync target
+├── GoogleEmailStatus           ← per-address sync status (Unknown/Valid/Rejected)
 ├── IsNotificationTarget: bool  ← exactly one per user
 ├── Visibility: ContactFieldVisibility? ← null = hidden from profile
 ├── VerificationSentAt: Instant?
