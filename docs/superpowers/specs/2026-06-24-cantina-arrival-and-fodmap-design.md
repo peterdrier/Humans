@@ -60,26 +60,50 @@ There is no concept of a continuous on-site stay. So a human whose first shift i
 
 ### Design
 
-All logic lives in `src/Humans.Application/Services/Cantina/CantinaRosterService.cs`.
+The arrival-day logic lives in `src/Humans.Application/Services/Cantina/CantinaRosterService.cs`.
+The scope change is one line in the Shifts service (see (a)). **No new interface, repository, or
+service methods are added.**
 
-**(a) Flip the scope.** Both `GetOnSiteUserIdsForDayAsync(...)` calls (lines 200, 299) pass
-`ShiftDayUserStatusScope.ConfirmedOnly` instead of the current `PendingOrConfirmed`.
-(Confirm the current default is passed implicitly; make it explicit.)
+**(a) Confirmed-only — change the scope inside the existing Shifts method.**
+The scope is *not* a caller argument: `IShiftManagementService.GetOnSiteUserIdsForDayAsync`
+(`IShiftManagementService.cs:358`) takes only `(eventSettingsId, dayOffset, ct)`, and the
+implementation (`ShiftManagementService.cs:1974-1980`) hardcodes
+`ShiftDayUserStatusScope.PendingOrConfirmed` when calling the repo. The fix is to change that one
+constant on **line 1979** to `ShiftDayUserStatusScope.ConfirmedOnly` (a real enum value already used
+by `ShiftSignupService.cs:1076`).
 
-**(b) Earliest-confirmed-day map (inline helper).**
-`firstConfirmedDayOffsetByUser(eventSettings, ct)` scans the **full event day range**
-`[eventSettings.BuildStartOffset … eventSettings.StrikeEndOffset]`, calling the existing
-`GetOnSiteUserIdsForDayAsync(eventId, offset, ConfirmedOnly)` per offset, and records the minimum
-offset seen per user id. At ~500 humans and a bounded day count this is in-memory-cheap
-(CLAUDE.md scale notes: prefer in-memory over query tuning). Returns `Dictionary<Guid,int>`.
+Blast radius — verified safe: `GetOnSiteUserIdsForDayAsync` has exactly one production caller,
+`CantinaRosterService` (calls at lines 200, 299; `grep` across `src/` finds no other consumer). The
+method exists to feed the cantina, so changing its on-site definition to confirmed-only is the
+correct fix, not a surgical patch — and it stays inside the existing method (no interface change, no
+new parameter, so no new public surface needing approval). Note for review: this *does* change the
+semantics of a Shifts-service method, recorded here explicitly for Peter's sign-off at PR.
+
+**(b) Earliest-confirmed-day map (inline, computed from a single range scan).**
+Inside `CantinaRosterService`, scan the **full event day range**, inclusive of both ends:
+`for (offset = eventSettings.BuildStartOffset; offset <= eventSettings.StrikeEndOffset; offset++)`,
+calling the existing (now confirmed-only) `GetOnSiteUserIdsForDayAsync(eventId, offset, ct)` per
+offset. From that single pass build both:
+  - `confirmedByOffset`: `Dictionary<int, IReadOnlyList<Guid>>` — the per-day cohorts, and
+  - `firstConfirmedOffsetByUser`: `Dictionary<Guid,int>` — the minimum offset seen per user.
 
 Scanning the whole event range — not just the visible week — is required so that "first shift" is
 the human's *true* earliest confirmed shift, not merely their first appearance within the current
 week window (which would wrongly grant an arrival day to multi-week attendees).
 
+NOTE (conscious trade): this is one DB round-trip per event-day (`BuildStartOffset` can be ≈ −25
+through `StrikeEndOffset`, so ~40-60 sequential queries) per roster render, where the weekly view
+previously issued 7. Result sets are tiny (id lists at ~500 humans) — the cost is round-trip count,
+not data volume. Accepted under CLAUDE.md "prefer in-memory over query tuning / don't over-engineer
+for scale," and because the cheaper alternative (a single `MIN(DayOffset) GROUP BY UserId` repo
+query) would require a new repository + interface method, which this design deliberately avoids. The
+weekly view derives its 7-day slice from `confirmedByOffset` (no separate 7 calls), so it is not
+more expensive than the scan itself.
+
 **(c) Weekly view (`GetWeeklyRosterAsync`).**
-After building `daysOnSiteByUserId` from the week's confirmed cohorts, for each user compute
-`arrivalOffset = firstConfirmedDayOffset[user] − 1`. If `arrivalOffset` maps to a date inside the
+After building `daysOnSiteByUserId` from the week's confirmed cohorts (the 7-day slice of
+`confirmedByOffset`), for each user compute `arrivalOffset = firstConfirmedOffsetByUser[user] − 1`.
+If `arrivalOffset` maps to a date inside the
 visible week window, add that date to the user's on-site day set — pulling the user into the cohort
 even if they have no shift in this week (e.g. first shift is the Monday of next week → arrival is
 the Sunday shown this week). Downstream this means:
@@ -89,8 +113,10 @@ the Sunday shown this week). Downstream this means:
   humans automatically, because they join `uniqueUserIds`.
 
 **(d) Daily drill-down (`GetDailyRosterAsync(dayOffset = N)`).**
-Cohort = confirmed users on day N **∪** users whose `firstConfirmedDayOffset == N + 1`. The added
-arrival-day humans flow through the same per-day people list and aggregates.
+Cohort = confirmed users on day N **∪** users whose `firstConfirmedOffsetByUser == N + 1`. The added
+arrival-day humans flow through the same per-day people list and aggregates. (This path also runs the
+range scan from (b) to obtain `firstConfirmedOffsetByUser`, since a single day cannot reveal whether
+a human's first confirmed shift is N+1.)
 
 ### Edge cases
 - First confirmed shift on the event's first possible day → arrival offset is one earlier
