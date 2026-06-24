@@ -83,6 +83,59 @@ public sealed class CantinaCsvWritersTests
         personRow.Should().Contain("'@lookup");
     }
 
+    /// <summary>
+    /// Regression guard: a human whose arrival day is the day before their first
+    /// confirmed shift (arrivalDay = firstConfirmedShiftDay − 1) must still appear
+    /// in the CSV with the correct ArrivesOn date. ArrivesOn is a non-nullable
+    /// column; this test pins that it is emitted correctly for arrival-day humans.
+    /// </summary>
+    [HumansFact]
+    public void WeeklyRoster_ArrivalDayHuman_AppearsInCsvWithArrivalDate()
+    {
+        // Arrange: human arrives on 2026-07-12 (day 5 of week), shifts only on 2026-07-13 (day 6).
+        // NoShift covers the first 5 days of the week (Mon–Sat with no signup).
+        var arrivalDay = WeekStart.PlusDays(5); // 2026-07-12
+        var shiftDay   = WeekStart.PlusDays(6); // 2026-07-13
+
+        var noShiftDays = Enumerable.Range(0, 5)
+            .Select(i => WeekStart.PlusDays(i))
+            .ToArray<LocalDate>();
+
+        var person = new RosterPersonDto(
+            UserId: Guid.NewGuid(),
+            BurnerName: "Arrival",
+            ArrivesOn: arrivalDay,
+            NoShift: noShiftDays,
+            DietaryPreference: "Vegan",
+            Allergies: Array.Empty<string>(),
+            AllergyOtherText: null,
+            Intolerances: Array.Empty<string>(),
+            IntoleranceOtherText: null);
+
+        var roster = new WeeklyRosterDto(
+            WeekStartOffset: 0,
+            WeekStartDate: WeekStart,
+            WeekEndDate: WeekStart.PlusDays(6),
+            EventName: "Test Event",
+            TotalUniqueOnSite: 1,
+            UnansweredCount: 0,
+            DietaryBreakdown: new Dictionary<string, int>(StringComparer.Ordinal),
+            AllergyRollup: [],
+            AllergyOtherEntries: [],
+            IntoleranceRollup: [],
+            IntoleranceOtherEntries: [],
+            Days: [new DayRosterSummaryDto(5, arrivalDay, 1, 0)],
+            People: [person],
+            EventTodayDate: null);
+
+        // Act
+        var lines = RosterLines(roster);
+
+        // Assert: person row exists and ArrivesOn column is the arrival date.
+        var personRow = lines[5];
+        personRow.Should().StartWith("Arrival,2026-07-12");
+    }
+
     [HumansFact]
     public void DailyMatrix_WritesHeaderPeopleAndTotals()
     {
