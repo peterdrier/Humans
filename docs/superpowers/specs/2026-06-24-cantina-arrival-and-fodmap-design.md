@@ -1,7 +1,7 @@
 # Design: Cantina arrival-day feeding + remove FODMAP intolerance
 
 Date: 2026-06-24
-Status: Approved (brainstorm) — pending spec review
+Status: Spec-reviewed ✅ — pending user review
 Branch: `feat/cantina-arrival-and-fodmap`
 
 Two small, independent changes bundled in one branch (two commits, possibly two PRs at merge time).
@@ -78,6 +78,10 @@ method exists to feed the cantina, so changing its on-site definition to confirm
 correct fix, not a surgical patch — and it stays inside the existing method (no interface change, no
 new parameter, so no new public surface needing approval). Note for review: this *does* change the
 semantics of a Shifts-service method, recorded here explicitly for Peter's sign-off at PR.
+
+Also update the now-stale doc comments that say "Pending/Confirmed": the XML summary on
+`IShiftManagementService.GetOnSiteUserIdsForDayAsync` (`IShiftManagementService.cs:354`) and any
+parallel comment near the implementation → "Confirmed signup" (fix-it-right, no misleading comment).
 
 **(b) Earliest-confirmed-day map (inline, computed from a single range scan).**
 Inside `CantinaRosterService`, scan the **full event day range**, inclusive of both ends:
