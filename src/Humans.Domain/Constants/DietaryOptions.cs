@@ -35,5 +35,5 @@ public static class DietaryOptions
     /// (and conventionally rendered last) for the free-text follow-up.
     /// </summary>
     public static readonly IReadOnlyList<string> IntoleranceOptions =
-        ["Lactose", "Gluten", "Histamine", "FODMAP", OtherOption];
+        ["Lactose", "Gluten", "Histamine", OtherOption];
 }
