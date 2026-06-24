@@ -80,6 +80,23 @@ public class CantinaRosterServiceTests
         IsActive = true
     };
 
+    /// <summary>
+    /// Active event with an explicit build→strike offset range so the
+    /// arrival-day scan (<c>BuildFirstConfirmedOffsetByUserAsync</c>) covers
+    /// days outside the visible week. The default <see cref="ActiveEvent"/>
+    /// leaves both offsets at 0, which would scan only day 0.
+    /// </summary>
+    private static EventSettings ActiveEventWithRange(int buildStart, int strikeEnd) => new()
+    {
+        Id = Guid.NewGuid(),
+        EventName = EventName,
+        TimeZoneId = "Europe/Madrid",
+        GateOpeningDate = GateOpening,
+        IsActive = true,
+        BuildStartOffset = buildStart,
+        StrikeEndOffset = strikeEnd,
+    };
+
     [HumansFact]
     public async Task GetWeeklyRoster_NoActiveEventSettings_ReturnsDtoWithNullDatesAndNoPeople()
     {
@@ -404,6 +421,40 @@ public class CantinaRosterServiceTests
             GateOpening.PlusDays(3), // Thu
             GateOpening.PlusDays(4), // Fri
             GateOpening.PlusDays(6)); // Sun
+    }
+
+    [HumansFact]
+    public async Task GetWeeklyRoster_FeedsHumanDayBeforeFirstConfirmedShift()
+    {
+        // Human's only confirmed shift is Wednesday (offset 2). They have no
+        // signup on any visible-week day other than via that shift, so the
+        // roster must feed them the day before — Tuesday (offset 1) — as their
+        // arrival day, pulling them into the cohort even though they were not
+        // returned for any visible-week load except day 2.
+        var ev = ActiveEventWithRange(buildStart: -2, strikeEnd: 8);
+        _shiftMgmt.GetActiveAsync().Returns(ev);
+
+        var id = Guid.NewGuid();
+        _shiftMgmt.GetOnSiteUserIdsForDayAsync(ev.Id, 2, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<Guid>>(new[] { id }));
+        SetupHumans(Human(id, "Ash"));
+
+        var result = await _service.GetWeeklyRosterAsync(0, Xunit.TestContext.Current.CancellationToken);
+
+        var person = result.People.Single(p => p.UserId == id);
+        // Arrival = day before the first confirmed shift (offset 2 → offset 1).
+        person.ArrivesOn.Should().Be(GateOpening.PlusDays(1));
+        // The arrival day is fed in as a real on-site day, so it is NOT in
+        // NoShift (NoShift is the complement of on-site days). The human is
+        // "present, no shift" on the arrival day in the sense that they have no
+        // confirmed signup there — but the day still counts as on-site for the
+        // cohort, which is what pulls an otherwise arrival-only human into the
+        // roster. Their only confirmed-shift day (offset 2) is likewise on-site.
+        person.NoShift.Should().NotContain(GateOpening.PlusDays(1)); // arrival is on-site
+        person.NoShift.Should().NotContain(GateOpening.PlusDays(2)); // confirmed shift is on-site
+        // The weekly per-day strip counts the arrival person on Tuesday (offset 1),
+        // matching what the daily drill-down will show (Task 2.4).
+        result.Days[1].TotalOnSite.Should().Be(1);
     }
 
     // ---- helpers ----

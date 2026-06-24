@@ -62,6 +62,34 @@ public sealed class CantinaRosterService : ICantinaRosterService
         // map each user id to the set of calendar dates they were on-site.
         var daysOnSiteByUserId = BuildDaysOnSiteByUserId(perDay, weekStartOffset, weekStartDate);
 
+        // Arrival-day feeding: each human is fed (present, but with no shift)
+        // the day before their FIRST confirmed shift across the whole event,
+        // not just this week. Scan the full build→strike range once, then inject
+        // the day-before-first-shift into this week's on-site set when it lands
+        // inside the visible 7 days. This pulls in humans whose only relation to
+        // the week is their arrival day (no confirmed shift inside the week).
+        // Guarded on an active event — the no-event branch leaves the map empty.
+        if (eventSettings is not null && weekStartDate is { } anchor)
+        {
+            var firstConfirmedOffsetByUser =
+                await BuildFirstConfirmedOffsetByUserAsync(eventSettings, ct).ConfigureAwait(false);
+            foreach (var (userId, minOffset) in firstConfirmedOffsetByUser)
+            {
+                var arrivalOffset = minOffset - 1;
+                if (arrivalOffset < weekStartOffset || arrivalOffset > weekStartOffset + DaysPerWeek - 1)
+                    continue;
+
+                var arrivalDate = anchor.PlusDays(arrivalOffset - weekStartOffset);
+                if (!daysOnSiteByUserId.TryGetValue(userId, out var list))
+                {
+                    list = new List<LocalDate>(capacity: DaysPerWeek);
+                    daysOnSiteByUserId[userId] = list;
+                }
+
+                list.Add(arrivalDate);
+            }
+        }
+
         var uniqueUserIds = daysOnSiteByUserId.Keys.ToList();
 
         // Dietary lives on Profile — read it from the cached UserInfo for the whole
@@ -71,9 +99,11 @@ public sealed class CantinaRosterService : ICantinaRosterService
             ? new Dictionary<Guid, ProfileInfo>()
             : BuildProfileMap(await _userRead.GetUserInfosAsync(uniqueUserIds, ct).ConfigureAwait(false));
 
-        // Build per-day summaries (counts only). Dietary is per-user, so a day's
-        // "unanswered" count is over that day's user ids.
-        var days = BuildDaySummaries(perDay, weekStartDate, profileByUserId);
+        // Build per-day summaries (counts only) from the POST-injection on-site
+        // map so arrival-day people are counted on their arrival date — keeping
+        // the weekly strip consistent with the daily drill-down. Dietary is
+        // per-user, so a day's "unanswered" count is over that day's user ids.
+        var days = BuildDaySummaries(daysOnSiteByUserId, weekStartOffset, weekStartDate, profileByUserId);
 
         if (uniqueUserIds.Count == 0)
         {
@@ -304,6 +334,32 @@ public sealed class CantinaRosterService : ICantinaRosterService
         return perDay;
     }
 
+    /// <summary>
+    /// Scans the full event span (build start through strike end, inclusive)
+    /// and records, per human, the earliest day offset on which they have a
+    /// confirmed on-site signup. Used to feed each human the day before their
+    /// first confirmed shift. Kept separate from
+    /// <see cref="LoadWeeklyOnSiteUsersAsync"/> — that load stays scoped to the
+    /// visible week; this one needs the whole span to find a true first day.
+    /// </summary>
+    private async Task<Dictionary<Guid, int>> BuildFirstConfirmedOffsetByUserAsync(
+        EventSettings ev,
+        CancellationToken ct)
+    {
+        var firstOffsetByUser = new Dictionary<Guid, int>();
+        for (var offset = ev.BuildStartOffset; offset <= ev.StrikeEndOffset; offset++)
+        {
+            var userIds = await _shiftMgmt.GetOnSiteUserIdsForDayAsync(ev.Id, offset, ct).ConfigureAwait(false);
+            foreach (var id in userIds)
+            {
+                if (!firstOffsetByUser.TryGetValue(id, out var existing) || offset < existing)
+                    firstOffsetByUser[id] = offset;
+            }
+        }
+
+        return firstOffsetByUser;
+    }
+
     private static Dictionary<Guid, List<LocalDate>> BuildDaysOnSiteByUserId(
         IReadOnlyList<(int DayOffset, IReadOnlyList<Guid> UserIds)> perDay,
         int weekStartOffset,
@@ -330,26 +386,39 @@ public sealed class CantinaRosterService : ICantinaRosterService
     }
 
     private static List<DayRosterSummaryDto> BuildDaySummaries(
-        IReadOnlyList<(int DayOffset, IReadOnlyList<Guid> UserIds)> perDay,
+        IReadOnlyDictionary<Guid, List<LocalDate>> daysOnSiteByUserId,
+        int weekStartOffset,
         LocalDate? weekStartDate,
         IReadOnlyDictionary<Guid, ProfileInfo> profileByUserId)
     {
         var days = new List<DayRosterSummaryDto>(DaysPerWeek);
         for (var i = 0; i < DaysPerWeek; i++)
         {
-            var (dayOffset, userIds) = perDay[i];
+            var calendarDate = weekStartDate?.PlusDays(i);
+
+            // Count users on-site this calendar date from the post-injection map
+            // (includes arrival-day people). Without an anchor date the map holds
+            // no dates, so every day is correctly zero.
+            var total = 0;
             var unanswered = 0;
-            foreach (var id in userIds)
+            if (calendarDate is { } day)
             {
-                if (!profileByUserId.TryGetValue(id, out var profile)
-                    || string.IsNullOrEmpty(profile.DietaryPreference))
-                    unanswered++;
+                foreach (var (id, dates) in daysOnSiteByUserId)
+                {
+                    if (!dates.Contains(day))
+                        continue;
+
+                    total++;
+                    if (!profileByUserId.TryGetValue(id, out var profile)
+                        || string.IsNullOrEmpty(profile.DietaryPreference))
+                        unanswered++;
+                }
             }
 
             days.Add(new DayRosterSummaryDto(
-                DayOffset: dayOffset,
-                CalendarDate: weekStartDate?.PlusDays(i),
-                TotalOnSite: userIds.Count,
+                DayOffset: weekStartOffset + i,
+                CalendarDate: calendarDate,
+                TotalOnSite: total,
                 UnansweredOnDay: unanswered));
         }
 
