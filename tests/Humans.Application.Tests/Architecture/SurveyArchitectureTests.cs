@@ -3,7 +3,6 @@ using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Surveys;
 using Humans.Domain.Entities;
 using Humans.Infrastructure.Repositories.Surveys;
-using Xunit;
 using SurveyService = Humans.Application.Services.Surveys.SurveyService;
 
 namespace Humans.Application.Tests.Architecture;

@@ -480,7 +480,7 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
         await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         _campAccess.GetCampSeasonsForComplianceAsync(2026, Arg.Any<CancellationToken>())
-            .Returns([(camp.Id, season.Name, camp.Slug, season.Id, season.Status, season.MemberCount, (int?)null)]);
+            .Returns([(camp.Id, season.Name, camp.Slug, season.Id, season.Status, season.MemberCount, null)]);
 
         var summaries = await _service.GetDirectoryRoleSummariesAsync(2026, Xunit.TestContext.Current.CancellationToken);
 
@@ -498,7 +498,7 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
         await SeedDefinitionAsync("LNT", slotCount: 1, minimumRequired: 1);
 
         _campAccess.GetCampSeasonsForComplianceAsync(2026, Arg.Any<CancellationToken>())
-            .Returns([(camp.Id, season.Name, camp.Slug, season.Id, season.Status, season.MemberCount, (int?)null)]);
+            .Returns([(camp.Id, season.Name, camp.Slug, season.Id, season.Status, season.MemberCount, null)]);
 
         var summaries = await _service.GetDirectoryRoleSummariesAsync(2026, Xunit.TestContext.Current.CancellationToken);
 
@@ -510,7 +510,7 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
     {
         var (camp, season) = await SeedCampWithSeasonAsync(year: 2026);
         // Sort order puts "LNT" before "Consent Lead" regardless of name.
-        var consent = await SeedDefinitionAsync("Consent Lead", slotCount: 2, minimumRequired: 1);
+        var consent = await SeedDefinitionAsync(slotCount: 2, minimumRequired: 1);
         var lnt = await SeedDefinitionAsync("LNT", slotCount: 1, minimumRequired: 1);
         lnt.SortOrder = -5;
         await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
@@ -528,7 +528,7 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
         await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         _campAccess.GetCampSeasonsForComplianceAsync(2026, Arg.Any<CancellationToken>())
-            .Returns([(camp.Id, season.Name, camp.Slug, season.Id, season.Status, 25, (int?)7)]);
+            .Returns([(camp.Id, season.Name, camp.Slug, season.Id, season.Status, 25, 7)]);
 
         var matrix = await _service.BuildComplianceMatrixAsync(2026, Xunit.TestContext.Current.CancellationToken);
 
@@ -553,9 +553,9 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
 
         _campAccess.GetCampSeasonsForComplianceAsync(2026, Arg.Any<CancellationToken>())
             .Returns([
-                (camp.Id, "Active Camp", camp.Slug, season.Id, CampSeasonStatus.Active, 10, (int?)null),
-                (camp.Id, "Full Camp", camp.Slug, Guid.NewGuid(), CampSeasonStatus.Full, 10, (int?)null),
-                (camp.Id, "Pending Camp", camp.Slug, Guid.NewGuid(), CampSeasonStatus.Pending, 10, (int?)null),
+                (camp.Id, "Active Camp", camp.Slug, season.Id, CampSeasonStatus.Active, 10, null),
+                (camp.Id, "Full Camp", camp.Slug, Guid.NewGuid(), CampSeasonStatus.Full, 10, null),
+                (camp.Id, "Pending Camp", camp.Slug, Guid.NewGuid(), CampSeasonStatus.Pending, 10, null),
             ]);
 
         var matrix = await _service.BuildComplianceMatrixAsync(2026, Xunit.TestContext.Current.CancellationToken);
@@ -591,7 +591,7 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
         await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         _campAccess.GetCampSeasonsForComplianceAsync(2026, Arg.Any<CancellationToken>())
-            .Returns([(camp.Id, season.Name, camp.Slug, season.Id, season.Status, 10, (int?)null)]);
+            .Returns([(camp.Id, season.Name, camp.Slug, season.Id, season.Status, 10, null)]);
 
         var matrix = await _service.BuildComplianceMatrixAsync(2026, Xunit.TestContext.Current.CancellationToken);
 

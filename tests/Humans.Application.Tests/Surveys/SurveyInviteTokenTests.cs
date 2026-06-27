@@ -1,7 +1,6 @@
 using AwesomeAssertions;
 using Humans.Infrastructure.Services.Surveys;
 using Microsoft.AspNetCore.DataProtection;
-using Xunit;
 
 namespace Humans.Application.Tests.Surveys;
 

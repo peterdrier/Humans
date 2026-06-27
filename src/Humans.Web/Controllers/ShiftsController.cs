@@ -3,7 +3,6 @@ using System.Text.Json;
 using Humans.Application;
 using Humans.Application.Architecture;
 using Humans.Application.Extensions;
-using Humans.Application.DTOs.Shifts;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;

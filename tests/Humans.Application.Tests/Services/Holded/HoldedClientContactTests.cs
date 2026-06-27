@@ -5,7 +5,6 @@ using Humans.Application.Interfaces.Holded;
 using Humans.Infrastructure.Services.Holded;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using NodaTime;
 
 namespace Humans.Application.Tests.Services.Holded;
 

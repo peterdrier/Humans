@@ -3,8 +3,6 @@ using Humans.Application.Services.Surveys;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Domain.ValueObjects;
-using Xunit;
-
 namespace Humans.Application.Tests.Surveys;
 
 public class SurveyBranchingEvaluatorTests
@@ -191,7 +189,7 @@ public class SurveyBranchingEvaluatorTests
         var q1 = Guid.NewGuid();
         var q2 = Guid.NewGuid();
         var q3 = Guid.NewGuid();
-        var ordered = new (Guid, BranchCondition?)[]
+        var ordered = new[]
         {
             (q1, null),
             (q2, Cond(BranchCombine.All, Clause(q1, BranchOperator.Is, "yes"))),

@@ -624,7 +624,9 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
 
         ctx.VolunteerTagPreferences.RemoveRange(existing);
 
-        foreach (var tagId in tagIds)
+        // Dedupe: a duplicate id in the posted list would insert two rows for the
+        // same (UserId, ShiftTagId) and violate the unique index.
+        foreach (var tagId in tagIds.Distinct())
         {
             ctx.VolunteerTagPreferences.Add(new VolunteerTagPreference
             {
