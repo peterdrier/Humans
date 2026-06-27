@@ -71,8 +71,12 @@ public sealed class CantinaRosterService : ICantinaRosterService
         // Guarded on an active event — the no-event branch leaves the map empty.
         if (eventSettings is not null && weekStartDate is { } anchor)
         {
+            // Only arrivals landing in [weekStartOffset, weekStartOffset+6] are
+            // injected below, so a first confirmed shift past weekStartOffset+7
+            // can't produce an in-week arrival — cap the scan there.
             var firstConfirmedOffsetByUser =
-                await BuildFirstConfirmedOffsetByUserAsync(eventSettings, ct).ConfigureAwait(false);
+                await BuildFirstConfirmedOffsetByUserAsync(
+                    eventSettings, weekStartOffset + DaysPerWeek, ct).ConfigureAwait(false);
             foreach (var (userId, minOffset) in firstConfirmedOffsetByUser)
             {
                 var arrivalOffset = minOffset - 1;
@@ -241,8 +245,11 @@ public sealed class CantinaRosterService : ICantinaRosterService
         var unionedUserIds = new HashSet<Guid>(shiftUserIds);
         if (eventSettings is not null)
         {
+            // Only users whose first confirmed shift is exactly dayOffset+1 are
+            // pulled in, so the scan never needs to look past dayOffset+1.
             var firstConfirmedOffsetByUser =
-                await BuildFirstConfirmedOffsetByUserAsync(eventSettings, ct).ConfigureAwait(false);
+                await BuildFirstConfirmedOffsetByUserAsync(
+                    eventSettings, dayOffset + 1, ct).ConfigureAwait(false);
             foreach (var (userId, minOffset) in firstConfirmedOffsetByUser)
             {
                 if (minOffset == dayOffset + 1)
@@ -358,19 +365,24 @@ public sealed class CantinaRosterService : ICantinaRosterService
     }
 
     /// <summary>
-    /// Scans the full event span (build start through strike end, inclusive)
-    /// and records, per human, the earliest day offset on which they have a
-    /// confirmed on-site signup. Used to feed each human the day before their
-    /// first confirmed shift. Kept separate from
+    /// Scans from build start up through <paramref name="scanThroughOffset"/>
+    /// (clamped to strike end, inclusive) and records, per human, the earliest
+    /// day offset on which they have a confirmed on-site signup. Used to feed
+    /// each human the day before their first confirmed shift. Kept separate from
     /// <see cref="LoadWeeklyOnSiteUsersAsync"/> — that load stays scoped to the
-    /// visible week; this one needs the whole span to find a true first day.
+    /// visible week; this one scans from the start of the event so a true first
+    /// day is never missed. The upper bound is the caller's window end: a first
+    /// confirmed shift later than that yields an arrival day outside the window,
+    /// which the caller discards anyway, so scanning past it is wasted DB work.
     /// </summary>
     private async Task<Dictionary<Guid, int>> BuildFirstConfirmedOffsetByUserAsync(
         EventSettings ev,
+        int scanThroughOffset,
         CancellationToken ct)
     {
         var firstOffsetByUser = new Dictionary<Guid, int>();
-        for (var offset = ev.BuildStartOffset; offset <= ev.StrikeEndOffset; offset++)
+        var lastOffset = Math.Min(ev.StrikeEndOffset, scanThroughOffset);
+        for (var offset = ev.BuildStartOffset; offset <= lastOffset; offset++)
         {
             var userIds = await _shiftMgmt.GetOnSiteUserIdsForDayAsync(ev.Id, offset, ct).ConfigureAwait(false);
             foreach (var id in userIds)
