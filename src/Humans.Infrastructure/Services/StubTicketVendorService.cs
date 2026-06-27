@@ -70,8 +70,10 @@ public sealed class StubTicketVendorService : ITicketVendorService
     public Task<IReadOnlyList<VendorCheckInDto>> GetCheckInsAsync(
         Instant? since, string eventId, CancellationToken ct = default)
     {
+        // Fixtures all "arrive" on the first full sync (the real client pages by
+        // record creation time); none on incremental, mirroring GetIssuedTicketsAsync.
         IReadOnlyList<VendorCheckInDto> checkIns = since.HasValue
-            ? _checkIns.Where(c => c.CheckedInAt >= since.Value).ToList()
+            ? []
             : _checkIns.ToList();
 
         return Task.FromResult(checkIns);

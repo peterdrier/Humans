@@ -166,8 +166,12 @@ public class TicketTailorService : ITicketVendorService
         do
         {
             var url = $"{BaseUrl}/check_ins?event_id={eventId}";
+            // Page by created_at (when the record reached TT), NOT check_in_at: a
+            // scanner that was offline can upload a scan whose check_in_at predates
+            // our last sync, and a check_in_at cursor would drop it forever. The
+            // earlier arrival time is still stored as CheckedInAt below.
             if (since.HasValue)
-                url += $"&check_in_at.gte={since.Value.ToUnixTimeSeconds()}";
+                url += $"&created_at.gte={since.Value.ToUnixTimeSeconds()}";
             if (cursor is not null)
                 url += $"&starting_after={cursor}";
 

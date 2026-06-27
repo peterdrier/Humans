@@ -349,14 +349,20 @@ public sealed class TicketRepositoryTests : IDisposable
         });
         _dbContext.TicketAttendees.Add(new TicketAttendee
         {
-            Id = Guid.NewGuid(), TicketOrderId = orderId, VendorEventId = eventId,
-            VendorTicketId = "tkt_a", Status = TicketAttendeeStatus.Valid,
+            Id = Guid.NewGuid(),
+            TicketOrderId = orderId,
+            VendorEventId = eventId,
+            VendorTicketId = "tkt_a",
+            Status = TicketAttendeeStatus.Valid,
             SyncedAt = _clock.GetCurrentInstant(),
         });
         _dbContext.TicketAttendees.Add(new TicketAttendee
         {
-            Id = Guid.NewGuid(), TicketOrderId = orderId, VendorEventId = eventId,
-            VendorTicketId = "tkt_b", Status = TicketAttendeeStatus.Valid,
+            Id = Guid.NewGuid(),
+            TicketOrderId = orderId,
+            VendorEventId = eventId,
+            VendorTicketId = "tkt_b",
+            Status = TicketAttendeeStatus.Valid,
             SyncedAt = _clock.GetCurrentInstant(),
         });
         await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);

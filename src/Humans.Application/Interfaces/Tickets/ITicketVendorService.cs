@@ -20,7 +20,9 @@ public interface ITicketVendorService : IApplicationService
     /// <summary>
     /// Fetch gate check-ins, optionally since a given timestamp. Check-in is a
     /// vendor resource distinct from issued-ticket status — TicketTailor records
-    /// it under <c>/check_ins</c>, not by flipping a ticket's status. Issue
+    /// it under <c>/check_ins</c>, not by flipping a ticket's status. <paramref
+    /// name="since"/> filters by record creation/upload time (not the scan time),
+    /// so scans uploaded late by an offline scanner are not missed. Issue
     /// nobodies-collective/Humans#736.
     /// </summary>
     Task<IReadOnlyList<VendorCheckInDto>> GetCheckInsAsync(
