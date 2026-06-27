@@ -95,7 +95,7 @@ public sealed class CantinaCsvWritersTests
         // Arrange: human arrives on 2026-07-12 (day 5 of week), shifts only on 2026-07-13 (day 6).
         // NoShift covers the first 5 days of the week (Mon–Sat with no signup).
         var arrivalDay = WeekStart.PlusDays(5); // 2026-07-12
-        var shiftDay   = WeekStart.PlusDays(6); // 2026-07-13
+        var shiftDay = WeekStart.PlusDays(6); // 2026-07-13
 
         var noShiftDays = Enumerable.Range(0, 5)
             .Select(i => WeekStart.PlusDays(i))
