@@ -26,9 +26,9 @@ The intended audience is **everyone who logged into Humans** — the people who 
 
 This also can't be solved with the public slug link: the slug path is always `Anonymous`, which forfeits the Identified/follow-up strategy this survey is built around (§1.2). Preserving follow-up requires an **invited (tokenised) send**, which means the audience must resolve to a concrete recipient set.
 
-**Decision for build time (your call):**
-- **(a) Use `AllActiveMembers` as a close-enough proxy** — zero code, but accepts the mismatch above (some never-logged-in members invited; some onboarding users missed). At ~500 users the gap is probably small.
-- **(b) Add a `LoggedInUsers` (or `AllUsers`) audience type** — an engine extension: new enum value + a resolver branch reading login state via an `I…ServiceRead`. The "fix it right" option if precise login-targeting matters; should be a tracked issue, not done inline here.
+**Decision (resolved):** Add a **`LoggedInSince`** audience type with a **cutoff date** — `LastLoginAt >= cutoff` — so each cycle the cutoff is set to that event year's start and the survey captures only that year's active users. Tracked as `nobodies-collective/Humans#894` (engine extension: new enum value + a `Survey` cutoff field + a resolver branch reading via `IUserServiceRead`; `User.LastLoginAt` already exists and is populated on sign-in, so no backfill).
+
+**Interim fallback:** if #894 hasn't shipped by send time, use `AllActiveMembers` as a close-enough proxy — it invites some never-logged-in members and misses some onboarding users, but the gap is small at ~500 users.
 
 ### 1.2 The anonymity choice — and why we lean Identified here
 
