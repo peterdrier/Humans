@@ -167,6 +167,7 @@ public sealed class TicketTransferService(
             throw new InvalidOperationException("Only Pending transfers can be cancelled.");
         if (request.SenderUserId != senderUserId)
             throw new InvalidOperationException("Only the Sender can cancel.");
+        EnsureNotMidProcessing(request);
 
         var now = clock.GetCurrentInstant();
         request.Status = TicketTransferStatus.Cancelled;
@@ -209,7 +210,7 @@ public sealed class TicketTransferService(
             // and then fall back to ApproveAsync ("Mark successful"). No success emails.
             await transferRepo.UpdateAsync(request, ct);
             await auditLog.LogAsync(
-                AuditAction.TicketTransferApproved,
+                AuditAction.TicketTransferAutoFailed,
                 nameof(TicketTransferRequest),
                 request.Id,
                 request.VendorResult == TicketTransferVendorResult.VoidSucceededIssueFailed
@@ -238,6 +239,17 @@ public sealed class TicketTransferService(
         if (request.Status != TicketTransferStatus.Pending)
             throw new InvalidOperationException("Only Pending transfers can be decided.");
         return request;
+    }
+
+    // A VoidSucceededIssueFailed request has already had its ticket voided at the vendor — that
+    // void is irreversible. Cancel/Reject would drop it from the queue and strand the receiver
+    // (seat gone, no replacement); the only forward path is to finish the reissue in TicketTailor
+    // and then "Mark successful" (ApproveAsync).
+    private static void EnsureNotMidProcessing(TicketTransferRequest request)
+    {
+        if (request.VendorResult == TicketTransferVendorResult.VoidSucceededIssueFailed)
+            throw new InvalidOperationException(
+                "This transfer is mid-processing — the ticket was already voided and is awaiting reissue. Finish it in TicketTailor, then use “Mark successful”.");
     }
 
     private async Task MarkApprovedAsync(
@@ -294,13 +306,16 @@ public sealed class TicketTransferService(
         {
             voidResult = await vendor.VoidIssuedTicketAsync(attendee.VendorTicketId, voidToHold: true, ct);
         }
-        catch (TicketVendorWriteException ex)
+        catch (Exception ex)
         {
+            // Any failure here (vendor error, HttpClient timeout/TaskCanceledException, transport)
+            // means the void did not reliably commit — fall back to manual processing. If it did
+            // commit, a retry voids again (404 -> NotFound) and the next sync reconciles the void.
             request.VendorResult = TicketTransferVendorResult.Failed;
-            request.VendorMessage = $"Void failed ({ex.Kind}): {ex.Message}";
-            logger.LogWarning(
-                "TT void failed for transfer {TransferId} attendee {AttendeeId} ({Kind}); manual fallback required",
-                request.Id, request.OriginalTicketAttendeeId, ex.Kind);
+            request.VendorMessage = $"Void failed ({VendorFailureDetail(ex)})";
+            logger.LogWarning(ex,
+                "TT void failed for transfer {TransferId} attendee {AttendeeId}; manual fallback required",
+                request.Id, request.OriginalTicketAttendeeId);
             return;
         }
 
@@ -317,15 +332,17 @@ public sealed class TicketTransferService(
                 SendEmail: true,
                 ExternalReference: request.Id.ToString("N")), ct);
         }
-        catch (TicketVendorWriteException ex)
+        catch (Exception ex)
         {
-            // Void committed at the vendor but reissue failed. Mirror the void locally so the
-            // Sender's holdings flip, and retain the hold id so the team can finish the reissue
-            // by hand against that hold. Partial state — never silently dropped.
+            // The void has already committed at the vendor, so ANY issue-call failure — vendor
+            // error, HttpClient timeout/TaskCanceledException, JSON parse — must be captured as
+            // partial state and never propagated (that would lose the committed void). Mirror the
+            // void locally so the Sender's holdings flip, and retain the hold id so the team can
+            // finish the reissue by hand against that hold. Partial state — never silently dropped.
             request.VendorResult = TicketTransferVendorResult.VoidSucceededIssueFailed;
             request.VendorMessage = voidResult.HoldId is null
-                ? $"Issue failed ({ex.Kind}): {ex.Message}"
-                : $"Issue failed ({ex.Kind}): {ex.Message} — reissue manually against hold {voidResult.HoldId}";
+                ? $"Issue failed ({VendorFailureDetail(ex)})"
+                : $"Issue failed ({VendorFailureDetail(ex)}) — reissue manually against hold {voidResult.HoldId}";
             attendee.Status = TicketAttendeeStatus.Void;
             await ticketRepo.UpsertAttendeesAsync([attendee], ct);
             cacheInvalidator.InvalidateAfterTransfer(request.SenderUserId, receiverUserId: null);
@@ -375,6 +392,7 @@ public sealed class TicketTransferService(
             ?? throw new InvalidOperationException("Transfer not found.");
         if (request.Status != TicketTransferStatus.Pending)
             throw new InvalidOperationException("Only Pending transfers can be decided.");
+        EnsureNotMidProcessing(request);
 
         var now = clock.GetCurrentInstant();
         request.Status = TicketTransferStatus.Rejected;
@@ -539,6 +557,11 @@ public sealed class TicketTransferService(
         var name = info?.BurnerName;
         return (email, string.IsNullOrWhiteSpace(name) ? "there" : name);
     }
+
+    // Kind-aware detail for a vendor write failure: the categorised Kind for a
+    // TicketVendorWriteException, else the raw exception type (timeout/JSON/transport).
+    private static string VendorFailureDetail(Exception ex) =>
+        ex is TicketVendorWriteException w ? $"{w.Kind}: {w.Message}" : $"{ex.GetType().Name}: {ex.Message}";
 
     private static string TicketLabel(string attendeeName, string vendorTicketId) =>
         string.IsNullOrEmpty(vendorTicketId) ? attendeeName : $"{attendeeName} ({vendorTicketId})";

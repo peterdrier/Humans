@@ -91,6 +91,8 @@ request columns + audit log instead.
   attendee rows, and sets `Approved` (`VendorResult = Succeeded`). On vendor failure the request **stays
   `Pending`** with the diagnostic recorded (`VendorResult` `Failed`, or `VoidSucceededIssueFailed` with the
   hold id) and the admin is told to finish in TicketTailor and use Mark successful — no success emails fire.
+  A `VoidSucceededIssueFailed` request (ticket already voided) **cannot be cancelled or rejected** — the
+  only forward path is Mark successful, so the voided seat can't be stranded.
 - **Mark transfer successful** sets `Approved` with no vendor call (manual void+reissue, or closing out a
   partial automated attempt); **Cancel transfer** requires a reason and sets `Rejected`. All three are
   policy-gated to `TicketAdminOrAdmin` and audit-logged.
