@@ -33,6 +33,8 @@ Conversational helper backed by Anthropic Claude. Available to any authenticated
 - **Turn** — one user message + one streamed assistant response (may include tool calls).
 - **Preload corpus** — cacheable markdown prefix containing the section *index* (one line per section: key + tagline), help glossaries, access matrix, and route map. Section invariant bodies are NOT preloaded; the model fetches them on demand via the `fetch_section_guide` tool.
 - **Preload config** — `Tier1` (8 highest-signal sections in the index) or `Tier2` (14 curated sections). Both fit comfortably under Anthropic ITPM caps because section bodies are routed through tool calls instead of preloaded.
+<!-- wheat: 2026-04-20-agent-section-design.md §Anthropic Provider Rate Limits -->
+<!-- NOTE: Anthropic ITPM limits count cache reads, not just fresh input. At Tier 1 (30K ITPM Sonnet), a >25K-token preload would 429 on every request because cache reads consume quota at the same rate as fresh tokens. The Tier1/Tier2 split in PreloadConfig was designed around this constraint: Tier1 caps the preload index at ~8 sections (~20K raw) to fit safely within 30K ITPM; Tier2 expands to 14 sections once the org auto-promotes ($40 lifetime spend + 7 days elapsed => 450K ITPM Sonnet). Admin can flip the live setting at /Agent/Admin/Settings. -->
 
 ## Data Model
 
@@ -92,6 +94,10 @@ Per-user message and token counters live in the Singleton `IAgentRateLimitStore`
 ## Invariants
 
 1. **Terms link, not gate.** The Assistant panel shows a persistent "AI Terms" link below the composer that opens `/Legal/agent-chat` (the rendered Agent Chat Terms from `nobodies-collective/legal`). There is no explicit consent step — opening the panel and sending a message constitutes use; the terms describe what's sent, retention, and rights. The team-required-doc consent flow (`IConsentService.GetPendingDocumentNamesAsync`) is intentionally NOT used here; agent use is opt-in, not a membership precondition.
+<!-- wheat: 2026-04-20-agent-section-design.md §GDPR / Privacy -->
+<!-- NOTE: Data sent to Anthropic per turn: display name, preferred locale, tier, approved flag, role assignments (names + expiry), team memberships (names only), consent pending list, open ticket IDs, open feedback IDs, open shift IDs, and conversation messages. Data NOT sent: email, phone, birthday, dietary/medical fields, payment info, profile picture, other users' personal data. Anthropic DPA: 30-day retention for abuse monitoring, no training on API inputs. GDPR export (IUserDataContributor) and retention purge (AgentConversationRetentionJob) cover the full lifecycle. -->
+<!-- wheat: 2026-04-20-agent-section-prototype-notes.md §Quality -->
+<!-- NOTE: Prototype validated both models on 20 curated questions (onboarding, membership tiers, teams, roles, legal/consent, tickets, shifts, governance, camps, edge cases, off-topic refusal). Graceful degradation (section not preloaded, dynamic-fetch tool not yet wired) produces 'I don't have information about that' + handoff offer — never a confident-wrong answer. All URLs spot-checked against real controllers were real. Locale (Spanish/Catalan) correct from both models. No category-level failures across 20 questions. -->
 2. **Enabled gate.** If `AgentSettings.Enabled = false`, widget is hidden and `POST /Agent/Ask` returns `503 ServiceUnavailable`.
 3. **Rate limit.** Per-user daily and hourly caps from `AgentSettings`. Over-cap requests return `429 TooManyRequests` without hitting the provider.
 4. **Tool whitelist.** Only `fetch_feature_spec`, `fetch_section_guide`, `route_to_issue`, `get_audit_history`, `get_shift_details` are valid tool names. Unknown names return a tool error. `fetch_section_guide` is restricted to a whitelisted set of section keys; `fetch_feature_spec` accepts only filename-safe stems (letters, digits, `-`, `_`). Both fetch from `nobodies-collective/Humans@main` via `IGuideContentSource` and cannot read arbitrary paths.
@@ -99,8 +105,12 @@ Per-user message and token counters live in the Singleton `IAgentRateLimitStore`
 6. **Refusal logging.** Every refused turn writes an `AgentMessage` with `RefusalReason != null`.
 7. **Append-only conversations per user.** A user can only post to conversations they own. `AgentController` rejects cross-user access with 404.
 8. **Issue handoff is propose-only.** `route_to_issue` carries `{title, category, description}`. The dispatcher never writes a row server-side; the SSE stream emits an `issueProposal` token and the client opens the Issues submission modal pre-filled. The user reviews and submits via `/Issues/Submit`. Historical legacy auto-created `FeedbackReport.AgentConversationId` links are immutable.
+<!-- wheat: 2026-04-20-agent-section-design.md §Data Model FeedbackReport additions + §Tool Use -->
+<!-- NOTE: The original design used route_to_feedback (auto-created FeedbackReport rows server-side). This was superseded: route_to_issue is propose-only; historical FeedbackReport.AgentConversationId + Source=AgentUnresolved rows were created by that earlier flow and remain queryable but Agent no longer produces new ones. The column is owned by Feedback section with no EF FK constraint. Do not revert to auto-creation. -->
 9. **Retention.** Conversations older than `AgentSettings.RetentionDays` are hard-deleted daily.
 10. **Single provider.** One `AnthropicClient` instance, one configured model at a time. No multi-provider fallback in Phase 1.
+<!-- wheat: 2026-04-20-agent-section-design.md §Cost Model + prototype-notes §Cost -->
+<!-- NOTE: Model default is Sonnet 4.6 (not Haiku). Prototype validated that Haiku is ~3x cheaper (~$7/mo vs ~$20/mo at 5 sessions/day x 4 turns) but Sonnet's precision and grounding matter for a support helper — both are production-viable but Sonnet is more concise and confidently grounded. The model is admin-configurable at AgentSettings.Model so the org can revisit after real usage data. -->
 
 ## Negative Access Rules
 
@@ -153,4 +163,5 @@ Missing or wrong key → 401 (503 if the key is not configured). Unknown id → 
 - Do **not** fetch `docs/sections/` or `docs/features/` markdown outside `AgentSectionDocReader` / `AgentFeatureSpecReader`; both route through the shared `IGuideContentSource` (Octokit, cached) and enforce the whitelist + filename-safe-stem validation.
 - Do **not** add new tool names without updating both `AgentToolNames` and `IAgentToolDispatcher` whitelist; an unknown name must be a hard error, never a fallthrough.
 - Do **not** make `route_to_issue` (or any future handoff tool) write rows server-side. Handoffs are propose-only; the user submits.
+<!-- NOTE: The originally-planned Phase-2 AgentFaq entity and IAgentFaqService were never built. The community knowledge-base tool (fetch_community_faq) backed by GitHubCommunityKbContentSource (nobodies-collective/knowledge-base repo, cached in RAM) replaced that design entirely. There is no AgentFaq table; CommunityKbSettings holds the repo/branch config. -->
 - `AgentSettings.PreloadConfig` defaults to `Tier1` (8 highest-signal sections in the index). If non-admin users start asking about sections outside that set and the model can't help, an admin can flip the live setting to `Tier2` at `/Agent/Admin/Settings` — both tiers fit Anthropic ITPM caps because section bodies route through tool calls, not preload.

@@ -60,7 +60,7 @@ None outbound. Inbound: Expenses calls `IHoldedClient`. Future Finance work will
 - `HoldedClient` lives in `Humans.Infrastructure/Services/Holded/` and is the single typed `HttpClient` to Holded.
 - Registered via `services.AddHoldedSection(config)` in `Humans.Web/Extensions/Sections/HoldedSectionExtensions.cs`.
 - `HoldedClientOptions.ApiKey` is bound from the `HOLDED_API_KEY` env var at startup.
-- **GDPR** — no `IUserDataContributor`. Holded owns no per-user data.
+- **GDPR** — the Holded HTTP client and its sync tables own no per-user data. However, `HoldedFinanceService` (Finance-owned, registered via `AddHoldedSection`) is registered as `IUserDataContributor` and contributes the user's `holded_creditor_contacts` binding to the GDPR export.
 
 ### Evolution
 

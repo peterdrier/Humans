@@ -33,6 +33,8 @@ Several system operations need to run automatically without user interaction: sy
 | SystemTeamSyncJob | **DISABLED** | Sync system team membership + Google permissions |
 | GoogleResourceReconciliationJob | **DISABLED** | Full Google resource reconciliation |
 | DriveActivityMonitorJob | Hourly | Check Drive Activity API for anomalous permission changes |
+| HoldedExpenseOutboxJob | Every minute | Drain the Holded expense outbox: push approved expense reports to Holded as purchase documents |
+| HoldedSyncJob | Daily 3:00 AM | Nightly pull of Holded purchase docs into budget-category actuals and creditor daybook ledger |
 
 > **Note:** `SystemTeamSyncJob` and `GoogleResourceReconciliationJob` are currently disabled because they modify Google Shared Drive and Group permissions. Use the manual "Sync Now" button at `/Google/Sync` until automated sync is validated. Per-service sync modes are configured at `/Google/SyncSettings`.
 

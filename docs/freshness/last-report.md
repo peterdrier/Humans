@@ -4,7 +4,7 @@
 **Mode:** diff
 **Previous anchor:** `c10d07400` · **New anchor:** `upstream/main` `c89e1514c`
 **Dirty set:** 10 mechanical entries (8 prompt + 2 script) + 61 editorial docs
-**Outcome:** 22 editorial docs drift-fixed · 6 mechanical regens updated (+2 clean) · 10 husks pruned (−2,363 lines, within the 5,119 cap) · 1 wheat migration · 5 inbound-ref retargets · 2 husks + several pre-existing items escalated to Peter inline · 0 errors
+**Outcome:** 22 editorial docs drift-fixed · 6 mechanical regens updated (+2 clean) · 12 husks pruned (−2,836 lines, within the 5,119 cap) · wheat migrated to `sections/Shifts.md` + `sections/Agent.md` · inbound-ref retargets · **Phase 7.5: all 6 review items approved by Peter and applied** · 0 errors
 
 Range themes (upstream `c10d07400..c89e1514c`, ~9 days): Holded **ledger single-source** redesign (creditor-balances/payments tables → ledger-lines/creditor-contacts); **Expenses SEPA removal** (SEPA builder/config/statuses deleted, payment now external/Holded); **Notifications SourceKey** + inbox cleanup; **Google group membership sync** + UserEmail per-address Google status (#687); **voluntell past shifts** + per-day signup; **Events favourite → JSON API** (no reload); **Camps** shift-signup-count badges + account-merge re-point.
 
@@ -44,8 +44,8 @@ Range themes (upstream `c10d07400..c89e1514c`, ~9 days): Holded **ledger single-
 
 Clean (dirty by broad trigger, no drift): all 5 E5a profiles-core docs, 4 E4 google docs (minus the one fixed), 12 E6 tangential docs, 7 E7a shifts docs, `guide/Events.md`, `features/tickets/event-participation.md`, and 5 of 6 arch-meta docs (`conventions`, `code-review-rules`, `coding-rules`, `roslyn-analysis`, `seed-data`).
 
-## Pruned (−2,363 lines; cap 5,119)
-Deleted 10 aged husks (verified shipped / superseded, wheat absent or already in living docs):
+## Pruned (−2,836 lines; cap 5,119)
+Deleted 12 aged husks (10 in the main pass + 2 agent-section husks in Phase 7.5) — verified shipped / superseded, wheat absent or already in living docs (or migrated):
 - `docs/plans/2026-05-16-cache-migration.md` (308) — all tasks shipped; wheat in design-rules §15i + Events.md
 - `docs/plans/2026-05-20-events-bugs-recurrence-and-withdrawn-queue.md` (63) — both bugs fixed (`Event.GetOccurrenceInstants` gate-offset; `ModerationQueueViewModel.WithdrawnCount`)
 - `docs/plans/2026-05-20-events-bulk-upload.md` (123) — feature in Events.md routing/invariants
@@ -66,9 +66,11 @@ Deleted 10 aged husks (verified shipped / superseded, wheat absent or already in
 - `features/calendar/community-calendar.md` — removed "See the design document …" pointer (Out-of-Scope list already covers v2+)
 - `features/guide/in-app-guide.md` — retargeted role-filtering authority to `sections/Guide.md` §Invariants/§Actors
 
+**Also pruned (Phase 7.5, after Peter's go):**
+- `docs/superpowers/specs/2026-04-20-agent-section-design.md` (339) + `2026-04-20-agent-section-prototype-notes.md` (134) — wheat migrated to `sections/Agent.md` as 5 provenance-tagged note blocks (model+cost rationale, ITPM/Tier1-Tier2 gotcha, route_to_feedback→route_to_issue supersession, GDPR data-sent/NOT-sent boundary, prototype quality baseline) + a community-KB supersession note; `tools/agent-spike/README.md` links retargeted to Agent.md.
+
 **Deferred husks (future sweeps):**
 - Budget: 4 `docs/superpowers/plans/*` (2026-05-18 store-summary-aggregates, 05-20 camp-roster-roles, 05-23 dietary-medical-nudge-impl, 05-23 volunteer-tracking-export; 5,872 lines) — would blow the 7% cap.
-- Pending Peter (no clean destination for their wheat): `2026-04-20-agent-section-design.md` + `2026-04-20-agent-section-prototype-notes.md` — see Questions.
 
 ## Flagged for human review
 None — every concrete factual contradiction caused by this changeset was fixed inline.
@@ -76,13 +78,14 @@ None — every concrete factual contradiction caused by this changeset was fixed
 ## Proposed for review
 None — all prune candidates analysed this sweep were resolved (migrate / drop / defer-with-reason).
 
-## Questions (delivered to Peter inline — Phase 7.5)
-1. **Holded GDPR note** — `sections/Holded.md` still says "Holded owns no per-user data / no `IUserDataContributor`", but `HoldedFinanceService` is now registered as `IUserDataContributor` via the Holded section DI (#1021); `gdpr-export.md` gained the `HoldedCreditorAccount` row. Clarify Holded.md's note, or leave (Holded *client* owns no per-user data; Finance service does)?
-2. **background-jobs.md omissions** — doesn't list `HoldedSyncJob` or `HoldedExpenseOutboxJob` (both changed: API-key guard, `SyncCreditorDataAsync`→`SyncCreditorLedgerAsync`). Add them? (pre-existing omission)
-3. **gdpr-export.md** — "16 section services" count is now stale (→17 with `HoldedFinanceService` + the new row); pre-existing missing rows (`AgentConversations`, `ExpenseReports`, `ExpenseAuditLog`, `TeamEarlyEntry`). Do a broader gdpr-export refresh, or leave as pre-existing?
-4. **Issues notification lifecycle** — `sections/Issues.md` + `features/issues/issues-system.md` don't mention `IssuesService` now resolves `IssueSubmitted` notifications by `sourceKey=issue.Id` on terminal status. Enrich, or leave?
-5. **preferred-email.md pre-existing drift** — data-model block uses `IsNotificationTarget` (entity is `IsPrimary`) and lists `IsOAuth`/`GoogleEmail` which are now EF shadow properties. Fix now or defer?
-6. **Pruned agent-section wheat (2 husks held back)** — `agent-section-design.md` + `prototype-notes.md` carry durable rationale with NO clean allowed destination: Sonnet-over-Haiku model choice + cost model, ITPM-counts-cache-reads gotcha + Tier1/Tier2 origin, `route_to_feedback`→`route_to_issue` supersession, GDPR data-sent/NOT-sent boundary, prototype quality baseline; plus the community-KB (`GitHubCommunityKbContentSource`) supersession of Phase-2 `AgentFaq` is undocumented. Where should this live — Agent.md (as notes), a real agent design doc, or drop? (I deferred deleting these two husks pending your call.)
+## Questions (delivered to Peter inline — Phase 7.5) — ALL RESOLVED
+Peter answered "fix them all"; every item applied this sweep (code-verified):
+1. **Holded GDPR note** — RESOLVED: `sections/Holded.md` note split — the Holded client + sync tables own no per-user data, but `HoldedFinanceService` (registered `IUserDataContributor` via `AddHoldedSection`, #1021) contributes the user's `holded_creditor_contacts` binding.
+2. **background-jobs.md** — RESOLVED: added `HoldedExpenseOutboxJob` (every minute) + `HoldedSyncJob` (daily 03:00); schedules confirmed in `RecurringJobExtensions.cs`.
+3. **gdpr-export.md** — RESOLVED: full re-enumeration of `IUserDataContributor` — count `16 → 21`; added rows Events, Issues, AgentConversations, ExpenseReports, ExpenseAuditLog; ASCII diagram + trigger paths refreshed (TeamEarlyEntry/HoldedCreditorAccount already present).
+4. **Issues notification lifecycle** — RESOLVED: `sections/Issues.md` + `features/issues/issues-system.md` now note `IssueSubmitted` notifications use `sourceKey=issue.Id` and are resolved by `ResolveSubmittedNotificationsAsync` on terminal status (verified `IssuesService.cs`).
+5. **preferred-email.md** — RESOLVED: `IsNotificationTarget`→`IsPrimary` (DB column note retained), `IsOAuth`/`DisplayOrder` annotated as EF shadow properties; `GoogleEmail` was already correct.
+6. **Agent-section wheat** — RESOLVED: 5 wheat note blocks + a community-KB supersession note migrated into `sections/Agent.md` (provenance-tagged); both husks deleted; `agent-spike/README.md` links retargeted. (Notes are HTML comments — preserve rationale without adding rendered narrative to a section doc.)
 
 ## Skipped (errors)
 None.
