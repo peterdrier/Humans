@@ -15,7 +15,7 @@ Spanish uses the informal **tú** register to match the existing in-app survey s
 | **Audience** | **Everyone who logged into Humans** (anyone who actually used the app) — see §1.1 for the engine gap | App feedback should come from people who actually used the app, including those still in onboarding — not just ticket holders or shift signups. |
 | **`AllowAnonymous`** | **true** | Shows the respondent the anonymity chooser on the intro screen. Off would force every response to `Identified`. |
 | **Anonymity default** | `Identified` (current engine default — pre-checked radio) | See §1.2. For a *suggestion-gathering* survey, follow-up is the asset, so we lean Identified and use framing to keep candor. |
-| **Reminder** | One reminder ~4–5 days after send | The engine sends at most one reminder; `CompletionTracked`/`Anonymous` responders may still get it (by design — completion is a boolean, no linkable timestamp). |
+| **Reminder** | **Fixed: one reminder 7 days after the invite** (not configurable) | `SendDueRemindersAsync` uses a hard-coded 7-day cutoff (`now - Duration.FromDays(7)`) and skips `Completed` invitations. Submitting any tracked response (Identified **or** CompletionTracked) marks the invite `Completed` and stops the reminder; public-slug (`Anonymous`) responders aren't invited at all, so they're never reminded. |
 | **Timing** | ~1 week after the event ends | Fresh enough to remember specifics, late enough that the dust has settled. |
 
 ### 1.1 Audience — "everyone who logged into Humans" vs. the engine
@@ -74,7 +74,7 @@ Engine types: `SingleChoice`, `MultiChoice`, `ShortText`, `LongText`, `Rating`. 
 
 Only **Q1 is required** (Q2 optional-but-recommended). Leave every open-ended question optional — required text boxes kill completion.
 
-Branch conditions reference the **option machine value** shown in parentheses.
+**Every choice option needs a non-empty `Value`** — the admin's per-option machine value, stored separately from the label. The answer flow persists only the `Value`, and `AnswerState.IsAnswered` treats an empty value as *unanswered*, so a blank `Value` makes required Q1 impossible to submit and breaks branching. Convention: set each option's `Value` to the lowercase English slug of its label (`very_dissatisfied`, `dissatisfied`, `neutral`, …). The `(value)` tokens called out below for branch options (`other`, `yes`, `no`) are the ones **branch conditions reference and must match exactly**.
 
 ### Page 1 — Overall
 
