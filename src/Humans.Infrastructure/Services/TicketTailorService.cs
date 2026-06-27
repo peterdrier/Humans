@@ -144,9 +144,6 @@ public class TicketTailorService : ITicketVendorService
                     TicketTypeName: ticket.Description ?? "Unknown",
                     Price: (ticket.ListedPrice ?? 0) / 100m,
                     Status: ticket.Status ?? "valid",
-                    CheckedInAt: ticket.CheckIn?.CheckedInAt is long epoch and > 0
-                        ? Instant.FromUnixTimeSeconds(epoch)
-                        : null,
                     Barcode: ticket.Barcode));
             }
 
@@ -157,6 +154,49 @@ public class TicketTailorService : ITicketVendorService
             tickets.Count, eventId);
 
         return tickets;
+    }
+
+    public async Task<IReadOnlyList<VendorCheckInDto>> GetCheckInsAsync(
+        Instant? since, string eventId, CancellationToken ct = default)
+    {
+        using var _ = _logger.TimeOperation();
+        var checkIns = new List<VendorCheckInDto>();
+        string? cursor = null;
+
+        do
+        {
+            var url = $"{BaseUrl}/check_ins?event_id={eventId}";
+            if (since.HasValue)
+                url += $"&check_in_at.gte={since.Value.ToUnixTimeSeconds()}";
+            if (cursor is not null)
+                url += $"&starting_after={cursor}";
+
+            var response = await _httpClient.GetAsync(url, ct);
+            response.EnsureSuccessStatusCode();
+
+            var body = await response.Content.ReadFromJsonAsync<TtPaginatedResponse<TtCheckIn>>(JsonOptions, ct);
+            if (body?.Data is null || body.Data.Count == 0)
+                break;
+
+            foreach (var checkIn in body.Data)
+            {
+                // Prefer check_in_at (gate-scan time); fall back to created_at.
+                var epoch = checkIn.CheckInAt ?? checkIn.CreatedAt;
+                if (checkIn.IssuedTicketId is not { Length: > 0 } || epoch is not (long and > 0))
+                    continue;
+
+                checkIns.Add(new VendorCheckInDto(
+                    VendorTicketId: checkIn.IssuedTicketId,
+                    CheckedInAt: Instant.FromUnixTimeSeconds(epoch.Value)));
+            }
+
+            cursor = body.Links?.Next is not null ? body.Data[^1].Id : null;
+        } while (cursor is not null);
+
+        _logger.LogInformation("Fetched {Count} check-ins from TicketTailor for event {EventId}",
+            checkIns.Count, eventId);
+
+        return checkIns;
     }
 
     public async Task<VendorEventSummaryDto> GetEventSummaryAsync(
@@ -357,14 +397,17 @@ public class TicketTailorService : ITicketVendorService
         [property: JsonPropertyName("status")] string? Status,
         [property: JsonPropertyName("order_id")] string? OrderId,
         [property: JsonPropertyName("custom_questions")] List<TtCustomQuestion>? CustomQuestions,
-        [property: JsonPropertyName("check_in")] TtCheckIn? CheckIn = null,
         [property: JsonPropertyName("barcode")] string? Barcode = null);
 
-    // TicketTailor returns `check_in` as a nested object on issued_tickets when
-    // a ticket has been scanned at the gate. `checked_in_at` is epoch seconds.
-    // Absent / null when not checked in. Issue nobodies-collective/Humans#736.
+    // TicketTailor records gate scans as their own `/check_ins` resource — NOT as
+    // a status change on the issued ticket (which stays "valid"). `issued_ticket_id`
+    // links back to the issued ticket; `check_in_at` / `created_at` are epoch seconds.
+    // Issue nobodies-collective/Humans#736.
     internal sealed record TtCheckIn(
-        [property: JsonPropertyName("checked_in_at")] long? CheckedInAt);
+        [property: JsonPropertyName("id")] string Id,
+        [property: JsonPropertyName("issued_ticket_id")] string? IssuedTicketId,
+        [property: JsonPropertyName("check_in_at")] long? CheckInAt,
+        [property: JsonPropertyName("created_at")] long? CreatedAt);
 
     internal sealed record TtCustomQuestion(
         [property: JsonPropertyName("question")] string? Question,

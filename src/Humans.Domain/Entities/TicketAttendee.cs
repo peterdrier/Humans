@@ -43,6 +43,16 @@ public class TicketAttendee
     /// <summary>Ticket status from vendor.</summary>
     public TicketAttendeeStatus Status { get; set; }
 
+    /// <summary>
+    /// When this ticket was scanned at the event gate, sourced from the vendor's
+    /// check-in resource (TicketTailor <c>/check_ins.check_in_at</c>, epoch seconds).
+    /// Orthogonal to <see cref="Status"/> — a checked-in ticket stays
+    /// <see cref="TicketAttendeeStatus.Valid"/>; check-in is a separate vendor concept.
+    /// Write-once per ticket: set to the earliest scan seen, never cleared by later
+    /// syncs. Null until the attendee is checked in. Issue nobodies-collective/Humans#736.
+    /// </summary>
+    public Instant? CheckedInAt { get; set; }
+
     /// <summary>Vendor event ID at time of sync (for future multi-event).</summary>
     public string VendorEventId { get; set; } = string.Empty;
 

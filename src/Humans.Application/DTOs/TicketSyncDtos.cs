@@ -11,8 +11,12 @@ namespace Humans.Application.DTOs;
 /// delta by ticket identity, not by attendee email — necessary because
 /// <c>MatchedUserId</c> can diverge from the email path after account-merge
 /// re-FK or non-email match assignment.
+/// <c>CheckedInAt</c> is the persisted per-ticket gate-scan time (null until the
+/// ticket is checked in); the participation pass reads it directly rather than
+/// inferring check-in from <c>Status</c> (which stays Valid once scanned).
 /// </summary>
-public record MatchedAttendeeRow(string VendorTicketId, Guid MatchedUserId, TicketAttendeeStatus Status);
+public record MatchedAttendeeRow(
+    string VendorTicketId, Guid MatchedUserId, TicketAttendeeStatus Status, Instant? CheckedInAt);
 
 /// <summary>
 /// A discount-code projection row used to build
