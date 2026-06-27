@@ -4,7 +4,6 @@ using Humans.Application.Interfaces.Mailer;
 using Humans.Application.Interfaces.Mailer.Dtos;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
-using Humans.Domain.Enums;
 using Humans.Web.Models.Mailer;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;

@@ -5,7 +5,6 @@ using Humans.Application.DTOs.Events;
 using Humans.Application.Events;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Camps;
-using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Events;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;

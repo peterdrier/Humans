@@ -21,7 +21,7 @@ public class TableModelBuilderTests
         var table = TableModel.For(Rows)
             .Column("Name", r => r.Name)
             .Column("Amount", r => r.Amount, c => c.Currency().End())
-            .Template("Actions", r => new HtmlString("<a>x</a>"))
+            .Template("Actions", _ => new HtmlString("<a>x</a>"))
             .Build();
 
         table.Columns.Select(c => c.Header).Should().Equal("Name", "Amount", "Actions");

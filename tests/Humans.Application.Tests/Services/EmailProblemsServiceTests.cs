@@ -5,7 +5,6 @@ using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Profiles;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
-using Humans.Domain.Enums;
 using NodaTime;
 using NSubstitute;
 

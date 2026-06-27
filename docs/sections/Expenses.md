@@ -100,7 +100,7 @@ Append-on-approve, drained by `HoldedExpenseOutboxJob`. Fields: `EventType` (Cre
 
 | Route | Method | Auth | Action |
 |-------|--------|------|--------|
-| `/Expenses` | GET | Authenticated | Submitter dashboard — shows member's reports + (when Holded creditor activity exists) the member's Holded IOU summary (balance owed / total paid / last payment) and a combined reports-and-payments ledger, populated via `GetHoldedTimelineAsync`. The balance may include items unrelated to expense reports (`OtherAmount`), so the ledger does not reconcile to zero. |
+| `/Expenses` | GET | Authenticated | Submitter dashboard — shows member's reports + (when Holded creditor activity exists) the member's Holded IOU summary (balance owed / total paid / last payment) and a combined reports-and-payments ledger, populated via `GetHoldedTimelineAsync`. The balance may include items unrelated to expense reports (`OtherAmount`), so the ledger does not reconcile to zero. When the member is bound to a 400000xx creditor account, also shows the member's full Holded daybook ledger (`AccountLedger`). |
 | `/Expenses/New` | GET/POST | Authenticated | Create draft |
 | `/Expenses/{id}` | GET | Authenticated (resource-based: owner + Finance) | Detail |
 | `/Expenses/{id}/Edit` | GET/POST | Authenticated (owner, Draft only) | Edit draft |
@@ -125,7 +125,7 @@ Append-on-approve, drained by `HoldedExpenseOutboxJob`. Fields: `EventType` (Cre
 |-------|--------------|
 | Authenticated member | Submit, edit, withdraw own reports. View own reports. Set own IBAN. |
 | Budget Coordinator | All member capabilities. Additionally: endorse or coordinator-reject reports in categories they coordinate. |
-| FinanceAdmin, Admin | All coordinator capabilities. Additionally: full review queue, approve, finance-reject, category override, view Holded sync status. |
+| FinanceAdmin, Admin | All coordinator capabilities. Additionally: full review queue, approve, finance-reject, category override, view Holded sync status, bind a submitter to a Holded creditor account (400000xx) on the expense detail view. |
 | Admin | All FinanceAdmin capabilities. Additionally: reveal raw IBAN on admin user page (audit-logged). |
 
 ## Invariants

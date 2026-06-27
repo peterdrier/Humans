@@ -159,8 +159,11 @@ All routes are gated by `[Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]` 
 |-------|---------|
 | `GET /Finance/HoldedAccounts` | Account provisioning UI (reconcile + apply) |
 | `GET /Finance/HoldedUnmatched` | Unmatched-doc worklist with deep links and "Sync now" |
+| `GET /Finance/Creditors` | Admin overview of all cached 400000xx creditor accounts with member bindings |
+| `GET /Finance/Creditors/{accountNum:int}` | Per-account creditor statement (balance + itemized journal lines) |
 | `POST /Finance/HoldedAccounts/Provision` | Add one or all pending Holded accounts + map rows |
 | `POST /Finance/HoldedSync/Run` | Manual sync trigger |
+| `POST /Finance/Creditors/Bind` | Manually bind a member to a Holded creditor account by 400000xx number |
 
 ## Actors & Roles
 

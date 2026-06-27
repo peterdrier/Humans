@@ -189,9 +189,9 @@ public sealed class CachingCampService(
                     CampName: season.Name,
                     CampSlug: camp.Slug,
                     CampSeasonId: season.Id,
-                    Status: season.Status,
+                    season.Status,
                     TargetMemberCount: season.MemberCount,
-                    JoinedMemberCount: season.JoinedMemberCount)))
+                    season.JoinedMemberCount)))
             .ToList();
     }
 

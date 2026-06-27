@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Humans.Domain.ValueObjects;
-using Xunit;
 
 namespace Humans.Application.Tests.Surveys;
 

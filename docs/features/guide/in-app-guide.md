@@ -78,9 +78,9 @@ cached in-memory from GitHub. No migrations, no new tables.
 
 ## Role filtering rules
 
-See `docs/superpowers/specs/2026-04-21-in-app-guide-design.md` §Role
-filtering for the authoritative rules (per-block visibility, within-file
-superset, parenthetical parsing).
+See `docs/sections/Guide.md` §Invariants and §Actors for the authoritative
+role-filtering rules (per-block visibility, within-file superset,
+parenthetical parsing).
 
 ## Related features
 

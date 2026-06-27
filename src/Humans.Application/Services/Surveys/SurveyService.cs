@@ -753,7 +753,7 @@ public sealed class SurveyService(
             .Distinct()
             .ToList();
         var users = identifiedUserIds.Count == 0
-            ? (IReadOnlyDictionary<Guid, UserInfo>)new Dictionary<Guid, UserInfo>()
+            ? new Dictionary<Guid, UserInfo>()
             : await userService.GetUserInfosAsync(identifiedUserIds, ct);
 
         var rows = responses
@@ -1057,7 +1057,7 @@ public sealed class SurveyService(
                     Order = o.Order,
                     Value = o.Value,
                     Label = o.Label,
-                }).ToList<SurveyQuestionOption>(),
+                }).ToList(),
             };
         }).ToList();
 

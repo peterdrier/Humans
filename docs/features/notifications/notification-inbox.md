@@ -28,6 +28,7 @@ Admins and coordinators receive many email notifications that lack shared state.
 - `ActionLabel` (string, nullable, max 50) -- button text, falls back to "View ->"
 - `Priority` (NotificationPriority: Normal, High, Critical) -- stored as string
 - `Source` (NotificationSource) -- which system generated it, stored as string
+- `SourceKey` (string, nullable, max 128) -- optional correlation key for the specific source entity; enables `ResolveBySourceKeyAsync` auto-resolution
 - `Class` (NotificationClass: Informational, Actionable) -- stored as string
 - `TargetGroupName` (string, nullable, max 100) -- display name for group targets
 - `CreatedAt` (Instant)
@@ -82,7 +83,7 @@ Shared between popup and inbox. 3px left border accent by priority/class. Type t
 
 ## Cleanup
 
-`CleanupNotificationsJob` runs daily. It deletes resolved notifications older than 7 days and unresolved informational notifications older than 30 days. Actionable unresolved notifications are never auto-deleted.
+`CleanupNotificationsJob` runs daily. It deletes resolved notifications older than 7 days, unresolved informational notifications older than 30 days, and unresolved rows of retired sources (currently `ApplicationSubmitted` and `ConsentReviewNeeded`) that have no remaining resolution path. Other actionable unresolved notifications are never auto-deleted.
 
 ## Authorization
 

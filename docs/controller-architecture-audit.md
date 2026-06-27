@@ -1,6 +1,6 @@
 # Controller Architecture Audit
 
-Living document. Last updated: 2026-06-15 (freshness-sweep regeneration).
+Living document. Last updated: 2026-06-24 (freshness-sweep regeneration).
 
 ## Part 1: Action Name Audit
 
@@ -665,6 +665,7 @@ The changes captured in the 2026-06-07 sweep — now all stable in the tables be
 | Index | /Mailer/Admin | GET | Mailer admin landing | OK |
 | Debug | /Mailer/Admin/Audiences/{key}/Debug | GET | Inspect a single audience's members | OK |
 | SyncAudience | /Mailer/Admin/Audiences/{key}/Sync | POST | Sync an audience | OK |
+| SyncAll | /Mailer/Admin/SyncAll | POST | Sync all audiences in one pass and report aggregate counts | OK |
 | Refresh | /Mailer/Admin/Refresh | POST | Refresh audience data | OK |
 | Commit | /Mailer/Admin/Import/Commit | POST | Commit a staged import | OK |
 | Import | /Mailer/Admin/Import | GET | Import preview page | OK |

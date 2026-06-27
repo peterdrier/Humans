@@ -4,7 +4,6 @@ using System.Text.Json.Serialization;
 using Humans.Application.Interfaces.Surveys;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
-using Humans.Domain.Enums;
 using Humans.Web.Authorization;
 using Humans.Web.Extensions;
 using Humans.Web.Models;

@@ -1,6 +1,5 @@
 // @e2e: board.spec.ts
 // @e2e: profile.spec.ts
-using Humans.Application;
 using Humans.Application.Authorization;
 using Humans.Application.Interfaces.Admin;
 using Humans.Application.Interfaces.AuditLog;

@@ -112,6 +112,28 @@ public sealed class ShiftRepositoryManagementTests : IDisposable
         preferences.Should().BeEquivalentTo([tagB.Id, tagC.Id]);
     }
 
+    [HumansFact]
+    public async Task SetVolunteerTagPreferencesAsync_DeduplicatesTagIds()
+    {
+        // A duplicate tag id in the posted list must not insert two rows for the
+        // same (UserId, ShiftTagId) — that violates IX_volunteer_tag_preferences_user_tag_unique
+        // in PostgreSQL and 500s the whole profile save.
+        var userId = Guid.NewGuid();
+        var tag = new ShiftTag { Id = Guid.NewGuid(), Name = "A" };
+        _dbContext.ShiftTags.Add(tag);
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        await _repo.SetVolunteerTagPreferencesAsync(userId, [tag.Id, tag.Id], Xunit.TestContext.Current.CancellationToken);
+
+        _dbContext.ChangeTracker.Clear();
+        var preferences = await _dbContext.VolunteerTagPreferences
+            .AsNoTracking()
+            .Where(v => v.UserId == userId)
+            .Select(v => v.ShiftTagId)
+            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        preferences.Should().ContainSingle().Which.Should().Be(tag.Id);
+    }
+
     // ─────────────────────────────────────────────────────────
     // helpers
     // ─────────────────────────────────────────────────────────
