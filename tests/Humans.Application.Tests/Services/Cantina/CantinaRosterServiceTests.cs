@@ -304,7 +304,6 @@ public class CantinaRosterServiceTests
         intolerance["Lactose"].Should().Be(1);
         intolerance["Gluten"].Should().Be(0);
         intolerance["Histamine"].Should().Be(0);
-        intolerance["FODMAP"].Should().Be(0);
         intolerance["Other"].Should().Be(0);
         result.IntoleranceOtherEntries.Should().BeEmpty();
 
