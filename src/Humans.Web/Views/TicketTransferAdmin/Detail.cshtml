@@ -1,9 +1,7 @@
 @model Humans.Application.DTOs.TicketTransferDetailDto
-@inject Microsoft.Extensions.Options.IOptions<Humans.Application.Configuration.TicketVendorSettings> TicketVendorOptions
 @{
     ViewData["Title"] = "Review transfer";
     var row = Model.Row;
-    var automated = TicketVendorOptions.Value.EnableAutomatedTransferWriteback;
     var (statusLabel, statusClass) = row.OriginalAttendeeStatus switch
     {
         TicketAttendeeStatus.Valid => ("Valid (not checked in)", "bg-success"),
@@ -99,27 +97,15 @@
     <div class="card mb-3 border-info">
         <div class="card-body">
             <h2 class="h6 mb-2">How to process this transfer</h2>
-            @if (automated)
-            {
-                <ol class="mb-0">
-                    <li><strong>Process transfer</strong> below voids ticket
-                        <strong>@Model.OriginalAttendeeVendorTicketId</strong> (to a hold, so the same ticket
-                        type is preserved even if it's now closed) and reissues it to
-                        <strong>@row.ReceiverLegalName</strong> (<strong>@row.ReceiverEmail</strong>) — no refund,
-                        like-for-like.</li>
-                    <li>If the automated step fails, finish the void+reissue in the TicketTailor dashboard and
-                        then use <strong>Mark successful</strong>. Or <strong>cancel</strong> with a reason.</li>
-                </ol>
-            }
-            else
-            {
-                <ol class="mb-0">
-                    <li>In the TicketTailor dashboard, void ticket <strong>@Model.OriginalAttendeeVendorTicketId</strong>
-                        and reissue it to <strong>@row.ReceiverLegalName</strong> (<strong>@row.ReceiverEmail</strong>).</li>
-                    <li>Then mark this request <strong>successful</strong> below — the next ticket sync updates the
-                        local records automatically. Or <strong>cancel</strong> it with a reason.</li>
-                </ol>
-            }
+            <ol class="mb-0">
+                <li><strong>Process transfer</strong> below voids ticket
+                    <strong>@Model.OriginalAttendeeVendorTicketId</strong> (to a hold, so the same ticket
+                    type is preserved even if it's now closed) and reissues it to
+                    <strong>@row.ReceiverLegalName</strong> (<strong>@row.ReceiverEmail</strong>) — no refund,
+                    like-for-like.</li>
+                <li>If the automated step fails, finish the void+reissue in the TicketTailor dashboard and
+                    then use <strong>Mark successful</strong>. Or <strong>cancel</strong> with a reason.</li>
+            </ol>
         </div>
     </div>
 
@@ -138,15 +124,8 @@
             <textarea id="adminNotes" name="adminNotes" rows="2" class="form-control" maxlength="1000"></textarea>
             <div class="form-text">A reason is required to cancel. Optional when marking successful.</div>
         </div>
-        @if (automated)
-        {
-            <button type="submit" name="action" value="process" class="btn btn-success">Process transfer (void + reissue)</button>
-            <button type="submit" name="action" value="marksuccessful" class="btn btn-outline-secondary">Mark successful (no vendor call)</button>
-        }
-        else
-        {
-            <button type="submit" name="action" value="marksuccessful" class="btn btn-success">Mark transfer successful</button>
-        }
+        <button type="submit" name="action" value="process" class="btn btn-success">Process transfer (void + reissue)</button>
+        <button type="submit" name="action" value="marksuccessful" class="btn btn-outline-secondary">Mark successful (no vendor call)</button>
         <button type="submit" name="action" value="cancel" class="btn btn-danger">Cancel transfer</button>
         <a class="btn btn-outline-secondary" asp-action="Index">Back</a>
     </form>

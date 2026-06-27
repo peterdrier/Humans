@@ -1,4 +1,3 @@
-using Humans.Application.Configuration;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Email;
@@ -9,7 +8,6 @@ using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using NodaTime;
 
 namespace Humans.Application.Services.Tickets;
@@ -17,9 +15,8 @@ namespace Humans.Application.Services.Tickets;
 /// <summary>
 /// Owns the TicketTransferRequest aggregate's lifecycle. The Sender initiates a
 /// request; the ticket team either runs the automated TicketTailor void(-to-hold)+reissue
-/// (<see cref="ProcessTransferAsync"/>, gated by
-/// <see cref="TicketVendorSettings.EnableAutomatedTransferWriteback"/>) or records a manual
-/// outcome (<see cref="ApproveAsync"/> = "mark successful", <see cref="RejectAsync"/> =
+/// (<see cref="ProcessTransferAsync"/>) or records a manual outcome
+/// (<see cref="ApproveAsync"/> = "mark successful", <see cref="RejectAsync"/> =
 /// "cancel with reason"). The next ticket sync reconciles local attendee rows. Requests
 /// email the Sender + the ticket team; decisions email the Sender + Receiver.
 /// </summary>
@@ -33,11 +30,9 @@ public sealed class TicketTransferService(
     IEmailMessageFactory emailMessages,
     IAuditLogService auditLog,
     ITicketCacheInvalidator cacheInvalidator,
-    IOptions<TicketVendorSettings> vendorSettings,
     IClock clock,
     ILogger<TicketTransferService> logger) : ITicketTransferService
 {
-    private readonly TicketVendorSettings _settings = vendorSettings.Value;
 
     public async Task<IReadOnlyList<MyAttendeeRowDto>> GetMyAttendeesAsync(
         Guid userId, CancellationToken ct = default)
@@ -201,11 +196,6 @@ public sealed class TicketTransferService(
     public async Task<TicketTransferRowDto> ProcessTransferAsync(
         Guid transferRequestId, Guid adminUserId, string? adminNotes, CancellationToken ct = default)
     {
-        // Server-side rollout gate — automation stays off in prod until the flag is flipped.
-        if (!_settings.EnableAutomatedTransferWriteback)
-            throw new InvalidOperationException(
-                "Automated ticket-transfer writeback is disabled. Process the transfer in TicketTailor and use “Mark successful”.");
-
         var request = await LoadPendingAsync(transferRequestId, ct);
 
         // Attempt the void(-to-hold)+reissue. On vendor failure this records the outcome on

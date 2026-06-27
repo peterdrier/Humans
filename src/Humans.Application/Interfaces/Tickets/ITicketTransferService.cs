@@ -47,10 +47,9 @@ public interface ITicketTransferService : IApplicationService
 
     /// <summary>
     /// Process a Pending request by performing the automated TicketTailor
-    /// void(-to-hold)+reissue, then marking it transferred and emailing the parties.
-    /// Gated by <c>TicketVendorSettings.EnableAutomatedTransferWriteback</c> — throws when
-    /// disabled. On vendor failure the request stays Pending (the diagnostic is recorded and
-    /// surfaced) so the team can finish in TicketTailor and fall back to <see cref="ApproveAsync"/>.
+    /// void(-to-hold)+reissue, then marking it transferred and emailing the parties. On vendor
+    /// failure the request stays Pending (the diagnostic is recorded and surfaced) so the team
+    /// can finish in TicketTailor and fall back to <see cref="ApproveAsync"/>.
     /// </summary>
     Task<TicketTransferRowDto> ProcessTransferAsync(
         Guid transferRequestId, Guid adminUserId, string? adminNotes, CancellationToken ct = default);

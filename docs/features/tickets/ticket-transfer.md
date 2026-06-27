@@ -12,10 +12,9 @@
   src/Humans.Web/ViewComponents/TicketStubViewComponent.cs
 -->
 <!-- freshness:flag-on-change
-  The two processing paths (automated void+reissue vs manual mark-successful), the
-  EnableAutomatedTransferWriteback flag, lifecycle states, email notification points, the AllowEmail
-  recipient lookup, and the reusable ticket-stub — review when transfer lifecycle, the wizard, the
-  vendor writeback, or notifications change.
+  The two processing paths (automated void+reissue vs manual mark-successful), lifecycle states, email
+  notification points, the AllowEmail recipient lookup, and the reusable ticket-stub — review when
+  transfer lifecycle, the wizard, the vendor writeback, or notifications change.
 -->
 
 # Ticket Transfer
@@ -31,8 +30,7 @@ docs.
 This feature lets the original holder (the **Sender**) request a transfer to another verified Humans
 member (the **Receiver**). A request notifies the team, who process it one of two ways:
 
-- **Automated** (`ProcessTransferAsync`, gated by `TicketVendorSettings.EnableAutomatedTransferWriteback`
-  — **default off in prod**): the team hits **Process transfer** and Humans voids the original ticket
+- **Automated** (`ProcessTransferAsync` — the **Process transfer** button): Humans voids the original ticket
   *to a hold* and reissues the same ticket type from that hold to the Receiver via the TicketTailor API.
   The void never refunds or moves the order's money; the reissue is like-for-like (same class even if it's
   now closed/sold out) and carries the original price. The swapped attendee rows are written locally in the
@@ -40,8 +38,9 @@ member (the **Receiver**). A request notifies the team, who process it one of tw
 - **Manual** (`ApproveAsync` = "mark successful"): the team voids+reissues by hand in the TicketTailor
   dashboard, then records the outcome; the next ticket sync reconciles the local attendee rows.
 
-Either way the team can instead cancel the request with a reason. The flag lets automation be validated in
-QA/preview and flipped on in prod once verified.
+Either way the team can instead cancel the request with a reason. Both decision actions are admin-only
+(`TicketAdminOrAdmin`); there is no per-environment toggle — the automated path is always available to the
+ticket team.
 
 Tracked in: peterdrier/Humans#382. The void+reissue mechanics are researched in
 [`docs/superpowers/probes/2026-05-04-tickettailor-write-api.md`](../../superpowers/probes/2026-05-04-tickettailor-write-api.md)
@@ -87,7 +86,7 @@ request columns + audit log instead.
   paid orders whose valid-ticket count dropped below what was issued (manual-reconciliation aid).
 - The Detail page shows the ticket/order context, both parties, the reason, a "View order in
   TicketTailor" link, and processing instructions that match the active path.
-- **Process transfer** (shown only when `EnableAutomatedTransferWriteback` is on) voids the original ticket
+- **Process transfer** voids the original ticket
   to a hold and reissues the same ticket type to the Receiver via the TicketTailor API, writes the swapped
   attendee rows, and sets `Approved` (`VendorResult = Succeeded`). On vendor failure the request **stays
   `Pending`** with the diagnostic recorded (`VendorResult` `Failed`, or `VoidSucceededIssueFailed` with the

@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using Humans.Application.Configuration;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Email;
@@ -12,7 +11,6 @@ using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
@@ -51,7 +49,7 @@ public sealed class TicketTransferServiceTests
 
     public TicketTransferServiceTests()
     {
-        _service = CreateService(automatedWriteback: false);
+        _service = CreateService();
 
         // Receiver: complete profile + primary email.
         _userService.GetUserInfoAsync(_receiverId, Arg.Any<CancellationToken>())
@@ -267,24 +265,9 @@ public sealed class TicketTransferServiceTests
     // ── ProcessTransferAsync (automated void+reissue) ───────────────────────────
 
     [HumansFact]
-    public async Task Process_Throws_WhenWritebackDisabled()
-    {
-        var req = MakePending(Guid.NewGuid());
-        _transferRepo.GetByIdAsync(req.Id, Arg.Any<CancellationToken>()).Returns(req);
-
-        // _service is built with the flag OFF.
-        var act = () => _service.ProcessTransferAsync(req.Id, _adminId, null, Xunit.TestContext.Current.CancellationToken);
-
-        await act.Should().ThrowAsync<InvalidOperationException>();
-        req.Status.Should().Be(TicketTransferStatus.Pending);
-        await _vendor.DidNotReceive().VoidIssuedTicketAsync(
-            Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
     public async Task Process_VoidToHoldThenReissue_KeepsOriginalPrice_MarksApproved()
     {
-        var svc = CreateService(automatedWriteback: true);
+        var svc = CreateService();
         var req = MakePending(Guid.NewGuid());
         _transferRepo.GetByIdAsync(req.Id, Arg.Any<CancellationToken>()).Returns(req);
         StubAttendee(TicketAttendeeStatus.Valid, _senderId);
@@ -321,7 +304,7 @@ public sealed class TicketTransferServiceTests
     [HumansFact]
     public async Task Process_VoidFails_StaysPending_NoLocalWrite_NoEmails()
     {
-        var svc = CreateService(automatedWriteback: true);
+        var svc = CreateService();
         var req = MakePending(Guid.NewGuid());
         _transferRepo.GetByIdAsync(req.Id, Arg.Any<CancellationToken>()).Returns(req);
         StubAttendee(TicketAttendeeStatus.Valid, _senderId);
@@ -344,7 +327,7 @@ public sealed class TicketTransferServiceTests
     [HumansFact]
     public async Task Process_VoidOkButIssueFails_VoidsOriginalLocally_StaysPending()
     {
-        var svc = CreateService(automatedWriteback: true);
+        var svc = CreateService();
         var req = MakePending(Guid.NewGuid());
         _transferRepo.GetByIdAsync(req.Id, Arg.Any<CancellationToken>()).Returns(req);
         StubAttendee(TicketAttendeeStatus.Valid, _senderId);
@@ -401,7 +384,7 @@ public sealed class TicketTransferServiceTests
 
     // ── helpers ─────────────────────────────────────────────────────────────────
 
-    private TicketTransferService CreateService(bool automatedWriteback) =>
+    private TicketTransferService CreateService() =>
         new(
             _transferRepo,
             _ticketRepo,
@@ -412,7 +395,6 @@ public sealed class TicketTransferServiceTests
             _emailMessages,
             _auditLog,
             _cacheInvalidator,
-            Options.Create(new TicketVendorSettings { EnableAutomatedTransferWriteback = automatedWriteback }),
             _clock,
             NullLogger<TicketTransferService>.Instance);
 

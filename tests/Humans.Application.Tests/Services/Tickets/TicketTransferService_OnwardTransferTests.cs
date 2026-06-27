@@ -44,7 +44,6 @@ public sealed class TicketTransferService_OnwardTransferTests
             Substitute.For<ITicketVendorService>(),
             _userService, _userEmailService, _emailService, _emailMessages,
             _auditLog, _cacheInvalidator,
-            Microsoft.Extensions.Options.Options.Create(new Humans.Application.Configuration.TicketVendorSettings()),
             _clock, NullLogger<TicketTransferService>.Instance);
 
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
