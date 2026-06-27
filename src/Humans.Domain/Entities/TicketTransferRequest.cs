@@ -63,6 +63,13 @@ public class TicketTransferRequest
     /// <summary>The reissued TicketTailor ticket id on a successful automated transfer.</summary>
     public string? NewVendorTicketId { get; set; }
 
+    /// <summary>
+    /// The TicketTailor hold id captured when a void-to-hold succeeded but the reissue failed
+    /// (<see cref="TicketTransferVendorResult.VoidSucceededIssueFailed"/>). Lets an admin retry the
+    /// reissue straight from the held seat — no manual dashboard step. Null otherwise.
+    /// </summary>
+    public string? VendorHoldId { get; set; }
+
     // Dormant: the removed vendor-step timeline's storage. The lean automated engine records
     // its outcome in the columns above + the audit log instead; VendorStepsJson is unread and
     // drops in a follow-up PR after prod soak (memory/architecture/no-drops-until-prod-verified.md).

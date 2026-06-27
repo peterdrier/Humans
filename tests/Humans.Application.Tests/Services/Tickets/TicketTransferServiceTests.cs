@@ -361,6 +361,7 @@ public sealed class TicketTransferServiceTests
         req.Status.Should().Be(TicketTransferStatus.Pending);
         req.VendorResult.Should().Be(TicketTransferVendorResult.VoidSucceededIssueFailed);
         req.VendorMessage.Should().Contain("hold_123");
+        req.VendorHoldId.Should().Be("hold_123"); // captured for one-click retry
         // Original mirrored to Void locally (seat already gone at the vendor); hold retained.
         await _ticketRepo.Received(1).UpsertAttendeesAsync(
             Arg.Is<IReadOnlyList<TicketAttendee>>(list =>
@@ -393,11 +394,101 @@ public sealed class TicketTransferServiceTests
         await act.Should().ThrowAsync<InvalidOperationException>();
         req.VendorResult.Should().Be(TicketTransferVendorResult.VoidSucceededIssueFailed);
         req.VendorMessage.Should().Contain("hold_123");
+        req.VendorHoldId.Should().Be("hold_123");
         await _ticketRepo.Received(1).UpsertAttendeesAsync(
             Arg.Is<IReadOnlyList<TicketAttendee>>(list =>
                 list.Count == 1 && list[0].VendorTicketId == "tkt_original"
                 && list[0].Status == TicketAttendeeStatus.Void),
             Arg.Any<CancellationToken>());
+    }
+
+    // ── RetryReissueAsync (one-click recovery from a partial void) ──────────────
+
+    [HumansFact]
+    public async Task RetryReissue_FromHold_IssuesNewTicket_MarksApproved()
+    {
+        var req = MakePending(Guid.NewGuid());
+        req.VendorResult = TicketTransferVendorResult.VoidSucceededIssueFailed;
+        req.VendorHoldId = "hold_123";
+        _transferRepo.GetByIdAsync(req.Id, Arg.Any<CancellationToken>()).Returns(req);
+        // Original attendee was already voided locally during the partial failure.
+        _ticketRepo.GetAttendeeByIdAsync(_attendeeId, Arg.Any<CancellationToken>())
+            .Returns(MakeAttendee(_attendeeId, _orderId, _senderId, TicketAttendeeStatus.Void));
+        _vendor.IssueTicketAsync(Arg.Any<IssueTicketRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new VendorTicketDto("tt_retry", null, "Alice Smith", "alice@example.com", "Full Week", 0m, "valid"));
+
+        await _service.RetryReissueAsync(req.Id, _adminId, "go", Xunit.TestContext.Current.CancellationToken);
+
+        // Reissued from the recorded hold — same ticket type, no second void.
+        await _vendor.Received(1).IssueTicketAsync(
+            Arg.Is<IssueTicketRequest>(r => r.HoldId == "hold_123" && r.EventId == null
+                && r.FullName == "Alice Smith"),
+            Arg.Any<CancellationToken>());
+        await _vendor.DidNotReceive().VoidIssuedTicketAsync(
+            Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
+        // Only the new Valid row is written (original is already Void), keeping the ORIGINAL €200 price.
+        await _ticketRepo.Received(1).UpsertAttendeesAsync(
+            Arg.Is<IReadOnlyList<TicketAttendee>>(list =>
+                list.Count == 1 && list[0].VendorTicketId == "tt_retry"
+                && list[0].Status == TicketAttendeeStatus.Valid && list[0].Price == 200m
+                && list[0].MatchedUserId == _receiverId),
+            CancellationToken.None);
+        req.Status.Should().Be(TicketTransferStatus.Approved);
+        req.VendorResult.Should().Be(TicketTransferVendorResult.Succeeded);
+        req.NewVendorTicketId.Should().Be("tt_retry");
+        req.VendorHoldId.Should().BeNull(); // consumed
+        _emailMessages.Received(2).TicketTransferDecision(
+            Arg.Any<string>(), Arg.Any<string>(), true, Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<string?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task RetryReissue_StillFails_StaysPartial_KeepsHold_NoEmails()
+    {
+        var req = MakePending(Guid.NewGuid());
+        req.VendorResult = TicketTransferVendorResult.VoidSucceededIssueFailed;
+        req.VendorHoldId = "hold_123";
+        _transferRepo.GetByIdAsync(req.Id, Arg.Any<CancellationToken>()).Returns(req);
+        _ticketRepo.GetAttendeeByIdAsync(_attendeeId, Arg.Any<CancellationToken>())
+            .Returns(MakeAttendee(_attendeeId, _orderId, _senderId, TicketAttendeeStatus.Void));
+        _vendor.IssueTicketAsync(Arg.Any<IssueTicketRequest>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new TicketVendorWriteException("still down", TicketVendorFailureKind.Transient));
+
+        var act = () => _service.RetryReissueAsync(req.Id, _adminId, null, Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        req.Status.Should().Be(TicketTransferStatus.Pending);
+        req.VendorResult.Should().Be(TicketTransferVendorResult.VoidSucceededIssueFailed);
+        req.VendorHoldId.Should().Be("hold_123"); // retained so it can be retried again
+        _emailMessages.DidNotReceive().TicketTransferDecision(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<string?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task RetryReissue_Throws_WhenNotPartial()
+    {
+        var req = MakePending(Guid.NewGuid()); // VendorResult NotAttempted
+        _transferRepo.GetByIdAsync(req.Id, Arg.Any<CancellationToken>()).Returns(req);
+
+        var act = () => _service.RetryReissueAsync(req.Id, _adminId, null, Xunit.TestContext.Current.CancellationToken);
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        await _vendor.DidNotReceive().IssueTicketAsync(
+            Arg.Any<IssueTicketRequest>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task RetryReissue_Throws_WhenNoHoldRecorded()
+    {
+        var req = MakePending(Guid.NewGuid());
+        req.VendorResult = TicketTransferVendorResult.VoidSucceededIssueFailed;
+        req.VendorHoldId = null;
+        _transferRepo.GetByIdAsync(req.Id, Arg.Any<CancellationToken>()).Returns(req);
+
+        var act = () => _service.RetryReissueAsync(req.Id, _adminId, null, Xunit.TestContext.Current.CancellationToken);
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        await _vendor.DidNotReceive().IssueTicketAsync(
+            Arg.Any<IssueTicketRequest>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

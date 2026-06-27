@@ -75,6 +75,11 @@ public sealed class TicketTransferAdminController(
                     SetSuccess("Transfer processed: ticket voided and reissued. The next sync confirms the local records.");
                     return RedirectToAction(nameof(Index));
 
+                case "retry":
+                    await service.RetryReissueAsync(id, user.Id, adminNotes, ct);
+                    SetSuccess("Reissue retried: the replacement ticket was issued to the receiver.");
+                    return RedirectToAction(nameof(Index));
+
                 case "marksuccessful":
                     await service.ApproveAsync(id, user.Id, adminNotes, ct);
                     SetSuccess("Transfer marked successful.");

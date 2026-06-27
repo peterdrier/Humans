@@ -55,6 +55,17 @@ public interface ITicketTransferService : IApplicationService
         Guid transferRequestId, Guid adminUserId, string? adminNotes, CancellationToken ct = default);
 
     /// <summary>
+    /// Retry the reissue of a part-processed transfer (a Pending request whose
+    /// <see cref="Domain.Enums.TicketTransferVendorResult.VoidSucceededIssueFailed"/> recorded a
+    /// hold id): issues the replacement from that held seat, writes the new attendee row and marks
+    /// it transferred. One-click recovery — no manual TicketTailor step. Throws when the request is
+    /// not in that state or has no recorded hold id; on a repeated failure the request stays Pending
+    /// with the hold retained so it can be retried again.
+    /// </summary>
+    Task<TicketTransferRowDto> RetryReissueAsync(
+        Guid transferRequestId, Guid adminUserId, string? adminNotes, CancellationToken ct = default);
+
+    /// <summary>
     /// Cancel a Pending request with a required reason. Records the decision,
     /// audits, and emails the Sender + Receiver with the reason.
     /// </summary>

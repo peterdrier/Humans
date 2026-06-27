@@ -92,7 +92,40 @@
     }
 </dl>
 
-@if (row.Status == TicketTransferStatus.Pending)
+@if (row.Status == TicketTransferStatus.Pending && row.VendorResult == TicketTransferVendorResult.VoidSucceededIssueFailed)
+{
+    <div class="card mb-3 border-warning">
+        <div class="card-body">
+            <h2 class="h6 mb-2">Reissue needs finishing</h2>
+            <p class="mb-2">
+                Ticket <strong>@Model.OriginalAttendeeVendorTicketId</strong> was <strong>voided</strong> at
+                TicketTailor (the seat is held — not refunded), but the reissue to
+                <strong>@row.ReceiverLegalName</strong> (<strong>@row.ReceiverEmail</strong>) failed.
+            </p>
+            @if (!string.IsNullOrEmpty(row.VendorMessage))
+            {
+                <p class="small text-muted mb-2">@row.VendorMessage</p>
+            }
+            <ol class="mb-0">
+                <li><strong>Retry reissue</strong> issues the replacement straight from the held seat — no dashboard step.</li>
+                <li>If you've already reissued it in TicketTailor, use <strong>Mark successful</strong> instead.</li>
+            </ol>
+        </div>
+    </div>
+
+    <form asp-action="Decide" method="post" class="mt-3">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="id" value="@row.Id" />
+        <div class="mb-3">
+            <label for="adminNotes">Notes (optional)</label>
+            <textarea id="adminNotes" name="adminNotes" rows="2" class="form-control" maxlength="1000"></textarea>
+        </div>
+        <button type="submit" name="action" value="retry" class="btn btn-success">Retry reissue</button>
+        <button type="submit" name="action" value="marksuccessful" class="btn btn-outline-secondary">Mark successful (already reissued in TicketTailor)</button>
+        <a class="btn btn-outline-secondary" asp-action="Index">Back</a>
+    </form>
+}
+else if (row.Status == TicketTransferStatus.Pending)
 {
     <div class="card mb-3 border-info">
         <div class="card-body">
@@ -103,8 +136,8 @@
                     type is preserved even if it's now closed) and reissues it to
                     <strong>@row.ReceiverLegalName</strong> (<strong>@row.ReceiverEmail</strong>) — no refund,
                     like-for-like.</li>
-                <li>If the automated step fails, finish the void+reissue in the TicketTailor dashboard and
-                    then use <strong>Mark successful</strong>. Or <strong>cancel</strong> with a reason.</li>
+                <li>If the automated step fails, retry the reissue (or finish in TicketTailor and use
+                    <strong>Mark successful</strong>). Or <strong>cancel</strong> with a reason.</li>
             </ol>
         </div>
     </div>

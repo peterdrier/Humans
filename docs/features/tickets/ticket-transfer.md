@@ -90,9 +90,10 @@ request columns + audit log instead.
   to a hold and reissues the same ticket type to the Receiver via the TicketTailor API, writes the swapped
   attendee rows, and sets `Approved` (`VendorResult = Succeeded`). On vendor failure the request **stays
   `Pending`** with the diagnostic recorded (`VendorResult` `Failed`, or `VoidSucceededIssueFailed` with the
-  hold id) and the admin is told to finish in TicketTailor and use Mark successful — no success emails fire.
-  A `VoidSucceededIssueFailed` request (ticket already voided) **cannot be cancelled or rejected** — the
-  only forward path is Mark successful, so the voided seat can't be stranded.
+  hold id persisted to `VendorHoldId`) and no success emails fire. A `VoidSucceededIssueFailed` request
+  (ticket already voided) shows a **Retry reissue** button that re-issues straight from the held seat — one
+  click, no dashboard step — or the admin can finish in TicketTailor and **Mark successful**. Such a request
+  **cannot be cancelled, rejected, or re-processed** (that would strand or double-void the held seat).
 - **Mark transfer successful** sets `Approved` with no vendor call (manual void+reissue, or closing out a
   partial automated attempt); **Cancel transfer** requires a reason and sets `Rejected`. All three are
   policy-gated to `TicketAdminOrAdmin` and audit-logged.
@@ -110,12 +111,18 @@ Submitted (Pending)
    ├── Cancel (Sender)              → Cancelled    (terminal)
    ├── Cancel transfer (admin)      → Rejected     (reason required, terminal)
    ├── Process transfer (admin)     → Approved      (terminal; automated TT void+reissue OK)
-   │                                  └ vendor failure → stays Pending (diagnostic recorded)
+   │                                  └ vendor failure → stays Pending (diagnostic recorded; hold kept)
+   ├── Retry reissue (admin)        → Approved      (from VoidSucceededIssueFailed; re-issues from the held seat)
+   │                                  └ still failing → stays Pending (hold retained for another retry)
    └── Mark successful (admin)      → Approved      (terminal; no vendor call)
 ```
 
+A `VoidSucceededIssueFailed` request (ticket voided, reissue pending) accepts only **Retry reissue** or
+**Mark successful** — Cancel/Reject/Process are blocked so the already-voided seat can't be stranded or
+double-voided.
+
 Triggers: `Submit` (Sender), `Cancel` (Sender, only on own Pending), `Reject`/`Approve` (manual mark
-successful) / `Process` (automated void+reissue) (admin).
+successful) / `Process` (automated void+reissue) / `Retry` (reissue from the held seat) (admin).
 
 ## Recipient Lookup
 
@@ -132,7 +139,8 @@ case-insensitive verified-email match returning at most one person (no enumerati
 | `TicketTransferCancelled` | Sender cancels | `"Transfer cancelled by Sender"` |
 | `TicketTransferApproved` | Admin marks successful (manual) | `"Transfer marked successful (processed manually in TicketTailor)"` |
 | `TicketTransferApproved` | Admin processes (automated OK) | `"Transfer processed automatically (TT void+reissue OK, new ticket <id>)"` |
-| `TicketTransferApproved` | Automated attempt failed/partial | `"Automated process FAILED — <detail>…"` / `"Automated process PARTIAL — <detail>…"` (request stays Pending) |
+| `TicketTransferApproved` | Admin retries reissue (OK) | `"Reissue retried OK (new ticket <id>)"` |
+| `TicketTransferAutoFailed` | Automated attempt or retry failed/partial | `"Automated process FAILED/PARTIAL — <detail>…"` / `"Reissue retry failed — <detail>"` (request stays Pending) |
 | `TicketTransferRejected` | Admin cancels | `"Transfer cancelled: <reason>"` |
 
 ## Reusable Ticket Stub
@@ -145,9 +153,11 @@ homepage "You're in" ticket card.
 
 ## Vendor-writeback Storage
 
-`VendorResult`, `VendorMessage`, and `NewVendorTicketId` on `ticket_transfer_requests` carry the automated
-void+reissue outcome (written by `ProcessTransferAsync`; `NotAttempted`/null for manual transfers) and are
-read by the admin queue/detail. `VendorStepsJson` (the removed vendor-step timeline's storage) stays
+`VendorResult`, `VendorMessage`, `NewVendorTicketId`, and `VendorHoldId` on `ticket_transfer_requests`
+carry the automated void+reissue outcome (written by `ProcessTransferAsync` / `RetryReissueAsync`;
+`NotAttempted`/null for manual transfers) and are read by the admin queue/detail. `VendorHoldId` holds the
+TicketTailor hold from a void-to-hold whose reissue failed, so **Retry reissue** can re-issue from that
+held seat without a dashboard step. `VendorStepsJson` (the removed vendor-step timeline's storage) stays
 **dormant, unread**; per
 [`memory/architecture/no-drops-until-prod-verified.md`](../../../memory/architecture/no-drops-until-prod-verified.md)
 a follow-up PR drops that one column after prod soak.

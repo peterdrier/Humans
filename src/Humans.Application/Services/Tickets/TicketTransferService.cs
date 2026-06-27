@@ -242,6 +242,79 @@ public sealed class TicketTransferService(
         return await BuildRowDtoAsync(request, ct);
     }
 
+    public async Task<TicketTransferRowDto> RetryReissueAsync(
+        Guid transferRequestId, Guid adminUserId, string? adminNotes, CancellationToken ct = default)
+    {
+        var request = await transferRepo.GetByIdAsync(transferRequestId, ct)
+            ?? throw new InvalidOperationException("Transfer not found.");
+        if (request.Status != TicketTransferStatus.Pending
+            || request.VendorResult != TicketTransferVendorResult.VoidSucceededIssueFailed)
+        {
+            throw new InvalidOperationException(
+                "Retry is only available for a part-processed transfer (ticket voided, reissue pending).");
+        }
+        if (string.IsNullOrEmpty(request.VendorHoldId))
+        {
+            throw new InvalidOperationException(
+                "No hold id was recorded for this transfer — finish the reissue in TicketTailor and use “Mark successful”.");
+        }
+
+        var attendee = await ticketRepo.GetAttendeeByIdAsync(request.OriginalTicketAttendeeId, ct)
+            ?? throw new InvalidOperationException("Original attendee missing.");
+
+        // Reissue from the held seat (same ticket type). The original is already Void locally.
+        VendorTicketDto issued;
+        try
+        {
+            issued = await vendor.IssueTicketAsync(new IssueTicketRequest(
+                EventId: null,
+                TicketTypeId: null,
+                HoldId: request.VendorHoldId,
+                FullName: request.ReceiverLegalName,
+                Email: request.ReceiverEmail,
+                SendEmail: true,
+                ExternalReference: request.Id.ToString("N")), ct);
+        }
+        catch (Exception ex)
+        {
+            // Still failing — stay in the partial state, refresh the diagnostic, keep the hold so
+            // the admin can retry again (or finish in TicketTailor). Persist with a non-request
+            // token so an aborted retry doesn't lose the updated diagnostic.
+            request.VendorMessage =
+                $"Reissue retry failed ({VendorFailureDetail(ex)}) — retry again or finish in TicketTailor against hold {request.VendorHoldId}";
+            await transferRepo.UpdateAsync(request, CancellationToken.None);
+            await auditLog.LogAsync(
+                AuditAction.TicketTransferAutoFailed,
+                nameof(TicketTransferRequest),
+                request.Id,
+                $"Reissue retry failed — {VendorFailureDetail(ex)}",
+                adminUserId,
+                request.SenderUserId,
+                nameof(User));
+            logger.LogError(ex, "Reissue retry failed for transfer {TransferId} against hold {HoldId}",
+                request.Id, request.VendorHoldId);
+            throw new InvalidOperationException(
+                $"Reissue retry failed ({VendorFailureDetail(ex)}). Try again, or finish in TicketTailor and use “Mark successful”.");
+        }
+
+        // Reissue committed — the new ticket exists at TT, so the local write must complete even if
+        // the admin request was aborted. Add the new Valid row (original already Void).
+        var now = clock.GetCurrentInstant();
+        await ticketRepo.UpsertAttendeesAsync(
+            [BuildReissuedAttendee(attendee, request, issued.VendorTicketId, now)], CancellationToken.None);
+
+        request.VendorResult = TicketTransferVendorResult.Succeeded;
+        request.NewVendorTicketId = issued.VendorTicketId;
+        request.VendorMessage = $"hold {request.VendorHoldId} (retried)";
+        request.VendorHoldId = null; // consumed
+        cacheInvalidator.InvalidateAfterTransfer(request.SenderUserId, request.ReceiverUserId);
+
+        await MarkApprovedAsync(
+            request, adminUserId, adminNotes,
+            $"Reissue retried OK (new ticket {issued.VendorTicketId})", CancellationToken.None);
+        return await BuildRowDtoAsync(request, ct);
+    }
+
     private async Task<TicketTransferRequest> LoadPendingAsync(Guid transferRequestId, CancellationToken ct)
     {
         var request = await transferRepo.GetByIdAsync(transferRequestId, ct)
@@ -355,9 +428,10 @@ public sealed class TicketTransferService(
             // void locally so the Sender's holdings flip, and retain the hold id so the team can
             // finish the reissue by hand against that hold. Partial state — never silently dropped.
             request.VendorResult = TicketTransferVendorResult.VoidSucceededIssueFailed;
+            request.VendorHoldId = voidResult.HoldId; // lets an admin one-click retry from the held seat
             request.VendorMessage = voidResult.HoldId is null
                 ? $"Issue failed ({VendorFailureDetail(ex)})"
-                : $"Issue failed ({VendorFailureDetail(ex)}) — reissue manually against hold {voidResult.HoldId}";
+                : $"Issue failed ({VendorFailureDetail(ex)}) — retry reissue from hold {voidResult.HoldId}";
             attendee.Status = TicketAttendeeStatus.Void;
             await ticketRepo.UpsertAttendeesAsync([attendee], commitCt);
             cacheInvalidator.InvalidateAfterTransfer(request.SenderUserId, receiverUserId: null);
@@ -372,26 +446,12 @@ public sealed class TicketTransferService(
         // is informational and may drift; sync preserves our snapshot for API-issued tickets).
         var now = clock.GetCurrentInstant();
         attendee.Status = TicketAttendeeStatus.Void;
-        await ticketRepo.UpsertAttendeesAsync([
-            new TicketAttendee
-            {
-                Id = Guid.NewGuid(),
-                VendorTicketId = issued.VendorTicketId,
-                TicketOrderId = attendee.TicketOrderId, // re-attach to the original order locally
-                AttendeeName = request.ReceiverLegalName,
-                AttendeeEmail = request.ReceiverEmail,
-                TicketTypeName = attendee.TicketTypeName,
-                Price = attendee.Price, // like-for-like: original price, no revenue drift
-                Status = TicketAttendeeStatus.Valid,
-                VendorEventId = attendee.VendorEventId,
-                SyncedAt = now,
-                MatchedUserId = request.ReceiverUserId,
-            },
-            attendee
-        ], commitCt);
+        await ticketRepo.UpsertAttendeesAsync(
+            [BuildReissuedAttendee(attendee, request, issued.VendorTicketId, now), attendee], commitCt);
 
         request.VendorResult = TicketTransferVendorResult.Succeeded;
         request.NewVendorTicketId = issued.VendorTicketId;
+        request.VendorHoldId = null; // consumed
         request.VendorMessage = voidResult.HoldId is null ? null : $"hold {voidResult.HoldId}";
 
         cacheInvalidator.InvalidateAfterTransfer(request.SenderUserId, request.ReceiverUserId);
@@ -587,6 +647,26 @@ public sealed class TicketTransferService(
             : $"{ex.GetType().Name}: {ex.Message}";
         return detail.Length <= MaxVendorDetailLength ? detail : detail[..MaxVendorDetailLength] + "…";
     }
+
+    // The new local attendee row for a reissued ticket: re-attached to the ORIGINAL order and
+    // keeping the ORIGINAL price (like-for-like, no revenue drift). Shared by the initial
+    // void+reissue and the retry path.
+    private static TicketAttendee BuildReissuedAttendee(
+        TicketAttendee original, TicketTransferRequest request, string newVendorTicketId, Instant now) =>
+        new()
+        {
+            Id = Guid.NewGuid(),
+            VendorTicketId = newVendorTicketId,
+            TicketOrderId = original.TicketOrderId,
+            AttendeeName = request.ReceiverLegalName,
+            AttendeeEmail = request.ReceiverEmail,
+            TicketTypeName = original.TicketTypeName,
+            Price = original.Price,
+            Status = TicketAttendeeStatus.Valid,
+            VendorEventId = original.VendorEventId,
+            SyncedAt = now,
+            MatchedUserId = request.ReceiverUserId,
+        };
 
     private static string TicketLabel(string attendeeName, string vendorTicketId) =>
         string.IsNullOrEmpty(vendorTicketId) ? attendeeName : $"{attendeeName} ({vendorTicketId})";
