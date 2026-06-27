@@ -117,7 +117,7 @@ public sealed class ShiftRepositoryManagementTests : IDisposable
     {
         // A duplicate tag id in the posted list must not insert two rows for the
         // same (UserId, ShiftTagId) — that violates IX_volunteer_tag_preferences_user_tag_unique
-        // in PostgreSQL and 500s the whole profile save. See #888.
+        // in PostgreSQL and 500s the whole profile save.
         var userId = Guid.NewGuid();
         var tag = new ShiftTag { Id = Guid.NewGuid(), Name = "A" };
         _dbContext.ShiftTags.Add(tag);
