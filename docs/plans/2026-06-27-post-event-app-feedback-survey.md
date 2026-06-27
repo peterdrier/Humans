@@ -12,13 +12,25 @@ Spanish uses the informal **tú** register to match the existing in-app survey s
 
 | Setting | Value | Why |
 |---|---|---|
-| **Audience** | `ShiftParticipants` + `TicketHolders` (or `AllActiveMembers` if you want the widest net) | The people who actually used the app at this event. |
+| **Audience** | **Everyone who logged into Humans** (anyone who actually used the app) — see §1.1 for the engine gap | App feedback should come from people who actually used the app, including those still in onboarding — not just ticket holders or shift signups. |
 | **`AllowAnonymous`** | **true** | Shows the respondent the anonymity chooser on the intro screen. Off would force every response to `Identified`. |
-| **Anonymity default** | `Identified` (current engine default — pre-checked radio) | See §1.1. For a *suggestion-gathering* survey, follow-up is the asset, so we lean Identified and use framing to keep candor. |
+| **Anonymity default** | `Identified` (current engine default — pre-checked radio) | See §1.2. For a *suggestion-gathering* survey, follow-up is the asset, so we lean Identified and use framing to keep candor. |
 | **Reminder** | One reminder ~4–5 days after send | The engine sends at most one reminder; `CompletionTracked`/`Anonymous` responders may still get it (by design — completion is a boolean, no linkable timestamp). |
 | **Timing** | ~1 week after the event ends | Fresh enough to remember specifics, late enough that the dust has settled. |
 
-### 1.1 The anonymity choice — and why we lean Identified here
+### 1.1 Audience — "everyone who logged into Humans" vs. the engine
+
+The intended audience is **everyone who logged into Humans** — the people who actually used the app, which for a tool-feedback survey is the only audience that makes sense (and notably *includes* users still mid-onboarding, who have the freshest signup/profile/consent feedback).
+
+**The engine can't target that set precisely today.** `SurveyAudienceType` has four values — `Team`, `AllActiveMembers`, `TicketHolders`, `ShiftParticipants` — and none means "has logged in." The resolver (`SurveyService.ResolveRecipientIdsAsync`) maps `AllActiveMembers` to *active members* (`ActiveMemberIdsAsync`), which is a **different set**: it can include active members who never logged in, and it excludes logged-in users who aren't yet active members (onboarding in progress). So `AllActiveMembers` is a *proxy*, not the real thing.
+
+This also can't be solved with the public slug link: the slug path is always `Anonymous`, which forfeits the Identified/follow-up strategy this survey is built around (§1.2). Preserving follow-up requires an **invited (tokenised) send**, which means the audience must resolve to a concrete recipient set.
+
+**Decision for build time (your call):**
+- **(a) Use `AllActiveMembers` as a close-enough proxy** — zero code, but accepts the mismatch above (some never-logged-in members invited; some onboarding users missed). At ~500 users the gap is probably small.
+- **(b) Add a `LoggedInUsers` (or `AllUsers`) audience type** — an engine extension: new enum value + a resolver branch reading login state via an `I…ServiceRead`. The "fix it right" option if precise login-targeting matters; should be a tracked issue, not done inline here.
+
+### 1.2 The anonymity choice — and why we lean Identified here
 
 The respondent picks their tier on the intro screen (`ResponseAnonymity`): **Identified** (linked to them, resumable, follow-up possible), **CompletionTracked** (unlinked but participation counted, stops reminders), or **Anonymous** (no trace).
 
