@@ -198,17 +198,27 @@ public sealed class TicketTransferService(
         Guid transferRequestId, Guid adminUserId, string? adminNotes, CancellationToken ct = default)
     {
         var request = await LoadPendingAsync(transferRequestId, ct);
+        // A partial (already-voided) request must not be re-processed — that would void the
+        // already-voided ticket again and overwrite the partial state. Finish + Mark successful.
+        EnsureNotMidProcessing(request);
 
         // Attempt the void(-to-hold)+reissue. On vendor failure this records the outcome on
         // the request but does NOT throw — we decide what to do with the result below.
         await WriteToVendorAsync(request, ct);
+
+        // Once a vendor void has committed it is irreversible — the recorded outcome must persist
+        // regardless of whether the admin's HTTP request was aborted, or TT and Humans diverge.
+        var persistCt = request.VendorResult is TicketTransferVendorResult.Succeeded
+            or TicketTransferVendorResult.VoidSucceededIssueFailed
+            ? CancellationToken.None
+            : ct;
 
         if (request.VendorResult != TicketTransferVendorResult.Succeeded)
         {
             // Not transferred: persist the diagnostic (and any local void already mirrored),
             // audit it, and leave the request Pending so the team can finish in TicketTailor
             // and then fall back to ApproveAsync ("Mark successful"). No success emails.
-            await transferRepo.UpdateAsync(request, ct);
+            await transferRepo.UpdateAsync(request, persistCt);
             await auditLog.LogAsync(
                 AuditAction.TicketTransferAutoFailed,
                 nameof(TicketTransferRequest),
@@ -228,7 +238,7 @@ public sealed class TicketTransferService(
 
         await MarkApprovedAsync(
             request, adminUserId, adminNotes,
-            $"Transfer processed automatically (TT void+reissue OK, new ticket {request.NewVendorTicketId})", ct);
+            $"Transfer processed automatically (TT void+reissue OK, new ticket {request.NewVendorTicketId})", persistCt);
         return await BuildRowDtoAsync(request, ct);
     }
 
@@ -319,6 +329,11 @@ public sealed class TicketTransferService(
             return;
         }
 
+        // The void has committed and is irreversible. Detach the rest of the writeback from the
+        // request-scoped token so an aborted/timed-out admin request can't cancel the reissue or
+        // the local persistence — that would strand the void at TT with no Humans-side record.
+        var commitCt = CancellationToken.None;
+
         // 2: issue replacement against the hold — same ticket type, like-for-like, no charge.
         VendorTicketDto issued;
         try
@@ -330,7 +345,7 @@ public sealed class TicketTransferService(
                 FullName: request.ReceiverLegalName,
                 Email: request.ReceiverEmail,
                 SendEmail: true,
-                ExternalReference: request.Id.ToString("N")), ct);
+                ExternalReference: request.Id.ToString("N")), commitCt);
         }
         catch (Exception ex)
         {
@@ -344,7 +359,7 @@ public sealed class TicketTransferService(
                 ? $"Issue failed ({VendorFailureDetail(ex)})"
                 : $"Issue failed ({VendorFailureDetail(ex)}) — reissue manually against hold {voidResult.HoldId}";
             attendee.Status = TicketAttendeeStatus.Void;
-            await ticketRepo.UpsertAttendeesAsync([attendee], ct);
+            await ticketRepo.UpsertAttendeesAsync([attendee], commitCt);
             cacheInvalidator.InvalidateAfterTransfer(request.SenderUserId, receiverUserId: null);
             logger.LogError(ex,
                 "TT issue failed for transfer {TransferId} after successful void; hold {HoldId} retained for manual reissue",
@@ -373,7 +388,7 @@ public sealed class TicketTransferService(
                 MatchedUserId = request.ReceiverUserId,
             },
             attendee
-        ], ct);
+        ], commitCt);
 
         request.VendorResult = TicketTransferVendorResult.Succeeded;
         request.NewVendorTicketId = issued.VendorTicketId;
@@ -558,10 +573,20 @@ public sealed class TicketTransferService(
         return (email, string.IsNullOrWhiteSpace(name) ? "there" : name);
     }
 
+    // VendorMessage is capped at 2000 chars and the vendor client embeds the raw TicketTailor
+    // response body in the exception message, so bound the detail well under that — otherwise the
+    // diagnostic UpdateAsync would throw and we'd lose the failure/partial record entirely.
+    private const int MaxVendorDetailLength = 1500;
+
     // Kind-aware detail for a vendor write failure: the categorised Kind for a
     // TicketVendorWriteException, else the raw exception type (timeout/JSON/transport).
-    private static string VendorFailureDetail(Exception ex) =>
-        ex is TicketVendorWriteException w ? $"{w.Kind}: {w.Message}" : $"{ex.GetType().Name}: {ex.Message}";
+    private static string VendorFailureDetail(Exception ex)
+    {
+        var detail = ex is TicketVendorWriteException w
+            ? $"{w.Kind}: {w.Message}"
+            : $"{ex.GetType().Name}: {ex.Message}";
+        return detail.Length <= MaxVendorDetailLength ? detail : detail[..MaxVendorDetailLength] + "…";
+    }
 
     private static string TicketLabel(string attendeeName, string vendorTicketId) =>
         string.IsNullOrEmpty(vendorTicketId) ? attendeeName : $"{attendeeName} ({vendorTicketId})";

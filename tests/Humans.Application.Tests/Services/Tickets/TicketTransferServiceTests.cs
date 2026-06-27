@@ -292,19 +292,20 @@ public sealed class TicketTransferServiceTests
 
         await svc.ProcessTransferAsync(req.Id, _adminId, "go", Xunit.TestContext.Current.CancellationToken);
 
-        // Reissue went through the hold (same ticket class), never fresh inventory.
+        // Reissue went through the hold (same ticket class), never fresh inventory — and uses a
+        // detached token (CancellationToken.None) so an aborted request can't strand the void.
         await _vendor.Received(1).IssueTicketAsync(
             Arg.Is<IssueTicketRequest>(r => r.HoldId == "hold_123" && r.EventId == null
                 && r.FullName == "Alice Smith" && r.Email == "alice@example.com"),
-            Arg.Any<CancellationToken>());
+            CancellationToken.None);
 
-        // Old row Void + new Valid row written together; new row keeps the ORIGINAL €200 price.
+        // Old row Void + new Valid row written together (also detached); new row keeps the ORIGINAL €200 price.
         await _ticketRepo.Received(1).UpsertAttendeesAsync(
             Arg.Is<IReadOnlyList<TicketAttendee>>(list =>
                 list.Any(a => a.VendorTicketId == "tt_new" && a.Status == TicketAttendeeStatus.Valid
                     && a.Price == 200m && a.MatchedUserId == _receiverId)
                 && list.Any(a => a.VendorTicketId == "tkt_original" && a.Status == TicketAttendeeStatus.Void)),
-            Arg.Any<CancellationToken>());
+            CancellationToken.None);
 
         req.Status.Should().Be(TicketTransferStatus.Approved);
         req.VendorResult.Should().Be(TicketTransferVendorResult.Succeeded);
@@ -397,6 +398,46 @@ public sealed class TicketTransferServiceTests
                 list.Count == 1 && list[0].VendorTicketId == "tkt_original"
                 && list[0].Status == TicketAttendeeStatus.Void),
             Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task Process_Throws_WhenAlreadyPartiallyProcessed_NoSecondVoid()
+    {
+        // Re-processing a VoidSucceededIssueFailed request would void the already-voided ticket
+        // again and overwrite the partial state — guard against it.
+        var svc = CreateService();
+        var req = MakePending(Guid.NewGuid());
+        req.VendorResult = TicketTransferVendorResult.VoidSucceededIssueFailed;
+        _transferRepo.GetByIdAsync(req.Id, Arg.Any<CancellationToken>()).Returns(req);
+
+        var act = () => svc.ProcessTransferAsync(req.Id, _adminId, null, Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        await _vendor.DidNotReceive().VoidIssuedTicketAsync(
+            Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
+        req.VendorResult.Should().Be(TicketTransferVendorResult.VoidSucceededIssueFailed); // not overwritten
+    }
+
+    [HumansFact]
+    public async Task Process_BoundsVendorMessage_WhenVendorErrorBodyIsHuge()
+    {
+        // VendorMessage is capped at 2000 chars; a huge TT error body must not blow the column
+        // (which would make the diagnostic UpdateAsync throw and lose the partial record).
+        var svc = CreateService();
+        var req = MakePending(Guid.NewGuid());
+        _transferRepo.GetByIdAsync(req.Id, Arg.Any<CancellationToken>()).Returns(req);
+        StubAttendee(TicketAttendeeStatus.Valid, _senderId);
+
+        _vendor.VoidIssuedTicketAsync("tkt_original", true, Arg.Any<CancellationToken>())
+            .Returns(new VoidIssuedTicketResult("tkt_original", "hold_123"));
+        _vendor.IssueTicketAsync(Arg.Any<IssueTicketRequest>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new TicketVendorWriteException(new string('x', 5000), TicketVendorFailureKind.Validation));
+
+        var act = () => svc.ProcessTransferAsync(req.Id, _adminId, null, Xunit.TestContext.Current.CancellationToken);
+        await act.Should().ThrowAsync<InvalidOperationException>();
+
+        req.VendorResult.Should().Be(TicketTransferVendorResult.VoidSucceededIssueFailed);
+        req.VendorMessage!.Length.Should().BeLessThanOrEqualTo(2000);
     }
 
     // ── RejectAsync (cancel with reason) ────────────────────────────────────────
