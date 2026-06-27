@@ -160,7 +160,7 @@ public class TicketTailorService : ITicketVendorService
         Instant? since, string eventId, CancellationToken ct = default)
     {
         using var _ = _logger.TimeOperation();
-        var checkIns = new List<VendorCheckInDto>();
+        var records = new List<TtCheckIn>();
         string? cursor = null;
 
         do
@@ -182,25 +182,49 @@ public class TicketTailorService : ITicketVendorService
             if (body?.Data is null || body.Data.Count == 0)
                 break;
 
-            foreach (var checkIn in body.Data)
-            {
-                // Prefer check_in_at (gate-scan time); fall back to created_at.
-                var epoch = checkIn.CheckInAt ?? checkIn.CreatedAt;
-                if (checkIn.IssuedTicketId is not { Length: > 0 } || epoch is not (long and > 0))
-                    continue;
-
-                checkIns.Add(new VendorCheckInDto(
-                    VendorTicketId: checkIn.IssuedTicketId,
-                    CheckedInAt: Instant.FromUnixTimeSeconds(epoch.Value)));
-            }
+            records.AddRange(body.Data);
 
             cursor = body.Links?.Next is not null ? body.Data[^1].Id : null;
         } while (cursor is not null);
+
+        var checkIns = NetCheckIns(records);
 
         _logger.LogInformation("Fetched {Count} check-ins from TicketTailor for event {EventId}",
             checkIns.Count, eventId);
 
         return checkIns;
+    }
+
+    // TicketTailor /check_ins includes checkout/undo records (quantity = -1) alongside
+    // check-ins (quantity = +1, or more for a group ticket). Net the quantity per issued
+    // ticket and report a check-in only when the net is positive — otherwise a checkout
+    // record would wrongly mark the attendee onsite. The recorded arrival is the earliest
+    // positive scan (check_in_at, falling back to created_at). Issue
+    // nobodies-collective/Humans#736.
+    private static IReadOnlyList<VendorCheckInDto> NetCheckIns(IEnumerable<TtCheckIn> records)
+    {
+        var result = new List<VendorCheckInDto>();
+
+        foreach (var group in records
+                     .Where(r => r.IssuedTicketId is { Length: > 0 })
+                     .GroupBy(r => r.IssuedTicketId!, StringComparer.Ordinal))
+        {
+            if (group.Sum(r => r.Quantity ?? 1) <= 0)
+                continue;
+
+            var earliest = group
+                .Where(r => (r.Quantity ?? 1) > 0)
+                .Select(r => r.CheckInAt ?? r.CreatedAt)
+                .Where(e => e is > 0)
+                .Select(e => e!.Value)
+                .DefaultIfEmpty(0L)
+                .Min();
+
+            if (earliest > 0)
+                result.Add(new VendorCheckInDto(group.Key, Instant.FromUnixTimeSeconds(earliest)));
+        }
+
+        return result;
     }
 
     public async Task<VendorEventSummaryDto> GetEventSummaryAsync(
@@ -411,7 +435,8 @@ public class TicketTailorService : ITicketVendorService
         [property: JsonPropertyName("id")] string Id,
         [property: JsonPropertyName("issued_ticket_id")] string? IssuedTicketId,
         [property: JsonPropertyName("check_in_at")] long? CheckInAt,
-        [property: JsonPropertyName("created_at")] long? CreatedAt);
+        [property: JsonPropertyName("created_at")] long? CreatedAt,
+        [property: JsonPropertyName("quantity")] int? Quantity);
 
     internal sealed record TtCustomQuestion(
         [property: JsonPropertyName("question")] string? Question,
