@@ -1,3 +1,4 @@
+using Humans.Application.Configuration;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Email;
@@ -8,30 +9,36 @@ using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using NodaTime;
 
 namespace Humans.Application.Services.Tickets;
 
 /// <summary>
 /// Owns the TicketTransferRequest aggregate's lifecycle. The Sender initiates a
-/// request; the ticket team processes the void+reissue manually in TicketTailor
-/// and then marks the request successful ("Approved") or cancels it with a reason
-/// ("Rejected"). This service never calls the vendor — the next ticket sync
-/// reconciles local attendee rows. Requests email the Sender + the ticket team;
-/// decisions email the Sender + Receiver.
+/// request; the ticket team either runs the automated TicketTailor void(-to-hold)+reissue
+/// (<see cref="ProcessTransferAsync"/>, gated by
+/// <see cref="TicketVendorSettings.EnableAutomatedTransferWriteback"/>) or records a manual
+/// outcome (<see cref="ApproveAsync"/> = "mark successful", <see cref="RejectAsync"/> =
+/// "cancel with reason"). The next ticket sync reconciles local attendee rows. Requests
+/// email the Sender + the ticket team; decisions email the Sender + Receiver.
 /// </summary>
 public sealed class TicketTransferService(
     ITicketTransferRepository transferRepo,
     ITicketRepository ticketRepo,
+    ITicketVendorService vendor,
     IUserServiceRead userService,
     IUserEmailService userEmailService,
     IEmailService emailService,
     IEmailMessageFactory emailMessages,
     IAuditLogService auditLog,
     ITicketCacheInvalidator cacheInvalidator,
+    IOptions<TicketVendorSettings> vendorSettings,
     IClock clock,
     ILogger<TicketTransferService> logger) : ITicketTransferService
 {
+    private readonly TicketVendorSettings _settings = vendorSettings.Value;
+
     public async Task<IReadOnlyList<MyAttendeeRowDto>> GetMyAttendeesAsync(
         Guid userId, CancellationToken ct = default)
     {
@@ -184,11 +191,69 @@ public sealed class TicketTransferService(
     public async Task<TicketTransferRowDto> ApproveAsync(
         Guid transferRequestId, Guid adminUserId, string? adminNotes, CancellationToken ct = default)
     {
+        var request = await LoadPendingAsync(transferRequestId, ct);
+        await MarkApprovedAsync(
+            request, adminUserId, adminNotes,
+            "Transfer marked successful (processed manually in TicketTailor)", ct);
+        return await BuildRowDtoAsync(request, ct);
+    }
+
+    public async Task<TicketTransferRowDto> ProcessTransferAsync(
+        Guid transferRequestId, Guid adminUserId, string? adminNotes, CancellationToken ct = default)
+    {
+        // Server-side rollout gate — automation stays off in prod until the flag is flipped.
+        if (!_settings.EnableAutomatedTransferWriteback)
+            throw new InvalidOperationException(
+                "Automated ticket-transfer writeback is disabled. Process the transfer in TicketTailor and use “Mark successful”.");
+
+        var request = await LoadPendingAsync(transferRequestId, ct);
+
+        // Attempt the void(-to-hold)+reissue. On vendor failure this records the outcome on
+        // the request but does NOT throw — we decide what to do with the result below.
+        await WriteToVendorAsync(request, ct);
+
+        if (request.VendorResult != TicketTransferVendorResult.Succeeded)
+        {
+            // Not transferred: persist the diagnostic (and any local void already mirrored),
+            // audit it, and leave the request Pending so the team can finish in TicketTailor
+            // and then fall back to ApproveAsync ("Mark successful"). No success emails.
+            await transferRepo.UpdateAsync(request, ct);
+            await auditLog.LogAsync(
+                AuditAction.TicketTransferApproved,
+                nameof(TicketTransferRequest),
+                request.Id,
+                request.VendorResult == TicketTransferVendorResult.VoidSucceededIssueFailed
+                    ? $"Automated process PARTIAL — {request.VendorMessage}; finish reissue in TicketTailor, then Mark successful"
+                    : $"Automated process FAILED — {request.VendorMessage}; process manually in TicketTailor",
+                adminUserId,
+                request.SenderUserId,
+                nameof(User));
+
+            throw new InvalidOperationException(
+                request.VendorResult == TicketTransferVendorResult.VoidSucceededIssueFailed
+                    ? $"Ticket was voided but the reissue failed ({request.VendorMessage}). Finish the reissue in TicketTailor, then use “Mark successful”."
+                    : $"Automated void+reissue failed ({request.VendorMessage}). Process this transfer manually in TicketTailor, then use “Mark successful”.");
+        }
+
+        await MarkApprovedAsync(
+            request, adminUserId, adminNotes,
+            $"Transfer processed automatically (TT void+reissue OK, new ticket {request.NewVendorTicketId})", ct);
+        return await BuildRowDtoAsync(request, ct);
+    }
+
+    private async Task<TicketTransferRequest> LoadPendingAsync(Guid transferRequestId, CancellationToken ct)
+    {
         var request = await transferRepo.GetByIdAsync(transferRequestId, ct)
             ?? throw new InvalidOperationException("Transfer not found.");
         if (request.Status != TicketTransferStatus.Pending)
             throw new InvalidOperationException("Only Pending transfers can be decided.");
+        return request;
+    }
 
+    private async Task MarkApprovedAsync(
+        TicketTransferRequest request, Guid adminUserId, string? adminNotes,
+        string auditDescription, CancellationToken ct)
+    {
         var now = clock.GetCurrentInstant();
         request.Status = TicketTransferStatus.Approved;
         request.DecidedByUserId = adminUserId;
@@ -204,14 +269,110 @@ public sealed class TicketTransferService(
             AuditAction.TicketTransferApproved,
             nameof(TicketTransferRequest),
             request.Id,
-            "Transfer marked successful (processed manually in TicketTailor)",
+            auditDescription,
             adminUserId,
             request.SenderUserId,
             nameof(User));
 
         await NotifyDecisionAsync(request, successful: true, reason: null, ct);
+    }
 
-        return await BuildRowDtoAsync(request, ct);
+    /// <summary>
+    /// Performs the TicketTailor void(-to-hold)+reissue and mirrors the result into local
+    /// attendee rows. Records the outcome on <paramref name="request"/>
+    /// (<see cref="TicketTransferRequest.VendorResult"/> / VendorMessage / NewVendorTicketId)
+    /// but does not persist the request itself — the caller decides. Three outcomes:
+    /// <list type="bullet">
+    /// <item>void fails → <c>Failed</c>; nothing mutated locally (manual fallback).</item>
+    /// <item>void OK but issue fails → <c>VoidSucceededIssueFailed</c>; original attendee
+    /// mirrored to Void locally and the hold id surfaced for a manual reissue.</item>
+    /// <item>both OK → <c>Succeeded</c>; original Void + new Valid row written atomically,
+    /// the new row keeping the ORIGINAL price so revenue/VAT stay anchored to the order.</item>
+    /// </list>
+    /// </summary>
+    private async Task WriteToVendorAsync(TicketTransferRequest request, CancellationToken ct)
+    {
+        var attendee = request.OriginalTicketAttendee
+            ?? await ticketRepo.GetAttendeeByIdAsync(request.OriginalTicketAttendeeId, ct)
+            ?? throw new InvalidOperationException("Original attendee missing during vendor writeback.");
+
+        // 1: void to hold — reserves THIS ticket's allocation (same ticket type) off-sale so
+        // the reissue lands on the original class even if it is now closed/sold out. TT never
+        // refunds or cancels the order on a void, so no cashflow moves.
+        VoidIssuedTicketResult voidResult;
+        try
+        {
+            voidResult = await vendor.VoidIssuedTicketAsync(attendee.VendorTicketId, voidToHold: true, ct);
+        }
+        catch (TicketVendorWriteException ex)
+        {
+            request.VendorResult = TicketTransferVendorResult.Failed;
+            request.VendorMessage = $"Void failed ({ex.Kind}): {ex.Message}";
+            logger.LogWarning(
+                "TT void failed for transfer {TransferId} attendee {AttendeeId} ({Kind}); manual fallback required",
+                request.Id, request.OriginalTicketAttendeeId, ex.Kind);
+            return;
+        }
+
+        // 2: issue replacement against the hold — same ticket type, like-for-like, no charge.
+        VendorTicketDto issued;
+        try
+        {
+            issued = await vendor.IssueTicketAsync(new IssueTicketRequest(
+                EventId: null,
+                TicketTypeId: null,
+                HoldId: voidResult.HoldId,
+                FullName: request.ReceiverLegalName,
+                Email: request.ReceiverEmail,
+                SendEmail: true,
+                ExternalReference: request.Id.ToString("N")), ct);
+        }
+        catch (TicketVendorWriteException ex)
+        {
+            // Void committed at the vendor but reissue failed. Mirror the void locally so the
+            // Sender's holdings flip, and retain the hold id so the team can finish the reissue
+            // by hand against that hold. Partial state — never silently dropped.
+            request.VendorResult = TicketTransferVendorResult.VoidSucceededIssueFailed;
+            request.VendorMessage = voidResult.HoldId is null
+                ? $"Issue failed ({ex.Kind}): {ex.Message}"
+                : $"Issue failed ({ex.Kind}): {ex.Message} — reissue manually against hold {voidResult.HoldId}";
+            attendee.Status = TicketAttendeeStatus.Void;
+            await ticketRepo.UpsertAttendeesAsync([attendee], ct);
+            cacheInvalidator.InvalidateAfterTransfer(request.SenderUserId, receiverUserId: null);
+            logger.LogError(ex,
+                "TT issue failed for transfer {TransferId} after successful void; hold {HoldId} retained for manual reissue",
+                request.Id, voidResult.HoldId);
+            return;
+        }
+
+        // 3: write both attendee rows in one SaveChanges so there is no window where the seat
+        // is Valid on both. The new row keeps the ORIGINAL price (TT's reissued listed_price
+        // is informational and may drift; sync preserves our snapshot for API-issued tickets).
+        var now = clock.GetCurrentInstant();
+        attendee.Status = TicketAttendeeStatus.Void;
+        await ticketRepo.UpsertAttendeesAsync([
+            new TicketAttendee
+            {
+                Id = Guid.NewGuid(),
+                VendorTicketId = issued.VendorTicketId,
+                TicketOrderId = attendee.TicketOrderId, // re-attach to the original order locally
+                AttendeeName = request.ReceiverLegalName,
+                AttendeeEmail = request.ReceiverEmail,
+                TicketTypeName = attendee.TicketTypeName,
+                Price = attendee.Price, // like-for-like: original price, no revenue drift
+                Status = TicketAttendeeStatus.Valid,
+                VendorEventId = attendee.VendorEventId,
+                SyncedAt = now,
+                MatchedUserId = request.ReceiverUserId,
+            },
+            attendee
+        ], ct);
+
+        request.VendorResult = TicketTransferVendorResult.Succeeded;
+        request.NewVendorTicketId = issued.VendorTicketId;
+        request.VendorMessage = voidResult.HoldId is null ? null : $"hold {voidResult.HoldId}";
+
+        cacheInvalidator.InvalidateAfterTransfer(request.SenderUserId, request.ReceiverUserId);
     }
 
     public async Task<TicketTransferRowDto> RejectAsync(
@@ -449,6 +610,8 @@ public sealed class TicketTransferService(
             ReceiverEmail: r.ReceiverEmail,
             SenderReason: r.SenderReason,
             Status: r.Status,
+            VendorResult: r.VendorResult,
+            VendorMessage: r.VendorMessage,
             DecidedByUserId: r.DecidedByUserId,
             DecidedByDisplayName: decider?.BurnerName,
             AdminNotes: r.AdminNotes,

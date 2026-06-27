@@ -29,5 +29,14 @@ public class TicketVendorSettings
     /// Not stored in appsettings (sensitive). Accessible in settings for testability.</summary>
     public string ApiKey { get; set; } = string.Empty;
 
+    /// <summary>
+    /// When true, the ticket team's "Process transfer" action performs the automated
+    /// TicketTailor void(-to-hold)+reissue against the vendor API. When false (default),
+    /// only the manual "mark successful" path is available and the team voids+reissues by
+    /// hand in the TicketTailor dashboard. Server-side rollout gate — left off in prod until
+    /// verified. Comes from the appsettings <c>TicketVendor</c> section.
+    /// </summary>
+    public bool EnableAutomatedTransferWriteback { get; set; }
+
     public bool IsConfigured => !string.IsNullOrEmpty(EventId) && !string.IsNullOrEmpty(ApiKey);
 }

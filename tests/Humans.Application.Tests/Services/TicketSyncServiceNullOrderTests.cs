@@ -251,4 +251,68 @@ public sealed class TicketSyncServiceNullOrderTests : ServiceTestHarness
         dbOrders.Should().ContainSingle();
         dbOrders[0].VendorOrderId.Should().Be("ord_normal");
     }
+
+    // ==========================================================================
+    // Test 4: null VendorOrderId reissue → original price preserved (no $ drift)
+    // ==========================================================================
+
+    /// <summary>
+    /// A transfer reissue is an API-issued ticket whose TT listed_price drifts to the
+    /// ticket type's *current* price. The sync must keep the price we snapshotted locally
+    /// at reissue time so revenue/VAT stay anchored to the original order — the
+    /// "like-for-like, no $ drift" transfer guarantee.
+    /// </summary>
+    [HumansFact]
+    public async Task SyncOrdersAndAttendeesAsync_NullVendorOrderId_PreservesLocalPrice()
+    {
+        var parentOrderId = Guid.NewGuid();
+        Db.TicketOrders.Add(new TicketOrder
+        {
+            Id = parentOrderId,
+            VendorOrderId = "ord_parent",
+            BuyerName = "Alice Buyer",
+            BuyerEmail = "alice@example.com",
+            TotalAmount = 200m,
+            Currency = "EUR",
+            PaymentStatus = TicketPaymentStatus.Paid,
+            VendorEventId = "ev_test_123",
+            PurchasedAt = Instant.FromUtc(2026, 3, 1, 0, 0),
+            SyncedAt = Instant.FromUtc(2026, 3, 1, 0, 0)
+        });
+        Db.TicketAttendees.Add(new TicketAttendee
+        {
+            Id = Guid.NewGuid(),
+            VendorTicketId = "tkt_reissued",
+            TicketOrderId = parentOrderId,
+            AttendeeName = "Bob Recipient",
+            AttendeeEmail = "bob@example.com",
+            TicketTypeName = "Early Bird",
+            Price = 200m, // original snapshot written at reissue time
+            Status = TicketAttendeeStatus.Valid,
+            VendorEventId = "ev_test_123",
+            SyncedAt = Instant.FromUtc(2026, 3, 1, 0, 0)
+        });
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        // Vendor returns the reissued ticket with null order id and a DRIFTED price (315).
+        var ticket = new VendorTicketDto(
+            VendorTicketId: "tkt_reissued",
+            VendorOrderId: null,
+            AttendeeName: "Bob Recipient",
+            AttendeeEmail: "bob@example.com",
+            TicketTypeName: "Early Bird",
+            Price: 315m,
+            Status: "valid");
+
+        _vendorService.GetOrdersAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new List<VendorOrderDto>());
+        _vendorService.GetIssuedTicketsAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new List<VendorTicketDto> { ticket });
+
+        await _service.SyncOrdersAndAttendeesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var dbAttendee = await Db.TicketAttendees.AsNoTracking()
+            .SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        dbAttendee.Price.Should().Be(200m); // preserved snapshot, NOT the drifted 315
+    }
 }

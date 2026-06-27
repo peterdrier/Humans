@@ -36,12 +36,23 @@ public interface ITicketTransferService : IApplicationService
     Task CancelAsync(Guid transferRequestId, Guid senderUserId, CancellationToken ct = default);
 
     /// <summary>
-    /// Mark a Pending request transferred ("transfer successful"). The ticket
-    /// team has already done the void+reissue manually in TicketTailor, so this
-    /// only records the decision, audits, and emails the Sender + Receiver. The
-    /// next ticket sync reconciles the local attendee rows.
+    /// Mark a Pending request transferred ("transfer successful") WITHOUT calling the
+    /// vendor — the ticket team has already done the void+reissue by hand in TicketTailor
+    /// (or finished an automated attempt that partially failed). Records the decision,
+    /// audits, and emails the Sender + Receiver. The next ticket sync reconciles the local
+    /// attendee rows.
     /// </summary>
     Task<TicketTransferRowDto> ApproveAsync(
+        Guid transferRequestId, Guid adminUserId, string? adminNotes, CancellationToken ct = default);
+
+    /// <summary>
+    /// Process a Pending request by performing the automated TicketTailor
+    /// void(-to-hold)+reissue, then marking it transferred and emailing the parties.
+    /// Gated by <c>TicketVendorSettings.EnableAutomatedTransferWriteback</c> — throws when
+    /// disabled. On vendor failure the request stays Pending (the diagnostic is recorded and
+    /// surfaced) so the team can finish in TicketTailor and fall back to <see cref="ApproveAsync"/>.
+    /// </summary>
+    Task<TicketTransferRowDto> ProcessTransferAsync(
         Guid transferRequestId, Guid adminUserId, string? adminNotes, CancellationToken ct = default);
 
     /// <summary>

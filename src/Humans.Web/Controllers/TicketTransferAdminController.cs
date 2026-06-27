@@ -61,28 +61,39 @@ public sealed class TicketTransferAdminController(
     [HttpPost("Decide")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Decide(
-        Guid id, bool approve, string? adminNotes, CancellationToken ct)
+        Guid id, string action, string? adminNotes, CancellationToken ct)
     {
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
 
         try
         {
-            if (approve)
+            switch (action)
             {
-                await service.ApproveAsync(id, user.Id, adminNotes, ct);
-                SetSuccess("Transfer marked successful.");
-                return RedirectToAction(nameof(Index));
-            }
+                case "process":
+                    await service.ProcessTransferAsync(id, user.Id, adminNotes, ct);
+                    SetSuccess("Transfer processed: ticket voided and reissued. The next sync confirms the local records.");
+                    return RedirectToAction(nameof(Index));
 
-            await service.RejectAsync(id, user.Id, adminNotes ?? string.Empty, ct);
-            SetSuccess("Transfer cancelled.");
-            return RedirectToAction(nameof(Index));
+                case "marksuccessful":
+                    await service.ApproveAsync(id, user.Id, adminNotes, ct);
+                    SetSuccess("Transfer marked successful.");
+                    return RedirectToAction(nameof(Index));
+
+                case "cancel":
+                    await service.RejectAsync(id, user.Id, adminNotes ?? string.Empty, ct);
+                    SetSuccess("Transfer cancelled.");
+                    return RedirectToAction(nameof(Index));
+
+                default:
+                    SetError("Unknown transfer action.");
+                    return RedirectToAction(nameof(Detail), new { id });
+            }
         }
         catch (InvalidOperationException ex)
         {
-            logger.LogWarning("Ticket transfer Decide rejected for transfer {TransferId} (approve={Approve}): {Message}",
-                id, approve, ex.Message);
+            logger.LogWarning("Ticket transfer Decide rejected for transfer {TransferId} (action={Action}): {Message}",
+                id, action, ex.Message);
             SetError(ex.Message);
             return RedirectToAction(nameof(Detail), new { id });
         }

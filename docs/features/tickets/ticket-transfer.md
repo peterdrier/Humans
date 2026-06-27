@@ -12,9 +12,10 @@
   src/Humans.Web/ViewComponents/TicketStubViewComponent.cs
 -->
 <!-- freshness:flag-on-change
-  Manual-processing model (no vendor writeback), lifecycle states, email notification points,
-  the AllowEmail recipient lookup, and the reusable ticket-stub — review when transfer lifecycle,
-  the wizard, or notifications change.
+  The two processing paths (automated void+reissue vs manual mark-successful), the
+  EnableAutomatedTransferWriteback flag, lifecycle states, email notification points, the AllowEmail
+  recipient lookup, and the reusable ticket-stub — review when transfer lifecycle, the wizard, the
+  vendor writeback, or notifications change.
 -->
 
 # Ticket Transfer
@@ -28,13 +29,25 @@ mismatch — which bypasses verified-member checks, the audit trail, and the rec
 docs.
 
 This feature lets the original holder (the **Sender**) request a transfer to another verified Humans
-member (the **Receiver**). **For this year the ticket team performs the actual void+reissue manually in
-the TicketTailor dashboard** — Humans does not call the vendor. A request notifies the team; once they
-process it they mark it successful (or cancel it with a reason), and the next ticket sync reconciles the
-local attendee rows automatically.
+member (the **Receiver**). A request notifies the team, who process it one of two ways:
 
-Tracked in: peterdrier/Humans#382. The earlier automated void+reissue engine (Option B / Option C /
-retry-issue / vendor-step timeline) was removed when transfers moved to manual processing.
+- **Automated** (`ProcessTransferAsync`, gated by `TicketVendorSettings.EnableAutomatedTransferWriteback`
+  — **default off in prod**): the team hits **Process transfer** and Humans voids the original ticket
+  *to a hold* and reissues the same ticket type from that hold to the Receiver via the TicketTailor API.
+  The void never refunds or moves the order's money; the reissue is like-for-like (same class even if it's
+  now closed/sold out) and carries the original price. The swapped attendee rows are written locally in the
+  same flow.
+- **Manual** (`ApproveAsync` = "mark successful"): the team voids+reissues by hand in the TicketTailor
+  dashboard, then records the outcome; the next ticket sync reconciles the local attendee rows.
+
+Either way the team can instead cancel the request with a reason. The flag lets automation be validated in
+QA/preview and flipped on in prod once verified.
+
+Tracked in: peterdrier/Humans#382. The void+reissue mechanics are researched in
+[`docs/superpowers/probes/2026-05-04-tickettailor-write-api.md`](../../superpowers/probes/2026-05-04-tickettailor-write-api.md)
+and [`…-tt-reissue-verification.md`](../../superpowers/probes/2026-05-04-tt-reissue-verification.md). The
+earlier engine's retry-issue + vendor-step timeline UI were **not** restored — outcomes are recorded on the
+request columns + audit log instead.
 
 ## User Stories
 
@@ -66,18 +79,24 @@ retry-issue / vendor-step timeline) was removed when transfers moved to manual p
 
 ### US-42.4: Ticket team processes and decides
 **As a** Ticket Admin
-**I want to** process the transfer manually in TicketTailor and then record the outcome
+**I want to** process the transfer (automatically, or by hand in TicketTailor) and record the outcome
 **So that** the request queue reflects reality and the parties are notified
 
 **Acceptance Criteria:**
 - `/Tickets/Admin/Transfers` lists `Pending` rows (FIFO) plus an "All" tab; an order-drift table flags
   paid orders whose valid-ticket count dropped below what was issued (manual-reconciliation aid).
 - The Detail page shows the ticket/order context, both parties, the reason, a "View order in
-  TicketTailor" link, and manual-processing instructions.
-- **Mark transfer successful** sets the request `Approved`; **Cancel transfer** requires a reason and
-  sets it `Rejected`. Both are policy-gated to `TicketAdminOrAdmin` and audit-logged.
-- Neither action calls the vendor or mutates attendee rows — the next ticket sync picks up the team's
-  TicketTailor-side void/reissue.
+  TicketTailor" link, and processing instructions that match the active path.
+- **Process transfer** (shown only when `EnableAutomatedTransferWriteback` is on) voids the original ticket
+  to a hold and reissues the same ticket type to the Receiver via the TicketTailor API, writes the swapped
+  attendee rows, and sets `Approved` (`VendorResult = Succeeded`). On vendor failure the request **stays
+  `Pending`** with the diagnostic recorded (`VendorResult` `Failed`, or `VoidSucceededIssueFailed` with the
+  hold id) and the admin is told to finish in TicketTailor and use Mark successful — no success emails fire.
+- **Mark transfer successful** sets `Approved` with no vendor call (manual void+reissue, or closing out a
+  partial automated attempt); **Cancel transfer** requires a reason and sets `Rejected`. All three are
+  policy-gated to `TicketAdminOrAdmin` and audit-logged.
+- The manual path mutates no attendee rows — the next ticket sync picks up the team's TicketTailor-side
+  void/reissue (which re-links the API-issued reissue to the original order and preserves its price).
 
 ### US-42.5: Decision notifications
 - On a decision, an email goes to **both the Sender and the Receiver**: completed, or cancelled with the
@@ -89,10 +108,13 @@ retry-issue / vendor-step timeline) was removed when transfers moved to manual p
 Submitted (Pending)
    ├── Cancel (Sender)              → Cancelled    (terminal)
    ├── Cancel transfer (admin)      → Rejected     (reason required, terminal)
+   ├── Process transfer (admin)     → Approved      (terminal; automated TT void+reissue OK)
+   │                                  └ vendor failure → stays Pending (diagnostic recorded)
    └── Mark successful (admin)      → Approved      (terminal; no vendor call)
 ```
 
-Triggers: `Submit` (Sender), `Cancel` (Sender, only on own Pending), `Reject`/`Approve` (admin).
+Triggers: `Submit` (Sender), `Cancel` (Sender, only on own Pending), `Reject`/`Approve` (manual mark
+successful) / `Process` (automated void+reissue) (admin).
 
 ## Recipient Lookup
 
@@ -107,7 +129,9 @@ case-insensitive verified-email match returning at most one person (no enumerati
 |--------|---------|---------------------|
 | `TicketTransferRequested` | Sender submits | `"Transfer requested: ticket <vendorTicketId> → <Receiver legal name>"` |
 | `TicketTransferCancelled` | Sender cancels | `"Transfer cancelled by Sender"` |
-| `TicketTransferApproved` | Admin marks successful | `"Transfer marked successful (processed manually in TicketTailor)"` |
+| `TicketTransferApproved` | Admin marks successful (manual) | `"Transfer marked successful (processed manually in TicketTailor)"` |
+| `TicketTransferApproved` | Admin processes (automated OK) | `"Transfer processed automatically (TT void+reissue OK, new ticket <id>)"` |
+| `TicketTransferApproved` | Automated attempt failed/partial | `"Automated process FAILED — <detail>…"` / `"Automated process PARTIAL — <detail>…"` (request stays Pending) |
 | `TicketTransferRejected` | Admin cancels | `"Transfer cancelled: <reason>"` |
 
 ## Reusable Ticket Stub
@@ -118,12 +142,14 @@ shows a "transfer pending" stamp; voided tickets render
 muted. Used by the wizard (step A), the `/Profile/Me` ticket card (`<vc:ticket-holdings>`), and the
 homepage "You're in" ticket card.
 
-## Dormant Storage
+## Vendor-writeback Storage
 
-The removed vendor engine's columns (`VendorResult`, `VendorMessage`, `NewVendorTicketId`,
-`VendorStepsJson`) remain on `ticket_transfer_requests` as **dormant, unread** columns. Per
+`VendorResult`, `VendorMessage`, and `NewVendorTicketId` on `ticket_transfer_requests` carry the automated
+void+reissue outcome (written by `ProcessTransferAsync`; `NotAttempted`/null for manual transfers) and are
+read by the admin queue/detail. `VendorStepsJson` (the removed vendor-step timeline's storage) stays
+**dormant, unread**; per
 [`memory/architecture/no-drops-until-prod-verified.md`](../../../memory/architecture/no-drops-until-prod-verified.md)
-a follow-up PR drops them after prod soak.
+a follow-up PR drops that one column after prod soak.
 
 ## Related
 

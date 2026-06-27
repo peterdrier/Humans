@@ -100,6 +100,38 @@ public sealed class StubTicketVendorService : ITicketVendorService
         return Task.FromResult(result);
     }
 
+    public Task<VoidIssuedTicketResult> VoidIssuedTicketAsync(
+        string vendorTicketId, bool voidToHold, CancellationToken ct = default)
+    {
+        var index = _tickets.FindIndex(t =>
+            string.Equals(t.VendorTicketId, vendorTicketId, StringComparison.Ordinal));
+
+        if (index < 0)
+            throw new TicketVendorWriteException(
+                $"Stub: ticket '{vendorTicketId}' not found.", TicketVendorFailureKind.NotFound);
+
+        _tickets[index] = _tickets[index] with { Status = "voided" };
+
+        var holdId = voidToHold ? $"hold_stub_{Guid.NewGuid().ToString("N")[..8]}" : null;
+        return Task.FromResult(new VoidIssuedTicketResult(vendorTicketId, holdId));
+    }
+
+    public Task<VendorTicketDto> IssueTicketAsync(
+        IssueTicketRequest request, CancellationToken ct = default)
+    {
+        var issued = new VendorTicketDto(
+            VendorTicketId: $"tt_stub_{Guid.NewGuid().ToString("N")[..8]}",
+            VendorOrderId: null,
+            AttendeeName: request.FullName,
+            AttendeeEmail: request.Email,
+            TicketTypeName: "Stub Reissued Ticket",
+            Price: 0m,
+            Status: "valid");
+
+        _tickets.Add(issued);
+        return Task.FromResult(issued);
+    }
+
     private static SampleData BuildSampleData()
     {
         var orders = new List<VendorOrderDto>();
