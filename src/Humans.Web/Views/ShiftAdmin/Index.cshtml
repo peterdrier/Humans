@@ -586,13 +586,14 @@
                                                                     <vc:human user-id="@signup.UserId" />
                                                                     @{
                                                                         var manageProfile = Model.VolunteerProfiles.GetValueOrDefault(signup.UserId);
+                                                                        var manageName = Model.Users.GetValueOrDefault(signup.UserId)?.BurnerName ?? "this human";
                                                                     }
                                                                     @await Html.PartialAsync("_VolunteerProfileBadges", manageProfile)
                                                                 </div>
                                                                 <form asp-action="RemoveSignup" asp-route-slug="@Model.Department.Slug" asp-route-signupId="@signup.Id" method="post" class="d-inline">
                                                                     @Html.AntiForgeryToken()
                                                                     <button type="submit" class="btn btn-sm btn-outline-secondary"
-                                                                            data-confirm="Remove this human from the shift?">Remove</button>
+                                                                            data-confirm="Remove @manageName from the shift?">Remove</button>
                                                                 </form>
                                                             </div>
                                                         }
@@ -622,6 +623,7 @@
                                                                 <vc:human user-id="@signup.UserId" />
                                                                 @{
                                                                     var signupProfile = Model.VolunteerProfiles.GetValueOrDefault(signup.UserId);
+                                                                    var signupName = Model.Users.GetValueOrDefault(signup.UserId)?.BurnerName ?? "this human";
                                                                 }
                                                                 @await Html.PartialAsync("_VolunteerProfileBadges", signupProfile)
                                                                 @if (signup.Status == SignupStatus.NoShow)
@@ -639,7 +641,7 @@
                                                                     <form asp-action="RemoveSignup" asp-route-slug="@Model.Department.Slug" asp-route-signupId="@signup.Id" method="post" class="d-inline">
                                                                         @Html.AntiForgeryToken()
                                                                         <button type="submit" class="btn btn-sm btn-outline-secondary"
-                                                                                data-confirm="Remove this human from the shift?">Remove</button>
+                                                                                data-confirm="Remove @signupName from the shift?">Remove</button>
                                                                     </form>
                                                                     <form asp-action="MarkNoShow" asp-route-slug="@Model.Department.Slug" asp-route-signupId="@signup.Id" method="post" class="d-inline">
                                                                         @Html.AntiForgeryToken()
