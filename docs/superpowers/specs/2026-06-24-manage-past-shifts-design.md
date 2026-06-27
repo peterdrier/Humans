@@ -3,7 +3,7 @@
 **Date:** 2026-06-24
 **Branch:** `feat/manage-past-shifts`
 **Section:** Shifts
-**Status:** design approved, pre-implementation
+**Status:** implemented
 **Load-bearing:** yes — coordinator-facing roster correctness during/after the live event.
 
 ## Problem
@@ -63,9 +63,11 @@ The view computes `isPast = now > shift.GetAbsoluteEnd(EventSettings)` (~line 38
 sites change; everything else is untouched.
 
 1. **Manage button (~line 469).** Currently `@if (Model.CanApproveSignups && !isPast)`.
-   **Drop the `!isPast` term** so the **Manage (N)** button renders for past shifts too,
-   whenever there is ≥1 confirmed signup. The Voluntell button alongside it is already
-   ungated and stays as-is.
+   **Drop the `!isPast` term** so the **Manage (N)** button renders for past shifts too.
+   Gating: a future shift shows the button when there is ≥1 **confirmed** signup; a past
+   shift shows it when there is ≥1 signup of **any** status (confirmed, no-show, or bailed),
+   so a past shift whose entire roster no-showed/bailed still exposes its history — nothing
+   becomes unreachable. The Voluntell button alongside it is already ungated and stays as-is.
 
 2. **Manage panel body (~line 570).** Currently the `!isPast` panel renders confirmed
    signups with **Remove** only. Generalise it to render for **both past and future**
@@ -82,7 +84,10 @@ sites change; everything else is untouched.
 
 The **count** on the Manage button stays the confirmed-signup count (actionable rows);
 No-Show/Bailed history is shown inside the panel but not counted, matching the future
-panel's existing semantics.
+panel's existing semantics. When the confirmed count is **zero** — only possible on a past
+shift surfaced solely for its no-show/bailed history — the numeral is omitted entirely and
+the button reads plain **"Manage"** rather than a misleading **"Manage (0)"** that opens to
+a non-empty panel.
 
 ### Localization — exempt (no resx changes)
 

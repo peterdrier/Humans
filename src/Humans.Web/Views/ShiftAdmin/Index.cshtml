@@ -479,7 +479,11 @@
                                                     var manageBtnId = "manage-" + shift.Id.ToString("N");
                                                     <button class="btn btn-sm btn-outline-secondary ms-1" type="button"
                                                             data-bs-toggle="collapse" data-bs-target="#@manageBtnId">
-                                                        Manage (@confirmedSignups.Count)
+                                                        @* Count stays confirmed-only (no-show/bailed history is shown
+                                                           in the panel but not counted). Drop the numeral entirely when
+                                                           confirmed = 0 — i.e. a past shift with only history — so the
+                                                           button never reads a misleading "Manage (0)". *@
+                                                        Manage@(confirmedSignups.Count > 0 ? $" ({confirmedSignups.Count})" : "")
                                                     </button>
                                                 }
                                             }
