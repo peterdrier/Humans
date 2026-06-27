@@ -1976,7 +1976,7 @@ public sealed class ShiftManagementService(
         repo.GetUserIdsForDayAsync(
             eventSettingsId,
             dayOffset,
-            ShiftDayUserStatusScope.PendingOrConfirmed,
+            ShiftDayUserStatusScope.ConfirmedOnly,
             ct);
 
     public async Task<int> DeleteShiftProfilesForUserAsync(
