@@ -466,17 +466,24 @@
                                                     </button>
                                                 </form>
                                             }
-                                            @if (Model.CanApproveSignups && !isPast)
+                                            @if (Model.CanApproveSignups)
                                             {
                                                 var confirmedSignups = shift.ShiftSignups
                                                     .Where(ss => ss.Status == SignupStatus.Confirmed)
                                                     .ToList();
-                                                if (confirmedSignups.Count > 0)
+                                                // Past shifts surface no-show/bailed history in the same panel, so show
+                                                // Manage whenever there is anything to manage or review.
+                                                var hasManagePanel = isPast ? shiftSignups.Count > 0 : confirmedSignups.Count > 0;
+                                                if (hasManagePanel)
                                                 {
                                                     var manageBtnId = "manage-" + shift.Id.ToString("N");
                                                     <button class="btn btn-sm btn-outline-secondary ms-1" type="button"
                                                             data-bs-toggle="collapse" data-bs-target="#@manageBtnId">
-                                                        Manage (@confirmedSignups.Count)
+                                                        @* Count stays confirmed-only (no-show/bailed history is shown
+                                                           in the panel but not counted). Drop the numeral entirely when
+                                                           confirmed = 0 — i.e. a past shift with only history — so the
+                                                           button never reads a misleading "Manage (0)". *@
+                                                        Manage@(confirmedSignups.Count > 0 ? $" ({confirmedSignups.Count})" : "")
                                                     </button>
                                                 }
                                             }
@@ -567,19 +574,28 @@
                                             </td>
                                         </tr>
                                     }
-                                    @if (!isPast && Model.CanApproveSignups)
+                                    @if (Model.CanApproveSignups)
                                     {
-                                        var manageSignups = shift.ShiftSignups
+                                        // Unified Manage panel for past and future shifts. Confirmed humans are
+                                        // actionable: Remove always; Mark No-Show + Bail Range only when the shift is
+                                        // past (post-shift corrections). Past shifts also list no-show/bailed humans
+                                        // as read-only history so nothing is lost from the old past-only panel.
+                                        var manageConfirmed = shift.ShiftSignups
                                             .Where(ss => ss.Status == SignupStatus.Confirmed)
                                             .OrderBy(ss => Model.Users.GetValueOrDefault(ss.UserId)?.BurnerName, StringComparer.OrdinalIgnoreCase)
                                             .ToList();
-                                        if (manageSignups.Count > 0)
+                                        var manageHistory = shift.ShiftSignups
+                                            .Where(ss => isPast && (ss.Status == SignupStatus.NoShow || ss.Status == SignupStatus.Bailed))
+                                            .OrderBy(ss => ss.Status)
+                                            .ThenBy(ss => Model.Users.GetValueOrDefault(ss.UserId)?.BurnerName, StringComparer.OrdinalIgnoreCase)
+                                            .ToList();
+                                        if (manageConfirmed.Count > 0 || manageHistory.Count > 0)
                                         {
                                             var manageCollapseId = "manage-" + shift.Id.ToString("N");
                                             <tr class="collapse" id="@manageCollapseId">
                                                 <td colspan="@(Model.CanApproveSignups ? 7 : 6)">
                                                     <div class="p-2">
-                                                        @foreach (var signup in manageSignups)
+                                                        @foreach (var signup in manageConfirmed)
                                                         {
                                                             <div class="d-flex justify-content-between align-items-center border-bottom py-1">
                                                                 <div>
@@ -590,79 +606,55 @@
                                                                     }
                                                                     @await Html.PartialAsync("_VolunteerProfileBadges", manageProfile)
                                                                 </div>
-                                                                <form asp-action="RemoveSignup" asp-route-slug="@Model.Department.Slug" asp-route-signupId="@signup.Id" method="post" class="d-inline">
-                                                                    @Html.AntiForgeryToken()
-                                                                    <button type="submit" class="btn btn-sm btn-outline-secondary"
-                                                                            data-confirm="Remove @manageName from the shift?">Remove</button>
-                                                                </form>
+                                                                <div class="d-flex gap-1">
+                                                                    <form asp-action="RemoveSignup" asp-route-slug="@Model.Department.Slug" asp-route-signupId="@signup.Id" method="post" class="d-inline">
+                                                                        @Html.AntiForgeryToken()
+                                                                        <button type="submit" class="btn btn-sm btn-outline-secondary"
+                                                                                data-confirm="Remove @manageName from the shift?">Remove</button>
+                                                                    </form>
+                                                                    @if (isPast)
+                                                                    {
+                                                                        <form asp-action="MarkNoShow" asp-route-slug="@Model.Department.Slug" asp-route-signupId="@signup.Id" method="post" class="d-inline">
+                                                                            @Html.AntiForgeryToken()
+                                                                            <button type="submit" class="btn btn-sm btn-outline-danger">Mark No-Show</button>
+                                                                        </form>
+                                                                        @if (signup.SignupBlockId != null)
+                                                                        {
+                                                                            <form asp-action="BailRange" asp-route-slug="@Model.Department.Slug" method="post" class="d-inline">
+                                                                                @Html.AntiForgeryToken()
+                                                                                <input type="hidden" name="signupBlockId" value="@signup.SignupBlockId" />
+                                                                                <button type="submit" class="btn btn-sm btn-outline-warning"
+                                                                                        data-confirm="Bail entire range for this human?">Bail Range</button>
+                                                                            </form>
+                                                                        }
+                                                                    }
+                                                                </div>
+                                                            </div>
+                                                        }
+                                                        @foreach (var signup in manageHistory)
+                                                        {
+                                                            <div class="d-flex justify-content-between align-items-center border-bottom py-1">
+                                                                <div>
+                                                                    <vc:human user-id="@signup.UserId" />
+                                                                    @{
+                                                                        var historyProfile = Model.VolunteerProfiles.GetValueOrDefault(signup.UserId);
+                                                                    }
+                                                                    @await Html.PartialAsync("_VolunteerProfileBadges", historyProfile)
+                                                                    @if (signup.Status == SignupStatus.NoShow)
+                                                                    {
+                                                                        <span class="badge bg-danger ms-1">No-Show</span>
+                                                                    }
+                                                                    else if (signup.Status == SignupStatus.Bailed)
+                                                                    {
+                                                                        <span class="badge bg-secondary ms-1 text-muted">Bailed</span>
+                                                                    }
+                                                                </div>
                                                             </div>
                                                         }
                                                     </div>
                                                 </td>
                                             </tr>
                                         }
-                                    }
-                                    @if (isPast && shiftSignups.Count > 0 && Model.CanApproveSignups)
-                                    {
-                                        var signupsCollapseId = "signups-" + shift.Id.ToString("N");
-                                        <tr>
-                                            <td colspan="@(Model.CanApproveSignups ? 7 : 6)">
-                                                <button class="btn btn-sm btn-outline-info" type="button"
-                                                        data-bs-toggle="collapse" data-bs-target="#@signupsCollapseId">
-                                                    Signups (@shiftSignups.Count)
-                                                </button>
-                                            </td>
-                                        </tr>
-                                        <tr class="collapse" id="@signupsCollapseId">
-                                            <td colspan="@(Model.CanApproveSignups ? 7 : 6)">
-                                                <div class="p-2">
-                                                    @foreach (var signup in shiftSignups)
-                                                    {
-                                                        <div class="d-flex justify-content-between align-items-center border-bottom py-1">
-                                                            <div>
-                                                                <vc:human user-id="@signup.UserId" />
-                                                                @{
-                                                                    var signupProfile = Model.VolunteerProfiles.GetValueOrDefault(signup.UserId);
-                                                                    var signupName = Model.Users.GetValueOrDefault(signup.UserId)?.BurnerName ?? "this human";
-                                                                }
-                                                                @await Html.PartialAsync("_VolunteerProfileBadges", signupProfile)
-                                                                @if (signup.Status == SignupStatus.NoShow)
-                                                                {
-                                                                    <span class="badge bg-danger ms-1">No-Show</span>
-                                                                }
-                                                                else if (signup.Status == SignupStatus.Bailed)
-                                                                {
-                                                                    <span class="badge bg-secondary ms-1 text-muted">Bailed</span>
-                                                                }
-                                                            </div>
-                                                            @if (signup.Status == SignupStatus.Confirmed)
-                                                            {
-                                                                <div class="d-flex gap-1">
-                                                                    <form asp-action="RemoveSignup" asp-route-slug="@Model.Department.Slug" asp-route-signupId="@signup.Id" method="post" class="d-inline">
-                                                                        @Html.AntiForgeryToken()
-                                                                        <button type="submit" class="btn btn-sm btn-outline-secondary"
-                                                                                data-confirm="Remove @signupName from the shift?">Remove</button>
-                                                                    </form>
-                                                                    <form asp-action="MarkNoShow" asp-route-slug="@Model.Department.Slug" asp-route-signupId="@signup.Id" method="post" class="d-inline">
-                                                                        @Html.AntiForgeryToken()
-                                                                        <button type="submit" class="btn btn-sm btn-outline-danger">Mark No-Show</button>
-                                                                    </form>
-                                                                    @if (signup.SignupBlockId != null)
-                                                                    {
-                                                                        <form asp-action="BailRange" asp-route-slug="@Model.Department.Slug" method="post" class="d-inline">
-                                                                            @Html.AntiForgeryToken()
-                                                                            <input type="hidden" name="signupBlockId" value="@signup.SignupBlockId" />
-                                                                            <button type="submit" class="btn btn-sm btn-outline-warning"
-                                                                                    data-confirm="Bail entire range for this human?">Bail Range</button>
-                                                                        </form>
-                                                                    }
-                                                                </div>
-                                                            }
-                                                        </div>
-                                                    }
-                                                </div>
-                                            </td>
-                                        </tr>
                                     }
                                     @if (Model.CanApproveSignups)
                                     {
