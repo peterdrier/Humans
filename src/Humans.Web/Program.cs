@@ -85,6 +85,7 @@ if (!builder.Environment.IsProduction())
 // + the per-source-IP sign-in failure throttle for /Account/GateLogin.
 builder.Services.AddScoped<GateTerminalAccountSeeder>();
 builder.Services.AddSingleton<GateLoginThrottle>();
+builder.Services.AddSingleton<GatePinThrottle>();
 
 builder.Services.ConfigureHttpJsonOptions(options =>
 {

@@ -95,3 +95,19 @@ public sealed record GateClaimViewModel(IReadOnlyList<GateRosterMember> Roster);
 
 /// <summary>One pre-filled roster pick on the claim screen.</summary>
 public sealed record GateRosterMember(Guid UserId, string DisplayName);
+
+/// <summary>What the PIN keypad is for.</summary>
+public enum GatePinMode
+{
+    /// <summary>First use — choose a new 4-digit PIN.</summary>
+    Set,
+
+    /// <summary>Returning — enter the existing PIN to take over the scanner.</summary>
+    Verify,
+
+    /// <summary>A supervisor with no PIN — they can't self-enrol; an admin must set it up.</summary>
+    BlockedSupervisor,
+}
+
+/// <summary>The full-screen PIN keypad shown after a name is picked on the claim screen.</summary>
+public sealed record GatePinViewModel(Guid UserId, string DisplayName, GatePinMode Mode, string? Error);
