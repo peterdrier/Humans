@@ -330,15 +330,15 @@ public class GateServiceTests : ServiceTestHarness
     private static UrgentShift ShiftAt(
         int dayOffset, LocalTime start, params (Guid Id, string Name, SignupStatus Status)[] signups) =>
         new(new Shift
-            {
-                Id = Guid.NewGuid(),
-                RotaId = Guid.NewGuid(),
-                DayOffset = dayOffset,
-                StartTime = start,
-                Duration = Duration.FromHours(4),
-                MinVolunteers = 1,
-                MaxVolunteers = 5,
-            },
+        {
+            Id = Guid.NewGuid(),
+            RotaId = Guid.NewGuid(),
+            DayOffset = dayOffset,
+            StartTime = start,
+            Duration = Duration.FromHours(4),
+            MinVolunteers = 1,
+            MaxVolunteers = 5,
+        },
             UrgencyScore: 0, ConfirmedCount: 0, RemainingSlots: 0, DepartmentName: "Gate",
             Signups: signups.Select(s => (s.Id, s.Name, s.Status)).ToList());
 
