@@ -595,7 +595,9 @@ public class AccountController(
         await signInManager.SignInAsync(user, isPersistent: true);
         logger.LogInformation("Gate terminal signed in");
 
-        return RedirectToAction(nameof(ScannerController.Tickets), "Scanner");
+        // Land the kiosk on the new gate terminal (which redirects to the claim screen
+        // to pick who's scanning), not the old read-only Scanner section.
+        return RedirectToAction(nameof(GateController.Index), "Gate");
     }
 
     // --- Standard Auth ---
