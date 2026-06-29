@@ -98,6 +98,18 @@ public static class AuthorizationPolicyExtensions
                     || ctx.User.HasClaim(System.Security.Claims.ClaimTypes.NameIdentifier,
                         SystemUserIds.GateTerminal.ToString())));
 
+            // Gate write actions (/Gate/Decision, /Gate/Claim POST). Same principals
+            // as ScannerAccess today — including the shared gate-terminal account by
+            // well-known id — but a separate policy so the write path never rides on
+            // the read-only Scanner gate (and the two can diverge later).
+            options.AddPolicy(PolicyNames.GateAdmit, policy =>
+                policy.RequireAssertion(ctx =>
+                    ctx.User.IsInRole(RoleNames.TicketAdmin)
+                    || ctx.User.IsInRole(RoleNames.Board)
+                    || ctx.User.IsInRole(RoleNames.Admin)
+                    || ctx.User.HasClaim(System.Security.Claims.ClaimTypes.NameIdentifier,
+                        SystemUserIds.GateTerminal.ToString())));
+
             options.AddPolicy(PolicyNames.FeedbackAdminOrAdmin, policy =>
                 policy.RequireRole(RoleNames.FeedbackAdmin, RoleNames.Admin));
 

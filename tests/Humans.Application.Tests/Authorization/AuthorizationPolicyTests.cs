@@ -139,6 +139,13 @@ public class AuthorizationPolicyTests : IDisposable
         { PolicyNames.ScannerAccess, RoleNames.HumanAdmin, false },
         { PolicyNames.ScannerAccess, "SomeNonAdminRole", false },
 
+        { PolicyNames.GateAdmit, RoleNames.TicketAdmin, true },
+        { PolicyNames.GateAdmit, RoleNames.Board, true },
+        { PolicyNames.GateAdmit, RoleNames.Admin, true },
+        { PolicyNames.GateAdmit, RoleNames.TeamsAdmin, false },
+        { PolicyNames.GateAdmit, RoleNames.HumanAdmin, false },
+        { PolicyNames.GateAdmit, "SomeNonAdminRole", false },
+
         { PolicyNames.FeedbackAdminOrAdmin, RoleNames.FeedbackAdmin, true },
         { PolicyNames.FeedbackAdminOrAdmin, RoleNames.Admin, true },
         { PolicyNames.FeedbackAdminOrAdmin, RoleNames.Board, false },
@@ -202,7 +209,8 @@ public class AuthorizationPolicyTests : IDisposable
         PolicyNames.AdminOnly,
         PolicyNames.AnyAdminRole,
         PolicyNames.BoardOnly,
-        PolicyNames.ScannerAccess
+        PolicyNames.ScannerAccess,
+        PolicyNames.GateAdmit
     ];
 
     public static TheoryData<string[], bool> HumanAdminOnlyCases => new()
@@ -397,6 +405,25 @@ public class AuthorizationPolicyTests : IDisposable
     {
         var user = CreateUserWithIdAndRoles(Guid.NewGuid());
         var result = await _authorizationService.AuthorizeAsync(user, PolicyNames.ScannerAccess);
+        result.Succeeded.Should().BeFalse();
+    }
+
+    // --- GateAdmit (gate write actions) ---
+
+    [HumansFact]
+    public async Task GateAdmit_AllowsGateTerminalAccountById()
+    {
+        // The shared gate kiosk account holds no roles; the write policy admits it by well-known id.
+        var user = CreateUserWithIdAndRoles(SystemUserIds.GateTerminal);
+        var result = await _authorizationService.AuthorizeAsync(user, PolicyNames.GateAdmit);
+        result.Succeeded.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task GateAdmit_DeniesOrdinaryUserWithNoRoles()
+    {
+        var user = CreateUserWithIdAndRoles(Guid.NewGuid());
+        var result = await _authorizationService.AuthorizeAsync(user, PolicyNames.GateAdmit);
         result.Succeeded.Should().BeFalse();
     }
 

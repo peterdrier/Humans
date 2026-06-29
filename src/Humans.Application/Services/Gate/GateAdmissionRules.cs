@@ -16,7 +16,7 @@ namespace Humans.Application.Services.Gate;
 /// <param name="AlreadyAdmittedLocally">This section already recorded an admit for this barcode (instant dedupe, authoritative before the next vendor sync).</param>
 /// <param name="CheckedInAtVendor">The vendor already reports this ticket as checked in (secondary dedupe signal from the last sync).</param>
 /// <param name="Now">Server clock, the single source of truth for the cutoff comparison.</param>
-/// <param name="GeneralEntryOpensAt">The instant general entry opens to all valid tickets; before it, Early Entry is required.</param>
+/// <param name="GeneralEntryOpensAt">The instant general entry opens to all valid tickets; before it, Early Entry is required. <c>null</c> means the cutoff has not been configured yet — the scan fails safe to AMBER rather than silently admitting.</param>
 /// <param name="MatchedToHuman">The ticket is matched to a Humans account, so Early Entry can be evaluated.</param>
 /// <param name="EarliestEntryDate">The earliest date the matched Human may enter, or null if they hold no Early Entry grant.</param>
 /// <param name="Today">Today's calendar date in the event time zone.</param>
@@ -26,7 +26,7 @@ public sealed record GateScanContext(
     bool AlreadyAdmittedLocally,
     bool CheckedInAtVendor,
     Instant Now,
-    Instant GeneralEntryOpensAt,
+    Instant? GeneralEntryOpensAt,
     bool MatchedToHuman,
     LocalDate? EarliestEntryDate,
     LocalDate Today);
@@ -45,6 +45,7 @@ public static class GateAdmissionRules
     /// <list type="number">
     /// <item>not found / void → <see cref="GatePreCheckOutcome.Invalid"/></item>
     /// <item>already admitted locally / already checked in at vendor → <see cref="GatePreCheckOutcome.Duplicate"/></item>
+    /// <item>cutoff not configured → <see cref="GatePreCheckOutcome.CutoffNotConfigured"/> (AMBER, fail-safe — never a silent admit)</item>
     /// <item>general entry open (now ≥ cutoff) → <see cref="GatePreCheckOutcome.NeedsIdCheck"/></item>
     /// <item>before cutoff, not matched to a Human → <see cref="GatePreCheckOutcome.EarlyEntryUnknown"/> (AMBER, never a silent too-early stop)</item>
     /// <item>before cutoff, matched, Early Entry covers today → <see cref="GatePreCheckOutcome.NeedsIdCheckEarly"/></item>
@@ -59,8 +60,14 @@ public static class GateAdmissionRules
         if (ctx.AlreadyAdmittedLocally || ctx.CheckedInAtVendor)
             return GatePreCheckOutcome.Duplicate;
 
+        // Cutoff unset: Early-Entry gating is undecidable, so fail safe to AMBER
+        // rather than treating "no cutoff" as "general entry already open" (which
+        // would silently admit everyone before an admin configures the cutoff).
+        if (ctx.GeneralEntryOpensAt is not { } generalEntryOpensAt)
+            return GatePreCheckOutcome.CutoffNotConfigured;
+
         // General entry open: any valid, un-used ticket is admissible; Early Entry is moot.
-        if (ctx.Now >= ctx.GeneralEntryOpensAt)
+        if (ctx.Now >= generalEntryOpensAt)
             return GatePreCheckOutcome.NeedsIdCheck;
 
         // Before the cutoff: Early Entry is required. If we cannot evaluate it

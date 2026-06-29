@@ -18,6 +18,15 @@
         <a asp-action="Leaderboard" class="gate-topbar-link">Leaderboard</a>
     </div>
 
+    @if (!Model.CutoffConfigured)
+    {
+        <div class="gate-config-warning" role="alert">
+            <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+            Gate cutoff not set — every scan will need a supervisor. An admin must set the
+            general-entry cutoff in <strong>Gate &#9656; Admin</strong> before doors open.
+        </div>
+    }
+
     <form id="gate-scan-form" autocomplete="off">
         <input id="gate-scan-input" type="text" inputmode="text" autocomplete="off"
                autocapitalize="off" spellcheck="false" placeholder="Scan a ticket"

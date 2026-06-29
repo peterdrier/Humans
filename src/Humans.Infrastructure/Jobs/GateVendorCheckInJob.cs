@@ -1,6 +1,7 @@
 using System.Net.Http;
 using Hangfire;
 using Humans.Application.Interfaces.Tickets;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 
@@ -13,17 +14,29 @@ namespace Humans.Infrastructure.Jobs;
 /// The Gate section's <c>gate_scan_events</c> row is the dedupe authority; this
 /// job only keeps the vendor dashboard / vendor check-in app consistent.
 /// Hangfire retries on failure (the vendor treats repeat check-ins idempotently).
+/// Gated behind <c>Gate:VendorMirrorEnabled</c> (default off) until the
+/// TicketTailor check-in payload is verified against a live API key — a wrong
+/// body 4xx-fails silently and permanently, so the mirror stays off by default.
 /// </summary>
 [AutomaticRetry(Attempts = 5)]
 public sealed class GateVendorCheckInJob(
     ITicketVendorService vendor,
     IClock clock,
+    IConfiguration configuration,
     ILogger<GateVendorCheckInJob> logger)
 {
     public async Task ExecuteAsync(string vendorTicketId, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(vendorTicketId))
             return;
+
+        // Off by default until the check-in payload is verified (see TicketTailorService).
+        if (!configuration.GetValue<bool>("Gate:VendorMirrorEnabled"))
+        {
+            logger.LogDebug(
+                "Vendor check-in mirror disabled (Gate:VendorMirrorEnabled) — skipping {VendorTicketId}", vendorTicketId);
+            return;
+        }
 
         try
         {

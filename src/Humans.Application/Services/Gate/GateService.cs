@@ -59,7 +59,7 @@ public sealed class GateService(
             AlreadyAdmittedLocally: priorAdmit is not null,
             CheckedInAtVendor: attendee.Status == TicketAttendeeStatus.CheckedIn,
             Now: now,
-            GeneralEntryOpensAt: settings.GeneralEntryOpensAt,
+            GeneralEntryOpensAt: settings.IsCutoffConfigured ? settings.GeneralEntryOpensAt : null,
             MatchedToHuman: attendee.MatchedUserId is not null,
             EarliestEntryDate: ee?.EarliestEntryDate,
             Today: TodayInEventZone(now, burn?.TimeZoneId)));
@@ -124,7 +124,7 @@ public sealed class GateService(
     public async Task<GateSettingsDto> GetSettingsAsync(CancellationToken ct = default)
     {
         var s = await repository.GetSettingsAsync(ct);
-        return new GateSettingsDto(s.GeneralEntryOpensAt, s.MinorAgeThresholdYears);
+        return new GateSettingsDto(s.GeneralEntryOpensAt, s.MinorAgeThresholdYears, s.IsCutoffConfigured);
     }
 
     public Task SaveSettingsAsync(GateSettingsDto settings, CancellationToken ct = default) =>
@@ -175,6 +175,7 @@ public sealed class GateService(
         GatePreCheckOutcome.Invalid => GateVerdict.RejectedInvalid,
         GatePreCheckOutcome.Duplicate => GateVerdict.RejectedDuplicate,
         GatePreCheckOutcome.TooEarly => GateVerdict.RejectedTooEarly,
+        GatePreCheckOutcome.CutoffNotConfigured => GateVerdict.Unresolved,
         GatePreCheckOutcome.EarlyEntryUnknown => GateVerdict.Unresolved,
         GatePreCheckOutcome.NeedsIdCheck or GatePreCheckOutcome.NeedsIdCheckEarly =>
             input.ChildWithAdult ? GateVerdict.AdmittedChildWithAdult

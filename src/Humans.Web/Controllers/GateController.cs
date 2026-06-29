@@ -5,6 +5,7 @@ using Humans.Application.Interfaces.Gate;
 using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Jobs;
 using Humans.Web.Authorization;
+using Humans.Web.Infrastructure;
 using Humans.Web.Models.Gate;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -17,9 +18,12 @@ namespace Humans.Web.Controllers;
 /// Gate admissions terminal. Distinct from the read-only <c>Scanner</c> section:
 /// this one decides entry and writes the durable <c>gate_scan_events</c> record.
 /// The terminal authenticates via the <see cref="PolicyNames.ScannerAccess"/>
-/// policy (shared gate-terminal account or a ticket admin); the individual
-/// staffer "claims" the session so each scan is attributed to a real Human —
-/// the attribution id is read from the session, never the request body.
+/// policy (shared gate-terminal account or a ticket admin) for the read actions
+/// (Index/Evaluate/Leaderboard); the write actions (Decision, Claim POST) require
+/// the dedicated <see cref="PolicyNames.GateAdmit"/> policy so they never ride on
+/// the read-only Scanner gate. The individual staffer "claims" the session so each
+/// scan is attributed to a real Human — the attribution id is read from the
+/// session, never the request body.
 /// </summary>
 [Authorize(Policy = PolicyNames.ScannerAccess)]
 [Route("Gate")]
@@ -27,6 +31,7 @@ public sealed class GateController(
     IGateService gate,
     IUserServiceRead users,
     IConfiguration configuration,
+    GateLoginThrottle pinThrottle,
     IClock clock) : HumansControllerBase(users)
 {
     private const string ScannerSessionKey = "GateScannerId";
@@ -38,8 +43,10 @@ public sealed class GateController(
             return RedirectToAction(nameof(Claim));
 
         var info = await UserService.GetUserInfoAsync(scanner, ct);
+        var settings = await gate.GetSettingsAsync(ct);
         var asOf = InstantPattern.ExtendedIso.Format(clock.GetCurrentInstant());
-        return View(new GateIndexViewModel(info?.BurnerName ?? "Gate staff", DataStale: false, asOf));
+        return View(new GateIndexViewModel(
+            info?.BurnerName ?? "Gate staff", DataStale: false, asOf, settings.CutoffConfigured));
     }
 
     [HttpGet("Evaluate")]
@@ -53,6 +60,7 @@ public sealed class GateController(
     }
 
     [HttpPost("Decision")]
+    [Authorize(Policy = PolicyNames.GateAdmit)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Decision(
         string barcode, bool idConfirmed, bool childWithAdult,
@@ -62,10 +70,28 @@ public sealed class GateController(
             return Unauthorized();
 
         // The ID waiver (child with adult) needs a server-verified supervisor PIN.
-        if (childWithAdult && !SupervisorPinValid(supervisorPin))
-            return PartialView("_VerdictCard", new GateScanCardViewModel(
-                GateCardKind.Amber, "Supervisor", null,
-                "Supervisor PIN required to admit a child without ID", false, barcode, false));
+        // Throttle PIN attempts per source IP — a static PIN on a write endpoint is
+        // otherwise brute-forceable (mirrors the /Account/GateLogin throttle, on its
+        // own bucket so the two surfaces don't share a failure count).
+        if (childWithAdult)
+        {
+            var pinSource = $"GatePin:{HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown"}";
+
+            if (pinThrottle.SecondsUntilRetry(pinSource) is { } waitSeconds)
+                return PartialView("_VerdictCard", new GateScanCardViewModel(
+                    GateCardKind.Amber, "Supervisor", null,
+                    $"Too many PIN attempts — wait {waitSeconds}s", false, barcode, false));
+
+            if (!SupervisorPinValid(supervisorPin))
+            {
+                pinThrottle.RecordFailure(pinSource);
+                return PartialView("_VerdictCard", new GateScanCardViewModel(
+                    GateCardKind.Amber, "Supervisor", null,
+                    "Supervisor PIN required to admit a child without ID", false, barcode, false));
+            }
+
+            pinThrottle.Reset(pinSource);
+        }
 
         var decision = await gate.RecordDecisionAsync(
             new GateDecisionInput(barcode, idConfirmed, childWithAdult, laneId, ClientScanAt: null, Note: null),
@@ -82,6 +108,7 @@ public sealed class GateController(
     public IActionResult Claim() => View();
 
     [HttpPost("Claim")]
+    [Authorize(Policy = PolicyNames.GateAdmit)]
     [ValidateAntiForgeryToken]
     public IActionResult Claim(Guid userId)
     {

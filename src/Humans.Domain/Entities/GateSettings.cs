@@ -18,10 +18,19 @@ public class GateSettings
     /// <summary>
     /// The instant general entry opens to every valid ticket. Before it, a valid
     /// ticket also needs an Early Entry grant covering today; at or after it,
-    /// Early Entry is irrelevant. Default <see cref="Instant.MinValue"/> means
-    /// "general entry already open" (no Early Entry gating) until an admin sets it.
+    /// Early Entry is irrelevant. Default <see cref="Instant.MinValue"/> is the
+    /// "not configured" sentinel (see <see cref="IsCutoffConfigured"/>): until an
+    /// admin sets a real cutoff, scans fail safe to AMBER rather than being
+    /// silently admitted. An admin must set this before doors open.
     /// </summary>
     public Instant GeneralEntryOpensAt { get; set; } = Instant.MinValue;
+
+    /// <summary>
+    /// Whether a real general-entry cutoff has been set. <see cref="Instant.MinValue"/>
+    /// is the unconfigured sentinel — admission logic treats an unset cutoff as
+    /// undecidable (AMBER), never as "general entry already open".
+    /// </summary>
+    public bool IsCutoffConfigured => GeneralEntryOpensAt != Instant.MinValue;
 
     /// <summary>
     /// Display-only age threshold under which the photo-ID step may be waived for

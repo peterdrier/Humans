@@ -7,6 +7,7 @@ using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Services.Gate;
 using Humans.Application.Tests.Infrastructure;
+using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Repositories.Gate;
 using NodaTime;
@@ -37,6 +38,19 @@ public class GateServiceTests : ServiceTestHarness
         _earlyEntry.GetForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns((UserEarlyEntry?)null);
         _svc = new GateService(new GateRepository(DbFactory), _tickets, _earlyEntry, _burn, Clock);
+
+        // Baseline: an admin has set the cutoff in the past, so general entry is open.
+        // Seeded directly (sync) since the ctor can't await; Db shares the in-memory
+        // store with the repository's factory. Before-cutoff tests override this, and
+        // the unconfigured-cutoff case is tested explicitly. Without a configured
+        // cutoff every scan fails safe to AMBER.
+        Db.Set<GateSettings>().Add(new GateSettings
+        {
+            Id = 1,
+            GeneralEntryOpensAt = Clock.GetCurrentInstant().Minus(Duration.FromHours(1)),
+            MinorAgeThresholdYears = 16,
+        });
+        Db.SaveChanges();
     }
 
     private void StubTicket(
@@ -141,6 +155,28 @@ public class GateServiceTests : ServiceTestHarness
 
         (await Record(idConfirmed: false, child: true))
             .Verdict.Should().Be(GateVerdict.AdmittedChildWithAdult);
+    }
+
+    [HumansFact]
+    public async Task CutoffNotConfigured_IsAmberUnresolved_NeverSilentlyAdmits()
+    {
+        StubTicket();
+        // Reset to the unconfigured sentinel (the ctor seeded an open cutoff).
+        await _svc.SaveSettingsAsync(new GateSettingsDto(Instant.MinValue, 16));
+
+        (await _svc.EvaluateAsync(Barcode)).Outcome.Should().Be(GatePreCheckOutcome.CutoffNotConfigured);
+
+        // Even with the agent confirming the ID, an unset cutoff escalates — no admit.
+        (await Record(idConfirmed: true)).Verdict.Should().Be(GateVerdict.Unresolved);
+    }
+
+    [HumansFact]
+    public async Task GetSettings_ReportsCutoffConfigured()
+    {
+        (await _svc.GetSettingsAsync()).CutoffConfigured.Should().BeTrue();   // ctor seeded a real cutoff
+
+        await _svc.SaveSettingsAsync(new GateSettingsDto(Instant.MinValue, 16));
+        (await _svc.GetSettingsAsync()).CutoffConfigured.Should().BeFalse();
     }
 
     [HumansFact]

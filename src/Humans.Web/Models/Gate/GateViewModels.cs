@@ -42,6 +42,8 @@ public sealed record GateScanCardViewModel(
             new(GateCardKind.Stop, "Stop", null, "Not a valid ticket for this gate", false, r.Barcode, false),
         GatePreCheckOutcome.Duplicate =>
             new(GateCardKind.Stop, "Stop", r.GuestName, "Already scanned — ticket already used", false, r.Barcode, false),
+        GatePreCheckOutcome.CutoffNotConfigured =>
+            new(GateCardKind.Amber, "Supervisor", r.GuestName, "Gate cutoff not set — get a supervisor", false, r.Barcode, false),
         GatePreCheckOutcome.TooEarly =>
             new(GateCardKind.Stop, "Stop", r.GuestName, "Too early — no Early Entry ticket", false, r.Barcode, false),
         GatePreCheckOutcome.EarlyEntryUnknown =>
@@ -69,8 +71,10 @@ public sealed record GateScanCardViewModel(
     };
 }
 
-/// <summary>The scan page shell.</summary>
-public sealed record GateIndexViewModel(string ScannerName, bool DataStale, string DataAsOf);
+/// <summary>The scan page shell. <paramref name="CutoffConfigured"/> drives a loud
+/// warning banner: while the general-entry cutoff is unset, every scan fails safe to
+/// AMBER, so the terminal tells staff to have an admin set it before doors.</summary>
+public sealed record GateIndexViewModel(string ScannerName, bool DataStale, string DataAsOf, bool CutoffConfigured);
 
 /// <summary>Gate settings admin form.</summary>
 public sealed record GateSettingsViewModel(

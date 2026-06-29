@@ -27,13 +27,14 @@ public class GateAdmissionRulesTests
         bool checkedInAtVendor = false,
         Instant? now = null,
         bool matched = true,
-        LocalDate? earliest = null) => new(
+        LocalDate? earliest = null,
+        bool cutoffSet = true) => new(
             Found: found,
             IsVoid: isVoid,
             AlreadyAdmittedLocally: admittedLocally,
             CheckedInAtVendor: checkedInAtVendor,
             Now: now ?? Cutoff.Plus(Duration.FromHours(1)),
-            GeneralEntryOpensAt: Cutoff,
+            GeneralEntryOpensAt: cutoffSet ? Cutoff : null,
             MatchedToHuman: matched,
             EarliestEntryDate: earliest,
             Today: Today);
@@ -67,6 +68,24 @@ public class GateAdmissionRulesTests
     {
         // Before the cutoff AND already admitted: duplicate wins over any EE logic.
         GateAdmissionRules.Evaluate(Valid(admittedLocally: true, now: Cutoff.Minus(Duration.FromHours(1)), matched: false))
+            .Should().Be(GatePreCheckOutcome.Duplicate);
+    }
+
+    [HumansFact]
+    public void CutoffNotConfigured_IsAmber_NotSilentAdmit()
+    {
+        // Unset cutoff must fail safe to AMBER, never be treated as "general entry open".
+        GateAdmissionRules.Evaluate(Valid(cutoffSet: false))
+            .Should().Be(GatePreCheckOutcome.CutoffNotConfigured);
+    }
+
+    [HumansFact]
+    public void CutoffNotConfigured_StillYieldsToInvalidAndDuplicate()
+    {
+        // Precedence: a void or already-used ticket still STOPs even with no cutoff set.
+        GateAdmissionRules.Evaluate(Valid(isVoid: true, cutoffSet: false))
+            .Should().Be(GatePreCheckOutcome.Invalid);
+        GateAdmissionRules.Evaluate(Valid(admittedLocally: true, cutoffSet: false))
             .Should().Be(GatePreCheckOutcome.Duplicate);
     }
 

@@ -82,5 +82,11 @@ public sealed record GateLeaderboardRow(Guid ScannedByUserId, int Admitted, int 
 /// <summary>Aggregated gate activity for a window.</summary>
 public sealed record GateLeaderboard(int TotalAdmitted, int TotalScanned, IReadOnlyList<GateLeaderboardRow> Rows);
 
-/// <summary>Gate configuration DTO (mirrors the singleton settings row).</summary>
-public sealed record GateSettingsDto(Instant GeneralEntryOpensAt, int MinorAgeThresholdYears);
+/// <summary>
+/// Gate configuration DTO (mirrors the singleton settings row).
+/// <paramref name="CutoffConfigured"/> is a read-only projection of whether a real
+/// general-entry cutoff has been set (it is ignored on save — an admin always
+/// writes a concrete cutoff); it lets the terminal warn loudly while unset.
+/// </summary>
+public sealed record GateSettingsDto(
+    Instant GeneralEntryOpensAt, int MinorAgeThresholdYears, bool CutoffConfigured = false);

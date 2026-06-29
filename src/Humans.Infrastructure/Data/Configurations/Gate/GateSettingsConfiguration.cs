@@ -17,7 +17,8 @@ public sealed class GateSettingsConfiguration : IEntityTypeConfiguration<GateSet
         builder.Property(x => x.MinorAgeThresholdYears).IsRequired();
 
         // No HasData seed: the singleton row is created on first save. GetSettingsAsync
-        // returns a safe default (general entry already open) until an admin sets it,
-        // per no-startup-guards.
+        // returns the default (GeneralEntryOpensAt = Instant.MinValue, the "not configured"
+        // sentinel) until an admin sets it — scans fail safe to AMBER while unset rather
+        // than silently admitting, per no-startup-guards.
     }
 }

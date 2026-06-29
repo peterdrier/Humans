@@ -38,6 +38,16 @@ public static class PolicyNames
     public const string ScannerAccess = nameof(ScannerAccess);
 
     /// <summary>
+    /// Gate <em>write</em> actions (/Gate/Decision, /Gate/Claim POST): records a
+    /// durable admission or claims the scanning session. Deliberately distinct
+    /// from the read-only <see cref="ScannerAccess"/> so the gate's write surface
+    /// never rides on the Scanner read gate. Same principals today (TicketAdmin,
+    /// Board, Admin, or the shared gate-terminal account) but kept separate so the
+    /// two can diverge without re-opening the read path. Composite assertion policy.
+    /// </summary>
+    public const string GateAdmit = nameof(GateAdmit);
+
+    /// <summary>
     /// Can use the app: <c>UserState == Active</c> (entered legal name).
     /// The single nav-visibility gate replaces the former
     /// IsActiveMember / ActiveMemberOrShiftAccess split (there is no separate shift access).

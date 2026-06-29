@@ -270,7 +270,9 @@ public class TicketTailorService : ITicketVendorService
         // NOTE: this request body is inferred, not yet verified against a live
         // POST /v1/check_ins — confirm the exact field names (and whether the id
         // belongs in the path) against the TicketTailor API before relying on the
-        // mirror. A 4xx here fails fast (the job does not retry 4xx).
+        // mirror. A 4xx here fails fast (the job does not retry 4xx). Until verified,
+        // the caller (GateVendorCheckInJob) is gated behind Gate:VendorMirrorEnabled
+        // (default off); flip that flag on only once this payload is confirmed.
         var payload = new
         {
             issued_ticket_id = vendorTicketId,
