@@ -1,4 +1,9 @@
 /* Gate admissions terminal — glanceable, high-contrast, sized for an 8" tablet. */
+
+/* Chromeless kiosk page shell (the _GateLayout body): full-bleed, no admin chrome. */
+body.gate-kiosk { margin: 0; min-height: 100vh; background: #f4ede1; }
+.gate-kiosk-main { max-width: 960px; margin: 0 auto; padding: 1rem 1rem 2rem; }
+
 .gate-shell { max-width: 920px; margin: 0 auto; }
 
 .gate-topbar {

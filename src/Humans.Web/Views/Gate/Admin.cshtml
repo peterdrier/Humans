@@ -2,6 +2,9 @@
 @model GateSettingsViewModel
 @{
     ViewData["Title"] = "Gate settings";
+    // Admin desktop task (set the cutoff before doors) — keep the normal admin chrome,
+    // not the chromeless gate kiosk layout that the tablet-facing views use.
+    Layout = "_AdminLayout";
 }
 
 <h1>Gate settings</h1>

@@ -148,5 +148,10 @@ throttled per source IP (its own bucket, mirroring `/Account/GateLogin`).
 **Jobs:** `GateRetentionJob` (recurring), `GateVendorCheckInJob` (enqueued on admit).
 **Decorator decision:** none — gate reads must be live (a stale verdict admits or blocks the wrong
 person), mirroring the read-through Scanner section.
+**Layout:** the tablet-facing views (`Claim`, scan terminal `Index`, `Leaderboard`) use the
+**chromeless kiosk layout** `_GateLayout` — full-bleed, no admin nav/sidebar/breadcrumb, so the
+rugged tablet shows only the gate UI. The admin settings page (`Admin`) overrides back to
+`_AdminLayout` (a desktop admin task). The shared `GateTerminal` system account (no roles/teams)
+sees only this kiosk; on the device, Edge Assigned Access removes browser chrome too.
 **Status:** new section (gate-scanner feature). Posture change (attendance gateway) pending Peter's
 sign-off.
