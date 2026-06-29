@@ -615,6 +615,32 @@ app.UseAuthorization();
 
 app.UseSession();
 
+// Hard route restriction for the shared gate-terminal kiosk account: it may only reach
+// the gate terminal and its own login/logout. Defense in depth on top of its zero
+// roles/teams — even if a URL were typed on the device, the kiosk account is bounced
+// to /Gate and can never browse the rest of Humans.
+app.Use(async (context, next) =>
+{
+    if (context.User.Identity?.IsAuthenticated == true
+        && context.User.HasClaim(
+            System.Security.Claims.ClaimTypes.NameIdentifier,
+            Humans.Domain.Constants.SystemUserIds.GateTerminal.ToString()))
+    {
+        var path = context.Request.Path;
+        var allowed =
+            path.StartsWithSegments("/Gate", StringComparison.OrdinalIgnoreCase)
+            || path.StartsWithSegments("/Account/GateLogin", StringComparison.OrdinalIgnoreCase)
+            || path.StartsWithSegments("/Account/Logout", StringComparison.OrdinalIgnoreCase)
+            || path.StartsWithSegments("/Account/AccessDenied", StringComparison.OrdinalIgnoreCase);
+        if (!allowed)
+        {
+            context.Response.Redirect("/Gate");
+            return;
+        }
+    }
+    await next();
+});
+
 app.UseRequestLocalization();
 
 app.MapHealthChecks("/health", new HealthCheckOptions

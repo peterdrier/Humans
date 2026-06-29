@@ -13,7 +13,8 @@
 <div class="gate-shell">
     <div class="gate-topbar">
         <span>Scanning as <strong>@Model.ScannerName</strong></span>
-        <span class="gate-asof" title="Data freshness">data @Model.DataAsOf</span>
+        <span class="gate-asof" data-asof="@Model.DataAsOf"
+              title="When this terminal last loaded — re-open it if this gets old">loaded…</span>
         <a asp-action="Claim" class="gate-topbar-link">Change</a>
         <a asp-action="Leaderboard" class="gate-topbar-link">Leaderboard</a>
     </div>

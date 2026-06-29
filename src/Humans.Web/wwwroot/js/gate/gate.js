@@ -11,6 +11,25 @@ export function initGate(refs) {
 
     const focusInput = () => { input.value = ''; input.focus(); };
     input.focus();
+    initFreshness();
+
+    // Render the "loaded HH:mm · N min ago" indicator and redden it once the terminal
+    // has been open a while — a nudge to re-open the page so its data view isn't stale.
+    // A once-a-minute text update only (no network, no scan-loop cost).
+    function initFreshness() {
+        const el = document.querySelector('.gate-asof');
+        const t0 = el ? Date.parse(el.getAttribute('data-asof')) : NaN;
+        if (!el || isNaN(t0)) return;
+        const STALE_MS = 15 * 60 * 1000;
+        const hhmm = new Intl.DateTimeFormat([], { hour: '2-digit', minute: '2-digit' });
+        const tick = () => {
+            const ageMin = Math.max(0, Math.round((Date.now() - t0) / 60000));
+            el.textContent = `loaded ${hhmm.format(t0)} · ${ageMin < 1 ? 'just now' : ageMin + ' min ago'}`;
+            el.classList.toggle('gate-asof-stale', Date.now() - t0 > STALE_MS);
+        };
+        tick();
+        setInterval(tick, 60000);
+    }
 
     // One request at a time: a stuck wedge emitting a double Enter, or a fast
     // re-scan, must not fire two overlapping lookups whose later response wins.
