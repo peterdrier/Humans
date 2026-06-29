@@ -7,6 +7,8 @@
   src/Humans.Application/Interfaces/Gate/**
   src/Humans.Domain/Entities/GateScanEvent.cs
   src/Humans.Domain/Entities/GateSettings.cs
+  src/Humans.Domain/Entities/GateStaffPin.cs
+  src/Humans.Web/Infrastructure/GatePinThrottle.cs
   src/Humans.Infrastructure/Repositories/Gate/**
   src/Humans.Infrastructure/Jobs/GateRetentionJob.cs
   src/Humans.Infrastructure/Jobs/GateVendorCheckInJob.cs
@@ -43,8 +45,26 @@ admission record. Distinct from the read-only `Scanner` section, which must neve
   set the cutoff to a past instant (explicitly "general entry already open") — never leave it unset.
 - **Server-authoritative decision** — `RecordDecisionAsync` re-evaluates server-side, so a client
   "ID confirmed" can never turn a STOP into an admit. `scannedByUserId` is the session-claimed
-  staffer, taken from the session, never the request body. The child/ID-waiver path requires a
-  server-verified supervisor PIN (`Gate:SupervisorPin`).
+  staffer, taken from the session, never the request body. The child/ID-waiver and the too-early
+  override both admit only when an authorizing supervisor was recorded (`OverrideByUserId`), which
+  the controller sets **only** after `AuthorizeOverrideAsync` verifies that supervisor's personal
+  PIN and active role — a forged `childWithAdult`/`overrideEarly` flag alone never admits.
+- **Personal staff PINs (`gate_staff_pins`)** — each staffer sets a 4-digit PIN the first time they
+  claim the gate (`SetOwnPinAsync`, hashed via Identity's `IPasswordHasher`), reused across shifts.
+  Claiming the scanner becomes a PIN entry (`/Gate/ClaimPin`), so the leaderboard attribution is a
+  real per-person claim rather than honour-system. **Supervisors** (Admin/Board/TicketAdmin) cannot
+  self-enrol at the anonymous kiosk — their PIN carries override authority, so an admin enrols it out
+  of band (`/Gate/Admin`); the override path is verify-only and rejects un-enrolled supervisors.
+- **Supervisor override** — a too-early scan (e.g. a Friday Early-Entry ticket scanned on Wednesday)
+  STOPs with a precise reason (the holder's EE date vs today, or "no early entry · general entry
+  opens …" — date only, never the EE source) and offers a **supervisor override**: the supervisor
+  taps their name from the enrolled-supervisor list (the route-locked kiosk can't reach free-text
+  people search) and enters their PIN. On success the admit is recorded as `AdmittedEarlyOverride`
+  with `OverrideByUserId` = the authorizing supervisor — the audit trail for "who let this person in
+  early". The same mechanism backs the child-without-ID waiver (`AdmittedChildWithAdult`).
+- **PIN brute-force throttle** — `GatePinThrottle`: 5 failures → a 15-minute lockout that does **not**
+  self-reset (only a correct PIN clears it), keyed on **both** the target user-id and the source
+  device/IP, so neither one supervisor's PIN nor one kiosk can be ground through the ~10k space.
 - **Dedupe authority** — a unique index on `GateScanEvent.AdmitDedupeKey` (the barcode for admit
   verdicts, null otherwise) makes the first admit per barcode win atomically across all lanes;
   Postgres excludes nulls so reject rows never collide. An explicit pre-check covers the common case.
@@ -73,10 +93,13 @@ admission record. Distinct from the read-only `Scanner` section, which must neve
 
 - **`gate_scan_events`** (owned) — append-only. `OccurredAt` (server), `ScannedByUserId`,
   `Barcode`, `TicketAttendeeId?`, `GuestUserId?`, `Verdict`, `LaneId?`, `ClientScanAt?`
-  (audit only, never trusted for the cutoff), `Note?`, `AdmitDedupeKey?`. Cross-section links are
-  bare Guid columns (no nav/FK).
+  (audit only, never trusted for the cutoff), `Note?`, `OverrideByUserId?` (the authorizing
+  supervisor on an override admit), `AdmitDedupeKey?`. Cross-section links are bare Guid columns
+  (no nav/FK); `GuestUserId`/`ScannedByUserId`/`OverrideByUserId` are re-pointed on account merge.
 - **`gate_settings`** (owned) — singleton (`Id` = 1). `GeneralEntryOpensAt` (UTC `Instant`),
   `MinorAgeThresholdYears`.
+- **`gate_staff_pins`** (owned) — one row per staffer, key = bare `UserId`. `PinHash`
+  (Identity `IPasswordHasher`), `CreatedAt`, `UpdatedAt`. The merge survivor keeps its PIN.
 
 ## Routing
 
@@ -84,29 +107,44 @@ admission record. Distinct from the read-only `Scanner` section, which must neve
 |-------|--------|------|---------|
 | `/Gate` | GET | `ScannerAccess` | Scan terminal (redirects to Claim if no active scanner) |
 | `/Gate/Evaluate` | GET | `ScannerAccess` | Live verdict card for a barcode (write-free) |
-| `/Gate/Decision` | POST | `GateAdmit` | Record the agent's Yes/No decision; enqueue vendor mirror on admit |
-| `/Gate/Claim` | GET (`ScannerAccess`) / POST (`GateAdmit`) | — | Claim the scanning session as a Humans user |
+| `/Gate/Decision` | POST | `GateAdmit` | Record the agent's Yes/No decision (incl. supervisor override); enqueue vendor mirror on admit |
+| `/Gate/Claim` | GET (`ScannerAccess`) / POST (`GateAdmit`) | — | Pick who is scanning → hands off to the PIN keypad |
+| `/Gate/ClaimPin` | POST | `GateAdmit` | Set/verify the staffer's PIN, then stamp the scanning session |
 | `/Gate/Leaderboard` | GET | `ScannerAccess` | Per-staffer scan tallies |
 | `/Gate/Admin` | GET/POST | `TicketAdminOrAdmin` | Gate settings (cutoff, minor age threshold) |
+| `/Gate/Admin/SetPin` | POST | `TicketAdminOrAdmin` | Admin enrol/change any staffer's PIN (incl. supervisors) |
+| `/Gate/Admin/ResetPin` | POST | `TicketAdminOrAdmin` | Admin clear a staffer's PIN (they re-enrol on next claim) |
 
-The **write** actions (`Decision`, `Claim` POST) require the dedicated `GateAdmit` policy
-rather than the read-only `ScannerAccess`, so the gate's admit surface never rides on the
+The **write** actions (`Decision`, `Claim`/`ClaimPin` POST) require the dedicated `GateAdmit`
+policy rather than the read-only `ScannerAccess`, so the gate's admit surface never rides on the
 Scanner read gate. Both are satisfied by the shared gate-terminal account today; they are
-kept separate so they can diverge. The supervisor-PIN child-waiver on `Decision` is
-throttled per source IP (its own bucket, mirroring `/Account/GateLogin`).
+kept separate so they can diverge. PIN entry (claim verify, and the supervisor override on
+`Decision`) is brute-force throttled via `GatePinThrottle` on **both** the target user-id and the
+source device — see Invariants. The supervisor override picks from the enrolled-supervisor
+tap-list because the `GateTerminal` account is route-locked to `/Gate` and so cannot reach the
+`/api/profiles/search` people-search the admin pages use.
 
 ## Invariants
 
 - The cutoff is evaluated against the server clock; `ClientScanAt` never influences it.
 - A barcode can be admitted at most once (atomic unique index + pre-check); re-entry is governed
   by a physical wristband, not a second scan.
-- `scannedByUserId` is server-derived from the claimed session; the child/ID-waiver needs a
-  server-verified supervisor PIN (attempts throttled per source IP).
-- **Attribution is honor-system, not authenticated.** On the shared kiosk account, `ScannedByUserId`
-  is the staffer-asserted session claim (whoever tapped "claim"), taken from the session rather than
-  the request body so it can't be forged on the wire — but it is **not** an independently
-  authenticated identity. This is intended for the leaderboard/audit trail; do not treat it as proof
-  of who physically scanned.
+- `scannedByUserId` is server-derived from the claimed session; an override (child/ID-waiver or
+  too-early) needs a server-verified supervisor PIN **and** an active supervisor role
+  (`AuthorizeOverrideAsync`), recorded as `OverrideByUserId`.
+- **Override authorization is verify-only and double-checked.** `AuthorizeOverrideAsync` admits an
+  override only if the asserted supervisor is enrolled, the PIN matches (timing-safe), **and** they
+  currently hold Admin/Board/TicketAdmin — re-derived server-side, never trusted from the request.
+  It never enrols. Supervisor PIN **enrolment** is privileged (admin-only, `/Gate/Admin`); a
+  supervisor PIN can never be cold-set at the anonymous kiosk.
+- **PIN entry is throttled on two keys.** `GatePinThrottle` (5 tries → 15-min non-self-resetting
+  lockout) is checked/recorded on **both** the target user-id and the source device/IP, so neither a
+  single supervisor's PIN nor one kiosk can be brute-forced. Claim-keypad *enrolment* (choosing a new
+  PIN) is not throttled — there's no secret to guess — only verification is.
+- **Attribution is now a personal PIN claim**, not honour-system: claiming the scanner verifies the
+  staffer's PIN (`/Gate/ClaimPin`), and `ScannedByUserId` is stamped server-side from that verified
+  id. It is still a shared physical device, so treat the attribution as a strong claim for the
+  leaderboard/audit trail, not as cryptographic proof of who held the tablet.
 - Gate participates in GDPR export (`IUserDataContributor`), account merge (`IUserMerge` re-FKs
   `GuestUserId`/`ScannedByUserId`), and retention purge.
 - The gate view shows name + verdict + one reason line only; Early-Entry source, the previous
@@ -126,11 +164,15 @@ throttled per source IP (its own bucket, mirroring `/Account/GateLogin`).
   Configuration). Read-only consumption of the existing Shifts service from the Web layer,
   mirroring how other controllers read shift signups — no new Shifts surface.
   _Cross-section read approved by Peter (verbal, 2026-06-29)._
-- **Users** — `IUserServiceRead` (scanner name; leaderboard rendering via `<vc:human>`).
+- **Users** — `IUserServiceRead` (scanner name; supervisor/claim display names; leaderboard
+  rendering via `<vc:human>`).
+- **Auth** — `IRoleAssignmentService.HasActiveRoleAsync` (is this user a supervisor?) and
+  `GetActiveUserIdsInRoleAsync` (enumerate enrolled supervisors for the override tap-list).
 
 ## Configuration
 
-- `Gate:SupervisorPin` — PIN that authorizes the child-without-ID waiver on `/Gate/Decision`.
+- _(retired)_ `Gate:SupervisorPin` — the shared override PIN is gone; overrides now use per-staffer
+  PINs (`gate_staff_pins`) verified against an active supervisor role. No config key.
 - `Gate:VendorMirrorEnabled` — default off; gates the TicketTailor check-in mirror (see Vendor
   check-in mirror above).
 - `Gate:RosterTeamId` — **optional** GUID of the Shifts department/team that staffs the gate.
@@ -144,7 +186,7 @@ throttled per source IP (its own bucket, mirroring `/Account/GateLogin`).
 
 **Owning service:** `GateService` (`Humans.Application.Services.Gate`) — also implements
 `IUserMerge` and `IUserDataContributor`.
-**Owned tables:** `gate_scan_events`, `gate_settings` via `IGateRepository`.
+**Owned tables:** `gate_scan_events`, `gate_settings`, `gate_staff_pins` via `IGateRepository`.
 **Jobs:** `GateRetentionJob` (recurring), `GateVendorCheckInJob` (enqueued on admit).
 **Decorator decision:** none — gate reads must be live (a stale verdict admits or blocks the wrong
 person), mirroring the read-through Scanner section.

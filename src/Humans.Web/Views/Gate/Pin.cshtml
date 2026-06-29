@@ -1,0 +1,67 @@
+@using Humans.Web.Models.Gate
+@model GatePinViewModel
+@{
+    ViewData["Title"] = Model.Mode == GatePinMode.Set ? "Set your PIN" : "Enter your PIN";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="@Url.Content("~/css/gate/gate.css")" asp-append-version="true" />
+}
+
+<div class="gate-pin-screen">
+    @if (Model.Mode == GatePinMode.BlockedSupervisor)
+    {
+        <div class="gate-pin-blocked" role="alert">
+            <div class="gate-pin-icon" aria-hidden="true"><i class="fa-solid fa-user-shield"></i></div>
+            <div class="gate-pin-name">@Model.DisplayName</div>
+            <p class="gate-pin-blocked-text">
+                Supervisor PINs are set by an admin — they carry override authority, so they're never
+                created here at the gate. Ask an admin to enrol your PIN in <strong>Gate &#9656; Admin</strong>,
+                then come back and tap your name.
+            </p>
+            <a asp-action="Claim" class="gate-pin-back">&larr; Back to names</a>
+        </div>
+    }
+    else
+    {
+        <div class="gate-pin-head">
+            <div class="gate-pin-name">@Model.DisplayName</div>
+            <div class="gate-pin-prompt">@(Model.Mode == GatePinMode.Set ? "Set a 4-digit PIN" : "Enter your PIN")</div>
+            @if (Model.Mode == GatePinMode.Set)
+            {
+                <div class="gate-pin-sub">You'll reuse this each shift to claim the gate.</div>
+            }
+            @if (!string.IsNullOrEmpty(Model.Error))
+            {
+                <div class="gate-pin-error" role="alert">@Model.Error</div>
+            }
+        </div>
+
+        <form id="gate-pin-form" method="post" asp-action="ClaimPin" autocomplete="off">
+            <input type="hidden" name="userId" value="@Model.UserId" />
+            <input type="hidden" name="pin" id="gate-pin-value" />
+            <partial name="_PinPad" />
+        </form>
+
+        <a asp-action="Claim" class="gate-pin-back">&larr; Not you? Pick a different name</a>
+    }
+</div>
+
+@if (Model.Mode != GatePinMode.BlockedSupervisor)
+{
+    @inject Microsoft.AspNetCore.Mvc.ViewFeatures.IFileVersionProvider FileVersionProvider
+    @section Scripts {
+        @* The keypad itself is a cache-busted classic script (no module import to go stale); the
+           page module wires it to the claim form. *@
+        <script src="@Url.Content("~/js/gate/gate-keypad.js")" asp-append-version="true"
+                nonce="@Context.Items["CspNonce"]"></script>
+        <script nonce="@Context.Items["CspNonce"]" type="module">
+            import { initClaimPin } from '@FileVersionProvider.AddFileVersionToPath(Context.Request.PathBase, Url.Content("~/js/gate/gate-pin.js"))';
+            initClaimPin({
+                container: document.querySelector('[data-gate-keypad]'),
+                form: document.getElementById('gate-pin-form'),
+                valueInput: document.getElementById('gate-pin-value')
+            });
+        </script>
+    }
+}

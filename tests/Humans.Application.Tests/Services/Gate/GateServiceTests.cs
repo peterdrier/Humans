@@ -94,9 +94,10 @@ public class GateServiceTests : ServiceTestHarness
             .Returns(new List<TicketOrderInfo> { order });
     }
 
-    private Task<GateDecisionResult> Record(bool idConfirmed, bool child = false) =>
+    private Task<GateDecisionResult> Record(bool idConfirmed, bool child = false, Guid? overrideBy = null) =>
         _svc.RecordDecisionAsync(
-            new GateDecisionInput(Barcode, idConfirmed, child, LaneId: "L1", ClientScanAt: null, Note: null),
+            new GateDecisionInput(Barcode, idConfirmed, child, LaneId: "L1", ClientScanAt: null, Note: null,
+                OverrideByUserId: overrideBy),
             AgentId);
 
     [HumansFact]
@@ -155,12 +156,24 @@ public class GateServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task RecordDecision_ChildWithAdult_Admits()
+    public async Task RecordDecision_ChildWithAdult_WithSupervisor_Admits()
     {
         StubTicket();
 
-        (await Record(idConfirmed: false, child: true))
+        // The child-without-ID waiver is now a supervisor override — it admits only when an
+        // authorizing supervisor was recorded (the controller sets this after AuthorizeOverrideAsync).
+        (await Record(idConfirmed: false, child: true, overrideBy: Guid.NewGuid()))
             .Verdict.Should().Be(GateVerdict.AdmittedChildWithAdult);
+    }
+
+    [HumansFact]
+    public async Task RecordDecision_ChildWithAdult_WithoutSupervisor_DoesNotAdmit()
+    {
+        StubTicket();
+
+        // No authorizing supervisor → the waiver is not granted (a forged child flag can't admit).
+        (await Record(idConfirmed: false, child: true))
+            .Verdict.Should().Be(GateVerdict.RejectedNameMismatch);
     }
 
     [HumansFact]
@@ -196,6 +209,39 @@ public class GateServiceTests : ServiceTestHarness
 
         (await Record(idConfirmed: true))
             .Verdict.Should().Be(GateVerdict.RejectedTooEarly);
+    }
+
+    [HumansFact]
+    public async Task BeforeCutoff_TooEarly_WithSupervisorOverride_AdmitsEarlyOverride()
+    {
+        StubTicket(matchedUserId: GuestId);
+        await _svc.SaveSettingsAsync(new GateSettingsDto(
+            Clock.GetCurrentInstant().Plus(Duration.FromHours(6)), 16));
+
+        (await _svc.EvaluateAsync(Barcode)).Outcome.Should().Be(GatePreCheckOutcome.TooEarly);
+
+        // A recorded supervisor override turns the too-early STOP into an attributable early admit.
+        (await Record(idConfirmed: false, overrideBy: Guid.NewGuid()))
+            .Verdict.Should().Be(GateVerdict.AdmittedEarlyOverride);
+    }
+
+    [HumansFact]
+    public async Task Evaluate_TooEarly_CarriesEarlyAndGeneralEntryDates_ForTheReason()
+    {
+        StubTicket(matchedUserId: GuestId);
+        var cutoff = Clock.GetCurrentInstant().Plus(Duration.FromHours(6));
+        await _svc.SaveSettingsAsync(new GateSettingsDto(cutoff, 16));
+        // Holds a *later-day* Early Entry grant (tomorrow) — the distinguishing too-early sub-case.
+        var tomorrow = Clock.GetCurrentInstant().InUtc().Date.PlusDays(1);
+        _earlyEntry.GetForUserAsync(GuestId, Arg.Any<CancellationToken>())
+            .Returns(new UserEarlyEntry(tomorrow, new[] { "Crew" }));
+
+        var r = await _svc.EvaluateAsync(Barcode);
+
+        r.Outcome.Should().Be(GatePreCheckOutcome.TooEarly);
+        r.EarliestEntryDate.Should().Be(tomorrow);
+        r.Today.Should().Be(Clock.GetCurrentInstant().InUtc().Date);
+        r.GeneralEntryDate.Should().Be(cutoff.InUtc().Date);
     }
 
     [HumansFact]
@@ -388,5 +434,22 @@ public class GateServiceTests : ServiceTestHarness
         var unenrolledSup = Guid.NewGuid();                                            // supervisor, no PIN
         _roles.HasActiveRoleAsync(unenrolledSup, RoleNames.Admin, Arg.Any<CancellationToken>()).Returns(true);
         (await _svc.AuthorizeOverrideAsync(unenrolledSup, "2580")).Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task GetEnrolledSupervisorIds_ReturnsOnlySupervisorsWithAPin()
+    {
+        Guid enrolled = Guid.NewGuid(), notEnrolled = Guid.NewGuid();
+        _roles.GetActiveUserIdsInRoleAsync(RoleNames.Board, Arg.Any<CancellationToken>())
+            .Returns(new[] { enrolled });
+        _roles.GetActiveUserIdsInRoleAsync(RoleNames.Admin, Arg.Any<CancellationToken>())
+            .Returns(new[] { notEnrolled });
+        _roles.GetActiveUserIdsInRoleAsync(RoleNames.TicketAdmin, Arg.Any<CancellationToken>())
+            .Returns(Array.Empty<Guid>());
+        await _svc.AdminSetPinAsync(enrolled, "2580");
+
+        var ids = await _svc.GetEnrolledSupervisorIdsAsync();
+
+        ids.Should().ContainSingle().Which.Should().Be(enrolled);
     }
 }

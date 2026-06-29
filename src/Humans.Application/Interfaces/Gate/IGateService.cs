@@ -75,6 +75,15 @@ public interface IGateService : IApplicationService
 
     /// <summary>Clear a user's PIN (admin reset). They re-enrol on next claim.</summary>
     Task ClearPinAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// The user-ids of every gate-supervisor (Admin/Board/TicketAdmin) who has a PIN enrolled —
+    /// i.e. the people who can actually authorize an override. Drives the kiosk override picker
+    /// (a tap-list, since the locked-down terminal can't reach free-text people search). Names are
+    /// resolved by the caller for display; the authority itself is always re-checked by
+    /// <see cref="AuthorizeOverrideAsync"/> at submit time.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetEnrolledSupervisorIdsAsync(CancellationToken ct = default);
 }
 
 /// <summary>One pre-filled gate-roster pick: a Humans user signed up for a current gate shift.</summary>
@@ -97,6 +106,9 @@ public enum GatePinSetResult
 }
 
 /// <summary>Write-free result of evaluating a scan, before the agent's ID decision.</summary>
+/// <param name="EarliestEntryDate">The earliest event-local date the holder may enter (their Early Entry grant), or null if they hold none. Drives the precise too-early reason. Date only — the EE source stays server-side (privacy I2).</param>
+/// <param name="Today">Today's calendar date in the event time zone, for the "today is …" half of the too-early reason. Null when not computed (e.g. invalid barcode).</param>
+/// <param name="GeneralEntryDate">The event-local date general entry opens, for the no-Early-Entry too-early reason. Null when the cutoff is unconfigured.</param>
 public sealed record GateScanResult(
     GatePreCheckOutcome Outcome,
     string Barcode,
@@ -108,12 +120,19 @@ public sealed record GateScanResult(
     Guid? GuestUserId,
     Instant? PreviousAdmitAt,
     Guid? PreviousAdmitByUserId,
-    string? VendorTicketId = null);
+    string? VendorTicketId = null,
+    LocalDate? EarliestEntryDate = null,
+    LocalDate? Today = null,
+    LocalDate? GeneralEntryDate = null);
 
 /// <summary>
 /// The agent's decision for a scan, recorded server-side after re-evaluation.
 /// Deliberately carries no scanner identity — that is supplied separately by the
 /// controller from the authenticated session so it cannot be forged on the wire.
+/// <paramref name="OverrideByUserId"/> is the supervisor who authorized an override
+/// (too-early or child-without-ID): the controller sets it ONLY after
+/// <see cref="IGateService.AuthorizeOverrideAsync"/> has verified that supervisor's PIN
+/// and role, so the service treats a non-null value as proof the override was authorized.
 /// </summary>
 public sealed record GateDecisionInput(
     string Barcode,
@@ -121,7 +140,8 @@ public sealed record GateDecisionInput(
     bool ChildWithAdult,
     string? LaneId,
     Instant? ClientScanAt,
-    string? Note);
+    string? Note,
+    Guid? OverrideByUserId = null);
 
 /// <summary>The durable verdict plus the bits needed to render the result screen.</summary>
 public sealed record GateDecisionResult(

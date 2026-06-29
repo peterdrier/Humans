@@ -52,9 +52,18 @@
             @if (Model.AllowChildWithAdult)
             {
                 <button type="button" class="gate-btn gate-child" data-child="true">
-                    Child — with adult (supervisor PIN)
+                    Child — with adult (supervisor)
                 </button>
             }
         </div>
+    }
+
+    @* Too-early scans (and a failed override retry) carry a supervisor-override affordance; tapping
+       it opens the override panel (supervisor taps their name + enters their PIN). *@
+    @if (Model.AllowSupervisorOverride)
+    {
+        <button type="button" class="gate-btn gate-override-btn" data-override="early" data-barcode="@Model.Barcode">
+            <i class="fa-solid fa-user-shield" aria-hidden="true"></i> Supervisor override
+        </button>
     }
 </div>

@@ -60,6 +60,8 @@ public sealed class GateService(
         var priorAdmit = await repository.GetAdmitForBarcodeAsync(code, ct);
         var burn = await burnSettings.GetActiveAsync(ct);
         var now = clock.GetCurrentInstant();
+        var zone = EventZone(burn?.TimeZoneId);
+        var today = now.InZone(zone).Date;
 
         UserEarlyEntry? ee = attendee.MatchedUserId is { } uid
             ? await earlyEntry.GetForUserAsync(uid, ct)
@@ -74,7 +76,7 @@ public sealed class GateService(
             GeneralEntryOpensAt: settings.IsCutoffConfigured ? settings.GeneralEntryOpensAt : null,
             MatchedToHuman: attendee.MatchedUserId is not null,
             EarliestEntryDate: ee?.EarliestEntryDate,
-            Today: TodayInEventZone(now, burn?.TimeZoneId)));
+            Today: today));
 
         return new GateScanResult(
             outcome,
@@ -87,7 +89,11 @@ public sealed class GateService(
             GuestUserId: attendee.MatchedUserId,
             PreviousAdmitAt: priorAdmit?.OccurredAt,
             PreviousAdmitByUserId: priorAdmit?.ScannedByUserId,
-            VendorTicketId: attendee.VendorTicketId);
+            VendorTicketId: attendee.VendorTicketId,
+            // Date-only context for a precise too-early reason on the card (never the EE source — privacy I2).
+            EarliestEntryDate: ee?.EarliestEntryDate,
+            Today: today,
+            GeneralEntryDate: settings.IsCutoffConfigured ? settings.GeneralEntryOpensAt.InZone(zone).Date : null);
     }
 
     public async Task<GateDecisionResult> RecordDecisionAsync(
@@ -232,6 +238,22 @@ public sealed class GateService(
     public Task ClearPinAsync(Guid userId, CancellationToken ct = default) =>
         repository.DeleteStaffPinAsync(userId, ct);
 
+    public async Task<IReadOnlyList<Guid>> GetEnrolledSupervisorIdsAsync(CancellationToken ct = default)
+    {
+        // Union the supervisor-role holders, then keep only those with a PIN — an un-enrolled
+        // supervisor can't override anyway, so listing them would just offer dead picks.
+        var supervisors = new HashSet<Guid>();
+        foreach (var role in SupervisorRoles)
+            foreach (var id in await roles.GetActiveUserIdsInRoleAsync(role, ct))
+                supervisors.Add(id);
+
+        var enrolled = new List<Guid>();
+        foreach (var id in supervisors)
+            if (await repository.GetStaffPinAsync(id, ct) is not null)
+                enrolled.Add(id);
+        return enrolled;
+    }
+
     private async Task<bool> IsSupervisorAsync(Guid userId, CancellationToken ct)
     {
         foreach (var role in SupervisorRoles)
@@ -293,11 +315,17 @@ public sealed class GateService(
     {
         GatePreCheckOutcome.Invalid => GateVerdict.RejectedInvalid,
         GatePreCheckOutcome.Duplicate => GateVerdict.RejectedDuplicate,
-        GatePreCheckOutcome.TooEarly => GateVerdict.RejectedTooEarly,
         GatePreCheckOutcome.CutoffNotConfigured => GateVerdict.Unresolved,
         GatePreCheckOutcome.EarlyEntryUnknown => GateVerdict.Unresolved,
+        // A too-early scan is admissible only by a supervisor override; the controller sets
+        // OverrideByUserId solely after AuthorizeOverrideAsync, so a non-null value is proof.
+        GatePreCheckOutcome.TooEarly =>
+            input.OverrideByUserId is not null ? GateVerdict.AdmittedEarlyOverride : GateVerdict.RejectedTooEarly,
         GatePreCheckOutcome.NeedsIdCheck or GatePreCheckOutcome.NeedsIdCheckEarly =>
-            input.ChildWithAdult ? GateVerdict.AdmittedChildWithAdult
+            // The child-without-ID waiver is itself a supervisor override now (per-PIN), so it
+            // only admits when an authorizing supervisor was recorded.
+            input.ChildWithAdult
+                ? (input.OverrideByUserId is not null ? GateVerdict.AdmittedChildWithAdult : GateVerdict.RejectedNameMismatch)
             : input.IdConfirmed
                 ? (outcome == GatePreCheckOutcome.NeedsIdCheckEarly ? GateVerdict.AdmittedEarly : GateVerdict.Admitted)
                 : GateVerdict.RejectedNameMismatch,
@@ -318,16 +346,15 @@ public sealed class GateService(
             LaneId = input.LaneId,
             ClientScanAt = input.ClientScanAt,
             Note = input.Note,
+            // The audit trail for "who let this person in early / without ID" — only recorded on an admit verdict.
+            OverrideByUserId = admit ? input.OverrideByUserId : null,
             AdmitDedupeKey = admit ? eval.Barcode : null,
         };
 
     private static bool IsAdmit(GateVerdict v) =>
-        v is GateVerdict.Admitted or GateVerdict.AdmittedEarly or GateVerdict.AdmittedChildWithAdult;
+        v is GateVerdict.Admitted or GateVerdict.AdmittedEarly
+            or GateVerdict.AdmittedChildWithAdult or GateVerdict.AdmittedEarlyOverride;
 
-    private static LocalDate TodayInEventZone(Instant now, string? timeZoneId)
-    {
-        var zone = (timeZoneId is not null ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(timeZoneId) : null)
-                   ?? DateTimeZone.Utc;
-        return now.InZone(zone).Date;
-    }
+    private static DateTimeZone EventZone(string? timeZoneId) =>
+        (timeZoneId is not null ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(timeZoneId) : null) ?? DateTimeZone.Utc;
 }

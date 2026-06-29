@@ -2,7 +2,10 @@
 
 /* Chromeless kiosk page shell (the _GateLayout body): full-bleed, no admin chrome. */
 body.gate-kiosk { margin: 0; min-height: 100vh; background: #f4ede1; }
-.gate-kiosk-main { max-width: 960px; margin: 0 auto; padding: 1rem 1rem 2rem; }
+/* site.css makes <body> a flex column; the auto side-margins here would otherwise suppress the
+   flex stretch and shrink-wrap the main to its content width. width:100% makes it fill the
+   column (capped by max-width, centred by the auto margins) so the kiosk pages use the full width. */
+.gate-kiosk-main { width: 100%; max-width: 960px; margin: 0 auto; padding: 1rem 1rem 2rem; }
 
 .gate-shell { max-width: 920px; margin: 0 auto; }
 
@@ -72,10 +75,80 @@ body.gate-kiosk { margin: 0; min-height: 100vh; background: #f4ede1; }
     font-size: 1.05rem; padding: .8rem;
 }
 
-.gate-pin-row { display: flex; align-items: center; gap: .75rem; margin-top: 1rem; max-width: 320px; }
-.gate-pin-row input { font-size: 1.3rem; padding: .5rem .75rem; border-radius: 8px; border: 2px solid #c9d2da; }
-
 .gate-neutral { background: #11181d !important; }
+
+/* ── Shared PIN keypad ──────────────────────────────────────────────────────
+   Big, glove-/sunlight-friendly: dark filled keys on cream, no thin outlines. */
+.gate-keypad { max-width: 380px; margin: 0 auto; width: 100%; }
+.gate-dots { display: flex; justify-content: center; gap: 1.1rem; margin: 0 0 1.5rem; }
+.gate-dot {
+    width: 22px; height: 22px; border-radius: 50%;
+    border: 3px solid #2b3440; background: transparent; transition: background-color .08s ease;
+}
+.gate-dot-filled { background: #2b3440; }
+.gate-pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: .9rem; }
+.gate-key {
+    font-size: 2.4rem; font-weight: 700; color: #fff; background: #2b3440;
+    border: none; border-radius: 14px; padding: 1.1rem 0; min-height: 78px; cursor: pointer;
+    -webkit-user-select: none; user-select: none; transition: background-color .08s ease;
+}
+.gate-key:active { background: #11181d; }
+.gate-key-muted { font-size: 1.4rem; background: #5a6672; }
+.gate-key-muted:active { background: #3a4753; }
+
+/* ── Full-screen claim keypad (Pin.cshtml) ──────────────────────────────────*/
+.gate-pin-screen {
+    max-width: 480px; margin: 0 auto; padding-top: 1.5rem;
+    display: flex; flex-direction: column; align-items: center; text-align: center;
+}
+/* The form is a flex child; without a definite width it shrinks to content and collapses the
+   keypad's width:100% to min-content (tall, thin keys). Make it span the column. */
+.gate-pin-screen form { width: 100%; }
+.gate-pin-head { margin-bottom: 1.25rem; }
+.gate-pin-name { font-size: 2.1rem; font-weight: 700; color: #1e2a33; line-height: 1.1; }
+.gate-pin-prompt { font-size: 1.4rem; color: #2b3440; margin-top: .35rem; }
+.gate-pin-sub { font-size: 1.05rem; color: #5f6b76; margin-top: .25rem; }
+.gate-pin-error {
+    margin-top: .9rem; padding: .6rem 1rem; border-radius: 10px;
+    background: #B11217; color: #fff; font-size: 1.15rem; font-weight: 600;
+}
+.gate-pin-back {
+    display: inline-block; margin-top: 1.5rem; font-size: 1.1rem; font-weight: 600; color: #5f6b76;
+}
+.gate-pin-blocked { max-width: 460px; margin: 2rem auto 0; text-align: center; color: #1e2a33; }
+.gate-pin-icon { font-size: 3.2rem; color: #B26A00; }
+.gate-pin-blocked-text { font-size: 1.2rem; line-height: 1.5; margin-top: .75rem; color: #2b3440; }
+
+/* ── Supervisor-override panel (Index.cshtml) ───────────────────────────────
+   Full-viewport scrim so the supervisor's name + PIN entry is the only focus. */
+.gate-override {
+    position: fixed; inset: 0; z-index: 1050; background: rgba(13, 18, 22, .78);
+    display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+    padding: 1.25rem; overflow-y: auto;
+}
+.gate-override-head {
+    width: 100%; max-width: 480px; display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 1rem;
+}
+.gate-override-title { color: #fff; font-size: 1.5rem; font-weight: 700; }
+.gate-override-cancel {
+    background: #5a6672; color: #fff; border: none; border-radius: 10px;
+    font-size: 1.05rem; font-weight: 600; padding: .6rem 1.1rem; cursor: pointer;
+}
+.gate-override-empty { color: #ffd9a0; font-size: 1.2rem; max-width: 460px; text-align: center; line-height: 1.5; }
+.gate-override-step {
+    width: 100%; max-width: 480px; background: #f4ede1; border-radius: 16px; padding: 1.25rem;
+}
+.gate-override-prompt { font-size: 1.25rem; font-weight: 600; color: #1e2a33; text-align: center; margin: 0 0 1rem; }
+.gate-supervisor-list { display: flex; flex-direction: column; gap: .6rem; max-height: 60vh; overflow-y: auto; }
+.gate-supervisor-pick {
+    font-size: 1.35rem; font-weight: 700; padding: 1.1rem 1.25rem; border: none; border-radius: 12px;
+    background: #2b3440; color: #fff; cursor: pointer; text-align: left;
+}
+.gate-supervisor-pick:active { background: #11181d; }
+
+/* The supervisor-override affordance on a too-early / failed-override card. */
+.gate-override-btn { display: block; width: 100%; margin-top: 1rem; background: #3a4753; font-size: 1.15rem; }
 
 /* Roster quick-pick on the claim screen — big FILLED tap targets (outline buttons
    wash out in direct sun) for gloved use. Capped height so a large roster scrolls

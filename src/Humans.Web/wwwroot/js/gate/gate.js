@@ -7,11 +7,14 @@
 // and the Yes/No buttons arm only after a short delay to defeat autopilot taps.
 
 export function initGate(refs) {
-    const { form, input, result, pinRow, pinInput, evaluateUrl, decisionUrl, token } = refs;
+    const { form, input, result, override, evaluateUrl, decisionUrl, token } = refs;
 
     const focusInput = () => { input.value = ''; input.focus(); };
     input.focus();
     initFreshness();
+
+    const overrideController = initOverride();
+    const overrideOpen = () => override && !override.classList.contains('d-none');
 
     // Render the "loaded HH:mm · N min ago" indicator and redden it once the terminal
     // has been open a while — a nudge to re-open the page so its data view isn't stale.
@@ -35,10 +38,12 @@ export function initGate(refs) {
     // re-scan, must not fire two overlapping lookups whose later response wins.
     let busy = false;
 
-    // Keep the scan field focused so a wedge scan always lands somewhere useful,
-    // except while the agent is interacting with the Yes/No buttons or PIN.
+    // Keep the scan field focused so a wedge scan always lands somewhere useful, except
+    // while the agent is interacting with the Yes/No buttons or the override panel.
     document.addEventListener('click', (e) => {
-        if (!e.target.closest('.gate-decide') && !e.target.closest('.gate-pin-row')) {
+        if (overrideOpen()) return;
+        if (!e.target.closest('.gate-decide') && !e.target.closest('.gate-override')
+            && !e.target.closest('[data-override]') && !e.target.closest('[data-child]')) {
             input.focus();
         }
     });
@@ -46,7 +51,7 @@ export function initGate(refs) {
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
         const code = input.value.trim();
-        if (!code || busy) return;
+        if (!code || busy || overrideOpen()) return; // ignore scans mid-override
         busy = true;
         flashNeutral(result);
         try {
@@ -89,6 +94,13 @@ export function initGate(refs) {
         const kind = card.getAttribute('data-kind');
         signal(kind);
 
+        // Supervisor-override affordance (too-early card, or a failed-override retry card).
+        const overrideBtn = card.querySelector('[data-override="early"]');
+        if (overrideBtn) {
+            overrideBtn.addEventListener('click', () =>
+                overrideController.open('early', overrideBtn.getAttribute('data-barcode')));
+        }
+
         const decide = card.querySelector('.gate-decide');
         if (!decide) return;
 
@@ -102,17 +114,13 @@ export function initGate(refs) {
         decide.querySelectorAll('[data-confirm]').forEach(btn => {
             btn.addEventListener('click', () => decide.contains(btn) && submitDecision(barcode, {
                 idConfirmed: btn.getAttribute('data-confirm') === 'true',
-                childWithAdult: false,
             }));
         });
 
+        // The child-without-ID waiver is now a supervisor override too — open the panel.
         const childBtn = decide.querySelector('[data-child]');
         if (childBtn) {
-            childBtn.addEventListener('click', () => {
-                const pin = pinInput.value.trim();
-                if (!pin) { pinRow.classList.remove('d-none'); pinInput.focus(); return; }
-                submitDecision(barcode, { idConfirmed: false, childWithAdult: true, supervisorPin: pin });
-            });
+            childBtn.addEventListener('click', () => overrideController.open('child', barcode));
         }
     }
 
@@ -121,18 +129,80 @@ export function initGate(refs) {
         busy = true;
         const body = new URLSearchParams();
         body.set('barcode', barcode);
-        body.set('idConfirmed', String(opts.idConfirmed));
-        body.set('childWithAdult', String(opts.childWithAdult));
+        body.set('idConfirmed', String(opts.idConfirmed === true));
+        body.set('childWithAdult', String(opts.childWithAdult === true));
+        body.set('overrideEarly', String(opts.overrideEarly === true));
+        if (opts.supervisorUserId) body.set('supervisorUserId', opts.supervisorUserId);
         if (opts.supervisorPin) body.set('supervisorPin', opts.supervisorPin);
         flashNeutral(result);
         try {
             await render(decisionUrl, body);
         } finally {
             busy = false;
-            pinRow.classList.add('d-none');
-            if (pinInput) pinInput.value = '';
             focusInput();
         }
+    }
+
+    // The supervisor-override panel: pick a supervisor (tap-list — the locked-down kiosk can't
+    // reach free-text people search) → enter their PIN on the shared keypad → submit the decision.
+    function initOverride() {
+        if (!override) return { open: () => {} };
+
+        const titleEl = override.querySelector('[data-override-title]');
+        const pickStep = override.querySelector('[data-override-pick]');
+        const pinStep = override.querySelector('[data-override-pin]');
+        const nameEl = override.querySelector('[data-supervisor-name]');
+        const keypadEl = override.querySelector('[data-gate-keypad]');
+        const cancelBtn = override.querySelector('[data-override-cancel]');
+
+        let mode = 'early';
+        let barcode = null;
+        let supervisorUserId = null;
+
+        const keypad = keypadEl && window.initGateKeypad
+            ? window.initGateKeypad(keypadEl, (pin) => submit(pin))
+            : { reset: () => {} };
+
+        function open(nextMode, nextBarcode) {
+            mode = nextMode;
+            barcode = nextBarcode;
+            supervisorUserId = null;
+            if (titleEl) titleEl.textContent = mode === 'child' ? 'Authorise: child without ID' : 'Supervisor override';
+            if (pinStep) pinStep.classList.add('d-none');
+            if (pickStep) pickStep.classList.remove('d-none');
+            keypad.reset();
+            override.classList.remove('d-none');
+            override.setAttribute('aria-hidden', 'false');
+        }
+
+        function close() {
+            override.classList.add('d-none');
+            override.setAttribute('aria-hidden', 'true');
+            keypad.reset();
+            focusInput();
+        }
+
+        override.querySelectorAll('[data-supervisor-id]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                supervisorUserId = btn.getAttribute('data-supervisor-id');
+                if (nameEl) nameEl.textContent = btn.textContent.trim();
+                if (pickStep) pickStep.classList.add('d-none');
+                if (pinStep) pinStep.classList.remove('d-none');
+                keypad.reset();
+            });
+        });
+
+        if (cancelBtn) cancelBtn.addEventListener('click', close);
+
+        function submit(pin) {
+            if (!supervisorUserId || !barcode) return;
+            const opts = { supervisorUserId, supervisorPin: pin };
+            if (mode === 'child') opts.childWithAdult = true; else opts.overrideEarly = true;
+            close();
+            submitDecision(barcode, opts);
+        }
+
+        return { open };
     }
 
     // Brief neutral frame so two greens in a row still visibly "tick over" and the

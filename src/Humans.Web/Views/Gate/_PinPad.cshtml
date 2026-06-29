@@ -1,0 +1,26 @@
+@* Shared numeric PIN pad — 4 masked dots + a 3×4 keypad. Used full-screen on the claim
+   keypad (Pin.cshtml) and inside the supervisor-override panel (Index.cshtml). Wired by the
+   shared window.initGateKeypad (a cache-busted classic script), so no element ids are needed
+   — the initializer finds the dots/pad within the [data-gate-keypad] container it's handed. *@
+<div class="gate-keypad" data-gate-keypad>
+    <div class="gate-dots" data-gate-dots aria-hidden="true">
+        <span class="gate-dot"></span>
+        <span class="gate-dot"></span>
+        <span class="gate-dot"></span>
+        <span class="gate-dot"></span>
+    </div>
+    <div class="gate-pad" data-gate-pad>
+        <button type="button" class="gate-key" data-digit="1">1</button>
+        <button type="button" class="gate-key" data-digit="2">2</button>
+        <button type="button" class="gate-key" data-digit="3">3</button>
+        <button type="button" class="gate-key" data-digit="4">4</button>
+        <button type="button" class="gate-key" data-digit="5">5</button>
+        <button type="button" class="gate-key" data-digit="6">6</button>
+        <button type="button" class="gate-key" data-digit="7">7</button>
+        <button type="button" class="gate-key" data-digit="8">8</button>
+        <button type="button" class="gate-key" data-digit="9">9</button>
+        <button type="button" class="gate-key gate-key-muted" data-action="clear" aria-label="Clear">Clear</button>
+        <button type="button" class="gate-key" data-digit="0">0</button>
+        <button type="button" class="gate-key gate-key-muted" data-action="back" aria-label="Delete">&#9003;</button>
+    </div>
+</div>
