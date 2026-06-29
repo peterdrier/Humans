@@ -2,7 +2,9 @@ using System.Security.Cryptography;
 using System.Text;
 using Hangfire;
 using Humans.Application.Interfaces.Gate;
+using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;
+using Humans.Domain.Enums;
 using Humans.Infrastructure.Jobs;
 using Humans.Web.Authorization;
 using Humans.Web.Infrastructure;
@@ -30,6 +32,7 @@ namespace Humans.Web.Controllers;
 public sealed class GateController(
     IGateService gate,
     IUserServiceRead users,
+    IShiftManagementService shifts,
     IConfiguration configuration,
     GateLoginThrottle pinThrottle,
     IClock clock) : HumansControllerBase(users)
@@ -105,7 +108,38 @@ public sealed class GateController(
     }
 
     [HttpGet("Claim")]
-    public IActionResult Claim() => View();
+    public async Task<IActionResult> Claim(CancellationToken ct)
+    {
+        // Quick-pick the gate-shift roster so a staffer taps their name at shift start;
+        // the search box below it still finds anyone (helpers who aren't rostered). The
+        // roster is opt-in: empty unless an admin points Gate:RosterTeamId at the Shifts
+        // department that staffs the gate, so unconfigured deployments just get search.
+        var roster = await BuildRosterAsync(ct);
+        return View(new GateClaimViewModel(roster));
+    }
+
+    private async Task<IReadOnlyList<GateRosterMember>> BuildRosterAsync(CancellationToken ct)
+    {
+        if (!Guid.TryParse(configuration["Gate:RosterTeamId"], out var teamId))
+            return [];
+
+        var activeEvent = await shifts.GetActiveAsync();
+        if (activeEvent is null)
+            return [];
+
+        var gateShifts = await shifts.GetBrowseShiftsAsync(new ShiftBrowseQuery(
+            activeEvent.Id, DepartmentId: teamId, Flags: ShiftBrowseQueryFlags.IncludeSignups));
+
+        // "Signed up" = not a negative terminal state (Refused/Bailed/Cancelled/NoShow);
+        // one person can hold several gate shifts, so de-dupe to one pick per human.
+        return gateShifts
+            .SelectMany(s => s.Signups)
+            .Where(u => u.Status is SignupStatus.Pending or SignupStatus.Confirmed)
+            .DistinctBy(u => u.UserId)
+            .OrderBy(u => u.DisplayName, StringComparer.CurrentCultureIgnoreCase)
+            .Select(u => new GateRosterMember(u.UserId, u.DisplayName))
+            .ToList();
+    }
 
     [HttpPost("Claim")]
     [Authorize(Policy = PolicyNames.GateAdmit)]

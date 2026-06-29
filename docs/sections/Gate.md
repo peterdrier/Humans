@@ -120,8 +120,24 @@ throttled per source IP (its own bucket, mirroring `/Account/GateLogin`).
   transferred, or refunded at the door won't scan correctly until the next Tickets sync. The window
   is the Tickets cache/sync interval, not real-time.
 - **Early Entry** — `IEarlyEntryService.GetForUserAsync`.
-- **Shifts** — `IBurnSettingsService.GetActiveAsync` (event time zone for "today").
+- **Shifts** — `IBurnSettingsService.GetActiveAsync` (event time zone for "today"); and
+  `IShiftManagementService.GetActiveAsync`/`GetBrowseShiftsAsync` from `GateController` to
+  pre-fill the claim screen with the gate-shift roster (opt-in via `Gate:RosterTeamId`; see
+  Configuration). Read-only consumption of the existing Shifts service from the Web layer,
+  mirroring how other controllers read shift signups — no new Shifts surface.
+  _Cross-section read approved by Peter (verbal, 2026-06-29)._
 - **Users** — `IUserServiceRead` (scanner name; leaderboard rendering via `<vc:human>`).
+
+## Configuration
+
+- `Gate:SupervisorPin` — PIN that authorizes the child-without-ID waiver on `/Gate/Decision`.
+- `Gate:VendorMirrorEnabled` — default off; gates the TicketTailor check-in mirror (see Vendor
+  check-in mirror above).
+- `Gate:RosterTeamId` — **optional** GUID of the Shifts department/team that staffs the gate.
+  When set, `/Gate/Claim` shows that team's signed-up volunteers as one-tap picks at shift start;
+  the name/email search remains for anyone not on the roster. Unset → search only (no behaviour
+  change). De-dupes one pick per human across all gate shifts; excludes refused/bailed/cancelled/
+  no-show signups.
 
 ## Architecture
 

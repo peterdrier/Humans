@@ -84,3 +84,14 @@ public sealed record GateSettingsViewModel(
 
 /// <summary>One leaderboard row (name resolved in the view via <c>&lt;vc:human&gt;</c>).</summary>
 public sealed record GateLeaderboardRowViewModel(Guid ScannedByUserId, int Admitted, int Rejected, int Total);
+
+/// <summary>
+/// The "Who is scanning?" claim screen. <see cref="Roster"/> is a one-tap quick-pick of
+/// people signed up for the gate shift roster (empty unless <c>Gate:RosterTeamId</c> is
+/// configured and that team has signups); the search box below it always finds anyone
+/// — including helpers who aren't rostered.
+/// </summary>
+public sealed record GateClaimViewModel(IReadOnlyList<GateRosterMember> Roster);
+
+/// <summary>One pre-filled roster pick on the claim screen.</summary>
+public sealed record GateRosterMember(Guid UserId, string DisplayName);

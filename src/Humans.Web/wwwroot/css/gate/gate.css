@@ -61,3 +61,7 @@
 .gate-pin-row input { font-size: 1.3rem; padding: .5rem .75rem; border-radius: 8px; border: 2px solid #c9d2da; }
 
 .gate-neutral { background: #11181d !important; }
+
+/* Roster quick-pick on the claim screen — big, wrapping tap targets for gloved/sunlit use. */
+.gate-roster { display: flex; flex-wrap: wrap; gap: .6rem; max-width: 720px; }
+.gate-roster-pick { flex: 1 1 auto; min-width: 180px; font-size: 1.25rem; padding: 1rem 1.25rem; }

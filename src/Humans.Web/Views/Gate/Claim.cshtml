@@ -1,12 +1,28 @@
+@model Humans.Web.Models.Gate.GateClaimViewModel
 @{
     ViewData["Title"] = "Who is scanning?";
 }
 
 <h1>Who is scanning?</h1>
 <p class="text-muted">
-    Search and select your name to claim the gate session. Your Humans account is
+    Tap your name to claim the gate session, or search below. Your Humans account is
     stamped on every scan you record, so anyone on gate — rostered or not — can take over.
 </p>
+
+@if (Model.Roster.Count > 0)
+{
+    <h2 class="h5 mt-3">On the gate roster</h2>
+    <form method="post" asp-action="Claim" class="gate-roster">
+        @foreach (var member in Model.Roster)
+        {
+            <button type="submit" name="userId" value="@member.UserId"
+                    class="btn btn-outline-primary btn-lg gate-roster-pick">
+                @member.DisplayName
+            </button>
+        }
+    </form>
+    <p class="text-muted mt-2">Not on the roster? Search for anyone below.</p>
+}
 
 <form method="post" asp-action="Claim" style="max-width: 480px;">
     <div class="mb-3">
