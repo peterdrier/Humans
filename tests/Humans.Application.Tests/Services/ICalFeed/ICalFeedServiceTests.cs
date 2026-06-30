@@ -3,7 +3,6 @@ using Humans.Application.Interfaces.ICalFeed;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.ICalFeed;
 using Humans.Domain.Entities;
-using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;

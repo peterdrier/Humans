@@ -6,7 +6,7 @@
 
 # Holded — Section Invariants
 
-Thin typed-`HttpClient` surface to the Holded accounting API. The current surface exposes eleven methods: `CreatePurchaseDocumentAsync`, `UpdatePurchaseDocumentTagsAsync`, `UploadAttachmentAsync`, `GetPurchaseDocumentAsync`, `ListExpenseAccountsAsync`, `CreateExpenseAccountAsync`, `ListPurchaseDocumentsPageAsync`, `UpsertContactAsync`, `GetContactAsync`, `ListChartOfAccountsAsync`, and `ListPaymentsAsync`. The broader Finance/Holded reconciliation described in `Finance.md` may extend this surface further without breaking consumers.
+Thin typed-`HttpClient` surface to the Holded accounting API. The current surface exposes eleven methods: `CreatePurchaseDocumentAsync`, `UpdatePurchaseDocumentTagsAsync`, `UploadAttachmentAsync`, `GetPurchaseDocumentAsync`, `ListExpenseAccountsAsync`, `CreateExpenseAccountAsync`, `ListPurchaseDocumentsPageAsync`, `UpsertContactAsync`, `GetContactAsync`, `ListDailyLedgerAsync`, and `ListContactsAsync`. The broader Finance/Holded reconciliation described in `Finance.md` may extend this surface further without breaking consumers.
 
 ## Concepts
 
@@ -60,13 +60,8 @@ None outbound. Inbound: Expenses calls `IHoldedClient`. Future Finance work will
 - `HoldedClient` lives in `Humans.Infrastructure/Services/Holded/` and is the single typed `HttpClient` to Holded.
 - Registered via `services.AddHoldedSection(config)` in `Humans.Web/Extensions/Sections/HoldedSectionExtensions.cs`.
 - `HoldedClientOptions.ApiKey` is bound from the `HOLDED_API_KEY` env var at startup.
-- **GDPR** — no `IUserDataContributor`. Holded owns no per-user data.
+- **GDPR** — the Holded HTTP client and its sync tables own no per-user data. However, `HoldedFinanceService` (Finance-owned, registered via `AddHoldedSection`) is registered as `IUserDataContributor` and contributes the user's `holded_creditor_contacts` binding to the GDPR export.
 
-### Future evolution
+### Evolution
 
-When the broader Finance/Holded sync described in `docs/sections/Finance.md` ships, it adds:
-- a recurring pull job (`HoldedSyncJob`) that imports purchase docs into a `holded_transactions` table,
-- additional client methods on the same `IHoldedClient` surface,
-- the unmatched-queue UI under `/Finance`.
-
-The current surface stays stable; new methods get added alongside.
+The Finance/Holded sync described in `docs/sections/Finance.md` is built. It added `HoldedSyncJob` (nightly Hangfire job), the `Finance`-owned `holded_expense_docs` / `holded_ledger_lines` / `holded_creditor_contacts` tables, and the unmatched-queue UI under `/Finance`. Additional methods (`ListDailyLedgerAsync`, `ListContactsAsync`) were added to `IHoldedClient` as part of the ledger single-source redesign. New methods continue to be added alongside the stable existing surface.

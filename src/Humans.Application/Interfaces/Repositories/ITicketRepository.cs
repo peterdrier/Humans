@@ -163,6 +163,15 @@ public interface ITicketRepository : IRepository
     Task UpsertAttendeesAsync(IReadOnlyList<TicketAttendee> attendees, CancellationToken ct = default);
 
     /// <summary>
+    /// Applies vendor gate check-ins to existing attendee rows, matched by
+    /// <c>VendorTicketId</c>. Sets <see cref="TicketAttendee.CheckedInAt"/>
+    /// write-once (keeps the earliest scan; never clears it) and leaves the
+    /// attendee's <c>Status</c> untouched. Check-ins whose ticket has not yet been
+    /// synced are skipped. Issue nobodies-collective/Humans#736.
+    /// </summary>
+    Task ApplyCheckInsAsync(IReadOnlyList<VendorCheckInDto> checkIns, CancellationToken ct = default);
+
+    /// <summary>
     /// Returns every <see cref="TicketAttendee"/> for the given vendor event
     /// that is currently unmatched (<c>MatchedUserId is null</c>) and whose
     /// <see cref="Humans.Domain.Enums.TicketAttendeeStatus"/> is

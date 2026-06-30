@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Application.Interfaces;
 using Humans.Infrastructure.Services;
 using Xunit;
 
@@ -84,7 +85,7 @@ public class ClientStatsTrackerTests
         snap.Resolutions.Should().BeEmpty();
     }
 
-    private static Humans.Application.Interfaces.ClientErrorEntry Error(
+    private static ClientErrorEntry Error(
         int status = 404, string url = "/missing", string ua = WinChrome)
         => new(NodaTime.SystemClock.Instance.GetCurrentInstant(), status, "GET", url, "203.0.113.7", null, ua);
 

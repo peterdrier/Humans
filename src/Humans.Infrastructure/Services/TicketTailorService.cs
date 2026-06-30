@@ -144,9 +144,6 @@ public class TicketTailorService : ITicketVendorService
                     TicketTypeName: ticket.Description ?? "Unknown",
                     Price: (ticket.ListedPrice ?? 0) / 100m,
                     Status: ticket.Status ?? "valid",
-                    CheckedInAt: ticket.CheckIn?.CheckedInAt is long epoch and > 0
-                        ? Instant.FromUnixTimeSeconds(epoch)
-                        : null,
                     Barcode: ticket.Barcode));
             }
 
@@ -157,6 +154,77 @@ public class TicketTailorService : ITicketVendorService
             tickets.Count, eventId);
 
         return tickets;
+    }
+
+    public async Task<IReadOnlyList<VendorCheckInDto>> GetCheckInsAsync(
+        Instant? since, string eventId, CancellationToken ct = default)
+    {
+        using var _ = _logger.TimeOperation();
+        var records = new List<TtCheckIn>();
+        string? cursor = null;
+
+        do
+        {
+            var url = $"{BaseUrl}/check_ins?event_id={eventId}";
+            // Page by created_at (when the record reached TT), NOT check_in_at: a
+            // scanner that was offline can upload a scan whose check_in_at predates
+            // our last sync, and a check_in_at cursor would drop it forever. The
+            // earlier arrival time is still stored as CheckedInAt below.
+            if (since.HasValue)
+                url += $"&created_at.gte={since.Value.ToUnixTimeSeconds()}";
+            if (cursor is not null)
+                url += $"&starting_after={cursor}";
+
+            var response = await _httpClient.GetAsync(url, ct);
+            response.EnsureSuccessStatusCode();
+
+            var body = await response.Content.ReadFromJsonAsync<TtPaginatedResponse<TtCheckIn>>(JsonOptions, ct);
+            if (body?.Data is null || body.Data.Count == 0)
+                break;
+
+            records.AddRange(body.Data);
+
+            cursor = body.Links?.Next is not null ? body.Data[^1].Id : null;
+        } while (cursor is not null);
+
+        var checkIns = NetCheckIns(records);
+
+        _logger.LogInformation("Fetched {Count} check-ins from TicketTailor for event {EventId}",
+            checkIns.Count, eventId);
+
+        return checkIns;
+    }
+
+    // TicketTailor /check_ins includes checkout/undo records (quantity = -1) alongside
+    // check-ins (quantity = +1, or more for a group ticket). Net the quantity per issued
+    // ticket and report a check-in only when the net is positive — otherwise a checkout
+    // record would wrongly mark the attendee onsite. The recorded arrival is the earliest
+    // positive scan (check_in_at, falling back to created_at). Issue
+    // nobodies-collective/Humans#736.
+    private static IReadOnlyList<VendorCheckInDto> NetCheckIns(IEnumerable<TtCheckIn> records)
+    {
+        var result = new List<VendorCheckInDto>();
+
+        foreach (var group in records
+                     .Where(r => r.IssuedTicketId is { Length: > 0 })
+                     .GroupBy(r => r.IssuedTicketId!, StringComparer.Ordinal))
+        {
+            if (group.Sum(r => r.Quantity ?? 1) <= 0)
+                continue;
+
+            var earliest = group
+                .Where(r => (r.Quantity ?? 1) > 0)
+                .Select(r => r.CheckInAt ?? r.CreatedAt)
+                .Where(e => e is > 0)
+                .Select(e => e!.Value)
+                .DefaultIfEmpty(0L)
+                .Min();
+
+            if (earliest > 0)
+                result.Add(new VendorCheckInDto(group.Key, Instant.FromUnixTimeSeconds(earliest)));
+        }
+
+        return result;
     }
 
     public async Task<VendorEventSummaryDto> GetEventSummaryAsync(
@@ -396,14 +464,18 @@ public class TicketTailorService : ITicketVendorService
         [property: JsonPropertyName("status")] string? Status,
         [property: JsonPropertyName("order_id")] string? OrderId,
         [property: JsonPropertyName("custom_questions")] List<TtCustomQuestion>? CustomQuestions,
-        [property: JsonPropertyName("check_in")] TtCheckIn? CheckIn = null,
         [property: JsonPropertyName("barcode")] string? Barcode = null);
 
-    // TicketTailor returns `check_in` as a nested object on issued_tickets when
-    // a ticket has been scanned at the gate. `checked_in_at` is epoch seconds.
-    // Absent / null when not checked in. Issue nobodies-collective/Humans#736.
+    // TicketTailor records gate scans as their own `/check_ins` resource — NOT as
+    // a status change on the issued ticket (which stays "valid"). `issued_ticket_id`
+    // links back to the issued ticket; `check_in_at` / `created_at` are epoch seconds.
+    // Issue nobodies-collective/Humans#736.
     internal sealed record TtCheckIn(
-        [property: JsonPropertyName("checked_in_at")] long? CheckedInAt);
+        [property: JsonPropertyName("id")] string Id,
+        [property: JsonPropertyName("issued_ticket_id")] string? IssuedTicketId,
+        [property: JsonPropertyName("check_in_at")] long? CheckInAt,
+        [property: JsonPropertyName("created_at")] long? CreatedAt,
+        [property: JsonPropertyName("quantity")] int? Quantity);
 
     internal sealed record TtCustomQuestion(
         [property: JsonPropertyName("question")] string? Question,
@@ -446,4 +518,113 @@ public class TicketTailorService : ITicketVendorService
         [property: JsonPropertyName("code")] string? Code,
         [property: JsonPropertyName("times_used")] int? TimesUsed);
 
+    public async Task<VoidIssuedTicketResult> VoidIssuedTicketAsync(
+        string vendorTicketId, bool voidToHold, CancellationToken ct = default)
+    {
+        var url = $"{BaseUrl}/issued_tickets/{vendorTicketId}/void";
+        using var content = new FormUrlEncodedContent(new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["void_to_hold"] = voidToHold ? "true" : "false",
+        });
+
+        HttpResponseMessage response;
+        try
+        {
+            response = await _httpClient.PostAsync(url, content, ct);
+        }
+        catch (HttpRequestException ex)
+        {
+            throw new TicketVendorWriteException(
+                $"TicketTailor void transport failure: {ex.Message}",
+                TicketVendorFailureKind.Transient, ex);
+        }
+
+        if (!response.IsSuccessStatusCode)
+            throw await BuildVendorWriteExceptionAsync(response, "void", vendorTicketId, ct);
+
+        var body = await response.Content.ReadFromJsonAsync<TtVoidResponse>(JsonOptions, ct);
+        return new VoidIssuedTicketResult(
+            VendorTicketId: body?.Id ?? vendorTicketId,
+            HoldId: body?.HoldId);
+    }
+
+    public async Task<VendorTicketDto> IssueTicketAsync(
+        IssueTicketRequest request, CancellationToken ct = default)
+    {
+        if (string.IsNullOrEmpty(request.HoldId) &&
+            (string.IsNullOrEmpty(request.EventId) || string.IsNullOrEmpty(request.TicketTypeId)))
+        {
+            throw new ArgumentException(
+                "IssueTicketRequest requires either HoldId or both EventId and TicketTypeId.",
+                nameof(request));
+        }
+
+        var form = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["full_name"] = request.FullName,
+            ["send_email"] = request.SendEmail ? "true" : "false",
+        };
+        if (!string.IsNullOrEmpty(request.HoldId))
+            form["hold_id"] = request.HoldId;
+        else
+        {
+            form["event_id"] = request.EventId!;
+            form["ticket_type_id"] = request.TicketTypeId!;
+        }
+        if (!string.IsNullOrEmpty(request.Email)) form["email"] = request.Email;
+        if (!string.IsNullOrEmpty(request.ExternalReference)) form["reference"] = request.ExternalReference;
+
+        using var content = new FormUrlEncodedContent(form);
+
+        HttpResponseMessage response;
+        try
+        {
+            response = await _httpClient.PostAsync($"{BaseUrl}/issued_tickets", content, ct);
+        }
+        catch (HttpRequestException ex)
+        {
+            throw new TicketVendorWriteException(
+                $"TicketTailor issue transport failure: {ex.Message}",
+                TicketVendorFailureKind.Transient, ex);
+        }
+
+        if (!response.IsSuccessStatusCode)
+            throw await BuildVendorWriteExceptionAsync(response, "issue", request.FullName, ct);
+
+        var body = await response.Content.ReadFromJsonAsync<TtIssuedTicket>(JsonOptions, ct)
+            ?? throw new TicketVendorWriteException(
+                "TicketTailor issue returned 2xx with empty body",
+                TicketVendorFailureKind.Transient);
+
+        return new VendorTicketDto(
+            VendorTicketId: body.Id,
+            VendorOrderId: body.OrderId,
+            AttendeeName: body.FullName ?? $"{body.FirstName} {body.LastName}".Trim(),
+            AttendeeEmail: ResolveAttendeeEmail(body),
+            TicketTypeName: body.Description ?? "Unknown",
+            Price: (body.ListedPrice ?? 0) / 100m,
+            Status: body.Status ?? "valid");
+    }
+
+    internal sealed record TtVoidResponse(
+        [property: JsonPropertyName("id")] string? Id,
+        [property: JsonPropertyName("hold_id")] string? HoldId,
+        [property: JsonPropertyName("voided")] string? Voided);
+
+    private static async Task<TicketVendorWriteException> BuildVendorWriteExceptionAsync(
+        HttpResponseMessage response, string op, string subject, CancellationToken ct)
+    {
+        var body = await response.Content.ReadAsStringAsync(ct);
+        var kind = (int)response.StatusCode switch
+        {
+            400 or 422 => TicketVendorFailureKind.Validation,
+            401 or 403 => TicketVendorFailureKind.AuthFailed,
+            404 => TicketVendorFailureKind.NotFound,
+            429 => TicketVendorFailureKind.RateLimited,
+            >= 500 => TicketVendorFailureKind.Transient,
+            _ => TicketVendorFailureKind.Transient,
+        };
+        return new TicketVendorWriteException(
+            $"TicketTailor {op} {subject} returned {(int)response.StatusCode}: {body}", kind);
+    }
 }

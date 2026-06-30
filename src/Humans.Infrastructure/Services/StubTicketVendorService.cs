@@ -41,8 +41,9 @@ public sealed class StubTicketVendorService : ITicketVendorService
     // Pre-built sample data, generated once and cached for the process lifetime.
     private static readonly Lazy<SampleData> Sample = new(BuildSampleData);
 
-    // Instance-level ticket list for the deterministic dev/preview fixture.
+    // Instance-level fixtures for the deterministic dev/preview data set.
     private readonly List<VendorTicketDto> _tickets = [.. Sample.Value.Tickets];
+    private readonly List<VendorCheckInDto> _checkIns = [.. Sample.Value.CheckIns];
 
     public Task<IReadOnlyList<VendorOrderDto>> GetOrdersAsync(
         Instant? since, string eventId, CancellationToken ct = default)
@@ -66,12 +67,25 @@ public sealed class StubTicketVendorService : ITicketVendorService
         return Task.FromResult(tickets);
     }
 
+    public Task<IReadOnlyList<VendorCheckInDto>> GetCheckInsAsync(
+        Instant? since, string eventId, CancellationToken ct = default)
+    {
+        // Fixtures all "arrive" on the first full sync (the real client pages by
+        // record creation time); none on incremental, mirroring GetIssuedTicketsAsync.
+        IReadOnlyList<VendorCheckInDto> checkIns = since.HasValue
+            ? []
+            : _checkIns.ToList();
+
+        return Task.FromResult(checkIns);
+    }
+
     public Task<VendorEventSummaryDto> GetEventSummaryAsync(
         string eventId, CancellationToken ct = default)
     {
+        // Checked-in tickets stay "valid" (check-in is a separate resource), so a
+        // single "valid" count covers all admitted tickets.
         var ticketsSold = _tickets.Count(t =>
-            string.Equals(t.Status, "valid", StringComparison.Ordinal) ||
-            string.Equals(t.Status, "checked_in", StringComparison.Ordinal));
+            string.Equals(t.Status, "valid", StringComparison.Ordinal));
 
         return Task.FromResult(new VendorEventSummaryDto(
             EventId: eventId,
@@ -104,10 +118,43 @@ public sealed class StubTicketVendorService : ITicketVendorService
     public Task CreateCheckInAsync(string vendorTicketId, Instant occurredAt, CancellationToken ct = default) =>
         Task.CompletedTask;
 
+    public Task<VoidIssuedTicketResult> VoidIssuedTicketAsync(
+        string vendorTicketId, bool voidToHold, CancellationToken ct = default)
+    {
+        var index = _tickets.FindIndex(t =>
+            string.Equals(t.VendorTicketId, vendorTicketId, StringComparison.Ordinal));
+
+        if (index < 0)
+            throw new TicketVendorWriteException(
+                $"Stub: ticket '{vendorTicketId}' not found.", TicketVendorFailureKind.NotFound);
+
+        _tickets[index] = _tickets[index] with { Status = "voided" };
+
+        var holdId = voidToHold ? $"hold_stub_{Guid.NewGuid().ToString("N")[..8]}" : null;
+        return Task.FromResult(new VoidIssuedTicketResult(vendorTicketId, holdId));
+    }
+
+    public Task<VendorTicketDto> IssueTicketAsync(
+        IssueTicketRequest request, CancellationToken ct = default)
+    {
+        var issued = new VendorTicketDto(
+            VendorTicketId: $"tt_stub_{Guid.NewGuid().ToString("N")[..8]}",
+            VendorOrderId: null,
+            AttendeeName: request.FullName,
+            AttendeeEmail: request.Email,
+            TicketTypeName: "Stub Reissued Ticket",
+            Price: 0m,
+            Status: "valid");
+
+        _tickets.Add(issued);
+        return Task.FromResult(issued);
+    }
+
     private static SampleData BuildSampleData()
     {
         var orders = new List<VendorOrderDto>();
         var tickets = new List<VendorTicketDto>();
+        var checkIns = new List<VendorCheckInDto>();
 
         var ticketPool = new List<(string Type, decimal Price)>();
         foreach (var (name, price, count) in TicketMix)
@@ -172,23 +219,6 @@ public sealed class StubTicketVendorService : ITicketVendorService
                     : BuildPerson(orderIndex * 10 + t + 500);
                 var vendorTicketId = $"stub-ticket-{orderIndex + 1:D4}-{t + 1:D2}";
 
-                // Every 5th ticket is checked in for realistic event summary stats
-                var status = (orderIndex * 10 + t) % 5 == 0 ? "checked_in" : "valid";
-
-                // Stub a gate-arrival time for checked-in tickets so dev /
-                // preview environments can exercise the "Who's onsite" view
-                // (#736). Spreads arrivals across the gate-day window.
-                Instant? checkedInAt = null;
-                if (string.Equals(status, "checked_in", StringComparison.Ordinal))
-                {
-                    var gateDay = new LocalDate(2026, 7, 8);
-                    var hour = 9 + ((orderIndex * 10 + t) % 12); // 09:00–20:00
-                    checkedInAt = gateDay
-                        .At(new LocalTime(hour, (orderIndex * 7 + t * 13) % 60))
-                        .InUtc()
-                        .ToInstant();
-                }
-
                 var ticketDto = new VendorTicketDto(
                     VendorTicketId: vendorTicketId,
                     VendorOrderId: vendorOrderId,
@@ -196,12 +226,26 @@ public sealed class StubTicketVendorService : ITicketVendorService
                     AttendeeEmail: attendee.Email,
                     TicketTypeName: ticket.Type,
                     Price: ticket.Price,
-                    Status: status,
-                    CheckedInAt: checkedInAt,
+                    Status: "valid",
                     Barcode: MakeBarcode(vendorTicketId));
 
                 vendorTickets.Add(ticketDto);
                 tickets.Add(ticketDto);
+
+                // Every 5th ticket has been scanned at the gate — recorded as its
+                // own check-in resource (mirrors TicketTailor /check_ins; the issued
+                // ticket itself stays "valid"). Spreads arrivals across the gate-day
+                // window so dev/preview exercises the "Who's onsite" view (#736).
+                if ((orderIndex * 10 + t) % 5 == 0)
+                {
+                    var gateDay = new LocalDate(2026, 7, 8);
+                    var hour = 9 + ((orderIndex * 10 + t) % 12); // 09:00–20:00
+                    var checkedInAt = gateDay
+                        .At(new LocalTime(hour, (orderIndex * 7 + t * 13) % 60))
+                        .InUtc()
+                        .ToInstant();
+                    checkIns.Add(new VendorCheckInDto(vendorTicketId, checkedInAt));
+                }
             }
 
             orders.Add(new VendorOrderDto(
@@ -257,7 +301,7 @@ public sealed class StubTicketVendorService : ITicketVendorService
                 Tickets: [ticketDto]));
         }
 
-        return new SampleData(orders, tickets);
+        return new SampleData(orders, tickets, checkIns);
     }
 
     private static Instant BuildPurchaseInstant(LocalDate saleStart, int orderIndex, int totalOrders)
@@ -307,5 +351,6 @@ public sealed class StubTicketVendorService : ITicketVendorService
 
     private sealed record SampleData(
         IReadOnlyList<VendorOrderDto> Orders,
-        IReadOnlyList<VendorTicketDto> Tickets);
+        IReadOnlyList<VendorTicketDto> Tickets,
+        IReadOnlyList<VendorCheckInDto> CheckIns);
 }

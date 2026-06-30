@@ -195,7 +195,7 @@ public class CachingEventServiceTests(HumansWebApplicationFactory factory) : ICl
         loaded.Status.Should().Be(EventStatus.Approved);
         var cached = await svc.GetApprovedEventByIdAsync(ev.Id, TestContext.Current.CancellationToken);
         cached.Should().NotBeNull("an edited Approved event stays approved and in the cache");
-        cached!.Title.Should().Be("Edited title");
+        cached.Title.Should().Be("Edited title");
     }
 
     [HumansFact]

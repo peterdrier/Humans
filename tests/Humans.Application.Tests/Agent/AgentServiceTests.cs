@@ -186,7 +186,7 @@ public class AgentServiceTests
             conversationId, Xunit.TestContext.Current.CancellationToken);
 
         preview.Should().NotBeNull();
-        preview!.SystemPromptTokens.Should().Be(4096);
+        preview.SystemPromptTokens.Should().Be(4096);
     }
 
     [HumansFact]
@@ -202,7 +202,7 @@ public class AgentServiceTests
             conversationId, Xunit.TestContext.Current.CancellationToken);
 
         preview.Should().NotBeNull();
-        preview!.SystemPromptTokens.Should().BeNull(
+        preview.SystemPromptTokens.Should().BeNull(
             "a count_tokens failure must never break the admin prompt-preview page");
     }
 

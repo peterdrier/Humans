@@ -647,7 +647,7 @@ public sealed class EventService(
             {
                 e.Description,
                 string.IsNullOrWhiteSpace(e.Host) ? null : $"Host: {e.Host}",
-                string.IsNullOrWhiteSpace(e.Category?.Name) ? null : $"Category: {e.Category!.Name}",
+                string.IsNullOrWhiteSpace(e.Category?.Name) ? null : $"Category: {e.Category.Name}",
             }.Where(s => !string.IsNullOrWhiteSpace(s)));
 
             foreach (var start in occurrences)

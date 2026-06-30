@@ -34,6 +34,8 @@ public sealed class TicketSyncServiceTests : ServiceTestHarness
     public TicketSyncServiceTests()
     {
         _vendorService = Substitute.For<ITicketVendorService>();
+        _vendorService.GetCheckInsAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns([]);
 
         var settings = Options.Create(new TicketVendorSettings
         {
@@ -421,8 +423,12 @@ public sealed class TicketSyncServiceTests : ServiceTestHarness
     // ==========================================================================
 
     [HumansFact]
-    public async Task SyncEventParticipations_PassesVendorCheckedInAt_ForCheckedInAttendees()
+    public async Task SyncEventParticipations_FlipsToAttended_WhenTicketValidAndCheckInRecorded()
     {
+        // Regression for nobodies-collective/Humans#736: the issued ticket stays
+        // status="valid" once scanned — check-in arrives as a separate /check_ins
+        // record. Sync must read that record (not the ticket status) to flip the
+        // user to Attended and persist the gate-scan timestamp.
         var userId = Guid.NewGuid();
         SeedUser(userId);
         SeedUserEmail(userId, "alice@example.com", isOAuth: true);
@@ -438,15 +444,21 @@ public sealed class TicketSyncServiceTests : ServiceTestHarness
         _vendorService.GetIssuedTicketsAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new List<VendorTicketDto>
             {
-                MakeTicketDto("tkt_chk", "ord_chk", "Alice", "alice@example.com",
-                    status: "checked_in", checkedInAt: checkInInstant)
+                MakeTicketDto("tkt_chk", "ord_chk", "Alice", "alice@example.com", status: "valid")
             });
+        _vendorService.GetCheckInsAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new List<VendorCheckInDto> { MakeCheckInDto("tkt_chk", checkInInstant) });
 
         await _service.SyncOrdersAndAttendeesAsync(Xunit.TestContext.Current.CancellationToken);
 
         await _userService.Received(1).SetParticipationFromTicketSyncAsync(
             userId, 2026, ParticipationStatus.Attended,
             checkInInstant, Arg.Any<CancellationToken>());
+
+        // Check-in is persisted on the attendee; its status is left "valid".
+        var dbAttendee = await Db.TicketAttendees.SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        dbAttendee.CheckedInAt.Should().Be(checkInInstant);
+        dbAttendee.Status.Should().Be(TicketAttendeeStatus.Valid);
     }
 
     [HumansFact]
@@ -468,10 +480,14 @@ public sealed class TicketSyncServiceTests : ServiceTestHarness
         _vendorService.GetIssuedTicketsAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new List<VendorTicketDto>
             {
-                MakeTicketDto("tkt_a", "ord_two", "Alice", "alice@example.com",
-                    status: "checked_in", checkedInAt: later),
-                MakeTicketDto("tkt_b", "ord_two", "Alice", "alice@example.com",
-                    status: "checked_in", checkedInAt: earlier),
+                MakeTicketDto("tkt_a", "ord_two", "Alice", "alice@example.com", status: "valid"),
+                MakeTicketDto("tkt_b", "ord_two", "Alice", "alice@example.com", status: "valid"),
+            });
+        _vendorService.GetCheckInsAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new List<VendorCheckInDto>
+            {
+                MakeCheckInDto("tkt_a", later),
+                MakeCheckInDto("tkt_b", earlier),
             });
 
         await _service.SyncOrdersAndAttendeesAsync(Xunit.TestContext.Current.CancellationToken);
@@ -479,37 +495,6 @@ public sealed class TicketSyncServiceTests : ServiceTestHarness
         await _userService.Received(1).SetParticipationFromTicketSyncAsync(
             userId, 2026, ParticipationStatus.Attended,
             earlier, Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task SyncEventParticipations_PassesNullCheckedInAt_WhenVendorDidntReturnTimestamp()
-    {
-        // Graceful fallback: vendor returned status=checked_in but no
-        // check_in.checked_in_at — sync still flips to Attended but with null
-        // timestamp. Repo's "never overwrite non-null" rule preserves a prior
-        // timestamp if one already exists.
-        var userId = Guid.NewGuid();
-        SeedUser(userId);
-        SeedUserEmail(userId, "alice@example.com", isOAuth: true);
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
-
-        _shiftManagementService.GetActiveAsync()
-            .Returns(new EventSettings { Year = 2026 });
-
-        _vendorService.GetOrdersAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(new List<VendorOrderDto> { MakeOrderDto("ord_x", "Alice", "alice@example.com") });
-        _vendorService.GetIssuedTicketsAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(new List<VendorTicketDto>
-            {
-                MakeTicketDto("tkt_x", "ord_x", "Alice", "alice@example.com",
-                    status: "checked_in", checkedInAt: null)
-            });
-
-        await _service.SyncOrdersAndAttendeesAsync(Xunit.TestContext.Current.CancellationToken);
-
-        await _userService.Received(1).SetParticipationFromTicketSyncAsync(
-            userId, 2026, ParticipationStatus.Attended,
-            null, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -528,8 +513,7 @@ public sealed class TicketSyncServiceTests : ServiceTestHarness
         _vendorService.GetIssuedTicketsAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new List<VendorTicketDto>
             {
-                MakeTicketDto("tkt_v", "ord_v", "Alice", "alice@example.com",
-                    status: "valid", checkedInAt: null)
+                MakeTicketDto("tkt_v", "ord_v", "Alice", "alice@example.com", status: "valid")
             });
 
         await _service.SyncOrdersAndAttendeesAsync(Xunit.TestContext.Current.CancellationToken);
@@ -602,9 +586,10 @@ public sealed class TicketSyncServiceTests : ServiceTestHarness
         _vendorService.GetIssuedTicketsAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new List<VendorTicketDto>
             {
-                MakeTicketDto("tkt_chk", "ord_chk", "Alice", "alice@example.com",
-                    status: "checked_in", checkedInAt: checkInInstant)
+                MakeTicketDto("tkt_chk", "ord_chk", "Alice", "alice@example.com", status: "valid")
             });
+        _vendorService.GetCheckInsAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new List<VendorCheckInDto> { MakeCheckInDto("tkt_chk", checkInInstant) });
 
         await _service.SyncOrdersAndAttendeesAsync(Xunit.TestContext.Current.CancellationToken);
 
@@ -690,8 +675,7 @@ public sealed class TicketSyncServiceTests : ServiceTestHarness
         string attendeeName,
         string? attendeeEmail,
         decimal price = 50m,
-        string status = "valid",
-        Instant? checkedInAt = null)
+        string status = "valid")
     {
         return new VendorTicketDto(
             VendorTicketId: vendorTicketId,
@@ -700,7 +684,9 @@ public sealed class TicketSyncServiceTests : ServiceTestHarness
             AttendeeEmail: attendeeEmail,
             TicketTypeName: "Full Week",
             Price: price,
-            Status: status,
-            CheckedInAt: checkedInAt);
+            Status: status);
     }
+
+    private static VendorCheckInDto MakeCheckInDto(string vendorTicketId, Instant checkedInAt) =>
+        new(vendorTicketId, checkedInAt);
 }

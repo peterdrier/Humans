@@ -37,8 +37,6 @@ The following are explicitly deferred to future slices:
 - **RSVP and attendance tracking**
 - **Event categories, colors, custom fields**
 
-See the design document at `docs/superpowers/specs/2026-04-21-community-calendar-design.md` for detailed design rationale and v2+ planning.
-
 ## User Stories
 
 ### US-39.1: Browse Community Calendar (Month View)

@@ -32,7 +32,7 @@ internal static class RenderedTextScanner
     public static IReadOnlyList<string> ExtractTextRuns(string html)
     {
         var document = Parser.ParseDocument(html);
-        var root = document.QuerySelector("main") ?? (IElement?)document.Body;
+        var root = document.QuerySelector("main") ?? document.Body;
         if (root is null)
             return [];
 

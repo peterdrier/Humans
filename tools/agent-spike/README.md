@@ -1,6 +1,6 @@
 # Agent Section Phase 0 Prototype
 
-Throwaway prototype for issue [#526](https://github.com/nobodies-collective/Humans/issues/526). Validates feasibility of the in-app AI helper agent described in [`docs/superpowers/specs/2026-04-20-agent-section-design.md`](../../docs/superpowers/specs/2026-04-20-agent-section-design.md).
+Throwaway prototype for issue [#526](https://github.com/nobodies-collective/Humans/issues/526). Validated feasibility of the in-app AI helper agent, now shipped — current architecture lives in [`docs/sections/Agent.md`](../../docs/sections/Agent.md).
 
 ## What it does
 
@@ -8,7 +8,7 @@ Throwaway prototype for issue [#526](https://github.com/nobodies-collective/Huma
 2. Runs each of the 20 curated questions in [`questions.yaml`](questions.yaml) against **Claude Sonnet 4.6** and **Claude Haiku 4.5**, with Anthropic prompt caching enabled for the corpus.
 3. Writes per-question markdown transcripts and a cost/latency summary to `transcripts/`.
 
-Results inform the go / no-go recommendation at [`docs/superpowers/specs/2026-04-20-agent-section-prototype-notes.md`](../../docs/superpowers/specs/2026-04-20-agent-section-prototype-notes.md).
+Results informed the go / no-go recommendation (historical — the agent section shipped; current architecture in [`docs/sections/Agent.md`](../../docs/sections/Agent.md)).
 
 ## Running it (cmd.exe)
 
