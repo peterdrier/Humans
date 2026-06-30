@@ -20,6 +20,7 @@ else
         .RowCss(x => x.Row.HasMultiple ? "table-warning" : null)
         .Column("#", x => x.Num, c => c.End())
         .Template("Human", @<text><vc:human user-id="@item.Row.UserId" layout="AvatarName" size="32" /></text>)
+        .Column("Legal name", x => x.Row.LegalName)
         .Column("Enters", x => x.Row.EarliestEntryDate.ToWeekdayDayMonth())
         .Column("Source(s)", x => string.Join(", ", x.Row.Sources))
         .Template("", @<text>@if (item.Row.HasMultiple) { <span class="badge bg-warning text-dark">multiple</span> }</text>, c => c.NoSort())

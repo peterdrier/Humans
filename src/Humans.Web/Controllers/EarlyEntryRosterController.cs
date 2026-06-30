@@ -18,14 +18,22 @@ public sealed class EarlyEntryRosterController(
     {
         var rows = await earlyEntryService.GetRosterAsync(ct);
 
-        // Names are resolved at render via <vc:human>; the VM carries UserId only
-        // (no DisplayName field — see memory/code/no-new-displayname-fields.md).
+        // Burner name is resolved at render via <vc:human>; the VM carries UserId for that
+        // (no DisplayName field — see memory/code/no-new-displayname-fields.md). Legal name is
+        // a separate concept resolved here from the canonical read-model.
         var ordered = rows
             .OrderBy(r => r.EarliestEntryDate)
             .ThenBy(r => r.UserId)
-            .Select(r => new EarlyEntryRosterRowVm(r.UserId, r.EarliestEntryDate, r.Sources, r.HasMultiple))
             .ToList();
 
-        return View(new EarlyEntryRosterViewModel(ordered));
+        var vms = new List<EarlyEntryRosterRowVm>(ordered.Count);
+        foreach (var r in ordered)
+        {
+            var info = await FindUserInfoByIdAsync(r.UserId, ct);
+            var legalName = info?.Profile?.FullName ?? string.Empty;
+            vms.Add(new EarlyEntryRosterRowVm(r.UserId, legalName, r.EarliestEntryDate, r.Sources, r.HasMultiple));
+        }
+
+        return View(new EarlyEntryRosterViewModel(vms));
     }
 }

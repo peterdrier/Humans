@@ -6,6 +6,7 @@ public sealed record EarlyEntryRosterViewModel(IReadOnlyList<EarlyEntryRosterRow
 
 public sealed record EarlyEntryRosterRowVm(
     Guid UserId,
+    string LegalName,
     LocalDate EarliestEntryDate,
     IReadOnlyList<string> Sources,
     bool HasMultiple);

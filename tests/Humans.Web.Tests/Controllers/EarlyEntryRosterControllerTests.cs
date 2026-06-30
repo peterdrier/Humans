@@ -1,7 +1,10 @@
 using System.Security.Claims;
 using AwesomeAssertions;
+using Humans.Application;
 using Humans.Application.Interfaces.EarlyEntry;
 using Humans.Application.Interfaces.Users;
+using Humans.Domain.Entities;
+using Humans.Domain.Enums;
 using Humans.Web.Controllers;
 using Humans.Web.Models.EarlyEntry;
 using Microsoft.AspNetCore.Http;
@@ -71,4 +74,46 @@ public class EarlyEntryRosterControllerTests
         model.Rows[0].HasMultiple.Should().BeTrue();
         model.Rows[0].Sources.Should().HaveCount(2);
     }
+
+    [HumansFact]
+    public async Task Index_PopulatesLegalNameFromProfile()
+    {
+        var userId = Guid.NewGuid();
+
+        _earlyEntryService.GetRosterAsync(Arg.Any<CancellationToken>())
+            .Returns(new List<EarlyEntryRosterRow>
+            {
+                new(userId, new LocalDate(2026, 8, 25), ["Camp Alpha"], HasMultiple: false),
+            });
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(MakeUserInfo(userId, burner: "Spark", first: "Jean", last: "Dupont"));
+
+        var ctrl = BuildSut();
+        var result = await ctrl.Index(Xunit.TestContext.Current.CancellationToken);
+
+        var view = result.Should().BeOfType<ViewResult>().Subject;
+        var model = view.Model.Should().BeOfType<EarlyEntryRosterViewModel>().Subject;
+        model.Rows[0].LegalName.Should().Be("Jean Dupont");
+    }
+
+    private static UserInfo MakeUserInfo(Guid userId, string burner, string first, string last) =>
+        UserInfo.Create(
+            user: new User { Id = userId, DisplayName = burner, PreferredLanguage = "en", CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0) },
+            userEmails: [],
+            eventParticipations: [],
+            externalLogins: [],
+            profile: new Profile
+            {
+                UserId = userId,
+                BurnerName = burner,
+                FirstName = first,
+                LastName = last,
+                State = ProfileState.Active,
+                CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+                UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+            },
+            contactFields: [],
+            profileLanguages: [],
+            volunteerHistory: [],
+            communicationPreferences: []);
 }
