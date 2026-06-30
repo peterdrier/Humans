@@ -272,6 +272,15 @@ public sealed class TicketSyncService(
             ? LookupUserId(emailLookup, dto.AttendeeEmail)
             : null;
 
+        // API-issued tickets (transfer reissues) carry no real order at TT and their
+        // listed_price drifts to the ticket type's *current* price. Keep the price we
+        // snapshotted locally at reissue time so revenue/VAT stay anchored to the original
+        // order — the "like-for-like, no $ drift" transfer guarantee. (Identified by a null
+        // vendor order id matched to an existing local row; see the orphan re-link above.)
+        var price = string.IsNullOrEmpty(dto.VendorOrderId) && existing is not null
+            ? existing.Price
+            : dto.Price;
+
         return new TicketAttendee
         {
             Id = id,
@@ -280,7 +289,7 @@ public sealed class TicketSyncService(
             AttendeeName = dto.AttendeeName,
             AttendeeEmail = dto.AttendeeEmail,
             TicketTypeName = dto.TicketTypeName,
-            Price = dto.Price,
+            Price = price,
             Status = ParseAttendeeStatus(dto.Status),
             VendorEventId = eventId,
             SyncedAt = now,

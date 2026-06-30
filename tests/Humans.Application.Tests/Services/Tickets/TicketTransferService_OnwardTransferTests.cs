@@ -41,8 +41,10 @@ public sealed class TicketTransferService_OnwardTransferTests
     public TicketTransferService_OnwardTransferTests()
     {
         _service = new TicketTransferService(_transferRepo, _ticketRepo,
+            Substitute.For<ITicketVendorService>(),
             _userService, _userEmailService, _emailService, _emailMessages,
-            _auditLog, _cacheInvalidator, _clock, NullLogger<TicketTransferService>.Instance);
+            _auditLog, _cacheInvalidator,
+            _clock, NullLogger<TicketTransferService>.Instance);
 
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(callInfo =>
