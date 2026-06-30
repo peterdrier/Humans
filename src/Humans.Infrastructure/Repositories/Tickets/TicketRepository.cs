@@ -165,7 +165,8 @@ internal sealed class TicketRepository(IDbContextFactory<HumansDbContext> factor
         return await ctx.TicketAttendees
             .AsNoTracking()
             .Where(a => a.MatchedUserId != null && a.VendorEventId == vendorEventId)
-            .Select(a => new MatchedAttendeeRow(a.VendorTicketId, a.MatchedUserId!.Value, a.Status))
+            .Select(a => new MatchedAttendeeRow(
+                a.VendorTicketId, a.MatchedUserId!.Value, a.Status, a.CheckedInAt))
             .ToListAsync(ct);
     }
 
@@ -241,6 +242,35 @@ internal sealed class TicketRepository(IDbContextFactory<HumansDbContext> factor
             {
                 ctx.TicketAttendees.Add(attendee);
             }
+        }
+
+        await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task ApplyCheckInsAsync(
+        IReadOnlyList<VendorCheckInDto> checkIns,
+        CancellationToken ct = default)
+    {
+        if (checkIns.Count == 0) return;
+
+        // Earliest scan wins when the vendor returns more than one check-in for a
+        // ticket (e.g. a re-scan); a full resync re-applies all of them idempotently.
+        var earliestByTicket = checkIns
+            .GroupBy(c => c.VendorTicketId, StringComparer.Ordinal)
+            .ToDictionary(g => g.Key, g => g.Min(c => c.CheckedInAt), StringComparer.Ordinal);
+
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var vendorIds = earliestByTicket.Keys.ToList();
+        var attendees = await ctx.TicketAttendees
+            .Where(a => vendorIds.Contains(a.VendorTicketId))
+            .ToListAsync(ct);
+
+        foreach (var attendee in attendees)
+        {
+            var scan = earliestByTicket[attendee.VendorTicketId];
+            // Write-once: keep the earliest gate scan, never clear or push later.
+            if (attendee.CheckedInAt is null || scan < attendee.CheckedInAt.Value)
+                attendee.CheckedInAt = scan;
         }
 
         await ctx.SaveChangesAsync(ct);

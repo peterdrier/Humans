@@ -17,6 +17,17 @@ public interface ITicketVendorService : IApplicationService
     Task<IReadOnlyList<VendorTicketDto>> GetIssuedTicketsAsync(
         Instant? since, string eventId, CancellationToken ct = default);
 
+    /// <summary>
+    /// Fetch gate check-ins, optionally since a given timestamp. Check-in is a
+    /// vendor resource distinct from issued-ticket status — TicketTailor records
+    /// it under <c>/check_ins</c>, not by flipping a ticket's status. <paramref
+    /// name="since"/> filters by record creation/upload time (not the scan time),
+    /// so scans uploaded late by an offline scanner are not missed. Issue
+    /// nobodies-collective/Humans#736.
+    /// </summary>
+    Task<IReadOnlyList<VendorCheckInDto>> GetCheckInsAsync(
+        Instant? since, string eventId, CancellationToken ct = default);
+
     /// <summary>Get high-level event summary (capacity, sold, remaining).</summary>
     Task<VendorEventSummaryDto> GetEventSummaryAsync(
         string eventId, CancellationToken ct = default);

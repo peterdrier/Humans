@@ -60,6 +60,7 @@ public sealed class TicketSyncService(
         {
             var orders = await vendorService.GetOrdersAsync(syncState.LastSyncAt, eventId, ct);
             var tickets = await vendorService.GetIssuedTicketsAsync(syncState.LastSyncAt, eventId, ct);
+            var checkIns = await vendorService.GetCheckInsAsync(syncState.LastSyncAt, eventId, ct);
 
             var emailLookup = await BuildEmailLookupAsync(ct);
 
@@ -126,11 +127,17 @@ public sealed class TicketSyncService(
             await ticketRepository.UpsertAttendeesAsync(attendeesToUpsert, ct);
             var attendeesSynced = attendeesToUpsert.Count;
 
+            // Apply gate check-ins onto the (now-upserted) attendee rows. Done as a
+            // standalone pass keyed by VendorTicketId — a check-in can arrive in a
+            // delta whose issued ticket was not itself updated, so it must not depend
+            // on the attendee being part of this run's issued-ticket batch.
+            await ticketRepository.ApplyCheckInsAsync(checkIns, ct);
+
             await ComputeVatForOrdersAsync(ct);
 
             var codesRedeemed = await MatchDiscountCodesAsync(ct);
 
-            await SyncEventParticipationsAsync(tickets, ct);
+            await SyncEventParticipationsAsync(ct);
 
             syncState.SyncStatus = TicketSyncStatus.Idle;
             syncState.StatusChangedAt = clock.GetCurrentInstant();
@@ -419,19 +426,17 @@ public sealed class TicketSyncService(
     /// For each matched user: 1+ valid tickets → Ticketed, any checked-in → Attended.
     /// If user had Ticketed from TicketSync but now has 0 valid tickets → remove record.
     /// <para>
-    /// <paramref name="vendorTicketsThisSync"/> carries the per-attendee
-    /// <see cref="VendorTicketDto.CheckedInAt"/> when the vendor returned one;
-    /// we min across this user's checked-in tickets and pass the result down to
-    /// <see cref="IUserService.SetParticipationFromTicketSyncAsync"/>. Older
-    /// checked-in tickets not in this delta won't have a timestamp here — that
-    /// is the graceful-null fallback (issue nobodies-collective/Humans#736);
-    /// the repo's "never overwrite non-null CheckedInAt" rule preserves prior
-    /// values.
+    /// Check-in is read from the persisted per-ticket
+    /// <see cref="TicketAttendee.CheckedInAt"/> (populated from the vendor's
+    /// check-in resource by <see cref="ITicketRepository.ApplyCheckInsAsync"/>),
+    /// NOT inferred from <see cref="TicketAttendeeStatus"/> — TicketTailor keeps a
+    /// scanned ticket's status "valid". The earliest scan across a user's tickets
+    /// is passed to <see cref="IUserService.SetParticipationFromTicketSyncAsync"/>;
+    /// the repo's "never overwrite non-null CheckedInAt" rule keeps the first value.
+    /// Issue nobodies-collective/Humans#736.
     /// </para>
     /// </summary>
-    private async Task SyncEventParticipationsAsync(
-        IReadOnlyList<VendorTicketDto> vendorTicketsThisSync,
-        CancellationToken ct)
+    private async Task SyncEventParticipationsAsync(CancellationToken ct)
     {
         var activeEvent = await shiftManagementService.GetActiveAsync();
         if (activeEvent is null || activeEvent.Year == 0)
@@ -442,33 +447,23 @@ public sealed class TicketSyncService(
         var matchedAttendees = await ticketRepository
             .GetMatchedAttendeesForEventAsync(_settings.EventId, ct);
 
-        var userTicketStatuses = matchedAttendees
+        // Per matched user: their ticket statuses plus the earliest gate scan
+        // across those tickets (null if none checked in). Sourced entirely from the
+        // persisted attendee rows, so it's correct regardless of which tickets were
+        // in this sync's delta and self-heals on a full resync.
+        var userTickets = matchedAttendees
             .GroupBy(a => a.MatchedUserId)
             .ToDictionary(
                 g => g.Key,
-                g => g.Select(a => a.Status).ToList());
-
-        // Per-user min(CheckedInAt) across the vendor tickets we just pulled,
-        // joined to matched-attendee rows by VendorTicketId so the user identity
-        // matches what the participation loop below uses (MatchedUserId). Using
-        // an email lookup here would drop users whose attendee was re-FKed via
-        // account-merge or matched through non-email paths.
-        // Vendor delta sync only returns *changed* tickets, so this populates
-        // timestamps for users whose check-in event was in THIS batch — which
-        // is exactly the moment we want to capture the timestamp.
-        var matchedUserByVendorTicketId = matchedAttendees
-            .ToDictionary(a => a.VendorTicketId, a => a.MatchedUserId, StringComparer.Ordinal);
-
-        var checkedInAtByUserId = vendorTicketsThisSync
-            .Where(t => t.CheckedInAt is not null)
-            .Select(t => (
-                UserId: matchedUserByVendorTicketId.TryGetValue(t.VendorTicketId, out var uid)
-                    ? (Guid?)uid
-                    : null,
-                CheckedInAt: t.CheckedInAt!.Value))
-            .Where(x => x.UserId is not null)
-            .GroupBy(x => x.UserId!.Value)
-            .ToDictionary(g => g.Key, g => g.Min(x => x.CheckedInAt));
+                g =>
+                {
+                    var statuses = g.Select(a => a.Status).ToList();
+                    var scans = g.Where(a => a.CheckedInAt is not null)
+                        .Select(a => a.CheckedInAt!.Value)
+                        .ToList();
+                    Instant? earliestScan = scans.Count > 0 ? scans.Min() : null;
+                    return (Statuses: statuses, CheckedInAt: earliestScan);
+                });
 
         // Current participation state from the in-memory UserInfo cache (zero DB).
         // Diffing against it lets us skip the per-user upsert — and the cache-slice
@@ -477,29 +472,24 @@ public sealed class TicketSyncService(
         var current = (await userService.GetAllParticipationsForYearAsync(year, ct))
             .ToDictionary(ep => ep.UserId);
 
-        foreach (var (userId, statuses) in userTicketStatuses)
+        foreach (var (userId, info) in userTickets)
         {
-            var hasCheckedIn = statuses.Any(s => s == TicketAttendeeStatus.CheckedIn);
-            var hasValidTicket = statuses.Any(s =>
+            var hasCheckedIn = info.CheckedInAt is not null;
+            var hasValidTicket = info.Statuses.Any(s =>
                 s == TicketAttendeeStatus.Valid || s == TicketAttendeeStatus.CheckedIn);
 
             current.TryGetValue(userId, out var existing);
 
             if (hasCheckedIn)
             {
-                Instant? checkedInAt = checkedInAtByUserId.TryGetValue(userId, out var ts)
-                    ? ts
-                    : null;
-
-                // Already Attended with the timestamp settled (or nothing new to
-                // record): the upsert would no-op. Attended is permanent and
-                // CheckedInAt is write-once.
+                // Already Attended with the timestamp settled: the upsert would
+                // no-op. Attended is permanent and CheckedInAt is write-once.
                 if (existing is { Status: ParticipationStatus.Attended }
-                    && (checkedInAt is null || existing.CheckedInAt is not null))
+                    && existing.CheckedInAt is not null)
                     continue;
 
                 await userService.SetParticipationFromTicketSyncAsync(
-                    userId, year, ParticipationStatus.Attended, checkedInAt, ct);
+                    userId, year, ParticipationStatus.Attended, info.CheckedInAt, ct);
             }
             else if (hasValidTicket)
             {
@@ -521,8 +511,8 @@ public sealed class TicketSyncService(
 
         foreach (var ep in stalePreviousTicketed)
         {
-            if (!userTicketStatuses.TryGetValue(ep.UserId, out var statuses) ||
-                !statuses.Any(s =>
+            if (!userTickets.TryGetValue(ep.UserId, out var info) ||
+                !info.Statuses.Any(s =>
                     s == TicketAttendeeStatus.Valid || s == TicketAttendeeStatus.CheckedIn))
             {
                 await userService.RemoveTicketSyncParticipationAsync(ep.UserId, year, ct);
