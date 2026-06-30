@@ -26,6 +26,7 @@ namespace Humans.Infrastructure.Migrations
                     LaneId = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: true),
                     ClientScanAt = table.Column<Instant>(type: "timestamp with time zone", nullable: true),
                     Note = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
+                    OverrideByUserId = table.Column<Guid>(type: "uuid", nullable: true),
                     AdmitDedupeKey = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: true)
                 },
                 constraints: table =>
@@ -44,6 +45,20 @@ namespace Humans.Infrastructure.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_gate_settings", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "gate_staff_pins",
+                columns: table => new
+                {
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    PinHash = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: false),
+                    CreatedAt = table.Column<Instant>(type: "timestamp with time zone", nullable: false),
+                    UpdatedAt = table.Column<Instant>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_gate_staff_pins", x => x.UserId);
                 });
 
             migrationBuilder.CreateIndex(
@@ -71,6 +86,9 @@ namespace Humans.Infrastructure.Migrations
 
             migrationBuilder.DropTable(
                 name: "gate_settings");
+
+            migrationBuilder.DropTable(
+                name: "gate_staff_pins");
         }
     }
 }

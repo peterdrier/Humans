@@ -13,7 +13,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Humans.Infrastructure.Migrations
 {
     [DbContext(typeof(HumansDbContext))]
-    [Migration("20260628231958_AddGateSection")]
+    [Migration("20260630092103_AddGateSection")]
     partial class AddGateSection
     {
         /// <inheritdoc />
@@ -21,7 +21,7 @@ namespace Humans.Infrastructure.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.8")
+                .HasAnnotation("ProductVersion", "10.0.9")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -2666,6 +2666,9 @@ namespace Humans.Infrastructure.Migrations
                     b.Property<Instant>("OccurredAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid?>("OverrideByUserId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid>("ScannedByUserId")
                         .HasColumnType("uuid");
 
@@ -2704,6 +2707,27 @@ namespace Humans.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("gate_settings", (string)null);
+                });
+
+            modelBuilder.Entity("Humans.Domain.Entities.GateStaffPin", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Instant>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("PinHash")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<Instant>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("UserId");
+
+                    b.ToTable("gate_staff_pins", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.GeneralAvailability", b =>
@@ -5011,6 +5035,9 @@ namespace Humans.Infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<Instant?>("CheckedInAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<Guid?>("MatchedUserId")
                         .HasColumnType("uuid");
 
@@ -5257,6 +5284,10 @@ namespace Humans.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)");
+
+                    b.Property<string>("VendorHoldId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
 
                     b.Property<string>("VendorMessage")
                         .HasMaxLength(2000)
