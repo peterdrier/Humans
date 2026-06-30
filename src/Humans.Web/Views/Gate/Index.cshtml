@@ -14,8 +14,10 @@
     <div class="gate-topbar">
         <span>Scanning as <strong>@Model.ScannerName</strong></span>
         <span class="gate-asof" data-asof="@Model.DataAsOf"
-              title="When this terminal last loaded — re-open it if this gets old">loaded…</span>
-        <a asp-action="Claim" class="gate-topbar-link">Change</a>
+              title="Tap to reload">loaded…</span>
+        @* "Change" abandons the session (re-enter PIN), so it's a deliberate two-tap (gate.js) to
+           stop a mid-queue fat-finger from dumping the operator back to the roster. *@
+        <a asp-action="Claim" class="gate-topbar-link" data-confirm-change>Change</a>
         <a asp-action="Leaderboard" class="gate-topbar-link">Leaderboard</a>
     </div>
 
@@ -72,11 +74,29 @@
                 </div>
             </div>
             <div class="gate-override-step d-none" data-override-pin>
+                <button type="button" class="gate-override-back" data-override-back>&larr; Wrong person</button>
                 <p class="gate-override-prompt"><span data-supervisor-name></span> — enter your PIN</p>
                 <partial name="_PinPad" />
             </div>
         }
     </div>
+
+    @* Always-available cheat-sheet for a barely-trained volunteer (native <details> — no JS).
+       Fixed corner button so it never crowds the scan flow. *@
+    <details class="gate-help">
+        <summary class="gate-help-toggle" title="What the colours mean" aria-label="Help">?</summary>
+        <div class="gate-help-panel">
+            <h2 class="gate-help-title">Quick guide</h2>
+            <ul class="gate-help-list">
+                <li><span class="gate-help-dot gate-admit"></span> <strong>GREEN — admit.</strong> Give a wristband.</li>
+                <li><span class="gate-help-dot gate-stop"></span> <strong>RED — do not admit.</strong> If disputed, get the gate lead.</li>
+                <li><span class="gate-help-dot gate-amber"></span> <strong>AMBER — get a supervisor</strong> / gate lead.</li>
+                <li><span class="gate-help-dot gate-idconfirm"></span> <strong>"Does the ID say…?"</strong> Check the photo ID, then tap Yes or No.</li>
+            </ul>
+            <p class="gate-help-tip">Scan the next ticket any time. Stuck or unsure? Get the gate lead.</p>
+            <p class="gate-help-tip">Tap <strong>?</strong> again to close.</p>
+        </div>
+    </details>
 </div>
 
 @inject Microsoft.AspNetCore.Mvc.ViewFeatures.IFileVersionProvider FileVersionProvider

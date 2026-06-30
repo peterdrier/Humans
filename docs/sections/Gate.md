@@ -158,6 +158,13 @@ tap-list because the `GateTerminal` account is route-locked to `/Gate` and so ca
   deadline back (active use keeps it up). The interim ID-confirm card has a longer ~45s **safety**
   timeout only (it shows a name but the operator is mid-decision); the supervisor-override panel pauses
   the timer while a PIN is being entered.
+- **No dead-ends / minimal-training affordances** (kiosk is chromeless — no browser back). Every screen
+  has a visible way out: Leaderboard has "← Back to scanning"; the PIN keypad has "← Not you?". "Change"
+  (switch operator) is a deliberate two-tap (it abandons the session). The scan screen has an always-on
+  "?" help cheat-sheet (green=admit / red=stop / amber=supervisor), STOP cards spell out the action
+  ("Do not admit · if disputed, get the gate lead"), the ID-confirm card has a "Wrong ticket — scan
+  again" escape and a visible auto-clear countdown, the override panel has "← Wrong person", and the
+  freshness line taps to reload.
 
 ## Cross-Section Dependencies
 

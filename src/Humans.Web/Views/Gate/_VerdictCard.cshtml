@@ -38,6 +38,13 @@
         <div class="gate-reason">@Model.Reason</div>
     }
 
+    @* Imperative next step for a refusal — a 2-minute-trained volunteer needs to be told what to DO,
+       and where to escalate if the guest disputes it, not just the diagnosis. *@
+    @if (Model.Kind == GateCardKind.Stop)
+    {
+        <div class="gate-action">Do not admit · if the guest disputes it, get the gate lead</div>
+    }
+
     @if (Model.Kind == GateCardKind.IdConfirm)
     {
         <div class="gate-decide" data-barcode="@Model.Barcode">
@@ -55,6 +62,10 @@
                     Child — with adult (supervisor)
                 </button>
             }
+            @* Scanned the wrong code (caught a neighbouring ticket)? Bail back to Ready and rescan. *@
+            <button type="button" class="gate-btn gate-cancel-scan" data-cancel-scan>
+                <i class="fa-solid fa-rotate-left" aria-hidden="true"></i> Wrong ticket — scan again
+            </button>
         </div>
     }
 

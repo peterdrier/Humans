@@ -4,6 +4,14 @@
     ViewData["Title"] = "Gate leaderboard";
 }
 
+@section Styles {
+    <link rel="stylesheet" href="@Url.Content("~/css/gate/gate.css")" asp-append-version="true" />
+}
+
+@* The kiosk is chromeless (no browser back), so a prominent return path is mandatory — without it
+   the operator is stranded here mid-queue. *@
+<a asp-action="Index" class="gate-back">&larr; Back to scanning</a>
+
 <h1>Gate leaderboard</h1>
 <p class="text-muted">
     <strong>@ViewData["TotalAdmitted"]</strong> admitted ·
