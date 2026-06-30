@@ -105,24 +105,26 @@ export function initGate(refs) {
     }
     result.addEventListener('pointerdown', bumpReset, { passive: true });
 
-    // "Change" abandons the session (re-enter PIN), so require a deliberate second tap.
+    // "End shift" clears the scanner session (next person re-claims with their PIN), so require
+    // a deliberate second tap.
     initChangeConfirm();
     // The freshness line is a reload affordance on the chromeless kiosk (no browser reload button).
     const asofEl = document.querySelector('.gate-asof');
     if (asofEl) asofEl.addEventListener('click', () => location.reload());
 
     function initChangeConfirm() {
-        const link = document.querySelector('[data-confirm-change]');
-        if (!link) return;
+        const btn = document.querySelector('[data-confirm-change]');
+        if (!btn) return;
         let armed = false;
-        link.addEventListener('click', (e) => {
-            if (armed) return; // second tap within the window → allow the link to navigate
+        const original = btn.textContent;
+        const armedLabel = btn.getAttribute('data-confirm-change') || 'Tap again';
+        btn.addEventListener('click', (e) => {
+            if (armed) return; // second tap within the window → allow the submit to proceed
             e.preventDefault();
             armed = true;
-            const original = link.textContent;
-            link.textContent = 'Tap again to switch';
-            link.classList.add('gate-armed');
-            setTimeout(() => { armed = false; link.textContent = original; link.classList.remove('gate-armed'); }, 3000);
+            btn.textContent = armedLabel;
+            btn.classList.add('gate-armed');
+            setTimeout(() => { armed = false; btn.textContent = original; btn.classList.remove('gate-armed'); }, 3000);
         });
     }
 

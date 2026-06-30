@@ -150,6 +150,19 @@ public sealed class GateController(
             : await SetClaimPinAsync(userId, name, status, pin, ct);
     }
 
+    [HttpPost("EndShift")]
+    [Authorize(Policy = PolicyNames.GateAdmit)]
+    [ValidateAntiForgeryToken]
+    public IActionResult EndShift()
+    {
+        // End the current scanner's session so the terminal drops back to "Who is scanning?".
+        // Clearing attribution server-side (not just navigating away) means a walk-away can't
+        // leave the next person's scans recorded against whoever last claimed — the session
+        // otherwise survives ~8h of idle, long past a single staffer's shift.
+        HttpContext.Session.Remove(ScannerSessionKey);
+        return RedirectToAction(nameof(Claim));
+    }
+
     // Name-only people search for the claim screen. The route-locked kiosk can't reach
     // /api/profiles/search (that lock is what keeps the supervisor-override picker a tap-list),
     // so the claim picker points here instead. Burner names only — no email, no broad fields —

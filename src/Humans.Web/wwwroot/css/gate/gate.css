@@ -14,7 +14,14 @@ body.gate-kiosk { margin: 0; min-height: 100vh; background: #f4ede1; }
     font-size: 1rem; color: #5f6b76; margin-bottom: .75rem;
 }
 .gate-topbar-link { margin-left: auto; font-weight: 600; }
-.gate-topbar-link + .gate-topbar-link { margin-left: .75rem; }
+.gate-topbar-link ~ .gate-endshift-form { margin: 0; }
+/* "End shift" is a button (not a faint link) so the handover to the next scanner is obvious. */
+.gate-endshift-btn {
+    font: inherit; font-weight: 700; cursor: pointer; line-height: 1.2;
+    color: #2b3440; background: transparent;
+    border: 2px solid #2b3440; border-radius: 6px; padding: .35rem .85rem;
+}
+.gate-endshift-btn:hover, .gate-endshift-btn:focus { background: #2b3440; color: #fff; }
 /* Freshness indicator — readable contrast; reddens once the terminal's been open a while. */
 .gate-asof { color: #2b3440; font-weight: 600; }
 .gate-asof-stale { color: #B11217; }
@@ -191,8 +198,8 @@ body.gate-kiosk { margin: 0; min-height: 100vh; background: #f4ede1; }
     font-size: 1.05rem; font-weight: 600; cursor: pointer; margin-bottom: .25rem;
 }
 
-/* "Change" link while armed for the confirming second tap. */
-.gate-topbar-link.gate-armed { color: #B11217; font-weight: 700; }
+/* "End shift" button while armed for the confirming second tap. */
+.gate-endshift-btn.gate-armed { color: #fff; background: #B11217; border-color: #B11217; }
 
 /* The freshness line doubles as the reload control on the chromeless kiosk. */
 .gate-asof { cursor: pointer; }

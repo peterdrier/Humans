@@ -159,8 +159,10 @@ tap-list because the `GateTerminal` account is route-locked to `/Gate` and so ca
   timeout only (it shows a name but the operator is mid-decision); the supervisor-override panel pauses
   the timer while a PIN is being entered.
 - **No dead-ends / minimal-training affordances** (kiosk is chromeless — no browser back). Every screen
-  has a visible way out: Leaderboard has "← Back to scanning"; the PIN keypad has "← Not you?". "Change"
-  (switch operator) is a deliberate two-tap (it abandons the session). The scan screen has an always-on
+  has a visible way out: Leaderboard has "← Back to scanning"; the PIN keypad has "← Not you?". "End shift"
+  (hand over to the next operator) is a deliberate two-tap button that POSTs `GateController.EndShift` to
+  clear the scanner session **server-side**, so a walk-away can't leave the next person's scans attributed
+  to whoever last claimed. The scan screen has an always-on
   "?" help cheat-sheet (green=admit / red=stop / amber=supervisor), STOP cards spell out the action
   ("Do not admit · if disputed, get the gate lead"), the ID-confirm card has a "Wrong ticket — scan
   again" escape and a visible auto-clear countdown, the override panel has "← Wrong person", and the
