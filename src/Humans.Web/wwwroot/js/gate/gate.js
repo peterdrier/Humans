@@ -16,6 +16,68 @@ export function initGate(refs) {
     const overrideController = initOverride();
     const overrideOpen = () => override && !override.classList.contains('d-none');
 
+    // After a result, auto-return to the Ready screen so the previous guest's name never lingers on
+    // the shared kiosk (PII) and the screen is never stuck on the last scan. Durations differ by
+    // outcome: an ADMIT is a glance, but a STOP/AMBER refusal gets explained to the guest, so it
+    // lingers longer; the interim ID-confirm card gets a long *safety* timeout only (it shows a name
+    // but the operator is mid-decision). Any tap on the card pushes the deadline back (active use
+    // keeps it up); terminal cards also get a "Next ticket" button with a visible countdown.
+    const readyCard = result.firstElementChild ? result.firstElementChild.cloneNode(true) : null;
+    const RESET_MS = { Admit: 10000, Stop: 30000, Amber: 30000, IdConfirm: 45000 };
+    let resetTimer = null, resetCountdown = null, resetDeadline = 0, resetMs = 0, resetLabel = null;
+
+    function clearResetTimer() {
+        if (resetTimer) { clearTimeout(resetTimer); resetTimer = null; }
+        if (resetCountdown) { clearInterval(resetCountdown); resetCountdown = null; }
+        resetLabel = null;
+    }
+
+    function resetToReady() {
+        clearResetTimer();
+        if (readyCard) result.replaceChildren(readyCard.cloneNode(true));
+        focusInput();
+    }
+
+    function startResetTimer() {
+        if (resetTimer) clearTimeout(resetTimer);
+        if (resetCountdown) clearInterval(resetCountdown);
+        resetDeadline = Date.now() + resetMs;
+        resetTimer = setTimeout(resetToReady, resetMs);
+        if (resetLabel) {
+            const tick = () => {
+                const left = Math.max(0, Math.ceil((resetDeadline - Date.now()) / 1000));
+                resetLabel.textContent = `Next ticket › (${left})`;
+            };
+            tick();
+            resetCountdown = setInterval(tick, 1000);
+        }
+    }
+
+    function armAutoReset(card, kind) {
+        clearResetTimer();
+        resetMs = RESET_MS[kind] || 10000;
+        // Terminal cards (no pending Yes/No) get a Next button + countdown; the ID-confirm card
+        // auto-clears silently, only as an abandonment safety net.
+        resetLabel = card.querySelector('.gate-decide') ? null : ensureNextButton(card);
+        startResetTimer();
+    }
+
+    function ensureNextButton(card) {
+        let btn = card.querySelector('.gate-next');
+        if (!btn) {
+            btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'gate-next';
+            btn.addEventListener('click', resetToReady);
+            card.appendChild(btn);
+        }
+        return btn;
+    }
+
+    // A tap anywhere on the result card means "still using this" — push the auto-return back.
+    // One delegated listener (not per-card) so it never accumulates across renders.
+    result.addEventListener('pointerdown', () => { if (resetTimer) startResetTimer(); }, { passive: true });
+
     // Render the "loaded HH:mm · N min ago" indicator and redden it once the terminal
     // has been open a while — a nudge to re-open the page so its data view isn't stale.
     // A once-a-minute text update only (no network, no scan-loop cost).
@@ -63,6 +125,7 @@ export function initGate(refs) {
     });
 
     async function render(url, body) {
+        clearResetTimer(); // a new scan/decision is incoming — cancel any pending auto-return
         try {
             const opts = body
                 ? { method: 'POST', headers: { 'RequestVerificationToken': token }, body }
@@ -102,7 +165,12 @@ export function initGate(refs) {
         }
 
         const decide = card.querySelector('.gate-decide');
-        if (!decide) return;
+        if (!decide) {
+            // Terminal result (admit / stop / amber / too-early) — no decision pending, so arm the
+            // per-kind auto-return + Next-ticket button. The override panel pauses this while open.
+            armAutoReset(card, kind);
+            return;
+        }
 
         const barcode = decide.getAttribute('data-barcode');
         const buttons = decide.querySelectorAll('.gate-btn');
@@ -122,6 +190,11 @@ export function initGate(refs) {
         if (childBtn) {
             childBtn.addEventListener('click', () => overrideController.open('child', barcode));
         }
+
+        // The ID-confirm card shows a name, so give it a long *safety* timeout (no Next button): if
+        // it's abandoned (guest walks off / staffer distracted), the name doesn't linger forever.
+        // Any tap — including the Yes/No buttons — pushes the deadline back during active use.
+        armAutoReset(card, kind);
     }
 
     async function submitDecision(barcode, opts) {
@@ -164,6 +237,7 @@ export function initGate(refs) {
             : { reset: () => {} };
 
         function open(nextMode, nextBarcode) {
+            clearResetTimer(); // hold the auto-return while the supervisor enters their PIN
             mode = nextMode;
             barcode = nextBarcode;
             supervisorUserId = null;
@@ -180,6 +254,10 @@ export function initGate(refs) {
             override.setAttribute('aria-hidden', 'true');
             keypad.reset();
             focusInput();
+            // Cancelled back to the (still-displayed) too-early card — re-arm its auto-return so the
+            // name doesn't linger. (When close() follows a successful submit, render() supersedes this.)
+            const current = result.firstElementChild;
+            if (current && !current.querySelector('.gate-decide')) armAutoReset(current, current.getAttribute('data-kind'));
         }
 
         override.querySelectorAll('[data-supervisor-id]').forEach(btn => {

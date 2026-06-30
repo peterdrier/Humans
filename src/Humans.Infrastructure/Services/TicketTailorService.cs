@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
@@ -332,27 +333,26 @@ public class TicketTailorService : ITicketVendorService
     {
         using var _ = _logger.TimeOperation();
 
-        // TicketTailor records check-ins against an issued ticket. We send the
-        // issued-ticket id and the time of admission; the vendor treats repeat
-        // check-ins idempotently, so retries are safe.
-        // Field names VERIFIED 2026-06-29 (read-only) against a live GET /v1/check_ins:
-        // the check_in object is { issued_ticket_id, check_in_at (unix seconds),
-        // event_id, event_series_id, quantity }. So the collection POST /v1/check_ins
-        // with issued_ticket_id in the BODY (not the path) is the right shape, and the
-        // time field is `check_in_at` (an earlier guess used `checked_in_at`, which the
-        // API would silently ignore). STILL UNVERIFIED (needs one live POST): whether
-        // create REQUIRES event_id and whether check_in_at is writable on create vs
-        // server-set. A 4xx here fails fast (the job does not retry 4xx); the caller
-        // (GateVendorCheckInJob) stays gated behind Gate:VendorMirrorEnabled (default
-        // off) until a live POST confirms create succeeds end-to-end.
-        var payload = new
+        // TicketTailor records check-ins against an issued ticket.
+        // VERIFIED LIVE 2026-06-30 with a real POST /v1/check_ins (→ 201) against a test ticket:
+        //  • the endpoint is FORM-ENCODED (application/x-www-form-urlencoded), NOT JSON — a JSON
+        //    body is ignored and every field reads as null/missing (silent 400);
+        //  • `issued_ticket_id` AND `quantity` are REQUIRED; `check_in_at` (unix seconds) is
+        //    accepted; `event_id` is OPTIONAL (the API derives it from the ticket);
+        //  • the API key must have Event-manager (or Admin) scope — an Order-manager key 403s here
+        //    (read AND write), so the production vendor key must be scoped accordingly.
+        //  • repeat check-ins are NOT idempotent — each POST creates a new check_in record (the
+        //    ticket just stays checked in), which is why GateVendorCheckInJob does not retry.
+        // The mirror stays gated behind Gate:VendorMirrorEnabled (default off).
+        // StringComparer.Ordinal only to satisfy MA0002 — FormUrlEncodedContent just enumerates the pairs.
+        var form = new FormUrlEncodedContent(new Dictionary<string, string>(StringComparer.Ordinal)
         {
-            issued_ticket_id = vendorTicketId,
-            check_in_at = occurredAt.ToUnixTimeSeconds(),
-        };
+            ["issued_ticket_id"] = vendorTicketId,
+            ["quantity"] = "1", // exactly one issued ticket per gate scan (the job carries a single ticket id)
+            ["check_in_at"] = occurredAt.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture),
+        });
 
-        var response = await _httpClient.PostAsJsonAsync(
-            $"{BaseUrl}/check_ins", payload, JsonOptions, ct);
+        var response = await _httpClient.PostAsync($"{BaseUrl}/check_ins", form, ct);
 
         if (!response.IsSuccessStatusCode)
         {

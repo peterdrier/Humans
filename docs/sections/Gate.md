@@ -74,12 +74,14 @@ admission record. Distinct from the read-only `Scanner` section, which must neve
 - **Vendor check-in mirror** — on an admit the controller enqueues `GateVendorCheckInJob`
   (fire-and-forget) which calls `ITicketVendorService.CreateCheckInAsync` (TicketTailor
   `POST /v1/check_ins`). Best-effort only; `gate_scan_events` remains the dedupe authority.
-  **Gated behind `Gate:VendorMirrorEnabled` (default off).** Payload field names were verified
-  read-only against the live API (2026-06-29): the `check_in` object is
-  `{ issued_ticket_id, check_in_at (unix s), event_id, event_series_id, quantity }`, so the body
-  uses `check_in_at` (not the earlier guess `checked_in_at`) with the id in the body, not the path.
-  Still unverified (needs one live POST): whether create requires `event_id`. The flag stays off
-  until that POST is confirmed — a wrong body 4xx-fails silently and permanently.
+  **Gated behind `Gate:VendorMirrorEnabled` (default off).** Payload **verified live (2026-06-30)**
+  with a real POST → 201: the endpoint is **form-encoded** (not JSON), **requires `issued_ticket_id`
+  AND `quantity`**, accepts `check_in_at` (unix s), and `event_id` is optional (derived from the
+  ticket). The **API key must have Event-manager (or Admin) scope** — an Order-manager key 403s on
+  `/v1/check_ins`. Check-ins are **not idempotent** (each POST creates a new `check_in` record), so
+  `GateVendorCheckInJob` runs with `Attempts = 0` (no retry — a retry after a silent success would
+  double-record; a missed mirror is acceptable, `gate_scan_events` is authoritative). Before enabling
+  the flag, confirm the configured TicketTailor key has Event-manager scope.
 - **Vendor-checked-in dedupe signal is currently dead** (pre-existing Tickets bug, not Gate).
   The `CheckedInAtVendor` precedence input depends on the Tickets sync detecting check-ins, but
   that sync parses a nested `check_in` object the live API no longer returns (it returns a
@@ -149,6 +151,13 @@ tap-list because the `GateTerminal` account is route-locked to `/Gate` and so ca
   `GuestUserId`/`ScannedByUserId`), and retention purge.
 - The gate view shows name + verdict + one reason line only; Early-Entry source, the previous
   scanner's id, and internal GUIDs stay server-side.
+- **A result card auto-clears** back to the Ready screen so the previous guest's name never lingers on
+  the shared kiosk (PII) and the screen is never stuck on the last scan. Timeouts vary by outcome (a
+  quick ADMIT clears in ~10s; a STOP/AMBER refusal that gets explained to the guest lingers ~30s); a
+  terminal card also shows a "Next ticket" button with a live countdown. Any tap on the card pushes the
+  deadline back (active use keeps it up). The interim ID-confirm card has a longer ~45s **safety**
+  timeout only (it shows a name but the operator is mid-decision); the supervisor-override panel pauses
+  the timer while a PIN is being entered.
 
 ## Cross-Section Dependencies
 

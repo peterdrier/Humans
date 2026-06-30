@@ -157,6 +157,16 @@ body.gate-kiosk { margin: 0; min-height: 100vh; background: #f4ede1; }
 /* The supervisor-override affordance on a too-early / failed-override card. */
 .gate-override-btn { display: block; width: 100%; margin-top: 1rem; background: #3a4753; font-size: 1.15rem; }
 
+/* "Next ticket" — appears on a terminal result card; clears the screen back to Ready (also auto-
+   fires after a countdown). SOLID near-black (not a translucent wash) so it stays legible on any
+   verdict colour in direct sun — outline/translucent buttons wash out (see the roster-pick note). */
+.gate-next {
+    display: block; width: 100%; margin-top: 1.5rem; padding: 1rem;
+    background: #11181d; color: #fff; border: none;
+    border-radius: 12px; font-size: 1.3rem; font-weight: 700; cursor: pointer;
+}
+.gate-next:active { background: #000; }
+
 /* Roster quick-pick on the claim screen — big FILLED tap targets (outline buttons
    wash out in direct sun) for gloved use. Capped height so a large roster scrolls
    instead of burying the search box below the fold. */
