@@ -3,7 +3,7 @@
 Audit of which services access which database tables and cache keys, organized by section.
 The goal is to identify cross-section table overlap, duplicated caching, and cache configuration issues.
 
-**Generated:** 2026-06-13
+**Generated:** 2026-06-24
 
 > **Methodology.** Tables are resolved by following each service's injected
 > repository interface to its EF-backed implementation in
@@ -1857,20 +1857,31 @@ expense submitters per PR #791). Implements `IUserDataContributor`. No
 > (rates from `appsettings.json`); rate math happens in the service, not
 > the DB. The personal IOU view reads through the existing surface.
 
-### SepaPaymentFileBuilder
-
-Stateless builder — formats SEPA XML payment files. No DI dependencies
-beyond `SepaConfig` options. No DB access.
-
 ---
 
 ## Finance
 
 Folder: `src/Humans.Application/Services/Finance/`. Owns `HoldedExpenseDocs`,
-`HoldedCategoryMap`, `HoldedSyncStates`, `HoldedCreditorBalances`,
-`HoldedPayments`. Section added since prior sweep to consolidate the
+`HoldedCategoryMap`, `HoldedSyncStates`, `HoldedLedgerLines`,
+`HoldedCreditorContacts`. Section added since prior sweep to consolidate the
 Holded accounting-system integration (provisioning, purchase-doc sync,
-actuals computation, creditor balance polling).
+actuals computation, creditor ledger sync).
+
+> **Change since prior sweep:** the Finance section's creditor-balance model
+> was replaced by a daybook-journal approach. The former `HoldedCreditorBalances`
+> and `HoldedPayments` tables are **gone** — the section now owns
+> `HoldedLedgerLines` (cached daily-ledger journal lines, upserted in ≤1-year
+> windows) and `HoldedCreditorContacts` (user ↔ Holded supplier-account bindings).
+> `HoldedFinanceService` derives balances and payment history in memory from the
+> `HoldedLedgerLines` rows rather than polling a separate balance table.
+> `SyncCreditorLedgerAsync` backfills or incrementally appends creditor-account
+> (400000xx) journal lines; `GetCreditorStatusAsync` /
+> `ListCreditorAccountsAsync` / `GetCreditorLedgerAsync` read from the cached
+> journal lines. The creditor-contact binding surface
+> (`GetCreditorContactByUserAsync`, `SetCreditorContactAsync`,
+> `EnsureCreditorContactAsync`, `SetCreditorAccountNumAsync`) upserts rows into
+> `HoldedCreditorContacts`. The GDPR `IUserDataContributor` slice exports the
+> binding record (supplier account num + Holded contact id) for the user.
 
 ### HoldedFinanceService (Scoped)
 
@@ -1880,14 +1891,14 @@ Repository: `IHoldedRepository`.
 |-------|-----|
 | HoldedCategoryMap | R/W |
 | HoldedExpenseDocs | R/W |
-| HoldedCreditorBalances | R/W |
-| HoldedPayments | R/W |
+| HoldedLedgerLines | R/W (upsert via `SyncCreditorLedgerAsync`; read for balance/ledger/list) |
+| HoldedCreditorContacts | R/W (creditor-contact bindings per user) |
 | HoldedSyncStates | R/W |
 
 Cross-section calls via `IBudgetService` (full `IBudgetService` — should
 narrow to an `IBudgetServiceRead` via the section read/write split once
 the surface stabilises), `IHoldedClient` (Infrastructure). Implements
-`IHoldedFinanceService`. No `IMemoryCache`.
+`IHoldedFinanceService`, `IUserDataContributor`. No `IMemoryCache`.
 
 ### HoldedMatcher
 
@@ -2053,7 +2064,8 @@ Camps (`CampService`), Shifts (`ShiftSignupService`), Tickets
 (`NotificationInboxService`), AuditLog (`AuditLogService`), Budget
 (`BudgetService`), Campaigns (`CampaignService`), Feedback
 (`FeedbackService`), Issues (`IssuesService`), Events (`EventService`),
-Expenses (`ExpenseReportService`), Agent (`AgentService`), Teams
+Expenses (`ExpenseReportService`), Finance (`HoldedFinanceService` —
+creditor-contact binding), Agent (`AgentService`), Teams
 (`TeamService`), Consent (`ConsentService`), Surveys (`SurveyService` —
 identified responses only, #884). No direct DB access, no cache.
 
@@ -2403,7 +2415,7 @@ separately below the key table.
 |-------|---------|-----|------|-------------|----------------|
 | `TrackedCache<Guid, UserInfo>` | Users (+Profiles) | `User.UserInfo` | Per-User | CachingUserService warmup + lazy load | `IUserInfoInvalidator` + `IUserMerge` + `UserInfoSaveChangesInterceptor` |
 | `TrackedCache<Guid, TeamInfo>` | Teams | `Team.TeamInfo` | Per-Entity | CachingTeamService warmup + lazy load | `IActiveTeamsCacheInvalidator` + `IUserMerge` |
-| `TrackedCache<Guid, ShiftUserView>` / `TrackedCache<Guid, ShiftRotaView>` | Shifts | `ShiftView.UserView` / `ShiftView.RotaView` | Per-User / Per-Entity | CachingShiftViewService lazy load | `IShiftViewInvalidator` (ShiftManagementService, ShiftSignupService, GeneralAvailabilityService, VolunteerTrackingService, AccountDeletionService) |
+| `TrackedCache<Guid, ShiftUserView>` / `TrackedCache<Guid, ShiftRotaView>` | Shifts | `ShiftView.UserView` / `ShiftView.RotaView` | Per-User / Per-Entity | CachingShiftViewService lazy load | `IShiftViewInvalidator` (ShiftManagementService, ShiftSignupService, VolunteerTrackingService, AccountDeletionService) |
 | `TrackedCache<Guid, TicketOrderInfo>` | Tickets | `Tickets.Orders` | Per-Entity | CachingTicketQueryService warmup + lazy load | `ITicketCacheInvalidator` |
 | `TrackedCache<Guid, CachedUserTicketHoldings>` | Tickets | `Tickets.UserHoldings` | Per-User (5-min freshness in value) | CachingTicketQueryService lazy load | `ITicketCacheInvalidator` |
 | `TrackedCache<Guid, CampInfo>` + settings slot | Camps | `Camp.CampInfo` | Per-Entity / Static | CachingCampService warmup + lazy load | `ICampInfoInvalidator` + `IUserMerge` |

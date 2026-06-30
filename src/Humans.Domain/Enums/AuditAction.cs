@@ -133,6 +133,7 @@ public enum AuditAction
     TicketTransferApproved,
     TicketTransferRejected,
     TicketTransferCancelled,
+    TicketTransferAutoFailed,
     OrphanUserEmailDeleted,
     GhostExternalLoginsDeleted,
     LegacyIdentityEmailBackfilled,

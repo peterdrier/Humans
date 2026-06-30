@@ -9,7 +9,7 @@
   src/Humans.Web/Controllers/ExpensesController.cs
 -->
 <!-- freshness:flag-on-change
-  Expense lifecycle, IBAN access rules, SEPA generation, Holded sync, and resource-based authorization — review when Expenses services/entities/controllers/auth handlers change.
+  Expense lifecycle, IBAN access rules, Holded sync, and resource-based authorization — review when Expenses services/entities/controllers/auth handlers change.
 -->
 
 # Expenses
@@ -59,9 +59,7 @@ Once every purchase item has a receipt and your IBAN is set, submit. You can wit
 - **Draft** — you're still building it
 - **Submitted** — waiting for a coordinator's sign-off (if its category has one) or for Finance
 - **Coordinator endorsed** — signed off by a coordinator; waiting for Finance
-- **Approved** — Finance has approved it; payment is being prepared
-- **SEPA sent** — included in a bank-transfer batch; on its way
-- **Paid** — money's gone out
+- **Approved** — Finance has approved it; booked into the org's accounting system. Payment happens outside the app (bank transfer by Finance); you can see what you're owed on **My expenses**.
 - **Withdrawn** — you pulled it back
 
 ![TODO: screenshot — expense report detail showing items, receipt links, and a status badge]
@@ -74,7 +72,7 @@ Once one of your reports has reached the org's accounting system, **My expenses*
 
 If you coordinate a budget category, expense reports in that category come to you for sign-off first. Go to `/Expenses/Coordinator` to see what's waiting. From a report, **endorse** it to pass it on to Finance, or **reject** it with a reason. This step only happens when the report's category actually has a coordinator assigned.
 
-Coordinators can't approve payments or create bank-transfer batches — that's Finance.
+Coordinators can't approve — that requires Finance Admin.
 
 ## As a Board member / Admin (Finance Admin)
 
@@ -84,11 +82,9 @@ The tasks below need the **Finance Admin** or **Admin** role.
 
 Go to `/Expenses/Review` to see every report waiting for Finance. Open one to check its items, receipts, and who submitted it, then **approve** it or **reject** it with a reason. When you approve, the accounting system is updated automatically in the background (and retried if there's a hiccup).
 
-### Pay people (SEPA batch)
+### Pay people
 
-From the Finance review page, generate a bank-transfer file covering all the approved, unpaid reports — this downloads the file and moves those reports to **SEPA sent** in one step. (Take that file to your bank to actually pay people.) The system then checks for confirmation periodically and marks each one **Paid** once the money has gone.
-
-If the SEPA file download fails before it's been sent, you can **reopen** an individual report from its detail page — this moves it back to **Approved** so it's picked up in the next batch you generate.
+Approved reports are booked into the org's accounting system (Holded) automatically. Payment is made outside the app by bank transfer. Once paid, the member's creditor balance in Holded updates, and their **My expenses** page shows the owed/paid summary.
 
 ## Related sections
 

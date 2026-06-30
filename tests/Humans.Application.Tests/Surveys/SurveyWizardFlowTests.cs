@@ -3,7 +3,6 @@ using Humans.Application.Interfaces.Surveys;
 using Humans.Application.Services.Surveys;
 using Humans.Domain.Enums;
 using Humans.Domain.ValueObjects;
-using Xunit;
 
 namespace Humans.Application.Tests.Surveys;
 

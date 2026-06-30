@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Application.DTOs;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -325,6 +326,71 @@ public sealed class TicketRepositoryTests : IDisposable
         var result = await _repo.GetUnmatchedActiveAttendeesAsync(eventId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().ContainSingle(a => a.Id == includedId);
+    }
+
+    // ── ApplyCheckInsAsync ───────────────────────────────────────────────────
+
+    [HumansFact]
+    public async Task ApplyCheckInsAsync_SetsEarliestScan_IsWriteOnce_AndSkipsUnknownTickets()
+    {
+        var orderId = Guid.NewGuid();
+        const string eventId = "evt_apply";
+        _dbContext.TicketOrders.Add(new TicketOrder
+        {
+            Id = orderId,
+            VendorOrderId = "ord_apply",
+            VendorEventId = eventId,
+            BuyerEmail = "buyer@x.com",
+            BuyerName = "Buyer",
+            Currency = "EUR",
+            PaymentStatus = TicketPaymentStatus.Paid,
+            PurchasedAt = _clock.GetCurrentInstant(),
+            SyncedAt = _clock.GetCurrentInstant(),
+        });
+        _dbContext.TicketAttendees.Add(new TicketAttendee
+        {
+            Id = Guid.NewGuid(),
+            TicketOrderId = orderId,
+            VendorEventId = eventId,
+            VendorTicketId = "tkt_a",
+            Status = TicketAttendeeStatus.Valid,
+            SyncedAt = _clock.GetCurrentInstant(),
+        });
+        _dbContext.TicketAttendees.Add(new TicketAttendee
+        {
+            Id = Guid.NewGuid(),
+            TicketOrderId = orderId,
+            VendorEventId = eventId,
+            VendorTicketId = "tkt_b",
+            Status = TicketAttendeeStatus.Valid,
+            SyncedAt = _clock.GetCurrentInstant(),
+        });
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var earlier = Instant.FromUtc(2026, 7, 8, 9, 0);
+        var later = Instant.FromUtc(2026, 7, 8, 18, 0);
+
+        // tkt_a scanned twice (earliest wins); tkt_b not scanned; an unknown
+        // issued-ticket id is ignored rather than throwing.
+        await _repo.ApplyCheckInsAsync(
+            [new VendorCheckInDto("tkt_a", later),
+             new VendorCheckInDto("tkt_a", earlier),
+             new VendorCheckInDto("tkt_unknown", earlier)],
+            Xunit.TestContext.Current.CancellationToken);
+
+        // A later sync reporting an even-later scan must not push the timestamp.
+        await _repo.ApplyCheckInsAsync(
+            [new VendorCheckInDto("tkt_a", Instant.FromUtc(2026, 7, 9, 0, 0))],
+            Xunit.TestContext.Current.CancellationToken);
+
+        var a = await _dbContext.TicketAttendees.AsNoTracking()
+            .SingleAsync(x => x.VendorTicketId == "tkt_a", Xunit.TestContext.Current.CancellationToken);
+        var b = await _dbContext.TicketAttendees.AsNoTracking()
+            .SingleAsync(x => x.VendorTicketId == "tkt_b", Xunit.TestContext.Current.CancellationToken);
+
+        a.CheckedInAt.Should().Be(earlier);
+        a.Status.Should().Be(TicketAttendeeStatus.Valid);
+        b.CheckedInAt.Should().BeNull();
     }
 
     // ── GetAttendeeByIdAsync + GetVendorTicketIdsForOrderAsync ───────────────

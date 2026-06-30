@@ -18,6 +18,11 @@
   src/Humans.Application/Services/Budget/BudgetService.cs
   src/Humans.Application/Services/Profile/AccountMergeService.cs
   src/Humans.Application/Services/Governance/ApplicationDecisionService.cs
+  src/Humans.Application/Services/Agent/AgentService.cs
+  src/Humans.Application/Services/Events/EventService.cs
+  src/Humans.Application/Services/Issues/IssuesService.cs
+  src/Humans.Application/Services/Expenses/ExpenseReportService.cs
+  src/Humans.Application/Services/Finance/HoldedFinanceService.cs
 -->
 <!-- freshness:flag-on-change
   Contributor list, JSON section names/shapes, or fan-out orchestration may have shifted; per-section table must stay in sync with each contributor's slice.
@@ -64,7 +69,7 @@ change.
        │
        ▼  ContributeForUserAsync(userId)
 ┌──────────────────────────────────────────────────┐
-│  16 section services, each implementing          │
+│  21 section services, each implementing          │
 │  IUserDataContributor:                            │
 │                                                   │
 │    ProfileService            UserService          │
@@ -75,6 +80,9 @@ change.
 │    TicketQueryService        CampaignService      │
 │    CampService               AuditLogService      │
 │    BudgetService             SurveyService        │
+│    AgentService              EventService         │
+│    IssuesService             ExpenseReportService │
+│    HoldedFinanceService                           │
 └──────────────────────────────────────────────────┘
 ```
 
@@ -125,7 +133,9 @@ service has no data for this user are omitted.
 | `VolunteerEventProfiles` | `ShiftSignupService` | Array of per-event profile records (skills, quirks, languages, dietary, allergies, intolerances, medical). |
 | `GeneralAvailability` | `ShiftSignupService` | Array of `{ EventName, AvailableDayOffsets, UpdatedAt }`. |
 | `ShiftTagPreferences` | `ShiftSignupService` | Array of `{ TagName }`. |
+| `Events` | `EventService` | Single object with `{ Favourites: [{ GuideEventId, DayOffset, CreatedAt }], Preference: { ExcludedCategorySlugs, UpdatedAt } }` — the user's event favourites and category-exclusion preference; `Preference` is null when no preference row exists. |
 | `FeedbackReports` | `FeedbackService` | Array of feedback reports with nested `Messages[]`. |
+| `Issues` | `IssuesService` | Array of `{ Title, Description, Category, Section, Status, PageUrl, CreatedAt, ResolvedAt, Comments: [{ Content, IsFromUser, CreatedAt }] }` — issues filed by the user including their comments. |
 | `Notifications` | `NotificationInboxService` | Array of `{ Title, Body, ActionUrl, Priority, Source, CreatedAt, ReadAt, ResolvedAt }`. |
 | `TicketOrders` | `TicketQueryService` | Array of `{ BuyerName, BuyerEmail, TotalAmount, Currency, PaymentStatus, DiscountCode, PurchasedAt }`. |
 | `TicketAttendeeMatches` | `TicketQueryService` | Array of `{ AttendeeName, AttendeeEmail, TicketTypeName, Price, Status }`. |
@@ -135,6 +145,10 @@ service has no data for this user are omitted.
 | `AccountMergeRequests` | `AccountMergeService` | Array of `{ Status, Role, CreatedAt, ResolvedAt }` (Role is "Target" or "Source"). |
 | `AuditLog` | `AuditLogService` | Array of `{ Action, EntityType, OccurredAt, Role }` (Role is "Actor" or "Subject"). |
 | `BudgetAuditLog` | `BudgetService` | Array of `{ EntityType, FieldName, Description, OccurredAt }`. |
+| `AgentConversations` | `AgentService` | Array of `{ Id, StartedAt, LastMessageAt, Locale, MessageCount, Messages: [{ Role, Content, CreatedAt, Model, RefusalReason, HandedOffToFeedbackId }] }` — the user's AI assistant conversations with full message history. |
+| `ExpenseReports` | `ExpenseReportService` | Array of `{ Id, Status, Note, PayeeName, PayeeIban (masked), Total, SubmittedAt, ApprovedAt, CreatedAt, Lines: [{ Id, Description, Amount, LineType, SortOrder, Attachment? }] }` — the user's expense reports including line items and attachment metadata; null when the user has no reports. |
+| `ExpenseAuditLog` | `ExpenseReportService` | Single object `{ MaskedIban, Entries: [{ Action, EntityType, EntityId, Description, OccurredAt }] }` covering all expense-related audit events (submit, endorse, approve, reject, IBAN set/remove/reveal, etc.); null when the user has no expense audit entries. |
+| `HoldedCreditorAccount` | `HoldedFinanceService` | Single object `{ SupplierAccountNum, HoldedContactId, Source }` — the user's Holded creditor account binding; null when no binding exists. |
 | `SurveyResponses` | `SurveyService` | Array of `{ Survey, SubmittedAt, Culture, Answers[] }` where each answer has `{ Question, SelectedLabels, TextValue, RatingValue }`. |
 
 All instants are serialized as invariant ISO-8601 strings (e.g.

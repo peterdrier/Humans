@@ -67,7 +67,7 @@ No retention policy changes; the data lives only as long as the user account doe
 - Fields, in order:
   - **Dietary preference** — required radio group: `Omnivore`, `Vegetarian`, `Vegan`, `Pescatarian`.
   - **Allergies** — optional multi-select chips: `Peanut`, `Tree nut`, `Dairy`, `Egg`, `Shellfish`, `Wheat/Gluten`, `Soy`, `Sesame`, `Other`. Choosing `Other` reveals a single-line text input (`AllergyOtherText`, max 500 chars — matches existing DB length).
-  - **Intolerances** — optional multi-select chips: `Lactose`, `Gluten`, `Histamine`, `FODMAP`, `Other`. Choosing `Other` reveals a single-line text input (`IntoleranceOtherText`, max 500 chars — matches existing DB length).
+  - **Intolerances** — optional multi-select chips: `Lactose`, `Gluten`, `Histamine`, `Other`. Choosing `Other` reveals a single-line text input (`IntoleranceOtherText`, max 500 chars — matches existing DB length).
   - **Medical conditions** — optional free-text textarea (max 4000 chars, the existing DB length). Hint copy: "Only visible to you and the No-Info Admins. Anything coordinators should know — diabetes, epilepsy, severe injuries, etc."
 - All values persist to `Profile` columns of the same name (moved from `VolunteerEventProfile`). No new columns.
 - POST validates: dietary preference must be one of the four enum values; "Other" text fields required iff `Other` is selected in their parent chip; medical conditions ≤ 4000 chars; allergy/intolerance items must be from the allowed set or `Other`.

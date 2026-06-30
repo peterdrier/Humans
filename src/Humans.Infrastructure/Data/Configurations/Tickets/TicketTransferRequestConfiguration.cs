@@ -40,9 +40,10 @@ public sealed class TicketTransferRequestConfiguration : IEntityTypeConfiguratio
             .HasConversion<string>()
             .HasMaxLength(32);
 
-        // Dormant vendor-writeback columns — no longer used by any code; kept mapped
-        // so the columns are not dropped in this PR. A follow-up PR drops them after
-        // prod soak (memory/architecture/no-drops-until-prod-verified.md).
+        // Vendor-writeback columns written by the automated transfer path
+        // (ProcessTransferAsync / RetryReissueAsync) and read by the admin queue/detail.
+        // VendorStepsJson is the one genuinely dormant column — unread, dropped in a
+        // follow-up PR after prod soak (memory/architecture/no-drops-until-prod-verified.md).
         builder.Property(x => x.VendorResult)
             .IsRequired()
             .HasConversion<string>()
@@ -50,6 +51,7 @@ public sealed class TicketTransferRequestConfiguration : IEntityTypeConfiguratio
 
         builder.Property(x => x.VendorMessage).HasMaxLength(2000);
         builder.Property(x => x.NewVendorTicketId).HasMaxLength(64);
+        builder.Property(x => x.VendorHoldId).HasMaxLength(64);
 
         builder.Property(x => x.VendorStepsJson)
             .IsRequired()

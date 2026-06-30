@@ -60,7 +60,7 @@ public class LoggerTimingExtensionsTests
         var snapshot = registry.GetTimings()
             .FirstOrDefault(t => string.Equals(t.Key, "RepeatClass.RepeatOp", StringComparison.Ordinal));
         snapshot.Should().NotBeNull();
-        snapshot!.Count.Should().BeGreaterThanOrEqualTo(2);
+        snapshot.Count.Should().BeGreaterThanOrEqualTo(2);
     }
 
     // ── Eat increments swallowed counter ───────────────────────────────────

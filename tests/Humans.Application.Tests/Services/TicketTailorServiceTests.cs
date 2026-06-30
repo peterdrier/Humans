@@ -6,6 +6,7 @@ using Humans.Infrastructure.Services;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using NodaTime;
 
 namespace Humans.Application.Tests.Services;
 
@@ -321,6 +322,34 @@ public class TicketTailorServiceTests
         summary.TotalCapacity.Should().Be(2000);
         summary.TicketsSold.Should().Be(96);
         summary.TicketsRemaining.Should().Be(1904);
+    }
+
+    [HumansFact]
+    public async Task GetCheckInsAsync_NetsQuantity_OmitsCheckedOutTickets()
+    {
+        // TicketTailor /check_ins returns checkout/undo records (quantity = -1)
+        // alongside check-ins (quantity = +1). A ticket whose records net to zero
+        // (checked in then out), or a bare checkout, must not be reported onsite.
+        var handler = new MockHttpHandler();
+        handler.EnqueueResponse(HttpStatusCode.OK, new
+        {
+            data = new[]
+            {
+                new { id = "ci_1", issued_ticket_id = "it_in", check_in_at = 1751983320L, created_at = 1751983320L, quantity = 1 },
+                new { id = "ci_2", issued_ticket_id = "it_out", check_in_at = 1751983300L, created_at = 1751983300L, quantity = 1 },
+                new { id = "ci_3", issued_ticket_id = "it_out", check_in_at = 1751990000L, created_at = 1751990000L, quantity = -1 },
+                new { id = "ci_4", issued_ticket_id = "it_undo", check_in_at = 1751990500L, created_at = 1751990500L, quantity = -1 },
+            },
+            links = new { next = (string?)null }
+        });
+
+        var service = CreateService(handler);
+        var checkIns = await service.GetCheckInsAsync(null, "ev_test", Xunit.TestContext.Current.CancellationToken);
+
+        checkIns.Should().ContainSingle(c => c.VendorTicketId == "it_in");
+        checkIns.Should().NotContain(c => c.VendorTicketId == "it_out");
+        checkIns.Should().NotContain(c => c.VendorTicketId == "it_undo");
+        checkIns.Single().CheckedInAt.Should().Be(Instant.FromUnixTimeSeconds(1751983320L));
     }
 }
 

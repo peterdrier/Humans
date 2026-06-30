@@ -135,7 +135,7 @@ The calendar is intentionally open: no resource-based authorization gates edit/d
 
 **Owning services:** `CalendarService` (keyed inner write/read service), `CachingCalendarService` (decorator exposing `ICalendarService` and `ICalendarServiceRead`)
 **Owned tables:** `calendar_events`, `calendar_event_exceptions`
-**Status:** (A) Migrated (peterdrier/Humans PR for issue nobodies-collective/Humans#569, 2026-04-23, design-rules §15i). Caching decorator added cache-migration plan task **T-08** (2026-05-16).
+**Status:** (A) Migrated (peterdrier/Humans PR for issue nobodies-collective/Humans#569, 2026-04-23, design-rules §15i). Caching decorator added 2026-05-16.
 
 - Service lives in `Humans.Application/Services/Calendar/CalendarService.cs` and never imports `Microsoft.EntityFrameworkCore` (enforced by the project's reference graph, design-rules §2b).
 - `ICalendarRepository` (impl in `Humans.Infrastructure/Repositories/Calendar/CalendarRepository.cs`) is the only code path that touches `calendar_events` / `calendar_event_exceptions` via `DbContext`.

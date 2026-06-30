@@ -1,4 +1,3 @@
-using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Budget;
 using Humans.Application.Interfaces.Expenses;
 using Humans.Application.Interfaces.Finance;
@@ -12,7 +11,6 @@ using Humans.Web.Authorization.Requirements;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Options;
 using NodaTime;
 
 namespace Humans.Web.Controllers;

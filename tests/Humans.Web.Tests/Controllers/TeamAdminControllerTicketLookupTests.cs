@@ -3,7 +3,6 @@ using Humans.Application;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Controllers;
-using Humans.Web.Models;
 using NodaTime;
 
 namespace Humans.Web.Tests.Controllers;

@@ -351,7 +351,7 @@ public interface IShiftManagementService : IApplicationService
 
     /// <summary>
     /// Returns the distinct user ids of volunteers on-site for the given event
-    /// day — those with a Pending/Confirmed signup on a <see cref="Shift"/> whose
+    /// day — those with a Confirmed signup on a <see cref="Shift"/> whose
     /// <see cref="Shift.DayOffset"/> matches. Service-layer read for the Cantina
     /// roster (feature #36) so it never reaches into the Shifts repository.
     /// </summary>

@@ -14,6 +14,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 
 namespace Humans.Application.Tests.Services.Tickets;
 
@@ -36,6 +37,7 @@ public sealed class TicketTransferServiceTests
 
     private readonly ITicketTransferRepository _transferRepo = Substitute.For<ITicketTransferRepository>();
     private readonly ITicketRepository _ticketRepo = Substitute.For<ITicketRepository>();
+    private readonly ITicketVendorService _vendor = Substitute.For<ITicketVendorService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
@@ -47,17 +49,7 @@ public sealed class TicketTransferServiceTests
 
     public TicketTransferServiceTests()
     {
-        _service = new TicketTransferService(
-            _transferRepo,
-            _ticketRepo,
-            _userService,
-            _userEmailService,
-            _emailService,
-            _emailMessages,
-            _auditLog,
-            _cacheInvalidator,
-            _clock,
-            NullLogger<TicketTransferService>.Instance);
+        _service = CreateService();
 
         // Receiver: complete profile + primary email.
         _userService.GetUserInfoAsync(_receiverId, Arg.Any<CancellationToken>())
@@ -236,6 +228,19 @@ public sealed class TicketTransferServiceTests
         await act.Should().ThrowAsync<InvalidOperationException>();
     }
 
+    [HumansFact]
+    public async Task Cancel_Throws_WhenVoidAlreadyCommitted()
+    {
+        var req = MakePending(Guid.NewGuid());
+        req.VendorResult = TicketTransferVendorResult.VoidSucceededIssueFailed;
+        _transferRepo.GetByIdAsync(req.Id, Arg.Any<CancellationToken>()).Returns(req);
+
+        // The original ticket is already voided — the Sender must not cancel it away.
+        var act = () => _service.CancelAsync(req.Id, _senderId, Xunit.TestContext.Current.CancellationToken);
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        req.Status.Should().Be(TicketTransferStatus.Pending);
+    }
+
     // ── ApproveAsync (mark successful) ──────────────────────────────────────────
 
     [HumansFact]
@@ -270,6 +275,262 @@ public sealed class TicketTransferServiceTests
         _cacheInvalidator.Received(1).InvalidateAfterTransfer(_senderId, _receiverId);
     }
 
+    // ── ProcessTransferAsync (automated void+reissue) ───────────────────────────
+
+    [HumansFact]
+    public async Task Process_VoidToHoldThenReissue_KeepsOriginalPrice_MarksApproved()
+    {
+        var svc = CreateService();
+        var req = MakePending(Guid.NewGuid());
+        _transferRepo.GetByIdAsync(req.Id, Arg.Any<CancellationToken>()).Returns(req);
+        StubAttendee(TicketAttendeeStatus.Valid, _senderId);
+
+        _vendor.VoidIssuedTicketAsync("tkt_original", true, Arg.Any<CancellationToken>())
+            .Returns(new VoidIssuedTicketResult("tkt_original", "hold_123"));
+        _vendor.IssueTicketAsync(Arg.Any<IssueTicketRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new VendorTicketDto("tt_new", null, "Alice Smith", "alice@example.com", "Full Week", 0m, "valid"));
+
+        await svc.ProcessTransferAsync(req.Id, _adminId, "go", Xunit.TestContext.Current.CancellationToken);
+
+        // Reissue went through the hold (same ticket class), never fresh inventory — and uses a
+        // detached token (CancellationToken.None) so an aborted request can't strand the void.
+        await _vendor.Received(1).IssueTicketAsync(
+            Arg.Is<IssueTicketRequest>(r => r.HoldId == "hold_123" && r.EventId == null
+                && r.FullName == "Alice Smith" && r.Email == "alice@example.com"),
+            CancellationToken.None);
+
+        // Old row Void + new Valid row written together (also detached); new row keeps the ORIGINAL €200 price.
+        await _ticketRepo.Received(1).UpsertAttendeesAsync(
+            Arg.Is<IReadOnlyList<TicketAttendee>>(list =>
+                list.Any(a => a.VendorTicketId == "tt_new" && a.Status == TicketAttendeeStatus.Valid
+                    && a.Price == 200m && a.MatchedUserId == _receiverId)
+                && list.Any(a => a.VendorTicketId == "tkt_original" && a.Status == TicketAttendeeStatus.Void)),
+            CancellationToken.None);
+
+        req.Status.Should().Be(TicketTransferStatus.Approved);
+        req.VendorResult.Should().Be(TicketTransferVendorResult.Succeeded);
+        req.NewVendorTicketId.Should().Be("tt_new");
+        _emailMessages.Received(2).TicketTransferDecision(
+            Arg.Any<string>(), Arg.Any<string>(), true, Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<string?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task Process_VoidFails_StaysPending_NoLocalWrite_NoEmails()
+    {
+        var svc = CreateService();
+        var req = MakePending(Guid.NewGuid());
+        _transferRepo.GetByIdAsync(req.Id, Arg.Any<CancellationToken>()).Returns(req);
+        StubAttendee(TicketAttendeeStatus.Valid, _senderId);
+
+        _vendor.VoidIssuedTicketAsync(Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new TicketVendorWriteException("sold out", TicketVendorFailureKind.Validation));
+
+        var act = () => svc.ProcessTransferAsync(req.Id, _adminId, null, Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        req.Status.Should().Be(TicketTransferStatus.Pending);
+        req.VendorResult.Should().Be(TicketTransferVendorResult.Failed);
+        // Audited under the dedicated auto-failed action, NOT TicketTransferApproved.
+        await _auditLog.Received(1).LogAsync(
+            AuditAction.TicketTransferAutoFailed, Arg.Any<string>(), req.Id, Arg.Any<string>(),
+            _adminId, _senderId, Arg.Any<string>());
+        await _ticketRepo.DidNotReceive().UpsertAttendeesAsync(
+            Arg.Any<IReadOnlyList<TicketAttendee>>(), Arg.Any<CancellationToken>());
+        _emailMessages.DidNotReceive().TicketTransferDecision(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<string?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task Process_VoidOkButIssueFails_VoidsOriginalLocally_StaysPending()
+    {
+        var svc = CreateService();
+        var req = MakePending(Guid.NewGuid());
+        _transferRepo.GetByIdAsync(req.Id, Arg.Any<CancellationToken>()).Returns(req);
+        StubAttendee(TicketAttendeeStatus.Valid, _senderId);
+
+        _vendor.VoidIssuedTicketAsync("tkt_original", true, Arg.Any<CancellationToken>())
+            .Returns(new VoidIssuedTicketResult("tkt_original", "hold_123"));
+        _vendor.IssueTicketAsync(Arg.Any<IssueTicketRequest>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new TicketVendorWriteException("boom", TicketVendorFailureKind.Transient));
+
+        var act = () => svc.ProcessTransferAsync(req.Id, _adminId, null, Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        req.Status.Should().Be(TicketTransferStatus.Pending);
+        req.VendorResult.Should().Be(TicketTransferVendorResult.VoidSucceededIssueFailed);
+        req.VendorMessage.Should().Contain("hold_123");
+        req.VendorHoldId.Should().Be("hold_123"); // captured for one-click retry
+        // Original mirrored to Void locally (seat already gone at the vendor); hold retained.
+        await _ticketRepo.Received(1).UpsertAttendeesAsync(
+            Arg.Is<IReadOnlyList<TicketAttendee>>(list =>
+                list.Count == 1 && list[0].VendorTicketId == "tkt_original"
+                && list[0].Status == TicketAttendeeStatus.Void),
+            Arg.Any<CancellationToken>());
+        _emailMessages.DidNotReceive().TicketTransferDecision(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<string?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task Process_VoidOk_NonVendorIssueException_TreatedAsPartial()
+    {
+        // A non-TicketVendorWriteException after the void commits (e.g. HttpClient timeout)
+        // must NOT escape — the void already happened, so it has to land in the partial path.
+        var svc = CreateService();
+        var req = MakePending(Guid.NewGuid());
+        _transferRepo.GetByIdAsync(req.Id, Arg.Any<CancellationToken>()).Returns(req);
+        StubAttendee(TicketAttendeeStatus.Valid, _senderId);
+
+        _vendor.VoidIssuedTicketAsync("tkt_original", true, Arg.Any<CancellationToken>())
+            .Returns(new VoidIssuedTicketResult("tkt_original", "hold_123"));
+        _vendor.IssueTicketAsync(Arg.Any<IssueTicketRequest>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new TaskCanceledException("timeout"));
+
+        var act = () => svc.ProcessTransferAsync(req.Id, _adminId, null, Xunit.TestContext.Current.CancellationToken);
+
+        // Surfaces as the actionable InvalidOperationException, not the raw TaskCanceledException.
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        req.VendorResult.Should().Be(TicketTransferVendorResult.VoidSucceededIssueFailed);
+        req.VendorMessage.Should().Contain("hold_123");
+        req.VendorHoldId.Should().Be("hold_123");
+        await _ticketRepo.Received(1).UpsertAttendeesAsync(
+            Arg.Is<IReadOnlyList<TicketAttendee>>(list =>
+                list.Count == 1 && list[0].VendorTicketId == "tkt_original"
+                && list[0].Status == TicketAttendeeStatus.Void),
+            Arg.Any<CancellationToken>());
+    }
+
+    // ── RetryReissueAsync (one-click recovery from a partial void) ──────────────
+
+    [HumansFact]
+    public async Task RetryReissue_FromHold_IssuesNewTicket_MarksApproved()
+    {
+        var req = MakePending(Guid.NewGuid());
+        req.VendorResult = TicketTransferVendorResult.VoidSucceededIssueFailed;
+        req.VendorHoldId = "hold_123";
+        _transferRepo.GetByIdAsync(req.Id, Arg.Any<CancellationToken>()).Returns(req);
+        // Original attendee was already voided locally during the partial failure.
+        _ticketRepo.GetAttendeeByIdAsync(_attendeeId, Arg.Any<CancellationToken>())
+            .Returns(MakeAttendee(_attendeeId, _orderId, _senderId, TicketAttendeeStatus.Void));
+        _vendor.IssueTicketAsync(Arg.Any<IssueTicketRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new VendorTicketDto("tt_retry", null, "Alice Smith", "alice@example.com", "Full Week", 0m, "valid"));
+
+        await _service.RetryReissueAsync(req.Id, _adminId, "go", Xunit.TestContext.Current.CancellationToken);
+
+        // Reissued from the recorded hold — same ticket type, no second void.
+        await _vendor.Received(1).IssueTicketAsync(
+            Arg.Is<IssueTicketRequest>(r => r.HoldId == "hold_123" && r.EventId == null
+                && r.FullName == "Alice Smith"),
+            Arg.Any<CancellationToken>());
+        await _vendor.DidNotReceive().VoidIssuedTicketAsync(
+            Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
+        // Only the new Valid row is written (original is already Void), keeping the ORIGINAL €200 price.
+        await _ticketRepo.Received(1).UpsertAttendeesAsync(
+            Arg.Is<IReadOnlyList<TicketAttendee>>(list =>
+                list.Count == 1 && list[0].VendorTicketId == "tt_retry"
+                && list[0].Status == TicketAttendeeStatus.Valid && list[0].Price == 200m
+                && list[0].MatchedUserId == _receiverId),
+            CancellationToken.None);
+        req.Status.Should().Be(TicketTransferStatus.Approved);
+        req.VendorResult.Should().Be(TicketTransferVendorResult.Succeeded);
+        req.NewVendorTicketId.Should().Be("tt_retry");
+        req.VendorHoldId.Should().BeNull(); // consumed
+        _emailMessages.Received(2).TicketTransferDecision(
+            Arg.Any<string>(), Arg.Any<string>(), true, Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<string?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task RetryReissue_StillFails_StaysPartial_KeepsHold_NoEmails()
+    {
+        var req = MakePending(Guid.NewGuid());
+        req.VendorResult = TicketTransferVendorResult.VoidSucceededIssueFailed;
+        req.VendorHoldId = "hold_123";
+        _transferRepo.GetByIdAsync(req.Id, Arg.Any<CancellationToken>()).Returns(req);
+        _ticketRepo.GetAttendeeByIdAsync(_attendeeId, Arg.Any<CancellationToken>())
+            .Returns(MakeAttendee(_attendeeId, _orderId, _senderId, TicketAttendeeStatus.Void));
+        _vendor.IssueTicketAsync(Arg.Any<IssueTicketRequest>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new TicketVendorWriteException("still down", TicketVendorFailureKind.Transient));
+
+        var act = () => _service.RetryReissueAsync(req.Id, _adminId, null, Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        req.Status.Should().Be(TicketTransferStatus.Pending);
+        req.VendorResult.Should().Be(TicketTransferVendorResult.VoidSucceededIssueFailed);
+        req.VendorHoldId.Should().Be("hold_123"); // retained so it can be retried again
+        _emailMessages.DidNotReceive().TicketTransferDecision(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<string?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task RetryReissue_Throws_WhenNotPartial()
+    {
+        var req = MakePending(Guid.NewGuid()); // VendorResult NotAttempted
+        _transferRepo.GetByIdAsync(req.Id, Arg.Any<CancellationToken>()).Returns(req);
+
+        var act = () => _service.RetryReissueAsync(req.Id, _adminId, null, Xunit.TestContext.Current.CancellationToken);
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        await _vendor.DidNotReceive().IssueTicketAsync(
+            Arg.Any<IssueTicketRequest>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task RetryReissue_Throws_WhenNoHoldRecorded()
+    {
+        var req = MakePending(Guid.NewGuid());
+        req.VendorResult = TicketTransferVendorResult.VoidSucceededIssueFailed;
+        req.VendorHoldId = null;
+        _transferRepo.GetByIdAsync(req.Id, Arg.Any<CancellationToken>()).Returns(req);
+
+        var act = () => _service.RetryReissueAsync(req.Id, _adminId, null, Xunit.TestContext.Current.CancellationToken);
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        await _vendor.DidNotReceive().IssueTicketAsync(
+            Arg.Any<IssueTicketRequest>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task Process_Throws_WhenAlreadyPartiallyProcessed_NoSecondVoid()
+    {
+        // Re-processing a VoidSucceededIssueFailed request would void the already-voided ticket
+        // again and overwrite the partial state — guard against it.
+        var svc = CreateService();
+        var req = MakePending(Guid.NewGuid());
+        req.VendorResult = TicketTransferVendorResult.VoidSucceededIssueFailed;
+        _transferRepo.GetByIdAsync(req.Id, Arg.Any<CancellationToken>()).Returns(req);
+
+        var act = () => svc.ProcessTransferAsync(req.Id, _adminId, null, Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        await _vendor.DidNotReceive().VoidIssuedTicketAsync(
+            Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
+        req.VendorResult.Should().Be(TicketTransferVendorResult.VoidSucceededIssueFailed); // not overwritten
+    }
+
+    [HumansFact]
+    public async Task Process_BoundsVendorMessage_WhenVendorErrorBodyIsHuge()
+    {
+        // VendorMessage is capped at 2000 chars; a huge TT error body must not blow the column
+        // (which would make the diagnostic UpdateAsync throw and lose the partial record).
+        var svc = CreateService();
+        var req = MakePending(Guid.NewGuid());
+        _transferRepo.GetByIdAsync(req.Id, Arg.Any<CancellationToken>()).Returns(req);
+        StubAttendee(TicketAttendeeStatus.Valid, _senderId);
+
+        _vendor.VoidIssuedTicketAsync("tkt_original", true, Arg.Any<CancellationToken>())
+            .Returns(new VoidIssuedTicketResult("tkt_original", "hold_123"));
+        _vendor.IssueTicketAsync(Arg.Any<IssueTicketRequest>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new TicketVendorWriteException(new string('x', 5000), TicketVendorFailureKind.Validation));
+
+        var act = () => svc.ProcessTransferAsync(req.Id, _adminId, null, Xunit.TestContext.Current.CancellationToken);
+        await act.Should().ThrowAsync<InvalidOperationException>();
+
+        req.VendorResult.Should().Be(TicketTransferVendorResult.VoidSucceededIssueFailed);
+        req.VendorMessage!.Length.Should().BeLessThanOrEqualTo(2000);
+    }
+
     // ── RejectAsync (cancel with reason) ────────────────────────────────────────
 
     [HumansFact]
@@ -298,7 +559,34 @@ public sealed class TicketTransferServiceTests
             "duplicate request", Arg.Any<string?>());
     }
 
+    [HumansFact]
+    public async Task Reject_Throws_WhenVoidAlreadyCommitted()
+    {
+        var req = MakePending(Guid.NewGuid());
+        req.VendorResult = TicketTransferVendorResult.VoidSucceededIssueFailed;
+        _transferRepo.GetByIdAsync(req.Id, Arg.Any<CancellationToken>()).Returns(req);
+
+        // Already voided at the vendor — admin can't reject it away; must finish + mark successful.
+        var act = () => _service.RejectAsync(req.Id, _adminId, "no longer needed", Xunit.TestContext.Current.CancellationToken);
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        req.Status.Should().Be(TicketTransferStatus.Pending);
+    }
+
     // ── helpers ─────────────────────────────────────────────────────────────────
+
+    private TicketTransferService CreateService() =>
+        new(
+            _transferRepo,
+            _ticketRepo,
+            _vendor,
+            _userService,
+            _userEmailService,
+            _emailService,
+            _emailMessages,
+            _auditLog,
+            _cacheInvalidator,
+            _clock,
+            NullLogger<TicketTransferService>.Instance);
 
     private void StubAttendee(TicketAttendeeStatus status, Guid attendeeMatchedUserId)
     {

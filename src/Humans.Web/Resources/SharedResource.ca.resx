@@ -6535,7 +6535,6 @@
   <data name="Profile_DietaryMedical_Allergy_Soy" xml:space="preserve"><value>Soja</value></data>
   <data name="Profile_DietaryMedical_Allergy_Treenut" xml:space="preserve"><value>Fruits secs</value></data>
   <data name="Profile_DietaryMedical_Allergy_WheatGluten" xml:space="preserve"><value>Blat/Gluten</value></data>
-  <data name="Profile_DietaryMedical_Intolerance_FODMAP" xml:space="preserve"><value>FODMAP</value></data>
   <data name="Profile_DietaryMedical_Intolerance_Gluten" xml:space="preserve"><value>Gluten</value></data>
   <data name="Profile_DietaryMedical_Intolerance_Histamine" xml:space="preserve"><value>Histamina</value></data>
   <data name="Profile_DietaryMedical_Intolerance_Lactose" xml:space="preserve"><value>Lactosa</value></data>

@@ -254,7 +254,7 @@ public class HoldedFinanceServiceTests
 
         // The last saved state must be Error.
         savedState.Should().NotBeNull();
-        savedState!.SyncStatus.Should().Be(HoldedSyncStatus.Error);
+        savedState.SyncStatus.Should().Be(HoldedSyncStatus.Error);
         savedState.LastError.Should().NotBeNullOrEmpty();
     }
 
@@ -399,7 +399,7 @@ public class HoldedFinanceServiceTests
         var ledger = await MakeService().GetCreditorLedgerAsync(40000004, Xunit.TestContext.Current.CancellationToken);
 
         ledger.Should().NotBeNull();
-        ledger!.Balance.Should().Be(-50m);
+        ledger.Balance.Should().Be(-50m);
         ledger.OwedToMember.Should().Be(50m);
         ledger.Lines.Should().ContainSingle();
     }
