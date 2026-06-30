@@ -13,7 +13,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Humans.Infrastructure.Migrations
 {
     [DbContext(typeof(HumansDbContext))]
-    [Migration("20260627164718_AddTicketAttendeeCheckedInAt")]
+    [Migration("20260630065903_AddTicketAttendeeCheckedInAt")]
     partial class AddTicketAttendeeCheckedInAt
     {
         /// <inheritdoc />
@@ -5188,6 +5188,10 @@ namespace Humans.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)");
+
+                    b.Property<string>("VendorHoldId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
 
                     b.Property<string>("VendorMessage")
                         .HasMaxLength(2000)
