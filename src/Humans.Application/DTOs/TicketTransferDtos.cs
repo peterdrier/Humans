@@ -30,6 +30,8 @@ public sealed record TicketTransferRowDto(
     string ReceiverEmail,
     string SenderReason,
     TicketTransferStatus Status,
+    TicketTransferVendorResult VendorResult,
+    string? VendorMessage,
     Guid? DecidedByUserId,
     string? DecidedByDisplayName,
     string? AdminNotes,

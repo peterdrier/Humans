@@ -49,15 +49,30 @@ public class TicketTransferRequest
     /// <summary>Lifecycle state. See <see cref="TicketTransferStatus"/>.</summary>
     public TicketTransferStatus Status { get; set; } = TicketTransferStatus.Pending;
 
-    // ── Dormant vendor-writeback columns ────────────────────────────────────────
-    // The automated TicketTailor void+reissue engine was removed when transfers
-    // moved to manual processing. These columns are no longer read or written by
-    // any code; they linger until a follow-up PR drops them after prod soak
-    // (memory/architecture/no-drops-until-prod-verified.md). Do not add new readers.
+    // ── Vendor-writeback outcome ─────────────────────────────────────────────────
+    // Written by TicketTransferService.ProcessTransferAsync (the automated void+reissue)
+    // and read by the admin queue/detail. NotAttempted for manual ("mark successful")
+    // transfers.
 
+    /// <summary>Outcome of the automated TT void+reissue. See <see cref="TicketTransferVendorResult"/>.</summary>
     public TicketTransferVendorResult VendorResult { get; set; } = TicketTransferVendorResult.NotAttempted;
+
+    /// <summary>Human-readable vendor diagnostic (hold id on success; failure detail otherwise).</summary>
     public string? VendorMessage { get; set; }
+
+    /// <summary>The reissued TicketTailor ticket id on a successful automated transfer.</summary>
     public string? NewVendorTicketId { get; set; }
+
+    /// <summary>
+    /// The TicketTailor hold id captured when a void-to-hold succeeded but the reissue failed
+    /// (<see cref="TicketTransferVendorResult.VoidSucceededIssueFailed"/>). Lets an admin retry the
+    /// reissue straight from the held seat — no manual dashboard step. Null otherwise.
+    /// </summary>
+    public string? VendorHoldId { get; set; }
+
+    // Dormant: the removed vendor-step timeline's storage. The lean automated engine records
+    // its outcome in the columns above + the audit log instead; VendorStepsJson is unread and
+    // drops in a follow-up PR after prod soak (memory/architecture/no-drops-until-prod-verified.md).
     public string VendorStepsJson { get; set; } = "[]";
 
     /// <summary>TicketAdmin who decided (null while Pending or if Cancelled by the Sender).</summary>

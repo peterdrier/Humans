@@ -80,6 +80,23 @@ public class CantinaRosterServiceTests
         IsActive = true
     };
 
+    /// <summary>
+    /// Active event with an explicit build→strike offset range so the
+    /// arrival-day scan (<c>BuildFirstConfirmedOffsetByUserAsync</c>) covers
+    /// days outside the visible week. The default <see cref="ActiveEvent"/>
+    /// leaves both offsets at 0, which would scan only day 0.
+    /// </summary>
+    private static EventSettings ActiveEventWithRange(int buildStart, int strikeEnd) => new()
+    {
+        Id = Guid.NewGuid(),
+        EventName = EventName,
+        TimeZoneId = "Europe/Madrid",
+        GateOpeningDate = GateOpening,
+        IsActive = true,
+        BuildStartOffset = buildStart,
+        StrikeEndOffset = strikeEnd,
+    };
+
     [HumansFact]
     public async Task GetWeeklyRoster_NoActiveEventSettings_ReturnsDtoWithNullDatesAndNoPeople()
     {
@@ -403,6 +420,114 @@ public class CantinaRosterServiceTests
             GateOpening.PlusDays(3), // Thu
             GateOpening.PlusDays(4), // Fri
             GateOpening.PlusDays(6)); // Sun
+    }
+
+    [HumansFact]
+    public async Task GetWeeklyRoster_FeedsHumanDayBeforeFirstConfirmedShift()
+    {
+        // Human's only confirmed shift is Wednesday (offset 2). They have no
+        // signup on any visible-week day other than via that shift, so the
+        // roster must feed them the day before — Tuesday (offset 1) — as their
+        // arrival day, pulling them into the cohort even though they were not
+        // returned for any visible-week load except day 2.
+        var ev = ActiveEventWithRange(buildStart: -2, strikeEnd: 8);
+        _shiftMgmt.GetActiveAsync().Returns(ev);
+
+        var id = Guid.NewGuid();
+        _shiftMgmt.GetOnSiteUserIdsForDayAsync(ev.Id, 2, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<Guid>>(new[] { id }));
+        SetupHumans(Human(id, "Ash"));
+
+        var result = await _service.GetWeeklyRosterAsync(0, Xunit.TestContext.Current.CancellationToken);
+
+        var person = result.People.Single(p => p.UserId == id);
+        // Arrival = day before the first confirmed shift (offset 2 → offset 1).
+        person.ArrivesOn.Should().Be(GateOpening.PlusDays(1));
+        // The arrival day is fed in as a real on-site day, so it is NOT in
+        // NoShift (NoShift is the complement of on-site days). The human is
+        // "present, no shift" on the arrival day in the sense that they have no
+        // confirmed signup there — but the day still counts as on-site for the
+        // cohort, which is what pulls an otherwise arrival-only human into the
+        // roster. Their only confirmed-shift day (offset 2) is likewise on-site.
+        person.NoShift.Should().NotContain(GateOpening.PlusDays(1)); // arrival is on-site
+        person.NoShift.Should().NotContain(GateOpening.PlusDays(2)); // confirmed shift is on-site
+        // The weekly per-day strip counts the arrival person on Tuesday (offset 1),
+        // matching what the daily drill-down will show (Task 2.4).
+        result.Days[1].TotalOnSite.Should().Be(1);
+    }
+
+    [HumansFact]
+    public async Task GetWeeklyRoster_ArrivalOnlyHuman_PulledIntoWeek()
+    {
+        // Human's ONLY confirmed shift is offset 7 (next week's first day).
+        // Viewing week 0 (offsets 0..6), their arrival = offset 6, which IS in
+        // this week. They have NO shift in offsets 0..6 — the arrival day alone
+        // pulls them into the cohort.
+        var ev = ActiveEventWithRange(buildStart: -2, strikeEnd: 8);
+        _shiftMgmt.GetActiveAsync().Returns(ev);
+
+        var id = Guid.NewGuid();
+        _shiftMgmt.GetOnSiteUserIdsForDayAsync(ev.Id, 7, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<Guid>>(new[] { id }));
+        SetupHumans(Human(id, "Bo"));
+
+        var result = await _service.GetWeeklyRosterAsync(0, Xunit.TestContext.Current.CancellationToken);
+
+        result.People.Should().ContainSingle(p => p.UserId == id);
+        var person = result.People.Single(p => p.UserId == id);
+        person.ArrivesOn.Should().Be(GateOpening.PlusDays(6));
+        result.TotalUniqueOnSite.Should().Be(1);
+        result.Days[6].TotalOnSite.Should().Be(1);
+    }
+
+    [HumansFact]
+    public async Task GetWeeklyRoster_ArrivalDayBeforeEvent_NotClamped()
+    {
+        // Human's first confirmed shift is offset 0 (gate opening). Arrival =
+        // offset -1. Viewing the PREVIOUS week (offsets -7..-1); offset -1 is
+        // the last day of that window (index 6). The pre-event/negative arrival
+        // day must NOT be clamped — the human must appear with ArrivesOn at -1.
+        var ev = ActiveEventWithRange(buildStart: -7, strikeEnd: 2);
+        _shiftMgmt.GetActiveAsync().Returns(ev);
+
+        var id = Guid.NewGuid();
+        _shiftMgmt.GetOnSiteUserIdsForDayAsync(ev.Id, 0, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<Guid>>(new[] { id }));
+        SetupHumans(Human(id, "Cy"));
+
+        var result = await _service.GetWeeklyRosterAsync(-7, Xunit.TestContext.Current.CancellationToken);
+
+        var person = result.People.Single(p => p.UserId == id);
+        person.ArrivesOn.Should().Be(GateOpening.PlusDays(-1));
+        result.Days[6].TotalOnSite.Should().Be(1); // offset -1 is index 6 of the -7..-1 window
+    }
+
+    [HumansFact]
+    public async Task GetWeeklyRoster_FirstShiftInPriorWeek_NoSpuriousArrivalInLaterWeek()
+    {
+        // Guards the GLOBAL-minimum logic. Human has confirmed shifts on offset
+        // 2 (a prior week) AND offset 8 (the viewed week, offsets 7..13).
+        // Their global min is 2 → arrival offset 1, which is NOT in the viewed
+        // week. So viewing week 7, no arrival day must be injected — their
+        // earliest in-week day is the offset-8 shift, and offset 7 (index 0)
+        // must have zero on-site.
+        var ev = ActiveEventWithRange(buildStart: -2, strikeEnd: 14);
+        _shiftMgmt.GetActiveAsync().Returns(ev);
+
+        var id = Guid.NewGuid();
+        _shiftMgmt.GetOnSiteUserIdsForDayAsync(ev.Id, 2, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<Guid>>(new[] { id }));
+        _shiftMgmt.GetOnSiteUserIdsForDayAsync(ev.Id, 8, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<Guid>>(new[] { id }));
+        SetupHumans(Human(id, "Di"));
+
+        var result = await _service.GetWeeklyRosterAsync(7, Xunit.TestContext.Current.CancellationToken);
+
+        var person = result.People.Single(p => p.UserId == id);
+        // ArrivesOn must be the first shift IN this week, not a spurious arrival
+        // day derived from the prior-week global minimum.
+        person.ArrivesOn.Should().Be(GateOpening.PlusDays(8));
+        result.Days[0].TotalOnSite.Should().Be(0); // offset 7 — no shift and no arrival
     }
 
     // ---- helpers ----

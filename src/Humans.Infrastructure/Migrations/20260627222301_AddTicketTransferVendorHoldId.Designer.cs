@@ -3,6 +3,7 @@ using System;
 using Humans.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using NodaTime;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
@@ -12,9 +13,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Humans.Infrastructure.Migrations
 {
     [DbContext(typeof(HumansDbContext))]
-    partial class HumansDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260627222301_AddTicketTransferVendorHoldId")]
+    partial class AddTicketTransferVendorHoldId
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -4935,9 +4938,6 @@ namespace Humans.Infrastructure.Migrations
                     b.Property<string>("Barcode")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
-
-                    b.Property<Instant?>("CheckedInAt")
-                        .HasColumnType("timestamp with time zone");
 
                     b.Property<Guid?>("MatchedUserId")
                         .HasColumnType("uuid");
