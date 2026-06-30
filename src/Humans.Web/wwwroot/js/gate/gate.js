@@ -93,9 +93,17 @@ export function initGate(refs) {
         return hint;
     }
 
-    // A tap anywhere on the result card means "still using this" — push the auto-return back.
-    // One delegated listener (not per-card) so it never accumulates across renders.
-    result.addEventListener('pointerdown', () => { if (resetTimer) startResetTimer(); }, { passive: true });
+    // A tap anywhere on the result card means "still using this" — push the deadline back. We only
+    // reschedule the setTimeout and leave the countdown setInterval running (its tick reads
+    // resetDeadline live and self-corrects), so rapid taps don't rebuild the interval or make the
+    // visible number stutter. One delegated listener (not per-card) so it never accumulates.
+    function bumpReset() {
+        if (!resetTimer) return;
+        resetDeadline = Date.now() + resetMs;
+        clearTimeout(resetTimer);
+        resetTimer = setTimeout(resetToReady, resetMs);
+    }
+    result.addEventListener('pointerdown', bumpReset, { passive: true });
 
     // "Change" abandons the session (re-enter PIN), so require a deliberate second tap.
     initChangeConfirm();
@@ -299,10 +307,15 @@ export function initGate(refs) {
             override.setAttribute('aria-hidden', 'true');
             keypad.reset();
             focusInput();
-            // Cancelled back to the (still-displayed) too-early card — re-arm its auto-return so the
-            // name doesn't linger. (When close() follows a successful submit, render() supersedes this.)
+        }
+
+        // Cancel returns to the card behind the panel — re-arm its auto-return so the guest's name
+        // doesn't linger. Covers the ID-confirm card too (its timer was paused when the panel opened),
+        // and matches on any card carrying a verdict (never the Ready card, which has no data-kind).
+        function closeAndReArm() {
+            close();
             const current = result.firstElementChild;
-            if (current && !current.querySelector('.gate-decide')) armAutoReset(current, current.getAttribute('data-kind'));
+            if (current && current.hasAttribute('data-kind')) armAutoReset(current, current.getAttribute('data-kind'));
         }
 
         override.querySelectorAll('[data-supervisor-id]').forEach(btn => {
@@ -315,7 +328,7 @@ export function initGate(refs) {
             });
         });
 
-        if (cancelBtn) cancelBtn.addEventListener('click', close);
+        if (cancelBtn) cancelBtn.addEventListener('click', closeAndReArm);
 
         // Tapped the wrong supervisor — go back to the name list without closing the whole panel.
         if (backBtn) backBtn.addEventListener('click', () => {
