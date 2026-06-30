@@ -29,8 +29,10 @@
 
 <form method="post" asp-action="Claim" style="max-width: 480px;">
     <div class="mb-3">
-        <vc:human-search field-name="userId" scope="Name" allow-email="true"
-                         placeholder="Search your name or email" />
+        @* The kiosk is route-locked away from /api/profiles/search, so the picker resolves
+           names through the Gate-scoped /Gate/Search (names only). *@
+        <vc:human-search field-name="userId" scope="Name" ticket-lookup-url="/Gate/Search"
+                         placeholder="Search your name" />
     </div>
     <button type="submit" class="btn btn-primary btn-lg">Start scanning</button>
 </form>

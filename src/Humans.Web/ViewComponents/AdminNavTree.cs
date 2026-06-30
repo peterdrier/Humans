@@ -27,6 +27,7 @@ public static class AdminNavTree
             new("Campaigns",          "Campaign",       "Index", null, null, "fa-solid fa-bullhorn",    PolicyNames.AdminOnly),
             new("Scanner",            "Scanner",        "Index", null, null, "fa-solid fa-qrcode",      PolicyNames.ScannerAccess),
             new("Gate terminal",      "TicketsGateAdmin", "Index", null, null, "fa-solid fa-key",       PolicyNames.TicketAdminOrAdmin),
+            new("Gate settings",      "Gate",           "Admin", null, null, "fa-solid fa-sliders",     PolicyNames.TicketAdminOrAdmin),
             // Early Entry aggregates providers from Shifts, Teams AND Camps; its
             // consumers are gate ops (scanner door context), so it lives here.
             new("Early entry",        "EarlyEntryRoster", "Index", null, null, "fa-solid fa-door-open", PolicyNames.ShiftDashboardAccess)

@@ -1,8 +1,10 @@
 using Hangfire;
 using Humans.Application.Interfaces.Gate;
 using Humans.Application.Interfaces.Users;
+using Humans.Application.Services.Profiles;
 using Humans.Infrastructure.Jobs;
 using Humans.Web.Authorization;
+using Humans.Web.Extensions;
 using Humans.Web.Infrastructure;
 using Humans.Web.Models.Gate;
 using Microsoft.AspNetCore.Authorization;
@@ -111,11 +113,16 @@ public sealed class GateController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Claim(Guid userId, CancellationToken ct)
     {
+        // The claimant must be a real active member — the id comes from the form, so an
+        // arbitrary/inactive guid must never reach PIN enrolment (attribution integrity).
+        var info = await UserService.GetUserInfoAsync(userId, ct);
+        if (info is not { IsActive: true })
+            return RedirectToAction(nameof(Claim));
+
         // Don't stamp the session yet — resolve the staffer's PIN status and hand off to the
         // keypad (set a new PIN, verify the existing one, or block an un-enrolled supervisor).
         var status = await gate.GetPinStatusAsync(userId, ct);
-        var info = await UserService.GetUserInfoAsync(userId, ct);
-        return View("Pin", GatePinViewModel.ForClaim(userId, info?.BurnerName ?? "Gate staff", status));
+        return View("Pin", GatePinViewModel.ForClaim(userId, info.BurnerName, status));
     }
 
     [HttpPost("ClaimPin")]
@@ -123,10 +130,15 @@ public sealed class GateController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ClaimPin(Guid userId, string? pin, CancellationToken ct)
     {
+        // The claimant must be a real active member — guard before any enrol/verify/stamp, so a
+        // direct POST with an arbitrary or inactive id can't mint a PIN or claim the session.
+        var info = await UserService.GetUserInfoAsync(userId, ct);
+        if (info is not { IsActive: true })
+            return RedirectToAction(nameof(Claim));
+
         // Re-derive the mode from the server (never trust a client-supplied set/verify hint).
         var status = await gate.GetPinStatusAsync(userId, ct);
-        var info = await UserService.GetUserInfoAsync(userId, ct);
-        var name = info?.BurnerName ?? "Gate staff";
+        var name = info.BurnerName;
 
         // A supervisor with no PIN can't self-enrol at the anonymous kiosk — re-show the block.
         if (status is { HasPin: false, IsSupervisor: true })
@@ -135,6 +147,31 @@ public sealed class GateController(
         return status.HasPin
             ? await VerifyClaimAsync(userId, name, status, pin, ct)
             : await SetClaimPinAsync(userId, name, status, pin, ct);
+    }
+
+    // Name-only people search for the claim screen. The route-locked kiosk can't reach
+    // /api/profiles/search (that lock is what keeps the supervisor-override picker a tap-list),
+    // so the claim picker points here instead. Burner names only — no email, no broad fields —
+    // and it stays inside the /Gate route-lock.
+    [HttpGet("Search")]
+    public async Task<IActionResult> Search(string? q, CancellationToken ct)
+    {
+        var query = q?.Trim() ?? string.Empty;
+        if (query.Length < 2)
+            return Json(Array.Empty<object>());
+
+        var matches = await UserService.SearchUsersAsync(query, PersonSearchFields.Name, 10, ct);
+        var rows = matches
+            .OrderByRelevance()
+            .Select(m => new
+            {
+                userId = m.UserId,
+                displayName = m.BurnerName,
+                detail = (string?)null,
+                profilePictureUrl = m.ProfilePictureUrl,
+            })
+            .ToList();
+        return Json(rows);
     }
 
     [HttpGet("Leaderboard")]
@@ -222,17 +259,16 @@ public sealed class GateController(
         Guid userId, string name, GatePinStatus status, string? pin, CancellationToken ct)
     {
         var userKey = UserKey(userId);
-        var deviceKey = DeviceKey();
-        if (ThrottleWait(userKey, deviceKey) is { } wait)
+        if (ThrottleWait(userKey) is { } wait)
             return View("Pin", GatePinViewModel.ForClaim(userId, name, status, $"Too many tries — wait {wait}s"));
 
         if (!await gate.VerifyPinAsync(userId, pin ?? string.Empty, ct))
         {
-            RecordPinFailure(userKey, deviceKey);
+            RecordPinFailure(userKey);
             return View("Pin", GatePinViewModel.ForClaim(userId, name, status, "That PIN didn't match — try again"));
         }
 
-        ResetPinThrottle(userKey, deviceKey);
+        ResetPinThrottle(userKey);
         return StampAndScan(userId);
     }
 
@@ -258,21 +294,23 @@ public sealed class GateController(
     private async Task<(GateScanCardViewModel? ErrorCard, Guid? SupervisorUserId)> AuthorizeSupervisorAsync(
         Guid? supervisorUserId, string? pin, string barcode, bool childWithAdult, CancellationToken ct)
     {
-        var deviceKey = DeviceKey();
-        // Throttle on both the target supervisor and the source device. With no supervisor picked
-        // there's no user bucket, so the device bucket carries the failures on its own.
-        var userKey = supervisorUserId is { } sid ? UserKey(sid) : deviceKey;
+        // No supervisor picked → nothing to authorize, and no per-person bucket to throttle.
+        if (supervisorUserId is not { } supId)
+            return (OverrideErrorCard(barcode, childWithAdult, "Pick the authorizing supervisor, then enter their PIN"), null);
 
-        if (ThrottleWait(userKey, deviceKey) is { } wait)
+        // Throttle per target supervisor only. A shared device/IP key would let one locked-out
+        // attempt (or a fat-fingered PIN) freeze every claim and override at the terminal.
+        var userKey = UserKey(supId);
+        if (ThrottleWait(userKey) is { } wait)
             return (OverrideErrorCard(barcode, childWithAdult, $"Too many PIN attempts — wait {wait}s"), null);
 
-        if (supervisorUserId is { } supId && await gate.AuthorizeOverrideAsync(supId, pin ?? string.Empty, ct))
+        if (await gate.AuthorizeOverrideAsync(supId, pin ?? string.Empty, ct))
         {
-            ResetPinThrottle(userKey, deviceKey);
+            ResetPinThrottle(userKey);
             return (null, supId);
         }
 
-        RecordPinFailure(userKey, deviceKey);
+        RecordPinFailure(userKey);
         return (OverrideErrorCard(barcode, childWithAdult, "Supervisor PIN not accepted — check the name & PIN"), null);
     }
 
@@ -283,30 +321,17 @@ public sealed class GateController(
             // waiver lives on the ID-confirm card, so a failed child auth just re-scans.
             AllowSupervisorOverride: !childWithAdult);
 
-    // ── Throttle helpers (both keys per attempt: target user-id + source device) ──
+    // ── Throttle helpers (keyed on the target user-id only) ──────────────────────
+    // Per-target-user, never per shared device/IP: a 4-digit PIN's brute-force ceiling is
+    // already capped per user (5 / 15 min), and a shared-device key would let one bad run
+    // lock out the whole terminal — the gate-wide-lockout DoS we deliberately avoid.
     private static string UserKey(Guid userId) => $"u:{userId}";
 
-    private string DeviceKey() => $"d:{HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown"}";
+    private int? ThrottleWait(string userKey) => pinThrottle.SecondsUntilRetry(userKey);
 
-    private int? ThrottleWait(string userKey, string deviceKey)
-    {
-        var a = pinThrottle.SecondsUntilRetry(userKey);
-        var b = pinThrottle.SecondsUntilRetry(deviceKey);
-        return a is null && b is null ? null : Math.Max(a ?? 0, b ?? 0);
-    }
+    private void RecordPinFailure(string userKey) => pinThrottle.RecordFailure(userKey);
 
-    private void RecordPinFailure(string userKey, string deviceKey)
-    {
-        pinThrottle.RecordFailure(userKey);
-        if (!string.Equals(deviceKey, userKey, StringComparison.Ordinal))
-            pinThrottle.RecordFailure(deviceKey);
-    }
-
-    private void ResetPinThrottle(string userKey, string deviceKey)
-    {
-        pinThrottle.Reset(userKey);
-        pinThrottle.Reset(deviceKey);
-    }
+    private void ResetPinThrottle(string userKey) => pinThrottle.Reset(userKey);
 
     // ── Lookups ──────────────────────────────────────────────────────────────
     private async Task<IReadOnlyList<GateRosterMember>> BuildRosterAsync(CancellationToken ct)
