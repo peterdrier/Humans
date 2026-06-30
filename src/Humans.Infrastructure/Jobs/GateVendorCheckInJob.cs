@@ -13,12 +13,19 @@ namespace Humans.Infrastructure.Jobs;
 /// after an admit is recorded, so the gate screen never waits on the vendor.
 /// The Gate section's <c>gate_scan_events</c> row is the dedupe authority; this
 /// job only keeps the vendor dashboard / vendor check-in app consistent.
-/// Hangfire retries on failure (the vendor treats repeat check-ins idempotently).
-/// Gated behind <c>Gate:VendorMirrorEnabled</c> (default off) until the
-/// TicketTailor check-in payload is verified against a live API key — a wrong
-/// body 4xx-fails silently and permanently, so the mirror stays off by default.
+/// <para>
+/// <b>No automatic retries</b> (<c>Attempts = 0</c>): TicketTailor check-ins are NOT idempotent —
+/// each POST creates a new check_in record (verified live 2026-06-30) — so retrying after a
+/// silently-succeeded call would double-record. <c>Attempts = 0</c> disables the auto-retry filter
+/// but does NOT make this exactly-once: Hangfire's at-least-once delivery can still re-run an
+/// orphaned job after a worker crash, which would create a duplicate. That's accepted — at this
+/// scale it's rare and a duplicate vendor-dashboard row is cosmetic; <c>gate_scan_events</c> is the
+/// authority. A transient failure simply loses one mirror.
+/// </para>
+/// Gated behind <c>Gate:VendorMirrorEnabled</c> (default off). NB the vendor API key must have
+/// Event-manager (or Admin) scope — an Order-manager key 403s on <c>/v1/check_ins</c>.
 /// </summary>
-[AutomaticRetry(Attempts = 5)]
+[AutomaticRetry(Attempts = 0)]
 public sealed class GateVendorCheckInJob(
     ITicketVendorService vendor,
     IClock clock,
@@ -52,9 +59,11 @@ public sealed class GateVendorCheckInJob(
         }
         catch (Exception ex)
         {
+            // Best-effort: a transient failure (vendor 5xx / network) just loses this one mirror.
+            // We do NOT retry — repeat check-ins aren't idempotent, so a retry after a silent
+            // success would double-record. gate_scan_events is the authority.
             logger.LogWarning(
-                ex, "Vendor check-in mirror failed for issued ticket {VendorTicketId}; Hangfire will retry", vendorTicketId);
-            throw;
+                ex, "Vendor check-in mirror failed for issued ticket {VendorTicketId} — not retried", vendorTicketId);
         }
     }
 }

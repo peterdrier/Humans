@@ -157,6 +157,66 @@ body.gate-kiosk { margin: 0; min-height: 100vh; background: #f4ede1; }
 /* The supervisor-override affordance on a too-early / failed-override card. */
 .gate-override-btn { display: block; width: 100%; margin-top: 1rem; background: #3a4753; font-size: 1.15rem; }
 
+/* "Next ticket" — appears on a terminal result card; clears the screen back to Ready (also auto-
+   fires after a countdown). SOLID near-black (not a translucent wash) so it stays legible on any
+   verdict colour in direct sun — outline/translucent buttons wash out (see the roster-pick note). */
+.gate-next {
+    display: block; width: 100%; margin-top: 1.5rem; padding: 1rem;
+    background: #11181d; color: #fff; border: none;
+    border-radius: 12px; font-size: 1.3rem; font-weight: 700; cursor: pointer;
+}
+.gate-next:active { background: #000; }
+
+/* Operator-UX additions ---------------------------------------------------- */
+
+/* Big return-to-scanning control (Leaderboard has no browser back on the chromeless kiosk). */
+.gate-back {
+    display: inline-block; margin-bottom: 1rem; padding: .8rem 1.25rem;
+    background: #2b3440; color: #fff; border-radius: 12px; font-size: 1.2rem; font-weight: 700;
+}
+.gate-back:hover, .gate-back:focus { background: #1e2a33; color: #fff; }
+
+/* Imperative "what to do" line on a STOP card — full-opacity white, sits under the reason. */
+.gate-action { font-size: 1.35rem; font-weight: 700; margin-top: .75rem; line-height: 1.3; }
+
+/* Lower-prominence "wrong ticket — scan again" escape on the ID-confirm card. */
+.gate-cancel-scan { display: block; width: 100%; margin-top: 1rem; background: #5a6672; font-size: 1.05rem; }
+
+/* ID-confirm visible countdown hint — non-silent safety net so the card can't vanish unannounced. */
+.gate-idhint { margin-top: 1.1rem; font-size: 1.05rem; color: rgba(255, 255, 255, .85); }
+
+/* "← Wrong person" back-step inside the override PIN panel (cream card, so dark text). */
+.gate-override-back {
+    display: block; background: none; border: none; color: #5f6b76;
+    font-size: 1.05rem; font-weight: 600; cursor: pointer; margin-bottom: .25rem;
+}
+
+/* "Change" link while armed for the confirming second tap. */
+.gate-topbar-link.gate-armed { color: #B11217; font-weight: 700; }
+
+/* The freshness line doubles as the reload control on the chromeless kiosk. */
+.gate-asof { cursor: pointer; }
+
+/* Always-available help cheat-sheet — fixed "?" button bottom-left + a centred card (native <details>). */
+.gate-help { position: fixed; left: .75rem; bottom: .75rem; z-index: 1000; }
+.gate-help-toggle {
+    list-style: none; width: 52px; height: 52px; border-radius: 50%; background: #2b3440; color: #fff;
+    font-size: 1.6rem; font-weight: 700; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; box-shadow: 0 2px 8px rgba(0, 0, 0, .35);
+}
+.gate-help-toggle::-webkit-details-marker { display: none; }
+.gate-help-toggle::marker { content: ""; }
+.gate-help-panel {
+    position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    width: 90vw; max-width: 440px; background: #f4ede1; color: #1e2a33;
+    border-radius: 16px; padding: 1.5rem; box-shadow: 0 8px 40px rgba(0, 0, 0, .45); z-index: 1001;
+}
+.gate-help-title { font-size: 1.5rem; margin: 0 0 .75rem; }
+.gate-help-list { list-style: none; padding: 0; margin: 0 0 1rem; font-size: 1.15rem; line-height: 1.5; }
+.gate-help-list li { margin-bottom: .5rem; }
+.gate-help-dot { display: inline-block; width: 18px; height: 18px; border-radius: 50%; vertical-align: middle; margin-right: .5rem; }
+.gate-help-tip { font-size: 1.05rem; color: #2b3440; margin: .25rem 0 0; }
+
 /* Roster quick-pick on the claim screen — big FILLED tap targets (outline buttons
    wash out in direct sun) for gloved use. Capped height so a large roster scrolls
    instead of burying the search box below the fold. */

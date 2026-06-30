@@ -80,6 +80,32 @@ public sealed class TicketTransferService_OnwardTransferTests
     }
 
     [HumansFact]
+    public async Task GetMyAttendees_DeniesTransfer_WhenCheckedIn()
+    {
+        // A gate scan keeps Status = Valid and records CheckedInAt
+        // (nobodies-collective/Humans#736); the owner must not be able to send a
+        // ticket they've already used at the door.
+        var attendee = new TicketAttendee
+        {
+            Id = Guid.NewGuid(),
+            Status = TicketAttendeeStatus.Valid,
+            CheckedInAt = Now,
+            MatchedUserId = UserB,
+            TicketOrder = new TicketOrder { Id = OrderId, MatchedUserId = UserB },
+        };
+        _ticketRepo.GetAttendeesVisibleToUserAsync(UserB, Arg.Any<CancellationToken>())
+            .Returns([attendee]);
+        _transferRepo.GetBySenderAsync(UserB, Arg.Any<CancellationToken>())
+            .Returns([]);
+
+        var rows = await _service.GetMyAttendeesAsync(UserB, Xunit.TestContext.Current.CancellationToken);
+
+        rows.Should().HaveCount(1);
+        rows[0].IsCurrentOwner.Should().BeTrue();
+        rows[0].CanSendTransfer.Should().BeFalse();
+    }
+
+    [HumansFact]
     public async Task GetMyAttendees_DeniesTransfer_WhenAttendeeMatchedToSomeoneElse_EvenIfCallerIsBuyer()
     {
         var attendee = new TicketAttendee

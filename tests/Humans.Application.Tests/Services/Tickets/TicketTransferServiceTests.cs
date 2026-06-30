@@ -120,6 +120,16 @@ public sealed class TicketTransferServiceTests
         confirm.Should().BeNull();
     }
 
+    [HumansFact]
+    public async Task GetConfirmation_Null_WhenCheckedIn()
+    {
+        // A gate scan keeps Status = Valid but records CheckedInAt — a used ticket
+        // must not be transferable. nobodies-collective/Humans#736.
+        StubAttendee(TicketAttendeeStatus.Valid, _senderId, checkedInAt: _now);
+        var confirm = await _service.GetConfirmationAsync(_attendeeId, _receiverId, _senderId, Xunit.TestContext.Current.CancellationToken);
+        confirm.Should().BeNull();
+    }
+
     // ── CreateRequestAsync ──────────────────────────────────────────────────────
 
     [HumansFact]
@@ -189,6 +199,18 @@ public sealed class TicketTransferServiceTests
         var act = () => _service.CreateRequestAsync(
             new TicketTransferRequestDto(_attendeeId, _receiverId, "x"), _senderId, Xunit.TestContext.Current.CancellationToken);
         await act.Should().ThrowAsync<InvalidOperationException>();
+    }
+
+    [HumansFact]
+    public async Task CreateRequest_Throws_WhenCheckedIn()
+    {
+        // Status stays Valid after a gate scan (nobodies-collective/Humans#736);
+        // the CheckedInAt guard must still block the transfer of a used ticket.
+        StubAttendee(TicketAttendeeStatus.Valid, _senderId, checkedInAt: _now);
+        var act = () => _service.CreateRequestAsync(
+            new TicketTransferRequestDto(_attendeeId, _receiverId, "x"), _senderId, Xunit.TestContext.Current.CancellationToken);
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("Checked-in tickets cannot be transferred.");
     }
 
     [HumansFact]
@@ -588,10 +610,11 @@ public sealed class TicketTransferServiceTests
             _clock,
             NullLogger<TicketTransferService>.Instance);
 
-    private void StubAttendee(TicketAttendeeStatus status, Guid attendeeMatchedUserId)
+    private void StubAttendee(
+        TicketAttendeeStatus status, Guid attendeeMatchedUserId, Instant? checkedInAt = null)
     {
         _ticketRepo.GetAttendeeByIdAsync(_attendeeId, Arg.Any<CancellationToken>())
-            .Returns(MakeAttendee(_attendeeId, _orderId, attendeeMatchedUserId, status));
+            .Returns(MakeAttendee(_attendeeId, _orderId, attendeeMatchedUserId, status, checkedInAt));
     }
 
     private static User MakeUser(Guid id, string displayName) => new()
@@ -616,7 +639,8 @@ public sealed class TicketTransferServiceTests
         communicationPreferences: []);
 
     private static TicketAttendee MakeAttendee(
-        Guid id, Guid orderId, Guid attendeeMatchedUserId, TicketAttendeeStatus status)
+        Guid id, Guid orderId, Guid attendeeMatchedUserId, TicketAttendeeStatus status,
+        Instant? checkedInAt = null)
     {
         // Buyer-fallback removed in nobodies-collective/Humans#856.
         // Ownership is determined by TicketAttendee.MatchedUserId only.
@@ -646,6 +670,7 @@ public sealed class TicketTransferServiceTests
             TicketTypeName = "Full Week",
             Price = 200m,
             Status = status,
+            CheckedInAt = checkedInAt,
             VendorEventId = "ev_test",
             SyncedAt = Instant.FromUtc(2026, 3, 1, 10, 0),
             MatchedUserId = attendeeMatchedUserId,
