@@ -23,6 +23,7 @@ public sealed record TicketTransferRowDto(
     string OriginalAttendeeName,
     string TicketTypeName,
     TicketAttendeeStatus OriginalAttendeeStatus,
+    Instant? OriginalAttendeeCheckedInAt,
     Guid SenderUserId,
     string SenderDisplayName,
     Guid ReceiverUserId,

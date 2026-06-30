@@ -58,7 +58,7 @@ public sealed class TicketTransferService(
                     TicketTypeName: a.TicketTypeName,
                     Status: a.Status,
                     IsCurrentOwner: owner,
-                    CanSendTransfer: a.Status == TicketAttendeeStatus.Valid && owner && !pending,
+                    CanSendTransfer: a.Status == TicketAttendeeStatus.Valid && a.CheckedInAt is null && owner && !pending,
                     HasPendingOutgoingTransfer: pending,
                     PendingTransferRequestId: pending ? transferId : null);
             })
@@ -73,6 +73,7 @@ public sealed class TicketTransferService(
         var attendee = await ticketRepo.GetAttendeeByIdAsync(attendeeId, ct);
         if (attendee is null
             || attendee.Status != TicketAttendeeStatus.Valid
+            || attendee.CheckedInAt is not null
             || !TicketAttendeeOwnership.IsCurrentOwner(attendee, senderUserId))
         {
             return null;
@@ -106,6 +107,12 @@ public sealed class TicketTransferService(
 
         if (attendee.Status != TicketAttendeeStatus.Valid)
             throw new InvalidOperationException("Only Valid tickets can be transferred.");
+
+        // A gate scan keeps Status = Valid and records the scan in CheckedInAt
+        // (nobodies-collective/Humans#736), so the Valid check above no longer
+        // catches an already-used ticket — guard on CheckedInAt explicitly.
+        if (attendee.CheckedInAt is not null)
+            throw new InvalidOperationException("Checked-in tickets cannot be transferred.");
 
         var receiverInfo = await userService.GetUserInfoAsync(dto.ReceiverUserId, ct)
             ?? throw new InvalidOperationException("Receiver user not found.");
@@ -721,6 +728,7 @@ public sealed class TicketTransferService(
             OriginalAttendeeName: attendee.AttendeeName,
             TicketTypeName: attendee.TicketTypeName,
             OriginalAttendeeStatus: attendee.Status,
+            OriginalAttendeeCheckedInAt: attendee.CheckedInAt,
             SenderUserId: r.SenderUserId,
             SenderDisplayName: sender?.BurnerName ?? "(unknown)",
             ReceiverUserId: r.ReceiverUserId,

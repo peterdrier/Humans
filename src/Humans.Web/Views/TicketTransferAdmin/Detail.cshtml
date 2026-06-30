@@ -142,7 +142,7 @@ else if (row.Status == TicketTransferStatus.Pending)
         </div>
     </div>
 
-    @if (row.OriginalAttendeeStatus == TicketAttendeeStatus.CheckedIn)
+    @if (row.OriginalAttendeeStatus == TicketAttendeeStatus.CheckedIn || row.OriginalAttendeeCheckedInAt is not null)
     {
         <div class="alert alert-warning">
             This ticket has already been checked in — confirm with the Sender before processing.
