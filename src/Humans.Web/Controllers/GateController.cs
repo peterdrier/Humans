@@ -6,6 +6,7 @@ using Humans.Infrastructure.Jobs;
 using Humans.Web.Authorization;
 using Humans.Web.Extensions;
 using Humans.Web.Infrastructure;
+using Humans.Web.Models;
 using Humans.Web.Models.Gate;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -158,18 +159,14 @@ public sealed class GateController(
     {
         var query = q?.Trim() ?? string.Empty;
         if (query.Length < 2)
-            return Json(Array.Empty<object>());
+            return Json(Array.Empty<HumanLookupSearchResult>());
 
+        // Same typed shape /api/profiles/search returns to this picker (no Detail —
+        // the kiosk search is name-only). memory/code/search-endpoint-response-shape.md.
         var matches = await UserService.SearchUsersAsync(query, PersonSearchFields.Name, 10, ct);
         var rows = matches
             .OrderByRelevance()
-            .Select(m => new
-            {
-                userId = m.UserId,
-                displayName = m.BurnerName,
-                detail = (string?)null,
-                profilePictureUrl = m.ProfilePictureUrl,
-            })
+            .Select(m => new HumanLookupSearchResult(m.UserId, m.BurnerName, ProfilePictureUrl: m.ProfilePictureUrl))
             .ToList();
         return Json(rows);
     }

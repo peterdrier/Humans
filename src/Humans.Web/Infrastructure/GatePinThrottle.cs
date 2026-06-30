@@ -9,9 +9,11 @@ namespace Humans.Web.Infrastructure;
 /// secret, so after a few failures the key is locked for a real cooldown that does NOT
 /// reset on its own — only a correct PIN (<see cref="Reset"/>) clears it.
 ///
-/// Callers throttle on BOTH the target user-id AND the source device/IP, so neither a
-/// single supervisor's PIN nor one kiosk can be ground through the ~10k space: check
-/// both keys before verifying, record a failure on both, reset both on success.
+/// Callers throttle per <em>target user-id only</em>. A shared device/IP key was
+/// considered but rejected: in practice the reverse-proxy collapses all kiosk traffic
+/// to one IP, so 5 failures for any one PIN would freeze every claim and override at
+/// the terminal for 15 minutes (gate-wide DoS). The per-user bucket already caps
+/// brute-force at 5 / 15 min across the ~10k PIN space.
 /// </summary>
 public sealed class GatePinThrottle(IMemoryCache cache, IClock clock)
 {

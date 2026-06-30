@@ -6,6 +6,7 @@ using Humans.Application.Services.Profiles;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Web.Controllers;
 using Humans.Web.Infrastructure;
+using Humans.Web.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
@@ -103,11 +104,10 @@ public class GateControllerClaimTests
         var result = await _controller.Search("ann", ct);
 
         var json = Assert.IsType<JsonResult>(result);
-        var doc = System.Text.Json.JsonSerializer.SerializeToElement(json.Value);
-        Assert.Equal(1, doc.GetArrayLength());
-        var row = doc[0];
-        Assert.Equal(id.ToString(), row.GetProperty("userId").GetString());
-        Assert.Equal("Annie", row.GetProperty("displayName").GetString());
+        var rows = Assert.IsType<List<HumanLookupSearchResult>>(json.Value);
+        var row = Assert.Single(rows);
+        Assert.Equal(id, row.UserId);
+        Assert.Equal("Annie", row.DisplayName);
     }
 
     [HumansFact]
