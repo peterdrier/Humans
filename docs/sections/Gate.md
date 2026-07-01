@@ -52,9 +52,20 @@ admission record. Distinct from the read-only `Scanner` section, which must neve
 - **Personal staff PINs (`gate_staff_pins`)** — each staffer sets a 4-digit PIN the first time they
   claim the gate (`SetOwnPinAsync`, hashed via Identity's `IPasswordHasher`), reused across shifts.
   Claiming the scanner becomes a PIN entry (`/Gate/ClaimPin`), so the leaderboard attribution is a
-  real per-person claim rather than honour-system. **Supervisors** (Admin/Board/TicketAdmin) cannot
-  self-enrol at the anonymous kiosk — their PIN carries override authority, so an admin enrols it out
-  of band (`/Gate/Admin`); the override path is verify-only and rejects un-enrolled supervisors.
+  real per-person claim rather than honour-system. **Claim vs override are decoupled by the
+  `AdminEnrolled` flag on the PIN.** _Everyone_ — supervisors included — may self-enrol a **claim**
+  PIN at the kiosk (`SetOwnPinAsync`, `AdminEnrolled = false`); it attributes scans only. **Override
+  authority** is conferred solely by an **admin enrolment** (`/Gate/Admin` → `AdminSetPinAsync`,
+  `AdminEnrolled = true`). `AuthorizeOverrideAsync` requires all three, server-checked: an
+  admin-enrolled PIN, the correct PIN, AND a currently-held supervisor role — so an attacker
+  cold-setting a supervisor's PIN at the anonymous kiosk gains attribution spoofing only (already
+  possible for any staffer), never override power. The enrolled-supervisor override picker
+  (`GetEnrolledSupervisorIdsAsync`) lists only admin-enrolled supervisors.
+  **First-time set** has two guards (claim-only, never on verify): an "is this you?" confirm before a
+  PIN is minted in someone's name, and a double-entry (enter twice, must match) so a mis-typed PIN
+  can't silently lock a volunteer out (there is no self-service reset — an admin clears it). Every
+  PIN **set/reset is audited** (`GateStaffPinSet`/`GateStaffPinReset` with the acting user — the
+  staffer on self-enrol, the admin on admin-set/reset); PIN values are never logged.
 - **Supervisor override** — a too-early scan (e.g. a Friday Early-Entry ticket scanned on Wednesday)
   STOPs with a precise reason (the holder's EE date vs today, or "no early entry · general entry
   opens …" — date only, never the EE source) and offers a **supervisor override**: the supervisor
@@ -159,8 +170,10 @@ tap-list because the `GateTerminal` account is route-locked to `/Gate` and so ca
   timeout only (it shows a name but the operator is mid-decision); the supervisor-override panel pauses
   the timer while a PIN is being entered.
 - **No dead-ends / minimal-training affordances** (kiosk is chromeless — no browser back). Every screen
-  has a visible way out: Leaderboard has "← Back to scanning"; the PIN keypad has "← Not you?". "Change"
-  (switch operator) is a deliberate two-tap (it abandons the session). The scan screen has an always-on
+  has a visible way out: Leaderboard has "← Back to scanning"; the PIN keypad has "← Not you?". "End shift"
+  (hand over to the next operator) is a deliberate two-tap button that POSTs `GateController.EndShift` to
+  clear the scanner session **server-side**, so a walk-away can't leave the next person's scans attributed
+  to whoever last claimed. The scan screen has an always-on
   "?" help cheat-sheet (green=admit / red=stop / amber=supervisor), STOP cards spell out the action
   ("Do not admit · if disputed, get the gate lead"), the ID-confirm card has a "Wrong ticket — scan
   again" escape and a visible auto-clear countdown, the override panel has "← Wrong person", and the

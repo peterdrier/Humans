@@ -1,5 +1,6 @@
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.EarlyEntry;
 using Humans.Application.Interfaces.Gate;
@@ -32,6 +33,7 @@ public sealed class GateService(
     IShiftManagementService shifts,
     IRoleAssignmentService roles,
     IPasswordHasher<GateStaffPin> pinHasher,
+    IAuditLogService auditLog,
     IClock clock) : IGateService, IUserMerge, IUserDataContributor
 {
     /// <summary>How far either side of "now" a gate shift may start to count as current.</summary>
@@ -202,19 +204,25 @@ public sealed class GateService(
     {
         if (!IsValidPin(pin))
             return GatePinSetResult.InvalidPin;
-        // A supervisor's PIN carries override authority — never let it be minted from the
-        // anonymous kiosk (an attacker could cold-enrol a supervisor and impersonate them).
-        if (await IsSupervisorAsync(userId, ct))
-            return GatePinSetResult.SupervisorMustBeAdminEnrolled;
-        await StorePinAsync(userId, pin, ct);
+        // Everyone — supervisors included — may self-enrol a CLAIM PIN (attribution only). It carries
+        // NO override authority: AdminEnrolled stays false and AuthorizeOverrideAsync requires it true.
+        // So an attacker cold-setting a supervisor's PIN at the anonymous kiosk gains attribution
+        // spoofing (already possible for any staffer), never override power — which stays admin-enrolled.
+        await StorePinAsync(userId, pin, adminEnrolled: false, ct);
+        // Self-enrol at the kiosk: actor == the claimed staffer (no PIN value is ever logged).
+        await auditLog.LogAsync(AuditAction.GateStaffPinSet, nameof(GateStaffPin), userId,
+            "Staffer self-enrolled their gate claim PIN at the kiosk", userId);
         return GatePinSetResult.Ok;
     }
 
-    public async Task<bool> AdminSetPinAsync(Guid userId, string pin, CancellationToken ct = default)
+    public async Task<bool> AdminSetPinAsync(Guid userId, string pin, Guid actorUserId, CancellationToken ct = default)
     {
         if (!IsValidPin(pin))
             return false;
-        await StorePinAsync(userId, pin, ct);
+        // Admin enrolment is the only path that confers supervisor-override authority (AdminEnrolled = true).
+        await StorePinAsync(userId, pin, adminEnrolled: true, ct);
+        await auditLog.LogAsync(AuditAction.GateStaffPinSet, nameof(GateStaffPin), userId,
+            "Admin set a staffer's gate PIN (override-enrolled)", actorUserId);
         return true;
     }
 
@@ -229,19 +237,28 @@ public sealed class GateService(
 
     public async Task<bool> AuthorizeOverrideAsync(Guid supervisorUserId, string pin, CancellationToken ct = default)
     {
-        // Verify-only: enrolled + correct PIN + currently holds a supervisor role. Never enrol here.
-        if (!await VerifyPinAsync(supervisorUserId, pin, ct))
+        // Verify-only, never enrol here. Requires all three, server-checked: an ADMIN-ENROLLED PIN
+        // (a self-set claim PIN — AdminEnrolled=false — can never authorize an override), the correct
+        // PIN, AND a currently-held supervisor role.
+        var row = await repository.GetStaffPinAsync(supervisorUserId, ct);
+        if (row is not { AdminEnrolled: true })
+            return false;
+        if (pinHasher.VerifyHashedPassword(row, row.PinHash, pin) == PasswordVerificationResult.Failed)
             return false;
         return await IsSupervisorAsync(supervisorUserId, ct);
     }
 
-    public Task ClearPinAsync(Guid userId, CancellationToken ct = default) =>
-        repository.DeleteStaffPinAsync(userId, ct);
+    public async Task ClearPinAsync(Guid userId, Guid actorUserId, CancellationToken ct = default)
+    {
+        await repository.DeleteStaffPinAsync(userId, ct);
+        await auditLog.LogAsync(AuditAction.GateStaffPinReset, nameof(GateStaffPin), userId,
+            "Admin reset a staffer's gate PIN", actorUserId);
+    }
 
     public async Task<IReadOnlyList<Guid>> GetEnrolledSupervisorIdsAsync(CancellationToken ct = default)
     {
-        // Union the supervisor-role holders, then keep only those with a PIN — an un-enrolled
-        // supervisor can't override anyway, so listing them would just offer dead picks.
+        // Union the supervisor-role holders, then keep only those with an ADMIN-ENROLLED PIN — a
+        // self-set claim PIN can't authorize an override, so listing those would offer dead picks.
         var supervisors = new HashSet<Guid>();
         foreach (var role in SupervisorRoles)
             foreach (var id in await roles.GetActiveUserIdsInRoleAsync(role, ct))
@@ -249,7 +266,7 @@ public sealed class GateService(
 
         var enrolled = new List<Guid>();
         foreach (var id in supervisors)
-            if (await repository.GetStaffPinAsync(id, ct) is not null)
+            if (await repository.GetStaffPinAsync(id, ct) is { AdminEnrolled: true })
                 enrolled.Add(id);
         return enrolled;
     }
@@ -262,10 +279,10 @@ public sealed class GateService(
         return false;
     }
 
-    private async Task StorePinAsync(Guid userId, string pin, CancellationToken ct)
+    private async Task StorePinAsync(Guid userId, string pin, bool adminEnrolled, CancellationToken ct)
     {
         var now = clock.GetCurrentInstant();
-        var entity = new GateStaffPin { UserId = userId, CreatedAt = now, UpdatedAt = now };
+        var entity = new GateStaffPin { UserId = userId, CreatedAt = now, UpdatedAt = now, AdminEnrolled = adminEnrolled };
         entity.PinHash = pinHasher.HashPassword(entity, pin);
         await repository.UpsertStaffPinAsync(entity, ct);
     }

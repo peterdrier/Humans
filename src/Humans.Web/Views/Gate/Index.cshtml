@@ -15,10 +15,12 @@
         <span>Scanning as <strong>@Model.ScannerName</strong></span>
         <span class="gate-asof" data-asof="@Model.DataAsOf"
               title="Tap to reload">loaded…</span>
-        @* "Change" abandons the session (re-enter PIN), so it's a deliberate two-tap (gate.js) to
-           stop a mid-queue fat-finger from dumping the operator back to the roster. *@
-        <a asp-action="Claim" class="gate-topbar-link" data-confirm-change>Change</a>
         <a asp-action="Leaderboard" class="gate-topbar-link">Leaderboard</a>
+        @* "End shift" clears the scanner session (the next person re-claims with their PIN), so it's a
+           deliberate two-tap (gate.js) to stop a mid-queue fat-finger from dumping the operator out. *@
+        <form method="post" asp-action="EndShift" class="gate-endshift-form">
+            <button type="submit" class="gate-endshift-btn" data-confirm-change="Tap again to end shift">End shift</button>
+        </form>
     </div>
 
     @if (!Model.CutoffConfigured)
