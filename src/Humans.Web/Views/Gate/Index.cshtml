@@ -29,10 +29,17 @@
         </div>
     }
 
+    @* inputmode="none" keeps the tablet's touch keyboard down: the field stays focused for the
+       keyboard-wedge imager (HID input still lands), but a tap never summons the OS keyboard over
+       the verdict card. The keyboard button flips to manual typing for damaged/unreadable codes. *@
     <form id="gate-scan-form" autocomplete="off">
-        <input id="gate-scan-input" type="text" inputmode="text" autocomplete="off"
+        <input id="gate-scan-input" type="text" inputmode="none" autocomplete="off"
                autocapitalize="off" spellcheck="false" placeholder="Scan a ticket"
                aria-label="Scan a ticket" />
+        <button type="button" id="gate-manual-toggle" class="gate-manual-toggle"
+                title="Type a code manually" aria-label="Type a code manually" aria-pressed="false">
+            <i class="fa-solid fa-keyboard" aria-hidden="true"></i>
+        </button>
     </form>
 
     <div id="gate-result">

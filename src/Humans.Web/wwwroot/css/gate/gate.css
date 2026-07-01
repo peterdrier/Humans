@@ -39,11 +39,18 @@ body.gate-kiosk { margin: 0; min-height: 100vh; background: #f4ede1; }
 .gate-config-warning > i { margin-top: .15rem; flex: none; color: #e0962b; }
 .gate-config-warning strong { color: #fff; }
 
+#gate-scan-form { display: flex; gap: .6rem; }
 #gate-scan-input {
     width: 100%; font-size: 1.6rem; padding: .9rem 1.1rem; border-radius: 12px;
     border: 2px solid #c9d2da;
 }
 #gate-scan-input:focus { outline: none; border-color: #1e2a33; box-shadow: 0 0 0 4px rgba(30,42,51,.15); }
+/* Manual-entry toggle — brings the touch keyboard up for typing a damaged/unreadable code. */
+.gate-manual-toggle {
+    flex: none; font-size: 1.4rem; color: #5f6b76; background: transparent; cursor: pointer;
+    border: 2px solid #c9d2da; border-radius: 12px; padding: .5rem .9rem; min-width: 64px;
+}
+.gate-manual-toggle.gate-manual-on { color: #fff; background: #2b3440; border-color: #2b3440; }
 
 .gate-card {
     margin-top: 1rem; border-radius: 18px; padding: 2rem 1.5rem; text-align: center;

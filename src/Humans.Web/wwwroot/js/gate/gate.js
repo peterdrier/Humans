@@ -141,8 +141,39 @@ export function initGate(refs) {
         }
     });
 
+    // Don't depend on the imager's Enter-suffix config to submit: a wedge scan arrives as a fast
+    // burst of characters, so once the field has a plausible barcode and goes quiet for a beat,
+    // submit anyway. An Enter suffix still submits immediately (the form handler clears the timer).
+    // Manual mode turns the quiet-timer off — a human typing pauses far longer than a wedge burst
+    // and presses Enter/Go themselves.
+    const SCAN_QUIET_MS = 300;
+    const SCAN_MIN_LENGTH = 5;
+    let scanTimer = null;
+    let manualMode = false;
+    const clearScanTimer = () => { if (scanTimer) { clearTimeout(scanTimer); scanTimer = null; } };
+    input.addEventListener('input', () => {
+        clearScanTimer();
+        if (manualMode || input.value.trim().length < SCAN_MIN_LENGTH) return;
+        scanTimer = setTimeout(() => form.requestSubmit(), SCAN_QUIET_MS);
+    });
+
+    // Manual-entry toggle: flips inputmode so the touch keyboard comes up (it stays suppressed in
+    // scan mode) for typing a damaged/unreadable code. Blur-then-focus forces the keyboard to
+    // follow the new inputmode while the field keeps receiving wedge input either way.
+    const manualToggle = document.getElementById('gate-manual-toggle');
+    if (manualToggle) manualToggle.addEventListener('click', () => {
+        manualMode = !manualMode;
+        clearScanTimer();
+        input.setAttribute('inputmode', manualMode ? 'text' : 'none');
+        manualToggle.setAttribute('aria-pressed', String(manualMode));
+        manualToggle.classList.toggle('gate-manual-on', manualMode);
+        input.blur();
+        input.focus();
+    });
+
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
+        clearScanTimer();
         const code = input.value.trim();
         if (!code || busy || overrideOpen()) return; // ignore scans mid-override
         busy = true;
