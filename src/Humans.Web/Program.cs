@@ -572,7 +572,15 @@ app.Use(async (context, next) =>
     await next();
 });
 
-app.UseStaticFiles();
+// "no-cache" = cache but always revalidate (cheap 304s at this scale). Without an explicit policy,
+// browsers heuristically cache static files (~10% of time since Last-Modified) with NO request at
+// all, so after a release some long-running kiosk tablets kept serving week-old CSS/JS while others
+// didn't. Fingerprinted URLs (asp-append-version / FileVersionProvider) change per release, but
+// unfingerprinted paths — and nested JS module imports, which no tag helper can reach — need this.
+app.UseStaticFiles(new StaticFileOptions
+{
+    OnPrepareResponse = ctx => ctx.Context.Response.Headers.CacheControl = "no-cache",
+});
 
 // Serve .well-known directory (blocked by default since it starts with a dot)
 if (app.Environment.IsDevelopment())

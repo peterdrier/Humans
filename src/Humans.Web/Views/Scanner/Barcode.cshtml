@@ -62,9 +62,12 @@
     </div>
 </div>
 
+@inject Microsoft.AspNetCore.Mvc.ViewFeatures.IFileVersionProvider FileVersionProvider
 @section Scripts {
+    @* Cache-bust the module import (the tag-helper asp-append-version can't reach an import
+       statement) so a deployed update reaches long-cached tablets. Mirrors Gate/Index. *@
     <script nonce="@Context.Items["CspNonce"]" type="module">
-        import { initBarcodeScanner } from '@Url.Content("~/js/scanner/barcode.js")';
+        import { initBarcodeScanner } from '@FileVersionProvider.AddFileVersionToPath(Context.Request.PathBase, Url.Content("~/js/scanner/barcode.js"))';
 
         initBarcodeScanner({
             startButton: document.getElementById('scanner-start'),
