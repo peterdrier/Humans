@@ -52,9 +52,15 @@ admission record. Distinct from the read-only `Scanner` section, which must neve
 - **Personal staff PINs (`gate_staff_pins`)** — each staffer sets a 4-digit PIN the first time they
   claim the gate (`SetOwnPinAsync`, hashed via Identity's `IPasswordHasher`), reused across shifts.
   Claiming the scanner becomes a PIN entry (`/Gate/ClaimPin`), so the leaderboard attribution is a
-  real per-person claim rather than honour-system. **Supervisors** (Admin/Board/TicketAdmin) cannot
-  self-enrol at the anonymous kiosk — their PIN carries override authority, so an admin enrols it out
-  of band (`/Gate/Admin`); the override path is verify-only and rejects un-enrolled supervisors.
+  real per-person claim rather than honour-system. **Claim vs override are decoupled by the
+  `AdminEnrolled` flag on the PIN.** _Everyone_ — supervisors included — may self-enrol a **claim**
+  PIN at the kiosk (`SetOwnPinAsync`, `AdminEnrolled = false`); it attributes scans only. **Override
+  authority** is conferred solely by an **admin enrolment** (`/Gate/Admin` → `AdminSetPinAsync`,
+  `AdminEnrolled = true`). `AuthorizeOverrideAsync` requires all three, server-checked: an
+  admin-enrolled PIN, the correct PIN, AND a currently-held supervisor role — so an attacker
+  cold-setting a supervisor's PIN at the anonymous kiosk gains attribution spoofing only (already
+  possible for any staffer), never override power. The enrolled-supervisor override picker
+  (`GetEnrolledSupervisorIdsAsync`) lists only admin-enrolled supervisors.
   **First-time set** has two guards (claim-only, never on verify): an "is this you?" confirm before a
   PIN is minted in someone's name, and a double-entry (enter twice, must match) so a mis-typed PIN
   can't silently lock a volunteer out (there is no self-service reset — an admin clears it). Every

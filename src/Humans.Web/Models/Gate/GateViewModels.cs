@@ -130,9 +130,6 @@ public enum GatePinMode
 
     /// <summary>Returning — enter the existing PIN to take over the scanner.</summary>
     Verify,
-
-    /// <summary>A supervisor with no PIN — they can't self-enrol; an admin must set it up.</summary>
-    BlockedSupervisor,
 }
 
 /// <summary>The full-screen PIN keypad shown after a name is picked on the claim screen.</summary>
@@ -140,12 +137,9 @@ public sealed record GatePinViewModel(Guid UserId, string DisplayName, GatePinMo
 {
     /// <summary>
     /// Resolve the keypad mode from the server-derived PIN status (never a client-supplied hint):
-    /// has a PIN → Verify; no PIN but a supervisor → Blocked (admin must enrol them); otherwise Set.
+    /// has a PIN → Verify; otherwise Set. Everyone — supervisors included — may self-enrol a claim
+    /// PIN; it attributes scans only, never authorizes an override (that stays admin-enrolled).
     /// </summary>
     public static GatePinViewModel ForClaim(Guid userId, string displayName, GatePinStatus status, string? error = null) =>
-        new(userId, displayName,
-            status.HasPin ? GatePinMode.Verify
-            : status.IsSupervisor ? GatePinMode.BlockedSupervisor
-            : GatePinMode.Set,
-            error);
+        new(userId, displayName, status.HasPin ? GatePinMode.Verify : GatePinMode.Set, error);
 }

@@ -23,4 +23,13 @@ public class GateStaffPin
 
     /// <summary>When the PIN was last set/reset.</summary>
     public Instant UpdatedAt { get; set; }
+
+    /// <summary>
+    /// True only when an admin set this PIN out of band (<c>/Gate/Admin</c>) — the enrolment that
+    /// confers <b>supervisor-override</b> authority. A staffer who self-enrols at the kiosk gets
+    /// <c>false</c>: their PIN attributes scans (claim) but can never authorize an override, so an
+    /// attacker cold-setting a supervisor's PIN at the anonymous kiosk gains attribution only, never
+    /// override power. The override authorization path requires this true.
+    /// </summary>
+    public bool AdminEnrolled { get; set; }
 }

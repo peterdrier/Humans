@@ -132,9 +132,6 @@ body.gate-kiosk { margin: 0; min-height: 100vh; background: #f4ede1; }
     border: none; border-radius: 14px; padding: 1.1rem; min-height: 78px; cursor: pointer;
 }
 .gate-pin-confirm-yes:active { background: #095e24; }
-.gate-pin-blocked { max-width: 460px; margin: 2rem auto 0; text-align: center; color: #1e2a33; }
-.gate-pin-icon { font-size: 3.2rem; color: #B26A00; }
-.gate-pin-blocked-text { font-size: 1.2rem; line-height: 1.5; margin-top: .75rem; color: #2b3440; }
 
 /* ── Supervisor-override panel (Index.cshtml) ───────────────────────────────
    Full-viewport scrim so the supervisor's name + PIN entry is the only focus. */

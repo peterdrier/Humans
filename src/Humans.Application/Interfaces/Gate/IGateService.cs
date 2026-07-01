@@ -100,9 +100,6 @@ public enum GatePinSetResult
 
     /// <summary>The PIN is not exactly four digits or is too easily guessed (e.g. 0000, 1234, repeats).</summary>
     InvalidPin,
-
-    /// <summary>The user holds a supervisor role — supervisor PINs must be set by an admin, not self-enrolled at the kiosk.</summary>
-    SupervisorMustBeAdminEnrolled,
 }
 
 /// <summary>Write-free result of evaluating a scan, before the agent's ID decision.</summary>

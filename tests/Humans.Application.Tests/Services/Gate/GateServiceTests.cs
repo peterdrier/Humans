@@ -426,16 +426,20 @@ public class GateServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task SetOwnPin_Supervisor_Blocked_ButAdminCanEnrol()
+    public async Task SetOwnPin_Supervisor_SelfSetsClaimPin_ButItCannotOverride()
     {
         var sup = Guid.NewGuid();
         _roles.HasActiveRoleAsync(sup, RoleNames.TicketAdmin, Arg.Any<CancellationToken>()).Returns(true);
 
-        (await _svc.SetOwnPinAsync(sup, "2580")).Should().Be(GatePinSetResult.SupervisorMustBeAdminEnrolled);
-        (await _svc.GetPinStatusAsync(sup)).Should().Be(new GatePinStatus(HasPin: false, IsSupervisor: true));
+        // A supervisor may now self-enrol a CLAIM PIN (attribution — everyone can)...
+        (await _svc.SetOwnPinAsync(sup, "2580")).Should().Be(GatePinSetResult.Ok);
+        (await _svc.VerifyPinAsync(sup, "2580")).Should().BeTrue();          // can claim the scanner
+        // ...but a self-set PIN never carries override authority (AdminEnrolled = false).
+        (await _svc.AuthorizeOverrideAsync(sup, "2580")).Should().BeFalse();
 
-        (await _svc.AdminSetPinAsync(sup, "2580", Guid.NewGuid())).Should().BeTrue();
-        (await _svc.VerifyPinAsync(sup, "2580")).Should().BeTrue();
+        // Admin enrolment (AdminEnrolled = true) is the only thing that confers override.
+        (await _svc.AdminSetPinAsync(sup, "1357", Guid.NewGuid())).Should().BeTrue();
+        (await _svc.AuthorizeOverrideAsync(sup, "1357")).Should().BeTrue();
     }
 
     [HumansFact]
@@ -455,22 +459,29 @@ public class GateServiceTests : ServiceTestHarness
         var unenrolledSup = Guid.NewGuid();                                            // supervisor, no PIN
         _roles.HasActiveRoleAsync(unenrolledSup, RoleNames.Admin, Arg.Any<CancellationToken>()).Returns(true);
         (await _svc.AuthorizeOverrideAsync(unenrolledSup, "2580")).Should().BeFalse();
+
+        var selfSetSup = Guid.NewGuid();                                               // supervisor who SELF-set a claim PIN
+        _roles.HasActiveRoleAsync(selfSetSup, RoleNames.Admin, Arg.Any<CancellationToken>()).Returns(true);
+        await _svc.SetOwnPinAsync(selfSetSup, "2580");                                 // AdminEnrolled = false
+        (await _svc.AuthorizeOverrideAsync(selfSetSup, "2580")).Should().BeFalse();    // correct PIN + role, but not admin-enrolled
     }
 
     [HumansFact]
-    public async Task GetEnrolledSupervisorIds_ReturnsOnlySupervisorsWithAPin()
+    public async Task GetEnrolledSupervisorIds_ReturnsOnlySupervisorsWithAnAdminEnrolledPin()
     {
-        Guid enrolled = Guid.NewGuid(), notEnrolled = Guid.NewGuid();
+        Guid enrolled = Guid.NewGuid(), selfSetOnly = Guid.NewGuid();
         _roles.GetActiveUserIdsInRoleAsync(RoleNames.Board, Arg.Any<CancellationToken>())
             .Returns(new[] { enrolled });
         _roles.GetActiveUserIdsInRoleAsync(RoleNames.Admin, Arg.Any<CancellationToken>())
-            .Returns(new[] { notEnrolled });
+            .Returns(new[] { selfSetOnly });
         _roles.GetActiveUserIdsInRoleAsync(RoleNames.TicketAdmin, Arg.Any<CancellationToken>())
             .Returns(Array.Empty<Guid>());
-        await _svc.AdminSetPinAsync(enrolled, "2580", Guid.NewGuid());
+        await _svc.AdminSetPinAsync(enrolled, "2580", Guid.NewGuid());   // admin-enrolled → override-capable
+        await _svc.SetOwnPinAsync(selfSetOnly, "1357");                  // self-set claim PIN → NOT override-capable
 
         var ids = await _svc.GetEnrolledSupervisorIdsAsync();
 
+        // Only the admin-enrolled supervisor is offered in the override picker.
         ids.Should().ContainSingle().Which.Should().Be(enrolled);
     }
 }

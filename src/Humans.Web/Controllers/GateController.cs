@@ -121,7 +121,7 @@ public sealed class GateController(
             return RedirectToAction(nameof(Claim));
 
         // Don't stamp the session yet — resolve the staffer's PIN status and hand off to the
-        // keypad (set a new PIN, verify the existing one, or block an un-enrolled supervisor).
+        // keypad (set a new PIN, or verify the existing one).
         var status = await gate.GetPinStatusAsync(userId, ct);
         return View("Pin", GatePinViewModel.ForClaim(userId, info.BurnerName, status));
     }
@@ -140,10 +140,6 @@ public sealed class GateController(
         // Re-derive the mode from the server (never trust a client-supplied set/verify hint).
         var status = await gate.GetPinStatusAsync(userId, ct);
         var name = info.BurnerName;
-
-        // A supervisor with no PIN can't self-enrol at the anonymous kiosk — re-show the block.
-        if (status is { HasPin: false, IsSupervisor: true })
-            return View("Pin", GatePinViewModel.ForClaim(userId, name, status));
 
         return status.HasPin
             ? await VerifyClaimAsync(userId, name, status, pin, ct)
@@ -278,10 +274,9 @@ public sealed class GateController(
         await gate.SetOwnPinAsync(userId, pin ?? string.Empty, ct) switch
         {
             GatePinSetResult.Ok => StampAndScan(userId),
-            GatePinSetResult.InvalidPin => View("Pin", GatePinViewModel.ForClaim(
+            // InvalidPin (or any non-Ok) → re-show the keypad with the "pick a better PIN" hint.
+            _ => View("Pin", GatePinViewModel.ForClaim(
                 userId, name, status, "Pick a less obvious PIN — not 1234, 0000, or repeats")),
-            // Role changed to supervisor between the GET and this POST — show the admin-enrol block.
-            _ => View("Pin", new GatePinViewModel(userId, name, GatePinMode.BlockedSupervisor, null)),
         };
 
     private IActionResult StampAndScan(Guid userId)
