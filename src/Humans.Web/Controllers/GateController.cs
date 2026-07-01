@@ -22,14 +22,11 @@ namespace Humans.Web.Controllers;
 /// this one decides entry and writes the durable <c>gate_scan_events</c> record.
 /// The terminal authenticates via the <see cref="PolicyNames.ScannerAccess"/>
 /// policy (shared gate-terminal account or a ticket admin) for the read actions
-/// (Index/Evaluate/Leaderboard); the write actions (Decision, Claim/ClaimPin POST)
-/// require the dedicated <see cref="PolicyNames.GateAdmit"/> policy so they never
-/// ride on the read-only Scanner gate. A staffer "claims" the session with their
-/// personal PIN so each scan is attributed to a real Human — the attribution id is
-/// read from the session, never the request body. Supervisor overrides (too-early,
-/// child-without-ID) carry the authorizing supervisor's PIN identity, brute-force
-/// throttled on both the target user-id and the source device via
-/// <see cref="GatePinThrottle"/>.
+/// (Index/Evaluate/Leaderboard); the write action (Decision) requires the dedicated
+/// <see cref="PolicyNames.GateAdmit"/> policy so it never rides on the read-only
+/// Scanner gate. Scans are attributed to the authenticated gate account, taken from
+/// the principal (never the request body). Too-early and child-without-ID admits are
+/// a plain operator override — a button tap, no PIN.
 /// </summary>
 [Authorize(Policy = PolicyNames.ScannerAccess)]
 [Route("Gate")]
@@ -45,23 +42,21 @@ public sealed class GateController(
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken ct)
     {
-        if (GetActiveScannerId() is not { } scanner)
-            return RedirectToAction(nameof(Claim));
+        // No claim step: the terminal scans as its authenticated gate account (never a per-staffer
+        // PIN). The attribution id is taken from the principal — never the request body.
+        if (GetCurrentUserId() is not { } scanner)
+            return Unauthorized();
 
         var info = await UserService.GetUserInfoAsync(scanner, ct);
         var settings = await gate.GetSettingsAsync(ct);
-        var supervisors = await BuildSupervisorOptionsAsync(ct);
         var asOf = InstantPattern.ExtendedIso.Format(clock.GetCurrentInstant());
         return View(new GateIndexViewModel(
-            info?.BurnerName ?? "Gate staff", DataStale: false, asOf, settings.CutoffConfigured, supervisors));
+            info?.BurnerName ?? "Gate staff", DataStale: false, asOf, settings.CutoffConfigured, []));
     }
 
     [HttpGet("Evaluate")]
     public async Task<IActionResult> Evaluate(string barcode, CancellationToken ct)
     {
-        if (GetActiveScannerId() is null)
-            return Unauthorized();
-
         var result = await gate.EvaluateAsync(barcode, ct);
         return PartialView("_VerdictCard", GateScanCardViewModel.FromEvaluation(result));
     }
@@ -71,22 +66,14 @@ public sealed class GateController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Decision(
         string barcode, bool idConfirmed, bool childWithAdult, bool overrideEarly,
-        Guid? supervisorUserId, string? supervisorPin, string? laneId, CancellationToken ct)
+        string? laneId, CancellationToken ct)
     {
-        if (GetActiveScannerId() is not { } scanner)
+        if (GetCurrentUserId() is not { } scanner)
             return Unauthorized();
 
-        // Both the too-early override and the child-without-ID waiver require a server-verified
-        // supervisor PIN (an authorizing identity recorded on the event). Verify before recording.
-        Guid? overrideBy = null;
-        if (childWithAdult || overrideEarly)
-        {
-            var (errorCard, authorized) = await AuthorizeSupervisorAsync(
-                supervisorUserId, supervisorPin, barcode, childWithAdult, ct);
-            if (errorCard is not null)
-                return PartialView("_VerdictCard", errorCard);
-            overrideBy = authorized;
-        }
+        // Too-early and child-without-ID admits are a plain no-PIN override now: the operator's tap on
+        // the override button IS the authorization. Record it against the gate account (no supervisor).
+        Guid? overrideBy = childWithAdult || overrideEarly ? scanner : null;
 
         var decision = await gate.RecordDecisionAsync(
             new GateDecisionInput(barcode, idConfirmed, childWithAdult, laneId,
@@ -337,37 +324,6 @@ public sealed class GateController(
         return RedirectToAction(nameof(Index));
     }
 
-    // ── Override authorization ───────────────────────────────────────────────
-    private async Task<(GateScanCardViewModel? ErrorCard, Guid? SupervisorUserId)> AuthorizeSupervisorAsync(
-        Guid? supervisorUserId, string? pin, string barcode, bool childWithAdult, CancellationToken ct)
-    {
-        // No supervisor picked → nothing to authorize, and no per-person bucket to throttle.
-        if (supervisorUserId is not { } supId)
-            return (OverrideErrorCard(barcode, childWithAdult, "Pick the authorizing supervisor, then enter their PIN"), null);
-
-        // Throttle per target supervisor only. A shared device/IP key would let one locked-out
-        // attempt (or a fat-fingered PIN) freeze every claim and override at the terminal.
-        var userKey = UserKey(supId);
-        if (ThrottleWait(userKey) is { } wait)
-            return (OverrideErrorCard(barcode, childWithAdult, $"Too many PIN attempts — wait {wait}s"), null);
-
-        if (await gate.AuthorizeOverrideAsync(supId, pin ?? string.Empty, ct))
-        {
-            ResetPinThrottle(userKey);
-            return (null, supId);
-        }
-
-        RecordPinFailure(userKey);
-        return (OverrideErrorCard(barcode, childWithAdult, "Supervisor PIN not accepted — check the name & PIN"), null);
-    }
-
-    private static GateScanCardViewModel OverrideErrorCard(string barcode, bool childWithAdult, string reason) =>
-        new(GateCardKind.Amber, "Supervisor", null, reason, IsEarly: false, barcode,
-            AllowChildWithAdult: false,
-            // A too-early override can retry inline (the barcode is preserved on the card). The child
-            // waiver lives on the ID-confirm card, so a failed child auth just re-scans.
-            AllowSupervisorOverride: !childWithAdult);
-
     // ── Throttle helpers (keyed on the target user-id only) ──────────────────────
     // Per-target-user, never per shared device/IP: a 4-digit PIN's brute-force ceiling is
     // already capped per user (5 / 15 min), and a shared-device key would let one bad run
@@ -390,20 +346,4 @@ public sealed class GateController(
         return roster.Select(r => new GateRosterMember(r.UserId, r.DisplayName)).ToList();
     }
 
-    private async Task<IReadOnlyList<GateSupervisorOption>> BuildSupervisorOptionsAsync(CancellationToken ct)
-    {
-        var ids = await gate.GetEnrolledSupervisorIdsAsync(ct);
-        var options = new List<GateSupervisorOption>(ids.Count);
-        foreach (var id in ids)
-        {
-            var info = await UserService.GetUserInfoAsync(id, ct);
-            if (info is { IsActive: true })
-                options.Add(new GateSupervisorOption(id, info.BurnerName));
-        }
-
-        return options.OrderBy(o => o.DisplayName, StringComparer.CurrentCultureIgnoreCase).ToList();
-    }
-
-    private Guid? GetActiveScannerId() =>
-        Guid.TryParse(HttpContext.Session.GetString(ScannerSessionKey), out var id) ? id : null;
 }

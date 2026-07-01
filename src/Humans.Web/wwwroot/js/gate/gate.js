@@ -105,28 +105,9 @@ export function initGate(refs) {
     }
     result.addEventListener('pointerdown', bumpReset, { passive: true });
 
-    // "End shift" clears the scanner session (next person re-claims with their PIN), so require
-    // a deliberate second tap.
-    initChangeConfirm();
     // The freshness line is a reload affordance on the chromeless kiosk (no browser reload button).
     const asofEl = document.querySelector('.gate-asof');
     if (asofEl) asofEl.addEventListener('click', () => location.reload());
-
-    function initChangeConfirm() {
-        const btn = document.querySelector('[data-confirm-change]');
-        if (!btn) return;
-        let armed = false;
-        const original = btn.textContent;
-        const armedLabel = btn.getAttribute('data-confirm-change') || 'Tap again';
-        btn.addEventListener('click', (e) => {
-            if (armed) return; // second tap within the window → allow the submit to proceed
-            e.preventDefault();
-            armed = true;
-            btn.textContent = armedLabel;
-            btn.classList.add('gate-armed');
-            setTimeout(() => { armed = false; btn.textContent = original; btn.classList.remove('gate-armed'); }, 3000);
-        });
-    }
 
     // Render the "loaded HH:mm · N min ago" indicator and redden it once the terminal
     // has been open a while — a nudge to re-open the page so its data view isn't stale.
@@ -270,36 +251,28 @@ export function initGate(refs) {
         }
     }
 
-    // The supervisor-override panel: pick a supervisor (tap-list — the locked-down kiosk can't
-    // reach free-text people search) → enter their PIN on the shared keypad → submit the decision.
+    // The override panel: a single confirm tap admits a too-early or child-without-ID scan. No PIN
+    // and no supervisor pick — the confirm button IS the authorization (recorded against the gate
+    // account server-side). It's a deliberate second tap so a stray tap on the card can't admit.
     function initOverride() {
         if (!override) return { open: () => {} };
 
         const titleEl = override.querySelector('[data-override-title]');
-        const pickStep = override.querySelector('[data-override-pick]');
-        const pinStep = override.querySelector('[data-override-pin]');
-        const nameEl = override.querySelector('[data-supervisor-name]');
-        const keypadEl = override.querySelector('[data-gate-keypad]');
+        const promptEl = override.querySelector('[data-override-prompt]');
         const cancelBtn = override.querySelector('[data-override-cancel]');
-        const backBtn = override.querySelector('[data-override-back]');
+        const confirmBtn = override.querySelector('[data-override-confirm]');
 
         let mode = 'early';
         let barcode = null;
-        let supervisorUserId = null;
-
-        const keypad = keypadEl && window.initGateKeypad
-            ? window.initGateKeypad(keypadEl, (pin) => submit(pin))
-            : { reset: () => {} };
 
         function open(nextMode, nextBarcode) {
-            clearResetTimer(); // hold the auto-return while the supervisor enters their PIN
+            clearResetTimer(); // hold the auto-return while the operator confirms the override
             mode = nextMode;
             barcode = nextBarcode;
-            supervisorUserId = null;
-            if (titleEl) titleEl.textContent = mode === 'child' ? 'Authorise: child without ID' : 'Supervisor override';
-            if (pinStep) pinStep.classList.add('d-none');
-            if (pickStep) pickStep.classList.remove('d-none');
-            keypad.reset();
+            if (titleEl) titleEl.textContent = mode === 'child' ? 'Admit: child without ID' : 'Supervisor override';
+            if (promptEl) promptEl.textContent = mode === 'child'
+                ? 'Admit this child with the accompanying adult?'
+                : 'Admit this guest before general entry?';
             override.classList.remove('d-none');
             override.setAttribute('aria-hidden', 'false');
         }
@@ -307,7 +280,6 @@ export function initGate(refs) {
         function close() {
             override.classList.add('d-none');
             override.setAttribute('aria-hidden', 'true');
-            keypad.reset();
             focusInput();
         }
 
@@ -320,33 +292,14 @@ export function initGate(refs) {
             if (current && current.hasAttribute('data-kind')) armAutoReset(current, current.getAttribute('data-kind'));
         }
 
-        override.querySelectorAll('[data-supervisor-id]').forEach(btn => {
-            btn.addEventListener('click', () => {
-                supervisorUserId = btn.getAttribute('data-supervisor-id');
-                if (nameEl) nameEl.textContent = btn.textContent.trim();
-                if (pickStep) pickStep.classList.add('d-none');
-                if (pinStep) pinStep.classList.remove('d-none');
-                keypad.reset();
-            });
-        });
-
         if (cancelBtn) cancelBtn.addEventListener('click', closeAndReArm);
 
-        // Tapped the wrong supervisor — go back to the name list without closing the whole panel.
-        if (backBtn) backBtn.addEventListener('click', () => {
-            supervisorUserId = null;
-            if (pinStep) pinStep.classList.add('d-none');
-            if (pickStep) pickStep.classList.remove('d-none');
-            keypad.reset();
-        });
-
-        function submit(pin) {
-            if (!supervisorUserId || !barcode) return;
-            const opts = { supervisorUserId, supervisorPin: pin };
-            if (mode === 'child') opts.childWithAdult = true; else opts.overrideEarly = true;
+        if (confirmBtn) confirmBtn.addEventListener('click', () => {
+            if (!barcode) return;
+            const opts = mode === 'child' ? { childWithAdult: true } : { overrideEarly: true };
             close();
             submitDecision(barcode, opts);
-        }
+        });
 
         return { open };
     }
