@@ -152,6 +152,10 @@ export function initGate(refs) {
     let manualMode = false;
     const clearScanTimer = () => { if (scanTimer) { clearTimeout(scanTimer); scanTimer = null; } };
     input.addEventListener('input', () => {
+        // A character in flight means a scan (or manual entry) is mid-stream: push the card's
+        // auto-return deadline back so resetToReady can't clear the field between keystrokes —
+        // a wipe mid-burst truncates the barcode into a false STOP or a silently dropped scan.
+        bumpReset();
         clearScanTimer();
         if (manualMode || input.value.trim().length < SCAN_MIN_LENGTH) return;
         scanTimer = setTimeout(() => form.requestSubmit(), SCAN_QUIET_MS);
