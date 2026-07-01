@@ -42,16 +42,11 @@ public sealed class GateController(
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken ct)
     {
-        // No claim step: the terminal scans as its authenticated gate account (never a per-staffer
-        // PIN). The attribution id is taken from the principal — never the request body.
-        if (GetCurrentUserId() is not { } scanner)
-            return Unauthorized();
-
-        var info = await UserService.GetUserInfoAsync(scanner, ct);
+        // No claim step and no per-scanner identity shown: the terminal simply scans as its
+        // authenticated gate account (attribution is taken from the principal on Decision).
         var settings = await gate.GetSettingsAsync(ct);
         var asOf = InstantPattern.ExtendedIso.Format(clock.GetCurrentInstant());
-        return View(new GateIndexViewModel(
-            info?.BurnerName ?? "Gate staff", DataStale: false, asOf, settings.CutoffConfigured, []));
+        return View(new GateIndexViewModel(DataStale: false, asOf, settings.CutoffConfigured, []));
     }
 
     [HttpGet("Evaluate")]
