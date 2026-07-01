@@ -55,6 +55,11 @@ admission record. Distinct from the read-only `Scanner` section, which must neve
   real per-person claim rather than honour-system. **Supervisors** (Admin/Board/TicketAdmin) cannot
   self-enrol at the anonymous kiosk — their PIN carries override authority, so an admin enrols it out
   of band (`/Gate/Admin`); the override path is verify-only and rejects un-enrolled supervisors.
+  **First-time set** has two guards (claim-only, never on verify): an "is this you?" confirm before a
+  PIN is minted in someone's name, and a double-entry (enter twice, must match) so a mis-typed PIN
+  can't silently lock a volunteer out (there is no self-service reset — an admin clears it). Every
+  PIN **set/reset is audited** (`GateStaffPinSet`/`GateStaffPinReset` with the acting user — the
+  staffer on self-enrol, the admin on admin-set/reset); PIN values are never logged.
 - **Supervisor override** — a too-early scan (e.g. a Friday Early-Entry ticket scanned on Wednesday)
   STOPs with a precise reason (the holder's EE date vs today, or "no early entry · general entry
   opens …" — date only, never the EE source) and offers a **supervisor override**: the supervisor

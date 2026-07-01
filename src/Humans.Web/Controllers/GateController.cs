@@ -224,9 +224,11 @@ public sealed class GateController(
     [Authorize(Policy = PolicyNames.TicketAdminOrAdmin)]
     public async Task<IActionResult> SetStaffPin(Guid userId, string? pin, CancellationToken ct)
     {
+        if (GetCurrentUserId() is not { } actor)
+            return Unauthorized();
         if (userId == Guid.Empty)
             SetError("Pick a person before setting a PIN.");
-        else if (await gate.AdminSetPinAsync(userId, pin ?? string.Empty, ct))
+        else if (await gate.AdminSetPinAsync(userId, pin ?? string.Empty, actor, ct))
             SetSuccess("PIN set.");
         else
             SetError("PIN must be 4 digits and not trivially guessable (no 1234, 0000, or repeats).");
@@ -240,11 +242,13 @@ public sealed class GateController(
     [Authorize(Policy = PolicyNames.TicketAdminOrAdmin)]
     public async Task<IActionResult> ResetStaffPin(Guid userId, CancellationToken ct)
     {
+        if (GetCurrentUserId() is not { } actor)
+            return Unauthorized();
         if (userId == Guid.Empty)
             SetError("Pick a person before resetting a PIN.");
         else
         {
-            await gate.ClearPinAsync(userId, ct);
+            await gate.ClearPinAsync(userId, actor, ct);
             SetSuccess("PIN reset — they'll set a new one on their next claim.");
         }
 

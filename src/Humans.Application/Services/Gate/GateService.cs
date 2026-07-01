@@ -1,5 +1,6 @@
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.EarlyEntry;
 using Humans.Application.Interfaces.Gate;
@@ -32,6 +33,7 @@ public sealed class GateService(
     IShiftManagementService shifts,
     IRoleAssignmentService roles,
     IPasswordHasher<GateStaffPin> pinHasher,
+    IAuditLogService auditLog,
     IClock clock) : IGateService, IUserMerge, IUserDataContributor
 {
     /// <summary>How far either side of "now" a gate shift may start to count as current.</summary>
@@ -207,14 +209,19 @@ public sealed class GateService(
         if (await IsSupervisorAsync(userId, ct))
             return GatePinSetResult.SupervisorMustBeAdminEnrolled;
         await StorePinAsync(userId, pin, ct);
+        // Self-enrol at the kiosk: actor == the claimed staffer (no PIN value is ever logged).
+        await auditLog.LogAsync(AuditAction.GateStaffPinSet, nameof(GateStaffPin), userId,
+            "Staffer self-enrolled their gate PIN at the kiosk", userId);
         return GatePinSetResult.Ok;
     }
 
-    public async Task<bool> AdminSetPinAsync(Guid userId, string pin, CancellationToken ct = default)
+    public async Task<bool> AdminSetPinAsync(Guid userId, string pin, Guid actorUserId, CancellationToken ct = default)
     {
         if (!IsValidPin(pin))
             return false;
         await StorePinAsync(userId, pin, ct);
+        await auditLog.LogAsync(AuditAction.GateStaffPinSet, nameof(GateStaffPin), userId,
+            "Admin set a staffer's gate PIN", actorUserId);
         return true;
     }
 
@@ -235,8 +242,12 @@ public sealed class GateService(
         return await IsSupervisorAsync(supervisorUserId, ct);
     }
 
-    public Task ClearPinAsync(Guid userId, CancellationToken ct = default) =>
-        repository.DeleteStaffPinAsync(userId, ct);
+    public async Task ClearPinAsync(Guid userId, Guid actorUserId, CancellationToken ct = default)
+    {
+        await repository.DeleteStaffPinAsync(userId, ct);
+        await auditLog.LogAsync(AuditAction.GateStaffPinReset, nameof(GateStaffPin), userId,
+            "Admin reset a staffer's gate PIN", actorUserId);
+    }
 
     public async Task<IReadOnlyList<Guid>> GetEnrolledSupervisorIdsAsync(CancellationToken ct = default)
     {

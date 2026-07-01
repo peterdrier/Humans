@@ -191,6 +191,9 @@ public enum AuditAction
     EarlyEntryRevoked,
     StorePaymentsReconciled,
     GateTerminalPasswordSet,
+    // Gate personal-PIN lifecycle: who set (self-enrol or admin) or reset a staffer's claim PIN.
+    GateStaffPinSet,
+    GateStaffPinReset,
     SurveyCreated,
     SurveyUpdated,
     SurveyOpened,

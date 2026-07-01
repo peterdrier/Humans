@@ -60,8 +60,8 @@ public interface IGateService : IApplicationService
     /// </summary>
     Task<GatePinSetResult> SetOwnPinAsync(Guid userId, string pin, CancellationToken ct = default);
 
-    /// <summary>Admin sets/initialises any user's PIN (incl. supervisors), from the gate admin page. Returns false if the PIN is invalid.</summary>
-    Task<bool> AdminSetPinAsync(Guid userId, string pin, CancellationToken ct = default);
+    /// <summary>Admin sets/initialises any user's PIN (incl. supervisors), from the gate admin page. <paramref name="actorUserId"/> is the acting admin (audit). Returns false if the PIN is invalid.</summary>
+    Task<bool> AdminSetPinAsync(Guid userId, string pin, Guid actorUserId, CancellationToken ct = default);
 
     /// <summary>Verify a staffer's PIN for claiming the scanner. Timing-safe. False if no PIN set or mismatch.</summary>
     Task<bool> VerifyPinAsync(Guid userId, string pin, CancellationToken ct = default);
@@ -73,8 +73,8 @@ public interface IGateService : IApplicationService
     /// </summary>
     Task<bool> AuthorizeOverrideAsync(Guid supervisorUserId, string pin, CancellationToken ct = default);
 
-    /// <summary>Clear a user's PIN (admin reset). They re-enrol on next claim.</summary>
-    Task ClearPinAsync(Guid userId, CancellationToken ct = default);
+    /// <summary>Clear a user's PIN (admin reset). <paramref name="actorUserId"/> is the acting admin (audit). They re-enrol on next claim.</summary>
+    Task ClearPinAsync(Guid userId, Guid actorUserId, CancellationToken ct = default);
 
     /// <summary>
     /// The user-ids of every gate-supervisor (Admin/Board/TicketAdmin) who has a PIN enrolled —

@@ -111,6 +111,9 @@ body.gate-kiosk { margin: 0; min-height: 100vh; background: #f4ede1; }
 .gate-pin-head { margin-bottom: 1.25rem; }
 .gate-pin-name { font-size: 2.1rem; font-weight: 700; color: #1e2a33; line-height: 1.1; }
 .gate-pin-prompt { font-size: 1.4rem; color: #2b3440; margin-top: .35rem; }
+/* Re-enter (confirm) step of a first-time set — stands out from the neutral "set" prompt so the
+   volunteer notices the keypad is asking a second time, not repeating itself. */
+.gate-pin-prompt-confirm { color: #0B7A2F; font-weight: 700; }
 .gate-pin-sub { font-size: 1.05rem; color: #5f6b76; margin-top: .25rem; }
 .gate-pin-error {
     margin-top: .9rem; padding: .6rem 1rem; border-radius: 10px;
@@ -119,6 +122,16 @@ body.gate-kiosk { margin: 0; min-height: 100vh; background: #f4ede1; }
 .gate-pin-back {
     display: inline-block; margin-top: 1.5rem; font-size: 1.1rem; font-weight: 600; color: #5f6b76;
 }
+/* "Is this you?" confirm before a first-time PIN set — big, unmissable, glove-friendly. */
+.gate-pin-confirm { max-width: 440px; margin: 0 auto; }
+.gate-pin-confirm-q { font-size: 1.6rem; font-weight: 700; color: #1e2a33; }
+.gate-pin-confirm-note { font-size: 1.2rem; color: #2b3440; line-height: 1.45; margin: .5rem 0 1.5rem; }
+.gate-pin-confirm-note strong { color: #1e2a33; }
+.gate-pin-confirm-yes {
+    width: 100%; font-size: 1.6rem; font-weight: 700; color: #fff; background: #0B7A2F;
+    border: none; border-radius: 14px; padding: 1.1rem; min-height: 78px; cursor: pointer;
+}
+.gate-pin-confirm-yes:active { background: #095e24; }
 .gate-pin-blocked { max-width: 460px; margin: 2rem auto 0; text-align: center; color: #1e2a33; }
 .gate-pin-icon { font-size: 3.2rem; color: #B26A00; }
 .gate-pin-blocked-text { font-size: 1.2rem; line-height: 1.5; margin-top: .75rem; color: #2b3440; }

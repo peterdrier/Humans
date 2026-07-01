@@ -25,7 +25,7 @@
     {
         <div class="gate-pin-head">
             <div class="gate-pin-name">@Model.DisplayName</div>
-            <div class="gate-pin-prompt">@(Model.Mode == GatePinMode.Set ? "Set a 4-digit PIN" : "Enter your PIN")</div>
+            <div class="gate-pin-prompt" data-gate-prompt>@(Model.Mode == GatePinMode.Set ? "Set a 4-digit PIN" : "Enter your PIN")</div>
             @if (Model.Mode == GatePinMode.Set)
             {
                 <div class="gate-pin-sub">You'll reuse this each shift to claim the gate.</div>
@@ -34,9 +34,23 @@
             {
                 <div class="gate-pin-error" role="alert">@Model.Error</div>
             }
+            @* Client-side message for a double-entry mismatch (set mode) — filled by gate-pin.js. *@
+            <div class="gate-pin-error d-none" role="alert" data-gate-error></div>
         </div>
 
-        <form id="gate-pin-form" method="post" asp-action="ClaimPin" autocomplete="off">
+        @* First-time set only: confirm the staffer is the person they picked before minting a PIN in
+           their name (every scan is attributed to them). The keypad stays hidden until they confirm. *@
+        @if (Model.Mode == GatePinMode.Set)
+        {
+            <div class="gate-pin-confirm" data-gate-confirm>
+                <div class="gate-pin-confirm-q">Is this you?</div>
+                <p class="gate-pin-confirm-note">Every ticket you scan will be recorded as <strong>@Model.DisplayName</strong>.</p>
+                <button type="button" class="gate-pin-confirm-yes" data-gate-confirm-yes>Yes — that's me</button>
+            </div>
+        }
+
+        <form id="gate-pin-form" method="post" asp-action="ClaimPin" autocomplete="off"
+              class="@(Model.Mode == GatePinMode.Set ? "d-none" : "")">
             <input type="hidden" name="userId" value="@Model.UserId" />
             <input type="hidden" name="pin" id="gate-pin-value" />
             <partial name="_PinPad" />
@@ -59,7 +73,12 @@
             initClaimPin({
                 container: document.querySelector('[data-gate-keypad]'),
                 form: document.getElementById('gate-pin-form'),
-                valueInput: document.getElementById('gate-pin-value')
+                valueInput: document.getElementById('gate-pin-value'),
+                confirmTwice: @(Model.Mode == GatePinMode.Set ? "true" : "false"),
+                confirmEl: document.querySelector('[data-gate-confirm]'),
+                confirmYes: document.querySelector('[data-gate-confirm-yes]'),
+                promptEl: document.querySelector('[data-gate-prompt]'),
+                errorEl: document.querySelector('[data-gate-error]')
             });
         </script>
     }
