@@ -41,7 +41,8 @@ public class GateControllerClaimTests
     {
         _throttle = new GatePinThrottle(new MemoryCache(new MemoryCacheOptions()), _clock);
         _controller = new GateController(
-            _gate, _users, new ConfigurationBuilder().Build(), _throttle, _clock);
+            _gate, _users, new ConfigurationBuilder().Build(), _throttle,
+            new GateVendorMirrorLedger(new MemoryCache(new MemoryCacheOptions())), _clock);
 
         var http = new DefaultHttpContext { Session = _session };
         _controller.ControllerContext = new ControllerContext { HttpContext = http };

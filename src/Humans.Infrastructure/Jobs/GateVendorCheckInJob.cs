@@ -32,7 +32,19 @@ public sealed class GateVendorCheckInJob(
     IConfiguration configuration,
     ILogger<GateVendorCheckInJob> logger)
 {
-    public async Task ExecuteAsync(string vendorTicketId, CancellationToken cancellationToken = default)
+    // Live mirror: the check-in time is "now" (the scan just happened). Hangfire-invoked —
+    // this signature is frozen per memory/code/hangfire-method-signature-stable.md; the
+    // backfill variant below is a SEPARATE method for the same reason.
+    public Task ExecuteAsync(string vendorTicketId, CancellationToken cancellationToken = default) =>
+        ExecuteCoreAsync(vendorTicketId, clock.GetCurrentInstant(), cancellationToken);
+
+    // Backfill mirror: preserves the original gate admit time (unix seconds — a primitive,
+    // so it serializes stably through Hangfire) instead of stamping the admin's click time.
+    // Also Hangfire-invoked: signature frozen once shipped.
+    public Task ExecuteBackfillAsync(string vendorTicketId, long admittedAtUnixSeconds, CancellationToken cancellationToken = default) =>
+        ExecuteCoreAsync(vendorTicketId, Instant.FromUnixTimeSeconds(admittedAtUnixSeconds), cancellationToken);
+
+    private async Task ExecuteCoreAsync(string vendorTicketId, Instant occurredAt, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(vendorTicketId))
             return;
@@ -47,7 +59,7 @@ public sealed class GateVendorCheckInJob(
 
         try
         {
-            await vendor.CreateCheckInAsync(vendorTicketId, clock.GetCurrentInstant(), cancellationToken);
+            await vendor.CreateCheckInAsync(vendorTicketId, occurredAt, cancellationToken);
         }
         catch (HttpRequestException ex) when (ex.StatusCode is { } status && (int)status is >= 400 and < 500)
         {

@@ -16,10 +16,11 @@
 
 <p class="text-muted">
     Gate admits recorded locally in <code>gate_scan_events</code> but not yet checked in at
-    TicketTailor (as of the last ticket sync). Sending a row enqueues the existing
-    <code>GateVendorCheckInJob</code> mirror. TicketTailor check-ins <strong>double-record on
-    repeat</strong>, so already-sent rows are excluded from both send buttons until the next
-    ticket sync confirms them.
+    TicketTailor (as of the last ticket sync). Sending a row enqueues the
+    <code>GateVendorCheckInJob</code> mirror with the <strong>original gate admit time</strong>
+    as the vendor check-in time. TicketTailor check-ins <strong>double-record on repeat</strong>,
+    so anything already enqueued — by these buttons or by a live gate scan — is excluded from
+    both send buttons until the next ticket sync confirms it.
 </p>
 
 @if (!Model.MirrorEnabled)

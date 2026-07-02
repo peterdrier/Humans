@@ -53,7 +53,7 @@ public sealed class GateVendorBackfillAdminController(
             return RedirectToAction(nameof(Index));
         }
 
-        Enqueue(row.VendorTicketId!);
+        Enqueue(row);
         SetSuccess($"Test check-in enqueued for {row.AttendeeName ?? row.Barcode} ({row.VendorTicketId}). " +
                    "Verify it on the TicketTailor dashboard, then send the rest.");
         return RedirectToAction(nameof(Index));
@@ -68,7 +68,7 @@ public sealed class GateVendorBackfillAdminController(
 
         var (_, pending, _) = await GetPendingSplitAsync(ct);
         foreach (var row in pending)
-            Enqueue(row.VendorTicketId!);
+            Enqueue(row);
 
         SetSuccess($"Enqueued {pending.Count} vendor check-in(s). " +
                    "Sent rows are excluded from re-sending; counts update after the next ticket sync.");
@@ -86,9 +86,14 @@ public sealed class GateVendorBackfillAdminController(
         return (snapshot, pending, sent);
     }
 
-    private void Enqueue(string vendorTicketId)
+    // ExecuteBackfillAsync (not the live ExecuteAsync) so TicketTailor records the ORIGINAL
+    // gate admit time as check_in_at, not the moment the admin clicked Send.
+    private void Enqueue(GateVendorBackfillRow row)
     {
-        backgroundJobs.Enqueue<GateVendorCheckInJob>(j => j.ExecuteAsync(vendorTicketId, CancellationToken.None));
+        var vendorTicketId = row.VendorTicketId!;
+        var admittedAtUnixSeconds = row.AdmittedAt.ToUnixTimeSeconds();
+        backgroundJobs.Enqueue<GateVendorCheckInJob>(j =>
+            j.ExecuteBackfillAsync(vendorTicketId, admittedAtUnixSeconds, CancellationToken.None));
         ledger.MarkSent(vendorTicketId);
     }
 

@@ -39,6 +39,7 @@ public sealed class GateController(
     IUserServiceRead users,
     IConfiguration configuration,
     GatePinThrottle pinThrottle,
+    GateVendorMirrorLedger mirrorLedger,
     IClock clock) : HumansControllerBase(users)
 {
     private const string ScannerSessionKey = "GateScannerId";
@@ -92,8 +93,13 @@ public sealed class GateController(
             scanner, ct);
 
         // Best-effort vendor check-in mirror on admit — fire-and-forget so the gate never waits.
+        // Marked in the mirror ledger so the vendor check-in backfill page never re-sends a live
+        // admit that hasn't flowed back through the ticket sync yet (TT check-ins double-record).
         if (decision.VendorTicketId is { Length: > 0 } vendorTicketId)
+        {
             BackgroundJob.Enqueue<GateVendorCheckInJob>(j => j.ExecuteAsync(vendorTicketId, CancellationToken.None));
+            mirrorLedger.MarkSent(vendorTicketId);
+        }
 
         return PartialView("_VerdictCard", GateScanCardViewModel.FromDecision(decision, barcode));
     }

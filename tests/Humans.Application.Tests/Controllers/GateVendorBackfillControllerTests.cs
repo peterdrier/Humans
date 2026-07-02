@@ -3,6 +3,7 @@ using Hangfire.Common;
 using Hangfire.States;
 using Humans.Application.Interfaces.Gate;
 using Humans.Application.Interfaces.Users;
+using Humans.Infrastructure.Jobs;
 using Humans.Web.Controllers;
 using Humans.Web.Infrastructure;
 using Microsoft.AspNetCore.Http;
@@ -85,6 +86,22 @@ public class GateVendorBackfillControllerTests
         Assert.Equal(["vt-A"], EnqueuedVendorIds());
         Assert.True(_ledger.WasSent("vt-A"));
         Assert.False(_ledger.WasSent("vt-B"));
+    }
+
+    [HumansFact]
+    public async Task RunOne_PreservesTheOriginalAdmitTime()
+    {
+        var controller = BuildController();
+
+        await controller.RunOne("vt-A", TestContext.Current.CancellationToken);
+
+        // ExecuteBackfillAsync(vendorTicketId, admittedAtUnixSeconds, ct) — the vendor
+        // check-in must carry the gate admit time, not the moment the admin clicked Send.
+        var job = (Job)_jobs.ReceivedCalls().Single(c =>
+            string.Equals(c.GetMethodInfo().Name, nameof(IBackgroundJobClient.Create), StringComparison.Ordinal))
+            .GetArguments()[0]!;
+        Assert.Equal(nameof(GateVendorCheckInJob.ExecuteBackfillAsync), job.Method.Name);
+        Assert.Equal(RowA.AdmittedAt.ToUnixTimeSeconds(), (long)job.Args[1]!);
     }
 
     [HumansFact]
