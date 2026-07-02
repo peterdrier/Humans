@@ -86,6 +86,7 @@ if (!builder.Environment.IsProduction())
 builder.Services.AddScoped<GateTerminalAccountSeeder>();
 builder.Services.AddSingleton<GateLoginThrottle>();
 builder.Services.AddSingleton<GatePinThrottle>();
+builder.Services.AddSingleton<GateVendorMirrorLedger>();
 
 builder.Services.ConfigureHttpJsonOptions(options =>
 {

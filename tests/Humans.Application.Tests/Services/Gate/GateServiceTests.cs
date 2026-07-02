@@ -7,6 +7,7 @@ using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Auth;
+using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Gate;
 using Humans.Domain.Constants;
 using Humans.Application.Tests.Infrastructure;
@@ -14,8 +15,10 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Repositories.Gate;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 
 namespace Humans.Application.Tests.Services.Gate;
 
@@ -38,6 +41,7 @@ public class GateServiceTests : ServiceTestHarness
     private readonly IRoleAssignmentService _roles = Substitute.For<IRoleAssignmentService>();
     private readonly IPasswordHasher<GateStaffPin> _pinHasher = new PasswordHasher<GateStaffPin>();
     private readonly IAuditLogService _auditLog = Substitute.For<IAuditLogService>();
+    private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly GateService _svc;
 
     public GateServiceTests()
@@ -45,7 +49,7 @@ public class GateServiceTests : ServiceTestHarness
         _burn.GetActiveAsync(Arg.Any<CancellationToken>()).Returns((BurnSettingsInfo?)null);
         _earlyEntry.GetForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns((UserEarlyEntry?)null);
-        _svc = new GateService(new GateRepository(DbFactory), _tickets, _earlyEntry, _burn, _shifts, _roles, _pinHasher, _auditLog, Clock);
+        _svc = new GateService(new GateRepository(DbFactory), _tickets, _earlyEntry, _burn, _shifts, _roles, _users, _pinHasher, _auditLog, NullLogger<GateService>.Instance, Clock);
 
         // Baseline: an admin has set the cutoff in the past, so general entry is open.
         // Seeded directly (sync) since the ctor can't await; Db shares the in-memory
@@ -64,10 +68,12 @@ public class GateServiceTests : ServiceTestHarness
     private void StubTicket(
         TicketAttendeeStatus status = TicketAttendeeStatus.Valid,
         Guid? matchedUserId = null,
-        string barcode = Barcode)
+        string barcode = Barcode,
+        Guid? attendeeId = null,
+        Instant? checkedInAt = null)
     {
         var attendee = new TicketAttendeeInfo(
-            Id: Guid.NewGuid(),
+            Id: attendeeId ?? Guid.NewGuid(),
             VendorTicketId: "v1",
             AttendeeName: "Jane Donovan",
             AttendeeEmail: "jane@example.com",
@@ -75,7 +81,8 @@ public class GateServiceTests : ServiceTestHarness
             Price: 100m,
             Status: status,
             MatchedUserId: matchedUserId,
-            Barcode: barcode);
+            Barcode: barcode,
+            CheckedInAt: checkedInAt);
 
         var order = new TicketOrderInfo(
             Id: Guid.NewGuid(),
@@ -176,6 +183,85 @@ public class GateServiceTests : ServiceTestHarness
         // No authorizing supervisor → the waiver is not granted (a forged child flag can't admit).
         (await Record(idConfirmed: false, child: true))
             .Verdict.Should().Be(GateVerdict.RejectedNameMismatch);
+    }
+
+    // ── Attendance projection (admit → participation Attended) ──────────────
+
+    private void StubActiveEvent(int year = 2026) =>
+        _shifts.GetActiveAsync().Returns(new EventSettings
+        {
+            Id = Guid.NewGuid(),
+            EventName = "Test",
+            Year = year,
+            TimeZoneId = "Europe/Madrid",
+            GateOpeningDate = new LocalDate(year, 3, 1),
+        });
+
+    [HumansFact]
+    public async Task RecordDecision_Admit_MarksParticipationAttended()
+    {
+        StubTicket(matchedUserId: GuestId);
+        StubActiveEvent(year: 2026);
+
+        var r = await Record(idConfirmed: true);
+
+        r.Verdict.Should().Be(GateVerdict.Admitted);
+        // CancellationToken.None pinned: the admit is durable, so a kiosk disconnect
+        // (aborted request token) must not skip the projection.
+        await _users.Received(1).SetParticipationFromTicketSyncAsync(
+            GuestId, 2026, ParticipationStatus.Attended,
+            Clock.GetCurrentInstant(), CancellationToken.None);
+    }
+
+    [HumansFact]
+    public async Task RecordDecision_Admit_ParticipationWriteThrows_StillAdmits()
+    {
+        // The projection races the ticket sync on the same (UserId, Year) row; its
+        // failure must never turn an already-recorded admit into an error response.
+        StubTicket(matchedUserId: GuestId);
+        StubActiveEvent();
+        _users.SetParticipationFromTicketSyncAsync(
+                default, default, default, default, default)
+            .ThrowsAsyncForAnyArgs(new InvalidOperationException("unique index collision"));
+
+        (await Record(idConfirmed: true)).Verdict.Should().Be(GateVerdict.Admitted);
+    }
+
+    [HumansFact]
+    public async Task RecordDecision_Reject_DoesNotTouchParticipation()
+    {
+        StubTicket(matchedUserId: GuestId);
+        StubActiveEvent();
+
+        (await Record(idConfirmed: false)).Verdict.Should().Be(GateVerdict.RejectedNameMismatch);
+
+        await _users.DidNotReceiveWithAnyArgs()
+            .SetParticipationFromTicketSyncAsync(default, default, default, default);
+    }
+
+    [HumansFact]
+    public async Task RecordDecision_Admit_UnmatchedGuest_DoesNotTouchParticipation()
+    {
+        // Barcode not matched to a Humans account: there is no user to mark Attended.
+        StubTicket(matchedUserId: null);
+        StubActiveEvent();
+
+        (await Record(idConfirmed: true)).Verdict.Should().Be(GateVerdict.Admitted);
+
+        await _users.DidNotReceiveWithAnyArgs()
+            .SetParticipationFromTicketSyncAsync(default, default, default, default);
+    }
+
+    [HumansFact]
+    public async Task RecordDecision_Admit_NoActiveEvent_StillAdmits()
+    {
+        // No active event → no year to record against; the admit itself must not fail.
+        StubTicket(matchedUserId: GuestId);
+
+        (await Record(idConfirmed: true)).Verdict.Should().Be(GateVerdict.Admitted);
+
+        await _users.DidNotReceiveWithAnyArgs()
+            .SetParticipationFromTicketSyncAsync(default, default, default, default);
     }
 
     [HumansFact]
@@ -507,5 +593,96 @@ public class GateServiceTests : ServiceTestHarness
 
         // Only the admin-enrolled supervisor is offered in the override picker.
         ids.Should().ContainSingle().Which.Should().Be(enrolled);
+    }
+
+    [HumansFact]
+    public async Task VendorBackfill_AdmitNotCheckedInAtVendor_IsPending()
+    {
+        StubTicket();
+        await Record(idConfirmed: true);
+
+        var snapshot = await _svc.GetVendorCheckInBackfillAsync();
+
+        snapshot.AdmitCount.Should().Be(1);
+        snapshot.AlreadyCheckedInCount.Should().Be(0);
+        snapshot.Unmirrorable.Should().BeEmpty();
+        var row = snapshot.Pending.Should().ContainSingle().Subject;
+        row.VendorTicketId.Should().Be("v1");
+        row.AttendeeName.Should().Be("Jane Donovan");
+    }
+
+    [HumansFact]
+    public async Task VendorBackfill_VendorAlreadyCheckedIn_IsNotPending()
+    {
+        var attendeeId = Guid.NewGuid();
+        StubTicket(attendeeId: attendeeId);
+        await Record(idConfirmed: true);
+        // The next /check_ins sync stamps CheckedInAt — the issued ticket's Status stays
+        // Valid (vendor semantics), so CheckedInAt alone must drop the row out of pending.
+        StubTicket(attendeeId: attendeeId, checkedInAt: Clock.GetCurrentInstant());
+
+        var snapshot = await _svc.GetVendorCheckInBackfillAsync();
+
+        snapshot.AdmitCount.Should().Be(1);
+        snapshot.AlreadyCheckedInCount.Should().Be(1);
+        snapshot.Pending.Should().BeEmpty();
+        snapshot.Unmirrorable.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task VendorBackfill_CheckedInStatusWithoutTimestamp_AlsoNotPending()
+    {
+        var attendeeId = Guid.NewGuid();
+        StubTicket(attendeeId: attendeeId);
+        await Record(idConfirmed: true);
+        StubTicket(status: TicketAttendeeStatus.CheckedIn, attendeeId: attendeeId);
+
+        var snapshot = await _svc.GetVendorCheckInBackfillAsync();
+
+        snapshot.AlreadyCheckedInCount.Should().Be(1);
+        snapshot.Pending.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task VendorBackfill_AttendeeNoLongerInOrders_IsUnmirrorable()
+    {
+        StubTicket();
+        await Record(idConfirmed: true);
+        _tickets.GetTicketOrdersAsync(Arg.Any<CancellationToken>())
+            .Returns(new List<TicketOrderInfo>());
+
+        var snapshot = await _svc.GetVendorCheckInBackfillAsync();
+
+        snapshot.Pending.Should().BeEmpty();
+        var row = snapshot.Unmirrorable.Should().ContainSingle().Subject;
+        row.VendorTicketId.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task VendorBackfill_IgnoresAdmitsOlderThanTheWindow()
+    {
+        StubTicket();
+        await Record(idConfirmed: true);
+        // Prior-edition admits (retention is 365 days) must not pollute the diff.
+        Clock.Advance(Duration.FromDays(31));
+
+        var snapshot = await _svc.GetVendorCheckInBackfillAsync();
+
+        snapshot.AdmitCount.Should().Be(0);
+        snapshot.Pending.Should().BeEmpty();
+        snapshot.Unmirrorable.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task VendorBackfill_RejectedScansAreNotCounted()
+    {
+        StubTicket();
+        await Record(idConfirmed: false); // ID says no → rejected, nothing to mirror
+
+        var snapshot = await _svc.GetVendorCheckInBackfillAsync();
+
+        snapshot.AdmitCount.Should().Be(0);
+        snapshot.Pending.Should().BeEmpty();
+        snapshot.Unmirrorable.Should().BeEmpty();
     }
 }

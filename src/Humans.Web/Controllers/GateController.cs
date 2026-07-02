@@ -39,10 +39,12 @@ public sealed class GateController(
     IUserServiceRead users,
     IConfiguration configuration,
     GatePinThrottle pinThrottle,
+    GateVendorMirrorLedger mirrorLedger,
     IClock clock) : HumansControllerBase(users)
 {
     private const string ScannerSessionKey = "GateScannerId";
     private const string SupervisorPinConfigKey = "Gate:SupervisorPin";
+    private const string VendorMirrorEnabledKey = "Gate:VendorMirrorEnabled";
 
     // Throttle bucket for the shared override PIN — one bucket for the terminal, distinct
     // from the per-user claim buckets so a fumbled override can never lock a claim (or vice versa).
@@ -92,8 +94,16 @@ public sealed class GateController(
             scanner, ct);
 
         // Best-effort vendor check-in mirror on admit — fire-and-forget so the gate never waits.
+        // Marked in the mirror ledger so the vendor check-in backfill page never re-sends a live
+        // admit that hasn't flowed back through the ticket sync yet (TT check-ins double-record).
+        // Marked ONLY when the mirror flag is on: with it off the job no-ops, and a ledger mark
+        // would hide exactly the rows the backfill page exists to recover.
         if (decision.VendorTicketId is { Length: > 0 } vendorTicketId)
+        {
             BackgroundJob.Enqueue<GateVendorCheckInJob>(j => j.ExecuteAsync(vendorTicketId, CancellationToken.None));
+            if (configuration.GetValue<bool>(VendorMirrorEnabledKey))
+                mirrorLedger.TryMarkSent(vendorTicketId);
+        }
 
         return PartialView("_VerdictCard", GateScanCardViewModel.FromDecision(decision, barcode));
     }

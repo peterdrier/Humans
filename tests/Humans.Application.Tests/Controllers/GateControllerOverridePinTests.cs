@@ -48,7 +48,8 @@ public class GateControllerOverridePinTests
             settings["Gate:SupervisorPin"] = configuredPin;
         var config = new ConfigurationBuilder().AddInMemoryCollection(settings).Build();
         var throttle = new GatePinThrottle(new MemoryCache(new MemoryCacheOptions()), _clock);
-        var controller = new GateController(_gate, _users, config, throttle, _clock);
+        var mirrorLedger = new GateVendorMirrorLedger(new MemoryCache(new MemoryCacheOptions()));
+        var controller = new GateController(_gate, _users, config, throttle, mirrorLedger, _clock);
 
         var http = new DefaultHttpContext
         {

@@ -13,6 +13,7 @@ using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Logging;
 using NodaTime;
 
 namespace Humans.Application.Services.Gate;
@@ -32,8 +33,10 @@ public sealed class GateService(
     IBurnSettingsService burnSettings,
     IShiftManagementService shifts,
     IRoleAssignmentService roles,
+    IUserService users,
     IPasswordHasher<GateStaffPin> pinHasher,
     IAuditLogService auditLog,
+    ILogger<GateService> logger,
     IClock clock) : IGateService, IUserMerge, IUserDataContributor
 {
     /// <summary>How far either side of "now" a gate shift may start to count as current.</summary>
@@ -120,11 +123,50 @@ public sealed class GateService(
                 IsEarly: false, prior?.OccurredAt, prior?.ScannedByUserId);
         }
 
+        if (admit)
+            await MarkAttendedAsync(eval.GuestUserId);
+
         return new GateDecisionResult(verdict, eval.GuestName, eval.TicketTypeName,
             IsEarly: admit && eval.IsEarly,
             eval.PreviousAdmitAt, eval.PreviousAdmitByUserId,
             // Only surface the vendor ticket id when there's an admit to mirror.
             VendorTicketId: admit ? eval.VendorTicketId : null);
+    }
+
+    /// <summary>
+    /// Project a recorded admit onto the guest's EventParticipation row (Attended,
+    /// permanent). The gate is the system of record for admission: the vendor
+    /// check-in mirror is best-effort and off by default, so without this write the
+    /// ticket sync may never learn of a gate check-in — and the consumed-Early-Entry
+    /// guards (e.g. Camps EE revocation) read participation. Same target year as the
+    /// ticket sync (the active event's), skipped when the guest is unmatched or no
+    /// event is active.
+    /// </summary>
+    private async Task MarkAttendedAsync(Guid? guestUserId)
+    {
+        if (guestUserId is null)
+            return;
+
+        // The admit row is already durable, so the projection must (a) not observe the
+        // request token — a kiosk disconnect mustn't skip it — and (b) never fail the
+        // decision response: it races the ticket sync on the same (UserId, Year) row,
+        // and a first-insert unique-index collision there is benign (the sync wrote the
+        // same fact). Log and move on; the next sync converges the row.
+        try
+        {
+            var activeEvent = await shifts.GetActiveAsync();
+            if (activeEvent is null || activeEvent.Year == 0)
+                return;
+
+            await users.SetParticipationFromTicketSyncAsync(
+                guestUserId.Value, activeEvent.Year, ParticipationStatus.Attended,
+                clock.GetCurrentInstant(), CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex,
+                "Attendance projection failed for admitted guest {GuestUserId}; participation row not marked Attended", guestUserId);
+        }
     }
 
     public async Task<GateLeaderboard> GetLeaderboardAsync(Instant since, CancellationToken ct = default)
@@ -159,6 +201,44 @@ public sealed class GateService(
 
     public Task<int> PurgeScansBeforeAsync(Instant cutoff, CancellationToken ct = default) =>
         repository.PurgeScansBeforeAsync(cutoff, ct);
+
+    /// <summary>Backfill diff window. Covers the whole event including the Early-Entry run-up,
+    /// while keeping prior editions' scans (retention is 365 days) out of the diff — the
+    /// attendee join is current-event-only, so older admits would only pollute Unmirrorable.</summary>
+    private static readonly Duration VendorBackfillWindow = Duration.FromDays(30);
+
+    public async Task<GateVendorBackfillSnapshot> GetVendorCheckInBackfillAsync(CancellationToken ct = default)
+    {
+        var scans = await repository.GetScansSinceAsync(clock.GetCurrentInstant().Minus(VendorBackfillWindow), ct);
+        var admits = scans.Where(s => IsAdmit(s.Verdict)).ToList();
+
+        var orders = await tickets.GetTicketOrdersAsync(ct);
+        var attendees = orders
+            .Where(o => o.IsCurrentEvent)
+            .SelectMany(o => o.Attendees)
+            .ToDictionary(a => a.Id);
+
+        List<GateVendorBackfillRow> pending = [];
+        List<GateVendorBackfillRow> unmirrorable = [];
+        var alreadyCheckedIn = 0;
+
+        foreach (var admit in admits)
+        {
+            var attendee = admit.TicketAttendeeId is { } id ? attendees.GetValueOrDefault(id) : null;
+            if (attendee is null || string.IsNullOrEmpty(attendee.VendorTicketId))
+                unmirrorable.Add(new GateVendorBackfillRow(
+                    admit.Barcode, attendee?.AttendeeName, admit.OccurredAt, VendorTicketId: null));
+            // CheckedInAt is the vendor check-in signal — a checked-in issued ticket keeps
+            // Status Valid, so testing Status alone would re-post every synced check-in.
+            else if (attendee.CheckedInAt is not null || attendee.Status == TicketAttendeeStatus.CheckedIn)
+                alreadyCheckedIn++;
+            else
+                pending.Add(new GateVendorBackfillRow(
+                    admit.Barcode, attendee.AttendeeName, admit.OccurredAt, attendee.VendorTicketId));
+        }
+
+        return new GateVendorBackfillSnapshot(admits.Count, alreadyCheckedIn, pending, unmirrorable);
+    }
 
     public async Task<IReadOnlyList<GateRosterEntry>> GetShiftRosterAsync(
         Guid rosterTeamId, CancellationToken ct = default)

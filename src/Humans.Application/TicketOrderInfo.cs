@@ -6,6 +6,9 @@ namespace Humans.Application;
 /// <summary>
 /// Compact projection of a <see cref="Humans.Domain.Entities.TicketAttendee"/>
 /// row carried inside <see cref="TicketOrderInfo"/>. One per issued ticket.
+/// <paramref name="CheckedInAt"/> is the vendor check-in signal (from the
+/// <c>/check_ins</c> sync) — the issued ticket's <paramref name="Status"/> stays
+/// <c>Valid</c> when checked in, so consumers must test <paramref name="CheckedInAt"/>.
 /// </summary>
 public sealed record TicketAttendeeInfo(
     Guid Id,
@@ -18,7 +21,8 @@ public sealed record TicketAttendeeInfo(
     Guid? MatchedUserId,
     string? Barcode = null,
     string? TransferredToName = null,
-    Instant? TransferredAt = null);
+    Instant? TransferredAt = null,
+    Instant? CheckedInAt = null);
 
 /// <summary>
 /// Compact projection of a <see cref="Humans.Domain.Entities.TicketOrder"/>
