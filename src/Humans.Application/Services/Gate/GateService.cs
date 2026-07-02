@@ -333,9 +333,11 @@ public sealed class GateService(
         GatePreCheckOutcome.Invalid => GateVerdict.RejectedInvalid,
         GatePreCheckOutcome.Duplicate => GateVerdict.RejectedDuplicate,
         GatePreCheckOutcome.CutoffNotConfigured => GateVerdict.Unresolved,
-        GatePreCheckOutcome.EarlyEntryUnknown => GateVerdict.Unresolved,
-        // A too-early scan is admissible only by a supervisor override; the controller sets
-        // OverrideByUserId solely after AuthorizeOverrideAsync, so a non-null value is proof.
+        // Early-entry scans blocked before the cutoff (too early, or EE can't be confirmed) are
+        // admissible only by a supervisor override; the controller sets OverrideByUserId solely
+        // after verifying the supervisor PIN, so a non-null value is proof.
+        GatePreCheckOutcome.EarlyEntryUnknown =>
+            input.OverrideByUserId is not null ? GateVerdict.AdmittedEarlyOverride : GateVerdict.Unresolved,
         GatePreCheckOutcome.TooEarly =>
             input.OverrideByUserId is not null ? GateVerdict.AdmittedEarlyOverride : GateVerdict.RejectedTooEarly,
         GatePreCheckOutcome.NeedsIdCheck or GatePreCheckOutcome.NeedsIdCheckEarly =>

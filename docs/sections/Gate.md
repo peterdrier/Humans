@@ -44,12 +44,15 @@ admission record. Distinct from the read-only `Scanner` section, which must neve
   cutoff in `Gate ▸ Admin` before opening the doors. To run with no Early-Entry gating at all,
   set the cutoff to a past instant (explicitly "general entry already open") — never leave it unset.
 - **Server-authoritative decision** — `RecordDecisionAsync` re-evaluates server-side, so a client
-  "ID confirmed" can never turn a STOP into an admit. `scannedByUserId` is the session-claimed
-  staffer, taken from the session, never the request body. The child/ID-waiver and the too-early
-  override both admit only when an authorizing supervisor was recorded (`OverrideByUserId`), which
-  the controller sets **only** after `AuthorizeOverrideAsync` verifies that supervisor's personal
-  PIN and active role — a forged `childWithAdult`/`overrideEarly` flag alone never admits.
-- **Personal staff PINs (`gate_staff_pins`)** — each staffer sets a 4-digit PIN the first time they
+  "ID confirmed" can never turn a STOP into an admit. `scannedByUserId` is the authenticated gate
+  account, taken from the principal, never the request body. The child/ID-waiver and the early
+  overrides admit only when `OverrideByUserId` was recorded, which the controller sets **only**
+  after verifying the shared supervisor override PIN (`Gate:SupervisorPin`) server-side — a forged
+  `childWithAdult`/`overrideEarly` flag alone never admits, and an unset PIN fails closed
+  (overrides refused, never a free pass).
+- **Personal staff PINs (`gate_staff_pins`)** — _disabled since peterdrier#1075: the claim step is
+  bypassed (the terminal scans as the gate account) and the flow below is unreachable, though the
+  table, service methods, admin page, and views remain in place._ Each staffer sets a 4-digit PIN the first time they
   claim the gate (`SetOwnPinAsync`, hashed via Identity's `IPasswordHasher`), reused across shifts.
   Claiming the scanner becomes a PIN entry (`/Gate/ClaimPin`), so the leaderboard attribution is a
   real per-person claim rather than honour-system. **Claim vs override are decoupled by the
@@ -68,14 +71,17 @@ admission record. Distinct from the read-only `Scanner` section, which must neve
   staffer on self-enrol, the admin on admin-set/reset); PIN values are never logged.
 - **Supervisor override** — a too-early scan (e.g. a Friday Early-Entry ticket scanned on Wednesday)
   STOPs with a precise reason (the holder's EE date vs today, or "no early entry · general entry
-  opens …" — date only, never the EE source) and offers a **supervisor override**: the supervisor
-  taps their name from the enrolled-supervisor list (the route-locked kiosk can't reach free-text
-  people search) and enters their PIN. On success the admit is recorded as `AdmittedEarlyOverride`
-  with `OverrideByUserId` = the authorizing supervisor — the audit trail for "who let this person in
-  early". The same mechanism backs the child-without-ID waiver (`AdmittedChildWithAdult`).
+  opens …" — date only, never the EE source); an **unconfirmed-Early-Entry** scan (the guest may
+  hold EE the terminal can't see) goes AMBER with "search by name". Both cards offer a
+  **supervisor override**: the supervisor enters the shared override PIN (`Gate:SupervisorPin`) on
+  the keypad in the override panel. On success the admit is recorded as `AdmittedEarlyOverride`.
+  One PIN for all supervisors: it **authorizes but cannot attribute** — `OverrideByUserId` records
+  the gate account, not which supervisor typed the PIN. The same mechanism backs the
+  child-without-ID waiver (`AdmittedChildWithAdult`).
 - **PIN brute-force throttle** — `GatePinThrottle`: 5 failures → a 15-minute lockout that does **not**
-  self-reset (only a correct PIN clears it), keyed on **both** the target user-id and the source
-  device/IP, so neither one supervisor's PIN nor one kiosk can be ground through the ~10k space.
+  self-reset (only a correct PIN clears it). The shared override PIN throttles on a single
+  terminal-wide bucket (`override:shared`) — a lockout blocks only the override path, never
+  scanning — capping brute-force at 5 tries / 15 min across the ~10k PIN space.
 - **Dedupe authority** — a unique index on `GateScanEvent.AdmitDedupeKey` (the barcode for admit
   verdicts, null otherwise) makes the first admit per barcode win atomically across all lanes;
   Postgres excludes nulls so reject rows never collide. An explicit pre-check covers the common case.
@@ -131,33 +137,29 @@ admission record. Distinct from the read-only `Scanner` section, which must neve
 The **write** actions (`Decision`, `Claim`/`ClaimPin` POST) require the dedicated `GateAdmit`
 policy rather than the read-only `ScannerAccess`, so the gate's admit surface never rides on the
 Scanner read gate. Both are satisfied by the shared gate-terminal account today; they are
-kept separate so they can diverge. PIN entry (claim verify, and the supervisor override on
-`Decision`) is brute-force throttled via `GatePinThrottle` on **both** the target user-id and the
-source device — see Invariants. The supervisor override picks from the enrolled-supervisor
-tap-list because the `GateTerminal` account is route-locked to `/Gate` and so cannot reach the
-`/api/profiles/search` people-search the admin pages use.
+kept separate so they can diverge. The supervisor override on `Decision` is authorized by the
+shared override PIN (`Gate:SupervisorPin`), brute-force throttled via `GatePinThrottle` on a
+single terminal-wide bucket — see Invariants. (The `Claim`/`ClaimPin`/`Admin` PIN routes remain
+but are unreachable since peterdrier#1075 — nothing links to them.)
 
 ## Invariants
 
 - The cutoff is evaluated against the server clock; `ClientScanAt` never influences it.
 - A barcode can be admitted at most once (atomic unique index + pre-check); re-entry is governed
   by a physical wristband, not a second scan.
-- `scannedByUserId` is server-derived from the claimed session; an override (child/ID-waiver or
-  too-early) needs a server-verified supervisor PIN **and** an active supervisor role
-  (`AuthorizeOverrideAsync`), recorded as `OverrideByUserId`.
-- **Override authorization is verify-only and double-checked.** `AuthorizeOverrideAsync` admits an
-  override only if the asserted supervisor is enrolled, the PIN matches (timing-safe), **and** they
-  currently hold Admin/Board/TicketAdmin — re-derived server-side, never trusted from the request.
-  It never enrols. Supervisor PIN **enrolment** is privileged (admin-only, `/Gate/Admin`); a
-  supervisor PIN can never be cold-set at the anonymous kiosk.
-- **PIN entry is throttled on two keys.** `GatePinThrottle` (5 tries → 15-min non-self-resetting
-  lockout) is checked/recorded on **both** the target user-id and the source device/IP, so neither a
-  single supervisor's PIN nor one kiosk can be brute-forced. Claim-keypad *enrolment* (choosing a new
-  PIN) is not throttled — there's no secret to guess — only verification is.
-- **Attribution is now a personal PIN claim**, not honour-system: claiming the scanner verifies the
-  staffer's PIN (`/Gate/ClaimPin`), and `ScannedByUserId` is stamped server-side from that verified
-  id. It is still a shared physical device, so treat the attribution as a strong claim for the
-  leaderboard/audit trail, not as cryptographic proof of who held the tablet.
+- `scannedByUserId` is server-derived from the authenticated principal (the gate account); an
+  override (child/ID-waiver, too-early, or unconfirmed-EE) needs the server-verified shared
+  supervisor PIN (`Gate:SupervisorPin`), recorded as `OverrideByUserId`.
+- **Override authorization fails closed.** The PIN comparison is timing-safe (fixed-width hashes),
+  and an unset `Gate:SupervisorPin` refuses every override with an explicit "not configured" card —
+  a missing key is never a free pass. The shared PIN authorizes but cannot attribute:
+  `OverrideByUserId` is the gate account, not the individual supervisor.
+- **Override PIN entry is throttled terminal-wide.** `GatePinThrottle` (5 tries → 15-min
+  non-self-resetting lockout; a correct PIN clears it) on the single `override:shared` bucket. A
+  lockout blocks only overrides — scanning and every other card continue — so a fumbled PIN can
+  never stop the line, while the shared PIN can't be ground through the ~10k space at the kiosk.
+- Scan **attribution is the shared gate account** (peterdrier#1075): the personal-PIN claim flow is
+  bypassed, so the leaderboard and `ScannedByUserId` no longer identify individual staffers.
 - Gate participates in GDPR export (`IUserDataContributor`), account merge (`IUserMerge` re-FKs
   `GuestUserId`/`ScannedByUserId`), and retention purge.
 - The gate view shows name + verdict + one reason line only; Early-Entry source, the previous
@@ -200,8 +202,11 @@ tap-list because the `GateTerminal` account is route-locked to `/Gate` and so ca
 
 ## Configuration
 
-- _(retired)_ `Gate:SupervisorPin` — the shared override PIN is gone; overrides now use per-staffer
-  PINs (`gate_staff_pins`) verified against an active supervisor role. No config key.
+- `Gate:SupervisorPin` — the shared supervisor override PIN (one PIN for all supervisors),
+  required for the too-early / unconfirmed-EE override and the child-without-ID waiver. **Unset →
+  overrides fail closed** (refused with a "not configured" card) — set it before doors open.
+  _(History: retired 2026-07-01 in favour of per-staffer enrolled PINs, restored after
+  peterdrier#1075 dropped the per-staffer PIN flow.)_
 - `Gate:VendorMirrorEnabled` — default off; gates the TicketTailor check-in mirror (see Vendor
   check-in mirror above).
 - `Gate:RosterTeamId` — **optional** GUID of the Shifts department/team that staffs the gate.

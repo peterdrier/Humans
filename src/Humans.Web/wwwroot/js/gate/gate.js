@@ -282,28 +282,33 @@ export function initGate(refs) {
         }
     }
 
-    // The override panel: a single confirm tap admits a too-early or child-without-ID scan. No PIN
-    // and no supervisor pick — the confirm button IS the authorization (recorded against the gate
-    // account server-side). It's a deliberate second tap so a stray tap on the card can't admit.
+    // The override panel: admits a too-early / unconfirmed-EE or child-without-ID scan, authorized
+    // by the shared supervisor PIN. The keypad auto-submits on the 4th digit; the server verifies
+    // the PIN (and throttles failures) before recording anything.
     function initOverride() {
         if (!override) return { open: () => {} };
 
         const titleEl = override.querySelector('[data-override-title]');
         const promptEl = override.querySelector('[data-override-prompt]');
         const cancelBtn = override.querySelector('[data-override-cancel]');
-        const confirmBtn = override.querySelector('[data-override-confirm]');
+        const keypadEl = override.querySelector('[data-gate-keypad]');
 
         let mode = 'early';
         let barcode = null;
 
+        const keypad = keypadEl && window.initGateKeypad
+            ? window.initGateKeypad(keypadEl, (pin) => submit(pin))
+            : { reset: () => {} };
+
         function open(nextMode, nextBarcode) {
-            clearResetTimer(); // hold the auto-return while the operator confirms the override
+            clearResetTimer(); // hold the auto-return while the supervisor enters the PIN
             mode = nextMode;
             barcode = nextBarcode;
             if (titleEl) titleEl.textContent = mode === 'child' ? 'Admit: child without ID' : 'Supervisor override';
             if (promptEl) promptEl.textContent = mode === 'child'
                 ? 'Admit this child with the accompanying adult?'
                 : 'Admit this guest before general entry?';
+            keypad.reset();
             override.classList.remove('d-none');
             override.setAttribute('aria-hidden', 'false');
         }
@@ -311,6 +316,7 @@ export function initGate(refs) {
         function close() {
             override.classList.add('d-none');
             override.setAttribute('aria-hidden', 'true');
+            keypad.reset();
             focusInput();
         }
 
@@ -325,12 +331,13 @@ export function initGate(refs) {
 
         if (cancelBtn) cancelBtn.addEventListener('click', closeAndReArm);
 
-        if (confirmBtn) confirmBtn.addEventListener('click', () => {
+        function submit(pin) {
             if (!barcode) return;
-            const opts = mode === 'child' ? { childWithAdult: true } : { overrideEarly: true };
+            const opts = { supervisorPin: pin };
+            if (mode === 'child') opts.childWithAdult = true; else opts.overrideEarly = true;
             close();
             submitDecision(barcode, opts);
-        });
+        }
 
         return { open };
     }

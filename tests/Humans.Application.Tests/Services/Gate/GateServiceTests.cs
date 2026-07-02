@@ -257,6 +257,30 @@ public class GateServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
+    public async Task BeforeCutoff_Unmatched_WithoutOverride_StaysUnresolved()
+    {
+        StubTicket(matchedUserId: null);
+        await _svc.SaveSettingsAsync(new GateSettingsDto(
+            Clock.GetCurrentInstant().Plus(Duration.FromHours(6)), 16));
+
+        // Even a client-asserted "ID confirmed" never turns the unconfirmed-EE amber into an admit.
+        (await Record(idConfirmed: true))
+            .Verdict.Should().Be(GateVerdict.Unresolved);
+    }
+
+    [HumansFact]
+    public async Task BeforeCutoff_Unmatched_WithSupervisorOverride_AdmitsEarlyOverride()
+    {
+        StubTicket(matchedUserId: null);
+        await _svc.SaveSettingsAsync(new GateSettingsDto(
+            Clock.GetCurrentInstant().Plus(Duration.FromHours(6)), 16));
+
+        // A recorded supervisor override admits an unconfirmed-EE scan, mirroring the too-early case.
+        (await Record(idConfirmed: false, overrideBy: Guid.NewGuid()))
+            .Verdict.Should().Be(GateVerdict.AdmittedEarlyOverride);
+    }
+
+    [HumansFact]
     public async Task BeforeCutoff_EarlyEntryToday_AdmitsEarly()
     {
         StubTicket(matchedUserId: GuestId);
