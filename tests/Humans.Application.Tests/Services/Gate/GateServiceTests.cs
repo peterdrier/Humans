@@ -15,8 +15,10 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Repositories.Gate;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 
 namespace Humans.Application.Tests.Services.Gate;
 
@@ -47,7 +49,7 @@ public class GateServiceTests : ServiceTestHarness
         _burn.GetActiveAsync(Arg.Any<CancellationToken>()).Returns((BurnSettingsInfo?)null);
         _earlyEntry.GetForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns((UserEarlyEntry?)null);
-        _svc = new GateService(new GateRepository(DbFactory), _tickets, _earlyEntry, _burn, _shifts, _roles, _users, _pinHasher, _auditLog, Clock);
+        _svc = new GateService(new GateRepository(DbFactory), _tickets, _earlyEntry, _burn, _shifts, _roles, _users, _pinHasher, _auditLog, NullLogger<GateService>.Instance, Clock);
 
         // Baseline: an admin has set the cutoff in the past, so general entry is open.
         // Seeded directly (sync) since the ctor can't await; Db shares the in-memory
@@ -204,9 +206,25 @@ public class GateServiceTests : ServiceTestHarness
         var r = await Record(idConfirmed: true);
 
         r.Verdict.Should().Be(GateVerdict.Admitted);
+        // CancellationToken.None pinned: the admit is durable, so a kiosk disconnect
+        // (aborted request token) must not skip the projection.
         await _users.Received(1).SetParticipationFromTicketSyncAsync(
             GuestId, 2026, ParticipationStatus.Attended,
-            Clock.GetCurrentInstant(), Arg.Any<CancellationToken>());
+            Clock.GetCurrentInstant(), CancellationToken.None);
+    }
+
+    [HumansFact]
+    public async Task RecordDecision_Admit_ParticipationWriteThrows_StillAdmits()
+    {
+        // The projection races the ticket sync on the same (UserId, Year) row; its
+        // failure must never turn an already-recorded admit into an error response.
+        StubTicket(matchedUserId: GuestId);
+        StubActiveEvent();
+        _users.SetParticipationFromTicketSyncAsync(
+                default, default, default, default, default)
+            .ThrowsAsyncForAnyArgs(new InvalidOperationException("unique index collision"));
+
+        (await Record(idConfirmed: true)).Verdict.Should().Be(GateVerdict.Admitted);
     }
 
     [HumansFact]

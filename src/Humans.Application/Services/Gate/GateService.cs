@@ -13,6 +13,7 @@ using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Logging;
 using NodaTime;
 
 namespace Humans.Application.Services.Gate;
@@ -35,6 +36,7 @@ public sealed class GateService(
     IUserService users,
     IPasswordHasher<GateStaffPin> pinHasher,
     IAuditLogService auditLog,
+    ILogger<GateService> logger,
     IClock clock) : IGateService, IUserMerge, IUserDataContributor
 {
     /// <summary>How far either side of "now" a gate shift may start to count as current.</summary>
@@ -122,7 +124,7 @@ public sealed class GateService(
         }
 
         if (admit)
-            await MarkAttendedAsync(eval.GuestUserId, ct);
+            await MarkAttendedAsync(eval.GuestUserId);
 
         return new GateDecisionResult(verdict, eval.GuestName, eval.TicketTypeName,
             IsEarly: admit && eval.IsEarly,
@@ -140,18 +142,31 @@ public sealed class GateService(
     /// ticket sync (the active event's), skipped when the guest is unmatched or no
     /// event is active.
     /// </summary>
-    private async Task MarkAttendedAsync(Guid? guestUserId, CancellationToken ct)
+    private async Task MarkAttendedAsync(Guid? guestUserId)
     {
         if (guestUserId is null)
             return;
 
-        var activeEvent = await shifts.GetActiveAsync();
-        if (activeEvent is null || activeEvent.Year == 0)
-            return;
+        // The admit row is already durable, so the projection must (a) not observe the
+        // request token — a kiosk disconnect mustn't skip it — and (b) never fail the
+        // decision response: it races the ticket sync on the same (UserId, Year) row,
+        // and a first-insert unique-index collision there is benign (the sync wrote the
+        // same fact). Log and move on; the next sync converges the row.
+        try
+        {
+            var activeEvent = await shifts.GetActiveAsync();
+            if (activeEvent is null || activeEvent.Year == 0)
+                return;
 
-        await users.SetParticipationFromTicketSyncAsync(
-            guestUserId.Value, activeEvent.Year, ParticipationStatus.Attended,
-            clock.GetCurrentInstant(), ct);
+            await users.SetParticipationFromTicketSyncAsync(
+                guestUserId.Value, activeEvent.Year, ParticipationStatus.Attended,
+                clock.GetCurrentInstant(), CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex,
+                "Attendance projection failed for admitted guest {GuestUserId}; participation row not marked Attended", guestUserId);
+        }
     }
 
     public async Task<GateLeaderboard> GetLeaderboardAsync(Instant since, CancellationToken ct = default)
