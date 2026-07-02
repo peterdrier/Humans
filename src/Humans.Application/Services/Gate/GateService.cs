@@ -160,6 +160,37 @@ public sealed class GateService(
     public Task<int> PurgeScansBeforeAsync(Instant cutoff, CancellationToken ct = default) =>
         repository.PurgeScansBeforeAsync(cutoff, ct);
 
+    public async Task<GateVendorBackfillSnapshot> GetVendorCheckInBackfillAsync(CancellationToken ct = default)
+    {
+        var scans = await repository.GetScansSinceAsync(Instant.MinValue, ct);
+        var admits = scans.Where(s => IsAdmit(s.Verdict)).ToList();
+
+        var orders = await tickets.GetTicketOrdersAsync(ct);
+        var attendees = orders
+            .Where(o => o.IsCurrentEvent)
+            .SelectMany(o => o.Attendees)
+            .ToDictionary(a => a.Id);
+
+        List<GateVendorBackfillRow> pending = [];
+        List<GateVendorBackfillRow> unmirrorable = [];
+        var alreadyCheckedIn = 0;
+
+        foreach (var admit in admits)
+        {
+            var attendee = admit.TicketAttendeeId is { } id ? attendees.GetValueOrDefault(id) : null;
+            if (attendee is null || string.IsNullOrEmpty(attendee.VendorTicketId))
+                unmirrorable.Add(new GateVendorBackfillRow(
+                    admit.Barcode, attendee?.AttendeeName, admit.OccurredAt, VendorTicketId: null));
+            else if (attendee.Status == TicketAttendeeStatus.CheckedIn)
+                alreadyCheckedIn++;
+            else
+                pending.Add(new GateVendorBackfillRow(
+                    admit.Barcode, attendee.AttendeeName, admit.OccurredAt, attendee.VendorTicketId));
+        }
+
+        return new GateVendorBackfillSnapshot(admits.Count, alreadyCheckedIn, pending, unmirrorable);
+    }
+
     public async Task<IReadOnlyList<GateRosterEntry>> GetShiftRosterAsync(
         Guid rosterTeamId, CancellationToken ct = default)
     {

@@ -149,7 +149,8 @@ public static class AdminNavTree
         ]),
         new("Temp", System: true, Items: [
             new("Picture migration",          "ProfilePictureMigrationAdmin", "Index", null, null, "fa-solid fa-image",     PolicyNames.AdminOnly),
-            new("Stub profile backfill",      "ProfileBackfillAdmin", "Index",          null, null, "fa-solid fa-user-plus", PolicyNames.AdminOnly)
+            new("Stub profile backfill",      "ProfileBackfillAdmin", "Index",          null, null, "fa-solid fa-user-plus", PolicyNames.AdminOnly),
+            new("Vendor check-in backfill",   "GateVendorBackfillAdmin", "Index",       null, null, "fa-solid fa-cloud-arrow-up", PolicyNames.AdminOnly)
         ])
     ];
 }

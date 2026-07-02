@@ -1,0 +1,162 @@
+@using Humans.Application.Extensions
+@model Humans.Web.Controllers.GateVendorBackfillViewModel
+@{
+    ViewData["Title"] = "Vendor check-in backfill";
+    Layout = "_AdminLayout";
+    var snapshot = Model.Snapshot;
+    var pending = snapshot.Pending.OrderBy(r => r.AdmittedAt).ToList();
+    var unmirrorable = snapshot.Unmirrorable.OrderBy(r => r.AdmittedAt).ToList();
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Vendor check-in backfill</h1>
+    <small class="text-muted">Temp page — remove after use</small>
+</div>
+
+<p class="text-muted">
+    Gate admits recorded locally in <code>gate_scan_events</code> but not yet checked in at
+    TicketTailor (as of the last ticket sync). Sending a row enqueues the existing
+    <code>GateVendorCheckInJob</code> mirror. TicketTailor check-ins <strong>double-record on
+    repeat</strong>: send once, let the ticket sync catch up, and only re-run rows still listed here.
+</p>
+
+@if (!Model.MirrorEnabled)
+{
+    <div class="alert alert-danger">
+        <i class="fa-solid fa-triangle-exclamation me-1" aria-hidden="true"></i>
+        <strong><code>Gate:VendorMirrorEnabled</code> is off.</strong> Every enqueued job will
+        silently skip — set the environment variable before sending anything.
+    </div>
+}
+
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <h6 class="card-subtitle text-muted mb-2">Local admits</h6>
+                <p class="h2 mb-0">@snapshot.AdmitCount</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <h6 class="card-subtitle text-muted mb-2">Already at vendor</h6>
+                <p class="h2 mb-0 text-success">@snapshot.AlreadyCheckedInCount</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <h6 class="card-subtitle text-muted mb-2">Pending mirror</h6>
+                <p class="h2 mb-0 @(pending.Count == 0 ? "text-success" : "text-warning")">@pending.Count</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <h6 class="card-subtitle text-muted mb-2">Unmirrorable</h6>
+                <p class="h2 mb-0 @(unmirrorable.Count == 0 ? "text-success" : "text-danger")">@unmirrorable.Count</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (pending.Count == 0)
+{
+    <div class="card mb-4">
+        <div class="card-body">
+            <p class="mb-0">Nothing pending — every mirrorable admit is checked in at the vendor.</p>
+        </div>
+    </div>
+}
+else
+{
+    <div class="card mb-4">
+        <div class="card-body">
+            <p>
+                <strong>@pending.Count</strong> admit@(pending.Count == 1 ? "" : "s") to send.
+                Test one first (the <em>Send</em> button on a row — pick yourself if you're listed),
+                confirm it lands on the TicketTailor dashboard, then send the rest.
+            </p>
+            <form method="post" asp-action="Run">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-primary">
+                    <i class="fa-solid fa-cloud-arrow-up me-1" aria-hidden="true"></i>
+                    Send all @pending.Count pending check-in@(pending.Count == 1 ? "" : "s") to TicketTailor
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">Pending check-ins</div>
+        <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0 align-middle">
+                <thead>
+                    <tr>
+                        <th>Attendee</th>
+                        <th>Barcode</th>
+                        <th>Vendor ticket</th>
+                        <th>Admitted (UTC)</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in pending)
+                    {
+                        <tr>
+                            <td>@(row.AttendeeName ?? "—")</td>
+                            <td><code>@row.Barcode</code></td>
+                            <td><code>@row.VendorTicketId</code></td>
+                            <td>@row.AdmittedAt.ToInvariantTimestamp()</td>
+                            <td class="text-end">
+                                <form method="post" asp-action="RunOne" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="vendorTicketId" value="@row.VendorTicketId" />
+                                    <button type="submit" class="btn btn-sm btn-outline-primary">Send</button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@if (unmirrorable.Count > 0)
+{
+    <div class="card mb-4">
+        <div class="card-header">Unmirrorable — fix on the TicketTailor dashboard by hand</div>
+        <div class="card-body pb-0">
+            <p class="text-muted">
+                These admits have no matched attendee / vendor ticket id (name-search or
+                unmatched-barcode overrides), so the API can't check them in.
+            </p>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-sm mb-0 align-middle">
+                <thead>
+                    <tr>
+                        <th>Attendee</th>
+                        <th>Barcode</th>
+                        <th>Admitted (UTC)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in unmirrorable)
+                    {
+                        <tr>
+                            <td>@(row.AttendeeName ?? "—")</td>
+                            <td><code>@row.Barcode</code></td>
+                            <td>@row.AdmittedAt.ToInvariantTimestamp()</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
