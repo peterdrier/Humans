@@ -160,6 +160,10 @@ but are unreachable since peterdrier#1075 — nothing links to them.)
   never stop the line, while the shared PIN can't be ground through the ~10k space at the kiosk.
 - Scan **attribution is the shared gate account** (peterdrier#1075): the personal-PIN claim flow is
   bypassed, so the leaderboard and `ScannedByUserId` no longer identify individual staffers.
+- An admit with a matched guest immediately writes the guest's Attended participation row for the
+  active event's year — consumed-Early-Entry guards (Camps) and other attendance readers see a gate
+  check-in in real time, never contingent on the vendor mirror or the ticket sync. Unmatched
+  barcodes and no-active-event still admit; only the projection is skipped.
 - Gate participates in GDPR export (`IUserDataContributor`), account merge (`IUserMerge` re-FKs
   `GuestUserId`/`ScannedByUserId`), and retention purge.
 - The gate view shows name + verdict + one reason line only; Early-Entry source, the previous
@@ -196,7 +200,13 @@ but are unreachable since peterdrier#1075 — nothing links to them.)
   mirroring how other controllers read shift signups — no new Shifts surface.
   _Cross-section read approved by Peter (verbal, 2026-06-29)._
 - **Users** — `IUserServiceRead` (scanner name; supervisor/claim display names; leaderboard
-  rendering via `<vc:human>`).
+  rendering via `<vc:human>`); and `IUserService.SetParticipationFromTicketSyncAsync` — on an
+  admit with a matched guest, `GateService` projects the check-in onto the guest's
+  `EventParticipation` row (Attended, `CheckedInAt` = admit instant, year = the active event's).
+  Same upsert the ticket sync uses; its Attended-is-permanent / CheckedInAt-write-once rules make
+  the two writers commute. Without this write the consumed-Early-Entry guards (Camps) never learn
+  of a gate check-in, because the vendor mirror is best-effort and off by default.
+  _Cross-section write approved by Peter (2026-07-02, camp-EE-revoke-after-check-in fix)._
 - **Auth** — `IRoleAssignmentService.HasActiveRoleAsync` (is this user a supervisor?) and
   `GetActiveUserIdsInRoleAsync` (enumerate enrolled supervisors for the override tap-list).
 
@@ -229,5 +239,6 @@ person), mirroring the read-through Scanner section.
 rugged tablet shows only the gate UI. The admin settings page (`Admin`) overrides back to
 `_AdminLayout` (a desktop admin task). The shared `GateTerminal` system account (no roles/teams)
 sees only this kiosk; on the device, Edge Assigned Access removes browser chrome too.
-**Status:** new section (gate-scanner feature). Posture change (attendance gateway) pending Peter's
-sign-off.
+**Status:** new section (gate-scanner feature). Attendance-gateway posture signed off by Peter
+(2026-07-02): a gate admit is the check-in of record and writes the Attended participation row
+directly (see Users under Cross-Section Dependencies).

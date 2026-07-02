@@ -7,6 +7,7 @@ using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Auth;
+using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Gate;
 using Humans.Domain.Constants;
 using Humans.Application.Tests.Infrastructure;
@@ -38,6 +39,7 @@ public class GateServiceTests : ServiceTestHarness
     private readonly IRoleAssignmentService _roles = Substitute.For<IRoleAssignmentService>();
     private readonly IPasswordHasher<GateStaffPin> _pinHasher = new PasswordHasher<GateStaffPin>();
     private readonly IAuditLogService _auditLog = Substitute.For<IAuditLogService>();
+    private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly GateService _svc;
 
     public GateServiceTests()
@@ -45,7 +47,7 @@ public class GateServiceTests : ServiceTestHarness
         _burn.GetActiveAsync(Arg.Any<CancellationToken>()).Returns((BurnSettingsInfo?)null);
         _earlyEntry.GetForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns((UserEarlyEntry?)null);
-        _svc = new GateService(new GateRepository(DbFactory), _tickets, _earlyEntry, _burn, _shifts, _roles, _pinHasher, _auditLog, Clock);
+        _svc = new GateService(new GateRepository(DbFactory), _tickets, _earlyEntry, _burn, _shifts, _roles, _users, _pinHasher, _auditLog, Clock);
 
         // Baseline: an admin has set the cutoff in the past, so general entry is open.
         // Seeded directly (sync) since the ctor can't await; Db shares the in-memory
@@ -179,6 +181,69 @@ public class GateServiceTests : ServiceTestHarness
         // No authorizing supervisor → the waiver is not granted (a forged child flag can't admit).
         (await Record(idConfirmed: false, child: true))
             .Verdict.Should().Be(GateVerdict.RejectedNameMismatch);
+    }
+
+    // ── Attendance projection (admit → participation Attended) ──────────────
+
+    private void StubActiveEvent(int year = 2026) =>
+        _shifts.GetActiveAsync().Returns(new EventSettings
+        {
+            Id = Guid.NewGuid(),
+            EventName = "Test",
+            Year = year,
+            TimeZoneId = "Europe/Madrid",
+            GateOpeningDate = new LocalDate(year, 3, 1),
+        });
+
+    [HumansFact]
+    public async Task RecordDecision_Admit_MarksParticipationAttended()
+    {
+        StubTicket(matchedUserId: GuestId);
+        StubActiveEvent(year: 2026);
+
+        var r = await Record(idConfirmed: true);
+
+        r.Verdict.Should().Be(GateVerdict.Admitted);
+        await _users.Received(1).SetParticipationFromTicketSyncAsync(
+            GuestId, 2026, ParticipationStatus.Attended,
+            Clock.GetCurrentInstant(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task RecordDecision_Reject_DoesNotTouchParticipation()
+    {
+        StubTicket(matchedUserId: GuestId);
+        StubActiveEvent();
+
+        (await Record(idConfirmed: false)).Verdict.Should().Be(GateVerdict.RejectedNameMismatch);
+
+        await _users.DidNotReceiveWithAnyArgs()
+            .SetParticipationFromTicketSyncAsync(default, default, default, default);
+    }
+
+    [HumansFact]
+    public async Task RecordDecision_Admit_UnmatchedGuest_DoesNotTouchParticipation()
+    {
+        // Barcode not matched to a Humans account: there is no user to mark Attended.
+        StubTicket(matchedUserId: null);
+        StubActiveEvent();
+
+        (await Record(idConfirmed: true)).Verdict.Should().Be(GateVerdict.Admitted);
+
+        await _users.DidNotReceiveWithAnyArgs()
+            .SetParticipationFromTicketSyncAsync(default, default, default, default);
+    }
+
+    [HumansFact]
+    public async Task RecordDecision_Admit_NoActiveEvent_StillAdmits()
+    {
+        // No active event → no year to record against; the admit itself must not fail.
+        StubTicket(matchedUserId: GuestId);
+
+        (await Record(idConfirmed: true)).Verdict.Should().Be(GateVerdict.Admitted);
+
+        await _users.DidNotReceiveWithAnyArgs()
+            .SetParticipationFromTicketSyncAsync(default, default, default, default);
     }
 
     [HumansFact]
