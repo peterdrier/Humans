@@ -50,8 +50,10 @@ public sealed record GateScanCardViewModel(
         // all), and offer a supervisor override either way (the reason is what informs the decision).
         GatePreCheckOutcome.TooEarly =>
             new(GateCardKind.Stop, "Stop", r.GuestName, TooEarlyReason(r), false, r.Barcode, false, AllowSupervisorOverride: true),
+        // Early Entry unknown: the search-by-name fallback stays the primary route, but the card
+        // is otherwise a dead end at the doors — offer the supervisor override here too.
         GatePreCheckOutcome.EarlyEntryUnknown =>
-            new(GateCardKind.Amber, "Supervisor", r.GuestName, "Early Entry can't be confirmed — search by name", false, r.Barcode, false),
+            new(GateCardKind.Amber, "Supervisor", r.GuestName, "Early Entry can't be confirmed — search by name", false, r.Barcode, false, AllowSupervisorOverride: true),
         // NeedsIdCheck / NeedsIdCheckEarly → ask the agent to confirm the ID.
         _ => new(GateCardKind.IdConfirm, "Does the ID say", r.GuestName,
             r.IsEarly ? "Early entry OK" : null, r.IsEarly, r.Barcode, AllowChildWithAdult: true),

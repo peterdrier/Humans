@@ -49,16 +49,18 @@
         </div>
     </div>
 
-    @* Override panel — shown over the card for a too-early override or a child-without-ID admit.
-       No PIN and no supervisor pick: a single deliberate confirm tap is the authorization. *@
+    @* Override panel — shown over the card for a too-early / unconfirmed-EE override or a
+       child-without-ID admit. Authorized by the shared supervisor PIN: the keypad auto-submits
+       on the 4th digit and the server verifies before recording anything. *@
     <div id="gate-override" class="gate-override d-none" aria-hidden="true">
         <div class="gate-override-head">
-            <span class="gate-override-title" data-override-title>Override</span>
+            <span class="gate-override-title" data-override-title>Supervisor override</span>
             <button type="button" class="gate-override-cancel" data-override-cancel>Cancel</button>
         </div>
         <div class="gate-override-step">
             <p class="gate-override-prompt" data-override-prompt>Admit this guest anyway?</p>
-            <button type="button" class="gate-override-confirm" data-override-confirm>Override — admit</button>
+            <p class="gate-override-hint">Supervisor — enter the override PIN</p>
+            <partial name="_PinPad" />
         </div>
     </div>
 
@@ -82,8 +84,11 @@
 
 @inject Microsoft.AspNetCore.Mvc.ViewFeatures.IFileVersionProvider FileVersionProvider
 @section Scripts {
-    @* Cache-bust the gate.js module import (the tag-helper asp-append-version can't reach an import
-       statement) so a deployed update reaches the kiosk. *@
+    @* Shared keypad is a cache-busted classic script (no module import to go stale on the kiosk);
+       the override panel uses it. Cache-bust the gate.js module import too (the tag-helper
+       asp-append-version can't reach an import statement) so a deployed update reaches the kiosk. *@
+    <script src="@Url.Content("~/js/gate/gate-keypad.js")" asp-append-version="true"
+            nonce="@Context.Items["CspNonce"]"></script>
     <script nonce="@Context.Items["CspNonce"]" type="module">
         import { initGate } from '@FileVersionProvider.AddFileVersionToPath(Context.Request.PathBase, Url.Content("~/js/gate/gate.js"))';
         initGate({
