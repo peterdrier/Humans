@@ -39,6 +39,13 @@ public interface IGateService : IApplicationService
     Task<int> PurgeScansBeforeAsync(Instant cutoff, CancellationToken ct = default);
 
     /// <summary>
+    /// Diff of local admits (<c>gate_scan_events</c>) against the vendor's check-in status
+    /// as of the last ticket sync, for the one-off vendor check-in backfill page — recovers
+    /// admits the fire-and-forget mirror (<c>GateVendorCheckInJob</c>) never delivered.
+    /// </summary>
+    Task<GateVendorBackfillSnapshot> GetVendorCheckInBackfillAsync(CancellationToken ct = default);
+
+    /// <summary>
     /// The de-duplicated volunteers signed up for gate shifts on <paramref name="rosterTeamId"/>
     /// whose shift starts within ±2 hours of now (event-local time) — the people likely working
     /// the gate around shift change. Used to pre-fill the claim screen. Empty when there's no
@@ -164,3 +171,22 @@ public sealed record GateLeaderboard(int TotalAdmitted, int TotalScanned, IReadO
 /// </summary>
 public sealed record GateSettingsDto(
     Instant GeneralEntryOpensAt, int MinorAgeThresholdYears, bool CutoffConfigured = false);
+
+/// <summary>
+/// One local admit in the vendor check-in backfill diff. <paramref name="VendorTicketId"/>
+/// is non-null for mirrorable rows and null for unmirrorable ones (no matched attendee
+/// or the attendee row carries no vendor ticket id).
+/// </summary>
+public sealed record GateVendorBackfillRow(
+    string Barcode, string? AttendeeName, Instant AdmittedAt, string? VendorTicketId);
+
+/// <summary>
+/// Local admits diffed against the vendor's check-in status (as of the last ticket sync).
+/// <paramref name="Pending"/> can be mirrored via <c>GateVendorCheckInJob</c>;
+/// <paramref name="Unmirrorable"/> can only be fixed on the vendor dashboard.
+/// </summary>
+public sealed record GateVendorBackfillSnapshot(
+    int AdmitCount,
+    int AlreadyCheckedInCount,
+    IReadOnlyList<GateVendorBackfillRow> Pending,
+    IReadOnlyList<GateVendorBackfillRow> Unmirrorable);

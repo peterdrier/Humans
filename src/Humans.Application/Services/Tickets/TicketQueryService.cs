@@ -795,7 +795,8 @@ public sealed class TicketQueryService(
                 MatchedUserId: a.MatchedUserId,
                 Barcode: a.Barcode,
                 TransferredToName: hasTransfer ? tr!.ReceiverLegalName : null,
-                TransferredAt: hasTransfer ? tr!.DecidedAt : null);
+                TransferredAt: hasTransfer ? tr!.DecidedAt : null,
+                CheckedInAt: a.CheckedInAt);
         }).ToList(),
         StripeFee: o.StripeFee,
         ApplicationFee: o.ApplicationFee);

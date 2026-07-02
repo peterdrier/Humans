@@ -227,6 +227,9 @@ inbox:
   # sweep scope entirely); PasswordGenerator CSPRNG (explicitly deferred by
   # Peter, 2026-04-24); BudgetRepository ResponsibleTeam .Include (covered by
   # grandfathered-hum0024-nav-strip).
+  - added: 2026-07-02
+    what: "GateService.EvaluateAsync CheckedInAtVendor uses Status==CheckedIn, but the /check_ins sync stamps CheckedInAt and leaves Status Valid — the 'already checked in at vendor' dedupe signal on the gate card never fires; switch to CheckedInAt (found via Codex on peterdrier/Humans#1080)"
+    review: per-item
   - added: 2026-06-12
     what: "UsersAdminController.Audience direct DbContext reads — route through IAdminDatabaseDiagnosticsService"
     review: panel

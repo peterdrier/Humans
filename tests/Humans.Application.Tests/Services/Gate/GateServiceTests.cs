@@ -64,10 +64,12 @@ public class GateServiceTests : ServiceTestHarness
     private void StubTicket(
         TicketAttendeeStatus status = TicketAttendeeStatus.Valid,
         Guid? matchedUserId = null,
-        string barcode = Barcode)
+        string barcode = Barcode,
+        Guid? attendeeId = null,
+        Instant? checkedInAt = null)
     {
         var attendee = new TicketAttendeeInfo(
-            Id: Guid.NewGuid(),
+            Id: attendeeId ?? Guid.NewGuid(),
             VendorTicketId: "v1",
             AttendeeName: "Jane Donovan",
             AttendeeEmail: "jane@example.com",
@@ -75,7 +77,8 @@ public class GateServiceTests : ServiceTestHarness
             Price: 100m,
             Status: status,
             MatchedUserId: matchedUserId,
-            Barcode: barcode);
+            Barcode: barcode,
+            CheckedInAt: checkedInAt);
 
         var order = new TicketOrderInfo(
             Id: Guid.NewGuid(),
@@ -507,5 +510,81 @@ public class GateServiceTests : ServiceTestHarness
 
         // Only the admin-enrolled supervisor is offered in the override picker.
         ids.Should().ContainSingle().Which.Should().Be(enrolled);
+    }
+
+    [HumansFact]
+    public async Task VendorBackfill_AdmitNotCheckedInAtVendor_IsPending()
+    {
+        StubTicket();
+        await Record(idConfirmed: true);
+
+        var snapshot = await _svc.GetVendorCheckInBackfillAsync();
+
+        snapshot.AdmitCount.Should().Be(1);
+        snapshot.AlreadyCheckedInCount.Should().Be(0);
+        snapshot.Unmirrorable.Should().BeEmpty();
+        var row = snapshot.Pending.Should().ContainSingle().Subject;
+        row.VendorTicketId.Should().Be("v1");
+        row.AttendeeName.Should().Be("Jane Donovan");
+    }
+
+    [HumansFact]
+    public async Task VendorBackfill_VendorAlreadyCheckedIn_IsNotPending()
+    {
+        var attendeeId = Guid.NewGuid();
+        StubTicket(attendeeId: attendeeId);
+        await Record(idConfirmed: true);
+        // The next /check_ins sync stamps CheckedInAt — the issued ticket's Status stays
+        // Valid (vendor semantics), so CheckedInAt alone must drop the row out of pending.
+        StubTicket(attendeeId: attendeeId, checkedInAt: Clock.GetCurrentInstant());
+
+        var snapshot = await _svc.GetVendorCheckInBackfillAsync();
+
+        snapshot.AdmitCount.Should().Be(1);
+        snapshot.AlreadyCheckedInCount.Should().Be(1);
+        snapshot.Pending.Should().BeEmpty();
+        snapshot.Unmirrorable.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task VendorBackfill_CheckedInStatusWithoutTimestamp_AlsoNotPending()
+    {
+        var attendeeId = Guid.NewGuid();
+        StubTicket(attendeeId: attendeeId);
+        await Record(idConfirmed: true);
+        StubTicket(status: TicketAttendeeStatus.CheckedIn, attendeeId: attendeeId);
+
+        var snapshot = await _svc.GetVendorCheckInBackfillAsync();
+
+        snapshot.AlreadyCheckedInCount.Should().Be(1);
+        snapshot.Pending.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task VendorBackfill_AttendeeNoLongerInOrders_IsUnmirrorable()
+    {
+        StubTicket();
+        await Record(idConfirmed: true);
+        _tickets.GetTicketOrdersAsync(Arg.Any<CancellationToken>())
+            .Returns(new List<TicketOrderInfo>());
+
+        var snapshot = await _svc.GetVendorCheckInBackfillAsync();
+
+        snapshot.Pending.Should().BeEmpty();
+        var row = snapshot.Unmirrorable.Should().ContainSingle().Subject;
+        row.VendorTicketId.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task VendorBackfill_RejectedScansAreNotCounted()
+    {
+        StubTicket();
+        await Record(idConfirmed: false); // ID says no → rejected, nothing to mirror
+
+        var snapshot = await _svc.GetVendorCheckInBackfillAsync();
+
+        snapshot.AdmitCount.Should().Be(0);
+        snapshot.Pending.Should().BeEmpty();
+        snapshot.Unmirrorable.Should().BeEmpty();
     }
 }
