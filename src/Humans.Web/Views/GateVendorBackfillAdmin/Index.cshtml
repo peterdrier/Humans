@@ -4,7 +4,8 @@
     ViewData["Title"] = "Vendor check-in backfill";
     Layout = "_AdminLayout";
     var snapshot = Model.Snapshot;
-    var pending = snapshot.Pending.OrderBy(r => r.AdmittedAt).ToList();
+    var pending = Model.Pending.OrderBy(r => r.AdmittedAt).ToList();
+    var sent = Model.SentAwaitingSync.OrderBy(r => r.AdmittedAt).ToList();
     var unmirrorable = snapshot.Unmirrorable.OrderBy(r => r.AdmittedAt).ToList();
 }
 
@@ -17,7 +18,8 @@
     Gate admits recorded locally in <code>gate_scan_events</code> but not yet checked in at
     TicketTailor (as of the last ticket sync). Sending a row enqueues the existing
     <code>GateVendorCheckInJob</code> mirror. TicketTailor check-ins <strong>double-record on
-    repeat</strong>: send once, let the ticket sync catch up, and only re-run rows still listed here.
+    repeat</strong>, so already-sent rows are excluded from both send buttons until the next
+    ticket sync confirms them.
 </p>
 
 @if (!Model.MirrorEnabled)
@@ -30,7 +32,7 @@
 }
 
 <div class="row g-3 mb-4">
-    <div class="col-md-3">
+    <div class="col-md">
         <div class="card h-100">
             <div class="card-body">
                 <h6 class="card-subtitle text-muted mb-2">Local admits</h6>
@@ -38,7 +40,7 @@
             </div>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-md">
         <div class="card h-100">
             <div class="card-body">
                 <h6 class="card-subtitle text-muted mb-2">Already at vendor</h6>
@@ -46,7 +48,7 @@
             </div>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-md">
         <div class="card h-100">
             <div class="card-body">
                 <h6 class="card-subtitle text-muted mb-2">Pending mirror</h6>
@@ -54,7 +56,15 @@
             </div>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-md">
+        <div class="card h-100">
+            <div class="card-body">
+                <h6 class="card-subtitle text-muted mb-2">Sent — awaiting sync</h6>
+                <p class="h2 mb-0 text-info">@sent.Count</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md">
         <div class="card h-100">
             <div class="card-body">
                 <h6 class="card-subtitle text-muted mb-2">Unmirrorable</h6>
@@ -68,7 +78,12 @@
 {
     <div class="card mb-4">
         <div class="card-body">
-            <p class="mb-0">Nothing pending — every mirrorable admit is checked in at the vendor.</p>
+            <p class="mb-0">
+                Nothing pending —
+                @(sent.Count > 0
+                    ? $"{sent.Count} sent check-in(s) awaiting the next ticket sync."
+                    : "every mirrorable admit is checked in at the vendor.")
+            </p>
         </div>
     </div>
 }
@@ -119,6 +134,42 @@ else
                                     <button type="submit" class="btn btn-sm btn-outline-primary">Send</button>
                                 </form>
                             </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@if (sent.Count > 0)
+{
+    <div class="card mb-4">
+        <div class="card-header">Sent — awaiting the next ticket sync</div>
+        <div class="card-body pb-0">
+            <p class="text-muted">
+                Already enqueued; excluded from re-sending. They disappear from this page once the
+                ticket sync confirms the vendor-side check-in.
+            </p>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-sm mb-0 align-middle">
+                <thead>
+                    <tr>
+                        <th>Attendee</th>
+                        <th>Barcode</th>
+                        <th>Vendor ticket</th>
+                        <th>Admitted (UTC)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in sent)
+                    {
+                        <tr>
+                            <td>@(row.AttendeeName ?? "—")</td>
+                            <td><code>@row.Barcode</code></td>
+                            <td><code>@row.VendorTicketId</code></td>
+                            <td>@row.AdmittedAt.ToInvariantTimestamp()</td>
                         </tr>
                     }
                 </tbody>

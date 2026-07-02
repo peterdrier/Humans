@@ -65,7 +65,8 @@ public class GateServiceTests : ServiceTestHarness
         TicketAttendeeStatus status = TicketAttendeeStatus.Valid,
         Guid? matchedUserId = null,
         string barcode = Barcode,
-        Guid? attendeeId = null)
+        Guid? attendeeId = null,
+        Instant? checkedInAt = null)
     {
         var attendee = new TicketAttendeeInfo(
             Id: attendeeId ?? Guid.NewGuid(),
@@ -76,7 +77,8 @@ public class GateServiceTests : ServiceTestHarness
             Price: 100m,
             Status: status,
             MatchedUserId: matchedUserId,
-            Barcode: barcode);
+            Barcode: barcode,
+            CheckedInAt: checkedInAt);
 
         var order = new TicketOrderInfo(
             Id: Guid.NewGuid(),
@@ -532,8 +534,9 @@ public class GateServiceTests : ServiceTestHarness
         var attendeeId = Guid.NewGuid();
         StubTicket(attendeeId: attendeeId);
         await Record(idConfirmed: true);
-        // The next ticket sync reports the vendor already has this check-in — drops out of pending.
-        StubTicket(status: TicketAttendeeStatus.CheckedIn, attendeeId: attendeeId);
+        // The next /check_ins sync stamps CheckedInAt — the issued ticket's Status stays
+        // Valid (vendor semantics), so CheckedInAt alone must drop the row out of pending.
+        StubTicket(attendeeId: attendeeId, checkedInAt: Clock.GetCurrentInstant());
 
         var snapshot = await _svc.GetVendorCheckInBackfillAsync();
 
@@ -541,6 +544,20 @@ public class GateServiceTests : ServiceTestHarness
         snapshot.AlreadyCheckedInCount.Should().Be(1);
         snapshot.Pending.Should().BeEmpty();
         snapshot.Unmirrorable.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task VendorBackfill_CheckedInStatusWithoutTimestamp_AlsoNotPending()
+    {
+        var attendeeId = Guid.NewGuid();
+        StubTicket(attendeeId: attendeeId);
+        await Record(idConfirmed: true);
+        StubTicket(status: TicketAttendeeStatus.CheckedIn, attendeeId: attendeeId);
+
+        var snapshot = await _svc.GetVendorCheckInBackfillAsync();
+
+        snapshot.AlreadyCheckedInCount.Should().Be(1);
+        snapshot.Pending.Should().BeEmpty();
     }
 
     [HumansFact]

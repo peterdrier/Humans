@@ -181,7 +181,9 @@ public sealed class GateService(
             if (attendee is null || string.IsNullOrEmpty(attendee.VendorTicketId))
                 unmirrorable.Add(new GateVendorBackfillRow(
                     admit.Barcode, attendee?.AttendeeName, admit.OccurredAt, VendorTicketId: null));
-            else if (attendee.Status == TicketAttendeeStatus.CheckedIn)
+            // CheckedInAt is the vendor check-in signal — a checked-in issued ticket keeps
+            // Status Valid, so testing Status alone would re-post every synced check-in.
+            else if (attendee.CheckedInAt is not null || attendee.Status == TicketAttendeeStatus.CheckedIn)
                 alreadyCheckedIn++;
             else
                 pending.Add(new GateVendorBackfillRow(
