@@ -202,9 +202,14 @@ public sealed class GateService(
     public Task<int> PurgeScansBeforeAsync(Instant cutoff, CancellationToken ct = default) =>
         repository.PurgeScansBeforeAsync(cutoff, ct);
 
+    /// <summary>Backfill diff window. Covers the whole event including the Early-Entry run-up,
+    /// while keeping prior editions' scans (retention is 365 days) out of the diff — the
+    /// attendee join is current-event-only, so older admits would only pollute Unmirrorable.</summary>
+    private static readonly Duration VendorBackfillWindow = Duration.FromDays(30);
+
     public async Task<GateVendorBackfillSnapshot> GetVendorCheckInBackfillAsync(CancellationToken ct = default)
     {
-        var scans = await repository.GetScansSinceAsync(Instant.MinValue, ct);
+        var scans = await repository.GetScansSinceAsync(clock.GetCurrentInstant().Minus(VendorBackfillWindow), ct);
         var admits = scans.Where(s => IsAdmit(s.Verdict)).ToList();
 
         var orders = await tickets.GetTicketOrdersAsync(ct);

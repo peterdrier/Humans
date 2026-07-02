@@ -141,6 +141,16 @@ public class GateVendorBackfillControllerTests
     }
 
     [HumansFact]
+    public void TryMarkSent_ClaimsAnIdExactlyOnce()
+    {
+        // The atomic claim is the double-post guard: of two overlapping requests
+        // (double-click / second admin), exactly one may enqueue a given ticket.
+        Assert.True(_ledger.TryMarkSent("vt-X"));
+        Assert.False(_ledger.TryMarkSent("vt-X"));
+        Assert.True(_ledger.WasSent("vt-X"));
+    }
+
+    [HumansFact]
     public async Task Index_SplitsPendingFromSentAwaitingSync()
     {
         var controller = BuildController();

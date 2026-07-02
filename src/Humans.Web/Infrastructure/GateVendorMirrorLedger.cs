@@ -17,10 +17,26 @@ public sealed class GateVendorMirrorLedger(IMemoryCache cache)
     /// <summary>How long a sent id stays remembered — generously past any sync cadence.</summary>
     public static readonly TimeSpan Retention = TimeSpan.FromHours(24);
 
+    private readonly Lock _lock = new();
+
     private static string Key(string vendorTicketId) => $"GateVendorMirrorSent:{vendorTicketId}";
 
-    public void MarkSent(string vendorTicketId) =>
-        cache.Set(Key(vendorTicketId), true, Retention);
+    /// <summary>
+    /// Atomically claim an id: true when THIS call marked it (caller may enqueue), false
+    /// when it was already claimed. Check-then-act under one lock — two overlapping "Send
+    /// all" requests must not both enqueue the same non-idempotent vendor check-in.
+    /// </summary>
+    public bool TryMarkSent(string vendorTicketId)
+    {
+        lock (_lock)
+        {
+            var key = Key(vendorTicketId);
+            if (cache.TryGetValue(key, out _))
+                return false;
+            cache.Set(key, true, Retention);
+            return true;
+        }
+    }
 
     public bool WasSent(string vendorTicketId) =>
         cache.TryGetValue(Key(vendorTicketId), out _);

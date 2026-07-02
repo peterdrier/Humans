@@ -47,13 +47,12 @@ public sealed class GateVendorBackfillAdminController(
         var (_, pending, _) = await GetPendingSplitAsync(ct);
         var row = pending.FirstOrDefault(r =>
             string.Equals(r.VendorTicketId, vendorTicketId, StringComparison.Ordinal));
-        if (row is null)
+        if (row is null || !TryEnqueue(row))
         {
             SetError("That ticket is no longer pending — already sent, checked in at the vendor, or unknown.");
             return RedirectToAction(nameof(Index));
         }
 
-        Enqueue(row);
         SetSuccess($"Test check-in enqueued for {row.AttendeeName ?? row.Barcode} ({row.VendorTicketId}). " +
                    "Verify it on the TicketTailor dashboard, then send the rest.");
         return RedirectToAction(nameof(Index));
@@ -67,10 +66,9 @@ public sealed class GateVendorBackfillAdminController(
             return error;
 
         var (_, pending, _) = await GetPendingSplitAsync(ct);
-        foreach (var row in pending)
-            Enqueue(row);
+        var enqueued = pending.Count(TryEnqueue);
 
-        SetSuccess($"Enqueued {pending.Count} vendor check-in(s). " +
+        SetSuccess($"Enqueued {enqueued} vendor check-in(s). " +
                    "Sent rows are excluded from re-sending; counts update after the next ticket sync.");
         return RedirectToAction(nameof(Index));
     }
@@ -87,14 +85,19 @@ public sealed class GateVendorBackfillAdminController(
     }
 
     // ExecuteBackfillAsync (not the live ExecuteAsync) so TicketTailor records the ORIGINAL
-    // gate admit time as check_in_at, not the moment the admin clicked Send.
-    private void Enqueue(GateVendorBackfillRow row)
+    // gate admit time as check_in_at, not the moment the admin clicked Send. The ledger claim
+    // is atomic and happens BEFORE the enqueue: two overlapping requests (double-click, second
+    // admin) must never both enqueue the same non-idempotent vendor check-in.
+    private bool TryEnqueue(GateVendorBackfillRow row)
     {
         var vendorTicketId = row.VendorTicketId!;
+        if (!ledger.TryMarkSent(vendorTicketId))
+            return false;
+
         var admittedAtUnixSeconds = row.AdmittedAt.ToUnixTimeSeconds();
         backgroundJobs.Enqueue<GateVendorCheckInJob>(j =>
             j.ExecuteBackfillAsync(vendorTicketId, admittedAtUnixSeconds, CancellationToken.None));
-        ledger.MarkSent(vendorTicketId);
+        return true;
     }
 
     private IActionResult? MirrorDisabledError()

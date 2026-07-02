@@ -102,7 +102,7 @@ public sealed class GateController(
         {
             BackgroundJob.Enqueue<GateVendorCheckInJob>(j => j.ExecuteAsync(vendorTicketId, CancellationToken.None));
             if (configuration.GetValue<bool>(VendorMirrorEnabledKey))
-                mirrorLedger.MarkSent(vendorTicketId);
+                mirrorLedger.TryMarkSent(vendorTicketId);
         }
 
         return PartialView("_VerdictCard", GateScanCardViewModel.FromDecision(decision, barcode));

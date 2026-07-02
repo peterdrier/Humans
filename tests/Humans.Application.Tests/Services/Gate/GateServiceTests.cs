@@ -659,6 +659,21 @@ public class GateServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
+    public async Task VendorBackfill_IgnoresAdmitsOlderThanTheWindow()
+    {
+        StubTicket();
+        await Record(idConfirmed: true);
+        // Prior-edition admits (retention is 365 days) must not pollute the diff.
+        Clock.Advance(Duration.FromDays(31));
+
+        var snapshot = await _svc.GetVendorCheckInBackfillAsync();
+
+        snapshot.AdmitCount.Should().Be(0);
+        snapshot.Pending.Should().BeEmpty();
+        snapshot.Unmirrorable.Should().BeEmpty();
+    }
+
+    [HumansFact]
     public async Task VendorBackfill_RejectedScansAreNotCounted()
     {
         StubTicket();
