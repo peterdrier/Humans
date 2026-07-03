@@ -184,6 +184,11 @@ but are unreachable since peterdrier#1075 — nothing links to them.)
   ("Do not admit · if disputed, get the gate lead"), the ID-confirm card has a "Wrong ticket — scan
   again" escape and a visible auto-clear countdown, the override panel has "← Wrong person", and the
   freshness line taps to reload.
+- **Logout escape hatch** — the route-restriction middleware hides every normal logout affordance from
+  the gate account, so typing `logout` (any case) into the scan field is the only way off it: a local
+  confirm card (client-side only, auto-clears) POSTs the standard `/Account/Logout` on a confirm tap.
+  Confirm arms after the same anti-mistap delay as Yes/No, so a scanned barcode that *encodes* "logout"
+  can never knock the terminal offline by itself.
 
 ## Cross-Section Dependencies
 
