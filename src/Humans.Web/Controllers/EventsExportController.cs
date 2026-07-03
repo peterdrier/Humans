@@ -67,6 +67,7 @@ public class EventsExportController(
                     e.PriorityRank,
                     e.Status.ToString(),
                     ToLocalDateTime(e.SubmittedAt, tz).ToInvariantTimestamp(),
+                    e.Host ?? "",
                 ]);
             }
         }
@@ -74,7 +75,7 @@ public class EventsExportController(
         var bytes = HumansCsv.WriteBytes(csv =>
         {
             csv.WriteRow("Id", "Title", "Description", "Category", "CampName", "VenueName", "SubmitterName",
-                "LocationNote", "Date", "StartTime", "DurationMinutes", "IsRecurring", "PriorityRank", "Status", "SubmittedAt");
+                "LocationNote", "Date", "StartTime", "DurationMinutes", "IsRecurring", "PriorityRank", "Status", "SubmittedAt", "Host");
             foreach (var row in rows)
             {
                 csv.WriteRow(row);
