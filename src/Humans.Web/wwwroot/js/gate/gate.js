@@ -25,7 +25,7 @@ export function initGate(refs) {
     // but the operator is mid-decision). Any tap on the card pushes the deadline back (active use
     // keeps it up); terminal cards also get a "Next ticket" button with a visible countdown.
     const readyCard = result.firstElementChild ? result.firstElementChild.cloneNode(true) : null;
-    const RESET_MS = { Admit: 10000, Stop: 30000, Amber: 30000, IdConfirm: 60000 };
+    const RESET_MS = { Admit: 10000, Stop: 30000, Amber: 30000, IdConfirm: 60000, LogoutConfirm: 60000 };
     let resetTimer = null, resetCountdown = null, resetDeadline = 0, resetMs = 0, resetLabel = null, resetLabelKind = 'next';
 
     function clearResetTimer() {
