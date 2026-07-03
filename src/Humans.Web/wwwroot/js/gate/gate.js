@@ -5,9 +5,11 @@
 // Yes/No (or Child) → /Gate/Decision records the decision and returns the final
 // card. Distinct sounds + haptics let the agent keep their eyes on the guest,
 // and the Yes/No buttons arm only after a short delay to defeat autopilot taps.
+// Typing "logout" (any case) instead of a barcode offers a confirm card that ends
+// the kiosk session — the only logout path on the route-restricted gate account.
 
 export function initGate(refs) {
-    const { form, input, result, override, evaluateUrl, decisionUrl, token } = refs;
+    const { form, input, result, override, evaluateUrl, decisionUrl, logoutUrl, token } = refs;
 
     const focusInput = () => { input.value = ''; input.focus(); };
     input.focus();
@@ -23,7 +25,7 @@ export function initGate(refs) {
     // but the operator is mid-decision). Any tap on the card pushes the deadline back (active use
     // keeps it up); terminal cards also get a "Next ticket" button with a visible countdown.
     const readyCard = result.firstElementChild ? result.firstElementChild.cloneNode(true) : null;
-    const RESET_MS = { Admit: 10000, Stop: 30000, Amber: 30000, IdConfirm: 60000 };
+    const RESET_MS = { Admit: 10000, Stop: 30000, Amber: 30000, IdConfirm: 60000, LogoutConfirm: 60000 };
     let resetTimer = null, resetCountdown = null, resetDeadline = 0, resetMs = 0, resetLabel = null, resetLabelKind = 'next';
 
     function clearResetTimer() {
@@ -176,6 +178,14 @@ export function initGate(refs) {
         clearScanTimer();
         const code = input.value.trim();
         if (!code || busy || overrideOpen()) return; // ignore scans mid-override
+        // Escape hatch for a device stuck on the kiosk account (the route-restriction
+        // middleware hides every normal logout affordance): typing "logout" into the scan
+        // field offers to end the session. Confirm-tap only — a scanned barcode that
+        // *encodes* "logout" must not be able to knock the terminal offline by itself.
+        if (code.toLowerCase() === 'logout') {
+            showLogoutConfirm();
+            return;
+        }
         busy = true;
         flashNeutral(result);
         try {
@@ -211,6 +221,48 @@ export function initGate(refs) {
             '<div class="gate-word">Error</div>' +
             '<div class="gate-reason">Connection problem — scan again</div></div>';
         signal('Stop');
+    }
+
+    // Local confirm card for the "logout" escape hatch — never touches the server until
+    // confirmed. Confirm POSTs the standard /Account/Logout via a real form (the browser
+    // then follows the redirect out of the kiosk); Cancel returns to Ready. The card
+    // auto-clears like any other so an abandoned prompt can't linger on the shared screen.
+    function showLogoutConfirm() {
+        input.value = '';
+        result.innerHTML =
+            '<div class="gate-card gate-idconfirm" data-kind="LogoutConfirm" role="status">' +
+            '<div class="gate-icon" aria-hidden="true"><i class="fa-solid fa-right-from-bracket"></i></div>' +
+            '<div class="gate-word">Log out</div>' +
+            '<div class="gate-reason">Sign this device out of the gate account?</div>' +
+            '<div class="gate-decide"><div class="gate-yesno">' +
+            '<button type="button" class="gate-btn gate-logout-cancel" data-logout-cancel>' +
+            '<i class="fa-solid fa-rotate-left" aria-hidden="true"></i> Cancel</button>' +
+            '<button type="button" class="gate-btn gate-no" data-logout-confirm>' +
+            '<i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i> Log out</button>' +
+            '</div></div></div>';
+
+        const card = result.firstElementChild;
+        card.querySelector('[data-logout-cancel]').addEventListener('click', resetToReady);
+
+        // Same anti-mistap arming as the Yes/No buttons: a wedge-scanned "logout" barcode
+        // auto-submits, so the confirm must never be tappable in the same motion.
+        const confirmBtn = card.querySelector('[data-logout-confirm]');
+        confirmBtn.setAttribute('disabled', 'disabled');
+        setTimeout(() => confirmBtn.removeAttribute('disabled'), 350);
+        confirmBtn.addEventListener('click', () => {
+            const f = document.createElement('form');
+            f.method = 'POST';
+            f.action = logoutUrl;
+            const t = document.createElement('input');
+            t.type = 'hidden';
+            t.name = '__RequestVerificationToken';
+            t.value = token;
+            f.appendChild(t);
+            document.body.appendChild(f);
+            f.submit();
+        });
+
+        armAutoReset(card, 'LogoutConfirm');
     }
 
     function afterRender() {

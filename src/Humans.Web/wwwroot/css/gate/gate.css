@@ -84,6 +84,8 @@ body.gate-kiosk { margin: 0; min-height: 100vh; background: #f4ede1; }
 .gate-btn[disabled] { opacity: .35; }
 .gate-no { background: #B11217; }
 .gate-yes { background: #0B7A2F; }
+/* Neutral Cancel that sits inside the Yes/No flex row (unlike the block-level cancel-scan). */
+.gate-logout-cancel { background: #5a6672; }
 .gate-child {
     display: block; width: 100%; margin-top: 1rem; background: #3a4753;
     font-size: 1.05rem; padding: .8rem;
