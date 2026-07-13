@@ -120,7 +120,7 @@
                         }
                     </select>
                 </div>
-                <div class="col-md-2" id="logged-in-since-field">
+                <div class="col-md-2" id="logged-in-since-field" style="@(Model.AudienceType == SurveyAudienceType.LoggedInSince ? "" : "display:none")">
                     <label class="form-label small">Logged in since</label>
                     <input type="date" name="AudienceLoggedInSince" value="@Model.AudienceLoggedInSinceInput" class="form-control form-control-sm" />
                 </div>
