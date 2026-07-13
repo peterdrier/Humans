@@ -300,6 +300,9 @@ builder.Services.Configure<BrotliCompressionProviderOptions>(options =>
     options.Level = CompressionLevel.Fastest;
 });
 
+builder.Services.AddSingleton(sp => new RateLimitRejectionAggregator(
+    sp.GetRequiredService<ILoggerFactory>().CreateLogger("RateLimiting")));
+
 builder.Services.AddRateLimiter(options =>
 {
     options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
@@ -352,13 +355,23 @@ builder.Services.AddRateLimiter(options =>
             .RecordError(ClientStatsMiddleware.BuildEntry(
                 context.HttpContext, StatusCodes.Status429TooManyRequests));
 
-        var logger = context.HttpContext.RequestServices.GetRequiredService<ILoggerFactory>()
-            .CreateLogger("RateLimiting");
         var remoteIp = context.HttpContext.Connection.RemoteIpAddress?.ToString();
         var authenticatedUser = context.HttpContext.User.Identity?.IsAuthenticated == true
             ? context.HttpContext.User.Identity.Name
             : null;
         var identity = authenticatedUser ?? remoteIp ?? "anonymous";
+
+        // A bot sweep produces dozens of near-identical rejections; only the
+        // first per identity per window logs in detail (and pays the reverse-DNS
+        // lookup) — the rest are counted and flushed as one summary line.
+        if (!context.HttpContext.RequestServices.GetRequiredService<RateLimitRejectionAggregator>()
+                .RecordRejection(identity))
+        {
+            return;
+        }
+
+        var logger = context.HttpContext.RequestServices.GetRequiredService<ILoggerFactory>()
+            .CreateLogger("RateLimiting");
 
         // Best-effort reverse DNS lookup
         string? reverseDns = null;
