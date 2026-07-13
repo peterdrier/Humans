@@ -121,6 +121,10 @@ public class DevPersonaSeederTests
         await _consents.Received(1).SubmitConsentAsync(
             userId, v2, true, Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
         await _humanLifecycle.Received(1).RestoreConsentSuspensionAsync(userId, Arg.Any<CancellationToken>());
+        // Volunteers admission is name + consents and SubmitConsentAsync does not provision
+        // membership — the repair must re-sync or the persona stays out until the nightly job.
+        await _systemTeamSync.Received(1).SyncMembershipForUserAsync(
+            userId, SystemTeamType.Volunteers, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -142,6 +146,46 @@ public class DevPersonaSeederTests
         await _consents.DidNotReceive().SubmitConsentAsync(
             Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<bool>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
         await _humanLifecycle.Received(1).RestoreConsentSuspensionAsync(userId, Arg.Any<CancellationToken>());
+        // Was suspended → the (nightly) suspension flow removed Volunteers membership; re-sync.
+        await _systemTeamSync.Received(1).SyncMembershipForUserAsync(
+            userId, SystemTeamType.Volunteers, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task EnsureActiveAsync_AlreadyActiveNothingMissing_DoesNotResyncVolunteers()
+    {
+        // The steady-state login (persona healthy) must not churn team sync on every hit.
+        var userId = Guid.NewGuid();
+        _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(NamedUserInfo(userId, UserState.Active)));
+        _membershipCalculator.GetMembershipSnapshotAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(Snapshot());
+        _humanLifecycle.RestoreConsentSuspensionAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new OnboardingResult(true));
+
+        await BuildSut().EnsureActiveAsync(userId);
+
+        await _systemTeamSync.DidNotReceive().SyncMembershipForUserAsync(
+            Arg.Any<Guid>(), Arg.Any<SystemTeamType>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task EnsureActiveAsync_RestoreFails_DoesNotResyncVolunteers()
+    {
+        // A still-suspended user is ineligible, and a single-user Volunteers sync REMOVES
+        // ineligible members — never sync when the restore did not succeed.
+        var userId = Guid.NewGuid();
+        _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(NamedUserInfo(userId, UserState.Suspended)));
+        _membershipCalculator.GetMembershipSnapshotAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(Snapshot());
+        _humanLifecycle.RestoreConsentSuspensionAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new OnboardingResult(false, "NotFound"));
+
+        await BuildSut().EnsureActiveAsync(userId);
+
+        await _systemTeamSync.DidNotReceive().SyncMembershipForUserAsync(
+            Arg.Any<Guid>(), Arg.Any<SystemTeamType>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

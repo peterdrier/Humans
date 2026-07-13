@@ -233,6 +233,9 @@ public sealed class DevPersonaSeeder(
         if (info is null || !info.HasRequiredNameFields)
             return;
 
+        var wasSuspended = info.State == UserState.Suspended;
+        var submittedAny = false;
+
         var snapshot = await membershipCalculator.GetMembershipSnapshotAsync(userId);
         foreach (var versionId in snapshot.MissingConsentVersionIds)
         {
@@ -242,6 +245,7 @@ public sealed class DevPersonaSeeder(
 
             if (result.Success)
             {
+                submittedAny = true;
                 logger.LogInformation(
                     "DEV: seeded consent for persona {UserId} on document version {VersionId}",
                     userId, versionId);
@@ -262,6 +266,18 @@ public sealed class DevPersonaSeeder(
             logger.LogWarning(
                 "DEV: consent-suspension restore failed for persona {UserId}: {ErrorKey}",
                 userId, restore.ErrorKey);
+        }
+
+        // Volunteers admission is name + consents (SyncVolunteersMembershipForUserAsync),
+        // and SubmitConsentAsync deliberately does not provision system-team membership —
+        // without this re-sync a persona repaired here (or created in an environment that
+        // already has required documents, where the creation-path sync ran pre-consent)
+        // stays out of Volunteers until the nightly SystemTeamSyncJob. Skipped when the
+        // restore failed: the user would still be suspended, and a single-user sync also
+        // REMOVES ineligible members.
+        if ((submittedAny || wasSuspended) && restore.Success)
+        {
+            await systemTeamSync.SyncMembershipForUserAsync(userId, SystemTeamType.Volunteers);
         }
     }
 
