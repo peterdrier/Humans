@@ -1,6 +1,6 @@
 ---
 name: triage
-description: "Triage application logs, open GitHub issues, pending feedback, in-app Issues, and agent refusals/handoffs. Runs five phases: logs → close shipped issues → feedback → in-app issues → agent FAQ gaps. Use when /whats shows pending feedback, checking app logs, cleaning up shipped issues, or working the in-app Issues backlog."
+description: "Triage application logs, open GitHub issues, pending feedback, in-app Issues, and agent conversations. Runs five phases: logs → close shipped issues → feedback → in-app issues → agent FAQ gaps. Use when /whats shows pending feedback, checking app logs, cleaning up shipped issues, or working the in-app Issues backlog."
 argument-hint: "[qa] [all] [logs [PR#]] [close] [open] [issues] [agent]"
 ---
 
@@ -12,7 +12,7 @@ Five phases run in priority order:
 2. **Close phase** — find open issues whose fixes shipped to production, close them, notify reporters
 3. **Feedback phase** — triage new feedback reports into GitHub issues (legacy; feedback is being retired in favor of in-app Issues)
 4. **Issues phase** — triage non-terminal in-app Issues (`/api/issues`) — the going-forward replacement for feedback
-5. **Agent phase** — pull agent refusals/handoffs (`/api/agent/conversations`), cluster repeated user questions, propose FAQ entries to plug gaps in `src/Humans.Web/Models/SectionHelpContent.cs` (the hardcoded knowledge base the agent reads via the `fetch_section_guide` tool)
+5. **Agent phase** — pull the full agent conversation history (`/api/agent/conversations`), cluster repeated user questions, propose FAQ entries to plug gaps in `src/Humans.Web/Models/SectionHelpContent.cs` (the hardcoded knowledge base the agent reads via the `fetch_section_guide` tool)
 
 ## Arguments
 
@@ -22,7 +22,7 @@ Five phases run in priority order:
 - `close` — only close phase
 - `open` — only feedback phase
 - `issues` — only in-app issues phase
-- `agent` — only the agent refusals/handoffs phase
+- `agent` — only the agent conversations phase
 - `qa` — logs + feedback + issues + agent from QA instance
 - `all` — include Acknowledged feedback reports + InProgress issues
 
@@ -683,11 +683,13 @@ Issues phase complete: {total} in-app issues ({environment})
 
 ---
 
-# Phase 5: Agent Refusals & Handoffs → FAQ Proposals
+# Phase 5: Agent Conversations → FAQ Proposals
 
 Skip if any of `logs`/`close`/`open`/`issues` is specified without `agent`.
 
-The agent (chat assistant) reads hardcoded markdown from `src/Humans.Web/Models/SectionHelpContent.cs` via the `fetch_section_guide` tool. When the user's question isn't covered, the agent either refuses or hands off to the issues queue. Both signals point at gaps in the hardcoded KB. **The goal of this phase is to propose new FAQ entries to plug those gaps, not to "process" individual conversations.** The KB is small and hand-edited for now; an editing UI may come later.
+The agent (chat assistant) reads hardcoded markdown from `src/Humans.Web/Models/SectionHelpContent.cs` via the `fetch_section_guide` tool. When the user's question isn't covered, the agent refuses, hands off to the issues queue, or answers from weaker sources (e.g. the unofficial community FAQ, with a "not official" disclaimer). All of these point at gaps in the hardcoded KB. **The goal of this phase is to propose new FAQ entries to plug those gaps, not to "process" individual conversations.** The KB is small and hand-edited for now; an editing UI may come later.
+
+Review the **full conversation list**, not a refusal filter — see the dead-counters note in Step 5.1.
 
 ## Step 5.0: Determine target environment
 
@@ -698,17 +700,17 @@ The agent (chat assistant) reads hardcoded markdown from `src/Humans.Web/Models/
 
 Always note the environment in output (e.g., "Agent phase from **QA**").
 
-## Step 5.1: Fetch refusals and handoffs
+## Step 5.1: Fetch the full conversation list
 
-> **Note on handoffs:** `handoffsOnly=true` filters by `HandedOffToFeedbackId != null` in the DB. Current `route_to_issue` tool calls do **not** set this field — the proposal is streamed to the client and the saved assistant message retains `HandedOffToFeedbackId = null`. This means `handoffsOnly` returns only legacy feedback-based handoffs (likely none). Omit that fetch unless you see results; rely on refusals as the primary signal. Issue handoffs surface instead through Phase 4 (in-app Issues with KB-gap flags).
+> **Dead counters (verified 2026-07-13, prod):** `refusalCount` and `handoffCount` are 0 on every conversation — the flags are never populated at save time, so `refusalsOnly=true` always returns an empty list and `handoffsOnly=true` only matches legacy feedback handoffs (`HandedOffToFeedbackId != null`, which `route_to_issue` never sets). Tracked in nobodies-collective/Humans#931. Until that ships, **do not use either filter** — pull everything and cluster from the question stream. Issue handoffs still surface through Phase 4 (in-app Issues with KB-gap flags).
 
 ```bash
-curl -sf -H "X-Api-Key: $AGENT_KEY" "$BASE_URL/api/agent/conversations?refusalsOnly=true&take=100"
-# handoffsOnly currently returns only legacy feedback handoffs (HandedOffToFeedbackId != null);
-# route_to_issue turns are not flagged this way — omit unless debugging legacy data.
+curl -sf -H "X-Api-Key: $AGENT_KEY" "$BASE_URL/api/agent/conversations?take=100"
 ```
 
-Save the raw JSON to a Windows-absolute path (per `feedback_temp_file_path_mismatch`), e.g. `H:/source/Humans/.worktrees/.triage-agent-refusals.json`.
+If exactly `take` rows come back, older history may exist — increase `take` (or page if the endpoint supports it) until the count drops below the limit or you reach the last triage run's date.
+
+Save the raw JSON to a Windows-absolute path (per `feedback_temp_file_path_mismatch`), e.g. `H:/source/Humans/.worktrees/.triage-agent-conversations.json`.
 
 503 → server key not configured; skip phase with note ("Agent phase skipped — `AgentApi:ApiKey` not wired on server."). 401 → wrong key; try the dedicated env var.
 
@@ -720,15 +722,22 @@ curl -sf -H "X-Api-Key: $AGENT_KEY" "$BASE_URL/api/agent/conversations/{id}/mess
 
 ## Step 5.2: Cluster repeated questions
 
-For each conversation, `lastUserMessagePreview` (200 chars) is the question the agent failed. Cluster by intent across refusals (and any legacy handoffs returned):
+For each conversation, `lastUserMessagePreview` (200 chars) is the question to cluster on. Questions arrive in multiple languages (EN/ES/FR/DE) — cluster by intent, not wording:
 
 - Same section + same question pattern → one cluster
 - Different sections but same root concept (e.g., "how do I cancel X" across Shifts + Tickets) → one cluster, multi-section FAQ
 - Singletons are fine to skip unless the question is high-value (GDPR, payments, accessibility)
 
-Cross-reference with Phase 4 KB-gap flags (issues whose descriptions mention "guide could not be loaded") — those are the same problem from the issues side and should fold into the cluster. Current `route_to_issue` handoffs surface here via Phase 4, not via `handoffsOnly`.
+**Then sample transcripts before proposing.** Since the list includes answered conversations, pull `/messages` for 1–2 conversations per candidate cluster and judge the agent's actual reply:
 
-Subagents are useful here if the refusal set is large: dispatch one per cluster candidate, then merge.
+- Answered correctly and completely → not a gap; drop the cluster.
+- Answered with an "unofficial / community FAQ / may be outdated" disclaimer → gap: the official answer belongs in the KB.
+- Answered wrong or told the user a capability doesn't exist when it does → gap, and flag the misinformation in the cluster block (these are the highest-value fixes).
+- Refused / punted to the issues queue → gap.
+
+Cross-reference with Phase 4 KB-gap flags (issues whose descriptions mention "guide could not be loaded") — those are the same problem from the issues side and should fold into the cluster. `route_to_issue` handoffs surface via Phase 4, not via this list's counters.
+
+Subagents are useful here if the conversation set is large: dispatch one per cluster candidate, then merge.
 
 ## Step 5.3: Propose FAQ entries
 
@@ -737,7 +746,7 @@ For each cluster ≥2 occurrences (or ≥1 high-value), draft a short Q&A entry 
 ```
 ### Cluster #{N}: {one-line topic}
 **Section:** {Section name, or "cross-section"}
-**Occurrences:** {N refusals + M handoffs + K KB-gap issues}
+**Occurrences:** {N conversations + K KB-gap issues}
 **Sample questions** (verbatim, anonymised):
 > {preview 1}
 > {preview 2}
@@ -759,7 +768,7 @@ If a cluster reveals a missing capability rather than a missing doc — e.g., "u
 
 ```
 ## Agent FAQ Proposals — {environment}
-Reviewed {refusal_count} refusals + {handoff_count} handoffs.
+Reviewed {conversation_count} conversations ({date_range}).
 {cluster_count} clusters worth addressing.
 
 [per-cluster blocks as above]
@@ -783,7 +792,7 @@ If missing-capability GH issues were approved, create them with `gh issue create
 ## Step 5.6: Summary
 
 ```
-Agent phase complete: {refusal_count} refusals + {handoff_count} handoffs reviewed
+Agent phase complete: {conversation_count} conversations reviewed
 - FAQ proposals drafted: {count} → {draft_file_path}
 - Missing-capability issues created: {count}
 - Skipped clusters: {count}
@@ -810,6 +819,6 @@ Agent phase complete: {refusal_count} refusals + {handoff_count} handoffs review
 - {kb_gap_count} flagged as agent KB gaps
 
 ### Agent refusals & handoffs
-- {refusal_count} refusals + {handoff_count} handoffs → {cluster_count} clusters → {faq_count} FAQ proposals drafted at {draft_file}
+- {conversation_count} conversations → {cluster_count} clusters → {faq_count} FAQ proposals drafted at {draft_file}
 - {capability_issue_count} missing-capability GH issues opened
 ```
