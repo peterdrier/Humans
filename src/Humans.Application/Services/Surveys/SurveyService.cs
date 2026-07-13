@@ -60,7 +60,7 @@ public sealed class SurveyService(
 
         var input = new SurveyEditInput(
             s.Title, s.Intro, s.ThankYou, s.DefaultCulture, s.AllowAnonymous, s.OpensAt, s.ClosesAt,
-            s.AudienceType, s.AudienceTeamId, s.PublicSlug,
+            s.AudienceType, s.AudienceTeamId, s.AudienceLoggedInSince, s.PublicSlug,
             s.Questions
                 .OrderBy(q => q.PageNumber).ThenBy(q => q.Order)
                 .Select(q => new QuestionInput(
@@ -93,6 +93,7 @@ public sealed class SurveyService(
             ClosesAt = input.ClosesAt,
             AudienceType = input.AudienceType,
             AudienceTeamId = input.AudienceTeamId,
+            AudienceLoggedInSince = input.AudienceLoggedInSince,
             PublicSlug = NormalizeSlug(input.PublicSlug),
             CreatedByUserId = actorUserId,
             CreatedAt = now,
@@ -125,6 +126,7 @@ public sealed class SurveyService(
             ClosesAt = input.ClosesAt,
             AudienceType = input.AudienceType,
             AudienceTeamId = input.AudienceTeamId,
+            AudienceLoggedInSince = input.AudienceLoggedInSince,
             PublicSlug = NormalizeSlug(input.PublicSlug),
             UpdatedAt = now,
             Questions = questions,
@@ -185,7 +187,7 @@ public sealed class SurveyService(
         var input = new SurveyEditInput(
             new LocalizedText(title), new LocalizedText(intro), new LocalizedText(thankYou),
             e.DefaultCulture, e.AllowAnonymous, e.OpensAt, e.ClosesAt,
-            e.AudienceType, e.AudienceTeamId, e.PublicSlug,
+            e.AudienceType, e.AudienceTeamId, e.AudienceLoggedInSince, e.PublicSlug,
             questions.Select(q => q.Question with
             {
                 Prompt = new LocalizedText(q.Prompt),
@@ -232,7 +234,7 @@ public sealed class SurveyService(
         var survey = await repo.GetByIdAsync(surveyId, ct);
         if (survey?.AudienceType is null) return 0;
 
-        var recipients = await ResolveRecipientIdsAsync(survey.AudienceType.Value, survey.AudienceTeamId, ct);
+        var recipients = await ResolveRecipientIdsAsync(survey.AudienceType.Value, survey.AudienceTeamId, survey.AudienceLoggedInSince, ct);
         return recipients.Count;
     }
 
@@ -246,7 +248,7 @@ public sealed class SurveyService(
             throw new InvalidOperationException("Survey has no audience to invite.");
 
         var now = clock.GetCurrentInstant();
-        var target = await ResolveRecipientIdsAsync(survey.AudienceType.Value, survey.AudienceTeamId, ct);
+        var target = await ResolveRecipientIdsAsync(survey.AudienceType.Value, survey.AudienceTeamId, survey.AudienceLoggedInSince, ct);
         var alreadyInvited = await repo.GetInvitedUserIdsAsync(surveyId, ct);
         var netNew = target.Except(alreadyInvited).ToList();
 
@@ -980,7 +982,7 @@ public sealed class SurveyService(
     /// interfaces. No marketing opt-out filter — surveys are System/always-send.
     /// </summary>
     private async Task<IReadOnlySet<Guid>> ResolveRecipientIdsAsync(
-        SurveyAudienceType type, Guid? teamId, CancellationToken ct)
+        SurveyAudienceType type, Guid? teamId, Instant? loggedInSince, CancellationToken ct)
     {
         switch (type)
         {
@@ -1013,6 +1015,21 @@ public sealed class SurveyService(
                     return views
                         .Where(kv => kv.Value.HasShift)
                         .Select(kv => kv.Key)
+                        .ToHashSet();
+                }
+
+            case SurveyAudienceType.LoggedInSince:
+                {
+                    // "Logged in on or after the cutoff" = LastLoginAt >= cutoff; null LastLoginAt never
+                    // matches (predates tracking). Deliberately no IsApproved filter — mid-onboarding
+                    // users belong in this audience (nobodies-collective/Humans#894) — but tombstones
+                    // (GDPR-anonymized/merged) and deletion-pending users are never invited.
+                    if (loggedInSince is null) return new HashSet<Guid>();
+                    var users = await userService.GetAllUserInfosAsync(ct);
+                    return users
+                        .Where(u => u.LastLoginAt is { } lastLogin && lastLogin >= loggedInSince.Value)
+                        .Where(u => !u.IsGdprAnonymized && !u.IsDeletionPending && !u.IsMerged)
+                        .Select(u => u.Id)
                         .ToHashSet();
                 }
 

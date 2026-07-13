@@ -4,6 +4,7 @@ using Humans.Domain.Enums;
 using Humans.Domain.ValueObjects;
 using Humans.Web.Extensions;
 using NodaTime;
+using NodaTime.Text;
 
 namespace Humans.Web.Models;
 
@@ -124,6 +125,7 @@ public sealed class SurveyBuilderViewModel
     public LocalDateTime? ClosesAt { get; set; }
     public SurveyAudienceType? AudienceType { get; set; }
     public Guid? AudienceTeamId { get; set; }
+    public LocalDate? AudienceLoggedInSince { get; set; }
     public string? PublicSlug { get; set; }
 
     public List<SurveyQuestionBuilderViewModel> Questions { get; set; } = [];
@@ -137,6 +139,10 @@ public sealed class SurveyBuilderViewModel
     // datetime-local <input> values (empty when unset).
     public string OpensAtInput => FormatLocal(OpensAt);
     public string ClosesAtInput => FormatLocal(ClosesAt);
+
+    // date <input> value (empty when unset).
+    public string AudienceLoggedInSinceInput
+        => AudienceLoggedInSince is null ? string.Empty : LocalDatePattern.Iso.Format(AudienceLoggedInSince.Value);
 
     private static string FormatLocal(LocalDateTime? local)
         => local is null ? string.Empty : DateFormattingExtensions.PlacementDateTimePattern.Format(local.Value);
@@ -152,6 +158,7 @@ public sealed class SurveyBuilderViewModel
         ToInstant(ClosesAt, zone),
         AudienceType,
         AudienceType == SurveyAudienceType.Team ? AudienceTeamId : null,
+        AudienceType == SurveyAudienceType.LoggedInSince ? ToStartOfDayInstant(AudienceLoggedInSince, zone) : null,
         string.IsNullOrWhiteSpace(PublicSlug) ? null : PublicSlug,
         Questions.Select((q, i) => q.ToInput(i)).ToList());
 
@@ -171,6 +178,7 @@ public sealed class SurveyBuilderViewModel
             ClosesAt = FromInstant(e.ClosesAt, zone),
             AudienceType = e.AudienceType,
             AudienceTeamId = e.AudienceTeamId,
+            AudienceLoggedInSince = e.AudienceLoggedInSince?.InZone(zone).Date,
             PublicSlug = e.PublicSlug,
             Questions = e.Questions.Select(SurveyQuestionBuilderViewModel.FromInput).ToList(),
             Teams = teams,
@@ -182,6 +190,9 @@ public sealed class SurveyBuilderViewModel
 
     internal static Instant? ToInstant(LocalDateTime? local, DateTimeZone zone)
         => local?.InZoneLeniently(zone).ToInstant();
+
+    internal static Instant? ToStartOfDayInstant(LocalDate? date, DateTimeZone zone)
+        => date?.AtStartOfDayInZone(zone).ToInstant();
 
     internal static LocalDateTime? FromInstant(Instant? instant, DateTimeZone zone)
         => instant?.InZone(zone).LocalDateTime;

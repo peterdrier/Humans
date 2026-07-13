@@ -149,6 +149,7 @@ public sealed record SurveyEditInput(
     Instant? ClosesAt,
     SurveyAudienceType? AudienceType,
     Guid? AudienceTeamId,
+    Instant? AudienceLoggedInSince,
     string? PublicSlug,
     IReadOnlyList<QuestionInput> Questions);
 

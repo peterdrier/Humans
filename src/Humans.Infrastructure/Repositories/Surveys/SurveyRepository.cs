@@ -57,6 +57,7 @@ internal sealed partial class SurveyRepository(IDbContextFactory<HumansDbContext
         existing.ClosesAt = survey.ClosesAt;
         existing.AudienceType = survey.AudienceType;
         existing.AudienceTeamId = survey.AudienceTeamId;
+        existing.AudienceLoggedInSince = survey.AudienceLoggedInSince;
         existing.PublicSlug = survey.PublicSlug;
         existing.UpdatedAt = survey.UpdatedAt;
 

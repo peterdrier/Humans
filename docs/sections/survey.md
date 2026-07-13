@@ -45,6 +45,7 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 | OpensAt / ClosesAt | Instant? | optional open/close window |
 | AudienceType | SurveyAudienceType? | string-converted; null = no audience |
 | AudienceTeamId | Guid? | bare FK → Team (when `AudienceType = Team`) — **FK only**, no nav, no cross-section EF FK constraint |
+| AudienceLoggedInSince | Instant? | cutoff (when `AudienceType = LoggedInSince`); users with `LastLoginAt >= cutoff` match, `null` LastLoginAt never matches |
 | PublicSlug | string? | max 80; public answering link; requires `AllowAnonymous`; null = invite-only |
 | PublicStartedCount | int | slug-path "started" funnel counter (no per-person anchor) |
 | CreatedByUserId | Guid | bare FK → User — **FK only**, no nav, resolved via `IUserServiceRead` |
@@ -139,7 +140,7 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 | SurveyQuestionType | SingleChoice, MultiChoice, ShortText, LongText, Rating |
 | ResponseAnonymity | Identified, CompletionTracked, Anonymous |
 | SurveyInputMethod | UserSpecificLink, Slug |
-| SurveyAudienceType | Team, AllActiveMembers, TicketHolders, ShiftParticipants |
+| SurveyAudienceType | Team, AllActiveMembers, TicketHolders, ShiftParticipants, LoggedInSince |
 | BranchCombine | All, Any |
 | BranchOperator | Is, IsNot, Answered, NotAnswered |
 
@@ -201,7 +202,7 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 
 ## Cross-Section Dependencies
 
-- **Users/Identity:** `IUserServiceRead` — resolve active-member ids for audience, and creator/respondent/recipient display names + preferred languages.
+- **Users/Identity:** `IUserServiceRead` — resolve active-member ids and `LoggedInSince`-audience ids (`UserInfo.LastLoginAt`), and creator/respondent/recipient display names + preferred languages.
 - **Teams:** `ITeamServiceRead` — `Team`-audience member ids and team display data.
 - **Tickets:** `ITicketServiceRead` — `TicketHolders`-audience recipient ids.
 - **Shifts:** `IShiftView` — `ShiftParticipants`-audience recipient ids.
