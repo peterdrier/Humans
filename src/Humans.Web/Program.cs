@@ -451,7 +451,8 @@ var mvcBuilder = builder.Services.AddControllersWithViews(options =>
         options.Filters.Add<Humans.Web.Filters.AuthorizationPillFilter>();
 
         // datetime-local inputs post without seconds; NodaTime's LocalDateTime
-        // TypeConverter requires them. See LocalDateTimeModelBinder (#932).
+        // TypeConverter requires them. See LocalDateTimeModelBinder
+        // (nobodies-collective/Humans#932).
         options.ModelBinderProviders.Insert(0, new LocalDateTimeModelBinderProvider());
     })
     .AddViewLocalization(LanguageViewLocationExpanderFormat.Suffix)
