@@ -8,7 +8,7 @@
 
 Fill in the existing `/Store/Summary` Phase 5 stub with admin-facing aggregate views over the year's store orders. Three cuts on the same data: by camp, by item, and a camp × product cross-tab. Lets FinanceAdmin / StoreAdmin see "what's been ordered, by whom, who has paid" at a glance.
 
-This is not a new section — it completes work scoped in `2026-04-30-store-section-design.md`.
+This is not a new section — it completes work scoped in the 2026-04-30 store-section design (historical, since removed — current invariants live in `docs/sections/Store.md`).
 
 ## Scope
 

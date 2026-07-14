@@ -48,7 +48,7 @@ If you have paid but your card still says you do not have a ticket, the attendee
 
 ### Pass your ticket to someone else
 
-Can't make it, or bought a ticket under your name for a friend? You can transfer a ticket you hold to another person from **Tickets → Transfers** (`/Tickets/Transfers`). You start the request, the ticketing team completes the swap with the vendor, and you both get an email. Full walkthrough: [Transferring your ticket](TicketTransfers.md).
+Can't make it, or bought a ticket under your name for a friend? You can transfer a ticket you hold to another person from **Tickets → Transfers** (`/Tickets/Transfers`). You start the request, the ticketing team completes the swap with the vendor, and you both get an email. A ticket that has already been scanned at the gate can no longer be transferred. Full walkthrough: [Transferring your ticket](TicketTransfers.md).
 
 ## As a Board member / Admin (Ticket Admin)
 
@@ -68,7 +68,7 @@ The Scanner section's ticket lookup (`/Scanner/Tickets`) uses your device camera
 
 ### Trigger a sync
 
-Sync runs on a schedule (every 15 minutes by default); Ticket Admins and Admins can also trigger one manually with the **Sync Now** button at the bottom of the dashboard. A sync pulls new and updated orders and attendees from the vendor since the last successful sync (using `LastSyncAt` as the cursor), upserts them, re-runs email matching, enriches paid orders with Stripe fee data when a payment-intent id is present, recomputes VAT using the VIP split, marks used vendor codes as redeemed on their campaign grants, and reconciles `EventParticipation` rows for matched users.
+Sync runs on a schedule (every 5 minutes in the shipped configuration); Ticket Admins and Admins can also trigger one manually with the **Sync Now** button at the bottom of the dashboard. A sync pulls new and updated orders, attendees, and gate check-ins from the vendor since the last successful sync (using `LastSyncAt` as the cursor), upserts them, re-runs email matching, enriches paid orders with Stripe fee data when a payment-intent id is present, recomputes VAT using the VIP split, marks used vendor codes as redeemed on their campaign grants, and reconciles `EventParticipation` rows for matched users.
 
 A separate **Full Re-sync** button (Admin-only, with a confirmation prompt) clears the cursor and re-fetches every order from the vendor. Use this only when you suspect the incremental sync has missed historical data.
 
@@ -88,7 +88,7 @@ When you import historical attendance from outside the vendor (e.g. from a previ
 
 ### Process ticket transfers
 
-When a Volunteer requests a ticket transfer (see [Transferring your ticket](TicketTransfers.md)), it lands in the admin queue at `/Tickets/Admin/Transfers`. Open a request's detail to review it, then approve or reject. **Approving records the decision and emails both people — you still do the actual void-and-reissue with the vendor by hand**, and the next sync reconciles the local attendee rows. Rejecting requires a reason, which is emailed to the sender and recipient. Ticket Admin and Admin can decide; Board can view.
+When a Volunteer requests a ticket transfer (see [Transferring your ticket](TicketTransfers.md)), it lands in the admin queue at `/Tickets/Admin/Transfers`. Open a request's detail to review it, then process it one of two ways. **Process transfer** does the void-and-reissue at the vendor automatically — the original ticket is voided to a hold and the same ticket type is reissued to the recipient at the original price, with no refund or order change. Or do the swap by hand in the vendor dashboard and use **Mark successful** to record it (the next sync reconciles the local attendee rows). If the automated path half-fails (ticket voided but the reissue failed), a **Retry reissue** button finishes it from the held seat. Either way both people are emailed. **Cancel transfer** requires a reason, which is emailed to the sender and recipient. Ticket Admin and Admin can decide; Board can view.
 
 ### Import attendee contacts
 

@@ -27,6 +27,8 @@ In-app issue tracker (bugs, features, questions) with screenshots, role-routed t
 - **Section** is a free-form string drawn from `IssueSectionRouting.AllKnownSections` (Tickets, Camps, Teams, Shifts, Onboarding, Profiles, Budget, Governance, Legal, CityPlanning) or `null`. Stored as a string so the routing table can change without migrations. Null-section issues fall to the Admin queue only.
 - A **Handler** is a user who can triage, assign, change status of, or comment as a non-reporter on an issue: `Admin`, or any role listed by `IssueSectionRouting.RolesFor(issue.Section)`.
 - **Ball-in-court** is **derived**, not stored: compare the latest comment's `SenderUserId` to `Issue.ReporterUserId`. There is no boolean column for "needs reply" — it is computed at read time.
+<!-- wheat: docs/superpowers/specs/2026-04-29-issues-section-design.md §10 Audit + inline thread -->
+- The Detail view's **activity thread has no event table**: status/assignee/section/GitHub-link events are reconstructed at read time from the audit log (the four `AuditAction.Issue*` values, fetched via `IAuditLogService`) and merged chronologically with `IssueComment` rows in `IssuesService`. The audit log is the source of truth for inline events — do not add an issue-events schema.
 - **Issue status** tracks the lifecycle: Triage, Open, InProgress, Resolved, WontFix, Duplicate. Resolved/WontFix/Duplicate are terminal.
 
 ## Data Model

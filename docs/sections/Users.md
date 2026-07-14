@@ -91,6 +91,9 @@ Per-user, per-year record of event involvement. Derived from ticket sync, user s
 
 `Attended` is permanent: ticket sync cannot downgrade it. `Ticketed` is removable when the last valid ticket is voided / transferred (`RemoveTicketSyncParticipationAsync`). `NotAttending` (with Source = `UserDeclared`) can only be undone by the same user via `UndoNotAttendingAsync`; ticket sync also overrides it when a ticket is purchased. `NoShow` is a post-event derivation for ticket holders who did not check in.
 
+<!-- wheat: docs/superpowers/specs/2026-04-30-account-merge-fold-redesign.md §Conflict / merge rules -->
+On account-merge fold, an `(UserId, Year)` collision between source and target keeps the **highest-precedence status** — `Attended` > `Ticketed` > `NoShow` > `NotAttending` — copying the winning row's `Status`/`Source`/`DeclaredAt` onto the target row and deleting the source row (`UserRepository.ReassignEventParticipationToUserAsync`).
+
 ### Identity framework tables
 
 `HumansDbContext.OnModelCreating` renames every Identity table to a lowercase `snake_case` Postgres-friendly name:

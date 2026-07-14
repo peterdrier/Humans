@@ -3,7 +3,7 @@
 Audit of which services access which database tables and cache keys, organized by section.
 The goal is to identify cross-section table overlap, duplicated caching, and cache configuration issues.
 
-**Generated:** 2026-06-24
+**Generated:** 2026-07-14
 
 > **Methodology.** Tables are resolved by following each service's injected
 > repository interface to its EF-backed implementation in
@@ -52,28 +52,29 @@ The goal is to identify cross-section table overlap, duplicated caching, and cac
 17. [Consent](#consent)
 18. [Notifications](#notifications)
 19. [Tickets](#tickets)
-20. [Budget](#budget)
-21. [Campaigns](#campaigns)
-22. [Email](#email)
-23. [SystemSettings](#systemsettings)
-24. [Mailer](#mailer)
-25. [Feedback](#feedback)
-26. [Issues](#issues)
-27. [Events (Event Guide)](#events-event-guide)
-28. [Expenses](#expenses)
-29. [Finance](#finance)
-30. [Store](#store)
-31. [Agent](#agent)
-32. [Search](#search)
-33. [Dashboard](#dashboard)
-34. [Gdpr](#gdpr)
-35. [AuditLog](#auditlog)
-36. [Surveys](#surveys)
-37. [ICalFeed](#icalfeed)
-38. [Cross-Section Analysis](#cross-section-analysis)
-39. [Cache Inventory](#cache-inventory)
-40. [Appendix A: Out-of-Service Database Access](#appendix-a-out-of-service-database-access)
-41. [Appendix B: Out-of-Service Cache Access](#appendix-b-out-of-service-cache-access)
+20. [Gate](#gate)
+21. [Budget](#budget)
+22. [Campaigns](#campaigns)
+23. [Email](#email)
+24. [SystemSettings](#systemsettings)
+25. [Mailer](#mailer)
+26. [Feedback](#feedback)
+27. [Issues](#issues)
+28. [Events (Event Guide)](#events-event-guide)
+29. [Expenses](#expenses)
+30. [Finance](#finance)
+31. [Store](#store)
+32. [Agent](#agent)
+33. [Search](#search)
+34. [Dashboard](#dashboard)
+35. [Gdpr](#gdpr)
+36. [AuditLog](#auditlog)
+37. [Surveys](#surveys)
+38. [ICalFeed](#icalfeed)
+39. [Cross-Section Analysis](#cross-section-analysis)
+40. [Cache Inventory](#cache-inventory)
+41. [Appendix A: Out-of-Service Database Access](#appendix-a-out-of-service-database-access)
+42. [Appendix B: Out-of-Service Cache Access](#appendix-b-out-of-service-cache-access)
 
 ---
 
@@ -524,7 +525,7 @@ table is therefore owned wholly by Google Integration.
 > `GdprExportSections.TeamEarlyEntry` GDPR slice; the `IUserMerge` path
 > reassigns grants across the merge.
 >
-> **New this sweep (#906):** team search is now **cache-only**.
+> **Prior sweep (#906):** team search is now **cache-only**.
 > `CachingTeamService.SearchAsync` filters the cached `TeamInfo` snapshot
 > (hidden teams excluded unless requested); the inner
 > `TeamService.SearchAsync` **throws `NotSupportedException`**, and the dead
@@ -765,7 +766,7 @@ Folder: `src/Humans.Application/Services/Camps/`. Owns `Camps`,
 > status lookups, plus `ICampInfoInvalidator` to evict the cached
 > `CampInfo` on role-assignment writes.
 >
-> **New this sweep (#906):** camp search is now **cache-only**.
+> **Prior sweep (#906):** camp search is now **cache-only**.
 > `CachingCampService.SearchAsync` filters the cached `CampInfo` snapshot
 > (relevance-ranked, public-status gated); the inner
 > `CampService.SearchAsync` **throws `NotSupportedException`** (reaching it
@@ -955,7 +956,7 @@ Folder: `src/Humans.Application/Services/Shifts/`. Owns `Rotas`,
 > markers on `ShiftRepository` / `VolunteerTrackingRepository` for
 > `EventSettings` / `ShiftSignups` are retired.
 >
-> **New this sweep:** `IShiftSignupRepository` has been **fully removed
+> **Prior sweep:** `IShiftSignupRepository` has been **fully removed
 > as a separate interface** — its signup-side methods are now surfaced
 > exclusively on `IShiftManagementRepository` (via
 > `IShiftManagementRepository.Signups.cs` partial). Services that
@@ -994,7 +995,7 @@ Repository: `IShiftManagementRepository`.
 Cross-section calls via `IAuditLogService`, `IAdminAuthorizationService`,
 `IShiftViewInvalidator`, plus `IServiceProvider` for cycle-breaking, which
 lazy-resolves the read surfaces `ITeamServiceRead`, `IUserServiceRead`,
-`ICampServiceRead` (new this sweep, #898), `IRoleAssignmentService`, and
+`ICampServiceRead` (#898), `IRoleAssignmentService`, and
 `ITicketServiceRead`. Injects `IMemoryCache` directly for the
 `shift-auth:{userId}` slot. Implements `IShiftAuthorizationInvalidator`,
 `IUserMerge`. Also exposes the Cantina-gating predicates
@@ -1186,6 +1187,12 @@ for dietary preference, allergies, intolerances). Implements
 
 `MedicalConditions` is intentionally never read here — the cantina plans
 around food, not medical history.
+
+> **New this sweep (#1056):** arrival-day feeding — each human is also fed
+> the day before their first confirmed shift of the event. The first-shift
+> scan reads confirmed signups through the existing
+> `IShiftManagementService` surface; dependencies are unchanged (still no
+> repository, no cache).
 
 ---
 
@@ -1435,7 +1442,7 @@ Repositories: `ITicketRepository`, `ITicketTransferRepository` (new — #916).
 The inner service holds no cache — invalidation methods are no-ops on the
 inner; `CachingTicketQueryService` intercepts. Cross-section calls via
 `IBudgetService`, `ICampaignServiceRead` (read-split surface — migrated
-from the full `ICampaignService` this sweep), `IUserService`,
+from the full `ICampaignService` in a prior sweep), `IUserService`,
 `IUserEmailService`, `ITeamServiceRead` (read-split surface),
 `IShiftManagementService`, plus `IClock`. Implements `IUserDataContributor`
 (the GDPR contributor is the inner, one per section).
@@ -1455,7 +1462,7 @@ been **removed**.
 > `TicketSyncService.BuildEmailLookupAsync`). The cross-section
 > design-rule violation on `UserEmails` is closed.
 >
-> **New this sweep (#916 — barcode):** `TicketAttendees` gained a `Barcode`
+> **Prior sweep (#916 — barcode):** `TicketAttendees` gained a `Barcode`
 > column (synced from Ticket Tailor). `TicketAttendeeInfo` in the cached
 > orders projection now carries `Barcode` plus transfer detail
 > (`TransferredToName` / `TransferredAt` for void attendees, resolved from
@@ -1465,6 +1472,17 @@ been **removed**.
 > card (`ScannerController`) resolves a barcode by filtering
 > `ITicketServiceRead.GetTicketOrdersAsync` in memory — no new interface
 > method.
+>
+> **New this sweep (#1058 / #1059 / #1067 — gate check-in era):**
+> `TicketAttendees` gained a `CheckedInAt` column — `TicketSyncService` now
+> also syncs vendor check-ins from the TicketTailor `/check_ins` endpoint
+> (#1059) so the onsite roster and the Gate section see gate check-ins made
+> directly at the vendor. `TicketAttendeeInfo` in the cached orders
+> projection carries `CheckedInAt` alongside `Barcode`. Transfers of
+> gate-checked-in tickets are blocked (#1067 — the transfer flow respects
+> `CheckedInAt`), and `TicketTransferService` gained an automated,
+> flag-gated TicketTailor void(-to-hold)+reissue path
+> (`ProcessTransferAsync`, #1058) via `ITicketVendorService`.
 
 ### CachingTicketQueryService (Singleton, Infrastructure)
 
@@ -1514,12 +1532,16 @@ Repositories: `ITicketRepository`, `ITicketTransferRepository`.
 | TicketAttendees | R/W |
 | TicketTransferRequests | R/W |
 
-Cross-section calls via `IUserService`, `IUserEmailService`,
-`IEmailService`, `IAuditLogService`. Invalidates ticket caches via
+Cross-section calls via `IUserServiceRead`, `IUserEmailService`,
+`IEmailService`, `IEmailMessageFactory`, `IAuditLogService`, plus
+`ITicketVendorService` (new — #1058: `ProcessTransferAsync` runs the
+automated, flag-gated TicketTailor void(-to-hold)+reissue; the next ticket
+sync reconciles local attendee rows). Invalidates ticket caches via
 `ITicketCacheInvalidator` (`InvalidateAfterTransfer`, called from
 `ApproveAsync` since #916 — approval mutates the cached order projection's
 transfer detail, so the orders slice and both users' holdings are
-evicted). No `IMemoryCache` directly.
+evicted). Transfers of gate-checked-in tickets are refused (#1067 —
+`CheckedInAt` respected). No `IMemoryCache` directly.
 
 ### TicketingBudgetService (Scoped)
 
@@ -1564,6 +1586,81 @@ no DI dependencies.
 
 ---
 
+## Gate
+
+Folder: `src/Humans.Application/Services/Gate/`. Owns `gate_scan_events`,
+`gate_settings`, `gate_staff_pins`. **New section (#1066, QA mirror of
+nobodies-collective#904; hardened in #1069–#1083)** — gate admissions:
+barcode scan evaluation, append-only scan/verdict recording, personal staff
+claim PINs, supervisor overrides, leaderboard, and a best-effort vendor
+check-in mirror back to TicketTailor.
+
+The Gate entities have **no `DbSet<>` properties on `HumansDbContext`** —
+table names come from the `IEntityTypeConfiguration` classes in
+`src/Humans.Infrastructure/Data/Configurations/Gate/` (`ToTable("gate_…")`),
+and `GateRepository` accesses them via `ctx.Set<T>()`. `GateRepository` is a
+**Singleton** (`IDbContextFactory` short-lived context pattern, §15b).
+
+**Deliberately no caching decorator** — gate reads must be live: a stale
+verdict admits or blocks the wrong person. Ticket/EE inputs still come from
+the cached cross-section read surfaces.
+
+### GateService (Scoped)
+
+Repository: `IGateRepository`.
+
+| Table | R/W |
+|-------|-----|
+| gate_scan_events | R/W (append-only verdict log; admit dedupe via unique index on `AdmitDedupeKey`; retention purge; merge reassignment) |
+| gate_settings | R/W (singleton row — general-entry cutoff, minor-age threshold) |
+| gate_staff_pins | R/W (per-staffer PIN hash via `IPasswordHasher<GateStaffPin>`; `AdminEnrolled` flag gates override authority) |
+| EventParticipations | W via `IUserService.SetParticipationFromTicketSyncAsync` (**not** a foreign table access — an admit projects an `Attended` participation row through the owning Users service, #1081, so consumed camp EE can't be revoked) |
+
+Cross-section calls via `ITicketServiceRead` (barcode → attendee resolved by
+filtering the cached orders projection in memory — no new interface method),
+`IEarlyEntryService` (cached per-user EE for the too-early rule),
+`IBurnSettingsService` (event timezone / active event), `IShiftManagementService`
+(active event + gate-crew shift roster for the claim screen, via
+`GetBrowseShiftsAsync`), `IRoleAssignmentService` (server-verified supervisor
+roles for overrides), `IUserService` (participation projection),
+`IAuditLogService` (PIN set/reset audit — never the PIN value), plus
+`IPasswordHasher<GateStaffPin>` and `IClock` (cutoff is always evaluated
+against the server clock, never a device clock). Implements `IGateService`,
+`IUserMerge` (re-points `GuestUserId` / `ScannedByUserId` /
+`OverrideByUserId` on merge), `IUserDataContributor` (GDPR slice
+`GdprExportSections.GateScans` — data-minimized: verdict/time/role/lane,
+no barcode, no other person's identifiers). No `IMemoryCache`.
+
+### GateAdmissionRules / GateBarcode
+
+Pure static helpers — no DI, no DB access. `GateAdmissionRules.Evaluate`
+is the decision table (void / duplicate / cutoff / EE / ID-check outcomes);
+`GateBarcode.Normalize` canonicalises scanned codes.
+
+### Web-layer gate helpers (`src/Humans.Web/Infrastructure/`)
+
+Not Application services, but they hold the section's only `IMemoryCache`
+state (single-server in-memory, see Appendix B): `GateLoginThrottle`
+(`GateLoginFailures:{sourceIp}` — per-IP terminal sign-in throttle),
+`GatePinThrottle` (`GatePinFailures:{key}` — PIN brute-force lockout, 5
+failures / 15 min), and `GateVendorMirrorLedger`
+(`GateVendorMirrorSent:{vendorTicketId}` — 24 h atomic claim so the vendor
+check-in mirror and the backfill page never double-post a non-idempotent
+TicketTailor check-in, #1083). `GateTerminalAccountSeeder` provisions the
+shared kiosk account and fires `InvalidateUserAccess` (claims / shift-auth /
+active-teams eviction).
+
+### Background jobs (Infrastructure)
+
+`GateRetentionJob` (daily purge of scan rows past retention, via
+`IGateService.PurgeScansBeforeAsync` — `Gate:RetentionDays`, default 365)
+and `GateVendorCheckInJob` (best-effort mirror of an admit to TicketTailor
+via `ITicketVendorService`; off by default behind
+`Gate:VendorMirrorEnabled`, enqueued by `GateController` on admit; a
+one-off backfill page covers a 30-day window, #1080/#1083).
+
+---
+
 ## Budget
 
 Folder: `src/Humans.Application/Services/Budget/`. Owns `BudgetYears`,
@@ -1588,7 +1685,7 @@ Repository: `IBudgetRepository`.
 | TicketingProjections | R/W |
 
 Cross-section calls via `ITeamService`, `IUserServiceRead` (migrated to the
-read-split surface this sweep — was the full `IUserService`), plus `IClock`.
+read-split surface in a prior sweep — was the full `IUserService`), plus `IClock`.
 Implements `IUserDataContributor`. No `IMemoryCache`.
 
 ---
@@ -1850,7 +1947,7 @@ Cross-section calls via `IFileStorage`, `IBudgetService`, `ITeamService`,
 expense submitters per PR #791). Implements `IUserDataContributor`. No
 `IMemoryCache`.
 
-> **New this sweep (#900 — travel lines):** expense lines can now be
+> **Prior sweep (#900 — travel lines):** expense lines can now be
 > travel reimbursements (mileage / per-diem; `ExpenseLineType` +
 > `PerDiemKind` columns on `ExpenseLines` — same table, no new DbSet).
 > The service gained an `IOptions<TravelReimbursementConfig>` dependency
@@ -2067,7 +2164,8 @@ Camps (`CampService`), Shifts (`ShiftSignupService`), Tickets
 Expenses (`ExpenseReportService`), Finance (`HoldedFinanceService` —
 creditor-contact binding), Agent (`AgentService`), Teams
 (`TeamService`), Consent (`ConsentService`), Surveys (`SurveyService` —
-identified responses only, #884). No direct DB access, no cache.
+identified responses only, #884), Gate (`GateService` — data-minimized
+gate-scan slice, #1066). No direct DB access, no cache.
 
 ---
 
@@ -2144,6 +2242,11 @@ Implements `IUserDataContributor` (GDPR export slice
 and CompletionTracked rows carry no `UserId` and are excluded). No
 `IMemoryCache`.
 
+> **New this sweep (#1094):** a `LoggedInSince` audience type
+> (`surveys.AudienceLoggedInSince` cutoff column) — resolved from the cached
+> `UserInfo.LastLoginAt` via the existing `IUserServiceRead` fan-out; no new
+> dependency.
+
 ### SurveyBranchingEvaluator / SurveyWizardFlow
 
 Pure static helpers — no DI dependencies, no DB access. `SurveyBranchingEvaluator`
@@ -2193,8 +2296,8 @@ After the §15 / `IUserMerge` consolidation, the
 `CalendarRepository` / `BudgetRepository` / `EventRepository` /
 `ShiftSignupRepository` / `TicketRepository` cleanups, the Profiles
 repository consolidation (PRs #810/#811: three Profiles repositories
-folded into `IUserRepository`), this sweep's #882 / #889 repository
-convergences, and the current sweep's removal of `IShiftSignupRepository`
+folded into `IUserRepository`), the #882 / #889 repository
+convergences, and the removal of `IShiftSignupRepository`
 as a separate interface (signup methods merged into
 `IShiftManagementRepository.Signups.cs`), **no cross-section
 repository-level table reads remain.**
@@ -2371,6 +2474,20 @@ former HUM0025 `[Grandfathered]` markers have been retired:
     their own repositories. The sequential fan-out pattern (shared scoped
     `HumansDbContext`) mirrors `GdprExportService` and `EarlyEntryService`.
 
+14. **Gate composes cached cross-section reads and never touches a foreign
+    table (#1066).** `GateService` resolves a scanned barcode by filtering
+    the cached `ITicketServiceRead.GetTicketOrdersAsync` projection in
+    memory (no new interface method), checks early entry via the cached
+    `IEarlyEntryService`, verifies supervisor roles via
+    `IRoleAssignmentService`, and pulls the gate-crew roster via
+    `IShiftManagementService` — all §15-compliant service-interface calls.
+    Its one cross-section **write** — projecting an admit onto the guest's
+    `EventParticipations` row as `Attended` (#1081) — goes through the
+    owning `IUserService.SetParticipationFromTicketSyncAsync`, so no
+    design-rule violation. `IGateRepository` reads/writes only the three
+    Gate-owned tables. The section deliberately has **no caching
+    decorator**: admission verdicts must be live.
+
 ---
 
 ## Cache Inventory
@@ -2401,6 +2518,13 @@ separately below the key table.
 | `CampContactRateLimit:{userId}:{campId}` | 10 min | Rate Limit | CampContactService | CampContactService |
 | `magic_link_used:{tokenPrefix}` | 15 min | Rate Limit | MagicLinkRateLimiter (Infrastructure) | MagicLinkRateLimiter |
 | `magic_link_signup:{normalizedEmail}` | 60 sec | Rate Limit | MagicLinkRateLimiter (Infrastructure) | MagicLinkRateLimiter |
+| `GateLoginFailures:{sourceIp}` | 1 min window | Rate Limit | GateLoginThrottle (Web) | GateLoginThrottle (reset on success) |
+| `GatePinFailures:{key}` | 15 min lockout after 5 failures | Rate Limit | GatePinThrottle (Web) | GatePinThrottle (only a correct PIN clears it) |
+| `GateVendorMirrorSent:{vendorTicketId}` | 24 hr | Dedupe claim | GateVendorMirrorLedger (Web) | expiry only |
+
+> The three `Gate*` keys are held by Web-layer helper singletons
+> (`src/Humans.Web/Infrastructure/`), not `CacheKeys.cs` /
+> `CacheKeys.Metadata` — they never appear on `/Debug/CacheStats`.
 
 > **Retired `IMemoryCache` keys** (now `TrackedCache` projections or
 > removed entirely): `camps_year_{year}` and `CampSettings` (→
@@ -2522,6 +2646,10 @@ Controllers and components that touch `IMemoryCache` directly.
 | Controller / Component | Cache Operation | Key |
 |------------------------|-----------------|-----|
 | **NotificationBellViewComponent** | GetOrCreate | `NotificationBadge:{userId}` |
+| **GateLoginThrottle** (Web infrastructure, used by the gate-terminal sign-in) | TryGetValue / Set / Remove | `GateLoginFailures:{sourceIp}` |
+| **GatePinThrottle** (Web infrastructure, used by `GateController` PIN claim / override) | TryGetValue / Set / Remove | `GatePinFailures:{key}` |
+| **GateVendorMirrorLedger** (Web infrastructure, used by `GateController` and `GateVendorBackfillAdminController`) | TryGetValue / Set (atomic claim) | `GateVendorMirrorSent:{vendorTicketId}` |
+| **GateTerminalAccountSeeder** (Web infrastructure) | `InvalidateUserAccess` extension | `ActiveTeams` + `claims:{userId}` + `shift-auth:{userId}` for the kiosk account |
 
 The §15 work continues to push cache populators into the owning service
 behind transparent decorators. `NavBadgesViewComponent` no longer injects

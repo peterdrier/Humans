@@ -1,3 +1,18 @@
+<!-- freshness:triggers
+  src/Humans.Web/Views/TicketTransfer/**
+  src/Humans.Web/Views/TicketTransferAdmin/**
+  src/Humans.Web/Controllers/TicketTransferController.cs
+  src/Humans.Web/Controllers/TicketTransferAdminController.cs
+  src/Humans.Web/ViewComponents/TicketStubViewComponent.cs
+  src/Humans.Application/Services/Tickets/TicketTransferService.cs
+  src/Humans.Application/Interfaces/Tickets/ITicketTransferService.cs
+  src/Humans.Domain/Entities/TicketTransferRequest.cs
+  src/Humans.Domain/Enums/TicketTransferStatus.cs
+-->
+<!-- freshness:flag-on-change
+  End-user transfer walkthrough: eligibility (valid, matched, not gate-checked-in), wizard steps, notifications, and the cancel window. Review when the transfer wizard, lifecycle, or notifications change.
+-->
+
 # Transferring your ticket
 
 Can't make it, or bought a ticket for a friend under your own name? You can hand
@@ -14,6 +29,8 @@ ticketing team finishes it, and both of you get an email when it's done.
   isn't on your profile yet — add it under
   **Profile → Emails** and it'll match. (See [Tickets](Tickets.md) for more on
   matching.)
+- A ticket that's **already been scanned at the gate** can't be transferred —
+  once it's been used to get in, it stays with you.
 
 ## How to do it
 
@@ -53,7 +70,8 @@ from the app (you'd have to arrange a fresh transfer back).
 |---|---|
 | The person I want to give it to isn't in the app | Ask them to sign up first — then they'll show up when you pick a recipient |
 | My ticket isn't in the list | It's probably matched to a different email. Add that email under Profile → Emails and it'll appear |
-| How long does it take? | The ticketing team processes it by hand, so it's not instant — you'll get an email when it's done |
+| How long does it take? | A person on the ticketing team has to process it, so it's not instant — you'll get an email when it's done |
+| My ticket's already been scanned at the gate | A used ticket can't be transferred |
 | Can I take it back? | Only while it's still pending (cancel it yourself). After it's completed, you'd need to arrange a new transfer the other way |
 | Can I transfer to someone outside the org? | They need a Humans account to receive it — signing up is quick and free |
 

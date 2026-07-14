@@ -2,7 +2,7 @@
 
 Originally produced as Phase 0 of the first-class authorization transition plan (historical; the plan doc has since been pruned). **Phase 1 is complete:** every canonical policy in §5 is registered in `AuthorizationPolicyExtensions.AddHumansAuthorizationPolicies`, all controllers (including the Events Guide section, which now uses `[Authorize(Policy = PolicyNames.EventsAdminOrAdmin)]`) use `[Authorize(Policy = PolicyNames.X)]`, the `authorize-policy` TagHelper resolves through `IAuthorizationService`, and views no longer call `RoleChecks.*` / `ShiftRoleChecks.*` directly. **Phase 2 (resource-based authorization)** has shipped multiple vertical slices — see §6 (`TeamAuthorizationHandler`, `CampAuthorizationHandler`, `BudgetAuthorizationHandler`, `RoleAssignmentAuthorizationHandler`, `ContainerAuthorizationHandler`, `ExpenseReportAuthorizationHandler`, `IbanAccessHandler`, `StoreOrderAuthorizationHandler`, `UserEmailAuthorizationHandler`, `IssuesAuthorizationHandler`, `AgentRateLimitHandler`). **Phase 3 (service-layer enforcement) is cancelled.**
 
-Generated 2026-04-03. Refreshed 2026-06-24 (via `/freshness-sweep`; full re-scan against worktree `freshness-sweep-2026-06-23T231018Z`: `SepaReopen` / `SepaGenerate` actions and `ExpenseReportOperation.{IncludeInSepaPayout,ReopenSepa}` are not present in this worktree's code — removed from §1, §3, §6, and the §6 call-site table; `ExpensesController` `AuthorizeAsync` call-site line numbers corrected to 206, 589, 635, 655, 700, 721; all other entries verified unchanged). Previously refreshed 2026-06-13 (via `/freshness-sweep`; `GovernanceBoardVotingController.Finalize` (POST, `AdminOnly`) added — action-level override finalizing board vote rounds; `VolunteerTrackingController.SetAvailabilityDay` / `ClearAvailabilityDay` added (`VolunteerTrackingWrite`); `ProfileController.BuildSentMessagesContextAsync` new `AuthorizeAsync(User, PolicyNames.PrivilegedSignupApprover)` call at line 1911 added to §6 call site table; line numbers in §6 call site table updated for `ExpensesController`, `ProfileController`, and `UsersAdminController` to reflect current source). Previously refreshed 2026-06-12 (via `/freshness-sweep`; catch-up: `ToggleCampFavourite` (route `/Events/Barrio/{slug}/Favourite/{eventId:guid}`) was renamed to `ToggleCardFavourite` (route `/Events/Card/Favourite/{eventId:guid}`) in #925 — whole-event favourite from the events card, now camp-and-profile-page-agnostic (missed by the 2026-06-10 sweep); #982 added `ExpensesController.SepaReopen` (`[HttpPost("{id:guid}/Sepa/Reopen")]`, `[Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]` + resource-based `ExpenseReportOperation.ReopenSepa`) — reopens a SepaSent report back to Approved; `ExpenseReportAuthorizationHandler` now covers `ReopenSepa` for FinanceAdmin/Admin; #985 and #986 are service-layer and view-only changes with no new authorization surface). Previously refreshed 2026-06-10 (via `/freshness-sweep`; #884 added the Survey section — `SurveyController` (`[AllowAnonymous]` — public wizard answering flow), `SurveyAdminController` (`BoardOrAdmin` — authoring/send/results), and `SurveysApiController` (`SurveyApiKeyAuthFilter` — key-authed agent read API); #931 added `ICalFeedApiController` (`[AllowAnonymous]` with secret-in-URL token at `/api/ical/{userId}/{token}.ics`); #930 added `AccountController.GateLogin` (GET/POST, no `[Authorize]` — shared kiosk credential for the gate terminal) and `TicketsGateAdminController` (`TicketAdminOrAdmin` — gate credential management at `/Tickets/Admin/Gate`); `ScannerController`'s class-level policy is now `PolicyNames.ScannerAccess` (a composite assertion that also admits the gate-terminal shared account by well-known id, not just TicketAdmin/Board/Admin roles) — the `ScannerAccess` policy is now listed in §5). Previously refreshed 2026-06-09 (via `/freshness-sweep`, full re-scan; #900 expense travel lines + personal IOU view reshaped the Expenses guard surface — the `ExpenseReportOperationRequirement` resource handler now covers `View` (Detail/Attachment), `Endorse`, `CoordinatorReject`, `Approve`, `FinanceReject`, and `IncludeInSepaPayout`, while all submitter-side actions (Edit, line CRUD including the new `AddMileage`/`AddPerDiem`, Submit, Withdraw, Iban) are gated by inline owner checks (`report.SubmitterUserId != user.Id → Forbid()`); #916 added the barcode scan & search actions (`Barcode`, `Tickets`, `Tickets/Card`) to `ScannerController` and the authenticated `search` / `by-userid` endpoints to `ProfileApiController`; `UsersAdminController` is now gated by a single class-level `HumanAdminBoardOrAdmin` policy with `AdminOnly` action overrides (`RevealIban`, `Audience`, `PurgeHuman`); `TeamController.EditTeam` (POST) gained an in-method `AdminOnly` check driving the `IsSensitive` leave-unchanged guard; the Store landing page admin button group is the first view spelling of `StoreCatalogAdmin`; `_HumanPopover` gained an `AnyAdminRole` camp-visibility flag and the Admin dashboard activity panels an `AdminOnly` view gate). Previously refreshed 2026-06-07 (via `/freshness-sweep`; #899 account-merge consolidation deleted `AdminMergeController` + `AdminDuplicateAccountsController` and replaced them with the single `UsersAdminAccountMergesController` at `/Users/Admin/AccountMerges`; #901 admin route moves gutted `AdminController` down to just the `/Admin` dashboard tile and relocated routes into section controllers — `PurgeHuman` and `RevealIban` now live on `UsersAdminController`, the debug/diagnostics routes were absorbed by `DebugController`, and the role-assignment `AddRole`/`EndRole` guards moved from `ProfileController` to `UsersAdminController`; #898 added the read-only `ShiftsController.Summary*` actions gated by `ShiftDepartmentManager`; #881 name-only access deleted the `IsActiveMember` / `ActiveMemberOrShiftAccess` requirement+handler pairs and `RoleChecks.BypassesMembershipRequirement` — `MembershipRequiredFilter` now gates the app purely on the stored `UserState` (only `Active` reaches it) and routes the rest to name-entry / status-wall / cancel-deletion landings on the new `UserController`). Previously refreshed 2026-06-05 (adds the `CampComplianceAccess` policy + `CampComplianceAccessHandler` and the new `CampComplianceController` for the read-only Barrios compliance matrix, split out of `CampAdminController` so it can be gated more broadly than CampAdmin-only — #894; `RoleAssignmentClaimsTransformation` was re-sourced from `IRoleAssignmentRepository` to `IRoleAssignmentService` in #889, an internal sourcing change with no inventory impact). Previously refreshed 2026-06-04 (full re-scan via `/freshness-sweep`; adds `ProfileApiController.BurnerNameCount`, `ShiftsController.ToggleDay`, the `StoreAdminController` Payments/reconcile actions, and the global `NameRequiredFilter` action filter). Previously refreshed 2026-06-03 (the new `RoleNames.EETeamAdmin` cross-team role, the `TeamOperationRequirement.ManageEarlyEntry` resource operation + `TeamAdminController` EarlyEntry actions, and the build-hash tooltip re-gated to `AdminOnly` / FullAdmin in commit 3c6a878e). Covers every `[Authorize(Policy)]` / `[Authorize(Roles)]` attribute on controllers and actions in `src/Humans.Web/Controllers/` (including `Controllers/Api/` and `Controllers/Mailer/`), every `RoleChecks.*` / `ShiftRoleChecks.*` invocation across `src/Humans.Web/` and `src/Humans.Application/`, every `IAuthorizationService.AuthorizeAsync` call site, every `authorize-policy` TagHelper attribute and `User.IsInRole` / `Model.X` authorization check across `src/Humans.Web/Views/` and `src/Humans.Web/ViewComponents/`, and every `AuthorizationHandler<T, R>` (and `IAuthorizationHandler`) under `src/Humans.Web/Authorization/` and `src/Humans.Application/Authorization/`.
+Generated 2026-04-03. Refreshed 2026-07-14 (via `/freshness-sweep`, full re-scan: the **Gate section** shipped (#1066 and follow-ups #1069–#1084) — `GateController` at `/Gate` carries class-level `[Authorize(Policy = PolicyNames.ScannerAccess)]` for the read actions (`Index`, `Evaluate`, `Claim` GET, `Search`, `Leaderboard`) while the write actions (`Decision`, `Claim` POST, `ClaimPin`, `EndShift`) require the **new `PolicyNames.GateAdmit` policy** (same principals as `ScannerAccess` today — TicketAdmin/Board/Admin or the gate-terminal shared account by well-known id — but a separate composite assertion so the write path never rides the read-only Scanner gate) and the settings/PIN-management actions (`Admin` GET/POST, `SetStaffPin`, `ResetStaffPin`) require `TicketAdminOrAdmin`; gate supervisor overrides (too-early / unconfirmed-EE admit, child-without-ID waiver) are authorized by a shared override PIN (`Gate:SupervisorPin` config), server-verified with a fixed-time hash compare and brute-force-throttled via `GatePinThrottle` (fail-closed when unconfigured); staff claim PINs are verified per-user via `IGateService` with per-target-user throttle buckets; `GateVendorBackfillAdminController` (`AdminOnly`, temp page at `/Gate/Admin/VendorCheckInBackfill`) added by #1080; `ExpensesController` gained an `AuthorizeAsync(User, PolicyNames.FinanceAdminOrAdmin)` flag call at line 223 (Holded creditor binding on report detail); `VolunteerTracking/Index.cshtml` no longer performs its own `VolunteerTrackingWrite` check (the two heatmap partials retain theirs); §2/§6 line numbers updated for `_Layout.cshtml`, `Governance/BoardVoting/Detail.cshtml`, `Profile/Index.cshtml`, `UsersAdmin/AdminDetail.cshtml`, `Campaign/Detail.cshtml`, `Ticket/Index.cshtml`, `CampAdmin/Index.cshtml`, `Store/Index.cshtml`, `WidgetGallery/Index.cshtml`, `AdminSidebarViewComponent`, `BudgetController`, `ExpensesController`, and `UsersAdminController`; all other entries verified unchanged). Previously refreshed 2026-06-24 (via `/freshness-sweep`; full re-scan against worktree `freshness-sweep-2026-06-23T231018Z`: `SepaReopen` / `SepaGenerate` actions and `ExpenseReportOperation.{IncludeInSepaPayout,ReopenSepa}` are not present in this worktree's code — removed from §1, §3, §6, and the §6 call-site table; `ExpensesController` `AuthorizeAsync` call-site line numbers corrected to 206, 589, 635, 655, 700, 721; all other entries verified unchanged). Previously refreshed 2026-06-13 (via `/freshness-sweep`; `GovernanceBoardVotingController.Finalize` (POST, `AdminOnly`) added — action-level override finalizing board vote rounds; `VolunteerTrackingController.SetAvailabilityDay` / `ClearAvailabilityDay` added (`VolunteerTrackingWrite`); `ProfileController.BuildSentMessagesContextAsync` new `AuthorizeAsync(User, PolicyNames.PrivilegedSignupApprover)` call at line 1911 added to §6 call site table; line numbers in §6 call site table updated for `ExpensesController`, `ProfileController`, and `UsersAdminController` to reflect current source). Previously refreshed 2026-06-12 (via `/freshness-sweep`; catch-up: `ToggleCampFavourite` (route `/Events/Barrio/{slug}/Favourite/{eventId:guid}`) was renamed to `ToggleCardFavourite` (route `/Events/Card/Favourite/{eventId:guid}`) in #925 — whole-event favourite from the events card, now camp-and-profile-page-agnostic (missed by the 2026-06-10 sweep); #982 added `ExpensesController.SepaReopen` (`[HttpPost("{id:guid}/Sepa/Reopen")]`, `[Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]` + resource-based `ExpenseReportOperation.ReopenSepa`) — reopens a SepaSent report back to Approved; `ExpenseReportAuthorizationHandler` now covers `ReopenSepa` for FinanceAdmin/Admin; #985 and #986 are service-layer and view-only changes with no new authorization surface). Previously refreshed 2026-06-10 (via `/freshness-sweep`; #884 added the Survey section — `SurveyController` (`[AllowAnonymous]` — public wizard answering flow), `SurveyAdminController` (`BoardOrAdmin` — authoring/send/results), and `SurveysApiController` (`SurveyApiKeyAuthFilter` — key-authed agent read API); #931 added `ICalFeedApiController` (`[AllowAnonymous]` with secret-in-URL token at `/api/ical/{userId}/{token}.ics`); #930 added `AccountController.GateLogin` (GET/POST, no `[Authorize]` — shared kiosk credential for the gate terminal) and `TicketsGateAdminController` (`TicketAdminOrAdmin` — gate credential management at `/Tickets/Admin/Gate`); `ScannerController`'s class-level policy is now `PolicyNames.ScannerAccess` (a composite assertion that also admits the gate-terminal shared account by well-known id, not just TicketAdmin/Board/Admin roles) — the `ScannerAccess` policy is now listed in §5). Previously refreshed 2026-06-09 (via `/freshness-sweep`, full re-scan; #900 expense travel lines + personal IOU view reshaped the Expenses guard surface — the `ExpenseReportOperationRequirement` resource handler now covers `View` (Detail/Attachment), `Endorse`, `CoordinatorReject`, `Approve`, `FinanceReject`, and `IncludeInSepaPayout`, while all submitter-side actions (Edit, line CRUD including the new `AddMileage`/`AddPerDiem`, Submit, Withdraw, Iban) are gated by inline owner checks (`report.SubmitterUserId != user.Id → Forbid()`); #916 added the barcode scan & search actions (`Barcode`, `Tickets`, `Tickets/Card`) to `ScannerController` and the authenticated `search` / `by-userid` endpoints to `ProfileApiController`; `UsersAdminController` is now gated by a single class-level `HumanAdminBoardOrAdmin` policy with `AdminOnly` action overrides (`RevealIban`, `Audience`, `PurgeHuman`); `TeamController.EditTeam` (POST) gained an in-method `AdminOnly` check driving the `IsSensitive` leave-unchanged guard; the Store landing page admin button group is the first view spelling of `StoreCatalogAdmin`; `_HumanPopover` gained an `AnyAdminRole` camp-visibility flag and the Admin dashboard activity panels an `AdminOnly` view gate). Previously refreshed 2026-06-07 (via `/freshness-sweep`; #899 account-merge consolidation deleted `AdminMergeController` + `AdminDuplicateAccountsController` and replaced them with the single `UsersAdminAccountMergesController` at `/Users/Admin/AccountMerges`; #901 admin route moves gutted `AdminController` down to just the `/Admin` dashboard tile and relocated routes into section controllers — `PurgeHuman` and `RevealIban` now live on `UsersAdminController`, the debug/diagnostics routes were absorbed by `DebugController`, and the role-assignment `AddRole`/`EndRole` guards moved from `ProfileController` to `UsersAdminController`; #898 added the read-only `ShiftsController.Summary*` actions gated by `ShiftDepartmentManager`; #881 name-only access deleted the `IsActiveMember` / `ActiveMemberOrShiftAccess` requirement+handler pairs and `RoleChecks.BypassesMembershipRequirement` — `MembershipRequiredFilter` now gates the app purely on the stored `UserState` (only `Active` reaches it) and routes the rest to name-entry / status-wall / cancel-deletion landings on the new `UserController`). Previously refreshed 2026-06-05 (adds the `CampComplianceAccess` policy + `CampComplianceAccessHandler` and the new `CampComplianceController` for the read-only Barrios compliance matrix, split out of `CampAdminController` so it can be gated more broadly than CampAdmin-only — #894; `RoleAssignmentClaimsTransformation` was re-sourced from `IRoleAssignmentRepository` to `IRoleAssignmentService` in #889, an internal sourcing change with no inventory impact). Previously refreshed 2026-06-04 (full re-scan via `/freshness-sweep`; adds `ProfileApiController.BurnerNameCount`, `ShiftsController.ToggleDay`, the `StoreAdminController` Payments/reconcile actions, and the global `NameRequiredFilter` action filter). Previously refreshed 2026-06-03 (the new `RoleNames.EETeamAdmin` cross-team role, the `TeamOperationRequirement.ManageEarlyEntry` resource operation + `TeamAdminController` EarlyEntry actions, and the build-hash tooltip re-gated to `AdminOnly` / FullAdmin in commit 3c6a878e). Covers every `[Authorize(Policy)]` / `[Authorize(Roles)]` attribute on controllers and actions in `src/Humans.Web/Controllers/` (including `Controllers/Api/` and `Controllers/Mailer/`), every `RoleChecks.*` / `ShiftRoleChecks.*` invocation across `src/Humans.Web/` and `src/Humans.Application/`, every `IAuthorizationService.AuthorizeAsync` call site, every `authorize-policy` TagHelper attribute and `User.IsInRole` / `Model.X` authorization check across `src/Humans.Web/Views/` and `src/Humans.Web/ViewComponents/`, and every `AuthorizationHandler<T, R>` (and `IAuthorizationHandler`) under `src/Humans.Web/Authorization/` and `src/Humans.Application/Authorization/`.
 
 The `Source` column reflects the constant referenced in the attribute as it appears in the code today.
 
@@ -93,6 +93,16 @@ The `Source` column reflects the constant referenced in the attribute as it appe
 | Controller | Scope | Roles | Source |
 |---|---|---|---|
 | `ScannerController` | Class | `TicketAdmin, Admin, Board` OR the gate-terminal shared account (by well-known id) | `PolicyNames.ScannerAccess` (composite assertion — also admits `SystemUserIds.GateTerminal` by NameIdentifier claim so the shared kiosk session can scan without holding any role; all actions inherit — `Index`, `Barcode`, `Tickets`, `Tickets/Card`) |
+
+### Gate Section
+
+| Controller | Scope | Roles | Source |
+|---|---|---|---|
+| `GateController` | Class | `TicketAdmin, Admin, Board` OR the gate-terminal shared account (by well-known id) | `PolicyNames.ScannerAccess` (gate admissions terminal at `/Gate` — distinct from the read-only Scanner section: this one decides entry and writes the durable `gate_scan_events` record; the read actions `Index`, `Evaluate`, `Claim` GET, `Search`, `Leaderboard` inherit the class-level policy) |
+| `GateController.Decision` | Action | `TicketAdmin, Admin, Board` OR the gate-terminal shared account | `PolicyNames.GateAdmit` (POST — records the admission decision, attributed to the session-claimed scanner; supervisor overrides — too-early / unconfirmed-EE admit, child-without-ID waiver — additionally require the shared override PIN, see §4) |
+| `GateController.Claim` (POST) / `ClaimPin` / `EndShift` | Action | `TicketAdmin, Admin, Board` OR the gate-terminal shared account | `PolicyNames.GateAdmit` (claims/releases the scanning session; `ClaimPin` verifies or enrols the staffer's personal 4-digit PIN via `IGateService` with per-target-user `GatePinThrottle` buckets; the verified user id is stamped into the session server-side — never from the request body) |
+| `GateController.Admin` (GET/POST) / `SetStaffPin` / `ResetStaffPin` | Action | `TicketAdmin, Admin` | `PolicyNames.TicketAdminOrAdmin` (gate settings + admin PIN enrolment/reset at `/Gate/Admin` — supervisor-authority PINs are never self-enrolled at the kiosk) |
+| `GateVendorBackfillAdminController` | Class | `Admin` | `PolicyNames.AdminOnly` (one-off vendor check-in backfill page at `/Gate/Admin/VendorCheckInBackfill` — temp, remove after use; `Index`, `RunOne`, `Run` all inherit — #1080) |
 
 ### Campaigns Section
 
@@ -405,15 +415,15 @@ Views express authorization four ways today:
 
 | Line | Check | Controls |
 |---|---|---|
-| 37 | `var isEventsAdminOrAdmin = (await AuthService.AuthorizeAsync(User, PolicyNames.EventsAdminOrAdmin)).Succeeded` | Drives `isEventsAdminOrAdmin` flag for the Events admin sub-dropdowns below |
-| 38 | `var isFullAdmin = (await AuthService.AuthorizeAsync(User, PolicyNames.AdminOnly)).Succeeded` | Drives `isFullAdmin` flag for build-hash tooltip on brand link (commit SHA on hover) — gated to FullAdmin (`AdminOnly`), not `AnyAdminRole` |
-| 97 | `authorize-policy="AppAccess"` | City Planning nav link |
-| 102 | `authorize-policy="AppAccess"` | Events dropdown (feature-flagged) |
-| 108 | `if (isEventsAdminOrAdmin)` | Guide Dashboard / Moderate / Export dropdown items |
-| 115 | `if (isEventsAdminOrAdmin)` | Guide Settings / Categories / Venues dropdown items |
-| 131 | `authorize-policy="AppAccess"` | Shifts nav link (no separate shift access — merged into `AppAccess`) |
-| 134 | `authorize-policy="AppAccess"` | Budget nav link |
-| 137 | `authorize-policy="AnyAdminRole"` | Admin nav link (entry to admin shell) |
+| 40 | `var isEventsAdminOrAdmin = (await AuthService.AuthorizeAsync(User, PolicyNames.EventsAdminOrAdmin)).Succeeded` | Drives `isEventsAdminOrAdmin` flag for the Events admin sub-dropdowns below |
+| 41 | `var isFullAdmin = (await AuthService.AuthorizeAsync(User, PolicyNames.AdminOnly)).Succeeded` | Drives `isFullAdmin` flag for build-hash tooltip on brand link (commit SHA on hover) — gated to FullAdmin (`AdminOnly`), not `AnyAdminRole` |
+| 100 | `authorize-policy="AppAccess"` | City Planning nav link |
+| 105 | `authorize-policy="AppAccess"` | Events dropdown (feature-flagged) |
+| 111 | `if (isEventsAdminOrAdmin)` | Guide Dashboard / Moderate / Export dropdown items |
+| 118 | `if (isEventsAdminOrAdmin)` | Guide Settings / Categories / Venues dropdown items |
+| 134 | `authorize-policy="AppAccess"` | Shifts nav link (no separate shift access — merged into `AppAccess`) |
+| 137 | `authorize-policy="AppAccess"` | Budget nav link |
+| 140 | `authorize-policy="AnyAdminRole"` | Admin nav link (entry to admin shell) |
 
 ### Login Partial (`_LoginPartial.cshtml`)
 
@@ -437,7 +447,6 @@ Views express authorization four ways today:
 | `ShiftDashboard/Index.cshtml` | 83 | `authorize-policy="ShiftDashboardAccess"` | Voluntell card |
 | `ShiftDashboard/Index.cshtml` | 220 | `authorize-policy="ShiftDashboardAccess"` | Volunteer search column |
 | `ShiftDashboard/Index.cshtml` | 304, 314 | `authorize-policy="ShiftDashboardAccess"` | Per-row signup-action cells |
-| `VolunteerTracking/Index.cshtml` | 8 | `(await AuthService.AuthorizeAsync(User, PolicyNames.VolunteerTrackingWrite)).Succeeded` | Drives `canWrite` flag for write controls below |
 | `VolunteerTracking/_VolunteerHeatmap.cshtml` | 9 | `(await AuthService.AuthorizeAsync(User, PolicyNames.VolunteerTrackingWrite)).Succeeded` | Drives `canWrite` flag for cell-level write actions |
 | `VolunteerTracking/_VolunteerUnbookedHeatmap.cshtml` | 8 | `(await AuthService.AuthorizeAsync(User, PolicyNames.VolunteerTrackingWrite)).Succeeded` | Drives `canWrite` flag for cell-level write actions |
 
@@ -445,16 +454,16 @@ Views express authorization four ways today:
 
 | View | Line | Check | Controls |
 |---|---|---|---|
-| `Profile/Index.cshtml` | 15 | `authorize-policy="HumanAdminBoardOrAdmin"` | "Admin" link to AdminDetail |
-| `Profile/Index.cshtml` | 70 | `(await AuthService.AuthorizeAsync(User, PolicyNames.TeamsAdminBoardOrAdmin)).Succeeded` | `ProfileCardViewMode.Admin` vs `Public` for non-own profiles |
+| `Profile/Index.cshtml` | 17 | `authorize-policy="HumanAdminBoardOrAdmin"` | "Admin" link to AdminDetail |
+| `Profile/Index.cshtml` | 72 | `(await AuthService.AuthorizeAsync(User, PolicyNames.TeamsAdminBoardOrAdmin)).Succeeded` | `ProfileCardViewMode.Admin` vs `Public` for non-own profiles |
 | `Profile/Emails.cshtml` | 17 | `(await AuthService.AuthorizeAsync(User, PolicyNames.AdminOnly)).Succeeded` | Admin-only email management controls |
-| `UsersAdmin/AdminDetail.cshtml` | 10 | `var isAdmin = (await AuthService.AuthorizeAsync(User, PolicyNames.AdminOnly)).Succeeded` | Drives `isAdmin` flag for Admin-only data blocks |
+| `UsersAdmin/AdminDetail.cshtml` | 13 | `var isAdmin = (await AuthService.AuthorizeAsync(User, PolicyNames.AdminOnly)).Succeeded` | Drives `isAdmin` flag for Admin-only data blocks |
 
 ### Board / Onboarding Review Views
 
 | View | Line | Check | Controls |
 |---|---|---|---|
-| `Governance/BoardVoting/Detail.cshtml` | 116 | `authorize-policy="BoardOnly"` | Vote casting card |
+| `Governance/BoardVoting/Detail.cshtml` | 102 | `authorize-policy="BoardOnly"` | Vote casting card |
 
 ### Team Views
 
@@ -472,15 +481,15 @@ Views express authorization four ways today:
 | View | Line | Check | Controls |
 |---|---|---|---|
 | `Camp/Index.cshtml` | 11 | `authorize-policy="CampAdminOrAdmin"` | "Camp Admin" link |
-| `CampAdmin/Index.cshtml` | 471 | `authorize-policy="AdminOnly"` | Danger Zone card (Delete Camp) |
+| `CampAdmin/Index.cshtml` | 462 | `authorize-policy="AdminOnly"` | Danger Zone card (Delete Camp) |
 
 ### Ticket Views
 
 | View | Line | Check | Controls |
 |---|---|---|---|
-| `Ticket/Index.cshtml` | 279 | `authorize-policy="TicketAdminOrAdmin"` | "Sync Now" form |
-| `Ticket/Index.cshtml` | 285 | `authorize-policy="AdminOnly"` | "Full Re-sync" form |
-| `Ticket/Index.cshtml` | 293 | `authorize-policy="TicketAdminOrAdmin"` | Export link |
+| `Ticket/Index.cshtml` | 248 | `authorize-policy="TicketAdminOrAdmin"` | "Sync Now" form |
+| `Ticket/Index.cshtml` | 254 | `authorize-policy="AdminOnly"` | "Full Re-sync" form |
+| `Ticket/Index.cshtml` | 262 | `authorize-policy="TicketAdminOrAdmin"` | Export link |
 | `Ticket/_TicketNav.cshtml` | 26 | `authorize-policy="AdminOnly"` | "Backfill" tab |
 
 ### Google Views
@@ -494,15 +503,15 @@ Views express authorization four ways today:
 
 | View | Line | Check | Controls |
 |---|---|---|---|
-| `Campaign/Detail.cshtml` | 21 | `var isAdmin = (await AuthService.AuthorizeAsync(User, PolicyNames.AdminOnly)).Succeeded` | Drives admin-gated buttons below |
-| `Campaign/Detail.cshtml` | 22 | `var canGenerateCodes = (await AuthService.AuthorizeAsync(User, PolicyNames.TicketAdminOrAdmin)).Succeeded` | Drives "Generate Codes" form |
+| `Campaign/Detail.cshtml` | 23 | `var isAdmin = (await AuthService.AuthorizeAsync(User, PolicyNames.AdminOnly)).Succeeded` | Drives admin-gated buttons below |
+| `Campaign/Detail.cshtml` | 24 | `var canGenerateCodes = (await AuthService.AuthorizeAsync(User, PolicyNames.TicketAdminOrAdmin)).Succeeded` | Drives "Generate Codes" form |
 
 ### Admin / Store Views
 
 | View | Line | Check | Controls |
 |---|---|---|---|
 | `Admin/Index.cshtml` | 124 | `authorize-policy="AdminOnly"` | Recent-activity / dashboard split-panels on the admin landing page |
-| `Store/Index.cshtml` | 10 | `authorize-policy="StoreCatalogAdmin"` | Catalog / Summary / Payments admin button group on the Store landing page |
+| `Store/Index.cshtml` | 11 | `authorize-policy="StoreCatalogAdmin"` | Catalog / Summary / Payments admin button group on the Store landing page |
 
 ### Shared Components
 
@@ -512,9 +521,9 @@ Views express authorization four ways today:
 | `Shared/_HumanPopover.cshtml` | 7 | `(await AuthService.AuthorizeAsync(User, PolicyNames.TeamsAdminBoardOrAdmin)).Succeeded` | Drives `canSeeHiddenTeams` flag (hidden-team list in popover) |
 | `Shared/_HumanPopover.cshtml` | 11 | `(await AuthService.AuthorizeAsync(User, PolicyNames.AnyAdminRole)).Succeeded` | Drives `canSeeCamp` flag (camp membership in popover) |
 | `Shared/_HumanPopover.cshtml` | 19 | `(await AuthService.AuthorizeAsync(User, PolicyNames.HumanAdminBoardOrAdmin)).Succeeded` | HumanAdmin/Board/Admin popover details (preferred-language flag) |
-| `WidgetGallery/Index.cshtml` | 1173 / 1178 | `authorize-policy="@PolicyNames.AdminOnly"` / `authorize-policy="DefinitelyNotARealPolicyName"` | Documentation/demo of the TagHelper (not production gating) |
+| `WidgetGallery/Index.cshtml` | 1193 / 1198 | `authorize-policy="@PolicyNames.AdminOnly"` / `authorize-policy="DefinitelyNotARealPolicyName"` | Documentation/demo of the TagHelper (not production gating) |
 | `AuthorizeViewTagHelper` | — | `IAuthorizationService.AuthorizeAsync(user, Policy)` | Backs every `authorize-policy="..."` attribute above |
-| `AdminSidebarViewComponent` | line 31 | `IAuthorizationService.AuthorizeAsync(HttpContext.User, null, item.Policy)` | Filters /Admin sidebar items per policy |
+| `AdminSidebarViewComponent` | line 28 | `IAuthorizationService.AuthorizeAsync(HttpContext.User, null, item.Policy)` | Filters /Admin sidebar items per policy |
 
 ---
 
@@ -531,6 +540,7 @@ Post Phase-1 retirement, controllers and views express the same authorization ru
 | TicketAdmin/Board/Admin | `[Authorize(Policy = PolicyNames.TicketAdminBoardOrAdmin)]` | `authorize-policy="TicketAdminBoardOrAdmin"` |
 | TicketAdmin or Admin | `[Authorize(Policy = PolicyNames.TicketAdminOrAdmin)]` | `authorize-policy="TicketAdminOrAdmin"` |
 | Scanner access (roles + gate terminal) | `[Authorize(Policy = PolicyNames.ScannerAccess)]` | (no current view spelling) |
+| Gate admit (gate write actions) | `[Authorize(Policy = PolicyNames.GateAdmit)]` | (no current view spelling) |
 | CampAdmin or Admin | `[Authorize(Policy = PolicyNames.CampAdminOrAdmin)]` | `authorize-policy="CampAdminOrAdmin"` |
 | HumanAdmin/Board/Admin | `[Authorize(Policy = PolicyNames.HumanAdminBoardOrAdmin)]` | `authorize-policy="HumanAdminBoardOrAdmin"` |
 | FeedbackAdmin or Admin | `[Authorize(Policy = PolicyNames.FeedbackAdminOrAdmin)]` | `authorize-policy="FeedbackAdminOrAdmin"` |
@@ -597,6 +607,7 @@ These actions rely on `if` checks + early return/forbid instead of `[Authorize(P
 | `IssuesController` | All mutating actions | `_authorization.AuthorizeAsync(User, issue, IssuesOperationRequirement.Handle)` (resource-based) |
 | `CityPlanningController` / `CityPlanningApiController` | All actions except `Index`/`GetState` | `RoleChecks.IsCampAdmin(User)` and lead-of-camp checks; three API endpoints also call `_authorizationService.AuthorizeAsync` |
 | `FeedbackController` | `Index`, `Detail`, `PostMessage` | `RoleChecks.IsFeedbackAdmin(User)` to determine admin vs user view |
+| `GovernanceBoardVotingController` | `Detail` | `RoleChecks.IsAdmin(User)` drives the admin view-model flag (Finalize affordance) — the `Finalize` POST itself is attribute-gated `AdminOnly` |
 | `UsersAdminController.AddRole/EndRole` | After `[Authorize(Policy)]` attribute | `_authorizationService.AuthorizeAsync(User, roleName, RoleAssignmentOperationRequirement.Manage)` enforces the role-list filter |
 | `ProfileController` email-edit endpoints (18 actions) | After class-level `[Authorize]` | `_authorizationService.AuthorizeAsync(User, userId, UserEmailOperations.Edit)` (resource-based) |
 | `TicketController.Index` | After class-level policy | `RoleChecks.CanAccessFinance(User)` toggles finance-only metrics |
@@ -604,6 +615,8 @@ These actions rely on `if` checks + early return/forbid instead of `[Authorize(P
 | `NameRequiredFilter` | All requests | Global action filter (registered in `Program.cs` before `MembershipRequiredFilter`). Redirects any authenticated user with no real `BurnerName` to the name form; never blocks sign-in (only redirects). Exempt controllers (`Account`, `Language`), exempt actions (`OnboardingWidget/Names`, `Home/Error`, `Home/Privacy`), and `[AllowAnonymous]` pass through. |
 | `HangfireAuthorizationFilter` | Hangfire dashboard | `RoleChecks.IsAdmin(User)` |
 | `AgentController.Ask` | Per-request | `_auth.AuthorizeAsync(User, user.Id, PolicyNames.AgentRateLimit)` (resource-based) |
+| `GateController.Decision` | Supervisor overrides (too-early / unconfirmed-EE admit, child-without-ID waiver) | Shared override PIN from `Gate:SupervisorPin` config, verified server-side (`SupervisorPinValid` — SHA-256 fixed-time compare) and brute-force-throttled via `GatePinThrottle` (one shared bucket for the terminal: 5 tries / 15 min); fail-closed when no PIN is configured. The PIN authorizes but cannot attribute — the event records the gate account. |
+| `GateController.Claim` (POST) / `ClaimPin` | Claimant identity | Claimant must be a real active member (`UserService.GetUserInfoAsync(...).IsActive` — guards a direct POST with an arbitrary/inactive id); `ClaimPin` verifies (`IGateService.VerifyPinAsync`) or enrols (`SetOwnPinAsync`) the staffer's personal PIN with per-target-user `GatePinThrottle` buckets, then stamps the verified user id into the session server-side (attribution can't be forged from the request body) |
 
 ---
 
@@ -625,6 +638,7 @@ These are the named ASP.NET policies registered in `AuthorizationPolicyExtension
 | `TicketAdminBoardOrAdmin` | TicketAdmin, Admin, Board | `PolicyNames.TicketAdminBoardOrAdmin`, `RoleChecks.CanAccessTickets` |
 | `TicketAdminOrAdmin` | TicketAdmin, Admin | `PolicyNames.TicketAdminOrAdmin`, `RoleChecks.CanManageTickets` |
 | `ScannerAccess` | TicketAdmin, Admin, Board OR `SystemUserIds.GateTerminal` (by NameIdentifier claim) | `PolicyNames.ScannerAccess` (composite assertion — gate-terminal account admitted by id, not by role) |
+| `GateAdmit` | TicketAdmin, Admin, Board OR `SystemUserIds.GateTerminal` (by NameIdentifier claim) | `PolicyNames.GateAdmit` (composite assertion — gate write actions; same principals as `ScannerAccess` today, kept separate so the write path never rides the read-only Scanner gate and the two can diverge) |
 | `FeedbackAdminOrAdmin` | FeedbackAdmin, Admin | `PolicyNames.FeedbackAdminOrAdmin`, `RoleChecks.IsFeedbackAdmin` |
 | `FinanceAdminOrAdmin` | FinanceAdmin, Admin | `PolicyNames.FinanceAdminOrAdmin`, `RoleChecks.IsFinanceAdmin`, `RoleChecks.CanAccessFinance` |
 | `EventsAdminOrAdmin` | EventsAdmin, Admin | `PolicyNames.EventsAdminOrAdmin` |
@@ -649,6 +663,7 @@ These are the named ASP.NET policies registered in `AuthorizationPolicyExtension
 - `CampComplianceAccess` is deliberately broader than `CampAdminOrAdmin`: it short-circuits for CampAdmin/Admin and otherwise admits any team/sub-team coordinator (composite via `CampComplianceAccessHandler`, reusing the same `IShiftManagementService.GetCoordinatorTeamIdsAsync` lookup as `IsAnyTeamManagerOrCoordinatorHandler`). It gates only the read-only Barrios compliance matrix; the camp-management surface in `CampAdminController` stays CampAdmin-only.
 - `HumanAdminOnly` is a composite policy used for the nav "Humans" link that only shows when the user has HumanAdmin but not the broader Board/Admin access.
 - `MedicalDataViewer` is a data-access policy, not a page-access policy. It controls whether medical fields are visible within pages the user already has access to.
+- `GateAdmit` is deliberately a twin of `ScannerAccess` (same assertion body): the durable gate write surface (`/Gate/Decision`, `/Gate/Claim` POST, `/Gate/ClaimPin`, `/Gate/EndShift`) must never inherit a future loosening of the read-only Scanner gate. Supervisor overrides inside `Decision` are a second factor on top of the policy — the shared `Gate:SupervisorPin`, not an identity check (see §4).
 - `AnyAdminRole` gates the admin-shell entry point (`/Admin`). Sidebar items inside the shell are filtered per-item by `AdminSidebarViewComponent` against each item's policy. The role list mirrors the top-nav check in `_Layout.cshtml` and includes the grantable `CantinaAdmin` role added with the Cantina coordinator surface (feature #36).
 - Object-relative policies (coordinator of specific team, camp lead of specific camp, camp-event submitter, budget category for coordinator's department, manageable role for HumanAdmin, expense reports, store orders, containers, issues, user-email edits, agent rate-limit) are implemented as resource-based authorization handlers — see §6.
 
@@ -691,24 +706,25 @@ Composite (non-resource) handlers registered alongside the above:
 | `src/Humans.Web/Controllers/HumansCampControllerBase.cs` | 24 | `AuthorizeAsync(User, campId, CampOperationRequirement.Manage)` |
 | `src/Humans.Web/Controllers/HumansCampControllerBase.cs` | 58 | `AuthorizeAsync(User, camp, CampOperationRequirement.Manage)` |
 | `src/Humans.Web/Controllers/HumansCampControllerBase.cs` | 88 | `AuthorizeAsync(User, camp, CampOperationRequirement.SubmitEvent)` |
-| `src/Humans.Web/Controllers/BudgetController.cs` | 29 | `AuthorizeAsync(User, PolicyNames.FinanceAdminOrAdmin)` |
-| `src/Humans.Web/Controllers/BudgetController.cs` | 92 | `AuthorizeAsync(User, PolicyNames.FinanceAdminOrAdmin)` |
-| `src/Humans.Web/Controllers/BudgetController.cs` | 112 | `AuthorizeAsync(User, PolicyNames.FinanceAdminOrAdmin)` |
-| `src/Humans.Web/Controllers/BudgetController.cs` | 118 | `AuthorizeAsync(User, detail.Category, BudgetOperationRequirement.Edit)` |
-| `src/Humans.Web/Controllers/BudgetController.cs` | 229 | `AuthorizeAsync(User, category, BudgetOperationRequirement.Edit)` |
+| `src/Humans.Web/Controllers/BudgetController.cs` | 28 | `AuthorizeAsync(User, PolicyNames.FinanceAdminOrAdmin)` |
+| `src/Humans.Web/Controllers/BudgetController.cs` | 91 | `AuthorizeAsync(User, PolicyNames.FinanceAdminOrAdmin)` |
+| `src/Humans.Web/Controllers/BudgetController.cs` | 111 | `AuthorizeAsync(User, PolicyNames.FinanceAdminOrAdmin)` |
+| `src/Humans.Web/Controllers/BudgetController.cs` | 117 | `AuthorizeAsync(User, detail.Category, BudgetOperationRequirement.Edit)` |
+| `src/Humans.Web/Controllers/BudgetController.cs` | 228 | `AuthorizeAsync(User, category, BudgetOperationRequirement.Edit)` |
 | `src/Humans.Web/Controllers/ContainerController.cs` | 24 | `AuthorizeAsync(User, target, requirement)` (private helper) |
-| `src/Humans.Web/Controllers/ExpensesController.cs` | 206, 589, 635, 655, 700, 721 | `AuthorizeAsync(User, report, new ExpenseReportOperationRequirement(ExpenseReportOperation.X))` — `View` (Detail 206, Attachment 589), `Endorse` 635, `CoordinatorReject` 655, `Approve` 700, `FinanceReject` 721 |
+| `src/Humans.Web/Controllers/ExpensesController.cs` | 204, 587, 633, 653, 698, 719 | `AuthorizeAsync(User, report, new ExpenseReportOperationRequirement(ExpenseReportOperation.X))` — `View` (Detail 204, Attachment 587), `Endorse` 633, `CoordinatorReject` 653, `Approve` 698, `FinanceReject` 719 |
+| `src/Humans.Web/Controllers/ExpensesController.cs` | 223 | `AuthorizeAsync(User, PolicyNames.FinanceAdminOrAdmin)` (drives the `isFinanceAdmin` flag on report Detail — Holded creditor-account binding UI for finance admins) |
 | `src/Humans.Web/Controllers/StoreController.cs` | 52, 74, 77, 78, 79, 101, 118, 136, 170, 188, 217, 247, 274, 299 | `AuthorizeAsync(User, order/resource, StoreOrderOperationRequirement.X)` (and `StoreOrderCreateContext` / `StoreOrderLineContext` for Create at 101 and line-deadline-aware AddLine/RemoveLine at 247/274) |
 | `src/Humans.Web/Controllers/IssuesController.cs` | 190, 260, 306, 333, 360, 385 | `AuthorizeAsync(User, issue, IssuesOperationRequirement.Handle)` |
 | `src/Humans.Web/Controllers/CityPlanningApiController.cs` | 274, 299, 337 | `AuthorizeAsync(User, ...)` (resource-based) |
 | `src/Humans.Web/Controllers/ProfileController.cs` | 658, 691, 736, 778, 815, 852, 889, 909, 953, 1032, 1048, 1074, 1107, 1133, 1159, 1335, 1361, 1405 | `AuthorizeAsync(User, userId, UserEmailOperations.Edit)` (18 email-edit endpoints) |
 | `src/Humans.Web/Controllers/ProfileController.cs` | 1815 | `AuthorizeAsync(User, PolicyNames.TicketAdminBoardOrAdmin)` (onsite-chip visibility gate) |
 | `src/Humans.Web/Controllers/ProfileController.cs` | 1911 | `AuthorizeAsync(User, PolicyNames.PrivilegedSignupApprover)` (inside `BuildSentMessagesContextAsync` private helper — gates whether a non-own-profile viewer sees the "sent messages" panel on the profile page; admits coordinators or `PrivilegedSignupApprover` role) |
-| `src/Humans.Web/Controllers/UsersAdminController.cs` | 301 | `AuthorizeAsync(User, model.RoleName, RoleAssignmentOperationRequirement.Manage)` (AddRole — moved off `ProfileController` in #901) |
-| `src/Humans.Web/Controllers/UsersAdminController.cs` | 339 | `AuthorizeAsync(User, roleAssignment.RoleName, RoleAssignmentOperationRequirement.Manage)` (EndRole — moved off `ProfileController` in #901) |
+| `src/Humans.Web/Controllers/UsersAdminController.cs` | 300 | `AuthorizeAsync(User, model.RoleName, RoleAssignmentOperationRequirement.Manage)` (AddRole — moved off `ProfileController` in #901) |
+| `src/Humans.Web/Controllers/UsersAdminController.cs` | 338 | `AuthorizeAsync(User, roleAssignment.RoleName, RoleAssignmentOperationRequirement.Manage)` (EndRole — moved off `ProfileController` in #901) |
 | `src/Humans.Web/Controllers/AgentController.cs` | 48 | `AuthorizeAsync(User, user.Id, PolicyNames.AgentRateLimit)` |
 | `src/Humans.Web/TagHelpers/AuthorizeViewTagHelper.cs` | 54 | `AuthorizeAsync(user, Policy)` (driver of `<authorize-policy>` view tags) |
-| `src/Humans.Web/ViewComponents/AdminSidebarViewComponent.cs` | 31 | `AuthorizeAsync(HttpContext.User, null, item.Policy)` (filters admin sidebar) |
+| `src/Humans.Web/ViewComponents/AdminSidebarViewComponent.cs` | 28 | `AuthorizeAsync(HttpContext.User, null, item.Policy)` (filters admin sidebar) |
 
 ---
 
@@ -716,6 +732,7 @@ Composite (non-resource) handlers registered alongside the above:
 
 - **No `[Authorize(Roles = ...)]` attributes remain anywhere in `src/`** — every controller/action `[Authorize]` attribute now references a `PolicyNames` constant or is a bare authenticated/`[AllowAnonymous]` marker (verified 2026-05-29). `DevSeedController.ResetDashboard`, formerly the last `[Authorize(Roles = RoleNames.Admin)]` holdout, now uses `[Authorize(Policy = PolicyNames.AdminOnly)]`.
 - **`ScannerController` uses `PolicyNames.ScannerAccess`**, not `TicketAdminBoardOrAdmin` — the `ScannerAccess` policy is a composite assertion that additionally admits the shared gate-terminal account by its well-known `SystemUserIds.GateTerminal` NameIdentifier claim so the kiosk session can scan without holding any role (added as part of #930 gate-terminal login).
+- **The Gate section (`/Gate`) splits read from write**: `GateController` reads under `ScannerAccess`, but every state-changing action (`Decision`, `Claim` POST, `ClaimPin`, `EndShift`) is gated by the separate `GateAdmit` policy (#1066). Scan attribution is session-based, stamped server-side after an active-member + personal-PIN check; supervisor overrides use the shared `Gate:SupervisorPin` config value (server-verified, throttled, fail-closed) — the PIN authorizes but never attributes. `GateController.Search` is a deliberately name-only, masked-email people search so the route-locked kiosk never exposes the broader `/api/profiles/search` surface.
 - **`SurveyController` is `[AllowAnonymous]`** — the entire public survey wizard is unauthenticated; identity flows from the invitation token, not the principal. `SurveyAdminController` (`BoardOrAdmin`) and `SurveysApiController` (`SurveyApiKeyAuthFilter`) are the gated surfaces.
 - **`ICalFeedApiController` is `[AllowAnonymous]`** — the personal iCal feed uses a secret token in the URL for authentication; all failure modes return 404 to prevent oracle attacks.
 - The Events Guide controllers and `_Layout.cshtml` Events sub-dropdowns have all been migrated to `PolicyNames.EventsAdminOrAdmin` (Phase-1 cleanup complete — verified 2026-05-28).

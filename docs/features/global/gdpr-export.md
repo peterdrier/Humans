@@ -3,7 +3,7 @@
   src/Humans.Application/Interfaces/Gdpr/**
   src/Humans.Web/Controllers/ProfileController.cs
   src/Humans.Web/Controllers/GuestController.cs
-  src/Humans.Application/Services/Profile/ProfileService.cs
+  src/Humans.Application/Services/Profiles/ProfileService.cs
   src/Humans.Application/Services/Users/UserService.cs
   src/Humans.Application/Services/Consent/ConsentService.cs
   src/Humans.Application/Services/Teams/TeamService.cs
@@ -16,13 +16,15 @@
   src/Humans.Application/Services/Camps/**
   src/Humans.Application/Services/AuditLog/**
   src/Humans.Application/Services/Budget/BudgetService.cs
-  src/Humans.Application/Services/Profile/AccountMergeService.cs
+  src/Humans.Application/Services/Users/AccountMergeService.cs
+  src/Humans.Application/Services/Surveys/SurveyService.cs
   src/Humans.Application/Services/Governance/ApplicationDecisionService.cs
   src/Humans.Application/Services/Agent/AgentService.cs
   src/Humans.Application/Services/Events/EventService.cs
   src/Humans.Application/Services/Issues/IssuesService.cs
   src/Humans.Application/Services/Expenses/ExpenseReportService.cs
   src/Humans.Application/Services/Finance/HoldedFinanceService.cs
+  src/Humans.Application/Services/Gate/GateService.cs
 -->
 <!-- freshness:flag-on-change
   Contributor list, JSON section names/shapes, or fan-out orchestration may have shifted; per-section table must stay in sync with each contributor's slice.
@@ -72,17 +74,17 @@ change.
 │  21 section services, each implementing          │
 │  IUserDataContributor:                            │
 │                                                   │
-│    ProfileService            UserService          │
-│    AccountMergeService       ApplicationDecisionService
-│    ConsentService            TeamService          │
-│    RoleAssignmentService     ShiftSignupService   │
-│    FeedbackService           NotificationInboxService
-│    TicketQueryService        CampaignService      │
-│    CampService               AuditLogService      │
-│    BudgetService             SurveyService        │
-│    AgentService              EventService         │
-│    IssuesService             ExpenseReportService │
-│    HoldedFinanceService                           │
+│    UserService               AccountMergeService  │
+│    ApplicationDecisionService ConsentService      │
+│    TeamService               RoleAssignmentService│
+│    ShiftSignupService        FeedbackService      │
+│    NotificationInboxService  TicketQueryService   │
+│    CampaignService           CampService          │
+│    AuditLogService           BudgetService        │
+│    SurveyService             AgentService         │
+│    EventService              IssuesService        │
+│    ExpenseReportService      HoldedFinanceService │
+│    GateService                                    │
 └──────────────────────────────────────────────────┘
 ```
 
@@ -117,12 +119,12 @@ service has no data for this user are omitted.
 |---------|-------------|-------|
 | `Account` | `UserService` | Single object with user identity, display name, preferred language, Google email, deletion request/scheduled instants, created/last-login instants. |
 | `EventParticipations` | `UserService` | Array of `{ Year, Status, Source, DeclaredAt }` covering every event-year the user has a participation row for (Ticketed / Attended / NoShow / NotAttending). |
-| `UserEmails` | `ProfileService` | Array of `{ Email, IsVerified, IsOAuth, IsNotificationTarget, Visibility }`. |
-| `Profile` | `ProfileService` | Single object with burner name, legal name, birthday (month/day only), city/country, lat/lng, bio, pronouns, contribution interests, board notes, membership tier, approval/suspension state, consent check state, emergency contact, created/updated instants. |
-| `ContactFields` | `ProfileService` | Array of `{ FieldType, Label, Value, Visibility }`. |
-| `VolunteerHistory` | `ProfileService` | Array of `{ Date, EventName, Description, CreatedAt }`. |
-| `Languages` | `ProfileService` | Array of `{ LanguageCode, Proficiency }`. |
-| `CommunicationPreferences` | `ProfileService` | Array of `{ Category, OptedOut, InboxEnabled, UpdatedAt, UpdateSource }`. |
+| `UserEmails` | `UserService` | Array of `{ Email, IsVerified, IsOAuth, IsNotificationTarget, Visibility }`. |
+| `Profile` | `UserService` | Single object with burner name, legal name, birthday (month/day only), city/country, lat/lng, bio, pronouns, contribution interests, board notes, membership tier, approval/suspension state, consent check state, emergency contact, created/updated instants. |
+| `ContactFields` | `UserService` | Array of `{ FieldType, Label, Value, Visibility }`. |
+| `VolunteerHistory` | `UserService` | Array of `{ Date, EventName, Description, CreatedAt }`. |
+| `Languages` | `UserService` | Array of `{ LanguageCode, Proficiency }`. |
+| `CommunicationPreferences` | `UserService` | Array of `{ Category, OptedOut, InboxEnabled, UpdatedAt, UpdateSource }`. |
 | `Applications` | `ApplicationDecisionService` | Array of tier application records with `StateHistory` inline. |
 | `Consents` | `ConsentService` | Array of `{ DocumentName, DocumentVersion, ExplicitConsent, ConsentedAt, IpAddress, UserAgent }`. |
 | `TeamMemberships` | `TeamService` | Array of `{ TeamName, Role, JoinedAt, LeftAt, TeamRoles[] }`. |
@@ -150,6 +152,7 @@ service has no data for this user are omitted.
 | `ExpenseAuditLog` | `ExpenseReportService` | Single object `{ MaskedIban, Entries: [{ Action, EntityType, EntityId, Description, OccurredAt }] }` covering all expense-related audit events (submit, endorse, approve, reject, IBAN set/remove/reveal, etc.); null when the user has no expense audit entries. |
 | `HoldedCreditorAccount` | `HoldedFinanceService` | Single object `{ SupplierAccountNum, HoldedContactId, Source }` — the user's Holded creditor account binding; null when no binding exists. |
 | `SurveyResponses` | `SurveyService` | Array of `{ Survey, SubmittedAt, Culture, Answers[] }` where each answer has `{ Question, SelectedLabels, TextValue, RatingValue }`. |
+| `GateScans` | `GateService` | Array of `{ OccurredAt, Verdict, Role, LaneId }` — the user's own gate activity, as guest or as scanner (`Role` is "Guest" or "Scanner"). Data-minimized: no barcode, no other person's identifiers. |
 
 All instants are serialized as invariant ISO-8601 strings (e.g.
 `2026-04-15T10:30:00Z`) via `NodaTime` extensions.

@@ -73,7 +73,7 @@ If there is no active event, the service returns an empty DTO with `WeekStartDat
   - **Allergy roll-up:** one row per allergy in the standard set (`Peanut`, `Tree nut`, `Dairy`, `Egg`, `Shellfish`, `Wheat/Gluten`, `Soy`, `Sesame`), counted over unique humans (a person on Mon+Wed with "Peanut" contributes 1, not 2). Free-text `AllergyOtherText` entries surface as a numbered list under "Other (N): …", **deduplicated** across the week (a person whose "Other = MSG" appears Mon–Wed contributes "MSG" once).
   - **Intolerance roll-up:** same shape as allergies, over the standard set (`Lactose`, `Gluten`, `Histamine`), same "Other (N): …" treatment, same week-level dedup.
   - **Unanswered cohort:** prominent count of unique humans with no `DietaryPreference`.
-- Below the aggregates, a **per-day mini-summary table** with 7 rows (Mon–Sun): each row shows the day's calendar date, `TotalOnSite` (count of distinct humans signed up that day), and `UnansweredOnDay` (count of that day's on-site humans with no `DietaryPreference`).
+- Below the aggregates, a **per-day mini-summary table** with 7 rows (Mon–Sun): each row shows the day's calendar date, `TotalOnSite` (count of distinct humans on-site that day, including arrival-day humans), and `UnansweredOnDay` (count of that day's on-site humans with no `DietaryPreference`).
 - Below that, a **per-person table** with one row per unique human on-site any day that week. Columns: **Burner Name** · **Arrives on** (single short day label, e.g. "Mon 27 May") · **No shift** (list of short day labels for days within the week with no scheduled shift) · **Dietary chip** · **Allergies (chips)** · **Other allergy text** · **Intolerances (chips)** · **Other intolerance text**.
 - Per-person table default sort: first arrival day asc → has-allergies first → canonical dietary order → cultural-collation burner name (Spanish event, names with `ñ`/`á` sort correctly).
 - Per-person table does **not** include a `MedicalConditions` column under any role.
@@ -127,10 +127,11 @@ If there is no active event, the service returns an empty DTO with `WeekStartDat
 
 ## "On-site" Definition
 
-A volunteer is **on-site for day X** iff they have at least one `ShiftSignup` with status `Pending` or `Confirmed` on a `Shift` whose `DayOffset == X`.
+A volunteer is **on-site for day X** iff they have at least one `ShiftSignup` with status `Confirmed` on a `Shift` whose `DayOffset == X`, **or** X is their arrival day (see below).
 
-- **Statuses that count:** `Pending`, `Confirmed`.
-- **Statuses that do NOT count:** `Refused`, `Bailed`, `NoShow`, `Cancelled`.
+- **Statuses that count:** `Confirmed`.
+- **Statuses that do NOT count:** `Pending`, `Refused`, `Bailed`, `NoShow`, `Cancelled`.
+- **Arrival-day rule:** each human is also fed (counted on-site, with no shift) on the day before their **first confirmed shift across the whole event**: `arrivalDay = firstConfirmedShiftDay − 1`. The service scans from build start to find the true first confirmed shift, so a human whose only relation to the requested week is their arrival day still appears. The rule applies to the weekly roster, the per-day mini-summary, the daily drill-down, and both CSVs. The arrival day is a real on-site day, so it feeds `ArrivesOn` and is not listed under `NoShift`.
 - **All-day shifts are single-day** (08:00–18:00 per existing `Shift.AllDayWindowStart/End`). There is **no multi-day expansion** — an all-day shift on `DayOffset = 3` contributes to day 3 only, never to day 2 or day 4.
 - **Past days are NOT excluded** — the cantina may need historical lookups. Future days ARE included.
 - **Active event only.** The query filters to signups whose `Shift` belongs to the currently active event.
@@ -165,7 +166,7 @@ Reads:
 | `User.BurnerName` (or fallback display name) | Per-person table "Burner Name" column | Existing |
 | `EventSettings.GateOpeningDate`, `EventSettings.TimeZoneId` | Compute calendar dates for each day in the week + default week | Existing |
 
-At ~500-user scale, the service issues 7 sequential per-day cohort queries (`GetOnSiteUserIdsForDayAsync`, one per day) plus a single batched `IUserServiceRead.GetUserInfosAsync` for the week's unique cohort (dietary + names from the cached `UserInfo`).
+At ~500-user scale, the service issues 7 sequential per-day cohort queries (`GetOnSiteUserIdsForDayAsync`, one per day) plus a single batched `IUserServiceRead.GetUserInfosAsync` for the week's unique cohort (dietary + names from the cached `UserInfo`). For the arrival-day rule it additionally scans per-day cohorts from build start up to the window's end (capped at strike end) to find each human's first confirmed shift.
 
 Explicitly **excluded** at the DTO boundary regardless of viewer role:
 

@@ -41,7 +41,7 @@ Coordinators and admins managing shifts cannot currently see who has signed up f
 - Only Confirmed and Pending signups are shown — Refused, Bailed, NoShow, and Cancelled are excluded
 - Empty cell when no signups (Filled column already shows "0/N")
 - Column renders for all authenticated viewers on `/Shifts` (temporary public policy — see Authorization)
-- Applies to both future and current shifts (past shifts retain existing collapsible pattern on admin page)
+- Applies to both future and current shifts (on the admin page, past shifts' per-signup lists live in the unified Manage panel — confirmed humans plus read-only no-show/bailed history — rather than a separate Signups collapsible)
 
 ### US-2: See who signed up for Build/Strike shifts
 **As a** coordinator or admin browsing shifts,

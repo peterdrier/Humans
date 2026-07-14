@@ -72,6 +72,8 @@ Append-only per design-rules §12. Enforced at two layers: the architecture test
 - **Mailer / Imports:** `MailerLiteReconciliationCompleted` — job-level summary written at the end of each Mailer import. Description carries counts as a structured string; no per-row PII.
 - **Mailer / Audience sync:** `MailerLiteAudienceSyncCompleted` — written once per audience by `MailerAudienceSyncService.SyncAsync` (daily Hangfire job + on-demand admin button). Description is a JSON object with `audience_key`, `group_id`, `group_name`, `candidates`, `excluded_unsubscribed`, `created`, `assigned`, `already_assigned`, `unassigned`, `errors`. No per-row PII.
 - **Scanner:** `GateTerminalPasswordSet` — written when the gate-terminal shared kiosk password is set.
+- **Gate:** `GateStaffPinSet`, `GateStaffPinReset` — gate personal-PIN lifecycle, written by `GateService` with the acting user (the staffer on kiosk self-enrol, the admin on admin set/reset); PIN values are never logged.
+- **Tickets (transfers):** `TicketTransferRequested`, `TicketTransferApproved`, `TicketTransferRejected`, `TicketTransferCancelled`, `TicketTransferAutoFailed` (the flag-gated automated TicketTailor void+reissue failed and fell back to manual handling); plus `TicketContactsImported`.
 - **Surveys:** `SurveyCreated`, `SurveyUpdated`, `SurveyOpened`, `SurveyClosed`, `SurveyInvitesSent`, `SurveyReminderSent` — survey lifecycle events written by the Survey section.
 
 Note: `BudgetAuditLog` is a separate per-section append-only log owned by Budget — it is **not** an `AuditAction` value and does not write to `audit_log`.

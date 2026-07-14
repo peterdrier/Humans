@@ -27,7 +27,7 @@ Track yearly event participation status for each human, enabling self-service op
 ### As a ticket holder, my participation is auto-tracked
 - Ticket sync creates/updates participation records automatically
 - Valid ticket -> Ticketed status
-- Checked in -> Attended status (permanent, cannot revert)
+- Checked in -> Attended status (permanent, cannot revert); written by the ticket sync from per-ticket `CheckedInAt`, and directly by a Humans gate admit
 - Ticket purchase overrides a previous NotAttending declaration
 - Ticket void/transfer with no remaining tickets removes Ticketed record
 
@@ -49,6 +49,7 @@ Track yearly event participation status for each human, enabling self-service op
 | Year | int | Event year |
 | Status | ParticipationStatus | NotAttending, Ticketed, Attended, NoShow |
 | DeclaredAt | Instant? | When user self-declared NotAttending |
+| CheckedInAt | Instant? | Earliest gate check-in for the year; write-once (never overwritten once set) |
 | Source | ParticipationSource | UserDeclared, TicketSync, AdminBackfill |
 
 **Unique constraint:** (UserId, Year)
@@ -63,7 +64,8 @@ Added `Year` (int) to EventSettings so participation records can be linked to th
 | (none) -> NotAttending | User clicks "Not attending this year" |
 | (none) -> Ticketed | Ticket sync matches valid ticket |
 | NotAttending -> Ticketed | Ticket purchase overrides |
-| Ticketed -> Attended | Ticket sync sees CheckedIn |
+| Ticketed -> Attended | Ticket sync sees a gate scan (`TicketAttendee.CheckedInAt`, synced from the vendor's `/check_ins` — a scanned ticket's Status stays Valid) |
+| any (except Attended) -> Attended | Gate admit: `GateService` projects a recorded admit onto participation (CheckedInAt = admit instant), best-effort after the durable scan event — so consumed camp Early Entry can't be revoked |
 | Ticketed -> NoShow | Post-event derivation |
 | Ticketed -> (removed) | All valid tickets voided/transferred |
 

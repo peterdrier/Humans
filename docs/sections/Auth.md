@@ -42,7 +42,7 @@ All under `/Account`. Anti-forgery on every POST.
 | GET | `MagicLinkSignup` | anonymous | Verifies signup token and renders the complete-signup form |
 | POST | `CompleteSignup` | anonymous | Re-verifies signup token, creates the `User` + `UserEmail`, signs the new user in (double-click safe) |
 | GET | `GateLogin` | anonymous | Renders the gate-terminal username/password form (shared laptop at gate; see `docs/features/scanner/gate-terminal-login.md`) |
-| POST | `GateLogin` | anonymous | Checks the credential against the well-known gate account (`SystemUserIds.GateTerminal`). Failures throttle per source IP (`GateLoginThrottle`, 10/min) — never per account, so nobody can lock the gate out; the account has Identity lockout disabled. Success signs in `isPersistent: true`, stamps `LastLoginAt`, redirects to `/Scanner/Tickets` |
+| POST | `GateLogin` | anonymous | Checks the credential against the well-known gate account (`SystemUserIds.GateTerminal`). Failures throttle per source IP (`GateLoginThrottle`, 10/min) — never per account, so nobody can lock the gate out; the account has Identity lockout disabled. Success signs in `isPersistent: true`, stamps `LastLoginAt`, redirects to `/Gate` (the gate terminal, which forwards to the claim screen to pick who's scanning) |
 | POST | `Logout` | (any) | Sign-out and redirect to `Home/Index` |
 | GET | `AccessDenied` | (any) | Renders the access-denied page |
 
