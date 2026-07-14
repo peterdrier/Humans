@@ -318,7 +318,7 @@ public class ShiftsController(
         }
         catch (InvalidOperationException ex)
         {
-            logger.LogWarning(ex, "Failed to bail shift range {SignupBlockId} for user {UserId}", signupBlockId, user.Id);
+            logger.LogWarning("Failed to bail shift range {SignupBlockId} for user {UserId}: {Reason}", signupBlockId, user.Id, ex.Message);
             SetError(ex.Message);
         }
 
@@ -362,12 +362,18 @@ public class ShiftsController(
         var userView = await shiftView.GetUserAsync(user.Id);
         var signups = userView.Signups;
 
+        // Broad privilege — matches the browse page (Index) so the bail lock below
+        // mirrors the #1033 sign-up lock for the same viewers.
+        var isPrivileged = ShiftRoleChecks.IsPrivilegedSignupApprover(User) ||
+                           (await shiftMgmt.GetCoordinatorTeamIdsAsync(user.Id)).Count > 0;
+
         var now = clock.GetCurrentInstant();
         var model = new MyShiftsViewModel
         {
             EventSettings = es,
             UserId = user.Id,
             SignupsBlockedByMissingDietary = await ComputeSignupsBlockedByMissingDietaryAsync(user, HttpContext.RequestAborted),
+            EarlyEntrySignupsClosed = es is not null && es.IsEarlyEntrySignupsClosedFor(isPrivileged, now),
         };
 
         var teamIds = ShiftSignupBucketer.GetTeamIds(signups);

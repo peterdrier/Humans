@@ -6023,6 +6023,7 @@
   <data name="Shifts_SignupDisabledTooltip_MissingDietary" xml:space="preserve"><value>Primero cuéntanos tus necesidades alimentarias.</value></data>
   <data name="Shifts_SetupClosedBadge" xml:space="preserve"><value>Montaje cerrado</value></data>
   <data name="Shifts_SignupDisabledTooltip_EarlyEntryClosed" xml:space="preserve"><value>Las inscripciones de montaje están cerradas — ya estamos en el sitio.</value></data>
+  <data name="Shifts_BailDisabledTooltip_EarlyEntryClosed" xml:space="preserve"><value>Los turnos de montaje ya están cerrados — contacta con tu coordinación si no puedes venir.</value></data>
   <data name="Shifts_DietaryRequiredBeforeSignup" xml:space="preserve"><value>Un momento — necesitamos tu información alimentaria antes de apuntarte a este turno.</value></data>
   <data name="Common_Optional" xml:space="preserve"><value>Opcional</value></data>
   <data name="Profile_DietaryMedical_MedicalConditions_Title" xml:space="preserve"><value>Condiciones médicas</value></data>

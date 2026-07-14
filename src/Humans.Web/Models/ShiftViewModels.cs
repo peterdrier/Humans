@@ -317,6 +317,12 @@ public class MyShiftsViewModel
     /// component renders the inline prompt and downstream signup CTAs are locked.
     /// </summary>
     public bool SignupsBlockedByMissingDietary { get; set; }
+
+    /// <summary>
+    /// True when early-entry sign-ups are closed for this viewer; the view locks
+    /// bail controls on early-entry (build) shifts, mirroring the #1033 sign-up lock.
+    /// </summary>
+    public bool EarlyEntrySignupsClosed { get; set; }
 }
 
 public class MySignupItem
