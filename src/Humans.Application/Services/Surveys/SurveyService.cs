@@ -1023,12 +1023,14 @@ public sealed class SurveyService(
                     // "Logged in on or after the cutoff" = LastLoginAt >= cutoff; null LastLoginAt never
                     // matches (predates tracking). Deliberately no IsApproved filter — mid-onboarding
                     // users belong in this audience (nobodies-collective/Humans#894) — but tombstones
-                    // (GDPR-anonymized/merged) and deletion-pending users are never invited.
+                    // (GDPR-anonymized/merged), deletion-pending users, and accounts walled off by
+                    // state (rejected/suspended — they can't reach the survey) are never invited.
                     if (loggedInSince is null) return new HashSet<Guid>();
                     var users = await userService.GetAllUserInfosAsync(ct);
                     return users
                         .Where(u => u.LastLoginAt is { } lastLogin && lastLogin >= loggedInSince.Value)
                         .Where(u => !u.IsGdprAnonymized && !u.IsDeletionPending && !u.IsMerged)
+                        .Where(u => u.State is not (UserState.Rejected or UserState.Suspended or UserState.AdminSuspended))
                         .Select(u => u.Id)
                         .ToHashSet();
                 }

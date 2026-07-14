@@ -241,9 +241,9 @@ public class SurveyServiceTests
         AudienceLoggedInSince = loggedInSince,
     };
 
-    private static UserInfo UserWithLastLogin(Guid id, Instant? lastLogin) =>
+    private static UserInfo UserWithLastLogin(Guid id, Instant? lastLogin, UserState? state = null) =>
         UserInfo.Create(
-            new User { Id = id, PreferredLanguage = "en", LastLoginAt = lastLogin },
+            new User { Id = id, PreferredLanguage = "en", LastLoginAt = lastLogin, State = state },
             [], [], [], null, [], [], [], []);
 
     private static TeamInfo TeamWith(Guid teamId, params Guid[] memberUserIds) => new(
@@ -285,6 +285,28 @@ public class SurveyServiceTests
         var count = await CreateService().PreviewAudienceCountAsync(survey.Id, TestContext.Current.CancellationToken);
 
         count.Should().Be(2);
+    }
+
+    [HumansFact]
+    public async Task PreviewAudienceCountAsync_loggedInSince_excludes_status_walled_accounts()
+    {
+        var cutoff = Instant.FromUtc(2026, 1, 1, 0, 0);
+        var recentLogin = cutoff + Duration.FromDays(3);
+        var survey = SurveyWith(SurveyStatus.Draft, SurveyAudienceType.LoggedInSince, null, cutoff);
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+        _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns(new List<UserInfo>
+        {
+            UserWithLastLogin(Guid.NewGuid(), recentLogin, UserState.Active),         // included
+            UserWithLastLogin(Guid.NewGuid(), recentLogin, UserState.Bare),           // mid-onboarding → included
+            UserWithLastLogin(Guid.NewGuid(), recentLogin),                           // legacy null state → included
+            UserWithLastLogin(Guid.NewGuid(), recentLogin, UserState.Rejected),       // status wall → excluded
+            UserWithLastLogin(Guid.NewGuid(), recentLogin, UserState.Suspended),      // status wall → excluded
+            UserWithLastLogin(Guid.NewGuid(), recentLogin, UserState.AdminSuspended), // status wall → excluded
+        });
+
+        var count = await CreateService().PreviewAudienceCountAsync(survey.Id, TestContext.Current.CancellationToken);
+
+        count.Should().Be(3);
     }
 
     [HumansFact]
