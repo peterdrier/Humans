@@ -1120,22 +1120,19 @@ public class StoreService(
             p.DepositAmountEur, p.OrderableUntil, p.IsActive);
 
     /// <summary>
-    /// The single event year whose catalog drives repricing of Open orders. The org runs one
-    /// event year, so this is hardcoded rather than derived from each order's <c>Year</c> — which
-    /// is also why legacy <c>store_orders</c> rows still at <c>Year = 0</c> reprice correctly.
-    /// Bump it when a new event year starts (nobodies-collective/Humans#816).
-    /// </summary>
-    private const int CatalogYear = 2026;
-
-    /// <summary>
-    /// Loads the current catalog price components (incl. deactivated products) for
-    /// <see cref="CatalogYear"/>, keyed by product id, so Open orders reprice to the live price.
+    /// Loads the current catalog price components (incl. deactivated products) for the active
+    /// event's year, keyed by product id, so Open orders reprice to the live price. The org runs
+    /// one event year, so a single catalog year drives repricing rather than each order's
+    /// <c>Year</c> — which is also why legacy <c>store_orders</c> rows still at <c>Year = 0</c>
+    /// reprice correctly.
     /// </summary>
     private async Task<IReadOnlyDictionary<Guid, BalanceCalculator.ProductPrice>> LoadCurrentPricesAsync(
         CancellationToken ct)
     {
+        var activeEvent = await shifts.GetActiveAsync();
+        var catalogYear = activeEvent?.Year > 0 ? activeEvent.Year : clock.GetCurrentInstant().InUtc().Year;
         var prices = new Dictionary<Guid, BalanceCalculator.ProductPrice>();
-        foreach (var product in await repo.GetAllProductsForYearAsync(CatalogYear, ct))
+        foreach (var product in await repo.GetAllProductsForYearAsync(catalogYear, ct))
             prices[product.Id] = new BalanceCalculator.ProductPrice(
                 product.UnitPriceEur, product.VatRatePercent, product.DepositAmountEur);
         return prices;
