@@ -55,6 +55,7 @@ public sealed class AnthropicClient : IAnthropicClient
                     InputSchema = MapInputSchema(t.JsonSchema),
                 })
                 .ToList(),
+            ToolChoice = request.DisallowToolUse ? new ToolChoice(new ToolChoiceNone()) : null,
         };
 
         string? model = null;

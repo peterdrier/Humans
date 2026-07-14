@@ -148,13 +148,19 @@ public sealed class AgentService : IAgentService
         // Wall-clock turn duration (streaming + tool loop) for the admin status latency panel.
         var turnStart = _clock.GetCurrentInstant();
 
+        // Set when the tool-call cap is hit: the next (final) model call withholds tool
+        // use so the model must synthesize an answer from the tool results it already
+        // has, instead of the turn dead-ending on interim preamble text.
+        var withholdTools = false;
+
         while (true)
         {
             var iterationAssistantText = new StringBuilder();
             var pendingToolCalls = new List<AnthropicToolCall>();
 
             await foreach (var token in _client.StreamAsync(
-                new AnthropicRequest(settings.Model, systemPrompt, sdkMessages, tools, MaxOutputTokens: 1024),
+                new AnthropicRequest(settings.Model, systemPrompt, sdkMessages, tools, MaxOutputTokens: 1024,
+                    DisallowToolUse: withholdTools),
                 cancellationToken))
             {
                 if (token.TextDelta is { Length: > 0 } delta)
@@ -173,7 +179,7 @@ public sealed class AgentService : IAgentService
                 }
             }
 
-            if (pendingToolCalls.Count == 0 || !string.Equals(finalFinalizer?.StopReason, "tool_use", StringComparison.Ordinal))
+            if (withholdTools || pendingToolCalls.Count == 0 || !string.Equals(finalFinalizer?.StopReason, "tool_use", StringComparison.Ordinal))
                 break;
 
             sdkMessages.Add(new AnthropicMessage(
@@ -188,9 +194,12 @@ public sealed class AgentService : IAgentService
                 toolCallCount++;
                 if (toolCallCount > _anthropicOptions.MaxToolCallsPerTurn)
                 {
+                    // Not `break`: every tool_use block needs a matching tool_result or
+                    // the follow-up synthesis call is rejected by the API.
                     results.Add(new AnthropicToolResult(call.Id,
-                        "Too many lookups. Try a narrower question.", IsError: true));
-                    break;
+                        "Lookup budget for this turn is used up. Answer now from the information already gathered.",
+                        IsError: true));
+                    continue;
                 }
 
                 var result = await _tools.DispatchAsync(call, request.UserId, cancellationToken);
@@ -206,8 +215,14 @@ public sealed class AgentService : IAgentService
 
             sdkMessages.Add(new AnthropicMessage("tool", Text: null, ToolCalls: null, ToolResults: results));
 
-            if (issueProposal is not null || toolCallCount >= _anthropicOptions.MaxToolCallsPerTurn)
+            // route_to_issue handoff: the proposal frame is the terminal output; no synthesis call.
+            if (issueProposal is not null)
                 break;
+
+            // Cap reached: loop once more with tool use withheld so the model answers
+            // from the results above instead of stranding the user mid-lookup.
+            if (toolCallCount >= _anthropicOptions.MaxToolCallsPerTurn)
+                withholdTools = true;
         }
 
         // Proposal frame signals client to open pre-filled Issues modal.

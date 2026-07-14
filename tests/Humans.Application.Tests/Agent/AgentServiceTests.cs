@@ -206,6 +206,51 @@ public class AgentServiceTests
             "a count_tokens failure must never break the admin prompt-preview page");
     }
 
+    [HumansFact]
+    public async Task Ask_synthesizes_a_final_answer_when_the_tool_call_cap_is_reached()
+    {
+        var userId = Guid.NewGuid();
+        var dispatcher = Substitute.For<IAgentToolDispatcher>();
+        dispatcher.DispatchAsync(Arg.Any<AnthropicToolCall>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(ci => new AnthropicToolResult(
+                ci.Arg<AnthropicToolCall>().Id, "guide content", IsError: false));
+        var (svc, client) = await BuildService(s => s.Enabled = true, toolDispatcher: dispatcher);
+
+        // Iteration 1: the model burns the whole tool budget (MaxToolCallsPerTurn = 3).
+        client.EnqueueTurn(
+            new AgentTurnToken("Let me look that up. ", null, null),
+            new AgentTurnToken(null, new AnthropicToolCall("t1", "fetch_section_guide", """{"section":"teams"}"""), null),
+            new AgentTurnToken(null, new AnthropicToolCall("t2", "fetch_section_guide", """{"section":"camps"}"""), null),
+            new AgentTurnToken(null, new AnthropicToolCall("t3", "fetch_community_faq", "{}"), null),
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "claude-sonnet-4-6", "tool_use")));
+
+        // Iteration 2: the synthesis call (tools withheld) answers from the fetched results.
+        client.EnqueueTurn(
+            new AgentTurnToken("Teams are groups of volunteers; see the Teams page.", null, null),
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "claude-sonnet-4-6", "end_turn")));
+
+        var tokens = new List<AgentTurnToken>();
+        await foreach (var t in svc.AskAsync(
+            new AgentTurnRequest(ConversationId: Guid.Empty, UserId: userId, Message: "What are teams?", Locale: "es"),
+            Xunit.TestContext.Current.CancellationToken))
+        {
+            tokens.Add(t);
+        }
+
+        var streamedText = string.Concat(tokens.Where(t => t.TextDelta != null).Select(t => t.TextDelta));
+        streamedText.Should().Contain("Teams are groups of volunteers",
+            "hitting the cap must still end in an answer synthesized from the tool results, not just the preamble");
+
+        tokens.Last().Finalizer!.StopReason.Should().Be("end_turn",
+            "the synthesis call ends the turn normally");
+
+        await dispatcher.Received(3).DispatchAsync(
+            Arg.Any<AnthropicToolCall>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+
+        client.LastRequest!.DisallowToolUse.Should().BeTrue(
+            "the final synthesis call must withhold tool use so the model answers in text");
+    }
+
     private static async Task<Guid> StartConversation(
         IAgentService svc, AnthropicClientFake client, Guid userId)
     {
@@ -225,7 +270,8 @@ public class AgentServiceTests
 
     private static async Task<(IAgentService Svc, AnthropicClientFake Client)> BuildService(
         Action<AgentSettings> tune,
-        IAgentRateLimitStore? rateLimitStore = null)
+        IAgentRateLimitStore? rateLimitStore = null,
+        IAgentToolDispatcher? toolDispatcher = null)
     {
         var dbOptions = new DbContextOptionsBuilder<HumansDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
@@ -266,7 +312,7 @@ public class AgentServiceTests
         var preload = Substitute.For<IAgentPreloadCorpusBuilder>();
         preload.BuildAsync(Arg.Any<AgentPreloadConfig>(), Arg.Any<CancellationToken>()).Returns("");
         var assembler = new AgentPromptAssembler();
-        var tools = Substitute.For<IAgentToolDispatcher>();
+        var tools = toolDispatcher ?? Substitute.For<IAgentToolDispatcher>();
         var client = new AnthropicClientFake();
         var options = Options.Create(new AnthropicOptions());
         var logger = NullLogger<AgentService>.Instance;
