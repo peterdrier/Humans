@@ -1,3 +1,17 @@
+<!-- freshness:triggers
+  src/Humans.Web/Controllers/EventsController.cs
+  src/Humans.Web/Views/Events/Browse.cshtml
+  src/Humans.Web/Views/Events/Schedule.cshtml
+  src/Humans.Application/Services/Events/EventService.cs
+  src/Humans.Application/Interfaces/Events/IEventService.cs
+  src/Humans.Domain/Entities/Event.cs
+  src/Humans.Domain/Entities/EventFavourite.cs
+  src/Humans.Domain/Entities/EventPreference.cs
+-->
+<!-- freshness:flag-on-change
+  /Events/Browse filters, favourites toggling, and category opt-out behavior. Review when the browser views, EventsController, or EventService change.
+-->
+
 # In-App Guide Browser
 
 ## Business Context

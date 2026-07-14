@@ -1,3 +1,19 @@
+<!-- freshness:triggers
+  src/Humans.Web/Controllers/ProfileController.cs
+  src/Humans.Web/Views/Profile/Privacy.cshtml
+  src/Humans.Web/Views/Profile/CommunicationPreferences.cshtml
+  src/Humans.Application/Services/Gdpr/GdprExportService.cs
+  src/Humans.Application/Services/Users/AccountLifecycle/AccountDeletionService.cs
+  src/Humans.Application/Services/Profiles/ContactFieldService.cs
+  src/Humans.Application/Services/Profiles/CommunicationPreferenceService.cs
+  src/Humans.Infrastructure/Jobs/ProcessAccountDeletionsJob.cs
+  src/Humans.Domain/Entities/ContactField.cs
+  src/Humans.Domain/Entities/CommunicationPreference.cs
+-->
+<!-- freshness:flag-on-change
+  Per-field visibility options, communication preference categories, data export contents, and the 30-day deletion/cancel window. Review when privacy views, GDPR export, or account deletion flows change.
+-->
+
 # Your data & privacy
 
 It's your information, and you're in control of it. This page covers the three

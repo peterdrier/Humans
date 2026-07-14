@@ -1,3 +1,16 @@
+<!-- freshness:triggers
+  src/Humans.Application/Services/GoogleIntegration/EmailProvisioningService.cs
+  src/Humans.Application/Services/GoogleIntegration/GoogleWorkspaceUserService.cs
+  src/Humans.Application/Services/GoogleIntegration/GoogleGroupSyncService.cs
+  src/Humans.Application/Services/GoogleIntegration/TeamResourceService.cs
+  src/Humans.Web/Controllers/TeamAdminController.cs
+  src/Humans.Web/Controllers/GoogleController.cs
+  src/Humans.Domain/Entities/UserEmail.cs
+-->
+<!-- freshness:flag-on-change
+  Who gets a mailbox, coordinator-created accounts, first-sign-in flow (temporary password + required 2FA), and shared team group addresses. Review when workspace-account provisioning or group membership sync change.
+-->
+
 # Your `@nobodies.team` email
 
 Some volunteers have their own email address ending in `@nobodies.team` — for

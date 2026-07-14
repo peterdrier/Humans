@@ -50,25 +50,12 @@ admission record. Distinct from the read-only `Scanner` section, which must neve
   after verifying the shared supervisor override PIN (`Gate:SupervisorPin`) server-side — a forged
   `childWithAdult`/`overrideEarly` flag alone never admits, and an unset PIN fails closed
   (overrides refused, never a free pass).
-- **Personal staff PINs (`gate_staff_pins`)** — _disabled since peterdrier#1075: the claim step is
-  bypassed (the terminal scans as the gate account) and the flow below is unreachable, though the
-  table, service methods, admin page, and views remain in place._ Each staffer sets a 4-digit PIN the first time they
-  claim the gate (`SetOwnPinAsync`, hashed via Identity's `IPasswordHasher`), reused across shifts.
-  Claiming the scanner becomes a PIN entry (`/Gate/ClaimPin`), so the leaderboard attribution is a
-  real per-person claim rather than honour-system. **Claim vs override are decoupled by the
-  `AdminEnrolled` flag on the PIN.** _Everyone_ — supervisors included — may self-enrol a **claim**
-  PIN at the kiosk (`SetOwnPinAsync`, `AdminEnrolled = false`); it attributes scans only. **Override
-  authority** is conferred solely by an **admin enrolment** (`/Gate/Admin` → `AdminSetPinAsync`,
-  `AdminEnrolled = true`). `AuthorizeOverrideAsync` requires all three, server-checked: an
-  admin-enrolled PIN, the correct PIN, AND a currently-held supervisor role — so an attacker
-  cold-setting a supervisor's PIN at the anonymous kiosk gains attribution spoofing only (already
-  possible for any staffer), never override power. The enrolled-supervisor override picker
-  (`GetEnrolledSupervisorIdsAsync`) lists only admin-enrolled supervisors.
-  **First-time set** has two guards (claim-only, never on verify): an "is this you?" confirm before a
-  PIN is minted in someone's name, and a double-entry (enter twice, must match) so a mis-typed PIN
-  can't silently lock a volunteer out (there is no self-service reset — an admin clears it). Every
-  PIN **set/reset is audited** (`GateStaffPinSet`/`GateStaffPinReset` with the acting user — the
-  staffer on self-enrol, the admin on admin-set/reset); PIN values are never logged.
+- **Personal staff PINs (`gate_staff_pins`)** — _disabled since peterdrier#1075_: the claim step is
+  bypassed (the terminal scans as the shared gate account), though the table, service methods,
+  admin page, and views remain in place should per-person claim return. Design retained in git
+  history (peterdrier#1071/#1073/#1074): claim vs override decoupled via `AdminEnrolled`,
+  three-factor `AuthorizeOverrideAsync`, double-entry first-time set, audited set/reset
+  (`GateStaffPinSet`/`GateStaffPinReset`); PIN values never logged.
 - **Supervisor override** — a too-early scan (e.g. a Friday Early-Entry ticket scanned on Wednesday)
   STOPs with a precise reason (the holder's EE date vs today, or "no early entry · general entry
   opens …" — date only, never the EE source); an **unconfirmed-Early-Entry** scan (the guest may
@@ -154,7 +141,8 @@ kept separate so they can diverge. The supervisor override on `Decision` is auth
 shared override PIN (`Gate:SupervisorPin`), brute-force throttled via `GatePinThrottle` on a
 single terminal-wide bucket — see Invariants. (The `Claim`/`ClaimPin`/`Admin` PIN routes — plus
 the claim flow's `EndShift` POST and its name-search endpoint `/Gate/Search` — remain but are
-unreachable since peterdrier#1075 — nothing links to them.)
+unreachable since peterdrier#1075 — nothing links to them. Deletion is planned:
+nobodies-collective/Humans#933.)
 
 ## Invariants
 

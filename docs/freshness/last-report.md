@@ -86,14 +86,14 @@ budget.md V2c → sections/Finance.md · store.md ×2 spec links removed (Store.
 
 None — all candidates resolved this sweep (every wheat migration verified against code; no uncertain item queued).
 
-## Questions (delivered inline, Phase 7.5)
+## Questions (delivered inline, Phase 7.5 — all resolved by Peter 2026-07-14)
 
-1. Gate.md: keep the full description of the disabled personal-PIN flow (~20 lines, "disabled since #1075"), or shrink to a two-line tombstone?
-2. background-jobs.md: keep the enqueue-only GateVendorCheckInJob row ("On demand (enqueued)") in the Job Overview table, or is that table recurring-only?
-3. Tickets sync cadence: docs now say "5 min per shipped config; code default 15" — keep, or document only the code default?
-4. code-review-rules "Orphaned Pages — every action reachable from UI" vs Gate's intentionally-unreachable actions (Claim/ClaimPin/EndShift/Search, unlinked since #1075): carve out the rule, or delete the dead actions?
-5. Unmarked editorial docs (features/26-events.md, 27-guide-browser.md, 43-google-group-membership-sync.md, test-system-reliability.md, user-search-overhaul.md, guide/EmailAccount.md, SigningIn.md, TwoStepVerification.md, YourData.md, sections/Mailer.md, _Index.md): add freshness:triggers now, or leave for organic touch?
-6. AuditLog.md AuditAction catalog is ~28 values behind: convert to a freshness:auto block so future sweeps regen it mechanically?
+1. Gate.md disabled personal-PIN flow → **shrink**. Applied: bullet reduced to a tombstone (table/services remain; design retained in git history, peterdrier#1071/#1073/#1074).
+2. background-jobs.md GateVendorCheckInJob "On demand (enqueued)" row → **keep**. No change.
+3. Tickets sync cadence → **match actual**. Applied: sections/Tickets.md + ticket-vendor-integration.md now say "every 5 min via `TicketVendor:SyncIntervalMinutes`" (code-default hedge dropped).
+4. Orphaned Gate actions vs "Orphaned Pages" rule → **plan to delete** the dead actions. Filed nobodies-collective/Humans#933; Gate.md unreachable-routes note now references it. Rule untouched.
+5. Unmarked editorial docs → **add triggers**. Applied: freshness:triggers + flag-on-change markers added to all 11 docs.
+6. AuditLog.md catalog → **yes, auto**. Applied: catalog regenerated to the full AuditAction enum and wrapped in a `freshness:auto id="auditaction-catalog"` block.
 
 ## Skipped (errors)
 

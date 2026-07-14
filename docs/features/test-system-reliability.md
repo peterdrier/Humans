@@ -1,3 +1,14 @@
+<!-- freshness:triggers
+  .github/workflows/build.yml
+  tests/xunit.runner.json
+  tests/Humans.Integration.Tests/Infrastructure/HumansWebApplicationFactory.cs
+  tests/Humans.Integration.Tests/Infrastructure/IntegrationTestBase.cs
+  src/Humans.Web/Program.cs
+-->
+<!-- freshness:flag-on-change
+  CI test filtering, Testcontainers fixture strategy, Hangfire Testing-environment guards, and quarantine policy. Review when the build workflow, xunit config, or integration test fixtures change — phase statuses here go stale as the plan lands.
+-->
+
 # Test System Reliability
 
 Rebuild the test setup so the suite is a reliable signal again — CI catches what local sees, integration tests survive concurrent runs, and "pre-existing failures on main, doesn't block the merge" stops being a sentence anyone says.

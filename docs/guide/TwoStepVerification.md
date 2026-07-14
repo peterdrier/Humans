@@ -1,3 +1,14 @@
+<!-- freshness:triggers
+  src/Humans.Application/Services/GoogleIntegration/GoogleAdminService.cs
+  src/Humans.Application/Services/GoogleIntegration/GoogleWorkspaceUserService.cs
+  src/Humans.Application/Services/GoogleIntegration/EmailProvisioningService.cs
+  src/Humans.Application/Interfaces/GoogleIntegration/IWorkspaceUserDirectoryClient.cs
+  src/Humans.Infrastructure/Services/GoogleWorkspace/WorkspaceUserDirectoryClient.cs
+-->
+<!-- freshness:flag-on-change
+  2FA requirement on @nobodies.team accounts, backup codes, and admin lockout recovery (password reset / 2SV-blocked handling). Review when workspace account admin flows change.
+-->
+
 # Two-step verification (2FA)
 
 Two-step verification — sometimes called **2FA** or **2-Step Verification** — is
