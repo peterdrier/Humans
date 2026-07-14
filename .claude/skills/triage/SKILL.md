@@ -705,10 +705,12 @@ Always note the environment in output (e.g., "Agent phase from **QA**").
 > **Dead counters (verified 2026-07-13, prod):** `refusalCount` and `handoffCount` are 0 on every conversation — the flags are never populated at save time, so `refusalsOnly=true` always returns an empty list and `handoffsOnly=true` only matches legacy feedback handoffs (`HandedOffToFeedbackId != null`, which `route_to_issue` never sets). Tracked in nobodies-collective/Humans#931. Until that ships, **do not use either filter** — pull everything and cluster from the question stream. Issue handoffs still surface through Phase 4 (in-app Issues with KB-gap flags).
 
 ```bash
-curl -sf -H "X-Api-Key: $AGENT_KEY" "$BASE_URL/api/agent/conversations?take=100"
+curl -sf -H "X-Api-Key: $AGENT_KEY" "$BASE_URL/api/agent/conversations?take=200"
+# take is clamped to 200 server-side; page with skip:
+curl -sf -H "X-Api-Key: $AGENT_KEY" "$BASE_URL/api/agent/conversations?take=200&skip=200"
 ```
 
-If exactly `take` rows come back, older history may exist — increase `take` (or page if the endpoint supports it) until the count drops below the limit or you reach the last triage run's date.
+`take` is clamped to 200 (`AgentApiController.List`); older rows are reached only via `skip`. If a page comes back with exactly `take` rows, fetch the next one (`skip=200`, `skip=400`, …) until a page returns fewer than `take` rows or you're past the last triage run's date. Merge pages before clustering.
 
 Save the raw JSON to a Windows-absolute path (per `feedback_temp_file_path_mismatch`), e.g. `H:/source/Humans/.worktrees/.triage-agent-conversations.json`.
 
