@@ -785,7 +785,7 @@ Present these options inline and ask which to take (do not use `AskUserQuestion`
 
 ## Step 5.5: Execute
 
-Default action is to write the approved drafts to `docs/superpowers/specs/{YYYY-MM-DD}-faq-proposals-{env}.md` with one section per cluster, ready for Peter to copy into `SectionHelpContent.cs`. Do not commit. Do not touch `SectionHelpContent.cs` directly.
+Default action is to write the approved drafts to `docs/superpowers/specs/{YYYY-MM-DD}-faq-proposals-{env}.md` with one section per cluster, ready for Peter to copy into `SectionHelpContent.cs`. Write the file in a worktree branch, commit, and open a PR (it can ride along with other triage-run doc changes) — **never leave the draft uncommitted in the main checkout; that's how work gets lost.** Do not touch `SectionHelpContent.cs` directly.
 
 If missing-capability GH issues were approved, create them with `gh issue create` (same template as Phase 4, label `blocked:needs-design`, no Sprint Metadata).
 
