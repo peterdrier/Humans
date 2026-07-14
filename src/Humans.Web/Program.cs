@@ -362,10 +362,11 @@ builder.Services.AddRateLimiter(options =>
         var identity = authenticatedUser ?? remoteIp ?? "anonymous";
 
         // A bot sweep produces dozens of near-identical rejections; only the
-        // first per identity per window logs in detail (and pays the reverse-DNS
-        // lookup) — the rest are counted and flushed as one summary line.
+        // first per source IP per window logs in detail (and pays the reverse-DNS
+        // lookup) — the rest are counted and flushed as one summary line. Keyed
+        // by IP only: the display identity (burner name) is not unique.
         if (!context.HttpContext.RequestServices.GetRequiredService<RateLimitRejectionAggregator>()
-                .RecordRejection(identity))
+                .RecordRejection(remoteIp ?? "unknown"))
         {
             return;
         }

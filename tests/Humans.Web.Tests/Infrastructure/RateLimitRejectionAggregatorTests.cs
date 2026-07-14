@@ -48,7 +48,7 @@ public class RateLimitRejectionAggregatorTests
         aggregator.RecordRejection("1.2.3.4").Should().BeTrue("first rejection must log in full detail");
         aggregator.RecordRejection("1.2.3.4").Should().BeFalse();
         aggregator.RecordRejection("1.2.3.4").Should().BeFalse();
-        aggregator.RecordRejection("5.6.7.8").Should().BeTrue("each identity gets its own window");
+        aggregator.RecordRejection("5.6.7.8").Should().BeTrue("each source IP gets its own window");
     }
 
     // ── a burst flushes exactly one summary carrying the count ───────────────
