@@ -124,7 +124,7 @@ Read-only HTTP surface for QA/prod chat-history review by dev tooling and a dev-
 
 | Endpoint | Purpose |
 |----------|---------|
-| `GET /api/agent/conversations?refusalsOnly&handoffsOnly&userId&take&skip` | Conversation summaries. `take` clamped 1–200 (default 50). Each row includes `RefusalCount`, `HandoffCount`, `LastUserMessagePreview` (200 char cap), `UserDisplayName` resolved via `IUserService.GetByIdsAsync`. |
+| `GET /api/agent/conversations?refusalsOnly&handoffsOnly&userId&take&skip` | Conversation summaries. `take` clamped 1–200 (default 50). Each row includes `RefusalCount` (messages with `RefusalReason`), `HandoffCount` (legacy `HandedOffToFeedbackId` links plus `route_to_issue` invocations recorded in `FetchedDocs`), `LastUserMessagePreview` (200 char cap), `UserDisplayName` resolved via `IUserService.GetByIdsAsync`. |
 | `GET /api/agent/conversations/{id}` | Full conversation envelope + ordered messages (Role, Content, CreatedAt, Model, RefusalReason, HandedOffToFeedbackId, FetchedDocs). |
 | `GET /api/agent/conversations/{id}/messages` | Messages-only view (same per-message shape). |
 
