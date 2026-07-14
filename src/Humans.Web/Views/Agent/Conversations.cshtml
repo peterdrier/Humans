@@ -63,3 +63,33 @@ else
         .Build();
     <partial name="_Table" model="table" />
 }
+
+@if (Model.IsAdminView && (Model.Page > 0 || Model.HasNext))
+{
+    // Older/Newer paging, preserving the filter query params (refusalsOnly, userId).
+    var baseRoute = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+    foreach (var pair in Context.Request.Query)
+    {
+        if (string.Equals(pair.Key, "page", StringComparison.OrdinalIgnoreCase)) { continue; }
+        baseRoute[pair.Key] = pair.Value.ToString();
+    }
+
+    Dictionary<string, string?> RouteFor(int page)
+    {
+        return new Dictionary<string, string?>(baseRoute, StringComparer.OrdinalIgnoreCase)
+        {
+            ["page"] = page.ToString(System.Globalization.CultureInfo.InvariantCulture),
+        };
+    }
+
+    <nav aria-label="Pagination">
+        <ul class="pagination justify-content-center">
+            <li class="page-item @(Model.Page <= 0 ? "disabled" : "")">
+                <a class="page-link" asp-action="Conversations" asp-all-route-data="@RouteFor(Model.Page - 1)">Newer</a>
+            </li>
+            <li class="page-item @(Model.HasNext ? "" : "disabled")">
+                <a class="page-link" asp-action="Conversations" asp-all-route-data="@RouteFor(Model.Page + 1)">Older</a>
+            </li>
+        </ul>
+    </nav>
+}
