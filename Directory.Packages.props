@@ -5,7 +5,7 @@
   </PropertyGroup>
   <ItemGroup>
     <!-- AI/LLM -->
-    <PackageVersion Include="Anthropic" Version="12.30.0" />
+    <PackageVersion Include="Anthropic" Version="12.35.1" />
     <!-- Core Framework -->
     <PackageVersion Include="ClosedXML" Version="0.105.0" />
     <!-- CSV — ALL CSV reading/writing goes through CsvHelper (memory/code/csv-use-csvhelper.md). Exact package name "CsvHelper" only; "CsvHelper.Excel.Core.Net" is known malware. -->
@@ -41,7 +41,7 @@
     <!-- Google Workspace APIs -->
     <PackageVersion Include="Google.Apis.Admin.Directory.directory_v1" Version="1.75.0.4168" />
     <PackageVersion Include="Google.Apis.CloudIdentity.v1" Version="1.75.0.4185" />
-    <PackageVersion Include="Google.Apis.Drive.v3" Version="1.74.0.4135" />
+    <PackageVersion Include="Google.Apis.Drive.v3" Version="1.75.0.4192" />
     <PackageVersion Include="Google.Apis.DriveActivity.v2" Version="1.74.0.3880" />
     <PackageVersion Include="Google.Apis.Groupssettings.v1" Version="1.74.0.2721" />
     <PackageVersion Include="Google.Apis.Auth" Version="1.75.0" />
@@ -78,7 +78,7 @@
     <PackageVersion Include="MinVer" Version="7.0.0" />
     <!-- Analyzers -->
     <PackageVersion Include="Roslynator.Analyzers" Version="4.15.0" />
-    <PackageVersion Include="Meziantou.Analyzer" Version="3.0.117" />
+    <PackageVersion Include="Meziantou.Analyzer" Version="3.0.121" />
     <PackageVersion Include="Microsoft.VisualStudio.Threading.Analyzers" Version="17.14.15" />
     <!-- Testing -->
     <PackageVersion Include="coverlet.collector" Version="10.0.1" />

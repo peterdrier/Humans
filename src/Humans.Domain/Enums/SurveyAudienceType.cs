@@ -10,5 +10,6 @@ public enum SurveyAudienceType
     Team = 0,
     AllActiveMembers = 1,
     TicketHolders = 2,
-    ShiftParticipants = 3
+    ShiftParticipants = 3,
+    LoggedInSince = 4
 }

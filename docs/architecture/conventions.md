@@ -47,6 +47,9 @@ Do not make the controller the coordinator of:
 
 That is service work.
 
+<!-- wheat: docs/superpowers/specs/2026-04-30-account-merge-fold-redesign.md §Transaction model -->
+Cross-repository orchestrations that must commit atomically (e.g. `AccountMergeService`'s fold fan-out) wrap the calls in an ambient `TransactionScope` (`TransactionScopeAsyncFlowOption.Enabled`, `ReadCommitted`). Each repository still creates its own short-lived `DbContext` via `IDbContextFactory`; Npgsql auto-enlists those connections in the ambient scope, so the writes commit or roll back together without sharing a `DbContext` across repositories.
+
 ## Caching
 
 See [`design-rules.md`](design-rules.md) §15 for the structured caching pattern (caching decorator owning a `TrackedCache` / `ConcurrentDictionary`; §4–§5 there describe the retired store + decorator predecessor).
@@ -190,6 +193,7 @@ All pages are server-rendered with Razor. The following use `fetch()` for the sp
 | `Feedback/Index.cshtml` | Master-detail panel loading | Progressive enhancement |
 | `Google/Sync.cshtml` | Tab content loaded via Razor partial (slow Google API) | Partial-via-AJAX |
 | `Scanner/Tickets.cshtml` (`js/scanner/tickets.js`) | Ticket card loaded via Razor partial (`_TicketCard`) on barcode hit | Partial-via-AJAX |
+| `Gate/Index.cshtml` (`js/gate/gate.js`) | Verdict card loaded via Razor partial (`_VerdictCard`) on barcode scan; decision POST returns the final card | Partial-via-AJAX |
 | `site.js` | Timezone, notification popup, profile popover | Utility |
 
 When adding a new page that needs client-side data loading, add it to this list with justification. If a page has no entry here, it must be server-rendered.

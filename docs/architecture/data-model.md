@@ -44,6 +44,7 @@ This file is the **index and cross-cutting rule sheet** for the data model. Per-
 | EmailOutboxMessage | [Email](../sections/Email.md) | |
 | Campaign / CampaignCode / CampaignGrant | [Campaigns](../sections/Campaigns.md) | |
 | TicketOrder / TicketAttendee / TicketSyncState / TicketTransferRequest | [Tickets](../sections/Tickets.md) | |
+| GateScanEvent / GateSettings / GateStaffPin | [Gate](../sections/Gate.md) | `GateScanEvent` is the append-only gate admission log (retention-purged by `GateRetentionJob`; user ids re-pointed on merge). Cross-section refs (`ScannedByUserId`, `GuestUserId`, `OverrideByUserId`, `TicketAttendeeId`, `GateStaffPin.UserId`) are bare Guid columns — no navs, no cross-section EF FK constraints. |
 | EventSettings / Rota / Shift / ShiftSignup / GeneralAvailability / VolunteerEventProfile / VolunteerBuildStatus / ShiftTag / VolunteerTagPreference | [Shifts](../sections/Shifts.md) | |
 | Event / EventCategory / EventVenue / EventGuideSettings / EventModerationAction / EventFavourite / EventPreference | [Events](../sections/Events.md) | Event Guide submissions, moderation, categories, shared venues, per-user favourites/preferences. `EventModerationAction` append-only (§12 — Restrict on delete). |
 | FeedbackReport / FeedbackMessage | [Feedback](../sections/Feedback.md) | |
@@ -88,6 +89,7 @@ Users/Identity
   ← SyncServiceSettings.UpdatedByUserId, GoogleSyncOutboxEvent (Google Integration)
   ← AccountMergeRequest.TargetUser / SourceUser / ResolvedByUser (Admin)
   ← Survey.CreatedByUserId, SurveyInvitation.UserId, SurveyResponse.UserId (Survey — bare Guid FKs, no navs, no cross-section EF FK constraints)
+  ← GateScanEvent.ScannedByUserId / GuestUserId / OverrideByUserId, GateStaffPin.UserId (Gate — bare Guid FKs, no navs, no cross-section EF FK constraints)
 
 Team (Teams)
   ← Rota.Team (Shifts)
@@ -98,7 +100,11 @@ Team (Teams)
   ← Survey.AudienceTeamId (Survey — bare Guid FK, no nav, no cross-section EF FK constraint)
 
 BudgetCategory (Budget)
-  ← HoldedTransaction.BudgetCategory (Finance — FK only, no nav)
+  ← HoldedCategoryMap.BudgetCategoryId (Finance — FK only, no nav)
+  ← HoldedExpenseDoc.BudgetCategoryId (Finance — FK only, no nav, null = unmatched)
+
+TicketAttendee (Tickets)
+  ← GateScanEvent.TicketAttendeeId (Gate — bare Guid FK, no nav, no cross-section EF FK constraint)
 
 CampSeason (Camps)
   ← CampPolygon, CampPolygonHistory (City Planning)

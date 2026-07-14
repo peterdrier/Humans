@@ -1,3 +1,24 @@
+<!-- freshness:triggers
+  src/Humans.Web/Controllers/EventsController.cs
+  src/Humans.Web/Controllers/EventsAdminController.cs
+  src/Humans.Web/Controllers/EventsModerationController.cs
+  src/Humans.Web/Controllers/EventsExportController.cs
+  src/Humans.Web/Views/Events/**
+  src/Humans.Web/Views/EventsAdmin/**
+  src/Humans.Web/Views/EventsModeration/**
+  src/Humans.Web/Views/EventsExport/**
+  src/Humans.Application/Services/Events/EventService.cs
+  src/Humans.Application/Interfaces/Events/**
+  src/Humans.Domain/Entities/Event.cs
+  src/Humans.Domain/Entities/EventCategory.cs
+  src/Humans.Domain/Entities/EventVenue.cs
+  src/Humans.Domain/Entities/EventGuideSettings.cs
+  src/Humans.Domain/Entities/EventModerationAction.cs
+-->
+<!-- freshness:flag-on-change
+  Submission/moderation workflow, GuideEvent state machine, bulk CSV upload rules, public /api/events surface, and email triggers. Review when Event Guide controllers, service, or entities change.
+-->
+
 # Event Guide Management
 
 ## Business Context

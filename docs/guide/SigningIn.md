@@ -1,3 +1,13 @@
+<!-- freshness:triggers
+  src/Humans.Web/Controllers/AccountController.cs
+  src/Humans.Web/Views/Account/**
+  src/Humans.Application/Services/Auth/MagicLinkService.cs
+  src/Humans.Web/Controllers/GuestController.cs
+-->
+<!-- freshness:flag-on-change
+  Login options, magic-link expiry/single-use/confirm-button mechanics, and the enumeration-safe "check your email" message. Review when AccountController, Account views, or MagicLinkService change.
+-->
+
 # Signing in & getting unstuck
 
 Getting into the Humans app is meant to be painless — **there's no password to

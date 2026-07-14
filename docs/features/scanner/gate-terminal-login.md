@@ -15,8 +15,10 @@
 
 ## Business Context
 
-The laptop at gate uses the ticket lookup tool (`/Scanner/Tickets`) to check
-people's ticket status and early-entry date as they arrive. The device is shared
+The laptop at gate originally used the ticket lookup tool (`/Scanner/Tickets`) to
+check people's ticket status and early-entry date as they arrive; the same shared
+account now fronts the Gate admissions terminal (`/Gate` — `docs/sections/Gate.md`)
+instead. The device is shared
 between whoever is on gate shift, so tying it to one human's login is wrong: their
 session, their personal permissions, their magic-link email. And the previous
 access policy (`TicketAdminBoardOrAdmin`) meant a gate laptop could only be signed
@@ -32,7 +34,11 @@ in once and the session persists across restarts.
 roles, so every admin surface and private-info page stays invisible. Self-scoped
 writes are the same writes any baseline volunteer could do, scoped to the gate
 account itself. No per-controller read-only machinery was added (deliberate — see
-the design dialogue: "no heroics on the hard read-only bit").
+the design dialogue: "no heroics on the hard read-only bit"). Since the Gate
+section landed, a hard route-restriction middleware in `Program.cs` additionally
+bounces the signed-in gate account to `/Gate` for any path outside `/Gate/*`,
+`/Account/GateLogin`, `/Account/Logout`, and `/Account/AccessDenied` — defense
+in depth on top of the zero roles.
 
 ## How It Works
 
@@ -50,7 +56,10 @@ the design dialogue: "no heroics on the hard read-only bit").
 - **Login:** `/Account/GateLogin` (anonymous GET form + POST). Username is the fixed
   constant `gate`; password checked via `CheckPasswordSignInAsync` with
   `lockoutOnFailure: false`. Success signs in with `isPersistent: true` and redirects
-  to `/Scanner/Tickets`.
+  to the Gate admissions terminal (`/Gate` — see `docs/sections/Gate.md`; originally
+  `/Scanner/Tickets`, repointed when the Gate section landed). Signing the kiosk out
+  again is the gate terminal's "logout"-typed-into-the-scan-field escape hatch, which
+  POSTs the standard `/Account/Logout`.
 - **Brute-force protection is per source IP, never per account.** The username is
   public, so Identity's per-account lockout would let anyone deny the real terminal
   at gate by deliberately failing passwords — the attacker and the victim would share
@@ -70,9 +79,11 @@ the design dialogue: "no heroics on the hard read-only bit").
   admins can verify/change the password under Tickets → Gate terminal.
 - **Authorization:** scanner routes and the onsite-roster route moved from
   `TicketAdminBoardOrAdmin` to the new `ScannerAccess` policy — TicketAdmin/Board/Admin
-  roles OR `NameIdentifier == SystemUserIds.GateTerminal`. This means the gate terminal
-  can also reach `/Tickets/Admin/Onsite` (the who's-onsite roster) directly from the
-  door, without any separate login. Deliberately NOT a `RoleNames` constant: role
+  roles OR `NameIdentifier == SystemUserIds.GateTerminal`. Policy-wise this also grants
+  the gate terminal `/Tickets/Admin/Onsite` (the who's-onsite roster) and `/Scanner/*`,
+  but the kiosk route-restriction middleware now bounces the gate account to `/Gate`
+  for both — human TicketAdmin/Board/Admin sessions still reach those routes via the
+  same policy. Deliberately NOT a `RoleNames` constant: role
   constants flow into the role-assignment UI and dev personas via the test-enforced
   `RoleNames.All`.
 - **Audit:** every password set/rotate writes `AuditAction.GateTerminalPasswordSet`
@@ -88,7 +99,8 @@ the design dialogue: "no heroics on the hard read-only bit").
 - `/Account/GateLogin` (localized, all six locales).
 - `/Tickets/Admin/Gate` admin card (status + set/rotate password) + admin-nav entry.
 - `GateTerminalAccountSeeder` (Web infrastructure, registered in all environments).
-- Onsite roster (`/Tickets/Admin/Onsite`) accessible to the gate terminal via `ScannerAccess`.
+- Onsite roster (`/Tickets/Admin/Onsite`) accessible to the gate terminal via `ScannerAccess`
+  (since route-locked away from the kiosk account — see Authorization above).
 
 ### Out of Scope
 

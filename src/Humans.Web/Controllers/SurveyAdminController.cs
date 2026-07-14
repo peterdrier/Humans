@@ -4,6 +4,7 @@ using System.Text.Json.Serialization;
 using Humans.Application.Interfaces.Surveys;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
+using Humans.Domain.Enums;
 using Humans.Web.Authorization;
 using Humans.Web.Extensions;
 using Humans.Web.Models;
@@ -68,6 +69,12 @@ public class SurveyAdminController(
     {
         var actorId = GetCurrentUserId();
         if (actorId is null) return Forbid();
+
+        if (model.AudienceType == SurveyAudienceType.LoggedInSince && model.AudienceLoggedInSince is null)
+        {
+            ModelState.AddModelError(nameof(model.AudienceLoggedInSince),
+                "A \"Logged in since\" cutoff date is required for the LoggedInSince audience.");
+        }
 
         if (!ModelState.IsValid)
         {

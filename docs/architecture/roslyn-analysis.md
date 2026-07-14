@@ -29,7 +29,7 @@ implemented), or **filesystem-aware** (rule depends on which directory a file
 lives in).
 
 The ratchet rules under `tests/Humans.Application.Tests/Architecture/Rules/`
-and the 7 boundary scans in `ServiceBoundaryArchitectureTests.cs` all fall
+and the 5 boundary scans in `ServiceBoundaryArchitectureTests.cs` all fall
 outside the analyzer envelope and stay as tests. Tier 3 below lists them so
 they aren't re-proposed.
 
@@ -281,7 +281,7 @@ analyzer.
 - `NoDestructiveMigrationOpsRule` (`tests/.../Rules/NoDestructiveMigrationOpsRule.cs`) — operates on EF-generated migration files which legitimately contain destructive ops in other contexts. Filesystem-aware. Stay as ratchet.
 - `NoStartupGuardsRule` (`tests/.../Rules/NoStartupGuardsRule.cs`) — heuristic regex over `Program.cs` and startup classes; pattern is too fuzzy for crisp call-site analyzer detection. Stay as ratchet.
 - `DisplaySortInControllersRule` (`tests/.../Rules/DisplaySortInControllersRule.cs`) — accumulated debt + inline `// arch:db-sort-ok` opt-out; baseline-ratcheted today, see Tier 2 for the analyzer prerequisite.
-- `ServiceBoundaryArchitectureTests` (`tests/.../Architecture/ServiceBoundaryArchitectureTests.cs`) — seven boundary scans (marker-attribute presence, ownership-map completeness, repository-injection rules across Web, cross-section repo injections in Application). All shaped as reflection/marker tests or baselined ratchets. Stay as tests.
+- `ServiceBoundaryArchitectureTests` (`tests/.../Architecture/ServiceBoundaryArchitectureTests.cs`) — five boundary scans (marker-attribute presence for services and repositories, repository-ownership-map completeness, the Users/Profiles single-section pin, and the entity-read-return ratchet; the former repository-injection scans across Web and Application shipped as analyzers). All shaped as reflection/marker tests or baselined ratchets. Stay as tests.
 - The per-section `*ArchitectureTests.cs` files (Camps, Teams, Shifts, Profile, etc.) — each pins namespace location, ctor shape, no-DbContext-injection, and "owned entities have no cross-domain navs" using reflection on the loaded assemblies. Marker/existence + reflection shape. Stay as tests.
 
 Cited reference for the policy: `docs/architecture/code-analysis.md`

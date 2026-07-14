@@ -1,3 +1,18 @@
+<!-- freshness:triggers
+  src/Humans.Application/Services/GoogleIntegration/GoogleGroupSyncService.cs
+  src/Humans.Application/Interfaces/GoogleIntegration/IGoogleGroupSync.cs
+  src/Humans.Application/Interfaces/GoogleIntegration/IGoogleGroupMembershipSource.cs
+  src/Humans.Application/Interfaces/GoogleIntegration/IGoogleGroupSyncScheduler.cs
+  src/Humans.Application/Interfaces/GoogleIntegration/IGoogleGroupMembershipClient.cs
+  src/Humans.Application/Services/Teams/TeamService.cs
+  src/Humans.Infrastructure/GoogleIntegration/HangfireGoogleGroupSyncScheduler.cs
+  src/Humans.Infrastructure/Jobs/SystemTeamSyncJob.cs
+  src/Humans.Web/Controllers/GoogleController.cs
+-->
+<!-- freshness:flag-on-change
+  Source/orchestrator split, ReconcileAll vs ReconcileOne semantics, fail-closed collision rule, capped scoped retries, and Rejected GoogleEmailStatus marking. Review when the group sync service, source interfaces, or scheduler change.
+-->
+
 # Google Group Membership Sync
 
 ## Purpose

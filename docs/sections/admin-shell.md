@@ -32,7 +32,7 @@ Sidebar groups — operational zone: Tickets, Members, Shifts, Barrios, Cantina,
 | Admin | Full access — every group and every item |
 | Board | Tickets (Tickets, Onsite roster, Scanner), Members (Humans, Roles, Review), Governance (Voting, Applications), Audit (Audit log), Messaging (Surveys), Google (Resource sync) |
 | HumanAdmin | Members (Humans, Roles) |
-| TicketAdmin | Tickets (Tickets, Transfer requests, Attendee contacts, Onsite roster, Scanner, Gate terminal) |
+| TicketAdmin | Tickets (Tickets, Transfer requests, Attendee contacts, Onsite roster, Scanner, Gate terminal, Gate settings) |
 | FinanceAdmin | Money (Expense review, Finance, Store catalog, Store summary, Store payments) |
 | StoreAdmin | Money (Store catalog, Store summary, Store payments) |
 | FeedbackAdmin | Feedback (Feedback queue) |

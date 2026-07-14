@@ -51,7 +51,7 @@ request columns + audit log instead.
 ## User Stories
 
 ### US-42.1: Sender requests a transfer (one-page wizard)
-**As a** Sender (current holder of a `Valid` ticket)
+**As a** Sender (current holder of a `Valid`, not-yet-checked-in ticket)
 **I want to** request sending the ticket to a specific other Humans member
 **So that** the seat goes to someone I trust rather than being wasted
 
@@ -59,6 +59,9 @@ request columns + audit log instead.
 - The wizard lives at `/Tickets/Transfers` (no `/Send`, no `attendeeId` query param). The homepage and
   `/Profile/Me` link to it; the homepage shows the held tickets as physical admission stubs.
 - **Step A:** the Sender's transferable tickets render as admission stubs (`<vc:ticket-stub>`); pick one.
+- Gate-checked-in tickets are not transferable: a gate scan keeps the ticket's `Status = Valid` but stamps
+  `TicketAttendee.CheckedInAt`, so transferability requires `Status == Valid` **and** `CheckedInAt == null`
+  (guarded in the stub list's `CanSendTransfer`, the confirm step, and `CreateRequestAsync`).
 - **Step B:** the recipient is chosen with the standard `<vc:human-search>` component (`scope=Name`,
   `allow-email=true`) — search by burner name, or paste an exact email to resolve a single match.
 - **Step C:** a server-side confirm step resolves the Receiver's legal name + primary email (the search

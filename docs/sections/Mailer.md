@@ -1,3 +1,16 @@
+<!-- freshness:triggers
+  src/Humans.Application/Services/Mailer/**
+  src/Humans.Application/Interfaces/Mailer/**
+  src/Humans.Infrastructure/Services/Mailer/**
+  src/Humans.Infrastructure/Jobs/MailerAudienceSyncJob.cs
+  src/Humans.Web/Controllers/Mailer/MailerAdminController.cs
+  src/Humans.Web/Views/Mailer/**
+  tests/Humans.Application.Tests/Architecture/MailerArchitectureTests.cs
+-->
+<!-- freshness:flag-on-change
+  Import classification/reset rules, "Humans - " group write guard, audience framework and universal Marketing opt-out exclusion, idempotency invariants, and admin routes. Review when Mailer services, audiences, client, or architecture-test pins change.
+-->
+
 # Mailer — Section Invariants
 
 Orchestrates Humans ↔ MailerLite synchronisation. Inbound import + outbound audience management.

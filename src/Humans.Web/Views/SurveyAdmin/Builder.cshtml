@@ -120,7 +120,11 @@
                         }
                     </select>
                 </div>
-                <div class="col-md-6">
+                <div class="col-md-2" id="logged-in-since-field" style="@(Model.AudienceType == SurveyAudienceType.LoggedInSince ? "" : "display:none")">
+                    <label class="form-label small">Logged in since</label>
+                    <input type="date" name="AudienceLoggedInSince" value="@Model.AudienceLoggedInSinceInput" class="form-control form-control-sm" />
+                </div>
+                <div class="col-md-4">
                     <label class="form-label small">Public link slug (optional; requires Allow anonymous)</label>
                     <input type="text" asp-for="PublicSlug" class="form-control form-control-sm" placeholder="e.g. feedback-2026" />
                 </div>
@@ -210,6 +214,17 @@
                 applyCulture();
                 updateMissingBadges();
             }));
+
+            // ── audience cutoff visibility ───────────────────────────────────
+            const audienceType = document.querySelector('select[name="AudienceType"]');
+            const loggedInSinceField = document.getElementById('logged-in-since-field');
+
+            function applyAudienceVisibility() {
+                loggedInSinceField.style.display = audienceType.value === 'LoggedInSince' ? '' : 'none';
+            }
+
+            audienceType.addEventListener('change', applyAudienceVisibility);
+            applyAudienceVisibility();
 
             // ── question cards ───────────────────────────────────────────────
             function applyTypeVisibility(card) {

@@ -5,7 +5,10 @@ using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Camps;
+using Humans.Application.Interfaces.Consent;
+using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.GoogleIntegration;
+using Humans.Application.Interfaces.HumanLifecycle;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
@@ -47,6 +50,9 @@ public sealed class DevPersonaSeeder(
     IAuditLogService auditLogService,
     ICampService campService,
     ICampRoleService campRoleService,
+    IConsentService consentService,
+    IMembershipCalculatorRead membershipCalculator,
+    IHumanLifecycleService humanLifecycleService,
     IClock clock,
     IMemoryCache cache,
     IOptions<CityPlanningOptions> cityPlanningOptions,
@@ -60,7 +66,10 @@ public sealed class DevPersonaSeeder(
     {
         var existing = await userManager.FindByIdAsync(id.ToString());
         if (existing is not null)
+        {
+            await EnsureActiveAsync(existing.Id);
             return existing.Id;
+        }
 
         var email = $"dev-{slug}@localhost";
 
@@ -69,6 +78,7 @@ public sealed class DevPersonaSeeder(
         if (byEmailUserId is not null)
         {
             logger.LogInformation("DEV: found legacy persona {Email} ({OldId}), reusing", email, byEmailUserId.Value);
+            await EnsureActiveAsync(byEmailUserId.Value);
             return byEmailUserId.Value;
         }
 
@@ -188,6 +198,11 @@ public sealed class DevPersonaSeeder(
             await EnsureSeededRoleAsync(id, role, id);
         }
 
+        // Sign the required legal documents up front — role-holding personas without
+        // them are suspended by the nightly SuspendNonCompliantMembersJob once a
+        // document's grace period lapses (#867).
+        await EnsureActiveAsync(id);
+
         cache.InvalidateUserAccess(id);
         await userInfoInvalidator.InvalidateAsync(id);
 
@@ -197,6 +212,73 @@ public sealed class DevPersonaSeeder(
             string.Join(", ", roles));
 
         return id;
+    }
+
+    /// <summary>
+    /// Restores a persona to <see cref="UserState.Active"/> on every dev sign-in. Personas
+    /// hold governance roles but historically never signed the required legal documents, so
+    /// the nightly <c>SuspendNonCompliantMembersJob</c> suspended them once a document's
+    /// grace period lapsed, and the create-only seeder could never bring them back (#867).
+    /// Submits any missing required consents through the canonical consent path (whose
+    /// completion also lifts a consent suspension), then lifts any remaining consent
+    /// suspension for the no-longer-missing-anything case. Idempotent.
+    /// </summary>
+    public async Task EnsureActiveAsync(Guid userId)
+    {
+        var info = await userService.GetUserInfoAsync(userId);
+
+        // Guest/no-name personas: no profile or blanked legal names. They cannot consent
+        // (SubmitConsentAsync's Stub gate refuses) and hold no governance roles, so the
+        // suspend job never targets them — nothing to repair.
+        if (info is null || !info.HasRequiredNameFields)
+            return;
+
+        var wasSuspended = info.State == UserState.Suspended;
+        var submittedAny = false;
+
+        var snapshot = await membershipCalculator.GetMembershipSnapshotAsync(userId);
+        foreach (var versionId in snapshot.MissingConsentVersionIds)
+        {
+            var result = await consentService.SubmitConsentAsync(
+                userId, versionId, explicitConsent: true,
+                ipAddress: "127.0.0.1", userAgent: nameof(DevPersonaSeeder));
+
+            if (result.Success)
+            {
+                submittedAny = true;
+                logger.LogInformation(
+                    "DEV: seeded consent for persona {UserId} on document version {VersionId}",
+                    userId, versionId);
+            }
+            else if (!string.Equals(result.ErrorKey, "AlreadyConsented", StringComparison.Ordinal))
+            {
+                logger.LogWarning(
+                    "DEV: consent seed failed for persona {UserId} on document version {VersionId}: {ErrorKey}",
+                    userId, versionId, result.ErrorKey);
+            }
+        }
+
+        // Covers a persona left Suspended with nothing missing (the required-document set
+        // can shrink after the suspension). No-ops unless the stored state is Suspended.
+        var restore = await humanLifecycleService.RestoreConsentSuspensionAsync(userId);
+        if (!restore.Success)
+        {
+            logger.LogWarning(
+                "DEV: consent-suspension restore failed for persona {UserId}: {ErrorKey}",
+                userId, restore.ErrorKey);
+        }
+
+        // Volunteers admission is name + consents (SyncVolunteersMembershipForUserAsync),
+        // and SubmitConsentAsync deliberately does not provision system-team membership —
+        // without this re-sync a persona repaired here (or created in an environment that
+        // already has required documents, where the creation-path sync ran pre-consent)
+        // stays out of Volunteers until the nightly SystemTeamSyncJob. Skipped when the
+        // restore failed: the user would still be suspended, and a single-user sync also
+        // REMOVES ineligible members.
+        if ((submittedAny || wasSuspended) && restore.Success)
+        {
+            await systemTeamSync.SyncMembershipForUserAsync(userId, SystemTeamType.Volunteers);
+        }
     }
 
     /// <summary>

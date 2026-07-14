@@ -3,7 +3,7 @@
 **Date:** 2026-05-25
 **Section:** Finance
 **Status:** Design — approved in brainstorm, pending spec review
-**Supersedes:** `docs/superpowers/specs/2026-04-26-holded-read-integration-design.md` (purchase-doc pull + `{group-slug}-{category-slug}` dash-split tag matching). That scheme is dead-on-arrival because Holded strips tag separators; this spec replaces it.
+**Supersedes:** the 2026-04-26 holded-read-integration spec (historical, since removed — current invariants live in `docs/sections/Finance.md`); it proposed purchase-doc pull + `{group-slug}-{category-slug}` dash-split tag matching. That scheme is dead-on-arrival because Holded strips tag separators; this spec replaces it.
 
 This is a **two-remote / v1-only** integration. Everything below was verified against the **live production Holded account on 2026-05-25** (read-only probes; no writes).
 
@@ -136,4 +136,4 @@ with the member's **proof-of-payment screenshot attached to that entry** (fallba
 ## 7. Docs to update on implementation
 
 - `docs/sections/Finance.md` — replace the "Planned" section (currently the dead dash-split design) with this one.
-- Mark `docs/superpowers/specs/2026-04-26-holded-read-integration-design.md` superseded.
+- Mark the 2026-04-26 holded-read-integration spec superseded. (Done — spec since removed; invariants live in `docs/sections/Finance.md`.)

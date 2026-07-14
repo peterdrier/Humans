@@ -1,16 +1,18 @@
 # Controller Architecture Audit
 
-Living document. Last updated: 2026-06-24 (freshness-sweep regeneration).
+Living document. Last updated: 2026-07-14 (freshness-sweep regeneration).
 
 ## Part 1: Action Name Audit
 
 ### Summary
-- Controllers audited: 87 (excludes 4 base classes: `ApiControllerBase`, `HumansControllerBase`, `HumansTeamControllerBase`, `HumansCampControllerBase`)
+- Controllers audited: 89 (excludes 4 base classes: `ApiControllerBase`, `HumansControllerBase`, `HumansTeamControllerBase`, `HumansCampControllerBase`)
 - Purposes and suggestions preserved from prior audit where the (method, verb) pair still exists; new actions default to a name-derived purpose and `OK`.
 
 `docs/architecture/conventions.md` §"Action Naming" codifies the heuristics: `Index` is for listings, no redundant controller-name prefixes, no bare plural-noun collisions, no generic verbs (`View`/`Show`/`Process`/`Handle`), and conventional form-handler verbs (`Create`/`Edit`/`Delete`/`Confirm`/`Cancel`).
 
-This regeneration (2026-06-12) records two action-surface changes. `EventsController.ToggleCampFavourite` (route `/Events/Barrio/{slug}/Favourite/{eventId:guid}`) was renamed to `ToggleCardFavourite` (route `/Events/Card/Favourite/{eventId:guid}`) and decoupled from the barrio slug — the heart now works from any host page (camp detail, profile events card) by bouncing via `returnUrl` (introduced in #925; missed by the 2026-06-10 sweep). `ExpensesController` gained `SepaReopen` (`POST /Expenses/{id:guid}/Sepa/Reopen`) — reopens a SepaSent expense report back to Approved for inclusion in a new SEPA batch (#982). All other controllers carry forward from the 2026-06-10 regeneration unchanged.
+This regeneration (2026-07-14) records the Gate section arriving plus a batch of smaller surface changes. Two new controllers: **`GateController`** (`/Gate`) — the admissions terminal that decides entry and writes durable `gate_scan_events` (distinct from the read-only Scanner section; scan attribution via claim/PIN session, supervisor-PIN overrides) — and **`GateVendorBackfillAdminController`** (`/Gate/Admin/VendorCheckInBackfill`) — a temp admin page recovering gate admits never mirrored to TicketTailor. Additions elsewhere: `DebugController` gained `HttpErrors`, `Timings`, and `Translations`; `EventsModerationController` gained the admin in-place `Edit`/`Update` pair (`/Events/Moderate/{eventId:guid}/Edit`, any state, status preserved); `FinanceController` gained the Holded creditor surface (`Creditors`, `CreditorStatement`, `BindCreditor`); `GoogleController` gained `RequeueOutboxEvent`, `RequeueAllFailedOutboxEvents`, and `RerunGoogleSync`; `ShiftDashboardController` gained `PostEventStats`; `TeamAdminController` gained `EarlyEntry/LookupTicket`. Removals/renames: `EventsController` lost its server-rendered favourite toggles (`ToggleFavourite`, `Unfavourite`, `ToggleCardFavourite`) — favourites now go through `EventsApiController`'s JSON endpoints, which accept an optional per-day parameter; `ExpensesController` lost `SepaReopen`/`SepaGenerate` (SEPA batch generation removed from the Expenses surface); `SurveyAdminController`'s invitation POST method is now `SendInvites` (kept on the `Send` route/action-name via `[ActionName]`).
+
+The previous regeneration (2026-06-12) recorded two action-surface changes. `EventsController.ToggleCampFavourite` (route `/Events/Barrio/{slug}/Favourite/{eventId:guid}`) was renamed to `ToggleCardFavourite` (route `/Events/Card/Favourite/{eventId:guid}`) and decoupled from the barrio slug — the heart now works from any host page (camp detail, profile events card) by bouncing via `returnUrl` (introduced in #925; missed by the 2026-06-10 sweep). `ExpensesController` gained `SepaReopen` (`POST /Expenses/{id:guid}/Sepa/Reopen`) — reopens a SepaSent expense report back to Approved for inclusion in a new SEPA batch (#982). All other controllers carry forward from the 2026-06-10 regeneration unchanged.
 
 The changes captured in the 2026-06-07 sweep — now all stable in the tables below — were: the account-merge consolidation (#899: deleted `AdminMergeController` / `AdminDuplicateAccountsController`, new `UsersAdminAccountMergesController` at `/Users/Admin/AccountMerges`), the legacy-`/Admin` route relocations (#901: `AdminController` reduced to its dashboard `Index`, debug pages onto `DebugController` and the new `UsersAdminDebugController`), the Profile-section retirement (#881: per-human admin surface onto `UsersAdminController`, account-status wall + cancel-deletion onto the new `UserController`), and the read-only Shift Summary by Camp on `ShiftsController` (#898: `Summary` / `SummaryTeam` / `SummaryRota`, with the old `SignUp` / `SignUpRange` form actions replaced by `ToggleDay`).
 
@@ -294,6 +296,7 @@ The changes captured in the 2026-06-07 sweep — now all stable in the tables be
 | Method | Route | Verb | Purpose | Suggestion |
 |--------|-------|------|---------|------------|
 | Logs | /Debug/Logs | GET | View in-memory logs | OK |
+| HttpErrors | /Debug/HttpErrors | GET | View recent HTTP error responses (per-status breakdown) | OK |
 | Maintenance | /Debug/Maintenance | GET | Maintenance | OK |
 | Configuration | /Debug/Configuration | GET | View configuration status | OK |
 | DbVersion | /Debug/DbVersion | GET | Database migration info (anonymous) | OK |
@@ -303,7 +306,9 @@ The changes captured in the 2026-06-07 sweep — now all stable in the tables be
 | CacheStats | /Debug/CacheStats | GET | Cache hit/miss statistics | OK |
 | ResetCacheStats | /Debug/CacheStats/Reset | POST | Reset cache statistics | OK |
 | ClientStats | /Debug/ClientStats | GET | Debug page returning client request/UA stats | OK |
+| Timings | /Debug/Timings | GET | Operation timing stats (count/avg/min/max per operation, plus swallowed-exception counts) | OK |
 | FormatGallery | /Debug/FormatGallery | GET | Developer reference page for the date/time formatting home (`DateFormattingExtensions` output samples) | OK |
+| Translations | /Debug/Translations | GET | Translation gallery — localized resource strings rendered for review | OK |
 
 ## DevLoginController
 
@@ -377,8 +382,8 @@ The changes captured in the 2026-06-07 sweep — now all stable in the tables be
 | GetPreferences | /api/events/preferences | GET | Get preferences | OK |
 | UpdatePreferences | /api/events/preferences | PUT | Update preferences | OK |
 | GetFavourites | /api/events/favourites | GET | Get favourites | OK |
-| AddFavourite | /api/events/favourites/{eventId:guid} | POST | Add favourite | OK |
-| RemoveFavourite | /api/events/favourites/{eventId:guid} | DELETE | Remove favourite | OK |
+| AddFavourite | /api/events/favourites/{eventId:guid} | POST | Add favourite (whole event, or one occurrence via optional `day`) | OK |
+| RemoveFavourite | /api/events/favourites/{eventId:guid} | DELETE | Remove favourite (whole event, or one occurrence via optional `day`) | OK |
 
 ## EventsController
 
@@ -392,9 +397,6 @@ The changes captured in the 2026-06-07 sweep — now all stable in the tables be
 | Withdraw | /Events/Submit/{eventId:guid}/Withdraw | POST | Withdraw an event submission | OK |
 | Schedule | /Events/Schedule | GET | Personal event schedule | OK |
 | Browse | /Events/Browse | GET | Browse the event programme | OK |
-| ToggleFavourite | /Events/Browse/Favourite/{eventId:guid} | POST | Toggle favourite from Browse | OK |
-| Unfavourite | /Events/Schedule/Unfavourite/{eventId:guid} | POST | Remove a favourite from Schedule | OK |
-| ToggleCardFavourite | /Events/Card/Favourite/{eventId:guid} | POST | Toggle whole-event favourite from a camp-detail or profile events card; bounces back via `returnUrl` | OK |
 | BarrioSubmit | /Events/Barrio/{slug}/Submit | GET | Barrio event submission form | OK |
 | BarrioCreate | /Events/Barrio/{slug}/Submit | POST | Submit a barrio event | OK |
 | BarrioEdit | /Events/Barrio/{slug}/{eventId:guid}/Edit | GET | Edit barrio event form | OK |
@@ -426,6 +428,8 @@ The changes captured in the 2026-06-07 sweep — now all stable in the tables be
 | Reject | /Events/Moderate/Reject | POST | Reject an event | OK |
 | Withdraw | /Events/Moderate/Withdraw | POST | Withdraw a submitted event (moderator) | OK |
 | RequestEdit | /Events/Moderate/RequestEdit | POST | Request edits from submitter | OK |
+| Edit | /Events/Moderate/{eventId:guid}/Edit | GET | Admin in-place edit form (any event, any state, status preserved) | OK |
+| Update | /Events/Moderate/{eventId:guid}/Edit | POST | Save admin in-place edits | OK |
 
 ## ExpensesController
 
@@ -455,8 +459,6 @@ The changes captured in the 2026-06-07 sweep — now all stable in the tables be
 | Review | /Expenses/Review | GET | Finance review queue | OK |
 | Approve | /Expenses/{id:guid}/Approve | POST | Approve an expense | OK |
 | Reject | /Expenses/{id:guid}/Reject | POST | Reject an expense | OK |
-| SepaReopen | /Expenses/{id:guid}/Sepa/Reopen | POST | Reopen a SepaSent report to Approved for inclusion in a new SEPA batch | OK |
-| SepaGenerate | /Expenses/Sepa/Generate | POST | Generate SEPA payment file | OK |
 
 ## FeedbackApiController
 
@@ -512,7 +514,40 @@ The changes captured in the 2026-06-07 sweep — now all stable in the tables be
 | HoldedAccounts | /Finance/HoldedAccounts | GET | Holded creditor account provisioning view | OK |
 | ProvisionHoldedAccounts | /Finance/HoldedAccounts/Provision | POST | Provision creditor accounts in Holded | OK |
 | HoldedUnmatched | /Finance/HoldedUnmatched | GET | List unmatched Holded creditor entries | OK |
+| Creditors | /Finance/Creditors | GET | Holded creditor accounts list (balances, member bindings) | OK |
+| CreditorStatement | /Finance/Creditors/{accountNum:int} | GET | Per-creditor ledger statement | OK |
+| BindCreditor | /Finance/Creditors/Bind | POST | Bind a member to a Holded creditor account | OK |
 | RunHoldedSync | /Finance/HoldedSync/Run | POST | Trigger Holded sync (expense actuals) | OK |
+
+## GateController
+
+Gate admissions terminal — decides entry and writes the durable `gate_scan_events` record (distinct from the read-only Scanner section). Read actions ride the shared `ScannerAccess` policy; the write action (`Decision`) requires the dedicated `GateAdmit` policy. Scans are attributed to the claimed staffer's session; too-early / child-without-ID admits need the shared supervisor override PIN (server-verified, brute-force throttled).
+
+| Method | Route | Verb | Purpose | Suggestion |
+|--------|-------|------|---------|------------|
+| Index | /Gate | GET | Gate terminal scan page | OK |
+| Evaluate | /Gate/Evaluate | GET | Evaluate a scanned barcode; returns the verdict-card partial | OK |
+| Decision | /Gate/Decision | POST | Record the admit decision (supervisor-PIN overrides; mirrors vendor check-in) | → `Decide` ? (noun action name; `TicketTransferAdminController` uses the verb `Decide` for the same shape) |
+| Claim | /Gate/Claim | GET | "Who is scanning?" claim page (gate-shift roster quick-pick + search) | OK |
+| Claim | /Gate/Claim | POST | Select a staffer to claim the terminal; hands off to the PIN keypad | OK |
+| ClaimPin | /Gate/ClaimPin | POST | Set or verify the staffer's gate PIN and stamp the scanner session | OK |
+| EndShift | /Gate/EndShift | POST | Clear scanner attribution (end the claimed session) | OK |
+| Search | /Gate/Search | GET | Name-only people search for the claim screen (masked-email disambiguator) | OK |
+| Leaderboard | /Gate/Leaderboard | GET | Gate scan leaderboard | OK |
+| Admin | /Gate/Admin | GET | Gate settings page | OK |
+| Admin | /Gate/Admin | POST | Save gate settings | OK |
+| SetStaffPin | /Gate/Admin/SetPin | POST | Set a staffer's gate PIN (admin) | OK |
+| ResetStaffPin | /Gate/Admin/ResetPin | POST | Clear a staffer's gate PIN (admin) | OK |
+
+## GateVendorBackfillAdminController
+
+One-off vendor check-in backfill (temp page, remove after use) — recovers gate admits that were never mirrored to TicketTailor while `Gate:VendorMirrorEnabled` was unset.
+
+| Method | Route | Verb | Purpose | Suggestion |
+|--------|-------|------|---------|------------|
+| Index | /Gate/Admin/VendorCheckInBackfill | GET | Diff of local admits vs vendor check-in status (pending vs sent-awaiting-sync) | OK |
+| RunOne | /Gate/Admin/VendorCheckInBackfill/RunOne | POST | Send one test check-in to the vendor before the bulk run | OK |
+| Run | /Gate/Admin/VendorCheckInBackfill/Run | POST | Enqueue vendor check-ins for the whole pending set | OK |
 
 ## GoogleController
 
@@ -541,6 +576,9 @@ The changes captured in the 2026-06-07 sweep — now all stable in the tables be
 | ResetPasswordAndGenerate2Fa | /Google/Accounts/ResetPasswordAndGenerate2Fa | POST | Reset password and generate 2FA | OK |
 | LinkAccount | /Google/Accounts/Link | POST | Link workspace email to a human | OK |
 | SyncOutbox | /Google/SyncOutbox | GET | View Google sync outbox events | OK |
+| RequeueOutboxEvent | /Google/SyncOutbox/{id:guid}/Requeue | POST | Requeue a single failed sync outbox event | OK |
+| RequeueAllFailedOutboxEvents | /Google/SyncOutbox/RequeueAll | POST | Requeue all failed sync outbox events | OK |
+| RerunGoogleSync | /Google/Human/{id:guid}/RerunSync | POST | Re-run Google sync for a human | OK |
 | CheckEmailRenames | /Google/CheckEmailRenames | POST | Detect renamed Workspace emails | OK |
 | EmailRenames | /Google/EmailRenames | GET | View detected email renames | OK |
 | EmailFlagViolations | /Google/EmailFlagViolations | GET | Email flag violations | OK |
@@ -841,6 +879,7 @@ The changes captured in the 2026-06-07 sweep — now all stable in the tables be
 | Method | Route | Verb | Purpose | Suggestion |
 |--------|-------|------|---------|------------|
 | Index | /Shifts/Dashboard | GET | Cross-department shift dashboard | OK |
+| PostEventStats | /Shifts/Dashboard/PostEventStats | GET | Post-event shift statistics report | OK |
 | SearchVolunteers | /Shifts/Dashboard/SearchVolunteers | GET | Search volunteers for a shift (JSON) | OK |
 | Voluntell | /Shifts/Dashboard/Voluntell | POST | Assign volunteer from dashboard | OK |
 
@@ -913,7 +952,7 @@ The changes captured in the 2026-06-07 sweep — now all stable in the tables be
 | Open | /Survey/Admin/Open/{id:guid} | POST | Open a survey for responses | OK |
 | Close | /Survey/Admin/Close/{id:guid} | POST | Close a survey | OK |
 | Send | /Survey/Admin/Send/{id:guid} | GET | Send invitations preview page | OK |
-| Send | /Survey/Admin/Send/{id:guid} | POST | Dispatch invitations to the survey audience | OK |
+| SendInvites | /Survey/Admin/Send/{id:guid} | POST | Dispatch invitations to the survey audience (`[ActionName(Send)]` keeps the GET/POST pair on one route) | OK |
 | Results | /Survey/Admin/Results/{id:guid} | GET | Survey results and aggregates page | OK |
 | ExportCsv | /Survey/Admin/Results/{id:guid}/Export.csv | GET | Download survey responses as CSV | OK |
 | ExportJson | /Survey/Admin/Results/{id:guid}/Export.json | GET | Download survey responses as JSON | OK |
@@ -973,6 +1012,7 @@ The changes captured in the 2026-06-07 sweep — now all stable in the tables be
 | AddEarlyEntry | /Teams/{slug}/EarlyEntry/Add | POST | Grant early entry to a member | OK |
 | EditEarlyEntry | /Teams/{slug}/EarlyEntry/Edit | POST | Edit an early-entry grant | OK |
 | RemoveEarlyEntry | /Teams/{slug}/EarlyEntry/Remove | POST | Revoke an early-entry grant | OK |
+| LookupTicket | /Teams/{slug}/EarlyEntry/LookupTicket | GET | Look up a current-event attendee by ticket barcode for the early-entry grant form | OK |
 | SearchMembersForRole | /Teams/{slug}/Roles/SearchMembers | GET | Search members for role assignment (JSON) | OK |
 
 ## TeamController
@@ -1160,6 +1200,7 @@ ViewComponents don't have routes — they are invoked from views via `@await Com
 | EmailController | `EmailOutbox` / `RetryEmailOutboxMessage` / `DiscardEmailOutboxMessage` / `EmailPreview` | `Outbox` / `RetryOutboxMessage` / `DiscardOutboxMessage` / `Preview` | The `Email` prefix duplicates the controller name |
 | ProfileController | `Privacy` | `DataPrivacy` ? | Avoids overlap with `HomeController.Privacy` (site policy vs user GDPR page) |
 | UnsubscribeController | `Index` | `Landing` ? | This isn't a list page — it's a token-specific landing/redirect |
+| GateController | `Decision` | `Decide` ? | Noun action name; `TicketTransferAdminController` uses the verb `Decide` for the same approve/deny-POST shape |
 
 **Note:** Items marked with `?` are suggestions where the rename benefit is marginal — worth discussing but not critical.
 

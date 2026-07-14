@@ -49,6 +49,7 @@ graph LR
     classDef systemsettings fill:#71717a,color:#fff
     classDef surveys fill:#0ea5e9,color:#fff
     classDef icalfeed fill:#38bdf8,color:#000
+    classDef gate fill:#b45309,color:#fff
     classDef crosscut fill:#334155,color:#fff
 
     %% ── Cross-cutting services (hub) ──
@@ -159,6 +160,7 @@ graph LR
 
     EventSvc[EventService]:::events
     EarlyEntry[EarlyEntryService]:::earlyentry
+    Gate[GateService]:::gate
     Agent[AgentService]:::agent
     Survey[SurveyService]:::surveys
     SysSettings[SystemSettingsService]:::systemsettings
@@ -502,6 +504,19 @@ graph LR
     %% Implemented by: EventService (favourited approved events) + ShiftSignupService (signed-up shifts).
     ICalFeed --> User
 
+    %% ── Gate (admissions, #1066) ──
+    %% GateService evaluates gate scans against admission rules using cross-section
+    %% reads (Tickets via ITicketServiceRead, EarlyEntry, BurnSettings), resolves the
+    %% current gate roster via ShiftMgmt, verifies supervisor-override roles via Role,
+    %% and records decisions to its own gate_scan_events table + the audit log.
+    Gate --> TicketQ
+    Gate --> EarlyEntry
+    Gate --> BurnSettings
+    Gate --> ShiftMgmt
+    Gate --> Role
+    Gate --> User
+    Gate --> Audit
+
     ExpenseReport --> Budget
     ExpenseReport --> Team
     ExpenseReport --> User
@@ -564,12 +579,11 @@ graph LR
     %% dashed arrows pop visually against eager solid arrows. The first lazy
     %% edge in this diagram is the (N+1)-th link after the eager arrows
     %% above; recompute the index range whenever edges are added or removed.
-    %% Eager count: 278 eager links, indices 0..277. (Net +3 vs prior sweep's 275:
-    %% +Issues → NotifInbox (IssuesService now injects INotificationInboxService);
-    %% +Onboard → Consent (OnboardingService injects IConsentServiceRead);
-    %% +Onboard → HumanLifecycle (OnboardingService injects IHumanLifecycleService).)
-    %% The 19 lazy edges are indices 278..296.
-    linkStyle 278,279,280,281,282,283,284,285,286,287,288,289,290,291,292,293,294,295,296 stroke:#f97316,stroke-width:2.5px
+    %% Eager count: 285 eager links, indices 0..284. (Net +7 vs prior sweep's 278:
+    %% +Gate → TicketQ / EarlyEntry / BurnSettings / ShiftMgmt / Role / User / Audit —
+    %% the new Gate (admissions) section landed in #1066.)
+    %% The 19 lazy edges are indices 285..303.
+    linkStyle 285,286,287,288,289,290,291,292,293,294,295,296,297,298,299,300,301,302,303 stroke:#f97316,stroke-width:2.5px
 ```
 
 ## Cycles broken by lazy-resolution
@@ -600,14 +614,14 @@ Threshold: services with >= 3 incoming edges (eager + lazy combined). Counts are
 
 | Service | Eager dependents | Lazy dependents | Notes |
 |---------|-----------------:|----------------:|-------|
-| `UserService` | 56 | 2 | By far the largest fan-in after the cross-section read-write split — almost every section reads users through `IUserServiceRead`. **No outbound edges** except a single eager `IAdminAuthorizationService` (PR #314 made User otherwise foundational; the old User↔* cycles were resolved by extracting deletion-cascade orchestration into `AccountDeletionService`, and Team→User is now one-way lazy). `ICalFeedService` added as a new eager consumer (token-validation path). |
-| `AuditLogService` | 35 | 0 | Cross-cutting — every write-path service logs audit events. No-op alternative: audit decorator (rejected; audit is in-service per §7a). Inbound count includes `AuditViewerService` (read+render layer) and the `UserEmailProviderBackfillService` leaf. `DriveActivityMonitorService` now logs via `IAuditLogService.LogAsync` (eager edge) — its prior direct-ctx-write was resolved by #889 deleting the drive-monitor repo. |
-| `TeamService` | 27 | 2 | Second-largest section fan-in. Read consumers go through `ITeamServiceRead`. Expose efficient batch methods (`GetByIdsAsync`/`GetByIdsWithParentsAsync`) to avoid N+1 at call sites. |
-| `UserEmailService` | 20 | 0 | Email-identity lookups across the system. Itself lazy-resolves AccountMerge + Tickets to avoid reverse cycles. |
-| `ShiftManagementService` | 16 | 0 | Shift hub. Lazy-resolves Team/Role/Tickets/User/Camp itself to break cycles (Camp added in #898 for Shift-Summary-by-Camp). Recent eager consumers: `Cantina`, `VolTrackExport`, `UserParticipationBackfill`, `OnboardingWidgetState`. |
-| `IEmailService` | 12 | 1 | Abstract over OutboxEmailService (impl) + SMTP send. |
-| `RoleAssignmentService` | 9 | 3 | Auth hub. Lazy half of the Team / ShiftManagement / TeamResource cycles. |
-| `CampService` | 7 | 2 | Read consumers via `ICampServiceRead`; lazy-in from its own section's `CampRoleService` construction cycle, plus a new lazy `ICampServiceRead` resolve from `ShiftManagementService` (#898 Shift-Summary-by-Camp). |
+| `UserService` | 59 | 2 | By far the largest fan-in after the cross-section read-write split — almost every section reads users through `IUserServiceRead`. **No outbound edges** except a single eager `IAdminAuthorizationService` (PR #314 made User otherwise foundational; the old User↔* cycles were resolved by extracting deletion-cascade orchestration into `AccountDeletionService`, and Team→User is now one-way lazy). `GateService` added as a new eager consumer (#1066). |
+| `AuditLogService` | 36 | 0 | Cross-cutting — every write-path service logs audit events. No-op alternative: audit decorator (rejected; audit is in-service per §7a). Inbound count includes `AuditViewerService` (read+render layer) and the `UserEmailProviderBackfillService` leaf. `DriveActivityMonitorService` now logs via `IAuditLogService.LogAsync` (eager edge) — its prior direct-ctx-write was resolved by #889 deleting the drive-monitor repo. |
+| `TeamService` | 28 | 2 | Second-largest section fan-in. Read consumers go through `ITeamServiceRead`. Expose efficient batch methods (`GetByIdsAsync`/`GetByIdsWithParentsAsync`) to avoid N+1 at call sites. |
+| `UserEmailService` | 21 | 0 | Email-identity lookups across the system. Itself lazy-resolves AccountMerge + Tickets to avoid reverse cycles. |
+| `ShiftManagementService` | 16 | 0 | Shift hub. Lazy-resolves Team/Role/Tickets/User/Camp itself to break cycles (Camp added in #898 for Shift-Summary-by-Camp). Recent eager consumers: `Cantina`, `VolTrackExport`, `UserParticipationBackfill`, `OnboardingWidgetState`, `GateService` (current gate-roster lookups, #1066). |
+| `IEmailService` | 14 | 1 | Abstract over OutboxEmailService (impl) + SMTP send. |
+| `RoleAssignmentService` | 10 | 3 | Auth hub. Lazy half of the Team / ShiftManagement / TeamResource cycles. `GateService` added as an eager consumer (supervisor-override role checks, #1066). |
+| `CampService` | 7 | 1 | Read consumers via `ICampServiceRead`; lazy-in from `ShiftManagementService`'s `ICampServiceRead` resolve (#898 Shift-Summary-by-Camp). CampService itself lazy-resolves `CampRoleService` (outbound) to break the intra-section construction cycle. |
 | `NotificationEmitter` | 15 | 0 | Lower-level enqueue surface — the high-fan-in notification node. Injected (`INotificationEmitter`) by Team, Camp, CampContact, CampRole, Role, ShiftSign, AppDec, LegalSync, Campaign, EmailProv, Onboard, HumanLifecycle, Feedback, Issues, and `NotificationService` itself (which wraps the emitter). Only `AccountMergeService` takes the full `INotificationService` instead. |
 | `CommunicationPreferenceService` | 6 | 0 | Consent + unsubscribe gating for any outbound message. |
 | `HumansMetricsService` | 4 | 0 | Invoked from Application services that emit counter events (ConsentService, HumanLifecycleService, AppDec, OutboxEmail). OnboardingService dropped its `IHumansMetrics` dependency in #881. Scheduled for push-model inversion in #580. |
@@ -618,7 +632,9 @@ Threshold: services with >= 3 incoming edges (eager + lazy combined). Counts are
 | `AdminAuthorizationService` | 4 | 0 | Admin-gate guard injected by User/Team/ShiftMgmt/ShiftSign. Reads `IRoleAssignmentRepository` + `ICurrentUserContext` only — zero outbound service edges. |
 | `LegalDocumentSyncService` | 3 | 0 | Required-docs snapshot for Membership + Consent + AdminLegal. |
 | `NotificationInboxService` | 3 | 0 | In-app inbox read/write; injected by Consent, HumanLifecycle, and IssuesService (added this sweep). |
-| `TicketQueryService` | 3 | 2 | `ITicketServiceRead` — read by Dash, AcctDel, and now `TicketingBudgetService` (which reads paid orders via the read interface after the #815 budget-repo removal). Lazy-in from ShiftMgmt + UEmail cycles. |
+| `TicketQueryService` | 5 | 2 | `ITicketServiceRead` — read by Dash, AcctDel, Survey, `TicketingBudgetService` (paid orders via the read interface after the #815 budget-repo removal), and now `GateService` (barcode → attendee lookup, #1066). Lazy-in from ShiftMgmt + UEmail cycles. |
+| `ShiftViewService` (`IShiftView`) | 5 | 0 | Read-only shift-view projection (repo-only adapter, zero outbound service edges). Injected by Dash, AdminDash, OnboardWidget, Survey, Workload; also fanned into the Mailer audiences (per-audience deps, not drawn). |
+| `BurnSettingsService` | 3 | 0 | Burn-event settings (repo-only adapter). Crossed the threshold this sweep: ShiftSign, EventSvc, and now `GateService` (gate-open cutoff, #1066). |
 
 Below the >= 3 threshold but tracked for narrative continuity:
 
@@ -646,7 +662,8 @@ Below the >= 3 threshold but tracked for narrative continuity:
 - **#894** — Camps compliance role-staffing matrix: the redesign moved into `CampComplianceController` plus supporting read types (`CampDirectoryRoleSummary`) and trimmed `CampRoleService` (the old `CampRoleComplianceReport` DTO was deleted). No service→service edges changed — `CampRoleService`/`CampService` ctor dependencies are unchanged (`CampRole → Camp/User/UEmail/NotifEmitter/Audit`, `Camp -. lazy .-> CampRole`).
 - **#899** — Account-merge consolidation moved Profiles → Users: `AccountMergeService` and `DuplicateAccountService` relocated from `Application/Services/Profiles` to `Application/Services/Users` (now `:::users` in the diagram). Edges are otherwise stable except `DuplicateAccountService` dropped its `IAuditLogService` dependency (`DupAcct → Audit` removed); it now injects only `IUserService`/`ITeamService`/`IRoleAssignmentService`. `AccountMergeService` keeps `Merge → User/Role/Notif/Audit` and remains the sole consumer of the full `INotificationService`. The `UEmail -. lazy .-> Merge` reparenting edge is unchanged.
 - **#881** — HumanLifecycle/Consent/Onboarding wiring: `ConsentService` now eagerly injects `IHumanLifecycleService` for consent-suspension restore (new eager `Consent → HumanLifecycle` edge). `OnboardingService` dropped `IHumansMetrics` (eager `Onboard → Metrics` removed; Metrics fan-in 5 → 4) and gained `IConsentServiceRead` + `IHumanLifecycleService` dependencies (new eager `Onboard → Consent` and `Onboard → HumanLifecycle` edges added in the current sweep — these were present in code but missing from the prior diagram). `UserStateClassifier` (added in #881) is a domain helper, not a service — no node. `HumanLifecycleService` ctor unchanged (`HumanLifecycle → User/NotifEmitter/NotifInbox/Audit/Metrics`).
-- **#898** — Shift Summary by Camp (read-only): `ShiftManagementService` gained summary methods that lazy-resolve `ICampServiceRead` via `IServiceProvider` (new dashed `ShiftMgmt -. lazy .-> Camp` edge; CampService lazy-in 1 → 2). The ctor is unchanged — no new eager edges.
+- **#898** — Shift Summary by Camp (read-only): `ShiftManagementService` gained summary methods that lazy-resolve `ICampServiceRead` via `IServiceProvider` (new dashed `ShiftMgmt -. lazy .-> Camp` edge). The ctor is unchanged — no new eager edges.
+- **#1066** — Gate (admissions) section landed: `GateService` (Application/Services/Gate) evaluates gate scans (barcode → admission decision) against `GateAdmissionRules` using cross-section reads — `ITicketServiceRead` (current-event attendee lookup), `IEarlyEntryService` (early-entry eligibility), `IBurnSettingsService` (gate-open cutoff), `IShiftManagementService` (current gate-roster shifts), `IRoleAssignmentService` (supervisor-override role verification), `IUserService` — and records decisions to its own `gate_scan_events` table (`IGateRepository`) plus the audit log. Seven new eager edges; zero inbound service edges. It also registers `IUserMerge` and `IUserDataContributor` fan-out implementations (account-merge and GDPR-export participation without new edges).
 - New thin sections since the previous sweep: **Cantina** (`CantinaRosterService` reads ShiftMgmt + User), **EarlyEntry** (`EarlyEntryService` fans an `IEnumerable<IEarlyEntryProvider>` — no eager service edges), **Workload** (`WorkloadService` reads Team + User via ShiftView), **RotaCoordinatorMessage/VolunteerTrackingExport** (new Shifts services; `GeneralAvailabilityService` was later deleted in #820), **SystemSettings** (`SystemSettingsService` — see #889 above). None take dependencies beyond existing service interfaces.
 - **ICalFeed section** (`ICalFeedService` — iCal personal feed): orchestrator that fans `IEnumerable<ICalendarFeedContributor>` into one VCALENDAR. Implemented contributors: `EventService` (favourited approved events, with recurrence expansion) and `ShiftSignupService` (signed-up shifts). The fan-out interface pattern means `ICalFeedService` has no direct eager edges to those services — only `ICalFeedService → User` (token validation via `IUserServiceRead`). Same pattern as `EarlyEntryService`.
 - **GoogleTranslationService** (GoogleIntegration section): thin connector facade over `IGoogleTranslationClient` (Infrastructure). No service→service outbound edges. Consumed by `SurveyService` for translation pre-fill (`Survey → GTrans`).

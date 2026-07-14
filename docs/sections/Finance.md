@@ -178,6 +178,8 @@ All routes are gated by `[Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]` 
 - Only `FinanceAdmin` or `Admin` may access any `/Finance/*` route (`[Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]` on `FinanceController`).
 - All budget mutations in `FinanceController` route through `IBudgetService` — the controller owns no Finance-domain tables beyond the Holded integration.
 - The sync job pulls all purchase docs from Holded each cycle (full-pull). Upsert is keyed on `HoldedDocId`; `CreatedAt` is preserved across re-syncs.
+<!-- wheat: docs/superpowers/specs/2026-04-26-holded-read-integration-design.md §Holded API findings -->
+- Full-pull is forced by a Holded API limitation (live probe, 2026-04-26): the purchase-documents endpoint's only date filters (`?starttmp`/`?endtmp`) filter on `accountingDate`, which is null on most real purchase docs, so there is no reliable incremental-sync key for purchase documents. `ListPurchaseDocumentsPageAsync` therefore takes only `page`/`limit`. (The dailyledger endpoint is different — its `starttmp`/`endtmp` window sweep works and is used by the creditor-ledger sync.)
 - Attribution runs every sync. Fixing an account mapping or tag in Holded takes effect on next sync or via the manual "Sync Now" button.
 - Attribution order: **Account** (booked line account id) → **Tag** (normalized, dash-free) → **Unmatched**. First match wins.
 - Tags are normalized: lowercase, all non-alphanumeric characters stripped (Holded strips separators like dashes from tag values).

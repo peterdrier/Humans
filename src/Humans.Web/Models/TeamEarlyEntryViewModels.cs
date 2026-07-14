@@ -9,7 +9,8 @@ namespace Humans.Web.Models;
 /// has its own page; multiple teams may have early entry enabled at once. The page
 /// lists this team's grants and offers add/edit/remove. <see cref="LocalDate"/> on
 /// rows is display-only; form POSTs use the string fields on the input models below
-/// — there is no MVC LocalDate binder.
+/// — a legacy workaround (NodaTime <c>LocalDate</c> binds fine from form input via
+/// its TypeConverter; NodaTime ≥ 3.1).
 /// </summary>
 public sealed class TeamEarlyEntryPageViewModel
 {
@@ -32,7 +33,8 @@ public sealed class TeamEarlyEntryRowViewModel
 
 /// <summary>Add-grant form input. The target team is resolved from the route slug,
 /// so no team field is bound. EntryDate is a string (yyyy-MM-dd) parsed in the
-/// controller via LocalDatePattern.Iso — LocalDate does not bind from form POST.
+/// controller via LocalDatePattern.Iso — a legacy workaround kept for its explicit
+/// validation (LocalDate itself binds fine from form POST via its TypeConverter).
 /// The empty-GUID guard for UserId lives at the service boundary.</summary>
 public sealed class AddTeamEarlyEntryInput
 {

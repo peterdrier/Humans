@@ -1,3 +1,14 @@
+<!-- freshness:triggers
+  docs/sections/*.md
+  src/Humans.Web/Controllers/**
+  src/Humans.Application/Services/**
+  src/Humans.Infrastructure/Repositories/**
+  src/Humans.Infrastructure/Data/Configurations/**
+-->
+<!-- freshness:flag-on-change
+  Code-derived section map — the controllers/orchestrators/services/repositories/tables rows must match code (code is authoritative), and the section list must match docs/sections/ directory contents. Regenerate when sections move or new controllers/services/repos/tables land.
+-->
+
 # Sections Index — Controllers / Orchestrators / Services / Repositories / Tables
 
 A code-derived map of every section to the concrete classes that implement it. Use it to answer "which controller/service/repository/table belongs to section X" at a glance, and to spot drift (a controller with no owning section, a service with no repository, a table owned by two repos).

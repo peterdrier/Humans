@@ -1,3 +1,17 @@
+<!-- freshness:triggers
+  src/Humans.Application/Services/Profiles/PersonSearchMatcher.cs
+  src/Humans.Application/Services/Profiles/PersonSearchFields.cs
+  src/Humans.Infrastructure/Services/Users/CachingUserService.cs
+  src/Humans.Web/Controllers/SearchController.cs
+  src/Humans.Web/Controllers/ProfileApiController.cs
+  src/Humans.Web/Controllers/TeamAdminController.cs
+  src/Humans.Web/Controllers/ShiftAdminController.cs
+  src/Humans.Web/Controllers/ShiftDashboardController.cs
+-->
+<!-- freshness:flag-on-change
+  Search scope authorization model (LegalName/Admin gating, never-searchable fields) and matcher semantics (resolved name, accent folding, token split). Review when the matcher, PersonSearchFields, or search endpoints change — especially the §Follow-up per-window scope flip landing.
+-->
+
 # User search overhaul — match all profile info, exclude board/private
 
 **Status:** in progress. This PR lands the matcher + wiring; the per-window legal-name

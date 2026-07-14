@@ -49,7 +49,7 @@
 - `src/Humans.Infrastructure/Data/HumansDbContext.cs` — add three `DbSet`s.
 - `src/Humans.Web/Controllers/FinanceController.cs` — add Holded routes + actuals on the budget view.
 - `src/Humans.Web/Extensions/Sections/HoldedSectionExtensions.cs` (or the Finance section extension) — register repo, service, job.
-- `docs/sections/Finance.md`, `docs/superpowers/specs/2026-04-26-holded-read-integration-design.md` — doc updates.
+- `docs/sections/Finance.md`, the 2026-04-26 holded-read-integration spec (historical, since removed — current invariants live in `docs/sections/Finance.md`) — doc updates.
 
 ---
 
@@ -955,7 +955,7 @@ git commit -m "test(finance): architecture pins (no EF, no cross-section repos)"
 ## Task 13: Docs
 
 **Files:**
-- Modify: `docs/sections/Finance.md`, `docs/superpowers/specs/2026-04-26-holded-read-integration-design.md`
+- Modify: `docs/sections/Finance.md`, the 2026-04-26 holded-read-integration spec (historical, since removed)
 
 - [ ] **Step 1:** In `Finance.md`, replace the "Planned" Holded section (the dead `{group-slug}-{category-slug}` dash-split design + `HoldedTransaction`/`MatchStatus` 6-value model) with the shipped design: `holded_expense_docs` / `holded_category_map` / `holded_sync_states`, A-account/B-tag/bucket matching, the `/Finance/HoldedAccounts` + `/Finance/HoldedUnmatched` routes, and flip the Architecture status from (C) Pre-migration to (A). Add `FinanceArchitectureTests` to the "what exists" list.
 
@@ -964,7 +964,7 @@ git commit -m "test(finance): architecture pins (no EF, no cross-section repos)"
 - [ ] **Step 3: Commit**
 
 ```bash
-git add docs/sections/Finance.md docs/superpowers/specs/2026-04-26-holded-read-integration-design.md
+git add docs/sections/Finance.md
 git commit -m "docs(finance): update Finance.md to shipped Holded design; mark old spec superseded"
 ```
 
