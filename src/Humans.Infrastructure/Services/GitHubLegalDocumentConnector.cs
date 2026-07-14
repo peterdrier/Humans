@@ -84,6 +84,10 @@ public sealed partial class GitHubLegalDocumentConnector : IGitHubLegalDocumentC
         {
             _logger.LogWarning("Folder not found in GitHub: {FolderPath}", folderPath);
         }
+        catch (ApiException ex)
+        {
+            throw new GitHubApiException(ex.StatusCode, ex);
+        }
 
         return languageFiles;
     }
@@ -115,6 +119,10 @@ public sealed partial class GitHubLegalDocumentConnector : IGitHubLegalDocumentC
         catch (NotFoundException)
         {
             return null;
+        }
+        catch (ApiException ex)
+        {
+            throw new GitHubApiException(ex.StatusCode, ex);
         }
     }
 

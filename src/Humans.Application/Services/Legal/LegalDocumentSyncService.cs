@@ -37,6 +37,15 @@ public sealed class LegalDocumentSyncService(
                     updatedDocuments.Add(document);
                 }
             }
+            catch (GitHubApiException ex)
+            {
+                // Transient GitHub outage — the next scheduled run self-heals. Log without
+                // the exception object so GitHub's HTML error page stays out of the logs
+                // (nobodies-collective/Humans#927).
+                logger.LogWarning(
+                    "Transient GitHub error syncing document {DocumentName} ({DocumentId}): {StatusCode}, will retry next run",
+                    document.Name, document.Id, ex.StatusCode);
+            }
             catch (Exception ex)
             {
                 logger.LogError(ex, "Error syncing document {DocumentName} ({DocumentId})",
