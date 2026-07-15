@@ -235,6 +235,36 @@ plpgsql immutability triggers exist only as raw SQL in the old chain. That is a 
 to solve *then* (e.g. EF `Sql` in that section's baseline with explicit authorization, or moving
 enforcement into the model). Explicitly out of scope now; recorded so it isn't silently lost.
 
+### 5.1 Second audit class discovered during peel 3: scaffolded physical column defaults
+
+**Found the hard way** (Gate peel, 2026-07-15): the content audit above only covered
+`Sql`/`InsertData`/`UpdateData`/`DeleteData`. A second class silently diverges fresh-baseline
+schema from old-chain schema: **`AddColumn` with a scaffolded `defaultValue:`**. When EF adds a
+non-nullable column to an existing table it emits `DEFAULT <clr-default>` so existing rows can be
+backfilled — and never drops the default. The physical default persists in every old-chain DB, but
+the model (correctly, per `memory/feedback_ef_sentinel`) declares no default, so a model-generated
+baseline omits it. The schema-equivalence test (§7.2.iii) catches exactly this.
+
+Authoritative physical audit (information_schema of a chain-built DB vs the model snapshot),
+all nine candidate sections:
+
+| Section | Physical default | In model? | Verdict |
+|---------|-----------------|-----------|---------|
+| Gate | `gate_staff_pins.AdminEnrolled DEFAULT false` (from `20260701005052_AddGateStaffPinAdminEnrolled`) | **no** | **DEFERRED** |
+| Store | `store_orders.Year DEFAULT 0` | **no** | **DEFERRED** |
+| Expenses | `expense_lines.LineType DEFAULT 'Receipt'` | yes (`HasDefaultValue`) | clean |
+| Surveys | 7 jsonb `DEFAULT '{}'` columns | yes (`HasDefaultValueSql`) | clean |
+| SystemSettings, Containers, Agent, Finance, EventGuide | none | n/a | clean |
+
+**Gate and Store are deferred out of this run.** Options for unblocking them (Peter's call — all
+were rejected as in-run improvisations): (a) a realignment `AlterColumn` migration on
+`HumansDbContext` dropping the stray physical default (model is source of truth; EF cannot
+auto-generate it because model==snapshot already — it would need a deliberate, explicitly-authorized
+schema change); (b) declaring the default in the model — forbidden for the bool
+(`HasDefaultValue(false)` sentinel trap), merely wrong-direction for `Year`; (c) weakening the
+equivalence check to ignore defaults — rejected, it guards the guarantee that makes real-up
+baselines trustworthy.
+
 ## 6. Cross-section FK constraint inventory
 
 All 62 cross-section constraints (list in §10) have **both endpoints in the main pile** after the
@@ -284,14 +314,14 @@ Order (criteria: navs = 0 for all, so ranked by table count, then seeds/PK quirk
 | # | Branch | Section | Tables | Notes |
 |---|--------|---------|--------|-------|
 | 1 | `858/01-systemsettings` | SystemSettings | 1 | Carries the shared mechanism (helper + hosted-service loop + `AddSectionDbContext` + analyzer generalization + ratchet scan fix + CI loop). Smallest possible section: 1 table, 0 FKs, 1 `HasData` row, 1 repo |
-| 2 | `858/02-containers` | Containers | 2 | 1 intra FK |
-| 3 | `858/03-gate` | Gate | 3 | partial unique index (model-declared) |
-| 4 | `858/04-agent` | Agent | 3 | `HasData`, identity int PK, scoped-context repo |
-| 5 | `858/05-expenses` | Expenses | 4 | dead data-op disposition (§5) |
-| 6 | `858/06-finance` | Finance | 5 | `HasData`, identity int PK |
-| 7 | `858/07-store` | Store | 6 | Stripe webhook integration tests exercise it |
-| 8 | `858/08-surveys` | Surveys | 6 | owned/JSON survey config |
-| 9 | `858/09-eventguide` | EventGuide | 7 | `HasData` (11 seed rows) |
+| 2 | `858/02-containers` | Containers | 2 | intra-section only |
+| 3 | `858/03-agent` | Agent | 3 | `HasData`, identity int PK, scoped-context repo |
+| 4 | `858/04-expenses` | Expenses | 4 | dead data-op disposition (§5); `LineType` default is model-declared |
+| 5 | `858/05-finance` | Finance | 5 | `HasData`, identity int PK |
+| 6 | `858/06-surveys` | Surveys | 6 | owned/JSON survey config; jsonb defaults model-declared |
+| 7 | `858/07-eventguide` | EventGuide | 7 | `HasData` (11 seed rows) |
+| — | *(deferred)* | Gate | 3 | **§5.1 wall**: `AdminEnrolled` physical default not in model |
+| — | *(deferred)* | Store | 6 | **§5.1 wall**: `Year` physical default not in model |
 
 Each peel PR (branch `858/NN-<section>` off the previous branch; PR base = previous branch):
 
@@ -414,3 +444,8 @@ rollback scenario involves data.
    `dotnet test` anyway); I prefer both since Layer 2 is the explicit from-scratch gate.
 4. **`AuditLogEntry → GoogleResource` nav** (§10) — flagging that the horizontal AuditLog section
    holds a model-level reference into a vertical section; want a drain issue opened for it now?
+5. **Gate/Store realignment (§5.1)** — to unblock their peels, my recommendation is a deliberate,
+   explicitly-authorized `AlterColumn` migration on `HumansDbContext` dropping the two stray
+   physical defaults (`gate_staff_pins.AdminEnrolled`, `store_orders.Year`) so the DB matches the
+   model, soaked through QA→prod before the peels. EF tooling cannot generate it (model and
+   snapshot already agree), so it needs your sign-off on the mechanism as well as the change.

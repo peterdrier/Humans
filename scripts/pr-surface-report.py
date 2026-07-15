@@ -50,8 +50,25 @@ def is_real_migration_file(path: str) -> bool:
         path.startswith(MIGRATIONS_PREFIX)
         and name.endswith(".cs")
         and not name.endswith(".Designer.cs")
-        and name != "HumansDbContextModelSnapshot.cs"
+        and not name.endswith("ModelSnapshot.cs")
     )
+
+
+def max_migrations_per_context(migration_files: list[str]) -> int:
+    """Max real migrations in any one migration directory.
+
+    Since the per-section DbContext split (nobodies-collective/Humans#858) each
+    context owns its own chain in its own directory (Migrations/ for
+    HumansDbContext, Migrations/<Section>/ for a peeled section). The
+    one-migration-per-PR rule applies per chain: a peel PR legitimately carries
+    one snapshot-only migration on the main chain plus one baseline in the new
+    section's directory.
+    """
+    per_dir: dict[str, int] = {}
+    for path in migration_files:
+        directory = str(Path(normalize(path)).parent)
+        per_dir[directory] = per_dir.get(directory, 0) + 1
+    return max(per_dir.values(), default=0)
 
 
 def parse_name_status(base: str, head: str) -> tuple[list[str], list[str], list[str]]:
@@ -302,8 +319,12 @@ def build_markdown(
         if rows
         else "### Diff Size\n\nNo line changes detected."
     )
-    migration_status = "OK" if len(migration_files) <= 1 else "BLOCK"
-    summary = f"{len(changed_files)} changed file(s) | EF migrations: {len(migration_files)}/1"
+    max_per_context = max_migrations_per_context(migration_files)
+    migration_status = "OK" if max_per_context <= 1 else "BLOCK"
+    summary = (
+        f"{len(changed_files)} changed file(s) | EF migrations: "
+        f"{len(migration_files)} file(s), max {max_per_context}/1 per context"
+    )
 
     compared_line = f"Compared `{short_ref(base_label)}`...`{short_ref(head_label)}`."
     if reforge_version:
@@ -387,7 +408,7 @@ def main() -> int:
                 "added_files": added_files,
                 "changed_files": changed_files,
                 "migration_files": migration_files,
-                "migration_count": len(migration_files),
+                "migration_count": max_migrations_per_context(migration_files),
                 "reforge": {
                     "version": args.reforge_version,
                     "base": base_score,
