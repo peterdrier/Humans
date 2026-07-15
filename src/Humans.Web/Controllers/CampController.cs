@@ -40,11 +40,14 @@ public class CampController(
     [HttpGet("")]
     public async Task<IActionResult> Index(CampFilterViewModel? filters, CancellationToken ct = default)
     {
-        // Scanners stuff garbage into the bool filter params; rendering with an invalid
-        // ModelState makes the checkbox tag helper throw (nobodies-collective/Humans#926).
+        // Scanners stuff garbage into the bool filter params; rendering with the failed
+        // attempted values still in ModelState makes the checkbox tag helper throw
+        // (nobodies-collective/Humans#926). Drop them and render with whatever bound
+        // successfully, so stale shared links (e.g. an outdated ?Vibe= value) degrade
+        // gracefully instead of erroring.
         if (!ModelState.IsValid)
         {
-            return BadRequest();
+            ModelState.Clear();
         }
 
         var user = await GetCurrentUserInfoAsync(ct);
