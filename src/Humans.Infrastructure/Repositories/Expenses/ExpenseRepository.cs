@@ -8,7 +8,7 @@ using NodaTime;
 
 namespace Humans.Infrastructure.Repositories.Expenses;
 
-internal sealed class ExpenseRepository(IDbContextFactory<HumansDbContext> factory)
+internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> factory)
     : IExpenseRepository
 {
     public async Task<ExpenseReportDto?> GetByIdAsync(Guid id, CancellationToken ct = default)
