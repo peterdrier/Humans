@@ -49,13 +49,61 @@ public static class InfrastructureServiceCollectionExtensions
         return services;
     }
 
-    private static void ConfigureNpgsql(IServiceProvider sp, DbContextOptionsBuilder options)
+    /// <summary>
+    /// Registers a per-section DbContext (nobodies-collective/Humans#858): scoped context +
+    /// singleton factory with the same Npgsql options and interceptors as
+    /// <see cref="HumansDbContext"/>, a section-specific
+    /// <c>__EFMigrationsHistory_&lt;Section&gt;</c> table, and the
+    /// <see cref="SectionDbContextRegistration"/> consumed by
+    /// <see cref="DatabaseMigrationHostedService"/> to run
+    /// <see cref="SectionMigrationRunner"/> at startup.
+    /// </summary>
+    /// <param name="sentinelTable">See <see cref="SectionDbContextRegistration.SentinelTable"/>.</param>
+    internal static IServiceCollection AddSectionDbContext<TContext>(
+        this IServiceCollection services,
+        string sentinelTable)
+        where TContext : DbContext
+    {
+        // AgentDbContext -> __EFMigrationsHistory_Agent
+        var historyTable = "__EFMigrationsHistory_" +
+            typeof(TContext).Name.Replace("DbContext", "", StringComparison.Ordinal);
+
+        services.AddDbContext<TContext>((sp, options) =>
+        {
+            ConfigureNpgsql(sp, options, historyTable);
+            options.AddInterceptors(sp.GetRequiredService<QueryMonitoringInterceptor>());
+            options.AddInterceptors(sp.GetRequiredService<UserInfoSaveChangesInterceptor>());
+            options.AddInterceptors(sp.GetRequiredService<LegalDocumentSaveChangesInterceptor>());
+            options.ConfigureWarnings(w => w.Ignore(CoreEventId.FirstWithoutOrderByAndFilterWarning));
+        }, optionsLifetime: ServiceLifetime.Singleton);
+
+        services.AddDbContextFactory<TContext>((sp, options) =>
+        {
+            ConfigureNpgsql(sp, options, historyTable);
+            options.AddInterceptors(sp.GetRequiredService<UserInfoSaveChangesInterceptor>());
+            options.AddInterceptors(sp.GetRequiredService<LegalDocumentSaveChangesInterceptor>());
+            options.ConfigureWarnings(w => w.Ignore(CoreEventId.FirstWithoutOrderByAndFilterWarning));
+        });
+
+        services.AddSingleton(new SectionDbContextRegistration(typeof(TContext), sentinelTable));
+
+        return services;
+    }
+
+    private static void ConfigureNpgsql(
+        IServiceProvider sp,
+        DbContextOptionsBuilder options,
+        string? migrationsHistoryTable = null)
     {
         options.UseNpgsql(sp.GetRequiredService<NpgsqlDataSource>(), npgsqlOptions =>
         {
             npgsqlOptions.UseNodaTime();
             npgsqlOptions.MigrationsAssembly("Humans.Infrastructure");
             npgsqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
+            if (migrationsHistoryTable is not null)
+            {
+                npgsqlOptions.MigrationsHistoryTable(migrationsHistoryTable);
+            }
         });
     }
 

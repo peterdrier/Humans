@@ -9,8 +9,15 @@ namespace Humans.Infrastructure.Hosting;
 /// <summary>
 /// Applies pending EF migrations in <c>StartingAsync</c>, before cache warmup
 /// and other hosted services read tables that may not exist yet.
+/// <c>HumansDbContext</c> migrates first (its historical chain provisions the
+/// whole schema on fresh databases), then each per-section context registered
+/// via <c>AddSectionDbContext</c> runs through <see cref="SectionMigrationRunner"/>
+/// (nobodies-collective/Humans#858).
 /// </summary>
-internal sealed class DatabaseMigrationHostedService(IServiceScopeFactory scopeFactory, ILoggerFactory loggerFactory)
+internal sealed class DatabaseMigrationHostedService(
+    IServiceScopeFactory scopeFactory,
+    ILoggerFactory loggerFactory,
+    IEnumerable<SectionDbContextRegistration> sectionContexts)
     : IHostedLifecycleService
 {
     private readonly ILogger _logger = loggerFactory.CreateLogger("DatabaseMigration");
@@ -21,6 +28,12 @@ internal sealed class DatabaseMigrationHostedService(IServiceScopeFactory scopeF
         var dbContext = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
         var dbName = dbContext.Database.GetDbConnection().Database;
         await MigrateAsync(dbContext, dbName, cancellationToken);
+
+        foreach (var section in sectionContexts)
+        {
+            var sectionContext = (DbContext)scope.ServiceProvider.GetRequiredService(section.ContextType);
+            await SectionMigrationRunner.MigrateAsync(sectionContext, section.SentinelTable, _logger, cancellationToken);
+        }
     }
 
     public Task StartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
