@@ -214,7 +214,9 @@ public class AgentServiceTests
         dispatcher.DispatchAsync(Arg.Any<AnthropicToolCall>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(ci => new AnthropicToolResult(
                 ci.Arg<AnthropicToolCall>().Id, "guide content", IsError: false));
-        var (svc, client) = await BuildService(s => s.Enabled = true, toolDispatcher: dispatcher);
+        var rateLimitStore = new AgentRateLimitStore();
+        var (svc, client) = await BuildService(s => s.Enabled = true,
+            rateLimitStore: rateLimitStore, toolDispatcher: dispatcher);
 
         // Iteration 1: the model burns the whole tool budget (MaxToolCallsPerTurn = 3).
         client.EnqueueTurn(
@@ -222,12 +224,12 @@ public class AgentServiceTests
             new AgentTurnToken(null, new AnthropicToolCall("t1", "fetch_section_guide", """{"section":"teams"}"""), null),
             new AgentTurnToken(null, new AnthropicToolCall("t2", "fetch_section_guide", """{"section":"camps"}"""), null),
             new AgentTurnToken(null, new AnthropicToolCall("t3", "fetch_community_faq", "{}"), null),
-            new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "claude-sonnet-4-6", "tool_use")));
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(100, 20, 5, 3, "claude-sonnet-4-6", "tool_use")));
 
         // Iteration 2: the synthesis call (tools withheld) answers from the fetched results.
         client.EnqueueTurn(
             new AgentTurnToken("Teams are groups of volunteers; see the Teams page.", null, null),
-            new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "claude-sonnet-4-6", "end_turn")));
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(40, 30, 7, 2, "claude-sonnet-4-6", "end_turn")));
 
         var tokens = new List<AgentTurnToken>();
         await foreach (var t in svc.AskAsync(
@@ -241,7 +243,8 @@ public class AgentServiceTests
         streamedText.Should().Contain("Teams are groups of volunteers",
             "hitting the cap must still end in an answer synthesized from the tool results, not just the preamble");
 
-        tokens.Last().Finalizer!.StopReason.Should().Be("end_turn",
+        var finalizer = tokens.Last().Finalizer!;
+        finalizer.StopReason.Should().Be("end_turn",
             "the synthesis call ends the turn normally");
 
         await dispatcher.Received(3).DispatchAsync(
@@ -249,6 +252,24 @@ public class AgentServiceTests
 
         client.LastRequest!.DisallowToolUse.Should().BeTrue(
             "the final synthesis call must withhold tool use so the model answers in text");
+
+        // Token accounting must cover BOTH provider requests (tool-use + synthesis),
+        // not just the last one — otherwise the tool-use request's tokens escape
+        // admin spend and DailyTokenCap accounting.
+        finalizer.InputTokens.Should().Be(140);
+        finalizer.OutputTokens.Should().Be(50);
+        finalizer.CacheReadTokens.Should().Be(12);
+        finalizer.CacheCreationTokens.Should().Be(5);
+
+        var transcript = await svc.GetConversationForUserAsync(
+            userId, finalizer.ConversationId, Xunit.TestContext.Current.CancellationToken);
+        var assistantMessage = transcript!.Messages.Single(m => m.Role == AgentRole.Assistant);
+        assistantMessage.PromptTokens.Should().Be(140);
+        assistantMessage.OutputTokens.Should().Be(50);
+        assistantMessage.CachedTokens.Should().Be(12);
+
+        rateLimitStore.Get(userId, new LocalDate(2026, 4, 21), hour: 12).TokensToday.Should().Be(190,
+            "the daily token cap must count prompt+output tokens from every request in the turn");
     }
 
     private static async Task<Guid> StartConversation(

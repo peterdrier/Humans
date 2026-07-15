@@ -145,6 +145,14 @@ public sealed class AgentService : IAgentService
         var toolCallCount = 0;
         AgentIssueProposal? issueProposal = null;
         AgentTurnFinalizer? finalFinalizer = null;
+        // Each loop iteration is a separate provider request with its own usage.
+        // Accumulate across all of them — recording only the last finalizer would
+        // drop tool-loop (and cap-hit synthesis) requests from admin spend and
+        // the DailyTokenCap accounting.
+        var promptTokensTotal = 0;
+        var outputTokensTotal = 0;
+        var cacheReadTokensTotal = 0;
+        var cacheCreationTokensTotal = 0;
         // Wall-clock turn duration (streaming + tool loop) for the admin status latency panel.
         var turnStart = _clock.GetCurrentInstant();
 
@@ -176,6 +184,10 @@ public sealed class AgentService : IAgentService
                 else if (token.Finalizer is { } f)
                 {
                     finalFinalizer = f;
+                    promptTokensTotal += f.InputTokens;
+                    outputTokensTotal += f.OutputTokens;
+                    cacheReadTokensTotal += f.CacheReadTokens;
+                    cacheCreationTokensTotal += f.CacheCreationTokens;
                 }
             }
 
@@ -242,9 +254,9 @@ public sealed class AgentService : IAgentService
             Role = AgentRole.Assistant,
             Content = assistantBuffer.ToString(),
             CreatedAt = turnEnd,
-            PromptTokens = finalFinalizer?.InputTokens ?? 0,
-            OutputTokens = finalFinalizer?.OutputTokens ?? 0,
-            CachedTokens = finalFinalizer?.CacheReadTokens ?? 0,
+            PromptTokens = promptTokensTotal,
+            OutputTokens = outputTokensTotal,
+            CachedTokens = cacheReadTokensTotal,
             Model = settings.Model,
             DurationMs = durationMs,
             FetchedDocs = fetchedDocs.ToArray(),
@@ -256,8 +268,17 @@ public sealed class AgentService : IAgentService
         _rateLimit.Record(request.UserId, today, hour, messagesDelta: 1, tokensDelta: totalTokens);
 
         var fallbackFinalizer = finalFinalizer ?? new AgentTurnFinalizer(0, 0, 0, 0, _settings.Current.Model, "unknown");
-        // Stamp the conversation id so the client can reuse it on the next send.
-        yield return new AgentTurnToken(null, null, fallbackFinalizer with { ConversationId = conversation.Id });
+        // Stamp the conversation id so the client can reuse it on the next send, and
+        // the turn-wide token sums so the finalizer reflects the whole turn, not just
+        // the last provider request. Other fields (stop reason, model) stay from the last one.
+        yield return new AgentTurnToken(null, null, fallbackFinalizer with
+        {
+            ConversationId = conversation.Id,
+            InputTokens = promptTokensTotal,
+            OutputTokens = outputTokensTotal,
+            CacheReadTokens = cacheReadTokensTotal,
+            CacheCreationTokens = cacheCreationTokensTotal
+        });
     }
 
     /// <summary>How many prior user/assistant turns to replay (bounded for context budget).</summary>
