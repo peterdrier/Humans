@@ -1010,7 +1010,12 @@ public class StoreService(
         // Reprice Open orders to the live catalog, exactly like the order page
         // (MapOrderAsync) — summing raw snapshots here made summary totals drift
         // from order totals whenever a catalog price changed after lines were added.
-        var currentPrices = await LoadCurrentPricesAsync(ct);
+        // Priced from the requested year's products (already loaded above), not the
+        // active event's catalog — historical summaries must not reprice against a
+        // later year's prices.
+        var currentPrices = products.ToDictionary(
+            p => p.Id,
+            p => new BalanceCalculator.ProductPrice(p.UnitPriceEur, p.VatRatePercent, p.DepositAmountEur));
         var totalsByOrder = campOrdersInYear
             .Concat(teamOrders)
             .ToDictionary(o => o.Id, o => BalanceCalculator.Compute(o, currentPrices));
