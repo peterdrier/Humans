@@ -1,4 +1,5 @@
 using Humans.Application;
+using Humans.Application.Constants;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Enums;
@@ -59,7 +60,7 @@ public class AgentApiController : ControllerBase
             LastMessageAt = conv.LastMessageAt.ToDateTimeUtc(),
             conv.MessageCount,
             RefusalCount = conv.Messages.Count(m => m.RefusalReason is not null),
-            HandoffCount = conv.Messages.Count(m => m.HandedOffToFeedbackId is not null),
+            HandoffCount = conv.Messages.Count(IsHandoff),
             Messages = conv.Messages.OrderBy(m => m.CreatedAt).Select(ToMessageDto)
         });
     }
@@ -104,10 +105,20 @@ public class AgentApiController : ControllerBase
             LastMessageAt = c.LastMessageAt.ToDateTimeUtc(),
             c.MessageCount,
             RefusalCount = c.Messages.Count(m => m.RefusalReason is not null),
-            HandoffCount = c.Messages.Count(m => m.HandedOffToFeedbackId is not null),
+            HandoffCount = c.Messages.Count(IsHandoff),
             LastUserMessagePreview = preview
         };
     }
+
+    /// <summary>
+    /// Handoff = legacy server-side FeedbackReport link, or a successful
+    /// route_to_issue recorded in FetchedDocs at save time (the propose-only flow
+    /// never sets HandedOffToFeedbackId — nobodies-collective/Humans#931).
+    /// Mirrors the handoffsOnly filter in AgentRepository.
+    /// </summary>
+    private static bool IsHandoff(AgentMessageSnapshot m) =>
+        m.HandedOffToFeedbackId is not null
+        || m.FetchedDocs.Contains(AgentToolNames.RouteToIssue, StringComparer.Ordinal);
 
     private static object ToMessageDto(AgentMessageSnapshot m) => new
     {

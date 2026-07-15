@@ -318,7 +318,7 @@ public class ShiftsController(
         }
         catch (InvalidOperationException ex)
         {
-            logger.LogWarning(ex, "Failed to bail shift range {SignupBlockId} for user {UserId}", signupBlockId, user.Id);
+            logger.LogWarning("Failed to bail shift range {SignupBlockId} for user {UserId}: {Reason}", signupBlockId, user.Id, ex.Message);
             SetError(ex.Message);
         }
 
@@ -371,6 +371,21 @@ public class ShiftsController(
         };
 
         var teamIds = ShiftSignupBucketer.GetTeamIds(signups);
+
+        // After early-entry close, the bail lock is per-team: the service gate
+        // (ShiftSignupService.BailAsync/BailRangeAsync) only exempts users who can
+        // approve signups for the signup's own department, so the UI mirrors that
+        // via the same CanApproveSignupsAsync check — once per distinct team, not per row.
+        var bailLockedTeamIds = new HashSet<Guid>();
+        if (es is not null && es.IsEarlyEntryClosed(now))
+        {
+            foreach (var teamId in teamIds)
+            {
+                if (!await shiftMgmt.CanApproveSignupsAsync(user.Id, teamId))
+                    bailLockedTeamIds.Add(teamId);
+            }
+        }
+
         IReadOnlyDictionary<Guid, string> mineTeamNames = new Dictionary<Guid, string>();
         if (teamIds.Count > 0)
         {
@@ -384,6 +399,10 @@ public class ShiftsController(
                 "Skipping shift signup {SignupId} for user {UserId} because related shift data was missing",
                 signup.Id,
                 user.Id));
+
+        foreach (var item in buckets.Upcoming.Concat(buckets.Pending))
+            item.BailLocked = item.Signup.Shift.IsEarlyEntry &&
+                              bailLockedTeamIds.Contains(item.Signup.Shift.Rota.TeamId);
 
         model.Upcoming = buckets.Upcoming;
         model.Pending = buckets.Pending;

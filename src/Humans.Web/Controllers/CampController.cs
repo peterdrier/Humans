@@ -40,6 +40,16 @@ public class CampController(
     [HttpGet("")]
     public async Task<IActionResult> Index(CampFilterViewModel? filters, CancellationToken ct = default)
     {
+        // Scanners stuff garbage into the bool filter params; rendering with the failed
+        // attempted values still in ModelState makes the checkbox tag helper throw
+        // (nobodies-collective/Humans#926). Drop them and render with whatever bound
+        // successfully, so stale shared links (e.g. an outdated ?Vibe= value) degrade
+        // gracefully instead of erroring.
+        if (!ModelState.IsValid)
+        {
+            ModelState.Clear();
+        }
+
         var user = await GetCurrentUserInfoAsync(ct);
         var settings = await _campService.GetSettingsAsync(ct);
         var year = settings.PublicYear;
@@ -53,36 +63,12 @@ public class CampController(
             ? new HashSet<Guid>()
             : camps.Where(camp => camp.IsLead(user.Id)).Select(camp => camp.Id).ToHashSet();
 
-        var directoryCards = camps
-            .Select(camp => new { Camp = camp, Season = camp.GetSeasonForYear(year) })
-            .Where(row => row.Season is { Status: CampSeasonStatus.Active or CampSeasonStatus.Full })
-            .Select(row => MapCampCard(row.Camp, row.Season!, roleSummaries));
-        if (filters?.Vibe.HasValue == true)
-        {
-            directoryCards = directoryCards.Where(card => card.Vibes.Contains(filters.Vibe.Value));
-        }
-
-        if (filters?.SoundZone.HasValue == true)
-        {
-            directoryCards = directoryCards.Where(card => card.SoundZone == filters.SoundZone.Value);
-        }
-
-        if (filters?.KidsFriendly == true)
-        {
-            directoryCards = directoryCards.Where(card => card.KidsWelcome == YesNoMaybe.Yes);
-        }
-
-        if (filters?.AcceptingMembers == true)
-        {
-            directoryCards = directoryCards.Where(card => card.AcceptingMembers == YesNoMaybe.Yes);
-        }
-
-        if (!string.IsNullOrWhiteSpace(filters?.Search))
-        {
-            var q = filters.Search.Trim();
-            directoryCards = directoryCards.Where(card =>
-                card.Name.Contains(q, StringComparison.OrdinalIgnoreCase));
-        }
+        var directoryCards = ApplyDirectoryFilters(
+            camps
+                .Select(camp => new { Camp = camp, Season = camp.GetSeasonForYear(year) })
+                .Where(row => row.Season is { Status: CampSeasonStatus.Active or CampSeasonStatus.Full })
+                .Select(row => MapCampCard(row.Camp, row.Season!, roleSummaries)),
+            filters);
 
         var cards = directoryCards
             .OrderBy(card => leadCampIds.Contains(card.Id) ? 0 : 1)
@@ -116,6 +102,40 @@ public class CampController(
         };
 
         return View(viewModel);
+    }
+
+    private static IEnumerable<CampCardViewModel> ApplyDirectoryFilters(
+        IEnumerable<CampCardViewModel> cards,
+        CampFilterViewModel? filters)
+    {
+        if (filters?.Vibe.HasValue == true)
+        {
+            cards = cards.Where(card => card.Vibes.Contains(filters.Vibe.Value));
+        }
+
+        if (filters?.SoundZone.HasValue == true)
+        {
+            cards = cards.Where(card => card.SoundZone == filters.SoundZone.Value);
+        }
+
+        if (filters?.KidsFriendly == true)
+        {
+            cards = cards.Where(card => card.KidsWelcome == YesNoMaybe.Yes);
+        }
+
+        if (filters?.AcceptingMembers == true)
+        {
+            cards = cards.Where(card => card.AcceptingMembers == YesNoMaybe.Yes);
+        }
+
+        if (!string.IsNullOrWhiteSpace(filters?.Search))
+        {
+            var q = filters.Search.Trim();
+            cards = cards.Where(card =>
+                card.Name.Contains(q, StringComparison.OrdinalIgnoreCase));
+        }
+
+        return cards;
     }
 
     private static CampCardViewModel MapCampCard(

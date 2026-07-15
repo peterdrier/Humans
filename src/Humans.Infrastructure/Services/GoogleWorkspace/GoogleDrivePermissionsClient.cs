@@ -164,7 +164,9 @@ public sealed class GoogleDrivePermissionsClient(
         }
         catch (Google.GoogleApiException ex)
         {
-            logger.LogWarning(ex,
+            // Debug only — GoogleWorkspaceSyncService logs the failure with
+            // resource/role context (nobodies-collective/Humans#893).
+            logger.LogDebug(ex,
                 "Google API error granting {Role} to {Email} on {FileId}: Code={Code} Message={Message}",
                 role, userEmail, fileId, ex.Error?.Code, ex.Error?.Message);
             return new DrivePermissionMutationResult(
@@ -189,7 +191,9 @@ public sealed class GoogleDrivePermissionsClient(
         }
         catch (Google.GoogleApiException ex)
         {
-            logger.LogWarning(ex,
+            // Debug only — GoogleWorkspaceSyncService logs the failure with
+            // resource context (nobodies-collective/Humans#893).
+            logger.LogDebug(ex,
                 "Google API error deleting permission {PermissionId} on {FileId}: Code={Code} Message={Message}",
                 permissionId, fileId, ex.Error?.Code, ex.Error?.Message);
             return new GoogleClientError(ex.Error?.Code ?? 0, ex.Error?.Message);

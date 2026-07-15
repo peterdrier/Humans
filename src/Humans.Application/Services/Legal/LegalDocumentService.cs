@@ -50,6 +50,14 @@ public sealed class LegalDocumentService(
             cache.Set(cacheKey, content, CacheTtl);
             return content;
         }
+        catch (GitHubApiException ex)
+        {
+            // Status code only — the inner Octokit exception can carry GitHub's HTML error body.
+            logger.LogWarning("GitHub API error fetching legal document {Slug}: {StatusCode}", slug, ex.StatusCode);
+            var emptyContent = new Dictionary<string, string>(StringComparer.Ordinal);
+            cache.Set(cacheKey, emptyContent, FailureCacheTtl);
+            return emptyContent;
+        }
         catch (Exception ex)
         {
             logger.LogWarning(ex, "Failed to fetch legal document {Slug} from GitHub", slug);

@@ -58,6 +58,27 @@ public class CampControllerTests
     }
 
     [HumansFact]
+    public async Task Index_InvalidFilterQueryValue_ClearsModelStateAndRendersWithDefaults()
+    {
+        // Regression for nobodies-collective/Humans#926: a scanner payload in a bool
+        // filter param leaves an invalid attempted value in ModelState, which the
+        // checkbox tag helper would throw a FormatException re-converting at render.
+        StubCampReadModel([]);
+        var controller = BuildController();
+        const string garbage = "test\")))EXTRACTVALUE(7966,...)";
+        controller.ModelState.SetModelValue(
+            "ShowLeadPositions", new Microsoft.AspNetCore.Mvc.ModelBinding.ValueProviderResult(garbage));
+        controller.ModelState.AddModelError(
+            "ShowLeadPositions", $"The value '{garbage}' is not valid for ShowLeadPositions.");
+
+        var result = await controller.Index(new CampFilterViewModel(), Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<ViewResult>();
+        controller.ModelState.Should().BeEmpty(
+            "the invalid attempted value must not survive to view rendering");
+    }
+
+    [HumansFact]
     public async Task Index_RoleLeadPendingCamp_AppearsInMyCamps_FromCampInfo()
     {
         var userId = Guid.NewGuid();

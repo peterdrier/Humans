@@ -22,6 +22,14 @@ public sealed class MailerLiteClient(IHttpClientFactory httpFactory, IClock cloc
 {
     public const string HttpClientName = "mailerlite";
     private const string HumansGroupPrefix = "Humans - ";
+    private const int MaxSendAttempts = 3;
+
+    // ML's rate-limit window is 60s; used when a 429 carries no Retry-After header.
+    private static readonly TimeSpan DefaultRetryAfter = TimeSpan.FromSeconds(60);
+
+    // Ceiling on honoring Retry-After (60s window + skew headroom) — a malformed or
+    // far-future header must not block callers for minutes; values above clamp to this.
+    private static readonly TimeSpan MaxRetryAfter = TimeSpan.FromSeconds(90);
 
     private static readonly JsonSerializerOptions Json = BuildJson();
     private readonly TrackedLock _gate = new("MailerLiteClient.Gate");
@@ -246,24 +254,53 @@ public sealed class MailerLiteClient(IHttpClientFactory httpFactory, IClock cloc
     {
         using var _ = logger.TimeOperation(operation: caller);
         var http = httpFactory.CreateClient(HttpClientName);
-        using var req = new HttpRequestMessage(method, url);
-        if (content is not null) req.Content = content;
-        HttpResponseMessage resp;
-        try
+        for (var attempt = 1; ; attempt++)
         {
-            resp = await http.SendAsync(req, ct);
+            using var req = new HttpRequestMessage(method, url);
+            if (content is not null) req.Content = content;
+            HttpResponseMessage resp;
+            try
+            {
+                resp = await http.SendAsync(req, ct);
+            }
+            catch (HttpRequestException ex)
+            {
+                logger.LogError(ex, "MailerLite HTTP call failed: {Method} {Url}", method, url);
+                throw;
+            }
+            catch (TaskCanceledException ex) when (!ct.IsCancellationRequested)
+            {
+                // HttpClient timeout — surfaces as TaskCanceledException with no token cancel.
+                logger.LogError(ex, "MailerLite HTTP call timed out: {Method} {Url}", method, url);
+                throw;
+            }
+            if (resp.StatusCode == HttpStatusCode.TooManyRequests && attempt < MaxSendAttempts)
+            {
+                var retryAfter = resp.Headers.RetryAfter switch
+                {
+                    { Delta: { } delta } => delta,
+                    { Date: { } date } => date - clock.GetCurrentInstant().ToDateTimeOffset(),
+                    _ => DefaultRetryAfter,
+                };
+                if (retryAfter < TimeSpan.Zero) retryAfter = TimeSpan.Zero;
+                if (retryAfter > MaxRetryAfter) retryAfter = MaxRetryAfter;
+                logger.LogWarning(
+                    "MailerLite returned 429; retrying in {Delay:0.#}s (attempt {Attempt}/{MaxAttempts}): {Method} {Url}",
+                    retryAfter.TotalSeconds, attempt, MaxSendAttempts, method, url);
+                resp.Dispose();
+                // Detach the caller-owned content so disposing this request doesn't dispose it.
+                req.Content = null;
+                await Task.Delay(retryAfter, ct);
+                continue;
+            }
+            return await FinishSendAsync(resp, method, url, ct);
         }
-        catch (HttpRequestException ex)
-        {
-            logger.LogError(ex, "MailerLite HTTP call failed: {Method} {Url}", method, url);
-            throw;
-        }
-        catch (TaskCanceledException ex) when (!ct.IsCancellationRequested)
-        {
-            // HttpClient timeout — surfaces as TaskCanceledException with no token cancel.
-            logger.LogError(ex, "MailerLite HTTP call timed out: {Method} {Url}", method, url);
-            throw;
-        }
+    }
+
+    // Post-response bookkeeping: proactive rate-limit backoff + non-2xx warning.
+    private async Task<HttpResponseMessage> FinishSendAsync(
+        HttpResponseMessage resp, HttpMethod method, string url, CancellationToken ct)
+    {
         if (resp.Headers.TryGetValues("X-RateLimit-Remaining", out var values)
             && int.TryParse(values.FirstOrDefault(), CultureInfo.InvariantCulture, out var remaining))
         {

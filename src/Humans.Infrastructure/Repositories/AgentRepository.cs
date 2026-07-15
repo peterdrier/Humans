@@ -1,3 +1,4 @@
+using Humans.Application.Constants;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Models;
 using Humans.Domain.Entities;
@@ -102,14 +103,26 @@ internal sealed class AgentRepository(HumansDbContext db, IClock clock) : IAgent
 
         if (userId is Guid u) q = q.Where(c => c.UserId == u);
         if (refusalsOnly) q = q.Where(c => c.Messages.Any(m => m.RefusalReason != null));
-        if (handoffsOnly) q = q.Where(c => c.Messages.Any(m => m.HandedOffToFeedbackId != null));
 
         // arch:db-sort-ok pagination top-N by LastMessageAt
-        return await q.OrderByDescending(c => c.LastMessageAt)
+        var ordered = q.OrderByDescending(c => c.LastMessageAt)
             // arch:db-sort-ok identity-ordered chronological message stream
-            .Include(c => c.Messages.OrderBy(m => m.CreatedAt))
+            .Include(c => c.Messages.OrderBy(m => m.CreatedAt));
+
+        if (!handoffsOnly)
+            return await ordered.Skip(skip).Take(take).ToListAsync(cancellationToken);
+
+        // Handoff = legacy server-side FeedbackReport link, or a successful
+        // route_to_issue recorded in the jsonb FetchedDocs array (propose-only flow,
+        // nobodies-collective/Humans#931). The FetchedDocs value converter blocks
+        // SQL translation of the array Contains, so materialize first and page in
+        // memory — fine at this scale (see CLAUDE.md scale notes).
+        var all = await ordered.ToListAsync(cancellationToken);
+        return all
+            .Where(c => c.Messages.Any(m => m.HandedOffToFeedbackId != null
+                || m.FetchedDocs.Contains(AgentToolNames.RouteToIssue, StringComparer.Ordinal)))
             .Skip(skip).Take(take)
-            .ToListAsync(cancellationToken);
+            .ToList();
     }
 
     public async Task<int> PurgeConversationsOlderThanAsync(Instant cutoff, CancellationToken cancellationToken)
