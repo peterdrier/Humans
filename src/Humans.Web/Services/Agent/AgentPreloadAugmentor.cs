@@ -11,18 +11,19 @@ public sealed class AgentPreloadAugmentor : IAgentPreloadAugmentor
         var sb = new StringBuilder();
         sb.AppendLine("# Access Matrix");
         sb.AppendLine();
-        sb.AppendLine("Per section: the roles allowed to use each feature. Roles not listed for a feature do not have access.");
+        sb.AppendLine("Per section: the roles that can use each feature; \"(limited)\" marks partial/restricted access. Roles not listed for a feature do not have access.");
         foreach (var section in AccessMatrixDefinitions.Sections.Values)
         {
             sb.AppendLine();
             sb.AppendLine(FormattableString.Invariant($"## {section.SectionName}"));
-            var allowedByFeature = section.Features
+            var rolesByFeature = section.Features
                 .Select(f => (f.Name, Roles: f.RoleAccess
-                    .Where(kv => kv.Value == AccessLevel.Allowed)
-                    .Select(kv => kv.Key)
+                    .Where(kv => kv.Value != AccessLevel.Denied)
+                    .OrderBy(kv => kv.Key, StringComparer.Ordinal)
+                    .Select(kv => kv.Value == AccessLevel.Limited ? kv.Key + " (limited)" : kv.Key)
                     .ToList()))
                 .Where(f => f.Roles.Count > 0);
-            foreach (var group in allowedByFeature.GroupBy(f => string.Join(", ", f.Roles), StringComparer.Ordinal))
+            foreach (var group in rolesByFeature.GroupBy(f => string.Join(", ", f.Roles), StringComparer.Ordinal))
             {
                 sb.AppendLine(FormattableString.Invariant(
                     $"- **{group.Key}** — {string.Join("; ", group.Select(f => f.Name))}"));

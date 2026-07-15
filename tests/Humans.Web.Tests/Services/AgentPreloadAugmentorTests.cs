@@ -60,7 +60,7 @@ public class AgentPreloadAugmentorTests
     }
 
     [HumansFact]
-    public void AccessMatrix_keeps_every_allowed_role_fact_grouped_by_section()
+    public void AccessMatrix_keeps_every_allowed_and_limited_role_fact_grouped_by_section()
     {
         var matrix = new AgentPreloadAugmentor().BuildAccessMatrixMarkdown();
         foreach (var section in AccessMatrixDefinitions.Sections.Values)
@@ -68,16 +68,30 @@ public class AgentPreloadAugmentorTests
             matrix.Should().Contain($"## {section.SectionName}");
             foreach (var feature in section.Features)
             {
-                var allowed = feature.RoleAccess.Where(kv => kv.Value == AccessLevel.Allowed).Select(kv => kv.Key).ToList();
-                if (allowed.Count == 0)
+                var roles = feature.RoleAccess
+                    .Where(kv => kv.Value != AccessLevel.Denied)
+                    .OrderBy(kv => kv.Key, StringComparer.Ordinal)
+                    .Select(kv => kv.Value == AccessLevel.Limited ? kv.Key + " (limited)" : kv.Key)
+                    .ToList();
+                if (roles.Count == 0)
                 {
                     continue;
                 }
                 matrix.Split('\n').Should().Contain(l =>
                     l.StartsWith("- ", StringComparison.Ordinal) &&
-                    l.Contains($"**{string.Join(", ", allowed)}**", StringComparison.Ordinal) &&
+                    l.Contains($"**{string.Join(", ", roles)}**", StringComparison.Ordinal) &&
                     l.Contains(feature.Name, StringComparison.Ordinal));
             }
         }
+    }
+
+    [HumansFact]
+    public void AccessMatrix_collapses_features_sharing_a_role_set_onto_one_line()
+    {
+        var matrix = new AgentPreloadAugmentor().BuildAccessMatrixMarkdown();
+        matrix.Split('\n').Should().Contain(l =>
+            l.Contains("Browse shifts", StringComparison.Ordinal) &&
+            l.Contains("Sign up for shifts", StringComparison.Ordinal) &&
+            l.Contains("My Shifts & availability", StringComparison.Ordinal));
     }
 }
