@@ -107,14 +107,6 @@ internal sealed class HumansDbContext(DbContextOptions<HumansDbContext> options)
     public DbSet<StoreInvoice> StoreInvoices => Set<StoreInvoice>();
     public DbSet<StoreTreasurySyncState> StoreTreasurySyncStates => Set<StoreTreasurySyncState>();
 
-    // Survey section
-    public DbSet<Survey> Surveys => Set<Survey>();
-    public DbSet<SurveyQuestion> SurveyQuestions => Set<SurveyQuestion>();
-    public DbSet<SurveyQuestionOption> SurveyQuestionOptions => Set<SurveyQuestionOption>();
-    public DbSet<SurveyInvitation> SurveyInvitations => Set<SurveyInvitation>();
-    public DbSet<SurveyResponse> SurveyResponses => Set<SurveyResponse>();
-    public DbSet<SurveyAnswer> SurveyAnswers => Set<SurveyAnswer>();
-
     /// <summary>
     /// Configuration namespaces of sections peeled into their own DbContexts
     /// (nobodies-collective/Humans#858). Their tables are no longer part of this
@@ -129,6 +121,7 @@ internal sealed class HumansDbContext(DbContextOptions<HumansDbContext> options)
         typeof(Configurations.Agent.AgentConversationConfiguration).Namespace!,
         typeof(Configurations.Expenses.ExpenseReportConfiguration).Namespace!,
         typeof(Configurations.Finance.HoldedExpenseDocConfiguration).Namespace!,
+        typeof(Configurations.Surveys.SurveyConfiguration).Namespace!,
     ];
 
     protected override void OnModelCreating(ModelBuilder builder)
