@@ -47,8 +47,8 @@ public class AgentConversationRetentionJobTests
         runStore.Snapshot.LastDeletedCount.Should().Be(1);
     }
 
-    private static HumansDbContext InMemoryDb() =>
-        new(new DbContextOptionsBuilder<HumansDbContext>().UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
+    private static AgentDbContext InMemoryDb() =>
+        new(new DbContextOptionsBuilder<AgentDbContext>().UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
 
     private sealed class FakeClock(Instant now) : IClock { public Instant GetCurrentInstant() => now; }
 }

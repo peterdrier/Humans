@@ -50,12 +50,12 @@ public class AgentSettingsServiceTests
         reloaded.DailyMessageCap.Should().Be(60);
     }
 
-    private static HumansDbContext CreateDb()
+    private static AgentDbContext CreateDb()
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
+        var options = new DbContextOptionsBuilder<AgentDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
-        return new HumansDbContext(options);
+        return new AgentDbContext(options);
     }
 
     private sealed class TestClock(Instant now) : IClock

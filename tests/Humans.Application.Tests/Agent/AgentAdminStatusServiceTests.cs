@@ -102,7 +102,7 @@ public class AgentAdminStatusServiceTests
     }
 
     private static AgentAdminStatusService BuildService(
-        HumansDbContext db, IClock clock,
+        AgentDbContext db, IClock clock,
         IAgentSettingsService? settings = null,
         IAgentAnthropicBalanceProvider? balance = null)
     {
@@ -132,7 +132,7 @@ public class AgentAdminStatusServiceTests
         return balance;
     }
 
-    private static AgentConversation SeedConversation(HumansDbContext db, Guid userId, Instant now)
+    private static AgentConversation SeedConversation(AgentDbContext db, Guid userId, Instant now)
     {
         var conv = new AgentConversation
         {
@@ -147,7 +147,7 @@ public class AgentAdminStatusServiceTests
         return conv;
     }
 
-    private static void SeedMessage(HumansDbContext db, Guid conversationId,
+    private static void SeedMessage(AgentDbContext db, Guid conversationId,
         Instant createdAt, int prompt, int output, int cached,
         string[]? fetched = null, string? refusalReason = null)
     {
@@ -168,8 +168,8 @@ public class AgentAdminStatusServiceTests
         });
     }
 
-    private static HumansDbContext InMemoryDb() =>
-        new(new DbContextOptionsBuilder<HumansDbContext>()
+    private static AgentDbContext InMemoryDb() =>
+        new(new DbContextOptionsBuilder<AgentDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options);
 

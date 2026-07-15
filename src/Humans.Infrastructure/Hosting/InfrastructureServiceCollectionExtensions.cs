@@ -48,6 +48,7 @@ public static class InfrastructureServiceCollectionExtensions
         // HumansDbContext by DatabaseMigrationHostedService in registration order.
         services.AddSectionDbContext<SystemSettingsDbContext>(sentinelTable: "system_settings");
         services.AddSectionDbContext<ContainersDbContext>(sentinelTable: "containers");
+        services.AddSectionDbContext<AgentDbContext>(sentinelTable: "agent_conversations");
 
         services.AddHostedService<DatabaseMigrationHostedService>();
 

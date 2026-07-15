@@ -84,9 +84,6 @@ internal sealed class HumansDbContext(DbContextOptions<HumansDbContext> options)
     public DbSet<FeedbackMessage> FeedbackMessages => Set<FeedbackMessage>();
     public DbSet<Issue> Issues => Set<Issue>();
     public DbSet<IssueComment> IssueComments => Set<IssueComment>();
-    public DbSet<AgentConversation> AgentConversations => Set<AgentConversation>();
-    public DbSet<AgentMessage> AgentMessages => Set<AgentMessage>();
-    public DbSet<AgentSettings> AgentSettings => Set<AgentSettings>();
     public DbSet<AccountMergeRequest> AccountMergeRequests => Set<AccountMergeRequest>();
     public DbSet<CommunicationPreference> CommunicationPreferences => Set<CommunicationPreference>();
     public DbSet<BudgetYear> BudgetYears => Set<BudgetYear>();
@@ -139,6 +136,7 @@ internal sealed class HumansDbContext(DbContextOptions<HumansDbContext> options)
     [
         typeof(Configurations.SystemSettings.SystemSettingConfiguration).Namespace!,
         typeof(Configurations.Containers.ContainerConfiguration).Namespace!,
+        typeof(Configurations.Agent.AgentConversationConfiguration).Namespace!,
     ];
 
     protected override void OnModelCreating(ModelBuilder builder)

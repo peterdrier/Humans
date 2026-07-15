@@ -51,6 +51,12 @@ public sealed class SectionMigrationRunnerTests : IAsyncLifetime
             ["containers", "container_placements"],
             cs => CreateSectionContext<ContainersDbContext>(cs, "__EFMigrationsHistory_Containers"),
             null),
+        new(
+            "Agent",
+            "agent_conversations",
+            ["agent_conversations", "agent_messages", "agent_settings"],
+            cs => CreateSectionContext<AgentDbContext>(cs, "__EFMigrationsHistory_Agent"),
+            "SELECT count(*) FROM agent_settings"),
     ];
 
     private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:16-alpine")
