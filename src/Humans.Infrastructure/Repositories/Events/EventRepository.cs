@@ -8,7 +8,7 @@ using NodaTime;
 
 namespace Humans.Infrastructure.Repositories.Events;
 
-internal sealed class EventRepository(IDbContextFactory<HumansDbContext> factory) : IEventRepository
+internal sealed class EventRepository(IDbContextFactory<EventGuideDbContext> factory) : IEventRepository
 {
     // ── Settings ─────────────────────────────────────────────────────────
 
@@ -438,7 +438,7 @@ internal sealed class EventRepository(IDbContextFactory<HumansDbContext> factory
     /// reference (null dayOffset) matches every row for the event; a day reference
     /// matches the same-day row plus any whole-event row.
     /// </summary>
-    private static IQueryable<EventFavourite> MatchingFavourites(HumansDbContext ctx, Guid userId, Guid eventId, int? dayOffset) =>
+    private static IQueryable<EventFavourite> MatchingFavourites(EventGuideDbContext ctx, Guid userId, Guid eventId, int? dayOffset) =>
         ctx.EventFavourites
             .Where(f => f.UserId == userId && f.GuideEventId == eventId)
             .Where(f => dayOffset == null || f.DayOffset == null || f.DayOffset == dayOffset);
