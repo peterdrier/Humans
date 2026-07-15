@@ -98,6 +98,52 @@ public class ClientStatsMiddlewareTests
     }
 
     [HumansFact]
+    public async Task AbortedProfilePicture_AuthenticatedUser_IsNotRecorded()
+    {
+        var tracker = await RunAsync(HttpMethods.Get, 200, "image/webp", ctx =>
+        {
+            ctx.Request.Path = "/Profile/Picture";
+            ctx.Request.QueryString = new QueryString("?id=abc&v=1");
+            ctx.RequestAborted = new CancellationToken(canceled: true);
+            ctx.User = AuthenticatedUser();
+        });
+
+        tracker.GetErrorsSnapshot(10).Recent.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task AbortedProfilePicture_AnonymousUser_IsRecordedAs499()
+    {
+        var tracker = await RunAsync(HttpMethods.Get, 200, "image/webp", ctx =>
+        {
+            ctx.Request.Path = "/Profile/Picture";
+            ctx.RequestAborted = new CancellationToken(canceled: true);
+        });
+
+        tracker.GetErrorsSnapshot(10).Recent.Should().ContainSingle()
+            .Which.StatusCode.Should().Be(499);
+    }
+
+    [HumansFact]
+    public async Task AbortedNonPicturePath_AuthenticatedUser_IsStillRecorded()
+    {
+        var tracker = await RunAsync(HttpMethods.Get, 200, "text/html", ctx =>
+        {
+            ctx.RequestAborted = new CancellationToken(canceled: true);
+            ctx.User = AuthenticatedUser();
+        });
+
+        tracker.GetErrorsSnapshot(10).Recent.Should().ContainSingle()
+            .Which.StatusCode.Should().Be(499);
+    }
+
+    private static System.Security.Claims.ClaimsPrincipal AuthenticatedUser()
+        => new(new System.Security.Claims.ClaimsIdentity(
+            [new System.Security.Claims.Claim(
+                System.Security.Claims.ClaimTypes.NameIdentifier, Guid.NewGuid().ToString())],
+            authenticationType: "Test"));
+
+    [HumansFact]
     public async Task ExceptionHandlerReExecute_RecordsOriginalPath()
     {
         var tracker = await RunAsync(HttpMethods.Get, 500, "text/html",

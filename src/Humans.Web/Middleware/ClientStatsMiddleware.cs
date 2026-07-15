@@ -12,7 +12,9 @@ namespace Humans.Web.Middleware;
 /// count, so static assets, JSON APIs, health/metrics probes and the beacon
 /// endpoint are naturally excluded. Feeds the <c>/Admin/ClientStats</c> screen.
 /// Also records every error response (status &gt; 399, plus aborted requests as
-/// 499) into the tracker's rolling buffer for <c>/Debug/HttpErrors</c>. 429s are
+/// 499 — except authenticated profile-picture loads, see
+/// <see cref="MaybeRecordError"/>) into the tracker's rolling buffer for
+/// <c>/Debug/HttpErrors</c>. 429s are
 /// recorded by the rate limiter's OnRejected callback instead — its rejection
 /// short-circuits before this middleware runs.
 /// </summary>
@@ -57,6 +59,15 @@ public sealed class ClientStatsMiddleware(RequestDelegate next, IClientStatsTrac
     {
         var aborted = context.RequestAborted.IsCancellationRequested;
         if (context.Response.StatusCode <= 399 && !aborted)
+            return;
+
+        // List pages load ~30 profile pictures at once; navigating away aborts
+        // whatever is still in flight. For a logged-in user that's routine browsing,
+        // not an error — recording it floods /Debug/HttpErrors with 499s. Anonymous
+        // aborts still record: a 499 flood without a session is a scrape signal.
+        if (aborted
+            && context.User.Identity?.IsAuthenticated == true
+            && context.Request.Path.StartsWithSegments("/Profile/Picture", StringComparison.OrdinalIgnoreCase))
             return;
 
         // UseStatusCodePagesWithReExecute re-runs the pipeline (and this middleware)
