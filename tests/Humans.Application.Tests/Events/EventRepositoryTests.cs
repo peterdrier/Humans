@@ -12,18 +12,18 @@ namespace Humans.Application.Tests.Repositories;
 
 public sealed class EventRepositoryTests : IDisposable
 {
-    private readonly HumansDbContext _db;
+    private readonly EventGuideDbContext _db;
     private readonly EventRepository _repo;
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 5, 5, 12, 0));
 
     public EventRepositoryTests()
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
+        var options = new DbContextOptionsBuilder<EventGuideDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
 
-        _db = new HumansDbContext(options);
-        _repo = new EventRepository(new TestDbContextFactory(options));
+        _db = new EventGuideDbContext(options);
+        _repo = new EventRepository(new TestDbContextFactory<EventGuideDbContext>(options));
     }
 
     public void Dispose()
@@ -276,12 +276,6 @@ public sealed class EventRepositoryTests : IDisposable
         Guid? campId = null,
         Guid? venueId = null)
     {
-        EnsureUser(submitterUserId);
-        if (campId.HasValue)
-        {
-            EnsureCamp(campId.Value, submitterUserId);
-        }
-
         var guideEvent = new Event
         {
             Id = Guid.NewGuid(),
@@ -300,40 +294,6 @@ public sealed class EventRepositoryTests : IDisposable
         };
         _db.Events.Add(guideEvent);
         return guideEvent;
-    }
-
-    private void EnsureUser(Guid userId)
-    {
-        if (_db.Users.Local.Any(u => u.Id == userId))
-        {
-            return;
-        }
-
-        _db.Users.Add(new User
-        {
-            Id = userId,
-            DisplayName = $"User {userId:N}",
-            CreatedAt = _clock.GetCurrentInstant()
-        });
-    }
-
-    private void EnsureCamp(Guid campId, Guid createdByUserId)
-    {
-        if (_db.Camps.Local.Any(c => c.Id == campId))
-        {
-            return;
-        }
-
-        _db.Camps.Add(new Camp
-        {
-            Id = campId,
-            Slug = $"camp-{campId:N}",
-            ContactEmail = "camp@example.test",
-            ContactPhone = "+34000000000",
-            CreatedByUserId = createdByUserId,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
-        });
     }
 
     private EventFavourite BuildFavourite(Guid userId, Guid guideEventId, int? dayOffset = null)

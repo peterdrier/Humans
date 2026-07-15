@@ -75,6 +75,12 @@ public sealed class SectionMigrationRunnerTests : IAsyncLifetime
             ["surveys", "survey_questions", "survey_question_options", "survey_invitations", "survey_responses", "survey_answers"],
             cs => CreateSectionContext<SurveysDbContext>(cs, "__EFMigrationsHistory_Surveys"),
             null),
+        new(
+            "EventGuide",
+            "events",
+            ["events", "event_categories", "event_venues", "event_guide_settings", "event_moderation_actions", "event_favourites", "event_preferences"],
+            cs => CreateSectionContext<EventGuideDbContext>(cs, "__EFMigrationsHistory_EventGuide"),
+            """SELECT count(*) FROM event_categories WHERE "Slug" = 'workshop'"""),
     ];
 
     private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:16-alpine")
