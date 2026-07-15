@@ -317,12 +317,6 @@ public class MyShiftsViewModel
     /// component renders the inline prompt and downstream signup CTAs are locked.
     /// </summary>
     public bool SignupsBlockedByMissingDietary { get; set; }
-
-    /// <summary>
-    /// True when early-entry sign-ups are closed for this viewer; the view locks
-    /// bail controls on early-entry (build) shifts, mirroring the #1033 sign-up lock.
-    /// </summary>
-    public bool EarlyEntrySignupsClosed { get; set; }
 }
 
 public class MySignupItem
@@ -332,6 +326,15 @@ public class MySignupItem
     public string DepartmentName { get; set; } = string.Empty;
     public Instant AbsoluteStart { get; set; }
     public Instant AbsoluteEnd { get; set; }
+
+    /// <summary>
+    /// True when the Mine view must lock the bail/withdraw control for this signup:
+    /// it's an early-entry (build) shift, early-entry close has passed, and the viewer
+    /// cannot approve signups for the signup's own department — the per-team gate
+    /// ShiftSignupService.BailAsync/BailRangeAsync enforces server-side.
+    /// Only the Mine action sets this; other MySignupItem surfaces leave it false.
+    /// </summary>
+    public bool BailLocked { get; set; }
 }
 
 // === ShiftAdmin ===
