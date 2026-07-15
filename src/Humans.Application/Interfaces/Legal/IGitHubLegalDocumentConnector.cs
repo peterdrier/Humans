@@ -59,15 +59,20 @@ public interface IGitHubLegalDocumentConnector
 public sealed record GitHubFileContent(string Content, string Sha);
 
 /// <summary>
-/// Application-layer translation of Octokit's <c>ApiException</c> (same
-/// pattern as <c>HoldedApiException</c>) so Legal services can distinguish
-/// GitHub API failures — transient outages, rate limits — from other errors
-/// without an Octokit dependency. Thrown by the Infrastructure connector;
-/// the message carries only the status code, never GitHub's HTML error body.
+/// Application-layer translation of Octokit's <c>ApiException</c> (Legal's
+/// analogue of <c>HoldedApiException</c>'s transient/permanent split) so Legal
+/// services can distinguish GitHub API failures from other errors without an
+/// Octokit dependency. Thrown by the Infrastructure connector, which classifies
+/// <see cref="IsTransient"/>: outages (5xx) and rate limits self-heal on the
+/// next run (log Warning); auth/scope/config failures (401/403/422…) repeat
+/// forever and must escalate (log Error). The message carries only the status
+/// code, never GitHub's HTML error body.
 /// </summary>
 public sealed class GitHubApiException : Exception
 {
     public System.Net.HttpStatusCode StatusCode { get; }
+
+    public bool IsTransient { get; }
 
     public GitHubApiException() { }
 
@@ -75,9 +80,10 @@ public sealed class GitHubApiException : Exception
 
     public GitHubApiException(string message, Exception inner) : base(message, inner) { }
 
-    public GitHubApiException(System.Net.HttpStatusCode statusCode, Exception inner)
+    public GitHubApiException(System.Net.HttpStatusCode statusCode, bool isTransient, Exception inner)
         : base($"GitHub API error ({(int)statusCode} {statusCode})", inner)
     {
         StatusCode = statusCode;
+        IsTransient = isTransient;
     }
 }
