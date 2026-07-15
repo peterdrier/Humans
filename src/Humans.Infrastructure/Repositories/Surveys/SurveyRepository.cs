@@ -8,7 +8,7 @@ using NodaTime;
 namespace Humans.Infrastructure.Repositories.Surveys;
 
 /// <summary>EF-backed <see cref="ISurveyRepository"/>. Declared <c>partial</c>; later phases add their reads/writes.</summary>
-internal sealed partial class SurveyRepository(IDbContextFactory<HumansDbContext> factory) : ISurveyRepository
+internal sealed partial class SurveyRepository(IDbContextFactory<SurveysDbContext> factory) : ISurveyRepository
 {
     public async Task<Survey?> GetByIdAsync(Guid id, CancellationToken ct = default)
     {
@@ -298,7 +298,7 @@ internal sealed partial class SurveyRepository(IDbContextFactory<HumansDbContext
     }
 
     /// <summary>Reconciles the persisted question/option graph against the incoming survey by id — removes dropped, updates kept, inserts new.</summary>
-    private static void ReconcileQuestions(HumansDbContext ctx, Survey existing, Survey incoming)
+    private static void ReconcileQuestions(SurveysDbContext ctx, Survey existing, Survey incoming)
     {
         var incomingQuestionIds = incoming.Questions.Select(q => q.Id).ToHashSet();
 
@@ -332,7 +332,7 @@ internal sealed partial class SurveyRepository(IDbContextFactory<HumansDbContext
         }
     }
 
-    private static void ReconcileOptions(HumansDbContext ctx, SurveyQuestion existing, SurveyQuestion incoming)
+    private static void ReconcileOptions(SurveysDbContext ctx, SurveyQuestion existing, SurveyQuestion incoming)
     {
         var incomingOptionIds = incoming.Options.Select(o => o.Id).ToHashSet();
 

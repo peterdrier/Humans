@@ -49,7 +49,7 @@ public class SurveyAdminControllerTests(HumansWebApplicationFactory factory) : I
 
         // Persisted instants must round-trip the posted local times in Europe/Madrid.
         using var scope = Factory.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var db = scope.ServiceProvider.GetRequiredService<SurveysDbContext>();
         var survey = await db.Surveys.AsNoTracking()
             .FirstAsync(s => s.Id == surveyId, Xunit.TestContext.Current.CancellationToken);
 
