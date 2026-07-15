@@ -44,7 +44,7 @@ jobs:
       # context since the per-section split (nobodies-collective/Humans#858).
       run: |
         dotnet tool install --global dotnet-ef --version 10.0.*
-        for ctx in HumansDbContext SystemSettingsDbContext ContainersDbContext AgentDbContext; do
+        for ctx in HumansDbContext SystemSettingsDbContext ContainersDbContext AgentDbContext ExpensesDbContext; do
           dotnet ef migrations has-pending-model-changes \
             --context "$ctx" \
             --project src/Humans.Infrastructure \
@@ -174,7 +174,7 @@ jobs:
       - name: Apply per-section baselines from scratch
         run: |
           set -euo pipefail
-          for ctx in SystemSettingsDbContext ContainersDbContext AgentDbContext; do
+          for ctx in SystemSettingsDbContext ContainersDbContext AgentDbContext ExpensesDbContext; do
             db="humans_$(echo "$ctx" | tr '[:upper:]' '[:lower:]')"
             docker exec "${{ steps.pg.outputs.container }}" \
               psql -U humans -d postgres -c "CREATE DATABASE $db"
@@ -193,7 +193,7 @@ jobs:
           # Belt-and-suspenders: Layer 1 already runs this in the build job,
           # but re-checking after a real apply guards against any state the
           # apply step might have observed differently from a static check.
-          for ctx in HumansDbContext SystemSettingsDbContext ContainersDbContext AgentDbContext; do
+          for ctx in HumansDbContext SystemSettingsDbContext ContainersDbContext AgentDbContext ExpensesDbContext; do
             dotnet ef migrations has-pending-model-changes \
               --context "$ctx" \
               --project src/Humans.Infrastructure \

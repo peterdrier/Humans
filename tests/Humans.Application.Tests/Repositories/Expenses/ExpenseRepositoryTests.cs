@@ -12,15 +12,15 @@ namespace Humans.Application.Tests.Repositories.Expenses;
 
 public class ExpenseRepositoryTests
 {
-    private readonly IDbContextFactory<HumansDbContext> _factory;
+    private readonly IDbContextFactory<ExpensesDbContext> _factory;
     private readonly IExpenseRepository _sut;
 
     public ExpenseRepositoryTests()
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
+        var options = new DbContextOptionsBuilder<ExpensesDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
-        _factory = new TestDbContextFactory(options);
+        _factory = new TestDbContextFactory<ExpensesDbContext>(options);
         _sut = new ExpenseRepository(_factory);
     }
 

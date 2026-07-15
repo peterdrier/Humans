@@ -13,7 +13,9 @@ using Humans.Application.Tests.Infrastructure;
 using Microsoft.Extensions.Options;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.Expenses;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
@@ -33,10 +35,13 @@ public sealed class ExpenseReportServiceTests : ServiceTestHarness
     private readonly IHoldedFinanceService _holdedFinance = Substitute.For<IHoldedFinanceService>();
     private readonly ExpenseReportService _sut;
 
+    private readonly DbContextOptions<ExpensesDbContext> _expensesOptions =
+        NewSectionDbOptions<ExpensesDbContext>();
+
     public ExpenseReportServiceTests()
         : base(FakeNow)
     {
-        _expenseRepo = new ExpenseRepository(DbFactory);
+        _expenseRepo = new ExpenseRepository(new TestDbContextFactory<ExpensesDbContext>(_expensesOptions));
 
         _fileStorage = Substitute.For<IFileStorage>();
         _budgetService = Substitute.For<IBudgetService>();
@@ -1540,7 +1545,7 @@ public sealed class ExpenseReportServiceTests : ServiceTestHarness
             CreatedAt = now,
             UpdatedAt = now
         };
-        await using var ctx = await DbFactory.CreateDbContextAsync(Xunit.TestContext.Current.CancellationToken);
+        await using var ctx = new ExpensesDbContext(_expensesOptions);
         ctx.ExpenseReports.Add(report);
         await ctx.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
     }
