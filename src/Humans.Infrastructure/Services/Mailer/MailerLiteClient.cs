@@ -27,6 +27,10 @@ public sealed class MailerLiteClient(IHttpClientFactory httpFactory, IClock cloc
     // ML's rate-limit window is 60s; used when a 429 carries no Retry-After header.
     private static readonly TimeSpan DefaultRetryAfter = TimeSpan.FromSeconds(60);
 
+    // Ceiling on honoring Retry-After (60s window + skew headroom) — a malformed or
+    // far-future header must not block callers for minutes; values above clamp to this.
+    private static readonly TimeSpan MaxRetryAfter = TimeSpan.FromSeconds(90);
+
     private static readonly JsonSerializerOptions Json = BuildJson();
     private readonly TrackedLock _gate = new("MailerLiteClient.Gate");
 
@@ -279,6 +283,7 @@ public sealed class MailerLiteClient(IHttpClientFactory httpFactory, IClock cloc
                     _ => DefaultRetryAfter,
                 };
                 if (retryAfter < TimeSpan.Zero) retryAfter = TimeSpan.Zero;
+                if (retryAfter > MaxRetryAfter) retryAfter = MaxRetryAfter;
                 logger.LogWarning(
                     "MailerLite returned 429; retrying in {Delay:0.#}s (attempt {Attempt}/{MaxAttempts}): {Method} {Url}",
                     retryAfter.TotalSeconds, attempt, MaxSendAttempts, method, url);

@@ -1,7 +1,9 @@
 using System.Net;
 using System.Net.Http.Headers;
 using AwesomeAssertions;
+using Humans.Application.Tests.AuditLog;
 using Humans.Infrastructure.Services.Mailer;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Humans.Application.Tests.Services.Mailer;
@@ -48,10 +50,31 @@ public class MailerLiteClientRetryTests
             "retries are bounded to 3 attempts, not an infinite loop");
     }
 
-    private static MailerLiteClient NewClient(HttpMessageHandler handler) =>
+    [HumansFact]
+    public async Task AssignSubscriberToGroupAsync_ClampsAbsurdRetryAfter_ToCeiling()
+    {
+        var handler = new ScriptedHandler();
+        handler.EnqueueJson(HttpStatusCode.OK, """{"data":[],"meta":{"next_cursor":null}}""");
+        handler.EnqueueJson(HttpStatusCode.OK, HumansGroupPage);
+        handler.Enqueue429(retryAfterSeconds: 86400); // a day — clock skew / malformed header
+        var logger = new CapturingLogger<MailerLiteClient>();
+        var client = NewClient(handler, logger);
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(
+            Xunit.TestContext.Current.CancellationToken);
+        cts.CancelAfter(TimeSpan.FromMilliseconds(250)); // don't sit out the (clamped) delay
+
+        var act = async () => await client.AssignSubscriberToGroupAsync("sub-1", "42", cts.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>(
+            "the clamped 90s delay is still pending when the token cancels");
+        logger.Entries.Should().ContainSingle(e => e.Level == LogLevel.Warning && e.Message.Contains("retrying in 90s"),
+            "an absurd Retry-After must clamp to the 90s ceiling, not be honored verbatim");
+    }
+
+    private static MailerLiteClient NewClient(HttpMessageHandler handler, ILogger<MailerLiteClient>? logger = null) =>
         new(new StubHttpClientFactory(handler),
             NodaTime.SystemClock.Instance,
-            NullLogger<MailerLiteClient>.Instance);
+            logger ?? NullLogger<MailerLiteClient>.Instance);
 
     private sealed class ScriptedHandler : HttpMessageHandler
     {
