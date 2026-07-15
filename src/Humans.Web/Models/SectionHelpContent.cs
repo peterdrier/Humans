@@ -511,7 +511,7 @@ public static class SectionHelpContent
 | **Drift** | A discrepancy between what the system expects and what Google actually has. |
 | **Legal Document** | A consent document (e.g., privacy policy) that humans must agree to. |
 | **Document Version** | A specific revision of a legal document. New versions require re-consent. |
-| **Audit Log** | An append-only record of significant system actions for accountability. |
+| **Audit Log** | An append-only record of significant system actions for accountability and compliance. |
 | **Hangfire** | The background job processing system used for scheduled and recurring tasks. |
 """,
 
@@ -630,7 +630,7 @@ public static class SectionHelpContent
 | **Limit Zone** | A GeoJSON polygon showing the boundary of the event site. |
 | **Containers** | Shipping containers assigned to barrios, shown as pentagons on the map. |
 | **Placement Phase** | The window during which barrio leads can draw or edit their camp polygons. |
-| **Map Admin** | Effective role for city-planning administration. Granted by holding `CampAdmin` or being in the `city-planning` team. |
+| **Map Admin** | Effective role for city-planning administration. Granted by holding `CampAdmin` or being a member of the `city-planning` team. |
 | **Barrio Lead** | The camp lead for a barrio — can place their barrio's polygon and containers while placement is open. |
 | **Measure tool** | A two-click tool that records straight-line distances on the map. Multiple measurements persist until cleared; right-click deletes one. |
 | **SignalR** | The real-time channel used to push polygon updates to all connected users simultaneously. |
@@ -647,13 +647,13 @@ public static class SectionHelpContent
 | **Barrio Lead** | The human responsible for a camp — the only non-admin who can edit that camp's polygon. |
 | **Placement Phase** | The window during which barrio leads can draw or edit their polygons. Opened and closed by Map Admins. |
 | **Placement Window / Dates** | Scheduled open and close times for the placement phase — the phase auto-opens/closes on these dates. |
-| **Map Admin** | Effective role for city-planning administration. Granted by holding `CampAdmin` **or** being a member of the `city-planning` team. |
+| **Map Admin** | Effective role for city-planning administration. Granted by holding `CampAdmin` or being a member of the `city-planning` team. |
 | **CampAdmin** | System role with full admin access to camps and city planning. |
 | **Limit Zone** | A GeoJSON polygon showing the boundary of the event site, displayed on the map for reference. |
 | **Official Zones** | A GeoJSON layer of pre-defined zones (e.g., quiet zones, sound stages) displayed as an overlay. |
 | **GeoJSON** | The open standard file format used for map polygons. Used for imports (limit zone, official zones) and exports. |
 | **Polygon History** | The append-only log of every save to a camp's polygon. Map Admins can view and restore previous versions. |
-| **SignalR** | The real-time channel used to push polygon updates to everyone on the map simultaneously. |
+| **SignalR** | The real-time channel used to push polygon updates to all connected users simultaneously. |
 """,
     };
 }
