@@ -96,6 +96,9 @@
                             var first = block.OrderBy(b => b.Signup.Shift.DayOffset).First();
                             var last = block.OrderBy(b => b.Signup.Shift.DayOffset).Last();
                             var shift = first.Signup.Shift;
+                            // Early-entry close locks bails on build shifts unless the viewer can
+                            // approve signups for the block's own department (per-team, set by the controller).
+                            var bailLocked = block.Any(b => b.BailLocked);
                             <div class="d-flex justify-content-between align-items-center border-bottom py-2">
                                 <div>
                                     <span class="badge @GetPhaseBadge(shift, es) me-1">@GetPhase(shift, es)</span>
@@ -104,11 +107,23 @@
                                     <small class="text-muted">(@block.Count() days)</small>
                                     <span class="ms-1">@first.DepartmentName</span>
                                 </div>
-                                <form asp-action="BailRange" method="post" class="d-inline">
-                                    @Html.AntiForgeryToken()
-                                    <input type="hidden" name="signupBlockId" value="@block.Key" />
-                                    <button type="submit" class="btn btn-sm btn-outline-danger">@Localizer["Shifts_Bail"]</button>
-                                </form>
+                                @if (bailLocked)
+                                {
+                                    <button type="button" class="btn btn-sm btn-outline-danger"
+                                            disabled
+                                            aria-disabled="true"
+                                            title="@Localizer["Shifts_BailDisabledTooltip_EarlyEntryClosed"]">
+                                        <i class="fa-solid fa-lock me-1" aria-hidden="true"></i>@Localizer["Shifts_Bail"]
+                                    </button>
+                                }
+                                else
+                                {
+                                    <form asp-action="BailRange" method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="signupBlockId" value="@block.Key" />
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">@Localizer["Shifts_Bail"]</button>
+                                    </form>
+                                }
                             </div>
                         }
                     }
@@ -119,11 +134,23 @@
                             <span class="badge @GetPhaseBadge(item.Signup.Shift, es)">@GetPhase(item.Signup.Shift, es)</span>
                         </text>;
                         Func<MySignupItem, IHtmlContent> upcomingActionCell = @<text>
-                            <form asp-action="Bail" method="post" class="d-inline">
-                                @Html.AntiForgeryToken()
-                                <input type="hidden" name="signupId" value="@item.Signup.Id" />
-                                <button type="submit" class="btn btn-sm btn-outline-danger">@Localizer["Shifts_Bail"]</button>
-                            </form>
+                            @if (item.BailLocked)
+                            {
+                                <button type="button" class="btn btn-sm btn-outline-danger"
+                                        disabled
+                                        aria-disabled="true"
+                                        title="@Localizer["Shifts_BailDisabledTooltip_EarlyEntryClosed"]">
+                                    <i class="fa-solid fa-lock me-1" aria-hidden="true"></i>@Localizer["Shifts_Bail"]
+                                </button>
+                            }
+                            else
+                            {
+                                <form asp-action="Bail" method="post" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="signupId" value="@item.Signup.Id" />
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">@Localizer["Shifts_Bail"]</button>
+                                </form>
+                            }
                         </text>;
                         var upcomingTable = TableModel.For(individualItems)
                             .Column(Localizer["Shifts_Department"].Value, r => r.DepartmentName)
@@ -156,11 +183,23 @@
                             <span class="badge @GetPhaseBadge(item.Signup.Shift, es)">@GetPhase(item.Signup.Shift, es)</span>
                         </text>;
                         Func<MySignupItem, IHtmlContent> pendingActionCell = @<text>
-                            <form asp-action="Bail" method="post" class="d-inline">
-                                @Html.AntiForgeryToken()
-                                <input type="hidden" name="signupId" value="@item.Signup.Id" />
-                                <button type="submit" class="btn btn-sm btn-outline-secondary">@Localizer["Shifts_WithdrawButton"]</button>
-                            </form>
+                            @if (item.BailLocked)
+                            {
+                                <button type="button" class="btn btn-sm btn-outline-secondary"
+                                        disabled
+                                        aria-disabled="true"
+                                        title="@Localizer["Shifts_BailDisabledTooltip_EarlyEntryClosed"]">
+                                    <i class="fa-solid fa-lock me-1" aria-hidden="true"></i>@Localizer["Shifts_WithdrawButton"]
+                                </button>
+                            }
+                            else
+                            {
+                                <form asp-action="Bail" method="post" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="signupId" value="@item.Signup.Id" />
+                                    <button type="submit" class="btn btn-sm btn-outline-secondary">@Localizer["Shifts_WithdrawButton"]</button>
+                                </form>
+                            }
                         </text>;
                         var pendingTable = TableModel.For(Model.Pending)
                             .Column(Localizer["Shifts_Department"].Value, r => r.DepartmentName)

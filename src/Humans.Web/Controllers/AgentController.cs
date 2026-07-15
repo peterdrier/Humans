@@ -79,10 +79,11 @@ public class AgentController(
         if (missing is not null) return missing;
 
         var isAdmin = User.IsInRole(RoleNames.Admin);
-        var rows = await LoadConversationsAsync(
+        var (rows, hasNext) = await LoadConversationsAsync(
             isAdmin, currentUser.Id, refusalsOnly, userId, page, cancellationToken);
         var listRows = await StitchListRowsAsync(rows, isAdmin, cancellationToken);
-        return View(new AgentConversationsViewModel(listRows, IsAdminView: isAdmin));
+        return View(new AgentConversationsViewModel(
+            listRows, IsAdminView: isAdmin, Page: page < 0 ? 0 : page, HasNext: hasNext));
     }
 
     [HttpGet("Conversation/{id:guid}")]
@@ -114,7 +115,7 @@ public class AgentController(
         return View(new AgentConversationDetailViewModel(conv, displayName, IsAdminView: isAdmin));
     }
 
-    private async Task<IReadOnlyList<AgentConversationListSnapshot>> LoadConversationsAsync(
+    private async Task<(IReadOnlyList<AgentConversationListSnapshot> Rows, bool HasNext)> LoadConversationsAsync(
         bool isAdmin, Guid currentUserId,
         bool refusalsOnly, Guid? userId, int page,
         CancellationToken ct)
@@ -124,10 +125,14 @@ public class AgentController(
         // otherwise crash the EF paging call with a 500.
         var safePage = page < 0 ? 0 : page;
         if (!isAdmin)
-            return await agent.GetHistoryAsync(currentUserId, take: 50, ct);
+            return (await agent.GetHistoryAsync(currentUserId, take: 50, ct), false);
 
-        return await agent.ListAllConversationsForAdminAsync(
-            refusalsOnly, userId, adminPageSize, safePage * adminPageSize, ct);
+        // Fetch one extra row so the view knows whether an older page exists.
+        var rows = await agent.ListAllConversationsForAdminAsync(
+            refusalsOnly, userId, adminPageSize + 1, safePage * adminPageSize, ct);
+        return rows.Count > adminPageSize
+            ? (rows.Take(adminPageSize).ToList(), true)
+            : (rows, false);
     }
 
     private async Task<List<AgentConversationRow>> StitchListRowsAsync(
@@ -178,10 +183,15 @@ public class AgentController(
 }
 
 /// <summary>List of conversations + an admin flag the view uses to decide whether
-/// to surface admin-only chrome (Human column, refusal filters).</summary>
+/// to surface admin-only chrome (Human column, refusal filters). Paging applies to
+/// the admin view only (the non-admin history is a fixed most-recent window):
+/// <see cref="Page"/> is zero-based and <see cref="HasNext"/> means an older page
+/// exists (detected by over-fetching one row).</summary>
 public sealed record AgentConversationsViewModel(
     IReadOnlyList<AgentConversationRow> Rows,
-    bool IsAdminView);
+    bool IsAdminView,
+    int Page = 0,
+    bool HasNext = false);
 
 /// <summary>One row in the conversations list. <see cref="DisplayName"/> is null
 /// for non-admin views (the column is hidden) and stitched in from

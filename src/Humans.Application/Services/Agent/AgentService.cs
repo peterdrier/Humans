@@ -145,8 +145,21 @@ public sealed class AgentService : IAgentService
         var toolCallCount = 0;
         AgentIssueProposal? issueProposal = null;
         AgentTurnFinalizer? finalFinalizer = null;
+        // Each loop iteration is a separate provider request with its own usage.
+        // Accumulate across all of them — recording only the last finalizer would
+        // drop tool-loop (and cap-hit synthesis) requests from admin spend and
+        // the DailyTokenCap accounting.
+        var promptTokensTotal = 0;
+        var outputTokensTotal = 0;
+        var cacheReadTokensTotal = 0;
+        var cacheCreationTokensTotal = 0;
         // Wall-clock turn duration (streaming + tool loop) for the admin status latency panel.
         var turnStart = _clock.GetCurrentInstant();
+
+        // Set when the tool-call cap is hit: the next (final) model call withholds tool
+        // use so the model must synthesize an answer from the tool results it already
+        // has, instead of the turn dead-ending on interim preamble text.
+        var withholdTools = false;
 
         while (true)
         {
@@ -154,7 +167,8 @@ public sealed class AgentService : IAgentService
             var pendingToolCalls = new List<AnthropicToolCall>();
 
             await foreach (var token in _client.StreamAsync(
-                new AnthropicRequest(settings.Model, systemPrompt, sdkMessages, tools, MaxOutputTokens: 1024),
+                new AnthropicRequest(settings.Model, systemPrompt, sdkMessages, tools, MaxOutputTokens: 1024,
+                    DisallowToolUse: withholdTools),
                 cancellationToken))
             {
                 if (token.TextDelta is { Length: > 0 } delta)
@@ -170,10 +184,14 @@ public sealed class AgentService : IAgentService
                 else if (token.Finalizer is { } f)
                 {
                     finalFinalizer = f;
+                    promptTokensTotal += f.InputTokens;
+                    outputTokensTotal += f.OutputTokens;
+                    cacheReadTokensTotal += f.CacheReadTokens;
+                    cacheCreationTokensTotal += f.CacheCreationTokens;
                 }
             }
 
-            if (pendingToolCalls.Count == 0 || !string.Equals(finalFinalizer?.StopReason, "tool_use", StringComparison.Ordinal))
+            if (withholdTools || pendingToolCalls.Count == 0 || !string.Equals(finalFinalizer?.StopReason, "tool_use", StringComparison.Ordinal))
                 break;
 
             sdkMessages.Add(new AnthropicMessage(
@@ -188,26 +206,47 @@ public sealed class AgentService : IAgentService
                 toolCallCount++;
                 if (toolCallCount > _anthropicOptions.MaxToolCallsPerTurn)
                 {
+                    // Not `break`: every tool_use block needs a matching tool_result or
+                    // the follow-up synthesis call is rejected by the API.
                     results.Add(new AnthropicToolResult(call.Id,
-                        "Too many lookups. Try a narrower question.", IsError: true));
-                    break;
+                        "Lookup budget for this turn is used up. Answer now from the information already gathered.",
+                        IsError: true));
+                    continue;
                 }
 
                 var result = await _tools.DispatchAsync(call, request.UserId, cancellationToken);
                 results.Add(result);
-                // Normalize slug so admin "Top fetched docs" groups by document, not tool-name+args.
-                fetchedDocs.Add(NormalizeFetchedDocSlug(call.Name, call.JsonArguments, _logger));
 
-                if (string.Equals(call.Name, AgentToolNames.RouteToIssue, StringComparison.Ordinal) && !result.IsError)
+                if (string.Equals(call.Name, AgentToolNames.RouteToIssue, StringComparison.Ordinal))
                 {
-                    issueProposal = ParseIssueProposalArgs(call.JsonArguments, conversation.Id);
+                    var proposal = result.IsError ? null : ParseIssueProposalArgs(call.JsonArguments, conversation.Id);
+                    if (proposal is not null)
+                    {
+                        issueProposal = proposal;
+                        // The route_to_issue slug in FetchedDocs is the handoff marker
+                        // (AgentRepository handoffsOnly / AgentApiController.IsHandoff),
+                        // so record it only when the proposal actually reaches the user —
+                        // failed dispatches must not inflate handoff counts.
+                        fetchedDocs.Add(NormalizeFetchedDocSlug(call.Name, call.JsonArguments, _logger));
+                    }
+                }
+                else
+                {
+                    // Normalize slug so admin "Top fetched docs" groups by document, not tool-name+args.
+                    fetchedDocs.Add(NormalizeFetchedDocSlug(call.Name, call.JsonArguments, _logger));
                 }
             }
 
             sdkMessages.Add(new AnthropicMessage("tool", Text: null, ToolCalls: null, ToolResults: results));
 
-            if (issueProposal is not null || toolCallCount >= _anthropicOptions.MaxToolCallsPerTurn)
+            // route_to_issue handoff: the proposal frame is the terminal output; no synthesis call.
+            if (issueProposal is not null)
                 break;
+
+            // Cap reached: loop once more with tool use withheld so the model answers
+            // from the results above instead of stranding the user mid-lookup.
+            if (toolCallCount >= _anthropicOptions.MaxToolCallsPerTurn)
+                withholdTools = true;
         }
 
         // Proposal frame signals client to open pre-filled Issues modal.
@@ -227,9 +266,9 @@ public sealed class AgentService : IAgentService
             Role = AgentRole.Assistant,
             Content = assistantBuffer.ToString(),
             CreatedAt = turnEnd,
-            PromptTokens = finalFinalizer?.InputTokens ?? 0,
-            OutputTokens = finalFinalizer?.OutputTokens ?? 0,
-            CachedTokens = finalFinalizer?.CacheReadTokens ?? 0,
+            PromptTokens = promptTokensTotal,
+            OutputTokens = outputTokensTotal,
+            CachedTokens = cacheReadTokensTotal,
             Model = settings.Model,
             DurationMs = durationMs,
             FetchedDocs = fetchedDocs.ToArray(),
@@ -241,8 +280,17 @@ public sealed class AgentService : IAgentService
         _rateLimit.Record(request.UserId, today, hour, messagesDelta: 1, tokensDelta: totalTokens);
 
         var fallbackFinalizer = finalFinalizer ?? new AgentTurnFinalizer(0, 0, 0, 0, _settings.Current.Model, "unknown");
-        // Stamp the conversation id so the client can reuse it on the next send.
-        yield return new AgentTurnToken(null, null, fallbackFinalizer with { ConversationId = conversation.Id });
+        // Stamp the conversation id so the client can reuse it on the next send, and
+        // the turn-wide token sums so the finalizer reflects the whole turn, not just
+        // the last provider request. Other fields (stop reason, model) stay from the last one.
+        yield return new AgentTurnToken(null, null, fallbackFinalizer with
+        {
+            ConversationId = conversation.Id,
+            InputTokens = promptTokensTotal,
+            OutputTokens = outputTokensTotal,
+            CacheReadTokens = cacheReadTokensTotal,
+            CacheCreationTokens = cacheCreationTokensTotal
+        });
     }
 
     /// <summary>How many prior user/assistant turns to replay (bounded for context budget).</summary>

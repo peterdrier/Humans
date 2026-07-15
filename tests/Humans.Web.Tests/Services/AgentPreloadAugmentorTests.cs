@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Web.Models;
 using Humans.Web.Services.Agent;
 
 namespace Humans.Web.Tests.Services;
@@ -36,5 +37,61 @@ public class AgentPreloadAugmentorTests
         faq.Should().Contain("/Profile/Me/Emails");          // bought-under-other-email + change email
         faq.Should().Contain("/Profile/Me/Privacy");         // delete account / data export
         faq.Should().Contain("https://nobodies.team/");      // external comms channels
+    }
+
+    [HumansFact]
+    public void Glossaries_define_Human_exactly_once()
+    {
+        var glossaries = new AgentPreloadAugmentor().BuildGlossariesMarkdown();
+        glossaries.Split('\n').Count(l => l.StartsWith("| **Human** |", StringComparison.Ordinal)).Should().Be(1);
+    }
+
+    [HumansFact]
+    public void Glossaries_keep_every_term_and_definition()
+    {
+        var glossaries = new AgentPreloadAugmentor().BuildGlossariesMarkdown();
+        foreach (var (_, body) in SectionHelpContent.AllGlossaries())
+        {
+            foreach (var row in body.Split('\n').Select(l => l.TrimEnd()).Where(l => l.StartsWith("| **", StringComparison.Ordinal)))
+            {
+                glossaries.Should().Contain(row);
+            }
+        }
+    }
+
+    [HumansFact]
+    public void AccessMatrix_keeps_every_allowed_and_limited_role_fact_grouped_by_section()
+    {
+        var matrix = new AgentPreloadAugmentor().BuildAccessMatrixMarkdown();
+        foreach (var section in AccessMatrixDefinitions.Sections.Values)
+        {
+            matrix.Should().Contain($"## {section.SectionName}");
+            foreach (var feature in section.Features)
+            {
+                var roles = feature.RoleAccess
+                    .Where(kv => kv.Value != AccessLevel.Denied)
+                    .OrderBy(kv => kv.Key, StringComparer.Ordinal)
+                    .Select(kv => kv.Value == AccessLevel.Limited ? kv.Key + " (limited)" : kv.Key)
+                    .ToList();
+                if (roles.Count == 0)
+                {
+                    continue;
+                }
+                matrix.Split('\n').Should().Contain(l =>
+                    l.StartsWith("- ", StringComparison.Ordinal) &&
+                    l.Contains($"**{string.Join(", ", roles)}**", StringComparison.Ordinal) &&
+                    l.Contains(feature.Name, StringComparison.Ordinal));
+            }
+        }
+    }
+
+    [HumansFact]
+    public void AccessMatrix_collapses_features_sharing_a_role_set_onto_one_line()
+    {
+        var matrix = new AgentPreloadAugmentor().BuildAccessMatrixMarkdown();
+        matrix.Split('\n').Should().Contain(l =>
+            l.Contains("Browse shifts", StringComparison.Ordinal) &&
+            l.Contains("Sign up for shifts", StringComparison.Ordinal) &&
+            l.Contains("My Shifts & availability", StringComparison.Ordinal));
     }
 }

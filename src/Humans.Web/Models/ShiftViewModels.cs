@@ -326,6 +326,15 @@ public class MySignupItem
     public string DepartmentName { get; set; } = string.Empty;
     public Instant AbsoluteStart { get; set; }
     public Instant AbsoluteEnd { get; set; }
+
+    /// <summary>
+    /// True when the Mine view must lock the bail/withdraw control for this signup:
+    /// it's an early-entry (build) shift, early-entry close has passed, and the viewer
+    /// cannot approve signups for the signup's own department — the per-team gate
+    /// ShiftSignupService.BailAsync/BailRangeAsync enforces server-side.
+    /// Only the Mine action sets this; other MySignupItem surfaces leave it false.
+    /// </summary>
+    public bool BailLocked { get; set; }
 }
 
 // === ShiftAdmin ===

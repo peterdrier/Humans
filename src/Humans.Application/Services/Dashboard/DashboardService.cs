@@ -171,6 +171,10 @@ public class DashboardService(
                 hasTicket = userTicketCount > 0;
             }
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw; // request aborted — let it abort, don't log as an error
+        }
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to load ticket status for user {UserId}", userId);
@@ -186,6 +190,10 @@ public class DashboardService(
                 participationStatus = info?.EventParticipations
                     .FirstOrDefault(p => p.Year == activeEvent.Year)?.Status;
             }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw; // request aborted — let it abort, don't log as an error
         }
         catch (OperationCanceledException ex)
         {

@@ -45,6 +45,18 @@ public sealed partial class GitHubLegalDocumentConnector : IGitHubLegalDocumentC
         }
     }
 
+    /// <summary>
+    /// Classifies an Octokit failure for <see cref="GitHubApiException.IsTransient"/>:
+    /// rate limits and 5xx self-heal on the next scheduled run; other 4xx
+    /// (revoked PAT, missing scope, malformed request) repeat until a human acts.
+    /// </summary>
+    private static GitHubApiException Translate(ApiException ex) =>
+        new(ex.StatusCode,
+            isTransient: ex is RateLimitExceededException or SecondaryRateLimitExceededException or AbuseException
+                || (int)ex.StatusCode >= 500
+                || (int)ex.StatusCode == 429,
+            ex);
+
     public async Task<IReadOnlyDictionary<string, string>> DiscoverLanguageFilesAsync(
         string folderPath, CancellationToken ct = default)
     {
@@ -84,6 +96,10 @@ public sealed partial class GitHubLegalDocumentConnector : IGitHubLegalDocumentC
         {
             _logger.LogWarning("Folder not found in GitHub: {FolderPath}", folderPath);
         }
+        catch (ApiException ex)
+        {
+            throw Translate(ex);
+        }
 
         return languageFiles;
     }
@@ -116,6 +132,10 @@ public sealed partial class GitHubLegalDocumentConnector : IGitHubLegalDocumentC
         {
             return null;
         }
+        catch (ApiException ex)
+        {
+            throw Translate(ex);
+        }
     }
 
     public async Task<string?> GetCommitMessageAsync(string sha, CancellationToken ct = default)
@@ -127,6 +147,12 @@ public sealed partial class GitHubLegalDocumentConnector : IGitHubLegalDocumentC
             var message = commit.Commit.Message;
             var firstLine = message.Split('\n', 2)[0].Trim();
             return firstLine.Length > 500 ? firstLine[..500] : firstLine;
+        }
+        catch (ApiException ex)
+        {
+            // Status code only — ApiException.Message can carry GitHub's raw HTML error body.
+            _logger.LogDebug("GitHub API error fetching commit message for {Sha}: {StatusCode}", sha, ex.StatusCode);
+            return null;
         }
         catch (Exception ex)
         {
@@ -147,6 +173,12 @@ public sealed partial class GitHubLegalDocumentConnector : IGitHubLegalDocumentC
                 new ApiOptions { PageCount = 1, PageSize = 1 });
             return commits.FirstOrDefault()?.Sha;
         }
+        catch (ApiException ex)
+        {
+            // Status code only — ApiException.Message can carry GitHub's raw HTML error body.
+            _logger.LogWarning("GitHub API error getting latest commit SHA for {Path}: {StatusCode}", path, ex.StatusCode);
+            return null;
+        }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Error getting latest commit SHA for {Path}", path);
@@ -158,6 +190,19 @@ public sealed partial class GitHubLegalDocumentConnector : IGitHubLegalDocumentC
         string folderPath, string filePrefix, CancellationToken ct = default)
     {
         using var _ = _logger.TimeOperation();
+        try
+        {
+            return await FetchFolderContentByPrefixAsync(folderPath, filePrefix);
+        }
+        catch (ApiException ex)
+        {
+            throw Translate(ex);
+        }
+    }
+
+    private async Task<IReadOnlyDictionary<string, string>> FetchFolderContentByPrefixAsync(
+        string folderPath, string filePrefix)
+    {
         var files = await _client.Repository.Content.GetAllContents(
             _settings.Owner,
             _settings.Repository,
