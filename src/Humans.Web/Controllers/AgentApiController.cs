@@ -111,8 +111,8 @@ public class AgentApiController : ControllerBase
     }
 
     /// <summary>
-    /// Handoff = legacy server-side FeedbackReport link, or a route_to_issue
-    /// invocation recorded in FetchedDocs at save time (the propose-only flow
+    /// Handoff = legacy server-side FeedbackReport link, or a successful
+    /// route_to_issue recorded in FetchedDocs at save time (the propose-only flow
     /// never sets HandedOffToFeedbackId — nobodies-collective/Humans#931).
     /// Mirrors the handoffsOnly filter in AgentRepository.
     /// </summary>

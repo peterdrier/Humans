@@ -195,12 +195,24 @@ public sealed class AgentService : IAgentService
 
                 var result = await _tools.DispatchAsync(call, request.UserId, cancellationToken);
                 results.Add(result);
-                // Normalize slug so admin "Top fetched docs" groups by document, not tool-name+args.
-                fetchedDocs.Add(NormalizeFetchedDocSlug(call.Name, call.JsonArguments, _logger));
 
-                if (string.Equals(call.Name, AgentToolNames.RouteToIssue, StringComparison.Ordinal) && !result.IsError)
+                if (string.Equals(call.Name, AgentToolNames.RouteToIssue, StringComparison.Ordinal))
                 {
-                    issueProposal = ParseIssueProposalArgs(call.JsonArguments, conversation.Id);
+                    var proposal = result.IsError ? null : ParseIssueProposalArgs(call.JsonArguments, conversation.Id);
+                    if (proposal is not null)
+                    {
+                        issueProposal = proposal;
+                        // The route_to_issue slug in FetchedDocs is the handoff marker
+                        // (AgentRepository handoffsOnly / AgentApiController.IsHandoff),
+                        // so record it only when the proposal actually reaches the user —
+                        // failed dispatches must not inflate handoff counts.
+                        fetchedDocs.Add(NormalizeFetchedDocSlug(call.Name, call.JsonArguments, _logger));
+                    }
+                }
+                else
+                {
+                    // Normalize slug so admin "Top fetched docs" groups by document, not tool-name+args.
+                    fetchedDocs.Add(NormalizeFetchedDocSlug(call.Name, call.JsonArguments, _logger));
                 }
             }
 

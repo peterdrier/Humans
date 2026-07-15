@@ -112,8 +112,8 @@ internal sealed class AgentRepository(HumansDbContext db, IClock clock) : IAgent
         if (!handoffsOnly)
             return await ordered.Skip(skip).Take(take).ToListAsync(cancellationToken);
 
-        // Handoff = legacy server-side FeedbackReport link, or a route_to_issue
-        // invocation recorded in the jsonb FetchedDocs array (propose-only flow,
+        // Handoff = legacy server-side FeedbackReport link, or a successful
+        // route_to_issue recorded in the jsonb FetchedDocs array (propose-only flow,
         // nobodies-collective/Humans#931). The FetchedDocs value converter blocks
         // SQL translation of the array Contains, so materialize first and page in
         // memory — fine at this scale (see CLAUDE.md scale notes).

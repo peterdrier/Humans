@@ -250,6 +250,48 @@ public class AgentServiceTests
     }
 
     [HumansFact]
+    public async Task Failed_route_to_issue_dispatch_does_not_count_as_a_handoff()
+    {
+        var userId = Guid.NewGuid();
+        var dispatcher = Substitute.For<IAgentToolDispatcher>();
+        // Malformed args → AgentToolDispatcher returns IsError=true and no
+        // issueProposal frame is emitted, so the user never sees the Issues modal.
+        dispatcher.DispatchAsync(Arg.Any<AnthropicToolCall>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(call => Task.FromResult(new AnthropicToolResult(
+                call.Arg<AnthropicToolCall>().Id, "Malformed tool arguments (expected JSON object).", IsError: true)));
+        var (svc, client) = await BuildService(s => s.Enabled = true, toolDispatcher: dispatcher);
+
+        client.EnqueueTurn(
+            new AgentTurnToken(null, new AnthropicToolCall(
+                "tc1", AgentToolNames.RouteToIssue, """{"title":"Broken"""), null),
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "claude-sonnet-4-6", "tool_use")));
+        // The loop continues after the failed tool call; script the follow-up turn.
+        client.EnqueueTurn(
+            new AgentTurnToken("Sorry, I could not draft that issue.", null, null),
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "claude-sonnet-4-6", "end_turn")));
+
+        await foreach (var _ in svc.AskAsync(
+            new AgentTurnRequest(ConversationId: Guid.Empty, UserId: userId, Message: "the camps page is broken", Locale: "es"),
+            Xunit.TestContext.Current.CancellationToken))
+        {
+        }
+
+        var rows = await svc.ListAllConversationsForAdminWithMessagesAsync(
+            refusalsOnly: false, handoffsOnly: true, userId: null, take: 50, skip: 0,
+            Xunit.TestContext.Current.CancellationToken);
+        rows.Should().BeEmpty("a failed route_to_issue dispatch never showed the user the Issues modal");
+
+        // Same predicate the API uses for HandoffCount — must stay at zero.
+        var all = await svc.ListAllConversationsForAdminWithMessagesAsync(
+            refusalsOnly: false, handoffsOnly: false, userId: null, take: 50, skip: 0,
+            Xunit.TestContext.Current.CancellationToken);
+        all.Should().ContainSingle().Which.Messages
+            .Count(m => m.HandedOffToFeedbackId != null
+                || m.FetchedDocs.Contains(AgentToolNames.RouteToIssue, StringComparer.Ordinal))
+            .Should().Be(0, "failed handoff attempts must not carry the handoff marker");
+    }
+
+    [HumansFact]
     public async Task Refused_conversations_are_surfaced_by_the_admin_refusals_filter()
     {
         var userId = Guid.NewGuid();
