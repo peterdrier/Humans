@@ -219,7 +219,7 @@ candidates — **(a)** re-expressed in the baseline, **(b)** dead, with justific
 | Finance | `HoldedActuals`: InsertData holded_sync_states singleton | **(a) via model**: `HoldedSyncState.HasData` |
 | Store | — none — | n/a |
 | Surveys | — none — | n/a |
-| EventGuide | `AddEventsSection`: InsertData event_categories (11 rows) | **(a) via model**: `EventCategory.HasData` |
+| EventGuide | `AddEventsSection`: InsertData event_categories (8 rows) | **(a) via model**: `EventCategory.HasData` |
 
 Every seed a candidate section owns is **model-level `HasData`**, so real-up baselines regenerate
 them with zero hand work; on existing DBs the fake-applied baseline never re-inserts (no duplicate
@@ -253,7 +253,7 @@ all nine candidate sections:
 | Gate | `gate_staff_pins.AdminEnrolled DEFAULT false` (from `20260701005052_AddGateStaffPinAdminEnrolled`) | **no** | **DEFERRED** |
 | Store | `store_orders.Year DEFAULT 0` | **no** | **DEFERRED** |
 | Expenses | `expense_lines.LineType DEFAULT 'Receipt'` | yes (`HasDefaultValue`) | clean |
-| Surveys | 7 jsonb `DEFAULT '{}'` columns | yes (`HasDefaultValueSql`) | clean |
+| Surveys | 8 jsonb `DEFAULT '{}'` columns | yes (`HasDefaultValueSql`) | clean |
 | SystemSettings, Containers, Agent, Finance, EventGuide | none | n/a | clean |
 
 **Gate and Store are deferred out of this run.** Options for unblocking them (Peter's call — all
@@ -319,7 +319,7 @@ Order (criteria: navs = 0 for all, so ranked by table count, then seeds/PK quirk
 | 4 | `858/04-expenses` | Expenses | 4 | dead data-op disposition (§5); `LineType` default is model-declared |
 | 5 | `858/05-finance` | Finance | 5 | `HasData`, identity int PK |
 | 6 | `858/06-surveys` | Surveys | 6 | owned/JSON survey config; jsonb defaults model-declared |
-| 7 | `858/07-eventguide` | EventGuide | 7 | `HasData` (11 seed rows) |
+| 7 | `858/07-eventguide` | EventGuide | 7 | `HasData` (8 seed rows) |
 | — | *(deferred)* | Gate | 3 | **§5.1 wall**: `AdminEnrolled` physical default not in model |
 | — | *(deferred)* | Store | 6 | **§5.1 wall**: `Year` physical default not in model |
 
