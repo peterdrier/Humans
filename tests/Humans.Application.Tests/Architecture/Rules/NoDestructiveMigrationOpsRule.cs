@@ -49,11 +49,14 @@ public class NoDestructiveMigrationOpsRule
     {
         if (!Directory.Exists(migrationsDir)) yield break;
 
-        foreach (var path in Directory.EnumerateFiles(migrationsDir, "*.cs", SearchOption.TopDirectoryOnly))
+        // AllDirectories: per-section migration folders (Migrations/<Section>/,
+        // nobodies-collective/Humans#858) are in scope too. Every context's
+        // snapshot (<Context>ModelSnapshot.cs) is excluded by suffix.
+        foreach (var path in Directory.EnumerateFiles(migrationsDir, "*.cs", SearchOption.AllDirectories))
         {
             var name = Path.GetFileName(path);
             if (name.EndsWith(".Designer.cs", StringComparison.Ordinal)) continue;
-            if (name.Equals("HumansDbContextModelSnapshot.cs", StringComparison.Ordinal)) continue;
+            if (name.EndsWith("ModelSnapshot.cs", StringComparison.Ordinal)) continue;
 
             var content = File.ReadAllText(path);
             var upBody = ExtractMethodBody(content, "Up");

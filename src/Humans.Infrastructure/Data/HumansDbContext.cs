@@ -64,7 +64,6 @@ internal sealed class HumansDbContext(DbContextOptions<HumansDbContext> options)
     public DbSet<Campaign> Campaigns { get; set; } = null!;
     public DbSet<CampaignCode> CampaignCodes { get; set; } = null!;
     public DbSet<CampaignGrant> CampaignGrants { get; set; } = null!;
-    public DbSet<SystemSetting> SystemSettings => Set<SystemSetting>();
     public DbSet<TicketOrder> TicketOrders => Set<TicketOrder>();
     public DbSet<TicketAttendee> TicketAttendees => Set<TicketAttendee>();
     public DbSet<TicketSyncState> TicketSyncStates => Set<TicketSyncState>();
@@ -131,12 +130,26 @@ internal sealed class HumansDbContext(DbContextOptions<HumansDbContext> options)
     public DbSet<SurveyResponse> SurveyResponses => Set<SurveyResponse>();
     public DbSet<SurveyAnswer> SurveyAnswers => Set<SurveyAnswer>();
 
+    /// <summary>
+    /// Configuration namespaces of sections peeled into their own DbContexts
+    /// (nobodies-collective/Humans#858). Their tables are no longer part of this
+    /// model; each peel appends its section here. Derived from a configuration
+    /// type per section (not string literals) so a namespace move breaks the
+    /// build instead of silently re-adding the section's tables to this model.
+    /// </summary>
+    private static readonly string[] PeeledConfigurationNamespaces =
+    [
+        typeof(Configurations.SystemSettings.SystemSettingConfiguration).Namespace!,
+    ];
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
 
-        // Apply all configurations from the assembly
-        builder.ApplyConfigurationsFromAssembly(typeof(HumansDbContext).Assembly);
+        // Apply all configurations from the assembly, minus peeled sections'.
+        builder.ApplyConfigurationsFromAssembly(
+            typeof(HumansDbContext).Assembly,
+            type => !PeeledConfigurationNamespaces.Contains(type.Namespace, StringComparer.Ordinal));
 
         // Rename Identity tables to use lowercase with underscores (PostgreSQL convention)
         builder.Entity<User>().ToTable("users");

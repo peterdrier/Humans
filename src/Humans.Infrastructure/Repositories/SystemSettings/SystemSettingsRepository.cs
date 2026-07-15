@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Humans.Infrastructure.Repositories.SystemSettings;
 
-internal sealed class SystemSettingsRepository(IDbContextFactory<HumansDbContext> factory)
+internal sealed class SystemSettingsRepository(IDbContextFactory<SystemSettingsDbContext> factory)
     : ISystemSettingsRepository
 {
     public async Task<string?> GetValueAsync(string key, CancellationToken ct = default)

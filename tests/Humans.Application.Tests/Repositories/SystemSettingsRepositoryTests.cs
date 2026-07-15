@@ -9,17 +9,17 @@ namespace Humans.Application.Tests.Repositories;
 
 public sealed class SystemSettingsRepositoryTests : IDisposable
 {
-    private readonly HumansDbContext _seedContext;
-    private readonly TestDbContextFactory _factory;
+    private readonly SystemSettingsDbContext _seedContext;
+    private readonly TestDbContextFactory<SystemSettingsDbContext> _factory;
     private readonly SystemSettingsRepository _repository;
 
     public SystemSettingsRepositoryTests()
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
+        var options = new DbContextOptionsBuilder<SystemSettingsDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
 
-        _factory = new TestDbContextFactory(options);
+        _factory = new TestDbContextFactory<SystemSettingsDbContext>(options);
         _seedContext = _factory.CreateDbContext();
         _repository = new SystemSettingsRepository(_factory);
     }

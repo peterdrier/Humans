@@ -22,14 +22,16 @@ public class OrchestratorRepositoryInjectionAnalyzerTests
             public interface IUserRepository : IRepository { }
         }
 
-        namespace Humans.Infrastructure.Data
-        {
-            public class HumansDbContext { }
-        }
-
         namespace Microsoft.EntityFrameworkCore
         {
+            public class DbContext { }
             public interface IDbContextFactory<TContext> where TContext : class { }
+        }
+
+        namespace Humans.Infrastructure.Data
+        {
+            public class HumansDbContext : Microsoft.EntityFrameworkCore.DbContext { }
+            public class SystemSettingsDbContext : Microsoft.EntityFrameworkCore.DbContext { }
         }
         """;
 
@@ -75,6 +77,30 @@ public class OrchestratorRepositoryInjectionAnalyzerTests
                 public sealed class DemoOrchestrator : Humans.Application.Interfaces.IOrchestrator
                 {
                     public DemoOrchestrator(Humans.Infrastructure.Data.HumansDbContext db)
+                    {
+                    }
+                }
+            }
+            """;
+
+        var diagnostics = await AnalyzerTestHarness.RunAsync(
+            new OrchestratorRepositoryInjectionAnalyzer(),
+            "Humans.Application",
+            source);
+
+        diagnostics.Where(IsHum0026).Should().ContainSingle();
+    }
+
+    [HumansFact]
+    public async Task HUM0026_fires_when_orchestrator_injects_a_section_DbContext()
+    {
+        var source = Stubs + """
+
+            namespace Humans.Application.Services.Demo
+            {
+                public sealed class DemoOrchestrator : Humans.Application.Interfaces.IOrchestrator
+                {
+                    public DemoOrchestrator(Humans.Infrastructure.Data.SystemSettingsDbContext db)
                     {
                     }
                 }

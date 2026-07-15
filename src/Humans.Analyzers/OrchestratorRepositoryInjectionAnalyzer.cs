@@ -33,7 +33,6 @@ public sealed class OrchestratorRepositoryInjectionAnalyzer : DiagnosticAnalyzer
     private const string OrchestratorMarkerFullName = "Humans.Application.Interfaces.IOrchestrator";
     private const string ApplicationServiceMarkerFullName = "Humans.Application.Interfaces.IApplicationService";
     private const string RepositoryMarkerFullName = "Humans.Application.Interfaces.Repositories.IRepository";
-    private const string HumansDbContextFullName = "Humans.Infrastructure.Data.HumansDbContext";
     private const string DbContextFactoryFullName = "Microsoft.EntityFrameworkCore.IDbContextFactory`1";
 
     private static readonly LocalizableString RepositoryInjectionTitle =
@@ -97,10 +96,12 @@ public sealed class OrchestratorRepositoryInjectionAnalyzer : DiagnosticAnalyzer
 
         var applicationServiceMarker = context.Compilation.GetTypeByMetadataName(ApplicationServiceMarkerFullName);
         var repositoryMarker = context.Compilation.GetTypeByMetadataName(RepositoryMarkerFullName);
-        // HumansDbContext lives in Humans.Infrastructure — usually unreachable from this
-        // compilation. Resolves only when an orchestrator (illegally) takes a project
-        // reference that drags it in. Same for IDbContextFactory<>.
-        var dbContextType = context.Compilation.GetTypeByMetadataName(HumansDbContextFullName);
+        // Humans persistence contexts live in Humans.Infrastructure — usually
+        // unreachable from this compilation. EF's DbContext resolves only when an
+        // orchestrator (illegally) takes a project reference that drags it in.
+        // Same for IDbContextFactory<>. Matching goes through SectionDbContexts
+        // so every per-section context is covered (nobodies-collective/Humans#858).
+        var efDbContext = SectionDbContexts.ResolveEfDbContext(context.Compilation);
         var dbContextFactoryDef = context.Compilation.GetTypeByMetadataName(DbContextFactoryFullName);
 
         context.RegisterSymbolAction(
@@ -109,7 +110,7 @@ public sealed class OrchestratorRepositoryInjectionAnalyzer : DiagnosticAnalyzer
                 orchestratorMarker,
                 applicationServiceMarker,
                 repositoryMarker,
-                dbContextType,
+                efDbContext,
                 dbContextFactoryDef),
             SymbolKind.NamedType);
     }
@@ -119,7 +120,7 @@ public sealed class OrchestratorRepositoryInjectionAnalyzer : DiagnosticAnalyzer
         INamedTypeSymbol orchestratorMarker,
         INamedTypeSymbol? applicationServiceMarker,
         INamedTypeSymbol? repositoryMarker,
-        INamedTypeSymbol? dbContextType,
+        INamedTypeSymbol? efDbContext,
         INamedTypeSymbol? dbContextFactoryDef)
     {
         var type = (INamedTypeSymbol)context.Symbol;
@@ -146,8 +147,8 @@ public sealed class OrchestratorRepositoryInjectionAnalyzer : DiagnosticAnalyzer
                 var paramType = parameter.Type;
 
                 var isRepo = repositoryMarker is not null && ImplementsMarker(paramType, repositoryMarker);
-                var isDbContext = dbContextType is not null && TypeReferences(paramType, dbContextType);
-                var isFactory = dbContextFactoryDef is not null && IsDbContextFactoryOf(paramType, dbContextFactoryDef, dbContextType);
+                var isDbContext = efDbContext is not null && SectionDbContexts.ReferencesSectionDbContext(paramType, efDbContext);
+                var isFactory = dbContextFactoryDef is not null && IsDbContextFactoryOf(paramType, dbContextFactoryDef, efDbContext);
 
                 if (!isRepo && !isDbContext && !isFactory)
                     continue;
@@ -183,37 +184,20 @@ public sealed class OrchestratorRepositoryInjectionAnalyzer : DiagnosticAnalyzer
         return false;
     }
 
-    private static bool TypeReferences(ITypeSymbol? candidate, INamedTypeSymbol target)
-    {
-        if (candidate is null)
-            return false;
-        if (SymbolEqualityComparer.Default.Equals(candidate, target))
-            return true;
-        if (candidate is INamedTypeSymbol named)
-        {
-            foreach (var arg in named.TypeArguments)
-            {
-                if (TypeReferences(arg, target))
-                    return true;
-            }
-        }
-        return false;
-    }
-
     private static bool IsDbContextFactoryOf(
         ITypeSymbol paramType,
         INamedTypeSymbol dbContextFactoryDef,
-        INamedTypeSymbol? dbContextType)
+        INamedTypeSymbol? efDbContext)
     {
         if (paramType is not INamedTypeSymbol named || !named.IsGenericType)
             return false;
         if (!SymbolEqualityComparer.Default.Equals(named.ConstructedFrom, dbContextFactoryDef))
             return false;
-        if (dbContextType is null)
+        if (efDbContext is null)
             return true;
-        // Only complain when the factory is parameterized on HumansDbContext.
+        // Only complain when the factory is parameterized on a Humans persistence context.
         return named.TypeArguments.Length == 1 &&
-               TypeReferences(named.TypeArguments[0], dbContextType);
+               SectionDbContexts.ReferencesSectionDbContext(named.TypeArguments[0], efDbContext);
     }
 
     private static Location FirstLocation(INamedTypeSymbol type) =>
