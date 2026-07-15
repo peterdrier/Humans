@@ -7,6 +7,7 @@ using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.Containers;
+using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using NSubstitute;
 
@@ -19,10 +20,13 @@ public sealed class ContainerImageServiceTests : ServiceTestHarness
     private static readonly Instant StartTime = Instant.FromUtc(2026, 5, 8, 10, 0, 0);
     private static readonly Guid CampId = Guid.Parse("00000000-0000-0000-0099-000000000001");
 
+    private readonly DbContextOptions<ContainersDbContext> _containersOptions =
+        NewSectionDbOptions<ContainersDbContext>();
+
     public ContainerImageServiceTests() : base(StartTime)
     {
         _fileStorage = Substitute.For<IFileStorage>();
-        var repo = new ContainerRepository(DbFactory);
+        var repo = new ContainerRepository(new TestDbContextFactory<ContainersDbContext>(_containersOptions));
         _sut = new ContainerService(
             repo,
             _fileStorage,
@@ -36,7 +40,7 @@ public sealed class ContainerImageServiceTests : ServiceTestHarness
 
     private async Task<Container> SeedContainerAsync(string? imagePath = null)
     {
-        await using var ctx = new HumansDbContext(DbOptions);
+        await using var ctx = new ContainersDbContext(_containersOptions);
         var container = new Container
         {
             Id = Guid.NewGuid(),

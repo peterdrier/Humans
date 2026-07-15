@@ -59,6 +59,19 @@ public abstract class ServiceTestHarness : IDisposable
         Clock = new FakeClock(now ?? Instant.FromUtc(2026, 3, 1, 12, 0));
     }
 
+    /// <summary>
+    /// In-memory options for a per-section DbContext (nobodies-collective/Humans#858),
+    /// e.g. <c>ContainersDbContext</c>. Pair with
+    /// <c>new TestDbContextFactory&lt;TContext&gt;(options)</c> for the repository under
+    /// test and construct a context directly from the options for seeding.
+    /// </summary>
+    private protected static DbContextOptions<TContext> NewSectionDbOptions<TContext>()
+        where TContext : DbContext =>
+        new DbContextOptionsBuilder<TContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
+            .Options;
+
     public virtual void Dispose()
     {
         Cache.Dispose();

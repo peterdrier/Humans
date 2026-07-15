@@ -53,8 +53,6 @@ internal sealed class HumansDbContext(DbContextOptions<HumansDbContext> options)
     public DbSet<CampImage> CampImages => Set<CampImage>();
     public DbSet<CampSettings> CampSettings => Set<CampSettings>();
     public DbSet<CampMember> CampMembers => Set<CampMember>();
-    public DbSet<Container> Containers => Set<Container>();
-    public DbSet<ContainerPlacement> ContainerPlacements => Set<ContainerPlacement>();
     public DbSet<CampRoleDefinition> CampRoleDefinitions => Set<CampRoleDefinition>();
     public DbSet<CampRoleAssignment> CampRoleAssignments => Set<CampRoleAssignment>();
     public DbSet<CampPolygon> CampPolygons => Set<CampPolygon>();
@@ -140,6 +138,7 @@ internal sealed class HumansDbContext(DbContextOptions<HumansDbContext> options)
     private static readonly string[] PeeledConfigurationNamespaces =
     [
         typeof(Configurations.SystemSettings.SystemSettingConfiguration).Namespace!,
+        typeof(Configurations.Containers.ContainerConfiguration).Namespace!,
     ];
 
     protected override void OnModelCreating(ModelBuilder builder)

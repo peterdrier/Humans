@@ -6,7 +6,7 @@ using NodaTime;
 
 namespace Humans.Infrastructure.Repositories.Containers;
 
-internal sealed class ContainerRepository(IDbContextFactory<HumansDbContext> factory) : IContainerRepository
+internal sealed class ContainerRepository(IDbContextFactory<ContainersDbContext> factory) : IContainerRepository
 {
     public async Task<IReadOnlyList<Container>> GetByCampAsync(Guid campId, CancellationToken ct = default)
     {

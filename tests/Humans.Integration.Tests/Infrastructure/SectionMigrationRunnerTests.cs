@@ -11,8 +11,8 @@ namespace Humans.Integration.Tests.Infrastructure;
 
 /// <summary>
 /// Proves both branches of the real-up baseline mechanism
-/// (nobodies-collective/Humans#858) against a real Postgres, using the
-/// SystemSettings section:
+/// (nobodies-collective/Humans#858) against a real Postgres, for every peeled
+/// section:
 /// <list type="bullet">
 /// <item><b>Fresh database</b> (section tables absent): the baseline migration
 /// executes for real — tables, seed data, and history row all appear.</item>
@@ -21,13 +21,38 @@ namespace Humans.Integration.Tests.Infrastructure;
 /// recorded as applied WITHOUT executing — no DDL error, no duplicate seed,
 /// and the path is idempotent across repeated boots.</item>
 /// <item><b>Schema equivalence</b>: both paths yield the same physical shape
-/// for the section's tables (columns, types, nullability, defaults, PK),
+/// for the section's tables (columns, types, nullability, defaults, indexes),
 /// ignoring ordinal position, which legitimately differs between a table
 /// evolved incrementally and one created from the model in one shot.</item>
 /// </list>
+/// Each peel adds one entry to <see cref="Sections"/>.
 /// </summary>
 public sealed class SectionMigrationRunnerTests : IAsyncLifetime
 {
+    private sealed record SectionCase(
+        string Name,
+        string SentinelTable,
+        string[] Tables,
+        Func<string, DbContext> CreateContext,
+        // Optional probe proving HasData seeds exist exactly once (null = section has no seed).
+        string? SeedProbeSql);
+
+    private static readonly SectionCase[] Sections =
+    [
+        new(
+            "SystemSettings",
+            "system_settings",
+            ["system_settings"],
+            cs => CreateSectionContext<SystemSettingsDbContext>(cs, "__EFMigrationsHistory_SystemSettings"),
+            """SELECT count(*) FROM system_settings WHERE "Key" = 'IsEmailSendingPaused'"""),
+        new(
+            "Containers",
+            "containers",
+            ["containers", "container_placements"],
+            cs => CreateSectionContext<ContainersDbContext>(cs, "__EFMigrationsHistory_Containers"),
+            null),
+    ];
+
     private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:16-alpine")
         .Build();
 
@@ -44,20 +69,31 @@ public sealed class SectionMigrationRunnerTests : IAsyncLifetime
     [HumansFact]
     public async Task FreshDatabase_BaselineExecutes_TablesSeedAndHistoryAppear()
     {
-        var connectionString = await CreateDatabaseAsync("fresh_section_only");
-
-        await using (var db = CreateSystemSettingsContext(connectionString))
+        foreach (var section in Sections)
         {
-            await SectionMigrationRunner.MigrateAsync(
-                db, "system_settings", NullLogger.Instance, TestContext.Current.CancellationToken);
-        }
+            var connectionString = await CreateDatabaseAsync($"fresh_{section.Name.ToLowerInvariant()}");
 
-        (await ScalarAsync<bool>(connectionString,
-            "SELECT to_regclass('public.system_settings') IS NOT NULL")).Should().BeTrue();
-        (await ScalarAsync<long>(connectionString,
-            """SELECT count(*) FROM system_settings WHERE "Key" = 'IsEmailSendingPaused'""")).Should().Be(1);
-        (await ScalarAsync<long>(connectionString,
-            """SELECT count(*) FROM "__EFMigrationsHistory_SystemSettings" """)).Should().Be(1);
+            await using (var db = section.CreateContext(connectionString))
+            {
+                await SectionMigrationRunner.MigrateAsync(
+                    db, section.SentinelTable, NullLogger.Instance, TestContext.Current.CancellationToken);
+            }
+
+            foreach (var table in section.Tables)
+            {
+                (await ScalarAsync<bool>(connectionString,
+                    $"SELECT to_regclass('public.{table}') IS NOT NULL"))
+                    .Should().BeTrue($"{section.Name}: {table} must exist after the baseline executes");
+            }
+
+            if (section.SeedProbeSql is not null)
+            {
+                (await ScalarAsync<long>(connectionString, section.SeedProbeSql))
+                    .Should().Be(1, $"{section.Name}: the HasData seed must be inserted by the baseline");
+            }
+
+            (await HistoryCountAsync(connectionString, section.Name)).Should().Be(1);
+        }
     }
 
     [HumansFact]
@@ -66,49 +102,71 @@ public sealed class SectionMigrationRunnerTests : IAsyncLifetime
         var connectionString = await CreateDatabaseAsync("existing_old_chain");
         await MigrateOldChainAsync(connectionString);
 
-        // The old chain already created system_settings + its seed row. The
-        // runner must record the baseline without executing it (a real execute
-        // would fail on CREATE TABLE and duplicate the seed).
-        await using (var db = CreateSystemSettingsContext(connectionString))
+        // The old chain already created every section's tables (+ seeds). The
+        // runner must record each baseline without executing it (a real execute
+        // would fail on CREATE TABLE and duplicate seeds). Two passes prove
+        // idempotency — the second boot sees history rows and no-ops.
+        for (var boot = 1; boot <= 2; boot++)
         {
-            await SectionMigrationRunner.MigrateAsync(
-                db, "system_settings", NullLogger.Instance, TestContext.Current.CancellationToken);
+            foreach (var section in Sections)
+            {
+                await using var db = section.CreateContext(connectionString);
+                await SectionMigrationRunner.MigrateAsync(
+                    db, section.SentinelTable, NullLogger.Instance, TestContext.Current.CancellationToken);
+            }
         }
 
-        (await ScalarAsync<long>(connectionString,
-            """SELECT count(*) FROM system_settings WHERE "Key" = 'IsEmailSendingPaused'""")).Should().Be(1);
-        (await ScalarAsync<long>(connectionString,
-            """SELECT count(*) FROM "__EFMigrationsHistory_SystemSettings" """)).Should().Be(1);
-
-        // Second boot: history row exists, so the runner goes straight to
-        // MigrateAsync (no-op). Nothing duplicates, nothing throws.
-        await using (var db = CreateSystemSettingsContext(connectionString))
+        foreach (var section in Sections)
         {
-            await SectionMigrationRunner.MigrateAsync(
-                db, "system_settings", NullLogger.Instance, TestContext.Current.CancellationToken);
-        }
+            (await HistoryCountAsync(connectionString, section.Name))
+                .Should().Be(1, $"{section.Name}: exactly one baseline history row after two boots");
 
-        (await ScalarAsync<long>(connectionString,
-            """SELECT count(*) FROM "__EFMigrationsHistory_SystemSettings" """)).Should().Be(1);
+            if (section.SeedProbeSql is not null)
+            {
+                (await ScalarAsync<long>(connectionString, section.SeedProbeSql))
+                    .Should().Be(1, $"{section.Name}: mark-applied must not duplicate the seed");
+            }
+        }
     }
 
     [HumansFact]
     public async Task BothPaths_ProduceEquivalentSectionSchema()
     {
-        var freshConnection = await CreateDatabaseAsync("equiv_fresh");
-        await using (var db = CreateSystemSettingsContext(freshConnection))
-        {
-            await SectionMigrationRunner.MigrateAsync(
-                db, "system_settings", NullLogger.Instance, TestContext.Current.CancellationToken);
-        }
-
         var oldChainConnection = await CreateDatabaseAsync("equiv_old_chain");
         await MigrateOldChainAsync(oldChainConnection);
 
-        var fromBaseline = await DescribeTableAsync(freshConnection, "system_settings");
-        var fromOldChain = await DescribeTableAsync(oldChainConnection, "system_settings");
+        foreach (var section in Sections)
+        {
+            var freshConnection = await CreateDatabaseAsync($"equiv_{section.Name.ToLowerInvariant()}");
+            await using (var db = section.CreateContext(freshConnection))
+            {
+                await SectionMigrationRunner.MigrateAsync(
+                    db, section.SentinelTable, NullLogger.Instance, TestContext.Current.CancellationToken);
+            }
 
-        fromBaseline.Should().BeEquivalentTo(fromOldChain);
+            foreach (var table in section.Tables)
+            {
+                var fromBaseline = await DescribeTableAsync(freshConnection, table);
+                var fromOldChain = await DescribeTableAsync(oldChainConnection, table);
+
+                fromBaseline.Should().BeEquivalentTo(
+                    fromOldChain, $"{section.Name}: {table} must be physically identical on both paths");
+            }
+        }
+    }
+
+    private static DbContext CreateSectionContext<TContext>(string connectionString, string historyTable)
+        where TContext : DbContext
+    {
+        var options = new DbContextOptionsBuilder<TContext>()
+            .UseNpgsql(connectionString, npgsql =>
+            {
+                npgsql.UseNodaTime();
+                npgsql.MigrationsAssembly("Humans.Infrastructure");
+                npgsql.MigrationsHistoryTable(historyTable);
+            })
+            .Options;
+        return (TContext)Activator.CreateInstance(typeof(TContext), options)!;
     }
 
     private async Task<string> CreateDatabaseAsync(string name)
@@ -125,19 +183,6 @@ public sealed class SectionMigrationRunnerTests : IAsyncLifetime
         return new NpgsqlConnectionStringBuilder(admin.ConnectionString) { Database = name }.ConnectionString;
     }
 
-    private static SystemSettingsDbContext CreateSystemSettingsContext(string connectionString)
-    {
-        var options = new DbContextOptionsBuilder<SystemSettingsDbContext>()
-            .UseNpgsql(connectionString, npgsql =>
-            {
-                npgsql.UseNodaTime();
-                npgsql.MigrationsAssembly("Humans.Infrastructure");
-                npgsql.MigrationsHistoryTable("__EFMigrationsHistory_SystemSettings");
-            })
-            .Options;
-        return new SystemSettingsDbContext(options);
-    }
-
     private static async Task MigrateOldChainAsync(string connectionString)
     {
         var options = new DbContextOptionsBuilder<HumansDbContext>()
@@ -151,6 +196,10 @@ public sealed class SectionMigrationRunnerTests : IAsyncLifetime
         await db.Database.MigrateAsync(TestContext.Current.CancellationToken);
     }
 
+    private static Task<long> HistoryCountAsync(string connectionString, string sectionName) =>
+        ScalarAsync<long>(connectionString,
+            $"""SELECT count(*) FROM "__EFMigrationsHistory_{sectionName}" """);
+
     private static async Task<T?> ScalarAsync<T>(string connectionString, string sql)
     {
         await using var connection = new NpgsqlConnection(connectionString);
@@ -163,8 +212,8 @@ public sealed class SectionMigrationRunnerTests : IAsyncLifetime
 
     /// <summary>
     /// Ordinal-independent physical description of a table: one line per column
-    /// (name, type, nullability, default) plus one line per PK/unique/index
-    /// definition, sorted.
+    /// (name, type, nullability, default) plus one line per index definition,
+    /// sorted.
     /// </summary>
     private static async Task<List<string>> DescribeTableAsync(string connectionString, string table)
     {

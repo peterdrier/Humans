@@ -4,7 +4,9 @@ using Humans.Application.Interfaces.Camps;
 using Humans.Application.Services.Containers;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
+using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.Containers;
+using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using NSubstitute;
 
@@ -18,10 +20,13 @@ public sealed class ContainerPlacementServiceTests : ServiceTestHarness
 
     private readonly ContainerService _sut;
 
+    private readonly DbContextOptions<ContainersDbContext> _containersOptions =
+        NewSectionDbOptions<ContainersDbContext>();
+
     public ContainerPlacementServiceTests()
         : base(Instant.FromUtc(2026, 4, 26, 10, 0))
     {
-        var repo = new ContainerRepository(DbFactory);
+        var repo = new ContainerRepository(new TestDbContextFactory<ContainersDbContext>(_containersOptions));
         _sut = new ContainerService(
             repo,
             Substitute.For<IFileStorage>(),
@@ -41,8 +46,9 @@ public sealed class ContainerPlacementServiceTests : ServiceTestHarness
             CreatedAt = now,
             UpdatedAt = now,
         };
-        Db.Containers.Add(container);
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await using var ctx = new ContainersDbContext(_containersOptions);
+        ctx.Containers.Add(container);
+        await ctx.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         return container;
     }
 
