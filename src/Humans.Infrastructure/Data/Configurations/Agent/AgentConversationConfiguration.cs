@@ -2,7 +2,7 @@ using Humans.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace Humans.Infrastructure.Data.Configurations;
+namespace Humans.Infrastructure.Data.Configurations.Agent;
 
 public class AgentConversationConfiguration : IEntityTypeConfiguration<AgentConversation>
 {

@@ -413,10 +413,10 @@ public class AgentServiceTests
         IAgentRateLimitStore? rateLimitStore = null,
         IAgentToolDispatcher? toolDispatcher = null)
     {
-        var dbOptions = new DbContextOptionsBuilder<HumansDbContext>()
+        var dbOptions = new DbContextOptionsBuilder<AgentDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
-        var db = new HumansDbContext(dbOptions);
+        var db = new AgentDbContext(dbOptions);
 
         var settings = new AgentSettings
         {

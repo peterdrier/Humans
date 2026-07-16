@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using NodaTime;
 
-namespace Humans.Infrastructure.Data.Configurations;
+namespace Humans.Infrastructure.Data.Configurations.Agent;
 
 public class AgentSettingsConfiguration : IEntityTypeConfiguration<AgentSettings>
 {
