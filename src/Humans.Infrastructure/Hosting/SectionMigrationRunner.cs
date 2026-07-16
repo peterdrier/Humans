@@ -1,4 +1,3 @@
-using System.Reflection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
@@ -71,18 +70,25 @@ internal static class SectionMigrationRunner
 
     private static async Task<bool> SentinelTableExistsAsync(DbContext db, string sentinelTable, CancellationToken ct)
     {
-        var connection = db.Database.GetDbConnection();
         await db.Database.OpenConnectionAsync(ct);
-        var command = connection.CreateCommand();
-        await using (command.ConfigureAwait(false))
+        try
         {
-            command.CommandText = "SELECT to_regclass(@table) IS NOT NULL";
-            var parameter = command.CreateParameter();
-            parameter.ParameterName = "@table";
-            parameter.Value = "public." + sentinelTable;
-            command.Parameters.Add(parameter);
-            var result = await command.ExecuteScalarAsync(ct);
-            return result is true;
+            var connection = db.Database.GetDbConnection();
+            var command = connection.CreateCommand();
+            await using (command.ConfigureAwait(false))
+            {
+                command.CommandText = "SELECT to_regclass(@table) IS NOT NULL";
+                var parameter = command.CreateParameter();
+                parameter.ParameterName = "@table";
+                parameter.Value = "public." + sentinelTable;
+                command.Parameters.Add(parameter);
+                var result = await command.ExecuteScalarAsync(ct);
+                return result is true;
+            }
+        }
+        finally
+        {
+            await db.Database.CloseConnectionAsync();
         }
     }
 
@@ -91,22 +97,6 @@ internal static class SectionMigrationRunner
         var historyRepository = db.GetService<IHistoryRepository>();
         await db.Database.ExecuteSqlRawAsync(historyRepository.GetCreateIfNotExistsScript(), ct);
         await db.Database.ExecuteSqlRawAsync(
-            historyRepository.GetInsertScript(new HistoryRow(baselineId, EfProductVersion)), ct);
-    }
-
-    /// <summary>
-    /// Mirrors what EF writes to the ProductVersion history column (its assembly
-    /// informational version, without build metadata) so fake-applied baseline rows
-    /// are indistinguishable from genuinely-applied ones.
-    /// </summary>
-    private static string EfProductVersion
-    {
-        get
-        {
-            var informational = typeof(Migration).Assembly
-                .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "unknown";
-            var metadataIndex = informational.IndexOf('+', StringComparison.Ordinal);
-            return metadataIndex < 0 ? informational : informational[..metadataIndex];
-        }
+            historyRepository.GetInsertScript(new HistoryRow(baselineId, ProductInfo.GetVersion())), ct);
     }
 }
