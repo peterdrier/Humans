@@ -106,11 +106,6 @@ internal sealed class HumansDbContext(DbContextOptions<HumansDbContext> options)
     public DbSet<StorePayment> StorePayments => Set<StorePayment>();
     public DbSet<StoreInvoice> StoreInvoices => Set<StoreInvoice>();
     public DbSet<StoreTreasurySyncState> StoreTreasurySyncStates => Set<StoreTreasurySyncState>();
-    public DbSet<ExpenseReport> ExpenseReports => Set<ExpenseReport>();
-    public DbSet<ExpenseLine> ExpenseLines => Set<ExpenseLine>();
-    public DbSet<ExpenseAttachment> ExpenseAttachments => Set<ExpenseAttachment>();
-    public DbSet<HoldedExpenseOutboxEvent> HoldedExpenseOutboxEvents
-        => Set<HoldedExpenseOutboxEvent>();
     public DbSet<HoldedExpenseDoc> HoldedExpenseDocs => Set<HoldedExpenseDoc>();
     public DbSet<HoldedCategoryMap> HoldedCategoryMap => Set<HoldedCategoryMap>();
     public DbSet<HoldedSyncState> HoldedSyncStates => Set<HoldedSyncState>();
@@ -137,6 +132,7 @@ internal sealed class HumansDbContext(DbContextOptions<HumansDbContext> options)
         typeof(Configurations.SystemSettings.SystemSettingConfiguration).Namespace!,
         typeof(Configurations.Containers.ContainerConfiguration).Namespace!,
         typeof(Configurations.Agent.AgentConversationConfiguration).Namespace!,
+        typeof(Configurations.Expenses.ExpenseReportConfiguration).Namespace!,
     ];
 
     protected override void OnModelCreating(ModelBuilder builder)
