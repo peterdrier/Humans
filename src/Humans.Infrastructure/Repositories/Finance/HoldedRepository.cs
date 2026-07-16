@@ -7,7 +7,7 @@ using NodaTime;
 
 namespace Humans.Infrastructure.Repositories.Finance;
 
-internal sealed class HoldedRepository(IDbContextFactory<HumansDbContext> factory)
+internal sealed class HoldedRepository(IDbContextFactory<FinanceDbContext> factory)
     : IHoldedRepository
 {
     // ── Category map ─────────────────────────────────────────────────────────
