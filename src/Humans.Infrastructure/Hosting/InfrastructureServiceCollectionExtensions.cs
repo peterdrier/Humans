@@ -44,6 +44,10 @@ public static class InfrastructureServiceCollectionExtensions
             options.ConfigureWarnings(w => w.Ignore(CoreEventId.FirstWithoutOrderByAndFilterWarning));
         });
 
+        // Per-section contexts (nobodies-collective/Humans#858), migrated after
+        // HumansDbContext by DatabaseMigrationHostedService in registration order.
+        services.AddSectionDbContext<SystemSettingsDbContext>(sentinelTable: "system_settings");
+
         services.AddHostedService<DatabaseMigrationHostedService>();
 
         return services;

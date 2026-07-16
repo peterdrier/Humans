@@ -11,9 +11,15 @@ public class ApplicationServiceDbContextInjectionAnalyzerTests
     // compilation so the analyzer can resolve them — the real build
     // references them transitively.
     private const string Stubs = """
+        namespace Microsoft.EntityFrameworkCore
+        {
+            public class DbContext { }
+        }
+
         namespace Humans.Infrastructure.Data
         {
-            public class HumansDbContext { }
+            public class HumansDbContext : Microsoft.EntityFrameworkCore.DbContext { }
+            public class SystemSettingsDbContext : Microsoft.EntityFrameworkCore.DbContext { }
         }
 
         namespace Humans.Application.Interfaces.Repositories
@@ -58,6 +64,32 @@ public class ApplicationServiceDbContextInjectionAnalyzerTests
                 public sealed class SomeJob
                 {
                     public SomeJob(Humans.Infrastructure.Data.HumansDbContext dbContext)
+                    {
+                    }
+                }
+            }
+            """;
+
+        var diagnostics = await AnalyzerTestHarness.RunAsync(
+            new ApplicationServiceDbContextInjectionAnalyzer(),
+            "Humans.Infrastructure",
+            source);
+
+        var hits = diagnostics.Where(IsHum0009).ToList();
+        hits.Should().ContainSingle();
+        hits[0].Severity.Should().Be(DiagnosticSeverity.Error);
+    }
+
+    [HumansFact]
+    public async Task Fires_error_on_non_repository_class_using_a_section_DbContext()
+    {
+        var source = Stubs + """
+
+            namespace Humans.Infrastructure.Jobs
+            {
+                public sealed class SomeJob
+                {
+                    public SomeJob(Humans.Infrastructure.Data.SystemSettingsDbContext dbContext)
                     {
                     }
                 }

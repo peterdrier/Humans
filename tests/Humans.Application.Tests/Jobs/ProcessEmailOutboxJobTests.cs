@@ -26,6 +26,7 @@ namespace Humans.Application.Tests.Jobs;
 public class ProcessEmailOutboxJobTests : IDisposable
 {
     private readonly DbContextOptions<HumansDbContext> _options;
+    private readonly DbContextOptions<SystemSettingsDbContext> _systemSettingsOptions;
     private readonly HumansDbContext _dbContext;
     private readonly IEmailTransport _transport;
     private readonly ICampaignService _campaignService;
@@ -54,7 +55,11 @@ public class ProcessEmailOutboxJobTests : IDisposable
         _settings = Options.Create(new EmailSettings { OutboxBatchSize = 10, OutboxMaxRetries = 10 });
         var logger = Substitute.For<ILogger<ProcessEmailOutboxJob>>();
         _repo = new EmailOutboxRepository(new TestDbContextFactory(_options));
-        _systemSettingsRepository = new SystemSettingsRepository(new TestDbContextFactory(_options));
+        _systemSettingsOptions = new DbContextOptionsBuilder<SystemSettingsDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+        _systemSettingsRepository = new SystemSettingsRepository(
+            new TestDbContextFactory<SystemSettingsDbContext>(_systemSettingsOptions));
         _systemSettingsService = new SystemSettingsService(_systemSettingsRepository);
         _outboxService = new EmailOutboxService(_repo, _systemSettingsService, _clock);
 
@@ -142,8 +147,11 @@ public class ProcessEmailOutboxJobTests : IDisposable
     [HumansFact]
     public async Task ExecuteAsync_SkipsPaused()
     {
-        _dbContext.SystemSettings.Add(new SystemSetting { Key = "IsEmailSendingPaused", Value = "true" });
-        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await using (var settingsContext = new SystemSettingsDbContext(_systemSettingsOptions))
+        {
+            settingsContext.SystemSettings.Add(new SystemSetting { Key = "IsEmailSendingPaused", Value = "true" });
+            await settingsContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        }
 
         await SeedMessageAsync(EmailOutboxStatus.Queued);
 

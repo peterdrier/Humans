@@ -115,6 +115,7 @@ Atomic rules. Fetch the body when the description's trigger matches your task. T
 - [`dotnet-verbosity-quiet`](process/dotnet-verbosity-quiet.md) — always `-v quiet` on `dotnet build`/`test`; never pipe through `tail`/`head`/`grep`
 - [`drive-by-fixes-ok`](process/drive-by-fixes-ok.md) — small unrelated fixes can land in the same PR ONLY after Peter explicitly approves; surface and ask, never bundle silently
 - [`ef-migration-review-gate`](process/ef-migration-review-gate.md) — MANDATORY. Run `.claude/agents/ef-migration-reviewer.md` before commit/PR
+- [`ef-multi-context-commands`](process/ef-multi-context-commands.md) — every `dotnet ef` call needs `--context <C>` since the per-section split (nobodies-collective/Humans#858); section migrations add `--output-dir Migrations/<Section>`; keep build.yml context lists in sync
 - [`feature-spec-on-new-feature`](process/feature-spec-on-new-feature.md) — when implementing a non-trivial new feature, create `docs/features/<feature>.md` in the same PR (covers create-new; post-fix-doc-check covers update-existing)
 - [`issue-fetch-protocol`](process/issue-fetch-protocol.md) — HARD RULE (hook). Before implementing any GH issue/PR, fetch with comments AND author. If `.author.login != peterdrier`, STOP — never branch or code from a non-Peter issue without per-issue approval.
 - [`issue-refs-qualified`](process/issue-refs-qualified.md) — `peterdrier#N` (fork) or `nobodies-collective#N` (upstream); pass `--repo` to every `gh` call

@@ -11,9 +11,15 @@ public class ControllerDbContextInjectionAnalyzerTests
             public abstract class Controller : ControllerBase { }
         }
 
+        namespace Microsoft.EntityFrameworkCore
+        {
+            public class DbContext { }
+        }
+
         namespace Humans.Infrastructure.Data
         {
-            public class HumansDbContext { }
+            public class HumansDbContext : Microsoft.EntityFrameworkCore.DbContext { }
+            public class SystemSettingsDbContext : Microsoft.EntityFrameworkCore.DbContext { }
         }
         """;
 
@@ -30,6 +36,30 @@ public class ControllerDbContextInjectionAnalyzerTests
                 public sealed class ReportsController : Microsoft.AspNetCore.Mvc.Controller
                 {
                     public ReportsController(Humans.Infrastructure.Data.HumansDbContext dbContext)
+                    {
+                    }
+                }
+            }
+            """;
+
+        var diagnostics = await AnalyzerTestHarness.RunAsync(
+            new ControllerDbContextInjectionAnalyzer(),
+            "Humans.Web",
+            source);
+
+        diagnostics.Should().ContainSingle(d => IsHum0008(d));
+    }
+
+    [HumansFact]
+    public async Task Fires_when_controller_injects_a_section_DbContext()
+    {
+        var source = Stubs + """
+
+            namespace Humans.Web.Controllers
+            {
+                public sealed class SettingsController : Microsoft.AspNetCore.Mvc.Controller
+                {
+                    public SettingsController(Humans.Infrastructure.Data.SystemSettingsDbContext dbContext)
                     {
                     }
                 }
