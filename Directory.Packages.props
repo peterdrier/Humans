@@ -31,7 +31,7 @@
     <!-- State Machine -->
     <PackageVersion Include="Stateless" Version="5.20.1" />
     <!-- Background Jobs -->
-    <PackageVersion Include="Hangfire.Core" Version="1.8.23" />
+    <PackageVersion Include="Hangfire.Core" Version="1.8.24" />
     <PackageVersion Include="Hangfire.AspNetCore" Version="1.8.23" />
     <PackageVersion Include="Hangfire.PostgreSql" Version="1.21.1" />
     <!-- Email -->
