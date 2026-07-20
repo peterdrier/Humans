@@ -124,29 +124,26 @@ public class TrackedLockTests
         // Acquire first to force contention.
         var first = await sut.AcquireAsync(NullLogger.Instance, TestContext.Current.CancellationToken);
 
-        // Signals once the waiter thread has actually started running, so the
-        // handshake below doesn't depend on guessing how long thread-pool
-        // scheduling takes under CI load. A blind delay here previously raced:
-        // if the pool was slow to schedule the waiter, the fixed delay could
-        // elapse and `first` could be disposed before the waiter ever called
-        // AcquireAsync, so it found the lock already free and measured ~0ms —
-        // below the debug threshold, so no log fired (the observed flake).
-        var secondStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        // Call (don't await) the second acquire on this same thread, not on a
+        // spawned Task. An async method always runs synchronously up to its
+        // first real suspension point, and SemaphoreSlim.WaitAsync registers
+        // a waiter synchronously — under its internal lock — before it ever
+        // returns an incomplete task when the semaphore is unavailable. So by
+        // the time this call returns, the waiter is deterministically already
+        // blocked on the lock; no thread-pool scheduling or wall-clock
+        // guesswork is involved. A prior version of this test raced a blind
+        // delay against Task.Run's scheduling latency and could flake under
+        // CI load when the pool was slow to start the waiter before the
+        // delay elapsed (observed: peterdrier/Humans run 29370106498).
+        var pendingSecond = sut.AcquireAsync(logger, TestContext.Current.CancellationToken);
 
-        var secondTask = Task.Run(async () =>
-        {
-            secondStarted.TrySetResult();
-            using var r = await sut.AcquireAsync(logger, TestContext.Current.CancellationToken);
-        }, TestContext.Current.CancellationToken);
-
-        await secondStarted.Task;
-        // The waiter is now running and about to call AcquireAsync (the next
-        // statement on its thread); this buffer covers that synchronous
-        // handoff so the waiter is reliably blocked on the semaphore before
-        // we release it, guaranteeing a measurable contended wait.
+        // The only remaining timing dependency: wait long enough ourselves
+        // that the measured elapsed time crosses the 1ms debug threshold
+        // before releasing — a lower bound we control, not a race against
+        // another thread having started.
         await Task.Delay(10, TestContext.Current.CancellationToken);
         first.Dispose();
-        await secondTask;
+        using var second = await pendingSecond;
 
         logger.Received().Log(
             LogLevel.Debug,
