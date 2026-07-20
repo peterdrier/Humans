@@ -124,12 +124,26 @@ public class TrackedLockTests
         // Acquire first to force contention.
         var first = await sut.AcquireAsync(NullLogger.Instance, TestContext.Current.CancellationToken);
 
+        // Signals once the waiter thread has actually started running, so the
+        // handshake below doesn't depend on guessing how long thread-pool
+        // scheduling takes under CI load. A blind delay here previously raced:
+        // if the pool was slow to schedule the waiter, the fixed delay could
+        // elapse and `first` could be disposed before the waiter ever called
+        // AcquireAsync, so it found the lock already free and measured ~0ms —
+        // below the debug threshold, so no log fired (the observed flake).
+        var secondStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
         var secondTask = Task.Run(async () =>
         {
-            // Small delay ensures the waiter spends > 1ms waiting.
+            secondStarted.TrySetResult();
             using var r = await sut.AcquireAsync(logger, TestContext.Current.CancellationToken);
         }, TestContext.Current.CancellationToken);
 
+        await secondStarted.Task;
+        // The waiter is now running and about to call AcquireAsync (the next
+        // statement on its thread); this buffer covers that synchronous
+        // handoff so the waiter is reliably blocked on the semaphore before
+        // we release it, guaranteeing a measurable contended wait.
         await Task.Delay(10, TestContext.Current.CancellationToken);
         first.Dispose();
         await secondTask;
