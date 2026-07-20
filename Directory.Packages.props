@@ -62,7 +62,7 @@
     <PackageVersion Include="Serilog.Sinks.Debug" Version="3.0.0" />
     <PackageVersion Include="Serilog.Sinks.OpenTelemetry" Version="4.2.0" />
     <!-- Image Processing -->
-    <PackageVersion Include="Magick.NET-Q8-AnyCPU" Version="14.14.0" />
+    <PackageVersion Include="Magick.NET-Q8-AnyCPU" Version="14.15.0" />
     <!-- Transitive pin: patches GHSA-37gx-xxp4-5rgx / GHSA-w3x6-4m5h-cxqf / GHSA-9mv3-2cwr-p262 -->
     <PackageVersion Include="System.Security.Cryptography.Xml" Version="10.0.9" />
     <!-- Localization -->
