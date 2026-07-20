@@ -5,7 +5,7 @@
   </PropertyGroup>
   <ItemGroup>
     <!-- AI/LLM -->
-    <PackageVersion Include="Anthropic" Version="12.35.1" />
+    <PackageVersion Include="Anthropic" Version="12.36.0" />
     <!-- Core Framework -->
     <PackageVersion Include="ClosedXML" Version="0.105.0" />
     <!-- CSV — ALL CSV reading/writing goes through CsvHelper (memory/code/csv-use-csvhelper.md). Exact package name "CsvHelper" only; "CsvHelper.Excel.Core.Net" is known malware. -->
