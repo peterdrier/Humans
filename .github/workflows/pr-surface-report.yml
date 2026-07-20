@@ -52,7 +52,7 @@ jobs:
           echo "SURFACE_BASE_SHA=$MERGE_BASE" >> "$GITHUB_ENV"
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v5
+        uses: actions/setup-dotnet@v6
         with:
           dotnet-version: '10.0.x'
 
