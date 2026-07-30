@@ -93,3 +93,5 @@ for the 2026-05-24→06-01 wave, so the 2026-06-11 snapshot is everyone's baseli
 | Cantina | 304 | — | — | never served |
 | Search | 132 | — | 2026-06-07 | #906 relevance-ranked, cache-only search rewrite |
 | Gdpr | 81 | — | — | never served |
+
+<!-- CI trigger verification probe — this branch is a throwaway. -->
