@@ -3,12 +3,20 @@ import { loginAsTicketAdmin, loginAsVolunteer, expectBlocked } from '../helpers/
 
 test.describe('Scanner', () => {
   test('ticket admin can decode locally and stop the camera stream', async ({ page }) => {
+    // Global, once-per-session telemetry every page fires on load: screen size
+    // (client-metrics.js) and browser timezone (site.js). Neither is triggered by
+    // the scanner nor carries the decoded value, so they are not evidence of the
+    // scan leaving the browser.
+    const GLOBAL_TELEMETRY = ['/api/client-metrics', '/api/timezone'];
+
     const appPosts: string[] = [];
+    const postedBodies: string[] = [];
     page.on('request', request => {
       const url = new URL(request.url());
-      if (request.method() === 'POST' && url.origin === new URL(page.url()).origin) {
-        appPosts.push(url.pathname);
-      }
+      if (request.method() !== 'POST' || url.origin !== new URL(page.url()).origin) return;
+      postedBodies.push(request.postData() ?? '');
+      if (GLOBAL_TELEMETRY.includes(url.pathname)) return;
+      appPosts.push(url.pathname);
     });
 
     await page.addInitScript(() => {
@@ -56,6 +64,9 @@ test.describe('Scanner', () => {
 
     await expect(page.locator('#scanner-results')).toContainText('https://tickets.example.test/stub/123');
     expect(appPosts).toEqual([]);
+    // The point of the test: decoding is local, so the scanned value must never be
+    // sent to the server — checked against every POST body, telemetry included.
+    expect(postedBodies.filter(body => body.includes('tickets.example.test'))).toEqual([]);
 
     await page.getByRole('button', { name: /stop|detener|stopp|atura|arrêter|ferma/i }).click();
 
