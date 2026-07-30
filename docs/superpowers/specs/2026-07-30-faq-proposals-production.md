@@ -72,14 +72,29 @@ Barcelona and speaks hungarian" (Pau) and "How do I find someone" (Bethany, 2026
 same question arriving from a different angle, and the agent handled the privacy boundary
 correctly but had no positive answer to offer alongside the refusal.
 
-**Correction caught in review.** The first draft of that third entry claimed "there is no
-directory search". That is wrong — `/Search` is a global name-only search across humans, teams,
-camps, rotas and events (`SearchController`, spec at `docs/features/global/global-search.md`),
-and it resolves a pasted GUID exactly (`Guid.TryParse` in the search service). The shipped entry
-points at `/Search` first, and is honest about its real limit: a common first name is hard to pin
-down when the person has not shared enough to be distinctive, and search cannot narrow by city or
-language. Worth noting for future runs — writing FAQ prose from what the *agent* said in a
-transcript reproduces the agent's own blind spots. Verify against the code, not the conversation.
+**Three corrections, all caught after the first draft.** Worth recording, because each one came
+from trusting a *description* of the code instead of the code:
+
+1. *"There is no directory search"* — written from what the agent said in the transcripts. Wrong:
+   `/Search` exists. Writing FAQ prose from an agent transcript reproduces the agent's own blind
+   spots.
+2. *"Replies then go directly by email between the two of you"* — wrong whenever the sender clears
+   "include my contact info". `EmailMessageFactory.FacilitatedMessage` sets
+   `replyTo = includeContactInfo ? senderEmail : null`, and the rendered body omits the address
+   too, so the recipient has no way to write back. Caught by Codex on the PR.
+3. *"Search matches names only… cannot narrow by city"* and *"pasting the GUID into /Search finds
+   them exactly"* — both wrong, and both came from reading the prose rather than the enum.
+   `SearchController`'s summary comment and `docs/features/global/global-search.md` describe the
+   feature as "name-only", but `SearchHumansAsync` passes `PersonSearchFields.PublicAll`, and
+   `PersonSearchFields.Bio` covers "Bio, city, contribution-interests, CV, pronouns,
+   AllActiveProfiles-visible ContactFields, and publicly-exposed emails". City **is** searchable;
+   languages are not. And the `Guid.TryParse` fast-path exists only in `SearchTeamsAsync` /
+   `SearchCampsAsync` / `SearchShiftsAsync` — the human bucket has none, so a person's id finds
+   nothing in `/Search`. `/Profile/{id}` is the route that works. Codex caught the field list; the
+   GUID error was found while verifying it.
+
+The stale "name-only" wording in `SearchController`'s summary and in `global-search.md` is real
+doc drift, surfaced separately rather than fixed here.
 
 ## Correctly handled — no action
 

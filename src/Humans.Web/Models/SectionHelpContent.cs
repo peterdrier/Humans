@@ -92,8 +92,9 @@ public static class SectionHelpContent
         **Q: How do I read messages sent to me / where is my inbox?**
         There is no in-app inbox. When someone uses the "Send <name> a message" button on your
         profile, the message is relayed to your registered email address — check the inbox for the
-        address listed at /Profile/Me/Emails. Replies then go directly by email between the two of
-        you.
+        address listed at /Profile/Me/Emails. Whether you can reply is the sender's choice: they
+        tick "include my contact info" when writing, and only then does the email carry their
+        address as the reply-to. Without it the message arrives with no way to write back.
 
         **Q: Why does the "Send <name> a message" button appear on some profiles but not others?**
         It shows only when all three are true: it is not your own profile; the person has no email
@@ -102,14 +103,15 @@ public static class SectionHelpContent
         their communication preferences. Messages are capped at 2000 characters.
 
         **Q: How do I find a specific person?**
-        Use the magnifying glass in the top nav, or go to /Search, and type their name (two
-        characters minimum). Search matches names only — humans, teams, camps, rotas, and events —
-        and only across what each person has chosen to make publicly visible. A common first name
-        is hard to pin down: if someone has not shared enough to make them distinctive, you may get
-        several matches or none, and narrowing by city or language is not something search can do.
-        If you have their profile id, pasting the GUID into /Search finds them exactly. Failing
-        that, /Team shows people you share a team with, and the community channels linked in the
-        footer at https://nobodies.team/ are the way to reach someone you have no other handle on.
+        Use the magnifying glass in the top nav, or go to /Search, and type at least two characters.
+        For people it matches the display name plus whatever they have chosen to make public — city,
+        bio, what they'd like to contribute, pronouns, and contact details set to "all active
+        profiles" visibility — so a city name does work as a search term. It does not search
+        languages, and it never matches anything someone has kept private. A common first name is
+        still hard to pin down: if the person has shared little, you may get many matches or none.
+        Search does not look people up by id — if you have their profile id, go straight to
+        /Profile/<id> instead. /Team lists people you share a team with, and the community channels
+        linked in the footer at https://nobodies.team/ are the way to reach someone otherwise.
 
         ## Account & privacy
 
