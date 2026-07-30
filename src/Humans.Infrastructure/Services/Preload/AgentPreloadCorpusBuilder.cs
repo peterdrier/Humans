@@ -14,9 +14,12 @@ public sealed class AgentPreloadCorpusBuilder(
     private static readonly IReadOnlyList<string> Tier1Sections =
         ["Onboarding", "Teams", "LegalAndConsent", "Governance", "Shifts", "Tickets", "Profiles", "Auth"];
 
+    // Keep in step with AgentSectionDocReader.Whitelist — a section the reader can serve but
+    // that never appears in this index is one the agent has no reason to ask for.
     private static readonly IReadOnlyList<string> Tier2Sections =
         ["Onboarding", "Teams", "LegalAndConsent", "Governance", "Shifts", "Tickets", "Profiles", "Auth",
-         "Budget", "Camps", "CityPlanning", "Campaigns", "Feedback", "GoogleIntegration"];
+         "Budget", "Camps", "CityPlanning", "Campaigns", "Feedback", "GoogleIntegration",
+         "Events", "Guide", "Store", "Scanner", "Gate", "Calendar", "Cantina", "Containers", "Issues"];
 
     private static readonly MemoryCacheEntryOptions HoldForever =
         new() { Priority = CacheItemPriority.NeverRemove };

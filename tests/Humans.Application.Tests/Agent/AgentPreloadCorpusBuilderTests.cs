@@ -28,16 +28,23 @@ public class AgentPreloadCorpusBuilderTests
         text.Should().NotContain("**CityPlanning**");
     }
 
+    /// <summary>
+    /// A section the reader can serve but that never appears in the Tier2 index is one the
+    /// agent has no reason to ask for — the index is the only place it learns the key set.
+    /// Asserting against <c>KnownSections</c> rather than a hand-listed set keeps the two
+    /// lists from drifting apart the way they did before nobodies-collective#951.
+    /// </summary>
     [HumansFact]
-    public async Task Tier2_index_lists_all_fourteen_sections()
+    public async Task Tier2_index_lists_every_section_the_reader_can_serve()
     {
         var builder = MakeBuilder();
         var text = await builder.BuildAsync(AgentPreloadConfig.Tier2, Xunit.TestContext.Current.CancellationToken);
 
-        text.Should().Contain("**Budget**");
-        text.Should().Contain("**Camps**");
-        text.Should().Contain("**CityPlanning**");
-        text.Should().Contain("**Campaigns**");
+        var reader = new AgentSectionDocReader(
+            new StubSource(), new MemoryCache(new MemoryCacheOptions()),
+            NullLogger<AgentSectionDocReader>.Instance);
+
+        text.Should().ContainAll(reader.KnownSections.Select(s => $"**{s}**"));
     }
 
     [HumansFact]

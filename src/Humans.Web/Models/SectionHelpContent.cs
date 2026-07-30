@@ -89,6 +89,28 @@ public static class SectionHelpContent
         then set it as your primary. Your sign-in is tied to your Google login / magic-link, which is
         separate from the addresses listed here.
 
+        **Q: How do I read messages sent to me / where is my inbox?**
+        There is no in-app inbox. When someone uses the "Send <name> a message" button on your
+        profile, the message is relayed to your registered email address — check the inbox for the
+        address listed at /Profile/Me/Emails. Replies then go directly by email between the two of
+        you.
+
+        **Q: Why does the "Send <name> a message" button appear on some profiles but not others?**
+        It shows only when all three are true: it is not your own profile; the person has no email
+        address set to "all active profiles" visibility (if their address is already visible to you,
+        you can just email them directly); and they have not switched off facilitated messages in
+        their communication preferences. Messages are capped at 2000 characters.
+
+        **Q: How do I find a specific person?**
+        Use the magnifying glass in the top nav, or go to /Search, and type their name (two
+        characters minimum). Search matches names only — humans, teams, camps, rotas, and events —
+        and only across what each person has chosen to make publicly visible. A common first name
+        is hard to pin down: if someone has not shared enough to make them distinctive, you may get
+        several matches or none, and narrowing by city or language is not something search can do.
+        If you have their profile id, pasting the GUID into /Search finds them exactly. Failing
+        that, /Team shows people you share a team with, and the community channels linked in the
+        footer at https://nobodies.team/ are the way to reach someone you have no other handle on.
+
         ## Account & privacy
 
         **Q: How do I delete my account / download my data?**

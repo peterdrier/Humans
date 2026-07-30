@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces;
+using Humans.Application.Tests.Architecture.Ratchet;
 using Humans.Infrastructure.Services.Preload;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -30,6 +31,25 @@ public class AgentSectionDocReaderTests
         content.Should().NotBeNullOrEmpty();
         source.LastFolder.Should().Be(AgentSectionDocReader.FolderPath);
         source.LastStem.Should().Be("Shifts", "the reader must canonicalize the key, not pass caller casing");
+    }
+
+    /// <summary>
+    /// A whitelisted key with no matching file is unreachable at runtime and fails silently —
+    /// <see cref="AgentSectionDocReader"/> swallows the GitHub 404 and returns null, and the
+    /// docs health check only probes Shifts, so a typo would never surface. The repo is the
+    /// source these docs are served from, so the local folder is the authority.
+    /// </summary>
+    [HumansFact]
+    public void Every_whitelisted_section_has_a_matching_doc_file()
+    {
+        var folder = Path.Combine(RatchetTestRunner.LocateRepoRoot(), "docs", "sections");
+        var stems = Directory.GetFiles(folder, "*.md").Select(Path.GetFileNameWithoutExtension).ToHashSet(StringComparer.Ordinal);
+
+        // Ordinal, not OrdinalIgnoreCase: GitHub paths are case-sensitive, and the reader
+        // fetches "{canonicalKey}.md" verbatim.
+        MakeReader(new FakeSource()).KnownSections.Should().OnlyContain(
+            key => stems.Contains(key),
+            "every whitelisted key is fetched as docs/sections/{key}.md with exact casing");
     }
 
     [HumansFact]

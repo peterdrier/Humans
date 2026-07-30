@@ -20,12 +20,19 @@ public sealed class AgentSectionDocReader(
     internal const string FolderPath = "docs/sections";
     private const string CacheKeyPrefix = "agent:section:";
 
+    // Every user-facing section. A section left off this list is unreachable: the agent
+    // either refuses the question outright or answers it from the community Discord FAQ
+    // with an "unofficial, may be outdated" disclaimer — even for a first-party feature.
+    // Operator/internal-only sections (Finance, Holded, Email, Mailer, AuditLog, Debug,
+    // admin-shell) stay off deliberately; add one when triage shows users asking about it.
     private static readonly HashSet<string> Whitelist =
         new(StringComparer.OrdinalIgnoreCase)
         {
             "Onboarding", "Teams", "LegalAndConsent", "Governance", "Shifts",
             "Tickets", "Profiles", "Auth", "Budget", "Camps",
-            "CityPlanning", "Campaigns", "Feedback", "GoogleIntegration"
+            "CityPlanning", "Campaigns", "Feedback", "GoogleIntegration",
+            "Events", "Guide", "Store", "Scanner", "Gate",
+            "Calendar", "Cantina", "Containers", "Issues"
         };
 
     // No expiration + NeverRemove: GitHub-backed content that only changes at release.
