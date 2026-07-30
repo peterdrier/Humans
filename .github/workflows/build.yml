@@ -3,8 +3,15 @@ name: Build and Test
 on:
   push:
     branches: [ main ]
+  # Deliberately NO base-branch filter. `branches: [ main ]` on pull_request
+  # filters on the PR's *base*, so a stacked PR — one targeting another feature
+  # branch rather than main — silently got no build, no tests, no code-quality
+  # and no migration checks. That is how #1113-#1119 (the #858 per-section
+  # DbContext split, ~50k lines across seven PRs) sat for two weeks with
+  # `check-migrations` and `report` as their only checks; those two come from
+  # label-db.yml / pr-surface-report.yml, which never had a base filter.
+  # Preview-DB provisioning stays main-only — see preview-db.yml.
   pull_request:
-    branches: [ main ]
 
 env:
   DOTNET_VERSION: '10.0.x'
