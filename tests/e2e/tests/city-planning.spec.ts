@@ -20,12 +20,20 @@ test.describe('City Planning (38-city-planning)', () => {
   });
 
   test.describe('admin access — positive', () => {
+    // Assert an admin-page-specific control, not just a heading. The app uses
+    // UseStatusCodePagesWithReExecute("/Home/Error/{0}"), which renders
+    // Views/Home/Error.cshtml *at the original URL* — and that view has its own
+    // h1 + h2. So `url contains ...` + `h1, h2` visible would still pass on a
+    // 403/404/500, which is exactly the vacuous behaviour the route correction
+    // was meant to remove. The admin forms only exist on the real admin page.
+    const adminForm = 'form[action*="/CityPlanning/BarrioMap/Admin/"]';
+
     test('camp-admin can access /CityPlanning/BarrioMap/Admin', async ({ page }) => {
       await loginAsCampAdmin(page);
       await page.goto('/CityPlanning/BarrioMap/Admin');
 
       expect(page.url()).toContain('/CityPlanning/BarrioMap/Admin');
-      await expect(page.locator('h1, h2').first()).toBeVisible();
+      await expect(page.locator(adminForm).first()).toBeVisible();
     });
 
     test('city-planning team member can access /CityPlanning/BarrioMap/Admin', async ({ page }) => {
@@ -33,7 +41,7 @@ test.describe('City Planning (38-city-planning)', () => {
       await page.goto('/CityPlanning/BarrioMap/Admin');
 
       expect(page.url()).toContain('/CityPlanning/BarrioMap/Admin');
-      await expect(page.locator('h1, h2').first()).toBeVisible();
+      await expect(page.locator(adminForm).first()).toBeVisible();
     });
   });
 

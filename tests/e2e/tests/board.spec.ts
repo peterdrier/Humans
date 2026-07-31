@@ -11,7 +11,12 @@ test.describe('Board (09-administration + 18-board-voting)', () => {
     await loginAsBoard(page);
     await page.goto('/Admin');
 
-    await expect(page.locator('h1, h2').first()).toBeVisible();
+    // Assert a dashboard-specific element, not just a heading: the app uses
+    // UseStatusCodePagesWithReExecute("/Home/Error/{0}"), which renders
+    // Views/Home/Error.cshtml *at the original URL*. That view has its own
+    // h1 + h2, so `h1, h2` visible + `url contains /Admin` would still pass if
+    // board lost AnyAdminRole or /Admin returned any 4xx/5xx.
+    await expect(page.locator('.stats')).toBeVisible();
     expect(page.url()).toContain('/Admin');
   });
 
