@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Humans.Application.Interfaces;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
@@ -35,18 +36,44 @@ public sealed class AgentSectionDocReader(
             "Calendar", "Cantina", "Containers", "Issues"
         };
 
+    // Names the model reads out of its own preload corpus (help-widget glossary keys and
+    // access-matrix display names) and out of user jargon, mapped onto the section file they
+    // are actually about. These are a different namespace from the whitelist: the model names
+    // the right section in prose and still dead-ends on the tool call. 20 such calls across 9
+    // production conversations, three of which ended in an empty reply to the user
+    // (nobodies-collective/Humans#949). Every value must be a whitelist key.
+    private static readonly Dictionary<string, string> Aliases =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Profile"] = "Profiles",
+            ["OnboardingReview"] = "Onboarding",
+            // /Admin is a nav holder, not a section; its help glossary is governance/ops terms.
+            ["Admin"] = "Governance",
+            ["Board"] = "Governance",
+            // A barrio is a camp — Camps.md defines them; CityPlanning.md only places them.
+            ["Barrios"] = "Camps",
+            ["CityPlanningOverview"] = "CityPlanning",
+            ["CityPlanningBarrioMap"] = "CityPlanning",
+            ["ContainerMap"] = "Containers",
+        };
+
     // No expiration + NeverRemove: GitHub-backed content that only changes at release.
     // Loaded once (startup warm-up or first call) and held for the process lifetime.
     private static readonly MemoryCacheEntryOptions HoldForever =
         new() { Priority = CacheItemPriority.NeverRemove };
 
+    /// <summary>
+    /// Resolves a caller-supplied section key — canonical, any casing, or a known alias — to the
+    /// whitelisted key whose <c>docs/sections/{key}.md</c> file backs it. Casing matters because
+    /// GitHub paths are case-sensitive and LLMs routinely lowercase the key (e.g. "shifts"), so
+    /// the fetched filename must be the canonical one ("Shifts.md").
+    /// </summary>
+    public static bool TryResolveKey(string key, [NotNullWhen(true)] out string? canonicalKey) =>
+        Whitelist.TryGetValue(key, out canonicalKey) || Aliases.TryGetValue(key, out canonicalKey);
+
     public async Task<string?> ReadAsync(string key, CancellationToken cancellationToken)
     {
-        // Resolve the caller-supplied key to the canonical-cased whitelist entry so the
-        // GitHub path matches exactly (GitHub paths are case-sensitive). LLMs routinely
-        // lowercase the key (e.g. "shifts"); the whitelist lookup is case-insensitive
-        // but the fetched filename must be canonical ("Shifts.md").
-        if (!Whitelist.TryGetValue(key, out var canonicalKey)) return null;
+        if (!TryResolveKey(key, out var canonicalKey)) return null;
 
         var cacheKey = CacheKeyPrefix + canonicalKey;
         if (cache.TryGetValue<string>(cacheKey, out var cached) && cached is not null)

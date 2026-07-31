@@ -52,6 +52,52 @@ public class AgentSectionDocReaderTests
             "every whitelisted key is fetched as docs/sections/{key}.md with exact casing");
     }
 
+    /// <summary>
+    /// The keys the model reads out of its own preload corpus (help-widget glossary keys,
+    /// access-matrix display names) and out of user jargon are a different namespace from the
+    /// whitelist. Every one of these was a real production lookup that dead-ended
+    /// (nobodies-collective/Humans#949).
+    /// </summary>
+    [HumansTheory]
+    [InlineData("Profile", "Profiles")]
+    [InlineData("profile", "Profiles")]
+    [InlineData("Barrios", "Camps")]
+    [InlineData("CityPlanningOverview", "CityPlanning")]
+    [InlineData("CityPlanningBarrioMap", "CityPlanning")]
+    [InlineData("ContainerMap", "Containers")]
+    [InlineData("OnboardingReview", "Onboarding")]
+    [InlineData("Board", "Governance")]
+    [InlineData("Admin", "Governance")]
+    public async Task ReadAsync_resolves_the_aliases_the_agent_reads_out_of_its_own_prompt(string key, string expectedStem)
+    {
+        var source = new FakeSource();
+        var reader = MakeReader(source);
+
+        var content = await reader.ReadAsync(key, TestContext.Current.CancellationToken);
+
+        content.Should().NotBeNullOrEmpty();
+        source.LastStem.Should().Be(expectedStem);
+    }
+
+    /// <summary>
+    /// An alias pointing at a non-whitelisted key would resolve and then fetch nothing — the same
+    /// silent dead end, one indirection further away.
+    /// </summary>
+    [HumansTheory]
+    [InlineData("Profile")]
+    [InlineData("Barrios")]
+    [InlineData("CityPlanningOverview")]
+    [InlineData("CityPlanningBarrioMap")]
+    [InlineData("ContainerMap")]
+    [InlineData("OnboardingReview")]
+    [InlineData("Board")]
+    [InlineData("Admin")]
+    public void Every_alias_target_is_a_whitelisted_section(string alias)
+    {
+        AgentSectionDocReader.TryResolveKey(alias, out var target).Should().BeTrue();
+        MakeReader(new FakeSource()).KnownSections.Should().Contain(target!);
+    }
+
     [HumansFact]
     public async Task ReadAsync_returns_null_for_non_whitelisted_key()
     {

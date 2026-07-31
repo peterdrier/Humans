@@ -18,9 +18,36 @@ public sealed class AgentFeatureSpecReader(
 {
     internal const string FolderPath = "docs/features";
     private const string CacheKeyPrefix = "agent:feature:";
+    private const string StemsCacheKey = "agent:feature:stems";
 
     private static readonly MemoryCacheEntryOptions HoldForever =
         new() { Priority = CacheItemPriority.NeverRemove };
+
+    /// <summary>
+    /// Lists the spec stems available under <c>docs/features</c> so a miss can tell the agent
+    /// what it may ask for instead of dead-ending on "not found" (nobodies-collective/Humans#949).
+    /// An unreachable folder yields an empty list, never an exception — the caller then falls back
+    /// to the bare message rather than advertising an empty key set.
+    /// </summary>
+    public async Task<IReadOnlyList<string>> KnownStemsAsync(CancellationToken cancellationToken)
+    {
+        if (cache.TryGetValue<IReadOnlyList<string>>(StemsCacheKey, out var cached) && cached is not null)
+            return cached;
+
+        try
+        {
+            var stems = await source.ListMarkdownStemsAsync(FolderPath, cancellationToken);
+            cache.Set(StemsCacheKey, stems, HoldForever);
+            return stems;
+        }
+        catch (Exception ex)
+        {
+            // Log per memory/code/always-log-problems.md — a folder listing that keeps failing is
+            // why the agent's miss messages stop naming any valid stems.
+            logger.LogWarning(ex, "Failed to list agent feature specs in {Folder}; returning empty list", FolderPath);
+            return [];
+        }
+    }
 
     public async Task<string?> ReadAsync(string stem, CancellationToken cancellationToken)
     {

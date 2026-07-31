@@ -1,6 +1,10 @@
 using AwesomeAssertions;
+using Humans.Application.Interfaces;
+using Humans.Infrastructure.Services.Preload;
 using Humans.Web.Models;
 using Humans.Web.Services.Agent;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Humans.Web.Tests.Services;
 
@@ -57,6 +61,48 @@ public class AgentPreloadAugmentorTests
                 glossaries.Should().Contain(row);
             }
         }
+    }
+
+    /// <summary>
+    /// The glossary block is the only place the corpus prints something that looks like a
+    /// <c>fetch_section_guide</c> argument, and the model takes it literally: "## Profile Glossary"
+    /// produced seven dead-end lookups for section="Profile" (nobodies-collective/Humans#949).
+    /// Every heading emitted here must be a key the reader can actually serve.
+    /// </summary>
+    [HumansFact]
+    public async Task Every_glossary_heading_is_a_fetchable_section_key()
+    {
+        var reader = new AgentSectionDocReader(
+            new AnySectionSource(), new MemoryCache(new MemoryCacheOptions()),
+            NullLogger<AgentSectionDocReader>.Instance);
+        var glossaries = new AgentPreloadAugmentor().BuildGlossariesMarkdown();
+
+        var headings = glossaries.Split('\n')
+            .Select(l => l.TrimEnd())
+            .Where(l => l.StartsWith("## ", StringComparison.Ordinal) && l.EndsWith(" Glossary", StringComparison.Ordinal))
+            .Select(l => l["## ".Length..^" Glossary".Length])
+            .ToList();
+
+        headings.Should().NotBeEmpty();
+        glossaries.Should().Contain("fetch_section_guide", "the block must say what the headings are for");
+        foreach (var heading in headings)
+        {
+            var body = await reader.ReadAsync(heading, Xunit.TestContext.Current.CancellationToken);
+            body.Should().NotBeNull($"glossary heading '{heading}' must be a fetch_section_guide key");
+        }
+    }
+
+    /// <summary>Serves any key the reader is willing to resolve, so the assertion is about key resolution only.</summary>
+    private sealed class AnySectionSource : IGuideContentSource
+    {
+        public Task<string> GetMarkdownAsync(string fileStem, CancellationToken cancellationToken = default) =>
+            Task.FromResult($"# {fileStem}");
+
+        public Task<string> GetMarkdownAsync(string folderPath, string fileStem, CancellationToken cancellationToken = default) =>
+            Task.FromResult($"# {fileStem}");
+
+        public Task<IReadOnlyList<string>> ListMarkdownStemsAsync(string folderPath, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<string>>([]);
     }
 
     [HumansFact]
