@@ -94,7 +94,7 @@ public class AgentSectionDocReaderTests
     [InlineData("Admin")]
     public void Every_alias_target_is_a_whitelisted_section(string alias)
     {
-        AgentSectionDocReader.TryResolveKey(alias, out var target).Should().BeTrue();
+        Humans.Application.Constants.AgentSectionKeys.TryResolve(alias, out var target).Should().BeTrue();
         MakeReader(new FakeSource()).KnownSections.Should().Contain(target!);
     }
 

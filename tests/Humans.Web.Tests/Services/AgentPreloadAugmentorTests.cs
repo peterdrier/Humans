@@ -92,6 +92,31 @@ public class AgentPreloadAugmentorTests
         }
     }
 
+    /// <summary>
+    /// Regrouping glossaries under section keys puts pages that share a key next to each other,
+    /// and several define the same term differently ("Barrio Lead" three ways across the
+    /// city-planning pages). Folding them into one table would hand the agent competing
+    /// definitions of the same term with no way to tell them apart — each page keeps its own table.
+    /// </summary>
+    [HumansFact]
+    public void No_glossary_table_defines_the_same_term_twice()
+    {
+        var terms = new List<string>();
+        foreach (var line in new AgentPreloadAugmentor().BuildGlossariesMarkdown().Split('\n').Select(l => l.TrimEnd()))
+        {
+            if (line.StartsWith("| Term |", StringComparison.Ordinal))
+            {
+                terms.Clear(); // a new table starts
+            }
+            else if (line.StartsWith("| **", StringComparison.Ordinal))
+            {
+                terms.Add(line[..line.IndexOf('|', 2)]);
+                terms.Should().OnlyHaveUniqueItems();
+            }
+        }
+        terms.Should().NotBeEmpty();
+    }
+
     /// <summary>Serves any key the reader is willing to resolve, so the assertion is about key resolution only.</summary>
     private sealed class AnySectionSource : IGuideContentSource
     {
