@@ -209,6 +209,39 @@ public class TeamAdminController(
         return View(viewModel);
     }
 
+    /// <summary>
+    /// Board/Admin-only roster: every member's burner name next to their legal name.
+    /// <c>TeamAuthorizationHandler</c> already passes Board and Admin for
+    /// <c>ManageCoordinators</c>, so the policy narrows <see cref="ResolveTeamManagementAsync"/>
+    /// (which also serves coordinators) down to exactly Board-or-Admin.
+    /// </summary>
+    [HttpGet("Roster")]
+    [Authorize(Policy = PolicyNames.BoardOrAdmin)]
+    public async Task<IActionResult> Roster(string slug, CancellationToken ct)
+    {
+        var (teamError, _, team) = await ResolveTeamManagementAsync(slug);
+        if (teamError is not null)
+        {
+            return teamError;
+        }
+
+        var members = team.Members;
+        var infos = await _userService.GetUserInfosAsync(
+            members.Select(m => m.UserId).ToList(), ct);
+
+        // Display sort at controller (memory/architecture/display-sort-in-controllers.md);
+        // the table's headers re-sort client-side from here.
+        var rows = members
+            .Select(m => new TeamRosterRowViewModel(
+                m.UserId,
+                infos.GetValueOrDefault(m.UserId)?.Profile?.FullName ?? string.Empty,
+                m.JoinedAt))
+            .OrderBy(r => r.LegalName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        return View(new TeamRosterViewModel(team.Name, team.Slug, rows));
+    }
+
     [HttpPost("Members/{userId}/Remove")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RemoveMember(string slug, Guid userId)
