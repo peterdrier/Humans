@@ -23,8 +23,10 @@ namespace Humans.Application.Interfaces.Legal;
 /// is wholesale (<c>Clear</c>) — there is no per-document key, because
 /// the bag of "all active+required documents" is the unit consumed by
 /// every read. Writes (admin create/update/archive/sync, version add) go
-/// through <c>LegalDocumentSaveChangesInterceptor</c>, which clears the
-/// cache after <c>SaveChangesAsync</c>.
+/// through <c>LegalDocumentSyncService</c>, the sole writer for
+/// <c>legal_documents</c>/<c>document_versions</c>, which calls
+/// <c>ILegalDocumentCacheInvalidator.InvalidateAll</c> directly after each
+/// successful write.
 /// </para>
 /// </remarks>
 /// <param name="Id">Document id.</param>

@@ -34,9 +34,13 @@ namespace Humans.Application.Tests.Architecture;
 /// global <see cref="LegalDocumentInfo"/> cache. The decorators
 /// (<see cref="CachingConsentService"/>, <see cref="CachingLegalDocumentSyncService"/>)
 /// own the <c>IMemoryCache</c>-style state; the inner Application-layer
-/// services (<see cref="ConsentService"/>,
-/// <see cref="LegalDocumentSyncService"/>) remain free of
-/// caching dependencies.
+/// services (<see cref="ConsentService"/>, <see cref="LegalDocumentSyncService"/>)
+/// hold no cache state themselves. <see cref="LegalDocumentSyncService"/> is the
+/// sole writer for <c>legal_documents</c>/<c>document_versions</c>
+/// (nobodies-collective/Humans#751) and depends on
+/// <see cref="ILegalDocumentCacheInvalidator"/> to signal the decorator
+/// directly after each successful write, rather than via a SaveChanges
+/// interceptor.
 /// </para>
 /// </summary>
 public class ConsentArchitectureTests
@@ -128,7 +132,7 @@ public class ConsentArchitectureTests
             .Should().BeTrue();
         typeof(ILegalDocumentCacheInvalidator).IsAssignableFrom(typeof(CachingLegalDocumentSyncService))
             .Should().BeTrue(
-                because: "LegalDocumentSaveChangesInterceptor resolves ILegalDocumentCacheInvalidator and must hit the same singleton that backs ILegalDocumentSyncService");
+                because: "LegalDocumentSyncService resolves ILegalDocumentCacheInvalidator directly after each write and must hit the same singleton that backs ILegalDocumentSyncService (nobodies-collective/Humans#751)");
     }
 
     /// <summary>

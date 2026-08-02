@@ -4,7 +4,7 @@ namespace Humans.Application.DTOs;
 
 /// <summary>
 /// Admin-facing row for the legal-documents list. Stitched by
-/// <c>AdminLegalDocumentService</c> from <c>LegalDocument</c> plus the
+/// <c>LegalDocumentSyncService</c> from <c>LegalDocument</c> plus the
 /// owning <c>Team</c> so the controller doesn't cross the Legal/Teams
 /// section boundary.
 /// </summary>

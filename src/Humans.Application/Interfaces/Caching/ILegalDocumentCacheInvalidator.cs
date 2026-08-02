@@ -5,9 +5,9 @@ namespace Humans.Application.Interfaces.Caching;
 /// <summary>
 /// Cross-section signal for the global Legal-document cache (T-04). Implemented
 /// by the Singleton <c>CachingLegalDocumentSyncService</c> decorator and
-/// consumed by the <c>LegalDocumentSaveChangesInterceptor</c>, which fires
-/// after EF persists any write to <c>legal_documents</c> or
-/// <c>document_versions</c>.
+/// consumed directly by <c>LegalDocumentSyncService</c> — the sole writer for
+/// <c>legal_documents</c> and <c>document_versions</c> — after each successful
+/// repository write (nobodies-collective/Humans#751).
 /// </summary>
 /// <remarks>
 /// The Legal cache is bag-shaped (whole-set replacement on rebuild), so the

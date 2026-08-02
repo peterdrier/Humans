@@ -15,9 +15,10 @@ namespace Humans.Infrastructure.Services.Legal;
 /// and the per-version snapshot lookup
 /// (<see cref="GetVersionByIdAsync"/>). The cache is lazily warmed on first
 /// read and invalidated wholesale after any persisted write to
-/// <c>legal_documents</c> or <c>document_versions</c> (signalled by
-/// <c>LegalDocumentSaveChangesInterceptor</c> via
-/// <see cref="ILegalDocumentCacheInvalidator.InvalidateAll"/>).
+/// <c>legal_documents</c> or <c>document_versions</c> — the inner
+/// <c>LegalDocumentSyncService</c> is the sole writer for those tables and calls
+/// <see cref="ILegalDocumentCacheInvalidator.InvalidateAll"/> directly after each
+/// successful write (nobodies-collective/Humans#751).
 /// </summary>
 /// <remarks>
 /// <para>
@@ -30,9 +31,9 @@ namespace Humans.Infrastructure.Services.Legal;
 /// <para>
 /// Writes (admin create/update/archive/sync, version add via
 /// <see cref="SyncDocumentAsync"/> / <see cref="SyncAllDocumentsAsync"/>)
-/// pass through to the inner service via a freshly resolved scope. The
-/// interceptor handles invalidation centrally; the decorator does not call
-/// <see cref="ILegalDocumentCacheInvalidator.InvalidateAll"/> itself.
+/// pass through to the inner service via a freshly resolved scope. The inner
+/// service invalidates directly after each successful write; the decorator
+/// does not call <see cref="ILegalDocumentCacheInvalidator.InvalidateAll"/> itself.
 /// </para>
 /// </remarks>
 public sealed class CachingLegalDocumentSyncService(
@@ -157,7 +158,7 @@ public sealed class CachingLegalDocumentSyncService(
         WithInner(inner => inner.CheckForUpdatesAsync(cancellationToken));
 
     // ==========================================================================
-    // Writes — passed through; LegalDocumentSaveChangesInterceptor invalidates
+    // Writes — passed through; the inner service invalidates directly
     // ==========================================================================
 
     public Task<IReadOnlyList<LegalDocument>> SyncAllDocumentsAsync(

@@ -2,7 +2,7 @@ using AwesomeAssertions;
 using Humans.Application.Interfaces.Legal;
 using Humans.Web.Controllers;
 using Microsoft.AspNetCore.Mvc;
-using AdminLegalDocumentService = Humans.Application.Services.Legal.AdminLegalDocumentService;
+using LegalDocumentSyncService = Humans.Application.Services.Legal.LegalDocumentSyncService;
 
 namespace Humans.Application.Tests.Architecture;
 
@@ -12,9 +12,9 @@ namespace Humans.Application.Tests.Architecture;
 public class LegalArchitectureTests
 {
     [HumansFact]
-    public void AdminLegalDocumentService_does_not_reference_octokit()
+    public void LegalDocumentSyncService_does_not_reference_octokit()
     {
-        var ctor = typeof(AdminLegalDocumentService).GetConstructors().Single();
+        var ctor = typeof(LegalDocumentSyncService).GetConstructors().Single();
         var octokitParam = ctor.GetParameters()
             .FirstOrDefault(p => (p.ParameterType.Namespace ?? string.Empty)
                 .StartsWith("Octokit", StringComparison.Ordinal));

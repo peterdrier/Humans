@@ -265,7 +265,7 @@ Ownership is now physical as well as conventional for the peeled sections: the m
 | **Teams** | `TeamService`, `TeamPageService`, `TeamResourceService` | `teams`, `team_members`, `team_join_requests`, `team_join_request_state_histories`, `team_role_definitions`, `team_role_assignments`, `team_pages`, `google_resources` |
 | **Auth** | `RoleAssignmentService`, `MagicLinkService` | `role_assignments` |
 | **Governance** | `ApplicationDecisionService` | `applications`, `application_state_histories`, `board_votes` |
-| **Legal & Consent** | `LegalDocumentService`, `AdminLegalDocumentService`, `LegalDocumentSyncService`, `ConsentService` | `legal_documents`, `document_versions`, `consent_records` |
+| **Legal & Consent** | `LegalDocumentService`, `LegalDocumentSyncService`, `ConsentService` | `legal_documents`, `document_versions`, `consent_records` |
 | **Onboarding** | `OnboardingService` (intake funnel), `HumanLifecycleService` (suspend/unsuspend state-machine) | *(no owned tables — orchestrator pair over Profiles, Legal & Consent, Teams, Governance)* |
 | **Camps** | `CampService`, `CampContactService` | `camps`, `camp_seasons`, `camp_leads`, `camp_images`, `camp_historical_names`, `camp_settings` |
 | **Containers** | `ContainerService` | `containers`, `container_placements` |

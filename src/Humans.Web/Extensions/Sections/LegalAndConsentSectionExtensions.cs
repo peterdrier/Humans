@@ -3,7 +3,6 @@ using Humans.Application.Interfaces.Consent;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Legal;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Repositories.Consent;
 using Humans.Infrastructure.Repositories.Legal;
@@ -11,7 +10,6 @@ using Humans.Infrastructure.Services;
 using Humans.Infrastructure.Services.Consent;
 using Humans.Infrastructure.Services.Legal;
 using ConsentConsentService = Humans.Application.Services.Consent.ConsentService;
-using LegalAdminLegalDocumentService = Humans.Application.Services.Legal.AdminLegalDocumentService;
 using LegalLegalDocumentService = Humans.Application.Services.Legal.LegalDocumentService;
 using LegalLegalDocumentSyncService = Humans.Application.Services.Legal.LegalDocumentSyncService;
 
@@ -25,9 +23,15 @@ internal static class LegalAndConsentSectionExtensions
         services.AddSingleton<ILegalDocumentRepository, LegalDocumentRepository>();
         services.AddScoped<IGitHubLegalDocumentConnector, GitHubLegalDocumentConnector>();
 
-        // Keyed-Scoped inner + Singleton decorator.
+        // Keyed-Scoped inner + Singleton decorator. LegalDocumentSyncService is the sole writer for
+        // legal_documents/document_versions (nobodies-collective/Humans#751) and implements both
+        // ILegalDocumentSyncService and IAdminLegalDocumentService; IAdminLegalDocumentService forwards
+        // to the same keyed inner instance so admin writes and GitHub-sync writes share one service.
         services.AddKeyedScoped<ILegalDocumentSyncService, LegalLegalDocumentSyncService>(
             CachingLegalDocumentSyncService.InnerServiceKey);
+        services.AddScoped<IAdminLegalDocumentService>(sp =>
+            (LegalLegalDocumentSyncService)sp.GetRequiredKeyedService<ILegalDocumentSyncService>(
+                CachingLegalDocumentSyncService.InnerServiceKey));
         services.AddSingleton<CachingLegalDocumentSyncService>();
         services.AddSingleton<ILegalDocumentSyncService>(sp =>
             sp.GetRequiredService<CachingLegalDocumentSyncService>());
@@ -39,10 +43,6 @@ internal static class LegalAndConsentSectionExtensions
         // TrackedCache StartAsync drives WarmAllAsync (warmOnStartup: true) — see #587.
         services.AddHostedService(sp => sp.GetRequiredService<CachingLegalDocumentSyncService>());
 
-        // Singleton — same instance registered into both AddDbContext and AddDbContextFactory pipelines.
-        services.AddSingleton<LegalDocumentSaveChangesInterceptor>();
-
-        services.AddScoped<IAdminLegalDocumentService, LegalAdminLegalDocumentService>();
         services.AddScoped<ILegalDocumentService, LegalLegalDocumentService>();
 
         // ConsentService — see #547. consent_records is append-only (design-rules §12).

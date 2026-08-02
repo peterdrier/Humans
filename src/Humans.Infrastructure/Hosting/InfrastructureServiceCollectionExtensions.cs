@@ -25,7 +25,6 @@ public static class InfrastructureServiceCollectionExtensions
             ConfigureNpgsql(sp, options);
             options.AddInterceptors(sp.GetRequiredService<QueryMonitoringInterceptor>());
             options.AddInterceptors(sp.GetRequiredService<UserInfoSaveChangesInterceptor>());
-            options.AddInterceptors(sp.GetRequiredService<LegalDocumentSaveChangesInterceptor>());
             // PK lookups via FirstOrDefaultAsync(e => e.Id == id) are deterministic — suppress warning.
             options.ConfigureWarnings(w => w.Ignore(CoreEventId.FirstWithoutOrderByAndFilterWarning));
             if (enableDeveloperDiagnostics)
@@ -40,7 +39,6 @@ public static class InfrastructureServiceCollectionExtensions
         {
             ConfigureNpgsql(sp, options);
             options.AddInterceptors(sp.GetRequiredService<UserInfoSaveChangesInterceptor>());
-            options.AddInterceptors(sp.GetRequiredService<LegalDocumentSaveChangesInterceptor>());
             options.ConfigureWarnings(w => w.Ignore(CoreEventId.FirstWithoutOrderByAndFilterWarning));
         });
 
@@ -82,7 +80,6 @@ public static class InfrastructureServiceCollectionExtensions
             ConfigureNpgsql(sp, options, historyTable);
             options.AddInterceptors(sp.GetRequiredService<QueryMonitoringInterceptor>());
             options.AddInterceptors(sp.GetRequiredService<UserInfoSaveChangesInterceptor>());
-            options.AddInterceptors(sp.GetRequiredService<LegalDocumentSaveChangesInterceptor>());
             options.ConfigureWarnings(w => w.Ignore(CoreEventId.FirstWithoutOrderByAndFilterWarning));
         }, optionsLifetime: ServiceLifetime.Singleton);
 
@@ -90,7 +87,6 @@ public static class InfrastructureServiceCollectionExtensions
         {
             ConfigureNpgsql(sp, options, historyTable);
             options.AddInterceptors(sp.GetRequiredService<UserInfoSaveChangesInterceptor>());
-            options.AddInterceptors(sp.GetRequiredService<LegalDocumentSaveChangesInterceptor>());
             options.ConfigureWarnings(w => w.Ignore(CoreEventId.FirstWithoutOrderByAndFilterWarning));
         });
 

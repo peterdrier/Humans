@@ -12,8 +12,9 @@ namespace Humans.Application.Interfaces.Repositories;
 /// DbSets after the §15 Legal document migration lands.
 /// </summary>
 /// <remarks>
-/// Shared between <c>AdminLegalDocumentService</c> and
-/// <c>LegalDocumentSyncService</c> — both live in
+/// Used by <c>LegalDocumentSyncService</c> — the sole writer for this
+/// aggregate, owning both the admin write surface and the GitHub-sync write
+/// surface (nobodies-collective/Humans#751) — in
 /// <c>Humans.Application.Services.Legal</c>. Read methods use
 /// <c>AsNoTracking</c>; writes create and dispose short-lived contexts via
 /// <see cref="Microsoft.EntityFrameworkCore.IDbContextFactory{HumansDbContext}"/>
