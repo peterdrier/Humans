@@ -11,7 +11,7 @@ using Microsoft.Extensions.Configuration;
 namespace Humans.Application.Services.Search;
 
 /// <summary>
-/// Names-only search orchestrator: each section runs its own ILike, this scores hits and returns five buckets (unsorted).
+/// Per-entity-field search orchestrator (no cross-modal traversal): each section runs its own ILike, this scores hits and returns five buckets (unsorted).
 /// See docs/features/global/global-search.md. Display ordering lives in SearchController.
 /// </summary>
 public sealed class SearchService(

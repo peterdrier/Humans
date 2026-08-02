@@ -16,7 +16,7 @@
 
 Members regularly want to find a person, team, camp, shift, or event without first guessing which list page to start from. As membership grows and camps/teams multiply, the friction of "which area do I look in?" gets worse. A single magnifying-glass entry point in the top nav routes to `/Search`, which fans out across the searchable sections and renders type-grouped results. The Events bucket is only included when the `Features:Events` flag is on (it gates the section's nav and routes the same way).
 
-The feature is deliberately scoped to **name-only matching**. Earlier drafts proposed cross-modal pull-ins (a person → their teams; a team → its rotas) and a unified ranked list, but those were dropped:
+The feature is deliberately scoped to matching **confined to each entity's own public fields** — no cross-modal traversal. Earlier drafts proposed cross-modal pull-ins (a person → their teams; a team → its rotas) and a unified ranked list, but those were dropped:
 
 - Cross-modal traversal invited 2nd- and 3rd-order links the user didn't ask for (e.g. "camps you lead" surfaced when matching a person), and the orchestration code was disproportionate to the value.
 - Names are what users actually type when they remember "I think it was called Foo." Matching on adjacency leaves Foo at the top instead of burying it under loosely-related rows.
@@ -52,11 +52,12 @@ The feature is deliberately scoped to **name-only matching**. Earlier drafts pro
 **So that** I find what I'm looking for without typing exactly the right field
 
 **Acceptance Criteria:**
-- **Humans** match via `IUserServiceRead.SearchUsersAsync` with `PersonSearchFields.PublicAll` (per `memory/architecture/person-search.md`). The bit-flag's existing fields are unchanged — humans inherit the same scope as `/Profile/Search` for non-admin viewers. Emergency-contact data is never searchable.
+- **Humans** match via `IUserServiceRead.SearchUsersAsync` with `PersonSearchFields.PublicAll` (`Name | Bio`, per `memory/architecture/person-search.md`) — the resolved display name plus the `Bio` bucket: bio, city, contribution-interests, CV, pronouns, `AllActiveProfiles`-visible ContactFields, and publicly-exposed emails. The bit-flag's existing fields are unchanged — humans inherit the same scope as `/Profile/Search` for non-admin viewers. Emergency-contact data and admin-only fields are never searchable.
 - **Teams** match on `Team.Name` only.
 - **Camps** match on the public-year `CampSeason.Name` only.
 - **Shifts** (rotas) match on `Rota.Name` only.
-- **Events** match on `Event.Title` or `Event.Description` and are filtered to `Status = Approved` only. Events are the one deliberate exception to names-only: the orchestrator reuses `IEventServiceRead.GetApprovedEventsAsync` (the same call the public Browse page makes), which filters Title + Description with ILike, because event copy is short and free-form so description text is often the load-bearing name signal users remember. Rows are still scored by Title via the standard exact/prefix/contains rubric; rows that only matched via Description fall through to a contains-tier score so they're still surfaced (just ranked below title hits).
+- Teams, Camps, and Shifts additionally match by pasting the entity's own id (a `Guid.TryParse` fast-path scored as an exact match). Humans have **no** such fast-path — a person cannot be found by pasting their id, only via the fields above.
+- **Events** match on `Event.Title` or `Event.Description` and are filtered to `Status = Approved` only. Events are the one deliberate exception to matching on the name/title field alone: the orchestrator reuses `IEventServiceRead.GetApprovedEventsAsync` (the same call the public Browse page makes), which filters Title + Description with ILike, because event copy is short and free-form so description text is often the load-bearing name signal users remember. Rows are still scored by Title via the standard exact/prefix/contains rubric; rows that only matched via Description fall through to a contains-tier score so they're still surfaced (just ranked below title hits).
 - Humans, Teams, and Camps match in-memory against the cached snapshots (`CachingUserService` / `CachingTeamService` / `CachingCampService`) — case-insensitive contains, accent-folded for humans; search never hits the DB for these buckets. Shifts and Events still run case-insensitive Postgres `EF.Functions.ILike` at the DB layer per `memory/feedback_ef_ilike_not_toupper.md`.
 
 ### US-GS.4: Search surfaces the public-visibility set, never more

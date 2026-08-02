@@ -9,7 +9,7 @@ using Humans.Application.Interfaces.Users;
 
 namespace Humans.Web.Controllers;
 
-/// <summary>Global search: name-only hits across humans/teams/camps/rotas/events. Public-visibility surface only (docs/features/global/global-search.md).</summary>
+/// <summary>Global search: matches each entity's own public fields (for humans: name + bio/city/interests/pronouns/contact) across humans/teams/camps/rotas/events, with no cross-modal traversal. Public-visibility surface only (docs/features/global/global-search.md).</summary>
 [Authorize]
 [Route("Search")]
 public sealed class SearchController(
