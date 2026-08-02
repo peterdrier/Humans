@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Lowest-level project: system marker interfaces and architecture attributes
+    only. No ProjectReferences, no NuGet packages. Namespaces intentionally
+    remain Humans.Application.* (namespace ≠ assembly) so call sites and the
+    Humans.Analyzers full-name constants are unaffected by the move.
+  -->
+
+</Project>

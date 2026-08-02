@@ -143,10 +143,18 @@ test.describe('Admin shell — sidebar visibility matrix', () => {
         await expect(section, `${role.name} should see group '${group.label}'`).toBeVisible();
 
         for (const item of group.items) {
-          // toBeAttached, not toBeVisible: system groups start collapsed on
-          // desktop, so their links render display:none until expanded.
+          // System groups start collapsed on desktop, so their links are
+          // display:none until expanded — hence toBeAttached rather than
+          // toBeVisible. Match on DOM text rather than getByRole: role locators
+          // resolve against the accessibility tree, which omits hidden elements,
+          // so on a collapsed group they find nothing and toBeAttached can never
+          // pass. (getByRole with includeHidden is not the fix — it also pulls
+          // icon glyph text into the accessible name, which breaks the anchor.)
+          // \s* absorbs whitespace contributed by each item's leading icon.
           await expect(
-            section.getByRole('link', { name: new RegExp(`^${escapeRegex(item)}\\b`) }),
+            section.locator('a').filter({
+              hasText: new RegExp(`^\\s*${escapeRegex(item)}\\b`),
+            }),
             `${role.name} should see item '${item}' in '${group.label}'`,
           ).toBeAttached();
         }
@@ -278,14 +286,16 @@ test.describe('Admin shell — chrome', () => {
     await expect(page.locator('body.admin-shell')).toHaveCount(0);
   });
 
-  test('dashboard tiles render: active humans, shift coverage, open feedback, recent activity', async ({ page }) => {
+  test('dashboard tiles render: active profiles, shift coverage, open feedback, recent activity', async ({ page }) => {
     await loginAsAdmin(page);
     await page.goto('/Admin');
 
-    // Tiles from _DashboardStats (active humans, shifts staffed, open feedback)
+    // Tiles from _DashboardStats. The "Active humans" tile was renamed to
+    // "Active (has profile)" by #546 (UserInfo-driven stats); the test was never
+    // updated, so this assertion had been failing against a label that no longer exists.
     const stats = page.locator('.stats');
     await expect(stats).toBeVisible();
-    await expect(stats.locator('.stat .label', { hasText: 'Active humans' })).toBeVisible();
+    await expect(stats.locator('.stat .label', { hasText: 'Active (has profile)' })).toBeVisible();
     await expect(stats.locator('.stat .label', { hasText: /Shifts staffed/ })).toBeVisible();
     await expect(stats.locator('.stat .label', { hasText: 'Open feedback' })).toBeVisible();
 

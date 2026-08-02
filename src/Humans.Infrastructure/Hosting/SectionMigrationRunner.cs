@@ -41,30 +41,40 @@ internal static class SectionMigrationRunner
     public static async Task MigrateAsync(DbContext db, string sentinelTable, ILogger logger, CancellationToken ct)
     {
         var contextName = db.GetType().Name;
-        var applied = (await db.Database.GetAppliedMigrationsAsync(ct)).ToList();
-
-        if (applied.Count == 0 && await SentinelTableExistsAsync(db, sentinelTable, ct))
+        try
         {
-            var baselineId = db.Database.GetMigrations().First();
-            logger.LogWarning(
-                "{Context}: tables exist but history is empty - recording baseline {Baseline} as applied without executing",
-                contextName, baselineId);
-            await RecordBaselineAsAppliedAsync(db, baselineId, ct);
-        }
+            var applied = (await db.Database.GetAppliedMigrationsAsync(ct)).ToList();
 
-        var pending = (await db.Database.GetPendingMigrationsAsync(ct)).ToList();
-        if (pending.Count > 0)
-        {
-            foreach (var migration in pending)
+            if (applied.Count == 0 && await SentinelTableExistsAsync(db, sentinelTable, ct))
             {
-                logger.LogWarning("{Context}: applying pending migration: {Migration}", contextName, migration);
+                var baselineId = db.Database.GetMigrations().First();
+                logger.LogWarning(
+                    "{Context}: tables exist but history is empty - recording baseline {Baseline} as applied without executing",
+                    contextName, baselineId);
+                await RecordBaselineAsAppliedAsync(db, baselineId, ct);
             }
 
-            await db.Database.MigrateAsync(ct);
+            var pending = (await db.Database.GetPendingMigrationsAsync(ct)).ToList();
+            if (pending.Count > 0)
+            {
+                foreach (var migration in pending)
+                {
+                    logger.LogWarning("{Context}: applying pending migration: {Migration}", contextName, migration);
+                }
+
+                await db.Database.MigrateAsync(ct);
+            }
+            else
+            {
+                logger.LogInformation("{Context}: schema is up to date", contextName);
+            }
         }
-        else
+        catch (Exception ex)
         {
-            logger.LogInformation("{Context}: schema is up to date", contextName);
+            logger.LogError(ex,
+                "Section migration failed for {Context}. The application may not function correctly",
+                contextName);
+            throw;
         }
     }
 

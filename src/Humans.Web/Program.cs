@@ -143,6 +143,13 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.Cookie.HttpOnly = true;
     options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
     options.Cookie.SameSite = SameSiteMode.Lax;
+    // 14-day sliding window — any visit inside it extends it, 14 days away requires re-login.
+    // Paired with isPersistent: true at every sign-in site, without which the cookie has no
+    // Expires and dies on browser close. Revocation stays per-request regardless of cookie age:
+    // MembershipRequiredFilter re-checks UserState, the claims transform re-derives roles, and
+    // Identity's security stamp invalidates server-side — see nobodies-collective#925.
+    options.ExpireTimeSpan = TimeSpan.FromDays(14);
+    options.SlidingExpiration = true;
     options.LoginPath = "/Account/Login";
     options.AccessDeniedPath = "/Account/AccessDenied";
 });

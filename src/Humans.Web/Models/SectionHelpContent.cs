@@ -89,6 +89,30 @@ public static class SectionHelpContent
         then set it as your primary. Your sign-in is tied to your Google login / magic-link, which is
         separate from the addresses listed here.
 
+        **Q: How do I read messages sent to me / where is my inbox?**
+        There is no in-app inbox. When someone uses the "Send <name> a message" button on your
+        profile, the message is relayed to your registered email address — check the inbox for the
+        address listed at /Profile/Me/Emails. Whether you can reply is the sender's choice: they
+        tick "include my contact info" when writing, and only then does the email carry their
+        address as the reply-to. Without it the message arrives with no way to write back.
+
+        **Q: Why does the "Send <name> a message" button appear on some profiles but not others?**
+        It shows only when all three are true: it is not your own profile; the person has no email
+        address set to "all active profiles" visibility (if their address is already visible to you,
+        you can just email them directly); and they have not switched off facilitated messages in
+        their communication preferences. Messages are capped at 2000 characters.
+
+        **Q: How do I find a specific person?**
+        Use the magnifying glass in the top nav, or go to /Search, and type at least two characters.
+        For people it matches the display name plus whatever they have chosen to make public — city,
+        bio, what they'd like to contribute, pronouns, and contact details set to "all active
+        profiles" visibility — so a city name does work as a search term. It does not search
+        languages, and it never matches anything someone has kept private. A common first name is
+        still hard to pin down: if the person has shared little, you may get many matches or none.
+        Search does not look people up by id — if you have their profile id, go straight to
+        /Profile/<id> instead. /Team lists people you share a team with, and the community channels
+        linked in the footer at https://nobodies.team/ are the way to reach someone otherwise.
+
         ## Account & privacy
 
         **Q: How do I delete my account / download my data?**

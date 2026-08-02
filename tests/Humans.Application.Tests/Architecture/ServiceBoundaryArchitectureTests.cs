@@ -138,8 +138,11 @@ public class ServiceBoundaryArchitectureTests
         }
     }
 
+    // Anchored to a type that lives in Humans.Application — the marker
+    // interfaces (IApplicationService, IRepository, …) moved to the
+    // Humans.Interfaces assembly, keeping their namespaces.
     private static IEnumerable<Type> ApplicationInterfaceTypes() =>
-        typeof(IApplicationService).Assembly.GetTypes()
+        typeof(IUserRepository).Assembly.GetTypes()
             .Where(t => t.IsInterface)
             .Where(t => t.Namespace?.StartsWith("Humans.Application.Interfaces", StringComparison.Ordinal) == true);
 

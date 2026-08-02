@@ -227,6 +227,9 @@ inbox:
   # sweep scope entirely); PasswordGenerator CSPRNG (explicitly deferred by
   # Peter, 2026-04-24); BudgetRepository ResponsibleTeam .Include (covered by
   # grandfathered-hum0024-nav-strip).
+  - added: 2026-08-02
+    what: "Humans.Integration.Tests is timeout-flaky under parallel load — each of the 14 test classes owns an IClassFixture<HumansWebApplicationFactory> that starts its own Testcontainers Postgres, and with no maxParallelThreads cap several tests land at 26-29s against HumansFact's 30s default (DetailedHealthEndpoint_ReturnsJsonWithStatus, Volunteer_cannot_create_order_against_someone_elses_camp_season, UnprivilegedUser_AdminPostToOtherUserEmails_ReturnsForbid observed timing out). Measured ~1-in-3 failure rate on unmodified origin/main. Fix is a shared collection fixture or a maxParallelThreads cap, not longer timeouts (found while verifying nobodies-collective#925)"
+    review: panel
   - added: 2026-07-02
     what: "GateService.EvaluateAsync CheckedInAtVendor uses Status==CheckedIn, but the /check_ins sync stamps CheckedInAt and leaves Status Valid — the 'already checked in at vendor' dedupe signal on the gate card never fires; switch to CheckedInAt (found via Codex on peterdrier/Humans#1080)"
     review: per-item

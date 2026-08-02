@@ -47,25 +47,31 @@ public sealed class AgentToolDispatcher(
                     {
                         var name = args.TryGetProperty("name", out var n) ? n.GetString() ?? "" : "";
                         var body = await features.ReadAsync(name, cancellationToken);
-                        return body is null
-                            ? new AnthropicToolResult(call.Id, string.Create(CultureInfo.InvariantCulture, $"Feature spec not found: {name}"), IsError: true)
-                            : new AnthropicToolResult(call.Id, body, IsError: false);
+                        return body is not null
+                            ? new AnthropicToolResult(call.Id, body, IsError: false)
+                            : UnknownKey(call.Id,
+                                string.Create(CultureInfo.InvariantCulture, $"Feature spec not found: {name}."),
+                                await features.KnownStemsAsync(cancellationToken));
                     }
                 case AgentToolNames.FetchSectionGuide:
                     {
                         var key = args.TryGetProperty("section", out var s) ? s.GetString() ?? "" : "";
                         var body = await sections.ReadAsync(key, cancellationToken);
-                        return body is null
-                            ? new AnthropicToolResult(call.Id, string.Create(CultureInfo.InvariantCulture, $"Unknown section: {key}"), IsError: true)
-                            : new AnthropicToolResult(call.Id, body, IsError: false);
+                        return body is not null
+                            ? new AnthropicToolResult(call.Id, body, IsError: false)
+                            : UnknownKey(call.Id,
+                                string.Create(CultureInfo.InvariantCulture, $"Unknown section: {key}."),
+                                sections.KnownSections);
                     }
                 case AgentToolNames.FetchCommunityFaq:
                     {
                         var topic = args.TryGetProperty("topic", out var t) ? t.GetString() ?? "" : "";
                         var body = await community.ReadAsync(topic, cancellationToken);
-                        return body is null
-                            ? new AnthropicToolResult(call.Id, string.Create(CultureInfo.InvariantCulture, $"Unknown community FAQ topic: {topic}"), IsError: true)
-                            : new AnthropicToolResult(call.Id, CommunityFaqReader.WrapWithProvenance(body), IsError: false);
+                        return body is not null
+                            ? new AnthropicToolResult(call.Id, CommunityFaqReader.WrapWithProvenance(body), IsError: false)
+                            : UnknownKey(call.Id,
+                                string.Create(CultureInfo.InvariantCulture, $"Unknown community FAQ topic: {topic}."),
+                                (await community.ListTopicsAsync(cancellationToken)).Select(e => e.Topic));
                     }
                 case AgentToolNames.GetAuditHistory:
                     {
@@ -98,6 +104,23 @@ public sealed class AgentToolDispatcher(
             logger.LogWarning(ex, "Agent sent malformed JSON arguments for tool {ToolName}", call.Name);
             return new AnthropicToolResult(call.Id, "Malformed tool arguments (expected JSON object).", IsError: true);
         }
+    }
+
+    /// <summary>
+    /// Builds the error a doc-fetch tool returns when the requested key misses. Naming the valid
+    /// keys is the whole point: a bare "Unknown section: X" gives the model nothing to correct
+    /// with, so it guesses again and often ends the turn with nothing to say
+    /// (nobodies-collective/Humans#949). Falls back to the bare message when the key set could not
+    /// be listed, so a GitHub outage never advertises an empty set as the accepted one.
+    /// </summary>
+    private static AnthropicToolResult UnknownKey(string callId, string message, IEnumerable<string> validKeys)
+    {
+        var keys = validKeys.OrderBy(k => k, StringComparer.OrdinalIgnoreCase).ToList();
+        var content = keys.Count == 0
+            ? message
+            : string.Create(CultureInfo.InvariantCulture,
+                $"{message} Valid keys are: {string.Join(", ", keys)}. Retry with one of these.");
+        return new AnthropicToolResult(callId, content, IsError: true);
     }
 
     private async Task<AnthropicToolResult> DispatchGetAuditHistoryAsync(

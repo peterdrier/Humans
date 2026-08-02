@@ -6,6 +6,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Humans.Domain\Humans.Domain.csproj" />
+    <ProjectReference Include="..\Humans.Interfaces\Humans.Interfaces.csproj" />
   </ItemGroup>
 
   <ItemGroup>

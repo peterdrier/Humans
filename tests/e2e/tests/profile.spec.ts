@@ -20,8 +20,12 @@ test.describe('Profile (02-profiles)', () => {
     await expect(burnerNameInput).toBeVisible();
     await expect(burnerNameInput).toBeEditable();
 
-    // Bio textarea
-    await expect(page.locator('textarea[name="Bio"]')).toBeVisible();
+    // Bio field. MarkdownEditorTagHelper upgrades it to an EasyMDE editor, which
+    // hides the underlying <textarea> and renders its own editing surface — so
+    // assert both: the field that actually posts still exists, and the editor the
+    // user types into is visible.
+    await expect(page.locator('textarea[name="Bio"]')).toBeAttached();
+    await expect(page.locator('.EasyMDEContainer .CodeMirror')).toBeVisible();
 
     // Private section (legal name)
     await expect(page.locator('input[name="FirstName"]')).toBeVisible();

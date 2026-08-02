@@ -68,7 +68,7 @@ public class AccountController(
         var result = await signInManager.ExternalLoginSignInAsync(
             info.LoginProvider,
             info.ProviderKey,
-            isPersistent: false,
+            isPersistent: true,
             bypassTwoFactor: true);
 
         if (result.Succeeded)
@@ -195,7 +195,7 @@ public class AccountController(
             }
 
             await userService.RecordLoginAsync(activeTarget.Id);
-            await signInManager.SignInAsync(activeTarget, isPersistent: false);
+            await signInManager.SignInAsync(activeTarget, isPersistent: true);
             await TryReconcileOAuthIdentityAsync(activeTarget.Id, info);
 
             logger.LogInformation(
@@ -231,7 +231,7 @@ public class AccountController(
                 await userService.RecordLoginAsync(existingByEmail.Id);
                 await TryReconcileOAuthIdentityAsync(existingByEmail.Id, info);
 
-                await signInManager.SignInAsync(existingByEmail, isPersistent: false);
+                await signInManager.SignInAsync(existingByEmail, isPersistent: true);
                 logger.LogInformation(
                     "Linked {Provider} login to existing user {UserId} via email match",
                     info.LoginProvider,
@@ -288,7 +288,7 @@ public class AccountController(
 
         await userService.EnsureStubProfileAsync(user.Id);
 
-        await signInManager.SignInAsync(user, isPersistent: false);
+        await signInManager.SignInAsync(user, isPersistent: true);
         logger.LogInformation("User created an account using {Provider}", info.LoginProvider);
         return RedirectToLocal(returnUrl);
     }
@@ -468,7 +468,7 @@ public class AccountController(
 
         await userService.RecordLoginAsync(user.Id);
 
-        await signInManager.SignInAsync(user, isPersistent: false);
+        await signInManager.SignInAsync(user, isPersistent: true);
         logger.LogInformation("User {UserId} logged in via magic link", user.Id);
 
         return RedirectToLocal(returnUrl);
@@ -534,7 +534,7 @@ public class AccountController(
         if (result.User is null)
             return View("MagicLinkError");
 
-        await signInManager.SignInAsync(result.User, isPersistent: false);
+        await signInManager.SignInAsync(result.User, isPersistent: true);
 #pragma warning restore CS0618
 
         return RedirectToLocal(returnUrl);

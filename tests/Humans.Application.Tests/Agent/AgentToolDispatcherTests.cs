@@ -355,14 +355,95 @@ public class AgentToolDispatcherTests
         result.Content.Should().Contain("Unknown community FAQ topic");
     }
 
+    /// <summary>
+    /// A miss must name the accepted keys. A bare "Unknown section: X" left the model nothing to
+    /// correct with: 20 out-of-whitelist lookups across 9 production conversations, three of which
+    /// ended in an empty reply to the user (nobodies-collective/Humans#949).
+    /// </summary>
+    [HumansFact]
+    public async Task FetchSectionGuide_miss_lists_the_valid_section_keys()
+    {
+        var dispatcher = MakeDispatcher();
+
+        var result = await dispatcher.DispatchAsync(
+            new AnthropicToolCall("t1", AgentToolNames.FetchSectionGuide, """{"section":"NotASection"}"""),
+            userId: Guid.NewGuid(),
+            Xunit.TestContext.Current.CancellationToken);
+
+        result.IsError.Should().BeTrue();
+        result.Content.Should().Contain("Unknown section: NotASection");
+        result.Content.Should().Contain("Shifts").And.Contain("Profiles").And.Contain("Retry with one of these");
+    }
+
+    [HumansFact]
+    public async Task FetchCommunityFaq_miss_lists_the_valid_topics()
+    {
+        var dispatcher = MakeDispatcher();
+
+        var result = await dispatcher.DispatchAsync(
+            new AnthropicToolCall("t1", AgentToolNames.FetchCommunityFaq, """{"topic":"nope"}"""),
+            userId: Guid.NewGuid(),
+            Xunit.TestContext.Current.CancellationToken);
+
+        result.IsError.Should().BeTrue();
+        result.Content.Should().Contain("Valid keys are: FAQ-general");
+    }
+
+    [HumansFact]
+    public async Task FetchFeatureSpec_miss_lists_the_valid_stems()
+    {
+        var dispatcher = MakeDispatcher();
+
+        var result = await dispatcher.DispatchAsync(
+            new AnthropicToolCall("t1", AgentToolNames.FetchFeatureSpec, """{"name":"no-such-spec"}"""),
+            userId: Guid.NewGuid(),
+            Xunit.TestContext.Current.CancellationToken);
+
+        result.IsError.Should().BeTrue();
+        result.Content.Should().Contain("Feature spec not found: no-such-spec");
+        result.Content.Should().Contain("Valid keys are: 26-events, gate-admissions");
+    }
+
+    /// <summary>
+    /// The key set is listed from GitHub; when that listing fails the miss must stay a plain
+    /// message rather than telling the model an empty set is what it may ask for.
+    /// </summary>
+    [HumansFact]
+    public async Task FetchFeatureSpec_miss_omits_the_key_list_when_the_folder_cannot_be_listed()
+    {
+        var dispatcher = MakeDispatcher(source: new UnlistableGuideSource());
+
+        var result = await dispatcher.DispatchAsync(
+            new AnthropicToolCall("t1", AgentToolNames.FetchFeatureSpec, """{"name":"no-such-spec"}"""),
+            userId: Guid.NewGuid(),
+            Xunit.TestContext.Current.CancellationToken);
+
+        result.IsError.Should().BeTrue();
+        result.Content.Should().Be("Feature spec not found: no-such-spec.");
+    }
+
+    /// <summary>A source whose folder listing is broken (revoked token, GitHub outage).</summary>
+    private sealed class UnlistableGuideSource : Humans.Application.Interfaces.IGuideContentSource
+    {
+        public Task<string> GetMarkdownAsync(string fileStem, CancellationToken cancellationToken = default) =>
+            throw new Octokit.NotFoundException("missing", System.Net.HttpStatusCode.NotFound);
+
+        public Task<string> GetMarkdownAsync(string folderPath, string fileStem, CancellationToken cancellationToken = default) =>
+            throw new Octokit.NotFoundException("missing", System.Net.HttpStatusCode.NotFound);
+
+        public Task<IReadOnlyList<string>> ListMarkdownStemsAsync(string folderPath, CancellationToken cancellationToken = default) =>
+            throw new InvalidOperationException("github unreachable");
+    }
+
     private static Humans.Infrastructure.Services.Agent.AgentToolDispatcher MakeDispatcher(
         Humans.Application.Interfaces.AuditLog.IAuditViewerService? auditViewer = null,
         Interfaces.Shifts.IShiftView? shiftView = null,
-        Interfaces.Shifts.IShiftManagementService? shiftManagement = null)
+        Interfaces.Shifts.IShiftManagementService? shiftManagement = null,
+        Humans.Application.Interfaces.IGuideContentSource? source = null)
     {
         var cache = new Microsoft.Extensions.Caching.Memory.MemoryCache(
             new Microsoft.Extensions.Caching.Memory.MemoryCacheOptions());
-        var source = new StubGuideSource();
+        source ??= new StubGuideSource();
         var sections = new Humans.Infrastructure.Services.Preload.AgentSectionDocReader(
             source, cache,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<
@@ -388,17 +469,29 @@ public class AgentToolDispatcherTests
 
     private sealed class StubGuideSource : Humans.Application.Interfaces.IGuideContentSource
     {
+        /// <summary>The only feature specs this stub repo contains — anything else 404s like GitHub would.</summary>
+        internal static readonly string[] FeatureStems = ["26-events", "gate-admissions"];
+
         public Task<string> GetMarkdownAsync(string fileStem, CancellationToken cancellationToken = default) =>
             Task.FromResult($"# {fileStem}");
 
-        public Task<string> GetMarkdownAsync(string folderPath, string fileStem, CancellationToken cancellationToken = default) =>
-            Task.FromResult($"# {fileStem}\nLast updated: 2026-02-01\n\n## Overview\nStub.");
+        public Task<string> GetMarkdownAsync(string folderPath, string fileStem, CancellationToken cancellationToken = default)
+        {
+            if (string.Equals(folderPath, Humans.Infrastructure.Services.Preload.AgentFeatureSpecReader.FolderPath, StringComparison.Ordinal)
+                && !FeatureStems.Contains(fileStem, StringComparer.Ordinal))
+            {
+                throw new Octokit.NotFoundException("missing", System.Net.HttpStatusCode.NotFound);
+            }
+            return Task.FromResult($"# {fileStem}\nLast updated: 2026-02-01\n\n## Overview\nStub.");
+        }
 
         public Task<IReadOnlyList<string>> ListMarkdownStemsAsync(string folderPath, CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<string>>(
                 string.Equals(folderPath, Humans.Infrastructure.Services.Preload.CommunityFaqReader.FolderPath, StringComparison.Ordinal)
                     ? ["FAQ-general"]
-                    : []);
+                    : string.Equals(folderPath, Humans.Infrastructure.Services.Preload.AgentFeatureSpecReader.FolderPath, StringComparison.Ordinal)
+                        ? FeatureStems
+                        : []);
     }
 
     private static Interfaces.Shifts.IShiftView MakeViewFor(

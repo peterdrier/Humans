@@ -15,8 +15,12 @@ test.describe('Community calendar', () => {
     await page.goto('/Calendar/Event/Create');
 
     await expect(page.getByRole('heading', { name: 'New event' })).toBeVisible();
-    await expect(page.locator('input[name="Title"]')).toBeVisible();
-    await expect(page.locator('select[name="OwningTeamId"]')).toBeVisible();
+    // Scope to <main>: the global "file an issue" widget lives outside it in the
+    // layout and also renders an input[name="Title"], which makes the bare
+    // selector a strict-mode violation.
+    const form = page.locator('main');
+    await expect(form.locator('input[name="Title"]')).toBeVisible();
+    await expect(form.locator('select[name="OwningTeamId"]')).toBeVisible();
   });
 
   test('agenda view renders', async ({ page }) => {

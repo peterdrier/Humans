@@ -8,6 +8,7 @@ using Humans.Application.Interfaces.Teams;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Domain.ValueObjects;
+using NodaTime;
 
 namespace Humans.Web.Models;
 
@@ -632,3 +633,19 @@ public class TeamResourceLinkViewModel
     public string? Url { get; set; }
     public string IconClass { get; set; } = string.Empty;
 }
+
+/// <summary>
+/// Board/Admin roster for one team: burner name alongside legal name.
+/// Deliberately not <see cref="TeamMemberViewModel"/> — that shape is shared with the
+/// Members and Roles pages, where a legal name would sit permanently unpopulated.
+/// </summary>
+public sealed record TeamRosterViewModel(
+    string TeamName,
+    string TeamSlug,
+    IReadOnlyList<TeamRosterRowViewModel> Rows);
+
+/// <summary>
+/// One roster row. Carries no name for the human — the burner name renders through
+/// <c>&lt;vc:human&gt;</c> from <see cref="UserId"/> (memory/code/no-new-displayname-fields.md).
+/// </summary>
+public sealed record TeamRosterRowViewModel(Guid UserId, string LegalName, Instant JoinedAt);

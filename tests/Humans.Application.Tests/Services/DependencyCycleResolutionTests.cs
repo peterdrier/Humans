@@ -176,7 +176,7 @@ public sealed class DependencyCycleResolutionTests : ServiceTestHarness
     {
         var assemblies = new[]
         {
-            typeof(IApplicationService).Assembly,
+            typeof(UserService).Assembly,
             typeof(HumansDbContext).Assembly,
             typeof(Humans.Web.Controllers.HomeController).Assembly,
         };

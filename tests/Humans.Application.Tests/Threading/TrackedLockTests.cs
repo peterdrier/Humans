@@ -124,15 +124,26 @@ public class TrackedLockTests
         // Acquire first to force contention.
         var first = await sut.AcquireAsync(NullLogger.Instance, TestContext.Current.CancellationToken);
 
-        var secondTask = Task.Run(async () =>
-        {
-            // Small delay ensures the waiter spends > 1ms waiting.
-            using var r = await sut.AcquireAsync(logger, TestContext.Current.CancellationToken);
-        }, TestContext.Current.CancellationToken);
+        // Call (don't await) the second acquire on this same thread, not on a
+        // spawned Task. An async method always runs synchronously up to its
+        // first real suspension point, and SemaphoreSlim.WaitAsync registers
+        // a waiter synchronously — under its internal lock — before it ever
+        // returns an incomplete task when the semaphore is unavailable. So by
+        // the time this call returns, the waiter is deterministically already
+        // blocked on the lock; no thread-pool scheduling or wall-clock
+        // guesswork is involved. A prior version of this test raced a blind
+        // delay against Task.Run's scheduling latency and could flake under
+        // CI load when the pool was slow to start the waiter before the
+        // delay elapsed (observed: peterdrier/Humans run 29370106498).
+        var pendingSecond = sut.AcquireAsync(logger, TestContext.Current.CancellationToken);
 
+        // The only remaining timing dependency: wait long enough ourselves
+        // that the measured elapsed time crosses the 1ms debug threshold
+        // before releasing — a lower bound we control, not a race against
+        // another thread having started.
         await Task.Delay(10, TestContext.Current.CancellationToken);
         first.Dispose();
-        await secondTask;
+        using var second = await pendingSecond;
 
         logger.Received().Log(
             LogLevel.Debug,
