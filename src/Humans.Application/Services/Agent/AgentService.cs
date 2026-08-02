@@ -249,6 +249,30 @@ public sealed class AgentService : IAgentService
                 withholdTools = true;
         }
 
+        // Never end a turn silently (nobodies-collective/Humans#952): a truncated or
+        // exhausted tool loop can leave assistantBuffer empty, which used to persist
+        // and yield a blank bubble. Fill in fallback prose so the transcript and the
+        // admin conversation view always show what the user saw.
+        var assistantText = assistantBuffer.ToString();
+        if (assistantText.Length == 0)
+        {
+            if (issueProposal is not null)
+            {
+                // The proposal frame is the terminal output for route_to_issue, but a
+                // blank stored message makes the admin conversation view misleading.
+                assistantText = RouteToIssueFallbackText;
+            }
+            else
+            {
+                _logger.LogWarning(
+                    "Agent turn produced no assistant text for conversation {ConversationId}: {ToolCallCount} tool calls, stop reason {StopReason}",
+                    conversation.Id, toolCallCount, finalFinalizer?.StopReason ?? "unknown");
+                assistantText = SilentTurnFallbackText;
+            }
+
+            yield return new AgentTurnToken(assistantText, null, null);
+        }
+
         // Proposal frame signals client to open pre-filled Issues modal.
         if (issueProposal is not null)
         {
@@ -264,7 +288,7 @@ public sealed class AgentService : IAgentService
             Id = Guid.NewGuid(),
             ConversationId = conversation.Id,
             Role = AgentRole.Assistant,
-            Content = assistantBuffer.ToString(),
+            Content = assistantText,
             CreatedAt = turnEnd,
             PromptTokens = promptTokensTotal,
             OutputTokens = outputTokensTotal,
@@ -295,6 +319,13 @@ public sealed class AgentService : IAgentService
 
     /// <summary>How many prior user/assistant turns to replay (bounded for context budget).</summary>
     private const int HistoryReplayLimit = 20;
+
+    /// <summary>Shown when a turn ends with no assistant prose (exhausted/truncated tool loop).</summary>
+    private const string SilentTurnFallbackText =
+        "I wasn't able to put together an answer for that — could you try rephrasing or asking again?";
+
+    /// <summary>Shown when a route_to_issue handoff produced no preamble text of its own.</summary>
+    private const string RouteToIssueFallbackText = "I've drafted an issue for you.";
 
     public async Task<IReadOnlyList<AgentConversationListSnapshot>> GetHistoryAsync(
         Guid userId, int take, CancellationToken ct)

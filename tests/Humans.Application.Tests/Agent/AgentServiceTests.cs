@@ -12,6 +12,7 @@ using Humans.Infrastructure.Repositories;
 using Humans.Infrastructure.Services.Agent;
 using Humans.Infrastructure.Stores;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NodaTime;
@@ -358,6 +359,105 @@ public class AgentServiceTests
     }
 
     [HumansFact]
+    public async Task Ask_yields_fallback_text_and_logs_warning_when_the_turn_produces_no_assistant_text()
+    {
+        // nobodies-collective/Humans#952 — a truncated/exhausted tool loop must never
+        // leave the user with a blank bubble or persist an empty Content string.
+        var userId = Guid.NewGuid();
+        var dispatcher = Substitute.For<IAgentToolDispatcher>();
+        dispatcher.DispatchAsync(Arg.Any<AnthropicToolCall>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(ci => new AnthropicToolResult(
+                ci.Arg<AnthropicToolCall>().Id, "guide content", IsError: false));
+        var logger = Substitute.For<ILogger<AgentService>>();
+        var (svc, client) = await BuildService(s => s.Enabled = true,
+            toolDispatcher: dispatcher, logger: logger);
+
+        // Iteration 1: the model burns the whole tool budget (MaxToolCallsPerTurn = 3) with no prose at all.
+        client.EnqueueTurn(
+            new AgentTurnToken(null, new AnthropicToolCall("t1", "fetch_section_guide", """{"section":"teams"}"""), null),
+            new AgentTurnToken(null, new AnthropicToolCall("t2", "fetch_section_guide", """{"section":"camps"}"""), null),
+            new AgentTurnToken(null, new AnthropicToolCall("t3", "fetch_community_faq", "{}"), null),
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(100, 20, 5, 3, "claude-sonnet-4-6", "tool_use")));
+
+        // Iteration 2: the synthesis call (tools withheld) still produces no text — the
+        // investigation dead-ended with nothing worth saying.
+        client.EnqueueTurn(
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(40, 5, 0, 0, "claude-sonnet-4-6", "end_turn")));
+
+        var tokens = new List<AgentTurnToken>();
+        await foreach (var t in svc.AskAsync(
+            new AgentTurnRequest(ConversationId: Guid.Empty, UserId: userId, Message: "What are teams?", Locale: "es"),
+            Xunit.TestContext.Current.CancellationToken))
+        {
+            tokens.Add(t);
+        }
+
+        var streamedText = string.Concat(tokens.Where(t => t.TextDelta != null).Select(t => t.TextDelta));
+        streamedText.Should().NotBeNullOrEmpty(
+            "the user must see fallback prose instead of a blank bubble when the turn produced no text");
+
+        var finalizer = tokens.Last().Finalizer!;
+        var transcript = await svc.GetConversationForUserAsync(
+            userId, finalizer.ConversationId, Xunit.TestContext.Current.CancellationToken);
+        var assistantMessage = transcript!.Messages.Single(m => m.Role == AgentRole.Assistant);
+        assistantMessage.Content.Should().Be(streamedText,
+            "the persisted Content must match what was streamed, so the transcript and admin view show what the user saw");
+        assistantMessage.Content.Should().NotBeNullOrEmpty();
+
+        logger.Received(1).Log(
+            LogLevel.Warning,
+            Arg.Any<EventId>(),
+            Arg.Is<object>(o => o.ToString()!.Contains("no assistant text")),
+            Arg.Any<Exception?>(),
+            Arg.Any<Func<object, Exception?, string>>());
+    }
+
+    [HumansFact]
+    public async Task Ask_stores_a_one_liner_when_route_to_issue_produces_no_preamble_text()
+    {
+        // nobodies-collective/Humans#952 — route_to_issue's proposal frame is the terminal
+        // output for the client, but a blank stored Content makes the admin transcript
+        // view misleading when the model called the tool with no preamble.
+        var userId = Guid.NewGuid();
+        var dispatcher = Substitute.For<IAgentToolDispatcher>();
+        dispatcher.DispatchAsync(Arg.Any<AnthropicToolCall>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(call => Task.FromResult(new AnthropicToolResult(
+                call.Arg<AnthropicToolCall>().Id, "Proposal queued.", IsError: false)));
+        var (svc, client) = await BuildService(s => s.Enabled = true, toolDispatcher: dispatcher);
+
+        client.EnqueueTurn(
+            new AgentTurnToken(null, new AnthropicToolCall(
+                "tc1", AgentToolNames.RouteToIssue,
+                """{"title":"Broken link","category":"Bug","description":"The camps page 404s."}"""), null),
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "claude-sonnet-4-6", "tool_use")));
+
+        var tokens = new List<AgentTurnToken>();
+        await foreach (var t in svc.AskAsync(
+            new AgentTurnRequest(ConversationId: Guid.Empty, UserId: userId, Message: "the camps page is broken", Locale: "es"),
+            Xunit.TestContext.Current.CancellationToken))
+        {
+            tokens.Add(t);
+        }
+
+        var streamedText = string.Concat(tokens.Where(t => t.TextDelta != null).Select(t => t.TextDelta));
+        streamedText.Should().NotBeNullOrEmpty(
+            "the client-visible transcript must not be blank even though the proposal frame carries the modal payload");
+
+        // The one-liner must precede the proposal frame in the stream (per issue #952's note).
+        var textIndex = tokens.FindIndex(t => t.TextDelta != null);
+        var proposalIndex = tokens.FindIndex(t => t.IssueProposal != null);
+        textIndex.Should().BeLessThan(proposalIndex,
+            "the fallback prose must be yielded before the proposal frame so the transcript reads naturally");
+
+        var finalizer = tokens.Last().Finalizer!;
+        var transcript = await svc.GetConversationForUserAsync(
+            userId, finalizer.ConversationId, Xunit.TestContext.Current.CancellationToken);
+        var assistantMessage = transcript!.Messages.Single(m => m.Role == AgentRole.Assistant);
+        assistantMessage.Content.Should().Be(streamedText);
+        assistantMessage.Content.Should().NotBeNullOrEmpty();
+    }
+
+    [HumansFact]
     public async Task Refused_conversations_are_surfaced_by_the_admin_refusals_filter()
     {
         var userId = Guid.NewGuid();
@@ -411,7 +511,8 @@ public class AgentServiceTests
     private static async Task<(IAgentService Svc, AnthropicClientFake Client)> BuildService(
         Action<AgentSettings> tune,
         IAgentRateLimitStore? rateLimitStore = null,
-        IAgentToolDispatcher? toolDispatcher = null)
+        IAgentToolDispatcher? toolDispatcher = null,
+        ILogger<AgentService>? logger = null)
     {
         var dbOptions = new DbContextOptionsBuilder<AgentDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
@@ -455,10 +556,10 @@ public class AgentServiceTests
         var tools = toolDispatcher ?? Substitute.For<IAgentToolDispatcher>();
         var client = new AnthropicClientFake();
         var options = Options.Create(new AnthropicOptions());
-        var logger = NullLogger<AgentService>.Instance;
+        var resolvedLogger = logger ?? NullLogger<AgentService>.Instance;
 
         var svc = new AgentService(settingsService, ratelimit, abuse, repo, snapshots, preload,
-            assembler, tools, client, options, clock, logger);
+            assembler, tools, client, options, clock, resolvedLogger);
         return (svc, client);
     }
 
