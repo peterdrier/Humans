@@ -1,0 +1,39 @@
+# Issues — G0 First Audit
+
+**Section:** Issues · **Kind:** vertical · **Audited:** 2026-08-03 @ 5a9bbe198
+
+## G1 predicate table
+
+| # | Predicate | Result | Evidence |
+|---|-----------|--------|----------|
+| 1 | Every owned table read/written by exactly one repo in-section | PASS | `reforge ownership-violations --owner Issues --tables issues,issue_comments` → 0 violations. |
+| 2 | One writer-service per table | PASS | `IIssuesRepository` (impl `Humans.Infrastructure/Repositories/Issues/IssuesRepository.cs`) is the only `DbContext` consumer for both tables; `IssuesService` the sole write orchestrator. |
+| 3 | No EF entity leaks across boundary | PASS | `.Include(i => i.Reporter/.Assignee/.ResolvedByUser)` and `.Include(c => c.SenderUser)` are explicitly never called (doc's own touch-and-clean guidance forbids reintroducing them); display data stitched via `IUserService.GetByIdsAsync` in `IssuesService.StitchCrossDomainNavsAsync`. |
+| 4 | No cross-section EF joins (zero baseline entries) | PASS | No Issues rows in any baseline file. |
+| 5 | No `[Obsolete]` cross-section navs / `[Grandfathered]` / baseline rows | PARTIAL | 4 cross-section navs are kept `[Obsolete]`-marked for FK/cascade wiring: `Issue.Reporter`, `.Assignee`, `.ResolvedByUser`, `IssueComment.SenderUser` (wrapped in `#pragma warning disable CS0618` in EF configs). This is the documented, deliberate design-rules §6c pattern (nav kept only for FK wiring, never walked) — lower urgency than a live/unmarked nav, but is literally an `[Obsolete]` cross-section nav per the G1 wording, so recording as a queued G2 item: convert to typed-FK form (`HasOne<User>().WithMany().HasForeignKey(...)`) the way GoogleIntegration already did for `SyncServiceSettings.UpdatedByUser`, dropping the nav property entirely. No `[Grandfathered]` hits; no other baseline rows. |
+| 6 | Controllers thin — no HUM0031 grandfathers | PASS | No `Grandfathered` hits on `IssuesController.cs` / `IssuesApiController.cs`. |
+| 7 | `docs/sections/Issues.md` current | PASS | Detailed and matches code, including the derived (non-stored) ball-in-court logic and the audit-log-reconstructed activity thread. |
+
+## G3 predicate table
+
+| # | Predicate | Result | Evidence |
+|---|-----------|--------|----------|
+| 1 | Repo tests real Postgres, zero EF-InMemory | **PARTIAL — no repository test exists at all** | Grep for `class.*IssuesRepository|new IssuesRepository\(` across `tests/`: only `Services/IssuesServiceTests.cs` matches (service-level, uses a mock repository interface, not the real repo). There is no `tests/.../IssuesRepositoryTests.cs` or equivalent — `IssuesRepository` itself has zero dedicated repository-layer test coverage. Trivially "zero EF-InMemory" but only because there are no repo tests to have used it. |
+| 2 | Service tests mock interfaces, zero `HumansDbContext` | PASS | `Services/IssuesServiceTests.cs` — no `HumansDbContext` references. |
+| 3 | Invariants/triggers each have a test | PARTIAL | Not exhaustively mapped. Auto-reopen-on-reporter-comment, comment-and-mark-resolved atomicity, and the 6-month retention sweep are documented invariants; plausibly covered by `IssuesServiceTests.cs` and a retention job test, but no line-level confirmation done this pass. |
+| 4 | No skipped tests without an issue ref | PASS | No `Skip=` anywhere in `tests/`. |
+| 5 | Tests grouped under section | **PARTIAL** | `IssuesServiceTests.cs` lives in the shared `tests/.../Services/` folder, `IssuesArchitectureTests.cs` correctly in `Architecture/`, `IssuesApiControllerTests.cs` in `Controllers/`, `IssuesAuthorizationHandlerTests.cs` in `Authorization/` — none grouped under a dedicated `tests/.../Issues/` folder the way GoogleIntegration/Notifications/Camps are. Not movable-with-section as-is. |
+
+## G1 gap list
+
+| What | Where | Suggested fix | No-migration-needed? |
+|------|-------|----------------|----|
+| 4 `[Obsolete]`-marked cross-section navs kept for FK wiring | `src/Humans.Domain/Entities/Issue.cs`, `IssueComment.cs` | Convert `ReporterUserId`/`AssigneeUserId`/`ResolvedByUserId`/`SenderUserId` to typed-FK form (drop the nav properties entirely), matching the GoogleIntegration pattern. | y |
+
+## G2 queue notes
+
+None identified beyond the typed-FK conversion above (schema-neutral, no migration required — it's an EF-configuration-only change).
+
+## Verdict
+
+`G1: 1 gap · G3: 2 PARTIAL (missing IssuesRepository test entirely; tests not grouped under section) — headline gap: IssuesRepository has zero dedicated test coverage`

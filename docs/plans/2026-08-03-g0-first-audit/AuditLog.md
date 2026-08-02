@@ -1,0 +1,46 @@
+# AuditLog — G0 First Audit
+
+**Kind:** horizontal · **Audited:** 2026-08-03 @ 5a9bbe198
+
+## G1 — Ownership
+
+| # | Predicate | Result | Evidence |
+|---|-----------|--------|----------|
+| 1 | Every owned table read/written by exactly one repository | PASS | `AuditLogRepository` doc comment: "The only non-test file that touches `DbContext.AuditLogEntries` after the Audit Log migration lands." All 13 methods confirmed touching only `AuditLogEntries` (`src/Humans.Infrastructure/Repositories/AuditLog/AuditLogRepository.cs`). Note: `BudgetAuditLog`/`budget_audit_logs` is a **separate, Budget-owned table** with a superficially similar name — not an AuditLog ownership conflict (see Budget's own audit file for that table's `[Grandfathered]` entry). |
+| 2 | One writer-service per table | PASS | `AuditLogService` is the sole injector of `IAuditLogRepository`. `AddAsync` is the only write method — append-only per design-rules §12, enforced by a DB trigger per the repository's doc comment. |
+| 3 | No EF entity leaks across the boundary | PASS (own table) / **FAIL** (consumption) | AuditLog's own writes/reads return `AuditLogEntrySnapshot`/`AuditEvent` DTOs, never `AuditLogEntry` entities, to callers — clean on the *outbound* side. But `AuditViewerService` (`src/Humans.Application/Services/AuditLog/AuditViewerService.cs:141`) calls `ITeamService.GetByIdsWithParentsAsync`, which returns `IReadOnlyDictionary<Guid, Team>` — the raw **Team domain entity** from the Teams section (`src/Humans.Application/Interfaces/Teams/ITeamService.cs:595`). This is an inbound entity leak: a horizontal section holding a vertical section's EF entity in memory. |
+| 4 | No cross-section EF joins (zero baseline entries) | PASS | Zero `AuditLog` hits across all 5 architecture-test baseline files. |
+| 5 | No `[Obsolete]` navs / `[Grandfathered]` / baseline rows | **FAIL (queued)** | `AuditLogEntryConfiguration` (`src/Humans.Infrastructure/Data/Configurations/AuditLog/AuditLogEntryConfiguration.cs:13`) carries `[Grandfathered(HUM0024, "Pre-existing cross-section EF navigation join; migrating to bare FK + service-level stitching.", since: 2026-05-25)]` covering `HasOne<User>()` (→ Users) and `HasOne(e => e.Resource)` (→ GoogleResource, GoogleIntegration section) navigations. Already tracked (`docs/architecture/roslyn-analysis.md#hum0024`) — counts as "queued G2 demolition item", not a fresh gap. |
+| 6 | Controllers thin — no HUM0031 grandfathers | PASS | `AuditLogController.cs` has no `[Grandfathered]`/`[Obsolete]`; body is pure query-delegate-to-`IAuditViewerService` + view-model shaping. |
+| 7 | `docs/sections/AuditLog.md` current | **PARTIAL** | **Correction:** `docs/sections/AuditLog.md` DOES exist (a prior glob call with brace-expansion syntax returned a false negative — confirmed via `ls` and direct `Read`; it's a 169-line, highly detailed doc). But it contains **stale claims** about its own enforcement machinery: it cites an architecture test named `Only_AuditLogRepository_Writes_AuditLogEntries_DbSet` and a baseline file `OnlyAuditLogRepositoryWritesAuditLogEntries.baseline.txt` — **neither exists** (`AuditLogArchitectureTests.cs` contains only `IAuditLogRepository_HasNoUpdateOrDeleteMethods`; only 5 baseline files exist total, none with that name). It also claims a live violation at `DriveActivityMonitorRepository.cs:81` (GoogleIntegration writing `ctx.AuditLogEntries.AddRange(...)` directly) — a full-repo grep for `AuditLogEntries` found **zero** matches outside `AuditLogRepository.cs` and the unrelated `HumansDbContext.cs` DbSet declaration; that violation appears to have been fixed without the doc being updated. Net: the underlying invariant (only `AuditLogRepository` writes `AuditLogEntries`) holds today, but the doc's description of *how* it's enforced is wrong on three points. |
+| Crosscut-purity (horizontal-only check) | **PARTIAL** | `AuditLogService` injects `IUserServiceRead` only (allowed — Users is an explicit shared-contract exception per the Q3 plan). `AuditViewerService` injects `IUserServiceRead` (fine) **plus `ITeamService` and `ITeamResourceService` — full service interfaces for the vertical Teams section**, not `ITeamServiceRead`. `ITeamServiceRead` exists but lacks a bulk-with-parents lookup that returns `TeamInfo` instead of `Team`; `ITeamResourceService.GetResourceNamesByIdsAsync` already returns a safe `IReadOnlyDictionary<Guid,string>` so that half is fine, but `GetByIdsWithParentsAsync` is the live violation (see G1.3 above — same root cause, listed once). |
+
+## G3 — Tests
+
+| # | Predicate | Result | Evidence |
+|---|-----------|--------|----------|
+| 1 | Repository tests on real Postgres, zero EF-InMemory | **FAIL** | `AuditLogRepositoryTests.cs:30-31` — `UseInMemoryDatabase(...)` against a real `HumansDbContext`, wrapped in the real `AuditLogRepository`. No shared-Postgres-fixture usage found. |
+| 2 | Service tests mock repo interfaces, zero `HumansDbContext` | **FAIL** | `AuditLogServiceTests.cs:22,29-35` — declares `private readonly HumansDbContext _dbContext`, builds it via `UseInMemoryDatabase`, and constructs a real `AuditLogRepository` around it instead of `Mock<IAuditLogRepository>`. |
+| 3 | Invariants/triggers from section doc each have a test | PASS (spot-check) | Using the real doc: the append-only invariant (no `UpdateAsync`/`DeleteAsync` on `IAuditLogRepository`) is directly pinned by `AuditLogArchitectureTests.IAuditLogRepository_HasNoUpdateOrDeleteMethods` — but the doc's second claimed layer (Postgres triggers `prevent_audit_log_update`/`prevent_audit_log_delete` from migration `20260212152552_Initial`) has no corresponding integration-level test found in this pass. "Best-effort, swallow on failure" (`AuditLogService.PersistAsync`) plausibly covered by `AuditLogServiceTests.cs` given its breadth; not line-verified. |
+| 4 | No skipped tests without an issue ref | PASS | Grepped `tests/Humans.Application.Tests/AuditLog/**` for `Skip\s*=` — zero hits. |
+| 5 | Tests grouped under the section | PASS | All 5 AuditLog test files live under `tests/Humans.Application.Tests/AuditLog/`. |
+
+## G1 Gap List
+
+1. **`AuditViewerService` consumes `ITeamService.GetByIdsWithParentsAsync` → raw `Team` entity**, not a DTO (`src/Humans.Application/Services/AuditLog/AuditViewerService.cs:141`, `ITeamService.cs:595`). Fix: either (a) filter the already-cached `ITeamServiceRead.GetTeamsAsync()` result set in memory by the requested IDs (consistent with the "enrich the cached read model" project rule — Teams is small enough at this scale to load in full and filter locally), or (b) if department/parent resolution genuinely needs a shape `TeamInfo` doesn't carry, add that field to `TeamInfo` and a filtered method to `ITeamServiceRead` rather than reaching for the full `ITeamService`. No-migration-needed: y (pure code change, no schema).
+2. **`AuditLogEntryConfiguration` HUM0024-grandfathered cross-section navs** (→ User, → GoogleResource). Already queued; no new action needed beyond what HUM0024's tracked plan already covers — retire the `[Grandfathered]` when the bare-FK migration lands.
+3. **`docs/sections/AuditLog.md` contains three stale claims about its own enforcement machinery** (a non-existent test name, a non-existent baseline file, and a since-fixed violation reference) — see G1.7. Fix: rewrite the "Architecture" section's paragraph on `Only_AuditLogRepository_Writes_AuditLogEntries_DbSet` to describe the real enforcement (currently: convention + the `IAuditLogRepository_HasNoUpdateOrDeleteMethods` test only covers append-only-ness, not the write-exclusivity claim — consider adding a real architecture test for that if the intent was for one to exist). No-migration-needed: y.
+
+## G3 Gap List
+
+1. **`AuditLogRepositoryTests.cs` on EF-InMemory** — convert to the shared Postgres fixture (#764 pattern). No-migration-needed: y.
+2. **`AuditLogServiceTests.cs` constructs a real repo over EF-InMemory** instead of mocking `IAuditLogRepository`. Convert to `Mock<IAuditLogRepository>`. No-migration-needed: y.
+
+## G2 Queue Notes
+
+- `audit_log` table already carries the append-only DB trigger + `[Grandfathered(HUM0024)]` cross-section FK navs — this section's G2 entry is largely "drop the two navs once HUM0024's bare-FK migration ships," not new discovery.
+- No dead columns spotted in `AuditLogEntryConfiguration` in this pass.
+
+## Verdict
+
+**G1: 2 gaps (Team entity leak in AuditViewerService; doc drift on the write-exclusivity enforcement description) — HUM0024 grandfather already queued, not counted as fresh · G3: 2 gaps (both EF-InMemory)**

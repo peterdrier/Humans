@@ -1,0 +1,43 @@
+# Camps — G0 First Audit
+
+**Section:** Camps · **Kind:** vertical · **Audited:** 2026-08-03 @ 5a9bbe198
+
+## G1 — Ownership
+
+| # | Predicate | Result | Evidence |
+|---|-----------|--------|----------|
+| 1 | Every owned table read/written by exactly one repository, in-section | **PARTIAL** | `reforge ownership-violations --owner Camps --tables Camps,CampHistoricalNames,CampImages,CampLeads,CampMembers,CampRoleAssignments,CampRoleDefinitions,CampSeasons,CampSettings` → 0 violations, and `CampRepository`/`CampRepository.Roles.cs` are the sole `HumansDbContext` accessors for these tables. **But** `src/Humans.Infrastructure/Jobs/SystemTeamSyncJob.cs:27` injects `ICampRepository` directly (outside the Camps namespace) and calls `campRepository.GetActiveLeadUserIdsAsync` / `campRepository.IsLeadAnywhereAsync` (both read-only, `SystemTeamSyncJob.cs:482,507`). This is *known, tracked* debt — `tests/Humans.Application.Tests/Architecture/CampsArchitectureTests.cs:101-134` (`ICampRepository_HasNoUnexpectedConsumers`) explicitly pins `SystemTeamSyncJob` as the one approved outside consumer — not an undiscovered violation, but still open debt. |
+| 2 | One writer-service per table (no interceptor workarounds) | **PASS** | `CachingCampService` decorates `CampService` (Singleton, hit-tracked); `CampsArchitectureTests.cs` pins this pattern and its remarks state "the T-06 SaveChanges interceptor was retired in favour of decorator-only invalidation" (line 160). |
+| 3 | No EF entity leaks across the boundary | **PASS** | `ICampServiceRead` exposes 6 members, all DTO-typed: `CampInfo`, `CampSeasonInfo`, `CampSettingsInfo`, `CampSearchHit`, `CampUserInfo` (`src/Humans.Application/Interfaces/Camps/ICampServiceRead.cs`). `tests/.../Baselines/ApplicationServiceEntityReadReturns.baseline.txt` has no `ICampService`/`ICampServiceRead` entries (only an unrelated `IEventService.GetCampEventAsync` Events-section entry). |
+| 4 | No cross-section EF joins (zero baseline entries) | **FAIL** | No `CrossSectionEfJoin` baseline *file* exists (correct — HUM0024 isn't baseline-file-based). But see predicate 5 — 3 configs carry an active `[Grandfathered("HUM0024", ...)]` marker, the attribute-based form of this analyzer's allowlist. |
+| 5 | No `[Obsolete]` cross-section navs, no `[Grandfathered]`, no baseline rows owned by Camps | **FAIL** | **Missed in the original pass** (grep only covered `Controllers/Camp*` and `Domain/Entities/Camp*`, not `Infrastructure/Data/Configurations/`): `CampSeasonConfiguration.cs:12`, `CampLeadConfiguration.cs:8`, and `CampConfiguration.cs:11` all carry `[Grandfathered(ruleId: "HUM0024", justification: "Pre-existing cross-section EF navigation join; migrating to bare FK + service-level stitching.", since: "2026-05-25", issueRef: "docs/architecture/roslyn-analysis.md#hum0024")]` — the same marker found on 4 other sections' configs in this audit pass. The 5 baseline files also carry cosmetic `DisplaySortInControllers` entries for `CampRepository.cs`/`CampRepository.Roles.cs` (`OrderBy`/`ThenBy` in the repository itself — fine, correct layer) and a `NoDestructiveMigrationOps` entry for a historical `DropColumn(IsRequired)` on `CampRoleDefinitions` — neither of those two is a live violation. Separately, the legacy `CampLead` entity/`camp_leads` table is doc-acknowledged as pending removal (issue #774) — already a queued G2 item, not fresh debt. |
+| 6 | Controllers thin — no HUM0031 grandfathers | **PASS** | No `Grandfathered("HUM0031"...)` hits under `src/Humans.Web/Controllers/Camp*`. |
+| 7 | `docs/sections/Camps.md` exists and matches reality | PASS | **Correction:** `docs/sections/Camps.md` DOES exist (a prior glob call with brace-expansion syntax returned a false negative — confirmed via `ls` and direct `Read`; it's a 310-line, exceptionally detailed doc: full role/lead/member lifecycle, EE grant rules, Google Group sync bridge). No drift found — it's self-aware, documenting the `CampLead` legacy-removal plan (#774) and the account-merge fold logic in detail. It does not mention the 3 HUM0024 grandfathers (predicate 5) or the `SystemTeamSyncJob` repository injection (predicate 1) — the latter is a real, undocumented cross-section dependency missing from the doc's own "Cross-Section Dependencies" list. |
+
+## G3 — Tests
+
+| # | Predicate | Result | Evidence |
+|---|-----------|--------|----------|
+| 1 | Repository tests real Postgres, zero EF-InMemory | **FAIL** | `tests/Humans.Application.Tests/Repositories/CampRepositoryTests.cs:22` — `.UseInMemoryDatabase(Guid.NewGuid().ToString())`. This is the only repository test file for Camps. |
+| 2 | Service tests mock repo/`I…ServiceRead`, zero `HumansDbContext` | **PASS** | Grepped `Camp*Tests.cs` under `tests/Humans.Application.Tests/Services/` for `HumansDbContext`/`UseInMemoryDatabase` → no matches. `CampsArchitectureTests.cs:274` uses `Substitute.For<ICampRepository>()`. |
+| 3 | Invariants/triggers from `docs/sections/Camps.md` each have a test | PASS (spot-check) | Using the real doc: name-lock + historical-name auto-log on rename — plausibly covered by `CampServiceTests.cs` given its breadth. EE grant rules (`Status=Active` required, over-`EeSlotCount` rejected, no auto-revoke on lower) — `CampServiceEarlyEntryTests.cs` exists specifically for this. Role-assignment `MemberNotActive`/`MemberSeasonMismatch` rejection — `CampRoleServiceTests.cs` exists specifically for this. Not exhaustively line-mapped against all 30+ documented invariants. |
+| 4 | No skipped tests without an issue ref | **PASS** | Grepped all `*Camp*Tests.cs` for `Skip\s*=` → no matches. |
+| 5 | Tests grouped under the section | **PASS** | Consistently foldered by kind app-wide (`Repositories/CampRepositoryTests.cs`, `Services/Camp*Tests.cs`, `Architecture/CampsArchitectureTests.cs`, `Authorization/CampAuthorizationHandlerTests.cs`) — same pattern as every other section, movable together at G5. |
+
+## G1 gap list
+
+1. **`SystemTeamSyncJob` injects `ICampRepository` directly** (`src/Humans.Infrastructure/Jobs/SystemTeamSyncJob.cs:27,482,507`). Fix: add `GetActiveLeadUserIdsAsync`/an equivalent lead-lookup method to `ICampServiceRead`, switch the job to depend on `ICampServiceRead`, remove `SystemTeamSyncJob` from the pinned-consumer list in `CampsArchitectureTests.ICampRepository_HasNoUnexpectedConsumers`. No migration needed: **y**.
+2. **3 HUM0024 cross-section EF join grandfathers** (`CampSeasonConfiguration`, `CampLeadConfiguration`, `CampConfiguration`) — where: `src/Humans.Infrastructure/Data/Configurations/Camps/*.cs`. No queued G2 items beyond the generic doc anchor. No migration needed: **y** (pending liveness verification).
+3. **`docs/sections/Camps.md` doesn't document `SystemTeamSyncJob`'s direct `ICampRepository` injection** (see G1 gap #1 above) — its "Cross-Section Dependencies" list omits this real dependency. Fix: add it once the repository-injection fix (gap #1) lands, or document it as known debt in the interim. No migration needed: **y**.
+
+## G3 gap list
+
+1. **`CampRepositoryTests.cs` uses EF-InMemory**, not the shared Postgres fixture (#764/#766 scope). Fix: convert to the real-Postgres fixture pattern used elsewhere once #766's per-section conversion reaches Camps. No migration needed: **y** (test-only change).
+2. **No canonical invariant doc to test against** — blocked on the same `docs/sections/` gap as G1.7.
+
+## G2 queue notes
+
+- `NoDestructiveMigrationOps.baseline.txt` carries one historical Camps entry (`DropColumn(IsRequired)` on `CampRoleDefinitions`, migration `20260426185621`) and `NoDestructiveMigrationOps` also lists `DropColumn(ContactMethod)` on a Camp-adjacent migration (`AddCampLinksRemoveContactMethod`) — both already-applied historical drops, not open G2 work; noted for completeness only.
+- No dead columns/tables or cross-section FK constraints surfaced in this pass beyond the `SystemTeamSyncJob` repository leak above (which is a G1 fix, not G2/schema).
+
+**Verdict: G1: 3 gaps (SystemTeamSyncJob repo injection; 3 HUM0024 grandfathers counted as one item; doc omission of the SystemTeamSyncJob dependency) · G3: 2 gaps**

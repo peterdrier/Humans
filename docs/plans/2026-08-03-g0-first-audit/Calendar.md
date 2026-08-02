@@ -1,0 +1,47 @@
+# Calendar — G0 First Audit
+
+**Kind:** vertical · **Audited:** 2026-08-03 @ `5a9bbe198`
+
+## G1 — Ownership
+
+| # | Predicate | Result | Evidence |
+|---|-----------|--------|----------|
+| 1 | Every owned table read/written by exactly one repository | **PASS** | `reforge ownership-violations --owner Calendar --tables CalendarEvents,CalendarEventExceptions` → 0 hits. `CalendarRepository.cs` header comment: "The only non-test file that touches the Calendar-owned DbSets... after the Calendar §15 migration (issue #569) lands." |
+| 2 | One writer-service per table | **PASS** | Only `CalendarService` writes; `CachingCalendarService` is a decorator that delegates writes to the inner `ICalendarService` (per hard rules on caching decorators), not a second writer. Confirmed by `CachingCalendarServiceTests.CachingCalendarService_ImplementsReadAndWriteSurfaces`. |
+| 3 | No EF entity leaks across the boundary | **PASS (today) / advisory** | `ICalendarServiceRead` is DTO-only and mechanically enforced: `CalendarArchitectureTests.CalendarServiceRead_ReturnsNoEntityTypes` fails the build if `CalendarEvent`/`CalendarEventException` appear in its return types. However the full write interface `ICalendarService` still returns raw `CalendarEvent` from `CreateEventAsync`/`UpdateEventAsync`/`CreateEventWithResultAsync`. `grep` across `src/` for `ICalendarService\b|ICalendarServiceRead\b` shows only 6 files, all inside Calendar (`CalendarController`, `CalendarService`, `CachingCalendarService`, `CalendarSectionExtensions`, `ICalendarService.cs`, `CalendarEventInfo.cs`) — no cross-section consumer exists today, so no active leak. Flagged as a latent risk if the write interface is ever injected cross-section. |
+| 4 | No cross-section EF joins (zero baseline entries) | **FAIL** | Grep of all 5 `Architecture/Baselines/*.txt` files for `calendar` (case-insensitive) → 0 hits (correct, HUM0024 isn't baseline-file-based). But see predicate 5 — `CalendarEventConfiguration` carries an active `[Grandfathered("HUM0024", ...)]` marker, which **is** this analyzer's allowlist mechanism. |
+| 5 | No `[Obsolete]` cross-section navs / `[Grandfathered]` / baseline rows without a queued G2 item | **FAIL** | `CalendarEvent.OwningTeam` nav **is** `[Obsolete]` (correctly annotated per design-rules §6c — `CalendarArchitectureTests.CalendarEvent_OwningTeamNavIsObsolete` pins this; resolution goes through `ITeamServiceRead` instead) — that part is the correct interim pattern. **Missed in the original pass** (grep only covered the entity/controller, not `Infrastructure/Data/Configurations/`): `src/Humans.Infrastructure/Data/Configurations/Calendar/CalendarEventConfiguration.cs:8` carries `[Grandfathered(ruleId: "HUM0024", justification: "Pre-existing cross-section EF navigation join; migrating to bare FK + service-level stitching.", since: "2026-05-25", issueRef: "docs/architecture/roslyn-analysis.md#hum0024")]` on the `OwningTeamId` FK wiring — the same marker found on 5 other sections' configs in this audit pass. The underlying DB-level FK constraint also hasn't been confirmed as queued on the unfiled "FK cuts" G2 work item — see gap list. |
+| 6 | Controllers thin, no HUM0031 grandfathers | **PASS** | `grep -n "HUM0031\|Grandfathered" CalendarController.cs` → no matches. |
+| 7 | `docs/sections/Calendar.md` exists and matches reality | PASS | **Correction:** `docs/sections/Calendar.md` DOES exist (a prior glob call with brace-expansion syntax returned a false negative — confirmed via `ls` and direct `Read`; it's a 153-line, detailed doc: recurrence model, `CalendarEventException` soft-delete filter chaining, open-edit authorization design, T-06 caching decorator). No drift found — it accurately documents `CalendarArchitectureTests.cs`'s decorator-invariant coverage. It does not mention the `CalendarEventConfiguration` HUM0024 grandfather (predicate 5), a minor omission shared by every section audited in this pass. |
+
+## G3 — Tests
+
+| # | Predicate | Result | Evidence |
+|---|-----------|--------|----------|
+| 1 | Repository tests use real Postgres, zero EF-InMemory | **FAIL** | `tests/Humans.Application.Tests/Repositories/CalendarRepositoryTests.cs:26` — `.UseInMemoryDatabase(Guid.NewGuid().ToString())`. This is the shared `ServiceTestHarness`/ad-hoc pattern used repo-wide; in scope of tracked issue #766. |
+| 2 | Service tests mock repo/`I…ServiceRead`, zero `HumansDbContext` | **PARTIAL** | `CachingCalendarServiceTests.cs` (decorator) correctly mocks `ICalendarService`/`ITeamServiceRead` via NSubstitute, zero DbContext — PASS in isolation. `CalendarServiceValidationTests.cs` only covers static-ish validation helpers (`ValidateRecurrenceRule`/`ValidateTimezone`), no repo interaction at all. **Gap:** no unit-level test exercises `CalendarService`'s core mutation logic (create/update/delete/occurrence-override, audit-log invariant) against a mocked `ICalendarRepository` — that logic is only covered by `tests/Humans.Integration.Tests/Services/CalendarServiceTests.cs`, which goes through the real DI container and a real DbContext (integration-level, not unit-level; acceptable as *a* test but doesn't satisfy the "mock repo" shape for a unit layer). |
+| 3 | Section invariants/triggers have a test (spot-check against the real `docs/sections/Calendar.md`) | **PASS (spot-checked)** | "Every mutation writes an AuditLogEntry" — `CalendarService.cs` injects `IAuditLogService` (1 usage site) and is covered via `Humans.Integration.Tests/Services/CalendarServiceTests.cs`. "No resource-based authorization, audit-only accountability (`CanEdit` hard-coded true)" — confirmed no `CalendarAuthorizationHandler`/`CalendarEditor` policy exists in `src/`, matching the documented open-access design. Occurrence cancel/override → `CalendarEventException`, plus the `IgnoreQueryFilters()` soft-delete-race handling in `UpsertExceptionAsync` — covered by `CalendarRepositoryTests.cs`-adjacent tests and `CalendarEventExceptionTests.cs` (domain). "All-or-nothing `RecurrenceRule`/`RecurrenceTimezone`" — covered by `CalendarServiceValidationTests.cs`. |
+| 4 | No skipped tests without an issue ref | **PASS** | `grep "Skip\s*="` across `CalendarRepositoryTests.cs`, `CalendarServiceValidationTests.cs`, `CachingCalendarServiceTests.cs` → 0 hits. |
+| 5 | Tests grouped under the section | **PASS (minor nit)** | `Repositories/CalendarRepositoryTests.cs`, `Services/Calendar/{CachingCalendarServiceTests,CalendarOccurrenceExpanderTests}.cs`, `Architecture/CalendarArchitectureTests.cs`, `Domain.Tests/Entities/Calendar*`, `Integration.Tests/{Controllers,Services}/Calendar*` all grouped by name/folder. One outlier: `Services/CalendarServiceValidationTests.cs` sits directly under `Services/` rather than `Services/Calendar/` — trivial to move at G5. |
+
+## G1 Gap List
+
+1. **`CalendarEventConfiguration` HUM0024 cross-section EF join grandfather** — where: `src/Humans.Infrastructure/Data/Configurations/Calendar/CalendarEventConfiguration.cs:8`. Tracked only to a generic doc anchor, no specific issue, no queued G2 item. Suggested fix: verify liveness (the nav side is already `[Obsolete]`-gated; the marker may just need retiring) or file a tracking issue. No-migration-needed: y (pending verification).
+2. **Confirm the `CalendarEvents.OwningTeamId → Teams.Id` FK is on the G2 "cross-section FK cuts" demolition list.** Where: `docs/architecture/design-rules.md` / demolition inventory (unfiled). The nav is already correctly `[Obsolete]`-gated; only the physical FK constraint remains as debt. Fix: add explicit line item to the unfiled FK-cut list referenced in the Q3 plan. No-migration-needed: n (this *is* a migration item, belongs at G2 not G1).
+3. **Latent entity-leak risk on `ICalendarService` (full write interface).** Where: `src/Humans.Application/Interfaces/Calendar/ICalendarService.cs`. No violation today (no cross-section injector), but if a cross-section consumer is ever added it will leak `CalendarEvent`. Fix: no action needed now; flag for review if a cross-section write dependency on Calendar appears. No-migration-needed: y.
+
+## G3 Gap List (feeding G3)
+
+1. **`CalendarRepositoryTests.cs` uses EF-InMemory.** Fix: convert to the shared Postgres fixture per #766. No-migration-needed: y (test-only change).
+2. **No mocked-repository unit test for `CalendarService`'s write path.** Where: add `Services/Calendar/CalendarServiceTests.cs` mocking `ICalendarRepository`, `ITeamServiceRead`, `IAuditLogService`. Currently only integration-level coverage exists for create/update/delete/occurrence logic. No-migration-needed: y.
+3. **Minor grouping nit:** move `Services/CalendarServiceValidationTests.cs` → `Services/Calendar/`. No-migration-needed: y.
+
+## G2 Queue Notes (light)
+
+- FK cut: `CalendarEvents.OwningTeamId → Teams.Id` (see gap #2 above) — pairs naturally with dropping the `[Obsolete]` nav property entirely once app-level integrity is trusted.
+- No dead columns/tables spotted in `CalendarEvent`/`CalendarEventException` during this pass — soft-delete (`DeletedAt`) and denormalized `RecurrenceUntilUtc` both appear actively used (indexing purpose documented in the feature doc).
+- Out-of-scope-for-now module aggregation (`ICalendarContributor`) is a *feature* item (post-v1 slice), not a debt item — no G2 action.
+
+## Verdict
+
+`G1: 3 gaps (HUM0024 grandfather; unqueued FK cut; latent entity-leak risk on ICalendarService) · G3: 3 gaps`

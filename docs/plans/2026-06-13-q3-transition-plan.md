@@ -95,13 +95,14 @@ The safety net plus the map. Nothing destructive starts before G0 closes.
       suite green on main.
 - [ ] **Section inventory frozen:** the tracker table below confirmed as the canonical
       section list (additions/merges decided now, not mid-flight).
-- [ ] **Dependency DAG computed:** Reforge-derived section→section call graph (service
-      calls, invalidator injections, read-interface consumers) committed alongside this
-      plan. Shared-contract exceptions (User/UserInfo, Auth, Audit) explicitly listed;
-      anything else that looks like it needs the exception gets challenged here.
-- [ ] **Demolition inventory:** per-section list of dead columns/tables, cross-section FK
-      constraints, and non-conforming table names (feeds G2 work items).
-- [ ] **First audit pass:** every section scored against G1–G3 predicates; tracker filled.
+- [x] **Dependency DAG computed:** [`2026-08-03-section-dependency-dag.md`](2026-08-03-section-dependency-dag.md)
+      (Reforge-derived; shared-contract exceptions listed; challenged edges called out).
+- [x] **Demolition inventory:** [`2026-08-03-demolition-inventory.md`](2026-08-03-demolition-inventory.md)
+      (per-section dead columns/tables, cross-section FKs, non-conforming table names).
+- [x] **First audit pass:** every section scored against G1–G3 predicates
+      ([`2026-08-03-g0-first-audit/`](2026-08-03-g0-first-audit/)); tracker filled.
+      Section-inventory freeze proposal awaiting confirmation:
+      [`2026-08-03-proposed-frozen-section-inventory.md`](2026-08-03-proposed-frozen-section-inventory.md).
 
 ### G1 — Ownership (per section): *your data is yours alone*
 
@@ -277,41 +278,52 @@ lands. #864 follows #809 and coordinates nav with #861.)
 Filled by the G0 first-audit pass; updated by every `/section-gate` run. Horizontal
 sections and shared contracts noted explicitly. (`—` = not yet audited.)
 
+> **First audit pass completed 2026-08-03** @ `5a9bbe198`. Per-section scorecards, evidence
+> and G1 gap lists: [`2026-08-03-g0-first-audit/`](2026-08-03-g0-first-audit/). Companion
+> G0 artifacts: [dependency DAG](2026-08-03-section-dependency-dag.md) ·
+> [demolition inventory](2026-08-03-demolition-inventory.md) ·
+> [PROPOSED frozen inventory](2026-08-03-proposed-frozen-section-inventory.md).
+> G1/G3 cells show gap counts from the audit (`✅` = predicates met). G2 is not scored
+> per-section yet — its queue lives in the demolition inventory. **Note:** the audit ran
+> against this table's taxonomy; the DAG audit found this taxonomy has drifted from
+> `reforge.surface-score.json` and code (see the frozen-inventory proposal before
+> treating rows as final).
+
 | Section | Kind | G1 | G2 | G3 | G4 | G5 |
 |---|---|---|---|---|---|---|
-| Agent | vertical | — | — | — | — | — |
-| AuditLog | **horizontal** | — | — | — | — | — |
-| Auth | **horizontal** | — | — | — | — | — |
-| Budget | vertical | — | — | — | — | — |
-| Calendar | vertical | — | — | — | — | — |
-| Campaigns | vertical | — | — | — | — | — |
-| Camps | vertical | — | — | — | — | — |
-| Cantina | vertical | — | — | — | — | — |
-| CityPlanning | vertical | — | — | — | — | — |
-| Containers | vertical | — | — | — | — | — |
-| Debug | **horizontal** | — | — | — | — | — |
-| Email | vertical | — | — | — | — | — |
-| Events | vertical | — | — | — | — | — |
-| Expenses | vertical | — | — | — | — | — |
-| Feedback | vertical | — | — | — | — | — |
-| Finance | vertical | — | — | — | — | — |
-| GoogleIntegration | vertical | — | — | — | — | — |
-| Governance | vertical | — | — | — | — | — |
-| Guide | vertical | — | — | — | — | — |
-| Holded | vertical | — | — | — | — | — |
-| Issues | vertical | — | — | — | — | — |
-| LegalAndConsent | vertical | — | — | — | — | — |
-| Mailer | vertical | — | — | — | — | — |
-| Notifications | vertical | — | — | — | — | — |
-| Onboarding | vertical (orchestrator) | — | — | — | — | — |
-| Profiles | **shared contract** | — | — | — | — | — |
-| Scanner | vertical | — | — | — | — | — |
-| Shifts | vertical | — | — | — | — | — |
-| Store | vertical | — | — | — | — | — |
-| Survey | vertical | — | — | — | — | — |
-| Teams | vertical | — | — | — | — | — |
-| Tickets | vertical | — | — | — | — | — |
-| Users | **shared contract** | — | — | — | — | — |
+| Agent | vertical | 1 gap | — | 2 gaps | — | — |
+| AuditLog | **horizontal** | 2 gaps | — | 2 gaps | — | — |
+| Auth | **horizontal** | 3 gaps | — | 2 gaps | — | — |
+| Budget | vertical | 3 gaps | — | 3 gaps | — | — |
+| Calendar | vertical | 2 gaps | — | 3 gaps | — | — |
+| Campaigns | vertical | 2 gaps | — | 2 gaps | — | — |
+| Camps | vertical | 2 gaps | — | 2 gaps | — | — |
+| Cantina | vertical | 3 gaps | — | 2 gaps | — | — |
+| CityPlanning | vertical | 1 gap | — | 2 gaps | — | — |
+| Containers | vertical | ✅ | — | 2 gaps | — | — |
+| Debug | **horizontal** | 2 gaps | — | 1 gap | — | — |
+| Email | vertical | 2 gaps | — | 2 gaps | — | — |
+| Events | vertical | 2 gaps | — | 1 gap | — | — |
+| Expenses | vertical | ✅ | — | 1 gap | — | — |
+| Feedback | vertical | 1 gap | — | 2 gaps | — | — |
+| Finance | vertical | ✅ | — | 1 gap | — | — |
+| GoogleIntegration | vertical | 2 gaps | — | 2 gaps | — | — |
+| Governance | vertical | ✅ | — | 2 gaps | — | — |
+| Guide | vertical | 1 gap | — | ✅ | — | — |
+| Holded | vertical | ✅ | — | ✅ | — | — |
+| Issues | vertical | 1 gap | — | 2 gaps | — | — |
+| LegalAndConsent | vertical | 3 gaps | — | 2 gaps | — | — |
+| Mailer | vertical | ✅ | — | ✅ | — | — |
+| Notifications | vertical | ✅ | — | 2 gaps | — | — |
+| Onboarding | vertical (orchestrator) | ✅ | — | ✅ | — | — |
+| Profiles | **shared contract** | 4 gaps | — | 2 gaps | — | — |
+| Scanner | vertical | ✅ | — | 1 gap | — | — |
+| Shifts | vertical | 3 gaps | — | 2 gaps | — | — |
+| Store | vertical | 1 gap | — | 1 gap | — | — |
+| Survey | vertical | 1 gap | — | 1 gap | — | — |
+| Teams | vertical | 3 gaps | — | 2 gaps | — | — |
+| Tickets | vertical | 1 gap | — | 3 gaps | — | — |
+| Users | **shared contract** | 4 gaps | — | 1 gap | — | — |
 | *Settings (new, #864)* | vertical | n/a | n/a | — | — | — |
 | *Shortlinks (new, #810)* | vertical | n/a | n/a | — | — | — |
 
