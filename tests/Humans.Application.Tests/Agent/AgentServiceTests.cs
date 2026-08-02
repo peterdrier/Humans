@@ -439,22 +439,58 @@ public class AgentServiceTests
             tokens.Add(t);
         }
 
-        var streamedText = string.Concat(tokens.Where(t => t.TextDelta != null).Select(t => t.TextDelta));
-        streamedText.Should().NotBeNullOrEmpty(
-            "the client-visible transcript must not be blank even though the proposal frame carries the modal payload");
-
-        // The one-liner must precede the proposal frame in the stream (per issue #952's note).
-        var textIndex = tokens.FindIndex(t => t.TextDelta != null);
-        var proposalIndex = tokens.FindIndex(t => t.IssueProposal != null);
-        textIndex.Should().BeLessThan(proposalIndex,
-            "the fallback prose must be yielded before the proposal frame so the transcript reads naturally");
+        // No prose is streamed for a proposal-only turn: when nothing was streamed the
+        // widget renders its own localized handoff line, and a streamed English delta
+        // would override that localization for non-English users.
+        tokens.Should().NotContain(t => t.TextDelta != null,
+            "a proposal-only turn streams no prose so the widget's localized fallback applies");
+        tokens.Should().Contain(t => t.IssueProposal != null);
 
         var finalizer = tokens.Last().Finalizer!;
         var transcript = await svc.GetConversationForUserAsync(
             userId, finalizer.ConversationId, Xunit.TestContext.Current.CancellationToken);
         var assistantMessage = transcript!.Messages.Single(m => m.Role == AgentRole.Assistant);
-        assistantMessage.Content.Should().Be(streamedText);
-        assistantMessage.Content.Should().NotBeNullOrEmpty();
+        assistantMessage.Content.Should().NotBeNullOrEmpty(
+            "a blank stored Content makes the admin transcript view misleading");
+    }
+
+    [HumansFact]
+    public async Task Ask_treats_whitespace_only_output_as_silent_and_yields_fallback()
+    {
+        // nobodies-collective/Humans#952 — whitespace-only deltas render as a blank
+        // bubble and must receive the same fallback as truly zero-length output.
+        var userId = Guid.NewGuid();
+        var logger = Substitute.For<ILogger<AgentService>>();
+        var (svc, client) = await BuildService(s => s.Enabled = true, logger: logger);
+
+        client.EnqueueTurn(
+            new AgentTurnToken(" \n\n ", null, null),
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(40, 5, 0, 0, "claude-sonnet-4-6", "end_turn")));
+
+        var tokens = new List<AgentTurnToken>();
+        await foreach (var t in svc.AskAsync(
+            new AgentTurnRequest(ConversationId: Guid.Empty, UserId: userId, Message: "hello?", Locale: "en"),
+            Xunit.TestContext.Current.CancellationToken))
+        {
+            tokens.Add(t);
+        }
+
+        var streamedText = string.Concat(tokens.Where(t => t.TextDelta != null).Select(t => t.TextDelta));
+        streamedText.Trim().Should().NotBeNullOrEmpty(
+            "whitespace-only model output must get the same fallback as zero-length output");
+
+        var finalizer = tokens.Last().Finalizer!;
+        var transcript = await svc.GetConversationForUserAsync(
+            userId, finalizer.ConversationId, Xunit.TestContext.Current.CancellationToken);
+        var assistantMessage = transcript!.Messages.Single(m => m.Role == AgentRole.Assistant);
+        assistantMessage.Content.Trim().Should().NotBeNullOrEmpty();
+
+        logger.Received(1).Log(
+            LogLevel.Warning,
+            Arg.Any<EventId>(),
+            Arg.Is<object>(o => o.ToString()!.Contains("no assistant text")),
+            Arg.Any<Exception?>(),
+            Arg.Any<Func<object, Exception?, string>>());
     }
 
     [HumansFact]

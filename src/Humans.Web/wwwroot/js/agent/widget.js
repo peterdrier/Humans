@@ -152,7 +152,7 @@
             // pre-filled with the proposal. Preserve any answer the agent
             // already streamed — only fall back to the canned "I drafted
             // an issue" text when the bubble is empty (escalate-only turn).
-            if (!bubble.dataset.rawMarkdown) {
+            if (!bubble.dataset.rawMarkdown.trim()) {
                 bubble.textContent = panel.dataset.issueProposedText || 'I drafted an issue for you. Please review and submit.';
             }
             messagesEl.scrollTop = messagesEl.scrollHeight;

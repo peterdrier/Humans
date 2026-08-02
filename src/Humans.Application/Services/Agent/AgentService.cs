@@ -254,12 +254,15 @@ public sealed class AgentService : IAgentService
         // and yield a blank bubble. Fill in fallback prose so the transcript and the
         // admin conversation view always show what the user saw.
         var assistantText = assistantBuffer.ToString();
-        if (assistantText.Length == 0)
+        if (string.IsNullOrWhiteSpace(assistantText))
         {
             if (issueProposal is not null)
             {
                 // The proposal frame is the terminal output for route_to_issue, but a
                 // blank stored message makes the admin conversation view misleading.
+                // Persist the fallback without streaming it: when no prose arrives the
+                // widget renders its own localized handoff line, and a streamed English
+                // delta would override that localization.
                 assistantText = RouteToIssueFallbackText;
             }
             else
@@ -268,9 +271,8 @@ public sealed class AgentService : IAgentService
                     "Agent turn produced no assistant text for conversation {ConversationId}: {ToolCallCount} tool calls, stop reason {StopReason}",
                     conversation.Id, toolCallCount, finalFinalizer?.StopReason ?? "unknown");
                 assistantText = SilentTurnFallbackText;
+                yield return new AgentTurnToken(assistantText, null, null);
             }
-
-            yield return new AgentTurnToken(assistantText, null, null);
         }
 
         // Proposal frame signals client to open pre-filled Issues modal.
