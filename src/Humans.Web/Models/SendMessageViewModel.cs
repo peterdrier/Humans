@@ -18,7 +18,7 @@ public class SendMessageViewModel
     public string Message
     {
         get => _message;
-        set => _message = value?.Replace("\r\n", "\n") ?? string.Empty;
+        set => _message = value?.Replace("\r\n", "\n", StringComparison.Ordinal) ?? string.Empty;
     }
 
     public bool IncludeContactInfo { get; set; } = true;
