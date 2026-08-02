@@ -58,7 +58,15 @@ public interface IGoogleDrivePermissionsClient
     /// Deletes the permission identified by <paramref name="permissionId"/>
     /// from <paramref name="fileId"/>.
     /// </summary>
-    Task<GoogleClientError?> DeletePermissionAsync(
+    /// <returns>
+    /// <see cref="DrivePermissionDeleteOutcome.Deleted"/> on success,
+    /// <see cref="DrivePermissionDeleteOutcome.InheritedPermission"/> when
+    /// Google responded with HTTP 403 because the permission is inherited
+    /// from a parent folder and cannot be deleted at this level (terminal —
+    /// callers must not retry), or <see cref="DrivePermissionDeleteOutcome.Failed"/>
+    /// with a populated <see cref="GoogleClientError"/> for any other error.
+    /// </returns>
+    Task<DrivePermissionDeleteResult> DeletePermissionAsync(
         string fileId,
         string permissionId,
         CancellationToken ct = default);
@@ -162,6 +170,33 @@ public enum DrivePermissionCreateOutcome
     AlreadyExists,
 
     /// <summary>Google responded with any other error. <see cref="DrivePermissionMutationResult.Error"/> is populated.</summary>
+    Failed
+}
+
+/// <summary>
+/// Outcome of <see cref="IGoogleDrivePermissionsClient.DeletePermissionAsync"/>.
+/// </summary>
+public sealed record DrivePermissionDeleteResult(
+    DrivePermissionDeleteOutcome Outcome,
+    GoogleClientError? Error);
+
+/// <summary>
+/// What happened when deleting a Drive permission.
+/// </summary>
+public enum DrivePermissionDeleteOutcome
+{
+    /// <summary>The permission was deleted.</summary>
+    Deleted,
+
+    /// <summary>
+    /// Google responded with HTTP 403 because the permission is inherited
+    /// from a parent folder — it cannot be deleted at this level. Terminal:
+    /// the caller must record the outcome and stop retrying
+    /// (nobodies-collective/Humans#945).
+    /// </summary>
+    InheritedPermission,
+
+    /// <summary>Google responded with any other error. <see cref="DrivePermissionDeleteResult.Error"/> is populated.</summary>
     Failed
 }
 

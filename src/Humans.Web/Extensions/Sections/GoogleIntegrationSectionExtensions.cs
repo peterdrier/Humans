@@ -19,6 +19,7 @@ internal static class GoogleIntegrationSectionExtensions
         services.AddScoped<IEmailProvisioningService, GoogleEmailProvisioningService>();
         services.AddSingleton<IGoogleResourceRepository, GoogleResourceRepository>();
         services.AddSingleton<IGoogleSyncOutboxRepository, GoogleSyncOutboxRepository>();
+        services.AddSingleton<IGoogleDrivePermissionFailureRepository, GoogleDrivePermissionFailureRepository>();
         services.AddScoped<IGoogleSyncOutboxService, GoogleSyncOutboxService>();
         services.AddScoped<IDriveActivityMonitorService, GoogleDriveActivityMonitorService>();
         services.AddScoped<IGoogleAdminService, GoogleAdminService>();

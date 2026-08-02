@@ -106,3 +106,77 @@ public class GoogleDrivePermissionsClientClassifierTests
         GoogleDrivePermissionsClient.IsDuplicatePermissionError(error).Should().BeFalse();
     }
 }
+
+/// <summary>
+/// Focused unit tests for <see cref="GoogleDrivePermissionsClient.IsInheritedPermissionError"/>,
+/// the classifier that decides whether an HTTP 403 from
+/// <c>drive.permissions.delete</c> is the terminal "permission is inherited
+/// from a parent folder" case (nobodies-collective/Humans#945) vs. any other
+/// 403 that should surface to the caller for retry / investigation.
+/// </summary>
+public class GoogleDrivePermissionsClientInheritedErrorClassifierTests
+{
+    [HumansTheory]
+    [InlineData("The authenticated user cannot delete the permission. If the permission is inherited, limited access must be leveraged.")]
+    [InlineData("Permission is Inherited and cannot be removed directly")]
+    public void MessageMentionsInherited_ClassifiedAsInheritedPermission(string message)
+    {
+        var error = new RequestError { Message = message, Code = 403 };
+
+        GoogleDrivePermissionsClient.IsInheritedPermissionError(error)
+            .Should().BeTrue(because: "'inherited' wording is Google's signal that the permission cannot be deleted at this level");
+    }
+
+    [HumansFact]
+    public void InnerErrorReasonCannotDeletePermission_ClassifiedAsInheritedPermission()
+    {
+        var error = new RequestError
+        {
+            Code = 403,
+            Message = "The user does not have sufficient permissions for this file.",
+            Errors =
+            [
+                new SingleError { Reason = "cannotDeletePermission", Message = "Cannot delete inherited permission" }
+            ]
+        };
+
+        GoogleDrivePermissionsClient.IsInheritedPermissionError(error).Should().BeTrue();
+    }
+
+    [HumansTheory]
+    [InlineData("The user does not have sufficient permissions for this file.")]
+    [InlineData("Rate limit exceeded")]
+    [InlineData("Caller does not have permission")]
+    public void GenericForbidden_NotClassifiedAsInheritedPermission(string message)
+    {
+        var error = new RequestError { Message = message, Code = 403 };
+
+        GoogleDrivePermissionsClient.IsInheritedPermissionError(error)
+            .Should().BeFalse(because: "non-inherited 403s must surface to the caller for retry / investigation");
+    }
+
+    [HumansFact]
+    public void InnerErrorWithUnrelatedReason_NotClassifiedAsInheritedPermission()
+    {
+        var error = new RequestError
+        {
+            Code = 403,
+            Message = "Forbidden.",
+            Errors =
+            [
+                new SingleError { Reason = "insufficientFilePermissions", Message = "caller lacks permission" }
+            ]
+        };
+
+        GoogleDrivePermissionsClient.IsInheritedPermissionError(error)
+            .Should().BeFalse();
+    }
+
+    [HumansFact]
+    public void NullMessageAndNoInnerErrors_NotClassifiedAsInheritedPermission()
+    {
+        var error = new RequestError { Code = 403 };
+
+        GoogleDrivePermissionsClient.IsInheritedPermissionError(error).Should().BeFalse();
+    }
+}

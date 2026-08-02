@@ -29,6 +29,7 @@ public sealed class GoogleWorkspaceSyncService(
     ITeamResourceGoogleClient teamResourceClient,
     IGoogleResourceRepository resourceRepository,
     IGoogleSyncOutboxRepository googleSyncOutboxRepository,
+    IGoogleDrivePermissionFailureRepository permissionFailureRepository,
     ITeamServiceRead teamService,
     IUserService userService,
     IUserEmailService userEmailService,
@@ -110,7 +111,15 @@ public sealed class GoogleWorkspaceSyncService(
         var effectiveLevel = permissionLevelOverride ?? resource.DrivePermissionLevel;
         var apiRole = effectiveLevel.ToApiRole();
 
-        var result = await drivePermissions.CreatePermissionAsync(resource.GoogleId, userEmail, apiRole, cancellationToken);
+        // Issue nobodies-collective/Humans#945 — Drive's permissions.create
+        // rejects a plus-addressed local part (local+tag@domain) with an
+        // opaque HTTP 400. Plus-addressing is only guaranteed equivalent on
+        // Gmail (CanonicalizeGmail leaves non-Gmail domains untouched, since
+        // granting the base address there could resolve to a different
+        // Google identity than the one recorded on the user).
+        var driveTargetEmail = EmailNormalization.CanonicalizeGmail(userEmail);
+
+        var result = await drivePermissions.CreatePermissionAsync(resource.GoogleId, driveTargetEmail, apiRole, cancellationToken);
 
         switch (result.Outcome)
         {
@@ -211,13 +220,32 @@ public sealed class GoogleWorkspaceSyncService(
             return;
         }
 
-        var error = await drivePermissions.DeletePermissionAsync(resource.GoogleId, permissionId, cancellationToken);
-        if (error is not null)
+        var result = await drivePermissions.DeletePermissionAsync(resource.GoogleId, permissionId, cancellationToken);
+        switch (result.Outcome)
         {
-            logger.LogWarning(
-                "Google API error deleting permission {PermissionId} on {GoogleId} — HTTP {Code}: {Message}",
-                permissionId, resource.GoogleId, error.StatusCode, error.RawMessage);
-            return;
+            case DrivePermissionDeleteOutcome.InheritedPermission:
+                // Terminal — the permission is inherited from a parent folder and
+                // can never be deleted at this level. Record it once so future
+                // nightly passes skip it instead of re-attempting forever
+                // (nobodies-collective/Humans#945).
+                logger.LogWarning(
+                    "Google API error deleting permission {PermissionId} on {GoogleId} — HTTP {Code}: {Message}. " +
+                    "Permission is inherited and cannot be deleted; recording as terminal, will not retry.",
+                    permissionId, resource.GoogleId, result.Error?.StatusCode, result.Error?.RawMessage);
+                await permissionFailureRepository.RecordTerminalFailureAsync(
+                    resource.GoogleId,
+                    permissionId,
+                    userEmail,
+                    result.Error?.RawMessage ?? string.Empty,
+                    clock.GetCurrentInstant(),
+                    cancellationToken);
+                return;
+
+            case DrivePermissionDeleteOutcome.Failed:
+                logger.LogWarning(
+                    "Google API error deleting permission {PermissionId} on {GoogleId} — HTTP {Code}: {Message}",
+                    permissionId, resource.GoogleId, result.Error?.StatusCode, result.Error?.RawMessage);
+                return;
         }
 
         await auditLogService.LogGoogleSyncAsync(
@@ -923,6 +951,20 @@ public sealed class GoogleWorkspaceSyncService(
                     "Skipping removal of {Email} from {GoogleId} - permission is inherited, not direct",
                     member.Email,
                     primary.GoogleId);
+                return;
+            }
+
+            // Issue nobodies-collective/Humans#945 — a permission previously
+            // recorded as a terminal inherited-permission failure can never be
+            // deleted at this level; skip the retry instead of re-attempting
+            // and re-logging every nightly pass.
+            if (await permissionFailureRepository.ExistsAsync(primary.GoogleId, permissionToRemove.Id, cancellationToken))
+            {
+                logger.LogDebug(
+                    "Skipping removal of {Email} from {GoogleId} - permission {PermissionId} previously recorded as a terminal inherited-permission failure",
+                    member.Email,
+                    primary.GoogleId,
+                    permissionToRemove.Id);
                 return;
             }
 

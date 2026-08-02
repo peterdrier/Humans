@@ -119,7 +119,7 @@ public sealed class StubGoogleDrivePermissionsClient(ILogger<StubGoogleDrivePerm
         }
     }
 
-    public Task<GoogleClientError?> DeletePermissionAsync(
+    public Task<DrivePermissionDeleteResult> DeletePermissionAsync(
         string fileId,
         string permissionId,
         CancellationToken ct = default)
@@ -130,17 +130,21 @@ public sealed class StubGoogleDrivePermissionsClient(ILogger<StubGoogleDrivePerm
         {
             if (!_permissionsByFile.TryGetValue(fileId, out var perms))
             {
-                return Task.FromResult<GoogleClientError?>(new GoogleClientError(404, "file not found"));
+                return Task.FromResult(new DrivePermissionDeleteResult(
+                    DrivePermissionDeleteOutcome.Failed,
+                    new GoogleClientError(404, "file not found")));
             }
 
             var idx = perms.FindIndex(p => string.Equals(p.Id, permissionId, StringComparison.Ordinal));
             if (idx < 0)
             {
-                return Task.FromResult<GoogleClientError?>(new GoogleClientError(404, "permission not found"));
+                return Task.FromResult(new DrivePermissionDeleteResult(
+                    DrivePermissionDeleteOutcome.Failed,
+                    new GoogleClientError(404, "permission not found")));
             }
 
             perms.RemoveAt(idx);
-            return Task.FromResult<GoogleClientError?>(null);
+            return Task.FromResult(new DrivePermissionDeleteResult(DrivePermissionDeleteOutcome.Deleted, Error: null));
         }
     }
 

@@ -56,6 +56,9 @@ public sealed class GoogleWorkspaceSyncServiceTests
     private readonly IGoogleSyncOutboxRepository _googleSyncOutboxRepository =
         Substitute.For<IGoogleSyncOutboxRepository>();
 
+    private readonly IGoogleDrivePermissionFailureRepository _permissionFailureRepository =
+        Substitute.For<IGoogleDrivePermissionFailureRepository>();
+
     private readonly ITeamServiceRead _teamService =
         Substitute.For<ITeamServiceRead>();
 
@@ -104,6 +107,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
             _teamResourceClient,
             _resourceRepository,
             _googleSyncOutboxRepository,
+            _permissionFailureRepository,
             _teamService,
             _userService,
             _userEmailService,
@@ -422,6 +426,162 @@ public sealed class GoogleWorkspaceSyncServiceTests
 
         await _userService.DidNotReceiveWithAnyArgs()
             .TrySetGoogleEmailStatusFromSyncAsync(Guid.Empty, default, Arg.Any<CancellationToken>());
+    }
+
+    // ==========================================================================
+    // Issue nobodies-collective/Humans#945 — plus-address normalization (grant)
+    // and terminal inherited-permission recording (delete)
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task AddUserToDriveAsync_WhenTargetIsPlusAddressedGmail_GrantsToCanonicalAddress()
+    {
+        // Drive's permissions.create rejects a plus-addressed local part with
+        // an opaque HTTP 400. Plus-addressing is a guaranteed alias only on
+        // Gmail, so the base address must be used for the API call.
+        const string plusAddressedEmail = "alice+travel@gmail.com";
+        const string canonicalEmail = "alice@gmail.com";
+
+        _syncSettingsService
+            .GetModeAsync(SyncServiceType.GoogleDrive, Arg.Any<CancellationToken>())
+            .Returns(SyncMode.AddAndRemove);
+        _syncSettingsService
+            .GetModeAsync(SyncServiceType.GoogleGroups, Arg.Any<CancellationToken>())
+            .Returns(SyncMode.None);
+
+        var user = MakeUser(TestUserId, plusAddressedEmail);
+        _userService.GetUserInfoAsync(TestUserId, Arg.Any<CancellationToken>()).Returns(user);
+
+        _userEmailService
+            .GetEntitiesByUserIdAsync(TestUserId, Arg.Any<CancellationToken>())
+            .Returns([
+                new UserEmailRowSnapshot(
+                    Guid.NewGuid(),
+                    TestUserId,
+                    plusAddressedEmail,
+                    IsVerified: true,
+                    Provider: null,
+                    ProviderKey: null,
+                    IsGoogle: true,
+                    IsPrimary: false,
+                    Visibility: null,
+                    VerificationSentAt: null,
+                    CreatedAt: default,
+                    UpdatedAt: default)
+            ]);
+
+        var driveResource = MakeDriveFolderResource(TestDriveFolderResourceId, TestTeamId, TestGoogleFolderId);
+        _resourceRepository
+            .GetActiveByTeamIdAsync(TestTeamId, Arg.Any<CancellationToken>())
+            .Returns([driveResource]);
+
+        _teamService.GetTeamAsync(TestTeamId, Arg.Any<CancellationToken>())
+            .Returns((TeamInfo?)null);
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, TeamInfo>());
+
+        _drivePermissions
+            .CreatePermissionAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new DrivePermissionMutationResult(DrivePermissionCreateOutcome.Created, Error: null));
+
+        await _syncService.AddUserToTeamResourcesAsync(TestTeamId, TestUserId, Xunit.TestContext.Current.CancellationToken);
+
+        await _drivePermissions.Received(1).CreatePermissionAsync(
+            TestGoogleFolderId, canonicalEmail, Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _drivePermissions.DidNotReceive().CreatePermissionAsync(
+            TestGoogleFolderId, plusAddressedEmail, Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task RemoveUserFromDriveAsync_WhenInheritedPermission403_RecordsTerminalFailureAndDoesNotThrow()
+    {
+        const string extraEmail = "extra@example.com";
+        const string extraPermissionId = "perm-001";
+
+        SetupExtraDriveMemberScenario(extraEmail, extraPermissionId);
+
+        _drivePermissions
+            .DeletePermissionAsync(TestGoogleFolderId, extraPermissionId, Arg.Any<CancellationToken>())
+            .Returns(new DrivePermissionDeleteResult(
+                DrivePermissionDeleteOutcome.InheritedPermission,
+                new GoogleClientError(403,
+                    "The authenticated user cannot delete the permission. If the permission is inherited, " +
+                    "limited access must be leveraged.")));
+
+        await _syncService.SyncSingleResourceAsync(TestDriveFolderResourceId, SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
+
+        await _permissionFailureRepository.Received(1).RecordTerminalFailureAsync(
+            TestGoogleFolderId,
+            extraPermissionId,
+            extraEmail,
+            Arg.Any<string>(),
+            Arg.Any<Instant>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task RemoveExtraDriveAccessAsync_WhenPermissionPreviouslyRecordedTerminal_SkipsDeleteAttempt()
+    {
+        const string extraEmail = "extra@example.com";
+        const string extraPermissionId = "perm-001";
+
+        SetupExtraDriveMemberScenario(extraEmail, extraPermissionId);
+
+        _permissionFailureRepository
+            .ExistsAsync(TestGoogleFolderId, extraPermissionId, Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        await _syncService.SyncSingleResourceAsync(TestDriveFolderResourceId, SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
+
+        await _drivePermissions.DidNotReceive()
+            .DeletePermissionAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    private void SetupExtraDriveMemberScenario(string extraEmail, string extraPermissionId)
+    {
+        _syncSettingsService
+            .GetModeAsync(SyncServiceType.GoogleDrive, Arg.Any<CancellationToken>())
+            .Returns(SyncMode.AddAndRemove);
+
+        var driveResource = MakeDriveFolderResource(TestDriveFolderResourceId, TestTeamId, TestGoogleFolderId);
+
+        _resourceRepository
+            .GetByIdAsync(TestDriveFolderResourceId, Arg.Any<CancellationToken>())
+            .Returns(driveResource);
+        _resourceRepository
+            .GetActiveDriveFoldersAsync(Arg.Any<CancellationToken>())
+            .Returns([driveResource]);
+
+        var teamInfo = new TeamInfo(
+            TestTeamId, "Test Team", null, "test-team",
+            IsActive: true, IsSystemTeam: false, SystemTeamType: SystemTeamType.None,
+            RequiresApproval: false, IsPublicPage: false, IsHidden: false,
+            IsPromotedToDirectory: false, CreatedAt: Instant.MinValue,
+            Members: []);
+        _teamService
+            .GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, TeamInfo> { [TestTeamId] = teamInfo });
+
+        _userEmailService
+            .GetEntitiesByUserIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, IReadOnlyList<UserEmailRowSnapshot>>());
+
+        _drivePermissions
+            .ListPermissionsAsync(TestGoogleFolderId, Arg.Any<CancellationToken>())
+            .Returns(new DrivePermissionListResult(
+                Permissions: [
+                    new DrivePermission(
+                        Id: extraPermissionId,
+                        Type: "user",
+                        Role: "writer",
+                        EmailAddress: extraEmail,
+                        IsInheritedOnly: false)
+                ],
+                Error: null));
+
+        _userEmailService
+            .MatchByEmailsAsync(Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>())
+            .Returns([]);
     }
 
     // ==========================================================================

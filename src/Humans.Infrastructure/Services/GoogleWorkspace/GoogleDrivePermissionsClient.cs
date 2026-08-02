@@ -175,7 +175,7 @@ public sealed class GoogleDrivePermissionsClient(
         }
     }
 
-    public async Task<GoogleClientError?> DeletePermissionAsync(
+    public async Task<DrivePermissionDeleteResult> DeletePermissionAsync(
         string fileId,
         string permissionId,
         CancellationToken ct = default)
@@ -187,7 +187,17 @@ public sealed class GoogleDrivePermissionsClient(
             var request = drive.Permissions.Delete(fileId, permissionId);
             request.SupportsAllDrives = true;
             await request.ExecuteAsync(ct);
-            return null;
+            return new DrivePermissionDeleteResult(DrivePermissionDeleteOutcome.Deleted, Error: null);
+        }
+        catch (Google.GoogleApiException ex) when (ex.Error?.Code == 403 && IsInheritedPermissionError(ex.Error))
+        {
+            // Drive returns HTTP 403 when the permission is inherited from a
+            // parent folder — it can never be deleted at this level. Terminal:
+            // GoogleWorkspaceSyncService records this so it stops re-attempting
+            // the same delete on future nightly passes (nobodies-collective/Humans#945).
+            return new DrivePermissionDeleteResult(
+                DrivePermissionDeleteOutcome.InheritedPermission,
+                new GoogleClientError(ex.Error?.Code ?? 0, ex.Error?.Message));
         }
         catch (Google.GoogleApiException ex)
         {
@@ -196,7 +206,9 @@ public sealed class GoogleDrivePermissionsClient(
             logger.LogDebug(ex,
                 "Google API error deleting permission {PermissionId} on {FileId}: Code={Code} Message={Message}",
                 permissionId, fileId, ex.Error?.Code, ex.Error?.Message);
-            return new GoogleClientError(ex.Error?.Code ?? 0, ex.Error?.Message);
+            return new DrivePermissionDeleteResult(
+                DrivePermissionDeleteOutcome.Failed,
+                new GoogleClientError(ex.Error?.Code ?? 0, ex.Error?.Message));
         }
     }
 
@@ -325,6 +337,48 @@ public sealed class GoogleDrivePermissionsClient(
     private static bool ContainsAlreadyExists(string? text) =>
         !string.IsNullOrEmpty(text) &&
         text.Contains("already exist", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Classifies an HTTP 403 from <c>drive.permissions.delete</c> as an
+    /// inherited-permission failure (terminal — the permission can never be
+    /// deleted at this level, per
+    /// https://developers.google.com/workspace/drive/api/guides/limited-expansive-access)
+    /// vs. any other 403 (caller lacks delete rights, rate limiting, etc.).
+    /// Matches Google's <c>cannotDeletePermission</c> reason and "inherited"
+    /// wording in both the top-level message and each
+    /// <c>errors[].message</c>/<c>errors[].reason</c>. Any error that does not
+    /// match defaults to Failed so real problems surface for retry/investigation
+    /// (nobodies-collective/Humans#945).
+    /// </summary>
+    internal static bool IsInheritedPermissionError(Google.Apis.Requests.RequestError error)
+    {
+        if (ContainsInherited(error.Message))
+        {
+            return true;
+        }
+
+        if (error.Errors is not null)
+        {
+            foreach (var detail in error.Errors)
+            {
+                if (ContainsInherited(detail.Message))
+                {
+                    return true;
+                }
+
+                if (string.Equals(detail.Reason, "cannotDeletePermission", StringComparison.Ordinal))
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private static bool ContainsInherited(string? text) =>
+        !string.IsNullOrEmpty(text) &&
+        text.Contains("inherited", StringComparison.OrdinalIgnoreCase);
 
     private static DrivePermission MapPermission(SdkPermission p)
     {
