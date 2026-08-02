@@ -382,7 +382,7 @@ public sealed class LegalDocumentSyncService(
                     title,
                     approvedUserIds,
                     body: body,
-                    actionUrl: "/Legal/Consent",
+                    actionUrl: "/Consent",
                     actionLabel: "Review document",
                     cancellationToken: cancellationToken);
             }

@@ -205,7 +205,7 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
             Arg.Any<string>(),
             Arg.Is<IReadOnlyList<Guid>>(ids => ids.Contains(user.Id)),
             body: Arg.Any<string?>(),
-            actionUrl: "/Legal/Consent",
+            actionUrl: "/Consent",
             actionLabel: Arg.Any<string?>(),
             Arg.Any<string?>(),
             Arg.Any<string?>(),

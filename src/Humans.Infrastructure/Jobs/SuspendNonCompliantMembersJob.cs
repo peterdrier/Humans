@@ -128,7 +128,7 @@ public class SuspendNonCompliantMembersJob(
                         "Your access has been suspended",
                         [user.Id],
                         body: "Your access has been suspended because required document consent is missing. Please review and sign the required documents to restore access.",
-                        actionUrl: "/Legal/Consent",
+                        actionUrl: "/Consent",
                         actionLabel: "Review documents",
                         cancellationToken: cancellationToken);
                 }
