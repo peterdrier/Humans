@@ -1,4 +1,6 @@
 @using Humans.Web.Authorization
+@using Microsoft.AspNetCore.Authorization
+@inject IAuthorizationService AuthService
 @model Humans.Web.Models.TeamDetailViewModel
 @{
     ViewData["Title"] = Model.Name;
@@ -306,7 +308,13 @@
                         Team calendar
                     </a>
 
-                    @if (Model.CanOpenStore)
+                    @{
+                        // "Open store": a coordinator of this active top-level department, or an
+                        // Admin / TeamsAdmin (who reach the Store regardless of coordinator status).
+                        var canOpenStore = (Model.IsCurrentUserCoordinator && Model.ParentTeam is null && Model.IsActive)
+                            || (await AuthService.AuthorizeAsync(User, PolicyNames.TeamsAdminOrAdmin)).Succeeded;
+                    }
+                    @if (canOpenStore)
                     {
                         <a asp-controller="Store" asp-action="Index" class="btn btn-outline-primary w-100 mt-2">
                             <i class="fa-solid fa-cart-shopping me-1"></i> Open store

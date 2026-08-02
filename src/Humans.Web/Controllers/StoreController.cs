@@ -32,7 +32,9 @@ public class StoreController(
         // can edit team orders but only view camp orders, so per-row affordances
         // are resolved against the order authorization handler below.
         var isPrivilegedReader = RoleChecks.CanAdministerStore(User) || RoleChecks.IsTeamsAdmin(User);
-        var pageData = await storeService.GetIndexDataAsync(user.Id, isPrivilegedReader, ct);
+        var pageData = isPrivilegedReader
+            ? await storeService.GetAllCounterpartiesIndexDataAsync(ct)
+            : await storeService.GetIndexDataAsync(user.Id, ct);
         if (pageData.ShowNoOrdersMessage)
         {
             SetInfo("You don't lead any camps or coordinate any departments this year, so there are no Store orders to manage.");

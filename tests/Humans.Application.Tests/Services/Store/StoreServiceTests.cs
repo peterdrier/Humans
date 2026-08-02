@@ -56,7 +56,7 @@ public class StoreServiceTests
                 MakeProduct(name: "Blanket")
             ]);
 
-        var result = await _service.GetIndexDataAsync(Guid.NewGuid(), isPrivilegedReader: false, ct: TestContext.Current.CancellationToken);
+        var result = await _service.GetIndexDataAsync(Guid.NewGuid(), ct: TestContext.Current.CancellationToken);
 
         result.Year.Should().Be(2026);
         result.Catalog.Select(p => p.Name).Should().Equal("Blanket", "Tent");
@@ -80,7 +80,7 @@ public class StoreServiceTests
         _repo.GetActiveProductsForYearAsync(2026, Arg.Any<CancellationToken>())
             .Returns(new List<StoreProduct>());
 
-        var result = await _service.GetIndexDataAsync(userId, isPrivilegedReader: false, ct: TestContext.Current.CancellationToken);
+        var result = await _service.GetIndexDataAsync(userId, ct: TestContext.Current.CancellationToken);
 
         result.Counterparties.Should().ContainSingle().Which.Should().Match<StoreCounterpartyOrders>(counterparty =>
             counterparty.CounterpartyType == StoreOrderCounterpartyType.Camp &&

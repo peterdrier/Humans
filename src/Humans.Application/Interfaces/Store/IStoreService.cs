@@ -6,7 +6,20 @@ namespace Humans.Application.Interfaces.Store;
 public interface IStoreService : IApplicationService
 {
     // Catalog (read)
-    Task<StoreIndexData> GetIndexDataAsync(Guid userId, bool isPrivilegedReader, CancellationToken ct = default);
+    /// <summary>
+    /// Builds the Store index for <paramref name="userId"/>: the camp they lead (if any) and the
+    /// top-level departments they coordinate. See <see cref="GetAllCounterpartiesIndexDataAsync"/>
+    /// for the privileged (every counterparty) variant. Authorization — who may see all
+    /// counterparties vs. only their own — is the controller's concern.
+    /// </summary>
+    Task<StoreIndexData> GetIndexDataAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Builds the Store index listing every camp and department counterparty for the active
+    /// event year, regardless of who leads or coordinates them. Reserved for privileged readers
+    /// (Store admins, TeamsAdmins) — the controller's concern.
+    /// </summary>
+    Task<StoreIndexData> GetAllCounterpartiesIndexDataAsync(CancellationToken ct = default);
     Task<IReadOnlyList<ProductDto>> GetActiveCatalogAsync(int year, CancellationToken ct = default);
     Task<IReadOnlyList<ProductDto>> GetAllProductsForYearAsync(int year, CancellationToken ct = default);
     Task<ProductDto?> GetProductAsync(Guid productId, CancellationToken ct = default);

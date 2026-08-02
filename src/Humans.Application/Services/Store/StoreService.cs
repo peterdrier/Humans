@@ -24,10 +24,16 @@ public class StoreService(
     IStripeService stripeService,
     ILogger<StoreService> logger) : IStoreService
 {
-    public async Task<StoreIndexData> GetIndexDataAsync(
+    public Task<StoreIndexData> GetIndexDataAsync(Guid userId, CancellationToken ct = default) =>
+        BuildIndexDataAsync(userId, allCounterparties: false, ct);
+
+    public Task<StoreIndexData> GetAllCounterpartiesIndexDataAsync(CancellationToken ct = default) =>
+        BuildIndexDataAsync(userId: Guid.Empty, allCounterparties: true, ct);
+
+    private async Task<StoreIndexData> BuildIndexDataAsync(
         Guid userId,
-        bool isPrivilegedReader,
-        CancellationToken ct = default)
+        bool allCounterparties,
+        CancellationToken ct)
     {
         var activeEvent = await shifts.GetActiveAsync();
         var year = activeEvent?.Year > 0 ? activeEvent.Year : clock.GetCurrentInstant().InUtc().Year;
@@ -42,7 +48,7 @@ public class StoreService(
         var campSeasons = new List<CampSeasonInfo>();
         foreach (var camp in await campService.GetCampsForYearAsync(year, ct))
         {
-            if (isPrivilegedReader)
+            if (allCounterparties)
             {
                 var season = camp.GetSeasonForYear(year);
                 if (season is not null) campSeasons.Add(season);
@@ -80,7 +86,7 @@ public class StoreService(
         var teamOrderPrices = await LoadCurrentPricesAsync(ct);
         foreach (var team in teams.Values
             .Where(t => t.ParentTeamId is null
-                        && (isPrivilegedReader
+                        && (allCounterparties
                             || (t.ManagementRoleHolderUserIds is not null
                                 && t.ManagementRoleHolderUserIds.Contains(userId)))))
         {
@@ -108,7 +114,7 @@ public class StoreService(
             year,
             catalog,
             counterparties,
-            counterparties.Count == 0 && !isPrivilegedReader);
+            counterparties.Count == 0 && !allCounterparties);
     }
 
     public async Task<IReadOnlyList<ProductDto>> GetActiveCatalogAsync(int year, CancellationToken ct = default)

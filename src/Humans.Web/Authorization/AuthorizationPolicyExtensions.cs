@@ -72,6 +72,9 @@ public static class AuthorizationPolicyExtensions
             options.AddPolicy(PolicyNames.TeamsAdminBoardOrAdmin, policy =>
                 policy.RequireRole(RoleNames.TeamsAdmin, RoleNames.Board, RoleNames.Admin));
 
+            options.AddPolicy(PolicyNames.TeamsAdminOrAdmin, policy =>
+                policy.RequireRole(RoleNames.TeamsAdmin, RoleNames.Admin));
+
             options.AddPolicy(PolicyNames.CampAdminOrAdmin, policy =>
                 policy.RequireRole(RoleNames.CampAdmin, RoleNames.Admin));
 

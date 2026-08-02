@@ -157,9 +157,6 @@ public class TeamController(
             CurrentUserPendingRequestId = teamPage.CurrentUserPendingRequestId,
             PendingRequestCount = teamPage.PendingRequestCount,
             ShiftsSummary = MapShiftsSummary(teamPage.ShiftsSummary, slug),
-            CanOpenStore = (teamPage.IsCurrentUserCoordinator && team.ParentTeam is null && team.IsActive)
-                || RoleChecks.IsAdmin(User)
-                || RoleChecks.IsTeamsAdmin(User),
         };
 
         // Surface the per-team Early Entry link when EE is enabled and the viewer can

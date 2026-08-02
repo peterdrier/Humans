@@ -13,6 +13,13 @@ public static class PolicyNames
     public const string HumanAdminBoardOrAdmin = nameof(HumanAdminBoardOrAdmin);
     public const string HumanAdminOrAdmin = nameof(HumanAdminOrAdmin);
     public const string TeamsAdminBoardOrAdmin = nameof(TeamsAdminBoardOrAdmin);
+
+    /// <summary>
+    /// TeamsAdmin or Admin — deliberately narrower than <see cref="TeamsAdminBoardOrAdmin"/>
+    /// (Board is not included) for gates where Board access would dead-end the viewer
+    /// (e.g. the Team page's "Open store" link, which Board members can't otherwise use).
+    /// </summary>
+    public const string TeamsAdminOrAdmin = nameof(TeamsAdminOrAdmin);
     public const string CampAdminOrAdmin = nameof(CampAdminOrAdmin);
     public const string TicketAdminBoardOrAdmin = nameof(TicketAdminBoardOrAdmin);
     public const string TicketAdminOrAdmin = nameof(TicketAdminOrAdmin);
