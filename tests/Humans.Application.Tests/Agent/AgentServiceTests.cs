@@ -395,6 +395,8 @@ public class AgentServiceTests
         var streamedText = string.Concat(tokens.Where(t => t.TextDelta != null).Select(t => t.TextDelta));
         streamedText.Should().NotBeNullOrEmpty(
             "the user must see fallback prose instead of a blank bubble when the turn produced no text");
+        streamedText.Should().Contain("reformular",
+            "the fallback must respect the conversation locale (es), not stream English");
 
         var finalizer = tokens.Last().Finalizer!;
         var transcript = await svc.GetConversationForUserAsync(

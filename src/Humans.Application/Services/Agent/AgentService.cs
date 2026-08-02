@@ -261,16 +261,18 @@ public sealed class AgentService : IAgentService
                 // The proposal frame is the terminal output for route_to_issue, but a
                 // blank stored message makes the admin conversation view misleading.
                 // Persist the fallback without streaming it: when no prose arrives the
-                // widget renders its own localized handoff line, and a streamed English
-                // delta would override that localization.
-                assistantText = RouteToIssueFallbackText;
+                // widget renders its own localized handoff line live, and a streamed
+                // delta would override that localization. The persisted copy mirrors
+                // the widget's Help_Agent_IssueProposed strings so a history reload
+                // shows the same sentence the user saw.
+                assistantText = RouteToIssueFallbackText(conversation.Locale);
             }
             else
             {
                 _logger.LogWarning(
                     "Agent turn produced no assistant text for conversation {ConversationId}: {ToolCallCount} tool calls, stop reason {StopReason}",
                     conversation.Id, toolCallCount, finalFinalizer?.StopReason ?? "unknown");
-                assistantText = SilentTurnFallbackText;
+                assistantText = SilentTurnFallbackText(conversation.Locale);
                 yield return new AgentTurnToken(assistantText, null, null);
             }
         }
@@ -322,12 +324,31 @@ public sealed class AgentService : IAgentService
     /// <summary>How many prior user/assistant turns to replay (bounded for context budget).</summary>
     private const int HistoryReplayLimit = 20;
 
-    /// <summary>Shown when a turn ends with no assistant prose (exhausted/truncated tool loop).</summary>
-    private const string SilentTurnFallbackText =
-        "I wasn't able to put together an answer for that — could you try rephrasing or asking again?";
+    /// <summary>Shown when a turn ends with no assistant prose (exhausted/truncated tool loop).
+    /// Localized here because the Application layer has no resx access and the text is both
+    /// streamed and persisted; locale codes mirror <c>User.PreferredLanguage</c>.</summary>
+    private static string SilentTurnFallbackText(string? locale) => locale switch
+    {
+        "es" => "No he podido preparar una respuesta para eso. ¿Podrías reformular la pregunta o intentarlo de nuevo?",
+        "ca" => "No he pogut preparar una resposta per a això. Podries reformular la pregunta o tornar-ho a intentar?",
+        "de" => "Ich konnte dazu keine Antwort zusammenstellen — kannst du die Frage umformulieren oder es noch einmal versuchen?",
+        "fr" => "Je n'ai pas réussi à formuler une réponse — peux-tu reformuler ta question ou réessayer ?",
+        "it" => "Non sono riuscito a mettere insieme una risposta — puoi riformulare la domanda o riprovare?",
+        _ => "I wasn't able to put together an answer for that — could you try rephrasing or asking again?",
+    };
 
-    /// <summary>Shown when a route_to_issue handoff produced no preamble text of its own.</summary>
-    private const string RouteToIssueFallbackText = "I've drafted an issue for you.";
+    /// <summary>Persisted when a route_to_issue handoff produced no preamble text of its own.
+    /// Kept in lockstep with the widget's <c>Help_Agent_IssueProposed</c> resx strings, which
+    /// render the live bubble for this case.</summary>
+    private static string RouteToIssueFallbackText(string? locale) => locale switch
+    {
+        "es" => "No puedo responder a esto por mí mismo. He redactado una incidencia para el equipo — revísala y envíala, por favor.",
+        "ca" => "No puc respondre això jo mateix. He redactat una incidència per a l'equip — revisa-la i envia-la, si us plau.",
+        "de" => "Das kann ich selbst nicht beantworten. Ich habe einen Vorgang für das Team entworfen — bitte prüfe und sende ihn ab.",
+        "fr" => "Je ne peux pas répondre à cela moi-même. J'ai rédigé un signalement pour l'équipe — relis-le et envoie-le, s'il te plaît.",
+        "it" => "Non posso rispondere a questo da solo. Ho preparato una segnalazione per il team — controllala e inviala, per favore.",
+        _ => "I can't answer this myself. I've drafted an issue for the team — please review and submit it.",
+    };
 
     public async Task<IReadOnlyList<AgentConversationListSnapshot>> GetHistoryAsync(
         Guid userId, int take, CancellationToken ct)
