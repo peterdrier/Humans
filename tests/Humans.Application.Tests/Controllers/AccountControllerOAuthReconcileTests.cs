@@ -127,7 +127,7 @@ public class AccountControllerOAuthReconcileTests
         var info = MakeInfo("user@example.com", emailVerified: true);
 
         _signInManager.GetExternalLoginInfoAsync().Returns(info);
-        _signInManager.ExternalLoginSignInAsync(Provider, ProviderKey, false, true)
+        _signInManager.ExternalLoginSignInAsync(Provider, ProviderKey, true, true)
             .Returns(SignInResult.Success);
 
         var existingUser = new User { Id = userId };
@@ -152,7 +152,7 @@ public class AccountControllerOAuthReconcileTests
         var info = MakeInfo("user@example.com", emailVerified: true);
 
         _signInManager.GetExternalLoginInfoAsync().Returns(info);
-        _signInManager.ExternalLoginSignInAsync(Provider, ProviderKey, false, true)
+        _signInManager.ExternalLoginSignInAsync(Provider, ProviderKey, true, true)
             .Returns(SignInResult.Success);
 
         var existingUser = new User { Id = userId };
@@ -179,7 +179,7 @@ public class AccountControllerOAuthReconcileTests
         var info = MakeInfo(newEmail, emailVerified: true);
 
         _signInManager.GetExternalLoginInfoAsync().Returns(info);
-        _signInManager.ExternalLoginSignInAsync(Provider, ProviderKey, false, true)
+        _signInManager.ExternalLoginSignInAsync(Provider, ProviderKey, true, true)
             .Returns(SignInResult.Failed);
 
         var identity = new ClaimsIdentity([
@@ -216,7 +216,7 @@ public class AccountControllerOAuthReconcileTests
         var info = MakeInfo(email, emailVerified: true);
 
         _signInManager.GetExternalLoginInfoAsync().Returns(info);
-        _signInManager.ExternalLoginSignInAsync(Provider, ProviderKey, false, true)
+        _signInManager.ExternalLoginSignInAsync(Provider, ProviderKey, true, true)
             .Returns(SignInResult.LockedOut);
 
         var lockedSource = new User { Id = lockedSourceId };
@@ -250,7 +250,7 @@ public class AccountControllerOAuthReconcileTests
         var info = MakeInfo(email, emailVerified: false);
 
         _signInManager.GetExternalLoginInfoAsync().Returns(info);
-        _signInManager.ExternalLoginSignInAsync(Provider, ProviderKey, false, true)
+        _signInManager.ExternalLoginSignInAsync(Provider, ProviderKey, true, true)
             .Returns(SignInResult.LockedOut);
 
         var lockedSource = new User { Id = lockedSourceId };
@@ -281,7 +281,7 @@ public class AccountControllerOAuthReconcileTests
         var info = MakeInfo(email, emailVerified: true);
 
         _signInManager.GetExternalLoginInfoAsync().Returns(info);
-        _signInManager.ExternalLoginSignInAsync(Provider, ProviderKey, false, true)
+        _signInManager.ExternalLoginSignInAsync(Provider, ProviderKey, true, true)
             .Returns(SignInResult.Failed);
 
         var existingUser = new User { Id = existingUserId };
@@ -308,7 +308,7 @@ public class AccountControllerOAuthReconcileTests
         var info = MakeInfo(newEmail, emailVerified: true);
 
         _signInManager.GetExternalLoginInfoAsync().Returns(info);
-        _signInManager.ExternalLoginSignInAsync(Provider, ProviderKey, false, true)
+        _signInManager.ExternalLoginSignInAsync(Provider, ProviderKey, true, true)
             .Returns(SignInResult.Failed);
         _magicLinkService.FindUserByVerifiedEmailAsync(newEmail, Arg.Any<CancellationToken>())
             .Returns((User?)null);
@@ -341,7 +341,7 @@ public class AccountControllerOAuthReconcileTests
         var info = MakeInfo(newEmail, emailVerified: true);
 
         _signInManager.GetExternalLoginInfoAsync().Returns(info);
-        _signInManager.ExternalLoginSignInAsync(Provider, ProviderKey, false, true)
+        _signInManager.ExternalLoginSignInAsync(Provider, ProviderKey, true, true)
             .Returns(SignInResult.Failed);
         _magicLinkService.FindUserByVerifiedEmailAsync(newEmail, Arg.Any<CancellationToken>())
             .Returns((User?)null);
@@ -375,7 +375,7 @@ public class AccountControllerOAuthReconcileTests
         var info = MakeInfo(newEmail, emailVerified: false);
 
         _signInManager.GetExternalLoginInfoAsync().Returns(info);
-        _signInManager.ExternalLoginSignInAsync(Provider, ProviderKey, false, true)
+        _signInManager.ExternalLoginSignInAsync(Provider, ProviderKey, true, true)
             .Returns(SignInResult.Failed);
         _magicLinkService.FindUserByVerifiedEmailAsync(newEmail, Arg.Any<CancellationToken>())
             .Returns((User?)null);
@@ -410,7 +410,7 @@ public class AccountControllerOAuthReconcileTests
         var info = MakeInfo("user@example.com", emailVerified: false);
 
         _signInManager.GetExternalLoginInfoAsync().Returns(info);
-        _signInManager.ExternalLoginSignInAsync(Provider, ProviderKey, false, true)
+        _signInManager.ExternalLoginSignInAsync(Provider, ProviderKey, true, true)
             .Returns(SignInResult.Success);
 
         var existingUser = new User { Id = userId };
