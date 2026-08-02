@@ -66,6 +66,23 @@ Every major section in the app now has a dedicated section doc.
 
 - **Admin Shell** — frame only, no entities. See [`docs/sections/admin-shell.md`](../sections/admin-shell.md).
 
+## DbContext ownership
+
+Since the per-section split (nobodies-collective/Humans#858) the model is partitioned across several EF contexts, all against the same database and connection. Each context below owns its tables outright: its own `__EFMigrationsHistory_<Section>` table, its own migrations folder under `src/Humans.Infrastructure/Migrations/<Section>/`, and its own model snapshot. An entity mapped by two contexts — or by none — is a build failure (`DbContextEntityOwnershipTests`).
+
+| Context | Tables |
+|---------|--------|
+| `SystemSettingsDbContext` | `system_settings` |
+| `ContainersDbContext` | `containers`, `container_placements` |
+| `AgentDbContext` | `agent_conversations`, `agent_messages`, `agent_settings` |
+| `ExpensesDbContext` | `expense_reports`, `expense_lines`, `expense_attachments`, `holded_expense_outbox_events` |
+| `FinanceDbContext` | `holded_expense_docs`, `holded_category_map`, `holded_ledger_lines`, `holded_creditor_contacts`, `holded_sync_states` |
+| `SurveysDbContext` | `surveys`, `survey_questions`, `survey_question_options`, `survey_invitations`, `survey_responses`, `survey_answers` |
+| `EventGuideDbContext` | `events`, `event_categories`, `event_venues`, `event_guide_settings`, `event_moderation_actions`, `event_favourites`, `event_preferences` |
+| `HumansDbContext` | everything else, including the Identity and Data Protection tables (which stay here permanently — they come from the framework base classes) |
+
+Gate and Store are clean candidates that stay in `HumansDbContext` for now; see the design doc's §5.1 for what blocks them.
+
 ## Cross-section FK graph
 
 High-level FK topology. Each arrow crosses a section boundary — the FK is scalar only, the navigation property is stripped or `[Obsolete]`-marked per design-rules §6c.
@@ -199,5 +216,6 @@ See [`../sections/Auth.md`](../sections/Auth.md#rolenames-constants) for the aut
 4. If the entity participates in a cross-section FK, update the [Cross-section FK graph](#cross-section-fk-graph) above.
 5. If the entity is append-only, add a row to [Append-only entities](#append-only-entities-12) above.
 6. If the entity owns user-scoped data, make the owning service implement `IUserDataContributor` per design-rules §8a and wire the GDPR export.
+7. If the owning section has its own DbContext ([DbContext ownership](#dbcontext-ownership) above), add the `DbSet<>` and an explicit `ApplyConfiguration` call to that context — `HumansDbContext`'s assembly scan deliberately skips peeled namespaces, so a configuration left unregistered is mapped by nothing at all.
 
 Do **not** add field tables to this file. This file is an index; the section doc is the source of truth.

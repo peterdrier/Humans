@@ -21,18 +21,20 @@ namespace Humans.Integration.Tests.Infrastructure;
 /// recorded as applied WITHOUT executing — no DDL error, no duplicate seed,
 /// and the path is idempotent across repeated boots.</item>
 /// <item><b>Schema equivalence</b>: both paths yield the same physical shape
-/// for the section's tables (columns, types, nullability, defaults, indexes),
-/// ignoring ordinal position, which legitimately differs between a table
-/// evolved incrementally and one created from the model in one shot.</item>
+/// for the section's tables (columns, types, nullability, defaults, indexes,
+/// and constraints), ignoring ordinal position, which legitimately differs
+/// between a table evolved incrementally and one created from the model in one
+/// shot.</item>
 /// </list>
-/// Each peel adds one entry to <see cref="Sections"/>.
+/// Each peel adds one entry to <see cref="Sections"/>. The tables to check come
+/// from the context model, not a literal list, so a table added to a section
+/// context is covered without touching this file.
 /// </summary>
 public sealed class SectionMigrationRunnerTests : IAsyncLifetime
 {
     private sealed record SectionCase(
         string Name,
         string SentinelTable,
-        string[] Tables,
         Func<string, DbContext> CreateContext,
         // Optional probe proving HasData seeds exist exactly once (null = section has no seed).
         string? SeedProbeSql);
@@ -42,44 +44,37 @@ public sealed class SectionMigrationRunnerTests : IAsyncLifetime
         new(
             "SystemSettings",
             "system_settings",
-            ["system_settings"],
-            cs => CreateSectionContext<SystemSettingsDbContext>(cs, "__EFMigrationsHistory_SystemSettings"),
+            CreateSectionContext<SystemSettingsDbContext>,
             """SELECT count(*) FROM system_settings WHERE "Key" = 'IsEmailSendingPaused'"""),
         new(
             "Containers",
             "containers",
-            ["containers", "container_placements"],
-            cs => CreateSectionContext<ContainersDbContext>(cs, "__EFMigrationsHistory_Containers"),
+            CreateSectionContext<ContainersDbContext>,
             null),
         new(
             "Agent",
             "agent_conversations",
-            ["agent_conversations", "agent_messages", "agent_settings"],
-            cs => CreateSectionContext<AgentDbContext>(cs, "__EFMigrationsHistory_Agent"),
+            CreateSectionContext<AgentDbContext>,
             "SELECT count(*) FROM agent_settings"),
         new(
             "Expenses",
             "expense_reports",
-            ["expense_reports", "expense_lines", "expense_attachments", "holded_expense_outbox_events"],
-            cs => CreateSectionContext<ExpensesDbContext>(cs, "__EFMigrationsHistory_Expenses"),
+            CreateSectionContext<ExpensesDbContext>,
             null),
         new(
             "Finance",
             "holded_expense_docs",
-            ["holded_expense_docs", "holded_category_map", "holded_ledger_lines", "holded_creditor_contacts", "holded_sync_states"],
-            cs => CreateSectionContext<FinanceDbContext>(cs, "__EFMigrationsHistory_Finance"),
+            CreateSectionContext<FinanceDbContext>,
             "SELECT count(*) FROM holded_sync_states"),
         new(
             "Surveys",
             "surveys",
-            ["surveys", "survey_questions", "survey_question_options", "survey_invitations", "survey_responses", "survey_answers"],
-            cs => CreateSectionContext<SurveysDbContext>(cs, "__EFMigrationsHistory_Surveys"),
+            CreateSectionContext<SurveysDbContext>,
             null),
         new(
             "EventGuide",
             "events",
-            ["events", "event_categories", "event_venues", "event_guide_settings", "event_moderation_actions", "event_favourites", "event_preferences"],
-            cs => CreateSectionContext<EventGuideDbContext>(cs, "__EFMigrationsHistory_EventGuide"),
+            CreateSectionContext<EventGuideDbContext>,
             """SELECT count(*) FROM event_categories WHERE "Slug" = 'workshop'"""),
     ];
 
@@ -103,13 +98,15 @@ public sealed class SectionMigrationRunnerTests : IAsyncLifetime
         {
             var connectionString = await CreateDatabaseAsync($"fresh_{section.Name.ToLowerInvariant()}");
 
+            List<string> tables;
             await using (var db = section.CreateContext(connectionString))
             {
                 await SectionMigrationRunner.MigrateAsync(
                     db, section.SentinelTable, NullLogger.Instance, TestContext.Current.CancellationToken);
+                tables = SectionTables(db);
             }
 
-            foreach (var table in section.Tables)
+            foreach (var table in tables)
             {
                 (await ScalarAsync<bool>(connectionString,
                     $"SELECT to_regclass('public.{table}') IS NOT NULL"))
@@ -168,13 +165,16 @@ public sealed class SectionMigrationRunnerTests : IAsyncLifetime
         foreach (var section in Sections)
         {
             var freshConnection = await CreateDatabaseAsync($"equiv_{section.Name.ToLowerInvariant()}");
+
+            List<string> tables;
             await using (var db = section.CreateContext(freshConnection))
             {
                 await SectionMigrationRunner.MigrateAsync(
                     db, section.SentinelTable, NullLogger.Instance, TestContext.Current.CancellationToken);
+                tables = SectionTables(db);
             }
 
-            foreach (var table in section.Tables)
+            foreach (var table in tables)
             {
                 var fromBaseline = await DescribeTableAsync(freshConnection, table);
                 var fromOldChain = await DescribeTableAsync(oldChainConnection, table);
@@ -185,7 +185,7 @@ public sealed class SectionMigrationRunnerTests : IAsyncLifetime
         }
     }
 
-    private static DbContext CreateSectionContext<TContext>(string connectionString, string historyTable)
+    private static DbContext CreateSectionContext<TContext>(string connectionString)
         where TContext : DbContext
     {
         var options = new DbContextOptionsBuilder<TContext>()
@@ -193,11 +193,23 @@ public sealed class SectionMigrationRunnerTests : IAsyncLifetime
             {
                 npgsql.UseNodaTime();
                 npgsql.MigrationsAssembly("Humans.Infrastructure");
-                npgsql.MigrationsHistoryTable(historyTable);
+                npgsql.MigrationsHistoryTable(SectionMigrationsHistory.TableFor<TContext>());
             })
             .Options;
         return (TContext)Activator.CreateInstance(typeof(TContext), options)!;
     }
+
+    /// <summary>
+    /// The section's tables, taken from the context model rather than a literal
+    /// list, so a table added to a section context is checked automatically.
+    /// </summary>
+    private static List<string> SectionTables(DbContext db) =>
+        db.Model.GetEntityTypes()
+            .Select(e => e.GetTableName())
+            .OfType<string>()
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)
+            .ToList();
 
     private async Task<string> CreateDatabaseAsync(string name)
     {
@@ -242,8 +254,12 @@ public sealed class SectionMigrationRunnerTests : IAsyncLifetime
 
     /// <summary>
     /// Ordinal-independent physical description of a table: one line per column
-    /// (name, type, nullability, default) plus one line per index definition,
-    /// sorted.
+    /// (name, type, nullability, default), one per index definition, and one per
+    /// constraint (name, type, definition), sorted. Constraints are compared
+    /// because a missing or differently-shaped FK / CHECK is invisible to a
+    /// columns-plus-indexes comparison, and a model-generated baseline that
+    /// silently omits one would produce a fresh database that diverges from
+    /// every chain-built database.
     /// </summary>
     private static async Task<List<string>> DescribeTableAsync(string connectionString, string table)
     {
@@ -276,6 +292,21 @@ public sealed class SectionMigrationRunnerTests : IAsyncLifetime
             await using var reader = await indexes.ExecuteReaderAsync(TestContext.Current.CancellationToken);
             while (await reader.ReadAsync(TestContext.Current.CancellationToken))
                 rows.Add("index:" + reader.GetString(0));
+        }
+
+        await using (var constraints = connection.CreateCommand())
+        {
+            constraints.CommandText = """
+                SELECT c.conname::text || '|' || c.contype::text || '|' || pg_get_constraintdef(c.oid)
+                FROM pg_constraint c
+                JOIN pg_class t ON t.oid = c.conrelid
+                JOIN pg_namespace n ON n.oid = t.relnamespace
+                WHERE n.nspname = 'public' AND t.relname = @table
+                """;
+            constraints.Parameters.AddWithValue("table", table);
+            await using var reader = await constraints.ExecuteReaderAsync(TestContext.Current.CancellationToken);
+            while (await reader.ReadAsync(TestContext.Current.CancellationToken))
+                rows.Add("constraint:" + reader.GetString(0));
         }
 
         rows.Sort(StringComparer.Ordinal);

@@ -70,8 +70,8 @@ HUM0004 | Profile.IsSuspended written outside the allowlisted dual-writers | Err
 HUM0005 | IUserEmailService.UpdateEmailAsync called from outside AccountController | Error
 HUM0006 | IUserRepository.ApplyUserEmailReconcilePlanAsync called from outside approved user-email services | Error
 HUM0007 | Concurrency-token metadata forbidden in live source | Error
-HUM0008 | Controller constructor injects HumansDbContext | Error
-HUM0009 | Class uses HumansDbContext but does not implement IRepository (`[Grandfathered("HUM0009")]` downgrades to Warning) | Error
+HUM0008 | Controller constructor injects an application DbContext (`HumansDbContext` or any per-section context) | Error
+HUM0009 | Class uses an application DbContext but does not implement IRepository (`[Grandfathered("HUM0009")]` downgrades to Warning) | Error
 HUM0010 | Reference to a symbol decorated with `[ExpiresOn(date)]` (escalates to Error on/after the date) | Warning
 HUM0011 | Declaration decorated with `[ExpiresOn(date)]` is past its date (escalates to Error after the graceDays window) | Warning
 HUM0012 | Application service (IApplicationService implementer) declared outside `Humans.Application.Services.*` | Error
@@ -86,7 +86,7 @@ HUM0020 | Caching decorator references a repository directly instead of the keye
 HUM0021 | Read of an obsolete cross-domain navigation property from Application, Web, or Infrastructure | Warning
 HUM0024 | EF configuration creates a navigation join across section boundaries (`[Grandfathered("HUM0024")]` downgrades to Warning) | Error
 HUM0025 | A DbSet table is referenced by more than one repository (`[Grandfathered("HUM0025", scope: "<DbSet>")]` downgrades to Warning) | Error
-HUM0026 | IOrchestrator implementer injects an `I*Repository`, `HumansDbContext`, or `IDbContextFactory<HumansDbContext>` | Error
+HUM0026 | IOrchestrator implementer injects an `I*Repository`, an application DbContext, or `IDbContextFactory<TContext>` for one | Error
 HUM0027 | Type implements both IApplicationService and IOrchestrator (the role axis is exclusive) | Error
 HUM0028 | Interface extends IInvalidator (`[Grandfathered("HUM0028")]` downgrades to Warning) | Error
 HUM0029 | Cross-section read interface (`I*Read`) exposes an EF entity, `Microsoft.EntityFrameworkCore` type, or `IQueryable` in a method signature (`[Grandfathered("HUM0029")]` downgrades to Warning) | Error
@@ -98,6 +98,16 @@ HUM0032 | Cross-section caller in `Humans.Application.Services.*` injects a full
 
 Authoritative declaration: `src/Humans.Analyzers/AnalyzerReleases.Unshipped.md`
 (plus `AnalyzerReleases.Shipped.md` once we cut a 1.0).
+
+**"Application DbContext"** (HUM0008 / HUM0009 / HUM0025 / HUM0026) is matched
+**structurally** by `Internal/SectionDbContexts.cs`: any class whose base chain
+reaches `Microsoft.EntityFrameworkCore.DbContext`. Since the per-section split
+(nobodies-collective/Humans#858) that means `HumansDbContext` *and* every
+`<Section>DbContext`. Neither namespace nor assembly is pinned, so moving the
+contexts cannot silently switch these rules off; production-only scoping comes
+from each analyzer's `AssemblyScope` guard, not from where the context lives.
+The diagnostic titles and messages still name `HumansDbContext` — read them as
+"the application DbContext you injected".
 
 ### How it ships
 

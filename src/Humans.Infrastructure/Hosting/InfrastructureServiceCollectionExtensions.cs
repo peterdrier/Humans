@@ -62,8 +62,9 @@ public static class InfrastructureServiceCollectionExtensions
     /// <summary>
     /// Registers a per-section DbContext (nobodies-collective/Humans#858): scoped context +
     /// singleton factory with the same Npgsql options and interceptors as
-    /// <see cref="HumansDbContext"/>, a section-specific
-    /// <c>__EFMigrationsHistory_&lt;Section&gt;</c> table, and the
+    /// <see cref="HumansDbContext"/>, the section-specific history table from
+    /// <see cref="SectionMigrationsHistory"/> (the same helper the design-time
+    /// factories use, so the two can never disagree), and the
     /// <see cref="SectionDbContextRegistration"/> consumed by
     /// <see cref="DatabaseMigrationHostedService"/> to run
     /// <see cref="SectionMigrationRunner"/> at startup.
@@ -74,9 +75,7 @@ public static class InfrastructureServiceCollectionExtensions
         string sentinelTable)
         where TContext : DbContext
     {
-        // AgentDbContext -> __EFMigrationsHistory_Agent
-        var historyTable = "__EFMigrationsHistory_" +
-            typeof(TContext).Name.Replace("DbContext", "", StringComparison.Ordinal);
+        var historyTable = SectionMigrationsHistory.TableFor<TContext>();
 
         services.AddDbContext<TContext>((sp, options) =>
         {

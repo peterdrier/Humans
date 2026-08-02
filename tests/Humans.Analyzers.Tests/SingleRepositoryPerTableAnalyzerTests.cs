@@ -43,6 +43,7 @@ public sealed class SingleRepositoryPerTableAnalyzerTests
             public sealed class Event { }
             public sealed class AuditLogEntry { }
             public sealed class User { }
+            public sealed class Survey { }
         }
 
         namespace Humans.Infrastructure.Data
@@ -59,6 +60,19 @@ public sealed class SingleRepositoryPerTableAnalyzerTests
             {
                 public DbSet<Event> Events => Set<Event>();
                 public DbSet<AuditLogEntry> AuditLogEntries => Set<AuditLogEntry>();
+            }
+        }
+
+        namespace Humans.Persistence.Surveys
+        {
+            using Microsoft.EntityFrameworkCore;
+            using Humans.Domain.Entities;
+
+            // Relocated out of Humans.Infrastructure.Data: context discovery is
+            // structural and assembly-wide, so its tables stay policed.
+            public sealed class SurveysDbContext : DbContext
+            {
+                public DbSet<Survey> Surveys => Set<Survey>();
             }
         }
         """;
@@ -98,6 +112,38 @@ public sealed class SingleRepositoryPerTableAnalyzerTests
         diagnostics.Should().HaveCount(2);
         diagnostics.Should().OnlyContain(d => d.Severity == DiagnosticSeverity.Error);
         diagnostics.Should().OnlyContain(d => d.GetMessage().Contains("Events") && d.GetMessage().Contains("2 repositories"));
+    }
+
+    [HumansFact]
+    public async Task Fires_when_two_repositories_share_a_dbset_on_a_relocated_context()
+    {
+        // ctx.Set<T>() only resolves to a table when the owning context was
+        // discovered, so this also proves discovery is not namespace-pinned.
+        var source = Stubs + """
+
+            namespace Humans.Infrastructure.Repositories.Surveys
+            {
+                public sealed class SurveyRepository : Humans.Application.Interfaces.Repositories.IRepository
+                {
+                    public void Save(Humans.Persistence.Surveys.SurveysDbContext ctx) =>
+                        ctx.Set<Humans.Domain.Entities.Survey>().Add(new Humans.Domain.Entities.Survey());
+                }
+            }
+
+            namespace Humans.Infrastructure.Repositories.Reporting
+            {
+                public sealed class ReportingRepository : Humans.Application.Interfaces.Repositories.IRepository
+                {
+                    public void Touch(Humans.Persistence.Surveys.SurveysDbContext ctx) =>
+                        ctx.Set<Humans.Domain.Entities.Survey>().Add(new Humans.Domain.Entities.Survey());
+                }
+            }
+            """;
+
+        var diagnostics = (await RunAsync(source)).Where(IsHum0025).ToList();
+
+        diagnostics.Should().HaveCount(2);
+        diagnostics.Should().OnlyContain(d => d.GetMessage().Contains("Surveys") && d.GetMessage().Contains("2 repositories"));
     }
 
     [HumansFact]

@@ -5,9 +5,10 @@ namespace Humans.Infrastructure.Data;
 
 /// <summary>
 /// Design-time factory used by <c>dotnet ef … --context FinanceDbContext</c>.
-/// Mirrors <see cref="HumansDbContextFactory"/>; the migrations-history table must
-/// match the runtime registration so CI's from-scratch apply records baselines in
-/// <c>__EFMigrationsHistory_Finance</c>.
+/// Mirrors <see cref="HumansDbContextFactory"/>; the migrations-history table comes
+/// from <see cref="SectionMigrationsHistory"/> — the same helper the runtime
+/// registration uses — so CI's from-scratch apply records baselines in the table
+/// the app reads.
 /// </summary>
 internal sealed class FinanceDbContextFactory : IDesignTimeDbContextFactory<FinanceDbContext>
 {
@@ -24,7 +25,8 @@ internal sealed class FinanceDbContextFactory : IDesignTimeDbContextFactory<Fina
             {
                 npgsqlOptions.UseNodaTime();
                 npgsqlOptions.MigrationsAssembly("Humans.Infrastructure");
-                npgsqlOptions.MigrationsHistoryTable("__EFMigrationsHistory_Finance");
+                npgsqlOptions.MigrationsHistoryTable(
+                    SectionMigrationsHistory.TableFor<FinanceDbContext>());
                 npgsqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
             });
 

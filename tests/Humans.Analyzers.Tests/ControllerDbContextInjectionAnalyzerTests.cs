@@ -20,6 +20,14 @@ public class ControllerDbContextInjectionAnalyzerTests
         {
             public class HumansDbContext : Microsoft.EntityFrameworkCore.DbContext { }
             public class SystemSettingsDbContext : Microsoft.EntityFrameworkCore.DbContext { }
+            public class QueryStatistics { }
+        }
+
+        // Detection is structural, not namespace-pinned: a context relocated by
+        // the planned assembly reorganization must still be caught.
+        namespace Humans.Persistence.Surveys
+        {
+            public class SurveysDbContext : Microsoft.EntityFrameworkCore.DbContext { }
         }
         """;
 
@@ -72,6 +80,54 @@ public class ControllerDbContextInjectionAnalyzerTests
             source);
 
         diagnostics.Should().ContainSingle(d => IsHum0008(d));
+    }
+
+    [HumansFact]
+    public async Task Fires_when_controller_injects_a_DbContext_from_another_namespace()
+    {
+        var source = Stubs + """
+
+            namespace Humans.Web.Controllers
+            {
+                public sealed class SurveysController : Microsoft.AspNetCore.Mvc.Controller
+                {
+                    public SurveysController(Humans.Persistence.Surveys.SurveysDbContext dbContext)
+                    {
+                    }
+                }
+            }
+            """;
+
+        var diagnostics = await AnalyzerTestHarness.RunAsync(
+            new ControllerDbContextInjectionAnalyzer(),
+            "Humans.Web",
+            source);
+
+        diagnostics.Should().ContainSingle(d => IsHum0008(d));
+    }
+
+    [HumansFact]
+    public async Task Does_not_fire_for_a_non_DbContext_type_in_the_Data_namespace()
+    {
+        var source = Stubs + """
+
+            namespace Humans.Web.Controllers
+            {
+                public sealed class StatsController : Microsoft.AspNetCore.Mvc.Controller
+                {
+                    public StatsController(Humans.Infrastructure.Data.QueryStatistics stats)
+                    {
+                    }
+                }
+            }
+            """;
+
+        var diagnostics = await AnalyzerTestHarness.RunAsync(
+            new ControllerDbContextInjectionAnalyzer(),
+            "Humans.Web",
+            source);
+
+        diagnostics.Where(IsHum0008).Should().BeEmpty();
     }
 
     [HumansFact]

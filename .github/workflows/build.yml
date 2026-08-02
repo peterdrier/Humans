@@ -15,6 +15,13 @@ on:
 
 env:
   DOTNET_VERSION: '10.0.x'
+  # The peeled per-section DbContexts (nobodies-collective/Humans#858) in one
+  # place. Both `has-pending-model-changes` loops below iterate
+  # `HumansDbContext $SECTION_DB_CONTEXTS`; the from-scratch baseline apply
+  # iterates this list alone, because HumansDbContext replays its full
+  # historical chain in the step before it. A new peel adds its context here
+  # and nowhere else in this file.
+  SECTION_DB_CONTEXTS: 'SystemSettingsDbContext ContainersDbContext AgentDbContext ExpensesDbContext FinanceDbContext SurveysDbContext EventGuideDbContext'
 
 jobs:
   build:
@@ -51,7 +58,7 @@ jobs:
       # context since the per-section split (nobodies-collective/Humans#858).
       run: |
         dotnet tool install --global dotnet-ef --version 10.0.*
-        for ctx in HumansDbContext SystemSettingsDbContext ContainersDbContext AgentDbContext ExpensesDbContext FinanceDbContext SurveysDbContext EventGuideDbContext; do
+        for ctx in HumansDbContext $SECTION_DB_CONTEXTS; do
           dotnet ef migrations has-pending-model-changes \
             --context "$ctx" \
             --project src/Humans.Infrastructure \
@@ -181,7 +188,7 @@ jobs:
       - name: Apply per-section baselines from scratch
         run: |
           set -euo pipefail
-          for ctx in SystemSettingsDbContext ContainersDbContext AgentDbContext ExpensesDbContext FinanceDbContext SurveysDbContext EventGuideDbContext; do
+          for ctx in $SECTION_DB_CONTEXTS; do
             db="humans_$(echo "$ctx" | tr '[:upper:]' '[:lower:]')"
             docker exec "${{ steps.pg.outputs.container }}" \
               psql -U humans -d postgres -c "CREATE DATABASE $db"
@@ -200,7 +207,7 @@ jobs:
           # Belt-and-suspenders: Layer 1 already runs this in the build job,
           # but re-checking after a real apply guards against any state the
           # apply step might have observed differently from a static check.
-          for ctx in HumansDbContext SystemSettingsDbContext ContainersDbContext AgentDbContext ExpensesDbContext FinanceDbContext SurveysDbContext EventGuideDbContext; do
+          for ctx in HumansDbContext $SECTION_DB_CONTEXTS; do
             dotnet ef migrations has-pending-model-changes \
               --context "$ctx" \
               --project src/Humans.Infrastructure \

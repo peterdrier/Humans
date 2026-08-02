@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using Microsoft.CodeAnalysis;
 
@@ -7,15 +6,22 @@ namespace Humans.Analyzers.Internal;
 /// <summary>
 /// Matcher for Humans persistence contexts (nobodies-collective/Humans#858).
 /// Since the per-section DbContext split, the persistence boundary is no longer
-/// the single <c>HumansDbContext</c> type but every class in
-/// <c>Humans.Infrastructure.Data</c> deriving from
-/// <c>Microsoft.EntityFrameworkCore.DbContext</c> (the main pile plus each
-/// <c>&lt;Section&gt;DbContext</c>). Analyzers that police context access use this
-/// helper instead of a hard-coded type name so peeled sections stay covered.
+/// the single <c>HumansDbContext</c> type but every application context — the
+/// main pile plus each <c>&lt;Section&gt;DbContext</c>. Analyzers that police
+/// context access use this helper instead of a hard-coded type name so peeled
+/// sections stay covered.
 /// </summary>
+/// <remarks>
+/// Detection is <b>structural</b>: a class counts when its base chain reaches
+/// <c>Microsoft.EntityFrameworkCore.DbContext</c>. It deliberately pins neither
+/// namespace nor assembly, so relocating the contexts cannot silently switch
+/// the analyzers off. Scoping to production code is unchanged and lives in the
+/// analyzers themselves — each bails unless the compilation is the assembly it
+/// polices (<see cref="AssemblyScope"/>), so test doubles deriving from
+/// <c>DbContext</c> are never analyzed.
+/// </remarks>
 internal static class SectionDbContexts
 {
-    public const string DataNamespace = "Humans.Infrastructure.Data";
     private const string EfDbContextFullName = "Microsoft.EntityFrameworkCore.DbContext";
 
     /// <summary>
@@ -27,21 +33,15 @@ internal static class SectionDbContexts
 
     /// <summary>
     /// True when <paramref name="candidate"/> is a Humans persistence context:
-    /// a class declared in <see cref="DataNamespace"/> whose base chain includes
-    /// EF's <c>DbContext</c>.
+    /// a class whose base chain includes EF's <c>DbContext</c>. EF's own
+    /// <c>DbContext</c> does not match — the walk starts at the base type — so
+    /// infrastructure plumbing that takes the framework base class (the section
+    /// migration runner, for one) is not mistaken for a context.
     /// </summary>
     public static bool IsSectionDbContext(ITypeSymbol? candidate, INamedTypeSymbol efDbContext)
     {
         if (candidate is not INamedTypeSymbol named || named.TypeKind != TypeKind.Class)
             return false;
-
-        if (!string.Equals(
-                named.ContainingNamespace?.ToDisplayString(),
-                DataNamespace,
-                StringComparison.Ordinal))
-        {
-            return false;
-        }
 
         for (ITypeSymbol? current = named.BaseType; current is not null; current = current.BaseType)
         {
@@ -82,43 +82,29 @@ internal static class SectionDbContexts
     }
 
     /// <summary>
-    /// Enumerates every Humans persistence context type declared in this
-    /// compilation's <see cref="DataNamespace"/>.
+    /// Enumerates every persistence context declared in this compilation's own
+    /// assembly, at any namespace depth. Referenced assemblies are out of scope:
+    /// framework contexts (Identity, Data Protection) are not ours to police.
     /// </summary>
     public static IEnumerable<INamedTypeSymbol> EnumerateSectionDbContexts(
         Compilation compilation, INamedTypeSymbol efDbContext)
     {
-        var ns = FindNamespace(compilation.Assembly.GlobalNamespace, DataNamespace);
-        if (ns is null)
-            yield break;
-
-        foreach (var type in ns.GetTypeMembers())
+        foreach (var type in DeclaredTypes(compilation.Assembly.GlobalNamespace))
         {
             if (IsSectionDbContext(type, efDbContext))
                 yield return type;
         }
     }
 
-    private static INamespaceSymbol? FindNamespace(INamespaceSymbol root, string dottedName)
+    private static IEnumerable<INamedTypeSymbol> DeclaredTypes(INamespaceSymbol ns)
     {
-        var current = root;
-        foreach (var segment in dottedName.Split('.'))
+        foreach (var type in ns.GetTypeMembers())
+            yield return type;
+
+        foreach (var child in ns.GetNamespaceMembers())
         {
-            INamespaceSymbol? next = null;
-            foreach (var member in current.GetNamespaceMembers())
-            {
-                if (string.Equals(member.Name, segment, StringComparison.Ordinal))
-                {
-                    next = member;
-                    break;
-                }
-            }
-
-            if (next is null)
-                return null;
-            current = next;
+            foreach (var type in DeclaredTypes(child))
+                yield return type;
         }
-
-        return current;
     }
 }

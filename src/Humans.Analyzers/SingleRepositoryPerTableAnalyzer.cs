@@ -100,8 +100,10 @@ public sealed class SingleRepositoryPerTableAnalyzer : DiagnosticAnalyzer
             return;
 
         // Since the per-section split (nobodies-collective/Humans#858) tables are
-        // spread across every context in Humans.Infrastructure.Data; DbSet access is
-        // matched on any of them via SectionDbContexts, so peeled tables stay policed.
+        // spread across every application context; DbSet access is matched on any of
+        // them via SectionDbContexts, which finds contexts structurally (declared in
+        // this assembly, derived from EF's DbContext), so peeled tables stay policed
+        // wherever the contexts live.
         var efDbContext = SectionDbContexts.ResolveEfDbContext(context.Compilation);
         if (efDbContext is null)
             return;

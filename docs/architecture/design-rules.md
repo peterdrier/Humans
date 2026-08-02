@@ -52,7 +52,14 @@ Business services (`ProfileService`, `TeamService`, `BudgetService`, etc.) live 
 
 Repository **implementations** (the classes that talk to `DbContext`) live in `Humans.Infrastructure`. That is the only project that may touch EF Core.
 
-`HumansDbContext` is `internal sealed` (issue #750). External access is via repository interfaces in `Humans.Application.Interfaces.Repositories`; wiring is via the extension methods in `Humans.Infrastructure.Hosting.InfrastructureServiceCollectionExtensions` (`AddHumansPersistence`, `AddHumansEntityFrameworkStores`, `PersistKeysToHumansDbContext`). The migration runner is a hosted service (`DatabaseMigrationHostedService`) registered by `AddHumansPersistence`. The design-time factory for `dotnet ef migrations` lives next to the context (`Humans.Infrastructure.Data.HumansDbContextFactory`). Test projects access `HumansDbContext` directly via `InternalsVisibleTo`.
+`HumansDbContext` is `internal sealed` (issue #750). External access is via repository interfaces in `Humans.Application.Interfaces.Repositories`; wiring is via the extension methods in `Humans.Infrastructure.Hosting.InfrastructureServiceCollectionExtensions` (`AddHumansPersistence`, `AddHumansEntityFrameworkStores`, `PersistKeysToHumansDbContext`). The migration runner is a hosted service (`DatabaseMigrationHostedService`) registered by `AddHumansPersistence`. Test projects access `HumansDbContext` directly via `InternalsVisibleTo`.
+
+**There is no single context any more.** Since the per-section split (nobodies-collective/Humans#858) each peeled section has its own `internal sealed <Section>DbContext` mapping only that section's tables, with its own `__EFMigrationsHistory_<Section>` table and its own migrations folder under `Migrations/<Section>/`; `HumansDbContext` keeps every section not yet peeled. Consequences:
+
+- **One design-time factory per context**, all next to their contexts in `Humans.Infrastructure.Data` (`HumansDbContextFactory`, `AgentDbContextFactory`, …). Every `dotnet ef` command therefore needs `--context` — see [`ef-multi-context-commands`](../../memory/process/ef-multi-context-commands.md).
+- **History-table names are derived, never typed.** `SectionMigrationsHistory.TableFor<TContext>()` is the single source for both the runtime registration (`AddSectionDbContext`) and the design-time factories.
+- **Section contexts apply their configurations explicitly** (no assembly scanning, which would drag in other sections); `HumansDbContext` scans the assembly minus the peeled namespaces. `DbContextEntityOwnershipTests` fails the build if an `IEntityTypeConfiguration` ends up applied by zero contexts (invisible to `has-pending-model-changes`) or by two.
+- **Unit tests for a section context** build their in-memory options with the shared `NewSectionDbOptions<TContext>()` helper in `tests/Humans.Application.Tests/Infrastructure/ServiceTestHarness.cs` rather than hand-rolling a `DbContextOptionsBuilder`.
 
 ### 2c. Table Ownership Is Strict and Sectional
 
@@ -248,6 +255,8 @@ If audit calls become noisy across many methods inside one service, the next evo
 ## 8. Table Ownership Map
 
 Each section's service owns these tables. Cross-service access goes through the service interface, never through direct DB queries, never through another domain's repository or store.
+
+Ownership is now physical as well as conventional for the peeled sections: the map below is **per DbContext**, not per single model. System Settings, Containers, Agent, Expenses, Finance, Survey, and Event Guide each own their tables in their own `<Section>DbContext` and migration chain; everything else is still mapped by `HumansDbContext`. See [`data-model.md`](data-model.md#dbcontext-ownership) for the context-to-table listing.
 
 | Section | Service(s) | Owned Tables |
 |---------|-----------|--------------|
@@ -503,14 +512,14 @@ Caching<Section>Service   (optional decorator)      [Infrastructure — Singleto
 <Section>Service          (inner, keyed)            [Application — Scoped]
   ↓ repositories + cross-section service interfaces
 <Section>Repository                                 [Infrastructure — Singleton via IDbContextFactory]
-  ↓ IDbContextFactory<HumansDbContext>              [Singleton — creates short-lived contexts per method]
+  ↓ IDbContextFactory<TContext>                     [Singleton — the section's own context if peeled, else HumansDbContext]
 ```
 
 The decorator is "optional" in the sense that removing it leaves the system fully functional — the inner service implements every method against the DB, except declared cache-only reads (§15c). The decorator is a pure performance optimization layered on top.
 
 ### 15b. Repository Rules
 
-Repositories are registered as **Singleton** because they inject `IDbContextFactory<HumansDbContext>` rather than `HumansDbContext` directly. Every method creates and disposes its own short-lived context:
+Repositories are registered as **Singleton** because they inject `IDbContextFactory<TContext>` — the section's own `<Section>DbContext` where the section has been peeled, `HumansDbContext` otherwise — rather than a context directly. Every method creates and disposes its own short-lived context:
 
 ```csharp
 public async Task<Profile?> GetByUserIdReadOnlyAsync(Guid userId, CancellationToken ct = default)

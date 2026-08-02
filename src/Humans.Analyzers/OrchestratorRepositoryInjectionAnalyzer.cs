@@ -96,7 +96,7 @@ public sealed class OrchestratorRepositoryInjectionAnalyzer : DiagnosticAnalyzer
 
         var applicationServiceMarker = context.Compilation.GetTypeByMetadataName(ApplicationServiceMarkerFullName);
         var repositoryMarker = context.Compilation.GetTypeByMetadataName(RepositoryMarkerFullName);
-        // Humans persistence contexts live in Humans.Infrastructure — usually
+        // Humans persistence contexts live in the Infrastructure layer — usually
         // unreachable from this compilation. EF's DbContext resolves only when an
         // orchestrator (illegally) takes a project reference that drags it in.
         // Same for IDbContextFactory<>. Matching goes through SectionDbContexts

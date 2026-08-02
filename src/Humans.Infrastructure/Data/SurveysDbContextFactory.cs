@@ -5,9 +5,10 @@ namespace Humans.Infrastructure.Data;
 
 /// <summary>
 /// Design-time factory used by <c>dotnet ef … --context SurveysDbContext</c>.
-/// Mirrors <see cref="HumansDbContextFactory"/>; the migrations-history table must
-/// match the runtime registration so CI's from-scratch apply records baselines in
-/// <c>__EFMigrationsHistory_Surveys</c>.
+/// Mirrors <see cref="HumansDbContextFactory"/>; the migrations-history table comes
+/// from <see cref="SectionMigrationsHistory"/> — the same helper the runtime
+/// registration uses — so CI's from-scratch apply records baselines in the table
+/// the app reads.
 /// </summary>
 internal sealed class SurveysDbContextFactory : IDesignTimeDbContextFactory<SurveysDbContext>
 {
@@ -24,7 +25,8 @@ internal sealed class SurveysDbContextFactory : IDesignTimeDbContextFactory<Surv
             {
                 npgsqlOptions.UseNodaTime();
                 npgsqlOptions.MigrationsAssembly("Humans.Infrastructure");
-                npgsqlOptions.MigrationsHistoryTable("__EFMigrationsHistory_Surveys");
+                npgsqlOptions.MigrationsHistoryTable(
+                    SectionMigrationsHistory.TableFor<SurveysDbContext>());
                 npgsqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
             });
 
