@@ -69,6 +69,23 @@ public interface IGoogleResourceRepository : IRepository
     Task<IReadOnlyList<GoogleResource>> GetActiveDriveFoldersAsync(CancellationToken ct = default);
 
     /// <summary>
+    /// Returns every active resource matching the exact <paramref name="resourceType"/>
+    /// across all teams. Read-only.
+    /// </summary>
+    /// <remarks>
+    /// nobodies-collective/Humans#508 — <c>GoogleWorkspaceSyncService.SyncResourcesByTypeAsync</c>
+    /// used to call <see cref="GetActiveDriveFoldersAsync"/> for every resource type
+    /// (including <see cref="GoogleResourceType.DriveFile"/>), but that method hard-filters
+    /// to <see cref="GoogleResourceType.DriveFolder"/> at the DB level, so the DriveFile
+    /// reconciliation pass silently loaded zero rows. This method fetches by the exact
+    /// type the caller asked for instead of overfetching a fixed type and filtering
+    /// in memory.
+    /// </remarks>
+    Task<IReadOnlyList<GoogleResource>> GetActiveByResourceTypeAsync(
+        GoogleResourceType resourceType,
+        CancellationToken ct = default);
+
+    /// <summary>
     /// Returns the total number of resource rows (including inactive). Used by
     /// the observable metrics gauge. Read-only.
     /// </summary>

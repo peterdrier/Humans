@@ -99,6 +99,17 @@ internal sealed class GoogleResourceRepository(IDbContextFactory<HumansDbContext
             .ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyList<GoogleResource>> GetActiveByResourceTypeAsync(
+        GoogleResourceType resourceType,
+        CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.GoogleResources
+            .AsNoTracking()
+            .Where(r => r.IsActive && r.ResourceType == resourceType)
+            .ToListAsync(ct);
+    }
+
     public async Task<int> GetCountAsync(CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);

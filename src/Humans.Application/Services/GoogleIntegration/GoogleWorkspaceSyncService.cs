@@ -405,10 +405,8 @@ public sealed class GoogleWorkspaceSyncService(
         // (including soft-deleted) through the Teams service so we never touch
         // the team graph directly — the resource's Team nav is hydrated via
         // ITeamService.GetTeamByIdAsync / GetByIdsWithParentsAsync.
-        var allActive = await resourceRepository.GetActiveDriveFoldersAsync(cancellationToken);
-        IReadOnlyList<GoogleResource> resources = allActive
-            .Where(r => r.ResourceType == resourceType && r.IsActive)
-            .ToList();
+        IReadOnlyList<GoogleResource> resources =
+            await resourceRepository.GetActiveByResourceTypeAsync(resourceType, cancellationToken);
 
         if (resources.Count == 0)
         {

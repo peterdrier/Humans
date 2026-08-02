@@ -256,7 +256,48 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : ServiceTestH
     }
 
     // ==========================================================================
-    // 5. Sync-mode gating: AddOnly / None never deactivate
+    // 5. DriveFile pass reconciles its own rows (nobodies-collective/Humans#508
+    //    follow-up — flagged by PR #1149 review comment 3700252152)
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task SyncResourcesByTypeAsync_DriveFilePass_RevokesAccessAndDeactivatesResource()
+    {
+        // Regression for a live bug the type-ordering scenario above didn't
+        // catch: SyncResourcesByTypeAsync(DriveFile, ...) used to call
+        // IGoogleResourceRepository.GetActiveDriveFoldersAsync(), which
+        // hard-filters to ResourceType == DriveFolder at the DB level — so the
+        // DriveFile pass always loaded zero rows and silently no-opped.
+        // GoogleResourceReconciliationJob runs exactly this pass every tick,
+        // so soft-deleted teams' linked Drive *files* never had their Google
+        // permissions revoked. Fixed by GetActiveByResourceTypeAsync (fetch by
+        // the exact requested type instead of overfetching DriveFolder rows).
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var teamId = Guid.NewGuid();
+        var googleId = await CreateGoogleFolderAsync("Doomed File");
+        const string extraEmail = "ex-member@nobodies.team";
+
+        await _drivePermissions.CreatePermissionAsync(googleId, extraEmail, "writer", ct);
+
+        var resourceId = SeedDriveResource(teamId, googleId, "Doomed File", GoogleResourceType.DriveFile);
+        await Db.SaveChangesAsync(ct);
+
+        StubTeams((teamId, IsActive: false, Members: []));
+
+        var result = await _syncService.SyncResourcesByTypeAsync(
+            GoogleResourceType.DriveFile, SyncAction.Execute, ct);
+
+        result.Diffs.Should().ContainSingle(d => d.ErrorMessage == null);
+
+        var permissions = await _drivePermissions.ListPermissionsAsync(googleId, ct);
+        permissions.Permissions.Should().BeEmpty("the extra permission on the DriveFile should have been revoked");
+
+        var row = await Db.GoogleResources.AsNoTracking().SingleAsync(r => r.Id == resourceId, ct);
+        row.IsActive.Should().BeFalse("the soft-deleted team's DriveFile resource should be deactivated for this type");
+    }
+
+    // ==========================================================================
+    // 6. Sync-mode gating: AddOnly / None never deactivate
     // ==========================================================================
 
     [HumansTheory]
