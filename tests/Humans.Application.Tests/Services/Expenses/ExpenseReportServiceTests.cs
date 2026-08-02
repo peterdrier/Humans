@@ -9,6 +9,7 @@ using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Expenses;
 using Humans.Application.Services.Expenses.Dtos;
 using Humans.Application.Services.Finance.Dtos;
+using Humans.Application.Tests.AuditLog;
 using Humans.Application.Tests.Infrastructure;
 using Microsoft.Extensions.Options;
 using Humans.Domain.Entities;
@@ -674,9 +675,9 @@ public sealed class ExpenseReportServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task SubmitWithResultAsync_LogsWarning_NoException_WhenValidationFails()
+    public async Task SubmitWithResultAsync_LogsWarning_WithReportId_NoException_WhenValidationFails()
     {
-        var logger = Substitute.For<ILogger<ExpenseReportService>>();
+        var logger = new CapturingLogger<ExpenseReportService>();
         var sut = new ExpenseReportService(
             _expenseRepo, _fileStorage, _budgetService, _teamService, _userService,
             AuditLog, _holdedClient, _holdedFinance, Clock, logger,
@@ -691,24 +692,20 @@ public sealed class ExpenseReportServiceTests : ServiceTestHarness
         var result = await sut.SubmitWithResultAsync(id, submitter, Xunit.TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
-        logger.Received().Log(
-            LogLevel.Warning,
-            Arg.Any<EventId>(),
-            Arg.Any<object>(),
-            Arg.Is<Exception?>(e => e == null),
-            Arg.Any<Func<object, Exception?, string>>());
-        logger.DidNotReceive().Log(
-            LogLevel.Error,
-            Arg.Any<EventId>(),
-            Arg.Any<object>(),
-            Arg.Any<Exception?>(),
-            Arg.Any<Func<object, Exception?, string>>());
+        logger.Entries.Should().ContainSingle(e => e.Level == LogLevel.Warning,
+            because: "a validation rejection is an expected, user-driven outcome, not a fault");
+        var warning = logger.Entries.Single(e => e.Level == LogLevel.Warning);
+        warning.Exception.Should().BeNull("no stack trace should be logged for a validation rejection");
+        warning.Message.Should().Contain(id.ToString(),
+            because: "the caller's structured identifiers (report ID) must survive into the warning");
+        warning.Message.Should().Contain("attachment");
+        logger.Entries.Should().NotContain(e => e.Level == LogLevel.Error);
     }
 
     [HumansFact]
     public async Task SubmitWithResultAsync_LogsError_WithException_ForGenuineFault()
     {
-        var logger = Substitute.For<ILogger<ExpenseReportService>>();
+        var logger = new CapturingLogger<ExpenseReportService>();
         var sut = new ExpenseReportService(
             _expenseRepo, _fileStorage, _budgetService, _teamService, _userService,
             AuditLog, _holdedClient, _holdedFinance, Clock, logger,
@@ -721,19 +718,20 @@ public sealed class ExpenseReportServiceTests : ServiceTestHarness
         var attachId = await _expenseRepo.AddAttachmentAsync(MakeAttachment(submitter), Xunit.TestContext.Current.CancellationToken);
         await _expenseRepo.SetLineAttachmentAsync(lineId, attachId, Xunit.TestContext.Current.CancellationToken);
 
-        // Not InvalidOperationException — a genuine fault, not a validation rejection.
+        // A dependency throwing plain InvalidOperationException for a genuine runtime fault —
+        // NOT the service's own ExpenseValidationException — must still log at Error with the
+        // exception attached, not be misclassified as a validation rejection.
         _userService.GetUserInfoAsync(submitter, Arg.Any<CancellationToken>())
-            .Throws(new TimeoutException("db timeout"));
+            .Throws(new InvalidOperationException("IUserService: profile cache not initialized"));
 
         var result = await sut.SubmitWithResultAsync(id, submitter, Xunit.TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
-        logger.Received().Log(
-            LogLevel.Error,
-            Arg.Any<EventId>(),
-            Arg.Any<object>(),
-            Arg.Is<Exception?>(e => e is TimeoutException),
-            Arg.Any<Func<object, Exception?, string>>());
+        logger.Entries.Should().ContainSingle(e => e.Level == LogLevel.Error,
+            because: "a dependency fault (even one thrown as InvalidOperationException) is not a validation rejection");
+        var error = logger.Entries.Single(e => e.Level == LogLevel.Error);
+        error.Exception.Should().BeOfType<InvalidOperationException>();
+        logger.Entries.Should().NotContain(e => e.Level == LogLevel.Warning);
     }
 
     [HumansFact]

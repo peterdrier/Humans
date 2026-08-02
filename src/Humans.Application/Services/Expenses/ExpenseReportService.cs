@@ -472,20 +472,20 @@ public sealed class ExpenseReportService(
         if (report.Status != ExpenseReportStatus.Draft) return false;
 
         if (!report.Lines.Any())
-            throw new InvalidOperationException("Report must have at least one line.");
+            throw new ExpenseValidationException("Report must have at least one line.");
 
         if (report.Lines.Any(l => l.LineType == ExpenseLineType.Receipt && l.AttachmentId is null))
-            throw new InvalidOperationException("Receipt lines must have an attachment before submitting.");
+            throw new ExpenseValidationException("Receipt lines must have an attachment before submitting.");
 
         var profile = (await userService.GetUserInfoAsync(submitterUserId, ct))?.Profile;
         if (profile?.Iban is null)
-            throw new InvalidOperationException("Submitter must have an IBAN set on their profile.");
+            throw new ExpenseValidationException("Submitter must have an IBAN set on their profile.");
 
         // Financial records use legal name (not BurnerName). See memory/architecture/burnername-is-the-display-name.md.
         var legalName = $"{profile.FirstName} {profile.LastName}".Trim();
         if (string.IsNullOrWhiteSpace(legalName))
         {
-            throw new InvalidOperationException("Submitter must have first and last name set on their profile.");
+            throw new ExpenseValidationException("Submitter must have first and last name set on their profile.");
         }
         var payeeIban = profile.Iban;
 
@@ -585,6 +585,21 @@ public sealed class ExpenseReportService(
     private static ExpenseIbanSaveResult IbanFailure(string message, bool isValidationError) =>
         new(Succeeded: false, IsValidationError: isValidationError, Message: message);
 
+    /// <summary>
+    /// Signals an ordinary, user-driven validation rejection (missing attachment, missing IBAN,
+    /// empty report, etc.) as distinct from a genuine dependency/system fault. Only the guard
+    /// clauses for expected, user-correctable conditions should throw this — never wrap an
+    /// arbitrary <see cref="InvalidOperationException"/> surfaced by EF Core, IUserService,
+    /// IFileStorage, or another dependency, since those indicate a real fault that must stay
+    /// visible at Error with its stack trace.
+    /// </summary>
+    private sealed class ExpenseValidationException : InvalidOperationException
+    {
+        public ExpenseValidationException() { }
+        public ExpenseValidationException(string message) : base(message) { }
+        public ExpenseValidationException(string message, Exception inner) : base(message, inner) { }
+    }
+
     private async Task<ExpenseMutationResult> RunMutationAsync(
         Func<Task<ExpenseMutationResult>> mutation,
         string logMessage,
@@ -595,13 +610,12 @@ public sealed class ExpenseReportService(
         {
             return await mutation();
         }
-        catch (InvalidOperationException ex)
+        catch (ExpenseValidationException ex)
         {
-            // InvalidOperationException is this file's established signal for ordinary,
-            // user-driven validation failures (missing attachment, missing IBAN, etc.) —
-            // not a system fault. Log at Warning with no stack trace so it doesn't pollute
-            // the Error log, but keep it structured and visible in the production log viewer.
-            logger.LogWarning("Expense mutation rejected: {Reason}", ex.Message);
+            // Expected, user-driven rejection — log at Warning with no stack trace so it doesn't
+            // pollute the Error log, but keep the caller's structured identifiers (report/line IDs)
+            // plus the reason, so it's still traceable to the affected mutation.
+            logger.LogWarning($"{logMessage}: {{Reason}}", [.. logArgs, ex.Message]);
             return ExpenseMutationResult.Failure(exceptionPrefix is null
                 ? ex.Message
                 : $"{exceptionPrefix}: {ex.Message}");
