@@ -326,17 +326,8 @@ public class AccountProvisioningServiceTests
         public Task<string?> GetVerifiedUserEmailAddressAsync(
             Guid userId, Guid emailId, CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<Guid?> GetUserIdByVerifiedUserEmailAsync(
-            string email, CancellationToken ct = default) =>
-            throw new NotSupportedException();
         public Task<IReadOnlyList<Guid>> GetUserIdsByUserEmailPrefixAndSuffixAsync(
             string prefix, string suffix, CancellationToken ct = default) =>
-            throw new NotSupportedException();
-        public Task<IReadOnlyList<Guid>> GetDistinctUserIdsByVerifiedUserEmailAsync(
-            string email, CancellationToken ct = default) =>
-            throw new NotSupportedException();
-        public Task<IReadOnlyList<Guid>> GetDistinctVerifiedUserEmailUserIdsAsync(
-            string normalizedEmail, string? alternateEmail, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task<Guid?> GetOtherUserIdHavingUserEmailAsync(
             string email, Guid excludeUserId, CancellationToken ct = default) =>

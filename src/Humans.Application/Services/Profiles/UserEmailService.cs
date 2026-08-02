@@ -474,14 +474,24 @@ public sealed class UserEmailService(
     public async Task<IReadOnlyList<Guid>> GetDistinctVerifiedUserIdsAsync(
         string email, CancellationToken cancellationToken = default)
     {
-        var normalizedEmail = EmailNormalization.NormalizeForComparison(email);
-        var alternateEmail = GetAlternateComparableEmail(normalizedEmail);
-        return await repository.GetDistinctVerifiedUserEmailUserIdsAsync(normalizedEmail, alternateEmail, cancellationToken);
+        // Matches against the cached UserInfo snapshot's verified emails; EmailsMatch handles
+        // gmail/googlemail aliasing on both sides, so no separate alternate-form lookup is needed.
+        var infos = await userService.GetAllUserInfosAsync(cancellationToken);
+        return infos
+            .Where(i => i.UserEmails.Any(e => e.IsVerified && EmailNormalization.EmailsMatch(e.Email, email)))
+            .Select(i => i.Id)
+            .ToList();
     }
 
-    public Task<Guid?> GetUserIdByVerifiedEmailAsync(
-        string email, CancellationToken cancellationToken = default) =>
-        repository.GetUserIdByVerifiedUserEmailAsync(email, cancellationToken);
+    public async Task<Guid?> GetUserIdByVerifiedEmailAsync(
+        string email, CancellationToken cancellationToken = default)
+    {
+        var infos = await userService.GetAllUserInfosAsync(cancellationToken);
+        return infos
+            .FirstOrDefault(i => i.UserEmails.Any(e =>
+                e.IsVerified && string.Equals(e.Email, email, StringComparison.OrdinalIgnoreCase)))
+            ?.Id;
+    }
 
     public Task<IReadOnlyList<Guid>> GetUserIdsByEmailPrefixAndSuffixAsync(
         string prefix,
@@ -492,7 +502,13 @@ public sealed class UserEmailService(
     public async Task<Guid?> GetUserIdByExactEmailAsync(string email, CancellationToken ct = default)
     {
         // Returns null on zero matches OR ambiguous matches; only non-null when exactly one user verified-holds the address.
-        var userIds = await repository.GetDistinctUserIdsByVerifiedUserEmailAsync(email, ct);
+        // No gmail/googlemail aliasing here (exact match only), matching the retired repo method's contract.
+        var infos = await userService.GetAllUserInfosAsync(ct);
+        var userIds = infos
+            .Where(i => i.UserEmails.Any(e =>
+                e.IsVerified && string.Equals(e.Email, email, StringComparison.OrdinalIgnoreCase)))
+            .Select(i => i.Id)
+            .ToList();
         return userIds.Count == 1 ? userIds[0] : null;
     }
 

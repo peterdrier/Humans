@@ -181,14 +181,6 @@ public partial interface IUserRepository
         Guid userId, Guid emailId, CancellationToken ct = default);
 
     /// <summary>
-    /// Returns the owning <c>UserId</c> for a verified email address matching
-    /// the given string exactly (no gmail/googlemail aliasing). Returns
-    /// <c>null</c> if no verified row matches.
-    /// </summary>
-    Task<Guid?> GetUserIdByVerifiedUserEmailAsync(
-        string email, CancellationToken ct = default);
-
-    /// <summary>
     /// Returns distinct user ids whose email starts with <paramref name="prefix"/>
     /// and ends with <paramref name="suffix"/>.
     /// </summary>
@@ -196,29 +188,6 @@ public partial interface IUserRepository
         string prefix,
         string suffix,
         CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns all distinct <c>UserId</c> values whose verified email rows
-    /// contain an address that matches <paramref name="email"/> exactly
-    /// (case-sensitive, no gmail/googlemail aliasing). The caller uses this
-    /// to detect ambiguous matches: a count of 0 means no match, a count
-    /// of 1 means an unambiguous match, and a count &gt; 1 means the same
-    /// address is verified for more than one user (invariant violation —
-    /// treat as ambiguous / return null to the caller).
-    /// </summary>
-    Task<IReadOnlyList<Guid>> GetDistinctUserIdsByVerifiedUserEmailAsync(
-        string email, CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns the distinct UserIds whose verified UserEmail matches the given
-    /// normalized address (or its gmail/googlemail alternate). Same matching
-    /// semantics as <see cref="FindVerifiedUserEmailWithUserAsync"/>, but returns the
-    /// full set rather than picking one arbitrary owner — so classifiers can
-    /// detect service-level uniqueness drift instead of silently attaching to
-    /// the wrong account.
-    /// </summary>
-    Task<IReadOnlyList<Guid>> GetDistinctVerifiedUserEmailUserIdsAsync(
-        string normalizedEmail, string? alternateEmail, CancellationToken ct = default);
 
     /// <summary>
     /// Returns the id of any user, other than <paramref name="excludeUserId"/>,

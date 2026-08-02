@@ -199,10 +199,16 @@ public sealed class UserService(
         var normalized = EmailNormalization.NormalizeForComparison(email);
         var alternate = GetAlternateEmail(normalized);
 
-        var matchingUserIds = await repo.GetDistinctVerifiedUserEmailUserIdsAsync(normalized, alternate, ct);
-        if (matchingUserIds.Count > 0)
-            return await GetUserInfoAsync(matchingUserIds[0], ct);
+        // UserEmails-based match: in-memory against the UserInfo snapshot. EmailsMatch handles
+        // gmail/googlemail aliasing on both sides, so no separate alternate-form lookup is needed.
+        var infos = await GetAllUserInfosAsync(ct);
+        var match = infos.FirstOrDefault(i =>
+            i.UserEmails.Any(e => e.IsVerified && EmailNormalization.EmailsMatch(e.Email, email)));
+        if (match is not null)
+            return match;
 
+        // Legacy fallback: the deprecated GoogleEmail shadow column, which UserInfo does not carry
+        // (UserInfo.IdentityEmailColumn is User.Email/Identity's column — a different legacy field).
         var legacyUser = await repo.GetByEmailOrAlternateAsync(normalized, alternate, ct);
         if (legacyUser is null)
             return null;
