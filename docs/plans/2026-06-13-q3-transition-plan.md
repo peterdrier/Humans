@@ -295,9 +295,9 @@ sections and shared contracts noted explicitly. (`—` = not yet audited.)
 | AuditLog | **horizontal** | 2 gaps | — | 2 gaps | — | — |
 | Auth | **horizontal** | 3 gaps | — | 2 gaps | — | — |
 | Budget | vertical | 3 gaps | — | 3 gaps | — | — |
-| Calendar | vertical | 2 gaps | — | 3 gaps | — | — |
-| Campaigns | vertical | 2 gaps | — | 2 gaps | — | — |
-| Camps | vertical | 2 gaps | — | 2 gaps | — | — |
+| Calendar | vertical | 3 gaps | — | 3 gaps | — | — |
+| Campaigns | vertical | 3 gaps | — | 2 gaps | — | — |
+| Camps | vertical | 3 gaps | — | 2 gaps | — | — |
 | Cantina | vertical | 3 gaps | — | 2 gaps | — | — |
 | CityPlanning | vertical | 1 gap | — | 2 gaps | — | — |
 | Containers | vertical | ✅ | — | 2 gaps | — | — |
