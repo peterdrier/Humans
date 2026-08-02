@@ -228,6 +228,16 @@ h5, .h5 { font-size: 1.1rem; }
     border-color: var(--h-border-light);
 }
 
+/* Below the navbar's lg expansion breakpoint the avatar toggle sits mid-row
+   (after the notification bell and language chooser), so a 220px menu anchored
+   to the toggle can escape the viewport on either side. Anchor it to the
+   full-width account row (position-relative in _Layout.cshtml) instead. */
+@media (max-width: 991.98px) {
+    .navbar [data-testid="user-nav"].dropdown {
+        position: static;
+    }
+}
+
 /* Dropdown toggle in navbar — style and remove Bootstrap's default caret */
 .navbar .dropdown > .btn-link.dropdown-toggle::after {
     display: none;

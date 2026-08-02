@@ -141,7 +141,7 @@
                             <a class="nav-link nav-restricted" asp-area="" asp-controller="Admin" asp-action="Index">@Localizer["Nav_Admin"]</a>
                         </li>
                     </ul>
-                    <div class="d-flex align-items-center gap-2">
+                    <div class="d-flex align-items-center gap-2 position-relative">
                         @if (User.Identity?.IsAuthenticated == true)
                         {
                             @await Component.InvokeAsync("NotificationBell")
