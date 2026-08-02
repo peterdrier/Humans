@@ -266,3 +266,14 @@ public sealed record EventFavouriteInfo(
 public sealed record ApprovedEventsExportInfo(
     IReadOnlyList<EventInfo> Events,
     EventGuideSettingsView? Settings);
+
+/// <summary>
+/// A camp's submissions bucketed by moderation status, with the events sorted
+/// most-recently-submitted-first — feeds the barrio block on the submitter's
+/// "My Submissions" dashboard.
+/// </summary>
+public sealed record CampSubmissionsSummary(
+    int SubmittedCount,
+    int ApprovedCount,
+    int PendingCount,
+    IReadOnlyList<EventInfo> Events);

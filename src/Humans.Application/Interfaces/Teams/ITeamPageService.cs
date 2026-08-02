@@ -27,6 +27,19 @@ public record TeamPageShiftsSummary(
 
 public record TeamPageTeamLink(Guid Id, string Name, string Slug);
 
+/// <summary>
+/// One row of the department page's subteam-member rollup: a child-team member
+/// (coordinator lead, or an ordinary member not already a direct department
+/// member). <see cref="RoleTitle"/> is the child team's management role name,
+/// populated only for coordinators.
+/// </summary>
+public record TeamPageChildTeamMemberSummary(
+    Guid UserId,
+    string ChildTeamName,
+    string ChildTeamSlug,
+    bool IsCoordinator,
+    string? RoleTitle);
+
 public record TeamPageTeamSummary(
     Guid Id,
     string Name,
@@ -62,7 +75,9 @@ public record TeamPageDetailResult(
     Guid? CurrentUserPendingRequestId,
     int PendingRequestCount,
     string? PageContentUpdatedByDisplayName,
-    TeamPageShiftsSummary? ShiftsSummary);
+    TeamPageShiftsSummary? ShiftsSummary,
+    IReadOnlyList<TeamPageChildTeamMemberSummary> SubteamLeads,
+    IReadOnlyList<TeamPageChildTeamMemberSummary> SubteamMembers);
 
 public interface ITeamPageService : IApplicationService
 {

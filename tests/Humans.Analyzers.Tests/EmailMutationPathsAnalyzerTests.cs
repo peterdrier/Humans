@@ -29,7 +29,7 @@ public class EmailMutationPathsAnalyzerTests
         string.Equals(d.Id, EmailMutationPathsAnalyzer.RepositoryCallerDiagnosticId, StringComparison.Ordinal);
 
     [HumansFact]
-    public async Task Fires_HUM0005_when_service_called_from_non_AccountController()
+    public async Task Fires_HUM0005_when_service_called_from_non_ExternalLoginService()
     {
         var source = InterfaceStubs + """
 
@@ -55,8 +55,38 @@ public class EmailMutationPathsAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Does_not_fire_when_service_called_from_AccountController()
+    public async Task Does_not_fire_when_service_called_from_ExternalLoginService()
     {
+        var source = InterfaceStubs + """
+
+            namespace Humans.Application.Services.Users
+            {
+                public class ExternalLoginService
+                {
+                    public async System.Threading.Tasks.Task Run(
+                        Humans.Application.Interfaces.Profiles.IUserEmailService svc)
+                    {
+                        await svc.ReconcileOAuthIdentityAsync(System.Guid.Empty, "p", "k", "e@x", true);
+                    }
+                }
+            }
+            """;
+
+        var diagnostics = await AnalyzerTestHarness.RunAsync(
+            new EmailMutationPathsAnalyzer(),
+            "Humans.Application",
+            source);
+
+        diagnostics.Where(IsHum0005).Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task Fires_HUM0005_when_service_called_from_AccountController()
+    {
+        // The pin moved off AccountController when HUM0031 forced the OAuth
+        // decision ladder into ExternalLoginService (#857). The controller
+        // reaching back for the primitive must now fail the build — otherwise
+        // the logic could drift back into the controller unnoticed.
         var source = InterfaceStubs + """
 
             namespace Humans.Web.Controllers
@@ -77,7 +107,7 @@ public class EmailMutationPathsAnalyzerTests
             "Humans.Web",
             source);
 
-        diagnostics.Where(IsHum0005).Should().BeEmpty();
+        diagnostics.Should().ContainSingle(d => IsHum0005(d));
     }
 
     [HumansFact]
@@ -159,7 +189,7 @@ public class EmailMutationPathsAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Fires_HUM0005_when_concrete_service_class_called_from_non_AccountController()
+    public async Task Fires_HUM0005_when_concrete_service_class_called_from_non_allowed_caller()
     {
         // Codex P2: a caller holding the concrete UserEmailService (rather than the
         // IUserEmailService interface) used to bypass the analyzer because the call's
@@ -239,7 +269,7 @@ public class EmailMutationPathsAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Fires_HUM0005_when_service_called_from_Infrastructure_non_AccountController()
+    public async Task Fires_HUM0005_when_service_called_from_Infrastructure_non_allowed_caller()
     {
         // Positive scope test for Infrastructure — mirrors the HUM0006 canary below.
         // Same regression risk: a future scope narrowing from

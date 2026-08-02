@@ -3,6 +3,7 @@ using AwesomeAssertions;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
+using Humans.Application.Services.Users;
 using Humans.Domain.Entities;
 using Humans.Web.Controllers;
 using Microsoft.AspNetCore.Authentication;
@@ -23,15 +24,22 @@ namespace Humans.Application.Tests.Controllers;
 /// <summary>
 /// Issue nobodies-collective/Humans#697: the OAuth callback drives every
 /// <see cref="UserEmail"/> mutation through
-/// <see cref="IUserEmailService.ReconcileOAuthIdentityAsync"/>. The
-/// controller writes no audit rows on the OAuth path — audit ownership
-/// moved into the service. These tests pin the 5 OAuth-success paths
-/// listed in the issue's acceptance criteria.
+/// <see cref="IUserEmailService.ReconcileOAuthIdentityAsync"/>. No audit rows
+/// are written on the OAuth path — audit ownership lives in the reconcile
+/// service. These tests pin the 5 OAuth-success paths listed in the issue's
+/// acceptance criteria.
+/// <para>
+/// Driven through the controller with a <b>real</b>
+/// <see cref="ExternalLoginService"/> behind it, so the assertions cover the
+/// whole callback (parse → decide → sign in → redirect) rather than one half
+/// of the seam introduced by nobodies-collective/Humans#857.
+/// </para>
 /// </summary>
 public class AccountControllerOAuthReconcileTests
 {
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly IMagicLinkService _magicLinkService = Substitute.For<IMagicLinkService>();
+    private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IStringLocalizer<Web.SharedResource> _localizer =
         Substitute.For<IStringLocalizer<Web.SharedResource>>();
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 5, 11, 12, 0));
@@ -62,13 +70,21 @@ public class AccountControllerOAuthReconcileTests
         _localizer[Arg.Any<string>()].Returns(ci =>
             new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
 
+        var externalLoginService = new ExternalLoginService(
+            _userManager,
+            _userService,
+            _userEmailService,
+            _magicLinkService,
+            _clock,
+            NullLogger<ExternalLoginService>.Instance);
+
         _controller = new AccountController(
             _signInManager,
-            Substitute.For<IUserService>(),
+            _userService,
             _userManager,
             _clock,
             NullLogger<AccountController>.Instance,
-            _userEmailService,
+            externalLoginService,
             _magicLinkService,
             Substitute.For<IAccountProvisioningService>(),
             new Web.Infrastructure.GateLoginThrottle(
@@ -192,7 +208,9 @@ public class AccountControllerOAuthReconcileTests
         };
 
         var currentUser = new User { Id = currentUserId };
-        _userManager.GetUserAsync(Arg.Any<ClaimsPrincipal>()).Returns(currentUser);
+        // The signed-in user is resolved from the NameIdentifier claim the
+        // controller reads, not from the principal itself.
+        _userManager.FindByIdAsync(currentUserId.ToString()).Returns(currentUser);
         _userManager.AddLoginAsync(currentUser, Arg.Any<UserLoginInfo>())
             .Returns(IdentityResult.Success);
         _userManager.UpdateAsync(currentUser).Returns(IdentityResult.Success);
@@ -203,6 +221,10 @@ public class AccountControllerOAuthReconcileTests
         await _userEmailService.Received(1).ReconcileOAuthIdentityAsync(
             currentUserId, Provider, ProviderKey, newEmail,
             claimEmailVerified: true, Arg.Any<CancellationToken>());
+
+        // Already-authenticated link keeps the existing session — no re-issue.
+        await _signInManager.DidNotReceive().SignInAsync(
+            Arg.Any<User>(), Arg.Any<bool>(), Arg.Any<string?>());
     }
 
     // ─── Path 3: lockout-relink ──────────────────────────────────────────────
@@ -235,6 +257,10 @@ public class AccountControllerOAuthReconcileTests
         await _userEmailService.Received(1).ReconcileOAuthIdentityAsync(
             activeTargetId, Provider, ProviderKey, email,
             claimEmailVerified: true, Arg.Any<CancellationToken>());
+
+        // The relink resolves to a different account than the one Identity
+        // matched, so the cookie must be issued for the active target.
+        await _signInManager.Received(1).SignInAsync(activeTarget, true, null);
     }
 
     [HumansFact]
@@ -297,6 +323,10 @@ public class AccountControllerOAuthReconcileTests
         await _userEmailService.Received(1).ReconcileOAuthIdentityAsync(
             existingUserId, Provider, ProviderKey, email,
             claimEmailVerified: true, Arg.Any<CancellationToken>());
+
+        // Identity's external sign-in failed (no login row yet), so the cookie
+        // for the email-matched account is issued by the callback itself.
+        await _signInManager.Received(1).SignInAsync(existingUser, true, null);
     }
 
     // ─── Path 5: new-user creation ───────────────────────────────────────────
@@ -360,6 +390,10 @@ public class AccountControllerOAuthReconcileTests
 
         // Failed reconcile rolls back: DeleteAsync called for the newly-created user.
         await _userManager.Received(1).DeleteAsync(Arg.Any<User>());
+
+        // ...and the rollback must not leave a session pointing at a deleted account.
+        await _signInManager.DidNotReceive().SignInAsync(
+            Arg.Any<User>(), Arg.Any<bool>(), Arg.Any<string?>());
     }
 
     [HumansFact]
@@ -422,5 +456,30 @@ public class AccountControllerOAuthReconcileTests
         await _userEmailService.Received(1).ReconcileOAuthIdentityAsync(
             userId, Provider, ProviderKey, "user@example.com",
             claimEmailVerified: false, Arg.Any<CancellationToken>());
+    }
+
+    // ─── Cookie issuance across the controller/service seam (#857) ───────────
+
+    [HumansFact]
+    public async Task LockoutWithNoActiveTarget_DoesNotSignAnyoneIn()
+    {
+        // The relink is an exception, not the rule: with nothing to relink to,
+        // the locked-out account must stay locked out.
+        var email = "locked@example.com";
+        var info = MakeInfo(email, emailVerified: true);
+
+        _signInManager.GetExternalLoginInfoAsync().Returns(info);
+        _signInManager.ExternalLoginSignInAsync(Provider, ProviderKey, true, true)
+            .Returns(SignInResult.LockedOut);
+
+        _userManager.FindByLoginAsync(Provider, ProviderKey).Returns(new User { Id = Guid.NewGuid() });
+        _magicLinkService.FindUserByVerifiedEmailAsync(email, Arg.Any<CancellationToken>())
+            .Returns((User?)null);
+
+        await _controller.ExternalLoginCallback(returnUrl: null, remoteError: null);
+
+        await _signInManager.DidNotReceive().SignInAsync(
+            Arg.Any<User>(), Arg.Any<bool>(), Arg.Any<string?>());
+        await _userManager.DidNotReceive().CreateAsync(Arg.Any<User>());
     }
 }

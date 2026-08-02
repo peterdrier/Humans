@@ -57,6 +57,9 @@ public interface IEventService : IApplicationService, IEventServiceRead
     Task<IReadOnlyList<EventInfo>> GetCampSubmissionsAsync(Guid campId, CancellationToken ct = default);
     // Read-then-mutate-then-write round trip (see GetUserEventAsync).
     Task<Event?> GetCampEventAsync(Guid eventId, Guid campId, CancellationToken ct = default);
+    // Status-bucketed + sorted view of a camp's submissions for the submitter's
+    // "My Submissions" barrio block.
+    Task<CampSubmissionsSummary> GetCampSubmissionsSummaryAsync(Guid campId, CancellationToken ct = default);
     // Persists a new submission and emails the submitter their confirmation (part of
     // the submit workflow). Null lifecycleActionUrl opts out (bulk import).
     Task SubmitEventAsync(Event guideEvent, string? lifecycleActionUrl = null, CancellationToken ct = default);
@@ -83,6 +86,15 @@ public interface IEventService : IApplicationService, IEventServiceRead
         Guid campId, Guid submitterUserId, IReadOnlyList<BulkCsvRow> rows,
         LocalDate gateOpeningDate, int eventEndOffset, DateTimeZone timeZone,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Builds the CSV bulk-upload template for a camp: existing non-withdrawn
+    /// submissions (or one example row when there are none), plus the
+    /// instructional banner comments — ready to write as the download body.
+    /// <paramref name="campName"/> is the caller's resolved display name
+    /// (Camps-section concern; Events has no visibility into camp identity).
+    /// </summary>
+    Task<byte[]> BuildBulkUploadTemplateAsync(Guid campId, string campName, CancellationToken ct = default);
 
     // ── Browse / API ──────────────────────────────────────────────────────
     // GetApprovedEventsAsync is declared on IEventServiceRead (cross-section read surface).

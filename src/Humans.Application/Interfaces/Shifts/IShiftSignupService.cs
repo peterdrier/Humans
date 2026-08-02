@@ -132,6 +132,38 @@ public interface IShiftSignupService : IApplicationService
     /// </summary>
     Task<IReadOnlySet<Guid>> GetActiveCommittedUserIdsForEventAsync(
         Guid eventSettingsId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Self-service day-row toggle for the current user: bails an existing active
+    /// signup for <paramref name="shiftId"/>, or signs up if none exists (auto-confirm
+    /// per <paramref name="privileged"/>, mirroring <see cref="SignUpAsync"/>'s Privileged
+    /// flag). Short-circuits with <see cref="ToggleDaySignupOutcome.NeedsDietaryFirst"/>
+    /// instead of signing up when the shift qualifies for a cantina meal and
+    /// <paramref name="hasDietaryPreference"/> is false — the caller owns the redirect.
+    /// <see cref="ToggleDaySignupOutcome.CanViewRestricted"/> folds
+    /// <paramref name="privileged"/> together with dept-coordinator status, matching the
+    /// browse page's broader privilege check, for restricted-shift row rendering.
+    /// </summary>
+    Task<ToggleDaySignupOutcome> ToggleDayAsync(
+        Guid userId,
+        Guid shiftId,
+        Guid eventSettingsId,
+        bool privileged,
+        bool hasDietaryPreference,
+        CancellationToken ct = default);
+}
+
+/// <summary>
+/// Outcome of <see cref="IShiftSignupService.ToggleDayAsync"/>.
+/// </summary>
+public sealed record ToggleDaySignupOutcome(
+    bool NeedsDietaryFirst,
+    SignupResult? Result,
+    bool SignedUp,
+    bool CanViewRestricted,
+    IReadOnlyList<ShiftSignup> SignupsAfter)
+{
+    public static ToggleDaySignupOutcome DietaryRequired() => new(true, null, false, false, []);
 }
 
 public sealed record ShiftSignupTeamProbe(

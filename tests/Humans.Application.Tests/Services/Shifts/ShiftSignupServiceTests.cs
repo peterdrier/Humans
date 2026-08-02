@@ -281,6 +281,105 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
     }
 
     // ============================================================
+    // ToggleDay
+    // ============================================================
+
+    [HumansFact]
+    public async Task ToggleDay_NoExistingSignup_HasDietaryPreference_SignsUp()
+    {
+        var (es, rota, _) = SeedShiftScenario(SignupPolicy.Public);
+        var shift = SeedAllDayShift(rota, dayOffset: 1); // qualifies for cantina meal
+        var userId = Guid.NewGuid();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var outcome = await _service.ToggleDayAsync(
+            userId, shift.Id, es.Id, privileged: false, hasDietaryPreference: true);
+
+        outcome.NeedsDietaryFirst.Should().BeFalse();
+        outcome.SignedUp.Should().BeTrue();
+        outcome.Result!.Success.Should().BeTrue();
+        outcome.SignupsAfter.Should().ContainSingle(s => s.ShiftId == shift.Id && s.Status == SignupStatus.Confirmed);
+    }
+
+    [HumansFact]
+    public async Task ToggleDay_NoExistingSignup_QualifyingShift_NoDietaryPreference_ReturnsNeedsDietaryFirst()
+    {
+        var (es, rota, _) = SeedShiftScenario(SignupPolicy.Public);
+        var shift = SeedAllDayShift(rota, dayOffset: 1); // qualifies for cantina meal
+        var userId = Guid.NewGuid();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var outcome = await _service.ToggleDayAsync(
+            userId, shift.Id, es.Id, privileged: false, hasDietaryPreference: false);
+
+        outcome.NeedsDietaryFirst.Should().BeTrue();
+        outcome.Result.Should().BeNull();
+        var signupCount = await Db.ShiftSignups.CountAsync(s => s.UserId == userId, Xunit.TestContext.Current.CancellationToken);
+        signupCount.Should().Be(0);
+    }
+
+    [HumansFact]
+    public async Task ToggleDay_NoExistingSignup_NonQualifyingShift_NoDietaryPreference_SignsUp()
+    {
+        // 4h shift — below the 6h cantina-meal threshold and not all-day, so the
+        // dietary gate never applies regardless of hasDietaryPreference.
+        var (es, _, shift) = SeedShiftScenario(SignupPolicy.Public);
+        var userId = Guid.NewGuid();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var outcome = await _service.ToggleDayAsync(
+            userId, shift.Id, es.Id, privileged: false, hasDietaryPreference: false);
+
+        outcome.NeedsDietaryFirst.Should().BeFalse();
+        outcome.SignedUp.Should().BeTrue();
+        outcome.Result!.Success.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task ToggleDay_ExistingActiveSignup_Bails_RegardlessOfDietaryGate()
+    {
+        var (es, rota, _) = SeedShiftScenario(SignupPolicy.Public);
+        var shift = SeedAllDayShift(rota, dayOffset: 1); // qualifies for cantina meal
+        var userId = Guid.NewGuid();
+        SeedSignup(userId, shift.Id, SignupStatus.Confirmed);
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var outcome = await _service.ToggleDayAsync(
+            userId, shift.Id, es.Id, privileged: false, hasDietaryPreference: false);
+
+        outcome.NeedsDietaryFirst.Should().BeFalse();
+        outcome.SignedUp.Should().BeFalse();
+        outcome.Result!.Success.Should().BeTrue();
+        outcome.Result.Signup!.Status.Should().Be(SignupStatus.Bailed);
+    }
+
+    [HumansFact]
+    public async Task ToggleDay_Privileged_CanViewRestrictedIsTrue()
+    {
+        var (es, _, shift) = SeedShiftScenario(SignupPolicy.Public);
+        var userId = Guid.NewGuid();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var outcome = await _service.ToggleDayAsync(
+            userId, shift.Id, es.Id, privileged: true, hasDietaryPreference: true);
+
+        outcome.CanViewRestricted.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task ToggleDay_NotPrivileged_NotCoordinator_CanViewRestrictedIsFalse()
+    {
+        var (es, _, shift) = SeedShiftScenario(SignupPolicy.Public);
+        var userId = Guid.NewGuid();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var outcome = await _service.ToggleDayAsync(
+            userId, shift.Id, es.Id, privileged: false, hasDietaryPreference: true);
+
+        outcome.CanViewRestricted.Should().BeFalse();
+    }
+
+    // ============================================================
     // Voluntell
     // ============================================================
 

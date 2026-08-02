@@ -236,6 +236,12 @@ public sealed class CachingEventService(
     public Task<Event?> GetCampEventAsync(Guid eventId, Guid campId, CancellationToken ct = default) =>
         WithInner(inner => inner.GetCampEventAsync(eventId, campId, ct));
 
+    public Task<CampSubmissionsSummary> GetCampSubmissionsSummaryAsync(Guid campId, CancellationToken ct = default) =>
+        WithInner(inner => inner.GetCampSubmissionsSummaryAsync(campId, ct));
+
+    public Task<byte[]> BuildBulkUploadTemplateAsync(Guid campId, string campName, CancellationToken ct = default) =>
+        WithInner(inner => inner.BuildBulkUploadTemplateAsync(campId, campName, ct));
+
     public async Task SubmitEventAsync(Event guideEvent, string? lifecycleActionUrl = null, CancellationToken ct = default)
     {
         await WithInner(inner => inner.SubmitEventAsync(guideEvent, lifecycleActionUrl, ct));

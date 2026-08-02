@@ -8,6 +8,7 @@ using ProfilesCommunicationPreferenceService = Humans.Application.Services.Profi
 using ProfilesEmailProblemsService = Humans.Application.Services.Profiles.EmailProblemsService;
 using ProfilesProfileEditorService = Humans.Application.Services.Profiles.ProfileEditorService;
 using UsersAccountProvisioningService = Humans.Application.Services.Users.AccountProvisioningService;
+using UsersExternalLoginService = Humans.Application.Services.Users.ExternalLoginService;
 using UsersUserEmailProviderBackfillService = Humans.Application.Services.Users.UserEmailProviderBackfillService;
 using UsersUnsubscribeService = Humans.Application.Services.Users.UnsubscribeService;
 using Humans.Application.Interfaces.Users;
@@ -43,6 +44,7 @@ internal static class ProfileSectionExtensions
         services.AddScoped<IEmailProblemsService, ProfilesEmailProblemsService>();
         services.AddScoped<IProfileEditorService, ProfilesProfileEditorService>();
         services.AddScoped<IAccountProvisioningService, UsersAccountProvisioningService>();
+        services.AddScoped<IExternalLoginService, UsersExternalLoginService>();
         services.AddScoped<IUserEmailProviderBackfillService, UsersUserEmailProviderBackfillService>();
 
         // FullProfile cache retired — denormalized reads go through IUserService.GetUserInfoAsync.

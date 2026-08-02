@@ -8,7 +8,7 @@ namespace Humans.Analyzers;
 
 /// <summary>
 /// Pins the single legitimate call chain for the OAuth reconcile primitive:
-/// <c>AccountController</c> → <c>IUserEmailService.ReconcileOAuthIdentityAsync</c> →
+/// <c>ExternalLoginService</c> → <c>IUserEmailService.ReconcileOAuthIdentityAsync</c> →
 /// <c>IUserService.ApplyUserEmailReconcilePlanAsync</c> ->
 /// <c>IUserRepository.ApplyUserEmailReconcilePlanAsync</c>. Any other call site is forbidden.
 /// </summary>
@@ -16,6 +16,13 @@ namespace Humans.Analyzers;
 /// See <c>memory/architecture/email-mutation-paths.md</c>. The atom names this
 /// analyzer as the build-time enforcement and instructs not to add a parallel
 /// IL-scan test.
+/// <para>
+/// The service-caller pin moved off <c>AccountController</c> when HUM0031
+/// forced the OAuth decision ladder out of the controller
+/// (nobodies-collective/Humans#857). <c>ExternalLoginService</c> exists solely
+/// to serve <c>AccountController.ExternalLoginCallback</c>, so the allowlist is
+/// still exactly one type wide and still names the OAuth-callback moment.
+/// </para>
 /// </remarks>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class EmailMutationPathsAnalyzer : DiagnosticAnalyzer
@@ -25,10 +32,10 @@ public sealed class EmailMutationPathsAnalyzer : DiagnosticAnalyzer
 
     public static readonly DiagnosticDescriptor ServiceCallerRule = new(
         id: ServiceCallerDiagnosticId,
-        title: "IUserEmailService.ReconcileOAuthIdentityAsync may only be called from AccountController",
+        title: "IUserEmailService.ReconcileOAuthIdentityAsync may only be called from ExternalLoginService",
         messageFormat:
-            "IUserEmailService.ReconcileOAuthIdentityAsync may only be called from AccountController " +
-            "(the OAuth sign-in callback). See memory/architecture/email-mutation-paths.md.",
+            "IUserEmailService.ReconcileOAuthIdentityAsync may only be called from ExternalLoginService " +
+            "(the OAuth sign-in callback's decision service). See memory/architecture/email-mutation-paths.md.",
         category: AnalyzerCategories.Architecture,
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,
@@ -58,7 +65,7 @@ public sealed class EmailMutationPathsAnalyzer : DiagnosticAnalyzer
     private const string RepositoryInterface = "Humans.Application.Interfaces.Repositories.IUserRepository";
     private const string ServiceMethodName = "ReconcileOAuthIdentityAsync";
     private const string RepositoryMethodName = "ApplyUserEmailReconcilePlanAsync";
-    private const string AllowedServiceCaller = "Humans.Web.Controllers.AccountController";
+    private const string AllowedServiceCaller = "Humans.Application.Services.Users.ExternalLoginService";
     private static readonly ImmutableHashSet<string> AllowedRepositoryCallers =
         ImmutableHashSet.Create(
             "Humans.Application.Services.Profiles.UserEmailService",
@@ -74,9 +81,10 @@ public sealed class EmailMutationPathsAnalyzer : DiagnosticAnalyzer
     private static void OnCompilationStart(CompilationStartAnalysisContext context)
     {
         // Scope: Application + Web + Infrastructure. The repository implementation lives in
-        // Infrastructure; the service / controllers live in Application + Web. The two
-        // allowlisted callers themselves are in Web and Application respectively — neither
-        // is excluded from the scope, instead the type-name guard below admits them.
+        // Infrastructure; the services / controllers live in Application + Web. Both
+        // allowlisted callers are in Application — neither is excluded from the scope,
+        // instead the type-name guard below admits them. Web stays in scope so a
+        // controller reaching for the primitive directly still fails the build.
         if (!AssemblyScope.IsApplicationWebOrInfrastructure(context.Compilation.Assembly))
             return;
 
