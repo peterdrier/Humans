@@ -50,7 +50,7 @@ public class DevLoginController(
             return StatusCode(500, "Dev persona seeding failed");
         }
 
-        await signInManager.SignInAsync(user, isPersistent: false);
+        await signInManager.SignInAsync(user, isPersistent: true);
         logger.LogWarning("DEV LOGIN: signed in as user {Id}", user.Id);
 
         return RedirectToLocalOrHome(returnUrl);
@@ -116,7 +116,7 @@ public class DevLoginController(
         if (user is null)
             return NotFound();
 
-        await signInManager.SignInAsync(user, isPersistent: false);
+        await signInManager.SignInAsync(user, isPersistent: true);
         logger.LogWarning("DEV LOGIN: signed in as user {Id}", user.Id);
 
         return RedirectToLocalOrHome(returnUrl);
@@ -147,7 +147,7 @@ public class DevLoginController(
             return StatusCode(500, "Dev guest seeding failed");
         }
 
-        await signInManager.SignInAsync(user, isPersistent: false);
+        await signInManager.SignInAsync(user, isPersistent: true);
         logger.LogWarning("DEV LOGIN: signed in as fresh guest {Id}", user.Id);
         return RedirectToLocalOrHome(returnUrl);
     }

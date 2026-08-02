@@ -2,6 +2,7 @@
   <Project Path="docs/docs.csproj" />
   <Folder Name="/src/">
     <Project Path="src/Humans.Analyzers/Humans.Analyzers.csproj" />
+    <Project Path="src/Humans.Interfaces/Humans.Interfaces.csproj" />
     <Project Path="src/Humans.Domain/Humans.Domain.csproj" />
     <Project Path="src/Humans.Application/Humans.Application.csproj" />
     <Project Path="src/Humans.Infrastructure/Humans.Infrastructure.csproj" />

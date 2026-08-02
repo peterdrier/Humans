@@ -1,3 +1,4 @@
+using Humans.Application.Constants;
 using Humans.Application.Interfaces;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
@@ -20,14 +21,6 @@ public sealed class AgentSectionDocReader(
     internal const string FolderPath = "docs/sections";
     private const string CacheKeyPrefix = "agent:section:";
 
-    private static readonly HashSet<string> Whitelist =
-        new(StringComparer.OrdinalIgnoreCase)
-        {
-            "Onboarding", "Teams", "LegalAndConsent", "Governance", "Shifts",
-            "Tickets", "Profiles", "Auth", "Budget", "Camps",
-            "CityPlanning", "Campaigns", "Feedback", "GoogleIntegration"
-        };
-
     // No expiration + NeverRemove: GitHub-backed content that only changes at release.
     // Loaded once (startup warm-up or first call) and held for the process lifetime.
     private static readonly MemoryCacheEntryOptions HoldForever =
@@ -35,11 +28,7 @@ public sealed class AgentSectionDocReader(
 
     public async Task<string?> ReadAsync(string key, CancellationToken cancellationToken)
     {
-        // Resolve the caller-supplied key to the canonical-cased whitelist entry so the
-        // GitHub path matches exactly (GitHub paths are case-sensitive). LLMs routinely
-        // lowercase the key (e.g. "shifts"); the whitelist lookup is case-insensitive
-        // but the fetched filename must be canonical ("Shifts.md").
-        if (!Whitelist.TryGetValue(key, out var canonicalKey)) return null;
+        if (!AgentSectionKeys.TryResolve(key, out var canonicalKey)) return null;
 
         var cacheKey = CacheKeyPrefix + canonicalKey;
         if (cache.TryGetValue<string>(cacheKey, out var cached) && cached is not null)
@@ -68,5 +57,5 @@ public sealed class AgentSectionDocReader(
         }
     }
 
-    public IReadOnlySet<string> KnownSections => Whitelist;
+    public IReadOnlySet<string> KnownSections => AgentSectionKeys.All;
 }

@@ -147,7 +147,8 @@ public class DebugController(
             lastApplied = status.LastApplied,
             appliedCount = status.AppliedCount,
             pendingCount = status.PendingCount,
-            recentApplied = status.Applied.TakeLast(20).Reverse().ToList()
+            recentApplied = status.Applied.TakeLast(20).Reverse().ToList(),
+            sections = status.Sections
         });
     }
 

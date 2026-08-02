@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces;
+using Humans.Application.Tests.Architecture.Ratchet;
 using Humans.Infrastructure.Services.Preload;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -30,6 +31,71 @@ public class AgentSectionDocReaderTests
         content.Should().NotBeNullOrEmpty();
         source.LastFolder.Should().Be(AgentSectionDocReader.FolderPath);
         source.LastStem.Should().Be("Shifts", "the reader must canonicalize the key, not pass caller casing");
+    }
+
+    /// <summary>
+    /// A whitelisted key with no matching file is unreachable at runtime and fails silently —
+    /// <see cref="AgentSectionDocReader"/> swallows the GitHub 404 and returns null, and the
+    /// docs health check only probes Shifts, so a typo would never surface. The repo is the
+    /// source these docs are served from, so the local folder is the authority.
+    /// </summary>
+    [HumansFact]
+    public void Every_whitelisted_section_has_a_matching_doc_file()
+    {
+        var folder = Path.Combine(RatchetTestRunner.LocateRepoRoot(), "docs", "sections");
+        var stems = Directory.GetFiles(folder, "*.md").Select(Path.GetFileNameWithoutExtension).ToHashSet(StringComparer.Ordinal);
+
+        // Ordinal, not OrdinalIgnoreCase: GitHub paths are case-sensitive, and the reader
+        // fetches "{canonicalKey}.md" verbatim.
+        MakeReader(new FakeSource()).KnownSections.Should().OnlyContain(
+            key => stems.Contains(key),
+            "every whitelisted key is fetched as docs/sections/{key}.md with exact casing");
+    }
+
+    /// <summary>
+    /// The keys the model reads out of its own preload corpus (help-widget glossary keys,
+    /// access-matrix display names) and out of user jargon are a different namespace from the
+    /// whitelist. Every one of these was a real production lookup that dead-ended
+    /// (nobodies-collective/Humans#949).
+    /// </summary>
+    [HumansTheory]
+    [InlineData("Profile", "Profiles")]
+    [InlineData("profile", "Profiles")]
+    [InlineData("Barrios", "Camps")]
+    [InlineData("CityPlanningOverview", "CityPlanning")]
+    [InlineData("CityPlanningBarrioMap", "CityPlanning")]
+    [InlineData("ContainerMap", "Containers")]
+    [InlineData("OnboardingReview", "Onboarding")]
+    [InlineData("Board", "Governance")]
+    [InlineData("Admin", "Governance")]
+    public async Task ReadAsync_resolves_the_aliases_the_agent_reads_out_of_its_own_prompt(string key, string expectedStem)
+    {
+        var source = new FakeSource();
+        var reader = MakeReader(source);
+
+        var content = await reader.ReadAsync(key, TestContext.Current.CancellationToken);
+
+        content.Should().NotBeNullOrEmpty();
+        source.LastStem.Should().Be(expectedStem);
+    }
+
+    /// <summary>
+    /// An alias pointing at a non-whitelisted key would resolve and then fetch nothing — the same
+    /// silent dead end, one indirection further away.
+    /// </summary>
+    [HumansTheory]
+    [InlineData("Profile")]
+    [InlineData("Barrios")]
+    [InlineData("CityPlanningOverview")]
+    [InlineData("CityPlanningBarrioMap")]
+    [InlineData("ContainerMap")]
+    [InlineData("OnboardingReview")]
+    [InlineData("Board")]
+    [InlineData("Admin")]
+    public void Every_alias_target_is_a_whitelisted_section(string alias)
+    {
+        Humans.Application.Constants.AgentSectionKeys.TryResolve(alias, out var target).Should().BeTrue();
+        MakeReader(new FakeSource()).KnownSections.Should().Contain(target!);
     }
 
     [HumansFact]
