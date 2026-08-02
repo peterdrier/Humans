@@ -58,6 +58,10 @@ public sealed record ExternalLoginAttempt(
     bool ProviderSignInLockedOut,
     Guid? CurrentUserId);
 
+/// <summary>
+/// Result of completing an external-login attempt: the outcome the controller
+/// must act on, plus the user to sign in when a cookie must be issued.
+/// </summary>
 /// <param name="Outcome">What the caller must do next.</param>
 /// <param name="SignInUser">
 /// Set when the caller must issue the auth cookie for this user. Null when the

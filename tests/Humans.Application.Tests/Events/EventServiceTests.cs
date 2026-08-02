@@ -601,17 +601,26 @@ public sealed class EventServiceTests
         var campId = Guid.NewGuid();
         var older = new Event
         {
-            Id = Guid.NewGuid(), CampId = campId, Title = "Older", Status = EventStatus.Approved,
+            Id = Guid.NewGuid(),
+            CampId = campId,
+            Title = "Older",
+            Status = EventStatus.Approved,
             SubmittedAt = Instant.FromUtc(2026, 5, 1, 12, 0)
         };
         var newer = new Event
         {
-            Id = Guid.NewGuid(), CampId = campId, Title = "Newer", Status = EventStatus.Pending,
+            Id = Guid.NewGuid(),
+            CampId = campId,
+            Title = "Newer",
+            Status = EventStatus.Pending,
             SubmittedAt = Instant.FromUtc(2026, 5, 3, 12, 0)
         };
         var otherCamp = new Event
         {
-            Id = Guid.NewGuid(), CampId = Guid.NewGuid(), Title = "Other camp", Status = EventStatus.Approved,
+            Id = Guid.NewGuid(),
+            CampId = Guid.NewGuid(),
+            Title = "Other camp",
+            Status = EventStatus.Approved,
             SubmittedAt = Instant.FromUtc(2026, 5, 2, 12, 0)
         };
         _repo.Events.AddRange([older, newer, otherCamp]);
@@ -633,14 +642,27 @@ public sealed class EventServiceTests
         var startAt = (new LocalDate(2026, 7, 8) + new LocalTime(9, 30)).InZoneLeniently(DateTimeZone.Utc).ToInstant();
         var kept = new Event
         {
-            Id = Guid.NewGuid(), CampId = campId, CategoryId = category.Id, Category = category,
-            Title = "Fire Circle", Description = "Desc", StartAt = startAt, DurationMinutes = 60,
-            PriorityRank = 1, Status = EventStatus.Approved, SubmittedAt = _clock.GetCurrentInstant()
+            Id = Guid.NewGuid(),
+            CampId = campId,
+            CategoryId = category.Id,
+            Category = category,
+            Title = "Fire Circle",
+            Description = "Desc",
+            StartAt = startAt,
+            DurationMinutes = 60,
+            PriorityRank = 1,
+            Status = EventStatus.Approved,
+            SubmittedAt = _clock.GetCurrentInstant()
         };
         var withdrawn = new Event
         {
-            Id = Guid.NewGuid(), CampId = campId, CategoryId = category.Id, Category = category,
-            Title = "Cancelled Talk", Status = EventStatus.Withdrawn, SubmittedAt = _clock.GetCurrentInstant()
+            Id = Guid.NewGuid(),
+            CampId = campId,
+            CategoryId = category.Id,
+            Category = category,
+            Title = "Cancelled Talk",
+            Status = EventStatus.Withdrawn,
+            SubmittedAt = _clock.GetCurrentInstant()
         };
         _repo.Events.AddRange([kept, withdrawn]);
 
