@@ -140,16 +140,24 @@ public sealed record DrivePermissionListResult(
 /// <param name="EmailAddress">
 /// The granted user's email. Null for non-user permissions (domain, anyone).
 /// </param>
-/// <param name="IsInheritedOnly">
-/// True when every entry in <c>permissionDetails</c> is marked inherited —
-/// the system cannot manage these and must skip them during reconciliation.
+/// <param name="HasInheritedComponent">
+/// True when ANY entry in <c>permissionDetails</c> is marked inherited — not
+/// only when every entry is. Issue nobodies-collective/Humans#945: a
+/// permission can carry both a direct and an inherited
+/// <c>permissionDetails</c> entry (e.g. the same role granted directly on
+/// this item and also inherited from a parent folder), and Drive's
+/// <c>permissions.delete</c> still 403s on those as "cannot delete an
+/// inherited permission." Only a permission with zero inherited components
+/// is safely deletable at this level — the system must skip any permission
+/// with an inherited component during reconciliation, not just fully-
+/// inherited ones.
 /// </param>
 public sealed record DrivePermission(
     string? Id,
     string? Type,
     string? Role,
     string? EmailAddress,
-    bool IsInheritedOnly);
+    bool HasInheritedComponent);
 
 /// <summary>
 /// Outcome of <see cref="IGoogleDrivePermissionsClient.CreatePermissionAsync"/>.

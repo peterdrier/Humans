@@ -382,16 +382,21 @@ public sealed class GoogleDrivePermissionsClient(
 
     private static DrivePermission MapPermission(SdkPermission p)
     {
-        var isInheritedOnly =
+        // Issue nobodies-collective/Humans#945 — ANY inherited permissionDetails
+        // entry, not just an all-inherited permission, makes the permission
+        // undeletable at this level (Drive 403s "cannot delete an inherited
+        // permission" even when the same permission also has a direct
+        // component).
+        var hasInheritedComponent =
             p.PermissionDetails is { Count: > 0 } details &&
-            details.All(d => d.Inherited == true);
+            details.Any(d => d.Inherited == true);
 
         return new DrivePermission(
             Id: p.Id,
             Type: p.Type,
             Role: p.Role,
             EmailAddress: p.EmailAddress,
-            IsInheritedOnly: isInheritedOnly);
+            HasInheritedComponent: hasInheritedComponent);
     }
 
     private async Task<DriveService> GetDriveServiceAsync(CancellationToken ct)

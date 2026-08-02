@@ -79,7 +79,7 @@ public class StubGoogleDrivePermissionsClientTests
         perm.Type.Should().Be("user");
         perm.Role.Should().Be("writer");
         perm.EmailAddress.Should().Be("alice@nobodies.team");
-        perm.IsInheritedOnly.Should().BeFalse(
+        perm.HasInheritedComponent.Should().BeFalse(
             because: "stub permissions are treated as direct — tests covering inherited-vs-direct filtering belong to the real-client integration tests");
     }
 

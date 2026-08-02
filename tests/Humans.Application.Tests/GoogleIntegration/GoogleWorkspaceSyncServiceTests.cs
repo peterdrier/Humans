@@ -1,4 +1,6 @@
+using AwesomeAssertions;
 using Humans.Application.Configuration;
+using Humans.Application.DTOs;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Profiles;
@@ -56,9 +58,6 @@ public sealed class GoogleWorkspaceSyncServiceTests
     private readonly IGoogleSyncOutboxRepository _googleSyncOutboxRepository =
         Substitute.For<IGoogleSyncOutboxRepository>();
 
-    private readonly IGoogleDrivePermissionFailureRepository _permissionFailureRepository =
-        Substitute.For<IGoogleDrivePermissionFailureRepository>();
-
     private readonly ITeamServiceRead _teamService =
         Substitute.For<ITeamServiceRead>();
 
@@ -107,7 +106,6 @@ public sealed class GoogleWorkspaceSyncServiceTests
             _teamResourceClient,
             _resourceRepository,
             _googleSyncOutboxRepository,
-            _permissionFailureRepository,
             _teamService,
             _userService,
             _userEmailService,
@@ -226,7 +224,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
                         Type: "user",
                         Role: "writer",
                         EmailAddress: extraEmail,
-                        IsInheritedOnly: false)
+                        HasInheritedComponent: false)
                 ],
                 Error: null));
 
@@ -430,7 +428,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
 
     // ==========================================================================
     // Issue nobodies-collective/Humans#945 — plus-address normalization (grant)
-    // and terminal inherited-permission recording (delete)
+    // and upfront inherited-permission exclusion (delete)
     // ==========================================================================
 
     [HumansFact]
@@ -493,12 +491,36 @@ public sealed class GoogleWorkspaceSyncServiceTests
     }
 
     [HumansFact]
-    public async Task RemoveUserFromDriveAsync_WhenInheritedPermission403_RecordsTerminalFailureAndDoesNotThrow()
+    public async Task RemoveExtraDriveAccessAsync_WhenPermissionHasInheritedComponent_ExcludesFromRemovalUpfront()
     {
+        // Per Peter's review of the original #945 fix: a permission that
+        // still 403s on delete because it carries an inherited component must
+        // never be selected for deletion in the first place — detect it
+        // upfront (IsDirectManagedPermission / HasInheritedComponent) instead
+        // of attempting the delete and persisting the failure afterward.
         const string extraEmail = "extra@example.com";
         const string extraPermissionId = "perm-001";
 
-        SetupExtraDriveMemberScenario(extraEmail, extraPermissionId);
+        SetupExtraDriveMemberScenario(extraEmail, extraPermissionId, hasInheritedComponent: true);
+
+        await _syncService.SyncSingleResourceAsync(TestDriveFolderResourceId, SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
+
+        await _drivePermissions.DidNotReceive()
+            .DeletePermissionAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task RemoveUserFromDriveAsync_WhenInheritedPermission403_LogsDefensivelyWithoutThrowing()
+    {
+        // Defensive fallback only: the upfront exclusion normally prevents
+        // this outcome, but a race (inheritance changed between list and
+        // delete) could still surface it. Must not throw, and must not
+        // persist anything (the persisted terminal-failure table was removed
+        // per Peter's review — detection is upfront, not recorded state).
+        const string extraEmail = "extra@example.com";
+        const string extraPermissionId = "perm-001";
+
+        SetupExtraDriveMemberScenario(extraEmail, extraPermissionId, hasInheritedComponent: false);
 
         _drivePermissions
             .DeletePermissionAsync(TestGoogleFolderId, extraPermissionId, Arg.Any<CancellationToken>())
@@ -508,36 +530,83 @@ public sealed class GoogleWorkspaceSyncServiceTests
                     "The authenticated user cannot delete the permission. If the permission is inherited, " +
                     "limited access must be leveraged.")));
 
-        await _syncService.SyncSingleResourceAsync(TestDriveFolderResourceId, SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
+        var act = async () => await _syncService.SyncSingleResourceAsync(
+            TestDriveFolderResourceId, SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
 
-        await _permissionFailureRepository.Received(1).RecordTerminalFailureAsync(
-            TestGoogleFolderId,
-            extraPermissionId,
-            extraEmail,
-            Arg.Any<string>(),
-            Arg.Any<Instant>(),
-            Arg.Any<CancellationToken>());
+        await act.Should().NotThrowAsync();
     }
 
     [HumansFact]
-    public async Task RemoveExtraDriveAccessAsync_WhenPermissionPreviouslyRecordedTerminal_SkipsDeleteAttempt()
+    public async Task DriveReconciliation_WhenMemberIsPlusAddressedGmail_RoundTripsToCorrectState()
     {
-        const string extraEmail = "extra@example.com";
-        const string extraPermissionId = "perm-001";
+        // BLOCK review comment on PR 1147 — AddUserToDriveAsync grants to the
+        // canonicalized Gmail address, but Drive's permissions.list always
+        // returns that same canonical form. Expected-member keys built from
+        // the member's raw plus-tagged stored email must be canonicalized the
+        // same way, or the member never resolves to Correct and thrashes
+        // grant/revoke every night.
+        const string plusAddressedEmail = "alice+travel@gmail.com";
+        const string canonicalEmail = "alice@gmail.com";
 
-        SetupExtraDriveMemberScenario(extraEmail, extraPermissionId);
+        var driveResource = MakeDriveFolderResource(TestDriveFolderResourceId, TestTeamId, TestGoogleFolderId);
+        _resourceRepository
+            .GetByIdAsync(TestDriveFolderResourceId, Arg.Any<CancellationToken>())
+            .Returns(driveResource);
+        _resourceRepository
+            .GetActiveDriveFoldersAsync(Arg.Any<CancellationToken>())
+            .Returns([driveResource]);
 
-        _permissionFailureRepository
-            .ExistsAsync(TestGoogleFolderId, extraPermissionId, Arg.Any<CancellationToken>())
-            .Returns(true);
+        var member = new TeamMemberInfo(
+            Guid.NewGuid(), TestUserId, "Alice Test", plusAddressedEmail, null,
+            TeamMemberRole.Member, Instant.MinValue, GoogleEmailStatus.Valid);
+        var teamInfo = new TeamInfo(
+            TestTeamId, "Test Team", null, "test-team",
+            IsActive: true, IsSystemTeam: false, SystemTeamType: SystemTeamType.None,
+            RequiresApproval: false, IsPublicPage: false, IsHidden: false,
+            IsPromotedToDirectory: false, CreatedAt: Instant.MinValue,
+            Members: [member]);
+        _teamService
+            .GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, TeamInfo> { [TestTeamId] = teamInfo });
 
-        await _syncService.SyncSingleResourceAsync(TestDriveFolderResourceId, SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
+        _userEmailService
+            .GetEntitiesByUserIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, IReadOnlyList<UserEmailRowSnapshot>>
+            {
+                [TestUserId] =
+                [
+                    new UserEmailRowSnapshot(
+                        Guid.NewGuid(), TestUserId, plusAddressedEmail,
+                        IsVerified: true, Provider: null, ProviderKey: null, IsGoogle: true,
+                        IsPrimary: false, Visibility: null, VerificationSentAt: null,
+                        CreatedAt: default, UpdatedAt: default)
+                ]
+            });
 
-        await _drivePermissions.DidNotReceive()
-            .DeletePermissionAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        // Drive reports the permission it actually granted — the
+        // canonicalized address, matching what AddUserToDriveAsync targets.
+        _drivePermissions
+            .ListPermissionsAsync(TestGoogleFolderId, Arg.Any<CancellationToken>())
+            .Returns(new DrivePermissionListResult(
+                Permissions: [
+                    new DrivePermission(
+                        Id: "perm-canonical",
+                        Type: "user",
+                        Role: "writer",
+                        EmailAddress: canonicalEmail,
+                        HasInheritedComponent: false)
+                ],
+                Error: null));
+
+        var diff = await _syncService.SyncSingleResourceAsync(
+            TestDriveFolderResourceId, SyncAction.Preview, Xunit.TestContext.Current.CancellationToken);
+
+        var memberStatus = diff.Members.Should().ContainSingle().Subject;
+        memberStatus.State.Should().Be(MemberSyncState.Correct,
+            because: "the canonical Drive permission must match the plus-addressed member's expected key, not read as Missing/Extra");
     }
 
-    private void SetupExtraDriveMemberScenario(string extraEmail, string extraPermissionId)
+    private void SetupExtraDriveMemberScenario(string extraEmail, string extraPermissionId, bool hasInheritedComponent)
     {
         _syncSettingsService
             .GetModeAsync(SyncServiceType.GoogleDrive, Arg.Any<CancellationToken>())
@@ -575,7 +644,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
                         Type: "user",
                         Role: "writer",
                         EmailAddress: extraEmail,
-                        IsInheritedOnly: false)
+                        HasInheritedComponent: hasInheritedComponent)
                 ],
                 Error: null));
 

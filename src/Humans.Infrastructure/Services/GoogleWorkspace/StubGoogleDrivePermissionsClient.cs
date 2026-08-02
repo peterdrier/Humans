@@ -112,7 +112,7 @@ public sealed class StubGoogleDrivePermissionsClient(ILogger<StubGoogleDrivePerm
                 Type: "user",
                 Role: role,
                 EmailAddress: userEmail,
-                IsInheritedOnly: false));
+                HasInheritedComponent: false));
 
             return Task.FromResult(new DrivePermissionMutationResult(
                 DrivePermissionCreateOutcome.Created, Error: null));

@@ -40,7 +40,6 @@ internal sealed class HumansDbContext(DbContextOptions<HumansDbContext> options)
     public DbSet<TeamEarlyEntryGrant> TeamEarlyEntryGrants => Set<TeamEarlyEntryGrant>();
     public DbSet<GoogleResource> GoogleResources => Set<GoogleResource>();
     public DbSet<GoogleSyncOutboxEvent> GoogleSyncOutboxEvents => Set<GoogleSyncOutboxEvent>();
-    public DbSet<GoogleDrivePermissionFailure> GoogleDrivePermissionFailures => Set<GoogleDrivePermissionFailure>();
     public DbSet<ContactField> ContactFields => Set<ContactField>();
     public DbSet<UserEmail> UserEmails => Set<UserEmail>();
     public DbSet<VolunteerHistoryEntry> VolunteerHistoryEntries => Set<VolunteerHistoryEntry>();

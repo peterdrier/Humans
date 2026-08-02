@@ -2018,43 +2018,6 @@ namespace Humans.Infrastructure.Migrations
                     b.ToTable("general_availability", (string)null);
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.GoogleDrivePermissionFailure", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Instant>("DetectedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Email")
-                        .IsRequired()
-                        .HasMaxLength(320)
-                        .HasColumnType("character varying(320)");
-
-                    b.Property<string>("ErrorMessage")
-                        .IsRequired()
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)");
-
-                    b.Property<string>("GoogleId")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
-
-                    b.Property<string>("PermissionId")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("GoogleId", "PermissionId")
-                        .IsUnique();
-
-                    b.ToTable("google_drive_permission_failures", (string)null);
-                });
-
             modelBuilder.Entity("Humans.Domain.Entities.GoogleResource", b =>
                 {
                     b.Property<Guid>("Id")
@@ -4454,7 +4417,7 @@ namespace Humans.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("DataProtectionKeys");
+                    b.ToTable("DataProtectionKeys", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole<System.Guid>", b =>
