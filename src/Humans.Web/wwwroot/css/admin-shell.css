@@ -106,6 +106,16 @@ body.admin-shell .m-nav .dropdown > .btn-link:focus {
     color: var(--h-gold);
 }
 
+/* The admin topbar keeps the avatar at the far right at every width, so keep the
+   menu end-aligned below the lg breakpoint too — the partial's dropdown-menu-lg-end
+   only fits the public navbar, whose collapsed toggle sits mid-row on the left. */
+@media (max-width: 991.98px) {
+    body.admin-shell .m-nav .profile-dropdown-menu {
+        right: 0;
+        left: auto;
+    }
+}
+
 /* ── Sidebar ──────────────────────────────────────────────────────────── */
 
 body.admin-shell .sidebar {
