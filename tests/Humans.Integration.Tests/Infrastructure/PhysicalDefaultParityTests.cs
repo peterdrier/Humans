@@ -1,7 +1,9 @@
 using AwesomeAssertions;
 using Humans.Infrastructure.Data;
+using Humans.Infrastructure.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.Extensions.Logging.Abstractions;
 using Npgsql;
 using Testcontainers.PostgreSql;
 using Xunit;
@@ -18,15 +20,27 @@ namespace Humans.Integration.Tests.Infrastructure;
 /// schema from old-chain schema and walling off that section's future peel.
 /// </summary>
 /// <remarks>
+/// <para>
 /// The check is <b>presence parity</b> per column: the model declares a default
 /// (<c>HasDefaultValue</c>/<c>HasDefaultValueSql</c>) if and only if the
 /// chain-built database has one. Comparing presence rather than rendered SQL
 /// keeps the test immune to Postgres literal-formatting noise while still
 /// catching both divergence directions. Identity columns are exempt (their
-/// generation is not a column default). When this test fails on a new column:
-/// declare the default in the model too (see the bool-sentinel rules in
+/// generation is not a column default).
+/// </para>
+/// <para>
+/// Coverage spans <b>every</b> DbContext in Humans.Infrastructure, discovered
+/// by reflection: the main pile migrates its historical chain, then each
+/// section context runs through <see cref="SectionMigrationRunner"/> exactly
+/// as production boot does — so a scaffolded default introduced by a
+/// <em>section's own</em> migration chain fails here too, and future peels are
+/// covered without touching this file. When this test fails on a new column:
+/// required columns need Peter's approval in the first place
+/// (<c>memory/architecture/required-columns-need-approval.md</c>); declare the
+/// approved default in the model (see the bool-sentinel rules in
 /// <c>.claude/agents/ef-migration-reviewer.md</c>) or ship a realignment
 /// migration dropping the scaffolded default — never leave the two disagreeing.
+/// </para>
 /// </remarks>
 public sealed class PhysicalDefaultParityTests : IAsyncLifetime
 {
@@ -48,20 +62,38 @@ public sealed class PhysicalDefaultParityTests : IAsyncLifetime
     {
         var connectionString = await CreateDatabaseAsync("default_parity");
 
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
-            .UseNpgsql(connectionString, npgsql =>
-            {
-                npgsql.UseNodaTime();
-                npgsql.MigrationsAssembly("Humans.Infrastructure");
-            })
-            .Options;
+        var contextTypes = typeof(HumansDbContext).Assembly.GetTypes()
+            .Where(t => t is { IsClass: true, IsAbstract: false } && typeof(DbContext).IsAssignableFrom(t))
+            .OrderBy(t => t == typeof(HumansDbContext) ? 0 : 1) // historical chain provisions everything first
+            .ThenBy(t => t.Name, StringComparer.Ordinal)
+            .ToList();
+        contextTypes.Should().Contain(typeof(HumansDbContext));
+        contextTypes.Count.Should().BeGreaterThan(1, "the section contexts must be discovered too");
 
-        // (table, column) -> model declares a default. Multiple properties can
-        // map to one column (TPH); the column declares a default if any does.
+        // (table, column) -> any mapping context declares a default. Multiple
+        // properties can map to one column (TPH); it declares if any does.
         var modelColumns = new Dictionary<(string Table, string Column), bool>();
-        await using (var db = new HumansDbContext(options))
+        foreach (var contextType in contextTypes)
         {
-            await db.Database.MigrateAsync(TestContext.Current.CancellationToken);
+            await using var db = CreateContext(contextType, connectionString);
+            if (contextType == typeof(HumansDbContext))
+            {
+                await db.Database.MigrateAsync(TestContext.Current.CancellationToken);
+            }
+            else
+            {
+                // Any owned table works as the existence sentinel: the chain
+                // just created them all, so the runner takes the same
+                // mark-applied path it takes on production, then applies any
+                // post-baseline section migrations for real.
+                var sentinel = db.Model.GetEntityTypes()
+                    .Select(e => e.GetTableName())
+                    .OfType<string>()
+                    .Order(StringComparer.Ordinal)
+                    .First();
+                await SectionMigrationRunner.MigrateAsync(
+                    db, sentinel, NullLogger.Instance, TestContext.Current.CancellationToken);
+            }
 
             foreach (var entity in db.Model.GetEntityTypes())
             {
@@ -102,7 +134,7 @@ public sealed class PhysicalDefaultParityTests : IAsyncLifetime
             {
                 var key = (reader.GetString(0), reader.GetString(1));
                 if (!modelColumns.TryGetValue(key, out var modelDeclares))
-                    continue; // column not mapped by HumansDbContext (peeled section, pending physical drop, EF history)
+                    continue; // column mapped by no context (pending physical drop, EF history tables)
 
                 var dbHas = reader.GetBoolean(2);
                 if (dbHas == modelDeclares)
@@ -120,6 +152,20 @@ public sealed class PhysicalDefaultParityTests : IAsyncLifetime
         string.Join(Environment.NewLine, mismatches).Should().BeEmpty(
             "every column's default must agree between the model and the chain-built schema " +
             "— see PhysicalDefaultParityTests remarks for how to fix a divergence");
+    }
+
+    private static DbContext CreateContext(Type contextType, string connectionString)
+    {
+        var optionsBuilder = (DbContextOptionsBuilder)Activator.CreateInstance(
+            typeof(DbContextOptionsBuilder<>).MakeGenericType(contextType))!;
+        optionsBuilder.UseNpgsql(connectionString, npgsql =>
+        {
+            npgsql.UseNodaTime();
+            npgsql.MigrationsAssembly("Humans.Infrastructure");
+            if (contextType != typeof(HumansDbContext))
+                npgsql.MigrationsHistoryTable(SectionMigrationsHistory.TableFor(contextType));
+        });
+        return (DbContext)Activator.CreateInstance(contextType, optionsBuilder.Options)!;
     }
 
     private async Task<string> CreateDatabaseAsync(string name)

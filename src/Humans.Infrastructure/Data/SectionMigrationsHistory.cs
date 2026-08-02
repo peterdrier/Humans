@@ -18,6 +18,13 @@ internal static class SectionMigrationsHistory
     /// </summary>
     public static string TableFor<TContext>()
         where TContext : DbContext =>
+        TableFor(typeof(TContext));
+
+    /// <summary>
+    /// Non-generic form for reflection-based callers (context types discovered
+    /// at runtime, e.g. <c>PhysicalDefaultParityTests</c>).
+    /// </summary>
+    public static string TableFor(Type contextType) =>
         "__EFMigrationsHistory_" +
-        typeof(TContext).Name.Replace("DbContext", "", StringComparison.Ordinal);
+        contextType.Name.Replace("DbContext", "", StringComparison.Ordinal);
 }
