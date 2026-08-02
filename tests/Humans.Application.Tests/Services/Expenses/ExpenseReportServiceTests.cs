@@ -16,9 +16,11 @@ using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.Expenses;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 
 namespace Humans.Application.Tests.Services.Expenses;
 
@@ -669,6 +671,69 @@ public sealed class ExpenseReportServiceTests : ServiceTestHarness
         var result = await _sut.SubmitWithResultAsync(id, submitter, Xunit.TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task SubmitWithResultAsync_LogsWarning_NoException_WhenValidationFails()
+    {
+        var logger = Substitute.For<ILogger<ExpenseReportService>>();
+        var sut = new ExpenseReportService(
+            _expenseRepo, _fileStorage, _budgetService, _teamService, _userService,
+            AuditLog, _holdedClient, _holdedFinance, Clock, logger,
+            Options.Create(new TravelReimbursementConfig()));
+
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var id = await sut.CreateDraftAsync(submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        await sut.AddLineAsync(id, submitter, "No attachment line", 50m, ct: Xunit.TestContext.Current.CancellationToken); // Receipt line, no attachment
+        SetupUserAndProfile(submitter, "Bob", "ES1234");
+
+        var result = await sut.SubmitWithResultAsync(id, submitter, Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        logger.Received().Log(
+            LogLevel.Warning,
+            Arg.Any<EventId>(),
+            Arg.Any<object>(),
+            Arg.Is<Exception?>(e => e == null),
+            Arg.Any<Func<object, Exception?, string>>());
+        logger.DidNotReceive().Log(
+            LogLevel.Error,
+            Arg.Any<EventId>(),
+            Arg.Any<object>(),
+            Arg.Any<Exception?>(),
+            Arg.Any<Func<object, Exception?, string>>());
+    }
+
+    [HumansFact]
+    public async Task SubmitWithResultAsync_LogsError_WithException_ForGenuineFault()
+    {
+        var logger = Substitute.For<ILogger<ExpenseReportService>>();
+        var sut = new ExpenseReportService(
+            _expenseRepo, _fileStorage, _budgetService, _teamService, _userService,
+            AuditLog, _holdedClient, _holdedFinance, Clock, logger,
+            Options.Create(new TravelReimbursementConfig()));
+
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var id = await sut.CreateDraftAsync(submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var lineId = await sut.AddLineAsync(id, submitter, "Item", 50m, ct: Xunit.TestContext.Current.CancellationToken);
+        var attachId = await _expenseRepo.AddAttachmentAsync(MakeAttachment(submitter), Xunit.TestContext.Current.CancellationToken);
+        await _expenseRepo.SetLineAttachmentAsync(lineId, attachId, Xunit.TestContext.Current.CancellationToken);
+
+        // Not InvalidOperationException — a genuine fault, not a validation rejection.
+        _userService.GetUserInfoAsync(submitter, Arg.Any<CancellationToken>())
+            .Throws(new TimeoutException("db timeout"));
+
+        var result = await sut.SubmitWithResultAsync(id, submitter, Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        logger.Received().Log(
+            LogLevel.Error,
+            Arg.Any<EventId>(),
+            Arg.Any<object>(),
+            Arg.Is<Exception?>(e => e is TimeoutException),
+            Arg.Any<Func<object, Exception?, string>>());
     }
 
     [HumansFact]

@@ -595,6 +595,17 @@ public sealed class ExpenseReportService(
         {
             return await mutation();
         }
+        catch (InvalidOperationException ex)
+        {
+            // InvalidOperationException is this file's established signal for ordinary,
+            // user-driven validation failures (missing attachment, missing IBAN, etc.) —
+            // not a system fault. Log at Warning with no stack trace so it doesn't pollute
+            // the Error log, but keep it structured and visible in the production log viewer.
+            logger.LogWarning("Expense mutation rejected: {Reason}", ex.Message);
+            return ExpenseMutationResult.Failure(exceptionPrefix is null
+                ? ex.Message
+                : $"{exceptionPrefix}: {ex.Message}");
+        }
         catch (Exception ex)
         {
             logger.LogError(ex, logMessage, logArgs);
