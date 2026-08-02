@@ -23,6 +23,7 @@ public sealed class CantinaRosterService : ICantinaRosterService
     private const int DaysPerWeek = 7;
 
     private readonly IShiftManagementService _shiftMgmt;
+    private readonly IBurnSettingsService _burnSettings;
     private readonly IUserServiceRead _userRead;
     private readonly IClock _clock;
 
@@ -31,32 +32,34 @@ public sealed class CantinaRosterService : ICantinaRosterService
 
     public CantinaRosterService(
         IShiftManagementService shiftMgmt,
+        IBurnSettingsService burnSettings,
         IUserServiceRead userRead,
         IClock clock)
     {
         _shiftMgmt = shiftMgmt;
+        _burnSettings = burnSettings;
         _userRead = userRead;
         _clock = clock;
     }
 
     public async Task<WeeklyRosterDto> GetWeeklyRosterAsync(int weekStartOffset, CancellationToken ct = default)
     {
-        var eventSettings = await _shiftMgmt.GetActiveAsync().ConfigureAwait(false);
-        var weekStartDate = eventSettings is null
+        var burn = await _burnSettings.GetActiveAsync(ct).ConfigureAwait(false);
+        var weekStartDate = burn is null
             ? (LocalDate?)null
-            : eventSettings.GateOpeningDate.PlusDays(weekStartOffset);
+            : burn.GateOpeningDate.PlusDays(weekStartOffset);
         var weekEndDate = weekStartDate?.PlusDays(DaysPerWeek - 1);
-        var eventName = eventSettings?.EventName;
+        var eventName = burn?.EventName;
 
         // "Today" must be computed in the event timezone — the view uses this
         // to highlight the current row in the per-day mini-table. Falling back
         // to view-side DateTime.UtcNow caused a Madrid coordinator to see
         // tomorrow highlighted late in the evening (CET is ahead of UTC).
-        var eventTodayDate = GetEventTodayDate(eventSettings);
+        var eventTodayDate = GetEventTodayDate(burn);
 
         // Per-day cohort: 7 sequential queries for the on-site user ids. At ~500
         // users this is fine (see CLAUDE.md scale notes).
-        var perDay = await LoadWeeklyOnSiteUsersAsync(eventSettings, weekStartOffset, ct).ConfigureAwait(false);
+        var perDay = await LoadWeeklyOnSiteUsersAsync(burn, weekStartOffset, ct).ConfigureAwait(false);
 
         // Build the union of unique on-site user IDs across the week, and
         // map each user id to the set of calendar dates they were on-site.
@@ -69,14 +72,14 @@ public sealed class CantinaRosterService : ICantinaRosterService
         // inside the visible 7 days. This pulls in humans whose only relation to
         // the week is their arrival day (no confirmed shift inside the week).
         // Guarded on an active event — the no-event branch leaves the map empty.
-        if (eventSettings is not null && weekStartDate is { } anchor)
+        if (burn is not null && weekStartDate is { } anchor)
         {
             // Only arrivals landing in [weekStartOffset, weekStartOffset+6] are
             // injected below, so a first confirmed shift past weekStartOffset+7
             // can't produce an in-week arrival — cap the scan there.
             var firstConfirmedOffsetByUser =
                 await BuildFirstConfirmedOffsetByUserAsync(
-                    eventSettings, weekStartOffset + DaysPerWeek, ct).ConfigureAwait(false);
+                    burn, weekStartOffset + DaysPerWeek, ct).ConfigureAwait(false);
             foreach (var (userId, minOffset) in firstConfirmedOffsetByUser)
             {
                 var arrivalOffset = minOffset - 1;
@@ -200,15 +203,15 @@ public sealed class CantinaRosterService : ICantinaRosterService
 
     public async Task<DailyMatrixDto> GetDailyRosterAsync(int dayOffset, CancellationToken ct = default)
     {
-        var eventSettings = await _shiftMgmt.GetActiveAsync().ConfigureAwait(false);
-        var calendarDate = eventSettings is null
+        var burn = await _burnSettings.GetActiveAsync(ct).ConfigureAwait(false);
+        var calendarDate = burn is null
             ? (LocalDate?)null
-            : eventSettings.GateOpeningDate.PlusDays(dayOffset);
-        var eventName = eventSettings?.EventName;
+            : burn.GateOpeningDate.PlusDays(dayOffset);
+        var eventName = burn?.EventName;
 
         // "Today" must be in event timezone (same rationale as the weekly view —
         // a Madrid coordinator late in the evening must not see tomorrow flagged).
-        var eventTodayDate = GetEventTodayDate(eventSettings);
+        var eventTodayDate = GetEventTodayDate(burn);
 
         // Monday-of-week containing this day. With active event use NodaTime
         // day-of-week so the result respects ISO Monday=1. Fallback when no
@@ -229,9 +232,9 @@ public sealed class CantinaRosterService : ICantinaRosterService
             weekStartOffset = dayOffset - ((dayOffset % DaysPerWeek + DaysPerWeek) % DaysPerWeek);
         }
 
-        var shiftUserIds = eventSettings is null
+        var shiftUserIds = burn is null
             ? Array.Empty<Guid>()
-            : await _shiftMgmt.GetOnSiteUserIdsForDayAsync(eventSettings.Id, dayOffset, ct).ConfigureAwait(false);
+            : await _shiftMgmt.GetOnSiteUserIdsForDayAsync(burn.Id, dayOffset, ct).ConfigureAwait(false);
 
         // Arrival-day feeding: a human is fed (present, no shift) the day before
         // their FIRST confirmed shift across the whole event. For day N that
@@ -243,13 +246,13 @@ public sealed class CantinaRosterService : ICantinaRosterService
         // evaluated on the unioned set. Guarded on an active event; the no-event
         // branch leaves the set as the (empty) shift cohort.
         var unionedUserIds = new HashSet<Guid>(shiftUserIds);
-        if (eventSettings is not null)
+        if (burn is not null)
         {
             // Only users whose first confirmed shift is exactly dayOffset+1 are
             // pulled in, so the scan never needs to look past dayOffset+1.
             var firstConfirmedOffsetByUser =
                 await BuildFirstConfirmedOffsetByUserAsync(
-                    eventSettings, dayOffset + 1, ct).ConfigureAwait(false);
+                    burn, dayOffset + 1, ct).ConfigureAwait(false);
             foreach (var (userId, minOffset) in firstConfirmedOffsetByUser)
             {
                 if (minOffset == dayOffset + 1)
@@ -346,7 +349,7 @@ public sealed class CantinaRosterService : ICantinaRosterService
     }
 
     private async Task<List<(int DayOffset, IReadOnlyList<Guid> UserIds)>> LoadWeeklyOnSiteUsersAsync(
-        EventSettings? eventSettings,
+        BurnSettingsInfo? burn,
         int weekStartOffset,
         CancellationToken ct)
     {
@@ -354,9 +357,9 @@ public sealed class CantinaRosterService : ICantinaRosterService
         for (var i = 0; i < DaysPerWeek; i++)
         {
             var dayOffset = weekStartOffset + i;
-            var userIds = eventSettings is null
+            var userIds = burn is null
                 ? Array.Empty<Guid>()
-                : await _shiftMgmt.GetOnSiteUserIdsForDayAsync(eventSettings.Id, dayOffset, ct)
+                : await _shiftMgmt.GetOnSiteUserIdsForDayAsync(burn.Id, dayOffset, ct)
                     .ConfigureAwait(false);
             perDay.Add((dayOffset, userIds));
         }
@@ -376,15 +379,15 @@ public sealed class CantinaRosterService : ICantinaRosterService
     /// which the caller discards anyway, so scanning past it is wasted DB work.
     /// </summary>
     private async Task<Dictionary<Guid, int>> BuildFirstConfirmedOffsetByUserAsync(
-        EventSettings ev,
+        BurnSettingsInfo burn,
         int scanThroughOffset,
         CancellationToken ct)
     {
         var firstOffsetByUser = new Dictionary<Guid, int>();
-        var lastOffset = Math.Min(ev.StrikeEndOffset, scanThroughOffset);
-        for (var offset = ev.BuildStartOffset; offset <= lastOffset; offset++)
+        var lastOffset = Math.Min(burn.StrikeEndOffset, scanThroughOffset);
+        for (var offset = burn.BuildStartOffset; offset <= lastOffset; offset++)
         {
-            var userIds = await _shiftMgmt.GetOnSiteUserIdsForDayAsync(ev.Id, offset, ct).ConfigureAwait(false);
+            var userIds = await _shiftMgmt.GetOnSiteUserIdsForDayAsync(burn.Id, offset, ct).ConfigureAwait(false);
             foreach (var id in userIds)
             {
                 if (!firstOffsetByUser.TryGetValue(id, out var existing) || offset < existing)
@@ -527,12 +530,12 @@ public sealed class CantinaRosterService : ICantinaRosterService
         return noShift;
     }
 
-    private LocalDate? GetEventTodayDate(EventSettings? eventSettings)
+    private LocalDate? GetEventTodayDate(BurnSettingsInfo? burn)
     {
-        if (eventSettings is null)
+        if (burn is null)
             return null;
 
-        var zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId)
+        var zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(burn.TimeZoneId)
             ?? DateTimeZoneProviders.Tzdb["Europe/Madrid"];
         return _clock.GetCurrentInstant().InZone(zone).Date;
     }

@@ -21,7 +21,7 @@ public sealed class AgentToolDispatcher(
     CommunityFaqReader community,
     IAuditViewerService auditViewer,
     IShiftView shiftView,
-    IShiftManagementService shiftManagement,
+    IBurnSettingsService burnSettings,
     ILogger<AgentToolDispatcher> logger) : IAgentToolDispatcher
 {
     internal const int DefaultAuditHistoryLimit = 20;
@@ -148,7 +148,7 @@ public sealed class AgentToolDispatcher(
     private async Task<AnthropicToolResult> DispatchGetShiftDetailsAsync(
         string callId, Guid userId, Guid shiftKey, CancellationToken ct)
     {
-        var activeEvent = await shiftManagement.GetActiveAsync();
+        var activeEvent = await burnSettings.GetActiveAsync(ct);
         if (activeEvent is null)
             return new AnthropicToolResult(callId, "No active event configured.", IsError: true);
 
@@ -181,7 +181,7 @@ public sealed class AgentToolDispatcher(
     }
 
     /// <summary>Renders the get_shift_details blob. All signups passed in must belong to the caller.</summary>
-    private static string RenderShiftDetails(IReadOnlyList<ShiftSignup> signups, EventSettings ev)
+    private static string RenderShiftDetails(IReadOnlyList<ShiftSignup> signups, BurnSettingsInfo ev)
     {
         // Order chronologically so first/last reflect actual span.
         var ordered = signups.OrderBy(s => s.Shift.DayOffset).ToList();

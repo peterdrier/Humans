@@ -159,10 +159,10 @@ public class AgentToolDispatcherTests
 
         var shiftView = MakeViewFor(viewer, signups);
 
-        var shiftMgmt = Substitute.For<Interfaces.Shifts.IShiftManagementService>();
-        shiftMgmt.GetActiveAsync().Returns(ev);
+        var burnSettings = Substitute.For<Interfaces.Shifts.IBurnSettingsService>();
+        burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(ev);
 
-        var dispatcher = MakeDispatcher(shiftView: shiftView, shiftManagement: shiftMgmt);
+        var dispatcher = MakeDispatcher(shiftView: shiftView, burnSettings: burnSettings);
 
         var result = await dispatcher.DispatchAsync(
             new AnthropicToolCall("t1", AgentToolNames.GetShiftDetails,
@@ -190,10 +190,10 @@ public class AgentToolDispatcherTests
 
         var shiftView = MakeViewFor(viewer, [signup]);
 
-        var shiftMgmt = Substitute.For<Interfaces.Shifts.IShiftManagementService>();
-        shiftMgmt.GetActiveAsync().Returns(ev);
+        var burnSettings = Substitute.For<Interfaces.Shifts.IBurnSettingsService>();
+        burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(ev);
 
-        var dispatcher = MakeDispatcher(shiftView: shiftView, shiftManagement: shiftMgmt);
+        var dispatcher = MakeDispatcher(shiftView: shiftView, burnSettings: burnSettings);
 
         var result = await dispatcher.DispatchAsync(
             new AnthropicToolCall("t1", AgentToolNames.GetShiftDetails,
@@ -215,10 +215,10 @@ public class AgentToolDispatcherTests
 
         var shiftView = MakeViewFor(viewer, []);
 
-        var shiftMgmt = Substitute.For<Interfaces.Shifts.IShiftManagementService>();
-        shiftMgmt.GetActiveAsync().Returns(ev);
+        var burnSettings = Substitute.For<Interfaces.Shifts.IBurnSettingsService>();
+        burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(ev);
 
-        var dispatcher = MakeDispatcher(shiftView: shiftView, shiftManagement: shiftMgmt);
+        var dispatcher = MakeDispatcher(shiftView: shiftView, burnSettings: burnSettings);
 
         var result = await dispatcher.DispatchAsync(
             new AnthropicToolCall("t1", AgentToolNames.GetShiftDetails,
@@ -243,10 +243,10 @@ public class AgentToolDispatcherTests
         // Viewer has zero signups in their cached view.
         var shiftView = MakeViewFor(viewer, []);
 
-        var shiftMgmt = Substitute.For<Interfaces.Shifts.IShiftManagementService>();
-        shiftMgmt.GetActiveAsync().Returns(ev);
+        var burnSettings = Substitute.For<Interfaces.Shifts.IBurnSettingsService>();
+        burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(ev);
 
-        var dispatcher = MakeDispatcher(shiftView: shiftView, shiftManagement: shiftMgmt);
+        var dispatcher = MakeDispatcher(shiftView: shiftView, burnSettings: burnSettings);
 
         var result = await dispatcher.DispatchAsync(
             new AnthropicToolCall("t1", AgentToolNames.GetShiftDetails,
@@ -270,18 +270,22 @@ public class AgentToolDispatcherTests
         result.Content.Should().Contain("must be a valid GUID");
     }
 
-    private static Humans.Domain.Entities.EventSettings MakeEventSettings() => new()
-    {
-        Id = Guid.NewGuid(),
-        EventName = "Test",
-        Year = 2026,
-        TimeZoneId = "Europe/Madrid",
-        GateOpeningDate = new NodaTime.LocalDate(2026, 7, 1),
-        BuildStartOffset = -14,
-        EventEndOffset = 6,
-        StrikeEndOffset = 9,
-        IsActive = true
-    };
+    private static Humans.Application.Interfaces.Shifts.BurnSettingsInfo MakeEventSettings() => new(
+        Id: Guid.NewGuid(),
+        EventName: "Test",
+        Year: 2026,
+        TimeZoneId: "Europe/Madrid",
+        GateOpeningDate: new NodaTime.LocalDate(2026, 7, 1),
+        BuildStartOffset: -14,
+        EventEndOffset: 6,
+        StrikeEndOffset: 9,
+        FirstCrewStartOffset: 0,
+        SetupWeekStartOffset: 0,
+        PreEventWeekStartOffset: 0,
+        FinishingWeekendStartOffset: 0,
+        EarlyEntryCapacity: new Dictionary<int, int>(),
+        BarriosEarlyEntryAllocation: null,
+        EarlyEntryClose: null);
 
     private static Humans.Domain.Entities.Shift MakeShift(
         Humans.Domain.Entities.Rota rota, int dayOffset, bool isAllDay,
@@ -438,7 +442,7 @@ public class AgentToolDispatcherTests
     private static Humans.Infrastructure.Services.Agent.AgentToolDispatcher MakeDispatcher(
         Humans.Application.Interfaces.AuditLog.IAuditViewerService? auditViewer = null,
         Interfaces.Shifts.IShiftView? shiftView = null,
-        Interfaces.Shifts.IShiftManagementService? shiftManagement = null,
+        Interfaces.Shifts.IBurnSettingsService? burnSettings = null,
         Humans.Application.Interfaces.IGuideContentSource? source = null)
     {
         var cache = new Microsoft.Extensions.Caching.Memory.MemoryCache(
@@ -463,7 +467,7 @@ public class AgentToolDispatcherTests
             community,
             auditViewer ?? new StubAuditViewer(),
             shiftView ?? Substitute.For<Interfaces.Shifts.IShiftView>(),
-            shiftManagement ?? Substitute.For<Interfaces.Shifts.IShiftManagementService>(),
+            burnSettings ?? Substitute.For<Interfaces.Shifts.IBurnSettingsService>(),
             logger);
     }
 
