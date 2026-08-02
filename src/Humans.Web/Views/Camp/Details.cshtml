@@ -19,12 +19,11 @@
         {
             if (Model.ImageUrls.Count == 1)
             {
-                <img src="@Model.ImageUrls[0]" class="img-fluid rounded mb-4" alt="@Model.Name"
-                     style="width: 100%; max-height: 400px; object-fit: cover;" />
+                <img src="@Model.ImageUrls[0]" class="w-100 rounded mb-4 camp-carousel-img" alt="@Model.Name" />
             }
             else
             {
-                <div id="campCarousel" class="carousel slide mb-4" data-bs-ride="carousel">
+                <div id="campCarousel" class="carousel slide mb-4">
                     <div class="carousel-indicators">
                         @for (var i = 0; i < Model.ImageUrls.Count; i++)
                         {
@@ -36,8 +35,7 @@
                         @for (var i = 0; i < Model.ImageUrls.Count; i++)
                         {
                             <div class="carousel-item @(i == 0 ? "active" : "")">
-                                <img src="@Model.ImageUrls[i]" class="d-block w-100 rounded" alt="@Model.Name"
-                                     style="max-height: 400px; object-fit: cover;" />
+                                <img src="@Model.ImageUrls[i]" class="d-block w-100 rounded camp-carousel-img" alt="@Model.Name" />
                             </div>
                         }
                     </div>

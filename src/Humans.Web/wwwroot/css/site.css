@@ -2097,3 +2097,19 @@ body.city-map-fullscreen main {
     font-weight: 600;
     color: var(--h-aged-ink); /* #3d2b1f — high contrast on parchment card */
 }
+
+/* ── Barrio image carousel (issue #956) ─────────────────────────────────
+   Fixed slide height so mixed-aspect images don't reflow the page as the
+   carousel advances; object-fit crops instead of the box auto-sizing. */
+.camp-carousel-img {
+    width: 100%;
+    height: 400px;
+    display: block;
+    object-fit: cover;
+}
+
+@media (max-width: 575.98px) {
+    .camp-carousel-img {
+        height: 220px;
+    }
+}
