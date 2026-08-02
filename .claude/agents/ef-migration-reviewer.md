@@ -24,7 +24,8 @@ Run this agent after generating any EF Core migration, before committing or push
 **Read the generated `.cs` file** (not the `.Designer.cs`). Check:
 
 - **No empty SET clauses:** Search for `UpdateData` calls. Each must have `column:` and `value:` parameters. If any UpdateData exists without a value, the bool sentinel trap has struck.
-- **AddColumn with defaults:** Non-nullable columns added to tables with existing data MUST have a `defaultValue:` parameter, or the migration will fail on production databases with existing rows.
+- **New required columns are forbidden without Peter's approval** (`memory/architecture/required-columns-need-approval.md`): a new column on an existing table must be **nullable** unless Peter explicitly approved a required one. Flag ANY `AddColumn` with `nullable: false` on an existing table as a violation unless the PR cites that approval.
+- **AddColumn with defaults:** if a (Peter-approved) non-nullable column is added to a table with existing data it needs a `defaultValue:` to apply — and then the model MUST declare the same default (`HasDefaultValue`/`HasDefaultValueSql`, minding the bool-sentinel rules above), so model and database agree. A scaffolded `defaultValue:` with no matching model declaration is the §5.1 divergence class (31-stray incident, 2026-08-02) and fails `PhysicalDefaultParityTests`.
 - **Correct namespace:** Must be `Humans.Infrastructure.Migrations`, NOT `Humans.Infrastructure.Data.Migrations` or anything else.
 - **No hand edits:** The migration should be exactly what `dotnet ef migrations add` generated. Never edit Up/Down methods.
 
