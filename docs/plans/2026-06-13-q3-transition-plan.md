@@ -307,7 +307,7 @@ sections and shared contracts noted explicitly. (`—` = not yet audited.)
 | Cantina | vertical | 3 gaps | — | ✅ | — | — |
 | CityPlanning | vertical | 2 gaps | — | 3 gaps | — | — |
 | Containers | vertical | ✅ | — | 2 gaps | — | — |
-| Debug | vertical | 1 gap | — | 1 gap | — | — |
+| Debug | vertical | ✅ | — | 1 gap | — | — |
 | Development *(new 2026-08-03 — dev-only, never loaded in prod; takes DevLogin/DevSeed)* | vertical | — | — | — | — | — |
 | Email | vertical | 3 gaps | — | 3 gaps | — | — |
 | Events | vertical | 2 gaps | — | 1 gap | — | — |
@@ -322,7 +322,7 @@ sections and shared contracts noted explicitly. (`—` = not yet audited.)
 | Holded | **vendor connector** | ✅ | — | ✅ | — | — |
 | Issues | vertical | 2 gaps | — | 3 gaps | — | — |
 | Consent *(renamed from LegalAndConsent)* | vertical | 3 gaps | — | 4 gaps | — | — |
-| Mailer | **vendor connector** | ✅ | — | ✅ | — | — |
+| Mailer | **vendor connector** | ✅ | — | 1 gap | — | — |
 | Notifications | vertical | 2 gaps | — | 2 gaps | — | — |
 | Onboarding | **orchestrator** | ✅ | — | 1 gap | — | — |
 | Scanner | vertical | ✅ | — | ✅ | — | — |

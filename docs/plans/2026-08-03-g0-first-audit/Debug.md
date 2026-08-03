@@ -47,7 +47,10 @@ Flagged separately: these are gated behind `IWebHostEnvironment`/Development-onl
 ## G1 gap list
 
 1. ~~No `docs/sections/Debug.md`~~ — **retracted 2026-08-03**: the file exists and is git-tracked (see predicate 7). Not a gap.
-2. **Section-boundary ambiguity: does "Debug" include `DevLogin`/`DevSeed`?** — needs an explicit decision recorded in the G0 section-inventory step (Q3 plan's "Section inventory frozen: the tracker table below confirmed as the canonical section list"). If yes, `DevLoginController`'s `IUserEmailService` dependency is a crosscut violation to queue for G1 fix (route dev-login through `IUserServiceRead` plus a narrower seeding-specific read/write surface, or explicitly grandfather it as dev-tooling exempt). No migration needed (y).
+2. ~~**Section-boundary ambiguity: does "Debug" include `DevLogin`/`DevSeed`?**~~ — **resolved 2026-08-03**: the frozen inventory moves `DevLoginController`/`DevSeedController` to the new **Development** section, so they are out of Debug's scope. `DevLoginController`'s `IUserEmailService` crosscut dependency carries over to the **Development** audit that still has to happen — it is not a Debug G1 gap. Not a gap.
+
+**No G1 gaps remain for Debug.** Both numbered items above are retracted or reassigned, and every
+G1 predicate for the effective `DebugController`-only scope is N/A or PASS.
 
 ## G3 gap list
 
@@ -60,4 +63,4 @@ Flagged separately: these are gated behind `IWebHostEnvironment`/Development-onl
 
 ## Verdict
 
-`G1: 1 gap (DebugController) · G3: 1 gap (DebugController)` — corrected 2026-08-03: the missing-section-doc gap is withdrawn (the file exists), and the DevLogin/DevSeed scope question is **resolved**, not open — the frozen inventory moves those controllers to the new **Development** section, so they are out of Debug's scope and their findings must be re-audited under Development rather than counted here. Debug is a **vertical** section in the frozen taxonomy.
+`G1: met · G3: 1 gap (DebugController)` — corrected 2026-08-03 (G1 was "1 gap"): the missing-section-doc gap is withdrawn (the file exists), and the DevLogin/DevSeed scope question is **resolved**, not open — the frozen inventory moves those controllers to the new **Development** section, so they are out of Debug's scope and their findings must be re-audited under Development rather than counted here. Debug is a **vertical** section in the frozen taxonomy.

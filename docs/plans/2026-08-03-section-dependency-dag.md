@@ -76,12 +76,27 @@ shared web-shell code. They are excluded from the counts here and must not be us
 and hide that the dependencies live in the web shell. The `DB[Dashboard]` node and its four arrows
 are likewise retained in the diagram below for traceability only.
 
-Counting on that basis: **73** distinct consumer→provider section pairs (77 as previously counted,
-less Dashboard's 4) across **25** vertical sections (26 as previously counted, less Dashboard).
-The 77/26 figures came from 71 original pairs + 6 found 2026-08-03 (Agent→Teams, Agent→Consent,
-Agent→Feedback, Agent→Tickets, Agent→Shifts, Email→SystemSettings) across 25 sections + `Agent`,
-which the original edge-collection pass omitted despite it already being a real
-`reforge.surface-score.json` section.
+Counting on that basis: **75** distinct consumer→provider section pairs (79 as previously counted,
+less Dashboard's 4), across a node set that gains **2** sections this pass (`Holded`, `Mailer`).
+The 79 figure came from 71 original pairs + 8 found 2026-08-03 (Agent→Teams, Agent→Consent,
+Agent→Feedback, Agent→Tickets, Agent→Shifts, Email→SystemSettings, **Expenses→Holded**,
+**Finance→Holded**) across the original section set + `Agent` + `Holded` + `Mailer`.
+
+*(The absolute section-count figure is deliberately not restated here: the previously published
+"26 sections" and the diagram's own node list disagree by one, a discrepancy that predates this
+pass. The pair counts above are verified directly against the diagram — 79 arrows, 4 of them
+Dashboard's. The node tally needs its own recount, tracked with the other config
+back-propagation follow-ups.)*
+
+Three collection errors account for the growth. The original pass omitted `Agent` despite it
+already being a real `reforge.surface-score.json` section. It also read the vendor connectors
+through that same config, which bundles `Holded*` under `Finance` and `Mailer*` under `Email`
+— the freeze keeps both as separate vendor-connector rows, so `Holded` gains a node plus its
+two inbound `IHoldedClient` edges (**+2 pairs**), and `Mailer` gains a node that takes over the
+two audience edges previously attributed to `Email` (**a relabel, +1 node, +0 pairs** — `Email`
+keeps its own `Email→SystemSettings` edge and stays in the graph). Re-owning the Mailer edges
+does not disturb the cycle analysis below: no listed cycle runs through `Email→Shifts` or
+`Email→Tickets`.
 
 ```mermaid
 flowchart LR
@@ -111,6 +126,8 @@ flowchart LR
     EX[Expenses]
     CT[Containers]
     EM[Email]
+    ML[Mailer]
+    HD[Holded]
     AG[Agent]
 
     TM --> SH
@@ -179,9 +196,11 @@ flowchart LR
     EX --> BD
     EX --> TM
     EX --> FN
+    EX --> HD
+    FN --> HD
     CT --> CP
-    EM --> SH
-    EM --> TK
+    ML --> SH
+    ML --> TK
     EV --> SH
     EV --> EM
     AG --> TM
@@ -268,9 +287,11 @@ write and read sides are different classes — see below).**
 | Expenses | Budget | full-service | `IBudgetService` | |
 | Expenses | Teams | full-service | `ITeamService` | |
 | Expenses | Finance | full-service | `IHoldedFinanceService` | |
+| Expenses | Holded | full-service | `IHoldedClient` (`ExpenseReportService.cs:36`) | **Added 2026-08-03** — omitted because the original pass read `Holded*` as part of `Finance` per `reforge.surface-score.json`; `Holded` is its own vendor-connector row, so this is a distinct edge alongside the `IHoldedFinanceService` one above |
+| Finance | Holded | full-service | `IHoldedClient` (`HoldedFinanceService.cs:20`) | **Added 2026-08-03** — same cause; `Finance` reaching the vendor client directly is the connector edge the `Holded` row exists to carry |
 | Containers | Camps | read-interface | `ICampServiceRead` | |
-| Email | Shifts | read-interface | `IShiftView` (Mailer audience classes, fanned via `IEnumerable<IMailerAudience>`) | Not drawn in `dependency-graph.md`'s diagram (per-audience deps excluded there as noise) |
-| Email | Tickets | read-interface | `ITicketServiceRead` (Mailer audience classes) | Same as above |
+| Mailer | Shifts | read-interface | `IShiftView` (Mailer audience classes, fanned via `IEnumerable<IMailerAudience>`) | **Owner corrected 2026-08-03** — was attributed to `Email`. The freeze keeps `Mailer` a separate vendor-connector section (and this document's own §"keep `Mailer` and `Holded` as vendor-connector rows" says so); only `reforge.surface-score.json` still bundles the `Mailer*` paths under `Email`, which is the config back-propagation follow-up, not an ownership fact. Not drawn in `dependency-graph.md`'s diagram (per-audience deps excluded there as noise) |
+| Mailer | Tickets | read-interface | `ITicketServiceRead` (Mailer audience classes) | Same as above, same owner correction |
 | Events | Shifts | full-service | `IBurnSettingsService` | |
 | Events | Email | full-service | `IEmailService` | |
 | Agent | Teams | read-interface | `ITeamServiceRead` (`AgentUserSnapshotProvider`) | **Added 2026-08-03** — Agent section omitted from the original edge-collection pass entirely (it's not a missing-from-inventory section; it's already in `reforge.surface-score.json`) |
@@ -293,8 +314,11 @@ orphaned — verified via direct grep + exact-case file reads:
   `ExpensesController` (`:22`), intra-section.
 - `IEmailOutboxServiceRead` (Email) — `ProfileController` (`:70`) and
   `UsersAdminController` (`:31`), **both Users-section Web controllers** — a live
-  cross-contract edge (Users → Email) not currently drawn anywhere in this DAG;
-  additional evidence for Challenged edge #1's "Users is not outbound-edge-free" finding.
+  cross-contract edge (Users → Email), now drawn as the second `Users` row in the
+  shared-contract outbound-edges table below (corrected 2026-08-03: this bullet previously
+  said the edge was "not currently drawn anywhere in this DAG", which contradicted that
+  table once it was added); additional evidence for Challenged edge #1's "Users is not
+  outbound-edge-free" finding.
 - `ICalendarServiceRead` (Calendar) — `CalendarController.cs:26`, intra-section.
 - `ILegalDocumentCacheInvalidator` (Consent) — resolved via
   `services.GetService<ILegalDocumentCacheInvalidator>()` in

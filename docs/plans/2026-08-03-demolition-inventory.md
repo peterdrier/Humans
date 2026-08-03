@@ -623,9 +623,16 @@ ahead of G5's project split.
   and the #864 absorption, not the code.) Against the frozen tracker, the rows carrying no
   audit result are **five**: `Gate`, `Settings`, `Development`, `Gdpr`, `Search` — all admitted
   at the 2026-08-03 freeze, after this inventory's audit pass. `Shortlinks` (#810) is separate:
-  it is `n/a`/`n/a` in the tracker because it genuinely does not exist yet. So for G2 purposes
-  the unchecked surfaces are those five rows plus Shortlinks-when-built — and of the five,
-  `Settings`'s tables were in fact swept here under the System Settings heading.
+  it is `n/a`/`n/a` in the tracker because it genuinely does not exist yet.
+
+  **Missing G1/G3 scorecards ≠ missing demolition coverage (corrected 2026-08-03).** Those five
+  rows lack *audit scorecards*; that is not the same as lacking a demolition sweep. Two of the
+  five were in fact swept by this inventory and appear in the no-findings list above:
+  **`Gate`** (no owned tables) and **`Settings`** (under the *System Settings* heading). Calling
+  them unchecked for G2 contradicts this document's own findings and would schedule duplicate
+  audit work. So for G2 purposes the genuinely unchecked surfaces are **three** — `Development`,
+  `Gdpr`, `Search` — plus Shortlinks-when-built. `Gate` and `Settings` still owe a G1/G3
+  scorecard, but their demolition coverage is complete.
 - This inventory did not attempt a full grep for every `[Obsolete]` property outside
   `Humans.Domain/Entities` (e.g. Application/Web-layer obsolete DTOs, view models) — scope was
   held to entities + EF configurations per the task brief. A follow-up pass could widen to

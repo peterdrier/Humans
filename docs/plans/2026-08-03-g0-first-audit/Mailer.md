@@ -28,10 +28,20 @@
 
 No G1 gaps found for Mailer.
 
+## G3 gap list
+
+1. **Added 2026-08-03 — invariant→test mapping not completed (predicate 3 is `PARTIAL`).** Naming
+   correspondence between the doc's invariants and the test files is strong, but no line-level
+   confirmation was performed, so trigger coverage is unverified. The gate ladder defines a section
+   as reaching a gate only when **every** predicate holds, so a `PARTIAL` cannot be scored as met —
+   same call already applied to Onboarding for the identical shape. Fix: complete the
+   invariant→test mapping (cheap — it's a read, not new tests, unless the mapping turns up real
+   holes). No-migration-needed: **y**.
+
 ## G2 queue notes
 
 None — no owned tables.
 
 ## Verdict
 
-`G1: met · G3: met (1 PARTIAL, not a real gap) — headline: cleanest and best-tested section in this batch; no action items`
+`G1: met · G3: 1 gap (corrected 2026-08-03, was "met (1 PARTIAL, not a real gap)") — predicate 3's invariant→test mapping is unverified, and an unverified predicate can't be scored as met; headline: still the cleanest and best-tested section in this batch, and the one gap is a mapping read, not missing tests`
