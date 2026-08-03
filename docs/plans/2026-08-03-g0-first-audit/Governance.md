@@ -41,4 +41,4 @@ Also queued: the three table renames (`applications` → `governance_application
 
 ## Verdict
 
-`G1: 4 gaps (corrected 2026-08-03, was "met" — four un-grandfathered cross-section User FKs across applications / application_state_history / board_votes, see the demolition inventory) · G3: 3 gaps (corrected: added harness-inherited EF-InMemory service tests) (+1 PARTIAL) — headline gap: ApplicationRepositoryTests still on EF-InMemory; otherwise the cleanest section audited in this batch`
+`G1: 1 gap (corrected 2026-08-03 — was "met", then briefly "4 gaps", which counted the four G2 FK cuts individually and contradicted the gap list's own "counted as one G1 item" rule; the G1 item is the single investigation into why the analyzer doesn't fire on the four un-grandfathered cross-section User FKs across applications / application_state_history / board_votes — the cuts themselves are G2, see the demolition inventory) · G3: 3 gaps (corrected: added harness-inherited EF-InMemory service tests) (+1 PARTIAL) — headline gap: ApplicationRepositoryTests still on EF-InMemory; otherwise the cleanest section audited in this batch`

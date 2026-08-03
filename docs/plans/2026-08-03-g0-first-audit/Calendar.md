@@ -44,4 +44,4 @@
 
 ## Verdict
 
-`G1: 2 gaps (corrected 2026-08-03, was 3 — the latent ICalendarService entity-leak risk is an advisory watch item, not a current violation; remaining: HUM0024 grandfather, unqueued FK cut) · G3: 3 gaps`
+`G1: 1 gap (corrected 2026-08-03 — was 3, then 2: the latent ICalendarService entity-leak risk is an advisory watch item, not a current violation, and G1 item 2 asked only that the `CalendarEvents.OwningTeamId → Teams.Id` FK be placed on the G2 queue, which the G2 Queue Notes below now do — so it is no longer an "unqueued FK cut" and the physical cut stays at G2. Remaining G1 ownership item: the HUM0024 grandfather) · G3: 3 gaps`

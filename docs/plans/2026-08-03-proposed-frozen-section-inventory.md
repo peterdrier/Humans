@@ -65,8 +65,16 @@ model), Platform (config bucket, dissolved).
 ## Follow-up work items
 
 1. Back-propagate to `reforge.surface-score.json`: add Gate, Surveys, Settings,
-   Development; split Onboarding out of Users; rename Consent key alignment; retire the
-   Platform bucket per above. (Config PR, not this docs PR.)
+   Development, **Gdpr, Search**; split Onboarding out of Users; **split the vendor
+   connectors out of their host buckets (`Holded*` out of `Finance`, `Mailer*` out of
+   `Email`)**; rename Consent key alignment; retire the Platform bucket per above.
+   (Config PR, not this docs PR.) *(Gdpr and Search added 2026-08-03: the canonical list
+   above admits both as orchestrator rows and item 2 queues their first audits, so
+   omitting them here would leave both absent from the config and stuck on the
+   namespace-fallback grouping this item exists to eliminate. The vendor-connector split
+   is the same omission from the other direction — the dependency DAG's corrected
+   `Expenses→Holded`/`Finance→Holded` and `Mailer→*` edges only hold if the config stops
+   folding those paths into their hosts.)*
 2. First-audit scorecards for the newly admitted rows: Gate, Settings, Development,
    Gdpr, Search (the G0 first-audit checklist item's scope caveat tracks this).
 3. `docs/sections/` file renames: `LegalAndConsent.md` → `Consent.md`,
