@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Immutable;
 using Humans.Analyzers.Internal;
 using Microsoft.CodeAnalysis;
@@ -68,6 +69,7 @@ public sealed class EmailMutationPathsAnalyzer : DiagnosticAnalyzer
     private const string AllowedServiceCaller = "Humans.Application.Services.Users.ExternalLoginService";
     private static readonly ImmutableHashSet<string> AllowedRepositoryCallers =
         ImmutableHashSet.Create(
+            StringComparer.Ordinal,
             "Humans.Application.Services.Profiles.UserEmailService",
             "Humans.Application.Services.Users.UserService");
 

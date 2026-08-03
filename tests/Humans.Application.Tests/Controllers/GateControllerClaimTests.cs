@@ -90,7 +90,7 @@ public class GateControllerClaimTests
         await _controller.ClaimPin(bogus, "1357", ct);
 
         await _gate.DidNotReceive().SetOwnPinAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
-        Assert.DoesNotContain(ScannerSessionKey, _session.Keys);
+        Assert.DoesNotContain(ScannerSessionKey, _session.Keys, StringComparer.Ordinal);
     }
 
     // ── F2: kiosk-scoped name search (replaces the route-blocked profile API) ──

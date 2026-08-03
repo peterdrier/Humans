@@ -33,7 +33,7 @@ internal sealed class HoldedRepository(IDbContextFactory<FinanceDbContext> facto
         await using var ctx = await factory.CreateDbContextAsync(ct);
         var ids = docs.Select(d => d.HoldedDocId).ToList();
         var existing = await ctx.HoldedExpenseDocs
-            .Where(d => ids.Contains(d.HoldedDocId)).ToDictionaryAsync(d => d.HoldedDocId, ct);
+            .Where(d => ids.Contains(d.HoldedDocId)).ToDictionaryAsync(d => d.HoldedDocId, StringComparer.Ordinal, ct);
         foreach (var d in docs)
         {
             if (existing.TryGetValue(d.HoldedDocId, out var cur))

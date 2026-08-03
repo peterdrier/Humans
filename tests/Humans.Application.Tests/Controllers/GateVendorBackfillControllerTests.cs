@@ -159,7 +159,7 @@ public class GateVendorBackfillControllerTests
         var model = Assert.IsType<GateVendorBackfillViewModel>(
             Assert.IsType<ViewResult>(await controller.Index(TestContext.Current.CancellationToken)).Model);
 
-        Assert.Equal(["vt-B"], model.Pending.Select(r => r.VendorTicketId));
-        Assert.Equal(["vt-A"], model.SentAwaitingSync.Select(r => r.VendorTicketId));
+        Assert.Equal(["vt-B"], model.Pending.Select(r => r.VendorTicketId), StringComparer.Ordinal);
+        Assert.Equal(["vt-A"], model.SentAwaitingSync.Select(r => r.VendorTicketId), StringComparer.Ordinal);
     }
 }
