@@ -27,7 +27,7 @@
 ## G1 Gap List
 
 1. **2 HUM0024 cross-section EF join grandfathers** (`CampaignConfiguration`, `CampaignGrantConfiguration`) — where: `src/Humans.Infrastructure/Data/Configurations/Campaigns/*.cs:8`. No queued G2 items beyond the generic doc anchor. No-migration-needed: y (pending liveness verification).
-2. **Stale `DisplaySortInControllers` baseline row.** Where: `tests/Humans.Application.Tests/Architecture/Baselines/DisplaySortInControllers.baseline.txt:9` (`CampaignRepository.cs:OrderByDescending#1`). The code already has the `arch:db-sort-ok` marker at `CampaignRepository.cs:304`; the baseline row appears to predate that marker being added and is now dead weight (verify by running the ratchet test — if it now finds 0 live violations for this file, delete the line). No-migration-needed: y.
+2. **Live `DisplaySortInControllers` baseline row.** Where: `tests/Humans.Application.Tests/Architecture/Baselines/DisplaySortInControllers.baseline.txt:9` (`CampaignRepository.cs:OrderByDescending#1`). ~~Initially assessed as stale~~ — corrected 2026-08-03 during the stretch pass: `#1` is the *first* occurrence, `CampaignRepository.cs:72` (`.OrderByDescending(c => c.CreatedAt)`), which carries **no** `arch:db-sort-ok` marker (the markers are on the *other* occurrences, lines 134/304). The row is live: fix by moving the ordering to the presentation layer (or marking it `arch:db-sort-ok` if it qualifies as a pagination tie-breaker/top-N per the display-sort atom), then delete the row. No-migration-needed: y.
 3. **No `ICampaignServiceRead`.** Where: `src/Humans.Application/Interfaces/Campaigns/`. Not a violation today (cross-section consumers only need writes), but if any future cross-section caller needs read access to campaign/grant data, it should get a purpose-scoped read interface rather than the full 19-method `ICampaignService`. No action now — advisory only. No-migration-needed: y.
 
 ## G3 Gap List (feeding G3)
@@ -43,4 +43,4 @@
 
 ## Verdict
 
-`G1: 3 gaps (2 HUM0024 grandfathers counted as one item; stale baseline row; no ICampaignServiceRead is advisory-only, not counted) · G3: 2 gaps`
+`G1: 3 gaps (2 HUM0024 grandfathers counted as one item; live DisplaySortInControllers baseline row at CampaignRepository.cs:72; no ICampaignServiceRead is advisory-only, not counted) · G3: 2 gaps`
