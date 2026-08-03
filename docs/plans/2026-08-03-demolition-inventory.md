@@ -509,7 +509,7 @@ plan-tracked, but a legitimate G2 drop candidate whenever Store's demolition bat
 | Governance | 0 | 0 | 0 | 0 | 3 |
 | Legal & Consent | 0 | 0 | 0 | 2 (2 tables) | 2 |
 | Profiles | 2 (+2 queued/blocked) | 0 | 0 | 0 | 5 |
-| Users/Identity | 1 (+4 targeted, not yet tagged) | 0 | 0 | 0 | 0 |
+| Users/Identity | 1 (+5 targeted by #603) | 0 | 0 | 0 | 0 |
 | Camps | 0 | 1 (`camp_leads`, #774) | 1 (#787) | 3 (3 tables) | 0 |
 | City Planning | 0 | 0 | 0 | 4 (2 tables) | 2 |
 | Calendar | 0 | 0 | 0 | 1 (1 table) | 0 |
@@ -525,7 +525,13 @@ plan-tracked, but a legitimate G2 drop candidate whenever Store's demolition bat
 | Issues | 0 | 0 | 0 | 4 (2 tables) | 0 |
 | Campaigns | 0 | 0 | 0 | 2 (2 tables) | 0 |
 | Store | 1 (self-contained) | 0 | 0 | 0 | 0 |
-| **Total** | **4 tagged + 6 queued/targeted + 7 retained-for-soak** | **1** | **1** | **49 (35 tables)** | **24** |
+| **Total** | **4 tagged + 7 queued/targeted + 7 retained-for-soak** | **1** | **1** | **49 (35 tables)** | **24** |
+
+Users/Identity row corrected 2026-08-03 (was `1 (+4 targeted, not yet tagged)`): #603's §4 migration drops
+**five** `AspNetUsers` columns — `NormalizedEmail` plus `Email`/`EmailConfirmed`/`UserName`/`NormalizedUserName` —
+so the earlier count dropped `NormalizedEmail` from the queue. The `1` is the dead `User.GoogleEmailStatus`
+column; `NormalizedEmail` is counted in the targeted bucket (not the tagged one) even though it carries
+`[Obsolete]`, because #603 owns its drop. Total queued/targeted moves 6 → 7 accordingly.
 
 Two misfiled-configuration findings (not counted above, not table-ownership violations):
 `AccountMergeRequestConfiguration.cs` and `EventParticipationConfiguration.cs` sit in the wrong

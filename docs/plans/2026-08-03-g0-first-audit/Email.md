@@ -9,7 +9,7 @@ Scope note: `reforge.surface-score.json` bundles **Mailer** (`IMailerAudienceSyn
 | # | Predicate | Result | Evidence |
 |---|-----------|--------|----------|
 | 1 | Every owned table read/written by exactly one repository in-section | PASS | `reforge ownership-violations --owner Email --tables email_outbox_messages` → 0 violations. `EmailOutboxRepository` (`src/Humans.Infrastructure/Repositories/Email/EmailOutboxRepository.cs`) is the only file touching `DbContext.EmailOutboxMessages` (per its own doc comment), via `IDbContextFactory<HumansDbContext>`. Mailer owns no tables — n/a. |
-| 2 | One writer-service per table, no interceptor workarounds | PASS | `OutboxEmailService.SendAsync` (`IEmailService`) is the single write path; `reforge audit-surface OutboxEmailService` shows 31 prod callers all going through the one `SendAsync` method — no bypass paths found. |
+| 2 | One writer-service per table, no interceptor workarounds | **FAIL — corrected 2026-08-03** | `OutboxEmailService.SendAsync` is only the **enqueue** write path (`repo.AddAsync`, `OutboxEmailService.cs:86`) — the original evidence mistook it for the single write path. Three further types mutate `email_outbox_messages` through `IEmailOutboxRepository`: `EmailOutboxService` (`RetryAsync`/`DiscardAsync`, `:26,29` — the admin requeue/discard surface), `ProcessEmailOutboxJob` (`MarkPickedUpAsync` `:68`, `MarkSentAsync` `:79,103`, `MarkFailedAsync` `:123`), and `CleanupEmailOutboxJob` (deletes sent rows). No interceptor workaround, but the one-writer-service predicate does not hold. |
 | 3 | No EF entity leaks across the boundary | PASS | Doc confirms `EmailOutboxMessage.User` nav was stripped (shadow FK only); `CampaignGrant`/`ShiftSignup` navs are explicitly documented as "aggregate-local," kept for status mirroring/dedup, not leaked out through public service methods. `IEmailService.SendAsync(EmailMessage, ct)` takes/returns no EF entity. |
 | 4 | No cross-section EF joins (zero baseline entries) | PASS | Grepped all 5 baseline files under `tests/Humans.Application.Tests/Architecture/Baselines/` for `Email`/`Mailer` — zero hits. |
 | 5 | No `[Obsolete]` cross-section navs / `[Grandfathered]` / baseline rows | **FAIL** | `EmailController.cs:88-92` — `[Grandfathered(ruleId: "HUM0031", justification: "Worst-offender at HUM0031 introduction: 51 statements, cc 2.", since: "2026-06-09", issueRef: "nobodies-collective/Humans#857")]` on `EmailPreview`. Per the team-lead's brief this is being worked in a parallel lane (#857) tonight — recorded honestly here regardless. |
@@ -30,6 +30,7 @@ Scope note: `reforge.surface-score.json` bundles **Mailer** (`IMailerAudienceSyn
 
 1. **HUM0031 grandfather on `EmailController.EmailPreview`** — already tracked under #857 (in-flight parallel lane per this run's brief); no new action needed here beyond confirming it. No migration needed (y).
 2. ~~No `docs/sections/Mailer.md`~~ — **retracted 2026-08-03**, the file exists (see predicate 7 correction). No gap.
+3. **Added 2026-08-03: four write paths on `email_outbox_messages`** (see predicate 2). `OutboxEmailService` enqueues, `EmailOutboxService` retries/discards, `ProcessEmailOutboxJob` marks picked-up/sent/failed, `CleanupEmailOutboxJob` deletes sent rows. Fix: fold the lifecycle mutations behind one owning service (`IEmailOutboxService`) so the jobs stop injecting `IEmailOutboxRepository` directly, or record the outbox-processor pattern as an accepted exception — the same call this audit has to make for `google_sync_outbox`. No migration needed (y).
 
 ## G3 gap list
 
@@ -43,4 +44,4 @@ Scope note: `reforge.surface-score.json` bundles **Mailer** (`IMailerAudienceSyn
 
 ## Verdict
 
-`G1: 1 gap (corrected 2026-08-03, was 2 — Mailer.md gap retracted, it exists) · G3: 2 gaps`
+`G1: 2 gaps (corrected 2026-08-03 — Mailer.md gap retracted, it exists; added: four write paths on `email_outbox_messages`) · G3: 2 gaps`

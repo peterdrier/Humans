@@ -7,7 +7,7 @@
 | # | Predicate | Result | Evidence |
 |---|-----------|--------|----------|
 | 1 | Every owned table read/written by exactly one repository | PASS | `reforge audit-downstream` on `AgentRepository`: all 12 methods touch only `AgentSettings`, `AgentConversations`, `AgentMessages`. No other repository references these DbSets (spot-checked via EF configs — no other section's config targets `agent_*` tables). |
-| 2 | One writer-service per table | PASS | `AgentService` is the sole injector of `IAgentRepository` (`reforge injected IAgentRepository` scope limited to `Humans.Application.Services.Agent`). No interceptor workaround found. |
+| 2 | One writer-service per table | **FAIL — corrected 2026-08-03** | `AgentService` is **not** the sole injector. Four production types inject `IAgentRepository`: `AgentService` (creates conversations, appends messages), `AgentSettingsService` (`UpdateSettingsAsync` → `AgentSettings`), `AgentAdminStatusService` (read-only — counts/list), and `AgentConversationRetentionJob` (`AgentConversationRetentionJob.cs:20` → `PurgeConversationsOlderThanAsync`, deleting conversation rows and their messages). `AgentConversations`/`AgentMessages` therefore carry two write paths (`AgentService` + the retention job), so the predicate fails. `AgentSettings` does have a single writer (`AgentSettingsService`). No interceptor workaround found. |
 | 3 | No EF entity leaks across the boundary | PASS | `IAgentService`/`IAgentRepository` surfaces return `Agent*` DTOs/domain types consumed only within the section; no cross-section caller found injecting `IAgentRepository` or an Agent entity type. |
 | 4 | No cross-section EF joins (zero baseline entries) | PASS | Grepped all 5 architecture-test baseline files (`ApplicationServiceEntityReadReturns`, `DisplaySortInControllers`, `NoDestructiveMigrationOps`, `NoLinqAtDbLayer`, `NoStartupGuards`) for `Agent` — zero hits. |
 | 5 | No `[Obsolete]` navs / `[Grandfathered]` / baseline rows | PASS | `src/Humans.Infrastructure/Data/Configurations/Agent/*.cs` (3 files) — only internal nav is `AgentMessage.Conversation → AgentConversation`, both owned by Agent. No `[Grandfathered]` attribute anywhere under `*Agent*` in `src/`. |
@@ -19,7 +19,7 @@
 | # | Predicate | Result | Evidence |
 |---|-----------|--------|----------|
 | 1 | Repository tests on real Postgres, zero EF-InMemory | **FAIL** | No dedicated `AgentRepositoryTests.cs` exists at all — `IAgentRepository` has zero direct repository-level test coverage against any database. |
-| 2 | Service tests mock repo interfaces, zero `HumansDbContext` | **FAIL** | `AgentServiceTests.cs:556,578` and `AgentAdminStatusServiceTests.cs:111,173` both build a real `AgentRepository` backed by `UseInMemoryDatabase(...)` instead of mocking `IAgentRepository`. This is both the EF-InMemory violation and the "no HumansDbContext in service tests" violation in one. |
+| 2 | Service tests mock repo interfaces, zero `HumansDbContext` | **FAIL** | `AgentServiceTests.cs:556,578`, `AgentAdminStatusServiceTests.cs:111,173` **and `AgentSettingsServiceTests.cs:35,56`** (corrected 2026-08-03 — the third file was missed in the original pass) all build a real `AgentRepository` backed by `UseInMemoryDatabase(...)` instead of mocking `IAgentRepository`. This is both the EF-InMemory violation and the "no HumansDbContext in service tests" violation in one. |
 | 3 | Invariants/triggers from section doc each have a test | PASS (spot-check) | Using the real `docs/sections/Agent.md` (corrected per G1.7): "Enabled gate → 503" and "Rate limit → 429" invariants are plausibly covered by `AgentServiceTests.cs` given its breadth; "Refusal logging — every refused turn writes an AgentMessage with RefusalReason" is exercised at the rate-limit branch in `AgentService.AskAsync`; "Tool whitelist" and "Tool loop bound" invariants have direct coverage in `AgentToolDispatcherTests.cs`. Not exhaustively line-mapped. |
 | 4 | No skipped tests without an issue ref | PASS | Grepped `tests/Humans.Application.Tests/Agent/**` for `Skip\s*=` — zero hits. |
 | 5 | Tests grouped under the section | PASS | All Agent tests live under `tests/Humans.Application.Tests/Agent/` (16 files), movable as a unit. |
@@ -28,11 +28,12 @@
 
 1. **`docs/sections/Agent.md` doesn't document the dedicated `AgentDbContext`** (see G1.7). Fix: rewrite the "Architecture" section to describe the per-section context, its migration history, and flag to the Q3 tracker owner that Agent may already satisfy G4. No-migration-needed: y (docs only).
 2. **Duplicate `IUserServiceRead` constructor parameter in `AgentController`** (`users` and `userService`, `src/Humans.Web/Controllers/AgentController.cs:19-23`). Cosmetic DI smell, not a boundary violation. Fix: drop the unused one. No-migration-needed: y.
+3. **Added 2026-08-03: second write path on `AgentConversations`/`AgentMessages`** (see G1.2). `AgentConversationRetentionJob` injects `IAgentRepository` directly and calls `PurgeConversationsOlderThanAsync` (`src/Humans.Infrastructure/Jobs/AgentConversationRetentionJob.cs:20`) alongside `AgentService`'s create/append writes. Fix: route the purge through `IAgentService` so the section keeps one writer-service per table, or record the retention job as an accepted job-owned-deletion exception. No-migration-needed: y.
 
 ## G3 Gap List (feeds G2 queue lightly, mostly pure G3 work)
 
 1. **No `AgentRepositoryTests.cs`.** Add a repository test file against the shared Postgres fixture (#764 pattern) covering the 12 `IAgentRepository` methods. No-migration-needed: y.
-2. **`AgentServiceTests.cs` and `AgentAdminStatusServiceTests.cs` construct a real `AgentRepository` over `UseInMemoryDatabase`** instead of `Mock<IAgentRepository>`. Convert both to interface mocks; this is exactly the #766 EF-InMemory-off conversion pattern. No-migration-needed: y.
+2. **`AgentServiceTests.cs`, `AgentAdminStatusServiceTests.cs` and `AgentSettingsServiceTests.cs` construct a real `AgentRepository` over `UseInMemoryDatabase`** instead of `Mock<IAgentRepository>`. Convert all three to interface mocks; this is exactly the #766 EF-InMemory-off conversion pattern. (`AgentSettingsServiceTests.cs:35,56` added 2026-08-03 — missed in the original pass; converting only the other two leaves this predicate failing.) No-migration-needed: y.
 
 ## G2 Queue Notes
 
@@ -46,4 +47,4 @@
 
 ## Verdict
 
-**G1: 1 gap (docs/sections/Agent.md doesn't document AgentDbContext) · G3: 2 gaps (missing repo tests, EF-InMemory in service tests)**
+**G1: 2 gaps (corrected 2026-08-03, was 1 — added: retention job is a second writer on `AgentConversations`/`AgentMessages`; docs/sections/Agent.md doesn't document AgentDbContext) · G3: 2 gaps (missing repo tests, EF-InMemory in service tests ×3)**

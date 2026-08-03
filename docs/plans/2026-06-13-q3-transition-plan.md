@@ -294,23 +294,23 @@ sections and shared contracts noted explicitly. (`—` = not yet audited.)
 
 | Section | Kind | G1 | G2 | G3 | G4 | G5 |
 |---|---|---|---|---|---|---|
-| Agent | vertical | 1 gap | — | 2 gaps | — | — |
+| Agent | vertical | 2 gaps | — | 2 gaps | — | — |
 | AuditLog | **horizontal** | 2 gaps | — | 2 gaps | — | — |
-| Auth | **horizontal** | 3 gaps | — | 2 gaps | — | — |
+| Auth | **horizontal** | 4 gaps | — | 2 gaps | — | — |
 | Budget | vertical | 3 gaps | — | 3 gaps | — | — |
 | Calendar | vertical | 3 gaps | — | 3 gaps | — | — |
 | Campaigns | vertical | 2 gaps | — | 2 gaps | — | — |
-| Camps | vertical | 3 gaps | — | 2 gaps | — | — |
+| Camps | vertical | 4 gaps | — | 2 gaps | — | — |
 | Cantina | vertical | 3 gaps | — | 2 gaps | — | — |
 | CityPlanning | vertical | 1 gap | — | 2 gaps | — | — |
 | Containers | vertical | ✅ | — | 2 gaps | — | — |
 | Debug | **horizontal** | 2 gaps | — | 1 gap | — | — |
-| Email | vertical | 1 gap | — | 2 gaps | — | — |
+| Email | vertical | 2 gaps | — | 2 gaps | — | — |
 | Events | vertical | 2 gaps | — | 1 gap | — | — |
 | Expenses | vertical | ✅ | — | 2 gaps | — | — |
 | Feedback | vertical | 1 gap | — | 2 gaps | — | — |
 | Finance | vertical | ✅ | — | 1 gap | — | — |
-| GoogleIntegration | vertical | 2 gaps | — | 2 gaps | — | — |
+| GoogleIntegration | vertical | 3 gaps | — | 2 gaps | — | — |
 | Governance | vertical | ✅ | — | 2 gaps | — | — |
 | Guide | vertical | 1 gap | — | ✅ | — | — |
 | Holded | vertical | ✅ | — | ✅ | — | — |
@@ -321,7 +321,7 @@ sections and shared contracts noted explicitly. (`—` = not yet audited.)
 | Onboarding | vertical (orchestrator) | ✅ | — | ✅ | — | — |
 | Profiles | **shared contract** | 4 gaps | — | 2 gaps | — | — |
 | Scanner | vertical | ✅ | — | 1 gap | — | — |
-| Shifts | vertical | 3 gaps | — | 2 gaps | — | — |
+| Shifts | vertical | 4 gaps | — | 2 gaps | — | — |
 | Store | vertical | 1 gap | — | 1 gap | — | — |
 | Survey | vertical | 1 gap | — | 1 gap | — | — |
 | Teams | vertical | 3 gaps | — | 2 gaps | — | — |

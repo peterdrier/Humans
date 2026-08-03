@@ -7,7 +7,7 @@
 | # | Predicate | Result | Evidence |
 |---|-----------|--------|----------|
 | 1 | Every owned table read/written by exactly one repo in-section | PASS | `reforge ownership-violations --owner GoogleIntegration --tables sync_service_settings,google_sync_outbox` → 0 violations. |
-| 2 | One writer-service per table | PASS | `ISyncSettingsRepository` (SyncSettingsService) and `IGoogleSyncOutboxRepository` (GoogleSyncOutboxService/GoogleWorkspaceSyncService) are each the sole writer of their table. |
+| 2 | One writer-service per table | **FAIL — corrected 2026-08-03** | `sync_service_settings` is fine (`SyncSettingsService` via `ISyncSettingsRepository`). `google_sync_outbox` is not: the original evidence named two services on one table and still scored it PASS. `GoogleSyncOutboxService` calls `AddAsync`/`AddRangeAsync`; `GoogleWorkspaceSyncService` calls `AddRangeAsync`/`RequeueAsync`/`RequeueAllFailedAsync`; and `ProcessGoogleSyncOutboxJob` mutates the same rows directly through `MarkProcessedAsync` (`:95`), `MarkPermanentlyFailedAsync` (`:117`) and `IncrementRetryAsync` (`:143`). Three write paths, so the predicate fails. (`HumansMetricsService` also injects the repository but is read-only.) |
 | 3 | No EF entity leaks across boundary | PARTIAL | `IGoogleResourceRepository` performs narrow writes into `google_resources`, a **Teams-owned** table (per `docs/sections/GoogleIntegration.md` and `Teams.md`), for reconciliation-loop atomicity. Documented and scoped ("all broader reads/writes route through `ITeamResourceService`"), but it is a repository in this section touching another section's table — flag for the Teams-side audit as the mirror finding. |
 | 4 | No cross-section EF joins (zero baseline entries) | PASS | No `tests/.../Architecture/Baselines/*` file for cross-section-EF-join exists at all (analyzer-enforced with zero suppressions); no `SuppressMessage` hits in `src/Humans.Infrastructure/Repositories/GoogleIntegration/**`. |
 | 5 | No `[Obsolete]` cross-section navs / `[Grandfathered]` / baseline rows owned by section | FAIL | `NoLinqAtDbLayer.baseline.txt` has 2 rows owned by this section: `GoogleResourceRepository.cs:OrderBy#1`, `OrderBy#2`. No `[Grandfathered]` hits in section controllers/services. `SyncServiceSettings.UpdatedByUser` nav was already fully removed (typed-FK, best-practice) — not a gap. `GoogleResource.Team` live nav is Teams-owned, tracked in the doc as a Teams-side follow-up, not counted against GoogleIntegration here. |
@@ -30,6 +30,7 @@
 |------|-------|----------------|----|
 | 2 `NoLinqAtDbLayer` baseline entries (`OrderBy`) | `src/Humans.Infrastructure/Repositories/GoogleIntegration/GoogleResourceRepository.cs` | Move ordering into service/application layer or justify + remove from baseline if DB-side ordering is required for pagination. | y |
 | `IGoogleResourceRepository` writes a Teams-owned table | `src/Humans.Infrastructure/Repositories/GoogleIntegration/GoogleResourceRepository.cs` | Cross-reference with Teams' own G1 audit; either fold into `ITeamResourceService` narrow-write surface or keep documented exception. | y (design decision, not schema) |
+| **Added 2026-08-03:** three write paths on `google_sync_outbox` | `GoogleSyncOutboxService`, `GoogleWorkspaceSyncService`, `ProcessGoogleSyncOutboxJob` (`:95,117,143`) | Consolidate enqueue/requeue/mark-processed behind `IGoogleSyncOutboxService` so the job and the workspace-sync service stop injecting `IGoogleSyncOutboxRepository` directly, or record the job's lifecycle writes as an accepted outbox-processor exception. | y |
 
 ## G2 queue notes
 
@@ -37,4 +38,4 @@ No dead columns/tables identified for this section in the current pass. `google_
 
 ## Verdict
 
-`G1: 2 gaps · G3: 2 gaps (+1 PARTIAL) — headline gap: repo/service tests still on EF-InMemory instead of mocked interfaces / shared Postgres fixture`
+`G1: 3 gaps (corrected 2026-08-03, was 2 — added: three write paths on `google_sync_outbox`) · G3: 2 gaps (+1 PARTIAL) — headline gap: repo/service tests still on EF-InMemory instead of mocked interfaces / shared Postgres fixture`
