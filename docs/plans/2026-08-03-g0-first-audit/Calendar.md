@@ -28,7 +28,7 @@
 
 1. **`CalendarEventConfiguration` HUM0024 cross-section EF join grandfather** — where: `src/Humans.Infrastructure/Data/Configurations/Calendar/CalendarEventConfiguration.cs:8`. Tracked only to a generic doc anchor, no specific issue, no queued G2 item. Suggested fix: verify liveness (the nav side is already `[Obsolete]`-gated; the marker may just need retiring) or file a tracking issue. No-migration-needed: y (pending verification).
 2. **Confirm the `CalendarEvents.OwningTeamId → Teams.Id` FK is on the G2 "cross-section FK cuts" demolition list.** Where: `docs/architecture/design-rules.md` / demolition inventory (unfiled). The nav is already correctly `[Obsolete]`-gated; only the physical FK constraint remains as debt. Fix: add explicit line item to the unfiled FK-cut list referenced in the Q3 plan. No-migration-needed: n (this *is* a migration item, belongs at G2 not G1).
-3. **Latent entity-leak risk on `ICalendarService` (full write interface).** Where: `src/Humans.Application/Interfaces/Calendar/ICalendarService.cs`. No violation today (no cross-section injector), but if a cross-section consumer is ever added it will leak `CalendarEvent`. Fix: no action needed now; flag for review if a cross-section write dependency on Calendar appears. No-migration-needed: y.
+**Not counted as a gap (advisory watch item — reclassified 2026-08-03):** latent entity-leak risk on `ICalendarService` (full write interface), `src/Humans.Application/Interfaces/Calendar/ICalendarService.cs`. Predicate 3 records no cross-section `ICalendarService` consumer and scores the boundary PASS, and this item's own text said "no violation today" / "no action needed now" — counting it inflated Calendar's G1 count and scheduled work the audit itself calls unnecessary. If a cross-section write dependency on Calendar ever appears it will leak `CalendarEvent`, and it becomes a real gap then.
 
 ## G3 Gap List (feeding G3)
 
@@ -44,4 +44,4 @@
 
 ## Verdict
 
-`G1: 3 gaps (HUM0024 grandfather; unqueued FK cut; latent entity-leak risk on ICalendarService) · G3: 3 gaps`
+`G1: 2 gaps (corrected 2026-08-03, was 3 — the latent ICalendarService entity-leak risk is an advisory watch item, not a current violation; remaining: HUM0024 grandfather, unqueued FK cut) · G3: 3 gaps`

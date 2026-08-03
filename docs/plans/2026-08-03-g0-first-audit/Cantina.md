@@ -35,12 +35,19 @@
 
 ## G3 gap list
 
-1. **No architecture test for Cantina** — see G1 gap #1 above; same fix covers both.
-2. **No canonical invariant doc to test against** — blocked on the same `docs/sections/` gap as G1.7.
+**None — corrected 2026-08-03 (was 2).** Neither item originally listed here corresponds to a
+G3 predicate failure:
+
+- *"No architecture test for Cantina"* — the G3 checklist doesn't require an architecture-test
+  file. It stays a G1 maintainability suggestion (G1 gap #1), not a G3 gap.
+- *"No canonical invariant doc to test against"* — false. G1.7 in this same scorecard confirms
+  `docs/sections/Cantina.md` exists, and G3.3 uses it to score invariant coverage PASS.
+
+All five G3 predicates pass; Cantina is **G3-complete**.
 
 ## G2 queue notes
 
 - Nothing — Cantina owns no tables, so there's no demolition-inventory surface (no dead columns, no cross-section FKs, no rename work) for this section specifically.
 - **Open structural question for the G0 tracker** (not resolved here): with zero owned tables and a service that is 100% cross-section composition (Shifts on-site data + Users dietary data), does Cantina meaningfully progress through G2/G4/G5 at all, or does it end up folded into whichever section ends up owning the read surfaces it depends on? Surfacing per the Q3 plan's explicit "whether Cantina/Scanner stay separate" open item — recommend the G0 tracker mark this `n/a` for G2/G4 similarly to how `Settings`/`Shortlinks` are marked `n/a` for G1/G2 in the tracker table, pending a real decision.
 
-**Verdict: G1: 3 gaps (no architecture test; doc cites a non-existent test file; cross-section full-service dependency on IShiftManagementService) · G3: 2 gaps (both tied to the missing-architecture-test gap)**
+**Verdict: G1: 3 gaps (no architecture test; doc cites a non-existent test file; cross-section full-service dependency on IShiftManagementService) · G3: ✅ (corrected 2026-08-03, was 2 gaps — neither item was a G3 predicate failure)**

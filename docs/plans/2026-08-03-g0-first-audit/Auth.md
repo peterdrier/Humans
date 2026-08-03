@@ -35,7 +35,18 @@
 
 ## G2 queue notes
 
-Nothing destructive queued from this pass. `role_assignments` schema looks clean (no dead columns spotted in a shape-only read of `RoleAssignment.cs`); `Notes` is free text with no observed debt. No FK-cut or rename items surfaced — light touch only, revisit at G2 kickoff with a schema-focused pass.
+**Corrected 2026-08-03** — "no FK-cut or rename items surfaced" was wrong; the demolition
+inventory in this same commit records both, and predicate 5(b) already found the HUM0024
+grandfather that marks the FKs. Auth's G2 queue is:
+
+- **Cut 2 cross-section FK relationships** — `role_assignments → AspNetUsers` (the
+  `RoleAssignment.User`/`CreatedByUser` pair), currently HUM0024-grandfathered at
+  `RoleAssignmentConfiguration.cs:8`. Sequenced after the G1 nav-strip (gap #3).
+- **Rename `role_assignments` → `auth_role_assignments`** — the table is unprefixed; the
+  inventory proposes the section-prefixed form for G2's rename wave.
+
+Otherwise the schema looks clean: no dead columns spotted in a shape-only read of
+`RoleAssignment.cs`; `Notes` is free text with no observed debt.
 
 ## Verdict
 

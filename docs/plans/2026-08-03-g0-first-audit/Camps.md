@@ -34,11 +34,17 @@
 ## G3 gap list
 
 1. **`CampRepositoryTests.cs` uses EF-InMemory**, not the shared Postgres fixture (#764/#766 scope). Fix: convert to the real-Postgres fixture pattern used elsewhere once #766's per-section conversion reaches Camps. No migration needed: **y** (test-only change).
-2. **No canonical invariant doc to test against** — blocked on the same `docs/sections/` gap as G1.7.
+> Removed 2026-08-03: a second G3 item claiming "no canonical invariant doc to test against"
+> contradicted G1.7 in this same scorecard, which corrects the earlier false negative and
+> confirms `docs/sections/Camps.md` exists with extensive invariant documentation — G3.3 then
+> uses that very doc to score invariant coverage. G3 count drops from 2 to 1.
 
 ## G2 queue notes
 
 - `NoDestructiveMigrationOps.baseline.txt` carries one historical Camps entry (`DropColumn(IsRequired)` on `CampRoleDefinitions`, migration `20260426185621`) and `NoDestructiveMigrationOps` also lists `DropColumn(ContactMethod)` on a Camp-adjacent migration (`AddCampLinksRemoveContactMethod`) — both already-applied historical drops, not open G2 work; noted for completeness only.
-- No dead columns/tables or cross-section FK constraints surfaced in this pass beyond the `SystemTeamSyncJob` repository leak above (which is a G1 fix, not G2/schema).
+- **Corrected 2026-08-03** — the original "nothing surfaced beyond the `SystemTeamSyncJob` repository leak" was wrong on both counts: that leak is a G1 refactor, not schema demolition, and the demolition inventory in this same commit names real Camps G2 work. The section's actual G2 queue is:
+  - **Drop the dead `camp_leads` table** (legacy `CampLead` entity, doc-acknowledged as pending removal, issue #774).
+  - **Drop the obsolete `CampRoleDefinition.SpecialRole` DB default** (#787).
+  - **Cut 3 cross-section FK relationships** across `CampConfiguration`, `CampSeasonConfiguration`, `CampLeadConfiguration` — the same three currently HUM0024-grandfathered (G1 gap #2).
 
-**Verdict: G1: 4 gaps (corrected 2026-08-03, was 3 — added: two writer-services on `CampRoleAssignments`; SystemTeamSyncJob repo injection; 3 HUM0024 grandfathers counted as one item; doc omission of the SystemTeamSyncJob dependency) · G3: 2 gaps**
+**Verdict: G1: 4 gaps (corrected 2026-08-03, was 3 — added: two writer-services on `CampRoleAssignments`; SystemTeamSyncJob repo injection; 3 HUM0024 grandfathers counted as one item; doc omission of the SystemTeamSyncJob dependency) · G3: 1 gap (corrected 2026-08-03, was 2 — the "no canonical invariant doc" item contradicted G1.7 and was removed)**

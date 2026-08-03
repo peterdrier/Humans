@@ -47,7 +47,7 @@ Separately, the transition plan's own **Section tracker** (in
 | `Mailer` (separate row) | Folded into `Email` (`Interfaces/Mailer/**`, `Services/Mailer/**` are `Email` paths). | Harmless rename; drop the separate row or rename `Email` row to `Email/Mailer`. |
 | `Holded` (separate row) | This is the `Finance` section (`Finance*`, `Holded*`, `IHolded*`). | Rename tracker row `Holded` → `Finance`. |
 | `LegalAndConsent` (separate row) | This is the `Consent` section (bundles `Legal*` + `Consent*`). | Rename tracker row → `Consent`. |
-| `Guide`, `Debug`, `Scanner` (separate rows) | All three are `Platform`-owned controllers/services (`GuideController`, `DebugController`, `ScannerController` are explicit `Platform` paths) — not independent sections with their own tables/services. | Demote these three rows; they don't need their own G1–G5 ladder, they ride with `Platform`. |
+| `Guide`, `Debug`, `Scanner` (separate rows) | All three sit on `Platform` paths in `reforge.surface-score.json` (`GuideController`, `DebugController`, `ScannerController`). | ~~Demote these three rows; they ride with `Platform`.~~ **Withdrawn 2026-08-03** — the confirmed inventory ([`2026-08-03-proposed-frozen-section-inventory.md`](2026-08-03-proposed-frozen-section-inventory.md)) explicitly **keeps all three as sections**, rejects the demote-for-thinness suggestion, and dissolves `Platform` as a section bucket. The fix runs the other way: correct their paths in `reforge.surface-score.json` (config PR). Left standing, this present-tense demotion would drive later G0/G5 work to undo the frozen taxonomy and contradicts the `sections-are-logical-units` rule. |
 | *(missing entirely)* | `Gate`, `Surveys`, `SystemSettings`, `ICalFeed`, `Dashboard`, `Admin`, `Platform`, `Search`, `Gdpr` all exist as real sections/services in code but have no tracker row. | **Corrected 2026-08-03:** add rows for `Gate`, `Surveys`, `SystemSettings`, `ICalFeed` before G0 closes. **`Admin` is explicitly excluded** — `docs/architecture/peters-hard-rules.md`/`CLAUDE.md` state `/Admin/*` is a nav holder, not a section, and the frozen-inventory proposal (`2026-08-03-proposed-frozen-section-inventory.md` §C) already classifies it that way. `Dashboard`, `Search`, `Gdpr`, `Platform` are an open classification question in that same proposal (orchestrator/crosscut/Platform-infrastructure candidates, not flatly "add a row") — don't pre-empt it here. |
 
 ## Vertical-section DAG
@@ -355,10 +355,15 @@ schedule a fix.
    through `IUserEmailService.InvalidateNobodiesTeamEmailsAsync()`. These are G1 "no entity
    leak across boundary" violations with a known owner and a known fix — they just haven't
    been through `/section-gate audit` yet.
-7. **Orphaned read-interfaces and invalidators** — see the note under the edge table.
-   `IVolunteerTrackingServiceRead`, `IExpenseReportServiceRead`, `IEmailOutboxServiceRead`,
-   `ICalendarServiceRead` have zero injectors solution-wide. Either dead surface (delete) or
-   scaffolded ahead of a consumer that hasn't landed yet (keep, but track).
+7. **Orphaned read-interfaces and invalidators** — **rewritten 2026-08-03.** The original
+   challenge listed `IVolunteerTrackingServiceRead`, `IExpenseReportServiceRead`,
+   `IEmailOutboxServiceRead` and `ICalendarServiceRead` as having zero injectors solution-wide.
+   That is stale: the corrected block under the edge table names concrete consumers for **every
+   one of them** — including the cross-contract Users → Email edge, where `ProfileController`
+   and `UsersAdminController` both inject `IEmailOutboxServiceRead`. Keeping them listed as
+   deletion candidates would target live boundaries. Only `IEventViewInvalidator` (Events) is
+   genuinely unconsumed — either dead surface (delete) or scaffolded ahead of a consumer that
+   hasn't landed yet (keep, but track).
 
 ## Cycles — 7 found, all block G5 unless resolved first
 

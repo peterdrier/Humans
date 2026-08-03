@@ -38,7 +38,14 @@
 
 ## G2 queue notes
 
-Budget hierarchy (`BudgetYear → BudgetGroup → BudgetCategory → BudgetLineItem`) plus `BudgetAuditLog` reads as a clean, purpose-built schema — no dead columns spotted in this pass. `docs/features/budget/budget.md` explicitly scopes it as "not an accounting system" / "not real-time," so no schema growth pressure expected before G2. Nothing destructive queued.
+Budget hierarchy (`BudgetYear → BudgetGroup → BudgetCategory → BudgetLineItem`) plus `BudgetAuditLog` reads as a clean, purpose-built schema — no dead columns spotted in this pass. `docs/features/budget/budget.md` explicitly scopes it as "not an accounting system" / "not real-time," so no schema growth pressure expected before G2.
+
+**Corrected 2026-08-03** — "nothing destructive queued" conflated *dead columns* with *all* G2 work. Absence of dead columns says nothing about FK cuts or renames, and the demolition inventory in this same commit records four schema actions (this scorecard's own G1 findings already acknowledge all three HUM0024 configurations):
+
+- **Cut `budget_categories.TeamId → teams`** — live nav `HasOne(c => c.Team)` (`BudgetCategoryConfiguration.cs:28`).
+- **Cut `budget_line_items.ResponsibleTeamId → teams`** (`BudgetLineItemConfiguration.cs`).
+- **Cut `budget_audit_logs.ActorUserId → AspNetUsers`** — live nav `HasOne(a => a.ActorUser)` (`BudgetAuditLogConfiguration.cs:28`).
+- **Rename `ticketing_projections` → `budget_ticketing_projections`** (`TicketingProjectionConfiguration.cs:11`) — the one table in the section without the `budget_` prefix.
 
 ## Verdict
 

@@ -9,7 +9,7 @@
 | 1 | Every owned table read/written by exactly one repo in-section | PASS | `reforge ownership-violations --owner Issues --tables issues,issue_comments` → 0 violations. |
 | 2 | One writer-service per table | PASS | `IIssuesRepository` (impl `Humans.Infrastructure/Repositories/Issues/IssuesRepository.cs`) is the only `DbContext` consumer for both tables; `IssuesService` the sole write orchestrator. |
 | 3 | No EF entity leaks across boundary | PASS | `.Include(i => i.Reporter/.Assignee/.ResolvedByUser)` and `.Include(c => c.SenderUser)` are explicitly never called (doc's own touch-and-clean guidance forbids reintroducing them); display data stitched via `IUserService.GetByIdsAsync` in `IssuesService.StitchCrossDomainNavsAsync`. |
-| 4 | No cross-section EF joins (zero baseline entries) | PASS | No Issues rows in any baseline file. |
+| 4 | No cross-section EF joins (zero baseline entries) | **FAIL — corrected 2026-08-03** | No Issues rows in any baseline file, but that can't establish a pass: HUM0024 is **attribute**-allowlisted, not baseline-file-based. `IssueConfiguration.cs` and `IssueCommentConfiguration.cs` both carry active `[Grandfathered("HUM0024", …)]` markers over the four cross-section User relationships named in predicate 5 (`ReporterUserId`, `AssigneeUserId`, `ResolvedByUserId`, `SenderUserId` → Users). |
 | 5 | No `[Obsolete]` cross-section navs / `[Grandfathered]` / baseline rows | PARTIAL | 4 cross-section navs are kept `[Obsolete]`-marked for FK/cascade wiring: `Issue.Reporter`, `.Assignee`, `.ResolvedByUser`, `IssueComment.SenderUser` (wrapped in `#pragma warning disable CS0618` in EF configs). This is the documented, deliberate design-rules §6c pattern (nav kept only for FK wiring, never walked) — lower urgency than a live/unmarked nav, but is literally an `[Obsolete]` cross-section nav per the G1 wording, so recording as a queued G2 item: convert to typed-FK form (`HasOne<User>().WithMany().HasForeignKey(...)`) the way GoogleIntegration already did for `SyncServiceSettings.UpdatedByUser`, dropping the nav property entirely. No `[Grandfathered]` hits; no other baseline rows. |
 | 6 | Controllers thin — no HUM0031 grandfathers | PASS | No `Grandfathered` hits on `IssuesController.cs` / `IssuesApiController.cs`. |
 | 7 | `docs/sections/Issues.md` current | PASS | Detailed and matches code, including the derived (non-stored) ball-in-court logic and the audit-log-reconstructed activity thread. |
@@ -29,6 +29,7 @@
 | What | Where | Suggested fix | No-migration-needed? |
 |------|-------|----------------|----|
 | 4 `[Obsolete]`-marked cross-section navs kept for FK wiring | `src/Humans.Domain/Entities/Issue.cs`, `IssueComment.cs` | Convert `ReporterUserId`/`AssigneeUserId`/`ResolvedByUserId`/`SenderUserId` to typed-FK form (drop the nav properties entirely), matching the GoogleIntegration pattern. | y |
+| **Added 2026-08-03:** 2 HUM0024 configuration grandfathers | `IssueConfiguration.cs`, `IssueCommentConfiguration.cs` | Same four relationships as the row above, seen from the EF-configuration side (predicate 4 was scored off baseline-file greps, which can't see attribute allowlisting). The typed-FK conversion above retires the navs; retiring the `[Grandfathered]` markers and cutting the physical FKs is the G2 half. | y (nav/attribute work); FK cut is G2 |
 
 ## G2 queue notes
 
@@ -36,4 +37,4 @@ None identified beyond the typed-FK conversion above (schema-neutral, no migrati
 
 ## Verdict
 
-`G1: 1 gap · G3: 2 PARTIAL (missing IssuesRepository test entirely; tests not grouped under section) — headline gap: IssuesRepository has zero dedicated test coverage`
+`G1: 2 gaps (corrected 2026-08-03, was 1 — added: 2 HUM0024 configuration grandfathers) · G3: 2 PARTIAL (missing IssuesRepository test entirely; tests not grouped under section) — headline gap: IssuesRepository has zero dedicated test coverage`

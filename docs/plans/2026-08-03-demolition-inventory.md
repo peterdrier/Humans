@@ -36,7 +36,8 @@ without a `[Grandfathered(HUM0024)]`", "every `ToTable` name matches its section
 ### Cross-section FK
 `AuditLogEntryConfiguration.cs:49-52` — typed `HasOne<User>()` (no nav) on `ActorUserId` →
 `AspNetUsers` (Users/Identity). `AuditLogEntryConfiguration.cs:69-72` — live nav
-`HasOne(e => e.Resource)` on `ResourceId` → `google_resources` (Teams); `AuditLogEntry.Resource`
+`HasOne(e => e.Resource)` on `ResourceId` → `google_resources` (**GoogleIntegration** — corrected
+2026-08-03, was mislabeled Teams; see the ownership correction below); `AuditLogEntry.Resource`
 is an un-obsoleted `GoogleResource?` nav property (`AuditLogEntry.cs:69`). Grandfathered
 HUM0024, `AuditLogEntryConfiguration.cs:13-17`.
 
@@ -513,7 +514,7 @@ plan-tracked, but a legitimate G2 drop candidate whenever Store's demolition bat
 | Camps | 0 | 1 (`camp_leads`, #774) | 1 (#787) | 3 (3 tables) | 0 |
 | City Planning | 0 | 0 | 0 | 4 (2 tables) | 2 |
 | Calendar | 0 | 0 | 0 | 1 (1 table) | 0 |
-| Shifts | 6 (retained-for-soak) | 0 | 0 | 9 (6 tables) | 6 (+1 cross-section) |
+| Shifts | 6 (retained-for-soak) | 0 | 0 | 8 (6 tables) | 6 (+1 cross-section) |
 | Budget | 0 | 0 | 0 | 3 (3 tables) | 1 |
 | Expenses | 0 | 0 | 0 | 0 | 1 |
 | Tickets | 1 (retained-for-soak) | 0 | 0 | 2 (2 tables) | 0 (doc drift only) |
@@ -525,7 +526,13 @@ plan-tracked, but a legitimate G2 drop candidate whenever Store's demolition bat
 | Issues | 0 | 0 | 0 | 4 (2 tables) | 0 |
 | Campaigns | 0 | 0 | 0 | 2 (2 tables) | 0 |
 | Store | 1 (self-contained) | 0 | 0 | 0 | 0 |
-| **Total** | **4 tagged + 7 queued/targeted + 7 retained-for-soak** | **1** | **1** | **49 (35 tables)** | **24** |
+| **Total** | **4 tagged + 7 queued/targeted + 7 retained-for-soak** | **1** | **1** | **48 (35 tables)** | **24** |
+
+Shifts cross-section relationships corrected 2026-08-03 (was 9): the detailed Shifts section
+enumerates **8** — one `User` FK from `GeneralAvailability`, one `Team` FK from `Rota`, three
+`User` FKs from `ShiftSignup`, and one `User` FK each from `VolunteerEventProfile`,
+`VolunteerTagPreference` and `EventParticipation` — across the stated six tables. Overall total
+moves 49 → 48 accordingly.
 
 Users/Identity row corrected 2026-08-03 (was `1 (+4 targeted, not yet tagged)`): #603's §4 migration drops
 **five** `AspNetUsers` columns — `NormalizedEmail` plus `Email`/`EmailConfirmed`/`UserName`/`NormalizedUserName` —
