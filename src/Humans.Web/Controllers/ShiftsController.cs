@@ -1,7 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
 using Humans.Application;
-using Humans.Application.Architecture;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Shifts;
@@ -163,11 +162,6 @@ public class ShiftsController(
     // 204 with X-Redirect so the client navigates instead of swapping a row.
     [HttpPost("ToggleDay")]
     [ValidateAntiForgeryToken]
-    [Grandfathered(
-        ruleId: "HUM0031",
-        justification: "Worst-offender at HUM0031 introduction: 38 statements, cc 20.",
-        since: "2026-06-09",
-        issueRef: "nobodies-collective/Humans#857")]
     public async Task<IActionResult> ToggleDay(Guid shiftId, CancellationToken ct)
     {
         var (currentUserNotFound, user) = await ResolveCurrentUserOrChallengeAsync();
@@ -180,46 +174,24 @@ public class ShiftsController(
         var es = await shiftMgmt.GetActiveAsync()
             ?? throw new InvalidOperationException("ToggleDay requires an active event.");
 
-        // Resolve sign-up-vs-bail before any gate: the dietary requirement applies to
-        // signing up, never to removing a signup you already hold. Event-scoped read so
-        // the count below matches the page badge (which is per active event).
-        var signups = await signupService.GetByUserAsync(user.Id, es.Id);
-        var existing = signups.FirstOrDefault(s =>
-            s.ShiftId == shiftId && s.Status is SignupStatus.Confirmed or SignupStatus.Pending);
+        // Narrow flag drives SignUpAsync's auto-confirm path (admin/approver only); also
+        // folded into the service's broader CanViewRestricted (matches the browse page)
+        // so a department coordinator's row for an admin-only/hidden shift still renders
+        // instead of falling out of the browse set and 500-ing after the write committed.
+        var privileged = ShiftRoleChecks.IsPrivilegedSignupApprover(User);
+        var hasDietaryPreference = !string.IsNullOrEmpty(user.Profile?.DietaryPreference);
+        var outcome = await signupService.ToggleDayAsync(
+            user.Id, shiftId, es.Id, privileged, hasDietaryPreference, ct);
 
-        if (existing is null && await ShiftNeedsDietaryFirstAsync(user, shiftId))
+        if (outcome.NeedsDietaryFirst)
         {
             SetInfo(localizer["Shifts_DietaryRequiredBeforeSignup"].Value);
             return RedirectHeader(Url.Action(
                 "DietaryMedical", "Profile", new { returnAction = "signup", shiftId }));
         }
 
-        // Narrow flag drives SignUpAsync's auto-confirm path (admin/approver only).
-        var privileged = ShiftRoleChecks.IsPrivilegedSignupApprover(User);
-        SignupResult result;
-        bool signedUp;
-        if (existing is not null)
-        {
-            result = await signupService.BailAsync(existing.Id, user.Id, "self-service toggle");
-            signedUp = false;
-        }
-        else
-        {
-            result = await signupService.SignUpAsync(
-                user.Id,
-                shiftId,
-                flags: privileged ? ShiftSignupRequestFlags.Privileged : ShiftSignupRequestFlags.None);
-            signedUp = result.Success;
-        }
-
-        // Broad privilege — matches the browse page (Index.cshtml) so a department
-        // coordinator's row for an admin-only/hidden shift still renders instead of
-        // falling out of the browse set and 500-ing after the write already committed.
-        var canViewRestricted = privileged
-            || (await shiftMgmt.GetCoordinatorTeamIdsAsync(user.Id)).Count > 0;
-
-        var after = await signupService.GetByUserAsync(user.Id, es.Id);
-        var row = await browsePageBuilder.BuildRowAsync(shiftId, after, canViewRestricted, ct);
+        var result = outcome.Result!;
+        var row = await browsePageBuilder.BuildRowAsync(shiftId, outcome.SignupsAfter, outcome.CanViewRestricted, ct);
         // Rare race (shift just closed/deleted between write and re-read): resync the
         // whole page rather than swap a missing row.
         if (row is null)
@@ -228,8 +200,8 @@ public class ShiftsController(
         var value = row.Value;
         var blocked = await ComputeSignupsBlockedByMissingDietaryAsync(user, ct);
 
-        Response.Headers["X-Signed-Up"] = signedUp ? "true" : "false";
-        Response.Headers["X-My-Signup-Count"] = after
+        Response.Headers["X-Signed-Up"] = outcome.SignedUp ? "true" : "false";
+        Response.Headers["X-My-Signup-Count"] = outcome.SignupsAfter
             .Count(s => s.Status is SignupStatus.Confirmed or SignupStatus.Pending)
             .ToString(CultureInfo.InvariantCulture);
 
@@ -237,7 +209,7 @@ public class ShiftsController(
             SetToastHeader("warning", result.Error);
         else if (result.Warning is not null)
             SetToastHeader("warning", result.Warning);
-        else if (signedUp)
+        else if (outcome.SignedUp)
             SetToastHeader("success", value.Status == SignupStatus.Pending
                 ? localizer["Shifts_Toast_Applied"].Value
                 : localizer["Shifts_Toast_SignedUp"].Value);
@@ -252,7 +224,7 @@ public class ShiftsController(
                 IsSignedUp = value.IsSignedUp,
                 SignupStatus = value.Status,
                 SignupsBlockedByMissingDietary = blocked,
-                EarlyEntrySignupsClosed = es.IsEarlyEntrySignupsClosedFor(canViewRestricted, clock.GetCurrentInstant()),
+                EarlyEntrySignupsClosed = es.IsEarlyEntrySignupsClosedFor(outcome.CanViewRestricted, clock.GetCurrentInstant()),
                 Interaction = ShiftSignupInteraction.InstantToggle
             });
 
@@ -263,7 +235,7 @@ public class ShiftsController(
             IsSignedUp = value.IsSignedUp,
             SignupStatus = value.Status,
             SignupsBlockedByMissingDietary = blocked,
-            EarlyEntrySignupsClosed = es.IsEarlyEntrySignupsClosedFor(canViewRestricted, clock.GetCurrentInstant()),
+            EarlyEntrySignupsClosed = es.IsEarlyEntrySignupsClosedFor(outcome.CanViewRestricted, clock.GetCurrentInstant()),
             Interaction = ShiftSignupInteraction.InstantToggle
         });
     }
@@ -291,13 +263,6 @@ public class ShiftsController(
     private async Task<bool> ComputeSignupsBlockedByMissingDietaryAsync(UserInfo user, CancellationToken ct = default)
     {
         if (!await shiftMgmt.HasQualifyingCantinaSignupAsync(user.Id, ct)) return false;
-        return string.IsNullOrEmpty(user.Profile?.DietaryPreference);
-    }
-
-    private async Task<bool> ShiftNeedsDietaryFirstAsync(UserInfo user, Guid shiftId)
-    {
-        var shift = await shiftMgmt.GetShiftByIdAsync(shiftId);
-        if (shift is null || !shift.QualifiesForCantinaMeal()) return false;
         return string.IsNullOrEmpty(user.Profile?.DietaryPreference);
     }
 

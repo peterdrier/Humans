@@ -38,7 +38,7 @@ Business requirements, user stories, data model, and workflows for each feature 
 | [Workspace Account Provisioning](features/google-integration/workspace-account-provisioning.md) | Admin-driven creation of @nobodies.team Google Workspace accounts linked to a human's profile |
 | [Tier Applications](features/governance/asociado-applications.md) | Application entity for Colaborador and Asociado tier-based membership applications with Board voting workflow |
 | [Board Voting](features/governance/board-voting.md) | Structured Board vote on Colaborador/Asociado tier applications with individual votes, meeting date, and collective decision |
-| [Membership Status Partition](features/governance/membership-status.md) | Six-bucket mutually exclusive status model computed by `PartitionUsersAsync` and used by the Board dashboard and Volunteers team sync (the Admin /Humans list derives its own buckets) |
+| [Membership Status Partition](features/governance/membership-status.md) | Six-bucket mutually exclusive status model computed by `PartitionUsersAsync` and used by the Admin dashboard — the Admin /Humans list and Volunteers team sync each compute their own status buckets independently now |
 | [Membership Tiers](features/governance/membership-tiers.md) | Four-tier membership model (Volunteer / Colaborador / Asociado / Board) with three tiers managed in-system |
 | [In-App Guide](features/guide/in-app-guide.md) | Embedded `/Guide` rendering of the `docs/guide/` markdown with role-aware filtering and in-app navigation |
 | [Issues System](features/issues/issues-system.md) | In-app issue tracker routing bugs/features/questions by section to the right role-holders, with reporter↔handler threads |
@@ -97,7 +97,7 @@ Terse, authoritative invariant docs for each major section: concepts, data model
 | [Debug](sections/Debug.md) | Developer/diagnostics section: admin-only pages exposing operational insight (client demographics, request health) that no domain section owns — owns no tables |
 | [Email](sections/Email.md) | Transactional email outbox: queue, render, deliver, retry, and pause/resume — backs campaign sends, onboarding, shift, and feedback emails |
 | [Events](sections/Events.md) | Event programming: submission, moderation, browsing, export, and preference management for festival events |
-| [Expenses](sections/Expenses.md) | Expense reports submitted by members, approved by Finance Admin, paid by SEPA batch, and notified asynchronously to Holded |
+| [Expenses](sections/Expenses.md) | Expense reports submitted by members and approved by Finance Admin; approval books into Holded async, and paid/unpaid status is read back from the member's Holded creditor ledger rather than stamped on the report — payment itself happens externally, with no SEPA-file generation in the app |
 | [Feedback](sections/Feedback.md) | In-app feedback reports (bugs, feature requests, questions) with screenshots and reporter↔admin conversation threads |
 | [Finance](sections/Finance.md) | Treasurer's reality side of money — actuals, reconciliation, and treasurer-facing operational data sharing keys with Budget |
 | [Gate](sections/Gate.md) | Gate ticket scanning that decides entry at the event door and writes the durable admission record — distinct from the read-only Scanner section, which must never check anyone in |

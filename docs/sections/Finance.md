@@ -186,6 +186,8 @@ All routes are gated by `[Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]` 
 - Provisioning is additive only. Retiring a map entry sets `IsActive = false`; it does not delete the Holded account.
 - `HoldedExpenseDoc.Total` is included in category-level actuals only when `ApprovedAt IS NOT NULL`.
 - Holded API key read from env var `HOLDED_API_KEY` only — never `appsettings.json`.
+<!-- wheat: docs/superpowers/specs/2026-05-25-holded-finance-integration-design.md §3 Link & data -->
+- The member ↔ creditor-account link resolves through the Holded contact's `supplierRecord.num` field, never by name matching. It is attempted **exactly once**, best-effort, during outbox processing after the payable exists (`ExpenseReportService` → `IHoldedClient.GetContactAsync`); a failure or a null `num` is logged, the null link is stored, and the outbox event is still marked processed so a created doc is never stranded as permanently-failed. **There is no automatic retry** — `SyncCreditorLedgerAsync` imports daybook lines but never re-resolves the contact — so after an initial miss the member stays unlinked until someone runs `POST /Finance/Creditors/Bind`. (The code comment and warning logs at that call site say "will backfill on the paid poll"; no such poll exists — tracked as nobodies-collective/Humans#972.)
 
 ## Negative Access Rules
 
@@ -215,7 +217,7 @@ Budget never calls into Finance.
 **Owned repository:** `IHoldedRepository` / `HoldedRepository`  
 **Owned tables:** `holded_expense_docs`, `holded_category_map`, `holded_sync_states`, `holded_ledger_lines`, `holded_creditor_contacts`  
 **Job:** `HoldedSyncJob` (cron `0 3 * * *`)  
-**Migrations:** `20260525163748_HoldedActuals` (F1), `20260525_HoldedCreditorData` (F2 — superseded), `20260615144222_HoldedCreditorContact` (#1021), `20260615201620_HoldedLedgerSingleSource` (ledger single-source)  
+**Migrations:** `20260715103643_BaselineFinance` — consolidated onto `FinanceDbContext` (its own history table, `__EFMigrationsHistory_Finance`) when Finance moved off the shared `HumansDbContext` (nobodies-collective/Humans#858); the earlier per-feature migration chain (`HoldedActuals`, `HoldedCreditorData`, `HoldedCreditorContact`, `HoldedLedgerSingleSource`) was squashed into this baseline  
 **Architecture tests:** `tests/Humans.Application.Tests/Architecture/FinanceArchitectureTests.cs`
 
 > **What exists (Feature 1):**

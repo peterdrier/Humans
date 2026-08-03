@@ -3,7 +3,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.Globalization;
 using System.Web;
-using Humans.Application.Architecture;
 using Humans.Application.Authorization.UserEmail;
 using Humans.Application.Configuration;
 using Humans.Application.Extensions;
@@ -204,11 +203,6 @@ public class ProfileController(
 
     [HttpPost("Me/Edit")]
     [ValidateAntiForgeryToken]
-    [Grandfathered(
-        ruleId: "HUM0031",
-        justification: "Validation invariants (allergy Other, Burner CV) and CV save live in IProfileEditorService as defense-in-depth backstops; the localized field-targeted form guards and the cross-section after-save orchestration (consent-check trigger, tier-application submit/update, pending-deletion cancel) remain controller-side per no-leaf-to-director-callbacks and user-profile-foundational.",
-        since: "2026-06-09",
-        issueRef: "nobodies-collective/Humans#857")]
     public async Task<IActionResult> Edit(ProfileViewModel model)
     {
         // Tag catalog not posted back — repopulate up front so validation-failure rerenders the picker.
@@ -226,6 +220,77 @@ public class ProfileController(
         if (user is null)
             return NotFound();
 
+        ValidateEditSimpleFieldGuards(model);
+        if (ModelState.ErrorCount > 0)
+        {
+            ViewData["GoogleMapsApiKey"] = configuration.GetRequiredSetting(configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
+            return View(model);
+        }
+
+        // Canonical predicate — UserInfo.IsApproved is the Consent-Coordinator gate, so
+        // "not approved yet" IS initial setup (it already absorbs the no-profile case).
+        // See memory/architecture/derived-predicates-on-userinfo.md.
+        var isInitialSetup = !user.IsApproved;
+
+        var burnerCvResult = ValidateBurnerCvOrNull(model, isInitialSetup);
+        if (burnerCvResult is not null)
+            return burnerCvResult;
+
+        var tierValidationResult = ValidateTierApplicationOrNull(model, isInitialSetup);
+        if (tierValidationResult is not null)
+            return tierValidationResult;
+
+        var pictureUpload = await TryReadProfilePictureUploadAsync(model);
+        if (!pictureUpload.Success)
+        {
+            ViewData["GoogleMapsApiKey"] = configuration.GetRequiredSetting(configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
+            return View(model);
+        }
+
+        var (profileId, saveResult) = await SaveEditedProfileOrNullAsync(model, user.Id, isInitialSetup, pictureUpload);
+        if (saveResult is not null)
+            return saveResult;
+
+        // Cross-section peer calls (consent-check trigger, tier-application
+        // submit/update, pending-deletion cancel) stay controller-side per
+        // no-leaf-to-director-callbacks — the controller is the director,
+        // services are peers/leaves that must not call each other back.
+        await RunPostProfileSaveOrchestrationAsync(user, model, isInitialSetup);
+
+        var contactFieldsResult = await SaveEditedContactFieldsOrNullAsync(model, user.Id, profileId);
+        if (contactFieldsResult is not null)
+            return contactFieldsResult;
+
+        // Languages: remove-and-replace.
+        var newLanguages = model.EditableLanguages
+            .Where(l => !string.IsNullOrWhiteSpace(l.LanguageCode))
+            .Select(l => new ProfileLanguage
+            {
+                Id = Guid.NewGuid(),
+                ProfileId = profileId,
+                LanguageCode = l.LanguageCode.Trim(),
+                Proficiency = l.Proficiency
+            })
+            .ToList();
+
+        await _userService.SaveProfileLanguagesAsync(profileId, newLanguages);
+
+        await shiftMgmt.SetVolunteerTagPreferencesAsync(user.Id, model.EditableShiftTagIds);
+
+        // Meal pref + allergies were persisted as part of the ProfileSaveRequest
+        // above (Profile now owns dietary). Intolerances + medical are untouched —
+        // they're owned by the DietaryMedical page.
+
+        SetSuccess(localizer["Profile_Updated"].Value);
+        return RedirectToAction(nameof(Me));
+    }
+
+    // Simple field-level guards (phone E.164 format, allergy "Other" text) —
+    // localized, form-field-targeted, so they stay controller-side alongside
+    // the ModelState they populate. Extracted only to keep Edit(POST) within
+    // HUM0031's statement/complexity budget.
+    private void ValidateEditSimpleFieldGuards(ProfileViewModel model)
+    {
         var phoneTypes = new[] { ContactFieldType.Phone, ContactFieldType.WhatsApp };
         for (var i = 0; i < model.EditableContactFields.Count; i++)
         {
@@ -251,22 +316,19 @@ public class ProfileController(
             ModelState.AddModelError(nameof(model.AllergyOtherText),
                 localizer["Profile_DietaryMedical_AllergyOther_Required"].Value);
         }
+    }
 
-        if (ModelState.ErrorCount > 0)
-        {
-            ViewData["GoogleMapsApiKey"] = configuration.GetRequiredSetting(configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
-            return View(model);
-        }
-
-        // Burner CV: entries OR "no prior experience".
+    // Burner CV: entries OR "no prior experience". Returns the rerender result
+    // when invalid, null to continue.
+    private IActionResult? ValidateBurnerCvOrNull(ProfileViewModel model, bool isInitialSetup)
+    {
         var hasVolunteerHistory = model.EditableVolunteerHistory
             .Any(vh => !string.IsNullOrWhiteSpace(vh.EventName) && vh.ParsedDate.HasValue);
         if (!model.NoPriorBurnExperience && !hasVolunteerHistory)
         {
             ModelState.AddModelError(nameof(model.NoPriorBurnExperience),
                 localizer["Profile_BurnerCVRequired"].Value);
-            var existingProfile = (await _userService.GetUserInfoAsync(user.Id))?.Profile;
-            model.IsInitialSetup = existingProfile is null || !existingProfile.IsApproved;
+            model.IsInitialSetup = isInitialSetup;
             model.ShowPrivateFirst = string.IsNullOrEmpty(model.FirstName)
                 && string.IsNullOrEmpty(model.LastName)
                 && string.IsNullOrEmpty(model.EmergencyContactName);
@@ -274,55 +336,58 @@ public class ProfileController(
             return View(model);
         }
 
-        var profileForSetupCheck = (await _userService.GetUserInfoAsync(user.Id))?.Profile;
-        var isInitialSetup = profileForSetupCheck is null || !profileForSetupCheck.IsApproved;
-        if (isInitialSetup)
+        return null;
+    }
+
+    // Maps IApplicationDecisionService's tier-application field rules onto localized,
+    // form-field-targeted ModelState errors — the same error keys, and the same mapping
+    // shape, GovernanceApplicationsController uses on the submit path. The rules
+    // themselves live in the service that owns tier-application state; this runs them
+    // before any persistence so a bad submit can't half-save. Returns the rerender
+    // result when invalid, null to continue.
+    private IActionResult? ValidateTierApplicationOrNull(ProfileViewModel model, bool isInitialSetup)
+    {
+        if (!isInitialSetup || model.SelectedTier == MembershipTier.Volunteer)
+            return null;
+
+        var result = applicationDecisionService.ValidateSubmission(
+            model.SelectedTier, model.ApplicationMotivation,
+            model.ApplicationSignificantContribution, model.ApplicationRoleUnderstanding);
+
+        if (result.Success)
+            return null;
+
+        switch (result.ErrorKey)
         {
-            if (model.SelectedTier != MembershipTier.Volunteer &&
-                string.IsNullOrWhiteSpace(model.ApplicationMotivation))
-            {
+            case "MotivationRequired":
                 ModelState.AddModelError(nameof(model.ApplicationMotivation),
                     localizer["Profile_MotivationRequired"].Value);
-                model.IsInitialSetup = true;
-                model.ShowPrivateFirst = string.IsNullOrEmpty(model.FirstName)
-                    && string.IsNullOrEmpty(model.LastName)
-                    && string.IsNullOrEmpty(model.EmergencyContactName);
-                ViewData["GoogleMapsApiKey"] = configuration.GetRequiredSetting(configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
-                return View(model);
-            }
-
-            if (model.SelectedTier == MembershipTier.Asociado)
-            {
-                if (string.IsNullOrWhiteSpace(model.ApplicationSignificantContribution))
-                {
-                    ModelState.AddModelError(nameof(model.ApplicationSignificantContribution),
-                        localizer["Application_SignificantContributionRequired"].Value);
-                }
-                if (string.IsNullOrWhiteSpace(model.ApplicationRoleUnderstanding))
-                {
-                    ModelState.AddModelError(nameof(model.ApplicationRoleUnderstanding),
-                        localizer["Application_RoleUnderstandingRequired"].Value);
-                }
-                if (!ModelState.IsValid)
-                {
-                    model.IsInitialSetup = true;
-                    model.ShowPrivateFirst = string.IsNullOrEmpty(model.FirstName)
-                        && string.IsNullOrEmpty(model.LastName)
-                        && string.IsNullOrEmpty(model.EmergencyContactName);
-                    ViewData["GoogleMapsApiKey"] = configuration.GetRequiredSetting(configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
-                    return View(model);
-                }
-            }
+                break;
+            case "SignificantContributionRequired":
+                ModelState.AddModelError(nameof(model.ApplicationSignificantContribution),
+                    localizer["Application_SignificantContributionRequired"].Value);
+                break;
+            case "RoleUnderstandingRequired":
+                ModelState.AddModelError(nameof(model.ApplicationRoleUnderstanding),
+                    localizer["Application_RoleUnderstandingRequired"].Value);
+                break;
+            default:
+                ModelState.AddModelError(string.Empty, localizer["Application_InvalidTier"].Value);
+                break;
         }
 
-        var pictureUpload = await TryReadProfilePictureUploadAsync(model);
-        if (!pictureUpload.Success)
-        {
-            ViewData["GoogleMapsApiKey"] = configuration.GetRequiredSetting(configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
-            return View(model);
-        }
+        model.IsInitialSetup = true;
+        model.ShowPrivateFirst = string.IsNullOrEmpty(model.FirstName)
+            && string.IsNullOrEmpty(model.LastName)
+            && string.IsNullOrEmpty(model.EmergencyContactName);
+        ViewData["GoogleMapsApiKey"] = configuration.GetRequiredSetting(configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
+        return View(model);
+    }
 
-        // CV: existing rows keep Id/CreatedAt; new rows post Guid.Empty and get fresh Id.
+    // CV: existing rows keep Id/CreatedAt; new rows post Guid.Empty and get fresh Id.
+    private static ProfileSaveRequest BuildProfileSaveRequest(
+        ProfileViewModel model, (bool Success, byte[]? Data, string? ContentType) pictureUpload)
+    {
         var cvEntries = model.EditableVolunteerHistory
             .Where(vh => !string.IsNullOrWhiteSpace(vh.EventName) && vh.ParsedDate.HasValue)
             .Select(vh => new CVEntry(
@@ -333,7 +398,7 @@ public class ProfileController(
             ))
             .ToList();
 
-        var saveRequest = new ProfileSaveRequest(
+        return new ProfileSaveRequest(
             BurnerName: model.BurnerName,
             FirstName: model.FirstName,
             LastName: model.LastName,
@@ -360,12 +425,18 @@ public class ProfileController(
             Allergies: [.. model.Allergies.Where(a => DietaryOptions.AllergyOptions.Contains(a, StringComparer.Ordinal))],
             AllergyOtherText: model.Allergies.Contains(DietaryOptions.OtherOption) ? model.AllergyOtherText?.Trim() : null,
             VolunteerHistory: cvEntries);
+    }
 
-        Guid profileId;
+    private async Task<(Guid ProfileId, IActionResult? EarlyReturn)> SaveEditedProfileOrNullAsync(
+        ProfileViewModel model, Guid userId, bool isInitialSetup, (bool Success, byte[]? Data, string? ContentType) pictureUpload)
+    {
+        var saveRequest = BuildProfileSaveRequest(model, pictureUpload);
+
         try
         {
-            profileId = await profileEditorService.SaveProfileAsync(
-                user.Id, model.BurnerName, saveRequest);
+            var profileId = await profileEditorService.SaveProfileAsync(
+                userId, model.BurnerName, saveRequest);
+            return (profileId, null);
         }
         catch (ValidationException ex)
         {
@@ -375,9 +446,12 @@ public class ProfileController(
                 && string.IsNullOrEmpty(model.LastName)
                 && string.IsNullOrEmpty(model.EmergencyContactName);
             ViewData["GoogleMapsApiKey"] = configuration.GetRequiredSetting(configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
-            return View(model);
+            return (Guid.Empty, View(model));
         }
+    }
 
+    private async Task RunPostProfileSaveOrchestrationAsync(UserInfo user, ProfileViewModel model, bool isInitialSetup)
+    {
         // Peer-call into Onboarding; ProfileEditorService doesn't.
         await onboardingService.SetConsentCheckPendingIfEligibleAsync(user.Id);
 
@@ -420,7 +494,10 @@ public class ProfileController(
                 "Cancelled pending deletion request for user {UserId} on profile creation",
                 user.Id);
         }
+    }
 
+    private async Task<IActionResult?> SaveEditedContactFieldsOrNullAsync(ProfileViewModel model, Guid userId, Guid profileId)
+    {
         var contactFieldDtos = model.EditableContactFields
             .Where(cf => !string.IsNullOrWhiteSpace(cf.Value))
             .Select((cf, index) => new ContactFieldEditDto(
@@ -436,37 +513,15 @@ public class ProfileController(
         try
         {
             await contactFieldService.SaveContactFieldsAsync(profileId, contactFieldDtos);
+            return null;
         }
         catch (ValidationException ex)
         {
-            logger.LogWarning(ex, "Failed to save contact fields for user {UserId} and profile {ProfileId}", user.Id, profileId);
+            logger.LogWarning(ex, "Failed to save contact fields for user {UserId} and profile {ProfileId}", userId, profileId);
             ModelState.AddModelError(string.Empty, ex.Message);
             ViewData["GoogleMapsApiKey"] = configuration.GetRequiredSetting(configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
             return View(model);
         }
-
-        // Languages: remove-and-replace.
-        var newLanguages = model.EditableLanguages
-            .Where(l => !string.IsNullOrWhiteSpace(l.LanguageCode))
-            .Select(l => new ProfileLanguage
-            {
-                Id = Guid.NewGuid(),
-                ProfileId = profileId,
-                LanguageCode = l.LanguageCode.Trim(),
-                Proficiency = l.Proficiency
-            })
-            .ToList();
-
-        await _userService.SaveProfileLanguagesAsync(profileId, newLanguages);
-
-        await shiftMgmt.SetVolunteerTagPreferencesAsync(user.Id, model.EditableShiftTagIds);
-
-        // Meal pref + allergies were persisted as part of the ProfileSaveRequest
-        // above (Profile now owns dietary). Intolerances + medical are untouched —
-        // they're owned by the DietaryMedical page.
-
-        SetSuccess(localizer["Profile_Updated"].Value);
-        return RedirectToAction(nameof(Me));
     }
 
     private async Task<(bool Success, byte[]? Data, string? ContentType)> TryReadProfilePictureUploadAsync(ProfileViewModel model)
@@ -1585,11 +1640,6 @@ public class ProfileController(
 
     [HttpPost("Me/DietaryMedical")]
     [ValidateAntiForgeryToken]
-    [Grandfathered(
-        ruleId: "HUM0031",
-        justification: "Worst-offender at HUM0031 introduction: 36 statements, cc 21.",
-        since: "2026-06-09",
-        issueRef: "nobodies-collective/Humans#857")]
     public async Task<IActionResult> DietaryMedical(DietaryMedicalViewModel model)
     {
         if (!ModelState.IsValid)
@@ -1619,62 +1669,14 @@ public class ProfileController(
             // columns (the editor leaves all other profile fields untouched).
             await profileEditorService.SaveDietaryMedicalAsync(user.Id, model.ToCommand());
 
-            // Signup-replay branches — the user was bounced here from
+            // Signup-replay — the user was bounced here from
             // ShiftsController.SignUp/SignUpRange by the dietary gate. After a
             // successful save we re-run the original signup and land them on
             // /Shifts with the appropriate flash. See
             // docs/superpowers/specs/2026-05-25-dietary-prompt-tightening-design.md.
             // Replay failure does NOT roll back the dietary save — the user can
             // retry the signup directly from /Shifts without re-entering it.
-            // The inline flash-mapping duplicates ShiftsController's two existing
-            // inline copies; extract on the third call site per project doctrine.
-            switch (model.ReturnAction)
-            {
-                case "signup" when model.ShiftId is { } sid:
-                    {
-                        var privileged = ShiftRoleChecks.IsPrivilegedSignupApprover(User);
-                        var result = await shiftSignupService.SignUpAsync(
-                            user.Id,
-                            sid,
-                            actorUserId: null,
-                            flags: privileged ? ShiftSignupRequestFlags.Privileged : ShiftSignupRequestFlags.None);
-                        if (!result.Success)
-                            SetError(result.Error ?? "Shift signup failed.");
-                        else
-                            SetSuccess(result.Warning is not null
-                                ? $"Signed up successfully. Note: {result.Warning}"
-                                : "Signed up successfully!");
-                        return RedirectToAction("Index", "Shifts");
-                    }
-                case "signuprange" when model.RotaId is { } rid
-                                         && model.StartDayOffset is { } sd
-                                         && model.EndDayOffset is { } ed:
-                    {
-                        var privileged = ShiftRoleChecks.IsPrivilegedSignupApprover(User);
-                        var flags = ShiftSignupRequestFlags.SkipConflicts;
-                        if (privileged) flags |= ShiftSignupRequestFlags.Privileged;
-                        var result = await shiftSignupService.SignUpRangeAsync(
-                            user.Id,
-                            rid,
-                            sd,
-                            ed,
-                            actorUserId: null,
-                            flags: flags);
-                        if (!result.Success)
-                            SetError(result.Error ?? "Shift range signup failed.");
-                        else
-                            SetSuccess(result.Warning is not null
-                                ? $"Signed up for date range. Note: {result.Warning}"
-                                : "Signed up for date range!");
-                        return RedirectToAction("Index", "Shifts");
-                    }
-                case "shifts":
-                    SetSuccess(localizer["Profile_DietaryMedical_Saved"].Value);
-                    return RedirectToAction("Index", "Shifts");
-                default:
-                    SetSuccess(localizer["Profile_DietaryMedical_Saved"].Value);
-                    return RedirectToAction("Index", "Home");
-            }
+            return await ReplayShiftSignupAfterDietaryMedicalSaveAsync(user.Id, model);
         }
         catch (ValidationException ex)
         {
@@ -1686,6 +1688,61 @@ public class ProfileController(
             logger.LogError(ex, "Failed to save dietary/medical info");
             SetError(localizer["Profile_DietaryMedical_SaveFailed"].Value);
             return View(model);
+        }
+    }
+
+    // The inline flash-mapping duplicates ShiftsController's two existing inline
+    // copies; extracted here as the third call site per project doctrine (this
+    // copy stays local to ProfileController — see #857 tracking for a follow-up
+    // to share it with ShiftsController.SignUp/SignUpRange).
+    private async Task<IActionResult> ReplayShiftSignupAfterDietaryMedicalSaveAsync(Guid userId, DietaryMedicalViewModel model)
+    {
+        switch (model.ReturnAction)
+        {
+            case "signup" when model.ShiftId is { } sid:
+                {
+                    var privileged = ShiftRoleChecks.IsPrivilegedSignupApprover(User);
+                    var result = await shiftSignupService.SignUpAsync(
+                        userId,
+                        sid,
+                        actorUserId: null,
+                        flags: privileged ? ShiftSignupRequestFlags.Privileged : ShiftSignupRequestFlags.None);
+                    if (!result.Success)
+                        SetError(result.Error ?? "Shift signup failed.");
+                    else
+                        SetSuccess(result.Warning is not null
+                            ? $"Signed up successfully. Note: {result.Warning}"
+                            : "Signed up successfully!");
+                    return RedirectToAction("Index", "Shifts");
+                }
+            case "signuprange" when model.RotaId is { } rid
+                                     && model.StartDayOffset is { } sd
+                                     && model.EndDayOffset is { } ed:
+                {
+                    var privileged = ShiftRoleChecks.IsPrivilegedSignupApprover(User);
+                    var flags = ShiftSignupRequestFlags.SkipConflicts;
+                    if (privileged) flags |= ShiftSignupRequestFlags.Privileged;
+                    var result = await shiftSignupService.SignUpRangeAsync(
+                        userId,
+                        rid,
+                        sd,
+                        ed,
+                        actorUserId: null,
+                        flags: flags);
+                    if (!result.Success)
+                        SetError(result.Error ?? "Shift range signup failed.");
+                    else
+                        SetSuccess(result.Warning is not null
+                            ? $"Signed up for date range. Note: {result.Warning}"
+                            : "Signed up for date range!");
+                    return RedirectToAction("Index", "Shifts");
+                }
+            case "shifts":
+                SetSuccess(localizer["Profile_DietaryMedical_Saved"].Value);
+                return RedirectToAction("Index", "Shifts");
+            default:
+                SetSuccess(localizer["Profile_DietaryMedical_Saved"].Value);
+                return RedirectToAction("Index", "Home");
         }
     }
 
@@ -2110,28 +2167,13 @@ public class ProfileController(
     private (byte[] Data, string ContentType)? ResizeProfilePicture(byte[] imageData) =>
         Helpers.ProfilePictureProcessor.ResizeProfilePicture(imageData, logger);
 
-    [Grandfathered(
-        ruleId: "HUM0031",
-        justification: "Worst-offender at HUM0031 introduction: 46 statements, cc 27.",
-        since: "2026-06-09",
-        issueRef: "nobodies-collective/Humans#857")]
     private async Task<EmailsViewModel> BuildEmailsViewModelAsync(User user, bool isAdminContext = false, CancellationToken ct = default)
     {
         var emails = await userEmailService.GetUserEmailsAsync(user.Id, ct);
         var info = await _userService.GetUserInfoAsync(user.Id, ct);
         var burnerName = info?.BurnerName ?? string.Empty;
 
-        var canAdd = true;
-        var minutesUntilResend = 0;
-
-        var pendingEmail = emails.FirstOrDefault(e => e.IsPendingVerification);
-        if (pendingEmail is not null)
-        {
-            var (cooldownCanAdd, cooldownMinutes, _) =
-                await userEmailService.GetEmailCooldownInfoAsync(pendingEmail.Id, ct);
-            canAdd = cooldownCanAdd;
-            minutesUntilResend = cooldownMinutes;
-        }
+        var (canAdd, minutesUntilResend) = await GetEmailAddCooldownStatusAsync(emails, ct);
 
         var hasNobodiesTeam = emails.Any(e => e.IsVerified &&
             e.Email.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase));
@@ -2142,77 +2184,15 @@ public class ProfileController(
             .Select(e => e.Email)
             .FirstOrDefault();
 
-        // Workspace canonical: Provider=Google + Workspace-domain email. Locks Primary + Google radios.
-        var workspaceDomainSuffix = "@" + _googleWorkspaceOptions.Domain;
-        var workspaceCandidates = emails
-            .Where(e => !string.IsNullOrEmpty(e.Provider)
-                && string.Equals(e.Provider, "Google", StringComparison.OrdinalIgnoreCase)
-                && e.Email.EndsWith(workspaceDomainSuffix, StringComparison.OrdinalIgnoreCase))
-            .ToList();
-        var workspaceLockedEmail = workspaceCandidates.FirstOrDefault(e => e.IsPrimary)
-            ?? workspaceCandidates.FirstOrDefault();
+        var workspaceLockedEmail = FindWorkspaceLockedEmail(emails);
 
-        // see nobodies-collective/Humans#697 — admin diagnostic loads AspNetUserLogins + computes store-disagreement.
-        IReadOnlyList<(string Provider, string ProviderKey)> userLogins = [];
-        IReadOnlyList<UserEmailRowSnapshot> rawUserEmails = [];
-        if (isAdminContext)
-        {
-            var loginsByUser = await _userService.GetExternalLoginsByUserIdsAsync([user.Id], ct);
-            if (loginsByUser.TryGetValue(user.Id, out var list))
-                userLogins = list;
-            rawUserEmails = await userEmailService.GetEntitiesByUserIdAsync(user.Id, ct);
-        }
+        var (userLogins, rawUserEmails) = await GetAdminEmailDiagnosticsAsync(user.Id, isAdminContext, ct);
 
-        // see nobodies-collective/Humans#731 — self uses UserManager (ProviderDisplayName); stitches UserEmail row id + CreatedAt.
-        IReadOnlyList<LinkedOAuthAccountViewModel> linkedAccounts = [];
-        if (!isAdminContext)
-        {
-            var logins = await userManager.GetLoginsAsync(user);
-            if (logins.Count > 0)
-            {
-                // (Provider, ProviderKey) uniqueness is service-enforced, not DB-enforced — keep first row per key.
-                var rowsByKey = new Dictionary<(string, string), UserEmailRowSnapshot>();
-                foreach (var r in await userEmailService.GetEntitiesByUserIdAsync(user.Id, ct))
-                {
-                    if (string.IsNullOrEmpty(r.Provider) || string.IsNullOrEmpty(r.ProviderKey))
-                        continue;
-                    rowsByKey.TryAdd((r.Provider!, r.ProviderKey!), r);
-                }
-
-                // Auth-method invariant: at least one verified row must remain post-unlink (orphan logins don't touch rows).
-                var verifiedTotal = emails.Count(e => e.IsVerified);
-
-                linkedAccounts = logins.Select(l =>
-                {
-                    rowsByKey.TryGetValue((l.LoginProvider, l.ProviderKey), out var row);
-                    var rowIsVerified = row?.IsVerified == true;
-                    var verifiedAfter = verifiedTotal - (rowIsVerified ? 1 : 0);
-                    return new LinkedOAuthAccountViewModel
-                    {
-                        Provider = l.LoginProvider,
-                        ProviderKey = l.ProviderKey,
-                        ProviderDisplayName = l.ProviderDisplayName,
-                        ProviderKeyHash = HashForDisplay(l.ProviderKey),
-                        MatchingUserEmailId = row?.Id,
-                        Email = row?.Email,
-                        LinkedAt = row?.CreatedAt,
-                        CanUnlink = verifiedAfter >= 1,
-                    };
-                }).ToList();
-            }
-        }
+        var linkedAccounts = await BuildLinkedAccountsAsync(user, emails, isAdminContext, ct);
 
         // see nobodies-collective/Humans#758 — addresses linked to the user's event ticket.
         // The grid hides Delete for these rows; UserEmailService.DeleteEmailAsync re-validates.
-        var ticketOrders = await _ticketQueryService.GetTicketOrdersAsync(ct);
-        var ticketEmails = ticketOrders
-            .Where(o => o.MatchedUserId == user.Id && !string.IsNullOrWhiteSpace(o.BuyerEmail))
-            .Select(o => o.BuyerEmail!)
-            .Concat(ticketOrders
-                .SelectMany(o => o.Attendees)
-                .Where(a => a.MatchedUserId == user.Id && !string.IsNullOrWhiteSpace(a.AttendeeEmail))
-                .Select(a => a.AttendeeEmail!))
-            .ToList();
+        var ticketEmails = await GetTicketLinkedEmailsAsync(user.Id, ct);
 
         bool RowIsTicketLinked(string address) =>
             ticketEmails.Any(ticketEmail => Domain.Helpers.EmailNormalization.EmailsMatch(address, ticketEmail));
@@ -2229,13 +2209,6 @@ public class ProfileController(
             !emails.Any(e =>
                 string.Equals(e.Provider, provider, StringComparison.Ordinal)
                 && string.Equals(e.ProviderKey, providerKey, StringComparison.Ordinal));
-
-        static string HashForDisplay(string s)
-        {
-            var bytes = System.Security.Cryptography.SHA256.HashData(
-                System.Text.Encoding.UTF8.GetBytes(s));
-            return Convert.ToHexString(bytes.AsSpan(0, 8));
-        }
 
         return new EmailsViewModel
         {
@@ -2282,6 +2255,109 @@ public class ProfileController(
                     ? info
                     : null,
         };
+    }
+
+    private async Task<(bool CanAdd, int MinutesUntilResend)> GetEmailAddCooldownStatusAsync(
+        IReadOnlyList<UserEmailEditDto> emails, CancellationToken ct)
+    {
+        var pendingEmail = emails.FirstOrDefault(e => e.IsPendingVerification);
+        if (pendingEmail is null)
+            return (true, 0);
+
+        var (cooldownCanAdd, cooldownMinutes, _) =
+            await userEmailService.GetEmailCooldownInfoAsync(pendingEmail.Id, ct);
+        return (cooldownCanAdd, cooldownMinutes);
+    }
+
+    // Workspace canonical: Provider=Google + Workspace-domain email. Locks Primary + Google radios.
+    private UserEmailEditDto? FindWorkspaceLockedEmail(IReadOnlyList<UserEmailEditDto> emails)
+    {
+        var workspaceDomainSuffix = "@" + _googleWorkspaceOptions.Domain;
+        var workspaceCandidates = emails
+            .Where(e => !string.IsNullOrEmpty(e.Provider)
+                && string.Equals(e.Provider, "Google", StringComparison.OrdinalIgnoreCase)
+                && e.Email.EndsWith(workspaceDomainSuffix, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        return workspaceCandidates.FirstOrDefault(e => e.IsPrimary)
+            ?? workspaceCandidates.FirstOrDefault();
+    }
+
+    // see nobodies-collective/Humans#697 — admin diagnostic loads AspNetUserLogins + computes store-disagreement.
+    private async Task<(IReadOnlyList<(string Provider, string ProviderKey)> UserLogins, IReadOnlyList<UserEmailRowSnapshot> RawUserEmails)>
+        GetAdminEmailDiagnosticsAsync(Guid userId, bool isAdminContext, CancellationToken ct)
+    {
+        IReadOnlyList<(string Provider, string ProviderKey)> userLogins = [];
+        IReadOnlyList<UserEmailRowSnapshot> rawUserEmails = [];
+        if (!isAdminContext)
+            return (userLogins, rawUserEmails);
+
+        var loginsByUser = await _userService.GetExternalLoginsByUserIdsAsync([userId], ct);
+        if (loginsByUser.TryGetValue(userId, out var list))
+            userLogins = list;
+        rawUserEmails = await userEmailService.GetEntitiesByUserIdAsync(userId, ct);
+        return (userLogins, rawUserEmails);
+    }
+
+    // see nobodies-collective/Humans#731 — self uses UserManager (ProviderDisplayName); stitches UserEmail row id + CreatedAt.
+    private async Task<IReadOnlyList<LinkedOAuthAccountViewModel>> BuildLinkedAccountsAsync(
+        User user, IReadOnlyList<UserEmailEditDto> emails, bool isAdminContext, CancellationToken ct)
+    {
+        if (isAdminContext)
+            return [];
+
+        var logins = await userManager.GetLoginsAsync(user);
+        if (logins.Count == 0)
+            return [];
+
+        // (Provider, ProviderKey) uniqueness is service-enforced, not DB-enforced — keep first row per key.
+        var rowsByKey = new Dictionary<(string, string), UserEmailRowSnapshot>();
+        foreach (var r in await userEmailService.GetEntitiesByUserIdAsync(user.Id, ct))
+        {
+            if (string.IsNullOrEmpty(r.Provider) || string.IsNullOrEmpty(r.ProviderKey))
+                continue;
+            rowsByKey.TryAdd((r.Provider!, r.ProviderKey!), r);
+        }
+
+        // Auth-method invariant: at least one verified row must remain post-unlink (orphan logins don't touch rows).
+        var verifiedTotal = emails.Count(e => e.IsVerified);
+
+        return logins.Select(l =>
+        {
+            rowsByKey.TryGetValue((l.LoginProvider, l.ProviderKey), out var row);
+            var rowIsVerified = row?.IsVerified == true;
+            var verifiedAfter = verifiedTotal - (rowIsVerified ? 1 : 0);
+            return new LinkedOAuthAccountViewModel
+            {
+                Provider = l.LoginProvider,
+                ProviderKey = l.ProviderKey,
+                ProviderDisplayName = l.ProviderDisplayName,
+                ProviderKeyHash = HashForDisplay(l.ProviderKey),
+                MatchingUserEmailId = row?.Id,
+                Email = row?.Email,
+                LinkedAt = row?.CreatedAt,
+                CanUnlink = verifiedAfter >= 1,
+            };
+        }).ToList();
+    }
+
+    private async Task<List<string>> GetTicketLinkedEmailsAsync(Guid userId, CancellationToken ct)
+    {
+        var ticketOrders = await _ticketQueryService.GetTicketOrdersAsync(ct);
+        return ticketOrders
+            .Where(o => o.MatchedUserId == userId && !string.IsNullOrWhiteSpace(o.BuyerEmail))
+            .Select(o => o.BuyerEmail!)
+            .Concat(ticketOrders
+                .SelectMany(o => o.Attendees)
+                .Where(a => a.MatchedUserId == userId && !string.IsNullOrWhiteSpace(a.AttendeeEmail))
+                .Select(a => a.AttendeeEmail!))
+            .ToList();
+    }
+
+    private static string HashForDisplay(string s)
+    {
+        var bytes = System.Security.Cryptography.SHA256.HashData(
+            System.Text.Encoding.UTF8.GetBytes(s));
+        return Convert.ToHexString(bytes.AsSpan(0, 8));
     }
 
 }

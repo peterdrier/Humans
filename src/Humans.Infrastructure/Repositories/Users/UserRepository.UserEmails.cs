@@ -294,18 +294,6 @@ internal sealed partial class UserRepository
             .FirstOrDefaultAsync(ct);
     }
 
-    public async Task<Guid?> GetUserIdByVerifiedUserEmailAsync(
-        string email, CancellationToken ct = default)
-    {
-        var escaped = EscapeLikePattern(email);
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.UserEmails
-            .AsNoTracking()
-            .Where(ue => EF.Functions.ILike(ue.Email, escaped, "\\") && ue.IsVerified)
-            .Select(ue => (Guid?)ue.UserId)
-            .FirstOrDefaultAsync(ct);
-    }
-
     public async Task<IReadOnlyList<Guid>> GetUserIdsByUserEmailPrefixAndSuffixAsync(
         string prefix,
         string suffix,
@@ -318,33 +306,6 @@ internal sealed partial class UserRepository
             .Select(ue => ue.UserId)
             .Distinct()
             .ToListAsync(ct);
-    }
-
-    public async Task<IReadOnlyList<Guid>> GetDistinctUserIdsByVerifiedUserEmailAsync(
-        string email, CancellationToken ct = default)
-    {
-        var escaped = EscapeLikePattern(email);
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.UserEmails
-            .AsNoTracking()
-            .Where(ue => EF.Functions.ILike(ue.Email, escaped, "\\") && ue.IsVerified)
-            .Select(ue => ue.UserId)
-            .Distinct()
-            .ToListAsync(ct);
-    }
-
-    public async Task<IReadOnlyList<Guid>> GetDistinctVerifiedUserEmailUserIdsAsync(
-        string normalizedEmail, string? alternateEmail, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var query = ctx.UserEmails.AsNoTracking().Where(ue => ue.IsVerified);
-
-        query = alternateEmail is null
-            ? query.Where(ue => EF.Functions.ILike(ue.Email, normalizedEmail))
-            : query.Where(ue => EF.Functions.ILike(ue.Email, normalizedEmail)
-                             || EF.Functions.ILike(ue.Email, alternateEmail));
-
-        return await query.Select(ue => ue.UserId).Distinct().ToListAsync(ct);
     }
 
     public async Task<Guid?> GetOtherUserIdHavingUserEmailAsync(

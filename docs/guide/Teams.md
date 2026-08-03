@@ -33,6 +33,7 @@ A few teams are **system teams** (Volunteers, Coordinators, Board, Asociados, Co
 - **My teams** (`/Teams/My`) — your teams with Leave / Manage buttons.
 - **Birthdays** (`/Teams/Birthdays`) — teammate birthday calendar (month + day).
 - **Roster** (`/Teams/Roster`) — cross-team view of named role slots.
+- **Team roster** (`/Teams/{slug}/Roster`) — Board/Admin-only legal-name roster for one team.
 - **Members admin** (`/Teams/{slug}/Members`) — members, join requests, role assignments.
 - **Edit team page** (`/Teams/{slug}/EditPage`) — markdown and calls-to-action for a department's public page.
 - **Roles** (`/Teams/{slug}/Roles`) — define named role slots.
@@ -155,6 +156,10 @@ In many departments it's the sub-team leads — not the top-level coordinator �
 ### Hidden teams
 
 Toggle `IsHidden` on create or edit. Hidden teams do not appear in the directory, profile cards, birthday lists, or "My Teams" for non-admins; campaigns can still target them by ID.
+
+### View a team's roster (legal names)
+
+`/Teams/{slug}/Roster`, restricted to Board and Admin — not coordinators or sub-team managers. Lists every member of that team with their legal name next to their burner name and join date, sorted by legal name (any column header re-sorts). Linked from the team detail page's management sidebar when you have access.
 
 ### System team sync
 

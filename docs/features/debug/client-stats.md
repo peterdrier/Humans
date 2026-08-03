@@ -77,6 +77,8 @@ response produced → ClientStatsMiddleware (after UseAuthorization)
 ```
 response produced → ClientStatsMiddleware
   → if status > 399 (or aborted → 499), and not a status-code-page re-execute
+  → skip if an authenticated request aborted under /Profile/Picture (routine
+    avatar-load cancellation, not an error; anonymous aborts still record)
   → record ClientErrorEntry (timestamp, code, method, URL, IP, user, UA)
   → tracker.RecordError → enqueue in 1000-entry rolling buffer
   (429s: rate limiter's OnRejected callback records via ClientStatsMiddleware.BuildEntry

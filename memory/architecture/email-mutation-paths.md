@@ -30,11 +30,13 @@ After the data change, the service runs `EnsurePrimaryInvariantAsync` and `Ensur
 
 **Audit ownership:** every audit row for every outcome is written by the service inside the reconcile flow. The controller writes no audit rows on the OAuth path.
 
-**Sole caller:** `AccountController.ExternalLoginCallback`, calling reconcile exactly once per OAuth-success path — five paths: existing-user sign-in, already-authenticated link, lockout-relink, email-match link, new-user creation. The controller swallows reconcile exceptions: **sign-in must never block on reconcile**.
+**Sole caller:** `ExternalLoginService.CompleteExternalLoginAsync` — the OAuth-callback decision service that `AccountController.ExternalLoginCallback` dispatches to. It calls reconcile exactly once per OAuth-success path — five paths: existing-user sign-in, already-authenticated link, lockout-relink, email-match link, new-user creation. The service swallows reconcile exceptions: **sign-in must never block on reconcile**. (The one exception is new-user creation, where a failed reconcile rolls the half-built account back rather than signing anyone in.)
 
-Build-time enforcement: analyzers `HUM0005` (service-caller) and `HUM0006` (repo-caller) in `src/Humans.Analyzers/EmailMutationPathsAnalyzer.cs`. HUM0005 pins `IUserEmailService.ReconcileOAuthIdentityAsync` to `AccountController` as its sole caller; HUM0006 pins `IUserEmailRepository.ApplyReconcilePlanAsync` to `UserEmailService`. Any other call site fails the build with a pointer back to this atom. Pattern + catalogue in `docs/architecture/code-analysis.md`.
+The pin sat on `AccountController` until HUM0031 forced the decision ladder out of the controller (nobodies-collective/Humans#857). `ExternalLoginService` exists solely to serve that callback, so the allowlist is still exactly one type wide and still names the OAuth-callback moment — do not widen it to a general-purpose service (e.g. `AccountProvisioningService`, which also serves import jobs).
 
-**Forbidden:** any admin-triggered "fix this email" flow, any `_userManager.SetEmailAsync`, any direct `UPDATE user_emails SET email = ...` outside the reconcile primitive, any caller of `ReconcileOAuthIdentityAsync` other than `AccountController`. None of these can produce a correct rewrite — admin lacks the OAuth `sub` and `email_verified` claim in the authoritative moment.
+Build-time enforcement: analyzers `HUM0005` (service-caller) and `HUM0006` (repo-caller) in `src/Humans.Analyzers/EmailMutationPathsAnalyzer.cs`. HUM0005 pins `IUserEmailService.ReconcileOAuthIdentityAsync` to `ExternalLoginService` as its sole caller; HUM0006 pins `IUserEmailRepository.ApplyReconcilePlanAsync` to `UserEmailService`. Any other call site — including `AccountController` itself — fails the build with a pointer back to this atom. Pattern + catalogue in `docs/architecture/code-analysis.md`.
+
+**Forbidden:** any admin-triggered "fix this email" flow, any `_userManager.SetEmailAsync`, any direct `UPDATE user_emails SET email = ...` outside the reconcile primitive, any caller of `ReconcileOAuthIdentityAsync` other than `ExternalLoginService`. None of these can produce a correct rewrite — admin lacks the OAuth `sub` and `email_verified` claim in the authoritative moment.
 
 ## `User.Email` — vestigial Identity field, computed
 

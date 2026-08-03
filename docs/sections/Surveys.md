@@ -190,6 +190,7 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 - The system **cannot** store a completion timestamp for CompletionTracked responses (timing side-channel).
 - Individual response submissions **cannot** be audit-logged (would re-link an anonymous answer to a time/actor).
 - Public-slug requests **cannot** carry identity or a non-Anonymous tier; `/Survey/Admin` and `/Survey/Answer` **cannot** be claimed as a public slug.
+- The `LoggedInSince` audience **cannot** include GDPR-anonymized, deletion-pending, or merged users, or users in `Rejected`/`Suspended`/`AdminSuspended` state — status-walled accounts that can't reach the survey are never invited, even if they logged in after the cutoff (nobodies-collective/Humans#1099).
 
 ## Triggers
 
@@ -220,7 +221,7 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 **Status:** (A) Migrated — born §15-compliant (peterdrier/Humans issue nobodies-collective/Humans Survey section, 2026-06-04).
 
 - `SurveyService` lives in `Humans.Application.Services.Surveys` and never imports `Microsoft.EntityFrameworkCore`. Implements `ISurveyService`, `ISurveyServiceRead`, and `IUserDataContributor`.
-- `ISurveyRepository` (impl `Humans.Infrastructure/Repositories/Surveys/SurveyRepository.cs`, `internal sealed`) is the only code path that touches the six `survey_*` tables via `DbContext`. Registered as Singleton; uses `IDbContextFactory<HumansDbContext>` for per-call scoped contexts.
+- `ISurveyRepository` (impl `Humans.Infrastructure/Repositories/Surveys/SurveyRepository.cs`, `internal sealed`) is the only code path that touches the six `survey_*` tables via `DbContext`. Registered as Singleton; uses `IDbContextFactory<SurveysDbContext>` (per-section DbContext, nobodies-collective/Humans#858) for per-call scoped contexts.
 - **Aggregate-local navs kept:** `Survey.Questions ↔ SurveyQuestion.Survey`, `SurveyQuestion.Options ↔ SurveyQuestionOption.Question`, `SurveyResponse.Answers ↔ SurveyAnswer.Response`. All within Survey-owned tables, so these `.Include`s are legal inside the repository.
 - **Decorator decision — no caching decorator.** Admin-authored, low-traffic, per-invitee writes — not a hot bulk-read path (Feedback/Issues rationale). Registered as a plain Scoped service.
 - **Cross-domain navs — none.** Survey references Users/Teams by **bare `Guid` FK columns only** (the clean `FeedbackReport.AgentConversationId` precedent / `memory/architecture/no-cross-section-ef-joins.md`), with **no `[Obsolete]` navs and no cross-section EF FK constraints** — the older `Issue`/`Feedback`/`Camp` nav-stitching debt is not propagated. The service resolves display data via the cross-section read interfaces and returns DTOs.

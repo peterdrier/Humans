@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Auth;
-using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
@@ -73,7 +72,7 @@ public class AccountControllerGateLoginTests
             _userManager,
             _clock,
             NullLogger<AccountController>.Instance,
-            Substitute.For<IUserEmailService>(),
+            Substitute.For<IExternalLoginService>(),
             Substitute.For<IMagicLinkService>(),
             Substitute.For<IAccountProvisioningService>(),
             _throttle,

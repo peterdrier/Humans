@@ -234,19 +234,33 @@ public sealed class ApplicationDecisionService(
             History: historyDtos);
     }
 
-    public async Task<ApplicationDecisionResult> SubmitAsync(
-        Guid userId, MembershipTier tier, string motivation,
-        string? additionalInfo, string? significantContribution, string? roleUnderstanding,
-        string language, CancellationToken ct = default)
+    public ApplicationDecisionResult ValidateSubmission(
+        MembershipTier tier, string? motivation,
+        string? significantContribution, string? roleUnderstanding)
     {
         if (tier == MembershipTier.Volunteer)
             return new ApplicationDecisionResult(false, "InvalidTier");
+
+        if (string.IsNullOrWhiteSpace(motivation))
+            return new ApplicationDecisionResult(false, "MotivationRequired");
 
         if (tier == MembershipTier.Asociado && string.IsNullOrWhiteSpace(significantContribution))
             return new ApplicationDecisionResult(false, "SignificantContributionRequired");
 
         if (tier == MembershipTier.Asociado && string.IsNullOrWhiteSpace(roleUnderstanding))
             return new ApplicationDecisionResult(false, "RoleUnderstandingRequired");
+
+        return new ApplicationDecisionResult(true);
+    }
+
+    public async Task<ApplicationDecisionResult> SubmitAsync(
+        Guid userId, MembershipTier tier, string motivation,
+        string? additionalInfo, string? significantContribution, string? roleUnderstanding,
+        string language, CancellationToken ct = default)
+    {
+        var fieldRules = ValidateSubmission(tier, motivation, significantContribution, roleUnderstanding);
+        if (!fieldRules.Success)
+            return fieldRules;
 
         var hasPending = await repository.AnySubmittedForUserAsync(userId, ct);
         if (hasPending)

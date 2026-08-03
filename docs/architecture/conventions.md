@@ -189,7 +189,7 @@ All pages are server-rendered with Razor. The following use `fetch()` for the sp
 | `_VolunteerSearchScript.cshtml` | Volunteer search autocomplete (shift-volunteer, exempt from person-search consolidation) | Search input |
 | `_TeamGoogleAndParentFields.cshtml` | Google resource dropdown on team change | Dynamic form field |
 | `ShiftAdmin/Index.cshtml` | Shift volunteer search + tag creation | Search input + inline action |
-| `Notification/Index.cshtml` | Dismiss/mark-read without reload | Progressive enhancement |
+| `Notifications/Index.cshtml` | Dismiss/mark-read without reload | Progressive enhancement |
 | `Feedback/Index.cshtml` | Master-detail panel loading | Progressive enhancement |
 | `Google/Sync.cshtml` | Tab content loaded via Razor partial (slow Google API) | Partial-via-AJAX |
 | `Scanner/Tickets.cshtml` (`js/scanner/tickets.js`) | Ticket card loaded via Razor partial (`_TicketCard`) on barcode hit | Partial-via-AJAX |

@@ -24,9 +24,12 @@ namespace Humans.Web.Tests.Controllers;
 
 /// <summary>
 /// <see cref="ShiftsController.ToggleDay"/> — the AJAX per-day signup/bail toggle.
-/// Asserts on the response metadata headers (X-Signed-Up, X-Toast-*, X-Redirect)
-/// and the service call that fired (SignUpAsync vs BailAsync vs neither), since
-/// those are the contract the client JS depends on.
+/// The bail-vs-signup decision and the dietary gate now live in
+/// <see cref="IShiftSignupService.ToggleDayAsync"/> (see
+/// <c>ShiftSignupServiceTests</c> for that coverage); these tests only assert
+/// the controller's mapping of a stubbed <see cref="ToggleDaySignupOutcome"/>
+/// onto the response metadata headers (X-Signed-Up, X-Toast-*, X-Redirect) and
+/// view selection, since that mapping is the contract the client JS depends on.
 /// </summary>
 public class ShiftsControllerToggleDayTests
 {
@@ -165,6 +168,11 @@ public class ShiftsControllerToggleDayTests
             UpdatedAt = TestNow
         };
 
+    private void StubToggleOutcome(ToggleDaySignupOutcome outcome) =>
+        _signupService.ToggleDayAsync(
+            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<bool>(), Arg.Any<bool>(),
+            Arg.Any<CancellationToken>()).Returns(outcome);
+
     [HumansFact]
     public async Task ToggleDay_WhenNotSignedUp_SignsUp_AndSetsSignedUpHeaderTrue()
     {
@@ -172,19 +180,17 @@ public class ShiftsControllerToggleDayTests
         var shiftId = Guid.NewGuid();
         var ctrl = BuildSut(userId, MakeUserInfo(userId, "B", "F", "L", dietary: "Vegan"));
 
-        _signupService.GetByUserAsync(userId, Arg.Any<Guid?>()).Returns([]);
         var created = ActiveSignup(Guid.NewGuid(), userId, shiftId, SignupStatus.Confirmed);
-        _signupService.SignUpAsync(userId, shiftId, Arg.Any<Guid?>(), Arg.Any<ShiftSignupRequestFlags>())
-            .Returns(SignupResult.Ok(created));
+        StubToggleOutcome(new ToggleDaySignupOutcome(false, SignupResult.Ok(created), true, false, [created]));
         StubBrowseRow(shiftId, userId, SignupStatus.Confirmed);
 
         var result = await ctrl.ToggleDay(shiftId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<PartialViewResult>();
         ctrl.Response.Headers["X-Signed-Up"].ToString().Should().Be("true");
-        await _signupService.Received(1).SignUpAsync(
-            userId, shiftId, Arg.Any<Guid?>(), Arg.Any<ShiftSignupRequestFlags>());
-        await _signupService.DidNotReceiveWithAnyArgs().BailAsync(default, default, default);
+        await _signupService.Received(1).ToggleDayAsync(
+            userId, shiftId, Event.Id, /* privileged */ false, /* hasDietaryPreference */ true,
+            Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -196,18 +202,13 @@ public class ShiftsControllerToggleDayTests
         var ctrl = BuildSut(userId, MakeUserInfo(userId, "B", "F", "L", dietary: "Vegan"));
 
         var existing = ActiveSignup(signupId, userId, shiftId, SignupStatus.Confirmed);
-        _signupService.GetByUserAsync(userId, Arg.Any<Guid?>()).Returns([existing]);
-        _signupService.BailAsync(signupId, userId, Arg.Any<string?>())
-            .Returns(SignupResult.Ok(existing));
+        StubToggleOutcome(new ToggleDaySignupOutcome(false, SignupResult.Ok(existing), false, false, []));
         StubBrowseRow(shiftId, userId, rowStatus: null);
 
         var result = await ctrl.ToggleDay(shiftId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<PartialViewResult>();
         ctrl.Response.Headers["X-Signed-Up"].ToString().Should().Be("false");
-        await _signupService.Received(1).BailAsync(signupId, userId, Arg.Any<string?>());
-        await _signupService.DidNotReceiveWithAnyArgs().SignUpAsync(
-            default, default);
     }
 
     [HumansFact]
@@ -217,9 +218,8 @@ public class ShiftsControllerToggleDayTests
         var shiftId = Guid.NewGuid();
         var ctrl = BuildSut(userId, MakeUserInfo(userId, "B", "F", "L", dietary: "Vegan"));
 
-        _signupService.GetByUserAsync(userId, Arg.Any<Guid?>()).Returns([]);
-        _signupService.SignUpAsync(userId, shiftId, Arg.Any<Guid?>(), Arg.Any<ShiftSignupRequestFlags>())
-            .Returns(SignupResult.Fail("Time conflict on day(s): Mon"));
+        StubToggleOutcome(new ToggleDaySignupOutcome(
+            false, SignupResult.Fail("Time conflict on day(s): Mon"), false, false, []));
         StubBrowseRow(shiftId, userId, rowStatus: null);
 
         var result = await ctrl.ToggleDay(shiftId, Xunit.TestContext.Current.CancellationToken);
@@ -237,10 +237,8 @@ public class ShiftsControllerToggleDayTests
         var shiftId = Guid.NewGuid();
         var ctrl = BuildSut(userId, MakeUserInfo(userId, "B", "F", "L", dietary: "Vegan"));
 
-        _signupService.GetByUserAsync(userId, Arg.Any<Guid?>()).Returns([]);
         var pending = ActiveSignup(Guid.NewGuid(), userId, shiftId, SignupStatus.Pending);
-        _signupService.SignUpAsync(userId, shiftId, Arg.Any<Guid?>(), Arg.Any<ShiftSignupRequestFlags>())
-            .Returns(SignupResult.Ok(pending));
+        StubToggleOutcome(new ToggleDaySignupOutcome(false, SignupResult.Ok(pending), true, false, [pending]));
         StubBrowseRow(shiftId, userId, SignupStatus.Pending);
 
         var result = await ctrl.ToggleDay(shiftId, Xunit.TestContext.Current.CancellationToken);
@@ -259,9 +257,8 @@ public class ShiftsControllerToggleDayTests
         var shiftId = Guid.NewGuid();
         var ctrl = BuildSut(userId, MakeUserInfo(userId, "B", "F", "L", dietary: "Vegan"));
 
-        _signupService.GetByUserAsync(userId, Arg.Any<Guid?>()).Returns([]);
-        _signupService.SignUpAsync(userId, shiftId, Arg.Any<Guid?>(), Arg.Any<ShiftSignupRequestFlags>())
-            .Returns(SignupResult.Ok(ActiveSignup(Guid.NewGuid(), userId, shiftId, SignupStatus.Confirmed)));
+        var created = ActiveSignup(Guid.NewGuid(), userId, shiftId, SignupStatus.Confirmed);
+        StubToggleOutcome(new ToggleDaySignupOutcome(false, SignupResult.Ok(created), true, false, [created]));
         // Active event present, but the toggled shift isn't in the browse set → BuildRowAsync
         // returns null; the controller must resync (204) instead of throwing.
         _shiftMgmt.GetActiveAsync().Returns(Event);
@@ -281,32 +278,16 @@ public class ShiftsControllerToggleDayTests
         // Named (passes name gate) but no dietary preference recorded.
         var ctrl = BuildSut(userId, MakeUserInfo(userId, "B", "F", "L", dietary: null));
 
-        // All-day shift qualifies for a cantina meal → dietary gate trips.
-        var qualifyingShift = new Shift
-        {
-            Id = shiftId,
-            RotaId = Guid.NewGuid(),
-            DayOffset = 1,
-            IsAllDay = true,
-            StartTime = new LocalTime(8, 0),
-            Duration = Duration.FromHours(4),
-            MinVolunteers = 1,
-            MaxVolunteers = 2,
-            CreatedAt = TestNow,
-            UpdatedAt = TestNow
-        };
-        _shiftMgmt.GetShiftByIdAsync(shiftId).Returns(qualifyingShift);
-        // es is resolved before the gate now; no existing signup → the gate applies.
         _shiftMgmt.GetActiveAsync().Returns(Event);
-        _signupService.GetByUserAsync(userId, Arg.Any<Guid?>()).Returns([]);
+        StubToggleOutcome(ToggleDaySignupOutcome.DietaryRequired());
 
         var result = await ctrl.ToggleDay(shiftId, Xunit.TestContext.Current.CancellationToken);
 
         var status = result.Should().BeAssignableTo<IStatusCodeActionResult>().Subject;
         status.StatusCode.Should().Be(204);
-        await _signupService.DidNotReceiveWithAnyArgs().SignUpAsync(
-            default, default);
-        await _signupService.DidNotReceiveWithAnyArgs().BailAsync(default, default, default);
+        await _signupService.Received(1).ToggleDayAsync(
+            userId, shiftId, Event.Id, /* privileged */ false, /* hasDietaryPreference */ false,
+            Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -321,8 +302,7 @@ public class ShiftsControllerToggleDayTests
 
         var status = result.Should().BeAssignableTo<IStatusCodeActionResult>().Subject;
         status.StatusCode.Should().Be(204);
-        await _signupService.DidNotReceiveWithAnyArgs().SignUpAsync(
-            default, default);
-        await _signupService.DidNotReceiveWithAnyArgs().BailAsync(default, default, default);
+        await _signupService.DidNotReceiveWithAnyArgs().ToggleDayAsync(
+            default, default, default, default, default);
     }
 }

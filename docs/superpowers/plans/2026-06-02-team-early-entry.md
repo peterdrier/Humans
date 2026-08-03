@@ -22,7 +22,7 @@ This plan describes an earlier shape (and an interim art-specific/single-team co
 
 **Tech Stack:** .NET, EF Core (Npgsql), NodaTime (`LocalDate`/`Instant`), Clean Architecture (Domain/Application/Infrastructure/Web), xUnit (`[HumansFact]`), Moq for pure-logic tests.
 
-**Spec:** `docs/superpowers/specs/2026-06-02-team-early-entry-design.md`
+**Spec:** `docs/superpowers/specs/2026-06-02-team-early-entry-design.md` (historical — since deleted; every decision in it is already current in [`docs/sections/Teams.md`](../../sections/Teams.md))
 
 **Branch/worktree:** Implement in a worktree `.worktrees/team-early-entry` off `feat/team-early-entry` (per repo git workflow). Build/test with `-v quiet` (`dotnet build Humans.slnx -v quiet`, `dotnet test Humans.slnx -v quiet`).
 

@@ -112,7 +112,8 @@ Physical shipping containers managed per-barrio or at org level, placed on the C
 **Status:** (A) Migrated — introduced in (A) shape from day one per PR peterdrier/Humans#389 (2026-04-26), reshaped pre-merge to the `Container` + `ContainerPlacement` split (2026-05-10) and stripped of the virtual-org-camp sentinel pre-merge (2026-05-14). New sections must be (A) per design-rules §15h(1).
 
 - `ContainerService` lives in `Humans.Application.Services.Containers` and never imports `Microsoft.EntityFrameworkCore`.
-- `IContainerRepository` / `ContainerRepository` (`Humans.Infrastructure.Repositories.Containers`) is the only code path that touches `containers` and `container_placements` via `DbContext`.
+- `IContainerRepository` / `ContainerRepository` (`Humans.Infrastructure.Repositories.Containers`, `IDbContextFactory<ContainersDbContext>`) is the only code path that touches `containers` and `container_placements` via `DbContext`.
+- **DbContext** — `ContainersDbContext` (`src/Humans.Infrastructure/Data/ContainersDbContext.cs`, `internal sealed`) is the section's own per-section EF model (nobodies-collective/Humans#858 split): maps only `containers` and `container_placements`, with its own `__EFMigrationsHistory_Containers` table and migrations under `Migrations/Containers/`. Same database and connection as `HumansDbContext` — the split partitions the EF model, not the database.
 - `IContainerImageStorage` / `ContainerImageStorage` (Application interface + Infrastructure impl) handles filesystem writes, rooted at `wwwroot/`.
 - **Decorator decision — no caching decorator.** Small dataset, admin/lead facing, low write frequency.
 - DI bundle: `ContainersSectionExtensions.AddContainersSection` (Web layer) registers `IContainerRepository` (Singleton), `IContainerImageStorage` (Singleton), `IContainerService` (Scoped).

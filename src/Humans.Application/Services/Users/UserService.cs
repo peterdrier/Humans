@@ -194,15 +194,27 @@ public sealed class UserService(
         return await repo.ApplyExpiredDeletionAnonymizationAsync(userId, ct);
     }
 
+    /// <summary>
+    /// Resolves a user by the legacy GoogleEmail shadow column (and its gmail/googlemail
+    /// alternate form), returning the matching <see cref="UserInfo"/> or null.
+    /// </summary>
+    /// <remarks>
+    /// This is the <b>legacy GoogleEmail shadow-column fallback only</b>. The verified-UserEmails
+    /// match that logically precedes it is owned by <c>CachingUserService</c>, which scans its
+    /// warmed <c>UserInfo</c> snapshot and only delegates here on a miss — same division of labour
+    /// as <see cref="SearchUsersAsync"/>. Doing the match here too would re-derive that entire
+    /// snapshot (<see cref="GetAllUserInfosAsync"/> = six bulk repository reads) on every miss,
+    /// once per address, which is what a Google sync run with unknown recipients actually hits.
+    /// Callers resolve <c>IUserService</c> to the decorator; reaching the inner service directly
+    /// is a DI registration mistake.
+    /// </remarks>
     public async Task<UserInfo?> GetByEmailOrAlternateAsync(string email, CancellationToken ct = default)
     {
         var normalized = EmailNormalization.NormalizeForComparison(email);
         var alternate = GetAlternateEmail(normalized);
 
-        var matchingUserIds = await repo.GetDistinctVerifiedUserEmailUserIdsAsync(normalized, alternate, ct);
-        if (matchingUserIds.Count > 0)
-            return await GetUserInfoAsync(matchingUserIds[0], ct);
-
+        // The deprecated GoogleEmail shadow column, which UserInfo does not carry
+        // (UserInfo.IdentityEmailColumn is User.Email/Identity's column — a different legacy field).
         var legacyUser = await repo.GetByEmailOrAlternateAsync(normalized, alternate, ct);
         if (legacyUser is null)
             return null;

@@ -59,6 +59,7 @@ All routes are `AdminOnly`.
 - For non-bounce subscribers, Humans state wins only when the prior write's `UpdateSource ∈ {Profile, Guest, MagicLink, OneClick}` AND `UpdatedAt > mlActionAt`.
 - `CommunicationPreference.SubscribedAt` is stamped on first known opt-in and never overwritten while non-null.
 - Audience sync excludes ML subscribers with `status ∈ {unsubscribed, bounced, junk}` from group assignment — delivery/consent state overrides audience membership.
+- `MailerLiteClient` retries a `429` response up to twice more (3 attempts total), honouring the response's `Retry-After` header (clamped to 0–90s; defaults to 60s when the header is absent or unparsable) before giving up (nobodies-collective/Humans#1103).
 
 ## Negative Access Rules
 

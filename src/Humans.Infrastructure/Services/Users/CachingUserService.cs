@@ -10,6 +10,7 @@ using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Profiles;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Humans.Domain.Helpers;
 
 namespace Humans.Infrastructure.Services.Users;
 
@@ -499,8 +500,22 @@ public sealed class CachingUserService(
         return result;
     }
 
-    public Task<UserInfo?> GetByEmailOrAlternateAsync(string email, CancellationToken ct = default) =>
-        WithInnerAsync(inner => inner.GetByEmailOrAlternateAsync(email, ct));
+    public async Task<UserInfo?> GetByEmailOrAlternateAsync(string email, CancellationToken ct = default)
+    {
+        // Verified-email match is served from the warmed snapshot; only the legacy
+        // GoogleEmail shadow-column fallback (not projected onto UserInfo) goes to the
+        // inner service's repo read. The inner method is legacy-column-only by design —
+        // it deliberately does NOT repeat this scan, so a miss costs one targeted query
+        // rather than re-deriving the whole snapshot. See UserService.GetByEmailOrAlternateAsync.
+        await EnsureWarmedAsync(ct).ConfigureAwait(false);
+        foreach (var u in Values)
+        {
+            if (u.UserEmails.Any(e => e.IsVerified && EmailNormalization.EmailsMatch(e.Email, email)))
+                return u;
+        }
+
+        return await WithInnerAsync(inner => inner.GetByEmailOrAlternateAsync(email, ct)).ConfigureAwait(false);
+    }
 
     public Task<IReadOnlyList<Guid>> GetAccountsDueForAnonymizationAsync(
         Instant now, CancellationToken ct = default) =>

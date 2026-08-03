@@ -1,4 +1,3 @@
-using Humans.Application.Architecture;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Enums;
@@ -84,105 +83,101 @@ public class EmailController(
         return RedirectToAction(nameof(EmailOutbox));
     }
 
+    // Sample data + the (id, name, recipient, renderer-call) table below are pure
+    // data — moved out of the method body so EmailPreview itself is just "loop
+    // cultures, project the table, return the view" (was 51 statements / cc 2:
+    // twenty near-identical var+Add pairs repeated per culture).
+    private static readonly string[] Cultures = ["en", "es", "de", "fr", "it", "ca"];
+
+    private static readonly Dictionary<string, (string Name, string Email)> Personas = new(StringComparer.Ordinal)
+    {
+        ["en"] = ("Sally Smith", "sally@example.com"),
+        ["es"] = ("María García", "maria@example.com"),
+        ["de"] = ("Frieda Fischer", "frieda@example.com"),
+        ["fr"] = ("François Dupont", "francois@example.com"),
+        ["it"] = ("Giulia Rossi", "giulia@example.com"),
+        ["ca"] = ("Jordi Puig", "jordi@example.com"),
+    };
+
+    private static readonly string[] SampleDocs = ["Volunteer Agreement", "Privacy Policy"];
+
+    private static readonly (string Name, string? Url)[] SampleResources =
+    [
+        ("Art Collective Shared Drive", "https://drive.google.com/drive/folders/example"),
+        ("art-collective@nobodies.team", "https://groups.google.com/g/art-collective"),
+    ];
+
+    private const string FacilitatedMessageSampleText =
+        "Hi! I'm organizing the next community event and would love your help. Let me know if you're interested!";
+
+    private readonly record struct PreviewContext(string Culture, string Name, string Email, EmailSettings Settings);
+
+    private static readonly IReadOnlyList<Func<IEmailRenderer, PreviewContext, EmailPreviewItem>> PreviewDefinitions =
+    [
+        (r, c) => BuildPreviewItem("application-submitted", "Application Submitted (to Admin)", c.Settings.AdminAddress,
+            r.RenderApplicationSubmitted(Guid.Empty, c.Name)),
+        (r, c) => BuildPreviewItem("application-approved", "Application Approved", c.Email,
+            r.RenderApplicationApproved(c.Name, MembershipTier.Colaborador, c.Culture)),
+        (r, c) => BuildPreviewItem("application-rejected", "Application Rejected", c.Email,
+            r.RenderApplicationRejected(c.Name, MembershipTier.Asociado, "Incomplete profile information", c.Culture)),
+        (r, c) => BuildPreviewItem("signup-rejected", "Signup Rejected", c.Email,
+            r.RenderSignupRejected(c.Name, "Incomplete profile information", c.Culture)),
+        (r, c) => BuildPreviewItem("reconsent-required", "Re-Consent Required (single doc)", c.Email,
+            r.RenderReConsentsRequired(c.Name, [SampleDocs[0]], c.Culture)),
+        (r, c) => BuildPreviewItem("reconsents-required", "Re-Consents Required (multiple docs)", c.Email,
+            r.RenderReConsentsRequired(c.Name, SampleDocs, c.Culture)),
+        (r, c) => BuildPreviewItem("reconsent-reminder", "Re-Consent Reminder", c.Email,
+            r.RenderReConsentReminder(c.Name, SampleDocs, 14, c.Culture)),
+        (r, c) => BuildPreviewItem("welcome", "Welcome", c.Email,
+            r.RenderWelcome(c.Name, c.Culture)),
+        (r, c) => BuildPreviewItem("access-suspended", "Access Suspended", c.Email,
+            r.RenderAccessSuspended(c.Name, "Outstanding consent requirements", c.Culture)),
+        (r, c) => BuildPreviewItem("email-verification", "Email Verification", "newemail@example.com",
+            r.RenderEmailVerification(c.Name, "newemail@example.com", $"{c.Settings.BaseUrl}/Profile/VerifyEmail?token=sample-token", culture: c.Culture)),
+        (r, c) => BuildPreviewItem("email-verification-merge", "Email Verification (Merge)", "duplicate@example.com",
+            r.RenderEmailVerification(c.Name, "duplicate@example.com", $"{c.Settings.BaseUrl}/Profile/VerifyEmail?token=sample-token", isConflict: true, culture: c.Culture)),
+        (r, c) => BuildPreviewItem("deletion-requested", "Account Deletion Requested", c.Email,
+            r.RenderAccountDeletionRequested(c.Name, "March 15, 2026", c.Culture)),
+        (r, c) => BuildPreviewItem("account-deleted", "Account Deleted", c.Email,
+            r.RenderAccountDeleted(c.Name, c.Culture)),
+        (r, c) => BuildPreviewItem("added-to-team", "Added to Team", c.Email,
+            r.RenderAddedToTeam(c.Name, "Art Collective", "art-collective", SampleResources, c.Culture)),
+        (r, c) => BuildPreviewItem("term-renewal-reminder", "Term Renewal Reminder", c.Email,
+            r.RenderTermRenewalReminder(c.Name, "Colaborador", "April 1, 2026", c.Culture)),
+        (r, c) => BuildPreviewItem("facilitated-message", "Facilitated Message (with contact info)", c.Email,
+            r.RenderFacilitatedMessage(c.Name, "Alex Firestone", FacilitatedMessageSampleText, true, "alex@example.com", c.Culture)),
+        (r, c) => BuildPreviewItem("facilitated-message-anon", "Facilitated Message (without contact info)", c.Email,
+            r.RenderFacilitatedMessage(c.Name, "Alex Firestone", FacilitatedMessageSampleText, false, null, c.Culture)),
+        (r, c) => BuildPreviewItem("google-group-removal-loss", "Google Group Removal — Loss of Access", c.Email,
+            r.RenderGoogleGroupRemovalLossOfAccess(c.Name, "Art Collective", "art-collective@nobodies.team", c.Culture)),
+        (r, c) => BuildPreviewItem("google-drive-removal-loss", "Google Drive Removal — Loss of Access", c.Email,
+            r.RenderGoogleDriveRemovalLossOfAccess(c.Name, "Art Collective Shared Drive", c.Culture)),
+        (r, c) => BuildPreviewItem("google-removal-secondary-cleanup", "Google Access Removal — Secondary Email Cleanup", "old-" + c.Email,
+            r.RenderGoogleAccessRemovalSecondaryCleanup(c.Name, "old-" + c.Email, c.Email, c.Culture)),
+    ];
+
+    private static EmailPreviewItem BuildPreviewItem(string id, string name, string recipient, EmailContent content) => new()
+    {
+        Id = id,
+        Name = name,
+        Recipient = recipient,
+        Subject = content.Subject,
+        Body = content.HtmlBody
+    };
+
     [HttpGet("EmailPreview")]
-    [Grandfathered(
-        ruleId: "HUM0031",
-        justification: "Worst-offender at HUM0031 introduction: 51 statements, cc 2.",
-        since: "2026-06-09",
-        issueRef: "nobodies-collective/Humans#857")]
     public IActionResult EmailPreview(
         [FromServices] IEmailRenderer renderer,
         [FromServices] IOptions<EmailSettings> emailSettings)
     {
         var settings = emailSettings.Value;
-        var cultures = new[] { "en", "es", "de", "fr", "it", "ca" };
-
-        var personas = new Dictionary<string, (string Name, string Email)>(StringComparer.Ordinal)
-        {
-            ["en"] = ("Sally Smith", "sally@example.com"),
-            ["es"] = ("Mar\u00eda Garc\u00eda", "maria@example.com"),
-            ["de"] = ("Frieda Fischer", "frieda@example.com"),
-            ["fr"] = ("Fran\u00e7ois Dupont", "francois@example.com"),
-            ["it"] = ("Giulia Rossi", "giulia@example.com"),
-            ["ca"] = ("Jordi Puig", "jordi@example.com"),
-        };
-
-        var sampleDocs = new[] { "Volunteer Agreement", "Privacy Policy" };
-        var sampleResources = new (string Name, string? Url)[]
-        {
-            ("Art Collective Shared Drive", "https://drive.google.com/drive/folders/example"),
-            ("art-collective@nobodies.team", "https://groups.google.com/g/art-collective"),
-        };
-
         var previews = new Dictionary<string, List<EmailPreviewItem>>(StringComparer.Ordinal);
 
-        foreach (var culture in cultures)
+        foreach (var culture in Cultures)
         {
-            var (name, email) = personas[culture];
-
-            var items = new List<EmailPreviewItem>();
-
-            var c1 = renderer.RenderApplicationSubmitted(Guid.Empty, name);
-            items.Add(new EmailPreviewItem { Id = "application-submitted", Name = "Application Submitted (to Admin)", Recipient = settings.AdminAddress, Subject = c1.Subject, Body = c1.HtmlBody });
-
-            var c2 = renderer.RenderApplicationApproved(name, MembershipTier.Colaborador, culture);
-            items.Add(new EmailPreviewItem { Id = "application-approved", Name = "Application Approved", Recipient = email, Subject = c2.Subject, Body = c2.HtmlBody });
-
-            var c3 = renderer.RenderApplicationRejected(name, MembershipTier.Asociado, "Incomplete profile information", culture);
-            items.Add(new EmailPreviewItem { Id = "application-rejected", Name = "Application Rejected", Recipient = email, Subject = c3.Subject, Body = c3.HtmlBody });
-
-            var c4 = renderer.RenderSignupRejected(name, "Incomplete profile information", culture);
-            items.Add(new EmailPreviewItem { Id = "signup-rejected", Name = "Signup Rejected", Recipient = email, Subject = c4.Subject, Body = c4.HtmlBody });
-
-            var c5 = renderer.RenderReConsentsRequired(name, [sampleDocs[0]], culture);
-            items.Add(new EmailPreviewItem { Id = "reconsent-required", Name = "Re-Consent Required (single doc)", Recipient = email, Subject = c5.Subject, Body = c5.HtmlBody });
-
-            var c6 = renderer.RenderReConsentsRequired(name, sampleDocs, culture);
-            items.Add(new EmailPreviewItem { Id = "reconsents-required", Name = "Re-Consents Required (multiple docs)", Recipient = email, Subject = c6.Subject, Body = c6.HtmlBody });
-
-            var c7 = renderer.RenderReConsentReminder(name, sampleDocs, 14, culture);
-            items.Add(new EmailPreviewItem { Id = "reconsent-reminder", Name = "Re-Consent Reminder", Recipient = email, Subject = c7.Subject, Body = c7.HtmlBody });
-
-            var c8 = renderer.RenderWelcome(name, culture);
-            items.Add(new EmailPreviewItem { Id = "welcome", Name = "Welcome", Recipient = email, Subject = c8.Subject, Body = c8.HtmlBody });
-
-            var c9 = renderer.RenderAccessSuspended(name, "Outstanding consent requirements", culture);
-            items.Add(new EmailPreviewItem { Id = "access-suspended", Name = "Access Suspended", Recipient = email, Subject = c9.Subject, Body = c9.HtmlBody });
-
-            var c10 = renderer.RenderEmailVerification(name, "newemail@example.com", $"{settings.BaseUrl}/Profile/VerifyEmail?token=sample-token", culture: culture);
-            items.Add(new EmailPreviewItem { Id = "email-verification", Name = "Email Verification", Recipient = "newemail@example.com", Subject = c10.Subject, Body = c10.HtmlBody });
-
-            var c10m = renderer.RenderEmailVerification(name, "duplicate@example.com", $"{settings.BaseUrl}/Profile/VerifyEmail?token=sample-token", isConflict: true, culture: culture);
-            items.Add(new EmailPreviewItem { Id = "email-verification-merge", Name = "Email Verification (Merge)", Recipient = "duplicate@example.com", Subject = c10m.Subject, Body = c10m.HtmlBody });
-
-            var c11 = renderer.RenderAccountDeletionRequested(name, "March 15, 2026", culture);
-            items.Add(new EmailPreviewItem { Id = "deletion-requested", Name = "Account Deletion Requested", Recipient = email, Subject = c11.Subject, Body = c11.HtmlBody });
-
-            var c12 = renderer.RenderAccountDeleted(name, culture);
-            items.Add(new EmailPreviewItem { Id = "account-deleted", Name = "Account Deleted", Recipient = email, Subject = c12.Subject, Body = c12.HtmlBody });
-
-            var c13 = renderer.RenderAddedToTeam(name, "Art Collective", "art-collective", sampleResources, culture);
-            items.Add(new EmailPreviewItem { Id = "added-to-team", Name = "Added to Team", Recipient = email, Subject = c13.Subject, Body = c13.HtmlBody });
-
-            var c14 = renderer.RenderTermRenewalReminder(name, "Colaborador", "April 1, 2026", culture);
-            items.Add(new EmailPreviewItem { Id = "term-renewal-reminder", Name = "Term Renewal Reminder", Recipient = email, Subject = c14.Subject, Body = c14.HtmlBody });
-
-            var cMsg1 = renderer.RenderFacilitatedMessage(name, "Alex Firestone", "Hi! I'm organizing the next community event and would love your help. Let me know if you're interested!", true, "alex@example.com", culture);
-            items.Add(new EmailPreviewItem { Id = "facilitated-message", Name = "Facilitated Message (with contact info)", Recipient = email, Subject = cMsg1.Subject, Body = cMsg1.HtmlBody });
-
-            var cMsg2 = renderer.RenderFacilitatedMessage(name, "Alex Firestone", "Hi! I'm organizing the next community event and would love your help. Let me know if you're interested!", false, null, culture);
-            items.Add(new EmailPreviewItem { Id = "facilitated-message-anon", Name = "Facilitated Message (without contact info)", Recipient = email, Subject = cMsg2.Subject, Body = cMsg2.HtmlBody });
-
-            var cGroupRemoval = renderer.RenderGoogleGroupRemovalLossOfAccess(name, "Art Collective", "art-collective@nobodies.team", culture);
-            items.Add(new EmailPreviewItem { Id = "google-group-removal-loss", Name = "Google Group Removal — Loss of Access", Recipient = email, Subject = cGroupRemoval.Subject, Body = cGroupRemoval.HtmlBody });
-
-            var cDriveRemoval = renderer.RenderGoogleDriveRemovalLossOfAccess(name, "Art Collective Shared Drive", culture);
-            items.Add(new EmailPreviewItem { Id = "google-drive-removal-loss", Name = "Google Drive Removal — Loss of Access", Recipient = email, Subject = cDriveRemoval.Subject, Body = cDriveRemoval.HtmlBody });
-
-            var cSecondaryCleanup = renderer.RenderGoogleAccessRemovalSecondaryCleanup(name, "old-" + email, email, culture);
-            items.Add(new EmailPreviewItem { Id = "google-removal-secondary-cleanup", Name = "Google Access Removal — Secondary Email Cleanup", Recipient = "old-" + email, Subject = cSecondaryCleanup.Subject, Body = cSecondaryCleanup.HtmlBody });
-
-            previews[culture] = items;
+            var (name, email) = Personas[culture];
+            var ctx = new PreviewContext(culture, name, email, settings);
+            previews[culture] = PreviewDefinitions.Select(build => build(renderer, ctx)).ToList();
         }
 
         return View(new EmailPreviewViewModel { Previews = previews, FromAddress = settings.FromAddress });

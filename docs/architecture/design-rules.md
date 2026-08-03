@@ -29,10 +29,12 @@ Domain  ←  Application  ←  Infrastructure
 |---|---|---|
 | **Domain** | Entities, enums, value objects. No external dependencies. | Services, interfaces, framework references, EF types, DTOs |
 | **Application** | Service **interfaces** and **implementations** (business logic), repository and store **interfaces**, DTOs, use cases, authorization handlers | `DbContext`, `Microsoft.EntityFrameworkCore.*`, HTTP types, external SDKs, direct I/O |
-| **Infrastructure** | Repository implementations, store implementations, caching decorators, `HumansDbContext`, migrations, external API clients (Google, Stripe, SMTP), background jobs | Controller logic, Razor, HTTP request/response, business rules |
+| **Infrastructure** | Repository implementations, store implementations, caching decorators, the application contexts (`HumansDbContext` plus the per-section `<Section>DbContext`s, §2b), migrations, external API clients (Google, Stripe, SMTP), background jobs | Controller logic, Razor, HTTP request/response, business rules |
 | **Web** | Controllers, views, view models, API endpoints, DI wiring | `DbContext`, direct EF queries, direct cache access for domain data, raw SQL |
 
-The project reference graph (`Humans.Application.csproj` references only `Humans.Domain.csproj`) **structurally enforces** that services in Application cannot import `Microsoft.EntityFrameworkCore`. EF pollution in business logic is a compile error, not a code-review finding.
+The project reference graph (`Humans.Application.csproj` references only `Humans.Domain.csproj` and `Humans.Interfaces.csproj`) **structurally enforces** that services in Application cannot import `Microsoft.EntityFrameworkCore`. EF pollution in business logic is a compile error, not a code-review finding.
+
+`Humans.Interfaces` is the lowest-level project — no project references, no packages. It holds only the role markers (`IApplicationService`, `IRepository`, `IOrchestrator`, `IFanout`, `IInvalidator`) and the architecture attributes (`GrandfatheredAttribute`, `DontFixAttribute`, `SurfaceBudgetAttribute`). Their namespaces intentionally stay `Humans.Application.*` (namespace ≠ assembly), so call sites and the `Humans.Analyzers` full-name constants are unaffected by the move.
 
 **Key change from prior rules:** Services now live in `Humans.Application`, not `Humans.Infrastructure`. The old rule ("services own their data access") meant "services inject `DbContext` directly," which conflated business logic with persistence and made "no cross-domain joins" impossible to enforce structurally. The new rule is "services go through their owning repository."
 
@@ -332,7 +334,7 @@ See [`docs/features/global/gdpr-export.md`](../features/global/gdpr-export.md) f
 
 ### 8b. Cross-Section Fanout — Contributor Pattern
 
-§8a's GDPR export is one instance of a recurring shape: an **orchestrator that owns no tables, injects `IEnumerable<IContributor>`, calls only the contributor interface, and merges the returned slices** — never reaching into another section's repository or running cross-section `Include` chains. Sections opt in by implementing the contributor interface; each contributor reads only its own owned tables, and cross-section names flow through the existing `I{Section}ServiceRead` surfaces. The orchestrator iterates sequentially (the contributors share the scoped `HumansDbContext`, which is not thread-safe) and never appears in §8's table-ownership map.
+§8a's GDPR export is one instance of a recurring shape: an **orchestrator that owns no tables, injects `IEnumerable<IContributor>`, calls only the contributor interface, and merges the returned slices** — never reaching into another section's repository or running cross-section `Include` chains. Sections opt in by implementing the contributor interface; each contributor reads only its own owned tables, and cross-section names flow through the existing `I{Section}ServiceRead` surfaces. The orchestrator iterates sequentially and never appears in §8's table-ownership map. **The original reason for iterating sequentially is obsolete** — it was "the contributors share the scoped `HumansDbContext`, which is not thread-safe", but since the per-section split (nobodies-collective/Humans#858) contributors such as `ExpenseReportService`, `SurveyService`, `AgentService`, `EventService` and `HoldedFinanceService` read through their own `IDbContextFactory<TContext>` against separate contexts, and independent factory-created contexts are safe to use concurrently (EF's restriction is on concurrent operations against the *same* instance). Sequential iteration is now a consistency and simplicity choice, not a correctness requirement.
 
 Two fanouts exist today:
 

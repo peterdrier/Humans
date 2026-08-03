@@ -196,6 +196,50 @@ public class Event
     }
 
     /// <summary>
+    /// Applies submitter-edited fields to an individual (non-camp) event.
+    /// Shared by the submit-edit and resubmit flows; the caller persists via
+    /// <c>UpdateAndResubmitAsync</c>.
+    /// </summary>
+    public void ApplyIndividualEdit(
+        Guid categoryId, Guid venueId, string title, string description,
+        Instant startAt, int durationMinutes, string? locationNote, string? host,
+        bool isRecurring, string? recurrenceDays)
+    {
+        CategoryId = categoryId;
+        GuideSharedVenueId = venueId;
+        Title = title;
+        Description = description;
+        StartAt = startAt;
+        DurationMinutes = durationMinutes;
+        LocationNote = locationNote;
+        Host = host;
+        IsRecurring = isRecurring;
+        RecurrenceDays = isRecurring ? recurrenceDays : null;
+    }
+
+    /// <summary>
+    /// Applies submitter-edited fields to a camp (barrio) event. Shared by the
+    /// submit-edit and resubmit flows; the caller persists via
+    /// <c>UpdateAndResubmitAsync</c>.
+    /// </summary>
+    public void ApplyBarrioEdit(
+        Guid categoryId, string title, string description,
+        Instant startAt, int durationMinutes, string? locationNote, string? host,
+        bool isRecurring, string? recurrenceDays, int priorityRank)
+    {
+        CategoryId = categoryId;
+        Title = title;
+        Description = description;
+        StartAt = startAt;
+        DurationMinutes = durationMinutes;
+        LocationNote = locationNote;
+        Host = host;
+        IsRecurring = isRecurring;
+        RecurrenceDays = isRecurring ? recurrenceDays : null;
+        PriorityRank = priorityRank;
+    }
+
+    /// <summary>
     /// Apply a moderation decision to this event.
     /// </summary>
     public void ApplyModerationAction(EventModerationActionType actionType, IClock clock)

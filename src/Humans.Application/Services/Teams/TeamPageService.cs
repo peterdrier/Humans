@@ -60,6 +60,10 @@ public sealed class TeamPageService(
             detail.IsAuthenticated,
             canManageShiftsByRole);
 
+        var (subteamLeads, subteamMembers) = detail.IsAuthenticated && detail.ChildTeams.Count > 0
+            ? await BuildSubteamRollupAsync(detail.ChildTeams, members)
+            : ([], []);
+
         return new TeamPageDetailResult(
             detail.Team,
             members,
@@ -76,7 +80,57 @@ public sealed class TeamPageService(
             detail.CurrentUserPendingRequestId,
             detail.PendingRequestCount,
             pageContentUpdatedBy?.BurnerName,
-            shiftsSummary);
+            shiftsSummary,
+            subteamLeads,
+            subteamMembers);
+    }
+
+    /// <summary>
+    /// Department page's subteam-member rollup: every child-team coordinator
+    /// (as a "lead"), plus every other child-team member not already a direct
+    /// department member (deduplicated across multiple child teams).
+    /// </summary>
+    private async Task<(IReadOnlyList<TeamPageChildTeamMemberSummary> Leads, IReadOnlyList<TeamPageChildTeamMemberSummary> Members)>
+        BuildSubteamRollupAsync(
+            IReadOnlyList<TeamPageTeamLink> childTeams,
+            IReadOnlyList<TeamPageMemberSummary> directMembers)
+    {
+        var directMemberUserIds = new HashSet<Guid>(directMembers.Select(m => m.UserId));
+        var addedUserIds = new HashSet<Guid>();
+
+        var childTeamIds = childTeams.Select(c => c.Id).ToList();
+        var managementRolesByTeam = await teamService.GetManagementRoleNamesByTeamIdsAsync(childTeamIds);
+        var teamsById = await teamService.GetTeamsAsync();
+
+        var childMembersByTeam = childTeamIds
+            .Where(teamsById.ContainsKey)
+            .ToDictionary(id => id, id => teamsById[id].Members);
+
+        var leads = new List<TeamPageChildTeamMemberSummary>();
+        var rollupMembers = new List<TeamPageChildTeamMemberSummary>();
+
+        foreach (var child in childTeams)
+        {
+            if (!childMembersByTeam.TryGetValue(child.Id, out var childMembers))
+                continue;
+            var managementRoleName = managementRolesByTeam.GetValueOrDefault(child.Id);
+
+            foreach (var cm in childMembers)
+            {
+                var isCoordinator = cm.Role == TeamMemberRole.Coordinator;
+
+                if (isCoordinator)
+                    leads.Add(new TeamPageChildTeamMemberSummary(cm.UserId, child.Name, child.Slug, true, managementRoleName));
+
+                if (directMemberUserIds.Contains(cm.UserId) || !addedUserIds.Add(cm.UserId))
+                    continue;
+
+                rollupMembers.Add(new TeamPageChildTeamMemberSummary(
+                    cm.UserId, child.Name, child.Slug, isCoordinator, isCoordinator ? managementRoleName : null));
+            }
+        }
+
+        return (leads, rollupMembers);
     }
 
     private async Task<TeamPageShiftsSummary?> GetShiftsSummaryAsync(

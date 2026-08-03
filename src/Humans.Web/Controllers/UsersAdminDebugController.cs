@@ -1,9 +1,9 @@
-using Humans.Application.Architecture;
 using Humans.Application.Interfaces.Users;
 using Humans.Web.Authorization;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using NodaTime;
 
 namespace Humans.Web.Controllers;
 
@@ -36,33 +36,38 @@ public sealed class UsersAdminDebugController(IUserServiceRead userService) : Hu
         return View(new UsersDebugViewModel(paged, total, page, pageSize, sort, dir));
     }
 
-    [Grandfathered(
-        ruleId: "HUM0031",
-        justification: "Sort-key switch over many columns — sorting is controller turf; reshape rather than relocate. 4 statements, cc 16.",
-        since: "2026-06-09",
-        issueRef: "nobodies-collective/Humans#857")]
+    // Null-first ascending semantics for tri-state booleans — null < false < true.
+    private static int NullableBoolRank(bool? b) => b is null ? 0 : b.Value ? 2 : 1;
+
+    // Sort-key → column comparison. A dictionary of comparisons (rather than a
+    // switch dispatching to OrderBy) keeps ApplySort itself a straight-line
+    // lookup + sort — see memory/architecture/display-sort-in-controllers.md
+    // (sorting is legitimately controller turf; this only reshapes it).
+    // Ordinal (case-sensitive) keys — matches the original switch's exact-string-literal semantics.
+    private static readonly IReadOnlyDictionary<string, Comparison<UserDebugRow>> SortComparisons =
+        new Dictionary<string, Comparison<UserDebugRow>>(StringComparer.Ordinal)
+        {
+            ["userId"] = (a, b) => a.UserId.CompareTo(b.UserId),
+            ["hasProfile"] = (a, b) => a.HasProfile.CompareTo(b.HasProfile),
+            ["hasTicket"] = (a, b) => a.HasTicket.CompareTo(b.HasTicket),
+            ["marketing"] = (a, b) => NullableBoolRank(a.MarketingOptedOut).CompareTo(NullableBoolRank(b.MarketingOptedOut)),
+            ["burnerName"] = (a, b) => string.Compare(a.BurnerName, b.BurnerName, StringComparison.OrdinalIgnoreCase),
+            ["legalName"] = (a, b) => string.Compare(a.LegalName, b.LegalName, StringComparison.OrdinalIgnoreCase),
+            ["hasName"] = (a, b) => NullableBoolRank(a.HasName).CompareTo(NullableBoolRank(b.HasName)),
+            ["hasConsent"] = (a, b) => NullableBoolRank(a.HasConsent).CompareTo(NullableBoolRank(b.HasConsent)),
+            ["createdAt"] = (a, b) => a.CreatedAt.CompareTo(b.CreatedAt),
+            ["lastLoginAt"] = (a, b) => (a.LastLoginAt ?? Instant.MinValue).CompareTo(b.LastLoginAt ?? Instant.MinValue),
+        };
+
     private static List<UserDebugRow> ApplySort(List<UserDebugRow> rows, string sort, string dir)
     {
         var asc = string.Equals(dir, "asc", StringComparison.OrdinalIgnoreCase);
+        var comparison = SortComparisons.GetValueOrDefault(sort,
+            (a, b) => string.Compare(a.DisplayName, b.DisplayName, StringComparison.OrdinalIgnoreCase));
 
-        // Null-first ascending semantics for tri-state booleans — null < false < true.
-        static int NullableBool(bool? b) => b is null ? 0 : b.Value ? 2 : 1;
-
-        IEnumerable<UserDebugRow> sorted = sort switch
-        {
-            "userId" => rows.OrderBy(r => r.UserId),
-            "hasProfile" => rows.OrderBy(r => r.HasProfile),
-            "hasTicket" => rows.OrderBy(r => r.HasTicket),
-            "marketing" => rows.OrderBy(r => NullableBool(r.MarketingOptedOut)),
-            "burnerName" => rows.OrderBy(r => r.BurnerName, StringComparer.OrdinalIgnoreCase),
-            "legalName" => rows.OrderBy(r => r.LegalName, StringComparer.OrdinalIgnoreCase),
-            "hasName" => rows.OrderBy(r => NullableBool(r.HasName)),
-            "hasConsent" => rows.OrderBy(r => NullableBool(r.HasConsent)),
-            "createdAt" => rows.OrderBy(r => r.CreatedAt),
-            "lastLoginAt" => rows.OrderBy(r => r.LastLoginAt ?? NodaTime.Instant.MinValue),
-            _ => rows.OrderBy(r => r.DisplayName, StringComparer.OrdinalIgnoreCase),
-        };
-
-        return asc ? sorted.ToList() : sorted.Reverse().ToList();
+        // OrderBy (not List.Sort) — stable sort, matching the prior switch/OrderBy behavior for ties.
+        var sorted = rows.OrderBy(r => r, Comparer<UserDebugRow>.Create(comparison)).ToList();
+        if (!asc) sorted.Reverse();
+        return sorted;
     }
 }

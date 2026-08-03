@@ -19,7 +19,8 @@ namespace Humans.Application.Tests.Services.Store;
 
 /// <summary>
 /// Focused coverage for the polymorphic team-coordinator order path.
-/// See <c>docs/superpowers/specs/2026-05-27-store-team-orders-design.md</c>.
+/// See <c>docs/sections/Store.md</c> (Architecture — the schema decision for why
+/// team orders reuse <c>StoreOrder</c> rather than a separate table).
 /// </summary>
 public class StoreServiceTeamOrdersTests
 {

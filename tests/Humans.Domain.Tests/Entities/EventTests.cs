@@ -220,6 +220,70 @@ public class EventTests
         occurrences.Should().Equal(guideEvent.StartAt);
     }
 
+    [HumansFact]
+    public void ApplyIndividualEdit_SetsFieldsAndClearsRecurrenceDaysWhenNotRecurring()
+    {
+        var guideEvent = CreateEvent(EventStatus.Pending);
+        var categoryId = Guid.NewGuid();
+        var venueId = Guid.NewGuid();
+        var startAt = Instant.FromUtc(2026, 7, 2, 14, 0);
+
+        guideEvent.ApplyIndividualEdit(
+            categoryId, venueId, "New title", "New description",
+            startAt, 90, "Near the fire", "Host name",
+            isRecurring: false, recurrenceDays: "1,2");
+
+        guideEvent.CategoryId.Should().Be(categoryId);
+        guideEvent.GuideSharedVenueId.Should().Be(venueId);
+        guideEvent.Title.Should().Be("New title");
+        guideEvent.Description.Should().Be("New description");
+        guideEvent.StartAt.Should().Be(startAt);
+        guideEvent.DurationMinutes.Should().Be(90);
+        guideEvent.LocationNote.Should().Be("Near the fire");
+        guideEvent.Host.Should().Be("Host name");
+        guideEvent.IsRecurring.Should().BeFalse();
+        guideEvent.RecurrenceDays.Should().BeNull(); // cleared when not recurring
+    }
+
+    [HumansFact]
+    public void ApplyIndividualEdit_Recurring_KeepsRecurrenceDays()
+    {
+        var guideEvent = CreateEvent(EventStatus.Pending);
+
+        guideEvent.ApplyIndividualEdit(
+            Guid.NewGuid(), Guid.NewGuid(), "Title", "Description",
+            Instant.FromUtc(2026, 7, 2, 14, 0), 60, null, null,
+            isRecurring: true, recurrenceDays: "0,2,4");
+
+        guideEvent.IsRecurring.Should().BeTrue();
+        guideEvent.RecurrenceDays.Should().Be("0,2,4");
+    }
+
+    [HumansFact]
+    public void ApplyBarrioEdit_SetsFieldsIncludingPriorityRankAndClearsRecurrenceDaysWhenNotRecurring()
+    {
+        var guideEvent = CreateEvent(EventStatus.Pending);
+        guideEvent.CampId = Guid.NewGuid();
+        var categoryId = Guid.NewGuid();
+        var startAt = Instant.FromUtc(2026, 7, 3, 9, 0);
+
+        guideEvent.ApplyBarrioEdit(
+            categoryId, "Barrio title", "Barrio description",
+            startAt, 45, "Behind the stage", "Camp host",
+            isRecurring: false, recurrenceDays: "1", priorityRank: 3);
+
+        guideEvent.CategoryId.Should().Be(categoryId);
+        guideEvent.Title.Should().Be("Barrio title");
+        guideEvent.Description.Should().Be("Barrio description");
+        guideEvent.StartAt.Should().Be(startAt);
+        guideEvent.DurationMinutes.Should().Be(45);
+        guideEvent.LocationNote.Should().Be("Behind the stage");
+        guideEvent.Host.Should().Be("Camp host");
+        guideEvent.IsRecurring.Should().BeFalse();
+        guideEvent.RecurrenceDays.Should().BeNull();
+        guideEvent.PriorityRank.Should().Be(3);
+    }
+
     private Event CreateEvent(EventStatus status)
     {
         return new Event

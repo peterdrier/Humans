@@ -25,6 +25,15 @@ Go to the login page (`/Account/Login`). You'll see two options:
 
 Either works. The login link is the simplest if you're not sure.
 
+## Staying signed in
+
+Once you're in, you'll generally stay signed in — even after closing your
+browser or restarting your device. Visit at least once every couple of weeks
+and you won't need to sign in again: a visit more than a week after your last
+one extends your sign-in for a further 14 days. Go quiet for more than 14
+days, or clear your browser's cookies, and you'll need to sign in again next
+time.
+
 ## How the email login link works
 
 1. Type your email and ask for a link.

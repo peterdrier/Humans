@@ -49,9 +49,14 @@ for a debug aid.
   enqueue-then-trim-under-lock like `InMemoryLogSink`. URL truncated to 200 chars,
   UA to 150; whole buffer stays under ~1 MB. Client label is derived by the
   tracker at record time via `UserAgentClassifier` (Web never calls Infrastructure).
-- **Capture point** — `ClientStatsMiddleware` after `await next()`. Three special cases:
+- **Capture point** — `ClientStatsMiddleware` after `await next()`. Four special cases:
   - **Aborted requests record as 499** (nginx convention, matching ASP.NET Core's
     request metric), including aborts that surface as cancellation exceptions.
+  - **Authenticated profile-picture aborts are not recorded.** List pages load
+    ~30 avatars at once; navigating away aborts whatever is still in flight —
+    routine browsing for a logged-in user, not an error. An abort under
+    `/Profile/Picture` only records when the requester is unauthenticated (a
+    499 flood without a session is treated as a scrape signal).
   - **`UseStatusCodePagesWithReExecute` re-runs are skipped** (`IStatusCodeReExecuteFeature`)
     so each error records once, with the real request path.
   - **`UseExceptionHandler` re-executes are recorded** (that's the only pass that

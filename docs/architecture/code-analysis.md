@@ -67,7 +67,7 @@ HUM0001 | Reference to deleted email-identity-decoupling legacy member | Error
 HUM0002 | Identity-derived User column written from Application or Web | Error
 HUM0003 | UserManager.FindByEmailAsync / FindByNameAsync called from Application or Web | Error
 HUM0004 | Profile.IsSuspended written outside the allowlisted dual-writers | Error
-HUM0005 | IUserEmailService.UpdateEmailAsync called from outside AccountController | Error
+HUM0005 | IUserEmailService.ReconcileOAuthIdentityAsync called from outside ExternalLoginService | Error
 HUM0006 | IUserRepository.ApplyUserEmailReconcilePlanAsync called from outside approved user-email services | Error
 HUM0007 | Concurrency-token metadata forbidden in live source | Error
 HUM0008 | Controller constructor injects an application DbContext (`HumansDbContext` or any per-section context) | Error

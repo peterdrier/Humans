@@ -8,7 +8,7 @@
 
 **Tech Stack:** .NET 10, EF Core (Npgsql), NodaTime, Hangfire (`IRecurringJob`), ASP.NET MVC, xUnit + AwesomeAssertions (`[HumansFact]`), NSubstitute.
 
-**Spec:** `docs/superpowers/specs/2026-05-25-holded-finance-integration-design.md` — §3 (Feature 2), §1 (API findings), §4 (org-accounting boundary).
+**Spec:** `docs/superpowers/specs/2026-05-25-holded-finance-integration-design.md` (historical — since deleted; §1's API-version finding now lives in [`docs/sections/Holded.md`](../../sections/Holded.md) and §3's creditor-link rule in [`docs/sections/Finance.md`](../../sections/Finance.md)).
 
 **Branch / worktree:** `feat/holded-finance-creditor` at `.worktrees/holded-finance-f2`. Feature 1 (PR #783) is now **merged to `main`**, its migration regenerated as `20260525215323_HoldedActuals`; this branch is rebased onto `origin/main`, so Feature 2 is a **normal PR to `main`** (no longer stacked). All work happens in this worktree.
 

@@ -1963,4 +1963,140 @@ public class UserEmailServiceTests
         await _repository.DidNotReceive()
             .AddUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
     }
+
+    // --- nobodies-collective/Humans#828: verified-email lookups match in-memory against UserInfo cache ---
+
+    [HumansFact]
+    public async Task GetDistinctVerifiedUserIdsAsync_GmailAlternateForm_Matches()
+    {
+        // Stored row is @googlemail.com; caller looks up the @gmail.com form (and vice versa
+        // would match too) — EmailsMatch normalizes both sides before comparing.
+        var userId = Guid.NewGuid();
+        var rows = new List<UserEmail>
+        {
+            new() { Id = Guid.NewGuid(), UserId = userId, Email = "alice@googlemail.com", IsVerified = true },
+        };
+        StubAllUserInfosFromRows(rows);
+
+        var matches = await _service.GetDistinctVerifiedUserIdsAsync(
+            "alice@gmail.com", Xunit.TestContext.Current.CancellationToken);
+
+        matches.Should().ContainSingle().Which.Should().Be(userId);
+    }
+
+    [HumansFact]
+    public async Task GetDistinctVerifiedUserIdsAsync_NoMatch_ReturnsEmpty()
+    {
+        var userId = Guid.NewGuid();
+        var rows = new List<UserEmail>
+        {
+            new() { Id = Guid.NewGuid(), UserId = userId, Email = "alice@gmail.com", IsVerified = true },
+        };
+        StubAllUserInfosFromRows(rows);
+
+        var matches = await _service.GetDistinctVerifiedUserIdsAsync(
+            "bob@gmail.com", Xunit.TestContext.Current.CancellationToken);
+
+        matches.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task GetDistinctVerifiedUserIdsAsync_IgnoresUnverifiedRows()
+    {
+        var userId = Guid.NewGuid();
+        var rows = new List<UserEmail>
+        {
+            new() { Id = Guid.NewGuid(), UserId = userId, Email = "alice@gmail.com", IsVerified = false },
+        };
+        StubAllUserInfosFromRows(rows);
+
+        var matches = await _service.GetDistinctVerifiedUserIdsAsync(
+            "alice@gmail.com", Xunit.TestContext.Current.CancellationToken);
+
+        matches.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task GetUserIdByExactEmailAsync_SingleVerifiedMatch_ReturnsUserId()
+    {
+        var userId = Guid.NewGuid();
+        var rows = new List<UserEmail>
+        {
+            new() { Id = Guid.NewGuid(), UserId = userId, Email = "alice@example.com", IsVerified = true },
+        };
+        StubAllUserInfosFromRows(rows);
+
+        var result = await _service.GetUserIdByExactEmailAsync(
+            "alice@example.com", Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().Be(userId);
+    }
+
+    [HumansFact]
+    public async Task GetUserIdByExactEmailAsync_GmailAlternateForm_DoesNotMatch()
+    {
+        // Exact-match semantics (no gmail/googlemail aliasing) — unlike
+        // GetDistinctVerifiedUserIdsAsync, this method must NOT alias-match.
+        var userId = Guid.NewGuid();
+        var rows = new List<UserEmail>
+        {
+            new() { Id = Guid.NewGuid(), UserId = userId, Email = "alice@googlemail.com", IsVerified = true },
+        };
+        StubAllUserInfosFromRows(rows);
+
+        var result = await _service.GetUserIdByExactEmailAsync(
+            "alice@gmail.com", Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task GetUserIdByExactEmailAsync_AmbiguousMatch_ReturnsNull()
+    {
+        var userA = Guid.NewGuid();
+        var userB = Guid.NewGuid();
+        var rows = new List<UserEmail>
+        {
+            new() { Id = Guid.NewGuid(), UserId = userA, Email = "shared@example.com", IsVerified = true },
+            new() { Id = Guid.NewGuid(), UserId = userB, Email = "shared@example.com", IsVerified = true },
+        };
+        StubAllUserInfosFromRows(rows);
+
+        var result = await _service.GetUserIdByExactEmailAsync(
+            "shared@example.com", Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task GetUserIdByVerifiedEmailAsync_CaseInsensitiveExactMatch_ReturnsUserId()
+    {
+        var userId = Guid.NewGuid();
+        var rows = new List<UserEmail>
+        {
+            new() { Id = Guid.NewGuid(), UserId = userId, Email = "alice@example.com", IsVerified = true },
+        };
+        StubAllUserInfosFromRows(rows);
+
+        var result = await _service.GetUserIdByVerifiedEmailAsync(
+            "ALICE@EXAMPLE.COM", Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().Be(userId);
+    }
+
+    [HumansFact]
+    public async Task GetUserIdByVerifiedEmailAsync_NoMatch_ReturnsNull()
+    {
+        var userId = Guid.NewGuid();
+        var rows = new List<UserEmail>
+        {
+            new() { Id = Guid.NewGuid(), UserId = userId, Email = "alice@example.com", IsVerified = true },
+        };
+        StubAllUserInfosFromRows(rows);
+
+        var result = await _service.GetUserIdByVerifiedEmailAsync(
+            "bob@example.com", Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeNull();
+    }
 }

@@ -1317,6 +1317,49 @@ public sealed class ShiftSignupService(
         Guid eventSettingsId, CancellationToken ct = default) =>
         repo.GetActiveCommittedUserIdsForEventAsync(eventSettingsId, ct);
 
+    public async Task<ToggleDaySignupOutcome> ToggleDayAsync(
+        Guid userId,
+        Guid shiftId,
+        Guid eventSettingsId,
+        bool privileged,
+        bool hasDietaryPreference,
+        CancellationToken ct = default)
+    {
+        var signups = await repo.GetForUsersAsync([userId], eventSettingsId, ct);
+        var existing = signups.FirstOrDefault(s =>
+            s.ShiftId == shiftId && s.Status is SignupStatus.Confirmed or SignupStatus.Pending);
+
+        if (existing is null && !hasDietaryPreference && await ShiftNeedsCantinaMealAsync(shiftId, ct))
+            return ToggleDaySignupOutcome.DietaryRequired();
+
+        SignupResult result;
+        bool signedUp;
+        if (existing is not null)
+        {
+            result = await BailAsync(existing.Id, userId, "self-service toggle");
+            signedUp = false;
+        }
+        else
+        {
+            result = await SignUpAsync(
+                userId,
+                shiftId,
+                flags: privileged ? ShiftSignupRequestFlags.Privileged : ShiftSignupRequestFlags.None);
+            signedUp = result.Success;
+        }
+
+        var canViewRestricted = privileged || (await shiftMgmt.GetCoordinatorTeamIdsAsync(userId)).Count > 0;
+        var after = await repo.GetForUsersAsync([userId], eventSettingsId, ct);
+
+        return new ToggleDaySignupOutcome(false, result, signedUp, canViewRestricted, after);
+    }
+
+    private async Task<bool> ShiftNeedsCantinaMealAsync(Guid shiftId, CancellationToken ct)
+    {
+        var shift = await repo.GetShiftAsync(shiftId, ShiftReadShape.Context, ct);
+        return shift is not null && shift.QualifiesForCantinaMeal();
+    }
+
     public async Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
         CancellationToken ct)
     {

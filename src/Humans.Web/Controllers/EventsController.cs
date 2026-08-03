@@ -1,6 +1,3 @@
-using CsvHelper.Configuration;
-using Humans.Application.Architecture;
-using Humans.Application.Csv;
 using Humans.Application.DTOs.Events;
 using Humans.Application.Events;
 using Humans.Application.Extensions;
@@ -33,11 +30,6 @@ public class EventsController(
     ILogger<EventsController> logger) : HumansCampControllerBase(users, camps, authorizationService)
 {
     [HttpGet("MySubmissions")]
-    [Grandfathered(
-        ruleId: "HUM0031",
-        justification: "Worst-offender at HUM0031 introduction: 21 statements, cc 19.",
-        since: "2026-06-09",
-        issueRef: "nobodies-collective/Humans#857")]
     public async Task<IActionResult> MySubmissions()
     {
         var user = await GetCurrentUserInfoAsync();
@@ -63,17 +55,17 @@ public class EventsController(
         var barrioBlocks = new List<BarrioSubmissionsBlock>();
         foreach (var camp in managedCamps)
         {
-            var campEvents = await guide.GetCampSubmissionsAsync(camp.Id);
+            var summary = await guide.GetCampSubmissionsSummaryAsync(camp.Id);
             var campName = camp.Active?.Name ?? camp.Slug;
             barrioBlocks.Add(new BarrioSubmissionsBlock
             {
                 CampId = camp.Id,
                 CampName = campName,
                 CampSlug = camp.Slug,
-                SubmittedCount = campEvents.Count,
-                ApprovedCount = campEvents.Count(e => e.Status == EventStatus.Approved),
-                PendingCount = campEvents.Count(e => e.Status == EventStatus.Pending),
-                Events = campEvents.OrderByDescending(e => e.SubmittedAt).Select(e => new CampEventRowViewModel
+                SubmittedCount = summary.SubmittedCount,
+                ApprovedCount = summary.ApprovedCount,
+                PendingCount = summary.PendingCount,
+                Events = summary.Events.Select(e => new CampEventRowViewModel
                 {
                     Id = e.Id,
                     Title = e.Title,
@@ -246,11 +238,6 @@ public class EventsController(
 
     [HttpPost("Submit/{eventId:guid}/Edit")]
     [ValidateAntiForgeryToken]
-    [Grandfathered(
-        ruleId: "HUM0031",
-        justification: "Worst-offender at HUM0031 introduction: 42 statements, cc 17.",
-        since: "2026-06-09",
-        issueRef: "nobodies-collective/Humans#857")]
     public async Task<IActionResult> Update(Guid eventId, IndividualEventFormViewModel model)
     {
         var user = await GetCurrentUserInfoAsync();
@@ -288,16 +275,10 @@ public class EventsController(
         var (startTime, durationMinutes) = Event.ResolveAllDaySchedule(
             model.IsAllDay, model.StartTime, model.DurationMinutes);
 
-        guideEvent.Title = model.Title;
-        guideEvent.Description = model.Description;
-        guideEvent.CategoryId = model.CategoryId;
-        guideEvent.GuideSharedVenueId = model.VenueId;
-        guideEvent.StartAt = ToInstant(model.StartDate.Add(startTime), tz);
-        guideEvent.DurationMinutes = durationMinutes;
-        guideEvent.LocationNote = model.LocationNote;
-        guideEvent.Host = model.Host;
-        guideEvent.IsRecurring = model.IsRecurring;
-        guideEvent.RecurrenceDays = model.IsRecurring ? model.RecurrenceDays : null;
+        guideEvent.ApplyIndividualEdit(
+            model.CategoryId, model.VenueId, model.Title, model.Description,
+            ToInstant(model.StartDate.Add(startTime), tz), durationMinutes,
+            model.LocationNote, model.Host, model.IsRecurring, model.RecurrenceDays);
 
         try
         {
@@ -426,11 +407,6 @@ public class EventsController(
     }
 
     [HttpGet("Browse")]
-    [Grandfathered(
-        ruleId: "HUM0031",
-        justification: "Worst-offender at HUM0031 introduction: 38 statements, cc 23.",
-        since: "2026-06-09",
-        issueRef: "nobodies-collective/Humans#857")]
     public async Task<IActionResult> Browse(
         [FromQuery(Name = "days")] int[]? days, Guid? categoryId, Guid? venueId, string? q, bool favouritesOnly = false)
     {
@@ -455,55 +431,38 @@ public class EventsController(
         var individualSubmitterIds = events.Where(e => e.CampId == null).Select(e => e.SubmitterUserId).Distinct();
         var submitterInfoById = await LoadSubmittersAsync(UserService, individualSubmitterIds);
 
-        var items = new List<BrowseEventItem>();
-        foreach (var e in events)
+        var occurrences = EventOccurrenceExpander.Expand(
+            events, favouriteDaysByEventId, gateOpeningDate, tz, filterDays);
+
+        var items = occurrences.Select(o =>
         {
+            var e = o.Event;
             var camp = e.CampId.HasValue ? campsById.GetValueOrDefault(e.CampId.Value) : null;
             var campName = camp?.Active?.Name ?? camp?.Slug;
             var submitterName = e.CampId == null
                 ? submitterInfoById.GetValueOrDefault(e.SubmitterUserId)?.BurnerName
                 : null;
 
-            foreach (var startInstant in gateOpeningDate.HasValue && tz != null ? e.GetOccurrenceInstants(gateOpeningDate.Value, tz) : (IReadOnlyList<Instant>)[e.StartAt])
+            return new BrowseEventItem
             {
-                var eventDayOffset = 0;
-                if (gateOpeningDate != null)
-                {
-                    LocalDate eventDate = tz != null
-                        ? startInstant.InZone(tz).Date
-                        : LocalDate.FromDateTime(startInstant.ToDateTimeUtc());
-                    eventDayOffset = Period.Between(gateOpeningDate.Value, eventDate, PeriodUnits.Days).Days;
-                }
-
-                if (filterDays != null && !filterDays.Contains(eventDayOffset)) continue;
-
-                // Hearts on recurring-event cards favourite that day's occurrence;
-                // non-recurring cards (and unexpanded ones) favourite the whole event.
-                var favouriteDayOffset = e.IsRecurring && gateOpeningDate.HasValue && tz != null
-                    ? eventDayOffset
-                    : (int?)null;
-
-                items.Add(new BrowseEventItem
-                {
-                    EventId = e.Id,
-                    Title = e.Title,
-                    Description = e.Description,
-                    CategoryName = e.CategoryName,
-                    CampName = campName,
-                    VenueName = e.VenueName,
-                    LocationNote = e.LocationNote,
-                    StartAt = ToLocalDateTime(startInstant, tz),
-                    DurationMinutes = e.DurationMinutes,
-                    DayOffset = eventDayOffset,
-                    FavouriteDayOffset = favouriteDayOffset,
-                    IsFavourited = favouriteDaysByEventId[e.Id].Any(d => d == null || d == favouriteDayOffset),
-                    SubmitterName = submitterName,
-                    DisplayHost = e.CampId == null
-                        ? (e.Host ?? submitterName)
-                        : e.Host
-                });
-            }
-        }
+                EventId = e.Id,
+                Title = e.Title,
+                Description = e.Description,
+                CategoryName = e.CategoryName,
+                CampName = campName,
+                VenueName = e.VenueName,
+                LocationNote = e.LocationNote,
+                StartAt = ToLocalDateTime(o.StartAt, tz),
+                DurationMinutes = e.DurationMinutes,
+                DayOffset = o.DayOffset,
+                FavouriteDayOffset = o.FavouriteDayOffset,
+                IsFavourited = o.IsFavourited,
+                SubmitterName = submitterName,
+                DisplayHost = e.CampId == null
+                    ? (e.Host ?? submitterName)
+                    : e.Host
+            };
+        }).ToList();
 
         if (favouritesOnly)
             items = items.Where(i => i.IsFavourited).ToList();
@@ -709,11 +668,6 @@ public class EventsController(
 
     [HttpPost("Barrio/{slug}/{eventId:guid}/Edit")]
     [ValidateAntiForgeryToken]
-    [Grandfathered(
-        ruleId: "HUM0031",
-        justification: "Worst-offender at HUM0031 introduction: 41 statements, cc 11.",
-        since: "2026-06-09",
-        issueRef: "nobodies-collective/Humans#857")]
     public async Task<IActionResult> BarrioUpdate(string slug, Guid eventId, CampEventFormViewModel model)
     {
         var (error, user, camp) = await ResolveCampEventManagementAsync(slug);
@@ -744,16 +698,10 @@ public class EventsController(
         }
 
         var tz = GetTimeZone(eventSettings);
-        guideEvent.Title = model.Title;
-        guideEvent.Description = model.Description;
-        guideEvent.CategoryId = model.CategoryId;
-        guideEvent.StartAt = ToInstant(model.StartDate.Add(model.StartTime), tz);
-        guideEvent.DurationMinutes = model.DurationMinutes;
-        guideEvent.LocationNote = model.LocationNote;
-        guideEvent.Host = model.Host;
-        guideEvent.IsRecurring = model.IsRecurring;
-        guideEvent.RecurrenceDays = model.IsRecurring ? model.RecurrenceDays : null;
-        guideEvent.PriorityRank = model.PriorityRank;
+        guideEvent.ApplyBarrioEdit(
+            model.CategoryId, model.Title, model.Description,
+            ToInstant(model.StartDate.Add(model.StartTime), tz), model.DurationMinutes,
+            model.LocationNote, model.Host, model.IsRecurring, model.RecurrenceDays, model.PriorityRank);
 
         try
         {
@@ -800,135 +748,12 @@ public class EventsController(
     }
 
     [HttpGet("Barrio/{slug}/BulkUpload/Template")]
-    [Grandfathered(
-        ruleId: "HUM0031",
-        justification: "Worst-offender at HUM0031 introduction: 60 statements, cc 14.",
-        since: "2026-06-09",
-        issueRef: "nobodies-collective/Humans#857")]
     public async Task<IActionResult> BulkUploadTemplate(string slug)
     {
         var (error, _, camp) = await ResolveCampEventManagementAsync(slug);
         if (error != null) return error;
 
-        var guideSettings = await guide.GetGuideSettingsAsync();
-        var eventSettings = await LoadBurnSettingsAsync(guideSettings);
-
-        var campEvents = await guide.GetCampSubmissionsAsync(camp.Id);
-        var categories = await guide.GetActiveCategoriesAsync();
-        var campName = ResolveCampDisplayName(camp);
-
-        DateTimeZone? tz = eventSettings != null
-            ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId)
-            : null;
-        LocalDate? gateDate = eventSettings?.GateOpeningDate;
-
-        var categoryNames = string.Join(", ", categories.Select(c => c.Name));
-
-        string[] banner =
-        [
-            " ─────────────────────────────────────────────────────────────────────────────",
-            " ELSEWHERE EVENT GUIDE — Bulk Upload Template",
-            " ─────────────────────────────────────────────────────────────────────────────",
-            "",
-            " HOW TO USE",
-            "   1. Fill in new rows leaving Id blank — a new event will be created.",
-            "   2. Existing rows already have an Id filled in. You may edit their fields,",
-            "      but DO NOT change or delete the Id — that is how we match the event.",
-            "      Changing an Id will cause the upload to fail.",
-            "   3. To leave an existing event unchanged, keep its row as-is.",
-            "      Events not present in the CSV are left untouched.",
-            "   4. Save as CSV (UTF-8) before uploading. Columns may be in any order and",
-            "      extra columns are ignored — match the column names, not the layout.",
-            "      In Excel:   File → Save As → CSV UTF-8 (Comma delimited)",
-            "      In Numbers: File → Export To → CSV",
-            "",
-            " FIELDS",
-            "   Id             Leave empty for new events. Do not edit for existing ones.",
-            "   Barrio         Informational only — shows which camp this file belongs to. Ignored on upload.",
-            "   Status         Informational only — shows the current event status. Ignored on upload.",
-            "                  If you upload a row without changing any fields, the status is kept as-is.",
-            "                  If you edit fields on an existing event, it will be re-queued for moderation.",
-            "   Category       Must match exactly one of the valid categories listed below.",
-            "   Date           Format: yyyy-MM-dd  (e.g. 2026-07-08)",
-            "   StartTime      Format: HH:mm       (e.g. 09:30)",
-            "   DurationMinutes  Integer, 15–480, in 15-minute increments (e.g. 15, 30, 45, 60, 90, 120...).",
-            "   IsRecurring    true or false.",
-            "   RecurrenceDays  Only used when IsRecurring is true.",
-            "                  Space-separated day names: Mon Tue Wed Thu Fri Sat Sun",
-            "                  Example: Mon Wed Fri means the event repeats on those days.",
-            "",
-            " VALID CATEGORIES",
-            $"   {categoryNames}",
-            "",
-            " ─────────────────────────────────────────────────────────────────────────────",
-        ];
-
-        var nonWithdrawn = campEvents
-            .Where(e => e.Status != EventStatus.Withdrawn)
-            .OrderByDescending(e => e.SubmittedAt)
-            .ToList();
-
-        var records = new List<BulkEventCsvRecord>();
-        foreach (var e in nonWithdrawn)
-        {
-            var localDt = ToLocalDateTime(e.StartAt, tz);
-            var recDays = e.IsRecurring && !string.IsNullOrEmpty(e.RecurrenceDays) && gateDate.HasValue
-                ? EventRecurrenceDays.OffsetsToDisplayDays(e.RecurrenceDays, gateDate.Value)
-                : string.Empty;
-
-            records.Add(new BulkEventCsvRecord
-            {
-                Id = e.Id.ToString("D", System.Globalization.CultureInfo.InvariantCulture),
-                Barrio = campName,
-                Status = e.Status.ToString(),
-                Title = e.Title,
-                Description = e.Description,
-                Category = e.CategoryName,
-                Date = localDt.ToInvariantDate(),
-                StartTime = localDt.ToInvariantTime(),
-                DurationMinutes = e.DurationMinutes.ToString(System.Globalization.CultureInfo.InvariantCulture),
-                LocationNote = e.LocationNote ?? string.Empty,
-                Host = e.Host ?? string.Empty,
-                IsRecurring = e.IsRecurring ? "true" : "false",
-                RecurrenceDays = recDays,
-                PriorityRank = e.PriorityRank.ToString(System.Globalization.CultureInfo.InvariantCulture),
-            });
-        }
-
-        if (nonWithdrawn.Count == 0)
-        {
-            var exampleDate = gateDate.HasValue
-                ? gateDate.Value.ToInvariantDate()
-                : clock.GetCurrentInstant().InZone(tz ?? DateTimeZone.Utc).Date.ToInvariantDate();
-            records.Add(new BulkEventCsvRecord
-            {
-                Barrio = campName,
-                Title = "Example Event",
-                Description = "Describe your event here.",
-                Category = categories.FirstOrDefault()?.Name ?? "Workshop",
-                Date = exampleDate,
-                StartTime = "12:00",
-                DurationMinutes = "60",
-                IsRecurring = "false",
-                PriorityRank = "1",
-            });
-        }
-
-        var bytes = HumansCsv.WriteBytes(
-            csv =>
-            {
-                csv.Context.RegisterClassMap<BulkEventCsvRecordMap>();
-                foreach (var line in banner)
-                {
-                    csv.WriteComment(line);
-                    csv.NextRecord();
-                }
-                csv.WriteRecords(records);
-            },
-            // Round-trip data file, not a spreadsheet report: injection escaping
-            // would prepend apostrophes that come back as data on re-upload,
-            // dirtying rows the user never touched.
-            config => config.InjectionOptions = InjectionOptions.None);
+        var bytes = await guide.BuildBulkUploadTemplateAsync(camp.Id, ResolveCampDisplayName(camp));
         return File(bytes, "text/csv", $"{slug}-events.csv");
     }
 

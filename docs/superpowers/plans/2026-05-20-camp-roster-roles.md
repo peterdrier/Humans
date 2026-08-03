@@ -8,7 +8,7 @@
 
 **Tech Stack:** ASP.NET Core MVC (Razor), EF Core (Npgsql), NodaTime, xUnit + NSubstitute + AwesomeAssertions, `ServiceTestHarness` (in-memory `HumansDbContext`).
 
-**Spec:** `docs/superpowers/specs/2026-05-20-camp-detail-roles-roster-and-lead-decouple-design.md`
+**Spec:** `docs/superpowers/specs/2026-05-20-camp-detail-roles-roster-and-lead-decouple-design.md` (historical — since deleted; the shipped Roles/Roster card invariants live in [`docs/sections/Camps.md`](../../sections/Camps.md))
 
 **Branch / worktree:** `feat/camp-roster-roles` at `H:\source\Humans\.worktrees\camp-roster-roles` (already created off `origin/main`).
 

@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Application.Csv;
 using Humans.Application.DTOs.Events;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Gdpr;
@@ -592,6 +593,98 @@ public sealed class EventServiceTests
 
         result.UpdatedCount.Should().Be(0);
         existing.Status.Should().Be(EventStatus.Approved);
+    }
+
+    [HumansFact]
+    public async Task GetCampSubmissionsSummaryAsync_BucketsByStatusAndSortsMostRecentFirst()
+    {
+        var campId = Guid.NewGuid();
+        var older = new Event
+        {
+            Id = Guid.NewGuid(),
+            CampId = campId,
+            Title = "Older",
+            Status = EventStatus.Approved,
+            SubmittedAt = Instant.FromUtc(2026, 5, 1, 12, 0)
+        };
+        var newer = new Event
+        {
+            Id = Guid.NewGuid(),
+            CampId = campId,
+            Title = "Newer",
+            Status = EventStatus.Pending,
+            SubmittedAt = Instant.FromUtc(2026, 5, 3, 12, 0)
+        };
+        var otherCamp = new Event
+        {
+            Id = Guid.NewGuid(),
+            CampId = Guid.NewGuid(),
+            Title = "Other camp",
+            Status = EventStatus.Approved,
+            SubmittedAt = Instant.FromUtc(2026, 5, 2, 12, 0)
+        };
+        _repo.Events.AddRange([older, newer, otherCamp]);
+
+        var summary = await _service.GetCampSubmissionsSummaryAsync(campId, TestContext.Current.CancellationToken);
+
+        summary.SubmittedCount.Should().Be(2);
+        summary.ApprovedCount.Should().Be(1);
+        summary.PendingCount.Should().Be(1);
+        summary.Events.Select(e => e.Title).Should().Equal("Newer", "Older");
+    }
+
+    [HumansFact]
+    public async Task BuildBulkUploadTemplateAsync_IncludesExistingNonWithdrawnEventsAndBanner()
+    {
+        var campId = Guid.NewGuid();
+        var category = new EventCategory { Id = Guid.NewGuid(), Name = "Workshop", Slug = "workshop", IsActive = true };
+        _repo.Categories.Add(category);
+        var startAt = (new LocalDate(2026, 7, 8) + new LocalTime(9, 30)).InZoneLeniently(DateTimeZone.Utc).ToInstant();
+        var kept = new Event
+        {
+            Id = Guid.NewGuid(),
+            CampId = campId,
+            CategoryId = category.Id,
+            Category = category,
+            Title = "Fire Circle",
+            Description = "Desc",
+            StartAt = startAt,
+            DurationMinutes = 60,
+            PriorityRank = 1,
+            Status = EventStatus.Approved,
+            SubmittedAt = _clock.GetCurrentInstant()
+        };
+        var withdrawn = new Event
+        {
+            Id = Guid.NewGuid(),
+            CampId = campId,
+            CategoryId = category.Id,
+            Category = category,
+            Title = "Cancelled Talk",
+            Status = EventStatus.Withdrawn,
+            SubmittedAt = _clock.GetCurrentInstant()
+        };
+        _repo.Events.AddRange([kept, withdrawn]);
+
+        var bytes = await _service.BuildBulkUploadTemplateAsync(campId, "Fire Barrio", TestContext.Current.CancellationToken);
+
+        var csv = HumansCsv.Utf8WithBom.GetString(bytes);
+        csv.Should().Contain("ELSEWHERE EVENT GUIDE");
+        csv.Should().Contain("Fire Circle");
+        csv.Should().Contain("Fire Barrio");
+        csv.Should().NotContain("Cancelled Talk");
+    }
+
+    [HumansFact]
+    public async Task BuildBulkUploadTemplateAsync_NoEvents_WritesExampleRow()
+    {
+        var campId = Guid.NewGuid();
+        _repo.Categories.Add(new EventCategory { Id = Guid.NewGuid(), Name = "Workshop", Slug = "workshop", IsActive = true });
+
+        var bytes = await _service.BuildBulkUploadTemplateAsync(campId, "Empty Barrio", TestContext.Current.CancellationToken);
+
+        var csv = HumansCsv.Utf8WithBom.GetString(bytes);
+        csv.Should().Contain("Example Event");
     }
 
     private static BulkCsvRow Row(
