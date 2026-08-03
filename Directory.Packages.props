@@ -7,7 +7,7 @@
     <!-- AI/LLM -->
     <PackageVersion Include="Anthropic" Version="12.35.1" />
     <!-- Core Framework -->
-    <PackageVersion Include="ClosedXML" Version="0.105.0" />
+    <PackageVersion Include="ClosedXML" Version="0.105.1" />
     <!-- CSV — ALL CSV reading/writing goes through CsvHelper (memory/code/csv-use-csvhelper.md). Exact package name "CsvHelper" only; "CsvHelper.Excel.Core.Net" is known malware. -->
     <PackageVersion Include="CsvHelper" Version="33.1.0" />
     <!-- 9.1.973 is the first stable release resolving AngleSharp 1.x — required to clear GHSA-pgww-w46g-26qg (nobodies-collective/Humans#929). -->
