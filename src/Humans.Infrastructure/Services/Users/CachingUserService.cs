@@ -504,7 +504,9 @@ public sealed class CachingUserService(
     {
         // Verified-email match is served from the warmed snapshot; only the legacy
         // GoogleEmail shadow-column fallback (not projected onto UserInfo) goes to the
-        // inner service's repo read.
+        // inner service's repo read. The inner method is legacy-column-only by design —
+        // it deliberately does NOT repeat this scan, so a miss costs one targeted query
+        // rather than re-deriving the whole snapshot. See UserService.GetByEmailOrAlternateAsync.
         await EnsureWarmedAsync(ct).ConfigureAwait(false);
         foreach (var u in Values)
         {
