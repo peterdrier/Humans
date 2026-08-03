@@ -209,7 +209,7 @@ public sealed class CachingLegalDocumentSyncService(
         // GetActiveRequiredDocumentsAsync read does NOT walk the
         // deprecated team nav on LegalDocument; team display names are
         // stitched here via ITeamService so the cache warm path stays
-        // free of the cross-domain nav (docs/sections/LegalAndConsent.md
+        // free of the cross-domain nav (docs/sections/Consent.md
         // "Touch-and-clean guidance").
         await using var scope = scopeFactory.CreateAsyncScope();
         var inner = scope.ServiceProvider.GetRequiredKeyedService<ILegalDocumentSyncService>(InnerServiceKey);

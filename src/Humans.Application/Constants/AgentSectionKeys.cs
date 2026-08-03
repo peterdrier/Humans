@@ -18,7 +18,7 @@ public static class AgentSectionKeys
     private static readonly HashSet<string> Canonical =
         new(StringComparer.OrdinalIgnoreCase)
         {
-            "Onboarding", "Teams", "LegalAndConsent", "Governance", "Shifts",
+            "Onboarding", "Teams", "Consent", "Governance", "Shifts",
             "Tickets", "Profiles", "Auth", "Budget", "Camps",
             "CityPlanning", "Campaigns", "Feedback", "GoogleIntegration",
             "Events", "Guide", "Store", "Scanner", "Gate",
@@ -36,6 +36,11 @@ public static class AgentSectionKeys
         {
             ["Profile"] = "Profiles",
             ["OnboardingReview"] = "Onboarding",
+            // Renamed to Consent by the 2026-08-03 inventory freeze. Kept as an alias because
+            // the model still meets the old name in its own context: docs/guide/ has not been
+            // renamed (GuideFiles.Sections still lists "LegalAndConsent"), and stored
+            // conversations emit it.
+            ["LegalAndConsent"] = "Consent",
             // /Admin is a nav holder, not a section; its help glossary is governance/ops terms.
             ["Admin"] = "Governance",
             ["Board"] = "Governance",

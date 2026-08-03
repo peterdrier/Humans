@@ -68,6 +68,7 @@ public class AgentSectionDocReaderTests
     [InlineData("OnboardingReview", "Onboarding")]
     [InlineData("Board", "Governance")]
     [InlineData("Admin", "Governance")]
+    [InlineData("LegalAndConsent", "Consent")]
     public async Task ReadAsync_resolves_the_aliases_the_agent_reads_out_of_its_own_prompt(string key, string expectedStem)
     {
         var source = new FakeSource();
@@ -92,6 +93,7 @@ public class AgentSectionDocReaderTests
     [InlineData("OnboardingReview")]
     [InlineData("Board")]
     [InlineData("Admin")]
+    [InlineData("LegalAndConsent")]
     public void Every_alias_target_is_a_whitelisted_section(string alias)
     {
         Humans.Application.Constants.AgentSectionKeys.TryResolve(alias, out var target).Should().BeTrue();

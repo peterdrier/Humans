@@ -17,7 +17,7 @@ public class AgentPreloadCorpusBuilderTests
 
         text.Should().Contain("**Onboarding**");
         text.Should().Contain("**Teams**");
-        text.Should().Contain("**LegalAndConsent**");
+        text.Should().Contain("**Consent**");
         text.Should().Contain("**Governance**");
         text.Should().Contain("**Shifts**");
         text.Should().Contain("**Tickets**");
