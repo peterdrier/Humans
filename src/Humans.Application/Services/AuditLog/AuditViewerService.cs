@@ -9,7 +9,7 @@ namespace Humans.Application.Services.AuditLog;
 public sealed class AuditViewerService(
     IAuditLogService auditLog,
     IUserServiceRead userService,
-    ITeamService teamService,
+    ITeamServiceRead teamService,
     ITeamResourceService teamResourceService) : IAuditViewerService
 {
     public async Task<IReadOnlyList<AuditEvent>> GetRecentAsync(int count, CancellationToken ct = default)
@@ -138,8 +138,12 @@ public sealed class AuditViewerService(
     private async Task<Dictionary<Guid, (string Name, string Slug)>> GetTeamNamesAsync(
         IReadOnlyList<Guid> teamIds, CancellationToken ct)
     {
-        var teams = await teamService.GetByIdsWithParentsAsync(teamIds, ct);
-        return teams.ToDictionary(kvp => kvp.Key, kvp => (kvp.Value.Name, kvp.Value.Slug));
+        // Teams section serves its full (cached) team list; filter to the requested ids here
+        // rather than adding a by-ids method to ITeamServiceRead.
+        var allTeams = await teamService.GetTeamsAsync(ct);
+        return teamIds
+            .Where(allTeams.ContainsKey)
+            .ToDictionary(id => id, id => (allTeams[id].Name, allTeams[id].Slug));
     }
 
     private static (List<Guid> UserIds, List<Guid> TeamIds, List<Guid> ResourceIds) CollectIds(IReadOnlyList<AuditLogEntrySnapshot> entries)
