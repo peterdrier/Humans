@@ -110,6 +110,9 @@ public class GovernanceApplicationsController(
                     SetError(localizer["Application_AlreadyPending"].Value);
                 else if (string.Equals(result.ErrorKey, "InvalidTier", StringComparison.Ordinal))
                     ModelState.AddModelError(nameof(model.MembershipTier), localizer["Application_InvalidTier"].Value);
+                else if (string.Equals(result.ErrorKey, "MotivationRequired", StringComparison.Ordinal))
+                    ModelState.AddModelError(nameof(model.Motivation),
+                        localizer["Profile_MotivationRequired"].Value);
                 else if (string.Equals(result.ErrorKey, "SignificantContributionRequired", StringComparison.Ordinal))
                     ModelState.AddModelError(nameof(model.SignificantContribution),
                         localizer["Application_SignificantContributionRequired"].Value);

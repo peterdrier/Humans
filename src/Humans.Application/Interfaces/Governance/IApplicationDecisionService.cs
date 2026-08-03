@@ -50,6 +50,23 @@ public interface IApplicationDecisionService : IApplicationServiceRead, IApplica
     Task<ApplicationUserDetailDto?> GetUserApplicationDetailAsync(
         Guid applicationId, Guid userId, CancellationToken ct = default);
 
+    /// <summary>
+    /// The tier-application field rules, evaluated without touching storage: a non-Volunteer
+    /// tier needs a motivation, and Asociado additionally needs a significant contribution and
+    /// a role understanding. <see cref="SubmitAsync"/> runs this first, so the two can't drift.
+    /// <para>
+    /// Exposed separately so a caller that must decide <em>before</em> writing anything — the
+    /// profile edit form, which validates the whole submit up front so a bad post can't
+    /// half-save — gets the same answer the submit would give. Returns the same
+    /// <c>ErrorKey</c>s (<c>InvalidTier</c>, <c>MotivationRequired</c>,
+    /// <c>SignificantContributionRequired</c>, <c>RoleUnderstandingRequired</c>) for callers
+    /// to map onto their own localized, field-targeted messages.
+    /// </para>
+    /// </summary>
+    ApplicationDecisionResult ValidateSubmission(
+        MembershipTier tier, string? motivation,
+        string? significantContribution, string? roleUnderstanding);
+
     Task<ApplicationDecisionResult> SubmitAsync(
         Guid userId, MembershipTier tier, string motivation,
         string? additionalInfo, string? significantContribution, string? roleUnderstanding,

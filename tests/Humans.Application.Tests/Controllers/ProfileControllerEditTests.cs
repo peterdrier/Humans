@@ -33,6 +33,7 @@ using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
+using Xunit;
 
 namespace Humans.Application.Tests.Controllers;
 
@@ -139,6 +140,16 @@ public class ProfileControllerEditTests
             .Returns(new User { Id = _userId, DisplayName = "Test Human", PreferredLanguage = "en" });
         userManager.GetUserId(Arg.Any<ClaimsPrincipal>()).Returns(_userId.ToString());
 
+        // Tier-application field rules live in IApplicationDecisionService and are
+        // pre-flighted by Edit POST before any save. Default to "passes" so tests
+        // that aren't about tier validation reach the save path; the tier-validation
+        // tests below override this with the specific failure they exercise.
+        _applicationDecisionService
+            .ValidateSubmission(
+                Arg.Any<MembershipTier>(), Arg.Any<string?>(),
+                Arg.Any<string?>(), Arg.Any<string?>())
+            .Returns(new ApplicationDecisionResult(true));
+
         // Edit GET reads shiftView.GetUserAsync(...).TagPreferences (#720); return
         // an empty view so the GET path doesn't NRE before the dietary population.
         _shiftView.GetUserAsync(_userId, Arg.Any<CancellationToken>())
@@ -192,6 +203,38 @@ public class ProfileControllerEditTests
             Arg.Any<CancellationToken>());
         await _userService.Received(1).SaveProfileLanguagesAsync(
             _profileId, Arg.Any<IReadOnlyList<ProfileLanguage>>(), Arg.Any<CancellationToken>());
+    }
+
+    // The tier-application field rules live in IApplicationDecisionService (the service that
+    // owns tier-application state), not in a controller-private helper — see
+    // memory/architecture/no-business-logic-in-controllers.md. The controller's remaining job
+    // is to pre-flight them before any save and map the ErrorKey onto a localized,
+    // form-field-targeted ModelState error, the same way GovernanceApplicationsController does.
+    [HumansTheory]
+    [InlineData("MotivationRequired", nameof(ProfileViewModel.ApplicationMotivation))]
+    [InlineData("SignificantContributionRequired", nameof(ProfileViewModel.ApplicationSignificantContribution))]
+    [InlineData("RoleUnderstandingRequired", nameof(ProfileViewModel.ApplicationRoleUnderstanding))]
+    public async Task Edit_InitialSetup_TierValidationFailure_RerendersWithFieldError_AndDoesNotSave(
+        string errorKey, string expectedField)
+    {
+        _applicationDecisionService
+            .ValidateSubmission(
+                Arg.Any<MembershipTier>(), Arg.Any<string?>(),
+                Arg.Any<string?>(), Arg.Any<string?>())
+            .Returns(new ApplicationDecisionResult(false, errorKey));
+
+        var model = MakeValidModel(MembershipTier.Asociado, motivation: "to help");
+
+        var result = await _controller.Edit(model);
+
+        result.Should().BeOfType<ViewResult>();
+        _controller.ModelState.Should().ContainKey(expectedField);
+
+        // Validation runs before persistence so a rejected submit cannot half-save.
+        await _profileEditorService.DidNotReceiveWithAnyArgs()
+            .SaveProfileAsync(Guid.Empty, null!, null!, Arg.Any<CancellationToken>());
+        await _applicationDecisionService.DidNotReceiveWithAnyArgs()
+            .SubmitAsync(Guid.Empty, default, null!, null, null, null, null!, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

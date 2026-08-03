@@ -227,11 +227,16 @@ public class ProfileController(
             return View(model);
         }
 
-        var burnerCvResult = await ValidateBurnerCvOrNullAsync(model, user.Id);
+        // Canonical predicate — UserInfo.IsApproved is the Consent-Coordinator gate, so
+        // "not approved yet" IS initial setup (it already absorbs the no-profile case).
+        // See memory/architecture/derived-predicates-on-userinfo.md.
+        var isInitialSetup = !user.IsApproved;
+
+        var burnerCvResult = ValidateBurnerCvOrNull(model, isInitialSetup);
         if (burnerCvResult is not null)
             return burnerCvResult;
 
-        var (isInitialSetup, tierValidationResult) = await ValidateTierApplicationOrNullAsync(model, user.Id);
+        var tierValidationResult = ValidateTierApplicationOrNull(model, isInitialSetup);
         if (tierValidationResult is not null)
             return tierValidationResult;
 
@@ -315,7 +320,7 @@ public class ProfileController(
 
     // Burner CV: entries OR "no prior experience". Returns the rerender result
     // when invalid, null to continue.
-    private async Task<IActionResult?> ValidateBurnerCvOrNullAsync(ProfileViewModel model, Guid userId)
+    private IActionResult? ValidateBurnerCvOrNull(ProfileViewModel model, bool isInitialSetup)
     {
         var hasVolunteerHistory = model.EditableVolunteerHistory
             .Any(vh => !string.IsNullOrWhiteSpace(vh.EventName) && vh.ParsedDate.HasValue);
@@ -323,8 +328,7 @@ public class ProfileController(
         {
             ModelState.AddModelError(nameof(model.NoPriorBurnExperience),
                 localizer["Profile_BurnerCVRequired"].Value);
-            var existingProfile = (await _userService.GetUserInfoAsync(userId))?.Profile;
-            model.IsInitialSetup = existingProfile is null || !existingProfile.IsApproved;
+            model.IsInitialSetup = isInitialSetup;
             model.ShowPrivateFirst = string.IsNullOrEmpty(model.FirstName)
                 && string.IsNullOrEmpty(model.LastName)
                 && string.IsNullOrEmpty(model.EmergencyContactName);
@@ -335,54 +339,49 @@ public class ProfileController(
         return null;
     }
 
-    // Initial-setup tier-application guards (motivation required; Asociado's
-    // significant-contribution + role-understanding required). Returns the
-    // computed IsInitialSetup flag (needed by later phases) plus the rerender
+    // Maps IApplicationDecisionService's tier-application field rules onto localized,
+    // form-field-targeted ModelState errors — the same error keys, and the same mapping
+    // shape, GovernanceApplicationsController uses on the submit path. The rules
+    // themselves live in the service that owns tier-application state; this runs them
+    // before any persistence so a bad submit can't half-save. Returns the rerender
     // result when invalid, null to continue.
-    private async Task<(bool IsInitialSetup, IActionResult? EarlyReturn)> ValidateTierApplicationOrNullAsync(ProfileViewModel model, Guid userId)
+    private IActionResult? ValidateTierApplicationOrNull(ProfileViewModel model, bool isInitialSetup)
     {
-        var profileForSetupCheck = (await _userService.GetUserInfoAsync(userId))?.Profile;
-        var isInitialSetup = profileForSetupCheck is null || !profileForSetupCheck.IsApproved;
-        if (isInitialSetup)
+        if (!isInitialSetup || model.SelectedTier == MembershipTier.Volunteer)
+            return null;
+
+        var result = applicationDecisionService.ValidateSubmission(
+            model.SelectedTier, model.ApplicationMotivation,
+            model.ApplicationSignificantContribution, model.ApplicationRoleUnderstanding);
+
+        if (result.Success)
+            return null;
+
+        switch (result.ErrorKey)
         {
-            if (model.SelectedTier != MembershipTier.Volunteer &&
-                string.IsNullOrWhiteSpace(model.ApplicationMotivation))
-            {
+            case "MotivationRequired":
                 ModelState.AddModelError(nameof(model.ApplicationMotivation),
                     localizer["Profile_MotivationRequired"].Value);
-                model.IsInitialSetup = true;
-                model.ShowPrivateFirst = string.IsNullOrEmpty(model.FirstName)
-                    && string.IsNullOrEmpty(model.LastName)
-                    && string.IsNullOrEmpty(model.EmergencyContactName);
-                ViewData["GoogleMapsApiKey"] = configuration.GetRequiredSetting(configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
-                return (isInitialSetup, View(model));
-            }
-
-            if (model.SelectedTier == MembershipTier.Asociado)
-            {
-                if (string.IsNullOrWhiteSpace(model.ApplicationSignificantContribution))
-                {
-                    ModelState.AddModelError(nameof(model.ApplicationSignificantContribution),
-                        localizer["Application_SignificantContributionRequired"].Value);
-                }
-                if (string.IsNullOrWhiteSpace(model.ApplicationRoleUnderstanding))
-                {
-                    ModelState.AddModelError(nameof(model.ApplicationRoleUnderstanding),
-                        localizer["Application_RoleUnderstandingRequired"].Value);
-                }
-                if (!ModelState.IsValid)
-                {
-                    model.IsInitialSetup = true;
-                    model.ShowPrivateFirst = string.IsNullOrEmpty(model.FirstName)
-                        && string.IsNullOrEmpty(model.LastName)
-                        && string.IsNullOrEmpty(model.EmergencyContactName);
-                    ViewData["GoogleMapsApiKey"] = configuration.GetRequiredSetting(configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
-                    return (isInitialSetup, View(model));
-                }
-            }
+                break;
+            case "SignificantContributionRequired":
+                ModelState.AddModelError(nameof(model.ApplicationSignificantContribution),
+                    localizer["Application_SignificantContributionRequired"].Value);
+                break;
+            case "RoleUnderstandingRequired":
+                ModelState.AddModelError(nameof(model.ApplicationRoleUnderstanding),
+                    localizer["Application_RoleUnderstandingRequired"].Value);
+                break;
+            default:
+                ModelState.AddModelError(string.Empty, localizer["Application_InvalidTier"].Value);
+                break;
         }
 
-        return (isInitialSetup, null);
+        model.IsInitialSetup = true;
+        model.ShowPrivateFirst = string.IsNullOrEmpty(model.FirstName)
+            && string.IsNullOrEmpty(model.LastName)
+            && string.IsNullOrEmpty(model.EmergencyContactName);
+        ViewData["GoogleMapsApiKey"] = configuration.GetRequiredSetting(configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
+        return View(model);
     }
 
     // CV: existing rows keep Id/CreatedAt; new rows post Guid.Empty and get fresh Id.
