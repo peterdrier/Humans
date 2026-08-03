@@ -29,13 +29,26 @@
    same as Onboarding) — they are **not** drawn as section→section edges; noted separately
    where relevant.
 
-## Section inventory gap (blocks the G0 "section inventory frozen" checklist item)
+## Section inventory gap (config follow-up; the inventory itself is frozen)
 
-`reforge.surface-score.json` does not yet define **four sections that exist in the
-codebase today**: `Gate` (#1066), `Surveys`, `SystemSettings`, `ICalFeed`. Files under
-these fall through to Reforge's namespace-fallback grouping instead of a named section —
-`surface-score` numbers for them are unreliable until they're added. **Recommend adding
-all four to `reforge.surface-score.json` before G0 closes.**
+**Rewritten 2026-08-03** — the original text called `Gate`, `Surveys`, `SystemSettings` and
+`ICalFeed` four standalone sections and recommended adding all four to
+`reforge.surface-score.json` before G0 closes. Two of those names did not survive the freeze,
+so following that recommendation would undo the canonical taxonomy.
+
+`reforge.surface-score.json` still lags the frozen inventory
+([`2026-08-03-proposed-frozen-section-inventory.md`](2026-08-03-proposed-frozen-section-inventory.md)).
+Files that fall through to Reforge's namespace-fallback grouping have unreliable
+`surface-score` numbers, so the config needs these edits — **as a config follow-up, not a G0
+blocker; the section inventory is already frozen**:
+
+- Add `Gate` (#1066), `Settings` (ex-`SystemSettings`, absorbs #864), `Development`, `Gdpr`
+  and `Search` as named sections.
+- Map `ICalFeed` paths into **Calendar** — it is not a standalone section.
+- Rename `Survey` → `Surveys`.
+- Map `Interfaces/Mailer/**` + `Services/Mailer/**` to `Mailer` (not `Email`), and split the
+  `Holded*` paths out of `Finance` — both are vendor connectors with their own rows.
+- Correct the `Guide`, `Debug` and `Scanner` paths off the dissolved `Platform` bucket.
 
 Separately, the transition plan's own **Section tracker** (in
 `2026-06-13-q3-transition-plan.md`) has drifted from `reforge.surface-score.json`:

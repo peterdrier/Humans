@@ -538,11 +538,14 @@ None — `campaigns`, `campaign_codes`, `campaign_grants` all conform.
 ## Sections audited with no findings
 
 No dead columns/tables, no cross-section FK, no non-conforming table names surfaced in:
-**Containers**, **Store**, **Finance**, **System Settings**, **Agent**, **Event Guide** (aside
+**Containers**, **Finance**, **System Settings**, **Agent**, **Event Guide** (aside
 from the `event_` collision noted under Shifts), **Survey**, **Gate**, **Scanner** (no owned
 tables), **Onboarding** (no owned tables), **Mailer** (no owned tables).
 
-One unrelated dead column noted in passing: `StoreOrder.Label` (`StoreOrder.cs:36`,
+**Store is not in that list (corrected 2026-08-03)** — it has no cross-section FK and no
+non-conforming table name, but it does carry one dead column, so a Store demolition pass is
+still owed. The summary table's `Store | 1 (self-contained)` row is the authoritative count:
+`StoreOrder.Label` (`StoreOrder.cs:36`,
 `[Obsolete("Order labels were removed from the UI (#816)...")]`, suppressed at
 `StoreOrderConfiguration.cs:13`) — self-contained within Store, not cross-section, not
 plan-tracked, but a legitimate G2 drop candidate whenever Store's demolition batch runs.

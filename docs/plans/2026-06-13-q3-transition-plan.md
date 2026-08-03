@@ -297,13 +297,13 @@ sections and shared contracts noted explicitly. (`—` = not yet audited.)
 
 | Section | Kind | G1 | G2 | G3 | G4 | G5 |
 |---|---|---|---|---|---|---|
-| Agent | vertical | 2 gaps | — | 2 gaps | — | — |
+| Agent | vertical | 2 gaps | — | 3 gaps | — | — |
 | AuditLog | **horizontal** | 2 gaps | — | 3 gaps | — | — |
 | Auth | **horizontal** | 4 gaps | — | 4 gaps | — | — |
 | Budget | vertical | 3 gaps | — | 4 gaps | — | — |
 | Calendar (incl. ICalFeed) | vertical | 2 gaps | — | 3 gaps | — | — |
 | Campaigns | vertical | 3 gaps | — | 3 gaps | — | — |
-| Camps | vertical | 4 gaps | — | 2 gaps | — | — |
+| Camps | vertical | 5 gaps | — | 2 gaps | — | — |
 | Cantina | vertical | 3 gaps | — | ✅ | — | — |
 | CityPlanning | vertical | 2 gaps | — | 3 gaps | — | — |
 | Containers | vertical | ✅ | — | 2 gaps | — | — |
@@ -316,7 +316,7 @@ sections and shared contracts noted explicitly. (`—` = not yet audited.)
 | Finance | vertical | ✅ | — | 1 gap | — | — |
 | Gate *(new row 2026-08-03)* | vertical | — | — | — | — | — |
 | Gdpr *(new row 2026-08-03)* | **orchestrator** | — | — | — | — | — |
-| GoogleIntegration | **vendor connector** | 3 gaps | — | 2 gaps | — | — |
+| GoogleIntegration | **vendor connector** | 4 gaps | — | 2 gaps | — | — |
 | Governance | vertical | 4 gaps | — | 3 gaps | — | — |
 | Guide | vertical | 1 gap | — | ✅ | — | — |
 | Holded | **vendor connector** | ✅ | — | ✅ | — | — |
