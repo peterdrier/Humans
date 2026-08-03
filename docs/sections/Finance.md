@@ -187,7 +187,7 @@ All routes are gated by `[Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]` 
 - `HoldedExpenseDoc.Total` is included in category-level actuals only when `ApprovedAt IS NOT NULL`.
 - Holded API key read from env var `HOLDED_API_KEY` only — never `appsettings.json`.
 <!-- wheat: docs/superpowers/specs/2026-05-25-holded-finance-integration-design.md §3 Link & data -->
-- The member ↔ creditor-account link resolves through the Holded contact's `supplierRecord.num` field, never by name matching. It is set best-effort once an expense report's payable exists in Holded (backfilled on the paid poll if the first attempt fails); `POST /Finance/Creditors/Bind` is the manual fallback when auto-resolution misses or needs correcting.
+- The member ↔ creditor-account link resolves through the Holded contact's `supplierRecord.num` field, never by name matching. It is attempted **exactly once**, best-effort, during outbox processing after the payable exists (`ExpenseReportService` → `IHoldedClient.GetContactAsync`); a failure or a null `num` is logged, the null link is stored, and the outbox event is still marked processed so a created doc is never stranded as permanently-failed. **There is no automatic retry** — `SyncCreditorLedgerAsync` imports daybook lines but never re-resolves the contact — so after an initial miss the member stays unlinked until someone runs `POST /Finance/Creditors/Bind`. (The code comment and warning logs at that call site say "will backfill on the paid poll"; no such poll exists — tracked as nobodies-collective/Humans#972.)
 
 ## Negative Access Rules
 

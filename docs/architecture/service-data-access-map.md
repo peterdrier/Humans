@@ -2369,12 +2369,15 @@ sections in `ShiftsSectionExtensions` and `EventsSectionExtensions`):
 - **`ShiftSignupService`** (Shifts) — the user's Confirmed **and** Pending shift signups (pending get a "(pending)" summary suffix); Cancelled/Bailed/NoShow history is excluded.
 - **`EventService`** (Events) — approved event-guide entries the user has favourited (moderation un-approval drops an event from the feed without touching the favourite row). No hosting/ownership path.
 
-Sequential fan-out (each contributor uses its own scoped DbContext instance —
-`ShiftSignupService` reads via `HumansDbContext`, `EventService` via the
-peeled `EventGuideDbContext` — but the fan-out stays sequential rather than
-parallel because EF `DbContext`/`IDbContextFactory` usage is not
-thread-safe within a single async flow; same pattern as `GdprExportService`
-and `EarlyEntryService`). No
+Sequential fan-out, matching `GdprExportService` and `EarlyEntryService`. Note
+the original rationale no longer applies to these two contributors: they no
+longer share one scoped context — `ShiftSignupService` reads via
+`HumansDbContext` and `EventService` via the peeled `EventGuideDbContext`,
+each from its own `IDbContextFactory`, and independent factory-created
+contexts *can* safely run concurrently (EF's restriction is on concurrent
+operations against the **same** context instance). The fan-out is kept
+sequential for consistency with the other contributor orchestrators, not
+because parallelism would be unsafe. No
 `IMemoryCache` — the section's DB reads are contributor-owned; the user-info
 token check comes from the warm `CachingUserService` TrackedCache.
 

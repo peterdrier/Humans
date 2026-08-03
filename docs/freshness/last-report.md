@@ -107,6 +107,23 @@ All-chaff drops with nothing to migrate: both mailer specs (superseded by `secti
 
 4. **`architecture/conventions.md` fetch()-exceptions backlog** — **Resolved: leave**, having confirmed it blocks no in-progress migration. See the verification under *Flagged for human review*.
 
+## Post-review corrections (Codex + claude-review on PR #1160)
+
+Eight review findings, all verified against source and all valid. Six were errors this sweep introduced — worth recording, because four of them are the same failure mode: **an agent generalised a rule from a subset of call sites without checking the outliers.**
+
+| # | Finding | Correction |
+|---|---|---|
+| 1 | `sections/Tickets.md` — the migrated EE-pill rule listed the Scanner gate card among the surfaces going through `TicketStubInfo.From`. `ScannerController` constructs the stub *directly* from `IEarlyEntryService.GetForUserAsync(hit.MatchedUserId)`, so gate staff see the **scanned attendee's** EE, by design | Split the rule: holder-facing surfaces are viewer-scoped; the Scanner is the deliberate staff-facing exception, with a "don't consolidate this onto the shared mapper" warning |
+| 2 | `guide/SigningIn.md` — "each visit resets that 14-day clock" is false; ASP.NET Core `SlidingExpiration` renews only after >50% of `ExpireTimeSpan` has elapsed. (`Program.cs:146`'s comment says "any visit inside it extends it", which is where the claim came from) | Reworded for end users: a visit more than a week after the last one extends the window by 14 days |
+| 3 | The prune inbound-ref scan covered `docs/` and `memory/` only, so it missed `tests/Humans.Application.Tests/Services/Store/StoreServiceTeamOrdersTests.cs:22`, whose class summary cited a deleted design doc | Repointed to `sections/Store.md`. Re-ran the scan across `src/`, `tests/`, `scripts/` and `.claude/` for all 13 deleted husks — this was the only hit |
+| 4 | `sections/Camps.md` — claimed both detail cards project `CampRoleAssignment` via `BuildPanelAsync`. Only **Roles** does; **Roster** is a `CampMember` projection off `season.ActiveMembers` | Rewritten to give each card its real source and to say they can legitimately disagree. Visibility detail also sharpened: a signed-in non-member gets the Roles card retitled **"Leads"** and filtered to the Lead role's filled assignees (`_CampRolesCard.cshtml`) |
+| 5 | `architecture/service-data-access-map.md` — the regen invented a thread-safety rationale for sequential fan-out. Post-split the two contributors use *different* contexts from separate factories, and independent factory-created contexts are safe concurrently | Rationale corrected. **The same stale claim was found and fixed in `design-rules.md` §8b**, which this sweep should have caught on its own (design-rules was a triggered doc and #858 is in range) |
+| 6 | `sections/Agent.md` — the Tier2 count was fixed 14 → 23 but the adjacent wheat `NOTE` still explained the ITPM budget in terms of 14 sections | Note updated to 23, naming `AgentPreloadCorpusBuilder.Tier2Sections` as the source of truth and explaining why the growth stays under the tier ceiling |
+| 7 | `sections/Finance.md` — the migrated wheat repeated the code's claim that a null `supplierRecord.num` is "backfilled on the paid poll". No such retry exists: `GetContactAsync` has exactly one call site, and `SetCreditorAccountNumAsync` fires only when that first lookup succeeded | Doc now states the real behaviour (one best-effort attempt, no retry, manual `POST /Finance/Creditors/Bind` required after a miss). The stale code comment and its two log messages are a genuine defect — filed as nobodies-collective/Humans#972 |
+| 8 | claude-review WARN — the sweep did not update `docs/architecture/maintenance-log.md`, per `memory/process/maintenance-log-update.md` | Row bumped. **Root cause fixed too:** the skill's own Constraints said "does not update maintenance-log.md (hand-maintained)", contradicting `CLAUDE.md` and the memory atom — `.claude/skills/freshness-sweep/SKILL.md` now requires the sweep to bump its own row and leave the rest of the file alone |
+
+Worth encoding in the drift-fix subagent prompt next time: when a doc claim takes the form "every X does Y", the agent must enumerate *all* call sites and name the exceptions rather than asserting the rule from the majority. Findings 1, 4, 5 and 7 are all that shape.
+
 ## Proposed for review
 
 None — all prune candidates resolved this sweep (migrate / drop / verify-clean). No uncertain wheat was queued for a future pass.

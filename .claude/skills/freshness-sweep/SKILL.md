@@ -288,5 +288,5 @@ Only after Phase 7.5 is resolved. `cd $REPO_ROOT && git worktree remove $WORKTRE
 
 - Only touches files in the catalog, editorial trees, or the prune allowlist (Phase 5.5).
 - Main checkout dirty state is irrelevant — all work is in the worktree.
-- Does not update `docs/architecture/maintenance-log.md` (hand-maintained).
+- **Must** bump the `Freshness sweep (diff)` (or `(full)`) row in `docs/architecture/maintenance-log.md` — Last Run = today, Next Due = today + cadence, plus a one-line Notes entry — in the sweep's own commit, per [`maintenance-log-update`](../../../memory/process/maintenance-log-update.md). Everything *else* in that file stays hand-maintained; touch only the sweep's row.
 - Prune phase (5.5) never touches living architectural docs (`design-rules.md`, `code-review-rules.md`, section invariants, feature specs). It only deletes shipped/historical plans and specs with cited evidence.
