@@ -23,8 +23,8 @@ This file is the **index and cross-cutting rule sheet** for the data model. Per-
 | ApplicationStateHistory | [Governance](../sections/Governance.md) | Append-only (§12). |
 | BoardVote | [Governance](../sections/Governance.md) | Transient — deleted on finalization. |
 | RoleAssignment | [Auth](../sections/Auth.md) | |
-| LegalDocument / DocumentVersion | [Legal & Consent](../sections/LegalAndConsent.md) | |
-| ConsentRecord | [Legal & Consent](../sections/LegalAndConsent.md) | Append-only via DB triggers (§12). |
+| LegalDocument / DocumentVersion | [Legal & Consent](../sections/Consent.md) | |
+| ConsentRecord | [Legal & Consent](../sections/Consent.md) | Append-only via DB triggers (§12). |
 | Team | [Teams](../sections/Teams.md) | |
 | TeamMember | [Teams](../sections/Teams.md) | |
 | TeamJoinRequest | [Teams](../sections/Teams.md) | |
@@ -55,7 +55,7 @@ This file is the **index and cross-cutting rule sheet** for the data model. Per-
 | Issue / IssueComment | [Issues](../sections/Issues.md) | |
 | AgentConversation / AgentMessage / AgentSettings | [Agent](../sections/Agent.md) | |
 | SyncServiceSettings / GoogleSyncOutboxEvent | [Google Integration](../sections/GoogleIntegration.md) | |
-| Survey / SurveyQuestion / SurveyQuestionOption / SurveyResponse / SurveyAnswer / SurveyInvitation | [Survey](../sections/Survey.md) | Cross-domain refs are bare `Guid` FK columns only — no nav properties, no cross-section EF FK constraints. |
+| Survey / SurveyQuestion / SurveyQuestionOption / SurveyResponse / SurveyAnswer / SurveyInvitation | [Survey](../sections/Surveys.md) | Cross-domain refs are bare `Guid` FK columns only — no nav properties, no cross-section EF FK constraints. |
 | SystemSetting | System Settings section | Owned by `SystemSettingsRepository` (exposed via `ISystemSettingsService`); consuming sections read/write keys through it. See [SystemSetting below](#systemsetting-system-settings-section). |
 | AuditLogEntry | [Audit Log](../sections/AuditLog.md) | Append-only (§12). |
 | Notification / NotificationRecipient | [Notifications](../sections/Notifications.md) | |
@@ -180,7 +180,7 @@ Append-only sections (§12) cannot rewrite their `UserId` / `ActorUserId` column
 | Section | Owning entity | Read paths that chain-follow |
 |---------|---------------|------------------------------|
 | [Audit Log](../sections/AuditLog.md) | `AuditLogEntry` | `GetByUserAsync`, `GetUserAuditLogPageAsync`, per-entity history when entity is User, `ContributeForUserAsync` |
-| [Legal & Consent](../sections/LegalAndConsent.md) | `ConsentRecord` | `GetUserConsentsAsync`, `HasAllRequiredConsentsAsync`, consent dashboard, `ContributeForUserAsync` |
+| [Legal & Consent](../sections/Consent.md) | `ConsentRecord` | `GetUserConsentsAsync`, `HasAllRequiredConsentsAsync`, consent dashboard, `ContributeForUserAsync` |
 | [Budget](../sections/Budget.md) | `BudgetAuditLog` | `ContributeForUserAsync` (GDPR) |
 
 When adding a new append-only entity that carries a `UserId` / `ActorUserId` column, decide at design time whether per-user reads need chain-follow and add the union explicitly — `IUserService.GetMergedSourceIdsAsync` is the only sanctioned primitive.
@@ -191,7 +191,7 @@ The following entities are append-only — no `UpdateAsync` / `DeleteAsync` on t
 
 | Entity | Owning section | Enforcement |
 |--------|---------------|-------------|
-| ConsentRecord | [Legal & Consent](../sections/LegalAndConsent.md) | DB triggers block UPDATE / DELETE |
+| ConsentRecord | [Legal & Consent](../sections/Consent.md) | DB triggers block UPDATE / DELETE |
 | AuditLogEntry | [Audit Log](../sections/AuditLog.md) | Architecture test: `AuditLogArchitectureTests.IAuditLogRepository_HasNoUpdateOrDeleteMethods` |
 | BudgetAuditLog | [Budget](../sections/Budget.md) | Repository shape — no update/delete methods |
 | CampPolygonHistory | [City Planning](../sections/CityPlanning.md) | Architecture test: `CityPlanningArchitectureTests` pins append-only repo surface |
