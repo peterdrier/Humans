@@ -53,11 +53,22 @@ Separately, the transition plan's own **Section tracker** (in
 ## Vertical-section DAG
 
 Excludes the shared-contract exceptions (`Users`, `Auth`, `AuditLog`) and the horizontal
-`Platform` bucket — see the **Shared-contract dependencies** table below for those. **77**
-distinct consumer→provider section pairs (71 originally + 6 found 2026-08-03: Agent→Teams,
-Agent→Consent, Agent→Feedback, Agent→Tickets, Agent→Shifts, Email→SystemSettings) across
-26 vertical sections (25 + `Agent`, which was omitted from the original edge-collection
-pass entirely despite already being a real `reforge.surface-score.json` section).
+`Platform` bucket — see the **Shared-contract dependencies** table below for those.
+
+**Dashboard is not a section (corrected 2026-08-03).** The frozen inventory classifies it as a
+non-section GUI holder, so its four outgoing edges (`Dashboard → Governance/Shifts/Tickets/Teams`,
+rows retained below for traceability) are **not** section→section dependencies — they originate in
+shared web-shell code. They are excluded from the counts here and must not be used to plan a
+`Dashboard` project boundary at G5; treating them as one would invent a boundary that doesn't exist
+and hide that the dependencies live in the web shell. The `DB[Dashboard]` node and its four arrows
+are likewise retained in the diagram below for traceability only.
+
+Counting on that basis: **73** distinct consumer→provider section pairs (77 as previously counted,
+less Dashboard's 4) across **25** vertical sections (26 as previously counted, less Dashboard).
+The 77/26 figures came from 71 original pairs + 6 found 2026-08-03 (Agent→Teams, Agent→Consent,
+Agent→Feedback, Agent→Tickets, Agent→Shifts, Email→SystemSettings) across 25 sections + `Agent`,
+which the original edge-collection pass omitted despite it already being a real
+`reforge.surface-score.json` section.
 
 ```mermaid
 flowchart LR

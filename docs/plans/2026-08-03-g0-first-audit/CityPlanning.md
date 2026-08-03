@@ -42,6 +42,9 @@ Kind: vertical · Audited 2026-08-03 @ 5a9bbe198
 - No obvious dead columns/tables spotted for this section during this pass — `CityPlanningSettings`, `CampPolygon`, `CampPolygonHistory` all look actively used per the doc's data model.
 - Still on monolithic `HumansDbContext` (via `IDbContextFactory<HumansDbContext>`) — G4 (own DbContext) not started for this section, unlike Containers/Expenses/Finance/EventGuide/Surveys/SystemSettings/Agent which already have dedicated `<Section>DbContext` classes (found via `Data/*DbContext*.cs` listing). Out of G1/G3 scope but relevant sequencing info for the tracker.
 
+
+**Added 2026-08-03 — cross-section FK cuts belong in this queue.** Retiring `[Obsolete]` navs or `[Grandfathered(HUM0024)]` markers is a code-shape change; it does **not** drop the physical constraint. Per the demolition inventory, this section owns **4** cross-section FKs across 2 tables: `camp_polygons` and `camp_polygon_histories` → `camp_seasons` (Camps) and `AspNetUsers` (Users), via `CampPolygonConfiguration.cs:24,29` and `CampPolygonHistoryConfiguration.cs:24,29`. All are G2 cuts — without them listed here, a schema batch driven by this scorecard can complete while every cross-section database dependency survives.
+
 ## Verdict
 
 `G1: 2 gaps (corrected 2026-08-03, was 1 — added: 2 HUM0024 configuration grandfathers) · G3: 3 gaps (corrected 2026-08-03, was 2 — added: harness-inherited EF-InMemory service tests)`

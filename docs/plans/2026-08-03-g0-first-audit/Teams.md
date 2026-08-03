@@ -38,6 +38,9 @@
 
 No dead columns/tables named in the doc beyond the nav-strip follow-up (which is code-shape, not schema). `google_resources` FK/ownership boundary with GoogleIntegration is clean and intentional, not debt.
 
+
+**Added 2026-08-03 — cross-section FK cuts belong in this queue.** Retiring `[Obsolete]` navs or `[Grandfathered(HUM0024)]` markers is a code-shape change; it does **not** drop the physical constraint. Per the demolition inventory, this section owns **5** cross-section FKs across 4 tables: `team_members`, `team_role_assignments`, `team_join_requests` (×2) and `team_join_request_state_history` → `AspNetUsers`, behind the four HUM0024 configurations listed in the G1 gap list. All are G2 cuts — without them listed here, a schema batch driven by this scorecard can complete while every cross-section database dependency survives.
+
 ## Verdict
 
 **G1: 4 gaps (corrected 2026-08-03, was 3 — added: 4 HUM0024 configuration grandfathers; 5 entity-leak baseline rows needing caller audit, 5 Obsolete-nav debt items already tracked, HUM0031×2 tracked) · G3: 2 gaps (EF-InMemory repo test, DbContext-backed service tests) — largest G1.5 debt surface by row-count of the 9 sections, but all items are named/documented rather than silent**

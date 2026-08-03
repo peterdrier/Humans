@@ -14,9 +14,18 @@
 > list — §10 is "Cross-Cutting Services", unrelated. The nearest existing catalog is the
 > `[Grandfathered(ruleId: "HUM0024", ...)]` attribute the HUM0024 analyzer already requires on
 > every configuration class with a live cross-section `HasOne`/`HasForeignKey`/`HasMany` (see
-> `memory/architecture/no-cross-section-ef-joins.md`). That attribute list *is* the ground-truth
-> cross-section FK inventory — §2 below is a direct transcription of all 34 grandfathered
-> configuration classes, verified against their actual EF mapping code, not a re-derivation.
+> `memory/architecture/no-cross-section-ef-joins.md`).
+>
+> **Method corrected 2026-08-03 — the HUM0024 attribute list is NOT ground truth.** This doc
+> originally described itself as a transcription of the 34 grandfathered configuration classes.
+> Its own later corrections falsify that premise: Governance contributes four cross-section FKs
+> and GoogleIntegration four more, and **none of those eight carries a HUM0024 marker**. Treating
+> the attribute list as complete would drop all eight on any future regeneration — and it also
+> means the analyzer is not firing where it should, which is a finding in its own right (raised
+> in both sections' scorecards). The source of truth for this inventory is a **repo-wide scan of
+> every EF configuration class for cross-section `HasOne`/`HasForeignKey`/`HasMany`**, with the
+> `[Grandfathered(HUM0024)]` attribute recorded as an *attribute of* each relationship rather
+> than as the enumeration mechanism. Regenerate it that way.
 
 ## Prior art
 
@@ -140,9 +149,17 @@ another section — none carry `[Grandfathered(HUM0024)]`.
 `communication_preferences` (`CommunicationPreferenceConfiguration.cs:10`),
 `volunteer_history_entries` (`VolunteerHistoryEntryConfiguration.cs:11`), and
 `account_merge_requests` (`AccountMergeRequestConfiguration.cs:10`) all lack a `profile_`
-prefix. Propose `profile_contact_fields`, `profile_user_emails` (contentious — see Unmapped
-tail), `profile_communication_preferences`, `profile_volunteer_history_entries`,
-`profile_account_merge_requests`.
+prefix.
+
+**Reassess before queueing (added 2026-08-03).** The obvious proposals are
+`profile_contact_fields`, `profile_user_emails`, `profile_communication_preferences`,
+`profile_volunteer_history_entries`, `profile_account_merge_requests` — but the confirmed section
+inventory folds **Profiles into the canonical `Users` shared-contract section**, and G2's rename
+rule is "prefix with the owning *section*". Spending a destructive migration to stamp `profile_`
+onto tables whose section is being eliminated would be immediately self-defeating. Re-derive these
+under the Users boundary (`user_…`? keep bare? some stay `profile_` because the *entity* is
+`Profile` even though the section is Users?) before any of them becomes a G2 work item. This also
+subsumes the `user_emails` naming question already parked in the Unmapped tail.
 
 ### Misfiled configuration (not a table-ownership violation, but pre-G5 drift)
 `AccountMergeRequestConfiguration.cs` lives under `Configurations/Profiles/`, but

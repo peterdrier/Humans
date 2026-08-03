@@ -41,4 +41,7 @@ Section: Feedback · Kind: vertical · Audited 2026-08-03 @ 5a9bbe198
 - The HUM0024 cross-section-join demolition (G1 gap #1) is this section's clearest G2 candidate — it's explicitly self-documented as in-progress-intent ("migrating to bare FK") but not yet executed. Should be filed as a tracked issue if one doesn't already exist, since the transition plan's demolition inventory expects named items, not just Grandfathered-attribute prose.
 - No dead columns spotted otherwise; data model is otherwise lean.
 
+
+**Added 2026-08-03 — cross-section FK cuts belong in this queue.** Retiring `[Obsolete]` navs or `[Grandfathered(HUM0024)]` markers is a code-shape change; it does **not** drop the physical constraint. Per the demolition inventory, this section owns **5** cross-section FKs across 2 tables: `feedback_reports` → `AspNetUsers` ×3 (`User`/`ResolvedByUser`/`AssignedToUser`) and `teams` ×1 (`AssignedToTeam`), plus `feedback_messages.SenderUserId` → `AspNetUsers`. All are G2 cuts — without them listed here, a schema batch driven by this scorecard can complete while every cross-section database dependency survives.
+
 **Verdict: G1: 1 gap · G3: 3 gaps (corrected 2026-08-03, was 2 — added: harness-inherited EF-InMemory service tests)**

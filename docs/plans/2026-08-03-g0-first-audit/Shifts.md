@@ -40,6 +40,9 @@
 
 `VolunteerEventProfile`'s dietary/medical columns are retained-but-unused pending a post-prod-soak drop (already migrated to `Profile`). This is a named demolition-inventory item already tracked in the doc.
 
+
+**Added 2026-08-03 — cross-section FK cuts belong in this queue.** Retiring `[Obsolete]` navs or `[Grandfathered(HUM0024)]` markers is a code-shape change; it does **not** drop the physical constraint. Per the demolition inventory, this section owns **7** cross-section FKs across 5 tables: `general_availability`, `rotas` (→ `teams`), `shift_signups` (×3), `volunteer_event_profiles` and `volunteer_tag_preferences` → `AspNetUsers`/`teams`. `event_participations` is **excluded** — Users-owned, so its FK is internal to Users. All are G2 cuts — without them listed here, a schema batch driven by this scorecard can complete while every cross-section database dependency survives.
+
 ## Verdict
 
 **G1: 5 gaps (corrected 2026-08-03, was 3 — 10 entity-leak baseline rows with 2 in-flight via #809, HUM0031×1 tracked, added: two writer-services on `shift_signups`, and 6 HUM0024 configuration grandfathers covering 8 cross-section relationships) · G3: 2 gaps (EF-InMemory repo tests ×3, DbContext-backed service tests ×12 — largest G3.2 gap in the batch)**

@@ -302,7 +302,7 @@ sections and shared contracts noted explicitly. (`—` = not yet audited.)
 | Auth | **horizontal** | 4 gaps | — | 4 gaps | — | — |
 | Budget | vertical | 3 gaps | — | 4 gaps | — | — |
 | Calendar (incl. ICalFeed) | vertical | 2 gaps | — | 3 gaps | — | — |
-| Campaigns | vertical | 2 gaps | — | 2 gaps | — | — |
+| Campaigns | vertical | 3 gaps | — | 3 gaps | — | — |
 | Camps | vertical | 4 gaps | — | 2 gaps | — | — |
 | Cantina | vertical | 3 gaps | — | ✅ | — | — |
 | CityPlanning | vertical | 2 gaps | — | 3 gaps | — | — |
@@ -324,7 +324,7 @@ sections and shared contracts noted explicitly. (`—` = not yet audited.)
 | Consent *(renamed from LegalAndConsent)* | vertical | 3 gaps | — | 4 gaps | — | — |
 | Mailer | **vendor connector** | ✅ | — | ✅ | — | — |
 | Notifications | vertical | 2 gaps | — | 2 gaps | — | — |
-| Onboarding | **orchestrator** | ✅ | — | ✅ | — | — |
+| Onboarding | **orchestrator** | ✅ | — | 1 gap | — | — |
 | Scanner | vertical | ✅ | — | ✅ | — | — |
 | Search *(new row 2026-08-03)* | **orchestrator** | — | — | — | — | — |
 | Settings *(ex-SystemSettings; absorbs #864)* | vertical | — | — | — | — | — |
