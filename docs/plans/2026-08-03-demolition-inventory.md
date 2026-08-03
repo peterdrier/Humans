@@ -256,6 +256,17 @@ None — `calendar_events`, `calendar_event_exceptions` both conform.
 
 ## Shifts
 
+### Dead columns — added 2026-08-03
+Six `VolunteerEventProfile` dietary/medical columns (`VolunteerEventProfile.cs:39-61`):
+`DietaryPreference`, `Allergies`, `Intolerances`, `AllergyOtherText`, `IntoleranceOtherText`,
+`MedicalConditions`. Class doc comment: "Dietary + medical moved to Profile... These
+columns are RETAINED but unused — the data was backfilled to Profile and all code now
+reads/writes Profile... Do NOT read or write these." Per-property doc comments: "RETAINED
+for prod-soak drop. Use Profile.\<X\>." Grep of `src/Humans.Application/Services/Shifts`
+for all six property names → zero live reads/writes, confirming the class comment. Same
+"retained for prod-soak drop" pattern as `Profile.ProfilePictureData`/`Profile.IsSuspended`
+above — a G2 drop candidate once soaked, not yet tracked as a numbered issue here.
+
 ### Cross-section FK
 `GeneralAvailabilityConfiguration.cs:34-37` — typed `HasOne<User>()` on `UserId` →
 `AspNetUsers`. `RotaConfiguration.cs:44-47` — typed `HasOne<Team>()` on `TeamId` → `teams`.
@@ -326,6 +337,14 @@ No cross-section FK — not `[Grandfathered(HUM0024)]`.
 
 ## Tickets
 
+### Dead columns — added 2026-08-03
+`TicketTransferRequest.VendorStepsJson` (`TicketTransferRequestConfiguration.cs:56-59`,
+`DefaultValue("[]")`). Config comment (`:43-46`): "Vendor-writeback columns written by the
+automated transfer path (ProcessTransferAsync / RetryReissueAsync) and read by the admin
+queue/detail. `VendorStepsJson` is the one genuinely dormant column — unread, dropped in a
+follow-up PR after prod soak." Already noted in the G0 first-audit Tickets scorecard's G2
+queue notes but was missing from this inventory's per-section list and summary total.
+
 ### Cross-section FK
 `TicketOrderConfiguration.cs:64-67` — typed `HasOne<User>()` on `MatchedUserId` →
 `AspNetUsers` (Users). `TicketAttendeeConfiguration.cs:59-62` — typed `HasOne<User>()` on
@@ -352,26 +371,47 @@ or pick one and rename, not a real demolition item.
 HUM0024 on all four: `TeamMemberConfiguration.cs:8-12`, `TeamRoleAssignmentConfiguration.cs:8-12`,
 `TeamJoinRequestConfiguration.cs:8-12`, `TeamJoinRequestStateHistoryConfiguration.cs:8-12`.
 
-### Non-conforming table name (ownership-naming confusion)
-`GoogleResourceConfiguration.cs:11` → `google_resources` — owned by Teams per `design-rules.md`
-§8 (`TeamResourceService`), but named for **Google Integration**, and it's also the FK target
-consumed cross-section by AuditLog above. Propose `team_google_resources`, or — given it's
-consumed by both Teams and AuditLog and reads as a Google Integration concern to anyone
-unfamiliar with the ownership map — worth a real ownership discussion at G1, not just a rename
-(flagged in the tail).
+### `google_resources` — ownership correction, added 2026-08-03
+~~Previously listed here as "owned by Teams per `design-rules.md` §8 (`TeamResourceService`),
+named for Google Integration."~~ **Wrong — `google_resources` is GoogleIntegration-owned, not
+Teams-owned.** `design-rules.md` §8's table-ownership map is stale on this point; per this
+doc's own stated methodology ("where the plan doc or `design-rules.md` §8 disagreed with what
+the code does, the code wins"): `TeamResourceService.cs` physically lives at
+`src/Humans.Application/Services/GoogleIntegration/TeamResourceService.cs` (not a Teams path),
+with its own doc comment "TeamService owns TeamMembers/Teams; **we** own GoogleResources" —
+"we" being GoogleIntegration. `reforge.surface-score.json`'s `GoogleIntegration` entry maps
+`src/Humans.Domain/Entities/Google*` (covers the `GoogleResource` entity) and
+`src/Humans.Infrastructure/Repositories/GoogleIntegration/**` (covers
+`GoogleResourceRepository.cs`, confirmed at that exact path) to GoogleIntegration. See the
+Google Integration section below for the corrected entry. Moved here to Teams: nothing — this
+was a misfiled item, not a Teams finding. The `GoogleResourceConfiguration.cs` class itself
+(directly under `Configurations/`, no section subfolder) is a misfiled-configuration case, same
+class of drift as `AccountMergeRequestConfiguration`/`EventParticipationConfiguration` above —
+flag for a mechanical move to `Configurations/GoogleIntegration/` at G1.
 
-All other `team_*` tables conform.
+All `team_*` tables conform.
 
 ---
 
 ## Google Integration
 
+### Cross-section FK — added 2026-08-03 (moved from Teams, see correction there)
+`GoogleResourceConfiguration.cs:54-57` — typed `HasOne<Team>()` (no nav) on `TeamId` →
+`teams` (Teams). `google_resources` is GoogleIntegration-owned (see the ownership
+correction under Teams above), so this is a genuine cross-section FK, not an internal one.
+**Not `[Grandfathered(HUM0024)]`** — the full config file (`GoogleResourceConfiguration.cs`)
+carries no `[Grandfathered]` attribute at all, unlike every other cross-section FK in this
+inventory. Either an under-the-radar HUM0024 gap (the analyzer/its baseline should be
+catching this and isn't) or the attribute was never added when the FK landed — worth a
+follow-up beyond just the rename.
+
 ### Non-conforming table name
 `SyncServiceSettingsConfiguration.cs:15` → `sync_service_settings` — its sibling table
 (`GoogleSyncOutboxEventConfiguration.cs:11` → `google_sync_outbox`) carries the `google_`
-prefix; this one doesn't. Propose `google_sync_service_settings`.
-
-No cross-section FK — neither config is `[Grandfathered(HUM0024)]`.
+prefix; this one doesn't. Propose `google_sync_service_settings`. Separately,
+`google_resources` (`GoogleResourceConfiguration.cs:11`) is misleadingly Teams-prefixed for
+a GoogleIntegration-owned table — propose `google_team_resources` (keeping the ownership
+signal on the section that actually owns the repository/entity).
 
 ---
 
@@ -473,19 +513,19 @@ plan-tracked, but a legitimate G2 drop candidate whenever Store's demolition bat
 | Camps | 0 | 1 (`camp_leads`, #774) | 1 (#787) | 3 (3 tables) | 0 |
 | City Planning | 0 | 0 | 0 | 4 (2 tables) | 2 |
 | Calendar | 0 | 0 | 0 | 1 (1 table) | 0 |
-| Shifts | 0 | 0 | 0 | 9 (6 tables) | 6 (+1 cross-section) |
+| Shifts | 6 (retained-for-soak) | 0 | 0 | 9 (6 tables) | 6 (+1 cross-section) |
 | Budget | 0 | 0 | 0 | 3 (3 tables) | 1 |
 | Expenses | 0 | 0 | 0 | 0 | 1 |
-| Tickets | 0 | 0 | 0 | 2 (2 tables) | 0 (doc drift only) |
-| Teams | 0 | 0 | 0 | 5 (4 tables) | 1 (needs ownership discussion) |
-| Google Integration | 0 | 0 | 0 | 0 | 1 |
+| Tickets | 1 (retained-for-soak) | 0 | 0 | 2 (2 tables) | 0 (doc drift only) |
+| Teams | 0 | 0 | 0 | 5 (4 tables) | 0 (google_resources rename moved to Google Integration, see correction) |
+| Google Integration | 0 | 0 | 0 | 1 (1 table) | 2 |
 | Email | 0 | 0 | 0 | 3 (1 table) | 0 |
 | Notifications | 0 | 0 | 0 | 2 (2 tables) | 0 |
 | Feedback | 0 | 0 | 0 | 4 (2 tables) | 0 |
 | Issues | 0 | 0 | 0 | 4 (2 tables) | 0 |
 | Campaigns | 0 | 0 | 0 | 2 (2 tables) | 0 |
 | Store | 1 (self-contained) | 0 | 0 | 0 | 0 |
-| **Total** | **4 tagged + 6 queued/targeted** | **1** | **1** | **48 (34 tables)** | **24** |
+| **Total** | **4 tagged + 6 queued/targeted + 7 retained-for-soak** | **1** | **1** | **49 (35 tables)** | **24** |
 
 Two misfiled-configuration findings (not counted above, not table-ownership violations):
 `AccountMergeRequestConfiguration.cs` and `EventParticipationConfiguration.cs` sit in the wrong
@@ -500,10 +540,13 @@ ahead of G5's project split.
   (`design-rules.md` §8: Profiles owns it) but reads badly next to `AspNetUsers`/`UserEmail`
   elsewhere in the codebase; an argument exists for leaving it bare or renaming the *section*
   boundary instead of the table. Punt to Peter.
-- **`google_resources` (Teams-owned, Google-named, AuditLog-consumed)** — a genuine three-way
-  ownership question, not just a naming one. Renaming to `team_google_resources` is the
-  mechanical fix, but worth confirming Teams should keep owning it at all before G2 locks the
-  name in.
+- **`google_resources` (GoogleIntegration-owned — corrected 2026-08-03, was mislabeled
+  Teams-owned; Team-named, AuditLog-consumed)** — still a naming question even after the
+  ownership correction: the table/repository/entity are GoogleIntegration's, but the FK
+  target is Teams and the physical name reads as a Teams concern. Renaming to
+  `google_team_resources` is the mechanical fix (see Google Integration section above); no
+  ownership transfer needed, ownership is already settled by `reforge.surface-score.json` +
+  code layout — just the ambiguous name.
 - **`event_guide_settings` vs `event_settings` shortening** — cosmetic follow-on to the
   `shift_event_settings` rename; not required, listed as optional in the Shifts section.
 - Six sections in the tracker (`Settings`/`Shortlinks`, both `n/a` for G1/G2 per the plan since

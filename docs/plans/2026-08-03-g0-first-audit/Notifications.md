@@ -1,16 +1,30 @@
 # Notifications — G0 First Audit
 
-**Section:** Notifications · **Kind:** vertical, fan-in (per `CONTEXT.md`: touched by nearly every other section, but carries no other section's logic and reaches into no other section's data — this makes it read as a **Crosscut** by the glossary definition, worth flagging for the G0 shared-contract-exception review even though the tracker currently lists it as `vertical`) · **Audited:** 2026-08-03 @ 5a9bbe198
+**Section:** Notifications · **Kind:** vertical · **Audited:** 2026-08-03 @ 5a9bbe198
+
+**Kind note — corrected 2026-08-03:** the original pass classified Notifications as a
+candidate `Crosscut` on the premise that it "carries no other section's logic and reaches
+into no other section's data." **False premise** — `NotificationMeterProvider`
+(`src/Humans.Application/Services/Notifications/NotificationMeterProvider.cs:36-42`)
+constructor-injects `IUserServiceRead`, `IGoogleSyncServiceRead`, `ITeamServiceRead`,
+`ITicketSyncService` (full-service, not the read cut), `IApplicationServiceRead`
+(Governance), and `ICampServiceRead` — it reads live data out of five other sections'
+tables via their services on every meter-count call. This is exactly the read side of the
+4 section-level-only cycles the dependency DAG's own Cycles section already documents
+(Teams/Camps/Governance/GoogleIntegration ↔ Notifications, all rooted in
+`NotificationMeterProvider`). Notifications stays `vertical` — it does reach into other
+sections' data, just through their read interfaces rather than raw EF, which is the
+*correct* pattern, not evidence of being a crosscut.
 
 ## G1 predicate table
 
 | # | Predicate | Result | Evidence |
 |---|-----------|--------|----------|
 | 1 | Every owned table read/written by exactly one repo in-section | PASS | `reforge ownership-violations --owner Notifications --tables notifications,notification_recipients` → 0 violations. |
-| 2 | One writer-service per table | PASS | `INotificationRepository` (Singleton, `IDbContextFactory<HumansDbContext>`) is the only non-test type touching `notifications`/`notification_recipients`. `INotificationEmitter`/`INotificationService` split exists specifically to break a DI cycle, not to create two writers — both ultimately route through the one repository. |
+| 2 | One writer-service per table | **FAIL — corrected 2026-08-03** | `INotificationRepository` is the only *repository* touching `notifications`/`notification_recipients`, but three different *services* call mutating repo methods against those tables: `NotificationEmitter.SendAsync` → `repo.AddRangeAsync` (`NotificationEmitter.cs:97`); `NotificationService.SendToRoleAsync` → `repo.AddAsync` (`NotificationService.cs:103`); `NotificationInboxService` → `repo.ResolveAsync`/`DismissAsync`/`MarkReadAsync`/`BulkResolveAsync`/`BulkDismissAsync` (`NotificationInboxService.cs:98,108,118,138,148`). The predicate is about writer-*services*, not writer-repositories — one repository funneling three services' writes is the #751 pattern this predicate is meant to catch, not satisfy. |
 | 3 | No EF entity leaks across boundary | PASS — best-in-class | `NotificationRecipient.User` and `Notification.ResolvedByUser` navs were **dropped entirely** (shadow navigations, not merely `[Obsolete]`-marked). Display data resolved via `IUserService.GetByIdsAsync`. This is the end-state the other 3 table-owning sections in this batch are working toward. |
-| 4 | No cross-section EF joins (zero baseline entries) | PASS | No Notifications rows in any baseline file. |
-| 5 | No `[Obsolete]` cross-section navs / `[Grandfathered]` / baseline rows | PASS | Confirmed by predicate 3 — navs are gone, not obsoleted. No `[Grandfathered]` hits. |
+| 4 | No cross-section EF joins (zero baseline entries) | PASS | No Notifications rows in any `CrossSectionEfJoinAnalyzer` baseline file. |
+| 5 | No `[Obsolete]` cross-section navs / `[Grandfathered]` / baseline rows | **FAIL — corrected 2026-08-03** | Predicate 3's "navs are gone" is true for the C# nav *properties*, but the EF **configuration classes** still carry the marker: `NotificationConfiguration.cs:8-12` and `NotificationRecipientConfiguration.cs:8-12` both carry `[Grandfathered(ruleId: "HUM0024", justification: "Pre-existing cross-section EF navigation join; migrating to bare FK + service-level stitching.", ...)]` on their typed `HasOne<User>()` FK wiring — the same pattern flagged as a gap on every other section in this batch (Campaigns, Feedback, etc.). Original pass conflated "no leaked nav property" with "no Grandfathered attribute" — they're separate predicates. |
 | 6 | Controllers thin — no HUM0031 grandfathers | PASS | No `Grandfathered` hits on `NotificationsController.cs`. |
 | 7 | `docs/sections/Notifications.md` current | PASS | Precise and current, including the "meters are computed, never stored" architectural rule and an explicit Design Rationale section with ADR references. |
 
@@ -26,12 +40,15 @@
 
 ## G1 gap list
 
-No G1 gaps found for Notifications.
+1. **Three writer-services on one repository** (predicate 2) — `NotificationEmitter.SendAsync`, `NotificationService.SendToRoleAsync`, `NotificationInboxService`'s resolve/dismiss/mark-read/bulk methods all mutate `notifications`/`notification_recipients`. Where: `src/Humans.Application/Services/Notifications/{NotificationEmitter,NotificationService,NotificationInboxService}.cs`. The split exists to break a real DI cycle concern, which is a legitimate reason — but it's still a #751-pattern gap as written, not a pass; needs an explicit call on whether this is an accepted exception (like the read/write split elsewhere) or should consolidate. No-migration-needed: y.
+2. **HUM0024 cross-section EF join grandfathers** (predicate 5) — `NotificationConfiguration.cs:8-12`, `NotificationRecipientConfiguration.cs:8-12`, typed `HasOne<User>()` FKs to `AspNetUsers`. Same pattern as every other table-owning section in this batch; no queued G2 item beyond the generic doc anchor. No-migration-needed: y (pending liveness verification).
 
 ## G2 queue notes
 
-None identified — this section is schema-clean. Worth a note for the G0 dependency-DAG pass: consider whether Notifications should be reclassified from `vertical` to `Crosscut` in the section tracker per the glossary (fan-in from nearly every section, but zero outbound section-specific logic) — doesn't change any G1–G5 predicate, just the tracker's `Kind` column.
+The 2 HUM0024 grandfathers above are this section's G2 demolition candidate, same shape as Campaigns/Feedback/etc. — file alongside those if a tracked issue doesn't exist yet.
+
+**Kind reclassification — retracted:** the original note suggesting Notifications move to `Crosscut` per the glossary is retracted — see the corrected Kind note above. `NotificationMeterProvider` does carry real outbound section-specific logic (live reads into 5 other sections), so the "zero outbound logic" premise for a Crosscut reclassification doesn't hold. Stays `vertical`.
 
 ## Verdict
 
-`G1: met · G3: 2 gaps (+1 PARTIAL) — headline gap: NotificationRepositoryTests + CleanupNotificationsJobTests both on EF-InMemory instead of mocked interfaces / shared Postgres fixture`
+`G1: 2 gaps (corrected 2026-08-03, was "met") · G3: 2 gaps (+1 PARTIAL) — headline gaps: (1) three writer-services routed through one repository (NotificationEmitter/NotificationService/NotificationInboxService), (2) HUM0024 grandfathers on NotificationConfiguration/NotificationRecipientConfiguration; G3 headline unchanged: NotificationRepositoryTests + CleanupNotificationsJobTests both on EF-InMemory instead of mocked interfaces / shared Postgres fixture`

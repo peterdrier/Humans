@@ -14,7 +14,7 @@ Scope note: `reforge.surface-score.json` bundles **Mailer** (`IMailerAudienceSyn
 | 4 | No cross-section EF joins (zero baseline entries) | PASS | Grepped all 5 baseline files under `tests/Humans.Application.Tests/Architecture/Baselines/` for `Email`/`Mailer` — zero hits. |
 | 5 | No `[Obsolete]` cross-section navs / `[Grandfathered]` / baseline rows | **FAIL** | `EmailController.cs:88-92` — `[Grandfathered(ruleId: "HUM0031", justification: "Worst-offender at HUM0031 introduction: 51 statements, cc 2.", since: "2026-06-09", issueRef: "nobodies-collective/Humans#857")]` on `EmailPreview`. Per the team-lead's brief this is being worked in a parallel lane (#857) tonight — recorded honestly here regardless. |
 | 6 | Controllers thin — no HUM0031 grandfathers | **FAIL** | Same finding as above — `EmailController.EmailPreview` carries the HUM0031 grandfather. `UnsubscribeController.cs` grepped clean (zero matches). |
-| 7 | `docs/sections/Email.md` exists and matches reality | PARTIAL | The outbox half of the doc is accurate and detailed (verified data model, routes, triggers, `IDbContextFactory<HumansDbContext>` usage, connector abstractions). **Gap:** the doc is titled "Email" and covers only the outbox — it does not document Mailer (`IMailerAudienceSyncService`/`IMailerImportService`/`IMailerLiteService`) at all, and no separate `docs/sections/Mailer.md` exists. Since the tracker/surface-score treats them as one entry, this is a real documentation gap for the Mailer half. |
+| 7 | `docs/sections/Email.md` exists and matches reality | PASS — corrected 2026-08-03 | The outbox half of the doc is accurate and detailed (verified data model, routes, triggers, `IDbContextFactory<HumansDbContext>` usage, connector abstractions). ~~Gap: no separate `docs/sections/Mailer.md` exists~~ — **wrong, verified via `git ls-files docs/sections/`**: `docs/sections/Mailer.md` exists, is git-tracked, and has substantial real content (concepts, import classification/reset rules, audience framework, idempotency invariants, admin routes — confirmed by direct read). The earlier pass's negative result was very likely a case-insensitive/glob false negative on Windows (same failure mode flagged elsewhere in this batch), not a real gap. |
 
 ## G3 predicate table
 
@@ -29,7 +29,7 @@ Scope note: `reforge.surface-score.json` bundles **Mailer** (`IMailerAudienceSyn
 ## G1 gap list
 
 1. **HUM0031 grandfather on `EmailController.EmailPreview`** — already tracked under #857 (in-flight parallel lane per this run's brief); no new action needed here beyond confirming it. No migration needed (y).
-2. **No `docs/sections/Mailer.md`** — Mailer (MailerLite audience sync) has no section-invariant doc even though it's tracked as part of "Email" in the surface-score/tracker. Fix: either write a minimal `docs/sections/Mailer.md` (no owned tables, external-API sync, write-surface restricted to 4 methods per `MailerArchitectureTests.cs`) or fold a short Mailer subsection into `Email.md` and update the tracker/surface-score comment to make the bundling explicit. No migration needed (y).
+2. ~~No `docs/sections/Mailer.md`~~ — **retracted 2026-08-03**, the file exists (see predicate 7 correction). No gap.
 
 ## G3 gap list
 
@@ -43,4 +43,4 @@ Scope note: `reforge.surface-score.json` bundles **Mailer** (`IMailerAudienceSyn
 
 ## Verdict
 
-`G1: 2 gaps · G3: 2 gaps`
+`G1: 1 gap (corrected 2026-08-03, was 2 — Mailer.md gap retracted, it exists) · G3: 2 gaps`

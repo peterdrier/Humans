@@ -48,13 +48,16 @@ Separately, the transition plan's own **Section tracker** (in
 | `Holded` (separate row) | This is the `Finance` section (`Finance*`, `Holded*`, `IHolded*`). | Rename tracker row `Holded` → `Finance`. |
 | `LegalAndConsent` (separate row) | This is the `Consent` section (bundles `Legal*` + `Consent*`). | Rename tracker row → `Consent`. |
 | `Guide`, `Debug`, `Scanner` (separate rows) | All three are `Platform`-owned controllers/services (`GuideController`, `DebugController`, `ScannerController` are explicit `Platform` paths) — not independent sections with their own tables/services. | Demote these three rows; they don't need their own G1–G5 ladder, they ride with `Platform`. |
-| *(missing entirely)* | `Gate`, `Surveys`, `SystemSettings`, `ICalFeed`, `Dashboard`, `Admin`, `Platform`, `Search`, `Gdpr` all exist as real sections/services in code but have no tracker row. | Add rows for all nine before G0 closes — otherwise they never get audited against G1–G5. |
+| *(missing entirely)* | `Gate`, `Surveys`, `SystemSettings`, `ICalFeed`, `Dashboard`, `Admin`, `Platform`, `Search`, `Gdpr` all exist as real sections/services in code but have no tracker row. | **Corrected 2026-08-03:** add rows for `Gate`, `Surveys`, `SystemSettings`, `ICalFeed` before G0 closes. **`Admin` is explicitly excluded** — `docs/architecture/peters-hard-rules.md`/`CLAUDE.md` state `/Admin/*` is a nav holder, not a section, and the frozen-inventory proposal (`2026-08-03-proposed-frozen-section-inventory.md` §C) already classifies it that way. `Dashboard`, `Search`, `Gdpr`, `Platform` are an open classification question in that same proposal (orchestrator/crosscut/Platform-infrastructure candidates, not flatly "add a row") — don't pre-empt it here. |
 
 ## Vertical-section DAG
 
 Excludes the shared-contract exceptions (`Users`, `Auth`, `AuditLog`) and the horizontal
-`Platform` bucket — see the **Shared-contract dependencies** table below for those. 71
-distinct consumer→provider section pairs across 25 vertical sections.
+`Platform` bucket — see the **Shared-contract dependencies** table below for those. **77**
+distinct consumer→provider section pairs (71 originally + 6 found 2026-08-03: Agent→Teams,
+Agent→Consent, Agent→Feedback, Agent→Tickets, Agent→Shifts, Email→SystemSettings) across
+26 vertical sections (25 + `Agent`, which was omitted from the original edge-collection
+pass entirely despite already being a real `reforge.surface-score.json` section).
 
 ```mermaid
 flowchart LR
@@ -84,6 +87,7 @@ flowchart LR
     EX[Expenses]
     CT[Containers]
     EM[Email]
+    AG[Agent]
 
     TM --> SH
     TM --> NT
@@ -156,6 +160,12 @@ flowchart LR
     EM --> TK
     EV --> SH
     EV --> EM
+    AG --> TM
+    AG --> CS
+    AG --> FB
+    AG --> TK
+    AG --> SH
+    EM --> SS
 ```
 
 **Cycles (7 total) — see "Cycles" section below for the full breakdown; the reciprocal
@@ -187,7 +197,7 @@ write and read sides are different classes — see below).**
 | Consent | Teams | full-service | `ITeamService` (`AdminLegalDocumentService`, `LegalDocumentSyncService`) | |
 | Consent | Notifications | full-service | `INotificationEmitter`/`INotificationInboxService` (`LegalDocumentSyncService`, `ConsentService`) | |
 | Tickets | Budget | full-service | `IBudgetService` (`TicketQueryService`, `TicketingBudgetService`) | |
-| Tickets | Campaigns | **mixed** read + full | `ICampaignServiceRead` (`TicketQueryService`) vs full `ICampaignService` (`TicketSyncService`) | **Challenged** — inconsistent split adoption within one section |
+| Tickets | Campaigns | read + full (write) | `ICampaignServiceRead` (`TicketQueryService`); full `ICampaignService` (`TicketSyncService`, sole call is the write `MarkGrantsRedeemedAsync`) | Consistent — write legitimately needs the full interface (challenge withdrawn 2026-08-03) |
 | Tickets | Teams | read-interface | `ITeamServiceRead` (`TicketQueryService`, `OnsiteRosterService`) | |
 | Tickets | Shifts | full-service | `IShiftManagementService` (`TicketQueryService`, `TicketSyncService`, `AttendeeContactImportService`) | **Real DI cycle** partner (Shifts lazy-resolves `ITicketServiceRead`) |
 | Shifts | Tickets | read-interface (lazy) | `ITicketServiceRead` (`ShiftManagementService`) | **Real DI cycle** |
@@ -226,7 +236,7 @@ write and read sides are different classes — see below).**
 | Store | Shifts | full-service | `IShiftManagementService` | |
 | Surveys | Teams | read-interface | `ITeamServiceRead` | Missing-from-inventory section |
 | Surveys | Tickets | read-interface | `ITicketServiceRead` | Missing-from-inventory section |
-| Surveys | Shifts | full-service | `IShiftView` | Missing-from-inventory section |
+| Surveys | Shifts | read-interface | `IShiftView` (`SurveyService`) | Missing-from-inventory section — **corrected 2026-08-03**: `IShiftView` is read-only (see Email→Shifts row for the same interface); was mislabeled full-service |
 | Surveys | Email | full-service | `IEmailService` | Missing-from-inventory section |
 | Surveys | GoogleIntegration | full-service | `IGoogleTranslationService` | Missing-from-inventory section |
 | Gate | Tickets | read-interface | `ITicketServiceRead` | Missing-from-inventory section |
@@ -239,14 +249,38 @@ write and read sides are different classes — see below).**
 | Email | Tickets | read-interface | `ITicketServiceRead` (Mailer audience classes) | Same as above |
 | Events | Shifts | full-service | `IBurnSettingsService` | |
 | Events | Email | full-service | `IEmailService` | |
+| Agent | Teams | read-interface | `ITeamServiceRead` (`AgentUserSnapshotProvider`) | **Added 2026-08-03** — Agent section omitted from the original edge-collection pass entirely (it's not a missing-from-inventory section; it's already in `reforge.surface-score.json`) |
+| Agent | Consent | read-interface | `IConsentServiceRead` (`AgentUserSnapshotProvider`) | **Added 2026-08-03** |
+| Agent | Feedback | full-service | `IFeedbackService` (`AgentUserSnapshotProvider`) | **Added 2026-08-03** — see Feedback audit correction, this is Feedback's only cross-section consumer |
+| Agent | Tickets | read-interface | `ITicketServiceRead` (`AgentUserSnapshotProvider`) | **Added 2026-08-03** |
+| Agent | Shifts | mixed read + full | `IShiftView` (read) + `IShiftManagementService` (full) (`AgentUserSnapshotProvider`) | **Added 2026-08-03** |
+| Email | SystemSettings | full-service | `ISystemSettingsService` (`EmailOutboxService`) | **Added 2026-08-03** — omitted from the original edge-collection pass; missing-from-inventory section (see above) |
 
-**Orphaned read-interfaces (zero injectors solution-wide):** `IVolunteerTrackingServiceRead`
-(Shifts), `IExpenseReportServiceRead` (Expenses), `IEmailOutboxServiceRead` (Email),
-`ICalendarServiceRead` (Calendar), `IEventViewInvalidator` (Events),
-`ILegalDocumentCacheInvalidator` (Consent). Either premature abstraction or dead surface —
-candidates for the G1 audit's dead-interface sweep. (`ICityPlanningServiceRead` is
-separately confirmed to have zero *Application-layer* consumers but real Web-layer ones —
-working as documented, not orphaned.)
+**Orphaned read-interfaces — corrected 2026-08-03:** the original "zero injectors
+solution-wide" list was `reforge injected`-only, which misses Web-layer
+primary-constructor consumers, authorization handlers, and
+`IServiceProvider.GetService<T>()`-style resolution. Five of the original six are **not**
+orphaned — verified via direct grep + exact-case file reads:
+
+- `IVolunteerTrackingServiceRead` (Shifts) — `VolunteerBuildStripViewComponent`
+  (`src/Humans.Web/ViewComponents/VolunteerBuildStripViewComponent.cs:9`), intra-section.
+- `IExpenseReportServiceRead` (Expenses) — `IbanAccessHandler`
+  (`src/Humans.Web/Authorization/Requirements/IbanAccessHandler.cs:17`) and
+  `ExpensesController` (`:22`), intra-section.
+- `IEmailOutboxServiceRead` (Email) — `ProfileController` (`:70`) and
+  `UsersAdminController` (`:31`), **both Users-section Web controllers** — a live
+  cross-contract edge (Users → Email) not currently drawn anywhere in this DAG;
+  additional evidence for Challenged edge #1's "Users is not outbound-edge-free" finding.
+- `ICalendarServiceRead` (Calendar) — `CalendarController.cs:26`, intra-section.
+- `ILegalDocumentCacheInvalidator` (Consent) — resolved via
+  `services.GetService<ILegalDocumentCacheInvalidator>()` in
+  `LegalDocumentSaveChangesInterceptor.cs:75`, intra-section (service-locator, not
+  constructor injection — invisible to `reforge injected`).
+
+Only `IEventViewInvalidator` (Events) is left standing from the original six — not
+reverified this pass, still a G1 dead-interface-sweep candidate. (`ICityPlanningServiceRead`
+is separately confirmed to have zero *Application-layer* consumers but real Web-layer
+ones — working as documented, not orphaned.)
 
 ## Shared-contract dependencies
 
@@ -257,8 +291,8 @@ listed once here rather than as 25+ separate diagram edges.
 
 | Shared contract | Depended on by | Mechanism |
 |---|---|---|
-| `Users` (`IUserServiceRead`/`UserInfo`) | AuditLog, Auth, Budget, Campaigns, Camps, Cantina, CityPlanning, Consent, Dashboard, Events, GoogleIntegration, Governance, ICalFeed, Issues, Consent(Legal), Email(Mailer), Notifications, Search, Shifts, Surveys, Teams, Tickets, Platform, Agent, Gate (full `IUserService`, not the read cut) | Read-interface everywhere except Gate |
-| `Auth` (`IRoleAssignmentService`) | Camps (via Users' `ContactFieldService`... see Challenged), Gate, Issues, Onboarding(Users), Tickets(`OnsiteRosterService`), Users(`AccountDeletionService`,`AccountMergeService`,`DuplicateAccountService`), Notifications(`NotificationRecipientResolver`), background jobs | Mostly full-service + `IRoleAssignmentClaimsCacheInvalidator`/`IRoleAssignmentCacheInvalidator` |
+| `Users` (`IUserServiceRead`/`UserInfo`) | AuditLog, Auth, Budget, Campaigns, Camps, Cantina, CityPlanning, Consent, Dashboard, Events, Expenses (full `IUserService` — `ExpenseReportService`), Feedback (full `IUserService` — `FeedbackService`), GoogleIntegration, Governance, ICalFeed, Issues, Consent(Legal), Email(Mailer), Notifications, Search, Shifts, Surveys, Teams, Tickets, Platform, Agent, Gate (full `IUserService`, not the read cut) | Read-interface everywhere except Expenses, Feedback, Gate — **corrected 2026-08-03**: Expenses/Feedback were missing from this row entirely, both inject full `IUserService`, not the read cut |
+| `Auth` (`IRoleAssignmentService`) | Agent (`AgentUserSnapshotProvider`), Camps (via Users' `ContactFieldService`... see Challenged), Gate, Issues, Onboarding(Users), Tickets(`OnsiteRosterService`), Users(`AccountDeletionService`,`AccountMergeService`,`DuplicateAccountService`), Notifications(`NotificationRecipientResolver`), background jobs | Mostly full-service + `IRoleAssignmentClaimsCacheInvalidator`/`IRoleAssignmentCacheInvalidator` |
 | `AuditLog` (`IAuditLogService`) | Nearly every write-path service (36 dependents per `dependency-graph.md`'s fan-in table) — Teams, Camps, Tickets, GoogleIntegration, Feedback, Store, Containers, Expenses, Gate, Surveys, Users, etc. | Full-service, one-way (Audit has zero outbound edges to verticals except the AuditViewer exception below) |
 
 **Proposed 4th exception — `Platform`:** not named in the plan's original three, but plays
@@ -298,9 +332,11 @@ schedule a fix.
    of `AuditLogRepository` in a 2026-05 alignment pass), but it's still a horizontal
    depending on a vertical — needs an explicit call from Peter on whether this is a
    permanent exception (like Users/Auth) or scheduled for the #799 event-bus treatment.
-3. **`Tickets → Campaigns` is split inconsistently.** `TicketQueryService` correctly uses
-   `ICampaignServiceRead`; `TicketSyncService` uses the full `ICampaignService` for the same
-   conceptual read. Low-effort G1 fix — no design question, just an oversight.
+3. **`Tickets → Campaigns` — withdrawn on verification (2026-08-03).** Initially flagged as
+   inconsistent split adoption, but `TicketSyncService`'s single `ICampaignService` call is
+   `MarkGrantsRedeemedAsync` — a genuine cross-section **write**, legitimate through the full
+   interface per the hard rules. `TicketQueryService`'s read correctly uses
+   `ICampaignServiceRead`. No fix needed; edge row updated to `read + full (write)` intent.
 4. **`Notifications → Tickets` bypasses the read-interface.** `NotificationMeterProvider`
    injects the full `ITicketSyncService` while every other cross-section Tickets consumer
    uses `ITicketServiceRead`. Either the read DTO needs a `GetFailedSyncEventCount`-style
@@ -383,8 +419,10 @@ sections can enter G5.
 
 ## Summary
 
-**71** vertical-to-vertical section edges across **25** vertical sections (26 including the
-four missing-from-inventory sections once added), plus the `Users`/`Auth`/`AuditLog`
+**77** vertical-to-vertical section edges (corrected 2026-08-03, was 71 — see the
+Vertical-section DAG intro for the 6 added edges) across **26** vertical sections (25 +
+`Agent`, added 2026-08-03; plus the four missing-from-inventory sections once added), plus
+the `Users`/`Auth`/`AuditLog`
 (+proposed `Platform`) shared-contract fan-in depended on by nearly every section. **7
 section-level cycles found** (3 real DI cycles: Teams↔Shifts, Tickets↔Shifts,
 Governance↔Consent; 4 Notifications-pattern cycles: Teams/Camps/Governance/GoogleIntegration

@@ -19,7 +19,7 @@ Section: Expenses · Kind: vertical · Audited 2026-08-03 @ 5a9bbe198
 | # | Predicate | Result | Evidence |
 |---|-----------|--------|----------|
 | 1 | Repository tests use real Postgres, zero EF-InMemory | FAIL | `tests/Humans.Application.Tests/Repositories/Expenses/ExpenseRepositoryTests.cs` uses `.UseInMemoryDatabase(...)`. |
-| 2 | Service tests mock interfaces, zero `HumansDbContext` | PASS | No `HumansDbContext` match anywhere under `tests/Humans.Application.Tests/Services/Expenses/` (3 files: `ExpenseReportServiceTests.cs`, `ExpenseReportServiceGdprTests.cs`, `ExpenseReportServiceHoldedOutboxTests.cs`). |
+| 2 | Service tests mock interfaces, zero `HumansDbContext` | **FAIL — corrected 2026-08-03** | The original grep only searched for the literal string `HumansDbContext`, missing that Expenses has its own section `DbContext`. `ExpenseReportServiceTests : ServiceTestHarness` (`ExpenseReportServiceTests.cs:28`) builds `_expensesOptions` via `ServiceTestHarness.NewSectionDbOptions<ExpensesDbContext>()` (`:41-42`), which uses `.UseInMemoryDatabase(...)` (`ServiceTestHarness.cs:71`), then constructs a **real** `ExpenseRepository` over it (`:47`: `new ExpenseRepository(new TestDbContextFactory<ExpensesDbContext>(_expensesOptions))`) rather than mocking `IExpenseRepository`. Same EF-InMemory-through-a-real-repository anti-pattern already correctly caught for Campaigns in this batch — Expenses' own version was missed because the grep pattern didn't cover `ExpensesDbContext`. |
 | 3 | Invariants/triggers each have a test (spot-check) | PASS (spot-check) | State machine transitions (`SubmitAsync_FlipsToSubmitted...`, `WithdrawAsync_FlipsToWithdrawn`, `CoordinatorEndorseAsync_FlipsToCoordinatorEndorsed`, `ApproveAsync_FlipsToApproved_AndAudits`, `FinanceRejectAsync_ReturnsToDraft_AndAudits`), receipt-attachment-required (`SubmitAsync_Throws_WhenLineHasNoAttachment`, `SubmitWithResultAsync_Succeeds_WithOnlyMileageLine_NoAttachment`), travel-line-immutability (`UpdateLineWithResultAsync_ReturnsFailure_AndKeepsAmount_ForTravelLine`), IBAN-required-at-submit (`SubmitAsync_Throws_WhenSubmitterHasNoIban`) all present (58 test methods total in the main file). IBAN-masking-in-logs invariant not directly spot-checked here (would need `IbanFormatterTests` or similar — not opened). |
 | 4 | No skipped tests without an issue ref | PASS | `Skip\s*=` grep on `Services/Expenses/` and `Repositories/Expenses/` → no matches. |
 | 5 | Tests grouped under the section | PASS | `tests/Humans.Application.Tests/Services/Expenses/` (3 files) + `Repositories/Expenses/` (1 file). Consistently grouped, unlike Feedback. |
@@ -31,10 +31,11 @@ None — Expenses is clean on G1.
 ## G3 Gap List
 
 1. **`ExpenseRepositoryTests.cs` uses `UseInMemoryDatabase`** — where: `tests/Humans.Application.Tests/Repositories/Expenses/ExpenseRepositoryTests.cs`. Suggested fix: convert to the shared Postgres fixture per #764/#766. No-migration-needed: **y**.
+2. **Added 2026-08-03: `ExpenseReportServiceTests.cs` builds a real `ExpenseRepository` over EF-InMemory `ExpensesDbContext` instead of mocking `IExpenseRepository`** — where: `tests/Humans.Application.Tests/Services/Expenses/ExpenseReportServiceTests.cs:41-47`. Suggested fix: convert to `Substitute.For<IExpenseRepository>()`, matching the pattern already used for `ITeamService`/`IUserService` mocks in the same file. In scope of #766, same pattern as Campaigns' G3 gap #2 in this batch. No-migration-needed: **y**.
 
 ## G2 Queue Notes (light)
 
 - `docs/sections/Expenses.md` flags its own tech debt: `IHoldedFinanceService` is consumed as the "full interface for now, read-split to `IHoldedFinanceServiceRead` noted as future tech debt" — this is a Finance-side G1 item (see Finance audit), not an Expenses gap.
 - No dead columns/tables spotted in the data model.
 
-**Verdict: G1: met · G3: 1 gap**
+**Verdict: G1: met · G3: 2 gaps (corrected 2026-08-03, was 1 — added: `ExpenseReportServiceTests` on EF-InMemory via a real repository instead of a mock)**

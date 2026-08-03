@@ -99,8 +99,11 @@ The safety net plus the map. Nothing destructive starts before G0 closes.
       (Reforge-derived; shared-contract exceptions listed; challenged edges called out).
 - [x] **Demolition inventory:** [`2026-08-03-demolition-inventory.md`](2026-08-03-demolition-inventory.md)
       (per-section dead columns/tables, cross-section FKs, non-conforming table names).
-- [x] **First audit pass:** every section scored against G1–G3 predicates
-      ([`2026-08-03-g0-first-audit/`](2026-08-03-g0-first-audit/)); tracker filled.
+- [x] **First audit pass (tracker-taxonomy scope):** all 33 sections in the tracker below
+      scored against G1–G3 predicates ([`2026-08-03-g0-first-audit/`](2026-08-03-g0-first-audit/));
+      tracker filled. **Scope caveat:** code-real sections *outside* the tracker taxonomy
+      (`Gate`, `SystemSettings`, `ICalFeed`, …) have no scorecards yet — whichever of them
+      the inventory freeze admits get a follow-up audit pass before G0 closes.
       Section-inventory freeze proposal awaiting confirmation:
       [`2026-08-03-proposed-frozen-section-inventory.md`](2026-08-03-proposed-frozen-section-inventory.md).
 
@@ -296,15 +299,15 @@ sections and shared contracts noted explicitly. (`—` = not yet audited.)
 | Auth | **horizontal** | 3 gaps | — | 2 gaps | — | — |
 | Budget | vertical | 3 gaps | — | 3 gaps | — | — |
 | Calendar | vertical | 3 gaps | — | 3 gaps | — | — |
-| Campaigns | vertical | 3 gaps | — | 2 gaps | — | — |
+| Campaigns | vertical | 2 gaps | — | 2 gaps | — | — |
 | Camps | vertical | 3 gaps | — | 2 gaps | — | — |
 | Cantina | vertical | 3 gaps | — | 2 gaps | — | — |
 | CityPlanning | vertical | 1 gap | — | 2 gaps | — | — |
 | Containers | vertical | ✅ | — | 2 gaps | — | — |
 | Debug | **horizontal** | 2 gaps | — | 1 gap | — | — |
-| Email | vertical | 2 gaps | — | 2 gaps | — | — |
+| Email | vertical | 1 gap | — | 2 gaps | — | — |
 | Events | vertical | 2 gaps | — | 1 gap | — | — |
-| Expenses | vertical | ✅ | — | 1 gap | — | — |
+| Expenses | vertical | ✅ | — | 2 gaps | — | — |
 | Feedback | vertical | 1 gap | — | 2 gaps | — | — |
 | Finance | vertical | ✅ | — | 1 gap | — | — |
 | GoogleIntegration | vertical | 2 gaps | — | 2 gaps | — | — |
@@ -314,7 +317,7 @@ sections and shared contracts noted explicitly. (`—` = not yet audited.)
 | Issues | vertical | 1 gap | — | 2 gaps | — | — |
 | LegalAndConsent | vertical | 3 gaps | — | 2 gaps | — | — |
 | Mailer | vertical | ✅ | — | ✅ | — | — |
-| Notifications | vertical | ✅ | — | 2 gaps | — | — |
+| Notifications | vertical | 2 gaps | — | 2 gaps | — | — |
 | Onboarding | vertical (orchestrator) | ✅ | — | ✅ | — | — |
 | Profiles | **shared contract** | 4 gaps | — | 2 gaps | — | — |
 | Scanner | vertical | ✅ | — | 1 gap | — | — |
@@ -322,7 +325,7 @@ sections and shared contracts noted explicitly. (`—` = not yet audited.)
 | Store | vertical | 1 gap | — | 1 gap | — | — |
 | Survey | vertical | 1 gap | — | 1 gap | — | — |
 | Teams | vertical | 3 gaps | — | 2 gaps | — | — |
-| Tickets | vertical | 1 gap | — | 3 gaps | — | — |
+| Tickets | vertical | 2 gaps | — | 3 gaps | — | — |
 | Users | **shared contract** | 4 gaps | — | 1 gap | — | — |
 | *Settings (new, #864)* | vertical | n/a | n/a | — | — | — |
 | *Shortlinks (new, #810)* | vertical | n/a | n/a | — | — | — |

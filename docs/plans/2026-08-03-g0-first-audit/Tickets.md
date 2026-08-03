@@ -6,8 +6,8 @@
 
 | # | Predicate | Result | Evidence |
 |---|-----------|--------|----------|
-| 1 | Every owned table read/written by exactly one repository in-section | PASS | `reforge ownership-violations --owner Tickets --tables ticket_orders,ticket_attendees,ticket_sync_states,ticket_transfer_requests` → **0 violations**. Single `ITicketRepository`. |
-| 2 | One writer-service per table | PASS | `TicketQueryService` (read) + `TicketSyncService` (write/sync) + `TicketTransferService` all route through the one repository; `TicketingBudgetService` is explicitly repository-free (reads via `ITicketServiceRead`, writes delegate to `IBudgetService`) per the #815 removal of its former dedicated `ITicketingBudgetRepository`. No interceptor pattern. |
+| 1 | Every owned table read/written by exactly one repository in-section | PASS (corrected evidence) | `reforge ownership-violations --owner Tickets --tables ticket_orders,ticket_attendees,ticket_sync_states,ticket_transfer_requests` → **0 violations** — predicate itself still holds, but the evidence text was wrong: there are **two** repositories in-section, not one. `ITicketRepository` (`ticket_orders`/`ticket_attendees`/`ticket_sync_states`) and a separate `ITicketTransferRepository`/`TicketTransferRepository` (`Interfaces/Repositories/ITicketTransferRepository.cs`, `Infrastructure/Repositories/Tickets/TicketTransferRepository.cs`) owning `ticket_transfer_requests`. Each table still maps to exactly one repository, so the predicate itself is unaffected — but see predicate 2. |
+| 2 | One writer-service per table | **FAIL — corrected 2026-08-03** | `ticket_transfer_requests` has two writer-services, not one: `TicketTransferService` (its primary owner, injects `ITicketTransferRepository` as `transferRepo`) **and** `TicketSyncService.ReassignAsync` (`TicketSyncService.cs:193-200`), which calls `transferRepository.ReassignUserAsync` (`:197`) as part of the account-merge fold, alongside `ticketRepository.ReassignToUserAsync` (`:196`) for the other two tables. `TicketQueryService`/`TicketSyncService`/`TicketTransferService` "all route through the one repository" was true for `ITicketRepository`'s three tables but not for `ticket_transfer_requests`, which now has a second writer. |
 | 3 | No EF entity leaks across boundary | PASS | No `Ticket*` rows in `ApplicationServiceEntityReadReturns.baseline.txt`. `MatchedUser` navs are stripped from both `TicketOrder` and `TicketAttendee` (FK-only, joined in-memory via `IUserService.GetByIdsAsync`). |
 | 4 | No cross-section EF joins | PASS | No `CrossSectionEfJoinAnalyzer` baseline entries. |
 | 5 | No `[Obsolete]` navs / `[Grandfathered]` / owned baseline rows (or queued item) | **PARTIAL** | No entity-leak or Obsolete-nav debt, but `DisplaySortInControllers.baseline.txt` carries **17 rows** for `TicketRepository.cs` (9× `OrderBy`, 8× `OrderByDescending`) — by far the largest single-file baseline count of any section in this batch. All 17 are pre-existing sort-in-repository debt with no queued G2 item found. |
@@ -29,6 +29,7 @@
 | What | Where | Suggested fix | No-migration-needed? |
 |------|-------|----------------|----|
 | 17 `DisplaySortInControllers` baseline rows on `TicketRepository.cs` | `src/Humans.Infrastructure/Repositories/Tickets/TicketRepository.cs` | Largest single-file sort-in-repository debt in the codebase by this audit's count. Move display sorts (orders list, attendee list, sales aggregates, gate list) into the controller/view-model layer per `memory/architecture/display-sort-in-controllers.md`. Worth flagging as a discrete G1/tech-debt-ledger item given the row count. | y |
+| **Added 2026-08-03:** Second writer-service on `ticket_transfer_requests` | `TicketSyncService.ReassignAsync` (`TicketSyncService.cs:197`) alongside `TicketTransferService` | Both call `ITicketTransferRepository`. The account-merge fold reassigning transfer requests belongs conceptually to the merge flow already living in `TicketSyncService`, but it's still a second writer-service against a table `TicketTransferService` otherwise owns — either route the fold through `ITicketTransferService`'s own interface or explicitly document this as an accepted account-merge-fold exception (same shape as Campaigns' `ReassignGrantsToUserAsync`). | y |
 
 ## G3 gap list
 
@@ -44,4 +45,4 @@
 
 ## Verdict
 
-**G1: 1 gap (17-row sort-in-repository baseline, largest in the batch) · G3: 3 gaps (EF-InMemory repo tests ×2, DbContext-backed service tests ×3, unconfirmed auto-matching invariant coverage)**
+**G1: 2 gaps (corrected 2026-08-03, was 1 — added: second writer-service on `ticket_transfer_requests`; 17-row sort-in-repository baseline, largest in the batch) · G3: 3 gaps (EF-InMemory repo tests ×2, DbContext-backed service tests ×3, unconfirmed auto-matching invariant coverage)**
