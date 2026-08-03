@@ -43,4 +43,4 @@ No dead columns/tables named in the doc beyond the nav-strip follow-up (which is
 
 ## Headline
 
-Largest G1.5 debt surface by row-count of the 9 sections — but all items are named/documented rather than silent.
+Largest G1.5 debt surface by row-count of any section audited — but all items are named/documented rather than silent.

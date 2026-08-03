@@ -44,4 +44,4 @@ Survey is "born §15-compliant" (2026-06-04) — no demolition-inventory items i
 
 ## Headline
 
-Best G1/G3 posture of the 9 sections audited in this batch.
+Best G1/G3 posture of the sections audited in this pass.
