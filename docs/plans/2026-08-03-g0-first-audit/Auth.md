@@ -57,7 +57,3 @@ grandfather that marks the FKs. Auth's G2 queue is:
 
 Otherwise the schema looks clean: no dead columns spotted in a shape-only read of
 `RoleAssignment.cs`; `Notes` is free text with no observed debt.
-
-## Verdict
-
-`G1: 4 gaps (corrected 2026-08-03, was 3 — added: IMagicLinkService.FindUserByVerifiedEmailAsync leaks the User entity; ISystemTeamSync DontFix cross-section ref; RoleAssignmentConfiguration HUM0024 grandfather; obsolete-nav still read from 5 external call sites) · G3: 4 gaps (corrected 2026-08-03, was 2 — added: harness-inherited EF-InMemory service tests, and the untested `SyncBoardTeamAsync` Board-team sync trigger; EF-InMemory repo tests; test grouping)`

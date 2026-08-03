@@ -29,6 +29,24 @@
    same as Onboarding) — they are **not** drawn as section→section edges; noted separately
    where relevant.
 
+**Scope consequence, stated explicitly 2026-08-03 (previously implicit, which made this
+document look incomplete rather than scoped).** Step 6 makes the edge table and diagram a
+**service-layer** graph. What follows from that, and what readers have to know:
+
+- A section whose only cross-section calls come from a Web controller gets **no node**.
+  `Scanner` is the clearest case — it has no `Services/Scanner/**` at all, so despite
+  `ScannerController` calling Tickets, Gate, Consent, Calendar, Events and Shifts contracts,
+  it is correctly absent from the graph under this scope. Absent ≠ dependency-free.
+- The **`Users` shared-contract fan-in table deliberately uses the opposite scope** and
+  *does* count Web-controller consumers, because its job is "what would need a project
+  reference to `Users`", which controllers plainly would. The two tables answer different
+  questions; the mismatch is intentional, not drift.
+- **Open question for G4/G5, not resolved here:** if sections take their controllers with
+  them at the assembly split, then controller→service calls *are* section→section project
+  references and this graph is missing a whole layer of them. If controllers stay in a shared
+  `Humans.Web`, the current scope is right. That decision has to land before this DAG can be
+  used to plan project references — flagging rather than guessing.
+
 ## Section inventory gap (config follow-up; the inventory itself is frozen)
 
 **Rewritten 2026-08-03** — the original text called `Gate`, `Surveys`, `SystemSettings` and
@@ -76,17 +94,10 @@ shared web-shell code. They are excluded from the counts here and must not be us
 and hide that the dependencies live in the web shell. The `DB[Dashboard]` node and its four arrows
 are likewise retained in the diagram below for traceability only.
 
-Counting on that basis: **75** distinct consumer→provider section pairs (79 as previously counted,
-less Dashboard's 4), across a node set that gains **2** sections this pass (`Holded`, `Mailer`).
-The 79 figure came from 71 original pairs + 8 found 2026-08-03 (Agent→Teams, Agent→Consent,
-Agent→Feedback, Agent→Tickets, Agent→Shifts, Email→SystemSettings, **Expenses→Holded**,
-**Finance→Holded**) across the original section set + `Agent` + `Holded` + `Mailer`.
-
-*(The absolute section-count figure is deliberately not restated here: the previously published
-"26 sections" and the diagram's own node list disagree by one, a discrepancy that predates this
-pass. The pair counts above are verified directly against the diagram — 79 arrows, 4 of them
-Dashboard's. The node tally needs its own recount, tracked with the other config
-back-propagation follow-ups.)*
+On that basis the edge table below is the graph; the pairs it lists are the pairs, and the
+diagram mirrors them. Edges found during the 2026-08-03 pass and not in the original collection:
+Agent→Teams, Agent→Consent, Agent→Feedback, Agent→Tickets, Agent→Shifts, Email→Settings,
+**Expenses→Holded**, **Finance→Holded**. Nodes added the same pass: `Agent`, `Holded`, `Mailer`.
 
 Three collection errors account for the growth. The original pass omitted `Agent` despite it
 already being a real `reforge.surface-score.json` section. It also read the vendor connectors
@@ -94,7 +105,7 @@ through that same config, which bundles `Holded*` under `Finance` and `Mailer*` 
 — the freeze keeps both as separate vendor-connector rows, so `Holded` gains a node plus its
 two inbound `IHoldedClient` edges (**+2 pairs**), and `Mailer` gains a node that takes over the
 two audience edges previously attributed to `Email` (**a relabel, +1 node, +0 pairs** — `Email`
-keeps its own `Email→SystemSettings` edge and stays in the graph). Re-owning the Mailer edges
+keeps its own `Email→Settings` edge and stays in the graph). Re-owning the Mailer edges
 does not disturb the cycle analysis below: no listed cycle runs through `Email→Shifts` or
 `Email→Tickets`.
 
@@ -111,7 +122,7 @@ flowchart LR
     BD[Budget]
     CG[Campaigns]
     GI[GoogleIntegration]
-    SS[SystemSettings]
+    SS[Settings]
     FB[Feedback]
     FN[Finance]
     CL[Calendar]
@@ -211,7 +222,7 @@ flowchart LR
     EM --> SS
 ```
 
-**Cycles (7 total) — see "Cycles" section below for the full breakdown; the reciprocal
+**Cycles — see "Cycles" section below for the full breakdown; the reciprocal
 pairs visible above are `Governance↔Consent`, `Teams↔Shifts`, `Tickets↔Shifts`, plus four
 more that only show up once `Notifications` is expanded past its `NotifEmitter`/
 `NotificationMeterProvider` split (not visible as a single arrow pair above because the
@@ -252,7 +263,7 @@ write and read sides are different classes — see below).**
 | GoogleIntegration | Teams | full-service | `ITeamService`/`ITeamResourceService` (multiple) | |
 | GoogleIntegration | Email | full-service | `IEmailService` (`EmailProvisioningService`, `GoogleRemovalNotificationService`) | |
 | GoogleIntegration | Notifications | full-service | `INotificationEmitter` (`EmailProvisioningService`) | Cycle partner (NotifMeter reads GSyncSvc back) |
-| GoogleIntegration | SystemSettings | full-service | `ISystemSettingsService` (`DriveActivityMonitorService`) | Missing-from-inventory section (see above) |
+| GoogleIntegration | Settings | full-service | `ISystemSettingsService` (`DriveActivityMonitorService`) | Provider renamed to the frozen name `Settings` 2026-08-03 (ex-`SystemSettings`); still absent from `reforge.surface-score.json` (config follow-up) |
 | Feedback | Teams | full-service | `ITeamService` | |
 | Feedback | Email | full-service | `IEmailService` | |
 | Feedback | Notifications | full-service | `INotificationEmitter` | |
@@ -299,7 +310,7 @@ write and read sides are different classes — see below).**
 | Agent | Feedback | full-service | `IFeedbackService` (`AgentUserSnapshotProvider`) | **Added 2026-08-03** — see Feedback audit correction, this is Feedback's only cross-section consumer |
 | Agent | Tickets | read-interface | `ITicketServiceRead` (`AgentUserSnapshotProvider`) | **Added 2026-08-03** |
 | Agent | Shifts | mixed read + full | `IShiftView` (read) + `IShiftManagementService` (full) (`AgentUserSnapshotProvider`) | **Added 2026-08-03** |
-| Email | SystemSettings | full-service | `ISystemSettingsService` (`EmailOutboxService`) | **Added 2026-08-03** — omitted from the original edge-collection pass; missing-from-inventory section (see above) |
+| Email | Settings | full-service | `ISystemSettingsService` (`EmailOutboxService`) | **Added 2026-08-03** — omitted from the original edge-collection pass; provider uses the frozen name `Settings` (ex-`SystemSettings`) |
 
 **Orphaned read-interfaces — corrected 2026-08-03:** the original "zero injectors
 solution-wide" list was `reforge injected`-only, which misses Web-layer
@@ -339,7 +350,7 @@ listed once here rather than as 25+ separate diagram edges.
 
 | Shared contract | Depended on by | Mechanism |
 |---|---|---|
-| `Users` (`IUserServiceRead`/`UserInfo`) | **32 of the 37 canonical sections** — Agent, AuditLog, Auth, Budget, Calendar (incl. ICalFeed), Campaigns, Camps, Cantina, CityPlanning, Consent, Containers, Debug, Development, Email, Events, Expenses †, Feedback †, Finance, Gate †, GoogleIntegration, Governance, Issues, Mailer, Notifications, Onboarding, Scanner, Search, Shifts, Store, Surveys, Teams, Tickets. **Non-consumers (5):** Gdpr, Guide, Holded, Settings — each verified to inject no Users contract — plus `Users` itself. († = full `IUserService`, not the read cut: `ExpenseReportService`, `FeedbackService`, Gate.) | **Rebuilt from the frozen taxonomy 2026-08-03.** The previous row was collected per-namespace-folder and was both incomplete and off-taxonomy: it omitted Calendar, Finance, Store, Scanner, Debug, Containers, Agent-via-Web, Email and Development (all consume `IUserServiceRead`, mostly from Web controllers the Application-layer sweep never saw), listed the non-sections `Dashboard` and `Platform` as peers, duplicated Consent (as itself and as `Consent(Legal)`), and used folded labels (`ICalFeed`, `Email(Mailer)`) that the freeze resolves. Counts reconcile: 32 consumers + 5 non-consumers = the 37 tracker rows. `Dashboard` is a GUI holder, not a section — it does consume Users, and is retained only in the diagram for traceability, as with its other four arrows |
+| `Users` (`IUserServiceRead`/`UserInfo`) | Agent, AuditLog, Auth, Budget, Calendar (incl. ICalFeed), Campaigns, Camps, Cantina, CityPlanning, Consent, Containers, Debug, Development, Email, Events, Expenses †, Feedback †, Finance, Gate †, GoogleIntegration †, Governance †, Issues, Mailer, Notifications, Onboarding, Scanner, Search, Shifts, Store, Surveys, Teams †, Tickets †. **Non-consumers:** Gdpr, Guide, Holded, Settings — each verified to inject no Users contract — plus `Users` itself. († = injects the full write-capable `IUserService`, not the read cut — **corrected 2026-08-03**: `ExpenseReportService`, `FeedbackService`, `GateService`, `GoogleAdminService`/`GoogleGroupSyncService`/`GoogleWorkspaceSyncService`, `ApplicationDecisionService`, `TeamService`, `AttendeeContactImportService`/`TicketQueryService`/`TicketSyncService`. An earlier revision listed only Expenses, Feedback and Gate.) | **Rebuilt from the frozen taxonomy 2026-08-03.** The previous row was collected per-namespace-folder and was both incomplete and off-taxonomy: it omitted Calendar, Finance, Store, Scanner, Debug, Containers, Agent-via-Web, Email and Development (all consume `IUserServiceRead`, mostly from Web controllers the Application-layer sweep never saw), listed the non-sections `Dashboard` and `Platform` as peers, duplicated Consent (as itself and as `Consent(Legal)`), and used folded labels (`ICalFeed`, `Email(Mailer)`) that the freeze resolves. `Dashboard` is a GUI holder, not a section — it does consume Users, and is retained only in the diagram for traceability, as with its other four arrows |
 | `Auth` (`IRoleAssignmentService`) | Agent (`AgentUserSnapshotProvider`), Camps (via Users' `ContactFieldService`... see Challenged), Gate, Issues, Onboarding(Users), Tickets(`OnsiteRosterService`), Users(`AccountDeletionService`,`AccountMergeService`,`DuplicateAccountService`), Notifications(`NotificationRecipientResolver`), background jobs | Mostly full-service + `IRoleAssignmentClaimsCacheInvalidator`/`IRoleAssignmentCacheInvalidator` |
 | `AuditLog` (`IAuditLogService`) | Nearly every write-path service (36 dependents per `dependency-graph.md`'s fan-in table) — Teams, Camps, Tickets, GoogleIntegration, Feedback, Store, Containers, Expenses, Gate, Surveys, Users, etc. | Full-service, one-way (Audit has zero outbound edges to verticals except the AuditViewer exception below) |
 
@@ -367,7 +378,7 @@ recommended G0 formally add `Platform` to the shared-contract exception list. Th
 inventory **dissolves `Platform` as a section and as a config bucket**, so adding it as a
 shared-contract exception would recreate the phantom boundary the freeze removed and make
 later dependency checks bless references against a section that does not exist. The
-exception list stays at **three**: `Users`, `Auth`, `AuditLog`.
+exception list stays: `Users`, `Auth`, `AuditLog`.
 
 The services that prompted the proposal are real and still need to not be flagged — they are
 **shared infrastructure, not a section**: `HumansMetricsService` (4 dependents: Consent,
@@ -388,11 +399,11 @@ document. `IFanout` (`src/Humans.Application/Interfaces/IFanout.cs`) is the code
 marker for this seam: "an interface many sections implement and a single coordinator
 (orchestrator) aggregates." Three contracts carry it.
 
-| Contract | Coordinator | Contributing sections | Count |
-|---|---|---|---|
-| `IUserDataContributor` (GDPR Art. 15 export) | `GdprExportService` (`Services/Gdpr/`) — `IEnumerable<IUserDataContributor> contributors` | Agent, AuditLog, Auth, Budget, Campaigns, Camps, Consent, Events, Expenses, Feedback, Finance, Gate, Governance, Issues, Notifications, Shifts, Surveys, Teams, Tickets, Users | **20 sections / 21 types** (Users contributes twice: `UserService` + `AccountMergeService`) |
-| `IEarlyEntryProvider` (early-entry roster) | `EarlyEntryService` (`Services/EarlyEntry/`) | Shifts (`VolunteerTrackingExportService`), Teams (`TeamService`), Camps (`CachingCampService`) | 3 |
-| `ICalendarFeedContributor` (iCal feed) | `ICalFeedService` (`Services/ICalFeed/`) | Events (`EventService`), Shifts (`ShiftSignupService`) | 2 |
+| Contract | Coordinator | Contributing sections |
+|---|---|---|
+| `IUserDataContributor` (GDPR Art. 15 export) | `GdprExportService` (`Services/Gdpr/`) — `IEnumerable<IUserDataContributor> contributors` | Agent, AuditLog, Auth, Budget, Campaigns, Camps, Consent, Events, Expenses, Feedback, Finance, Gate, Governance, Issues, Notifications, Shifts, Surveys, Teams, Tickets, Users *(Users contributes twice: `UserService` + `AccountMergeService`)* |
+| `IEarlyEntryProvider` (early-entry roster) | `EarlyEntryService` (`Services/EarlyEntry/`) | Shifts (`VolunteerTrackingExportService`), Teams (`TeamService`), Camps (`CachingCampService`) |
+| `ICalendarFeedContributor` (iCal feed) | `ICalFeedService` (`Services/ICalFeed/`) | Events (`EventService`), Shifts (`ShiftSignupService`) |
 
 **Classification — these are not section→section edges, and the DAG stays as drawn.** The
 dependency runs *contributor-side-inward*: each section implements an interface it does not
@@ -463,15 +474,15 @@ schedule a fix.
    cross-section consumer reads `IUserServiceRead`; Gate is the only one importing full
    write-capable `IUserService` for what looks like a lookup-only need. Worth a pass once
    Gate is added to the inventory.
-6. **`GoogleIntegration` #500 entity-leak items (already flagged in `dependency-graph.md`'s
-   own follow-up notes, not yet in a demolition-inventory item):** `AuditLogEntry.Resource`
-   navigates directly into `GoogleResource` instead of going through
-   `ITeamResourceService.GetResourceNamesByIdsAsync`; `GoogleResource.Team` is a live EF nav
-   from GoogleIntegration's entity into Teams' entity (should be a typed FK, not a nav);
-   `GoogleController`/`ProfileController` inject `IMemoryCache` directly instead of going
-   through `IUserEmailService.InvalidateNobodiesTeamEmailsAsync()`. These are G1 "no entity
-   leak across boundary" violations with a known owner and a known fix — they just haven't
-   been through `/section-gate audit` yet.
+6. **`GoogleIntegration` #500 entity leak — one item, not three (re-verified 2026-08-03).**
+   `AuditLogEntry.Resource` (`src/Humans.Domain/Entities/AuditLogEntry.cs:69`) is still a live
+   `GoogleResource?` nav out of AuditLog's entity, instead of going through
+   `ITeamResourceService.GetResourceNamesByIdsAsync`. That one stands. The other two items this
+   challenge used to carry are **already fixed in code** and were withdrawn rather than
+   rescheduled: `GoogleResource` now has only `TeamId` and no `Team` nav
+   (`GoogleResource.cs:39`), and neither `GoogleController` nor `ProfileController` injects
+   `IMemoryCache` any more. Listing fixed work as an open challenge is what makes this document
+   untrustworthy for scheduling.
 7. **Orphaned read-interfaces and invalidators** — **rewritten 2026-08-03.** The original
    challenge listed `IVolunteerTrackingServiceRead`, `IExpenseReportServiceRead`,
    `IEmailOutboxServiceRead` and `ICalendarServiceRead` as having zero injectors solution-wide.
@@ -482,9 +493,9 @@ schedule a fix.
    genuinely unconsumed — either dead surface (delete) or scaffolded ahead of a consumer that
    hasn't landed yet (keep, but track).
 
-## Cycles — 7 found, all block G5 unless resolved first
+## Cycles — all block G5 unless resolved first
 
-**3 are real DI cycles today** (require `IServiceProvider`/`Lazy<T>` resolution to avoid a
+These are real DI cycles today (they require `IServiceProvider`/`Lazy<T>` resolution to avoid a
 constructor-injection deadlock):
 
 1. **Teams ↔ Shifts** — `TeamService` eagerly injects `IShiftManagementService`;
@@ -495,7 +506,7 @@ constructor-injection deadlock):
    `ConsentService` lazy-resolves `IMembershipCalculator`. Both sides lazy (the only "hot
    two-way" pair in the solution).
 
-**4 more are section-level-only cycles** — invisible in today's DI graph because the write
+These are section-level-only cycles — invisible in today's DI graph because the write
 side and the read side are *different classes* within the same section, so no single class
 needs lazy resolution, but a G5 project split would still create a circular assembly
 reference:
@@ -530,7 +541,7 @@ sections can enter G5.
   into `Users` per the JSON config, which is the more accurate current-state view (see the
   inventory-gap table above).
 - It omits the Mailer per-audience `IShiftView`/`ITicketServiceRead` edges "as noise" —
-  this DAG includes them (`Email → Shifts`, `Email → Tickets`) since G0 needs the complete
+  this DAG includes them (`Mailer → Shifts`, `Mailer → Tickets`) since G0 needs the complete
   picture even where the class-level graph reasonably simplifies for readability.
 - It doesn't classify edges as read-interface vs. full-service at the table level (only in
   prose footnotes) — this DAG makes that classification the primary axis, which is what
@@ -541,20 +552,25 @@ sections can enter G5.
 
 ## Summary
 
-**73** vertical-to-vertical section edges across **25** vertical sections (**corrected
-2026-08-03** — was 77/26; that count included `Dashboard`, which the freeze classifies as a
-non-section GUI holder, so its 4 outgoing edges are not section→section. See the
-Vertical-section DAG intro for the derivation: 71 original pairs + 6 found 2026-08-03, less
-Dashboard's 4). Plus the `Users`/`Auth`/`AuditLog` shared-contract fan-in depended on by
-nearly every section — **three exceptions, not four**: the `Platform` proposal is withdrawn
-(see the shared-infrastructure note above). **7
-section-level cycles found** (3 real DI cycles: Teams↔Shifts, Tickets↔Shifts,
-Governance↔Consent; 4 Notifications-pattern cycles: Teams/Camps/Governance/GoogleIntegration
-↔ Notifications, all resolvable by landing #581). **6 open challenged items** requiring an
-explicit decision or scheduled fix (7 entries listed, of which #3 Tickets→Campaigns was
-withdrawn 2026-08-03 with "no fix needed"), headlined by the `Users`/`Onboarding` conflation
-undermining the shared-contract model, and a horizontal (`AuditLog`) reaching into a
-vertical (`Teams`).
+*Counts are deliberately not restated here.* Edge and section totals live once, in the
+[Vertical-section DAG](#vertical-section-dag) intro; cycles in [Cycles](#cycles--7-found-all-block-g5-unless-resolved-first);
+open items in [Challenged edges](#challenged-edges). Earlier revisions of this section kept
+its own copies of all three and they drifted from the tables they summarized every time an
+edge was corrected — which is the same defect this pass removed from the section scorecards.
+
+What the graph actually says, as judgment rather than arithmetic:
+
+- The **`Users`/`Onboarding` conflation is the headline structural problem.** The identity
+  core is genuinely outbound-edge-free and works as a shared contract; the orchestrators
+  folded in beside it are not, and they are what makes `Users` look like it depends on half
+  the system. Carving `Onboarding` out is the highest-leverage single change in this document.
+- A **horizontal reaching into a vertical** (`AuditLog → Teams`, for display-name stitching)
+  is the one crosscut-purity violation that needs an explicit ruling rather than a fix.
+- The shared-contract exception list stays `Users`, `Auth`, `AuditLog` — the
+  `Platform` proposal is withdrawn, since the freeze dissolves `Platform` entirely.
+- Every cycle is either already targeted by #581 (the four Notifications-pattern ones) or
+  needs a deliberate restructure (the three real DI cycles); none is a shared-contract
+  candidate, so none can be waived.
 
 **Section inventory: frozen — no longer a G0 blocker (corrected 2026-08-03).** This
 paragraph previously said G0 could not close until four "real sections" (`Gate`, `Surveys`,

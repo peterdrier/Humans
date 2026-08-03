@@ -40,4 +40,3 @@ None — Finance is clean on G1. (Tech debt already self-documented and out of s
 - Soft boundary noted in doc: `TicketingProjection`/`TicketingBudgetService` conceptually belong to Finance-adjacent "actuals materialization" but live in Budget — explicitly flagged by the doc as deliberate, not an active violation; leave as-is unless Budget's own audit disagrees.
 - **Process note for Peter:** consider adding a `Holded` row to the G0 section tracker table, separate from `Finance`, since `docs/sections/Holded.md` describes it as an already-built, distinct, table-less section (pure HTTP client) rather than a Finance sub-concept.
 
-**Verdict: G1: met · G3: 1 gap**

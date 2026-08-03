@@ -37,7 +37,3 @@ None — Containers is the cleanest of this batch on G1; ahead of most sections 
 
 - Doc explicitly documents an accepted limitation (orphaned placement-image files on delete) rather than a bug — not a demolition candidate, just a known tradeoff at current scale.
 - Already has its own `ContainersDbContext` — a head start on G4 once G1/G3 close.
-
-## Verdict
-
-`G1: met · G3: 2 gaps`

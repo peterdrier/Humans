@@ -41,7 +41,3 @@
 - **Added 2026-08-03 — two cross-section FK cuts.** The absence of dead columns is not the absence of G2 work: `CampaignConfiguration.cs:31-33` (`Campaign.CreatedByUserId` → `AspNetUsers`) and `CampaignGrantConfiguration.cs:40-42` (`CampaignGrant.UserId` → `AspNetUsers`) are physical cross-section FKs, both behind the HUM0024 configurations already listed as G1 gap 1. Retiring those attributes/navs does not drop the constraints — queue both cuts here so a Campaigns schema batch driven by this scorecard can't omit its known boundary work.
 - No dead columns/tables spotted in `Campaign`/`CampaignCode`/`CampaignGrant` this pass.
 - `ReassignGrantsToUserAsync` (account-merge fold) has a `_ = updatedAt;` unused-parameter workaround with a comment explaining `CampaignGrant` has no `UpdatedAt` column — not a defect, just noted for context if the merge-fold pattern gets revisited.
-
-## Verdict
-
-`G1: 3 gaps (2 HUM0024 grandfathers counted as one item; live DisplaySortInControllers baseline row at CampaignRepository.cs:72 — corrected 2026-08-03: gap 3 "no ICampaignServiceRead" retracted, the interface exists and is correctly used, see G1 Gap List item 3; **added 2026-08-03**: `docs/sections/Campaigns.md` is stale — it claims no dedicated architecture test exists while `CampaignsArchitectureTests.cs` does) · G3: 3 gaps (corrected 2026-08-03, was 2 — added: `CampaignServiceTests.cs` sits flat under `Services/`, the same placement Budget is failed for)`

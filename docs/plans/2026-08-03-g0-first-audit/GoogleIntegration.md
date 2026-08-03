@@ -41,6 +41,6 @@ No dead columns/tables identified for this section in the current pass. `google_
 
 **Added 2026-08-03 — cross-section FK cuts belong in this queue.** Retiring `[Obsolete]` navs or `[Grandfathered(HUM0024)]` markers is a code-shape change; it does **not** drop the physical constraint. Per the demolition inventory, this section owns **4** cross-section FKs across 3 tables: `google_resources.TeamId` → `teams`; `google_sync_outbox.TeamId` → `teams` and `.UserId` → `AspNetUsers`; `sync_service_settings.UpdatedByUserId` → `AspNetUsers`. Note none carries a HUM0024 marker (see predicate 4), so they are absent from the attribute-based catalog §2 of the inventory relies on. All are G2 cuts — without them listed here, a schema batch driven by this scorecard can complete while every cross-section database dependency survives.
 
-## Verdict
+## Headline
 
-`G1: 4 gaps (corrected 2026-08-03, was 2 — added: three write paths on `google_sync_outbox`, 4 un-grandfathered cross-section FKs, and a stale `docs/sections/GoogleIntegration.md` carrying obsolete Teams-ownership and `GoogleResource.Team` nav-strip instructions; retracted: the `google_resources` "Teams-owned table" gap, which was based on a wrong ownership premise) · G3: 2 gaps (+1 PARTIAL) — headline gap: repo/service tests still on EF-InMemory instead of mocked interfaces / shared Postgres fixture`
+Repo/service tests are still on EF-InMemory instead of mocked interfaces / a shared Postgres fixture.

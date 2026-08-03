@@ -41,7 +41,3 @@
 ## G2 queue notes
 
 `StoreOrder.Label` — `[Obsolete]`, retained but unused after #816, never set on write. Already a named demolition-inventory item in the doc. Phase 5 (manual payments, invoice issuance, treasury sync) is unimplemented (`NotSupportedException("Phase 5")`) — not a G1/G3 concern, just incomplete feature scope.
-
-## Verdict
-
-**G1: 1 gap (stale doc claim about missing architecture test — the test exists) · G3: 1 gap (EF-InMemory repo test; service tests are clean)**

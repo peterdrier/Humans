@@ -41,7 +41,3 @@
 - FK cut: `CalendarEvents.OwningTeamId → Teams.Id` (see gap #2 above) — pairs naturally with dropping the `[Obsolete]` nav property entirely once app-level integrity is trusted.
 - No dead columns/tables spotted in `CalendarEvent`/`CalendarEventException` during this pass — soft-delete (`DeletedAt`) and denormalized `RecurrenceUntilUtc` both appear actively used (indexing purpose documented in the feature doc).
 - Out-of-scope-for-now module aggregation (`ICalendarContributor`) is a *feature* item (post-v1 slice), not a debt item — no G2 action.
-
-## Verdict
-
-`G1: 1 gap (corrected 2026-08-03 — was 3, then 2: the latent ICalendarService entity-leak risk is an advisory watch item, not a current violation, and G1 item 2 asked only that the `CalendarEvents.OwningTeamId → Teams.Id` FK be placed on the G2 queue, which the G2 Queue Notes below now do — so it is no longer an "unqueued FK cut" and the physical cut stays at G2. Remaining G1 ownership item: the HUM0024 grandfather) · G3: 3 gaps`

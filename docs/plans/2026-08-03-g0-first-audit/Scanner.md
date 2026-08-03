@@ -43,7 +43,3 @@ assertion. Adding one would be nice-to-have hardening, not a G3 predicate failur
 ## G2 queue notes
 
 Owns no tables, no schema debt. Nothing queued.
-
-## Verdict
-
-**G1: met · G3: ✅ (corrected 2026-08-03, was 1 gap — `ScannerControllerTests.cs` exists; the gap was a search artifact)**

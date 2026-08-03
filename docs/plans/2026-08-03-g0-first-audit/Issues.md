@@ -35,6 +35,6 @@
 
 **Corrected 2026-08-03.** The typed-FK conversion above is schema-neutral, but that is *not* the same as having no G2 work: `IssueConfiguration` and `IssueCommentConfiguration` define **four physical User FK constraints** (`ReporterUserId`, `AssigneeUserId`, `ResolvedByUserId`, `SenderUserId` → `AspNetUsers`), and dropping the nav properties or the HUM0024 attributes does not drop those constraints. All four FK cuts belong in Issues' G2 queue; otherwise the section could enter schema cleanup with only the configuration refactor scheduled and keep every cross-section database dependency.
 
-## Verdict
+## Headline
 
-`G1: 2 gaps (corrected 2026-08-03, was 1 — added: 2 HUM0024 configuration grandfathers) · G3: 3 gaps (corrected 2026-08-03, was 2 PARTIAL — added: IssuesServiceTests is harness-inherited EF-InMemory; missing IssuesRepository test entirely; tests not grouped under section) — headline gap: IssuesRepository has zero dedicated test coverage`
+IssuesRepository has zero dedicated test coverage.

@@ -52,6 +52,6 @@ and `legal_documents.TeamId → teams`, both currently HUM0024-grandfathered. On
 `LegalDocument.Team` nav is stripped and both FKs are cut, this section is schema-clean — no dead
 columns/tables spotted.
 
-## Verdict
+## Headline
 
-`G1: 3 gaps (corrected 2026-08-03 — added: 2 HUM0024 configuration grandfathers; moved the append-only-trigger test item to G3 where its predicate lives; 1 already in flight) · G3: 4 gaps (corrected 2026-08-03 — added: harness-inherited EF-InMemory service tests) (+1 PARTIAL) — headline gap: live LegalDocument.Team nav is the worst entity-leak found in this batch; #751 writer consolidation already staffed`
+The live `LegalDocument.Team` nav is the worst entity-leak found in this batch; #751 writer consolidation is already staffed.

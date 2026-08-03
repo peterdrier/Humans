@@ -28,10 +28,19 @@
 
 No G1 gaps owned by Holded itself. One note flagged for cross-reference: the `NoDestructiveMigrationOps` baseline's Holded-named migration entries belong to Finance's table set, not this section's — Finance's own audit should account for them, not Holded's.
 
+## G3 gap list
+
+1. **Invariant→test mapping not completed (predicate 3).** The doc's core invariants (EUR-only,
+   `HOLDED_API_KEY` env-var-only, transient-vs-permanent exception classification) look plausibly
+   covered by the existing client test files by name, but no line-level verification was done.
+   The gate ladder defines a section as reaching a gate only when every predicate holds, so an
+   inferred mapping can't score as met. Fix: complete the mapping (a read, not new tests, unless
+   it turns up real holes). No-migration-needed: **y**.
+
 ## G2 queue notes
 
 None for this section (no owned tables). Finance's forthcoming G2 pass should account for the already-approved `holded_creditor_balances`/`holded_payments` drops recorded in the baseline.
 
-## Verdict
+## Headline
 
-`G1: met (0 owned gaps; 1 cross-reference note for Finance) · G3: met — cleanest possible shape: pure client wrapper, zero DB surface, well-tested`
+Cleanest possible shape: pure client wrapper, zero DB surface, well-tested. One cross-reference note: Finance's own audit should account for the Holded-named baseline entries.

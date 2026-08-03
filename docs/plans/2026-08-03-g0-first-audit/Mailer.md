@@ -42,6 +42,6 @@ No G1 gaps found for Mailer.
 
 None — no owned tables.
 
-## Verdict
+## Headline
 
-`G1: met · G3: 1 gap (corrected 2026-08-03, was "met (1 PARTIAL, not a real gap)") — predicate 3's invariant→test mapping is unverified, and an unverified predicate can't be scored as met; headline: still the cleanest and best-tested section in this batch, and the one gap is a mapping read, not missing tests`
+Still the cleanest and best-tested section in this batch — the one gap is a mapping read, not missing tests.

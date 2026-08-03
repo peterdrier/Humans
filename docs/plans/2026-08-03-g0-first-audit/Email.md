@@ -47,6 +47,3 @@ Scope note: `reforge.surface-score.json` bundles **Mailer** (`IMailerAudienceSyn
 
 **Added 2026-08-03 — cross-section FK cuts belong in this queue.** Retiring `[Obsolete]` navs or `[Grandfathered(HUM0024)]` markers is a code-shape change; it does **not** drop the physical constraint. Per the demolition inventory, this section owns **3** cross-section FKs across 1 table: `email_outbox_messages` → `AspNetUsers` (Users, `:44`), `campaign_grants` (Campaigns, `:49`) and `shift_signups` (Shifts, `:54`), all on `EmailOutboxMessageConfiguration`. All are G2 cuts — without them listed here, a schema batch driven by this scorecard can complete while every cross-section database dependency survives.
 
-## Verdict
-
-`G1: 3 gaps (corrected 2026-08-03 — Mailer.md gap retracted, it exists; added: four write paths on `email_outbox_messages`, and the `EmailOutboxMessageConfiguration` HUM0024 grandfather) · G3: 3 gaps (corrected 2026-08-03, was 2 — EF-InMemory repository test; the two DbContext-backed outbox job tests; unverified invariant-to-test mapping)`

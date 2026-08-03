@@ -38,4 +38,3 @@ None — Expenses is clean on G1.
 - `docs/sections/Expenses.md` flags its own tech debt: `IHoldedFinanceService` is consumed as the "full interface for now, read-split to `IHoldedFinanceServiceRead` noted as future tech debt" — this is a Finance-side G1 item (see Finance audit), not an Expenses gap.
 - No dead columns/tables spotted in the data model.
 
-**Verdict: G1: met · G3: 2 gaps (corrected 2026-08-03, was 1 — added: `ExpenseReportServiceTests` on EF-InMemory via a real repository instead of a mock)**

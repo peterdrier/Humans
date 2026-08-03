@@ -60,7 +60,3 @@ G1 predicate for the effective `DebugController`-only scope is N/A or PASS.
 
 - Nothing to demolish — Debug owns no tables/columns.
 - If `DevLogin`/`DevSeed` are confirmed in-scope, the `IUserEmailService` dependency in `DevLoginController` is a candidate for narrowing once the section boundary decision lands (not a G2/schema item — it's a G1 dependency-shape fix).
-
-## Verdict
-
-`G1: met · G3: 1 gap (DebugController)` — corrected 2026-08-03 (G1 was "1 gap"): the missing-section-doc gap is withdrawn (the file exists), and the DevLogin/DevSeed scope question is **resolved**, not open — the frozen inventory moves those controllers to the new **Development** section, so they are out of Debug's scope and their findings must be re-audited under Development rather than counted here. Debug is a **vertical** section in the frozen taxonomy.

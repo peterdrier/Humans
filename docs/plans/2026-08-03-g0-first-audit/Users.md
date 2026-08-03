@@ -37,7 +37,3 @@
 ## G2 queue notes
 
 `User.GoogleEmailStatus`, `User.GoogleEmail` (shadow), `UserEmail.IsOAuth`/`DisplayOrder` (shadow), `Profile.IsSuspended` legacy bool (cross-referenced in Profiles.md) are the section's demolition-inventory items, already named in the doc as soak-pending drops. No new items surfaced.
-
-## Verdict
-
-**G1: 4 gaps (interceptor, entity-leak baseline×2, HUM0031×2 tracked) · G3: 2 gaps (corrected 2026-08-03, was 1 — added: `UserServiceProfileOnboardingMutationTests` is harness-inherited EF-InMemory; EF-InMemory repo tests)**

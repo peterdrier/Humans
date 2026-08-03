@@ -44,7 +44,3 @@ Kind: vertical · Audited 2026-08-03 @ 5a9bbe198
 
 
 **Added 2026-08-03 — cross-section FK cuts belong in this queue.** Retiring `[Obsolete]` navs or `[Grandfathered(HUM0024)]` markers is a code-shape change; it does **not** drop the physical constraint. Per the demolition inventory, this section owns **4** cross-section FKs across 2 tables: `camp_polygons` and `camp_polygon_histories` → `camp_seasons` (Camps) and `AspNetUsers` (Users), via `CampPolygonConfiguration.cs:24,29` and `CampPolygonHistoryConfiguration.cs:24,29`. All are G2 cuts — without them listed here, a schema batch driven by this scorecard can complete while every cross-section database dependency survives.
-
-## Verdict
-
-`G1: 2 gaps (corrected 2026-08-03, was 1 — added: 2 HUM0024 configuration grandfathers) · G3: 3 gaps (corrected 2026-08-03, was 2 — added: harness-inherited EF-InMemory service tests)`

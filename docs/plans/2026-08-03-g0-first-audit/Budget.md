@@ -49,7 +49,3 @@ Budget hierarchy (`BudgetYear → BudgetGroup → BudgetCategory → BudgetLineI
 - **Cut `budget_line_items.ResponsibleTeamId → teams`** (`BudgetLineItemConfiguration.cs`).
 - **Cut `budget_audit_logs.ActorUserId → AspNetUsers`** — live nav `HasOne(a => a.ActorUser)` (`BudgetAuditLogConfiguration.cs:28`).
 - **Rename `ticketing_projections` → `budget_ticketing_projections`** (`TicketingProjectionConfiguration.cs:11`) — the one table in the section without the `budget_` prefix.
-
-## Verdict
-
-`G1: 3 gaps (3 HUM0024 grandfathers counted as one item; entity-leak coverage not exhaustive; ResponsibleTeam nav not Obsolete-marked) · G3: 4 gaps (corrected 2026-08-03, was 3 — added: harness-inherited EF-InMemory service tests) (+1 PARTIAL)`

@@ -38,4 +38,3 @@ Section: Events · Kind: vertical · Audited 2026-08-03 @ 5a9bbe198
 - No dead columns/tables spotted in `docs/sections/Events.md`'s data model — schema looks lean already (bare-FK pattern already applied, cross-domain navs already stripped per PR #539).
 - The 3 entity-leak baseline rows (G1 gap #2) are a light G2/G1 cleanup, not a schema change.
 
-**Verdict: G1: 2 gaps · G3: 1 gap**

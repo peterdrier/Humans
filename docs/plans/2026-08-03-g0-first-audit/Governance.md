@@ -39,6 +39,6 @@ Every other G1 predicate passed cleanly — Governance remains among the cleanes
 
 Also queued: the three table renames (`applications` → `governance_applications`, `application_state_history` → `governance_application_state_history`, `board_votes` → `governance_board_votes`) per the inventory. Separately, `ReviewStartedAt` is documented as currently unused (no controller path sets it) — a dead-column candidate worth confirming isn't reserved for a near-term feature before dropping.
 
-## Verdict
+## Headline
 
-`G1: 1 gap (corrected 2026-08-03 — was "met", then briefly "4 gaps", which counted the four G2 FK cuts individually and contradicted the gap list's own "counted as one G1 item" rule; the G1 item is the single investigation into why the analyzer doesn't fire on the four un-grandfathered cross-section User FKs across applications / application_state_history / board_votes — the cuts themselves are G2, see the demolition inventory) · G3: 3 gaps (corrected: added harness-inherited EF-InMemory service tests) (+1 PARTIAL) — headline gap: ApplicationRepositoryTests still on EF-InMemory; otherwise the cleanest section audited in this batch`
+ApplicationRepositoryTests is still on EF-InMemory; otherwise the cleanest section audited in this batch.

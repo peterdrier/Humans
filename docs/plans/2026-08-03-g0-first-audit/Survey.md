@@ -42,6 +42,6 @@
 
 Survey is "born §15-compliant" (2026-06-04) — no demolition-inventory items identified in the doc or this audit.
 
-## Verdict
+## Headline
 
-**G1: 1 cosmetic gap (filename casing) · G3: 1 coverage gap (no dedicated repo test file) — best G1/G3 posture of the 9 sections audited in this batch**
+Best G1/G3 posture of the 9 sections audited in this batch.

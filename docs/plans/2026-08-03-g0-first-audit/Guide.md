@@ -33,10 +33,19 @@ Guide owns zero database tables (content is fetched from GitHub, cached in `IMem
 | Doc claims a fixed violation still exists | `docs/sections/Guide.md` §"Current violations" / §"Touch-and-clean guidance" | Freshness-sweep pass: remove the stale `_db.TeamMembers` callout, confirm no other violations remain, and consider promoting Status from "(B) Partially migrated" to "(A) Migrated" if this was the only item. | y |
 | No architecture test file exists for Guide | `tests/Humans.Application.Tests/Architecture/GuideArchitectureTests.cs` (absent) | Doc already flags this ("Add one when migrating"). Low priority since section owns no tables/EF surface, but would pin the no-DbContext-in-services shape going forward. | y |
 
+## G3 gap list
+
+1. **Invariant→test mapping not completed (predicate 3).** The within-file Coordinator-superset
+   rule and role-parenthetical scoping look covered by `GuideFilterTests.cs` /
+   `GuideRolePrivilegeMapTests.cs` by name, but no line-level check was done. The gate ladder
+   defines a section as reaching a gate only when every predicate holds, so an inferred mapping
+   can't score as met. Fix: complete the mapping (a read, not new tests, unless it turns up real
+   holes). No-migration-needed: **y**.
+
 ## G2 queue notes
 
 None — no owned tables to demolish/rename.
 
-## Verdict
+## Headline
 
-`G1: 1 gap (stale doc, code already fixed) · G3: met — headline: docs/sections/Guide.md needs a freshness-sweep pass, not a code fix`
+`docs/sections/Guide.md` needs a freshness-sweep pass, not a code fix.

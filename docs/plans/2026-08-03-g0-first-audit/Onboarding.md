@@ -39,7 +39,3 @@ None — no gaps found this pass.
 ## G2 queue notes
 
 Owns no tables — G2 (schema) is trivially satisfied once its dependent sections (Profiles/Users, Legal & Consent, Teams, Governance) clear their own G2 items. No demolition-inventory items originate here.
-
-## Verdict
-
-**G1: met · G3: 1 gap (corrected 2026-08-03, was "met")** — predicate 3 is `PARTIAL`: none of the doc's 11 invariants and 5 triggers was mapped to a test this pass. The gate ladder defines a section as reaching a gate only when **every** predicate holds, so an unverified predicate can't be scored as met — that would let Onboarding advance without the coverage G3 exists to prove. Fix: complete the invariant→test mapping (cheap — it's a read, not new tests, unless the mapping turns up real holes).

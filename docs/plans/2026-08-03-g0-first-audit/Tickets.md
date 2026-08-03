@@ -48,6 +48,6 @@
 
 **Added 2026-08-03 — cross-section FK cuts belong in this queue.** Retiring `[Obsolete]` navs or `[Grandfathered(HUM0024)]` markers is a code-shape change; it does **not** drop the physical constraint. Per the demolition inventory, this section owns **2** cross-section FKs across 2 tables: `ticket_orders.MatchedUserId` and `ticket_attendees.MatchedUserId` → `AspNetUsers`, behind the two HUM0024 configurations listed in the G1 gap list. All are G2 cuts — without them listed here, a schema batch driven by this scorecard can complete while every cross-section database dependency survives.
 
-## Verdict
+## Headline
 
-**G1: 3 gaps (corrected 2026-08-03, was 1 — added: second writer-service on `ticket_transfer_requests`, and 2 HUM0024 configuration grandfathers; 18-row sort-in-repository baseline, largest in the batch) · G3: 3 gaps (EF-InMemory repo tests ×2, DbContext-backed service tests ×3, unconfirmed auto-matching invariant coverage)**
+Largest sort-in-repository baseline in the batch (`TicketRepository.cs`).

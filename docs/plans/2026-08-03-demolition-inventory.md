@@ -552,53 +552,26 @@ plan-tracked, but a legitimate G2 drop candidate whenever Store's demolition bat
 
 ---
 
-## Summary
+## Notes that don't belong to a single section
 
-| Section | Dead cols | Dead tables | Dead DB defaults | Cross-section FKs (relationships) | Rename proposals |
-|---|---|---|---|---|---|
-| AuditLog | 0 | 0 | 0 | 2 (1 table) | 1 (fix doc drift) |
-| Auth | 0 | 0 | 0 | 2 (1 table) | 1 |
-| Governance | 0 | 0 | 0 | 4 (3 tables) | 3 |
-| Legal & Consent | 0 | 0 | 0 | 2 (2 tables) | 2 |
-| Profiles | 2 (+2 queued/blocked) | 0 | 0 | 0 | 5 |
-| Users/Identity | 1 (+5 targeted by #603) | 0 | 0 | 0 | 0 |
-| Camps | 0 | 1 (`camp_leads`, #774) | 1 (#787) | 3 (3 tables) | 0 |
-| City Planning | 0 | 0 | 0 | 4 (2 tables) | 2 |
-| Calendar | 0 | 0 | 0 | 1 (1 table) | 0 |
-| Shifts | 6 (retained-for-soak) | 0 | 0 | 7 (5 tables) | 6 (+1 cross-section) |
-| Budget | 0 | 0 | 0 | 3 (3 tables) | 1 |
-| Expenses | 0 | 0 | 0 | 0 | 1 |
-| Tickets | 1 (retained-for-soak) | 0 | 0 | 2 (2 tables) | 0 (doc drift only) |
-| Teams | 0 | 0 | 0 | 5 (4 tables) | 0 (google_resources rename moved to Google Integration, see correction) |
-| Google Integration | 0 | 0 | 0 | 4 (3 tables) | 2 |
-| Email | 0 | 0 | 0 | 3 (1 table) | 0 |
-| Notifications | 0 | 0 | 0 | 2 (2 tables) | 0 |
-| Feedback | 0 | 0 | 0 | 5 (2 tables) | 0 |
-| Issues | 0 | 0 | 0 | 4 (2 tables) | 0 |
-| Campaigns | 0 | 0 | 0 | 2 (2 tables) | 0 |
-| Store | 1 (self-contained) | 0 | 0 | 0 | 0 |
-| **Total** | **4 tagged + 7 queued/targeted + 7 retained-for-soak** | **1** | **1** | **55 (39 tables)** | **24** |
+*(This was a per-section count table with a Total row. Every number in it was derived from the
+per-section findings above, and it drifted from them repeatedly — the Shifts row alone was
+corrected twice and the Users row once, each time as pure arithmetic reconciliation. The
+per-section sections above are the inventory; count them there if a count is wanted.)*
 
-Shifts cross-section relationships corrected 2026-08-03 (was 9, then briefly 8): the detailed
-Shifts section enumerates **7 across 5 tables** — one `User` FK from `GeneralAvailability`, one
-`Team` FK from `Rota`, three `User` FKs from `ShiftSignup`, and one `User` FK each from
-`VolunteerEventProfile` and `VolunteerTagPreference`. `EventParticipation` is **excluded**:
-`event_participations` is Users-owned per this file's own ownership finding, so its
-`UserId → AspNetUsers` is internal to Users, not a Shifts cross-section FK, and must not be
-queued as one.
+**`EventParticipation` is not a Shifts cross-section FK.** `event_participations` is Users-owned
+per this file's own ownership finding, so its `UserId → AspNetUsers` is internal to Users. It must
+not be queued as a Shifts FK cut — an earlier revision did exactly that.
 
-Users/Identity row corrected 2026-08-03 (was `1 (+4 targeted, not yet tagged)`): #603's §4 migration drops
-**five** `AspNetUsers` columns — `NormalizedEmail` plus `Email`/`EmailConfirmed`/`UserName`/`NormalizedUserName` —
-so the earlier count dropped `NormalizedEmail` from the queue. The `1` is the dead `User.GoogleEmailStatus`
-column; `NormalizedEmail` is counted in the targeted bucket (not the tagged one) even though it carries
-`[Obsolete]`, because #603 owns its drop. Total queued/targeted moves 6 → 7 accordingly.
+**#603 §4 drops five `AspNetUsers` columns**, not four: `NormalizedEmail` alongside
+`Email`/`EmailConfirmed`/`UserName`/`NormalizedUserName`. `NormalizedEmail` carries `[Obsolete]`
+but its drop is owned by #603, so it belongs in that migration's scope rather than this
+inventory's own tagged-dead-column work.
 
-Two misfiled-configuration findings (not counted above, not table-ownership violations):
-`AccountMergeRequestConfiguration.cs` and `EventParticipationConfiguration.cs` sit in the wrong
-`Configurations/<Section>/` folder relative to who actually owns their table — cheap G1 fixes
-ahead of G5's project split.
-
----
+**Two misfiled EF configurations** — `AccountMergeRequestConfiguration.cs` and
+`EventParticipationConfiguration.cs` sit in the wrong `Configurations/<Section>/` folder relative
+to who actually owns their table. Not table-ownership violations, just cheap G1 fixes ahead of
+G5's project split.
 
 ## Unmapped / unclear
 
@@ -621,7 +594,7 @@ ahead of G5's project split.
   `SystemSettingsDbContext` are all in the tree, and this inventory's own no-findings list
   above records **System Settings** as audited. What's pending for `Settings` is the rename
   and the #864 absorption, not the code.) Against the frozen tracker, the rows carrying no
-  audit result are **five**: `Gate`, `Settings`, `Development`, `Gdpr`, `Search` — all admitted
+  audit result are `Gate`, `Settings`, `Development`, `Gdpr` and `Search` — all admitted
   at the 2026-08-03 freeze, after this inventory's audit pass. `Shortlinks` (#810) is separate:
   it is `n/a`/`n/a` in the tracker because it genuinely does not exist yet.
 
@@ -630,7 +603,7 @@ ahead of G5's project split.
   five were in fact swept by this inventory and appear in the no-findings list above:
   **`Gate`** (no owned tables) and **`Settings`** (under the *System Settings* heading). Calling
   them unchecked for G2 contradicts this document's own findings and would schedule duplicate
-  audit work. So for G2 purposes the genuinely unchecked surfaces are **three** — `Development`,
+  audit work. So for G2 purposes the genuinely unchecked surfaces are `Development`,
   `Gdpr`, `Search` — plus Shortlinks-when-built. `Gate` and `Settings` still owe a G1/G3
   scorecard, but their demolition coverage is complete.
 - This inventory did not attempt a full grep for every `[Obsolete]` property outside

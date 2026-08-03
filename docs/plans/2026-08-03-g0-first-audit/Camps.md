@@ -50,5 +50,3 @@
   - **Drop the dead `camp_leads` table** (legacy `CampLead` entity, doc-acknowledged as pending removal, issue #774).
   - **Drop the obsolete `CampRoleDefinition.SpecialRole` DB default** (#787).
   - **Cut 3 cross-section FK relationships** across `CampConfiguration`, `CampSeasonConfiguration`, `CampLeadConfiguration` — the same three currently HUM0024-grandfathered (G1 gap #2).
-
-**Verdict: G1: 5 gaps (corrected 2026-08-03, was 3 — added: two writer-services on `CampRoleAssignments`, and 5 unmarked `DisplaySortInControllers` baseline rows; SystemTeamSyncJob repo injection; 3 HUM0024 grandfathers counted as one item; doc omission of the SystemTeamSyncJob dependency) · G3: 2 gaps (corrected 2026-08-03 — removed the "no canonical invariant doc" item, which contradicted G1.7; added: harness-inherited EF-InMemory service tests)**

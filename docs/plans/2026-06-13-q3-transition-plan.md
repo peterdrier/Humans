@@ -289,52 +289,54 @@ sections and shared contracts noted explicitly. (`—` = not yet audited.)
 > G0 artifacts: [dependency DAG](2026-08-03-section-dependency-dag.md) ·
 > [demolition inventory](2026-08-03-demolition-inventory.md) ·
 > [PROPOSED frozen inventory](2026-08-03-proposed-frozen-section-inventory.md).
-> G1/G3 cells show gap counts from the audit (`✅` = predicates met). G2 is not scored
-> per-section yet — its queue lives in the demolition inventory. Taxonomy is per the
-> **2026-08-03 inventory freeze** (decision record:
+> This table is the canonical **section list and audit index** — it deliberately carries no
+> gap counts. Counts here were hand-copied out of 33 scorecards and drifted from them
+> constantly; the scorecard is the single source of truth for a section's gate status, so
+> read it there. G2 is not scored per-section — its queue lives in the demolition inventory.
+> Taxonomy is per the **2026-08-03 inventory freeze** (decision record:
 > [`2026-08-03-proposed-frozen-section-inventory.md`](2026-08-03-proposed-frozen-section-inventory.md));
-> rows added at the freeze show `—` until their first audit pass.
+> rows admitted at the freeze show `—` until their first audit pass.
 
-| Section | Kind | G1 | G2 | G3 | G4 | G5 |
-|---|---|---|---|---|---|---|
-| Agent | vertical | 2 gaps | — | 3 gaps | — | — |
-| AuditLog | **horizontal** | 2 gaps | — | 3 gaps | — | — |
-| Auth | **horizontal** | 4 gaps | — | 4 gaps | — | — |
-| Budget | vertical | 3 gaps | — | 4 gaps | — | — |
-| Calendar (incl. ICalFeed) | vertical | 1 gap | — | 3 gaps | — | — |
-| Campaigns | vertical | 3 gaps | — | 3 gaps | — | — |
-| Camps | vertical | 5 gaps | — | 2 gaps | — | — |
-| Cantina | vertical | 3 gaps | — | ✅ | — | — |
-| CityPlanning | vertical | 2 gaps | — | 3 gaps | — | — |
-| Containers | vertical | ✅ | — | 2 gaps | — | — |
-| Debug | vertical | ✅ | — | 1 gap | — | — |
-| Development *(new 2026-08-03 — dev-only, never loaded in prod; takes DevLogin/DevSeed)* | vertical | — | — | — | — | — |
-| Email | vertical | 3 gaps | — | 3 gaps | — | — |
-| Events | vertical | 2 gaps | — | 1 gap | — | — |
-| Expenses | vertical | ✅ | — | 2 gaps | — | — |
-| Feedback | vertical | 1 gap | — | 3 gaps | — | — |
-| Finance | vertical | ✅ | — | 1 gap | — | — |
-| Gate *(new row 2026-08-03)* | vertical | — | — | — | — | — |
-| Gdpr *(new row 2026-08-03)* | **orchestrator** | — | — | — | — | — |
-| GoogleIntegration | **vendor connector** | 4 gaps | — | 2 gaps | — | — |
-| Governance | vertical | 1 gap | — | 3 gaps | — | — |
-| Guide | vertical | 1 gap | — | ✅ | — | — |
-| Holded | **vendor connector** | ✅ | — | ✅ | — | — |
-| Issues | vertical | 2 gaps | — | 3 gaps | — | — |
-| Consent *(renamed from LegalAndConsent)* | vertical | 3 gaps | — | 4 gaps | — | — |
-| Mailer | **vendor connector** | ✅ | — | 1 gap | — | — |
-| Notifications | vertical | 2 gaps | — | 2 gaps | — | — |
-| Onboarding | **orchestrator** | ✅ | — | 1 gap | — | — |
-| Scanner | vertical | ✅ | — | ✅ | — | — |
-| Search *(new row 2026-08-03)* | **orchestrator** | — | — | — | — | — |
-| Settings *(ex-SystemSettings; absorbs #864)* | vertical | — | — | — | — | — |
-| Shifts | vertical | 5 gaps | — | 2 gaps | — | — |
-| Store | vertical | 1 gap | — | 1 gap | — | — |
-| Surveys *(renamed from Survey)* | vertical | 1 gap | — | 1 gap | — | — |
-| Teams | vertical | 4 gaps | — | 2 gaps | — | — |
-| Tickets | vertical | 3 gaps | — | 3 gaps | — | — |
-| Users *(incl. Profiles — the "Humans" section)* | **shared contract** | 4 gaps | — | 4 gaps | — | — |
-| *Shortlinks (new, #810)* | vertical | n/a | n/a | — | — | — |
+| Section | Kind | First audit (gate detail lives in the scorecard) |
+|---|---|---|
+| Agent | vertical | [Agent](2026-08-03-g0-first-audit/Agent.md) |
+| AuditLog | **horizontal** | [AuditLog](2026-08-03-g0-first-audit/AuditLog.md) |
+| Auth | **horizontal** | [Auth](2026-08-03-g0-first-audit/Auth.md) |
+| Budget | vertical | [Budget](2026-08-03-g0-first-audit/Budget.md) |
+| Calendar (incl. ICalFeed) | vertical | [Calendar](2026-08-03-g0-first-audit/Calendar.md) |
+| Campaigns | vertical | [Campaigns](2026-08-03-g0-first-audit/Campaigns.md) |
+| Camps | vertical | [Camps](2026-08-03-g0-first-audit/Camps.md) |
+| Cantina | vertical | [Cantina](2026-08-03-g0-first-audit/Cantina.md) |
+| CityPlanning | vertical | [CityPlanning](2026-08-03-g0-first-audit/CityPlanning.md) |
+| Containers | vertical | [Containers](2026-08-03-g0-first-audit/Containers.md) |
+| Debug | vertical | [Debug](2026-08-03-g0-first-audit/Debug.md) |
+| Development *(new 2026-08-03 — dev-only, never loaded in prod; takes DevLogin/DevSeed)* | vertical | — |
+| Email | vertical | [Email](2026-08-03-g0-first-audit/Email.md) |
+| Events | vertical | [Events](2026-08-03-g0-first-audit/Events.md) |
+| Expenses | vertical | [Expenses](2026-08-03-g0-first-audit/Expenses.md) |
+| Feedback | vertical | [Feedback](2026-08-03-g0-first-audit/Feedback.md) |
+| Finance | vertical | [Finance](2026-08-03-g0-first-audit/Finance.md) |
+| Gate *(new row 2026-08-03)* | vertical | — |
+| Gdpr *(new row 2026-08-03)* | **orchestrator** | — |
+| GoogleIntegration | **vendor connector** | [GoogleIntegration](2026-08-03-g0-first-audit/GoogleIntegration.md) |
+| Governance | vertical | [Governance](2026-08-03-g0-first-audit/Governance.md) |
+| Guide | vertical | [Guide](2026-08-03-g0-first-audit/Guide.md) |
+| Holded | **vendor connector** | [Holded](2026-08-03-g0-first-audit/Holded.md) |
+| Issues | vertical | [Issues](2026-08-03-g0-first-audit/Issues.md) |
+| Consent *(renamed from LegalAndConsent)* | vertical | [LegalAndConsent](2026-08-03-g0-first-audit/LegalAndConsent.md) |
+| Mailer | **vendor connector** | [Mailer](2026-08-03-g0-first-audit/Mailer.md) |
+| Notifications | vertical | [Notifications](2026-08-03-g0-first-audit/Notifications.md) |
+| Onboarding | **orchestrator** | [Onboarding](2026-08-03-g0-first-audit/Onboarding.md) |
+| Scanner | vertical | [Scanner](2026-08-03-g0-first-audit/Scanner.md) |
+| Search *(new row 2026-08-03)* | **orchestrator** | — |
+| Settings *(ex-SystemSettings; absorbs #864)* | vertical | — |
+| Shifts | vertical | [Shifts](2026-08-03-g0-first-audit/Shifts.md) |
+| Store | vertical | [Store](2026-08-03-g0-first-audit/Store.md) |
+| Surveys *(renamed from Survey)* | vertical | [Survey](2026-08-03-g0-first-audit/Survey.md) |
+| Teams | vertical | [Teams](2026-08-03-g0-first-audit/Teams.md) |
+| Tickets | vertical | [Tickets](2026-08-03-g0-first-audit/Tickets.md) |
+| Users *(incl. Profiles — the "Humans" section)* | **shared contract** | [Users](2026-08-03-g0-first-audit/Users.md) · [Profiles](2026-08-03-g0-first-audit/Profiles.md) |
+| *Shortlinks (new, #810)* | vertical | — *(does not exist yet)* |
 
 Confirmed non-sections (never get ladder rows): **Admin** (nav holder), **Dashboard**
 (GUI holder; possible future per-section `DashboardPanel` contributions), **Platform**

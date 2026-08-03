@@ -43,7 +43,3 @@
 
 - `audit_log` table already carries the append-only DB trigger + `[Grandfathered(HUM0024)]` cross-section FK navs — this section's G2 entry is largely "drop the two navs once HUM0024's bare-FK migration ships," not new discovery.
 - No dead columns spotted in `AuditLogEntryConfiguration` in this pass.
-
-## Verdict
-
-**G1: 2 gaps (Team entity leak in AuditViewerService; doc drift on the write-exclusivity enforcement description) — HUM0024 grandfather already queued, not counted as fresh · G3: 3 gaps (corrected 2026-08-03, was 2 — added: the Postgres `prevent_audit_log_update`/`prevent_audit_log_delete` triggers have no integration-level test; the architecture test only constrains the repository interface. Plus 2 EF-InMemory)**

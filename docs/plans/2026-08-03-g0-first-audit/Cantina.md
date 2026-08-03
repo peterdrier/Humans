@@ -29,25 +29,23 @@
 
 ## G1 gap list
 
-1. **No `CantinaArchitectureTests.cs`** exists to pin Cantina's shape (unlike Agent/AuditLog/Auth/Calendar/Campaigns/Camps, which all have one). Given Cantina owns no tables, there's little for a repository-pinning test to enforce, but a small architecture test could at least pin "no repository is ever injected into Cantina types" as a tripwire against future table ownership creeping in unnoticed. Fix: add `tests/Humans.Application.Tests/Architecture/CantinaArchitectureTests.cs`. No migration needed: **y**.
+1. **Not a gate gap — a maintainability suggestion.** **No `CantinaArchitectureTests.cs`** exists to pin Cantina's shape (unlike Agent/AuditLog/Auth/Calendar/Campaigns/Camps, which all have one). Given Cantina owns no tables, there's little for a repository-pinning test to enforce, but a small architecture test could at least pin "no repository is ever injected into Cantina types" as a tripwire against future table ownership creeping in unnoticed. Fix: add `tests/Humans.Application.Tests/Architecture/CantinaArchitectureTests.cs`. No migration needed: **y**.
 2. **`docs/sections/Cantina.md`'s "Architecture test" sentence has two invalid references** — the non-existent `CantinaAccessServiceTests.cs`, **and** a claim that the cross-section read is pinned by `CrossSectionRepositoryInjection.baseline.txt`, which does not exist either (corrected 2026-08-03; only the analyzer of that name exists). Fix: correct the test filenames to the real ones (`CantinaDailyRosterServiceTests.cs`/`CantinaRosterServiceTests.cs`, plus `CantinaCsvWritersTests.cs`/`CantinaRosterAssemblerTests.cs` under `Web.Tests/Cantina/`) and either drop the baseline claim or replace it with the analyzer that actually enforces the rule. No migration needed: **y**.
 3. **Cross-section full-service dependency on `IShiftManagementService`** in both `CantinaRosterService` and `CantinaController`, with no read-split available to narrow it to. Fix belongs primarily to the **Shifts** section: add `IShiftManagementServiceRead` (mirroring the `IVolunteerTrackingServiceRead` pattern already in place) exposing at minimum `GetActiveAsync` (event settings) and `GetOnSiteUserIdsForDayAsync`; then narrow both Cantina call sites to the read interface. Cross-section coordination required — flag for whoever picks up Shifts' G1 audit. No migration needed: **y**.
 
 ## G3 gap list
 
-**None — corrected 2026-08-03 (was 2).** Neither item originally listed here corresponds to a
-G3 predicate failure:
+1. **Invariant→test mapping not completed (predicate 3).** Predicate 3's own evidence says the
+   mapping is a spot-check — coverage is inferred from test filenames and shape, with no
+   line-level confirmation. The gate ladder defines a section as reaching a gate only when every
+   predicate holds, so an inferred mapping can't score as met. Fix: complete the mapping (a read,
+   not new tests, unless it turns up real holes). No-migration-needed: **y**.
 
-- *"No architecture test for Cantina"* — the G3 checklist doesn't require an architecture-test
-  file. It stays a G1 maintainability suggestion (G1 gap #1), not a G3 gap.
-- *"No canonical invariant doc to test against"* — false. G1.7 in this same scorecard confirms
-  `docs/sections/Cantina.md` exists, and G3.3 uses it to score invariant coverage PASS.
-
-All five G3 predicates pass; Cantina is **G3-complete**.
+Two items that were once listed here are **not** G3 gaps and stay struck: *"no architecture test
+for Cantina"* (no G3 predicate requires one — see the G1 note) and *"no canonical invariant doc to
+test against"* (false; `docs/sections/Cantina.md` exists per G1.7).
 
 ## G2 queue notes
 
 - Nothing — Cantina owns no tables, so there's no demolition-inventory surface (no dead columns, no cross-section FKs, no rename work) for this section specifically.
 - **Resolved 2026-08-03 — the folding question is closed, not open.** This note originally asked whether Cantina might end up folded into whichever section owns the read surfaces it depends on. The confirmed section inventory (`2026-08-03-proposed-frozen-section-inventory.md`) rules that Cantina **is** its own section, and the `sections-are-logical-units` rule states that table-less sections stay on the ladder with table-keyed predicates marked N/A. Leaving the question open would reopen a frozen decision and invite later tracker work to undo the canonical taxonomy. The still-valid half stands: mark Cantina `n/a` for G2/G4 (no owned tables ⇒ no schema or DbContext work), the same way `Settings`/`Shortlinks` are marked `n/a` for G1/G2.
-
-**Verdict: G1: 3 gaps (no architecture test; doc cites a non-existent test file; cross-section full-service dependency on IShiftManagementService) · G3: ✅ (corrected 2026-08-03, was 2 gaps — neither item was a G3 predicate failure)**

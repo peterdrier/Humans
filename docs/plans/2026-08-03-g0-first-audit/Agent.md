@@ -45,7 +45,3 @@
 ## Orchestrator-marker check
 
 `AgentService` implements `IAgentService : IApplicationService` (not `IOrchestrator`) and injects `IAgentRepository` directly — correctly classified as a **Section**, consistent with `memory/architecture/orchestrator-marker.md`'s explicit callout that the design-rules §15i "orchestrator" label on `AgentService` is wrong. No action needed; classification in the tracker should read "vertical", not "orchestrator".
-
-## Verdict
-
-**G1: 2 gaps (corrected 2026-08-03, was 1 — added: retention job is a second writer on `AgentConversations`/`AgentMessages`; docs/sections/Agent.md's Architecture paragraph is stale on both AgentDbContext and the "no architecture test" claim) · G3: 3 gaps (corrected 2026-08-03, was 2 — missing repo tests, EF-InMemory in service tests ×3, added: untested "Enabled gate → 503" invariant with no AgentController coverage at all)**

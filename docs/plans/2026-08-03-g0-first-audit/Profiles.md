@@ -38,7 +38,3 @@
 ## G2 queue notes
 
 Profile picture dual-write (`ProfilePictureData` DB fallback), `Profile.IsSuspended` obsolete column, `User.GoogleEmailStatus`/`GoogleEmail` shadow columns, `UserEmail.IsOAuth`/`DisplayOrder` shadow columns are all named demolition-inventory candidates already flagged in the section doc as "pending a deferred drop migration" — these feed G2 directly once soak windows close. No new items surfaced this pass beyond what the doc already tracks.
-
-## Verdict
-
-**G1: 4 gaps (interceptor, 2 entity-leak baseline rows, un-stripped AccountMergeRequest navs, HUM0031×3 tracked) · G3: 2 gaps (EF-InMemory repo tests, mixed DbContext-backed service tests)**

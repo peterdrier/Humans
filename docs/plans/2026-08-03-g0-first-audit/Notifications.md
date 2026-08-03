@@ -56,7 +56,3 @@ The 2 HUM0024 grandfathers above are this section's G2 demolition candidate, sam
 
 
 **Added 2026-08-03 — cross-section FK cuts belong in this queue.** Retiring `[Obsolete]` navs or `[Grandfathered(HUM0024)]` markers is a code-shape change; it does **not** drop the physical constraint. Per the demolition inventory, this section owns **2** cross-section FKs across 2 tables: `notifications` and `notification_recipients` → `AspNetUsers`, via the two HUM0024-grandfathered configurations already listed as G1 gap 2. All are G2 cuts — without them listed here, a schema batch driven by this scorecard can complete while every cross-section database dependency survives.
-
-## Verdict
-
-`G1: 2 gaps (corrected 2026-08-03, was "met"; G1.4 also re-scored FAIL for the same HUM0024 grandfathers already counted in gap 2 — no additional gap) · G3: 2 gaps (+1 PARTIAL) — headline gaps: (1) **four** write paths routed through one repository (corrected 2026-08-03, was "three writer-services") — `NotificationEmitter`, `NotificationService`, `NotificationInboxService` **and `CleanupNotificationsJob`'s three delete calls**; consolidating only the three services would leave the daily cleanup job bypassing the owning service and the predicate still failing, (2) HUM0024 grandfathers on NotificationConfiguration/NotificationRecipientConfiguration; G3 headline (corrected 2026-08-03): NotificationRepositoryTests plus ALL FOUR service/job tests are on EF-InMemory with a concrete NotificationRepository, not mocked interfaces / shared Postgres fixture`
