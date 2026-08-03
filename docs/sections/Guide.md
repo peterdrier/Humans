@@ -82,7 +82,7 @@ Unknown stems return 404 (`NotFound.cshtml`). GitHub unavailability on cold cach
 
 ## Cross-Section Dependencies
 
-- **Teams**: `GuideRoleResolver` queries `TeamMembers` directly via `HumansDbContext` to determine `IsTeamCoordinator` (`tm.Role == TeamMemberRole.Coordinator && tm.LeftAt == null`).
+- **Teams**: `GuideRoleResolver` calls `ITeamServiceRead.GetTeamsAsync` and determines `IsTeamCoordinator` from the cached `TeamInfo` snapshot (any team where the user holds `TeamMemberRole.Coordinator`) — no direct `TeamMembers` read.
 - **Auth/Roles**: `GuideRoleResolver` reads `ClaimsPrincipal.IsInRole` against `RoleNames` constants to build `SystemRoles` set.
 
 ## Architecture
@@ -95,10 +95,7 @@ Unknown stems return 404 (`NotFound.cshtml`). GitHub unavailability on cold cach
 
 - **Inline `IMemoryCache` usage in service methods:**
   - `src/Humans.Infrastructure/Services/GuideContentService.cs` — `_cache.TryGetValue` / `_cache.Set` inline (§2d/§4b); no Store or decorator; acceptable given content-not-entity shape, but does not follow §15 pattern
-- **Cross-section direct DbContext reads:**
-  - `src/Humans.Infrastructure/Services/GuideRoleResolver.cs:57` — `_db.TeamMembers.AnyAsync(...)` reads Teams table directly instead of calling `ITeamService` or a Teams read interface
 
 #### Touch-and-clean guidance
 
-- When touching `GuideRoleResolver.cs`: replace `_db.TeamMembers` query with a call to a Teams read interface (e.g. `ITeamMemberReadService.IsCoordinatorAsync(userId)`) to remove the cross-section DB read.
 - No architecture test file exists for Guide (`tests/Humans.Application.Tests/Architecture/GuideArchitectureTests.cs` is absent). Add one when migrating.

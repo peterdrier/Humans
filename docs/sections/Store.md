@@ -281,6 +281,6 @@ The Store section uses `IStripeService` (Application-layer abstraction; Infrastr
 - **Decorator decision — no caching decorator.** Store is admin / camp-lead only, low-traffic; same rationale as Budget / Governance.
 - **Cross-domain navs:** none. `CampSeasonId`, `ProductId`, `AddedByUserId`, `RecordedByUserId`, `IssuedByUserId` are all FK-only with no navigation property. Intra-section back-navs `StoreOrderLine.Order` and `StorePayment.Order` are aggregate-local and are kept.
 - **Cross-section calls** route through `ICampServiceRead` (camp / camp-season lookups), `IShiftManagementService` (active event year + time-zone), `IAuditLogService`, `IHoldedClient`, `IStripeService`.
-- **Architecture test:** none yet. `tests/Humans.Application.Tests/Architecture/StoreArchitectureTests.cs` is not present — gap to fill in a follow-up.
+- **Architecture test:** `tests/Humans.Application.Tests/Architecture/StoreArchitectureTests.cs` pins the §15 repository pattern — `StoreService` doesn't reference EF Core, and `StoreRepository` implements `IStoreRepository`.
 
 Implementation status: catalog CRUD (create, update, deactivate), order create, add/remove line, counterparty edit, and Stripe payment recording are live. `RecordManualPaymentAsync`, `IssueInvoiceAsync`, treasury sync, and the Orders admin view throw `NotSupportedException("Phase 5")`. See [`docs/features/store/store.md`](../features/store/store.md).

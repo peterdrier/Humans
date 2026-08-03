@@ -55,7 +55,7 @@ This file is the **index and cross-cutting rule sheet** for the data model. Per-
 | Issue / IssueComment | [Issues](../sections/Issues.md) | |
 | AgentConversation / AgentMessage / AgentSettings | [Agent](../sections/Agent.md) | |
 | SyncServiceSettings / GoogleSyncOutboxEvent | [Google Integration](../sections/GoogleIntegration.md) | |
-| Survey / SurveyQuestion / SurveyQuestionOption / SurveyResponse / SurveyAnswer / SurveyInvitation | [Survey](../sections/survey.md) | Cross-domain refs are bare `Guid` FK columns only — no nav properties, no cross-section EF FK constraints. |
+| Survey / SurveyQuestion / SurveyQuestionOption / SurveyResponse / SurveyAnswer / SurveyInvitation | [Survey](../sections/Survey.md) | Cross-domain refs are bare `Guid` FK columns only — no nav properties, no cross-section EF FK constraints. |
 | SystemSetting | System Settings section | Owned by `SystemSettingsRepository` (exposed via `ISystemSettingsService`); consuming sections read/write keys through it. See [SystemSetting below](#systemsetting-system-settings-section). |
 | AuditLogEntry | [Audit Log](../sections/AuditLog.md) | Append-only (§12). |
 | Notification / NotificationRecipient | [Notifications](../sections/Notifications.md) | |
