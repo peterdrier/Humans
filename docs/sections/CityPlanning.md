@@ -1,12 +1,12 @@
 <!-- freshness:triggers
   src/Humans.Application/Services/CityPlanning/**
-  src/Humans.Application/Interfaces/CitiPlanning/ICityPlanningService.cs
+  src/Humans.Application/Interfaces/CityPlanning/ICityPlanningService.cs
   src/Humans.Application/Interfaces/Repositories/ICityPlanningRepository.cs
   src/Humans.Domain/Entities/CityPlanningSettings.cs
   src/Humans.Domain/Entities/CampPolygon.cs
   src/Humans.Domain/Entities/CampPolygonHistory.cs
   src/Humans.Infrastructure/Data/Configurations/CityPlanning/**
-  src/Humans.Infrastructure/Repositories/CitiPlanning/CityPlanningRepository.cs
+  src/Humans.Infrastructure/Repositories/CityPlanning/CityPlanningRepository.cs
   src/Humans.Web/Controllers/CityPlanningController.cs
   src/Humans.Web/Controllers/CityPlanningApiController.cs
   src/Humans.Web/Hubs/CityPlanningHub.cs
@@ -183,7 +183,7 @@ Broadcasts `CampPolygonUpdated(campSeasonId, geoJson, areaSqm, soundZone, campNa
 **Status:** (A) Migrated (peterdrier/Humans PR #543, 2026-04-22).
 
 - `CityPlanningService` lives in `Humans.Application.Services.CityPlanning` and never imports `Microsoft.EntityFrameworkCore` — enforced structurally by `Humans.Application.csproj`'s reference graph.
-- `ICityPlanningRepository` (`Humans.Application.Interfaces.Repositories`) / `CityPlanningRepository` (`Humans.Infrastructure.Repositories.CitiPlanning`) is the only code path that touches this section's tables via `DbContext`.
+- `ICityPlanningRepository` (`Humans.Application.Interfaces.Repositories`) / `CityPlanningRepository` (`Humans.Infrastructure.Repositories.CityPlanning`) is the only code path that touches this section's tables via `DbContext`.
 - **Decorator decision — no caching decorator.** Admin-facing, low-traffic (same rationale as Governance / User / Feedback).
 - **Read/write interface split.** `ICityPlanningServiceRead` (3 methods: `GetSettingsAsync`, `GetRegistrationInfoAsync`, `IsCityPlanningTeamMemberAsync`) is the cross-section read surface. External sections inject `ICityPlanningServiceRead`; `ICityPlanningService : ICityPlanningServiceRead` adds writes. `ContainerAuthorizationHandler` and `ContainerController` inject `ICityPlanningServiceRead` — not `ICityPlanningService`. `GetUserDisplayNameAsync` was removed from the service; `CityPlanningHub` now resolves the burner name directly via `IUserServiceRead.GetUserInfoAsync`. See `memory/architecture/section-read-write-split.md`.
 - **Save/restore return type.** `SaveCampPolygonAsync` and `RestoreCampPolygonVersionAsync` return `CampPolygonSaveResult(GeoJson, AreaSqm)` instead of the previous `(CampPolygon, CampPolygonHistory)` tuple, keeping EF entities inside the service boundary.
