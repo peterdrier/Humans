@@ -1,78 +1,74 @@
-# PROPOSED Frozen Section Inventory — G0 decision draft
+# Frozen Section Inventory — G0 decision record
 
-> **Status: PROPOSED — awaiting Peter's confirmation.** Drafted 2026-08-03 during the
-> overnight G0 map run, from the [first audit pass](2026-08-03-g0-first-audit/), the
+> **Status: CONFIRMED by Peter, 2026-08-03** (morning review of the overnight G0 map run).
+> This closes the G0 "Section inventory frozen" checklist item. Drafted from the
+> [first audit pass](2026-08-03-g0-first-audit/), the
 > [dependency DAG](2026-08-03-section-dependency-dag.md), and the
 > [demolition inventory](2026-08-03-demolition-inventory.md), all @ `5a9bbe198`.
-> The G0 checklist item "Section inventory frozen" closes when this doc's decisions are
-> confirmed (or amended) and back-propagated to the plan tracker **and**
-> `reforge.surface-score.json` in the same PR.
+> Back-propagation to `reforge.surface-score.json` + first audits for the newly admitted
+> sections are follow-up work items (tracked below).
 
-## Why this needs a decision
+## Principles set during the freeze (now memory atoms)
 
-Three sources of truth disagree about what the sections *are*:
+- **Sections are logical units** of the app that can be worked on independently —
+  **owning tables is not a requirement**. Thin sections representing a logical construct
+  (plus a little GUI/agent code) are fine. → [`memory/architecture/sections-are-logical-units.md`](../../memory/architecture/sections-are-logical-units.md)
+- **Vendor connectors are never merged with app code.** External-vendor sections stay
+  their own sections even with a single consumer — vendors can change.
+  → [`memory/architecture/vendor-connectors-own-sections.md`](../../memory/architecture/vendor-connectors-own-sections.md)
+- Section names lean **plural** where natural (hence Surveys); no systematic rename pass
+  of existing singular names.
 
-1. The **plan tracker** (35 rows incl. two planned-new).
-2. **`reforge.surface-score.json`** (the operational section map used by every Reforge
-   audit) — missing four sections that exist in code (`Gate`, `Surveys`, `SystemSettings`,
-   `ICalFeed`), and folding several tracker rows into larger groups.
-3. **Code layout** (namespaces/folders), which has kept moving since the tracker was
-   drafted (e.g. #685 folded Profiles' non-picture surface into Users).
+## Decisions
 
-The overnight audit ran against taxonomy (1); the DAG against (2)+(3). Where they
-disagree is exactly the freeze decision.
+| Question | Ruling |
+|---|---|
+| Profiles | **Folds into Users** (one shared-contract row: Users, incl. Profiles). |
+| Holded | **Stays separate** — vendor connector (Finance is likely its only consumer; irrelevant). |
+| Mailer | **Stays separate** — vendor connector (MailerLite), not part of Email. |
+| Onboarding | **Stays separate** (orchestrator) for now; config must stop folding it into Users. |
+| LegalAndConsent vs Consent | **Consent** ("cleaner"). |
+| Survey vs Surveys | **Surveys** (plural convention). |
+| Gate | **Is a section** — add row + config entry. |
+| SystemSettings | **Becomes the Settings section** (assumed: absorbs the existing SystemSettings code and the planned #864 work as one row — flag if wrong). |
+| ICalFeed | **Goes into Calendar** (its export surface, not a section). |
+| Admin | **Not a section** — nav holder (per hard rules). |
+| Platform | **Not a section** — it was only ever `reforge.surface-score.json`'s catch-all bucket for shared web-shell paths; with Guide/Debug/Scanner confirmed as sections it mostly dissolves. Remaining truly-shared infra stays an explicit non-section grouping in the config. |
+| Dashboard | **Not a ladder section** — a GUI construct/holder. Future direction (not committed): sections contribute `DashboardPanel`-style pieces to it. |
+| Gdpr | **Orchestrator** (manages the export/erasure bits across sections). |
+| Search | **Orchestrator**. |
+| Cantina | **Own section.** Roadmap: the food-preference bits move here from Users/Profiles as the identity overload thins out into sections keyed off `UserId`. |
+| Guide / Debug / Scanner | **All stay sections** (the audit's demote-for-thinness suggestion is rejected — see principles). |
+| DevLogin / DevSeed | Move to a **new Development section** that is **not loaded in prod**. (Resolves the Debug-scope question from the audit: they are not Debug's problem; the horizontal-purity concern is answered by prod-exclusion.) |
 
-## Proposed inventory
+## Resulting canonical section list
 
-### A. Rows confirmed as-is (no change) — 22 vertical + 2 horizontal
+**Vertical:** Agent, Budget, Calendar (incl. ICalFeed), Campaigns, Camps, Cantina,
+CityPlanning, Containers, Debug, Development *(new; dev-only, never loaded in prod)*,
+Email, Events, Expenses, Feedback, Finance, Gate *(new row)*, Governance, Guide, Issues,
+Notifications, Scanner, Settings *(new row; ex-SystemSettings + #864)*, Shifts,
+Shortlinks *(planned, #810)*, Store, Surveys, Teams, Tickets.
 
-Agent, Budget, Calendar, Campaigns, Camps, CityPlanning, Containers, Events, Expenses,
-Feedback, GoogleIntegration, Governance, Issues, Notifications, Scanner¹, Shifts, Store,
-Survey², Teams, Tickets; horizontals AuditLog, Auth; shared contract Users; orchestrator
-Onboarding³.
+**Vendor connectors (vertical, never merged):** GoogleIntegration, Holded, Mailer.
 
-¹ Scanner stays a section (safety-critical negative invariant "never a check-in gateway"
-deserves its own docs/tests home) even though the DAG groups its controller under
-`Platform` — challenge if you disagree.
-² `reforge.surface-score.json` spells it `Surveys`; code and tracker say `Survey`.
-Proposal: standardize on **Survey** and fix the config key.
-³ Onboarding is folded into `Users` in `reforge.surface-score.json`; the DAG recommends
-splitting it back out as its own (orchestrator) entry to keep its fan-out edges visible.
-Proposal: **split it out in the config**, matching the tracker.
+**Horizontal:** Auth, AuditLog.
 
-### B. Proposed merges / renames (tracker changes)
+**Shared contract:** Users (incl. Profiles) — the "Humans" section.
 
-| Current row(s) | Proposal | Rationale |
-|---|---|---|
-| Profiles (separate shared-contract row) | **Merge into Users row** (label it `Users/Profiles ("Humans")`) | #685 + `users-profiles-one-section` hard rule: one ownership section; the audit found the same 2 entity-leak baseline rows and the same interceptor on both rows — they are one work surface. |
-| Holded (separate row) | **Merge into Finance** (Holded = connector client inside Finance) | Audit found Holded owns zero tables; its migration-baseline entries belong to Finance's table set. DAG maps `Holded*` symbols to the Finance section. |
-| Mailer (separate row) | **Merge into Email** (`Email/Mailer`) | Config already folds `Mailer/**` paths into Email; Mailer owns no tables (MailerLite is system of record). Audit scored both ✅/✅ — merging loses nothing. |
-| LegalAndConsent | **Keep scope, decide the name** (`LegalAndConsent` vs config's `Consent`) | Pure naming drift between tracker and config; pick one and align both. No scope change proposed. |
-| Guide, Debug | **Demote from ladder rows to Platform-bucket entries** (keep Debug's horizontal *audit* — it still must not reach into verticals — but no G2/G4/G5 ladder of its own) | Neither owns tables; both are controller+service shells (audit: Guide G1 gap is a stale doc; Debug's gaps are doc/test hygiene). A ladder row with no tables has nothing to do at G2/G4. |
-| Cantina | **Decide: keep as vertical, or reclassify as a read-composition feature of Shifts** | Audit: Cantina owns **zero tables** — it is pure read-composition over Shifts+Users, and its G1 gap is that it injects the full `IShiftManagementService` because Shifts has no read split. If it keeps a row, its ladder is G1/G3-only like other table-less sections. |
+**Orchestrators:** Onboarding, Gdpr *(new row)*, Search *(new row)*.
 
-### C. Proposed additions (rows that exist in code but not in the tracker)
+**Consent** (renamed from LegalAndConsent): vertical.
 
-| Add | Kind | Evidence |
-|---|---|---|
-| Gate | vertical | Landed via #1066; absent from tracker and `reforge.surface-score.json`. Needs both. |
-| SystemSettings | vertical | Own service/table surface per DAG; unaudited tonight — needs a first-audit pass once frozen in. |
-| ICalFeed | vertical (or Calendar sub-feature — decide) | Exists in code, unmapped in config. If it's Calendar's export surface, merge into Calendar instead. |
-| Dashboard, Search, Gdpr, Admin, Platform | **decide: sections vs nav-holders/crosscuts** | DAG found real code under each, but `/Admin/*` is by rule a nav holder, not a section; Dashboard/Search/Gdpr smell like orchestrator/crosscut surfaces. Recommend: classify Dashboard + Gdpr as orchestrators, Search as Platform infrastructure, Admin stays a nav holder — but these are architecture calls for Peter. |
+**Not sections:** Admin (nav holder), Dashboard (GUI holder; future panel-contribution
+model), Platform (config bucket, dissolved).
 
-Settings (#864) and Shortlinks (#810) stay as planned-new rows, unchanged.
+## Follow-up work items
 
-### D. Config fixes required regardless of the above decisions
-
-- Add `Gate`, `Survey(s)`, `SystemSettings`, `ICalFeed` to `reforge.surface-score.json`
-  (their `surface-score` numbers are currently namespace-fallback noise).
-- Split `Onboarding` out of `Users` in the config (per A³).
-- Align the `Consent`/`LegalAndConsent` and `Survey`/`Surveys` names with the tracker
-  decision.
-
-## What the freeze unblocks
-
-Per the plan, G0's "inventory frozen" predicate gates everything else: the demolition
-inventory and audit files are keyed by section name, `/section-gate` will key off this
-list, and G5 assembly names are permanent. Deciding B/C now avoids re-keying those
-artifacts later.
+1. Back-propagate to `reforge.surface-score.json`: add Gate, Surveys, Settings,
+   Development; split Onboarding out of Users; rename Consent key alignment; retire the
+   Platform bucket per above. (Config PR, not this docs PR.)
+2. First-audit scorecards for the newly admitted rows: Gate, Settings, Development,
+   Gdpr, Search (the G0 first-audit checklist item's scope caveat tracks this).
+3. `docs/sections/` file renames: `LegalAndConsent.md` → `Consent.md`,
+   `Survey.md` → `Surveys.md` (+ link sweeps).
+4. Extract DevLogin/DevSeed into the Development section with prod-excluded loading.

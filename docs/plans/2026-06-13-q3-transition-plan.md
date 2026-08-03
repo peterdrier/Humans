@@ -93,19 +93,20 @@ The safety net plus the map. Nothing destructive starts before G0 closes.
 - [ ] **Quarantine discipline:** CI fails on `Skip=` without a tracking issue ref (#767).
 - [ ] **Integration tests trustworthy as a net:** shared Postgres fixture (#764) landed;
       suite green on main.
-- [ ] **Section inventory frozen:** the tracker table below confirmed as the canonical
-      section list (additions/merges decided now, not mid-flight).
+- [x] **Section inventory frozen (2026-08-03):** canonical list confirmed by Peter —
+      decision record: [`2026-08-03-proposed-frozen-section-inventory.md`](2026-08-03-proposed-frozen-section-inventory.md)
+      (Profiles→Users; Holded/Mailer stay as vendor connectors; Consent + Surveys naming;
+      new rows Gate, Settings, Development, Gdpr, Search; Admin/Dashboard/Platform are
+      not sections). Config back-propagation + new-row audits are queued follow-ups.
 - [x] **Dependency DAG computed:** [`2026-08-03-section-dependency-dag.md`](2026-08-03-section-dependency-dag.md)
       (Reforge-derived; shared-contract exceptions listed; challenged edges called out).
 - [x] **Demolition inventory:** [`2026-08-03-demolition-inventory.md`](2026-08-03-demolition-inventory.md)
       (per-section dead columns/tables, cross-section FKs, non-conforming table names).
 - [x] **First audit pass (tracker-taxonomy scope):** all 33 sections in the tracker below
       scored against G1–G3 predicates ([`2026-08-03-g0-first-audit/`](2026-08-03-g0-first-audit/));
-      tracker filled. **Scope caveat:** code-real sections *outside* the tracker taxonomy
-      (`Gate`, `SystemSettings`, `ICalFeed`, …) have no scorecards yet — whichever of them
-      the inventory freeze admits get a follow-up audit pass before G0 closes.
-      Section-inventory freeze proposal awaiting confirmation:
-      [`2026-08-03-proposed-frozen-section-inventory.md`](2026-08-03-proposed-frozen-section-inventory.md).
+      tracker filled. **Scope caveat:** the rows admitted at the 2026-08-03 freeze
+      (`Gate`, `Settings`, `Development`, `Gdpr`, `Search`) have no scorecards yet and
+      get a follow-up audit pass before G0 closes.
 
 ### G1 — Ownership (per section): *your data is yours alone*
 
@@ -287,10 +288,10 @@ sections and shared contracts noted explicitly. (`—` = not yet audited.)
 > [demolition inventory](2026-08-03-demolition-inventory.md) ·
 > [PROPOSED frozen inventory](2026-08-03-proposed-frozen-section-inventory.md).
 > G1/G3 cells show gap counts from the audit (`✅` = predicates met). G2 is not scored
-> per-section yet — its queue lives in the demolition inventory. **Note:** the audit ran
-> against this table's taxonomy; the DAG audit found this taxonomy has drifted from
-> `reforge.surface-score.json` and code (see the frozen-inventory proposal before
-> treating rows as final).
+> per-section yet — its queue lives in the demolition inventory. Taxonomy is per the
+> **2026-08-03 inventory freeze** (decision record:
+> [`2026-08-03-proposed-frozen-section-inventory.md`](2026-08-03-proposed-frozen-section-inventory.md));
+> rows added at the freeze show `—` until their first audit pass.
 
 | Section | Kind | G1 | G2 | G3 | G4 | G5 |
 |---|---|---|---|---|---|---|
@@ -298,37 +299,48 @@ sections and shared contracts noted explicitly. (`—` = not yet audited.)
 | AuditLog | **horizontal** | 2 gaps | — | 2 gaps | — | — |
 | Auth | **horizontal** | 4 gaps | — | 2 gaps | — | — |
 | Budget | vertical | 3 gaps | — | 3 gaps | — | — |
-| Calendar | vertical | 3 gaps | — | 3 gaps | — | — |
+| Calendar (incl. ICalFeed) | vertical | 3 gaps | — | 3 gaps | — | — |
 | Campaigns | vertical | 2 gaps | — | 2 gaps | — | — |
 | Camps | vertical | 4 gaps | — | 2 gaps | — | — |
 | Cantina | vertical | 3 gaps | — | 2 gaps | — | — |
 | CityPlanning | vertical | 1 gap | — | 2 gaps | — | — |
 | Containers | vertical | ✅ | — | 2 gaps | — | — |
 | Debug | **horizontal** | 2 gaps | — | 1 gap | — | — |
+| Development *(new 2026-08-03 — dev-only, never loaded in prod; takes DevLogin/DevSeed)* | vertical | — | — | — | — | — |
 | Email | vertical | 2 gaps | — | 2 gaps | — | — |
 | Events | vertical | 2 gaps | — | 1 gap | — | — |
 | Expenses | vertical | ✅ | — | 2 gaps | — | — |
 | Feedback | vertical | 1 gap | — | 2 gaps | — | — |
 | Finance | vertical | ✅ | — | 1 gap | — | — |
-| GoogleIntegration | vertical | 3 gaps | — | 2 gaps | — | — |
+| Gate *(new row 2026-08-03)* | vertical | — | — | — | — | — |
+| Gdpr *(new row 2026-08-03)* | **orchestrator** | — | — | — | — | — |
+| GoogleIntegration | **vendor connector** | 3 gaps | — | 2 gaps | — | — |
 | Governance | vertical | ✅ | — | 2 gaps | — | — |
 | Guide | vertical | 1 gap | — | ✅ | — | — |
-| Holded | vertical | ✅ | — | ✅ | — | — |
+| Holded | **vendor connector** | ✅ | — | ✅ | — | — |
 | Issues | vertical | 1 gap | — | 2 gaps | — | — |
-| LegalAndConsent | vertical | 3 gaps | — | 2 gaps | — | — |
-| Mailer | vertical | ✅ | — | ✅ | — | — |
+| Consent *(renamed from LegalAndConsent)* | vertical | 3 gaps | — | 2 gaps | — | — |
+| Mailer | **vendor connector** | ✅ | — | ✅ | — | — |
 | Notifications | vertical | 2 gaps | — | 2 gaps | — | — |
-| Onboarding | vertical (orchestrator) | ✅ | — | ✅ | — | — |
-| Profiles | **shared contract** | 4 gaps | — | 2 gaps | — | — |
+| Onboarding | **orchestrator** | ✅ | — | ✅ | — | — |
 | Scanner | vertical | ✅ | — | 1 gap | — | — |
+| Search *(new row 2026-08-03)* | **orchestrator** | — | — | — | — | — |
+| Settings *(ex-SystemSettings; absorbs #864)* | vertical | — | — | — | — | — |
 | Shifts | vertical | 4 gaps | — | 2 gaps | — | — |
 | Store | vertical | 1 gap | — | 1 gap | — | — |
-| Survey | vertical | 1 gap | — | 1 gap | — | — |
+| Surveys *(renamed from Survey)* | vertical | 1 gap | — | 1 gap | — | — |
 | Teams | vertical | 3 gaps | — | 2 gaps | — | — |
 | Tickets | vertical | 2 gaps | — | 3 gaps | — | — |
-| Users | **shared contract** | 4 gaps | — | 1 gap | — | — |
-| *Settings (new, #864)* | vertical | n/a | n/a | — | — | — |
+| Users *(incl. Profiles — the "Humans" section)* | **shared contract** | 4 gaps | — | 3 gaps | — | — |
 | *Shortlinks (new, #810)* | vertical | n/a | n/a | — | — | — |
+
+Confirmed non-sections (never get ladder rows): **Admin** (nav holder), **Dashboard**
+(GUI holder; possible future per-section `DashboardPanel` contributions), **Platform**
+(dissolved config bucket). Decision record:
+[`2026-08-03-proposed-frozen-section-inventory.md`](2026-08-03-proposed-frozen-section-inventory.md).
+The Users row merges the former Profiles row (G1 gaps were the same items; G3 combines
+Users 1 + Profiles 2 — scorecards remain split as
+[`Users.md`](2026-08-03-g0-first-audit/Users.md) / [`Profiles.md`](2026-08-03-g0-first-audit/Profiles.md)).
 
 G0 confirms this inventory (merges/splits decided then — e.g. whether Cantina/Scanner stay
 separate, where admin-shell lands, whether Settings absorbs pieces of Shifts per #864).
