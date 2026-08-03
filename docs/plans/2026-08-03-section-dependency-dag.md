@@ -319,12 +319,73 @@ listed once here rather than as 25+ separate diagram edges.
 | `Auth` (`IRoleAssignmentService`) | Agent (`AgentUserSnapshotProvider`), Camps (via Users' `ContactFieldService`... see Challenged), Gate, Issues, Onboarding(Users), Tickets(`OnsiteRosterService`), Users(`AccountDeletionService`,`AccountMergeService`,`DuplicateAccountService`), Notifications(`NotificationRecipientResolver`), background jobs | Mostly full-service + `IRoleAssignmentClaimsCacheInvalidator`/`IRoleAssignmentCacheInvalidator` |
 | `AuditLog` (`IAuditLogService`) | Nearly every write-path service (36 dependents per `dependency-graph.md`'s fan-in table) — Teams, Camps, Tickets, GoogleIntegration, Feedback, Store, Containers, Expenses, Gate, Surveys, Users, etc. | Full-service, one-way (Audit has zero outbound edges to verticals except the AuditViewer exception below) |
 
-**Proposed 4th exception — `Platform`:** not named in the plan's original three, but plays
-the identical role. `HumansMetricsService` (4 dependents: Consent, HumanLifecycle/Users,
-Governance, OutboxEmail/Notifications), `INavBadgeCacheInvalidator` (4 dependents: Auth,
-Feedback, Governance, Issues), `AdminDatabaseDiagnosticsService` (reads Users + Tickets for
-diagnostics), `GuideRoleResolver` (reads Teams). Recommend G0 formally adds `Platform` to
-the shared-contract exception list so these don't get flagged as violations later.
+**Shared-contract outbound edges (should be empty — added 2026-08-03).** A shared contract
+that depends on a vertical cannot become its own G5 assembly. These are the outbound edges
+found on the three exceptions, drawn here rather than left in prose so cycle analysis and G5
+project-reference planning see them:
+
+| From (shared contract) | To (vertical) | Mechanism | Origin | Status |
+|---|---|---|---|---|
+| `Users` | Governance, Consent, Email, Notifications, Shifts, Tickets, Teams (via `ContactFieldService`) | orchestrator fan-out | `OnboardingService`, `HumanLifecycleService`, `AccountDeletion`/`Merge`/`DuplicateAccountService`, `UserParticipationBackfillService` — all folded into `Users` by `reforge.surface-score.json` | Challenged edge #1 — fix is the `Onboarding` carve-out |
+| `Users` | Email | **read-interface** (`IEmailOutboxServiceRead`) | `ProfileController` (`:70`) and `UsersAdminController` (`:31`) — Users-section **Web controllers**, not orchestrators | Challenged edge #1 — *not* fixed by the `Onboarding` carve-out; see below |
+| `AuditLog` | Teams | full-service (`ITeamService`/`ITeamResourceService`) | `AuditViewerService` display-name stitching | Challenged edge #2 — awaiting Peter's call |
+| `Auth` | — | — | none found | clean |
+
+The second `Users` row is the one worth flagging: it is a **different mechanism** from the
+orchestrator fan-out above it. Carving `Onboarding` out of `Users` removes the first row's
+edges but leaves this one, because the consumers are Web controllers that legitimately
+belong to the identity core's own UI. It is a read-interface call — the well-behaved
+direction — so the likely resolution is to bless it explicitly rather than cut it, but that
+is a G0 decision, not an omission. Counted as part of Challenged edge #1.
+
+**~~Proposed 4th exception — `Platform`~~ — withdrawn 2026-08-03.** The original text
+recommended G0 formally add `Platform` to the shared-contract exception list. The frozen
+inventory **dissolves `Platform` as a section and as a config bucket**, so adding it as a
+shared-contract exception would recreate the phantom boundary the freeze removed and make
+later dependency checks bless references against a section that does not exist. The
+exception list stays at **three**: `Users`, `Auth`, `AuditLog`.
+
+The services that prompted the proposal are real and still need to not be flagged — they are
+**shared infrastructure, not a section**: `HumansMetricsService` (4 dependents: Consent,
+HumanLifecycle/Users, Governance, OutboxEmail/Notifications), `INavBadgeCacheInvalidator`
+(4 dependents: Auth, Feedback, Governance, Issues), `AdminDatabaseDiagnosticsService` (reads
+Users + Tickets for diagnostics), `GuideRoleResolver` (reads Teams). Classify them the way
+this document already treats background jobs and `AdminDatabaseDiagnosticsService` (method
+step 6): above the service layer, not section→section edges. Whatever enforces the
+dependency rules at G5 needs a **non-section shared-infrastructure** category for them — not
+a `Platform` section row.
+
+## Orchestrator fan-outs (`IFanout`) — added 2026-08-03
+
+The original pass classified edges as read-interface / full-service / invalidator /
+**orchestrator fan-out** (method step 5) but never enumerated the fan-outs, so `Gdpr` — which
+the freeze admits as a canonical section — had no node and no edge analysis anywhere in this
+document. `IFanout` (`src/Humans.Application/Interfaces/IFanout.cs`) is the codebase's own
+marker for this seam: "an interface many sections implement and a single coordinator
+(orchestrator) aggregates." Three contracts carry it.
+
+| Contract | Coordinator | Contributing sections | Count |
+|---|---|---|---|
+| `IUserDataContributor` (GDPR Art. 15 export) | `GdprExportService` (`Services/Gdpr/`) — `IEnumerable<IUserDataContributor> contributors` | Agent, AuditLog, Auth, Budget, Campaigns, Camps, Consent, Events, Expenses, Feedback, Finance, Gate, Governance, Issues, Notifications, Shifts, Surveys, Teams, Tickets, Users | **20 sections / 21 types** (Users contributes twice: `UserService` + `AccountMergeService`) |
+| `IEarlyEntryProvider` (early-entry roster) | `EarlyEntryService` (`Services/EarlyEntry/`) | Shifts (`VolunteerTrackingExportService`), Teams (`TeamService`), Camps (`CachingCampService`) | 3 |
+| `ICalendarFeedContributor` (iCal feed) | `ICalFeedService` (`Services/ICalFeed/`) | Events (`EventService`), Shifts (`ShiftSignupService`) | 2 |
+
+**Classification — these are not section→section edges, and the DAG stays as drawn.** The
+dependency runs *contributor-side-inward*: each section implements an interface it does not
+call, and the coordinator depends only on the abstraction, never on a section. `Gdpr` has
+**zero outbound section dependencies** — `GdprExportService` injects `IEnumerable<IUserDataContributor>`,
+`IClock` and a logger, nothing else. Drawing 20 `Gdpr → *` arrows would invent a fan-out that
+doesn't exist in the reference graph and would manufacture cycles with every section that
+reads back from `Users`/`Auth`/`AuditLog`. Same treatment as background jobs and
+`AdminDatabaseDiagnosticsService` (method step 6).
+
+**What this does mean for G5:** the fan-out interfaces live in `Humans.Application/Interfaces/`
+and every contributing section must reference them, so at assembly-split time the three
+contracts (plus `IFanout` itself) belong in a shared contracts assembly that all sections
+reference and none owns — *not* in a `Gdpr` assembly. If they landed in `Gdpr`, all 20
+contributing sections would need a project reference to `Gdpr`, inverting the intended
+direction. Worth confirming at G4/G5 gate design; recorded here so the graph is complete for
+reference planning.
 
 ## Challenged edges
 
@@ -349,6 +410,14 @@ schedule a fix.
    and move `AccountDeletionService`/`AccountMergeService`/`DuplicateAccountService`/
    `UserParticipationBackfillService` there or to a similar orchestrator carve-out. Leaves
    the real `Users` shared contract clean.
+   **Amended 2026-08-03 — the carve-out is necessary but not sufficient.** One `Users → Email`
+   edge survives it: `ProfileController` (`:70`) and `UsersAdminController` (`:31`) inject
+   `IEmailOutboxServiceRead` directly. Those are Web controllers of the identity core itself,
+   not orchestrators, so moving `Onboarding` out doesn't touch them. Both edges are now drawn
+   in the **Shared-contract outbound edges** table above. This one is a read-interface call —
+   the well-behaved direction — so G0 should decide whether to bless it as a permitted
+   shared-contract → vertical read or schedule it out; "clean after the carve-out" is not
+   accurate as written.
 2. **`AuditLog` (horizontal) reaches into `Teams` (vertical).** `AuditViewerService` eagerly
    injects `ITeamService`/`ITeamResourceService` for display-name stitching on audit pages.
    Peter's hard rules: horizontals are "strictly forbidden from referencing vertical
@@ -448,23 +517,29 @@ sections can enter G5.
 
 ## Summary
 
-**77** vertical-to-vertical section edges (corrected 2026-08-03, was 71 — see the
-Vertical-section DAG intro for the 6 added edges) across **26** vertical sections (25 +
-`Agent`, added 2026-08-03; plus the four missing-from-inventory sections once added), plus
-the `Users`/`Auth`/`AuditLog`
-(+proposed `Platform`) shared-contract fan-in depended on by nearly every section. **7
+**73** vertical-to-vertical section edges across **25** vertical sections (**corrected
+2026-08-03** — was 77/26; that count included `Dashboard`, which the freeze classifies as a
+non-section GUI holder, so its 4 outgoing edges are not section→section. See the
+Vertical-section DAG intro for the derivation: 71 original pairs + 6 found 2026-08-03, less
+Dashboard's 4). Plus the `Users`/`Auth`/`AuditLog` shared-contract fan-in depended on by
+nearly every section — **three exceptions, not four**: the `Platform` proposal is withdrawn
+(see the shared-infrastructure note above). **7
 section-level cycles found** (3 real DI cycles: Teams↔Shifts, Tickets↔Shifts,
 Governance↔Consent; 4 Notifications-pattern cycles: Teams/Camps/Governance/GoogleIntegration
 ↔ Notifications, all resolvable by landing #581). **6 open challenged items** requiring an
 explicit decision or scheduled fix (7 entries listed, of which #3 Tickets→Campaigns was
 withdrawn 2026-08-03 with "no fix needed"), headlined by the `Users`/`Onboarding` conflation
 undermining the shared-contract model, and a horizontal (`AuditLog`) reaching into a
-vertical (`Teams`). Section inventory itself needs updating before G0 can close: four real
-sections (`Gate`, `Surveys`, `SystemSettings`, `ICalFeed`) are missing from
-`reforge.surface-score.json` entirely, and the transition plan's own tracker table has six
-rows that don't match current section reality. **Corrected 2026-08-03:** the specific
-remedies once listed here are superseded by the confirmed inventory — `Mailer` and `Holded`
-stay as vendor-connector rows (not merged into Email/Finance), and `Guide`/`Debug`/`Scanner`
-stay as sections (the demote-to-`Platform` suggestion is rejected; `Platform` itself
-dissolves). What remains true is that `reforge.surface-score.json` needs back-propagating to
-match the frozen taxonomy.
+vertical (`Teams`).
+
+**Section inventory: frozen — no longer a G0 blocker (corrected 2026-08-03).** This
+paragraph previously said G0 could not close until four "real sections" (`Gate`, `Surveys`,
+`SystemSettings`, `ICalFeed`) were added to `reforge.surface-score.json`. Two of those names
+did not survive the freeze — `ICalFeed` folds into Calendar and `SystemSettings` becomes
+`Settings` — so acting on that sentence would reintroduce the superseded taxonomy. The
+inventory is frozen ([`2026-08-03-proposed-frozen-section-inventory.md`](2026-08-03-proposed-frozen-section-inventory.md));
+what remains is a **config follow-up**, itemised at the top of this document: add `Gate`,
+`Settings`, `Development`, `Gdpr` and `Search`; fold `ICalFeed` into Calendar; rename
+`Survey` → `Surveys`; keep `Mailer` and `Holded` as vendor-connector rows (not merged into
+Email/Finance); keep `Guide`/`Debug`/`Scanner` as sections and correct their paths off the
+dissolved `Platform` bucket.

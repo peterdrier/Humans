@@ -340,9 +340,31 @@ Confirmed non-sections (never get ladder rows): **Admin** (nav holder), **Dashbo
 (GUI holder; possible future per-section `DashboardPanel` contributions), **Platform**
 (dissolved config bucket). Decision record:
 [`2026-08-03-proposed-frozen-section-inventory.md`](2026-08-03-proposed-frozen-section-inventory.md).
-The Users row merges the former Profiles row (G1 gaps were the same items; G3 combines
-Users 1 + Profiles 2 — scorecards remain split as
-[`Users.md`](2026-08-03-g0-first-audit/Users.md) / [`Profiles.md`](2026-08-03-g0-first-audit/Profiles.md)).
+The Users row merges the former Profiles row; scorecards remain split as
+[`Users.md`](2026-08-03-g0-first-audit/Users.md) / [`Profiles.md`](2026-08-03-g0-first-audit/Profiles.md).
+**Arithmetic corrected 2026-08-03** (the note said "G3 combines Users 1 + Profiles 2", which
+yields 3 and stopped matching the cell once `Users.md`'s G3 count was corrected 1 → 2). Both
+cells are **4**, but they get there differently — the two scorecards each report 4/4, so
+neither cell is a plain sum:
+
+- **G1 = 4 — union of distinct items, deduplicated.** The scorecards' own "4"s overlap and
+  sub-count differently (Users counts the two entity-leak baseline rows separately and has no
+  nav item; Profiles collapses those rows but adds the navs). The union is: (1) the
+  `UserInfoSaveChangesInterceptor` workaround — flagged in both, `Users.md` says "Same item as
+  Profiles.md"; (2) `IUserService.GetByIdsAsync` / `IAccountProvisioningService.FindOrCreateUserByEmailAsync`
+  returning `User` — the same `ApplicationServiceEntityReadReturns` rows 28–29 in both; (3) the
+  HUM0031 controller grandfathers under #857 — `AccountController`/`UsersAdminDebugController`
+  on the Users side plus `ProfileController` on the Profiles side, different controllers but
+  one tracked item; (4) the un-stripped `AccountMergeRequest.TargetUser`/`SourceUser`/`ResolvedByUser`
+  navs, Profiles-only.
+- **G3 = 4 — additive, no overlap.** Users 2 (`UserRepositoryTests`/`UserRepositoryUserEmailsTests`
+  on EF-InMemory; `UserServiceProfileOnboardingMutationTests` harness-inherited) + Profiles 2
+  (`ProfileRepositoryTests` on EF-InMemory; `ProfileServiceTests`/`ContactFieldServiceTests`/
+  `CommunicationPreferenceServiceTests` harness-inherited). Disjoint test files, so nothing
+  deduplicates.
+
+Anyone re-deriving this cell from the scorecards should apply the same union-for-G1,
+sum-for-G3 rule rather than adding both.
 
 G0 confirms this inventory (merges/splits decided then — e.g. whether Cantina/Scanner stay
 separate, where admin-shell lands, whether Settings absorbs pieces of Shifts per #864).

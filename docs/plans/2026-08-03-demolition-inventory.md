@@ -615,9 +615,17 @@ ahead of G5's project split.
   code layout — just the ambiguous name.
 - **`event_guide_settings` vs `event_settings` shortening** — cosmetic follow-on to the
   `shift_event_settings` rename; not required, listed as optional in the Shifts section.
-- Six sections in the tracker (`Settings`/`Shortlinks`, both `n/a` for G1/G2 per the plan since
-  they don't exist yet) were not audited — out of scope for this inventory by the plan's own
-  tracker notes.
+- **Unaudited sections (corrected 2026-08-03.** The original note claimed six sections but
+  named two, and said `Settings` "doesn't exist yet" — it does: `SystemSetting`,
+  `SystemSettingConfiguration`, `SystemSettingsRepository` and a dedicated
+  `SystemSettingsDbContext` are all in the tree, and this inventory's own no-findings list
+  above records **System Settings** as audited. What's pending for `Settings` is the rename
+  and the #864 absorption, not the code.) Against the frozen tracker, the rows carrying no
+  audit result are **five**: `Gate`, `Settings`, `Development`, `Gdpr`, `Search` — all admitted
+  at the 2026-08-03 freeze, after this inventory's audit pass. `Shortlinks` (#810) is separate:
+  it is `n/a`/`n/a` in the tracker because it genuinely does not exist yet. So for G2 purposes
+  the unchecked surfaces are those five rows plus Shortlinks-when-built — and of the five,
+  `Settings`'s tables were in fact swept here under the System Settings heading.
 - This inventory did not attempt a full grep for every `[Obsolete]` property outside
   `Humans.Domain/Entities` (e.g. Application/Web-layer obsolete DTOs, view models) — scope was
   held to entities + EF configurations per the task brief. A follow-up pass could widen to
