@@ -35,7 +35,9 @@ Every other G1 predicate passed cleanly — Governance remains among the cleanes
 
 ## G2 queue notes
 
-None identified this pass. `ReviewStartedAt` field is documented as currently unused (no controller path sets it) — worth a demolition-inventory look (dead column candidate) when Governance enters G2, but needs confirmation it isn't reserved for a near-term feature before dropping.
+**Corrected 2026-08-03 — "none identified" contradicted this scorecard's own G1 gap list and the demolition inventory.** Governance's G2 queue is the **four cross-section FK cuts** to `AspNetUsers`: `applications.ReviewedByUserId` and `applications.UserId` (`ApplicationConfiguration.cs:49,56`), `application_state_history.ChangedByUserId` (`ApplicationStateHistoryConfiguration.cs:27`), and `board_votes.BoardMemberUserId` (`BoardVoteConfiguration.cs:32`). Governance must not advance through G2 while those constraints remain.
+
+Also queued: the three table renames (`applications` → `governance_applications`, `application_state_history` → `governance_application_state_history`, `board_votes` → `governance_board_votes`) per the inventory. Separately, `ReviewStartedAt` is documented as currently unused (no controller path sets it) — a dead-column candidate worth confirming isn't reserved for a near-term feature before dropping.
 
 ## Verdict
 

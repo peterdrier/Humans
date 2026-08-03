@@ -298,8 +298,8 @@ sections and shared contracts noted explicitly. (`—` = not yet audited.)
 | Section | Kind | G1 | G2 | G3 | G4 | G5 |
 |---|---|---|---|---|---|---|
 | Agent | vertical | 2 gaps | — | 2 gaps | — | — |
-| AuditLog | **horizontal** | 2 gaps | — | 2 gaps | — | — |
-| Auth | **horizontal** | 4 gaps | — | 3 gaps | — | — |
+| AuditLog | **horizontal** | 2 gaps | — | 3 gaps | — | — |
+| Auth | **horizontal** | 4 gaps | — | 4 gaps | — | — |
 | Budget | vertical | 3 gaps | — | 4 gaps | — | — |
 | Calendar (incl. ICalFeed) | vertical | 2 gaps | — | 3 gaps | — | — |
 | Campaigns | vertical | 2 gaps | — | 2 gaps | — | — |
@@ -307,7 +307,7 @@ sections and shared contracts noted explicitly. (`—` = not yet audited.)
 | Cantina | vertical | 3 gaps | — | ✅ | — | — |
 | CityPlanning | vertical | 2 gaps | — | 3 gaps | — | — |
 | Containers | vertical | ✅ | — | 2 gaps | — | — |
-| Debug | **horizontal** | 2 gaps | — | 1 gap | — | — |
+| Debug | vertical | 1 gap | — | 1 gap | — | — |
 | Development *(new 2026-08-03 — dev-only, never loaded in prod; takes DevLogin/DevSeed)* | vertical | — | — | — | — | — |
 | Email | vertical | 3 gaps | — | 3 gaps | — | — |
 | Events | vertical | 2 gaps | — | 1 gap | — | — |
@@ -320,7 +320,7 @@ sections and shared contracts noted explicitly. (`—` = not yet audited.)
 | Governance | vertical | 4 gaps | — | 3 gaps | — | — |
 | Guide | vertical | 1 gap | — | ✅ | — | — |
 | Holded | **vendor connector** | ✅ | — | ✅ | — | — |
-| Issues | vertical | 2 gaps | — | 2 gaps | — | — |
+| Issues | vertical | 2 gaps | — | 3 gaps | — | — |
 | Consent *(renamed from LegalAndConsent)* | vertical | 3 gaps | — | 4 gaps | — | — |
 | Mailer | **vendor connector** | ✅ | — | ✅ | — | — |
 | Notifications | vertical | 2 gaps | — | 2 gaps | — | — |
@@ -333,7 +333,7 @@ sections and shared contracts noted explicitly. (`—` = not yet audited.)
 | Surveys *(renamed from Survey)* | vertical | 1 gap | — | 1 gap | — | — |
 | Teams | vertical | 4 gaps | — | 2 gaps | — | — |
 | Tickets | vertical | 3 gaps | — | 3 gaps | — | — |
-| Users *(incl. Profiles — the "Humans" section)* | **shared contract** | 4 gaps | — | 3 gaps | — | — |
+| Users *(incl. Profiles — the "Humans" section)* | **shared contract** | 4 gaps | — | 4 gaps | — | — |
 | *Shortlinks (new, #810)* | vertical | n/a | n/a | — | — | — |
 
 Confirmed non-sections (never get ladder rows): **Admin** (nav holder), **Dashboard**

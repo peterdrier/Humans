@@ -48,7 +48,7 @@ Separately, the transition plan's own **Section tracker** (in
 | `Holded` (separate row) | Bundled with `Finance` (`Finance*`, `Holded*`, `IHolded*`) in `reforge.surface-score.json`. | ~~Rename tracker row `Holded` → `Finance`.~~ **Withdrawn 2026-08-03** — same rule: `Holded` is a vendor connector and stays its own row alongside `Finance`. Split the config paths rather than merging the rows. |
 | `LegalAndConsent` (separate row) | This is the `Consent` section (bundles `Legal*` + `Consent*`). | Rename tracker row → `Consent`. |
 | `Guide`, `Debug`, `Scanner` (separate rows) | All three sit on `Platform` paths in `reforge.surface-score.json` (`GuideController`, `DebugController`, `ScannerController`). | ~~Demote these three rows; they ride with `Platform`.~~ **Withdrawn 2026-08-03** — the confirmed inventory ([`2026-08-03-proposed-frozen-section-inventory.md`](2026-08-03-proposed-frozen-section-inventory.md)) explicitly **keeps all three as sections**, rejects the demote-for-thinness suggestion, and dissolves `Platform` as a section bucket. The fix runs the other way: correct their paths in `reforge.surface-score.json` (config PR). Left standing, this present-tense demotion would drive later G0/G5 work to undo the frozen taxonomy and contradicts the `sections-are-logical-units` rule. |
-| *(missing entirely)* | `Gate`, `Surveys`, `SystemSettings`, `ICalFeed`, `Dashboard`, `Admin`, `Platform`, `Search`, `Gdpr` all exist as real sections/services in code but have no tracker row. | **Corrected 2026-08-03:** add rows for `Gate`, `Surveys`, `SystemSettings`, `ICalFeed` before G0 closes. **`Admin` is explicitly excluded** — `docs/architecture/peters-hard-rules.md`/`CLAUDE.md` state `/Admin/*` is a nav holder, not a section, and the frozen-inventory proposal (`2026-08-03-proposed-frozen-section-inventory.md` §C) already classifies it that way. `Dashboard`, `Search`, `Gdpr`, `Platform` are an open classification question in that same proposal (orchestrator/crosscut/Platform-infrastructure candidates, not flatly "add a row") — don't pre-empt it here. |
+| *(missing entirely)* | `Gate`, `Surveys`, `SystemSettings`, `ICalFeed`, `Dashboard`, `Admin`, `Platform`, `Search`, `Gdpr` all exist as real sections/services in code but have no tracker row. | **Superseded 2026-08-03 by the confirmed inventory** ([`2026-08-03-proposed-frozen-section-inventory.md`](2026-08-03-proposed-frozen-section-inventory.md)) — the open questions this row listed are now decided, so use the decision record, not this row: add rows for **`Gate`, `Settings`** (ex-`SystemSettings`, absorbs #864), **`Development`** (new; dev-only, takes DevLogin/DevSeed), **`Gdpr`** and **`Search`**; fold **`ICalFeed` into Calendar**; rename **`Survey` → `Surveys`**; **`Admin`, `Dashboard` and `Platform` are not sections** (`Platform` dissolves as a bucket). Back-propagating the original text would undo several frozen decisions. |
 
 ## Vertical-section DAG
 
@@ -431,12 +431,16 @@ the `Users`/`Auth`/`AuditLog`
 (+proposed `Platform`) shared-contract fan-in depended on by nearly every section. **7
 section-level cycles found** (3 real DI cycles: Teams↔Shifts, Tickets↔Shifts,
 Governance↔Consent; 4 Notifications-pattern cycles: Teams/Camps/Governance/GoogleIntegration
-↔ Notifications, all resolvable by landing #581). **7 challenged items** requiring an
-explicit decision or scheduled fix, headlined by the `Users`/`Onboarding` conflation
+↔ Notifications, all resolvable by landing #581). **6 open challenged items** requiring an
+explicit decision or scheduled fix (7 entries listed, of which #3 Tickets→Campaigns was
+withdrawn 2026-08-03 with "no fix needed"), headlined by the `Users`/`Onboarding` conflation
 undermining the shared-contract model, and a horizontal (`AuditLog`) reaching into a
 vertical (`Teams`). Section inventory itself needs updating before G0 can close: four real
 sections (`Gate`, `Surveys`, `SystemSettings`, `ICalFeed`) are missing from
 `reforge.surface-score.json` entirely, and the transition plan's own tracker table has six
-rows that don't match current section reality (stale `Profiles`/`Onboarding` split,
-`Mailer`/`Holded`/`LegalAndConsent` renames, and `Guide`/`Debug`/`Scanner` that should ride
-with `Platform` instead of getting their own G1–G5 ladder).
+rows that don't match current section reality. **Corrected 2026-08-03:** the specific
+remedies once listed here are superseded by the confirmed inventory — `Mailer` and `Holded`
+stay as vendor-connector rows (not merged into Email/Finance), and `Guide`/`Debug`/`Scanner`
+stay as sections (the demote-to-`Platform` suggestion is rejected; `Platform` itself
+dissolves). What remains true is that `reforge.surface-score.json` needs back-propagating to
+match the frozen taxonomy.

@@ -559,11 +559,13 @@ plan-tracked, but a legitimate G2 drop candidate whenever Store's demolition bat
 | Store | 1 (self-contained) | 0 | 0 | 0 | 0 |
 | **Total** | **4 tagged + 7 queued/targeted + 7 retained-for-soak** | **1** | **1** | **55 (39 tables)** | **24** |
 
-Shifts cross-section relationships corrected 2026-08-03 (was 9): the detailed Shifts section
-enumerates **8** — one `User` FK from `GeneralAvailability`, one `Team` FK from `Rota`, three
-`User` FKs from `ShiftSignup`, and one `User` FK each from `VolunteerEventProfile`,
-`VolunteerTagPreference` and `EventParticipation` — across the stated six tables. Overall total
-moves 49 → 48 accordingly.
+Shifts cross-section relationships corrected 2026-08-03 (was 9, then briefly 8): the detailed
+Shifts section enumerates **7 across 5 tables** — one `User` FK from `GeneralAvailability`, one
+`Team` FK from `Rota`, three `User` FKs from `ShiftSignup`, and one `User` FK each from
+`VolunteerEventProfile` and `VolunteerTagPreference`. `EventParticipation` is **excluded**:
+`event_participations` is Users-owned per this file's own ownership finding, so its
+`UserId → AspNetUsers` is internal to Users, not a Shifts cross-section FK, and must not be
+queued as one.
 
 Users/Identity row corrected 2026-08-03 (was `1 (+4 targeted, not yet tagged)`): #603's §4 migration drops
 **five** `AspNetUsers` columns — `NormalizedEmail` plus `Email`/`EmailConfirmed`/`UserName`/`NormalizedUserName` —

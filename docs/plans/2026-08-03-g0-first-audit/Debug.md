@@ -2,7 +2,13 @@
 
 Kind: horizontal · Audited 2026-08-03 @ 5a9bbe198
 
-Scope note: Debug is **not** a distinct entry in `reforge.surface-score.json` — it lives inside the "Platform" catch-all. No `docs/sections/Debug.md` exists. Scope taken as `DebugController.cs` (the `/Debug/*` diagnostics pages) as the section's core, plus `DevLoginController.cs`/`DevSeedController.cs` (dev-only tooling under `/DevLogin`, `/DevSeed`) as adjacent dev-tools controllers surfaced by the same Platform bucket — audited separately below since they have materially different crosscut characteristics.
+Scope note — **rewritten 2026-08-03 against the frozen inventory**, which resolves every ambiguity the original note hedged on:
+
+- Debug is a **vertical section** in its own right (not a slice of the dissolved `Platform` catch-all, and not horizontal). `reforge.surface-score.json` still files it under `Platform`; that's a config-back-propagation follow-up, not a finding about Debug.
+- `DevLoginController.cs`/`DevSeedController.cs` move to the new **Development** section (dev-only, never loaded in prod). They are **out of scope for this scorecard** — the sections below that audit them are retained only as evidence for the Development audit that still has to happen, and their findings must not be counted against Debug.
+- `docs/sections/Debug.md` **does exist** and is git-tracked, so the original "no section doc" gap was a false negative of the same kind found across this batch — it is withdrawn, not rescheduled.
+
+Effective scope for Debug's score: `DebugController.cs` (the `/Debug/*` diagnostics pages) alone.
 
 ## `DebugController` — the diagnostics/`/Debug/*` core
 
@@ -16,7 +22,7 @@ Scope note: Debug is **not** a distinct entry in `reforge.surface-score.json` �
 | 4 | No cross-section EF joins (zero baseline entries) | PASS | Grepped all 5 baseline files under `tests/Humans.Application.Tests/Architecture/Baselines/` for `Debug` — zero hits. |
 | 5 | No `[Obsolete]` cross-section navs / `[Grandfathered]` / baseline rows | PASS | Grep of `DebugController.cs` for `Grandfathered`/`[Obsolete]` — zero matches. |
 | 6 | Controllers thin — no HUM0031 grandfathers | PASS | Same grep — zero matches. Note: several methods build moderately complex view-model projections inline (e.g. `CacheStats`, `ClientStats`) but stay within formatting/shaping, no business logic. |
-| 7 | `docs/sections/Debug.md` exists and matches reality | **FAIL** | No such file exists. Given Debug is a real horizontal with its own routes, actors (`AdminOnly` policy), and crosscut constraints, it warrants a minimal section doc — even the horizontal sections (AuditLog, Auth) are expected to have one per the gate ladder's "per-section ladder" including horizontals explicitly listed in the tracker table. |
+| 7 | `docs/sections/Debug.md` exists and matches reality | PASS — **corrected 2026-08-03** | `docs/sections/Debug.md` **does exist** and is git-tracked; the original FAIL was the same false-negative pattern (brace-expansion glob) found across this batch. Not re-read line-by-line for drift this pass, so this is a presence check rather than a content verification. |
 
 **Crosscut check (horizontal-specific, per `peters-hard-rules.md` — horizontals may not reach into vertical sections' logic):** PASS for `DebugController` itself. `reforge dependencies DebugController` → 9 constructor params; only one (`IUserServiceRead userService`) touches a vertical-section contract, and it's the read-only shared-contract exception (`IUserServiceRead` is explicitly one of the allowed exceptions per the Q3 plan's "shared-contract exceptions" list). All other dependencies are Platform-owned (`IClientStatsTracker`, `IHttpStatusTracker`, `ConfigurationRegistry`, `QueryStatistics`, `ICacheStatsProvider`, `IAdminDatabaseDiagnosticsService`) or ASP.NET framework types.
 
@@ -40,7 +46,7 @@ Flagged separately: these are gated behind `IWebHostEnvironment`/Development-onl
 
 ## G1 gap list
 
-1. **No `docs/sections/Debug.md`** — write a minimal section doc: concepts (admin diagnostics surface), routes (`/Debug/Logs`, `/HttpErrors`, `/Maintenance`, `/Configuration`, `/DbVersion`, `/DbStats`, `/CacheStats`, `/ClientStats`, `/Timings`, `/FormatGallery`, `/Translations`), actors (`AdminOnly` only), the "owns zero tables, pure telemetry read + one delegated Hangfire-lock-clear write" invariant, and the crosscut rule it must keep honoring. No migration needed (y).
+1. ~~No `docs/sections/Debug.md`~~ — **retracted 2026-08-03**: the file exists and is git-tracked (see predicate 7). Not a gap.
 2. **Section-boundary ambiguity: does "Debug" include `DevLogin`/`DevSeed`?** — needs an explicit decision recorded in the G0 section-inventory step (Q3 plan's "Section inventory frozen: the tracker table below confirmed as the canonical section list"). If yes, `DevLoginController`'s `IUserEmailService` dependency is a crosscut violation to queue for G1 fix (route dev-login through `IUserServiceRead` plus a narrower seeding-specific read/write surface, or explicitly grandfather it as dev-tooling exempt). No migration needed (y).
 
 ## G3 gap list
@@ -54,4 +60,4 @@ Flagged separately: these are gated behind `IWebHostEnvironment`/Development-onl
 
 ## Verdict
 
-`G1: 2 gaps (DebugController) · G3: 1 gap (DebugController)` — plus one unresolved scope question (DevLogin/DevSeed inclusion) that should be settled before this section's gap count is treated as final.
+`G1: 1 gap (DebugController) · G3: 1 gap (DebugController)` — corrected 2026-08-03: the missing-section-doc gap is withdrawn (the file exists), and the DevLogin/DevSeed scope question is **resolved**, not open — the frozen inventory moves those controllers to the new **Development** section, so they are out of Debug's scope and their findings must be re-audited under Development rather than counted here. Debug is a **vertical** section in the frozen taxonomy.

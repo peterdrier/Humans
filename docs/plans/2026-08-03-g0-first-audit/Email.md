@@ -46,4 +46,4 @@ Scope note: `reforge.surface-score.json` bundles **Mailer** (`IMailerAudienceSyn
 
 ## Verdict
 
-`G1: 3 gaps (corrected 2026-08-03 — Mailer.md gap retracted, it exists; added: four write paths on `email_outbox_messages`, and the `EmailOutboxMessageConfiguration` HUM0024 grandfather) · G3: 2 gaps`
+`G1: 3 gaps (corrected 2026-08-03 — Mailer.md gap retracted, it exists; added: four write paths on `email_outbox_messages`, and the `EmailOutboxMessageConfiguration` HUM0024 grandfather) · G3: 3 gaps (corrected 2026-08-03, was 2 — EF-InMemory repository test; the two DbContext-backed outbox job tests; unverified invariant-to-test mapping)`

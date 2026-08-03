@@ -30,7 +30,7 @@
 
 | What | Where | Suggested fix | No-migration-needed? |
 |------|-------|----------------|----|
-| `docs/sections/survey.md` filename is lowercase, breaking the PascalCase sibling convention | `docs/sections/survey.md` → should be `Survey.md` | Rename for consistency; update any inbound links (`docs/plans/2026-06-13-q3-transition-plan.md` and others reference it by section name, not literal path, so risk is low). | y |
+| `docs/sections/survey.md` filename is lowercase, breaking the PascalCase sibling convention | `docs/sections/survey.md` → **`docs/sections/Surveys.md`** (corrected 2026-08-03) | Rename for consistency. Target the **plural** form: the confirmed section inventory renames this canonical section `Survey` → `Surveys`, and its follow-up list calls for the doc to become `Surveys.md`. Stopping at singular `Survey.md` would land the file out of alignment with the canonical tracker name the moment it's renamed. Update inbound links (most reference it by section name, not literal path, so risk is low). | y |
 
 ## G3 gap list
 

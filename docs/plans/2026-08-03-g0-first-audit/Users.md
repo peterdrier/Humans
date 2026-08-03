@@ -21,7 +21,7 @@
 | # | Predicate | Result | Evidence |
 |---|-----------|--------|----------|
 | 1 | Repo tests on real Postgres, zero EF-InMemory | **FAIL** | `UserRepositoryTests.cs:23` and `UserRepositoryUserEmailsTests.cs:24` both use `.UseInMemoryDatabase(...)`. |
-| 2 | Service tests mock interfaces, zero `HumansDbContext` | PASS (mostly) | `AccountMergeServiceMergeTests.cs`, `DuplicateAccountServiceTests.cs`, `AccountDeletionServiceTests.cs`, `AccountProvisioningServiceTests.cs`, `UserEmailServiceTests.cs` all show **zero** `ServiceTestHarness`/`HumansDbContext` hits — properly mocked. `tests/Humans.Application.Tests/Services/Users/` (`CachingUserServiceTests.cs`, `UserServiceProfileOnboardingMutationTests.cs`, `UserStateClassifierTests.cs`) not individually re-verified for DbContext use this pass but no positive hits found in the broad scan. |
+| 2 | Service tests mock interfaces, zero `HumansDbContext` | **FAIL — corrected 2026-08-03** | The first group is genuinely clean (`AccountMergeServiceMergeTests.cs`, `DuplicateAccountServiceTests.cs`, `AccountDeletionServiceTests.cs`, `AccountProvisioningServiceTests.cs`, `UserEmailServiceTests.cs` — zero `ServiceTestHarness`/`HumansDbContext` hits, properly mocked). But one of the files this row named as *unverified* is a violation: `UserServiceProfileOnboardingMutationTests` extends `ServiceTestHarness`, constructs a concrete `UserRepository(DbFactory, Clock)`, and seeds/reads the harness's EF-InMemory `Db` directly (`ServiceTestHarness.cs:54,71`). Add it to the #766 conversion queue. |
 | 3 | Invariants/triggers each have a test | PARTIAL | Spot-check: `Attended`-monotonic invariant (ticket-sync cannot downgrade `Attended`) has at least one reference in `CachingUserServiceTests.cs`. Full traceability against the doc's ~9 invariants / 10+ triggers not verified. |
 | 4 | No skipped tests without issue ref | PASS (tentative) | No `Skip="..."` hits found in this section's test files. |
 | 5 | Tests grouped under section | PARTIAL | `tests/Humans.Application.Tests/Services/Users/` exists and is used, but `AccountMergeServiceMergeTests.cs`, `DuplicateAccountServiceTests.cs`, `AccountProvisioningServiceTests.cs`, `UnsubscribeServiceTests.cs` sit flat at `Services/` root rather than inside `Services/Users/`. Same repo-wide flat-naming pattern noted in Profiles.md. |
@@ -40,4 +40,4 @@
 
 ## Verdict
 
-**G1: 4 gaps (interceptor, entity-leak baseline×2, HUM0031×2 tracked) · G3: 1 gap (EF-InMemory repo tests)**
+**G1: 4 gaps (interceptor, entity-leak baseline×2, HUM0031×2 tracked) · G3: 2 gaps (corrected 2026-08-03, was 1 — added: `UserServiceProfileOnboardingMutationTests` is harness-inherited EF-InMemory; EF-InMemory repo tests)**

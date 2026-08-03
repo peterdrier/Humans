@@ -19,7 +19,7 @@
 | # | Predicate | Result | Evidence |
 |---|-----------|--------|----------|
 | 1 | Repo tests real Postgres, zero EF-InMemory | **PARTIAL — no repository test exists at all** | Grep for `class.*IssuesRepository|new IssuesRepository\(` across `tests/`: only `Services/IssuesServiceTests.cs` matches (service-level, uses a mock repository interface, not the real repo). There is no `tests/.../IssuesRepositoryTests.cs` or equivalent — `IssuesRepository` itself has zero dedicated repository-layer test coverage. Trivially "zero EF-InMemory" but only because there are no repo tests to have used it. |
-| 2 | Service tests mock interfaces, zero `HumansDbContext` | PASS | `Services/IssuesServiceTests.cs` — no `HumansDbContext` references. |
+| 2 | Service tests mock interfaces, zero `HumansDbContext` | **FAIL — corrected 2026-08-03** | Another inherited-setup false negative: `IssuesServiceTests` extends `ServiceTestHarness` and constructs a concrete `IssuesRepository(DbFactory)`, exercising it against the harness's `UseInMemoryDatabase`-backed `HumansDbContext` (`ServiceTestHarness.cs:54,71`). The absence of a literal `HumansDbContext` reference in the test file proves nothing. Add to the repository-mocking conversion queue (#766). |
 | 3 | Invariants/triggers each have a test | PARTIAL | Not exhaustively mapped. Auto-reopen-on-reporter-comment, comment-and-mark-resolved atomicity, and the 6-month retention sweep are documented invariants; plausibly covered by `IssuesServiceTests.cs` and a retention job test, but no line-level confirmation done this pass. |
 | 4 | No skipped tests without an issue ref | PASS | No `Skip=` anywhere in `tests/`. |
 | 5 | Tests grouped under section | **PARTIAL** | `IssuesServiceTests.cs` lives in the shared `tests/.../Services/` folder, `IssuesArchitectureTests.cs` correctly in `Architecture/`, `IssuesApiControllerTests.cs` in `Controllers/`, `IssuesAuthorizationHandlerTests.cs` in `Authorization/` — none grouped under a dedicated `tests/.../Issues/` folder the way GoogleIntegration/Notifications/Camps are. Not movable-with-section as-is. |
@@ -33,8 +33,8 @@
 
 ## G2 queue notes
 
-None identified beyond the typed-FK conversion above (schema-neutral, no migration required — it's an EF-configuration-only change).
+**Corrected 2026-08-03.** The typed-FK conversion above is schema-neutral, but that is *not* the same as having no G2 work: `IssueConfiguration` and `IssueCommentConfiguration` define **four physical User FK constraints** (`ReporterUserId`, `AssigneeUserId`, `ResolvedByUserId`, `SenderUserId` → `AspNetUsers`), and dropping the nav properties or the HUM0024 attributes does not drop those constraints. All four FK cuts belong in Issues' G2 queue; otherwise the section could enter schema cleanup with only the configuration refactor scheduled and keep every cross-section database dependency.
 
 ## Verdict
 
-`G1: 2 gaps (corrected 2026-08-03, was 1 — added: 2 HUM0024 configuration grandfathers) · G3: 2 PARTIAL (missing IssuesRepository test entirely; tests not grouped under section) — headline gap: IssuesRepository has zero dedicated test coverage`
+`G1: 2 gaps (corrected 2026-08-03, was 1 — added: 2 HUM0024 configuration grandfathers) · G3: 3 gaps (corrected 2026-08-03, was 2 PARTIAL — added: IssuesServiceTests is harness-inherited EF-InMemory; missing IssuesRepository test entirely; tests not grouped under section) — headline gap: IssuesRepository has zero dedicated test coverage`
