@@ -167,7 +167,7 @@ See [Volunteer Status](../onboarding/volunteer-status.md) for the full onboardin
 ## Security Considerations
 
 1. **OAuth Security**: No passwords stored; relies on Google's security
-2. **Session Management**: ASP.NET Core Identity handles session tokens
+2. **Session Management**: Every sign-in path (Google OAuth, magic link, gate terminal, dev login) signs in with `isPersistent: true`; the Identity application cookie carries a 14-day sliding lifetime (`ExpireTimeSpan` + `SlidingExpiration` in `Program.cs`) — any visit inside the window extends it, 14 days away requires re-login
 3. **Role Validation**: Temporal roles checked against current timestamp
 4. **Access Gating**: Global action filter routes non-Active users by `UserState`
 5. **Audit Trail**: RoleAssignment tracks who assigned roles and when

@@ -40,7 +40,7 @@ As a **signed-in human** I want to **review my previous agent conversations** so
 As an **Admin** I want to **see all agent conversations and refusals** so that **I can spot-check quality and feed corrections back into docs**.
 
 **Acceptance:**
-- `/Agent/Conversations` adapts to the role: regular users see only their own; Admins see all conversations with a Human column and filters for refusals-only, handoffs-only, and per-user.
+- `/Agent/Conversations` adapts to the role: regular users see only their own (a fixed most-recent window, no paging); Admins see all conversations with a Human column, filters for refusals-only, handoffs-only, and per-user, and Older/Newer paging (zero-based `page` query param, preserving the active filters).
 - `/Agent/Conversations/{id}` shows additional Admin-only details (token counts, tool invocations, "Show what would be sent to Anthropic" link).
 - `/Agent/Admin/Settings` exposes `Enabled`, `Model`, caps, `PreloadConfig` (Tier1/Tier2).
 
@@ -68,7 +68,7 @@ Legacy: `FeedbackReport.Source` (`AgentUnresolved`) and `FeedbackReport.AgentCon
 ## Workflows
 
 ### Turn workflow
-`User submits` → `enabled gate` → `rate-limit check` → `abuse check` → `prompt assembly` → `Anthropic streaming call (with cached prefix)` → `[tool loop, max 3]` → `persist messages` → `stream finalizer`.
+`User submits` → `enabled gate` → `rate-limit check` → `abuse check` → `prompt assembly` → `Anthropic streaming call (with cached prefix)` → `[tool loop, max 3; cap hit triggers one final tool-withheld call so the model synthesizes an answer]` → `empty-reply fallback if the loop still produced no prose` → `persist messages (turn-wide token totals across all loop iterations)` → `stream finalizer`.
 
 ### Handoff workflow (propose-only)
 Tool call `route_to_issue` with `{title, category, description}` → dispatcher returns a proposal-marker without DB writes → `AgentService.ParseIssueProposalArgs` decodes the args → `AgentService` yields an `AgentIssueProposal` SSE frame → client opens the Issues modal pre-filled → user submits via `/Issues/Submit`. The agent never writes Issue or FeedbackReport rows itself.

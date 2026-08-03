@@ -4,7 +4,9 @@
 **Branch:** `feat/ticket-transfer-wizard`
 **Tracking:** TBD (peterdrier/Humans issue to be filed)
 **Supersedes:** the vendor-writeback portions of `docs/features/tickets/ticket-transfer.md` and the
-`2026-05-12-ticket-transfer-ui-history-design.md` spec.
+`2026-05-12-ticket-transfer-ui-history-design.md` spec (historical — since deleted; current transfer
+invariants live in [`docs/sections/Tickets.md`](../../sections/Tickets.md) and
+[`docs/features/tickets/ticket-transfer.md`](../../features/tickets/ticket-transfer.md)).
 
 ## Summary
 

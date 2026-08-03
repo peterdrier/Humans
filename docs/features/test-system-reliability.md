@@ -17,7 +17,7 @@ Rebuild the test setup so the suite is a reliable signal again — CI catches wh
 
 PRs keep landing with the sentence *"the agent reported N pre-existing failures on `origin/main` unrelated to this PR — doesn't block the merge."* That happens because:
 
-1. **CI does not run integration tests.** `.github/workflows/build.yml:36` filters them out (`--filter "FullyQualifiedName!~Integration"`). Integration failures only surface when someone runs locally, then get attributed to "pre-existing" and merged around.
+1. **CI does not run integration tests.** `.github/workflows/build.yml:50` filters them out (`--filter "FullyQualifiedName!~Integration"`). Integration failures only surface when someone runs locally, then get attributed to "pre-existing" and merged around.
 2. **EF In-Memory** is used in 85 Application test files. It doesn't enforce FKs, NOT NULL, unique constraints, doesn't translate Npgsql LINQ, doesn't fire triggers — so unit tests pass while real-Postgres behavior diverges.
 3. **Per-class Testcontainers Postgres.** ~18 integration test classes × `IClassFixture<HumansWebApplicationFactory>` × no parallelization control = up to 18 concurrent Postgres containers booting, each running all 96 migrations. Resource contention causes intermittent failures.
 4. **Hangfire static state leakage.** `JobStorage.Current` is per-AppDomain. The codebase has six `if (!IsEnvironment("Testing"))` guards in `Program.cs` and infrastructure. Every new Hangfire-touching feature is one missed guard from breaking tests — this is the "Hangfire-init" failure cluster pattern.
@@ -44,7 +44,7 @@ No third option. The act of triage will surface the actual root causes (Hangfire
 ### P1 — Turn integration tests on in CI
 **Value: high · Effort: small · Risk: low. Depends on P0.**
 
-Remove `--filter "FullyQualifiedName!~Integration"` from `.github/workflows/build.yml:36`. Either run integration tests in the same job (simplest) or as a separate job with Postgres service container (cleaner separation, allows per-job timeout tuning). Keep the existing `--blame-hang-timeout 2m` guard.
+Remove `--filter "FullyQualifiedName!~Integration"` from `.github/workflows/build.yml:50`. Either run integration tests in the same job (simplest) or as a separate job with Postgres service container (cleaner separation, allows per-job timeout tuning). Keep the existing `--blame-hang-timeout 2m` guard.
 
 **Definition of done:** integration tests run on every PR. A new "pre-existing failure" cannot land on `main` without being noticed.
 

@@ -264,7 +264,9 @@ When listing permissions, the system uses `permissionDetails` from the Drive API
 // 2. Role is not "owner"
 // 3. Has a valid email address
 // 4. Is not a service account (.iam.gserviceaccount.com)
-// 5. Is NOT inherited (permissionDetails.All(d => d.Inherited) == false)
+// 5. Has NO inherited component (permissionDetails.Any(d => d.Inherited) == false) —
+//    a permission with a mix of direct and inherited detail entries is excluded
+//    too, since Drive still 403s deleting it at this level (#945)
 ```
 
 ### API Requirements
@@ -579,7 +581,7 @@ On Google API error (resource provisioning):
 | Invalid email (400) | Permanent — mark user email rejected |
 | Permission denied (403) | Permanent — no Google account for address, mark rejected |
 | Folder not found | Re-provision |
-| Inherited permission delete | Skip (cannot remove inherited Shared Drive permissions) |
+| Inherited permission delete | Excluded from the removal set before the delete is ever attempted — any permission with an inherited component (not just fully-inherited ones) is skipped. If Drive still 403s on a race (inheritance changed between list and delete), the failure is classified terminal, logged once, and not retried until the next reconciliation pass (#945) |
 
 ### Failed-Sync Admin Meter
 

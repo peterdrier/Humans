@@ -175,7 +175,8 @@ Append-on-approve, drained by `HoldedExpenseOutboxJob`. Fields: `EventType` (Cre
 **Status:** (A) Migrated (2026-05-10, this PR).
 
 - `ExpenseReportService` lives in `Humans.Application.Services.Expenses` and depends only on Application-layer abstractions.
-- `ExpenseRepository` (impl `Humans.Infrastructure/Repositories/Expenses/ExpenseRepository.cs`, §15b Singleton + `IDbContextFactory`) is the only file that touches expense tables via `DbContext`.
+- `ExpenseRepository` (impl `Humans.Infrastructure/Repositories/Expenses/ExpenseRepository.cs`, §15b Singleton + `IDbContextFactory<ExpensesDbContext>`) is the only file that touches expense tables via `DbContext`.
+- **DbContext** — `ExpensesDbContext` (`src/Humans.Infrastructure/Data/ExpensesDbContext.cs`, `internal sealed`) is the section's own per-section EF model (nobodies-collective/Humans#858 split): maps only `expense_reports`, `expense_lines`, `expense_attachments`, `holded_expense_outbox_events`, with its own `__EFMigrationsHistory_Expenses` table and migrations under `Migrations/Expenses/`. Same database and connection as `HumansDbContext` — the split partitions the EF model, not the database.
 - **Decorator decision — no caching decorator.** Expense data is mutable and user-specific; low-traffic at ~500 users.
 - **Cross-domain navs** — none declared. All cross-section linkage is scalar FK only.
 - **Cross-section calls** route through `IBudgetService`, `ITeamService`, `IProfileService`, `IUserService`, `IAuditLogService`, `IHoldedFinanceService` (Finance, Feature 2).

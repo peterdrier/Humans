@@ -69,9 +69,11 @@ assertion families that are plausible analyzer candidates:
   generalized arch test; promote it to an analyzer once the remaining
   grandfather story is clear.
 - Repository implementations should be sealed, live under
-  `Humans.Infrastructure.Repositories.*`, and use `IDbContextFactory` rather
-  than direct `HumansDbContext` construction. The first two are already
-  generalized arch tests.
+  `Humans.Infrastructure.Repositories.*`, and use `IDbContextFactory<TContext>`
+  rather than constructing an application context directly (`HumansDbContext`
+  or any per-section context). The first two are already generalized arch tests
+  (`IRepositoryImplementationsAreSealedRule`,
+  `RepositoryImplementationsLiveInInfrastructureRule`).
 - Interface marker obligations should be compile-time enforced:
   `I*Service`/`I*Query`/`I*Calculator` extend `IApplicationService`, and
   `I*Repository` extends `IRepository`.
@@ -79,9 +81,15 @@ assertion families that are plausible analyzer candidates:
   repeated Ticket Tailor, Stripe, and Google bridge tests are one rule family:
   application interfaces expose DTOs/abstractions, infrastructure owns vendor
   SDK types.
-- DbSet write ownership should become one analyzer family: only the owning
-  repository/section writes its owned DbSets. Today AuditLog, Events, and
-  Notifications each carry bespoke ratchets for the same invariant.
+- DbSet ownership as one analyzer family — only the owning repository touches
+  its owned DbSets — **(SHIPPED)** as `HUM0025`
+  (`SingleRepositoryPerTableAnalyzer`), the day after this audit: a DbSet
+  referenced, read or written, by more than one `IRepository` implementation is
+  an error, with `[Grandfathered("HUM0025", …, scope: "<DbSet>")]` per
+  (repository, table) pair. The bespoke AuditLog / Events / Notifications
+  ratchets it replaced are gone. Since the per-section split it matches DbSets
+  on **every** application context via `Internal/SectionDbContexts.cs`, not just
+  `HumansDbContext`. Catalogued in `code-analysis.md`.
 - Application service read methods should not expose domain/EF entities.
   `ApplicationServiceEntityReadReturns.baseline.txt` has existing debt, so this
   needs either a grandfather mechanism or a warning-first migration.

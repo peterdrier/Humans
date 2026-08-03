@@ -33,6 +33,8 @@ None. Holded has no UI in v1.
 
 - API key is read from `HOLDED_API_KEY` env var only and is never written to logs, audit entries, or error messages.
 - All HTTP calls go through one typed `HttpClient` (`HoldedClient`). No raw `HttpClient.Send` elsewhere.
+<!-- wheat: docs/superpowers/specs/2026-05-25-holded-finance-integration-design.md §1 API reality -->
+- **Holded REST API v1 only** — every path is `/api/invoicing/v1/…` or `/api/accounting/v1/…`, authenticated with the `key` header. Holded's **API v2** is not usable here (live probe, 2026-05-25): it returned `403 Forbidden` on every endpoint tried, with both `Authorization: Bearer` and the `key` header, because it requires a registered Holded developer OAuth app with scopes this integration does not have. (Distinct from "v1" elsewhere in this doc, which means the first version of the *Humans* Holded section.)
 - Currency is EUR-only. Multi-currency is out of scope.
 - 5xx and network failures throw `HoldedTransientException`. 4xx failures throw `HoldedPermanentException`. Consumers choose retry policy.
 

@@ -8,7 +8,7 @@
 
 **Tech Stack:** .NET, EF Core (Npgsql), NodaTime, Hangfire (`IRecurringJob`), ASP.NET MVC, xUnit + AwesomeAssertions (`[HumansFact]`).
 
-**Spec:** `docs/superpowers/specs/2026-05-25-holded-finance-integration-design.md` (Feature 1 + provisioning + §1 API findings + §6 probes).
+**Spec:** `docs/superpowers/specs/2026-05-25-holded-finance-integration-design.md` (historical — since deleted; §1's API-version finding now lives in [`docs/sections/Holded.md`](../../sections/Holded.md) and §3's creditor-link rule in [`docs/sections/Finance.md`](../../sections/Finance.md)).
 
 **Worktree:** already created at `.worktrees/holded-finance` on branch `feat/holded-finance-integration`. All work happens there.
 

@@ -203,10 +203,13 @@ Selected routes:
 | `POST /Teams/{slug}/Shifts/VoluntellRange` | Voluntell range |
 | `GET /Teams/{slug}/Shifts/Tags/Search` | Tag autocomplete |
 | `POST /Teams/{slug}/Shifts/Tags/Create` | Create new tag |
+| `GET /Teams/{slug}/Shifts/Email` | Compose a team-wide coordinator message to everyone with an active signup across the team's upcoming rotas |
+| `POST /Teams/{slug}/Shifts/Email` | Send the team-wide coordinator message |
 | `GET /Shifts/Dashboard` | Cross-department coordinator dashboard |
 | `GET /Shifts/Dashboard/PostEventStats` | Post-event stats: completion/no-show rates by department (`ShiftDashboardAccess`) |
 | `GET /Shifts/Dashboard/SearchVolunteers` | Dashboard volunteer search |
 | `POST /Shifts/Dashboard/Voluntell` | Dashboard voluntell |
+| `GET /Shifts/Admin/EarlyEntry` | Cross-source Early Entry roster (Camps + Shifts + Teams grants), flagging humans who hold EE from more than one source. Orchestrator page, deliberately not its own section; interim location, gated by `ShiftDashboardAccess` |
 
 ## Actors & Roles
 
@@ -229,6 +232,8 @@ Selected routes:
 - Rota visibility is controlled by `IsVisibleToVolunteers` (default: visible). Hidden rotas are only shown to privileged roles (Admin/NoInfoAdmin/VolunteerCoordinator/dept coordinator). Browse and Mine queries pass `includeHidden = isPrivileged`. The Hidden pill rendered on hidden rotas is therefore admin-only by virtue of the server-side filter (no separate role check).
 - Signup-list visibility on `/Shifts` is currently public to all authenticated viewers (temporary policy — see [feature 26](../features/shifts/shift-signup-visibility.md)). The browse partials (`_EventRotaTable`, `_BuildStrikeRotaTable`) render avatar chips for everyone; pending signups appear faded with a dashed border and the localized "Pending" label in the hover popover. `includeSignups` is unconditionally true so the column has data; the `isPrivileged` computation is preserved so reverting visibility is a one-line flip in `ShiftsController`. Admin-side signup lists (`/Teams/{slug}/Shifts`) remain coordinator-gated via `CanApproveAsync`.
 - Voluntelling (admin/coordinator-initiated signup) creates a Confirmed `ShiftSignup` with `Enrolled = true` and records `EnrolledByUserId` / `ReviewedByUserId`. Range voluntell uses a shared `SignupBlockId` and skips shifts that are full or already booked.
+<!-- wheat: docs/superpowers/specs/2026-05-27-team-rotas-coordinator-message-design.md §Audience -->
+- The team-wide coordinator message (`/Teams/{slug}/Shifts/Email`) targets distinct users holding a **Pending or Confirmed** signup on any shift in any of the team's rotas that still has at least one shift not yet ended (`shift.GetAbsoluteEnd(eventSettings) > now` — end, not start). Each recipient gets exactly one email listing only their own shifts, grouped by rota; `Reply-To` is the sending coordinator while `From` stays the shared address.
 - Voluntell (single and range) is permitted on **past shifts** so coordinators can correct the rota retroactively; capacity ceiling and overlap checks still apply. Self-signup remains unavailable for past shifts (a browsing-window property, not a hard service guard). In the department admin view, past and future shifts are managed through the **same Manage control**: a unified panel listing confirmed humans with **Remove** (always), plus **Mark No-Show** and **Bail Range** only when the shift is past (post-shift corrections). Past shifts additionally list no-show/bailed humans as read-only history. The **Voluntell** control is available on all shifts.
 - Range signups (build/strike rotas) create signups for every all-day shift in the date range under one `SignupBlockId`; conflicts and capacity are reported as warnings, not failures (provided at least one slot is available). The whole block is bailed/approved/refused atomically by `BailRangeAsync` / `ApproveRangeAsync` / `RefuseRangeAsync`.
 - Event settings is a singleton per event — `CreateAsync` / `UpdateAsync` reject a second IsActive=true row.
@@ -280,6 +285,8 @@ Selected routes:
 - When a Bail or Remove drops the confirmed count below `MinVolunteers`, a `ShiftCoverageGap` actionable notification (priority High) is sent to the department's coordinators.
 - Range signup, range voluntell, range bail, range approve, and range refuse all use a shared `SignupBlockId` and operate on the entire block atomically (with per-shift filtering for capacity/conflicts on creation paths).
 - Moving a rota to a different team writes an `AuditAction.RotaMovedToTeam` log entry and updates `Rota.TeamId` via a targeted update (only `TeamId` + `UpdatedAt` are marked modified).
+<!-- wheat: docs/superpowers/specs/2026-05-27-team-rotas-coordinator-message-design.md §Audit -->
+- Sending the team-wide coordinator message writes one `AuditAction.CoordinatorTeamRotasMessageSent` entry per dispatch — not one per recipient.
 - Deleting a rota or shift is rejected if any signup is in Confirmed state. Pending signups on a deleted rota/shift are auto-Cancelled via the entity's `Cancel` method.
 - When an account merge accepts, `IShiftSignupService.ReassignToUserAsync` re-FKs `ShiftSignup` rows (volunteer / enrolled-by / reviewed-by user references) from source to target; `IShiftManagementService.ReassignProfilesAndTagPrefsToUserAsync` re-FKs `VolunteerEventProfile` + `VolunteerTagPreference` (with conflict resolution since both are `(UserId)`-unique); `IGeneralAvailabilityService.ReassignToUserAsync` re-FKs `GeneralAvailability`. Called only by `IAccountMergeService.AcceptAsync` (Profiles section).
 

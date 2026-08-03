@@ -167,6 +167,17 @@ Nobodies Collective operates through self-organizing working groups (teams). Tea
 - Turning Early Entry off on a team keeps existing grants (they just stop counting toward early access)
 - Each grant feeds the festival early-entry roster as "{Team name}: {Project name}"
 
+### US-6.13: Board/Admin Team Roster
+**As a** Board member or Admin
+**I want to** see every member's legal name next to their burner name for a specific team
+**So that** I can identify who's who for compliance/legal purposes without needing coordinator access
+
+**Acceptance Criteria:**
+- Roster page at `/Teams/{slug}/Roster`, gated to Board or Admin (narrower than the coordinator-inclusive team-management resolver used elsewhere on `TeamAdminController`)
+- Lists every team member with their human card (avatar + burner name), legal name, and join date
+- Sorted by legal name by default; any column header re-sorts the table
+- Linked from the team detail page's management sidebar, visible only to Board/Admin
+
 ## Workflows
 
 ### Join Request State Machine

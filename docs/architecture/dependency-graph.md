@@ -95,7 +95,6 @@ graph LR
     GovIndex[GovernanceIndexService]:::governance
 
     LegalDoc[LegalDocumentService]:::legal
-    AdminLegal[AdminLegalDocumentService]:::legal
     LegalSync[LegalDocumentSyncService]:::legal
     Consent[ConsentService]:::consent
 
@@ -215,8 +214,11 @@ graph LR
     CampRole --> Audit
 
     %% Cantina section (own thin section, registered via Shifts ext)
+    %% CantinaRosterService also reads IBurnSettingsService (gate-open cutoff for the
+    %% on-site cohort window) — missing from the prior diagram; added this sweep.
     Cantina --> ShiftMgmt
     Cantina --> User
+    Cantina --> BurnSettings
 
     %% CityPlanning section
     CityPlan --> Camp
@@ -262,8 +264,10 @@ graph LR
     GovIndex --> User
 
     %% Legal + Consent sections
-    AdminLegal --> LegalSync
-    AdminLegal --> Team
+    %% #751 (PR #1155): AdminLegalDocumentService was consolidated into LegalDocumentSyncService —
+    %% it's now the sole writer for the Legal-document aggregate and implements both
+    %% ILegalDocumentSyncService and IAdminLegalDocumentService directly. The separate
+    %% AdminLegal node/edges (AdminLegal --> LegalSync, AdminLegal --> Team) are gone.
     LegalSync --> User
     LegalSync --> Team
     LegalSync --> NotifEmitter
@@ -579,11 +583,12 @@ graph LR
     %% dashed arrows pop visually against eager solid arrows. The first lazy
     %% edge in this diagram is the (N+1)-th link after the eager arrows
     %% above; recompute the index range whenever edges are added or removed.
-    %% Eager count: 285 eager links, indices 0..284. (Net +7 vs prior sweep's 278:
-    %% +Gate → TicketQ / EarlyEntry / BurnSettings / ShiftMgmt / Role / User / Audit —
-    %% the new Gate (admissions) section landed in #1066.)
-    %% The 19 lazy edges are indices 285..303.
-    linkStyle 285,286,287,288,289,290,291,292,293,294,295,296,297,298,299,300,301,302,303 stroke:#f97316,stroke-width:2.5px
+    %% Eager count: 284 eager links, indices 0..283. (Net -1 vs prior sweep's 285:
+    %% +Cantina → BurnSettings (missing edge found this sweep) -2 AdminLegalDocumentService
+    %% edges (AdminLegal --> LegalSync, AdminLegal --> Team — the node was consolidated into
+    %% LegalDocumentSyncService, #751/PR #1155).)
+    %% The 19 lazy edges are indices 284..302.
+    linkStyle 284,285,286,287,288,289,290,291,292,293,294,295,296,297,298,299,300,301,302 stroke:#f97316,stroke-width:2.5px
 ```
 
 ## Cycles broken by lazy-resolution
@@ -630,11 +635,11 @@ Threshold: services with >= 3 incoming edges (eager + lazy combined). Counts are
 | `MembershipCalculator` | 4 | 1 | Membership-status snapshot consumed by Onboard, Dash, AdminDash, OnboardingWidgetState; lazy half of the Consent cycle. ShiftSignupService dropped its eager `IMembershipCalculator` earlier. |
 | `BudgetService` | 4 | 0 | Read by TicketQ, TicketBudget, ExpenseReport, and now `HoldedFinanceService` (Finance section). |
 | `AdminAuthorizationService` | 4 | 0 | Admin-gate guard injected by User/Team/ShiftMgmt/ShiftSign. Reads `IRoleAssignmentRepository` + `ICurrentUserContext` only — zero outbound service edges. |
-| `LegalDocumentSyncService` | 3 | 0 | Required-docs snapshot for Membership + Consent + AdminLegal. |
+| `LegalDocumentSyncService` | 2 | 0 | Required-docs snapshot for Membership + Consent. Now also the sole writer for the admin write surface (`IAdminLegalDocumentService`, consolidated in #751/PR #1155) — no separate `AdminLegalDocumentService` node/edges remain. |
 | `NotificationInboxService` | 3 | 0 | In-app inbox read/write; injected by Consent, HumanLifecycle, and IssuesService (added this sweep). |
 | `TicketQueryService` | 5 | 2 | `ITicketServiceRead` — read by Dash, AcctDel, Survey, `TicketingBudgetService` (paid orders via the read interface after the #815 budget-repo removal), and now `GateService` (barcode → attendee lookup, #1066). Lazy-in from ShiftMgmt + UEmail cycles. |
 | `ShiftViewService` (`IShiftView`) | 5 | 0 | Read-only shift-view projection (repo-only adapter, zero outbound service edges). Injected by Dash, AdminDash, OnboardWidget, Survey, Workload; also fanned into the Mailer audiences (per-audience deps, not drawn). |
-| `BurnSettingsService` | 3 | 0 | Burn-event settings (repo-only adapter). Crossed the threshold this sweep: ShiftSign, EventSvc, and now `GateService` (gate-open cutoff, #1066). |
+| `BurnSettingsService` | 4 | 0 | Burn-event settings (repo-only adapter). Consumers: ShiftSign, EventSvc, `GateService` (gate-open cutoff, #1066), and now `CantinaRosterService` (gate-open cutoff for the on-site cohort window — missing edge found this sweep). |
 
 Below the >= 3 threshold but tracked for narrative continuity:
 
@@ -664,7 +669,8 @@ Below the >= 3 threshold but tracked for narrative continuity:
 - **#881** — HumanLifecycle/Consent/Onboarding wiring: `ConsentService` now eagerly injects `IHumanLifecycleService` for consent-suspension restore (new eager `Consent → HumanLifecycle` edge). `OnboardingService` dropped `IHumansMetrics` (eager `Onboard → Metrics` removed; Metrics fan-in 5 → 4) and gained `IConsentServiceRead` + `IHumanLifecycleService` dependencies (new eager `Onboard → Consent` and `Onboard → HumanLifecycle` edges added in the current sweep — these were present in code but missing from the prior diagram). `UserStateClassifier` (added in #881) is a domain helper, not a service — no node. `HumanLifecycleService` ctor unchanged (`HumanLifecycle → User/NotifEmitter/NotifInbox/Audit/Metrics`).
 - **#898** — Shift Summary by Camp (read-only): `ShiftManagementService` gained summary methods that lazy-resolve `ICampServiceRead` via `IServiceProvider` (new dashed `ShiftMgmt -. lazy .-> Camp` edge). The ctor is unchanged — no new eager edges.
 - **#1066** — Gate (admissions) section landed: `GateService` (Application/Services/Gate) evaluates gate scans (barcode → admission decision) against `GateAdmissionRules` using cross-section reads — `ITicketServiceRead` (current-event attendee lookup), `IEarlyEntryService` (early-entry eligibility), `IBurnSettingsService` (gate-open cutoff), `IShiftManagementService` (current gate-roster shifts), `IRoleAssignmentService` (supervisor-override role verification), `IUserService` — and records decisions to its own `gate_scan_events` table (`IGateRepository`) plus the audit log. Seven new eager edges; zero inbound service edges. It also registers `IUserMerge` and `IUserDataContributor` fan-out implementations (account-merge and GDPR-export participation without new edges).
-- New thin sections since the previous sweep: **Cantina** (`CantinaRosterService` reads ShiftMgmt + User), **EarlyEntry** (`EarlyEntryService` fans an `IEnumerable<IEarlyEntryProvider>` — no eager service edges), **Workload** (`WorkloadService` reads Team + User via ShiftView), **RotaCoordinatorMessage/VolunteerTrackingExport** (new Shifts services; `GeneralAvailabilityService` was later deleted in #820), **SystemSettings** (`SystemSettingsService` — see #889 above). None take dependencies beyond existing service interfaces.
+- **#751 (PR #1155)** — Legal-document writers consolidated: `AdminLegalDocumentService` was merged into `LegalDocumentSyncService`, which is now the sole writer for the Legal-document aggregate (`legal_documents`, `document_versions`) and implements both `IAdminLegalDocumentService` (admin create/update/archive/version-summary edits) and `ILegalDocumentSyncService` (GitHub-sync surface). Being the single writer lets it call `ILegalDocumentCacheInvalidator.InvalidateAll()` directly instead of relying on a cross-cutting SaveChanges interceptor. The separate `AdminLegal` node and its two edges (`AdminLegal --> LegalSync`, `AdminLegal --> Team`) are gone; `LegalSync`'s own edges (`LegalSync --> User/Team/NotifEmitter`) are unchanged.
+- New thin sections since the previous sweep: **Cantina** (`CantinaRosterService` reads ShiftMgmt + User + BurnSettings), **EarlyEntry** (`EarlyEntryService` fans an `IEnumerable<IEarlyEntryProvider>` — no eager service edges), **Workload** (`WorkloadService` reads Team + User via ShiftView), **RotaCoordinatorMessage/VolunteerTrackingExport** (new Shifts services; `GeneralAvailabilityService` was later deleted in #820), **SystemSettings** (`SystemSettingsService` — see #889 above). None take dependencies beyond existing service interfaces.
 - **ICalFeed section** (`ICalFeedService` — iCal personal feed): orchestrator that fans `IEnumerable<ICalendarFeedContributor>` into one VCALENDAR. Implemented contributors: `EventService` (favourited approved events, with recurrence expansion) and `ShiftSignupService` (signed-up shifts). The fan-out interface pattern means `ICalFeedService` has no direct eager edges to those services — only `ICalFeedService → User` (token validation via `IUserServiceRead`). Same pattern as `EarlyEntryService`.
 - **GoogleTranslationService** (GoogleIntegration section): thin connector facade over `IGoogleTranslationClient` (Infrastructure). No service→service outbound edges. Consumed by `SurveyService` for translation pre-fill (`Survey → GTrans`).
 - **CityPlanning — read-split boundary (`ICityPlanningServiceRead`, #current sweep):** `ICityPlanningService` now extends `ICityPlanningServiceRead`, exposing the per-year settings projection (`GetSettingsAsync`), the registration-info scalar (`GetRegistrationInfoAsync`), and the team-membership check (`IsCityPlanningTeamMemberAsync`) as the cross-section read surface. As of this sweep, no Application-layer service injects `ICityPlanningServiceRead` — the current consumers are Web-layer controllers/view components (`CampController`, `ContainerAuthorizationHandler`, `CampAdminPageBuilder`). When a service consumer is added, the edge must be drawn to the `CityPlan` node per the read-split convention. No Mermaid edges changed.

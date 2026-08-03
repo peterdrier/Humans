@@ -12,7 +12,7 @@
 - Build/test: `dotnet build Humans.slnx -v quiet`, `dotnet test Humans.slnx -v quiet` (the `-v quiet` is required).
 - Run a single test: `dotnet test Humans.slnx -v quiet --filter "FullyQualifiedName~EarlyEntryServiceTests"`.
 - All work happens in the `early-entry-roster` worktree on branch `early-entry-roster`.
-- Spec: `docs/superpowers/specs/2026-05-25-early-entry-roster-design.md`.
+- Spec: `docs/superpowers/specs/2026-05-25-early-entry-roster-design.md` (historical — since deleted; the shipped roster route lives in [`docs/sections/Shifts.md`](../../sections/Shifts.md) and the EE-stub rule in [`docs/sections/Tickets.md`](../../sections/Tickets.md)).
 
 ---
 

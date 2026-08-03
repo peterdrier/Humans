@@ -99,7 +99,7 @@ All Google integration management is consolidated in `GoogleController` (`[Route
 ## Invariants
 
 - All Google Drive resources are on Shared Drives. The system does not use regular (My Drive) folders.
-- Only direct permissions are managed by the system. Inherited Shared Drive permissions are excluded from drift detection and sync.
+- Only direct permissions are managed by the system. A permission with any inherited component — not only a fully-inherited one — is excluded from drift detection and sync, since Drive still refuses to delete a partially-inherited permission at this level (#945). A Drive permission-delete that still 403s as inherited (a race between listing and deleting) is classified terminal, logged once, and not retried until the next reconciliation pass.
 - Drive folders with `RestrictInheritedAccess = true` have `inheritedPermissionsDisabled` enforced by the reconciliation job. Drift (manual re-enablement of inheritance) is detected and corrected automatically, with an audit trail entry.
 - Sync settings are per-service (Google Drive, Google Groups, Discord). Setting a service to None disables sync without redeploying.
 <!-- wheat: docs/plans/2026-03-09-google-groups-sync-modes-design.md §Design Principles -->
