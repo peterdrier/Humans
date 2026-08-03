@@ -33,7 +33,7 @@ sections' data, just through their read interfaces rather than raw EF, which is 
 | # | Predicate | Result | Evidence |
 |---|-----------|--------|----------|
 | 1 | Repo tests real Postgres, zero EF-InMemory | FAIL | `tests/.../Notifications/NotificationRepositoryTests.cs:21` calls `.UseInMemoryDatabase(...)`. |
-| 2 | Service tests mock interfaces, zero `HumansDbContext` | **PARTIAL** | `NotificationServiceTests.cs`, `NotificationEmitterTests.cs`, `NotificationInboxServiceTests.cs` — no `HumansDbContext` references (clean). But `CleanupNotificationsJobTests.cs:17` constructs a real `HumansDbContext` over `.UseInMemoryDatabase(...)` rather than mocking `INotificationRepository` — same anti-pattern as GoogleIntegration's job tests. |
+| 2 | Service tests mock interfaces, zero `HumansDbContext` | **FAIL — corrected 2026-08-03** | The "clean" reading of the three service-test files was a false negative. `NotificationServiceTests.cs`, `NotificationEmitterTests.cs` **and** `NotificationInboxServiceTests.cs` each declare a real `HumansDbContext`, configure it with `.UseInMemoryDatabase(...)`, and construct a concrete `NotificationRepository` — the same anti-pattern as `CleanupNotificationsJobTests.cs:17`. All **four** files violate this predicate; converting only the job test would leave it failing. |
 | 3 | Invariants/triggers each have a test | PARTIAL | Not exhaustively mapped. Shared-resolution-across-recipients, actionable-cannot-be-dismissed, and the meter/no-duplicate-notification rule are documented invariants that plausibly map to `NotificationServiceTests`/`NotificationInboxServiceTests`, but no line-level confirmation done. |
 | 4 | No skipped tests without an issue ref | PASS | No `Skip=` anywhere in `tests/`. |
 | 5 | Tests grouped under section | PASS | `tests/Humans.Application.Tests/Notifications/**` — cleanly grouped, including the repo and job tests. |
@@ -43,6 +43,11 @@ sections' data, just through their read interfaces rather than raw EF, which is 
 1. **Three writer-services on one repository** (predicate 2) — `NotificationEmitter.SendAsync`, `NotificationService.SendToRoleAsync`, `NotificationInboxService`'s resolve/dismiss/mark-read/bulk methods all mutate `notifications`/`notification_recipients`. Where: `src/Humans.Application/Services/Notifications/{NotificationEmitter,NotificationService,NotificationInboxService}.cs`. The split exists to break a real DI cycle concern, which is a legitimate reason — but it's still a #751-pattern gap as written, not a pass; needs an explicit call on whether this is an accepted exception (like the read/write split elsewhere) or should consolidate. No-migration-needed: y.
 2. **HUM0024 cross-section EF join grandfathers** (predicate 5) — `NotificationConfiguration.cs:8-12`, `NotificationRecipientConfiguration.cs:8-12`, typed `HasOne<User>()` FKs to `AspNetUsers`. Same pattern as every other table-owning section in this batch; no queued G2 item beyond the generic doc anchor. No-migration-needed: y (pending liveness verification).
 
+## G3 gap list
+
+1. **`NotificationRepositoryTests.cs:21` on EF-InMemory** — convert to the shared Postgres fixture (#764/#766). No-migration-needed: y.
+2. **All four service/job tests build a real `HumansDbContext` over `UseInMemoryDatabase` with a concrete `NotificationRepository`** — `NotificationServiceTests.cs`, `NotificationEmitterTests.cs`, `NotificationInboxServiceTests.cs`, `CleanupNotificationsJobTests.cs:17`. (Corrected 2026-08-03: the first three were originally read as clean, so the remediation list named only the job test — converting just that one would leave G3.2 failing.) Convert all four to `Substitute.For<INotificationRepository>()` per #766. No-migration-needed: y.
+
 ## G2 queue notes
 
 The 2 HUM0024 grandfathers above are this section's G2 demolition candidate, same shape as Campaigns/Feedback/etc. — file alongside those if a tracked issue doesn't exist yet.
@@ -51,4 +56,4 @@ The 2 HUM0024 grandfathers above are this section's G2 demolition candidate, sam
 
 ## Verdict
 
-`G1: 2 gaps (corrected 2026-08-03, was "met") · G3: 2 gaps (+1 PARTIAL) — headline gaps: (1) three writer-services routed through one repository (NotificationEmitter/NotificationService/NotificationInboxService), (2) HUM0024 grandfathers on NotificationConfiguration/NotificationRecipientConfiguration; G3 headline unchanged: NotificationRepositoryTests + CleanupNotificationsJobTests both on EF-InMemory instead of mocked interfaces / shared Postgres fixture`
+`G1: 2 gaps (corrected 2026-08-03, was "met") · G3: 2 gaps (+1 PARTIAL) — headline gaps: (1) three writer-services routed through one repository (NotificationEmitter/NotificationService/NotificationInboxService), (2) HUM0024 grandfathers on NotificationConfiguration/NotificationRecipientConfiguration; G3 headline (corrected 2026-08-03): NotificationRepositoryTests plus ALL FOUR service/job tests are on EF-InMemory with a concrete NotificationRepository, not mocked interfaces / shared Postgres fixture`

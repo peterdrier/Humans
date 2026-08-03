@@ -104,9 +104,11 @@ The safety net plus the map. Nothing destructive starts before G0 closes.
       (per-section dead columns/tables, cross-section FKs, non-conforming table names).
 - [x] **First audit pass (tracker-taxonomy scope):** all 33 sections in the tracker below
       scored against G1–G3 predicates ([`2026-08-03-g0-first-audit/`](2026-08-03-g0-first-audit/));
-      tracker filled. **Scope caveat:** the rows admitted at the 2026-08-03 freeze
-      (`Gate`, `Settings`, `Development`, `Gdpr`, `Search`) have no scorecards yet and
-      get a follow-up audit pass before G0 closes.
+      tracker filled.
+- [ ] **Audit the five sections admitted at the 2026-08-03 freeze:** `Gate`, `Settings`,
+      `Development`, `Gdpr`, `Search` have no scorecards yet. Split out as its own gate item
+      2026-08-03 — it was previously only a prose caveat on the item above, which meant the
+      checklist could read complete while five canonical sections had never been scored.
 
 ### G1 — Ownership (per section): *your data is yours alone*
 
@@ -297,33 +299,33 @@ sections and shared contracts noted explicitly. (`—` = not yet audited.)
 |---|---|---|---|---|---|---|
 | Agent | vertical | 2 gaps | — | 2 gaps | — | — |
 | AuditLog | **horizontal** | 2 gaps | — | 2 gaps | — | — |
-| Auth | **horizontal** | 4 gaps | — | 2 gaps | — | — |
-| Budget | vertical | 3 gaps | — | 3 gaps | — | — |
+| Auth | **horizontal** | 4 gaps | — | 3 gaps | — | — |
+| Budget | vertical | 3 gaps | — | 4 gaps | — | — |
 | Calendar (incl. ICalFeed) | vertical | 2 gaps | — | 3 gaps | — | — |
 | Campaigns | vertical | 2 gaps | — | 2 gaps | — | — |
-| Camps | vertical | 4 gaps | — | 1 gap | — | — |
+| Camps | vertical | 4 gaps | — | 2 gaps | — | — |
 | Cantina | vertical | 3 gaps | — | ✅ | — | — |
-| CityPlanning | vertical | 2 gaps | — | 2 gaps | — | — |
+| CityPlanning | vertical | 2 gaps | — | 3 gaps | — | — |
 | Containers | vertical | ✅ | — | 2 gaps | — | — |
 | Debug | **horizontal** | 2 gaps | — | 1 gap | — | — |
 | Development *(new 2026-08-03 — dev-only, never loaded in prod; takes DevLogin/DevSeed)* | vertical | — | — | — | — | — |
-| Email | vertical | 3 gaps | — | 2 gaps | — | — |
+| Email | vertical | 3 gaps | — | 3 gaps | — | — |
 | Events | vertical | 2 gaps | — | 1 gap | — | — |
 | Expenses | vertical | ✅ | — | 2 gaps | — | — |
-| Feedback | vertical | 1 gap | — | 2 gaps | — | — |
+| Feedback | vertical | 1 gap | — | 3 gaps | — | — |
 | Finance | vertical | ✅ | — | 1 gap | — | — |
 | Gate *(new row 2026-08-03)* | vertical | — | — | — | — | — |
 | Gdpr *(new row 2026-08-03)* | **orchestrator** | — | — | — | — | — |
 | GoogleIntegration | **vendor connector** | 3 gaps | — | 2 gaps | — | — |
-| Governance | vertical | ✅ | — | 2 gaps | — | — |
+| Governance | vertical | 4 gaps | — | 3 gaps | — | — |
 | Guide | vertical | 1 gap | — | ✅ | — | — |
 | Holded | **vendor connector** | ✅ | — | ✅ | — | — |
 | Issues | vertical | 2 gaps | — | 2 gaps | — | — |
-| Consent *(renamed from LegalAndConsent)* | vertical | 3 gaps | — | 3 gaps | — | — |
+| Consent *(renamed from LegalAndConsent)* | vertical | 3 gaps | — | 4 gaps | — | — |
 | Mailer | **vendor connector** | ✅ | — | ✅ | — | — |
 | Notifications | vertical | 2 gaps | — | 2 gaps | — | — |
 | Onboarding | **orchestrator** | ✅ | — | ✅ | — | — |
-| Scanner | vertical | ✅ | — | 1 gap | — | — |
+| Scanner | vertical | ✅ | — | ✅ | — | — |
 | Search *(new row 2026-08-03)* | **orchestrator** | — | — | — | — | — |
 | Settings *(ex-SystemSettings; absorbs #864)* | vertical | — | — | — | — | — |
 | Shifts | vertical | 5 gaps | — | 2 gaps | — | — |

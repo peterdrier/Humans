@@ -65,6 +65,14 @@ HUM0024, `RoleAssignmentConfiguration.cs:8-12`.
 
 ## Governance
 
+### Cross-section FK
+**Added 2026-08-03** — the original pass recorded Governance as having none, which also made its
+G1.4 PASS wrong. Four typed `HasOne<User>()` relationships → `AspNetUsers` (Users) across three
+Governance-owned tables: `ApplicationConfiguration.cs:49-51` (`ReviewedByUserId`) and `:56-58`
+(`UserId`); `ApplicationStateHistoryConfiguration.cs:27-29` (`ChangedByUserId`);
+`BoardVoteConfiguration.cs:32-34` (`BoardMemberUserId`). None carry a `[Grandfathered(HUM0024)]`
+marker. All four are G2 FK cuts.
+
 ### Non-conforming table names
 `ApplicationConfiguration.cs:12` → `applications`; `ApplicationStateHistoryConfiguration.cs:11`
 → `application_state_history`; `BoardVoteConfiguration.cs:11` → `board_votes`. None carry a
@@ -274,10 +282,20 @@ above — a G2 drop candidate once soaked, not yet tracked as a numbered issue h
 `ShiftSignupConfiguration.cs:35-38,45-53` — **three** typed `HasOne<User>()`: `UserId`,
 `EnrolledByUserId`, `ReviewedByUserId`, all → `AspNetUsers`. `VolunteerEventProfileConfiguration.cs:44-47`
 — typed `HasOne<User>()` on `UserId` → `AspNetUsers`. `VolunteerTagPreferenceConfiguration.cs:27-30`
-— typed `HasOne<User>()` on `UserId` → `AspNetUsers`. `EventParticipationConfiguration.cs:41-44`
-— live two-way nav on `UserId` → `AspNetUsers` (table is Users-owned per the Users section above;
-listed here because the *configuration class* lives in this folder). Grandfathered HUM0024 on
-all six: `GeneralAvailabilityConfiguration.cs:9-12`, `RotaConfiguration.cs:8-11`,
+— typed `HasOne<User>()` on `UserId` → `AspNetUsers`. That is **7 Shifts cross-section
+relationships across 5 tables** (corrected 2026-08-03 — see below).
+
+`EventParticipationConfiguration.cs:41-44` — live two-way nav on `UserId` → `AspNetUsers`.
+**Not counted as a Shifts relationship (corrected 2026-08-03, hence 7 not 8):** this file's own
+ownership determination above establishes that `event_participations` is Users-owned and the
+configuration class is merely misfiled into `Configurations/Shifts/`. A Users-owned table with a
+FK to the Users-owned `AspNetUsers` is an *internal* Users relationship, so counting it here both
+inflated Shifts and would have scheduled an FK cut that isn't a cross-section cut at all. It stays
+listed in this section only because the configuration class currently sits in the folder — the
+fix is the mechanical class move already flagged at G1.
+
+Grandfathered HUM0024 on
+all six configuration classes in the folder: `GeneralAvailabilityConfiguration.cs:9-12`, `RotaConfiguration.cs:8-11`,
 `ShiftSignupConfiguration.cs:8-11`, `VolunteerEventProfileConfiguration.cs:9-12`,
 `VolunteerTagPreferenceConfiguration.cs:8-11`, `EventParticipationConfiguration.cs:8-11`.
 
@@ -406,6 +424,18 @@ inventory. Either an under-the-radar HUM0024 gap (the analyzer/its baseline shou
 catching this and isn't) or the attribute was never added when the FK landed — worth a
 follow-up beyond just the rename.
 
+**Three further cross-section FKs — added 2026-08-03** (this section originally inventoried
+only `google_resources.TeamId`, undercounting the section 1 → 4 across three tables):
+`GoogleSyncOutboxEventConfiguration.cs:32-34` — typed `HasOne<Team>()` on `TeamId` → `teams`
+(Teams); `:37-39` — typed `HasOne<User>()` on `UserId` → `AspNetUsers` (Users);
+`SyncServiceSettingsConfiguration.cs:35-37` — typed `HasOne<User>()` on `UpdatedByUserId` →
+`AspNetUsers` (Users). Like `google_resources.TeamId`, **none carries a
+`[Grandfathered(HUM0024)]` marker**, so all four sit outside the attribute-based allowlist that
+§2 treats as the ground-truth FK catalog — the same under-the-radar gap noted above, now known
+to span the whole section. Note the `SyncServiceSettings` case is not a contradiction of the
+audit's "`UpdatedByUser` nav was already fully removed" finding: the nav is gone (good), but the
+physical FK constraint remains and is what G2 cuts.
+
 ### Non-conforming table name
 `SyncServiceSettingsConfiguration.cs:15` → `sync_service_settings` — its sibling table
 (`GoogleSyncOutboxEventConfiguration.cs:11` → `google_sync_outbox`) carries the `google_`
@@ -452,8 +482,9 @@ pattern as `camps`, `teams`, `issues`).
 `User`/`ResolvedByUser`/`AssignedToUser` (`FeedbackReport.cs:21-22,62-63,72-73`) → `AspNetUsers`
 ×3, and `AssignedToTeam` (`FeedbackReport.cs:81-82`) → `teams` (Teams) ×1.
 `FeedbackMessageConfiguration.cs:36-38` — nav `SenderUser` (`[Obsolete]`,
-`FeedbackMessage.cs:19-20`) on `SenderUserId` → `AspNetUsers`. Grandfathered HUM0024:
-`FeedbackReportConfiguration.cs:9-13`, `FeedbackMessageConfiguration.cs:8-12`.
+`FeedbackMessage.cs:19-20`) on `SenderUserId` → `AspNetUsers`. That is **5 relationships across
+2 tables** (corrected 2026-08-03 — the summary row said 4, dropping the message-sender FK).
+Grandfathered HUM0024: `FeedbackReportConfiguration.cs:9-13`, `FeedbackMessageConfiguration.cs:8-12`.
 
 ### Non-conforming table names
 None — `feedback_reports`, `feedback_messages` both conform.
@@ -507,26 +538,26 @@ plan-tracked, but a legitimate G2 drop candidate whenever Store's demolition bat
 |---|---|---|---|---|---|
 | AuditLog | 0 | 0 | 0 | 2 (1 table) | 1 (fix doc drift) |
 | Auth | 0 | 0 | 0 | 2 (1 table) | 1 |
-| Governance | 0 | 0 | 0 | 0 | 3 |
+| Governance | 0 | 0 | 0 | 4 (3 tables) | 3 |
 | Legal & Consent | 0 | 0 | 0 | 2 (2 tables) | 2 |
 | Profiles | 2 (+2 queued/blocked) | 0 | 0 | 0 | 5 |
 | Users/Identity | 1 (+5 targeted by #603) | 0 | 0 | 0 | 0 |
 | Camps | 0 | 1 (`camp_leads`, #774) | 1 (#787) | 3 (3 tables) | 0 |
 | City Planning | 0 | 0 | 0 | 4 (2 tables) | 2 |
 | Calendar | 0 | 0 | 0 | 1 (1 table) | 0 |
-| Shifts | 6 (retained-for-soak) | 0 | 0 | 8 (6 tables) | 6 (+1 cross-section) |
+| Shifts | 6 (retained-for-soak) | 0 | 0 | 7 (5 tables) | 6 (+1 cross-section) |
 | Budget | 0 | 0 | 0 | 3 (3 tables) | 1 |
 | Expenses | 0 | 0 | 0 | 0 | 1 |
 | Tickets | 1 (retained-for-soak) | 0 | 0 | 2 (2 tables) | 0 (doc drift only) |
 | Teams | 0 | 0 | 0 | 5 (4 tables) | 0 (google_resources rename moved to Google Integration, see correction) |
-| Google Integration | 0 | 0 | 0 | 1 (1 table) | 2 |
+| Google Integration | 0 | 0 | 0 | 4 (3 tables) | 2 |
 | Email | 0 | 0 | 0 | 3 (1 table) | 0 |
 | Notifications | 0 | 0 | 0 | 2 (2 tables) | 0 |
-| Feedback | 0 | 0 | 0 | 4 (2 tables) | 0 |
+| Feedback | 0 | 0 | 0 | 5 (2 tables) | 0 |
 | Issues | 0 | 0 | 0 | 4 (2 tables) | 0 |
 | Campaigns | 0 | 0 | 0 | 2 (2 tables) | 0 |
 | Store | 1 (self-contained) | 0 | 0 | 0 | 0 |
-| **Total** | **4 tagged + 7 queued/targeted + 7 retained-for-soak** | **1** | **1** | **48 (35 tables)** | **24** |
+| **Total** | **4 tagged + 7 queued/targeted + 7 retained-for-soak** | **1** | **1** | **55 (39 tables)** | **24** |
 
 Shifts cross-section relationships corrected 2026-08-03 (was 9): the detailed Shifts section
 enumerates **8** — one `User` FK from `GeneralAvailability`, one `Team` FK from `Rota`, three

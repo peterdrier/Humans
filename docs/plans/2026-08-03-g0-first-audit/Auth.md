@@ -19,7 +19,7 @@
 | # | Predicate | Result | Evidence |
 |---|-----------|--------|----------|
 | 1 | Repo tests on real Postgres, zero EF-InMemory | **FAIL** | `tests/Humans.Application.Tests/Repositories/RoleAssignmentRepositoryTests.cs:21-24` — `new DbContextOptionsBuilder<HumansDbContext>().UseInMemoryDatabase(...)`. |
-| 2 | Service tests mock repo/`I*ServiceRead`, zero `HumansDbContext` | PASS | Grepped `RoleAssignmentServiceTests.cs`, `AdminAuthorizationServiceTests.cs`, `MagicLinkServiceTests.cs` for `HumansDbContext` — zero matches. |
+| 2 | Service tests mock repo/`I*ServiceRead`, zero `HumansDbContext` | **FAIL — corrected 2026-08-03** | Grepping these files for the literal `HumansDbContext` is a false negative: they inherit their EF setup. `RoleAssignmentServiceTests` extends `ServiceTestHarness` and constructs `new RoleAssignmentRepository(DbFactory)`; `MagicLinkServiceTests` extends it too. `ServiceTestHarness` (`tests/Humans.Application.Tests/Infrastructure/ServiceTestHarness.cs:54,71`) builds a real `HumansDbContext` over `.UseInMemoryDatabase(...)` and exposes it as `Db`/`DbFactory`, so a harness-derived test constructing a concrete repository is exactly the EF-InMemory service test this predicate forbids. Same false-negative pattern corrected across Auth, Budget, Camps, CityPlanning, Feedback, Governance and Consent in this pass. |
 | 3 | Invariants/triggers from section doc each have a test | PASS (spot-check) | Using the real `docs/sections/Auth.md`: "temporal assignments, never resurrected" + overlap rejection — covered, `RoleAssignmentServiceTests.cs` has 5 tests around `HasOverlappingAssignmentAsync`. "Magic-link login tokens single-use (15-min replay cache)" and "signup rate-limited 1/60s" — plausibly covered by `MagicLinkServiceTests.cs` given its scope; not line-verified. "Assigning Board triggers `SyncBoardTeamAsync`" — not directly traced to a test in this pass. |
 | 4 | No skipped tests without an issue ref | PASS | No `Skip=` found in `RoleAssignmentServiceTests.cs`, `RoleAssignmentRepositoryTests.cs`, `AdminAuthorizationServiceTests.cs`, `MagicLinkServiceTests.cs`. |
 | 5 | Tests grouped under the section | **FAIL** | Tests live under generic `tests/Humans.Application.Tests/Services/*.cs` and `.../Repositories/RoleAssignmentRepositoryTests.cs` — no `tests/.../Auth/` folder. Not movable as a unit at G5 without reorganizing. |
@@ -32,6 +32,9 @@
 4. **Added 2026-08-03: `IMagicLinkService.FindUserByVerifiedEmailAsync` returns the raw `User` entity** — an Auth-owned `ApplicationServiceEntityReadReturns.baseline.txt` row missed by the original pass, which scored predicate 3 against `IRoleAssignmentService` alone. Fix: return a DTO (or just the `Guid`, which is all the magic-link flow needs) and drop the baseline line. No-migration-needed: **y**.
 5. **`RoleAssignmentRepositoryTests.cs` on EF-InMemory** — `tests/Humans.Application.Tests/Repositories/RoleAssignmentRepositoryTests.cs:21-24`. Fix: convert to the shared Postgres fixture (#764/#766 pattern). No-migration-needed: **y**.
 6. **Auth tests not grouped under a section folder** — `Services/RoleAssignmentServiceTests.cs`, `Services/MagicLinkServiceTests.cs`, `Services/AdminAuthorizationServiceTests.cs`, `Repositories/RoleAssignmentRepositoryTests.cs`. Fix: move into `tests/Humans.Application.Tests/Auth/`. No-migration-needed: **y**.
+
+
+**Added 2026-08-03 — harness-inherited EF-InMemory (G3.2).** `RoleAssignmentServiceTests` and `MagicLinkServiceTests` extend `ServiceTestHarness`, which stands up a real `HumansDbContext` over `.UseInMemoryDatabase(...)`; the original pass missed this because it grepped for a literal `HumansDbContext` the files never name. Fix: convert to `Substitute.For<IRoleAssignmentRepository>()` per #766, or move these off the harness. No-migration-needed: **y**.
 
 ## G2 queue notes
 
@@ -50,4 +53,4 @@ Otherwise the schema looks clean: no dead columns spotted in a shape-only read o
 
 ## Verdict
 
-`G1: 4 gaps (corrected 2026-08-03, was 3 — added: IMagicLinkService.FindUserByVerifiedEmailAsync leaks the User entity; ISystemTeamSync DontFix cross-section ref; RoleAssignmentConfiguration HUM0024 grandfather; obsolete-nav still read from 5 external call sites) · G3: 2 gaps (EF-InMemory repo tests; test grouping)`
+`G1: 4 gaps (corrected 2026-08-03, was 3 — added: IMagicLinkService.FindUserByVerifiedEmailAsync leaks the User entity; ISystemTeamSync DontFix cross-section ref; RoleAssignmentConfiguration HUM0024 grandfather; obsolete-nav still read from 5 external call sites) · G3: 3 gaps (corrected 2026-08-03, was 2 — added: harness-inherited EF-InMemory service tests; EF-InMemory repo tests; test grouping)`

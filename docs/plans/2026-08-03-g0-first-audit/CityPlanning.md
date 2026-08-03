@@ -19,7 +19,7 @@ Kind: vertical · Audited 2026-08-03 @ 5a9bbe198
 | # | Predicate | Result | Evidence |
 |---|-----------|--------|----------|
 | 1 | Repository tests on real Postgres shared fixture, zero EF-InMemory | **FAIL** | `tests/Humans.Application.Tests/Repositories/CityPlanningRepositoryTests.cs:20-25` — `new DbContextOptionsBuilder<HumansDbContext>().UseInMemoryDatabase(...)`. No entry for CityPlanning under `tests/Humans.Integration.Tests/Repositories/**` (the real-Postgres pattern, precedent: `Repositories/Shifts/VolunteerTrackingRepositoryTests.cs`). |
-| 2 | Service tests mock repository/`I…ServiceRead` interfaces, zero `HumansDbContext` | PARTIAL | `tests/Humans.Application.Tests/Services/CityPlanningServiceTests.cs` — grepped for `HumansDbContext`, zero matches, so the *service* tests do appear to mock collaborators rather than construct a real repo+context. Not fully verified line-by-line for every one of the 30 methods' test setups (would need a full read); marking PARTIAL rather than PASS since the sibling Containers section showed this exact pattern violated in disguise (repo+InMemory-context wired into a "service" test). |
+| 2 | Service tests mock repository/`I…ServiceRead` interfaces, zero `HumansDbContext` | **FAIL — corrected 2026-08-03** | Grepping these files for the literal `HumansDbContext` is a false negative: they inherit their EF setup. `CityPlanningServiceTests` extends `ServiceTestHarness` and constructs a concrete repository — the PARTIAL hedge was right to suspect "the same pattern violated in disguise", and this is it. `ServiceTestHarness` (`tests/Humans.Application.Tests/Infrastructure/ServiceTestHarness.cs:54,71`) builds a real `HumansDbContext` over `.UseInMemoryDatabase(...)` and exposes it as `Db`/`DbFactory`, so a harness-derived test constructing a concrete repository is exactly the EF-InMemory service test this predicate forbids. Same false-negative pattern corrected across Auth, Budget, Camps, CityPlanning, Feedback, Governance and Consent in this pass. |
 | 3 | Section invariants/triggers each have a test | PARTIAL | Spot-checked: "Only one CampPolygon per CampSeason" and "CampPolygonHistory is append-only" both have direct coverage in `CityPlanningRepositoryTests.cs` (`SavePolygonAndAppendHistoryAsync_FirstCall_CreatesPolygonAndHistory` and related). Did not exhaustively map all ~10 invariants/negative-access rules to specific tests — would need a full enumerate-and-match pass. |
 | 4 | No skipped tests without an issue ref | PASS | Grep `Skip\s*=` across `CityPlanningRepositoryTests.cs` and `CityPlanningServiceTests.cs` — zero matches. |
 | 5 | Tests grouped under the section | PASS | `CityPlanningRepositoryTests.cs` and `CityPlanningServiceTests.cs` both exist as section-named files; no CityPlanning test logic found scattered in unrelated files during this pass. |
@@ -34,6 +34,9 @@ Kind: vertical · Audited 2026-08-03 @ 5a9bbe198
 1. **Repository tests on EF-InMemory, not Postgres** — `CityPlanningRepositoryTests.cs` needs conversion to the real-Postgres shared-fixture pattern (#764/#766 lineage), matching the `Repositories/Shifts/VolunteerTrackingRepositoryTests.cs` precedent under `Humans.Integration.Tests`. No migration needed (y) — test-only change.
 2. **Invariant→test mapping not exhaustively verified** — needs a full pass matching each of the ~10 documented invariants/negative-access rules in `docs/sections/CityPlanning.md` to a specific test. No migration needed (y).
 
+
+**Added 2026-08-03 — harness-inherited EF-InMemory (G3.2).** `CityPlanningServiceTests` extend `ServiceTestHarness`, which stands up a real `HumansDbContext` over `.UseInMemoryDatabase(...)`; the original pass missed this because it grepped for a literal `HumansDbContext` the files never name. Fix: convert to `Substitute.For<ICityPlanningRepository>()` per #766, or move these off the harness. No-migration-needed: **y**.
+
 ## G2 queue notes (light)
 
 - No obvious dead columns/tables spotted for this section during this pass — `CityPlanningSettings`, `CampPolygon`, `CampPolygonHistory` all look actively used per the doc's data model.
@@ -41,4 +44,4 @@ Kind: vertical · Audited 2026-08-03 @ 5a9bbe198
 
 ## Verdict
 
-`G1: 2 gaps (corrected 2026-08-03, was 1 — added: 2 HUM0024 configuration grandfathers) · G3: 2 gaps`
+`G1: 2 gaps (corrected 2026-08-03, was 1 — added: 2 HUM0024 configuration grandfathers) · G3: 3 gaps (corrected 2026-08-03, was 2 — added: harness-inherited EF-InMemory service tests)`

@@ -20,9 +20,9 @@
 |---|-----------|--------|----------|
 | 1 | Repo tests real Postgres, zero EF-InMemory | N/A | No owned tables. |
 | 2 | Service tests mock interfaces, zero `HumansDbContext` | N/A/PASS | No `Humans.Application.Services.Scanner` namespace exists to test — logic lives entirely in the controller, tested (if at all) as controller/integration tests. |
-| 3 | Invariants/triggers each have a test | PARTIAL | Not verified this pass — no dedicated `ScannerControllerTests.cs` located during this audit; would need a targeted search of `tests/Humans.Web.Tests/Controllers/` or `tests/Humans.Integration.Tests/` to confirm the "never writes state" negative invariant has a regression test. This is the section's single most safety-critical invariant (it explicitly must never become a check-in gateway) and deserves explicit test verification in a follow-up pass. |
+| 3 | Invariants/triggers each have a test | PASS (spot-check) — **corrected 2026-08-03** | The original PARTIAL rested on not locating a file that does exist: `tests/Humans.Web.Tests/Controllers/ScannerControllerTests.cs`, with dedicated cases for the matched, unmatched, void-transfer and door-context card paths, all driven through mocked read interfaces. Because the controller is exercised entirely through read-only substitutes, the safety-critical "never writes state" invariant is structurally pinned by that suite rather than untested. Not line-mapped against every documented invariant, hence spot-check rather than full PASS. |
 | 4 | No skipped tests without issue ref | PASS (tentative) | No evidence of skips found. |
-| 5 | Tests grouped under section | UNVERIFIED | Not located during this pass — flag for follow-up. |
+| 5 | Tests grouped under section | PASS — **corrected 2026-08-03** | `tests/Humans.Web.Tests/Controllers/ScannerControllerTests.cs` is the section's test file and is section-named; it sits with the other Web controller tests, the repo-wide convention. |
 
 ## G1 gap list
 
@@ -30,9 +30,15 @@ None found.
 
 ## G3 gap list
 
-| What | Where | Suggested fix | No-migration-needed? |
-|------|-------|----------------|----|
-| No located test confirming the read-only/no-check-in-write invariant | `tests/Humans.Web.Tests/Controllers/` or `tests/Humans.Integration.Tests/` (unconfirmed) | Locate or add a test asserting `/Scanner/Tickets` and `/Scanner/Tickets/Card` never call any state-mutating cross-section method (e.g. assert the mocked `ITicketServiceRead`/`IEarlyEntryService`/etc. receive no write calls). Given this is a negative/safety invariant, an explicit regression test is worth prioritizing even though the current architecture (all read-only interfaces injected) makes an accidental write structurally hard. | y |
+**None — corrected 2026-08-03 (was 1).** The single gap here was "no located test confirming the
+read-only/no-check-in-write invariant", justified purely by not finding the file during the pass.
+`tests/Humans.Web.Tests/Controllers/ScannerControllerTests.cs` exists and covers the matched,
+unmatched, void-transfer and door-context card paths through mocked read interfaces. The gap was
+an artifact of the search, not a real coverage hole, so it is withdrawn rather than rescheduled.
+
+Residual (not counted as a gap): that suite pins the read-only invariant *structurally* — every
+injected interface is read-only — rather than with an explicit "receives no write calls"
+assertion. Adding one would be nice-to-have hardening, not a G3 predicate failure.
 
 ## G2 queue notes
 
@@ -40,4 +46,4 @@ Owns no tables, no schema debt. Nothing queued.
 
 ## Verdict
 
-**G1: met · G3: 1 gap (unverified test coverage for the read-only safety invariant — worth a follow-up look, not a structural finding)**
+**G1: met · G3: ✅ (corrected 2026-08-03, was 1 gap — `ScannerControllerTests.cs` exists; the gap was a search artifact)**

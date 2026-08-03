@@ -19,7 +19,7 @@
 | # | Predicate | Result | Evidence |
 |---|-----------|--------|----------|
 | 1 | Repo tests on real Postgres, zero EF-InMemory | **FAIL (worse: no coverage at all)** | No `BudgetRepositoryTests.cs` (or equivalent) exists anywhere under `tests/Humans.Application.Tests/Repositories/`. `BudgetRepository` — the sole writer/reader of all 5 Budget tables — has **zero dedicated repository-level test coverage**. |
-| 2 | Service tests mock repo/`I*ServiceRead`, zero `HumansDbContext` | PASS | `tests/Humans.Application.Tests/Services/BudgetServiceTests.cs` — zero `HumansDbContext` references. |
+| 2 | Service tests mock repo/`I*ServiceRead`, zero `HumansDbContext` | **FAIL — corrected 2026-08-03** | Grepping these files for the literal `HumansDbContext` is a false negative: they inherit their EF setup. `BudgetServiceTests` extends `ServiceTestHarness` and constructs a concrete repository. `ServiceTestHarness` (`tests/Humans.Application.Tests/Infrastructure/ServiceTestHarness.cs:54,71`) builds a real `HumansDbContext` over `.UseInMemoryDatabase(...)` and exposes it as `Db`/`DbFactory`, so a harness-derived test constructing a concrete repository is exactly the EF-InMemory service test this predicate forbids. Same false-negative pattern corrected across Auth, Budget, Camps, CityPlanning, Feedback, Governance and Consent in this pass. |
 | 3 | Invariants/triggers from section doc each have a test | PARTIAL | Using the real `docs/sections/Budget.md`: "only one year Active at a time, auto-close on activate" — plausibly covered by `BudgetServiceTests.cs` given its breadth, not line-verified. "Every mutation generates a `BudgetAuditLog` entry" (append-only, §12) has some indirect coverage via `BudgetServiceTests.cs` and `BudgetAuditLog` references in `Humans.Integration.Tests/AccountMerge/*` fixtures, but no dedicated immutability test found, and `reforge audit-immutable` returned no Budget-tagged findings either way. Restricted/ticketing-group visibility rules (Forbid on drill-in) not traced to a specific test in this pass. |
 | 4 | No skipped tests without an issue ref | PASS | No `Skip=` found in `BudgetServiceTests.cs`. |
 | 5 | Tests grouped under the section | **FAIL** | `BudgetServiceTests.cs` lives under generic `tests/Humans.Application.Tests/Services/`, not a `tests/.../Budget/` folder. No repository test exists to even mis-group. |
@@ -36,6 +36,9 @@
 4. **No dedicated immutability test for `budget_audit_logs` append-only invariant** — docstring claims append-only (§12) but no test enforces it (`reforge audit-immutable` silent on Budget). Fix: add a test (and/or confirm `reforge audit-immutable` config covers `BudgetAuditLog`). No-migration-needed: **y**.
 5. **Budget tests not grouped under a section folder** — `Services/BudgetServiceTests.cs`. Fix: move into `tests/Humans.Application.Tests/Budget/` (created alongside the new repository tests from gap #3). No-migration-needed: **y**.
 
+
+**Added 2026-08-03 — harness-inherited EF-InMemory (G3.2).** `BudgetServiceTests` extend `ServiceTestHarness`, which stands up a real `HumansDbContext` over `.UseInMemoryDatabase(...)`; the original pass missed this because it grepped for a literal `HumansDbContext` the files never name. Fix: convert to `Substitute.For<IBudgetRepository>()` per #766, or move these off the harness. No-migration-needed: **y**.
+
 ## G2 queue notes
 
 Budget hierarchy (`BudgetYear → BudgetGroup → BudgetCategory → BudgetLineItem`) plus `BudgetAuditLog` reads as a clean, purpose-built schema — no dead columns spotted in this pass. `docs/features/budget/budget.md` explicitly scopes it as "not an accounting system" / "not real-time," so no schema growth pressure expected before G2.
@@ -49,4 +52,4 @@ Budget hierarchy (`BudgetYear → BudgetGroup → BudgetCategory → BudgetLineI
 
 ## Verdict
 
-`G1: 3 gaps (3 HUM0024 grandfathers counted as one item; entity-leak coverage not exhaustive; ResponsibleTeam nav not Obsolete-marked) · G3: 3 gaps (+1 PARTIAL)`
+`G1: 3 gaps (3 HUM0024 grandfathers counted as one item; entity-leak coverage not exhaustive; ResponsibleTeam nav not Obsolete-marked) · G3: 4 gaps (corrected 2026-08-03, was 3 — added: harness-inherited EF-InMemory service tests) (+1 PARTIAL)`

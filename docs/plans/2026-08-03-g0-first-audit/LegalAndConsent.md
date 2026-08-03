@@ -19,7 +19,7 @@
 | # | Predicate | Result | Evidence |
 |---|-----------|--------|----------|
 | 1 | Repo tests real Postgres, zero EF-InMemory | FAIL | `tests/.../Repositories/ConsentRepositoryTests.cs:27` and `LegalDocumentRepositoryTests.cs:23` both call `.UseInMemoryDatabase(...)`. |
-| 2 | Service tests mock interfaces, zero `HumansDbContext` | PASS | `ConsentServiceTests.cs`, `LegalDocumentServiceTests.cs`, `AdminLegalDocumentServiceTests.cs`, `Services/Consent/CachingConsentServiceTests.cs` — no `HumansDbContext` references (grep scoped to `Services/Legal/**` and `Services/Consent/**` found none). `LegalDocumentSaveChangesInterceptorTests.cs` does use a real `HumansDbContext` — expected/necessary, since it's testing an EF interceptor directly, not counted against this predicate. |
+| 2 | Service tests mock interfaces, zero `HumansDbContext` | **FAIL — corrected 2026-08-03** | The `HumansDbContext` grep is a false negative: `ConsentServiceTests` and `AdminLegalDocumentServiceTests` extend `ServiceTestHarness` and construct concrete repositories. `ServiceTestHarness` (`tests/Humans.Application.Tests/Infrastructure/ServiceTestHarness.cs:54,71`) builds a real `HumansDbContext` over `.UseInMemoryDatabase(...)` and exposes it as `Db`/`DbFactory`, so the EF setup is inherited rather than declared. Same false-negative pattern corrected across Auth, Budget, Camps, CityPlanning, Feedback and Governance in this pass. (`LegalDocumentSaveChangesInterceptorTests.cs` still doesn't count — testing an EF interceptor genuinely needs a context.) |
 | 3 | Invariants/triggers each have a test | PARTIAL | Not exhaustively mapped. The DB-trigger immutability invariant (`prevent_consent_record_update/delete`) is pinned at the interface level by `ConsentArchitectureTests.IConsentRepository_HasNoUpdateOrDeleteOrRemoveMethods`, but that only tests the C# surface, not that the Postgres triggers themselves still exist/fire — that would need an integration test against real Postgres, which is a separate ask from G3. Flagging as a gap: no test exercises the actual DB trigger. |
 | 4 | No skipped tests without an issue ref | PASS | No `Skip=` anywhere in `tests/`. |
 | 5 | Tests grouped under section | PARTIAL | Service tests are correctly split under `Services/Consent/` and top-level `Services/*LegalDocument*`/`*Consent*`; but the two repository tests sit in the shared `tests/.../Repositories/` folder rather than a section folder. |
@@ -42,6 +42,9 @@
 |------|-------|----------------|----|
 | No test exercises the Postgres append-only trigger directly | `tests/` | Add one integration test (once #764's shared Postgres fixture is available) that attempts an UPDATE/DELETE against a real `consent_records` row and asserts the DB rejects it. | y |
 
+
+**Added 2026-08-03 — harness-inherited EF-InMemory (G3.2).** `ConsentServiceTests` and `AdminLegalDocumentServiceTests` extend `ServiceTestHarness`, which stands up a real `HumansDbContext` over `.UseInMemoryDatabase(...)`; the original pass missed this because it grepped for a literal `HumansDbContext` the files never name. Fix: convert to `Substitute.For<IConsentRepository>()` per #766, or move these off the harness. No-migration-needed: **y**.
+
 ## G2 queue notes
 
 Two cross-section FK cuts are queued (see the G1 gap list): `consent_records.UserId → AspNetUsers`
@@ -51,4 +54,4 @@ columns/tables spotted.
 
 ## Verdict
 
-`G1: 3 gaps (corrected 2026-08-03 — added: 2 HUM0024 configuration grandfathers; moved the append-only-trigger test item to G3 where its predicate lives; 1 already in flight) · G3: 3 gaps (+1 PARTIAL) — headline gap: live LegalDocument.Team nav is the worst entity-leak found in this batch; #751 writer consolidation already staffed`
+`G1: 3 gaps (corrected 2026-08-03 — added: 2 HUM0024 configuration grandfathers; moved the append-only-trigger test item to G3 where its predicate lives; 1 already in flight) · G3: 4 gaps (corrected 2026-08-03 — added: harness-inherited EF-InMemory service tests) (+1 PARTIAL) — headline gap: live LegalDocument.Team nav is the worst entity-leak found in this batch; #751 writer consolidation already staffed`

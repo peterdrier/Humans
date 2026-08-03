@@ -19,7 +19,7 @@ Section: Feedback · Kind: vertical · Audited 2026-08-03 @ 5a9bbe198
 | # | Predicate | Result | Evidence |
 |---|-----------|--------|----------|
 | 1 | Repository tests use real Postgres, zero EF-InMemory | FAIL | `tests/Humans.Application.Tests/Repositories/FeedbackRepositoryTests.cs:22` uses `.UseInMemoryDatabase(Guid.NewGuid().ToString())`. |
-| 2 | Service tests mock interfaces, zero `HumansDbContext` | PASS | No `HumansDbContext` match in `tests/Humans.Application.Tests/Services/FeedbackServiceTests.cs`. |
+| 2 | Service tests mock interfaces, zero `HumansDbContext` | **FAIL — corrected 2026-08-03** | Grepping these files for the literal `HumansDbContext` is a false negative: they inherit their EF setup. `FeedbackServiceTests` extends `ServiceTestHarness` and constructs a concrete repository. `ServiceTestHarness` (`tests/Humans.Application.Tests/Infrastructure/ServiceTestHarness.cs:54,71`) builds a real `HumansDbContext` over `.UseInMemoryDatabase(...)` and exposes it as `Db`/`DbFactory`, so a harness-derived test constructing a concrete repository is exactly the EF-InMemory service test this predicate forbids. Same false-negative pattern corrected across Auth, Budget, Camps, CityPlanning, Feedback, Governance and Consent in this pass. |
 | 3 | Invariants/triggers each have a test (spot-check) | PASS (spot-check) | `ResolvedAt`/status-transition-clears-resolution fields covered (lines ~175, ~190 of `FeedbackServiceTests.cs`: resolved-status sets `ResolvedAt`, transitioning out clears it). Not directly verified here: screenshot MIME/size validation test, "needs reply" derivation test, admin-reply-sends-email-before-persist ordering test — would need a fuller read of the 400+-line test file to confirm all are present; flagging as **unverified, not confirmed missing**. |
 | 4 | No skipped tests without an issue ref | PASS | `Skip\s*=` grep on `Services/FeedbackServiceTests.cs` and `Repositories/FeedbackRepositoryTests.cs` → no matches. |
 | 5 | Tests grouped under the section | FAIL | Unlike Events/Expenses/Finance (which have `Events/`, `Services/Expenses/`, `Finance/` subfolders), Feedback's tests are two loose top-level files: `tests/Humans.Application.Tests/Services/FeedbackServiceTests.cs` and `tests/Humans.Application.Tests/Repositories/FeedbackRepositoryTests.cs` — not grouped under a `Feedback/` subfolder. Not movable as a unit at G5 without a rename/move first. |
@@ -33,9 +33,12 @@ Section: Feedback · Kind: vertical · Audited 2026-08-03 @ 5a9bbe198
 1. **`FeedbackRepositoryTests.cs` uses `UseInMemoryDatabase`** — where: `tests/Humans.Application.Tests/Repositories/FeedbackRepositoryTests.cs:22`. Suggested fix: convert to the shared Postgres fixture. No-migration-needed: **y**.
 2. **Tests not grouped under a `Feedback/` subfolder** — where: `Services/FeedbackServiceTests.cs`, `Repositories/FeedbackRepositoryTests.cs`. Suggested fix: move both into `Services/Feedback/` and `Repositories/Feedback/` (or a top-level `Feedback/` folder matching the Events/Expenses pattern) ahead of G5. No-migration-needed: **y**.
 
+
+**Added 2026-08-03 — harness-inherited EF-InMemory (G3.2).** `FeedbackServiceTests` extend `ServiceTestHarness`, which stands up a real `HumansDbContext` over `.UseInMemoryDatabase(...)`; the original pass missed this because it grepped for a literal `HumansDbContext` the files never name. Fix: convert to `Substitute.For<IFeedbackRepository>()` per #766, or move these off the harness. No-migration-needed: **y**.
+
 ## G2 Queue Notes (light)
 
 - The HUM0024 cross-section-join demolition (G1 gap #1) is this section's clearest G2 candidate — it's explicitly self-documented as in-progress-intent ("migrating to bare FK") but not yet executed. Should be filed as a tracked issue if one doesn't already exist, since the transition plan's demolition inventory expects named items, not just Grandfathered-attribute prose.
 - No dead columns spotted otherwise; data model is otherwise lean.
 
-**Verdict: G1: 1 gap · G3: 2 gaps**
+**Verdict: G1: 1 gap · G3: 3 gaps (corrected 2026-08-03, was 2 — added: harness-inherited EF-InMemory service tests)**

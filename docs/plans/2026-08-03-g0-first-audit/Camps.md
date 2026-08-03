@@ -19,7 +19,7 @@
 | # | Predicate | Result | Evidence |
 |---|-----------|--------|----------|
 | 1 | Repository tests real Postgres, zero EF-InMemory | **FAIL** | `tests/Humans.Application.Tests/Repositories/CampRepositoryTests.cs:22` — `.UseInMemoryDatabase(Guid.NewGuid().ToString())`. This is the only repository test file for Camps. |
-| 2 | Service tests mock repo/`I…ServiceRead`, zero `HumansDbContext` | **PASS** | Grepped `Camp*Tests.cs` under `tests/Humans.Application.Tests/Services/` for `HumansDbContext`/`UseInMemoryDatabase` → no matches. `CampsArchitectureTests.cs:274` uses `Substitute.For<ICampRepository>()`. |
+| 2 | Service tests mock repo/`I…ServiceRead`, zero `HumansDbContext` | **FAIL — corrected 2026-08-03** | Grepping these files for the literal `HumansDbContext` is a false negative: they inherit their EF setup. `CampServiceTests`, `CampRoleServiceTests`, `CachingCampServiceTests` and `CampServiceEarlyEntryTests` all extend `ServiceTestHarness` and construct concrete repositories. (`CampsArchitectureTests.cs:274` does use `Substitute.For<ICampRepository>()` — that file is genuinely clean.) `ServiceTestHarness` (`tests/Humans.Application.Tests/Infrastructure/ServiceTestHarness.cs:54,71`) builds a real `HumansDbContext` over `.UseInMemoryDatabase(...)` and exposes it as `Db`/`DbFactory`, so a harness-derived test constructing a concrete repository is exactly the EF-InMemory service test this predicate forbids. Same false-negative pattern corrected across Auth, Budget, Camps, CityPlanning, Feedback, Governance and Consent in this pass. |
 | 3 | Invariants/triggers from `docs/sections/Camps.md` each have a test | PASS (spot-check) | Using the real doc: name-lock + historical-name auto-log on rename — plausibly covered by `CampServiceTests.cs` given its breadth. EE grant rules (`Status=Active` required, over-`EeSlotCount` rejected, no auto-revoke on lower) — `CampServiceEarlyEntryTests.cs` exists specifically for this. Role-assignment `MemberNotActive`/`MemberSeasonMismatch` rejection — `CampRoleServiceTests.cs` exists specifically for this. Not exhaustively line-mapped against all 30+ documented invariants. |
 | 4 | No skipped tests without an issue ref | **PASS** | Grepped all `*Camp*Tests.cs` for `Skip\s*=` → no matches. |
 | 5 | Tests grouped under the section | **PASS** | Consistently foldered by kind app-wide (`Repositories/CampRepositoryTests.cs`, `Services/Camp*Tests.cs`, `Architecture/CampsArchitectureTests.cs`, `Authorization/CampAuthorizationHandlerTests.cs`) — same pattern as every other section, movable together at G5. |
@@ -39,6 +39,9 @@
 > confirms `docs/sections/Camps.md` exists with extensive invariant documentation — G3.3 then
 > uses that very doc to score invariant coverage. G3 count drops from 2 to 1.
 
+
+**Added 2026-08-03 — harness-inherited EF-InMemory (G3.2).** `CampServiceTests`, `CampRoleServiceTests`, `CachingCampServiceTests` and `CampServiceEarlyEntryTests` extend `ServiceTestHarness`, which stands up a real `HumansDbContext` over `.UseInMemoryDatabase(...)`; the original pass missed this because it grepped for a literal `HumansDbContext` the files never name. Fix: convert to `Substitute.For<ICampRepository>()` per #766, or move these off the harness. No-migration-needed: **y**.
+
 ## G2 queue notes
 
 - `NoDestructiveMigrationOps.baseline.txt` carries one historical Camps entry (`DropColumn(IsRequired)` on `CampRoleDefinitions`, migration `20260426185621`) and `NoDestructiveMigrationOps` also lists `DropColumn(ContactMethod)` on a Camp-adjacent migration (`AddCampLinksRemoveContactMethod`) — both already-applied historical drops, not open G2 work; noted for completeness only.
@@ -47,4 +50,4 @@
   - **Drop the obsolete `CampRoleDefinition.SpecialRole` DB default** (#787).
   - **Cut 3 cross-section FK relationships** across `CampConfiguration`, `CampSeasonConfiguration`, `CampLeadConfiguration` — the same three currently HUM0024-grandfathered (G1 gap #2).
 
-**Verdict: G1: 4 gaps (corrected 2026-08-03, was 3 — added: two writer-services on `CampRoleAssignments`; SystemTeamSyncJob repo injection; 3 HUM0024 grandfathers counted as one item; doc omission of the SystemTeamSyncJob dependency) · G3: 1 gap (corrected 2026-08-03, was 2 — the "no canonical invariant doc" item contradicted G1.7 and was removed)**
+**Verdict: G1: 4 gaps (corrected 2026-08-03, was 3 — added: two writer-services on `CampRoleAssignments`; SystemTeamSyncJob repo injection; 3 HUM0024 grandfathers counted as one item; doc omission of the SystemTeamSyncJob dependency) · G3: 2 gaps (corrected 2026-08-03 — removed the "no canonical invariant doc" item, which contradicted G1.7; added: harness-inherited EF-InMemory service tests)**
