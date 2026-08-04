@@ -136,13 +136,45 @@ train; EF migration reviewer on every PR; prod-verify before the next section en
       #774 camp_leads, #787 SQL default, #528 ProfilePictureData, #507 email vestiges,
       #603 Identity columns, #844 ProfileState, #516 ProfileId).
 - [ ] Cross-section DB-level FK constraints dropped — integrity is application-level
-      (bare-Guid pattern); a section's schema must stand alone.
-- [ ] Tables renamed to the section prefix (paid once, on the monolithic snapshot,
-      *before* G4 baselines).
+      (bare-Guid pattern); a section's schema must stand alone. **Executed app-wide in one
+      migration, not per section** — see the FK-cut carve-out below.
 - [ ] No data backfills authored (hard rule); lazy-seed paths retired where their soak
       gates pass (#834).
 - [ ] Migration deployed to prod and verified; debt ledger cleared of this section's
       destructive items.
+
+**Table renames moved out of G2 (decision 2026-08-04).** The section-prefix rename pass used
+to sit here, "paid once, on the monolithic snapshot, before G4 baselines." It now runs at G5,
+once the section is its own assembly — see the G5 checklist for the rationale.
+
+#### FK-cut carve-out — one migration, not seventeen (decision 2026-08-04)
+
+The cross-section FK cut does **not** ride the per-section turnstile. It lands as a single
+app-wide migration covering all 55 relationships across 39 tables in 17 sections.
+
+- The turnstile exists to stop parallel PRs colliding on the shared EF snapshot. One PR
+  cannot collide with itself, so the mechanism buys nothing here.
+- Dropping an FK constraint destroys no data and is reversible by re-adding the constraint.
+  It is categorically different from the column and table drops the turnstile is really for.
+- Seventeen sequential section PRs, each with its own prod-verify, would take weeks and add
+  no safety over one reviewed migration.
+
+Two conditions on that PR, both load-bearing:
+
+1. **Index preservation.** EF auto-creates `IX_<table>_<column>` for each FK and removes it
+   with the relationship. Several of these columns are hot query filters
+   (`shift_signups.UserId`, `team_members.UserId`, `consent_records.UserId`,
+   `ticket_orders.MatchedUserId`). Every dropped FK column that a query filters or sorts on
+   must get an explicit `HasIndex(...)` in the same PR. A silent index loss here is a real
+   production regression and would not surface in tests.
+2. **HUM0024 must be firing first.** The analyzer is what keeps cross-section FKs from
+   growing back once cut. Governance (4 FKs) and GoogleIntegration (4) currently carry
+   cross-section FKs with no `[Grandfathered(HUM0024)]` marker and a green build, so the
+   analyzer is not detecting them. Fix that gap before the cut lands, or the cut is a
+   one-time cleanup rather than a permanent boundary.
+
+Prerequisite, unchanged: G0 must be closed first (#845), because the cut is still a schema
+migration against prod.
 
 ### G3 — Tests (per section): *section-shaped and honest*
 
@@ -178,6 +210,14 @@ The section's slice of #858, peel-off style.
       section contracts. Solution builds ⇒ the DAG holds.
 - [ ] Section tests live in/with the section's test project.
 - [ ] Section's rows in analyzers/baselines deleted — the compiler owns the boundary now.
+- [ ] Tables renamed to the section prefix (**moved here from G2, decision 2026-08-04**).
+      Once the section is its own assembly with its own migration history, a rename is an
+      ordinary migration in that history: no shared snapshot, no turnstile, no coordination
+      with other sections. Doing it at G2 instead meant paying for it on the monolithic
+      snapshot, one section at a time, before the frozen inventory had even settled what the
+      prefixes should be. Two caveats: the G4 baselines will carry the pre-rename names
+      (cosmetic), and table names referenced **outside** EF — raw SQL, backup/restore
+      tooling, the #845 runbook — must be swept at rename time.
 
 ### G6 — End gate (app-wide, once): *the clean state*
 
@@ -397,7 +437,10 @@ Institutionalizes the gate checklists so any agent applies the same definitions.
 |------|------|-------|
 | Section dependency DAG audit | G0 | Reforge-driven; lists shared-contract exceptions; pure analysis |
 | Demolition inventory (dead cols/tables, cross-section FKs, table renames) | G0→G2 | The G2 work-item generator |
-| Table rename pass (section prefixes) | G2 | Before G4 baselines; check raw SQL/backup tooling refs |
+| Cross-section FK cut (55 relationships, 39 tables, 17 sections) | G2 | One app-wide migration per the carve-out; index-preservation list is the deliverable |
+| HUM0024 detection gap (Governance ×4, GoogleIntegration ×4 unmarked, green build) | G1 | Blocks the FK cut — without it the boundary won't hold after the cut |
+| Table rename pass (section prefixes) | **G5** | Moved from G2 2026-08-04; check raw SQL/backup tooling refs, incl. the #845 runbook |
+| Naming decision for the rename pass | G5 | `profile_*` is moot now Profiles folded into Users; `event_settings` (Shifts) / `event_*` (Guide) / `event_participations` (Users) collide three ways |
 | `/section-gate` skill | G0 | Audit mode first |
 
 ## Every Q3 issue accounted for (46/46)

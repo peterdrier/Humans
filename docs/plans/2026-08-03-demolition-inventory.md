@@ -27,6 +27,22 @@
 > `[Grandfathered(HUM0024)]` attribute recorded as an *attribute of* each relationship rather
 > than as the enumeration mechanism. Regenerate it that way.
 
+> **Scheduling update 2026-08-04 — two decisions change when this inventory's items run.**
+>
+> 1. **Non-conforming table names → G5, not G2.** Every "Propose `<section>_…`" rename below is
+>    now a **G5** item, executed once the owning section is its own assembly with its own
+>    migration history. Nothing in the analysis changes — only the gate. This also gives the
+>    open naming questions in the Unmapped tail (`user_emails` under the Users boundary, the
+>    three-way `event_` collision) time to be settled before anyone spends a migration on them.
+> 2. **Cross-section FKs → one app-wide migration, not per section.** The §"Cross-section FK"
+>    entries below are executed together in a single PR rather than section by section. The
+>    per-section breakdown here remains the work list; it is no longer the PR boundary. Two
+>    conditions attach — index preservation on the dropped FK columns, and fixing the HUM0024
+>    detection gap this document already flags under Governance and Google Integration first.
+>
+> Both are recorded in the [Q3 transition plan](2026-06-13-q3-transition-plan.md) (G2 FK-cut
+> carve-out; G5 checklist).
+
 ## Prior art
 
 nobodies-collective/Humans#866 (G5 project-split issue) carries a live status comment
