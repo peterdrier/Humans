@@ -39,7 +39,7 @@ else
             {
                 <tr>
                     <td><a asp-action="CreditorStatement" asp-route-accountNum="@r.SupplierAccountNum">@r.SupplierAccountNum</a></td>
-                    <td>@r.Name</td>
+                    <td>@(string.IsNullOrWhiteSpace(r.Name) ? "—" : r.Name)</td>
                     <td class="text-end">@(r.Balance.HasValue ? r.Balance.Value.ToEuro() : "—")</td>
                     <td class="text-end">
                         <span class="@(r.OwedToMember > 0 ? "text-danger fw-semibold" : "text-muted")">@r.OwedToMember.ToEuro()</span>

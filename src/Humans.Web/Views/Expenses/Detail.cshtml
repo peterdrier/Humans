@@ -190,16 +190,31 @@
 
         @if (Model.CanBindCreditor)
         {
-            <div class="card mb-3 border-warning">
-                <div class="card-header bg-warning-subtle"><strong><i class="fa-solid fa-link me-1"></i>Holded creditor account</strong></div>
+            <div class="card mb-3 border-danger">
+                <div class="card-header bg-danger-subtle"><strong><i class="fa-solid fa-link me-1"></i>Holded creditor account</strong> <small class="text-muted">(Finance admin only)</small></div>
                 <div class="card-body">
                     @if (Model.BoundAccountNum is { } boundAcct)
                     {
-                        <p class="small mb-2"><i class="fa-solid fa-circle-check text-success me-1"></i>Bound to account <strong>@boundAcct</strong>. Change below if needed.</p>
+                        <p class="small mb-2">
+                            <i class="fa-solid fa-circle-check text-success me-1"></i>Bound to account
+                            <strong>@boundAcct@(string.IsNullOrWhiteSpace(Model.BoundAccountName) ? "" : $" — {Model.BoundAccountName}")</strong>.
+                            Change below if needed.
+                        </p>
+                    }
+                    else if (Model.HasCreditorContact)
+                    {
+                        <p class="small mb-2 text-muted">
+                            <i class="fa-solid fa-circle-info me-1"></i>This member has a Holded contact; its 400000xx
+                            account number is assigned by Holded on the next push. Nothing to do before approving.
+                        </p>
                     }
                     else
                     {
-                        <p class="small mb-2 text-danger"><i class="fa-solid fa-triangle-exclamation me-1"></i>Not bound &mdash; set this before approving so the push reuses the right account instead of creating a new one.</p>
+                        <p class="small mb-2 text-muted">
+                            <i class="fa-solid fa-circle-info me-1"></i>No Holded creditor account yet &mdash; one is created
+                            automatically when this report is pushed. That is the expected state for a first-time submitter,
+                            so approve as normal. Bind below only if this member already has an account in Holded.
+                        </p>
                     }
                     <form asp-controller="Finance" asp-action="BindCreditor" method="post" class="row g-2 align-items-center">
                         @Html.AntiForgeryToken()
@@ -207,12 +222,14 @@
                         <input type="hidden" name="returnUrl" value="@Context.Request.Path" />
                         <div class="col-auto">
                             @{
+                                // Holded is the only source of the account name; fall back to the bare number
+                                // for an account we hold a binding for but Holded has no contact for.
                                 var accountItems = Model.CreditorAccounts.Select(a => new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem
                                 {
                                     Value = a.SupplierAccountNum.ToString(),
-                                    Text = a.OwedToMember > 0
-                                        ? $"{a.SupplierAccountNum} — {a.Name} (owed {a.OwedToMember.ToEuro()})"
-                                        : $"{a.SupplierAccountNum} — {a.Name}",
+                                    Text = string.IsNullOrWhiteSpace(a.Name)
+                                        ? $"{a.SupplierAccountNum}{(a.OwedToMember > 0 ? $" (owed {a.OwedToMember.ToEuro()})" : "")}"
+                                        : $"{a.SupplierAccountNum} — {a.Name}{(a.OwedToMember > 0 ? $" (owed {a.OwedToMember.ToEuro()})" : "")}",
                                     Selected = Model.BoundAccountNum == a.SupplierAccountNum,
                                 });
                             }

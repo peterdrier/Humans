@@ -621,11 +621,11 @@ public class FinanceController(
     {
         try
         {
-            var ok = await holdedFinance.SetCreditorContactAsync(userId, supplierAccountNum);
-            if (ok)
+            var result = await holdedFinance.SetCreditorContactAsync(userId, supplierAccountNum);
+            if (result.Succeeded)
                 SetSuccess($"Bound member to creditor account {supplierAccountNum}.");
             else
-                SetError($"No Holded contact carries account {supplierAccountNum} — nothing bound.");
+                SetError(result.ErrorMessage ?? $"Could not bind account {supplierAccountNum}.");
         }
         catch (Exception ex)
         {

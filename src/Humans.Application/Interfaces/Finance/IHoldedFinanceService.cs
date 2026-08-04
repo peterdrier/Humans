@@ -19,15 +19,18 @@ public interface IHoldedFinanceService : IApplicationService
     Task<HoldedCreditorStatus?> GetCreditorStatusAsync(
         int? supplierAccountNum, CancellationToken ct = default);
 
-    /// <summary>Admin overview: every cached 400000xx creditor balance joined with its member binding.</summary>
+    /// <summary>Admin overview: every 400000xx creditor account — cached balances, member bindings and
+    /// Holded's own creditor contacts (which carry the account name and appear before any journal
+    /// activity exists). Names are blank when Holded is unreachable; the rest still renders.</summary>
     Task<IReadOnlyList<HoldedCreditorAccountRow>> ListCreditorAccountsAsync(CancellationToken ct = default);
 
     /// <summary>The member's creditor-account binding, if any.</summary>
     Task<CreditorContactBinding?> GetCreditorContactByUserAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>Manually binds a member to an existing Holded creditor account (by 400000xx number).
-    /// Resolves the Holded contact id; returns false if no contact carries that supplier-account number.</summary>
-    Task<bool> SetCreditorContactAsync(Guid userId, int supplierAccountNum, CancellationToken ct = default);
+    /// Resolves the Holded contact id. Fails — writing nothing — when the account is already bound to a
+    /// different member, or when no Holded contact carries that supplier-account number.</summary>
+    Task<CreditorBindResult> SetCreditorContactAsync(Guid userId, int supplierAccountNum, CancellationToken ct = default);
 
     /// <summary>Per-account statement: balance + itemized journal lines over the last ~year. Null if unknown.</summary>
     Task<HoldedCreditorLedger?> GetCreditorLedgerAsync(int supplierAccountNum, CancellationToken ct = default);

@@ -94,6 +94,11 @@ public sealed class ExpenseDetailViewModel
     public bool CanBindCreditor { get; init; }
     /// <summary>The submitter's currently-bound 400000xx account, or null if unbound.</summary>
     public int? BoundAccountNum { get; init; }
+    /// <summary>Holded's name for <see cref="BoundAccountNum"/>; blank when Holded has no contact for it.</summary>
+    public string? BoundAccountName { get; init; }
+    /// <summary>True when the submitter already has a Holded creditor contact — with or without a
+    /// 400000xx number yet. False means the push will create one, which is the expected new-member state.</summary>
+    public bool HasCreditorContact { get; init; }
     /// <summary>Creditor accounts available to bind to (finance-admin only).</summary>
     public IReadOnlyList<HoldedCreditorAccountRow> CreditorAccounts { get; init; } = [];
 }

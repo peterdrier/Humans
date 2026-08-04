@@ -243,6 +243,10 @@ public sealed class ExpensesController(
                 HoldedTimeline = timeline,
                 CanBindCreditor = isFinanceAdmin,
                 BoundAccountNum = submitterBinding?.SupplierAccountNum,
+                BoundAccountName = submitterBinding?.SupplierAccountNum is { } boundNum
+                    ? creditorAccounts.FirstOrDefault(a => a.SupplierAccountNum == boundNum)?.Name
+                    : null,
+                HasCreditorContact = submitterBinding is not null,
                 CreditorAccounts = creditorAccounts,
             };
             return View(model);
