@@ -5,6 +5,7 @@ using Humans.Application.Interfaces.Holded;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Services.Finance.Dtos;
 using Humans.Domain.Entities;
+using System.Text.Json;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging;
 using NodaTime;
@@ -535,10 +536,11 @@ public sealed class HoldedFinanceService(
             logger.LogError(ex, "Holded rejected the contact list; creditor account names will be blank.");
             return [];
         }
-        catch (InvalidOperationException ex)
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException)
         {
-            // Unconfigured client (no BaseAddress) — the QA/preview default, where Holded has no key.
-            logger.LogWarning(ex, "Holded client is not configured; creditor account names will be blank.");
+            // Malformed body, or a 200 carrying Holded's {"status":0,...} error object where the
+            // contact array should be. Still a vendor failure — it must not take the page down.
+            logger.LogError(ex, "Holded returned an unreadable contact list; creditor account names will be blank.");
             return [];
         }
     }
@@ -555,6 +557,13 @@ public sealed class HoldedFinanceService(
     public async Task<CreditorBindResult> SetCreditorContactAsync(
         Guid userId, int supplierAccountNum, CancellationToken ct = default)
     {
+        // The dropdown is filtered, but it is client data — the account number arrives on a POST.
+        // Holded numbers every supplier contact, so without this an org vendor's account is bindable.
+        if (supplierAccountNum is < CreditorAccountMin or > CreditorAccountMax)
+            return CreditorBindResult.Failure(
+                $"Account {supplierAccountNum} is outside the member creditor block " +
+                $"({CreditorAccountMin}–{CreditorAccountMax}) — that is not a member's account.");
+
         // Only UserId is unique in the DB, so nothing stops a second member being written onto the
         // same 400000xx — which silently points one person's payments at another's creditor account.
         var takenByOther = (await repo.GetCreditorContactsAsync(ct))

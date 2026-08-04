@@ -1,3 +1,4 @@
+using System.Text.Json;
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Budget;
 using Humans.Application.Interfaces.Holded;
@@ -618,6 +619,38 @@ public class HoldedFinanceServiceTests
             .ListCreditorAccountsAsync(Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<NullReferenceException>();
+    }
+
+    [HumansFact]
+    public async Task ListCreditorAccounts_UnreadableHoldedResponse_DegradesToBlankNames()
+    {
+        _repo.GetAllLedgerLinesAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedLedgerLine>
+        {
+            new() { EntryNumber = 1, Line = 0, AccountNum = 40000004, Date = FixedNow, Credit = 40m },
+        });
+        _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>());
+        // A malformed body is still a vendor failure — /Finance/Creditors has no try/catch, so letting
+        // this escape would 500 the page instead of costing the names.
+        _client.ListContactsAsync(Arg.Any<CancellationToken>())
+            .Throws(new JsonException("unexpected token"));
+
+        var rows = await MakeService().ListCreditorAccountsAsync(Xunit.TestContext.Current.CancellationToken);
+
+        rows.Should().ContainSingle().Which.Name.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task SetCreditorContact_AccountOutsideCreditorBlock_FailsWithoutTouchingHolded()
+    {
+        // The number arrives on a POST; the filtered dropdown is not a server-side gate.
+        var result = await MakeService().SetCreditorContactAsync(
+            Guid.NewGuid(), 40000150, Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("outside the member creditor block");
+        await _repo.DidNotReceive().UpsertCreditorContactAsync(
+            Arg.Any<HoldedCreditorContact>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+        await _client.DidNotReceive().ListContactsAsync(Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
