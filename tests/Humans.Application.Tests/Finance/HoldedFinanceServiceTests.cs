@@ -567,12 +567,16 @@ public class HoldedFinanceServiceTests
         {
             new() { Id = "c1", Name = "Daniela Marquez", SupplierAccountNum = 40000004 },
             new() { Id = "c2", Name = "Maria Garcia", SupplierAccountNum = 40000012 },  // no ledger lines yet
-            new() { Id = "c3", Name = "A Client", SupplierAccountNum = null },          // not a creditor
+            new() { Id = "c3", Name = "A Client", SupplierAccountNum = null },          // not a supplier
+            new() { Id = "c4", Name = "Acme Supplies SL", SupplierAccountNum = 40000150 }, // vendor, outside the block
         });
 
         var rows = await MakeService().ListCreditorAccountsAsync(Xunit.TestContext.Current.CancellationToken);
 
+        // Ordinary org vendors carry supplier numbers too — only the 400000xx member-creditor block counts,
+        // or an admin could bind a member onto a vendor's account.
         rows.Should().HaveCount(2);
+        rows.Should().NotContain(r => r.SupplierAccountNum == 40000150);
         rows.Should().ContainSingle(r => r.SupplierAccountNum == 40000004)
             .Which.Name.Should().Be("Daniela Marquez");
         // A first-time submitter's contact exists in Holded before any journal activity — still selectable.
@@ -589,14 +593,50 @@ public class HoldedFinanceServiceTests
             new() { EntryNumber = 1, Line = 0, AccountNum = 40000004, Date = FixedNow, Credit = 40m },
         });
         _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>());
+        // The real client wraps HTTP failures — assert against what production actually throws.
         _client.ListContactsAsync(Arg.Any<CancellationToken>())
-            .Throws(new HttpRequestException("Holded is down"));
+            .Throws(new HoldedTransientException("Holded is down"));
 
         var rows = await MakeService().ListCreditorAccountsAsync(Xunit.TestContext.Current.CancellationToken);
 
         var row = rows.Should().ContainSingle().Subject;
         row.SupplierAccountNum.Should().Be(40000004);
         row.OwedToMember.Should().Be(40m);
+        row.Name.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task ListCreditorAccounts_UnexpectedClientFailure_Propagates()
+    {
+        _repo.GetAllLedgerLinesAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedLedgerLine>());
+        _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>());
+        // Only vendor-call failures degrade to blank names; a bug must not be silently absorbed.
+        _client.ListContactsAsync(Arg.Any<CancellationToken>())
+            .Throws(new NullReferenceException("mapping bug"));
+
+        var act = async () => await MakeService()
+            .ListCreditorAccountsAsync(Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<NullReferenceException>();
+    }
+
+    [HumansFact]
+    public async Task ListCreditorAccounts_BoundAccountWithNoHoldedContact_YieldsRowWithBlankName()
+    {
+        var userId = Guid.NewGuid();
+        _repo.GetAllLedgerLinesAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedLedgerLine>());
+        _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>
+        {
+            new() { UserId = userId, HoldedContactId = "c1", SupplierAccountNum = 40000004, Source = CreditorContactSource.Manual },
+        });
+        _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedContactDto>());
+
+        var rows = await MakeService().ListCreditorAccountsAsync(Xunit.TestContext.Current.CancellationToken);
+
+        // The binding keeps the row visible; there is simply no name to show for it.
+        var row = rows.Should().ContainSingle().Subject;
+        row.SupplierAccountNum.Should().Be(40000004);
+        row.BoundUserId.Should().Be(userId);
         row.Name.Should().BeEmpty();
     }
 

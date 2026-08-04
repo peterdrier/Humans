@@ -488,9 +488,11 @@ public sealed class HoldedFinanceService(
             .ToDictionary(g => g.Key, g => g.First());
 
         // Holded is the only place the chart-account label lives — nothing caches it locally.
+        // Range filter is load-bearing: Holded assigns a supplier number to every supplier contact,
+        // so an ordinary org vendor would otherwise become a bindable "creditor account" here.
         // Same group-by-first reasoning: a duplicate account number must not throw the whole list.
         var contacts = (await ListContactsOrEmptyAsync(ct))
-            .Where(c => c.SupplierAccountNum is not null)
+            .Where(c => c.SupplierAccountNum is >= CreditorAccountMin and <= CreditorAccountMax)
             .GroupBy(c => c.SupplierAccountNum!.Value)
             .ToDictionary(g => g.Key, g => g.First());
 
@@ -513,18 +515,30 @@ public sealed class HoldedFinanceService(
             }).ToList();
     }
 
-    /// <summary>Holded's contact list, or empty when Holded is unreachable/unconfigured. The creditor
-    /// overviews are otherwise cache-backed reads embedded in admin pages, so a vendor outage must
-    /// cost the account names, not the page.</summary>
+    /// <summary>Holded's contact list, or empty when the Holded call fails. The creditor overviews are
+    /// otherwise cache-backed reads embedded in admin pages, so a vendor failure must cost the account
+    /// names, not the page. Only vendor-call failures are absorbed — anything else is a bug and throws.</summary>
     private async Task<IReadOnlyList<HoldedContactDto>> ListContactsOrEmptyAsync(CancellationToken ct)
     {
         try
         {
             return await client.ListContactsAsync(ct);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (HoldedTransientException ex)
         {
             logger.LogWarning(ex, "Holded contact list unavailable; creditor account names will be blank.");
+            return [];
+        }
+        catch (HoldedPermanentException ex)
+        {
+            // A rejected key or a removed endpoint blanks every name until someone acts — Error, not Warning.
+            logger.LogError(ex, "Holded rejected the contact list; creditor account names will be blank.");
+            return [];
+        }
+        catch (InvalidOperationException ex)
+        {
+            // Unconfigured client (no BaseAddress) — the QA/preview default, where Holded has no key.
+            logger.LogWarning(ex, "Holded client is not configured; creditor account names will be blank.");
             return [];
         }
     }
@@ -546,8 +560,11 @@ public sealed class HoldedFinanceService(
         var takenByOther = (await repo.GetCreditorContactsAsync(ct))
             .Any(b => b.SupplierAccountNum == supplierAccountNum && b.UserId != userId);
         if (takenByOther)
+            // No unbind action exists; the remedy is to move the other member onto their own account,
+            // which overwrites their row (the binding upsert is keyed by UserId).
             return CreditorBindResult.Failure(
-                $"Account {supplierAccountNum} is already bound to a different member — unbind it there first.");
+                $"Account {supplierAccountNum} is already bound to a different member. " +
+                "Check /Finance/Creditors to see who, and bind them to their own account first.");
 
         var contact = (await client.ListContactsAsync(ct))
             .FirstOrDefault(c => c.SupplierAccountNum == supplierAccountNum);

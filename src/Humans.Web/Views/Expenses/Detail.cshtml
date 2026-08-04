@@ -224,13 +224,22 @@
                             @{
                                 // Holded is the only source of the account name; fall back to the bare number
                                 // for an account we hold a binding for but Holded has no contact for.
-                                var accountItems = Model.CreditorAccounts.Select(a => new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem
+                                // Accounts held by another member are marked, not hidden — the bind will be
+                                // refused, and seeing why beats a round-trip into a red error.
+                                var submitterId = Model.Report.SubmitterUserId;
+                                var accountItems = Model.CreditorAccounts.Select(a =>
                                 {
-                                    Value = a.SupplierAccountNum.ToString(),
-                                    Text = string.IsNullOrWhiteSpace(a.Name)
-                                        ? $"{a.SupplierAccountNum}{(a.OwedToMember > 0 ? $" (owed {a.OwedToMember.ToEuro()})" : "")}"
-                                        : $"{a.SupplierAccountNum} — {a.Name}{(a.OwedToMember > 0 ? $" (owed {a.OwedToMember.ToEuro()})" : "")}",
-                                    Selected = Model.BoundAccountNum == a.SupplierAccountNum,
+                                    var label = string.IsNullOrWhiteSpace(a.Name)
+                                        ? a.SupplierAccountNum.ToString()
+                                        : $"{a.SupplierAccountNum} — {a.Name}";
+                                    if (a.OwedToMember > 0) label += $" (owed {a.OwedToMember.ToEuro()})";
+                                    if (a.BoundUserId is { } owner && owner != submitterId) label += " — bound to another member";
+                                    return new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem
+                                    {
+                                        Value = a.SupplierAccountNum.ToString(),
+                                        Text = label,
+                                        Selected = Model.BoundAccountNum == a.SupplierAccountNum,
+                                    };
                                 });
                             }
                             <select name="supplierAccountNum" class="form-select form-select-sm" asp-items="accountItems" required>
