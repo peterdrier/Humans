@@ -566,7 +566,8 @@ public sealed class HoldedFinanceService(
 
         // Only UserId is unique in the DB, so nothing stops a second member being written onto the
         // same 400000xx — which silently points one person's payments at another's creditor account.
-        var takenByOther = (await repo.GetCreditorContactsAsync(ct))
+        var bindings = await repo.GetCreditorContactsAsync(ct);
+        var takenByOther = bindings
             .Any(b => b.SupplierAccountNum == supplierAccountNum && b.UserId != userId);
         if (takenByOther)
             // No unbind action exists; the remedy is to move the other member onto their own account,
@@ -580,6 +581,18 @@ public sealed class HoldedFinanceService(
         if (contact is null)
             return CreditorBindResult.Failure(
                 $"No Holded contact carries account {supplierAccountNum} — nothing bound.");
+
+        // The account-number check above cannot see a member whose binding carries this contact but
+        // whose 400000xx never resolved — the push's lookup is best-effort and leaves the number null.
+        // Two members on one Holded contact merges their payables just as surely as two on one number,
+        // and that binding is invisible on /Finance/Creditors (its rows are keyed by account number),
+        // so name the contact rather than send the admin somewhere it does not appear.
+        if (bindings.Any(b => b.UserId != userId
+                              && string.Equals(b.HoldedContactId, contact.Id, StringComparison.Ordinal)))
+            return CreditorBindResult.Failure(
+                $"Account {supplierAccountNum} belongs to Holded contact \"{contact.Name}\", which is " +
+                "already bound to a different member whose account number has not resolved yet. " +
+                "Nothing was changed — two members must never share one Holded contact.");
 
         var now = clock.GetCurrentInstant();
         await repo.UpsertCreditorContactAsync(new HoldedCreditorContact

@@ -692,6 +692,29 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
+    public async Task SetCreditorContact_ContactBoundToAnotherMemberWithUnresolvedAccount_FailsAndWritesNothing()
+    {
+        // The other member's binding carries the contact but no account number — the push resolves it
+        // best-effort — so the account-number guard cannot see the collision. The contact-id guard must.
+        _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>
+        {
+            new() { UserId = Guid.NewGuid(), HoldedContactId = "c1", SupplierAccountNum = null, Source = CreditorContactSource.Auto },
+        });
+        _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedContactDto>
+        {
+            new() { Id = "c1", Name = "Daniela Marquez", SupplierAccountNum = 40000004 },
+        });
+
+        var result = await MakeService().SetCreditorContactAsync(
+            Guid.NewGuid(), 40000004, Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("Daniela Marquez");
+        await _repo.DidNotReceive().UpsertCreditorContactAsync(
+            Arg.Any<HoldedCreditorContact>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task SetCreditorContact_NoHoldedContactCarriesAccount_FailsAndWritesNothing()
     {
         _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>());

@@ -201,11 +201,22 @@
                             Change below if needed.
                         </p>
                     }
-                    else if (Model.HasCreditorContact)
+                    else if (Model.HasCreditorContact && string.IsNullOrEmpty(Model.Report.HoldedDocId))
                     {
                         <p class="small mb-2 text-muted">
                             <i class="fa-solid fa-circle-info me-1"></i>This member has a Holded contact; its 400000xx
                             account number is assigned by Holded on the next push. Nothing to do before approving.
+                        </p>
+                    }
+                    else if (Model.HasCreditorContact)
+                    {
+                        @* Pushed, yet still no number: the push resolves it best-effort and does not retry for
+                           this report, so the binding can sit unresolved. The member is missing from the creditor
+                           overview and has no statement until it lands — not a blocker here, but not "nothing to do". *@
+                        <p class="small mb-2 text-muted">
+                            <i class="fa-solid fa-triangle-exclamation text-danger me-1"></i>This report was already
+                            pushed to Holded, but the member's 400000xx account number never resolved, so they do not
+                            appear on the creditor overview. It is not retried for this report &mdash; bind below to fix it now.
                         </p>
                     }
                     else
