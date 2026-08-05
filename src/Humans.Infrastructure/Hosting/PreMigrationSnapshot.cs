@@ -132,18 +132,33 @@ internal sealed class PreMigrationSnapshot(string connectionString, ILogger logg
         }
     }
 
+    /// <remarks>
+    /// Never throws: by the time this runs the snapshot exists, so a housekeeping failure must
+    /// not be what blocks the deploy. Worst case the directory grows and someone tidies it.
+    /// </remarks>
     private void Prune(string database)
     {
-        // The timestamp in the file name sorts lexicographically in chronological order.
-        var stale = new DirectoryInfo(SnapshotDirectory)
-            .GetFiles(database + "-*.dump")
-            .OrderByDescending(file => file.Name, StringComparer.Ordinal)
-            .Skip(RetainedSnapshots);
-
-        foreach (var file in stale)
+        try
         {
-            file.Delete();
-            logger.LogInformation("Pruned old pre-migration snapshot {Path}", file.FullName);
+            // The timestamp in the file name sorts lexicographically in chronological order.
+            var stale = new DirectoryInfo(SnapshotDirectory)
+                .GetFiles(database + "-*.dump")
+                .OrderByDescending(file => file.Name, StringComparer.Ordinal)
+                .Skip(RetainedSnapshots);
+
+            foreach (var file in stale)
+            {
+                file.Delete();
+                logger.LogInformation("Pruned old pre-migration snapshot {Path}", file.FullName);
+            }
+        }
+        catch (IOException ex)
+        {
+            logger.LogWarning(ex, "Could not prune old pre-migration snapshots in {Directory}", SnapshotDirectory);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            logger.LogWarning(ex, "Could not prune old pre-migration snapshots in {Directory}", SnapshotDirectory);
         }
     }
 }
