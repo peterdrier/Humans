@@ -2,8 +2,10 @@
 
 > Generated 2026-08-03 against commit `5a9bbe198` (fork `main`). Feeds the
 > [Q3 Transition Plan](2026-06-13-q3-transition-plan.md) G0 gate ("Demolition inventory: per-section
-> list of dead columns/tables, cross-section FK constraints, and non-conforming table names —
-> feeds G2 work items") and the Section tracker table in that doc.
+> list of dead columns/tables, cross-section FK constraints, and non-conforming table names")
+> and the Section tracker table in that doc. This file is the **work list**; the transition plan
+> assigns the gates — dead columns/tables and FK cuts run at G2, table renames at G5, per the
+> scheduling update below. Do not read a gate off this document.
 >
 > **Method:** code-derived, not doc-derived. Every claim below cites a `file:line` or a
 > `[Grandfathered(...)]`/`ToTable(...)` call actually in the tree. Where the plan doc or
