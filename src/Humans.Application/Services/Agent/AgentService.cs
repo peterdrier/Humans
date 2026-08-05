@@ -305,9 +305,13 @@ public sealed class AgentService : IAgentService
                         fetchedDocs.Add(NormalizeFetchedDocSlug(call.Name, call.JsonArguments, _logger));
                     }
                 }
-                else
+                else if (!result.IsError)
                 {
                     // Normalize slug so admin "Top fetched docs" groups by document, not tool-name+args.
+                    // Only successful dispatches count: now that max_tokens-truncated calls are
+                    // dispatched rather than discarded, a malformed-JSON call would otherwise be
+                    // recorded under its bare tool name (NormalizeFetchedDocSlug's parse fallback)
+                    // and inflate the admin panel with lookups that never returned a document.
                     fetchedDocs.Add(NormalizeFetchedDocSlug(call.Name, call.JsonArguments, _logger));
                 }
             }

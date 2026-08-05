@@ -536,6 +536,15 @@ public class AgentServiceTests
             "a max_tokens cutoff mid tool-call must not dead-end the turn — the loop retries and the model finishes its answer");
 
         tokens.Last().Finalizer!.StopReason.Should().Be("end_turn");
+
+        // Dispatching the truncated call must not inflate the admin "Top fetched docs" panel:
+        // NormalizeFetchedDocSlug can't parse the truncated args, so it would fall back to the
+        // bare tool name and record a lookup that never returned a document.
+        var rows = await svc.ListAllConversationsForAdminWithMessagesAsync(
+            refusalsOnly: false, handoffsOnly: false, userId: userId, take: 50, skip: 0,
+            Xunit.TestContext.Current.CancellationToken);
+        rows.SelectMany(r => r.Messages).SelectMany(m => m.FetchedDocs)
+            .Should().BeEmpty("a failed tool dispatch is not a fetched doc");
     }
 
     [HumansFact]
