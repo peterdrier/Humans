@@ -40,6 +40,4 @@
 
 ## Schema demolition queue
 
-> Gate assignment for these items comes from the [Q3 transition plan](../2026-06-13-q3-transition-plan.md), not from this scorecard.
-
 `StoreOrder.Label` — `[Obsolete]`, retained but unused after #816, never set on write. Already a named demolition-inventory item in the doc. Phase 5 (manual payments, invoice issuance, treasury sync) is unimplemented (`NotSupportedException("Phase 5")`) — not a G1/G3 concern, just incomplete feature scope.

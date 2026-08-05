@@ -38,8 +38,6 @@ Section: Feedback · Kind: vertical · Audited 2026-08-03 @ 5a9bbe198
 
 ## Schema demolition queue (light)
 
-> Gate assignment for these items comes from the [Q3 transition plan](../2026-06-13-q3-transition-plan.md), not from this scorecard.
-
 - The HUM0024 cross-section-join demolition (G1 gap #1) is this section's clearest schema-demolition candidate — it's explicitly self-documented as in-progress-intent ("migrating to bare FK") but not yet executed. Should be filed as a tracked issue if one doesn't already exist, since the transition plan's demolition inventory expects named items, not just Grandfathered-attribute prose.
 - No dead columns spotted otherwise; data model is otherwise lean.
 

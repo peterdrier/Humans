@@ -58,7 +58,5 @@ G1 predicate for the effective `DebugController`-only scope is N/A or PASS.
 
 ## Schema demolition queue (light)
 
-> Gate assignment for these items comes from the [Q3 transition plan](../2026-06-13-q3-transition-plan.md), not from this scorecard.
-
 - Nothing to demolish — Debug owns no tables/columns.
 - If `DevLogin`/`DevSeed` are confirmed in-scope, the `IUserEmailService` dependency in `DevLoginController` is a candidate for narrowing once the section boundary decision lands (not a schema item — it's a G1 dependency-shape fix).

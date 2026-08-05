@@ -41,7 +41,5 @@
 
 ## Schema demolition queue
 
-> Gate assignment for these items comes from the [Q3 transition plan](../2026-06-13-q3-transition-plan.md), not from this scorecard.
-
 - `audit_log` table already carries the append-only DB trigger + `[Grandfathered(HUM0024)]` cross-section FK navs — this section's schema queue is largely "drop the two navs once HUM0024's bare-FK migration ships," not new discovery.
 - No dead columns spotted in `AuditLogEntryConfiguration` in this pass.

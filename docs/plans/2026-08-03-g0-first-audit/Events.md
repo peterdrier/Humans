@@ -35,8 +35,6 @@ Section: Events · Kind: vertical · Audited 2026-08-03 @ 5a9bbe198
 
 ## Schema demolition queue (light)
 
-> Gate assignment for these items comes from the [Q3 transition plan](../2026-06-13-q3-transition-plan.md), not from this scorecard.
-
 - No dead columns/tables spotted in `docs/sections/Events.md`'s data model — schema looks lean already (bare-FK pattern already applied, cross-domain navs already stripped per PR #539).
 - The 3 entity-leak baseline rows (G1 gap #2) are a light cleanup, not a schema change.
 

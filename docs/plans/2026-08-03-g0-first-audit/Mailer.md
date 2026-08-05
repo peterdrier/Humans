@@ -40,8 +40,6 @@ No G1 gaps found for Mailer.
 
 ## Schema demolition queue
 
-> Gate assignment for these items comes from the [Q3 transition plan](../2026-06-13-q3-transition-plan.md), not from this scorecard.
-
 None — no owned tables.
 
 ## Headline

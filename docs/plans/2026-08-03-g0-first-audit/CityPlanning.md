@@ -39,8 +39,6 @@ Kind: vertical · Audited 2026-08-03 @ 5a9bbe198
 
 ## Schema demolition queue (light)
 
-> Gate assignment for these items comes from the [Q3 transition plan](../2026-06-13-q3-transition-plan.md), not from this scorecard.
-
 - No obvious dead columns/tables spotted for this section during this pass — `CityPlanningSettings`, `CampPolygon`, `CampPolygonHistory` all look actively used per the doc's data model.
 - Still on monolithic `HumansDbContext` (via `IDbContextFactory<HumansDbContext>`) — G4 (own DbContext) not started for this section, unlike Containers/Expenses/Finance/EventGuide/Surveys/SystemSettings/Agent which already have dedicated `<Section>DbContext` classes (found via `Data/*DbContext*.cs` listing). Out of G1/G3 scope but relevant sequencing info for the tracker.
 

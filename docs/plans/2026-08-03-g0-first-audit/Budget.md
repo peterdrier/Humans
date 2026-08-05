@@ -41,8 +41,6 @@
 
 ## Schema demolition queue
 
-> Gate assignment for these items comes from the [Q3 transition plan](../2026-06-13-q3-transition-plan.md), not from this scorecard.
-
 Budget hierarchy (`BudgetYear → BudgetGroup → BudgetCategory → BudgetLineItem`) plus `BudgetAuditLog` reads as a clean, purpose-built schema — no dead columns spotted in this pass. `docs/features/budget/budget.md` explicitly scopes it as "not an accounting system" / "not real-time," so no schema growth pressure expected.
 
 **Corrected 2026-08-03** — "nothing destructive queued" conflated *dead columns* with *all* schema work. Absence of dead columns says nothing about FK cuts or renames, and the demolition inventory in this same commit records four schema actions (this scorecard's own G1 findings already acknowledge all three HUM0024 configurations):

@@ -43,8 +43,6 @@
 
 ## Schema demolition queue
 
-> Gate assignment for these items comes from the [Q3 transition plan](../2026-06-13-q3-transition-plan.md), not from this scorecard.
-
 `TicketTransferRequest.VendorStepsJson` is unused, dormant, named as pending a post-soak drop PR — already a tracked demolition-inventory item.
 
 

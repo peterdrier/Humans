@@ -35,8 +35,6 @@ None — Expenses is clean on G1.
 
 ## Schema demolition queue (light)
 
-> Gate assignment for these items comes from the [Q3 transition plan](../2026-06-13-q3-transition-plan.md), not from this scorecard.
-
 - `docs/sections/Expenses.md` flags its own tech debt: `IHoldedFinanceService` is consumed as the "full interface for now, read-split to `IHoldedFinanceServiceRead` noted as future tech debt" — this is a Finance-side G1 item (see Finance audit), not an Expenses gap.
 - No dead columns/tables spotted in the data model.
 

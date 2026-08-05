@@ -47,8 +47,6 @@
 
 ## Schema demolition queue
 
-> Gate assignment for these items comes from the [Q3 transition plan](../2026-06-13-q3-transition-plan.md), not from this scorecard.
-
 Two cross-section FK cuts are queued (see the G1 gap list): `consent_records.UserId → AspNetUsers`
 and `legal_documents.TeamId → teams`, both currently HUM0024-grandfathered. Once #751 lands, the
 `LegalDocument.Team` nav is stripped and both FKs are cut, this section is schema-clean — no dead

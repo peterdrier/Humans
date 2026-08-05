@@ -45,8 +45,6 @@ section. Counts are unchanged — the verdict already scored G1 as 4 and G3 as 4
 
 ## Schema demolition queue
 
-> Gate assignment for these items comes from the [Q3 transition plan](../2026-06-13-q3-transition-plan.md), not from this scorecard.
-
 **Corrected 2026-08-03** — "no FK-cut or rename items surfaced" was wrong; the demolition
 inventory in this same commit records both, and predicate 5(b) already found the HUM0024
 grandfather that marks the FKs. Auth's schema queue is:

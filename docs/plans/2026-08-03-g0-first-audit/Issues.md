@@ -33,8 +33,6 @@
 
 ## Schema demolition queue
 
-> Gate assignment for these items comes from the [Q3 transition plan](../2026-06-13-q3-transition-plan.md), not from this scorecard.
-
 **Corrected 2026-08-03.** The typed-FK conversion above is schema-neutral, but that is *not* the same as having no schema work: `IssueConfiguration` and `IssueCommentConfiguration` define **four physical User FK constraints** (`ReporterUserId`, `AssigneeUserId`, `ResolvedByUserId`, `SenderUserId` → `AspNetUsers`), and dropping the nav properties or the HUM0024 attributes does not drop those constraints. All four FK cuts belong in Issues' schema queue; otherwise the section could enter schema cleanup with only the configuration refactor scheduled and keep every cross-section database dependency.
 
 ## Headline

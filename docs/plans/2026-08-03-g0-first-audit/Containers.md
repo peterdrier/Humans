@@ -35,7 +35,5 @@ None — Containers is the cleanest of this batch on G1; ahead of most sections 
 
 ## Schema demolition queue (light)
 
-> Gate assignment for these items comes from the [Q3 transition plan](../2026-06-13-q3-transition-plan.md), not from this scorecard.
-
 - Doc explicitly documents an accepted limitation (orphaned placement-image files on delete) rather than a bug — not a demolition candidate, just a known tradeoff at current scale.
 - Already has its own `ContainersDbContext` — a head start on G4 once G1/G3 close.

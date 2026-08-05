@@ -35,8 +35,6 @@ Every other G1 predicate passed cleanly — Governance remains among the cleanes
 
 ## Schema demolition queue
 
-> Gate assignment for these items comes from the [Q3 transition plan](../2026-06-13-q3-transition-plan.md), not from this scorecard.
-
 **Corrected 2026-08-03 — "none identified" contradicted this scorecard's own G1 gap list and the demolition inventory.** Governance's schema queue is the **four cross-section FK cuts** to `AspNetUsers`: `applications.ReviewedByUserId` and `applications.UserId` (`ApplicationConfiguration.cs:49,56`), `application_state_history.ChangedByUserId` (`ApplicationStateHistoryConfiguration.cs:27`), and `board_votes.BoardMemberUserId` (`BoardVoteConfiguration.cs:32`). Governance is not schema-clean while those constraints remain.
 
 Also queued: the three table renames (`applications` → `governance_applications`, `application_state_history` → `governance_application_state_history`, `board_votes` → `governance_board_votes`) per the inventory. Separately, `ReviewStartedAt` is documented as currently unused (no controller path sets it) — a dead-column candidate worth confirming isn't reserved for a near-term feature before dropping.

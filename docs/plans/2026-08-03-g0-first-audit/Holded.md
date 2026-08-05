@@ -39,8 +39,6 @@ No G1 gaps owned by Holded itself. One note flagged for cross-reference: the `No
 
 ## Schema demolition queue
 
-> Gate assignment for these items comes from the [Q3 transition plan](../2026-06-13-q3-transition-plan.md), not from this scorecard.
-
 None for this section (no owned tables). Finance's forthcoming schema pass should account for the already-approved `holded_creditor_balances`/`holded_payments` drops recorded in the baseline.
 
 ## Headline

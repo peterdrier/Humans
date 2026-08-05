@@ -37,8 +37,6 @@
 
 ## Schema demolition queue (light)
 
-> Gate assignment for these items comes from the [Q3 transition plan](../2026-06-13-q3-transition-plan.md), not from this scorecard.
-
 - Q3 plan lane note: Campaigns sits in the independent "`#524 → #204 (legal gate) → #218`" newsletter/marketing-opt-in/segmentation lane — no legal-gate coupling observed in the current code (current `CampaignCodes` message-category opt-out via `ICommunicationPreferenceService` is already the compliant pattern the lane presumably builds on). Nothing blocking this schema work found.
 - **Added 2026-08-03 — two cross-section FK cuts.** The absence of dead columns is not the absence of schema work: `CampaignConfiguration.cs:31-33` (`Campaign.CreatedByUserId` → `AspNetUsers`) and `CampaignGrantConfiguration.cs:40-42` (`CampaignGrant.UserId` → `AspNetUsers`) are physical cross-section FKs, both behind the HUM0024 configurations already listed as G1 gap 1. Retiring those attributes/navs does not drop the constraints — queue both cuts here so a Campaigns schema batch driven by this scorecard can't omit its known boundary work.
 - No dead columns/tables spotted in `Campaign`/`CampaignCode`/`CampaignGrant` this pass.

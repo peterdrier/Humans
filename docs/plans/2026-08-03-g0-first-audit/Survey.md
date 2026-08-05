@@ -40,8 +40,6 @@
 
 ## Schema demolition queue
 
-> Gate assignment for these items comes from the [Q3 transition plan](../2026-06-13-q3-transition-plan.md), not from this scorecard.
-
 Survey is "born §15-compliant" (2026-06-04) — no demolition-inventory items identified in the doc or this audit.
 
 ## Headline

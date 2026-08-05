@@ -38,8 +38,6 @@
 
 ## Schema demolition queue
 
-> Gate assignment for these items comes from the [Q3 transition plan](../2026-06-13-q3-transition-plan.md), not from this scorecard.
-
 - Nothing schema-destructive spotted for Agent (no dead columns/tables flagged in this pass; would need a dedicated demolition-inventory sweep against `AgentSettings`/`AgentConversations`/`AgentMessages` columns to confirm).
 - Table names already section-prefixed (`agent_*` per orchestrator-marker memory doc) — rename work likely already satisfied for this section; verify when this item is addressed.
 - **Agent already has its own `DbContext` + migration history (issue #858)** — the section may already satisfy G4 outright. Recommend the tracker owner verify Agent against the formal G4 predicate list once written, rather than routing it through the standard schema-demolition queue like a from-scratch section.

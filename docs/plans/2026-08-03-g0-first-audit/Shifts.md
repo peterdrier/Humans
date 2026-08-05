@@ -38,8 +38,6 @@
 
 ## Schema demolition queue
 
-> Gate assignment for these items comes from the [Q3 transition plan](../2026-06-13-q3-transition-plan.md), not from this scorecard.
-
 `VolunteerEventProfile`'s dietary/medical columns are retained-but-unused pending a post-prod-soak drop (already migrated to `Profile`). This is a named demolition-inventory item already tracked in the doc.
 
 

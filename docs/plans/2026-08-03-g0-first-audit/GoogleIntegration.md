@@ -36,8 +36,6 @@
 
 ## Schema demolition queue
 
-> Gate assignment for these items comes from the [Q3 transition plan](../2026-06-13-q3-transition-plan.md), not from this scorecard.
-
 No dead columns/tables identified for this section in the current pass. `google_sync_outbox` table name vs `design-rules.md §8`'s stale `google_sync_outbox_events` reference should be corrected in that doc (not a schema change, a doc fix).
 
 

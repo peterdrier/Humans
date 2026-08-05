@@ -50,8 +50,6 @@ sections' data, just through their read interfaces rather than raw EF, which is 
 
 ## Schema demolition queue
 
-> Gate assignment for these items comes from the [Q3 transition plan](../2026-06-13-q3-transition-plan.md), not from this scorecard.
-
 The 2 HUM0024 grandfathers above are this section's schema demolition candidate, same shape as Campaigns/Feedback/etc. — file alongside those if a tracked issue doesn't exist yet.
 
 **Kind reclassification — retracted:** the original note suggesting Notifications move to `Crosscut` per the glossary is retracted — see the corrected Kind note above. `NotificationMeterProvider` does carry real outbound section-specific logic (live reads into 5 other sections), so the "zero outbound logic" premise for a Crosscut reclassification doesn't hold. Stays `vertical`.

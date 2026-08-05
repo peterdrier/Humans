@@ -47,7 +47,5 @@ test against"* (false; `docs/sections/Cantina.md` exists per G1.7).
 
 ## Schema demolition queue
 
-> Gate assignment for these items comes from the [Q3 transition plan](../2026-06-13-q3-transition-plan.md), not from this scorecard.
-
 - Nothing — Cantina owns no tables, so there's no demolition-inventory surface (no dead columns, no cross-section FKs, no rename work) for this section specifically.
 - **Resolved 2026-08-03 — the folding question is closed, not open.** This note originally asked whether Cantina might end up folded into whichever section owns the read surfaces it depends on. The confirmed section inventory (`2026-08-03-proposed-frozen-section-inventory.md`) rules that Cantina **is** its own section, and the `sections-are-logical-units` rule states that table-less sections stay on the ladder with table-keyed predicates marked N/A. Leaving the question open would reopen a frozen decision and invite later tracker work to undo the canonical taxonomy. The still-valid half stands: Cantina owns no tables, so there is no schema or DbContext work for this section.

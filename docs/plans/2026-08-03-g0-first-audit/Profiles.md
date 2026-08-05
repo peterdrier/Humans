@@ -37,6 +37,4 @@
 
 ## Schema demolition queue
 
-> Gate assignment for these items comes from the [Q3 transition plan](../2026-06-13-q3-transition-plan.md), not from this scorecard.
-
 Profile picture dual-write (`ProfilePictureData` DB fallback), `Profile.IsSuspended` obsolete column, `User.GoogleEmailStatus`/`GoogleEmail` shadow columns, `UserEmail.IsOAuth`/`DisplayOrder` shadow columns are all named demolition-inventory candidates already flagged in the section doc as "pending a deferred drop migration" — these feed the schema queue directly once soak windows close. No new items surfaced this pass beyond what the doc already tracks.

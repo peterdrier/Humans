@@ -38,6 +38,4 @@ None — no gaps found this pass.
 
 ## Schema demolition queue
 
-> Gate assignment for these items comes from the [Q3 transition plan](../2026-06-13-q3-transition-plan.md), not from this scorecard.
-
 Owns no tables — schema cleanup is trivially satisfied once its dependent sections (Profiles/Users, Legal & Consent, Teams, Governance) clear their own schema items. No demolition-inventory items originate here.

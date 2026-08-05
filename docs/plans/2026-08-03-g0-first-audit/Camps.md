@@ -45,8 +45,6 @@
 
 ## Schema demolition queue
 
-> Gate assignment for these items comes from the [Q3 transition plan](../2026-06-13-q3-transition-plan.md), not from this scorecard.
-
 - `NoDestructiveMigrationOps.baseline.txt` carries one historical Camps entry (`DropColumn(IsRequired)` on `CampRoleDefinitions`, migration `20260426185621`) and `NoDestructiveMigrationOps` also lists `DropColumn(ContactMethod)` on a Camp-adjacent migration (`AddCampLinksRemoveContactMethod`) — both already-applied historical drops, not open schema-queue work; noted for completeness only.
 - **Corrected 2026-08-03** — the original "nothing surfaced beyond the `SystemTeamSyncJob` repository leak" was wrong on both counts: that leak is a G1 refactor, not schema demolition, and the demolition inventory in this same commit names real Camps schema work. The section's actual schema queue is:
   - **Drop the dead `camp_leads` table** (legacy `CampLead` entity, doc-acknowledged as pending removal, issue #774).

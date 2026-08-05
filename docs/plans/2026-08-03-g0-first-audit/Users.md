@@ -36,6 +36,4 @@
 
 ## Schema demolition queue
 
-> Gate assignment for these items comes from the [Q3 transition plan](../2026-06-13-q3-transition-plan.md), not from this scorecard.
-
 `User.GoogleEmailStatus`, `User.GoogleEmail` (shadow), `UserEmail.IsOAuth`/`DisplayOrder` (shadow), `Profile.IsSuspended` legacy bool (cross-referenced in Profiles.md) are the section's demolition-inventory items, already named in the doc as soak-pending drops. No new items surfaced.

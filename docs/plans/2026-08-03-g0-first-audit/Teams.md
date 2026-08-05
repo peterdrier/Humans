@@ -36,8 +36,6 @@
 
 ## Schema demolition queue
 
-> Gate assignment for these items comes from the [Q3 transition plan](../2026-06-13-q3-transition-plan.md), not from this scorecard.
-
 No dead columns/tables named in the doc beyond the nav-strip follow-up (which is code-shape, not schema). `google_resources` FK/ownership boundary with GoogleIntegration is clean and intentional, not debt.
 
 

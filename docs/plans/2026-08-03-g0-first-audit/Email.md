@@ -41,8 +41,6 @@ Scope note: `reforge.surface-score.json` bundles **Mailer** (`IMailerAudienceSyn
 
 ## Schema demolition queue (light)
 
-> Gate assignment for these items comes from the [Q3 transition plan](../2026-06-13-q3-transition-plan.md), not from this scorecard.
-
 - Still on monolithic `HumansDbContext` (via `IDbContextFactory<HumansDbContext>`) — no dedicated `EmailDbContext` yet, unlike Containers/Expenses/Finance/EventGuide/Surveys/SystemSettings/Agent.
 - No dead-column/table candidates spotted; schema described as "stable" by design (new headers go in `ExtraHeaders` JSON, not new columns) — this is an intentional anti-demolition-churn decision, not debt.
 

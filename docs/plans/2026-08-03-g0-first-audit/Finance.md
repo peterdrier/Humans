@@ -36,8 +36,6 @@ None — Finance is clean on G1. (Tech debt already self-documented and out of s
 
 ## Schema demolition queue (light)
 
-> Gate assignment for these items comes from the [Q3 transition plan](../2026-06-13-q3-transition-plan.md), not from this scorecard.
-
 - `docs/sections/Finance.md` explicitly documents `20260525_HoldedCreditorData` as "superseded" by the ledger single-source redesign — confirm this migration/its dropped tables (`holded_creditor_balances`, `holded_payments`, seen in `NoDestructiveMigrationOps.baseline.txt`) are fully retired with no lingering references; looks already clean per the doc.
 - Soft boundary noted in doc: `TicketingProjection`/`TicketingBudgetService` conceptually belong to Finance-adjacent "actuals materialization" but live in Budget — explicitly flagged by the doc as deliberate, not an active violation; leave as-is unless Budget's own audit disagrees.
 - **Process note for Peter:** consider adding a `Holded` row to the G0 section tracker table, separate from `Finance`, since `docs/sections/Holded.md` describes it as an already-built, distinct, table-less section (pure HTTP client) rather than a Finance sub-concept.

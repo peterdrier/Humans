@@ -38,8 +38,6 @@
 
 ## Schema demolition queue (light)
 
-> Gate assignment for these items comes from the [Q3 transition plan](../2026-06-13-q3-transition-plan.md), not from this scorecard.
-
 - FK cut: `CalendarEvents.OwningTeamId → Teams.Id` (see gap #2 above) — pairs naturally with dropping the `[Obsolete]` nav property entirely once app-level integrity is trusted.
 - No dead columns/tables spotted in `CalendarEvent`/`CalendarEventException` during this pass — soft-delete (`DeletedAt`) and denormalized `RecurrenceUntilUtc` both appear actively used (indexing purpose documented in the feature doc).
 - Out-of-scope-for-now module aggregation (`ICalendarContributor`) is a *feature* item (post-v1 slice), not a debt item — no queue action needed.
