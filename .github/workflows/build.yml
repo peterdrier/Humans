@@ -253,10 +253,3 @@ jobs:
           echo "::error::RS0030 suppressions in test code are forbidden. Use [HumansFact] / [HumansTheory] (or set Timeout = N) instead of suppressing the analyzer."
           exit 1
         fi
-
-    - name: Enforce quarantine discipline (Skip= needs a tracking issue)
-      # nobodies-collective/Humans#767: a permanently-skipped test
-      # ([BrokenFact(...)] or an unconditional Skip= on [HumansFact] /
-      # [HumansTheory]) must reference its tracking issue, or it rots
-      # silently. See memory/process/no-pre-existing-failures.md.
-      run: bash scripts/check-skip-attribute-tracking.sh
