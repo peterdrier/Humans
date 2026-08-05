@@ -1,6 +1,7 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Email;
+using Humans.Application.Interfaces.Feedback;
 using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
@@ -112,14 +113,21 @@ public sealed class FeedbackServiceTests : ServiceTestHarness
     }
 
     // Feedback stopped accepting new reports in nobodies-collective/Humans#977 —
-    // there is no service-level create any more, so every fixture seeds rows directly.
+    // there is no service- or repository-level create any more, so every fixture
+    // below seeds historical rows straight into the DB.
     [HumansFact]
-    public void IFeedbackService_ExposesNoReportCreationMethod()
+    public void FeedbackSurface_ExposesNoReportCreationMethod()
     {
-        typeof(Humans.Application.Interfaces.Feedback.IFeedbackService)
-            .GetMethods()
-            .Select(m => m.Name)
-            .Should().NotContain(["SubmitFeedbackAsync", "SubmitUserFeedbackAsync"]);
+        Type[] surfaces = [typeof(IFeedbackService), typeof(IFeedbackRepository)];
+
+        var creators = surfaces
+            .SelectMany(s => s.GetMethods().Select(m => $"{s.Name}.{m.Name}"))
+            .Where(n => n.Contains(".Submit", StringComparison.Ordinal)
+                     || n.Contains(".Create", StringComparison.Ordinal)
+                     || n.Contains(".AddReport", StringComparison.Ordinal))
+            .ToList();
+
+        creators.Should().BeEmpty("no Feedback surface may expose a way to create a FeedbackReport");
     }
 
     [HumansFact]
