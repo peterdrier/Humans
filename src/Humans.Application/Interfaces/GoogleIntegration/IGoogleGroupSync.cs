@@ -1,3 +1,4 @@
+using Humans.Application.Architecture;
 using Humans.Application.DTOs;
 using Humans.Domain.Enums;
 
@@ -43,6 +44,7 @@ public interface IGoogleGroupSync
     /// Google; <see cref="SyncAction.Execute"/> applies changes per the
     /// admin-configured <c>SyncSettings</c> mode (None / AddOnly / AddAndRemove).
     /// </param>
+    [ExternalWrite]
     Task<SyncPreviewResult> ReconcileAllAsync(
         SyncAction action,
         CancellationToken ct = default);
@@ -51,6 +53,7 @@ public interface IGoogleGroupSync
     /// Reconciles one group. Called by Hangfire-scoped sync requests and by
     /// the <c>/Google/Sync</c> Groups tab's per-row Execute.
     /// </summary>
+    [ExternalWrite]
     Task<ResourceSyncDiff> ReconcileOneAsync(
         string groupKey,
         SyncAction action,
@@ -66,6 +69,7 @@ public interface IGoogleGroupSync
     // HangfireGoogleGroupSyncScheduler, so new jobs are also serialized
     // against this signature. Do not remove without first draining queued
     // ReconcileOneAsync jobs.
+    [ExternalWrite]
     Task<ResourceSyncDiff> ReconcileOneAsync(
         string groupKey,
         SyncAction action,

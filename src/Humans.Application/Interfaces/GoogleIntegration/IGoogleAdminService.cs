@@ -1,3 +1,4 @@
+using Humans.Application.Architecture;
 using Humans.Application.DTOs;
 
 namespace Humans.Application.Interfaces.GoogleIntegration;
@@ -18,6 +19,7 @@ public interface IGoogleAdminService : IApplicationService
     /// <summary>
     /// Provisions a new standalone @nobodies.team account (not linked to a user).
     /// </summary>
+    [ExternalWrite]
     Task<WorkspaceAccountActionResult> ProvisionStandaloneAccountAsync(
         string emailPrefix, string firstName, string lastName,
         Guid actorUserId,
@@ -26,6 +28,7 @@ public interface IGoogleAdminService : IApplicationService
     /// <summary>
     /// Suspends a @nobodies.team account.
     /// </summary>
+    [ExternalWrite]
     Task<WorkspaceAccountActionResult> SuspendAccountAsync(
         string email, Guid actorUserId,
         CancellationToken ct = default);
@@ -33,6 +36,7 @@ public interface IGoogleAdminService : IApplicationService
     /// <summary>
     /// Reactivates a suspended @nobodies.team account.
     /// </summary>
+    [ExternalWrite]
     Task<WorkspaceAccountActionResult> ReactivateAccountAsync(
         string email, Guid actorUserId,
         CancellationToken ct = default);
@@ -40,6 +44,7 @@ public interface IGoogleAdminService : IApplicationService
     /// <summary>
     /// Resets the password for a @nobodies.team account.
     /// </summary>
+    [ExternalWrite]
     Task<WorkspaceAccountActionResult> ResetPasswordAsync(
         string email, Guid actorUserId,
         CancellationToken ct = default);
@@ -51,6 +56,7 @@ public interface IGoogleAdminService : IApplicationService
     /// temp password and the code regardless of 2FA-enrollment state).
     /// Writes two audit entries (password reset + backup codes generated).
     /// </summary>
+    [ExternalWrite]
     Task<WorkspaceRecoveryCredentialsResult> ResetPasswordAndGenerate2FaAsync(
         string email, Guid actorUserId,
         CancellationToken ct = default);
@@ -67,6 +73,7 @@ public interface IGoogleAdminService : IApplicationService
     /// <summary>
     /// Links a Google Group prefix to a team.
     /// </summary>
+    [ExternalWrite]
     Task<GroupLinkActionResult> LinkGroupToTeamAsync(
         Guid teamId, string groupPrefix,
         CancellationToken ct = default);
