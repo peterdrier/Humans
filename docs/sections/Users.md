@@ -193,7 +193,7 @@ Inbound (other sections → Users) — the typical direction:
 - **Notifications, Email, AuditLog:** call `IUserService.GetByIdsAsync` (always returns `User` with `UserEmails` populated — there is no "without emails" variant; the caching decorator's `UserInfo` dict already carries the full payload) to resolve recipient identity/email without navigating cross-domain navs.
 - **Account-deletion job (Infrastructure):** calls `IUserService.GetAccountsDueForAnonymizationAsync` + `AnonymizeExpiredAccountAsync`.
 - **Account merge (`IAccountMergeService.AcceptAsync`, Users section):** the `IUserMerge` fan-out calls `IUserService.ReassignLoginsToUserAsync`, `ReassignEventParticipationToUserAsync`, and `AnonymizeForMergeAsync` to fold a source User into a target.
-- **Audit Log / Legal & Consent / Budget:** call `IUserService.GetMergedSourceIdsAsync(targetUserId)` to chain-follow merge tombstones on per-user reads of append-only entities.
+- **Audit Log / Consent / Budget:** call `IUserService.GetMergedSourceIdsAsync(targetUserId)` to chain-follow merge tombstones on per-user reads of append-only entities.
 
 ## Architecture
 

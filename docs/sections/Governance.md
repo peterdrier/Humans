@@ -171,7 +171,7 @@ Three controllers serve this section directly. `BoardController` composes Govern
 - **Profiles:** `IProfileService` — membership tier lives on the profile; approval calls `SetMembershipTierAsync`. `IProfileService.GetTierCountsAsync` is called by `GovernanceController.Index` for sidebar tier counts. Account merge: `ApplicationDecisionService` implements `IUserMerge`; `AccountMergeService` (Profiles section) fans out to all `IUserMerge` implementations, which triggers `ApplicationDecisionService.ReassignAsync` → `IApplicationRepository.ReassignApplicationsToUserAsync` to re-FK `Application.UserId` from source to target. `BoardVote.BoardMemberUserId` is not re-FK'd (votes are transient, deleted on finalization).
 - **Teams:** `ISystemTeamSync` — tier approval or expiry adds/removes the human from Colaboradors/Asociados system teams.
 - **Onboarding:** Tier applications are a separate, optional path — never block Volunteer onboarding.
-- **Legal & Consent:** Consent checks are reviewed alongside (but independently of) tier applications.
+- **Consent:** Consent checks are reviewed alongside (but independently of) tier applications.
 - **Users/Identity:** `IUserService.GetByIdsAsync` — display data for applicant/reviewer/voter, stitched into DTOs.
 - **Auth:** `IRoleAssignmentService.GetActiveUserIdsInRoleAsync` — used by `ApplicationDecisionService.GetBoardVotingDashboardAsync` to enumerate Board member IDs for vote grid headers.
 
