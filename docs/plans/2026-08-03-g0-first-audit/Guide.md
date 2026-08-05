@@ -42,7 +42,7 @@ Guide owns zero database tables (content is fetched from GitHub, cached in `IMem
    can't score as met. Fix: complete the mapping (a read, not new tests, unless it turns up real
    holes). No-migration-needed: **y**.
 
-## G2 queue notes
+## Schema demolition queue
 
 None — no owned tables to demolish/rename.
 

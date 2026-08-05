@@ -38,7 +38,7 @@ No G1 gaps found for Mailer.
    invariant→test mapping (cheap — it's a read, not new tests, unless the mapping turns up real
    holes). No-migration-needed: **y**.
 
-## G2 queue notes
+## Schema demolition queue
 
 None — no owned tables.
 

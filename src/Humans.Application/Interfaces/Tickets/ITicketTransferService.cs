@@ -1,3 +1,4 @@
+using Humans.Application.Architecture;
 using Humans.Application.DTOs;
 using Humans.Domain.Enums;
 
@@ -51,6 +52,7 @@ public interface ITicketTransferService : IApplicationService
     /// failure the request stays Pending (the diagnostic is recorded and surfaced) so the team
     /// can finish in TicketTailor and fall back to <see cref="ApproveAsync"/>.
     /// </summary>
+    [ExternalWrite]
     Task<TicketTransferRowDto> ProcessTransferAsync(
         Guid transferRequestId, Guid adminUserId, string? adminNotes, CancellationToken ct = default);
 
@@ -62,6 +64,7 @@ public interface ITicketTransferService : IApplicationService
     /// not in that state or has no recorded hold id; on a repeated failure the request stays Pending
     /// with the hold retained so it can be retried again.
     /// </summary>
+    [ExternalWrite]
     Task<TicketTransferRowDto> RetryReissueAsync(
         Guid transferRequestId, Guid adminUserId, string? adminNotes, CancellationToken ct = default);
 

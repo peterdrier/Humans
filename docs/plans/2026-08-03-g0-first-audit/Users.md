@@ -34,6 +34,6 @@
 | `IUserService.GetByIdsAsync` / `IAccountProvisioningService.FindOrCreateUserByEmailAsync` return `User` entity | `Interfaces.Users` | Same item as Profiles.md — project to `UserInfo`, remove baseline rows. This is the highest-traffic entity leak in the codebase (both methods are called from nearly every other section per the Cross-Section Dependencies tables across all 9 audited sections). | y |
 | `AccountController`/`UsersAdminDebugController` HUM0031 grandfathers | `src/Humans.Web/Controllers/` | Tracked under #857 (Lane 2 tonight). | y |
 
-## G2 queue notes
+## Schema demolition queue
 
 `User.GoogleEmailStatus`, `User.GoogleEmail` (shadow), `UserEmail.IsOAuth`/`DisplayOrder` (shadow), `Profile.IsSuspended` legacy bool (cross-referenced in Profiles.md) are the section's demolition-inventory items, already named in the doc as soak-pending drops. No new items surfaced.

@@ -13,25 +13,18 @@ namespace Humans.Integration.Tests.Repositories.Shifts;
 /// <summary>
 /// Integration tests for
 /// <see cref="IShiftManagementRepository.GetConfirmedShiftsInRangeAsync"/>.
-/// Mirrors the existing <c>VolunteerTrackingRepositoryTests</c> style: container-
-/// backed factory via <see cref="IClassFixture{T}"/>, scope per test, real
-/// PostgreSQL. Seeding helpers are inlined here (rather than shared) because the
-/// existing class keeps them <c>private</c>.
+/// Mirrors the existing <c>VolunteerTrackingRepositoryTests</c> style: the
+/// assembly-shared container-backed factory, scope per test, real PostgreSQL.
+/// Seeding helpers are inlined here (rather than shared) because the existing
+/// class keeps them <c>private</c>.
 /// </summary>
-public sealed class VolunteerTrackingRepositoryConfirmedShiftsTests
-    : IClassFixture<HumansWebApplicationFactory>
+public sealed class VolunteerTrackingRepositoryConfirmedShiftsTests(HumansWebApplicationFactory factory)
+    : IntegrationTestBase(factory)
 {
-    private readonly HumansWebApplicationFactory _factory;
-
-    public VolunteerTrackingRepositoryConfirmedShiftsTests(HumansWebApplicationFactory factory)
-    {
-        _factory = factory;
-    }
-
     [HumansFact]
     public async Task ReturnsOnlyConfirmedSignups()
     {
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = Factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
         var repo = scope.ServiceProvider.GetRequiredService<IShiftManagementRepository>();
 
@@ -51,7 +44,7 @@ public sealed class VolunteerTrackingRepositoryConfirmedShiftsTests
     [HumansFact]
     public async Task ExcludesShiftsOutsideRange()
     {
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = Factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
         var repo = scope.ServiceProvider.GetRequiredService<IShiftManagementRepository>();
 
@@ -71,7 +64,7 @@ public sealed class VolunteerTrackingRepositoryConfirmedShiftsTests
     [HumansFact]
     public async Task DepartmentFilter_ExcludesOtherTeams()
     {
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = Factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
         var repo = scope.ServiceProvider.GetRequiredService<IShiftManagementRepository>();
 
@@ -90,7 +83,7 @@ public sealed class VolunteerTrackingRepositoryConfirmedShiftsTests
     [HumansFact]
     public async Task ShiftThatOverlapsStartBoundary_IsIncluded()
     {
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = Factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
         var repo = scope.ServiceProvider.GetRequiredService<IShiftManagementRepository>();
 

@@ -1,3 +1,4 @@
+using Humans.Application.Architecture;
 using Humans.Application.Interfaces.Mailer.Dtos;
 
 namespace Humans.Application.Interfaces.Mailer;
@@ -19,6 +20,7 @@ public interface IMailerImportService : IApplicationService
     /// <see cref="Dtos.ImportResult.DecisionsThrottled"/>. Null or non-positive
     /// processes the entire plan.
     /// </summary>
+    [ExternalWrite]
     Task<ImportResult> ApplyAsync(
         ImportPlan plan, int? maxPerOutcome = null, CancellationToken ct = default);
 }

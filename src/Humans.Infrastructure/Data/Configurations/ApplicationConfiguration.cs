@@ -1,10 +1,16 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Humans.Domain.Entities;
+using Humans.Application.Architecture;
 using MemberApplication = Humans.Domain.Entities.Application;
 
 namespace Humans.Infrastructure.Data.Configurations;
 
+[Grandfathered(
+    ruleId: "HUM0024",
+    justification: "Pre-existing cross-section EF navigation join; migrating to bare FK + service-level stitching.",
+    since: "2026-08-05",
+    issueRef: "docs/architecture/roslyn-analysis.md#hum0024")]
 public class ApplicationConfiguration : IEntityTypeConfiguration<MemberApplication>
 {
     public void Configure(EntityTypeBuilder<MemberApplication> builder)

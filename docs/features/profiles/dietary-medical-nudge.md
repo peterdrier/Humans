@@ -110,7 +110,7 @@ No retention policy changes; the data lives only as long as the user account doe
 **So that** the cantina never gets blindsided
 
 **Acceptance Criteria:**
-- `ShiftsController.SignUp` / `SignUpRange` redirect to `/Profile/Me/DietaryMedical?returnAction=signup|signuprange&...` when the target shift `QualifiesForCantinaMeal()` and `DietaryPreference` is empty.
+- `ShiftsController.ToggleDay` redirects to `/Profile/Me/DietaryMedical?returnAction=signup&shiftId=...` when `ShiftSignupService.ToggleDayAsync` returns `NeedsDietaryFirst` — i.e. the target shift `QualifiesForCantinaMeal()` and `DietaryPreference` is empty. (`SignUp` / `SignUpRange` no longer exist on the controller.)
 - On successful save, the form replays the signup (`ProfileController.DietaryMedical` POST branches on `returnAction`).
 - A banner on `/Shifts` and `/Shifts/Mine` (`DietaryMissingBannerViewComponent`) plus disabled Sign-Up buttons catch humans who already have a qualifying signup but no dietary on file.
 - See `docs/superpowers/specs/2026-05-25-dietary-prompt-tightening-design.md`.
@@ -143,7 +143,7 @@ The check operates over the user's **currently-active signups only**:
 
 ## Data Model
 
-Fields live on `Profile` (moved from `VolunteerEventProfile` per `docs/superpowers/specs/2026-05-25-dietary-medical-to-profile-design.md`). The corresponding columns on `VolunteerEventProfile` are retained-only tombstones (XML-doc'd "RETAINED for prod-soak drop — do NOT read or write these") pending a deferred column-drop PR per `memory/architecture/no-drops-until-prod-verified.md`:
+Fields live on `Profile` (moved from `VolunteerEventProfile`; the current invariants are in [`sections/Profiles.md`](../../sections/Profiles.md)). The corresponding columns on `VolunteerEventProfile` are retained-only tombstones (XML-doc'd "RETAINED for prod-soak drop — do NOT read or write these") pending a deferred column-drop PR per `memory/architecture/no-drops-until-prod-verified.md`:
 
 | Column | Type | Notes |
 |---|---|---|
@@ -169,7 +169,7 @@ Fields live on `Profile` (moved from `VolunteerEventProfile` per `docs/superpowe
 
 ## Cross-section dependencies
 
-Dietary/medical fields were moved from `VolunteerEventProfile` to `Profile` (see `docs/superpowers/specs/2026-05-25-dietary-medical-to-profile-design.md`). Saves now go through `IProfileEditorService.SaveDietaryMedicalAsync` (→ `IUserService.SaveDietaryMedicalAsync` → `ProfileRepository`) — **not** `IShiftManagementService`.
+Dietary/medical fields were moved from `VolunteerEventProfile` to `Profile` (see [`sections/Profiles.md`](../../sections/Profiles.md) and [`sections/Shifts.md`](../../sections/Shifts.md)). Saves now go through `IProfileEditorService.SaveDietaryMedicalAsync` (→ `IUserService.SaveDietaryMedicalAsync` → `ProfileRepository`) — **not** `IShiftManagementService`.
 
 - **Shifts** (reads, gate): `ShiftSignup` status + `Shift.Duration`/`IsAllDay` to compute qualifying-shift gate. Method `IShiftManagementService.HasQualifyingCantinaSignupAsync(Guid userId, CancellationToken ct)` on the existing service. Pure-query, no `Include` of `User`. Internally calls `Shift.QualifiesForCantinaMeal()` (pure helper on the entity).
 - **Profile** (reads, form): The dietary/medical form view pre-populates from `FullProfile` (loaded by `ProfileController` via `IUserService`). The `DietaryPreference`/`Allergies`/`Intolerances`/`AllergyOtherText`/`IntoleranceOtherText`/`MedicalConditions` fields are now `Profile`-owned.

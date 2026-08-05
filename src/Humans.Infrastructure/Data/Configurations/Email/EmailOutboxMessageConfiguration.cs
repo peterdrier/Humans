@@ -46,12 +46,12 @@ public class EmailOutboxMessageConfiguration : IEntityTypeConfiguration<EmailOut
             .HasForeignKey(e => e.UserId)
             .OnDelete(DeleteBehavior.SetNull);
 
-        builder.HasOne(e => e.CampaignGrant)
+        builder.HasOne<CampaignGrant>()
             .WithMany(g => g.OutboxMessages)
             .HasForeignKey(e => e.CampaignGrantId)
             .OnDelete(DeleteBehavior.SetNull);
 
-        builder.HasOne(e => e.ShiftSignup)
+        builder.HasOne<ShiftSignup>()
             .WithMany()
             .HasForeignKey(e => e.ShiftSignupId)
             .OnDelete(DeleteBehavior.SetNull);

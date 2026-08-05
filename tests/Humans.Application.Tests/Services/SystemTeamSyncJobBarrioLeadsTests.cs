@@ -141,9 +141,6 @@ public class SystemTeamSyncJobBarrioLeadsTests
         _campRepository.IsLeadAnywhereAsync(userId, Arg.Any<CancellationToken>())
             .Returns(true);
 
-        _userService.GetByIdsAsync(
-            Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, User>());
         _userService.GetUserInfosAsync(
             Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));

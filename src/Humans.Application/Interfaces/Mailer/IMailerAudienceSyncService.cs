@@ -1,3 +1,4 @@
+using Humans.Application.Architecture;
 using Humans.Application.Interfaces.Mailer.Dtos;
 
 namespace Humans.Application.Interfaces.Mailer;
@@ -27,10 +28,12 @@ public interface IMailerAudienceSyncService : IApplicationService
     /// "Push Now"); leave null for the scheduled job so the audit entry uses
     /// the job-actor overload.
     /// </summary>
+    [ExternalWrite]
     Task<AudienceSyncResult> SyncAsync(
         IMailerAudience audience, Guid? actorUserId = null, CancellationToken ct = default);
 
     /// <summary>Calls SyncAsync sequentially for every registered audience.</summary>
+    [ExternalWrite]
     Task<IReadOnlyList<AudienceSyncResult>> SyncAllAsync(
         Guid? actorUserId = null, CancellationToken ct = default);
 }

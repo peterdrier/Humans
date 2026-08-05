@@ -1,3 +1,4 @@
+using Humans.Application.Architecture;
 namespace Humans.Application.Interfaces.GoogleIntegration;
 
 /// <summary>
@@ -21,6 +22,7 @@ public interface IGoogleWorkspaceUserService : IApplicationService
     /// <param name="recoveryEmail">Personal email for password recovery (should not be @nobodies.team).</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>The provisioned account details.</returns>
+    [ExternalWrite]
     Task<WorkspaceUserAccount> ProvisionAccountAsync(
         string primaryEmail,
         string firstName,
@@ -32,16 +34,19 @@ public interface IGoogleWorkspaceUserService : IApplicationService
     /// <summary>
     /// Suspends a @nobodies.team account.
     /// </summary>
+    [ExternalWrite]
     Task SuspendAccountAsync(string primaryEmail, CancellationToken ct = default);
 
     /// <summary>
     /// Reactivates a suspended @nobodies.team account.
     /// </summary>
+    [ExternalWrite]
     Task ReactivateAccountAsync(string primaryEmail, CancellationToken ct = default);
 
     /// <summary>
     /// Resets the password for a @nobodies.team account.
     /// </summary>
+    [ExternalWrite]
     Task ResetPasswordAsync(string primaryEmail, string newPassword, CancellationToken ct = default);
 
     /// <summary>
@@ -58,6 +63,7 @@ public interface IGoogleWorkspaceUserService : IApplicationService
     /// <param name="primaryEmail">The @nobodies.team account to generate codes for.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>The freshly issued backup codes (typically 10 codes; the recovery flow uses one).</returns>
+    [ExternalWrite]
     Task<IReadOnlyList<string>> GenerateBackupCodesAsync(
         string primaryEmail,
         CancellationToken ct = default);

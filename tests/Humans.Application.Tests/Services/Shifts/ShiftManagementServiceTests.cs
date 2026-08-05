@@ -36,17 +36,6 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
         // Default: users looked up by id resolve to the entities seeded in Db
         // so the cross-section signup stitching in GetBrowseShiftsAsync returns the
         // correct DisplayName.
-        _userService.GetByIdsAsync(
-                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(ci =>
-            {
-                var ids = ci.Arg<IReadOnlyCollection<Guid>>();
-                return Task.FromResult<IReadOnlyDictionary<Guid, User>>(
-                    Db.Users
-                        .Where(u => ids.Contains(u.Id))
-                        .AsEnumerable()
-                        .ToDictionary(u => u.Id));
-            });
         _userService.StubGetUserInfosFromContext(Db);
 
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())

@@ -21,11 +21,11 @@ namespace Humans.Integration.Tests.Localization;
 /// intended cadence is a bi-weekly maintenance sweep, not a per-build blocker.
 /// </summary>
 public sealed class LocalizationCoverageSweep(
-    PseudoLocalizationWebApplicationFactory factory,
-    ITestOutputHelper output) : IClassFixture<PseudoLocalizationWebApplicationFactory>
+    HumansWebApplicationFactory sharedFactory,
+    ITestOutputHelper output)
 {
     /// <summary>
-    /// Gates the sweep out of normal CI runs (it boots a Postgres container and crawls every
+    /// Gates the sweep out of normal CI runs (it boots a second app host and crawls every
     /// page, ~20s). Set <c>RUN_LOCALIZATION_SWEEP=1</c> to run it — e.g. from the bi-weekly
     /// maintenance job. How (and whether) it should gate on findings is decided separately.
     /// </summary>
@@ -38,12 +38,17 @@ public sealed class LocalizationCoverageSweep(
         SkipUnless = nameof(SweepEnabled))]
     public async Task Public_pages_are_localized_and_admin_pages_are_not()
     {
+        // Built here rather than injected as a fixture: the sweep is skipped on
+        // normal runs, and a fixture would pay for the second app boot anyway.
+        await using var factory = new PseudoLocalizationWebApplicationFactory(sharedFactory);
+        await factory.InitializeAsync();
+
         var catalog = SweepRouteCatalog.Build(factory.Services);
 
-        var publicClient = CreateClient();
+        var publicClient = CreateClient(factory);
         await factory.SignInAsFullyOnboardedAsync(publicClient, DevPersona.Volunteer);
 
-        var adminClient = CreateClient();
+        var adminClient = CreateClient(factory);
         await factory.SignInAsFullyOnboardedAsync(adminClient, DevPersona.Admin);
 
         var results = new List<RouteScanResult>(catalog.Crawlable.Count);
@@ -62,7 +67,7 @@ public sealed class LocalizationCoverageSweep(
         results.Should().NotBeEmpty("the sweep must crawl at least one page");
     }
 
-    private HttpClient CreateClient() =>
+    private static HttpClient CreateClient(PseudoLocalizationWebApplicationFactory factory) =>
         factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 
     private static string? LocationOf(HttpResponseMessage response)

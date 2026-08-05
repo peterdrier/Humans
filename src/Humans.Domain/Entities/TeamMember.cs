@@ -34,11 +34,10 @@ public class TeamMember
     /// <remarks>
     /// Cross-domain nav into the Users section — will be removed per
     /// design-rules §6c once the User-entity nav strip follow-up lands.
-    /// New callers must resolve user data via
-    /// <c>IUserService.GetUserInfoAsync</c> keyed on <see cref="UserId"/>;
-    /// existing callers are migrated opportunistically. The Application-layer
-    /// <c>TeamService</c> already populates this nav in-memory (§6b) for the
-    /// readers that still reach through it.
+    /// No longer populated by any service (nobodies-collective/Humans#979
+    /// removed <c>TeamService</c>'s in-memory stitcher); callers must resolve
+    /// user data via <c>IUserServiceRead.GetUserInfosAsync</c> / <c>GetUserInfoAsync</c>
+    /// keyed on <see cref="UserId"/> instead. Retained only for the FK relationship.
     /// </remarks>
     [Obsolete("Cross-domain nav; resolve via IUserService.GetUserInfoAsync(UserId) instead. See design-rules §6c.")]
     public User User { get; set; } = null!;

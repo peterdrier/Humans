@@ -20,23 +20,23 @@ namespace Humans.Integration.Tests.AccountMerge;
 /// flow never leaves orphaned Pending rows behind.
 /// </summary>
 public class ReconcileOrphanTests(HumansWebApplicationFactory factory)
-    : IClassFixture<HumansWebApplicationFactory>
+    : IntegrationTestBase(factory)
 {
     [HumansFact(Timeout = 60_000)]
     public async Task MergeAsync_ClosesPendingRequestForThePair()
     {
         var adminId = await SeedAdminUserAsync();
         var (requestId, targetId, sourceId) =
-            await factory.SeedPendingMergeRequestAsync($"shared-{Guid.NewGuid():N}@example.com");
+            await Factory.SeedPendingMergeRequestAsync($"shared-{Guid.NewGuid():N}@example.com");
 
         // Merge the pair through the engine (survivor = target, archived = source).
-        await using (var scope = factory.Services.CreateAsyncScope())
+        await using (var scope = Factory.Services.CreateAsyncScope())
         {
             var sut = scope.ServiceProvider.GetRequiredService<IAccountMergeService>();
             await sut.MergeAsync(targetId, sourceId, adminId, ct: TestContext.Current.CancellationToken);
         }
 
-        await using var assertScope = factory.Services.CreateAsyncScope();
+        await using var assertScope = Factory.Services.CreateAsyncScope();
         var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
         (await db.AccountMergeRequests.AsNoTracking().FirstOrDefaultAsync(r => r.Id == requestId, TestContext.Current.CancellationToken))!.Status
             .Should().Be(AccountMergeRequestStatus.Accepted,
@@ -49,7 +49,7 @@ public class ReconcileOrphanTests(HumansWebApplicationFactory factory)
 
     private async Task<Guid> SeedAdminUserAsync()
     {
-        await using var scope = factory.Services.CreateAsyncScope();
+        await using var scope = Factory.Services.CreateAsyncScope();
         var um = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
         var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
         var now = SystemClock.Instance.GetCurrentInstant();

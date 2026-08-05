@@ -3,9 +3,15 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using NodaTime;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Humans.Application.Architecture;
 
 namespace Humans.Infrastructure.Data.Configurations;
 
+[Grandfathered(
+    ruleId: "HUM0024",
+    justification: "Pre-existing cross-section EF navigation join; migrating to bare FK + service-level stitching.",
+    since: "2026-08-05",
+    issueRef: "docs/architecture/roslyn-analysis.md#hum0024")]
 public class SyncServiceSettingsConfiguration : IEntityTypeConfiguration<SyncServiceSettings>
 {
     private static readonly Instant SeedTimestamp = Instant.FromUtc(2026, 3, 9, 0, 0, 0);

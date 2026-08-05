@@ -56,7 +56,7 @@ G1 predicate for the effective `DebugController`-only scope is N/A or PASS.
 
 1. **Zero tests for `DebugController`** — add a `DebugControllerTests.cs` (or controller-integration test) covering at minimum: `AdminOnly` authorization is enforced, `DbVersion` stays `[AllowAnonymous]` intentionally (documented as deliberate — "only migration names + counts, no sensitive data"), and the sensitive-value masking logic in `Configuration()` (`IsSensitive` → first-4-chars-then-mask). No migration needed (y).
 
-## G2 queue notes (light)
+## Schema demolition queue (light)
 
 - Nothing to demolish — Debug owns no tables/columns.
-- If `DevLogin`/`DevSeed` are confirmed in-scope, the `IUserEmailService` dependency in `DevLoginController` is a candidate for narrowing once the section boundary decision lands (not a G2/schema item — it's a G1 dependency-shape fix).
+- If `DevLogin`/`DevSeed` are confirmed in-scope, the `IUserEmailService` dependency in `DevLoginController` is a candidate for narrowing once the section boundary decision lands (not a schema item — it's a G1 dependency-shape fix).

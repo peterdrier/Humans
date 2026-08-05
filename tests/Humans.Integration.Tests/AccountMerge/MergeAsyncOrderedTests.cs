@@ -19,7 +19,7 @@ namespace Humans.Integration.Tests.AccountMerge;
 /// No cross-section transaction — the tombstone is the commit point and source of truth.
 /// </summary>
 public class MergeAsyncOrderedTests(HumansWebApplicationFactory factory)
-    : IClassFixture<HumansWebApplicationFactory>
+    : IntegrationTestBase(factory)
 {
     [HumansFact(Timeout = 60_000)]
     public async Task MergeAsync_FoldsArchivedIntoSurvivor_AndTombstonesArchivedOnly()
@@ -30,7 +30,7 @@ public class MergeAsyncOrderedTests(HumansWebApplicationFactory factory)
         // class fixture shares one Postgres DB and the verified-email uniqueness
         // index would otherwise trip across tests.
         var runTag = Guid.NewGuid().ToString("N");
-        var (sourceId, targetId) = await factory.SeedMergeFixtureAsync(b =>
+        var (sourceId, targetId) = await Factory.SeedMergeFixtureAsync(b =>
         {
             b.WithTargetEmail($"keep-{runTag}@example.com", verified: true, isPrimary: true);   // survivor
             b.WithSourceEmail($"dupe-{runTag}@example.com", verified: true, isPrimary: true);   // archived
@@ -40,13 +40,13 @@ public class MergeAsyncOrderedTests(HumansWebApplicationFactory factory)
         var archivedId = sourceId;
 
         var adminId = await SeedAdminUserAsync();
-        await using (var scope = factory.Services.CreateAsyncScope())
+        await using (var scope = Factory.Services.CreateAsyncScope())
         {
             var sut = scope.ServiceProvider.GetRequiredService<IAccountMergeService>();
             await sut.MergeAsync(survivorId, archivedId, adminId, ct: TestContext.Current.CancellationToken);
         }
 
-        await using var assertScope = factory.Services.CreateAsyncScope();
+        await using var assertScope = Factory.Services.CreateAsyncScope();
         var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
         var survivor = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == survivorId, TestContext.Current.CancellationToken);
         var archived = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == archivedId, TestContext.Current.CancellationToken);
@@ -59,7 +59,7 @@ public class MergeAsyncOrderedTests(HumansWebApplicationFactory factory)
     public async Task MergeAsync_WithAlreadyGonePendingEmail_CompletesWithoutThrowing()
     {
         var runTag = Guid.NewGuid().ToString("N");
-        var (sourceId, targetId) = await factory.SeedMergeFixtureAsync(b =>
+        var (sourceId, targetId) = await Factory.SeedMergeFixtureAsync(b =>
         {
             b.WithTargetEmail($"keep-{runTag}@example.com", verified: true, isPrimary: true);
             b.WithSourceEmail($"dupe-{runTag}@example.com", verified: true, isPrimary: true);
@@ -68,7 +68,7 @@ public class MergeAsyncOrderedTests(HumansWebApplicationFactory factory)
         var archivedId = sourceId;
 
         var adminId = await SeedAdminUserAsync();
-        await using var scope = factory.Services.CreateAsyncScope();
+        await using var scope = Factory.Services.CreateAsyncScope();
         var sut = scope.ServiceProvider.GetRequiredService<IAccountMergeService>();
 
         // A pending-email id that no longer exists must NOT throw — a gone email is the
@@ -78,7 +78,7 @@ public class MergeAsyncOrderedTests(HumansWebApplicationFactory factory)
 
         await act.Should().NotThrowAsync();
 
-        await using var assertScope = factory.Services.CreateAsyncScope();
+        await using var assertScope = Factory.Services.CreateAsyncScope();
         var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
         (await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == archivedId, TestContext.Current.CancellationToken))!.MergedToUserId
             .Should().Be(survivorId, "the tombstone must still be written when the pending email is gone");
@@ -94,7 +94,7 @@ public class MergeAsyncOrderedTests(HumansWebApplicationFactory factory)
         // AspNetUsers) and the IUserMerge fan-out hits TeamService authorization,
         // which requires an active Admin role. Seed both per call so those FKs
         // resolve and authorization succeeds.
-        await using var scope = factory.Services.CreateAsyncScope();
+        await using var scope = Factory.Services.CreateAsyncScope();
         var um = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
         var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
         var now = SystemClock.Instance.GetCurrentInstant();

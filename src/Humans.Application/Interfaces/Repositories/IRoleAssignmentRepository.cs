@@ -46,7 +46,7 @@ public interface IRoleAssignmentRepository : IRepository
     /// <summary>
     /// Filtered list of assignments plus total count for pagination. Read-only.
     /// Cross-domain navs are NOT populated — callers stitch User / CreatedByUser
-    /// via <c>IUserService.GetByIdsAsync</c>.
+    /// via <c>IUserServiceRead.GetUserInfosAsync</c>.
     /// </summary>
     Task<(IReadOnlyList<RoleAssignment> Items, int TotalCount)> GetFilteredAsync(
         string? roleFilter,

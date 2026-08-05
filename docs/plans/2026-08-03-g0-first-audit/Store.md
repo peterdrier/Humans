@@ -38,6 +38,6 @@
 |------|-------|----------------|----|
 | `StoreRepositoryTests.cs` uses EF-InMemory | `tests/Humans.Application.Tests/Repositories/StoreRepositoryTests.cs` | Migrate to the shared Postgres fixture pattern (once identified/confirmed elsewhere in the codebase — no reference "good" example was located in this pass; worth checking with whoever owns #764/#766). | y |
 
-## G2 queue notes
+## Schema demolition queue
 
 `StoreOrder.Label` — `[Obsolete]`, retained but unused after #816, never set on write. Already a named demolition-inventory item in the doc. Phase 5 (manual payments, invoice issuance, treasury sync) is unimplemented (`NotSupportedException("Phase 5")`) — not a G1/G3 concern, just incomplete feature scope.

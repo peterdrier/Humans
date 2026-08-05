@@ -44,9 +44,6 @@ public class ProcessGoogleSyncOutboxJobTests : IDisposable
             .GetActiveByTeamIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns([]);
         _userService = Substitute.For<IUserService>();
-        _userService
-            .GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, User>());
         _userService.StubGetUserInfosFromContext(_dbContext);
         _teamService = Substitute.For<ITeamService>();
         _teamService

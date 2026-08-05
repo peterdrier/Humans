@@ -1,3 +1,4 @@
+using Humans.Application.Architecture;
 using Humans.Application.DTOs;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -44,6 +45,7 @@ public interface ICampaignService : ICampaignServiceRead, IApplicationService
     Task<CampaignSendWavePageDto?> GetSendWavePageAsync(Guid campaignId, Guid? teamId, CancellationToken ct = default);
     Task<Guid?> GetCampaignIdForGrantAsync(Guid grantId, CancellationToken ct = default);
     Task ImportCodesAsync(Guid campaignId, IEnumerable<string> codes, CancellationToken ct = default);
+    [ExternalWrite]
     Task<CampaignGenerateCodesResult> GenerateAndImportDiscountCodesAsync(
         Guid campaignId,
         int count,

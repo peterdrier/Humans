@@ -21,7 +21,7 @@ public class Application
 
     /// <summary>
     /// Foreign key to the applicant user. Use <c>IUserService.GetUserInfoAsync</c>
-    /// or <c>IUserService.GetByIdsAsync</c> to hydrate user info — cross-domain
+    /// or <c>IUserServiceRead.GetUserInfosAsync</c> to hydrate user info — cross-domain
     /// navigation properties are forbidden on this entity (design-rules §6).
     /// </summary>
     public Guid UserId { get; init; }

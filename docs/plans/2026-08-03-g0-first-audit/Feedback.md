@@ -26,7 +26,7 @@ Section: Feedback · Kind: vertical · Audited 2026-08-03 @ 5a9bbe198
 
 ## G1 Gap List
 
-1. **HUM0024 cross-section EF joins on `FeedbackReportConfiguration`/`FeedbackMessageConfiguration`** — where: `src/Humans.Infrastructure/Data/Configurations/Feedback/FeedbackReportConfiguration.cs:9`, `FeedbackMessageConfiguration.cs:8`. What: DB-level FK/nav wiring to `User`/`Team` still exists even though app-layer `[Obsolete]` navs aren't read. Suggested fix: drop the EF `HasOne(...).WithMany()` nav-wiring blocks entirely, keep the FK columns as bare scalars (pattern already used by Events/Expenses/Finance), remove the 5 `[Obsolete]` attributes and the 2 `[Grandfathered]` attributes. No-migration-needed: **y** (dropping EF-level nav config, not the DB FK constraint itself — though if the DB-level FK constraint also needs dropping, that's a G2 item, matching the "Great Cleanup" cross-section-FK-drop theme in the transition plan). File as a G2 demolition item if not already tracked.
+1. **HUM0024 cross-section EF joins on `FeedbackReportConfiguration`/`FeedbackMessageConfiguration`** — where: `src/Humans.Infrastructure/Data/Configurations/Feedback/FeedbackReportConfiguration.cs:9`, `FeedbackMessageConfiguration.cs:8`. What: DB-level FK/nav wiring to `User`/`Team` still exists even though app-layer `[Obsolete]` navs aren't read. Suggested fix: drop the EF `HasOne(...).WithMany()` nav-wiring blocks entirely, keep the FK columns as bare scalars (pattern already used by Events/Expenses/Finance), remove the 5 `[Obsolete]` attributes and the 2 `[Grandfathered]` attributes. No-migration-needed: **y** (dropping EF-level nav config, not the DB FK constraint itself — though if the DB-level FK constraint also needs dropping, that's schema-queue work, matching the "Great Cleanup" cross-section-FK-drop theme in the transition plan). File as a demolition item if not already tracked.
 
 ## G3 Gap List
 
@@ -36,11 +36,11 @@ Section: Feedback · Kind: vertical · Audited 2026-08-03 @ 5a9bbe198
 
 **Added 2026-08-03 — harness-inherited EF-InMemory (G3.2).** `FeedbackServiceTests` extend `ServiceTestHarness`, which stands up a real `HumansDbContext` over `.UseInMemoryDatabase(...)`; the original pass missed this because it grepped for a literal `HumansDbContext` the files never name. Fix: convert to `Substitute.For<IFeedbackRepository>()` per #766, or move these off the harness. No-migration-needed: **y**.
 
-## G2 Queue Notes (light)
+## Schema demolition queue (light)
 
-- The HUM0024 cross-section-join demolition (G1 gap #1) is this section's clearest G2 candidate — it's explicitly self-documented as in-progress-intent ("migrating to bare FK") but not yet executed. Should be filed as a tracked issue if one doesn't already exist, since the transition plan's demolition inventory expects named items, not just Grandfathered-attribute prose.
+- The HUM0024 cross-section-join demolition (G1 gap #1) is this section's clearest schema-demolition candidate — it's explicitly self-documented as in-progress-intent ("migrating to bare FK") but not yet executed. Should be filed as a tracked issue if one doesn't already exist, since the transition plan's demolition inventory expects named items, not just Grandfathered-attribute prose.
 - No dead columns spotted otherwise; data model is otherwise lean.
 
 
-**Added 2026-08-03 — cross-section FK cuts belong in this queue.** Retiring `[Obsolete]` navs or `[Grandfathered(HUM0024)]` markers is a code-shape change; it does **not** drop the physical constraint. Per the demolition inventory, this section owns **5** cross-section FKs across 2 tables: `feedback_reports` → `AspNetUsers` ×3 (`User`/`ResolvedByUser`/`AssignedToUser`) and `teams` ×1 (`AssignedToTeam`), plus `feedback_messages.SenderUserId` → `AspNetUsers`. All are G2 cuts — without them listed here, a schema batch driven by this scorecard can complete while every cross-section database dependency survives.
+**Added 2026-08-03 — cross-section FK cuts belong in this queue.** Retiring `[Obsolete]` navs or `[Grandfathered(HUM0024)]` markers is a code-shape change; it does **not** drop the physical constraint. Per the demolition inventory, this section owns **5** cross-section FKs across 2 tables: `feedback_reports` → `AspNetUsers` ×3 (`User`/`ResolvedByUser`/`AssignedToUser`) and `teams` ×1 (`AssignedToTeam`), plus `feedback_messages.SenderUserId` → `AspNetUsers`. All are cross-section FK cuts — without them listed here, a schema batch driven by this scorecard can complete while every cross-section database dependency survives.
 

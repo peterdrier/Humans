@@ -8,8 +8,8 @@ namespace Humans.Application.Tests.Infrastructure;
 
 /// <summary>
 /// Helpers for stubbing the <see cref="IUserService.GetUserInfosAsync"/> reader on
-/// NSubstitute test doubles, mirroring whatever in-memory DB the existing
-/// <c>GetByIdsAsync</c> stubs read from. Builds a minimal UserInfo
+/// NSubstitute test doubles, reading from whatever in-memory DB the test
+/// owns. Builds a minimal UserInfo
 /// (the User + its UserEmails) — empty collections for the rest, which
 /// matches what existing legacy stubs covered.
 /// </summary>

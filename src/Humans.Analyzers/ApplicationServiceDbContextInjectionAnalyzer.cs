@@ -28,10 +28,10 @@ public sealed class ApplicationServiceDbContextInjectionAnalyzer : DiagnosticAna
     public const string DiagnosticId = "HUM0009";
 
     private static readonly LocalizableString Title =
-        "Non-repository class uses HumansDbContext";
+        "Non-repository class uses an application DbContext";
 
     private static readonly LocalizableString MessageFormat =
-        "'{0}' uses HumansDbContext but does not implement IRepository. Route the DB access through a repository or service.";
+        "'{0}' uses '{1}' but does not implement IRepository. Route the DB access through a repository or service.";
 
     public static readonly DiagnosticDescriptor Rule = new(
         id: DiagnosticId,
@@ -41,11 +41,11 @@ public sealed class ApplicationServiceDbContextInjectionAnalyzer : DiagnosticAna
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,
         description:
-            "HumansDbContext is the persistence boundary; only repositories may touch it. " +
-            "Classes outside the repository layer that need persisted state must call a service " +
-            "or repository. Existing violators may carry [Grandfathered(\"HUM0009\", …)] which " +
-            "downgrades this diagnostic to a warning for the tagged class only — the attribute " +
-            "is a TODO for migration, not a permanent exemption.");
+            "An application DbContext (HumansDbContext or any per-section context) is the persistence " +
+            "boundary; only repositories may touch it. Classes outside the repository layer that need " +
+            "persisted state must call a service or repository. Existing violators may carry " +
+            "[Grandfathered(\"HUM0009\", …)] which downgrades this diagnostic to a warning for the tagged " +
+            "class only — the attribute is a TODO for migration, not a permanent exemption.");
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];
 
@@ -126,19 +126,19 @@ public sealed class ApplicationServiceDbContextInjectionAnalyzer : DiagnosticAna
         if (ImplementsRepositoryMarker(type, repositoryMarker))
             return;
 
-        var location = FindFirstDbContextReference(type, efDbContext);
-        if (location is null)
+        var reference = FindFirstDbContextReference(type, efDbContext);
+        if (reference is not { } found)
             return;
 
         var severity = GrandfatheredCheck.EffectiveSeverity(type, grandfatheredAttr, DiagnosticId);
 
         context.ReportDiagnostic(Diagnostic.Create(
             descriptor: Rule,
-            location: location,
+            location: found.Location,
             effectiveSeverity: severity,
             additionalLocations: null,
             properties: null,
-            messageArgs: type.Name));
+            messageArgs: [type.Name, found.ContextType.Name]));
     }
 
     private static bool ImplementsRepositoryMarker(INamedTypeSymbol type, INamedTypeSymbol repositoryMarker)
@@ -185,38 +185,47 @@ public sealed class ApplicationServiceDbContextInjectionAnalyzer : DiagnosticAna
     /// Finds the first structural reference to a Humans persistence context on
     /// the type — base type, implemented interface, field, property, or method
     /// (parameter or return type). Recurses through generic type arguments
-    /// so <c>UserStore&lt;…, HumansDbContext, …&gt;</c> also matches.
-    /// Returns null if the type does not use a context structurally.
+    /// so <c>UserStore&lt;…, HumansDbContext, …&gt;</c> also matches. Returns
+    /// both the location and the actual context type that matched (e.g.
+    /// <c>ContainersDbContext</c>), so the diagnostic can name it instead of a
+    /// generic "HumansDbContext". Returns null if the type does not use a
+    /// context structurally.
     /// </summary>
-    private static Location? FindFirstDbContextReference(INamedTypeSymbol type, INamedTypeSymbol efDbContext)
+    private static (Location Location, INamedTypeSymbol ContextType)? FindFirstDbContextReference(
+        INamedTypeSymbol type, INamedTypeSymbol efDbContext)
     {
-        if (type.BaseType is { } baseType && SectionDbContexts.ReferencesSectionDbContext(baseType, efDbContext))
-            return PreferFirstSyntax(type);
+        if (type.BaseType is { } baseType &&
+            SectionDbContexts.FindReferencedSectionDbContext(baseType, efDbContext) is { } baseContext)
+        {
+            return PreferFirstSyntax(type) is { } loc ? (loc, baseContext) : null;
+        }
 
         foreach (var iface in type.Interfaces)
         {
-            if (SectionDbContexts.ReferencesSectionDbContext(iface, efDbContext))
-                return PreferFirstSyntax(type);
+            if (SectionDbContexts.FindReferencedSectionDbContext(iface, efDbContext) is { } ifaceContext)
+                return PreferFirstSyntax(type) is { } loc ? (loc, ifaceContext) : null;
         }
 
         foreach (var member in type.GetMembers())
         {
             switch (member)
             {
-                case IFieldSymbol field when SectionDbContexts.ReferencesSectionDbContext(field.Type, efDbContext):
-                    return PreferFirst(field.Locations);
+                case IFieldSymbol field
+                    when SectionDbContexts.FindReferencedSectionDbContext(field.Type, efDbContext) is { } fieldContext:
+                    return PreferFirst(field.Locations) is { } floc ? (floc, fieldContext) : null;
 
-                case IPropertySymbol prop when SectionDbContexts.ReferencesSectionDbContext(prop.Type, efDbContext):
-                    return PreferFirst(prop.Locations);
+                case IPropertySymbol prop
+                    when SectionDbContexts.FindReferencedSectionDbContext(prop.Type, efDbContext) is { } propContext:
+                    return PreferFirst(prop.Locations) is { } ploc ? (ploc, propContext) : null;
 
                 case IMethodSymbol method:
-                    if (SectionDbContexts.ReferencesSectionDbContext(method.ReturnType, efDbContext))
-                        return PreferFirst(method.Locations);
+                    if (SectionDbContexts.FindReferencedSectionDbContext(method.ReturnType, efDbContext) is { } retContext)
+                        return PreferFirst(method.Locations) is { } rloc ? (rloc, retContext) : null;
 
                     foreach (var parameter in method.Parameters)
                     {
-                        if (SectionDbContexts.ReferencesSectionDbContext(parameter.Type, efDbContext))
-                            return PreferFirst(parameter.Locations);
+                        if (SectionDbContexts.FindReferencedSectionDbContext(parameter.Type, efDbContext) is { } paramContext)
+                            return PreferFirst(parameter.Locations) is { } paramLoc ? (paramLoc, paramContext) : null;
                     }
                     break;
             }

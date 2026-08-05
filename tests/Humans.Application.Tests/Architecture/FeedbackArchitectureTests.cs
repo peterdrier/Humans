@@ -39,8 +39,8 @@ public class FeedbackArchitectureTests
         var ctor = typeof(FeedbackService).GetConstructors().Single();
         var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
 
-        paramTypes.Should().Contain(typeof(IUserService),
-            because: "Feedback resolves reporter / assignee / resolver display names via IUserService.GetUserInfosAsync — UserInfo.BurnerName implements the BurnerName-first fallback per memory/architecture/burnername-is-the-display-name.md");
+        paramTypes.Should().Contain(typeof(IUserServiceRead),
+            because: "Feedback resolves reporter / assignee / resolver display names via IUserServiceRead.GetUserInfosAsync — UserInfo.BurnerName implements the BurnerName-first fallback per memory/architecture/burnername-is-the-display-name.md");
         paramTypes.Should().Contain(typeof(IUserEmailService),
             because: "Feedback resolves the reporter's effective notification email via IUserEmailService.GetNotificationTargetEmailsAsync — no User.UserEmails navigation");
         paramTypes.Should().Contain(typeof(ITeamServiceRead),

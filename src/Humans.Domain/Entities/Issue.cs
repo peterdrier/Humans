@@ -10,14 +10,6 @@ public class Issue
     public Guid ReporterUserId { get; init; }
 
     /// <summary>
-    /// Cross-domain navigation to the reporter's <see cref="User"/>. Service
-    /// stitches in memory from <c>IUserService.GetByIdsAsync</c>; repositories
-    /// must not <c>.Include()</c> this property (design-rules §6c).
-    /// </summary>
-    [Obsolete("Cross-domain nav — resolve via IUserService instead. See design-rules §6c.")]
-    public User Reporter { get; set; } = null!;
-
-    /// <summary>
     /// Section the issue is about (drives routing). Null = unknown → Admin queue.
     /// One of the <c>IssueSectionRouting</c> known values; stored as string.
     /// </summary>
@@ -42,17 +34,11 @@ public class Issue
 
     public Guid? AssigneeUserId { get; set; }
 
-    [Obsolete("Cross-domain nav — resolve via IUserService instead. See design-rules §6c.")]
-    public User? Assignee { get; set; }
-
     public Instant CreatedAt { get; init; }
     public Instant UpdatedAt { get; set; }
     public Instant? ResolvedAt { get; set; }
 
     public Guid? ResolvedByUserId { get; set; }
-
-    [Obsolete("Cross-domain nav — resolve via IUserService instead. See design-rules §6c.")]
-    public User? ResolvedByUser { get; set; }
 
     public ICollection<IssueComment> Comments { get; set; } = new List<IssueComment>();
 }

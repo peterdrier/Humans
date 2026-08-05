@@ -22,7 +22,7 @@ namespace Humans.Infrastructure.Jobs;
 /// goes through <see cref="IGoogleResourceRepository"/>, and the
 /// user-GoogleEmailStatus mutation goes through <see cref="IUserService"/>.
 /// User/team display-name lookups for the error log go through
-/// <see cref="IUserService.GetByIdsAsync"/> and
+/// <see cref="IUserServiceRead.GetUserInfosAsync"/> and
 /// <see cref="ITeamServiceRead.GetTeamsAsync"/>.
 /// </remarks>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]

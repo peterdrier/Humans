@@ -12,8 +12,8 @@ namespace Humans.Application.Tests.Architecture;
 /// cache-migration plan task T-08. Pins the invariants: <c>CalendarService</c>
 /// lives in Application, goes through <see cref="ICalendarRepository"/>,
 /// never injects <c>DbContext</c>, and resolves owning-team display names via
-/// <see cref="ITeamServiceRead"/> rather than the <c>CalendarEvent.OwningTeam</c>
-/// cross-domain nav. The read surface is DTO-only and cache-backed.
+/// <see cref="ITeamServiceRead"/> rather than a cross-domain nav. The read
+/// surface is DTO-only and cache-backed.
 /// </summary>
 public class CalendarArchitectureTests
 {
@@ -97,17 +97,14 @@ public class CalendarArchitectureTests
     // ── CalendarEvent ────────────────────────────────────────────────────────
 
     [HumansFact]
-    public void CalendarEvent_OwningTeamNavIsObsolete()
+    public void CalendarEvent_HasNoOwningTeamNav()
     {
-        var navProperty = typeof(Humans.Domain.Entities.CalendarEvent)
-            .GetProperty("OwningTeam");
-
-        navProperty.Should().NotBeNull(
-            because: "EF configuration still needs the nav reference to declare FK + cascade behavior");
-
-        navProperty.GetCustomAttributes(typeof(ObsoleteAttribute), inherit: false)
-            .Should().NotBeEmpty(
-                because: "CalendarEvent.OwningTeam is a cross-domain nav into the Teams section; resolve via ITeamService instead (design-rules §6c)");
+        typeof(Humans.Domain.Entities.CalendarEvent)
+            .GetProperty("OwningTeam")
+            .Should().BeNull(
+                because: "CalendarEvent.OwningTeam was a cross-domain nav into the Teams section; the FK is now " +
+                          "a bare column configured via typed HasOne<Team>() (design-rules §6c, " +
+                          "memory/architecture/no-cross-section-ef-joins.md)");
     }
 
     [HumansFact]

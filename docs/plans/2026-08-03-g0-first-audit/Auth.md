@@ -43,17 +43,17 @@ section. Counts are unchanged — the verdict already scored G1 as 4 and G3 as 4
 3. **Documented `SyncBoardTeamAsync` trigger is untested (G3.3)** — `docs/sections/Auth.md` documents "assigning or ending a Board role triggers `SyncBoardTeamAsync`", but a repo-wide search for `SyncBoardTeamAsync` across `tests/` returns **zero hits** — the trigger is untested, not merely untraced. `RoleAssignmentServiceTests` covers Board overlap and active-role behaviour only. Fix: add assignment/end coverage asserting the sync is invoked (the seam already exists — `RoleAssignmentService` injects `ISystemTeamSync`, so it substitutes cleanly). No-migration-needed: **y**.
 4. **Auth tests not grouped under a section folder (G3.5)** — `Services/RoleAssignmentServiceTests.cs`, `Services/MagicLinkServiceTests.cs`, `Services/AdminAuthorizationServiceTests.cs`, `Repositories/RoleAssignmentRepositoryTests.cs`. Fix: move into `tests/Humans.Application.Tests/Auth/`. No-migration-needed: **y**.
 
-## G2 queue notes
+## Schema demolition queue
 
 **Corrected 2026-08-03** — "no FK-cut or rename items surfaced" was wrong; the demolition
 inventory in this same commit records both, and predicate 5(b) already found the HUM0024
-grandfather that marks the FKs. Auth's G2 queue is:
+grandfather that marks the FKs. Auth's schema queue is:
 
 - **Cut 2 cross-section FK relationships** — `role_assignments → AspNetUsers` (the
   `RoleAssignment.User`/`CreatedByUser` pair), currently HUM0024-grandfathered at
   `RoleAssignmentConfiguration.cs:8`. Sequenced after the G1 nav-strip (gap #3).
 - **Rename `role_assignments` → `auth_role_assignments`** — the table is unprefixed; the
-  inventory proposes the section-prefixed form for G2's rename wave.
+  inventory proposes the section-prefixed form.
 
 Otherwise the schema looks clean: no dead columns spotted in a shape-only read of
 `RoleAssignment.cs`; `Notes` is free text with no observed debt.

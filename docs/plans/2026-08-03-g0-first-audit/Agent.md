@@ -30,17 +30,17 @@
 2. **Duplicate `IUserServiceRead` constructor parameter in `AgentController`** (`users` and `userService`, `src/Humans.Web/Controllers/AgentController.cs:19-23`). Cosmetic DI smell, not a boundary violation. Fix: drop the unused one. No-migration-needed: y.
 3. **Added 2026-08-03: second write path on `AgentConversations`/`AgentMessages`** (see G1.2). `AgentConversationRetentionJob` injects `IAgentRepository` directly and calls `PurgeConversationsOlderThanAsync` (`src/Humans.Infrastructure/Jobs/AgentConversationRetentionJob.cs:20`) alongside `AgentService`'s create/append writes. Fix: route the purge through `IAgentService` so the section keeps one writer-service per table, or record the retention job as an accepted job-owned-deletion exception. No-migration-needed: y.
 
-## G3 Gap List (feeds G2 queue lightly, mostly pure G3 work)
+## G3 Gap List (feeds the schema queue lightly, mostly pure G3 work)
 
 1. **No `AgentRepositoryTests.cs`.** Add a repository test file against the shared Postgres fixture (#764 pattern) covering the 12 `IAgentRepository` methods. No-migration-needed: y.
 2. **Added 2026-08-03: the "Enabled gate → 503" invariant has no test** (see G3.3). No `AgentController` coverage exists at all, and every `AgentServiceTests.BuildService` call sets `Enabled = true`, so `AgentService.cs:59`'s disabled short-circuit never runs either. Fix: add a controller-level test asserting `Enabled = false` → 503, plus a service-level test on the disabled branch. Same gap applies to the 429 status for the rate-limit invariant, whose service-layer behaviour *is* covered. No-migration-needed: y.
 3. **`AgentServiceTests.cs`, `AgentAdminStatusServiceTests.cs` and `AgentSettingsServiceTests.cs` construct a real `AgentRepository` over `UseInMemoryDatabase`** instead of `Mock<IAgentRepository>`. Convert all three to interface mocks; this is exactly the #766 EF-InMemory-off conversion pattern. (`AgentSettingsServiceTests.cs:35,56` added 2026-08-03 — missed in the original pass; converting only the other two leaves this predicate failing.) No-migration-needed: y.
 
-## G2 Queue Notes
+## Schema demolition queue
 
 - Nothing schema-destructive spotted for Agent (no dead columns/tables flagged in this pass; would need a dedicated demolition-inventory sweep against `AgentSettings`/`AgentConversations`/`AgentMessages` columns to confirm).
-- Table names already section-prefixed (`agent_*` per orchestrator-marker memory doc) — G2 rename item likely already satisfied for this section; verify at G2 entry.
-- **Agent already has its own `DbContext` + migration history (issue #858)** — the section may already satisfy G4 outright. Recommend the tracker owner verify Agent against the formal G4 predicate list once written, rather than routing it through the G2→G4 turnstile queue like a from-scratch section.
+- Table names already section-prefixed (`agent_*` per orchestrator-marker memory doc) — rename work likely already satisfied for this section; verify when this item is addressed.
+- **Agent already has its own `DbContext` + migration history (issue #858)** — the section may already satisfy G4 outright. Recommend the tracker owner verify Agent against the formal G4 predicate list once written, rather than routing it through the standard schema-demolition queue like a from-scratch section.
 
 ## Orchestrator-marker check
 

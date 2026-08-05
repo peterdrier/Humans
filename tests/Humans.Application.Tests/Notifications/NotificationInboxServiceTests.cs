@@ -35,9 +35,6 @@ public class NotificationInboxServiceTests : IDisposable
         _cache = new MemoryCache(new MemoryCacheOptions());
         _repo = new NotificationRepository(new TestDbContextFactory(options));
 
-        _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyDictionary<Guid, User>>(
-                new Dictionary<Guid, User>()));
         _userService.StubGetUserInfosFromContext(_dbContext);
 
         _service = new NotificationInboxService(_repo, _userService, _clock, _cache);

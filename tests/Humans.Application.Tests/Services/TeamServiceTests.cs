@@ -1,8 +1,9 @@
 // Tests seed TeamMember.User navs directly for DB-roundtrip verification.
-// TeamMember.User is Obsolete per Â§6c; the production path populates it
-// in-memory via TeamService, but the tests set it on the entity before
-// SaveChanges. File-wide disable cleared when tests switch to seeding via
-// service calls instead of raw entity inserts.
+// TeamMember.User is Obsolete per Â§6c and is never populated by production
+// code (nobodies-collective/Humans#979 removed the in-memory stitcher); the
+// tests set it on the entity before SaveChanges purely to satisfy the FK.
+// File-wide disable cleared when tests switch to seeding via service calls
+// instead of raw entity inserts.
 #pragma warning disable CS0618
 using AwesomeAssertions;
 using Microsoft.EntityFrameworkCore;
@@ -1613,20 +1614,6 @@ public sealed class TeamServiceTests : ServiceTestHarness
         var result = await _service.GetTeamEntityBySlugAsync("non-existent", Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeNull();
-    }
-
-    [HumansFact]
-    public async Task GetTeamEntityBySlugAsync_IncludesUserNavigation()
-    {
-        var user = SeedUser(displayName: "Alice");
-        var team = SeedTeam("Alpha");
-        SeedTeamMember(team.Id, user.Id);
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
-
-        var result = await _service.GetTeamEntityBySlugAsync("alpha", Xunit.TestContext.Current.CancellationToken);
-
-        result!.Members.Single().User.Should().NotBeNull();
-        result.Members.Single().User.DisplayName.Should().Be("Alice");
     }
 
     // ==========================================================================

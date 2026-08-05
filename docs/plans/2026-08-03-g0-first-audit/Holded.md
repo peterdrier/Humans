@@ -37,9 +37,9 @@ No G1 gaps owned by Holded itself. One note flagged for cross-reference: the `No
    inferred mapping can't score as met. Fix: complete the mapping (a read, not new tests, unless
    it turns up real holes). No-migration-needed: **y**.
 
-## G2 queue notes
+## Schema demolition queue
 
-None for this section (no owned tables). Finance's forthcoming G2 pass should account for the already-approved `holded_creditor_balances`/`holded_payments` drops recorded in the baseline.
+None for this section (no owned tables). Finance's forthcoming schema pass should account for the already-approved `holded_creditor_balances`/`holded_payments` drops recorded in the baseline.
 
 ## Headline
 

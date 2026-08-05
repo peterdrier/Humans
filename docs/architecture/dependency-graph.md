@@ -132,6 +132,7 @@ graph LR
     UEmailProvBackfill[UserEmailProviderBackfillService]:::users
     Merge[AccountMergeService]:::users
     DupAcct[DuplicateAccountService]:::users
+    ExtLogin[ExternalLoginService]:::users
 
     AdminAuth[AdminAuthorizationService]:::auth
     MagicLink[MagicLinkService]:::auth
@@ -428,6 +429,11 @@ graph LR
     DupAcct --> User
     DupAcct --> Team
     DupAcct --> Role
+    %% #857 (HUM0031): ExternalLoginService — OAuth-callback decision ladder lifted out of AccountController.
+    %% UserManager<User> is Identity/infra, not a service node.
+    ExtLogin --> User
+    ExtLogin --> UEmail
+    ExtLogin --> MagicLink
 
     %% Auth section
     Role --> User
@@ -583,12 +589,11 @@ graph LR
     %% dashed arrows pop visually against eager solid arrows. The first lazy
     %% edge in this diagram is the (N+1)-th link after the eager arrows
     %% above; recompute the index range whenever edges are added or removed.
-    %% Eager count: 284 eager links, indices 0..283. (Net -1 vs prior sweep's 285:
-    %% +Cantina → BurnSettings (missing edge found this sweep) -2 AdminLegalDocumentService
-    %% edges (AdminLegal --> LegalSync, AdminLegal --> Team — the node was consolidated into
-    %% LegalDocumentSyncService, #751/PR #1155).)
-    %% The 19 lazy edges are indices 284..302.
-    linkStyle 284,285,286,287,288,289,290,291,292,293,294,295,296,297,298,299,300,301,302 stroke:#f97316,stroke-width:2.5px
+    %% Eager count: 287 eager links, indices 0..286. (Net +3 vs prior sweep's 284:
+    %% +3 ExternalLoginService edges — ExtLogin --> User/UEmail/MagicLink, new service
+    %% added in #857/HUM0031, Services/Users/ExternalLoginService.cs.)
+    %% The 19 lazy edges are indices 287..305.
+    linkStyle 287,288,289,290,291,292,293,294,295,296,297,298,299,300,301,302,303,304,305 stroke:#f97316,stroke-width:2.5px
 ```
 
 ## Cycles broken by lazy-resolution
@@ -619,10 +624,10 @@ Threshold: services with >= 3 incoming edges (eager + lazy combined). Counts are
 
 | Service | Eager dependents | Lazy dependents | Notes |
 |---------|-----------------:|----------------:|-------|
-| `UserService` | 59 | 2 | By far the largest fan-in after the cross-section read-write split — almost every section reads users through `IUserServiceRead`. **No outbound edges** except a single eager `IAdminAuthorizationService` (PR #314 made User otherwise foundational; the old User↔* cycles were resolved by extracting deletion-cascade orchestration into `AccountDeletionService`, and Team→User is now one-way lazy). `GateService` added as a new eager consumer (#1066). |
+| `UserService` | 60 | 2 | By far the largest fan-in after the cross-section read-write split — almost every section reads users through `IUserServiceRead`. **No outbound edges** except a single eager `IAdminAuthorizationService` (PR #314 made User otherwise foundational; the old User↔* cycles were resolved by extracting deletion-cascade orchestration into `AccountDeletionService`, and Team→User is now one-way lazy). `GateService` added as a new eager consumer (#1066); `ExternalLoginService` added as a new eager consumer (#857). |
 | `AuditLogService` | 36 | 0 | Cross-cutting — every write-path service logs audit events. No-op alternative: audit decorator (rejected; audit is in-service per §7a). Inbound count includes `AuditViewerService` (read+render layer) and the `UserEmailProviderBackfillService` leaf. `DriveActivityMonitorService` now logs via `IAuditLogService.LogAsync` (eager edge) — its prior direct-ctx-write was resolved by #889 deleting the drive-monitor repo. |
 | `TeamService` | 28 | 2 | Second-largest section fan-in. Read consumers go through `ITeamServiceRead`. Expose efficient batch methods (`GetByIdsAsync`/`GetByIdsWithParentsAsync`) to avoid N+1 at call sites. |
-| `UserEmailService` | 21 | 0 | Email-identity lookups across the system. Itself lazy-resolves AccountMerge + Tickets to avoid reverse cycles. |
+| `UserEmailService` | 22 | 0 | Email-identity lookups across the system. Itself lazy-resolves AccountMerge + Tickets to avoid reverse cycles. `ExternalLoginService` added as a new eager consumer (#857). |
 | `ShiftManagementService` | 16 | 0 | Shift hub. Lazy-resolves Team/Role/Tickets/User/Camp itself to break cycles (Camp added in #898 for Shift-Summary-by-Camp). Recent eager consumers: `Cantina`, `VolTrackExport`, `UserParticipationBackfill`, `OnboardingWidgetState`, `GateService` (current gate-roster lookups, #1066). |
 | `IEmailService` | 14 | 1 | Abstract over OutboxEmailService (impl) + SMTP send. |
 | `RoleAssignmentService` | 10 | 3 | Auth hub. Lazy half of the Team / ShiftManagement / TeamResource cycles. `GateService` added as an eager consumer (supervisor-override role checks, #1066). |
@@ -670,6 +675,7 @@ Below the >= 3 threshold but tracked for narrative continuity:
 - **#898** — Shift Summary by Camp (read-only): `ShiftManagementService` gained summary methods that lazy-resolve `ICampServiceRead` via `IServiceProvider` (new dashed `ShiftMgmt -. lazy .-> Camp` edge). The ctor is unchanged — no new eager edges.
 - **#1066** — Gate (admissions) section landed: `GateService` (Application/Services/Gate) evaluates gate scans (barcode → admission decision) against `GateAdmissionRules` using cross-section reads — `ITicketServiceRead` (current-event attendee lookup), `IEarlyEntryService` (early-entry eligibility), `IBurnSettingsService` (gate-open cutoff), `IShiftManagementService` (current gate-roster shifts), `IRoleAssignmentService` (supervisor-override role verification), `IUserService` — and records decisions to its own `gate_scan_events` table (`IGateRepository`) plus the audit log. Seven new eager edges; zero inbound service edges. It also registers `IUserMerge` and `IUserDataContributor` fan-out implementations (account-merge and GDPR-export participation without new edges).
 - **#751 (PR #1155)** — Legal-document writers consolidated: `AdminLegalDocumentService` was merged into `LegalDocumentSyncService`, which is now the sole writer for the Legal-document aggregate (`legal_documents`, `document_versions`) and implements both `IAdminLegalDocumentService` (admin create/update/archive/version-summary edits) and `ILegalDocumentSyncService` (GitHub-sync surface). Being the single writer lets it call `ILegalDocumentCacheInvalidator.InvalidateAll()` directly instead of relying on a cross-cutting SaveChanges interceptor. The separate `AdminLegal` node and its two edges (`AdminLegal --> LegalSync`, `AdminLegal --> Team`) are gone; `LegalSync`'s own edges (`LegalSync --> User/Team/NotifEmitter`) are unchanged.
+- **#857 (HUM0031)** — `ExternalLoginService` (Application/Services/Users) landed: the OAuth-callback decision ladder lifted out of `AccountController` per the A2/A3 findings in `docs/debt/controller-intent-audit-2026-06-12.md`. Ctor-injects `UserManager<User>` (Identity infra, no node), `IUserService`, `IUserEmailService`, `IMagicLinkService`, `IClock`, `ILogger`. Three new eager edges (`ExtLogin --> User/UEmail/MagicLink`); zero inbound service edges. HUM0031 pins `IUserEmailService.ReconcileOAuthIdentityAsync` to this class as its sole caller.
 - New thin sections since the previous sweep: **Cantina** (`CantinaRosterService` reads ShiftMgmt + User + BurnSettings), **EarlyEntry** (`EarlyEntryService` fans an `IEnumerable<IEarlyEntryProvider>` — no eager service edges), **Workload** (`WorkloadService` reads Team + User via ShiftView), **RotaCoordinatorMessage/VolunteerTrackingExport** (new Shifts services; `GeneralAvailabilityService` was later deleted in #820), **SystemSettings** (`SystemSettingsService` — see #889 above). None take dependencies beyond existing service interfaces.
 - **ICalFeed section** (`ICalFeedService` — iCal personal feed): orchestrator that fans `IEnumerable<ICalendarFeedContributor>` into one VCALENDAR. Implemented contributors: `EventService` (favourited approved events, with recurrence expansion) and `ShiftSignupService` (signed-up shifts). The fan-out interface pattern means `ICalFeedService` has no direct eager edges to those services — only `ICalFeedService → User` (token validation via `IUserServiceRead`). Same pattern as `EarlyEntryService`.
 - **GoogleTranslationService** (GoogleIntegration section): thin connector facade over `IGoogleTranslationClient` (Infrastructure). No service→service outbound edges. Consumed by `SurveyService` for translation pre-fill (`Survey → GTrans`).

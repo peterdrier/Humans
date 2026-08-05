@@ -26,16 +26,16 @@
 
 ## G1 gap list
 
-**Added 2026-08-03 (was: "no G1 gaps found").** 4 un-grandfathered cross-section FKs — `ApplicationConfiguration.cs:49,56`, `ApplicationStateHistoryConfiguration.cs:27`, `BoardVoteConfiguration.cs:32`, all → `AspNetUsers` across `applications`, `application_state_history` and `board_votes` (see predicate 4). None carries `[Grandfathered(HUM0024)]`, so they're invisible to the attribute allowlist the rest of this inventory relies on — worth understanding why the analyzer doesn't fire before the cuts are queued. Counted as one G1 item; the four FK cuts themselves are G2. No-migration-needed: **y** (investigation); FK cuts are G2.
+**Added 2026-08-03 (was: "no G1 gaps found").** 4 un-grandfathered cross-section FKs — `ApplicationConfiguration.cs:49,56`, `ApplicationStateHistoryConfiguration.cs:27`, `BoardVoteConfiguration.cs:32`, all → `AspNetUsers` across `applications`, `application_state_history` and `board_votes` (see predicate 4). None carries `[Grandfathered(HUM0024)]`, so they're invisible to the attribute allowlist the rest of this inventory relies on — worth understanding why the analyzer doesn't fire before the cuts are queued. Counted as one G1 item; the four FK cuts themselves are schema-queue work. No-migration-needed: **y** (investigation); FK cuts are schema-queue work.
 
 Every other G1 predicate passed cleanly — Governance remains among the cleanest sections in the batch on ownership and writer discipline.
 
 
 **Added 2026-08-03 — harness-inherited EF-InMemory (G3.2).** `ApplicationDecisionServiceTests` extend `ServiceTestHarness`, which stands up a real `HumansDbContext` over `.UseInMemoryDatabase(...)`; the original pass missed this because it grepped for a literal `HumansDbContext` the files never name. Fix: convert to `Substitute.For<IApplicationRepository>()` per #766, or move these off the harness. No-migration-needed: **y**.
 
-## G2 queue notes
+## Schema demolition queue
 
-**Corrected 2026-08-03 — "none identified" contradicted this scorecard's own G1 gap list and the demolition inventory.** Governance's G2 queue is the **four cross-section FK cuts** to `AspNetUsers`: `applications.ReviewedByUserId` and `applications.UserId` (`ApplicationConfiguration.cs:49,56`), `application_state_history.ChangedByUserId` (`ApplicationStateHistoryConfiguration.cs:27`), and `board_votes.BoardMemberUserId` (`BoardVoteConfiguration.cs:32`). Governance must not advance through G2 while those constraints remain.
+**Corrected 2026-08-03 — "none identified" contradicted this scorecard's own G1 gap list and the demolition inventory.** Governance's schema queue is the **four cross-section FK cuts** to `AspNetUsers`: `applications.ReviewedByUserId` and `applications.UserId` (`ApplicationConfiguration.cs:49,56`), `application_state_history.ChangedByUserId` (`ApplicationStateHistoryConfiguration.cs:27`), and `board_votes.BoardMemberUserId` (`BoardVoteConfiguration.cs:32`). Governance is not schema-clean while those constraints remain.
 
 Also queued: the three table renames (`applications` → `governance_applications`, `application_state_history` → `governance_application_state_history`, `board_votes` → `governance_board_votes`) per the inventory. Separately, `ReviewStartedAt` is documented as currently unused (no controller path sets it) — a dead-column candidate worth confirming isn't reserved for a near-term feature before dropping.
 

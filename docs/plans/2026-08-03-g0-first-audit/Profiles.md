@@ -30,11 +30,11 @@
 
 | What | Where | Suggested fix | No-migration-needed? |
 |------|-------|----------------|----|
-| `UserInfoSaveChangesInterceptor` bypasses the one-writer-service rule for Identity-machinery writes | `Humans.Infrastructure` interceptor registration (both scoped + factory contexts) | Out of scope tonight per orchestrator briefing — retire once `IdentityFindByEmailRestrictionsTests`-style routing covers all Identity write paths through `IUserService`. Track as a named G2/G1 follow-up issue if not already filed. | y (service-layer refactor) |
+| `UserInfoSaveChangesInterceptor` bypasses the one-writer-service rule for Identity-machinery writes | `Humans.Infrastructure` interceptor registration (both scoped + factory contexts) | Out of scope tonight per orchestrator briefing — retire once `IdentityFindByEmailRestrictionsTests`-style routing covers all Identity write paths through `IUserService`. Track as a named follow-up issue if not already filed. | y (service-layer refactor) |
 | `IUserService.GetByIdsAsync` / `IAccountProvisioningService.FindOrCreateUserByEmailAsync` return `Humans.Domain.Entities.User` | `ApplicationServiceEntityReadReturns.baseline.txt` rows 28–29 | Convert both to return `UserInfo`/DTO projections and remove the baseline rows — likely a Users-section change since both interfaces live under `Interfaces.Users`. | y |
 | `AccountMergeRequest.TargetUser`/`SourceUser`/`ResolvedByUser` cross-domain navs live and un-stripped | `Humans.Domain.Entities.AccountMergeRequest` + `AccountMergeService`/merge admin views | Strip navs, route display data through `IUserService.GetByIdsAsync` (once that itself stops returning entities) per the doc's own "Touch-and-clean guidance." | y |
 | `ProfileController` carries 3 HUM0031 grandfathers | `src/Humans.Web/Controllers/ProfileController.cs` | Tracked under nobodies-collective/Humans#857 (in-flight, Lane 2 tonight). No new action needed from this audit. | y |
 
-## G2 queue notes
+## Schema demolition queue
 
-Profile picture dual-write (`ProfilePictureData` DB fallback), `Profile.IsSuspended` obsolete column, `User.GoogleEmailStatus`/`GoogleEmail` shadow columns, `UserEmail.IsOAuth`/`DisplayOrder` shadow columns are all named demolition-inventory candidates already flagged in the section doc as "pending a deferred drop migration" — these feed G2 directly once soak windows close. No new items surfaced this pass beyond what the doc already tracks.
+Profile picture dual-write (`ProfilePictureData` DB fallback), `Profile.IsSuspended` obsolete column, `User.GoogleEmailStatus`/`GoogleEmail` shadow columns, `UserEmail.IsOAuth`/`DisplayOrder` shadow columns are all named demolition-inventory candidates already flagged in the section doc as "pending a deferred drop migration" — these feed the schema queue directly once soak windows close. No new items surfaced this pass beyond what the doc already tracks.

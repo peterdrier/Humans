@@ -269,6 +269,13 @@ public sealed class TicketTransferService(
         var attendee = await ticketRepo.GetAttendeeByIdAsync(request.OriginalTicketAttendeeId, ct)
             ?? throw new InvalidOperationException("Original attendee missing.");
 
+        // This method only runs once the void has already committed
+        // (VoidSucceededIssueFailed + a recorded hold id), so every step from here
+        // is post-commit — the same state WriteToVendorAsync detaches for. Mirror
+        // its commitCt so an aborted or timed-out admin request can't cancel the
+        // reissue and strand the held seat at TT (nobodies-collective/Humans#950).
+        var commitCt = CancellationToken.None;
+
         // Reissue from the held seat (same ticket type). The original is already Void locally.
         VendorTicketDto issued;
         try
@@ -280,7 +287,7 @@ public sealed class TicketTransferService(
                 FullName: request.ReceiverLegalName,
                 Email: request.ReceiverEmail,
                 SendEmail: true,
-                ExternalReference: request.Id.ToString("N")), ct);
+                ExternalReference: request.Id.ToString("N")), commitCt);
         }
         catch (Exception ex)
         {

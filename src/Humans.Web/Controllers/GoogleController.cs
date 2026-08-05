@@ -311,10 +311,15 @@ public class GoogleController(
     {
         try
         {
+            // Deliberately not passing HttpContext.RequestAborted: an admin
+            // closing the tab mid-reconcile would abort partway through applying
+            // group memberships and Drive permissions, leaving Workspace
+            // half-synced with no record of where it stopped
+            // (nobodies-collective/Humans#950).
             var result = await googleSyncService.SyncSingleResourceAsync(
                 resourceId,
                 SyncAction.Execute,
-                HttpContext.RequestAborted);
+                CancellationToken.None);
             return Json(result);
         }
         catch (Exception ex)
@@ -331,9 +336,13 @@ public class GoogleController(
     {
         try
         {
+            // Deliberately not passing HttpContext.RequestAborted — see
+            // SyncExecute above. A full reconcile touches every resource of the
+            // type; aborting it midway is the worst case for partial remote
+            // state (nobodies-collective/Humans#950).
             var result = resourceType == GoogleResourceType.Group
-                ? await googleGroupSync.ReconcileAllAsync(SyncAction.Execute, HttpContext.RequestAborted)
-                : await googleSyncService.SyncResourcesByTypeAsync(resourceType, SyncAction.Execute, HttpContext.RequestAborted);
+                ? await googleGroupSync.ReconcileAllAsync(SyncAction.Execute, CancellationToken.None)
+                : await googleSyncService.SyncResourcesByTypeAsync(resourceType, SyncAction.Execute, CancellationToken.None);
             return Json(result);
         }
         catch (Exception ex)

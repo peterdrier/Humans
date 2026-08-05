@@ -67,10 +67,10 @@ public class SecurityHeaderTests(HumansWebApplicationFactory factory) : Integrat
     }
 
     // The auth-cookie policy from nobodies-collective#925 lives here rather than in its own
-    // class: every test class owns an IClassFixture<HumansWebApplicationFactory>, and each
-    // factory starts its own Testcontainers Postgres. Reusing this class's fixture keeps the
-    // suite at 14 parallel containers instead of 15 — worth doing for two assertions, since
-    // several tests already run 26-29s against HumansFact's 30s default timeout.
+    // class simply because it asserts on response headers like the rest of this class. The
+    // original reason — one Testcontainers Postgres per test class, so co-locating saved a
+    // container — no longer applies: the factory is an assembly fixture and the whole run
+    // shares a single container.
 
     [HumansFact]
     public async Task SignIn_IssuesPersistentCookie_NotSessionCookie()

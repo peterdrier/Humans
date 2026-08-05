@@ -30,7 +30,7 @@
 |------|-------|----------------|----|
 | 2–3-way writer on `legal_documents`/`document_versions` (#751) | `AdminLegalDocumentService`, `LegalDocumentSyncService`, `LegalDocumentSaveChangesInterceptor` | **Already staffed** — Lane 3 in current sprint, in progress: consolidate writers, drop the interceptor. | y |
 | `LegalDocument.Team` / `Team.LegalDocuments` live cross-domain navs | `LegalDocument.cs:30`, `Team.cs:160`, `LegalDocumentRepository.cs:101` | Strip nav, convert to typed-FK, move `ConsentService.GetConsentDashboardAsync`'s `Team` read to `ITeamService.GetTeamNamesByIdsAsync` (doc already prescribes this). | y |
-| **Added 2026-08-03:** 2 HUM0024 configuration grandfathers | `ConsentRecordConfiguration.cs:49` (`consent_records.UserId → AspNetUsers`), `LegalDocumentConfiguration.cs:44` (`legal_documents.TeamId → teams`) | See predicate 4. The Users FK cut is independent of the `LegalDocument.Team` nav-strip row above and must be queued separately at G2; retire the markers once both are cut. | y (attribute work); FK cuts are G2 |
+| **Added 2026-08-03:** 2 HUM0024 configuration grandfathers | `ConsentRecordConfiguration.cs:49` (`consent_records.UserId → AspNetUsers`), `LegalDocumentConfiguration.cs:44` (`legal_documents.TeamId → teams`) | See predicate 4. The Users FK cut is independent of the `LegalDocument.Team` nav-strip row above and must be queued separately; retire the markers once both are cut. | y (attribute work); FK cuts are schema work |
 
 ## G3 gap list
 
@@ -45,7 +45,7 @@
 
 **Added 2026-08-03 — harness-inherited EF-InMemory (G3.2).** `ConsentServiceTests` and `AdminLegalDocumentServiceTests` extend `ServiceTestHarness`, which stands up a real `HumansDbContext` over `.UseInMemoryDatabase(...)`; the original pass missed this because it grepped for a literal `HumansDbContext` the files never name. Fix: convert to `Substitute.For<IConsentRepository>()` per #766, or move these off the harness. No-migration-needed: **y**.
 
-## G2 queue notes
+## Schema demolition queue
 
 Two cross-section FK cuts are queued (see the G1 gap list): `consent_records.UserId → AspNetUsers`
 and `legal_documents.TeamId → teams`, both currently HUM0024-grandfathered. Once #751 lands, the

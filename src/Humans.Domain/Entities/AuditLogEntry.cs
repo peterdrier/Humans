@@ -63,12 +63,6 @@ public class AuditLogEntry
     public Guid? ResourceId { get; init; }
 
     /// <summary>
-    /// Navigation property to the Google resource.
-    /// Uses set (not init) as required by EF Core for navigation properties.
-    /// </summary>
-    public GoogleResource? Resource { get; set; }
-
-    /// <summary>
     /// Whether the Google API call succeeded. Null for non-Google entries.
     /// </summary>
     public bool? Success { get; init; }

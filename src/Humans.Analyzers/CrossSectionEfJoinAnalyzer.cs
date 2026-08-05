@@ -20,6 +20,15 @@ public sealed class CrossSectionEfJoinAnalyzer : DiagnosticAnalyzer
     private const string EntityTypeConfigurationFullName = "Microsoft.EntityFrameworkCore.IEntityTypeConfiguration`1";
     private const string EfBuilderNamespacePrefix = "Microsoft.EntityFrameworkCore";
 
+    /// <summary>
+    /// Section identity for a configuration that sits directly in the
+    /// <c>Configurations</c> root namespace, where no folder segment names an
+    /// owning section. Such configurations form a single bucket that is never
+    /// equal to a named section, so their joins to (and from) sectioned
+    /// entities are reported instead of silently passing.
+    /// </summary>
+    private const string UnsectionedSection = "(unsectioned)";
+
     private static readonly ImmutableHashSet<string> RelationshipMethods =
         ImmutableHashSet.Create(StringComparer.Ordinal, "HasOne", "HasMany");
 
@@ -38,8 +47,11 @@ public sealed class CrossSectionEfJoinAnalyzer : DiagnosticAnalyzer
         isEnabledByDefault: true,
         description:
             "A section's EF model must not configure HasOne/HasMany navigation joins to entities owned by " +
-            "another section. Existing violators carry [Grandfathered(\"HUM0024\", ...)] until their joins " +
-            "are migrated to bare FK columns and service-level stitching.");
+            "another section. A configuration's owning section is the folder/namespace segment directly under " +
+            "Data/Configurations; one that sits in the Configurations root declares no section and is reported " +
+            "as '(unsectioned)' -- move it under Configurations/<Section>/ so its owner is stated. Existing " +
+            "violators carry [Grandfathered(\"HUM0024\", ...)] until their joins are migrated to bare FK " +
+            "columns and service-level stitching.");
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];
 
@@ -156,6 +168,14 @@ public sealed class CrossSectionEfJoinAnalyzer : DiagnosticAnalyzer
         return null;
     }
 
+    /// <summary>
+    /// Resolves the section that owns a configuration class from the namespace
+    /// segment directly beneath <c>…Data.Configurations</c>. Returns
+    /// <c>null</c> only when the type is not under that namespace at all (so it
+    /// is not an EF configuration this rule governs); a configuration that sits
+    /// in the <c>Configurations</c> root namespace resolves to
+    /// <see cref="UnsectionedSection"/> rather than to <c>null</c>.
+    /// </summary>
     private static string? SectionFromConfigurationNamespace(INamedTypeSymbol type)
     {
         var ns = type.ContainingNamespace?.ToDisplayString();
@@ -163,7 +183,7 @@ public sealed class CrossSectionEfJoinAnalyzer : DiagnosticAnalyzer
             return null;
 
         if (ns.Length == ConfigurationNamespacePrefix.Length)
-            return null;
+            return UnsectionedSection;
 
         if (ns[ConfigurationNamespacePrefix.Length] != '.')
             return null;
@@ -171,7 +191,7 @@ public sealed class CrossSectionEfJoinAnalyzer : DiagnosticAnalyzer
         var start = ConfigurationNamespacePrefix.Length + 1;
         var dot = ns.IndexOf('.', start);
         var raw = dot < 0 ? ns.Substring(start) : ns.Substring(start, dot - start);
-        return FoldSection(raw);
+        return Sections.Fold(raw);
     }
 
     private static INamedTypeSymbol? FindTargetEntity(
@@ -241,13 +261,6 @@ public sealed class CrossSectionEfJoinAnalyzer : DiagnosticAnalyzer
 
     private static string SymbolKey(ITypeSymbol type) =>
         type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-
-    private static string FoldSection(string raw) =>
-        raw switch
-        {
-            "Users" or "Profile" or "Profiles" => "Humans",
-            _ => raw,
-        };
 
     private sealed class OwnershipMap
     {

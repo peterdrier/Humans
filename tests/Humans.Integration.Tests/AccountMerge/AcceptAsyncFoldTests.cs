@@ -21,7 +21,7 @@ namespace Humans.Integration.Tests.AccountMerge;
 /// <see cref="MergeFixtureBuilder"/>, calls <c>AcceptAsync</c>, then asserts
 /// the resulting fold against the rule documented in the fold-redesign plan.
 /// </summary>
-public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassFixture<HumansWebApplicationFactory>
+public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IntegrationTestBase(factory)
 {
     private async Task<Guid> SeedAdminUserAsync()
     {
@@ -32,7 +32,7 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
         // CanUserApproveRequestsForTeamAsync). Seed an admin User + an active
         // Admin RoleAssignment per test so those FKs resolve and authorization
         // succeeds.
-        await using var scope = factory.Services.CreateAsyncScope();
+        await using var scope = Factory.Services.CreateAsyncScope();
         var um = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
         var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
         var now = SystemClock.Instance.GetCurrentInstant();
@@ -79,17 +79,17 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
         // doesn't trip when the class fixture's shared DB carries rows from
         // an earlier test in the same run.
         var sharedEmail = $"shared-{Guid.NewGuid():N}@example.com";
-        var (sourceId, targetId) = await factory.SeedMergeFixtureAsync(b =>
+        var (sourceId, targetId) = await Factory.SeedMergeFixtureAsync(b =>
         {
             b.WithSourceEmail(sharedEmail, verified: true, isPrimary: false, isGoogle: false);
             b.WithTargetEmail(sharedEmail, verified: false, isPrimary: true, isGoogle: true);
         });
-        var requestId = await factory.SeedMergeRequestAsync(sourceId, targetId);
+        var requestId = await Factory.SeedMergeRequestAsync(sourceId, targetId);
 
         var adminId = await SeedAdminUserAsync();
         await AcceptAsync(requestId, adminId);
 
-        await using var assertScope = factory.Services.CreateAsyncScope();
+        await using var assertScope = Factory.Services.CreateAsyncScope();
         var emailRepo = assertScope.ServiceProvider.GetRequiredService<IUserRepository>();
 
         var targetEmails = await emailRepo.GetUserEmailsByUserIdReadOnlyAsync(targetId, TestContext.Current.CancellationToken);
@@ -112,18 +112,18 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
         // OR-combine into a single verified target row.
         var collapseEmail = $"collapse-{Guid.NewGuid():N}@example.com";
         var sourceOnlyEmail = $"source-only-{Guid.NewGuid():N}@example.com";
-        var (sourceId, targetId) = await factory.SeedMergeFixtureAsync(b =>
+        var (sourceId, targetId) = await Factory.SeedMergeFixtureAsync(b =>
         {
             b.WithSourceEmail(collapseEmail, verified: true);
             b.WithTargetEmail(collapseEmail, verified: false, isPrimary: true);
             b.WithSourceEmail(sourceOnlyEmail, verified: true);
         });
-        var requestId = await factory.SeedMergeRequestAsync(sourceId, targetId);
+        var requestId = await Factory.SeedMergeRequestAsync(sourceId, targetId);
 
         var adminId = await SeedAdminUserAsync();
         await AcceptAsync(requestId, adminId);
 
-        await using var assertScope = factory.Services.CreateAsyncScope();
+        await using var assertScope = Factory.Services.CreateAsyncScope();
         var emailRepo = assertScope.ServiceProvider.GetRequiredService<IUserRepository>();
 
         var targetEmails = await emailRepo.GetUserEmailsByUserIdReadOnlyAsync(targetId, TestContext.Current.CancellationToken);
@@ -155,18 +155,18 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
         var sourceKey2 = $"source-sub-2-{Guid.NewGuid():N}";
         var targetKey = $"target-sub-{Guid.NewGuid():N}";
 
-        var (sourceId, targetId) = await factory.SeedMergeFixtureAsync(b =>
+        var (sourceId, targetId) = await Factory.SeedMergeFixtureAsync(b =>
         {
             b.WithSourceLogin("Google", sourceKey1);
             b.WithSourceLogin("Google", sourceKey2);
             b.WithTargetLogin("Google", targetKey);
         });
-        var requestId = await factory.SeedMergeRequestAsync(sourceId, targetId);
+        var requestId = await Factory.SeedMergeRequestAsync(sourceId, targetId);
 
         var adminId = await SeedAdminUserAsync();
         await AcceptAsync(requestId, adminId);
 
-        await using var assertScope = factory.Services.CreateAsyncScope();
+        await using var assertScope = Factory.Services.CreateAsyncScope();
         var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
 
         var targetLogins = await db.Set<IdentityUserLogin<Guid>>()
@@ -200,13 +200,13 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
     [HumansFact(Timeout = 30_000)]
     public async Task AcceptAsync_Profile_AnonymizesAndKeepsTombstoneRow()
     {
-        var (sourceId, targetId) = await factory.SeedMergeFixtureAsync();
-        var requestId = await factory.SeedMergeRequestAsync(sourceId, targetId);
+        var (sourceId, targetId) = await Factory.SeedMergeFixtureAsync();
+        var requestId = await Factory.SeedMergeRequestAsync(sourceId, targetId);
 
         var adminId = await SeedAdminUserAsync();
         await AcceptAsync(requestId, adminId);
 
-        await using var assertScope = factory.Services.CreateAsyncScope();
+        await using var assertScope = Factory.Services.CreateAsyncScope();
         var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
 
         // Source profile row still exists (tombstone) but with anonymized scalars.
@@ -234,19 +234,19 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
     [HumansFact(Timeout = 30_000)]
     public async Task AcceptAsync_VolunteerHistory_Move_DedupIdenticalEntries()
     {
-        var (sourceId, targetId) = await factory.SeedMergeFixtureAsync(b =>
+        var (sourceId, targetId) = await Factory.SeedMergeFixtureAsync(b =>
         {
             b.WithSourceVolunteerHistory(2024, "Nowhere 2024");
             b.WithTargetVolunteerHistory(2024, "Nowhere 2024"); // dup — drop source
             b.WithSourceVolunteerHistory(2023, "Build 2023");   // unique to source — moves
             b.WithTargetVolunteerHistory(2025, "Cleanup 2025"); // unique to target — stays
         });
-        var requestId = await factory.SeedMergeRequestAsync(sourceId, targetId);
+        var requestId = await Factory.SeedMergeRequestAsync(sourceId, targetId);
 
         var adminId = await SeedAdminUserAsync();
         await AcceptAsync(requestId, adminId);
 
-        await using var assertScope = factory.Services.CreateAsyncScope();
+        await using var assertScope = Factory.Services.CreateAsyncScope();
         var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
 
         var targetProfileId = await db.Profiles
@@ -281,7 +281,7 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
     [HumansFact(Timeout = 30_000)]
     public async Task AcceptAsync_Languages_Move_DedupKeepHighestProficiency()
     {
-        var (sourceId, targetId) = await factory.SeedMergeFixtureAsync(b =>
+        var (sourceId, targetId) = await Factory.SeedMergeFixtureAsync(b =>
         {
             // Both have "es" — source higher proficiency, target's row should
             // be upgraded.
@@ -294,12 +294,12 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
             // Target-only "de" stays.
             b.WithTargetLanguage("de", LanguageProficiency.Native);
         });
-        var requestId = await factory.SeedMergeRequestAsync(sourceId, targetId);
+        var requestId = await Factory.SeedMergeRequestAsync(sourceId, targetId);
 
         var adminId = await SeedAdminUserAsync();
         await AcceptAsync(requestId, adminId);
 
-        await using var assertScope = factory.Services.CreateAsyncScope();
+        await using var assertScope = Factory.Services.CreateAsyncScope();
         var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
 
         var targetProfileId = await db.Profiles
@@ -332,7 +332,7 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
         var older = Instant.FromUtc(2025, 1, 1, 0, 0);
         var newer = Instant.FromUtc(2025, 6, 1, 0, 0);
 
-        var (sourceId, targetId) = await factory.SeedMergeFixtureAsync(b =>
+        var (sourceId, targetId) = await Factory.SeedMergeFixtureAsync(b =>
         {
             // Same category — source is newer, so source's OptedOut value wins
             // and gets copied onto target before the source row is deleted.
@@ -343,12 +343,12 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
             b.WithSourceCommPref(MessageCategory.Marketing, optedOut: false, updatedAt: older);
             b.WithTargetCommPref(MessageCategory.Marketing, optedOut: true, updatedAt: newer);
         });
-        var requestId = await factory.SeedMergeRequestAsync(sourceId, targetId);
+        var requestId = await Factory.SeedMergeRequestAsync(sourceId, targetId);
 
         var adminId = await SeedAdminUserAsync();
         await AcceptAsync(requestId, adminId);
 
-        await using var assertScope = factory.Services.CreateAsyncScope();
+        await using var assertScope = Factory.Services.CreateAsyncScope();
         var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
 
         var targetPrefs = await db.CommunicationPreferences
@@ -376,7 +376,7 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
     [HumansFact(Timeout = 30_000)]
     public async Task AcceptAsync_EventParticipation_HighestStatusWins_ByEnumPrecedence()
     {
-        var (sourceId, targetId) = await factory.SeedMergeFixtureAsync(b =>
+        var (sourceId, targetId) = await Factory.SeedMergeFixtureAsync(b =>
         {
             // Year 2024 — source Attended (highest precedence) beats target NotAttending.
             b.WithSourceEventParticipation(2024, ParticipationStatus.Attended);
@@ -389,12 +389,12 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
             // Year 2023 — source-only, re-FKs to target.
             b.WithSourceEventParticipation(2023, ParticipationStatus.Attended);
         });
-        var requestId = await factory.SeedMergeRequestAsync(sourceId, targetId);
+        var requestId = await Factory.SeedMergeRequestAsync(sourceId, targetId);
 
         var adminId = await SeedAdminUserAsync();
         await AcceptAsync(requestId, adminId);
 
-        await using var assertScope = factory.Services.CreateAsyncScope();
+        await using var assertScope = Factory.Services.CreateAsyncScope();
         var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
 
         var targetEvents = await db.EventParticipations
@@ -421,19 +421,19 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
     [HumansFact(Timeout = 30_000)]
     public async Task AcceptAsync_Applications_Move_AllHistorical()
     {
-        var (sourceId, targetId) = await factory.SeedMergeFixtureAsync(b =>
+        var (sourceId, targetId) = await Factory.SeedMergeFixtureAsync(b =>
         {
             // Both source and target have applications — every row moves; no dedup.
             b.WithSourceApplication();
             b.WithSourceApplication(MembershipTier.Asociado);
             b.WithTargetApplication();
         });
-        var requestId = await factory.SeedMergeRequestAsync(sourceId, targetId);
+        var requestId = await Factory.SeedMergeRequestAsync(sourceId, targetId);
 
         var adminId = await SeedAdminUserAsync();
         await AcceptAsync(requestId, adminId);
 
-        await using var assertScope = factory.Services.CreateAsyncScope();
+        await using var assertScope = Factory.Services.CreateAsyncScope();
         var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
 
         var targetApps = await db.Applications
@@ -456,18 +456,18 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
     [HumansFact(Timeout = 30_000)]
     public async Task AcceptAsync_FeedbackReportsAndMessages_Move()
     {
-        var (sourceId, targetId) = await factory.SeedMergeFixtureAsync(b =>
+        var (sourceId, targetId) = await Factory.SeedMergeFixtureAsync(b =>
         {
             b.WithSourceFeedbackReport("Source bug A");
             b.WithSourceFeedbackReport("Source bug B");
             b.WithTargetFeedbackReport("Target bug C");
         });
-        var requestId = await factory.SeedMergeRequestAsync(sourceId, targetId);
+        var requestId = await Factory.SeedMergeRequestAsync(sourceId, targetId);
 
         var adminId = await SeedAdminUserAsync();
         await AcceptAsync(requestId, adminId);
 
-        await using var assertScope = factory.Services.CreateAsyncScope();
+        await using var assertScope = Factory.Services.CreateAsyncScope();
         var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
 
         var targetReports = await db.FeedbackReports
@@ -497,16 +497,16 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
         // seeded by other tests in the same shared-DB class fixture.
         var description = $"audit-source-action-{Guid.NewGuid():N}";
 
-        var (sourceId, targetId) = await factory.SeedMergeFixtureAsync(b =>
+        var (sourceId, targetId) = await Factory.SeedMergeFixtureAsync(b =>
         {
             b.WithSourceAuditLogEntry(AuditAction.AccountAnonymized, description);
         });
-        var requestId = await factory.SeedMergeRequestAsync(sourceId, targetId);
+        var requestId = await Factory.SeedMergeRequestAsync(sourceId, targetId);
 
         var adminId = await SeedAdminUserAsync();
         await AcceptAsync(requestId, adminId);
 
-        await using var assertScope = factory.Services.CreateAsyncScope();
+        await using var assertScope = Factory.Services.CreateAsyncScope();
         var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
 
         // The seeded audit row MUST still be attached to the source user id —
@@ -527,13 +527,13 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
     [HumansFact(Timeout = 30_000)]
     public async Task AcceptAsync_TombstonesSourceWithMergedToUserId()
     {
-        var (sourceId, targetId) = await factory.SeedMergeFixtureAsync();
-        var requestId = await factory.SeedMergeRequestAsync(sourceId, targetId);
+        var (sourceId, targetId) = await Factory.SeedMergeFixtureAsync();
+        var requestId = await Factory.SeedMergeRequestAsync(sourceId, targetId);
 
         var adminId = await SeedAdminUserAsync();
         await AcceptAsync(requestId, adminId);
 
-        await using var assertScope = factory.Services.CreateAsyncScope();
+        await using var assertScope = Factory.Services.CreateAsyncScope();
         var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
 
         var sourceUser = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == sourceId, TestContext.Current.CancellationToken);
@@ -549,13 +549,13 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
     [HumansFact(Timeout = 30_000)]
     public async Task AcceptAsync_PreventsSourceLogin()
     {
-        var (sourceId, targetId) = await factory.SeedMergeFixtureAsync();
-        var requestId = await factory.SeedMergeRequestAsync(sourceId, targetId);
+        var (sourceId, targetId) = await Factory.SeedMergeFixtureAsync();
+        var requestId = await Factory.SeedMergeRequestAsync(sourceId, targetId);
 
         var adminId = await SeedAdminUserAsync();
         await AcceptAsync(requestId, adminId);
 
-        await using var assertScope = factory.Services.CreateAsyncScope();
+        await using var assertScope = Factory.Services.CreateAsyncScope();
         var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
 
         var sourceUser = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == sourceId, TestContext.Current.CancellationToken);
@@ -573,19 +573,19 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
     [HumansFact(Timeout = 30_000)]
     public async Task AcceptAsync_ContactFields_Move_DedupOnTypeValue()
     {
-        var (sourceId, targetId) = await factory.SeedMergeFixtureAsync(b =>
+        var (sourceId, targetId) = await Factory.SeedMergeFixtureAsync(b =>
         {
             b.WithTargetContactField(ContactFieldType.Phone, "+34 600 100 200");
             b.WithSourceContactField(ContactFieldType.Phone, "+34 600 100 200"); // dup — drop source
             b.WithSourceContactField(ContactFieldType.Telegram, "@source-handle"); // unique to source — moves
             b.WithTargetContactField(ContactFieldType.Telegram, "@target-handle"); // unique to target — stays
         });
-        var requestId = await factory.SeedMergeRequestAsync(sourceId, targetId);
+        var requestId = await Factory.SeedMergeRequestAsync(sourceId, targetId);
 
         var adminId = await SeedAdminUserAsync();
         await AcceptAsync(requestId, adminId);
 
-        await using var assertScope = factory.Services.CreateAsyncScope();
+        await using var assertScope = Factory.Services.CreateAsyncScope();
         var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
 
         var targetProfileId = await db.Profiles
@@ -631,7 +631,7 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
         var sharedRole = $"shared-role-{Guid.NewGuid():N}";
         var sourceOnlyRole = $"source-only-role-{Guid.NewGuid():N}";
 
-        var (sourceId, targetId) = await factory.SeedMergeFixtureAsync(b =>
+        var (sourceId, targetId) = await Factory.SeedMergeFixtureAsync(b =>
         {
             // Both have an active assignment for sharedRole — drop source's row.
             b.WithSourceRoleAssignment(sharedRole);
@@ -640,12 +640,12 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
             // Source-only — re-FK to target.
             b.WithSourceRoleAssignment(sourceOnlyRole);
         });
-        var requestId = await factory.SeedMergeRequestAsync(sourceId, targetId);
+        var requestId = await Factory.SeedMergeRequestAsync(sourceId, targetId);
 
         var adminId = await SeedAdminUserAsync();
         await AcceptAsync(requestId, adminId);
 
-        await using var assertScope = factory.Services.CreateAsyncScope();
+        await using var assertScope = Factory.Services.CreateAsyncScope();
         var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
 
         var targetRows = await db.RoleAssignments
@@ -675,7 +675,7 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
     {
         Guid sharedTeamId = Guid.Empty, sourceOnlyTeamId = Guid.Empty;
 
-        var (sourceId, targetId) = await factory.SeedMergeFixtureAsync(b =>
+        var (sourceId, targetId) = await Factory.SeedMergeFixtureAsync(b =>
         {
             sharedTeamId = b.SeedTeamNow($"Shared-{Guid.NewGuid():N}");
             sourceOnlyTeamId = b.SeedTeamNow($"SourceOnly-{Guid.NewGuid():N}");
@@ -687,12 +687,12 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
             // Only source belongs to sourceOnlyTeam — target gets added, source removed.
             b.WithSourceTeamMember(sourceOnlyTeamId);
         });
-        var requestId = await factory.SeedMergeRequestAsync(sourceId, targetId);
+        var requestId = await Factory.SeedMergeRequestAsync(sourceId, targetId);
 
         var adminId = await SeedAdminUserAsync();
         await AcceptAsync(requestId, adminId);
 
-        await using var assertScope = factory.Services.CreateAsyncScope();
+        await using var assertScope = Factory.Services.CreateAsyncScope();
         var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
 
         // Target should have ACTIVE memberships (LeftAt == null) on both teams.
@@ -723,7 +723,7 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
     {
         Guid contestedTeamId = Guid.Empty, sourceOnlyTeamId = Guid.Empty;
 
-        var (sourceId, targetId) = await factory.SeedMergeFixtureAsync(b =>
+        var (sourceId, targetId) = await Factory.SeedMergeFixtureAsync(b =>
         {
             contestedTeamId = b.SeedTeamNow($"Contested-{Guid.NewGuid():N}");
             sourceOnlyTeamId = b.SeedTeamNow($"SourceOnlyTJR-{Guid.NewGuid():N}");
@@ -735,12 +735,12 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
             // Source pending on sourceOnly — re-FK to target.
             b.WithSourceTeamJoinRequest(sourceOnlyTeamId);
         });
-        var requestId = await factory.SeedMergeRequestAsync(sourceId, targetId);
+        var requestId = await Factory.SeedMergeRequestAsync(sourceId, targetId);
 
         var adminId = await SeedAdminUserAsync();
         await AcceptAsync(requestId, adminId);
 
-        await using var assertScope = factory.Services.CreateAsyncScope();
+        await using var assertScope = Factory.Services.CreateAsyncScope();
         var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
 
         var targetRequests = await db.TeamJoinRequests
@@ -771,7 +771,7 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
     {
         Guid sharedNotificationId = Guid.Empty, sourceOnlyNotificationId = Guid.Empty;
 
-        var (sourceId, targetId) = await factory.SeedMergeFixtureAsync(b =>
+        var (sourceId, targetId) = await Factory.SeedMergeFixtureAsync(b =>
         {
             sharedNotificationId = b.SeedNotificationNow($"shared-{Guid.NewGuid():N}");
             sourceOnlyNotificationId = b.SeedNotificationNow($"source-only-{Guid.NewGuid():N}");
@@ -780,12 +780,12 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
             b.WithTargetNotificationRecipient(sharedNotificationId);
             b.WithSourceNotificationRecipient(sourceOnlyNotificationId);
         });
-        var requestId = await factory.SeedMergeRequestAsync(sourceId, targetId);
+        var requestId = await Factory.SeedMergeRequestAsync(sourceId, targetId);
 
         var adminId = await SeedAdminUserAsync();
         await AcceptAsync(requestId, adminId);
 
-        await using var assertScope = factory.Services.CreateAsyncScope();
+        await using var assertScope = Factory.Services.CreateAsyncScope();
         var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
 
         var targetRecipients = await db.NotificationRecipients
@@ -815,13 +815,13 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
     {
         Guid contestedCampaignId, sourceOnlyCampaignId;
 
-        var (sourceId, targetId) = await factory.SeedMergeFixtureAsync();
+        var (sourceId, targetId) = await Factory.SeedMergeFixtureAsync();
 
         // Need a real user to satisfy Campaign.CreatedByUserId FK; use the
         // source as creator (fold doesn't touch Campaigns).
         var creatorId = sourceId;
 
-        await using (var scope = factory.Services.CreateAsyncScope())
+        await using (var scope = Factory.Services.CreateAsyncScope())
         {
             var builder = new MergeFixtureBuilder(scope, sourceId, targetId);
             contestedCampaignId = builder.SeedCampaignNow($"Contested-{Guid.NewGuid():N}", creatorId);
@@ -834,12 +834,12 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
 
             await builder.SaveAllAsync();
         }
-        var requestId = await factory.SeedMergeRequestAsync(sourceId, targetId);
+        var requestId = await Factory.SeedMergeRequestAsync(sourceId, targetId);
 
         var adminId = await SeedAdminUserAsync();
         await AcceptAsync(requestId, adminId);
 
-        await using var assertScope = factory.Services.CreateAsyncScope();
+        await using var assertScope = Factory.Services.CreateAsyncScope();
         var db2 = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
 
         var targetGrants = await db2.CampaignGrants
@@ -870,9 +870,9 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
         var sourceContent = $"source-msg-{Guid.NewGuid():N}";
         var targetContent = $"target-msg-{Guid.NewGuid():N}";
 
-        var (sourceId, targetId) = await factory.SeedMergeFixtureAsync();
+        var (sourceId, targetId) = await Factory.SeedMergeFixtureAsync();
 
-        await using (var scope = factory.Services.CreateAsyncScope())
+        await using (var scope = Factory.Services.CreateAsyncScope())
         {
             var builder = new MergeFixtureBuilder(scope, sourceId, targetId);
             // FeedbackMessages.SenderUserId references either user; the
@@ -887,12 +887,12 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
 
             await builder.SaveAllAsync();
         }
-        var requestId = await factory.SeedMergeRequestAsync(sourceId, targetId);
+        var requestId = await Factory.SeedMergeRequestAsync(sourceId, targetId);
 
         var adminId = await SeedAdminUserAsync();
         await AcceptAsync(requestId, adminId);
 
-        await using var assertScope = factory.Services.CreateAsyncScope();
+        await using var assertScope = Factory.Services.CreateAsyncScope();
         var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
 
         // Both messages should now be attributed to target.
@@ -920,9 +920,9 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
     {
         var description = $"budget-source-action-{Guid.NewGuid():N}";
 
-        var (sourceId, targetId) = await factory.SeedMergeFixtureAsync();
+        var (sourceId, targetId) = await Factory.SeedMergeFixtureAsync();
 
-        await using (var scope = factory.Services.CreateAsyncScope())
+        await using (var scope = Factory.Services.CreateAsyncScope())
         {
             var builder = new MergeFixtureBuilder(scope, sourceId, targetId);
             var budgetYearId = builder.SeedBudgetYearNow($"BY-{Guid.NewGuid():N}".Substring(0, 6));
@@ -930,12 +930,12 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
             await builder.SaveAllAsync();
         }
 
-        var requestId = await factory.SeedMergeRequestAsync(sourceId, targetId);
+        var requestId = await Factory.SeedMergeRequestAsync(sourceId, targetId);
 
         var adminId = await SeedAdminUserAsync();
         await AcceptAsync(requestId, adminId);
 
-        await using var assertScope = factory.Services.CreateAsyncScope();
+        await using var assertScope = Factory.Services.CreateAsyncScope();
         var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
 
         // Audit row must still point at the source user — fold doesn't
@@ -959,16 +959,16 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
         // The request is created Target=<new account>, Source=<primary>. The admin flips it,
         // keeping the Source — the request's stored direction must be overridden.
         var (requestId, requestTargetId, requestSourceId) =
-            await factory.SeedPendingMergeRequestAsync($"shared-{Guid.NewGuid():N}@example.com");
+            await Factory.SeedPendingMergeRequestAsync($"shared-{Guid.NewGuid():N}@example.com");
 
         var adminId = await SeedAdminUserAsync();
-        await using (var scope = factory.Services.CreateAsyncScope())
+        await using (var scope = Factory.Services.CreateAsyncScope())
         {
             var sut = scope.ServiceProvider.GetRequiredService<IAccountMergeService>();
             await sut.AcceptAsync(requestId, adminId, survivorUserId: requestSourceId, ct: TestContext.Current.CancellationToken); // flip: keep the Source
         }
 
-        await using var assertScope = factory.Services.CreateAsyncScope();
+        await using var assertScope = Factory.Services.CreateAsyncScope();
         var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
         (await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == requestSourceId, TestContext.Current.CancellationToken))!.MergedToUserId
             .Should().BeNull("the admin-chosen survivor is never tombstoned");
@@ -984,7 +984,7 @@ public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IClassF
 
     private async Task AcceptAsync(Guid requestId, Guid adminUserId)
     {
-        await using var scope = factory.Services.CreateAsyncScope();
+        await using var scope = Factory.Services.CreateAsyncScope();
         var mergeService = scope.ServiceProvider.GetRequiredService<IAccountMergeService>();
         // These fold tests assert source→target (target survives); pick the request target.
         var request = await mergeService.GetByIdAsync(requestId, TestContext.Current.CancellationToken)

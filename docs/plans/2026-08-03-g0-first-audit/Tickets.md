@@ -29,7 +29,7 @@
 | What | Where | Suggested fix | No-migration-needed? |
 |------|-------|----------------|----|
 | 18 `DisplaySortInControllers` baseline rows on `TicketRepository.cs` (corrected 2026-08-03, was 17) | `src/Humans.Infrastructure/Repositories/Tickets/TicketRepository.cs` | Largest single-file sort-in-repository debt in the codebase by this audit's count. Move display sorts (orders list, attendee list, sales aggregates, gate list) into the controller/view-model layer per `memory/architecture/display-sort-in-controllers.md`. Worth flagging as a discrete G1/tech-debt-ledger item given the row count. | y |
-| **Added 2026-08-03:** 2 HUM0024 configuration grandfathers | `TicketOrderConfiguration.cs:64`, `TicketAttendeeConfiguration.cs:59` | Both grandfather `HasOne<User>()` on `MatchedUserId` → `AspNetUsers` (see predicate 4). Verify liveness, then retire the attributes; the physical FK cuts are already queued in the demolition inventory and belong to G2. | y (attribute work); FK cut is G2 |
+| **Added 2026-08-03:** 2 HUM0024 configuration grandfathers | `TicketOrderConfiguration.cs:64`, `TicketAttendeeConfiguration.cs:59` | Both grandfather `HasOne<User>()` on `MatchedUserId` → `AspNetUsers` (see predicate 4). Verify liveness, then retire the attributes; the physical FK cuts are already queued in the demolition inventory. | y (attribute work); FK cut is schema-queue work |
 | **Added 2026-08-03:** Multiple writer-services on `ticket_attendees` and `ticket_sync_states` | `AttendeeContactImportService`/`TicketSyncService`/`TicketTransferService` (all `UpsertAttendeesAsync`); `TicketQueryService.ResetStaleRunningStateAsync` alongside `TicketSyncService` | Fixing only the transfer-service conflict below leaves G1.2 failing on two more tables. Decide per table whether to funnel writes through one owning service or record an explicit accepted exception. | y |
 | **Added 2026-08-03:** Second writer-service on `ticket_transfer_requests` | `TicketSyncService.ReassignAsync` (`TicketSyncService.cs:197`) alongside `TicketTransferService` | Both call `ITicketTransferRepository`. The account-merge fold reassigning transfer requests belongs conceptually to the merge flow already living in `TicketSyncService`, but it's still a second writer-service against a table `TicketTransferService` otherwise owns — either route the fold through `ITicketTransferService`'s own interface or explicitly document this as an accepted account-merge-fold exception (same shape as Campaigns' `ReassignGrantsToUserAsync`). | y |
 
@@ -41,12 +41,12 @@
 | `TicketQueryServiceTests.cs`/`TicketSyncServiceTests.cs`/`TicketSyncServiceNullOrderTests.cs` use `ServiceTestHarness` (DbContext-backed) instead of mocked `ITicketRepository` | `tests/Humans.Application.Tests/Services/` | Migrate to `Substitute.For<ITicketRepository>()` pattern, matching Store's clean example. | y |
 | Auto-matching (`NormalizingEmailComparer`) invariant test presence unconfirmed | `TicketSyncServiceTests.cs` | Confirm coverage exists (search under alternate naming) or add an explicit test for the "collision among verified emails leaves both unmatched + LogError" edge case — this is a data-integrity-error path that's easy to leave untested since it should never trigger in practice. | y |
 
-## G2 queue notes
+## Schema demolition queue
 
 `TicketTransferRequest.VendorStepsJson` is unused, dormant, named as pending a post-soak drop PR — already a tracked demolition-inventory item.
 
 
-**Added 2026-08-03 — cross-section FK cuts belong in this queue.** Retiring `[Obsolete]` navs or `[Grandfathered(HUM0024)]` markers is a code-shape change; it does **not** drop the physical constraint. Per the demolition inventory, this section owns **2** cross-section FKs across 2 tables: `ticket_orders.MatchedUserId` and `ticket_attendees.MatchedUserId` → `AspNetUsers`, behind the two HUM0024 configurations listed in the G1 gap list. All are G2 cuts — without them listed here, a schema batch driven by this scorecard can complete while every cross-section database dependency survives.
+**Added 2026-08-03 — cross-section FK cuts belong in this queue.** Retiring `[Obsolete]` navs or `[Grandfathered(HUM0024)]` markers is a code-shape change; it does **not** drop the physical constraint. Per the demolition inventory, this section owns **2** cross-section FKs across 2 tables: `ticket_orders.MatchedUserId` and `ticket_attendees.MatchedUserId` → `AspNetUsers`, behind the two HUM0024 configurations listed in the G1 gap list. All are cross-section FK cuts — without them listed here, a schema batch driven by this scorecard can complete while every cross-section database dependency survives.
 
 ## Headline
 

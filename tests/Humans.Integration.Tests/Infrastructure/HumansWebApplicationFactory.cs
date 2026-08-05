@@ -14,6 +14,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NodaTime;
+using Npgsql;
 using NSubstitute;
 using NSubstitute.ClearExtensions;
 using Testcontainers.PostgreSql;
@@ -25,6 +26,26 @@ using Humans.Infrastructure.Services;
 
 namespace Humans.Integration.Tests.Infrastructure;
 
+/// <summary>
+/// The integration suite's app host, registered once for the whole assembly
+/// (see AssemblyFixtures.cs): one Postgres container, one app boot, one migration
+/// pass per <c>dotnet test</c> run.
+/// </summary>
+/// <remarks>
+/// <para>
+/// Test classes take it as a constructor parameter — an assembly fixture needs no
+/// <c>IClassFixture</c> declaration. Classes deriving from
+/// <see cref="IntegrationTestBase"/> additionally get the shared NSubstitute stubs
+/// reset per test.
+/// </para>
+/// <para>
+/// One database is shared by every test, so a test must not assume an empty table:
+/// scope assertions to rows it seeded itself (a per-test GUID suffix is the
+/// established pattern here). Per-test database rollback is not available — see
+/// the P2 notes in <c>docs/features/test-system-reliability.md</c> for why, and
+/// nobodies-collective/Humans#983 for what it would take.
+/// </para>
+/// </remarks>
 public class HumansWebApplicationFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
     /// <summary>Test-only Stripe Store webhook signing secret. Used by webhook integration tests to compute valid Stripe-Signature headers.</summary>
@@ -41,8 +62,10 @@ public class HumansWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
     /// </summary>
     public IBackgroundJobClient BackgroundJobClientStub { get; } = Substitute.For<IBackgroundJobClient>();
 
-    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:16-alpine")
-        .Build();
+    /// <summary>Null until <see cref="StartDatabaseAsync"/> starts one; a derived factory that borrows an existing database never creates a container.</summary>
+    private PostgreSqlContainer? _postgres;
+
+    private string _connectionString = string.Empty;
 
     public IReadOnlyList<ServiceDescriptor> RegisteredServices { get; private set; } = [];
 
@@ -57,7 +80,7 @@ public class HumansWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
             // NpgsqlDataSource and DbContext, so overriding here is sufficient.
             config.AddInMemoryCollection(new Dictionary<string, string?>(StringComparer.Ordinal)
             {
-                ["ConnectionStrings:DefaultConnection"] = _postgres.GetConnectionString(),
+                ["ConnectionStrings:DefaultConnection"] = _connectionString,
                 ["DevAuth:Enabled"] = "true",
                 ["Authentication:Google:ClientId"] = "test-client-id",
                 ["Authentication:Google:ClientSecret"] = "test-client-secret",
@@ -121,10 +144,9 @@ public class HumansWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
     /// <summary>
     /// Resets the shared single-instance NSubstitute stubs so no state leaks between
     /// tests. <see cref="StripeServiceStub"/> and <see cref="BackgroundJobClientStub"/>
-    /// are singletons reused across every test in a class; xUnit runs tests within a
-    /// class sequentially so within-class is safe today, but the contract is fragile —
-    /// any future move to method-level parallelism would silently corrupt assertions.
-    /// Called per test from <see cref="IntegrationTestBase"/>'s constructor.
+    /// are singletons reused by every test in the assembly, so this is what keeps
+    /// received-call assertions honest. Called per test from
+    /// <see cref="IntegrationTestBase"/>'s constructor.
     /// </summary>
     public void ResetSharedSubstitutes()
     {
@@ -164,13 +186,53 @@ public class HumansWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
     // Testcontainers Postgres container.
     public async ValueTask InitializeAsync()
     {
-        await _postgres.StartAsync(TestContext.Current.CancellationToken);
+        var ct = TestContext.Current.CancellationToken;
+
+        _connectionString = await StartDatabaseAsync(ct);
+
+        // Force the host to build now: that runs DatabaseMigrationHostedService
+        // (the whole migration chain) and warms every Singleton cache. Paying it
+        // here rather than inside whichever test first calls CreateClient keeps a
+        // slow boot from eating that test's 30s timeout.
+        _ = Services;
+    }
+
+    /// <summary>
+    /// Provisions the database this factory's app runs against and returns its
+    /// connection string. The assembly fixture starts the run's single Postgres
+    /// container here; a derived factory that needs its own app boot overrides
+    /// this to borrow a database from the already-running container instead of
+    /// starting a second one.
+    /// </summary>
+    protected virtual async ValueTask<string> StartDatabaseAsync(CancellationToken ct)
+    {
+        _postgres = new PostgreSqlBuilder("postgres:16-alpine").Build();
+        await _postgres.StartAsync(ct);
+        return _postgres.GetConnectionString();
     }
 
     public override async ValueTask DisposeAsync()
     {
-        await _postgres.DisposeAsync();
         await base.DisposeAsync();
+        if (_postgres is not null)
+            await _postgres.DisposeAsync();
+    }
+
+    /// <summary>
+    /// Creates an additional database in this factory's Postgres container and
+    /// returns its connection string. Lets the migration-mechanics tests — which
+    /// need pristine databases to migrate from scratch — share the assembly's one
+    /// container instead of each starting their own.
+    /// </summary>
+    public async Task<string> CreateDatabaseAsync(string name, CancellationToken ct)
+    {
+        await using var connection = new NpgsqlConnection(_connectionString);
+        await connection.OpenAsync(ct);
+        await using var command = connection.CreateCommand();
+        command.CommandText = $"CREATE DATABASE {name}";
+        await command.ExecuteNonQueryAsync(ct);
+
+        return new NpgsqlConnectionStringBuilder(_connectionString) { Database = name }.ConnectionString;
     }
 
     /// <summary>

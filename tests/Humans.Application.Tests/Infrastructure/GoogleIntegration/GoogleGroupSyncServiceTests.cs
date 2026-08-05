@@ -665,14 +665,6 @@ public sealed class GoogleGroupSyncServiceTests
                 DisplayName = u.DisplayName,
                 CreatedAt = _clock.GetCurrentInstant()
             });
-        _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(call =>
-            {
-                var requested = call.ArgAt<IReadOnlyCollection<Guid>>(0).ToHashSet();
-                return userEntities
-                    .Where(kv => requested.Contains(kv.Key))
-                    .ToDictionary(kv => kv.Key, kv => kv.Value);
-            });
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(call =>
             {

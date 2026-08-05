@@ -43,10 +43,10 @@
 
 **Added 2026-08-03 — harness-inherited EF-InMemory (G3.2).** `CampServiceTests`, `CampRoleServiceTests`, `CachingCampServiceTests` and `CampServiceEarlyEntryTests` extend `ServiceTestHarness`, which stands up a real `HumansDbContext` over `.UseInMemoryDatabase(...)`; the original pass missed this because it grepped for a literal `HumansDbContext` the files never name. Fix: convert to `Substitute.For<ICampRepository>()` per #766, or move these off the harness. No-migration-needed: **y**.
 
-## G2 queue notes
+## Schema demolition queue
 
-- `NoDestructiveMigrationOps.baseline.txt` carries one historical Camps entry (`DropColumn(IsRequired)` on `CampRoleDefinitions`, migration `20260426185621`) and `NoDestructiveMigrationOps` also lists `DropColumn(ContactMethod)` on a Camp-adjacent migration (`AddCampLinksRemoveContactMethod`) — both already-applied historical drops, not open G2 work; noted for completeness only.
-- **Corrected 2026-08-03** — the original "nothing surfaced beyond the `SystemTeamSyncJob` repository leak" was wrong on both counts: that leak is a G1 refactor, not schema demolition, and the demolition inventory in this same commit names real Camps G2 work. The section's actual G2 queue is:
+- `NoDestructiveMigrationOps.baseline.txt` carries one historical Camps entry (`DropColumn(IsRequired)` on `CampRoleDefinitions`, migration `20260426185621`) and `NoDestructiveMigrationOps` also lists `DropColumn(ContactMethod)` on a Camp-adjacent migration (`AddCampLinksRemoveContactMethod`) — both already-applied historical drops, not open schema-queue work; noted for completeness only.
+- **Corrected 2026-08-03** — the original "nothing surfaced beyond the `SystemTeamSyncJob` repository leak" was wrong on both counts: that leak is a G1 refactor, not schema demolition, and the demolition inventory in this same commit names real Camps schema work. The section's actual schema queue is:
   - **Drop the dead `camp_leads` table** (legacy `CampLead` entity, doc-acknowledged as pending removal, issue #774).
   - **Drop the obsolete `CampRoleDefinition.SpecialRole` DB default** (#787).
   - **Cut 3 cross-section FK relationships** across `CampConfiguration`, `CampSeasonConfiguration`, `CampLeadConfiguration` — the same three currently HUM0024-grandfathered (G1 gap #2).

@@ -33,7 +33,7 @@ None — Expenses is clean on G1.
 1. **`ExpenseRepositoryTests.cs` uses `UseInMemoryDatabase`** — where: `tests/Humans.Application.Tests/Repositories/Expenses/ExpenseRepositoryTests.cs`. Suggested fix: convert to the shared Postgres fixture per #764/#766. No-migration-needed: **y**.
 2. **Added 2026-08-03: `ExpenseReportServiceTests.cs` builds a real `ExpenseRepository` over EF-InMemory `ExpensesDbContext` instead of mocking `IExpenseRepository`** — where: `tests/Humans.Application.Tests/Services/Expenses/ExpenseReportServiceTests.cs:41-47`. Suggested fix: convert to `Substitute.For<IExpenseRepository>()`, matching the pattern already used for `ITeamService`/`IUserService` mocks in the same file. In scope of #766, same pattern as Campaigns' G3 gap #2 in this batch. No-migration-needed: **y**.
 
-## G2 Queue Notes (light)
+## Schema demolition queue (light)
 
 - `docs/sections/Expenses.md` flags its own tech debt: `IHoldedFinanceService` is consumed as the "full interface for now, read-split to `IHoldedFinanceServiceRead` noted as future tech debt" — this is a Finance-side G1 item (see Finance audit), not an Expenses gap.
 - No dead columns/tables spotted in the data model.

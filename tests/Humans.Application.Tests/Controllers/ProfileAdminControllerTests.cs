@@ -90,8 +90,6 @@ public class ProfileAdminControllerTests
         _emailProblems.ScanAsync(Arg.Any<CancellationToken>())
             .Returns(new EmailProblemsReport(NodaTime.SystemClock.Instance.GetCurrentInstant(),
                 []));
-        _users.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, User>());
 
         var result = await BuildController().EmailProblems(Xunit.TestContext.Current.CancellationToken);
 

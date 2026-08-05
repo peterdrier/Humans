@@ -56,6 +56,11 @@ public sealed class CrossSectionEfJoinAnalyzerTests
                 public User User { get; set; } = new();
                 public Team Team { get; set; } = new();
             }
+            public sealed class SyncSettings { }
+            public sealed class SyncLink
+            {
+                public SyncSettings Settings { get; set; } = new();
+            }
         }
 
         namespace Humans.Infrastructure.Data.Configurations.Users
@@ -230,7 +235,7 @@ public sealed class CrossSectionEfJoinAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Does_not_fire_for_root_level_configuration_without_section_namespace()
+    public async Task Fires_for_root_level_configuration_targeting_sectioned_entity()
     {
         var source = Stubs + """
 
@@ -250,7 +255,102 @@ public sealed class CrossSectionEfJoinAnalyzerTests
             "Humans.Infrastructure",
             source);
 
+        var hit = diagnostics.Where(IsHum0024).Should().ContainSingle().Subject;
+        hit.Severity.Should().Be(DiagnosticSeverity.Error);
+        hit.GetMessage().Should().Contain("(unsectioned)");
+    }
+
+    [HumansFact]
+    public async Task Fires_for_sectioned_configuration_targeting_root_level_entity()
+    {
+        var source = Stubs + """
+
+            namespace Humans.Infrastructure.Data.Configurations
+            {
+                public sealed class SyncSettingsConfiguration :
+                    Microsoft.EntityFrameworkCore.IEntityTypeConfiguration<Humans.Domain.Entities.SyncSettings>
+                {
+                    public void Configure(Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder<Humans.Domain.Entities.SyncSettings> builder) { }
+                }
+            }
+
+            namespace Humans.Infrastructure.Data.Configurations.Teams
+            {
+                public sealed class TeamMemberConfiguration :
+                    Microsoft.EntityFrameworkCore.IEntityTypeConfiguration<Humans.Domain.Entities.TeamMember>
+                {
+                    public void Configure(Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder<Humans.Domain.Entities.TeamMember> builder) =>
+                        builder.HasOne<Humans.Domain.Entities.SyncSettings>();
+                }
+            }
+            """;
+
+        var diagnostics = await AnalyzerTestHarness.RunAsync(
+            new CrossSectionEfJoinAnalyzer(),
+            "Humans.Infrastructure",
+            source);
+
+        diagnostics.Where(IsHum0024).Should().ContainSingle();
+    }
+
+    [HumansFact]
+    public async Task Does_not_fire_between_two_root_level_configurations()
+    {
+        var source = Stubs + """
+
+            namespace Humans.Infrastructure.Data.Configurations
+            {
+                public sealed class SyncSettingsConfiguration :
+                    Microsoft.EntityFrameworkCore.IEntityTypeConfiguration<Humans.Domain.Entities.SyncSettings>
+                {
+                    public void Configure(Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder<Humans.Domain.Entities.SyncSettings> builder) { }
+                }
+
+                public sealed class SyncLinkConfiguration :
+                    Microsoft.EntityFrameworkCore.IEntityTypeConfiguration<Humans.Domain.Entities.SyncLink>
+                {
+                    public void Configure(Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder<Humans.Domain.Entities.SyncLink> builder) =>
+                        builder.HasOne(link => link.Settings);
+                }
+            }
+            """;
+
+        var diagnostics = await AnalyzerTestHarness.RunAsync(
+            new CrossSectionEfJoinAnalyzer(),
+            "Humans.Infrastructure",
+            source);
+
         diagnostics.Where(IsHum0024).Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task Reports_warning_for_grandfathered_root_level_configuration()
+    {
+        var source = Stubs + """
+
+            namespace Humans.Infrastructure.Data.Configurations
+            {
+                [Humans.Application.Architecture.Grandfathered(
+                    ruleId: "HUM0024",
+                    justification: "Pre-existing cross-section EF navigation join.",
+                    since: "2026-08-05",
+                    issueRef: "docs/architecture/roslyn-analysis.md#hum0024")]
+                public sealed class TeamMemberConfiguration :
+                    Microsoft.EntityFrameworkCore.IEntityTypeConfiguration<Humans.Domain.Entities.TeamMember>
+                {
+                    public void Configure(Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder<Humans.Domain.Entities.TeamMember> builder) =>
+                        builder.HasOne<Humans.Domain.Entities.User>();
+                }
+            }
+            """;
+
+        var diagnostics = await AnalyzerTestHarness.RunAsync(
+            new CrossSectionEfJoinAnalyzer(),
+            "Humans.Infrastructure",
+            source);
+
+        var hit = diagnostics.Where(IsHum0024).Should().ContainSingle().Subject;
+        hit.Severity.Should().Be(DiagnosticSeverity.Warning);
     }
 
     [HumansFact]

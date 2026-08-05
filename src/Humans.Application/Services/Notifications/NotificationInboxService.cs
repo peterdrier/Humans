@@ -14,7 +14,7 @@ namespace Humans.Application.Services.Notifications;
 /// Application-layer implementation of <see cref="INotificationInboxService"/>.
 /// Builds read models for the inbox and popup, handles resolve/dismiss/
 /// mark-read actions, and invalidates nav-badge cache entries after writes.
-/// Cross-domain display names are stitched via <c>IUserService.GetByIdsAsync</c>
+/// Cross-domain display names are stitched via <c>IUserServiceRead.GetUserInfosAsync</c>
 /// (design-rules §6).
 /// </summary>
 public sealed class NotificationInboxService(

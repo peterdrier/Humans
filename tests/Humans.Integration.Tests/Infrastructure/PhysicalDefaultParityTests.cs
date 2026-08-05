@@ -5,7 +5,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.Extensions.Logging.Abstractions;
 using Npgsql;
-using Testcontainers.PostgreSql;
 using Xunit;
 
 namespace Humans.Integration.Tests.Infrastructure;
@@ -42,26 +41,13 @@ namespace Humans.Integration.Tests.Infrastructure;
 /// migration dropping the scaffolded default — never leave the two disagreeing.
 /// </para>
 /// </remarks>
-public sealed class PhysicalDefaultParityTests : IAsyncLifetime
+public sealed class PhysicalDefaultParityTests(HumansWebApplicationFactory factory)
 {
     /// <summary>
     /// The pre-migration snapshot hook (nobodies-collective/Humans#845) is a production-boot
-    /// concern; this test migrates a throwaway Testcontainers database with nothing to protect.
+    /// concern; this test migrates a throwaway test database with nothing to protect.
     /// </summary>
     private static readonly Func<CancellationToken, Task> NoSnapshot = _ => Task.CompletedTask;
-
-    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:16-alpine")
-        .Build();
-
-    public async ValueTask InitializeAsync()
-    {
-        await _postgres.StartAsync(TestContext.Current.CancellationToken);
-    }
-
-    public async ValueTask DisposeAsync()
-    {
-        await _postgres.DisposeAsync();
-    }
 
     [HumansFact]
     public async Task ChainBuiltDatabase_HasNoUndeclaredPhysicalColumnDefaults()
@@ -174,17 +160,10 @@ public sealed class PhysicalDefaultParityTests : IAsyncLifetime
         return (DbContext)Activator.CreateInstance(contextType, optionsBuilder.Options)!;
     }
 
-    private async Task<string> CreateDatabaseAsync(string name)
-    {
-        var admin = new NpgsqlConnectionStringBuilder(_postgres.GetConnectionString());
-        await using (var connection = new NpgsqlConnection(admin.ConnectionString))
-        {
-            await connection.OpenAsync(TestContext.Current.CancellationToken);
-            await using var command = connection.CreateCommand();
-            command.CommandText = $"CREATE DATABASE {name}";
-            await command.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
-        }
-
-        return new NpgsqlConnectionStringBuilder(admin.ConnectionString) { Database = name }.ConnectionString;
-    }
+    /// <summary>
+    /// A pristine database in the assembly's shared Postgres container — this test
+    /// migrates from scratch, so it needs its own database, not the app's.
+    /// </summary>
+    private Task<string> CreateDatabaseAsync(string name) =>
+        factory.CreateDatabaseAsync(name, TestContext.Current.CancellationToken);
 }

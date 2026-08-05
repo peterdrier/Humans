@@ -6,7 +6,7 @@ using Xunit;
 
 namespace Humans.Integration.Tests.DependencyInjection;
 
-public class DiResolutionSmokeTests(HumansWebApplicationFactory factory) : IClassFixture<HumansWebApplicationFactory>
+public class DiResolutionSmokeTests(HumansWebApplicationFactory factory) : IntegrationTestBase(factory)
 {
     private static readonly HashSet<Type> RuntimeBootstrappedServiceTypes =
     [
@@ -16,11 +16,11 @@ public class DiResolutionSmokeTests(HumansWebApplicationFactory factory) : IClas
     [HumansFact(Timeout = 60000)]
     public async Task All_application_registrations_resolve_from_a_real_app_scope()
     {
-        await using var scope = factory.Services.CreateAsyncScope();
+        await using var scope = Factory.Services.CreateAsyncScope();
 
         var failures = new List<string>();
 
-        foreach (var group in factory.RegisteredServices
+        foreach (var group in Factory.RegisteredServices
                      .Where(IsResolvableApplicationRegistration)
                      .GroupBy(d => d.ServiceType)
                      .OrderBy(g => g.Key.FullName, StringComparer.Ordinal))

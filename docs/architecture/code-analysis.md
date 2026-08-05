@@ -84,7 +84,7 @@ HUM0018 | Section-aware analyzer cannot determine a type's section (missing `[Se
 HUM0019 | Read of an Identity-derived User column (Email/NormalizedEmail/UserName/NormalizedUserName) from Application or Web | Warning
 HUM0020 | Caching decorator references a repository directly instead of the keyed inner service | Error
 HUM0021 | Read of an obsolete cross-domain navigation property from Application, Web, or Infrastructure | Warning
-HUM0024 | EF configuration creates a navigation join across section boundaries (`[Grandfathered("HUM0024")]` downgrades to Warning) | Error
+HUM0024 | EF configuration creates a navigation join across section boundaries — a configuration's section is its namespace segment under `Data.Configurations`; one sitting in the `Configurations` root declares no section and is reported as `(unsectioned)` rather than skipped (`[Grandfathered("HUM0024")]` downgrades to Warning) | Error
 HUM0025 | A DbSet table is referenced by more than one repository (`[Grandfathered("HUM0025", scope: "<DbSet>")]` downgrades to Warning) | Error
 HUM0026 | IOrchestrator implementer injects an `I*Repository`, an application DbContext, or `IDbContextFactory<TContext>` for one | Error
 HUM0027 | Type implements both IApplicationService and IOrchestrator (the role axis is exclusive) | Error
@@ -93,8 +93,9 @@ HUM0029 | Cross-section read interface (`I*Read`) exposes an EF entity, `Microso
 HUM0030 | Date/time format-string literal (custom `.ToString` format, interpolation format clause, or NodaTime `*Pattern.Create` literal) used outside the single sanctioned home `Humans.Application.Extensions.DateFormattingExtensions` | Error
 HUM0031 | Controller method (action or private helper) exceeds the business-logic thresholds — statements > 40 or cyclomatic complexity > 15; thresholds are hardcoded in `ControllerBusinessLogicAnalyzer` and ratchet down over time (`[Grandfathered("HUM0031")]` on the method downgrades to Warning) | Error
 HUM0032 | Cross-section caller in `Humans.Application.Services.*` injects a full `I*Service` but only uses members of its `I*ServiceRead` base — inject the read interface instead (`[Grandfathered("HUM0032")]` downgrades to Warning) | Error
+HUM0033 | State-changing controller action (`[HttpPost]`/`[HttpPut]`/`[HttpDelete]`/`[HttpPatch]`) passes a request-scoped cancellation token (`HttpContext.RequestAborted` or the action's own `CancellationToken` parameter) to a method marked `[ExternalWrite]` — pass `CancellationToken.None` or enqueue through Hangfire (`[Grandfathered("HUM0033")]` on the action downgrades to Warning) | Error
 
-> The next free id is **HUM0033** (0022-0023 unused). Always confirm against `AnalyzerReleases.Unshipped.md` before assigning a new id.
+> The next free id is **HUM0034** (0022-0023 unused). Always confirm against `AnalyzerReleases.Unshipped.md` before assigning a new id.
 
 Authoritative declaration: `src/Humans.Analyzers/AnalyzerReleases.Unshipped.md`
 (plus `AnalyzerReleases.Shipped.md` once we cut a 1.0).
@@ -106,8 +107,6 @@ reaches `Microsoft.EntityFrameworkCore.DbContext`. Since the per-section split
 `<Section>DbContext`. Neither namespace nor assembly is pinned, so moving the
 contexts cannot silently switch these rules off; production-only scoping comes
 from each analyzer's `AssemblyScope` guard, not from where the context lives.
-The diagnostic titles and messages still name `HumansDbContext` — read them as
-"the application DbContext you injected".
 
 ### How it ships
 

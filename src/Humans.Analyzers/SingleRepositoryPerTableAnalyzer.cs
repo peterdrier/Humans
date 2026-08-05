@@ -18,7 +18,7 @@ namespace Humans.Analyzers;
 /// Enforces two of Peter's hard rules at once (<c>peters-hard-rules.md</c>):
 /// "only the repository writes its section's tables" and "a table must only
 /// exist in one repository." Ownership is <b>emergent</b>, not declared: the
-/// single repository that references a <c>HumansDbContext</c> <c>DbSet</c> is
+/// single repository that references an application DbContext's <c>DbSet</c> is
 /// its owner. When more than one repository references the same DbSet, there is
 /// no single owner — the table is shared across the repository (and usually
 /// section) boundary, which bypasses the owning section's service and its §15
@@ -27,7 +27,7 @@ namespace Humans.Analyzers;
 /// </para>
 /// <para>
 /// Mechanism: across the <c>Humans.Infrastructure</c> compilation, collect every
-/// reference (read or write) to a <c>HumansDbContext</c> DbSet from inside a type
+/// reference (read or write) to an application DbContext's DbSet from inside a type
 /// implementing <see cref="Humans.Application.Interfaces.Repositories.IRepository"/>,
 /// then build <c>DbSet → {referencing repository types}</c>. A table referenced by
 /// N&gt;1 repositories produces a diagnostic at each access site. Phase 1 detects
@@ -48,8 +48,8 @@ namespace Humans.Analyzers;
 /// Counting unit is top-level types implementing <c>IRepository</c>. Framework
 /// stores (ASP.NET Identity <c>UserStore</c> etc.) are not repositories and do not
 /// count — their DbContext access is governed by HUM0009. Runs in
-/// <c>Humans.Infrastructure</c> only, the one compilation where
-/// <c>HumansDbContext</c> and every repository implementation are visible.
+/// <c>Humans.Infrastructure</c> only, the one compilation where every
+/// application DbContext and repository implementation are visible.
 /// </para>
 /// </remarks>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
@@ -75,7 +75,7 @@ public sealed class SingleRepositoryPerTableAnalyzer : DiagnosticAnalyzer
         isEnabledByDefault: true,
         description:
             "Each section owns its tables and a table must exist in exactly one repository (peters-hard-rules.md). " +
-            "When more than one repository references a HumansDbContext DbSet — read or write — the table is shared " +
+            "When more than one repository references an application DbContext's DbSet — read or write — the table is shared " +
             "across the repository (and usually the section) boundary, bypassing the owning section's service and its " +
             "§15 cache. Route foreign access through the owning section's IRepository / application service. Existing " +
             "shared tables carry [Grandfathered(\"HUM0025\", …, scope: \"<DbSet>\")] on each participating repository, " +

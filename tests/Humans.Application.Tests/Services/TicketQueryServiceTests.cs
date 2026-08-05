@@ -55,9 +55,6 @@ public sealed class TicketQueryServiceTests : ServiceTestHarness
                 Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns([]);
 
-        _userService.GetByIdsAsync(
-                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, User>());
         _userService.StubGetUserInfosFromDb(DbOptions);
 
         _userEmailService.GetNotificationEmailsByUserIdsAsync(

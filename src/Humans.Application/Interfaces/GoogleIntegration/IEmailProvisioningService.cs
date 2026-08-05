@@ -1,3 +1,4 @@
+using Humans.Application.Architecture;
 namespace Humans.Application.Interfaces.GoogleIntegration;
 
 /// <summary>
@@ -17,6 +18,7 @@ public interface IEmailProvisioningService : IApplicationService
     /// <param name="emailPrefix">The prefix part of the email (before @nobodies.team).</param>
     /// <param name="provisionedByUserId">The user performing the provisioning (for audit).</param>
     /// <returns>Result indicating success or failure with details.</returns>
+    [ExternalWrite]
     Task<EmailProvisioningResult> ProvisionNobodiesEmailAsync(
         Guid userId,
         string emailPrefix,

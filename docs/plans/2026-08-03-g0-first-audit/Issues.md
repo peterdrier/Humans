@@ -29,11 +29,11 @@
 | What | Where | Suggested fix | No-migration-needed? |
 |------|-------|----------------|----|
 | 4 `[Obsolete]`-marked cross-section navs kept for FK wiring | `src/Humans.Domain/Entities/Issue.cs`, `IssueComment.cs` | Convert `ReporterUserId`/`AssigneeUserId`/`ResolvedByUserId`/`SenderUserId` to typed-FK form (drop the nav properties entirely), matching the GoogleIntegration pattern. | y |
-| **Added 2026-08-03:** 2 HUM0024 configuration grandfathers | `IssueConfiguration.cs`, `IssueCommentConfiguration.cs` | Same four relationships as the row above, seen from the EF-configuration side (predicate 4 was scored off baseline-file greps, which can't see attribute allowlisting). The typed-FK conversion above retires the navs; retiring the `[Grandfathered]` markers and cutting the physical FKs is the G2 half. | y (nav/attribute work); FK cut is G2 |
+| **Added 2026-08-03:** 2 HUM0024 configuration grandfathers | `IssueConfiguration.cs`, `IssueCommentConfiguration.cs` | Same four relationships as the row above, seen from the EF-configuration side (predicate 4 was scored off baseline-file greps, which can't see attribute allowlisting). The typed-FK conversion above retires the navs; retiring the `[Grandfathered]` markers and cutting the physical FKs is the schema-queue half. | y (nav/attribute work); FK cut is schema-queue work |
 
-## G2 queue notes
+## Schema demolition queue
 
-**Corrected 2026-08-03.** The typed-FK conversion above is schema-neutral, but that is *not* the same as having no G2 work: `IssueConfiguration` and `IssueCommentConfiguration` define **four physical User FK constraints** (`ReporterUserId`, `AssigneeUserId`, `ResolvedByUserId`, `SenderUserId` → `AspNetUsers`), and dropping the nav properties or the HUM0024 attributes does not drop those constraints. All four FK cuts belong in Issues' G2 queue; otherwise the section could enter schema cleanup with only the configuration refactor scheduled and keep every cross-section database dependency.
+**Corrected 2026-08-03.** The typed-FK conversion above is schema-neutral, but that is *not* the same as having no schema work: `IssueConfiguration` and `IssueCommentConfiguration` define **four physical User FK constraints** (`ReporterUserId`, `AssigneeUserId`, `ResolvedByUserId`, `SenderUserId` → `AspNetUsers`), and dropping the nav properties or the HUM0024 attributes does not drop those constraints. All four FK cuts belong in Issues' schema queue; otherwise the section could enter schema cleanup with only the configuration refactor scheduled and keep every cross-section database dependency.
 
 ## Headline
 

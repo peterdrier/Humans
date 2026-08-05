@@ -39,11 +39,11 @@
 
 **Added 2026-08-03 — harness-inherited EF-InMemory (G3.2).** `BudgetServiceTests` extend `ServiceTestHarness`, which stands up a real `HumansDbContext` over `.UseInMemoryDatabase(...)`; the original pass missed this because it grepped for a literal `HumansDbContext` the files never name. Fix: convert to `Substitute.For<IBudgetRepository>()` per #766, or move these off the harness. No-migration-needed: **y**.
 
-## G2 queue notes
+## Schema demolition queue
 
-Budget hierarchy (`BudgetYear → BudgetGroup → BudgetCategory → BudgetLineItem`) plus `BudgetAuditLog` reads as a clean, purpose-built schema — no dead columns spotted in this pass. `docs/features/budget/budget.md` explicitly scopes it as "not an accounting system" / "not real-time," so no schema growth pressure expected before G2.
+Budget hierarchy (`BudgetYear → BudgetGroup → BudgetCategory → BudgetLineItem`) plus `BudgetAuditLog` reads as a clean, purpose-built schema — no dead columns spotted in this pass. `docs/features/budget/budget.md` explicitly scopes it as "not an accounting system" / "not real-time," so no schema growth pressure expected.
 
-**Corrected 2026-08-03** — "nothing destructive queued" conflated *dead columns* with *all* G2 work. Absence of dead columns says nothing about FK cuts or renames, and the demolition inventory in this same commit records four schema actions (this scorecard's own G1 findings already acknowledge all three HUM0024 configurations):
+**Corrected 2026-08-03** — "nothing destructive queued" conflated *dead columns* with *all* schema work. Absence of dead columns says nothing about FK cuts or renames, and the demolition inventory in this same commit records four schema actions (this scorecard's own G1 findings already acknowledge all three HUM0024 configurations):
 
 - **Cut `budget_categories.TeamId → teams`** — live nav `HasOne(c => c.Team)` (`BudgetCategoryConfiguration.cs:28`).
 - **Cut `budget_line_items.ResponsibleTeamId → teams`** (`BudgetLineItemConfiguration.cs`).

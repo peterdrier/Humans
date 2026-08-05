@@ -60,7 +60,7 @@ public class Profile
     public string? EmergencyContactRelationship { get; set; }
 
     // Dietary + medical — person-level attributes (moved off VolunteerEventProfile;
-    // see docs/superpowers/specs/2026-05-25-dietary-medical-to-profile-design.md).
+    // see docs/sections/Profiles.md).
 
     /// <summary>Dietary preference (e.g., "Vegan", "Vegetarian", "Omnivore", "Pescatarian").</summary>
     [PersonalData]

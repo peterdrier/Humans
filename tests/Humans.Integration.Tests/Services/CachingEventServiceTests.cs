@@ -18,12 +18,12 @@ namespace Humans.Integration.Tests.Services;
 /// Singleton decorator, reads come back through the same decorator, and the
 /// assertion is that the cached projection reflects the write.
 /// </summary>
-public class CachingEventServiceTests(HumansWebApplicationFactory factory) : IClassFixture<HumansWebApplicationFactory>
+public class CachingEventServiceTests(HumansWebApplicationFactory factory) : IntegrationTestBase(factory)
 {
     [HumansFact]
     public async Task CreateCategoryAsync_through_decorator_is_visible_to_next_read()
     {
-        var svc = factory.Services.GetRequiredService<IEventService>();
+        var svc = Factory.Services.GetRequiredService<IEventService>();
         svc.Should().BeOfType<CachingEventService>(
             "the unkeyed IEventService registration must resolve to the Singleton decorator");
 
@@ -54,7 +54,7 @@ public class CachingEventServiceTests(HumansWebApplicationFactory factory) : ICl
     [HumansFact]
     public async Task UpdateCategoryAsync_through_decorator_updates_cached_projection()
     {
-        var svc = factory.Services.GetRequiredService<IEventService>();
+        var svc = Factory.Services.GetRequiredService<IEventService>();
         await ((CachingEventService)svc).WarmAllAsync(TestContext.Current.CancellationToken);
 
         var slug = $"itest-rename-{Guid.NewGuid():N}";
@@ -87,7 +87,7 @@ public class CachingEventServiceTests(HumansWebApplicationFactory factory) : ICl
         // Codex P1 (PR #582): GetCategoryAsync served from an active-only
         // snapshot, breaking EditCategory for inactive rows. Snapshot must
         // hold all rows; IsActive filter belongs in GetActive*Async.
-        var svc = factory.Services.GetRequiredService<IEventService>();
+        var svc = Factory.Services.GetRequiredService<IEventService>();
         await ((CachingEventService)svc).WarmAllAsync(TestContext.Current.CancellationToken);
 
         var slug = $"itest-inactive-cat-{Guid.NewGuid():N}";
@@ -116,7 +116,7 @@ public class CachingEventServiceTests(HumansWebApplicationFactory factory) : ICl
     public async Task GetVenueAsync_returns_inactive_venue_for_admin_edit()
     {
         // Codex P1 (PR #582): same regression on venues — EditVenue 404s.
-        var svc = factory.Services.GetRequiredService<IEventService>();
+        var svc = Factory.Services.GetRequiredService<IEventService>();
         await ((CachingEventService)svc).WarmAllAsync(TestContext.Current.CancellationToken);
 
         var name = $"itest-inactive-venue-{Guid.NewGuid():N}";
@@ -144,7 +144,7 @@ public class CachingEventServiceTests(HumansWebApplicationFactory factory) : ICl
         // §15g-bis for the admin in-place edit path: an Approved event edited
         // via AdminUpdateAsync stays approved (status preserved) and the cached
         // approved-events projection must reflect the new field values.
-        var svc = factory.Services.GetRequiredService<IEventService>();
+        var svc = Factory.Services.GetRequiredService<IEventService>();
         await ((CachingEventService)svc).WarmAllAsync(TestContext.Current.CancellationToken);
 
         var category = new EventCategory
@@ -204,7 +204,7 @@ public class CachingEventServiceTests(HumansWebApplicationFactory factory) : ICl
         // Codex P1 (PR #582): DB unique index covers active+inactive rows;
         // the cache check must match or INSERT will throw DbUpdateException
         // instead of producing a friendly ModelState message.
-        var svc = factory.Services.GetRequiredService<IEventService>();
+        var svc = Factory.Services.GetRequiredService<IEventService>();
         await ((CachingEventService)svc).WarmAllAsync(TestContext.Current.CancellationToken);
 
         var slug = $"itest-slug-collide-{Guid.NewGuid():N}";

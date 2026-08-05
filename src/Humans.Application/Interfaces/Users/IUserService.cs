@@ -18,18 +18,6 @@ namespace Humans.Application.Interfaces.Users;
 public interface IUserService : IUserServiceRead, IApplicationService, IUserMerge
 {
     /// <summary>
-    /// Fetches a batched set of users keyed by id with each user's
-    /// <see cref="User.UserEmails"/> collection populated. Missing users are
-    /// absent from the returned dictionary. Used for in-memory stitching
-    /// when rendering lists that previously relied on
-    /// <c>.Include(x =&gt; x.User)</c>. Served from the caching decorator's
-    /// <see cref="UserInfo"/> dict for warm-cache callers.
-    /// </summary>
-    Task<IReadOnlyDictionary<Guid, User>> GetByIdsAsync(
-        IReadOnlyCollection<Guid> userIds,
-        CancellationToken ct = default);
-
-    /// <summary>
     /// Get all participation records for a given year, projected to the slim
     /// <see cref="UserParticipationRow"/> shape (no EF entity leaves the
     /// section). Served from the caching decorator's <see cref="UserInfo"/>

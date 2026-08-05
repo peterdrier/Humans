@@ -20,10 +20,6 @@ namespace Humans.Application.Tests.Services.Users;
 /// </summary>
 public class CachingUserServiceTests
 {
-    private static readonly System.Reflection.PropertyInfo LegacyDisplayNameProperty =
-        typeof(User).GetProperty("DisplayName")
-        ?? throw new InvalidOperationException("User.DisplayName property missing.");
-
     private readonly IUserService _inner = Substitute.For<IUserService>();
 
     private CachingUserService CreateSut()
@@ -67,15 +63,6 @@ public class CachingUserServiceTests
         State = ProfileState.Active,
         IsApproved = true,
     };
-
-    private static User WithLegacyDisplayName(User user, string displayName)
-    {
-        LegacyDisplayNameProperty.SetValue(user, displayName);
-        return user;
-    }
-
-    private static string LegacyDisplayName(User user) =>
-        (string?)LegacyDisplayNameProperty.GetValue(user) ?? string.Empty;
 
     [HumansFact]
     public async Task GetUserInfoAsync_DictMiss_DelegatesToInnerAndCaches()
@@ -406,96 +393,61 @@ public class CachingUserServiceTests
     }
 
     [HumansFact]
-    public async Task GetByIdsAsync_WarmCache_ServesFromDict_ZeroInnerCalls()
+    public async Task GetUserInfosAsync_WarmCache_ServesFromDict_ZeroInnerCalls()
     {
-        // Issue #744. Warm cache + GetByIdsAsync(known ids) must never call
-        // the inner service (zero EF queries). The single GetByIdsAsync always
-        // returns Users with UserEmails populated — there is no "without
-        // emails" variant because there is nothing else the cache can serve.
+        // nobodies-collective/Humans#979. GetByIdsAsync (the User-entity-returning
+        // batched lookup, and CachingUserService.RehydrateUser) were removed —
+        // GetUserInfosAsync is the sole batched lookup. Once the cache is fully
+        // warmed, further batched reads must never call the inner service.
         var userId = Guid.NewGuid();
-        var emailId = Guid.NewGuid();
-        var user = new User
-        {
-            Id = userId,
-            PreferredLanguage = "es",
-            ProfilePictureUrl = "https://example.com/pic.png",
-            CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-        };
-        var userEmail = new UserEmail
-        {
-            Id = emailId,
-            UserId = userId,
-            Email = "cached@example.com",
-            IsVerified = true,
-            IsPrimary = true,
-            IsGoogle = true,
-            GoogleEmailStatus = GoogleEmailStatus.Valid,
-            Provider = "Google",
-            ProviderKey = "subj-1",
-        };
-        var info = UserInfo.Create(
-            user, [userEmail],
-            eventParticipations: [],
-            externalLogins: [],
-            profile: SampleProfile(userId, "Cached"),
-            contactFields: [],
-            profileLanguages: [],
-            volunteerHistory: [],
-            communicationPreferences: []);
+        var info = SampleUserInfo(userId, "Cached");
 
-        _inner.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<UserInfo?>(info));
+        _inner.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
+            .Returns([info]);
 
         var sut = CreateSut();
+        await ((IHostedService)sut).StartAsync(Xunit.TestContext.Current.CancellationToken);
+        _inner.ClearReceivedCalls();
 
-        // Prime the cache.
-        await sut.GetUserInfoAsync(userId, Xunit.TestContext.Current.CancellationToken);
-
-        // Warm-cache call should rehydrate locally, never delegate.
-        var result = await sut.GetByIdsAsync([userId], Xunit.TestContext.Current.CancellationToken);
+        // Warm-cache call should be served from the dict, never delegate.
+        var result = await sut.GetUserInfosAsync([userId], Xunit.TestContext.Current.CancellationToken);
 
         result.Should().ContainKey(userId);
-        var hit = result[userId];
-        LegacyDisplayName(hit).Should().Be("Cached");
-        hit.ProfilePictureUrl.Should().Be("https://example.com/pic.png");
-        hit.UserEmails.Single(e => e.IsGoogle).GoogleEmailStatus.Should().Be(GoogleEmailStatus.Valid);
-        hit.UserEmails.Should().ContainSingle(e =>
-            e.Id == emailId && e.Email == "cached@example.com" && e.IsPrimary && e.IsGoogle && e.IsVerified);
+        result[userId].BurnerName.Should().Be("Cached");
 
-        await _inner.DidNotReceive().GetByIdsAsync(
-            Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>());
+        await _inner.DidNotReceive().GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await _inner.DidNotReceive().GetAllUserInfosAsync(Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
-    public async Task GetByIdsAsync_PartialHit_OnlyMissesDelegated()
+    public async Task GetUserInfosAsync_PartialHit_OnlyMissesDelegated()
     {
-        // Issue #744. Warm hits served from dict, misses batched to inner.
+        // nobodies-collective/Humans#979. Warm hits served from dict, misses
+        // loaded per-id from the inner service.
         var hitId = Guid.NewGuid();
         var missId = Guid.NewGuid();
 
-        var info = SampleUserInfo(hitId, "Cached");
-        _inner.GetUserInfoAsync(hitId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<UserInfo?>(info));
-
-        var missUser = WithLegacyDisplayName(SampleUser(missId), "Fresh");
-        _inner.GetByIdsAsync(
-            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 1 && ids.Contains(missId)),
-            Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, User> { [missId] = missUser });
+        var hitInfo = SampleUserInfo(hitId, "Cached");
+        var missInfo = SampleUserInfo(missId, "Fresh");
+        _inner.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
+            .Returns([hitInfo]); // missId is not part of the warmed snapshot.
+        _inner.GetUserInfoAsync(missId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(missInfo));
 
         var sut = CreateSut();
-        await sut.GetUserInfoAsync(hitId, Xunit.TestContext.Current.CancellationToken); // prime only the hit.
+        await ((IHostedService)sut).StartAsync(Xunit.TestContext.Current.CancellationToken); // warm — primes the hit.
+        _inner.ClearReceivedCalls();
 
-        var result = await sut.GetByIdsAsync([hitId, missId], Xunit.TestContext.Current.CancellationToken);
+        var result = await sut.GetUserInfosAsync([hitId, missId], Xunit.TestContext.Current.CancellationToken);
 
         result.Should().HaveCount(2);
-        LegacyDisplayName(result[hitId]).Should().Be("Cached");
-        LegacyDisplayName(result[missId]).Should().Be("Fresh");
+        result[hitId].BurnerName.Should().Be("Cached");
+        result[missId].BurnerName.Should().Be("Fresh");
 
-        // Inner was called for the miss with only the missing id.
-        await _inner.Received(1).GetByIdsAsync(
-            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 1 && ids.Contains(missId)),
-            Arg.Any<CancellationToken>());
+        // Inner was called for the miss only.
+        await _inner.Received(1).GetUserInfoAsync(missId, Arg.Any<CancellationToken>());
+        await _inner.DidNotReceive().GetUserInfoAsync(hitId, Arg.Any<CancellationToken>());
+        await _inner.DidNotReceive().GetAllUserInfosAsync(Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

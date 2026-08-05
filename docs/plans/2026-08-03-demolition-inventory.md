@@ -2,8 +2,10 @@
 
 > Generated 2026-08-03 against commit `5a9bbe198` (fork `main`). Feeds the
 > [Q3 Transition Plan](2026-06-13-q3-transition-plan.md) G0 gate ("Demolition inventory: per-section
-> list of dead columns/tables, cross-section FK constraints, and non-conforming table names —
-> feeds G2 work items") and the Section tracker table in that doc.
+> list of dead columns/tables, cross-section FK constraints, and non-conforming table names")
+> and the Section tracker table in that doc. This file is the **work list**; the transition plan
+> assigns the gates — dead columns/tables and FK cuts run at G2, table renames at G5, per the
+> scheduling update below. Do not read a gate off this document.
 >
 > **Method:** code-derived, not doc-derived. Every claim below cites a `file:line` or a
 > `[Grandfathered(...)]`/`ToTable(...)` call actually in the tree. Where the plan doc or
@@ -26,6 +28,33 @@
 > every EF configuration class for cross-section `HasOne`/`HasForeignKey`/`HasMany`**, with the
 > `[Grandfathered(HUM0024)]` attribute recorded as an *attribute of* each relationship rather
 > than as the enumeration mechanism. Regenerate it that way.
+
+> **Scheduling update 2026-08-04 — two decisions change when this inventory's items run.**
+>
+> 1. **Non-conforming table names → G5, not G2.** Every "Propose `<section>_…`" rename below is
+>    now a **G5** item, executed once the owning section is its own assembly with its own
+>    migration history. Nothing in the analysis changes — only the gate. This also gives the
+>    open naming questions in the Unmapped tail (`user_emails` under the Users boundary, the
+>    three-way `event_` collision) time to be settled before anyone spends a migration on them.
+> 2. **Cross-section FKs → one app-wide migration, not per section.** The §"Cross-section FK"
+>    entries below are executed together in a single PR rather than section by section. The
+>    per-section breakdown here remains the work list; it is no longer the PR boundary. That
+>    single PR still takes one exclusive migration-turnstile slot — it collapses seventeen
+>    slots into one, it does not opt out of serialization. Four conditions attach: index
+>    preservation on the dropped FK columns; fixing the HUM0024 detection gap this document
+>    already flags under Governance and Google Integration; auditing and replacing the
+>    `Cascade`/`SetNull`/`Restrict` delete behaviors the dropped constraints carry; and
+>    landing the G1 nav strips for every affected relationship first.
+>
+>    **Not every §"Cross-section FK" entry below belongs to that PR.** A relationship is out
+>    of bulk-cut scope if its table is dropped whole by that table's own demolition item —
+>    the constraint dies with the table, and including it would collide with the drop
+>    migration. Today that is `camp_leads.UserId` (`CampLeadConfiguration.cs:29-32`), which
+>    the Camps entry below already records as dying with `camp_leads` under #774. Re-check
+>    this exclusion against the dead-table list when authoring the migration.
+>
+> Both are recorded in the [Q3 transition plan](2026-06-13-q3-transition-plan.md) (FK-cut
+> carve-out; G5 checklist).
 
 ## Prior art
 
@@ -154,11 +183,11 @@ prefix.
 **Reassess before queueing (added 2026-08-03).** The obvious proposals are
 `profile_contact_fields`, `profile_user_emails`, `profile_communication_preferences`,
 `profile_volunteer_history_entries`, `profile_account_merge_requests` — but the confirmed section
-inventory folds **Profiles into the canonical `Users` shared-contract section**, and G2's rename
+inventory folds **Profiles into the canonical `Users` shared-contract section**, and the rename
 rule is "prefix with the owning *section*". Spending a destructive migration to stamp `profile_`
 onto tables whose section is being eliminated would be immediately self-defeating. Re-derive these
 under the Users boundary (`user_…`? keep bare? some stay `profile_` because the *entity* is
-`Profile` even though the section is Users?) before any of them becomes a G2 work item. This also
+`Profile` even though the section is Users?) before any of them becomes a work item. This also
 subsumes the `user_emails` naming question already parked in the Unmapped tail.
 
 ### Misfiled configuration (not a table-ownership violation, but pre-G5 drift)

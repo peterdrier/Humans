@@ -41,24 +41,13 @@ public class IssuesApiControllerTests
         string? section = "Tickets",
         string title = "Issue title",
         string description = "Issue description",
-        Guid? reporterId = null,
-        string reporterName = "Reporter",
-        string reporterEmail = "reporter@example.com",
-        string reporterLanguage = "en")
+        Guid? reporterId = null)
     {
         var rId = reporterId ?? Guid.NewGuid();
-        var reporter = new User
-        {
-            Id = rId,
-            Email = reporterEmail,
-            DisplayName = reporterName,
-            PreferredLanguage = reporterLanguage
-        };
         return new Issue
         {
             Id = id ?? Guid.NewGuid(),
             ReporterUserId = rId,
-            Reporter = reporter,
             Section = section,
             Category = category,
             Title = title,
@@ -101,9 +90,9 @@ public class IssuesApiControllerTests
         issue.UserAgent,
         issue.AdditionalContext,
         issue.ReporterUserId,
-        issue.Reporter?.DisplayName,
-        issue.Reporter?.Email,
-        issue.Reporter?.PreferredLanguage,
+        ReporterDisplayName: null,
+        ReporterEmail: null,
+        ReporterPreferredLanguage: null,
         issue.CreatedAt,
         issue.UpdatedAt,
         issue.ResolvedAt,
@@ -111,7 +100,7 @@ public class IssuesApiControllerTests
         issue.ScreenshotStoragePath,
         issue.Comments.Count,
         issue.AssigneeUserId,
-        issue.Assignee?.DisplayName,
+        AssigneeDisplayName: null,
         issue.GitHubIssueNumber);
 
     // ==========================================================================

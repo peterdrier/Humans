@@ -39,7 +39,7 @@
 
 **Added 2026-08-03 (G3.3).** No test exercises the Postgres append-only triggers `prevent_audit_log_update`/`prevent_audit_log_delete` (migration `20260212152552_Initial`). `AuditLogArchitectureTests.IAuditLogRepository_HasNoUpdateOrDeleteMethods` pins the C# surface only and cannot prove the database rejects a direct UPDATE/DELETE. Fix: one integration test against real Postgres (once #764's shared fixture lands) that attempts both statements against a seeded row and asserts rejection — the same test shape Consent needs for its own append-only trigger. No-migration-needed: **y**.
 
-## G2 Queue Notes
+## Schema demolition queue
 
-- `audit_log` table already carries the append-only DB trigger + `[Grandfathered(HUM0024)]` cross-section FK navs — this section's G2 entry is largely "drop the two navs once HUM0024's bare-FK migration ships," not new discovery.
+- `audit_log` table already carries the append-only DB trigger + `[Grandfathered(HUM0024)]` cross-section FK navs — this section's schema queue is largely "drop the two navs once HUM0024's bare-FK migration ships," not new discovery.
 - No dead columns spotted in `AuditLogEntryConfiguration` in this pass.

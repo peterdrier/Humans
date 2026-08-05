@@ -28,7 +28,7 @@ namespace Humans.Integration.Tests.AccountMerge;
 /// <c>IUserService.AnonymizeForMergeAsync</c>), then queries the read path
 /// for the target and asserts the source-attributed row surfaces.
 /// </summary>
-public class ChainFollowReadTests(HumansWebApplicationFactory factory) : IClassFixture<HumansWebApplicationFactory>
+public class ChainFollowReadTests(HumansWebApplicationFactory factory) : IntegrationTestBase(factory)
 {
     // ==================================================================
     // AuditLog — chain-follow GetByUserAsync (Phase 4.1)
@@ -41,18 +41,18 @@ public class ChainFollowReadTests(HumansWebApplicationFactory factory) : IClassF
         // seeded by other tests in the same shared-DB class fixture.
         var description = $"chain-follow-audit-{Guid.NewGuid():N}";
 
-        var (sourceId, targetId) = await factory.SeedMergeFixtureAsync(b =>
+        var (sourceId, targetId) = await Factory.SeedMergeFixtureAsync(b =>
         {
             b.WithSourceAuditLogEntry(AuditAction.AccountAnonymized, description);
         });
-        var requestId = await factory.SeedMergeRequestAsync(sourceId, targetId);
+        var requestId = await Factory.SeedMergeRequestAsync(sourceId, targetId);
 
         var adminId = await SeedAdminUserAsync();
         await AcceptAsync(requestId, adminId);
 
         // Act: query the AuditLog read path for the TARGET — chain-follow
         // should union the source-tombstone id and surface source's row.
-        await using var assertScope = factory.Services.CreateAsyncScope();
+        await using var assertScope = Factory.Services.CreateAsyncScope();
         var auditService = assertScope.ServiceProvider.GetRequiredService<IAuditLogService>();
         var entries = await auditService.GetByUserAsync(targetId, count: 100, ct: TestContext.Current.CancellationToken);
 
@@ -72,9 +72,9 @@ public class ChainFollowReadTests(HumansWebApplicationFactory factory) : IClassF
     {
         Guid versionId;
 
-        var (sourceId, targetId) = await factory.SeedMergeFixtureAsync();
+        var (sourceId, targetId) = await Factory.SeedMergeFixtureAsync();
 
-        await using (var scope = factory.Services.CreateAsyncScope())
+        await using (var scope = Factory.Services.CreateAsyncScope())
         {
             var builder = new MergeFixtureBuilder(scope, sourceId, targetId);
             versionId = builder.SeedDocumentVersionNow($"ChainFollowDoc-{Guid.NewGuid():N}".Substring(0, 24));
@@ -82,7 +82,7 @@ public class ChainFollowReadTests(HumansWebApplicationFactory factory) : IClassF
             await builder.SaveAllAsync();
         }
 
-        var requestId = await factory.SeedMergeRequestAsync(sourceId, targetId);
+        var requestId = await Factory.SeedMergeRequestAsync(sourceId, targetId);
 
         var adminId = await SeedAdminUserAsync();
         await AcceptAsync(requestId, adminId);
@@ -93,7 +93,7 @@ public class ChainFollowReadTests(HumansWebApplicationFactory factory) : IClassF
         // chain-follow read; the uniquely-seeded version id is consented to
         // by the source only, so a History match under a target read proves
         // the source-tombstone id was unioned in.
-        await using var assertScope = factory.Services.CreateAsyncScope();
+        await using var assertScope = Factory.Services.CreateAsyncScope();
         var consentService = assertScope.ServiceProvider.GetRequiredService<IConsentService>();
         var dashboard = await consentService.GetConsentDashboardAsync(targetId, TestContext.Current.CancellationToken);
 
@@ -114,9 +114,9 @@ public class ChainFollowReadTests(HumansWebApplicationFactory factory) : IClassF
     {
         var description = $"chain-follow-budget-{Guid.NewGuid():N}";
 
-        var (sourceId, targetId) = await factory.SeedMergeFixtureAsync();
+        var (sourceId, targetId) = await Factory.SeedMergeFixtureAsync();
 
-        await using (var scope = factory.Services.CreateAsyncScope())
+        await using (var scope = Factory.Services.CreateAsyncScope())
         {
             var builder = new MergeFixtureBuilder(scope, sourceId, targetId);
             var budgetYearId = builder.SeedBudgetYearNow($"BY-{Guid.NewGuid():N}".Substring(0, 6));
@@ -124,7 +124,7 @@ public class ChainFollowReadTests(HumansWebApplicationFactory factory) : IClassF
             await builder.SaveAllAsync();
         }
 
-        var requestId = await factory.SeedMergeRequestAsync(sourceId, targetId);
+        var requestId = await Factory.SeedMergeRequestAsync(sourceId, targetId);
 
         var adminId = await SeedAdminUserAsync();
         await AcceptAsync(requestId, adminId);
@@ -134,7 +134,7 @@ public class ChainFollowReadTests(HumansWebApplicationFactory factory) : IClassF
         // both IBudgetService and IUserDataContributor; resolve the former
         // (single DI registration to that ID) and cast for the contributor
         // method.
-        await using var assertScope = factory.Services.CreateAsyncScope();
+        await using var assertScope = Factory.Services.CreateAsyncScope();
         var budgetService = assertScope.ServiceProvider.GetRequiredService<IBudgetService>();
         var contributor = (IUserDataContributor)budgetService;
         var slices = await contributor.ContributeForUserAsync(targetId, TestContext.Current.CancellationToken);
@@ -164,7 +164,7 @@ public class ChainFollowReadTests(HumansWebApplicationFactory factory) : IClassF
         // and ActorUserId = adminUserId on the audit row, both FK'd to AspNetUsers.
         // It also calls TeamService.RemoveMemberAsync for non-system team folds,
         // which requires the actor to be Admin / Board / TeamsAdmin.
-        await using var scope = factory.Services.CreateAsyncScope();
+        await using var scope = Factory.Services.CreateAsyncScope();
         var um = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
         var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
         var now = SystemClock.Instance.GetCurrentInstant();
@@ -202,7 +202,7 @@ public class ChainFollowReadTests(HumansWebApplicationFactory factory) : IClassF
 
     private async Task AcceptAsync(Guid requestId, Guid adminUserId)
     {
-        await using var scope = factory.Services.CreateAsyncScope();
+        await using var scope = Factory.Services.CreateAsyncScope();
         var mergeService = scope.ServiceProvider.GetRequiredService<IAccountMergeService>();
         // Chain-follow tests assert source→target (target survives); pick the request target.
         var request = await mergeService.GetByIdAsync(requestId, TestContext.Current.CancellationToken)

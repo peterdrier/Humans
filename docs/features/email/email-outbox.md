@@ -26,7 +26,7 @@ Transactional emails (onboarding, campaign codes, notifications) must be deliver
 3. `ProcessEmailOutboxJob` (Hangfire, runs every minute) picks up batches of queued messages and delivers them via `IEmailTransport`.
 4. On success: `Status = Sent`, `SentAt` stamped.
 5. On failure: `RetryCount++`, `LastError` set, `NextRetryAt` computed with exponential backoff. After `OutboxMaxRetries` attempts, message stays `Failed` and is not retried.
-6. `CleanupEmailOutboxJob` (Hangfire, runs daily) deletes sent/failed messages older than `OutboxRetentionDays`.
+6. `CleanupEmailOutboxJob` (Hangfire, weekly — Sunday 03:00 UTC) deletes **sent** messages older than `OutboxRetentionDays`. `Failed` messages are retained (`DeleteSentOlderThanAsync` filters on `Status == Sent`).
 
 ## Configuration
 

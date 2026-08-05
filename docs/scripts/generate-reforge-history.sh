@@ -13,14 +13,25 @@
 # Requirements:
 #   - reforge CLI on PATH (install via `dotnet tool install -g Reforge`)
 #   - bash 4+
-#   - working tree may be dirty (script stashes and restores) but the
-#     `docs/reforge-history.csv` file specifically is reset between
-#     iterations to keep `git checkout COMMIT` clean.
+#   - working tree may be dirty — historical per-day snapshots are computed
+#     in a throwaway `git worktree add --detach` checkout, so the caller's
+#     tree is never stashed, checked out, or otherwise touched (see
+#     nobodies-collective/Humans#971: this used to stash the caller's tree
+#     and leave it checked out at whatever commit the loop last visited on
+#     interrupt — silently reverting concurrent edits from other processes
+#     sharing this worktree, e.g. /freshness-sweep's drift-fix subagents).
 #
 # Implementation notes:
+#   - Historical per-day snapshots are computed in a throwaway
+#     `git worktree add --detach` checkout (SNAPSHOT_WORKTREE below). Every
+#     `git checkout <commit>` and `reforge snapshot` in the loop is scoped to
+#     that throwaway worktree, so the caller's HEAD and tracked files are
+#     never touched — including on interrupt, since there's nothing to
+#     restore in the caller's tree in the first place.
 #   - Snapshots are written to per-iteration temp files OUTSIDE the worktree,
 #     then concatenated into the CSV at the end. This avoids dirtying the
-#     tracked CSV during the loop (which would block subsequent `git checkout`).
+#     tracked CSV during the loop (which would block subsequent `git checkout`
+#     inside the throwaway worktree).
 #   - We avoid setting any shell variable named `TMP` / `TEMP` / `TMPDIR`,
 #     because on Windows those names overlap with the env vars MSBuild uses
 #     for its temp directory; clobbering them makes Roslyn's project loader
@@ -37,29 +48,19 @@ if [ "${1:-}" = "--full" ]; then
   FULL=true
 fi
 
-# Stash any dirty state so checkout iteration is safe.
 ORIG_REF=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main")
-NEEDS_STASH=false
-if ! git diff --quiet 2>/dev/null || ! git diff --cached --quiet 2>/dev/null; then
-  git stash --quiet
-  NEEDS_STASH=true
-fi
 
 # Use the system temp dir but DO NOT name our variables TMP/TEMP/TMPDIR.
 WORK_DIR="${TMPDIR:-/tmp}/reforge-history-$$"
 mkdir -p "$WORK_DIR"
 GAP_ROWS="$WORK_DIR/gap-rows.csv"
+SNAPSHOT_WORKTREE="$WORK_DIR/checkout"
 > "$GAP_ROWS"
 
 cleanup() {
-  # Restore branch FIRST so any subsequent file ops act on the right ref.
-  # Do NOT `git checkout HEAD -- $CSV` here — that step is for the
-  # mid-loop reset between historical checkouts (line below). On EXIT,
-  # the script has already rewritten $CSV with the merged final state,
-  # and a HEAD-restore would silently undo that write.
-  git checkout --quiet "$ORIG_REF" 2>/dev/null || true
-  if [ "$NEEDS_STASH" = "true" ]; then
-    git stash pop --quiet 2>/dev/null || true
+  if [ -d "$SNAPSHOT_WORKTREE" ]; then
+    git worktree remove --force "$SNAPSHOT_WORKTREE" 2>/dev/null \
+      || { rm -rf -- "$SNAPSHOT_WORKTREE" 2>/dev/null || true; git worktree prune --quiet 2>/dev/null || true; }
   fi
   if [ -d "$WORK_DIR" ]; then
     rm -- "$WORK_DIR"/* 2>/dev/null || true
@@ -121,6 +122,10 @@ if [ -z "$COMMITS" ]; then
   exit 0
 fi
 
+# Create the throwaway worktree that historical checkouts happen in. This
+# never touches the caller's tree (see the header comment).
+git worktree add --quiet --detach "$SNAPSHOT_WORKTREE" "$ORIG_REF"
+
 TOTAL=$(echo "$COMMITS" | wc -l)
 N=0
 OK=0
@@ -130,12 +135,19 @@ for COMMIT in $COMMITS; do
   N=$((N+1))
   SNAP="$WORK_DIR/snap-${COMMIT:0:8}.csv"
   > "$SNAP"
-  if ! git checkout --quiet "$COMMIT" 2>/dev/null; then
+  if ! git -C "$SNAPSHOT_WORKTREE" checkout --quiet "$COMMIT" 2>/dev/null; then
     echo "[$N/$TOTAL] $COMMIT — checkout FAILED"
     FAIL=$((FAIL+1))
     continue
   fi
-  if reforge snapshot --solution "$SOLUTION" --append "$SNAP" >/dev/null 2>&1 && [ -s "$SNAP" ]; then
+  # Run reforge from INSIDE the throwaway worktree. reforge relays any command
+  # to a running hot server when it finds a `.reforge-port` file — first next to
+  # `--solution`, then by searching upward from the CWD. The throwaway worktree
+  # has no port file, but the caller's repo does whenever `reforge serve` is
+  # running there, so invoking from the caller's cwd would relay `snapshot` to a
+  # server holding the caller's checkout and silently record rows for the wrong
+  # commit. The subshell keeps the caller's cwd unchanged for the merge below.
+  if ( cd "$SNAPSHOT_WORKTREE" && reforge snapshot --solution "$SNAPSHOT_WORKTREE/$SOLUTION" --append "$SNAP" >/dev/null 2>&1 ) && [ -s "$SNAP" ]; then
     # Strip header (first line); append the data row to the gap accumulator.
     tail -n +2 "$SNAP" >> "$GAP_ROWS"
     OK=$((OK+1))
@@ -143,17 +155,14 @@ for COMMIT in $COMMITS; do
     echo "[$N/$TOTAL] $COMMIT — reforge snapshot FAILED"
     FAIL=$((FAIL+1))
   fi
-  # Reset the tracked CSV in the working tree before next checkout (otherwise
-  # git checkout aborts on the dirty file).
-  git checkout --quiet HEAD -- "$CSV" 2>/dev/null || true
+  # Reset the tracked CSV in the throwaway worktree before next checkout
+  # (otherwise `git checkout` there aborts on the dirty file).
+  git -C "$SNAPSHOT_WORKTREE" checkout --quiet HEAD -- "$CSV" 2>/dev/null || true
 done
 
-# Restore branch (cleanup() will also try, but doing it here lets us write the
-# final CSV from the right ref).
-git checkout --quiet "$ORIG_REF"
-
 # Merge: existing CSV (or empty if --full) + gap rows. Dedup by date column
-# (latest timestamp wins). Sort by timestamp ascending.
+# (latest timestamp wins). Sort by timestamp ascending. The caller's tree was
+# never touched, so $CSV is read/written here directly.
 HEADER=""
 if [ -f "$CSV" ]; then
   HEADER=$(head -1 "$CSV")

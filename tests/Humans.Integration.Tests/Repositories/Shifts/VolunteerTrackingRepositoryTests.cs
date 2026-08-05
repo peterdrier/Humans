@@ -12,23 +12,20 @@ using Xunit;
 namespace Humans.Integration.Tests.Repositories.Shifts;
 
 /// <summary>
-/// Integration tests for <see cref="VolunteerTrackingRepository"/>. Mirrors the
-/// repo's established service-test shape (e.g. <c>CalendarServiceTests</c>):
-/// uses <see cref="IClassFixture{T}"/> for the test-container-backed factory,
-/// resolves the Scoped <see cref="HumansDbContext"/> per test through a DI
-/// scope, and exercises the repository against a real PostgreSQL container.
-///
-/// <see cref="IntegrationTestBase"/> is HttpClient-only, so it doesn't fit
-/// repository tests; we use the factory directly per the
-/// <c>CalendarServiceTests</c> pattern.
+/// Integration tests for <see cref="VolunteerTrackingRepository"/>. Takes the
+/// assembly-shared <see cref="HumansWebApplicationFactory"/> through
+/// <see cref="IntegrationTestBase"/>, resolves the Scoped
+/// <see cref="HumansDbContext"/> per test through a DI scope off
+/// <see cref="IntegrationTestBase.Factory"/>, and exercises the repository
+/// against the run's single PostgreSQL container.
 /// </summary>
 public class VolunteerTrackingRepositoryTests(HumansWebApplicationFactory factory)
-    : IClassFixture<HumansWebApplicationFactory>
+    : IntegrationTestBase(factory)
 {
     [HumansFact]
     public async Task GetBuildStatusesForEventAsync_returns_empty_when_no_row_exists()
     {
-        await using var scope = factory.Services.CreateAsyncScope();
+        await using var scope = Factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
         var sut = new VolunteerTrackingRepository(db);
         var userId = Guid.NewGuid();
@@ -41,7 +38,7 @@ public class VolunteerTrackingRepositoryTests(HumansWebApplicationFactory factor
     [HumansFact]
     public async Task UpsertCampSetupAsync_inserts_when_no_row_exists()
     {
-        await using var scope = factory.Services.CreateAsyncScope();
+        await using var scope = Factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
         var es = await SeedActiveEventAsync(db);
         var userId = Guid.NewGuid();
@@ -67,7 +64,7 @@ public class VolunteerTrackingRepositoryTests(HumansWebApplicationFactory factor
     [HumansFact]
     public async Task GetBuildStatusesForEventAsync_returns_only_rows_for_requested_event()
     {
-        await using var scope = factory.Services.CreateAsyncScope();
+        await using var scope = Factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
         var es1 = await SeedActiveEventAsync(db);
         var es2 = await SeedActiveEventAsync(db);
@@ -92,7 +89,7 @@ public class VolunteerTrackingRepositoryTests(HumansWebApplicationFactory factor
     [HumansFact]
     public async Task GetEligibleBuildSignupsAsync_returns_only_build_period_active_signups_in_event()
     {
-        await using var scope = factory.Services.CreateAsyncScope();
+        await using var scope = Factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
         var es = await SeedActiveEventAsync(db);   // BuildStartOffset = -10
         var sut = scope.ServiceProvider.GetRequiredService<IShiftManagementRepository>();
@@ -140,7 +137,7 @@ public class VolunteerTrackingRepositoryTests(HumansWebApplicationFactory factor
     [HumansFact(Timeout = 30000)]
     public async Task UpsertDayOffAsync_inserts_first_entry_and_creates_row_if_absent()
     {
-        await using var scope = factory.Services.CreateAsyncScope();
+        await using var scope = Factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
         var es = await SeedActiveEventAsync(db);
         var userId = Guid.NewGuid();
@@ -164,7 +161,7 @@ public class VolunteerTrackingRepositoryTests(HumansWebApplicationFactory factor
     [HumansFact(Timeout = 30000)]
     public async Task UpsertDayOffAsync_replaces_entry_for_same_day_offset()
     {
-        await using var scope = factory.Services.CreateAsyncScope();
+        await using var scope = Factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
         var es = await SeedActiveEventAsync(db);
         var userId = Guid.NewGuid();
@@ -191,7 +188,7 @@ public class VolunteerTrackingRepositoryTests(HumansWebApplicationFactory factor
     [HumansFact(Timeout = 30000)]
     public async Task UpsertDayOffAsync_appends_entries_for_distinct_days_sorted_by_offset()
     {
-        await using var scope = factory.Services.CreateAsyncScope();
+        await using var scope = Factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
         var es = await SeedActiveEventAsync(db);
         var userId = Guid.NewGuid();
@@ -212,7 +209,7 @@ public class VolunteerTrackingRepositoryTests(HumansWebApplicationFactory factor
     [HumansFact(Timeout = 30000)]
     public async Task RemoveDayOffAsync_drops_only_the_specified_day()
     {
-        await using var scope = factory.Services.CreateAsyncScope();
+        await using var scope = Factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
         var es = await SeedActiveEventAsync(db);
         var userId = Guid.NewGuid();
@@ -235,7 +232,7 @@ public class VolunteerTrackingRepositoryTests(HumansWebApplicationFactory factor
     [HumansFact(Timeout = 30000)]
     public async Task RemoveDayOffAsync_returns_false_when_entry_absent()
     {
-        await using var scope = factory.Services.CreateAsyncScope();
+        await using var scope = Factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
         var es = await SeedActiveEventAsync(db);
         var userId = Guid.NewGuid();
@@ -254,7 +251,7 @@ public class VolunteerTrackingRepositoryTests(HumansWebApplicationFactory factor
     [HumansFact(Timeout = 30000)]
     public async Task UpsertCampSetupAsync_does_not_disturb_existing_DayOffs()
     {
-        await using var scope = factory.Services.CreateAsyncScope();
+        await using var scope = Factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
         var es = await SeedActiveEventAsync(db);
         var userId = Guid.NewGuid();

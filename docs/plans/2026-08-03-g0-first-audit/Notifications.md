@@ -48,11 +48,11 @@ sections' data, just through their read interfaces rather than raw EF, which is 
 1. **`NotificationRepositoryTests.cs:21` on EF-InMemory** — convert to the shared Postgres fixture (#764/#766). No-migration-needed: y.
 2. **All four service/job tests build a real `HumansDbContext` over `UseInMemoryDatabase` with a concrete `NotificationRepository`** — `NotificationServiceTests.cs`, `NotificationEmitterTests.cs`, `NotificationInboxServiceTests.cs`, `CleanupNotificationsJobTests.cs:17`. (Corrected 2026-08-03: the first three were originally read as clean, so the remediation list named only the job test — converting just that one would leave G3.2 failing.) Convert all four to `Substitute.For<INotificationRepository>()` per #766. No-migration-needed: y.
 
-## G2 queue notes
+## Schema demolition queue
 
-The 2 HUM0024 grandfathers above are this section's G2 demolition candidate, same shape as Campaigns/Feedback/etc. — file alongside those if a tracked issue doesn't exist yet.
+The 2 HUM0024 grandfathers above are this section's schema demolition candidate, same shape as Campaigns/Feedback/etc. — file alongside those if a tracked issue doesn't exist yet.
 
 **Kind reclassification — retracted:** the original note suggesting Notifications move to `Crosscut` per the glossary is retracted — see the corrected Kind note above. `NotificationMeterProvider` does carry real outbound section-specific logic (live reads into 5 other sections), so the "zero outbound logic" premise for a Crosscut reclassification doesn't hold. Stays `vertical`.
 
 
-**Added 2026-08-03 — cross-section FK cuts belong in this queue.** Retiring `[Obsolete]` navs or `[Grandfathered(HUM0024)]` markers is a code-shape change; it does **not** drop the physical constraint. Per the demolition inventory, this section owns **2** cross-section FKs across 2 tables: `notifications` and `notification_recipients` → `AspNetUsers`, via the two HUM0024-grandfathered configurations already listed as G1 gap 2. All are G2 cuts — without them listed here, a schema batch driven by this scorecard can complete while every cross-section database dependency survives.
+**Added 2026-08-03 — cross-section FK cuts belong in this queue.** Retiring `[Obsolete]` navs or `[Grandfathered(HUM0024)]` markers is a code-shape change; it does **not** drop the physical constraint. Per the demolition inventory, this section owns **2** cross-section FKs across 2 tables: `notifications` and `notification_recipients` → `AspNetUsers`, via the two HUM0024-grandfathered configurations already listed as G1 gap 2. All are cross-section FK cuts — without them listed here, a schema batch driven by this scorecard can complete while every cross-section database dependency survives.

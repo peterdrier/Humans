@@ -45,7 +45,7 @@ Two items that were once listed here are **not** G3 gaps and stay struck: *"no a
 for Cantina"* (no G3 predicate requires one — see the G1 note) and *"no canonical invariant doc to
 test against"* (false; `docs/sections/Cantina.md` exists per G1.7).
 
-## G2 queue notes
+## Schema demolition queue
 
 - Nothing — Cantina owns no tables, so there's no demolition-inventory surface (no dead columns, no cross-section FKs, no rename work) for this section specifically.
-- **Resolved 2026-08-03 — the folding question is closed, not open.** This note originally asked whether Cantina might end up folded into whichever section owns the read surfaces it depends on. The confirmed section inventory (`2026-08-03-proposed-frozen-section-inventory.md`) rules that Cantina **is** its own section, and the `sections-are-logical-units` rule states that table-less sections stay on the ladder with table-keyed predicates marked N/A. Leaving the question open would reopen a frozen decision and invite later tracker work to undo the canonical taxonomy. The still-valid half stands: mark Cantina `n/a` for G2/G4 (no owned tables ⇒ no schema or DbContext work), the same way `Settings`/`Shortlinks` are marked `n/a` for G1/G2.
+- **Resolved 2026-08-03 — the folding question is closed, not open.** This note originally asked whether Cantina might end up folded into whichever section owns the read surfaces it depends on. The confirmed section inventory (`2026-08-03-proposed-frozen-section-inventory.md`) rules that Cantina **is** its own section, and the `sections-are-logical-units` rule states that table-less sections stay on the ladder with table-keyed predicates marked N/A. Leaving the question open would reopen a frozen decision and invite later tracker work to undo the canonical taxonomy. The still-valid half stands: Cantina owns no tables, so there is no schema or DbContext work for this section.
