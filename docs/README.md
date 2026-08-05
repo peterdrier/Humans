@@ -98,7 +98,7 @@ Terse, authoritative invariant docs for each major section: concepts, data model
 | [Email](sections/Email.md) | Transactional email outbox: queue, render, deliver, retry, and pause/resume — backs campaign sends, onboarding, shift, and feedback emails |
 | [Events](sections/Events.md) | Event programming: submission, moderation, browsing, export, and preference management for festival events |
 | [Expenses](sections/Expenses.md) | Expense reports submitted by members and approved by Finance Admin; approval books into Holded async, and paid/unpaid status is read back from the member's Holded creditor ledger rather than stamped on the report — payment itself happens externally, with no SEPA-file generation in the app |
-| [Feedback](sections/Feedback.md) | In-app feedback reports (bugs, feature requests, questions) with screenshots and reporter↔admin conversation threads |
+| [Feedback](sections/Feedback.md) | Retired — closed to new reports and Admin-only; the historical archive of in-app reports (bugs, feature requests, questions) with screenshots and conversation threads |
 | [Finance](sections/Finance.md) | Treasurer's reality side of money — actuals, reconciliation, and treasurer-facing operational data sharing keys with Budget |
 | [Gate](sections/Gate.md) | Gate ticket scanning that decides entry at the event door and writes the durable admission record — distinct from the read-only Scanner section, which must never check anyone in |
 | [Google Integration](sections/GoogleIntegration.md) | Shared-Drive-only sync for Drive folders, Groups, and Workspace accounts with reconciliation and Drive-activity monitoring |
@@ -134,7 +134,7 @@ The end-user guide for the Humans app, organized by role within each section.
 | [Email](guide/Email.md) | Personal `@nobodies.team` mailboxes and team group emails: how they work and how to send "as" your team |
 | [Events](guide/Events.md) | Browse the festival programme and submit your own events; moderators approve submissions into the public guide |
 | [Expenses](guide/Expenses.md) | Submit expense reports and track reimbursement; FinanceAdmin reviews |
-| [Feedback](guide/Feedback.md) | Report a bug, suggest an improvement, or ask a question without leaving the app |
+| [Feedback](guide/Feedback.md) | Retired predecessor to Issues — Admins triage the historical queue; report bugs and ideas via `/Issues` instead |
 | [Google Integration](guide/GoogleIntegration.md) | Wires teams up to Google Workspace: Group, Shared Drive, Workspace accounts, and Drive activity monitoring |
 | [Governance](guide/Governance.md) | Tier applications, Board votes, and coordinator/admin role assignments — not Volunteer onboarding |
 | [Legal & Consent](guide/LegalAndConsent.md) | Documents you sign, GDPR Article 15 export, and Article 17 deletion |

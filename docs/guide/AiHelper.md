@@ -65,10 +65,10 @@ Worth knowing, in plain terms:
 | Will it do things for me? | No. It can tee things up, but you press the button |
 | Can it see my stuff? | It knows your account so it can help (your teams, shifts, tickets, to-dos). It can't see your passwords |
 | It gave me a wrong answer | It happens — check with your coordinator, or file an issue via the same help button so it gets fixed |
-| I'd rather just report a bug | Same help button → "Create issue" (or "Feedback") files it for the team |
+| I'd rather just report a bug | Same help button → "Create issue" files it for the team |
 
 ## Related
 
-- [Feedback](Feedback.md) — reporting bugs and ideas through the help button.
+- [Feedback](Feedback.md) — the retired predecessor to Issues; kept for the historical archive only.
 - [Signing in & getting unstuck](SigningIn.md) — you need to be signed in to see
   the helper.
