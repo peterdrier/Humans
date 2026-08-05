@@ -1,3 +1,4 @@
+using Humans.Application.Architecture;
 using Humans.Application.Interfaces.Mailer.Dtos;
 using NodaTime;
 
@@ -37,6 +38,7 @@ public interface IMailerLiteService : IApplicationService
     /// <see cref="InvalidOperationException"/> if <paramref name="name"/> does
     /// not start with <c>"Humans - "</c>.
     /// </summary>
+    [ExternalWrite]
     Task<MailerLiteGroup> CreateGroupAsync(string name, CancellationToken ct = default);
 
     /// <summary>
@@ -44,11 +46,13 @@ public interface IMailerLiteService : IApplicationService
     /// <see cref="InvalidOperationException"/> if the target group's
     /// <see cref="MailerLiteGroup.Name"/> does not start with <c>"Humans - "</c>.
     /// </summary>
+    [ExternalWrite]
     Task AssignSubscriberToGroupAsync(string subscriberId, string groupId, CancellationToken ct = default);
 
     /// <summary>
     /// Removes a subscriber from a group. Same prefix guard as assign.
     /// </summary>
+    [ExternalWrite]
     Task UnassignSubscriberFromGroupAsync(string subscriberId, string groupId, CancellationToken ct = default);
 
     /// <summary>
@@ -58,6 +62,7 @@ public interface IMailerLiteService : IApplicationService
     /// per-email failures; successfully processed emails are still assigned.
     /// Same prefix guard as assign.
     /// </summary>
+    [ExternalWrite]
     Task<BulkImportResult> BulkImportSubscribersToGroupAsync(
         string groupId, IReadOnlyList<string> emails, CancellationToken ct = default);
 }

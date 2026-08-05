@@ -1,3 +1,4 @@
+using Humans.Application.Architecture;
 using Humans.Application.DTOs;
 using NodaTime;
 
@@ -33,6 +34,7 @@ public interface ITicketVendorService : IApplicationService
         string eventId, CancellationToken ct = default);
 
     /// <summary>Generate discount codes via vendor API.</summary>
+    [ExternalWrite]
     Task<IReadOnlyList<string>> GenerateDiscountCodesAsync(
         DiscountCodeSpec spec, CancellationToken ct = default);
 
@@ -47,6 +49,7 @@ public interface ITicketVendorService : IApplicationService
     /// to reissue the same ticket type without racing open inventory. Never refunds or cancels
     /// the parent order. Throws <see cref="TicketVendorWriteException"/> on vendor failure.
     /// </summary>
+    [ExternalWrite]
     Task<VoidIssuedTicketResult> VoidIssuedTicketAsync(
         string vendorTicketId, bool voidToHold, CancellationToken ct = default);
 
@@ -57,6 +60,7 @@ public interface ITicketVendorService : IApplicationService
     /// <see cref="IssueTicketRequest.ExternalReference"/> so the next sync can re-link the orphan
     /// attendee. Throws <see cref="TicketVendorWriteException"/> on vendor failure.
     /// </summary>
+    [ExternalWrite]
     Task<VendorTicketDto> IssueTicketAsync(
         IssueTicketRequest request, CancellationToken ct = default);
 
@@ -66,6 +70,7 @@ public interface ITicketVendorService : IApplicationService
     /// so the vendor dashboard / vendor check-in app stays consistent — the Gate
     /// section's own <c>gate_scan_events</c> remains the dedupe authority. Safe to retry.
     /// </summary>
+    [ExternalWrite]
     Task CreateCheckInAsync(
         string vendorTicketId, Instant occurredAt, CancellationToken ct = default);
 }
