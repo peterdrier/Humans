@@ -21,7 +21,7 @@ public class CampPolygonHistoryConfiguration : IEntityTypeConfiguration<CampPoly
         builder.Property(h => h.GeoJson).HasColumnType("text").IsRequired();
         builder.Property(h => h.Note).HasMaxLength(512).IsRequired();
 
-        builder.HasOne(h => h.CampSeason)
+        builder.HasOne<CampSeason>()
             .WithMany()
             .HasForeignKey(h => h.CampSeasonId)
             .OnDelete(DeleteBehavior.Restrict);
