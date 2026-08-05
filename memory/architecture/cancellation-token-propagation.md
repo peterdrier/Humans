@@ -24,7 +24,7 @@ applied (nobodies-collective/Humans#950; split from #946).
 | Kind | Source | Rule |
 |---|---|---|
 | **Request-scoped** | `HttpContext.RequestAborted`, a controller action's `CancellationToken` parameter, `ViewComponent`/filter `HttpContext.RequestAborted` | The user gave up watching. **Must not** abort an external call that mutates remote state. Fine to honour for read-only fetches populating a view nobody is looking at any more. |
-| **Process-lifetime** | Hangfire's job token, `IHostedService` stopping token, host shutdown | The server is going down. Honour it at safe boundaries — between items in a loop, before starting the next unit of work — but never let it interrupt a partially-applied remote mutation. Check it, don't thread it into the mutating call. |
+| **Process-lifetime** | Hangfire's job token, `IHostedService` stopping token, host shutdown | The server is going down. Honour it at safe boundaries — between items in a loop, before starting the next unit of work — but never let it interrupt a partially-applied remote mutation. Check it, don't thread it into the mutating call. **In this repo it does not currently occur on Hangfire paths** — see below. |
 | **Genuine caller cancellation** | An explicit abort affordance the user operated ("Cancel this sync") | Honour it. **No such affordance exists in the UI today**, so no call site is currently in this category. Don't retrofit a request-scoped token and call it caller cancellation. |
 
 **How to apply:**
@@ -50,6 +50,33 @@ applied (nobodies-collective/Humans#950; split from #946).
   The verb of the HTTP action is what settles it: a `[HttpGet]` action may pass a
   request-scoped token; a `[HttpPost]`/`[HttpPut]`/`[HttpDelete]`/`[HttpPatch]`
   action may not.
+
+**Hangfire jobs are already non-cancellable here — don't reason as if they
+aren't.** Every job registration bakes a *literal* `CancellationToken.None` into
+the enqueue expression: all 21 `RecurringJob.AddOrUpdate<…>(… ExecuteAsync(
+CancellationToken.None) …)` registrations plus every ad-hoc `Enqueue`. That
+falls out of [`hangfire-method-signature-stable`](../code/hangfire-method-signature-stable.md),
+which requires passing every parameter explicitly at the enqueue site so the
+serialized `MethodInfo` stays pinned. The consequence: the process-lifetime row
+above is a *category*, not a live case — a job's `CancellationToken` parameter is
+always `None` at runtime, so a Workspace/Holded/MailerLite write on a job path
+cannot be torn by shutdown either. Before "honouring the job token at safe
+boundaries" anywhere, check that a real token is actually being passed; today
+none is.
+
+**A paid outbound query is not a write.** An outbound call that mutates nothing
+remote but costs money (`IGoogleTranslationClient.TranslateAsync`, billed per
+character) stays cancellable: there is no partial remote state to strand, and
+abandoning the loop early *saves* spend an admin who navigated away didn't want.
+Weigh integrity first, cost second — cost alone never makes a call
+`[ExternalWrite]`.
+
+**Guard irreversible multi-step writes inside the service too.** Where step 1
+commits something at the vendor and step 2 must follow, detach locally at that
+seam (`var commitCt = CancellationToken.None;`) instead of trusting every future
+caller — `TicketTransferService.WriteToVendorAsync` does this once the
+TicketTailor void has committed. This is not "threading a second token": the
+signature is unchanged and the detach is a one-line local at the commit point.
 
 **Enforcement:** Mark Application-layer interface methods that reach an
 external mutating call with `[ExternalWrite]`
