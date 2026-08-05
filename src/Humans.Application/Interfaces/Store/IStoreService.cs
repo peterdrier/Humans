@@ -1,3 +1,4 @@
+using Humans.Application.Architecture;
 using Humans.Application.Services.Store.Dtos;
 using Humans.Domain.Enums;
 
@@ -79,6 +80,7 @@ public interface IStoreService : IApplicationService
     // Payments (FinanceAdmin)
     Task RecordManualPaymentAsync(Guid orderId, decimal amountEur, StorePaymentMethod method, string? externalRef, string? notes, Guid actorUserId, CancellationToken ct = default);
 
+    [ExternalWrite]
     Task<string> CreateStripeCheckoutSessionAsync(
         OrderDto order,
         decimal amountEur,

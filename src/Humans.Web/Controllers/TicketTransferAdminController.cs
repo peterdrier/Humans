@@ -70,13 +70,19 @@ public sealed class TicketTransferAdminController(
         {
             switch (action)
             {
+                // "process" and "retry" write to TicketTailor (void, then
+                // reissue). Deliberately not passing the request-scoped token:
+                // an admin navigating away between the void and the reissue
+                // would leave the receiver with no ticket at all
+                // (nobodies-collective/Humans#950). The two local-only branches
+                // below keep it — a torn DB write rolls back.
                 case "process":
-                    await service.ProcessTransferAsync(id, user.Id, adminNotes, ct);
+                    await service.ProcessTransferAsync(id, user.Id, adminNotes, CancellationToken.None);
                     SetSuccess("Transfer processed: ticket voided and reissued. The next sync confirms the local records.");
                     return RedirectToAction(nameof(Index));
 
                 case "retry":
-                    await service.RetryReissueAsync(id, user.Id, adminNotes, ct);
+                    await service.RetryReissueAsync(id, user.Id, adminNotes, CancellationToken.None);
                     SetSuccess("Reissue retried: the replacement ticket was issued to the receiver.");
                     return RedirectToAction(nameof(Index));
 
