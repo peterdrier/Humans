@@ -146,8 +146,20 @@ public sealed class AgentService : IAgentService
 
             if (caught is not null)
             {
-                _logger.LogError(caught,
-                    "Agent turn failed before completion for conversation {ConversationId}", conversation.Id);
+                if (caught is OperationCanceledException && cancellationToken.IsCancellationRequested)
+                {
+                    // Expected (client disconnect), not a bug — Warning, not Error. Still
+                    // persist the trace below: #952's log evidence showed conversations with
+                    // no assistant message at all, and a disconnect is one plausible cause.
+                    _logger.LogWarning(
+                        "Agent turn cancelled (likely client disconnect) before completion for conversation {ConversationId}",
+                        conversation.Id);
+                }
+                else
+                {
+                    _logger.LogError(caught,
+                        "Agent turn failed before completion for conversation {ConversationId}", conversation.Id);
+                }
                 // CancellationToken.None: the turn may be failing BECAUSE cancellationToken
                 // fired (client disconnect), and the whole point is to still leave a trace.
                 await AppendFailureMessage(conversation.Id, "error", settings.Model, CancellationToken.None);
