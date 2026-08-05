@@ -119,6 +119,60 @@ public sealed class AgentService : IAgentService
             Model = settings.Model
         }, cancellationToken);
 
+        // From here on, a thrown exception (or client disconnect) would otherwise leave the
+        // user message above with no matching assistant reply (nobodies-collective/Humans#963:
+        // 4 of 11 conversations in #952's log evidence never reached the AppendMessageAsync
+        // below because something threw between the two writes). `await foreach` forbids
+        // `yield` inside its implicit try/finally, so drive the inner enumerator manually —
+        // that lets MoveNextAsync be wrapped in try/catch while still streaming tokens live.
+        var turn = RunTurnAsync(request, conversation, settings, priorTurns, today, hour, cancellationToken);
+        await using var enumerator = turn.GetAsyncEnumerator(cancellationToken);
+        while (true)
+        {
+            AgentTurnToken? current = null;
+            Exception? caught = null;
+            try
+            {
+                if (!await enumerator.MoveNextAsync())
+                    yield break;
+                current = enumerator.Current;
+            }
+            catch (Exception ex)
+            {
+                // `yield` isn't allowed inside a catch block, so stash the exception and
+                // handle/yield below.
+                caught = ex;
+            }
+
+            if (caught is not null)
+            {
+                _logger.LogError(caught,
+                    "Agent turn failed before completion for conversation {ConversationId}", conversation.Id);
+                // CancellationToken.None: the turn may be failing BECAUSE cancellationToken
+                // fired (client disconnect), and the whole point is to still leave a trace.
+                await AppendFailureMessage(conversation.Id, "error", settings.Model, CancellationToken.None);
+                yield return new AgentTurnToken(null, null,
+                    new AgentTurnFinalizer(0, 0, 0, 0, settings.Model, "error", conversation.Id));
+                yield break;
+            }
+
+            yield return current!;
+        }
+    }
+
+    /// <summary>The tool-call loop and finalizer for one turn, run after the user message is
+    /// already persisted. Split out of <see cref="AskAsync"/> so the caller can wrap iteration
+    /// in try/catch (nobodies-collective/Humans#963) — a `yield`-containing method can't have a
+    /// `catch` in its own body around the `yield`.</summary>
+    private async IAsyncEnumerable<AgentTurnToken> RunTurnAsync(
+        AgentTurnRequest request,
+        AgentConversation conversation,
+        AgentSettingsDto settings,
+        List<AgentMessage> priorTurns,
+        LocalDate today,
+        int hour,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
         var snapshot = await _snapshots.LoadAsync(request.UserId, cancellationToken);
         var preloadText = await _preload.BuildAsync(settings.PreloadConfig, cancellationToken);
         var systemPrompt = _assembler.BuildSystemPrompt(preloadText);
@@ -167,8 +221,8 @@ public sealed class AgentService : IAgentService
             var pendingToolCalls = new List<AnthropicToolCall>();
 
             await foreach (var token in _client.StreamAsync(
-                new AnthropicRequest(settings.Model, systemPrompt, sdkMessages, tools, MaxOutputTokens: 1024,
-                    DisallowToolUse: withholdTools),
+                new AnthropicRequest(settings.Model, systemPrompt, sdkMessages, tools,
+                    MaxOutputTokens: MaxOutputTokensPerIteration, DisallowToolUse: withholdTools),
                 cancellationToken))
             {
                 if (token.TextDelta is { Length: > 0 } delta)
@@ -191,7 +245,16 @@ public sealed class AgentService : IAgentService
                 }
             }
 
-            if (withholdTools || pendingToolCalls.Count == 0 || !string.Equals(finalFinalizer?.StopReason, "tool_use", StringComparison.Ordinal))
+            // A max_tokens cutoff mid tool-call JSON still yields a (possibly truncated)
+            // AnthropicToolCall — AnthropicClient closes the current content block before the
+            // stream ends regardless of stop reason (nobodies-collective/Humans#963). Treat it
+            // like tool_use so the call is dispatched instead of silently discarded: the
+            // dispatcher already handles malformed JSON gracefully, and MaxToolCallsPerTurn
+            // still bounds the loop if the model keeps truncating.
+            var stopReason = finalFinalizer?.StopReason;
+            var continuesToolLoop = string.Equals(stopReason, "tool_use", StringComparison.Ordinal)
+                || string.Equals(stopReason, "max_tokens", StringComparison.Ordinal);
+            if (withholdTools || pendingToolCalls.Count == 0 || !continuesToolLoop)
                 break;
 
             sdkMessages.Add(new AnthropicMessage(
@@ -323,6 +386,13 @@ public sealed class AgentService : IAgentService
 
     /// <summary>How many prior user/assistant turns to replay (bounded for context budget).</summary>
     private const int HistoryReplayLimit = 20;
+
+    /// <summary>Per-iteration output cap sent to the provider. 1024 (the prior value) was tight
+    /// for a turn that also emits tool-call JSON, truncating mid-JSON often enough to matter
+    /// (nobodies-collective/Humans#963). Raised alongside the max_tokens loop-continuation fix
+    /// above — the two are complementary, not alternatives: the higher cap avoids most
+    /// truncation outright, and the loop fix handles what it doesn't.</summary>
+    private const int MaxOutputTokensPerIteration = 4096;
 
     /// <summary>Shown when a turn ends with no assistant prose (exhausted/truncated tool loop).
     /// Localized here because the Application layer has no resx access and the text is both
@@ -598,14 +668,24 @@ public sealed class AgentService : IAgentService
                 : await _repo.CreateConversationAsync(req.UserId, req.Locale, ct);
         }
 
+        await AppendFailureMessage(conv.Id, reason, _settings.Current.Model, ct);
+    }
+
+    /// <summary>Appends an empty-content assistant message carrying a machine-readable
+    /// <c>RefusalReason</c> — the same "no real answer, here's why" shape <see cref="PersistRefusal"/>
+    /// already writes for rate-limit/abuse turns (Agent.md invariant 6). Reused for the
+    /// turn-exception path (nobodies-collective/Humans#963) so a failed turn shows up through the
+    /// same admin refusals filter and "top refusal reasons" panel instead of a new surface.</summary>
+    private async Task AppendFailureMessage(Guid conversationId, string reason, string model, CancellationToken ct)
+    {
         await _repo.AppendMessageAsync(new AgentMessage
         {
             Id = Guid.NewGuid(),
-            ConversationId = conv.Id,
+            ConversationId = conversationId,
             Role = AgentRole.Assistant,
             Content = "",
             CreatedAt = _clock.GetCurrentInstant(),
-            Model = _settings.Current.Model,
+            Model = model,
             RefusalReason = reason
         }, ct);
     }

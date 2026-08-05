@@ -496,6 +496,96 @@ public class AgentServiceTests
     }
 
     [HumansFact]
+    public async Task Ask_continues_the_tool_loop_when_a_tool_call_is_truncated_by_max_tokens()
+    {
+        // nobodies-collective/Humans#963 — a max_tokens cutoff mid tool-call JSON used to
+        // discard the call outright: the loop only ever continued on StopReason=="tool_use".
+        // AnthropicClient still closes the current content block before the stream ends, so a
+        // (possibly malformed) AnthropicToolCall reaches AgentService even on a max_tokens stop.
+        var userId = Guid.NewGuid();
+        var dispatcher = Substitute.For<IAgentToolDispatcher>();
+        dispatcher.DispatchAsync(Arg.Any<AnthropicToolCall>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(call => Task.FromResult(new AnthropicToolResult(
+                call.Arg<AnthropicToolCall>().Id, "Malformed tool arguments (expected JSON object).", IsError: true)));
+        var (svc, client) = await BuildService(s => s.Enabled = true, toolDispatcher: dispatcher);
+
+        // Iteration 1: max_tokens hits mid tool-call JSON.
+        client.EnqueueTurn(
+            new AgentTurnToken("Let me check that. ", null, null),
+            new AgentTurnToken(null, new AnthropicToolCall("t1", "fetch_section_guide", """{"section":"tea"""), null),
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(100, 20, 0, 0, "claude-sonnet-4-6", "max_tokens")));
+
+        // Iteration 2: the follow-up call recovers and answers normally.
+        client.EnqueueTurn(
+            new AgentTurnToken("Teams are groups of volunteers.", null, null),
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(40, 10, 0, 0, "claude-sonnet-4-6", "end_turn")));
+
+        var tokens = new List<AgentTurnToken>();
+        await foreach (var t in svc.AskAsync(
+            new AgentTurnRequest(ConversationId: Guid.Empty, UserId: userId, Message: "What are teams?", Locale: "es"),
+            Xunit.TestContext.Current.CancellationToken))
+        {
+            tokens.Add(t);
+        }
+
+        await dispatcher.Received(1).DispatchAsync(
+            Arg.Any<AnthropicToolCall>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+
+        var streamedText = string.Concat(tokens.Where(t => t.TextDelta != null).Select(t => t.TextDelta));
+        streamedText.Should().Contain("Teams are groups of volunteers",
+            "a max_tokens cutoff mid tool-call must not dead-end the turn — the loop retries and the model finishes its answer");
+
+        tokens.Last().Finalizer!.StopReason.Should().Be("end_turn");
+    }
+
+    [HumansFact]
+    public async Task Ask_persists_an_assistant_message_when_an_exception_escapes_the_turn()
+    {
+        // nobodies-collective/Humans#963 — 4 of 11 conversations in #952's log evidence never
+        // reached AppendMessageAsync for the assistant turn because an exception escaped the
+        // stream between the user message being written and the assistant message being
+        // written. A failed turn must still leave a trace in the transcript.
+        var userId = Guid.NewGuid();
+        var dispatcher = Substitute.For<IAgentToolDispatcher>();
+        dispatcher.DispatchAsync(Arg.Any<AnthropicToolCall>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns<Task<AnthropicToolResult>>(_ => throw new InvalidOperationException("simulated dispatch failure"));
+        var logger = Substitute.For<ILogger<AgentService>>();
+        var (svc, client) = await BuildService(s => s.Enabled = true, toolDispatcher: dispatcher, logger: logger);
+
+        client.EnqueueTurn(
+            new AgentTurnToken(null, new AnthropicToolCall("t1", "fetch_section_guide", """{"section":"teams"}"""), null),
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(100, 20, 0, 0, "claude-sonnet-4-6", "tool_use")));
+
+        var tokens = new List<AgentTurnToken>();
+        await foreach (var t in svc.AskAsync(
+            new AgentTurnRequest(ConversationId: Guid.Empty, UserId: userId, Message: "What are teams?", Locale: "es"),
+            Xunit.TestContext.Current.CancellationToken))
+        {
+            tokens.Add(t);
+        }
+
+        var finalizer = tokens.Last().Finalizer;
+        finalizer.Should().NotBeNull();
+        finalizer!.StopReason.Should().Be("error");
+        finalizer.ConversationId.Should().NotBe(Guid.Empty,
+            "the client must be able to continue the same conversation after a failed turn");
+
+        var transcript = await svc.GetConversationForUserAsync(
+            userId, finalizer.ConversationId, Xunit.TestContext.Current.CancellationToken);
+        transcript.Should().NotBeNull();
+        var failureMessage = transcript!.Messages.Should().ContainSingle(m => m.Role == AgentRole.Assistant,
+            "a turn that throws mid-stream must still leave an assistant message in the transcript").Subject;
+        failureMessage.RefusalReason.Should().Be("error");
+
+        logger.Received(1).Log(
+            LogLevel.Error,
+            Arg.Any<EventId>(),
+            Arg.Any<object>(),
+            Arg.Is<Exception>(e => e is InvalidOperationException),
+            Arg.Any<Func<object, Exception?, string>>());
+    }
+
+    [HumansFact]
     public async Task Refused_conversations_are_surfaced_by_the_admin_refusals_filter()
     {
         var userId = Guid.NewGuid();
