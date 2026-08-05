@@ -132,6 +132,10 @@ internal sealed class PreMigrationSnapshot(string connectionString, ILogger logg
         }
     }
 
+    /// <summary>
+    /// Deletes all but the <see cref="RetainedSnapshots"/> newest snapshots of the given
+    /// database, so the volume cannot fill up over a long series of schema-changing deploys.
+    /// </summary>
     /// <remarks>
     /// Never throws: by the time this runs the snapshot exists, so a housekeeping failure must
     /// not be what blocks the deploy. Worst case the directory grows and someone tidies it.

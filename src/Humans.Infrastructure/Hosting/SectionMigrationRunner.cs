@@ -38,6 +38,10 @@ namespace Humans.Infrastructure.Hosting;
 /// </remarks>
 internal static class SectionMigrationRunner
 {
+    /// <summary>
+    /// Brings one section context up to date, choosing between the three baseline branches
+    /// described on the class, and applies whatever migrations remain after that decision.
+    /// </summary>
     /// <param name="beforeSchemaChange">
     /// Invoked immediately before anything writes to the schema — including the baseline
     /// bookkeeping, which creates the section's history table (nobodies-collective/Humans#845).
