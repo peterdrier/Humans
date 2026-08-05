@@ -17,8 +17,13 @@ themes:
     detect: "build:HUM0024"
     review: panel
     last_swept: 2026-06-12
-    remaining: 34
+    remaining: 56
     notes: >-
+      Count re-measured 2026-08-05 (nobodies-collective/Humans#978): 47 -> 56.
+      The +9 are not new joins, they are joins HUM0024 could not see until the
+      analyzer stopped silently skipping configurations that sit in the
+      `Configurations` root namespace. 55 carry markers; the 56th
+      (GoogleResourceConfiguration) is marked by #1178.
       SCHEMA-BLOCKED (verified empirically, sweep 2026-06-12): dropping any
       HasOne config fires `dotnet ef migrations has-pending-model-changes` —
       the config blocks own the DB-level FK + cascade behavior, so every fix
