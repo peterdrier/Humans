@@ -198,6 +198,15 @@ Four conditions on that PR, all load-bearing:
    explicitly included and validated inside it. Analyzer detection (condition 2) proves the
    FKs are *found*; it does not prove they are *safe to remove*.
 
+**Scope boundary against the table drops.** The carve-out is FK-only, so it must not claim
+FKs that a section's own G2 table-drop already destroys. `camp_leads.UserId` is the live
+example: `camp_leads` is a dead table dropped whole by #774, and the inventory records the FK
+as dying with it. Whichever migration lands second would otherwise operate on an
+already-removed constraint. **Rule: a relationship is out of the bulk cut's scope if its
+table is dropped by that table's own G2 demolition item.** The inventoried 55 is the gross
+count; net it against those before writing the migration, and re-check at authoring time
+rather than trusting the number here.
+
 Prerequisites: G0 must be closed first (#845), because the cut is still a schema migration
 against prod — and the G1 nav-strip work for every affected relationship must be done, per
 condition 4. That makes the cut a G1-complete-app-wide gate, not merely a G0 one.
@@ -246,6 +255,11 @@ The section's slice of #858, peel-off style.
       caveats: the G4 baselines will carry the pre-rename names (cosmetic), and table names
       referenced **outside** EF — raw SQL, backup/restore tooling, the #845 runbook — must
       be swept at rename time.
+- [ ] **Rename migration carries G2's safeguards.** Moving the rename out of G2 must not
+      move it out of G2's discipline: the rename is still a schema migration against prod,
+      so it invokes the EF migration reviewer and is prod-verified before the section is
+      considered through G5 — the same two predicates it would have satisfied at G2. G5's
+      turnstile covers file-move conflicts, not migration safety; both apply here.
 
 ### G6 — End gate (app-wide, once): *the clean state*
 
@@ -454,6 +468,18 @@ Institutionalizes the gate checklists so any agent applies the same definitions.
 - **advance** — opens a worktree, fixes the gap list for the next gate, PRs. Refuses to
   enter a 🚧 turnstile gate while another section's turnstile PR is open. Migration gates
   invoke the EF migration reviewer; G2 items respect demolition-inventory scope.
+- **This doc outranks the scorecards on gate assignment.** The
+  [`2026-08-03-g0-first-audit/`](2026-08-03-g0-first-audit/) scorecards are dated snapshots
+  (`@ 5a9bbe198`), written before the 2026-08-04 decisions. Their "G2 queue notes" therefore
+  still queue table renames at G2 and still schedule cross-section FK cuts section by
+  section — e.g. `Auth.md` ("G2's rename wave", plus its own two-relationship FK cut),
+  `Governance.md` (three renames + four FK cuts), and the same shape in `Budget`, `Teams`,
+  `Tickets`, `Shifts`, `GoogleIntegration` and ~13 others. **An agent must take the *gate*
+  from this document and the *work list* from the scorecard, never the gate from the
+  scorecard.** Concretely: renames are G5, and FK cuts belong to the single app-wide item —
+  no section owns an FK-cut migration of its own. Regenerating the scorecards against these
+  decisions is queued below; until that lands, this precedence rule is what keeps
+  `/section-gate advance` from spending monolithic-snapshot migrations at G2.
 - Gate definitions live in the skill and reference this doc; changing a gate is a PR to
   both.
 - Build order: audit mode first (it fills the tracker and is pure analysis); advance mode
@@ -469,7 +495,8 @@ Institutionalizes the gate checklists so any agent applies the same definitions.
 | HUM0024 detection gap (Governance ×4, GoogleIntegration ×4 unmarked, green build) | G1 | Blocks the FK cut — without it the boundary won't hold after the cut |
 | Table rename pass (section prefixes) | **G5** | Moved from G2 2026-08-04; check raw SQL/backup tooling refs, incl. the #845 runbook |
 | Naming decision for the rename pass | G5 | `profile_*` is moot now Profiles folded into Users; `event_settings` (Shifts) / `event_*` (Guide) / `event_participations` (Users) collide three ways |
-| `/section-gate` skill | G0 | Audit mode first |
+| Regenerate the G0 scorecards against the 2026-08-04 decisions | G0 | ~20 of 33 still queue renames at G2 and schedule per-section FK cuts; the precedence rule in the `/section-gate` sketch is the interim guard |
+| `/section-gate` skill | G0 | Audit mode first; must implement the scorecard-precedence rule |
 
 ## Every Q3 issue accounted for (46/46)
 
