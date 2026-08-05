@@ -13,7 +13,12 @@
 # Requirements:
 #   - bash 4+ (associative arrays)
 #   - GNU sed (for the comma-grouping regex; ships with Git Bash on Windows)
-#   - working tree may be dirty (script stashes everything and restores after)
+#   - working tree may be dirty — historical per-day snapshots are computed in
+#     a throwaway `git worktree add --detach` checkout, so the caller's tree
+#     is never stashed, checked out, or otherwise touched (see
+#     nobodies-collective/Humans#971: stashing used to silently revert
+#     concurrent edits from other processes sharing this worktree, e.g.
+#     /freshness-sweep's drift-fix subagents).
 #   - docs/reforge-history.csv populated by docs/scripts/generate-reforge-history.sh
 #     (used as a join source for semantic class/interface counts; missing dates
 #     fall back to the legacy regex)
@@ -58,13 +63,17 @@
 #   - The Codebase Growth table MUST be the last section in the file. Sections
 #     above (Quick Summary, Language Breakdown, Highlights, Column Key) are
 #     manually maintained and not touched by this script.
-#   - The script never writes to docs/development-stats.md during the
-#     iteration loop (writing to a tracked file makes the next `git checkout
-#     <commit>` abort with "Your local changes would be overwritten"). The
-#     table rows are accumulated in a temp file outside the worktree, then
-#     concatenated onto the doc after we restore the original ref.
-#   - The reforge CSV is loaded ONCE upfront, before any checkouts, so we don't
-#     have to keep it consistent across historical commits.
+#   - Historical per-day snapshots are computed in a throwaway
+#     `git worktree add --detach` checkout (SNAPSHOT_WORKTREE below), not in
+#     the caller's working tree. Every `git checkout <commit>` in the loop is
+#     scoped to that throwaway worktree via `git -C`, so the caller's tracked
+#     files are never touched and the caller's HEAD never moves — this is
+#     what makes the script safe to run concurrently with other processes
+#     (subagents, editors) working in this same worktree.
+#   - The table rows are accumulated in a temp file outside the worktree, then
+#     concatenated onto the doc once at the end, after the loop completes.
+#   - The reforge CSV is loaded ONCE upfront, before any checkouts, from the
+#     caller's tree (it's never touched, so this is safe at any point).
 #
 # Pitfalls — do not regress:
 #   - Never name a shell variable TMP/TEMP/TMPDIR. On Windows, those names
@@ -78,6 +87,9 @@
 #   - The awk regex matching the markdown table separator must accept colons
 #     used for column alignment (e.g. `|----:|`). Use `^\|.*---`, not
 #     `^[|+ -]+$`.
+#   - Do not stash or checkout the caller's tree. Other processes may be
+#     editing files in this worktree concurrently (nobodies-collective/Humans#971);
+#     all historical checkouts MUST stay confined to SNAPSHOT_WORKTREE.
 
 set -euo pipefail
 
@@ -108,7 +120,6 @@ if [ "${1:-}" = "--full" ]; then
 fi
 
 ORIG_REF=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main")
-NEEDS_STASH=false
 
 # Capture the doc's manually-maintained content (everything down to and
 # including the table separator row) BEFORE we touch the working tree. The
@@ -119,6 +130,7 @@ mkdir -p "$WORK_DIR"
 PREAMBLE="$WORK_DIR/preamble.md"
 EXISTING_ROWS="$WORK_DIR/existing-rows.md"
 NEW_ROWS="$WORK_DIR/new-rows.md"
+SNAPSHOT_WORKTREE="$WORK_DIR/checkout"
 > "$EXISTING_ROWS"
 > "$NEW_ROWS"
 
@@ -156,9 +168,9 @@ else
 fi
 
 cleanup() {
-  git checkout --quiet "$ORIG_REF" 2>/dev/null || true
-  if [ "$NEEDS_STASH" = "true" ]; then
-    git stash pop --quiet 2>/dev/null || true
+  if [ -d "$SNAPSHOT_WORKTREE" ]; then
+    git worktree remove --force "$SNAPSHOT_WORKTREE" 2>/dev/null \
+      || { rm -rf -- "$SNAPSHOT_WORKTREE" 2>/dev/null || true; git worktree prune --quiet 2>/dev/null || true; }
   fi
   if [ -d "$WORK_DIR" ]; then
     rm -- "$WORK_DIR"/*.md 2>/dev/null || true
@@ -183,12 +195,6 @@ if [ -f "$REFORGE_CSV" ]; then
   echo "Loaded reforge classes/interfaces for ${#reforge_classes[@]} days from $REFORGE_CSV."
 else
   echo "Warning: $REFORGE_CSV not found — classes/interfaces will use the legacy regex (less accurate)." >&2
-fi
-
-# Stash anything dirty so checkouts run cleanly.
-if ! git diff --quiet 2>/dev/null || ! git diff --cached --quiet 2>/dev/null; then
-  git stash --quiet --include-untracked
-  NEEDS_STASH=true
 fi
 
 # Format helpers.
@@ -232,6 +238,10 @@ done < <(
   '
 )
 
+# Create the throwaway worktree that historical checkouts happen in. This
+# never touches the caller's tree (see the header comment).
+git worktree add --quiet --detach "$SNAPSHOT_WORKTREE" "$ORIG_REF"
+
 N=0
 TOTAL=$(echo "$DAY_COMMITS" | wc -l)
 REFORGE_HITS=0
@@ -240,17 +250,17 @@ REFORGE_MISSES=0
 while IFS=' ' read -r day commit; do
   [ -z "$day" ] && continue
   N=$((N+1))
-  git checkout --quiet "$commit"
+  git -C "$SNAPSHOT_WORKTREE" checkout --quiet "$commit"
 
   # Pipe through `cat` to wc, NOT `xargs -0 wc -l -c | tail -1`. When the file
   # list exceeds the OS command-line limit (~8 KB on Windows), xargs splits
   # into multiple wc invocations and each emits its own "total" line; `tail
   # -1` then only sees the last batch's count. `cat` merges content into a
   # single stream so wc sees the true total.
-  cs_data=$(find src -type f -name '*.cs' ! -path '*/Migrations/*' ! -path '*Tests*' -print0 2>/dev/null | xargs -0 cat 2>/dev/null | wc -l -c)
-  cshtml_data=$(find src -type f -name '*.cshtml' ! -path '*/Migrations/*' ! -path '*Tests*' -print0 2>/dev/null | xargs -0 cat 2>/dev/null | wc -l -c)
-  resx_data=$(find src -type f -name '*.resx' ! -path '*/Migrations/*' ! -path '*Tests*' -print0 2>/dev/null | xargs -0 cat 2>/dev/null | wc -l -c)
-  js_data=$(find src -type f -name '*.js' ! -path '*/Migrations/*' ! -path '*Tests*' -print0 2>/dev/null | xargs -0 cat 2>/dev/null | wc -l -c)
+  cs_data=$(find "$SNAPSHOT_WORKTREE/src" -type f -name '*.cs' ! -path '*/Migrations/*' ! -path '*Tests*' -print0 2>/dev/null | xargs -0 cat 2>/dev/null | wc -l -c)
+  cshtml_data=$(find "$SNAPSHOT_WORKTREE/src" -type f -name '*.cshtml' ! -path '*/Migrations/*' ! -path '*Tests*' -print0 2>/dev/null | xargs -0 cat 2>/dev/null | wc -l -c)
+  resx_data=$(find "$SNAPSHOT_WORKTREE/src" -type f -name '*.resx' ! -path '*/Migrations/*' ! -path '*Tests*' -print0 2>/dev/null | xargs -0 cat 2>/dev/null | wc -l -c)
+  js_data=$(find "$SNAPSHOT_WORKTREE/src" -type f -name '*.js' ! -path '*/Migrations/*' ! -path '*Tests*' -print0 2>/dev/null | xargs -0 cat 2>/dev/null | wc -l -c)
 
   cs_lines=$(echo "$cs_data" | awk '{print $1+0}')
   cshtml_lines=$(echo "$cshtml_data" | awk '{print $1+0}')
@@ -260,7 +270,7 @@ while IFS=' ' read -r day commit; do
   app_lines=$((cs_lines + cshtml_lines + resx_lines + js_lines))
   app_bytes=$(( $(echo "$cs_data" | awk '{print $2+0}') + $(echo "$cshtml_data" | awk '{print $2+0}') + $(echo "$resx_data" | awk '{print $2+0}') + $(echo "$js_data" | awk '{print $2+0}') ))
 
-  test_data=$(find . -type f -name '*.cs' -path '*Tests*' ! -path '*/Migrations/*' ! -path '*/.worktrees/*' ! -path '*/.claude/worktrees/*' -print0 2>/dev/null | xargs -0 cat 2>/dev/null | wc -l -c)
+  test_data=$(find "$SNAPSHOT_WORKTREE" -type f -name '*.cs' -path '*Tests*' ! -path '*/Migrations/*' ! -path '*/.worktrees/*' ! -path '*/.claude/worktrees/*' -print0 2>/dev/null | xargs -0 cat 2>/dev/null | wc -l -c)
   test_lines=$(echo "$test_data" | awk '{print $1+0}')
   test_bytes=$(echo "$test_data" | awk '{print $2+0}')
 
@@ -268,8 +278,8 @@ while IFS=' ' read -r day commit; do
   app_kb=$(to_kb "$app_bytes")
   test_kb=$(to_kb "$test_bytes")
 
-  app_files=$(( $(find src -type f \( -name '*.cs' -o -name '*.cshtml' -o -name '*.resx' -o -name '*.js' \) ! -path '*/Migrations/*' ! -path '*Tests*' 2>/dev/null | wc -l) ))
-  test_files=$(find . -type f -name '*.cs' -path '*Tests*' ! -path '*/Migrations/*' ! -path '*/.worktrees/*' ! -path '*/.claude/worktrees/*' 2>/dev/null | wc -l)
+  app_files=$(( $(find "$SNAPSHOT_WORKTREE/src" -type f \( -name '*.cs' -o -name '*.cshtml' -o -name '*.resx' -o -name '*.js' \) ! -path '*/Migrations/*' ! -path '*Tests*' 2>/dev/null | wc -l) ))
+  test_files=$(find "$SNAPSHOT_WORKTREE" -type f -name '*.cs' -path '*Tests*' ! -path '*/Migrations/*' ! -path '*/.worktrees/*' ! -path '*/.claude/worktrees/*' 2>/dev/null | wc -l)
   files=$((app_files + test_files))
 
   # Prefer reforge-derived (semantic) counts; fall back to regex if reforge
@@ -280,21 +290,21 @@ while IFS=' ' read -r day commit; do
     interfaces=${reforge_interfaces[$day]}
     REFORGE_HITS=$((REFORGE_HITS+1))
   else
-    classes=$(grep -rE '^\s*(public|internal)\s+(sealed |abstract |static |partial )*(class|record) ' --include='*.cs' src/ 2>/dev/null | grep -v '/Migrations/' | grep -v 'Tests' | wc -l || echo 0)
-    interfaces=$(grep -rE '^\s*public\s+interface\s' --include='*.cs' src/ 2>/dev/null | grep -v '/Migrations/' | grep -v 'Tests' | wc -l || echo 0)
+    classes=$(grep -rE '^\s*(public|internal)\s+(sealed |abstract |static |partial )*(class|record) ' --include='*.cs' "$SNAPSHOT_WORKTREE/src/" 2>/dev/null | grep -v '/Migrations/' | grep -v 'Tests' | wc -l || echo 0)
+    interfaces=$(grep -rE '^\s*public\s+interface\s' --include='*.cs' "$SNAPSHOT_WORKTREE/src/" 2>/dev/null | grep -v '/Migrations/' | grep -v 'Tests' | wc -l || echo 0)
     REFORGE_MISSES=$((REFORGE_MISSES+1))
   fi
 
-  controllers=$(find src -name '*Controller.cs' ! -path '*/Migrations/*' 2>/dev/null | wc -l)
-  views=$(find src -name '*.cshtml' 2>/dev/null | wc -l)
-  entities=$(find src -path '*/Entities/*.cs' 2>/dev/null | wc -l)
-  resx_keys=$(grep -c '<data ' src/Humans.Web/Resources/SharedResource.resx 2>/dev/null || echo 0)
+  controllers=$(find "$SNAPSHOT_WORKTREE/src" -name '*Controller.cs' ! -path '*/Migrations/*' 2>/dev/null | wc -l)
+  views=$(find "$SNAPSHOT_WORKTREE/src" -name '*.cshtml' 2>/dev/null | wc -l)
+  entities=$(find "$SNAPSHOT_WORKTREE/src" -path '*/Entities/*.cs' 2>/dev/null | wc -l)
+  resx_keys=$(grep -c '<data ' "$SNAPSHOT_WORKTREE/src/Humans.Web/Resources/SharedResource.resx" 2>/dev/null || echo 0)
 
   # Semantic C# code/comment split via cloc. Same scope as cs_lines above
   # (src/ minus Migrations; tests live in tests/ at the root, not in src/).
   # cloc CSV: files,language,blank,comment,code  — we read the C# row.
-  if [ -d src ]; then
-    cloc_csv=$("$CLOC" --quiet --csv --include-lang=C# --exclude-dir=Migrations src 2>/dev/null || true)
+  if [ -d "$SNAPSHOT_WORKTREE/src" ]; then
+    cloc_csv=$("$CLOC" --quiet --csv --include-lang=C# --exclude-dir=Migrations "$SNAPSHOT_WORKTREE/src" 2>/dev/null || true)
     cs_code=$(echo "$cloc_csv" | awk -F, '$2=="C#" { print $5+0; exit }')
     cs_comment=$(echo "$cloc_csv" | awk -F, '$2=="C#" { print $4+0; exit }')
     cs_code=${cs_code:-0}
@@ -308,7 +318,7 @@ while IFS=' ' read -r day commit; do
   # Excludes vendored/tooling dirs and any sibling worktree the developer may
   # have created. Defensive — `.worktrees/` is gitignored so it shouldn't show
   # up in a clean checkout, but we exclude it anyway.
-  md_data=$(find . -type f -name '*.md' \
+  md_data=$(find "$SNAPSHOT_WORKTREE" -type f -name '*.md' \
     -not -path '*/.git/*' -not -path '*/node_modules/*' \
     -not -path '*/.worktrees/*' -not -path '*/.claude/worktrees/*' \
     -not -path '*/bin/*' -not -path '*/obj/*' \
@@ -318,7 +328,7 @@ while IFS=' ' read -r day commit; do
   # Migration lines — currently excluded from every other metric. Tracked
   # separately so the cost of accumulated EF migrations is visible (and we
   # know when they need consolidating).
-  migration_data=$(find src -type f -name '*.cs' -path '*/Migrations/*' -print0 2>/dev/null | xargs -0 cat 2>/dev/null | wc -l)
+  migration_data=$(find "$SNAPSHOT_WORKTREE/src" -type f -name '*.cs' -path '*/Migrations/*' -print0 2>/dev/null | xargs -0 cat 2>/dev/null | wc -l)
   migration_lines=$(echo "$migration_data" | awk '{print $1+0}')
 
   commits="${cum_commits[$day]:-0}"
@@ -339,11 +349,8 @@ while IFS=' ' read -r day commit; do
   echo "[$N/$TOTAL] $day $commit"
 done <<< "$DAY_COMMITS"
 
-# Restore branch BEFORE writing back to the doc, so the file we modify is the
-# one on the original ref (not a historical commit's version of it).
-git checkout --quiet "$ORIG_REF"
-
-# Stitch: preamble + existing rows + new rows.
+# Stitch: preamble + existing rows + new rows. The caller's tree was never
+# touched, so $DOC is written in place with no ref restore needed first.
 {
   cat "$PREAMBLE"
   cat "$EXISTING_ROWS"
