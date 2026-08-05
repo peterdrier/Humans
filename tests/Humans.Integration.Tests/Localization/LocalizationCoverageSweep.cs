@@ -25,7 +25,7 @@ public sealed class LocalizationCoverageSweep(
     ITestOutputHelper output)
 {
     /// <summary>
-    /// Gates the sweep out of normal CI runs (it boots a Postgres container and crawls every
+    /// Gates the sweep out of normal CI runs (it boots a second app host and crawls every
     /// page, ~20s). Set <c>RUN_LOCALIZATION_SWEEP=1</c> to run it — e.g. from the bi-weekly
     /// maintenance job. How (and whether) it should gate on findings is decided separately.
     /// </summary>

@@ -53,7 +53,16 @@ Remove `--filter "FullyQualifiedName!~Integration"` from `.github/workflows/buil
 
 `HumansWebApplicationFactory` is registered once for the assembly with xUnit v3's `[assembly: AssemblyFixture(...)]` (the attribute form — v3 has no `IAssemblyFixture<T>` interface, and an assembly fixture cannot take another assembly fixture as a constructor argument). One container, one app boot, one migration pass per test run. Test parallelization is disabled for the assembly, since the classes now share one host. The migration-mechanics tests (`PhysicalDefaultParityTests`, `SectionMigrationRunnerTests`) and the localization sweep's second app boot take their own databases inside that one container rather than starting their own.
 
-Measured on `origin/main` at 94535e688: **27 → 1** concurrent Postgres containers, **22 → 0** failures (all 22 were 30s/60s timeouts, i.e. contention), **62s → 31s** of test time.
+Measured back to back against `origin/main` at 94535e688, same machine, same command:
+
+| | before | after |
+|---|---|---|
+| distinct Postgres containers created per run | 30 | **1** |
+| test duration | 4m 27s | **25s** |
+| result on an otherwise-idle machine | 122 passed, 1 skipped | 122 passed, 1 skipped |
+| result while four other agents were building | **22 failed** (every one a 30s/60s timeout) | 0 failed |
+
+That last row is the point of the phase: the "pre-existing failures" were never assertion failures, they were containers starving each other.
 
 **Per-test database isolation did not ship** — tracked as nobodies-collective/Humans#983. Both options in the original plan were tried and neither works as written:
 

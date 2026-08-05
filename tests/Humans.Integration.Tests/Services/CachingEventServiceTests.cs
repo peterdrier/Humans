@@ -1,4 +1,4 @@
-﻿using AwesomeAssertions;
+using AwesomeAssertions;
 using Humans.Application.Interfaces.Events;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;

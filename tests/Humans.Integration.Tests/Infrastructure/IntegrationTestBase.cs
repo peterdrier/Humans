@@ -15,8 +15,6 @@ public abstract class IntegrationTestBase
 
     protected IntegrationTestBase(HumansWebApplicationFactory factory)
     {
-        ArgumentNullException.ThrowIfNull(factory);
-
         // The factory (and its single-instance NSubstitute stubs) is shared by
         // every test in the assembly. This constructor runs once per test, so
         // reset the shared substitutes here to guarantee no mutation leaks

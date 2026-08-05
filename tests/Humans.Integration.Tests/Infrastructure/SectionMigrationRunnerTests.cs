@@ -4,7 +4,6 @@ using Humans.Infrastructure.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Npgsql;
-using Testcontainers.PostgreSql;
 using Xunit;
 
 namespace Humans.Integration.Tests.Infrastructure;
