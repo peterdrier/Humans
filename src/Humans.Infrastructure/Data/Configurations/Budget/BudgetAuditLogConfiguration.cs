@@ -24,9 +24,7 @@ public class BudgetAuditLogConfiguration : IEntityTypeConfiguration<BudgetAuditL
         builder.Property(a => a.Description).HasMaxLength(1000).IsRequired();
         builder.Property(a => a.OccurredAt).IsRequired();
 
-#pragma warning disable CS0618 // Obsolete cross-domain nav kept so EF FK constraint stays modelled.
-        builder.HasOne(a => a.ActorUser).WithMany().HasForeignKey(a => a.ActorUserId).OnDelete(DeleteBehavior.Restrict);
-#pragma warning restore CS0618
+        builder.HasOne<User>().WithMany().HasForeignKey(a => a.ActorUserId).OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(a => a.BudgetYearId);
         builder.HasIndex(a => a.OccurredAt);

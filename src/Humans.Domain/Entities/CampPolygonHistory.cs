@@ -7,7 +7,6 @@ public class CampPolygonHistory
     public Guid Id { get; init; } = Guid.NewGuid();
 
     public Guid CampSeasonId { get; init; }
-    public CampSeason CampSeason { get; set; } = null!;
 
     public string GeoJson { get; init; } = string.Empty;
     public double AreaSqm { get; init; }

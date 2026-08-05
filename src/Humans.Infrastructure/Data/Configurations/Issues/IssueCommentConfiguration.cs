@@ -20,13 +20,10 @@ public class IssueCommentConfiguration : IEntityTypeConfiguration<IssueComment>
         b.Property(x => x.Content).HasMaxLength(5000).IsRequired();
         b.Property(x => x.CreatedAt).IsRequired();
 
-        // EF needs the nav ref to configure the cross-section FK relationship.
-        // The nav itself is [Obsolete] for Application callers; this block
-        // owns the DB-level FK + cascade behavior.
-#pragma warning disable CS0618
-        b.HasOne(x => x.SenderUser).WithMany().HasForeignKey(x => x.SenderUserId)
+        // Cross-section FK column only — no nav property (design-rules §6c,
+        // memory/architecture/no-cross-section-ef-joins.md).
+        b.HasOne<User>().WithMany().HasForeignKey(x => x.SenderUserId)
             .OnDelete(DeleteBehavior.SetNull);
-#pragma warning restore CS0618
 
         b.HasIndex(x => x.IssueId);
         b.HasIndex(x => x.CreatedAt);

@@ -40,6 +40,6 @@ Residual (not counted as a gap): that suite pins the read-only invariant *struct
 injected interface is read-only — rather than with an explicit "receives no write calls"
 assertion. Adding one would be nice-to-have hardening, not a G3 predicate failure.
 
-## G2 queue notes
+## Schema demolition queue
 
 Owns no tables, no schema debt. Nothing queued.

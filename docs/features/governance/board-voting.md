@@ -33,7 +33,7 @@ Board voting only applies to tier applications (Colaborador and Asociado). Volun
 **So that** I can review and vote on them
 
 **Acceptance Criteria:**
-- Dashboard shows applications where consent check is Cleared and Status is Submitted
+- Dashboard shows all applications where Status is Submitted (not gated on consent-check status)
 - Spreadsheet-style layout: rows = applications, columns = Board members
 - Each cell shows the Board member's current vote (or empty if not yet voted)
 - Filter by tier: Colaborador / Asociado / All
@@ -197,7 +197,7 @@ Application (new fields)
 
 ```
 Application enters Board queue
-(ConsentCheckStatus = Cleared on the Profile, Application exists, Status = Submitted)
+(Application exists, Status = Submitted — not gated on consent-check status)
     │
     ▼
 Board members cast individual votes (working data)

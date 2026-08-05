@@ -1,6 +1,6 @@
 # Controller Architecture Audit
 
-Living document. Last updated: 2026-08-03 (freshness-sweep regeneration).
+Living document. Last updated: 2026-08-05 (freshness-sweep regeneration).
 
 ## Part 1: Action Name Audit
 
@@ -10,7 +10,9 @@ Living document. Last updated: 2026-08-03 (freshness-sweep regeneration).
 
 `docs/architecture/conventions.md` §"Action Naming" codifies the heuristics: `Index` is for listings, no redundant controller-name prefixes, no bare plural-noun collisions, no generic verbs (`View`/`Show`/`Process`/`Handle`), and conventional form-handler verbs (`Create`/`Edit`/`Delete`/`Confirm`/`Cancel`).
 
-This regeneration (2026-08-03) is a full re-audit against the current controller set: the 89-controller/4-base-class inventory is unchanged, and every action/verb/route was re-verified. One omission from the prior sweep was caught: `TeamAdminController.Roster` (`GET /Teams/{slug}/Roster`, Board/Admin-only) had never been recorded.
+This regeneration (2026-08-05) re-verified the ten controllers touched by commit d34a8b9cc ("burn down all 15 HUM0031-grandfathered controller methods": `AccountController`, `ProfileController`, `EventsController`, `EmailController`, `ShiftsController`, `TeamController`, `TeamAdminController`, `StoreController`, `GovernanceApplicationsController`, `UsersAdminDebugController`) plus `StoreController`/`TeamController` again via c85abc977. That work moved method bodies into services/private helpers to clear complexity budgets — it changed **no** action names, routes, or verbs. Every action in those ten controllers was re-checked against current source and every row below is unchanged. The 89-controller/4-base-class inventory is unchanged.
+
+The 2026-08-03 regeneration was a full re-audit against the current controller set: every action/verb/route was re-verified. One omission from that sweep was caught: `TeamAdminController.Roster` (`GET /Teams/{slug}/Roster`, Board/Admin-only) had never been recorded.
 
 The 2026-07-14 regeneration recorded the Gate section arriving plus a batch of smaller surface changes. Two new controllers: **`GateController`** (`/Gate`) — the admissions terminal that decides entry and writes durable `gate_scan_events` (distinct from the read-only Scanner section; scan attribution via claim/PIN session, supervisor-PIN overrides) — and **`GateVendorBackfillAdminController`** (`/Gate/Admin/VendorCheckInBackfill`) — a temp admin page recovering gate admits never mirrored to TicketTailor. Additions elsewhere: `DebugController` gained `HttpErrors`, `Timings`, and `Translations`; `EventsModerationController` gained the admin in-place `Edit`/`Update` pair (`/Events/Moderate/{eventId:guid}/Edit`, any state, status preserved); `FinanceController` gained the Holded creditor surface (`Creditors`, `CreditorStatement`, `BindCreditor`); `GoogleController` gained `RequeueOutboxEvent`, `RequeueAllFailedOutboxEvents`, and `RerunGoogleSync`; `ShiftDashboardController` gained `PostEventStats`; `TeamAdminController` gained `EarlyEntry/LookupTicket`. Removals/renames: `EventsController` lost its server-rendered favourite toggles (`ToggleFavourite`, `Unfavourite`, `ToggleCardFavourite`) — favourites now go through `EventsApiController`'s JSON endpoints, which accept an optional per-day parameter; `ExpensesController` lost `SepaReopen`/`SepaGenerate` (SEPA batch generation removed from the Expenses surface); `SurveyAdminController`'s invitation POST method is now `SendInvites` (kept on the `Send` route/action-name via `[ActionName]`).
 

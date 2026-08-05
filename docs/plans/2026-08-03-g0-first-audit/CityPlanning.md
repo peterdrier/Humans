@@ -27,7 +27,7 @@ Kind: vertical · Audited 2026-08-03 @ 5a9bbe198
 ## G1 gap list
 
 1. **Freshness-trigger/doc path typo** — `docs/sections/CityPlanning.md` freshness-triggers block and Architecture section reference non-existent `CitiPlanning` paths/namespace instead of the real `CityPlanning` spelling. Fix: correct the 4 path references + 1 namespace reference in the doc. No migration needed (y).
-2. **Added 2026-08-03: 2 HUM0024 cross-section EF join grandfathers** (`CampPolygonConfiguration.cs`, `CampPolygonHistoryConfiguration.cs`) covering the CampSeason → Camps and `LastModifiedByUserId`/`ModifiedByUserId` → Users relationships (see predicates 4 and 5). Tracked only to a generic doc anchor, no specific issue. Fix: verify liveness and either retire the attributes or file a tracking issue; the physical FK cuts belong to G2. No migration needed: **y** (pending verification).
+2. **Added 2026-08-03: 2 HUM0024 cross-section EF join grandfathers** (`CampPolygonConfiguration.cs`, `CampPolygonHistoryConfiguration.cs`) covering the CampSeason → Camps and `LastModifiedByUserId`/`ModifiedByUserId` → Users relationships (see predicates 4 and 5). Tracked only to a generic doc anchor, no specific issue. Fix: verify liveness and either retire the attributes or file a tracking issue; the physical FK cuts are schema-queue work. No migration needed: **y** (pending verification).
 
 ## G3 gap list
 
@@ -37,10 +37,10 @@ Kind: vertical · Audited 2026-08-03 @ 5a9bbe198
 
 **Added 2026-08-03 — harness-inherited EF-InMemory (G3.2).** `CityPlanningServiceTests` extend `ServiceTestHarness`, which stands up a real `HumansDbContext` over `.UseInMemoryDatabase(...)`; the original pass missed this because it grepped for a literal `HumansDbContext` the files never name. Fix: convert to `Substitute.For<ICityPlanningRepository>()` per #766, or move these off the harness. No-migration-needed: **y**.
 
-## G2 queue notes (light)
+## Schema demolition queue (light)
 
 - No obvious dead columns/tables spotted for this section during this pass — `CityPlanningSettings`, `CampPolygon`, `CampPolygonHistory` all look actively used per the doc's data model.
 - Still on monolithic `HumansDbContext` (via `IDbContextFactory<HumansDbContext>`) — G4 (own DbContext) not started for this section, unlike Containers/Expenses/Finance/EventGuide/Surveys/SystemSettings/Agent which already have dedicated `<Section>DbContext` classes (found via `Data/*DbContext*.cs` listing). Out of G1/G3 scope but relevant sequencing info for the tracker.
 
 
-**Added 2026-08-03 — cross-section FK cuts belong in this queue.** Retiring `[Obsolete]` navs or `[Grandfathered(HUM0024)]` markers is a code-shape change; it does **not** drop the physical constraint. Per the demolition inventory, this section owns **4** cross-section FKs across 2 tables: `camp_polygons` and `camp_polygon_histories` → `camp_seasons` (Camps) and `AspNetUsers` (Users), via `CampPolygonConfiguration.cs:24,29` and `CampPolygonHistoryConfiguration.cs:24,29`. All are G2 cuts — without them listed here, a schema batch driven by this scorecard can complete while every cross-section database dependency survives.
+**Added 2026-08-03 — cross-section FK cuts belong in this queue.** Retiring `[Obsolete]` navs or `[Grandfathered(HUM0024)]` markers is a code-shape change; it does **not** drop the physical constraint. Per the demolition inventory, this section owns **4** cross-section FKs across 2 tables: `camp_polygons` and `camp_polygon_histories` → `camp_seasons` (Camps) and `AspNetUsers` (Users), via `CampPolygonConfiguration.cs:24,29` and `CampPolygonHistoryConfiguration.cs:24,29`. All are cross-section FK cuts — without them listed here, a schema batch driven by this scorecard can complete while every cross-section database dependency survives.

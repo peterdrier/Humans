@@ -1,3 +1,4 @@
+using Humans.Application.Architecture;
 using Humans.Application.DTOs;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -19,6 +20,7 @@ public interface IGoogleSyncService : IGoogleSyncServiceRead, IApplicationServic
     /// <param name="folderName">The folder name.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The created Google resource.</returns>
+    [ExternalWrite]
     Task<GoogleResource> ProvisionTeamFolderAsync(
         Guid teamId,
         string folderName,
@@ -29,6 +31,7 @@ public interface IGoogleSyncService : IGoogleSyncServiceRead, IApplicationServic
     /// type, then optionally executes adds/removes based on the action. Google Group
     /// membership is handled by <see cref="IGoogleGroupSync"/>.
     /// </summary>
+    [ExternalWrite]
     Task<SyncPreviewResult> SyncResourcesByTypeAsync(
         GoogleResourceType resourceType,
         SyncAction action,
@@ -38,6 +41,7 @@ public interface IGoogleSyncService : IGoogleSyncServiceRead, IApplicationServic
     /// Syncs a single Google resource by ID. Drive resources are reconciled here;
     /// Google Group resources are routed through <see cref="IGoogleGroupSync"/>.
     /// </summary>
+    [ExternalWrite]
     Task<ResourceSyncDiff> SyncSingleResourceAsync(
         Guid resourceId,
         SyncAction action,
@@ -49,6 +53,7 @@ public interface IGoogleSyncService : IGoogleSyncServiceRead, IApplicationServic
     /// <param name="teamId">The team ID.</param>
     /// <param name="userId">The user ID.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
+    [ExternalWrite]
     Task AddUserToTeamResourcesAsync(Guid teamId, Guid userId, CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -63,6 +68,7 @@ public interface IGoogleSyncService : IGoogleSyncServiceRead, IApplicationServic
     /// Ensures a team has a linked Google Group. If GoogleGroupPrefix is set but no Group
     /// resource exists, creates or links the group. Called when prefix is set on a team.
     /// </summary>
+    [ExternalWrite]
     Task<GroupLinkResult> EnsureTeamGroupAsync(Guid teamId, bool confirmReactivation = false, CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -77,6 +83,7 @@ public interface IGoogleSyncService : IGoogleSyncServiceRead, IApplicationServic
     /// Applies expected settings to a Google Group, fixing any drift.
     /// Respects SyncSettings mode — returns without action if sync is disabled.
     /// </summary>
+    [ExternalWrite]
     Task<GroupSettingsRemediationResult> RemediateGroupSettingsAsync(string groupEmail, CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -100,12 +107,14 @@ public interface IGoogleSyncService : IGoogleSyncServiceRead, IApplicationServic
     /// <param name="googleFileId">The Google Drive file/folder ID.</param>
     /// <param name="restrict">True to disable inheritance, false to enable.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
+    [ExternalWrite]
     Task SetInheritedPermissionsDisabledAsync(string googleFileId, bool restrict, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Checks and corrects inherited access drift for all Drive folders that have
     /// RestrictInheritedAccess enabled. Returns the number of folders corrected.
     /// </summary>
+    [ExternalWrite]
     Task<int> EnforceInheritedAccessRestrictionsAsync(CancellationToken cancellationToken = default);
 
     // ==========================================================================

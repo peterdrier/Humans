@@ -33,7 +33,7 @@ None — Containers is the cleanest of this batch on G1; ahead of most sections 
 1. **No true repository-layer test, and the closest substitute uses EF-InMemory** — `ContainerImageServiceTests.cs`/`ContainerPlacementServiceTests.cs` should be split: (a) a proper `ContainerRepositoryTests.cs` under the real-Postgres integration pattern, and (b) service tests rewritten to mock `IContainerRepository` (e.g. via `NSubstitute`, already a project dependency per the `using NSubstitute;` import seen in `ContainerImageServiceTests.cs`) instead of standing up a real DbContext. No migration needed (y) — test-only change.
 2. **Invariant→test mapping not exhaustively verified** — needs a full pass against `docs/sections/Containers.md` Invariants/Negative-Access-Rules/Triggers sections. No migration needed (y).
 
-## G2 queue notes (light)
+## Schema demolition queue (light)
 
 - Doc explicitly documents an accepted limitation (orphaned placement-image files on delete) rather than a bug — not a demolition candidate, just a known tradeoff at current scale.
 - Already has its own `ContainersDbContext` — a head start on G4 once G1/G3 close.

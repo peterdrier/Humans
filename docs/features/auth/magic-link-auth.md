@@ -126,7 +126,7 @@ Google OAuth callback
   ├── User found by provider key → sign in (existing flow)
   │
   └── No user by provider key
-        ├── User found by verified UserEmail match (IUserEmailService.FindVerifiedEmailWithUserAsync)
+        ├── User found by verified UserEmail match (IMagicLinkService.FindUserByVerifiedEmailAsync)
         │     └── Link Google login (AddLoginAsync) → sign in
         │
         └── No user by email → create new user (existing flow)
@@ -231,12 +231,12 @@ The same lookup pattern applies to the Google OAuth account linking in `External
 
 ### Account Linking (Google OAuth)
 
-Modify `ExternalLoginCallback` in `AccountController`:
+The decision ladder now lives in `ExternalLoginService.CompleteExternalLoginAsync`; `AccountController.ExternalLoginCallback` only dispatches to it:
 
 ```
 Current: no user by provider key → create new user
 New:     no user by provider key
-           → check UserEmails for verified match (IUserEmailService.FindVerifiedEmailWithUserAsync)
+           → check UserEmails for verified match (IMagicLinkService.FindUserByVerifiedEmailAsync)
            → if found: AddLoginAsync + sign in (same user)
            → else: create new user (existing flow)
 ```

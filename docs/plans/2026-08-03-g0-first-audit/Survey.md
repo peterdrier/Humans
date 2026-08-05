@@ -38,7 +38,7 @@
 |------|-------|----------------|----|
 | No dedicated `SurveyRepositoryTests.cs` | `tests/Humans.Application.Tests/Repositories/` | Add a repository-level test file (real-Postgres-fixture, per G3.1) covering the six `survey_*` tables directly, rather than relying solely on service-level indirection. Lower priority than sections with active EF-InMemory violations, since there's no InMemory usage to migrate away from — this is a coverage gap, not a technical-debt migration. | y |
 
-## G2 queue notes
+## Schema demolition queue
 
 Survey is "born §15-compliant" (2026-06-04) — no demolition-inventory items identified in the doc or this audit.
 

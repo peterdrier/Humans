@@ -1,3 +1,4 @@
+using Humans.Application.Architecture;
 using Humans.Application.DTOs;
 using Humans.Domain.Enums;
 using NodaTime;
@@ -187,6 +188,7 @@ public interface ITeamResourceService : IApplicationService
     /// enforces the corresponding inheritedPermissionsDisabled setting on Google Drive,
     /// returning a result that captures any Google Drive mutation failure.
     /// </summary>
+    [ExternalWrite]
     Task<TeamResourceMutationResult> SetRestrictInheritedAccessWithResultAsync(Guid resourceId, bool restrict, CancellationToken ct = default);
 }
 

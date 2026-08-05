@@ -464,6 +464,42 @@ public sealed class TicketTransferServiceTests
             Arg.Any<string?>(), Arg.Any<string?>());
     }
 
+    /// <summary>
+    /// nobodies-collective/Humans#950 — RetryReissueAsync only runs once the void
+    /// has already committed at TicketTailor, so it is entirely post-commit. An
+    /// aborted admin request must not cancel the reissue and strand the held seat.
+    /// Mirrors the <c>commitCt</c> detach in <c>WriteToVendorAsync</c>.
+    /// </summary>
+    [HumansFact]
+    public async Task RetryReissue_AbortedRequest_StillIssuesAgainstTheHold()
+    {
+        var req = MakePending(Guid.NewGuid());
+        req.VendorResult = TicketTransferVendorResult.VoidSucceededIssueFailed;
+        req.VendorHoldId = "hold_123";
+        _transferRepo.GetByIdAsync(req.Id, Arg.Any<CancellationToken>()).Returns(req);
+        _ticketRepo.GetAttendeeByIdAsync(_attendeeId, Arg.Any<CancellationToken>())
+            .Returns(MakeAttendee(_attendeeId, _orderId, _senderId, TicketAttendeeStatus.Void));
+
+        CancellationToken issuedWith = default;
+        _vendor.IssueTicketAsync(Arg.Any<IssueTicketRequest>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                issuedWith = call.Arg<CancellationToken>();
+                return Task.FromResult(new VendorTicketDto(
+                    "tt_retry", null, "Alice Smith", "alice@example.com", "Full Week", 0m, "valid"));
+            });
+
+        using var aborted = new CancellationTokenSource();
+        await aborted.CancelAsync();
+
+        await _service.RetryReissueAsync(req.Id, _adminId, "go", aborted.Token);
+
+        issuedWith.IsCancellationRequested.Should().BeFalse(
+            "the void has already committed — an aborted admin request must not cancel the reissue");
+        req.VendorResult.Should().Be(TicketTransferVendorResult.Succeeded);
+        req.VendorHoldId.Should().BeNull();
+    }
+
     [HumansFact]
     public async Task RetryReissue_StillFails_StaysPartial_KeepsHold_NoEmails()
     {

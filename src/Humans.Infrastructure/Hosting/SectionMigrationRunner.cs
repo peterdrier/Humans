@@ -52,9 +52,18 @@ internal static class SectionMigrationRunner
                     "{Context}: tables exist but history is empty - recording baseline {Baseline} as applied without executing",
                     contextName, baselineId);
                 await RecordBaselineAsAppliedAsync(db, baselineId, ct);
+                applied = (await db.Database.GetAppliedMigrationsAsync(ct)).ToList();
             }
 
             var pending = (await db.Database.GetPendingMigrationsAsync(ct)).ToList();
+
+            // Warning level so the per-boot migration breadcrumb survives production's
+            // default log filtering, matching HumansDbContext's breadcrumb in
+            // DatabaseMigrationHostedService.MigrateAsync (nobodies-collective/Humans#960).
+            logger.LogWarning(
+                "{Context}: {AppliedCount} applied migrations, {PendingCount} pending",
+                contextName, applied.Count, pending.Count);
+
             if (pending.Count > 0)
             {
                 foreach (var migration in pending)
@@ -63,10 +72,11 @@ internal static class SectionMigrationRunner
                 }
 
                 await db.Database.MigrateAsync(ct);
-            }
-            else
-            {
-                logger.LogInformation("{Context}: schema is up to date", contextName);
+
+                var nowApplied = (await db.Database.GetAppliedMigrationsAsync(ct)).ToList();
+                logger.LogWarning(
+                    "{Context}: migrations complete - {AppliedCount} total applied",
+                    contextName, nowApplied.Count);
             }
         }
         catch (Exception ex)

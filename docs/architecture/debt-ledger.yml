@@ -227,6 +227,18 @@ inbox:
   # sweep scope entirely); PasswordGenerator CSPRNG (explicitly deferred by
   # Peter, 2026-04-24); BudgetRepository ResponsibleTeam .Include (covered by
   # grandfathered-hum0024-nav-strip).
+  - added: 2026-08-05
+    what: "Extend [ExternalWrite] marking to the Holded surface (ExpenseReportService transitions reaching holdedClient.CreatePurchaseDocumentAsync / UpdatePurchaseDocumentTagsAsync / UploadAttachmentAsync via RunMutationAsync; HoldedFinanceService.EnsureCreditorContactAsync, CreateExpenseAccountAsync) so HUM0033 guards it. No defect exists today — ExpensesController and FinanceController declare no CancellationToken parameter — so this is future-proofing per memory/architecture/cancellation-token-propagation.md (found while auditing nobodies-collective/Humans#950)"
+    review: panel
+  - added: 2026-08-05
+    what: "GoogleController.SyncExecute / SyncExecuteAll run a full Workspace reconcile inline on the request thread. Moving them to Hangfire (the TicketController.Sync pattern) is blocked on UI: Views/Google/Sync.cshtml:142,163 calls loadTab() in the fetch continuation, so the tab refresh depends on the POST having completed the reconcile — fire-and-forget would re-render stale diffs. Needs a progress/polling affordance (deferred from nobodies-collective/Humans#950)"
+    review: panel
+  - added: 2026-08-05
+    what: "GoogleResourceProvisionJob (src/Humans.Infrastructure/Jobs/GoogleResourceProvisionJob.cs) has no enqueue site anywhere in src — no BackgroundJob.Enqueue, no RecurringJob.AddOrUpdate, no reference outside its own declaration. It calls IGoogleSyncService.ProvisionTeamFolderAsync (a Drive write), so it is not inert if something ever schedules it. Decide whether team-folder provisioning is meant to run through it or through the Google sync outbox, then wire it or delete it (found while auditing nobodies-collective/Humans#950)"
+    review: panel
+  - added: 2026-08-05
+    what: "GitHubGuideContentSource.GetMarkdownAsync / ListMarkdownStemsAsync accept a CancellationToken they never forward — Octokit's GetRawContentByRef / GetAllContentsByRef expose no CT overload. Read-only so harmless, but the signature promises something it cannot deliver (found while auditing nobodies-collective/Humans#950)"
+    review: light
   - added: 2026-08-02
     what: "Humans.Integration.Tests is timeout-flaky under parallel load — each of the 14 test classes owns an IClassFixture<HumansWebApplicationFactory> that starts its own Testcontainers Postgres, and with no maxParallelThreads cap several tests land at 26-29s against HumansFact's 30s default (DetailedHealthEndpoint_ReturnsJsonWithStatus, Volunteer_cannot_create_order_against_someone_elses_camp_season, UnprivilegedUser_AdminPostToOtherUserEmails_ReturnsForbid observed timing out). Measured ~1-in-3 failure rate on unmodified origin/main. Fix is a shared collection fixture or a maxParallelThreads cap, not longer timeouts (found while verifying nobodies-collective#925)"
     review: panel

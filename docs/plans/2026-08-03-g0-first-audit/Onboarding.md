@@ -36,6 +36,6 @@ None — no gaps found this pass.
 |------|-------|----------------|----|
 | Invariant→test traceability not verified exhaustively | `tests/Humans.Application.Tests/Services/Onboarding/*` vs `docs/sections/Onboarding.md` Invariants/Triggers | A future audit pass (or `/section-gate advance`) should line up each of the 11 invariants / 5 triggers against a named test. | y |
 
-## G2 queue notes
+## Schema demolition queue
 
-Owns no tables — G2 (schema) is trivially satisfied once its dependent sections (Profiles/Users, Legal & Consent, Teams, Governance) clear their own G2 items. No demolition-inventory items originate here.
+Owns no tables — schema cleanup is trivially satisfied once its dependent sections (Profiles/Users, Legal & Consent, Teams, Governance) clear their own schema items. No demolition-inventory items originate here.

@@ -25,7 +25,7 @@ The Application entity serves all tier-based membership applications: **Colabora
 
 After initial onboarding, existing volunteers apply for Colaborador or Asociado through the dedicated Governance Applications route. The inline embedding is a one-shot convenience for new signups only.
 
-Applications go through a review workflow: after the Consent Coordinator clears the human's consent check (granting Volunteer access), the Application enters the Board's voting queue. The Board votes individually, then finalizes the decision. Approved applications set the human's tier and enroll them in the appropriate system team with a synchronized 2-year term.
+Applications go through a review workflow: once submitted, the Application enters the Board's voting queue — this is not gated on the human's Volunteer consent-check status. The Board votes individually, then finalizes the decision. Approved applications set the human's tier and enroll them in the appropriate system team with a synchronized 2-year term.
 
 **Volunteer access does not require an Application.** Only Colaborador and Asociado tiers use the Application entity. The consent check is a separate Volunteer-level safety gate. See [Onboarding Pipeline](../onboarding/onboarding-pipeline.md).
 

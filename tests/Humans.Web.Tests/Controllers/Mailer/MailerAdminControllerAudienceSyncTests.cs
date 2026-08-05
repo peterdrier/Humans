@@ -43,7 +43,7 @@ public class MailerAdminControllerAudienceSyncTests
 
         var ctrl = BuildSut([audience]);
 
-        var result = await ctrl.SyncAudience("ticket-no-shifts", Xunit.TestContext.Current.CancellationToken);
+        var result = await ctrl.SyncAudience("ticket-no-shifts");
 
         result.Should().BeOfType<RedirectToActionResult>()
             .Which.ActionName.Should().Be(nameof(MailerAdminController.Index));
@@ -56,7 +56,7 @@ public class MailerAdminControllerAudienceSyncTests
     {
         var ctrl = BuildSut([]);
 
-        var result = await ctrl.SyncAudience("nope", Xunit.TestContext.Current.CancellationToken);
+        var result = await ctrl.SyncAudience("nope");
 
         result.Should().BeOfType<NotFoundResult>();
     }
@@ -73,7 +73,7 @@ public class MailerAdminControllerAudienceSyncTests
 
         var ctrl = BuildSut([audience]);
 
-        var result = await ctrl.SyncAudience("bad-audience", Xunit.TestContext.Current.CancellationToken);
+        var result = await ctrl.SyncAudience("bad-audience");
 
         result.Should().BeOfType<RedirectToActionResult>();
         ctrl.TempData["Banner"]!.ToString().Should().Contain("sync failed");

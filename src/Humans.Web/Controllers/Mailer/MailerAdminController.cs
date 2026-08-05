@@ -163,7 +163,7 @@ public sealed class MailerAdminController(
 
     [HttpPost("Audiences/{key}/Sync")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> SyncAudience(string key, CancellationToken ct)
+    public async Task<IActionResult> SyncAudience(string key)
     {
         var audience = _audiences.FirstOrDefault(a => string.Equals(a.Key, key, StringComparison.Ordinal));
         if (audience is null) return NotFound();
@@ -171,7 +171,11 @@ public sealed class MailerAdminController(
         try
         {
             var actor = await GetCurrentUserInfoAsync();
-            var result = await audienceSync.SyncAsync(audience, actor?.Id, ct);
+            // Deliberately not passing a request-scoped token: the sync pushes
+            // subscriber and group writes to MailerLite, and an admin closing the
+            // tab must not leave the audience half-pushed
+            // (nobodies-collective/Humans#950).
+            var result = await audienceSync.SyncAsync(audience, actor?.Id, CancellationToken.None);
             TempData["Banner"] = $"{audience.DisplayName}: {result.FormatSummary()}";
         }
         catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException)
@@ -179,9 +183,10 @@ public sealed class MailerAdminController(
             logger.LogError(ex, "Audience sync failed for {Audience}", key);
             TempData["Banner"] = $"{audience.DisplayName}: sync failed — {ex.Message}";
         }
-        catch (TaskCanceledException) when (!ct.IsCancellationRequested)
+        catch (TaskCanceledException)
         {
-            // HttpClient timeout surfaces as TaskCanceledException when caller didn't cancel.
+            // Nothing cancels the sync any more, so this can only be an
+            // HttpClient timeout.
             logger.LogWarning("Audience sync timed out for {Audience}", key);
             TempData["Banner"] = $"{audience.DisplayName}: sync timed out. Try again shortly.";
         }
@@ -190,12 +195,14 @@ public sealed class MailerAdminController(
 
     [HttpPost("SyncAll")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> SyncAll(CancellationToken ct)
+    public async Task<IActionResult> SyncAll()
     {
         try
         {
             var actor = await GetCurrentUserInfoAsync();
-            var results = await audienceSync.SyncAllAsync(actor?.Id, ct);
+            // Deliberately not passing a request-scoped token — see SyncAudience
+            // above (nobodies-collective/Humans#950).
+            var results = await audienceSync.SyncAllAsync(actor?.Id, CancellationToken.None);
 
             var created = results.Sum(r => r.Created);
             var assigned = results.Sum(r => r.Assigned);
@@ -208,9 +215,10 @@ public sealed class MailerAdminController(
             if (failed > 0) banner += $" {failed} audience(s) failed — see logs.";
             TempData["Banner"] = banner;
         }
-        catch (TaskCanceledException) when (!ct.IsCancellationRequested)
+        catch (TaskCanceledException)
         {
-            // HttpClient timeout surfaces as TaskCanceledException when caller didn't cancel.
+            // Nothing cancels the sync any more, so this can only be an
+            // HttpClient timeout.
             logger.LogWarning("Push All timed out");
             TempData["Banner"] = "Push All timed out. Some audiences may have synced; try again shortly.";
         }
@@ -265,7 +273,10 @@ public sealed class MailerAdminController(
             }
         }
 
-        var result = await import.ApplyAsync(fresh, maxPerOutcome, ct);
+        // The plan build above is a read and may be abandoned; applying it
+        // creates/assigns MailerLite subscribers, so it must not be torn in half
+        // by the admin navigating away (nobodies-collective/Humans#950).
+        var result = await import.ApplyAsync(fresh, maxPerOutcome, CancellationToken.None);
         TempData["Banner"] = result.FormatSummary();
         return RedirectToAction(nameof(Index));
     }

@@ -30,7 +30,7 @@ Scope note: `reforge.surface-score.json` bundles **Mailer** (`IMailerAudienceSyn
 
 1. **HUM0031 grandfather on `EmailController.EmailPreview`** — already tracked under #857 (in-flight parallel lane per this run's brief); no new action needed here beyond confirming it. No migration needed (y).
 2. ~~No `docs/sections/Mailer.md`~~ — **retracted 2026-08-03**, the file exists (see predicate 7 correction). No gap.
-3. **Added 2026-08-03: `EmailOutboxMessageConfiguration` HUM0024 cross-section EF join grandfather** covering FKs to Users, Campaigns and Shifts (see predicate 4). The original pass scored predicate 4 off baseline-file greps, which can't see attribute-based allowlisting. Fix: verify liveness and either retire the attribute or file a tracking issue; the three FK cuts belong to G2 and are already in the demolition inventory. No migration needed (y, pending verification).
+3. **Added 2026-08-03: `EmailOutboxMessageConfiguration` HUM0024 cross-section EF join grandfather** covering FKs to Users, Campaigns and Shifts (see predicate 4). The original pass scored predicate 4 off baseline-file greps, which can't see attribute-based allowlisting. Fix: verify liveness and either retire the attribute or file a tracking issue; the three FK cuts are already in the demolition inventory. No migration needed (y, pending verification).
 4. **Added 2026-08-03: four write paths on `email_outbox_messages`** (see predicate 2). `OutboxEmailService` enqueues, `EmailOutboxService` retries/discards, `ProcessEmailOutboxJob` marks picked-up/sent/failed, `CleanupEmailOutboxJob` deletes sent rows. Fix: fold the lifecycle mutations behind one owning service (`IEmailOutboxService`) so the jobs stop injecting `IEmailOutboxRepository` directly, or record the outbox-processor pattern as an accepted exception — the same call this audit has to make for `google_sync_outbox`. No migration needed (y).
 
 ## G3 gap list
@@ -39,11 +39,11 @@ Scope note: `reforge.surface-score.json` bundles **Mailer** (`IMailerAudienceSyn
 1b. **Added 2026-08-03: `ProcessEmailOutboxJobTests.cs` and `CleanupEmailOutboxJobTests.cs` also build a real `HumansDbContext` + concrete `EmailOutboxRepository`** (see predicate 2). Convert both to `Substitute.For<IEmailOutboxRepository>()` alongside the repository test — otherwise G3.2 still fails after the conversion above. No migration needed (y).
 2. **Invariant→test mapping not exhaustively verified** — needs a full pass against `docs/sections/Email.md` Invariants/Triggers sections (11 triggers documented). No migration needed (y).
 
-## G2 queue notes (light)
+## Schema demolition queue (light)
 
 - Still on monolithic `HumansDbContext` (via `IDbContextFactory<HumansDbContext>`) — no dedicated `EmailDbContext` yet, unlike Containers/Expenses/Finance/EventGuide/Surveys/SystemSettings/Agent.
 - No dead-column/table candidates spotted; schema described as "stable" by design (new headers go in `ExtraHeaders` JSON, not new columns) — this is an intentional anti-demolition-churn decision, not debt.
 
 
-**Added 2026-08-03 — cross-section FK cuts belong in this queue.** Retiring `[Obsolete]` navs or `[Grandfathered(HUM0024)]` markers is a code-shape change; it does **not** drop the physical constraint. Per the demolition inventory, this section owns **3** cross-section FKs across 1 table: `email_outbox_messages` → `AspNetUsers` (Users, `:44`), `campaign_grants` (Campaigns, `:49`) and `shift_signups` (Shifts, `:54`), all on `EmailOutboxMessageConfiguration`. All are G2 cuts — without them listed here, a schema batch driven by this scorecard can complete while every cross-section database dependency survives.
+**Added 2026-08-03 — cross-section FK cuts belong in this queue.** Retiring `[Obsolete]` navs or `[Grandfathered(HUM0024)]` markers is a code-shape change; it does **not** drop the physical constraint. Per the demolition inventory, this section owns **3** cross-section FKs across 1 table: `email_outbox_messages` → `AspNetUsers` (Users, `:44`), `campaign_grants` (Campaigns, `:49`) and `shift_signups` (Shifts, `:54`), all on `EmailOutboxMessageConfiguration`. All are cross-section FK cuts — without them listed here, a schema batch driven by this scorecard can complete while every cross-section database dependency survives.
 

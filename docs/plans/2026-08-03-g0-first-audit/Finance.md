@@ -34,7 +34,7 @@ None — Finance is clean on G1. (Tech debt already self-documented and out of s
 
 1. **No repository-level test exists for `IHoldedRepository`** — where: expected at `tests/Humans.Application.Tests/Repositories/Finance/HoldedRepositoryTests.cs` or similar; confirmed absent solution-wide. Suggested fix: add a real-Postgres repository test for `holded_expense_docs`/`holded_category_map`/`holded_sync_states`/`holded_ledger_lines`/`holded_creditor_contacts` CRUD + the ledger idempotent-upsert-on-`(EntryNumber, Line)` invariant. No-migration-needed: **y**.
 
-## G2 Queue Notes (light)
+## Schema demolition queue (light)
 
 - `docs/sections/Finance.md` explicitly documents `20260525_HoldedCreditorData` as "superseded" by the ledger single-source redesign — confirm this migration/its dropped tables (`holded_creditor_balances`, `holded_payments`, seen in `NoDestructiveMigrationOps.baseline.txt`) are fully retired with no lingering references; looks already clean per the doc.
 - Soft boundary noted in doc: `TicketingProjection`/`TicketingBudgetService` conceptually belong to Finance-adjacent "actuals materialization" but live in Budget — explicitly flagged by the doc as deliberate, not an active violation; leave as-is unless Budget's own audit disagrees.

@@ -29,10 +29,7 @@ public class EmailOutboxMessage
     /// </summary>
     public Guid? ShiftSignupId { get; set; }
 
-    // Navigation
-    // Note: no User nav (FK-only per design-rules §6c — cross-domain nav
-    // into the Users section would defeat table ownership). Callers resolve
-    // the user via IUserService.GetUserInfoAsync(message.UserId.Value) when needed.
-    public CampaignGrant? CampaignGrant { get; set; }
-    public ShiftSignup? ShiftSignup { get; set; }
+    // Note: no cross-domain nav properties (FK-only per design-rules §6c —
+    // cross-section navs into the Users/Campaigns/Shifts sections would defeat
+    // table ownership). Callers resolve via the owning section's service.
 }

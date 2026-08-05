@@ -30,16 +30,16 @@
 |------|-------|----------------|----|
 | 5 entity-returning `ITeamService` methods baselined as leaks despite the `ITeamServiceRead` split existing | `Interfaces.Teams.ITeamService` | Audit actual callers of `GetAllTeamsAsync`/`GetByIdsWithParentsAsync`/`GetTeamByIdAsync`/`GetTeamEntityBySlugAsync`/`GetUserTeamsAsync` — if all callers are Teams-internal, this may be a ratchet false-positive worth exempting; if any cross-section caller exists, it's a live boundary violation needing a DTO projection. | y |
 | 5 `[Obsolete]`-marked cross-domain navs still read via `#pragma warning disable CS0618` | `TeamMember`, `TeamJoinRequest`×2, `TeamRoleAssignment`, `TeamJoinRequestStateHistory` | Already tracked as "the User-entity nav-strip follow-up" per the doc — no new action from this audit, just confirming it's real and current. | y |
-| **Added 2026-08-03:** 4 HUM0024 configuration grandfathers | `TeamMemberConfiguration.cs`, `TeamJoinRequestConfiguration.cs`, `TeamJoinRequestStateHistoryConfiguration.cs`, `TeamRoleAssignmentConfiguration.cs` | The EF-configuration side of the nav-strip row above (predicate 4 was scored off baseline-file greps, which can't see attribute allowlisting). Retire the markers as part of the same nav-strip follow-up; the physical FK cuts belong to G2. | y (attribute work); FK cut is G2 |
+| **Added 2026-08-03:** 4 HUM0024 configuration grandfathers | `TeamMemberConfiguration.cs`, `TeamJoinRequestConfiguration.cs`, `TeamJoinRequestStateHistoryConfiguration.cs`, `TeamRoleAssignmentConfiguration.cs` | The EF-configuration side of the nav-strip row above (predicate 4 was scored off baseline-file greps, which can't see attribute allowlisting). Retire the markers as part of the same nav-strip follow-up; the physical FK cuts are schema-queue work. | y (attribute work); FK cut is schema-queue work |
 | 3 `DisplaySortInControllers` baseline rows on `TeamRepository.cs` | `src/Humans.Infrastructure/Repositories/Teams/TeamRepository.cs` (`OrderBy`, `ThenBy`×2) | Move display sort into the controller/view-model layer per `memory/architecture/display-sort-in-controllers.md`. | y |
 | `TeamController`/`TeamAdminController` HUM0031 grandfathers | `src/Humans.Web/Controllers/` | Tracked under #857 (Lane 2 tonight). | y |
 
-## G2 queue notes
+## Schema demolition queue
 
 No dead columns/tables named in the doc beyond the nav-strip follow-up (which is code-shape, not schema). `google_resources` FK/ownership boundary with GoogleIntegration is clean and intentional, not debt.
 
 
-**Added 2026-08-03 — cross-section FK cuts belong in this queue.** Retiring `[Obsolete]` navs or `[Grandfathered(HUM0024)]` markers is a code-shape change; it does **not** drop the physical constraint. Per the demolition inventory, this section owns **5** cross-section FKs across 4 tables: `team_members`, `team_role_assignments`, `team_join_requests` (×2) and `team_join_request_state_history` → `AspNetUsers`, behind the four HUM0024 configurations listed in the G1 gap list. All are G2 cuts — without them listed here, a schema batch driven by this scorecard can complete while every cross-section database dependency survives.
+**Added 2026-08-03 — cross-section FK cuts belong in this queue.** Retiring `[Obsolete]` navs or `[Grandfathered(HUM0024)]` markers is a code-shape change; it does **not** drop the physical constraint. Per the demolition inventory, this section owns **5** cross-section FKs across 4 tables: `team_members`, `team_role_assignments`, `team_join_requests` (×2) and `team_join_request_state_history` → `AspNetUsers`, behind the four HUM0024 configurations listed in the G1 gap list. All are cross-section FK cuts — without them listed here, a schema batch driven by this scorecard can complete while every cross-section database dependency survives.
 
 ## Headline
 

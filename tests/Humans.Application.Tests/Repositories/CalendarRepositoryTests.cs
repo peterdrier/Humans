@@ -75,20 +75,6 @@ public sealed class CalendarRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task GetEventByIdAsync_DoesNotLoadOwningTeamNav()
-    {
-        var ev = BuildEvent();
-        await _repo.AddAsync(ev, Xunit.TestContext.Current.CancellationToken);
-
-        var fetched = await _repo.GetEventByIdAsync(ev.Id, Xunit.TestContext.Current.CancellationToken);
-        fetched.Should().NotBeNull();
-#pragma warning disable CS0618 // accessing the [Obsolete] nav intentionally in the assertion
-        fetched.OwningTeam.Should().BeNull(
-            because: "CalendarRepository must not .Include(OwningTeam) — cross-domain nav resolved via ITeamService (design-rules §6c)");
-#pragma warning restore CS0618
-    }
-
-    [HumansFact]
     public async Task GetEventByIdAsync_HidesSoftDeleted()
     {
         var ev = BuildEvent();

@@ -33,8 +33,8 @@ Section: Events · Kind: vertical · Audited 2026-08-03 @ 5a9bbe198
 
 1. **`EventRepositoryTests.cs` uses `UseInMemoryDatabase`** — where: `tests/Humans.Application.Tests/Events/EventRepositoryTests.cs`. Suggested fix: convert to the shared Postgres fixture per #764/#766. No-migration-needed: **y**.
 
-## G2 Queue Notes (light)
+## Schema demolition queue (light)
 
 - No dead columns/tables spotted in `docs/sections/Events.md`'s data model — schema looks lean already (bare-FK pattern already applied, cross-domain navs already stripped per PR #539).
-- The 3 entity-leak baseline rows (G1 gap #2) are a light G2/G1 cleanup, not a schema change.
+- The 3 entity-leak baseline rows (G1 gap #2) are a light cleanup, not a schema change.
 

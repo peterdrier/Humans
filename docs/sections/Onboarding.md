@@ -18,7 +18,7 @@
 
 # Onboarding — Section Invariants
 
-Pure orchestrator over Profiles, Legal & Consent, Teams, and Governance. Owns no tables.
+Pure orchestrator over Profiles, Consent, Teams, and Governance. Owns no tables.
 
 > **Three-concerns split (umbrella nobodies-collective#563).** `OnboardingService` is the *intake funnel only* (signup → profile → consents → first-team admission, plus CC review queue). Sibling services own the other workflow stages so onboarding stays narrow:
 >
@@ -104,7 +104,7 @@ After the nobodies-collective#584 narrowing, `OnboardingService` injects only wh
 - **Users/Identity:** `IUserService` — user reads (rejection email recipient hydration). Admin-initiated account purge is NOT here — it lives on `IAccountDeletionService`.
 - **Governance:** `IApplicationDecisionService` — pending-application lookup (review queue). Board-voting methods are now consumed directly by callers, not via OnboardingService.
 - **Teams:** `ISystemTeamSync` — Volunteers / Colaboradors / Asociados de-provisioning on reject (`DeprovisionApprovalGatedSystemTeamsAsync`). Clear/flag no longer sync.
-- **Legal & Consent:** `IConsentServiceRead` — used by `GetNextUnsignedConsentAsync` to resolve the next unsigned document for the onboarding widget's consent step.
+- **Consent:** `IConsentServiceRead` — used by `GetNextUnsignedConsentAsync` to resolve the next unsigned document for the onboarding widget's consent step.
 - **Lifecycle:** `IHumanLifecycleService` — used by `GetNextUnsignedConsentAsync` to self-heal a consent-suspended user who is already compliant (nothing left to sign after the required set shrank).
 - **Notifications / Email:** `IEmailService.SendAsync` (with `IEmailMessageFactory.SignupRejected`), `INotificationService` (`ProfileRejected`, `ConsentReviewNeeded` dispatch). `INotificationInboxService` moved out with `UnsuspendAsync` (now on `IHumanLifecycleService`).
 - **Cross-cutting:** `IMembershipCalculator` (consent-check eligibility + review-queue snapshots), `ILogger`.
@@ -113,7 +113,7 @@ After the nobodies-collective#584 narrowing, `OnboardingService` injects only wh
 
 **Owning services:** `OnboardingService` (intake funnel only after the nobodies-collective#584 narrowing).
 **Sibling services in the three-concerns split:** `HumanLifecycleService` (state-machine), `ApplicationDecisionService` (board voting), `AdminDashboardService` (dashboard aggregation), `AccountDeletionService` (cascade — single entry point for `RequestDeletionAsync` and `CancelDeletionAsync`; both `ProfileController` and `GuestController` deletion actions call through it; ticket-hold + 30-day-grace fields written atomically, see `Profiles.md` cascade section).
-**Owned tables:** None — orchestrator over Profiles, Legal & Consent, Teams, Governance.
+**Owned tables:** None — orchestrator over Profiles, Consent, Teams, Governance.
 **Status:** (A) Migrated (peterdrier/Humans PR #285 for issue nobodies-collective/Humans#553, 2026-04-22). Three-concerns narrowing complete with nobodies-collective#583 (lifecycle) and nobodies-collective#584 (board voting + admin dashboard).
 
 - `OnboardingService` lives in `src/Humans.Application/Services/Onboarding/OnboardingService.cs` and depends only on interfaces (plus `IClock`).

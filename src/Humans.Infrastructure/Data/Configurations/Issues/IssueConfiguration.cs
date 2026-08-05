@@ -35,10 +35,10 @@ public class IssueConfiguration : IEntityTypeConfiguration<Issue>
         b.Property(x => x.CreatedAt).IsRequired();
         b.Property(x => x.UpdatedAt).IsRequired();
 
-        // EF needs the nav refs to configure the cross-section FK relationships.
-        // The nav properties themselves are [Obsolete] for the Application layer,
-        // but the DB-level FK behavior is still owned here — suppress the
-        // obsolete warning only for this wiring block.
+        // Cross-section FK columns only — no nav property (design-rules §6c,
+        // memory/architecture/no-cross-section-ef-joins.md). Resolve display
+        // data via IUserService; repositories must not .Include() across
+        // sections.
         //
         // Reporter FK uses Restrict: account deletion in this codebase
         // anonymizes the User row in place (see IAccountDeletionService) — the
@@ -46,16 +46,14 @@ public class IssueConfiguration : IEntityTypeConfiguration<Issue>
         // anyone ever bypasses the deletion service and tries to Remove() a
         // user, Restrict makes the DB reject it instead of silently wiping
         // every issue the user reported.
-#pragma warning disable CS0618
-        b.HasOne(x => x.Reporter).WithMany().HasForeignKey(x => x.ReporterUserId)
+        b.HasOne<User>().WithMany().HasForeignKey(x => x.ReporterUserId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        b.HasOne(x => x.Assignee).WithMany().HasForeignKey(x => x.AssigneeUserId)
+        b.HasOne<User>().WithMany().HasForeignKey(x => x.AssigneeUserId)
             .OnDelete(DeleteBehavior.SetNull);
 
-        b.HasOne(x => x.ResolvedByUser).WithMany().HasForeignKey(x => x.ResolvedByUserId)
+        b.HasOne<User>().WithMany().HasForeignKey(x => x.ResolvedByUserId)
             .OnDelete(DeleteBehavior.SetNull);
-#pragma warning restore CS0618
 
         b.HasMany(x => x.Comments).WithOne(c => c.Issue).HasForeignKey(c => c.IssueId)
             .OnDelete(DeleteBehavior.Cascade);
