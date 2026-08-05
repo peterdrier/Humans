@@ -24,9 +24,7 @@ public class BudgetCategoryConfiguration : IEntityTypeConfiguration<BudgetCatego
         builder.Property(c => c.CreatedAt).IsRequired();
         builder.Property(c => c.UpdatedAt).IsRequired();
 
-#pragma warning disable CS0618 // Obsolete cross-domain nav kept so EF FK constraint stays modelled.
-        builder.HasOne(c => c.Team).WithMany().HasForeignKey(c => c.TeamId).OnDelete(DeleteBehavior.SetNull);
-#pragma warning restore CS0618
+        builder.HasOne<Team>().WithMany().HasForeignKey(c => c.TeamId).OnDelete(DeleteBehavior.SetNull);
         builder.HasMany(c => c.LineItems).WithOne(l => l.BudgetCategory).HasForeignKey(l => l.BudgetCategoryId).OnDelete(DeleteBehavior.Cascade);
 
         builder.HasIndex(c => new { c.BudgetGroupId, c.SortOrder });
