@@ -182,10 +182,10 @@ public sealed class FeedbackService(
     private async Task DispatchAdminReplyNotificationAsync(
         FeedbackReport report, CancellationToken ct)
     {
-        var reportLink = $"/Feedback/{report.Id}";
-
         try
         {
+            // No action link: /Feedback/{id} is Admin-only now, so the reporter would land on a 403.
+            // The response text itself reaches them in the FeedbackResponse email.
             await notificationService.SendAsync(
                 NotificationSource.FeedbackResponse,
                 NotificationClass.Informational,
@@ -193,8 +193,6 @@ public sealed class FeedbackService(
                 "You have a response to your feedback",
                 [report.UserId],
                 body: "An admin has responded to your feedback report.",
-                actionUrl: reportLink,
-                actionLabel: "View response",
                 cancellationToken: ct);
         }
         catch (Exception ex)

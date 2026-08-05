@@ -108,7 +108,7 @@ public sealed class AgentPreloadAugmentor : IAgentPreloadAugmentor
         - /Team — team directory and join requests
         - /Shifts — shift dashboard (if you have signup access)
         - /Legal — required legal documents + consent status
-        - /Feedback — submit a bug, feature request, or question
+        - /Issues — report a bug, request a feature, or ask a question
         - /Agent — conversational helper (this tool's own history page)
         """;
 

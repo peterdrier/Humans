@@ -27,7 +27,6 @@ public class MembershipRequiredFilter : IAsyncActionFilter
         "Language",         // Language switching
         "Guest",            // Profileless account dashboard
         "GovernanceApplications", // Tier application submission — any logged-in user
-        "Feedback",         // Feedback submission — any logged-in user
         "Notifications",    // Notification inbox — any logged-in user
         "Survey",           // Tokenised survey answering — invited non-Active users must still reach it ([AllowAnonymous])
     };
