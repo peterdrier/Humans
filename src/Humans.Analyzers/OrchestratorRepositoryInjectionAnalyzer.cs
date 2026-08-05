@@ -10,8 +10,8 @@ namespace Humans.Analyzers;
 /// <see cref="Humans.Application.Interfaces.IOrchestrator"/>.
 /// <list type="bullet">
 /// <item><b>HUM0026</b> — an <c>IOrchestrator</c> implementer must not inject
-/// any <c>I*Repository</c>, <c>HumansDbContext</c>, or
-/// <c>IDbContextFactory&lt;HumansDbContext&gt;</c>. Orchestrators own no lane.</item>
+/// any <c>I*Repository</c>, an application DbContext, or
+/// <c>IDbContextFactory&lt;TContext&gt;</c> parameterized on one. Orchestrators own no lane.</item>
 /// <item><b>HUM0027</b> — a type must implement <c>IOrchestrator</c> XOR
 /// <c>IApplicationService</c>, never both. The role axis is exclusive.</item>
 /// </list>
@@ -57,8 +57,8 @@ public sealed class OrchestratorRepositoryInjectionAnalyzer : DiagnosticAnalyzer
         description:
             "An IOrchestrator coordinates ≥2 sections through their public service interfaces " +
             "and owns no tables — by definition it must not inject any I*Repository, " +
-            "HumansDbContext, or IDbContextFactory<HumansDbContext>. A type that needs that " +
-            "access is a Section, not an orchestrator: relocate the access into the owning " +
+            "an application DbContext, or IDbContextFactory<TContext> parameterized on one. " +
+            "A type that needs that access is a Section, not an orchestrator: relocate the access into the owning " +
             "section's Section service. No grandfather machinery — a violation here means " +
             "the role marker is wrong, not that the rule is wrong.");
 
@@ -139,7 +139,7 @@ public sealed class OrchestratorRepositoryInjectionAnalyzer : DiagnosticAnalyzer
                 messageArgs: type.Name));
         }
 
-        // HUM0026 — no repository / DbContext / DbContextFactory<HumansDbContext> injection.
+        // HUM0026 — no repository / DbContext / DbContextFactory<application DbContext> injection.
         foreach (var ctor in type.InstanceConstructors)
         {
             foreach (var parameter in ctor.Parameters)

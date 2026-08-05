@@ -106,8 +106,6 @@ reaches `Microsoft.EntityFrameworkCore.DbContext`. Since the per-section split
 `<Section>DbContext`. Neither namespace nor assembly is pinned, so moving the
 contexts cannot silently switch these rules off; production-only scoping comes
 from each analyzer's `AssemblyScope` guard, not from where the context lives.
-The diagnostic titles and messages still name `HumansDbContext` — read them as
-"the application DbContext you injected".
 
 ### How it ships
 

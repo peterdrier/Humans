@@ -11,10 +11,10 @@ public sealed class ControllerDbContextInjectionAnalyzer : DiagnosticAnalyzer
     public const string DiagnosticId = "HUM0008";
 
     private static readonly LocalizableString Title =
-        "Controllers may not inject HumansDbContext";
+        "Controllers may not inject an application DbContext";
 
     private static readonly LocalizableString MessageFormat =
-        "Controller '{0}' must not inject HumansDbContext. Controllers should call services; services go through repositories or infrastructure-owned database services.";
+        "Controller '{0}' must not inject '{1}'. Controllers should call services; services go through repositories or infrastructure-owned database services.";
 
     public static readonly DiagnosticDescriptor Rule = new(
         id: DiagnosticId,
@@ -24,8 +24,9 @@ public sealed class ControllerDbContextInjectionAnalyzer : DiagnosticAnalyzer
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,
         description:
-            "Controllers reaching directly for HumansDbContext bypass the service and repository layers. " +
-            "Keep database access behind an application or infrastructure service and inject that service instead.");
+            "Controllers reaching directly for an application DbContext (HumansDbContext or any per-section " +
+            "context) bypass the service and repository layers. Keep database access behind an application or " +
+            "infrastructure service and inject that service instead.");
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];
 
@@ -70,7 +71,8 @@ public sealed class ControllerDbContextInjectionAnalyzer : DiagnosticAnalyzer
                 context.ReportDiagnostic(Diagnostic.Create(
                     Rule,
                     parameter.Locations.Length > 0 ? parameter.Locations[0] : ctor.Locations[0],
-                    type.Name));
+                    type.Name,
+                    parameter.Type.Name));
             }
         }
     }
