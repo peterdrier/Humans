@@ -4,15 +4,20 @@
 Humans' PostgreSQL database from a backup, the automatic pre-deploy snapshot that gives you
 something to restore *to* after a bad migration, and the deploy-freeze rule for event week.
 
-Every command below was executed end-to-end on 2026-08-05 against a local
-`postgres:16` container (the image `docker-compose.yml` pins). Observed output and timings
-are quoted verbatim in [Drill record](#drill-record-2026-08-05). Where something could not be
-verified without the Coolify console it is called out explicitly rather than assumed.
+The backup, restore, verification, and application-boot steps (§1–§3) were executed
+end-to-end on 2026-08-05 against a local `postgres:16` container — the image
+`docker-compose.yml` pins — with the schema built by this application's own migrations.
+Observed output and timings are quoted verbatim in [Drill record](#drill-record-2026-08-05),
+along with what the drill did *not* cover. Everything that could not be verified without the
+Coolify console is called out explicitly rather than assumed.
 
-- **Server version:** PostgreSQL 16 (`docker-compose.yml` → `image: postgres:16`). The client
-  you restore with must be **16 or newer** — a `pg_restore` older than the server will refuse
-  the archive.
-- **Nothing in here needs the application to be running.** Restores go container → database.
+- **Server version:** PostgreSQL 16 (`docker-compose.yml` → `image: postgres:16`). Restore
+  with a client at least as new as the `pg_dump` that produced the file; an older `pg_restore`
+  rejects a newer archive outright. The `postgres:16` container's own client is the safe
+  default, which is why every command here runs inside it.
+- **The database work does not need the application running** — restores go container →
+  database — but §3 requires the app *stopped*, because its open connections block
+  `DROP DATABASE`.
 
 ---
 
@@ -27,8 +32,8 @@ There are two sources, and they are for different situations.
 
 > **Format assumption.** Coolify's backup format is configured in the Coolify console and is
 > not committed to this repo, so it could not be confirmed from here. **Assume custom format
-> (`pg_dump --format=custom`, restored with `pg_restore`)** — the PostgreSQL default for
-> automated backups — and check the file if unsure:
+> (`pg_dump --format=custom`, restored with `pg_restore`)** — the usual choice for automated
+> backups — and check the file if unsure:
 >
 > ```bash
 > file backup.dump          # "PostgreSQL custom database dump"
@@ -57,11 +62,13 @@ container is the one built from this repo. The rest of this runbook calls them `
 ## 1. Get the dump file onto the database container
 
 **From a pre-migration snapshot** (it is inside the *app* container, and snapshots are named
-`{database}-{UTC timestamp}.dump`):
+`{database}-{UTC timestamp}.dump`). Use `docker cp` on the directory rather than
+`docker exec ls` — `docker cp` works on a stopped or crash-looping container, `docker exec`
+does not:
 
 ```bash
-docker exec $APP ls -l /app/db-snapshots
-docker cp $APP:/app/db-snapshots/humans-20260805T155147Z.dump ./restore.dump
+docker cp $APP:/app/db-snapshots ./snapshots && ls -l ./snapshots
+cp ./snapshots/humans-20260805T155147Z.dump ./restore.dump
 docker cp ./restore.dump $DB:/tmp/restore.dump
 ```
 
@@ -157,11 +164,13 @@ Database humans: 130 applied migrations, 0 pending
 Database humans: schema is up to date
 ```
 
-and then a healthy app:
+and then a healthy app. `curl` is installed in the runtime image, so run the check inside the
+container and you do not have to care how the host port or the proxy is wired up:
 
 ```bash
-curl -f http://localhost:5000/health/live
-curl -s http://localhost:5000/api/version
+docker exec $APP curl -fs http://localhost:8080/health/live
+docker exec $APP curl -s  http://localhost:8080/api/version
+docker inspect --format '{{.State.Health.Status}}' $APP     # -> healthy
 ```
 
 **If it says pending migrations instead of "up to date",** you restored a backup older than the
@@ -178,11 +187,14 @@ a bad migration means the container crash-loops.
 
 1. **Read the logs before doing anything.** `docker logs $APP | tail -100`. The line
    `Applying pending migration: <name>` immediately before the exception names the culprit.
-2. **Find the snapshot.** `docker exec $APP ls -l /app/db-snapshots` — the newest file is from
-   this deploy, taken *before* the failed migration ran.
+2. **Find the snapshot.** `docker cp $APP:/app/db-snapshots ./snapshots && ls -l ./snapshots` —
+   the newest file is from this deploy, taken *before* the failed migration ran. (`docker cp`
+   rather than `docker exec`: a crash-looping container is usually not in a state you can exec
+   into.)
    - The app container survives a crash-loop (Docker restarts the same container, it does not
-     replace it), so the file is still there. If the container has been *recreated* since,
-     `docker volume inspect humans_db_snapshots` and read it from the volume instead.
+     replace it), so the file is still there. If the container has been *recreated* since, find
+     the volume with `docker volume ls | grep db_snapshots` and read the file from its
+     `Mountpoint` (`docker volume inspect <name>`) on the host.
 3. **Roll the image back** to the previous release in Coolify. That alone is not enough if the
    migration partially applied — schema changes do not roll back with the image.
 4. **Restore the snapshot** using steps 1–3 above.
@@ -198,17 +210,19 @@ database is not the problem, and rolling the image back is a complete fix.
 Implemented in `src/Humans.Infrastructure/Hosting/PreMigrationSnapshot.cs`
 (nobodies-collective/Humans#845).
 
-- **What triggers it:** the startup migration path. It is the only thing that runs on every
-  deploy and knows whether *this* deploy changes the schema. The first context with something
-  to apply triggers one `pg_dump`; a deploy with no pending migrations never dumps.
+- **What triggers it:** the startup migration path — the only thing committed to this repo that
+  runs on every deploy and knows whether *this* deploy changes the schema. The first context
+  with something to apply triggers one `pg_dump`; a deploy with no pending migrations never
+  dumps.
 - **Where the file goes:** `/app/db-snapshots/{database}-{UTC timestamp}.dump`, custom format,
   on the `db_snapshots` volume. It is deliberately **not** under `wwwroot` — that directory is
   web-served.
 - **Retention:** the newest 10 are kept; older ones are deleted after a successful dump. These
   are a fast local rollback point, not the archive — Coolify's scheduled backups are the
   off-host copy.
-- **Which environments:** `Production` and `Staging` (QA). Development and the integration-test
-  host run against disposable local databases and skip it.
+- **Which environments:** `Production` and `Staging` (QA) only. Every other environment —
+  Development, the integration-test host — runs against a disposable local database and skips
+  it.
 - **If the dump fails, startup aborts and the migration does not run.** This is on purpose:
   the schema is left exactly as the previous release left it, so rolling the image back is a
   complete recovery. Fix the cause (usually the volume mount or a missing `pg_dump`) and
