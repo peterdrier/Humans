@@ -12,15 +12,12 @@ using Xunit;
 namespace Humans.Integration.Tests.Repositories.Shifts;
 
 /// <summary>
-/// Integration tests for <see cref="VolunteerTrackingRepository"/>. Mirrors the
-/// repo's established service-test shape (e.g. <c>CalendarServiceTests</c>):
-/// uses <see cref="IClassFixture{T}"/> for the test-container-backed factory,
-/// resolves the Scoped <see cref="HumansDbContext"/> per test through a DI
-/// scope, and exercises the repository against a real PostgreSQL container.
-///
-/// <see cref="IntegrationTestBase"/> is HttpClient-only, so it doesn't fit
-/// repository tests; we use the factory directly per the
-/// <c>CalendarServiceTests</c> pattern.
+/// Integration tests for <see cref="VolunteerTrackingRepository"/>. Takes the
+/// assembly-shared <see cref="HumansWebApplicationFactory"/> through
+/// <see cref="IntegrationTestBase"/>, resolves the Scoped
+/// <see cref="HumansDbContext"/> per test through a DI scope off
+/// <see cref="IntegrationTestBase.Factory"/>, and exercises the repository
+/// against the run's single PostgreSQL container.
 /// </summary>
 public class VolunteerTrackingRepositoryTests(HumansWebApplicationFactory factory)
     : IntegrationTestBase(factory)
