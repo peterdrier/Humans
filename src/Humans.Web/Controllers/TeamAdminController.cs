@@ -620,10 +620,14 @@ public class TeamAdminController(
 
         try
         {
+            // Deliberately not passing HttpContext.RequestAborted: a team admin
+            // navigating away mid-reconcile would abort partway through applying
+            // Drive permissions, leaving the resource half-synced
+            // (nobodies-collective/Humans#950).
             var diff = await googleSyncService.SyncSingleResourceAsync(
                 resourceId,
                 SyncAction.Execute,
-                HttpContext.RequestAborted);
+                CancellationToken.None);
             if (diff.ErrorMessage is not null)
                 SetError(string.Format(localizer["TeamAdmin_ResourceSyncFailed"].Value, diff.ErrorMessage));
             else
