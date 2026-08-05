@@ -108,9 +108,11 @@ The safety net plus the map. Nothing destructive starts before G0 closes.
 - [x] **Audit the five sections admitted at the 2026-08-03 freeze (2026-08-05):** `Gate`,
       `Settings`, `Development`, `Gdpr`, `Search` scorecards added
       ([`2026-08-03-g0-first-audit/`](2026-08-03-g0-first-audit/)). Headline findings: Gate's
-      table-ownership boundary is clean (two `docs/sections/Gate.md` drifts aside) but it is
-      untested at real-Postgres/mocked-repo G3, and its vendor-checked-in dedupe signal is dead
-      in code, not merely untested; Settings (still coded as `SystemSettings`) is already ahead
+      table ownership is clean, but it is untested at real-Postgres/mocked-repo G3, its
+      vendor-checked-in dedupe signal is dead in code rather than merely untested, and
+      gate-terminal account provisioning writes Identity state via `UserManager` outside the
+      Users service boundary (plus two `docs/sections/Gate.md` drifts); Settings (still coded
+      as `SystemSettings`) is already ahead
       of G4 despite missing docs and service tests; Development is a decision, not yet a code
       module (DevLogin/DevSeed remain in generic `Humans.Web.*` namespaces — follow-up #4
       confirmed still open, and only `DevLogin` is actually excluded from prod); Gdpr's export
