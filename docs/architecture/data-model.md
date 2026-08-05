@@ -23,8 +23,8 @@ This file is the **index and cross-cutting rule sheet** for the data model. Per-
 | ApplicationStateHistory | [Governance](../sections/Governance.md) | Append-only (§12). |
 | BoardVote | [Governance](../sections/Governance.md) | Transient — deleted on finalization. |
 | RoleAssignment | [Auth](../sections/Auth.md) | |
-| LegalDocument / DocumentVersion | [Legal & Consent](../sections/Consent.md) | |
-| ConsentRecord | [Legal & Consent](../sections/Consent.md) | Append-only via DB triggers (§12). |
+| LegalDocument / DocumentVersion | [Consent](../sections/Consent.md) | |
+| ConsentRecord | [Consent](../sections/Consent.md) | Append-only via DB triggers (§12). |
 | Team | [Teams](../sections/Teams.md) | |
 | TeamMember | [Teams](../sections/Teams.md) | |
 | TeamJoinRequest | [Teams](../sections/Teams.md) | |
@@ -92,7 +92,7 @@ Users/Identity
   ← Profile, UserEmail, ContactField, CommunicationPreference (Profiles)
   ← RoleAssignment (Auth)
   ← Application, BoardVote, ApplicationStateHistory (Governance)
-  ← ConsentRecord (Legal & Consent)
+  ← ConsentRecord (Consent)
   ← TeamMember, TeamJoinRequest, TeamRoleAssignment (Teams)
   ← Camp.CreatedByUser, CampLead, CampSeason.ReviewedByUser, CampRoleAssignment.AssignedByUser (Camps)
   ← CampPolygon.LastModifiedByUser, CampPolygonHistory.ModifiedByUser (City Planning)
@@ -112,7 +112,7 @@ Team (Teams)
   ← Rota.Team (Shifts)
   ← BudgetCategory.Team, BudgetLineItem.ResponsibleTeam (Budget)
   ← CalendarEvent.OwningTeam (Calendar)
-  ← LegalDocument.Team (Legal & Consent)
+  ← LegalDocument.Team (Consent)
   ← FeedbackReport.AssignedToTeam (Feedback)
   ← Survey.AudienceTeamId (Survey — bare Guid FK, no nav, no cross-section EF FK constraint)
 
@@ -129,8 +129,8 @@ CampSeason (Camps)
 Camp (Camps)
   ← Container.CampId (Containers — bare Guid FK, non-nullable)
 
-DocumentVersion (Legal & Consent)
-  ← ConsentRecord (Legal & Consent, sibling aggregate — join by DocumentVersionId)
+DocumentVersion (Consent)
+  ← ConsentRecord (Consent, sibling aggregate — join by DocumentVersionId)
 
 CampSeason (Camps)
   ← CampMember (Camps, aggregate-local — partial unique on (CampSeasonId, UserId) WHERE Status <> 'Removed')
@@ -180,7 +180,7 @@ Append-only sections (§12) cannot rewrite their `UserId` / `ActorUserId` column
 | Section | Owning entity | Read paths that chain-follow |
 |---------|---------------|------------------------------|
 | [Audit Log](../sections/AuditLog.md) | `AuditLogEntry` | `GetByUserAsync`, `GetUserAuditLogPageAsync`, per-entity history when entity is User, `ContributeForUserAsync` |
-| [Legal & Consent](../sections/Consent.md) | `ConsentRecord` | `GetUserConsentsAsync`, `HasAllRequiredConsentsAsync`, consent dashboard, `ContributeForUserAsync` |
+| [Consent](../sections/Consent.md) | `ConsentRecord` | `GetUserConsentsAsync`, `HasAllRequiredConsentsAsync`, consent dashboard, `ContributeForUserAsync` |
 | [Budget](../sections/Budget.md) | `BudgetAuditLog` | `ContributeForUserAsync` (GDPR) |
 
 When adding a new append-only entity that carries a `UserId` / `ActorUserId` column, decide at design time whether per-user reads need chain-follow and add the union explicitly — `IUserService.GetMergedSourceIdsAsync` is the only sanctioned primitive.
@@ -191,7 +191,7 @@ The following entities are append-only — no `UpdateAsync` / `DeleteAsync` on t
 
 | Entity | Owning section | Enforcement |
 |--------|---------------|-------------|
-| ConsentRecord | [Legal & Consent](../sections/Consent.md) | DB triggers block UPDATE / DELETE |
+| ConsentRecord | [Consent](../sections/Consent.md) | DB triggers block UPDATE / DELETE |
 | AuditLogEntry | [Audit Log](../sections/AuditLog.md) | Architecture test: `AuditLogArchitectureTests.IAuditLogRepository_HasNoUpdateOrDeleteMethods` |
 | BudgetAuditLog | [Budget](../sections/Budget.md) | Repository shape — no update/delete methods |
 | CampPolygonHistory | [City Planning](../sections/CityPlanning.md) | Architecture test: `CityPlanningArchitectureTests` pins append-only repo surface |

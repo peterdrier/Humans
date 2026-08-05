@@ -13,7 +13,7 @@
   ConsentRecord append-only DB-trigger invariant, document sync from GitHub, and the Consent Coordinator review queue (audit-only, NOT a gate for Volunteers admission) — review when Legal/Consent services/entities/controllers change.
 -->
 
-# Legal & Consent — Section Invariants
+# Consent — Section Invariants
 
 Legal documents synced from GitHub, per-version consent records (append-only), the Consent Coordinator audit/review queue.
 

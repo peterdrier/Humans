@@ -395,7 +395,7 @@ Admin-only flows for the section's cross-account hygiene (routes pre-date `memor
 
 ## Cross-Section Dependencies
 
-- **Legal & Consent:** `IConsentService` — consent-check status gating depends on all required document versions having active consent records.
+- **Consent:** `IConsentService` — consent-check status gating depends on all required document versions having active consent records.
 - **Teams:** `ITeamService` — active membership equals membership in the Volunteers system team. Profile activation triggers addition.
 - **Onboarding:** none (one-directional — `OnboardingService` consumes `IProfileService`, never the reverse). The consent-check threshold (`Profile.ConsentCheckStatus → Pending` + Consent Coordinator notification) is director-level work and lives on `IOnboardingService.SetConsentCheckPendingIfEligibleAsync`; controllers call it as a peer call after `ProfileService.SaveProfileAsync`.
 - **Google Integration:** `IGoogleWorkspaceUserService` / `IGoogleSyncService` — a human's Google service email determines which email is used for Google Groups and Drive sync.

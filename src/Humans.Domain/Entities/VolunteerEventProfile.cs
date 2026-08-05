@@ -5,7 +5,7 @@ namespace Humans.Domain.Entities;
 /// <summary>
 /// User-scoped volunteer shift profile: skills, quirks, and languages used for
 /// shift-matching. One-to-one with User. (Dietary + medical moved to Profile —
-/// see docs/superpowers/specs/2026-05-25-dietary-medical-to-profile-design.md.)
+/// see docs/sections/Profiles.md.)
 /// </summary>
 public class VolunteerEventProfile
 {

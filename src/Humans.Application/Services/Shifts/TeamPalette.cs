@@ -17,7 +17,7 @@ public static class TeamPalette
 
     public static string ColorFor(Guid teamId)
     {
-        // Guid.ToString("D") locked by spec — see 2026-05-23-volunteer-tracking-export-design.md
+        // Guid.ToString("D") is load-bearing — see docs/sections/Shifts.md (Invariants).
         var idString = teamId.ToString("D");
         var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(idString));
         var index = (uint)(bytes[0] << 24 | bytes[1] << 16 | bytes[2] << 8 | bytes[3]);

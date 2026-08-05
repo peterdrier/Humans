@@ -3,7 +3,7 @@
 Audit of which services access which database tables and cache keys, organized by section.
 The goal is to identify cross-section table overlap, duplicated caching, and cache configuration issues.
 
-**Generated:** 2026-08-03
+**Generated:** 2026-08-05
 
 > **Methodology.** Tables are resolved by following each service's injected
 > repository interface to its EF-backed implementation in
@@ -276,6 +276,23 @@ Implements `IUserService`, `IUserServiceRead`, `IUserMerge`,
 catch OAuth/`UpdateAsync`/`LastLoginAt` writes that bypass the service
 surface). Surfaced on `/Debug/CacheStats`.
 
+> **Change since prior sweep (#1152 / #828):** `IUserRepository`'s three
+> verified-email repo lookups
+> (`GetDistinctUserIdsByVerifiedUserEmailAsync`,
+> `GetDistinctVerifiedUserEmailUserIdsAsync`,
+> `GetUserIdByVerifiedUserEmailAsync`) are **deleted**. `UserEmailService`
+> (`GetUserIdByExactEmailAsync`, `GetDistinctVerifiedUserIdsAsync`,
+> `GetUserIdByVerifiedEmailAsync`) and `UserService`
+> (`GetByEmailOrAlternateAsync`) now match verified addresses in memory
+> against the cached `UserInfo` set instead of querying `UserEmails`
+> directly. `CachingUserService.GetByEmailOrAlternateAsync` overrides the
+> inner service to scan the warmed snapshot itself (no repeated
+> `GetAllUserInfosAsync` fan-out per miss); the inner
+> `UserService.GetByEmailOrAlternateAsync` is now legacy-`GoogleEmail`-shadow-column-only,
+> reached only on a snapshot miss. Gmail/googlemail aliasing is preserved via
+> `EmailNormalization.EmailsMatch` on the alias-aware methods; exact-match
+> methods keep their no-aliasing contract.
+
 ### AccountProvisioningService (Scoped)
 
 Repository: `IUserRepository`.
@@ -372,6 +389,19 @@ per involved user. Resolution is delegated to
 / `IdentityUserLogins` (the §2c cross-section table-write violations called
 out in the prior sweep) are **gone**. Cross-section calls via `IUserService`,
 `ITeamService`, `IRoleAssignmentService`. No cache.
+
+### ExternalLoginService (Scoped) — new this sweep
+
+No repository. OAuth-callback decision ladder (link-while-signed-in →
+lockout-relink → verified-email link → create-new-account), lifted out of
+`AccountController` per HUM0031 (#857). Uses ASP.NET `UserManager<User>`
+directly (framework concern, per design-rules §2a — `AspNetUserLogins` is
+the authoritative store for `(Provider, ProviderKey)` → `UserId`) plus
+`IUserService` (login-timestamp recording, stub-profile provisioning on
+create), `IUserEmailService` (`ReconcileOAuthIdentityAsync` — the sole
+caller, pinned by HUM0005), `IMagicLinkService`
+(`FindUserByVerifiedEmailAsync`), and `IClock`. No direct DB access, no
+`IMemoryCache`. Implements `IExternalLoginService`.
 
 ---
 
@@ -1226,10 +1256,19 @@ the unified `UserInfo` read-model.
 ### CantinaRosterService (Scoped)
 
 No repository. Cross-section reads via `IShiftManagementService`
-(on-site cohort per day, via `GetOnSiteUserIdsForDayAsync` and active
-`EventSettings`) and `IUserServiceRead` (cached `UserInfo` + `ProfileInfo`
-for dietary preference, allergies, intolerances). Implements
-`ICantinaRosterService`. No direct DB access, no cache.
+(on-site cohort per day, via `GetOnSiteUserIdsForDayAsync`), `IBurnSettingsService`
+(active-burn metadata — `GetActiveAsync` returning `BurnSettingsInfo`, for
+the gate-opening/strike-end date range and event timezone) and
+`IUserServiceRead` (cached `UserInfo` + `ProfileInfo` for dietary
+preference, allergies, intolerances). Implements `ICantinaRosterService`.
+No direct DB access, no cache.
+
+> **Change since prior sweep (#809):** active-burn reads migrated off
+> `IShiftManagementService.GetActiveAsync()` (the `EventSettings` entity)
+> onto `IBurnSettingsService.GetActiveAsync()` (the `BurnSettingsInfo` DTO)
+> — the Shifts-owned `EventSettings` entity is no longer touched by this
+> service. `AgentToolDispatcher` (Agent section) made the same migration
+> in the same PR.
 
 `MedicalConditions` is intentionally never read here — the cantina plans
 around food, not medical history.
@@ -1284,8 +1323,18 @@ Folder: `src/Humans.Application/Services/Legal/`. **DbContext:**
 warmed on startup, with a version-id → document-id index). It caches the
 global active-document set behind the every-page consent-banner read and
 the per-version lookup, invalidated wholesale after any persisted
-`legal_documents` / `document_versions` write via
-`LegalDocumentSaveChangesInterceptor` → `ILegalDocumentCacheInvalidator.InvalidateAll`.
+`legal_documents` / `document_versions` write.
+
+> **Change since prior sweep (#751):** `AdminLegalDocumentService` and the
+> `LegalDocumentSaveChangesInterceptor` are both **deleted**.
+> `LegalDocumentSyncService` is now the sole writer for `LegalDocuments` /
+> `DocumentVersions` — it implements both `ILegalDocumentSyncService` (the
+> GitHub-sync write/read surface) and `IAdminLegalDocumentService` (the
+> admin create/update/archive/version-summary surface, absorbed from the
+> deleted service). Being the single writer lets it call
+> `ILegalDocumentCacheInvalidator.InvalidateAll()` directly after each
+> successful repository write instead of relying on a cross-cutting EF
+> `SaveChangesInterceptor`.
 
 ### LegalDocumentService (Scoped)
 
@@ -1296,9 +1345,13 @@ No repository (read-through service). Uses `IGitHubLegalDocumentConnector`
 |-----------|-----|------|-------|------------|
 | `Legal:{slug}` | 1 hr | yes | yes | yes |
 
-No DB access. Documents are cached from the GitHub source.
+No DB access. Documents are cached from the GitHub source. Unrelated to
+`LegalDocumentSyncService` below — this is the public `/Legal` Statutes
+content provider (no DB access), a naming collision the #751 rename kept
+rather than resolve (the merged writer took the `LegalDocumentSyncService`
+name because `LegalDocumentService` was already taken by this class).
 
-### LegalDocumentSyncService (Scoped — wrapped by CachingLegalDocumentSyncService Singleton decorator)
+### LegalDocumentSyncService (Scoped — wrapped by CachingLegalDocumentSyncService Singleton decorator; implements `ILegalDocumentSyncService` + `IAdminLegalDocumentService`)
 
 Repository: `ILegalDocumentRepository`.
 
@@ -1307,8 +1360,17 @@ Repository: `ILegalDocumentRepository`.
 | LegalDocuments | R/W |
 | DocumentVersions | R/W |
 
-Cross-section calls via `INotificationService`, `IUserService`,
-`IGitHubLegalDocumentConnector`. The inner service has no `IMemoryCache`;
+Sole writer for both the GitHub-sync surface (`SyncDocumentAsync` /
+`SyncAllDocumentsAsync` — version add, sync-touch) and the admin surface
+(`CreateLegalDocumentAsync` / `UpdateLegalDocumentAsync` /
+`ArchiveLegalDocumentAsync` / `UpdateVersionSummaryAsync` — absorbed from
+the deleted `AdminLegalDocumentService`, #751). Calls
+`ILegalDocumentCacheInvalidator.InvalidateAll()` directly after each
+successful write. Cross-section calls via `INotificationEmitter`,
+`ITeamService` (full service — team-name stitching for the admin list and
+the active-required-by-team read), `IUserServiceRead` (active-user
+fan-out for re-consent-required notifications), `IGitHubLegalDocumentConnector`,
+plus `IOptions<GitHubSettings>`. The inner service has no `IMemoryCache`;
 caching lives in the decorator. Periodic background sync of legal
 documents from the legal-internal repo.
 
@@ -1316,23 +1378,11 @@ documents from the legal-internal repo.
 
 | Cache | Type | Read | Write | Invalidate |
 |-------|------|------|-------|------------|
-| `TrackedCache<Guid, LegalDocumentInfo>` (`Legal.LegalDocumentInfo`, warmed on startup, + version-id index) | Per-Entity | yes | yes (warm/load) | yes (wholesale via `ILegalDocumentCacheInvalidator.InvalidateAll`, fired by `LegalDocumentSaveChangesInterceptor`) |
+| `TrackedCache<Guid, LegalDocumentInfo>` (`Legal.LegalDocumentInfo`, warmed on startup, + version-id index) | Per-Entity | yes | yes (warm/load) | yes (wholesale via `ILegalDocumentCacheInvalidator.InvalidateAll`, called directly by `LegalDocumentSyncService` after each successful write — #751) |
 
 Implements `ILegalDocumentSyncService`, `ILegalDocumentCacheInvalidator`.
-Surfaced on `/Debug/CacheStats`.
-
-### AdminLegalDocumentService (Scoped)
-
-Repository: `ILegalDocumentRepository`.
-
-| Table | R/W |
-|-------|-----|
-| LegalDocuments | R/W |
-| DocumentVersions | R/W |
-
-Admin-only mutation surface. Cross-section calls via
-`ILegalDocumentSyncService`, `ITeamService`. Uses `GitHubSettings`. No
-`IMemoryCache`. Writes are picked up by the interceptor-driven cache flush.
+Warm resolves team display names via `ITeamService` through a fresh DI
+scope per warm. Surfaced on `/Debug/CacheStats`.
 
 ---
 
@@ -2274,8 +2324,14 @@ No `IMemoryCache`.
 ### AuditViewerService (Scoped)
 
 No repository. Read-only view assembler over `IAuditLogService`,
-`IUserService`, `ITeamService`, `ITeamResourceService`. No DB access,
-no cache.
+`IUserServiceRead`, `ITeamServiceRead`, `ITeamResourceService`. No DB
+access, no cache.
+
+> **Change since prior sweep (#1157):** migrated off `ITeamService` /
+> `Team` entities onto `ITeamServiceRead` — team names are stitched by
+> filtering the cached `GetTeamsAsync()` `TeamInfo` dictionary client-side
+> (only `Name`/`Slug` were ever consumed; parent data was never used). No
+> new interface surface.
 
 `AuditEvent` and `AuditEventTextualizer` are value types / pure
 formatters with no DI dependencies.
@@ -2668,7 +2724,7 @@ separately below the key table.
 | `TrackedCache<Guid, CalendarEventInfo>` | Calendar | `Calendar.Event` | Per-Entity | CachingCalendarService warmup + lazy load | per-event `ReplaceAsync` after delegated write |
 | `TrackedCache<Guid, ApprovedEventView>` + category/venue/settings snapshots | Events | `Event.ApprovedEventView` | Per-Entity / Static | CachingEventService warmup + lazy load | `IEventViewInvalidator` (inline per write) |
 | `TrackedCache<Guid, UserConsentInfo>` | Consent | `Consent.UserConsentInfo` | Per-User | CachingConsentService lazy load | `IConsentCacheInvalidator` (synchronous per-user evict on submit) |
-| `TrackedCache<Guid, LegalDocumentInfo>` | Legal | `Legal.LegalDocumentInfo` | Per-Entity | CachingLegalDocumentSyncService warmup + lazy load | `ILegalDocumentCacheInvalidator.InvalidateAll` (via `LegalDocumentSaveChangesInterceptor`) |
+| `TrackedCache<Guid, LegalDocumentInfo>` | Legal | `Legal.LegalDocumentInfo` | Per-Entity | CachingLegalDocumentSyncService warmup + lazy load | `ILegalDocumentCacheInvalidator.InvalidateAll` (called directly by `LegalDocumentSyncService` after each write — #751) |
 | `TrackedCache<Guid, RoleAssignmentRow>` | Auth | `Auth.RoleAssignmentRow` | Per-Entity | CachingRoleAssignmentService warmup + lazy load | `IRoleAssignmentCacheInvalidator.InvalidateAll` (service-level) |
 | `TrackedCache<Guid, UserEarlyEntry?>` | Early Entry | `EarlyEntry.UserEarlyEntry` | Per-User (negative-result safe) | CachingEarlyEntryService lazy load | `IEarlyEntryInvalidator.InvalidateUser` / `InvalidateAll` (ShiftManagementService, ShiftSignupService, CampService, TeamService) |
 

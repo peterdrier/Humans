@@ -264,6 +264,8 @@ Selected routes:
   - Confirmed signups are capped at `MaxVolunteers` per shift before they roll into `FilledHours`, so a pie never exceeds 100 %.
   - All-day shifts contribute the standard 08:00–18:00 window's duration per slot, never `Shift.Duration` directly.
   - Service (`IShiftManagementService.GetDepartmentCoveragePiesAsync`) returns rows in natural `TeamName` order; the "promoted sub-team next to its parent" display ordering is applied in `ShiftBrowsePageBuilder.OrderPiesGroupedByParent` (display ordering belongs in view-model assembly).
+<!-- wheat: docs/superpowers/specs/2026-05-23-volunteer-tracking-export-design.md §Team Palette -->
+- **Volunteer-tracking export colours are derived, never stored.** `TeamPalette.ColorFor(teamId)` indexes a fixed 20-entry palette by the first four bytes of `SHA256(teamId.ToString("D"))`; there is deliberately no `Team.HexColor` column and no migration behind it. The `"D"` Guid format is load-bearing — an Id-formatting change would re-colour every team. Changing the palette's length **or** order re-maps existing teams too, so exports taken either side of such a change are not colour-comparable. Two teams landing on the same colour is accepted; row grouping keeps them distinct.
 
 ## Negative Access Rules
 
@@ -287,6 +289,8 @@ Selected routes:
 - Moving a rota to a different team writes an `AuditAction.RotaMovedToTeam` log entry and updates `Rota.TeamId` via a targeted update (only `TeamId` + `UpdatedAt` are marked modified).
 <!-- wheat: docs/superpowers/specs/2026-05-27-team-rotas-coordinator-message-design.md §Audit -->
 - Sending the team-wide coordinator message writes one `AuditAction.CoordinatorTeamRotasMessageSent` entry per dispatch — not one per recipient.
+<!-- wheat: docs/superpowers/specs/2026-05-23-volunteer-tracking-export-design.md §Out of Scope -->
+- `GET /Shifts/Dashboard/VolunteerTracking/ExportXlsx` deliberately writes **no** audit entry, unlike every mutating action on `VolunteerTrackingController`: the grid carries burner names only — no legal names, no emails, no medical data. If the export is ever widened to carry PII, an audit entry must land in the same change.
 - Deleting a rota or shift is rejected if any signup is in Confirmed state. Pending signups on a deleted rota/shift are auto-Cancelled via the entity's `Cancel` method.
 - When an account merge accepts, `IShiftSignupService.ReassignToUserAsync` re-FKs `ShiftSignup` rows (volunteer / enrolled-by / reviewed-by user references) from source to target; `IShiftManagementService.ReassignProfilesAndTagPrefsToUserAsync` re-FKs `VolunteerEventProfile` + `VolunteerTagPreference` (with conflict resolution since both are `(UserId)`-unique); `IGeneralAvailabilityService.ReassignToUserAsync` re-FKs `GeneralAvailability`. Called only by `IAccountMergeService.AcceptAsync` (Profiles section).
 

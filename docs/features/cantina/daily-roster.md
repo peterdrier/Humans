@@ -220,7 +220,7 @@ This feature lives in the `Cantina/` section and reads **only through section se
 - **Shifts (read, on-site cohort):** `IShiftManagementService.GetOnSiteUserIdsForDayAsync`, called in a 7-day loop and unioned into the unique-humans cohort.
 - **Users/Identity (read, dietary + names):** `IUserServiceRead.GetUserInfosAsync` — batched, cached `UserInfo`. Dietary lives on `Profile`; `CantinaRosterService` never reads `MedicalConditions`.
 - **Users/Identity (read, burner names):** `IUserServiceRead.GetUserInfosAsync` — batched, cached `UserInfo`. No entity reads, no new surface.
-- **Event settings:** `IShiftManagementService.GetActiveAsync` for `GateOpeningDate` / `TimeZoneId` (week-boundary computation and per-day calendar labels).
+- **Event settings:** `IBurnSettingsService.GetActiveAsync` for `GateOpeningDate` / `TimeZoneId` (week-boundary computation and per-day calendar labels).
 - **Authorization:** the `CantinaAdminOrAdmin` policy (Admin or the grantable `CantinaAdmin` role). No team-name heuristic, no bespoke access service.
 - **No new Domain entity, no schema change, no migration.**
 
@@ -228,7 +228,7 @@ New / updated components:
 
 | Layer | Component | Purpose |
 |---|---|---|
-| Application | `CantinaRosterService` | Build weekly aggregates + per-day mini-summary + unique-humans table; reads via `IShiftManagementService` + `IUserServiceRead` |
+| Application | `CantinaRosterService` | Build weekly aggregates + per-day mini-summary + unique-humans table; reads via `IShiftManagementService`, `IBurnSettingsService` + `IUserServiceRead` |
 | Application | `WeeklyRosterDto`, `DayRosterSummaryDto`, `RosterPersonDto`, `RollupItemDto` | View-model contracts; no `MedicalConditions` field |
 | Domain | `RoleNames.CantinaAdmin` | Grantable admin role; wired into `RoleNames.All` + `AnyAdminRole` + the `CantinaAdminOrAdmin` policy |
 | Web | `CantinaController` | `[Authorize(Policy = CantinaAdminOrAdmin)]`; `GET /Cantina/Roster(/Csv)` + `/Roster/Day(/Csv)` |
