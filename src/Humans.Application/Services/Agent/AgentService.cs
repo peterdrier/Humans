@@ -127,48 +127,77 @@ public sealed class AgentService : IAgentService
         // that lets MoveNextAsync be wrapped in try/catch while still streaming tokens live.
         var turn = RunTurnAsync(request, conversation, settings, priorTurns, today, hour, cancellationToken);
         await using var enumerator = turn.GetAsyncEnumerator(cancellationToken);
-        while (true)
+        // False until the assistant message for this turn is on disk — written either by
+        // RunTurnAsync itself (it yields its finalizer only after AppendMessageAsync) or by
+        // the failure path below. While it's false the persisted user message still owes the
+        // user a reply, so both the catch and the finally below write one.
+        var assistantPersisted = false;
+        try
         {
-            AgentTurnToken? current = null;
-            Exception? caught = null;
-            try
+            while (true)
             {
-                if (!await enumerator.MoveNextAsync())
+                AgentTurnToken? current = null;
+                Exception? caught = null;
+                try
+                {
+                    if (!await enumerator.MoveNextAsync())
+                        yield break;
+                    current = enumerator.Current;
+                }
+                catch (Exception ex)
+                {
+                    // `yield` isn't allowed inside a catch block, so stash the exception and
+                    // handle/yield below.
+                    caught = ex;
+                }
+
+                if (caught is not null)
+                {
+                    if (caught is OperationCanceledException && cancellationToken.IsCancellationRequested)
+                    {
+                        // Expected (client disconnect), not a bug — Warning, not Error. Still
+                        // persist the trace below: #952's log evidence showed conversations with
+                        // no assistant message at all, and a disconnect is one plausible cause.
+                        _logger.LogWarning(
+                            "Agent turn cancelled (likely client disconnect) before completion for conversation {ConversationId}",
+                            conversation.Id);
+                    }
+                    else
+                    {
+                        _logger.LogError(caught,
+                            "Agent turn failed before completion for conversation {ConversationId}", conversation.Id);
+                    }
+                    // CancellationToken.None: the turn may be failing BECAUSE cancellationToken
+                    // fired (client disconnect), and the whole point is to still leave a trace.
+                    await AppendFailureMessage(conversation.Id, "error", settings.Model, CancellationToken.None);
+                    assistantPersisted = true;
+                    yield return new AgentTurnToken(null, null,
+                        new AgentTurnFinalizer(0, 0, 0, 0, settings.Model, "error", conversation.Id));
                     yield break;
-                current = enumerator.Current;
-            }
-            catch (Exception ex)
-            {
-                // `yield` isn't allowed inside a catch block, so stash the exception and
-                // handle/yield below.
-                caught = ex;
-            }
+                }
 
-            if (caught is not null)
+                // RunTurnAsync yields its finalizer last, after AppendMessageAsync — seeing one
+                // means the turn is fully persisted, so a disconnect while writing that very
+                // frame must not add a spurious failure trace on top of it.
+                if (current!.Finalizer is not null)
+                    assistantPersisted = true;
+                yield return current;
+            }
+        }
+        finally
+        {
+            // Not every abandoned turn throws into the catch above: AgentController awaits
+            // WriteSse OUTSIDE this method, so a browser that disconnects while a token is
+            // being written tears the turn down by disposing the iterator at a `yield return`,
+            // which resumes here rather than at MoveNextAsync. Without this the disconnect
+            // case #963 set out to fix still leaves a user message with no assistant reply.
+            if (!assistantPersisted)
             {
-                if (caught is OperationCanceledException && cancellationToken.IsCancellationRequested)
-                {
-                    // Expected (client disconnect), not a bug — Warning, not Error. Still
-                    // persist the trace below: #952's log evidence showed conversations with
-                    // no assistant message at all, and a disconnect is one plausible cause.
-                    _logger.LogWarning(
-                        "Agent turn cancelled (likely client disconnect) before completion for conversation {ConversationId}",
-                        conversation.Id);
-                }
-                else
-                {
-                    _logger.LogError(caught,
-                        "Agent turn failed before completion for conversation {ConversationId}", conversation.Id);
-                }
-                // CancellationToken.None: the turn may be failing BECAUSE cancellationToken
-                // fired (client disconnect), and the whole point is to still leave a trace.
+                _logger.LogWarning(
+                    "Agent turn abandoned mid-stream (likely client disconnect) for conversation {ConversationId}",
+                    conversation.Id);
                 await AppendFailureMessage(conversation.Id, "error", settings.Model, CancellationToken.None);
-                yield return new AgentTurnToken(null, null,
-                    new AgentTurnFinalizer(0, 0, 0, 0, settings.Model, "error", conversation.Id));
-                yield break;
             }
-
-            yield return current!;
         }
     }
 

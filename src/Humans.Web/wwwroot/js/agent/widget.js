@@ -165,10 +165,14 @@
             // A turn that threw mid-stream now finishes as a well-formed 200/SSE
             // 'error' finalizer instead of a broken connection, so neither the
             // !resp.ok branch nor the catch below fires — without this the user is
-            // left staring at an empty bubble. Only fill an empty bubble: the
-            // exception can land after a partial answer was already streamed, and
-            // that text is worth keeping.
-            if (reason === 'error' && !bubble.dataset.rawMarkdown.trim()) {
+            // left staring at an empty bubble. Only fill a bubble that is still
+            // empty: the exception can land after a partial answer was streamed
+            // (rawMarkdown), or after the propose branch wrote the handoff line as
+            // plain text with no rawMarkdown — both beat a generic error, and the
+            // proposal modal is open and usable regardless. The bubble starts as
+            // appendMessage('assistant', ''), so textContent is only non-empty when
+            // one of those branches filled it.
+            if (reason === 'error' && !bubble.dataset.rawMarkdown.trim() && !bubble.textContent.trim()) {
                 bubble.textContent = '(Something went wrong answering that. Please try again.)';
             }
             // Capture the conversation id from the first successful turn so the

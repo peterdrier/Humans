@@ -595,6 +595,75 @@ public class AgentServiceTests
     }
 
     [HumansFact]
+    public async Task Ask_persists_an_assistant_message_when_the_stream_is_abandoned_mid_turn()
+    {
+        // nobodies-collective/Humans#963 — AgentController awaits WriteSse OUTSIDE AskAsync, so
+        // a browser that goes away while a token is being written never throws into AskAsync's
+        // catch: it abandons the enumeration, which disposes the iterator at a `yield return`.
+        // That is the likeliest disconnect timing, and it must still leave the already-persisted
+        // user message with a matching assistant trace.
+        var userId = Guid.NewGuid();
+        var (svc, client) = await BuildService(s => s.Enabled = true);
+
+        client.EnqueueTurn(
+            new AgentTurnToken("Teams are groups of ", null, null),
+            new AgentTurnToken("volunteers.", null, null),
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(40, 10, 0, 0, "claude-sonnet-4-6", "end_turn")));
+
+        // `break` disposes the async enumerator — exactly what the controller's `await foreach`
+        // does when the response write throws on a dead connection.
+        await foreach (var t in svc.AskAsync(
+            new AgentTurnRequest(ConversationId: Guid.Empty, UserId: userId, Message: "What are teams?", Locale: "es"),
+            Xunit.TestContext.Current.CancellationToken))
+        {
+            if (t.TextDelta is not null)
+                break;
+        }
+
+        var rows = await svc.ListAllConversationsForAdminWithMessagesAsync(
+            refusalsOnly: false, handoffsOnly: false, userId: userId, take: 50, skip: 0,
+            Xunit.TestContext.Current.CancellationToken);
+        var messages = rows.SelectMany(r => r.Messages).ToList();
+        messages.Should().Contain(m => m.Role == AgentRole.User,
+            "the user message is persisted before the turn starts streaming");
+        var failure = messages.Should().ContainSingle(m => m.Role == AgentRole.Assistant,
+            "an abandoned turn must leave exactly one assistant trace — no reply, and no duplicate")
+            .Subject;
+        failure.RefusalReason.Should().Be("error",
+            "the trace surfaces through the existing admin refusals filter");
+    }
+
+    [HumansFact]
+    public async Task Ask_does_not_add_a_failure_trace_when_the_consumer_stops_after_the_finalizer()
+    {
+        // The disconnect guard above must not fire on a turn that completed: RunTurnAsync yields
+        // its finalizer only after AppendMessageAsync, so a disconnect while writing that last
+        // frame would otherwise stack a bogus "error" trace on top of a perfectly good answer.
+        var userId = Guid.NewGuid();
+        var (svc, client) = await BuildService(s => s.Enabled = true);
+
+        client.EnqueueTurn(
+            new AgentTurnToken("Teams are groups of volunteers.", null, null),
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(40, 10, 0, 0, "claude-sonnet-4-6", "end_turn")));
+
+        await foreach (var t in svc.AskAsync(
+            new AgentTurnRequest(ConversationId: Guid.Empty, UserId: userId, Message: "What are teams?", Locale: "es"),
+            Xunit.TestContext.Current.CancellationToken))
+        {
+            if (t.Finalizer is not null)
+                break;
+        }
+
+        var rows = await svc.ListAllConversationsForAdminWithMessagesAsync(
+            refusalsOnly: false, handoffsOnly: false, userId: userId, take: 50, skip: 0,
+            Xunit.TestContext.Current.CancellationToken);
+        var assistant = rows.SelectMany(r => r.Messages).Should()
+            .ContainSingle(m => m.Role == AgentRole.Assistant).Subject;
+        assistant.Content.Should().Be("Teams are groups of volunteers.");
+        assistant.RefusalReason.Should().BeNull();
+    }
+
+    [HumansFact]
     public async Task Refused_conversations_are_surfaced_by_the_admin_refusals_filter()
     {
         var userId = Guid.NewGuid();
