@@ -27,10 +27,11 @@ namespace Humans.Infrastructure.Hosting;
 /// <para>
 /// A failed migration crash-loops the container, and every restart re-enters this class with
 /// the schema already part-changed. The rollback point therefore belongs to the <em>deploy</em>,
-/// not the boot: the snapshot is written with an <see cref="UnfinishedSuffix"/> suffix and only
-/// loses it once a boot gets all the way through its migrations. While that suffix is present
-/// later boots carry the same file forward instead of dumping the damage over it, so the one
-/// snapshot that predates the deploy survives the crash loop.
+/// not the boot: the snapshot earns an <see cref="UnfinishedSuffix"/> suffix once
+/// <c>pg_dump</c> has exited successfully, and loses it once a boot gets all the way through its
+/// migrations. While that suffix is present later boots carry the same file forward instead of
+/// dumping the damage over it, so the one snapshot that predates the deploy survives the crash
+/// loop.
 /// </para>
 /// <para>
 /// These snapshots are a fast local rollback point, not the archive: Coolify's own scheduled
@@ -53,6 +54,14 @@ internal sealed class PreMigrationSnapshot(string connectionString, ILogger logg
     /// rollback point and is neither overwritten nor pruned.
     /// </summary>
     internal const string UnfinishedSuffix = ".unfinished";
+
+    /// <summary>
+    /// Marks the file <c>pg_dump</c> is writing into. A dump only earns
+    /// <see cref="UnfinishedSuffix"/> once the process has exited successfully, so a failed or
+    /// killed dump can never leave a truncated file that a later boot mistakes for a rollback
+    /// point. Nothing reads these; the next dump attempt deletes whatever it finds.
+    /// </summary>
+    private const string WritingSuffix = ".writing";
 
     /// <summary>
     /// Newest snapshots kept; older ones are deleted after a successful dump. Bounds disk use
@@ -83,11 +92,12 @@ internal sealed class PreMigrationSnapshot(string connectionString, ILogger logg
         _attempted = true;
 
         var database = _connection.Database!;
-        var path = Path.Combine(
+        var dump = Path.Combine(
             SnapshotDirectory,
             string.Create(
                 CultureInfo.InvariantCulture,
-                $"{database}-{DateTime.UtcNow:yyyyMMdd'T'HHmmss'Z'}.dump{UnfinishedSuffix}"));
+                $"{database}-{DateTime.UtcNow:yyyyMMdd'T'HHmmss'Z'}.dump"));
+        var path = dump + UnfinishedSuffix;
 
         var stopwatch = Stopwatch.StartNew();
         try
@@ -106,7 +116,14 @@ internal sealed class PreMigrationSnapshot(string connectionString, ILogger logg
                 return;
             }
 
-            await RunPgDumpAsync(_connection, path, cancellationToken);
+            DiscardAbandonedWrites(SnapshotDirectory, database);
+
+            // Dump into a name nothing looks for, and only rename once pg_dump has exited 0.
+            // Writing straight to the final name would let a dump that failed or was killed
+            // half-way leave a truncated file that the next boot carries forward as this
+            // deploy's rollback point - and then migrates on the strength of it.
+            await RunPgDumpAsync(_connection, dump + WritingSuffix, cancellationToken);
+            File.Move(dump + WritingSuffix, path, overwrite: true);
         }
         catch (Exception ex)
         {
@@ -189,6 +206,19 @@ internal sealed class PreMigrationSnapshot(string connectionString, ILogger logg
             .GetFiles(directory, database + "-*.dump" + UnfinishedSuffix)
             .OrderBy(Path.GetFileName, StringComparer.Ordinal)];
 
+    /// <summary>
+    /// Deletes the output of any dump that did not finish. Nothing can be mid-dump here — this
+    /// runs at startup on the single instance, before this boot's own dump — so anything still
+    /// carrying <see cref="WritingSuffix"/> is the wreckage of an earlier attempt.
+    /// </summary>
+    private static void DiscardAbandonedWrites(string directory, string database)
+    {
+        foreach (var abandoned in Directory.GetFiles(directory, database + "-*.dump" + WritingSuffix))
+        {
+            File.Delete(abandoned);
+        }
+    }
+
     private static async Task RunPgDumpAsync(
         NpgsqlConnectionStringBuilder connection,
         string path,
@@ -237,12 +267,12 @@ internal sealed class PreMigrationSnapshot(string connectionString, ILogger logg
         try
         {
             // The timestamp in the file name sorts lexicographically in chronological order.
-            // Unfinished snapshots are excluded outright rather than left to retention: one of
-            // them is the snapshot this call just wrote, and any other belongs to a deploy that
-            // has not been recovered yet.
+            // Only completed snapshots are retention candidates: a suffixed file is either this
+            // deploy's rollback point or a dump in flight, and neither is ours to delete on a
+            // count.
             var stale = new DirectoryInfo(SnapshotDirectory)
                 .GetFiles(database + "-*.dump")
-                .Where(file => !file.Name.EndsWith(UnfinishedSuffix, StringComparison.Ordinal))
+                .Where(file => file.Name.EndsWith(".dump", StringComparison.Ordinal))
                 .OrderByDescending(file => file.Name, StringComparer.Ordinal)
                 .Skip(RetainedSnapshots);
 

@@ -67,13 +67,24 @@ container is the one built from this repo. The rest of this runbook calls them `
 does not:
 
 ```bash
-docker cp $APP:/app/db-snapshots ./snapshots && ls -l ./snapshots
-cp ./snapshots/humans-20260805T155147Z.dump ./restore.dump
+mkdir -p ./snapshots
+docker cp $APP:/app/db-snapshots/. ./snapshots && ls -l ./snapshots
+
+# After a failed migration this is the .unfinished file — see §4
+cp ./snapshots/humans-20260805T155147Z.dump.unfinished ./restore.dump
 docker cp ./restore.dump $DB:/tmp/restore.dump
 ```
 
+The trailing **`/.`** on the source matters: `docker cp` of a directory *into an existing
+directory* nests it, so without it a second attempt leaves you with
+`./snapshots/db-snapshots/...` and a `cp` that either fails or quietly picks up the stale dump
+from the first attempt. With `/.` it copies the contents, and reruns are safe.
+
 A file with a trailing **`.unfinished`** is the one you want: it means the deploy that took it
-never finished migrating, so it is the last state before that deploy touched the schema. See §5.
+never finished migrating, so it is the last state before that deploy touched the schema. Copy it
+to a plain `restore.dump` as above — the suffix is bookkeeping for the app, and `pg_restore` does
+not care what the file is called. (`.writing` is different: that is an aborted dump, never a
+restore candidate.) See §5.
 
 **From a Coolify backup:** download it from Coolify's storage to the host, then
 
@@ -218,10 +229,11 @@ a bad migration means the container crash-loops.
 
 1. **Read the logs before doing anything.** `docker logs $APP | tail -100`. The line
    `Applying pending migration: <name>` immediately before the exception names the culprit.
-2. **Find the snapshot.** `docker cp $APP:/app/db-snapshots ./snapshots && ls -l ./snapshots` —
-   the file ending **`.unfinished`** is from this deploy, taken *before* the failed migration
-   ran. (`docker cp` rather than `docker exec`: a crash-looping container is usually not in a
-   state you can exec into.)
+2. **Find the snapshot.** `mkdir -p ./snapshots && docker cp $APP:/app/db-snapshots/. ./snapshots
+   && ls -l ./snapshots` — the file ending **`.unfinished`** is from this deploy, taken *before*
+   the failed migration ran. (`docker cp` rather than `docker exec`: a crash-looping container is
+   usually not in a state you can exec into. The trailing `/.` is what makes a second attempt
+   refresh `./snapshots` instead of nesting a directory inside it — see §1.)
    - **Take the `.unfinished` one, not the newest one.** The crash loop keeps restarting the
      app, and each restart re-runs the migration against a schema the earlier attempts may have
      already part-changed. The suffix marks the snapshot from *before* any of that; the app
@@ -253,12 +265,17 @@ Implemented in `src/Humans.Infrastructure/Hosting/PreMigrationSnapshot.cs`
 - **Where the file goes:** `/app/db-snapshots/{database}-{UTC timestamp}.dump`, custom format,
   on the `db_snapshots` volume. It is deliberately **not** under `wwwroot` — that directory is
   web-served.
-- **The `.unfinished` suffix:** the snapshot is written with it and loses it only once a boot
-  gets all the way through its migrations. So a file still carrying the suffix means "the deploy
-  that took this never finished" — it is the live rollback point, and it is the file §4 tells
-  you to restore. While it is there, later boots reuse it instead of taking a new dump (log line:
-  `Reusing pre-migration snapshot …`), which is what stops a crash loop from archiving a
-  part-migrated schema over the good one. It is also never pruned.
+- **The `.unfinished` suffix:** the snapshot earns it when `pg_dump` exits successfully and loses
+  it only once a boot gets all the way through its migrations. So a file still carrying the
+  suffix means "the deploy that took this never finished" — it is the live rollback point, and it
+  is the file §4 tells you to restore. While it is there, later boots reuse it instead of taking a
+  new dump (log line: `Reusing pre-migration snapshot …`), which is what stops a crash loop from
+  archiving a part-migrated schema over the good one. It is also never pruned.
+- **A `.writing` file is not a backup.** That is the name a dump in flight is written under; it
+  is renamed to `.unfinished` only once `pg_dump` succeeds, so a dump that failed or was killed
+  can never be mistaken for a rollback point. The next dump attempt deletes it. If you see one,
+  the deploy that made it aborted before migrating — the schema is untouched and rolling the
+  image back is a complete fix.
 - **Retention:** the newest 10 completed snapshots are kept; older ones are deleted after a
   successful dump. These are a fast local rollback point, not the archive — Coolify's scheduled
   backups are the off-host copy.

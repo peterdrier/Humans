@@ -54,6 +54,28 @@ public sealed class PreMigrationSnapshotTests : IDisposable
         PreMigrationSnapshot.FindUnfinishedSnapshot(_directory, Database).Should().Be(first);
     }
 
+    /// <summary>
+    /// A dump only earns the suffix once <c>pg_dump</c> has exited successfully. The file it was
+    /// being written into must never qualify: carrying a truncated dump forward would skip the
+    /// next boot's dump and let it migrate on the strength of an unrestorable file.
+    /// </summary>
+    [HumansFact]
+    public void A_dump_still_being_written_is_never_carried_forward()
+    {
+        Snapshot("humans-20260805T120000Z.dump.writing");
+
+        PreMigrationSnapshot.FindUnfinishedSnapshot(_directory, Database).Should().BeNull();
+    }
+
+    [HumansFact]
+    public void A_dump_still_being_written_is_never_promoted()
+    {
+        Snapshot("humans-20260805T120000Z.dump.writing");
+
+        PreMigrationSnapshot.PromoteUnfinishedSnapshots(_directory, Database).Should().BeEmpty();
+        File.Exists(Path.Combine(_directory, "humans-20260805T120000Z.dump")).Should().BeFalse();
+    }
+
     [HumansFact]
     public void Another_databases_snapshot_is_never_carried_forward()
     {
