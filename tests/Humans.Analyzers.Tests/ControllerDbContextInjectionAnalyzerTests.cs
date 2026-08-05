@@ -209,6 +209,34 @@ public class ControllerDbContextInjectionAnalyzerTests
     }
 
     [HumansFact]
+    public async Task Message_names_the_actual_injected_DbContext_type()
+    {
+        // Detection is structural (any DbContext-derived type), so the message
+        // must name the actual context injected rather than a hardcoded
+        // "HumansDbContext" (nobodies-collective/Humans#960).
+        var source = Stubs + """
+
+            namespace Humans.Web.Controllers
+            {
+                public sealed class SettingsController : Microsoft.AspNetCore.Mvc.Controller
+                {
+                    public SettingsController(Humans.Infrastructure.Data.SystemSettingsDbContext dbContext)
+                    {
+                    }
+                }
+            }
+            """;
+
+        var diagnostics = await AnalyzerTestHarness.RunAsync(
+            new ControllerDbContextInjectionAnalyzer(),
+            "Humans.Web",
+            source);
+
+        diagnostics.Should().ContainSingle(d =>
+            IsHum0008(d) && d.GetMessage().Contains("SystemSettingsDbContext", StringComparison.Ordinal));
+    }
+
+    [HumansFact]
     public async Task Does_not_fire_outside_Web_assembly()
     {
         var source = Stubs + """

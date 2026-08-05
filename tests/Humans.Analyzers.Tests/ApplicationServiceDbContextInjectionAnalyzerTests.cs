@@ -338,6 +338,34 @@ public class ApplicationServiceDbContextInjectionAnalyzerTests
     }
 
     [HumansFact]
+    public async Task Message_names_the_actual_DbContext_type_used()
+    {
+        // Detection is structural (any DbContext-derived type), so the message
+        // must name the actual context used rather than a hardcoded
+        // "HumansDbContext" (nobodies-collective/Humans#960).
+        var source = Stubs + """
+
+            namespace Humans.Infrastructure.Jobs
+            {
+                public sealed class SomeJob
+                {
+                    public SomeJob(Humans.Infrastructure.Data.SystemSettingsDbContext dbContext)
+                    {
+                    }
+                }
+            }
+            """;
+
+        var diagnostics = await AnalyzerTestHarness.RunAsync(
+            new ApplicationServiceDbContextInjectionAnalyzer(),
+            "Humans.Infrastructure",
+            source);
+
+        diagnostics.Should().ContainSingle(d =>
+            IsHum0009(d) && d.GetMessage().Contains("SystemSettingsDbContext", StringComparison.Ordinal));
+    }
+
+    [HumansFact]
     public async Task Does_not_fire_outside_Infrastructure_assembly()
     {
         var source = Stubs + """

@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Humans.Application.Architecture;
 
-namespace Humans.Infrastructure.Data.Configurations.Shifts;
+namespace Humans.Infrastructure.Data.Configurations.Users;
 
 [Grandfathered(
     ruleId: "HUM0024",

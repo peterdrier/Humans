@@ -1,7 +1,7 @@
 using Humans.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-namespace Humans.Infrastructure.Data.Configurations.Profiles;
+namespace Humans.Infrastructure.Data.Configurations.Users;
 
 public class AccountMergeRequestConfiguration : IEntityTypeConfiguration<AccountMergeRequest>
 {

@@ -58,27 +58,37 @@ internal static class SectionDbContexts
     /// <c>IDbContextFactory&lt;TContext&gt;</c>, <c>UserStore&lt;…, HumansDbContext, …&gt;</c>,
     /// and arbitrarily-nested constructions.
     /// </summary>
-    public static bool ReferencesSectionDbContext(ITypeSymbol? candidate, INamedTypeSymbol efDbContext)
+    public static bool ReferencesSectionDbContext(ITypeSymbol? candidate, INamedTypeSymbol efDbContext) =>
+        FindReferencedSectionDbContext(candidate, efDbContext) is not null;
+
+    /// <summary>
+    /// Same walk as <see cref="ReferencesSectionDbContext"/>, but returns the
+    /// specific context type that matched (e.g. <c>ContainersDbContext</c>)
+    /// instead of a bool, so callers can name the actual context in a
+    /// diagnostic message rather than a generic "HumansDbContext".
+    /// </summary>
+    public static INamedTypeSymbol? FindReferencedSectionDbContext(ITypeSymbol? candidate, INamedTypeSymbol efDbContext)
     {
         if (candidate is null)
-            return false;
+            return null;
 
         if (IsSectionDbContext(candidate, efDbContext))
-            return true;
+            return (INamedTypeSymbol)candidate;
 
         if (candidate is INamedTypeSymbol named)
         {
             foreach (var typeArg in named.TypeArguments)
             {
-                if (ReferencesSectionDbContext(typeArg, efDbContext))
-                    return true;
+                var found = FindReferencedSectionDbContext(typeArg, efDbContext);
+                if (found is not null)
+                    return found;
             }
         }
 
-        if (candidate is IArrayTypeSymbol arr && ReferencesSectionDbContext(arr.ElementType, efDbContext))
-            return true;
+        if (candidate is IArrayTypeSymbol arr)
+            return FindReferencedSectionDbContext(arr.ElementType, efDbContext);
 
-        return false;
+        return null;
     }
 
     /// <summary>
