@@ -1,4 +1,4 @@
-﻿using Humans.Application.Extensions;
+using Humans.Application.Extensions;
 using Humans.Application.Helpers;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.AuditLog;
