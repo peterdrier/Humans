@@ -48,20 +48,21 @@ Remove `--filter "FullyQualifiedName!~Integration"` from `.github/workflows/buil
 
 **Definition of done:** integration tests run on every PR. A new "pre-existing failure" cannot land on `main` without being noticed.
 
-### P2 — Share one Postgres container across the assembly
-**Value: high · Effort: medium · Risk: medium. Depends on P0.**
+### P2 — Share one Postgres container across the assembly — **shipped**
+**Value: high · Effort: medium · Risk: medium. Depends on P0. Landed via nobodies-collective/Humans#764.**
 
-Move from `IClassFixture<HumansWebApplicationFactory>` to `IAssemblyFixture<HumansWebApplicationFactory>` (xUnit v3 supports this natively). One container, one app boot, one migration pass per test run.
+`HumansWebApplicationFactory` is registered once for the assembly with xUnit v3's `[assembly: AssemblyFixture(...)]` (the attribute form — v3 has no `IAssemblyFixture<T>` interface, and an assembly fixture cannot take another assembly fixture as a constructor argument). One container, one app boot, one migration pass per test run. Test parallelization is disabled for the assembly, since the classes now share one host. The migration-mechanics tests (`PhysicalDefaultParityTests`, `SectionMigrationRunnerTests`) and the localization sweep's second app boot take their own databases inside that one container rather than starting their own.
 
-Per-test isolation via either:
-- (a) `BEGIN; ROLLBACK` transaction wrapper per test — fast, clean for the common case.
-- (b) `TRUNCATE TABLE ... CASCADE` reset between tests — necessary for tests that assert post-commit behavior (triggers firing, etc.).
+Measured on `origin/main` at 94535e688: **27 → 1** concurrent Postgres containers, **22 → 0** failures (all 22 were 30s/60s timeouts, i.e. contention), **62s → 31s** of test time.
 
-Default to (a); tests that need post-commit assertions opt into (b) via a fixture base-class flag.
+**Per-test database isolation did not ship** — tracked as nobodies-collective/Humans#983. Both options in the original plan were tried and neither works as written:
 
-Tradeoff: shared container trades isolation for speed. Mitigated by per-test transaction rollback. A handful of tests will need the TRUNCATE variant — that's a 5-line fixture method.
+- (a) **`BEGIN; ROLLBACK` per test.** Not implementable for this suite. Tests drive the app over TestServer, so each request resolves its own scoped `HumansDbContext` off the pooled `NpgsqlDataSource` and writes on a different physical connection than the test holds; a transaction the test opens is invisible to the code under test. Pinning the pool to a single connection does not help either — EF's own `SaveChanges` transaction collides with an out-of-band `BEGIN`.
+- (b) **`TRUNCATE ... CASCADE`.** Implemented and measured, including a post-boot snapshot/restore so `HasData` and startup-seeder rows survive. It takes 23 of 123 tests down, because the app's 11 Singleton caching decorators are not truncated with the database: `/dev/login/{persona}` 500s when `DevPersonaSeeder` resolves a cached user id whose row was just truncated. Truncating the database while the app still believes the old rows exist is a worse correctness story than not truncating at all, so it was not shipped. #983 records what a complete cache-flush capability would need.
 
-**Definition of done:** integration suite boots one Postgres container per run; per-test isolation preserved; suite runtime drops to seconds, not minutes.
+The suite is green sharing one database because tests already scope assertions to rows they seeded themselves (per-test GUID suffixes). `HumansWebApplicationFactory`'s XML docs state that contract for future tests.
+
+**Definition of done:** integration suite boots one Postgres container per run ✅; suite runtime drops to seconds, not minutes ✅; per-test isolation → deferred to nobodies-collective/Humans#983.
 
 ### P3 — Containerize Hangfire away from static state
 **Value: high · Effort: medium · Risk: low. Can run in parallel with P2.**
@@ -121,7 +122,7 @@ Parent: nobodies-collective/Humans#761. Phase issues:
 |-------|-------|
 | P0 — Fix 53 integration failures | nobodies-collective/Humans#762 |
 | P1 — Integration in CI | nobodies-collective/Humans#763 |
-| P2 — Shared container fixture | nobodies-collective/Humans#764 |
+| P2 — Shared container fixture | nobodies-collective/Humans#764 (shipped; isolation follow-up nobodies-collective/Humans#983) |
 | P3 — Hangfire abstraction | nobodies-collective/Humans#765 |
 | P4 — EF In-Memory migration | nobodies-collective/Humans#766 |
 | P5 — Quarantine discipline | nobodies-collective/Humans#767 |

@@ -71,8 +71,18 @@ internal sealed class PseudoStringLocalizer : IStringLocalizer
 /// which the framework builds on top of <see cref="IStringLocalizerFactory"/>. Isolated to the
 /// sweep fixture — all other integration tests keep the real localizer.
 /// </summary>
-public sealed class PseudoLocalizationWebApplicationFactory : HumansWebApplicationFactory
+/// <remarks>
+/// The sweep needs a second app boot (a different DI graph), but not a second
+/// Postgres container: it takes its own database inside the shared one. The sweep
+/// constructs this itself rather than declaring it as a fixture, so the second
+/// boot costs nothing on the runs where the sweep is skipped.
+/// </remarks>
+public sealed class PseudoLocalizationWebApplicationFactory(HumansWebApplicationFactory shared)
+    : HumansWebApplicationFactory
 {
+    protected override ValueTask<string> StartDatabaseAsync(CancellationToken ct) =>
+        new(shared.CreateDatabaseAsync("pseudo_localization", ct));
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         base.ConfigureWebHost(builder);

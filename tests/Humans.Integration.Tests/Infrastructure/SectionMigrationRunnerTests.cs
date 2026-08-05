@@ -30,7 +30,7 @@ namespace Humans.Integration.Tests.Infrastructure;
 /// from the context model, not a literal list, so a table added to a section
 /// context is covered without touching this file.
 /// </summary>
-public sealed class SectionMigrationRunnerTests : IAsyncLifetime
+public sealed class SectionMigrationRunnerTests(HumansWebApplicationFactory factory)
 {
     private sealed record SectionCase(
         string Name,
@@ -77,19 +77,6 @@ public sealed class SectionMigrationRunnerTests : IAsyncLifetime
             CreateSectionContext<EventGuideDbContext>,
             """SELECT count(*) FROM event_categories WHERE "Slug" = 'workshop'"""),
     ];
-
-    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:16-alpine")
-        .Build();
-
-    public async ValueTask InitializeAsync()
-    {
-        await _postgres.StartAsync(TestContext.Current.CancellationToken);
-    }
-
-    public async ValueTask DisposeAsync()
-    {
-        await _postgres.DisposeAsync();
-    }
 
     [HumansFact]
     public async Task FreshDatabase_BaselineExecutes_TablesSeedAndHistoryAppear()
@@ -211,19 +198,13 @@ public sealed class SectionMigrationRunnerTests : IAsyncLifetime
             .Order(StringComparer.Ordinal)
             .ToList();
 
-    private async Task<string> CreateDatabaseAsync(string name)
-    {
-        var admin = new NpgsqlConnectionStringBuilder(_postgres.GetConnectionString());
-        await using (var connection = new NpgsqlConnection(admin.ConnectionString))
-        {
-            await connection.OpenAsync(TestContext.Current.CancellationToken);
-            await using var command = connection.CreateCommand();
-            command.CommandText = $"CREATE DATABASE {name}";
-            await command.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
-        }
-
-        return new NpgsqlConnectionStringBuilder(admin.ConnectionString) { Database = name }.ConnectionString;
-    }
+    /// <summary>
+    /// A pristine database in the assembly's shared Postgres container — these tests
+    /// drive the migration runner from scratch, so they need their own databases,
+    /// not the app's.
+    /// </summary>
+    private Task<string> CreateDatabaseAsync(string name) =>
+        factory.CreateDatabaseAsync(name, TestContext.Current.CancellationToken);
 
     private static async Task MigrateOldChainAsync(string connectionString)
     {
