@@ -140,7 +140,14 @@ for COMMIT in $COMMITS; do
     FAIL=$((FAIL+1))
     continue
   fi
-  if reforge snapshot --solution "$SNAPSHOT_WORKTREE/$SOLUTION" --append "$SNAP" >/dev/null 2>&1 && [ -s "$SNAP" ]; then
+  # Run reforge from INSIDE the throwaway worktree. reforge relays any command
+  # to a running hot server when it finds a `.reforge-port` file — first next to
+  # `--solution`, then by searching upward from the CWD. The throwaway worktree
+  # has no port file, but the caller's repo does whenever `reforge serve` is
+  # running there, so invoking from the caller's cwd would relay `snapshot` to a
+  # server holding the caller's checkout and silently record rows for the wrong
+  # commit. The subshell keeps the caller's cwd unchanged for the merge below.
+  if ( cd "$SNAPSHOT_WORKTREE" && reforge snapshot --solution "$SNAPSHOT_WORKTREE/$SOLUTION" --append "$SNAP" >/dev/null 2>&1 ) && [ -s "$SNAP" ]; then
     # Strip header (first line); append the data row to the gap accumulator.
     tail -n +2 "$SNAP" >> "$GAP_ROWS"
     OK=$((OK+1))
