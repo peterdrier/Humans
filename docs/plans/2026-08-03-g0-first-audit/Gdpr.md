@@ -42,4 +42,4 @@ Beyond that, Gdpr's test coverage is thorough for the export surface. Erasure (G
 
 ## G2 queue notes
 
-Gdpr owns no tables — nothing to demolish or rename. Not in `docs/plans/2026-08-03-demolition-inventory.md` (drafted before this row was admitted).
+Gdpr owns no tables — nothing to demolish or rename. `docs/plans/2026-08-03-demolition-inventory.md:604-607` names `Development`, `Gdpr` and `Search` as the genuinely unchecked G2 surfaces (its 2026-08-03 correction, which also clears `Gate` and `Settings` as already swept). **This scorecard is that check, and its answer is "nothing to demolish": Gdpr owns zero tables**, so the inventory entry is satisfied rather than still open — no sweep is owed and none should be requeued from it.

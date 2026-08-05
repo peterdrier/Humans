@@ -107,15 +107,20 @@ The safety net plus the map. Nothing destructive starts before G0 closes.
       tracker filled.
 - [x] **Audit the five sections admitted at the 2026-08-03 freeze (2026-08-05):** `Gate`,
       `Settings`, `Development`, `Gdpr`, `Search` scorecards added
-      ([`2026-08-03-g0-first-audit/`](2026-08-03-g0-first-audit/)). Headline findings: Gate is
-      clean at G1 but untested at real-Postgres/mocked-repo G3; Settings (still coded as
-      `SystemSettings`) is already ahead of G4 despite missing docs and service tests;
-      Development is a decision, not yet a code module (DevLogin/DevSeed remain in generic
-      `Humans.Web.*` namespaces — follow-up #4 confirmed still open, and only `DevLogin` is
-      actually excluded from prod); Gdpr's export half is clean, but the erasure half the
-      frozen inventory assigns to it lives under Users and needs an ownership ruling;
-      Search has zero test coverage of any kind, the largest gap found in this pass. See each
-      scorecard's gap lists for details.
+      ([`2026-08-03-g0-first-audit/`](2026-08-03-g0-first-audit/)). Headline findings: Gate's
+      table-ownership boundary is clean (two `docs/sections/Gate.md` drifts aside) but it is
+      untested at real-Postgres/mocked-repo G3, and its vendor-checked-in dedupe signal is dead
+      in code, not merely untested; Settings (still coded as `SystemSettings`) is already ahead
+      of G4 despite missing docs and service tests; Development is a decision, not yet a code
+      module (DevLogin/DevSeed remain in generic `Humans.Web.*` namespaces — follow-up #4
+      confirmed still open, and only `DevLogin` is actually excluded from prod); Gdpr's export
+      half is clean, but the erasure half the frozen inventory assigns to it lives under Users
+      and needs an ownership ruling; Search has zero test coverage of any kind — the largest gap
+      found in this pass — and that blind spot is hiding a live one: on GUID queries the Team,
+      Camp and Rota buckets each resolve by id around their own visibility filter, so the
+      "public surface only, regardless of role" guarantee is already broken. Two findings need
+      a Peter ruling before anyone codes against them (Gdpr erasure ownership, Search's GUID
+      contract); see each scorecard's gap lists for details.
 
 ### G1 — Ownership (per section): *your data is yours alone*
 
