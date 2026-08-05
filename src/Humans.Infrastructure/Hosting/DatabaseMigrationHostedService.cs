@@ -34,7 +34,9 @@ internal sealed class DatabaseMigrationHostedService(
         using var scope = scopeFactory.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
         var dbName = dbContext.Database.GetDbConnection().Database;
-        var beforeSchemaChange = CreateSnapshotHook();
+        var snapshot = CreateSnapshot();
+        Func<CancellationToken, Task> beforeSchemaChange =
+            snapshot is null ? static _ => Task.CompletedTask : snapshot.EnsureCapturedAsync;
 
         await MigrateAsync(dbContext, dbName, beforeSchemaChange, cancellationToken);
 
@@ -44,6 +46,10 @@ internal sealed class DatabaseMigrationHostedService(
             await SectionMigrationRunner.MigrateAsync(
                 sectionContext, section.SentinelTable, _logger, beforeSchemaChange, cancellationToken);
         }
+
+        // Reached only if every context migrated, so this is what tells the next boot that the
+        // snapshot above is history rather than the rollback point for an unfinished deploy.
+        snapshot?.MarkMigrationsComplete();
     }
 
     public Task StartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
@@ -57,25 +63,25 @@ internal sealed class DatabaseMigrationHostedService(
     public Task StoppedAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
     /// <summary>
-    /// Builds the callback every migration runner invokes immediately before it touches the
-    /// schema. Only the deployed environments snapshot: Development and the integration-test
+    /// Builds the snapshot this boot dumps through, or <see langword="null"/> where snapshots do
+    /// not apply. Only the deployed environments snapshot: Development and the integration-test
     /// host ("Testing") run against disposable local databases and have no <c>pg_dump</c>
     /// alongside them, so there is nothing to protect and nothing to dump with.
     /// </summary>
-    private Func<CancellationToken, Task> CreateSnapshotHook()
+    private PreMigrationSnapshot? CreateSnapshot()
     {
         if (!environment.IsProduction() && !environment.IsStaging())
         {
             _logger.LogDebug(
                 "Pre-migration snapshot disabled: environment is {Environment}",
                 environment.EnvironmentName);
-            return static _ => Task.CompletedTask;
+            return null;
         }
 
         var connectionString = configuration.GetConnectionString("DefaultConnection")
             ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
-        return new PreMigrationSnapshot(connectionString, _logger).EnsureCapturedAsync;
+        return new PreMigrationSnapshot(connectionString, _logger);
     }
 
     private async Task MigrateAsync(

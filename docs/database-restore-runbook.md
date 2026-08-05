@@ -72,11 +72,19 @@ cp ./snapshots/humans-20260805T155147Z.dump ./restore.dump
 docker cp ./restore.dump $DB:/tmp/restore.dump
 ```
 
+A file with a trailing **`.unfinished`** is the one you want: it means the deploy that took it
+never finished migrating, so it is the last state before that deploy touched the schema. See §5.
+
 **From a Coolify backup:** download it from Coolify's storage to the host, then
 
 ```bash
 docker cp ./restore.dump $DB:/tmp/restore.dump
 ```
+
+> **Name the file for its format and keep that name to the end.** Custom-format archives go to
+> `/tmp/restore.dump` and are restored with `pg_restore`; plain SQL goes to `/tmp/restore.sql`
+> and is restored with `psql -f`. §2 and §3 both have commands for each — use the same one in
+> both places. Pre-migration snapshots are always custom format.
 
 ---
 
@@ -105,25 +113,42 @@ docker exec $DB psql -U humans -d humans_restore -c "
   ORDER BY rows DESC LIMIT 20;"
 ```
 
-and that the migration history is complete (this number must match the migration count of the
-release you are running):
+and that the migration history is complete. **There is one history table per DbContext**, not
+one for the whole database — the per-section split (nobodies-collective/Humans#858) gave each
+section its own `__EFMigrationsHistory_<Section>`, and a restore that is missing one of those
+looks fine until the app boots and starts applying that section's migrations from scratch. Count
+all of them:
 
 ```bash
-docker exec $DB psql -U humans -d humans_restore -tAc 'SELECT count(*) FROM "__EFMigrationsHistory"'
+docker exec $DB psql -U humans -d humans_restore -c "
+  SELECT table_name,
+         (xpath('/row/cnt/text()', query_to_xml(format('select count(*) as cnt from public.%I', table_name), false, true, '')))[1]::text::bigint AS migrations
+  FROM information_schema.tables
+  WHERE table_schema='public' AND table_name LIKE '\_\_EFMigrationsHistory%'
+  ORDER BY table_name;"
 ```
+
+Expect the main `__EFMigrationsHistory` plus one per section context. The boot log quoted in the
+[drill record](#drill-record-2026-08-05) names the section contexts of that release — there were
+seven, so eight history tables. A section table that is **absent or empty** is the failure this
+check exists to catch. The main table's count must also match the migration count of the release
+you are running.
 
 If those look wrong, **stop** — you have the wrong backup, and you have not damaged anything.
 
 ### Plain-SQL variant
 
-If the backup is plain SQL rather than custom format, replace the `pg_restore` line with:
+If the backup is plain SQL rather than custom format, you copied it to `/tmp/restore.sql` in §1.
+Replace the `pg_restore` line with:
 
 ```bash
 docker exec $DB psql -U humans -d humans_restore -v ON_ERROR_STOP=1 -f /tmp/restore.sql
 ```
 
 `ON_ERROR_STOP=1` is the plain-SQL equivalent of `--exit-on-error`. Without it psql prints
-errors and keeps going.
+errors and keeps going. The verification queries above are the same either way, and §3 has the
+matching live-restore command — carry the format through to the end, do not switch back to
+`pg_restore` there.
 
 ---
 
@@ -147,6 +172,12 @@ docker exec $DB psql -U humans -d postgres -c \
 docker exec $DB psql -U humans -d postgres -c "DROP DATABASE humans"
 docker exec $DB psql -U humans -d postgres -c "CREATE DATABASE humans OWNER humans"
 docker exec $DB pg_restore -U humans -d humans --exit-on-error /tmp/restore.dump
+```
+
+**If the backup is plain SQL**, the last line is instead — same file, same flag as §2:
+
+```bash
+docker exec $DB psql -U humans -d humans -v ON_ERROR_STOP=1 -f /tmp/restore.sql
 ```
 
 Then start the app and confirm it comes up:
@@ -188,9 +219,14 @@ a bad migration means the container crash-loops.
 1. **Read the logs before doing anything.** `docker logs $APP | tail -100`. The line
    `Applying pending migration: <name>` immediately before the exception names the culprit.
 2. **Find the snapshot.** `docker cp $APP:/app/db-snapshots ./snapshots && ls -l ./snapshots` —
-   the newest file is from this deploy, taken *before* the failed migration ran. (`docker cp`
-   rather than `docker exec`: a crash-looping container is usually not in a state you can exec
-   into.)
+   the file ending **`.unfinished`** is from this deploy, taken *before* the failed migration
+   ran. (`docker cp` rather than `docker exec`: a crash-looping container is usually not in a
+   state you can exec into.)
+   - **Take the `.unfinished` one, not the newest one.** The crash loop keeps restarting the
+     app, and each restart re-runs the migration against a schema the earlier attempts may have
+     already part-changed. The suffix marks the snapshot from *before* any of that; the app
+     carries it forward untouched across restarts rather than dumping over it, which is exactly
+     why it is still the right file on the tenth restart.
    - The app container survives a crash-loop (Docker restarts the same container, it does not
      replace it), so the file is still there. If the container has been *recreated* since, find
      the volume with `docker volume ls | grep db_snapshots` and read the file from its
@@ -217,9 +253,15 @@ Implemented in `src/Humans.Infrastructure/Hosting/PreMigrationSnapshot.cs`
 - **Where the file goes:** `/app/db-snapshots/{database}-{UTC timestamp}.dump`, custom format,
   on the `db_snapshots` volume. It is deliberately **not** under `wwwroot` — that directory is
   web-served.
-- **Retention:** the newest 10 are kept; older ones are deleted after a successful dump. These
-  are a fast local rollback point, not the archive — Coolify's scheduled backups are the
-  off-host copy.
+- **The `.unfinished` suffix:** the snapshot is written with it and loses it only once a boot
+  gets all the way through its migrations. So a file still carrying the suffix means "the deploy
+  that took this never finished" — it is the live rollback point, and it is the file §4 tells
+  you to restore. While it is there, later boots reuse it instead of taking a new dump (log line:
+  `Reusing pre-migration snapshot …`), which is what stops a crash loop from archiving a
+  part-migrated schema over the good one. It is also never pruned.
+- **Retention:** the newest 10 completed snapshots are kept; older ones are deleted after a
+  successful dump. These are a fast local rollback point, not the archive — Coolify's scheduled
+  backups are the off-host copy.
 - **Which environments:** `Production` and `Staging` (QA) only. Every other environment —
   Development, the integration-test host — runs against a disposable local database and skips
   it.
