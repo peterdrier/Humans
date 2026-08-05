@@ -99,6 +99,10 @@ Delivered to Peter inline at the end of this sweep (the report is the record, no
 
 None — all prune candidates were resolved this sweep (migrate / drop / verify-clean). No uncertain wheat was queued for a future pass; the one uncertain item is Question 3 above, pending Peter's answer.
 
+## CI
+
+`MailerLiteClientRetryTests.AssignSubscriberToGroupAsync_ClampsAbsurdRetryAfter_ToCeiling` failed on one run of this branch and passed on another with only markdown between them (`31019573457` green → `31020027058` red); `main` was green throughout and this PR touches no Mailer code. Cause: the test arms `cts.CancelAfter(250ms)` up front, but three handler round-trips must complete before `MailerLiteClient` logs the clamped-delay warning the assertion looks for — on a loaded runner the token cancels first and `logger.Entries` is empty. Filed as nobodies-collective/Humans#982 (`bug`, `section:infra`, `size:S`) with a deterministic fix suggested (cancel from the handler when it serves the 429, rather than on a timer). **Not fixed here** — an unrelated flaky test does not belong in a docs sweep, and raising the timeout would be the surgical fix the hard rules forbid.
+
 ## Skipped (errors)
 
 None — but **four subagents went idle without delivering their result payload** (`drift-admin-gdpr`, `mech-about-packages`, and *both* attempts at the volunteer-tracking-export prune batch). This is the same failure mode recorded last sweep. Recovery: `drift-admin-gdpr` re-sent on request; `mech-about-packages` had already written its edit, which was read back from the worktree diff and independently verified against `Directory.Packages.props`; the volunteer-export prune was re-dispatched once, failed again, and was then **performed by the orchestrator directly** rather than dropped — which is why that batch's wheat is code-verified above. No entry was skipped.
