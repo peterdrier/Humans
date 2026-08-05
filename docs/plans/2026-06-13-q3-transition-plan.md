@@ -105,10 +105,15 @@ The safety net plus the map. Nothing destructive starts before G0 closes.
 - [x] **First audit pass (tracker-taxonomy scope):** all 33 sections in the tracker below
       scored against G1–G3 predicates ([`2026-08-03-g0-first-audit/`](2026-08-03-g0-first-audit/));
       tracker filled.
-- [ ] **Audit the five sections admitted at the 2026-08-03 freeze:** `Gate`, `Settings`,
-      `Development`, `Gdpr`, `Search` have no scorecards yet. Split out as its own gate item
-      2026-08-03 — it was previously only a prose caveat on the item above, which meant the
-      checklist could read complete while five canonical sections had never been scored.
+- [x] **Audit the five sections admitted at the 2026-08-03 freeze (2026-08-05):** `Gate`,
+      `Settings`, `Development`, `Gdpr`, `Search` scorecards added
+      ([`2026-08-03-g0-first-audit/`](2026-08-03-g0-first-audit/)). Headline findings: Gate is
+      clean at G1 but untested at real-Postgres/mocked-repo G3; Settings (still coded as
+      `SystemSettings`) is already ahead of G4 despite missing docs and service tests;
+      Development is a decision, not yet a code module (DevLogin/DevSeed remain in generic
+      `Humans.Web.*` namespaces — follow-up #4 confirmed still open); Gdpr is clean throughout;
+      Search has zero test coverage of any kind, the largest gap found in this pass. See each
+      scorecard's gap lists for details.
 
 ### G1 — Ownership (per section): *your data is yours alone*
 

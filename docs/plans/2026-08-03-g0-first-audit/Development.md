@@ -1,0 +1,43 @@
+# Development — G0 First Audit
+
+**Section:** Development · **Kind:** vertical (new, dev-only, never loaded in prod) · **Audited:** 2026-08-05 @ 94535e688
+
+**Headline: this row is a decision, not yet a code module.** The frozen-inventory record rules *"Move [DevLogin/DevSeed] to a new Development section that is not loaded in prod"* and lists extraction as open follow-up item #4 ("Extract DevLogin/DevSeed into the Development section with prod-excluded loading"). Today, `DevLoginController` and `DevSeedController` both declare `namespace Humans.Web.Controllers;` (confirmed by `grep -n "^namespace"` on both files) — the generic controllers namespace, not a `Development`-named one — and the three seeder classes they call (`DevelopmentBudgetSeeder`, `DevelopmentCampRoleSeeder`, `DevelopmentDashboardSeeder`) live in `Humans.Web.Infrastructure`. The prod-exclusion behavior itself is real and working (see G1.6), but there is no `Humans.Application.Services.Development` namespace, no owning service, and no `docs/sections/Development.md` — most G1/G3 predicates below are scored against files that exist but aren't yet organized as a section.
+
+## G1 — Ownership
+
+| # | Predicate | Result | Evidence |
+|---|-----------|--------|----------|
+| 1 | Every owned table read/written by exactly one repository, in-section | **N/A** | Development owns no tables. `DevSeedController`/`DevLoginController` write only through other sections' own service interfaces (`IBudgetService`, `ITeamService`, `ICampServiceRead` from `DevelopmentBudgetSeeder.cs:1-3`) — never a repository or `DbContext` directly (`grep -n "Repository\|DbContext"` on all three seeder files returns nothing). |
+| 2 | One writer-service per table | **N/A** | Same — no owned tables. |
+| 3 | No EF entity leaks across the boundary | **PASS** | Zero Development/DevSeed/DevLogin entries in `ApplicationServiceEntityReadReturns.baseline.txt`; controllers return `IActionResult`/views, not entity payloads. |
+| 4 | No cross-section EF joins (zero baseline entries) | **PASS** | No repository, no DbContext — zero baseline entries across all 5 baseline files. |
+| 5 | No `[Obsolete]` cross-section navs, no `[Grandfathered]`, no baseline rows owned by Development | **PASS** | No `[Grandfathered]` hits on `DevLoginController.cs`, `DevSeedController.cs`, or the three seeders. |
+| 6 | Controllers thin — no HUM0031 grandfathers | **PASS** | No `HUM0031` grandfather on either controller (the repo-wide only hit is `ProfileController.cs`, unrelated). Prod-exclusion is real: `DevLoginControllerExclusionProvider.cs` is an `IApplicationFeatureProvider<ControllerFeature>` that removes `DevLoginController` from MVC's controller graph when `IsProduction()` (wired via `ConfigureApplicationPartManager`), and `DevSeedController` guards every action with `IsDevSeedEnabled()`/`environment.IsDevelopment()` checks (e.g. `DevSeedController.cs:114`). |
+| 7 | `docs/sections/Development.md` exists and matches reality | **FAIL** | Doesn't exist. Development's one documented invariant currently lives in a *different* section's doc: `DevSeedControllerTests.cs`'s class summary cites `"Shifts.md line 239"` for the dashboard-seed environment-gating rule — Development invariants are scattered across the docs of whichever section a given seeder happens to touch, not centralized. |
+
+## G3 — Tests
+
+| # | Predicate | Result | Evidence |
+|---|-----------|--------|----------|
+| 1 | Repository tests real Postgres, zero EF-InMemory | **N/A** | No repository. |
+| 2 | Service tests mock repository/`I…ServiceRead`, zero `HumansDbContext` | **PARTIAL** | No dedicated service exists to test (logic lives in the controllers + 3 seeder classes). `DevSeedControllerTests.cs` mocks `IUserService`/`IWebHostEnvironment` via NSubstitute and covers only the dashboard-seed gating path (2 test cases: `grep -c "\[HumansFact\]"` → 2). `DevelopmentBudgetSeeder`, `DevelopmentCampRoleSeeder`, and `DevelopmentDashboardSeeder`'s actual seeding logic (team/budget/camp creation, idempotency) has **no dedicated unit tests** — `find tests -iname "*DevelopmentBudgetSeeder*" -o -iname "*DevelopmentCampRoleSeeder*" -o -iname "*DevelopmentDashboardSeeder*"` is empty. `DevLoginController`'s own persona-signin/env-gating logic is exercised only incidentally, as test infrastructure inside `HumansIntegration.Tests/Infrastructure/HumansWebApplicationFactory.cs` (which calls `/dev/login/{slug}` to seed test users), not as a direct unit test of the controller's own gating branches. |
+| 3 | Invariants/triggers each have a test | **N/A** | No `docs/sections/Development.md` to test against (predicate 7); the one invariant that does have coverage (dashboard-seed env gating) is tested per predicate 2. |
+| 4 | No skipped tests without an issue ref | **PASS** | No `Skip\s*=` in `DevSeedControllerTests.cs`. |
+| 5 | Tests grouped under the section | **FAIL** | `DevSeedControllerTests.cs` sits under `Humans.Web.Tests/Controllers/` (fine by the repo-wide controller-test convention), but there is no `Development` grouping at all to move at G5 — no service/seeder tests exist to group in the first place (predicate 2). |
+
+## G1 gap list
+
+1. **`docs/sections/Development.md` doesn't exist** (predicate 7). Fix: write it once extraction (gap #2) lands, or as an interim doc-only step describing the current controller/seeder shape and the prod-exclusion mechanism. No-migration-needed: **y**.
+2. **DevLogin/DevSeed haven't been extracted into a `Development`-named module** — both controllers and all three seeders remain in the generic `Humans.Web.Controllers`/`Humans.Web.Infrastructure` namespaces. This is frozen-inventory follow-up item #4, confirmed still open by this audit, not new debt. No-migration-needed: **y**.
+3. **Not yet in `reforge.surface-score.json`** (`'Development' in data['sections']` → `False`) — frozen-inventory follow-up #1, same gap as Gate/Settings. No-migration-needed: **y**.
+
+## G3 gap list
+
+1. **The three Development seeders have zero dedicated unit tests** (predicate 2) — their business logic (which teams/budget-lines/camp-roles get created, idempotency on re-run) is entirely unverified except by manual use. Fix: add `DevelopmentBudgetSeederTests.cs`/etc. mocking the injected section service interfaces. No-migration-needed: **y**.
+2. **`DevLoginController`'s own gating/persona-resolution logic has no direct unit test** — it's only exercised as integration-test *infrastructure*, so a regression there would surface as unrelated integration-test failures elsewhere rather than a clear, attributable failure. Fix: add a `DevLoginControllerTests.cs` covering `IsDevAuthEnabled()`/persona-not-found/guest-flow branches directly. No-migration-needed: **y**.
+3. **No test grouping to move at G5** (predicate 5) — a direct consequence of gap 1/2 above; once those land, group them under a `Development`-named test folder alongside the extraction in G1 gap #2.
+
+## G2 queue notes
+
+Development owns no tables — nothing to demolish or rename. Not in `docs/plans/2026-08-03-demolition-inventory.md` (drafted before this row was admitted).

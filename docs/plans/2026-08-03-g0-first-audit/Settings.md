@@ -1,0 +1,41 @@
+# Settings — G0 First Audit
+
+**Section:** Settings · **Kind:** vertical (shared key/value store) · **Audited:** 2026-08-05 @ 94535e688
+
+**Scope note:** The frozen-inventory decision record says *"SystemSettings becomes the Settings section (assumed: absorbs the existing SystemSettings code and the planned #864 work as one row)"*. In code today there is no "Settings" anything — the namespace, class names, `[Section(...)]` attribute value, DbContext, and migrations folder are all still `SystemSettings`, and `reforge.surface-score.json` has neither key (`'Settings' in data['sections']` → `False`, `'SystemSettings' in data['sections']` → `False`). This audit scores the existing `SystemSettings` code as the Settings row, per the inventory's ruling — but the rename itself is unresolved (see G1 gap #2). **Not to be confused** with the many *other* `*Settings` entities in the codebase (`AgentSettings`, `CampSettings`, `CityPlanningSettings`, `EventGuideSettings`, `EventSettings`, `GateSettings`, `SyncServiceSettings`) — those are each owned by their own section (Agent, Camps, CityPlanning, EventGuide, Shifts, Gate, GoogleIntegration respectively) and are out of scope here.
+
+## G1 — Ownership
+
+| # | Predicate | Result | Evidence |
+|---|-----------|--------|----------|
+| 1 | Every owned table read/written by exactly one repository, in-section | **PASS** | `SystemSettingsRepository` (`src/Humans.Infrastructure/Repositories/SystemSettings/SystemSettingsRepository.cs`) is the sole class touching the `system_settings` table, via its own `SystemSettingsDbContext`. `HumansDbContext.cs:111` explicitly lists `Configurations.SystemSettings.SystemSettingConfiguration`'s namespace in `PeeledConfigurationNamespaces` — the monolithic context is coded to *exclude* this table, not just to happen not to reference it. Grep for `SystemSetting`/`SystemSettings` outside the section's own files finds only `IEmailOutboxRepository.cs` (a doc-comment mention) and consumers of `ISystemSettingsService` (`EmailOutboxService.cs`, `DriveActivityMonitorService.cs`) — both cross-section calls go through the service interface, not the table. |
+| 2 | One writer-service per table | **PASS** | Only `SystemSettingsService.SetValueAsync` writes `system_settings`, via `ISystemSettingsRepository`. |
+| 3 | No EF entity leaks across the boundary | **PASS** | `ISystemSettingsService` (`src/Humans.Application/Interfaces/SystemSettings/ISystemSettingsService.cs`) returns `string?`, never the `SystemSetting` entity. Zero entries for this section in `ApplicationServiceEntityReadReturns.baseline.txt`. |
+| 4 | No cross-section EF joins (zero baseline entries) | **PASS** | `SystemSettingConfiguration.cs` declares only `Key`/`Value` scalar properties, no navigation properties — a join is structurally impossible. Zero baseline entries in any of the 5 architecture-test baseline files. |
+| 5 | No `[Obsolete]` cross-section navs, no `[Grandfathered]`, no baseline rows owned by Settings | **PASS** | No `[Grandfathered]` hits anywhere under `Infrastructure/Data/Configurations/SystemSettings/`, `Infrastructure/Repositories/SystemSettings/`, or `Application/Services/SystemSettings/`. |
+| 6 | Controllers thin — no HUM0031 grandfathers | **N/A** | No controller exists for Settings at all — there is no admin UI to view or edit raw key/value rows; the two rows (`IsEmailSendingPaused`, seeded via `SystemSettingConfiguration.cs:18`) are only ever get/set programmatically by Email and GoogleIntegration. If the "planned #864 work" the frozen inventory folds into this row adds an admin surface, it enters this ladder fresh. |
+| 7 | `docs/sections/Settings.md` exists and matches reality | **FAIL** | Neither `docs/sections/Settings.md` nor `docs/sections/SystemSettings.md` exists (`ls docs/sections/ | grep -iE "settings"` → no hits at all, including the vendor/other `*Settings` entities' own sections which document those inline instead). |
+
+## G3 — Tests
+
+| # | Predicate | Result | Evidence |
+|---|-----------|--------|----------|
+| 1 | Repository tests real Postgres, zero EF-InMemory | **FAIL** | `SystemSettingsRepositoryTests.cs:18` — `.UseInMemoryDatabase(Guid.NewGuid().ToString())`. This is the only repository test file for the section. |
+| 2 | Service tests mock repository, zero `HumansDbContext` | **FAIL** | No `SystemSettingsServiceTests.cs` (or any file testing `SystemSettingsService` directly) exists at all — `find tests -iname "*SystemSettingsService*"` is empty. The pass-through `GetValueAsync`/`SetValueAsync` logic has zero direct unit coverage; only the repository is tested (over EF-InMemory, predicate 1). |
+| 3 | Invariants/triggers each have a test | **N/A** | No `docs/sections/Settings.md` exists to test against (predicate 7). `SystemSettingsRepositoryTests.cs` does cover the get/set upsert semantics (insert-when-missing vs. update-when-present) at the repository level, which is the section's only real behavior. |
+| 4 | No skipped tests without an issue ref | **PASS** | No `Skip\s*=` in `SystemSettingsRepositoryTests.cs`. |
+| 5 | Tests grouped under the section | **PASS** | The one test file sits in `tests/Humans.Application.Tests/Repositories/SystemSettingsRepositoryTests.cs` — the standard by-kind repo-tests folder, same convention as every other section. |
+
+## G1 gap list
+
+1. **`docs/sections/Settings.md` (or `SystemSettings.md`) doesn't exist** (predicate 7). Fix: write the section doc per `SECTION-TEMPLATE.md` — it's a short one (a two-key KV store with two known consumers). No-migration-needed: **y**.
+2. **Section naming is unresolved.** Code identifies the section as `SystemSettings` everywhere (`[Section("SystemSettings")]` on `ISystemSettingsRepository`, namespace `Humans.Application.Services.SystemSettings`, `SystemSettingsDbContext`, `Migrations/SystemSettings/`), while the frozen inventory canonicalizes the row as `Settings`. `reforge.surface-score.json` has neither key registered (frozen-inventory follow-up #1). Fix: decide rename-vs-keep before back-propagating to the reforge config, so the config doesn't have to be redone. No-migration-needed: **y** (code rename would touch namespaces only, not the DB schema — `system_settings` table/migration history naming is a separate, larger question tied to #864 and G4's per-section EF history convention).
+
+## G3 gap list
+
+1. **Repository tests use EF-InMemory, not the shared Postgres fixture** (predicate 1). Fix: convert per #766. No-migration-needed: **y**.
+2. **`SystemSettingsService` has zero direct unit tests** (predicate 2). Fix: add a `SystemSettingsServiceTests.cs` mocking `ISystemSettingsRepository`, even though the logic is currently thin pass-through — it stops being thin the moment #864 lands real behavior on top of it. No-migration-needed: **y**.
+
+## G2 queue notes
+
+Settings is not in `docs/plans/2026-08-03-demolition-inventory.md` (drafted before this row was admitted 2026-08-03). Notably, this section is **already ahead of the G1/G3 gates it's failing** — `SystemSettingsDbContext` (own DbContext, own `__EFMigrationsHistory_SystemSettings`, own `Migrations/SystemSettings/` folder) means it already satisfies most of **G4** per `SystemSettingsDbContext.cs`'s own doc comment ("nobodies-collective/Humans#858"). No dead columns/tables found; two migrations (`AddSystemSettings`, `PeelSystemSettings`) are both additive/structural, not destructive. Nothing queued beyond the G1/G3 gaps above.
