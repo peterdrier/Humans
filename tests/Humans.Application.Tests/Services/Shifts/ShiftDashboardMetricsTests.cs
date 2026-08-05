@@ -1004,13 +1004,6 @@ public sealed class ShiftDashboardMetricsTests : ServiceTestHarness
             string query, Humans.Application.Services.Profiles.PersonSearchFields fields,
             int limit = 10, CancellationToken ct = default) => throw new NotSupportedException();
 
-        public async Task<IReadOnlyDictionary<Guid, User>> GetByIdsAsync(IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
-        {
-            if (userIds.Count == 0) return new Dictionary<Guid, User>();
-            var users = await db.Users.Include(u => u.UserEmails).Where(u => userIds.Contains(u.Id)).ToListAsync(ct);
-            return users.ToDictionary(u => u.Id);
-        }
-
         public async ValueTask<IReadOnlyDictionary<Guid, UserInfo>> GetUserInfosAsync(
             IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
         {
