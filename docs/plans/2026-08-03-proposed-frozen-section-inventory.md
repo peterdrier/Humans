@@ -83,8 +83,12 @@ model), Platform (config bucket, dissolved).
    `Finance→Holded` edge exists precisely because `HoldedFinanceService` (Finance) injects
    `IHoldedClient` (Holded) — collapsing the two back together erases the edge this split is
    meant to expose.
-2. First-audit scorecards for the newly admitted rows: Gate, Settings, Development,
-   Gdpr, Search (the G0 first-audit checklist item's scope caveat tracks this).
+2. ~~First-audit scorecards for the newly admitted rows: Gate, Settings, Development,
+   Gdpr, Search (the G0 first-audit checklist item's scope caveat tracks this).~~
+   **Done 2026-08-05** — all five scorecards live in
+   [`2026-08-03-g0-first-audit/`](2026-08-03-g0-first-audit/) and the section tracker in
+   [`2026-06-13-q3-transition-plan.md`](2026-06-13-q3-transition-plan.md) links them.
+   Their own gap lists carry what each audit found; don't requeue the audits here.
 3. `docs/sections/` file renames: `LegalAndConsent.md` → `Consent.md`,
    `Survey.md` → `Surveys.md` (+ link sweeps).
 4. Extract DevLogin/DevSeed into the Development section with prod-excluded loading.

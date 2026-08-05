@@ -14,7 +14,7 @@
 | 4 | No cross-section EF joins (zero baseline entries) | **PASS** | Zero Gate entries in any of the 5 architecture-test baseline files (`ApplicationServiceEntityReadReturns`, `DisplaySortInControllers`, `NoDestructiveMigrationOps`, `NoLinqAtDbLayer`, `NoStartupGuards`) — confirmed by grep across all five. |
 | 5 | No `[Obsolete]` cross-section navs, no `[Grandfathered]`, no baseline rows owned by Gate | **PASS** | `grep -rn "Grandfathered" src/Humans.Infrastructure/Data/Configurations/Gate/` and the Gate controllers/services returns nothing. `GateScanEventConfiguration`/`GateSettingsConfiguration`/`GateStaffPinConfiguration` declare no navigation properties (bare-Guid cross-section links only, per `docs/sections/Gate.md`'s Data Model section). |
 | 6 | Controllers thin — no HUM0031 grandfathers | **PASS** | The only `HUM0031` grandfather in `src/Humans.Web/Controllers/` repo-wide is on `ProfileController.cs` (unrelated to Gate). `GateController.cs`, `GateVendorBackfillAdminController.cs`, and `TicketsGateAdminController.cs` (gate-account credential admin, owns no Gate tables — reads only `IUserServiceRead` + `GateTerminalAccountSeeder`) carry no grandfather. |
-| 7 | `docs/sections/Gate.md` exists and matches reality | **PASS** | The doc exists and is current: cross-section deps listed (Tickets, EarlyEntry, Shifts, Users, Auth) match the actual `GateService` constructor deps found in `GateServiceTests.cs`; the routing table matches `GateController`/`GateVendorBackfillAdminController`; config keys (`Gate:SupervisorPin`, `Gate:VendorMirrorEnabled`, `Gate:RosterTeamId`) match usages found in code. No drift found. |
+| 7 | `docs/sections/Gate.md` exists and matches reality | **PARTIAL** | The doc exists and is broadly current: the routing table matches `GateController`/`GateVendorBackfillAdminController`, and the listed cross-section deps (Tickets, EarlyEntry, Shifts, Users, Auth) match `GateService`'s constructor. Two drifts found on a direct doc-vs-code read, both recorded in the G1 gap list: (a) the **Configuration** list names only `Gate:SupervisorPin`, `Gate:VendorMirrorEnabled` and `Gate:RosterTeamId`, omitting `Gate:RetentionDays`, which `GateRetentionJob.cs:25` reads (`GetValue("Gate:RetentionDays", 365)`) — it appears in the retention prose at `Gate.md:105` but not where a reader configuring the section would look; (b) **Cross-Section Dependencies** omits `IAuditLogService`, which `GateService.cs:38` injects for PIN audit writes — 15 other section docs list that dependency, so this is an omission against the repo's own convention, not a deliberate exclusion of horizontals. |
 
 ## G3 — Tests
 
@@ -28,7 +28,12 @@
 
 ## G1 gap list
 
-None found. Gate's ownership boundary is clean — the only open item is config back-propagation (frozen-inventory follow-up #1), which is tracked there already, not fresh debt from this audit.
+Gate's ownership boundary itself is clean — no table, entity-leak, join or grandfather findings. Two documentation drifts (predicate 7):
+
+1. **`docs/sections/Gate.md`'s Configuration list omits `Gate:RetentionDays`** — read by `GateRetentionJob.cs:25` with a 365-day default, and settable to disable the purge. Mentioned in the retention prose (`Gate.md:105`) but absent from the config list an operator would read. Fix: add it to `## Configuration` with the default and the disable value. No-migration-needed: **y**.
+2. **`docs/sections/Gate.md`'s Cross-Section Dependencies omits `IAuditLogService`** — injected by `GateService.cs:38` for PIN audit writes. Fix: add the AuditLog line, matching how the other 15 section docs record it. No-migration-needed: **y**.
+
+Config back-propagation (frozen-inventory follow-up #1) remains open but is tracked there already, not fresh debt from this audit.
 
 ## G3 gap list
 
@@ -37,4 +42,4 @@ None found. Gate's ownership boundary is clean — the only open item is config 
 
 ## G2 queue notes
 
-Gate is not in `docs/plans/2026-08-03-demolition-inventory.md` (drafted before Gate was admitted as a section on 2026-08-03). Two migrations exist (`AddGateSection`, `AddGateStaffPinAdminEnrolled`), both additive — no dead columns/tables found during this audit. Nothing queued.
+Gate **is** already covered by `docs/plans/2026-08-03-demolition-inventory.md` — it appears by name in that inventory's "Sections audited with no findings" list, so no demolition sweep is owed here. (The inventory's later note that Gate "carries no audit result" refers to the G0 first-audit tracker this scorecard now fills, not to demolition coverage.) Consistent with that: two migrations exist (`AddGateSection`, `AddGateStaffPinAdminEnrolled`), both additive, and this audit found no dead columns/tables. Nothing queued.
