@@ -52,13 +52,28 @@ internal sealed class AgentRepository(AgentDbContext db, IClock clock) : IAgentR
 
     public async Task AppendMessageAsync(AgentMessage message, CancellationToken cancellationToken)
     {
-        db.AgentMessages.Add(message);
+        try
+        {
+            db.AgentMessages.Add(message);
 
-        var conv = await db.AgentConversations.FirstAsync(c => c.Id == message.ConversationId, cancellationToken);
-        conv.MessageCount += 1;
-        conv.LastMessageAt = message.CreatedAt;
+            var conv = await db.AgentConversations.FirstAsync(c => c.Id == message.ConversationId, cancellationToken);
+            conv.MessageCount += 1;
+            conv.LastMessageAt = message.CreatedAt;
 
-        await db.SaveChangesAsync(cancellationToken);
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch
+        {
+            // A failed append leaves the message Added (and any MessageCount bump Modified) on
+            // this scoped context, so the NEXT save through it would flush this half-written
+            // append on top of its own work. AgentService answers a failed turn by appending an
+            // "error" trace (nobodies-collective/Humans#963) — without this the transcript would
+            // get both the original assistant reply and the trace, plus a double MessageCount
+            // increment. Cancellation is the likely trigger: it can land on either the
+            // conversation read or SaveChangesAsync, so both are inside the try.
+            db.ChangeTracker.Clear();
+            throw;
+        }
     }
 
     public async Task<IReadOnlyList<AgentConversation>> ListConversationsForUserAsync(Guid userId, int take, CancellationToken cancellationToken) =>

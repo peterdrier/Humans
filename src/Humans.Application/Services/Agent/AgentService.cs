@@ -125,19 +125,22 @@ public sealed class AgentService : IAgentService
         // below because something threw between the two writes). `await foreach` forbids
         // `yield` inside its implicit try/finally, so drive the inner enumerator manually —
         // that lets MoveNextAsync be wrapped in try/catch while still streaming tokens live.
-        var turn = RunTurnAsync(request, conversation, settings, priorTurns, today, hour, cancellationToken);
+        // Shared with RunTurnAsync so the failure path below can still bill a turn that broke
+        // partway: the running totals live inside the iterator, out of reach of this method.
+        var turnUsage = new TurnUsage();
+        var turn = RunTurnAsync(request, conversation, settings, priorTurns, today, hour, turnUsage, cancellationToken);
         await using var enumerator = turn.GetAsyncEnumerator(cancellationToken);
         // False until the assistant message for this turn is on disk — written either by
         // RunTurnAsync itself (it yields its finalizer only after AppendMessageAsync) or by
-        // the failure path below. While it's false the persisted user message still owes the
-        // user a reply, so both the catch and the finally below write one.
+        // the finally below. While it's false the persisted user message still owes the user
+        // a reply, and the turn is still unbilled.
         var assistantPersisted = false;
+        Exception? turnFailure = null;
         try
         {
             while (true)
             {
                 AgentTurnToken? current = null;
-                Exception? caught = null;
                 try
                 {
                     if (!await enumerator.MoveNextAsync())
@@ -148,37 +151,34 @@ public sealed class AgentService : IAgentService
                 {
                     // `yield` isn't allowed inside a catch block, so stash the exception and
                     // handle/yield below.
-                    caught = ex;
+                    turnFailure = ex;
                 }
 
-                if (caught is not null)
+                if (turnFailure is not null)
                 {
-                    if (caught is OperationCanceledException && cancellationToken.IsCancellationRequested)
+                    if (turnFailure is OperationCanceledException && cancellationToken.IsCancellationRequested)
                     {
-                        // Expected (client disconnect), not a bug — Warning, not Error. Still
-                        // persist the trace below: #952's log evidence showed conversations with
-                        // no assistant message at all, and a disconnect is one plausible cause.
+                        // Expected (client disconnect), not a bug — Warning, not Error. The
+                        // finally still persists the trace: #952's log evidence showed
+                        // conversations with no assistant message at all, and a disconnect is
+                        // one plausible cause.
                         _logger.LogWarning(
                             "Agent turn cancelled (likely client disconnect) before completion for conversation {ConversationId}",
                             conversation.Id);
                     }
                     else
                     {
-                        _logger.LogError(caught,
+                        _logger.LogError(turnFailure,
                             "Agent turn failed before completion for conversation {ConversationId}", conversation.Id);
                     }
-                    // CancellationToken.None: the turn may be failing BECAUSE cancellationToken
-                    // fired (client disconnect), and the whole point is to still leave a trace.
-                    await AppendFailureMessage(conversation.Id, "error", settings.Model, CancellationToken.None);
-                    assistantPersisted = true;
                     yield return new AgentTurnToken(null, null,
                         new AgentTurnFinalizer(0, 0, 0, 0, settings.Model, "error", conversation.Id));
                     yield break;
                 }
 
-                // RunTurnAsync yields its finalizer last, after AppendMessageAsync — seeing one
-                // means the turn is fully persisted, so a disconnect while writing that very
-                // frame must not add a spurious failure trace on top of it.
+                // RunTurnAsync yields its finalizer last, after AppendMessageAsync and its own
+                // _rateLimit.Record — seeing one means the turn is fully persisted and billed,
+                // so a disconnect while writing that very frame must not double up on either.
                 if (current!.Finalizer is not null)
                     assistantPersisted = true;
                 yield return current;
@@ -186,19 +186,40 @@ public sealed class AgentService : IAgentService
         }
         finally
         {
-            // Not every abandoned turn throws into the catch above: AgentController awaits
-            // WriteSse OUTSIDE this method, so a browser that disconnects while a token is
-            // being written tears the turn down by disposing the iterator at a `yield return`,
-            // which resumes here rather than at MoveNextAsync. Without this the disconnect
-            // case #963 set out to fix still leaves a user message with no assistant reply.
+            // Reached by `yield break` above and also by disposal: not every abandoned turn
+            // throws into the catch, because AgentController awaits WriteSse OUTSIDE this
+            // method — a browser that disconnects while a token is being written tears the turn
+            // down by disposing the iterator at a `yield return`, which resumes here rather
+            // than at MoveNextAsync. Without that the disconnect case #963 set out to fix still
+            // leaves a user message with no assistant reply.
             if (!assistantPersisted)
             {
-                _logger.LogWarning(
-                    "Agent turn abandoned mid-stream (likely client disconnect) for conversation {ConversationId}",
-                    conversation.Id);
+                if (turnFailure is null)
+                    _logger.LogWarning(
+                        "Agent turn abandoned mid-stream (likely client disconnect) for conversation {ConversationId}",
+                        conversation.Id);
+                // CancellationToken.None: the turn may be failing BECAUSE cancellationToken
+                // fired (client disconnect), and the whole point is to still leave a trace.
                 await AppendFailureMessage(conversation.Id, "error", settings.Model, CancellationToken.None);
+                // Bill it. The provider already charged us for whatever the turn consumed
+                // before it broke, so leaving those tokens out understates admin spend and the
+                // DailyTokenCap; and a turn that fails deterministically must still cost a
+                // message, or a repeatable backend error becomes an unmetered send loop.
+                _rateLimit.Record(request.UserId, today, hour,
+                    messagesDelta: 1, tokensDelta: turnUsage.PromptTokens + turnUsage.OutputTokens);
             }
         }
+    }
+
+    /// <summary>Provider usage accumulated by <see cref="RunTurnAsync"/> as its tool loop runs.
+    /// Mutable and passed in by <see cref="AskAsync"/> rather than kept as iterator locals so a
+    /// turn that dies partway can still be billed for the tokens already spent on it.</summary>
+    private sealed class TurnUsage
+    {
+        public int PromptTokens;
+        public int OutputTokens;
+        public int CacheReadTokens;
+        public int CacheCreationTokens;
     }
 
     /// <summary>The tool-call loop and finalizer for one turn, run after the user message is
@@ -212,6 +233,7 @@ public sealed class AgentService : IAgentService
         List<AgentMessage> priorTurns,
         LocalDate today,
         int hour,
+        TurnUsage usage,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         var snapshot = await _snapshots.LoadAsync(request.UserId, cancellationToken);
@@ -243,11 +265,8 @@ public sealed class AgentService : IAgentService
         // Each loop iteration is a separate provider request with its own usage.
         // Accumulate across all of them — recording only the last finalizer would
         // drop tool-loop (and cap-hit synthesis) requests from admin spend and
-        // the DailyTokenCap accounting.
-        var promptTokensTotal = 0;
-        var outputTokensTotal = 0;
-        var cacheReadTokensTotal = 0;
-        var cacheCreationTokensTotal = 0;
+        // the DailyTokenCap accounting. The totals live on the caller-supplied
+        // `usage` so a turn that throws mid-loop can still be billed for them.
         // Wall-clock turn duration (streaming + tool loop) for the admin status latency panel.
         var turnStart = _clock.GetCurrentInstant();
 
@@ -279,10 +298,10 @@ public sealed class AgentService : IAgentService
                 else if (token.Finalizer is { } f)
                 {
                     finalFinalizer = f;
-                    promptTokensTotal += f.InputTokens;
-                    outputTokensTotal += f.OutputTokens;
-                    cacheReadTokensTotal += f.CacheReadTokens;
-                    cacheCreationTokensTotal += f.CacheCreationTokens;
+                    usage.PromptTokens += f.InputTokens;
+                    usage.OutputTokens += f.OutputTokens;
+                    usage.CacheReadTokens += f.CacheReadTokens;
+                    usage.CacheCreationTokens += f.CacheCreationTokens;
                 }
             }
 
@@ -405,9 +424,9 @@ public sealed class AgentService : IAgentService
             Role = AgentRole.Assistant,
             Content = assistantText,
             CreatedAt = turnEnd,
-            PromptTokens = promptTokensTotal,
-            OutputTokens = outputTokensTotal,
-            CachedTokens = cacheReadTokensTotal,
+            PromptTokens = usage.PromptTokens,
+            OutputTokens = usage.OutputTokens,
+            CachedTokens = usage.CacheReadTokens,
             Model = settings.Model,
             DurationMs = durationMs,
             FetchedDocs = fetchedDocs.ToArray(),
@@ -425,10 +444,10 @@ public sealed class AgentService : IAgentService
         yield return new AgentTurnToken(null, null, fallbackFinalizer with
         {
             ConversationId = conversation.Id,
-            InputTokens = promptTokensTotal,
-            OutputTokens = outputTokensTotal,
-            CacheReadTokens = cacheReadTokensTotal,
-            CacheCreationTokens = cacheCreationTokensTotal
+            InputTokens = usage.PromptTokens,
+            OutputTokens = usage.OutputTokens,
+            CacheReadTokens = usage.CacheReadTokens,
+            CacheCreationTokens = usage.CacheCreationTokens
         });
     }
 

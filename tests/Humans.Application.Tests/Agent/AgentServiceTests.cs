@@ -559,7 +559,9 @@ public class AgentServiceTests
         dispatcher.DispatchAsync(Arg.Any<AnthropicToolCall>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns<Task<AnthropicToolResult>>(_ => throw new InvalidOperationException("simulated dispatch failure"));
         var logger = Substitute.For<ILogger<AgentService>>();
-        var (svc, client) = await BuildService(s => s.Enabled = true, toolDispatcher: dispatcher, logger: logger);
+        var store = new AgentRateLimitStore();
+        var (svc, client) = await BuildService(s => s.Enabled = true, rateLimitStore: store,
+            toolDispatcher: dispatcher, logger: logger);
 
         client.EnqueueTurn(
             new AgentTurnToken(null, new AnthropicToolCall("t1", "fetch_section_guide", """{"section":"teams"}"""), null),
@@ -592,6 +594,66 @@ public class AgentServiceTests
             Arg.Any<object>(),
             Arg.Is<Exception>(e => e is InvalidOperationException),
             Arg.Any<Func<object, Exception?, string>>());
+
+        // A failed turn is still a billed turn: the provider charged us for the 100/20 the
+        // first request consumed before the dispatcher threw, and leaving the message cap
+        // untouched would make a deterministic backend error an unmetered send loop.
+        var usage = store.Get(userId, new LocalDate(2026, 4, 21), hour: 12);
+        usage.MessagesToday.Should().Be(1);
+        usage.MessagesThisHour.Should().Be(1);
+        usage.TokensToday.Should().Be(120,
+            "tokens the provider already billed before the failure must reach DailyTokenCap and admin spend");
+    }
+
+    [HumansFact]
+    public async Task Ask_writes_one_trace_when_the_assistant_append_itself_is_cancelled()
+    {
+        // AgentRepository shares one scoped AgentDbContext across the turn. A cancellation that
+        // lands inside the final AppendMessageAsync leaves the assistant message tracked as
+        // Added, so the failure trace's save would flush BOTH — a real reply plus an "error"
+        // refusal for the same turn, and a double MessageCount bump. The repository discards the
+        // half-written append on failure so the turn ends with exactly one trace.
+        var userId = Guid.NewGuid();
+        using var cts = new CancellationTokenSource();
+
+        // route_to_issue is the one turn shape that reaches the final append with no further
+        // provider call in between (the proposal frame is terminal), so cancelling from the
+        // dispatcher lands the cancellation inside AppendMessageAsync itself rather than in
+        // the streaming loop — which is the ordering the duplicate-write hazard needs.
+        var dispatcher = Substitute.For<IAgentToolDispatcher>();
+        dispatcher.DispatchAsync(Arg.Any<AnthropicToolCall>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(async call =>
+            {
+                await cts.CancelAsync();
+                return new AnthropicToolResult(
+                    call.Arg<AnthropicToolCall>().Id, "Proposal queued.", IsError: false);
+            });
+        var (svc, client) = await BuildService(s => s.Enabled = true, toolDispatcher: dispatcher);
+
+        client.EnqueueTurn(
+            new AgentTurnToken(null, new AnthropicToolCall(
+                "tc1", AgentToolNames.RouteToIssue,
+                """{"title":"Broken link","category":"Bug","description":"The camps page 404s."}"""), null),
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(40, 10, 0, 0, "claude-sonnet-4-6", "tool_use")));
+
+        await foreach (var _ in svc.AskAsync(
+            new AgentTurnRequest(ConversationId: Guid.Empty, UserId: userId, Message: "the camps page is broken", Locale: "es"),
+            cts.Token))
+        {
+            // Drain; the assertions below read the persisted transcript.
+        }
+
+        var rows = await svc.ListAllConversationsForAdminWithMessagesAsync(
+            refusalsOnly: false, handoffsOnly: false, userId: userId, take: 50, skip: 0,
+            Xunit.TestContext.Current.CancellationToken);
+        var conversation = rows.Should().ContainSingle().Subject;
+        var assistant = conversation.Messages.Should()
+            .ContainSingle(m => m.Role == AgentRole.Assistant,
+                "the cancelled append must not be flushed alongside the failure trace")
+            .Subject;
+        assistant.RefusalReason.Should().Be("error");
+        assistant.Content.Should().BeEmpty();
+        conversation.MessageCount.Should().Be(2, "one user message and one assistant trace");
     }
 
     [HumansFact]
