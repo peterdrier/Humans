@@ -66,7 +66,7 @@ public class AuditLogEntryConfiguration : IEntityTypeConfiguration<AuditLogEntry
             .HasMaxLength(500);
 
         // FK to GoogleResource with SetNull on delete
-        builder.HasOne(e => e.Resource)
+        builder.HasOne<GoogleResource>()
             .WithMany()
             .HasForeignKey(e => e.ResourceId)
             .OnDelete(DeleteBehavior.SetNull);
