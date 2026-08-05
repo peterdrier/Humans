@@ -1,4 +1,4 @@
-using Humans.Application.Extensions;
+﻿using Humans.Application.Extensions;
 using Humans.Application.Helpers;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.AuditLog;
@@ -880,15 +880,32 @@ public sealed class ExpenseReportService(
         CancellationToken ct)
     {
         // 1. Ensure the member's Holded creditor contact + binding (Finance owns creditor identity).
-        //    Reuses the binding — including an admin's manual bind — or lazy-seeds from this report's
-        //    cached contact id; never mints a duplicate. Legal name -> name; burner -> tradeName.
+        //    Reuses the binding — including an admin's manual bind — or lazy-seeds from a cached
+        //    contact id; never mints a duplicate. Legal name -> name; burner -> tradeName.
         string? burnerName = null;
         if (!string.IsNullOrWhiteSpace(report.PayeeName))
             burnerName = (await userService.GetUserInfoAsync(report.SubmitterUserId, ct))?.BurnerName;
 
+        // This report carries a contact id only on a re-drain. Seeding from it alone misses a member
+        // whose contact predates holded_creditor_contacts (that migration creates the table and
+        // backfills nothing), leaving them with a contact on older reports and no binding row — and a
+        // null seed makes Finance POST a *second* Holded contact, splitting their payables across two.
+        // Lazy-seed from their most recent linked report instead; the push then writes the binding.
+        var seedContactId = report.HoldedContactId;
+        var seedAccountNum = report.HoldedSupplierAccountNum;
+        if (string.IsNullOrEmpty(seedContactId))
+        {
+            var priorLinked = (await repo.GetForSubmitterAsync(report.SubmitterUserId, ct))
+                .Where(r => r.Id != report.Id && !string.IsNullOrEmpty(r.HoldedContactId))
+                .OrderByDescending(r => r.SubmittedAt ?? r.CreatedAt)
+                .FirstOrDefault();
+            seedContactId = priorLinked?.HoldedContactId;
+            seedAccountNum = priorLinked?.HoldedSupplierAccountNum;
+        }
+
         var holdedContactId = await holdedFinance.EnsureCreditorContactAsync(
             report.SubmitterUserId, report.PayeeName, burnerName, report.PayeeIban,
-            report.HoldedContactId, report.HoldedSupplierAccountNum, ct);
+            seedContactId, seedAccountNum, ct);
 
         // Mirror the contact id onto the report (keeps the creditor-timeline reads working) before the
         // retryable doc-create + attachment steps. The supplier-account number is backfilled in step 4.

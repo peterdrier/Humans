@@ -1337,6 +1337,62 @@ public sealed class ExpenseReportServiceTests : ServiceTestHarness
     // ─────────────────────── Holded contact enrichment ───────────────────────
 
     [HumansFact]
+    public async Task DrainHoldedOutboxAsync_SecondReport_SeedsContactIdFromTheMembersEarlierReport()
+    {
+        // A member whose Holded contact predates holded_creditor_contacts has a contact id on older
+        // reports and no binding row. Seeding only from the report being pushed sends Finance a null,
+        // which POSTs a second contact and splits their payables — so seed from the earlier report.
+        var (_, category) = SetupActiveYear();
+        var userId = Guid.NewGuid();
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(WrapInUserInfo(new Profile
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                BurnerName = "Meri",
+                FirstName = "Maria",
+                LastName = "Garcia",
+                Iban = "ES9121000418450200051332",
+            }));
+        _budgetService.GetCategoryByIdAsync(category.Id).Returns(
+            ToBudgetCategorySnapshot(new BudgetCategory
+            {
+                Id = category.Id,
+                BudgetGroupId = Guid.NewGuid(),
+                Name = "Test Category",
+                TeamId = null,
+                SortOrder = 0,
+                CreatedAt = FakeNow,
+                UpdatedAt = FakeNow,
+            }));
+        _holdedFinance.EnsureCreditorContactAsync(
+                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns("contact-123");
+        _holdedClient.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>())
+            .Returns("doc-1");
+        _holdedClient.GetContactAsync("contact-123", Arg.Any<CancellationToken>())
+            .Returns(new HoldedContactDto { Id = "contact-123", SupplierAccountNum = 40000007 });
+        _fileStorage.TryReadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new byte[] { 1, 2, 3 });
+
+        // First report links the member to contact-123 — this is the pre-existing Holded contact.
+        await SeedApprovedReportWithAttachmentAsync(userId, category.Id);
+        await _sut.DrainHoldedOutboxAsync(100, Xunit.TestContext.Current.CancellationToken);
+        _holdedFinance.ClearReceivedCalls();
+
+        // Act — a fresh report for the same member carries no contact id of its own.
+        await SeedApprovedReportWithAttachmentAsync(userId, category.Id);
+        await _sut.DrainHoldedOutboxAsync(100, Xunit.TestContext.Current.CancellationToken);
+
+        // Assert — the earlier report's contact id (and its account number) are passed as the seed,
+        // so Finance updates the existing contact instead of creating a duplicate.
+        await _holdedFinance.Received(1).EnsureCreditorContactAsync(
+            userId, Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>(),
+            "contact-123", 40000007, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task DrainHoldedOutboxAsync_DelegatesContactEnrichmentToFinance_PersistsContactLink()
     {
         // Arrange — active year + user with distinct legal name and burner

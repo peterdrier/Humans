@@ -38,7 +38,19 @@ else
             @foreach (var r in Model)
             {
                 <tr>
-                    <td><a asp-action="CreditorStatement" asp-route-accountNum="@r.SupplierAccountNum">@r.SupplierAccountNum</a></td>
+                    @* A null balance means no cached ledger lines, which is exactly when
+                       CreditorStatement 404s — a contact with no journal activity yet. Show the
+                       number without a link rather than a dead one. *@
+                    <td>
+                        @if (r.Balance.HasValue)
+                        {
+                            <a asp-action="CreditorStatement" asp-route-accountNum="@r.SupplierAccountNum">@r.SupplierAccountNum</a>
+                        }
+                        else
+                        {
+                            <span title="No cached ledger activity yet — nothing to show on a statement.">@r.SupplierAccountNum</span>
+                        }
+                    </td>
                     <td>@(string.IsNullOrWhiteSpace(r.Name) ? "—" : r.Name)</td>
                     <td class="text-end">@(r.Balance.HasValue ? r.Balance.Value.ToEuro() : "—")</td>
                     <td class="text-end">
