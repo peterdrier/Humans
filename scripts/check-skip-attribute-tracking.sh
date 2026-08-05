@@ -28,10 +28,15 @@
 # forbids them in test code (see docs/architecture/code-review-rules.md), and
 # the preceding CI step rejects RS0030 suppressions.
 #
-# Skip values must be plain, verbatim or raw string literals. Anything else (a
-# const reference, string concatenation, nameof) is rejected rather than waved
-# through: the reason text is what carries the issue number, so a value this
-# script cannot read is a value it cannot vouch for.
+# Skip values and BrokenFact reasons must be plain, verbatim or raw string
+# literals. Anything else (a const reference, string concatenation, nameof) is
+# rejected rather than waved through: the reason text is what carries the issue
+# number, so a value this script cannot read is a value it cannot vouch for.
+#
+# Attributes are recognised anywhere in a shared bracketed list
+# ([Trait(...), HumansFact(Skip = "...")]), with or without the `Attribute`
+# suffix, and with or without generic type arguments (xUnit v3's
+# ClassData<TRows>).
 #
 # See memory/process/no-pre-existing-failures.md for the policy this enforces.
 
@@ -44,19 +49,26 @@ FAILURES=$(perl -0777 -ne '
     my $file = $ARGV;
     my @bad;
 
+    # Reads a C# string literal anchored at the start of $text. Returns the text
+    # for plain / verbatim / raw literals, undef for anything else. Raw
+    # ("""...""") is tried before plain ("...") so the empty capture between the
+    # first two quotes of a raw literal is not mistaken for it.
+    sub literal_reason {
+        my ($text) = @_;
+        return $1 if $text =~ /^\s*"""(.*?)"""/s;
+        return $1 if $text =~ /^\s*\@"((?:[^"]|"")*)"/s;
+        return $1 if $text =~ /^\s*"((?:[^"\\]|\\.)*)"/s;
+        return undef;
+    }
+
     # Reads a Skip= value out of an attribute argument list. Returns:
     #   ()          -- no static Skip= at all
     #   (undef)     -- Skip= present but not a string literal we can read
     #   ($reason)   -- the literal reason text
-    # Raw ("""...""") is tried before plain ("...") so the empty capture
-    # between the first two quotes of a raw literal is not mistaken for it.
     sub skip_reason {
         my ($args) = @_;
-        return () unless $args =~ /\bSkip\s*=/s;
-        return ($1) if $args =~ /\bSkip\s*=\s*"""(.*?)"""/s;
-        return ($1) if $args =~ /\bSkip\s*=\s*\@"((?:[^"]|"")*)"/s;
-        return ($1) if $args =~ /\bSkip\s*=\s*"((?:[^"\\]|\\.)*)"/s;
-        return (undef);
+        return () unless $args =~ /\bSkip\s*=(.*)$/s;
+        return (literal_reason($1));
     }
 
     sub check_reason {
@@ -69,17 +81,46 @@ FAILURES=$(perl -0777 -ne '
         }
     }
 
-    # [BrokenFact("reason")] / [BrokenFact(reason: "reason")], with or without
-    # the optional Attribute suffix C# allows at the usage site.
-    while (/\[BrokenFact(?:Attribute)?\(\s*(?:reason\s*:\s*)?"((?:[^"\\]|\\.)*)"/gs) {
-        check_reason(\@bad, "BrokenFact reason", $1);
+    # Builds the matcher for one attribute family. An attribute may sit anywhere
+    # in a shared bracketed list ([Trait(...), HumansFact(...)]), so it is
+    # anchored on "[" OR "," rather than "[" alone; may carry the optional
+    # Attribute suffix; and may be generic (xUnit v3 ClassData<TRows>).
+    #
+    # The argument list is matched with a recursive balanced-paren pattern, not
+    # a non-greedy run to the next ")". Argument values contain parens of their
+    # own -- typeof(string), nameof(Enabled) -- and a naive match stops at the
+    # first inner ")", truncating the captured list. That silently hides any
+    # argument after it: a Skip= followed by typeof(...) then SkipWhen= would
+    # lose the SkipWhen and be misreported as an unconditional quarantine.
+    # String literals are skipped over so a ")" inside a reason does not throw
+    # the paren count off.
+    sub attr_pattern {
+        my ($names) = @_;
+        my $parens = qr/(?<p>\((?:[^()"]++|"(?:[^"\\]|\\.)*+"|(?&p))*+\))/;
+        return qr/(?:\[|,)\s*(?:$names)(?:Attribute)?(?:\s*<[^>]*>)?\s*(?<args>$parens)/s;
+    }
+
+    # Strips the outer parens off a captured argument list.
+    sub inner_args {
+        my ($captured) = @_;
+        return substr($captured, 1, length($captured) - 2);
+    }
+
+    # [BrokenFact("reason")] / [BrokenFact(reason: "reason")] -- the reason is
+    # the first constructor argument, read with the same literal rules as Skip=.
+    my $broken = attr_pattern("BrokenFact");
+    while (/$broken/g) {
+        my $args = inner_args($+{args});
+        $args =~ s/^\s*reason\s*:\s*//s;
+        check_reason(\@bad, "BrokenFact reason", literal_reason($args));
     }
 
     # [HumansFact(...)] / [HumansTheory(...)] -- inspect the whole argument
     # list so Skip=, SkipUnless=, etc. are seen together regardless of
     # multi-line formatting.
-    while (/\[(?:HumansFact|HumansTheory)(?:Attribute)?\((.*?)\)\s*\]/gs) {
-        my $args = $1;
+    my $fact = attr_pattern("HumansFact|HumansTheory");
+    while (/$fact/g) {
+        my $args = inner_args($+{args});
         my @found = skip_reason($args);
         next unless @found;
         next if $args =~ /\bSkipUnless\s*=|\bSkipWhen\s*=/s; # conditional gate, not quarantine
@@ -87,8 +128,9 @@ FAILURES=$(perl -0777 -ne '
     }
 
     # Per-row skips on xUnit data attributes quarantine a single theory case.
-    while (/\[(?:InlineData|MemberData|ClassData)(?:Attribute)?\((.*?)\)\s*\]/gs) {
-        my $args = $1;
+    my $data = attr_pattern("InlineData|MemberData|ClassData|TheoryData");
+    while (/$data/g) {
+        my $args = inner_args($+{args});
         my @found = skip_reason($args);
         next unless @found;
         check_reason(\@bad, "data-row Skip=", $found[0]);
