@@ -58,11 +58,6 @@
                 </a>
             </li>
             <li>
-                <a class="dropdown-item d-flex align-items-center gap-2" asp-controller="Feedback" asp-action="Index">
-                    <i class="fa-solid fa-comment-dots fa-fw"></i> @Localizer["Nav_MyFeedback"]
-                </a>
-            </li>
-            <li>
                 <a class="dropdown-item d-flex align-items-center gap-2" asp-controller="Issues" asp-action="Index">
                     <i class="fa-solid fa-circle-exclamation fa-fw"></i> @Localizer["Nav_Issues"]
                     @await Component.InvokeAsync("NavBadges", new { queue = "issues" })

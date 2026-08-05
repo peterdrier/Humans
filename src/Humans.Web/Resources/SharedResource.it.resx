@@ -124,9 +124,6 @@
   <data name="Nav_OnboardingReview" xml:space="preserve">
     <value>Coda di revisione</value>
   </data>
-  <data name="Nav_MyFeedback" xml:space="preserve">
-    <value>Il mio feedback</value>
-  </data>
   <data name="Nav_Issues" xml:space="preserve">
     <value>Segnalazioni</value>
   </data>
@@ -3151,56 +3148,11 @@
 &lt;p&gt;— Il team Humans&lt;/p&gt;</value>
     <comment>{0} = display name, {1} = issue title, {2} = comment HTML, {3} = issue URL</comment>
   </data>
-  <data name="Feedback_Button" xml:space="preserve">
-    <value>Feedback</value>
-  </data>
-  <data name="Feedback_Title" xml:space="preserve">
-    <value>Invia Feedback</value>
-  </data>
-  <data name="Feedback_Category" xml:space="preserve">
-    <value>Categoria</value>
-  </data>
-  <data name="Feedback_Category_Bug" xml:space="preserve">
-    <value>Segnalazione bug</value>
-  </data>
-  <data name="Feedback_Category_FeatureRequest" xml:space="preserve">
-    <value>Richiesta funzionalità</value>
-  </data>
-  <data name="Feedback_Category_Question" xml:space="preserve">
-    <value>Domanda</value>
-  </data>
-  <data name="Feedback_Description" xml:space="preserve">
-    <value>Descrizione</value>
-  </data>
-  <data name="Feedback_DescriptionPlaceholder" xml:space="preserve">
-    <value>Raccontaci cosa è successo o cosa vorresti vedere...</value>
-  </data>
-  <data name="Feedback_Screenshot" xml:space="preserve">
-    <value>Screenshot (opzionale)</value>
-  </data>
-  <data name="Feedback_ScreenshotHelp" xml:space="preserve">
-    <value>JPEG, PNG o WebP. Max 10MB.</value>
-  </data>
-  <data name="Feedback_Cancel" xml:space="preserve">
-    <value>Annulla</value>
-  </data>
-  <data name="Feedback_Submit" xml:space="preserve">
-    <value>Invia</value>
-  </data>
-  <data name="Feedback_Submitted" xml:space="preserve">
-    <value>Grazie! Il tuo feedback è stato inviato.</value>
-  </data>
-  <data name="Feedback_Error" xml:space="preserve">
-    <value>Qualcosa è andato storto nell'invio del tuo feedback. Riprova.</value>
-  </data>
   <data name="Agent_ConversationBackToHistory" xml:space="preserve">
     <value>Torna alla cronologia</value>
   </data>
   <data name="Agent_ConversationEmpty" xml:space="preserve">
     <value>Nessun messaggio in questa conversazione.</value>
-  </data>
-  <data name="Agent_ConversationHandedOffToFeedback" xml:space="preserve">
-    <value>Trasferito a un rapporto di feedback</value>
   </data>
   <data name="Agent_ConversationRefusedLabel" xml:space="preserve">
     <value>L'assistente ha rifiutato di rispondere in questo turno.</value>

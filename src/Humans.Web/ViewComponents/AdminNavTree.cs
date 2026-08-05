@@ -90,7 +90,7 @@ public static class AdminNavTree
             new("Audit log", "AuditLog", "Index", null, null, "fa-solid fa-book-open", PolicyNames.BoardOrAdmin)
         ]),
         new("Feedback", [
-            new("Feedback queue", "Feedback", "Index", null, null, "fa-solid fa-comment-dots", PolicyNames.FeedbackAdminOrAdmin,
+            new("Feedback queue", "Feedback", "Index", null, null, "fa-solid fa-comment-dots", PolicyNames.AdminOnly,
                  PillCount: PillCounts.FeedbackQueue),
             new("Issues",         "Issues",   "Index", null, null, "fa-solid fa-bug",          PolicyNames.AdminOnly)
         ]),

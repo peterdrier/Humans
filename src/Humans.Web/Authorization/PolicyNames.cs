@@ -23,7 +23,6 @@ public static class PolicyNames
     public const string CampAdminOrAdmin = nameof(CampAdminOrAdmin);
     public const string TicketAdminBoardOrAdmin = nameof(TicketAdminBoardOrAdmin);
     public const string TicketAdminOrAdmin = nameof(TicketAdminOrAdmin);
-    public const string FeedbackAdminOrAdmin = nameof(FeedbackAdminOrAdmin);
     public const string FinanceAdminOrAdmin = nameof(FinanceAdminOrAdmin);
     public const string EventsAdminOrAdmin = nameof(EventsAdminOrAdmin);
     public const string CantinaAdminOrAdmin = nameof(CantinaAdminOrAdmin);

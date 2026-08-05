@@ -1,27 +1,18 @@
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Microsoft.AspNetCore.Http;
 using NodaTime;
 
 namespace Humans.Application.Interfaces.Feedback;
 
+/// <summary>
+/// Feedback is closed to new reports (nobodies-collective/Humans#977) — Issues
+/// superseded it. This interface deliberately exposes no report-creation method;
+/// what remains is admin-only read and triage over the historical rows.
+/// </summary>
 public interface IFeedbackService : IApplicationService
 {
-    Task<FeedbackReport> SubmitUserFeedbackAsync(
-        Guid userId, FeedbackCategory category, string description,
-        string pageUrl, string? userAgent, IEnumerable<string> roleNames,
-        IFormFile? screenshot, CancellationToken cancellationToken = default);
-
-    Task<FeedbackReport> SubmitFeedbackAsync(
-        Guid userId, FeedbackCategory category, string description,
-        string pageUrl, string? userAgent, string? additionalContext,
-        IFormFile? screenshot, CancellationToken cancellationToken = default);
-
     Task<FeedbackReportInfo?> GetFeedbackByIdAsync(
         Guid id, CancellationToken cancellationToken = default);
-
-    Task<FeedbackReportInfo?> GetFeedbackByIdForViewerAsync(
-        Guid id, Guid viewerUserId, bool isAdmin, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<FeedbackReportInfo>> GetFeedbackListAsync(
         FeedbackStatus? status = null, FeedbackCategory? category = null,
@@ -37,8 +28,13 @@ public interface IFeedbackService : IApplicationService
     Task SetGitHubIssueNumberAsync(
         Guid id, int? issueNumber, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Appends an admin reply to a report's thread. Reporters have no route into
+    /// Feedback any more, so every message posted from here is an admin reply:
+    /// it stamps <c>LastAdminMessageAt</c>, emails the reporter, and notifies them.
+    /// </summary>
     Task<FeedbackMessage> PostMessageAsync(
-        Guid reportId, Guid? senderUserId, string content, bool isAdmin,
+        Guid reportId, Guid? senderUserId, string content,
         CancellationToken cancellationToken = default);
 
     Task UpdateAssignmentAsync(

@@ -1,6 +1,4 @@
-using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.Extensions;
@@ -39,92 +37,9 @@ public sealed class FeedbackService(
     INavBadgeCacheInvalidator navBadge,
     IMemoryCache cache,
     IClock clock,
-    IHostEnvironment env,
     ILogger<FeedbackService> logger) : IFeedbackService, IUserDataContributor, IUserMerge
 {
     private static readonly TimeSpan BadgeCacheDuration = TimeSpan.FromMinutes(2);
-
-    private static readonly HashSet<string> AllowedContentTypes = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "image/jpeg", "image/png", "image/webp"
-    };
-
-    private const long MaxScreenshotBytes = 10 * 1024 * 1024; // 10MB
-
-    public Task<FeedbackReport> SubmitUserFeedbackAsync(
-        Guid userId, FeedbackCategory category, string description,
-        string pageUrl, string? userAgent, IEnumerable<string> roleNames,
-        IFormFile? screenshot, CancellationToken cancellationToken = default)
-    {
-        var sortedRoleNames = roleNames.Order(StringComparer.Ordinal).ToList();
-        var additionalContext = sortedRoleNames.Count > 0
-            ? string.Join(", ", sortedRoleNames)
-            : null;
-
-        return SubmitFeedbackAsync(
-            userId, category, description, pageUrl, userAgent,
-            additionalContext, screenshot, cancellationToken);
-    }
-
-    public async Task<FeedbackReport> SubmitFeedbackAsync(
-        Guid userId, FeedbackCategory category, string description,
-        string pageUrl, string? userAgent, string? additionalContext,
-        IFormFile? screenshot, CancellationToken cancellationToken = default)
-    {
-        var now = clock.GetCurrentInstant();
-        var reportId = Guid.NewGuid();
-
-        var report = new FeedbackReport
-        {
-            Id = reportId,
-            UserId = userId,
-            Category = category,
-            Description = description,
-            PageUrl = pageUrl,
-            UserAgent = userAgent,
-            AdditionalContext = additionalContext,
-            Status = FeedbackStatus.Open,
-            CreatedAt = now,
-            UpdatedAt = now
-        };
-
-        if (screenshot is { Length: > 0 })
-        {
-            if (screenshot.Length > MaxScreenshotBytes)
-                throw new InvalidOperationException("Screenshot must be under 10MB.");
-
-            if (!AllowedContentTypes.Contains(screenshot.ContentType))
-                throw new InvalidOperationException("Screenshot must be JPEG, PNG, or WebP.");
-
-            var ext = screenshot.ContentType switch
-            {
-                "image/jpeg" => ".jpg",
-                "image/png" => ".png",
-                "image/webp" => ".webp",
-                _ => throw new InvalidOperationException($"Unexpected content type: {screenshot.ContentType}")
-            };
-
-            var fileName = $"{Guid.NewGuid()}{ext}";
-            var relativePath = Path.Combine("uploads", "feedback", reportId.ToString(), fileName);
-            var absolutePath = Path.Combine(env.ContentRootPath, "wwwroot", relativePath);
-
-            Directory.CreateDirectory(Path.GetDirectoryName(absolutePath)!);
-
-            await using var stream = new FileStream(absolutePath, FileMode.Create);
-            await screenshot.CopyToAsync(stream, cancellationToken);
-
-            report.ScreenshotFileName = screenshot.FileName;
-            report.ScreenshotStoragePath = relativePath.Replace('\\', '/');
-            report.ScreenshotContentType = screenshot.ContentType;
-        }
-
-        await repository.AddReportAsync(report, cancellationToken);
-        navBadge.Invalidate();
-
-        logger.LogInformation("Feedback {ReportId} submitted by {UserId}: {Category}", reportId, userId, category);
-
-        return report;
-    }
 
     public async Task<FeedbackReportInfo?> GetFeedbackByIdAsync(
         Guid id, CancellationToken cancellationToken = default)
@@ -134,15 +49,6 @@ public sealed class FeedbackService(
 
         var lookups = await StitchCrossDomainNavsAsync([report], cancellationToken);
         return CreateFeedbackReportInfo(report, lookups);
-    }
-
-    public async Task<FeedbackReportInfo?> GetFeedbackByIdForViewerAsync(
-        Guid id, Guid viewerUserId, bool isAdmin, CancellationToken cancellationToken = default)
-    {
-        var report = await GetFeedbackByIdAsync(id, cancellationToken);
-        if (report is null) return null;
-
-        return isAdmin || report.UserId == viewerUserId ? report : null;
     }
 
     public async Task<IReadOnlyList<FeedbackReportInfo>> GetFeedbackListAsync(
@@ -216,16 +122,11 @@ public sealed class FeedbackService(
     }
 
     public async Task<FeedbackMessage> PostMessageAsync(
-        Guid reportId, Guid? senderUserId, string content, bool isAdmin,
+        Guid reportId, Guid? senderUserId, string content,
         CancellationToken cancellationToken = default)
     {
         var report = await repository.FindForMutationAsync(reportId, cancellationToken)
             ?? throw new InvalidOperationException($"Feedback report {reportId} not found");
-
-        if (!isAdmin && senderUserId != report.UserId)
-        {
-            throw new InvalidOperationException($"Feedback report {reportId} not found for user {senderUserId}");
-        }
 
         var now = clock.GetCurrentInstant();
         var message = new FeedbackMessage
@@ -237,34 +138,19 @@ public sealed class FeedbackService(
             CreatedAt = now
         };
 
-        if (isAdmin)
-        {
-            report.LastAdminMessageAt = now;
-        }
-        else
-        {
-            report.LastReporterMessageAt = now;
-        }
-
+        report.LastAdminMessageAt = now;
         report.UpdatedAt = now;
 
         // Send email BEFORE persisting so an SMTP throw leaves no committed message → safe to retry.
-        if (isAdmin)
-        {
-            await SendAdminResponseEmailAsync(report, content, cancellationToken);
-        }
+        await SendAdminResponseEmailAsync(report, content, cancellationToken);
 
         await repository.AddMessageAndSaveReportAsync(message, report, cancellationToken);
 
-        if (isAdmin)
-        {
-            await DispatchAdminReplyNotificationAsync(report, cancellationToken);
-        }
+        await DispatchAdminReplyNotificationAsync(report, cancellationToken);
 
         navBadge.Invalidate();
         logger.LogInformation(
-            "Feedback message posted on {ReportId} by {UserId} (admin: {IsAdmin})",
-            reportId, senderUserId, isAdmin);
+            "Feedback admin reply posted on {ReportId} by {UserId}", reportId, senderUserId);
         return message;
     }
 

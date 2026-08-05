@@ -67,7 +67,6 @@
   <data name="Nav_About" xml:space="preserve"><value>About</value></data>
   <data name="Nav_Admin" xml:space="preserve"><value>Admin</value></data>
   <data name="Nav_OnboardingReview" xml:space="preserve"><value>Review Queue</value></data>
-  <data name="Nav_MyFeedback" xml:space="preserve"><value>My Feedback</value></data>
   <data name="Nav_Issues" xml:space="preserve"><value>Issues</value></data>
   <data name="Issue_Unavailable" xml:space="preserve"><value>That issue isn't available — it may have been removed, or you don't have access to it.</value></data>
 
@@ -1353,26 +1352,9 @@
 &lt;p&gt;&lt;a href="{3}"&gt;Open issue&lt;/a&gt;&lt;/p&gt;
 &lt;p&gt;— The Humans team&lt;/p&gt;</value><comment>{0} = display name, {1} = issue title, {2} = comment HTML, {3} = issue URL</comment></data>
 
-  <!-- Feedback Widget -->
-  <data name="Feedback_Button" xml:space="preserve"><value>Feedback</value></data>
-  <data name="Feedback_Title" xml:space="preserve"><value>Send Feedback</value></data>
-  <data name="Feedback_Category" xml:space="preserve"><value>Category</value></data>
-  <data name="Feedback_Category_Bug" xml:space="preserve"><value>Bug Report</value></data>
-  <data name="Feedback_Category_FeatureRequest" xml:space="preserve"><value>Feature Request</value></data>
-  <data name="Feedback_Category_Question" xml:space="preserve"><value>Question</value></data>
-  <data name="Feedback_Description" xml:space="preserve"><value>Description</value></data>
-  <data name="Feedback_DescriptionPlaceholder" xml:space="preserve"><value>Tell us what happened or what you'd like to see...</value></data>
-  <data name="Feedback_Screenshot" xml:space="preserve"><value>Screenshot (optional)</value></data>
-  <data name="Feedback_ScreenshotHelp" xml:space="preserve"><value>JPEG, PNG, or WebP. Max 10MB.</value></data>
-  <data name="Feedback_Cancel" xml:space="preserve"><value>Cancel</value></data>
-  <data name="Feedback_Submit" xml:space="preserve"><value>Send</value></data>
-  <data name="Feedback_Submitted" xml:space="preserve"><value>Thank you! Your feedback has been submitted.</value></data>
-  <data name="Feedback_Error" xml:space="preserve"><value>Something went wrong submitting your feedback. Please try again.</value></data>
-
   <!-- Agent Widget -->
   <data name="Agent_ConversationBackToHistory" xml:space="preserve"><value>Back to history</value></data>
   <data name="Agent_ConversationEmpty" xml:space="preserve"><value>No messages in this conversation.</value></data>
-  <data name="Agent_ConversationHandedOffToFeedback" xml:space="preserve"><value>Handed off to feedback report</value></data>
   <data name="Agent_ConversationRefusedLabel" xml:space="preserve"><value>The agent declined to answer this turn.</value></data>
   <data name="Agent_ConversationTitle" xml:space="preserve"><value>Agent conversation</value></data>
   <data name="Agent_ConversationToolCallsSummary" xml:space="preserve"><value>{0} tool call(s)</value></data>

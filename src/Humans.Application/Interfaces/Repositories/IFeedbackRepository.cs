@@ -88,11 +88,6 @@ public interface IFeedbackRepository : IRepository
     // ==========================================================================
 
     /// <summary>
-    /// Persists a new feedback report. Commits immediately.
-    /// </summary>
-    Task AddReportAsync(FeedbackReport report, CancellationToken ct = default);
-
-    /// <summary>
     /// Persists changes to a tracked report (obtained via <see cref="FindForMutationAsync"/>).
     /// </summary>
     Task SaveTrackedReportAsync(FeedbackReport report, CancellationToken ct = default);

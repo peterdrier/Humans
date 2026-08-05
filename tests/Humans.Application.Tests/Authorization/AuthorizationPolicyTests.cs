@@ -1,3 +1,4 @@
+using System.Reflection;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Application.Interfaces;
@@ -145,11 +146,6 @@ public class AuthorizationPolicyTests : IDisposable
         { PolicyNames.GateAdmit, RoleNames.TeamsAdmin, false },
         { PolicyNames.GateAdmit, RoleNames.HumanAdmin, false },
         { PolicyNames.GateAdmit, "SomeNonAdminRole", false },
-
-        { PolicyNames.FeedbackAdminOrAdmin, RoleNames.FeedbackAdmin, true },
-        { PolicyNames.FeedbackAdminOrAdmin, RoleNames.Admin, true },
-        { PolicyNames.FeedbackAdminOrAdmin, RoleNames.Board, false },
-        { PolicyNames.FeedbackAdminOrAdmin, RoleNames.TeamsAdmin, false },
 
         { PolicyNames.FinanceAdminOrAdmin, RoleNames.FinanceAdmin, true },
         { PolicyNames.FinanceAdminOrAdmin, RoleNames.Admin, true },
@@ -427,18 +423,49 @@ public class AuthorizationPolicyTests : IDisposable
         result.Succeeded.Should().BeFalse();
     }
 
-    // --- FeedbackAdminOrAdmin ---
+    // --- Feedback screens (nobodies-collective/Humans#977) ---
+    //
+    // Feedback is retired: read-only and full-Admin only. These run the policy
+    // that FeedbackController actually carries through the real authorization
+    // pipeline, so the gate cannot silently loosen by editing the attribute.
 
-    [HumansTheory]
-    [InlineData(RoleNames.FeedbackAdmin, true)]
-    [InlineData(RoleNames.Admin, true)]
-    [InlineData(RoleNames.Board, false)]
-    [InlineData(RoleNames.TeamsAdmin, false)]
-    public async Task FeedbackAdminOrAdmin_ChecksCorrectRoles(string role, bool expected)
+    [HumansFact]
+    public async Task FeedbackController_DeniesAuthenticatedUserWithNoRoles()
     {
-        var result = await AuthorizeAsync(PolicyNames.FeedbackAdminOrAdmin, role);
-        result.Succeeded.Should().Be(expected);
+        var result = await _authorizationService.AuthorizeAsync(
+            CreateAuthenticatedUser(), FeedbackControllerPolicy);
+        result.Succeeded.Should().BeFalse();
     }
+
+    [HumansFact]
+    public async Task FeedbackController_DeniesFeedbackAdminWithoutAdmin()
+    {
+        // FeedbackAdmin alone no longer reaches /Feedback or /Feedback/{id}.
+        var result = await _authorizationService.AuthorizeAsync(
+            CreateUserWithRoles(RoleNames.FeedbackAdmin), FeedbackControllerPolicy);
+        result.Succeeded.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task FeedbackController_AllowsAdmin()
+    {
+        var result = await _authorizationService.AuthorizeAsync(
+            CreateUserWithRoles(RoleNames.Admin), FeedbackControllerPolicy);
+        result.Succeeded.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task FeedbackController_DeniesUnauthenticated()
+    {
+        var result = await AuthorizeAnonymousAsync(FeedbackControllerPolicy);
+        result.Succeeded.Should().BeFalse();
+    }
+
+    private static string FeedbackControllerPolicy =>
+        typeof(Humans.Web.Controllers.FeedbackController)
+            .GetCustomAttribute<AuthorizeAttribute>()?.Policy
+        ?? throw new InvalidOperationException(
+            "FeedbackController must carry a policy-bearing [Authorize] attribute.");
 
     // --- FinanceAdminOrAdmin ---
 

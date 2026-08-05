@@ -119,7 +119,7 @@ public class FeedbackApiController(IFeedbackService feedbackService, ILogger<Fee
 
         try
         {
-            var message = await feedbackService.PostMessageAsync(id, null, model.Content, isAdmin: true);
+            var message = await feedbackService.PostMessageAsync(id, null, model.Content);
             return Ok(new
             {
                 message.Id,

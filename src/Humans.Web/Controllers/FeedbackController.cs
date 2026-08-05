@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Localization;
 using Humans.Domain.Enums;
 using Humans.Web.Authorization;
 using Humans.Web.Models;
@@ -10,13 +9,18 @@ using Humans.Application.Interfaces.Users;
 
 namespace Humans.Web.Controllers;
 
-[Authorize]
+/// <summary>
+/// Read-and-triage surface for the retired Feedback section
+/// (nobodies-collective/Humans#977). Feedback no longer accepts new reports —
+/// Issues superseded it — so every remaining action is full-Admin only. There is
+/// deliberately no reporter-facing view and no creation route.
+/// </summary>
+[Authorize(Policy = PolicyNames.AdminOnly)]
 [Route("Feedback")]
 public class FeedbackController(
     IFeedbackService feedbackService,
     ITeamServiceRead teamService,
     IUserServiceRead userService,
-    IStringLocalizer<SharedResource> localizer,
     ILogger<FeedbackController> logger) : HumansControllerBase(userService)
 {
     private readonly IUserServiceRead _userService = userService;
@@ -48,49 +52,35 @@ public class FeedbackController(
         var (userMissing, user) = await RequireCurrentUserAsync();
         if (userMissing is not null) return userMissing;
 
-        var isAdmin = RoleChecks.IsFeedbackAdmin(User);
-        Guid? reporterFilter = isAdmin ? reporterUserId : user.Id;
-
         var reports = await feedbackService.GetFeedbackListAsync(
-            status, category, reporterFilter,
-            assignedToUserId: isAdmin ? assignedTo : null,
-            assignedToTeamId: isAdmin ? team : null,
-            unassignedOnly: isAdmin && unassigned ? true : null);
+            status, category, reporterUserId,
+            assignedToUserId: assignedTo,
+            assignedToTeamId: team,
+            unassignedOnly: unassigned ? true : null);
 
-        var assigneeOptions = new List<AssigneeOption>();
-        IReadOnlyList<TeamInfo> teamOptions = [];
+        var teamOptions = (await teamService.GetTeamsAsync()).Values
+            .Where(t => t.IsActive)
+            .OrderBy(t => t.Name, StringComparer.Ordinal)
+            .ToList();
+        var assigneeOptions = await GetActiveAssigneeOptionsAsync();
 
-        if (isAdmin)
+        var distinctReporters = await feedbackService.GetDistinctReportersAsync();
+        var reporters = distinctReporters.Select(r => new ReporterDropdownItem
         {
-            teamOptions = (await teamService.GetTeamsAsync()).Values
-                .Where(t => t.IsActive)
-                .OrderBy(t => t.Name, StringComparer.Ordinal)
-                .ToList();
-            assigneeOptions = await GetActiveAssigneeOptionsAsync();
-        }
-
-        var reporters = new List<ReporterDropdownItem>();
-        if (isAdmin)
-        {
-            var distinctReporters = await feedbackService.GetDistinctReportersAsync();
-            reporters = distinctReporters.Select(r => new ReporterDropdownItem
-            {
-                UserId = r.UserId,
-                DisplayName = r.DisplayName,
-                Count = r.Count
-            }).ToList();
-        }
+            UserId = r.UserId,
+            DisplayName = r.DisplayName,
+            Count = r.Count
+        }).ToList();
 
         var viewModel = new FeedbackPageViewModel
         {
             StatusFilter = status,
             CategoryFilter = category,
-            ReporterFilter = isAdmin ? reporterUserId : null,
+            ReporterFilter = reporterUserId,
             Reporters = reporters,
             AssignedToFilter = assignedTo,
             TeamFilter = team,
             UnassignedFilter = unassigned,
-            IsAdmin = isAdmin,
             SelectedReportId = selected,
             CurrentUserId = user.Id,
             AssigneeOptions = assigneeOptions,
@@ -122,19 +112,11 @@ public class FeedbackController(
     [HttpGet("{id}")]
     public async Task<IActionResult> Detail(Guid id)
     {
-        var (userMissing, user) = await RequireCurrentUserAsync();
-        if (userMissing is not null) return userMissing;
-
-        var isAdmin = RoleChecks.IsFeedbackAdmin(User);
-        var report = await feedbackService.GetFeedbackByIdForViewerAsync(id, user.Id, isAdmin);
+        var report = await feedbackService.GetFeedbackByIdAsync(id);
         if (report is null) return NotFound();
 
-        var viewModel = MapDetailViewModel(report, isAdmin);
-
-        if (isAdmin)
-        {
-            await PopulateAssignmentOptionsAsync(viewModel);
-        }
+        var viewModel = MapDetailViewModel(report);
+        await PopulateAssignmentOptionsAsync(viewModel);
 
         if (Request.Headers.XRequestedWith == "XMLHttpRequest")
         {
@@ -142,53 +124,6 @@ public class FeedbackController(
         }
 
         return RedirectToAction(nameof(Index), new { selected = id });
-    }
-
-    [HttpPost("")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Submit(SubmitFeedbackViewModel model)
-    {
-        var isAjax = Request.Headers.XRequestedWith == "XMLHttpRequest";
-
-        var (userMissing, user) = await RequireCurrentUserAsync();
-        if (userMissing is not null)
-        {
-            return isAjax ? Unauthorized() : userMissing;
-        }
-
-        if (!ModelState.IsValid)
-        {
-            var errorMsg = localizer["Feedback_Error"].Value;
-            if (isAjax) return Json(new { success = false, message = errorMsg });
-            SetError(errorMsg);
-            return LocalRedirect(Url.IsLocalUrl(model.PageUrl) ? model.PageUrl : "/");
-        }
-
-        try
-        {
-            var roles = User.Claims
-                .Where(c => string.Equals(c.Type, System.Security.Claims.ClaimTypes.Role, StringComparison.Ordinal))
-                .Select(c => c.Value)
-                .ToList();
-
-            await feedbackService.SubmitUserFeedbackAsync(
-                user.Id, model.Category, model.Description,
-                model.PageUrl, model.UserAgent, roles,
-                model.Screenshot);
-
-            var successMsg = localizer["Feedback_Submitted"].Value;
-            if (isAjax) return Json(new { success = true, message = successMsg });
-            SetSuccess(successMsg);
-        }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogWarning(ex, "Feedback submission failed for user {UserId}", user.Id);
-            var errorMsg = localizer["Feedback_Error"].Value;
-            if (isAjax) return Json(new { success = false, message = errorMsg });
-            SetError(errorMsg);
-        }
-
-        return LocalRedirect(Url.IsLocalUrl(model.PageUrl) ? model.PageUrl : "/");
     }
 
     [HttpPost("{id}/Message")]
@@ -206,7 +141,7 @@ public class FeedbackController(
 
         try
         {
-            await feedbackService.PostMessageAsync(id, user.Id, model.Content, RoleChecks.IsFeedbackAdmin(User));
+            await feedbackService.PostMessageAsync(id, user.Id, model.Content);
             SetSuccess("Message posted.");
         }
         catch (InvalidOperationException)
@@ -223,7 +158,6 @@ public class FeedbackController(
     }
 
     [HttpPost("{id}/Status")]
-    [Authorize(Policy = PolicyNames.FeedbackAdminOrAdmin)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UpdateStatus(Guid id, UpdateFeedbackStatusModel model)
     {
@@ -249,7 +183,6 @@ public class FeedbackController(
     }
 
     [HttpPost("{id}/Assignment")]
-    [Authorize(Policy = PolicyNames.FeedbackAdminOrAdmin)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UpdateAssignment(Guid id, UpdateFeedbackAssignmentModel model)
     {
@@ -275,7 +208,6 @@ public class FeedbackController(
     }
 
     [HttpPost("{id}/GitHubIssue")]
-    [Authorize(Policy = PolicyNames.FeedbackAdminOrAdmin)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SetGitHubIssue(Guid id, SetGitHubIssueModel model)
     {
@@ -297,7 +229,7 @@ public class FeedbackController(
         return RedirectToAction(nameof(Index), new { selected = id });
     }
 
-    private static FeedbackDetailViewModel MapDetailViewModel(FeedbackReportInfo report, bool isAdmin)
+    private static FeedbackDetailViewModel MapDetailViewModel(FeedbackReportInfo report)
     {
         return new FeedbackDetailViewModel
         {
@@ -310,14 +242,12 @@ public class FeedbackController(
             AdditionalContext = report.AdditionalContext,
             ScreenshotUrl = report.ScreenshotStoragePath is not null
                 ? $"/{report.ScreenshotStoragePath}" : null,
-            ReporterName = report.ReporterName,
             ReporterUserId = report.UserId,
             GitHubIssueNumber = report.GitHubIssueNumber,
             CreatedAt = report.CreatedAt.ToDateTimeUtc(),
             UpdatedAt = report.UpdatedAt.ToDateTimeUtc(),
             ResolvedAt = report.ResolvedAt?.ToDateTimeUtc(),
             ResolvedByName = report.ResolvedByName,
-            IsAdmin = isAdmin,
             AssignedToUserId = report.AssignedToUserId,
             AssignedToName = report.AssignedToName,
             AssignedToTeamId = report.AssignedToTeamId,

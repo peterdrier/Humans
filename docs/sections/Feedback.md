@@ -13,11 +13,20 @@
 
 # Feedback — Section Invariants
 
-In-app feedback reports (bugs, feature requests, questions) with screenshots and a reporter↔admin conversation thread.
+> **Retired and closed to new input (nobodies-collective/Humans#977).** Feedback was
+> superseded by [Issues](Issues.md) — same shape (bug/feature/question, screenshots,
+> reporter↔handler thread) but with role-routed triage. There is **no creation path
+> left**: no widget, no `POST /Feedback`, no `IFeedbackService` create method, no
+> `IFeedbackRepository.AddReportAsync`. What survives is a **read-and-triage surface
+> over the historical rows, gated on `PolicyNames.AdminOnly`**. Existing
+> `feedback_reports` / `feedback_messages` rows are untouched and still exportable
+> under GDPR. New in-app reporting goes to Issues.
+
+Historical in-app feedback reports (bugs, feature requests, questions) with screenshots and a reporter↔admin conversation thread.
 
 ## Concepts
 
-- A **Feedback Report** is an in-app submission from a human — a bug report, feature request, or question. It captures the page URL, optional screenshot, and conversation thread between the reporter and admins.
+- A **Feedback Report** is a historical in-app submission from a human — a bug report, feature request, or question. It captures the page URL, optional screenshot, and conversation thread between the reporter and admins. No new reports can be created.
 - **Feedback status** tracks the lifecycle: Open, Acknowledged, Resolved, or WontFix.
 
 ## Data Model
@@ -46,7 +55,7 @@ In-app feedback reports (bugs, feature requests, questions) with screenshots and
 | AssignedToTeamId | Guid? | FK → Team, SetNull on delete — **FK only**, `[Obsolete]`-marked nav |
 | CreatedAt | Instant | Submission timestamp |
 | UpdatedAt | Instant | Last modification |
-| Source | FeedbackSource | `UserReport` (default) or `AgentUnresolved` — set when created by the agent's `route_to_feedback` tool |
+| Source | FeedbackSource | `UserReport` (default) or `AgentUnresolved` — was set when created by the agent's retired `route_to_feedback` tool |
 | AgentConversationId | Guid? | FK column only — no EF FK constraint to `agent_conversations`; cross-section join is not modeled |
 | ResolvedAt | Instant? | When resolved/won't-fix |
 | ResolvedByUserId | Guid? | FK → User, SetNull on delete — **FK only**, `[Obsolete]`-marked nav |
@@ -101,16 +110,18 @@ Cross-domain nav `FeedbackMessage.SenderUser` is `[Obsolete]`-marked — senders
 
 | Actor | Capabilities |
 |-------|--------------|
-| Any authenticated human | Submit feedback (with optional screenshot). View and reply to their own feedback reports. Accessible even during onboarding (before becoming an active member) |
-| FeedbackAdmin, Admin | View all feedback reports. Update status (`PolicyNames.FeedbackAdminOrAdmin`). Assign to humans and/or teams (`PolicyNames.FeedbackAdminOrAdmin`). Link GitHub issues (`PolicyNames.FeedbackAdminOrAdmin`). Reply to any report (admin replies queue an email and dispatch an in-app notification to the reporter) |
-| API (key auth) | List, get, post messages, update status, update assignment, set GitHub issue via `/api/feedback` (no user session required; `ApiKeyAuthFilter` enforces the key) |
+| Admin | The **only** human actor. View all historical reports at `/Feedback` and `/Feedback/{id}`, update status, assign to humans and/or teams, link GitHub issues, and reply on any report (replies queue an email and dispatch an in-app notification to the reporter). Every action is gated by the controller-level `PolicyNames.AdminOnly`. |
+| API (key auth) | List, get, post messages, update status, update assignment, set GitHub issue via `/api/feedback` (no user session required; `ApiKeyAuthFilter` enforces the key). No report-creation endpoint. |
+
+`RoleNames.FeedbackAdmin` still exists as an assignable role (it appears on the Staff page and in the Guide, and still admits the holder to the `/Admin` shell via `AnyAdminRole`), but it **no longer grants any Feedback access**. Its former policy `PolicyNames.FeedbackAdminOrAdmin` and role group `RoleGroups.FeedbackAdminOrAdmin` were deleted with the lockdown.
 
 ## Invariants
 
 - Every feedback report is linked to the human who submitted it.
-- Screenshots are validated for allowed file types (JPEG, PNG, WebP) and a max size of 10 MB before storage.
+- **No code path creates a feedback report.** There is no service, repository, controller, or view component that writes a new `FeedbackReport` row.
 - Feedback status flows Open → Acknowledged → Resolved or WontFix; transitioning out of a terminal status (Resolved/WontFix) clears `ResolvedAt` and `ResolvedByUserId`.
-- Regular humans can only see their own feedback reports. FeedbackAdmin and Admin can see all reports.
+- Only Admin can see feedback reports — including a report's own reporter, who has no route into the section any more.
+- Every message posted through `IFeedbackService.PostMessageAsync` is an admin reply: it stamps `LastAdminMessageAt`, emails the reporter, and dispatches an in-app notification. Reporter messages exist only on historical rows.
 - "Needs reply" is derived: true when the reporter has posted a message more recent than any admin reply (`LastReporterMessageAt > LastAdminMessageAt`) or when the report is still Open and no admin has ever replied. The nav-badge count uses the same rule and excludes Resolved/WontFix.
 - A report can optionally be assigned to a human and/or a team. Both assignments are independent and nullable.
 - Status changes and assignment changes are audit-logged via `AuditAction.FeedbackStatusChanged` and `AuditAction.FeedbackAssignmentChanged`. API-initiated changes are logged with actor `"API"`.
@@ -118,14 +129,15 @@ Cross-domain nav `FeedbackMessage.SenderUser` is `[Obsolete]`-marked — senders
 
 ## Negative Access Rules
 
-- Regular humans **cannot** view other humans' feedback reports.
-- Regular humans **cannot** update feedback status, assign reports, link GitHub issues, or post replies on reports they did not submit.
-- FeedbackAdmin **cannot** perform system administration tasks — their elevated access is scoped to feedback only.
+- Non-Admins **cannot** reach `/Feedback` or `/Feedback/{id}` at all — including reporters looking for their own reports. `FeedbackAdmin` alone is denied.
+- Nobody, at any privilege level, **can** create a feedback report through the app. File an Issue instead.
+- No Feedback link is rendered outside the Admin nav tree: it is absent from the user dropdown, from the Help widget, and from the agent conversation view.
+- Feedback counts (the admin nav pill and the `/Admin` dashboard "Open feedback" tile) render for **Admin only**, not for the other admin-shaped roles that can reach the admin shell.
 
 ## Triggers
 
 - When an admin posts a message on a report, the reporter's effective notification email is resolved via `IUserEmailService.GetNotificationTargetEmailsAsync` and a localized response email is queued via `IEmailService.SendAsync(IEmailMessageFactory.FeedbackResponse(...))`. After the message is persisted, an in-app `NotificationSource.FeedbackResponse` notification is also dispatched.
-- When a report is created or any message is posted (admin or reporter), the nav-badge cache is invalidated via `INavBadgeCacheInvalidator`.
+- When a message is posted or a status changes, the nav-badge cache is invalidated via `INavBadgeCacheInvalidator`.
 - When an account merge accepts, `FeedbackService.ReassignAsync` (`IUserMerge`) re-FKs `FeedbackReport.UserId` / `AssignedToUserId` / `ResolvedByUserId` and `FeedbackMessage.SenderUserId` from source to target. Called only by `IAccountMergeService.AcceptAsync` (Profiles section) inside an ambient `TransactionScope`.
 
 ## Cross-Section Dependencies
@@ -139,14 +151,13 @@ Cross-domain nav `FeedbackMessage.SenderUser` is `[Obsolete]`-marked — senders
 - **Audit Log:** `IAuditLogService.LogAsync` — status and assignment changes (`AuditAction.FeedbackStatusChanged`, `AuditAction.FeedbackAssignmentChanged`).
 - **Caching:** the actionable badge count is cached inline in `FeedbackService.GetActionableCountAsync` (`CacheKeys.FeedbackBadgeCount`, 2-min TTL, Static) and invalidated via `INavBadgeCacheInvalidator` whenever the count could have changed.
 - **GDPR:** implements `IUserDataContributor` to export the reporter's feedback reports and message contents under `GdprExportSections.FeedbackReports`.
-- **Agent:** `AgentConversationId` is a plain FK column on `feedback_reports` (no EF FK constraint). Reports with `Source = AgentUnresolved` originate from the agent's `route_to_feedback` tool. Transcript resolution goes through the Agent section's services when needed.
-- **Onboarding:** Feedback submission is available during onboarding, before the human is an active member.
+- **Agent:** `AgentConversationId` is a plain FK column on `feedback_reports` (no EF FK constraint). Reports with `Source = AgentUnresolved` originate from the agent's retired `route_to_feedback` tool. Transcript resolution goes through the Agent section's services when needed. `IFeedbackService.GetOpenFeedbackIdsForUserAsync` still feeds `AgentUserSnapshotProvider`.
 
 ## Architecture
 
 **Owning services:** `FeedbackService`
 **Owned tables:** `feedback_reports`, `feedback_messages`
-**Status:** (A) Migrated (peterdrier/Humans PR for issue nobodies-collective/Humans#549, 2026-04-22).
+**Status:** (A) Migrated (peterdrier/Humans PR for issue nobodies-collective/Humans#549, 2026-04-22). Write-locked and admin-gated by nobodies-collective/Humans#977.
 
 - `FeedbackService` lives in `Humans.Application.Services.Feedback` and depends only on Application-layer abstractions. It never imports `Microsoft.EntityFrameworkCore`. Implements `IFeedbackService`, `IUserDataContributor`, and `IUserMerge`.
 - `IFeedbackRepository` (impl `Humans.Infrastructure/Repositories/Feedback/FeedbackRepository.cs`) owns the SQL surface. Registered as Singleton and uses `IDbContextFactory<HumansDbContext>` to create per-call scoped contexts, so the repository can be a long-lived singleton while EF state stays per-request.

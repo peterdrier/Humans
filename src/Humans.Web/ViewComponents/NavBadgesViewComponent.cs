@@ -1,7 +1,6 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Application.Interfaces.Dashboard;
-using Humans.Application.Interfaces.Feedback;
 using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Issues;
 using Humans.Domain.Constants;
@@ -9,12 +8,13 @@ using Humans.Domain.Constants;
 namespace Humans.Web.ViewComponents;
 
 // No IMemoryCache here (memory/code/viewcomponent-no-cache.md). Each count comes from
-// its owning service: feedback/voting/issues are cached inside those services; the review
+// its owning service: voting/issues are cached inside those services; the review
 // count reads the already-cache-served UserInfo store, so it needs no extra cache.
+// Feedback has no badge here — its queue is admin-only and its pill count is rendered
+// by the admin nav tree (nobodies-collective/Humans#977).
 public class NavBadgesViewComponent(
     IAdminDashboardService adminDashboardService,
     IApplicationServiceRead applicationDecisionService,
-    IFeedbackService feedbackService,
     IIssuesService issuesService) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync(string queue)
@@ -34,7 +34,7 @@ public class NavBadgesViewComponent(
         }
         else
         {
-            count = await feedbackService.GetActionableCountAsync();
+            count = 0;
         }
 
         return View(count);

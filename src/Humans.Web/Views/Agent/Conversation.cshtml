@@ -77,16 +77,10 @@ else
                         <div class="agent-msg-other small">@msg.Content</div>
                     }
 
-                    @if (isAssistant && msg.HandedOffToFeedbackId.HasValue)
-                    {
-                        @* Legacy Feedback handoff link — historical rows only (post-#628 uses client-side issue proposals). *@
-                        <div class="agent-handoff small mt-2">
-                            <span aria-hidden="true">↪</span>
-                            @Localizer["Agent_ConversationHandedOffToFeedback"]:
-                            <a asp-controller="Feedback" asp-action="Detail"
-                               asp-route-id="@msg.HandedOffToFeedbackId">@msg.HandedOffToFeedbackId</a>
-                        </div>
-                    }
+                    @* No legacy Feedback handoff link: /Feedback/{id} is Admin-only
+                       (nobodies-collective/Humans#977), so it would 403 for the reporter
+                       reading their own conversation. Admins still see the handoff id on
+                       the admin conversation view. *@
 
                     @if (isAssistant && msg.FetchedDocs is { Length: > 0 })
                     {

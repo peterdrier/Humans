@@ -35,7 +35,7 @@
                 }
             }
         </select>
-        @if (Model.IsAdmin && Model.Reporters.Count > 0)
+        @if (Model.Reporters.Count > 0)
         {
             <select name="reporterUserId" class="form-select form-select-sm" style="width: auto;">
                 <option value="">@Localizer["Feedback_AllReporters"]</option>
@@ -52,61 +52,58 @@
                 }
             </select>
         }
-        @if (Model.IsAdmin)
-        {
-            <select name="assignedTo" class="form-select form-select-sm" style="width: auto;">
-                <option value="">@Localizer["Feedback_AllAssignees"]</option>
-                @if (Model.AssignedToFilter == Model.CurrentUserId)
+        <select name="assignedTo" class="form-select form-select-sm" style="width: auto;">
+            <option value="">@Localizer["Feedback_AllAssignees"]</option>
+            @if (Model.AssignedToFilter == Model.CurrentUserId)
+            {
+                <option value="@Model.CurrentUserId" selected>@Localizer["Feedback_AssignedToMe"]</option>
+            }
+            else
+            {
+                <option value="@Model.CurrentUserId">@Localizer["Feedback_AssignedToMe"]</option>
+            }
+            @foreach (var a in Model.AssigneeOptions)
+            {
+                if (a.Id != Model.CurrentUserId)
                 {
-                    <option value="@Model.CurrentUserId" selected>@Localizer["Feedback_AssignedToMe"]</option>
-                }
-                else
-                {
-                    <option value="@Model.CurrentUserId">@Localizer["Feedback_AssignedToMe"]</option>
-                }
-                @foreach (var a in Model.AssigneeOptions)
-                {
-                    if (a.Id != Model.CurrentUserId)
+                    if (Model.AssignedToFilter == a.Id)
                     {
-                        if (Model.AssignedToFilter == a.Id)
-                        {
-                            <option value="@a.Id" selected>@a.DisplayName</option>
-                        }
-                        else
-                        {
-                            <option value="@a.Id">@a.DisplayName</option>
-                        }
-                    }
-                }
-            </select>
-            <select name="team" class="form-select form-select-sm" style="width: auto;">
-                <option value="">@Localizer["Feedback_AllTeams"]</option>
-                @foreach (var t in Model.TeamOptions)
-                {
-                    if (Model.TeamFilter == t.Id)
-                    {
-                        <option value="@t.Id" selected>@t.Name</option>
+                        <option value="@a.Id" selected>@a.DisplayName</option>
                     }
                     else
                     {
-                        <option value="@t.Id">@t.Name</option>
+                        <option value="@a.Id">@a.DisplayName</option>
                     }
                 }
-            </select>
-            <div class="form-check form-check-inline align-self-center ms-1">
-                @if (Model.UnassignedFilter)
+            }
+        </select>
+        <select name="team" class="form-select form-select-sm" style="width: auto;">
+            <option value="">@Localizer["Feedback_AllTeams"]</option>
+            @foreach (var t in Model.TeamOptions)
+            {
+                if (Model.TeamFilter == t.Id)
                 {
-                    <input class="form-check-input feedback-filter-checkbox" type="checkbox" name="unassigned" value="true"
-                           id="unassignedFilter" checked>
+                    <option value="@t.Id" selected>@t.Name</option>
                 }
                 else
                 {
-                    <input class="form-check-input feedback-filter-checkbox" type="checkbox" name="unassigned" value="true"
-                           id="unassignedFilter">
+                    <option value="@t.Id">@t.Name</option>
                 }
-                <label class="form-check-label small" for="unassignedFilter">@Localizer["Feedback_UnassignedOnly"]</label>
-            </div>
-        }
+            }
+        </select>
+        <div class="form-check form-check-inline align-self-center ms-1">
+            @if (Model.UnassignedFilter)
+            {
+                <input class="form-check-input feedback-filter-checkbox" type="checkbox" name="unassigned" value="true"
+                       id="unassignedFilter" checked>
+            }
+            else
+            {
+                <input class="form-check-input feedback-filter-checkbox" type="checkbox" name="unassigned" value="true"
+                       id="unassignedFilter">
+            }
+            <label class="form-check-label small" for="unassignedFilter">@Localizer["Feedback_UnassignedOnly"]</label>
+        </div>
         @if (Model.StatusFilter.HasValue || Model.CategoryFilter.HasValue || Model.ReporterFilter.HasValue || Model.AssignedToFilter.HasValue || Model.TeamFilter.HasValue || Model.UnassignedFilter)
         {
             <a asp-action="Index" class="btn btn-sm btn-outline-secondary">@Localizer["Feedback_Clear"]</a>
@@ -139,45 +136,35 @@
                         }
                         <span class="badge @badgeClass" style="font-size: 0.7rem;">@Localizer.EnumDisplay(report.Status)</span>
                     </div>
-                    @if (Model.IsAdmin)
-                    {
-                        <div class="text-muted" style="font-size: 0.75rem;">@report.ReporterName · @report.CreatedAt.ToWeekdayDayMonth()</div>
-                    }
-                    else
-                    {
-                        <div class="text-muted" style="font-size: 0.75rem;">@report.CreatedAt.ToMonthDayTime()</div>
-                    }
+                    <div class="text-muted" style="font-size: 0.75rem;">@report.ReporterName · @report.CreatedAt.ToWeekdayDayMonth()</div>
                     <div class="d-flex justify-content-between align-items-center mt-1" style="font-size: 0.75rem;">
                         <span class="text-muted"><i class="fa-solid fa-comment"></i> @report.MessageCount</span>
-                        @if (Model.IsAdmin)
-                        {
-                            <span class="d-flex gap-1 align-items-center">
-                                @if (!string.IsNullOrEmpty(report.AssignedToName))
-                                {
-                                    <span class="badge bg-primary bg-opacity-10 text-primary border border-primary-subtle" style="font-size: 0.65rem;"
-                                          title="@Localizer["Feedback_AssignedToName", report.AssignedToName]">
-                                        <i class="fa-solid fa-user fa-xs"></i> @(report.AssignedToName.Length > 12 ? report.AssignedToName[..12] + "..." : report.AssignedToName)
-                                    </span>
-                                }
-                                @if (!string.IsNullOrEmpty(report.AssignedToTeamName))
-                                {
-                                    <span class="badge bg-warning bg-opacity-10 text-warning-emphasis border border-warning-subtle" style="font-size: 0.65rem;"
-                                          title="@Localizer["Feedback_TeamName", report.AssignedToTeamName]">
-                                        <i class="fa-solid fa-users fa-xs"></i> @(report.AssignedToTeamName.Length > 12 ? report.AssignedToTeamName[..12] + "..." : report.AssignedToTeamName)
-                                    </span>
-                                }
-                                @if (isUnassigned)
-                                {
-                                    <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary-subtle" style="font-size: 0.65rem;">
-                                        @Localizer["Feedback_Unassigned"]
-                                    </span>
-                                }
-                            </span>
-                        }
+                        <span class="d-flex gap-1 align-items-center">
+                            @if (!string.IsNullOrEmpty(report.AssignedToName))
+                            {
+                                <span class="badge bg-primary bg-opacity-10 text-primary border border-primary-subtle" style="font-size: 0.65rem;"
+                                      title="@Localizer["Feedback_AssignedToName", report.AssignedToName]">
+                                    <i class="fa-solid fa-user fa-xs"></i> @(report.AssignedToName.Length > 12 ? report.AssignedToName[..12] + "..." : report.AssignedToName)
+                                </span>
+                            }
+                            @if (!string.IsNullOrEmpty(report.AssignedToTeamName))
+                            {
+                                <span class="badge bg-warning bg-opacity-10 text-warning-emphasis border border-warning-subtle" style="font-size: 0.65rem;"
+                                      title="@Localizer["Feedback_TeamName", report.AssignedToTeamName]">
+                                    <i class="fa-solid fa-users fa-xs"></i> @(report.AssignedToTeamName.Length > 12 ? report.AssignedToTeamName[..12] + "..." : report.AssignedToTeamName)
+                                </span>
+                            }
+                            @if (isUnassigned)
+                            {
+                                <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary-subtle" style="font-size: 0.65rem;">
+                                    @Localizer["Feedback_Unassigned"]
+                                </span>
+                            }
+                        </span>
                     </div>
                     <div class="d-flex justify-content-between mt-1" style="font-size: 0.75rem;">
                         <span></span>
-                        @if (report.NeedsReply && Model.IsAdmin)
+                        @if (report.NeedsReply)
                         {
                             <span class="text-danger"><i class="fa-solid fa-circle fa-xs"></i> @Localizer["Feedback_NeedsReply"]</span>
                         }

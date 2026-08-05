@@ -117,13 +117,6 @@ internal sealed class FeedbackRepository(IDbContextFactory<HumansDbContext> fact
     // Writes
     // ==========================================================================
 
-    public async Task AddReportAsync(FeedbackReport report, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        ctx.FeedbackReports.Add(report);
-        await ctx.SaveChangesAsync(ct);
-    }
-
     public async Task SaveTrackedReportAsync(FeedbackReport report, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);

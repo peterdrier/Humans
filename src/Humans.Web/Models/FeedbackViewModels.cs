@@ -5,24 +5,6 @@ using Humans.Domain.Enums;
 
 namespace Humans.Web.Models;
 
-public class SubmitFeedbackViewModel
-{
-    [Required]
-    public FeedbackCategory Category { get; set; }
-
-    [Required]
-    [StringLength(5000)]
-    public string Description { get; set; } = string.Empty;
-
-    [StringLength(2000)]
-    public string PageUrl { get; set; } = string.Empty;
-
-    [StringLength(1000)]
-    public string? UserAgent { get; set; }
-
-    public IFormFile? Screenshot { get; set; }
-}
-
 public class FeedbackPageViewModel
 {
     public List<FeedbackListItemViewModel> Reports { get; set; } = [];
@@ -33,7 +15,6 @@ public class FeedbackPageViewModel
     public Guid? AssignedToFilter { get; set; }
     public Guid? TeamFilter { get; set; }
     public bool UnassignedFilter { get; set; }
-    public bool IsAdmin { get; set; }
     public Guid? SelectedReportId { get; set; }
     public Guid CurrentUserId { get; set; }
     public List<AssigneeOption> AssigneeOptions { get; set; } = [];
@@ -83,14 +64,12 @@ public class FeedbackDetailViewModel
     public string? UserAgent { get; set; }
     public string? AdditionalContext { get; set; }
     public string? ScreenshotUrl { get; set; }
-    public string ReporterName { get; set; } = string.Empty;
     public Guid ReporterUserId { get; set; }
     public int? GitHubIssueNumber { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
     public DateTime? ResolvedAt { get; set; }
     public string? ResolvedByName { get; set; }
-    public bool IsAdmin { get; set; }
     public Guid? AssignedToUserId { get; set; }
     public string? AssignedToName { get; set; }
     public Guid? AssignedToTeamId { get; set; }

@@ -113,9 +113,6 @@ public static class AuthorizationPolicyExtensions
                     || ctx.User.HasClaim(System.Security.Claims.ClaimTypes.NameIdentifier,
                         SystemUserIds.GateTerminal.ToString())));
 
-            options.AddPolicy(PolicyNames.FeedbackAdminOrAdmin, policy =>
-                policy.RequireRole(RoleNames.FeedbackAdmin, RoleNames.Admin));
-
             options.AddPolicy(PolicyNames.FinanceAdminOrAdmin, policy =>
                 policy.RequireRole(RoleNames.FinanceAdmin, RoleNames.Admin));
 

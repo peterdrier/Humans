@@ -85,11 +85,6 @@ public static class RoleChecks
         return IsAdminOrBoard(user) || IsHumanAdmin(user);
     }
 
-    public static bool IsFeedbackAdmin(ClaimsPrincipal user)
-    {
-        return IsAdmin(user) || user.IsInRole(RoleNames.FeedbackAdmin);
-    }
-
     public static bool IsFinanceAdmin(ClaimsPrincipal user)
     {
         return IsAdmin(user) || user.IsInRole(RoleNames.FinanceAdmin);

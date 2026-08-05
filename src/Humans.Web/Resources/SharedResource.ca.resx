@@ -124,9 +124,6 @@
   <data name="Nav_OnboardingReview" xml:space="preserve">
     <value>Cua de revisió</value>
   </data>
-  <data name="Nav_MyFeedback" xml:space="preserve">
-    <value>El meu feedback</value>
-  </data>
   <data name="Nav_Issues" xml:space="preserve">
     <value>Incidències</value>
   </data>
@@ -3151,56 +3148,11 @@
 &lt;p&gt;— L’equip de Humans&lt;/p&gt;</value>
     <comment>{0} = display name, {1} = issue title, {2} = comment HTML, {3} = issue URL</comment>
   </data>
-  <data name="Feedback_Button" xml:space="preserve">
-    <value>Feedback</value>
-  </data>
-  <data name="Feedback_Title" xml:space="preserve">
-    <value>Envia feedback</value>
-  </data>
-  <data name="Feedback_Category" xml:space="preserve">
-    <value>Categoria</value>
-  </data>
-  <data name="Feedback_Category_Bug" xml:space="preserve">
-    <value>Informe d'error</value>
-  </data>
-  <data name="Feedback_Category_FeatureRequest" xml:space="preserve">
-    <value>Sol·licitud de funcionalitat</value>
-  </data>
-  <data name="Feedback_Category_Question" xml:space="preserve">
-    <value>Pregunta</value>
-  </data>
-  <data name="Feedback_Description" xml:space="preserve">
-    <value>Descripció</value>
-  </data>
-  <data name="Feedback_DescriptionPlaceholder" xml:space="preserve">
-    <value>Explica’ns què ha passat o què t’agradaria veure...</value>
-  </data>
-  <data name="Feedback_Screenshot" xml:space="preserve">
-    <value>Captura de pantalla (opcional)</value>
-  </data>
-  <data name="Feedback_ScreenshotHelp" xml:space="preserve">
-    <value>JPEG, PNG o WebP. Màxim 10MB.</value>
-  </data>
-  <data name="Feedback_Cancel" xml:space="preserve">
-    <value>Cancel·la</value>
-  </data>
-  <data name="Feedback_Submit" xml:space="preserve">
-    <value>Envia</value>
-  </data>
-  <data name="Feedback_Submitted" xml:space="preserve">
-    <value>Gràcies! El teu feedback s’ha enviat.</value>
-  </data>
-  <data name="Feedback_Error" xml:space="preserve">
-    <value>Alguna cosa ha anat malament en enviar el teu feedback. Si us plau, torna-ho a provar.</value>
-  </data>
   <data name="Agent_ConversationBackToHistory" xml:space="preserve">
     <value>Tornar a l'historial</value>
   </data>
   <data name="Agent_ConversationEmpty" xml:space="preserve">
     <value>No hi ha missatges en aquesta conversa.</value>
-  </data>
-  <data name="Agent_ConversationHandedOffToFeedback" xml:space="preserve">
-    <value>Derivat a informe d'incidència</value>
   </data>
   <data name="Agent_ConversationRefusedLabel" xml:space="preserve">
     <value>L'assistent ha declinat respondre aquest torn.</value>

@@ -869,25 +869,6 @@
                 <div class="wg-card">
                     <div class="wg-card-header">
                         <div>
-                            <span class="wg-card-name">&lt;vc:feedback-widget&gt;</span>
-                            <span class="wg-card-kind kind-vc">ViewComponent</span>
-                        </div>
-                        <span class="wg-card-path">src/Humans.Web/ViewComponents/FeedbackWidgetViewComponent.cs</span>
-                    </div>
-                    <div class="wg-card-note">
-                        Legacy compatibility shim. Feedback submission now lives inside <code>HelpWidget</code>, which is the single
-                        floating page launcher.
-                    </div>
-                    @ParamsBlock()
-                    @AuthLine("Renders empty content; keep callers on <code>HelpWidget</code> instead.")
-                    <div class="wg-card-example is-empty">
-                        Superseded by <code>&lt;vc:help-widget&gt;</code>.
-                    </div>
-                </div>
-
-                <div class="wg-card">
-                    <div class="wg-card-header">
-                        <div>
                             <span class="wg-card-name">&lt;vc:help-widget&gt;</span>
                             <span class="wg-card-kind kind-vc">ViewComponent</span>
                         </div>
@@ -919,11 +900,11 @@
                         </div>
                         <span class="wg-card-path">src/Humans.Web/ViewComponents/NavBadgesViewComponent.cs</span>
                     </div>
-                    <div class="wg-card-note">Numeric badges on admin nav items. Counts cached for 2 minutes (per-human for voting/issues, global for review/feedback).</div>
+                    <div class="wg-card-note">Numeric badges on admin nav items. Counts cached for 2 minutes (per-human for voting/issues, global for review).</div>
                     @ParamsBlock(
-                        ("queue", "<code>string</code> — review · voting · issues · feedback")
+                        ("queue", "<code>string</code> — review · voting · issues")
                     )
-                    @AuthLine("Voting and issues queues filter by current viewer's roles; review/feedback are global counts (admins always see them).")
+                    @AuthLine("Voting and issues queues filter by current viewer's roles; review is a global count (admins always see it).")
                     <div class="wg-variants">
                         <div class="wg-variant-label">queue="review"<span class="wg-variant-sub">pending applicant review</span></div>
                         <div class="wg-variant-render"><vc:nav-badges queue="review" /></div>
@@ -933,9 +914,6 @@
 
                         <div class="wg-variant-label">queue="issues"<span class="wg-variant-sub">actionable issues for current human</span></div>
                         <div class="wg-variant-render"><vc:nav-badges queue="issues" /></div>
-
-                        <div class="wg-variant-label">queue="feedback"<span class="wg-variant-sub">actionable feedback (global)</span></div>
-                        <div class="wg-variant-render"><vc:nav-badges queue="feedback" /></div>
                     </div>
                 </div>
 

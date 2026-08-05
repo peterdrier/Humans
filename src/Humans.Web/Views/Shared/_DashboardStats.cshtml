@@ -27,7 +27,9 @@
         </div>
         <div class="delta">@Model.ShiftCoveragePercent% of slots filled</div>
     </div>
-    <div class="stat">
+    @* Feedback is Admin-only (nobodies-collective/Humans#977) — other admin-shaped
+       roles reach /Admin but must not see feedback counts. *@
+    <div class="stat" authorize-policy="AdminOnly">
         <div class="label">Open feedback</div>
         <div class="value">@Model.OpenFeedback</div>
     </div>

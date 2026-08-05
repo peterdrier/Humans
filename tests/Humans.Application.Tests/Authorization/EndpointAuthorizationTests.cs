@@ -39,6 +39,13 @@ public class EndpointAuthorizationTests
         { typeof(OnboardingReviewController), "Flag", "ConsentCoordinatorBoardOrAdmin" },
         { typeof(OnboardingReviewController), "Reject", "ConsentCoordinatorBoardOrAdmin" },
         { typeof(FinanceController), null, "FinanceAdminOrAdmin" },
+        { typeof(FeedbackController), null, "AdminOnly" },
+        { typeof(FeedbackController), "Index", "AdminOnly" },
+        { typeof(FeedbackController), "Detail", "AdminOnly" },
+        { typeof(FeedbackController), "PostMessage", "AdminOnly" },
+        { typeof(FeedbackController), "UpdateStatus", "AdminOnly" },
+        { typeof(FeedbackController), "UpdateAssignment", "AdminOnly" },
+        { typeof(FeedbackController), "SetGitHubIssue", "AdminOnly" },
         { typeof(ScannerController), null, "ScannerAccess" },
         { typeof(TicketsOnsiteAdminController), null, "ScannerAccess" },
         { typeof(TicketsGateAdminController), null, "TicketAdminOrAdmin" },
@@ -92,6 +99,38 @@ public class EndpointAuthorizationTests
     public void OnboardingReviewConsentActions_RequireConsentCoordinatorBoardOrAdmin(string actionName)
     {
         AssertHasPolicy(typeof(OnboardingReviewController), actionName, "ConsentCoordinatorBoardOrAdmin");
+    }
+
+    // --- Feedback is closed to new reports (nobodies-collective/Humans#977) ---
+
+    // Feedback was superseded by Issues. No route may create a FeedbackReport, so
+    // FeedbackController must expose no POST on its route root and FeedbackApiController
+    // must expose no POST beyond the admin message thread.
+    [HumansFact]
+    public void FeedbackController_HasNoReportCreationRoute()
+    {
+        var rootPosts = typeof(FeedbackController)
+            .GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
+            .Select(m => m.GetCustomAttribute<HttpPostAttribute>())
+            .Where(a => a is not null)
+            .Select(a => a!.Template ?? string.Empty)
+            .Where(t => t.Length == 0)
+            .ToList();
+
+        rootPosts.Should().BeEmpty("POST /Feedback must not exist — Feedback accepts no new reports");
+    }
+
+    [HumansFact]
+    public void FeedbackApiController_OnlyPostsMessages()
+    {
+        var postTemplates = typeof(FeedbackApiController)
+            .GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
+            .Select(m => m.GetCustomAttribute<HttpPostAttribute>())
+            .Where(a => a is not null)
+            .Select(a => a!.Template ?? string.Empty)
+            .ToList();
+
+        postTemplates.Should().BeEquivalentTo(["{id}/messages"]);
     }
 
     // --- Finance endpoints ---

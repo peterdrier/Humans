@@ -5,99 +5,86 @@
         <div>
             <h5 class="mb-1">@Model.Category on @(Model.PageUrl.Length > 40 ? Model.PageUrl[..40] + "..." : Model.PageUrl)</h5>
             <div class="text-muted small">
-                @if (Model.IsAdmin)
-                {
-                    <vc:human user-id="@Model.ReporterUserId" link="Admin" />
-                }
-                else
-                {
-                    @Model.ReporterName
-                }
+                <vc:human user-id="@Model.ReporterUserId" link="Admin" />
                 · @Model.CreatedAt.ToMonthDayTime() ·
                 <span class="text-muted">@Model.PageUrl</span>
             </div>
         </div>
 
-        @if (Model.IsAdmin)
-        {
-            <div class="d-flex gap-2 align-items-center">
-                <i class="fa-solid fa-lock auth-lock-icon" title="Admin only"></i>
-                <form asp-action="UpdateStatus" asp-route-id="@Model.Id" method="post" class="d-inline">
-                    @Html.AntiForgeryToken()
-                    <select name="Status" class="form-select form-select-sm detail-auto-submit" style="width: auto;">
-                        @foreach (var s in Enum.GetValues<FeedbackStatus>())
-                        {
-                            if (Model.Status == s)
-                            {
-                                <option value="@s" selected>@s</option>
-                            }
-                            else
-                            {
-                                <option value="@s">@s</option>
-                            }
-                        }
-                    </select>
-                </form>
-                <form asp-action="SetGitHubIssue" asp-route-id="@Model.Id" method="post" class="d-inline">
-                    @Html.AntiForgeryToken()
-                    <div class="input-group input-group-sm" style="width: 120px;">
-                        <span class="input-group-text">GH #</span>
-                        <input type="number" name="IssueNumber" value="@Model.GitHubIssueNumber"
-                               class="form-control form-control-sm detail-auto-submit" placeholder="#">
-                    </div>
-                </form>
-            </div>
-        }
-    </div>
-
-    @if (Model.IsAdmin)
-    {
-        <div class="mt-2 d-flex gap-2 align-items-center flex-wrap">
-            <form asp-action="UpdateAssignment" asp-route-id="@Model.Id" method="post" class="d-inline">
+        <div class="d-flex gap-2 align-items-center">
+            <i class="fa-solid fa-lock auth-lock-icon" title="Admin only"></i>
+            <form asp-action="UpdateStatus" asp-route-id="@Model.Id" method="post" class="d-inline">
                 @Html.AntiForgeryToken()
-                <input type="hidden" name="AssignedToTeamId" value="@Model.AssignedToTeamId" />
-                <div class="input-group input-group-sm" style="width: auto;">
-                    <span class="input-group-text"><i class="fa-solid fa-user fa-xs"></i></span>
-                    <select name="AssignedToUserId" class="form-select form-select-sm detail-auto-submit" style="width: auto; min-width: 160px;">
-                        <option value="">@Localizer["Feedback_Unassigned"]</option>
-                        @foreach (var a in Model.AssigneeOptions)
+                <select name="Status" class="form-select form-select-sm detail-auto-submit" style="width: auto;">
+                    @foreach (var s in Enum.GetValues<FeedbackStatus>())
+                    {
+                        if (Model.Status == s)
                         {
-                            if (Model.AssignedToUserId == a.Id)
-                            {
-                                <option value="@a.Id" selected>@a.DisplayName</option>
-                            }
-                            else
-                            {
-                                <option value="@a.Id">@a.DisplayName</option>
-                            }
+                            <option value="@s" selected>@s</option>
                         }
-                    </select>
-                </div>
+                        else
+                        {
+                            <option value="@s">@s</option>
+                        }
+                    }
+                </select>
             </form>
-            <form asp-action="UpdateAssignment" asp-route-id="@Model.Id" method="post" class="d-inline">
+            <form asp-action="SetGitHubIssue" asp-route-id="@Model.Id" method="post" class="d-inline">
                 @Html.AntiForgeryToken()
-                <input type="hidden" name="AssignedToUserId" value="@Model.AssignedToUserId" />
-                <div class="input-group input-group-sm" style="width: auto;">
-                    <span class="input-group-text"><i class="fa-solid fa-users fa-xs"></i></span>
-                    <select name="AssignedToTeamId" class="form-select form-select-sm detail-auto-submit" style="width: auto; min-width: 160px;">
-                        <option value="">@Localizer["Feedback_NoTeam"]</option>
-                        @foreach (var t in Model.TeamOptions)
-                        {
-                            var label = t.IsActive ? t.Name : $"{t.Name} (inactive)";
-                            if (Model.AssignedToTeamId == t.Id)
-                            {
-                                <option value="@t.Id" selected>@label</option>
-                            }
-                            else
-                            {
-                                <option value="@t.Id">@label</option>
-                            }
-                        }
-                    </select>
+                <div class="input-group input-group-sm" style="width: 120px;">
+                    <span class="input-group-text">GH #</span>
+                    <input type="number" name="IssueNumber" value="@Model.GitHubIssueNumber"
+                           class="form-control form-control-sm detail-auto-submit" placeholder="#">
                 </div>
             </form>
         </div>
-    }
+    </div>
+
+    <div class="mt-2 d-flex gap-2 align-items-center flex-wrap">
+        <form asp-action="UpdateAssignment" asp-route-id="@Model.Id" method="post" class="d-inline">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="AssignedToTeamId" value="@Model.AssignedToTeamId" />
+            <div class="input-group input-group-sm" style="width: auto;">
+                <span class="input-group-text"><i class="fa-solid fa-user fa-xs"></i></span>
+                <select name="AssignedToUserId" class="form-select form-select-sm detail-auto-submit" style="width: auto; min-width: 160px;">
+                    <option value="">@Localizer["Feedback_Unassigned"]</option>
+                    @foreach (var a in Model.AssigneeOptions)
+                    {
+                        if (Model.AssignedToUserId == a.Id)
+                        {
+                            <option value="@a.Id" selected>@a.DisplayName</option>
+                        }
+                        else
+                        {
+                            <option value="@a.Id">@a.DisplayName</option>
+                        }
+                    }
+                </select>
+            </div>
+        </form>
+        <form asp-action="UpdateAssignment" asp-route-id="@Model.Id" method="post" class="d-inline">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="AssignedToUserId" value="@Model.AssignedToUserId" />
+            <div class="input-group input-group-sm" style="width: auto;">
+                <span class="input-group-text"><i class="fa-solid fa-users fa-xs"></i></span>
+                <select name="AssignedToTeamId" class="form-select form-select-sm detail-auto-submit" style="width: auto; min-width: 160px;">
+                    <option value="">@Localizer["Feedback_NoTeam"]</option>
+                    @foreach (var t in Model.TeamOptions)
+                    {
+                        var label = t.IsActive ? t.Name : $"{t.Name} (inactive)";
+                        if (Model.AssignedToTeamId == t.Id)
+                        {
+                            <option value="@t.Id" selected>@label</option>
+                        }
+                        else
+                        {
+                            <option value="@t.Id">@label</option>
+                        }
+                    }
+                </select>
+            </div>
+        </form>
+    </div>
 
     @if (!string.IsNullOrEmpty(Model.UserAgent) || !string.IsNullOrEmpty(Model.AdditionalContext))
     {

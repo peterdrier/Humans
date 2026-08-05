@@ -23,8 +23,6 @@ public static class RoleGroups
 
     public const string TicketAdminOrAdmin = RoleNames.TicketAdmin + "," + RoleNames.Admin;
 
-    public const string FeedbackAdminOrAdmin = RoleNames.FeedbackAdmin + "," + RoleNames.Admin;
-
     public const string HumanAdminBoardOrAdmin =
         RoleNames.HumanAdmin + "," + RoleNames.Board + "," + RoleNames.Admin;
 
