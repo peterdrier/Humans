@@ -8,7 +8,7 @@ Always write GitHub issue and PR references as `owner/repo#N` or at minimum `own
 - Fork (default for QA, small changes, peter's own backlog): `peterdrier#292` (or `peterdrier/Humans#292`)
 - Upstream (production, nobodies-collective): `nobodies-collective#586` (or `nobodies-collective/Humans#586`)
 
-Applies everywhere: commit messages, PR bodies, issue comments, chat responses, triage output, sprint plans, release notes, `todos.md` entries, `gh` commands.
+Applies everywhere: commit messages, PR bodies, issue comments, chat responses, triage output, sprint plans, release notes, `gh` commands.
 
 **Why:** The two repos have overlapping issue numbers. A bare `#310` is ambiguous and has caused real chaos — wrong issues closed, wrong commits linked, PR descriptions pointing at the other repo's tracker. Peter has had to untangle this repeatedly.
 

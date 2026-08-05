@@ -136,7 +136,6 @@ src/Humans.Web/bin/
 src/**/bin\\Debug/
 src/**/bin\\Release/
 .reforge-port
-todos.md
 /.claude/scheduled_tasks.lock
 
 # JetBrains InspectCode output (jb inspectcode --output=insp.json)

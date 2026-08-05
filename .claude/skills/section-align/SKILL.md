@@ -613,7 +613,6 @@ Opus.
 - **`docs/architecture/dependency-graph.md`** — update the section's inbound/outbound edges to reflect actual state after Phase 2. Add new dependencies introduced; remove ones eliminated by the cross-section fixes. The dependency graph is the at-a-glance map reviewers consult; if it's stale, alignment work is invisible.
 - **Feature specs** (`docs/features/*.md`) — match implementation; rename if section name changed.
 - **`data-model.md`** — update owned-entity index.
-- **`todos.md`** — per `feedback_todos_update_after_commits`.
 - **`maintenance-log.md`** — if a recurring task ran. Always update this section's **Section Refactor History** row: Last Lane (date + PR) and Post-Lane Score (the section's built `reforge surface-score` after the final commit).
 - **About page** — if dependencies changed.
 - **`/freshness-sweep`** — if catalog covers touched docs.
@@ -651,7 +650,7 @@ Plan files are durable, committed artifacts under `docs/plans/` — one per run,
 - `feedback_no_linq_at_db_layer` · `feedback_caching_transparent` · `feedback_no_extensions_for_owned_classes` · `feedback_viewcomponent_no_cache`
 - `feedback_codex_thread_replies` · `feedback_pr_review_both_repos` · `feedback_done_means_codex_clean`
 - `feedback_simplify_scope_to_section_size` · `feedback_dotnet_verbosity` · `feedback_always_use_worktree`
-- `feedback_no_direct_to_main` · `feedback_no_schedule_offers` · `feedback_todos_update_after_commits`
+- `feedback_no_direct_to_main` · `feedback_no_schedule_offers`
 - Design Rule §2a (no controller→DbContext) · §2c (no cross-service table access) · §6 (no cross-domain `.Include`) · §8 (table ownership) · §11 (auth) · §12 (append-only) · §15 (caching pattern) — `docs/architecture/design-rules.md`
 - `docs/sections/SECTION-TEMPLATE.md`
 - `docs/testing/mutation-testing.md` (Stryker.NET setup, test-attribute gate)

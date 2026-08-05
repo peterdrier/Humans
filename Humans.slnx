@@ -23,6 +23,5 @@
     <File Path="docker-compose.yml" />
     <File Path="Dockerfile" />
     <File Path="global.json" />
-    <File Path="todos.md" />
   </Folder>
 </Solution>

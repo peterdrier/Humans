@@ -274,7 +274,7 @@ Explicit out-of-scope list, to keep docs from drifting into other files' territo
 
 - **No workflow diagrams.** State machines live under `docs/features/<section>/<feature>.md`. The section doc states "Status follows: Submitted → Approved/Rejected" and stops.
 - **No implementation walk-throughs.** If a PR needs one, it goes in the PR description, not the section doc.
-- **No open questions, TODOs, "thinking about..." notes.** Those are issues on GitHub or lines in `todos.md`.
+- **No open questions, TODOs, "thinking about..." notes.** Those are issues on GitHub.
 - **No deploy / infra notes.** CLAUDE.md owns deployment; section docs describe the section as it runs, not how it ships.
 - **No "before" state.** Section docs describe the current and target architectures only. The history is in git.
 

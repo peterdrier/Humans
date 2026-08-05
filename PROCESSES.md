@@ -6,13 +6,13 @@ How to use the skills and agents in this project. Ordered by typical workflow.
 
 **When:** Start of a work session, or when deciding what to work on next.
 
-**What it does:** Reads open GitHub issues and todos.md, assesses business importance and effort, groups related issues into batches, flags migration conflicts, and identifies which batches can run in parallel.
+**What it does:** Reads open GitHub issues, assesses business importance and effort, groups related issues into batches, flags migration conflicts, and identifies which batches can run in parallel.
 
 **Output:** `local/sprint-{date}.md` — a structured plan with numbered batches, work orders, and parallel-safety flags.
 
 ```
 /sprint              # full backlog analysis
-/sprint quick        # skip research, use todos.md only
+/sprint quick        # skip research, use issue metadata only
 /sprint area:shifts  # focus on one area
 ```
 
