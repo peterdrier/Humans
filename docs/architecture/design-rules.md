@@ -352,6 +352,19 @@ services.AddScoped<ICalendarFeedContributor>(sp => sp.GetRequiredService<EventSe
 
 **Invariant:** a new cross-section need of this shape — assembling per-user (or per-aggregate) rows from several sections into one document — MUST follow the contributor pattern (orchestrator owning no tables, fanning out over a contributor interface that sections opt into) rather than the orchestrator making direct cross-section service calls section-by-section. Direct calls couple the orchestrator to every contributing section and bypass the opt-in registration that keeps the fanout list honest.
 
+### 8c. Special-Category (GDPR Art. 9) Fields Are Guarded by Convention, Not by Type
+
+`Profile.MedicalConditions` is special-category data under GDPR Article 9, and it is deliberately a plain `string?` that rides on the cached `UserInfo` / `ProfileInfo` read model like any other profile field. That means **any code holding a `UserInfo` already has the medical text in memory** — nothing at the type level stops it being serialized out.
+
+What keeps it contained is a convention with three parts, and all three are load-bearing:
+
+1. Outbound DTOs omit the field by construction (`RosterPersonDto`, `DailyPersonRowDto` — both carry an XML-doc note saying why).
+2. Each such surface pins the omission with a test — e.g. `CantinaRosterServiceTests.GetWeeklyRoster_MedicalConditionsNeverInDto` reflects over the DTO to assert the property does not exist, *then* serializes a result containing medical text to JSON and asserts it does not appear.
+3. Write paths document the caller's obligation (`IUserService`, `UserProfileCommands`: "MedicalConditions is GDPR Art. 9 — callers must already have verified the caller is allowed"), and the section docs carry the matching negative access rules (department coordinators and VolunteerCoordinator cannot view medical data).
+
+<!-- wheat: docs/superpowers/specs/2026-05-25-dietary-medical-to-profile-design.md §Medical access control -->
+**A wrapper type was considered and rejected.** The alternative was a `Sensitive<T>`-style wrapper that forces the caller to present a policy token to read the value, which would turn an accidental leak into a compile error rather than a review miss. It was rejected as over-engineering at this scale — but it is the designated fallback: **if medical data ever does leak through a serializer, the fix is the wrapper type, not another one-off test.** Adding `MedicalConditions` (or any future Art. 9 field) to a DTO therefore requires the omission test on that surface, and a leak is the trigger to escalate to type-level enforcement. There is no analyzer covering this today.
+
 ## 9. Cross-Service Communication
 
 When a service needs data from another section, it calls that section's public service interface via constructor injection. Repositories and stores are never crossed — only the public `I{Section}Service` interface.
