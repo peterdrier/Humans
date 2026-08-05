@@ -10,13 +10,13 @@ public class FeedbackReport
     public Guid UserId { get; init; }
 
     /// <summary>
-    /// Cross-domain navigation to the reporter's <see cref="User"/>. Kept so
-    /// that controllers and views can still read <c>report.User.DisplayName</c>
-    /// after the service populates the nav in memory from
-    /// <c>IUserService.GetByIdsAsync</c>. Repositories must not
-    /// <c>.Include()</c> this property (design-rules §6). Callers in new code
-    /// should resolve the user via <c>IUserService</c> directly and stop
-    /// navigating this property.
+    /// Cross-domain navigation to the reporter's <see cref="User"/>. No
+    /// longer populated by any service (nobodies-collective/Humans#979
+    /// removed the in-memory stitcher — display names resolve via
+    /// <c>IUserServiceRead.GetUserInfosAsync</c> into <c>UserInfo</c>
+    /// instead). Repositories must not <c>.Include()</c> this property
+    /// (design-rules §6). Retained only for the FK relationship; callers
+    /// must not navigate it.
     /// </summary>
     [Obsolete("Cross-domain nav — resolve via IUserService instead of navigating FeedbackReport.User. See design-rules §6c.")]
     public User User { get; set; } = null!;

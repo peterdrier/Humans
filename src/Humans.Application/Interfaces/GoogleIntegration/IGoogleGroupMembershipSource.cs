@@ -9,7 +9,7 @@ namespace Humans.Application.Interfaces.GoogleIntegration;
 /// <para>
 /// Keys are Google Group email addresses (e.g. <c>volunteers@nobodies.team</c>).
 /// Values are user IDs only — the <see cref="IGoogleGroupSync"/> orchestrator
-/// hydrates them via <see cref="Users.IUserService.GetByIdsAsync"/> in a single
+/// hydrates them via <see cref="Users.IUserServiceRead.GetUserInfosAsync"/> in a single
 /// bulk call per sync pass and applies user-state filtering (suspended, missing
 /// <c>GoogleEmail</c>, etc.) uniformly across all sources. Sources MUST NOT
 /// call <c>IUserService</c> to satisfy this contract.

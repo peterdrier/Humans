@@ -81,7 +81,7 @@ public abstract class ServiceTestHarness : IDisposable
 
     /// <summary>
     /// Creates an NSubstitute <see cref="IUserService"/> whose reader methods
-    /// (<c>GetByIdsAsync</c>, <c>GetUserInfoAsync</c>, <c>GetUserInfosAsync</c>)
+    /// (<c>GetUserInfoAsync</c>, <c>GetUserInfosAsync</c>)
     /// are wired to read from this harness's in-memory DB.
     /// Mirrors the production behavior of the User stitcher without requiring the real
     /// caching/repository stack. Use for services that depend on <see cref="IUserService"/>
@@ -90,22 +90,6 @@ public abstract class ServiceTestHarness : IDisposable
     private protected IUserService NewDbBackedUserService()
     {
         var svc = Substitute.For<IUserService>();
-
-        svc.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(ci =>
-            {
-                var ids = ci.Arg<IReadOnlyCollection<Guid>>();
-                if (ids.Count == 0)
-                    return Task.FromResult<IReadOnlyDictionary<Guid, User>>(
-                        new Dictionary<Guid, User>());
-                using var db = new HumansDbContext(DbOptions);
-                var users = db.Users.AsNoTracking()
-                    .Include(u => u.UserEmails)
-                    .Where(u => ids.Contains(u.Id))
-                    .ToList();
-                return Task.FromResult<IReadOnlyDictionary<Guid, User>>(
-                    users.ToDictionary(u => u.Id));
-            });
 
         svc.StubGetUserInfoFromContext(Db);
         svc.StubGetUserInfosFromDb(DbOptions);

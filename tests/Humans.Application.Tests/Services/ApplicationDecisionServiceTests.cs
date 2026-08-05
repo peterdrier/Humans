@@ -650,10 +650,6 @@ public sealed class ApplicationDecisionServiceTests : ServiceTestHarness
             Email = "r@t.com"
         };
         var users = new Dictionary<Guid, User> { [reviewerId] = reviewer };
-        _userService.GetByIdsAsync(
-            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(reviewerId)),
-            Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyDictionary<Guid, User>>(users));
         _userService.GetUserInfosAsync(
             Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(reviewerId)),
             Arg.Any<CancellationToken>())
@@ -774,11 +770,6 @@ public sealed class ApplicationDecisionServiceTests : ServiceTestHarness
             UserName = "a@t.com",
             Email = "a@t.com"
         };
-        _userService.GetByIdsAsync(
-            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
-            Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyDictionary<Guid, User>>(
-                new Dictionary<Guid, User> { [userId] = user }));
         _userService.GetUserInfosAsync(
             Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
             Arg.Any<CancellationToken>())

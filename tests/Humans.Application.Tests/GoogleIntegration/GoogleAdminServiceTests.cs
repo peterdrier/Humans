@@ -101,8 +101,6 @@ public class GoogleAdminServiceTests
             ]);
 
         var testUser = new User { Id = userId, DisplayName = "Test User" };
-        _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, User> { [userId] = testUser });
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo> { [userId] = testUser.ToUserInfo() }));
@@ -180,8 +178,6 @@ public class GoogleAdminServiceTests
             ]);
 
         var verifiedUser = new User { Id = verifiedUserId, DisplayName = "Verified User" };
-        _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, User> { [verifiedUserId] = verifiedUser });
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo> { [verifiedUserId] = verifiedUser.ToUserInfo() }));

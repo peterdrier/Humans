@@ -64,11 +64,6 @@ public class ExpenseReportServiceHoldedOutboxTests
             .Returns(_category);
 
         var submitter = new User { Id = SubmitterId, DisplayName = "Alice Smith" };
-        _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, User>
-            {
-                [SubmitterId] = submitter,
-            });
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo> { [SubmitterId] = submitter.ToUserInfo() }));

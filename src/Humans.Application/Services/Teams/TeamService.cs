@@ -133,12 +133,7 @@ public sealed class TeamService(
     public async Task<Team?> GetTeamEntityBySlugAsync(string slug, CancellationToken cancellationToken = default)
     {
         var normalizedSlug = slug.ToLowerInvariant();
-        var team = await repo.GetBySlugWithRelationsAsync(normalizedSlug, cancellationToken);
-        if (team is null)
-            return null;
-
-        await StitchMemberUserSlicesAsync(team.Members.Where(m => m.LeftAt is null), cancellationToken);
-        return team;
+        return await repo.GetBySlugWithRelationsAsync(normalizedSlug, cancellationToken);
     }
 
     public async Task<TeamInfo?> GetTeamBySlugAsync(string slug, CancellationToken cancellationToken = default)
@@ -150,15 +145,8 @@ public sealed class TeamService(
             || (t.CustomSlug is not null && string.Equals(t.CustomSlug, normalizedSlug, StringComparison.Ordinal)));
     }
 
-    public async Task<Team?> GetTeamByIdAsync(Guid teamId, CancellationToken cancellationToken = default)
-    {
-        var team = await repo.GetByIdWithRelationsAsync(teamId, cancellationToken);
-        if (team is null)
-            return null;
-
-        await StitchMemberUserSlicesAsync(team.Members.Where(m => m.LeftAt is null), cancellationToken);
-        return team;
-    }
+    public async Task<Team?> GetTeamByIdAsync(Guid teamId, CancellationToken cancellationToken = default) =>
+        await repo.GetByIdWithRelationsAsync(teamId, cancellationToken);
 
     public async Task<TeamInfo?> GetTeamAsync(
         Guid teamId,
@@ -292,7 +280,6 @@ public sealed class TeamService(
             ? (await GetPendingRequestsForTeamAsync(team.Id, cancellationToken)).Count
             : 0;
         var roleDefinitions = await repo.GetRoleDefinitionsAsync(team.Id, cancellationToken);
-        await StitchRoleAssignmentUserSlicesAsync(roleDefinitions, cancellationToken);
 
         return new TeamDetailResult(
             Team: MapTeamSummary(team),
@@ -318,12 +305,8 @@ public sealed class TeamService(
             PendingRequestCount: pendingRequestCount);
     }
 
-    public async Task<IReadOnlyList<TeamMember>> GetUserTeamsAsync(Guid userId, CancellationToken cancellationToken = default)
-    {
-        var memberships = await repo.GetActiveByUserIdAsync(userId, cancellationToken);
-        await StitchMemberUserSlicesAsync(memberships, cancellationToken);
-        return memberships;
-    }
+    public async Task<IReadOnlyList<TeamMember>> GetUserTeamsAsync(Guid userId, CancellationToken cancellationToken = default) =>
+        await repo.GetActiveByUserIdAsync(userId, cancellationToken);
 
     public async Task<IReadOnlyList<MyTeamMembershipSummary>> GetMyTeamMembershipsAsync(
         Guid userId,
@@ -2191,50 +2174,6 @@ public sealed class TeamService(
         definition.IsManagement &&
         definition.Team.SystemTeamType == SystemTeamType.None;
 #pragma warning restore CS0618
-
-    private async Task StitchMemberUserSlicesAsync(
-        IEnumerable<TeamMember> members, CancellationToken ct)
-    {
-        var list = members as IReadOnlyList<TeamMember> ?? members.ToList();
-        if (list.Count == 0)
-            return;
-
-        var userIds = list.Select(m => m.UserId).Distinct().ToList();
-        var users = await UserService.GetByIdsAsync(userIds, ct);
-
-        foreach (var member in list)
-        {
-            if (users.TryGetValue(member.UserId, out var user))
-            {
-#pragma warning disable CS0618 // §6b in-memory cross-domain join via Obsolete nav.
-                member.User = user;
-#pragma warning restore CS0618
-            }
-        }
-    }
-
-    private async Task StitchRoleAssignmentUserSlicesAsync(
-        IReadOnlyList<TeamRoleDefinition> definitions, CancellationToken ct)
-    {
-        var members = definitions
-            .SelectMany(d => d.Assignments.Select(a => a.TeamMember))
-            .ToList();
-        if (members.Count == 0)
-            return;
-
-        var userIds = members.Select(m => m.UserId).Distinct().ToList();
-        var users = await UserService.GetByIdsAsync(userIds, ct);
-
-        foreach (var member in members)
-        {
-            if (users.TryGetValue(member.UserId, out var user))
-            {
-#pragma warning disable CS0618
-                member.User = user;
-#pragma warning restore CS0618
-            }
-        }
-    }
 
     private async Task<GoogleSyncOutboxEvent?> BuildOutboxEventAsync(
         Guid teamMemberId,

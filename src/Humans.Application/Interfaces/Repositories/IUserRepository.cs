@@ -32,16 +32,6 @@ public partial interface IUserRepository : IRepository
     Task<User?> GetByIdAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
-    /// Batched user fetch keyed by id. Missing users are absent from the
-    /// returned dictionary. Read-only (AsNoTracking). <see cref="User.UserEmails"/>
-    /// is owned by the UserEmail methods on this repository and is not populated by
-    /// this method.
-    /// </summary>
-    Task<IReadOnlyDictionary<Guid, User>> GetByIdsAsync(
-        IReadOnlyCollection<Guid> userIds,
-        CancellationToken ct = default);
-
-    /// <summary>
     /// Loads every user, read-only (AsNoTracking). Used by admin list views
     /// that must include profileless users. Trivial at ~500-user scale.
     /// </summary>

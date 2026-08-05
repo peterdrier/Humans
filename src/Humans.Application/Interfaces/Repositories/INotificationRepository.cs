@@ -19,7 +19,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// <para>
 /// Read methods never <c>.Include</c> cross-domain navigation properties.
 /// Callers resolve recipient and resolver display names via
-/// <c>IUserService.GetByIdsAsync</c> and stitch them in memory.
+/// <c>IUserServiceRead.GetUserInfosAsync</c> and stitch them in memory.
 /// </para>
 /// </remarks>
 [Section("Notifications")]

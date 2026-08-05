@@ -53,7 +53,7 @@ public interface ICampaignRepository : IRepository
     /// Returns one row per grant (campaign id, code string, redemption,
     /// email status, user id) for every grant on an Active or Completed
     /// campaign. Recipient display names are resolved by the caller via
-    /// <c>IUserService.GetByIdsAsync</c>; grant rows carry only the user id.
+    /// <c>IUserServiceRead.GetUserInfosAsync</c>; grant rows carry only the user id.
     /// </summary>
     Task<IReadOnlyList<CampaignCodeTrackingGrantRow>> GetCodeTrackingGrantRowsAsync(
         CancellationToken ct = default);

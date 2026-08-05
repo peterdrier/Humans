@@ -11,7 +11,7 @@ public class Issue
 
     /// <summary>
     /// Cross-domain navigation to the reporter's <see cref="User"/>. Service
-    /// stitches in memory from <c>IUserService.GetByIdsAsync</c>; repositories
+    /// stitches in memory from <c>IUserServiceRead.GetUserInfosAsync</c>; repositories
     /// must not <c>.Include()</c> this property (design-rules §6c).
     /// </summary>
     [Obsolete("Cross-domain nav — resolve via IUserService instead. See design-rules §6c.")]

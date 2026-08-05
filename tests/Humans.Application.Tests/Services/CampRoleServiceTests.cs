@@ -413,8 +413,6 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
             [member1.UserId] = new() { Id = member1.UserId, DisplayName = "Member One" },
             [member2.UserId] = new() { Id = member2.UserId, DisplayName = "Member Two" },
         };
-        _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyDictionary<Guid, User>>(users));
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 users.ToDictionary(kv => kv.Key, kv => kv.Value.ToUserInfo())));
@@ -451,8 +449,6 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
             [m1.UserId] = new() { Id = m1.UserId, DisplayName = "Alpha" },
             [m2.UserId] = new() { Id = m2.UserId, DisplayName = "Beta" },
         };
-        _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyDictionary<Guid, User>>(users));
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 users.ToDictionary(kv => kv.Key, kv => kv.Value.ToUserInfo())));

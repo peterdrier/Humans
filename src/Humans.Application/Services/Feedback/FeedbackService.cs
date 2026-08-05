@@ -29,7 +29,7 @@ namespace Humans.Application.Services.Feedback;
 /// </summary>
 public sealed class FeedbackService(
     IFeedbackRepository repository,
-    IUserService userService,
+    IUserServiceRead userService,
     IUserEmailService userEmailService,
     ITeamServiceRead teamService,
     IEmailService emailService,
@@ -467,9 +467,7 @@ public sealed class FeedbackService(
         return [new UserDataSlice(GdprExportSections.FeedbackReports, shaped)];
     }
 
-    // Cross-domain nav stitching (design-rules §6b in-memory join).
-#pragma warning disable CS0618 // Obsolete cross-domain nav properties populated in-memory
-
+    // Cross-domain read stitching (design-rules §6b in-memory join via UserInfo).
     private async Task<FeedbackCrossDomainLookups> StitchCrossDomainNavsAsync(
         IReadOnlyList<FeedbackReport> reports, CancellationToken ct)
     {
@@ -491,9 +489,6 @@ public sealed class FeedbackService(
             }
         }
 
-        var users = userIds.Count == 0
-            ? null
-            : await userService.GetByIdsAsync(userIds, ct);
         IReadOnlyDictionary<Guid, string> teamNames = EmptyTeamNames;
         if (teamIds.Count > 0)
         {
@@ -501,12 +496,6 @@ public sealed class FeedbackService(
             teamNames = teamIds
                 .Where(teamsById.ContainsKey)
                 .ToDictionary(id => id, id => teamsById[id].Name);
-        }
-
-        foreach (var r in reports)
-        {
-            if (users is not null && users.TryGetValue(r.UserId, out var reporter))
-                r.User = reporter;
         }
 
         return new FeedbackCrossDomainLookups(
@@ -598,6 +587,4 @@ public sealed class FeedbackService(
 
     private static string? ResolveTeamName(Guid? teamId, IReadOnlyDictionary<Guid, string> teamNames)
         => teamId.HasValue && teamNames.TryGetValue(teamId.Value, out var teamName) ? teamName : null;
-
-#pragma warning restore CS0618
 }

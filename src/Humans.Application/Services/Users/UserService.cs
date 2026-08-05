@@ -157,17 +157,6 @@ public sealed class UserService(
             "it indicates a DI registration mistake — IUserService should resolve " +
             "to CachingUserService.");
 
-    public async Task<IReadOnlyDictionary<Guid, User>> GetByIdsAsync(
-        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
-    {
-        var users = await repo.GetByIdsAsync(userIds, ct);
-        if (users.Count == 0)
-            return users;
-
-        await HydrateUserEmailsAsync(users.Values, ct);
-        return users;
-    }
-
     public async Task<string?> PurgeOwnDataAsync(Guid userId, CancellationToken ct = default)
     {
         if (await repo.GetByIdAsync(userId, ct) is null)
@@ -220,32 +209,6 @@ public sealed class UserService(
             return null;
 
         return await GetUserInfoAsync(legacyUser.Id, ct);
-    }
-
-    private async Task HydrateUserEmailsAsync(IEnumerable<User> users, CancellationToken ct)
-    {
-        var userList = users.ToList();
-        if (userList.Count == 0)
-            return;
-
-        var userIds = userList.Select(u => u.Id).ToHashSet();
-        var emailsByUser = (await repo.GetAllUserEmailsAsync(ct))
-            .Where(e => userIds.Contains(e.UserId))
-            .GroupBy(e => e.UserId)
-            .ToDictionary(g => g.Key, g => (IReadOnlyList<UserEmail>)g.ToList());
-
-        foreach (var user in userList)
-        {
-            if (user.UserEmails.Count > 0)
-                continue;
-
-            var emails = emailsByUser.TryGetValue(user.Id, out var found)
-                ? found
-                : [];
-
-            foreach (var email in emails)
-                user.UserEmails.Add(email);
-        }
     }
 
     public Task<IReadOnlyList<Guid>> GetAccountsDueForAnonymizationAsync(

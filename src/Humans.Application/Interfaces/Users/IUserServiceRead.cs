@@ -39,10 +39,9 @@ public interface IUserServiceRead
     /// user id; ids without a corresponding user are absent. Served from the
     /// caching decorator's in-memory dict for any id already cached; missing
     /// ids are refilled through the same per-user load path used by
-    /// <see cref="GetUserInfoAsync"/>. The canonical replacement for
-    /// <see cref="IUserService.GetByIdsAsync"/> at reader call sites — that still exists
-    /// for the rare consumer that needs a real entity
-    /// (Identity machinery, in-place mutations).
+    /// <see cref="GetUserInfoAsync"/>. The single batched-lookup surface for
+    /// cross-section readers — no entity-returning equivalent exists
+    /// (nobodies-collective/Humans#979).
     /// </summary>
     ValueTask<IReadOnlyDictionary<Guid, UserInfo>> GetUserInfosAsync(
         IReadOnlyCollection<Guid> userIds,
