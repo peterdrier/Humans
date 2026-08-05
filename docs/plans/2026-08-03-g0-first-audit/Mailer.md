@@ -38,7 +38,9 @@ No G1 gaps found for Mailer.
    invariant→test mapping (cheap — it's a read, not new tests, unless the mapping turns up real
    holes). No-migration-needed: **y**.
 
-## G2 queue notes
+## Schema demolition queue
+
+> Gate assignment for these items comes from the [Q3 transition plan](../2026-06-13-q3-transition-plan.md), not from this scorecard.
 
 None — no owned tables.
 

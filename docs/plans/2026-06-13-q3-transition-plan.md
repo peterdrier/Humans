@@ -468,18 +468,15 @@ Institutionalizes the gate checklists so any agent applies the same definitions.
 - **advance** — opens a worktree, fixes the gap list for the next gate, PRs. Refuses to
   enter a 🚧 turnstile gate while another section's turnstile PR is open. Migration gates
   invoke the EF migration reviewer; G2 items respect demolition-inventory scope.
-- **This doc outranks the scorecards on gate assignment.** The
-  [`2026-08-03-g0-first-audit/`](2026-08-03-g0-first-audit/) scorecards are dated snapshots
-  (`@ 5a9bbe198`), written before the 2026-08-04 decisions. Their "G2 queue notes" therefore
-  still queue table renames at G2 and still schedule cross-section FK cuts section by
-  section — e.g. `Auth.md` ("G2's rename wave", plus its own two-relationship FK cut),
-  `Governance.md` (three renames + four FK cuts), and the same shape in `Budget`, `Teams`,
-  `Tickets`, `Shifts`, `GoogleIntegration` and ~13 others. **An agent must take the *gate*
-  from this document and the *work list* from the scorecard, never the gate from the
-  scorecard.** Concretely: renames are G5, and FK cuts belong to the single app-wide item —
-  no section owns an FK-cut migration of its own. Regenerating the scorecards against these
-  decisions is queued below; until that lands, this precedence rule is what keeps
-  `/section-gate advance` from spending monolithic-snapshot migrations at G2.
+- **This doc owns gate assignment; the scorecards own the work list.** The
+  [`2026-08-03-g0-first-audit/`](2026-08-03-g0-first-audit/) scorecards are per-section TODO
+  lists: what is broken, with `file:line` evidence. They deliberately do **not** say *when*
+  an item runs. They used to — each carried a "G2 queue notes" section — and that restated
+  derived data, so the moment the 2026-08-04 decisions moved renames to G5 and collapsed the
+  FK cuts into one app-wide migration, twenty scorecards were quietly wrong. The gate labels
+  were stripped (now "Schema demolition queue") rather than re-pointed, because re-pointing
+  would just re-copy the same derived fact and drift again on the next decision. **Take the
+  gate from this document, the work list from the scorecard.**
 - Gate definitions live in the skill and reference this doc; changing a gate is a PR to
   both.
 - Build order: audit mode first (it fills the tracker and is pure analysis); advance mode
@@ -495,8 +492,7 @@ Institutionalizes the gate checklists so any agent applies the same definitions.
 | HUM0024 detection gap (Governance ×4, GoogleIntegration ×4 unmarked, green build) | G1 | Blocks the FK cut — without it the boundary won't hold after the cut |
 | Table rename pass (section prefixes) | **G5** | Moved from G2 2026-08-04; check raw SQL/backup tooling refs, incl. the #845 runbook |
 | Naming decision for the rename pass | G5 | `profile_*` is moot now Profiles folded into Users; `event_settings` (Shifts) / `event_*` (Guide) / `event_participations` (Users) collide three ways |
-| Regenerate the G0 scorecards against the 2026-08-04 decisions | G0 | ~20 of 33 still queue renames at G2 and schedule per-section FK cuts; the precedence rule in the `/section-gate` sketch is the interim guard |
-| `/section-gate` skill | G0 | Audit mode first; must implement the scorecard-precedence rule |
+| `/section-gate` skill | G0 | Audit mode first; emits work lists without gate labels — gate assignment reads from this doc |
 
 ## Every Q3 issue accounted for (46/46)
 
