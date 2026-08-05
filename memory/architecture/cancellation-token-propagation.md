@@ -58,6 +58,6 @@ state-changing controller action passes a request-scoped token to one of them.
 When you add a service method that reaches a new outbound write, mark it —
 the analyzer is only as complete as the markers.
 
-**Related:** [`no-startup-guards`](no-startup-guards.md) ·
+**Related:** [`universal-enforcement-over-per-section`](universal-enforcement-over-per-section.md) ·
 [`analyzer-exceptions-via-attributes`](analyzer-exceptions-via-attributes.md) ·
 [`vendor-connectors-own-sections`](vendor-connectors-own-sections.md)
