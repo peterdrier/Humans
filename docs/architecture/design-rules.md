@@ -263,7 +263,7 @@ Ownership is now physical as well as conventional for the peeled sections: the m
 | Section | Service(s) | Owned Tables |
 |---------|-----------|--------------|
 | **Profiles** | `ProfileService`, `ContactFieldService`, `ContactService`, `UserEmailService`, `CommunicationPreferenceService` | `profiles`, `contact_fields`, `user_emails`, `communication_preferences`, `volunteer_history_entries` |
-| **Users/Identity** | `UserService`, `AccountProvisioningService`, `UnsubscribeService`, `AccountMergeService`, `DuplicateAccountService` | `AspNetUsers`, `AspNetUserClaims`, `AspNetUserLogins`, `AspNetUserTokens`, `AspNetRoles` (legacy), `AspNetUserRoles` (legacy), `event_participations`, `account_merge_requests` |
+| **Users/Identity** | `UserService`, `AccountProvisioningService`, `UnsubscribeService`, `AccountMergeService`, `DuplicateAccountService`, `ExternalLoginService` | `AspNetUsers`, `AspNetUserClaims`, `AspNetUserLogins`, `AspNetUserTokens`, `AspNetRoles` (legacy), `AspNetUserRoles` (legacy), `event_participations`, `account_merge_requests` |
 | **Teams** | `TeamService`, `TeamPageService`, `TeamResourceService` | `teams`, `team_members`, `team_join_requests`, `team_join_request_state_histories`, `team_role_definitions`, `team_role_assignments`, `team_pages`, `google_resources` |
 | **Auth** | `RoleAssignmentService`, `MagicLinkService` | `role_assignments` |
 | **Governance** | `ApplicationDecisionService` | `applications`, `application_state_histories`, `board_votes` |
@@ -274,6 +274,7 @@ Ownership is now physical as well as conventional for the peeled sections: the m
 | **City Planning** | `CityPlanningService` | `city_planning_settings`, `camp_polygons`, `camp_polygon_histories` |
 | **Calendar** | `CalendarService` | `calendar_events`, `calendar_event_exceptions` |
 | **Shifts** | `ShiftManagementService`, `ShiftSignupService`, `GeneralAvailabilityService`, `VolunteerTrackingService` | `rotas`, `shifts`, `shift_signups`, `event_settings`, `general_availability`, `volunteer_event_profiles`, `volunteer_build_statuses`, `shift_tags`, `volunteer_tag_preferences`, `rota_shift_tags` |
+| **Cantina** | `CantinaRosterService` | *(no owned tables — reads the on-site cohort via `IShiftManagementService`, the active event via `IBurnSettingsService`, and dietary fields via `IUserServiceRead`)* |
 | **Budget** | `BudgetService` | `budget_years`, `budget_groups`, `budget_categories`, `budget_line_items`, `budget_audit_logs`, `ticketing_projections` |
 | **Expenses** | `ExpenseReportService` | `expense_reports`, `expense_lines`, `expense_attachments`, `holded_expense_outbox_events` |
 | **Finance** | `HoldedFinanceService` | `holded_expense_docs`, `holded_category_map`, `holded_ledger_lines`, `holded_creditor_contacts`, `holded_sync_states` |

@@ -173,7 +173,7 @@ This gate is about Volunteer access only. It does not evaluate tier applications
 
 ### Stage 5: Board Voting (Colaborador/Asociado Only)
 
-**Trigger:** Application exists AND consent check Cleared
+**Trigger:** Application exists (Status = Submitted) — not gated on consent-check status
 **Actor:** Board members
 **Actions:**
 - Application appears on Board Voting dashboard

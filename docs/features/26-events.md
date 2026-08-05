@@ -223,18 +223,18 @@ If any field differs:
 
 Modified:
 
-- `src/Humans.Web/Controllers/EventsController.cs` — add `BulkUploadTemplate` (GET), `BulkUploadImport` (POST); add `ParseCsvRows` and `ValidateBulkRows` private helpers; update `MySubmissions` to read bulk upload errors from TempData
+- `src/Humans.Web/Controllers/EventsController.cs` — add `BulkUploadTemplate` (GET), `BulkUploadImport` (POST); parse the upload via the shared `BulkEventCsvParser.Parse` helper (`src/Humans.Application/Events/`); update `MySubmissions` to read bulk upload errors from TempData. Row validation lives in `EventService.ValidateBulkRows` (private static), not in the controller
 - `src/Humans.Web/Models/Events/BarrioEventViewModels.cs` — add `BulkRowError` (row number, title, error list); add `BulkUploadErrors` to the barrio block view model
 - `src/Humans.Web/Views/Events/MySubmissions.cshtml` — add download link, file upload form, and error table to each barrio block
 
-No changes needed to domain, service interface, or repository — all existing methods are sufficient (`GetCampSubmissionsAsync`, `SubmitEventAsync`, `UpdateAndResubmitAsync`). No EF migration.
+No changes needed to domain or repository; no EF migration. (`IEventService` later gained `BuildBulkUploadTemplateAsync`, which absorbed the template CSV/banner assembly — see below.)
 
 #### Key Reused Pieces
 
 | What | Where |
 | --- | --- |
 | `ResolveCampEventManagementAsync(slug)` | `EventsController` base helpers — auth guard |
-| `GetCampSubmissionsAsync(campId)` | `IEventService` — fetches existing events for template |
+| `BuildBulkUploadTemplateAsync(campId, campName)` | `IEventService` — builds the full template CSV (banner + existing camp events), wrapping `GetCampSubmissionsAsync` |
 | `SubmitEventAsync(event)` | `IEventService` — submits new events |
 | `UpdateAndResubmitAsync(event)` | `IEventService` — updates + resubmits existing events |
 | `GetActiveCategoriesAsync()` | `IEventService` — category lookup for validation |

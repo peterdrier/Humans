@@ -106,7 +106,7 @@ Terse, authoritative invariant docs for each major section: concepts, data model
 | [Guide](sections/Guide.md) | The in-app `/Guide` renderer for `docs/guide/` markdown with role-scoped block filtering |
 | [Holded](sections/Holded.md) | Thin typed-`HttpClient` surface to the Holded accounting API, shared by Expenses (purchase documents) and Finance (ledger reconciliation) |
 | [Issues](sections/Issues.md) | In-app issue tracker (bugs, features, questions) with screenshots, role-routed triage, and a reporter↔handler conversation thread |
-| [Legal & Consent](sections/Consent.md) | GitHub-synced legal documents, per-version append-only consent records, and the Consent Coordinator review gate |
+| [Legal & Consent](sections/Consent.md) | GitHub-synced legal documents, per-version append-only consent records, and the Consent Coordinator audit/review queue |
 | [Mailer](sections/Mailer.md) | Humans ↔ MailerLite synchronisation: inbound import and outbound audience management |
 | [Notifications](sections/Notifications.md) | In-app notification fan-out (stored events plus per-user inbox) and live meter counts (computed) |
 | [Onboarding](sections/Onboarding.md) | Pure orchestrator over Profiles, Legal & Consent, Teams, and Governance — owns no tables |
