@@ -491,7 +491,7 @@ Institutionalizes the gate checklists so any agent applies the same definitions.
 | Cross-section FK cut (55 relationships, 39 tables, 17 sections) | G2 | One app-wide migration per the carve-out, taking one exclusive turnstile slot; index + delete-behavior preservation lists are the deliverable; needs the G1 nav strips landed first |
 | HUM0024 detection gap (Governance ×4, GoogleIntegration ×4 unmarked, green build) | G1 | Blocks the FK cut — without it the boundary won't hold after the cut |
 | Table rename pass (section prefixes) | **G5** | Moved from G2 2026-08-04; check raw SQL/backup tooling refs, incl. the #845 runbook |
-| Naming decision for the rename pass | G5 | `profile_*` is moot now Profiles folded into Users; `event_settings` (Shifts) / `event_*` (Guide) / `event_participations` (Users) collide three ways |
+| Naming decision for the rename pass | G5 | `profile_*` is moot now Profiles folded into Users; `event_settings` (Shifts) / `event_*` (**EventGuide** — the tables are `event_moderation_actions`/`event_favourites`/`event_preferences`/`event_guide_settings`; the `Guide` section owns no tables) / `event_participations` (Users) collide three ways |
 | `/section-gate` skill | G0 | Audit mode first; emits work lists without gate labels — gate assignment reads from this doc |
 
 ## Every Q3 issue accounted for (46/46)

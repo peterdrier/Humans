@@ -44,7 +44,14 @@
 >    `Cascade`/`SetNull`/`Restrict` delete behaviors the dropped constraints carry; and
 >    landing the G1 nav strips for every affected relationship first.
 >
-> Both are recorded in the [Q3 transition plan](2026-06-13-q3-transition-plan.md) (G2 FK-cut
+>    **Not every §"Cross-section FK" entry below belongs to that PR.** A relationship is out
+>    of bulk-cut scope if its table is dropped whole by that table's own demolition item —
+>    the constraint dies with the table, and including it would collide with the drop
+>    migration. Today that is `camp_leads.UserId` (`CampLeadConfiguration.cs:29-32`), which
+>    the Camps entry below already records as dying with `camp_leads` under #774. Re-check
+>    this exclusion against the dead-table list when authoring the migration.
+>
+> Both are recorded in the [Q3 transition plan](2026-06-13-q3-transition-plan.md) (FK-cut
 > carve-out; G5 checklist).
 
 ## Prior art
@@ -174,11 +181,11 @@ prefix.
 **Reassess before queueing (added 2026-08-03).** The obvious proposals are
 `profile_contact_fields`, `profile_user_emails`, `profile_communication_preferences`,
 `profile_volunteer_history_entries`, `profile_account_merge_requests` — but the confirmed section
-inventory folds **Profiles into the canonical `Users` shared-contract section**, and G2's rename
+inventory folds **Profiles into the canonical `Users` shared-contract section**, and the rename
 rule is "prefix with the owning *section*". Spending a destructive migration to stamp `profile_`
 onto tables whose section is being eliminated would be immediately self-defeating. Re-derive these
 under the Users boundary (`user_…`? keep bare? some stay `profile_` because the *entity* is
-`Profile` even though the section is Users?) before any of them becomes a G2 work item. This also
+`Profile` even though the section is Users?) before any of them becomes a work item. This also
 subsumes the `user_emails` naming question already parked in the Unmapped tail.
 
 ### Misfiled configuration (not a table-ownership violation, but pre-G5 drift)
