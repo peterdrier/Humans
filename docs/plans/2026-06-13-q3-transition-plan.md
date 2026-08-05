@@ -24,9 +24,10 @@ only access state (#834, #844 kill the classifier and `ProfileState`); the warme
 ### 2. Sections become projects — the constitution becomes the compiler
 The destructive-DB moratorium lifts in Q3. Everything queued behind it — cross-section FK
 constraints, dead columns, legacy tables — is cleaned up in one careful pass. On the clean
-schema, each section gets its own EF DbContext and migration history (#858), tables are
-renamed to section prefixes, and finally **each section becomes its own C# project** (#866):
-database layer, repositories, services, and controllers in one vertical assembly.
+schema, each section gets its own EF DbContext and migration history (#858), and finally
+**each section becomes its own C# project** (#866) — database layer, repositories, services,
+and controllers in one vertical assembly — with its tables renamed to the section prefix on
+the way through, now that the rename is a cheap migration in the section's own history.
 
 - Cross-section dependencies become assembly references; circular dependencies become
   compile errors, not analyzer findings.
@@ -68,10 +69,10 @@ flowchart LR
     subgraph ladder ["Per-section ladder — sections advance independently"]
         direction LR
         G1["G1 — Ownership<br/>logical boundaries clean"]
-        G2["G2 — Schema 🚧<br/>drops, FK cuts, renames"]
+        G2["G2 — Schema 🚧<br/>drops, FK cuts"]
         G3["G3 — Tests<br/>section-shaped, no EF-InMemory"]
         G4["G4 — Context 🚧<br/>own DbContext + history"]
-        G5["G5 — Assembly 🚧<br/>own C# project, visibility"]
+        G5["G5 — Assembly 🚧<br/>own C# project, visibility,<br/>table renames"]
         G1 --> G2 --> G3 --> G4 --> G5
     end
     G6["G6 — End gate<br/>(app-wide, once)<br/>monolith artifacts deleted"]
@@ -149,17 +150,22 @@ once the section is its own assembly — see the G5 checklist for the rationale.
 
 #### FK-cut carve-out — one migration, not seventeen (decision 2026-08-04)
 
-The cross-section FK cut does **not** ride the per-section turnstile. It lands as a single
-app-wide migration covering all 55 relationships across 39 tables in 17 sections.
+The cross-section FK cut does **not** ride the per-section turnstile *seventeen times*. It
+lands as a single app-wide migration covering all 55 relationships across 39 tables in 17
+sections, and takes **one** exclusive turnstile slot for that migration.
 
-- The turnstile exists to stop parallel PRs colliding on the shared EF snapshot. One PR
-  cannot collide with itself, so the mechanism buys nothing here.
-- Dropping an FK constraint destroys no data and is reversible by re-adding the constraint.
-  It is categorically different from the column and table drops the turnstile is really for.
+- The turnstile exists to stop parallel PRs colliding on the shared EF snapshot. Collapsing
+  seventeen section PRs into one collapses seventeen slots into one — it does not remove the
+  need for a slot, because the bulk PR still shares the snapshot with every other schema PR
+  in flight (per-section G2 drops, `db:yes` features — see the parallelism rules above).
+  **While the bulk FK-cut PR is open, no other migration lands.**
+- Dropping an FK constraint destroys no rows and the constraint itself is reversible by
+  re-adding it. It is categorically different from the column and table drops the turnstile
+  is really for — but see condition 3: it is *not* behaviorally reversible for free.
 - Seventeen sequential section PRs, each with its own prod-verify, would take weeks and add
   no safety over one reviewed migration.
 
-Two conditions on that PR, both load-bearing:
+Four conditions on that PR, all load-bearing:
 
 1. **Index preservation.** EF auto-creates `IX_<table>_<column>` for each FK and removes it
    with the relationship. Several of these columns are hot query filters
@@ -172,9 +178,29 @@ Two conditions on that PR, both load-bearing:
    cross-section FKs with no `[Grandfathered(HUM0024)]` marker and a green build, so the
    analyzer is not detecting them. Fix that gap before the cut lands, or the cut is a
    one-time cleanup rather than a permanent boundary.
+3. **Delete behaviors replaced, not silently dropped.** Dropping the constraint also drops
+   its referential action. These are not all no-ops: `team_members.UserId` and
+   `role_assignments.UserId` are `Cascade`, `issues.AssigneeUserId` /
+   `issues.ResolvedByUserId` / `ticket_orders.MatchedUserId` /
+   `ticket_attendees.MatchedUserId` are `SetNull`, `issues.ReporterUserId` is `Restrict`.
+   After the cut, deleting a user leaves orphaned membership/authorization rows and stale
+   user IDs instead of cascading or nulling. Every `Cascade`/`SetNull`/`Restrict` on a cut
+   relationship needs an audited application-level replacement (or an explicit, recorded
+   decision that the orphan is acceptable) **before** the drop is treated as safe. Inventory
+   the behaviors alongside the index list — same deliverable, same PR.
+4. **Navigation consumers retired first.** Cutting the relationship removes the navigation
+   with it, so any live consumer breaks or silently loses data. The G0 audit already has
+   examples: `LegalDocument.Team` is an unstripped cross-domain nav that
+   `LegalDocumentRepository.GetActiveRequiredDocumentsForTeamsAsync` still `.Include(...)`s
+   and `ConsentService.GetConsentDashboardAsync` reads on the cache-miss path
+   (`2026-08-03-g0-first-audit/LegalAndConsent.md`, predicate 3). Every affected nav strip
+   and its G1 service-stitching replacement must have **landed** before the bulk PR, or be
+   explicitly included and validated inside it. Analyzer detection (condition 2) proves the
+   FKs are *found*; it does not prove they are *safe to remove*.
 
-Prerequisite, unchanged: G0 must be closed first (#845), because the cut is still a schema
-migration against prod.
+Prerequisites: G0 must be closed first (#845), because the cut is still a schema migration
+against prod — and the G1 nav-strip work for every affected relationship must be done, per
+condition 4. That makes the cut a G1-complete-app-wide gate, not merely a G0 one.
 
 ### G3 — Tests (per section): *section-shaped and honest*
 
@@ -212,12 +238,14 @@ The section's slice of #858, peel-off style.
 - [ ] Section's rows in analyzers/baselines deleted — the compiler owns the boundary now.
 - [ ] Tables renamed to the section prefix (**moved here from G2, decision 2026-08-04**).
       Once the section is its own assembly with its own migration history, a rename is an
-      ordinary migration in that history: no shared snapshot, no turnstile, no coordination
-      with other sections. Doing it at G2 instead meant paying for it on the monolithic
-      snapshot, one section at a time, before the frozen inventory had even settled what the
-      prefixes should be. Two caveats: the G4 baselines will carry the pre-rename names
-      (cosmetic), and table names referenced **outside** EF — raw SQL, backup/restore
-      tooling, the #845 runbook — must be swept at rename time.
+      ordinary migration in that history: no shared snapshot, and so no *migration-train*
+      coordination with other sections. It is still performed inside G5, which is itself a
+      turnstile — the rename rides the section's G5 slot rather than needing one of its own.
+      Doing it at G2 instead meant paying for it on the monolithic snapshot, one section at
+      a time, before the frozen inventory had even settled what the prefixes should be. Two
+      caveats: the G4 baselines will carry the pre-rename names (cosmetic), and table names
+      referenced **outside** EF — raw SQL, backup/restore tooling, the #845 runbook — must
+      be swept at rename time.
 
 ### G6 — End gate (app-wide, once): *the clean state*
 
@@ -274,7 +302,7 @@ flowchart LR
         i694["#694 *Admin rename"]
     end
     subgraph W2 ["G2 — schema"]
-        demo["Demolition: #774 #787 #528<br/>#507 #603 #844 #516<br/>+ FK cuts + renames (unfiled)"]
+        demo["Demolition: #774 #787 #528<br/>#507 #603 #844 #516<br/>+ FK cuts, app-wide (unfiled)"]
         i515["#515→#516 identity chain"]
         i834["#834 retire lazy-seed"]
     end
@@ -436,8 +464,8 @@ Institutionalizes the gate checklists so any agent applies the same definitions.
 | Item | Gate | Notes |
 |------|------|-------|
 | Section dependency DAG audit | G0 | Reforge-driven; lists shared-contract exceptions; pure analysis |
-| Demolition inventory (dead cols/tables, cross-section FKs, table renames) | G0→G2 | The G2 work-item generator |
-| Cross-section FK cut (55 relationships, 39 tables, 17 sections) | G2 | One app-wide migration per the carve-out; index-preservation list is the deliverable |
+| Demolition inventory (dead cols/tables, cross-section FKs, table renames) | G0 | The work-item generator: dead cols/tables + FK cuts feed G2, table renames feed G5 |
+| Cross-section FK cut (55 relationships, 39 tables, 17 sections) | G2 | One app-wide migration per the carve-out, taking one exclusive turnstile slot; index + delete-behavior preservation lists are the deliverable; needs the G1 nav strips landed first |
 | HUM0024 detection gap (Governance ×4, GoogleIntegration ×4 unmarked, green build) | G1 | Blocks the FK cut — without it the boundary won't hold after the cut |
 | Table rename pass (section prefixes) | **G5** | Moved from G2 2026-08-04; check raw SQL/backup tooling refs, incl. the #845 runbook |
 | Naming decision for the rename pass | G5 | `profile_*` is moot now Profiles folded into Users; `event_settings` (Shifts) / `event_*` (Guide) / `event_participations` (Users) collide three ways |

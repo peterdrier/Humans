@@ -36,9 +36,13 @@
 >    three-way `event_` collision) time to be settled before anyone spends a migration on them.
 > 2. **Cross-section FKs → one app-wide migration, not per section.** The §"Cross-section FK"
 >    entries below are executed together in a single PR rather than section by section. The
->    per-section breakdown here remains the work list; it is no longer the PR boundary. Two
->    conditions attach — index preservation on the dropped FK columns, and fixing the HUM0024
->    detection gap this document already flags under Governance and Google Integration first.
+>    per-section breakdown here remains the work list; it is no longer the PR boundary. That
+>    single PR still takes one exclusive migration-turnstile slot — it collapses seventeen
+>    slots into one, it does not opt out of serialization. Four conditions attach: index
+>    preservation on the dropped FK columns; fixing the HUM0024 detection gap this document
+>    already flags under Governance and Google Integration; auditing and replacing the
+>    `Cascade`/`SetNull`/`Restrict` delete behaviors the dropped constraints carry; and
+>    landing the G1 nav strips for every affected relationship first.
 >
 > Both are recorded in the [Q3 transition plan](2026-06-13-q3-transition-plan.md) (G2 FK-cut
 > carve-out; G5 checklist).
