@@ -269,10 +269,13 @@ public sealed class AgentService : IAgentService
             if (withholdTools || pendingToolCalls.Count == 0 || !continuesToolLoop)
                 break;
 
+            // Replay the calls with unparseable arguments neutralised — see
+            // ReplayableToolCalls. Dispatch below still uses the raw pendingToolCalls
+            // so the dispatcher sees (and reports) the malformed payload as it is.
             sdkMessages.Add(new AnthropicMessage(
                 Role: "assistant",
                 Text: iterationAssistantText.Length > 0 ? iterationAssistantText.ToString() : null,
-                ToolCalls: pendingToolCalls,
+                ToolCalls: ReplayableToolCalls(pendingToolCalls),
                 ToolResults: null));
 
             var results = new List<AnthropicToolResult>();
@@ -607,6 +610,43 @@ public sealed class AgentService : IAgentService
     /// non-doc tools we drop the JSON args entirely — different shift ids /
     /// audit limits would otherwise split the bucket per invocation.
     /// </summary>
+    /// <summary>
+    /// Returns the tool calls as they can safely be replayed to the provider.
+    /// </summary>
+    /// <remarks>
+    /// A max_tokens cutoff mid tool-call JSON yields a truncated arguments payload
+    /// (nobodies-collective/Humans#963). Every following request replays the whole
+    /// assistant message, and <c>AnthropicClient.MapMessages</c> deserializes each
+    /// replayed <c>tool_use</c> block's arguments into a
+    /// <c>Dictionary&lt;string, JsonElement&gt;</c> — so replaying the raw truncated
+    /// payload throws while building the request, killing the very recovery
+    /// iteration this is supposed to enable.
+    /// <para>
+    /// Unparseable arguments are therefore swapped for an empty object. The block
+    /// still pairs with its <c>tool_result</c> (the API rejects an unmatched
+    /// <c>tool_use</c>), and that result carries <c>IsError</c>, so the model is
+    /// told the call failed and can reissue it rather than silently seeing a
+    /// well-formed no-arg call.
+    /// </para>
+    /// </remarks>
+    private static List<AnthropicToolCall> ReplayableToolCalls(List<AnthropicToolCall> calls) =>
+        [.. calls.Select(c => IsReplayableArguments(c.JsonArguments) ? c : c with { JsonArguments = "{}" })];
+
+    private static bool IsReplayableArguments(string jsonArguments)
+    {
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(jsonArguments);
+            // MapMessages deserializes into a dictionary, so a valid non-object
+            // (array, bare string) would throw there just like malformed JSON does.
+            return doc.RootElement.ValueKind == System.Text.Json.JsonValueKind.Object;
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return false;
+        }
+    }
+
     private static string NormalizeFetchedDocSlug(string toolName, string jsonArguments, ILogger<AgentService> logger)
     {
         switch (toolName)

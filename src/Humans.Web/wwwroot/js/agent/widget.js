@@ -162,6 +162,15 @@
             // Final-frame placeholders are trusted strings — render as plain text.
             if (reason === 'disabled') bubble.textContent = '(The agent is currently disabled.)';
             if (reason === 'rate_limited') bubble.textContent = '(Daily limit reached — try again tomorrow.)';
+            // A turn that threw mid-stream now finishes as a well-formed 200/SSE
+            // 'error' finalizer instead of a broken connection, so neither the
+            // !resp.ok branch nor the catch below fires — without this the user is
+            // left staring at an empty bubble. Only fill an empty bubble: the
+            // exception can land after a partial answer was already streamed, and
+            // that text is worth keeping.
+            if (reason === 'error' && !bubble.dataset.rawMarkdown.trim()) {
+                bubble.textContent = '(Something went wrong answering that. Please try again.)';
+            }
             // Capture the conversation id from the first successful turn so the
             // next send continues the same conversation server-side. Bail-out
             // finalizers (disabled, rate_limited) carry an empty Guid; ignore
