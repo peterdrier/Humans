@@ -44,6 +44,12 @@ namespace Humans.Integration.Tests.Infrastructure;
 /// </remarks>
 public sealed class PhysicalDefaultParityTests : IAsyncLifetime
 {
+    /// <summary>
+    /// The pre-migration snapshot hook (nobodies-collective/Humans#845) is a production-boot
+    /// concern; this test migrates a throwaway Testcontainers database with nothing to protect.
+    /// </summary>
+    private static readonly Func<CancellationToken, Task> NoSnapshot = _ => Task.CompletedTask;
+
     private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:16-alpine")
         .Build();
 
@@ -92,7 +98,7 @@ public sealed class PhysicalDefaultParityTests : IAsyncLifetime
                     .Order(StringComparer.Ordinal)
                     .First();
                 await SectionMigrationRunner.MigrateAsync(
-                    db, sentinel, NullLogger.Instance, TestContext.Current.CancellationToken);
+                    db, sentinel, NullLogger.Instance, NoSnapshot, TestContext.Current.CancellationToken);
             }
 
             foreach (var entity in db.Model.GetEntityTypes())

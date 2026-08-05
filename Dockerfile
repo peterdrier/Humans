@@ -35,16 +35,22 @@ WORKDIR /app
 
 # Install native dependencies for SkiaSharp + curl for healthcheck
 # (libheif native binaries are provided by the LibHeif.Native NuGet package)
+# postgresql-client-16 matches the postgres:16 server and provides the pg_dump the
+# pre-migration snapshot shells out to (nobodies-collective/Humans#845).
 # Swap to nl.archive.ubuntu.com — geographically closer and avoids archive.ubuntu.com flakiness
 RUN sed -i 's|archive\.ubuntu\.com|nl.archive.ubuntu.com|g; s|security\.ubuntu\.com|nl.archive.ubuntu.com|g' /etc/apt/sources.list.d/ubuntu.sources \
     && apt-get update && apt-get install -y --no-install-recommends \
         libfontconfig1 \
         curl \
+        postgresql-client-16 \
     && rm -rf /var/lib/apt/lists/*
 
-# Create non-root user and give it ownership of the app directory
+# Create non-root user and give it ownership of the app directory.
+# db-snapshots is created here so a named volume mounted over it inherits appuser
+# ownership — a bind mount would land as root and the non-root app could not write.
 RUN groupadd -r appuser && useradd -r -g appuser -s /sbin/nologin appuser \
-    && chown appuser:appuser /app
+    && mkdir -p /app/db-snapshots \
+    && chown appuser:appuser /app /app/db-snapshots
 
 # Copy published files pre-owned by appuser (a separate chown -R would re-run on
 # every build and duplicate the entire layer)

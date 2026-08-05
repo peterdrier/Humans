@@ -23,6 +23,10 @@ services:
       - "5000:8080"
     volumes:
       - ./uploads:/app/wwwroot/uploads
+      # Pre-migration snapshots (nobodies-collective/Humans#845). A named volume, not a
+      # bind mount: Docker seeds it from the image directory, so it keeps appuser
+      # ownership and the non-root app can write to it.
+      - db_snapshots:/app/db-snapshots
     depends_on:
       db:
         condition: service_healthy
@@ -51,6 +55,7 @@ services:
 
 volumes:
   postgres_data:
+  db_snapshots:
 
 networks:
   humans-net:

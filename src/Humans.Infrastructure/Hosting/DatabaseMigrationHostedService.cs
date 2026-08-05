@@ -1,5 +1,6 @@
 using Humans.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -13,11 +14,17 @@ namespace Humans.Infrastructure.Hosting;
 /// whole schema on fresh databases), then each per-section context registered
 /// via <c>AddSectionDbContext</c> runs through <see cref="SectionMigrationRunner"/>
 /// (nobodies-collective/Humans#858).
+/// Immediately before the first schema change of the boot — whichever context
+/// causes it — a <see cref="PreMigrationSnapshot"/> is taken, so no deploy can
+/// change the schema without leaving a recoverable point behind
+/// (nobodies-collective/Humans#845).
 /// </summary>
 internal sealed class DatabaseMigrationHostedService(
     IServiceScopeFactory scopeFactory,
     ILoggerFactory loggerFactory,
-    IEnumerable<SectionDbContextRegistration> sectionContexts)
+    IEnumerable<SectionDbContextRegistration> sectionContexts,
+    IConfiguration configuration,
+    IHostEnvironment environment)
     : IHostedLifecycleService
 {
     private readonly ILogger _logger = loggerFactory.CreateLogger("DatabaseMigration");
@@ -27,12 +34,15 @@ internal sealed class DatabaseMigrationHostedService(
         using var scope = scopeFactory.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
         var dbName = dbContext.Database.GetDbConnection().Database;
-        await MigrateAsync(dbContext, dbName, cancellationToken);
+        var beforeSchemaChange = CreateSnapshotHook();
+
+        await MigrateAsync(dbContext, dbName, beforeSchemaChange, cancellationToken);
 
         foreach (var section in sectionContexts)
         {
             var sectionContext = (DbContext)scope.ServiceProvider.GetRequiredService(section.ContextType);
-            await SectionMigrationRunner.MigrateAsync(sectionContext, section.SentinelTable, _logger, cancellationToken);
+            await SectionMigrationRunner.MigrateAsync(
+                sectionContext, section.SentinelTable, _logger, beforeSchemaChange, cancellationToken);
         }
     }
 
@@ -46,7 +56,33 @@ internal sealed class DatabaseMigrationHostedService(
 
     public Task StoppedAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
-    private async Task MigrateAsync(HumansDbContext dbContext, string dbName, CancellationToken cancellationToken)
+    /// <summary>
+    /// Builds the callback every migration runner invokes immediately before it touches the
+    /// schema. Only the deployed environments snapshot: Development and the integration-test
+    /// host ("Testing") run against disposable local databases and have no <c>pg_dump</c>
+    /// alongside them, so there is nothing to protect and nothing to dump with.
+    /// </summary>
+    private Func<CancellationToken, Task> CreateSnapshotHook()
+    {
+        if (!environment.IsProduction() && !environment.IsStaging())
+        {
+            _logger.LogDebug(
+                "Pre-migration snapshot disabled: environment is {Environment}",
+                environment.EnvironmentName);
+            return static _ => Task.CompletedTask;
+        }
+
+        var connectionString = configuration.GetConnectionString("DefaultConnection")
+            ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+
+        return new PreMigrationSnapshot(connectionString, _logger).EnsureCapturedAsync;
+    }
+
+    private async Task MigrateAsync(
+        HumansDbContext dbContext,
+        string dbName,
+        Func<CancellationToken, Task> beforeSchemaChange,
+        CancellationToken cancellationToken)
     {
         try
         {
@@ -66,6 +102,7 @@ internal sealed class DatabaseMigrationHostedService(
                     _logger.LogWarning("Applying pending migration: {Migration}", migration);
                 }
 
+                await beforeSchemaChange(cancellationToken);
                 await dbContext.Database.MigrateAsync(cancellationToken);
 
                 var nowApplied = (await dbContext.Database.GetAppliedMigrationsAsync(cancellationToken)).ToList();
