@@ -24,8 +24,8 @@ namespace Humans.Analyzers;
 /// </list>
 /// The thresholds are deliberately generous: they're calibrated to flag only
 /// the worst offenders (~15 methods at introduction). They are <b>frozen</b>
-/// at 40/15 — do not lower them, and do not burn down the existing
-/// <c>[Grandfathered]</c> list — until the per-section assembly split
+/// at 40/15 — do not lower them, and do not burn down any
+/// <c>[Grandfathered]</c> method that appears — until the per-section assembly split
 /// (nobodies-collective/Humans#866) lands; until then the churn is a
 /// distraction (nobodies-collective/Humans#857). Replaces the retired
 /// <c>NoBusinessLogicInControllersRule</c> ratchet test, whose regex

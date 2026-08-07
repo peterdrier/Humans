@@ -44,7 +44,7 @@ Scope every Glob/Grep to `$WORKTREE` paths — never the repo root (it holds oth
      ```
    - Files in `tests/Humans.Application.Tests/Architecture/Baselines/` with >0 non-comment entries vs. ledger → same.
    - New themes are committed in the ledger update (Phase 5) even when not worked this run.
-3. **`--inventory` only:** re-run every theme's `detect`, refresh all `remaining`, evict themes whose debt is gone (note each eviction in the report), and look for debt classes the ledger misses (new `[Obsolete]` clusters, new custom warning ids in a fresh build, new ratchet analyzers).
+3. **`--inventory` only:** re-run every theme's `detect`, refresh all `remaining`, evict themes whose debt is gone (note each eviction in the report), and look for debt classes the ledger misses (new `[Obsolete]` clusters, new custom warning ids in a fresh build, new ratchet analyzers). **Never evict a `parked:` theme** — refresh its `remaining` and leave the entry in place, `remaining: 0` included. Evicting it would drop the park, and the staleness check would later re-create the theme unparked.
 
 ### Build-derived counts
 
@@ -64,9 +64,9 @@ Run this build once in Phase 3 (it doubles as the baseline build) and reuse the 
 3. Enumerate the theme's concrete items (file list from grep, baseline lines, distinct warning sites). Order items so anything in a `recent_sections` section is worked **last**.
 4. Fold in `inbox` items that match the chosen theme.
 
-**Parked themes:** a theme with a `parked: "<reason>"` value is off the table — Peter has decided the work must not happen yet. Rotation skips it, and `--theme=<parked-id>` **refuses**: report the `parked` reason and stop, never work it. Only Peter removes the field. Parking is orthogonal to `remaining` — a parked theme keeps its real count so `--inventory` stays honest.
+**Parked themes:** a theme with a `parked: "<reason>"` value is off the table — Peter has decided the work must not happen yet. Rotation skips it, and `--theme=<parked-id>` **refuses**: report the `parked` reason and stop, never work it. Only Peter removes the field. Parking is orthogonal to `remaining` — a parked theme keeps its real count so `--inventory` stays honest, and it is **never retired or evicted**, at `remaining: 0` or otherwise: the entry is the park, and deleting it would let the staleness check re-create the theme unparked the moment the debt reappears.
 
-**Drain rule:** when a theme hits 0 and a structural enforcer guards regression (analyzer at Error with no remaining grandfathers; architecture test whose baseline is empty), **retire** the entry — delete it from the ledger and note it in the report. The Phase 2 staleness check re-creates it if the debt ever reappears. Themes without an enforcer stay listed at `remaining: 0` and are only re-checked by `--inventory`.
+**Drain rule:** when a theme hits 0 and a structural enforcer guards regression (analyzer at Error with no remaining grandfathers; architecture test whose baseline is empty), **retire** the entry — delete it from the ledger and note it in the report. The Phase 2 staleness check re-creates it if the debt ever reappears. Themes without an enforcer stay listed at `remaining: 0` and are only re-checked by `--inventory`. **Parked themes are exempt** — set `remaining: 0` and leave the entry (and its `parked:` value) alone.
 
 ## Phase 4: Work loop
 
