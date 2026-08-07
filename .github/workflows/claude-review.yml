@@ -69,10 +69,10 @@ on:
     types: [created]
   # Note: do NOT use trigger-level paths-ignore here. For pull_request /
   # pull_request_target, GitHub evaluates path filters against the PR's
-  # cumulative diff vs base, not the push delta — so once any code is in
-  # the PR, every later docs-only push still triggers the workflow. The
-  # docs-only-push skip is enforced by the `skip-if-docs-only` step
-  # below, which checks the actual push delta via the compare API.
+  # cumulative diff vs base, not the push delta — and a filtered-out
+  # trigger reports as a missing check rather than a passing one. The
+  # docs-only skip is enforced by the `skip-if-docs-only` step below,
+  # which compares base...head via the compare API.
 
 concurrency:
   # Include event_name so pull_request, pull_request_target, and issue_comment
@@ -113,6 +113,9 @@ jobs:
           && github.event.pull_request.head.repo.full_name == 'peterdrier/Humans')
       ))
     runs-on: ubuntu-latest
+    # A full review runs ~5 minutes; without this the job inherits the
+    # 360-minute default and a hung action burns an afternoon of runner time.
+    timeout-minutes: 20
     permissions:
       contents: read
       pull-requests: write
@@ -120,32 +123,43 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          fetch-depth: 0
+          # Deep enough for `git show <base-sha>:<file>` against the PR's
+          # base and head (both are parents of the merge ref); the reviewer
+          # reads the diff through the GitHub API, not local history.
+          fetch-depth: 10
 
-      # Skip the review when this event's push delta is docs-only.
-      # Compares github.event.before...github.event.after via the compare
-      # API (works across forks because PR head SHAs are mirrored into
-      # refs/pull/N/head in the base repo). On 'opened' / 'ready_for_review',
-      # before is absent or all-zeros — fall back to base.sha → head.sha,
-      # which is the full PR diff and correctly catches all-docs-from-open.
+      # Resolve the PR under review once, for every trigger, and hand the
+      # result to the action's prompt. Without it the reviewer spends ~8
+      # turns on `gh pr list` / `gh pr view` / `gh api pulls/N` working out
+      # which PR it is — the custom `prompt:` below suppresses the action's
+      # own PR-context block. issue_comment events carry only the issue
+      # number, so the SHAs have to come from the API on every path.
+      - name: pr-context
+        id: pr
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ github.event.pull_request.number || github.event.issue.number }}
+        run: |
+          set -euo pipefail
+          gh api "repos/${{ github.repository }}/pulls/${PR}" \
+            --jq '"number=\(.number)", "head_sha=\(.head.sha)", "base_sha=\(.base.sha)", "base_ref=\(.base.ref)"' \
+            | tee -a "$GITHUB_OUTPUT"
+
+      # Skip the review when the PR diff is docs-only. Compares
+      # base.sha...head.sha via the compare API — works across forks because
+      # PR head SHAs are mirrored into refs/pull/N/head in the base repo.
       # Fails open: if the compare endpoint errors, run the review.
       - name: skip-if-docs-only
         id: guard
         if: github.event_name != 'issue_comment'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BASE: ${{ steps.pr.outputs.base_sha }}
+          HEAD: ${{ steps.pr.outputs.head_sha }}
         run: |
           set -euo pipefail
-          BEFORE='${{ github.event.before }}'
-          AFTER='${{ github.event.after }}'
-          if [[ -z "$BEFORE" || "$BEFORE" == "0000000000000000000000000000000000000000" ]]; then
-            BEFORE='${{ github.event.pull_request.base.sha }}'
-          fi
-          if [[ -z "$AFTER" ]]; then
-            AFTER='${{ github.event.pull_request.head.sha }}'
-          fi
-          echo "Comparing $BEFORE...$AFTER"
-          if ! files=$(gh api "repos/${{ github.repository }}/compare/${BEFORE}...${AFTER}" --jq '.files[].filename' 2>&1); then
+          echo "Comparing $BASE...$HEAD"
+          if ! files=$(gh api "repos/${{ github.repository }}/compare/${BASE}...${HEAD}" --jq '.files[].filename' 2>&1); then
             echo "Compare API failed; running review anyway."
             echo "$files"
             echo "skip=false" >> "$GITHUB_OUTPUT"
@@ -174,9 +188,30 @@ jobs:
           # action the workflow token directly. Empty on pull_request → action
           # falls back to OIDC and posts as claude[bot].
           github_token: ${{ github.event_name == 'pull_request_target' && secrets.GITHUB_TOKEN || '' }}
-          show_full_output: true
           prompt: |
             Review this pull request for the Nobodies Humans codebase.
+
+              Repo:     ${{ github.repository }}
+              PR:       #${{ steps.pr.outputs.number }}
+              Head SHA: ${{ steps.pr.outputs.head_sha }}
+              Base:     ${{ steps.pr.outputs.base_ref }} @ ${{ steps.pr.outputs.base_sha }}
+
+            That is the PR under review. Do NOT run `gh pr list` or
+            `gh pr view` to work out which PR it is, and do not look up the
+            head SHA — it is above, and it is the SHA the summary comment
+            must cite. Get the diff with
+            `gh pr diff ${{ steps.pr.outputs.number }} --repo ${{ github.repository }}`.
+
+            ## Shell rules
+
+            The workspace is write-blocked and the tool allow-list is
+            matched per sub-command, so a Bash call that chains commands is
+            rejected whole. Do not use `&&` or `;`, and do not redirect
+            output (`>`) — /tmp and the workspace are both blocked, so
+            saving the diff to a file cannot work and only costs a turn.
+            Read `gh pr diff` output straight from the tool result. A pipe
+            is fine when every stage is a plain read-only tool
+            (`git show … | sed -n '10,40p'`).
 
             Anchor your review on the project's own rule documents (read them
             from the checkout):
@@ -224,10 +259,11 @@ jobs:
 
             ## Existing thread state — fetch BEFORE deciding what to flag
 
-            Synchronize fires on every push. To avoid re-flagging the same
-            finding across pushes, fetch the existing review threads FIRST
-            and build a deny-list. Then run your review pass. Then filter
-            findings against the deny-list before posting.
+            This PR may already have been reviewed — a repeat `/review`
+            comment, or a re-open after work landed. To avoid re-flagging
+            findings that were already raised, fetch the existing review
+            threads FIRST and build a deny-list. Then run your review pass.
+            Then filter findings against the deny-list before posting.
 
             Use GraphQL — the REST `/pulls/{N}/comments` endpoint does NOT
             expose `isResolved`, so it cannot tell you which threads have
@@ -236,7 +272,7 @@ jobs:
               gh api graphql \
                 -F owner='${{ github.event.repository.owner.login }}' \
                 -F repo='${{ github.event.repository.name }}' \
-                -F pr=${{ github.event.pull_request.number || github.event.issue.number }} \
+                -F pr=${{ steps.pr.outputs.number }} \
                 -f query='
                   query($owner: String!, $repo: String!, $pr: Int!) {
                     repository(owner: $owner, name: $repo) {
