@@ -959,6 +959,21 @@ and may need `<Section>.Contracts`.
     capture**; `has-pending-model-changes` clean for every context; preview deploy boots;
     `dotnet watch` hot-reloads one of the section's views.
 
+**The rename hazard: `<vc:*>` tags.** ReSharper's move-to-namespace and rename refactorings read a
+`<vc:name>` element as a reference to the view-component *type* and rewrite it to the default
+tag-helper convention — `<vc:human>` becomes `<human-view-component>`. Nothing objects: the build
+is green, the suite passes, the page returns 200, and the element renders as literal markup that
+contributes nothing to the output. PR 0 (peterdrier/Humans#1220) hit this on 127 tags across the
+three view components it moved, and only the step 12 HTML diff caught it. So: after any
+refactoring pass over `.cshtml`, run
+
+```
+grep -rn -- '-view-component' --include='*.cshtml' src/
+```
+
+and expect zero hits. Step 12 is the backstop, not the first line of defence — the grep is cheaper
+and names the failure.
+
 **One section per PR.** G5 is a 🚧 turnstile — the file-move conflict surface serializes it.
 
 ---
