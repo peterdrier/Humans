@@ -3067,7 +3067,13 @@
     <value>Dieses Barrio kontaktieren</value>
   </data>
   <data name="Camp_ContactLoginHint" xml:space="preserve">
-    <value>Anmeldung erforderlich · Deine E-Mail bleibt privat</value>
+    <value>Melde dich an, um dieses Camp zu kontaktieren</value>
+  </data>
+  <data name="Camp_ContactLoginDetail" xml:space="preserve">
+    <value>Deine E-Mail bleibt privat.</value>
+  </data>
+  <data name="Camp_ContactLoginDetailOpenSeason" xml:space="preserve">
+    <value>Nach der Anmeldung kannst du eintragen, dass du zu diesem Camp gehörst, und siehst die Events, die es veranstaltet – falls es welche gibt. Deine E-Mail bleibt privat.</value>
   </data>
   <data name="Camp_Contact_Title" xml:space="preserve">
     <value>Kontakt {0}</value>

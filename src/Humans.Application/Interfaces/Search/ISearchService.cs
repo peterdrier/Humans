@@ -26,7 +26,7 @@ namespace Humans.Application.Interfaces.Search;
 /// admins use the existing per-section admin pages.
 /// </para>
 /// </summary>
-public interface ISearchService : IApplicationService
+public interface ISearchService : IOrchestrator
 {
     /// <summary>
     /// Run a global search. Empty/whitespace <paramref name="query"/>, or

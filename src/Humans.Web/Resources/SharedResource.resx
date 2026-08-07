@@ -1311,7 +1311,9 @@
   <data name="Camp_InfoTitle" xml:space="preserve"><value>Barrio Info</value></data>
   <data name="Camp_NameLabel" xml:space="preserve"><value>Barrio Name</value></data>
   <data name="Camp_ContactButton" xml:space="preserve"><value>Contact this barrio</value></data>
-  <data name="Camp_ContactLoginHint" xml:space="preserve"><value>Login required · Your email stays private</value></data>
+  <data name="Camp_ContactLoginHint" xml:space="preserve"><value>Log in to contact this camp</value></data>
+  <data name="Camp_ContactLoginDetail" xml:space="preserve"><value>Your email stays private.</value></data>
+  <data name="Camp_ContactLoginDetailOpenSeason" xml:space="preserve"><value>Logging in lets you record that you're part of this camp, and shows any events it's hosting. Your email stays private.</value></data>
   <data name="Camp_Contact_Title" xml:space="preserve"><value>Contact {0}</value><comment>{0} = camp name</comment></data>
   <data name="Camp_Contact_Heading" xml:space="preserve"><value>Contact {0}</value><comment>{0} = camp name</comment></data>
   <data name="Camp_Contact_Breadcrumb" xml:space="preserve"><value>Contact</value></data>

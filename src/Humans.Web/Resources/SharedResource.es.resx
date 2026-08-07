@@ -3091,7 +3091,13 @@
     <value>Contactar este barrio</value>
   </data>
   <data name="Camp_ContactLoginHint" xml:space="preserve">
-    <value>Requiere iniciar sesión · Tu email se mantiene privado</value>
+    <value>Inicia sesión para contactar con este camp</value>
+  </data>
+  <data name="Camp_ContactLoginDetail" xml:space="preserve">
+    <value>Tu email se mantiene privado.</value>
+  </data>
+  <data name="Camp_ContactLoginDetailOpenSeason" xml:space="preserve">
+    <value>Al iniciar sesión podrás indicar que formas parte de este camp y verás los eventos que organice, si los hay. Tu email se mantiene privado.</value>
   </data>
   <data name="Camp_Contact_Title" xml:space="preserve">
     <value>Contactar {0}</value>

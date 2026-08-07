@@ -5,9 +5,24 @@
   src/Humans.Web/Views/Search/**
   src/Humans.Application/DTOs/GlobalSearchResults.cs
   src/Humans.Application/DTOs/SectionSearchHits.cs
+  src/Humans.Infrastructure/Services/Users/CachingUserService.cs
+  src/Humans.Infrastructure/Services/Teams/CachingTeamService.cs
+  src/Humans.Infrastructure/Services/Camps/CachingCampService.cs
+  src/Humans.Infrastructure/Services/Events/CachingEventService.cs
+  src/Humans.Application/Services/Shifts/ShiftManagementService.cs
+  src/Humans.Application/Services/Profiles/PersonSearchMatcher.cs
+  src/Humans.Web/Controllers/CampController.cs
+  src/Humans.Web/Controllers/TeamController.cs
 -->
 <!-- freshness:flag-on-change
-  Search scope (which fields are searched per section), the public-only authorization model, and per-section SearchAsync contracts — review when search code, the auth-conventions atom, or the person-search atom change.
+  Search scope (which fields are searched per section), the authorization model (role-blind on both paths; public-only on text queries), the US-GS.4 GUID exception, and per-section SearchAsync contracts — review when search code, the auth-conventions atom, or the person-search atom change.
+
+  The trigger list reaches outside src/**/Search/** on purpose. Since the nobodies-collective/Humans#985
+  ruling, the visibility guarantee is enforced by the destination pages, not by Search — so the
+  US-GS.4 GUID exception and its known-gap note depend on CampController/TeamController, and the
+  per-bucket filters and GUID branches live in the Caching*Service classes and ShiftManagementService.
+  Fixing nobodies-collective/Humans#993 in CampController must force a review of this doc; without
+  these paths it would not.
 -->
 
 # Global Search (`/Search`)

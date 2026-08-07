@@ -503,7 +503,7 @@ public sealed class HoldedFinanceService(
         // Every creditor account with ledger activity, plus bound accounts that have no lines yet,
         // plus every Holded creditor contact — a first-time submitter's account exists in Holded
         // before it has any journal activity, and that is exactly the row an admin needs to see.
-        return byAccount.Keys.Union(bindings.Keys).Union(contacts.Keys)
+        var rows = byAccount.Keys.Union(bindings.Keys).Union(contacts.Keys)
             .Select(num =>
             {
                 decimal? balance = byAccount.TryGetValue(num, out var lines) ? LedgerBalance(lines) : null;
@@ -517,6 +517,17 @@ public sealed class HoldedFinanceService(
                     BoundUserId: binding?.UserId,
                     BindingSource: binding?.Source);
             }).ToList();
+
+        // Not one account named, yet accounts exist: the contact list came back empty or unusable, and
+        // the bind card is down to bare numbers an admin cannot check a member against. That state was
+        // silent until a human reported it (nobodies-collective/Humans#994). One row without a name is a
+        // real gap in Holded, not a fault here — only the all-or-nothing signature is logged.
+        if (rows.Count > 0 && rows.TrueForAll(r => string.IsNullOrWhiteSpace(r.Name)))
+            logger.LogWarning(
+                "None of the {Count} creditor accounts resolved a Holded contact name; the bind card and " +
+                "/Finance/Creditors will show bare account numbers.", rows.Count);
+
+        return rows;
     }
 
     /// <summary>Holded's contact list, or empty when the Holded call fails. Cached for

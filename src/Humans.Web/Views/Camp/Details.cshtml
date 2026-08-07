@@ -284,9 +284,33 @@
                 }
                 else
                 {
-                    <div class="text-center text-muted">
+                    <a asp-controller="Account" asp-action="Login" asp-route-returnUrl="@Context.Request.Path"
+                       class="btn btn-outline-primary w-100">
                         <i class="fa-solid fa-envelope me-1"></i> @Localizer["Camp_ContactLoginHint"]
-                    </div>
+                    </a>
+                    @* Only name the events and membership cards when the authenticated branch would
+                       actually render them, read off the camp rather than the viewer: Model.Membership
+                       is resolved per-user and is always NoOpenSeason on this branch, which is
+                       anonymous by construction, so testing it here would leave the claim permanently
+                       unspoken. The viewer-independent form of the gate is a displayed season that is
+                       Active or Full *for the public year* — that makes GetMembershipState find an
+                       open season so the membership card renders, and it matches the season
+                       CampService.RequestCampMembership accepts, so the join actually goes through.
+                       Dropping the year would let a fallback season (Details serves the latest one
+                       when the camp has not renewed) or an older season page promise a join that the
+                       mutation rejects. The events half of the copy is deliberately hedged ("any
+                       events it's hosting") rather than gated: EventsCardViewComponent auto-hides
+                       when Features:Events is off or the camp has no approved events, and querying
+                       Events from here to firm up one subtitle is not worth the cross-section read.
+                       Anything else falls back to the privacy line and promises nothing. *@
+                    var loginShowsMore =
+                        Model.CurrentSeason is { Status: CampSeasonStatus.Active or CampSeasonStatus.Full }
+                        && Model.CurrentSeason.Year == Model.PublicYear;
+                    <p class="small text-muted text-center mt-2 mb-0">
+                        @(loginShowsMore
+                            ? Localizer["Camp_ContactLoginDetailOpenSeason"]
+                            : Localizer["Camp_ContactLoginDetail"])
+                    </p>
                 }
             </div>
         </div>

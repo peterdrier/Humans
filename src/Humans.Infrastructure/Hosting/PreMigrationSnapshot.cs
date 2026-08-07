@@ -50,18 +50,29 @@ internal sealed class PreMigrationSnapshot(string connectionString, ILogger logg
 
     /// <summary>
     /// Marks a snapshot whose deploy has not finished migrating. Dropped by
-    /// <see cref="MarkMigrationsComplete"/>; while it is there the file is this deploy's
-    /// rollback point and is neither overwritten nor pruned.
+    /// <see cref="MarkMigrationsComplete"/> when that deploy finishes, or by
+    /// <see cref="EnsureCapturedAsync"/> if a later deploy finds it stale
+    /// (nobodies-collective/Humans#989); while it is there the file is this deploy's rollback
+    /// point and is neither overwritten nor pruned.
     /// </summary>
     internal const string UnfinishedSuffix = ".unfinished";
 
     /// <summary>
-    /// Marks the file <c>pg_dump</c> is writing into. A dump only earns
-    /// <see cref="UnfinishedSuffix"/> once the process has exited successfully, so a failed or
-    /// killed dump can never leave a truncated file that a later boot mistakes for a rollback
-    /// point. Nothing reads these; the next dump attempt deletes whatever it finds.
+    /// Marks a file still being written — <c>pg_dump</c>'s output, or the
+    /// <see cref="FrontierSuffix"/> sidecar in <see cref="WriteFrontier"/>. Neither earns the name
+    /// a later boot looks for until its write has finished, so a write that failed or was killed
+    /// half-way can never leave a truncated file that boot reads as authoritative. Nothing reads
+    /// these; <see cref="DiscardAbandonedWrites"/> deletes whatever it finds.
     /// </summary>
     private const string WritingSuffix = ".writing";
+
+    /// <summary>
+    /// Sidecar recording the migrations that were pending, across every context, at the moment
+    /// an <see cref="UnfinishedSuffix"/> snapshot was taken — its deploy identity
+    /// (nobodies-collective/Humans#989). Read by <see cref="FrontierStillPending"/> to tell a
+    /// marker a crash-loop is still carrying forward from one a completed deploy left behind.
+    /// </summary>
+    private const string FrontierSuffix = ".migrations";
 
     /// <summary>
     /// Newest snapshots kept; older ones are deleted after a successful dump. Bounds disk use
@@ -79,10 +90,19 @@ internal sealed class PreMigrationSnapshot(string connectionString, ILogger logg
     /// unfinished snapshot, which is carried forward instead. Later calls in the same boot are
     /// no-ops, so a deploy that migrates several contexts still snapshots exactly once.
     /// </summary>
+    /// <param name="pendingMigrations">
+    /// Every migration pending across every migrated context, collected once before any of them
+    /// applies anything (nobodies-collective/Humans#989). Recorded alongside a fresh dump as its
+    /// deploy identity, and compared against a carried-forward marker to tell a genuine
+    /// crash-loop retry (some of it still pending) from a marker a completed deploy left behind
+    /// (none of it still pending) — the marker's own migrations having finished is what makes it
+    /// safe to retire instead of carrying it forward as a stale rollback point.
+    /// </param>
     /// <exception cref="InvalidOperationException">
     /// The dump could not be taken. Thrown so the caller aborts before migrating.
     /// </exception>
-    public async Task EnsureCapturedAsync(CancellationToken cancellationToken)
+    public async Task EnsureCapturedAsync(
+        IReadOnlyCollection<string> pendingMigrations, CancellationToken cancellationToken)
     {
         if (_attempted)
         {
@@ -104,19 +124,15 @@ internal sealed class PreMigrationSnapshot(string connectionString, ILogger logg
         {
             Directory.CreateDirectory(SnapshotDirectory);
 
-            var carried = FindUnfinishedSnapshot(SnapshotDirectory, database);
+            var carried = CarryForwardMarker(SnapshotDirectory, database, pendingMigrations);
             if (carried is not null)
             {
                 // Warning level for the same reason as the "written" line below: in a crash loop
-                // this is the line that tells you which file is the real rollback point. The age
-                // is what separates the case this exists for - a restart minutes after the
-                // failed deploy - from a marker left behind by an older one, which would make
-                // this deploy's rollback point far older than it should be.
+                // this is the line that tells you which file is the real rollback point.
                 logger.LogWarning(
                     "Reusing pre-migration snapshot {Path}, taken {AgeHours:F1}h ago: an earlier boot of " +
                     "this deploy took it and did not finish migrating, so it - not the current schema - " +
-                    "is the rollback point. An age beyond this deploy means a stale marker; see " +
-                    "docs/database-restore-runbook.md §5",
+                    "is the rollback point. See docs/database-restore-runbook.md §5",
                     carried,
                     (DateTime.UtcNow - File.GetLastWriteTimeUtc(carried)).TotalHours);
                 return;
@@ -130,6 +146,25 @@ internal sealed class PreMigrationSnapshot(string connectionString, ILogger logg
             // deploy's rollback point - and then migrates on the strength of it.
             await RunPgDumpAsync(_connection, dump + WritingSuffix, cancellationToken);
             File.Move(dump + WritingSuffix, path, overwrite: true);
+
+            // Outside the abort contract above, deliberately: the dump - the thing this deploy
+            // must not migrate without - already exists. A sidecar that fails to write leaves the
+            // marker with no recorded frontier, which FrontierStillPending reads as "still
+            // pending": the unconditional carry-forward this had before #989, not a lost rollback
+            // point. Not a reason to refuse the deploy.
+            try
+            {
+                WriteFrontier(path, pendingMigrations);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                logger.LogError(
+                    ex,
+                    "Could not record the migration frontier for pre-migration snapshot {Path}. The dump " +
+                    "itself is intact; without the sidecar a later deploy carries this marker forward " +
+                    "unconditionally instead of retiring it once stale. See nobodies-collective/Humans#989",
+                    path);
+            }
         }
         catch (Exception ex)
         {
@@ -164,11 +199,12 @@ internal sealed class PreMigrationSnapshot(string connectionString, ILogger logg
     /// </para>
     /// <para>
     /// A failure is logged at Error because of what it costs later: the marker stays, and the
-    /// next schema-changing deploy carries this snapshot forward instead of dumping, leaving its
-    /// rollback point older than the deploy it is meant to undo. It mostly self-heals — this runs
-    /// on every boot, pending migrations or not, so any later restart retires the marker — but a
-    /// deploy landing first would inherit it. Making that impossible needs the snapshot to record
-    /// which deploy took it: nobodies-collective/Humans#989.
+    /// next schema-changing deploy finds it. It self-heals either way now
+    /// (nobodies-collective/Humans#989) — a restart before that deploy retires the marker here,
+    /// and the deploy itself retires it via <see cref="FrontierStillPending"/> in
+    /// <see cref="EnsureCapturedAsync"/> once it sees none of the marker's recorded migrations
+    /// are still pending. Logging stays at Error because between those two points the deploy's
+    /// own rollback point is missing its dump.
     /// </para>
     /// </remarks>
     public void MarkMigrationsComplete()
@@ -196,49 +232,180 @@ internal sealed class PreMigrationSnapshot(string connectionString, ILogger logg
             ex,
             "Could not retire the unfinished pre-migration snapshot in {Directory}. This deploy's " +
             "migrations succeeded, but until the marker clears the next schema-changing deploy will " +
-            "reuse that snapshot instead of taking its own. Rename it to drop the '{Suffix}' suffix, " +
-            "or restart the app once - see docs/database-restore-runbook.md §5",
+            "find it. It self-heals - a restart retries this, or that deploy retires it itself once " +
+            "none of its recorded migrations are still pending - but rename it to drop the " +
+            "'{Suffix}' suffix, or restart the app once, to clear it sooner. See " +
+            "docs/database-restore-runbook.md §5",
             SnapshotDirectory,
             UnfinishedSuffix);
 
     /// <summary>
-    /// The snapshot an earlier boot of this deploy left behind, or <see langword="null"/> if the
-    /// last deploy finished. Oldest first: if several ever pile up, the earliest is the one that
-    /// predates the most.
+    /// The snapshot an earlier boot of this deploy left behind and this boot must reuse instead of
+    /// dumping, or <see langword="null"/> if there is none and this boot takes its own dump.
+    /// Retires every stale marker it steps over on the way (nobodies-collective/Humans#989).
     /// </summary>
-    internal static string? FindUnfinishedSnapshot(string directory, string database) =>
-        UnfinishedSnapshots(directory, database).FirstOrDefault();
+    /// <remarks>
+    /// Walks all the markers, oldest first, rather than judging the oldest alone. Retiring a stale
+    /// marker is best-effort, so a rename that failed leaves that marker sitting in front of one
+    /// that is still live — and this boot's own marker is created behind it. Judging only the
+    /// oldest would then retire the stale one, see nothing else, and dump the half-migrated schema
+    /// as this deploy's rollback point, over a crash loop whose real rollback point was the marker
+    /// it never looked at. Worse, a later boot promotes every marker, so that damaged dump becomes
+    /// the newest completed snapshot — the one <c>docs/database-restore-runbook.md</c> restores.
+    /// Oldest first is still what picks the winner among live markers: the earliest predates the
+    /// most.
+    /// </remarks>
+    internal string? CarryForwardMarker(
+        string directory, string database, IReadOnlyCollection<string> pendingMigrations)
+    {
+        foreach (var marker in UnfinishedSnapshots(directory, database))
+        {
+            if (FrontierStillPending(marker, pendingMigrations, logger))
+            {
+                return marker;
+            }
+
+            RetireStaleMarker(marker);
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Retires a marker none of whose recorded migrations are still pending: the deploy that took
+    /// it finished (nobodies-collective/Humans#989), so reusing it would make this deploy's
+    /// rollback point predate the deploy before it. The same rename
+    /// <see cref="MarkMigrationsComplete"/> does for a marker that clears normally.
+    /// </summary>
+    /// <remarks>
+    /// Best-effort, unlike the dump itself: retiring a marker is bookkeeping, and the boot ends up
+    /// with a rollback point either way. A rename that fails must not be what stops the boot — the
+    /// marker stays, <see cref="CarryForwardMarker"/> steps over it next time, and a later boot
+    /// retires it, the same tolerance <see cref="MarkMigrationsComplete"/> already gives the
+    /// identical call.
+    /// </remarks>
+    private void RetireStaleMarker(string marker)
+    {
+        try
+        {
+            var retired = Retire(marker);
+            logger.LogWarning(
+                "Retired stale pre-migration snapshot {Path} as {Retired}: none of its recorded " +
+                "migrations are still pending, so the deploy that took it already finished. See " +
+                "nobodies-collective/Humans#989",
+                marker, retired);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            logger.LogError(
+                ex,
+                "Could not retire stale pre-migration snapshot {Path}. The boot still gets a rollback " +
+                "point - a live marker behind this one, or its own dump; the stale marker stays until a " +
+                "boot clears it. See docs/database-restore-runbook.md §5",
+                marker);
+        }
+    }
 
     /// <summary>
     /// Renames every unfinished snapshot of the database to its final name and returns the new
     /// paths.
     /// </summary>
-    internal static List<string> PromoteUnfinishedSnapshots(string directory, string database)
-    {
-        var promoted = new List<string>();
-        foreach (var unfinished in UnfinishedSnapshots(directory, database))
-        {
-            var completed = unfinished[..^UnfinishedSuffix.Length];
-            File.Move(unfinished, completed, overwrite: true);
-            promoted.Add(completed);
-        }
+    internal static List<string> PromoteUnfinishedSnapshots(string directory, string database) =>
+        [.. UnfinishedSnapshots(directory, database).Select(Retire)];
 
-        return promoted;
+    /// <summary>
+    /// Renames one unfinished snapshot to its final name, retiring it from "this deploy's
+    /// rollback point" to plain history, and drops its now-unneeded
+    /// <see cref="FrontierSuffix"/> sidecar (nobodies-collective/Humans#989).
+    /// </summary>
+    private static string Retire(string unfinishedPath)
+    {
+        var completed = unfinishedPath[..^UnfinishedSuffix.Length];
+        File.Move(unfinishedPath, completed, overwrite: true);
+        File.Delete(unfinishedPath + FrontierSuffix);
+        return completed;
     }
 
-    private static List<string> UnfinishedSnapshots(string directory, string database) =>
+    /// <summary>
+    /// Every snapshot of the database whose deploy has not finished migrating, oldest first.
+    /// </summary>
+    internal static List<string> UnfinishedSnapshots(string directory, string database) =>
         [.. Directory
             .GetFiles(directory, database + "-*.dump" + UnfinishedSuffix)
             .OrderBy(Path.GetFileName, StringComparer.Ordinal)];
 
     /// <summary>
-    /// Deletes the output of any dump that did not finish. Nothing can be mid-dump here — this
-    /// runs at startup on the single instance, before this boot's own dump — so anything still
-    /// carrying <see cref="WritingSuffix"/> is the wreckage of an earlier attempt.
+    /// Records the migrations pending, across every context, when <paramref name="unfinishedPath"/>
+    /// was taken — its deploy identity (nobodies-collective/Humans#989). One migration ID per
+    /// line; nothing but <see cref="FrontierStillPending"/> reads it.
+    /// </summary>
+    /// <remarks>
+    /// Published by rename, for the same reason the dump is: <see cref="File.WriteAllLines(string,
+    /// IEnumerable{string})"/> truncates first, so a write that fails half-way — the snapshot
+    /// volume filling up is the likely way — or a process killed mid-write would leave a
+    /// <em>short</em> frontier. A frontier missing the migration that is in fact still pending is
+    /// exactly what makes <see cref="FrontierStillPending"/> retire a marker it should have
+    /// carried forward, so a partial sidecar is worse than none: readers must see the whole
+    /// frontier or no file at all.
+    /// </remarks>
+    internal static void WriteFrontier(string unfinishedPath, IEnumerable<string> pendingMigrations)
+    {
+        var frontierPath = unfinishedPath + FrontierSuffix;
+        File.WriteAllLines(frontierPath + WritingSuffix, pendingMigrations);
+        File.Move(frontierPath + WritingSuffix, frontierPath, overwrite: true);
+    }
+
+    /// <summary>
+    /// Whether any migration recorded as pending when <paramref name="unfinishedPath"/> was taken
+    /// is still pending now. True carries the marker forward (a genuine crash-loop retry); false
+    /// means the deploy that took it finished, so the marker is stale and safe to retire
+    /// (nobodies-collective/Humans#989). A <see cref="FrontierSuffix"/> sidecar this cannot read —
+    /// missing, because the snapshot was taken before this fix shipped, or unreadable through an
+    /// IO or permission fault — fails safe as "still pending", the same unconditional
+    /// carry-forward this had before the sidecar existed. Retiring a marker needs proof it is
+    /// stale, and "I could not tell" is not proof; nor may a sidecar read be what aborts a boot,
+    /// which is the one failure the deploy cannot recover from
+    /// (<c>memory/architecture/no-startup-guards.md</c>).
+    /// </summary>
+    internal static bool FrontierStillPending(
+        string unfinishedPath, IReadOnlyCollection<string> currentlyPendingMigrations, ILogger logger)
+    {
+        var frontierPath = unfinishedPath + FrontierSuffix;
+        if (!File.Exists(frontierPath))
+        {
+            return true;
+        }
+
+        string[] frontier;
+        try
+        {
+            frontier = File.ReadAllLines(frontierPath);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // Logged at Error, unlike the expected missing-sidecar case above: the file is there
+            // and the volume would not give it up, which is the same volume the dump writes to.
+            logger.LogError(
+                ex,
+                "Could not read the recorded migration frontier {Path}. Carrying its snapshot forward as " +
+                "this deploy's rollback point rather than retiring a marker that may still be live. See " +
+                "docs/database-restore-runbook.md §5",
+                frontierPath);
+            return true;
+        }
+
+        return frontier.Any(currentlyPendingMigrations.Contains);
+    }
+
+    /// <summary>
+    /// Deletes the output of any dump or frontier-sidecar write that did not finish. Nothing can
+    /// be mid-write here — this runs at startup on the single instance, before this boot's own
+    /// dump — so anything still carrying <see cref="WritingSuffix"/> is the wreckage of an earlier
+    /// attempt.
     /// </summary>
     private static void DiscardAbandonedWrites(string directory, string database)
     {
-        foreach (var abandoned in Directory.GetFiles(directory, database + "-*.dump" + WritingSuffix))
+        foreach (var abandoned in Directory.GetFiles(directory, database + "-*" + WritingSuffix))
         {
             File.Delete(abandoned);
         }

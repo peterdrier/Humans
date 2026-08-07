@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Holded;
@@ -195,15 +196,25 @@ public sealed class HoldedClient : IHoldedClient
         AttachAuth(req);
         using var resp = await SendAsync(req, ct);
         await using var stream = await resp.Content.ReadAsStreamAsync(ct);
-        var node = await JsonNode.ParseAsync(stream, cancellationToken: ct)
-            ?? throw new HoldedTransientException("Holded returned empty body");
-
-        return new HoldedContactDto
+        try
         {
-            Id = node["id"]?.GetValue<string>() ?? contactId,
-            Name = node["name"]?.GetValue<string>(),
-            SupplierAccountNum = ReadInt(node["supplierRecord"]?["num"]),
-        };
+            var node = await JsonNode.ParseAsync(stream, cancellationToken: ct)
+                ?? throw new HoldedTransientException("Holded returned empty body");
+
+            return ParseContact(node, contactId);
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException
+            or FormatException or OverflowException)
+        {
+            // The single-contact sibling of the per-contact skip in ListContactsAsync. A value of an
+            // unexpected type is a property of the stored contact, not of this request, so retrying
+            // cannot help — surface it as permanent so callers that already handle the client's typed
+            // exceptions degrade instead of letting a raw parse failure escape the client. The only
+            // caller (ExpenseReportService.ProcessHoldedCreateAsync) would otherwise abort the whole
+            // outbox batch and leave its own event neither processed nor failed.
+            throw new HoldedPermanentException(
+                $"Holded contact {contactId} could not be read.", ex);
+        }
     }
 
     public async Task<IReadOnlyList<HoldedContactDto>> ListContactsAsync(CancellationToken ct = default)
@@ -215,28 +226,65 @@ public sealed class HoldedClient : IHoldedClient
         // live, so we don't assume it honors a requested limit.
         const int pageSafetyCap = 50; // 5 000+ contacts — far above a small nonprofit's vendor/member list
         var contacts = new List<HoldedContactDto>();
-        for (var page = 1; page <= pageSafetyCap; page++)
+        var skipped = 0;
+        var page = 1;
+        for (; page <= pageSafetyCap; page++)
         {
             using var req = new HttpRequestMessage(HttpMethod.Get, $"/api/invoicing/v1/contacts?page={page}");
             AttachAuth(req);
             using var resp = await SendAsync(req, ct);
             await using var stream = await resp.Content.ReadAsStreamAsync(ct);
             var arr = (await JsonNode.ParseAsync(stream, cancellationToken: ct))?.AsArray() ?? [];
-            if (arr.Count == 0) return contacts;
+            if (arr.Count == 0) break;
 
-            contacts.AddRange(arr.Where(n => n is not null).Select(n => new HoldedContactDto
+            foreach (var n in arr)
             {
-                Id = n!["id"]?.GetValue<string>() ?? "",
-                Name = n["name"]?.GetValue<string>(),
-                SupplierAccountNum = ReadInt(n["supplierRecord"]?["num"]),
-            }));
+                if (n is null) continue;
+                try
+                {
+                    contacts.Add(ParseContact(n));
+                }
+                catch (Exception ex) when (ex is JsonException or InvalidOperationException
+                    or FormatException or OverflowException)
+                {
+                    // One contact carrying an unexpected value must not cost every other contact its name.
+                    // This list is the sole source of creditor account names on /Finance/Creditors and the
+                    // bind dropdown, and its caller degrades a throw to *all* names blank — which is how a
+                    // single contact silently emptied the whole card (nobodies-collective/Humans#994).
+                    // Detail on the first one only; the rest are counted, so a bad page cannot flood the log.
+                    if (skipped == 0)
+                        _logger.LogWarning(ex, "Unreadable Holded contact on page {Page}; skipping it.", page);
+                    skipped++;
+                }
+            }
         }
 
-        _logger.LogWarning(
-            "Holded contacts hit the {Cap}-page safety cap; results may be truncated.",
-            pageSafetyCap);
+        if (page > pageSafetyCap)
+            _logger.LogWarning(
+                "Holded contacts hit the {Cap}-page safety cap; results may be truncated.",
+                pageSafetyCap);
+        if (skipped > 0)
+            _logger.LogWarning(
+                "Skipped {Skipped} unreadable Holded contact(s); those accounts will show without a name.",
+                skipped);
         return contacts;
     }
+
+    /// <summary>Projects one Holded contact. Holded sends an absent sub-record as an empty array rather
+    /// than null, and <see cref="JsonNode"/>'s string indexer throws on anything but a JsonObject — so
+    /// every nested read goes through <see cref="Prop"/>, never the raw indexer.</summary>
+    private static HoldedContactDto ParseContact(JsonNode node, string? fallbackId = null) => new()
+    {
+        Id = Prop(node, "id")?.GetValue<string>() ?? fallbackId ?? "",
+        Name = Prop(node, "name")?.GetValue<string>(),
+        SupplierAccountNum = ReadInt(Prop(Prop(node, "supplierRecord"), "num")),
+    };
+
+    /// <summary>A property of <paramref name="node"/>, or null when it is not an object. The raw
+    /// <c>node["x"]</c> indexer throws InvalidOperationException on a non-object, which for a list read
+    /// costs the whole page rather than the one field.</summary>
+    private static JsonNode? Prop(JsonNode? node, string name) =>
+        node is JsonObject obj ? obj[name] : null;
 
     public async Task<IReadOnlyList<HoldedLedgerLineDto>> ListDailyLedgerAsync(
         Instant from, Instant to, CancellationToken ct = default)
