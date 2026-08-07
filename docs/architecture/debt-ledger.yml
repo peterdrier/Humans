@@ -40,6 +40,16 @@ themes:
     last_swept: 2026-06-12
     remaining: 12
     notes: >-
+      PARKED — Peter 2026-08-07: BOTH dials are off. Do not lower the
+      thresholds in ControllerBusinessLogicAnalyzer and do not burn down the
+      [Grandfathered("HUM0031", …)] methods. Rotation skips this theme until
+      the per-section assembly split (nobodies-collective/Humans#866) lands —
+      the controllers relocate then, so the work is churn against code that is
+      about to move, and in the meantime it is a distraction. The burn-down
+      issue nobodies-collective/Humans#857 is closed for the same reason.
+      Re-open this theme only when #866 has shipped. The analyzer stays live at
+      Error for NEW breaches — that is not parked.
+      Prior sweep findings, kept for whenever this restarts:
       12 distinct warning sites, all grandfathered (14 grandfathers total —
       AccountController.ExternalLoginCallback and
       EventsController.BulkUploadTemplate no longer fire; their justification
