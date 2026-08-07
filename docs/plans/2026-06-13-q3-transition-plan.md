@@ -229,6 +229,12 @@ Prerequisites: G0 must be closed first (#845), because the cut is still a schema
 against prod — and the G1 nav-strip work for every affected relationship must be done, per
 condition 4. That makes the cut a G1-complete-app-wide gate, not merely a G0 one.
 
+**Conditions 1 and 3 are inventoried:**
+[`2026-08-07-fk-cut-inventory.md`](2026-08-07-fk-cut-inventory.md) — all 55 relationships
+re-derived from HUM0024 at `37eb40d99` (54 net of `camp_leads`), with the surviving/dropping
+index per FK column and the delete-behavior replacement or recorded orphan decision per
+relationship.
+
 ### G3 — Tests (per section): *section-shaped and honest*
 
 Parallel-safe. This is #766's per-section batch plus the #806 conversion, gated per
