@@ -11,6 +11,7 @@
   src/Humans.Infrastructure/Services/Events/CachingEventService.cs
   src/Humans.Web/Extensions/Sections/EventsSectionExtensions.cs
   src/Humans.Application/Services/Shifts/ShiftManagementService.cs
+  src/Humans.Infrastructure/Repositories/Shifts/ShiftRepository.Management.cs
   src/Humans.Application/Services/Profiles/PersonSearchMatcher.cs
   src/Humans.Web/Controllers/CampController.cs
   src/Humans.Web/Controllers/TeamController.cs
@@ -23,7 +24,10 @@
   The trigger list reaches outside src/**/Search/** on purpose. Since the nobodies-collective/Humans#985
   ruling, the visibility guarantee is enforced by the destination pages, not by Search — so the
   US-GS.4 GUID exception and its known-gap note depend on CampController/TeamController, and the
-  per-bucket filters and GUID branches live in the Caching*Service classes and ShiftManagementService.
+  per-bucket filters and GUID branches live in the Caching*Service classes and ShiftManagementService —
+  and for Shifts, one level deeper still: the service's text branch delegates to
+  ShiftRepository.Management.cs, where the active-event, IsVisibleToVolunteers and EF.Functions.ILike
+  predicates behind this doc's Shifts claims actually live.
   Rotas are the non-obvious one: a rota hit links to /Shifts?departmentId=, not to the rota, so its
   destination gate is ShiftBrowsePageBuilder's IncludeAdminOnly/IncludeHidden flags behind
   ShiftsController — that is where an admin-only rota would be exposed, not in Shifts' search call.

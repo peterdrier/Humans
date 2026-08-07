@@ -10,6 +10,7 @@
   src/Humans.Infrastructure/Services/Events/CachingEventService.cs
   src/Humans.Web/Extensions/Sections/EventsSectionExtensions.cs
   src/Humans.Application/Services/Shifts/ShiftManagementService.cs
+  src/Humans.Infrastructure/Repositories/Shifts/ShiftRepository.Management.cs
   src/Humans.Application/Services/Profiles/PersonSearchMatcher.cs
   src/Humans.Web/Controllers/CampController.cs
   src/Humans.Web/Controllers/TeamController.cs
@@ -21,8 +22,10 @@
 
   Why the trigger list reaches outside src/**/Search/**: this section owns no logic of its own. Every
   invariant it states is implemented in someone else's file — the per-bucket visibility filters and
-  GUID branches live in the four Caching*Service classes and ShiftManagementService, the Humans score
-  tiers live in PersonSearchMatcher, and the ruling on nobodies-collective/Humans#985 moved the whole
+  GUID branches live in the four Caching*Service classes and ShiftManagementService, whose text branch
+  in turn only delegates: the active-event, IsVisibleToVolunteers and ILike predicates behind the
+  "Shifts is the only DB-backed bucket" claim are in ShiftRepository.Management.cs, not the service.
+  The Humans score tiers live in PersonSearchMatcher, and the ruling on nobodies-collective/Humans#985 moved the whole
   privacy guarantee onto the destinations: CampController, TeamController, and — because a rota hit
   links to /Shifts?departmentId=, not to the rota itself — ShiftsController plus
   ShiftBrowsePageBuilder, where the IncludeAdminOnly/IncludeHidden flags actually decide it.
@@ -97,7 +100,7 @@ None — this section is a pure read/fan-out surface with no side effects: no wr
 - **Decorator decision — no caching decorator on `SearchService` itself.** Four of the five buckets are already served from their owning section's warm in-memory snapshot, with no DB round trip per search: Humans/Teams/Camps via `CachingUserService`/`CachingTeamService`/`CachingCampService`, and **Events too** — `IEventServiceRead` is registered as the `CachingEventService` singleton (`EventsSectionExtensions.cs:48`), whose `GetApprovedEventsAsync` filters the approved-event cache in memory (`Contains(…, OrdinalIgnoreCase)`), not in SQL. **Shifts is the only DB-backed bucket:** `ShiftManagementService.SearchAsync` calls `repo.SearchVolunteerVisibleRotasAsync` (case-insensitive Postgres `ILike`) for text and `repo.GetRotaAsync` for a GUID. So a Search-level cache would, for four of five buckets, cache a cache — and duplicate invalidation the owning sections already do correctly.
 - **Cross-domain navs** — none; the section owns no entities.
 - **Cross-section calls** — `IUserServiceRead`, `ITeamServiceRead`, `ICampServiceRead`, `IShiftManagementService`, `IEventServiceRead` (see Cross-Section Dependencies).
-- **Test coverage — structure and behaviour are both pinned as of #1197/#1198.** Structure: `Architecture/SearchArchitectureTests.cs` (#1197) — `ISearchService_ImplementsOrchestratorNotApplicationService`, `SearchService_HasNoRepositoryDependency`, `SearchService_DependsOnlyOnServiceInterfaces`. Behaviour (#1198):
+- **Test coverage — structure and behaviour pinned as of #1197/#1198, with one hole left.** That hole is the Events cache filter (last bullet below), and it is what still holds G3 predicate 3 at **FAIL** in the audit. Structure: `Architecture/SearchArchitectureTests.cs` (#1197) — `ISearchService_ImplementsOrchestratorNotApplicationService`, `SearchService_HasNoRepositoryDependency`, `SearchService_DependsOnlyOnServiceInterfaces`. Behaviour (#1198):
   - **Orchestration** — `tests/Humans.Application.Tests/Services/Search/SearchServiceTests.cs`, 17 tests: the `<2`-char gate and its boundary, query trimming, `onlyType` querying one section and skipping four, the no-`onlyType` fan-out to all five, the 100/80/60 tiers with case-insensitivity and empty-name drop, GUID hits for Team/Camp/Rota, `PersonSearchFields.PublicAll` on both text and GUID paths, the unbounded cap, the `Features:Events` off path, and the Events description-fallback tier.
   - **Controller** — `tests/Humans.Web.Tests/Controllers/SearchControllerTests.cs`, 7 tests: non-human buckets sorted score-desc-then-title-asc, humans by relevance then burner name, view-model projection, and the shell-not-500 path on a service throw.
   - **Humans** — `CachingUserServiceTests.cs:661-852`, 16 tests, including `SearchUsersAsync_PublicAll_ExcludesRejected`, `…_GuidShortCircuitsById`, and its `ExactName` carve-out.
