@@ -185,7 +185,7 @@ That is the question the inventory has to answer first, and it collapses most of
 | `User` | **42** | **Yes — on three paths.** Right-to-erasure and account-merge both **anonymise in place** — `IUserRepository.Profiles.cs:108,122` (`AnonymizeForMergeByUserIdAsync`, `AnonymizeForDeletionByUserIdAsync`), `IAccountDeletionService.cs:77` (`AnonymizeExpiredAccountAsync`); the merged-away row survives, stamped with `MergedToUserId`. But three paths do hard-delete: the dev-dashboard reset (via the repository) and two signup rollbacks (via ASP.NET Identity). Enumerated below. |
 | `Team` | 8 | **Yes, on one path.** The user-facing delete is a soft delete: `TeamService.DeleteTeamAsync` (`TeamService.cs:608-629`) calls `DeactivateTeamAsync` and removes no row; `TeamController.cs:724` is its only caller. The hard delete is `TeamService.PermanentlyDeleteTeamAsync` (`TeamService.cs:1846-1867`) → `TeamRepository.PermanentlyDeleteTeamAsync` (`TeamRepository.cs:1051-1091`, `db.Teams.Remove` at `:1087`). Its only caller today is `DevelopmentDashboardSeeder.cs:472`, but it is admin-authorized production surface. |
 | `CampSeason` | 2 | Indirectly — `CampRepository.cs:186` removes a `Camp`, and `CampConfiguration.cs:44` cascades `Camp → CampSeason`. |
-| `ShiftSignup` | 1 | Yes — `ShiftRepository.Management.cs:187,294`, when a rota or shift is deleted. |
+| `ShiftSignup` | 1 | **Yes, on four paths.** Rota delete (`ShiftRepository.Management.cs:187`) and shift delete (`:294`); **account-merge dedup** — `ShiftSignupService.ReassignAsync` (`:1366`) → `ShiftRepository.Signups.ReassignToUserAsync`, which drops the source row at `Signups.cs:212` when the target already holds a signup for that shift; and `DeleteAllForUsersAsync` (`Signups.cs:183-186`), whose only caller is the dev seeder (`DevelopmentDashboardSeeder.cs:462`). The first three are ordinary production. |
 | `CampaignGrant` | 1 | Yes — `CampaignRepository.cs:364`, the account-merge dedup branch. |
 | `GoogleResource` | 1 | No hard-delete path found. |
 
@@ -199,7 +199,7 @@ condition 3 has to deliver:
 
 | | Count | Reachability today |
 |---|---|---|
-| `CampSeason` (2), `ShiftSignup` (1), `CampaignGrant` (1) | **4** | **Ordinary production.** Deleting a camp (`CampAdminController.cs:292` → `ICampService.DeleteCampAsync` → `CampRepository.cs:186`) cascades to its seasons; rota and shift deletes remove signups (`ShiftRepository.Management.cs:187,294`); account-merge dedup removes grants (`CampaignRepository.cs:364`). |
+| `CampSeason` (2), `ShiftSignup` (1), `CampaignGrant` (1) | **4** | **Ordinary production.** Deleting a camp (`CampAdminController.cs:292` → `ICampService.DeleteCampAsync` → `CampRepository.cs:186`) cascades to its seasons; rota and shift deletes remove signups (`ShiftRepository.Management.cs:187,294`), as does account-merge dedup (`Signups.cs:212`); account-merge dedup also removes grants (`CampaignRepository.cs:364`). |
 | `Team` (8) | **8** | **Dev-dashboard reset only.** `PermanentlyDeleteTeamAsync` is admin-authorized service surface, but its only caller is `DevelopmentDashboardSeeder.cs:472` — same gating as user path 1 below. |
 | `GoogleResource` (1) | **1** | **Never.** Nothing deletes a `GoogleResource`, so `audit_log.ResourceId`'s `SetNull` cannot fire at all. |
 
@@ -317,7 +317,7 @@ next quarter.
 | `Team` | `google_sync_outbox.TeamId` | `Cascade` | Pending outbox events for a deleted team survive and are processed by `ProcessGoogleSyncOutboxJob` against a team that is gone. | Delete pending events for the team inside the same transaction. This one is not merely cosmetic — it is a job that will run. |
 | `CampSeason` | `camp_polygons.CampSeasonId` | `Restrict` | Deleting a `Camp` currently throws if any of its seasons has a city-planning polygon. After the cut the polygon is orphaned and `CityPlanningRepository.cs:34,49,96` returns rows for a season that no longer exists. | Pre-check in the Camps delete path, or delete the polygons through `ICityPlanning…` — **cross-section, so it must go through a service, not a repository.** |
 | `CampSeason` | `camp_polygon_histories.CampSeasonId` | `Restrict` | As above, for the history table. | As above. |
-| `ShiftSignup` | `email_outbox_messages.ShiftSignupId` | `SetNull` | Deleting a rota (`ShiftRepository.Management.cs:187`) leaves outbox rows pointing at a dead signup. The dedup index `(ShiftSignupId, TemplateName)` then guards against a signup that cannot exist. | **Orphan is acceptable** — see below. |
+| `ShiftSignup` | `email_outbox_messages.ShiftSignupId` | `SetNull` | Deleting a rota or shift (`ShiftRepository.Management.cs:187,294`) **and account-merge dedup** (`Signups.cs:212`) leave outbox rows pointing at a dead signup. The dedup index `(ShiftSignupId, TemplateName)` then guards against a signup that cannot exist. | **Orphan is acceptable** — see below. |
 | `CampaignGrant` | `email_outbox_messages.CampaignGrantId` | `SetNull` | Account-merge dedup (`CampaignRepository.cs:364`) leaves outbox rows pointing at a dead grant. | **Orphan is acceptable** — see below. |
 | `GoogleResource` | `audit_log.ResourceId` | `SetNull` | Nothing today — no code deletes a `GoogleResource`. | None needed; record the constraint. |
 
@@ -332,6 +332,17 @@ Recorded here so the migration PR does not have to re-argue them:
   signup that has since been deleted, which is true. Neither column is read as a lookup key
   (`ShiftSignupId` appears only in the dedup index, `CampaignGrantId` in no predicate at all).
   Leave both as stale ids; add no replacement.
+
+  **Checked against the account-merge path specifically**, since that is the one case where the
+  deleted principal has a live counterpart rather than simply ceasing to exist. When
+  `ReassignToUserAsync` drops the source signup (`Signups.cs:212`), the target's signup for that
+  shift survives under a *different* `Guid`. The concern would be the partial unique index
+  `(ShiftSignupId, TemplateName)`: today `SetNull` blanks the column and the row falls out of the
+  index, whereas after the cut it stays in, keyed on a signup id that no longer resolves. That
+  cannot collide with anything — the dead id is never reissued, and the surviving signup carries
+  its own — so no send is blocked and no dedup decision changes. The same holds for
+  `CampaignGrantId` on `CampaignRepository.cs:364`, which is the identical dedup shape. Decision
+  stands for both merge and delete paths.
 - **The 42 `User`-targeting actions, on the two signup-rollback paths.** Path 3 and three of
   path 2's four call sites delete a user that cannot yet have any of the 42 dependent rows, as
   traced above — nothing to orphan, no replacement. Path 2's `CrossUserBlocked` branch does leave
