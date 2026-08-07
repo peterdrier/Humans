@@ -187,6 +187,7 @@ public sealed class ShiftDashboardMetricsTests : ServiceTestHarness
         var refundedUser = await SeedUserAsync("C");
         var nonTicketSignupUser = await SeedUserAsync("D");
         var cancelledOnlyTicketHolder = await SeedUserAsync("E");
+        var secondNonTicketSignupUser = await SeedUserAsync("F");
 
         await SeedTicketOrderAsync(engagedTicketHolder.Id, TicketPaymentStatus.Paid);
         await SeedTicketOrderAsync(engagedTicketHolder.Id, TicketPaymentStatus.Paid); // duplicate — counts once
@@ -197,12 +198,13 @@ public sealed class ShiftDashboardMetricsTests : ServiceTestHarness
         await SeedOneSignupAsync(shift, engagedTicketHolder.Id, SignupStatus.Confirmed);
         await SeedOneSignupAsync(shift, nonTicketSignupUser.Id, SignupStatus.Pending);
         await SeedOneSignupAsync(shift, cancelledOnlyTicketHolder.Id, SignupStatus.Cancelled);
+        await SeedOneSignupAsync(shift, secondNonTicketSignupUser.Id, SignupStatus.Confirmed);
 
         var result = await _service.GetDashboardOverviewAsync(es.Id);
 
         result.TicketHolderCount.Should().Be(3); // engaged, disengaged, cancelled-only
         result.TicketHoldersEngaged.Should().Be(1); // only A
-        result.NonTicketSignups.Should().Be(1); // only D
+        result.NonTicketSignups.Should().Be(2); // D and F
     }
 
     [HumansFact(Timeout = 10000)]
@@ -442,6 +444,150 @@ public sealed class ShiftDashboardMetricsTests : ServiceTestHarness
         result.Should().HaveCount(2);
         result[0].TeamName.Should().Be("B");
         result[1].TeamName.Should().Be("A");
+    }
+
+    [HumansFact]
+    public async Task GetCoordinatorActivity_ParentRowRollsUpItsSubteamPendingCounts()
+    {
+        var es = await SeedEventAsync();
+        var department = await SeedTeamAsync("Gate");
+        var subTeam = await SeedTeamAsync("Gate Night", parentId: department.Id);
+
+        var deptRota = await SeedRotaAsync(department, es, RotaPeriod.Event);
+        await SeedSignupsAsync(await SeedShiftAsync(deptRota, 1, 1, 3), SignupStatus.Pending, count: 2);
+        var subRota = await SeedRotaAsync(subTeam, es, RotaPeriod.Event);
+        await SeedSignupsAsync(await SeedShiftAsync(subRota, 2, 1, 3), SignupStatus.Pending, count: 3);
+
+        await SeedCoordinatorAsync(department, await SeedUserAsync("dept-coord", TestNow));
+
+        var result = await _service.GetCoordinatorActivityAsync(es.Id);
+
+        var parent = result.Should().ContainSingle().Subject;
+        parent.TeamName.Should().Be("Gate");
+        parent.PendingSignupCount.Should().Be(2);
+        parent.AggregatePendingCount.Should().Be(5);
+        var child = parent.Subgroups.Should().ContainSingle().Subject;
+        child.TeamName.Should().Be("Gate Night");
+        child.PendingSignupCount.Should().Be(3);
+        child.AggregatePendingCount.Should().Be(3);
+    }
+
+    [HumansFact]
+    public async Task GetDashboardOverview_DepartmentRowBreaksTotalsDownByPeriod()
+    {
+        var es = await SeedEventAsync();
+        var team = await SeedTeamAsync("Gate");
+        var buildRota = await SeedRotaAsync(team, es, RotaPeriod.Build);
+        var eventRota = await SeedRotaAsync(team, es, RotaPeriod.Event);
+        var strikeRota = await SeedRotaAsync(team, es, RotaPeriod.Strike);
+
+        // Build: at min, 1 slot left. Event: below min, 4 slots left. Strike: empty, 2 slots left.
+        await SeedSignupsAsync(await SeedShiftAsync(buildRota, -3, 2, 3), SignupStatus.Confirmed, count: 2);
+        await SeedSignupsAsync(await SeedShiftAsync(eventRota, 1, 3, 5), SignupStatus.Confirmed, count: 1);
+        await SeedShiftAsync(strikeRota, 8, 1, 2);
+
+        var row = (await _service.GetDashboardOverviewAsync(es.Id)).Departments.Should().ContainSingle().Subject;
+
+        row.TotalShifts.Should().Be(3);
+        row.FilledShifts.Should().Be(1);
+        row.TotalSlots.Should().Be(10);
+        row.FilledSlots.Should().Be(3);
+        row.SlotsRemaining.Should().Be(7);
+        row.Build.Should().Be(new PeriodStaffing(1, 1, 3, 2, 1));
+        row.Event.Should().Be(new PeriodStaffing(1, 0, 5, 1, 4));
+        row.Strike.Should().Be(new PeriodStaffing(1, 0, 2, 0, 2));
+    }
+
+    [HumansFact]
+    public async Task GetDashboardOverview_PeriodFillRatesArePerPeriodPercentages()
+    {
+        var es = await SeedEventAsync();
+        var team = await SeedTeamAsync("Gate");
+        var buildRota = await SeedRotaAsync(team, es, RotaPeriod.Build);
+        var eventRota = await SeedRotaAsync(team, es, RotaPeriod.Event);
+
+        await SeedSignupsAsync(await SeedShiftAsync(buildRota, -3, 1, 4), SignupStatus.Confirmed, count: 1);
+        await SeedSignupsAsync(await SeedShiftAsync(eventRota, 1, 1, 5), SignupStatus.Confirmed, count: 4);
+
+        var rates = (await _service.GetDashboardOverviewAsync(es.Id)).PeriodFillRates;
+
+        rates.BuildPct.Should().Be(25);
+        rates.EventPct.Should().Be(80);
+        rates.StrikePct.Should().Be(0);
+    }
+
+    [HumansFact]
+    public async Task GetDashboardOverview_BuildSubPeriodNarrowsToItsHalfOpenDayWindow()
+    {
+        // PreEventWeek is [PreEventWeekStartOffset, FinishingWeekendStartOffset) = [-9, -4).
+        var es = await SeedEventAsync();
+        var team = await SeedTeamAsync("Gate");
+        var rota = await SeedRotaAsync(team, es, RotaPeriod.Build);
+        foreach (var day in new[] { -10, -9, -5, -4 })
+            await SeedShiftAsync(rota, day, min: 1, max: 2);
+
+        var narrowed = await _service.GetDashboardOverviewAsync(
+            es.Id, ShiftPeriod.Build, BuildSubPeriod.PreEventWeek);
+
+        narrowed.TotalShifts.Should().Be(2);
+        narrowed.TotalSlots.Should().Be(4);
+    }
+
+    [HumansFact]
+    public async Task GetDashboardOverview_SubPeriodQueriesBypassTheCachedBasePeriodResult()
+    {
+        var es = await SeedEventAsync();
+        var team = await SeedTeamAsync("Gate");
+        var rota = await SeedRotaAsync(team, es, RotaPeriod.Build);
+        await SeedShiftAsync(rota, -5, min: 1, max: 2);
+
+        (await _service.GetDashboardOverviewAsync(es.Id, ShiftPeriod.Build)).TotalShifts.Should().Be(1);
+        await SeedShiftAsync(rota, -6, min: 1, max: 2);
+
+        // Base-period result is served from the 5-minute cache; the sub-period call is not.
+        (await _service.GetDashboardOverviewAsync(es.Id, ShiftPeriod.Build)).TotalShifts.Should().Be(1);
+        (await _service.GetDashboardOverviewAsync(
+            es.Id, ShiftPeriod.Build, BuildSubPeriod.PreEventWeek)).TotalShifts.Should().Be(2);
+    }
+
+    [HumansFact]
+    public async Task AnalyticsReads_AllExcludeAdminOnlyShiftsAndHiddenRotas()
+    {
+        var es = await SeedEventAsync();
+        var team = await SeedTeamAsync("Gate");
+        var visibleRota = await SeedRotaAsync(team, es, RotaPeriod.Build);
+        var hiddenRota = await SeedRotaAsync(team, es, RotaPeriod.Build, isVisible: false);
+        await SeedSignupsAsync(await SeedShiftAsync(visibleRota, -3, 1, 2), SignupStatus.Confirmed, count: 1);
+        await SeedSignupsAsync(await SeedShiftAsync(visibleRota, -3, 1, 4, adminOnly: true), SignupStatus.Confirmed, count: 3);
+        await SeedSignupsAsync(await SeedShiftAsync(hiddenRota, -3, 1, 8), SignupStatus.Confirmed, count: 5);
+
+        (await _service.GetOverallCoverageAsync(Xunit.TestContext.Current.CancellationToken))
+            .Should().Be((1, 2, 0.5d));
+
+        var staffing = await _service.GetDailyDepartmentStaffingAsync(es.Id, ShiftPeriod.Build);
+        staffing.Single(d => d.Date == es.GateOpeningDate.PlusDays(-3))
+            .Departments.Single().ConfirmedCount.Should().Be(1);
+
+        var heatmapCell = (await _service.GetCoverageHeatmapAsync(es.Id, ShiftPeriod.Build))
+            .Rotas.Single().Cells.Single(c => c.DayOffset == -3);
+        heatmapCell.TotalSlots.Should().Be(2);
+        heatmapCell.FilledSlots.Should().Be(1);
+
+        (await _service.GetShiftDurationBreakdownAsync(es.Id, ShiftPeriod.Build))
+            .Single().TotalSlots.Should().Be(2);
+    }
+
+    [HumansFact]
+    public async Task GetDepartmentsWithRotas_ReturnsRotaOwningTeamsInNameOrder()
+    {
+        var es = await SeedEventAsync();
+        foreach (var name in new[] { "Sanctuary", "Gate", "Rangers" })
+            await SeedRotaAsync(await SeedTeamAsync(name), es, RotaPeriod.Event);
+        await SeedTeamAsync("No Rotas");
+
+        var result = await _service.GetDepartmentsWithRotasAsync(es.Id);
+
+        result.Select(r => r.TeamName).Should().Equal("Gate", "Rangers", "Sanctuary");
     }
 
     [HumansFact]
