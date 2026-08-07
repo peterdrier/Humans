@@ -13,7 +13,7 @@ namespace Humans.Web.Extensions;
 public static class EnumLocalizationExtensions
 {
     /// <summary>Localized display text for a single enum value.</summary>
-    public static string EnumDisplay<TEnum>(this IStringLocalizer<SharedResource> localizer, TEnum value)
+    public static string EnumDisplay<TEnum>(this IStringLocalizer localizer, TEnum value)
         where TEnum : struct, Enum
     {
         var localized = localizer[$"Enum_{typeof(TEnum).Name}_{value}"];
@@ -25,7 +25,7 @@ public static class EnumLocalizationExtensions
     /// display text. Item values are the enum names, matching how the model binder and the
     /// previous <c>new SelectList(Enum.GetValues&lt;T&gt;())</c> call sites round-trip.
     /// </summary>
-    public static List<SelectListItem> EnumSelectItems<TEnum>(this IStringLocalizer<SharedResource> localizer, TEnum? selected = null)
+    public static List<SelectListItem> EnumSelectItems<TEnum>(this IStringLocalizer localizer, TEnum? selected = null)
         where TEnum : struct, Enum =>
         [.. Enum.GetValues<TEnum>().Select(v => new SelectListItem(
             localizer.EnumDisplay(v),

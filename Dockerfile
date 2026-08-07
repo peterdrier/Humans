@@ -7,6 +7,7 @@ COPY .editorconfig Directory.Build.props Directory.Packages.props ./
 COPY src/Humans.Domain/Humans.Domain.csproj src/Humans.Domain/
 COPY src/Humans.Application/Humans.Application.csproj src/Humans.Application/
 COPY src/Humans.Infrastructure/Humans.Infrastructure.csproj src/Humans.Infrastructure/
+COPY src/Humans.UI/Humans.UI.csproj src/Humans.UI/
 COPY src/Humans.Web/Humans.Web.csproj src/Humans.Web/
 
 # Restore packages

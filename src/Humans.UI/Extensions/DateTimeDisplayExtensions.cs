@@ -1,11 +1,17 @@
 using Humans.Application.Extensions;
-using Humans.Web.Controllers;
 using NodaTime;
 
 namespace Humans.Web.Extensions;
 
 public static class DateTimeDisplayExtensions
 {
+    /// <summary>
+    /// Session key holding the browser-reported IANA timezone. Written by
+    /// <c>TimezoneApiController</c>; read by every display overload below. Lives here
+    /// rather than on the controller so the display layer does not reference Shell.
+    /// </summary>
+    public const string SessionKey = "UserTimeZone";
+
     private static IHttpContextAccessor? _httpContextAccessor;
 
     /// <summary>
@@ -27,7 +33,7 @@ public static class DateTimeDisplayExtensions
         var session = _httpContextAccessor?.HttpContext?.Session;
         if (session is null) return DateTimeZone.Utc;
 
-        var sessionTz = session.GetString(TimezoneApiController.SessionKey);
+        var sessionTz = session.GetString(SessionKey);
         if (!string.IsNullOrEmpty(sessionTz))
         {
             var zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(sessionTz);
@@ -43,7 +49,7 @@ public static class DateTimeDisplayExtensions
     /// </summary>
     public static DateTimeZone GetUserTimeZone(this ISession session, string? eventTimeZoneId = null)
     {
-        var sessionTz = session.GetString(TimezoneApiController.SessionKey);
+        var sessionTz = session.GetString(SessionKey);
         if (!string.IsNullOrEmpty(sessionTz))
         {
             var zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(sessionTz);

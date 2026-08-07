@@ -1,3 +1,4 @@
+using Humans.Web.Extensions;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 
@@ -7,8 +8,6 @@ namespace Humans.Web.Controllers;
 [Route("api/timezone")]
 public class TimezoneApiController : ControllerBase
 {
-    public const string SessionKey = "UserTimeZone";
-
     [HttpPost]
     public IActionResult SetTimezone([FromBody] TimezoneRequest request)
     {
@@ -19,7 +18,7 @@ public class TimezoneApiController : ControllerBase
         if (zone is null)
             return BadRequest();
 
-        HttpContext.Session.SetString(SessionKey, request.TimeZone);
+        HttpContext.Session.SetString(DateTimeDisplayExtensions.SessionKey, request.TimeZone);
         return Ok();
     }
 
