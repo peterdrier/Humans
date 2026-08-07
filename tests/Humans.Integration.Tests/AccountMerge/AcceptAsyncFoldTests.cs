@@ -21,7 +21,7 @@ namespace Humans.Integration.Tests.AccountMerge;
 /// <see cref="MergeFixtureBuilder"/>, calls <c>AcceptAsync</c>, then asserts
 /// the resulting fold against the rule documented in the fold-redesign plan.
 /// </summary>
-public class AcceptAsyncFoldTests(HumansWebApplicationFactory factory) : IntegrationTestBase(factory)
+public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTestBase(database)
 {
     private async Task<Guid> SeedAdminUserAsync()
     {

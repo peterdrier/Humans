@@ -2,6 +2,7 @@
   .github/workflows/build.yml
   tests/xunit.runner.json
   tests/Humans.Integration.Tests/Infrastructure/HumansWebApplicationFactory.cs
+  tests/Humans.Integration.Tests/Infrastructure/HumansTestDatabase.cs
   tests/Humans.Integration.Tests/Infrastructure/IntegrationTestBase.cs
   src/Humans.Web/Program.cs
 -->
@@ -80,7 +81,7 @@ That is not a hypothesis. Option (b) was built and measured, and 23 of 123 tests
 | Mechanism | Does it isolate? | Cost | Demands on test authors |
 |---|---|---|---|
 | GUID-suffixed keys (the status quo convention) | No. Nothing enforces it; a test that forgets is silently wrong. | free | remember it, every test, forever |
-| `BEGIN … ROLLBACK` around the test | **No — verified, not assumed.** See the probe below. | — | — |
+| `BEGIN … ROLLBACK` around the test | **No — verified, not assumed.** See below. | — | — |
 | `TRUNCATE … CASCADE` between tests | Database yes, app no. 23/123 tests down. | cheap | — |
 | Truncate + an app-wide cache flush | Only if the flush is *complete*, and nothing can establish that it is. Needs `Clear()` on the public `ICacheStats`, a fix to `CachingEventService`'s partial registration, plus an open-ended audit of every other singleton holding DB-derived state. Adds production surface whose only consumer is tests, guarded by an invariant nothing enforces — the next caching decorator silently un-isolates the suite, and the symptom is a false pass. | cheap | — |
 | Per-test schema + `search_path` | Same app-state defect, plus Postgres has no `CREATE SCHEMA LIKE`, so the whole DDL would have to be replayed per test. | — | — |
@@ -89,7 +90,7 @@ That is not a hypothesis. Option (b) was built and measured, and 23 of 123 tests
 
 #### Why (a) is not implementable — measured, not asserted
 
-`Probe_TestTransactionIsInvisibleToAppScope` created a table inside a transaction on the test's own connection, then queried for it from an app scope resolved the way a TestServer request resolves one. The app scope did not see it. `Probe_RequestsUseDifferentPhysicalConnectionsThanTheTest` shows why: `pg_backend_pid()` differs between the test's connection and every app scope's. Both probes pass, i.e. the isolation the test's transaction provides is isolation *from the code under test*. Pinning the pool to one connection doesn't rescue it — EF's own `SaveChanges` transaction then collides with the out-of-band `BEGIN`.
+Two throwaway probes settled it against the real fixture. Creating a table inside a transaction on the test's own connection, then querying for it from an app scope resolved the way a TestServer request resolves one: the app scope did not see it. `SELECT pg_backend_pid()` shows why — the test's connection and every app scope's are different backends, because each scope rents its own from the pooled `NpgsqlDataSource`. The isolation a test's transaction buys is isolation *from the code under test*. Pinning the pool to one connection doesn't rescue it either: EF's own `SaveChanges` transaction then collides with the out-of-band `BEGIN`.
 
 #### What shipped
 
@@ -105,7 +106,18 @@ Measured on the same machine, per operation: `CREATE DATABASE … TEMPLATE` 33�
 
 `DatabaseIsolationTests` is the regression guard. It is a two-case `[Theory]` — xUnit gives each case its own class instance and therefore its own database — where each case writes a row under a *fixed* key and asserts exactly one such row exists. On a shared database the second case sees two and fails; the same test also asserts `/dev/login/volunteer` still redirects rather than 500s, which is the exact symptom that took option (b) down. It fails on the shared-database scheme and passes on this one.
 
-**Definition of done:** no test can see another test's writes ✅; the app's caches stay coherent with its database ✅; no production surface added ✅.
+#### What it costs, and what pays for it
+
+Sequentially the suite went from **33 s to 2 m 39 s**. Only 279 ms of the ~1 s added per test is the fixture's own work (clone 39 ms, boot 227 ms, drop 13 ms); the rest is a cold app — EF model and query-plan caches, routing and policy caches, all rebuilt per host. That is inherent to making the app the reset unit, and cannot be optimised away without giving up the isolation.
+
+What pays for it is that test classes no longer observe each other, which is the only reason nobodies-collective/Humans#764 disabled parallelization. Turning it back on brings the suite to **41 s – 1 m 10 s** across three consecutive green runs on a 32-core box also running other work. The container is started with `max_connections=500` so the parallelism is bounded by cores rather than by Postgres.
+
+| | shared everything (P2) | per-test, sequential | per-test, parallel |
+|---|---|---|---|
+| suite wall clock | 33 s | 2 m 39 s | 41 s – 1 m 10 s |
+| a test can see another test's writes | yes | no | no |
+
+**Definition of done:** no test can see another test's writes ✅; the app's caches stay coherent with its database ✅; no production surface added ✅; the P2 runtime is not regressed ✅.
 
 ### P3 — Containerize Hangfire away from static state
 **Value: high · Effort: medium · Risk: low. Can run in parallel with P2.**
@@ -149,7 +161,7 @@ Bump `longRunningTestSeconds` in `tests/xunit.runner.json` to 10 (or remove). Th
 ### P7 — Fixture mutation hygiene
 **Value: low · Effort: trivial · Risk: low.**
 
-`HumansWebApplicationFactory.StripeServiceStub` and similar single-instance substitutes get reset in `IntegrationTestBase` (per-test `ClearSubstitute.For` calls) so any future move to method-level parallelism doesn't introduce flake.
+Subsumed by P2a. The substitutes were single-instance because the factory was; the factory is now per test, so `ResetSharedSubstitutes` was deleted rather than kept — there is nothing left to share.
 
 ## Execution order
 
@@ -174,7 +186,8 @@ Parent: nobodies-collective/Humans#761. Phase issues:
 | P4 — EF In-Memory migration | nobodies-collective/Humans#766 |
 | P5 — Failures get fixed | nobodies-collective/Humans#767 |
 | P6 — Diagnostic noise | nobodies-collective/Humans#768 |
-| P7 — Fixture mutation hygiene | nobodies-collective/Humans#769 |
+| P2a — Per-test isolation | nobodies-collective/Humans#983 |
+| P7 — Fixture mutation hygiene | nobodies-collective/Humans#769 (subsumed by P2a) |
 
 Each phase issue carries `section:infra`. P4 sub-issues (per section batch) carry the relevant section label.
 

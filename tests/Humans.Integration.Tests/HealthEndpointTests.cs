@@ -4,7 +4,7 @@ using Humans.Integration.Tests.Infrastructure;
 
 namespace Humans.Integration.Tests;
 
-public class HealthEndpointTests(HumansWebApplicationFactory factory) : IntegrationTestBase(factory)
+public class HealthEndpointTests(HumansTestDatabase database) : IntegrationTestBase(database)
 {
     [HumansFact(Timeout = 30000)]
     public async Task LivenessEndpoint_ReturnsOk()

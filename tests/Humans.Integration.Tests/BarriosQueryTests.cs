@@ -7,7 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Integration.Tests;
 
-public class BarriosQueryTests(HumansWebApplicationFactory factory) : IntegrationTestBase(factory)
+public class BarriosQueryTests(HumansTestDatabase database) : IntegrationTestBase(database)
 {
     [HumansFact(Timeout = 60000)]
     public async Task AuthenticatedBarriosPage_DoesNotSelectUsers_WhenUserInfoCacheIsWarm()

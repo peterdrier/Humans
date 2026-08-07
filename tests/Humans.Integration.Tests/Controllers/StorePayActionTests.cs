@@ -15,7 +15,7 @@ namespace Humans.Integration.Tests.Controllers;
 /// Integration tests for POST /Store/Order/{id}/Pay. Stripe's HTTP layer is replaced
 /// by the factory's <c>StripeServiceStub</c> — no real network calls.
 /// </summary>
-public class StorePayActionTests(HumansWebApplicationFactory factory) : IntegrationTestBase(factory)
+public class StorePayActionTests(HumansTestDatabase database) : IntegrationTestBase(database)
 {
     [HumansFact(Timeout = 30000)]
     public async Task Pay_with_valid_amount_redirects_to_Stripe_session_url()

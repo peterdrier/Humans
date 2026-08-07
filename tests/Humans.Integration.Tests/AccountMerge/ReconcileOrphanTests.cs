@@ -19,8 +19,8 @@ namespace Humans.Integration.Tests.AccountMerge;
 /// that pair (via the internal CloseRequestsForPairAsync), so the unified merge
 /// flow never leaves orphaned Pending rows behind.
 /// </summary>
-public class ReconcileOrphanTests(HumansWebApplicationFactory factory)
-    : IntegrationTestBase(factory)
+public class ReconcileOrphanTests(HumansTestDatabase database)
+    : IntegrationTestBase(database)
 {
     [HumansFact(Timeout = 60_000)]
     public async Task MergeAsync_ClosesPendingRequestForThePair()

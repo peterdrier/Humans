@@ -18,7 +18,7 @@ namespace Humans.Integration.Tests.Services;
 /// Singleton decorator, reads come back through the same decorator, and the
 /// assertion is that the cached projection reflects the write.
 /// </summary>
-public class CachingEventServiceTests(HumansWebApplicationFactory factory) : IntegrationTestBase(factory)
+public class CachingEventServiceTests(HumansTestDatabase database) : IntegrationTestBase(database)
 {
     [HumansFact]
     public async Task CreateCategoryAsync_through_decorator_is_visible_to_next_read()

@@ -28,7 +28,7 @@ namespace Humans.Integration.Tests.AccountMerge;
 /// <c>IUserService.AnonymizeForMergeAsync</c>), then queries the read path
 /// for the target and asserts the source-attributed row surfaces.
 /// </summary>
-public class ChainFollowReadTests(HumansWebApplicationFactory factory) : IntegrationTestBase(factory)
+public class ChainFollowReadTests(HumansTestDatabase database) : IntegrationTestBase(database)
 {
     // ==================================================================
     // AuditLog — chain-follow GetByUserAsync (Phase 4.1)

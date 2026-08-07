@@ -19,8 +19,8 @@ namespace Humans.Integration.Tests.Repositories.Shifts;
 /// <see cref="IntegrationTestBase.Factory"/>, and exercises the repository
 /// against the run's single PostgreSQL container.
 /// </summary>
-public class VolunteerTrackingRepositoryTests(HumansWebApplicationFactory factory)
-    : IntegrationTestBase(factory)
+public class VolunteerTrackingRepositoryTests(HumansTestDatabase database)
+    : IntegrationTestBase(database)
 {
     [HumansFact]
     public async Task GetBuildStatusesForEventAsync_returns_empty_when_no_row_exists()

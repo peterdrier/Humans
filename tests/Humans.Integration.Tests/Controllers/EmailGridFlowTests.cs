@@ -31,7 +31,7 @@ namespace Humans.Integration.Tests.Controllers;
 ///   behavior, not service behavior. Antiforgery is satisfied by harvesting
 ///   the token + cookie pair from the rendered self-Emails page.
 /// </summary>
-public class EmailGridFlowTests(HumansWebApplicationFactory factory) : IntegrationTestBase(factory)
+public class EmailGridFlowTests(HumansTestDatabase database) : IntegrationTestBase(database)
 {
     [HumansFact(Timeout = 30_000)]
     public async Task SelfAddEmail_AlreadyVerifiedOnAnotherUser_CreatesAccountMergeRequest_AndShowsMergePendingPill()

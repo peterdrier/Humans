@@ -35,8 +35,8 @@ namespace Humans.Integration.Tests.AccountMerge;
 /// per-rule tests when the fixture builder grows support.
 /// </para>
 /// </summary>
-public class AcceptAsyncFullFixtureTest(HumansWebApplicationFactory factory)
-    : IntegrationTestBase(factory)
+public class AcceptAsyncFullFixtureTest(HumansTestDatabase database)
+    : IntegrationTestBase(database)
 {
     [HumansFact(Timeout = 60_000)]
     public async Task AcceptAsync_FullFixture_FoldsAllSectionsAndTombstonesSource()

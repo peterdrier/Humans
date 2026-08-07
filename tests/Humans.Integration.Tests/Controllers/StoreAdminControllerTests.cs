@@ -8,7 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Integration.Tests.Controllers;
 
-public class StoreAdminControllerTests(HumansWebApplicationFactory factory) : IntegrationTestBase(factory)
+public class StoreAdminControllerTests(HumansTestDatabase database) : IntegrationTestBase(database)
 {
     [HumansFact(Timeout = 60000)]
     public async Task Volunteer_GET_admin_catalog_returns_403_or_redirect()

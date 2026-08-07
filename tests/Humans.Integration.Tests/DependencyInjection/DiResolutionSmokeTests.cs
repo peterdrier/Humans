@@ -6,7 +6,7 @@ using Xunit;
 
 namespace Humans.Integration.Tests.DependencyInjection;
 
-public class DiResolutionSmokeTests(HumansWebApplicationFactory factory) : IntegrationTestBase(factory)
+public class DiResolutionSmokeTests(HumansTestDatabase database) : IntegrationTestBase(database)
 {
     private static readonly HashSet<Type> RuntimeBootstrappedServiceTypes =
     [

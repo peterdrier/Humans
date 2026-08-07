@@ -15,7 +15,7 @@ namespace Humans.Integration.Tests.Controllers;
 /// seconds, which the default NodaTime TypeConverter rejects. These tests
 /// exercise the full MVC model-binding path via LocalDateTimeModelBinder.
 /// </summary>
-public class SurveyAdminControllerTests(HumansWebApplicationFactory factory) : IntegrationTestBase(factory)
+public class SurveyAdminControllerTests(HumansTestDatabase database) : IntegrationTestBase(database)
 {
     private static readonly DateTimeZone Madrid = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
 
