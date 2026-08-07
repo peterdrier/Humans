@@ -157,7 +157,10 @@ public sealed class DependencyCycleResolutionTests : ServiceTestHarness
 
     /// <summary>
     /// Generic cycle guard. Scans every concrete class implementing
-    /// <see cref="IApplicationService"/> across the Humans assemblies, maps each
+    /// <see cref="IApplicationService"/> or <see cref="IOrchestrator"/> across
+    /// the Humans assemblies — the role axis is exclusive, so both markers must
+    /// be swept or reclassifying a service silently drops it from the graph —
+    /// maps each
     /// interface ctor parameter to its <c>IFoo → Foo</c> implementation by naming
     /// convention, and DFS-detects cycles. Edges through lazy escape hatches
     /// (<see cref="IServiceProvider"/>, <see cref="Lazy{T}"/>, <see cref="Func{T}"/>,
@@ -184,7 +187,8 @@ public sealed class DependencyCycleResolutionTests : ServiceTestHarness
         var concreteServices = assemblies
             .SelectMany(SafeGetTypes)
             .Where(t => t.IsClass && !t.IsAbstract && !t.IsGenericTypeDefinition)
-            .Where(t => typeof(IApplicationService).IsAssignableFrom(t))
+            .Where(t => typeof(IApplicationService).IsAssignableFrom(t)
+                        || typeof(IOrchestrator).IsAssignableFrom(t))
             .ToHashSet();
 
         // Interface → concrete implementation via "IFoo → Foo" naming convention,
@@ -234,7 +238,7 @@ public sealed class DependencyCycleResolutionTests : ServiceTestHarness
         }
 
         cycles.Should().BeEmpty(
-            "constructor dependencies between IApplicationService implementations must form a DAG — " +
+            "constructor dependencies between IApplicationService/IOrchestrator implementations must form a DAG — " +
             "every edge in a cycle is a real ctor injection that MS DI will fail to resolve at first " +
             "request and (in some forwarder-factory configurations) hang instead of throw. Break cycles " +
             "by relocating the predicate/write to its rightful owner, or as a last resort by switching " +

@@ -121,8 +121,12 @@ public class ServiceBoundaryArchitectureTests
             .ToHashSet();
 
         foreach (var serviceType in ApplicationInterfaceTypes()
-                     .Where(t => typeof(IApplicationService).IsAssignableFrom(t))
-                     .Where(t => t != typeof(IApplicationService))
+                     // Both role markers — the axis is exclusive, so scanning only
+                     // IApplicationService would drop a service the moment it is
+                     // reclassified as an orchestrator.
+                     .Where(t => typeof(IApplicationService).IsAssignableFrom(t)
+                                 || typeof(IOrchestrator).IsAssignableFrom(t))
+                     .Where(t => t != typeof(IApplicationService) && t != typeof(IOrchestrator))
                      .OrderBy(t => t.FullName, StringComparer.Ordinal))
         {
             foreach (var (memberName, returnType) in EntityReturnReadMembers(serviceType))
