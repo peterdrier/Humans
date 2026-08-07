@@ -34,15 +34,31 @@ internal sealed class DatabaseMigrationHostedService(
         using var scope = scopeFactory.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
         var dbName = dbContext.Database.GetDbConnection().Database;
+        var sectionContextInstances = sectionContexts
+            .Select(section => (
+                section, Context: (DbContext)scope.ServiceProvider.GetRequiredService(section.ContextType)))
+            .ToList();
         var snapshot = CreateSnapshot();
-        Func<CancellationToken, Task> beforeSchemaChange =
-            snapshot is null ? static _ => Task.CompletedTask : snapshot.EnsureCapturedAsync;
+
+        Func<CancellationToken, Task> beforeSchemaChange;
+        if (snapshot is null)
+        {
+            beforeSchemaChange = static _ => Task.CompletedTask;
+        }
+        else
+        {
+            // Collected once, before any context has applied anything, so the marker records the
+            // frontier the whole deploy needs to clear - not just whichever context happens to
+            // trigger the dump (nobodies-collective/Humans#989).
+            var pendingFrontier = await CollectPendingFrontierAsync(
+                dbContext, sectionContextInstances.Select(instance => instance.Context), cancellationToken);
+            beforeSchemaChange = ct => snapshot.EnsureCapturedAsync(pendingFrontier, ct);
+        }
 
         await MigrateAsync(dbContext, dbName, beforeSchemaChange, cancellationToken);
 
-        foreach (var section in sectionContexts)
+        foreach (var (section, sectionContext) in sectionContextInstances)
         {
-            var sectionContext = (DbContext)scope.ServiceProvider.GetRequiredService(section.ContextType);
             await SectionMigrationRunner.MigrateAsync(
                 sectionContext, section.SentinelTable, _logger, beforeSchemaChange, cancellationToken);
         }
@@ -50,6 +66,26 @@ internal sealed class DatabaseMigrationHostedService(
         // Reached only if every context migrated, so this is what tells the next boot that the
         // snapshot above is history rather than the rollback point for an unfinished deploy.
         snapshot?.MarkMigrationsComplete();
+    }
+
+    /// <summary>
+    /// Every migration pending across <paramref name="dbContext"/> and every section context,
+    /// qualified by context type so identically-timestamped IDs from different contexts can never
+    /// collide. A dry read via <c>GetPendingMigrationsAsync</c> per context - nothing here applies
+    /// anything (nobodies-collective/Humans#989).
+    /// </summary>
+    private static async Task<List<string>> CollectPendingFrontierAsync(
+        HumansDbContext dbContext, IEnumerable<DbContext> sectionContexts, CancellationToken cancellationToken)
+    {
+        var frontier = new List<string>();
+        foreach (var context in sectionContexts.Prepend((DbContext)dbContext))
+        {
+            var contextName = context.GetType().Name;
+            var pending = await context.Database.GetPendingMigrationsAsync(cancellationToken);
+            frontier.AddRange(pending.Select(migration => $"{contextName}:{migration}"));
+        }
+
+        return frontier;
     }
 
     public Task StartAsync(CancellationToken cancellationToken) => Task.CompletedTask;

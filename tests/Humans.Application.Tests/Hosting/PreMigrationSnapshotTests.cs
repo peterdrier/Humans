@@ -113,6 +113,79 @@ public sealed class PreMigrationSnapshotTests : IDisposable
         PreMigrationSnapshot.FindUnfinishedSnapshot(_directory, "humans_pr_42").Should().NotBeNull();
     }
 
+    /// <summary>
+    /// The gap nobodies-collective/Humans#989 closes: a genuine crash-loop retry, where the
+    /// deploy that took the marker still has not finished, keeps carrying its snapshot forward.
+    /// </summary>
+    [HumansFact]
+    public void A_marker_with_migrations_still_pending_is_not_stale()
+    {
+        var unfinished = Snapshot("humans-20260805T120000Z.dump" + PreMigrationSnapshot.UnfinishedSuffix);
+        PreMigrationSnapshot.WriteFrontier(unfinished, ["HumansDbContext:20260805100000_AddFoo"]);
+
+        PreMigrationSnapshot.FrontierStillPending(
+            unfinished, ["HumansDbContext:20260805100000_AddFoo"]).Should().BeTrue();
+    }
+
+    /// <summary>
+    /// A partial application (migration 3 of 5 fails) must still carry forward: the test is "any
+    /// recorded migration still pending", not "all".
+    /// </summary>
+    [HumansFact]
+    public void A_marker_with_only_some_of_its_migrations_still_pending_is_not_stale()
+    {
+        var unfinished = Snapshot("humans-20260805T120000Z.dump" + PreMigrationSnapshot.UnfinishedSuffix);
+        PreMigrationSnapshot.WriteFrontier(
+            unfinished,
+            ["HumansDbContext:20260805100000_AddFoo", "HumansDbContext:20260805100001_AddBar"]);
+
+        PreMigrationSnapshot.FrontierStillPending(
+            unfinished, ["HumansDbContext:20260805100001_AddBar"]).Should().BeTrue();
+    }
+
+    /// <summary>
+    /// The actual fix: when every migration recorded on the marker has since been applied, the
+    /// deploy that took it finished, so it is stale rather than a rollback point worth reusing.
+    /// </summary>
+    [HumansFact]
+    public void A_marker_whose_migrations_have_all_been_applied_is_stale()
+    {
+        var unfinished = Snapshot("humans-20260805T120000Z.dump" + PreMigrationSnapshot.UnfinishedSuffix);
+        PreMigrationSnapshot.WriteFrontier(unfinished, ["HumansDbContext:20260805100000_AddFoo"]);
+
+        PreMigrationSnapshot.FrontierStillPending(
+            unfinished, ["HumansDbContext:20260805200000_AddLaterMigration"]).Should().BeFalse();
+    }
+
+    /// <summary>
+    /// A marker taken before nobodies-collective/Humans#989 shipped has no frontier sidecar.
+    /// Unable to tell whether it is stale, it fails safe as the old unconditional carry-forward
+    /// rather than risk losing a real rollback point.
+    /// </summary>
+    [HumansFact]
+    public void A_marker_with_no_recorded_frontier_is_not_stale()
+    {
+        var unfinished = Snapshot("humans-20260805T120000Z.dump" + PreMigrationSnapshot.UnfinishedSuffix);
+
+        PreMigrationSnapshot.FrontierStillPending(unfinished, []).Should().BeTrue();
+    }
+
+    /// <summary>
+    /// Promoting a marker drops its now-unneeded frontier sidecar along with the
+    /// <see cref="PreMigrationSnapshot.UnfinishedSuffix"/> rename, so it does not linger as an
+    /// orphan file next to the completed snapshot.
+    /// </summary>
+    [HumansFact]
+    public void Promoting_a_marker_drops_its_frontier_sidecar()
+    {
+        var unfinished = Snapshot("humans-20260805T120000Z.dump" + PreMigrationSnapshot.UnfinishedSuffix);
+        PreMigrationSnapshot.WriteFrontier(unfinished, ["HumansDbContext:20260805100000_AddFoo"]);
+
+        PreMigrationSnapshot.PromoteUnfinishedSnapshots(_directory, Database);
+
+        File.Exists(unfinished + ".migrations").Should().BeFalse();
+    }
+
     private string Snapshot(string fileName)
     {
         var path = Path.Combine(_directory, fileName);
