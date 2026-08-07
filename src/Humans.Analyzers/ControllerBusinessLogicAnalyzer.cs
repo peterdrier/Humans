@@ -73,8 +73,10 @@ public sealed class ControllerBusinessLogicAnalyzer : DiagnosticAnalyzer
         description:
             "Controllers are the display layer: parse, delegate, format. A method this large or this " +
             "branchy is making decisions that belong in an application service. Thresholds are " +
-            "hardcoded and frozen at 40/15; pre-existing offenders carry " +
-            "[Grandfathered(\"HUM0031\", …)] which downgrades to Warning until they are refactored.");
+            "hardcoded and frozen at 40/15; a grandfathered method carries " +
+            "[Grandfathered(\"HUM0031\", …)] which downgrades to Warning. Do not refactor grandfathered " +
+            "methods and do not lower the thresholds until the per-section assembly split " +
+            "(nobodies-collective/Humans#866) lands.");
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];
 
