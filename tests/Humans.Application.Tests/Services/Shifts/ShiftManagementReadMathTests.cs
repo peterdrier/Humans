@@ -277,16 +277,31 @@ public sealed class ShiftManagementReadMathTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task GetUrgentShifts_TreatsASingleBoundAsAnOpenEndedRange()
+    public async Task GetUrgentShifts_TreatsAStartOnlyBoundAsAnOpenEndedRange()
     {
         var (es, rota) = SeedScenario();
         SeedShift(rota, dayOffset: 6, min: 1, max: 3);
-        var late = SeedShift(rota, dayOffset: 8, min: 1, max: 3);
+        var onBound = SeedShift(rota, dayOffset: 8, min: 1, max: 3);
+        var afterBound = SeedShift(rota, dayOffset: 9, min: 1, max: 3);
         await Db.SaveChangesAsync(Ct);
 
         var urgent = await _service.GetUrgentShiftsAsync(es.Id, startDate: GateOpening.PlusDays(8));
 
-        urgent.Select(u => u.Shift.Id).Should().Equal(late.Id);
+        urgent.Select(u => u.Shift.Id).Should().BeEquivalentTo([onBound.Id, afterBound.Id]);
+    }
+
+    [HumansFact]
+    public async Task GetUrgentShifts_TreatsAnEndOnlyBoundAsAnOpenEndedRange()
+    {
+        var (es, rota) = SeedScenario();
+        var beforeBound = SeedShift(rota, dayOffset: 6, min: 1, max: 3);
+        var onBound = SeedShift(rota, dayOffset: 8, min: 1, max: 3);
+        SeedShift(rota, dayOffset: 9, min: 1, max: 3);
+        await Db.SaveChangesAsync(Ct);
+
+        var urgent = await _service.GetUrgentShiftsAsync(es.Id, endDate: GateOpening.PlusDays(8));
+
+        urgent.Select(u => u.Shift.Id).Should().BeEquivalentTo([beforeBound.Id, onBound.Id]);
     }
 
     // ============================================================

@@ -791,10 +791,11 @@ public sealed class ShiftManagementService(
         var (minDayOffset, maxDayOffset) = GetDayOffsetBounds(period, subPeriod, es);
 
         // Date range overrides period bounds; defensively swap if start > end.
+        // A single bound stays open-ended — do not mirror it onto the missing side.
         if (startDate.HasValue || endDate.HasValue)
         {
-            var s = startDate ?? endDate;
-            var e = endDate ?? startDate;
+            var s = startDate;
+            var e = endDate;
             if (s.HasValue && e.HasValue && s.Value > e.Value)
             {
                 (s, e) = (e, s);
