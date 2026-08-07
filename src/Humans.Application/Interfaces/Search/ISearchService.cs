@@ -21,12 +21,15 @@ namespace Humans.Application.Interfaces.Search;
 ///
 /// <para>
 /// <b>Search is not an authorization boundary.</b> A hit says a URL exists;
-/// it does not say the caller may open it. Visibility is enforced at the
-/// destination page, which re-runs its own access checks — so search may
-/// legitimately return a row that then 404s for that viewer. One
-/// destination does not yet hold up its end: <c>/Camps/{slug}</c> has no
-/// season-status gate, so a non-public season still renders
-/// (nobodies-collective/Humans#993).
+/// it does not say the caller may open it. Enforcement lives at the
+/// destination, in whatever shape that destination has: a detail page
+/// refuses outright — <c>/Teams/{slug}</c> 404s a hidden team — while a
+/// listing renders and omits the row, since a rota hit links to
+/// <c>/Shifts?departmentId={teamId}</c>, whose default browse query drops
+/// rotas hidden from volunteers. Either way the viewer does not get the
+/// thing. One destination does not yet hold up its end:
+/// <c>/Camps/{slug}</c> has no season-status gate, so a non-public season
+/// still renders (nobodies-collective/Humans#993).
 /// </para>
 ///
 /// <para>
@@ -37,7 +40,10 @@ namespace Humans.Application.Interfaces.Search;
 /// different — the Team, Camp and Rota buckets resolve it straight to the
 /// entity with no visibility filter. That is a routing convenience for
 /// someone who already holds the id, not an authorization statement. Humans
-/// are unconditionally GUID-resolvable: there are no hidden users.
+/// are the exception: the id path skips only the field mask, not the
+/// eligibility gate, so a user with no profile or a rejected one resolves
+/// to nothing by id exactly as by name
+/// (<c>CachingUserService.SearchUsersAsync</c>).
 /// </para>
 /// </summary>
 public interface ISearchService : IApplicationService

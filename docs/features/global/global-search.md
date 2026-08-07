@@ -79,12 +79,12 @@ The feature is deliberately scoped to matching **confined to each entity's own p
 
 **Acceptance Criteria:**
 - The Teams, Camps and Rotas buckets treat a parseable GUID as an id lookup and skip the visibility filters in US-GS.4 — the hit comes back for a hidden team, a non-public camp season, or a rota hidden from volunteers.
-- Humans are unconditionally GUID-resolvable: there are no hidden users.
-- The hit is scored as an exact match and its URL is the entity's normal detail page. Opening that page re-runs the page's own access checks, so a viewer without a stake in it gets an error, not the page — except for `/Camps/{slug}`, which does not yet gate on season status (see Authorization Model).
+- Humans are the exception: the id path skips only the `PersonSearchFields` mask, not the eligibility gate. `CachingUserService.SearchUsersAsync` requires `Profile is not null && Profile.RejectedAt is null` on the GUID branch exactly as it does per-row on the text branch, so a profile-less or rejected user resolves to nothing either way.
+- The hit is scored as an exact match and its URL is the entity's normal page. Opening it re-runs that page's own access checks — a detail page refuses (`/Teams/{slug}` 404s a hidden team), and a rota's `/Shifts?departmentId={teamId}` listing opens but omits the hidden rota. `/Camps/{slug}` is the one that does not yet hold up its end (see Authorization Model).
 
 ## Authorization Model
 
-`/Search` is gated by `[Authorize]` — anonymous viewers can't reach it. Beyond that, **search is not an authorization boundary**: a hit says a URL exists, not that the caller may open it. Visibility is enforced at the destination page (ruling on nobodies-collective/Humans#985, 2026-08-07). Text queries are still filtered to the public surface per US-GS.4; the GUID path in US-GS.5 is deliberately unfiltered, because you can only use it if you already hold the id.
+`/Search` is gated by `[Authorize]` — anonymous viewers can't reach it. Beyond that, **search is not an authorization boundary**: a hit says a URL exists, not that the caller may open it. Visibility is enforced at the destination, in whatever shape that destination has — a detail page refuses outright, a listing page renders and omits the row (ruling on nobodies-collective/Humans#985, 2026-08-07). Text queries are still filtered to the public surface per US-GS.4; the GUID path in US-GS.5 is deliberately unfiltered, because you can only use it if you already hold the id.
 
 That destination-page guarantee has one known hole: `CampController.Details` (and `SeasonDetails`) has no season-status gate, so a camp whose public-year season is `Pending`, `Rejected` or `Withdrawn` renders its detail page to anyone, signed-out included. Tracked as nobodies-collective/Humans#993; `CampControllerTests.Details_NonPublicSeason_AnonymousViewer_IsRefused` is skipped until that lands.
 

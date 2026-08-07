@@ -272,8 +272,10 @@ public sealed class SearchServiceTests
     [HumansFact]
     public async Task SearchAsync_GuidQuery_AlsoAsksForPublicFieldsOnly()
     {
-        // There are no hidden users, so humans stay GUID-resolvable — but the id path must
-        // not widen the field mask on the way.
+        // The id path must not widen the field mask on the way. It skips only the mask:
+        // CachingUserService.SearchUsersAsync still requires a non-rejected profile on its
+        // GUID branch, so eligibility is unchanged — that gate is covered where it lives,
+        // not here, since this harness stubs IUserServiceRead.
         await Build().SearchAsync(Guid.NewGuid().ToString(), ct: TestContext.Current.CancellationToken);
 
         await _users.Received(1).SearchUsersAsync(
