@@ -22,9 +22,11 @@ namespace Humans.Analyzers;
 /// the decision logic into the section's application service — controllers
 /// parse the request, call services, and format/sort/filter the response.</item>
 /// </list>
-/// The thresholds are deliberately generous: they're calibrated to flag only
-/// the worst offenders (~15 methods at introduction) and are ratcheted
-/// <b>down</b> over time as offenders are fixed. Replaces the retired
+/// The thresholds are ratcheted <b>down</b> as offenders are fixed. They were
+/// calibrated to the ~15 worst offenders at introduction; those were all
+/// refactored (nobodies-collective/Humans#1156), leaving no grandfathers, so
+/// the statement dial was tightened to the current high-water mark
+/// (nobodies-collective/Humans#857). Replaces the retired
 /// <c>NoBusinessLogicInControllersRule</c> ratchet test, whose regex
 /// heuristic was noisy and only saw public action signatures
 /// (nobodies-collective/Humans#793). Source rule:
@@ -43,10 +45,23 @@ public sealed class ControllerBusinessLogicAnalyzer : DiagnosticAnalyzer
 {
     public const string DiagnosticId = "HUM0031";
 
-    /// <summary>Flag when a method body has more statements than this.</summary>
-    public const int MaxStatements = 40;
+    /// <summary>
+    /// Flag when a method body has more statements than this. Ratcheted 40 → 34
+    /// once the grandfather list emptied — 34 is the current high-water mark
+    /// (<c>EventsController.Edit</c>, <c>ProfileController.Edit</c>), so no
+    /// controller method may grow past today's worst.
+    /// </summary>
+    public const int MaxStatements = 34;
 
-    /// <summary>Flag when a method's cyclomatic complexity exceeds this.</summary>
+    /// <summary>
+    /// Flag when a method's cyclomatic complexity exceeds this. Held at 15: the
+    /// metric counts switch-expression arms, ternaries and <c>??</c>, which are
+    /// what pure display mapping is made of, so the remaining top scorers are
+    /// formatting — the controller's own job per the hard rules — rather than
+    /// business logic. <c>GuideController.DisplayName</c> is the proof: a
+    /// one-expression stem→label lookup scoring 14. Lowering this dial would
+    /// push formatting into services, which the hard rules forbid.
+    /// </summary>
     public const int MaxCyclomaticComplexity = 15;
 
     private const string ControllerBaseFullName = "Microsoft.AspNetCore.Mvc.ControllerBase";
