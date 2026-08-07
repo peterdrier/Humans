@@ -3094,6 +3094,9 @@
     <value>Inicia sesión para contactar con este camp</value>
   </data>
   <data name="Camp_ContactLoginDetail" xml:space="preserve">
+    <value>Tu email se mantiene privado.</value>
+  </data>
+  <data name="Camp_ContactLoginDetailOpenSeason" xml:space="preserve">
     <value>Al iniciar sesión también verás los eventos del camp y podrás indicar que formas parte de él. Tu email se mantiene privado.</value>
   </data>
   <data name="Camp_Contact_Title" xml:space="preserve">

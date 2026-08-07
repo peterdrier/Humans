@@ -288,7 +288,16 @@
                        class="btn btn-outline-primary w-100">
                         <i class="fa-solid fa-envelope me-1"></i> @Localizer["Camp_ContactLoginHint"]
                     </a>
-                    <p class="small text-muted text-center mt-2 mb-0">@Localizer["Camp_ContactLoginDetail"]</p>
+                    @* Only name the events and membership cards when the authenticated branch would
+                       actually render them — no current season hides the events card, NoOpenSeason
+                       hides the membership card, and either way the claim would be false. *@
+                    var loginShowsMore = Model.CurrentSeason != null
+                        && Model.Membership.Status != CampMemberStatusSummaryView.NoOpenSeason;
+                    <p class="small text-muted text-center mt-2 mb-0">
+                        @(loginShowsMore
+                            ? Localizer["Camp_ContactLoginDetailOpenSeason"]
+                            : Localizer["Camp_ContactLoginDetail"])
+                    </p>
                 }
             </div>
         </div>

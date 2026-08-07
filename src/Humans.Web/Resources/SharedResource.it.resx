@@ -3070,6 +3070,9 @@
     <value>Accedi per contattare questo camp</value>
   </data>
   <data name="Camp_ContactLoginDetail" xml:space="preserve">
+    <value>La tua email resta privata.</value>
+  </data>
+  <data name="Camp_ContactLoginDetailOpenSeason" xml:space="preserve">
     <value>Accedendo vedrai anche gli eventi del camp e potrai indicare che ne fai parte. La tua email resta privata.</value>
   </data>
   <data name="Camp_Contact_Title" xml:space="preserve">
