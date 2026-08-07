@@ -917,9 +917,6 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
     [HumansFact]
     public async Task SeedSystemRoles_creates_both_definitions_when_empty()
     {
-        _campAccess.GetCampMemberStatusAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(_ => Task.FromResult<CampMemberLookup?>(null));
-
         var definitionsCreated = await _service.SeedSystemRolesAsync(_actorUserId, Xunit.TestContext.Current.CancellationToken);
 
         definitionsCreated.Should().Be(2);
