@@ -473,6 +473,19 @@ public sealed class ShiftDashboardMetricsTests : ServiceTestHarness
     }
 
     [HumansFact]
+    public async Task GetDashboardOverview_DepartmentWithoutOwnShifts_GetsNoDirectSubgroupRow()
+    {
+        var es = await SeedEventAsync();
+        var department = await SeedTeamAsync("Gate");
+        var subTeam = await SeedTeamAsync("Gate Night", parentId: department.Id);
+        await SeedShiftAsync(await SeedRotaAsync(subTeam, es, RotaPeriod.Event), 1, 1, 3);
+
+        var row = (await _service.GetDashboardOverviewAsync(es.Id)).Departments.Should().ContainSingle().Subject;
+
+        row.Subgroups.Select(s => s.Name).Should().Equal("Gate Night");
+    }
+
+    [HumansFact]
     public async Task GetDashboardOverview_DepartmentRowBreaksTotalsDownByPeriod()
     {
         var es = await SeedEventAsync();

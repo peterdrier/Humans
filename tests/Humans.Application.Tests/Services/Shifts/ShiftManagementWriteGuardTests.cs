@@ -6,6 +6,7 @@ using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Shifts;
 using Humans.Application.Tests.Infrastructure;
+using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Repositories.Shifts;
@@ -26,6 +27,7 @@ public sealed class ShiftManagementWriteGuardTests : ServiceTestHarness
 
     private readonly ITeamServiceRead _teamService;
     private readonly IShiftViewInvalidator _viewInvalidator;
+    private readonly IRoleAssignmentService _roleAssignments;
     private readonly ShiftManagementService _service;
 
     public ShiftManagementWriteGuardTests()
@@ -33,6 +35,7 @@ public sealed class ShiftManagementWriteGuardTests : ServiceTestHarness
     {
         _teamService = Substitute.For<ITeamServiceRead>();
         _viewInvalidator = Substitute.For<IShiftViewInvalidator>();
+        _roleAssignments = Substitute.For<IRoleAssignmentService>();
         var userService = Substitute.For<IUserService>();
         userService.StubGetUserInfosFromContext(Db);
 
@@ -51,7 +54,7 @@ public sealed class ShiftManagementWriteGuardTests : ServiceTestHarness
             .With(_teamService)
             .With(userService)
             .With<IUserServiceRead>(userService)
-            .With(Substitute.For<IRoleAssignmentService>())
+            .With(_roleAssignments)
             .Build();
 
         _service = new ShiftManagementService(
@@ -62,6 +65,46 @@ public sealed class ShiftManagementWriteGuardTests : ServiceTestHarness
             Cache,
             _viewInvalidator,
             Clock);
+    }
+
+    // ============================================================
+    // CanApproveSignupsAsync — system-wide roles vs department scope
+    // ============================================================
+
+    [HumansTheory]
+    [InlineData(RoleNames.Admin)]
+    [InlineData(RoleNames.NoInfoAdmin)]
+    [InlineData(RoleNames.VolunteerCoordinator)]
+    public async Task CanApproveSignups_IsGrantedByAnyOneSystemWideRoleOnItsOwn(string roleName)
+    {
+        var userId = Guid.NewGuid();
+        _roleAssignments.HasActiveRoleAsync(userId, roleName).Returns(true);
+
+        (await _service.CanApproveSignupsAsync(userId, Guid.NewGuid())).Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task CanApproveSignups_IsRefused_ForANonCoordinatorWithoutASystemWideRole()
+    {
+        var userId = Guid.NewGuid();
+        _teamService.GetUserCoordinatedTeamIdsAsync(userId, Arg.Any<CancellationToken>())
+            .Returns([]);
+
+        (await _service.CanApproveSignupsAsync(userId, Guid.NewGuid())).Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task CanApproveSignups_FallsBackToDepartmentCoordinatorScope()
+    {
+        var userId = Guid.NewGuid();
+        var department = SeedDepartment("Gate");
+        var other = SeedDepartment("Sanctuary");
+        await Db.SaveChangesAsync(Ct);
+        _teamService.GetUserCoordinatedTeamIdsAsync(userId, Arg.Any<CancellationToken>())
+            .Returns([department.Id]);
+
+        (await _service.CanApproveSignupsAsync(userId, department.Id)).Should().BeTrue();
+        (await _service.CanApproveSignupsAsync(userId, other.Id)).Should().BeFalse();
     }
 
     // ============================================================
