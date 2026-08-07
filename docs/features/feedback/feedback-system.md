@@ -159,7 +159,7 @@ The feedback API enables a Claude Code workflow for processing feedback during d
 
 Since #977:
 
-- **Admin:** "Feedback queue" link in the admin nav with badge showing actionable item count (via `NavBadges` ViewComponent, `queue = "feedback"`), plus the `/Admin` dashboard tile — both `AdminOnly`
+- **Admin:** "Feedback queue" item in the admin sidebar with a pill showing the actionable count, supplied by `AdminNavTree` via `PillCounts.FeedbackQueue`, plus the `/Admin` dashboard tile — both `AdminOnly`. `NavBadgesViewComponent` does **not** serve this: it has no `feedback` queue and returns zero for that value
 - **All authenticated users:** nothing. The "My Feedback" profile-dropdown link was removed
 - **Floating button:** removed from the Help widget; the widget's remaining report action is "Create issue"
 
@@ -167,5 +167,5 @@ Since #977:
 
 - Email outbox (`EmailOutboxMessage`) — used for admin reply notification emails
 - Audit log (`AuditLogEntry`) — tracks status changes
-- `NavBadges` ViewComponent — extended with `feedback` queue for actionable item count
+- `AdminNavTree` / `PillCounts.FeedbackQueue` — renders the actionable count on the admin sidebar item. The count itself is still cached inline in `FeedbackService.GetActionableCountAsync` (`CacheKeys.FeedbackBadgeCount`, 2-min TTL) and invalidated through `INavBadgeCacheInvalidator`
 - Role management — FeedbackAdmin role assignable via `/Admin/Roles`

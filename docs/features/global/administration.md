@@ -348,7 +348,7 @@ All roles are defined in `RoleNames` constants and use temporal `RoleAssignment`
 | **CampAdmin** | Manage camps, approve/reject season registrations, configure camp settings system-wide. |
 | **TicketAdmin** | Manage ticket vendor integration, trigger syncs, generate discount codes, export ticket data. |
 | **NoInfoAdmin** | Approve/voluntell shift signups (cannot create/edit shifts). Access to volunteer event profile medical data. |
-| **FeedbackAdmin** | View all feedback reports, respond to reporters, manage feedback status, link GitHub issues. |
+| **FeedbackAdmin** | None since nobodies-collective/Humans#977 — Feedback is retired and every screen is `AdminOnly`. The role stays assignable (Staff page, Guide, `AnyAdminRole`) but grants no feedback access. |
 | **FinanceAdmin** | Manage budgets, budget years, groups, categories, and line items. Full Finance section access. |
 | **ConsentCoordinator** | Safety checks on new humans during onboarding. Can clear or flag consent checks. |
 | **VolunteerCoordinator** | Read-only access to onboarding review queue. |

@@ -103,7 +103,7 @@ export const loginAsBarrioLead = (page: Page) => loginAs(page, 'barrio-1-lead');
 /**
  * Extract an antiforgery token from the current page.
  * Requires the page to already be on an authenticated page (the layout includes
- * _LanguageChooser and FeedbackWidget which both render @Html.AntiForgeryToken()).
+ * _LanguageChooser and the Help widget, which both render @Html.AntiForgeryToken()).
  */
 export async function getAntiForgeryToken(page: Page): Promise<string> {
   const token = await page

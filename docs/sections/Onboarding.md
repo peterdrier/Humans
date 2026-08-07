@@ -63,7 +63,7 @@ Board voting moved to Governance: `/Governance/BoardVoting`. Onboarding only con
 | Actor | Capabilities |
 |-------|--------------|
 | Unauthenticated visitor | Sign up via Google OAuth (or magic link) |
-| Authenticated human (pre-approval) | Complete profile, sign legal documents, submit a tier application (optional), submit feedback |
+| Authenticated human (pre-approval) | Complete profile, sign legal documents, submit a tier application (optional) |
 | ConsentCoordinator | Clear, flag, or reject signups in the onboarding review queue (`PolicyNames.ConsentCoordinatorBoardOrAdmin`) |
 | VolunteerCoordinator | Read-only access to the onboarding review queue (`PolicyNames.ReviewQueueAccess`) — cannot clear, flag, or reject |
 | HumanAdmin, Board, Admin | All ConsentCoordinator capabilities. Board voting on Colaborador/Asociado tier applications is Board+Admin only (`PolicyNames.BoardOrAdmin` / `PolicyNames.BoardOnly`). |

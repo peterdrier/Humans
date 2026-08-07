@@ -303,12 +303,11 @@ The `Source` column reflects the constant referenced in the attribute as it appe
 
 | Controller | Scope | Roles | Source |
 |---|---|---|---|
-| `FeedbackController` | Class | `[Authorize]` (authenticated) | — |
-| `FeedbackController.UpdateStatus` | Action | `FeedbackAdmin, Admin` | `PolicyNames.FeedbackAdminOrAdmin` |
-| `FeedbackController.UpdateAssignment` | Action | `FeedbackAdmin, Admin` | `PolicyNames.FeedbackAdminOrAdmin` |
-| `FeedbackController.SetGitHubIssue` | Action | `FeedbackAdmin, Admin` | `PolicyNames.FeedbackAdminOrAdmin` |
-| `FeedbackController` runtime guards | In-method | `RoleChecks.IsFeedbackAdmin(User)` to drive admin-vs-user view | RoleChecks helper |
+| `FeedbackController` | Class | `Admin` | `PolicyNames.AdminOnly` — every action inherits it; no per-action attributes (#977) |
+| `FeedbackController` runtime guards | In-method | none — the admin-vs-reporter branch was deleted with the reporter view | — |
 | `FeedbackApiController` | Class | `[ServiceFilter(typeof(ApiKeyAuthFilter))]` (API-key auth) | `ApiKeyAuthFilter` |
+
+Feedback is retired (nobodies-collective/Humans#977): closed to new reports, no reporter-facing view, and `FeedbackAdmin` alone reaches none of it. `PolicyNames.FeedbackAdminOrAdmin`, `RoleGroups.FeedbackAdminOrAdmin`, and `RoleChecks.IsFeedbackAdmin` were deleted.
 
 ### Issues Section
 
@@ -547,7 +546,6 @@ Post Phase-1 retirement, controllers and views express the same authorization ru
 | Gate admit (gate write actions) | `[Authorize(Policy = PolicyNames.GateAdmit)]` | (no current view spelling) |
 | CampAdmin or Admin | `[Authorize(Policy = PolicyNames.CampAdminOrAdmin)]` | `authorize-policy="CampAdminOrAdmin"` |
 | HumanAdmin/Board/Admin | `[Authorize(Policy = PolicyNames.HumanAdminBoardOrAdmin)]` | `authorize-policy="HumanAdminBoardOrAdmin"` |
-| FeedbackAdmin or Admin | `[Authorize(Policy = PolicyNames.FeedbackAdminOrAdmin)]` | `authorize-policy="FeedbackAdminOrAdmin"` |
 | FinanceAdmin or Admin | `[Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]` | `authorize-policy="FinanceAdminOrAdmin"` |
 | CantinaAdmin or Admin | `[Authorize(Policy = PolicyNames.CantinaAdminOrAdmin)]` | `authorize-policy="CantinaAdminOrAdmin"` |
 | Store catalog admin | `[Authorize(Policy = PolicyNames.StoreCatalogAdmin)]` | `authorize-policy="StoreCatalogAdmin"` (Store landing-page admin button group) |
@@ -610,7 +608,6 @@ These actions rely on `if` checks + early return/forbid instead of `[Authorize(P
 | `StoreController` | Order CRUD/pay | `_authService.AuthorizeAsync(User, order, StoreOrderOperationRequirement.*)` (resource-based) |
 | `IssuesController` | All mutating actions | `_authorization.AuthorizeAsync(User, issue, IssuesOperationRequirement.Handle)` (resource-based) |
 | `CityPlanningController` / `CityPlanningApiController` | All actions except `Index`/`GetState` | `RoleChecks.IsCampAdmin(User)` and lead-of-camp checks; three API endpoints also call `_authorizationService.AuthorizeAsync` |
-| `FeedbackController` | `Index`, `Detail`, `PostMessage` | `RoleChecks.IsFeedbackAdmin(User)` to determine admin vs user view |
 | `GovernanceBoardVotingController` | `Detail` | `RoleChecks.IsAdmin(User)` drives the admin view-model flag (Finalize affordance) — the `Finalize` POST itself is attribute-gated `AdminOnly` |
 | `UsersAdminController.AddRole/EndRole` | After `[Authorize(Policy)]` attribute | `_authorizationService.AuthorizeAsync(User, roleName, RoleAssignmentOperationRequirement.Manage)` enforces the role-list filter |
 | `ProfileController` email-edit endpoints (18 actions) | After class-level `[Authorize]` | `_authorizationService.AuthorizeAsync(User, userId, UserEmailOperations.Edit)` (resource-based) |
@@ -644,7 +641,6 @@ These are the named ASP.NET policies registered in `AuthorizationPolicyExtension
 | `TicketAdminOrAdmin` | TicketAdmin, Admin | `PolicyNames.TicketAdminOrAdmin`, `RoleChecks.CanManageTickets` |
 | `ScannerAccess` | TicketAdmin, Admin, Board OR `SystemUserIds.GateTerminal` (by NameIdentifier claim) | `PolicyNames.ScannerAccess` (composite assertion — gate-terminal account admitted by id, not by role) |
 | `GateAdmit` | TicketAdmin, Admin, Board OR `SystemUserIds.GateTerminal` (by NameIdentifier claim) | `PolicyNames.GateAdmit` (composite assertion — gate write actions; same principals as `ScannerAccess` today, kept separate so the write path never rides the read-only Scanner gate and the two can diverge) |
-| `FeedbackAdminOrAdmin` | FeedbackAdmin, Admin | `PolicyNames.FeedbackAdminOrAdmin`, `RoleChecks.IsFeedbackAdmin` |
 | `FinanceAdminOrAdmin` | FinanceAdmin, Admin | `PolicyNames.FinanceAdminOrAdmin`, `RoleChecks.IsFinanceAdmin`, `RoleChecks.CanAccessFinance` |
 | `EventsAdminOrAdmin` | EventsAdmin, Admin | `PolicyNames.EventsAdminOrAdmin` |
 | `CantinaAdminOrAdmin` | CantinaAdmin, Admin | `PolicyNames.CantinaAdminOrAdmin` (Cantina coordinator surface) |
@@ -781,7 +777,6 @@ Composite (non-resource) handlers registered alongside the above:
 | `CanManageTickets` | `TicketAdminOrAdmin` |
 | `IsHumanAdminBoardOrAdmin` | `HumanAdminBoardOrAdmin` |
 | `IsHumanAdmin` | `HumanAdminOnly` (composite, when negated against Board/Admin) |
-| `IsFeedbackAdmin` | `FeedbackAdminOrAdmin` |
 | `IsFinanceAdmin` / `CanAccessFinance` | `FinanceAdminOrAdmin` |
 | `CanAdministerStore` | `StoreCatalogAdmin` |
 | `IsVolunteerManager` | `VolunteerManager` |

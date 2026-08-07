@@ -141,7 +141,7 @@ All roles are stored as temporal `RoleAssignment` records. Role claims are added
 | **TeamsAdmin** | System-wide team management; view sync status but not execute |
 | **CampAdmin** | Camp management and season approval |
 | **TicketAdmin** | Ticket vendor integration, discount codes, ticket data export |
-| **FeedbackAdmin** | View all feedback, respond to reporters, manage status |
+| **FeedbackAdmin** | None since #977 — Feedback is retired and Admin-only. Assignable and still shown on the Staff page, but grants no access |
 | **FinanceAdmin** | Budget management (years, groups, categories, line items) |
 | **NoInfoAdmin** | Approve/voluntell shift signups; access volunteer medical data |
 

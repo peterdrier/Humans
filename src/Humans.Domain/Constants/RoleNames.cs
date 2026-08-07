@@ -57,8 +57,12 @@ public static class RoleNames
     public const string EventsAdmin = "EventsAdmin";
 
     /// <summary>
-    /// Feedback Administrator — can view all feedback reports, respond to reporters,
-    /// manage feedback status, and link GitHub issues.
+    /// Feedback Administrator — historically granted feedback triage. Since
+    /// nobodies-collective/Humans#977 the Feedback section is retired and every screen is
+    /// gated by the <c>AdminOnly</c> policy, so this role grants
+    /// <b>no</b> feedback access. It stays assignable because the Staff page, the Guide
+    /// role resolver, the authorization pill-filter labels, and <c>AnyAdminRole</c> still
+    /// reference it.
     /// </summary>
     public const string FeedbackAdmin = "FeedbackAdmin";
 

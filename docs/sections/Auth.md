@@ -79,7 +79,7 @@ Defined in `src/Humans.Domain/Constants/RoleNames.cs`.
 | TeamsAdmin | `"TeamsAdmin"` | Manage all teams, approve membership, assign leads, configure Google Group prefixes system-wide |
 | CampAdmin | `"CampAdmin"` | Manage camps, approve/reject season registrations, configure camp settings system-wide |
 | TicketAdmin | `"TicketAdmin"` | Manage ticket vendor integration, trigger syncs, generate discount codes, export ticket data |
-| FeedbackAdmin | `"FeedbackAdmin"` | View all feedback reports, respond to reporters, manage feedback status, link GitHub issues |
+| FeedbackAdmin | `"FeedbackAdmin"` | No privileges since #977 — Feedback is retired and `AdminOnly`. Kept assignable; still admits the holder to the `/Admin` shell via `AnyAdminRole` |
 | FinanceAdmin | `"FinanceAdmin"` | Full access to Finance section (budgets, audit log) |
 | NoInfoAdmin | `"NoInfoAdmin"` | Approve/voluntell shift signups (cannot create/edit shifts); access to volunteer-event-profile medical data |
 | StoreAdmin | `"StoreAdmin"` | Store-domain superset: catalog, orders, payments, invoices, treasury sync; FinanceAdmin retains parallel access for accounting workflows |

@@ -48,8 +48,11 @@ public class StaffViewModel
             "Tastemakers of the program. They review event guide submissions, request edits, and shepherd the schedule from rough draft to ready-for-prime-time.",
             "fa-solid fa-book-open"),
 
+        // Retired role (#977): Feedback is closed to new reports and its screens are
+        // Admin-only, so this badge is honorary — the blurb must not advertise triage
+        // these holders can no longer perform. Report bugs and ideas via /Issues.
         new(RoleNames.FeedbackAdmin, "Feedback Whisperers",
-            "Listeners of the community voice. They triage bug reports, field feature requests, and make sure every piece of feedback finds its way to the right hands.",
+            "Listeners of the community voice. They fielded bug reports, feature requests, and questions back when Feedback was how you reached us — these days that lives in Issues.",
             "fa-solid fa-comments"),
 
         new(RoleNames.HumanAdmin, "Human Administrators",

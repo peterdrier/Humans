@@ -54,7 +54,7 @@ Admin pages are not visible to you.
 
 ## As a Coordinator
 
-The Coordinator role does not include global admin access; the domain-specific admin roles (Teams Admin, Camp Admin, Ticket Admin, Finance Admin, Feedback Admin, and so on) are separate and covered in their respective section guides.
+The Coordinator role does not include global admin access; the domain-specific admin roles (Teams Admin, Camp Admin, Ticket Admin, Finance Admin, and so on) are separate and covered in their respective section guides. Feedback Admin is the exception — the role is still assignable but grants nothing since Feedback was retired.
 
 ## As a Board member / Admin
 

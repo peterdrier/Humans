@@ -35,7 +35,6 @@ Sidebar groups — operational zone: Tickets, Members, Shifts, Barrios, Cantina,
 | TicketAdmin | Tickets (Tickets, Transfer requests, Attendee contacts, Onsite roster, Scanner, Gate terminal, Gate settings) |
 | FinanceAdmin | Money (Expense review, Finance, Store catalog, Store summary, Store payments) |
 | StoreAdmin | Money (Store catalog, Store summary, Store payments) |
-| FeedbackAdmin | Feedback (Feedback queue) |
 | ConsentCoordinator | Members (Review) |
 | VolunteerCoordinator | Tickets (Early entry), Members (Review), Shifts (Volunteer tracking, Workload, Post-event stats) |
 | TeamsAdmin | Google (Resource sync) |
@@ -45,6 +44,7 @@ Sidebar groups — operational zone: Tickets, Members, Shifts, Barrios, Cantina,
 ## Invariants
 
 - The `Admin` top-nav link and the `/Admin` dashboard are gated by `PolicyNames.AnyAdminRole` (12 roles: Admin, Board, HumanAdmin, TeamsAdmin, CampAdmin, TicketAdmin, FeedbackAdmin, FinanceAdmin, StoreAdmin, NoInfoAdmin, VolunteerCoordinator, ConsentCoordinator). Concrete admin tools are gated on their section controllers.
+- `FeedbackAdmin` is in `AnyAdminRole` but owns no sidebar item since nobodies-collective/Humans#977 made every Feedback screen `AdminOnly`. A holder of only that role therefore reaches the shell and sees an empty sidebar. Dropping it from `AnyAdminRole` is a privilege reduction left undecided by #977.
 - Sidebar items are filtered per-item by `IAuthorizationService.AuthorizeAsync`; an item the current user cannot access does not appear in the rendered HTML.
 - Sidebar groups whose entire visible-item list is empty do not render.
 - The admin shell adds no new authorization policies; it reuses existing `PolicyNames.*` constants defined in the Auth section.

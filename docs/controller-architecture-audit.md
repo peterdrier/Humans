@@ -1189,7 +1189,6 @@ ViewComponents don't have routes — they are invoked from views via `@await Com
 | ProfileCardViewComponent | Renders profile card with data fetching |
 | NavBadgesViewComponent | Renders notification badges in nav |
 | AccessMatrixViewComponent | Renders access permission matrix |
-| FeedbackWidgetViewComponent | Renders floating feedback button |
 | UserAvatarViewComponent | Renders user avatar with fallbacks |
 | TempDataAlertsViewComponent | Renders TempData success/error alerts |
 | ShiftSignupsViewComponent | Renders shift signup list |
