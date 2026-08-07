@@ -5,6 +5,8 @@ using NodaTime;
 using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Enums;
+using Humans.UI;
+using Humans.UI.Authorization;
 using Humans.Web.Authorization;
 using Humans.Web.Models;
 

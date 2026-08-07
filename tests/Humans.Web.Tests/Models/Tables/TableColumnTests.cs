@@ -2,8 +2,9 @@ using System.Globalization;
 using System.Text.Encodings.Web;
 using AwesomeAssertions;
 using Humans.Domain.Enums;
+using Humans.UI.Extensions;
+using Humans.UI.Models.Tables;
 using Humans.Web.Extensions;
-using Humans.Web.Models.Tables;
 using Microsoft.AspNetCore.Html;
 using NodaTime;
 

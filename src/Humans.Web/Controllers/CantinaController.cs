@@ -2,7 +2,7 @@ using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Cantina;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;
-using Humans.Web.Authorization;
+using Humans.UI.Authorization;
 using Humans.Web.Cantina;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

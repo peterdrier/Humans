@@ -1,7 +1,6 @@
 using System.Security.Claims;
 using Humans.Application.Interfaces.Gate;
 using Humans.Application.Interfaces.Users;
-using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Enums;
 using Humans.Web.Controllers;
 using Humans.Web.Infrastructure;

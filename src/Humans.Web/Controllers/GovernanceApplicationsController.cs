@@ -5,8 +5,9 @@ using Microsoft.Extensions.Localization;
 using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Enums;
-using Humans.Web.Authorization;
-using Humans.Web.Extensions;
+using Humans.UI;
+using Humans.UI.Authorization;
+using Humans.UI.Extensions;
 using Humans.Web.Models;
 
 namespace Humans.Web.Controllers;

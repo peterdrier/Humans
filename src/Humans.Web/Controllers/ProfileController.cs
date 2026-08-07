@@ -34,6 +34,9 @@ using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Models;
 using Humans.Application.Services.Profiles;
+using Humans.UI;
+using Humans.UI.Authorization;
+using Humans.UI.Extensions;
 
 // RoleAssignment nav props are [Obsolete]; service stitches them in memory. Nav-strip tracked in §15i.
 #pragma warning disable CS0618

@@ -4,7 +4,7 @@ using Humans.Application.Interfaces.Dashboard;
 using Humans.Application.Interfaces.Feedback;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;
-using Humans.Web.Authorization;
+using Humans.UI.Authorization;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

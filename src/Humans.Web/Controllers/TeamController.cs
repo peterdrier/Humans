@@ -8,13 +8,15 @@ using Humans.Application.Configuration;
 using Humans.Domain.Enums;
 using Humans.Web.Authorization;
 using Humans.Web.Authorization.Requirements;
-using Humans.Web.Extensions;
 using Humans.Web.Models;
 using NodaTime;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
+using Humans.UI;
+using Humans.UI.Authorization;
+using Humans.UI.Extensions;
 
 namespace Humans.Web.Controllers;
 

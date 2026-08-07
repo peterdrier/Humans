@@ -6,7 +6,7 @@ using Humans.Application.Interfaces.Mailer.Dtos;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Enums;
-using Humans.Web.Authorization;
+using Humans.UI.Authorization;
 using Humans.Web.Models.Mailer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

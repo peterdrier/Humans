@@ -1,4 +1,3 @@
-using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Gate;
 using Humans.Application.Interfaces.Users;

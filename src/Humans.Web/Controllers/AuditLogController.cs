@@ -5,7 +5,7 @@ using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.AuditLog;
 using Humans.Domain.Enums;
-using Humans.Web.Authorization;
+using Humans.UI.Authorization;
 using Humans.Web.Models;
 
 namespace Humans.Web.Controllers;

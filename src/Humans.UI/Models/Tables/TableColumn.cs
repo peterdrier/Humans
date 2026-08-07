@@ -1,10 +1,10 @@
 using System.Globalization;
 using System.Text.Encodings.Web;
-using Humans.Web.Extensions;
+using Humans.UI.Extensions;
 using Microsoft.AspNetCore.Html;
 using NodaTime;
 
-namespace Humans.Web.Models.Tables;
+namespace Humans.UI.Models.Tables;
 
 /// <summary>
 /// Fluent per-column configuration captured by <see cref="TableModelBuilder{TRow}.Column"/> /

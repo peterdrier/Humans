@@ -2,7 +2,7 @@ using Hangfire;
 using Humans.Application.Interfaces.Gate;
 using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Jobs;
-using Humans.Web.Authorization;
+using Humans.UI.Authorization;
 using Humans.Web.Infrastructure;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

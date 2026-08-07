@@ -1,3 +1,3 @@
-namespace Humans.Web;
+namespace Humans.UI;
 
 public class SharedResource { }

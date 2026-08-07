@@ -2,7 +2,6 @@ using AwesomeAssertions;
 using Humans.Application.Events;
 using Humans.Application.Interfaces.Events;
 using NodaTime;
-using Xunit;
 
 namespace Humans.Application.Tests.Events;
 

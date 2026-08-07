@@ -1,5 +1,5 @@
 using Humans.Application.Interfaces.Legal;
-using Humans.Web.Extensions;
+using Humans.UI.Extensions;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

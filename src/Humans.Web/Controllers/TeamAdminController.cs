@@ -15,6 +15,8 @@ using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Profiles;
+using Humans.UI;
+using Humans.UI.Authorization;
 using NodaTime.Text;
 
 namespace Humans.Web.Controllers;

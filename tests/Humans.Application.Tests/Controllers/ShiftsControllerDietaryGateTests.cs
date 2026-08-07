@@ -6,7 +6,7 @@ using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
-using Humans.Web;
+using Humans.UI;
 using Humans.Web.Controllers;
 using Humans.Web.Models.Shifts;
 using Microsoft.AspNetCore.Http;

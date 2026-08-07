@@ -2,13 +2,14 @@ using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Web.Authorization;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 
 using Humans.Application.Interfaces.Users;
+using Humans.UI.Authorization;
+using Humans.UI.Models;
 
 namespace Humans.Web.Controllers;
 

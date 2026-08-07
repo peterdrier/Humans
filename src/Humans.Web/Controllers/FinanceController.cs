@@ -4,13 +4,13 @@ using Humans.Application.Interfaces.Finance;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Domain.Enums;
-using Humans.Web.Authorization;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 
 using Humans.Application.Interfaces.Users;
+using Humans.UI.Authorization;
 
 namespace Humans.Web.Controllers;
 

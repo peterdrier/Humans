@@ -2,7 +2,7 @@ using System.Text;
 using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Razor.TagHelpers;
 
-namespace Humans.Web.TagHelpers;
+namespace Humans.UI.TagHelpers;
 
 /// <summary>
 /// Renders the standard page-header band: a single &lt;h1&gt; title (optionally with a

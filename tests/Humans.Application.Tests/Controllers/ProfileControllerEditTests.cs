@@ -18,7 +18,7 @@ using Humans.Application.Interfaces.Users;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Web;
+using Humans.UI;
 using Humans.Web.Controllers;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;

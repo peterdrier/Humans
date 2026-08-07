@@ -1,4 +1,6 @@
 @* Page-style search results partial — /Profile/Search (PublicAll) and /Users/Admin (AdminAll). Admin-only fields render only when present. *@
+@using Humans.UI.Extensions
+@using Humans.UI.ViewComponents
 @model IReadOnlyList<Humans.Web.Models.HumanSearchResultViewModel>
 
 @if (Model.Count == 0)

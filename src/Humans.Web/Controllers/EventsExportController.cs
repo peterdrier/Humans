@@ -3,7 +3,7 @@ using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Events;
 using Humans.Application.Interfaces.Users;
-using Humans.Web.Authorization;
+using Humans.UI.Authorization;
 using Humans.Web.Filters;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

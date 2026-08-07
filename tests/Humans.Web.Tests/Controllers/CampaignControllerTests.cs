@@ -1,5 +1,6 @@
 using System.Reflection;
 using AwesomeAssertions;
+using Humans.UI.Authorization;
 using Humans.Web.Authorization;
 using Humans.Web.Controllers;
 using Microsoft.AspNetCore.Authorization;

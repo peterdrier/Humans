@@ -2,7 +2,7 @@ using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Configuration;
-using Humans.Web.Authorization;
+using Humans.UI.Authorization;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

@@ -1,6 +1,5 @@
 using Hangfire;
 using Hangfire.Common;
-using Hangfire.States;
 using Humans.Application.Interfaces.Gate;
 using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Jobs;
@@ -9,7 +8,6 @@ using Humans.Web.Infrastructure;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Controllers;
-using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;

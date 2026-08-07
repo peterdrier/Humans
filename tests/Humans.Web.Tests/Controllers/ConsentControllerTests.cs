@@ -5,6 +5,7 @@ using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Humans.UI;
 using Humans.Web.Controllers;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;

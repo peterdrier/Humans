@@ -1,7 +1,6 @@
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Store;
 using Humans.Application.Services.Store.Dtos;
-using Humans.Web.Authorization;
 using Humans.Web.Models;
 using Humans.Web.Models.Store;
 using Microsoft.AspNetCore.Authorization;
@@ -10,6 +9,7 @@ using NodaTime;
 using NodaTime.Text;
 
 using Humans.Application.Interfaces.Users;
+using Humans.UI.Authorization;
 
 namespace Humans.Web.Controllers;
 

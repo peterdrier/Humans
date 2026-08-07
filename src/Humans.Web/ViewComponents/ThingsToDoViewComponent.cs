@@ -7,6 +7,7 @@ using Humans.Web.Models;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Users;
+using Humans.UI;
 
 namespace Humans.Web.ViewComponents;
 

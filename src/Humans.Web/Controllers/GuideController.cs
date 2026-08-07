@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Humans.Application.Constants;
 using Humans.Application.Interfaces;
 using Humans.Application.Services;
-using Humans.Web.Authorization;
+using Humans.UI.Authorization;
 using Humans.Web.Models;
 
 namespace Humans.Web.Controllers;

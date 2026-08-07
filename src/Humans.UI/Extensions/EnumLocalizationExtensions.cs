@@ -2,7 +2,7 @@ using System.Text;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.Extensions.Localization;
 
-namespace Humans.Web.Extensions;
+namespace Humans.UI.Extensions;
 
 /// <summary>
 /// Localized display of enum values via the SharedResource key convention

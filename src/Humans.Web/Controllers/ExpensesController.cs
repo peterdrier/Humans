@@ -6,7 +6,7 @@ using Humans.Application.Services.Expenses.Dtos;
 using Humans.Application.Services.Finance.Dtos;
 using Humans.Domain.Enums;
 using Humans.Domain.Helpers;
-using Humans.Web.Authorization;
+using Humans.UI.Authorization;
 using Humans.Web.Authorization.Requirements;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;

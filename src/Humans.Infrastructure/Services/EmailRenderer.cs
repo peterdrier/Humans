@@ -18,7 +18,7 @@ public class EmailRenderer(
     ILogger<EmailRenderer> logger) : IEmailRenderer
 {
     private readonly EmailSettings _settings = settings.Value;
-    private readonly IStringLocalizer _localizer = localizerFactory.Create("SharedResource", "Humans.Web");
+    private readonly IStringLocalizer _localizer = localizerFactory.Create("SharedResource", "Humans.UI");
 
     public EmailContent RenderApplicationSubmitted(Guid applicationId, string applicantName)
     {

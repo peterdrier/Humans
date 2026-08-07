@@ -1,7 +1,7 @@
 using System.Security.Claims;
 using Humans.Application;
 using Humans.Application.Interfaces.Users;
-using Humans.Web.Constants;
+using Humans.UI.Constants;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Web.Controllers;

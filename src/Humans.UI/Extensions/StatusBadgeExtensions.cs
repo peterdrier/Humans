@@ -1,7 +1,7 @@
 using Humans.Domain.Constants;
 using Humans.Domain.Enums;
 
-namespace Humans.Web.Extensions;
+namespace Humans.UI.Extensions;
 
 /// <summary>
 /// Extension methods for getting Bootstrap badge CSS classes for various status types.

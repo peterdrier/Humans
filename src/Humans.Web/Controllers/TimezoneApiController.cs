@@ -1,4 +1,4 @@
-using Humans.Web.Extensions;
+using Humans.UI.Extensions;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 

@@ -1,5 +1,6 @@
 using Humans.Application.Authorization;
 using Humans.Domain.Constants;
+using Humans.UI.Authorization;
 using Humans.Web.Authorization.Handlers;
 using Humans.Web.Authorization.Requirements;
 using Microsoft.AspNetCore.Authorization;

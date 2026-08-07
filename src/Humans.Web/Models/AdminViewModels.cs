@@ -1,6 +1,7 @@
 using Humans.Domain.Enums;
 using Humans.Application.Interfaces.Campaigns;
 using Humans.Application.Interfaces.Email;
+using Humans.UI.Authorization;
 
 namespace Humans.Web.Models;
 
@@ -240,7 +241,7 @@ public class ProfileSummaryViewModel
     /// <summary>
     /// The subject's camp for the active season, if they're an active member of one.
     /// Only rendered in the popover when the viewer holds an admin-shaped role
-    /// (<see cref="Humans.Web.Authorization.PolicyNames.AnyAdminRole"/>). Null when not in a camp this year.
+    /// (<see cref="PolicyNames.AnyAdminRole"/>). Null when not in a camp this year.
     /// </summary>
     public string? CampName { get; set; }
 

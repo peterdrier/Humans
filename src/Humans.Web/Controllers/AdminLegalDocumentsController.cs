@@ -2,12 +2,12 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 using Humans.Application.DTOs;
-using Humans.Web.Authorization;
 using Humans.Web.Models;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Legal;
 
 using Humans.Application.Interfaces.Users;
+using Humans.UI.Authorization;
 
 namespace Humans.Web.Controllers;
 

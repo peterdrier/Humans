@@ -1,4 +1,4 @@
-namespace Humans.Web.Extensions;
+namespace Humans.UI.Extensions;
 
 public static class CultureCatalog
 {

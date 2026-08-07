@@ -2,7 +2,6 @@ using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Events;
 using Humans.Domain.Enums;
-using Humans.Web.Authorization;
 using Humans.Web.Filters;
 using Humans.Web.Models.Events;
 using Microsoft.AspNetCore.Authorization;
@@ -11,6 +10,7 @@ using NodaTime;
 using static Humans.Web.Helpers.EventsLookupHelpers;
 
 using Humans.Application.Interfaces.Users;
+using Humans.UI.Authorization;
 
 namespace Humans.Web.Controllers;
 

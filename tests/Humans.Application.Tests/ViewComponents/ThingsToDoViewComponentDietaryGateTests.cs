@@ -5,7 +5,7 @@ using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Web;
+using Humans.UI;
 using Humans.Web.Models;
 using Humans.Web.ViewComponents;
 using Microsoft.AspNetCore.Mvc;

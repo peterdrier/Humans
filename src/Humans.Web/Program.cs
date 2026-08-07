@@ -33,6 +33,7 @@ using Humans.Web.Middleware;
 using Microsoft.Extensions.Localization;
 using Npgsql;
 using Humans.Infrastructure.Logging;
+using Humans.UI.Extensions;
 using Serilog;
 using Serilog.Events;
 using Humans.Web.Infrastructure;
@@ -470,7 +471,7 @@ var mvcBuilder = builder.Services.AddControllersWithViews(options =>
         // MVC defaults to (which nothing here provides, so annotations rendered raw
         // English regardless of culture). A key with no SharedResource match just
         // falls back to the attribute's own text, so untouched view models are unaffected.
-        options.DataAnnotationLocalizerProvider = (_, factory) => factory.Create(typeof(Humans.Web.SharedResource));
+        options.DataAnnotationLocalizerProvider = (_, factory) => factory.Create(typeof(Humans.UI.SharedResource));
     });
 
 // DevLoginController depends on DevPersonaSeeder (non-Production only); exclude in Prod so ValidateOnBuild passes and /dev/login/* 404s cleanly.
@@ -532,7 +533,7 @@ CurrentUserEnricher.StaticAccessor = app.Services.GetRequiredService<IHttpContex
 {
     using var scope = app.Services.CreateScope();
     var localizerFactory = scope.ServiceProvider.GetRequiredService<IStringLocalizerFactory>();
-    var localizer = localizerFactory.Create(typeof(Humans.Web.SharedResource));
+    var localizer = localizerFactory.Create(typeof(Humans.UI.SharedResource));
     var testKey = "Dashboard_Welcome";
     var result = localizer[testKey];
 
@@ -541,10 +542,10 @@ CurrentUserEnricher.StaticAccessor = app.Services.GetRequiredService<IHttpContex
         Log.Error("LOCALIZATION BROKEN: Resource key '{Key}' not found. SearchedLocation: {Location}",
             testKey, result.SearchedLocation);
         Log.Error("SharedResource type: {TypeName}, Assembly: {Assembly}",
-            typeof(Humans.Web.SharedResource).FullName, typeof(Humans.Web.SharedResource).Assembly.GetName().Name);
+            typeof(Humans.UI.SharedResource).FullName, typeof(Humans.UI.SharedResource).Assembly.GetName().Name);
 
         // List embedded resources for debugging
-        var assembly = typeof(Humans.Web.SharedResource).Assembly;
+        var assembly = typeof(Humans.UI.SharedResource).Assembly;
         var resourceNames = assembly.GetManifestResourceNames();
         Log.Error("Embedded resources in {Assembly}: {Resources}",
             assembly.GetName().Name, string.Join(", ", resourceNames));

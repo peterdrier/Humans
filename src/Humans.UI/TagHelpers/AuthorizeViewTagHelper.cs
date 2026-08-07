@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Razor.TagHelpers;
 
-namespace Humans.Web.TagHelpers;
+namespace Humans.UI.TagHelpers;
 
 /// <summary>
 /// Attribute-based TagHelper that conditionally renders an element based on

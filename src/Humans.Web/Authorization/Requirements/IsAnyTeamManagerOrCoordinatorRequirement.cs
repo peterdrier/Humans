@@ -1,3 +1,4 @@
+using Humans.UI.Authorization;
 using Microsoft.AspNetCore.Authorization;
 
 namespace Humans.Web.Authorization.Requirements;

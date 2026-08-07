@@ -13,6 +13,7 @@ using NodaTime;
 
 using Humans.Application.Interfaces.Users;
 using Humans.Application;
+using Humans.UI.Authorization;
 
 namespace Humans.Web.Controllers;
 

@@ -3,7 +3,7 @@ using AwesomeAssertions;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
-using Humans.Web.Authorization;
+using Humans.UI.Authorization;
 using Humans.Web.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;

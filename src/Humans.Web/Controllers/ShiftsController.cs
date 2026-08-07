@@ -8,6 +8,8 @@ using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Humans.UI;
+using Humans.UI.Authorization;
 using Humans.Web.Authorization;
 using Humans.Web.Models;
 using Humans.Web.Models.Shifts;

@@ -1,7 +1,5 @@
 using AwesomeAssertions;
 using Humans.Application.Configuration;
-using Humans.Application.DTOs;
-using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;

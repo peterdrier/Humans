@@ -1,5 +1,5 @@
 using Humans.Application.Interfaces.Users;
-using Humans.Web.Extensions;
+using Humans.UI.Extensions;
 
 namespace Humans.Web.Models;
 

@@ -6,7 +6,7 @@ using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
-using Humans.Web.Constants;
+using Humans.UI.Constants;
 using Humans.Web.Controllers;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;

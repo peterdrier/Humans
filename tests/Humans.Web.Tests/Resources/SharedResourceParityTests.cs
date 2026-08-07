@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.UI;
 using Humans.Web.Models;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging.Abstractions;

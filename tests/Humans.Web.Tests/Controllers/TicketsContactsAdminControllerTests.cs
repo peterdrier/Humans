@@ -4,7 +4,7 @@ using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Interfaces.Tickets.Dtos;
 using Humans.Domain.Entities;
-using Humans.Web.Constants;
+using Humans.UI.Constants;
 using Humans.Web.Controllers;
 using Humans.Web.Models.Tickets;
 using Microsoft.AspNetCore.Http;

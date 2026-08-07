@@ -3,8 +3,6 @@ using Microsoft.AspNetCore.Mvc;
 using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Domain.Enums;
-using Humans.Web.Authorization;
-using Humans.Web.Constants;
 using Humans.Web.Models;
 using Humans.Web.Models.Google;
 using Humans.Application.Interfaces.AuditLog;
@@ -12,6 +10,8 @@ using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
+using Humans.UI.Authorization;
+using Humans.UI.Constants;
 
 namespace Humans.Web.Controllers;
 

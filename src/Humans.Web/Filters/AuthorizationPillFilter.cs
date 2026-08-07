@@ -1,6 +1,6 @@
 using System.Reflection;
 using Humans.Domain.Constants;
-using Humans.Web.Authorization;
+using Humans.UI.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Controllers;

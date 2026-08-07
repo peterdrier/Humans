@@ -1,6 +1,6 @@
 using Humans.Application.Interfaces.EarlyEntry;
 using Humans.Application.Interfaces.Users;
-using Humans.Web.Authorization;
+using Humans.UI.Authorization;
 using Humans.Web.Models.EarlyEntry;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

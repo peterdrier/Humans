@@ -1,4 +1,4 @@
-namespace Humans.Web.Authorization;
+namespace Humans.UI.Authorization;
 
 /// <summary>
 /// Canonical authorization policy names. Each name corresponds to a registered ASP.NET Core

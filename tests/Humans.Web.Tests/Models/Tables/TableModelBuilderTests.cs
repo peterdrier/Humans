@@ -1,6 +1,7 @@
 using AwesomeAssertions;
+using Humans.UI.Models;
+using Humans.UI.Models.Tables;
 using Humans.Web.Models;
-using Humans.Web.Models.Tables;
 using Microsoft.AspNetCore.Html;
 
 namespace Humans.Web.Tests.Models.Tables;

@@ -1,7 +1,6 @@
 using Humans.Application.Interfaces.Expenses;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Application.Services.Expenses;
 using Humans.Application.Services.Expenses.Dtos;
 using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Repositories.Expenses;

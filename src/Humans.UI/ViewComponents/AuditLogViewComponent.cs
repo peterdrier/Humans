@@ -3,7 +3,7 @@ using Humans.Application.Services.AuditLog;
 using Humans.Domain.Enums;
 using Microsoft.AspNetCore.Mvc;
 
-namespace Humans.Web.ViewComponents;
+namespace Humans.UI.ViewComponents;
 
 public class AuditLogViewComponent(IAuditViewerService auditViewer, ILogger<AuditLogViewComponent> logger)
     : ViewComponent

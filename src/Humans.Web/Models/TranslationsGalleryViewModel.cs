@@ -1,5 +1,6 @@
 using System.Globalization;
-using Humans.Web.Extensions;
+using Humans.UI;
+using Humans.UI.Extensions;
 using Microsoft.Extensions.Localization;
 
 namespace Humans.Web.Models;

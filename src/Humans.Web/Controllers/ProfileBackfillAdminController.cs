@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Enums;
-using Humans.Web.Authorization;
+using Humans.UI.Authorization;
 using NodaTime;
 
 namespace Humans.Web.Controllers;

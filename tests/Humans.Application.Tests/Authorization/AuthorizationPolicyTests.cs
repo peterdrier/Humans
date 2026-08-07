@@ -11,6 +11,7 @@ using Humans.Application.Interfaces.Stores;
 using Humans.Application.Interfaces.Teams;
 using Humans.Domain.Constants;
 using Humans.Domain.Enums;
+using Humans.UI.Authorization;
 using Humans.Web.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.DependencyInjection;

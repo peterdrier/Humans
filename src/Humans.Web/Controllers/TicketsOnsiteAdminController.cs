@@ -1,7 +1,7 @@
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
-using Humans.Web.Authorization;
+using Humans.UI.Authorization;
 using Humans.Web.Models.Tickets;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

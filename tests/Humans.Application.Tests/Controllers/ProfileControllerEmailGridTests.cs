@@ -16,7 +16,7 @@ using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
-using Humans.Web;
+using Humans.UI;
 using Humans.Web.Controllers;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;

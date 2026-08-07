@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using Humans.Application;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.EarlyEntry;
 using Humans.Application.Interfaces.Gate;

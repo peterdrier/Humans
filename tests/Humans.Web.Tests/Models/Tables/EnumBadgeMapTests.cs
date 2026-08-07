@@ -1,6 +1,6 @@
 using AwesomeAssertions;
 using Humans.Domain.Enums;
-using Humans.Web.Models.Tables;
+using Humans.UI.Models.Tables;
 
 namespace Humans.Web.Tests.Models.Tables;
 

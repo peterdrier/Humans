@@ -7,7 +7,7 @@ using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Web.Authorization;
+using Humans.UI.Authorization;
 using Humans.Web.Controllers;
 using Humans.Web.Models.EmailProblems;
 using Microsoft.AspNetCore.Authorization;

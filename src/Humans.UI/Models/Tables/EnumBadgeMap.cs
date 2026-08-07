@@ -1,6 +1,6 @@
 using Humans.Domain.Enums;
 
-namespace Humans.Web.Models.Tables;
+namespace Humans.UI.Models.Tables;
 
 /// <summary>
 /// Central enum-value → Bootstrap badge class registry for <see cref="CellFormat.EnumBadge"/> columns.

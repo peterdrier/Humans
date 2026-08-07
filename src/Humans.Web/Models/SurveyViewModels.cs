@@ -2,7 +2,7 @@ using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Surveys;
 using Humans.Domain.Enums;
 using Humans.Domain.ValueObjects;
-using Humans.Web.Extensions;
+using Humans.UI.Extensions;
 using NodaTime;
 using NodaTime.Text;
 
