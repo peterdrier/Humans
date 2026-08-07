@@ -22,8 +22,8 @@ namespace Humans.Integration.Tests.Repositories.Shifts;
 /// <c>ShiftManagementServiceTests.SearchAsync_GuidQuery_ResolvesARotaHiddenFromVolunteers</c>.
 /// </para>
 /// </summary>
-public class ShiftRepositoryRotaSearchTests(HumansWebApplicationFactory factory)
-    : IntegrationTestBase(factory)
+public class ShiftRepositoryRotaSearchTests(HumansTestDatabase database)
+    : IntegrationTestBase(database)
 {
     [HumansFact]
     public async Task SearchVolunteerVisibleRotasAsync_ExcludesRotasHiddenFromVolunteers()
