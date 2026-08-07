@@ -176,6 +176,27 @@ public class CampControllerTests
         vm.ActiveMembers.Single(m => m.UserId == fivePlusShiftMemberId).EventShiftSignupDisplay.Should().Be("5+");
     }
 
+    [HumansFact(Skip = "nobodies-collective/Humans#993 — /Camps/{slug} has no season-status gate, so a non-public season renders. Unskip with the fix.")]
+    public async Task Details_NonPublicSeason_AnonymousViewer_IsRefused()
+    {
+        // Destination-page half of the nobodies-collective/Humans#985 ruling: global search
+        // stops offering a camp once its public-year season leaves Active/Full, and the id
+        // path deliberately does not — so /Camps/{slug} has to be the enforcement point.
+        var pending = MakeCamp("pending-camp", "Pending Camp", CampSeasonStatus.Pending);
+        StubCampReadModel([pending]);
+        _camps.GetCampBySlugAsync(pending.Slug, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<CampInfo?>(pending));
+        _authorization.AuthorizeAsync(
+                Arg.Any<ClaimsPrincipal>(),
+                Arg.Any<object?>(),
+                Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Failed());
+
+        var result = await BuildController().Details(pending.Slug, Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<NotFoundResult>();
+    }
+
     private void StubCampReadModel(IReadOnlyList<CampInfo> camps)
     {
         _camps.GetSettingsAsync(Arg.Any<CancellationToken>())
