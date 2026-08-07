@@ -111,7 +111,11 @@ The safety net plus the map. Nothing destructive starts before G0 closes.
       table ownership is clean, but it is untested at real-Postgres/mocked-repo G3, its
       vendor-checked-in dedupe signal is dead in code rather than merely untested, and
       gate-terminal account provisioning writes Identity state via `UserManager` outside the
-      Users service boundary (plus two `docs/sections/Gate.md` drifts); Settings (still coded
+      Users service boundary and is wholly untested (plus two `docs/sections/Gate.md` drifts).
+      Gate also carries the pass's one **G2** item: the personal staff-PIN surface
+      (`gate_staff_pins`, its service methods, admin actions and views) has been dead since
+      peterdrier#1075 and is queued for deletion under nobodies-collective/Humans#933 — which
+      post-dates the demolition inventory's "no findings" verdict on Gate. Settings (still coded
       as `SystemSettings`) is already ahead
       of G4 despite missing docs and service tests; Development is a decision, not yet a code
       module (DevLogin/DevSeed remain in generic `Humans.Web.*` namespaces — follow-up #4
