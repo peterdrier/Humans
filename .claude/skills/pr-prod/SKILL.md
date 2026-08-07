@@ -8,7 +8,7 @@ argument-hint: "(no args)"
 
 Promotes the batch through staging and opens a single batched PR from `peterdrier/Humans:main` (peter's fork, QA-deployed) to `nobodies-collective/Humans:main` (production). Per `CLAUDE.md`, the upstream merge strategy is **rebase merge** — individual PRs were already squashed on the fork.
 
-The batch goes to `upstream/staging` first, where it deploys against a fresh clone of the production database, and only reaches `upstream/main` once that deploy has been verified — `docs/staging-environment.md` (nobodies-collective/Humans#962). The PR records the verified staging SHA, so `upstream/main` never moves to a commit whose migrations have not already run against real production data.
+The batch goes to `upstream/staging` first, where it deploys against a fresh clone of the production database, and only reaches `upstream/main` once that deploy has been verified — `docs/staging-environment.md` (nobodies-collective/Humans#962). The PR is opened **from the verified commit itself**, on a one-shot `promote/*` branch rather than from the fork's moving `main`, so `upstream/main` never moves to a commit whose migrations have not already run against real production data.
 
 ## The ref-qualification rule (read this first)
 
@@ -36,29 +36,35 @@ git fetch upstream main
 ### 2. Check for an existing open PR
 
 ```bash
-gh pr list --repo nobodies-collective/Humans --state open --head peterdrier:main
+gh pr list --repo nobodies-collective/Humans --state open --base main \
+  --json number,title,headRefName --jq '.[] | "\(.number) \(.headRefName) — \(.title)"'
 ```
 
-If one exists, **edit it** with `gh pr edit <num> --repo nobodies-collective/Humans --body ...` instead of opening a duplicate.
+Don't filter on `--head peterdrier:main` — since step 6 each promotion opens from its own `promote/*` branch, so an exact-head filter matches nothing.
 
-### 3. Enumerate the commits to promote
+If an open promotion is for **this** batch, **edit it** with `gh pr edit <num> --repo nobodies-collective/Humans --body ...` instead of opening a duplicate. If it is for an earlier batch that never merged, stop and ask Peter — two open promotions racing the same base is his call, not a thing to resolve by opening a third.
+
+### 3. Enumerate the commits to promote, and pin the SHA
 
 ```bash
 git log --oneline upstream/main..origin/main
 git diff --stat upstream/main..origin/main | tail -1
+PROMOTE_SHA=$(git rev-parse origin/main)
 ```
 
 If empty: nothing to promote. Tell the user and stop.
 
+`$PROMOTE_SHA` **is** the batch, and every step from here names that commit rather than the `origin/main` branch. The branch moves — feature PRs land on the fork continuously — and a promotion that tracked it would quietly grow past the commit staging verified.
+
 ### 4. Promote to `upstream/staging`
 
 ```bash
-git push upstream origin/main:refs/heads/staging
+git push upstream "$PROMOTE_SHA":refs/heads/staging
 ```
 
 This is the deploy trigger: `.github/workflows/staging-db.yml` rebuilds `humans_staging` from the newest production backup artifact, and Coolify deploys the pushed commit against it.
 
-**If the push is rejected as a non-fast-forward, stop and ask Peter.** It means the previous batch was staged and then abandoned rather than promoted. Recovering needs a force-push, which requires Peter's explicit per-instance approval (`memory/process/no-force-push-without-permission.md`) — never pass `--force` or `--force-with-lease` here on your own initiative.
+**A non-fast-forward rejection here is expected from the second cycle onwards, and does not mean a batch was abandoned.** Upstream merges by rebase, so last cycle's promotion sits on `upstream/main` under rewritten SHAs, and `memory/process/after-prod-merge-reset.md` then resets `origin/main` onto that rewritten history. `upstream/staging` still points at the pre-rebase commit, which is no longer an ancestor of anything on the fork. Realigning it is a forced update, and forced updates need Peter's explicit per-instance approval (`memory/process/no-destructive-actions-without-approval.md`) — **stop and ask; never pass `--force` or `--force-with-lease` here on your own initiative.** See [Open question](#open-question--realigning-upstreamstaging) below.
 
 ### 5. Verify on staging
 
@@ -74,9 +80,20 @@ curl -s https://staging.nobodies.team/api/version     # commit == the SHA you pu
 
 **If anything fails, stop.** The bad commit is on `staging` only; fix it on the fork and re-run from step 1. Do not open the production PR.
 
-Record the verified SHA — step 6 puts it in the PR body.
+`/api/version` must report `$PROMOTE_SHA` itself, not merely "something recent" — that equality is what ties the verification to the commit the next step promotes.
 
-### 6. Build the PR body
+### 6. Publish the promotion head
+
+```bash
+PROMOTE_BRANCH="promote/$(date -u +%Y-%m-%d)-$(git rev-parse --short "$PROMOTE_SHA")"
+git push origin "$PROMOTE_SHA":"refs/heads/$PROMOTE_BRANCH"
+```
+
+A fresh branch per promotion, pointed at the verified commit and written exactly once. **The PR opens from this, never from `peterdrier:main`.** A PR whose head is `main` follows the branch: any feature PR that lands on the fork between staging verification and Peter's merge is carried into production without ever having deployed against the cloned database, while the PR body goes on naming the older SHA as verified. That is the whole guarantee this skill exists to provide, and a branch head silently voids it.
+
+Nothing else writes to `$PROMOTE_BRANCH`, so it is immutable in practice and never needs a force-push. Leave it in place after the merge — it is the record of exactly what was promoted, and deleting branches needs Peter's approval anyway (`memory/process/no-destructive-actions-without-approval.md`).
+
+### 7. Build the PR body
 
 For each commit, transform the subject as follows:
 
@@ -97,20 +114,22 @@ emit this bullet:
 - `8508e353` nobodies-collective/Humans#673: consolidate person-search with PersonSearchFields bit-flag API (peterdrier/Humans#455)
 ```
 
-### 7. Write the PR
+### 8. Write the PR
 
-Use `gh pr create` with `--head peterdrier:main`. Pass the body via heredoc to preserve formatting:
+Use `gh pr create` with `--head peterdrier:$PROMOTE_BRANCH`. Pass the body via heredoc to preserve formatting:
 
 ```bash
 gh pr create --repo nobodies-collective/Humans \
-  --base main --head peterdrier:main \
+  --base main --head "peterdrier:$PROMOTE_BRANCH" \
   --title "Promote QA → production (N commits)" \
   --body "$(cat <<'EOF'
 ## Summary
 
-Batched promotion of QA-tested changes from `peterdrier/Humans:main` to production.
+Batched promotion of QA-tested changes from `peterdrier/Humans` to production.
 
 Verified on staging at `<staging sha>` — `https://staging.nobodies.team` deployed this batch against a fresh clone of the production database, migrations applied cleanly, real sign-in works.
+
+**This PR's head is that commit**, not the fork's moving `main`, so what merges is what staging ran.
 
 All issue/PR refs are qualified per `memory/process/issue-refs-qualified.md` — `peterdrier/Humans#NNN` for peter-fork PRs, `nobodies-collective/Humans#NNN` for upstream issues.
 
@@ -128,13 +147,13 @@ EOF
 )"
 ```
 
-Substitute `N` with the actual commit count and `<staging sha>` with the SHA verified in step 5.
+Substitute `N` with the actual commit count and `<staging sha>` with `$PROMOTE_SHA`, the SHA verified in step 5.
 
-### 8. Return the PR URL
+### 9. Return the PR URL
 
-`gh pr create` prints the URL on success — surface it to the user. Don't merge; promotion is Peter's call. Merging fast-forwards `upstream/main` onto the commit staging already ran.
+`gh pr create` prints the URL on success — surface it to the user. Don't merge; promotion is Peter's call. Rebase merge replays these commits onto `upstream/main` under new SHAs — same trees, different history, which is the reason step 4 stops being a fast-forward next cycle.
 
-### 9. Discord release notes
+### 10. Discord release notes
 
 After surfacing the PR URL, draft member-facing release notes for Discord and present them in the conversation as a single copy-paste-ready ```markdown code block (Claude does NOT post to Discord — Peter pastes it).
 
@@ -155,12 +174,32 @@ Rules:
 - [ ] Title is `Promote QA → production (<N> commits)` with the correct count.
 - [ ] No existing open PR was overlooked (step 2).
 - [ ] The batch deployed to staging and passed step 5, and the body names the verified SHA.
-- [ ] Discord release notes drafted (step 9), dated, member-features first, ≤ 2,000 characters.
+- [ ] The PR head is `peterdrier:promote/<date>-<short sha>`, **not** `peterdrier:main`, and `gh pr view <num> --repo nobodies-collective/Humans --json headRefOid` returns `$PROMOTE_SHA`.
+- [ ] Discord release notes drafted (step 10), dated, member-features first, ≤ 2,000 characters.
+
+## Open question — realigning `upstream/staging`
+
+**For Peter. Until it is answered, step 4 stops and asks on every cycle after the first.**
+
+The promotion cycle structurally requires one forced update of `upstream/staging` per cycle. Rebase merge rewrites the batch's SHAs onto `upstream/main`, `after-prod-merge-reset` resets the fork onto that rewritten history, and `upstream/staging` is left holding a commit that is nobody's ancestor. There is no non-forced way out: the branch has to be rewritten because upstream rewrote the commits under it.
+
+The argument for making it standing rather than per-instance: `upstream/staging` is a disposable pointer at "the batch currently under verification". It is never merged anywhere, its database is dropped between cycles by design (`docs/staging-environment.md` §6), and its history carries nothing that could be lost. `--force-with-lease` would still refuse if someone else had moved it.
+
+The argument against: `memory/process/no-destructive-actions-without-approval.md` is a hard rule with exactly one standing exception today (the squash-merge button), and `after-prod-merge-reset`'s `--force-with-lease` on `origin/main` is a documented procedure Peter wrote, not a precedent an agent gets to extend to a second remote on its own.
+
+Recommended: realign as part of the post-merge reset, when the two commits have identical trees and the operation is unambiguous —
+
+```bash
+git push upstream upstream/main:refs/heads/staging --force-with-lease
+```
+
+— added to `memory/process/after-prod-merge-reset.md` so it is Peter's standing instruction rather than an agent's judgement call. **Not made here**, for the reason in the paragraph above.
 
 ## What this skill does NOT do
 
 - Merge the PR. Peter does that manually with rebase merge.
-- Force-push `upstream/staging`, or skip the staging verification because the batch "looks safe". Both need Peter.
+- Force-push `upstream/staging`, or skip the staging verification because the batch "looks safe". Both need Peter — see the open question above.
+- Delete the `promote/*` branch after the merge. It stays as the record of what was promoted.
 - Post to Discord. The release notes are drafted in-conversation for Peter to paste.
 - Update fork main after merge. The `memory/process/after-prod-merge-reset.md` rule covers post-merge.
 - Open or modify per-feature PRs on `peterdrier/Humans`. Those land on the fork before promotion runs.

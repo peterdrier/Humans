@@ -43,23 +43,34 @@ Production's deploy semantics do not change: it still auto-deploys `upstream/mai
 ## 2. The promotion cycle
 
 ```
-origin/main  ──push──▶  upstream/staging  ──▶  refresh humans_staging  ──▶  staging deploy
-                                                                                  │
-                                                                             verify (§8)
-                                                                                  │
-                                             upstream/main ◀── fast-forward ──────┘
+origin/main @ SHA  ──push SHA──▶  upstream/staging  ──▶  refresh humans_staging  ──▶  deploy
+                                                                                        │
+                                                                                   verify (§8)
+                                                                                        │
+                                   origin/promote/<date>-<sha> @ SHA  ◀── push SHA ─────┘
                                                     │
-                                            production deploy
+                                          PR ── rebase merge ──▶  upstream/main
+                                                                        │
+                                                                production deploy
 ```
 
 The gate is git-native: `upstream/main` only ever moves to a commit that already deployed and
 was verified on staging. `/pr-prod` (`.claude/skills/pr-prod/SKILL.md`) drives it.
 
-**Sequential promotions stay fast-forwards.** `origin/main` is a superset of `upstream/main`,
-so each cycle's push to `staging` is a fast-forward of the previous one. It stops being one if a
-batch is verified on staging and then abandoned rather than promoted. Recovering from that needs
-a force-push to `upstream/staging`, which needs Peter's explicit per-instance approval
-(`memory/process/no-force-push-without-permission.md`) — so don't abandon a batch quietly.
+**The gate is pinned to a commit, not to a branch.** `/pr-prod` captures the SHA it stages,
+pushes that SHA to `staging`, and opens the production PR from a one-shot `promote/<date>-<sha>`
+branch pointed at it. Opening the PR from `peterdrier:main` instead would let any feature PR
+landing on the fork between verification and merge ride into production unverified, while the
+body still named the older SHA — the branch head follows, the claim does not.
+
+**Pushes to `staging` stop being fast-forwards after the first cycle.** Upstream merges by
+rebase, so a promoted batch lands on `upstream/main` under rewritten SHAs, and
+`memory/process/after-prod-merge-reset.md` resets `origin/main` onto that rewritten history.
+`upstream/staging` is left at the pre-rebase commit, which is then nobody's ancestor. That
+rejection is the normal state of affairs, not evidence of an abandoned batch. Realigning the
+branch is a forced update and needs Peter's approval
+(`memory/process/no-destructive-actions-without-approval.md`); whether that approval should
+become standing is an open question recorded in `.claude/skills/pr-prod/SKILL.md`.
 
 ---
 
@@ -351,7 +362,7 @@ restart corrected it; that is the signal to do the ordering fix above.
 
 ## 8. Verifying a staging deploy
 
-Before fast-forwarding `upstream/main`:
+Before merging the production PR onto `upstream/main`:
 
 1. **The pushed commit is live.** `curl -s https://staging.nobodies.team/api/version` reports
    the `commit` you pushed.
