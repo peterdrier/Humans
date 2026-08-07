@@ -23,7 +23,7 @@ public sealed class PreMigrationSnapshotTests : IDisposable
     [HumansFact]
     public void No_snapshots_means_nothing_to_carry_forward()
     {
-        PreMigrationSnapshot.FindUnfinishedSnapshot(_directory, Database).Should().BeNull();
+        PreMigrationSnapshot.UnfinishedSnapshots(_directory, Database).Should().BeEmpty();
     }
 
     [HumansFact]
@@ -31,7 +31,7 @@ public sealed class PreMigrationSnapshotTests : IDisposable
     {
         Snapshot("humans-20260805T120000Z.dump");
 
-        PreMigrationSnapshot.FindUnfinishedSnapshot(_directory, Database).Should().BeNull();
+        PreMigrationSnapshot.UnfinishedSnapshots(_directory, Database).Should().BeEmpty();
     }
 
     [HumansFact]
@@ -39,20 +39,21 @@ public sealed class PreMigrationSnapshotTests : IDisposable
     {
         var unfinished = Snapshot("humans-20260805T120000Z.dump" + PreMigrationSnapshot.UnfinishedSuffix);
 
-        PreMigrationSnapshot.FindUnfinishedSnapshot(_directory, Database).Should().Be(unfinished);
+        PreMigrationSnapshot.UnfinishedSnapshots(_directory, Database).Should().Equal(unfinished);
     }
 
     /// <summary>
     /// The crash-loop case: restart two carries forward restart one's file instead of dumping a
-    /// database whose schema the failed migration has already part-changed.
+    /// database whose schema the failed migration has already part-changed. Oldest first, because
+    /// among live markers the earliest is the one that predates the most.
     /// </summary>
     [HumansFact]
-    public void Earliest_unfinished_snapshot_wins()
+    public void Unfinished_snapshots_come_back_oldest_first()
     {
         var first = Snapshot("humans-20260805T120000Z.dump" + PreMigrationSnapshot.UnfinishedSuffix);
-        Snapshot("humans-20260805T130000Z.dump" + PreMigrationSnapshot.UnfinishedSuffix);
+        var second = Snapshot("humans-20260805T130000Z.dump" + PreMigrationSnapshot.UnfinishedSuffix);
 
-        PreMigrationSnapshot.FindUnfinishedSnapshot(_directory, Database).Should().Be(first);
+        PreMigrationSnapshot.UnfinishedSnapshots(_directory, Database).Should().Equal(first, second);
     }
 
     /// <summary>
@@ -65,7 +66,7 @@ public sealed class PreMigrationSnapshotTests : IDisposable
     {
         Snapshot("humans-20260805T120000Z.dump.writing");
 
-        PreMigrationSnapshot.FindUnfinishedSnapshot(_directory, Database).Should().BeNull();
+        PreMigrationSnapshot.UnfinishedSnapshots(_directory, Database).Should().BeEmpty();
     }
 
     [HumansFact]
@@ -82,7 +83,7 @@ public sealed class PreMigrationSnapshotTests : IDisposable
     {
         Snapshot("humans_pr_42-20260805T120000Z.dump" + PreMigrationSnapshot.UnfinishedSuffix);
 
-        PreMigrationSnapshot.FindUnfinishedSnapshot(_directory, Database).Should().BeNull();
+        PreMigrationSnapshot.UnfinishedSnapshots(_directory, Database).Should().BeEmpty();
     }
 
     [HumansFact]
@@ -95,7 +96,7 @@ public sealed class PreMigrationSnapshotTests : IDisposable
         promoted.Should().ContainSingle()
             .Which.Should().Be(Path.Combine(_directory, "humans-20260805T120000Z.dump"));
         File.Exists(promoted[0]).Should().BeTrue();
-        PreMigrationSnapshot.FindUnfinishedSnapshot(_directory, Database).Should().BeNull();
+        PreMigrationSnapshot.UnfinishedSnapshots(_directory, Database).Should().BeEmpty();
     }
 
     /// <summary>
@@ -110,8 +111,8 @@ public sealed class PreMigrationSnapshotTests : IDisposable
 
         PreMigrationSnapshot.PromoteUnfinishedSnapshots(_directory, Database);
 
-        PreMigrationSnapshot.FindUnfinishedSnapshot(_directory, Database).Should().BeNull();
-        PreMigrationSnapshot.FindUnfinishedSnapshot(_directory, "humans_pr_42").Should().NotBeNull();
+        PreMigrationSnapshot.UnfinishedSnapshots(_directory, Database).Should().BeEmpty();
+        PreMigrationSnapshot.UnfinishedSnapshots(_directory, "humans_pr_42").Should().NotBeEmpty();
     }
 
     /// <summary>
@@ -236,6 +237,64 @@ public sealed class PreMigrationSnapshotTests : IDisposable
 
         File.Exists(unfinished + ".migrations").Should().BeFalse();
     }
+
+    /// <summary>
+    /// A single live marker is what a crash-loop retry carries forward, and it is not retired.
+    /// </summary>
+    [HumansFact]
+    public void A_live_marker_is_carried_forward()
+    {
+        var live = Snapshot("humans-20260805T120000Z.dump" + PreMigrationSnapshot.UnfinishedSuffix);
+        PreMigrationSnapshot.WriteFrontier(live, ["HumansDbContext:20260805100000_AddFoo"]);
+
+        Sut().CarryForwardMarker(_directory, Database, ["HumansDbContext:20260805100000_AddFoo"])
+            .Should().Be(live);
+        File.Exists(live).Should().BeTrue();
+    }
+
+    /// <summary>
+    /// Every marker being stale is the ordinary "last deploy finished" case: all of them retire
+    /// and the boot goes on to take its own dump.
+    /// </summary>
+    [HumansFact]
+    public void All_markers_stale_means_this_boot_takes_its_own_dump()
+    {
+        var stale = Snapshot("humans-20260805T120000Z.dump" + PreMigrationSnapshot.UnfinishedSuffix);
+        PreMigrationSnapshot.WriteFrontier(stale, ["HumansDbContext:20260805100000_AddFoo"]);
+
+        Sut().CarryForwardMarker(_directory, Database, ["HumansDbContext:20260805200000_AddLater"])
+            .Should().BeNull();
+        File.Exists(stale).Should().BeFalse();
+        File.Exists(Path.Combine(_directory, "humans-20260805T120000Z.dump")).Should().BeTrue();
+    }
+
+    /// <summary>
+    /// A retirement that fails leaves its stale marker in front of the marker that is actually
+    /// live, so judging the oldest marker alone would retire the stale one, see nothing else, and
+    /// dump the half-migrated schema over the crash loop's real rollback point — which a later
+    /// boot then promotes as the newest completed snapshot. The scan steps past the stale marker
+    /// and finds the live one.
+    /// </summary>
+    [HumansFact]
+    public void A_stale_marker_in_front_of_a_live_one_is_stepped_over()
+    {
+        var stale = Snapshot("humans-20260805T120000Z.dump" + PreMigrationSnapshot.UnfinishedSuffix);
+        PreMigrationSnapshot.WriteFrontier(stale, ["HumansDbContext:20260805100000_AddFoo"]);
+        var live = Snapshot("humans-20260805T130000Z.dump" + PreMigrationSnapshot.UnfinishedSuffix);
+        PreMigrationSnapshot.WriteFrontier(live, ["HumansDbContext:20260805200000_AddBar"]);
+
+        Sut().CarryForwardMarker(_directory, Database, ["HumansDbContext:20260805200000_AddBar"])
+            .Should().Be(live);
+        File.Exists(stale).Should().BeFalse();
+        File.Exists(live).Should().BeTrue();
+    }
+
+    /// <summary>
+    /// Connection string is never opened — <see cref="PreMigrationSnapshot"/> only parses it for
+    /// the database name, and everything under test here is filesystem bookkeeping.
+    /// </summary>
+    private static PreMigrationSnapshot Sut() =>
+        new($"Host=localhost;Database={Database};Username=humans", NullLogger.Instance);
 
     private string Snapshot(string fileName)
     {

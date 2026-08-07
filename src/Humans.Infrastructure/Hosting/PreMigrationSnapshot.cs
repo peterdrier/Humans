@@ -124,51 +124,18 @@ internal sealed class PreMigrationSnapshot(string connectionString, ILogger logg
         {
             Directory.CreateDirectory(SnapshotDirectory);
 
-            var carried = FindUnfinishedSnapshot(SnapshotDirectory, database);
+            var carried = CarryForwardMarker(SnapshotDirectory, database, pendingMigrations);
             if (carried is not null)
             {
-                if (FrontierStillPending(carried, pendingMigrations, logger))
-                {
-                    // Warning level for the same reason as the "written" line below: in a crash
-                    // loop this is the line that tells you which file is the real rollback
-                    // point.
-                    logger.LogWarning(
-                        "Reusing pre-migration snapshot {Path}, taken {AgeHours:F1}h ago: an earlier boot of " +
-                        "this deploy took it and did not finish migrating, so it - not the current schema - " +
-                        "is the rollback point. See docs/database-restore-runbook.md §5",
-                        carried,
-                        (DateTime.UtcNow - File.GetLastWriteTimeUtc(carried)).TotalHours);
-                    return;
-                }
-
-                // None of its recorded migrations are still pending, so the deploy that took it
-                // finished (nobodies-collective/Humans#989) - reusing it now would make this
-                // deploy's rollback point predate the deploy before it. Retire it as history,
-                // same as MarkMigrationsComplete does for a marker that clears normally, and
-                // fall through to take this deploy's own dump.
-                //
-                // Best-effort, unlike the dump itself: retiring a marker is bookkeeping, and this
-                // deploy gets its own rollback point below either way. A rename that fails must
-                // not be what stops the boot - the marker stays and a later boot retires it, the
-                // same tolerance MarkMigrationsComplete already gives the identical call.
-                try
-                {
-                    var retired = Retire(carried);
-                    logger.LogWarning(
-                        "Retired stale pre-migration snapshot {Path} as {Retired}: none of its recorded " +
-                        "migrations are still pending, so the deploy that took it already finished. See " +
-                        "nobodies-collective/Humans#989",
-                        carried, retired);
-                }
-                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-                {
-                    logger.LogError(
-                        ex,
-                        "Could not retire stale pre-migration snapshot {Path}. This deploy still takes its " +
-                        "own snapshot, so it has a rollback point; the stale marker stays until a boot " +
-                        "clears it. See docs/database-restore-runbook.md §5",
-                        carried);
-                }
+                // Warning level for the same reason as the "written" line below: in a crash loop
+                // this is the line that tells you which file is the real rollback point.
+                logger.LogWarning(
+                    "Reusing pre-migration snapshot {Path}, taken {AgeHours:F1}h ago: an earlier boot of " +
+                    "this deploy took it and did not finish migrating, so it - not the current schema - " +
+                    "is the rollback point. See docs/database-restore-runbook.md §5",
+                    carried,
+                    (DateTime.UtcNow - File.GetLastWriteTimeUtc(carried)).TotalHours);
+                return;
             }
 
             DiscardAbandonedWrites(SnapshotDirectory, database);
@@ -273,12 +240,71 @@ internal sealed class PreMigrationSnapshot(string connectionString, ILogger logg
             UnfinishedSuffix);
 
     /// <summary>
-    /// The snapshot an earlier boot of this deploy left behind, or <see langword="null"/> if the
-    /// last deploy finished. Oldest first: if several ever pile up, the earliest is the one that
-    /// predates the most.
+    /// The snapshot an earlier boot of this deploy left behind and this boot must reuse instead of
+    /// dumping, or <see langword="null"/> if there is none and this boot takes its own dump.
+    /// Retires every stale marker it steps over on the way (nobodies-collective/Humans#989).
     /// </summary>
-    internal static string? FindUnfinishedSnapshot(string directory, string database) =>
-        UnfinishedSnapshots(directory, database).FirstOrDefault();
+    /// <remarks>
+    /// Walks all the markers, oldest first, rather than judging the oldest alone. Retiring a stale
+    /// marker is best-effort, so a rename that failed leaves that marker sitting in front of one
+    /// that is still live — and this boot's own marker is created behind it. Judging only the
+    /// oldest would then retire the stale one, see nothing else, and dump the half-migrated schema
+    /// as this deploy's rollback point, over a crash loop whose real rollback point was the marker
+    /// it never looked at. Worse, a later boot promotes every marker, so that damaged dump becomes
+    /// the newest completed snapshot — the one <c>docs/database-restore-runbook.md</c> restores.
+    /// Oldest first is still what picks the winner among live markers: the earliest predates the
+    /// most.
+    /// </remarks>
+    internal string? CarryForwardMarker(
+        string directory, string database, IReadOnlyCollection<string> pendingMigrations)
+    {
+        foreach (var marker in UnfinishedSnapshots(directory, database))
+        {
+            if (FrontierStillPending(marker, pendingMigrations, logger))
+            {
+                return marker;
+            }
+
+            RetireStaleMarker(marker);
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Retires a marker none of whose recorded migrations are still pending: the deploy that took
+    /// it finished (nobodies-collective/Humans#989), so reusing it would make this deploy's
+    /// rollback point predate the deploy before it. The same rename
+    /// <see cref="MarkMigrationsComplete"/> does for a marker that clears normally.
+    /// </summary>
+    /// <remarks>
+    /// Best-effort, unlike the dump itself: retiring a marker is bookkeeping, and the boot ends up
+    /// with a rollback point either way. A rename that fails must not be what stops the boot — the
+    /// marker stays, <see cref="CarryForwardMarker"/> steps over it next time, and a later boot
+    /// retires it, the same tolerance <see cref="MarkMigrationsComplete"/> already gives the
+    /// identical call.
+    /// </remarks>
+    private void RetireStaleMarker(string marker)
+    {
+        try
+        {
+            var retired = Retire(marker);
+            logger.LogWarning(
+                "Retired stale pre-migration snapshot {Path} as {Retired}: none of its recorded " +
+                "migrations are still pending, so the deploy that took it already finished. See " +
+                "nobodies-collective/Humans#989",
+                marker, retired);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            logger.LogError(
+                ex,
+                "Could not retire stale pre-migration snapshot {Path}. The boot still gets a rollback " +
+                "point - a live marker behind this one, or its own dump; the stale marker stays until a " +
+                "boot clears it. See docs/database-restore-runbook.md §5",
+                marker);
+        }
+    }
 
     /// <summary>
     /// Renames every unfinished snapshot of the database to its final name and returns the new
@@ -300,7 +326,10 @@ internal sealed class PreMigrationSnapshot(string connectionString, ILogger logg
         return completed;
     }
 
-    private static List<string> UnfinishedSnapshots(string directory, string database) =>
+    /// <summary>
+    /// Every snapshot of the database whose deploy has not finished migrating, oldest first.
+    /// </summary>
+    internal static List<string> UnfinishedSnapshots(string directory, string database) =>
         [.. Directory
             .GetFiles(directory, database + "-*.dump" + UnfinishedSuffix)
             .OrderBy(Path.GetFileName, StringComparer.Ordinal)];
