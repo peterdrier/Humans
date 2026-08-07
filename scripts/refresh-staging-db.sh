@@ -88,9 +88,24 @@ psql_postgres() { docker exec "$DB_CONTAINER" psql -U "$DB_USER" -d postgres "$@
 psql_staging()  { docker exec "$DB_CONTAINER" psql -U "$DB_USER" -d "$STAGING_DB" "$@"; }
 
 WORKDIR=""
+DB_AT_RISK=false   # armed just before the DROP — see cleanup()
+
 cleanup() {
+  status=$?
   [ -n "$WORKDIR" ] && rm -rf "$WORKDIR"
   docker exec "$DB_CONTAINER" rm -f /tmp/staging-restore.dump /tmp/staging-restore.sql 2>/dev/null || true
+
+  # A failure anywhere after the DROP leaves $STAGING_DB missing or half-restored, and
+  # `set -e` means the hand-back in §6 never runs. Coolify's deploy is still racing this
+  # script, so a container it brought up mid-flight would be left serving a partial clone
+  # under the pushed SHA: workflow red, staging apparently fine, which is the wrong way
+  # round. Leave it stopped — the next refresh restores the database and starts it again.
+  if [ "$status" -ne 0 ] && [ "$DB_AT_RISK" = true ] \
+     && [ "$(docker inspect -f '{{.State.Running}}' "$STAGING_APP_CONTAINER" 2>/dev/null || echo false)" = "true" ]; then
+    printf '==> Refresh failed — stopping %s so it cannot serve a partial database\n' "$STAGING_APP_CONTAINER" >&2
+    docker stop "$STAGING_APP_CONTAINER" >/dev/null 2>&1 || true
+  fi
+  return "$status"
 }
 trap cleanup EXIT
 
@@ -167,6 +182,7 @@ fi
 # ---------------------------------------------------------------------------
 
 log "Recreating '$STAGING_DB'"
+DB_AT_RISK=true   # from here on, any failure leaves the database unusable — cleanup() stops the app
 psql_postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '${STAGING_DB}' AND pid <> pg_backend_pid();" >/dev/null || true
 psql_postgres -c "DROP DATABASE IF EXISTS ${STAGING_DB};"
 psql_postgres -c "CREATE DATABASE ${STAGING_DB} OWNER ${DB_USER};"

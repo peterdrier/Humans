@@ -164,6 +164,8 @@ setting one turns the real connector on:
 |---|---|
 | `GoogleWorkspace__ServiceAccountKeyJson` / `__ServiceAccountKeyPath` | Real Drive/Groups clients. Reconciliation jobs would mutate real Workspace resources from cloned state |
 | `HOLDED_API_KEY` | Real `api.holded.com` client. `HoldedExpenseOutboxJob` runs every minute and would push cloned expense rows into the real accounting system |
+| `MailerLite__ApiKey` **and** `MAILERLITE_API_KEY` | Real `api.mailerlite.com` client. `MailerSectionExtensions.cs` registers `MailerLiteClient` unconditionally, and `IMailerLiteService` writes — `AssignSubscriberToGroupAsync`, `UnassignSubscriberFromGroupAsync`, `BulkImportSubscribersToGroupAsync`. Audience membership is computed from the cloned database, so a sync from here adds and removes real subscribers in the real account. **Two spellings, both live**: the dotted key binds through `MailerLiteOptions`, and the flat one is picked up by an explicit `Environment.GetEnvironmentVariable` fallback. Omitting one and copying the other leaves the connector fully armed |
+| `MailerLite__AudienceSyncCron` | Turns the audience sync from admin-triggered into scheduled. `RecurringJobExtensions.cs` registers `MailerAudienceSyncJob` only when this is non-empty, so a copied production cron makes staging push audiences on a timer with nobody watching |
 | `STRIPE_TICKETS_KEY`, `STRIPE_STORE_KEY`, `STRIPE_STORE_WEBHOOK_SECRET`, `STRIPE_STORE_WEBHOOK_REGISTRAR_KEY` | Live payment calls. The registrar key additionally re-points the Store webhook |
 | `Anthropic__ApiKey` | Billed agent calls from a full copy of production's data |
 | `GITHUB_ACCESS_TOKEN` | Not dangerous — legal-doc sync is a read. Omit anyway; staging does not need the rate limit |
@@ -228,7 +230,10 @@ What makes that defensible under the existing posture:
   is Google OAuth against the cloned database, so the same humans hold the same roles they hold
   in production — staging grants nobody access they do not already have.
 - **No new egress.** Every outbound connector is stubbed (§5), so PII is not forwarded to any
-  third party from here.
+  third party from here. For a few this is enforced by code; for most — Workspace, Holded,
+  MailerLite, Stripe — it rests on the credential simply being absent, so the guarantee holds
+  exactly as long as §4's must-stay-unset list is honoured. That is a configuration promise,
+  not a code one, which is why §8 checks it per deploy instead of assuming it.
 - **Wiped on every refresh.** The database is dropped and recreated, and uploads are re-copied
   with `--delete`. Nothing accumulates: staging holds a snapshot, never a divergent second copy
   of member data with its own history.
@@ -349,6 +354,13 @@ after the restore and verification, and restarts anything running — whether it
 itself or found it started mid-flight. A restart re-runs `DatabaseMigrationHostedService`
 against the finished database, and the log line it prints is what §8.2 reads. The refresh is
 therefore idempotent with respect to deploy timing rather than dependent on it.
+
+**On failure it goes the other way.** A restore, verification, or uploads copy that fails after
+the `DROP` never reaches that hand-back — `set -e` exits first — so the script's `EXIT` trap
+stops the app instead. Otherwise a container that came up mid-flight would be left serving a
+partial clone under the pushed SHA: workflow red, staging apparently healthy, which is exactly
+the wrong way round for a promotion gate. Staging stays down until the next refresh restores
+it, and down is the honest state.
 
 **The durable fix is ordering, not correction.** Turning off Coolify's auto-deploy for the
 staging resource and having `staging-db.yml` trigger the deploy through Coolify's API once the
