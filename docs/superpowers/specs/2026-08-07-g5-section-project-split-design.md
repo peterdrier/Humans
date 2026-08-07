@@ -968,7 +968,7 @@ three view components it moved, and only the step 12 HTML diff caught it. So: af
 refactoring pass over `.cshtml`, run
 
 ```
-grep -rn -- '-view-component' --include='*.cshtml' src/
+grep -rn --include='*.cshtml' -- '-view-component' src/
 ```
 
 and expect zero hits. Step 12 is the backstop, not the first line of defence — the grep is cheaper
