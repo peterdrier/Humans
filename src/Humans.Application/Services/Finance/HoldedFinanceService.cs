@@ -765,6 +765,23 @@ public sealed class HoldedFinanceService(
             LogBindingCollision(
                 nameof(EnsureCreditorContactAsync), userId, contactId, accountNum, conflict);
 
+        // Nothing left to write once the member already held this contact, and writing anyway is worse
+        // than wasteful. UpsertContactAsync PUTs to ExistingContactId and returns the id it was given,
+        // and Source and the account number are carried straight off the binding just read, so the only
+        // column that would change is UpdatedAt — which nothing reads. Meanwhile this write sits on the
+        // far side of a multi-second Holded round-trip, holding a copy of the binding read before it:
+        // an admin who hits Unbind during that window would get their success message and then have the
+        // binding they just cleared resurrected from that stale copy. Skipping the empty write is what
+        // makes Unbind hold against an in-flight push in the steady state — a member already bound, with
+        // their 400000xx already resolved, does no binding write on a push at all. It does not make the
+        // read-modify-write safe in general: a binding still missing its number, and
+        // SetCreditorAccountNumAsync below, both write real content and can still lose a concurrent
+        // delete (nobodies-collective/Humans#995 — closing that needs an update-only repository write).
+        if (binding is not null
+            && string.Equals(binding.HoldedContactId, contactId, StringComparison.Ordinal)
+            && accountNum == binding.SupplierAccountNum)
+            return contactId;
+
         var now = clock.GetCurrentInstant();
         await repo.UpsertCreditorContactAsync(new HoldedCreditorContact
         {

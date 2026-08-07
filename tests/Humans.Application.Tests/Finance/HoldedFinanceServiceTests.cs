@@ -569,6 +569,8 @@ public class HoldedFinanceServiceTests
     [HumansFact]
     public async Task EnsureCreditorContact_ManualBinding_NotDowngradedToAuto()
     {
+        // A Manual binding whose 400000xx never resolved: the seed still has a number to contribute,
+        // so this is a push that genuinely writes — which is what makes it the case that can downgrade.
         var userId = Guid.NewGuid();
         _repo.GetCreditorContactByUserAsync(userId, Arg.Any<CancellationToken>()).Returns(
             new HoldedCreditorContact
@@ -576,17 +578,75 @@ public class HoldedFinanceServiceTests
                 Id = Guid.NewGuid(),
                 UserId = userId,
                 HoldedContactId = "m-c",
-                SupplierAccountNum = 40000001,
+                SupplierAccountNum = null,
                 Source = CreditorContactSource.Manual,
             });
         _client.UpsertContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("m-c");
 
         await MakeService().EnsureCreditorContactAsync(
-            userId, "Daniela Marquez", null, null, null, null,
+            userId, "Daniela Marquez", null, null, null, 40000001,
             Xunit.TestContext.Current.CancellationToken);
 
         await _repo.Received(1).UpsertCreditorContactAsync(
             Arg.Is<HoldedCreditorContact>(c => c.Source == CreditorContactSource.Manual),
+            FixedNow, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task EnsureCreditorContact_MemberAlreadyHoldsThisContact_WritesNothing()
+    {
+        // The steady state: bound member, number already resolved. UpsertContactAsync PUTs to the id it
+        // was given and returns it, and Source/number come straight off the binding just read, so the
+        // row's only changing column would be UpdatedAt — which nothing reads. It is not a harmless
+        // write either: it lands after a multi-second Holded round-trip carrying a pre-round-trip copy
+        // of the binding, so an admin who unbinds during that window would have the binding they just
+        // cleared resurrected. No write, nothing to resurrect.
+        var userId = Guid.NewGuid();
+        _repo.GetCreditorContactByUserAsync(userId, Arg.Any<CancellationToken>()).Returns(
+            new HoldedCreditorContact
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                HoldedContactId = "c1",
+                SupplierAccountNum = 40000004,
+                Source = CreditorContactSource.Auto,
+            });
+        _client.UpsertContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("c1");
+
+        var id = await MakeService().EnsureCreditorContactAsync(
+            userId, "Peter Drier", null, null, null, null,
+            Xunit.TestContext.Current.CancellationToken);
+
+        // Holded is still updated — the member's legal name and IBAN have to reach the contact.
+        id.Should().Be("c1");
+        await _client.Received(1).UpsertContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>());
+        await _repo.DidNotReceive().UpsertCreditorContactAsync(
+            Arg.Any<HoldedCreditorContact>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task EnsureCreditorContact_BindingMissingItsAccountNumber_StillWritesTheSeedNumber()
+    {
+        // The skip must not swallow a push that has something to say: an unresolved 400000xx is exactly
+        // the gap the seed exists to close, so this write still has to happen.
+        var userId = Guid.NewGuid();
+        _repo.GetCreditorContactByUserAsync(userId, Arg.Any<CancellationToken>()).Returns(
+            new HoldedCreditorContact
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                HoldedContactId = "c1",
+                SupplierAccountNum = null,
+                Source = CreditorContactSource.Auto,
+            });
+        _client.UpsertContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("c1");
+
+        await MakeService().EnsureCreditorContactAsync(
+            userId, "Peter Drier", null, null, null, 40000004,
+            Xunit.TestContext.Current.CancellationToken);
+
+        await _repo.Received(1).UpsertCreditorContactAsync(
+            Arg.Is<HoldedCreditorContact>(c => c.SupplierAccountNum == 40000004),
             FixedNow, Arg.Any<CancellationToken>());
     }
 
