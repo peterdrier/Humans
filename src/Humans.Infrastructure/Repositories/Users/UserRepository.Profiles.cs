@@ -146,14 +146,13 @@ internal sealed partial class UserRepository
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         var userIdList = userIds is IList<Guid> list ? list : userIds.ToList();
         var profiles = await ctx.Profiles
-            .Where(p => userIdList.Contains(p.UserId) && !p.IsSuspended)
+            .Where(p => userIdList.Contains(p.UserId)
+                && p.State != ProfileState.Suspended
+                && p.State != ProfileState.AdminSuspended)
             .ToListAsync(ct);
 
         foreach (var profile in profiles)
         {
-            profile.IsSuspended = true;
-            // Issue #635 (§15i): dual-write ProfileState alongside the legacy
-            // bool until the follow-up PR drops the IsSuspended column.
             profile.State = ProfileState.Suspended;
             profile.UpdatedAt = now;
         }

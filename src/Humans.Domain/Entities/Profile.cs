@@ -118,10 +118,6 @@ public class Profile
     [PersonalData]
     public string? Iban { get; set; }
 
-    /// <summary>Superseded by <see cref="State"/>; DB column retained for prod-soak drop. See #635.</summary>
-    [Obsolete("Use Profile.State (ProfileState.Suspended) for new writes. The DB column stays until a follow-up PR after prod soak.", DiagnosticId = "HUM_PROFILE_ISSUSPENDED", UrlFormat = "https://github.com/nobodies-collective/Humans/issues/635")]
-    public bool IsSuspended { get; set; }
-
     /// <summary>Lifecycle state — Stub/Active/Suspended. Nullable during lazy backfill.</summary>
     public ProfileState? State { get; set; }
 

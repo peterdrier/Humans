@@ -395,7 +395,6 @@ public sealed class UserService(
 
             case UserProfileOnboardingMutation.SetSuspension:
                 var suspended = command.Suspended!.Value;
-                profile.IsSuspended = suspended;
                 profile.State = suspended
                     ? (command.AdminSuspension ? ProfileState.AdminSuspended : ProfileState.Suspended)
                     : HasRequiredNameFields(profile) ? ProfileState.Active : ProfileState.Stub;
@@ -987,7 +986,8 @@ public sealed class UserService(
                 profile.BoardNotes,
                 profile.MembershipTier,
                 profile.IsApproved,
-                profile.IsSuspended,
+                // JSON key pinned per memory/code/no-rename-serialized-fields.md (GDPR export stability).
+                IsSuspended = profile.State is ProfileState.Suspended or ProfileState.AdminSuspended,
                 profile.NoPriorBurnExperience,
                 ConsentCheckStatus = profile.ConsentCheckStatus?.ToString(),
                 ConsentCheckAt = profile.ConsentCheckAt.ToIso8601(),

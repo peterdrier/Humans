@@ -90,8 +90,7 @@ A contact is identified by `ContactSource != null && LastLoginAt == null`. When 
 | ContributionInterests | string? | null | Skills / availability statement (publicly visible on profile). |
 | BoardNotes | string? | null | Notes from the human intended for the Board (self + Board only). |
 | AdminNotes | string? (4000) | null | Admin-only notes (not visible to the human). |
-| IsSuspended | bool | false | **`[Obsolete]`** (issue #635 §15i, diagnostic id `HUM_PROFILE_ISSUSPENDED`). New writes go through `State` (`ProfileState.Suspended`); the column stays in the schema until a follow-up PR drops it after prod soak. Legacy readers and the dual-writers (`ProfileService.SetSuspendedAsync`, `UserRepository.SuspendManyAsync`) are pinned by `Profile_IsSuspended_HasNoNewWriters`. |
-| State | ProfileState? | null | **Issue #635 (§15i):** lifecycle marker — `Stub` / `Active` / `Suspended`. Nullable while existing rows are lazily populated by `CachingProfileService` on read (computed from `IsSuspended` + required-field presence). New rows always start as `Stub`. The column is later promoted to `NOT NULL` in a separate schema change after every row is populated. |
+| State | ProfileState? | null | **Issue #635 (§15i):** lifecycle marker — `Stub` / `Active` / `Suspended` / `AdminSuspended`. The sole suspension source of truth since nobodies-collective/Humans#997 dropped the redundant `IsSuspended` bool. Nullable while existing rows are lazily populated by `CachingProfileService` on read (computed from required-field presence). New rows always start as `Stub`. The column is later promoted to `NOT NULL` in a separate schema change after every row is populated. |
 | IsApproved | bool | false | Set automatically when consent check is cleared. |
 | MembershipTier | MembershipTier | Volunteer | Current tier — tracked on Profile, not as RoleAssignment. |
 | ConsentCheckStatus | ConsentCheckStatus? | null | Consent check gate status (null until all consents signed). |
@@ -423,7 +422,7 @@ Admin-only flows for the section's cross-account hygiene (routes pre-date `memor
 - **Cross-domain navs stripped:** `Profile.User`, `UserEmail.User`, `CommunicationPreference.User`. Display stitching routes through `IUserService.GetByIdsAsync`.
 - **GDPR:** `ProfileService` and `AccountMergeService` both implement `IUserDataContributor` (design-rules §8a). `ProfileService` emits the `Profile`, `ContactFields`, `UserEmails`, `VolunteerHistory`, `Languages`, and `CommunicationPreferences` slices; `AccountMergeService` emits the `AccountMergeRequests` slice. Section keys are constants on `GdprExportSections`. The `ExpectedContributorTypes` in `GdprExportDependencyInjectionTests` enforces registration.
 - **Account merge & duplicates** — `AccountMergeService` and `DuplicateAccountService` (and `IAccountMergeRepository` / the `account_merge_requests` table) moved to the **Users** section in the account-merge consolidation — see [Users.md](Users.md). The Profile sub-aggregates still participate in a fold as `IUserMerge` implementations (`UserEmailService` / `ContactFieldService` / `CommunicationPreferenceService`).
-- **Architecture tests** — `tests/Humans.Application.Tests/Architecture/ProfileArchitectureTests.cs` + `tests/Humans.Application.Tests/Architecture/ProfileStateAndIsSuspendedTests.cs` + `tests/Humans.Application.Tests/Services/Gdpr/GdprExportDependencyInjectionTests.cs`.
+- **Architecture tests** — `tests/Humans.Application.Tests/Architecture/ProfileArchitectureTests.cs` + `tests/Humans.Application.Tests/Services/Gdpr/GdprExportDependencyInjectionTests.cs`.
 
 ### Account deletion cascade
 

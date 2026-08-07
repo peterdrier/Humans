@@ -122,7 +122,7 @@ public partial interface IUserRepository
     Task<bool> AnonymizeForDeletionByUserIdAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
-    /// Sets <see cref="Profile.IsSuspended"/> to true and stamps
+    /// Sets <see cref="Profile.State"/> to <c>Suspended</c> and stamps
     /// <see cref="Profile.UpdatedAt"/> for every profile whose <c>UserId</c>
     /// is in <paramref name="userIds"/> and that is not already suspended.
     /// Persists in a single SaveChanges and returns the set of user ids

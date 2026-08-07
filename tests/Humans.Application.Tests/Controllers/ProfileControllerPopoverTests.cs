@@ -178,7 +178,6 @@ public class ProfileControllerPopoverTests
             UserId = id,
             MembershipTier = MembershipTier.Volunteer,
             IsApproved = true,
-            IsSuspended = false,
             State = ProfileState.Active,
             City = "Madrid",
             CountryCode = "ES",
@@ -218,7 +217,6 @@ public class ProfileControllerPopoverTests
             UserId = id,
             MembershipTier = MembershipTier.Volunteer,
             IsApproved = true,
-            IsSuspended = false,
             State = ProfileState.Active,
         };
         _userService.GetUserInfoAsync(id, Arg.Any<CancellationToken>())

@@ -782,7 +782,6 @@ public class MembershipCalculatorTests
             FirstName = "Test",
             LastName = "User",
             IsApproved = isApproved,
-            IsSuspended = isSuspended,
             State = isSuspended ? ProfileState.Suspended : ProfileState.Active,
             CreatedAt = _clock.GetCurrentInstant(),
             UpdatedAt = _clock.GetCurrentInstant()

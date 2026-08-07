@@ -16,7 +16,7 @@ namespace Humans.Application.Interfaces.HumanLifecycle;
 public interface IHumanLifecycleService : IOrchestrator
 {
     /// <summary>
-    /// Suspends a human (admin-initiated). Sets <c>IsSuspended = true</c> on
+    /// Suspends a human (admin-initiated). Sets <c>State = AdminSuspended</c> on
     /// the profile, records suspension audit metadata, dispatches an
     /// <c>AccessSuspended</c> notification, and increments the
     /// <c>members_suspended{source="admin"}</c> metric.
@@ -25,8 +25,8 @@ public interface IHumanLifecycleService : IOrchestrator
         Guid userId, Guid adminId, string? notes, CancellationToken ct = default);
 
     /// <summary>
-    /// Unsuspends a human (admin-initiated). Sets <c>IsSuspended = false</c>
-    /// on the profile and resolves any open <c>AccessSuspended</c>
+    /// Unsuspends a human (admin-initiated). Clears the suspended
+    /// <c>State</c> on the profile and resolves any open <c>AccessSuspended</c>
     /// notifications in the user's inbox.
     /// </summary>
     Task<OnboardingResult> UnsuspendAsync(

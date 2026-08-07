@@ -310,7 +310,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
     }
 
     [HumansFact]
-    public async Task ApplyProfileOnboardingMutationAsync_SetSuspensionTrue_SetsSuspendedAndState()
+    public async Task ApplyProfileOnboardingMutationAsync_SetSuspensionTrue_SetsSuspendedState()
     {
         var userId = Guid.NewGuid();
         await SeedUserWithProfileAsync(userId);
@@ -324,9 +324,6 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
 
         result.Success.Should().BeTrue();
         var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId, TestContext.Current.CancellationToken);
-#pragma warning disable HUM_PROFILE_ISSUSPENDED
-        profile.IsSuspended.Should().BeTrue();
-#pragma warning restore HUM_PROFILE_ISSUSPENDED
         profile.State.Should().Be(ProfileState.Suspended);
         profile.AdminNotes.Should().Be("Disruptive");
     }
@@ -358,9 +355,6 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         var userId = Guid.NewGuid();
         var profileId = await SeedUserWithProfileAsync(userId);
         var profile = await Db.Profiles.FirstAsync(p => p.Id == profileId, TestContext.Current.CancellationToken);
-#pragma warning disable HUM_PROFILE_ISSUSPENDED
-        profile.IsSuspended = true;
-#pragma warning restore HUM_PROFILE_ISSUSPENDED
         profile.State = ProfileState.Suspended;
         await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
@@ -372,9 +366,6 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
 
         result.Success.Should().BeTrue();
         var fresh = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId, TestContext.Current.CancellationToken);
-#pragma warning disable HUM_PROFILE_ISSUSPENDED
-        fresh.IsSuspended.Should().BeFalse();
-#pragma warning restore HUM_PROFILE_ISSUSPENDED
         fresh.State.Should().Be(ProfileState.Active);
     }
 

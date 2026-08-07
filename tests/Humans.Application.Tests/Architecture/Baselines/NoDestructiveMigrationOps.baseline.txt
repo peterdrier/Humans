@@ -48,3 +48,9 @@ src/Humans.Infrastructure/Migrations/20260615201620_HoldedLedgerSingleSource.cs:
 # the code-side decouple soaked in production; camp_leads has had no live reader or writer since.
 # Table drop only, no data moved or transformed.
 src/Humans.Infrastructure/Migrations/20260807155413_DropCampLeadsAndSpecialRoleDefault.cs:DropTable(name=camp_leads)#1
+# Sanctioned split-PR drop (issue nobodies-collective/Humans#997): this IS the "PR B" of the
+# cut sequence in memory/architecture/no-drops-until-prod-verified.md. The replacement —
+# Profile.State (ProfileState.Suspended / AdminSuspended) — shipped in #635 and soaked in
+# production; the redundant IsSuspended bool has had no reader or writer left after this PR's
+# code sweep. Column drop only, no data moved or transformed.
+src/Humans.Infrastructure/Migrations/20260807215606_DropProfileIsSuspended.cs:DropColumn(name=IsSuspended)#1

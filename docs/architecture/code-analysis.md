@@ -17,7 +17,6 @@ Runs during `dotnet build`:
 - `MA0026` - Fix TODO comment
 - `MA0051` - Method is too long
 - `VSTHRD200` - Use "Async" suffix for async methods (not required for ASP.NET Core controller actions)
-- `HUM_PROFILE_ISSUSPENDED` - Legacy reads of `Profile.IsSuspended` permitted until lazy-State-backfill follow-up (issue #635 §15i)
 - `HUM_USER_NORMALIZEDEMAIL` - Legacy reads of Identity's shadow-populated `User.NormalizedEmail` permitted (issue #635 §15i)
 - `HUM_USER_DISPLAYNAME` - Legacy `User.DisplayName` seeded in test fixtures (account creation/merge/deletion, cached `UserInfo` fallback) — not render-path violations (test projects only, via `tests/Directory.Build.props`)
 
@@ -66,7 +65,6 @@ Rule    | Title | Severity
 HUM0001 | Reference to deleted email-identity-decoupling legacy member | Error
 HUM0002 | Identity-derived User column written from Application or Web | Error
 HUM0003 | UserManager.FindByEmailAsync / FindByNameAsync called from Application or Web | Error
-HUM0004 | Profile.IsSuspended written outside the allowlisted dual-writers | Error
 HUM0005 | IUserEmailService.ReconcileOAuthIdentityAsync called from outside ExternalLoginService | Error
 HUM0006 | IUserRepository.ApplyUserEmailReconcilePlanAsync called from outside approved user-email services | Error
 HUM0007 | Concurrency-token metadata forbidden in live source | Error
