@@ -240,6 +240,7 @@ inbox:
   - added: 2026-08-07
     what: "Shifts section's own Web layer (ShiftAdminController, ShiftsController, VolunteerTrackingController, ShiftViewModels.cs, ShiftAdminPageBuilder, ShiftBrowsePageBuilder, ShiftDashboardPageBuilder, ShiftBrowseMapper, ShiftFilterResolver, ShiftSignupBucketer, ShiftVolunteerSearchBuilder, DevelopmentDashboardSeeder, ShiftSignupsViewComponent) carries the EF EventSettings entity as a view-model/builder field on read-only display paths — should be BurnSettingsInfo per nobodies-collective/Humans#809's acceptance criteria. Distinct from the write/edit path (EventSettingsFormMapper), which legitimately keeps the entity. ~10 interconnected files forming one section's own display pipeline — warrants its own dedicated section-scoped PR rather than folding into #809's cross-section batch (found while working nobodies-collective/Humans#809)"
     review: panel
+  - added: 2026-08-05
     what: "Extend [ExternalWrite] marking to the Holded surface (ExpenseReportService transitions reaching holdedClient.CreatePurchaseDocumentAsync / UpdatePurchaseDocumentTagsAsync / UploadAttachmentAsync via RunMutationAsync; HoldedFinanceService.EnsureCreditorContactAsync, CreateExpenseAccountAsync) so HUM0033 guards it. No defect exists today — ExpensesController and FinanceController declare no CancellationToken parameter — so this is future-proofing per memory/architecture/cancellation-token-propagation.md (found while auditing nobodies-collective/Humans#950)"
     review: panel
   - added: 2026-08-05
