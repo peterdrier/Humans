@@ -587,6 +587,10 @@ public class AgentServiceTests
         var failureMessage = transcript!.Messages.Should().ContainSingle(m => m.Role == AgentRole.Assistant,
             "a turn that throws mid-stream must still leave an assistant message in the transcript").Subject;
         failureMessage.RefusalReason.Should().Be("error");
+        // AgentAdminStatusService prices spend straight off these fields, so a zeroed trace
+        // would hide a turn the provider actually billed us for.
+        failureMessage.PromptTokens.Should().Be(100);
+        failureMessage.OutputTokens.Should().Be(20);
 
         logger.Received(1).Log(
             LogLevel.Error,

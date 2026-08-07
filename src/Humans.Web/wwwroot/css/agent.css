@@ -80,6 +80,14 @@
     padding-top: 0.4rem;
     color: #444;
 }
+/* Appended under a partial answer when the turn failed after streaming some of it,
+   so the text the user already read stays put but doesn't read as a finished reply. */
+.agent-error-note {
+    border-top: 1px dotted #ccc;
+    margin-top: 0.4rem;
+    padding-top: 0.4rem;
+    color: #a33;
+}
 .agent-tool-calls summary {
     cursor: pointer;
 }

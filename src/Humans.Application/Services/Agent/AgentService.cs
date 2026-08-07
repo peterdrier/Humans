@@ -200,7 +200,7 @@ public sealed class AgentService : IAgentService
                         conversation.Id);
                 // CancellationToken.None: the turn may be failing BECAUSE cancellationToken
                 // fired (client disconnect), and the whole point is to still leave a trace.
-                await AppendFailureMessage(conversation.Id, "error", settings.Model, CancellationToken.None);
+                await AppendFailureMessage(conversation.Id, "error", settings.Model, turnUsage, CancellationToken.None);
                 // Bill it. The provider already charged us for whatever the turn consumed
                 // before it broke, so leaving those tokens out understates admin spend and the
                 // DailyTokenCap; and a turn that fails deterministically must still cost a
@@ -772,7 +772,8 @@ public sealed class AgentService : IAgentService
                 : await _repo.CreateConversationAsync(req.UserId, req.Locale, ct);
         }
 
-        await AppendFailureMessage(conv.Id, reason, _settings.Current.Model, ct);
+        // usage: null — a refused turn is rejected before any provider call, so it cost nothing.
+        await AppendFailureMessage(conv.Id, reason, _settings.Current.Model, usage: null, ct);
     }
 
     /// <summary>Appends an empty-content assistant message carrying a machine-readable
@@ -780,7 +781,14 @@ public sealed class AgentService : IAgentService
     /// already writes for rate-limit/abuse turns (Agent.md invariant 6). Reused for the
     /// turn-exception path (nobodies-collective/Humans#963) so a failed turn shows up through the
     /// same admin refusals filter and "top refusal reasons" panel instead of a new surface.</summary>
-    private async Task AppendFailureMessage(Guid conversationId, string reason, string model, CancellationToken ct)
+    /// <param name="usage">Provider usage to stamp on the row, or null for a turn that never
+    /// reached the provider (rate_limited / abuse_flag). A turn that failed mid-flight did spend
+    /// tokens, and <see cref="AgentAdminStatusService"/> prices spend straight off
+    /// <see cref="AgentMessage.PromptTokens"/>/<see cref="AgentMessage.OutputTokens"/> — leaving
+    /// zeros here would hide billable turns from the admin panel even though the rate-limit
+    /// store counted them.</param>
+    private async Task AppendFailureMessage(
+        Guid conversationId, string reason, string model, TurnUsage? usage, CancellationToken ct)
     {
         await _repo.AppendMessageAsync(new AgentMessage
         {
@@ -789,6 +797,9 @@ public sealed class AgentService : IAgentService
             Role = AgentRole.Assistant,
             Content = "",
             CreatedAt = _clock.GetCurrentInstant(),
+            PromptTokens = usage?.PromptTokens ?? 0,
+            OutputTokens = usage?.OutputTokens ?? 0,
+            CachedTokens = usage?.CacheReadTokens ?? 0,
             Model = model,
             RefusalReason = reason
         }, ct);

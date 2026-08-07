@@ -164,16 +164,23 @@
             if (reason === 'rate_limited') bubble.textContent = '(Daily limit reached — try again tomorrow.)';
             // A turn that threw mid-stream now finishes as a well-formed 200/SSE
             // 'error' finalizer instead of a broken connection, so neither the
-            // !resp.ok branch nor the catch below fires — without this the user is
-            // left staring at an empty bubble. Only fill a bubble that is still
-            // empty: the exception can land after a partial answer was streamed
-            // (rawMarkdown), or after the propose branch wrote the handoff line as
-            // plain text with no rawMarkdown — both beat a generic error, and the
-            // proposal modal is open and usable regardless. The bubble starts as
-            // appendMessage('assistant', ''), so textContent is only non-empty when
-            // one of those branches filled it.
-            if (reason === 'error' && !bubble.dataset.rawMarkdown.trim() && !bubble.textContent.trim()) {
-                bubble.textContent = '(Something went wrong answering that. Please try again.)';
+            // !resp.ok branch nor the catch below fires — the user must be told
+            // here or not at all. Replace an empty bubble; append to one that
+            // already has content so a partial answer, or the propose branch's
+            // handoff line, survives while the user still learns the turn didn't
+            // finish. The bubble starts as appendMessage('assistant', ''), so
+            // textContent is only non-empty once one of those branches filled it.
+            if (reason === 'error') {
+                const errorText = '(Something went wrong answering that. Please try again.)';
+                if (!bubble.dataset.rawMarkdown.trim() && !bubble.textContent.trim()) {
+                    bubble.textContent = errorText;
+                } else {
+                    const note = document.createElement('div');
+                    note.className = 'agent-error-note';
+                    note.textContent = errorText;
+                    bubble.appendChild(note);
+                }
+                messagesEl.scrollTop = messagesEl.scrollHeight;
             }
             // Capture the conversation id from the first successful turn so the
             // next send continues the same conversation server-side. Bail-out
