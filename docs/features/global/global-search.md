@@ -85,7 +85,12 @@ Because the guarantee now rests entirely on destination pages, those pages must 
 
 ## Authorization Model
 
-`/Search` is gated by `[Authorize]` — anonymous viewers can't reach it. Beyond that, **every authenticated viewer sees the same public-visibility surface**, regardless of role. There is no scope parameter on `ISearchService` and no role check in `SearchController`.
+`/Search` is gated by `[Authorize]` — anonymous viewers can't reach it. Beyond that, **every authenticated viewer sees the same surface, regardless of role** — there is no scope parameter on `ISearchService` and no role check in `SearchController`. Role-blindness, not public-only, is the actual invariant, and the two differ on one path:
+
+- **Text queries** return the public-visibility surface, identically for every role. This is what the descope below is about.
+- **GUID queries** resolve past those filters, identically for every role (US-GS.4's GUID exception). A viewer can therefore see a hidden team's *name* in results — which is not a privilege escalation, because no role gets more than any other and the destination page still refuses. Enforcement moved there by the nobodies-collective/Humans#985 ruling.
+
+So "no privileged search mode" holds in both cases; "only the public-visibility surface" holds for text queries only.
 
 This is a deliberate descope. An earlier draft had a `SearchScope { Public, Admin }` parameter threaded through every search service that promoted `Admin` / `HumanAdmin` / `Board` callers to a wider surface (hidden teams, non-public camp seasons, admin-only profile fields). It was removed because:
 
