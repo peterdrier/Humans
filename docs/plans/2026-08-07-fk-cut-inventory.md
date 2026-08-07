@@ -203,22 +203,56 @@ Two of the three bypass `IUserRepository` entirely and delete through ASP.NET Id
 | # | Path | Delete call | Gating | Cross-section dependents at delete time |
 |---|---|---|---|---|
 | 1 | Dev-dashboard reset — `UserService.DeleteUsersAsync` (`UserService.cs:1253-1260`) → `UserRepository.DeleteUsersAsync` (`UserRepository.cs:321-341`) | `ctx.Users.Where(...).ExecuteDeleteAsync` at `:335-337` | Admin (`UserService.cs:1257`); only caller is `DevelopmentDashboardSeeder.ResetAsync:478`, reachable only via `POST dev/seed/dashboard/reset`, which is `AdminOnly` **and** 404s outside `ASPNETCORE_ENVIRONMENT=Development` (`DevSeedController.cs:102,114`); seeder not DI-registered in Production (`Program.cs:76-80`) | **Yes** — seeded users have been through a full seed run |
-| 2 | OAuth signup rollback — `ExternalLoginService.TryDeleteOrphanUserAsync` (`:331-343`), called from `:230,264,279,288` | `userManager.DeleteAsync(user)` at `:335` | None beyond the signup flow itself — **production** | **No** — see below |
-| 3 | Magic-link signup rollback — `AccountProvisioningService` | `userManager.DeleteAsync(user)` at `:164` | None beyond the signup flow itself — **production** | **No** — see below |
+| 2 | OAuth signup rollback — `ExternalLoginService.TryDeleteOrphanUserAsync` (`:331-343`), called from `:230,264,279,288` | `userManager.DeleteAsync(user)` at `:335` | None beyond the signup flow itself — **production** | **One, on one branch** — an `audit_log` row. See below |
+| 3 | Magic-link signup rollback — `AccountProvisioningService` | `userManager.DeleteAsync(user)` at `:164` | None beyond the signup flow itself — **production** | **No** |
 
-**Paths 2 and 3 need no replacement, and that is verified rather than assumed.** Both delete a
-user created moments earlier in the same request, on a failure branch, before onboarding has
-written anything. In `ExternalLoginService.CreateUserAsync` the only writes between
-`userManager.CreateAsync` (`:223`) and the last rollback point are `AddLoginAsync` (`:227`,
-`AspNetUserLogins`) and `ReconcileOAuthIdentityAsync` (`UserEmail` rows) — both Users-section
-tables, neither among the 42. `EnsureStubProfileAsync` runs at `:238`, *after* the final
-rollback. `AccountProvisioningService` has the same shape: `CreateAsync` at `:141`, the only
-write before the rollback is `AddVerifiedEmailAsync` at `:155` (a `UserEmail` row), the delete is
-at `:164`, and `EnsureStubProfileAsync` runs at `:177`. So none of the 42 dependent rows can
-exist when these deletes fire — today or after the cut.
+**Path 3 has nothing to orphan.** `CreateAsync` at `:141`, the only write before the rollback is
+`AddVerifiedEmailAsync` at `:155` (a `UserEmail` row — Users-section, not among the 42, and it
+writes no audit entry), the delete is at `:164`, and `EnsureStubProfileAsync` runs at `:177`,
+after the rollback.
 
-That does not make them irrelevant. They are production callers that hard-delete a user, and any
-enforcement that only guards `IUserService.DeleteUsersAsync` would miss them entirely. See the
+**Path 2 does, on the `CrossUserBlocked` branch.** Three of its four call sites are clean:
+`:230` fires when `AddLoginAsync` fails, before reconcile has run at all, and the writes in
+between (`AspNetUserLogins`, `UserEmail`) are Users-section tables. But `:264` fires *after*
+`ReconcileOAuthIdentityAsync` returns `CrossUserBlocked`, and that branch has already written an
+`audit_log` row — `UserEmailService.cs:988-993`, `AuditAction.OAuthRenameCollisionBlocked` with
+`actorUserId: userId` set to the user about to be deleted. `audit_log.ActorUserId` is
+relationship #1 in this inventory. The two exception branches (`:279`, `:288`) may also have
+written one, depending on how far reconcile got before throwing.
+
+##### This relationship is already broken, and the cut fixes it
+
+`audit_log.ActorUserId` is `SetNull` (`AuditLogEntryConfiguration.cs:49-52`; the FK is
+`onDelete: ReferentialAction.SetNull`, `20260212152552_Initial.cs:525-529`), and a `SET NULL`
+referential action is executed by Postgres as an `UPDATE` on the referencing table. But
+`audit_log` carries `prevent_audit_log_update` — `BEFORE UPDATE ... FOR EACH ROW`, raising
+*"UPDATE operations are not allowed on audit_log table"* unconditionally
+(`20260212152552_Initial.cs:1001-1017`). Referential-action updates fire row-level triggers like
+any other.
+
+So today, deleting a user that has any `audit_log` row as actor **fails**. On the
+`CrossUserBlocked` path the exception is swallowed by `TryDeleteOrphanUserAsync`'s catch and
+logged as *"Failed to clean up orphan user"* (`ExternalLoginService.cs:337-341`) — meaning the
+half-provisioned account the code intends to roll back is still there. The `SetNull` and the
+immutability trigger have contradicted each other since the initial migration; the config
+comment at `:49` (*"null ActorUserId = system action or deleted user"*) describes a behavior the
+database has never permitted.
+
+After the cut there is no FK, so no `SET NULL`, so no `UPDATE`, so no trigger: the delete
+succeeds and leaves `ActorUserId` as a stale `Guid`. **Accepted orphan, and an improvement.** A
+stale actor id on an immutable audit row is a historical fact of the same kind the
+`email_outbox_messages` decision accepts — the row records who attempted the action, which
+remains true — and it is strictly better than today's outcome, where the rollback silently does
+not happen. The migration PR should say so rather than treat it as a new orphan it introduced.
+
+This one is worth confirming against a live database before the migration, since it is inferred
+from the trigger and FK definitions rather than observed: delete a user holding an `audit_log`
+actor row on a copy of prod and check that it raises. The same reasoning applies to path 1 — the
+dev-reset — for any seeded user who has acted.
+
+Paths 2 and 3 still matter for enforcement regardless. They are production callers that
+hard-delete a user, and any guard that only covers `IUserService.DeleteUsersAsync` would miss
+them entirely. See the
 follow-up at the end.
 
 #### What the cut changes on the dev-reset path (path 1)
@@ -230,7 +264,9 @@ handle the rest: the **nine `User`-targeting `Cascade` relationships** (`role_as
 `team_join_requests.UserId`, `team_members.UserId`, `volunteer_event_profiles.UserId`,
 `volunteer_tag_preferences.UserId`, `google_sync_outbox.UserId`) delete the dependent rows, the
 `SetNull` ones blank their columns, and the `Restrict` ones would refuse the delete outright if
-a dev user had picked up an unexpected dependent.
+a dev user had picked up an unexpected dependent. The one exception is
+`audit_log.ActorUserId`: its `SetNull` cannot fire at all, for the trigger reason above, so a
+seeded user who has acted cannot be deleted today either.
 
 After the cut none of that happens. The delete succeeds unconditionally and leaves orphaned
 `team_members`, `role_assignments`, `notification_recipients` and the rest pointing at user ids
@@ -278,10 +314,13 @@ Recorded here so the migration PR does not have to re-argue them:
   signup that has since been deleted, which is true. Neither column is read as a lookup key
   (`ShiftSignupId` appears only in the dedup index, `CampaignGrantId` in no predicate at all).
   Leave both as stale ids; add no replacement.
-- **The 42 `User`-targeting actions, on the two signup-rollback paths.** Both delete a user that
-  cannot yet have any of the 42 dependent rows, as traced above. Nothing to orphan, so no
-  replacement. This is not a blanket pass for the 42: the dev-dashboard reset deletes users that
-  *do* have dependents, and needs the seeder-side cleanup specified above.
+- **The 42 `User`-targeting actions, on the two signup-rollback paths.** Path 3 and three of
+  path 2's four call sites delete a user that cannot yet have any of the 42 dependent rows, as
+  traced above — nothing to orphan, no replacement. Path 2's `CrossUserBlocked` branch does leave
+  one, a stale `audit_log.ActorUserId`; that is accepted for the reasons given above, where the
+  alternative today is a rollback that fails outright. This is not a blanket pass for the 42: the
+  dev-dashboard reset deletes users that *do* have dependents, and needs the seeder-side cleanup
+  specified above.
 
 ### Precedent — the pattern is already in the codebase
 
@@ -339,14 +378,22 @@ argue about, not all nine.
 Neither is in this document's scope; both are recorded because they bear on the conditions
 being tracked and would otherwise be re-derived.
 
-1. **Condition 2's ratchet is not armed.** `Directory.Build.props:79` lists `HUM0024` in
-   `WarningsNotAsErrors` globally, and **zero** configurations carry
-   `[Grandfathered("HUM0024", ...)]`. The props comment at `:51-55` describes a per-site
-   grandfathering scheme that is not in use, and states its exit condition as *"remove this
-   entry once the last `[Grandfathered("HUM0024", ...)]` is gone"* — a condition already
-   vacuously true, so nothing will ever trigger it. A new cross-section FK added today produces
-   a non-blocking warning. Removing `HUM0024` from `WarningsNotAsErrors` in the bulk cut's PR
-   is what actually makes the boundary permanent, which is the thing condition 2 is for.
+1. **Condition 2's ratchet is already armed — and the bulk cut is what disarms the scaffolding
+   around it.** `CrossSectionEfJoinAnalyzer.cs:46` declares HUM0024 with
+   `defaultSeverity: DiagnosticSeverity.Error` and `isEnabledByDefault: true`, and `:119` runs
+   every configuration through `GrandfatheredCheck.EffectiveSeverity`, which downgrades to
+   Warning **only** for types carrying `[Grandfathered(ruleId: "HUM0024", ...)]`. Forty
+   configuration classes carry it today (`AuditLogEntryConfiguration.cs:13-17` is the pattern —
+   one per inventoried relationship). `Directory.Build.props:79` lists HUM0024 in
+   `WarningsNotAsErrors`, which keeps those forty *downgraded* diagnostics non-fatal; it does
+   not touch the undowngraded ones.
+
+   So a new cross-section relationship added today, on a class with no annotation, is an
+   **Error and fails the build**. The boundary is enforced. What the bulk cut changes is the
+   debt side: as each relationship's join goes, its `[Grandfathered]` annotation goes with it,
+   and once the last one is removed the `WarningsNotAsErrors` entry becomes removable on the
+   exit condition the props comment at `:51-55` already states. That entry is cleanup after the
+   fact, not the thing that makes the boundary permanent.
 2. **Condition 4's cited example is stale.** The plan
    (`2026-06-13-q3-transition-plan.md:209-217`) and the issue both cite `LegalDocument.Team` as
    an unstripped live nav. It no longer exists: `LegalDocument.cs:25` carries only
