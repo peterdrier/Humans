@@ -660,6 +660,41 @@ public sealed class HoldedFinanceService(
             "both now show on /Finance/Creditors and one must be unbound.",
             writePath, userId, holdedContactId, supplierAccountNum, conflict.UserId, conflict.Source);
 
+    /// <summary>True when the member's creditor row is still exactly what <paramref name="asRead"/>
+    /// holds — same row, same content, or still absent when nothing was read.
+    ///
+    /// <para>The automatic write paths carry the contact id, Source and account number straight off the
+    /// binding they opened with, so their write is only safe while that binding is still the one in the
+    /// table; an admin Bind, Unbind or rebind landing in the window turns it into a silent revert, and
+    /// holded_creditor_contacts has no audit trail to reconstruct the loss from. Row identity alone is
+    /// not enough to detect that: UpsertCreditorContactAsync is keyed by UserId and mutates in place, so
+    /// an admin rebinding a member to a different Holded contact keeps the row and its Id and changes
+    /// only the columns being clobbered. Absence is not enough either — a member unbound at the opening
+    /// read who is manually bound during the round-trip has a row to lose too.</para></summary>
+    private async Task<bool> BindingUnchangedAsync(
+        string writePath, Guid userId, HoldedCreditorContact? asRead, CancellationToken ct)
+    {
+        var current = await repo.GetCreditorContactByUserAsync(userId, ct);
+        if (current is null && asRead is null) return true;
+        if (current is not null && asRead is not null
+            && current.Id == asRead.Id
+            && string.Equals(current.HoldedContactId, asRead.HoldedContactId, StringComparison.Ordinal)
+            && current.SupplierAccountNum == asRead.SupplierAccountNum
+            && current.Source == asRead.Source)
+            return true;
+
+        // The admin's action stands and nothing is written, so this line is the only record that a push
+        // was overtaken — worth a Warning so a member whose push "did nothing" can be explained.
+        logger.LogWarning(
+            "Skipped the creditor binding write in {WritePath} for member {UserId}: the binding changed " +
+            "while the push was in flight — was {WasContactId} / {WasAccountNum} ({WasSource}), is now " +
+            "{NowContactId} / {NowAccountNum} ({NowSource}). The newer binding stands.",
+            writePath, userId,
+            asRead?.HoldedContactId, asRead?.SupplierAccountNum, asRead?.Source,
+            current?.HoldedContactId, current?.SupplierAccountNum, current?.Source);
+        return false;
+    }
+
     public async Task<CreditorBindResult> SetCreditorContactAsync(
         Guid userId, int supplierAccountNum, CancellationToken ct = default)
     {
@@ -808,12 +843,13 @@ public sealed class HoldedFinanceService(
             return contactId;
 
         // A binding still missing its account number does write real content, so it cannot be skipped
-        // the way the steady state above is — but it can still lose a concurrent Unbind the same way:
-        // UpsertCreditorContactAsync treats an absent row as first-time and inserts, which would
-        // resurrect the very binding an admin just cleared (nobodies-collective/Humans#995). Re-reading
-        // right before the write shrinks that window from the whole Holded round-trip above to the gap
-        // between this read and the write call, without a version column (no-concurrency-tokens.md).
-        if (binding is not null && await repo.GetCreditorContactByUserAsync(userId, ct) is null)
+        // the way the steady state above is — but it can still lose whatever an admin did during the
+        // Holded round-trip above. UpsertCreditorContactAsync is keyed by UserId, so it inserts over an
+        // Unbind and mutates over a Bind, either way undoing the admin's action from the copy read
+        // before the round-trip (nobodies-collective/Humans#995). Re-reading right before the write
+        // shrinks that window to the gap between this read and the write call, without a version column
+        // (no-concurrency-tokens.md).
+        if (!await BindingUnchangedAsync(nameof(EnsureCreditorContactAsync), userId, binding, ct))
             return contactId;
 
         var now = clock.GetCurrentInstant();
@@ -846,13 +882,13 @@ public sealed class HoldedFinanceService(
                 nameof(SetCreditorAccountNumAsync), userId, binding.HoldedContactId,
                 supplierAccountNum, conflict);
 
-        // Re-check immediately before writing: an Unbind landing between the read above and here must
-        // not be undone the same way EnsureCreditorContactAsync guards against it (Humans#995) — without
-        // this, UpsertCreditorContactAsync would treat the now-absent row as first-time and insert it
-        // back. This runs at the end of a long push with no I/O since the read above, so the remaining
-        // window is sub-millisecond; closing it fully would need a version column, which this
-        // codebase deliberately does not use (no-concurrency-tokens.md).
-        if (await repo.GetCreditorContactByUserAsync(userId, ct) is null) return;
+        // Re-check immediately before writing: an Unbind or a rebind landing between the read above and
+        // here must not be undone the same way EnsureCreditorContactAsync guards against it
+        // (Humans#995) — the row below carries the contact id, Source and CreatedAt of the binding read
+        // above, so writing it over an admin's newer one reverts it wholesale. This runs at the end of a
+        // long push with no I/O since the read above, so the remaining window is sub-millisecond;
+        // closing it fully would need a version column (no-concurrency-tokens.md).
+        if (!await BindingUnchangedAsync(nameof(SetCreditorAccountNumAsync), userId, binding, ct)) return;
 
         var now = clock.GetCurrentInstant();
         await repo.UpsertCreditorContactAsync(new HoldedCreditorContact

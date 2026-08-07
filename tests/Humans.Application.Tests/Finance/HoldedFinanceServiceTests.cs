@@ -740,6 +740,82 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
+    public async Task EnsureCreditorContact_ReboundDuringHoldedRoundTrip_DoesNotClobberTheNewBinding()
+    {
+        // An admin who unbinds *and* rebinds inside the window leaves a row behind, so mere presence
+        // proves nothing — and a rebind of an already-bound member keeps the row and its Id
+        // (UpsertCreditorContactAsync is keyed by UserId), so Id proves nothing either. Only the
+        // columns this write would overwrite say whether it is still the binding that was read.
+        var userId = Guid.NewGuid();
+        var bindingId = Guid.NewGuid();
+        var logger = new CapturingLogger<HoldedFinanceService>();
+        _repo.GetCreditorContactByUserAsync(userId, Arg.Any<CancellationToken>()).Returns(
+            new HoldedCreditorContact
+            {
+                Id = bindingId,
+                UserId = userId,
+                HoldedContactId = "c1",
+                SupplierAccountNum = null,
+                Source = CreditorContactSource.Auto,
+            },
+            new HoldedCreditorContact                  // re-check: admin rebound to another contact
+            {
+                Id = bindingId,
+                UserId = userId,
+                HoldedContactId = "c2",
+                SupplierAccountNum = 40000009,
+                Source = CreditorContactSource.Manual,
+            });
+        _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>());
+        _client.UpsertContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("c1");
+
+        var id = await new HoldedFinanceService(_repo, _client, _budget, _clock, _cache, logger)
+            .EnsureCreditorContactAsync(
+                userId, "Peter Drier", null, null, null, 40000004,
+                Xunit.TestContext.Current.CancellationToken);
+
+        id.Should().Be("c1");
+        await _repo.DidNotReceive().UpsertCreditorContactAsync(
+            Arg.Any<HoldedCreditorContact>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+        // The table has no audit trail, so the skip is only reconstructible from this line.
+        logger.Entries.Should().ContainSingle(e => e.Level == LogLevel.Warning)
+            .Which.Message.Should().Contain("c2");
+    }
+
+    [HumansFact]
+    public async Task EnsureCreditorContact_BoundByAdminDuringHoldedRoundTrip_DoesNotOverwriteTheManualBind()
+    {
+        // Same window, opposite polarity: nothing was bound at the opening read, so the write below is
+        // a first-time insert — but Upsert is keyed by UserId, and a manual bind landing mid-push turns
+        // that insert into an update that overwrites the admin's contact and drops Source back to Auto.
+        var userId = Guid.NewGuid();
+        var logger = new CapturingLogger<HoldedFinanceService>();
+        _repo.GetCreditorContactByUserAsync(userId, Arg.Any<CancellationToken>()).Returns(
+            (HoldedCreditorContact?)null,
+            new HoldedCreditorContact                  // re-check: admin bound them while we pushed
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                HoldedContactId = "c-admin",
+                SupplierAccountNum = 40000009,
+                Source = CreditorContactSource.Manual,
+            });
+        _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>());
+        _client.UpsertContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("c-new");
+
+        var id = await new HoldedFinanceService(_repo, _client, _budget, _clock, _cache, logger)
+            .EnsureCreditorContactAsync(
+                userId, "Peter Drier", null, null, null, null,
+                Xunit.TestContext.Current.CancellationToken);
+
+        id.Should().Be("c-new");
+        await _repo.DidNotReceive().UpsertCreditorContactAsync(
+            Arg.Any<HoldedCreditorContact>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+        logger.Entries.Should().ContainSingle(e => e.Level == LogLevel.Warning)
+            .Which.Message.Should().Contain("c-admin");
+    }
+
+    [HumansFact]
     public async Task SetCreditorAccountNum_RecordsAssignedAccountOnExistingBinding()
     {
         var userId = Guid.NewGuid();
@@ -788,6 +864,41 @@ public class HoldedFinanceServiceTests
 
         await _repo.DidNotReceive().UpsertCreditorContactAsync(
             Arg.Any<HoldedCreditorContact>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task SetCreditorAccountNum_UnboundAndReboundBetweenReadAndWrite_DoesNotClobberTheNewBinding()
+    {
+        // An Unbind followed by a fresh manual bind leaves a row in place, so the write is not blocked
+        // by absence — and it would carry the old binding's contact id and Source over the admin's.
+        var userId = Guid.NewGuid();
+        var logger = new CapturingLogger<HoldedFinanceService>();
+        _repo.GetCreditorContactByUserAsync(userId, Arg.Any<CancellationToken>()).Returns(
+            new HoldedCreditorContact
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                HoldedContactId = "new-contact",
+                SupplierAccountNum = null,
+                Source = CreditorContactSource.Auto,
+            },
+            new HoldedCreditorContact                  // re-check: a different row — deleted, rebound
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                HoldedContactId = "c-admin",
+                SupplierAccountNum = 40000009,
+                Source = CreditorContactSource.Manual,
+            });
+        _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>());
+
+        await new HoldedFinanceService(_repo, _client, _budget, _clock, _cache, logger)
+            .SetCreditorAccountNumAsync(userId, 40000012, Xunit.TestContext.Current.CancellationToken);
+
+        await _repo.DidNotReceive().UpsertCreditorContactAsync(
+            Arg.Any<HoldedCreditorContact>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+        logger.Entries.Should().ContainSingle(e => e.Level == LogLevel.Warning)
+            .Which.Message.Should().Contain("c-admin");
     }
 
     // ─── Creditor account names + manual bind guard ──────────────────────────────
