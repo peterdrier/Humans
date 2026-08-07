@@ -28,7 +28,7 @@ There are two sources, and they are for different situations.
 | Source | Taken when | Where it lives | Use it for |
 |--------|-----------|----------------|------------|
 | **Coolify scheduled backup** | On Coolify's backup schedule | Coolify's configured off-host storage | Data loss, corruption, an old state you need back |
-| **Pre-migration snapshot** | Automatically, immediately before any deploy that changes the schema | `db_snapshots` volume, mounted at `/app/db-snapshots` inside the **app** container | A migration that went wrong — rolls you back to the moment before this deploy touched the schema |
+| **Pre-migration snapshot** | Automatically, immediately before any deploy that changes the schema | `db_snapshots` volume, mounted at `/app/db-snapshots` inside the **app** container | Undoing a schema-changing deploy — whether its migration failed outright (§4) or completed and turned out to be wrong. Rolls you back to the moment before that deploy touched the schema |
 
 > **Format assumption.** Coolify's backup format is configured in the Coolify console and is
 > not committed to this repo, so it could not be confirmed from here. **Assume custom format
@@ -68,11 +68,7 @@ does not:
 
 ```bash
 mkdir -p ./snapshots
-docker cp $APP:/app/db-snapshots/. ./snapshots && ls -l ./snapshots
-
-# After a failed migration this is the .unfinished file — see §4
-cp ./snapshots/humans-20260805T155147Z.dump.unfinished ./restore.dump
-docker cp ./restore.dump $DB:/tmp/restore.dump
+docker cp $APP:/app/db-snapshots/. ./snapshots && ls -lt ./snapshots
 ```
 
 The trailing **`/.`** on the source matters: `docker cp` of a directory *into an existing
@@ -80,11 +76,27 @@ directory* nests it, so without it a second attempt leaves you with
 `./snapshots/db-snapshots/...` and a `cp` that either fails or quietly picks up the stale dump
 from the first attempt. With `/.` it copies the contents, and reruns are safe.
 
-A file with a trailing **`.unfinished`** is the one you want: it means the deploy that took it
-never finished migrating, so it is the last state before that deploy touched the schema. Copy it
-to a plain `restore.dump` as above — the suffix is bookkeeping for the app, and `pg_restore` does
-not care what the file is called. (`.writing` is different: that is an aborted dump, never a
-restore candidate.) See §5.
+**Which file — it depends on what went wrong:**
+
+| Situation | File | Why |
+|-----------|------|-----|
+| **The migration failed** — app crash-looping, §4 | the one ending **`.unfinished`** | The suffix means the deploy that took it never finished migrating, so it is the last state before that deploy touched the schema. There is at most one. |
+| **The deploy succeeded but was wrong** — bad data, wrong schema, and you want the previous release's state back | the **newest plain `.dump`** | A completed deploy's snapshot loses the suffix, so the newest `.dump` is the state immediately before the most recent schema-changing deploy. |
+
+Both are counterintuitive in the same way, so check the timestamps in `ls -lt` output against
+when the deploy happened rather than trusting the ordering. If the deploy you are undoing was
+code-only it took no snapshot at all — the database is not the problem and rolling the image back
+is the whole fix.
+
+A **`.writing`** file is never a restore candidate: that is an aborted dump. See §5.
+
+Then copy the file you picked to a plain `restore.dump` — the suffix is bookkeeping for the app,
+and `pg_restore` does not care what the file is called:
+
+```bash
+cp ./snapshots/humans-20260805T155147Z.dump.unfinished ./restore.dump
+docker cp ./restore.dump $DB:/tmp/restore.dump
+```
 
 **From a Coolify backup:** download it from Coolify's storage to the host, then
 
@@ -347,11 +359,15 @@ the image in minutes, and the pre-migration snapshot correctly does not fire for
 then all of the following, no exceptions:
 
 1. An admin who can reach the server is awake, at a keyboard, and knows the deploy is happening.
-2. A fresh snapshot exists from *before* the deploy. The automatic pre-migration snapshot covers
-   this; confirm the file appeared (`docker exec $APP ls -l /app/db-snapshots`) rather than
-   assuming.
-3. Someone has read this runbook *before* deploying, not during the incident.
-4. It is not during a peak hour — gate opening, ticket scanning surges, shift changeover.
+2. **Before:** the snapshot volume is real — `docker exec $APP ls -l /app/db-snapshots` shows the
+   previous deploy's files, not an empty directory. You cannot pre-check *this* deploy's
+   snapshot: the new image takes it on boot, immediately before it migrates. That it gets taken
+   at all is guaranteed by §5 (a failed dump aborts startup before any schema change); what a
+   missing volume costs you is the file surviving a container replacement.
+3. **After:** a snapshot with this deploy's timestamp actually appeared —
+   `docker exec $APP ls -lt /app/db-snapshots | head` — before anyone walks away.
+4. Someone has read this runbook *before* deploying, not during the incident.
+5. It is not during a peak hour — gate opening, ticket scanning surges, shift changeover.
 
 **Why:** every failure mode above ends in "the single instance crash-loops and someone must
 hand-restore." That is a 10-minute job with a snapshot, this runbook, and an awake admin. It is

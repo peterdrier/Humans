@@ -108,11 +108,17 @@ internal sealed class PreMigrationSnapshot(string connectionString, ILogger logg
             if (carried is not null)
             {
                 // Warning level for the same reason as the "written" line below: in a crash loop
-                // this is the line that tells you which file is the real rollback point.
+                // this is the line that tells you which file is the real rollback point. The age
+                // is what separates the case this exists for - a restart minutes after the
+                // failed deploy - from a marker left behind by an older one, which would make
+                // this deploy's rollback point far older than it should be.
                 logger.LogWarning(
-                    "Reusing pre-migration snapshot {Path}: an earlier boot of this deploy took it and " +
-                    "did not finish migrating, so it - not the current schema - is the rollback point",
-                    carried);
+                    "Reusing pre-migration snapshot {Path}, taken {AgeHours:F1}h ago: an earlier boot of " +
+                    "this deploy took it and did not finish migrating, so it - not the current schema - " +
+                    "is the rollback point. An age beyond this deploy means a stale marker; see " +
+                    "docs/database-restore-runbook.md §5",
+                    carried,
+                    (DateTime.UtcNow - File.GetLastWriteTimeUtc(carried)).TotalHours);
                 return;
             }
 
@@ -152,9 +158,18 @@ internal sealed class PreMigrationSnapshot(string connectionString, ILogger logg
     /// has recovered a failed deploy by rolling the image back.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// Never throws: the schema is already migrated by the time this runs, so bookkeeping must
-    /// not be what fails the boot. A failure leaves the marker in place, which costs the next
-    /// deploy a fresh snapshot but never costs anyone the existing one.
+    /// not be what fails the boot.
+    /// </para>
+    /// <para>
+    /// A failure is logged at Error because of what it costs later: the marker stays, and the
+    /// next schema-changing deploy carries this snapshot forward instead of dumping, leaving its
+    /// rollback point older than the deploy it is meant to undo. It mostly self-heals — this runs
+    /// on every boot, pending migrations or not, so any later restart retires the marker — but a
+    /// deploy landing first would inherit it. Making that impossible needs the snapshot to record
+    /// which deploy took it: nobodies-collective/Humans#989.
+    /// </para>
     /// </remarks>
     public void MarkMigrationsComplete()
     {
@@ -168,13 +183,23 @@ internal sealed class PreMigrationSnapshot(string connectionString, ILogger logg
         }
         catch (IOException ex)
         {
-            logger.LogWarning(ex, "Could not clear unfinished pre-migration snapshots in {Directory}", SnapshotDirectory);
+            LogRetirementFailure(ex);
         }
         catch (UnauthorizedAccessException ex)
         {
-            logger.LogWarning(ex, "Could not clear unfinished pre-migration snapshots in {Directory}", SnapshotDirectory);
+            LogRetirementFailure(ex);
         }
     }
+
+    private void LogRetirementFailure(Exception ex) =>
+        logger.LogError(
+            ex,
+            "Could not retire the unfinished pre-migration snapshot in {Directory}. This deploy's " +
+            "migrations succeeded, but until the marker clears the next schema-changing deploy will " +
+            "reuse that snapshot instead of taking its own. Rename it to drop the '{Suffix}' suffix, " +
+            "or restart the app once - see docs/database-restore-runbook.md §5",
+            SnapshotDirectory,
+            UnfinishedSuffix);
 
     /// <summary>
     /// The snapshot an earlier boot of this deploy left behind, or <see langword="null"/> if the

@@ -10,14 +10,24 @@ pending EF migration.** Any `Up()` counts: `AddColumn` is as frozen as `DropColu
 in minutes.
 
 **If a schema change genuinely cannot wait** (data-corrupting bug, gate admissions broken), all
-four, no exceptions:
+five, no exceptions:
 
 1. An admin who can reach the server is awake, at a keyboard, and knows the deploy is happening.
-2. The pre-deploy snapshot file is confirmed present — `docker exec $APP ls -l /app/db-snapshots`
-   — not assumed.
-3. Whoever is deploying has read [`docs/database-restore-runbook.md`](../../docs/database-restore-runbook.md)
+2. **Before:** the snapshot volume is real — `docker exec $APP ls -l /app/db-snapshots` shows the
+   previous deploy's files on a mounted volume, not an empty directory in the container's own
+   filesystem. You cannot pre-check *this* deploy's snapshot: it is taken by the new image on
+   boot, immediately before it migrates. What you are confirming is that the mechanism will have
+   somewhere durable to write.
+3. **After:** a snapshot carrying this deploy's timestamp actually appeared —
+   `docker exec $APP ls -lt /app/db-snapshots | head` — before anyone walks away.
+4. Whoever is deploying has read [`docs/database-restore-runbook.md`](../../docs/database-restore-runbook.md)
    beforehand, not during the incident.
-4. It is not a peak hour (gate opening, ticket scanning surge, shift changeover).
+5. It is not a peak hour (gate opening, ticket scanning surge, shift changeover).
+
+Condition 2 is about durability, not about whether a snapshot gets taken. That part the code
+already guarantees: a dump that fails aborts startup *before* any schema change, so a
+schema-changing deploy cannot get past boot without one. What a missing volume costs you is the
+snapshot surviving a container replacement.
 
 **Why:** migrations apply at startup and rethrow on failure, and the single instance runs with
 `restart: unless-stopped` — so a bad migration crash-loops the only instance. Recovery is a
