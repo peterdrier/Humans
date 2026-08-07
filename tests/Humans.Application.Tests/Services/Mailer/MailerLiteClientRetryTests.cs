@@ -58,10 +58,12 @@ public class MailerLiteClientRetryTests
         handler.EnqueueJson(HttpStatusCode.OK, HumansGroupPage);
         handler.Enqueue429(retryAfterSeconds: 86400); // a day — clock skew / malformed header
         var logger = new CapturingLogger<MailerLiteClient>();
-        var client = NewClient(handler, logger);
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(
             Xunit.TestContext.Current.CancellationToken);
-        cts.CancelAfter(TimeSpan.FromMilliseconds(250)); // don't sit out the (clamped) delay
+        // Cancel the instant the retry warning is written, so the client reaches its
+        // clamped 90s Task.Delay with an already-cancelled token. Ordering, not wall
+        // clock: a loaded runner can no longer cancel before the warning exists.
+        var client = NewClient(handler, new CancelOnRetryWarningLogger(logger, cts));
 
         var act = async () => await client.AssignSubscriberToGroupAsync("sub-1", "42", cts.Token);
 
@@ -75,6 +77,32 @@ public class MailerLiteClientRetryTests
         new(new StubHttpClientFactory(handler),
             NodaTime.SystemClock.Instance,
             logger ?? NullLogger<MailerLiteClient>.Instance);
+
+    // Forwards everything to the capturing logger, then cancels once the 429 retry
+    // warning has been recorded — the deterministic trigger the timed budget was
+    // standing in for.
+    private sealed class CancelOnRetryWarningLogger(
+        CapturingLogger<MailerLiteClient> inner, CancellationTokenSource cts)
+        : ILogger<MailerLiteClient>
+    {
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull
+            => inner.BeginScope(state);
+
+        public bool IsEnabled(LogLevel logLevel) => inner.IsEnabled(logLevel);
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter)
+        {
+            inner.Log(logLevel, eventId, state, exception, formatter);
+            if (logLevel == LogLevel.Warning
+                && formatter(state, exception).Contains("retrying in", StringComparison.Ordinal))
+                cts.Cancel();
+        }
+    }
 
     private sealed class ScriptedHandler : HttpMessageHandler
     {
