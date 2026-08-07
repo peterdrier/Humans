@@ -493,10 +493,16 @@ public sealed class HoldedFinanceService(
             .GroupBy(c => c.SupplierAccountNum!.Value)
             .ToDictionary(g => g.Key, g => g.First());
 
-        // A binding whose one-shot number resolution missed carries a contact id and a null 400000xx.
-        // Placing it by contact id is what makes it appear at all: keyed on the number alone, its
-        // account renders "unbound" while a member in fact holds the contact behind it — which is
-        // both a lie and the reason such a binding could not be unbound from this page.
+        // Which 400000xx a contact carries is Holded's fact, so this map — not the number cached on the
+        // binding — decides the row, and it does two jobs. A binding whose one-shot number resolution
+        // missed carries a contact id and a null 400000xx; keyed on the number alone its account renders
+        // "unbound" while a member in fact holds the contact behind it, which is both a lie and the
+        // reason such a binding could not be unbound from here. And the two columns are independent, so
+        // bindings sharing a contact can carry numbers that disagree — resolving through the contact
+        // lands them on one row, which is what makes the contact-id half of the at-most-one-member
+        // invariant (the half FindConflictingBinding enforces on writes) visible as a collision instead
+        // of two innocent-looking single-member rows. The stored number is the fallback, for a contact
+        // Holded's list does not carry.
         var accountByContactId = contacts
             .GroupBy(kv => kv.Value.Id, StringComparer.Ordinal)
             .ToDictionary(g => g.Key, g => g.First().Key, StringComparer.Ordinal);
@@ -505,10 +511,9 @@ public sealed class HoldedFinanceService(
         // automatic write paths record what Holded assigned rather than refusing, so a second member on
         // one 400000xx is exactly the state an admin has to see and resolve here.
         var bindings = (await repo.GetCreditorContactsAsync(ct))
-            .Select(b => (Account: b.SupplierAccountNum
-                              ?? (accountByContactId.TryGetValue(b.HoldedContactId, out var viaContact)
-                                  ? viaContact
-                                  : (int?)null),
+            .Select(b => (Account: accountByContactId.TryGetValue(b.HoldedContactId, out var viaContact)
+                              ? viaContact
+                              : b.SupplierAccountNum,
                           Binding: b))
             .Where(x => x.Account is not null)
             .GroupBy(x => x.Account!.Value)

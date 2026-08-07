@@ -423,6 +423,35 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
+    public async Task ListCreditorAccounts_BindingsSharingAContact_CollideOnOneRowDespiteDifferentNumbers()
+    {
+        // HoldedContactId and SupplierAccountNum are independent columns, so two members on one Holded
+        // contact can carry numbers that disagree — the legacy state the previously-unguarded seed path
+        // could leave behind. Grouped on the stored number they would be two innocent single-member
+        // rows, hiding the contact-id half of the invariant FindConflictingBinding enforces on writes.
+        var first = Guid.NewGuid();
+        var second = Guid.NewGuid();
+        _repo.GetAllLedgerLinesAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedLedgerLine>());
+        _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>
+        {
+            new() { UserId = first, HoldedContactId = "c1", SupplierAccountNum = 40000004, Source = CreditorContactSource.Manual },
+            new() { UserId = second, HoldedContactId = "c1", SupplierAccountNum = 40000007, Source = CreditorContactSource.Auto },
+        });
+        _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedContactDto>
+        {
+            new() { Id = "c1", Name = "Daniela Marquez", SupplierAccountNum = 40000004 },
+        });
+
+        var rows = await MakeService().ListCreditorAccountsAsync(Xunit.TestContext.Current.CancellationToken);
+
+        // Holded says c1 is 40000004, so that is the row — and 40000007 was only ever a stale guess,
+        // with no ledger lines and no contact of its own to keep it alive.
+        var row = rows.Should().ContainSingle().Subject;
+        row.SupplierAccountNum.Should().Be(40000004);
+        row.Bindings.Select(b => b.UserId).Should().BeEquivalentTo([first, second]);
+    }
+
+    [HumansFact]
     public async Task GetCreditorLedger_derives_balance_and_lines_from_cache()
     {
         _repo.GetLedgerLinesByAccountNumAsync(40000004, Arg.Any<CancellationToken>()).Returns(new List<HoldedLedgerLine>
