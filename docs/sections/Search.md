@@ -4,9 +4,24 @@
   src/Humans.Web/Controllers/SearchController.cs
   src/Humans.Web/Views/Search/**
   src/Humans.Application/DTOs/GlobalSearchResults.cs
+  src/Humans.Infrastructure/Services/Users/CachingUserService.cs
+  src/Humans.Infrastructure/Services/Teams/CachingTeamService.cs
+  src/Humans.Infrastructure/Services/Camps/CachingCampService.cs
+  src/Humans.Infrastructure/Services/Events/CachingEventService.cs
+  src/Humans.Application/Services/Shifts/ShiftManagementService.cs
+  src/Humans.Application/Services/Profiles/PersonSearchMatcher.cs
+  src/Humans.Web/Controllers/CampController.cs
+  src/Humans.Web/Controllers/TeamController.cs
 -->
 <!-- freshness:flag-on-change
   The GUID-vs-text visibility split, the five-section fan-out list, and the Search-vs-HumanSearchViewComponent naming boundary — review when SearchService's dependencies change or when a destination page's own visibility gate changes.
+
+  Why the trigger list reaches outside src/**/Search/**: this section owns no logic of its own. Every
+  invariant it states is implemented in someone else's file — the per-bucket visibility filters and
+  GUID branches live in the four Caching*Service classes and ShiftManagementService, the Humans score
+  tiers live in PersonSearchMatcher, and the ruling on nobodies-collective/Humans#985 moved the whole
+  privacy guarantee onto the destination controllers (CampController, TeamController). A change to any
+  of those can falsify this doc without touching a single file under Search.
 -->
 
 # Search — Section Invariants
@@ -36,7 +51,7 @@ None — Search owns no tables. It is a pure read/fan-out orchestrator over five
 
 - A query shorter than 2 characters after trim short-circuits to an empty `GlobalSearchResults` — no call to any of the five sections.
 - `onlyType` skips the fan-out to the other four sections entirely, not just their display.
-- Each bucket is scored independently on name-match strength (exact = 100, prefix = 80, contains = 60); there is no cross-type ranking and no result cap — every match returns (capping was tried and reverted: at ~500-user scale it hid people users were looking for). Display ordering (score desc, then title/burner-name asc) is a `SearchController` concern, never pushed into `SearchService` ([`display-sort-in-controllers`](../../memory/architecture/display-sort-in-controllers.md)).
+- Each bucket is scored independently, but **the rubric is not shared — Humans use a finer one.** Teams/Camps/Shifts/Events are scored by `SearchService.ScoreNameField` (`SearchService.cs:158-164`): exact = 100, prefix = 80, contains = 60. Humans arrive **pre-scored** from `PersonSearchMatcher` (`PersonSearchMatcher.cs:26-30`), which adds two tiers the orchestrator has no concept of — exact name = 100, whole-name prefix = **85**, token prefix = 80, name contains = 60, and any non-name public field (bio/city/contact) = **40**. A GUID hit scores 100 in every bucket. So do not check the Humans bucket against 100/80/60: a whole-name-prefix hit at 85 and a bio hit at 40 are both correct. There is no cross-type ranking and no result cap — every match returns (capping was tried and reverted: at ~500-user scale it hid people users were looking for). Display ordering (score desc, then title/burner-name asc) is a `SearchController` concern, never pushed into `SearchService` ([`display-sort-in-controllers`](../../memory/architecture/display-sort-in-controllers.md)).
 - **Text queries are visibility-filtered per section, role-blind.** Hidden teams, non-public camp seasons (outside `Active`/`Full`), admin-only rotas, and admin-only profile fields are excluded for every viewer — there is no admin-privileged text-search bucket. The filters are constants applied inside each section's own search call (`CachingTeamService`, `CachingCampService`, `ShiftManagementService`, `IUserServiceRead.SearchUsersAsync(..., PersonSearchFields.PublicAll, ...)`), not a role check `SearchService` performs itself.
 - **GUID queries are NOT visibility-filtered — this is a routing convenience, not an authorization statement.** Pasting a searchable entity's own id (Team, Camp, Shift/Rota, Human) resolves it directly, bypassing the text-query visibility filters, on the reasoning that a caller can only use an id they already hold. Search may therefore return a hit the caller cannot open; enforcement is entirely the destination page's job (Peter's ruling on nobodies-collective/Humans#985, 2026-08-07). **Do not re-add a visibility check on the GUID path** — that was the pre-ruling behavior and was deliberately removed.
 - There are no hidden users, so the Humans bucket has no visibility filter for the GUID path to bypass — but it is not unconditional resolution either. `CachingUserService.SearchUsersAsync` returns an id hit only when the human has a `Profile` and `Profile.RejectedAt` is null (`CachingUserService.cs:132-150`), the same eligibility gate the text loop applies per candidate; a profile-less or rejected human returns an empty bucket from both paths. What the GUID path does skip is the `PersonSearchFields.PublicAll` mask, which only governs which fields *text* matching compares.
