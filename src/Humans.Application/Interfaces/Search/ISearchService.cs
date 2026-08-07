@@ -8,8 +8,8 @@ namespace Humans.Application.Interfaces.Search;
 /// <c>ITeamServiceRead</c>, <c>ICampServiceRead</c>,
 /// <c>IShiftManagementService</c>, <c>IEventServiceRead</c>), each of which
 /// resolves its own case-insensitive match — from a cached snapshot for
-/// teams/camps/humans, via Postgres ILike at the DB layer for rotas and
-/// events. The orchestrator scores and ranks within each type and returns
+/// teams/camps/humans/events, via Postgres ILike at the DB layer for rotas
+/// only. The orchestrator scores and ranks within each type and returns
 /// five independently-ranked buckets — there is no cross-modal / relational
 /// expansion (see <c>docs/features/global/global-search.md</c>).
 ///
