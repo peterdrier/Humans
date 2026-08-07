@@ -315,8 +315,16 @@ Implemented in `src/Humans.Infrastructure/Hosting/PreMigrationSnapshot.cs`
 - **If the dump fails, startup aborts and the migration does not run.** This is on purpose:
   the schema is left exactly as the previous release left it, so rolling the image back is a
   complete recovery. Fix the cause (usually the volume mount or a missing `pg_dump`) and
-  redeploy — do not work around it. `postgresql-client-16` is installed in the runtime image by
+  redeploy — do not work around it. `postgresql-client-18` is installed in the runtime image by
   the `Dockerfile`; the volume is declared in `docker-compose.yml`.
+- **The client major tracks production's server, not `docker-compose.yml`'s.** `pg_dump` refuses
+  to dump a server newer than itself but reads older ones fine, so the pinned client must be
+  `>=` the production server's major. Production runs Postgres 18; `docker-compose.yml` runs 16
+  for QA and local, and one client 18 covers both. Pinning it to the compose file instead is what
+  broke the first schema-changing production deploy after this feature shipped
+  (nobodies-collective/Humans#1187): the snapshot only runs when a deploy has pending migrations,
+  so the mismatch sat unexercised through every deploy that did not touch the schema, and QA —
+  on 16, where a client 16 works — could not reproduce it.
 
 > **Owner action — Coolify.** QA gets the `db_snapshots` volume from `docker-compose.yml`.
 > Production is deployed through Coolify, whose volume configuration is not in this repo, so it

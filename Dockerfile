@@ -35,14 +35,26 @@ WORKDIR /app
 
 # Install native dependencies for SkiaSharp + curl for healthcheck
 # (libheif native binaries are provided by the LibHeif.Native NuGet package)
-# postgresql-client-16 matches the postgres:16 server and provides the pg_dump the
-# pre-migration snapshot shells out to (nobodies-collective/Humans#845).
+# postgresql-client-18 provides the pg_dump the pre-migration snapshot shells out to
+# (nobodies-collective/Humans#845). The client major must be >= the *server* major:
+# pg_dump refuses outright to dump a server newer than itself, and production runs
+# Postgres 18. It reads older servers fine, so this one client covers the postgres:16
+# in docker-compose.yml too — pin it to production's major, never to compose's.
+# Noble's own archive stops at 16, so the client comes from PGDG.
 # Swap to nl.archive.ubuntu.com — geographically closer and avoids archive.ubuntu.com flakiness
 RUN sed -i 's|archive\.ubuntu\.com|nl.archive.ubuntu.com|g; s|security\.ubuntu\.com|nl.archive.ubuntu.com|g' /etc/apt/sources.list.d/ubuntu.sources \
     && apt-get update && apt-get install -y --no-install-recommends \
         libfontconfig1 \
         curl \
-        postgresql-client-16 \
+        ca-certificates \
+        gnupg \
+    && curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+        | gpg --dearmor -o /usr/share/keyrings/pgdg.gpg \
+    && echo "deb [signed-by=/usr/share/keyrings/pgdg.gpg] https://apt.postgresql.org/pub/repos/apt noble-pgdg main" \
+        > /etc/apt/sources.list.d/pgdg.list \
+    && apt-get update && apt-get install -y --no-install-recommends \
+        postgresql-client-18 \
+    && apt-get purge -y --auto-remove gnupg \
     && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user and give it ownership of the app directory.
