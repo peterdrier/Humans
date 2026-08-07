@@ -789,6 +789,73 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
         Db.ShiftSignups.Add(signup);
     }
 
+    // ============================================================
+    // SearchAsync — global /Search rota bucket
+    // ============================================================
+
+    [HumansFact]
+    public async Task SearchAsync_GuidQuery_ResolvesARotaHiddenFromVolunteers()
+    {
+        // Ruling on nobodies-collective/Humans#985 (2026-08-07): the id path skips the
+        // visibility filter on purpose. The rota's destination — /Shifts?departmentId={teamId}
+        // — still builds its listing through the ExcludeHiddenRotas filter, so the hit is a
+        // link, not access. The text-query half of this pair needs Postgres ILike and lives in
+        // Humans.Integration.Tests/Repositories/Shifts/ShiftRepositoryRotaSearchTests.
+        var (_, rota) = SeedRotaScenario(RotaPeriod.Event);
+        rota.IsVisibleToVolunteers = false;
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var results = await _service.SearchAsync(
+            rota.Id.ToString(), int.MaxValue, Xunit.TestContext.Current.CancellationToken);
+
+        var hit = results.Should().ContainSingle().Subject;
+        hit.Name.Should().Be("Test Rota");
+        hit.TeamId.Should().Be(rota.TeamId);
+        hit.TeamName.Should().Be("Test Department");
+    }
+
+    [HumansFact]
+    public async Task SearchAsync_GuidQuery_ReturnsNothing_WhenNoRotaHasThatId()
+    {
+        SeedRotaScenario(RotaPeriod.Event);
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var results = await _service.SearchAsync(
+            Guid.NewGuid().ToString(), int.MaxValue, Xunit.TestContext.Current.CancellationToken);
+
+        results.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task SearchAsync_TextQuery_ReturnsNothing_WhenNoEventIsActive()
+    {
+        var results = await _service.SearchAsync(
+            "rota", int.MaxValue, Xunit.TestContext.Current.CancellationToken);
+
+        results.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task GetBrowseShifts_HiddenRota_IsAbsentForAVolunteer_AndPresentForAPrivilegedViewer()
+    {
+        // Destination-page enforcement for the rota half of the nobodies-collective/Humans#985
+        // ruling. A GUID search hit links to /Shifts?departmentId={teamId}; the listing that
+        // page builds is a default ShiftBrowseQuery, which excludes rotas hidden from
+        // volunteers. ShiftBrowsePageBuilder only adds IncludeHidden for a privileged viewer.
+        var (es, rota) = SeedRotaScenario(RotaPeriod.Event);
+        rota.IsVisibleToVolunteers = false;
+        SeedShift(rota, dayOffset: 1);
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var volunteerView = await _service.GetBrowseShiftsAsync(
+            new ShiftBrowseQuery(es.Id, rota.TeamId));
+        var privilegedView = await _service.GetBrowseShiftsAsync(
+            new ShiftBrowseQuery(es.Id, rota.TeamId, Flags: ShiftBrowseQueryFlags.IncludeHidden));
+
+        volunteerView.Should().BeEmpty();
+        privilegedView.Should().ContainSingle().Which.Shift.RotaId.Should().Be(rota.Id);
+    }
+
     private (EventSettings es, Rota rota) SeedRotaScenario(RotaPeriod period)
     {
         var es = new EventSettings

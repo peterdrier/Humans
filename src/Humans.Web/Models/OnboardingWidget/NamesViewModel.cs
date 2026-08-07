@@ -6,16 +6,16 @@ public class NamesViewModel
 {
     [Required]
     [StringLength(100)]
-    [Display(Name = "Burner Name")]
+    [Display(Name = "Onboarding_BurnerNameLabel")]
     public string BurnerName { get; set; } = string.Empty;
 
     [Required]
     [StringLength(100)]
-    [Display(Name = "Legal First Name")]
+    [Display(Name = "Onboarding_LegalFirstNameLabel")]
     public string FirstName { get; set; } = string.Empty;
 
     [Required]
     [StringLength(100)]
-    [Display(Name = "Legal Last Name(s)")]
+    [Display(Name = "Onboarding_LegalLastNameLabel")]
     public string LastName { get; set; } = string.Empty;
 }

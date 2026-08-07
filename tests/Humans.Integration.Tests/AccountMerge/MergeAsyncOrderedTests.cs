@@ -18,8 +18,8 @@ namespace Humans.Integration.Tests.AccountMerge;
 /// the optional pending email (non-fatal), then tombstone the archived account LAST.
 /// No cross-section transaction — the tombstone is the commit point and source of truth.
 /// </summary>
-public class MergeAsyncOrderedTests(HumansWebApplicationFactory factory)
-    : IntegrationTestBase(factory)
+public class MergeAsyncOrderedTests(HumansTestDatabase database)
+    : IntegrationTestBase(database)
 {
     [HumansFact(Timeout = 60_000)]
     public async Task MergeAsync_FoldsArchivedIntoSurvivor_AndTombstonesArchivedOnly()

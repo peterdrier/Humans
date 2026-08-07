@@ -80,37 +80,38 @@ The feature is deliberately scoped to matching **confined to each entity's own p
 - **Events** match on `Event.Title` or `Event.Description` and are filtered to `Status = Approved` only. Events are the one deliberate exception to matching on the name/title field alone: the orchestrator reuses `IEventServiceRead.GetApprovedEventsAsync` (the same call the public Browse page makes), which filters Title + Description in memory over the approved-event cache, because event copy is short and free-form so description text is often the load-bearing name signal users remember. Rows are still scored by Title via the standard exact/prefix/contains rubric; rows that only matched via Description fall through to a contains-tier score so they're still surfaced (just ranked below title hits).
 - Humans, Teams, Camps **and Events** match in-memory against the cached snapshots (`CachingUserService` / `CachingTeamService` / `CachingCampService` / `CachingEventService`) — case-insensitive contains, accent-folded for humans; search never hits the DB for these four buckets. **Shifts is the only DB-backed bucket**, running case-insensitive Postgres `EF.Functions.ILike` per `memory/feedback_ef_ilike_not_toupper.md`.
 
-### US-GS.4: Text search surfaces the public-visibility set, never more
+### US-GS.4: A text query surfaces the public-visibility set, never more
 **As an** authenticated viewer (any role)
-**I want** a text query to surface only what a regular volunteer would see from list pages
+**I want** a name search to surface only what a regular volunteer would see from list pages
 **So that** the search affordance can't be a privilege escalation, and admins never see surprise data through this path
 
-*(Scope: text queries. Resolving an entity by pasting its GUID is a separate, ruled-on path — see the GUID exception below.)*
+*(Scope: text queries. Resolving an entity by pasting its GUID is a separate, ruled-on path — see US-GS.5.)*
 
-**Acceptance Criteria — these govern *text* queries. GUID queries are a sanctioned exception; see below.**
+**Acceptance Criteria — these govern *text* queries. GUID queries are a sanctioned exception; see US-GS.5.**
 - Hidden teams (`Team.IsHidden = true`) are excluded for everyone.
 - Camps are filtered to the public-status set (`CampSeasonStatus.Active` or `Full`) for the public year — same gate as the public camp directory.
 - Rotas are filtered to `IsVisibleToVolunteers = true` for everyone.
 - Events are filtered to `Status = Approved`; submissions in `Draft`, `Pending`, `Rejected`, `ResubmitRequested`, or `Withdrawn` are never returned, matching the public `/Events/Browse` surface.
 - Admin-only profile fields (verified emails, non-public ContactFields) are never returned through `/Search`, regardless of role. Admins use the existing per-section admin pages (`/Teams` admin, `/Camps` admin, `/Users/Admin`) for privileged views.
 
-**GUID exception — ruled 2026-08-07 (nobodies-collective/Humans#985).** Pasting an entity's own id resolves it **past** the four filters above. Peter's ruling: *"the search can return the results, if the user isn't entitled to see it, they'll get an error when they click on the search result."* You must already hold the id, so a GUID hit is a routing convenience, not an authorization statement — **enforcement is the destination page's job, not Search's.** Concretely, a hidden team, a non-public camp season and an admin-only rota all resolve by id today, deliberately (`CachingTeamService` "any visibility", `CachingCampService` "any status", `ShiftManagementService` via `repo.GetRotaAsync`). **Do not "fix" this by re-adding visibility checks on the GUID path** — that was the pre-ruling behavior and was removed on purpose.
+### US-GS.5: A GUID query resolves straight to the entity
+**As** someone who already holds an entity id (from a log line, an audit row, a support thread)
+**I want** pasting it into search to find that entity
+**So that** I don't have to know which section's admin page owns it
 
-Two things the exception does *not* cover:
-
-- **Text queries are unchanged.** The ruling does not open hidden teams / non-public camp seasons / admin-only rotas to name search. Every criterion above still holds for them.
-- **Humans still have an eligibility gate.** There are no hidden users, so no visibility filter exists for the GUID path to bypass — but `CachingUserService.SearchUsersAsync` returns the id hit only when a `Profile` exists and `Profile.RejectedAt` is null, the same gate the text path applies per candidate. Profile-less and rejected humans return empty from **both** paths.
-
-Because the guarantee now rests entirely on destination pages, those pages must actually refuse — and one does not yet: `/Camps/{slug}` and `/Camps/{slug}/Season/{year}` have no season-status gate, filed as nobodies-collective/Humans#993. Invariant record: [`docs/sections/Search.md`](../../sections/Search.md).
+**Acceptance Criteria:**
+- The Teams, Camps and Rotas buckets treat a parseable GUID as an id lookup and skip the visibility filters in US-GS.4 — the hit comes back for a hidden team, a non-public camp season, or a rota hidden from volunteers.
+- Humans are the exception: the id path skips only the `PersonSearchFields` mask, not the eligibility gate. `CachingUserService.SearchUsersAsync` requires `Profile is not null && Profile.RejectedAt is null` on the GUID branch exactly as it does per-row on the text branch, so a profile-less or rejected user resolves to nothing either way.
+- The hit is scored as an exact match and its URL is the entity's normal page. Opening it re-runs that page's own access checks — a detail page refuses (`/Teams/{slug}` 404s a hidden team), and a rota's `/Shifts?departmentId={teamId}` listing opens but omits the hidden rota. `/Camps/{slug}` is the one that does not yet hold up its end (see Authorization Model).
+- Rotas carry one further exception, and it is about reach rather than visibility. The GUID branch of `ShiftManagementService.SearchAsync` has no event filter, but `/Shifts` always builds from the active event — so a rota belonging to a **past** event resolves to a link that cannot show it, even when it is volunteer-visible. Tracked as nobodies-collective/Humans#998. The text branch does not have this problem: it is already scoped to the active event.
 
 ## Authorization Model
 
-`/Search` is gated by `[Authorize]` — anonymous viewers can't reach it. Beyond that, **every authenticated viewer sees the same surface, regardless of role** — there is no scope parameter on `ISearchService` and no role check in `SearchController`. Role-blindness, not public-only, is the actual invariant, and the two differ on one path:
+`/Search` is gated by `[Authorize]` — anonymous viewers can't reach it. Beyond that, **search is not an authorization boundary**: a hit says a URL exists, not that the caller may open it. Visibility is enforced at the destination, in whatever shape that destination has — a detail page refuses outright, a listing page renders and omits the row (ruling on nobodies-collective/Humans#985, 2026-08-07). Text queries are still filtered to the public surface per US-GS.4; the GUID path in US-GS.5 is deliberately unfiltered, because you can only use it if you already hold the id.
 
-- **Text queries** return the public-visibility surface, identically for every role. This is what the descope below is about.
-- **GUID queries** resolve past those filters, identically for every role (US-GS.4's GUID exception). A viewer can therefore see a hidden team's *name* in results — which is not a privilege escalation, because no role gets more than any other and the destination page still refuses. Enforcement moved there by the nobodies-collective/Humans#985 ruling.
+That destination-page guarantee has one known hole: `CampController.Details` (and `SeasonDetails`) has no season-status gate, so a camp whose public-year season is `Pending`, `Rejected` or `Withdrawn` renders its detail page to anyone, signed-out included. Tracked as nobodies-collective/Humans#993; `CampControllerTests.Details_NonPublicSeason_AnonymousViewer_IsRefused` is skipped until that lands.
 
-So "no privileged search mode" holds in both cases; "only the public-visibility surface" holds for text queries only.
+There is no scope parameter on `ISearchService` and no role check in `SearchController`.
 
 This is a deliberate descope. An earlier draft had a `SearchScope { Public, Admin }` parameter threaded through every search service that promoted `Admin` / `HumanAdmin` / `Board` callers to a wider surface (hidden teams, non-public camp seasons, admin-only profile fields). It was removed because:
 

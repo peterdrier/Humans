@@ -29,7 +29,7 @@ namespace Humans.Integration.Tests.Infrastructure;
 /// from the context model, not a literal list, so a table added to a section
 /// context is covered without touching this file.
 /// </summary>
-public sealed class SectionMigrationRunnerTests(HumansWebApplicationFactory factory)
+public sealed class SectionMigrationRunnerTests(HumansTestDatabase database)
 {
     /// <summary>
     /// The pre-migration snapshot hook (nobodies-collective/Humans#845) is a production-boot
@@ -209,7 +209,7 @@ public sealed class SectionMigrationRunnerTests(HumansWebApplicationFactory fact
     /// not the app's.
     /// </summary>
     private Task<string> CreateDatabaseAsync(string name) =>
-        factory.CreateDatabaseAsync(name, TestContext.Current.CancellationToken);
+        database.CreateEmptyDatabaseAsync(name, TestContext.Current.CancellationToken);
 
     private static async Task MigrateOldChainAsync(string connectionString)
     {

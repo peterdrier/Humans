@@ -8,7 +8,7 @@ using Microsoft.Net.Http.Headers;
 
 namespace Humans.Integration.Tests;
 
-public class SecurityHeaderTests(HumansWebApplicationFactory factory) : IntegrationTestBase(factory)
+public class SecurityHeaderTests(HumansTestDatabase database) : IntegrationTestBase(database)
 {
     [HumansFact]
     public async Task Response_ContainsXFrameOptionsDeny()

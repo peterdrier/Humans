@@ -151,7 +151,7 @@ public class OnboardingWidgetController(
         var result = await signupService.SignUpAsync(userId, shiftId, actorUserId: userId);
         if (!result.Success)
         {
-            SetError(result.Error ?? "Could not sign up.");
+            SetError(result.Error ?? localizer["Onboarding_ShiftsSignUpFailed"].Value);
             return RedirectToAction(nameof(Shifts));
         }
         return RedirectToAction(nameof(Consents));
@@ -165,7 +165,7 @@ public class OnboardingWidgetController(
         var result = await signupService.SignUpRangeAsync(CurrentUserId(), rotaId, startDayOffset, endDayOffset);
         if (!result.Success)
         {
-            SetError(result.Error ?? "Could not sign up for date range.");
+            SetError(result.Error ?? localizer["Onboarding_ShiftsSignUpRangeFailed"].Value);
             return RedirectToAction(nameof(Shifts));
         }
         return RedirectToAction(nameof(Consents));

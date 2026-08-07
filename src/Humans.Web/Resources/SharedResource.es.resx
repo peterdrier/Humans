@@ -1242,6 +1242,10 @@
     <value>Revisar: {0}</value>
     <comment>{0} = document name</comment>
   </data>
+  <data name="ConsentReview_Progress" xml:space="preserve">
+    <value>Documento {0} de {1}</value>
+    <comment>{0} = current document index, {1} = total required documents</comment>
+  </data>
   <data name="Consent_RequiredDocuments" xml:space="preserve">
     <value>Documentos requeridos</value>
   </data>
@@ -5885,6 +5889,81 @@
     <value>Fecha de montaje de barrio eliminada</value>
     <comment>TODO: translate</comment>
   </data>
+  <data name="Email_CoordinatorRotaMessage_Subject" xml:space="preserve">
+    <value>Un mensaje sobre tus franjas en {0}</value>
+  </data>
+  <data name="Email_CoordinatorRotaMessage_Body" xml:space="preserve">
+    <value>&lt;p&gt;Hola {0},&lt;/p&gt;&lt;p&gt;Un mensaje del coordinador de &lt;strong&gt;{2}&lt;/strong&gt;:&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;{3}&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;Para tu informaci&#xF3;n, tus franjas en este turno son:&lt;/p&gt;{4}&lt;p&gt;Gracias,&lt;/p&gt;{5}</value>
+  </data>
+  <data name="Email_CoordinatorRotaMessage_NoShifts" xml:space="preserve">
+    <value>(todav&#xED;a no hay franjas en este turno)</value>
+  </data>
+  <data name="EmailRota_Title" xml:space="preserve">
+    <value>Enviar correo al turno: {0}</value>
+  </data>
+  <data name="EmailRota_Breadcrumb" xml:space="preserve">
+    <value>Correo al turno</value>
+  </data>
+  <data name="EmailRota_Heading" xml:space="preserve">
+    <value>Enviar correo a todos en el turno: {0}</value>
+  </data>
+  <data name="EmailRota_RecipientsHeading" xml:space="preserve">
+    <value>Destinatarios ({0})</value>
+  </data>
+  <data name="EmailRota_NoRecipients" xml:space="preserve">
+    <value>Todav&#xED;a nadie se ha inscrito en este turno.</value>
+  </data>
+  <data name="EmailRota_MessageLabel" xml:space="preserve">
+    <value>Tu mensaje</value>
+  </data>
+  <data name="EmailRota_MessageHelp" xml:space="preserve">
+    <value>Solo texto sin formato. Cada destinatario ver&#xE1; este mensaje junto con su propia lista de franjas de este turno.</value>
+  </data>
+  <data name="EmailRota_Button" xml:space="preserve">
+    <value>Enviar correo a un turno</value>
+  </data>
+  <data name="EmailRota_Send" xml:space="preserve">
+    <value>Enviar a {0} destinatario(s)</value>
+  </data>
+  <data name="EmailRota_Success" xml:space="preserve">
+    <value>Se encolaron {0} correo(s) para los destinatarios del turno '{1}'.</value>
+  </data>
+  <data name="EmailRota_NoActiveSignups" xml:space="preserve">
+    <value>Este turno no tiene inscripciones activas a las que enviar correo.</value>
+  </data>
+  <data name="Email_CoordinatorTeamRotasMessage_Subject" xml:space="preserve">
+    <value>Un mensaje sobre tus franjas con {0}</value>
+  </data>
+  <data name="Email_CoordinatorTeamRotasMessage_Body" xml:space="preserve">
+    <value>&lt;p&gt;Hola {0},&lt;/p&gt;&lt;p&gt;Un mensaje del coordinador de &lt;strong&gt;{2}&lt;/strong&gt;:&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;{3}&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;Para tu informaci&#xF3;n, tus franjas en los pr&#xF3;ximos turnos del equipo:&lt;/p&gt;{4}&lt;p&gt;Gracias,&lt;/p&gt;{5}</value>
+  </data>
+  <data name="EmailTeamRotas_Title" xml:space="preserve">
+    <value>Enviar correo al equipo: {0}</value>
+  </data>
+  <data name="EmailTeamRotas_Breadcrumb" xml:space="preserve">
+    <value>Correo al equipo</value>
+  </data>
+  <data name="EmailTeamRotas_Heading" xml:space="preserve">
+    <value>Enviar correo a todos en los pr&#xF3;ximos turnos: {0}</value>
+  </data>
+  <data name="EmailTeamRotas_RecipientsHeading" xml:space="preserve">
+    <value>Destinatarios ({0})</value>
+  </data>
+  <data name="EmailTeamRotas_RotaCount" xml:space="preserve">
+    <value>en {0} turno(s)</value>
+  </data>
+  <data name="EmailTeamRotas_NoRecipients" xml:space="preserve">
+    <value>Todav&#xED;a nadie se ha inscrito en los pr&#xF3;ximos turnos de este equipo.</value>
+  </data>
+  <data name="EmailTeamRotas_MessageLabel" xml:space="preserve">
+    <value>Tu mensaje</value>
+  </data>
+  <data name="EmailTeamRotas_MessageHelp" xml:space="preserve">
+    <value>Solo texto sin formato. Cada destinatario ver&#xE1; este mensaje junto con su propia lista de franjas en los pr&#xF3;ximos turnos del equipo.</value>
+  </data>
+  <data name="EmailTeamRotas_Send" xml:space="preserve">
+    <value>Enviar a {0} destinatario(s)</value>
+  </data>
   <data name="AdminHumans_MissingConsents" xml:space="preserve"><value>Consentimientos pendientes</value></data>
   <data name="AdminHumans_IncompleteSignup" xml:space="preserve"><value>Registro incompleto</value></data>
   <data name="ProfileEdit_ImportGooglePhoto" xml:space="preserve"><value>Importar mi foto de Google</value></data>
@@ -6491,6 +6570,8 @@
   <data name="Onboarding_BurnerNameHelp" xml:space="preserve"><value>El nombre por el que todos te conocerán.</value></data>
   <data name="Onboarding_BurnerNameLabel" xml:space="preserve"><value>Burner name</value></data>
   <data name="Onboarding_Continue" xml:space="preserve"><value>Continuar</value></data>
+  <data name="Onboarding_LegalFirstNameLabel" xml:space="preserve"><value>Nombre legal</value></data>
+  <data name="Onboarding_LegalLastNameLabel" xml:space="preserve"><value>Apellidos legales</value></data>
   <data name="Onboarding_LegalNameExplainerEmphasis" xml:space="preserve"><value>no</value></data>
   <data name="Onboarding_LegalNameExplainerPost" xml:space="preserve"><value>exportamos esta información, y solo la revelaríamos si lo exigiera la ley o una auditoría formal.</value></data>
   <data name="Onboarding_LegalNameExplainerPre" xml:space="preserve"><value>Se guarda internamente, solo es visible para los administradores y se usa únicamente donde la ley española lo exige — por ejemplo, en nuestro registro de auditoría de que aceptaste el Acuerdo de Voluntariado en una fecha y hora concretas. Explícitamente</value></data>
@@ -6511,6 +6592,8 @@
   <data name="Onboarding_ShiftsNoCritical" xml:space="preserve"><value>No hay turnos críticos abiertos en este momento — prueba con Importantes o Todos.</value></data>
   <data name="Onboarding_ShiftsNoImportant" xml:space="preserve"><value>No hay turnos importantes abiertos en este momento — prueba con Todos.</value></data>
   <data name="Onboarding_ShiftsNotNow" xml:space="preserve"><value>Ahora no</value></data>
+  <data name="Onboarding_ShiftsSignUpFailed" xml:space="preserve"><value>No se pudo inscribir.</value></data>
+  <data name="Onboarding_ShiftsSignUpRangeFailed" xml:space="preserve"><value>No se pudo inscribir para el rango de fechas.</value></data>
   <data name="Onboarding_ShiftsTitle" xml:space="preserve"><value>Elige un turno</value></data>
   <data name="Outbox_AdminTitle" xml:space="preserve"><value>Correos</value></data>
   <data name="Outbox_BackToAdmin" xml:space="preserve"><value>Volver a Administración</value></data>

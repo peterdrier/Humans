@@ -18,8 +18,8 @@ namespace Humans.Integration.Tests.Repositories.Shifts;
 /// Seeding helpers are inlined here (rather than shared) because the existing
 /// class keeps them <c>private</c>.
 /// </summary>
-public sealed class VolunteerTrackingRepositoryConfirmedShiftsTests(HumansWebApplicationFactory factory)
-    : IntegrationTestBase(factory)
+public sealed class VolunteerTrackingRepositoryConfirmedShiftsTests(HumansTestDatabase database)
+    : IntegrationTestBase(database)
 {
     [HumansFact]
     public async Task ReturnsOnlyConfirmedSignups()

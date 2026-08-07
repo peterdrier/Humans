@@ -500,6 +500,7 @@
   <!-- ======================== -->
   <data name="ConsentIndex_Title" xml:space="preserve"><value>Agreements</value></data>
   <data name="ConsentReview_Title" xml:space="preserve"><value>Review: {0}</value><comment>{0} = document name</comment></data>
+  <data name="ConsentReview_Progress" xml:space="preserve"><value>Document {0} of {1}</value><comment>{0} = current document index, {1} = total required documents</comment></data>
 
   <!-- Consent Index View -->
   <data name="Consent_RequiredDocuments" xml:space="preserve"><value>Required Documents</value></data>
@@ -2913,6 +2914,8 @@
   <data name="Onboarding_BurnerNameHelp" xml:space="preserve"><value>The name everyone will know you by.</value></data>
   <data name="Onboarding_BurnerNameLabel" xml:space="preserve"><value>Burner name</value></data>
   <data name="Onboarding_Continue" xml:space="preserve"><value>Continue</value></data>
+  <data name="Onboarding_LegalFirstNameLabel" xml:space="preserve"><value>Legal First Name</value></data>
+  <data name="Onboarding_LegalLastNameLabel" xml:space="preserve"><value>Legal Last Name(s)</value></data>
   <data name="Onboarding_LegalNameExplainerEmphasis" xml:space="preserve"><value>not</value></data>
   <data name="Onboarding_LegalNameExplainerPost" xml:space="preserve"><value>export this information, and would only disclose it if required by law or a formal audit.</value></data>
   <data name="Onboarding_LegalNameExplainerPre" xml:space="preserve"><value>Kept internally, visible only to Admins, and used only where Spanish law requires it — for example, our audit record that you agreed to the Volunteer Agreement on a specific date and time. We explicitly do</value></data>
@@ -2932,6 +2935,8 @@
   <data name="Onboarding_ShiftsNoCritical" xml:space="preserve"><value>No critical shifts open at the moment — try Important or All.</value></data>
   <data name="Onboarding_ShiftsNoImportant" xml:space="preserve"><value>No important shifts open at the moment — try All.</value></data>
   <data name="Onboarding_ShiftsNotNow" xml:space="preserve"><value>Not right now</value></data>
+  <data name="Onboarding_ShiftsSignUpFailed" xml:space="preserve"><value>Could not sign up.</value></data>
+  <data name="Onboarding_ShiftsSignUpRangeFailed" xml:space="preserve"><value>Could not sign up for date range.</value></data>
   <data name="Onboarding_ShiftsTitle" xml:space="preserve"><value>Pick a shift</value></data>
   <data name="Outbox_AdminTitle" xml:space="preserve"><value>Emails</value></data>
   <data name="Outbox_BackToAdmin" xml:space="preserve"><value>Back to Admin</value></data>

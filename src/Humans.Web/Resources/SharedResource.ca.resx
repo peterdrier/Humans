@@ -1242,6 +1242,10 @@
     <value>Revisar: {0}</value>
     <comment>{0} = document name</comment>
   </data>
+  <data name="ConsentReview_Progress" xml:space="preserve">
+    <value>Document {0} de {1}</value>
+    <comment>{0} = current document index, {1} = total required documents</comment>
+  </data>
   <data name="Consent_RequiredDocuments" xml:space="preserve">
     <value>Documents requerits</value>
   </data>
@@ -5528,6 +5532,33 @@
   <data name="VolTrack_Counts_Unbooked" xml:space="preserve">
     <value>Declarats però sense reserva</value>
   </data>
+  <data name="VolTrack_Export_Title" xml:space="preserve">
+    <value>Exportar graella de voluntariat</value>
+  </data>
+  <data name="VolTrack_Export_Department" xml:space="preserve">
+    <value>Departament</value>
+  </data>
+  <data name="VolTrack_Export_AllDepartments" xml:space="preserve">
+    <value>Tots els departaments</value>
+  </data>
+  <data name="VolTrack_Export_Period" xml:space="preserve">
+    <value>Per&#xED;ode</value>
+  </data>
+  <data name="VolTrack_Export_PeriodCustom" xml:space="preserve">
+    <value>Interval personalitzat</value>
+  </data>
+  <data name="VolTrack_Export_From" xml:space="preserve">
+    <value>Des de</value>
+  </data>
+  <data name="VolTrack_Export_To" xml:space="preserve">
+    <value>Fins a</value>
+  </data>
+  <data name="VolTrack_Export_Download" xml:space="preserve">
+    <value>Descarregar XLSX</value>
+  </data>
+  <data name="VolTrack_Export_Methodology" xml:space="preserve">
+    <value>Files = humans amb &#x2265;1 franja confirmada en l'interval. El color de la cel&#xB7;la = l'equip amb qui van treballar m&#xE9;s hores aquell dia. Cel&#xB7;la blanca = dia abans de la seva primera franja confirmada (dia d'arribada). Fila de totals = humans presents aquell dia (utilitzat per als recomptes d'&#xE0;pats). Els noms mostrats s&#xF3;n noms de platja.</value>
+  </data>
   <data name="VolTrack_Filter_HideNoGaps" xml:space="preserve">
     <value>Oculta els voluntaris sense forats</value>
     <comment>TODO: translate</comment>
@@ -5835,6 +5866,81 @@
   <data name="VolTrack_AuditAction_CampSetupCleared" xml:space="preserve">
     <value>Configuració de muntatge del campament esborrada</value>
     <comment>TODO: translate</comment>
+  </data>
+  <data name="Email_CoordinatorRotaMessage_Subject" xml:space="preserve">
+    <value>Un missatge sobre les teves franges a {0}</value>
+  </data>
+  <data name="Email_CoordinatorRotaMessage_Body" xml:space="preserve">
+    <value>&lt;p&gt;Hola {0},&lt;/p&gt;&lt;p&gt;Un missatge del coordinador de &lt;strong&gt;{2}&lt;/strong&gt;:&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;{3}&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;Per a la teva informaci&#xF3;, les teves franges en aquest torn s&#xF3;n:&lt;/p&gt;{4}&lt;p&gt;Gr&#xE0;cies,&lt;/p&gt;{5}</value>
+  </data>
+  <data name="Email_CoordinatorRotaMessage_NoShifts" xml:space="preserve">
+    <value>(encara no hi ha franges en aquest torn)</value>
+  </data>
+  <data name="EmailRota_Title" xml:space="preserve">
+    <value>Enviar correu al torn: {0}</value>
+  </data>
+  <data name="EmailRota_Breadcrumb" xml:space="preserve">
+    <value>Correu al torn</value>
+  </data>
+  <data name="EmailRota_Heading" xml:space="preserve">
+    <value>Enviar correu a tothom del torn: {0}</value>
+  </data>
+  <data name="EmailRota_RecipientsHeading" xml:space="preserve">
+    <value>Destinataris ({0})</value>
+  </data>
+  <data name="EmailRota_NoRecipients" xml:space="preserve">
+    <value>Encara ning&#xFA; s'ha inscrit en aquest torn.</value>
+  </data>
+  <data name="EmailRota_MessageLabel" xml:space="preserve">
+    <value>El teu missatge</value>
+  </data>
+  <data name="EmailRota_MessageHelp" xml:space="preserve">
+    <value>Nom&#xE9;s text sense format. Cada destinatari veur&#xE0; aquest missatge juntament amb la seva pr&#xF2;pia llista de franges d'aquest torn.</value>
+  </data>
+  <data name="EmailRota_Button" xml:space="preserve">
+    <value>Enviar correu a un torn</value>
+  </data>
+  <data name="EmailRota_Send" xml:space="preserve">
+    <value>Enviar a {0} destinatari(s)</value>
+  </data>
+  <data name="EmailRota_Success" xml:space="preserve">
+    <value>S'han encuat {0} correu(s) per als destinataris del torn '{1}'.</value>
+  </data>
+  <data name="EmailRota_NoActiveSignups" xml:space="preserve">
+    <value>Aquest torn no t&#xE9; inscripcions actives a les quals enviar correu.</value>
+  </data>
+  <data name="Email_CoordinatorTeamRotasMessage_Subject" xml:space="preserve">
+    <value>Un missatge sobre les teves franges amb {0}</value>
+  </data>
+  <data name="Email_CoordinatorTeamRotasMessage_Body" xml:space="preserve">
+    <value>&lt;p&gt;Hola {0},&lt;/p&gt;&lt;p&gt;Un missatge del coordinador de &lt;strong&gt;{2}&lt;/strong&gt;:&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;{3}&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;Per a la teva informaci&#xF3;, les teves franges en els propers torns de l'equip:&lt;/p&gt;{4}&lt;p&gt;Gr&#xE0;cies,&lt;/p&gt;{5}</value>
+  </data>
+  <data name="EmailTeamRotas_Title" xml:space="preserve">
+    <value>Enviar correu a l'equip: {0}</value>
+  </data>
+  <data name="EmailTeamRotas_Breadcrumb" xml:space="preserve">
+    <value>Correu a l'equip</value>
+  </data>
+  <data name="EmailTeamRotas_Heading" xml:space="preserve">
+    <value>Enviar correu a tothom dels propers torns: {0}</value>
+  </data>
+  <data name="EmailTeamRotas_RecipientsHeading" xml:space="preserve">
+    <value>Destinataris ({0})</value>
+  </data>
+  <data name="EmailTeamRotas_RotaCount" xml:space="preserve">
+    <value>en {0} torn(s)</value>
+  </data>
+  <data name="EmailTeamRotas_NoRecipients" xml:space="preserve">
+    <value>Encara ning&#xFA; s'ha inscrit en els propers torns d'aquest equip.</value>
+  </data>
+  <data name="EmailTeamRotas_MessageLabel" xml:space="preserve">
+    <value>El teu missatge</value>
+  </data>
+  <data name="EmailTeamRotas_MessageHelp" xml:space="preserve">
+    <value>Nom&#xE9;s text sense format. Cada destinatari veur&#xE0; aquest missatge juntament amb la seva pr&#xF2;pia llista de franges en els propers torns de l'equip.</value>
+  </data>
+  <data name="EmailTeamRotas_Send" xml:space="preserve">
+    <value>Enviar a {0} destinatari(s)</value>
   </data>
   <data name="AdminHumans_MissingConsents" xml:space="preserve"><value>Consentiments pendents</value></data>
   <data name="AdminHumans_IncompleteSignup" xml:space="preserve"><value>Registre incomplet</value></data>
@@ -6454,6 +6560,8 @@
   <data name="Onboarding_BurnerNameHelp" xml:space="preserve"><value>El nom amb què tothom et coneixerà.</value></data>
   <data name="Onboarding_BurnerNameLabel" xml:space="preserve"><value>Nom burner</value></data>
   <data name="Onboarding_Continue" xml:space="preserve"><value>Continua</value></data>
+  <data name="Onboarding_LegalFirstNameLabel" xml:space="preserve"><value>Nom legal</value></data>
+  <data name="Onboarding_LegalLastNameLabel" xml:space="preserve"><value>Cognoms legals</value></data>
   <data name="Onboarding_LegalNameExplainerEmphasis" xml:space="preserve"><value>no</value></data>
   <data name="Onboarding_LegalNameExplainerPost" xml:space="preserve"><value>exportem aquesta informació, i només la divulgaríem si ho exigís la llei o una auditoria formal.</value></data>
   <data name="Onboarding_LegalNameExplainerPre" xml:space="preserve"><value>Es guarda internament, només visible per als administradors, i s'utilitza només on la llei espanyola ho requereix — per exemple, el nostre registre d'auditoria que vas acceptar l'acord de voluntariat en una data i hora concretes. Explícitament</value></data>
@@ -6474,6 +6582,8 @@
   <data name="Onboarding_ShiftsNoCritical" xml:space="preserve"><value>De moment no hi ha torns crítics oberts — prova amb Importants o Tots.</value></data>
   <data name="Onboarding_ShiftsNoImportant" xml:space="preserve"><value>De moment no hi ha torns importants oberts — prova amb Tots.</value></data>
   <data name="Onboarding_ShiftsNotNow" xml:space="preserve"><value>Ara no</value></data>
+  <data name="Onboarding_ShiftsSignUpFailed" xml:space="preserve"><value>No s'ha pogut inscriure.</value></data>
+  <data name="Onboarding_ShiftsSignUpRangeFailed" xml:space="preserve"><value>No s'ha pogut inscriure per a l'interval de dates.</value></data>
   <data name="Onboarding_ShiftsTitle" xml:space="preserve"><value>Tria un torn</value></data>
   <data name="Outbox_AdminTitle" xml:space="preserve"><value>Correus</value></data>
   <data name="Outbox_BackToAdmin" xml:space="preserve"><value>Torna a Administració</value></data>

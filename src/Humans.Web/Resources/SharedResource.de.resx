@@ -1242,6 +1242,10 @@
     <value>Prüfung: {0}</value>
     <comment>{0} = document name</comment>
   </data>
+  <data name="ConsentReview_Progress" xml:space="preserve">
+    <value>Dokument {0} von {1}</value>
+    <comment>{0} = current document index, {1} = total required documents</comment>
+  </data>
   <data name="Consent_RequiredDocuments" xml:space="preserve">
     <value>Erforderliche Dokumente</value>
   </data>
@@ -5528,6 +5532,33 @@
   <data name="VolTrack_Counts_Unbooked" xml:space="preserve">
     <value>Gemeldet, aber ungebucht</value>
   </data>
+  <data name="VolTrack_Export_Title" xml:space="preserve">
+    <value>Freiwilligenraster exportieren</value>
+  </data>
+  <data name="VolTrack_Export_Department" xml:space="preserve">
+    <value>Abteilung</value>
+  </data>
+  <data name="VolTrack_Export_AllDepartments" xml:space="preserve">
+    <value>Alle Abteilungen</value>
+  </data>
+  <data name="VolTrack_Export_Period" xml:space="preserve">
+    <value>Zeitraum</value>
+  </data>
+  <data name="VolTrack_Export_PeriodCustom" xml:space="preserve">
+    <value>Benutzerdefinierter Zeitraum</value>
+  </data>
+  <data name="VolTrack_Export_From" xml:space="preserve">
+    <value>Von</value>
+  </data>
+  <data name="VolTrack_Export_To" xml:space="preserve">
+    <value>Bis</value>
+  </data>
+  <data name="VolTrack_Export_Download" xml:space="preserve">
+    <value>XLSX herunterladen</value>
+  </data>
+  <data name="VolTrack_Export_Methodology" xml:space="preserve">
+    <value>Zeilen = humans mit &#x2265;1 best&#xE4;tigter Schicht im Zeitraum. Zellfarbe = das Team, f&#xFC;r das sie an diesem Tag die meisten Stunden gearbeitet haben. Wei&#xDF;e Zelle = Tag vor der ersten best&#xE4;tigten Schicht (Ankunftstag). Summenzeile = an diesem Tag vor Ort befindliche humans (f&#xFC;r Essensz&#xE4;hlungen verwendet). Angezeigte Namen sind Playa-Namen.</value>
+  </data>
   <data name="VolTrack_Filter_HideNoGaps" xml:space="preserve">
     <value>Freiwillige ohne Lücken ausblenden</value>
     <comment>TODO: translate</comment>
@@ -5835,6 +5866,81 @@
   <data name="VolTrack_AuditAction_CampSetupCleared" xml:space="preserve">
     <value>Camp-Aufbaudatum entfernt</value>
     <comment>TODO: translate</comment>
+  </data>
+  <data name="Email_CoordinatorRotaMessage_Subject" xml:space="preserve">
+    <value>Eine Nachricht zu deinen Schichten in {0}</value>
+  </data>
+  <data name="Email_CoordinatorRotaMessage_Body" xml:space="preserve">
+    <value>&lt;p&gt;Liebe/r {0},&lt;/p&gt;&lt;p&gt;Eine Nachricht vom Koordinator von &lt;strong&gt;{2}&lt;/strong&gt;:&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;{3}&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;Zur Info, deine Schichten in diesem Dienstplan sind:&lt;/p&gt;{4}&lt;p&gt;Danke,&lt;/p&gt;{5}</value>
+  </data>
+  <data name="Email_CoordinatorRotaMessage_NoShifts" xml:space="preserve">
+    <value>(noch keine Schichten in diesem Dienstplan)</value>
+  </data>
+  <data name="EmailRota_Title" xml:space="preserve">
+    <value>E-Mail an Dienstplan senden: {0}</value>
+  </data>
+  <data name="EmailRota_Breadcrumb" xml:space="preserve">
+    <value>E-Mail an Dienstplan</value>
+  </data>
+  <data name="EmailRota_Heading" xml:space="preserve">
+    <value>E-Mail an alle im Dienstplan senden: {0}</value>
+  </data>
+  <data name="EmailRota_RecipientsHeading" xml:space="preserve">
+    <value>Empf&#xE4;nger ({0})</value>
+  </data>
+  <data name="EmailRota_NoRecipients" xml:space="preserve">
+    <value>F&#xFC;r diesen Dienstplan hat sich noch niemand angemeldet.</value>
+  </data>
+  <data name="EmailRota_MessageLabel" xml:space="preserve">
+    <value>Deine Nachricht</value>
+  </data>
+  <data name="EmailRota_MessageHelp" xml:space="preserve">
+    <value>Nur Klartext. Jeder Empf&#xE4;nger sieht diesen Text zusammen mit seiner eigenen Schichtliste f&#xFC;r diesen Dienstplan.</value>
+  </data>
+  <data name="EmailRota_Button" xml:space="preserve">
+    <value>E-Mail an einen Dienstplan senden</value>
+  </data>
+  <data name="EmailRota_Send" xml:space="preserve">
+    <value>An {0} Empf&#xE4;nger senden</value>
+  </data>
+  <data name="EmailRota_Success" xml:space="preserve">
+    <value>{0} E-Mail(s) an Empf&#xE4;nger im Dienstplan '{1}' eingereiht.</value>
+  </data>
+  <data name="EmailRota_NoActiveSignups" xml:space="preserve">
+    <value>Dieser Dienstplan hat keine aktiven Anmeldungen, denen eine E-Mail gesendet werden k&#xF6;nnte.</value>
+  </data>
+  <data name="Email_CoordinatorTeamRotasMessage_Subject" xml:space="preserve">
+    <value>Eine Nachricht zu deinen Schichten bei {0}</value>
+  </data>
+  <data name="Email_CoordinatorTeamRotasMessage_Body" xml:space="preserve">
+    <value>&lt;p&gt;Liebe/r {0},&lt;/p&gt;&lt;p&gt;Eine Nachricht vom Koordinator von &lt;strong&gt;{2}&lt;/strong&gt;:&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;{3}&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;Zur Info, deine Schichten in den kommenden Dienstpl&#xE4;nen dieses Teams:&lt;/p&gt;{4}&lt;p&gt;Danke,&lt;/p&gt;{5}</value>
+  </data>
+  <data name="EmailTeamRotas_Title" xml:space="preserve">
+    <value>E-Mail an Team senden: {0}</value>
+  </data>
+  <data name="EmailTeamRotas_Breadcrumb" xml:space="preserve">
+    <value>E-Mail an Team</value>
+  </data>
+  <data name="EmailTeamRotas_Heading" xml:space="preserve">
+    <value>E-Mail an alle in den kommenden Dienstpl&#xE4;nen senden: {0}</value>
+  </data>
+  <data name="EmailTeamRotas_RecipientsHeading" xml:space="preserve">
+    <value>Empf&#xE4;nger ({0})</value>
+  </data>
+  <data name="EmailTeamRotas_RotaCount" xml:space="preserve">
+    <value>in {0} Dienstpl&#xE4;nen</value>
+  </data>
+  <data name="EmailTeamRotas_NoRecipients" xml:space="preserve">
+    <value>F&#xFC;r die kommenden Dienstpl&#xE4;ne dieses Teams hat sich noch niemand angemeldet.</value>
+  </data>
+  <data name="EmailTeamRotas_MessageLabel" xml:space="preserve">
+    <value>Deine Nachricht</value>
+  </data>
+  <data name="EmailTeamRotas_MessageHelp" xml:space="preserve">
+    <value>Nur Klartext. Jeder Empf&#xE4;nger sieht diesen Text zusammen mit seiner eigenen Schichtliste &#xFC;ber die kommenden Dienstpl&#xE4;ne des Teams hinweg.</value>
+  </data>
+  <data name="EmailTeamRotas_Send" xml:space="preserve">
+    <value>An {0} Empf&#xE4;nger senden</value>
   </data>
   <data name="AdminHumans_MissingConsents" xml:space="preserve"><value>Fehlende Einwilligungen</value></data>
   <data name="AdminHumans_IncompleteSignup" xml:space="preserve"><value>Registrierung unvollst&#xE4;ndig</value></data>
@@ -6454,6 +6560,8 @@
   <data name="Onboarding_BurnerNameHelp" xml:space="preserve"><value>Der Name, unter dem dich alle kennen werden.</value></data>
   <data name="Onboarding_BurnerNameLabel" xml:space="preserve"><value>Burner Name</value></data>
   <data name="Onboarding_Continue" xml:space="preserve"><value>Weiter</value></data>
+  <data name="Onboarding_LegalFirstNameLabel" xml:space="preserve"><value>Bürgerlicher Vorname</value></data>
+  <data name="Onboarding_LegalLastNameLabel" xml:space="preserve"><value>Bürgerlicher Nachname</value></data>
   <data name="Onboarding_LegalNameExplainerEmphasis" xml:space="preserve"><value>nicht</value></data>
   <data name="Onboarding_LegalNameExplainerPost" xml:space="preserve"><value>und würden sie nur offenlegen, wenn das Gesetz oder eine förmliche Prüfung es erfordert.</value></data>
   <data name="Onboarding_LegalNameExplainerPre" xml:space="preserve"><value>Wird intern gespeichert, ist nur für Admins sichtbar und wird nur dort verwendet, wo das spanische Recht es verlangt — zum Beispiel für unseren Prüfnachweis, dass du der Volunteer-Vereinbarung zu einem bestimmten Datum und einer bestimmten Uhrzeit zugestimmt hast. Wir exportieren diese Information ausdrücklich</value></data>
@@ -6474,6 +6582,8 @@
   <data name="Onboarding_ShiftsNoCritical" xml:space="preserve"><value>Derzeit keine kritischen Schichten offen — probiere Wichtig oder Alle.</value></data>
   <data name="Onboarding_ShiftsNoImportant" xml:space="preserve"><value>Derzeit keine wichtigen Schichten offen — probiere Alle.</value></data>
   <data name="Onboarding_ShiftsNotNow" xml:space="preserve"><value>Nicht jetzt</value></data>
+  <data name="Onboarding_ShiftsSignUpFailed" xml:space="preserve"><value>Anmeldung fehlgeschlagen.</value></data>
+  <data name="Onboarding_ShiftsSignUpRangeFailed" xml:space="preserve"><value>Anmeldung für den Datumsbereich fehlgeschlagen.</value></data>
   <data name="Onboarding_ShiftsTitle" xml:space="preserve"><value>Wähle eine Schicht</value></data>
   <data name="Outbox_AdminTitle" xml:space="preserve"><value>E-Mails</value></data>
   <data name="Outbox_BackToAdmin" xml:space="preserve"><value>Zurück zur Administration</value></data>

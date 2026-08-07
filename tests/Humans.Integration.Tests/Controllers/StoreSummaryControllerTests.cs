@@ -4,8 +4,8 @@ using Humans.Integration.Tests.Infrastructure;
 
 namespace Humans.Integration.Tests.Controllers;
 
-public class StoreSummaryControllerTests(HumansWebApplicationFactory factory)
-    : IntegrationTestBase(factory)
+public class StoreSummaryControllerTests(HumansTestDatabase database)
+    : IntegrationTestBase(database)
 {
     [HumansFact(Timeout = 60000)]
     public async Task Volunteer_GET_admin_summary_returns_403_or_redirect()

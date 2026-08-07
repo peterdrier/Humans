@@ -4,7 +4,7 @@ using Humans.Integration.Tests.Infrastructure;
 
 namespace Humans.Integration.Tests.Controllers;
 
-public class CalendarControllerTests(HumansWebApplicationFactory factory) : IntegrationTestBase(factory)
+public class CalendarControllerTests(HumansTestDatabase database) : IntegrationTestBase(database)
 {
     [HumansFact]
     public async Task Anonymous_GET_Calendar_redirects_to_login()

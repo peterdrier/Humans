@@ -36,7 +36,7 @@ Scope every Glob/Grep to `$WORKTREE` paths — never the repo root (it holds oth
 
 ## Phase 2: Ledger + staleness check
 
-1. Read `docs/architecture/debt-ledger.yml`. Validate: `version: 1`; every theme has `id`, `title`, `detect`, `review` (`light`|`panel`; the `inbox` theme alone uses `per-item` — each inbox entry carries its own tier), `last_swept`, `remaining`. Parse error → abort (no partial run), report to Peter.
+1. Read `docs/architecture/debt-ledger.yml`. Validate: `version: 1`; every theme has `id`, `title`, `detect`, `review` (`light`|`panel`; the `inbox` theme alone uses `per-item` — each inbox entry carries its own tier), `last_swept`, `remaining`. Optional: `parked: "<reason>"` (see Phase 3). Parse error → abort (no partial run), report to Peter.
 2. **Staleness check (every run, cheap):**
    - Distinct `HUM####` ids in real `[Grandfathered(` attribute usages vs. ledger theme ids → each missing rule becomes a new theme (`last_swept: never`, `review: light` unless it is plainly a structural/judgment rule — then `panel`). **Anchor the grep to attribute syntax** — an unanchored `[Grandfathered(` also matches analyzer doc-comments and message strings, which seeds phantom themes:
      ```bash
@@ -44,7 +44,7 @@ Scope every Glob/Grep to `$WORKTREE` paths — never the repo root (it holds oth
      ```
    - Files in `tests/Humans.Application.Tests/Architecture/Baselines/` with >0 non-comment entries vs. ledger → same.
    - New themes are committed in the ledger update (Phase 5) even when not worked this run.
-3. **`--inventory` only:** re-run every theme's `detect`, refresh all `remaining`, evict themes whose debt is gone (note each eviction in the report), and look for debt classes the ledger misses (new `[Obsolete]` clusters, new custom warning ids in a fresh build, new ratchet analyzers).
+3. **`--inventory` only:** re-run every theme's `detect`, refresh all `remaining`, evict themes whose debt is gone (note each eviction in the report), and look for debt classes the ledger misses (new `[Obsolete]` clusters, new custom warning ids in a fresh build, new ratchet analyzers). **Never evict a `parked:` theme** — refresh its `remaining` and leave the entry in place, `remaining: 0` included. Evicting it would drop the park, and the staleness check would later re-create the theme unparked.
 
 ### Build-derived counts
 
@@ -59,12 +59,14 @@ Run this build once in Phase 3 (it doubles as the baseline build) and reuse the 
 
 ## Phase 3: Pick theme
 
-1. `--theme` if given; else: order themes by `last_swept` ascending (`never` first), skip `remaining: 0`.
+1. `--theme` if given; else: order themes by `last_swept` ascending (`never` first), skip `remaining: 0` and skip any theme carrying a `parked:` value.
 2. Run the candidate's `detect` to confirm `remaining > 0`. If 0 → apply the drain rule (below), update the entry, take the next candidate.
 3. Enumerate the theme's concrete items (file list from grep, baseline lines, distinct warning sites). Order items so anything in a `recent_sections` section is worked **last**.
 4. Fold in `inbox` items that match the chosen theme.
 
-**Drain rule:** when a theme hits 0 and a structural enforcer guards regression (analyzer at Error with no remaining grandfathers; architecture test whose baseline is empty), **retire** the entry — delete it from the ledger and note it in the report. The Phase 2 staleness check re-creates it if the debt ever reappears. Themes without an enforcer stay listed at `remaining: 0` and are only re-checked by `--inventory`.
+**Parked themes:** a theme with a `parked: "<reason>"` value is off the table — Peter has decided the work must not happen yet. Rotation skips it, and `--theme=<parked-id>` **refuses**: report the `parked` reason and stop, never work it. Only Peter removes the field. Parking is orthogonal to `remaining` — a parked theme keeps its real count so `--inventory` stays honest, and it is **never retired or evicted**, at `remaining: 0` or otherwise: the entry is the park, and deleting it would let the staleness check re-create the theme unparked the moment the debt reappears.
+
+**Drain rule:** when a theme hits 0 and a structural enforcer guards regression (analyzer at Error with no remaining grandfathers; architecture test whose baseline is empty), **retire** the entry — delete it from the ledger and note it in the report. The Phase 2 staleness check re-creates it if the debt ever reappears. Themes without an enforcer stay listed at `remaining: 0` and are only re-checked by `--inventory`. **Parked themes are exempt** — set `remaining: 0` and leave the entry (and its `parked:` value) alone.
 
 ## Phase 4: Work loop
 

@@ -21,7 +21,7 @@ namespace Humans.Integration.Tests.Localization;
 /// intended cadence is a bi-weekly maintenance sweep, not a per-build blocker.
 /// </summary>
 public sealed class LocalizationCoverageSweep(
-    HumansWebApplicationFactory sharedFactory,
+    HumansTestDatabase database,
     ITestOutputHelper output)
 {
     /// <summary>
@@ -40,7 +40,9 @@ public sealed class LocalizationCoverageSweep(
     {
         // Built here rather than injected as a fixture: the sweep is skipped on
         // normal runs, and a fixture would pay for the second app boot anyway.
-        await using var factory = new PseudoLocalizationWebApplicationFactory(sharedFactory);
+        var connectionString = await database.CloneTemplateAsync(
+            "pseudo_localization", TestContext.Current.CancellationToken);
+        await using var factory = new PseudoLocalizationWebApplicationFactory(connectionString);
         await factory.InitializeAsync();
 
         var catalog = SweepRouteCatalog.Build(factory.Services);

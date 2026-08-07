@@ -463,7 +463,15 @@ var mvcBuilder = builder.Services.AddControllersWithViews(options =>
         options.ModelBinderProviders.Insert(0, new LocalDateTimeModelBinderProvider());
     })
     .AddViewLocalization(LanguageViewLocationExpanderFormat.Suffix)
-    .AddDataAnnotationsLocalization();
+    .AddDataAnnotationsLocalization(options =>
+    {
+        // Route every [Display]/[Required]/[StringLength] lookup through SharedResource
+        // (same resx views/controllers already use) instead of the per-type resource
+        // MVC defaults to (which nothing here provides, so annotations rendered raw
+        // English regardless of culture). A key with no SharedResource match just
+        // falls back to the attribute's own text, so untouched view models are unaffected.
+        options.DataAnnotationLocalizerProvider = (_, factory) => factory.Create(typeof(Humans.Web.SharedResource));
+    });
 
 // DevLoginController depends on DevPersonaSeeder (non-Production only); exclude in Prod so ValidateOnBuild passes and /dev/login/* 404s cleanly.
 if (builder.Environment.IsProduction())

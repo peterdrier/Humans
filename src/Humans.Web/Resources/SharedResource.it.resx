@@ -1242,6 +1242,10 @@
     <value>Esame: {0}</value>
     <comment>{0} = document name</comment>
   </data>
+  <data name="ConsentReview_Progress" xml:space="preserve">
+    <value>Documento {0} di {1}</value>
+    <comment>{0} = current document index, {1} = total required documents</comment>
+  </data>
   <data name="Consent_RequiredDocuments" xml:space="preserve">
     <value>Documenti richiesti</value>
   </data>
@@ -5528,6 +5532,33 @@
   <data name="VolTrack_Counts_Unbooked" xml:space="preserve">
     <value>Dichiarati ma non prenotati</value>
   </data>
+  <data name="VolTrack_Export_Title" xml:space="preserve">
+    <value>Esporta griglia dei volontari</value>
+  </data>
+  <data name="VolTrack_Export_Department" xml:space="preserve">
+    <value>Reparto</value>
+  </data>
+  <data name="VolTrack_Export_AllDepartments" xml:space="preserve">
+    <value>Tutti i reparti</value>
+  </data>
+  <data name="VolTrack_Export_Period" xml:space="preserve">
+    <value>Periodo</value>
+  </data>
+  <data name="VolTrack_Export_PeriodCustom" xml:space="preserve">
+    <value>Intervallo personalizzato</value>
+  </data>
+  <data name="VolTrack_Export_From" xml:space="preserve">
+    <value>Da</value>
+  </data>
+  <data name="VolTrack_Export_To" xml:space="preserve">
+    <value>A</value>
+  </data>
+  <data name="VolTrack_Export_Download" xml:space="preserve">
+    <value>Scarica XLSX</value>
+  </data>
+  <data name="VolTrack_Export_Methodology" xml:space="preserve">
+    <value>Righe = humans con &#x2265;1 fascia confermata nell'intervallo. Colore della cella = il team con cui hanno lavorato pi&#xF9; ore quel giorno. Cella bianca = giorno prima della loro prima fascia confermata (giorno di arrivo). Riga dei totali = humans presenti quel giorno (usato per il conteggio dei pasti). I nomi mostrati sono nomi playa.</value>
+  </data>
   <data name="VolTrack_Filter_HideNoGaps" xml:space="preserve">
     <value>Nascondi volontari senza buchi</value>
     <comment>TODO: translate</comment>
@@ -5835,6 +5866,81 @@
   <data name="VolTrack_AuditAction_CampSetupCleared" xml:space="preserve">
     <value>Configurazione montaggio camp rimossa</value>
     <comment>TODO: translate</comment>
+  </data>
+  <data name="Email_CoordinatorRotaMessage_Subject" xml:space="preserve">
+    <value>Un messaggio sulle tue fasce in {0}</value>
+  </data>
+  <data name="Email_CoordinatorRotaMessage_Body" xml:space="preserve">
+    <value>&lt;p&gt;Ciao {0},&lt;/p&gt;&lt;p&gt;Un messaggio dal coordinatore di &lt;strong&gt;{2}&lt;/strong&gt;:&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;{3}&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;Per tua informazione, le tue fasce in questo turno sono:&lt;/p&gt;{4}&lt;p&gt;Grazie,&lt;/p&gt;{5}</value>
+  </data>
+  <data name="Email_CoordinatorRotaMessage_NoShifts" xml:space="preserve">
+    <value>(ancora nessuna fascia in questo turno)</value>
+  </data>
+  <data name="EmailRota_Title" xml:space="preserve">
+    <value>Invia email al turno: {0}</value>
+  </data>
+  <data name="EmailRota_Breadcrumb" xml:space="preserve">
+    <value>Email al turno</value>
+  </data>
+  <data name="EmailRota_Heading" xml:space="preserve">
+    <value>Invia email a tutti nel turno: {0}</value>
+  </data>
+  <data name="EmailRota_RecipientsHeading" xml:space="preserve">
+    <value>Destinatari ({0})</value>
+  </data>
+  <data name="EmailRota_NoRecipients" xml:space="preserve">
+    <value>Nessuno si &#xE8; ancora iscritto a questo turno.</value>
+  </data>
+  <data name="EmailRota_MessageLabel" xml:space="preserve">
+    <value>Il tuo messaggio</value>
+  </data>
+  <data name="EmailRota_MessageHelp" xml:space="preserve">
+    <value>Solo testo semplice. Ogni destinatario vedr&#xE0; questo messaggio insieme al proprio elenco di fasce di questo turno.</value>
+  </data>
+  <data name="EmailRota_Button" xml:space="preserve">
+    <value>Invia email a un turno</value>
+  </data>
+  <data name="EmailRota_Send" xml:space="preserve">
+    <value>Invia a {0} destinatario/i</value>
+  </data>
+  <data name="EmailRota_Success" xml:space="preserve">
+    <value>Accodate {0} email per i destinatari del turno '{1}'.</value>
+  </data>
+  <data name="EmailRota_NoActiveSignups" xml:space="preserve">
+    <value>Questo turno non ha iscrizioni attive a cui inviare email.</value>
+  </data>
+  <data name="Email_CoordinatorTeamRotasMessage_Subject" xml:space="preserve">
+    <value>Un messaggio sulle tue fasce con {0}</value>
+  </data>
+  <data name="Email_CoordinatorTeamRotasMessage_Body" xml:space="preserve">
+    <value>&lt;p&gt;Ciao {0},&lt;/p&gt;&lt;p&gt;Un messaggio dal coordinatore di &lt;strong&gt;{2}&lt;/strong&gt;:&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;{3}&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;Per tua informazione, le tue fasce nei prossimi turni del team:&lt;/p&gt;{4}&lt;p&gt;Grazie,&lt;/p&gt;{5}</value>
+  </data>
+  <data name="EmailTeamRotas_Title" xml:space="preserve">
+    <value>Invia email al team: {0}</value>
+  </data>
+  <data name="EmailTeamRotas_Breadcrumb" xml:space="preserve">
+    <value>Email al team</value>
+  </data>
+  <data name="EmailTeamRotas_Heading" xml:space="preserve">
+    <value>Invia email a tutti nei prossimi turni: {0}</value>
+  </data>
+  <data name="EmailTeamRotas_RecipientsHeading" xml:space="preserve">
+    <value>Destinatari ({0})</value>
+  </data>
+  <data name="EmailTeamRotas_RotaCount" xml:space="preserve">
+    <value>in {0} turno/i</value>
+  </data>
+  <data name="EmailTeamRotas_NoRecipients" xml:space="preserve">
+    <value>Nessuno si &#xE8; ancora iscritto ai prossimi turni di questo team.</value>
+  </data>
+  <data name="EmailTeamRotas_MessageLabel" xml:space="preserve">
+    <value>Il tuo messaggio</value>
+  </data>
+  <data name="EmailTeamRotas_MessageHelp" xml:space="preserve">
+    <value>Solo testo semplice. Ogni destinatario vedr&#xE0; questo messaggio insieme al proprio elenco di fasce nei prossimi turni del team.</value>
+  </data>
+  <data name="EmailTeamRotas_Send" xml:space="preserve">
+    <value>Invia a {0} destinatario/i</value>
   </data>
   <data name="AdminHumans_MissingConsents" xml:space="preserve"><value>Consensi mancanti</value></data>
   <data name="AdminHumans_IncompleteSignup" xml:space="preserve"><value>Registrazione incompleta</value></data>
@@ -6454,6 +6560,8 @@
   <data name="Onboarding_BurnerNameHelp" xml:space="preserve"><value>Il nome con cui tutti ti conosceranno.</value></data>
   <data name="Onboarding_BurnerNameLabel" xml:space="preserve"><value>Burner name</value></data>
   <data name="Onboarding_Continue" xml:space="preserve"><value>Continua</value></data>
+  <data name="Onboarding_LegalFirstNameLabel" xml:space="preserve"><value>Nome legale</value></data>
+  <data name="Onboarding_LegalLastNameLabel" xml:space="preserve"><value>Cognome legale</value></data>
   <data name="Onboarding_LegalNameExplainerEmphasis" xml:space="preserve"><value>non</value></data>
   <data name="Onboarding_LegalNameExplainerPost" xml:space="preserve"><value>esportiamo queste informazioni, e le divulgheremmo solo se richiesto dalla legge o da un audit formale.</value></data>
   <data name="Onboarding_LegalNameExplainerPre" xml:space="preserve"><value>Conservato internamente, visibile solo agli Admin e usato solo dove lo richiede la legge spagnola — per esempio, il nostro registro di audit attestante che hai accettato l'Accordo di volontariato in una data e ora specifiche. Esplicitamente</value></data>
@@ -6474,6 +6582,8 @@
   <data name="Onboarding_ShiftsNoCritical" xml:space="preserve"><value>Nessun turno critico aperto al momento — prova Importanti o Tutti.</value></data>
   <data name="Onboarding_ShiftsNoImportant" xml:space="preserve"><value>Nessun turno importante aperto al momento — prova Tutti.</value></data>
   <data name="Onboarding_ShiftsNotNow" xml:space="preserve"><value>Non adesso</value></data>
+  <data name="Onboarding_ShiftsSignUpFailed" xml:space="preserve"><value>Iscrizione non riuscita.</value></data>
+  <data name="Onboarding_ShiftsSignUpRangeFailed" xml:space="preserve"><value>Iscrizione non riuscita per l'intervallo di date.</value></data>
   <data name="Onboarding_ShiftsTitle" xml:space="preserve"><value>Scegli un turno</value></data>
   <data name="Outbox_AdminTitle" xml:space="preserve"><value>Email</value></data>
   <data name="Outbox_BackToAdmin" xml:space="preserve"><value>Torna ad Amministrazione</value></data>

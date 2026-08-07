@@ -12,7 +12,7 @@ using Xunit;
 
 namespace Humans.Integration.Tests.Services;
 
-public class CalendarServiceTests(HumansWebApplicationFactory factory) : IntegrationTestBase(factory)
+public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTestBase(database)
 {
     [HumansFact]
     public async Task CreateEventAsync_persists_and_GetEventById_returns_it()

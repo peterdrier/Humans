@@ -483,6 +483,73 @@ public sealed class CachingTeamServiceTests : ServiceTestHarness
             Arg.Any<string>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
     }
 
+    [HumansFact]
+    public async Task SearchAsync_GuidQuery_ResolvesAHiddenTeam_BecauseTheDestinationPageEnforces()
+    {
+        // Ruling on nobodies-collective/Humans#985 (2026-08-07): a by-GUID hit is a routing
+        // convenience for someone who already holds the id, not an authorization statement.
+        // The pairing test below — GetTeamDetailAsync_HiddenTeam_NonPrivilegedViewer — is what
+        // makes that safe: /Teams/{slug} is where the hidden team is actually refused.
+        var hidden = SeedTeam("Kitchenette");
+        hidden.IsHidden = true;
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var results = await _service.SearchAsync(
+            hidden.Id.ToString(), int.MaxValue, Xunit.TestContext.Current.CancellationToken);
+
+        results.Should().ContainSingle().Which.Name.Should().Be("Kitchenette");
+    }
+
+    [HumansFact]
+    public async Task GetTeamDetailAsync_HiddenTeam_NonPrivilegedViewer_ReturnsNull()
+    {
+        // Destination-page enforcement for the ruling above. TeamController.Details turns this
+        // null into NotFound(), so pasting a hidden team's GUID into /Search buys the caller a
+        // link and a 404 — never the page.
+        var viewer = SeedUser("Plain Human");
+        var hidden = SeedTeam("Kitchenette");
+        hidden.IsHidden = true;
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var detail = await _service.GetTeamDetailAsync(
+            hidden.Slug, viewer.Id, Xunit.TestContext.Current.CancellationToken);
+
+        detail.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task GetTeamDetailAsync_HiddenTeam_AnonymousViewer_ReturnsNull()
+    {
+        var hidden = SeedTeam("Kitchenette");
+        hidden.IsHidden = true;
+        hidden.IsPublicPage = true;
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var detail = await _service.GetTeamDetailAsync(
+            hidden.Slug, userId: null, Xunit.TestContext.Current.CancellationToken);
+
+        detail.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task GetTeamDetailAsync_HiddenTeam_TeamsAdmin_ReturnsTheDetail()
+    {
+        var admin = SeedUser("Teams Admin");
+        var hidden = SeedTeam("Kitchenette");
+        hidden.IsHidden = true;
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        _roleAssignmentService.IsUserTeamsAdminAsync(admin.Id, Arg.Any<CancellationToken>())
+            .Returns(true);
+        _innerTeamService.GetPendingRequestsForTeamAsync(hidden.Id, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<TeamJoinRequestSnapshot>>([]));
+
+        var detail = await _service.GetTeamDetailAsync(
+            hidden.Slug, admin.Id, Xunit.TestContext.Current.CancellationToken);
+
+        detail.Should().NotBeNull();
+        detail.Team.Name.Should().Be("Kitchenette");
+    }
+
     private void SeedJoinRequest(Guid teamId, Guid userId)
     {
         var request = new TeamJoinRequest

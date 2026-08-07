@@ -41,7 +41,7 @@ namespace Humans.Integration.Tests.Infrastructure;
 /// migration dropping the scaffolded default — never leave the two disagreeing.
 /// </para>
 /// </remarks>
-public sealed class PhysicalDefaultParityTests(HumansWebApplicationFactory factory)
+public sealed class PhysicalDefaultParityTests(HumansTestDatabase database)
 {
     /// <summary>
     /// The pre-migration snapshot hook (nobodies-collective/Humans#845) is a production-boot
@@ -165,5 +165,5 @@ public sealed class PhysicalDefaultParityTests(HumansWebApplicationFactory facto
     /// migrates from scratch, so it needs its own database, not the app's.
     /// </summary>
     private Task<string> CreateDatabaseAsync(string name) =>
-        factory.CreateDatabaseAsync(name, TestContext.Current.CancellationToken);
+        database.CreateEmptyDatabaseAsync(name, TestContext.Current.CancellationToken);
 }

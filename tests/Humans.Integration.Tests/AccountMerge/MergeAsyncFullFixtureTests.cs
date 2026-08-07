@@ -18,7 +18,7 @@ namespace Humans.Integration.Tests.AccountMerge;
 /// seeds a full two-user fixture, invokes a direct admin fold (no
 /// AccountMergeRequest), and asserts all six post-conditions.
 /// </summary>
-public class MergeAsyncFullFixtureTests(HumansWebApplicationFactory factory) : IntegrationTestBase(factory)
+public class MergeAsyncFullFixtureTests(HumansTestDatabase database) : IntegrationTestBase(database)
 {
     [HumansFact(Timeout = 60_000)]
     public async Task MergeAsync_FullFixture_AllPostConditionsHold()

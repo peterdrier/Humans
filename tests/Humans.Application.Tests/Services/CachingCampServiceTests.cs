@@ -11,6 +11,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
+using Xunit;
 
 namespace Humans.Application.Tests.Services;
 
@@ -367,7 +368,39 @@ public sealed class CachingCampServiceTests : ServiceTestHarness
             Arg.Any<string>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
     }
 
-    private async Task<(Camp camp, CampSeason season)> SeedCampWithSeasonAsync(int year)
+    [HumansTheory]
+    [InlineData(CampSeasonStatus.Pending)]
+    [InlineData(CampSeasonStatus.Rejected)]
+    [InlineData(CampSeasonStatus.Withdrawn)]
+    public async Task SearchAsync_TextQuery_ExcludesNonPublicSeasonStatuses(CampSeasonStatus status)
+    {
+        // The ruling on nobodies-collective/Humans#985 narrowed the privacy guarantee to
+        // by-GUID lookups only — text queries are unchanged and still see Active/Full alone.
+        await SeedSettingsAsync(publicYear: 2026, openSeasons: [2026]);
+        await SeedCampWithSeasonAsync(year: 2026, status);
+
+        var results = await _service.SearchAsync(
+            "test camp", int.MaxValue, Xunit.TestContext.Current.CancellationToken);
+
+        results.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task SearchAsync_GuidQuery_ResolvesACampWithANonPublicSeason()
+    {
+        // Routing convenience, not authorization: the caller already holds the camp id and
+        // /Camps/{slug} is where the decision belongs.
+        await SeedSettingsAsync(publicYear: 2026, openSeasons: [2026]);
+        var (camp, _) = await SeedCampWithSeasonAsync(year: 2026, CampSeasonStatus.Pending);
+
+        var results = await _service.SearchAsync(
+            camp.Id.ToString(), int.MaxValue, Xunit.TestContext.Current.CancellationToken);
+
+        results.Should().ContainSingle().Which.Slug.Should().Be(camp.Slug);
+    }
+
+    private async Task<(Camp camp, CampSeason season)> SeedCampWithSeasonAsync(
+        int year, CampSeasonStatus status = CampSeasonStatus.Active)
     {
         var camp = new Camp
         {
@@ -384,7 +417,7 @@ public sealed class CachingCampServiceTests : ServiceTestHarness
             Id = Guid.NewGuid(),
             CampId = camp.Id,
             Year = year,
-            Status = CampSeasonStatus.Active,
+            Status = status,
             Name = "Test Camp",
             EeSlotCount = 5,
             BlurbLong = "A fun camp",

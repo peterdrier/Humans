@@ -572,6 +572,7 @@ public class CachingUserServiceTests
         bool isApproved = true,
         bool isSuspended = false,
         bool isRejected = false,
+        bool hasProfile = true,
         IReadOnlyList<(string Email, bool IsVerified, bool IsPrimary)>? emails = null,
         IReadOnlyList<(string EventName, string? Description)>? volunteerHistory = null,
         IReadOnlyList<(ContactFieldType Type, string Value, ContactFieldVisibility Visibility)>? contactFields = null)
@@ -639,7 +640,7 @@ public class CachingUserServiceTests
             user, userEmails,
             eventParticipations: [],
             externalLogins: [],
-            profile, cfRows,
+            hasProfile ? profile : null, cfRows,
             profileLanguages: [],
             volunteerHistory: vhRows,
             communicationPreferences: []);
@@ -804,6 +805,35 @@ public class CachingUserServiceTests
         results.Should().HaveCount(1);
         results[0].UserId.Should().Be(userId);
         results[0].MatchField.Should().Be("User ID");
+    }
+
+    [HumansFact]
+    public async Task SearchUsersAsync_PublicAll_GuidQuery_ExcludesRejected()
+    {
+        // The by-id fast path skips the PersonSearchFields mask, which only governs which
+        // text fields are matched — it does NOT skip the eligibility gate. A rejected
+        // profile is as unresolvable by GUID as it is by name
+        // (SearchUsersAsync_PublicAll_ExcludesRejected), so the global-search ruling on
+        // nobodies-collective/Humans#985 never hands out a rejected human's id.
+        var userId = Guid.NewGuid();
+        var sut = CreateSut();
+        await PrimeAsync(sut, BuildSearchableUserInfo(userId, burnerName: "Alice", isRejected: true));
+
+        var results = await sut.SearchUsersAsync(userId.ToString(), PersonSearchFields.PublicAll, ct: Xunit.TestContext.Current.CancellationToken);
+
+        results.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task SearchUsersAsync_PublicAll_GuidQuery_ExcludesUserWithNoProfile()
+    {
+        var userId = Guid.NewGuid();
+        var sut = CreateSut();
+        await PrimeAsync(sut, BuildSearchableUserInfo(userId, burnerName: "Alice", hasProfile: false));
+
+        var results = await sut.SearchUsersAsync(userId.ToString(), PersonSearchFields.PublicAll, ct: Xunit.TestContext.Current.CancellationToken);
+
+        results.Should().BeEmpty();
     }
 
     [HumansFact]

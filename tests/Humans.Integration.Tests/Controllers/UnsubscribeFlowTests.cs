@@ -25,7 +25,7 @@ namespace Humans.Integration.Tests.Controllers;
 /// against <see cref="MessageCategory.VolunteerUpdates"/> (default OptedOut=false)
 /// with <c>emailEnabled=false</c>, which forces an actual write.
 /// </summary>
-public class UnsubscribeFlowTests(HumansWebApplicationFactory factory) : IntegrationTestBase(factory)
+public class UnsubscribeFlowTests(HumansTestDatabase database) : IntegrationTestBase(database)
 {
     [HumansFact(Timeout = 30_000)]
     public async Task TokenDriven_UpdatePreference_AttributesUpdateSourceToMagicLink()
