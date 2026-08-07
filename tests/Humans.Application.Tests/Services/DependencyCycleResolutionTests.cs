@@ -161,8 +161,8 @@ public sealed class DependencyCycleResolutionTests : ServiceTestHarness
     /// the Humans assemblies — the role axis is exclusive, so both markers must
     /// be swept or reclassifying a service silently drops it from the graph —
     /// maps each
-    /// interface ctor parameter to its <c>IFoo → Foo</c> implementation by naming
-    /// convention, and DFS-detects cycles. Edges through lazy escape hatches
+    /// interface ctor parameter to every in-scope concrete implementation of that
+    /// interface, and DFS-detects cycles. Edges through lazy escape hatches
     /// (<see cref="IServiceProvider"/>, <see cref="Lazy{T}"/>, <see cref="Func{T}"/>,
     /// <see cref="IEnumerable{T}"/>) are deliberately not followed — those defer
     /// resolution out of the ctor and break cycles in MS DI.
@@ -191,17 +191,30 @@ public sealed class DependencyCycleResolutionTests : ServiceTestHarness
                         || typeof(IOrchestrator).IsAssignableFrom(t))
             .ToHashSet();
 
-        // Interface → concrete implementation via "IFoo → Foo" naming convention,
-        // restricted to types we just collected so external interface
-        // implementations don't pollute the graph.
-        var implByInterface = new Dictionary<Type, Type>();
+        // Interface → EVERY concrete service implementing it, restricted to the
+        // types collected above so external implementations don't pollute the
+        // graph.
+        //
+        // This used to key on the "IFoo → Foo" naming convention, which silently
+        // dropped every cross-section read interface: there is no `UserServiceRead`
+        // class, because `IUserServiceRead` (and ITeamServiceRead / ICampServiceRead /
+        // IEventServiceRead) is registered as a forwarder factory onto the matching
+        // `Caching*Service` decorator. Any edge through a read interface therefore
+        // vanished, so a cycle routed via a decorator resolved fine here and blew up
+        // only in MS DI — the exact failure mode this guard exists to prevent.
+        //
+        // Over-approximating (all implementers rather than one) is the safe direction
+        // for a cycle guard: a missing edge hides a real cycle, whereas a surplus edge
+        // can at worst report one that DI's single chosen implementation wouldn't hit.
+        var implsByInterface = new Dictionary<Type, HashSet<Type>>();
         foreach (var concrete in concreteServices)
         {
             foreach (var iface in concrete.GetInterfaces())
             {
                 if (!iface.Name.StartsWith("I", StringComparison.Ordinal)) continue;
-                if (!string.Equals(concrete.Name, iface.Name[1..], StringComparison.Ordinal)) continue;
-                implByInterface[iface] = concrete;
+                if (!implsByInterface.TryGetValue(iface, out var impls))
+                    implsByInterface[iface] = impls = [];
+                impls.Add(concrete);
             }
         }
 
@@ -218,9 +231,15 @@ public sealed class DependencyCycleResolutionTests : ServiceTestHarness
             {
                 var pt = p.ParameterType;
                 if (IsLazyEscapeHatch(pt)) continue;
-                if (pt.IsInterface && implByInterface.TryGetValue(pt, out var impl))
+                if (pt.IsInterface && implsByInterface.TryGetValue(pt, out var impls))
                 {
-                    deps.Add(impl);
+                    // Drop the self-edge a decorator creates by injecting the very
+                    // interface it implements — `CachingUserService(IUserService inner)`
+                    // is the decorator pattern wrapping the separately-registered
+                    // concrete, not a cycle.
+                    foreach (var impl in impls)
+                        if (impl != concrete)
+                            deps.Add(impl);
                 }
                 else if (concreteServices.Contains(pt))
                 {
