@@ -37,14 +37,21 @@ Two completeness checks:
 | | Count |
 |---|---|
 | HUM0024 warnings at `37eb40d99` (gross) | **55** |
-| less `camp_leads.UserId` — table dropped whole by nobodies-collective/Humans#774, in flight as peterdrier/Humans#1199 | −1 |
+| less `camp_leads.UserId` — table dropped whole by nobodies-collective/Humans#774 via peterdrier/Humans#1199 | −1 |
 | **Net, in scope for the bulk FK-cut migration** | **54** across **38 tables** in **17 sections** |
 
 `camp_leads` is the only G2 table drop that removes an inventoried relationship. Camps keeps
 `camps.CreatedByUserId` and `camp_seasons.ReviewedByUserId`, so the section count stays at 17.
-If peterdrier/Humans#1199 has not merged when the bulk migration is authored, re-check — the
-scope rule is the plan's: *a relationship is out of scope if its table is dropped by that
+The scope rule is the plan's: *a relationship is out of scope if its table is dropped by that
 table's own G2 demolition item*.
+
+> **Since the anchor:** peterdrier/Humans#1199 has now merged — migration
+> `20260807155413_DropCampLeadsAndSpecialRoleDefault` drops the `camp_leads` table, and
+> `CampLeadConfiguration` is gone from `origin/main` (`da45a29a3`). So **54 is no longer a
+> projection; it is the live figure**, and a build at current main emits 54 HUM0024 warnings
+> rather than 55. Everything below is still derived at `37eb40d99`, where the row existed — the
+> `camp_leads` row in the full inventory is retained as history and marked accordingly. No other
+> figure in this document changes.
 
 ---
 
@@ -314,12 +321,31 @@ next quarter.
 | `Team` | `budget_categories.TeamId` | `SetNull` | Column keeps a stale `Guid`; budget screens resolve a team name that no longer exists. | Null it explicitly inside `PermanentlyDeleteTeamAsync`'s transaction — or accept the orphan, since the delete already requires an admin and the column is nullable. **Needs a call.** |
 | `Team` | `budget_line_items.ResponsibleTeamId` | `SetNull` | As above. | As above. |
 | `Team` | `feedback_reports.AssignedToTeamId` | `SetNull` | An assigned report keeps a dead team id; the Feedback admin filter at `FeedbackRepository.cs:69` returns it under a team that no longer exists. | As above. |
-| `Team` | `google_sync_outbox.TeamId` | `Cascade` | Pending outbox events for a deleted team survive and are processed by `ProcessGoogleSyncOutboxJob` against a team that is gone. | Delete pending events for the team inside the same transaction. This one is not merely cosmetic — it is a job that will run. |
+| `Team` | `google_sync_outbox.TeamId` | `Cascade` | Outbox events for a deleted team survive and are processed by `ProcessGoogleSyncOutboxJob` against a team that is gone. | **Delete *all* of the team's outbox rows** inside the same transaction — not just the pending ones. This one is not merely cosmetic; it is a job that will run. See the note below on why "pending" is the wrong filter. |
 | `CampSeason` | `camp_polygons.CampSeasonId` | `Restrict` | Deleting a `Camp` currently throws if any of its seasons has a city-planning polygon. After the cut the polygon is orphaned and `CityPlanningRepository.cs:34,49,96` returns rows for a season that no longer exists. | Pre-check in the Camps delete path, or delete the polygons through `ICityPlanning…` — **cross-section, so it must go through a service, not a repository.** |
 | `CampSeason` | `camp_polygon_histories.CampSeasonId` | `Restrict` | As above, for the history table. | As above. |
 | `ShiftSignup` | `email_outbox_messages.ShiftSignupId` | `SetNull` | Deleting a rota or shift (`ShiftRepository.Management.cs:187,294`) **and account-merge dedup** (`Signups.cs:212`) leave outbox rows pointing at a dead signup. The dedup index `(ShiftSignupId, TemplateName)` then guards against a signup that cannot exist. | **Orphan is acceptable** — see below. |
 | `CampaignGrant` | `email_outbox_messages.CampaignGrantId` | `SetNull` | Account-merge dedup (`CampaignRepository.cs:364`) leaves outbox rows pointing at a dead grant. | **Orphan is acceptable** — see below. |
 | `GoogleResource` | `audit_log.ResourceId` | `SetNull` | Nothing today — no code deletes a `GoogleResource`. | None needed; record the constraint. |
+
+### "Pending" is the wrong filter for the outbox cleanup
+
+The `google_sync_outbox` replacement has to match what `Cascade` does today, which is delete
+**every** row for the team regardless of state. Cleaning up only pending events leaves a hole:
+
+- `MarkPermanentlyFailedAsync` (`GoogleSyncOutboxRepository.cs:130-142`) sets
+  `FailedPermanently = true` **and** a non-null `ProcessedAt`, so a permanently-failed row is not
+  pending by any definition and would be skipped.
+- `RequeueAllFailedAsync` (`:99-116`) then reactivates *every* failed row —
+  `Where(e => e.FailedPermanently)`, with no team filter — clearing `FailedPermanently`,
+  nulling `ProcessedAt` and resetting `RetryCount`.
+
+So the skipped row becomes pending again the next time an admin hits requeue, and
+`ProcessGoogleSyncOutboxJob` processes it against a team that no longer exists. The window is not
+the delete transaction; it is however long the row sits there until someone requeues.
+
+Delete all of the team's rows. It is the same one-line predicate, it matches the cascade exactly,
+and it removes the need to reason about which states can be resurrected.
 
 ### Explicit "orphan is acceptable" decisions
 
@@ -412,9 +438,10 @@ being tracked and would otherwise be re-derived.
    `defaultSeverity: DiagnosticSeverity.Error` and `isEnabledByDefault: true`, and `:119` runs
    every configuration through `GrandfatheredCheck.EffectiveSeverity`, which downgrades to
    Warning **only** for types carrying `[Grandfathered(ruleId: "HUM0024", ...)]`. Forty
-   configuration classes carry it today (`AuditLogEntryConfiguration.cs:13-17` is the pattern —
-   one per inventoried relationship). `Directory.Build.props:79` lists HUM0024 in
-   `WarningsNotAsErrors`, which keeps those forty *downgraded* diagnostics non-fatal; it does
+   configuration classes carried it at the anchor — **39 on `origin/main` at `da45a29a3`**, since
+   peterdrier/Humans#1199 deleted `CampLeadConfiguration` with the table
+   (`AuditLogEntryConfiguration.cs:13-17` is the pattern). `Directory.Build.props:79` lists
+   HUM0024 in `WarningsNotAsErrors`, which keeps those *downgraded* diagnostics non-fatal; it does
    not touch the undowngraded ones.
 
    So a new cross-section relationship added today, on a class with no annotation, is an
@@ -508,7 +535,7 @@ Sections are the *dependent* side — the section that owns the table carrying t
 
 | Table | FK column | → | Action | Index after cut | Query filters/sorts on it? | Config |
 |---|---|---|---|---|---|---|
-| `camp_leads` | `UserId` | `User` | `Restrict` | **DROPS** | n/a — table dropped | `CampLeadConfiguration.cs:29` |
+| ~~`camp_leads`~~ | `UserId` | `User` | `Restrict` | n/a | **Table dropped since the anchor** by peterdrier/Humans#1199 (`20260807155413_DropCampLeadsAndSpecialRoleDefault`); `CampLeadConfiguration` is gone. Row kept as history — out of scope for the cut. | `CampLeadConfiguration.cs:29` (deleted) |
 | `camp_seasons` | `ReviewedByUserId` | `User` | `SetNull` | **DROPS** | No | `CampSeasonConfiguration.cs:62` |
 | `camps` | `CreatedByUserId` | `User` | `Restrict` | **DROPS** | No | `CampConfiguration.cs:40` |
 
