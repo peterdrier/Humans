@@ -214,6 +214,13 @@ The cloned database carries production's live email outbox rows, real member add
 real Workspace/Holded identifiers. A staging environment labelled `Production` would double-send
 pending mail on its first boot. Stubbing is the safety requirement here, not a backdoor.
 
+**Stubbing is only half of it.** Everything in this section governs *connectors* — code paths
+that reach a third party. It says nothing about the database, and staging shares a Postgres
+server with production, so a staging app holding production's role reaches live data directly
+with no connector in the path and no stub able to intervene. That boundary is a role grant, not
+a code branch, and it is §7.7. Read the two together: §5 is why staging cannot talk to the
+outside world, §7.7 is why it cannot talk to production's database.
+
 **Stubbed by environment** — cannot be turned on from Coolify:
 
 - **TicketTailor.** `TicketVendorInfrastructureExtensions.cs` registers `TicketTailorService`
@@ -479,7 +486,19 @@ Before merging the production PR onto `upstream/main`:
    it must show as unset. It is registered as a critical setting, so an empty value shows up as
    a missing critical one — that is the correct state here, not a problem to fix. This is the §5
    fail-open, and it is worth one look per deploy rather than one assumption.
-5. **Exercise what the release changed.** Against real data, which is the entire point of the
+5. **Staging is on its own database role.** Nothing in the app reports this —
+   `/Debug/Configuration` does not carry the connection string — so ask Postgres, on the
+   production host:
+
+   ```bash
+   docker exec humans-db psql -U humans -d postgres \
+     -c "SELECT DISTINCT usename FROM pg_stat_activity WHERE datname = 'humans_staging'"
+   ```
+
+   It must show `humans_staging`, never `humans`. Same reasoning as the check above it: §7.7 is
+   a configuration boundary rather than a code one, so a Coolify edit undoes it silently and
+   nothing goes wrong until staging touches production.
+6. **Exercise what the release changed.** Against real data, which is the entire point of the
    environment.
 
 If any of this fails, the promotion stops. The bad commit is on `staging` only, and the next
