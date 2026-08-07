@@ -437,13 +437,16 @@ seeing it. Inside one assembly there is no other assembly, so the interface is c
 
 Store has neither, so it gets a bare `Repository` and `Service` with no interfaces at all.
 
-Two things this collides with, both needing resolution before it lands:
+**The rule changed to allow this** (Peter, 2026-08-07): `IRepository` is not a root interface
+unless it exists for a reason, and tests and analyzers move to accommodate. Two follow-ons:
 
-1. **The constitution requires the interface.** `docs/architecture/peters-hard-rules.md` says
-   "Repositories must derive from IRepository", and
-   `memory/architecture/repository-required-for-db-access.md` is a HARD RULE that every
-   DB-accessing service goes through a repository *interface*. Both are hand-maintained by Peter.
-   **This decision lands only once he has amended them** — it is recorded here, not enacted.
+1. **One line in the constitution, edited when PR B gets there** — not a prerequisite.
+   `docs/architecture/peters-hard-rules.md` reads "Repositories must derive from IRepository, and
+   only the repository may read or write to its section's tables." Striking the first clause leaves
+   exactly the rule that survives: *only the repository — the type holding the section's DbContext —
+   may read or write its section's tables.* That file is never edited by an LLM; Peter makes the
+   change when the pilot reaches it. `memory/architecture/repository-required-for-db-access.md` is
+   already updated (the repository is mandatory; its interface is not).
 2. **Store's service tests mock the interface.** `StoreServiceTests`,
    `StoreServiceTeamOrdersTests` and `StoreServiceStripeReconciliationTests` each open with
    `Substitute.For<IStoreRepository>()`; NSubstitute needs an interface or virtual members. Two
@@ -699,6 +702,35 @@ assert *namespace* locations (`Humans.Application.Services.*`,
 `Humans.Application.Interfaces.Repositories`). Section types live under `Humans.Store.*` and must
 be accepted, not flagged.
 
+### The `IRepository` marker, and the seven analyzers keyed on it
+
+Seven analyzers resolve `Humans.Application.Interfaces.Repositories.IRepository` by full name to
+decide "is this a repository". Deleting section-internal interfaces (§6a) takes that marker away
+inside section assemblies. Four of the seven do not care, because the compiler has already taken
+their job:
+
+| Analyzer | Fate |
+|---|---|
+| `CrossSectionRepositoryInjectionAnalyzer` (HUM0017) | **Retires** — section Y's repository is `internal` to Y's assembly, so a service in X cannot name it. Precisely the subsumption #866 predicted |
+| `WebRepositoryInjectionAnalyzer` (HUM0014) | **Retires** — Shell cannot see a section's internals |
+| `OrchestratorRepositoryInjectionAnalyzer` (HUM0026) | **Retires** for sections — orchestrators live in Base, repositories are section-internal |
+| `RepositoryInterfaceLocationAnalyzer` (HUM0013) | **Retires** — moot where there is no interface |
+| `ApplicationServiceDbContextInjectionAnalyzer` | **Stays** — "only the repository touches the DbContext" is live *inside* a section |
+| `SingleRepositoryPerTableAnalyzer` (HUM0025) | **Stays** — two repositories over one `DbSet` is still writable within one section |
+| `CachingDecoratorRepositoryAnalyzer` | **Stays** wherever a decorator exists |
+
+The three survivors re-key on structure instead of a marker: **a repository is the type that
+injects the section's DbContext.** `SectionDbContexts` already resolves section contexts
+structurally (it matches any type whose base chain reaches `DbContext`, pinning neither namespace
+nor assembly), so the detection is a constructor-parameter check away. That is strictly better than
+the marker — a marker can be forgotten on a new class; holding the DbContext *is* being the
+repository. It also collapses the first two survivors into one statement: **types injecting a
+section DbContext are its repositories, and each `DbSet` is touched by exactly one of them.**
+
+Sequencing: sections stop deriving from `IRepository` at their own G5; the marker type itself is
+deleted at G6, when the last pre-split service leaves `Humans.Application` and the four retiring
+analyzers go with it.
+
 ### Reflection-anchored tests
 
 Two tests discover contexts via `typeof(HumansDbContext).Assembly` and would silently stop covering
@@ -783,8 +815,9 @@ anyway and already what the startup migrator uses.
     `<Section>DbContext` and public `Contracts/` types keep it, each for a mechanical reason (§6a).
 11. **Section-internal interfaces go away entirely** — not renamed, deleted. `Repository` and
     `Service` are concrete classes unless a caching decorator or a `Contracts/` entry needs the
-    seam. **Blocked on Peter amending `peters-hard-rules.md` and
-    `repository-required-for-db-access.md`**, both of which currently mandate the interface (§6a).
+    seam. `IRepository` is not a root interface unless it exists for a reason; tests and analyzers
+    move to accommodate (§6a, §10). The one line in `peters-hard-rules.md` is Peter's to strike when
+    PR B reaches it — not a prerequisite.
 
 ---
 
