@@ -76,17 +76,22 @@ if [ "$SOURCE" = "live" ]; then
   RESTORE_KIND="live"
   log "Source: live pg_dump from '$PROD_DB'"
 else
-  [ -d "$COOLIFY_BACKUP_DIR" ] \
-    || die "backup directory '$COOLIFY_BACKUP_DIR' not found — set COOLIFY_BACKUP_DIR to Coolify's backup path, or pass 'live'"
+  # BACKUP_FILE picks a specific artifact — an older one, or one whose filename does not
+  # carry the database name. Unset, the newest matching artifact wins.
+  if [ -z "${BACKUP_FILE:-}" ]; then
+    [ -d "$COOLIFY_BACKUP_DIR" ] \
+      || die "backup directory '$COOLIFY_BACKUP_DIR' not found — set COOLIFY_BACKUP_DIR to Coolify's backup path, or pass 'live'"
 
-  # Coolify writes one file per scheduled backup under a per-resource directory; the
-  # database name is in the filename. Newest wins, whatever the nesting.
-  BACKUP_FILE=$(find "$COOLIFY_BACKUP_DIR" -type f -name "*${PROD_DB}*" \
-    \( -name '*.dump' -o -name '*.dmp' -o -name '*.sql' -o -name '*.backup' -o -name '*.gz' \) \
-    -printf '%T@\t%p\n' 2>/dev/null | sort -rn | head -1 | cut -f2-)
+    # Coolify writes one file per scheduled backup under a per-resource directory; the
+    # database name is in the filename. Newest wins, whatever the nesting.
+    BACKUP_FILE=$(find "$COOLIFY_BACKUP_DIR" -type f -name "*${PROD_DB}*" \
+      \( -name '*.dump' -o -name '*.dmp' -o -name '*.sql' -o -name '*.backup' -o -name '*.gz' \) \
+      -printf '%T@\t%p\n' 2>/dev/null | sort -rn | head -1 | cut -f2-)
 
-  [ -n "$BACKUP_FILE" ] \
-    || die "no backup artifact matching '*${PROD_DB}*' under '$COOLIFY_BACKUP_DIR' — check the path, or pass 'live'"
+    [ -n "$BACKUP_FILE" ] \
+      || die "no backup artifact matching '*${PROD_DB}*' under '$COOLIFY_BACKUP_DIR' — check the path, set BACKUP_FILE to one directly, or pass 'live'"
+  fi
+  [ -f "$BACKUP_FILE" ] || die "backup artifact '$BACKUP_FILE' is not a file"
 
   log "Source: $BACKUP_FILE ($(date -r "$BACKUP_FILE" '+%Y-%m-%d %H:%M:%S %Z'))"
 
@@ -163,6 +168,10 @@ esac
 TABLES=$(psql_staging -tAc "SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE';" | tr -d '[:space:]')
 [ "${TABLES:-0}" -gt 0 ] || die "restored database has no tables — the archive was empty or the wrong file"
 log "Restored $TABLES tables"
+
+HISTORY_TABLES=$(psql_staging -tAc "SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_name LIKE '\_\_EFMigrationsHistory%';" | tr -d '[:space:]')
+[ "${HISTORY_TABLES:-0}" -gt 0 ] \
+  || die "restored database has no __EFMigrationsHistory table — this is not a Humans database"
 
 log "Migration history:"
 psql_staging -c "

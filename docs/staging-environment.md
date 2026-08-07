@@ -12,6 +12,13 @@ also a live test of the restore path that
 > exist until someone with Coolify, Google Cloud console, and shell access to the production
 > host works through [§7 Host-side steps](#7-host-side-steps-owner).
 > nobodies-collective/Humans#962.
+>
+> **`scripts/refresh-staging-db.sh` has not been executed.** Unlike the restore runbook, whose
+> procedure was drilled against a real `postgres:16` container before it was written down, this
+> script is reviewed and syntax-checked only. Its commands are the ones `preview-db.yml` runs
+> today and the ones the runbook's drill proved, but the script as a whole is unproven. **Run
+> §7.3's manual dispatch and read the log before trusting a scheduled refresh** — that run is
+> its first real test.
 
 ---
 
@@ -102,6 +109,9 @@ PROD_UPLOADS_DIR=/path/to/prod/uploads \
 STAGING_UPLOADS_DIR=/path/to/staging/uploads \
 ./scripts/refresh-staging-db.sh backup      # or: live
 ```
+
+Set `BACKUP_FILE=/path/to/artifact` to restore a specific one — an older backup, or one whose
+filename does not carry the database name — instead of the newest match.
 
 Nothing in the script writes to production. `backup` never opens the production database at
 all; `live` only reads it; the uploads copy is one-way. The destructive statements target
