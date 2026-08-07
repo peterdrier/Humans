@@ -109,7 +109,11 @@ from scratch against tables that already exist.
 shared mount — staging writes to its uploads directory, and production's bytes must not be on
 the other end of that. `--delete` is deliberate: staging's own uploads are wiped on every
 refresh, exactly like its database. The script refuses to run if both paths are not set, or if
-they are the same path.
+they are the same directory, or if either is nested inside the other — the two paths are
+resolved with `realpath` first, so a trailing slash or a symlink cannot disguise any of those.
+Nesting is the one worth spelling out: with staging at `/data` and production at
+`/data/uploads`, `rsync --delete` finds production's directory extraneous at the destination
+and deletes it.
 
 ### Running it by hand
 

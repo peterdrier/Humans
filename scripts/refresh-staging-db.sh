@@ -62,9 +62,27 @@ docker inspect "$STAGING_APP_CONTAINER" >/dev/null 2>&1 \
 # the app is already stopped, and failing there leaves staging down for a missing path.
 [ -n "${PROD_UPLOADS_DIR:-}" ] && [ -n "${STAGING_UPLOADS_DIR:-}" ] \
   || die "PROD_UPLOADS_DIR and STAGING_UPLOADS_DIR must both be set — staging without uploads renders a broken image for every profile picture (see docs/staging-environment.md)"
-[ "$PROD_UPLOADS_DIR" = "$STAGING_UPLOADS_DIR" ] \
-  && die "PROD_UPLOADS_DIR and STAGING_UPLOADS_DIR are the same path — staging would write into production's uploads"
 [ -d "$PROD_UPLOADS_DIR" ] || die "PROD_UPLOADS_DIR '$PROD_UPLOADS_DIR' does not exist"
+
+# Resolved before comparing: '/data/uploads', '/data/uploads/', '/data/./uploads' and a
+# symlink to any of them are the same directory and must not read as three different ones.
+# -m so the staging path is allowed not to exist yet — §5 creates it.
+PROD_UPLOADS_DIR=$(realpath -m "$PROD_UPLOADS_DIR")
+STAGING_UPLOADS_DIR=$(realpath -m "$STAGING_UPLOADS_DIR")
+
+# Equality is not the only way `rsync --delete` reaches production. If staging is an
+# ancestor of prod — staging '/data', prod '/data/uploads' — rsync copies the contents of
+# '/data/uploads' into '/data', finds '/data/uploads' extraneous at the destination, and
+# deletes production's uploads. The reverse nesting has rsync copying a tree into itself.
+# Both are rejected; only two disjoint trees are safe here.
+[ "$PROD_UPLOADS_DIR" = "$STAGING_UPLOADS_DIR" ] \
+  && die "PROD_UPLOADS_DIR and STAGING_UPLOADS_DIR resolve to the same path '$PROD_UPLOADS_DIR' — staging would write into production's uploads"
+case "$STAGING_UPLOADS_DIR/" in
+  "$PROD_UPLOADS_DIR"/*) die "STAGING_UPLOADS_DIR '$STAGING_UPLOADS_DIR' is inside PROD_UPLOADS_DIR '$PROD_UPLOADS_DIR' — the copy would recurse into its own destination" ;;
+esac
+case "$PROD_UPLOADS_DIR/" in
+  "$STAGING_UPLOADS_DIR"/*) die "PROD_UPLOADS_DIR '$PROD_UPLOADS_DIR' is inside STAGING_UPLOADS_DIR '$STAGING_UPLOADS_DIR' — rsync --delete would delete production's uploads as an extraneous destination entry" ;;
+esac
 
 psql_postgres() { docker exec "$DB_CONTAINER" psql -U "$DB_USER" -d postgres "$@"; }
 psql_staging()  { docker exec "$DB_CONTAINER" psql -U "$DB_USER" -d "$STAGING_DB" "$@"; }
@@ -94,9 +112,15 @@ else
 
     # Coolify writes one file per scheduled backup under a per-resource directory; the
     # database name is in the filename. Newest wins, whatever the nesting.
+    #
+    # awk keeps the first line rather than `head -1`, which would close the pipe early:
+    # under `pipefail` plus `errexit`, sort dying of SIGPIPE once the listing outgrows the
+    # pipe buffer would fail this assignment with status 141 and block every refresh from
+    # then on — with a directory full of perfectly good backups. awk drains the stream.
     BACKUP_FILE=$(find "$COOLIFY_BACKUP_DIR" -type f -name "*${PROD_DB}*" \
       \( -name '*.dump' -o -name '*.dmp' -o -name '*.sql' -o -name '*.backup' -o -name '*.gz' \) \
-      -printf '%T@\t%p\n' 2>/dev/null | sort -rn | head -1 | cut -f2-)
+      -printf '%T@\t%p\n' 2>/dev/null \
+      | sort -rn | cut -f2- | awk 'NR == 1 { newest = $0 } END { print newest }')
 
     [ -n "$BACKUP_FILE" ] \
       || die "no backup artifact matching '*${PROD_DB}*' under '$COOLIFY_BACKUP_DIR' — check the path, set BACKUP_FILE to one directly, or pass 'live'"
