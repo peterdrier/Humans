@@ -8,7 +8,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// <summary>
 /// Repository for the camps aggregate: <c>camps</c>, <c>camp_seasons</c>,
 /// <c>camp_members</c>, <c>camp_role_definitions</c>,
-/// <c>camp_role_assignments</c>, <c>camp_leads</c>, <c>camp_images</c>,
+/// <c>camp_role_assignments</c>, <c>camp_images</c>,
 /// <c>camp_historical_names</c>, and <c>camp_settings</c>.
 /// </summary>
 /// <remarks>
@@ -16,8 +16,8 @@ namespace Humans.Application.Interfaces.Repositories;
 /// save changes atomically inside a single
 /// <see cref="Microsoft.EntityFrameworkCore.IDbContextFactory{HumansDbContext}"/>-owned
 /// context so callers never have to reason about the EF context lifetime.
-/// Cross-domain navigation (<c>CampLead.User</c>) is not resolved by this
-/// repository; the application service stitches display names from
+/// Cross-domain user navigation is not resolved by this repository; the
+/// application service stitches display names from
 /// <see cref="Users.IUserService"/> per design-rules §6.
 /// </remarks>
 [Section("Camps")]
@@ -184,51 +184,22 @@ public partial interface ICampRepository : IRepository
     Task<CampSeason?> GetSeasonByIdAsync(Guid campSeasonId, CancellationToken ct = default);
 
     // ==========================================================================
-    // Reads — Lead (legacy camp_leads; only the role-backed team-sync read and the
-    // one-shot seed-migration snapshot remain. Entity/table kept until #774.)
+    // Reads — Lead (backed by camp_role_assignments against the Camp Lead
+    // special role; the legacy camp_leads table is gone.)
     // ==========================================================================
 
     /// <summary>
     /// Returns the distinct set of user ids who currently hold the Camp Lead
     /// special role on any camp. Used by <c>SystemTeamSyncJob</c> to sync the
-    /// Barrio Leads team membership. (Reads CampRoleAssignment, not camp_leads.)
+    /// Barrio Leads team membership.
     /// </summary>
     Task<IReadOnlyList<Guid>> GetActiveLeadUserIdsAsync(CancellationToken ct = default);
 
     /// <summary>
-    /// Returns a snapshot of every active <c>CampLead</c> row, projected to
-    /// (LeadId, CampId, UserId, CampSlug). Used by the one-shot Camp Lead
-    /// retirement admin button — the seed action walks this list and creates
-    /// CampMember + CampRoleAssignment rows on the migration target side.
-    /// AsNoTracking. Read-only.
-    /// </summary>
-    Task<IReadOnlyList<LeadMigrationSnapshot>> GetLeadMigrationSnapshotsAsync(
-        CancellationToken ct = default);
-
-    /// <summary>
-    /// Picks the season for Camp Lead retirement migration: prefers the open
-    /// (Pending/Active/Full) season with the latest year; falls back to the
-    /// most-recent season of any status. Returns null if the camp has no
-    /// seasons at all (legacy stale leads with no camp seasons — caller logs
-    /// and skips). Read-only.
-    /// </summary>
-    Task<Guid?> GetCampSeasonForLeadMigrationAsync(
-        Guid campId, CancellationToken ct = default);
-
-    /// <summary>
     /// Returns true if the user currently holds the Camp Lead special role on any
-    /// camp. Used by <c>SystemTeamSyncJob</c>. (Reads CampRoleAssignment, not camp_leads.)
+    /// camp. Used by <c>SystemTeamSyncJob</c>.
     /// </summary>
     Task<bool> IsLeadAnywhereAsync(Guid userId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns all (read-only, AsNoTracking) legacy <c>camp_leads</c> rows — active
-    /// and historical — for the user, with parent <c>Camp</c> loaded for slug access.
-    /// Used by the GDPR export contributor: while the legacy table still holds
-    /// per-user rows (until #774 drops it), Article 15 export must include them.
-    /// </summary>
-    Task<IReadOnlyList<CampLead>> GetAllLeadAssignmentsForUserAsync(
-        Guid userId, CancellationToken ct = default);
 
     // ==========================================================================
     // Writes / reads — Historical names
@@ -399,14 +370,3 @@ public enum CampMemberInsertOutcome
 }
 
 public record CampMemberInsertResult(Guid MemberId, CampMemberInsertOutcome Outcome);
-
-/// <summary>
-/// Read-only snapshot for the one-shot Camp Lead retirement migration —
-/// projects an active <c>CampLead</c> row to its identifying fields and the
-/// camp slug used for logging skipped (no-season) cases.
-/// </summary>
-public sealed record LeadMigrationSnapshot(
-    Guid LeadId,
-    Guid CampId,
-    Guid UserId,
-    string CampSlug);

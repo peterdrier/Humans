@@ -1225,11 +1225,6 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
         return result.MemberId;
     }
 
-    public Task<Guid> EnsureActiveMemberForMigrationAsync(
-        Guid campSeasonId, Guid userId, Guid actorUserId,
-        CancellationToken cancellationToken = default) =>
-        EnsureActiveCampMemberAsync(campSeasonId, userId, actorUserId, cancellationToken);
-
     public async Task<AddCampMemberOutcome> AddCampMemberToActiveSeasonAsync(
         Guid campId, Guid userId, Guid actorUserId,
         CancellationToken cancellationToken = default)
@@ -1325,18 +1320,9 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
-        // Camp Lead is now a CampRoleAssignment. The legacy camp_leads table still
-        // holds per-user rows until #774 drops it, so Article 15 export must keep
-        // including them alongside the role-assignment slice (design-rules §8a).
-        var legacyLeads = await _repo.GetAllLeadAssignmentsForUserAsync(userId, ct);
-        var shapedLeads = legacyLeads.Select(cl => new
-        {
-            CampSlug = cl.Camp.Slug,
-            cl.Role,
-            JoinedAt = cl.JoinedAt.ToIso8601(),
-            LeftAt = cl.LeftAt.ToIso8601()
-        }).ToList();
-
+        // Camp Lead is a CampRoleAssignment (issue nobodies-collective/Humans#753);
+        // the legacy camp_leads table was dropped in #774, so the role-assignment
+        // slice is the whole of this section's Article 15 export (design-rules §8a).
         var roleAssignments = await _repo.GetAllAssignmentsForUserAsync(userId, ct);
 
         var shapedRoles = roleAssignments.Select(a => new
@@ -1348,11 +1334,7 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
             a.AssignedByUserId
         }).ToList();
 
-        return
-        [
-            new UserDataSlice(GdprExportSections.CampLeadAssignments, shapedLeads),
-            new UserDataSlice(GdprExportSections.CampRoleAssignments, shapedRoles)
-        ];
+        return [new UserDataSlice(GdprExportSections.CampRoleAssignments, shapedRoles)];
     }
 
     public async Task SetEeStartDateAsync(

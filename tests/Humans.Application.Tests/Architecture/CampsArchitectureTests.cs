@@ -111,13 +111,9 @@ public class CampsArchitectureTests
             // Read-only consumer — uses GetActiveLeadUserIdsAsync /
             // IsLeadAnywhereAsync. Never writes through the repo.
             "Humans.Infrastructure.Jobs.SystemTeamSyncJob",
-            // CampLead retirement (issue nobodies-collective/Humans#753) —
-            // SeedSystemRolesAndMigrateLeadsAsync reads from the legacy
-            // camp_leads + camp_seasons + camp_members tables to migrate
-            // existing leads into CampRoleAssignment. Routed through
-            // ICampRoleCampAccess.EnsureActiveMemberForMigrationAsync via the
-            // decorator (which invalidates), so writes still pass through the
-            // decorator path. Read-only consumer here.
+            // Owns camp_role_definitions + camp_role_assignments through the
+            // same repo; camp/season lookups route through
+            // ICampRoleCampAccess on the decorator (which invalidates).
             "Humans.Application.Services.Camps.CampRoleService",
         };
 
@@ -158,26 +154,6 @@ public class CampsArchitectureTests
 
         found.Should().BeNull(
             because: "the T-06 SaveChanges interceptor was retired in favour of decorator-only invalidation pinned by ICampRepository_HasNoUnexpectedConsumers — see CachingCampService remarks");
-    }
-
-    // ── CampLead ─────────────────────────────────────────────────────────────
-
-    [HumansFact]
-    public void CampLead_HasNoUserNavigationProperty()
-    {
-        typeof(Humans.Domain.Entities.CampLead)
-            .GetProperty("User")
-            .Should().BeNull(
-                because: "CampLead.User is a cross-domain nav into the Users section; resolve via IUserService instead (design-rules §6c)");
-    }
-
-    [HumansFact]
-    public void CampLead_KeepsUserIdForeignKey()
-    {
-        typeof(Humans.Domain.Entities.CampLead)
-            .GetProperty("UserId")
-            .Should().NotBeNull(
-                because: "FK stays — only the navigation property is stripped");
     }
 
     // ── Google Group membership source — Camps claim ─────────────────────────

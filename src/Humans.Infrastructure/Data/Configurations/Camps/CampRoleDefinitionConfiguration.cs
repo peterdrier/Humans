@@ -25,19 +25,17 @@ public class CampRoleDefinitionConfiguration : IEntityTypeConfiguration<CampRole
 
         builder.HasIndex(d => d.SortOrder);
 
-        // SpecialRole stored as string per the Camps enum convention. The
-        // SQL-level default ('None') backfills the AddColumn migration so
-        // existing rows land on the enum's None member, not the empty string
-        // EF would otherwise generate. SQL-level default (not
-        // HasDefaultValue(CampSpecialRole.None)) avoids the EF sentinel trap
-        // documented in code-review-rules.md "EF Core Bool Sentinel" —
-        // explicit None on a CLR instance still serializes correctly because
-        // EF doesn't treat the SQL default as the unset sentinel here.
+        // SpecialRole stored as string per the Camps enum convention. No DB
+        // default: the one-time backfill it existed for (the AddColumn in
+        // 20260519173900_AddSpecialRoleToCampRoleDefinition) is long done, and
+        // every insert goes through EF, which always supplies the value. A
+        // DEFAULT whose value equals the CLR default (CampSpecialRole.None = 0)
+        // also gives EF no sentinel to distinguish "explicitly None" from
+        // "unset", which it warns about at every startup.
         builder.Property(d => d.SpecialRole)
             .HasConversion<string>()
             .HasMaxLength(50)
-            .IsRequired()
-            .HasDefaultValueSql("'None'");
+            .IsRequired();
 
         builder.Ignore(d => d.IsActive);
     }

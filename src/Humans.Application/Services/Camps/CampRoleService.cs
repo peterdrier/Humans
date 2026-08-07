@@ -448,16 +448,15 @@ public sealed class CampRoleService(
             .ToList();
     }
 
-    public async Task<SeedSystemRolesResult> SeedSystemRolesAndMigrateLeadsAsync(
+    public async Task<int> SeedSystemRolesAsync(
         Guid actorUserId, CancellationToken ct = default)
     {
         var now = clock.GetCurrentInstant();
 
-        // (1) Idempotent seed across every non-None CampSpecialRole value. The
+        // Idempotent seed across every non-None CampSpecialRole value. The
         // enum is the source of truth — adding a new value automatically picks
         // it up on the next seed-button click.
         var definitionsCreated = 0;
-        CampRoleDefinition? campLead = null;
         foreach (var specialRole in Enum.GetValues<CampSpecialRole>())
         {
             if (specialRole == CampSpecialRole.None) continue;
@@ -480,10 +479,9 @@ public sealed class CampRoleService(
                 _ => throw new InvalidOperationException($"No seed defaults for special role '{specialRole}'."),
             };
 
-            var definition = await repo.GetSpecialDefinitionAsync(specialRole, ct);
-            if (definition is null)
+            if (await repo.GetSpecialDefinitionAsync(specialRole, ct) is null)
             {
-                definition = new CampRoleDefinition
+                var definition = new CampRoleDefinition
                 {
                     Id = Guid.NewGuid(),
                     Name = name,
@@ -505,71 +503,9 @@ public sealed class CampRoleService(
                     actorUserId);
                 definitionsCreated++;
             }
-
-            if (specialRole == CampSpecialRole.Lead) campLead = definition;
         }
 
-        if (campLead is null)
-            throw new InvalidOperationException("Camp Lead special role definition is missing after seed.");
-        var leadSnapshots = await repo.GetLeadMigrationSnapshotsAsync(ct);
-        var leadsMigrated = 0;
-        var leadsAlreadyMigrated = 0;
-        var skippedCampSlugs = new List<string>();
-
-        foreach (var lead in leadSnapshots)
-        {
-            ct.ThrowIfCancellationRequested();
-
-            // Pick a target season for the migration.
-            var seasonId = await repo.GetCampSeasonForLeadMigrationAsync(lead.CampId, ct);
-            if (seasonId is null)
-            {
-                logger.LogWarning(
-                    "Camp Lead retirement: skipping legacy lead {LeadId} (user {UserId}) — camp {CampSlug} has no seasons",
-                    lead.LeadId, lead.UserId, lead.CampSlug);
-                skippedCampSlugs.Add(lead.CampSlug);
-                continue;
-            }
-
-            // Ensure CampMember(Active) exists. Idempotent — promotes Pending → Active
-            // or no-ops if already Active.
-            var memberId = await campAccess.EnsureActiveMemberForMigrationAsync(
-                seasonId.Value, lead.UserId, actorUserId, ct);
-
-            // Assign Camp Lead role (idempotent — AlreadyHoldsRole is a no-op).
-            var outcome = await AssignAsync(
-                seasonId.Value, campLead.Id, memberId, actorUserId, ct);
-            switch (outcome)
-            {
-                case AssignCampRoleOutcome.Assigned:
-                    leadsMigrated++;
-                    break;
-                case AssignCampRoleOutcome.AlreadyHoldsRole:
-                    leadsAlreadyMigrated++;
-                    break;
-                case AssignCampRoleOutcome.SlotCapReached:
-                    // Slot cap of 2 may have been reached because the camp had 3+ leads.
-                    // Log it but don't fail the whole migration; admin can bump the
-                    // slot count or unassign manually after the fact.
-                    logger.LogWarning(
-                        "Camp Lead retirement: slot cap reached for camp {CampSlug} season {SeasonId} when migrating lead {LeadId} (user {UserId})",
-                        lead.CampSlug, seasonId.Value, lead.LeadId, lead.UserId);
-                    skippedCampSlugs.Add($"{lead.CampSlug} (slot cap)");
-                    break;
-                default:
-                    logger.LogWarning(
-                        "Camp Lead retirement: AssignAsync returned {Outcome} for lead {LeadId} (user {UserId}) on camp {CampSlug} season {SeasonId}",
-                        outcome, lead.LeadId, lead.UserId, lead.CampSlug, seasonId.Value);
-                    skippedCampSlugs.Add($"{lead.CampSlug} ({outcome})");
-                    break;
-            }
-        }
-
-        return new SeedSystemRolesResult(
-            DefinitionsCreated: definitionsCreated,
-            LeadsMigrated: leadsMigrated,
-            LeadsAlreadyMigrated: leadsAlreadyMigrated,
-            SkippedCampSlugs: skippedCampSlugs);
+        return definitionsCreated;
     }
 
     public async Task<CampRoleDrillDownData?> BuildDrillDownAsync(Guid roleDefinitionId, int year, CancellationToken ct = default)

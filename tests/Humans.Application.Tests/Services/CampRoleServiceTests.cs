@@ -915,15 +915,14 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task SeedSystemRolesAndMigrateLeads_creates_both_definitions_when_empty()
+    public async Task SeedSystemRoles_creates_both_definitions_when_empty()
     {
         _campAccess.GetCampMemberStatusAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(_ => Task.FromResult<CampMemberLookup?>(null));
 
-        var result = await _service.SeedSystemRolesAndMigrateLeadsAsync(_actorUserId, Xunit.TestContext.Current.CancellationToken);
+        var definitionsCreated = await _service.SeedSystemRolesAsync(_actorUserId, Xunit.TestContext.Current.CancellationToken);
 
-        result.DefinitionsCreated.Should().Be(2);
-        result.LeadsMigrated.Should().Be(0);
+        definitionsCreated.Should().Be(2);
 
         var defs = await Db.CampRoleDefinitions
             .Where(d => d.SpecialRole != CampSpecialRole.None)
@@ -934,15 +933,13 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task SeedSystemRolesAndMigrateLeads_is_idempotent()
+    public async Task SeedSystemRoles_is_idempotent()
     {
-        var first = await _service.SeedSystemRolesAndMigrateLeadsAsync(_actorUserId, Xunit.TestContext.Current.CancellationToken);
-        first.DefinitionsCreated.Should().Be(2);
+        var first = await _service.SeedSystemRolesAsync(_actorUserId, Xunit.TestContext.Current.CancellationToken);
+        first.Should().Be(2);
 
-        var second = await _service.SeedSystemRolesAndMigrateLeadsAsync(_actorUserId, Xunit.TestContext.Current.CancellationToken);
-        second.DefinitionsCreated.Should().Be(0);
-        second.LeadsMigrated.Should().Be(0);
-        second.LeadsAlreadyMigrated.Should().Be(0);
+        var second = await _service.SeedSystemRolesAsync(_actorUserId, Xunit.TestContext.Current.CancellationToken);
+        second.Should().Be(0);
 
         (await Db.CampRoleDefinitions.CountAsync(d => d.SpecialRole != CampSpecialRole.None, Xunit.TestContext.Current.CancellationToken))
             .Should().Be(2);

@@ -513,21 +513,13 @@ public class CampAdminController(
 
         try
         {
-            var result = await campRoleService.SeedSystemRolesAndMigrateLeadsAsync(user.Id, ct);
-            var summary =
-                $"System roles: {result.DefinitionsCreated} created. " +
-                $"Camp leads: {result.LeadsMigrated} migrated, " +
-                $"{result.LeadsAlreadyMigrated} already migrated, " +
-                $"{result.LeadsSkipped} skipped" +
-                (result.SkippedCampSlugs.Count == 0
-                    ? "."
-                    : $" ({string.Join(", ", result.SkippedCampSlugs)}).");
-            SetSuccess(summary);
+            var definitionsCreated = await campRoleService.SeedSystemRolesAsync(user.Id, ct);
+            SetSuccess($"System roles: {definitionsCreated} created.");
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "SeedSystemRoles failed.");
-            SetError("Failed to seed system roles and migrate leads.");
+            SetError("Failed to seed system roles.");
         }
         return RedirectToAction(nameof(Index));
     }

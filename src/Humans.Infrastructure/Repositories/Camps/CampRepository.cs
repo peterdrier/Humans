@@ -317,9 +317,8 @@ internal sealed partial class CampRepository : ICampRepository
             .FirstOrDefaultAsync(s => s.Id == campSeasonId, ct);
     }
 
-    // Leads (legacy camp_leads — only the seed-migration snapshot + role-backed
-    // team-sync reads remain; mutation/query methods retired with the Camp Lead
-    // role move. Entity/table kept until nobodies-collective/Humans#774.)
+    // Leads (role-backed team-sync reads; the legacy camp_leads table was
+    // dropped in nobodies-collective/Humans#774.)
 
     public async Task<IReadOnlyList<Guid>> GetActiveLeadUserIdsAsync(
         CancellationToken ct = default)
@@ -349,59 +348,6 @@ internal sealed partial class CampRepository : ICampRepository
             .AnyAsync(a => a.CampMember.UserId == userId
                 && a.Definition.SpecialRole == CampSpecialRole.Lead
                 && a.Definition.DeactivatedAt == null, ct);
-    }
-
-    public async Task<IReadOnlyList<CampLead>> GetAllLeadAssignmentsForUserAsync(
-        Guid userId, CancellationToken ct = default)
-    {
-        // GDPR export of legacy camp_leads rows until #774 drops the table.
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.CampLeads
-            .AsNoTracking()
-            .Include(cl => cl.Camp)
-            .Where(cl => cl.UserId == userId)
-            .OrderByDescending(cl => cl.JoinedAt) // arch:db-sort-ok — GDPR export ordering
-            .ToListAsync(ct);
-    }
-
-    public async Task<IReadOnlyList<LeadMigrationSnapshot>> GetLeadMigrationSnapshotsAsync(
-        CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var rows = await ctx.CampLeads
-            .AsNoTracking()
-            .Where(l => l.LeftAt == null)
-            .Select(l => new { l.Id, l.CampId, l.UserId, CampSlug = l.Camp.Slug })
-            .ToListAsync(ct);
-        return rows
-            .Select(r => new LeadMigrationSnapshot(r.Id, r.CampId, r.UserId, r.CampSlug))
-            .ToList();
-    }
-
-    public async Task<Guid?> GetCampSeasonForLeadMigrationAsync(
-        Guid campId, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        // Prefer the open (Pending/Active/Full) season with the latest year;
-        // fall back to the most-recent season of any status. Returns null when
-        // the camp has no seasons at all.
-        var openLatest = await ctx.CampSeasons
-            .AsNoTracking()
-            .Where(s => s.CampId == campId
-                && (s.Status == CampSeasonStatus.Pending
-                    || s.Status == CampSeasonStatus.Active
-                    || s.Status == CampSeasonStatus.Full))
-            .OrderByDescending(s => s.Year) // arch:db-sort-ok — picking single most-relevant season for one-shot lead migration
-            .Select(s => (Guid?)s.Id)
-            .FirstOrDefaultAsync(ct);
-        if (openLatest is not null) return openLatest;
-
-        return await ctx.CampSeasons
-            .AsNoTracking()
-            .Where(s => s.CampId == campId)
-            .OrderByDescending(s => s.Year) // arch:db-sort-ok — picking single most-relevant season for one-shot lead migration
-            .Select(s => (Guid?)s.Id)
-            .FirstOrDefaultAsync(ct);
     }
 
     // Historical names

@@ -47,11 +47,6 @@ public class CampConfiguration : IEntityTypeConfiguration<Camp>
             .HasForeignKey(s => s.CampId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.HasMany(b => b.Leads)
-            .WithOne(l => l.Camp)
-            .HasForeignKey(l => l.CampId)
-            .OnDelete(DeleteBehavior.Cascade);
-
         builder.HasMany(b => b.HistoricalNames)
             .WithOne(h => h.Camp)
             .HasForeignKey(h => h.CampId)

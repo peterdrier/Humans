@@ -33,7 +33,7 @@ This file is the **index and cross-cutting rule sheet** for the data model. Per-
 | TeamRoleAssignment | [Teams](../sections/Teams.md) | |
 | TeamEarlyEntryGrant | [Teams](../sections/Teams.md) | Per-team Early Entry grant (gated by `Team.EarlyEntryEnabled`). Cross-section `UserId` FK — nav stripped, resolved via `IUserServiceRead`. |
 | GoogleResource | [Teams](../sections/Teams.md) | Team Resources sub-aggregate. |
-| Camp / CampSeason / CampLead / CampImage / CampHistoricalName / CampSettings | [Camps](../sections/Camps.md) | |
+| Camp / CampSeason / CampImage / CampHistoricalName / CampSettings | [Camps](../sections/Camps.md) | |
 | CampMember | [Camps](../sections/Camps.md) | Per-season, post-hoc human/camp affiliation (Pending/Active/Removed). Partial unique on `(CampSeasonId, UserId) WHERE Status <> 'Removed'`. |
 | CampRoleDefinition / CampRoleAssignment | [Camps](../sections/Camps.md) | Per-camp role catalogue + per-season assignments. Owned by `CampRoleService`. Unique on `(CampSeasonId, CampRoleDefinitionId, CampMemberId)`. |
 | Container / ContainerPlacement | [Containers](../sections/Containers.md) | Camp-owned (`CampId` → `camps.Id`, non-nullable). |
@@ -94,7 +94,7 @@ Users/Identity
   ← Application, BoardVote, ApplicationStateHistory (Governance)
   ← ConsentRecord (Consent)
   ← TeamMember, TeamJoinRequest, TeamRoleAssignment (Teams)
-  ← Camp.CreatedByUser, CampLead, CampSeason.ReviewedByUser, CampRoleAssignment.AssignedByUser (Camps)
+  ← Camp.CreatedByUser, CampSeason.ReviewedByUser, CampRoleAssignment.AssignedByUser (Camps)
   ← CampPolygon.LastModifiedByUser, CampPolygonHistory.ModifiedByUser (City Planning)
   ← CalendarEvent.CreatedByUser, CalendarEventException.CreatedByUser (Calendar)
   ← EmailOutboxMessage.User (Email)

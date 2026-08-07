@@ -20,12 +20,4 @@ public interface ICampRoleCampAccess
     Task<IReadOnlyList<(Guid CampId, string CampName, string CampSlug, Guid CampSeasonId,
             CampSeasonStatus Status, int TargetMemberCount, int? JoinedMemberCount)>>
         GetCampSeasonsForComplianceAsync(int year, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Idempotent migration helper: ensures a <c>CampMember</c>(<c>Status = Active</c>)
-    /// row exists for the given season and user, promoting Pending when needed.
-    /// </summary>
-    Task<Guid> EnsureActiveMemberForMigrationAsync(
-        Guid campSeasonId, Guid userId, Guid actorUserId,
-        CancellationToken cancellationToken = default);
 }

@@ -22,7 +22,6 @@ public class Camp
     public Instant UpdatedAt { get; set; }
 
     public ICollection<CampSeason> Seasons { get; set; } = new List<CampSeason>();
-    public ICollection<CampLead> Leads { get; set; } = new List<CampLead>();
     public ICollection<CampHistoricalName> HistoricalNames { get; set; } = new List<CampHistoricalName>();
     public ICollection<CampImage> Images { get; set; } = new List<CampImage>();
 

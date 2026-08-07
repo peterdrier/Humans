@@ -81,15 +81,10 @@ public interface ICampRoleService : IApplicationService
     /// <summary>
     /// Idempotent admin action: ensures every non-<see cref="CampSpecialRole.None"/>
     /// value of <see cref="CampSpecialRole"/> has a matching system role definition
-    /// (matched by <see cref="CampRoleDefinition.SpecialRole"/>), then walks the
-    /// legacy <c>camp_leads</c> table and creates a <see cref="CampRoleAssignment"/>
-    /// for the Camp Lead role on the camp's open (or most-recent-open) season,
-    /// creating <see cref="CampMember"/>(<c>Status = Active</c>) as needed. Camps
-    /// with no season are skipped and logged. Safe to run multiple times — the
-    /// second run is a no-op for already-seeded definitions and already-migrated
-    /// leads.
+    /// (matched by <see cref="CampRoleDefinition.SpecialRole"/>). Returns the number
+    /// of definitions created. Safe to run multiple times — the second run is a no-op.
     /// </summary>
-    Task<SeedSystemRolesResult> SeedSystemRolesAndMigrateLeadsAsync(Guid actorUserId, CancellationToken ct = default);
+    Task<int> SeedSystemRolesAsync(Guid actorUserId, CancellationToken ct = default);
 
     /// <summary>
     /// Returns the set of <see cref="CampSpecialRole"/> values (excluding
@@ -119,15 +114,6 @@ public static class CampSystemRoles
     public const int WorkshopLeadSortOrder = -990;
     public const int WorkshopLeadSlotCount = 2;
     public const int WorkshopLeadMinimumRequired = 0;
-}
-
-public sealed record SeedSystemRolesResult(
-    int DefinitionsCreated,
-    int LeadsMigrated,
-    int LeadsAlreadyMigrated,
-    IReadOnlyList<string> SkippedCampSlugs)
-{
-    public int LeadsSkipped => SkippedCampSlugs.Count;
 }
 
 public sealed record CreateCampRoleDefinitionInput(

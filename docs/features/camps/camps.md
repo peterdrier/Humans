@@ -10,7 +10,6 @@
   src/Humans.Web/Views/CampCompliance/**
   src/Humans.Domain/Entities/Camp.cs
   src/Humans.Domain/Entities/CampSeason.cs
-  src/Humans.Domain/Entities/CampLead.cs
   src/Humans.Domain/Entities/CampMember.cs
   src/Humans.Domain/Entities/CampImage.cs
   src/Humans.Domain/Entities/CampHistoricalName.cs
@@ -254,18 +253,6 @@ CampSeason
 └── UpdatedAt: Instant
 ```
 
-### CampLead
-```
-CampLead
-├── Id: Guid
-├── CampId: Guid (FK → Camp)
-├── UserId: Guid (FK → User)
-├── Role: CampLeadRole [Primary, CoLead]
-├── JoinedAt: Instant
-├── LeftAt: Instant? (null = active)
-└── Computed: IsActive (LeftAt == null)
-```
-
 ### CampSettings (singleton)
 ```
 CampSettings
@@ -353,7 +340,6 @@ CampRoleAssignment
 ```
 CampSeasonStatus: Pending(0), Active(1), Full(2), Rejected(4), Withdrawn(5)
 CampMemberStatus: Pending(0), Active(1), Removed(2)
-CampLeadRole: Primary(0), CoLead(1)
 CampVibe: Adult(0), ChillOut(1), ElectronicMusic(2), Games(3), Queer(4), Sober(5), Lecture(6), LiveMusic(7), Wellness(8), Workshop(9)
 CampNameSource: Manual(0), NameChange(1)
 YesNoMaybe: Yes(0), No(1), Maybe(2)
@@ -386,8 +372,10 @@ Authenticated User
 │ Create Camp       │
 │ + CampSeason      │
 │ (Status=Pending)  │
-│ + CampLead        │
-│ (Role=Primary)    │
+│ + CampMember      │
+│ (Status=Active)   │
+│ + CampRoleAssign. │
+│ (Camp Lead role)  │
 └─────────┬─────────┘
           │
           ▼

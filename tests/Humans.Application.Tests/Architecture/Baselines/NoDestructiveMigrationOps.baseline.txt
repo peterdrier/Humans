@@ -42,3 +42,9 @@ src/Humans.Infrastructure/Migrations/20260615201620_HoldedLedgerSingleSource.cs:
 src/Humans.Infrastructure/Migrations/20260615201620_HoldedLedgerSingleSource.cs:DropColumn(name=SepaSentAt)#1
 src/Humans.Infrastructure/Migrations/20260615201620_HoldedLedgerSingleSource.cs:DropTable(name=holded_creditor_balances)#1
 src/Humans.Infrastructure/Migrations/20260615201620_HoldedLedgerSingleSource.cs:DropTable(name=holded_payments)#1
+# Sanctioned split-PR drop (issue nobodies-collective/Humans#774): this IS the "PR B" of the
+# cut sequence in memory/architecture/no-drops-until-prod-verified.md. The replacement — Camp Lead
+# as a CampRoleAssignment against the SpecialRole=Lead definition — shipped in #753 (PR #657) and
+# the code-side decouple soaked in production; camp_leads has had no live reader or writer since.
+# Table drop only, no data moved or transformed.
+src/Humans.Infrastructure/Migrations/20260807155413_DropCampLeadsAndSpecialRoleDefault.cs:DropTable(name=camp_leads)#1
