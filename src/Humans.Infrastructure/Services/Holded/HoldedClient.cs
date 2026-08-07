@@ -208,17 +208,34 @@ public sealed class HoldedClient : IHoldedClient
 
     public async Task<IReadOnlyList<HoldedContactDto>> ListContactsAsync(CancellationToken ct = default)
     {
-        using var req = new HttpRequestMessage(HttpMethod.Get, "/api/invoicing/v1/contacts");
-        AttachAuth(req);
-        using var resp = await SendAsync(req, ct);
-        await using var stream = await resp.Content.ReadAsStreamAsync(ct);
-        var arr = (await JsonNode.ParseAsync(stream, cancellationToken: ct))?.AsArray() ?? [];
-        return arr.Where(n => n is not null).Select(n => new HoldedContactDto
+        // Paginates by walking `page` until an empty page comes back — the same
+        // "empty list = past the end" contract already verified for this API family
+        // via ListPurchaseDocumentsPageAsync. No `limit` param: unlike dailyledger/
+        // documents-purchase, the contacts endpoint's page size has never been probed
+        // live, so we don't assume it honors a requested limit.
+        const int pageSafetyCap = 50; // 5 000+ contacts — far above a small nonprofit's vendor/member list
+        var contacts = new List<HoldedContactDto>();
+        for (var page = 1; page <= pageSafetyCap; page++)
         {
-            Id = n!["id"]?.GetValue<string>() ?? "",
-            Name = n["name"]?.GetValue<string>(),
-            SupplierAccountNum = ReadInt(n["supplierRecord"]?["num"]),
-        }).ToList();
+            using var req = new HttpRequestMessage(HttpMethod.Get, $"/api/invoicing/v1/contacts?page={page}");
+            AttachAuth(req);
+            using var resp = await SendAsync(req, ct);
+            await using var stream = await resp.Content.ReadAsStreamAsync(ct);
+            var arr = (await JsonNode.ParseAsync(stream, cancellationToken: ct))?.AsArray() ?? [];
+            if (arr.Count == 0) return contacts;
+
+            contacts.AddRange(arr.Where(n => n is not null).Select(n => new HoldedContactDto
+            {
+                Id = n!["id"]?.GetValue<string>() ?? "",
+                Name = n["name"]?.GetValue<string>(),
+                SupplierAccountNum = ReadInt(n["supplierRecord"]?["num"]),
+            }));
+        }
+
+        _logger.LogWarning(
+            "Holded contacts hit the {Cap}-page safety cap; results may be truncated.",
+            pageSafetyCap);
+        return contacts;
     }
 
     public async Task<IReadOnlyList<HoldedLedgerLineDto>> ListDailyLedgerAsync(

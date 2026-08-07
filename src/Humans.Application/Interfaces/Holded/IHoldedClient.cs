@@ -49,6 +49,7 @@ public interface IHoldedClient
     Task<IReadOnlyList<HoldedLedgerLineDto>> ListDailyLedgerAsync(
         Instant from, Instant to, CancellationToken ct = default);
 
-    /// <summary>Lists all contacts (id + name + supplierRecord.num) for account-number → contact resolution.</summary>
+    /// <summary>Lists all contacts (id + name + supplierRecord.num) for account-number → contact resolution.
+    /// Paginates internally by walking `page` until an empty page returns.</summary>
     Task<IReadOnlyList<HoldedContactDto>> ListContactsAsync(CancellationToken ct = default);
 }

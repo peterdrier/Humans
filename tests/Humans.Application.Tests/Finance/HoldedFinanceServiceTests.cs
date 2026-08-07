@@ -8,6 +8,7 @@ using Humans.Application.Services.Finance.Dtos;
 using Humans.Application.Tests.AuditLog;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
@@ -25,12 +26,14 @@ public class HoldedFinanceServiceTests
     private readonly IHoldedClient _client = Substitute.For<IHoldedClient>();
     private readonly IBudgetService _budget = Substitute.For<IBudgetService>();
     private readonly FakeClock _clock = new(FixedNow);
+    private readonly IMemoryCache _cache = new MemoryCache(new MemoryCacheOptions());
 
     private HoldedFinanceService MakeService() => new(
         _repo,
         _client,
         _budget,
         _clock,
+        _cache,
         NullLogger<HoldedFinanceService>.Instance);
 
     // ─── GetProvisioningPlan ──────────────────────────────────────────────────────
@@ -811,7 +814,7 @@ public class HoldedFinanceServiceTests
             new() { UserId = otherUserId, HoldedContactId = "c-theirs", SupplierAccountNum = 40000012, Source = CreditorContactSource.Manual },
         });
 
-        await new HoldedFinanceService(_repo, _client, _budget, _clock, logger)
+        await new HoldedFinanceService(_repo, _client, _budget, _clock, _cache, logger)
             .SetCreditorAccountNumAsync(userId, 40000012, Xunit.TestContext.Current.CancellationToken);
 
         await _repo.Received(1).UpsertCreditorContactAsync(
@@ -841,7 +844,7 @@ public class HoldedFinanceServiceTests
             new() { UserId = userId, HoldedContactId = "c-mine", SupplierAccountNum = 40000012, Source = CreditorContactSource.Auto },
         });
 
-        await new HoldedFinanceService(_repo, _client, _budget, _clock, logger)
+        await new HoldedFinanceService(_repo, _client, _budget, _clock, _cache, logger)
             .SetCreditorAccountNumAsync(userId, 40000012, Xunit.TestContext.Current.CancellationToken);
 
         await _repo.Received(1).UpsertCreditorContactAsync(
@@ -862,7 +865,7 @@ public class HoldedFinanceServiceTests
         });
         _client.UpsertContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("c-mine");
 
-        await new HoldedFinanceService(_repo, _client, _budget, _clock, logger)
+        await new HoldedFinanceService(_repo, _client, _budget, _clock, _cache, logger)
             .EnsureCreditorContactAsync(
                 userId, "Ana Ruiz", null, null, seedContactId: "c-mine", seedAccountNum: 40000012,
                 Xunit.TestContext.Current.CancellationToken);
@@ -889,7 +892,7 @@ public class HoldedFinanceServiceTests
         });
         _client.UpsertContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("c-shared");
 
-        await new HoldedFinanceService(_repo, _client, _budget, _clock, logger)
+        await new HoldedFinanceService(_repo, _client, _budget, _clock, _cache, logger)
             .EnsureCreditorContactAsync(
                 userId, "Ana Ruiz", null, null, seedContactId: "c-shared", seedAccountNum: null,
                 Xunit.TestContext.Current.CancellationToken);

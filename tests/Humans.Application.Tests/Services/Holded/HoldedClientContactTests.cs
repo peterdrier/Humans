@@ -36,6 +36,74 @@ public class HoldedClientContactTests
     }
 
     [HumansFact]
+    public async Task ListContacts_parses_id_name_and_supplierAccountNum()
+    {
+        var json = """
+        [
+          {"id":"c1","name":"Daniela Real","supplierRecord":{"num":40000001}},
+          {"id":"c2","name":"Acme Supplies SL"}
+        ]
+        """;
+        var callCount = 0;
+        var client = Make(new StubHandler(_ =>
+            Respond(HttpStatusCode.OK, callCount++ == 0 ? json : "[]")));
+
+        var contacts = await client.ListContactsAsync(Xunit.TestContext.Current.CancellationToken);
+
+        contacts.Should().HaveCount(2);
+        contacts[0].Id.Should().Be("c1");
+        contacts[0].SupplierAccountNum.Should().Be(40000001);
+        contacts[1].Id.Should().Be("c2");
+        contacts[1].SupplierAccountNum.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task ListContacts_walks_pages_until_an_empty_page_returns()
+    {
+        // Regression for #976: an unpaged call silently truncated at whatever cap Holded applies.
+        var capturedPages = new List<string>();
+        var handler = new StubHandler(req =>
+        {
+            capturedPages.Add(req.RequestUri!.Query);
+            var page = req.RequestUri.Query.Contains("page=1", StringComparison.Ordinal) ? 1
+                : req.RequestUri.Query.Contains("page=2", StringComparison.Ordinal) ? 2
+                : 3;
+            return page switch
+            {
+                1 => Respond(HttpStatusCode.OK, """[{"id":"c1","name":"A"}]"""),
+                2 => Respond(HttpStatusCode.OK, """[{"id":"c2","name":"B"}]"""),
+                _ => Respond(HttpStatusCode.OK, "[]"),
+            };
+        });
+        var client = Make(handler);
+
+        var contacts = await client.ListContactsAsync(Xunit.TestContext.Current.CancellationToken);
+
+        contacts.Select(c => c.Id).Should().Equal("c1", "c2");
+        capturedPages.Should().HaveCount(3);
+        capturedPages[0].Should().Contain("page=1");
+        capturedPages[1].Should().Contain("page=2");
+        capturedPages[2].Should().Contain("page=3");
+    }
+
+    [HumansFact]
+    public async Task ListContacts_stops_after_one_call_when_first_page_is_empty()
+    {
+        var callCount = 0;
+        var handler = new StubHandler(_ =>
+        {
+            callCount++;
+            return Respond(HttpStatusCode.OK, "[]");
+        });
+        var client = Make(handler);
+
+        var contacts = await client.ListContactsAsync(Xunit.TestContext.Current.CancellationToken);
+
+        contacts.Should().BeEmpty();
+        callCount.Should().Be(1);
+    }
+
+    [HumansFact]
     public async Task UpsertContact_posts_when_no_existing_id_and_returns_id()
     {
         string? method = null;

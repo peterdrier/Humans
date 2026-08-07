@@ -16,6 +16,7 @@ using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.EarlyEntry;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Infrastructure.Repositories.Shifts;
+using Xunit;
 
 namespace Humans.Application.Tests.Services.Shifts;
 
@@ -496,6 +497,33 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
 
         result.Success.Should().BeTrue();
         result.Signup!.Status.Should().Be(SignupStatus.NoShow);
+    }
+
+    [HumansTheory(Timeout = 10000)]
+    [InlineData(SignupStatus.NoShow)]
+    [InlineData(SignupStatus.Bailed)]
+    [InlineData(SignupStatus.Cancelled)]
+    [InlineData(SignupStatus.Pending)]
+    [InlineData(SignupStatus.Refused)]
+    public async Task MarkNoShow_NotConfirmed_ReturnsErrorInsteadOfThrowing(SignupStatus status)
+    {
+        var (es, _, shift) = SeedShiftScenario(SignupPolicy.Public);
+        // Same past-ending shift as MarkNoShow_AfterShiftEnd_SetsNoShow, so the
+        // shift-end guard passes and the status guard is the one under test.
+        es.GateOpeningDate = new LocalDate(2026, 6, 14);
+        shift.DayOffset = 0;
+        shift.StartTime = new LocalTime(8, 0);
+        shift.Duration = Duration.FromHours(2);
+
+        var userId = Guid.NewGuid();
+        var signup = SeedSignup(userId, shift.Id, status);
+        var reviewerId = Guid.NewGuid();
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var result = await _service.MarkNoShowAsync(signup.Id, reviewerId);
+
+        result.Success.Should().BeFalse();
+        result.Error.Should().Contain(status.ToString());
     }
 
     // ============================================================
