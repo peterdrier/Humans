@@ -62,14 +62,50 @@ Measured back to back against `origin/main` at 94535e688, same machine, same com
 
 That last row is the point of the phase: the "pre-existing failures" were never assertion failures, they were containers starving each other.
 
-**Per-test database isolation did not ship** — tracked as nobodies-collective/Humans#983. Both options in the original plan were tried and neither works as written:
+**Per-test database isolation did not ship in P2** — it landed separately as P2a below, after both options in the original plan turned out not to work as written.
 
-- (a) **`BEGIN; ROLLBACK` per test.** Not implementable for this suite. Tests drive the app over TestServer, so each request resolves its own scoped `HumansDbContext` off the pooled `NpgsqlDataSource` and writes on a different physical connection than the test holds; a transaction the test opens is invisible to the code under test. Pinning the pool to a single connection does not help either — EF's own `SaveChanges` transaction collides with an out-of-band `BEGIN`.
-- (b) **`TRUNCATE ... CASCADE`.** Implemented and measured, including a post-boot snapshot/restore so `HasData` and startup-seeder rows survive. It takes 23 of 123 tests down, because the app's 11 Singleton caching decorators are not truncated with the database: `/dev/login/{persona}` 500s when `DevPersonaSeeder` resolves a cached user id whose row was just truncated. Truncating the database while the app still believes the old rows exist is a worse correctness story than not truncating at all, so it was not shipped. #983 records what a complete cache-flush capability would need.
+**Definition of done:** integration suite boots one Postgres container per run ✅; suite runtime drops to seconds, not minutes ✅; per-test isolation → P2a.
 
-The suite is green sharing one database because tests already scope assertions to rows they seeded themselves (per-test GUID suffixes). `HumansWebApplicationFactory`'s XML docs state that contract for future tests.
+### P2a — Per-test isolation — **shipped**
+**Value: high · Effort: medium · Risk: medium. Depends on P2. Landed via nobodies-collective/Humans#983.**
 
-**Definition of done:** integration suite boots one Postgres container per run ✅; suite runtime drops to seconds, not minutes ✅; per-test isolation → deferred to nobodies-collective/Humans#983.
+#### The mistake both original options make
+
+They treat the database as the unit of isolation. It isn't. The app carries the database's contents forward in process memory — 11 Singleton `Caching*Service` decorators, `TrackingMemoryCache`, `DevPersonaSeeder`'s resolved persona ids, Identity's security stamp cache, the DataProtection key ring. Those caches are a *projection of the database*, so resetting one without the other leaves the app asserting rows that no longer exist. Every mechanism that resets the database while keeping the app alive re-derives the same failure with a different reset verb.
+
+That is not a hypothesis. Option (b) was built and measured, and 23 of 123 tests went down exactly this way.
+
+#### Mechanisms considered
+
+| Mechanism | Does it isolate? | Cost | Demands on test authors |
+|---|---|---|---|
+| GUID-suffixed keys (the status quo convention) | No. Nothing enforces it; a test that forgets is silently wrong. | free | remember it, every test, forever |
+| `BEGIN … ROLLBACK` around the test | **No — verified, not assumed.** See the probe below. | — | — |
+| `TRUNCATE … CASCADE` between tests | Database yes, app no. 23/123 tests down. | cheap | — |
+| Truncate + an app-wide cache flush | Only if the flush is *complete*, and nothing can establish that it is. Needs `Clear()` on the public `ICacheStats`, a fix to `CachingEventService`'s partial registration, plus an open-ended audit of every other singleton holding DB-derived state. Adds production surface whose only consumer is tests, guarded by an invariant nothing enforces — the next caching decorator silently un-isolates the suite, and the symptom is a false pass. | cheap | — |
+| Per-test schema + `search_path` | Same app-state defect, plus Postgres has no `CREATE SCHEMA LIKE`, so the whole DDL would have to be replayed per test. | — | — |
+| Per-test database, shared app | Incoherent — option (b) with a different verb. | — | — |
+| **Per-test app + per-test database cloned from a migrated template** | **Yes, by construction.** The reset unit is all process-level state: fresh database *and* fresh caches, because it is a fresh app. | 0.3 s/test (below) | none |
+
+#### Why (a) is not implementable — measured, not asserted
+
+`Probe_TestTransactionIsInvisibleToAppScope` created a table inside a transaction on the test's own connection, then queried for it from an app scope resolved the way a TestServer request resolves one. The app scope did not see it. `Probe_RequestsUseDifferentPhysicalConnectionsThanTheTest` shows why: `pg_backend_pid()` differs between the test's connection and every app scope's. Both probes pass, i.e. the isolation the test's transaction provides is isolation *from the code under test*. Pinning the pool to one connection doesn't rescue it — EF's own `SaveChanges` transaction then collides with the out-of-band `BEGIN`.
+
+#### What shipped
+
+Container lifetime and app lifetime are now separate objects, because they now have different lifetimes:
+
+- **`HumansTestDatabase`** is the assembly fixture. It starts the run's one Postgres container, creates `humans_template` and migrates it by booting one throwaway app, then releases it. It hands out clones.
+- **`HumansWebApplicationFactory`** takes a connection string and boots an app against it. It no longer owns a container.
+- **`IntegrationTestBase`** clones a database and boots a factory in `InitializeAsync`, and disposes the factory and drops the database in `DisposeAsync` — per test.
+
+`ResetSharedSubstitutes` is gone: the substitutes are fields on the factory, and the factory is now per-test, so there is nothing left to share. P7 is subsumed.
+
+Measured on the same machine, per operation: `CREATE DATABASE … TEMPLATE` 33–59 ms, app boot on the pre-migrated clone 240–311 ms. Migrating from scratch instead of cloning would be 2,367 ms, which is what makes the template worth having.
+
+`DatabaseIsolationTests` is the regression guard. It is a two-case `[Theory]` — xUnit gives each case its own class instance and therefore its own database — where each case writes a row under a *fixed* key and asserts exactly one such row exists. On a shared database the second case sees two and fails; the same test also asserts `/dev/login/volunteer` still redirects rather than 500s, which is the exact symptom that took option (b) down. It fails on the shared-database scheme and passes on this one.
+
+**Definition of done:** no test can see another test's writes ✅; the app's caches stay coherent with its database ✅; no production surface added ✅.
 
 ### P3 — Containerize Hangfire away from static state
 **Value: high · Effort: medium · Risk: low. Can run in parallel with P2.**
