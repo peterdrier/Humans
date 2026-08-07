@@ -89,15 +89,47 @@ filters, sorts, joins or groups by** — they are audit stamps (`CreatedByUserId
 `ReviewedByUserId`, `ChangedByUserId`, `ModifiedByUserId`, `AssignedByUserId`,
 `ResolvedByUserId`, `EnrolledByUserId`, `UpdatedByUserId`) written on insert and read only
 through the row that carries them. Those need no `HasIndex(...)`; adding one would be
-speculative. The five that do carry query traffic:
+speculative. Five columns do carry query traffic — but carrying traffic is not the same as being
+exposed by the cut, and only two of the five survive that second test:
 
 | Table.column | Query evidence | Judgement |
 |---|---|---|
-| `audit_log.ActorUserId` | `AuditLogRepository.cs:171` (`userIds.Contains(e.ActorUserId.Value)`), `:190` (`a.ActorUserId == userId`), `:208` | **Highest risk.** `audit_log` is append-only and the fastest-growing table in the system; two of the three call sites are GDPR export contributors that scan by actor. Re-add. |
-| `campaign_grants.UserId` | `CampaignRepository.cs:160,173,327,350,380` — five `UserId ==` predicates, including the per-user grant list and the GDPR export row | **Re-add.** The only other index touching `UserId` is `(CampaignId, UserId)` unique, whose leading column is `CampaignId` — it cannot serve a `UserId`-only lookup. |
-| `budget_audit_logs.ActorUserId` | `BudgetRepository.cs:1013,1029` | Re-add. Small table, but the predicate is a bare equality with nothing else to cover it. |
-| `board_votes.BoardMemberUserId` | `ApplicationRepository.cs:198` — `!a.BoardVotes.Any(v => v.BoardMemberUserId == boardMemberUserId)`, a solo predicate. `:169` is covered by the unique `(ApplicationId, BoardMemberUserId)`. | Partial exposure. Re-add — one index on a table of a few hundred rows is not worth reasoning about twice. |
-| `rotas.TeamId` | `ShiftRepository.Signups.cs:312` — `s.Shift.Rota.TeamId == deptId`, a solo join-side predicate. `Management.cs:379` is covered by the explicit `(EventSettingsId, TeamId)`. | Partial exposure. Re-add. |
+| `campaign_grants.UserId` | `CampaignRepository.cs:160,173,327,350,380` — five bare `g.UserId == userId` predicates, none of them also constraining `CampaignId`. Includes the per-user grant list and the GDPR export row. | **Re-add.** The only other index touching `UserId` is `(CampaignId, UserId)` unique, whose leading column is `CampaignId` — it cannot serve a `UserId`-only lookup. |
+| `budget_audit_logs.ActorUserId` | `BudgetRepository.cs:1013,1029` — both bare `ActorUserId` equality / `Contains`, no other predicate | **Re-add.** The table's indexes are `BudgetYearId`, `OccurredAt` and `(EntityType, EntityId)`; none can serve an actor lookup. |
+| `audit_log.ActorUserId` | `AuditLogRepository.cs:171,190,208` | **Do not re-add** — a solo index here is unusable. See below. |
+| `board_votes.BoardMemberUserId` | `ApplicationRepository.cs:198,169,110` | **Do not re-add** — already covered. See below. |
+| `rotas.TeamId` | `ShiftRepository.Signups.cs:312`; `Management.cs:339,379,412` | **Do not re-add** — already covered. See below. |
+
+#### Why the last three are not exposed
+
+Each looked like a solo predicate and is not. Worth spelling out, because the cost of getting
+this wrong is two or three indexes that carry write and storage cost forever while preserving
+nothing.
+
+- **`board_votes.BoardMemberUserId`.** The `Any` at `:198` reads
+  `!a.BoardVotes.Any(v => v.BoardMemberUserId == boardMemberUserId)`, which looks single-column
+  but is a *correlated* subquery: `BoardVoteConfiguration.cs:31-33` binds `a.BoardVotes` through
+  `HasForeignKey(bv => bv.ApplicationId)`, so the generated `EXISTS` constrains `ApplicationId`
+  **and** `BoardMemberUserId`. That is exactly the unique index at
+  `BoardVoteConfiguration.cs:44-45`. The other two sites are covered too — `:169` filters both
+  columns explicitly, `:110` filters `ApplicationId` and merely projects the user id. No
+  exposure.
+- **`rotas.TeamId`.** Every repository predicate on this column sits in a query that already
+  pins `EventSettingsId` on the same `Rota`: `Signups.cs:306`+`:312`, `Management.cs:330`+`:339`,
+  `:406`+`:412`, and `:379` in one expression. The composite `(EventSettingsId, TeamId)`
+  (`RotaConfiguration.cs:36`, the only `TeamId` index on the table) serves all four as a
+  leading-equality lookup. Everything else matching `Rota.TeamId` in `src/` is in-memory LINQ in
+  the service layer over already-loaded entities, which generates no SQL. No exposure.
+- **`audit_log.ActorUserId`.** This column is never queried alone. All three sites are
+  three-way disjunctions over `EntityId`, `RelatedEntityId` and `ActorUserId` (`:190` is
+  `a.EntityId == userId || a.RelatedEntityId == userId || a.ActorUserId == userId`; `:171` and
+  `:208` are the `Contains` forms). Postgres can only use indexes for an `OR` by building a
+  bitmap per disjunct, so it needs a usable index on *every* branch. `RelatedEntityId` has none
+  — the only index containing it is `(RelatedEntityType, RelatedEntityId)`, which cannot serve
+  the bare column — so all three queries seq-scan `audit_log` today, with or without an index on
+  `ActorUserId`. Dropping it therefore regresses nothing. If these GDPR-export scans are ever
+  worth making index-driven, that needs solo indexes on all three branches and is a separate
+  decision from the FK cut, not a consequence of it.
 
 Two more dropping columns are queried, but only from the user-merge path
 (`FeedbackRepository.cs:165` on `feedback_messages.SenderUserId`,
@@ -106,23 +138,25 @@ accounts is a rare admin action on tables measured in thousands of rows; a seque
 there is acceptable. Recorded rather than recommended — say so explicitly in the migration PR
 rather than leaving it to be re-derived.
 
-**Recommendation for the migration PR:** add explicit `HasIndex(...)` for the five rows above.
-Leave the other twenty alone (18 unused + 2 merge-path) and state in the PR body that they were
-checked, so a reviewer does not have to re-derive it.
+**Recommendation for the migration PR:** add explicit `HasIndex(...)` for exactly **two** columns
+— `campaign_grants.UserId` and `budget_audit_logs.ActorUserId`. Leave the other twenty-three
+alone (18 unused, 2 merge-path, 3 already covered or unusable) and state in the PR body that they
+were checked, so a reviewer does not have to re-derive it.
 
 ### What this analysis cannot tell you
 
 Stated plainly rather than guessed:
 
-- **No row counts.** This is static analysis of a repo with no live-database access. Whether
-  losing `IX_audit_log_ActorUserId` actually degrades anything depends on how large `audit_log`
-  has grown in production. At ~500 users most of these tables are small enough that Postgres
-  would sequential-scan them regardless of the index. The five recommendations above are made
-  on the conservative side: an index is cheap and the cost of guessing wrong is a silent
-  production regression that no test catches.
-- **No `EXPLAIN`.** Whether the planner uses each of these indexes *today* is unverified. If
-  anyone wants to trim the five down, the check is `EXPLAIN (ANALYZE)` against prod on the
-  cited call sites — not further reading of the source.
+- **No row counts.** This is static analysis of a repo with no live-database access. At ~500
+  users most of these tables are small enough that Postgres would sequential-scan them
+  regardless of the index, which is a reason the two recommendations are narrow: an index is
+  cheap, but only where a plan could actually use it.
+- **No `EXPLAIN`.** The coverage arguments above are read off the index definitions and the
+  predicates, not off a query plan. They turn on rules that hold generally — a composite serves
+  a leading-column equality; an `OR` needs a usable index on every branch — but the confirmation
+  is `EXPLAIN (ANALYZE)` against prod on the cited call sites, not further reading of the
+  source. That check is worth running before the migration for the two re-adds and for
+  `audit_log`.
 - **Partial indexes.** `budget_categories.TeamId` and `budget_line_items.ResponsibleTeamId`
   survive as `WHERE "<col>" IS NOT NULL` partial indexes
   (`HumansDbContextModelSnapshot.cs:401,496`), as does
@@ -363,7 +397,7 @@ Sections are the *dependent* side — the section that owns the table carrying t
 
 | Table | FK column | → | Action | Index after cut | Query filters/sorts on it? | Config |
 |---|---|---|---|---|---|---|
-| `audit_log` | `ActorUserId` | `User` | `SetNull` | **DROPS** | **Yes** — `AuditLogRepository.cs:171` (`userIds.Contains(e.ActorUserId.Value)`), `:190` (`a.ActorUserId == userId`), `:208` | `AuditLogEntryConfiguration.cs:49` |
+| `audit_log` | `ActorUserId` | `User` | `SetNull` | **DROPS** | Yes, but only inside a three-way `OR` — `AuditLogRepository.cs:171,190,208`. No solo index is usable; see *Why the last three are not exposed*. | `AuditLogEntryConfiguration.cs:49` |
 | `audit_log` | `ResourceId` | `GoogleResource` | `SetNull` | survives — explicit `HasIndex` | Yes — `AuditLogRepository.cs:43,54,70` | `AuditLogEntryConfiguration.cs:69` |
 
 ### Auth
@@ -445,7 +479,7 @@ Sections are the *dependent* side — the section that owns the table carrying t
 | `application_state_history` | `ChangedByUserId` | `User` | `Restrict` | **DROPS** | No | `ApplicationStateHistoryConfiguration.cs:33` |
 | `applications` | `ReviewedByUserId` | `User` | `Restrict` | **DROPS** | No | `ApplicationConfiguration.cs:55` |
 | `applications` | `UserId` | `User` | `Cascade` | survives — explicit `HasIndex` | Yes — `ApplicationRepository.cs` | `ApplicationConfiguration.cs:62` |
-| `board_votes` | `BoardMemberUserId` | `User` | `Restrict` | **DROPS** | **Partly** — `ApplicationRepository.cs:198` (solo predicate inside `Any`); `:169` is covered by the unique composite | `BoardVoteConfiguration.cs:38` |
+| `board_votes` | `BoardMemberUserId` | `User` | `Restrict` | **DROPS** | Yes — `ApplicationRepository.cs:110,169,198` — but all three also constrain `ApplicationId`, so the unique `(ApplicationId, BoardMemberUserId)` covers them | `BoardVoteConfiguration.cs:38` |
 
 ### Issues
 
@@ -475,7 +509,7 @@ Sections are the *dependent* side — the section that owns the table carrying t
 | Table | FK column | → | Action | Index after cut | Query filters/sorts on it? | Config |
 |---|---|---|---|---|---|---|
 | `general_availability` | `UserId` | `User` | `Restrict` | survives — composite `UserId + EventSettingsId` (leading) | Yes — `VolunteerTrackingRepository.cs:33,50,62` | `GeneralAvailabilityConfiguration.cs:34` |
-| `rotas` | `TeamId` | `Team` | `Restrict` | **DROPS** | **Partly** — `ShiftRepository.Signups.cs:312` (`s.Shift.Rota.TeamId == deptId`, solo); `Management.cs:379` is covered by `EventSettingsId+TeamId` | `RotaConfiguration.cs:44` |
+| `rotas` | `TeamId` | `Team` | `Restrict` | **DROPS** | Yes — `Signups.cs:312`, `Management.cs:339,379,412` — but every one also pins `EventSettingsId` on the same rota, so `(EventSettingsId, TeamId)` covers them | `RotaConfiguration.cs:44` |
 | `shift_signups` | `EnrolledByUserId` | `User` | `SetNull` | **DROPS** | No | `ShiftSignupConfiguration.cs:45` |
 | `shift_signups` | `ReviewedByUserId` | `User` | `SetNull` | **DROPS** | No | `ShiftSignupConfiguration.cs:50` |
 | `shift_signups` | `UserId` | `User` | `Restrict` | survives — explicit `HasIndex` | Yes — `ShiftRepository.Signups.cs:42,100,158,184,197` | `ShiftSignupConfiguration.cs:35` |
