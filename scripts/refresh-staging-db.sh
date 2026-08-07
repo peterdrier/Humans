@@ -27,6 +27,16 @@ STAGING_DB="${STAGING_DB:-humans_staging}"
 COOLIFY_BACKUP_DIR="${COOLIFY_BACKUP_DIR:-/data/coolify/backups}"
 STAGING_APP_CONTAINER="${STAGING_APP_CONTAINER:-}"
 
+# How old the newest backup artifact may be before this is a backup incident rather than a
+# refresh. Only applies when the artifact was picked automatically — an operator naming
+# BACKUP_FILE is deliberately reaching for an older one. 0 disables the check.
+BACKUP_MAX_AGE_HOURS="${BACKUP_MAX_AGE_HOURS:-48}"
+
+# Per-section DbContexts, each of which owns a __EFMigrationsHistory_<Section> table since
+# nobodies-collective/Humans#858. Same list, same variable name, as
+# .github/workflows/build.yml — grep SECTION_DB_CONTEXTS to find both; they move together.
+SECTION_DB_CONTEXTS="${SECTION_DB_CONTEXTS:-SystemSettingsDbContext ContainersDbContext AgentDbContext ExpensesDbContext FinanceDbContext SurveysDbContext EventGuideDbContext}"
+
 log() { printf '==> %s\n' "$*"; }
 die() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 
@@ -139,6 +149,17 @@ else
 
     [ -n "$BACKUP_FILE" ] \
       || die "no backup artifact matching '*${PROD_DB}*' under '$COOLIFY_BACKUP_DIR' — check the path, set BACKUP_FILE to one directly, or pass 'live'"
+
+    # A stalled backup schedule leaves a perfectly restorable artifact lying around, so
+    # every check below would pass while staging exercised weeks-old schema and data —
+    # the migration rehearsal would be against the wrong database, and the backup outage
+    # this workflow exists to surface would go unreported. Age is the only thing that
+    # distinguishes the two, so it is checked rather than logged.
+    if [ "$BACKUP_MAX_AGE_HOURS" != "0" ]; then
+      AGE_HOURS=$(( ( $(date +%s) - $(date -r "$BACKUP_FILE" +%s) ) / 3600 ))
+      [ "$AGE_HOURS" -le "$BACKUP_MAX_AGE_HOURS" ] \
+        || die "newest backup artifact is ${AGE_HOURS}h old (limit ${BACKUP_MAX_AGE_HOURS}h): '$BACKUP_FILE' — treat this as an incident on production's backup schedule, not as a staging problem (docs/staging-environment.md §9). Set BACKUP_FILE to restore it anyway, BACKUP_MAX_AGE_HOURS to match the real cadence, or pass 'live'"
+    fi
   fi
   [ -f "$BACKUP_FILE" ] || die "backup artifact '$BACKUP_FILE' is not a file"
 
@@ -217,9 +238,25 @@ TABLES=$(psql_staging -tAc "SELECT count(*) FROM information_schema.tables WHERE
 [ "${TABLES:-0}" -gt 0 ] || die "restored database has no tables — the archive was empty or the wrong file"
 log "Restored $TABLES tables"
 
-HISTORY_TABLES=$(psql_staging -tAc "SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_name LIKE '\_\_EFMigrationsHistory%';" | tr -d '[:space:]')
-[ "${HISTORY_TABLES:-0}" -gt 0 ] \
-  || die "restored database has no __EFMigrationsHistory table — this is not a Humans database"
+# Every expected history table by name, not merely "at least one". A count test passes on an
+# archive holding the main __EFMigrationsHistory and none of the per-section ones — and the
+# empty-table query below cannot see a table that is absent, so such a restore would be
+# reported as verified. The app would then treat that section's post-baseline migrations as
+# unapplied and replay them against tables that already exist.
+RESTORED_HISTORY=$(psql_staging -tAc "SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND table_name LIKE '\_\_EFMigrationsHistory%';" | tr -d '\r')
+
+EXPECTED_HISTORY="__EFMigrationsHistory"          # HumansDbContext, the original
+for ctx in $SECTION_DB_CONTEXTS; do
+  EXPECTED_HISTORY="$EXPECTED_HISTORY __EFMigrationsHistory_${ctx%DbContext}"
+done
+
+MISSING_HISTORY=""
+for expected in $EXPECTED_HISTORY; do
+  printf '%s\n' "$RESTORED_HISTORY" | grep -qx -- "$expected" \
+    || MISSING_HISTORY="$MISSING_HISTORY $expected"
+done
+[ -z "$MISSING_HISTORY" ] \
+  || die "restored database is missing migration-history table(s):$MISSING_HISTORY — either the archive is not a Humans database, or it predates those sections; restoring it would have the app replay their migrations against existing tables"
 
 log "Migration history:"
 psql_staging -c "

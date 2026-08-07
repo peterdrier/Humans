@@ -97,11 +97,26 @@ fine.
 
 ### What it verifies
 
-After restoring, the script fails the workflow if the restored database has no tables, or if
-**any** `__EFMigrationsHistory*` table came back empty. There is one history table per
-DbContext since the per-section split (nobodies-collective/Humans#858), and an empty one is the
-quiet failure worth catching: the app boots happily and then applies that section's migrations
-from scratch against tables that already exist.
+After restoring, the script fails the workflow if the restored database has no tables, if any
+**expected** `__EFMigrationsHistory*` table is missing, or if any of them came back empty.
+There is one history table per DbContext since the per-section split
+(nobodies-collective/Humans#858), so the expected set is `__EFMigrationsHistory` plus one
+`__EFMigrationsHistory_<Section>` per entry in `SECTION_DB_CONTEXTS` — the same list
+`.github/workflows/build.yml` uses, duplicated in the script's defaults and kept in step with
+it by name.
+
+Missing and empty are different failures and both are quiet. An empty history table has the
+app boot happily and then apply that section's migrations from scratch against tables that
+already exist. A **missing** one cannot be caught by the empty check at all — no row to
+inspect — which is how a selective or pre-split archive would otherwise be reported as
+verified.
+
+**Staleness is the third.** The newest artifact is rejected if it is older than
+`BACKUP_MAX_AGE_HOURS` (default 48). A stalled backup schedule leaves a perfectly restorable
+file behind, so without an age bound every check above passes while staging rehearses
+migrations against weeks-old schema — and the backup outage goes unreported, which is the one
+thing §9 says this workflow is for. Naming `BACKUP_FILE` explicitly bypasses the bound, since
+that is a deliberate reach for an older artifact; `BACKUP_MAX_AGE_HOURS=0` disables it.
 
 ### Uploads
 
@@ -127,7 +142,9 @@ STAGING_APP_CONTAINER=<staging app container> \
 ```
 
 Set `BACKUP_FILE=/path/to/artifact` to restore a specific one — an older backup, or one whose
-filename does not carry the database name — instead of the newest match.
+filename does not carry the database name — instead of the newest match. That also bypasses the
+`BACKUP_MAX_AGE_HOURS` bound, which exists to catch a stalled schedule rather than to stop
+someone deliberately restoring an old artifact.
 
 Nothing in the script writes to production. `backup` never opens the production database at
 all; `live` only reads it; the uploads copy is one-way. The destructive statements target
@@ -291,6 +308,7 @@ repository cannot know; the script fails loudly rather than guessing.
 | `PROD_UPLOADS_DIR` | Host path backing production's `/app/wwwroot/uploads` (Coolify → the production resource → **Storages**) | Yes |
 | `STAGING_UPLOADS_DIR` | Host path for staging's uploads — a **new, separate** directory | Yes |
 | `COOLIFY_BACKUP_DIR` | Where Coolify writes database backup artifacts, if not `/data/coolify/backups` | Only if different |
+| `BACKUP_MAX_AGE_HOURS` | How old the newest artifact may be before the refresh fails as a backup incident. Default 48 — set it to match the real Coolify backup schedule, since a cadence slower than the bound fails every refresh and one much faster than it wastes the signal | Recommended |
 | `STAGING_DB_CONTAINER` | Postgres container name, if not `humans-db` | Only if different |
 | `STAGING_APP_CONTAINER` | Staging app container name, stable across deploys. The script stops the app before dropping its database and restarts it afterwards, and refuses to run if the name is unset or does not resolve — an app left running through the drop reconnects to a half-restored database and stays there | Yes |
 
@@ -409,4 +427,7 @@ restore itself are exercised continuously rather than the once
 nobodies-collective/Humans#845 asked for.
 
 A staging refresh that fails on the restore step is telling you something about **production's
-backups**, not about staging. Treat it as an incident on the backup path.
+backups**, not about staging. Treat it as an incident on the backup path. `BACKUP_MAX_AGE_HOURS`
+extends that to the schedule itself: backups that stopped being written are an incident even
+though the last one still restores perfectly, and without the age bound that is precisely the
+outage this workflow would sail through.

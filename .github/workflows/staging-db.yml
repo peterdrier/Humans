@@ -32,6 +32,9 @@ jobs:
           DB_CONTAINER: ${{ vars.STAGING_DB_CONTAINER || 'humans-db' }}
           STAGING_APP_CONTAINER: ${{ vars.STAGING_APP_CONTAINER }}
           COOLIFY_BACKUP_DIR: ${{ vars.COOLIFY_BACKUP_DIR || '/data/coolify/backups' }}
+          # Set to match production's real backup cadence. A stalled backup schedule must
+          # fail the refresh rather than quietly restore a weeks-old artifact.
+          BACKUP_MAX_AGE_HOURS: ${{ vars.BACKUP_MAX_AGE_HOURS }}
           PROD_UPLOADS_DIR: ${{ vars.PROD_UPLOADS_DIR }}
           STAGING_UPLOADS_DIR: ${{ vars.STAGING_UPLOADS_DIR }}
         run: ./scripts/refresh-staging-db.sh "${{ github.event.inputs.source || 'backup' }}"
