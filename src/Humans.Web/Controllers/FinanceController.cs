@@ -596,7 +596,7 @@ public class FinanceController(
                     names.TryGetValue(b.UserId, out var nm) ? nm : b.UserId.ToString(),
                     b.Source.ToString())).ToList()))
             // Collisions first — they are the only rows that need a human right now.
-            .OrderByDescending(r => r.Bindings.Count > 1)
+            .OrderByDescending(r => r.HasCollision)
             .ThenByDescending(r => r.OwedToMember)
             .ThenBy(r => r.SupplierAccountNum)
             .ToList();

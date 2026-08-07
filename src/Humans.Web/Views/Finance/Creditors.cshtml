@@ -69,7 +69,7 @@ else
                         }
                         else
                         {
-                            @if (r.Bindings.Count > 1)
+                            @if (r.HasCollision)
                             {
                                 <div class="text-danger small fw-semibold mb-1">
                                     <i class="fa-solid fa-triangle-exclamation me-1"></i>Collision —

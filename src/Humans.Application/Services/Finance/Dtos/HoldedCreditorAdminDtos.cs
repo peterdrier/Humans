@@ -9,13 +9,11 @@ public sealed record HoldedCreditorAccountRow(
     string Name,                    // Holded account name (legal name for member creditors)
     decimal? Balance,               // signed; negative = org owes
     decimal OwedToMember,           // = max(0, -Balance)
-    IReadOnlyList<CreditorContactBinding> Bindings)  // every member bound here, oldest first
-{
-    /// <summary>Two or more members bound to one 400000xx — one member's expense payments are pointed
-    /// at another's creditor account. The automatic write paths can still create this, so the overview
-    /// has to show it rather than pick a winner (nobodies-collective/Humans#975).</summary>
-    public bool HasCollision => Bindings.Count > 1;
-}
+    // Every member bound here, oldest first — not just one. Two members on a single 400000xx point
+    // one person's expense payments at the other's creditor account, and the automatic write paths
+    // record what Holded assigned rather than refusing, so the overview must show the collision
+    // rather than pick a winner (nobodies-collective/Humans#975).
+    IReadOnlyList<CreditorContactBinding> Bindings);
 
 /// <summary>Outcome of a manual creditor-account bind: the failure message is admin-facing.</summary>
 public sealed record CreditorBindResult(bool Succeeded, string? ErrorMessage)

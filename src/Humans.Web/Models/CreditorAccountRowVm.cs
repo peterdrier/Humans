@@ -8,7 +8,11 @@ public sealed record CreditorAccountRowVm(
     string Name,
     decimal? Balance,
     decimal OwedToMember,
-    IReadOnlyList<CreditorAccountBindingVm> Bindings);
+    IReadOnlyList<CreditorAccountBindingVm> Bindings)
+{
+    /// <summary>Two or more members on one 400000xx — needs an admin to unbind all but the owner.</summary>
+    public bool HasCollision => Bindings.Count > 1;
+}
 
 /// <summary>One member bound to a creditor account, named for display and unbindable by id.</summary>
 public sealed record CreditorAccountBindingVm(Guid UserId, string MemberName, string Source);

@@ -393,7 +393,6 @@ public class HoldedFinanceServiceTests
         row.OwedToMember.Should().Be(10m);
         // Both, not the first: hiding the second is what kept the collision invisible to admins.
         row.Bindings.Select(b => b.UserId).Should().BeEquivalentTo([first, second]);
-        row.HasCollision.Should().BeTrue();
     }
 
     [HumansFact]
@@ -677,7 +676,6 @@ public class HoldedFinanceServiceTests
         var row = rows.Should().ContainSingle().Subject;
         row.SupplierAccountNum.Should().Be(40000004);
         row.Bindings.Should().ContainSingle().Which.UserId.Should().Be(userId);
-        row.HasCollision.Should().BeFalse();
         row.Name.Should().BeEmpty();
     }
 
