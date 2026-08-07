@@ -58,10 +58,11 @@ internal sealed class PreMigrationSnapshot(string connectionString, ILogger logg
     internal const string UnfinishedSuffix = ".unfinished";
 
     /// <summary>
-    /// Marks the file <c>pg_dump</c> is writing into. A dump only earns
-    /// <see cref="UnfinishedSuffix"/> once the process has exited successfully, so a failed or
-    /// killed dump can never leave a truncated file that a later boot mistakes for a rollback
-    /// point. Nothing reads these; the next dump attempt deletes whatever it finds.
+    /// Marks a file still being written — <c>pg_dump</c>'s output, or the
+    /// <see cref="FrontierSuffix"/> sidecar in <see cref="WriteFrontier"/>. Neither earns the name
+    /// a later boot looks for until its write has finished, so a write that failed or was killed
+    /// half-way can never leave a truncated file that boot reads as authoritative. Nothing reads
+    /// these; <see cref="DiscardAbandonedWrites"/> deletes whatever it finds.
     /// </summary>
     private const string WritingSuffix = ".writing";
 
@@ -126,7 +127,7 @@ internal sealed class PreMigrationSnapshot(string connectionString, ILogger logg
             var carried = FindUnfinishedSnapshot(SnapshotDirectory, database);
             if (carried is not null)
             {
-                if (FrontierStillPending(carried, pendingMigrations))
+                if (FrontierStillPending(carried, pendingMigrations, logger))
                 {
                     // Warning level for the same reason as the "written" line below: in a crash
                     // loop this is the line that tells you which file is the real rollback
@@ -309,19 +310,36 @@ internal sealed class PreMigrationSnapshot(string connectionString, ILogger logg
     /// was taken — its deploy identity (nobodies-collective/Humans#989). One migration ID per
     /// line; nothing but <see cref="FrontierStillPending"/> reads it.
     /// </summary>
-    internal static void WriteFrontier(string unfinishedPath, IEnumerable<string> pendingMigrations) =>
-        File.WriteAllLines(unfinishedPath + FrontierSuffix, pendingMigrations);
+    /// <remarks>
+    /// Published by rename, for the same reason the dump is: <see cref="File.WriteAllLines(string,
+    /// IEnumerable{string})"/> truncates first, so a write that fails half-way — the snapshot
+    /// volume filling up is the likely way — or a process killed mid-write would leave a
+    /// <em>short</em> frontier. A frontier missing the migration that is in fact still pending is
+    /// exactly what makes <see cref="FrontierStillPending"/> retire a marker it should have
+    /// carried forward, so a partial sidecar is worse than none: readers must see the whole
+    /// frontier or no file at all.
+    /// </remarks>
+    internal static void WriteFrontier(string unfinishedPath, IEnumerable<string> pendingMigrations)
+    {
+        var frontierPath = unfinishedPath + FrontierSuffix;
+        File.WriteAllLines(frontierPath + WritingSuffix, pendingMigrations);
+        File.Move(frontierPath + WritingSuffix, frontierPath, overwrite: true);
+    }
 
     /// <summary>
     /// Whether any migration recorded as pending when <paramref name="unfinishedPath"/> was taken
     /// is still pending now. True carries the marker forward (a genuine crash-loop retry); false
     /// means the deploy that took it finished, so the marker is stale and safe to retire
-    /// (nobodies-collective/Humans#989). A missing <see cref="FrontierSuffix"/> sidecar — a
-    /// snapshot taken before this fix shipped — fails safe as "still pending", the same
-    /// unconditional carry-forward this had before the sidecar existed.
+    /// (nobodies-collective/Humans#989). A <see cref="FrontierSuffix"/> sidecar this cannot read —
+    /// missing, because the snapshot was taken before this fix shipped, or unreadable through an
+    /// IO or permission fault — fails safe as "still pending", the same unconditional
+    /// carry-forward this had before the sidecar existed. Retiring a marker needs proof it is
+    /// stale, and "I could not tell" is not proof; nor may a sidecar read be what aborts a boot,
+    /// which is the one failure the deploy cannot recover from
+    /// (<c>memory/architecture/no-startup-guards.md</c>).
     /// </summary>
     internal static bool FrontierStillPending(
-        string unfinishedPath, IReadOnlyCollection<string> currentlyPendingMigrations)
+        string unfinishedPath, IReadOnlyCollection<string> currentlyPendingMigrations, ILogger logger)
     {
         var frontierPath = unfinishedPath + FrontierSuffix;
         if (!File.Exists(frontierPath))
@@ -329,18 +347,36 @@ internal sealed class PreMigrationSnapshot(string connectionString, ILogger logg
             return true;
         }
 
-        var frontier = File.ReadAllLines(frontierPath);
+        string[] frontier;
+        try
+        {
+            frontier = File.ReadAllLines(frontierPath);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // Logged at Error, unlike the expected missing-sidecar case above: the file is there
+            // and the volume would not give it up, which is the same volume the dump writes to.
+            logger.LogError(
+                ex,
+                "Could not read the recorded migration frontier {Path}. Carrying its snapshot forward as " +
+                "this deploy's rollback point rather than retiring a marker that may still be live. See " +
+                "docs/database-restore-runbook.md §5",
+                frontierPath);
+            return true;
+        }
+
         return frontier.Any(currentlyPendingMigrations.Contains);
     }
 
     /// <summary>
-    /// Deletes the output of any dump that did not finish. Nothing can be mid-dump here — this
-    /// runs at startup on the single instance, before this boot's own dump — so anything still
-    /// carrying <see cref="WritingSuffix"/> is the wreckage of an earlier attempt.
+    /// Deletes the output of any dump or frontier-sidecar write that did not finish. Nothing can
+    /// be mid-write here — this runs at startup on the single instance, before this boot's own
+    /// dump — so anything still carrying <see cref="WritingSuffix"/> is the wreckage of an earlier
+    /// attempt.
     /// </summary>
     private static void DiscardAbandonedWrites(string directory, string database)
     {
-        foreach (var abandoned in Directory.GetFiles(directory, database + "-*.dump" + WritingSuffix))
+        foreach (var abandoned in Directory.GetFiles(directory, database + "-*" + WritingSuffix))
         {
             File.Delete(abandoned);
         }

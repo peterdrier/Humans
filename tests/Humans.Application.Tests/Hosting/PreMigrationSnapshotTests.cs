@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using Humans.Infrastructure.Hosting;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Humans.Application.Tests.Hosting;
 
@@ -124,7 +125,7 @@ public sealed class PreMigrationSnapshotTests : IDisposable
         PreMigrationSnapshot.WriteFrontier(unfinished, ["HumansDbContext:20260805100000_AddFoo"]);
 
         PreMigrationSnapshot.FrontierStillPending(
-            unfinished, ["HumansDbContext:20260805100000_AddFoo"]).Should().BeTrue();
+            unfinished, ["HumansDbContext:20260805100000_AddFoo"], NullLogger.Instance).Should().BeTrue();
     }
 
     /// <summary>
@@ -140,7 +141,7 @@ public sealed class PreMigrationSnapshotTests : IDisposable
             ["HumansDbContext:20260805100000_AddFoo", "HumansDbContext:20260805100001_AddBar"]);
 
         PreMigrationSnapshot.FrontierStillPending(
-            unfinished, ["HumansDbContext:20260805100001_AddBar"]).Should().BeTrue();
+            unfinished, ["HumansDbContext:20260805100001_AddBar"], NullLogger.Instance).Should().BeTrue();
     }
 
     /// <summary>
@@ -154,7 +155,9 @@ public sealed class PreMigrationSnapshotTests : IDisposable
         PreMigrationSnapshot.WriteFrontier(unfinished, ["HumansDbContext:20260805100000_AddFoo"]);
 
         PreMigrationSnapshot.FrontierStillPending(
-            unfinished, ["HumansDbContext:20260805200000_AddLaterMigration"]).Should().BeFalse();
+            unfinished,
+            ["HumansDbContext:20260805200000_AddLaterMigration"],
+            NullLogger.Instance).Should().BeFalse();
     }
 
     /// <summary>
@@ -167,7 +170,55 @@ public sealed class PreMigrationSnapshotTests : IDisposable
     {
         var unfinished = Snapshot("humans-20260805T120000Z.dump" + PreMigrationSnapshot.UnfinishedSuffix);
 
-        PreMigrationSnapshot.FrontierStillPending(unfinished, []).Should().BeTrue();
+        PreMigrationSnapshot.FrontierStillPending(unfinished, [], NullLogger.Instance).Should().BeTrue();
+    }
+
+    /// <summary>
+    /// The sidecar is published by rename, so the name readers look for never exists half-written:
+    /// a write killed part-way through leaves only the temporary file, which nothing reads. A
+    /// short frontier read as authoritative is the damaging case — it can omit the migration that
+    /// is still pending and retire a marker that is this deploy's live rollback point.
+    /// </summary>
+    [HumansFact]
+    public void A_frontier_write_killed_half_way_is_never_read_as_the_frontier()
+    {
+        var unfinished = Snapshot("humans-20260805T120000Z.dump" + PreMigrationSnapshot.UnfinishedSuffix);
+        File.WriteAllText(unfinished + ".migrations.writing", "HumansDbContext:2026080510");
+
+        PreMigrationSnapshot.FrontierStillPending(unfinished, [], NullLogger.Instance).Should().BeTrue();
+        File.Exists(unfinished + ".migrations").Should().BeFalse();
+    }
+
+    [HumansFact]
+    public void Publishing_a_frontier_leaves_no_temporary_file_behind()
+    {
+        var unfinished = Snapshot("humans-20260805T120000Z.dump" + PreMigrationSnapshot.UnfinishedSuffix);
+
+        PreMigrationSnapshot.WriteFrontier(unfinished, ["HumansDbContext:20260805100000_AddFoo"]);
+
+        File.Exists(unfinished + ".migrations.writing").Should().BeFalse();
+        File.ReadAllLines(unfinished + ".migrations")
+            .Should().Equal("HumansDbContext:20260805100000_AddFoo");
+    }
+
+    /// <summary>
+    /// A sidecar the volume will not give up must not abort the boot — the one failure a deploy
+    /// cannot recover from (<c>memory/architecture/no-startup-guards.md</c>). Unable to tell
+    /// whether the marker is stale, it carries forward like a marker with no sidecar at all.
+    /// </summary>
+    [HumansFact]
+    public void A_marker_whose_frontier_cannot_be_read_is_not_stale()
+    {
+        var unfinished = Snapshot("humans-20260805T120000Z.dump" + PreMigrationSnapshot.UnfinishedSuffix);
+        PreMigrationSnapshot.WriteFrontier(unfinished, ["HumansDbContext:20260805100000_AddFoo"]);
+
+        using var exclusive = new FileStream(
+            unfinished + ".migrations", FileMode.Open, FileAccess.Read, FileShare.None);
+
+        PreMigrationSnapshot.FrontierStillPending(
+            unfinished,
+            ["HumansDbContext:20260805200000_AddLaterMigration"],
+            NullLogger.Instance).Should().BeTrue();
     }
 
     /// <summary>
