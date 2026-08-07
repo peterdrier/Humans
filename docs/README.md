@@ -163,6 +163,7 @@ Plain-language pages for the things people ask most.
 | Document | Description |
 |----------|-------------|
 | [Database Restore Runbook](database-restore-runbook.md) | Restoring Postgres from a backup, the automatic pre-deploy snapshot, and the event deploy-freeze policy |
+| [Staging Environment](staging-environment.md) | The promotion gate on the prod host: per-deploy restore of the prod DB, connector safety, GDPR posture, and the host-side setup it needs |
 | [Admin Role Setup](admin-role-setup.md) | Adding initial admin users via SQL |
 | [GUID Reservations](guid-reservations.md) | Reserved deterministic GUID blocks for seeded data |
 | [Seed Data Strategy](seed-data.md) | When to use `HasData`, migration backfills, and dev-only runtime seeders |

@@ -1,0 +1,37 @@
+name: Staging Database Refresh
+
+# Rebuilds humans_staging from production on every push to the staging branch, so the
+# staging deploy that follows applies its migrations to a fresh clone of prod data.
+# Runs on the production host — the runner label is `prod`, not `nuc` (that is QA).
+# nobodies-collective/Humans#962 · docs/staging-environment.md
+on:
+  push:
+    branches: [staging]
+  workflow_dispatch:
+    inputs:
+      source:
+        description: "backup = newest Coolify artifact (also tests the restore path); live = pg_dump from prod"
+        type: choice
+        options: [backup, live]
+        default: backup
+
+# Two pushes in quick succession must not race each other into the same DROP DATABASE.
+# Queue rather than cancel: a cancelled refresh leaves a half-restored staging database.
+concurrency:
+  group: staging-db-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: [self-hosted, prod]
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Refresh humans_staging
+        env:
+          DB_CONTAINER: ${{ vars.STAGING_DB_CONTAINER || 'humans-db' }}
+          STAGING_APP_CONTAINER: ${{ vars.STAGING_APP_CONTAINER }}
+          COOLIFY_BACKUP_DIR: ${{ vars.COOLIFY_BACKUP_DIR || '/data/coolify/backups' }}
+          PROD_UPLOADS_DIR: ${{ vars.PROD_UPLOADS_DIR }}
+          STAGING_UPLOADS_DIR: ${{ vars.STAGING_UPLOADS_DIR }}
+        run: ./scripts/refresh-staging-db.sh "${{ github.event.inputs.source || 'backup' }}"

@@ -393,6 +393,24 @@ an outage of unknown length without them, in the middle of the one week the app 
 
 ---
 
+## 8. The staging refresh is this runbook, running continuously
+
+`scripts/refresh-staging-db.sh` rebuilds `humans_staging` on every promotion to production, and
+its default source is **the newest Coolify backup artifact** — restored with the same commands
+§2 and §3 use, with the same stop-on-first-error flags, and verified with the same
+`__EFMigrationsHistory` check. See [`staging-environment.md`](staging-environment.md).
+
+That closes the gap the drill record below names first: the drill could not restore a real
+Coolify-produced backup, so the format assumption in §0 stood on nothing. Once staging is live
+(nobodies-collective/Humans#962), every promotion settles it again.
+
+**So a failed staging refresh is a production backup incident, not a staging one.** If the
+workflow cannot find an artifact, cannot read one, or restores an empty migration history, the
+thing that is broken is the archive you would be reaching for at 3am — investigate it here,
+where nothing is on fire.
+
+---
+
 ## Drill record (2026-08-05)
 
 Executed against a throwaway local `postgres:16` container, schema created by running this
