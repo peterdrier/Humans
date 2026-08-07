@@ -23,7 +23,10 @@ namespace Humans.Application.Interfaces.Search;
 /// <b>Search is not an authorization boundary.</b> A hit says a URL exists;
 /// it does not say the caller may open it. Visibility is enforced at the
 /// destination page, which re-runs its own access checks — so search may
-/// legitimately return a row that then 404s for that viewer.
+/// legitimately return a row that then 404s for that viewer. One
+/// destination does not yet hold up its end: <c>/Camps/{slug}</c> has no
+/// season-status gate, so a non-public season still renders
+/// (nobodies-collective/Humans#993).
 /// </para>
 ///
 /// <para>
