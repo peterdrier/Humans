@@ -13,6 +13,8 @@
   src/Humans.Application/Services/Profiles/PersonSearchMatcher.cs
   src/Humans.Web/Controllers/CampController.cs
   src/Humans.Web/Controllers/TeamController.cs
+  src/Humans.Web/Controllers/ShiftsController.cs
+  src/Humans.Web/Models/Shifts/ShiftBrowsePageBuilder.cs
 -->
 <!-- freshness:flag-on-change
   Search scope (which fields are searched per section), the authorization model (role-blind on both paths; public-only on text queries), the US-GS.4 GUID exception, and per-section SearchAsync contracts — review when search code, the auth-conventions atom, or the person-search atom change.
@@ -21,6 +23,9 @@
   ruling, the visibility guarantee is enforced by the destination pages, not by Search — so the
   US-GS.4 GUID exception and its known-gap note depend on CampController/TeamController, and the
   per-bucket filters and GUID branches live in the Caching*Service classes and ShiftManagementService.
+  Rotas are the non-obvious one: a rota hit links to /Shifts?departmentId=, not to the rota, so its
+  destination gate is ShiftBrowsePageBuilder's IncludeAdminOnly/IncludeHidden flags behind
+  ShiftsController — that is where an admin-only rota would be exposed, not in Shifts' search call.
   Fixing nobodies-collective/Humans#993 in CampController must force a review of this doc; without
   these paths it would not.
 -->

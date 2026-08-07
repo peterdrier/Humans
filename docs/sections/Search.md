@@ -12,6 +12,8 @@
   src/Humans.Application/Services/Profiles/PersonSearchMatcher.cs
   src/Humans.Web/Controllers/CampController.cs
   src/Humans.Web/Controllers/TeamController.cs
+  src/Humans.Web/Controllers/ShiftsController.cs
+  src/Humans.Web/Models/Shifts/ShiftBrowsePageBuilder.cs
 -->
 <!-- freshness:flag-on-change
   The GUID-vs-text visibility split, the five-section fan-out list, and the Search-vs-HumanSearchViewComponent naming boundary — review when SearchService's dependencies change or when a destination page's own visibility gate changes.
@@ -20,8 +22,10 @@
   invariant it states is implemented in someone else's file — the per-bucket visibility filters and
   GUID branches live in the four Caching*Service classes and ShiftManagementService, the Humans score
   tiers live in PersonSearchMatcher, and the ruling on nobodies-collective/Humans#985 moved the whole
-  privacy guarantee onto the destination controllers (CampController, TeamController). A change to any
-  of those can falsify this doc without touching a single file under Search.
+  privacy guarantee onto the destinations: CampController, TeamController, and — because a rota hit
+  links to /Shifts?departmentId=, not to the rota itself — ShiftsController plus
+  ShiftBrowsePageBuilder, where the IncludeAdminOnly/IncludeHidden flags actually decide it.
+  A change to any of those can falsify this doc without touching a single file under Search.
 -->
 
 # Search — Section Invariants
@@ -91,10 +95,11 @@ None — this section is a pure read/fan-out surface with no side effects: no wr
 - **Cross-section calls** — `IUserServiceRead`, `ITeamServiceRead`, `ICampServiceRead`, `IShiftManagementService`, `IEventServiceRead` (see Cross-Section Dependencies).
 - **Test coverage — structure is pinned; behaviour is not.** The gap is real but narrower than "none". `tests/Humans.Application.Tests/Architecture/SearchArchitectureTests.cs` (added by #1197) pins the three structural claims above: `ISearchService_ImplementsOrchestratorNotApplicationService`, `SearchService_HasNoRepositoryDependency`, `SearchService_DependsOnlyOnServiceInterfaces`. What is still missing is **behavioural** coverage of the orchestration — there is no `SearchServiceTests` and no `SearchControllerTests`, so the query-length gate, the `onlyType` short-circuit, the five-bucket fan-out, the `Features:Events` gate, and the non-human 100/80/60 rubric are all unverified. The per-bucket behaviour *is* covered, in the owning sections' own tests, because that is where the filters live:
   - **Humans** — 16 tests at `CachingUserServiceTests.cs:661-852`, including the eligibility gate (`SearchUsersAsync_PublicAll_ExcludesRejected`), the GUID short-circuit (`…_GuidShortCircuitsById`) and its `ExactName` carve-out (`…_ExactName_GuidQuery_DoesNotShortCircuitById`).
-  - **Teams** — the hidden-team text filter, `CachingTeamServiceTests.SearchAsync_ServesFromCache_MatchesByName_ExcludesHidden` (`:468`).
-  - **Camps** — `CachingCampServiceTests.SearchAsync_ServesFromCache_MatchesPublicYearSeasonName` (`:354`).
+  - **Teams** — the hidden-team filter genuinely is pinned: `CachingTeamServiceTests.SearchAsync_ServesFromCache_MatchesByName_ExcludesHidden` (`:468`) seeds "Kitchen" and a hidden "Kitchenette", searches `kitchen`, and asserts a single hit.
   - **Humans score tiers** — `PersonSearchMatcherTests.cs`: 18 test methods (10 `[Fact]`, 8 `[Theory]`), 40 executed cases once the `[InlineData]` rows expand.
-  - **Not covered:** the Shifts and Events bucket match paths (`SearchVolunteerVisibleRotasAsync`, and `CachingEventService`'s in-memory `MatchesQuery` — `EventRepositoryTests` covers the repository's status/category/venue filters, not the cache path Search actually calls).
+  - **Not covered:**
+    - **The Camps `Active`/`Full` season filter.** `CachingCampServiceTests.SearchAsync_ServesFromCache_MatchesPublicYearSeasonName` (`:354-368`) reads like visibility coverage from its name, but seeds only an `Active` season and asserts the positive match — there is no non-public season to exclude and no `Full` case. Deleting the `PublicCampSeasonStatuses` predicate would leave the suite green. It pins the cache path, not the filter.
+    - The Shifts and Events bucket match paths — `SearchVolunteerVisibleRotasAsync`, and `CachingEventService`'s in-memory `MatchesQuery` (`EventRepositoryTests` covers the *repository*'s status/category/venue filters, not the cache path Search actually calls).
 
   Recorded as G3 gap #1 in [`docs/plans/2026-08-03-g0-first-audit/Search.md`](../plans/2026-08-03-g0-first-audit/Search.md); orchestration coverage is in flight in PR peterdrier/Humans#1198. **Check the list above before assuming an invariant here is tested — and before writing a test that already exists elsewhere.**
 
