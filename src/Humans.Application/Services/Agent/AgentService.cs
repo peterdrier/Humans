@@ -171,8 +171,15 @@ public sealed class AgentService : IAgentService
                         _logger.LogError(turnFailure,
                             "Agent turn failed before completion for conversation {ConversationId}", conversation.Id);
                     }
+                    // Bill the failed turn's real usage, not zeros — the same totals
+                    // AppendFailureMessage/_rateLimit.Record use below, so this streamed
+                    // frame agrees with what got persisted and billed instead of telling
+                    // /Agent/Ask consumers the turn cost nothing (nobodies-collective/Humans#990).
                     yield return new AgentTurnToken(null, null,
-                        new AgentTurnFinalizer(0, 0, 0, 0, settings.Model, "error", conversation.Id));
+                        new AgentTurnFinalizer(
+                            turnUsage.PromptTokens, turnUsage.OutputTokens,
+                            turnUsage.CacheReadTokens, turnUsage.CacheCreationTokens,
+                            settings.Model, "error", conversation.Id));
                     yield break;
                 }
 

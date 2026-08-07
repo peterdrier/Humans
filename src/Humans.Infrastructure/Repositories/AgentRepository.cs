@@ -167,6 +167,7 @@ internal sealed class AgentRepository(AgentDbContext db, IClock clock) : IAgentR
                 m.ConversationId,
                 m.Conversation.UserId,
                 m.CreatedAt,
+                m.Role,
                 m.PromptTokens,
                 m.OutputTokens,
                 m.CachedTokens,

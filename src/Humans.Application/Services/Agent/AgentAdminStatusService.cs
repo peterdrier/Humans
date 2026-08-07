@@ -2,6 +2,7 @@ using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Stores;
 using Humans.Application.Models;
+using Humans.Domain.Enums;
 using NodaTime;
 
 namespace Humans.Application.Services.Agent;
@@ -92,6 +93,7 @@ public sealed class AgentAdminStatusService(
     {
         // Rows are CreatedAt-desc; early-stop once outside `since`.
         long prompt = 0, output = 0, cached = 0;
+        var messageCount = 0;
         var durations = new List<int>();
         var uniqueUsers = new HashSet<Guid>();
 
@@ -101,11 +103,17 @@ public sealed class AgentAdminStatusService(
             prompt += r.PromptTokens;
             output += r.OutputTokens;
             cached += r.CachedTokens;
-            durations.Add(r.DurationMs);
+            messageCount++;
+            // Latency panel measures completed turns only. User rows carry no duration at
+            // all, and refusal/error rows (rate_limited, abuse_flag, "error" traces) never
+            // finished a timed provider turn — their DurationMs is a structural 0, not a
+            // real sample. Mixing either into the average/percentile dilutes both toward
+            // roughly half the real figure (nobodies-collective/Humans#990).
+            if (r.Role == AgentRole.Assistant && string.IsNullOrEmpty(r.RefusalReason))
+                durations.Add(r.DurationMs);
             uniqueUsers.Add(r.UserId);
         }
 
-        var messageCount = durations.Count;
         var cacheBase = prompt + cached;
         var cacheRatio = cacheBase > 0 ? (double)cached / cacheBase : 0.0;
         var avgMs = messageCount > 0 ? (int)durations.Average() : 0;

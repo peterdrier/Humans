@@ -67,6 +67,47 @@ public class AgentAdminStatusServiceTests
     }
 
     [HumansFact]
+    public async Task Latency_panel_excludes_user_rows_and_zero_duration_refusals()
+    {
+        // nobodies-collective/Humans#990: user rows carry no duration at all, and
+        // refusal/error rows (rate_limited, abuse_flag, "error" traces) are
+        // structural zeros — none of them represent a timed provider turn. Mixing
+        // them into AverageTurnMs/P95TurnMs dilutes both toward roughly half the
+        // real figure. Only completed (non-refused) assistant rows should count.
+        await using var db = InMemoryDb();
+        var now = Instant.FromUtc(2026, 5, 17, 12, 0);
+        var clock = new FakeClock(now);
+
+        var user1 = Guid.NewGuid();
+        var conv = SeedConversation(db, user1, now);
+
+        // Real, completed assistant turns — the only rows that should feed the average/p95.
+        SeedMessage(db, conv.Id, now - Duration.FromMinutes(30), prompt: 10, output: 5, cached: 0,
+            role: AgentRole.Assistant, durationMs: 1000);
+        SeedMessage(db, conv.Id, now - Duration.FromMinutes(20), prompt: 10, output: 5, cached: 0,
+            role: AgentRole.Assistant, durationMs: 2000);
+
+        // Dilution sources: a user row (no duration concept) and refusal/error assistant
+        // rows (DurationMs stamped 0 because the turn never reached/finished the provider).
+        SeedMessage(db, conv.Id, now - Duration.FromMinutes(31), prompt: 10, output: 0, cached: 0,
+            role: AgentRole.User, durationMs: 0);
+        SeedMessage(db, conv.Id, now - Duration.FromMinutes(10), prompt: 0, output: 0, cached: 0,
+            role: AgentRole.Assistant, refusalReason: "rate_limited", durationMs: 0);
+        SeedMessage(db, conv.Id, now - Duration.FromMinutes(5), prompt: 5, output: 3, cached: 0,
+            role: AgentRole.Assistant, refusalReason: "error", durationMs: 0);
+        await db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var report = await BuildService(db, clock).GetStatusAsync(Xunit.TestContext.Current.CancellationToken);
+
+        // Average/p95 computed only over the two real assistant turns (1000ms, 2000ms).
+        report.Usage24h.AverageTurnMs.Should().Be(1500);
+        report.Usage24h.P95TurnMs.Should().Be(2000);
+
+        // MessageCount still counts every row in the window (raw message volume), unaffected.
+        report.Usage24h.MessageCount.Should().Be(5);
+    }
+
+    [HumansFact]
     public async Task Balance_unavailable_when_admin_key_missing()
     {
         await using var db = InMemoryDb();
@@ -149,20 +190,21 @@ public class AgentAdminStatusServiceTests
 
     private static void SeedMessage(AgentDbContext db, Guid conversationId,
         Instant createdAt, int prompt, int output, int cached,
-        string[]? fetched = null, string? refusalReason = null)
+        string[]? fetched = null, string? refusalReason = null,
+        AgentRole role = AgentRole.Assistant, int durationMs = 1200)
     {
         db.AgentMessages.Add(new AgentMessage
         {
             Id = Guid.NewGuid(),
             ConversationId = conversationId,
-            Role = AgentRole.Assistant,
+            Role = role,
             Content = string.Empty,
             CreatedAt = createdAt,
             PromptTokens = prompt,
             OutputTokens = output,
             CachedTokens = cached,
             Model = "claude-sonnet-4-6",
-            DurationMs = 1200,
+            DurationMs = durationMs,
             FetchedDocs = fetched ?? [],
             RefusalReason = refusalReason,
         });

@@ -580,6 +580,11 @@ public class AgentServiceTests
         finalizer!.StopReason.Should().Be("error");
         finalizer.ConversationId.Should().NotBe(Guid.Empty,
             "the client must be able to continue the same conversation after a failed turn");
+        // nobodies-collective/Humans#990: the streamed error frame must agree with what got
+        // persisted and billed below, not hardcode zeros — that was a contract inconsistency
+        // between three surfaces (SSE finalizer, AgentMessage row, rate-limit billing).
+        finalizer.InputTokens.Should().Be(100);
+        finalizer.OutputTokens.Should().Be(20);
 
         var transcript = await svc.GetConversationForUserAsync(
             userId, finalizer.ConversationId, Xunit.TestContext.Current.CancellationToken);

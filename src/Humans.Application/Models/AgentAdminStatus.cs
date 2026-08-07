@@ -1,3 +1,4 @@
+using Humans.Domain.Enums;
 using NodaTime;
 
 namespace Humans.Application.Models;
@@ -14,6 +15,7 @@ public sealed record AgentStatusMessageRow(
     Guid ConversationId,
     Guid UserId,
     Instant CreatedAt,
+    AgentRole Role,
     int PromptTokens,
     int OutputTokens,
     int CachedTokens,
