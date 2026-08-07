@@ -461,6 +461,9 @@ public sealed class ShiftSignupService(
         if (now < shiftEnd)
             return SignupResult.Fail("Cannot mark no-show before the shift ends.");
 
+        if (signup.Status != SignupStatus.Confirmed)
+            return SignupResult.Fail($"Cannot mark no-show for a signup in {signup.Status} state.");
+
         signup.MarkNoShow(reviewerUserId, clock);
 
         await repo.SaveChangesAsync();
