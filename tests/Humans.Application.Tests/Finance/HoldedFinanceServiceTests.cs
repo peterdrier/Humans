@@ -711,6 +711,35 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
+    public async Task EnsureCreditorContact_UnboundDuringHoldedRoundTrip_DoesNotResurrectBinding()
+    {
+        // nobodies-collective/Humans#995: the write below still carries real content (an unresolved
+        // account number), so it cannot be skipped the way the steady state is — but an Unbind landing
+        // during the Holded round trip above must still not come back from the dead.
+        var userId = Guid.NewGuid();
+        _repo.GetCreditorContactByUserAsync(userId, Arg.Any<CancellationToken>()).Returns(
+            new HoldedCreditorContact
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                HoldedContactId = "c1",
+                SupplierAccountNum = null,
+                Source = CreditorContactSource.Auto,
+            },
+            (HoldedCreditorContact?)null); // re-check right before the write: admin unbound mid-push
+        _client.UpsertContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("c1");
+
+        var id = await MakeService().EnsureCreditorContactAsync(
+            userId, "Peter Drier", null, null, null, 40000004,
+            Xunit.TestContext.Current.CancellationToken);
+
+        // Holded itself was still updated — only the local binding write is skipped.
+        id.Should().Be("c1");
+        await _repo.DidNotReceive().UpsertCreditorContactAsync(
+            Arg.Any<HoldedCreditorContact>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task SetCreditorAccountNum_RecordsAssignedAccountOnExistingBinding()
     {
         var userId = Guid.NewGuid();
@@ -734,6 +763,31 @@ public class HoldedFinanceServiceTests
                 c.HoldedContactId == "new-contact" && c.SupplierAccountNum == 40000012 &&
                 c.Source == CreditorContactSource.Auto),
             FixedNow, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task SetCreditorAccountNum_UnboundBetweenReadAndWrite_DoesNotResurrectBinding()
+    {
+        // nobodies-collective/Humans#995: this runs at the end of a long push, well after an admin
+        // could have clicked Unbind. The window between the read and the write below has no I/O in it,
+        // but the re-check still must catch a delete that lands there.
+        var userId = Guid.NewGuid();
+        _repo.GetCreditorContactByUserAsync(userId, Arg.Any<CancellationToken>()).Returns(
+            new HoldedCreditorContact
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                HoldedContactId = "new-contact",
+                SupplierAccountNum = null,
+                Source = CreditorContactSource.Auto,
+            },
+            (HoldedCreditorContact?)null); // re-check right before the write: admin unbound in between
+
+        await MakeService().SetCreditorAccountNumAsync(
+            userId, 40000012, Xunit.TestContext.Current.CancellationToken);
+
+        await _repo.DidNotReceive().UpsertCreditorContactAsync(
+            Arg.Any<HoldedCreditorContact>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
     }
 
     // ─── Creditor account names + manual bind guard ──────────────────────────────

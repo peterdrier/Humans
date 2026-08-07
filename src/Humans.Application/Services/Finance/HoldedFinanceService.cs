@@ -801,13 +801,19 @@ public sealed class HoldedFinanceService(
         // an admin who hits Unbind during that window would get their success message and then have the
         // binding they just cleared resurrected from that stale copy. Skipping the empty write is what
         // makes Unbind hold against an in-flight push in the steady state — a member already bound, with
-        // their 400000xx already resolved, does no binding write on a push at all. It does not make the
-        // read-modify-write safe in general: a binding still missing its number, and
-        // SetCreditorAccountNumAsync below, both write real content and can still lose a concurrent
-        // delete (nobodies-collective/Humans#995 — closing that needs an update-only repository write).
+        // their 400000xx already resolved, does no binding write on a push at all.
         if (binding is not null
             && string.Equals(binding.HoldedContactId, contactId, StringComparison.Ordinal)
             && accountNum == binding.SupplierAccountNum)
+            return contactId;
+
+        // A binding still missing its account number does write real content, so it cannot be skipped
+        // the way the steady state above is — but it can still lose a concurrent Unbind the same way:
+        // UpsertCreditorContactAsync treats an absent row as first-time and inserts, which would
+        // resurrect the very binding an admin just cleared (nobodies-collective/Humans#995). Re-reading
+        // right before the write shrinks that window from the whole Holded round-trip above to the gap
+        // between this read and the write call, without a version column (no-concurrency-tokens.md).
+        if (binding is not null && await repo.GetCreditorContactByUserAsync(userId, ct) is null)
             return contactId;
 
         var now = clock.GetCurrentInstant();
@@ -839,6 +845,14 @@ public sealed class HoldedFinanceService(
             LogBindingCollision(
                 nameof(SetCreditorAccountNumAsync), userId, binding.HoldedContactId,
                 supplierAccountNum, conflict);
+
+        // Re-check immediately before writing: an Unbind landing between the read above and here must
+        // not be undone the same way EnsureCreditorContactAsync guards against it (Humans#995) — without
+        // this, UpsertCreditorContactAsync would treat the now-absent row as first-time and insert it
+        // back. This runs at the end of a long push with no I/O since the read above, so the remaining
+        // window is sub-millisecond; closing it fully would need a version column, which this
+        // codebase deliberately does not use (no-concurrency-tokens.md).
+        if (await repo.GetCreditorContactByUserAsync(userId, ct) is null) return;
 
         var now = clock.GetCurrentInstant();
         await repo.UpsertCreditorContactAsync(new HoldedCreditorContact
