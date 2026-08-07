@@ -1,5 +1,7 @@
 # Rotation state for /debt-sweep (.claude/skills/debt-sweep/SKILL.md).
-# Pick = oldest last_swept (never sorts first) with remaining > 0.
+# Pick = oldest last_swept (never sorts first) with remaining > 0 and no `parked`.
+# `parked: "<reason>"` = Peter has ruled this work out for now: rotation skips it
+# and --theme=<id> refuses. Only Peter removes it. Keep `remaining` truthful.
 # detect "build:<CODE>" = distinct sites of that warning code in one fresh build log.
 # Seeded 2026-06-12 (counts from origin/main @ e3fdfbcab). Add new themes with
 # last_swept: never; add one-offs to inbox. See memory/process/debt-ledger-additions.md.
@@ -39,6 +41,7 @@ themes:
     review: panel
     last_swept: 2026-06-12
     remaining: 12
+    parked: "Peter 2026-08-07 — frozen until the per-section assembly split (nobodies-collective/Humans#866) lands. Do not lower the thresholds; do not burn down the grandfathers."
     notes: >-
       PARKED — Peter 2026-08-07: BOTH dials are off. Do not lower the
       thresholds in ControllerBusinessLogicAnalyzer and do not burn down the
