@@ -9,6 +9,7 @@
   src/Humans.Infrastructure/Services/Teams/CachingTeamService.cs
   src/Humans.Infrastructure/Services/Camps/CachingCampService.cs
   src/Humans.Infrastructure/Services/Events/CachingEventService.cs
+  src/Humans.Web/Extensions/Sections/EventsSectionExtensions.cs
   src/Humans.Application/Services/Shifts/ShiftManagementService.cs
   src/Humans.Application/Services/Profiles/PersonSearchMatcher.cs
   src/Humans.Web/Controllers/CampController.cs

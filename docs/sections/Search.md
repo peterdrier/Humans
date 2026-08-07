@@ -8,6 +8,7 @@
   src/Humans.Infrastructure/Services/Teams/CachingTeamService.cs
   src/Humans.Infrastructure/Services/Camps/CachingCampService.cs
   src/Humans.Infrastructure/Services/Events/CachingEventService.cs
+  src/Humans.Web/Extensions/Sections/EventsSectionExtensions.cs
   src/Humans.Application/Services/Shifts/ShiftManagementService.cs
   src/Humans.Application/Services/Profiles/PersonSearchMatcher.cs
   src/Humans.Web/Controllers/CampController.cs
@@ -25,7 +26,10 @@
   privacy guarantee onto the destinations: CampController, TeamController, and — because a rota hit
   links to /Shifts?departmentId=, not to the rota itself — ShiftsController plus
   ShiftBrowsePageBuilder, where the IncludeAdminOnly/IncludeHidden flags actually decide it.
-  A change to any of those can falsify this doc without touching a single file under Search.
+  EventsSectionExtensions is in the list for a different reason: the "four buckets never touch the
+  DB" claim rests on IEventServiceRead being bound to CachingEventService (a one-line DI
+  registration), so a lifetime change or a rebind to EventService falsifies it without editing any
+  service. A change to any of these can falsify this doc without touching a single file under Search.
 -->
 
 # Search — Section Invariants
@@ -93,14 +97,16 @@ None — this section is a pure read/fan-out surface with no side effects: no wr
 - **Decorator decision — no caching decorator on `SearchService` itself.** Four of the five buckets are already served from their owning section's warm in-memory snapshot, with no DB round trip per search: Humans/Teams/Camps via `CachingUserService`/`CachingTeamService`/`CachingCampService`, and **Events too** — `IEventServiceRead` is registered as the `CachingEventService` singleton (`EventsSectionExtensions.cs:48`), whose `GetApprovedEventsAsync` filters the approved-event cache in memory (`Contains(…, OrdinalIgnoreCase)`), not in SQL. **Shifts is the only DB-backed bucket:** `ShiftManagementService.SearchAsync` calls `repo.SearchVolunteerVisibleRotasAsync` (case-insensitive Postgres `ILike`) for text and `repo.GetRotaAsync` for a GUID. So a Search-level cache would, for four of five buckets, cache a cache — and duplicate invalidation the owning sections already do correctly.
 - **Cross-domain navs** — none; the section owns no entities.
 - **Cross-section calls** — `IUserServiceRead`, `ITeamServiceRead`, `ICampServiceRead`, `IShiftManagementService`, `IEventServiceRead` (see Cross-Section Dependencies).
-- **Test coverage — structure is pinned; behaviour is not.** The gap is real but narrower than "none". `tests/Humans.Application.Tests/Architecture/SearchArchitectureTests.cs` (added by #1197) pins the three structural claims above: `ISearchService_ImplementsOrchestratorNotApplicationService`, `SearchService_HasNoRepositoryDependency`, `SearchService_DependsOnlyOnServiceInterfaces`. What is still missing is **behavioural** coverage of the orchestration — there is no `SearchServiceTests` and no `SearchControllerTests`, so the query-length gate, the `onlyType` short-circuit, the five-bucket fan-out, the `Features:Events` gate, and the non-human 100/80/60 rubric are all unverified. The per-bucket behaviour *is* covered, in the owning sections' own tests, because that is where the filters live:
-  - **Humans** — 16 tests at `CachingUserServiceTests.cs:661-852`, including the eligibility gate (`SearchUsersAsync_PublicAll_ExcludesRejected`), the GUID short-circuit (`…_GuidShortCircuitsById`) and its `ExactName` carve-out (`…_ExactName_GuidQuery_DoesNotShortCircuitById`).
-  - **Teams** — the hidden-team filter genuinely is pinned: `CachingTeamServiceTests.SearchAsync_ServesFromCache_MatchesByName_ExcludesHidden` (`:468`) seeds "Kitchen" and a hidden "Kitchenette", searches `kitchen`, and asserts a single hit.
-  - **Humans score tiers** — `PersonSearchMatcherTests.cs`: 18 test methods (10 `[Fact]`, 8 `[Theory]`), 40 executed cases once the `[InlineData]` rows expand.
-  - **Not covered:**
-    - **The Camps `Active`/`Full` season filter.** `CachingCampServiceTests.SearchAsync_ServesFromCache_MatchesPublicYearSeasonName` (`:354-368`) reads like visibility coverage from its name, but seeds only an `Active` season and asserts the positive match — there is no non-public season to exclude and no `Full` case. Deleting the `PublicCampSeasonStatuses` predicate would leave the suite green. It pins the cache path, not the filter.
-    - The Shifts and Events bucket match paths — `SearchVolunteerVisibleRotasAsync`, and `CachingEventService`'s in-memory `MatchesQuery` (`EventRepositoryTests` covers the *repository*'s status/category/venue filters, not the cache path Search actually calls).
+- **Test coverage — structure and behaviour are both pinned as of #1197/#1198.** Structure: `Architecture/SearchArchitectureTests.cs` (#1197) — `ISearchService_ImplementsOrchestratorNotApplicationService`, `SearchService_HasNoRepositoryDependency`, `SearchService_DependsOnlyOnServiceInterfaces`. Behaviour (#1198):
+  - **Orchestration** — `tests/Humans.Application.Tests/Services/Search/SearchServiceTests.cs`, 17 tests: the `<2`-char gate and its boundary, query trimming, `onlyType` querying one section and skipping four, the no-`onlyType` fan-out to all five, the 100/80/60 tiers with case-insensitivity and empty-name drop, GUID hits for Team/Camp/Rota, `PersonSearchFields.PublicAll` on both text and GUID paths, the unbounded cap, the `Features:Events` off path, and the Events description-fallback tier.
+  - **Controller** — `tests/Humans.Web.Tests/Controllers/SearchControllerTests.cs`, 7 tests: non-human buckets sorted score-desc-then-title-asc, humans by relevance then burner name, view-model projection, and the shell-not-500 path on a service throw.
+  - **Humans** — `CachingUserServiceTests.cs:661-852`, 16 tests, including `SearchUsersAsync_PublicAll_ExcludesRejected`, `…_GuidShortCircuitsById`, and its `ExactName` carve-out.
+  - **Teams** — `CachingTeamServiceTests.SearchAsync_ServesFromCache_MatchesByName_ExcludesHidden` (`:468`) seeds "Kitchen" and a hidden "Kitchenette" and asserts a single hit.
+  - **Camps** — the `Active`/`Full` filter is now genuinely pinned: `SearchAsync_TextQuery_ExcludesNonPublicSeasonStatuses` (`:375`) is a `[Theory]` over `Pending`/`Rejected`/`Withdrawn` asserting an empty result, and `SearchAsync_GuidQuery_ResolvesACampWithANonPublicSeason` (`:389`) pins the GUID carve-out. The older `…_MatchesPublicYearSeasonName` (`:355`) pins only the cache path — it seeds one `Active` season and asserts the positive match, so on its own it never protected the status predicate.
+  - **Shifts** — `tests/Humans.Integration.Tests/Repositories/Shifts/ShiftRepositoryRotaSearchTests.cs`: `SearchVolunteerVisibleRotasAsync_ExcludesRotasHiddenFromVolunteers` seeds a visible and a hidden rota and asserts only the visible one returns; a second test pins case-insensitivity and event scoping.
+  - **Humans score tiers** — `PersonSearchMatcherTests.cs`: 18 test methods (10 `[Fact]`, 8 `[Theory]`), 40 executed cases once `[InlineData]` expands.
+  - **Still not covered:** `CachingEventService`'s in-memory `MatchesQuery` — the Events *cache* filter. `SearchServiceTests` exercises the orchestrator's scoring of event rows against a mocked `IEventServiceRead`, and `EventRepositoryTests` covers the *repository*'s status/category/venue filters; neither runs the cache path Search actually calls. `CachingEventServiceTests` does not touch `GetApprovedEventsAsync`.
 
-  Recorded as G3 gap #1 in [`docs/plans/2026-08-03-g0-first-audit/Search.md`](../plans/2026-08-03-g0-first-audit/Search.md); orchestration coverage is in flight in PR peterdrier/Humans#1198. **Check the list above before assuming an invariant here is tested — and before writing a test that already exists elsewhere.**
+  History in G3 gap #1 of [`docs/plans/2026-08-03-g0-first-audit/Search.md`](../plans/2026-08-03-g0-first-audit/Search.md). **Check the list above before writing a test — most of this is now covered, and the one real hole is the Events cache filter.**
 
 See [`docs/features/global/global-search.md`](../features/global/global-search.md) for the full user-facing workflow and DTO reference; this doc states the invariants a PR is checked against, not the feature narrative.
