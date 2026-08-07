@@ -108,6 +108,32 @@ public class AgentAdminStatusServiceTests
     }
 
     [HumansFact]
+    public async Task Latency_panel_reports_zero_when_the_window_holds_no_completed_turn()
+    {
+        // Decoupling MessageCount from the duration sample made an empty sample reachable
+        // with a positive message count: a window of nothing but user rows and refusals.
+        // Averaging that empty sample throws, so the guard reads durations, not messages.
+        await using var db = InMemoryDb();
+        var now = Instant.FromUtc(2026, 5, 17, 12, 0);
+        var clock = new FakeClock(now);
+
+        var user1 = Guid.NewGuid();
+        var conv = SeedConversation(db, user1, now);
+
+        SeedMessage(db, conv.Id, now - Duration.FromMinutes(20), prompt: 10, output: 0, cached: 0,
+            role: AgentRole.User, durationMs: 0);
+        SeedMessage(db, conv.Id, now - Duration.FromMinutes(10), prompt: 0, output: 0, cached: 0,
+            role: AgentRole.Assistant, refusalReason: "rate_limited", durationMs: 0);
+        await db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var report = await BuildService(db, clock).GetStatusAsync(Xunit.TestContext.Current.CancellationToken);
+
+        report.Usage24h.MessageCount.Should().Be(2);
+        report.Usage24h.AverageTurnMs.Should().Be(0);
+        report.Usage24h.P95TurnMs.Should().Be(0);
+    }
+
+    [HumansFact]
     public async Task Balance_unavailable_when_admin_key_missing()
     {
         await using var db = InMemoryDb();

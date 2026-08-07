@@ -116,7 +116,10 @@ public sealed class AgentAdminStatusService(
 
         var cacheBase = prompt + cached;
         var cacheRatio = cacheBase > 0 ? (double)cached / cacheBase : 0.0;
-        var avgMs = messageCount > 0 ? (int)durations.Average() : 0;
+        // Guard on the sample list, not messageCount: a window can hold rows that all fail
+        // the timed-turn filter above (user rows only, or nothing but refusals), leaving
+        // messageCount positive and durations empty — Average() throws on empty.
+        var avgMs = durations.Count > 0 ? (int)durations.Average() : 0;
         var p95Ms = Percentile(durations, 0.95);
 
         return new AgentUsageStats(
