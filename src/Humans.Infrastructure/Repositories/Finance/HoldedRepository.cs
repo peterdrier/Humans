@@ -179,6 +179,18 @@ internal sealed class HoldedRepository(IDbContextFactory<FinanceDbContext> facto
         await ctx.SaveChangesAsync(ct);
     }
 
+    public async Task<bool> DeleteCreditorContactAsync(Guid userId, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var existing = await ctx.HoldedCreditorContacts
+            .FirstOrDefaultAsync(c => c.UserId == userId, ct);
+        if (existing is null) return false;
+
+        ctx.HoldedCreditorContacts.Remove(existing);
+        await ctx.SaveChangesAsync(ct);
+        return true;
+    }
+
     // ── Sync state (singleton, seeded by migration) ──────────────────────────
 
     public async Task<HoldedSyncState> GetSyncStateAsync(CancellationToken ct = default)

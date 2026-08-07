@@ -45,4 +45,11 @@ public interface IHoldedFinanceService : IApplicationService
 
     /// <summary>Records the resolved 400000xx number on the member's binding (once the payable exists).</summary>
     Task SetCreditorAccountNumAsync(Guid userId, int supplierAccountNum, CancellationToken ct = default);
+
+    /// <summary>Clears the member's creditor binding outright — the admin remedy for a wrong bind and
+    /// for the duplicate the automatic write paths record rather than refuse. Removes the whole row,
+    /// not just the 400000xx: a binding stripped of its number still carries the other member's Holded
+    /// contact id, which merges their payables just as thoroughly. The member's next expense push
+    /// re-resolves the contact from scratch. Returns false when there was nothing bound.</summary>
+    Task<bool> ClearCreditorContactAsync(Guid userId, CancellationToken ct = default);
 }

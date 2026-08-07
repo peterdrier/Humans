@@ -12,7 +12,9 @@
 
 <p class="text-muted">
     Holded creditor accounts (400000xx). A negative balance is money the organisation owes the member;
-    <strong>Owed</strong> shows that amount. Bind a member to an account from their expense report.
+    <strong>Owed</strong> shows that amount. Bind a member to an account from their expense report, and
+    unbind here. An account should carry exactly one member — a row showing two is flagged and needs one
+    of them cleared.
 </p>
 
 @if (!Model.Any())
@@ -56,15 +58,37 @@ else
                     <td class="text-end">
                         <span class="@(r.OwedToMember > 0 ? "text-danger fw-semibold" : "text-muted")">@r.OwedToMember.ToEuro()</span>
                     </td>
+                    @* Every binding is listed, not just one. Two members on a single 400000xx point one
+                       person's expense payments at the other's creditor account; the automatic push
+                       paths record what Holded assigned rather than refusing it, so this table is
+                       where that collision has to become visible. *@
                     <td>
-                        @if (r.BoundMemberName is not null)
+                        @if (r.Bindings.Count == 0)
                         {
-                            <i class="fa-solid fa-link me-1 text-success"></i><span>@r.BoundMemberName</span>
-                            <span class="text-muted small">(@r.BindingSource)</span>
+                            <span class="text-muted"><i class="fa-solid fa-link-slash me-1"></i>unbound</span>
                         }
                         else
                         {
-                            <span class="text-muted"><i class="fa-solid fa-link-slash me-1"></i>unbound</span>
+                            @if (r.Bindings.Count > 1)
+                            {
+                                <div class="text-danger small fw-semibold mb-1">
+                                    <i class="fa-solid fa-triangle-exclamation me-1"></i>Collision —
+                                    @r.Bindings.Count members share this account. Unbind all but the one who owns it in Holded.
+                                </div>
+                            }
+                            @foreach (var b in r.Bindings)
+                            {
+                                <div class="d-flex align-items-center gap-2 mb-1">
+                                    <span><i class="fa-solid fa-link me-1 text-success"></i>@b.MemberName</span>
+                                    <span class="text-muted small">(@b.Source)</span>
+                                    <form asp-action="UnbindCreditor" method="post" class="d-inline"
+                                          data-confirm="Clear @b.MemberName's creditor account binding? Their next expense push will resolve it again from Holded.">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="userId" value="@b.UserId" />
+                                        <button type="submit" class="btn btn-sm btn-outline-danger py-0">Unbind</button>
+                                    </form>
+                                </div>
+                            }
                         }
                     </td>
                 </tr>

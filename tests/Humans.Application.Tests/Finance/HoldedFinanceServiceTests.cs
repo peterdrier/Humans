@@ -5,8 +5,10 @@ using Humans.Application.Interfaces.Holded;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Services.Finance;
 using Humans.Application.Services.Finance.Dtos;
+using Humans.Application.Tests.AuditLog;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
@@ -368,17 +370,20 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task ListCreditorAccounts_DerivesFromLedger_AndDuplicateBindingDoesNotThrow()
+    public async Task ListCreditorAccounts_DerivesFromLedger_AndSurfacesBothSidesOfACollision()
     {
+        var first = Guid.NewGuid();
+        var second = Guid.NewGuid();
         _repo.GetAllLedgerLinesAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedLedgerLine>
         {
             new() { EntryNumber = 1, Line = 0, AccountNum = 40000004, Date = FixedNow, Credit = 10m },
         });
-        // Two members mis-bound to the same account number — only UserId is unique in the DB.
+        // Two members on the same account number — only UserId is unique in the DB, and the automatic
+        // push paths record what Holded assigned rather than refusing, so this state is reachable.
         _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>
         {
-            new() { UserId = Guid.NewGuid(), HoldedContactId = "c1", SupplierAccountNum = 40000004, Source = CreditorContactSource.Manual },
-            new() { UserId = Guid.NewGuid(), HoldedContactId = "c2", SupplierAccountNum = 40000004, Source = CreditorContactSource.Auto },
+            new() { UserId = first, HoldedContactId = "c1", SupplierAccountNum = 40000004, Source = CreditorContactSource.Manual },
+            new() { UserId = second, HoldedContactId = "c2", SupplierAccountNum = 40000004, Source = CreditorContactSource.Auto },
         });
 
         var rows = await MakeService().ListCreditorAccountsAsync(Xunit.TestContext.Current.CancellationToken);
@@ -386,7 +391,9 @@ public class HoldedFinanceServiceTests
         var row = rows.Should().ContainSingle(r => r.SupplierAccountNum == 40000004).Subject;
         row.Balance.Should().Be(-10m);
         row.OwedToMember.Should().Be(10m);
-        row.BoundUserId.Should().NotBeNull();
+        // Both, not the first: hiding the second is what kept the collision invisible to admins.
+        row.Bindings.Select(b => b.UserId).Should().BeEquivalentTo([first, second]);
+        row.HasCollision.Should().BeTrue();
     }
 
     [HumansFact]
@@ -669,7 +676,8 @@ public class HoldedFinanceServiceTests
         // The binding keeps the row visible; there is simply no name to show for it.
         var row = rows.Should().ContainSingle().Subject;
         row.SupplierAccountNum.Should().Be(40000004);
-        row.BoundUserId.Should().Be(userId);
+        row.Bindings.Should().ContainSingle().Which.UserId.Should().Be(userId);
+        row.HasCollision.Should().BeFalse();
         row.Name.Should().BeEmpty();
     }
 
@@ -752,5 +760,146 @@ public class HoldedFinanceServiceTests
                 c.UserId == userId && c.HoldedContactId == "c1" &&
                 c.SupplierAccountNum == 40000004 && c.Source == CreditorContactSource.Manual),
             FixedNow, Arg.Any<CancellationToken>());
+    }
+
+    // ─── The automatic write paths (nobodies-collective/Humans#975) ──────────────
+    //
+    // Holded assigned the number to the contact just pushed, so it is authoritative and the older
+    // binding is the wrong guess. Refusing would leave a real payable unlinked to preserve a bad row,
+    // so these paths write, log Error, and leave the collision standing on /Finance/Creditors.
+
+    [HumansFact]
+    public async Task SetCreditorAccountNum_AccountHeldByAnotherMember_WritesAnyway_AndLogsError()
+    {
+        var userId = Guid.NewGuid();
+        var otherUserId = Guid.NewGuid();
+        var logger = new CapturingLogger<HoldedFinanceService>();
+        _repo.GetCreditorContactByUserAsync(userId, Arg.Any<CancellationToken>()).Returns(
+            new HoldedCreditorContact
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                HoldedContactId = "c-mine",
+                SupplierAccountNum = null,
+                Source = CreditorContactSource.Auto,
+                CreatedAt = FixedNow,
+            });
+        _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>
+        {
+            new() { UserId = otherUserId, HoldedContactId = "c-theirs", SupplierAccountNum = 40000012, Source = CreditorContactSource.Manual },
+        });
+
+        await new HoldedFinanceService(_repo, _client, _budget, _clock, logger)
+            .SetCreditorAccountNumAsync(userId, 40000012, Xunit.TestContext.Current.CancellationToken);
+
+        await _repo.Received(1).UpsertCreditorContactAsync(
+            Arg.Is<HoldedCreditorContact>(c => c.UserId == userId && c.SupplierAccountNum == 40000012),
+            FixedNow, Arg.Any<CancellationToken>());
+        var error = logger.Entries.Should().ContainSingle(e => e.Level == LogLevel.Error).Subject;
+        error.Message.Should().Contain(otherUserId.ToString()).And.Contain("40000012");
+    }
+
+    [HumansFact]
+    public async Task SetCreditorAccountNum_AccountFree_WritesWithoutLoggingAnError()
+    {
+        var userId = Guid.NewGuid();
+        var logger = new CapturingLogger<HoldedFinanceService>();
+        _repo.GetCreditorContactByUserAsync(userId, Arg.Any<CancellationToken>()).Returns(
+            new HoldedCreditorContact
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                HoldedContactId = "c-mine",
+                Source = CreditorContactSource.Auto,
+                CreatedAt = FixedNow,
+            });
+        // The member's own prior binding on the same account must not read as a collision.
+        _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>
+        {
+            new() { UserId = userId, HoldedContactId = "c-mine", SupplierAccountNum = 40000012, Source = CreditorContactSource.Auto },
+        });
+
+        await new HoldedFinanceService(_repo, _client, _budget, _clock, logger)
+            .SetCreditorAccountNumAsync(userId, 40000012, Xunit.TestContext.Current.CancellationToken);
+
+        await _repo.Received(1).UpsertCreditorContactAsync(
+            Arg.Any<HoldedCreditorContact>(), FixedNow, Arg.Any<CancellationToken>());
+        logger.Entries.Should().NotContain(e => e.Level == LogLevel.Error);
+    }
+
+    [HumansFact]
+    public async Task EnsureCreditorContact_SeededAccountHeldByAnotherMember_WritesAnyway_AndLogsError()
+    {
+        var userId = Guid.NewGuid();
+        var otherUserId = Guid.NewGuid();
+        var logger = new CapturingLogger<HoldedFinanceService>();
+        _repo.GetCreditorContactByUserAsync(userId, Arg.Any<CancellationToken>()).Returns((HoldedCreditorContact?)null);
+        _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>
+        {
+            new() { UserId = otherUserId, HoldedContactId = "c-theirs", SupplierAccountNum = 40000012, Source = CreditorContactSource.Manual },
+        });
+        _client.UpsertContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("c-mine");
+
+        await new HoldedFinanceService(_repo, _client, _budget, _clock, logger)
+            .EnsureCreditorContactAsync(
+                userId, "Ana Ruiz", null, null, seedContactId: "c-mine", seedAccountNum: 40000012,
+                Xunit.TestContext.Current.CancellationToken);
+
+        await _repo.Received(1).UpsertCreditorContactAsync(
+            Arg.Is<HoldedCreditorContact>(c => c.UserId == userId && c.SupplierAccountNum == 40000012),
+            FixedNow, Arg.Any<CancellationToken>());
+        logger.Entries.Should().ContainSingle(e => e.Level == LogLevel.Error)
+            .Which.Message.Should().Contain(otherUserId.ToString());
+    }
+
+    [HumansFact]
+    public async Task EnsureCreditorContact_ContactHeldByAnotherMember_LogsError_EvenWithNoAccountNumber()
+    {
+        // The one-shot number resolution is best-effort, so the other member's binding can carry the
+        // shared Holded contact with a null 400000xx — invisible to an account-number-only check.
+        var userId = Guid.NewGuid();
+        var otherUserId = Guid.NewGuid();
+        var logger = new CapturingLogger<HoldedFinanceService>();
+        _repo.GetCreditorContactByUserAsync(userId, Arg.Any<CancellationToken>()).Returns((HoldedCreditorContact?)null);
+        _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>
+        {
+            new() { UserId = otherUserId, HoldedContactId = "c-shared", SupplierAccountNum = null, Source = CreditorContactSource.Auto },
+        });
+        _client.UpsertContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("c-shared");
+
+        await new HoldedFinanceService(_repo, _client, _budget, _clock, logger)
+            .EnsureCreditorContactAsync(
+                userId, "Ana Ruiz", null, null, seedContactId: "c-shared", seedAccountNum: null,
+                Xunit.TestContext.Current.CancellationToken);
+
+        logger.Entries.Should().ContainSingle(e => e.Level == LogLevel.Error)
+            .Which.Message.Should().Contain("c-shared");
+    }
+
+    // ─── Unbind ─────────────────────────────────────────────────────────────────
+
+    [HumansFact]
+    public async Task ClearCreditorContact_RemovesTheBinding()
+    {
+        var userId = Guid.NewGuid();
+        _repo.DeleteCreditorContactAsync(userId, Arg.Any<CancellationToken>()).Returns(true);
+
+        var removed = await MakeService().ClearCreditorContactAsync(
+            userId, Xunit.TestContext.Current.CancellationToken);
+
+        removed.Should().BeTrue();
+        await _repo.Received(1).DeleteCreditorContactAsync(userId, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task ClearCreditorContact_NothingBound_ReportsFalse()
+    {
+        var userId = Guid.NewGuid();
+        _repo.DeleteCreditorContactAsync(userId, Arg.Any<CancellationToken>()).Returns(false);
+
+        var removed = await MakeService().ClearCreditorContactAsync(
+            userId, Xunit.TestContext.Current.CancellationToken);
+
+        removed.Should().BeFalse();
     }
 }

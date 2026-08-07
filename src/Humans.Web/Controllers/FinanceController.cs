@@ -583,18 +583,21 @@ public class FinanceController(
         var rows = await holdedFinance.ListCreditorAccountsAsync();
 
         var names = new Dictionary<Guid, string>();
-        var boundIds = rows.Where(r => r.BoundUserId is not null)
-            .Select(r => r.BoundUserId!.Value).Distinct().ToList();
+        var boundIds = rows.SelectMany(r => r.Bindings).Select(b => b.UserId).Distinct().ToList();
         if (boundIds.Count > 0)
             foreach (var kv in await UserService.GetUserInfosAsync(boundIds))
                 names[kv.Key] = kv.Value.BurnerName;
 
         var model = rows
             .Select(r => new CreditorAccountRowVm(
-                r.SupplierAccountNum, r.Name, r.Balance, r.OwedToMember, r.BoundUserId,
-                r.BoundUserId is { } id && names.TryGetValue(id, out var nm) ? nm : null,
-                r.BindingSource?.ToString()))
-            .OrderByDescending(r => r.OwedToMember)
+                r.SupplierAccountNum, r.Name, r.Balance, r.OwedToMember,
+                r.Bindings.Select(b => new CreditorAccountBindingVm(
+                    b.UserId,
+                    names.TryGetValue(b.UserId, out var nm) ? nm : b.UserId.ToString(),
+                    b.Source.ToString())).ToList()))
+            // Collisions first — they are the only rows that need a human right now.
+            .OrderByDescending(r => r.Bindings.Count > 1)
+            .ThenByDescending(r => r.OwedToMember)
             .ThenBy(r => r.SupplierAccountNum)
             .ToList();
         return View(model);
@@ -631,6 +634,28 @@ public class FinanceController(
         {
             logger.LogError(ex, "Failed to bind user {UserId} to creditor account {AccountNum}", userId, supplierAccountNum);
             SetError("Failed to bind creditor account.");
+        }
+
+        if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
+            return Redirect(returnUrl);
+        return RedirectToAction(nameof(Creditors));
+    }
+
+    [HttpPost("Creditors/Unbind")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UnbindCreditor(Guid userId, string? returnUrl)
+    {
+        try
+        {
+            if (await holdedFinance.ClearCreditorContactAsync(userId))
+                SetSuccess("Cleared the member's creditor account binding.");
+            else
+                SetError("That member has no creditor account binding to clear.");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to clear the creditor binding for user {UserId}", userId);
+            SetError("Failed to clear the creditor account binding.");
         }
 
         if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))

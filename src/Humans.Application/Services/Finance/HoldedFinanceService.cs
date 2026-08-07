@@ -481,12 +481,18 @@ public sealed class HoldedFinanceService(
             .GroupBy(l => l.AccountNum)
             .ToDictionary(g => g.Key, g => (IReadOnlyCollection<HoldedLedgerLine>)g.ToList());
 
-        // Group-by-first, not ToDictionary: only UserId is unique in the DB, so two members
-        // could (mis)bind to the same account number — that must not throw the whole list.
+        // Every binding on an account, not just the first: only UserId is unique in the DB and the two
+        // automatic write paths record what Holded assigned rather than refusing, so a second member on
+        // one 400000xx is exactly the state an admin has to see and resolve here.
         var bindings = (await repo.GetCreditorContactsAsync(ct))
             .Where(b => b.SupplierAccountNum is not null)
             .GroupBy(b => b.SupplierAccountNum!.Value)
-            .ToDictionary(g => g.Key, g => g.First());
+            .ToDictionary(
+                g => g.Key,
+                g => (IReadOnlyList<CreditorContactBinding>)g
+                    .OrderBy(b => b.CreatedAt)
+                    .Select(ToBinding)
+                    .ToList());
 
         // Holded is the only place the chart-account label lives — nothing caches it locally.
         // Range filter is load-bearing: Holded assigns a supplier number to every supplier contact,
@@ -504,15 +510,14 @@ public sealed class HoldedFinanceService(
             .Select(num =>
             {
                 decimal? balance = byAccount.TryGetValue(num, out var lines) ? LedgerBalance(lines) : null;
-                bindings.TryGetValue(num, out var binding);
+                bindings.TryGetValue(num, out var bound);
                 contacts.TryGetValue(num, out var contact);
                 return new HoldedCreditorAccountRow(
                     SupplierAccountNum: num,
                     Name: contact?.Name ?? "",
                     Balance: balance,
                     OwedToMember: balance is { } b ? Math.Max(0m, -b) : 0m,
-                    BoundUserId: binding?.UserId,
-                    BindingSource: binding?.Source);
+                    Bindings: bound ?? []);
             }).ToList();
     }
 
@@ -549,10 +554,56 @@ public sealed class HoldedFinanceService(
         Guid userId, CancellationToken ct = default)
     {
         var b = await repo.GetCreditorContactByUserAsync(userId, ct);
-        return b is null
-            ? null
-            : new CreditorContactBinding(b.UserId, b.HoldedContactId, b.SupplierAccountNum, b.Source);
+        return b is null ? null : ToBinding(b);
     }
+
+    private static CreditorContactBinding ToBinding(HoldedCreditorContact b) =>
+        new(b.UserId, b.HoldedContactId, b.SupplierAccountNum, b.Source);
+
+    // ─── The at-most-one-member invariant (nobodies-collective/Humans#975) ───────
+    //
+    // A 400000xx account — and the Holded contact behind it — binds to at most one member; a second
+    // binding silently points one person's expense payments at another person's creditor account.
+    // All three write paths test for it with FindConflictingBinding, and they diverge only in what
+    // they do about it, because only one of them is a guess:
+    //
+    //   SetCreditorContactAsync (manual bind)  — an admin picked the account, so the pick can be
+    //       wrong. Refuse and write nothing; the admin re-picks or unbinds the other member.
+    //   SetCreditorAccountNumAsync / EnsureCreditorContactAsync (automatic, during an expense push)
+    //       — Holded assigned the number to the contact we just pushed, so Holded is authoritative
+    //       and the *older* binding is the wrong guess. Refusing would leave a real payable pointing
+    //       at nothing to preserve a wrong row. Record the truth, log Error, and let the collision
+    //       stand visibly on /Finance/Creditors until an admin resolves it with Unbind.
+    //
+    // Deliberately not a DB unique index: the automatic writers run unattended inside outbox drain,
+    // where a constraint violation would strand a created Holded doc as permanently-failed, and the
+    // index would have to be created against production rows that may already collide. Enforcement
+    // lives in the service (memory/architecture/db-enforcement-minimal.md).
+
+    /// <summary>Another member's binding already claiming this 400000xx and/or this Holded contact.
+    /// Either kind of overlap merges two members' payables, so both are conflicts.</summary>
+    private static HoldedCreditorContact? FindConflictingBinding(
+        IEnumerable<HoldedCreditorContact> bindings,
+        Guid userId,
+        int? supplierAccountNum,
+        string? holdedContactId) =>
+        bindings.FirstOrDefault(b =>
+            b.UserId != userId
+            && ((supplierAccountNum is not null && b.SupplierAccountNum == supplierAccountNum)
+                || (!string.IsNullOrEmpty(holdedContactId)
+                    && string.Equals(b.HoldedContactId, holdedContactId, StringComparison.Ordinal))));
+
+    /// <summary>Records a collision the automatic paths wrote through. The admin-facing surface is the
+    /// duplicate row on /Finance/Creditors; this is the trail explaining when and how it arrived.</summary>
+    private void LogBindingCollision(
+        string writePath, Guid userId, string holdedContactId, int? supplierAccountNum,
+        HoldedCreditorContact conflict) =>
+        logger.LogError(
+            "Creditor binding collision in {WritePath}: member {UserId} resolved to Holded contact " +
+            "{HoldedContactId} / account {SupplierAccountNum}, which is already bound to member " +
+            "{ConflictUserId} ({ConflictSource}). Holded is authoritative so the binding was written; " +
+            "both now show on /Finance/Creditors and one must be unbound.",
+            writePath, userId, holdedContactId, supplierAccountNum, conflict.UserId, conflict.Source);
 
     public async Task<CreditorBindResult> SetCreditorContactAsync(
         Guid userId, int supplierAccountNum, CancellationToken ct = default)
@@ -565,16 +616,12 @@ public sealed class HoldedFinanceService(
                 $"({CreditorAccountMin}–{CreditorAccountMax}) — that is not a member's account.");
 
         // Only UserId is unique in the DB, so nothing stops a second member being written onto the
-        // same 400000xx — which silently points one person's payments at another's creditor account.
+        // same 400000xx. Checked before the Holded call so a doomed bind costs no vendor round-trip.
         var bindings = await repo.GetCreditorContactsAsync(ct);
-        var takenByOther = bindings
-            .Any(b => b.SupplierAccountNum == supplierAccountNum && b.UserId != userId);
-        if (takenByOther)
-            // No unbind action exists; the remedy is to move the other member onto their own account,
-            // which overwrites their row (the binding upsert is keyed by UserId).
+        if (FindConflictingBinding(bindings, userId, supplierAccountNum, holdedContactId: null) is not null)
             return CreditorBindResult.Failure(
                 $"Account {supplierAccountNum} is already bound to a different member. " +
-                "Check /Finance/Creditors to see who, and bind them to their own account first.");
+                "Check /Finance/Creditors to see who, and unbind them there first.");
 
         var contact = (await client.ListContactsAsync(ct))
             .FirstOrDefault(c => c.SupplierAccountNum == supplierAccountNum);
@@ -587,8 +634,7 @@ public sealed class HoldedFinanceService(
         // Two members on one Holded contact merges their payables just as surely as two on one number,
         // and that binding is invisible on /Finance/Creditors (its rows are keyed by account number),
         // so name the contact rather than send the admin somewhere it does not appear.
-        if (bindings.Any(b => b.UserId != userId
-                              && string.Equals(b.HoldedContactId, contact.Id, StringComparison.Ordinal)))
+        if (FindConflictingBinding(bindings, userId, supplierAccountNum: null, contact.Id) is not null)
             return CreditorBindResult.Failure(
                 $"Account {supplierAccountNum} belongs to Holded contact \"{contact.Name}\", which is " +
                 "already bound to a different member whose account number has not resolved yet. " +
@@ -661,13 +707,23 @@ public sealed class HoldedFinanceService(
             ExistingContactId = existingContactId,
         }, ct);
 
+        // The contact id we just resolved, and the seeded 400000xx carried in with it, are both
+        // unguarded inputs to this write — the seed comes off the member's own prior report, but a
+        // manual bind could have handed that same account to someone else in the meantime.
+        var accountNum = binding?.SupplierAccountNum ?? seedAccountNum;
+        var conflict = FindConflictingBinding(
+            await repo.GetCreditorContactsAsync(ct), userId, accountNum, contactId);
+        if (conflict is not null)
+            LogBindingCollision(
+                nameof(EnsureCreditorContactAsync), userId, contactId, accountNum, conflict);
+
         var now = clock.GetCurrentInstant();
         await repo.UpsertCreditorContactAsync(new HoldedCreditorContact
         {
             Id = Guid.NewGuid(),                                   // ignored on update (keyed by UserId)
             UserId = userId,
             HoldedContactId = contactId,
-            SupplierAccountNum = binding?.SupplierAccountNum ?? seedAccountNum,
+            SupplierAccountNum = accountNum,
             Source = binding?.Source ?? CreditorContactSource.Auto, // preserve a Manual binding
             CreatedAt = now,
             UpdatedAt = now,
@@ -682,6 +738,15 @@ public sealed class HoldedFinanceService(
         var binding = await repo.GetCreditorContactByUserAsync(userId, ct);
         if (binding is null) return;
 
+        // Holded just told us this number belongs to the contact we pushed against, so it is written
+        // either way; only the contact-id overlap is already covered upstream by EnsureCreditorContact.
+        var conflict = FindConflictingBinding(
+            await repo.GetCreditorContactsAsync(ct), userId, supplierAccountNum, holdedContactId: null);
+        if (conflict is not null)
+            LogBindingCollision(
+                nameof(SetCreditorAccountNumAsync), userId, binding.HoldedContactId,
+                supplierAccountNum, conflict);
+
         var now = clock.GetCurrentInstant();
         await repo.UpsertCreditorContactAsync(new HoldedCreditorContact
         {
@@ -693,6 +758,14 @@ public sealed class HoldedFinanceService(
             CreatedAt = binding.CreatedAt,
             UpdatedAt = now,
         }, now, ct);
+    }
+
+    public async Task<bool> ClearCreditorContactAsync(Guid userId, CancellationToken ct = default)
+    {
+        var removed = await repo.DeleteCreditorContactAsync(userId, ct);
+        if (removed)
+            logger.LogInformation("Cleared the creditor binding for member {UserId}.", userId);
+        return removed;
     }
 
     // ─── GDPR (Article 15 export) ───────────────────────────────────────────────
