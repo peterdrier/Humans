@@ -2,6 +2,7 @@ using AwesomeAssertions;
 using Humans.Application.Services.AuditLog;
 using Humans.Application.Services.Camps;
 using Humans.Application.Services.Feedback;
+using Humans.Application.Services.Finance;
 using Humans.Application.Services.Governance;
 using Humans.Application.Services.Issues;
 using Humans.Application.Services.Legal;
@@ -35,6 +36,7 @@ namespace Humans.Application.Tests.Architecture.Rules;
 ///   <item><see cref="ShiftManagementService"/> — shift data cache</item>
 ///   <item><see cref="FeedbackService"/> — feedback-badge count cache (nav badges)</item>
 ///   <item><see cref="ApplicationDecisionService"/> — voting-badge count cache (nav badges)</item>
+///   <item><see cref="HoldedFinanceService"/> — Holded contact-list cache (nobodies-collective/Humans#976)</item>
 /// </list>
 /// Removed (caching moved to decorators):
 /// <list type="bullet">
@@ -68,7 +70,10 @@ public class ApplicationServicesTakeNoMemoryCacheRule
         // count is NOT here — its read is already cache-served by CachingUserService,
         // so AdminDashboardService stays cache-free; double-caching it would be §4b.)
         typeof(FeedbackService),        // CacheKeys.FeedbackBadgeCount
-        typeof(ApplicationDecisionService)  // CacheKeys.VotingBadge(userId)
+        typeof(ApplicationDecisionService),  // CacheKeys.VotingBadge(userId)
+        // CacheKeys.HoldedContacts — 2-min TTL so /Finance/Creditors and /Expenses/{id} don't
+        // call Holded live on every admin page load (nobodies-collective/Humans#976).
+        typeof(HoldedFinanceService)
     ];
 
     [HumansFact]

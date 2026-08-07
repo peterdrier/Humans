@@ -7,6 +7,7 @@ using Humans.Application.Services.Finance.Dtos;
 using Humans.Domain.Entities;
 using System.Text.Json;
 using Humans.Domain.Enums;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 
@@ -23,9 +24,11 @@ public sealed class HoldedFinanceService(
     // Future: narrow to an IBudgetServiceRead via the section read/write split.
     IBudgetService budget,
     IClock clock,
+    IMemoryCache cache,
     ILogger<HoldedFinanceService> logger) : IHoldedFinanceService, IUserDataContributor
 {
     private const int SyncPageSafetyCap = 200;
+    private static readonly TimeSpan ContactsCacheDuration = TimeSpan.FromMinutes(2);
 
     // ─── Provisioning ───────────────────────────────────────────────────────────
 
@@ -516,34 +519,40 @@ public sealed class HoldedFinanceService(
             }).ToList();
     }
 
-    /// <summary>Holded's contact list, or empty when the Holded call fails. The creditor overviews are
-    /// otherwise cache-backed reads embedded in admin pages, so a vendor failure must cost the account
-    /// names, not the page. Only vendor-call failures are absorbed — anything else is a bug and throws.</summary>
-    private async Task<IReadOnlyList<HoldedContactDto>> ListContactsOrEmptyAsync(CancellationToken ct)
-    {
-        try
+    /// <summary>Holded's contact list, or empty when the Holded call fails. Cached for
+    /// <see cref="ContactsCacheDuration"/> (design-rules §15 Option A — short-TTL <see cref="IMemoryCache"/>,
+    /// same pattern as the nav-badge counts) since the same identical list is read on every
+    /// /Finance/Creditors and /Expenses/{id} load; the TTL keeps a contact created today visible
+    /// within minutes without a live call on every page load. The creditor overviews are otherwise
+    /// cache-backed reads embedded in admin pages, so a vendor failure must cost the account names,
+    /// not the page. Only vendor-call failures are absorbed — anything else is a bug and throws.</summary>
+    private async Task<IReadOnlyList<HoldedContactDto>> ListContactsOrEmptyAsync(CancellationToken ct) =>
+        await cache.GetOrCreateAsync(CacheKeys.HoldedContacts, async entry =>
         {
-            return await client.ListContactsAsync(ct);
-        }
-        catch (HoldedTransientException ex)
-        {
-            logger.LogWarning(ex, "Holded contact list unavailable; creditor account names will be blank.");
-            return [];
-        }
-        catch (HoldedPermanentException ex)
-        {
-            // A rejected key or a removed endpoint blanks every name until someone acts — Error, not Warning.
-            logger.LogError(ex, "Holded rejected the contact list; creditor account names will be blank.");
-            return [];
-        }
-        catch (Exception ex) when (ex is JsonException or InvalidOperationException)
-        {
-            // Malformed body, or a 200 carrying Holded's {"status":0,...} error object where the
-            // contact array should be. Still a vendor failure — it must not take the page down.
-            logger.LogError(ex, "Holded returned an unreadable contact list; creditor account names will be blank.");
-            return [];
-        }
-    }
+            entry.AbsoluteExpirationRelativeToNow = ContactsCacheDuration;
+            try
+            {
+                return await client.ListContactsAsync(ct);
+            }
+            catch (HoldedTransientException ex)
+            {
+                logger.LogWarning(ex, "Holded contact list unavailable; creditor account names will be blank.");
+                return (IReadOnlyList<HoldedContactDto>)[];
+            }
+            catch (HoldedPermanentException ex)
+            {
+                // A rejected key or a removed endpoint blanks every name until someone acts — Error, not Warning.
+                logger.LogError(ex, "Holded rejected the contact list; creditor account names will be blank.");
+                return (IReadOnlyList<HoldedContactDto>)[];
+            }
+            catch (Exception ex) when (ex is JsonException or InvalidOperationException)
+            {
+                // Malformed body, or a 200 carrying Holded's {"status":0,...} error object where the
+                // contact array should be. Still a vendor failure — it must not take the page down.
+                logger.LogError(ex, "Holded returned an unreadable contact list; creditor account names will be blank.");
+                return (IReadOnlyList<HoldedContactDto>)[];
+            }
+        }) ?? [];
 
     public async Task<CreditorContactBinding?> GetCreditorContactByUserAsync(
         Guid userId, CancellationToken ct = default)
