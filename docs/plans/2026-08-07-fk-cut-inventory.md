@@ -189,11 +189,26 @@ That is the question the inventory has to answer first, and it collapses most of
 | `CampaignGrant` | 1 | Yes — `CampaignRepository.cs:364`, the account-merge dedup branch. |
 | `GoogleResource` | 1 | No hard-delete path found. |
 
-**So 13 of the 55 referential actions are live in ordinary production flow. The other 42 —
-every `User`-targeting one — fire only on the three user hard-delete paths below.** That
-includes all seven the issue calls out by name (`team_members.UserId`,
+**So 42 of the 55 are `User`-targeting and fire only on the three user hard-delete paths
+below** — including all seven the issue calls out by name (`team_members.UserId`,
 `role_assignments.UserId`, `issues.AssigneeUserId`, `issues.ResolvedByUserId`,
 `ticket_orders.MatchedUserId`, `ticket_attendees.MatchedUserId`, `issues.ReporterUserId`).
+
+**The remaining 13 are not uniformly live either**, and the difference matters for what
+condition 3 has to deliver:
+
+| | Count | Reachability today |
+|---|---|---|
+| `CampSeason` (2), `ShiftSignup` (1), `CampaignGrant` (1) | **4** | **Ordinary production.** Deleting a camp (`CampAdminController.cs:292` → `ICampService.DeleteCampAsync` → `CampRepository.cs:186`) cascades to its seasons; rota and shift deletes remove signups (`ShiftRepository.Management.cs:187,294`); account-merge dedup removes grants (`CampaignRepository.cs:364`). |
+| `Team` (8) | **8** | **Dev-dashboard reset only.** `PermanentlyDeleteTeamAsync` is admin-authorized service surface, but its only caller is `DevelopmentDashboardSeeder.cs:472` — same gating as user path 1 below. |
+| `GoogleResource` (1) | **1** | **Never.** Nothing deletes a `GoogleResource`, so `audit_log.ResourceId`'s `SetNull` cannot fire at all. |
+
+Only **four** of the 55 fire on a path an ordinary production user can reach today, plus
+`audit_log.ActorUserId` from the 42 (see path 2). That is the real size of condition 3's live
+surface. It does not shrink the *work*, because the `Team` rows still need their replacements
+before someone wires `PermanentlyDeleteTeamAsync` to a real admin screen — but it should be
+stated rather than left implicit, so nobody reads "13 live" as thirteen production regressions
+waiting to happen.
 
 #### The three user hard-delete paths
 
@@ -282,10 +297,13 @@ That the *ordinary* production lifecycle never hard-deletes a user — erasure a
 in place, and the only production deletes are the two signup rollbacks above — is a statement
 about today's code, not a permanent guarantee. See the follow-up at the end.
 
-### The 13 live in production flow
+### The 13 non-`User` relationships
 
-The 42 `User`-targeting actions are dealt with above. These are the ones ordinary production
-flow can trigger.
+The 42 `User`-targeting actions are dealt with above. These are the rest — four reachable in
+ordinary production, eight only through the dev-dashboard reset, and one
+(`audit_log.ResourceId`) with no delete path at all, per the breakdown above. Each still needs a
+decision, because the replacement work is the same whether the trigger is wired up today or
+next quarter.
 
 | Principal | Dependent | Action | What breaks after the cut | Replacement |
 |---|---|---|---|---|
