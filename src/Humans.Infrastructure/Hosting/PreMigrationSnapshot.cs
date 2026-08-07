@@ -145,12 +145,29 @@ internal sealed class PreMigrationSnapshot(string connectionString, ILogger logg
                 // deploy's rollback point predate the deploy before it. Retire it as history,
                 // same as MarkMigrationsComplete does for a marker that clears normally, and
                 // fall through to take this deploy's own dump.
-                var retired = Retire(carried);
-                logger.LogWarning(
-                    "Retired stale pre-migration snapshot {Path} as {Retired}: none of its recorded " +
-                    "migrations are still pending, so the deploy that took it already finished. See " +
-                    "nobodies-collective/Humans#989",
-                    carried, retired);
+                //
+                // Best-effort, unlike the dump itself: retiring a marker is bookkeeping, and this
+                // deploy gets its own rollback point below either way. A rename that fails must
+                // not be what stops the boot - the marker stays and a later boot retires it, the
+                // same tolerance MarkMigrationsComplete already gives the identical call.
+                try
+                {
+                    var retired = Retire(carried);
+                    logger.LogWarning(
+                        "Retired stale pre-migration snapshot {Path} as {Retired}: none of its recorded " +
+                        "migrations are still pending, so the deploy that took it already finished. See " +
+                        "nobodies-collective/Humans#989",
+                        carried, retired);
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    logger.LogError(
+                        ex,
+                        "Could not retire stale pre-migration snapshot {Path}. This deploy still takes its " +
+                        "own snapshot, so it has a rollback point; the stale marker stays until a boot " +
+                        "clears it. See docs/database-restore-runbook.md §5",
+                        carried);
+                }
             }
 
             DiscardAbandonedWrites(SnapshotDirectory, database);
@@ -161,7 +178,25 @@ internal sealed class PreMigrationSnapshot(string connectionString, ILogger logg
             // deploy's rollback point - and then migrates on the strength of it.
             await RunPgDumpAsync(_connection, dump + WritingSuffix, cancellationToken);
             File.Move(dump + WritingSuffix, path, overwrite: true);
-            WriteFrontier(path, pendingMigrations);
+
+            // Outside the abort contract above, deliberately: the dump - the thing this deploy
+            // must not migrate without - already exists. A sidecar that fails to write leaves the
+            // marker with no recorded frontier, which FrontierStillPending reads as "still
+            // pending": the unconditional carry-forward this had before #989, not a lost rollback
+            // point. Not a reason to refuse the deploy.
+            try
+            {
+                WriteFrontier(path, pendingMigrations);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                logger.LogError(
+                    ex,
+                    "Could not record the migration frontier for pre-migration snapshot {Path}. The dump " +
+                    "itself is intact; without the sidecar a later deploy carries this marker forward " +
+                    "unconditionally instead of retiring it once stale. See nobodies-collective/Humans#989",
+                    path);
+            }
         }
         catch (Exception ex)
         {
