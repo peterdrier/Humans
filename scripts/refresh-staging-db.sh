@@ -52,6 +52,20 @@ case "$SOURCE" in
   *) die "unknown source '$SOURCE' (expected 'backup' or 'live')" ;;
 esac
 
+# Identifiers first, because every comparison below is a shell string compare and Postgres
+# does not agree with the shell about what two strings are the same. `DROP DATABASE Humans`
+# is unquoted, so Postgres folds it to `humans` — while `[ "Humans" = "humans" ]` is false
+# and `case Humans in humans)` does not match. STAGING_DB=Humans would therefore clear both
+# guards below and drop production. Requiring the already-folded form makes the shell's
+# notion of equality and Postgres's the same one.
+for ident_var in STAGING_DB PROD_DB DB_USER STAGING_DB_OWNER; do
+  eval "ident_val=\$$ident_var"
+  case "$ident_val" in
+    ""|[!a-z_]*|*[!a-z0-9_]*)
+      die "$ident_var is '$ident_val' — it must be a lowercase identifier ([a-z_][a-z0-9_]*). Postgres folds unquoted identifiers to lowercase, so a name that looks different here can still resolve to production's" ;;
+  esac
+done
+
 [ "$STAGING_DB" = "$PROD_DB" ] && die "STAGING_DB and PROD_DB are both '$PROD_DB' — refusing to drop production"
 case "$STAGING_DB" in
   humans|humans_pr_*) die "STAGING_DB is '$STAGING_DB' — that name belongs to production or a PR preview" ;;
@@ -256,17 +270,37 @@ case "$RESTORE_KIND" in
     ;;
 esac
 
-# The restore runs as $DB_USER, so every restored object is owned by it. When staging
-# connects as a restricted role instead, that role needs rights on what was just restored —
-# including CREATE on the schema, because the migration service adds tables on boot.
+# The restore runs as $DB_USER, so every restored object is owned by it. Ownership has to be
+# handed over, not merely granted: privileges do not carry ALTER or DROP, those need
+# ownership, and DatabaseMigrationHostedService applies pending migrations through the
+# application's own connection. An AlterColumn or DropColumn migration — this repository
+# produces them routinely — would fail at staging startup, which is the one release the
+# rehearsal most needs to survive.
+#
+# Object by object rather than REASSIGN OWNED BY: that statement also reassigns shared
+# objects owned by the role, which includes the production database itself.
 if [ "$STAGING_DB_OWNER" != "$DB_USER" ]; then
-  log "Granting '$STAGING_DB_OWNER' on '$STAGING_DB'"
+  log "Transferring '$STAGING_DB' objects to '$STAGING_DB_OWNER'"
   psql_staging -v ON_ERROR_STOP=1 -c "
-    GRANT ALL ON SCHEMA public TO ${STAGING_DB_OWNER};
-    GRANT ALL ON ALL TABLES IN SCHEMA public TO ${STAGING_DB_OWNER};
-    GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO ${STAGING_DB_OWNER};
-    ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO ${STAGING_DB_OWNER};
-    ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO ${STAGING_DB_OWNER};" >/dev/null
+    ALTER SCHEMA public OWNER TO ${STAGING_DB_OWNER};
+    DO \$\$
+    DECLARE r record;
+    BEGIN
+      FOR r IN
+        SELECT c.relname, c.relkind
+        FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p', 'S', 'v', 'm')
+      LOOP
+        EXECUTE format(
+          CASE r.relkind
+            WHEN 'S' THEN 'ALTER SEQUENCE public.%I OWNER TO %I'
+            WHEN 'v' THEN 'ALTER VIEW public.%I OWNER TO %I'
+            WHEN 'm' THEN 'ALTER MATERIALIZED VIEW public.%I OWNER TO %I'
+            ELSE 'ALTER TABLE public.%I OWNER TO %I'
+          END, r.relname, '${STAGING_DB_OWNER}');
+      END LOOP;
+    END
+    \$\$;" >/dev/null
 fi
 
 # ---------------------------------------------------------------------------

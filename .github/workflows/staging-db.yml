@@ -44,6 +44,11 @@ jobs:
         env:
           DB_CONTAINER: ${{ vars.STAGING_DB_CONTAINER || 'humans-db' }}
           STAGING_APP_CONTAINER: ${{ vars.STAGING_APP_CONTAINER }}
+          # The restricted role the staging app connects as (docs/staging-environment.md
+          # §7.7). Unset, the script falls back to the production role and says so in the
+          # log — the restored objects would then belong to `humans` and the staging app
+          # would fail on its first query.
+          STAGING_DB_OWNER: ${{ vars.STAGING_DB_OWNER }}
           COOLIFY_BACKUP_DIR: ${{ vars.COOLIFY_BACKUP_DIR || '/data/coolify/backups' }}
           # Set to match production's real backup cadence. A stalled backup schedule must
           # fail the refresh rather than quietly restore a weeks-old artifact.

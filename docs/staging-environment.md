@@ -328,6 +328,7 @@ repository cannot know; the script fails loudly rather than guessing.
 | `COOLIFY_BACKUP_DIR` | Where Coolify writes database backup artifacts, if not `/data/coolify/backups`. Prefer the **production resource's own** backup directory over the shared root — it removes any chance of selecting another database's artifact | Only if different |
 | `BACKUP_MAX_AGE_HOURS` | How old the newest artifact may be before the refresh fails as a backup incident. Default 48 — set it to match the real Coolify backup schedule, since a cadence slower than the bound fails every refresh and one much faster than it wastes the signal | Recommended |
 | `STAGING_DB_CONTAINER` | Postgres container name, if not `humans-db` | Only if different |
+| `STAGING_DB_OWNER` | The restricted role from §7.7, e.g. `humans_staging`. Unset, the refresh leaves the restored objects owned by production's role and logs a warning | Yes, once §7.7 is done |
 | `STAGING_APP_CONTAINER` | Staging app container name, stable across deploys. The script stops the app before dropping its database and restarts it afterwards, and refuses to run if the name is unset or does not resolve — an app left running through the drop reconnects to a half-restored database and stays there | Yes |
 
 **Check:** run the workflow manually (**Actions → Staging Database Refresh → Run workflow**) and
@@ -389,19 +390,27 @@ CREATE ROLE humans_staging LOGIN PASSWORD '<a new password, not production''s>';
 REVOKE ALL ON DATABASE humans FROM humans_staging;
 REVOKE CONNECT ON DATABASE humans FROM humans_staging, PUBLIC;
 GRANT ALL ON DATABASE humans_staging TO humans_staging;
+GRANT humans_staging TO humans;
 ```
 
-`REVOKE ... FROM PUBLIC` matters: without it the implicit `PUBLIC` grant lets any role connect
-to `humans`, and the revoke on the named role achieves nothing.
+Two of those lines are easy to leave out, and each one silently defeats the step:
 
-Then set `STAGING_DB_OWNER=humans_staging` as a repository variable. The refresh script grants
-that role rights on each restored database — the restore itself runs as `humans`, so without the
-grant staging would connect successfully and then fail on the first query. When
-`STAGING_DB_OWNER` is unset the script logs a warning naming this section, because the default
-is the insecure one.
+- **`REVOKE ... FROM PUBLIC`.** Postgres grants `CONNECT` to `PUBLIC` by default, so revoking
+  it from the named role alone changes nothing — staging would still reach `humans`.
+- **`GRANT humans_staging TO humans`.** Changing an object's owner requires membership of the
+  role receiving it. Without this the refresh script cannot hand the restored objects over and
+  fails at that step, unless `humans` happens to be a superuser — not something to depend on.
 
-**Check:** `psql -U humans_staging -d humans` is refused, and `psql -U humans_staging -d
-humans_staging` succeeds.
+Then set `STAGING_DB_OWNER=humans_staging` as a repository variable (§7.3). The refresh script
+transfers ownership of every restored object to that role — **ownership, not privileges**. The
+restore runs as `humans`, and EF migrations issue `ALTER TABLE` and `DROP TABLE`, which `GRANT`
+does not confer. With grants alone staging would start cleanly and then fail on the first
+schema-changing release, which is the release the rehearsal exists for. When `STAGING_DB_OWNER`
+is unset the script logs a warning naming this section, because the default is the insecure one.
+
+**Check:** `psql -U humans_staging -d humans` is refused; `psql -U humans_staging -d
+humans_staging` succeeds; and after a refresh `\dt` in `humans_staging` shows `humans_staging`
+owning the restored tables.
 
 ### 7.8 Protect the `staging` branch
 
