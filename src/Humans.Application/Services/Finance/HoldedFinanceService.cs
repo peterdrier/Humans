@@ -708,6 +708,28 @@ public sealed class HoldedFinanceService(
         string? seedContactId, int? seedAccountNum, CancellationToken ct = default)
     {
         var binding = await repo.GetCreditorContactByUserAsync(userId, ct);
+        var allBindings = await repo.GetCreditorContactsAsync(ct);
+
+        // The seed is this member's own cached contact id / 400000xx off a prior report — our guess,
+        // not something Holded just told us — so it gets the manual bind's treatment, not
+        // SetCreditorAccountNumAsync's: a seed landing on another member's binding is refused rather
+        // than recorded. Dropping it makes the push mint this member their own Holded contact, which
+        // is the correct split. It is also what makes Unbind durable: the cleared member's old reports
+        // still carry the other member's contact id and account number, and adopting those would
+        // silently restore the very binding an admin just cleared.
+        if (binding is null
+            && FindConflictingBinding(allBindings, userId, seedAccountNum, seedContactId) is { } seedConflict)
+        {
+            logger.LogError(
+                "Refused a creditor seed for member {UserId}: the contact {SeedContactId} / account " +
+                "{SeedAccountNum} cached on their prior report is bound to member {ConflictUserId} " +
+                "({ConflictSource}). Adopting it would merge their payables, so a new Holded contact " +
+                "is being created instead.",
+                userId, seedContactId, seedAccountNum, seedConflict.UserId, seedConflict.Source);
+            seedContactId = null;
+            seedAccountNum = null;
+        }
+
         // Reuse the bound contact, else lazy-seed from the report's previously-cached contact id.
         var existingContactId = !string.IsNullOrEmpty(binding?.HoldedContactId)
             ? binding.HoldedContactId
@@ -729,12 +751,11 @@ public sealed class HoldedFinanceService(
             ExistingContactId = existingContactId,
         }, ct);
 
-        // The contact id we just resolved, and the seeded 400000xx carried in with it, are both
-        // unguarded inputs to this write — the seed comes off the member's own prior report, but a
-        // manual bind could have handed that same account to someone else in the meantime.
+        // A refused seed cannot collide, so what is left here is a member whose *own* existing binding
+        // already overlaps someone else's — a pre-existing collision this push does not create and
+        // must not silently carry forward unreported.
         var accountNum = binding?.SupplierAccountNum ?? seedAccountNum;
-        var conflict = FindConflictingBinding(
-            await repo.GetCreditorContactsAsync(ct), userId, accountNum, contactId);
+        var conflict = FindConflictingBinding(allBindings, userId, accountNum, contactId);
         if (conflict is not null)
             LogBindingCollision(
                 nameof(EnsureCreditorContactAsync), userId, contactId, accountNum, conflict);

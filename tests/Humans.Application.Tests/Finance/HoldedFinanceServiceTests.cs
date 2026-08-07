@@ -853,8 +853,10 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task EnsureCreditorContact_SeededAccountHeldByAnotherMember_WritesAnyway_AndLogsError()
+    public async Task EnsureCreditorContact_SeedHeldByAnotherMember_IsRefused_AndANewContactIsCreated()
     {
+        // The seed is this member's own cached guess off a prior report, not something Holded just
+        // told us, so it is refused like a bad manual bind rather than recorded like an assignment.
         var userId = Guid.NewGuid();
         var otherUserId = Guid.NewGuid();
         var logger = new CapturingLogger<HoldedFinanceService>();
@@ -863,22 +865,26 @@ public class HoldedFinanceServiceTests
         {
             new() { UserId = otherUserId, HoldedContactId = "c-theirs", SupplierAccountNum = 40000012, Source = CreditorContactSource.Manual },
         });
-        _client.UpsertContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("c-mine");
+        _client.UpsertContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("c-fresh");
 
         await new HoldedFinanceService(_repo, _client, _budget, _clock, _cache, logger)
             .EnsureCreditorContactAsync(
-                userId, "Ana Ruiz", null, null, seedContactId: "c-mine", seedAccountNum: 40000012,
+                userId, "Ana Ruiz", null, null, seedContactId: "c-theirs", seedAccountNum: 40000012,
                 Xunit.TestContext.Current.CancellationToken);
 
+        // No ExistingContactId => Holded POSTs a new contact, splitting the two members apart.
+        await _client.Received(1).UpsertContactAsync(
+            Arg.Is<HoldedContactInput>(i => i.ExistingContactId == null), Arg.Any<CancellationToken>());
         await _repo.Received(1).UpsertCreditorContactAsync(
-            Arg.Is<HoldedCreditorContact>(c => c.UserId == userId && c.SupplierAccountNum == 40000012),
+            Arg.Is<HoldedCreditorContact>(c =>
+                c.UserId == userId && c.HoldedContactId == "c-fresh" && c.SupplierAccountNum == null),
             FixedNow, Arg.Any<CancellationToken>());
         logger.Entries.Should().ContainSingle(e => e.Level == LogLevel.Error)
             .Which.Message.Should().Contain(otherUserId.ToString());
     }
 
     [HumansFact]
-    public async Task EnsureCreditorContact_ContactHeldByAnotherMember_LogsError_EvenWithNoAccountNumber()
+    public async Task EnsureCreditorContact_SeedContactHeldByAnotherMember_IsRefused_EvenWithNoAccountNumber()
     {
         // The one-shot number resolution is best-effort, so the other member's binding can carry the
         // shared Holded contact with a null 400000xx — invisible to an account-number-only check.
@@ -890,15 +896,64 @@ public class HoldedFinanceServiceTests
         {
             new() { UserId = otherUserId, HoldedContactId = "c-shared", SupplierAccountNum = null, Source = CreditorContactSource.Auto },
         });
-        _client.UpsertContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("c-shared");
+        _client.UpsertContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("c-fresh");
 
         await new HoldedFinanceService(_repo, _client, _budget, _clock, _cache, logger)
             .EnsureCreditorContactAsync(
                 userId, "Ana Ruiz", null, null, seedContactId: "c-shared", seedAccountNum: null,
                 Xunit.TestContext.Current.CancellationToken);
 
+        await _client.Received(1).UpsertContactAsync(
+            Arg.Is<HoldedContactInput>(i => i.ExistingContactId == null), Arg.Any<CancellationToken>());
         logger.Entries.Should().ContainSingle(e => e.Level == LogLevel.Error)
             .Which.Message.Should().Contain("c-shared");
+    }
+
+    [HumansFact]
+    public async Task EnsureCreditorContact_AfterUnbind_DoesNotRestoreTheOtherMembersBindingFromAPriorReport()
+    {
+        // The regression this guards (PR #1194 review): unbind deletes the binding row, but the
+        // cleared member's old reports still carry the other member's contact id and 400000xx, and
+        // ProcessHoldedCreateAsync hands those straight back as seeds on their very next push.
+        var userId = Guid.NewGuid();
+        var otherUserId = Guid.NewGuid();
+        _repo.GetCreditorContactByUserAsync(userId, Arg.Any<CancellationToken>()).Returns((HoldedCreditorContact?)null);
+        _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>
+        {
+            new() { UserId = otherUserId, HoldedContactId = "c-theirs", SupplierAccountNum = 40000012, Source = CreditorContactSource.Manual },
+        });
+        _client.UpsertContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("c-fresh");
+
+        await MakeService().EnsureCreditorContactAsync(
+            userId, "Ana Ruiz", null, null, seedContactId: "c-theirs", seedAccountNum: 40000012,
+            Xunit.TestContext.Current.CancellationToken);
+
+        await _repo.DidNotReceive().UpsertCreditorContactAsync(
+            Arg.Is<HoldedCreditorContact>(c => c.HoldedContactId == "c-theirs" || c.SupplierAccountNum == 40000012),
+            Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task EnsureCreditorContact_SeedIsTheMembersOwnContact_IsStillAdopted()
+    {
+        // The lazy-seed self-heal must survive the refusal: only *another* member's binding blocks it.
+        var userId = Guid.NewGuid();
+        _repo.GetCreditorContactByUserAsync(userId, Arg.Any<CancellationToken>()).Returns((HoldedCreditorContact?)null);
+        _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>
+        {
+            new() { UserId = userId, HoldedContactId = "c-mine", SupplierAccountNum = 40000012, Source = CreditorContactSource.Auto },
+        });
+        _client.UpsertContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("c-mine");
+
+        await MakeService().EnsureCreditorContactAsync(
+            userId, "Ana Ruiz", null, null, seedContactId: "c-mine", seedAccountNum: 40000012,
+            Xunit.TestContext.Current.CancellationToken);
+
+        await _client.Received(1).UpsertContactAsync(
+            Arg.Is<HoldedContactInput>(i => i.ExistingContactId == "c-mine"), Arg.Any<CancellationToken>());
+        await _repo.Received(1).UpsertCreditorContactAsync(
+            Arg.Is<HoldedCreditorContact>(c => c.SupplierAccountNum == 40000012),
+            FixedNow, Arg.Any<CancellationToken>());
     }
 
     // ─── Unbind ─────────────────────────────────────────────────────────────────
