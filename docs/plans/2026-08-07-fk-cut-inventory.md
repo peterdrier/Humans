@@ -148,7 +148,7 @@ That is the question the inventory has to answer first, and it collapses most of
 
 | Principal | Relationships | Is the row ever hard-deleted, and from where? |
 |---|---|---|
-| `User` | **42** | **Yes, on one path.** Right-to-erasure and account-merge both **anonymise in place** — `IUserRepository.Profiles.cs:108,122` (`AnonymizeForMergeByUserIdAsync`, `AnonymizeForDeletionByUserIdAsync`), `IAccountDeletionService.cs:77` (`AnonymizeExpiredAccountAsync`); the merged-away row survives, stamped with `MergedToUserId`. But that is not the only path: `UserService.DeleteUsersAsync` (`UserService.cs:1253-1260`) → `UserRepository.DeleteUsersAsync` (`UserRepository.cs:321-341`) hard-deletes, `ctx.Users.Where(...).ExecuteDeleteAsync` at `:335-337`. Reachable only from the dev-dashboard reset — see below. |
+| `User` | **42** | **Yes — on three paths.** Right-to-erasure and account-merge both **anonymise in place** — `IUserRepository.Profiles.cs:108,122` (`AnonymizeForMergeByUserIdAsync`, `AnonymizeForDeletionByUserIdAsync`), `IAccountDeletionService.cs:77` (`AnonymizeExpiredAccountAsync`); the merged-away row survives, stamped with `MergedToUserId`. But three paths do hard-delete: the dev-dashboard reset (via the repository) and two signup rollbacks (via ASP.NET Identity). Enumerated below. |
 | `Team` | 8 | **Yes, on one path.** The user-facing delete is a soft delete: `TeamService.DeleteTeamAsync` (`TeamService.cs:608-629`) calls `DeactivateTeamAsync` and removes no row; `TeamController.cs:724` is its only caller. The hard delete is `TeamService.PermanentlyDeleteTeamAsync` (`TeamService.cs:1846-1867`) → `TeamRepository.PermanentlyDeleteTeamAsync` (`TeamRepository.cs:1051-1091`, `db.Teams.Remove` at `:1087`). Its only caller today is `DevelopmentDashboardSeeder.cs:472`, but it is admin-authorized production surface. |
 | `CampSeason` | 2 | Indirectly — `CampRepository.cs:186` removes a `Camp`, and `CampConfiguration.cs:44` cascades `Camp → CampSeason`. |
 | `ShiftSignup` | 1 | Yes — `ShiftRepository.Management.cs:187,294`, when a rota or shift is deleted. |
@@ -156,26 +156,38 @@ That is the question the inventory has to answer first, and it collapses most of
 | `GoogleResource` | 1 | No hard-delete path found. |
 
 **So 13 of the 55 referential actions are live in ordinary production flow. The other 42 —
-every `User`-targeting one — fire only on the dev-dashboard reset.** That includes all seven the
-issue calls out by name (`team_members.UserId`, `role_assignments.UserId`,
-`issues.AssigneeUserId`, `issues.ResolvedByUserId`, `ticket_orders.MatchedUserId`,
-`ticket_attendees.MatchedUserId`, `issues.ReporterUserId`).
+every `User`-targeting one — fire only on the three user hard-delete paths below.** That
+includes all seven the issue calls out by name (`team_members.UserId`,
+`role_assignments.UserId`, `issues.AssigneeUserId`, `issues.ResolvedByUserId`,
+`ticket_orders.MatchedUserId`, `ticket_attendees.MatchedUserId`, `issues.ReporterUserId`).
 
-The reset path is real code with a real hard delete, and it is narrowly gated:
+#### The three user hard-delete paths
 
-- The service method is admin-authorized production surface — `UserService.cs:1257` calls
-  `RequireCurrentUserIsAdminAsync`, and `IUserService.cs:369-374` documents it as permanent
-  deletion *"after the caller has cleared cross-section references."*
-- Its only in-repo caller is `DevelopmentDashboardSeeder.ResetAsync` (`:478`), reachable only
-  through `POST dev/seed/dashboard/reset`, which is `AdminOnly` **and** returns `NotFound`
-  outside `ASPNETCORE_ENVIRONMENT=Development` (`DevSeedController.cs:102,114`). The seeder is
-  not DI-registered in Production at all (`Program.cs:76-80`).
-- It deletes only users carrying the seed marker `dev-human-*@seed.local`.
+Two of the three bypass `IUserRepository` entirely and delete through ASP.NET Identity's
+`UserStore`, which is why they do not appear in a search of the repository layer.
 
-That is the same shape as the `Team` row above — an admin-authorized service method whose only
-caller today is the seeder — and it gets the same treatment here rather than being waved off.
+| # | Path | Delete call | Gating | Cross-section dependents at delete time |
+|---|---|---|---|---|
+| 1 | Dev-dashboard reset — `UserService.DeleteUsersAsync` (`UserService.cs:1253-1260`) → `UserRepository.DeleteUsersAsync` (`UserRepository.cs:321-341`) | `ctx.Users.Where(...).ExecuteDeleteAsync` at `:335-337` | Admin (`UserService.cs:1257`); only caller is `DevelopmentDashboardSeeder.ResetAsync:478`, reachable only via `POST dev/seed/dashboard/reset`, which is `AdminOnly` **and** 404s outside `ASPNETCORE_ENVIRONMENT=Development` (`DevSeedController.cs:102,114`); seeder not DI-registered in Production (`Program.cs:76-80`) | **Yes** — seeded users have been through a full seed run |
+| 2 | OAuth signup rollback — `ExternalLoginService.TryDeleteOrphanUserAsync` (`:331-343`), called from `:230,264,279,288` | `userManager.DeleteAsync(user)` at `:335` | None beyond the signup flow itself — **production** | **No** — see below |
+| 3 | Magic-link signup rollback — `AccountProvisioningService` | `userManager.DeleteAsync(user)` at `:164` | None beyond the signup flow itself — **production** | **No** — see below |
 
-#### What the cut changes on the dev-reset path
+**Paths 2 and 3 need no replacement, and that is verified rather than assumed.** Both delete a
+user created moments earlier in the same request, on a failure branch, before onboarding has
+written anything. In `ExternalLoginService.CreateUserAsync` the only writes between
+`userManager.CreateAsync` (`:223`) and the last rollback point are `AddLoginAsync` (`:227`,
+`AspNetUserLogins`) and `ReconcileOAuthIdentityAsync` (`UserEmail` rows) — both Users-section
+tables, neither among the 42. `EnsureStubProfileAsync` runs at `:238`, *after* the final
+rollback. `AccountProvisioningService` has the same shape: `CreateAsync` at `:141`, the only
+write before the rollback is `AddVerifiedEmailAsync` at `:155` (a `UserEmail` row), the delete is
+at `:164`, and `EnsureStubProfileAsync` runs at `:177`. So none of the 42 dependent rows can
+exist when these deletes fire — today or after the cut.
+
+That does not make them irrelevant. They are production callers that hard-delete a user, and any
+enforcement that only guards `IUserService.DeleteUsersAsync` would miss them entirely. See the
+follow-up at the end.
+
+#### What the cut changes on the dev-reset path (path 1)
 
 Today the reset leans on the database to finish the job. It clears the seeded event (`:454`)
 and the dev users' shift signups (`:462`) explicitly, then deletes the users and lets the FKs
@@ -196,18 +208,19 @@ the pattern it already uses for shift signups at `:462`. That is a seeder change
 production one, and it is the whole of the replacement work for the 42 — but it is not "no
 replacement needed."
 
-The production half of the claim — that erasure and merge never hard-delete — is a statement
+That the *ordinary* production lifecycle never hard-deletes a user — erasure and merge anonymise
+in place, and the only production deletes are the two signup rollbacks above — is a statement
 about today's code, not a permanent guarantee. See the follow-up at the end.
 
 ### The 13 live in production flow
 
-The dev-reset path's 42 are dealt with above. These are the ones ordinary production flow can
-trigger.
+The 42 `User`-targeting actions are dealt with above. These are the ones ordinary production
+flow can trigger.
 
 | Principal | Dependent | Action | What breaks after the cut | Replacement |
 |---|---|---|---|---|
 | `Team` | `calendar_events.OwningTeamId` | `Restrict` | `PermanentlyDeleteTeamAsync` currently throws a raw FK violation if the team owns calendar events. After the cut it succeeds and orphans them. | **Pre-check in `TeamService.PermanentlyDeleteTeamAsync`**, matching the pattern already there for Google resources (`TeamService.cs:1862-1865`). |
-| `Team` | `google_resources.TeamId` | `Restrict` | Nothing — **already replaced.** `TeamService.cs:1862-1865` pre-checks and throws a clear message, with a comment saying it exists precisely because the FK is `Restrict`. | Done. Use it as the template for the other three. |
+| `Team` | `google_resources.TeamId` | `Restrict` | **Already replaced, but not equivalently.** `TeamService.cs:1862-1865` pre-checks and throws a clear message, with a comment saying it exists precisely because the FK is `Restrict`. The check is not atomic with the delete — see *Pre-checks are weaker than the constraint* below. | Template for the other three, with that caveat. |
 | `Team` | `legal_documents.TeamId` | `Restrict` | Same as `calendar_events` — orphaned required documents, which would then be missing from every consent dashboard that resolves the team. | Pre-check. |
 | `Team` | `rotas.TeamId` | `Restrict` | Same — orphaned rotas, and their shifts and signups behind them. | Pre-check. |
 | `Team` | `budget_categories.TeamId` | `SetNull` | Column keeps a stale `Guid`; budget screens resolve a team name that no longer exists. | Null it explicitly inside `PermanentlyDeleteTeamAsync`'s transaction — or accept the orphan, since the delete already requires an admin and the column is nullable. **Needs a call.** |
@@ -231,10 +244,10 @@ Recorded here so the migration PR does not have to re-argue them:
   signup that has since been deleted, which is true. Neither column is read as a lookup key
   (`ShiftSignupId` appears only in the dedup index, `CampaignGrantId` in no predicate at all).
   Leave both as stale ids; add no replacement.
-- **The 42 `User`-targeting actions — in production flow only.** No production path hard-deletes
-  a user; erasure and merge anonymise in place. So no *production* replacement is needed. This is
-  not a blanket pass: the dev-dashboard reset does delete users, and needs the seeder-side
-  cleanup specified above.
+- **The 42 `User`-targeting actions, on the two signup-rollback paths.** Both delete a user that
+  cannot yet have any of the 42 dependent rows, as traced above. Nothing to orphan, so no
+  replacement. This is not a blanket pass for the 42: the dev-dashboard reset deletes users that
+  *do* have dependents, and needs the seeder-side cleanup specified above.
 
 ### Precedent — the pattern is already in the codebase
 
@@ -250,6 +263,32 @@ Seven of the eight `Team` rows (all but `google_resources`, already done) and th
 `CampSeason` rows are that same job, nine more times.
 That is the whole of condition 3's remaining work; it is a bounded, named list, not an open
 question.
+
+### Pre-checks are weaker than the constraint they replace
+
+Worth stating before nine more of them get written, because "replaced" reads as "equivalent" and
+it is not.
+
+A `Restrict` FK is enforced by the database at the moment of the delete. A service-layer
+pre-check is a separate read, on a separate connection, some time earlier. The existing Google
+resource replacement shows the gap: `TeamService.cs:1862-1865` reads through
+`TeamResourceService`, then `:1867` calls `repo.PermanentlyDeleteTeamAsync`, which opens **its
+own** `DbContext` (`TeamRepository.cs:1053`) and **its own** transaction (`:1061`). A resource
+linked to the team between the check and the commit is not seen by either. Today the FK still
+catches that — the delete throws. After the cut nothing does, and the delete silently orphans
+the row.
+
+The same race applies to all nine proposed pre-checks, and to the cross-section cleanup calls for
+the `SetNull` and `Cascade` rows.
+
+**This inventory does not propose closing it.** Permanently deleting a team is an admin-only
+operation on a single-server deployment of a few hundred users; the window is a few milliseconds
+and the losing outcome is one orphaned row, not corruption. Taking a lock or threading a shared
+transaction through the service and repository would be a substantial change to how this codebase
+does data access, to buy very little. The point is that the migration PR should record the
+narrowing as an accepted trade rather than describe the pre-checks as preserving the guarantee —
+and if anyone decides the trade is *not* acceptable for a particular row, that is the row to
+argue about, not all nine.
 
 ### What this analysis cannot tell you
 
@@ -291,16 +330,27 @@ being tracked and would otherwise be re-derived.
 
 ### Follow-up worth filing
 
-Production's "no hard delete" property rests on convention, not enforcement. Anonymise-in-place
-is a deliberate GDPR design choice, but nothing stops a future path from calling the
-already-existing `IUserService.DeleteUsersAsync`. Once the FKs are cut, such a path would
+The property that keeps the 42 harmless is not "users are never hard-deleted" — they are, three
+times — but "nothing hard-deletes a user that has dependents, except the dev seeder." That rests
+on convention, not enforcement. Once the FKs are cut, a new delete path added anywhere would
 silently orphan rows in sixteen sections with no database backstop.
 
-An analyzer or architecture test is worth filing, but it **cannot** be phrased as "nothing calls
-`Remove`/`ExecuteDelete` on the `Users` `DbSet`" — `UserRepository.cs:335-337` does, legitimately,
-so that assertion fails on `main` today. The enforceable version is a ban on *new* callers of
-`IUserService.DeleteUsersAsync` outside the dev seeder: a call-site allowlist of one, which is
-the shape `[Grandfathered]` already handles.
+An analyzer or architecture test is worth filing, but two phrasings that look obvious are both
+wrong:
+
+- *"Nothing calls `Remove`/`ExecuteDelete` on the `Users` `DbSet`."* `UserRepository.cs:335-337`
+  does, legitimately. Fails on `main` today.
+- *"Nothing new calls `IUserService.DeleteUsersAsync`."* Misses paths 2 and 3 entirely — they
+  never touch `IUserService`, they go through `UserManager.DeleteAsync` and Identity's
+  `UserStore`. This is precisely how the first draft of this document came to claim no
+  hard-delete path existed at all.
+
+The enforceable version has to cover **both** doors: `IUserService.DeleteUsersAsync` *and*
+`UserManager.DeleteAsync`, allowlisted to the three known call sites
+(`DevelopmentDashboardSeeder.cs:478`, `ExternalLoginService.cs:335`,
+`AccountProvisioningService.cs:164`) — a small enough list for the `[Grandfathered]` shape the
+codebase already uses. A new caller of either is then a build failure rather than a silent
+orphan.
 
 ---
 
