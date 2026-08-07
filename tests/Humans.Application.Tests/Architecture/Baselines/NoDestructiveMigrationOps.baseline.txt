@@ -54,3 +54,10 @@ src/Humans.Infrastructure/Migrations/20260807155413_DropCampLeadsAndSpecialRoleD
 # production; the redundant IsSuspended bool has had no reader or writer left after this PR's
 # code sweep. Column drop only, no data moved or transformed.
 src/Humans.Infrastructure/Migrations/20260807215606_DropProfileIsSuspended.cs:DropColumn(name=IsSuspended)#1
+# Sanctioned split-PR drop (issue nobodies-collective/Humans#528): this IS the "PR B" of the
+# cut sequence in memory/architecture/no-drops-until-prod-verified.md. The replacement — the
+# IFileStorage-backed picture store — shipped in #527 (PR #576), the DB→FS sweep completed and
+# was verified via the #702 admin page, and the column has had no reader or writer since.
+# ProfilePictureContentType is deliberately KEPT: it is the "has picture?" predicate and supplies
+# the file extension. Column drop only, no data moved or transformed.
+src/Humans.Infrastructure/Migrations/20260807220438_DropProfilePictureData.cs:DropColumn(name=ProfilePictureData)#1

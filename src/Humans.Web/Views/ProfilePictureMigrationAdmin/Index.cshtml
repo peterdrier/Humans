@@ -13,9 +13,10 @@
 
 <p class="text-muted">
     Phase 1 (#527, shipped) added a filesystem-backed profile picture store with
-    DB fallback + migrate-on-read + dual-write. Phase 2 (#528) will drop
-    <code>Profile.ProfilePictureData</code>. This page confirms every DB-stored
-    picture is on disk before Phase 2 ships.
+    DB fallback + migrate-on-read + dual-write. Phase 2 (#528, shipped) dropped
+    <code>Profile.ProfilePictureData</code> — the filesystem is now the only
+    store. This page confirms every profile with a custom picture has its file
+    on disk.
 </p>
 
 <div class="row g-3 mb-4">
