@@ -481,27 +481,40 @@ public sealed class HoldedFinanceService(
             .GroupBy(l => l.AccountNum)
             .ToDictionary(g => g.Key, g => (IReadOnlyCollection<HoldedLedgerLine>)g.ToList());
 
-        // Every binding on an account, not just the first: only UserId is unique in the DB and the two
-        // automatic write paths record what Holded assigned rather than refusing, so a second member on
-        // one 400000xx is exactly the state an admin has to see and resolve here.
-        var bindings = (await repo.GetCreditorContactsAsync(ct))
-            .Where(b => b.SupplierAccountNum is not null)
-            .GroupBy(b => b.SupplierAccountNum!.Value)
-            .ToDictionary(
-                g => g.Key,
-                g => (IReadOnlyList<CreditorContactBinding>)g
-                    .OrderBy(b => b.CreatedAt)
-                    .Select(ToBinding)
-                    .ToList());
-
         // Holded is the only place the chart-account label lives — nothing caches it locally.
         // Range filter is load-bearing: Holded assigns a supplier number to every supplier contact,
         // so an ordinary org vendor would otherwise become a bindable "creditor account" here.
-        // Same group-by-first reasoning: a duplicate account number must not throw the whole list.
+        // Group-by-first: a duplicate account number must not throw the whole list.
         var contacts = (await ListContactsOrEmptyAsync(ct))
             .Where(c => c.SupplierAccountNum is >= CreditorAccountMin and <= CreditorAccountMax)
             .GroupBy(c => c.SupplierAccountNum!.Value)
             .ToDictionary(g => g.Key, g => g.First());
+
+        // A binding whose one-shot number resolution missed carries a contact id and a null 400000xx.
+        // Placing it by contact id is what makes it appear at all: keyed on the number alone, its
+        // account renders "unbound" while a member in fact holds the contact behind it — which is
+        // both a lie and the reason such a binding could not be unbound from this page.
+        var accountByContactId = contacts
+            .GroupBy(kv => kv.Value.Id, StringComparer.Ordinal)
+            .ToDictionary(g => g.Key, g => g.First().Key, StringComparer.Ordinal);
+
+        // Every binding on an account, not just the first: only UserId is unique in the DB and the two
+        // automatic write paths record what Holded assigned rather than refusing, so a second member on
+        // one 400000xx is exactly the state an admin has to see and resolve here.
+        var bindings = (await repo.GetCreditorContactsAsync(ct))
+            .Select(b => (Account: b.SupplierAccountNum
+                              ?? (accountByContactId.TryGetValue(b.HoldedContactId, out var viaContact)
+                                  ? viaContact
+                                  : (int?)null),
+                          Binding: b))
+            .Where(x => x.Account is not null)
+            .GroupBy(x => x.Account!.Value)
+            .ToDictionary(
+                g => g.Key,
+                g => (IReadOnlyList<CreditorContactBinding>)g
+                    .OrderBy(x => x.Binding.CreatedAt)
+                    .Select(x => ToBinding(x.Binding))
+                    .ToList());
 
         // Every creditor account with ledger activity, plus bound accounts that have no lines yet,
         // plus every Holded creditor contact — a first-time submitter's account exists in Holded

@@ -396,6 +396,30 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
+    public async Task ListCreditorAccounts_BindingWithUnresolvedNumber_LandsOnItsAccountViaTheContactId()
+    {
+        // The one-shot number resolution is best-effort and has no retry, so a binding can sit on a
+        // contact id with a null 400000xx indefinitely. Keyed on the number alone the account would
+        // render "unbound" while this member holds it — and could not be unbound from that page.
+        var userId = Guid.NewGuid();
+        _repo.GetAllLedgerLinesAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedLedgerLine>());
+        _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>
+        {
+            new() { UserId = userId, HoldedContactId = "c1", SupplierAccountNum = null, Source = CreditorContactSource.Auto },
+        });
+        _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedContactDto>
+        {
+            new() { Id = "c1", Name = "Daniela Marquez", SupplierAccountNum = 40000004 },
+        });
+
+        var rows = await MakeService().ListCreditorAccountsAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var row = rows.Should().ContainSingle().Subject;
+        row.SupplierAccountNum.Should().Be(40000004);
+        row.Bindings.Should().ContainSingle().Which.UserId.Should().Be(userId);
+    }
+
+    [HumansFact]
     public async Task GetCreditorLedger_derives_balance_and_lines_from_cache()
     {
         _repo.GetLedgerLinesByAccountNumAsync(40000004, Arg.Any<CancellationToken>()).Returns(new List<HoldedLedgerLine>
