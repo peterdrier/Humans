@@ -226,7 +226,7 @@ public sealed class ExpensesController(
             if (isFinanceAdmin)
             {
                 submitterBinding = await holdedFinance.GetCreditorContactByUserAsync(report.SubmitterUserId);
-                creditorAccounts = (await holdedFinance.ListCreditorAccountsAsync())
+                creditorAccounts = (await holdedFinance.ListCreditorAccountsAsync()).Accounts
                     .OrderBy(a => a.SupplierAccountNum)
                     .ToList();
             }

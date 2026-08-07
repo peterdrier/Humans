@@ -967,8 +967,9 @@ public sealed class ExpenseReportService(
         // Best-effort: the doc is already created, so a failure here must NOT fail the outbox event
         // (that would strand a created doc as permanently-failed). There is no automatic retry — a null
         // num stays null until an admin runs POST /Finance/Creditors/Bind, or a later report for this
-        // same member resolves it (nobodies-collective/Humans#972). GetUnresolvedCreditorBindingsAsync
-        // surfaces the gap on /Finance/Creditors so that manual step is discoverable.
+        // same member resolves it (nobodies-collective/Humans#972). ListCreditorAccountsAsync returns
+        // such bindings in its Unresolved half, which is what makes the gap visible on
+        // /Finance/Creditors so that manual step is discoverable.
         int? supplierAccountNum = null;
         try
         {

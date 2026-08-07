@@ -580,8 +580,7 @@ public class FinanceController(
     [HttpGet("Creditors")]
     public async Task<IActionResult> Creditors()
     {
-        var rows = await holdedFinance.ListCreditorAccountsAsync();
-        var unresolved = await holdedFinance.GetUnresolvedCreditorBindingsAsync();
+        var (rows, unresolved) = await holdedFinance.ListCreditorAccountsAsync();
 
         var names = new Dictionary<Guid, string>();
         var boundIds = rows.SelectMany(r => r.Bindings).Select(b => b.UserId)
