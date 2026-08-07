@@ -331,6 +331,29 @@ public class AgentToolDispatcherTests
     }
 
     [HumansFact]
+    public async Task RouteToIssue_reports_an_error_when_max_tokens_truncated_its_arguments()
+    {
+        // nobodies-collective/Humans#963 dispatches max_tokens-truncated tool calls instead of
+        // discarding them, which raised the question of whether route_to_issue — the one tool
+        // whose result is a canned success string — could tell the model "Proposal queued" for
+        // a payload AgentService then drops, leaving the user with no issue form. It can't:
+        // DispatchAsync parses the arguments once, up front, for every tool, so a truncated
+        // payload fails before the per-tool switch is ever reached. Pinning that ordering here
+        // because the canned success sits below it and would be wrong if the parse ever moved.
+        var dispatcher = MakeDispatcher();
+
+        var result = await dispatcher.DispatchAsync(
+            new AnthropicToolCall("t1", AgentToolNames.RouteToIssue,
+                """{"title":"Calendar feature","category":"Feature","description":"User asked ab"""),
+            userId: Guid.Parse("22222222-2222-2222-2222-222222222222"),
+            Xunit.TestContext.Current.CancellationToken);
+
+        result.IsError.Should().BeTrue(
+            "the model must learn the proposal failed so it can retry, not be told it was queued");
+        result.Content.Should().NotContain("Proposal queued");
+    }
+
+    [HumansFact]
     public async Task FetchCommunityFaq_returns_wrapped_body_for_known_topic()
     {
         var dispatcher = MakeDispatcher();
