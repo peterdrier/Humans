@@ -8,10 +8,10 @@
 #           from docs/database-restore-runbook.md, run for real on every staging deploy.
 #   live    pg_dump straight out of the production database, for up-to-the-minute data.
 #
-# Nothing here writes to production: `backup` never opens the production database at all,
-# `live` only reads it, and the uploads copy is one-way. The only destructive statements
-# target $STAGING_DB, and the guards below refuse to run if that name has drifted onto
-# something real.
+# Nothing here writes to production: `backup` reads only its catalog, to learn which
+# migration-history tables a backup is expected to carry; `live` reads its data as well; and
+# the uploads copy is one-way. The only destructive statements target $STAGING_DB, and the
+# guards below refuse to run if that name has drifted onto something real.
 #
 # See docs/staging-environment.md for the environment this feeds and the host-side setup
 # it assumes. nobodies-collective/Humans#962.
@@ -32,10 +32,12 @@ STAGING_APP_CONTAINER="${STAGING_APP_CONTAINER:-}"
 # BACKUP_FILE is deliberately reaching for an older one. 0 disables the check.
 BACKUP_MAX_AGE_HOURS="${BACKUP_MAX_AGE_HOURS:-48}"
 
-# Per-section DbContexts, each of which owns a __EFMigrationsHistory_<Section> table since
-# nobodies-collective/Humans#858. Same list, same variable name, as
-# .github/workflows/build.yml — grep SECTION_DB_CONTEXTS to find both; they move together.
-SECTION_DB_CONTEXTS="${SECTION_DB_CONTEXTS:-SystemSettingsDbContext ContainersDbContext AgentDbContext ExpensesDbContext FinanceDbContext SurveysDbContext EventGuideDbContext}"
+# The role the staging application connects as. It must NOT be $DB_USER: that role owns
+# production, so a staging app holding it can simply point its connection string at
+# $PROD_DB and read or write live data — no code change required, no stub in the way.
+# docs/staging-environment.md §7.7 creates it. Defaults to $DB_USER so a first bootstrap
+# run works before the role exists; the script says so loudly when it does.
+STAGING_DB_OWNER="${STAGING_DB_OWNER:-$DB_USER}"
 
 log() { printf '==> %s\n' "$*"; }
 die() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
@@ -230,6 +232,12 @@ psql_postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE d
 psql_postgres -c "DROP DATABASE IF EXISTS ${STAGING_DB};"
 psql_postgres -c "CREATE DATABASE ${STAGING_DB} OWNER ${DB_USER};"
 
+if [ "$STAGING_DB_OWNER" = "$DB_USER" ]; then
+  log "WARNING: staging will connect as '${DB_USER}', the role that owns production."
+  log "         That role can reach '${PROD_DB}' from staging by connection string alone."
+  log "         Create a restricted role and set STAGING_DB_OWNER — docs/staging-environment.md §7.7."
+fi
+
 case "$RESTORE_KIND" in
   live)
     log "Cloning '$PROD_DB' -> '$STAGING_DB'"
@@ -247,6 +255,19 @@ case "$RESTORE_KIND" in
     docker exec "$DB_CONTAINER" psql -U "$DB_USER" -d "$STAGING_DB" -v ON_ERROR_STOP=1 -f /tmp/staging-restore.sql >/dev/null
     ;;
 esac
+
+# The restore runs as $DB_USER, so every restored object is owned by it. When staging
+# connects as a restricted role instead, that role needs rights on what was just restored —
+# including CREATE on the schema, because the migration service adds tables on boot.
+if [ "$STAGING_DB_OWNER" != "$DB_USER" ]; then
+  log "Granting '$STAGING_DB_OWNER' on '$STAGING_DB'"
+  psql_staging -v ON_ERROR_STOP=1 -c "
+    GRANT ALL ON SCHEMA public TO ${STAGING_DB_OWNER};
+    GRANT ALL ON ALL TABLES IN SCHEMA public TO ${STAGING_DB_OWNER};
+    GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO ${STAGING_DB_OWNER};
+    ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO ${STAGING_DB_OWNER};
+    ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO ${STAGING_DB_OWNER};" >/dev/null
+fi
 
 # ---------------------------------------------------------------------------
 # 4. Verify the restore landed
@@ -267,10 +288,22 @@ log "Restored $TABLES tables"
 # unapplied and replay them against tables that already exist.
 RESTORED_HISTORY=$(psql_staging -tAc "SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND table_name LIKE '\_\_EFMigrationsHistory%';" | tr -d '\r')
 
-EXPECTED_HISTORY="__EFMigrationsHistory"          # HumansDbContext, the original
-for ctx in $SECTION_DB_CONTEXTS; do
-  EXPECTED_HISTORY="$EXPECTED_HISTORY __EFMigrationsHistory_${ctx%DbContext}"
-done
+# The expected set comes from production's own catalog, not from this checkout's list of
+# DbContexts. A release that ADDS a section arrives here with a context whose first
+# migration has not run anywhere yet, so production's backup legitimately has no history
+# table for it — and a candidate-derived list would reject that valid backup and make the
+# gate impossible to pass for exactly the releases most worth rehearsing. Production's
+# deployed schema is the thing the backup should match.
+#
+# This reads production's catalog. It is the only statement in `backup` mode that touches
+# the production database at all, it selects table names from information_schema, and it
+# is covered by the same read-only posture as `live`.
+EXPECTED_HISTORY=$(docker exec "$DB_CONTAINER" psql -U "$DB_USER" -d "$PROD_DB" -tAc \
+  "SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND table_name LIKE '\_\_EFMigrationsHistory%';" | tr -d '\r') \
+  || die "could not read production's migration-history tables from '$PROD_DB' — this script expects to run on the production host (docs/staging-environment.md §7.2)"
+
+printf '%s\n' "$EXPECTED_HISTORY" | grep -qx -- '__EFMigrationsHistory' \
+  || die "production database '$PROD_DB' has no __EFMigrationsHistory table — refusing to verify a restore against it"
 
 MISSING_HISTORY=""
 for expected in $EXPECTED_HISTORY; do
@@ -278,7 +311,7 @@ for expected in $EXPECTED_HISTORY; do
     || MISSING_HISTORY="$MISSING_HISTORY $expected"
 done
 [ -z "$MISSING_HISTORY" ] \
-  || die "restored database is missing migration-history table(s):$MISSING_HISTORY — either the archive is not a Humans database, or it predates those sections; restoring it would have the app replay their migrations against existing tables"
+  || die "restored database is missing migration-history table(s) that production has:$MISSING_HISTORY — the archive is not a Humans database, or it predates those sections; restoring it would have the app replay their migrations against existing tables. A section added since this backup was taken is the benign case: take a fresh backup, or pass 'live'"
 
 log "Migration history:"
 psql_staging -c "

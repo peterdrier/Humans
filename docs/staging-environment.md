@@ -110,10 +110,16 @@ fine.
 After restoring, the script fails the workflow if the restored database has no tables, if any
 **expected** `__EFMigrationsHistory*` table is missing, or if any of them came back empty.
 There is one history table per DbContext since the per-section split
-(nobodies-collective/Humans#858), so the expected set is `__EFMigrationsHistory` plus one
-`__EFMigrationsHistory_<Section>` per entry in `SECTION_DB_CONTEXTS` — the same list
-`.github/workflows/build.yml` uses, duplicated in the script's defaults and kept in step with
-it by name.
+(nobodies-collective/Humans#858).
+
+**The expected set is read from production's catalog, not from the checkout.** A release that
+adds a section arrives at staging with a DbContext whose first migration has not run anywhere
+yet, so production's backup legitimately has no history table for it. Deriving the expected set
+from the candidate's list of contexts would reject that valid backup — making the gate
+impossible to pass for precisely the releases most worth rehearsing. What the backup should
+contain is what production's deployed schema contains, so that is what it is compared against.
+This is the one statement `backup` mode runs against the production database, and it reads
+table names from `information_schema`.
 
 Missing and empty are different failures and both are quiet. An empty history table has the
 app boot happily and then apply that section's migrations from scratch against tables that
@@ -157,8 +163,9 @@ filename does not carry the database name — instead of the newest match. That 
 `BACKUP_MAX_AGE_HOURS` bound, which exists to catch a stalled schedule rather than to stop
 someone deliberately restoring an old artifact.
 
-Nothing in the script writes to production. `backup` never opens the production database at
-all; `live` only reads it; the uploads copy is one-way. The destructive statements target
+Nothing in the script writes to production. `backup` reads only its catalog, to learn which
+migration-history tables the backup is expected to carry; `live` reads its data as well; the
+uploads copy is one-way. The destructive statements target
 `humans_staging`, and the script refuses to start if that name has drifted onto `humans` or a
 `humans_pr_*` preview.
 
@@ -173,7 +180,8 @@ this host** — those are QA's and production's values.
 | Variable | Value | Why it cannot be left to defaults |
 |---|---|---|
 | `ASPNETCORE_ENVIRONMENT` | `Staging` | Selects the connector-stubbing branches in §5 |
-| `ConnectionStrings__DefaultConnection` | `Host=humans-db;Database=humans_staging;Username=humans;Password=<prod DB password>` | Same Postgres server as production, different database |
+| `ConnectionStrings__DefaultConnection` | `Host=humans-db;Database=humans_staging;Username=humans_staging;Password=<staging role password>` | Same Postgres server as production, different database **and different role**. Not `humans` — see §7.7. The database name in a connection string is a choice the application makes at runtime; the role's grants are what actually stop staging reaching production |
+| `POSTGRES_PASSWORD` | the **staging** role's password | Only if the staging resource templates its connection string from it. Never production's |
 | `AllowedHosts` | `staging.nobodies.team;localhost` | `appsettings.Staging.json` sets this to `humans.n.burn.camp;localhost`. Leave it and **every request to staging is rejected** before it reaches a controller |
 | `Email__BaseUrl` | `https://staging.nobodies.team` | Same file points it at QA. Links in anything staging generates would send people to QA |
 | `Email__SmtpHost` | *(empty string — see §5)* | Its default in `appsettings.json` is a real relay. **This is the one that decides whether staging can send mail to real members** |
@@ -181,7 +189,6 @@ this host** — those are QA's and production's values.
 | `Authentication__Google__ClientId` | production's value | Same OAuth client, with the staging redirect URI added |
 | `Authentication__Google__ClientSecret` | production's value | |
 | `GOOGLE_MAPS_API_KEY` | production's value | Read-only autocomplete; safe to share |
-| `POSTGRES_PASSWORD` | production's value | Only if the staging resource templates the connection string from it |
 
 ### Must stay unset
 
@@ -369,7 +376,49 @@ JavaScript origins** if that list is in use.
 
 **Check:** it resolves to the same address as `humans.nobodies.team`.
 
-### 7.7 Confirm the deploy ordering
+### 7.7 Create a restricted database role for staging
+
+**Required.** Staging and production share a Postgres server, and the database named in a
+connection string is a runtime choice, not a boundary. If staging connects as `humans` — the
+role that owns production — then staged code reaches production data by changing one string,
+and an accidental override or a bad candidate release is production-impacting. Every stub in §5
+is irrelevant to this: it is a direct database connection, not a connector.
+
+```sql
+CREATE ROLE humans_staging LOGIN PASSWORD '<a new password, not production''s>';
+REVOKE ALL ON DATABASE humans FROM humans_staging;
+REVOKE CONNECT ON DATABASE humans FROM humans_staging, PUBLIC;
+GRANT ALL ON DATABASE humans_staging TO humans_staging;
+```
+
+`REVOKE ... FROM PUBLIC` matters: without it the implicit `PUBLIC` grant lets any role connect
+to `humans`, and the revoke on the named role achieves nothing.
+
+Then set `STAGING_DB_OWNER=humans_staging` as a repository variable. The refresh script grants
+that role rights on each restored database — the restore itself runs as `humans`, so without the
+grant staging would connect successfully and then fail on the first query. When
+`STAGING_DB_OWNER` is unset the script logs a warning naming this section, because the default
+is the insecure one.
+
+**Check:** `psql -U humans_staging -d humans` is refused, and `psql -U humans_staging -d
+humans_staging` succeeds.
+
+### 7.8 Protect the `staging` branch
+
+**Required, and it is a production-host security control rather than a hygiene one.** The
+refresh workflow runs on the production host with Docker access, which is effectively root
+there. `.github/workflows/staging-db.yml` checks out `main` rather than the pushed commit, so a
+candidate cannot rewrite the *script* it runs — but for `on: push`, GitHub reads the *workflow
+file itself* from the pushed ref. Anyone who can push to `staging` can therefore add a step and
+run it as root on the production host, before the production PR is reviewed.
+
+GitHub → **Settings → Branches → Add rule** for `staging`: restrict who can push to the people
+who run promotions. Do not add required status checks — `/pr-prod` pushes a commit that CI has
+already passed on the fork, and a pending check would stall the promotion.
+
+**Check:** a push to `staging` from an account outside the allow-list is rejected.
+
+### 7.9 Confirm the deploy ordering
 
 Coolify auto-deploys the staging app on push to `staging`, and the refresh workflow starts on
 the same push. **Nothing orders the two.** In practice the refresh (seconds) finishes long

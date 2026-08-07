@@ -25,7 +25,20 @@ jobs:
   refresh:
     runs-on: [self-hosted, prod]
     steps:
+      # `main`, not the pushed commit. This job runs on the production host with Docker
+      # access, so whatever it executes has effectively root there. Checking out the
+      # candidate would mean any commit staged for review could rewrite the script and run
+      # it as root on production *before* the production PR is looked at. `main` is the
+      # reviewed ref; a change to the refresh script therefore takes effect one promotion
+      # after it lands, which is the right way round for infrastructure.
+      #
+      # This does NOT cover the workflow file itself — for `on: push`, GitHub reads that
+      # from the pushed ref. Push access to `staging` is therefore equivalent to root on
+      # the production host, which is why docs/staging-environment.md §7.8 makes branch
+      # protection on `staging` a required step rather than a suggestion.
       - uses: actions/checkout@v7
+        with:
+          ref: main
 
       - name: Refresh humans_staging
         env:
