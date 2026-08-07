@@ -19,7 +19,7 @@
 
 The Issues section is the in-app issue tracker — bugs, feature requests, and questions raised by humans against any section of the app. Submissions are routed by `Issue.Section` to the role-holders who own that section (e.g. an issue tagged `Tickets` lands in the queue of every `TicketAdmin`), so triage is decentralised: each section's coordinators see only the issues that concern them, while Admin sees everything. A reporter can have a back-and-forth conversation with handlers right inside the issue detail; "ball-in-court" is derived from the latest comment so the system never lies about whose move it is. Claude Code agents have programmatic read/write access via an API key for automated triage and follow-up.
 
-This is **not** the same surface as Feedback (`27-feedback-system.md`). Feedback is a single global queue triaged by `FeedbackAdmin`; Issues is a section-routed queue triaged by each section's role-holders. Both are kept because they serve different audiences and lifecycles, but new in-app reports of section-specific problems should go to Issues.
+Issues **superseded** Feedback (`docs/features/feedback/feedback-system.md`), which was a single global queue. Since nobodies-collective/Humans#977 Feedback accepts no new reports and its screens are Admin-only, so Issues is the only in-app reporting path — every new report, section-specific or not, goes here.
 
 ## User Stories
 
@@ -169,7 +169,7 @@ The Issues API is the read/write surface Claude Code agents use to triage and fo
 
 ## Related Features
 
-- `27-feedback-system.md` — separate global feedback queue triaged by `FeedbackAdmin`. Issues is the section-routed sibling.
+- `docs/features/feedback/feedback-system.md` — the retired global feedback queue Issues replaced (#977): closed to new reports, Admin-only, kept as a historical archive.
 - Email outbox (`EmailOutboxMessage`) — used for comment notification emails.
 - Notifications (`37-notification-inbox.md`) — `NotificationSource.IssueSubmitted`, `NotificationSource.IssueComment`, `NotificationSource.IssueStatusChanged`, `NotificationSource.IssueAssigned`.
 - Audit log — every issue mutation is recorded.
