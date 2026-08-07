@@ -80,6 +80,13 @@ docker inspect "$STAGING_APP_CONTAINER" >/dev/null 2>&1 \
 PROD_UPLOADS_DIR=$(realpath -m "$PROD_UPLOADS_DIR")
 STAGING_UPLOADS_DIR=$(realpath -m "$STAGING_UPLOADS_DIR")
 
+# '/' is the one path that breaks the nesting test below: it is the only canonical path
+# ending in a slash, so its ancestry pattern would be '//*' and would match nothing —
+# '/data/uploads' would read as unrelated to '/'. Rejected here rather than papered over in
+# the pattern, because neither variable has any business pointing at the host root.
+[ "$PROD_UPLOADS_DIR" = "/" ] && die "PROD_UPLOADS_DIR resolves to '/' — that is the host root, not an uploads directory"
+[ "$STAGING_UPLOADS_DIR" = "/" ] && die "STAGING_UPLOADS_DIR resolves to '/' — rsync --delete would run against the host root"
+
 # Equality is not the only way `rsync --delete` reaches production. If staging is an
 # ancestor of prod — staging '/data', prod '/data/uploads' — rsync copies the contents of
 # '/data/uploads' into '/data', finds '/data/uploads' extraneous at the destination, and
@@ -142,10 +149,25 @@ else
     # under `pipefail` plus `errexit`, sort dying of SIGPIPE once the listing outgrows the
     # pipe buffer would fail this assignment with status 141 and block every refresh from
     # then on — with a directory full of perfectly good backups. awk drains the stream.
+    # '*humans*' also matches humans_staging, humans_restore and humans_pr_12 — all of
+    # which restore cleanly and satisfy every check below, so a newer one of those would
+    # be promoted as though it were production. The second awk keeps only artifacts where
+    # the database name is a whole token: a letter straight after it (with or without an
+    # underscore) means a different database whose name merely starts with this one, while
+    # a digit or a separator is the timestamp Coolify appends.
     BACKUP_FILE=$(find "$COOLIFY_BACKUP_DIR" -type f -name "*${PROD_DB}*" \
       \( -name '*.dump' -o -name '*.dmp' -o -name '*.sql' -o -name '*.backup' -o -name '*.gz' \) \
       -printf '%T@\t%p\n' 2>/dev/null \
-      | sort -rn | cut -f2- | awk 'NR == 1 { newest = $0 } END { print newest }')
+      | sort -rn | cut -f2- \
+      | awk -v db="$PROD_DB" '
+          {
+            name = $0; sub(/^.*\//, "", name)
+            p = index(name, db)
+            if (p == 0) next
+            if (substr(name, p + length(db)) ~ /^_?[A-Za-z]/) next
+            print
+          }' \
+      | awk 'NR == 1 { newest = $0 } END { print newest }')
 
     [ -n "$BACKUP_FILE" ] \
       || die "no backup artifact matching '*${PROD_DB}*' under '$COOLIFY_BACKUP_DIR' — check the path, set BACKUP_FILE to one directly, or pass 'live'"

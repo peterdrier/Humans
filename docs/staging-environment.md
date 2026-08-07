@@ -87,8 +87,18 @@ restore-source switch and the verification step added.
 
 | Source | What it restores | When |
 |---|---|---|
-| **`backup`** (default) | The newest Coolify backup artifact under `COOLIFY_BACKUP_DIR` | Every push. Doubles as the restore test — a broken backup fails the workflow here rather than during an incident |
+| **`backup`** (default) | The newest Coolify backup artifact **for the `humans` database** under `COOLIFY_BACKUP_DIR` | Every push. Doubles as the restore test — a broken backup fails the workflow here rather than during an incident |
 | **`live`** | `pg_dump` straight from the production database | Manual override via **Actions → Staging Database Refresh → Run workflow → source: live**, when you need data newer than the last backup |
+
+**The database name has to match as a whole token, not as a substring.** `humans_staging`,
+`humans_restore` and `humans_pr_12` all contain `humans`, and all of them restore cleanly and
+satisfy every check below — so a newer artifact for one of those would be promoted as though it
+were production, having verified the release against the wrong snapshot. The selector keeps an
+artifact only when the character after the database name is a digit or a separator (the
+timestamp Coolify appends); a letter, with or without an underscore, means a different database
+whose name merely starts with this one. Pointing `COOLIFY_BACKUP_DIR` at the production
+resource's own backup directory removes the ambiguity at the source and is worth doing if
+Coolify's layout allows it.
 
 Format is detected, not assumed: `.gz` is decompressed, then the `PGDMP` magic bytes select
 `pg_restore --exit-on-error` over `psql -v ON_ERROR_STOP=1`. Both paths carry a
@@ -123,12 +133,13 @@ that is a deliberate reach for an older artifact; `BACKUP_MAX_AGE_HOURS=0` disab
 `rsync -a --delete` from production's uploads directory into staging's. A **copy**, never a
 shared mount — staging writes to its uploads directory, and production's bytes must not be on
 the other end of that. `--delete` is deliberate: staging's own uploads are wiped on every
-refresh, exactly like its database. The script refuses to run if both paths are not set, or if
-they are the same directory, or if either is nested inside the other — the two paths are
-resolved with `realpath` first, so a trailing slash or a symlink cannot disguise any of those.
-Nesting is the one worth spelling out: with staging at `/data` and production at
-`/data/uploads`, `rsync --delete` finds production's directory extraneous at the destination
-and deletes it.
+refresh, exactly like its database. The script refuses to run if both paths are not set, if
+either resolves to `/`, if they are the same directory, or if either is nested inside the
+other — the two paths are resolved with `realpath` first, so a trailing slash or a symlink
+cannot disguise any of those. Nesting is the one worth spelling out: with staging at `/data`
+and production at `/data/uploads`, `rsync --delete` finds production's directory extraneous at
+the destination and deletes it. `/` is rejected separately because it is the only canonical
+path that already ends in a slash, which is exactly the shape the nesting test cannot see.
 
 ### Running it by hand
 
@@ -307,7 +318,7 @@ repository cannot know; the script fails loudly rather than guessing.
 |---|---|---|
 | `PROD_UPLOADS_DIR` | Host path backing production's `/app/wwwroot/uploads` (Coolify → the production resource → **Storages**) | Yes |
 | `STAGING_UPLOADS_DIR` | Host path for staging's uploads — a **new, separate** directory | Yes |
-| `COOLIFY_BACKUP_DIR` | Where Coolify writes database backup artifacts, if not `/data/coolify/backups` | Only if different |
+| `COOLIFY_BACKUP_DIR` | Where Coolify writes database backup artifacts, if not `/data/coolify/backups`. Prefer the **production resource's own** backup directory over the shared root — it removes any chance of selecting another database's artifact | Only if different |
 | `BACKUP_MAX_AGE_HOURS` | How old the newest artifact may be before the refresh fails as a backup incident. Default 48 — set it to match the real Coolify backup schedule, since a cadence slower than the bound fails every refresh and one much faster than it wastes the signal | Recommended |
 | `STAGING_DB_CONTAINER` | Postgres container name, if not `humans-db` | Only if different |
 | `STAGING_APP_CONTAINER` | Staging app container name, stable across deploys. The script stops the app before dropping its database and restarts it afterwards, and refuses to run if the name is unset or does not resolve — an app left running through the drop reconnects to a half-restored database and stays there | Yes |
