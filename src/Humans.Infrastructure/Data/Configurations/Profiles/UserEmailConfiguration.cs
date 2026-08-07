@@ -58,17 +58,12 @@ public class UserEmailConfiguration : IEntityTypeConfiguration<UserEmail>
             .HasSentinel(GoogleEmailStatus.Unknown)
             .IsRequired();
 
-        // The IsOAuth / DisplayOrder columns survive on disk as EF shadow
-        // properties: the C# surface on UserEmail is gone, but the migration
-        // scaffolder still sees the columns so no DropColumn is generated.
-        // Column drops happen in a deferred PR after end-to-end prod
-        // verification per architecture_no_drops_until_prod_verified.
+        // The IsOAuth column survives on disk as an EF shadow property: the C#
+        // surface on UserEmail is gone, but UserEmailProviderBackfillService
+        // still reads it via EF.Property<T>, so the column stays until that
+        // backfill is retired (nobodies-collective/Humans#507).
         builder.Property<bool>("IsOAuth")
             .HasColumnName("IsOAuth")
-            .IsRequired();
-
-        builder.Property<int>("DisplayOrder")
-            .HasColumnName("DisplayOrder")
             .IsRequired();
 
         builder.HasOne<User>()

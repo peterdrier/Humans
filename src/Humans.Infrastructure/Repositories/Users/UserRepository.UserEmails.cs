@@ -474,15 +474,14 @@ internal sealed partial class UserRepository
         await ctx.SaveChangesAsync(ct);
     }
 
-    // The legacy IsOAuth / DisplayOrder columns are mapped as EF shadow
-    // properties; detached UpdateUserEmailAsync would write the CLR default (false / 0)
-    // and silently erase legacy values that the provider backfill still depends
-    // on. Drop the columns from the UPDATE until PR 7 removes them entirely.
+    // The legacy IsOAuth column is mapped as an EF shadow property; detached
+    // UpdateUserEmailAsync would write the CLR default (false) and silently
+    // erase legacy values that the provider backfill still depends on. Drop the
+    // column from the UPDATE until that backfill is retired.
     private static void ExcludeLegacyShadowsFromUpdate(
         Microsoft.EntityFrameworkCore.ChangeTracking.EntityEntry<UserEmail> entry)
     {
         entry.Property("IsOAuth").IsModified = false;
-        entry.Property("DisplayOrder").IsModified = false;
     }
 
     public async Task<UserEmail?> FindOtherUsersVerifiedUserEmailRowAsync(

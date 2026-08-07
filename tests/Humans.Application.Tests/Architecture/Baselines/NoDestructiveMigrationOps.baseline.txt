@@ -61,3 +61,10 @@ src/Humans.Infrastructure/Migrations/20260807215606_DropProfileIsSuspended.cs:Dr
 # ProfilePictureContentType is deliberately KEPT: it is the "has picture?" predicate and supplies
 # the file extension. Column drop only, no data moved or transformed.
 src/Humans.Infrastructure/Migrations/20260807220438_DropProfilePictureData.cs:DropColumn(name=ProfilePictureData)#1
+# Sanctioned split-PR drop (issue nobodies-collective/Humans#507, partial): this IS the "PR B" of
+# the cut sequence in memory/architecture/no-drops-until-prod-verified.md. The replacement —
+# alphabetical sort on Email — shipped with the entity-property removal and soaked; the column was
+# left as an EF shadow property with no reader, only a write-guard. Column drop only, no data
+# moved. #507's other two columns (UserEmail.IsOAuth, User.GoogleEmail) still have live readers
+# and are deliberately NOT dropped here.
+src/Humans.Infrastructure/Migrations/20260807220909_DropUserEmailDisplayOrder.cs:DropColumn(name=DisplayOrder)#1

@@ -10,8 +10,8 @@ namespace Humans.Application.Interfaces.Repositories;
 public partial interface IUserRepository
 {
     /// <summary>
-    /// Returns all emails for a user, read-only, ordered by
-    /// <c>DisplayOrder</c> then <c>CreatedAt</c>.
+    /// Returns all emails for a user, read-only, unordered — callers sort for
+    /// display (alphabetically on <c>Email</c>).
     /// </summary>
     Task<IReadOnlyList<UserEmail>> GetUserEmailsByUserIdReadOnlyAsync(
         Guid userId, CancellationToken ct = default);
