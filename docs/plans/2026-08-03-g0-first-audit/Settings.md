@@ -24,7 +24,7 @@
 | 2 | Service tests mock repository, zero `HumansDbContext` | **FAIL** | No `SystemSettingsServiceTests.cs` (or any file testing `SystemSettingsService` directly) exists at all — `find tests -iname "*SystemSettingsService*"` is empty. The pass-through `GetValueAsync`/`SetValueAsync` logic has zero direct unit coverage; only the repository is tested (over EF-InMemory, predicate 1). |
 | 3 | Invariants/triggers each have a test | **N/A** | No `docs/sections/Settings.md` exists to test against (predicate 7). `SystemSettingsRepositoryTests.cs` does cover the get/set upsert semantics (insert-when-missing vs. update-when-present) at the repository level, which is the section's only real behavior. |
 | 4 | No skipped tests without an issue ref | **PASS** | No `Skip\s*=` in `SystemSettingsRepositoryTests.cs`. |
-| 5 | Tests grouped under the section | **PASS** | The one test file sits in `tests/Humans.Application.Tests/Repositories/SystemSettingsRepositoryTests.cs` — the standard by-kind repo-tests folder, same convention as every other section. |
+| 5 | Tests grouped under the section | **FAIL** | The one test file is a loose top-level file at `tests/Humans.Application.Tests/Repositories/SystemSettingsRepositoryTests.cs`, with no `Settings`/`SystemSettings` test folder anywhere — not movable as a unit at G5. **Corrected from PASS**: the original scoring called this "the standard by-kind repo-tests folder, same convention as every other section", which doesn't survive comparison with how this same criterion was applied in the first G0 pass. `Auth.md` predicate 5 FAILs on `.../Repositories/RoleAssignmentRepositoryTests.cs` and `Feedback.md` FAILs on `.../Repositories/FeedbackRepositoryTests.cs`, both for exactly this placement, both citing "not movable as a unit". The sections scored PASS (Camps, Cantina, Gdpr, Gate) all have a real section-named folder — e.g. `Services/Cantina/`, `Services/Gdpr/`. Settings has none. |
 
 ## G1 gap list
 
@@ -35,6 +35,7 @@
 
 1. **Repository tests use EF-InMemory, not the shared Postgres fixture** (predicate 1). Fix: convert per #766. No-migration-needed: **y**.
 2. **`SystemSettingsService` has zero direct unit tests** (predicate 2). Fix: add a `SystemSettingsServiceTests.cs` mocking `ISystemSettingsRepository`, even though the logic is currently thin pass-through — it stops being thin the moment #864 lands real behavior on top of it. No-migration-needed: **y**.
+3. **No section test grouping — `SystemSettingsRepositoryTests.cs` is a loose file that G5 can leave behind** (predicate 5). Same finding Auth and Feedback carry from the first G0 pass. Fix: create the section test folder and move it there, together with the `SystemSettingsServiceTests.cs` from gap #2 so the grouping lands complete rather than in two passes. **Sequencing note:** the folder name depends on the unresolved `Settings`-vs-`SystemSettings` question in G1 gap #2 — do the rename decision first, or this move gets redone. No-migration-needed: **y**.
 
 ## G2 queue notes
 

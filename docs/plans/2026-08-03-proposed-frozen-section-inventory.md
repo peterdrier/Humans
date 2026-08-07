@@ -65,15 +65,22 @@ model), Platform (config bucket, dissolved).
 ## Follow-up work items
 
 1. Back-propagate to `reforge.surface-score.json`: add Gate, Surveys, Settings,
-   Development, **Gdpr, Search**; split Onboarding out of Users; **map each vendor
+   Development, ~~**Gdpr, Search**~~; split Onboarding out of Users; **map each vendor
    connector's client surface to its own section — `IHoldedClient` and the Holded API-client
    types to `Holded`, `Interfaces/Mailer/**` + `Services/Mailer/**` to `Mailer`**; rename
    Consent key alignment; retire the Platform bucket per above. (Config PR, not this docs PR.)
 
-   *(Gdpr and Search added 2026-08-03: the canonical list above admits both as orchestrator
-   rows and item 2 queues their first audits, so omitting them here would leave both absent
-   from the config and stuck on the namespace-fallback grouping this item exists to
-   eliminate.)*
+   *(~~Gdpr and Search added 2026-08-03~~ — **struck 2026-08-05, premise was wrong.** That
+   addition assumed both were absent from the config; the G0 audit checked and both are already
+   registered (`'Gdpr' in data['sections']` → `True`, likewise `Search`), each with its own
+   paths/symbols/`serviceInterfaces` mapping — so neither was ever on the namespace-fallback
+   grouping this item exists to eliminate. **Still genuinely outstanding: `Gate`, `Settings`
+   and `Development`** — all three confirmed `False` by the same check
+   ([`Gate.md`](2026-08-03-g0-first-audit/Gate.md) scope note,
+   [`Settings.md`](2026-08-03-g0-first-audit/Settings.md) G1 gap #2,
+   [`Development.md`](2026-08-03-g0-first-audit/Development.md) G1 gap #3). Note the ordering
+   dependency: `Settings` can't be registered until the `Settings`-vs-`SystemSettings` naming
+   question is settled, or the config key has to be redone.)*
 
    ⚠️ **Scope the Holded split by symbol, not by name prefix.** A literal "move every `Holded*`
    path out of `Finance`" would drag `Services/Finance/HoldedFinanceService.cs`,
