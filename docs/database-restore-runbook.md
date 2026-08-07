@@ -67,14 +67,20 @@ container is the one built from this repo. The rest of this runbook calls them `
 does not:
 
 ```bash
-mkdir -p ./snapshots
-docker cp $APP:/app/db-snapshots/. ./snapshots && ls -lt ./snapshots
+SNAPSHOTS=$(mktemp -d)
+docker cp $APP:/app/db-snapshots/. "$SNAPSHOTS" && ls -lt "$SNAPSHOTS"
 ```
 
-The trailing **`/.`** on the source matters: `docker cp` of a directory *into an existing
-directory* nests it, so without it a second attempt leaves you with
-`./snapshots/db-snapshots/...` and a `cp` that either fails or quietly picks up the stale dump
-from the first attempt. With `/.` it copies the contents, and reruns are safe.
+Two details, both about making a *second* attempt safe — and during an incident there is almost
+always a second attempt:
+
+- **A fresh directory every time.** `docker cp` copies into the destination; it never removes
+  what is already there. Copying into a reused `./snapshots` leaves last incident's files
+  sitting alongside this one's, including an old `.unfinished` that the rules below would
+  happily identify as this deploy's rollback point. `mktemp -d` costs nothing and makes that
+  impossible.
+- **The trailing `/.` on the source.** Without it, `docker cp` of a directory into an existing
+  directory nests it, and you get `$SNAPSHOTS/db-snapshots/...` instead of the files.
 
 **Which file — it depends on what went wrong:**
 
@@ -94,7 +100,7 @@ Then copy the file you picked to a plain `restore.dump` — the suffix is bookke
 and `pg_restore` does not care what the file is called:
 
 ```bash
-cp ./snapshots/humans-20260805T155147Z.dump.unfinished ./restore.dump
+cp "$SNAPSHOTS"/humans-20260805T155147Z.dump.unfinished ./restore.dump
 docker cp ./restore.dump $DB:/tmp/restore.dump
 ```
 
@@ -158,6 +164,8 @@ check exists to catch. The main table's count must also match the migration coun
 you are running.
 
 If those look wrong, **stop** — you have the wrong backup, and you have not damaged anything.
+Drop `humans_restore` before you walk away, though: the end of §3 says why, and it applies just
+as much to an attempt you abandoned here.
 
 ### Plain-SQL variant
 
@@ -227,6 +235,16 @@ docker exec $APP curl -s  http://localhost:8080/api/version
 docker inspect --format '{{.State.Health.Status}}' $APP     # -> healthy
 ```
 
+**Then drop the scratch database — but not before the checks above pass.** Until they do,
+`humans_restore` is your second chance at the same archive without another `pg_restore`. Once
+they pass it is dead weight: a full second copy of the database sitting on the same volume, and
+at production size that is how an incident turns into a disk-full outage a week later.
+
+```bash
+docker exec $DB psql -U humans -d postgres -c "DROP DATABASE IF EXISTS humans_restore"
+docker exec $DB df -h /var/lib/postgresql/data     # confirm the space came back
+```
+
 **If it says pending migrations instead of "up to date",** you restored a backup older than the
 running release. That is fine and expected — the app will apply the missing migrations on boot,
 and it will take a fresh pre-migration snapshot before doing so.
@@ -241,11 +259,11 @@ a bad migration means the container crash-loops.
 
 1. **Read the logs before doing anything.** `docker logs $APP | tail -100`. The line
    `Applying pending migration: <name>` immediately before the exception names the culprit.
-2. **Find the snapshot.** `mkdir -p ./snapshots && docker cp $APP:/app/db-snapshots/. ./snapshots
-   && ls -l ./snapshots` — the file ending **`.unfinished`** is from this deploy, taken *before*
-   the failed migration ran. (`docker cp` rather than `docker exec`: a crash-looping container is
-   usually not in a state you can exec into. The trailing `/.` is what makes a second attempt
-   refresh `./snapshots` instead of nesting a directory inside it — see §1.)
+2. **Find the snapshot.** `SNAPSHOTS=$(mktemp -d) && docker cp $APP:/app/db-snapshots/.
+   "$SNAPSHOTS" && ls -lt "$SNAPSHOTS"` — the file ending **`.unfinished`** is from this deploy,
+   taken *before* the failed migration ran. (`docker cp` rather than `docker exec`: a
+   crash-looping container is usually not in a state you can exec into. The fresh directory and
+   the trailing `/.` both matter on a second attempt — see §1.)
    - **Take the `.unfinished` one, not the newest one.** The crash loop keeps restarting the
      app, and each restart re-runs the migration against a schema the earlier attempts may have
      already part-changed. The suffix marks the snapshot from *before* any of that; the app
