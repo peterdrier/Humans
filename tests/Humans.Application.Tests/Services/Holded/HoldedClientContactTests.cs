@@ -115,6 +115,20 @@ public class HoldedClientContactTests
     }
 
     [HumansFact]
+    public async Task GetContact_surfaces_an_unreadable_contact_as_permanent_not_a_raw_parse_throw()
+    {
+        // ProcessHoldedCreateAsync catches only the client's typed exceptions, and so does the outbox
+        // drain loop above it — a raw InvalidOperationException here would abort the whole batch and
+        // leave its own event neither processed nor failed.
+        var client = Make(new StubHandler(_ => Respond(
+            HttpStatusCode.OK, """{"id":42,"name":"Numeric id"}""")));
+
+        var act = async () => await client.GetContactAsync("c1", Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<HoldedPermanentException>();
+    }
+
+    [HumansFact]
     public async Task ListContacts_walks_pages_until_an_empty_page_returns()
     {
         // Regression for #976: an unpaged call silently truncated at whatever cap Holded applies.

@@ -196,10 +196,25 @@ public sealed class HoldedClient : IHoldedClient
         AttachAuth(req);
         using var resp = await SendAsync(req, ct);
         await using var stream = await resp.Content.ReadAsStreamAsync(ct);
-        var node = await JsonNode.ParseAsync(stream, cancellationToken: ct)
-            ?? throw new HoldedTransientException("Holded returned empty body");
+        try
+        {
+            var node = await JsonNode.ParseAsync(stream, cancellationToken: ct)
+                ?? throw new HoldedTransientException("Holded returned empty body");
 
-        return ParseContact(node, contactId);
+            return ParseContact(node, contactId);
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException
+            or FormatException or OverflowException)
+        {
+            // The single-contact sibling of the per-contact skip in ListContactsAsync. A value of an
+            // unexpected type is a property of the stored contact, not of this request, so retrying
+            // cannot help — surface it as permanent so callers that already handle the client's typed
+            // exceptions degrade instead of letting a raw parse failure escape the client. The only
+            // caller (ExpenseReportService.ProcessHoldedCreateAsync) would otherwise abort the whole
+            // outbox batch and leave its own event neither processed nor failed.
+            throw new HoldedPermanentException(
+                $"Holded contact {contactId} could not be read.", ex);
+        }
     }
 
     public async Task<IReadOnlyList<HoldedContactDto>> ListContactsAsync(CancellationToken ct = default)
