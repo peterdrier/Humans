@@ -60,9 +60,9 @@ The feature is deliberately scoped to matching **confined to each entity's own p
 - **Events** match on `Event.Title` or `Event.Description` and are filtered to `Status = Approved` only. Events are the one deliberate exception to matching on the name/title field alone: the orchestrator reuses `IEventServiceRead.GetApprovedEventsAsync` (the same call the public Browse page makes), which filters Title + Description with ILike, because event copy is short and free-form so description text is often the load-bearing name signal users remember. Rows are still scored by Title via the standard exact/prefix/contains rubric; rows that only matched via Description fall through to a contains-tier score so they're still surfaced (just ranked below title hits).
 - Humans, Teams, and Camps match in-memory against the cached snapshots (`CachingUserService` / `CachingTeamService` / `CachingCampService`) — case-insensitive contains, accent-folded for humans; search never hits the DB for these buckets. Shifts and Events still run case-insensitive Postgres `EF.Functions.ILike` at the DB layer per `memory/feedback_ef_ilike_not_toupper.md`.
 
-### US-GS.4: Search surfaces the public-visibility set, never more
+### US-GS.4: A text query surfaces the public-visibility set, never more
 **As an** authenticated viewer (any role)
-**I want** search to surface only what a regular volunteer would see from list pages
+**I want** a name search to surface only what a regular volunteer would see from list pages
 **So that** the search affordance can't be a privilege escalation, and admins never see surprise data through this path
 
 **Acceptance Criteria:**
@@ -72,9 +72,21 @@ The feature is deliberately scoped to matching **confined to each entity's own p
 - Events are filtered to `Status = Approved`; submissions in `Draft`, `Pending`, `Rejected`, `ResubmitRequested`, or `Withdrawn` are never returned, matching the public `/Events/Browse` surface.
 - Admin-only profile fields (verified emails, non-public ContactFields) are never returned through `/Search`, regardless of role. Admins use the existing per-section admin pages (`/Teams` admin, `/Camps` admin, `/Users/Admin`) for privileged views.
 
+### US-GS.5: A GUID query resolves straight to the entity
+**As** someone who already holds an entity id (from a log line, an audit row, a support thread)
+**I want** pasting it into search to find that entity
+**So that** I don't have to know which section's admin page owns it
+
+**Acceptance Criteria:**
+- The Teams, Camps and Rotas buckets treat a parseable GUID as an id lookup and skip the visibility filters in US-GS.4 — the hit comes back for a hidden team, a non-public camp season, or a rota hidden from volunteers.
+- Humans are unconditionally GUID-resolvable: there are no hidden users.
+- The hit is scored as an exact match and its URL is the entity's normal detail page. Opening that page re-runs the page's own access checks, so a viewer without a stake in it gets an error, not the page.
+
 ## Authorization Model
 
-`/Search` is gated by `[Authorize]` — anonymous viewers can't reach it. Beyond that, **every authenticated viewer sees the same public-visibility surface**, regardless of role. There is no scope parameter on `ISearchService` and no role check in `SearchController`.
+`/Search` is gated by `[Authorize]` — anonymous viewers can't reach it. Beyond that, **search is not an authorization boundary**: a hit says a URL exists, not that the caller may open it. Visibility is enforced at the destination page (ruling on nobodies-collective/Humans#985, 2026-08-07). Text queries are still filtered to the public surface per US-GS.4; the GUID path in US-GS.5 is deliberately unfiltered, because you can only use it if you already hold the id.
+
+There is no scope parameter on `ISearchService` and no role check in `SearchController`.
 
 This is a deliberate descope. An earlier draft had a `SearchScope { Public, Admin }` parameter threaded through every search service that promoted `Admin` / `HumanAdmin` / `Board` callers to a wider surface (hidden teams, non-public camp seasons, admin-only profile fields). It was removed because:
 

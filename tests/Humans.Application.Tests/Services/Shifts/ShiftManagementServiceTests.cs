@@ -835,6 +835,27 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
         results.Should().BeEmpty();
     }
 
+    [HumansFact]
+    public async Task GetBrowseShifts_HiddenRota_IsAbsentForAVolunteer_AndPresentForAPrivilegedViewer()
+    {
+        // Destination-page enforcement for the rota half of the nobodies-collective/Humans#985
+        // ruling. A GUID search hit links to /Shifts?departmentId={teamId}; the listing that
+        // page builds is a default ShiftBrowseQuery, which excludes rotas hidden from
+        // volunteers. ShiftBrowsePageBuilder only adds IncludeHidden for a privileged viewer.
+        var (es, rota) = SeedRotaScenario(RotaPeriod.Event);
+        rota.IsVisibleToVolunteers = false;
+        SeedShift(rota, dayOffset: 1);
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var volunteerView = await _service.GetBrowseShiftsAsync(
+            new ShiftBrowseQuery(es.Id, rota.TeamId));
+        var privilegedView = await _service.GetBrowseShiftsAsync(
+            new ShiftBrowseQuery(es.Id, rota.TeamId, Flags: ShiftBrowseQueryFlags.IncludeHidden));
+
+        volunteerView.Should().BeEmpty();
+        privilegedView.Should().ContainSingle().Which.Shift.RotaId.Should().Be(rota.Id);
+    }
+
     private (EventSettings es, Rota rota) SeedRotaScenario(RotaPeriod period)
     {
         var es = new EventSettings
