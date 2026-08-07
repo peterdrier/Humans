@@ -335,8 +335,8 @@ public sealed class StoreSection : ISection
     public void Register(IServiceCollection services)
     {
         services.AddSectionDbContext<StoreDbContext>(sentinelTable: "store_orders");
-        services.AddSingleton<IRepository, Repository>();
-        services.AddScoped<IService, Service>();
+        services.AddSingleton<Repository>();
+        services.AddScoped<Service>();
         services.AddScoped<IAuthorizationHandler, OrderAuthorizationHandler>();
     }
 }
@@ -416,18 +416,44 @@ each for a concrete reason.
 
 | Names | Rule |
 |---|---|
-| `IStoreRepository`/`StoreRepository` → `IRepository`/`Repository`; `IStoreService`/`StoreService` → `IService`/`Service`; entities and enums (`StoreOrder` → `Order`, `StoreOrderState` → `OrderState`); EF configurations (`StoreOrderConfiguration` → `OrderConfiguration`); view models (`StoreIndexViewModel` → `IndexViewModel`) | **Drop the prefix.** All internal; nothing outside the assembly resolves them by name. Table names are declared explicitly in the EF configurations, so entity renames are schema-inert. `Enum_{TypeName}_{Value}` resx keys do change — but those keys are moving into the section's own resource set in the same PR (§3) |
+| `StoreRepository` → `Repository`; `StoreService` → `Service`; entities and enums (`StoreOrder` → `Order`, `StoreOrderState` → `OrderState`); EF configurations (`StoreOrderConfiguration` → `OrderConfiguration`); view models (`StoreIndexViewModel` → `IndexViewModel`) | **Drop the prefix.** All internal; nothing outside the assembly resolves them by name. Table names are declared explicitly in the EF configurations, so entity renames are schema-inert. `Enum_{TypeName}_{Value}` resx keys do change — but those keys are moving into the section's own resource set in the same PR (§3) |
 | `StoreController`, `StoreAdminController`, `StoreStripeWebhookController` | **Keep the prefix.** View lookup is `/Views/{ControllerName}/{Action}.cshtml`, and that path is **global across application parts** — two sections with `Views/Controller/Index.cshtml` collide at one path. *Routes* are safe either way: all three Store controllers carry an explicit `[Route("Store")]` / `[Route("Store/Admin")]` / `[Route("Store/StripeWebhook")]`, and 78 of the repo's 90 controllers do. The 12 without must add one before any rename elsewhere |
 | `StoreDbContext` | **Keep the prefix.** `SectionMigrationsHistory.TableFor` derives `__EFMigrationsHistory_Store` by stripping `"DbContext"` from the type name; renaming empties the suffix. Derivable from the section marker instead, but it names live schema — leave it |
 | Public `Contracts/` types (`ICampsRead`, `CampSeasonInfo`, `Camp*` events) | **Keep the prefix.** They are read at cross-section call sites, where `ICampsRead campService` beats `using Humans.Camps.Contracts; … IRead campService` |
 
-One collision worth knowing: the section-local `IRepository` derives from the marker
-`Humans.Application.Interfaces.Repositories.IRepository` (`src/Humans.Interfaces/Interfaces/Repositories/IRepository.cs`)
-— same simple name, different namespace. Legal C#; costs one qualified reference in the file that
-declares it.
+### The interface goes away too, unless something needs the seam
 
-Do the renames **in their own commit** inside PR B, after the move compiles green. A move and a
-rename in one diff is unreviewable.
+`IStoreRepository` exists to let a caller in another assembly depend on Store's persistence without
+seeing it. Inside one assembly there is no other assembly, so the interface is ceremony:
+`internal sealed class Repository` is the whole thing. Same for `IStoreService`.
+
+**Rule: no interface unless something needs the seam.** Exactly two things do:
+
+- **A caching decorator.** `memory/architecture/decorators-talk-only-to-inner.md` is a hard rule —
+  a decorator over interface `I` depends only on `I`, via its keyed inner registration. A section
+  with a caching decorator keeps the interface *for the decorator to wrap*, which is a reason
+  rather than a habit.
+- **A cross-section contract.** Anything in `Contracts/` is an interface by definition.
+
+Store has neither, so it gets a bare `Repository` and `Service` with no interfaces at all.
+
+Two things this collides with, both needing resolution before it lands:
+
+1. **The constitution requires the interface.** `docs/architecture/peters-hard-rules.md` says
+   "Repositories must derive from IRepository", and
+   `memory/architecture/repository-required-for-db-access.md` is a HARD RULE that every
+   DB-accessing service goes through a repository *interface*. Both are hand-maintained by Peter.
+   **This decision lands only once he has amended them** — it is recorded here, not enacted.
+2. **Store's service tests mock the interface.** `StoreServiceTests`,
+   `StoreServiceTeamOrdersTests` and `StoreServiceStripeReconciliationTests` each open with
+   `Substitute.For<IStoreRepository>()`; NSubstitute needs an interface or virtual members. Two
+   ways out, and the standing EF-InMemory rule (§5) makes the second viable: mark the members
+   `virtual` and substitute the class, or let those tests construct a real `Repository` over an
+   InMemory context. The second is more churn in PR B and ends with tests that exercise the real
+   query code. Implementer's call; flag whichever was taken in the PR.
+
+Do the renames — and this de-interfacing — **in their own commit** inside PR B, after the move
+compiles green. A move and a rename in one diff is unreviewable.
 
 Two things must change for this to compile:
 
@@ -753,8 +779,12 @@ anyway and already what the startup migrator uses.
 9. **Enforcement keys on `[assembly: Section("…")]`**, which also supersedes the per-type
    `[Section("…")]`. Cross-section dependency order, when it is eventually needed, is **derived**
    from assembly references — never declared on `ISection`.
-10. **Internal types drop the section prefix** (`IStoreRepository` → `IRepository`); controllers,
+10. **Internal types drop the section prefix** (`StoreRepository` → `Repository`); controllers,
     `<Section>DbContext` and public `Contracts/` types keep it, each for a mechanical reason (§6a).
+11. **Section-internal interfaces go away entirely** — not renamed, deleted. `Repository` and
+    `Service` are concrete classes unless a caching decorator or a `Contracts/` entry needs the
+    seam. **Blocked on Peter amending `peters-hard-rules.md` and
+    `repository-required-for-db-access.md`**, both of which currently mandate the interface (§6a).
 
 ---
 
@@ -868,10 +898,11 @@ and may need `<Section>.Contracts`.
    discovers it; nothing is added to `Program.cs`.
 4b. `[assembly: Section("<Section>")]` in `Properties/AssemblyInfo.cs` — the analyzer marker (§10).
    Delete any per-type `[Section("…")]` the section carried.
-5. Everything else `internal`, and internal types drop the section prefix per §6a — `IRepository`,
-   `Repository`, `IService`, `Service`, entities, EF configurations, view models. Controllers,
-   `<Section>DbContext` and `Contracts/` types keep it. Do the renames in a **separate commit**
-   after the move compiles.
+5. Everything else `internal`, and internal types drop the section prefix per §6a — `Repository`,
+   `Service`, entities, EF configurations, view models. Controllers, `<Section>DbContext` and
+   `Contracts/` types keep it. Delete section-internal interfaces outright unless a caching
+   decorator or a `Contracts/` entry needs the seam. Do the renames in a **separate commit** after
+   the move compiles.
 5b. `Contracts/` holds only `I<Section>ServiceRead`, canonical read DTOs and domain events — and
    may be empty for a leaf section.
 6. Authorization *policies* stay in Shell's `AuthorizationPolicyExtensions`; resource-based
