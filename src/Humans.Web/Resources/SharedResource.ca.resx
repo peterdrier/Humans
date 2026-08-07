@@ -3073,7 +3073,7 @@
     <value>El teu correu es manté privat.</value>
   </data>
   <data name="Camp_ContactLoginDetailOpenSeason" xml:space="preserve">
-    <value>En iniciar la sessió també veuràs els esdeveniments del camp i podràs indicar que en formes part. El teu correu es manté privat.</value>
+    <value>En iniciar la sessió podràs indicar que formes part d'aquest camp i veuràs els esdeveniments que organitzi, si n'hi ha. El teu correu es manté privat.</value>
   </data>
   <data name="Camp_Contact_Title" xml:space="preserve">
     <value>Contacta {0}</value>

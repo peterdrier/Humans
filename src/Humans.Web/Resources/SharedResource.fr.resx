@@ -3073,7 +3073,7 @@
     <value>Votre email reste privé.</value>
   </data>
   <data name="Camp_ContactLoginDetailOpenSeason" xml:space="preserve">
-    <value>Une fois connecté, vous verrez aussi les événements du camp et pourrez indiquer que vous en faites partie. Votre email reste privé.</value>
+    <value>Une fois connecté, vous pourrez indiquer que vous faites partie de ce camp et verrez les événements qu'il organise, s'il y en a. Votre email reste privé.</value>
   </data>
   <data name="Camp_Contact_Title" xml:space="preserve">
     <value>Contacter {0}</value>
