@@ -292,12 +292,17 @@
                        actually render them, read off the camp rather than the viewer: Model.Membership
                        is resolved per-user and is always NoOpenSeason on this branch, which is
                        anonymous by construction, so testing it here would leave the claim permanently
-                       unspoken. A displayed season that is Active or Full is the viewer-independent
-                       form of both gates — it renders the events card (CurrentSeason != null) and
-                       guarantees GetMembershipState finds an open season, so the membership card
-                       renders too. Anything else falls back to the privacy line and promises nothing. *@
+                       unspoken. The viewer-independent form of both gates is a displayed season that
+                       is Active or Full *for the public year* — it renders the events card
+                       (CurrentSeason != null), makes GetMembershipState find an open season so the
+                       membership card renders, and matches the season CampService.RequestCampMembership
+                       accepts, so the join actually goes through. Dropping the year would let a
+                       fallback season (Details serves the latest one when the camp has not renewed)
+                       or an older season page promise a join that the mutation rejects. Anything else
+                       falls back to the privacy line and promises nothing. *@
                     var loginShowsMore =
-                        Model.CurrentSeason is { Status: CampSeasonStatus.Active or CampSeasonStatus.Full };
+                        Model.CurrentSeason is { Status: CampSeasonStatus.Active or CampSeasonStatus.Full }
+                        && Model.CurrentSeason.Year == Model.PublicYear;
                     <p class="small text-muted text-center mt-2 mb-0">
                         @(loginShowsMore
                             ? Localizer["Camp_ContactLoginDetailOpenSeason"]

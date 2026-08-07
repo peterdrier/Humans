@@ -195,7 +195,8 @@ public class CampController(
         await PopulateCityPlanningViewBagAsync(currentUser, ct);
 
         var vm = MapCampDetailViewModel(
-            camp, season, isLead, isCampAdmin, membership, _clock.GetCurrentInstant().InUtc().Date);
+            camp, season, isLead, isCampAdmin, membership, settings.PublicYear,
+            _clock.GetCurrentInstant().InUtc().Date);
         await PopulateDetailCardsAsync(vm, camp, season, currentUser, isCampAdmin, ct);
         return View(vm);
     }
@@ -213,13 +214,15 @@ public class CampController(
         if (season is null)
             return NotFound();
 
+        var settings = await _campService.GetSettingsAsync(ct);
         var currentUser = await GetCurrentUserInfoAsync(ct);
         var (isLead, isCampAdmin) = await ResolveCampViewerStateAsync(camp.Id, currentUser, ct);
         var membership = ResolveCurrentUserMembershipState(camp, currentUser);
         await PopulateCityPlanningViewBagAsync(currentUser, ct);
 
         var vm = MapCampDetailViewModel(
-            camp, season, isLead, isCampAdmin, membership, _clock.GetCurrentInstant().InUtc().Date);
+            camp, season, isLead, isCampAdmin, membership, settings.PublicYear,
+            _clock.GetCurrentInstant().InUtc().Date);
         await PopulateDetailCardsAsync(vm, camp, season, currentUser, isCampAdmin, ct);
         return View(nameof(Details), vm);
     }
@@ -1227,6 +1230,7 @@ public class CampController(
         bool isLead,
         bool isCampAdmin,
         CampMembershipStateViewModel membership,
+        int publicYear,
         LocalDate today) => new()
         {
             Id = camp.Id,
@@ -1265,6 +1269,7 @@ public class CampController(
                 ElectricalGrid = season.ElectricalGrid,
                 IsNameLocked = season.IsNameLocked(today)
             },
+            PublicYear = publicYear,
             IsCurrentUserLead = isLead,
             IsCurrentUserCampAdmin = isCampAdmin,
             Membership = membership
