@@ -3067,7 +3067,10 @@
     <value>Contacta aquest barri</value>
   </data>
   <data name="Camp_ContactLoginHint" xml:space="preserve">
-    <value>Cal iniciar la sessió · El teu correu es manté privat</value>
+    <value>Inicia la sessió per contactar amb aquest camp</value>
+  </data>
+  <data name="Camp_ContactLoginDetail" xml:space="preserve">
+    <value>En iniciar la sessió també veuràs els esdeveniments del camp i podràs indicar que en formes part. El teu correu es manté privat.</value>
   </data>
   <data name="Camp_Contact_Title" xml:space="preserve">
     <value>Contacta {0}</value>

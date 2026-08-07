@@ -284,9 +284,11 @@
                 }
                 else
                 {
-                    <div class="text-center text-muted">
+                    <a asp-controller="Account" asp-action="Login" asp-route-returnUrl="@Context.Request.Path"
+                       class="btn btn-outline-primary w-100">
                         <i class="fa-solid fa-envelope me-1"></i> @Localizer["Camp_ContactLoginHint"]
-                    </div>
+                    </a>
+                    <p class="small text-muted text-center mt-2 mb-0">@Localizer["Camp_ContactLoginDetail"]</p>
                 }
             </div>
         </div>
