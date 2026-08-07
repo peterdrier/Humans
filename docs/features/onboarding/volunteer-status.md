@@ -137,7 +137,7 @@ Only controllers a non-Active user must still reach are exempt:
 - **User** — account-status wall + cancel-deletion (the redirect targets)
 - **Language** — language switching
 - **Guest** — profileless account dashboard
-- **GovernanceApplications**, **Feedback**, **Notifications** — any logged-in user
+- **GovernanceApplications**, **Issues**, **Notifications** — any logged-in user. `Issues` inherited the exemption from `Feedback` when Issues replaced it (nobodies-collective/Humans#977): the Help widget renders for any authenticated user, so someone stuck mid-onboarding or on the status wall must still be able to report that they are stuck
 - **Survey** — tokenised survey answering; invited non-Active users must reach it (`[AllowAnonymous]`)
 
 Role-gated app controllers are reached only after the `UserState == Active` gate passes; `[AllowAnonymous]`/API-key controllers use anonymous pass-through.

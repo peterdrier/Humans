@@ -27,6 +27,10 @@ public class MembershipRequiredFilter : IAsyncActionFilter
         "Language",         // Language switching
         "Guest",            // Profileless account dashboard
         "GovernanceApplications", // Tier application submission — any logged-in user
+        "Issues",           // In-app issue reporting — any logged-in user. Inherited from the
+                            // Feedback exemption when Issues replaced Feedback wholesale (#977):
+                            // someone stuck mid-onboarding or on the status wall still sees the
+                            // Help widget, and reporting that they are stuck must reach the queue.
         "Notifications",    // Notification inbox — any logged-in user
         "Survey",           // Tokenised survey answering — invited non-Active users must still reach it ([AllowAnonymous])
     };

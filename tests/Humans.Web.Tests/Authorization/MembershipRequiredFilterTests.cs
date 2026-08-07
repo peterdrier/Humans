@@ -81,6 +81,18 @@ public class MembershipRequiredFilterTests
         Assert.Null(result);
     }
 
+    [HumansTheory]
+    [InlineData(UserState.Bare)]
+    [InlineData(UserState.Suspended)]
+    public async Task Issue_reporting_passes_through_for_non_active_user(UserState state)
+    {
+        var (result, nextCalled) = await RunAsync("Issues", "Submit", state: state);
+
+        Assert.True(nextCalled, "Issues replaced Feedback as the only in-app report path — a user "
+                                + "stuck in onboarding or on the status wall must still reach it");
+        Assert.Null(result);
+    }
+
     [HumansFact]
     public async Task Role_holder_does_not_bypass_state_routing()
     {
