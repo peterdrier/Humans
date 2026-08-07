@@ -156,14 +156,18 @@ horizontal, so `AuditLogViewComponent` moves cleanly.
 `src/Sections/Humans.Store/Views/_ViewImports.cshtml`:
 
 ```
+@using Humans.Store
 @using Humans.Store.Models
 @using Humans.UI
 @using Humans.UI.Models.Tables
 @using Microsoft.Extensions.Localization
-@inject IStringLocalizer<SharedResource> Localizer
+@inject IStringLocalizer<StoreResource> Localizer
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
 @addTagHelper *, Humans.UI
 ```
+
+`Localizer` is bound to the *section's* resource set (§3), so the view bodies are untouched by
+the move.
 
 Omitting it, or omitting one `@addTagHelper` line, ships broken markup with a green build. The
 only mechanical guard is a rendered-output assertion — see §8 step B8 and §10.
@@ -181,14 +185,44 @@ leaves `Humans.Web` it still serves the views that remain.
 
 ## 3. Localization
 
-**`.resx` files do not split per section. `SharedResource` and its six `.resx` files move once,
-into `Humans.UI`, and stay one file set.**
+**Every section owns its own `.resx` set. Nothing a section needs stays outside it.**
 
-Splitting the 2 617 keys per section was considered and rejected: the resx-parity discipline
-(#848), the `EnumDisplay` convention and `DataAnnotationLocalizerProvider` all key off a single
-resource type, and cross-section reuse of keys is pervasive. One resource set, one parity check.
+`Humans.UI` keeps only the vocabulary the *shared* surface renders — layout, nav, footer, the
+`Views/Shared` partials, common form/button words. Everything else moves into the section that
+uses it, and `Humans.UI`'s set shrinks with each section that carves.
 
-### The non-obvious mechanic that makes the move risky
+The carve is mechanical: **all 2 617 keys are already section-prefixed, with zero unprefixed
+keys.** Prefix counts run `Profile_` 118, `Shifts_` 108, `CityPlanning_` 103, `Camp_` 98,
+`Enum_` 96 … down to `Store_` 23. Store's full share is **25 keys** — its 23 `Store_*` plus
+`Enum_StoreOrderCounterpartyType_{Camp,Team}` — across six languages, so 150 resx entries. Small
+enough that the pilot establishes the pattern without the pattern being the risk.
+
+A string two sections both want gets **duplicated**, per #866's own rule: duplication inside two
+sections is healthier than a coupling no one owns. Promoting it to `Humans.UI` is only correct
+when the *shared* surface renders it.
+
+### Per-section shape
+
+`src/Sections/Humans.Store/Resources/StoreResource.cs` (`namespace Humans.Store`) with
+`StoreResource.resx` + `.es/.ca/.de/.fr/.it` beside it; the section's `_ViewImports` injects
+`IStringLocalizer<StoreResource>` as `Localizer`, so no view body changes — the keys and the
+`Localizer[...]` call sites are untouched by the move.
+
+Three pieces of shared machinery are hardcoded to the single resource type and must widen first:
+
+- **`EnumLocalizationExtensions`** — `EnumDisplay<TEnum>` and `EnumSelectItems<TEnum>` extend
+  `IStringLocalizer<SharedResource>` specifically. Widen both to `this IStringLocalizer`;
+  `IStringLocalizer<T>` implements `IStringLocalizer`, so every existing call site compiles
+  unchanged and any section's localizer works. The `Enum_{TypeName}_{Value}` key convention is
+  unaffected — a section's enum keys simply live in the section's resx.
+- **`DataAnnotationLocalizerProvider`** (`Program.cs:473`) routes *every* `[Display]`/`[Required]`
+  lookup through `Humans.Web.SharedResource`. It becomes convention-routed on the model type's
+  assembly: a view model in `Humans.Store` resolves `factory.Create("StoreResource",
+  "Humans.Store")`, falling back to the `Humans.UI` set. One lambda.
+- **resx parity (#848)** becomes per-resource-set rather than one comparison. The check itself is
+  unchanged; it just runs N times.
+
+### The non-obvious mechanic that makes every one of these moves risky
 
 `SharedResource.cs` sits at `Resources/SharedResource.cs` with `namespace Humans.Web;` — note the
 namespace does **not** include `.Resources`. The `.resx` files sit beside it. This works because
@@ -198,12 +232,14 @@ than the path-derived `Humans.Web.Resources.SharedResource.resources`.
 `builder.Services.AddLocalization()` is called with **no** `ResourcesPath`, so nothing else
 corrects for it.
 
-**Consequence:** the `.cs` and the `.resx` must stay in the same folder, and the `.cs` namespace
-determines the resource prefix. Get it wrong and every localized string falls back to its key at
-runtime — the startup diagnostic block at `Program.cs:531-570` exists because this has bitten
-before. Keep that diagnostic; it is the move's smoke test.
+**Consequence:** in every project — `Humans.UI` and each section — the `.cs` and the `.resx` must
+sit in the same folder, and the `.cs` namespace determines the resource prefix. Get it wrong and
+every localized string in that set falls back to its key at runtime. The startup diagnostic block
+at `Program.cs:531-570` exists because this has bitten before; **extend it to assert one known key
+per registered resource set**, so a botched section carve fails at boot instead of shipping a page
+of raw keys.
 
-### Decision: rename to `namespace Humans.UI`
+### Decision: `Humans.UI`'s own resource renames to `namespace Humans.UI`
 
 The alternative — keeping `namespace Humans.Web` inside assembly `Humans.UI`, as
 `Humans.Interfaces` deliberately does with `Humans.Application.*` — avoids touching ~30
@@ -215,7 +251,9 @@ internal-only assembly and that justification expires at packaging.
 So the move is: files to `src/Humans.UI/Resources/`, namespace to `Humans.UI`, ReSharper
 move-to-namespace across the call sites, plus one string literal —
 `EmailRenderer.cs:21` calls `localizerFactory.Create("SharedResource", "Humans.Web")` where the
-second argument is the **assembly** name, and becomes `"Humans.UI"`.
+second argument is the **assembly** name, and becomes `"Humans.UI"`. (Email body strings are
+`Email_*`-prefixed and belong to whichever section sends the mail; they follow their sections
+later, not in PR 0.)
 
 (Follow-up, not pilot: `Humans.Interfaces` has the same mismatch — `Humans.Application.*`
 namespaces in a differently-named assembly — and wants a real name and matching namespace before
@@ -234,15 +272,16 @@ which assembly the resx lives in. **No sweep changes are needed at any point in 
 
 ## 4. Static assets
 
-**Nothing to do for the pilot.** `find src/Humans.Web/wwwroot -iname "*store*"` returns nothing;
-Store's views reference no section-specific CSS or JS. `wwwroot/js/` has per-section folders
-(`agent/`, `city-planning/`, `gate/`, `scanner/`) that will matter for *those* sections.
+Same rule as §3: **a section's assets live in the section.** An RCL's `wwwroot/` is published as a
+static web asset automatically and served at `_content/<AssemblyName>/…` — so
+`Humans.Gate/wwwroot/gate/x.js` becomes `/_content/Humans.Gate/gate/x.js`. The URL change is made
+in the same PR as the move. Only Shell's own chrome assets (`site.css`, `site.js`,
+`client-metrics.js`, favicons, `img/`) stay in Shell's `wwwroot/` — they belong to the layout, not
+to any section.
 
-**Convention for sections that do have assets:** an RCL's `wwwroot/` is published as a static web
-asset automatically and served at `_content/<AssemblyName>/…` — so `Humans.Gate/wwwroot/gate/x.js`
-becomes `/_content/Humans.Gate/gate/x.js`. That URL change is made in the same PR as the move.
-Shared/global assets (`site.css`, `site.js`, `client-metrics.js`, favicons, `img/`) stay in Shell's
-`wwwroot/`.
+**Nothing to do for the pilot.** `find src/Humans.Web/wwwroot -iname "*store*"` returns nothing and
+Store's views reference no section-specific CSS or JS. `wwwroot/js/` already has per-section folders
+(`agent/`, `city-planning/`, `gate/`, `scanner/`) that will move with *those* sections.
 
 ---
 
@@ -280,36 +319,115 @@ separate docs pass.
 
 ---
 
-## 6. DI composition
+## 6. DI composition — `ISection`, discovered
 
-**No new pattern is needed — the roll-call already exists.** `src/Humans.Web/Extensions/Sections/`
-holds 35 `<Section>SectionExtensions.cs` files, each an `internal static IServiceCollection
-Add<Section>Section(this IServiceCollection)`, called from `Program.cs`.
-
-The section's entry point is that file, moved into the section project and made `public`:
+**Every section exposes one registration type in the same place, and Shell finds them rather than
+naming them.** `src/Humans.Web/Extensions/Sections/` holds 35
+`internal static Add<Section>Section(this IServiceCollection)` files today, each called by name
+from `Program.cs`. That file moves into the section and becomes an `ISection` implementation:
 
 ```csharp
 // src/Sections/Humans.Store/StoreSection.cs
 namespace Humans.Store;
 
-public static class StoreSection
+public sealed class StoreSection : ISection
 {
-    public static IServiceCollection AddStoreSection(this IServiceCollection services)
+    public void Register(IServiceCollection services)
     {
         services.AddSectionDbContext<StoreDbContext>(sentinelTable: "store_orders");
-        services.AddSingleton<IStoreRepository, StoreRepository>();
-        services.AddScoped<IStoreService, StoreService>();
-        services.AddScoped<IAuthorizationHandler, StoreOrderAuthorizationHandler>();
-        return services;
+        services.AddSingleton<IRepository, Repository>();
+        services.AddScoped<IService, Service>();
+        services.AddScoped<IAuthorizationHandler, OrderAuthorizationHandler>();
     }
 }
 ```
 
-It is the **only** `public` non-`Contracts/` type in the section — the keystone analyzer needs an
-explicit carve-out for one `public static class <Section>Section` at the project root, or the very
-first section fails its own rule. Shell calls it by name from `Program.cs`, unchanged in shape.
-This is also the seam the later optionality work uses: replacing a named call with discovery
-changes Shell, not the section.
+`ISection` lives in `Humans.Interfaces` — a leaf Base project with no references, which is exactly
+where a marker consumed by both Shell and every section belongs.
+
+It is the **only** `public` non-`Contracts/` type in the section, so the keystone analyzer needs a
+carve-out for one `public sealed class <Section>Section : ISection` at the project root, or the
+first section fails its own rule.
+
+### Why an instance class, not `static class Section` with `AddSection()`
+
+- **Static classes cannot implement interfaces**, so a static entry point cannot be discovered.
+  C# 11 static abstract members don't help: they are consumed through generic constraints, which
+  requires the type at compile time — the opposite of discovery. An instance class costs nothing
+  (parameterless, `Activator.CreateInstance`).
+- **A same-named `AddSection()` extension in 35 assemblies is CS0121-ambiguous** the moment Shell
+  has two `using`s in scope, forcing `Humans.Store.Section.AddSection(services)` at every call
+  site. Discovery makes the question moot — nobody calls it by name.
+- **A type named `Section` collides with `[Section("…")]`.** `SectionAttribute`
+  (`Humans.Domain/Attributes/SectionAttribute.cs`) would be in scope alongside a `Section` type in
+  the section's own namespace, and attribute usage in those files stops compiling. `<Section>Section`
+  avoids it.
+
+### Discovery works now, with hard references
+
+MVC already finds section controllers and views by walking the entry assembly's `DependencyContext`
+(§1 measured it: the RCL was discovered with no `AddApplicationPart`). The same walk finds
+`ISection` implementations. So `Program.cs` drops its 35-line roll-call **at the pilot** — roughly
+fifteen lines of discovery replace it — while ProjectReferences stay hard-coded exactly as decided
+in §12.2. Later optionality is then only a change of where the assembly list comes from: a config
+allowlist, or `AssemblyLoadContext` over a plugin folder. No section code changes.
+
+Two consequences to handle in the same PR:
+
+- **Registration order becomes assembly-enumeration order.** Sort by section name for determinism.
+  Nothing currently depends on the hand-written order:
+  `DatabaseMigrationHostedService` migrates section contexts in registration order, but #858 §6
+  establishes that no section baseline contains a cross-section FK, so the contexts are independent.
+- **A section that fails to load is now silently absent**, where #866 wanted "a startup error
+  naming the section". Shell logs the discovered set at boot; that log is what you check when a
+  page 404s.
+
+### The dependency graph is derived, not declared
+
+Once sections are optional, Shell must know that enabling Store requires Camps, Teams and Shifts.
+Do **not** put a `DependsOn` list on `ISection`: it duplicates a fact the compiler already owns and
+will drift. `assembly.GetReferencedAssemblies()` filtered to assemblies carrying
+`[assembly: Section("…")]` (§10) *is* the graph — zero maintenance, cannot go stale, and yields
+both the topological registration order and a boot-time "Store requires Camps, which is not
+registered" instead of a DI resolution failure deep in the stack.
+
+Only needed when sections become optional. The derivation is worth writing down now so nobody adds
+a hand-maintained list in the meantime.
+
+### Two things must change for this to compile
+
+- **`AddSectionDbContext<TContext>` becomes `public`.** It is `internal` today
+  (`InfrastructureServiceCollectionExtensions.cs:71`) and depends on `NpgsqlDataSource`,
+  `QueryMonitoringInterceptor` and `UserInfoSaveChangesInterceptor` from `Humans.Infrastructure`.
+  Since `Humans.Infrastructure` is Base and will never reference a section, `Store →
+  Humans.Infrastructure` is a legal Base reference — so it stays where it is and simply goes
+  public. It relocates later, when Infrastructure splits (§14), not now.
+- **`StoreOrderAuthorizationHandler`'s registration moves** out of
+  `AuthorizationPolicyExtensions.cs:27` into the section. The *policy*
+  `PolicyNames.StoreCatalogAdmin` (`AuthorizationPolicyExtensions.cs:125`) stays in Shell — §8.
+
+---
+
+## 6a. Naming inside a section
+
+Once the vertical is one assembly and everything in it is `internal`, the `Store` prefix on
+internal types is stutter — they are already in Store. Drop it. Three categories cannot follow,
+each for a concrete reason.
+
+| Names | Rule |
+|---|---|
+| `IStoreRepository`/`StoreRepository` → `IRepository`/`Repository`; `IStoreService`/`StoreService` → `IService`/`Service`; entities and enums (`StoreOrder` → `Order`, `StoreOrderState` → `OrderState`); EF configurations (`StoreOrderConfiguration` → `OrderConfiguration`); view models (`StoreIndexViewModel` → `IndexViewModel`) | **Drop the prefix.** All internal; nothing outside the assembly resolves them by name. Table names are declared explicitly in the EF configurations, so entity renames are schema-inert. `Enum_{TypeName}_{Value}` resx keys do change — but those keys are moving into the section's own resource set in the same PR (§3) |
+| `StoreController`, `StoreAdminController`, `StoreStripeWebhookController` | **Keep the prefix.** View lookup is `/Views/{ControllerName}/{Action}.cshtml`, and that path is **global across application parts** — two sections with `Views/Controller/Index.cshtml` collide at one path. *Routes* are safe either way: all three Store controllers carry an explicit `[Route("Store")]` / `[Route("Store/Admin")]` / `[Route("Store/StripeWebhook")]`, and 78 of the repo's 90 controllers do. The 12 without must add one before any rename elsewhere |
+| `StoreDbContext` | **Keep the prefix.** `SectionMigrationsHistory.TableFor` derives `__EFMigrationsHistory_Store` by stripping `"DbContext"` from the type name; renaming empties the suffix. Derivable from the section marker instead, but it names live schema — leave it |
+| Public `Contracts/` types (`ICampsRead`, `CampSeasonInfo`, `Camp*` events) | **Keep the prefix.** They are read at cross-section call sites, where `ICampsRead campService` beats `using Humans.Camps.Contracts; … IRead campService` |
+
+One collision worth knowing: the section-local `IRepository` derives from the marker
+`Humans.Application.Interfaces.Repositories.IRepository` (`src/Humans.Interfaces/Interfaces/Repositories/IRepository.cs`)
+— same simple name, different namespace. Legal C#; costs one qualified reference in the file that
+declares it.
+
+Do the renames **in their own commit** inside PR B, after the move compiles green. A move and a
+rename in one diff is unreviewable.
 
 Two things must change for this to compile:
 
@@ -482,10 +600,20 @@ holds the line. Nothing else blocks Store.
   `Views/`, `Authorization/`, `StoreSection.cs`. ~40 files, no behavioural edits in the same commit.
 - **B3.** `src/Sections/Humans.Store/Views/_ViewImports.cshtml` — §2. Do this **before** the first
   build-and-eyeball, not after.
+- **B3c.** Carve the section's resource set — §3, steps in §15.3b. 25 keys × 6 languages.
 - **B4.** Visibility pass: everything `internal` except `StoreSection` and `Contracts/`. Store has
   no `IStoreServiceRead` today (nothing consumes it), so its `Contracts/` folder starts **empty** —
   the honest end state for a leaf section, and a useful demonstration that `Contracts/` is earned,
   not mandatory.
+- **B4b.** `[assembly: Section("Store")]` in `Properties/AssemblyInfo.cs`; add
+  `AttributeTargets.Assembly` to `SectionAttribute`; delete the per-type `[Section("Store")]` from
+  the repository interface (§10).
+- **B4c.** `ISection` in `Humans.Interfaces`; `StoreSection : ISection`; replace the `Program.cs`
+  roll-call with `DependencyContext` discovery, sorted by section name, logging the discovered set
+  at boot (§6). This lands with the pilot because it is what stops `Program.cs` needing an edit per
+  section for the remaining 34.
+- **B4d.** *Separate commit, after the move is green:* drop the `Store` prefix from internal types
+  per §6a. Controllers, `StoreDbContext` and `Contracts/` types keep theirs.
 - **B5.** `dotnet ef` re-point: `--project src/Sections/Humans.Store`; CI env var to
   `context:project` pairs (§7); update `memory/process/ef-multi-context-commands.md`.
 - **B6.** `tests/Humans.Store.Tests` (§5); delete `StoreArchitectureTests.cs` (§10).
@@ -509,10 +637,31 @@ just moved** — HUM0012, the HUM0031 controller thresholds, cross-section repos
 caching-decorator rules, the read-interface DTO rule, the lot. The split would *reduce*
 enforcement, exactly inverting its purpose.
 
-Fix in PR B: make the scope convention-keyed rather than a literal list — any assembly whose name
-starts with `Humans.`, excluding `Humans.Analyzers` and `*.Tests`. This is precisely what
+Fix in PR B: **scope on a marker the section project carries, not on a name.**
+
+```csharp
+[assembly: Section("Store")]     // src/Sections/Humans.Store/Properties/AssemblyInfo.cs
+```
+
+`AssemblyScope` then asks `compilation.Assembly.GetAttributes()` whether a `[Section]` is present —
+one lookup, no type walk — and Shell/Base keep their existing name checks. A name-prefix rule
+(`starts with "Humans."`) would work too but is guessable rather than declared; the marker says
+what the project *is*, which is what
 `memory/architecture/universal-enforcement-over-per-section.md` asks for ("universal, keyed off
-convention, never per-section"), and it is one file.
+convention, never per-section").
+
+Scanning for `ISection` implementations was the alternative and loses: it costs a full declared-type
+walk per compilation, where the attribute is a single metadata read. `ISection` stays the runtime/DI
+seam (§6); the assembly attribute is the analyzer seam.
+
+**This requires one word of change to `SectionAttribute`**, which is currently
+`[AttributeUsage(AttributeTargets.Interface | AttributeTargets.Class)]` — add
+`| AttributeTargets.Assembly`.
+
+The payoff is larger than the fix: the assembly attribute carries the section *name*, so it
+**replaces** the per-type `[Section("Store")]` that HUM0017/HUM0018 read today. One annotation per
+project instead of one per repository interface — and the row in the table below changes from
+"keep until G6" to "delete at G5, superseded".
 
 `SectionDbContexts` (the other analyzer helper) is already structural — it matches any type whose
 base chain reaches `DbContext`, and its own doc comment says it "deliberately pins neither
@@ -539,7 +688,7 @@ anyway and already what the startup migrator uses.
 
 | Item | After G5 |
 |---|---|
-| `[Section("Store")]` on `IStoreRepository.cs:43` | **Keep** until HUM0017/HUM0018 retire at G6. Assembly identity is the real marker; the attribute is the bridge |
+| `[Section("Store")]` on `IStoreRepository.cs:43` | **Delete at G5** — superseded by `[assembly: Section("Store")]` above, which tells HUM0017/HUM0018 the same thing once per project instead of once per type. Also removes the name collision that would otherwise block calling the registration type `Section` (§6) |
 | `reforge.surface-score.json` `Store.paths` (6 globs across 4 projects) | Collapses to `src/Sections/Humans.Store/**`. `symbols`, `repositoryInterfaces`, `serviceInterfaces` unchanged |
 | `StoreArchitectureTests.StoreService_DoesNotReferenceEntityFrameworkCore` | **Delete.** It asserts `typeof(StoreService).Assembly` does not reference EF — false *by design* once the section assembly contains `StoreDbContext`. The guarantee it encoded (services don't touch EF) is now a §15 convention within one assembly, policed by `ApplicationServiceDbContextInjectionAnalyzer` — one of the 22 that only survives if `AssemblyScope` is fixed |
 | `StoreArchitectureTests.StoreRepository_ImplementsIStoreRepository` | **Delete** — a tautology once interface and impl share an assembly |
@@ -549,7 +698,9 @@ anyway and already what the startup migrator uses.
 
 ---
 
-## 11. Layout and naming
+## 11. Project layout on disk
+
+(Type naming *inside* a section is §6a.)
 
 **`src/Sections/Humans.Store/`.**
 
@@ -587,6 +738,23 @@ anyway and already what the startup migrator uses.
    assembly name and root namespace must agree in a package.
 6. **`Humans.Web` becomes `Humans.Shell` by subtraction, renamed at G6** — when it has actually
    become one, not before.
+7. **Everything a section needs lives in the section's own project — no exceptions.** Views,
+   entities, data, services, controllers, static assets **and its `.resx` set**. `Humans.UI` keeps
+   only what the *shared* surface itself renders, and shrinks as each section carves. A string or
+   asset two sections both want is duplicated, not promoted (#866's own rule: duplication inside
+   two sections beats a coupling no one owns). This reverses an earlier draft of §3, which kept one
+   central resource set.
+8. **One registration type per section, same place every time, found rather than named.**
+   `public sealed class <Section>Section : ISection` at the project root; Shell discovers
+   implementations instead of listing them in `Program.cs`. Ships with the pilot — it is what stops
+   `Program.cs` needing an edit for each of the remaining 34 sections. Section *optionality* is
+   still deferred (§12.2); this only removes the hard-coded roll-call, not the hard-coded
+   references.
+9. **Enforcement keys on `[assembly: Section("…")]`**, which also supersedes the per-type
+   `[Section("…")]`. Cross-section dependency order, when it is eventually needed, is **derived**
+   from assembly references — never declared on `ISection`.
+10. **Internal types drop the section prefix** (`IStoreRepository` → `IRepository`); controllers,
+    `<Section>DbContext` and public `Contracts/` types keep it, each for a mechanical reason (§6a).
 
 ---
 
@@ -613,6 +781,13 @@ Open by design. Treat a surprise here as expected output, not oversight.
 7. **How much nav is section-shaped.** Nav stays in Shell for now, but the optionality work needs
    sections to contribute their own entries. The pilot is the first chance to see how much of
    `_Layout` and `AdminNavTree` is genuinely per-section versus global.
+8. **How much genuinely shared vocabulary is left in `Humans.UI`'s resource set** once every
+   section has carved. Prefix counts predict the split cleanly (all 2 617 keys are prefixed), but
+   whether e.g. the 96 `Enum_*` keys land mostly in sections or mostly in UI only becomes clear
+   around section five. Store's 25 keys are too small a sample to extrapolate from.
+9. **Whether duplication-over-promotion holds under pressure.** §12.7 says a string two sections
+   want gets duplicated. The first time that is a 40-key block rather than one word, someone will
+   argue for promotion. That argument is worth having on a real case, not pre-empting here.
 
 ---
 
@@ -636,7 +811,7 @@ Open by design. Treat a surprise here as expected output, not oversight.
 | Project | Status | Expectation |
 |---|---|---|
 | `Humans.UI` | **new** | Shared layout, `Views/Shared` partials, tag helpers, cross-section view components, `Models/Tables`, `SharedResource` + 6 resx, `PolicyNames`. The one project the pilot creates. Grows for the first few sections, then settles |
-| `Humans.Interfaces` | stay | Already the right shape — marker interfaces and architecture attributes, no references, no packages. Wants a real name and matching namespace before it ships as a package. Human-gatekept; no DTOs, ever |
+| `Humans.Interfaces` | stay, +`ISection` | Already the right shape — marker interfaces and architecture attributes, no references, no packages; the correct home for `ISection` (§6), consumed by Shell and every section. Wants a real name and matching namespace before it ships as a package. Human-gatekept; no DTOs, ever |
 | `Humans.Domain` | drain | Entities leave with their sections. Ends as `User`/Identity (the shared-contract exception), `RoleNames`, value objects, genuinely cross-cutting enums |
 | `Humans.Application` | drain | Services and interfaces leave with their sections. Ends as orchestrators plus cross-section contracts not yet pushed into section `Contracts/`. Expected to be last and messiest |
 | `Humans.Infrastructure` | drain → split three ways | DbContext/migration plumbing → its own Base project; vendor connectors (Google, Stripe, Holded, MailKit, Octokit, Anthropic) → one per connector per `memory/architecture/vendor-connectors-own-sections.md`; repositories → their sections. `HumansDbContext` deleted at G6 |
@@ -678,18 +853,31 @@ and may need `<Section>.Contracts`.
    Microsoft.AspNetCore.App`, the section's own NuGet packages. Add to `Humans.slnx`. No
    `Directory.Build.props`.
 2. Move the vertical, folders as layers: `Contracts/ Domain/ Data/ Services/ Controllers/ Models/
-   Views/ Authorization/` + `<Section>Section.cs`. Migrations land at `Data/Migrations/`.
+   Views/ Resources/ Authorization/ wwwroot/` + `<Section>Section.cs`. Migrations land at
+   `Data/Migrations/`. **Everything the section needs comes with it — no exceptions.**
 3. **Write `Views/_ViewImports.cshtml` in the same commit as the views.** Copy the section-local
    template from §2. Omitting a line ships broken HTML with a green build.
-4. `<Section>Section.cs`: `public static class`, one `Add<Section>Section` extension —
-   `AddSectionDbContext<…>`, repositories, services, section-owned authorization handlers. The only
-   `public` type outside `Contracts/`.
-5. Everything else `internal`. `Contracts/` holds only `I<Section>ServiceRead`, canonical read DTOs
-   and domain events — and may be empty for a leaf section.
+3b. Carve the section's `.resx`: `grep` the `<Section>_*` and `Enum_<Section>*` keys out of
+   `Humans.UI`'s set into `Resources/<Section>Resource.{resx,es,ca,de,fr,it}` beside a
+   `<Section>Resource.cs` in the section's namespace (§3 — the `.cs`-namespace mechanic decides the
+   resource prefix, and getting it wrong degrades every string to its key). Extend the startup
+   diagnostic to assert one key from the new set.
+4. `<Section>Section.cs` at the project root: `public sealed class <Section>Section : ISection`
+   with one `Register(IServiceCollection)` — `AddSectionDbContext<…>`, repositories, services,
+   section-owned authorization handlers. The only `public` type outside `Contracts/`. Shell
+   discovers it; nothing is added to `Program.cs`.
+4b. `[assembly: Section("<Section>")]` in `Properties/AssemblyInfo.cs` — the analyzer marker (§10).
+   Delete any per-type `[Section("…")]` the section carried.
+5. Everything else `internal`, and internal types drop the section prefix per §6a — `IRepository`,
+   `Repository`, `IService`, `Service`, entities, EF configurations, view models. Controllers,
+   `<Section>DbContext` and `Contracts/` types keep it. Do the renames in a **separate commit**
+   after the move compiles.
+5b. `Contracts/` holds only `I<Section>ServiceRead`, canonical read DTOs and domain events — and
+   may be empty for a leaf section.
 6. Authorization *policies* stay in Shell's `AuthorizationPolicyExtensions`; resource-based
    *handlers* move into the section.
 7. `wwwroot/` assets, if any, move with the section and their URLs become
-   `/_content/Humans.<Section>/…`. Global assets stay in Shell.
+   `/_content/Humans.<Section>/…`. Only Shell's own chrome assets stay in Shell.
 8. `tests/Humans.<Section>.Tests` — service, repository, entity and handler tests move in;
    integration tests stay in `Humans.Integration.Tests`. EF-InMemory stays EF-InMemory.
 9. `dotnet ef` for this section: `--project src/Sections/Humans.<Section>
