@@ -451,6 +451,66 @@ public class HoldedFinanceServiceTests
         row.Bindings.Select(b => b.UserId).Should().BeEquivalentTo([first, second]);
     }
 
+    // ─── GetUnresolvedCreditorBindings ─────────────────────────────────────────────
+
+    [HumansFact]
+    public async Task GetUnresolvedCreditorBindings_BindingWithNoNumberAndNoLiveHoldedNumber_IsSurfaced()
+    {
+        // Neither the one-shot push resolution nor Holded's own contact list carries a number for this
+        // contact, so ListCreditorAccountsAsync has no account row to place it on (#972).
+        var userId = Guid.NewGuid();
+        _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>
+        {
+            new() { UserId = userId, HoldedContactId = "c1", SupplierAccountNum = null, Source = CreditorContactSource.Auto },
+        });
+        _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedContactDto>
+        {
+            new() { Id = "c1", Name = "Daniela Marquez", SupplierAccountNum = null },
+        });
+
+        var unresolved = await MakeService()
+            .GetUnresolvedCreditorBindingsAsync(Xunit.TestContext.Current.CancellationToken);
+
+        unresolved.Should().ContainSingle().Which.UserId.Should().Be(userId);
+    }
+
+    [HumansFact]
+    public async Task GetUnresolvedCreditorBindings_BindingResolvedViaLiveHoldedContact_IsNotSurfaced()
+    {
+        // Holded's own contact list carries a number for this contact even though our cached
+        // SupplierAccountNum is null — ListCreditorAccountsAsync places it on that account's row, so it
+        // must not also show up as unresolved.
+        var userId = Guid.NewGuid();
+        _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>
+        {
+            new() { UserId = userId, HoldedContactId = "c1", SupplierAccountNum = null, Source = CreditorContactSource.Auto },
+        });
+        _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedContactDto>
+        {
+            new() { Id = "c1", Name = "Daniela Marquez", SupplierAccountNum = 40000004 },
+        });
+
+        var unresolved = await MakeService()
+            .GetUnresolvedCreditorBindingsAsync(Xunit.TestContext.Current.CancellationToken);
+
+        unresolved.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task GetUnresolvedCreditorBindings_FullyBoundMember_IsNotSurfaced()
+    {
+        _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>
+        {
+            new() { UserId = Guid.NewGuid(), HoldedContactId = "c1", SupplierAccountNum = 40000004, Source = CreditorContactSource.Manual },
+        });
+        _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedContactDto>());
+
+        var unresolved = await MakeService()
+            .GetUnresolvedCreditorBindingsAsync(Xunit.TestContext.Current.CancellationToken);
+
+        unresolved.Should().BeEmpty();
+    }
+
     [HumansFact]
     public async Task GetCreditorLedger_derives_balance_and_lines_from_cache()
     {

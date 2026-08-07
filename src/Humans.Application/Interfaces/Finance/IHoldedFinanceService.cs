@@ -27,6 +27,13 @@ public interface IHoldedFinanceService : IApplicationService
     /// <summary>The member's creditor-account binding, if any.</summary>
     Task<CreditorContactBinding?> GetCreditorContactByUserAsync(Guid userId, CancellationToken ct = default);
 
+    /// <summary>Bindings whose 400000xx never resolved — neither our one-shot push resolution nor
+    /// Holded's live contact list has a number for the contact — so <see cref="ListCreditorAccountsAsync"/>
+    /// has no account row to place them on and they would otherwise be invisible on /Finance/Creditors.
+    /// There is no automatic retry (nobodies-collective/Humans#972); this is the discoverability surface
+    /// an admin works with <see cref="SetCreditorContactAsync"/> once they know the member's account.</summary>
+    Task<IReadOnlyList<CreditorContactBinding>> GetUnresolvedCreditorBindingsAsync(CancellationToken ct = default);
+
     /// <summary>Manually binds a member to an existing Holded creditor account (by 400000xx number).
     /// Resolves the Holded contact id. Fails — writing nothing — when the account is already bound to a
     /// different member, or when no Holded contact carries that supplier-account number.</summary>

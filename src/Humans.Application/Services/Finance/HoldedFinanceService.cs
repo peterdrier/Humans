@@ -503,9 +503,7 @@ public sealed class HoldedFinanceService(
         // invariant (the half FindConflictingBinding enforces on writes) visible as a collision instead
         // of two innocent-looking single-member rows. The stored number is the fallback, for a contact
         // Holded's list does not carry.
-        var accountByContactId = contacts
-            .GroupBy(kv => kv.Value.Id, StringComparer.Ordinal)
-            .ToDictionary(g => g.Key, g => g.First().Key, StringComparer.Ordinal);
+        var accountByContactId = AccountByContactId(contacts);
 
         // Every binding on an account, not just the first: only UserId is unique in the DB and the two
         // automatic write paths record what Holded assigned rather than refusing, so a second member on
@@ -551,6 +549,33 @@ public sealed class HoldedFinanceService(
                 "/Finance/Creditors will show bare account numbers.", rows.Count);
 
         return rows;
+    }
+
+    private static Dictionary<string, int> AccountByContactId(
+        IReadOnlyDictionary<int, HoldedContactDto> contactsByAccount) =>
+        contactsByAccount
+            .GroupBy(kv => kv.Value.Id, StringComparer.Ordinal)
+            .ToDictionary(g => g.Key, g => g.First().Key, StringComparer.Ordinal);
+
+    /// <summary>Bindings with no resolved 400000xx — <see cref="ListCreditorAccountsAsync"/> drops these
+    /// (there is no account row to place them on), which is exactly why they need a surface of their
+    /// own: without one, a binding whose one-shot push resolution missed and that Holded's live contact
+    /// list still does not carry a number for is invisible on /Finance/Creditors and nothing ever
+    /// retries it (nobodies-collective/Humans#972).</summary>
+    public async Task<IReadOnlyList<CreditorContactBinding>> GetUnresolvedCreditorBindingsAsync(
+        CancellationToken ct = default)
+    {
+        var contacts = (await ListContactsOrEmptyAsync(ct))
+            .Where(c => c.SupplierAccountNum is >= CreditorAccountMin and <= CreditorAccountMax)
+            .GroupBy(c => c.SupplierAccountNum!.Value)
+            .ToDictionary(g => g.Key, g => g.First());
+        var accountByContactId = AccountByContactId(contacts);
+
+        return (await repo.GetCreditorContactsAsync(ct))
+            .Where(b => !accountByContactId.ContainsKey(b.HoldedContactId) && b.SupplierAccountNum is null)
+            .OrderBy(b => b.CreatedAt)
+            .Select(ToBinding)
+            .ToList();
     }
 
     /// <summary>Holded's contact list, or empty when the Holded call fails. Cached for

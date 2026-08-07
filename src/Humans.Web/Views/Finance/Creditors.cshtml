@@ -1,4 +1,4 @@
-@model IReadOnlyList<Humans.Web.Models.CreditorAccountRowVm>
+@model Humans.Web.Models.CreditorsPageVm
 @{
     ViewData["Title"] = "Creditor Accounts";
 }
@@ -17,7 +17,47 @@
     of them cleared.
 </p>
 
-@if (!Model.Any())
+@if (Model.Unresolved.Count > 0)
+{
+    <div class="card mb-4 border-warning">
+        <div class="card-header bg-warning-subtle">
+            <i class="fa-solid fa-triangle-exclamation me-1"></i>Unresolved creditor links
+        </div>
+        <div class="card-body">
+            <p class="text-muted">
+                These members pushed an expense report but their Holded creditor-account number never
+                resolved — neither the one-shot push lookup nor Holded's own contact list has a number
+                for them. There is no automatic retry; bind each one manually once you know their
+                400000xx account in Holded.
+            </p>
+            <table class="table table-sm align-middle mb-0">
+                <thead><tr><th>Member</th><th>Source</th><th>Bind to account</th></tr></thead>
+                <tbody>
+                @foreach (var b in Model.Unresolved)
+                {
+                    <tr>
+                        <td>@b.MemberName</td>
+                        <td class="text-muted small">@b.Source</td>
+                        <td>
+                            <form asp-action="BindCreditor" method="post" class="d-flex gap-2 align-items-center">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="userId" value="@b.UserId" />
+                                <input type="hidden" name="returnUrl" value="@Context.Request.Path" />
+                                <input type="number" name="supplierAccountNum" class="form-control form-control-sm"
+                                       style="max-width: 10rem" placeholder="400000xx" required
+                                       min="40000000" max="40000099" />
+                                <button type="submit" class="btn btn-sm btn-outline-primary">Bind</button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@if (!Model.Accounts.Any())
 {
     <div class="card"><div class="card-body text-center py-5 text-muted">
         No creditor balances cached yet — run a Holded sync from the Unmatched page.
@@ -37,7 +77,7 @@ else
                 </tr>
             </thead>
             <tbody>
-            @foreach (var r in Model)
+            @foreach (var r in Model.Accounts)
             {
                 <tr>
                     @* A null balance means no cached ledger lines, which is exactly when

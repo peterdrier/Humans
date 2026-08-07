@@ -965,7 +965,10 @@ public sealed class ExpenseReportService(
 
         // 4. Resolve supplierRecord.num (now that a payable exists) and persist the contact link.
         // Best-effort: the doc is already created, so a failure here must NOT fail the outbox event
-        // (that would strand a created doc as permanently-failed). A null num is backfilled on the paid poll.
+        // (that would strand a created doc as permanently-failed). There is no automatic retry — a null
+        // num stays null until an admin runs POST /Finance/Creditors/Bind, or a later report for this
+        // same member resolves it (nobodies-collective/Humans#972). GetUnresolvedCreditorBindingsAsync
+        // surfaces the gap on /Finance/Creditors so that manual step is discoverable.
         int? supplierAccountNum = null;
         try
         {
@@ -975,13 +978,15 @@ public sealed class ExpenseReportService(
         catch (HoldedTransientException ex)
         {
             logger.LogWarning(
-                "Could not resolve supplier account number for contact {ContactId}: {Error} — will backfill on the paid poll",
+                "Could not resolve supplier account number for contact {ContactId}: {Error} — no automatic " +
+                "retry; bind manually via POST /Finance/Creditors/Bind if it does not resolve on a later push",
                 holdedContactId, ex.Message);
         }
         catch (HoldedPermanentException ex)
         {
             logger.LogWarning(
-                "Permanent error resolving supplier account number for contact {ContactId}: {Error} — will backfill on the paid poll",
+                "Permanent error resolving supplier account number for contact {ContactId}: {Error} — no " +
+                "automatic retry; bind manually via POST /Finance/Creditors/Bind",
                 holdedContactId, ex.Message);
         }
         await repo.SetHoldedContactLinkAsync(report.Id, holdedContactId, supplierAccountNum, now, ct);

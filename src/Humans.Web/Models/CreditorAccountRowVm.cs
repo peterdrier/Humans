@@ -16,3 +16,13 @@ public sealed record CreditorAccountRowVm(
 
 /// <summary>One member bound to a creditor account, named for display and unbindable by id.</summary>
 public sealed record CreditorAccountBindingVm(Guid UserId, string MemberName, string Source);
+
+/// <summary>The /Finance/Creditors page model: the per-account overview plus the bindings that never
+/// resolved a 400000xx and so have no account row to sit on (nobodies-collective/Humans#972).</summary>
+public sealed record CreditorsPageVm(
+    IReadOnlyList<CreditorAccountRowVm> Accounts,
+    IReadOnlyList<UnresolvedCreditorBindingVm> Unresolved);
+
+/// <summary>A member whose creditor-account number never resolved — no automatic retry exists, so this
+/// is the discoverability surface for binding them manually via POST /Finance/Creditors/Bind.</summary>
+public sealed record UnresolvedCreditorBindingVm(Guid UserId, string MemberName, string Source);

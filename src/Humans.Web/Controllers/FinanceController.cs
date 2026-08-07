@@ -581,14 +581,17 @@ public class FinanceController(
     public async Task<IActionResult> Creditors()
     {
         var rows = await holdedFinance.ListCreditorAccountsAsync();
+        var unresolved = await holdedFinance.GetUnresolvedCreditorBindingsAsync();
 
         var names = new Dictionary<Guid, string>();
-        var boundIds = rows.SelectMany(r => r.Bindings).Select(b => b.UserId).Distinct().ToList();
+        var boundIds = rows.SelectMany(r => r.Bindings).Select(b => b.UserId)
+            .Concat(unresolved.Select(b => b.UserId))
+            .Distinct().ToList();
         if (boundIds.Count > 0)
             foreach (var kv in await UserService.GetUserInfosAsync(boundIds))
                 names[kv.Key] = kv.Value.BurnerName;
 
-        var model = rows
+        var accounts = rows
             .Select(r => new CreditorAccountRowVm(
                 r.SupplierAccountNum, r.Name, r.Balance, r.OwedToMember,
                 r.Bindings.Select(b => new CreditorAccountBindingVm(
@@ -600,7 +603,15 @@ public class FinanceController(
             .ThenByDescending(r => r.OwedToMember)
             .ThenBy(r => r.SupplierAccountNum)
             .ToList();
-        return View(model);
+
+        var unresolvedVm = unresolved
+            .Select(b => new UnresolvedCreditorBindingVm(
+                b.UserId,
+                names.TryGetValue(b.UserId, out var nm) ? nm : b.UserId.ToString(),
+                b.Source.ToString()))
+            .ToList();
+
+        return View(new CreditorsPageVm(accounts, unresolvedVm));
     }
 
     [HttpGet("Creditors/{accountNum:int}")]
