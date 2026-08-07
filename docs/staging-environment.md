@@ -107,6 +107,7 @@ On the production host, from a checkout:
 ```bash
 PROD_UPLOADS_DIR=/path/to/prod/uploads \
 STAGING_UPLOADS_DIR=/path/to/staging/uploads \
+STAGING_APP_CONTAINER=<staging app container> \
 ./scripts/refresh-staging-db.sh backup      # or: live
 ```
 
@@ -271,7 +272,7 @@ repository cannot know; the script fails loudly rather than guessing.
 | `STAGING_UPLOADS_DIR` | Host path for staging's uploads — a **new, separate** directory | Yes |
 | `COOLIFY_BACKUP_DIR` | Where Coolify writes database backup artifacts, if not `/data/coolify/backups` | Only if different |
 | `STAGING_DB_CONTAINER` | Postgres container name, if not `humans-db` | Only if different |
-| `STAGING_APP_CONTAINER` | Staging app container name. Set it — the script stops the app before dropping its database and starts it again afterwards | Recommended |
+| `STAGING_APP_CONTAINER` | Staging app container name, stable across deploys. The script stops the app before dropping its database and restarts it afterwards, and refuses to run if the name is unset or does not resolve — an app left running through the drop reconnects to a half-restored database and stays there | Yes |
 
 **Check:** run the workflow manually (**Actions → Staging Database Refresh → Run workflow**) and
 watch it find a backup artifact, restore it, print a non-empty migration-history table per
@@ -322,12 +323,29 @@ JavaScript origins** if that list is in use.
 ### 7.7 Confirm the deploy ordering
 
 Coolify auto-deploys the staging app on push to `staging`, and the refresh workflow starts on
-the same push. In practice the refresh (seconds) finishes long before the image build (minutes),
-and the script stops the app before dropping its database and restarts it afterwards, so either
-order is survivable.
+the same push. **Nothing orders the two.** In practice the refresh (seconds) finishes long
+before the image build (minutes), but that is a timing observation, not a guarantee, and the
+case it would leave behind is the quiet one: a container that came up between the `DROP` and
+the end of the restore, migrated a partial clone, and now serves the pushed SHA at
+`/api/version` — passing §8.1 while §8.2 is a lie.
+
+The script closes that by not trusting its own snapshot. It re-reads the container's state
+after the restore and verification, and restarts anything running — whether it stopped it
+itself or found it started mid-flight. A restart re-runs `DatabaseMigrationHostedService`
+against the finished database, and the log line it prints is what §8.2 reads. The refresh is
+therefore idempotent with respect to deploy timing rather than dependent on it.
+
+**The durable fix is ordering, not correction.** Turning off Coolify's auto-deploy for the
+staging resource and having `staging-db.yml` trigger the deploy through Coolify's API once the
+refresh succeeds would remove the window instead of repairing it. That needs a Coolify API
+token in repository secrets and the resource's UUID, so it is a deliberate follow-up rather
+than part of the repository half — and it is worth doing before this environment carries a
+promotion anyone relies on.
 
 **Check:** after the first real push, the workflow log shows the restore completing, and the
-staging app's log shows migrations applying to the restored database — not to an empty one.
+staging app's log shows migrations applying to the restored database — not to an empty one. If
+the workflow log carries `came up during the refresh`, the deploy raced the restore and the
+restart corrected it; that is the signal to do the ordering fix above.
 
 ---
 

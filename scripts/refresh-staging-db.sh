@@ -48,6 +48,16 @@ esac
 docker inspect "$DB_CONTAINER" >/dev/null 2>&1 \
   || die "database container '$DB_CONTAINER' not found (set DB_CONTAINER)"
 
+# Required, not optional. An app left running through the drop has its connections
+# terminated, reconnects to a half-restored database, and stays pointed at it — the
+# migration service already ran, so recreating the database underneath it does not make it
+# run again. A stale name is the same failure with a typo in front of it, so an
+# uninspectable container fails here rather than being read as "no app to stop".
+[ -n "$STAGING_APP_CONTAINER" ] \
+  || die "STAGING_APP_CONTAINER must be set — the staging app has to be down while its database is dropped and restored (see docs/staging-environment.md §7.3)"
+docker inspect "$STAGING_APP_CONTAINER" >/dev/null 2>&1 \
+  || die "staging application container '$STAGING_APP_CONTAINER' not found — fix the name in Coolify rather than refreshing the database out from under a running app"
+
 # Checked up front rather than at the copy: by then the database is already dropped and
 # the app is already stopped, and failing there leaves staging down for a missing path.
 [ -n "${PROD_UPLOADS_DIR:-}" ] && [ -n "${STAGING_UPLOADS_DIR:-}" ] \
@@ -118,14 +128,12 @@ fi
 # 2. Take the staging app down
 #
 # Its connections block DROP DATABASE, and a running app must not read a
-# half-restored database. Coolify's deploy for this push brings it back; the
-# restart below only covers a refresh that ran on its own.
+# half-restored database. Stopping it here is only half the job — §6 handles the
+# deploy that lands while the restore is still going.
 # ---------------------------------------------------------------------------
 
-APP_WAS_RUNNING=false
-if [ -n "$STAGING_APP_CONTAINER" ] \
-   && [ "$(docker inspect -f '{{.State.Running}}' "$STAGING_APP_CONTAINER" 2>/dev/null || echo false)" = "true" ]; then
-  APP_WAS_RUNNING=true
+APP_WAS_RUNNING=$(docker inspect -f '{{.State.Running}}' "$STAGING_APP_CONTAINER")
+if [ "$APP_WAS_RUNNING" = "true" ]; then
   log "Stopping '$STAGING_APP_CONTAINER'"
   docker stop "$STAGING_APP_CONTAINER" >/dev/null
 fi
@@ -204,9 +212,22 @@ rsync -a --delete "$PROD_UPLOADS_DIR"/ "$STAGING_UPLOADS_DIR"/
 
 # ---------------------------------------------------------------------------
 # 6. Hand back
+#
+# Coolify deploys the staging app on the same push that starts this refresh, and nothing
+# orders the two. So the check in §2 is a snapshot, not a lock: a container can come up
+# between the DROP and the end of the restore and bind to a partial clone. The state is
+# re-read here rather than assumed, and anything found running is restarted — the database
+# it is looking at now is the finished one, and a restart is what makes the migration
+# service run against it instead of against whatever existed mid-restore.
 # ---------------------------------------------------------------------------
 
-if [ "$APP_WAS_RUNNING" = true ]; then
+APP_IS_RUNNING=$(docker inspect -f '{{.State.Running}}' "$STAGING_APP_CONTAINER")
+if [ "$APP_IS_RUNNING" = "true" ]; then
+  [ "$APP_WAS_RUNNING" = "true" ] \
+    || log "'$STAGING_APP_CONTAINER' came up during the refresh — a deploy landed mid-restore"
+  log "Restarting '$STAGING_APP_CONTAINER'"
+  docker restart "$STAGING_APP_CONTAINER" >/dev/null
+elif [ "$APP_WAS_RUNNING" = "true" ]; then
   log "Starting '$STAGING_APP_CONTAINER'"
   docker start "$STAGING_APP_CONTAINER" >/dev/null
 fi
