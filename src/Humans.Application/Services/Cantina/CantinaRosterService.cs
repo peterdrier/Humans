@@ -3,7 +3,6 @@ using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Cantina.Dtos;
 using Humans.Domain.Constants;
-using Humans.Domain.Entities;
 using NodaTime;
 
 namespace Humans.Application.Services.Cantina;
@@ -180,25 +179,25 @@ public sealed class CantinaRosterService : ICantinaRosterService
             EventTodayDate: eventTodayDate);
     }
 
-    public int GetCurrentWeekStartOffsetForActiveEvent(EventSettings eventSettings, Instant now)
+    public int GetCurrentWeekStartOffsetForActiveEvent(BurnSettingsInfo burn, Instant now)
     {
-        ArgumentNullException.ThrowIfNull(eventSettings);
-        var zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId)
+        ArgumentNullException.ThrowIfNull(burn);
+        var zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(burn.TimeZoneId)
             ?? DateTimeZoneProviders.Tzdb["Europe/Madrid"];
         var todayLocal = now.InZone(zone).Date;
         // NodaTime: IsoDayOfWeek.Monday = 1; LocalDate.DayOfWeek is an IsoDayOfWeek.
         var daysSinceMonday = ((int)todayLocal.DayOfWeek - 1 + DaysPerWeek) % DaysPerWeek;
         var monday = todayLocal.PlusDays(-daysSinceMonday);
-        return Period.Between(eventSettings.GateOpeningDate, monday, PeriodUnits.Days).Days;
+        return Period.Between(burn.GateOpeningDate, monday, PeriodUnits.Days).Days;
     }
 
-    public int GetCurrentDayOffsetForActiveEvent(EventSettings eventSettings, Instant now)
+    public int GetCurrentDayOffsetForActiveEvent(BurnSettingsInfo burn, Instant now)
     {
-        ArgumentNullException.ThrowIfNull(eventSettings);
-        var zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId)
+        ArgumentNullException.ThrowIfNull(burn);
+        var zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(burn.TimeZoneId)
             ?? DateTimeZoneProviders.Tzdb["Europe/Madrid"];
         var todayLocal = now.InZone(zone).Date;
-        return Period.Between(eventSettings.GateOpeningDate, todayLocal, PeriodUnits.Days).Days;
+        return Period.Between(burn.GateOpeningDate, todayLocal, PeriodUnits.Days).Days;
     }
 
     public async Task<DailyMatrixDto> GetDailyRosterAsync(int dayOffset, CancellationToken ct = default)

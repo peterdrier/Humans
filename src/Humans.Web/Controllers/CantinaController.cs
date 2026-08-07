@@ -23,19 +23,19 @@ namespace Humans.Web.Controllers;
 public sealed class CantinaController : HumansControllerBase
 {
     private readonly ICantinaRosterService _roster;
-    private readonly IShiftManagementService _shiftMgmt;
+    private readonly IBurnSettingsService _burnSettings;
     private readonly IClock _clock;
     private readonly ILogger<CantinaController> _logger;
 
     public CantinaController(
         ICantinaRosterService roster,
-        IShiftManagementService shiftMgmt,
+        IBurnSettingsService burnSettings,
         IClock clock,
         ILogger<CantinaController> logger,
         IUserServiceRead userService) : base(userService)
     {
         _roster = roster;
-        _shiftMgmt = shiftMgmt;
+        _burnSettings = burnSettings;
         _clock = clock;
         _logger = logger;
     }
@@ -111,10 +111,10 @@ public sealed class CantinaController : HumansControllerBase
     /// </summary>
     private async Task<int> ComputeDefaultWeekStartOffsetAsync()
     {
-        var es = await _shiftMgmt.GetActiveAsync().ConfigureAwait(false);
-        if (es is null)
+        var burn = await _burnSettings.GetActiveAsync().ConfigureAwait(false);
+        if (burn is null)
             return 0;
-        return _roster.GetCurrentWeekStartOffsetForActiveEvent(es, _clock.GetCurrentInstant());
+        return _roster.GetCurrentWeekStartOffsetForActiveEvent(burn, _clock.GetCurrentInstant());
     }
 
     /// <summary>
@@ -124,9 +124,9 @@ public sealed class CantinaController : HumansControllerBase
     /// </summary>
     private async Task<int> ComputeDefaultDayOffsetAsync()
     {
-        var es = await _shiftMgmt.GetActiveAsync().ConfigureAwait(false);
-        if (es is null)
+        var burn = await _burnSettings.GetActiveAsync().ConfigureAwait(false);
+        if (burn is null)
             return 0;
-        return _roster.GetCurrentDayOffsetForActiveEvent(es, _clock.GetCurrentInstant());
+        return _roster.GetCurrentDayOffsetForActiveEvent(burn, _clock.GetCurrentInstant());
     }
 }
