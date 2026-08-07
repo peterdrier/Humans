@@ -27,9 +27,12 @@ namespace Humans.Application.Interfaces.Search;
 /// listing renders and omits the row, since a rota hit links to
 /// <c>/Shifts?departmentId={teamId}</c>, whose default browse query drops
 /// rotas hidden from volunteers. Either way the viewer does not get the
-/// thing. One destination does not yet hold up its end:
-/// <c>/Camps/{slug}</c> has no season-status gate, so a non-public season
-/// still renders (nobodies-collective/Humans#993).
+/// thing. Two destinations fall short. <c>/Camps/{slug}</c> has no
+/// season-status gate, so a non-public season still renders
+/// (nobodies-collective/Humans#993). And a rota from a <i>past</i> event
+/// resolves by id but <c>/Shifts</c> only ever builds the active event, so
+/// that link cannot reach it even when it is volunteer-visible
+/// (nobodies-collective/Humans#998) — a reach problem, not a privacy one.
 /// </para>
 ///
 /// <para>
