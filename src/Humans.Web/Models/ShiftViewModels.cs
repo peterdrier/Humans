@@ -688,13 +688,12 @@ public class BuildStrikeRotaTableViewModel
     public RotaShiftGroup RotaGroup { get; set; } = null!;
 
     /// <summary>
-    /// Typed as the interface, not <see cref="BurnSettingsInfo"/>: this partial is
-    /// shared between the migrated browse/onboarding pages (which hold the DTO) and
-    /// the widget gallery (which still holds the EF entity, scope unresolved — #809).
-    /// Both implement <see cref="IBurnSettingsInfo"/> and the partial reads nothing
-    /// beyond it.
+    /// The burn this rota belongs to, as the cross-section read DTO. Every consumer
+    /// of this partial — browse, onboarding, and the widget gallery — resolves the
+    /// active burn through <see cref="IBurnSettingsService"/>, so the EF entity never
+    /// reaches a view model (#809).
     /// </summary>
-    public IBurnSettingsInfo EventSettings { get; set; } = null!;
+    public BurnSettingsInfo EventSettings { get; set; } = null!;
     public HashSet<Guid> UserSignupShiftIds { get; set; } = [];
     public Dictionary<Guid, SignupStatus> UserSignupStatuses { get; set; } = new();
     public bool ShowSignups { get; set; }
@@ -734,7 +733,7 @@ public class EventRotaTableViewModel
     public List<ShiftDisplayItem> Shifts { get; set; } = [];
 
     /// <inheritdoc cref="BuildStrikeRotaTableViewModel.EventSettings" />
-    public IBurnSettingsInfo EventSettings { get; set; } = null!;
+    public BurnSettingsInfo EventSettings { get; set; } = null!;
     public HashSet<Guid> UserSignupShiftIds { get; set; } = [];
     public Dictionary<Guid, SignupStatus> UserSignupStatuses { get; set; } = new();
     public bool ShowSignups { get; set; }
@@ -786,7 +785,7 @@ public class BuildStrikeRotaRowViewModel
     public ShiftDisplayItem Item { get; set; } = null!;
 
     /// <inheritdoc cref="BuildStrikeRotaTableViewModel.EventSettings" />
-    public IBurnSettingsInfo Es { get; set; } = null!;
+    public BurnSettingsInfo Es { get; set; } = null!;
     public bool IsSignedUp { get; set; }
     public SignupStatus? SignupStatus { get; set; }
     public bool SignupsBlockedByMissingDietary { get; set; }
@@ -825,7 +824,7 @@ public class EventRotaRowViewModel
     public ShiftDisplayItem Item { get; set; } = null!;
 
     /// <inheritdoc cref="BuildStrikeRotaTableViewModel.EventSettings" />
-    public IBurnSettingsInfo Es { get; set; } = null!;
+    public BurnSettingsInfo Es { get; set; } = null!;
     public bool IsSignedUp { get; set; }
     public SignupStatus? SignupStatus { get; set; }
     public bool SignupsBlockedByMissingDietary { get; set; }

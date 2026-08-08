@@ -4,7 +4,7 @@
 @using NodaTime
 
 @functions {
-    string GetPhase(Shift shift, IBurnSettingsInfo es)
+    string GetPhase(Shift shift, BurnSettingsInfo es)
     {
         return shift.GetShiftPeriod(es) switch
         {
@@ -15,7 +15,7 @@
         };
     }
 
-    string GetPhaseBadge(Shift shift, IBurnSettingsInfo es)
+    string GetPhaseBadge(Shift shift, BurnSettingsInfo es)
     {
         return shift.GetShiftPeriod(es) switch
         {
