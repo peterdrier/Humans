@@ -103,7 +103,8 @@ public class ScannerControllerTests
         FinishingWeekendStartOffset: 3,
         EarlyEntryCapacity: new Dictionary<int, int>(),
         BarriosEarlyEntryAllocation: null,
-        EarlyEntryClose: null);
+        EarlyEntryClose: null,
+        IsShiftBrowsingOpen: false);
 
     private static ApprovedEventView OfferedEvent(
         Guid submitterUserId, Guid? campId, string title, Instant startAt,

@@ -285,7 +285,8 @@ public class AgentToolDispatcherTests
         FinishingWeekendStartOffset: 0,
         EarlyEntryCapacity: new Dictionary<int, int>(),
         BarriosEarlyEntryAllocation: null,
-        EarlyEntryClose: null);
+        EarlyEntryClose: null,
+        IsShiftBrowsingOpen: false);
 
     private static Humans.Domain.Entities.Shift MakeShift(
         Humans.Domain.Entities.Rota rota, int dayOffset, bool isAllDay,

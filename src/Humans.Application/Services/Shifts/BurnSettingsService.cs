@@ -32,5 +32,6 @@ public sealed class BurnSettingsService(IShiftManagementRepository repo) : IBurn
         EarlyEntryCapacity: new Dictionary<int, int>(src.EarlyEntryCapacity),
         BarriosEarlyEntryAllocation: src.BarriosEarlyEntryAllocation is null
             ? null : new Dictionary<int, int>(src.BarriosEarlyEntryAllocation),
-        EarlyEntryClose: src.EarlyEntryClose);
+        EarlyEntryClose: src.EarlyEntryClose,
+        IsShiftBrowsingOpen: src.IsShiftBrowsingOpen);
 }

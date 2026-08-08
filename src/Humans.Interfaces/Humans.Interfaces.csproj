@@ -1,10 +1,19 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    Lowest-level project: system marker interfaces and architecture attributes
-    only. No ProjectReferences, no NuGet packages. Namespaces intentionally
-    remain Humans.Application.* (namespace ≠ assembly) so call sites and the
-    Humans.Analyzers full-name constants are unaffected by the move.
+    Lowest-level project: system marker interfaces, architecture attributes, and
+    shape interfaces shared by Domain entities and their Application DTOs.
+    Never a ProjectReference on another Humans.* project — this project stays the
+    bottom of the graph so Humans.Domain can reference it. External packages only:
+    NodaTime is allowed because IBurnSettingsInfo's calendar members are LocalDate
+    and Instant, and NodaTime is an external, base-class-like dependency already
+    used by every layer above. Namespaces intentionally remain Humans.Application.*
+    (namespace ≠ assembly) so call sites and the Humans.Analyzers full-name
+    constants are unaffected by the move.
   -->
+
+  <ItemGroup>
+    <PackageReference Include="NodaTime" />
+  </ItemGroup>
 
 </Project>

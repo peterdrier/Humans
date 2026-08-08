@@ -100,7 +100,8 @@ public class EventServiceCalendarFeedTests
                 FinishingWeekendStartOffset: -2,
                 EarlyEntryCapacity: new Dictionary<int, int>(),
                 BarriosEarlyEntryAllocation: null,
-                EarlyEntryClose: null));
+                EarlyEntryClose: null,
+                IsShiftBrowsingOpen: false));
     }
 
     [HumansFact]

@@ -76,7 +76,8 @@ public sealed class EventServiceTests
             FinishingWeekendStartOffset: -4,
             EarlyEntryCapacity: new Dictionary<int, int>(),
             BarriosEarlyEntryAllocation: null,
-            EarlyEntryClose: null));
+            EarlyEntryClose: null,
+            IsShiftBrowsingOpen: false));
 
         await _service.SaveGuideSettingsAsync(
             existingId: null,

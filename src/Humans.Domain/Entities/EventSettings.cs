@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces.Shifts;
 using NodaTime;
 
 namespace Humans.Domain.Entities;
@@ -6,7 +7,7 @@ namespace Humans.Domain.Entities;
 /// Singleton event configuration — dates, timezone, early entry capacity, and global caps.
 /// One active EventSettings per event cycle.
 /// </summary>
-public class EventSettings
+public class EventSettings : IBurnSettingsInfo
 {
     /// <summary>
     /// Unique identifier.

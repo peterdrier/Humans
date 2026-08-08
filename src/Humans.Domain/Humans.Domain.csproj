@@ -6,4 +6,9 @@
     <PackageReference Include="Stateless" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Humans.Interfaces has no dependencies of its own, so this cannot cycle. -->
+    <ProjectReference Include="..\Humans.Interfaces\Humans.Interfaces.csproj" />
+  </ItemGroup>
+
 </Project>

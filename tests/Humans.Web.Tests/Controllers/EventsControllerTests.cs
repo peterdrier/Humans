@@ -169,7 +169,8 @@ public class EventsControllerTests
         FinishingWeekendStartOffset: 0,
         EarlyEntryCapacity: new Dictionary<int, int>(),
         BarriosEarlyEntryAllocation: null,
-        EarlyEntryClose: null);
+        EarlyEntryClose: null,
+        IsShiftBrowsingOpen: false);
 
     private static Event MakeEvent(Guid? campId, Guid submitterId, EventStatus status) => new()
     {

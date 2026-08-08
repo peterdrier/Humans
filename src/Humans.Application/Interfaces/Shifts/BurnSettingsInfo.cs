@@ -6,8 +6,8 @@ namespace Humans.Application.Interfaces.Shifts;
 /// Cross-section read DTO over the Shifts-owned <c>event_settings</c> row
 /// (colloquially "the burn" — Nowhere 2026, etc.). Exposes only the fields
 /// other sections legitimately need (identity, calendar anchor, build
-/// calendar, early-entry capacity) — Shifts-internal flags
-/// (<c>IsShiftBrowsingOpen</c>, <c>GlobalVolunteerCap</c>,
+/// calendar, early-entry capacity, and the global shift-browsing switch) —
+/// Shifts-internal tuning knobs (<c>GlobalVolunteerCap</c>,
 /// <c>ReminderLeadTimeHours</c>) stay on <see cref="IShiftManagementService"/>.
 /// </summary>
 /// <remarks>
@@ -38,7 +38,8 @@ public sealed record BurnSettingsInfo(
     int FinishingWeekendStartOffset,
     IReadOnlyDictionary<int, int> EarlyEntryCapacity,
     IReadOnlyDictionary<int, int>? BarriosEarlyEntryAllocation,
-    Instant? EarlyEntryClose)
+    Instant? EarlyEntryClose,
+    bool IsShiftBrowsingOpen) : IBurnSettingsInfo
 {
     /// <summary>
     /// Step-function lookup: returns the cumulative EE capacity for the

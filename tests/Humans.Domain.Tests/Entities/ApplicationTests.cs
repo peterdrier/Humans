@@ -7,6 +7,12 @@ using Xunit;
 
 namespace Humans.Domain.Tests.Entities;
 
+// Humans.Domain now references Humans.Interfaces, which declares the
+// Humans.Application.* namespace, so the bare name `Application` would resolve
+// to that namespace instead of the entity. The alias must sit inside the
+// namespace declaration to win the lookup.
+using Application = Humans.Domain.Entities.Application;
+
 public class ApplicationTests
 {
     private readonly FakeClock _clock = new(Instant.FromUtc(2024, 1, 15, 10, 0));

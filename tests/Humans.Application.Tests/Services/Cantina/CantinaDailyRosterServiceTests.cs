@@ -82,7 +82,8 @@ public class CantinaDailyRosterServiceTests
         FinishingWeekendStartOffset: 0,
         EarlyEntryCapacity: new Dictionary<int, int>(),
         BarriosEarlyEntryAllocation: null,
-        EarlyEntryClose: null);
+        EarlyEntryClose: null,
+        IsShiftBrowsingOpen: false);
 
     /// <summary>
     /// Active event with an explicit build→strike offset range so the

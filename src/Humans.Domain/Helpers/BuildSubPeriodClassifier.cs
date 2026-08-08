@@ -1,16 +1,16 @@
-using Humans.Domain.Entities;
+using Humans.Application.Interfaces.Shifts;
 using Humans.Domain.Enums;
 
 namespace Humans.Domain.Helpers;
 
 /// <summary>
 /// Classifies a build-period DayOffset into one of the four sub-periods
-/// defined on <see cref="EventSettings"/>. Returns null for offsets outside
+/// defined on <see cref="IBurnSettingsInfo"/>. Returns null for offsets outside
 /// the build window (≥ 0). Used by the shift dashboard's set-up sub-filter.
 /// </summary>
 public static class BuildSubPeriodClassifier
 {
-    public static BuildSubPeriod? Classify(int dayOffset, EventSettings settings)
+    public static BuildSubPeriod? Classify(int dayOffset, IBurnSettingsInfo settings)
     {
         if (dayOffset >= 0)
             return null;
@@ -37,7 +37,7 @@ public static class BuildSubPeriodClassifier
     /// FinishingWeekend (the final sub-period before the event itself begins).
     /// </summary>
     public static (int StartInclusive, int EndExclusive) BoundsFor(
-        BuildSubPeriod subPeriod, EventSettings settings) => subPeriod switch
+        BuildSubPeriod subPeriod, IBurnSettingsInfo settings) => subPeriod switch
         {
             BuildSubPeriod.FirstCrew => (settings.FirstCrewStartOffset, settings.SetupWeekStartOffset),
             BuildSubPeriod.SetupWeek => (settings.SetupWeekStartOffset, settings.PreEventWeekStartOffset),
