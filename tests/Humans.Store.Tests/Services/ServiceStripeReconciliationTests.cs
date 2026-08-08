@@ -20,10 +20,7 @@ namespace Humans.Store.Tests.Services;
 
 public class ServiceStripeReconciliationTests
 {
-    // The class is the seam: Store has no repository interface (design §6a), so
-    // Repository's members are virtual and NSubstitute proxies the class. The null
-    // factory is never touched — every member used here is overridden.
-    private readonly Repository _repo = Substitute.For<Repository>(new object[] { null! });
+    private readonly IStoreRepository _repo = Substitute.For<IStoreRepository>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly ICampServiceRead _campService = Substitute.For<ICampServiceRead>();
     private readonly ITeamServiceRead _teams = Substitute.For<ITeamServiceRead>();

@@ -25,7 +25,7 @@ public static class SectionDiscoveryExtensions
     {
         var sections = DiscoverSections();
 
-        foreach (var section in sections)
+        foreach (var (_, section) in sections)
         {
             section.Register(services, configuration);
         }
@@ -36,7 +36,7 @@ public static class SectionDiscoveryExtensions
         Serilog.Log.Information(
             "Discovered {Count} section project(s): {Sections}",
             sections.Count,
-            string.Join(", ", sections.Select(s => s.GetType().Name)));
+            string.Join(", ", sections.Select(s => s.Name)));
 
         return services;
     }
@@ -53,15 +53,23 @@ public static class SectionDiscoveryExtensions
                         && t.Name.EndsWith("Resource", StringComparison.Ordinal))
             .OrderBy(t => t.Name, StringComparer.Ordinal)];
 
-    private static IReadOnlyList<ISection> DiscoverSections() =>
+    /// <remarks>
+    /// Named by the assembly's <c>[Section("…")]</c> rather than by the type. The types
+    /// are distinct — <c>Humans.Store.Section</c>, <c>Humans.Agent.Section</c> — but the
+    /// attribute carries the canonical section name the analyzers and HUM0017/HUM0018
+    /// already key on, so one identity serves discovery, logging and enforcement.
+    /// </remarks>
+    private static IReadOnlyList<(string Name, ISection Section)> DiscoverSections() =>
         [.. SectionAssemblies()
-            .SelectMany(a => a.GetExportedTypes())
-            .Where(t => t is { IsClass: true, IsAbstract: false } && typeof(ISection).IsAssignableFrom(t))
-            .Select(t => (ISection)Activator.CreateInstance(t)!)
+            .SelectMany(a => a.GetExportedTypes()
+                .Where(t => t is { IsClass: true, IsAbstract: false } && typeof(ISection).IsAssignableFrom(t))
+                .Select(t => (
+                    Name: a.GetCustomAttribute<SectionAttribute>()!.Name,
+                    Section: (ISection)Activator.CreateInstance(t)!)))
             // Assembly-enumeration order is not stable; sort so registration order is.
             // Nothing depends on it today — #858 §6 establishes that no section baseline
             // carries a cross-section FK, so the contexts migrate independently.
-            .OrderBy(s => s.GetType().Name, StringComparer.Ordinal)];
+            .OrderBy(s => s.Name, StringComparer.Ordinal)];
 
     /// <summary>
     /// Assemblies in the entry assembly's dependency graph carrying

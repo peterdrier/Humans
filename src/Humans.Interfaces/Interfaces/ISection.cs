@@ -10,9 +10,9 @@ namespace Humans.Application.Interfaces;
 /// </summary>
 /// <remarks>
 /// The one <c>public</c> type a section exposes outside <c>Contracts/</c>. Implementations
-/// are <c>public sealed class &lt;Section&gt;Section : ISection</c> at the section project's
-/// root, activated with <see cref="Activator"/>, so they must have a parameterless
-/// constructor and hold no state.
+/// are <c>public sealed class Section : ISection</c> at the section project's root — same
+/// name in every section, since nothing names it. Activated with <see cref="Activator"/>,
+/// so they must have a parameterless constructor and hold no state.
 /// </remarks>
 public interface ISection
 {

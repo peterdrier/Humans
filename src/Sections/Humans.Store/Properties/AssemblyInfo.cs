@@ -8,7 +8,8 @@ using Humans.Domain.Attributes;
 // [Section("Store")] on the repository interface.
 [assembly: Section("Store")]
 
-// Castle DynamicProxy, behind NSubstitute in Humans.Store.Tests, proxies the internal
-// Repository class. With IStoreRepository deleted (design §6a) there is no interface to
-// substitute, so the class is the seam and the proxy generator needs to see it.
+// Castle DynamicProxy, behind NSubstitute in Humans.Store.Tests, needs to see
+// IStoreRepository to proxy it. Internal visibility is the point of the section
+// boundary, and Castle requires this grant for an internal type either way — an
+// internal interface is no more proxyable than an internal class.
 [assembly: InternalsVisibleTo("DynamicProxyGenAssembly2")]

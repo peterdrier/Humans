@@ -15,7 +15,7 @@ namespace Humans.Web.Infrastructure;
 /// section <c>_ViewImports.cshtml</c>, and measured the same way (design §1).
 /// </summary>
 /// <remarks>
-/// A section's rule is "public means <c>&lt;Section&gt;Section</c> or <c>Contracts/</c>",
+/// A section's rule is "public means <c>Section</c> or <c>Contracts/</c>",
 /// with no exceptions — that is what makes the compiler the boundary. Without this the
 /// rule would have to carve out controllers in all ~35 sections, and a section's
 /// controllers, its action-parameter view models and everything those touch would be

@@ -1,6 +1,6 @@
 # Contracts — deliberately empty
 
-Everything in this folder is `public`; everything outside it (except `StoreSection`) is
+Everything in this folder is `public`; everything outside it (except `Section`) is
 `internal`. It holds a section's cross-section surface only: `I<Section>ServiceRead`,
 canonical read DTOs, and domain events.
 

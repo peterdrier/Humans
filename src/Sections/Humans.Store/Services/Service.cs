@@ -15,7 +15,7 @@ using NodaTime.Text;
 namespace Humans.Store.Services;
 
 internal sealed class Service(
-    Repository repo,
+    IStoreRepository repo,
     IAuditLogService audit,
     ICampServiceRead campService,
     ITeamServiceRead teamService,
