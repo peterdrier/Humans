@@ -286,7 +286,7 @@ public sealed class ShiftManagementService(
     }
 
     public async Task<ShiftSummary?> BuildSummaryAsync(
-        EventSettings activeEvent,
+        BurnSettingsInfo activeEvent,
         string? teamSlug = null,
         Guid? rotaId = null,
         CancellationToken ct = default)

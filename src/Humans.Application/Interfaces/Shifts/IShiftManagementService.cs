@@ -120,7 +120,7 @@ public interface IShiftManagementService : IApplicationService
     /// orders for display.
     /// </summary>
     Task<ShiftSummary?> BuildSummaryAsync(
-        EventSettings activeEvent,
+        BurnSettingsInfo activeEvent,
         string? teamSlug = null,
         Guid? rotaId = null,
         CancellationToken ct = default);

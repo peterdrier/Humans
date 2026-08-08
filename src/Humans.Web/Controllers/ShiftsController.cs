@@ -123,7 +123,7 @@ public class ShiftsController(
 
     private async Task<IActionResult> RenderSummaryAsync(string? teamSlug, Guid? rotaId)
     {
-        var es = await shiftMgmt.GetActiveAsync();
+        var es = await burnSettings.GetActiveAsync(HttpContext.RequestAborted);
         if (es is null) return View("NoActiveEvent");
 
         var summary = await shiftMgmt.BuildSummaryAsync(es, teamSlug, rotaId, HttpContext.RequestAborted);
