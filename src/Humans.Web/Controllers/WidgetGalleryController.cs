@@ -26,6 +26,7 @@ public sealed class WidgetGalleryController(
     IUserServiceRead userService,
     ITeamServiceRead teamService,
     IShiftManagementService shiftMgmt,
+    IBurnSettingsService burnSettings,
     ILogger<WidgetGalleryController> logger) : HumansControllerBase(userService)
 {
     [HttpGet("")]
@@ -147,7 +148,7 @@ public sealed class WidgetGalleryController(
     {
         try
         {
-            var es = await shiftMgmt.GetActiveAsync();
+            var es = await burnSettings.GetActiveAsync(HttpContext.RequestAborted);
             if (es is null)
                 return ShiftsSamples.Empty;
 
@@ -193,7 +194,7 @@ public sealed class WidgetGalleryController(
         }
     }
 
-    private ShiftDisplayItem MapToDisplayItem(UrgentShift u, EventSettings es)
+    private ShiftDisplayItem MapToDisplayItem(UrgentShift u, BurnSettingsInfo es)
     {
         return new ShiftDisplayItem
         {
@@ -211,7 +212,7 @@ public sealed class WidgetGalleryController(
     }
 
     private sealed record ShiftsSamples(
-        EventSettings? EventSettings,
+        BurnSettingsInfo? EventSettings,
         Rota? Rota,
         IReadOnlyList<DailyStaffingData> StaffingData,
         IReadOnlyList<DailyStaffingHours> StaffingHours,
@@ -235,7 +236,7 @@ public sealed class WidgetGalleryViewModel
     public string? SampleTeamSlug { get; init; }
     public string? SampleTeamName { get; init; }
     public VolunteerEventProfile? SampleVolunteerProfile { get; init; }
-    public EventSettings? SampleEventSettings { get; init; }
+    public BurnSettingsInfo? SampleEventSettings { get; init; }
     public Rota? SampleRota { get; init; }
     public required IReadOnlyList<DailyStaffingData> SampleStaffingData { get; init; }
     public required IReadOnlyList<DailyStaffingHours> SampleStaffingHours { get; init; }
