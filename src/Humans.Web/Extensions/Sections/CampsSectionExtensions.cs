@@ -1,5 +1,6 @@
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Camps;
+using Humans.Application.Interfaces.CityPlanning;
 using Humans.Application.Interfaces.EarlyEntry;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.GoogleIntegration;
@@ -60,6 +61,9 @@ internal static class CampsSectionExtensions
         services.AddScoped<IGoogleGroupMembershipSource>(sp => sp.GetRequiredService<CampsCampRoleService>());
         // Lazy<ICampRoleService> resolves a circular dep: CampService -> ICampRoleService -> ICampRoleCampAccess.
         services.AddTransient(sp => new Lazy<ICampRoleService>(sp.GetRequiredService<ICampRoleService>));
+        // Lazy<ICityPlanningService> resolves a circular dep: CampService -> ICityPlanningService
+        // -> ICampServiceRead. Used on the camp-delete path to clear the section's polygons.
+        services.AddTransient(sp => new Lazy<ICityPlanningService>(sp.GetRequiredService<ICityPlanningService>));
 
         services.AddScoped<ICampContactService, CampsCampContactService>();
         services.AddScoped<CampAdminPageBuilder>();

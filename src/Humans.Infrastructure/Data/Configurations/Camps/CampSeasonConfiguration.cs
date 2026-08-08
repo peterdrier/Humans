@@ -5,15 +5,9 @@ using Humans.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using Humans.Application.Architecture;
 
 namespace Humans.Infrastructure.Data.Configurations.Camps;
 
-[Grandfathered(
-    ruleId: "HUM0024",
-    justification: "Pre-existing cross-section EF navigation join; migrating to bare FK + service-level stitching.",
-    since: "2026-05-25",
-    issueRef: "docs/architecture/roslyn-analysis.md#hum0024")]
 public class CampSeasonConfiguration : IEntityTypeConfiguration<CampSeason>
 {
     private static readonly JsonSerializerOptions JsonEnumOptions = new()
@@ -59,9 +53,5 @@ public class CampSeasonConfiguration : IEntityTypeConfiguration<CampSeason>
         builder.HasIndex(s => new { s.CampId, s.Year }).IsUnique();
         builder.HasIndex(s => s.Status);
 
-        builder.HasOne<User>()
-            .WithMany()
-            .HasForeignKey(s => s.ReviewedByUserId)
-            .OnDelete(DeleteBehavior.SetNull);
     }
 }

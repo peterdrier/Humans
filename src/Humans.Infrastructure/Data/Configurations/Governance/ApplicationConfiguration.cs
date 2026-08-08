@@ -1,16 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Humans.Domain.Entities;
-using Humans.Application.Architecture;
 using MemberApplication = Humans.Domain.Entities.Application;
 
 namespace Humans.Infrastructure.Data.Configurations.Governance;
 
-[Grandfathered(
-    ruleId: "HUM0024",
-    justification: "Pre-existing cross-section EF navigation join; migrating to bare FK + service-level stitching.",
-    since: "2026-08-05",
-    issueRef: "docs/architecture/roslyn-analysis.md#hum0024")]
 public class ApplicationConfiguration : IEntityTypeConfiguration<MemberApplication>
 {
     public void Configure(EntityTypeBuilder<MemberApplication> builder)
@@ -49,20 +43,8 @@ public class ApplicationConfiguration : IEntityTypeConfiguration<MemberApplicati
         builder.Property(a => a.UpdatedAt)
             .IsRequired();
 
-        // FK-only relationship to User — the cross-domain nav property was
-        // stripped in the Governance migration (design-rules §6). The FK
-        // column stays in the schema; only the in-memory nav is removed.
-        builder.HasOne<User>()
-            .WithMany()
-            .HasForeignKey(a => a.ReviewedByUserId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        // Issue #635 (§15i): inverse-side FK preservation for the applicant
-        // after the User-side nav (User.Applications) was stripped.
-        builder.HasOne<User>()
-            .WithMany()
-            .HasForeignKey(a => a.UserId)
-            .OnDelete(DeleteBehavior.Cascade);
+        // UserId / ReviewedByUserId are bare cross-section Guid columns — no FK
+        // constraint, no nav (memory/architecture/no-cross-section-ef-joins.md).
 
         builder.HasMany(a => a.StateHistory)
             .WithOne(sh => sh.Application)

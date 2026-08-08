@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Humans.Domain.Entities;
-using Humans.Application.Architecture;
 
 namespace Humans.Infrastructure.Data.Configurations.Legal;
 
@@ -10,11 +9,6 @@ namespace Humans.Infrastructure.Data.Configurations.Legal;
 /// This table is append-only - no updates or deletes should be performed.
 /// A database trigger should be created to enforce this at the database level.
 /// </summary>
-[Grandfathered(
-    ruleId: "HUM0024",
-    justification: "Pre-existing cross-section EF navigation join; migrating to bare FK + service-level stitching.",
-    since: "2026-05-25",
-    issueRef: "docs/architecture/roslyn-analysis.md#hum0024")]
 public class ConsentRecordConfiguration : IEntityTypeConfiguration<ConsentRecord>
 {
     public void Configure(EntityTypeBuilder<ConsentRecord> builder)
@@ -41,15 +35,11 @@ public class ConsentRecordConfiguration : IEntityTypeConfiguration<ConsentRecord
         builder.Property(cr => cr.ExplicitConsent)
             .IsRequired();
 
-        // Create unique index to prevent duplicate consents for same user/version
-        // Issue #635 (§15i): inverse-side FK preservation after the User-side
-        // nav (User.ConsentRecords) was stripped. OnDelete(Restrict) preserves
-        // append-only history when a User is deleted via the orchestrated
-        // anonymization path.
-        builder.HasOne<User>()
-            .WithMany()
-            .HasForeignKey(cr => cr.UserId)
-            .OnDelete(DeleteBehavior.Restrict);
+        // UserId is a bare cross-section Guid column — no FK constraint, no nav.
+        // Consent history is append-only; the Users section anonymises in place
+        // rather than deleting (IAccountDeletionService).
+
+        // Unique index prevents duplicate consents for the same user/version.
 
         builder.HasIndex(cr => new { cr.UserId, cr.DocumentVersionId })
             .IsUnique();

@@ -1,15 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Humans.Domain.Entities;
-using Humans.Application.Architecture;
 
 namespace Humans.Infrastructure.Data.Configurations.Tickets;
 
-[Grandfathered(
-    ruleId: "HUM0024",
-    justification: "Pre-existing cross-section EF navigation join; migrating to bare FK + service-level stitching.",
-    since: "2026-05-25",
-    issueRef: "docs/architecture/roslyn-analysis.md#hum0024")]
 public class TicketAttendeeConfiguration : IEntityTypeConfiguration<TicketAttendee>
 {
     public void Configure(EntityTypeBuilder<TicketAttendee> builder)
@@ -55,11 +49,6 @@ public class TicketAttendeeConfiguration : IEntityTypeConfiguration<TicketAttend
 
         builder.Property(a => a.SyncedAt)
             .IsRequired();
-
-        builder.HasOne<User>()
-            .WithMany()
-            .HasForeignKey(a => a.MatchedUserId)
-            .OnDelete(DeleteBehavior.SetNull);
 
         builder.HasIndex(a => a.AttendeeEmail);
         builder.HasIndex(a => a.MatchedUserId);

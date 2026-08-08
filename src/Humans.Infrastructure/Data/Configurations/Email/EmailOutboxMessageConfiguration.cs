@@ -1,15 +1,9 @@
 using Humans.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using Humans.Application.Architecture;
 
 namespace Humans.Infrastructure.Data.Configurations.Email;
 
-[Grandfathered(
-    ruleId: "HUM0024",
-    justification: "Pre-existing cross-section EF navigation join; migrating to bare FK + service-level stitching.",
-    since: "2026-05-25",
-    issueRef: "docs/architecture/roslyn-analysis.md#hum0024")]
 public class EmailOutboxMessageConfiguration : IEntityTypeConfiguration<EmailOutboxMessage>
 {
     public void Configure(EntityTypeBuilder<EmailOutboxMessage> builder)
@@ -37,24 +31,10 @@ public class EmailOutboxMessageConfiguration : IEntityTypeConfiguration<EmailOut
         // Campaign grant tracking
         builder.HasIndex(e => e.CampaignGrantId);
 
-        // FK-only reference into the Users section (no navigation property on
-        // EmailOutboxMessage per design-rules §6c). The shadow relationship
-        // still produces the foreign-key column and ON DELETE SET NULL cascade
-        // exactly as the old HasOne(e => e.User).WithMany() configuration did.
-        builder.HasOne<User>()
-            .WithMany()
-            .HasForeignKey(e => e.UserId)
-            .OnDelete(DeleteBehavior.SetNull);
-
-        builder.HasOne<CampaignGrant>()
-            .WithMany()
-            .HasForeignKey(e => e.CampaignGrantId)
-            .OnDelete(DeleteBehavior.SetNull);
-
-        builder.HasOne<ShiftSignup>()
-            .WithMany()
-            .HasForeignKey(e => e.ShiftSignupId)
-            .OnDelete(DeleteBehavior.SetNull);
+        // UserId / CampaignGrantId / ShiftSignupId are bare cross-section Guid
+        // columns — no FK constraint, no nav (memory/architecture/no-cross-section-ef-joins.md).
+        // A stale id here is an accepted orphan: this is an append-only send log,
+        // pruned on age by DeleteSentOlderThanAsync.
 
         // Dedup: one email of each template type per signup
         builder.HasIndex(e => new { e.ShiftSignupId, e.TemplateName })

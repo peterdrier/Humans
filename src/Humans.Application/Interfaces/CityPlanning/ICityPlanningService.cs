@@ -21,6 +21,16 @@ public interface ICityPlanningService : ICityPlanningServiceRead, IApplicationSe
         Guid campSeasonId, Guid historyId, Guid restoredByUserId,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Deletes every polygon and history row belonging to the given camp seasons.
+    /// Returns the number of rows removed. Called by the Camps section when a Camp
+    /// is deleted, before its seasons go — the <c>Restrict</c> FK that used to make
+    /// the database refuse that delete was dropped by
+    /// nobodies-collective/Humans#992.
+    /// </summary>
+    Task<int> DeleteCampPolygonsForSeasonsAsync(
+        IReadOnlyCollection<Guid> campSeasonIds, CancellationToken cancellationToken = default);
+
     // Authorization (global role checks belong at the controller level via claims)
     // IsCityPlanningTeamMemberAsync is inherited from ICityPlanningServiceRead.
     Task<bool> CanUserEditAsync(Guid userId, Guid campSeasonId, CancellationToken cancellationToken = default);

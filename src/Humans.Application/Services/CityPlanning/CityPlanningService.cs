@@ -187,6 +187,10 @@ public sealed class CityPlanningService(
             campSeasonId, entry.GeoJson, entry.AreaSqm, restoredByUserId, note, cancellationToken);
     }
 
+    public Task<int> DeleteCampPolygonsForSeasonsAsync(
+        IReadOnlyCollection<Guid> campSeasonIds, CancellationToken cancellationToken = default) =>
+        repo.DeletePolygonsForCampSeasonsAsync(campSeasonIds, cancellationToken);
+
     // --- Authorization ---
 
     public async Task<bool> IsCityPlanningTeamMemberAsync(

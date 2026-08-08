@@ -1,15 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Humans.Domain.Entities;
-using Humans.Application.Architecture;
 
 namespace Humans.Infrastructure.Data.Configurations.GoogleIntegration;
 
-[Grandfathered(
-    ruleId: "HUM0024",
-    justification: "Pre-existing cross-section EF navigation join; migrating to bare FK + service-level stitching.",
-    since: "2026-05-25",
-    issueRef: "docs/architecture/roslyn-analysis.md#hum0024")]
 public class GoogleResourceConfiguration : IEntityTypeConfiguration<GoogleResource>
 {
     public void Configure(EntityTypeBuilder<GoogleResource> builder)
@@ -53,13 +47,8 @@ public class GoogleResourceConfiguration : IEntityTypeConfiguration<GoogleResour
             .HasFilter("\"IsActive\" = true")
             .IsUnique();
 
-        // Restrict (not SetNull): GoogleResource.TeamId is non-nullable, so
-        // SetNull would produce a NOT NULL violation on team delete. Teams
-        // should never be hard-deleted if resources exist; callers must unlink
-        // resources first.
-        builder.HasOne<Team>()
-            .WithMany()
-            .HasForeignKey(gr => gr.TeamId)
-            .OnDelete(DeleteBehavior.Restrict);
+        // TeamId is a bare cross-section Guid column — no FK constraint, no nav.
+        // Teams must not be hard-deleted while resources exist; the guard is the
+        // pre-check in TeamService.PermanentlyDeleteTeamAsync.
     }
 }

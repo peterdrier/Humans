@@ -78,6 +78,21 @@ public interface ICityPlanningRepository : IRepository
         Instant now,
         CancellationToken ct = default);
 
+    /// <summary>
+    /// Deletes every polygon and history row belonging to the given camp seasons,
+    /// in one unit of work. Returns the number of rows removed across both tables.
+    /// Empty input is a no-op returning 0.
+    /// </summary>
+    /// <remarks>
+    /// Replaces the <c>CampSeason → camp_polygons</c> / <c>camp_polygon_histories</c>
+    /// <c>Restrict</c> constraints dropped by nobodies-collective/Humans#992: deleting
+    /// a Camp cascades to its seasons, and the database no longer refuses that delete
+    /// when city-planning rows hang off them. Called by the Camps section through
+    /// <c>ICityPlanningService</c>, never by a repository.
+    /// </remarks>
+    Task<int> DeletePolygonsForCampSeasonsAsync(
+        IReadOnlyCollection<Guid> campSeasonIds, CancellationToken ct = default);
+
     // ==========================================================================
     // Reads / Writes — CityPlanningSettings
     // ==========================================================================

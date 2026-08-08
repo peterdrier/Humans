@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Humans.Domain.Entities;
-using Humans.Application.Architecture;
 
 namespace Humans.Infrastructure.Data.Configurations.AuditLog;
 
@@ -10,11 +9,6 @@ namespace Humans.Infrastructure.Data.Configurations.AuditLog;
 /// This table is append-only — no updates or deletes should be performed.
 /// A database trigger enforces this at the database level.
 /// </summary>
-[Grandfathered(
-    ruleId: "HUM0024",
-    justification: "Pre-existing cross-section EF navigation join; migrating to bare FK + service-level stitching.",
-    since: "2026-05-25",
-    issueRef: "docs/architecture/roslyn-analysis.md#hum0024")]
 public class AuditLogEntryConfiguration : IEntityTypeConfiguration<AuditLogEntry>
 {
     public void Configure(EntityTypeBuilder<AuditLogEntry> builder)
@@ -45,11 +39,8 @@ public class AuditLogEntryConfiguration : IEntityTypeConfiguration<AuditLogEntry
         builder.Property(e => e.RelatedEntityType)
             .HasMaxLength(100);
 
-        // FK to User with SetNull on delete (null ActorUserId = system action or deleted user)
-        builder.HasOne<User>()
-            .WithMany()
-            .HasForeignKey(e => e.ActorUserId)
-            .OnDelete(DeleteBehavior.SetNull);
+        // ActorUserId is a bare cross-section Guid column — no FK constraint, no nav
+        // (null = system action).
 
         // Google sync-specific fields (all nullable)
         builder.Property(e => e.ErrorMessage)
@@ -65,11 +56,7 @@ public class AuditLogEntryConfiguration : IEntityTypeConfiguration<AuditLogEntry
         builder.Property(e => e.UserEmail)
             .HasMaxLength(500);
 
-        // FK to GoogleResource with SetNull on delete
-        builder.HasOne<GoogleResource>()
-            .WithMany()
-            .HasForeignKey(e => e.ResourceId)
-            .OnDelete(DeleteBehavior.SetNull);
+        // ResourceId is a bare cross-section Guid column — no FK constraint, no nav.
 
         // Indexes for querying
         builder.HasIndex(e => new { e.EntityType, e.EntityId });

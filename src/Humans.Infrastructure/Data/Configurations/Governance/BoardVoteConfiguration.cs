@@ -1,15 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Humans.Domain.Entities;
-using Humans.Application.Architecture;
 
 namespace Humans.Infrastructure.Data.Configurations.Governance;
 
-[Grandfathered(
-    ruleId: "HUM0024",
-    justification: "Pre-existing cross-section EF navigation join; migrating to bare FK + service-level stitching.",
-    since: "2026-08-05",
-    issueRef: "docs/architecture/roslyn-analysis.md#hum0024")]
 public class BoardVoteConfiguration : IEntityTypeConfiguration<BoardVote>
 {
     public void Configure(EntityTypeBuilder<BoardVote> builder)
@@ -33,12 +27,7 @@ public class BoardVoteConfiguration : IEntityTypeConfiguration<BoardVote>
             .HasForeignKey(bv => bv.ApplicationId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // FK-only relationship to User — the cross-domain nav property was
-        // stripped in the Governance migration (design-rules §6).
-        builder.HasOne<User>()
-            .WithMany()
-            .HasForeignKey(bv => bv.BoardMemberUserId)
-            .OnDelete(DeleteBehavior.Restrict);
+        // BoardMemberUserId is a bare cross-section Guid column — no FK constraint, no nav.
 
         // One vote per Board member per application
         builder.HasIndex(bv => new { bv.ApplicationId, bv.BoardMemberUserId })

@@ -1,15 +1,9 @@
 using Humans.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using Humans.Application.Architecture;
 
 namespace Humans.Infrastructure.Data.Configurations.CityPlanning;
 
-[Grandfathered(
-    ruleId: "HUM0024",
-    justification: "Pre-existing cross-section EF navigation join; migrating to bare FK + service-level stitching.",
-    since: "2026-05-25",
-    issueRef: "docs/architecture/roslyn-analysis.md#hum0024")]
 public class CampPolygonConfiguration : IEntityTypeConfiguration<CampPolygon>
 {
     public void Configure(EntityTypeBuilder<CampPolygon> builder)
@@ -21,14 +15,5 @@ public class CampPolygonConfiguration : IEntityTypeConfiguration<CampPolygon>
 
         builder.Property(p => p.GeoJson).HasColumnType("text").IsRequired();
 
-        builder.HasOne<CampSeason>()
-            .WithMany()
-            .HasForeignKey(p => p.CampSeasonId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        builder.HasOne<User>()
-            .WithMany()
-            .HasForeignKey(p => p.LastModifiedByUserId)
-            .OnDelete(DeleteBehavior.Restrict);
     }
 }

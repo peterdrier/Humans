@@ -1,15 +1,9 @@
 using Humans.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using Humans.Application.Architecture;
 
 namespace Humans.Infrastructure.Data.Configurations.Shifts;
 
-[Grandfathered(
-    ruleId: "HUM0024",
-    justification: "Pre-existing cross-section EF navigation join; migrating to bare FK + service-level stitching.",
-    since: "2026-05-25",
-    issueRef: "docs/architecture/roslyn-analysis.md#hum0024")]
 public class RotaConfiguration : IEntityTypeConfiguration<Rota>
 {
     public void Configure(EntityTypeBuilder<Rota> builder)
@@ -40,10 +34,6 @@ public class RotaConfiguration : IEntityTypeConfiguration<Rota>
             .HasForeignKey(r => r.EventSettingsId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        // Cross-section FK to Team — typed-FK form, no navigation property.
-        builder.HasOne<Team>()
-            .WithMany()
-            .HasForeignKey(r => r.TeamId)
-            .OnDelete(DeleteBehavior.Restrict);
+        // TeamId is a bare cross-section Guid column — no FK constraint, no nav.
     }
 }

@@ -5,6 +5,7 @@ using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Camps;
+using Humans.Application.Interfaces.CityPlanning;
 using Humans.Application.Interfaces.EarlyEntry;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.GoogleIntegration;
@@ -29,6 +30,8 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
     private readonly INotificationEmitter _notificationEmitter;
     private readonly ICampLeadJoinRequestsBadgeCacheInvalidator _leadBadgeInvalidator;
     private readonly Lazy<ICampRoleService> _campRoleService;
+    // Lazy: CityPlanningService injects ICampServiceRead, closing the cycle.
+    private readonly Lazy<ICityPlanningService> _cityPlanningService;
     private readonly IEarlyEntryInvalidator _earlyEntryInvalidator;
     private readonly IUserServiceRead _userServiceRead;
     private readonly IClock _clock;
@@ -47,6 +50,7 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
         INotificationEmitter notificationEmitter,
         ICampLeadJoinRequestsBadgeCacheInvalidator leadBadgeInvalidator,
         Lazy<ICampRoleService> campRoleService,
+        Lazy<ICityPlanningService> cityPlanningService,
         IEarlyEntryInvalidator earlyEntryInvalidator,
         IUserServiceRead userServiceRead,
         IClock clock,
@@ -59,6 +63,7 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
         _notificationEmitter = notificationEmitter;
         _leadBadgeInvalidator = leadBadgeInvalidator;
         _campRoleService = campRoleService;
+        _cityPlanningService = cityPlanningService;
         _earlyEntryInvalidator = earlyEntryInvalidator;
         _userServiceRead = userServiceRead;
         _clock = clock;
@@ -731,6 +736,26 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
 
     public async Task DeleteCampAsync(Guid campId, CancellationToken cancellationToken = default)
     {
+        var camp = await _repo.GetByIdAsync(campId, cancellationToken)
+            ?? throw new InvalidOperationException("Camp not found.");
+
+        // Removing the camp cascades to its seasons. City Planning keeps polygons and
+        // polygon history keyed on CampSeasonId; the Restrict FK that used to make the
+        // database refuse this delete was dropped by nobodies-collective/Humans#992, so
+        // the Camps section now clears them through the owning section's service.
+        var seasonIds = camp.Seasons.Select(s => s.Id).ToList();
+        if (seasonIds.Count > 0)
+        {
+            var removed = await _cityPlanningService.Value
+                .DeleteCampPolygonsForSeasonsAsync(seasonIds, cancellationToken);
+            if (removed > 0)
+            {
+                _logger.LogInformation(
+                    "Deleted {Rows} city-planning polygon/history rows for {Seasons} seasons of camp {CampId}",
+                    removed, seasonIds.Count, campId);
+            }
+        }
+
         var deletedImagePaths = await _repo.DeleteCampAsync(campId, cancellationToken);
         if (deletedImagePaths is null)
         {

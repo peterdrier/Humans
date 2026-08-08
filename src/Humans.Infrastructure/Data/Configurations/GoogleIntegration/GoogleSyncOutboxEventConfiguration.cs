@@ -1,15 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Humans.Domain.Entities;
-using Humans.Application.Architecture;
 
 namespace Humans.Infrastructure.Data.Configurations.GoogleIntegration;
 
-[Grandfathered(
-    ruleId: "HUM0024",
-    justification: "Pre-existing cross-section EF navigation join; migrating to bare FK + service-level stitching.",
-    since: "2026-08-05",
-    issueRef: "docs/architecture/roslyn-analysis.md#hum0024")]
 public class GoogleSyncOutboxEventConfiguration : IEntityTypeConfiguration<GoogleSyncOutboxEvent>
 {
     public void Configure(EntityTypeBuilder<GoogleSyncOutboxEvent> builder)
@@ -34,16 +28,6 @@ public class GoogleSyncOutboxEventConfiguration : IEntityTypeConfiguration<Googl
 
         builder.Property(e => e.OccurredAt)
             .IsRequired();
-
-        builder.HasOne<Team>()
-            .WithMany()
-            .HasForeignKey(e => e.TeamId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        builder.HasOne<User>()
-            .WithMany()
-            .HasForeignKey(e => e.UserId)
-            .OnDelete(DeleteBehavior.Cascade);
 
         builder.Property(e => e.FailedPermanently)
             .IsRequired();

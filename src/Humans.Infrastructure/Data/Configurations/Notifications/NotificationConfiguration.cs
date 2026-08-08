@@ -1,15 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Humans.Domain.Entities;
-using Humans.Application.Architecture;
 
 namespace Humans.Infrastructure.Data.Configurations.Notifications;
 
-[Grandfathered(
-    ruleId: "HUM0024",
-    justification: "Pre-existing cross-section EF navigation join; migrating to bare FK + service-level stitching.",
-    since: "2026-05-25",
-    issueRef: "docs/architecture/roslyn-analysis.md#hum0024")]
 public class NotificationConfiguration : IEntityTypeConfiguration<Notification>
 {
     public void Configure(EntityTypeBuilder<Notification> builder)
@@ -54,11 +48,6 @@ public class NotificationConfiguration : IEntityTypeConfiguration<Notification>
 
         builder.Property(n => n.CreatedAt)
             .IsRequired();
-
-        builder.HasOne<User>()
-            .WithMany()
-            .HasForeignKey(n => n.ResolvedByUserId)
-            .OnDelete(DeleteBehavior.SetNull);
 
         builder.HasMany(n => n.Recipients)
             .WithOne(r => r.Notification)

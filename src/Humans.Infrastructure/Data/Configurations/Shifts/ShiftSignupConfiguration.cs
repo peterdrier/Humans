@@ -1,15 +1,9 @@
 using Humans.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using Humans.Application.Architecture;
 
 namespace Humans.Infrastructure.Data.Configurations.Shifts;
 
-[Grandfathered(
-    ruleId: "HUM0024",
-    justification: "Pre-existing cross-section EF navigation join; migrating to bare FK + service-level stitching.",
-    since: "2026-05-25",
-    issueRef: "docs/architecture/roslyn-analysis.md#hum0024")]
 public class ShiftSignupConfiguration : IEntityTypeConfiguration<ShiftSignup>
 {
     public void Configure(EntityTypeBuilder<ShiftSignup> builder)
@@ -31,25 +25,13 @@ public class ShiftSignupConfiguration : IEntityTypeConfiguration<ShiftSignup>
         builder.HasIndex(d => d.ShiftId);
         builder.HasIndex(d => new { d.ShiftId, d.Status });
 
-        // Cross-section FKs to User — typed-FK form, no navigation properties.
-        builder.HasOne<User>()
-            .WithMany()
-            .HasForeignKey(d => d.UserId)
-            .OnDelete(DeleteBehavior.Restrict);
+        // UserId / EnrolledByUserId / ReviewedByUserId are bare cross-section Guid
+        // columns — no FK constraint, no nav.
 
         builder.HasOne(d => d.Shift)
             .WithMany(s => s.ShiftSignups)
             .HasForeignKey(d => d.ShiftId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasOne<User>()
-            .WithMany()
-            .HasForeignKey(d => d.EnrolledByUserId)
-            .OnDelete(DeleteBehavior.SetNull);
-
-        builder.HasOne<User>()
-            .WithMany()
-            .HasForeignKey(d => d.ReviewedByUserId)
-            .OnDelete(DeleteBehavior.SetNull);
     }
 }

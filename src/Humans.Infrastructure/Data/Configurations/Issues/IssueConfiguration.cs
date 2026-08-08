@@ -1,15 +1,9 @@
 using Humans.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using Humans.Application.Architecture;
 
 namespace Humans.Infrastructure.Data.Configurations.Issues;
 
-[Grandfathered(
-    ruleId: "HUM0024",
-    justification: "Pre-existing cross-section EF navigation join; migrating to bare FK + service-level stitching.",
-    since: "2026-05-25",
-    issueRef: "docs/architecture/roslyn-analysis.md#hum0024")]
 public class IssueConfiguration : IEntityTypeConfiguration<Issue>
 {
     public void Configure(EntityTypeBuilder<Issue> b)
@@ -35,25 +29,11 @@ public class IssueConfiguration : IEntityTypeConfiguration<Issue>
         b.Property(x => x.CreatedAt).IsRequired();
         b.Property(x => x.UpdatedAt).IsRequired();
 
-        // Cross-section FK columns only — no nav property (design-rules §6c,
-        // memory/architecture/no-cross-section-ef-joins.md). Resolve display
-        // data via IUserService; repositories must not .Include() across
-        // sections.
-        //
-        // Reporter FK uses Restrict: account deletion in this codebase
-        // anonymizes the User row in place (see IAccountDeletionService) — the
-        // row is never physically removed, so the FK should never trip. If
-        // anyone ever bypasses the deletion service and tries to Remove() a
-        // user, Restrict makes the DB reject it instead of silently wiping
-        // every issue the user reported.
-        b.HasOne<User>().WithMany().HasForeignKey(x => x.ReporterUserId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        b.HasOne<User>().WithMany().HasForeignKey(x => x.AssigneeUserId)
-            .OnDelete(DeleteBehavior.SetNull);
-
-        b.HasOne<User>().WithMany().HasForeignKey(x => x.ResolvedByUserId)
-            .OnDelete(DeleteBehavior.SetNull);
+        // ReporterUserId / AssigneeUserId / ResolvedByUserId are bare cross-section
+        // Guid columns — no FK constraint, no nav (memory/architecture/no-cross-section-ef-joins.md).
+        // Resolve display data via IUserService; repositories must not .Include()
+        // across sections. Account deletion anonymises the User row in place
+        // (IAccountDeletionService), so these ids stay resolvable.
 
         b.HasMany(x => x.Comments).WithOne(c => c.Issue).HasForeignKey(c => c.IssueId)
             .OnDelete(DeleteBehavior.Cascade);

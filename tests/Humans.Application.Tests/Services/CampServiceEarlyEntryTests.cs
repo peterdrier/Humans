@@ -1,6 +1,7 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Camps;
+using Humans.Application.Interfaces.CityPlanning;
 using Humans.Application.Interfaces.EarlyEntry;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Users;
@@ -44,6 +45,7 @@ public sealed class CampServiceEarlyEntryTests : ServiceTestHarness
             Notifier,
             Substitute.For<ICampLeadJoinRequestsBadgeCacheInvalidator>(),
             new Lazy<ICampRoleService>(() => _campRoleService),
+            new Lazy<ICityPlanningService>(() => Substitute.For<ICityPlanningService>()),
             Substitute.For<IEarlyEntryInvalidator>(),
             _userServiceRead,
             Clock,

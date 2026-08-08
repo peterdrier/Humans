@@ -1,15 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Humans.Domain.Entities;
-using Humans.Application.Architecture;
 
 namespace Humans.Infrastructure.Data.Configurations.Teams;
 
-[Grandfathered(
-    ruleId: "HUM0024",
-    justification: "Pre-existing cross-section EF navigation join; migrating to bare FK + service-level stitching.",
-    since: "2026-05-25",
-    issueRef: "docs/architecture/roslyn-analysis.md#hum0024")]
 public class TeamJoinRequestStateHistoryConfiguration : IEntityTypeConfiguration<TeamJoinRequestStateHistory>
 {
     public void Configure(EntityTypeBuilder<TeamJoinRequestStateHistory> builder)
@@ -29,11 +23,7 @@ public class TeamJoinRequestStateHistoryConfiguration : IEntityTypeConfiguration
         builder.Property(sh => sh.Notes)
             .HasMaxLength(2000);
 
-        // Cross-section FK to Users — bare-FK form, no navigation property.
-        builder.HasOne<User>()
-            .WithMany()
-            .HasForeignKey(sh => sh.ChangedByUserId)
-            .OnDelete(DeleteBehavior.Restrict);
+        // ChangedByUserId is a bare cross-section Guid column — no FK constraint, no nav.
 
         builder.HasIndex(sh => sh.TeamJoinRequestId);
         builder.HasIndex(sh => sh.ChangedAt);

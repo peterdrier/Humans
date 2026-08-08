@@ -1,15 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Humans.Domain.Entities;
-using Humans.Application.Architecture;
 
 namespace Humans.Infrastructure.Data.Configurations.Budget;
 
-[Grandfathered(
-    ruleId: "HUM0024",
-    justification: "Pre-existing cross-section EF navigation join; migrating to bare FK + service-level stitching.",
-    since: "2026-05-25",
-    issueRef: "docs/architecture/roslyn-analysis.md#hum0024")]
 public class BudgetLineItemConfiguration : IEntityTypeConfiguration<BudgetLineItem>
 {
     public void Configure(EntityTypeBuilder<BudgetLineItem> builder)
@@ -26,11 +20,6 @@ public class BudgetLineItemConfiguration : IEntityTypeConfiguration<BudgetLineIt
         builder.Property(l => l.SortOrder).IsRequired();
         builder.Property(l => l.CreatedAt).IsRequired();
         builder.Property(l => l.UpdatedAt).IsRequired();
-
-        builder.HasOne<Team>()
-            .WithMany()
-            .HasForeignKey(l => l.ResponsibleTeamId)
-            .OnDelete(DeleteBehavior.SetNull);
 
         builder.HasIndex(l => new { l.BudgetCategoryId, l.SortOrder });
         builder.HasIndex(l => l.ResponsibleTeamId).HasFilter("\"ResponsibleTeamId\" IS NOT NULL");

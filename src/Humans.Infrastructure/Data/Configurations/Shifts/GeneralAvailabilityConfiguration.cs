@@ -2,15 +2,9 @@ using Humans.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using Humans.Application.Architecture;
 
 namespace Humans.Infrastructure.Data.Configurations.Shifts;
 
-[Grandfathered(
-    ruleId: "HUM0024",
-    justification: "Pre-existing cross-section EF navigation join; migrating to bare FK + service-level stitching.",
-    since: "2026-05-25",
-    issueRef: "docs/architecture/roslyn-analysis.md#hum0024")]
 public class GeneralAvailabilityConfiguration : IEntityTypeConfiguration<GeneralAvailability>
 {
     public void Configure(EntityTypeBuilder<GeneralAvailability> builder)
@@ -28,13 +22,7 @@ public class GeneralAvailabilityConfiguration : IEntityTypeConfiguration<General
 
         builder.HasIndex(e => new { e.UserId, e.EventSettingsId }).IsUnique();
 
-        // FK to User — no navigation property (cross-domain nav stripped per
-        // design-rules §6c). The FK constraint and Restrict delete behavior
-        // are preserved to keep the schema identical.
-        builder.HasOne<User>()
-            .WithMany()
-            .HasForeignKey(e => e.UserId)
-            .OnDelete(DeleteBehavior.Restrict);
+        // UserId is a bare cross-section Guid column — no FK constraint, no nav.
 
         builder.HasOne(e => e.EventSettings)
             .WithMany()

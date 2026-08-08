@@ -1,15 +1,9 @@
 using Humans.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using Humans.Application.Architecture;
 
 namespace Humans.Infrastructure.Data.Configurations.Feedback;
 
-[Grandfathered(
-    ruleId: "HUM0024",
-    justification: "Pre-existing cross-section EF navigation join; migrating to bare FK + service-level stitching.",
-    since: "2026-05-25",
-    issueRef: "docs/architecture/roslyn-analysis.md#hum0024")]
 public class FeedbackMessageConfiguration : IEntityTypeConfiguration<FeedbackMessage>
 {
     public void Configure(EntityTypeBuilder<FeedbackMessage> builder)
@@ -29,13 +23,8 @@ public class FeedbackMessageConfiguration : IEntityTypeConfiguration<FeedbackMes
             .HasForeignKey(m => m.FeedbackReportId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // Cross-section FK in bare-FK form: this block owns the DB-level FK +
-        // cascade behavior, with no navigation property on either side.
+        // SenderUserId is a bare cross-section Guid column — no FK constraint, no nav.
         // Resolve senders via IUserServiceRead.
-        builder.HasOne<User>()
-            .WithMany()
-            .HasForeignKey(m => m.SenderUserId)
-            .OnDelete(DeleteBehavior.SetNull);
 
         builder.HasIndex(m => m.FeedbackReportId);
         builder.HasIndex(m => m.CreatedAt);

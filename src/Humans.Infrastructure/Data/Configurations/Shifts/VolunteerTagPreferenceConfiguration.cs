@@ -1,15 +1,9 @@
 using Humans.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using Humans.Application.Architecture;
 
 namespace Humans.Infrastructure.Data.Configurations.Shifts;
 
-[Grandfathered(
-    ruleId: "HUM0024",
-    justification: "Pre-existing cross-section EF navigation join; migrating to bare FK + service-level stitching.",
-    since: "2026-05-25",
-    issueRef: "docs/architecture/roslyn-analysis.md#hum0024")]
 public class VolunteerTagPreferenceConfiguration : IEntityTypeConfiguration<VolunteerTagPreference>
 {
     public void Configure(EntityTypeBuilder<VolunteerTagPreference> builder)
@@ -23,11 +17,7 @@ public class VolunteerTagPreferenceConfiguration : IEntityTypeConfiguration<Volu
 
         builder.HasIndex(v => v.UserId);
 
-        // Cross-section FK to User — typed-FK form, no navigation property.
-        builder.HasOne<User>()
-            .WithMany()
-            .HasForeignKey(v => v.UserId)
-            .OnDelete(DeleteBehavior.Cascade);
+        // UserId is a bare cross-section Guid column — no FK constraint, no nav.
 
         builder.HasOne(v => v.ShiftTag)
             .WithMany(t => t.VolunteerPreferences)

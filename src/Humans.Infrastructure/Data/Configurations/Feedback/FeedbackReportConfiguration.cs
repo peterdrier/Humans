@@ -2,15 +2,9 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using Humans.Application.Architecture;
 
 namespace Humans.Infrastructure.Data.Configurations.Feedback;
 
-[Grandfathered(
-    ruleId: "HUM0024",
-    justification: "Pre-existing cross-section EF navigation join; migrating to bare FK + service-level stitching.",
-    since: "2026-05-25",
-    issueRef: "docs/architecture/roslyn-analysis.md#hum0024")]
 public class FeedbackReportConfiguration : IEntityTypeConfiguration<FeedbackReport>
 {
     public void Configure(EntityTypeBuilder<FeedbackReport> builder)
@@ -73,34 +67,13 @@ public class FeedbackReportConfiguration : IEntityTypeConfiguration<FeedbackRepo
         builder.Property(f => f.CreatedAt).IsRequired();
         builder.Property(f => f.UpdatedAt).IsRequired();
 
-        // Cross-section FK relationships in bare-FK form: the DB-level FK +
-        // cascade behavior is owned here, but no navigation property exists on
-        // either side. Resolve users via IUserServiceRead and teams via
-        // ITeamServiceRead.
+        // UserId / ResolvedByUserId / AssignedToUserId / AssignedToTeamId are bare
+        // cross-section Guid columns — no FK constraint, no nav. Resolve users via
+        // IUserServiceRead and teams via ITeamServiceRead.
         // No cross-section FK to agent_conversations. AgentConversationId is
         // a plain nullable Guid column on feedback_reports — Feedback owns the
         // column, Agent owns the referenced rows, and EF does not model the
         // join. Index on the column lives below.
-
-        builder.HasOne<User>()
-            .WithMany()
-            .HasForeignKey(f => f.UserId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        builder.HasOne<User>()
-            .WithMany()
-            .HasForeignKey(f => f.ResolvedByUserId)
-            .OnDelete(DeleteBehavior.SetNull);
-
-        builder.HasOne<User>()
-            .WithMany()
-            .HasForeignKey(f => f.AssignedToUserId)
-            .OnDelete(DeleteBehavior.SetNull);
-
-        builder.HasOne<Team>()
-            .WithMany()
-            .HasForeignKey(f => f.AssignedToTeamId)
-            .OnDelete(DeleteBehavior.SetNull);
 
         builder.HasIndex(f => f.Status);
         builder.HasIndex(f => f.CreatedAt);

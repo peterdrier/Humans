@@ -1,15 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Humans.Domain.Entities;
-using Humans.Application.Architecture;
 
 namespace Humans.Infrastructure.Data.Configurations.Legal;
 
-[Grandfathered(
-    ruleId: "HUM0024",
-    justification: "Pre-existing cross-section EF navigation join; migrating to bare FK + service-level stitching.",
-    since: "2026-05-25",
-    issueRef: "docs/architecture/roslyn-analysis.md#hum0024")]
 public class LegalDocumentConfiguration : IEntityTypeConfiguration<LegalDocument>
 {
     public void Configure(EntityTypeBuilder<LegalDocument> builder)
@@ -40,11 +34,6 @@ public class LegalDocumentConfiguration : IEntityTypeConfiguration<LegalDocument
 
         builder.Property(ld => ld.LastSyncedAt)
             .IsRequired();
-
-        builder.HasOne<Team>()
-            .WithMany()
-            .HasForeignKey(ld => ld.TeamId)
-            .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasMany(ld => ld.Versions)
             .WithOne(v => v.LegalDocument)

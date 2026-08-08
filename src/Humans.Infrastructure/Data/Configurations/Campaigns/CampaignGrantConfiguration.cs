@@ -1,15 +1,9 @@
 using Humans.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using Humans.Application.Architecture;
 
 namespace Humans.Infrastructure.Data.Configurations.Campaigns;
 
-[Grandfathered(
-    ruleId: "HUM0024",
-    justification: "Pre-existing cross-section EF navigation join; migrating to bare FK + service-level stitching.",
-    since: "2026-05-25",
-    issueRef: "docs/architecture/roslyn-analysis.md#hum0024")]
 public class CampaignGrantConfiguration : IEntityTypeConfiguration<CampaignGrant>
 {
     public void Configure(EntityTypeBuilder<CampaignGrant> builder)
@@ -23,6 +17,11 @@ public class CampaignGrantConfiguration : IEntityTypeConfiguration<CampaignGrant
 
         builder.Property(g => g.RedeemedAt);
 
+        // UserId is a bare cross-section Guid column — no FK constraint, no nav.
+        // Explicit index: replaces the convention index that died with the FK.
+        // CampaignRepository filters UserId alone (:160,173,327,350,380) and the
+        // unique (CampaignId, UserId) cannot serve a UserId-only lookup.
+        builder.HasIndex(g => g.UserId);
         builder.HasIndex(g => new { g.CampaignId, g.UserId }).IsUnique();
         builder.HasIndex(g => g.CampaignCodeId).IsUnique();
 
@@ -36,9 +35,5 @@ public class CampaignGrantConfiguration : IEntityTypeConfiguration<CampaignGrant
             .HasForeignKey<CampaignGrant>(g => g.CampaignCodeId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasOne<User>()
-            .WithMany()
-            .HasForeignKey(g => g.UserId)
-            .OnDelete(DeleteBehavior.Restrict);
     }
 }

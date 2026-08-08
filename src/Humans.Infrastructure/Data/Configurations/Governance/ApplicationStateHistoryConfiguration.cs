@@ -1,15 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Humans.Domain.Entities;
-using Humans.Application.Architecture;
 
 namespace Humans.Infrastructure.Data.Configurations.Governance;
 
-[Grandfathered(
-    ruleId: "HUM0024",
-    justification: "Pre-existing cross-section EF navigation join; migrating to bare FK + service-level stitching.",
-    since: "2026-08-05",
-    issueRef: "docs/architecture/roslyn-analysis.md#hum0024")]
 public class ApplicationStateHistoryConfiguration : IEntityTypeConfiguration<ApplicationStateHistory>
 {
     public void Configure(EntityTypeBuilder<ApplicationStateHistory> builder)
@@ -28,12 +22,7 @@ public class ApplicationStateHistoryConfiguration : IEntityTypeConfiguration<App
         builder.Property(sh => sh.Notes)
             .HasMaxLength(4000);
 
-        // FK-only relationship to User — the cross-domain nav property was
-        // stripped in the Governance migration (design-rules §6).
-        builder.HasOne<User>()
-            .WithMany()
-            .HasForeignKey(sh => sh.ChangedByUserId)
-            .OnDelete(DeleteBehavior.Restrict);
+        // ChangedByUserId is a bare cross-section Guid column — no FK constraint, no nav.
 
         builder.HasIndex(sh => sh.ApplicationId);
         builder.HasIndex(sh => sh.ChangedAt);

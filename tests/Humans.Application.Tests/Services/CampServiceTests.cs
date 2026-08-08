@@ -1,17 +1,23 @@
 using AwesomeAssertions;
+using Humans.Application.Configuration;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Camps;
+using Humans.Application.Interfaces.CityPlanning;
 using Humans.Application.Interfaces.EarlyEntry;
 using Humans.Application.Interfaces.GoogleIntegration;
+using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Camps;
+using Humans.Application.Services.CityPlanning;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Domain.ValueObjects;
 using Humans.Infrastructure.Repositories.Camps;
+using Humans.Infrastructure.Repositories.CityPlanning;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using NodaTime;
 using NSubstitute;
 
@@ -22,6 +28,7 @@ public sealed class CampServiceTests : ServiceTestHarness
     private readonly CampService _service;
     private readonly InMemoryFileStorage _fileStorage;
     private readonly ICampRoleService _campRoleService;
+    private readonly ICityPlanningService _cityPlanningService;
     private readonly IEarlyEntryInvalidator _earlyEntryInvalidator;
 
     public CampServiceTests()
@@ -37,6 +44,16 @@ public sealed class CampServiceTests : ServiceTestHarness
 
         _earlyEntryInvalidator = Substitute.For<IEarlyEntryInvalidator>();
 
+        // Real City Planning service over the same in-memory store: the camp-delete
+        // path must actually remove the polygons now that the FK no longer does.
+        _cityPlanningService = new CityPlanningService(
+            new CityPlanningRepository(DbFactory),
+            Clock,
+            Options.Create(new CityPlanningOptions()),
+            Substitute.For<ICampServiceRead>(),
+            Substitute.For<ITeamServiceRead>(),
+            Substitute.For<IUserServiceRead>());
+
         _service = new CampService(
             repo,
             AuditLog,
@@ -45,6 +62,7 @@ public sealed class CampServiceTests : ServiceTestHarness
             Notifier,
             Substitute.For<ICampLeadJoinRequestsBadgeCacheInvalidator>(),
             new Lazy<ICampRoleService>(() => _campRoleService),
+            new Lazy<ICityPlanningService>(() => _cityPlanningService),
             _earlyEntryInvalidator,
             Substitute.For<IUserServiceRead>(),
             Clock,
@@ -1490,6 +1508,33 @@ public sealed class CampServiceTests : ServiceTestHarness
         return new CampInfo(
             campId, "resolve-camp", "camp@example.com", "+34600000010",
             IsSwissCamp: false, TimesAtNowhere: 1, [season]);
+    }
+
+    // ==========================================================================
+    // DeleteCampAsync — City Planning cleanup (nobodies-collective/Humans#992)
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task DeleteCampAsync_ClearsCityPlanningPolygonsForItsSeasons()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var camp = await CreateTestCamp();
+        var season = await Db.CampSeasons.FirstAsync(s => s.CampId == camp.Id, ct);
+
+        await _cityPlanningService.SaveCampPolygonAsync(
+            season.Id, "{\"type\":\"Polygon\",\"coordinates\":[]}", 42.0, Guid.NewGuid(),
+            cancellationToken: ct);
+
+        (await Db.CampPolygons.CountAsync(ct)).Should().Be(1);
+        (await Db.CampPolygonHistories.CountAsync(ct)).Should().Be(1);
+
+        await _service.DeleteCampAsync(camp.Id, ct);
+
+        // The Restrict FK that used to block this delete is gone; the Camps section
+        // now clears the rows through ICityPlanningService instead of orphaning them.
+        (await Db.CampPolygons.CountAsync(ct)).Should().Be(0);
+        (await Db.CampPolygonHistories.CountAsync(ct)).Should().Be(0);
+        (await Db.Camps.AnyAsync(c => c.Id == camp.Id, ct)).Should().BeFalse();
     }
 
     private async Task<Camp> CreateTestCamp()
