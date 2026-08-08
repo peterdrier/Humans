@@ -342,7 +342,7 @@ public class MySignupItem
 public class ShiftAdminViewModel
 {
     public TeamInfo Department { get; set; } = null!;
-    public EventSettings EventSettings { get; set; } = null!;
+    public BurnSettingsInfo EventSettings { get; set; } = null!;
     public List<Rota> Rotas { get; set; } = [];
     public List<ShiftSignup> PendingSignups { get; set; } = [];
     public int TotalSlots { get; set; }

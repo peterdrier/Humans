@@ -12,7 +12,7 @@ namespace Humans.Web.Models.Shifts;
 
 public sealed record ShiftAdminPageRequest(
     TeamInfo Department,
-    EventSettings EventSettings,
+    BurnSettingsInfo EventSettings,
     bool CanManage,
     bool CanApprove,
     bool CanViewMedical,

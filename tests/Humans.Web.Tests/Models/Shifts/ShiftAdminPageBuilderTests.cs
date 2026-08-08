@@ -40,19 +40,23 @@ public sealed class ShiftAdminPageBuilderTests
         IsPublicPage: true, IsHidden: false, IsPromotedToDirectory: false,
         CreatedAt: TestNow, Members: []);
 
-    private static readonly EventSettings Event = new()
-    {
-        Id = Guid.NewGuid(),
-        EventName = "Test Event 2026",
-        TimeZoneId = "Europe/Madrid",
-        GateOpeningDate = new LocalDate(2026, 7, 1),
-        BuildStartOffset = -14,
-        EventEndOffset = 6,
-        StrikeEndOffset = 9,
-        IsActive = true,
-        CreatedAt = TestNow,
-        UpdatedAt = TestNow
-    };
+    private static readonly BurnSettingsInfo Event = new(
+        Id: Guid.NewGuid(),
+        EventName: "Test Event 2026",
+        Year: 2026,
+        TimeZoneId: "Europe/Madrid",
+        GateOpeningDate: new LocalDate(2026, 7, 1),
+        BuildStartOffset: -14,
+        EventEndOffset: 6,
+        StrikeEndOffset: 9,
+        FirstCrewStartOffset: -14,
+        SetupWeekStartOffset: -10,
+        PreEventWeekStartOffset: -7,
+        FinishingWeekendStartOffset: -3,
+        EarlyEntryCapacity: new Dictionary<int, int>(),
+        BarriosEarlyEntryAllocation: null,
+        EarlyEntryClose: null,
+        IsShiftBrowsingOpen: true);
 
     public ShiftAdminPageBuilderTests()
     {
