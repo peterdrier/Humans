@@ -20,6 +20,5 @@ public class CampaignConfiguration : IEntityTypeConfiguration<Campaign>
             .HasConversion<string>()
             .HasMaxLength(20)
             .IsRequired();
-
     }
 }

@@ -14,6 +14,5 @@ public class CampPolygonHistoryConfiguration : IEntityTypeConfiguration<CampPoly
 
         builder.Property(h => h.GeoJson).HasColumnType("text").IsRequired();
         builder.Property(h => h.Note).HasMaxLength(512).IsRequired();
-
     }
 }

@@ -32,6 +32,5 @@ public class ShiftSignupConfiguration : IEntityTypeConfiguration<ShiftSignup>
             .WithMany(s => s.ShiftSignups)
             .HasForeignKey(d => d.ShiftId)
             .OnDelete(DeleteBehavior.Restrict);
-
     }
 }

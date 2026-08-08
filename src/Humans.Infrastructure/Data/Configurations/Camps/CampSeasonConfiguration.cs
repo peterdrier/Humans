@@ -52,6 +52,5 @@ public class CampSeasonConfiguration : IEntityTypeConfiguration<CampSeason>
 
         builder.HasIndex(s => new { s.CampId, s.Year }).IsUnique();
         builder.HasIndex(s => s.Status);
-
     }
 }

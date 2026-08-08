@@ -34,6 +34,5 @@ public class CampaignGrantConfiguration : IEntityTypeConfiguration<CampaignGrant
             .WithOne(c => c.Grant)
             .HasForeignKey<CampaignGrant>(g => g.CampaignCodeId)
             .OnDelete(DeleteBehavior.Restrict);
-
     }
 }

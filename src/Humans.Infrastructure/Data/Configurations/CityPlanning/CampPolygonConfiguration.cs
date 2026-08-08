@@ -14,6 +14,5 @@ public class CampPolygonConfiguration : IEntityTypeConfiguration<CampPolygon>
         builder.HasIndex(p => p.CampSeasonId).IsUnique();
 
         builder.Property(p => p.GeoJson).HasColumnType("text").IsRequired();
-
     }
 }

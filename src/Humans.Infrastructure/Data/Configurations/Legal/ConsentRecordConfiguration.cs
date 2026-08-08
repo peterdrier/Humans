@@ -40,7 +40,6 @@ public class ConsentRecordConfiguration : IEntityTypeConfiguration<ConsentRecord
         // rather than deleting (IAccountDeletionService).
 
         // Unique index prevents duplicate consents for the same user/version.
-
         builder.HasIndex(cr => new { cr.UserId, cr.DocumentVersionId })
             .IsUnique();
 
