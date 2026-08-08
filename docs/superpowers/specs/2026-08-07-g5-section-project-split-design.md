@@ -525,6 +525,62 @@ prod schema change.
 
 ---
 
+## 7a. Documentation
+
+Same rule as §3 and §4: **a section's documentation lives in the section.** The aim is that a
+worktree scoped to one section project is self-describing — an agent searching it finds the
+invariants and the code that implements them in one pass, rather than having to know that
+`docs/sections/` exists and is the canonical reference.
+
+### Moves into `src/Sections/Humans.Store/`
+
+| Today | Why it moves |
+|---|---|
+| `docs/sections/Store.md` | The section's invariants — its canonical current truth |
+| `docs/features/store/store.md` | Feature documentation for this section only |
+| `docs/superpowers/specs/2026-04-30-store-section-design.md` | The section's own design |
+| `docs/superpowers/specs/2026-06-04-store-stripe-payment-reconciliation-design.md` | Same |
+
+Put them at the project root (or a `Docs/` folder — implementer's call, but be consistent across
+sections from the pilot onward). Add `<None Include="**/*.md" />` to the section csproj so they
+still appear in Solution Explorer; they leave `docs/docs.csproj`, whose only job is that glob.
+
+### Stays in `docs/`
+
+**Point-in-time artifacts.** `docs/plans/2026-08-03-g0-first-audit/Store.md` and the execution
+plans (`docs/superpowers/plans/2026-05-18-store-summary-aggregates.md`,
+`2026-05-27-store-team-orders.md`) record what a program did on a date. They are not the section's
+current truth, and freezing them beside living docs is how a section folder rots. Same reasoning as
+the plans in `docs/plans/` generally.
+
+**`docs/sections/_Index.md` stays and points into the projects.** It is the "which sections exist,
+where does X live" map, and deleting it in the name of locality makes discovery worse, not better —
+the opposite of the goal.
+
+### The trap: `docs/guide/` is product content, not documentation
+
+`GuideSettings.FolderPath` defaults to `"docs/guide"` and the app **serves those files at runtime**
+at `/Guide/{stem}`, with the rendered set pinned in `GuideFiles.cs`. `docs/guide/Store.md` is
+therefore user-facing content the Guide section publishes, not developer prose about Store.
+
+Moving it would 404 the page unless Guide learns to aggregate markdown from section projects *and*
+the Dockerfile copies those paths. **Leave it where it is for the pilot** and record the question
+for Guide's own G5: should a section ship its user-facing guide page, with Guide aggregating? That
+is Guide's design decision, not Store's.
+
+### Inbound links to fix in the same PR
+
+`docs/README.md` (two tables), `docs/architecture/data-model.md`, `docs/sections/_Index.md`,
+`memory/architecture/refunds-manual-via-dashboard.md`, `memory/code/stripe-restricted-keys.md`, and
+the section's `freshness-catalog.yml` entry — whose trigger globs collapse to the one section path,
+the same collapse as `reforge.surface-score.json` in §10.
+
+`CLAUDE.md`'s "Section Invariants — `docs/sections/`" pointer needs a sentence saying that a section
+at G5 carries its invariants doc in its own project, with `_Index.md` as the map. Update it when the
+pilot lands, not before — until then `docs/sections/` is still right for all 35.
+
+---
+
 ## 8. Reference direction — what Shell keeps
 
 Confirmed against the wiring. Store's outbound dependencies, from `StoreService.cs:17-25`:
@@ -630,6 +686,7 @@ holds the line. Nothing else blocks Store.
 - **B3.** `src/Sections/Humans.Store/Views/_ViewImports.cshtml` — §2. Do this **before** the first
   build-and-eyeball, not after.
 - **B3c.** Carve the section's resource set — §3, steps in §15.3b. 25 keys × 6 languages.
+- **B3d.** Move the section's docs in and fix the inbound links — §7a. `docs/guide/Store.md` stays.
 - **B4.** Visibility pass: everything `internal` except `StoreSection` and `Contracts/`. Store has
   no `IStoreServiceRead` today (nothing consumes it), so its `Contracts/` folder starts **empty** —
   the honest end state for a leaf section, and a useful demonstration that `Contracts/` is earned,
@@ -813,6 +870,10 @@ anyway and already what the startup migrator uses.
    from assembly references — never declared on `ISection`.
 10. **Internal types drop the section prefix** (`StoreRepository` → `Repository`); controllers,
     `<Section>DbContext` and public `Contracts/` types keep it, each for a mechanical reason (§6a).
+12. **The section's documentation moves in with it** — the same "everything local" rule as 7,
+    extended to docs. A section project holds its own invariants doc, feature doc and design specs,
+    so an agent working the section finds the prose and the code in one scoped search instead of
+    needing to know `docs/sections/` exists. Point-in-time artifacts stay in `docs/`. See §7a.
 11. **Section-internal interfaces go away entirely** — not renamed, deleted. `Repository` and
     `Service` are concrete classes unless a caching decorator or a `Contracts/` entry needs the
     seam. `IRepository` is not a root interface unless it exists for a reason; tests and analyzers
@@ -851,6 +912,13 @@ Open by design. Treat a surprise here as expected output, not oversight.
 9. **Whether duplication-over-promotion holds under pressure.** §12.7 says a string two sections
    want gets duplicated. The first time that is a 40-key block rather than one word, someone will
    argue for promotion. That argument is worth having on a real case, not pre-empting here.
+10. **Whether section-owned docs actually help agents.** §7a's premise is that a worktree scoped to
+    one section becomes self-describing. Store is the first test of it, and the honest measure is
+    whether the next agent to work Store finds the invariants without being told where they are.
+11. **Where user-facing guide content belongs.** `docs/guide/*.md` is served at runtime by the Guide
+    section (§7a). Whether each section eventually ships its own guide page with Guide aggregating,
+    or Guide keeps owning the folder, is Guide's G5 decision — but every section that moves before
+    then leaves its guide page behind, so the question gets louder, not quieter.
 
 ---
 
@@ -942,6 +1010,10 @@ and may need `<Section>.Contracts`.
    *handlers* move into the section.
 7. `wwwroot/` assets, if any, move with the section and their URLs become
    `/_content/Humans.<Section>/…`. Only Shell's own chrome assets stay in Shell.
+7b. The section's docs move in — invariants doc, feature doc, its own design specs (§7a). Fix the
+   inbound links (`docs/README.md`, `data-model.md`, `_Index.md`, any `memory/` atom citing them,
+   the `freshness-catalog.yml` globs). Point-in-time plans and audits stay in `docs/`; anything the
+   app *serves* from `docs/` at runtime (`docs/guide/`) stays until Guide's own G5.
 8. `tests/Humans.<Section>.Tests` — service, repository, entity and handler tests move in;
    integration tests stay in `Humans.Integration.Tests`. EF-InMemory stays EF-InMemory.
 9. `dotnet ef` for this section: `--project src/Sections/Humans.<Section>
