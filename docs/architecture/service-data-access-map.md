@@ -18,7 +18,7 @@ The goal is to identify cross-section table overlap, duplicated caching, and cac
 >
 > | DbContext | Owns |
 > |-----------|------|
-> | `HumansDbContext` | Everything not peeled below — still the majority of tables (Profiles, Users/Identity, Governance, Auth, Teams, Google Integration, Camps, CityPlanning, Calendar, Shifts, Legal, Consent, Notifications, Tickets, Gate, Budget, Campaigns, Email, Feedback, Issues, Store, AuditLog) |
+> | `HumansDbContext` | Everything not peeled below — still the majority of tables (Profiles, Users/Identity, Governance, Auth, Teams, Google Integration, Camps, CityPlanning, Calendar, Shifts, Legal, Consent, Notifications, Tickets, Gate, Budget, Campaigns, Email, Feedback, Issues, AuditLog) |
 > | `SystemSettingsDbContext` | `SystemSettings` |
 > | `ContainersDbContext` | `Containers`, `ContainerPlacements` |
 > | `AgentDbContext` | `AgentConversations`, `AgentMessages`, `AgentSettings` |
@@ -2137,9 +2137,9 @@ dependencies beyond pure data shaping, no DB access.
 ## Store
 
 Folder: `src/Humans.Application/Services/Store/`. **DbContext:**
-`HumansDbContext` (not peeled). Owns `StoreProducts`,
-`StoreOrders`, `StoreOrderLines`, `StorePayments`, `StoreInvoices`,
-`StoreTreasurySyncStates`.
+`StoreDbContext` — **peeled** (nobodies-collective/Humans#866 PR A). Owns
+`StoreProducts`, `StoreOrders`, `StoreOrderLines`, `StorePayments`,
+`StoreInvoices`, `StoreTreasurySyncStates`.
 
 ### StoreService (Scoped)
 
