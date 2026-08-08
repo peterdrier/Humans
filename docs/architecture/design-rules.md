@@ -716,7 +716,7 @@ For the Google Workspace section in particular, the cached projection isn't a ta
 - **Cross-domain navigation properties**. Target: stripped at the entity boundary, FK-only everywhere.
   - Still declared:
     - `User.UserEmails` stays — the `User.Email` override computes from it (per the #635 AC). All other `User` navs were stripped in #635 (see Stripped, below).
-    - Cross-section *navigation properties* are now all gone (nobodies-collective/Humans#996 stripped the last 11, in Feedback, Teams and Campaigns). What remains is the nav-less cross-section EF **FK constraint** — `HasOne<User>().WithMany().HasForeignKey(...)` — on ~42 configurations. Those still emit HUM0024 (the analyzer flags the bare-FK form too) and are cut in nobodies-collective/Humans#992, which is the change that needs a migration.
+    - Cross-section *navigation properties* are all gone (nobodies-collective/Humans#996 stripped the last 11, in Feedback, Teams and Campaigns), and so are the nav-less cross-section EF **FK constraints** — nobodies-collective/Humans#992 dropped all 54 (`HasOne<User>().WithMany().HasForeignKey(...)` and friends) across 38 configurations in one migration. Cross-section linkage is now a bare `Guid` column everywhere, HUM0024 reports zero, and no `[Grandfathered("HUM0024")]` remains, so a new cross-section relationship is a build error.
   - Stripped:
     - User-side (issue #635, 2026-05-04): `User.Profile`, `User.TeamMemberships`, `User.RoleAssignments`, `User.Applications`, `User.ConsentRecords`, `User.CommunicationPreferences`, and the `GetEffectiveEmail()` method. Enforced by `User_HasNoCrossDomainNavigationProperties`.
     - Profile-section: `Profile.User`, `UserEmail.User`, `CommunicationPreference.User`.

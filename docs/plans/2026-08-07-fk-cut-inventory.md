@@ -6,6 +6,29 @@
 FK-cut carve-out (`2026-06-13-q3-transition-plan.md`, *FK-cut carve-out*) gate the migration
 and are not this document's subject.
 
+> **ACTED ON 2026-08-08.** Re-derived at `origin/main` `04dd8bc8c`:
+> still exactly 54 relationships, matching this document row for row, and all 54 in
+> `HumansDbContext` (no cross-section FK hides in a peeled context). What the migration did
+> with each recommendation:
+>
+> - **Condition 1.** `20260808191329_DropCrossSectionForeignKeys` drops **23** convention
+>   indexes — this document's 25 exposed, minus `campaign_grants.UserId` and
+>   `budget_audit_logs.ActorUserId`, which now carry an explicit `HasIndex` and therefore
+>   produce no schema operation at all. The generated migration is the empirical confirmation
+>   of the survives/drops column below: none of the four columns the issue named appears in
+>   the drop list. The `EXPLAIN` check this document asks for is still worth running against
+>   prod, but nothing in the cut depends on it.
+> - **Condition 3.** Implemented: the `CampSeason → camp_polygons` / `camp_polygon_histories`
+>   `Restrict` pair, the only ordinary-production guard the cut removed —
+>   `CampService.DeleteCampAsync` now clears them through `ICityPlanningService` before
+>   deleting the camp. Accepted as recorded orphans: `email_outbox_messages.ShiftSignupId`
+>   and `.CampaignGrantId`, `audit_log.ActorUserId` (the cut *fixes* the trigger/`SET NULL`
+>   contradiction described below) and `audit_log.ResourceId` (no delete path).
+>   Deferred with an issue, not silently: the eight `Team` rows and the seeder-side cleanup
+>   for the 42 `User`-targeting actions, neither of which is reachable outside the
+>   dev-dashboard reset today, plus the both-doors delete guard from *Follow-up worth filing*.
+>   See nobodies-collective/Humans#1009.
+
 ---
 
 ## How the list was derived

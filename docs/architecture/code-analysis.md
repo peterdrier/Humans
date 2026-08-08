@@ -82,7 +82,7 @@ HUM0018 | Section-aware analyzer cannot determine a type's section (missing `[Se
 HUM0019 | Read of an Identity-derived User column (Email/NormalizedEmail/UserName/NormalizedUserName) from Application or Web | Warning
 HUM0020 | Caching decorator references a repository directly instead of the keyed inner service | Error
 HUM0021 | Read of an obsolete cross-domain navigation property from Application, Web, or Infrastructure | Warning
-HUM0024 | EF configuration creates a navigation join across section boundaries — a configuration's section is its namespace segment under `Data.Configurations`; one sitting in the `Configurations` root declares no section and is reported as `(unsectioned)` rather than skipped (`[Grandfathered("HUM0024")]` downgrades to Warning) | Error
+HUM0024 | EF configuration creates a navigation join across section boundaries — a configuration's section is its namespace segment under `Data.Configurations`; one sitting in the `Configurations` root declares no section and is reported as `(unsectioned)` rather than skipped. Zero violations since nobodies-collective/Humans#992 cut the last 54; no grandfathers remain and the rule is not in `WarningsNotAsErrors`, so any new one fails the build | Error
 HUM0025 | A DbSet table is referenced by more than one repository (`[Grandfathered("HUM0025", scope: "<DbSet>")]` downgrades to Warning) | Error
 HUM0026 | IOrchestrator implementer injects an `I*Repository`, an application DbContext, or `IDbContextFactory<TContext>` for one | Error
 HUM0027 | Type implements both IApplicationService and IOrchestrator (the role axis is exclusive) | Error

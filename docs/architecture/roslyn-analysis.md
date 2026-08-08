@@ -93,10 +93,11 @@ assertion families that are plausible analyzer candidates:
 - Application service read methods should not expose domain/EF entities.
   `ApplicationServiceEntityReadReturns.baseline.txt` has existing debt, so this
   needs either a grandfather mechanism or a warning-first migration.
-- Cross-section EF nav configuration is error-enforced by `HUM0024`, with
-  existing violators carrying `[Grandfathered("HUM0024", ...)]` to downgrade
-  to warning. Those warnings represent debt to migrate to bare FK columns and
-  service-level stitching; delete the attribute once the join is gone.
+- Cross-section EF nav configuration is error-enforced by `HUM0024`. The debt is
+  drained: nobodies-collective/Humans#992 cut all 54 cross-section relationships,
+  so no `[Grandfathered("HUM0024", ...)]` remains and the rule's
+  `WarningsNotAsErrors` entry is gone — any new cross-section join or bare-FK
+  relationship fails the build outright.
   `HUM0024` folds `Users` / `Profile` / `Profiles` into one logical section
   (`Humans`), so a join between a Users entity and a Profiles entity does not
   flag — they are the same person-section per §2c of `design-rules.md`. This

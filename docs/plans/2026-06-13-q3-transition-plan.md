@@ -168,6 +168,14 @@ once the section is its own assembly — see the G5 checklist for the rationale.
 
 #### FK-cut carve-out — one migration, not seventeen (decision 2026-08-04)
 
+> **LANDED 2026-08-08** — migration
+> `20260808191329_DropCrossSectionForeignKeys`: 54 constraints and 23 convention indexes
+> dropped in one migration, HUM0024 at zero, all 38 `[Grandfathered("HUM0024")]` removed and
+> the rule's `WarningsNotAsErrors` entry deleted. Conditions 1–4 all met; see
+> [`2026-08-07-fk-cut-inventory.md`](2026-08-07-fk-cut-inventory.md) for the per-relationship
+> index and delete-behavior decisions. The four conditions below are kept as the record of
+> what the cut had to satisfy.
+
 The cross-section FK cut does **not** ride the per-section turnstile *seventeen times*. It
 lands as a single app-wide migration covering all 55 relationships across 39 tables in 17
 sections, and takes **one** exclusive turnstile slot for that migration.
