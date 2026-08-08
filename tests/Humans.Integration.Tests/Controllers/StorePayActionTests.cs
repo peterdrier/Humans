@@ -90,6 +90,7 @@ public class StorePayActionTests(HumansTestDatabase database) : IntegrationTestB
     {
         using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var storeDb = scope.ServiceProvider.GetRequiredService<StoreDbContext>();
 
         var year = (await db.CampSettings.FirstAsync(Xunit.TestContext.Current.CancellationToken)).PublicYear;
         var seasonId = await db.Set<CampSeason>().AsNoTracking()
@@ -110,11 +111,11 @@ public class StorePayActionTests(HumansTestDatabase database) : IntegrationTestB
             CreatedAt = SystemClock.Instance.GetCurrentInstant(),
             UpdatedAt = SystemClock.Instance.GetCurrentInstant(),
         };
-        db.StoreProducts.Add(product);
+        storeDb.StoreProducts.Add(product);
 
         var orderId = Guid.NewGuid();
         var now = SystemClock.Instance.GetCurrentInstant();
-        db.StoreOrders.Add(new StoreOrder
+        storeDb.StoreOrders.Add(new StoreOrder
         {
             Id = orderId,
             CampSeasonId = seasonId,
@@ -137,7 +138,7 @@ public class StorePayActionTests(HumansTestDatabase database) : IntegrationTestB
             CreatedAt = now,
             UpdatedAt = now,
         });
-        await db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await storeDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         // Subtotal 25 + VAT 21% = 30.25 EUR balance.
         return (orderId, 30.25m);

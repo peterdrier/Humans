@@ -14,10 +14,10 @@ public sealed class StoreRepositoryTests
 
     public StoreRepositoryTests()
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
+        var options = new DbContextOptionsBuilder<StoreDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
-        _repo = new StoreRepository(new TestDbContextFactory(options));
+        _repo = new StoreRepository(new TestDbContextFactory<StoreDbContext>(options));
     }
 
     [HumansFact]

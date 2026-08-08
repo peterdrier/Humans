@@ -21,7 +21,7 @@ env:
   # iterates this list alone, because HumansDbContext replays its full
   # historical chain in the step before it. A new peel adds its context here
   # and nowhere else in this file.
-  SECTION_DB_CONTEXTS: 'SystemSettingsDbContext ContainersDbContext AgentDbContext ExpensesDbContext FinanceDbContext SurveysDbContext EventGuideDbContext'
+  SECTION_DB_CONTEXTS: 'SystemSettingsDbContext ContainersDbContext AgentDbContext ExpensesDbContext FinanceDbContext SurveysDbContext EventGuideDbContext StoreDbContext'
 
 jobs:
   build:

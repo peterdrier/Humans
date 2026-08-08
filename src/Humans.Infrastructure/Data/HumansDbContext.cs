@@ -92,12 +92,6 @@ internal sealed class HumansDbContext(DbContextOptions<HumansDbContext> options)
     public DbSet<NotificationRecipient> NotificationRecipients => Set<NotificationRecipient>();
     public DbSet<ProfileLanguage> ProfileLanguages => Set<ProfileLanguage>();
     public DbSet<EventParticipation> EventParticipations => Set<EventParticipation>();
-    public DbSet<StoreProduct> StoreProducts => Set<StoreProduct>();
-    public DbSet<StoreOrder> StoreOrders => Set<StoreOrder>();
-    public DbSet<StoreOrderLine> StoreOrderLines => Set<StoreOrderLine>();
-    public DbSet<StorePayment> StorePayments => Set<StorePayment>();
-    public DbSet<StoreInvoice> StoreInvoices => Set<StoreInvoice>();
-    public DbSet<StoreTreasurySyncState> StoreTreasurySyncStates => Set<StoreTreasurySyncState>();
 
     /// <summary>
     /// Configuration namespaces of sections peeled into their own DbContexts
@@ -115,6 +109,7 @@ internal sealed class HumansDbContext(DbContextOptions<HumansDbContext> options)
         typeof(Configurations.Finance.HoldedExpenseDocConfiguration).Namespace!,
         typeof(Configurations.Surveys.SurveyConfiguration).Namespace!,
         typeof(Configurations.EventGuide.EventConfiguration).Namespace!,
+        typeof(Configurations.Store.StoreProductConfiguration).Namespace!,
     ];
 
     protected override void OnModelCreating(ModelBuilder builder)

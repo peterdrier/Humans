@@ -16,9 +16,9 @@ namespace Humans.Infrastructure.Repositories.Store;
 /// <remarks>
 /// Follows design-rules §15b: registered as Singleton, injects
 /// <see cref="IDbContextFactory{TContext}"/>, and opens a fresh short-lived
-/// <see cref="HumansDbContext"/> per method.
+/// <see cref="StoreDbContext"/> per method.
 /// </remarks>
-internal sealed class StoreRepository(IDbContextFactory<HumansDbContext> factory) : IStoreRepository
+internal sealed class StoreRepository(IDbContextFactory<StoreDbContext> factory) : IStoreRepository
 {
     // ==========================================================================
     // Products

@@ -78,12 +78,13 @@ public class StoreControllerTests(HumansTestDatabase database) : IntegrationTest
     {
         using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var storeDb = scope.ServiceProvider.GetRequiredService<StoreDbContext>();
         var year = (await db.CampSettings.FirstAsync(Xunit.TestContext.Current.CancellationToken)).PublicYear;
 
-        if (await db.StoreProducts.AnyAsync(p => p.Year == year && p.Name == name, Xunit.TestContext.Current.CancellationToken))
+        if (await storeDb.StoreProducts.AnyAsync(p => p.Year == year && p.Name == name, Xunit.TestContext.Current.CancellationToken))
             return year;
 
-        db.StoreProducts.Add(new StoreProduct
+        storeDb.StoreProducts.Add(new StoreProduct
         {
             Id = Guid.NewGuid(),
             Year = year,
@@ -97,7 +98,7 @@ public class StoreControllerTests(HumansTestDatabase database) : IntegrationTest
             CreatedAt = SystemClock.Instance.GetCurrentInstant(),
             UpdatedAt = SystemClock.Instance.GetCurrentInstant()
         });
-        await db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await storeDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         return year;
     }
 

@@ -58,7 +58,7 @@ public class StoreStripeWebhookControllerTests(HumansTestDatabase database) : In
         resp.StatusCode.Should().Be(HttpStatusCode.OK);
 
         using var scope = Factory.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var db = scope.ServiceProvider.GetRequiredService<StoreDbContext>();
         var payment = await db.StorePayments.AsNoTracking()
             .SingleOrDefaultAsync(p => p.StripePaymentIntentId == paymentIntentId, Xunit.TestContext.Current.CancellationToken);
         payment.Should().NotBeNull();
@@ -84,7 +84,7 @@ public class StoreStripeWebhookControllerTests(HumansTestDatabase database) : In
         (await PostWithSignatureAsync(payload, sig)).StatusCode.Should().Be(HttpStatusCode.OK);
 
         using var scope = Factory.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var db = scope.ServiceProvider.GetRequiredService<StoreDbContext>();
         var matches = await db.StorePayments.AsNoTracking()
             .Where(p => p.StripePaymentIntentId == paymentIntentId)
             .CountAsync(Xunit.TestContext.Current.CancellationToken);
@@ -112,7 +112,7 @@ public class StoreStripeWebhookControllerTests(HumansTestDatabase database) : In
         (await PostWithSignatureAsync(payload, sig)).StatusCode.Should().Be(HttpStatusCode.OK);
 
         using var scope = Factory.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var db = scope.ServiceProvider.GetRequiredService<StoreDbContext>();
         var payment = await db.StorePayments.AsNoTracking()
             .SingleAsync(p => p.StripePaymentIntentId == paymentIntentId, Xunit.TestContext.Current.CancellationToken);
         payment.Status.Should().Be(StorePaymentStatus.Pending);
@@ -137,7 +137,7 @@ public class StoreStripeWebhookControllerTests(HumansTestDatabase database) : In
             .StatusCode.Should().Be(HttpStatusCode.OK);
 
         using var scope = Factory.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var db = scope.ServiceProvider.GetRequiredService<StoreDbContext>();
         var payment = await db.StorePayments.AsNoTracking()
             .SingleAsync(p => p.StripePaymentIntentId == paymentIntentId, Xunit.TestContext.Current.CancellationToken);
         payment.Status.Should().Be(StorePaymentStatus.Paid);
@@ -161,7 +161,7 @@ public class StoreStripeWebhookControllerTests(HumansTestDatabase database) : In
             .StatusCode.Should().Be(HttpStatusCode.OK);
 
         using var scope = Factory.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var db = scope.ServiceProvider.GetRequiredService<StoreDbContext>();
         var payment = await db.StorePayments.AsNoTracking()
             .SingleAsync(p => p.StripePaymentIntentId == paymentIntentId, Xunit.TestContext.Current.CancellationToken);
         payment.Status.Should().Be(StorePaymentStatus.Failed); // never paid-then-reversed
@@ -186,7 +186,7 @@ public class StoreStripeWebhookControllerTests(HumansTestDatabase database) : In
             .StatusCode.Should().Be(HttpStatusCode.OK);
 
         using var scope = Factory.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var db = scope.ServiceProvider.GetRequiredService<StoreDbContext>();
         var payments = await db.StorePayments.AsNoTracking()
             .Where(p => p.StripePaymentIntentId == paymentIntentId)
             .ToListAsync(Xunit.TestContext.Current.CancellationToken);
@@ -207,7 +207,7 @@ public class StoreStripeWebhookControllerTests(HumansTestDatabase database) : In
             .StatusCode.Should().Be(HttpStatusCode.OK);
 
         using var scope = Factory.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var db = scope.ServiceProvider.GetRequiredService<StoreDbContext>();
         var payment = await db.StorePayments.AsNoTracking()
             .SingleAsync(p => p.StripePaymentIntentId == paymentIntentId, Xunit.TestContext.Current.CancellationToken);
         payment.Status.Should().Be(StorePaymentStatus.Paid);
@@ -231,7 +231,7 @@ public class StoreStripeWebhookControllerTests(HumansTestDatabase database) : In
             .StatusCode.Should().Be(HttpStatusCode.OK);
 
         using var scope = Factory.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var db = scope.ServiceProvider.GetRequiredService<StoreDbContext>();
         var exists = await db.StorePayments.AsNoTracking()
             .AnyAsync(p => p.StripePaymentIntentId == paymentIntentId, Xunit.TestContext.Current.CancellationToken);
         exists.Should().BeFalse();
@@ -266,9 +266,10 @@ public class StoreStripeWebhookControllerTests(HumansTestDatabase database) : In
         }
 
         using var scope = Factory.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var db = scope.ServiceProvider.GetRequiredService<StoreDbContext>();
+        var campsDb = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
 
-        var seasonId = await db.Set<CampSeason>().AsNoTracking()
+        var seasonId = await campsDb.Set<CampSeason>().AsNoTracking()
             .Where(s => s.Camp.Slug == "barrio-1")
             .Select(s => s.Id).FirstOrDefaultAsync(Xunit.TestContext.Current.CancellationToken);
         if (seasonId == Guid.Empty)

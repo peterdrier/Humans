@@ -79,9 +79,10 @@ Since the per-section split (nobodies-collective/Humans#858) the model is partit
 | `FinanceDbContext` | `holded_expense_docs`, `holded_category_map`, `holded_ledger_lines`, `holded_creditor_contacts`, `holded_sync_states` |
 | `SurveysDbContext` | `surveys`, `survey_questions`, `survey_question_options`, `survey_invitations`, `survey_responses`, `survey_answers` |
 | `EventGuideDbContext` | `events`, `event_categories`, `event_venues`, `event_guide_settings`, `event_moderation_actions`, `event_favourites`, `event_preferences` |
+| `StoreDbContext` | `store_products`, `store_orders`, `store_order_lines`, `store_payments`, `store_invoices`, `store_treasury_sync_state` |
 | `HumansDbContext` | everything else, including the Identity and Data Protection tables (which stay here permanently — they come from the framework base classes) |
 
-Gate and Store are clean candidates that stay in `HumansDbContext` for now; see the design doc's §5.1 for what blocks them.
+Gate is a clean candidate that stays in `HumansDbContext` for now; see the design doc's §5.1 for what blocks it. Store's blocker — the physical `DEFAULT 0` on `store_orders.Year` — was cleared by `20260802203816_RealignScaffoldedPhysicalDefaults`, and Store peeled as PR A of nobodies-collective/Humans#866.
 
 ## Cross-section FK graph
 

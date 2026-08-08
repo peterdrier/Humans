@@ -81,6 +81,11 @@ public sealed class SectionMigrationRunnerTests(HumansTestDatabase database)
             "events",
             CreateSectionContext<EventGuideDbContext>,
             """SELECT count(*) FROM event_categories WHERE "Slug" = 'workshop'"""),
+        new(
+            "Store",
+            "store_orders",
+            CreateSectionContext<StoreDbContext>,
+            null),
     ];
 
     [HumansFact]

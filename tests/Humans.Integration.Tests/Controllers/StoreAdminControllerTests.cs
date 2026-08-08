@@ -112,7 +112,7 @@ public class StoreAdminControllerTests(HumansTestDatabase database) : Integratio
     private async Task<Guid> GetProductIdByNameAsync(string name)
     {
         using var scope = Factory.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var db = scope.ServiceProvider.GetRequiredService<StoreDbContext>();
         var p = await db.StoreProducts.AsNoTracking().FirstOrDefaultAsync(x => x.Name == name, Xunit.TestContext.Current.CancellationToken);
         return p?.Id ?? Guid.Empty;
     }
