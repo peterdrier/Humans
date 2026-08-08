@@ -37,7 +37,7 @@ public sealed record VolunteerSearchBuildResult(
 }
 
 public sealed class ShiftVolunteerSearchBuilder(
-    IShiftManagementService shiftManagement,
+    IBurnSettingsService burnSettings,
     IUserServiceRead userService,
     IShiftView shiftView,
     IShiftSignupService signupService,
@@ -54,8 +54,17 @@ public sealed class ShiftVolunteerSearchBuilder(
         if (shift is null)
             return VolunteerSearchBuildResult.NotFound;
 
-        var activeEvent = await shiftManagement.GetActiveAsync();
-        var eventSettings = shift.Rota.EventSettings;
+        // Two distinct burns, deliberately not collapsed: the target shift's own
+        // burn (drives its calendar) and the currently active one (decides whether
+        // the cached, active-scoped ShiftUserView.Signups can be reused). Admins
+        // search shifts in past/future cycles, so these differ.
+        var activeEvent = await burnSettings.GetActiveAsync();
+        var eventSettings = activeEvent?.Id == shift.Rota.EventSettingsId
+            ? activeEvent
+            : await burnSettings.GetByIdAsync(shift.Rota.EventSettingsId);
+
+        if (eventSettings is null)
+            return VolunteerSearchBuildResult.NotFound;
 
         var results = await BuildAsync(
             shift,
@@ -70,8 +79,8 @@ public sealed class ShiftVolunteerSearchBuilder(
     private async Task<List<VolunteerSearchResult>> BuildAsync(
         Shift shift,
         string query,
-        EventSettings eventSettings,
-        EventSettings? activeEvent,
+        BurnSettingsInfo eventSettings,
+        BurnSettingsInfo? activeEvent,
         bool canViewMedical)
     {
         var shiftStart = shift.GetAbsoluteStart(eventSettings);
