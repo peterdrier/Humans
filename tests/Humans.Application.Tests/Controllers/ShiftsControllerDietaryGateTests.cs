@@ -63,11 +63,12 @@ public class ShiftsControllerDietaryGateTests
         _shiftView.GetUserAsync(_user.Id, Arg.Any<CancellationToken>())
             .Returns(new ShiftUserView(_user.Id, null, null, null, [], []));
 
-        var builder = new ShiftBrowsePageBuilder(_shiftMgmt, _teamService);
+        var burnSettings = Substitute.For<IBurnSettingsService>();
+        var builder = new ShiftBrowsePageBuilder(_shiftMgmt, burnSettings, _teamService);
 
         _controller = new ShiftsController(
             _shiftMgmt,
-            Substitute.For<IBurnSettingsService>(),
+            burnSettings,
             _signupService,
             _volunteerTrackingService,
             _shiftView,

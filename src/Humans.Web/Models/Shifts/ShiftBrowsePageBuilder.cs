@@ -15,7 +15,7 @@ namespace Humans.Web.Models.Shifts;
 /// id set on the view model.
 /// </summary>
 public sealed record ShiftBrowsePageRequest(
-    EventSettings EventSettings,
+    BurnSettingsInfo EventSettings,
     Guid UserId,
     IReadOnlyList<ShiftSignup> UserSignups,
     IReadOnlyList<VolunteerTagPreference> UserTagPreferences,
@@ -30,7 +30,10 @@ public sealed record ShiftBrowsePageRequest(
     IReadOnlyList<string>? Periods,
     bool IsPrivileged);
 
-public sealed class ShiftBrowsePageBuilder(IShiftManagementService shiftManagement, ITeamServiceRead teamService)
+public sealed class ShiftBrowsePageBuilder(
+    IShiftManagementService shiftManagement,
+    IBurnSettingsService burnSettings,
+    ITeamServiceRead teamService)
 {
     public async Task<ShiftBrowseViewModel> BuildAsync(ShiftBrowsePageRequest request, CancellationToken ct = default)
     {
@@ -50,7 +53,7 @@ public sealed class ShiftBrowsePageBuilder(IShiftManagementService shiftManageme
         {
             if (activePeriods.Count == 1)
             {
-                var (periodFrom, periodTo) = GetPeriodDateRange(es, activePeriods[0]);
+                var (periodFrom, periodTo) = ShiftFilterResolver.ResolvePeriodRange(activePeriods[0], es);
                 filterFromDate ??= periodFrom;
                 filterToDate ??= periodTo;
             }
@@ -138,8 +141,8 @@ public sealed class ShiftBrowsePageBuilder(IShiftManagementService shiftManageme
     public async Task<(ShiftDisplayItem Item, bool IsSignedUp, SignupStatus? Status)?> BuildRowAsync(
         Guid shiftId, IReadOnlyList<ShiftSignup> userSignups, bool isPrivileged, CancellationToken ct)
     {
-        // GetActiveAsync() is EventSettings? — guard for nullable + TreatWarningsAsErrors.
-        var es = await shiftManagement.GetActiveAsync()
+        // GetActiveAsync() is BurnSettingsInfo? — guard for nullable + TreatWarningsAsErrors.
+        var es = await burnSettings.GetActiveAsync(ct)
             ?? throw new InvalidOperationException("BuildRowAsync requires an active event.");
 
         var flags = ShiftBrowseQueryFlags.IncludeSignups;
@@ -161,7 +164,7 @@ public sealed class ShiftBrowsePageBuilder(IShiftManagementService shiftManageme
 
     private async Task<List<DepartmentShiftGroup>> BuildDepartmentGroupsAsync(
         IReadOnlyList<UrgentShift> shifts,
-        EventSettings eventSettings)
+        BurnSettingsInfo eventSettings)
     {
         var teamsById = await teamService.GetTeamsAsync();
 
@@ -249,23 +252,4 @@ public sealed class ShiftBrowsePageBuilder(IShiftManagementService shiftManageme
             .ThenBy(p => p.IsSubTeam ? 1 : 0)
             .ThenBy(p => p.TeamName, StringComparer.Ordinal)
             .ToList();
-
-    private static (LocalDate From, LocalDate To) GetPeriodDateRange(EventSettings es, ShiftPeriod period)
-    {
-        return period switch
-        {
-            ShiftPeriod.Build => (
-                es.GateOpeningDate.PlusDays(es.BuildStartOffset),
-                es.GateOpeningDate.PlusDays(-1)),
-            ShiftPeriod.Event => (
-                es.GateOpeningDate,
-                es.GateOpeningDate.PlusDays(es.EventEndOffset)),
-            ShiftPeriod.Strike => (
-                es.GateOpeningDate.PlusDays(es.EventEndOffset + 1),
-                es.GateOpeningDate.PlusDays(es.StrikeEndOffset)),
-            _ => (
-                es.GateOpeningDate.PlusDays(es.BuildStartOffset),
-                es.GateOpeningDate.PlusDays(es.StrikeEndOffset))
-        };
-    }
 }

@@ -8,7 +8,7 @@ namespace Humans.Web.Models.Shifts;
 /// (<c>ShiftsController.Index</c>) and the onboarding widget step-2 view
 /// (<see cref="OnboardingWidget.OnboardingShiftsBrowseModelBuilder"/>).
 ///
-/// Pure mapping over <see cref="UrgentShift"/> + <see cref="EventSettings"/> —
+/// Pure mapping over <see cref="UrgentShift"/> + <see cref="BurnSettingsInfo"/> —
 /// no service dependencies. Time/period resolution delegates to the
 /// <see cref="Shift"/> entity helpers (<see cref="Shift.GetAbsoluteStart"/>,
 /// <see cref="Shift.GetAbsoluteEnd"/>, <see cref="Shift.GetShiftPeriod"/>).
@@ -18,7 +18,7 @@ internal static class ShiftBrowseMapper
     /// <summary>
     /// Maps a single <see cref="UrgentShift"/> to a <see cref="ShiftDisplayItem"/>.
     /// </summary>
-    internal static ShiftDisplayItem MapToDisplayItem(UrgentShift u, EventSettings eventSettings)
+    internal static ShiftDisplayItem MapToDisplayItem(UrgentShift u, BurnSettingsInfo eventSettings)
     {
         return new ShiftDisplayItem
         {
@@ -42,7 +42,7 @@ internal static class ShiftBrowseMapper
     /// </summary>
     internal static RotaShiftGroup BuildRotaGroup(
         IGrouping<Guid, UrgentShift> rotaGroup,
-        EventSettings eventSettings,
+        BurnSettingsInfo eventSettings,
         string? departmentName = null,
         string? departmentSlug = null)
     {

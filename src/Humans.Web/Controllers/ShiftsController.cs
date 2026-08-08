@@ -51,7 +51,7 @@ public class ShiftsController(
 
         if (RedirectIfNameMissing(user) is { } nameGate) return nameGate;
 
-        var es = await shiftMgmt.GetActiveAsync();
+        var es = await burnSettings.GetActiveAsync(HttpContext.RequestAborted);
         if (es is null) return View("NoActiveEvent");
 
         var isPrivileged = ShiftRoleChecks.IsPrivilegedSignupApprover(User) ||
@@ -175,7 +175,7 @@ public class ShiftsController(
             return RedirectHeader(Url.Action(
                 nameof(OnboardingWidgetController.Index), "OnboardingWidget"));
 
-        var es = await shiftMgmt.GetActiveAsync()
+        var es = await burnSettings.GetActiveAsync(ct)
             ?? throw new InvalidOperationException("ToggleDay requires an active event.");
 
         // Narrow flag drives SignUpAsync's auto-confirm path (admin/approver only); also
@@ -402,7 +402,7 @@ public class ShiftsController(
             return currentUserNotFound;
         }
 
-        var es = await shiftMgmt.GetActiveAsync();
+        var es = await burnSettings.GetActiveAsync(HttpContext.RequestAborted);
         if (es is null) return BadRequest("No active event.");
 
         await volunteerTrackingService.SetAvailabilityAsync(user.Id, es.Id, dayOffsets ?? []);

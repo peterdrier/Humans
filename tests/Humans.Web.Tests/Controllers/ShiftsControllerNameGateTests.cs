@@ -39,6 +39,7 @@ public class ShiftsControllerNameGateTests
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IStringLocalizer<SharedResource> _localizer = Substitute.For<IStringLocalizer<SharedResource>>();
     private readonly IClock _clock = Substitute.For<IClock>();
+    private readonly IBurnSettingsService _burnSettings = Substitute.For<IBurnSettingsService>();
     private readonly ShiftBrowsePageBuilder _builder;
     private readonly ILogger<ShiftsController> _logger = NullLogger<ShiftsController>.Instance;
 
@@ -46,14 +47,14 @@ public class ShiftsControllerNameGateTests
     {
         _localizer[Arg.Any<string>()].Returns(ci =>
             new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
-        _builder = new ShiftBrowsePageBuilder(_shiftMgmt, _teamService);
+        _builder = new ShiftBrowsePageBuilder(_shiftMgmt, _burnSettings, _teamService);
     }
 
     private ShiftsController BuildSut(Guid userId, UserInfo userInfo)
     {
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(userInfo);
         var ctrl = new ShiftsController(
-            _shiftMgmt, Substitute.For<IBurnSettingsService>(), _signupService, _volunteerTrackingService, _shiftView, _teamService,
+            _shiftMgmt, _burnSettings, _signupService, _volunteerTrackingService, _shiftView, _teamService,
             _auditLogService, _userService, _localizer, _clock, _builder, _logger);
         var http = new DefaultHttpContext
         {
@@ -111,7 +112,7 @@ public class ShiftsControllerNameGateTests
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal(nameof(OnboardingWidgetController.Index), redirect.ActionName);
         Assert.Equal("OnboardingWidget", redirect.ControllerName);
-        await _shiftMgmt.DidNotReceiveWithAnyArgs().GetActiveAsync();
+        await _burnSettings.DidNotReceiveWithAnyArgs().GetActiveAsync();
     }
 
     [HumansFact]
@@ -122,7 +123,7 @@ public class ShiftsControllerNameGateTests
         // gate let the request through.
         var userId = Guid.NewGuid();
         var ctrl = BuildSut(userId, MakeUserInfo(userId, burner: "B", first: "F", last: "L"));
-        _shiftMgmt.GetActiveAsync().Returns((EventSettings?)null);
+        _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns((BurnSettingsInfo?)null);
 
         var result = await ctrl.Index(
             departmentId: null, fromDate: null, toDate: null, period: null);

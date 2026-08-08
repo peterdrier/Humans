@@ -57,7 +57,7 @@ public class ShiftsControllerSummaryTests
     {
         _localizer[Arg.Any<string>()].Returns(ci =>
             new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
-        _builder = new ShiftBrowsePageBuilder(_shiftMgmt, _teamService);
+        _builder = new ShiftBrowsePageBuilder(_shiftMgmt, Substitute.For<IBurnSettingsService>(), _teamService);
     }
 
     // Authorization is declarative: [Authorize(Policy = ShiftDepartmentManager)] on

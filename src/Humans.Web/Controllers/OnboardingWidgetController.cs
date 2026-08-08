@@ -29,6 +29,7 @@ public class OnboardingWidgetController(
     IProfileEditorService profileEditorService,
     IShiftSignupService signupService,
     IShiftManagementService shiftMgmt,
+    IBurnSettingsService burnSettings,
     IShiftView shiftView,
     IConsentService consents,
     IOnboardingService onboardingService,
@@ -126,7 +127,7 @@ public class OnboardingWidgetController(
     [HttpGet]
     public async Task<IActionResult> Shifts(string? priority = null, CancellationToken ct = default)
     {
-        var es = await shiftMgmt.GetActiveAsync();
+        var es = await burnSettings.GetActiveAsync(ct);
         if (es is null)
             return View(OnboardingShiftsBrowseModelBuilder.BuildEmpty(priority ?? string.Empty));
 

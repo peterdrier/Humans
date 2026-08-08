@@ -23,7 +23,7 @@ public static class OnboardingShiftsBrowseModelBuilder
     public const string PriorityAll = "all";
 
     public static ShiftsStepViewModel Build(
-        EventSettings eventSettings,
+        BurnSettingsInfo eventSettings,
         IReadOnlyList<UrgentShift> allShifts,
         HashSet<Guid> userSignupShiftIds,
         Dictionary<Guid, SignupStatus> userSignupStatuses,

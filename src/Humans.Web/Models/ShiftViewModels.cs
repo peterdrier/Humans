@@ -172,7 +172,7 @@ public class TimeSlotEntry
 
 public class ShiftBrowseViewModel
 {
-    public EventSettings? EventSettings { get; set; }
+    public BurnSettingsInfo? EventSettings { get; set; }
     public List<DepartmentShiftGroup> Departments { get; set; } = [];
     public List<DepartmentOption> AllDepartments { get; set; } = [];
     public Guid? FilterDepartmentId { get; set; }
@@ -200,7 +200,7 @@ public class ShiftBrowseViewModel
 
     /// <summary>
     /// True when early-entry (build) signups have closed
-    /// (<see cref="EventSettings.EarlyEntryClose"/> passed) and the viewer is not
+    /// (<see cref="IBurnSettingsInfo.EarlyEntryClose"/> passed) and the viewer is not
     /// privileged. Row partials combine this with <see cref="Shift.IsEarlyEntry"/>
     /// so only build shifts lock; mirrors the server gate in ShiftSignupService.
     /// </summary>
@@ -686,7 +686,15 @@ public record ShiftWindow(Instant AbsoluteStart, Instant AbsoluteEnd);
 public class BuildStrikeRotaTableViewModel
 {
     public RotaShiftGroup RotaGroup { get; set; } = null!;
-    public EventSettings EventSettings { get; set; } = null!;
+
+    /// <summary>
+    /// Typed as the interface, not <see cref="BurnSettingsInfo"/>: this partial is
+    /// shared between the migrated browse/onboarding pages (which hold the DTO) and
+    /// the widget gallery (which still holds the EF entity, scope unresolved — #809).
+    /// Both implement <see cref="IBurnSettingsInfo"/> and the partial reads nothing
+    /// beyond it.
+    /// </summary>
+    public IBurnSettingsInfo EventSettings { get; set; } = null!;
     public HashSet<Guid> UserSignupShiftIds { get; set; } = [];
     public Dictionary<Guid, SignupStatus> UserSignupStatuses { get; set; } = new();
     public bool ShowSignups { get; set; }
@@ -724,7 +732,9 @@ public class BuildStrikeRotaTableViewModel
 public class EventRotaTableViewModel
 {
     public List<ShiftDisplayItem> Shifts { get; set; } = [];
-    public EventSettings EventSettings { get; set; } = null!;
+
+    /// <inheritdoc cref="BuildStrikeRotaTableViewModel.EventSettings" />
+    public IBurnSettingsInfo EventSettings { get; set; } = null!;
     public HashSet<Guid> UserSignupShiftIds { get; set; } = [];
     public Dictionary<Guid, SignupStatus> UserSignupStatuses { get; set; } = new();
     public bool ShowSignups { get; set; }
@@ -774,7 +784,9 @@ public class NoShowHistoryItem
 public class BuildStrikeRotaRowViewModel
 {
     public ShiftDisplayItem Item { get; set; } = null!;
-    public EventSettings Es { get; set; } = null!;
+
+    /// <inheritdoc cref="BuildStrikeRotaTableViewModel.EventSettings" />
+    public IBurnSettingsInfo Es { get; set; } = null!;
     public bool IsSignedUp { get; set; }
     public SignupStatus? SignupStatus { get; set; }
     public bool SignupsBlockedByMissingDietary { get; set; }
@@ -800,7 +812,7 @@ public class ShiftToggleButtonModel
 
     /// <summary>
     /// True when this is an early-entry (build) shift, early-entry signups have
-    /// closed (<see cref="EventSettings.EarlyEntryClose"/> passed) and the viewer
+    /// closed (<see cref="IBurnSettingsInfo.EarlyEntryClose"/> passed) and the viewer
     /// is not privileged. The button is rendered as a disabled "set-up closed"
     /// state; the server-side gate in ShiftSignupService still enforces it.
     /// </summary>
@@ -811,7 +823,9 @@ public class ShiftToggleButtonModel
 public class EventRotaRowViewModel
 {
     public ShiftDisplayItem Item { get; set; } = null!;
-    public EventSettings Es { get; set; } = null!;
+
+    /// <inheritdoc cref="BuildStrikeRotaTableViewModel.EventSettings" />
+    public IBurnSettingsInfo Es { get; set; } = null!;
     public bool IsSignedUp { get; set; }
     public SignupStatus? SignupStatus { get; set; }
     public bool SignupsBlockedByMissingDietary { get; set; }
