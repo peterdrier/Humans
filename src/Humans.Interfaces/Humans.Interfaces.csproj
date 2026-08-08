@@ -2,7 +2,10 @@
 
   <!--
     Lowest-level project: system marker interfaces, architecture attributes, and
-    shape interfaces shared by Domain entities and their Application DTOs.
+    shape interfaces shared by Domain entities and their Application DTOs. Those
+    shape interfaces may carry default-implemented members when a rule must have a
+    single home across both implementers (IBurnSettingsInfo's early-entry clock) —
+    so a little behaviour lives here, deliberately, not just declarations.
     Never a ProjectReference on another Humans.* project — this project stays the
     bottom of the graph so Humans.Domain can reference it. External packages only:
     NodaTime is allowed because IBurnSettingsInfo's calendar members are LocalDate

@@ -45,4 +45,31 @@ public interface IBurnSettingsInfo
 
     /// <summary>Whether the shift browsing system is open to regular volunteers.</summary>
     bool IsShiftBrowsingOpen { get; }
+
+    /// <summary>
+    /// True once <see cref="EarlyEntryClose"/> has passed (<paramref name="now"/> ≥ close).
+    /// The single home for the early-entry-closed clock rule: the server gates
+    /// (ShiftSignupService) and the browse UI both call this, ANDing it with the
+    /// viewer's privilege and the shift's <c>Shift.IsEarlyEntry</c> at each call site.
+    /// </summary>
+    /// <remarks>
+    /// <c>sealed</c> (non-virtual) on purpose: implementers must not be able to
+    /// override the clock rule, and it lets <c>EventSettings</c> forward its
+    /// same-named public method here without the call dispatching back into
+    /// itself.
+    /// </remarks>
+    public sealed bool IsEarlyEntryClosed(Instant now) =>
+        EarlyEntryClose.HasValue && now >= EarlyEntryClose.Value;
+
+    /// <summary>
+    /// True when early-entry (build) sign-ups are closed for a viewer with the given
+    /// privilege at <paramref name="now"/> — the close has passed and the viewer is
+    /// not privileged. This is the page-level eligibility the browse/onboarding UI
+    /// surfaces (combined per-shift with <c>Shift.IsEarlyEntry</c> in the view);
+    /// the server gates in ShiftSignupService compose <see cref="IsEarlyEntryClosed"/>
+    /// with per-team privilege directly instead.
+    /// </summary>
+    /// <remarks><c>sealed</c> for the same reason as <see cref="IsEarlyEntryClosed"/>.</remarks>
+    public sealed bool IsEarlyEntrySignupsClosedFor(bool isPrivileged, Instant now) =>
+        !isPrivileged && IsEarlyEntryClosed(now);
 }

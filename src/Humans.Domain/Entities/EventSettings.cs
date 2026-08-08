@@ -142,23 +142,16 @@ public class EventSettings : IBurnSettingsInfo
         return applicableKey == int.MinValue ? 0 : EarlyEntryCapacity[applicableKey];
     }
 
-    /// <summary>
-    /// True once <see cref="EarlyEntryClose"/> has passed (<paramref name="now"/> ≥ close).
-    /// The single home for the early-entry-closed clock rule: the server gates
-    /// (ShiftSignupService) and the browse UI both call this, ANDing it with the
-    /// viewer's privilege and the shift's <see cref="Shift.IsEarlyEntry"/> at each call site.
-    /// </summary>
-    public bool IsEarlyEntryClosed(Instant now) =>
-        EarlyEntryClose.HasValue && now >= EarlyEntryClose.Value;
+    // The early-entry clock rule lives on IBurnSettingsInfo as a default
+    // implementation so entity and DTO share one copy. C# does not surface a
+    // default implementation through the concrete type, so these two forward to
+    // it — they carry no logic of their own and cannot drift from it.
 
-    /// <summary>
-    /// True when early-entry (build) sign-ups are closed for a viewer with the given
-    /// privilege at <paramref name="now"/> — the close has passed and the viewer is
-    /// not privileged. This is the page-level eligibility the browse/onboarding UI
-    /// surfaces (combined per-shift with <see cref="Shift.IsEarlyEntry"/> in the view);
-    /// the server gates in ShiftSignupService compose <see cref="IsEarlyEntryClosed"/>
-    /// with per-team privilege directly instead.
-    /// </summary>
+    /// <inheritdoc cref="IBurnSettingsInfo.IsEarlyEntryClosed" />
+    public bool IsEarlyEntryClosed(Instant now) =>
+        ((IBurnSettingsInfo)this).IsEarlyEntryClosed(now);
+
+    /// <inheritdoc cref="IBurnSettingsInfo.IsEarlyEntrySignupsClosedFor" />
     public bool IsEarlyEntrySignupsClosedFor(bool isPrivileged, Instant now) =>
-        !isPrivileged && IsEarlyEntryClosed(now);
+        ((IBurnSettingsInfo)this).IsEarlyEntrySignupsClosedFor(isPrivileged, now);
 }
