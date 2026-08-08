@@ -73,36 +73,34 @@ public class FeedbackReportConfiguration : IEntityTypeConfiguration<FeedbackRepo
         builder.Property(f => f.CreatedAt).IsRequired();
         builder.Property(f => f.UpdatedAt).IsRequired();
 
-        // EF needs the nav refs to configure the cross-section FK relationships.
-        // The nav properties themselves are [Obsolete] for the Application layer,
-        // but the DB-level FK + cascade behavior is still owned here — suppress
-        // the obsolete warning only for this wiring block.
+        // Cross-section FK relationships in bare-FK form: the DB-level FK +
+        // cascade behavior is owned here, but no navigation property exists on
+        // either side. Resolve users via IUserServiceRead and teams via
+        // ITeamServiceRead.
         // No cross-section FK to agent_conversations. AgentConversationId is
         // a plain nullable Guid column on feedback_reports — Feedback owns the
         // column, Agent owns the referenced rows, and EF does not model the
         // join. Index on the column lives below.
 
-#pragma warning disable CS0618
-        builder.HasOne(f => f.User)
+        builder.HasOne<User>()
             .WithMany()
             .HasForeignKey(f => f.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.HasOne(f => f.ResolvedByUser)
+        builder.HasOne<User>()
             .WithMany()
             .HasForeignKey(f => f.ResolvedByUserId)
             .OnDelete(DeleteBehavior.SetNull);
 
-        builder.HasOne(f => f.AssignedToUser)
+        builder.HasOne<User>()
             .WithMany()
             .HasForeignKey(f => f.AssignedToUserId)
             .OnDelete(DeleteBehavior.SetNull);
 
-        builder.HasOne(f => f.AssignedToTeam)
+        builder.HasOne<Team>()
             .WithMany()
             .HasForeignKey(f => f.AssignedToTeamId)
             .OnDelete(DeleteBehavior.SetNull);
-#pragma warning restore CS0618
 
         builder.HasIndex(f => f.Status);
         builder.HasIndex(f => f.CreatedAt);

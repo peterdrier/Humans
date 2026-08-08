@@ -7,19 +7,11 @@ public class FeedbackReport
 {
     public Guid Id { get; init; }
 
-    public Guid UserId { get; init; }
-
     /// <summary>
-    /// Cross-domain navigation to the reporter's <see cref="User"/>. No
-    /// longer populated by any service (nobodies-collective/Humans#979
-    /// removed the in-memory stitcher — display names resolve via
-    /// <c>IUserServiceRead.GetUserInfosAsync</c> into <c>UserInfo</c>
-    /// instead). Repositories must not <c>.Include()</c> this property
-    /// (design-rules §6). Retained only for the FK relationship; callers
-    /// must not navigate it.
+    /// FK column only — no navigation property. Resolve the reporter's
+    /// display name via <c>IUserServiceRead.GetUserInfosAsync</c>.
     /// </summary>
-    [Obsolete("Cross-domain nav — resolve via IUserService instead of navigating FeedbackReport.User. See design-rules §6c.")]
-    public User User { get; set; } = null!;
+    public Guid UserId { get; init; }
 
     public FeedbackCategory Category { get; set; }
     public string Description { get; set; } = string.Empty;
@@ -52,35 +44,23 @@ public class FeedbackReport
 
     public Instant? ResolvedAt { get; set; }
 
+    /// <summary>
+    /// FK column only — no navigation property. Resolve via
+    /// <c>IUserServiceRead.GetUserInfosAsync</c>.
+    /// </summary>
     public Guid? ResolvedByUserId { get; set; }
 
     /// <summary>
-    /// Cross-domain navigation to the resolver's <see cref="User"/>.
-    /// Service stitches this in memory when rendering reports; repositories
-    /// must not <c>.Include()</c> it.
+    /// FK column only — no navigation property. Resolve via
+    /// <c>IUserServiceRead.GetUserInfosAsync</c>.
     /// </summary>
-    [Obsolete("Cross-domain nav — resolve via IUserService instead of navigating FeedbackReport.ResolvedByUser. See design-rules §6c.")]
-    public User? ResolvedByUser { get; set; }
-
     public Guid? AssignedToUserId { get; set; }
 
     /// <summary>
-    /// Cross-domain navigation to the assignee's <see cref="User"/>.
-    /// Service stitches this in memory when rendering reports; repositories
-    /// must not <c>.Include()</c> it.
+    /// FK column only — no navigation property. Resolve via
+    /// <c>ITeamServiceRead</c>.
     /// </summary>
-    [Obsolete("Cross-domain nav — resolve via IUserService instead of navigating FeedbackReport.AssignedToUser. See design-rules §6c.")]
-    public User? AssignedToUser { get; set; }
-
     public Guid? AssignedToTeamId { get; set; }
-
-    /// <summary>
-    /// Cross-domain navigation to the assigned <see cref="Team"/>.
-    /// Service stitches this in memory when rendering reports; repositories
-    /// must not <c>.Include()</c> it.
-    /// </summary>
-    [Obsolete("Cross-domain nav — resolve via ITeamService.GetTeamsAsync / GetTeamAsync instead of navigating FeedbackReport.AssignedToTeam. See design-rules §6c.")]
-    public Team? AssignedToTeam { get; set; }
 
     public ICollection<FeedbackMessage> Messages { get; set; } = new List<FeedbackMessage>();
 }
