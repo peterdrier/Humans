@@ -580,7 +580,7 @@ public class ShiftDashboardViewModel
     public LocalDate? FilterEndDate { get; set; }
     public ShiftPeriod? SelectedPeriod { get; set; }
     public BuildSubPeriod? SelectedSubPeriod { get; set; }
-    public EventSettings EventSettings { get; set; } = null!;
+    public BurnSettingsInfo EventSettings { get; set; } = null!;
     public List<DailyStaffingData> StaffingData { get; set; } = [];
     public List<DailyStaffingHours> StaffingHours { get; set; } = [];
 

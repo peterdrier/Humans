@@ -1,13 +1,12 @@
 using Humans.Application.Enums;
 using Humans.Application.Interfaces.Shifts;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
 
 namespace Humans.Web.Models.Shifts;
 
 public sealed record ShiftDashboardPageRequest(
-    EventSettings EventSettings,
+    BurnSettingsInfo EventSettings,
     Guid? DepartmentId,
     Guid? RotaId,
     string? StartDate,
@@ -75,7 +74,7 @@ public sealed class ShiftDashboardPageBuilder(
         };
     }
 
-    private BuildDayCountdown BuildCountdown(EventSettings eventSettings)
+    private BuildDayCountdown BuildCountdown(BurnSettingsInfo eventSettings)
     {
         var tz = DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId) ?? DateTimeZone.Utc;
         var todayLocal = clock.GetCurrentInstant().InZone(tz).Date;
