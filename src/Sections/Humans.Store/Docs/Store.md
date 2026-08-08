@@ -14,7 +14,7 @@ Per-camp catalog ordering, multi-method payments, and consolidated Holded factur
 ## Concepts
 
 - A **Store Product** is a catalog item available to Camp Leads and department coordinators in a given event year (price, VAT rate, optional deposit, ordering deadline). Products are created and edited by StoreAdmin.
-- A **Store Order** is owned by exactly one counterparty — either a `CampSeason` (billable, full lifecycle Open → InvoiceIssued, multiple orders per season allowed) **or** a `Team` (non-billable, department-level only, stays `Open` indefinitely, one order per team per year). The "exactly one" invariant is service-enforced, not DB-enforced. Both kinds reuse the same `StoreProduct` catalog and the `OrderableUntil` deadline gate.
+- A **Store Order** is owned by exactly one counterparty — either a `CampSeason` (billable, full lifecycle Open → InvoiceIssued, multiple orders per season allowed) **or** a `Team` (non-billable, department-level only, stays `Open` indefinitely, one order per team per year). The "exactly one" invariant is service-enforced, not DB-enforced. Both kinds reuse the same `Product` catalog and the `OrderableUntil` deadline gate.
 - A **Store Order Line** is a line on an order that snapshots the product's price, VAT, and deposit at the time the line was added — later catalog edits never mutate existing lines.
 - A **Store Payment** is a payment against a camp order, recorded with one of three methods (`Stripe`, `BankTransfer`, `Manual`) and a `Status` (`Paid` / `Pending` / `Failed`) reflecting what Stripe has confirmed about the money — a captured debit mandate is `Pending`, not `Paid`. Only `Paid` rows count toward the order balance. Negative amounts represent refunds. Team orders never have payments.
 - A **Store Invoice** is the consolidated Holded factura issued for a camp order. One invoice per order, written once at issuance. Team orders never receive invoices.
@@ -22,7 +22,7 @@ Per-camp catalog ordering, multi-method payments, and consolidated Holded factur
 
 ## Data Model
 
-### StoreProduct
+### Product
 
 Catalog item for a given event year.
 
@@ -44,7 +44,7 @@ Catalog item for a given event year.
 
 **Indexes:** `(Year, IsActive)`.
 
-### StoreOrder
+### Order
 
 A camp's order against a season.
 
@@ -57,7 +57,7 @@ A camp's order against a season.
 | TeamId | Guid? | FK only — no nav. Set for team orders; null for camp orders. |
 | Year | int | Event year the catalog draws from. Always set on write; lazy-backfilled from `CampSeason.Year` for legacy camp rows. |
 | Label | string(100)? | `[Obsolete]` — removed from the UI (#816); column retained but unused, never set on write |
-| State | StoreOrderState (int) | Open or InvoiceIssued; team orders stay Open |
+| State | OrderState (int) | Open or InvoiceIssued; team orders stay Open |
 | CounterpartyName / CounterpartyVatId / CounterpartyAddress / CounterpartyCountryCode / CounterpartyEmail | string? | Editable by Camp Lead while Open; FinanceAdmin always. Never populated on team orders. |
 | IssuedInvoiceId | Guid? | Set when invoice is issued (camp orders only) |
 | CreatedAt / UpdatedAt | Instant | |
@@ -68,9 +68,9 @@ A camp's order against a season.
 
 **Year backfill rule:** new writes always populate `Year`. Pre-existing camp rows may carry `Year = 0` until they're next saved through the service, at which point the column is backfilled from `CampSeason.Year`.
 
-**Aggregate-local navs:** `StoreOrder.Lines`, `StoreOrder.Payments`.
+**Aggregate-local navs:** `Order.Lines`, `Order.Payments`.
 
-### StoreOrderLine
+### OrderLine
 
 **Table:** `store_order_lines`
 
@@ -88,7 +88,7 @@ A camp's order against a season.
 
 **Indexes:** `OrderId`. `ProductId` — intra-section FK to `store_products` (`OnDelete=Restrict`, no navigation property).
 
-### StorePayment
+### Payment
 
 **Table:** `store_payments`
 
@@ -97,8 +97,8 @@ A camp's order against a season.
 | Id | Guid | PK |
 | OrderId | Guid | FK to store_orders, cascade delete |
 | AmountEur | numeric(12,2) | Signed — negative = refund |
-| Method | StorePaymentMethod (int) | Stripe / BankTransfer / Manual |
-| Status | StorePaymentStatus (string) | Paid / Pending / Failed. Defaults to Paid (column default + entity default). Only Paid counts toward balance. |
+| Method | PaymentMethod (int) | Stripe / BankTransfer / Manual |
+| Status | PaymentStatus (string) | Paid / Pending / Failed. Defaults to Paid (column default + entity default). Only Paid counts toward balance. |
 | StripePaymentIntentId | string(200)? | Unique when present (filtered unique index) |
 | ExternalRef | string(200)? | e.g. Holded treasury entry id |
 | ReceivedAt | Instant | |
@@ -107,7 +107,7 @@ A camp's order against a season.
 
 **Indexes:** `OrderId`, unique-filtered `StripePaymentIntentId`.
 
-### StoreInvoice
+### Invoice
 
 One per order; written once at issuance.
 
@@ -126,7 +126,7 @@ One per order; written once at issuance.
 
 **Constraints:** `OrderId` — intra-section FK to `store_orders` (one-to-one, `OnDelete=Restrict`); unique implicit. `HoldedDocId` — unique index.
 
-### StoreTreasurySyncState
+### TreasurySyncState
 
 Singleton cursor row (`Id = 1`).
 
@@ -136,10 +136,10 @@ Singleton cursor row (`Id = 1`).
 |----------|------|-------|
 | Id | int | Always 1 |
 | LastSyncAt | Instant? | Cursor for next poll |
-| SyncStatus | StoreTreasurySyncStatus (int) | Idle (0) / Running (1) / Failed (2) |
+| SyncStatus | TreasurySyncStatus (int) | Idle (0) / Running (1) / Failed (2) |
 | LastError | string(2000)? | Last error message |
 
-### StoreOrderState
+### OrderState
 
 | Value | Int | Description |
 |-------|-----|-------------|
@@ -148,7 +148,7 @@ Singleton cursor row (`Id = 1`).
 
 Stored as int via `HasConversion<int>()`.
 
-### StorePaymentMethod
+### PaymentMethod
 
 | Value | Int | Description |
 |-------|-----|-------------|
@@ -158,7 +158,7 @@ Stored as int via `HasConversion<int>()`.
 
 Stored as int via `HasConversion<int>()`.
 
-### StorePaymentStatus
+### PaymentStatus
 
 | Value | Description |
 |-------|-------------|
@@ -170,7 +170,7 @@ Stored as **string** via `HasConversion<string>()` with column default `Paid`. `
 
 ## Routing
 
-- `/Store` — Camp Lead and department-coordinator order browse + create + line edit. Each counterparty (camp-you-lead or department-you-coordinate) is rendered as its own card. A privileged reader (StoreAdmin/FinanceAdmin/Admin **or** TeamsAdmin) sees every camp season and department for the year, not just the ones they lead/coordinate; per-row Create/Delete affordances are resolved against `StoreOrderAuthorizationHandler` rather than a blanket admin flag.
+- `/Store` — Camp Lead and department-coordinator order browse + create + line edit. Each counterparty (camp-you-lead or department-you-coordinate) is rendered as its own card. A privileged reader (StoreAdmin/FinanceAdmin/Admin **or** TeamsAdmin) sees every camp season and department for the year, not just the ones they lead/coordinate; per-row Create/Delete affordances are resolved against `OrderAuthorizationHandler` rather than a blanket admin flag.
 - `/Store/Order/{id}` — Order detail. Lines display the **effective** unit price (live catalog price for an Open order, frozen snapshot once InvoiceIssued — #816). Camp orders show summary cards (lines subtotal, VAT, deposits, total cleared payments, balance owed — the balance and total exclude `Pending`/`Failed`), a "price changes since this order started" table (from `StoreProductPriceChanged` audit entries), the recorded-payments list (date, method, **status** Paid/Pending/Failed, Stripe/external reference, amount) with a "€X pending settlement" banner when async mandates are uncleared, the Pay button, and a collapsed-by-default counterparty section. Team orders show only lines + add-line form + a "non-billable" footer (no counterparty form, no Pay, no payments list).
 - `/Store/Team/{teamId}/Create` — POST: department coordinator creates their team's order for the active event year.
 - `/Store/Admin/Catalog` — StoreAdmin catalog CRUD (`StoreAdminController`, policy `StoreCatalogAdmin`).
@@ -195,13 +195,13 @@ Stored as **string** via `HasConversion<string>()` with column default `Paid`. `
 
 ## Invariants
 
-- An order has **exactly one counterparty** — `CampSeasonId` xor `TeamId` is non-null. The invariant is service-enforced (in `StoreService.CreateOrderAsync` / `CreateTeamOrderAsync`), not DB-enforced.
+- An order has **exactly one counterparty** — `CampSeasonId` xor `TeamId` is non-null. The invariant is service-enforced (in `Service.CreateOrderAsync` / `CreateTeamOrderAsync`), not DB-enforced.
 - **Team orders are non-billable.** `UpdateCounterpartyAsync`, `RecordManualPaymentAsync`, `RecordStripePaymentAsync`, `CreateStripeCheckoutSessionAsync`, and `IssueInvoiceAsync` reject any order whose `TeamId is not null` with `InvalidOperationException`. The auth handler also permanently denies the `EditCounterparty` and `Pay` operations on team orders regardless of role.
 - A team order is restricted to a **department** (top-level team — `ParentTeamId is null`). Sub-team orders are not supported.
 - At most **one team order per team per year** — enforced by `CreateTeamOrderAsync` via a repo lookup before insert.
 - Camp orders follow the lifecycle: **Open → InvoiceIssued**. There is no return-to-Open transition.
 - Team orders stay in **Open** indefinitely. The implicit close-out signal is per-product `OrderableUntil` — once every catalog product has passed its deadline, the order is effectively read-only.
-- Lines may only be added or removed while the order is `Open` AND `today <= Product.OrderableUntil`. The deadline gate is per-product and identical for camp and team orders. It is enforced at the **authorization layer** (`StoreOrderAuthorizationHandler`, using the `StoreOrderLineContext` resource): non-admins are denied past the deadline; Store admins are exempt and may edit lines on any Open order regardless of `OrderableUntil`. `StoreService.AddLineAsync` / `RemoveLineAsync` no longer throw on a passed deadline — they only annotate the audit entry with `(past order deadline …)` when the line is edited past it.
+- Lines may only be added or removed while the order is `Open` AND `today <= Product.OrderableUntil`. The deadline gate is per-product and identical for camp and team orders. It is enforced at the **authorization layer** (`OrderAuthorizationHandler`, using the `OrderLineContext` resource): non-admins are denied past the deadline; Store admins are exempt and may edit lines on any Open order regardless of `OrderableUntil`. `Service.AddLineAsync` / `RemoveLineAsync` no longer throw on a passed deadline — they only annotate the audit entry with `(past order deadline …)` when the line is edited past it.
 - Counterparty fields (`CounterpartyName`, `CounterpartyVatId`, `CounterpartyAddress`, `CounterpartyCountryCode`, `CounterpartyEmail`) are editable only while the order is `Open` (Camp Lead) or by FinanceAdmin/Admin always.
 - Line snapshots (`UnitPriceSnapshot`, `VatRateSnapshot`, `DepositAmountSnapshot`) are written at add-time and never recomputed. **Effective pricing differs by order state (#816):** an `Open` order is a live running tab — `BalanceCalculator.Compute` reprices its lines to the *current* catalog price for the event year (falling back to the snapshot when the product is absent from the catalog), so catalog edits DO propagate to Open orders. An `InvoiceIssued` order is frozen and always reads each line's add-time snapshot.
 - Payments may be recorded regardless of order state — payments do not freeze on issuance.
@@ -209,8 +209,8 @@ Stored as **string** via `HasConversion<string>()` with column default `Paid`. `
 - **Spanish VAT applies to every order regardless of buyer country** — all goods are physically handed over on-site in Spain, so place of supply is Spain and there is no B2B reverse-charge path. VAT comes solely from the per-product `VatRatePercent` snapshot; `CounterpartyCountryCode` is stored for the factura but never consulted for tax.
 - **Deposits are VAT-free** (refundable security deposits / fianzas are not subject to VAT): `BalanceCalculator.Compute` adds deposit amounts without applying VAT, and the future Holded invoice renders each deposit as a separate `tax = 0` line.
 - Issuing an invoice is idempotent: re-issuing an order that already has `IssuedInvoiceId` set throws and does NOT call Holded.
-- Issue-invoice failure mid-flight leaves the order in `Open` state with no `StoreInvoice` row (atomic on success only).
-- A Stripe `checkout.session.completed` event with a known `humans_store_order_id` inserts at most one `StorePayment` per `StripePaymentIntentId` (filtered unique index + service-level dedup check). The inserted row's `Status` is **`Paid`** when `session.payment_status == "paid"` (sync card/wallet) and **`Pending`** otherwise (`"unpaid"` — async mandate captured but not yet cleared, e.g. SEPA).
+- Issue-invoice failure mid-flight leaves the order in `Open` state with no `Invoice` row (atomic on success only).
+- A Stripe `checkout.session.completed` event with a known `humans_store_order_id` inserts at most one `Payment` per `StripePaymentIntentId` (filtered unique index + service-level dedup check). The inserted row's `Status` is **`Paid`** when `session.payment_status == "paid"` (sync card/wallet) and **`Pending`** otherwise (`"unpaid"` — async mandate captured but not yet cleared, e.g. SEPA).
 - **Balance counts `Paid` only.** `BalanceCalculator.Compute` sums payments where `Status == Paid`; `Pending` and `Failed` rows are excluded, so a captured-but-uncleared mandate never makes an order look paid.
 - **Async-payment state machine** (`HandleStripeCheckoutWebhookEventAsync`, all idempotent):
   - `checkout.session.async_payment_succeeded` → the matching `Pending` row transitions to `Paid` (`StorePaymentSettled` audit). Re-delivery of an already-`Paid` row is a no-op. Out-of-order delivery (succeeded before `completed`, so no row yet) records a `Paid` payment directly so settled money is never lost.
@@ -218,11 +218,11 @@ Stored as **string** via `HasConversion<string>()` with column default `Paid`. `
   - `checkout.session.expired` → defensively deletes an orphan `Pending` row for the session's PI (`StorePaymentExpired` audit); a `Paid` or `Failed` row is never touched.
 - **Reconciliation is the recovery path when the webhook misses a payment** (e.g. `STRIPE_STORE_WEBHOOK_SECRET` unset → webhook 503s). `RecordMissingStripePaymentsAsync` lists Store Checkout Sessions, and records only those that are `payment_status == paid`, resolve to an existing **billable** (non-Team) order via `humans_store_order_id` metadata, and are not already recorded. Amount + PaymentIntent id come **from Stripe** — never fabricated. Idempotent (same PI-id guard as the webhook), so it is safe to re-run. Unmatched sessions and orphan recorded payments are surfaced read-only, never auto-recorded or auto-deleted.
 - The treasury sync job (Phase 7, not yet implemented) will match Holded entries to orders **best-effort**; the original `Order.Label` matching key was removed with the Label field (#816), so the eventual matching strategy is TBD.
-- Resource-based authorization per design-rules §11: `StoreOrderAuthorizationHandler` + `StoreOrderOperationRequirement` gate Camp Lead writes against the order's parent camp-season. Operations: `View`, `Create`, `AddLine`, `RemoveLine`, `EditCounterparty`, `Pay`, `Delete`. Mutating ops (`AddLine`, `RemoveLine`, `EditCounterparty`) are gated on `State = Open`; `View` and `Pay` carry no state gate. `Delete` is admin-only (Admin/FinanceAdmin/StoreAdmin on any order; TeamsAdmin on team orders) — camp leads and team coordinators never delete their own orders. A **TeamsAdmin** additionally passes `View` on any order and manages team orders only — `AddLine`/`RemoveLine` (Open only); camp orders stay view-only for them, and `EditCounterparty`/`Pay` are never granted on team orders. The **product deadline gate** is also enforced here: when the authorization resource is a `StoreOrderLineContext` (carrying the product's `OrderableUntil`), non-admin line edits (`AddLine` / `RemoveLine`) are denied once today's event-zone date is past the deadline; Store admins are exempt.
+- Resource-based authorization per design-rules §11: `OrderAuthorizationHandler` + `OrderOperationRequirement` gate Camp Lead writes against the order's parent camp-season. Operations: `View`, `Create`, `AddLine`, `RemoveLine`, `EditCounterparty`, `Pay`, `Delete`. Mutating ops (`AddLine`, `RemoveLine`, `EditCounterparty`) are gated on `State = Open`; `View` and `Pay` carry no state gate. `Delete` is admin-only (Admin/FinanceAdmin/StoreAdmin on any order; TeamsAdmin on team orders) — camp leads and team coordinators never delete their own orders. A **TeamsAdmin** additionally passes `View` on any order and manages team orders only — `AddLine`/`RemoveLine` (Open only); camp orders stay view-only for them, and `EditCounterparty`/`Pay` are never granted on team orders. The **product deadline gate** is also enforced here: when the authorization resource is a `OrderLineContext` (carrying the product's `OrderableUntil`), non-admin line edits (`AddLine` / `RemoveLine`) are denied once today's event-zone date is past the deadline; Store admins are exempt.
 
 ## Negative Access Rules
 
-- A Camp Lead **cannot** add or remove lines after the product's `OrderableUntil` has passed (deadline is per-product, enforced by `StoreOrderAuthorizationHandler` at request time; Store admins are exempt).
+- A Camp Lead **cannot** add or remove lines after the product's `OrderableUntil` has passed (deadline is per-product, enforced by `OrderAuthorizationHandler` at request time; Store admins are exempt).
 - A Camp Lead **cannot** edit lines or counterparty on an order in `InvoiceIssued` state.
 - A Camp Lead **cannot** view or edit orders for camp-seasons they do not lead (resource-based auth).
 - Anyone other than StoreAdmin/FinanceAdmin/Admin **cannot** issue an invoice or run the treasury sync job manually.
@@ -233,15 +233,15 @@ Stored as **string** via `HasConversion<string>()` with column default `Paid`. `
 **Live:**
 - Order create, line add/remove, counterparty edit, and Stripe payment record emit audit log entries via `IAuditLogService` (`StoreOrderCreated`, `StoreLineAdded`, `StoreLineRemoved`, `StoreCounterpartyEdited`, `StorePaymentRecorded`). Async-payment transitions emit `StorePaymentSettled` (Pending → Paid), `StorePaymentFailed` (Pending → Failed), and `StorePaymentExpired` (orphan Pending removed on session expiry), all with the `StripeWebhook` job actor.
 - Product create, update, and deactivate emit `StoreProductCreated`, `StoreProductUpdated`, `StoreProductDeactivated`. A product update that changes the unit price additionally emits a dedicated, queryable `StoreProductPriceChanged` entry (#816); the order page surfaces these for an order's products since it was created, and the catalog edit page shows per-product price history.
-- The Stripe webhook controller (`StoreStripeWebhookController`) verifies the request signature via `IStripeService.ParseStoreCheckoutEvent` and dispatches to `IStoreService.HandleStripeCheckoutWebhookEventAsync`, which handles all four `checkout.session.*` events (completed + the async-payment state machine above). Idempotent on `StripePaymentIntentId`.
+- The Stripe webhook controller (`StoreStripeWebhookController`) verifies the request signature via `IStripeService.ParseStoreCheckoutEvent` and dispatches to `Service.HandleStripeCheckoutWebhookEventAsync`, which handles all four `checkout.session.*` events (completed + the async-payment state machine above). Idempotent on `StripePaymentIntentId`.
 - `/Store/Admin/Payments/RecordMissing` reconciles Stripe → ledger on demand (admin-triggered), recording missing paid sessions via the same idempotent path and emitting one `StorePaymentsReconciled` summary audit entry (with the human actor) plus the per-payment `StorePaymentRecorded` entries. The webhook is therefore no longer the *sole* writer of Stripe payments — but it remains the only automatic one.
 
 **Not yet shipped (Phase 5+):**
-- `IssueInvoiceAsync` — will call `IHoldedClient.UpsertContactAsync` then `IHoldedClient.CreateInvoiceAsync`, write the `StoreInvoice` row, flip `StoreOrder.State = InvoiceIssued`, and emit `StorePaymentRecorded` audit entry. Currently throws `NotSupportedException("Phase 5")`.
+- `IssueInvoiceAsync` — will call `IHoldedClient.UpsertContactAsync` then `IHoldedClient.CreateInvoiceAsync`, write the `Invoice` row, flip `Order.State = InvoiceIssued`, and emit `StorePaymentRecorded` audit entry. Currently throws `NotSupportedException("Phase 5")`.
 <!-- wheat: docs/superpowers/specs/2026-04-30-store-section-design.md §Invoice issuance; §Holded outbound — thin-probe caveat -->
   - Issuance rules carried from the design: the effective counterparty falls back to the camp name when `CounterpartyName` is blank; the Holded contact upsert matches by VAT-id when present, else name + country; each deposit-bearing line adds a separate VAT-free (`tax = 0`) invoice line. Gotcha: the outbound Holded `invoice` and contact payload shapes were **never verified against real data** (the 2026-04 probe saw only purchase docs) — dump a real invoice + contact via the API and lock the field mapping before implementing (`HoldedClient.UpsertContactAsync` still carries a `TODO(probe)`).
 - `RecordManualPaymentAsync` — manual payment entry by FinanceAdmin. Currently throws `NotSupportedException("Phase 5")`.
-- `StoreTreasurySyncJob` (Hangfire recurring) — polls `IHoldedClient.ListTreasuryEntriesAsync` from `StoreTreasurySyncState.LastSyncAt`, inserts `StorePayment(Method=BankTransfer)` for unambiguous matches, advances cursor. Not yet implemented (the original Label matching key was removed in #816).
+- `StoreTreasurySyncJob` (Hangfire recurring) — polls `IHoldedClient.ListTreasuryEntriesAsync` from `TreasurySyncState.LastSyncAt`, inserts `Payment(Method=BankTransfer)` for unambiguous matches, advances cursor. Not yet implemented (the original Label matching key was removed in #816).
 
 ## Cross-Section Dependencies
 
@@ -257,24 +257,24 @@ Stored as **string** via `HasConversion<string>()` with column default `Paid`. `
 
 The Store section uses `IStripeService` (Application-layer abstraction; Infrastructure impl in `Humans.Infrastructure/Services/StripeService.cs`).
 
-- `STRIPE_STORE_KEY` — `checkout_session:write` (Write ⊇ Read, so it also creates Checkout Sessions **and** lists/reads them for reconciliation via `ListStoreCheckoutSessionsAsync`). Each session is created with `humans_store_order_id` stamped on **both** the session metadata and the PaymentIntent metadata, plus a legible description, so payments are matchable from the dashboard, receipts, and PI search. Refunds, payouts, and chargebacks remain manual via the Stripe dashboard; the bookkeeping side posts as negative `StorePayment` rows via FinanceAdmin manual entry (Phase 5.3).
+- `STRIPE_STORE_KEY` — `checkout_session:write` (Write ⊇ Read, so it also creates Checkout Sessions **and** lists/reads them for reconciliation via `ListStoreCheckoutSessionsAsync`). Each session is created with `humans_store_order_id` stamped on **both** the session metadata and the PaymentIntent metadata, plus a legible description, so payments are matchable from the dashboard, receipts, and PI search. Refunds, payouts, and chargebacks remain manual via the Stripe dashboard; the bookkeeping side posts as negative `Payment` rows via FinanceAdmin manual entry (Phase 5.3).
 - `STRIPE_STORE_WEBHOOK_SECRET` — signing secret for `StoreStripeWebhookController`. Set manually in QA/prod; auto-provisioned at boot in PR-preview envs via `StoreWebhookRegistrationService` (requires `STRIPE_STORE_WEBHOOK_REGISTRAR_KEY`).
 - Webhook events subscribed and handled: `checkout.session.completed` (records Paid or Pending by `payment_status`), `checkout.session.async_payment_succeeded` (Pending → Paid), `checkout.session.async_payment_failed` (Pending → Failed), `checkout.session.expired` (orphan-Pending cleanup) — the async-payment state machine (nobodies-collective/Humans#638).
 - Boot-time `StripeStartupSmokeService` validates each key with one low-risk read (Checkout.Sessions.list for Store key). Positive-confirmation only — cannot detect over-granted scopes.
 
 ## Architecture
 
-**Owning services:** `StoreService`
+**Owning services:** `Service`
 **Owned tables:** `store_products`, `store_orders`, `store_order_lines`, `store_payments`, `store_invoices`, `store_treasury_sync_state`
 **Status:** (A) Migrated — new section, born §15-compliant (peterdrier/Humans store-foundation, 2026-04-30).
 **Project:** `src/Sections/Humans.Store` — the G5 pilot (nobodies-collective/Humans#866). The whole vertical is one assembly: `Domain/ Data/ Services/ Controllers/ Models/ Views/ Resources/ Authorization/ Docs/` plus `StoreSection.cs`. Everything is `internal` except `StoreSection`; `Contracts/` is empty because nothing consumes Store.
 
-- `Service` (`Services/StoreService.cs`) depends only on Base abstractions — nothing in Store reaches another section's internals.
-- `Repository` (`Data/StoreRepository.cs`, §15b Singleton + `IDbContextFactory<StoreDbContext>`) is the only type that touches Store tables. It has no interface: inside one assembly there is no other assembly to hide behind, and Store has neither a caching decorator nor a `Contracts/` entry needing the seam (#866 design §6a).
+- `Service` (`Services/Service.cs`) depends only on Base abstractions — nothing in Store reaches another section's internals.
+- `Repository` (`Data/Repository.cs`, §15b Singleton + `IDbContextFactory<StoreDbContext>`) is the only type that touches Store tables. It has no interface: inside one assembly there is no other assembly to hide behind, and Store has neither a caching decorator nor a `Contracts/` entry needing the seam (#866 design §6a).
 - **Decorator decision — no caching decorator.** Store is admin / camp-lead only, low-traffic; same rationale as Budget / Governance.
 <!-- wheat: docs/superpowers/specs/2026-05-27-store-team-orders-design.md §Out of scope -->
-- **Schema decision — one polymorphic `StoreOrder`, not a second table.** Nullable `CampSeasonId` / `TeamId` on the same row was chosen over a separate `store_team_orders` table so team orders reuse the existing catalog, line, authorization and audit machinery instead of duplicating it for the non-billable case. The "exactly one of the two is non-null" invariant is service-enforced, not a DB constraint.
-- **Cross-domain navs:** none. `CampSeasonId`, `ProductId`, `AddedByUserId`, `RecordedByUserId`, `IssuedByUserId` are all FK-only with no navigation property. Intra-section back-navs `StoreOrderLine.Order` and `StorePayment.Order` are aggregate-local and are kept.
+- **Schema decision — one polymorphic `Order`, not a second table.** Nullable `CampSeasonId` / `TeamId` on the same row was chosen over a separate `store_team_orders` table so team orders reuse the existing catalog, line, authorization and audit machinery instead of duplicating it for the non-billable case. The "exactly one of the two is non-null" invariant is service-enforced, not a DB constraint.
+- **Cross-domain navs:** none. `CampSeasonId`, `ProductId`, `AddedByUserId`, `RecordedByUserId`, `IssuedByUserId` are all FK-only with no navigation property. Intra-section back-navs `OrderLine.Order` and `Payment.Order` are aggregate-local and are kept.
 - **Cross-section calls** route through `ICampServiceRead` (camp / camp-season lookups), `IShiftManagementService` (active event year + time-zone), `IAuditLogService`, `IHoldedClient`, `IStripeService`.
 - **Architecture test:** none — `StoreArchitectureTests` was deleted at G5. Both its assertions became false or vacuous once the section became one assembly (the assembly now contains `StoreDbContext` by design, and interface-implementation is a tautology). What it encoded is policed by `ApplicationServiceDbContextInjectionAnalyzer` plus the assembly boundary itself. Store's unit tests live in `tests/Humans.Store.Tests`; its controller tests stay in `Humans.Integration.Tests`.
 

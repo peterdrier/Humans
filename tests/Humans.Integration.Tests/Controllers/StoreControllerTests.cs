@@ -83,10 +83,10 @@ public class StoreControllerTests(HumansTestDatabase database) : IntegrationTest
         var storeDb = scope.ServiceProvider.GetRequiredService<StoreDbContext>();
         var year = (await db.CampSettings.FirstAsync(Xunit.TestContext.Current.CancellationToken)).PublicYear;
 
-        if (await storeDb.StoreProducts.AnyAsync(p => p.Year == year && p.Name == name, Xunit.TestContext.Current.CancellationToken))
+        if (await storeDb.Products.AnyAsync(p => p.Year == year && p.Name == name, Xunit.TestContext.Current.CancellationToken))
             return year;
 
-        storeDb.StoreProducts.Add(new StoreProduct
+        storeDb.Products.Add(new Product
         {
             Id = Guid.NewGuid(),
             Year = year,

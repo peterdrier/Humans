@@ -99,7 +99,7 @@ public class StorePayActionTests(HumansTestDatabase database) : IntegrationTestB
             .Where(s => s.Camp.Slug == "barrio-1")
             .Select(s => s.Id).FirstAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var product = new StoreProduct
+        var product = new Product
         {
             Id = Guid.NewGuid(),
             Year = year,
@@ -113,16 +113,16 @@ public class StorePayActionTests(HumansTestDatabase database) : IntegrationTestB
             CreatedAt = SystemClock.Instance.GetCurrentInstant(),
             UpdatedAt = SystemClock.Instance.GetCurrentInstant(),
         };
-        storeDb.StoreProducts.Add(product);
+        storeDb.Products.Add(product);
 
         var orderId = Guid.NewGuid();
         var now = SystemClock.Instance.GetCurrentInstant();
-        storeDb.StoreOrders.Add(new StoreOrder
+        storeDb.Orders.Add(new Order
         {
             Id = orderId,
             CampSeasonId = seasonId,
-            State = StoreOrderState.Open,
-            Lines = new List<StoreOrderLine>
+            State = OrderState.Open,
+            Lines = new List<OrderLine>
             {
                 new()
                 {

@@ -7,7 +7,7 @@
 ## Problem
 
 Store payments are recorded only by the Stripe webhook (`POST /Store/StripeWebhook` →
-`HandleStripeCheckoutWebhookEventAsync` → `RecordStripePaymentAsync` → `StorePayment` row).
+`HandleStripeCheckoutWebhookEventAsync` → `RecordStripePaymentAsync` → `Payment` row).
 When `STRIPE_STORE_WEBHOOK_SECRET` is unset the endpoint returns 503 to every Stripe
 delivery (`StoreStripeWebhookController.cs:24-28`), so a paid Checkout Session is never
 recorded — the order balance stays at the full amount even though Stripe collected the
@@ -20,7 +20,7 @@ There is no path to recover such a payment today: `RecordManualPaymentAsync` thr
 ## Goal
 
 A durable, always-available **reconciliation** between Stripe (source of truth for money
-received) and our `StorePayment` records, surfaced as an admin screen under the Store
+received) and our `Payment` records, surfaced as an admin screen under the Store
 section. It is the operational home for Store-payment problems and management: it shows
 webhook health, every Stripe payment matched to its order, what is unrecorded, and the
 action to record the missing ones — idempotently, with all values pulled **from Stripe**,
@@ -48,7 +48,7 @@ Stripe payment to its order reliably; a human never has to eyeball or paste a se
 ## Reconciliation status per Stripe payment
 
 Computed in the Store service by diffing the Stripe session list against recorded
-`StorePayment` rows (matched on PaymentIntent id):
+`Payment` rows (matched on PaymentIntent id):
 
 | Status | Meaning | Action |
 |---|---|---|
@@ -57,7 +57,7 @@ Computed in the Store service by diffing the Stripe session list against recorde
 | **Unmatched** | paid but no/unknown/Team order in metadata | flagged for human; never auto-recorded |
 | **Unpaid** | session `payment_status != paid` (open/expired/async-pending) | informational |
 
-Reverse direction — **Orphan**: a recorded Stripe-method `StorePayment` whose PI id is
+Reverse direction — **Orphan**: a recorded Stripe-method `Payment` whose PI id is
 absent from the Stripe list — is reported read-only (never auto-deleted).
 
 ## Architecture
@@ -80,13 +80,13 @@ connector seam (design-rules §15i).
   `PaymentStatus` (string?) and `CreatedAt` (Instant?), populated in both the list path and
   the existing webhook-parse path, rather than introduce a second near-identical session DTO.
 
-**Application — repository (`IStoreRepository` / `StoreRepository`)**
-- `Task<IReadOnlyList<StoreRecordedStripePayment>> GetRecordedStripePaymentsAsync(CancellationToken ct = default)`
+**Application — repository (`Repository` / `Repository`)**
+- `Task<IReadOnlyList<RecordedStripePayment>> GetRecordedStripePaymentsAsync(CancellationToken ct = default)`
   returning `(string PaymentIntentId, Guid OrderId, decimal AmountEur, Instant ReceivedAt)` for
   rows where `StripePaymentIntentId != null`. Feeds both the missing-detection set and orphan detection.
   Rejected `GetRecordedStripePaymentIntentIdsAsync` (set only) because orphan rows need order/amount to display.
 
-**Application — service (`IStoreService` / `StoreService`)**
+**Application — service (`Service` / `Service`)**
 - `Task<StripeReconciliationReport> GetStripeReconciliationAsync(CancellationToken ct = default)`
   — builds the rows + health flags + counts; resolves matched-order labels via the repo
   (`GetOrderByIdAsync`) for the distinct matched ids.
@@ -105,7 +105,7 @@ connector seam (design-rules §15i).
 - `GET Store/Admin/Payments` → `GetStripeReconciliationAsync` → `Views/StoreAdmin/Payments.cshtml`.
 - `POST Store/Admin/Payments/RecordMissing` `[ValidateAntiForgeryToken]` → `RecordMissingStripePaymentsAsync`
   → redirect back with a success summary.
-- `StorePaymentsReconciliationViewModel`; controller does formatting/ordering only.
+- `PaymentsReconciliationViewModel`; controller does formatting/ordering only.
 - Nav link "Payments" added to the Store admin area alongside Catalog / Summary.
 
 **Forward fix (in scope — so this can't recur invisibly)**
@@ -118,8 +118,8 @@ connector seam (design-rules §15i).
 ```
 GET /Store/Admin/Payments
   StripeService.ListStoreCheckoutSessionsAsync (StoreKey, auto-paged)  ─┐
-  StoreRepository.GetRecordedStripePaymentsAsync ─────────────────────┐ │
-  StoreService diffs by PI id, resolves order labels  <───────────────┴─┘
+  Repository.GetRecordedStripePaymentsAsync ─────────────────────┐ │
+  Service diffs by PI id, resolves order labels  <───────────────┴─┘
   → health banner + rows (Recorded/Missing/Unmatched/Unpaid) + orphans
 
 POST /Store/Admin/Payments/RecordMissing
@@ -139,7 +139,7 @@ POST /Store/Admin/Payments/RecordMissing
 
 ## Testing
 
-- Service recon logic (fake `IStripeService` + `IStoreRepository`): each status classification
+- Service recon logic (fake `IStripeService` + `Repository`): each status classification
   (recorded / missing / unmatched / unpaid), orphan detection, label resolution.
 - `RecordMissingStripePaymentsAsync`: records only paid+matched+unrecorded; idempotent on
   re-run; skips Team orders; correct count/total + audit.

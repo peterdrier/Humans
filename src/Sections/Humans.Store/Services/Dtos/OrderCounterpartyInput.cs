@@ -1,6 +1,6 @@
 namespace Humans.Store.Services.Dtos;
 
-public record OrderCounterpartyInput(
+internal sealed record OrderCounterpartyInput(
     string? Name,
     string? VatId,
     string? Address,

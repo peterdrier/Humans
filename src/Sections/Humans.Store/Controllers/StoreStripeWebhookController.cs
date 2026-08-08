@@ -12,8 +12,8 @@ namespace Humans.Store.Controllers;
 [ApiController]
 [AllowAnonymous]
 [Route("Store/StripeWebhook")]
-public class StoreStripeWebhookController(
-    IStoreService storeService,
+internal sealed class StoreStripeWebhookController(
+    Service storeService,
     IStripeService stripeService,
     ILogger<StoreStripeWebhookController> logger) : ControllerBase
 {

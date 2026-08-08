@@ -1,7 +1,7 @@
 @using Humans.UI.Extensions
 @using Humans.UI.Models.Tables
 @using Microsoft.AspNetCore.Html
-@model Humans.Store.Models.StoreIndexViewModel
+@model Humans.Store.Models.IndexViewModel
 @{
     ViewData["Title"] = Localizer["Store_Title"].Value;
 }
@@ -35,7 +35,7 @@ else
                     @cp.DisplayName
                     <span class="badge bg-light text-dark ms-2">@Localizer.EnumDisplay(cp.CounterpartyType)</span>
                 </h2>
-                @if (cp.CounterpartyType == StoreOrderCounterpartyType.Camp && cp.Orders.Count == 0 && Model.CanManageByCounterparty[cp.CounterpartyId])
+                @if (cp.CounterpartyType == OrderCounterpartyType.Camp && cp.Orders.Count == 0 && Model.CanManageByCounterparty[cp.CounterpartyId])
                 {
                     <form asp-action="Create" asp-route-campSeasonId="@cp.CounterpartyId"
                           method="post" class="d-flex gap-2 align-items-center mb-0">
@@ -43,7 +43,7 @@ else
                         <button type="submit" class="btn btn-sm btn-primary">@Localizer["Store_StartOrder"]</button>
                     </form>
                 }
-                else if (cp.CounterpartyType == StoreOrderCounterpartyType.Team && cp.Orders.Count == 0 && Model.CanManageByCounterparty[cp.CounterpartyId])
+                else if (cp.CounterpartyType == OrderCounterpartyType.Team && cp.Orders.Count == 0 && Model.CanManageByCounterparty[cp.CounterpartyId])
                 {
                     <form asp-action="CreateTeamOrder" asp-route-teamId="@cp.CounterpartyId"
                           method="post" class="mb-0">
@@ -59,7 +59,7 @@ else
                         <thead>
                             <tr>
                                 <th>@Localizer["Store_ColState"]</th>
-                                @if (cp.CounterpartyType == StoreOrderCounterpartyType.Camp)
+                                @if (cp.CounterpartyType == OrderCounterpartyType.Camp)
                                 {
                                     <th class="text-end">@Localizer["Store_ColLinesVat"]</th>
                                     <th class="text-end">@Localizer["Store_ColDeposits"]</th>
@@ -77,7 +77,7 @@ else
                             {
                                 <tr>
                                     <td><span class="badge bg-secondary">@order.State</span></td>
-                                    @if (cp.CounterpartyType == StoreOrderCounterpartyType.Camp)
+                                    @if (cp.CounterpartyType == OrderCounterpartyType.Camp)
                                     {
                                         <td class="text-end">@((order.LinesSubtotalEur + order.VatTotalEur).ToEuro())</td>
                                         <td class="text-end">@order.DepositTotalEur.ToEuro()</td>

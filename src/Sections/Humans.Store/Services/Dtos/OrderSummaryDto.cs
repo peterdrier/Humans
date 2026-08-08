@@ -1,15 +1,14 @@
-using Humans.Domain.Enums;
 using Humans.Store.Domain;
 
 namespace Humans.Store.Services.Dtos;
 
-public record OrderSummaryDto(
+internal sealed record OrderSummaryDto(
     Guid OrderId,
-    StoreOrderCounterpartyType CounterpartyType,
+    OrderCounterpartyType CounterpartyType,
     Guid CounterpartyId,
     string CounterpartyName,
     string? Label,
-    StoreOrderState State,
+    OrderState State,
     decimal TotalDueEur,
     decimal PaymentsTotalEur,
     decimal BalanceEur);

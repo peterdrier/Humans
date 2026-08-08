@@ -1,18 +1,16 @@
-using Humans.Domain.Entities;
-using Humans.Domain.Enums;
 using Humans.Store.Domain;
 
 namespace Humans.Store.Services;
 
-public static class BalanceCalculator
+internal static class BalanceCalculator
 {
     /// <summary>
     /// Current catalog price components for a product, used to reprice the lines
-    /// of an <see cref="StoreOrderState.Open"/> order. See nobodies-collective/Humans#816.
+    /// of an <see cref="OrderState.Open"/> order. See nobodies-collective/Humans#816.
     /// </summary>
     public readonly record struct ProductPrice(decimal UnitPriceEur, decimal VatRatePercent, decimal? DepositAmountEur);
 
-    public record LineTotals(
+    public sealed record LineTotals(
         Guid LineId,
         decimal EffectiveUnitPrice,
         decimal EffectiveVatRate,
@@ -22,7 +20,7 @@ public static class BalanceCalculator
         decimal DepositEur,
         decimal TotalEur);
 
-    public record Result(
+    public sealed record Result(
         decimal LinesSubtotalEur,
         decimal VatTotalEur,
         decimal DepositTotalEur,
@@ -35,23 +33,23 @@ public static class BalanceCalculator
 
     /// <summary>
     /// Computes order totals from each line's add-time snapshot. Equivalent to
-    /// <see cref="Compute(StoreOrder, IReadOnlyDictionary{Guid, ProductPrice})"/>
+    /// <see cref="Compute(Order, IReadOnlyDictionary{Guid, ProductPrice})"/>
     /// with no resolvable current prices — every line falls back to its snapshot.
     /// </summary>
-    public static Result Compute(StoreOrder order) => Compute(order, NoCurrentPrices);
+    public static Result Compute(Order order) => Compute(order, NoCurrentPrices);
 
     /// <summary>
     /// Computes order totals using <em>effective</em> prices: an
-    /// <see cref="StoreOrderState.Open"/> order tracks the current catalog price
+    /// <see cref="OrderState.Open"/> order tracks the current catalog price
     /// from <paramref name="currentPrices"/> (a running tab), while an
-    /// <see cref="StoreOrderState.InvoiceIssued"/> order is frozen and always
+    /// <see cref="OrderState.InvoiceIssued"/> order is frozen and always
     /// reads each line's add-time snapshot. An Open line whose product is absent
     /// from <paramref name="currentPrices"/> falls back to its snapshot.
     /// See nobodies-collective/Humans#816.
     /// </summary>
-    public static Result Compute(StoreOrder order, IReadOnlyDictionary<Guid, ProductPrice> currentPrices)
+    public static Result Compute(Order order, IReadOnlyDictionary<Guid, ProductPrice> currentPrices)
     {
-        var reprice = order.State == StoreOrderState.Open;
+        var reprice = order.State == OrderState.Open;
         decimal subtotal = 0m;
         decimal vat = 0m;
         decimal deposits = 0m;
@@ -78,7 +76,7 @@ public static class BalanceCalculator
         // (mandate rejected / settlement bounced) are excluded so the balance reflects what Stripe
         // has actually confirmed, never what the donor intended. See nobodies-collective/Humans#638.
         var payments = order.Payments
-            .Where(p => p.Status == StorePaymentStatus.Paid)
+            .Where(p => p.Status == PaymentStatus.Paid)
             .Sum(p => p.AmountEur);
         var balance = subtotal + vat + deposits - payments;
 

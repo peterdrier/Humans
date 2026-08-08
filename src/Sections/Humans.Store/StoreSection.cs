@@ -16,12 +16,14 @@ public sealed class StoreSection : ISection
     {
         services.AddSectionDbContext<StoreDbContext>(sentinelTable: "store_orders");
 
-        // §15b repository pattern: StoreRepository uses IDbContextFactory<StoreDbContext>
+        // §15b repository pattern: Repository uses IDbContextFactory<StoreDbContext>
         // so it can be Singleton; every method opens its own short-lived DbContext.
-        services.AddSingleton<IStoreRepository, StoreRepository>();
-        services.AddScoped<IStoreService, StoreService>();
+        // No interfaces: nothing outside this assembly can name them, and Store has
+        // neither a caching decorator nor a Contracts/ entry needing the seam (§6a).
+        services.AddSingleton<Repository>();
+        services.AddScoped<Service>();
 
         // Resource-based handler; the StoreCatalogAdmin *policy* stays in Shell (design §8).
-        services.AddScoped<IAuthorizationHandler, StoreOrderAuthorizationHandler>();
+        services.AddScoped<IAuthorizationHandler, OrderAuthorizationHandler>();
     }
 }

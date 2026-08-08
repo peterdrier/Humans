@@ -2,7 +2,7 @@ using NodaTime;
 
 namespace Humans.Store.Services.Dtos;
 
-public record OrderLineDto(
+internal sealed record OrderLineDto(
     Guid Id,
     Guid OrderId,
     Guid ProductId,

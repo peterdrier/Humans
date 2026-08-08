@@ -2,7 +2,7 @@ using NodaTime;
 
 namespace Humans.Store.Services.Dtos;
 
-public record ProductDto(
+internal sealed record ProductDto(
     Guid Id,
     int Year,
     string Name,

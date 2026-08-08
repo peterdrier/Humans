@@ -11,7 +11,7 @@ public class BalanceCalculatorTests
     [HumansFact]
     public void Empty_order_has_zero_balance()
     {
-        var order = new StoreOrder();
+        var order = new Order();
         var result = BalanceCalculator.Compute(order);
         result.LinesSubtotalEur.Should().Be(0);
         result.VatTotalEur.Should().Be(0);
@@ -25,9 +25,9 @@ public class BalanceCalculatorTests
     public void Single_line_with_21_percent_vat()
     {
         var lineId = Guid.NewGuid();
-        var order = new StoreOrder
+        var order = new Order
         {
-            Lines = new List<StoreOrderLine>
+            Lines = new List<OrderLine>
             {
                 new() { Id = lineId, Qty = 2, UnitPriceSnapshot = 50m, VatRateSnapshot = 21m }
             }
@@ -46,9 +46,9 @@ public class BalanceCalculatorTests
     public void Deposit_lines_excluded_from_vat_added_to_total()
     {
         var lineId = Guid.NewGuid();
-        var order = new StoreOrder
+        var order = new Order
         {
-            Lines = new List<StoreOrderLine>
+            Lines = new List<OrderLine>
             {
                 new() { Id = lineId, Qty = 1, UnitPriceSnapshot = 30m, VatRateSnapshot = 21m, DepositAmountSnapshot = 100m }
             }
@@ -67,16 +67,16 @@ public class BalanceCalculatorTests
     public void Payments_reduce_balance_negative_payment_treated_as_refund()
     {
         var lineId = Guid.NewGuid();
-        var order = new StoreOrder
+        var order = new Order
         {
-            Lines = new List<StoreOrderLine>
+            Lines = new List<OrderLine>
             {
                 new() { Id = lineId, Qty = 1, UnitPriceSnapshot = 100m, VatRateSnapshot = 21m }
             },
-            Payments = new List<StorePayment>
+            Payments = new List<Payment>
             {
-                new() { AmountEur = 50m, Method = StorePaymentMethod.Stripe },
-                new() { AmountEur = -10m, Method = StorePaymentMethod.Manual }
+                new() { AmountEur = 50m, Method = PaymentMethod.Stripe },
+                new() { AmountEur = -10m, Method = PaymentMethod.Manual }
             }
         };
 
@@ -95,17 +95,17 @@ public class BalanceCalculatorTests
     public void Only_paid_payments_count_toward_balance()
     {
         var lineId = Guid.NewGuid();
-        var order = new StoreOrder
+        var order = new Order
         {
-            Lines = new List<StoreOrderLine>
+            Lines = new List<OrderLine>
             {
                 new() { Id = lineId, Qty = 1, UnitPriceSnapshot = 100m, VatRateSnapshot = 0m }
             },
-            Payments = new List<StorePayment>
+            Payments = new List<Payment>
             {
-                new() { AmountEur = 40m, Method = StorePaymentMethod.Stripe, Status = StorePaymentStatus.Paid },
-                new() { AmountEur = 30m, Method = StorePaymentMethod.Stripe, Status = StorePaymentStatus.Pending },
-                new() { AmountEur = 25m, Method = StorePaymentMethod.Stripe, Status = StorePaymentStatus.Failed }
+                new() { AmountEur = 40m, Method = PaymentMethod.Stripe, Status = PaymentStatus.Paid },
+                new() { AmountEur = 30m, Method = PaymentMethod.Stripe, Status = PaymentStatus.Pending },
+                new() { AmountEur = 25m, Method = PaymentMethod.Stripe, Status = PaymentStatus.Failed }
             }
         };
 
@@ -119,15 +119,15 @@ public class BalanceCalculatorTests
     public void Pending_only_order_is_not_treated_as_paid()
     {
         // SEPA mandate captured at checkout but not yet cleared: the order is still fully owed.
-        var order = new StoreOrder
+        var order = new Order
         {
-            Lines = new List<StoreOrderLine>
+            Lines = new List<OrderLine>
             {
                 new() { Id = Guid.NewGuid(), Qty = 1, UnitPriceSnapshot = 50m, VatRateSnapshot = 0m }
             },
-            Payments = new List<StorePayment>
+            Payments = new List<Payment>
             {
-                new() { AmountEur = 50m, Method = StorePaymentMethod.Stripe, Status = StorePaymentStatus.Pending }
+                new() { AmountEur = 50m, Method = PaymentMethod.Stripe, Status = PaymentStatus.Pending }
             }
         };
 
@@ -160,10 +160,10 @@ public class BalanceCalculatorTests
     public void Open_order_reprices_current_vat_and_deposit_when_higher()
     {
         var productId = Guid.NewGuid();
-        var order = new StoreOrder
+        var order = new Order
         {
-            State = StoreOrderState.Open,
-            Lines = new List<StoreOrderLine>
+            State = OrderState.Open,
+            Lines = new List<OrderLine>
             {
                 new() { Id = Guid.NewGuid(), ProductId = productId, Qty = 1,
                         UnitPriceSnapshot = 50m, VatRateSnapshot = 21m, DepositAmountSnapshot = 10m }
@@ -188,7 +188,7 @@ public class BalanceCalculatorTests
     {
         var productId = Guid.NewGuid();
         var order = OpenOrderWithLine(productId, snapshotUnit: 50m, snapshotVat: 21m);
-        order.State = StoreOrderState.InvoiceIssued;
+        order.State = OrderState.InvoiceIssued;
         var current = Prices((productId, 40m, 21m, null));
 
         var r = BalanceCalculator.Compute(order, current);
@@ -213,16 +213,16 @@ public class BalanceCalculatorTests
     public void Open_order_balance_goes_negative_when_repriced_below_payments()
     {
         var productId = Guid.NewGuid();
-        var order = new StoreOrder
+        var order = new Order
         {
-            State = StoreOrderState.Open,
-            Lines = new List<StoreOrderLine>
+            State = OrderState.Open,
+            Lines = new List<OrderLine>
             {
                 new() { Id = Guid.NewGuid(), ProductId = productId, Qty = 1, UnitPriceSnapshot = 100m, VatRateSnapshot = 0m }
             },
-            Payments = new List<StorePayment>
+            Payments = new List<Payment>
             {
-                new() { AmountEur = 100m, Method = StorePaymentMethod.Stripe }
+                new() { AmountEur = 100m, Method = PaymentMethod.Stripe }
             }
         };
         var current = Prices((productId, 60m, 0m, null));
@@ -232,11 +232,11 @@ public class BalanceCalculatorTests
         r.BalanceEur.Should().Be(-40m); // 60 due − 100 paid: credit owed
     }
 
-    private static StoreOrder OpenOrderWithLine(Guid productId, decimal snapshotUnit, decimal snapshotVat) =>
+    private static Order OpenOrderWithLine(Guid productId, decimal snapshotUnit, decimal snapshotVat) =>
         new()
         {
-            State = StoreOrderState.Open,
-            Lines = new List<StoreOrderLine>
+            State = OrderState.Open,
+            Lines = new List<OrderLine>
             {
                 new() { Id = Guid.NewGuid(), ProductId = productId, Qty = 2,
                         UnitPriceSnapshot = snapshotUnit, VatRateSnapshot = snapshotVat }

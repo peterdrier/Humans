@@ -44,9 +44,9 @@ public class VatInclusivePriceTests
         var line = Line(qty: 3, unitEx: 9.99m, vat: 21m);
         line.EffectiveUnitPriceInclVat.Should().Be(12.09m);
 
-        var order = new StoreOrder
+        var order = new Order
         {
-            Lines = new List<StoreOrderLine>
+            Lines = new List<OrderLine>
             {
                 new() { Qty = 3, UnitPriceSnapshot = 9.99m, VatRateSnapshot = 21m }
             }

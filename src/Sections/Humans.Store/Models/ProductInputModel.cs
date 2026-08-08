@@ -3,7 +3,7 @@ using Humans.Domain.Attributes;
 
 namespace Humans.Store.Models;
 
-public sealed class ProductInputModel
+internal sealed class ProductInputModel
 {
     public Guid? Id { get; set; }
 

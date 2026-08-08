@@ -82,7 +82,7 @@
 @if (!isCreate)
 {
     <div class="mt-4">
-        <vc:audit-log entity-type="StoreProduct" entity-id="@Model.Id"
+        <vc:audit-log entity-type="Product" entity-id="@Model.Id"
                       actions="StoreProductPriceChanged" title="Price history" limit="20" />
     </div>
 }

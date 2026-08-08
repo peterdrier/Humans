@@ -1,12 +1,12 @@
 @using Humans.UI.Models.Tables
 @using Microsoft.AspNetCore.Html
-@model Humans.Store.Models.StoreOrderViewModel
+@model Humans.Store.Models.OrderViewModel
 @{
     ViewData["Title"] = $"Store order — {Model.CounterpartyDisplayName}";
     var order = Model.Order;
-    var isTeamOrder = order.CounterpartyType == StoreOrderCounterpartyType.Team;
+    var isTeamOrder = order.CounterpartyType == OrderCounterpartyType.Team;
     var pendingTotal = order.Payments
-        .Where(p => p.Status == StorePaymentStatus.Pending)
+        .Where(p => p.Status == PaymentStatus.Pending)
         .Sum(p => p.AmountEur);
 }
 
@@ -190,21 +190,21 @@ else
             <tbody>
                 @foreach (var payment in order.Payments.OrderBy(p => p.ReceivedAt))
                 {
-                    var isPending = payment.Status == StorePaymentStatus.Pending;
-                    var isFailed = payment.Status == StorePaymentStatus.Failed;
+                    var isPending = payment.Status == PaymentStatus.Pending;
+                    var isFailed = payment.Status == PaymentStatus.Failed;
                     <tr class="@(isPending ? "table-warning" : isFailed ? "text-muted" : "")">
                         <td>@payment.ReceivedAt.ToInvariantTimestamp() UTC</td>
                         <td><span class="badge bg-secondary">@payment.Method</span></td>
                         <td>
                             @switch (payment.Status)
                             {
-                                case StorePaymentStatus.Paid:
+                                case PaymentStatus.Paid:
                                     <span class="badge bg-success">Paid</span>
                                     break;
-                                case StorePaymentStatus.Pending:
+                                case PaymentStatus.Pending:
                                     <span class="badge bg-warning text-dark" title="Mandate captured, not yet cleared">Pending settlement</span>
                                     break;
-                                case StorePaymentStatus.Failed:
+                                case PaymentStatus.Failed:
                                     <span class="badge bg-danger">Failed</span>
                                     break;
                             }

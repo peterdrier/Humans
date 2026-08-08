@@ -474,6 +474,11 @@ var mvcBuilder = builder.Services.AddControllersWithViews(options =>
         options.DataAnnotationLocalizerProvider = (_, factory) => factory.Create(typeof(Humans.UI.SharedResource));
     });
 
+// A section project's controllers are internal (nobodies-collective/Humans#866); MVC's
+// default provider only discovers public ones, and says nothing when it doesn't.
+mvcBuilder.ConfigureApplicationPartManager(apm =>
+    apm.FeatureProviders.Add(new SectionControllerFeatureProvider()));
+
 // DevLoginController depends on DevPersonaSeeder (non-Production only); exclude in Prod so ValidateOnBuild passes and /dev/login/* 404s cleanly.
 if (builder.Environment.IsProduction())
 {

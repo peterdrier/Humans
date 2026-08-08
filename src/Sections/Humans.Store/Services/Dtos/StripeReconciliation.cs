@@ -5,9 +5,9 @@ namespace Humans.Store.Services.Dtos;
 
 /// <summary>
 /// Reconciliation status of a single Stripe Checkout Session against recorded
-/// <c>StorePayment</c> rows. See the 2026-06-04 reconciliation design.
+/// <c>Payment</c> rows. See the 2026-06-04 reconciliation design.
 /// </summary>
-public enum StripeReconciliationStatus
+internal enum StripeReconciliationStatus
 {
     /// <summary>Paid session whose PaymentIntent is already a recorded payment.</summary>
     Recorded,
@@ -26,7 +26,7 @@ public enum StripeReconciliationStatus
 }
 
 /// <summary>One Stripe Checkout Session row in the reconciliation view.</summary>
-public sealed record StripeReconciliationRow(
+internal sealed record StripeReconciliationRow(
     string SessionId,
     string? PaymentIntentId,
     decimal? AmountEur,
@@ -40,7 +40,7 @@ public sealed record StripeReconciliationRow(
 /// A recorded Stripe-method payment with no matching session in the Stripe list —
 /// reported for human review, never auto-deleted.
 /// </summary>
-public sealed record StripeOrphanPayment(
+internal sealed record StripeOrphanPayment(
     string PaymentIntentId,
     Guid OrderId,
     string? OrderLabel,
@@ -56,7 +56,7 @@ public sealed record StripeOrphanPayment(
 /// (key unset or missing read scope) — in which case <see cref="Orphans"/> is empty rather than
 /// false-flagging every recorded payment as an orphan.
 /// </param>
-public sealed record StripeReconciliationReport(
+internal sealed record StripeReconciliationReport(
     bool WebhookConfigured,
     bool CheckoutConfigured,
     bool StripeQueried,
@@ -74,4 +74,4 @@ public sealed record StripeReconciliationReport(
 }
 
 /// <summary>Outcome of recording the missing payments: how many were recorded and their total.</summary>
-public sealed record StripeReconciliationResult(int RecordedCount, decimal TotalEur);
+internal sealed record StripeReconciliationResult(int RecordedCount, decimal TotalEur);

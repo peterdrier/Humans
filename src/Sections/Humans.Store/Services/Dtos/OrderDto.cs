@@ -1,18 +1,17 @@
-using Humans.Domain.Enums;
 using Humans.Store.Domain;
 using NodaTime;
 
 namespace Humans.Store.Services.Dtos;
 
-public record OrderDto(
+internal sealed record OrderDto(
     Guid Id,
     Guid? CampSeasonId,
     Guid? TeamId,
-    StoreOrderCounterpartyType CounterpartyType,
+    OrderCounterpartyType CounterpartyType,
     string CounterpartyDisplayName,
     int Year,
     string? Label,
-    StoreOrderState State,
+    OrderState State,
     string? CounterpartyName,
     string? CounterpartyVatId,
     string? CounterpartyAddress,
@@ -29,10 +28,10 @@ public record OrderDto(
     Instant CreatedAt);
 
 /// <summary>One recorded payment against a camp order (a row in <c>store_payments</c>).</summary>
-public record OrderPaymentDto(
+internal sealed record OrderPaymentDto(
     decimal AmountEur,
-    StorePaymentMethod Method,
-    StorePaymentStatus Status,
+    PaymentMethod Method,
+    PaymentStatus Status,
     string? StripePaymentIntentId,
     string? ExternalRef,
     Instant ReceivedAt,

@@ -1,7 +1,7 @@
 @using Microsoft.AspNetCore.Html
 @using Humans.Store.Services.Dtos
 @using Humans.UI.Models.Tables
-@model Humans.Store.Models.StoreSummaryViewModel
+@model Humans.Store.Models.SummaryViewModel
 @{
     ViewData["Title"] = "Store summary";
     var s = Model.Summary;
@@ -34,7 +34,7 @@
                 @<text><a asp-controller="Store" asp-action="Order" asp-route-id="@item.OrderId">@item.CounterpartyName</a></text>;
 
             bool IsTeam(OrderSummaryDto r) =>
-                r.CounterpartyType == StoreOrderCounterpartyType.Team;
+                r.CounterpartyType == OrderCounterpartyType.Team;
 
             string PaymentStatus(OrderSummaryDto r) =>
                 IsTeam(r) ? "paid"

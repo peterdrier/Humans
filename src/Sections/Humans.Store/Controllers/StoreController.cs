@@ -2,7 +2,6 @@ using Humans.Application.Interfaces.Camps;
 using Humans.Store.Domain;
 using Humans.Store.Services;
 using Humans.Store.Services.Dtos;
-using Humans.Domain.Enums;
 using Humans.UI.Authorization;
 using Humans.Store.Authorization;
 using Humans.Store.Models;
@@ -17,8 +16,8 @@ namespace Humans.Store.Controllers;
 
 [Authorize]
 [Route("Store")]
-public class StoreController(
-    IStoreService storeService,
+internal sealed class StoreController(
+    Service storeService,
     ICampServiceRead campService,
     IAuthorizationService authService,
     IUserServiceRead userService,
@@ -48,15 +47,15 @@ public class StoreController(
             // The order's one actionable affordance on this page: Delete when it
             // exists, Create when it doesn't.
             var (resource, requirement) = cp.Orders.Count > 0
-                ? ((object)cp.Orders[0], StoreOrderOperationRequirement.Delete)
-                : (new StoreOrderCreateContext(
-                       CampSeasonId: cp.CounterpartyType == StoreOrderCounterpartyType.Camp ? cp.CounterpartyId : null,
-                       TeamId: cp.CounterpartyType == StoreOrderCounterpartyType.Team ? cp.CounterpartyId : null),
-                   StoreOrderOperationRequirement.Create);
+                ? ((object)cp.Orders[0], OrderOperationRequirement.Delete)
+                : (new OrderCreateContext(
+                       CampSeasonId: cp.CounterpartyType == OrderCounterpartyType.Camp ? cp.CounterpartyId : null,
+                       TeamId: cp.CounterpartyType == OrderCounterpartyType.Team ? cp.CounterpartyId : null),
+                   OrderOperationRequirement.Create);
             canManage[cp.CounterpartyId] = (await authService.AuthorizeAsync(User, resource, requirement)).Succeeded;
         }
 
-        var model = new StoreIndexViewModel
+        var model = new IndexViewModel
         {
             Year = pageData.Year,
             Catalog = pageData.Catalog,
@@ -75,20 +74,20 @@ public class StoreController(
         var order = await storeService.GetOrderAsync(id, ct);
         if (order is null) return NotFound();
 
-        var view = await authService.AuthorizeAsync(User, order, StoreOrderOperationRequirement.View);
+        var view = await authService.AuthorizeAsync(User, order, OrderOperationRequirement.View);
         if (!view.Succeeded) return Forbid();
 
-        var canEdit = (await authService.AuthorizeAsync(User, order, StoreOrderOperationRequirement.AddLine)).Succeeded;
-        var canPay = (await authService.AuthorizeAsync(User, order, StoreOrderOperationRequirement.Pay)).Succeeded;
-        var canDeleteAuth = (await authService.AuthorizeAsync(User, order, StoreOrderOperationRequirement.Delete)).Succeeded;
+        var canEdit = (await authService.AuthorizeAsync(User, order, OrderOperationRequirement.AddLine)).Succeeded;
+        var canPay = (await authService.AuthorizeAsync(User, order, OrderOperationRequirement.Pay)).Succeeded;
+        var canDeleteAuth = (await authService.AuthorizeAsync(User, order, OrderOperationRequirement.Delete)).Succeeded;
         var pageData = await storeService.GetOrderPageDataAsync(order, canEdit, canPay, ct);
         var (catalog, removableLineIds) = await FilterLineEditAffordancesAsync(order, pageData.Catalog, canEdit, ct);
-        return View(StoreOrderViewModel.FromPageData(
+        return View(OrderViewModel.FromPageData(
             pageData, canDeleteAuth && order.BalanceEur == 0m, catalog, removableLineIds));
     }
 
     /// <summary>
-    /// Per-row line-edit affordances, resolved against <see cref="StoreOrderAuthorizationHandler"/>
+    /// Per-row line-edit affordances, resolved against <see cref="OrderAuthorizationHandler"/>
     /// (same pattern as the index's per-counterparty gating): the add-line catalog keeps only
     /// products the viewer may still add, and Remove buttons render only for lines the viewer
     /// may still remove — past the product deadline that's Store admins only.
@@ -103,7 +102,7 @@ public class StoreController(
         foreach (var product in catalog)
         {
             var auth = await authService.AuthorizeAsync(
-                User, new StoreOrderLineContext(order, product.OrderableUntil), StoreOrderOperationRequirement.AddLine);
+                User, new OrderLineContext(order, product.OrderableUntil), OrderOperationRequirement.AddLine);
             if (auth.Succeeded)
                 allowedProducts.Add(product);
         }
@@ -118,8 +117,8 @@ public class StoreController(
                 deadlineByProduct[line.ProductId] = deadline;
             }
             // Missing product: leave the button visible; the service rejects authoritatively.
-            object resource = deadline is { } d ? new StoreOrderLineContext(order, d) : order;
-            var auth = await authService.AuthorizeAsync(User, resource, StoreOrderOperationRequirement.RemoveLine);
+            object resource = deadline is { } d ? new OrderLineContext(order, d) : order;
+            var auth = await authService.AuthorizeAsync(User, resource, OrderOperationRequirement.RemoveLine);
             if (auth.Succeeded)
                 removable.Add(line.Id);
         }
@@ -137,7 +136,7 @@ public class StoreController(
         var order = await storeService.GetOrderAsync(id, ct);
         if (order is null) return NotFound();
 
-        var auth = await authService.AuthorizeAsync(User, order, StoreOrderOperationRequirement.Pay);
+        var auth = await authService.AuthorizeAsync(User, order, OrderOperationRequirement.Pay);
         if (!auth.Succeeded) return Forbid();
 
         var orderUrl = Url.Action(nameof(Order), "Store", new { id }, Request.Scheme, Request.Host.Value)
@@ -179,8 +178,8 @@ public class StoreController(
 
         var auth = await authService.AuthorizeAsync(
             User,
-            new StoreOrderCreateContext(CampSeasonId: campSeasonId),
-            StoreOrderOperationRequirement.Create);
+            new OrderCreateContext(CampSeasonId: campSeasonId),
+            OrderOperationRequirement.Create);
         if (!auth.Succeeded) return Forbid();
 
         var newId = await storeService.CreateOrderAsync(campSeasonId, label, user.Id, ct);
@@ -197,8 +196,8 @@ public class StoreController(
 
         var auth = await authService.AuthorizeAsync(
             User,
-            new StoreOrderCreateContext(CampSeasonId: null, TeamId: teamId),
-            StoreOrderOperationRequirement.Create);
+            new OrderCreateContext(CampSeasonId: null, TeamId: teamId),
+            OrderOperationRequirement.Create);
         if (!auth.Succeeded) return Forbid();
 
         try
@@ -224,7 +223,7 @@ public class StoreController(
         var order = await storeService.GetOrderAsync(id, ct);
         if (order is null) return NotFound();
 
-        var auth = await authService.AuthorizeAsync(User, order, StoreOrderOperationRequirement.Delete);
+        var auth = await authService.AuthorizeAsync(User, order, OrderOperationRequirement.Delete);
         if (!auth.Succeeded) return Forbid();
 
         try
@@ -253,8 +252,8 @@ public class StoreController(
         // Authorize against the product's order deadline when known; an unknown product
         // falls back to the plain order resource and the service rejects it as not found.
         var product = await storeService.GetProductAsync(productId, ct);
-        object resource = product is null ? order : new StoreOrderLineContext(order, product.OrderableUntil);
-        var auth = await authService.AuthorizeAsync(User, resource, StoreOrderOperationRequirement.AddLine);
+        object resource = product is null ? order : new OrderLineContext(order, product.OrderableUntil);
+        var auth = await authService.AuthorizeAsync(User, resource, OrderOperationRequirement.AddLine);
         if (!auth.Succeeded) return Forbid();
 
         var result = await storeService.AddLineWithResultAsync(id, productId, qty, user.Id, ct);
@@ -280,8 +279,8 @@ public class StoreController(
         // falls back to the plain order resource and the service rejects it authoritatively.
         var lineProductId = order.Lines.FirstOrDefault(l => l.Id == lineId)?.ProductId;
         var product = lineProductId is { } pid ? await storeService.GetProductAsync(pid, ct) : null;
-        object resource = product is null ? order : new StoreOrderLineContext(order, product.OrderableUntil);
-        var auth = await authService.AuthorizeAsync(User, resource, StoreOrderOperationRequirement.RemoveLine);
+        object resource = product is null ? order : new OrderLineContext(order, product.OrderableUntil);
+        var auth = await authService.AuthorizeAsync(User, resource, OrderOperationRequirement.RemoveLine);
         if (!auth.Succeeded) return Forbid();
 
         var result = await storeService.RemoveLineWithResultAsync(id, lineId, user.Id, ct);
@@ -306,7 +305,7 @@ public class StoreController(
         var order = await storeService.GetOrderAsync(id, ct);
         if (order is null) return NotFound();
 
-        var auth = await authService.AuthorizeAsync(User, order, StoreOrderOperationRequirement.EditCounterparty);
+        var auth = await authService.AuthorizeAsync(User, order, OrderOperationRequirement.EditCounterparty);
         if (!auth.Succeeded) return Forbid();
 
         var result = await storeService.UpdateCounterpartyWithResultAsync(id, input, user.Id, ct);

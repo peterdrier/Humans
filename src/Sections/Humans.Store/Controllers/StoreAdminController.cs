@@ -15,8 +15,8 @@ namespace Humans.Store.Controllers;
 
 [Authorize(Policy = PolicyNames.StoreCatalogAdmin)]
 [Route("Store/Admin")]
-public class StoreAdminController(
-    IStoreService storeService,
+internal sealed class StoreAdminController(
+    Service storeService,
     IShiftManagementService shifts,
     IClock clock,
     IUserServiceRead userService,
@@ -33,7 +33,7 @@ public class StoreAdminController(
             .OrderByDescending(p => p.IsActive)
             .ThenBy(p => p.Name, StringComparer.Ordinal)
             .ToList();
-        return View(new StoreCatalogAdminViewModel { Year = year, Products = products });
+        return View(new CatalogAdminViewModel { Year = year, Products = products });
     }
 
     [HttpGet("Summary")]
@@ -44,7 +44,7 @@ public class StoreAdminController(
         var selectedYear = year ?? defaultYear;
 
         var summary = await storeService.GetStoreSummaryAsync(selectedYear, ct);
-        return View(new StoreSummaryViewModel { Summary = summary });
+        return View(new SummaryViewModel { Summary = summary });
     }
 
     [HttpGet("Payments")]
@@ -55,7 +55,7 @@ public class StoreAdminController(
             .OrderByDescending(r => r.Status is StripeReconciliationStatus.Missing or StripeReconciliationStatus.Unmatched)
             .ThenByDescending(r => r.CreatedAt)
             .ToList();
-        return View(new StorePaymentsReconciliationViewModel { Report = report, Rows = rows });
+        return View(new PaymentsReconciliationViewModel { Report = report, Rows = rows });
     }
 
     [HttpPost("Payments/RecordMissing")]
@@ -120,7 +120,7 @@ public class StoreAdminController(
             return View("CatalogEdit", input);
 
         var result = await storeService.SaveProductWithResultAsync(
-            new StoreProductSaveRequest(
+            new ProductSaveRequest(
                 input.Id,
                 input.Year,
                 input.Name,

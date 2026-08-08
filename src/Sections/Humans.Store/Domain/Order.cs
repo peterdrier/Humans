@@ -1,0 +1,52 @@
+using NodaTime;
+
+namespace Humans.Store.Domain;
+
+internal sealed class Order
+{
+    public Guid Id { get; set; }
+
+    /// <summary>
+    /// Cross-section linkage to <c>CampSeason</c> — bare Guid, no EF navigation, no FK
+    /// constraint (per <c>memory/architecture/no-cross-section-ef-joins.md</c>). Resolved
+    /// at the service layer via <c>ICampService.GetCampSeasonByIdAsync</c>. Exactly one of
+    /// <see cref="CampSeasonId"/> and <see cref="TeamId"/> is non-null; the invariant is
+    /// service-enforced, not DB-enforced.
+    /// </summary>
+    public Guid? CampSeasonId { get; set; }
+
+    /// <summary>
+    /// Cross-section linkage to <c>Team</c> for non-billable department orders — bare
+    /// Guid, no EF navigation, no FK constraint. Resolved at the service layer via
+    /// <c>ITeamServiceRead.GetTeamAsync</c>. Exactly one of <see cref="CampSeasonId"/>
+    /// and <see cref="TeamId"/> is non-null; the invariant is service-enforced, not
+    /// DB-enforced.
+    /// </summary>
+    public Guid? TeamId { get; set; }
+
+    /// <summary>
+    /// Event year the order's catalog draws from. Always set on write. For camp orders
+    /// this mirrors <c>CampSeason.Year</c>; for team orders it is the active event year
+    /// at create time. Legacy rows may carry <c>0</c> until they're next saved through
+    /// the service, at which point the camp-side year is backfilled.
+    /// </summary>
+    public int Year { get; set; }
+
+    [Obsolete("Order labels were removed from the UI (#816). The column is retained but unused — do not reference.")]
+    public string? Label { get; set; }
+    public OrderState State { get; set; } = OrderState.Open;
+
+    public string? CounterpartyName { get; set; }
+    public string? CounterpartyVatId { get; set; }
+    public string? CounterpartyAddress { get; set; }
+    public string? CounterpartyCountryCode { get; set; }
+    public string? CounterpartyEmail { get; set; }
+
+    public Guid? IssuedInvoiceId { get; set; }
+
+    public Instant CreatedAt { get; set; }
+    public Instant UpdatedAt { get; set; }
+
+    public ICollection<OrderLine> Lines { get; set; } = new List<OrderLine>();
+    public ICollection<Payment> Payments { get; set; } = new List<Payment>();
+}
