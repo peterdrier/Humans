@@ -144,7 +144,7 @@ public class AgentUserSnapshotProviderTests
 
     private static AgentUserSnapshotProvider MakeProvider(
         Guid userId,
-        EventSettings? activeEvent,
+        BurnSettingsInfo? activeEvent,
         IReadOnlyList<ShiftSignup> signups,
         IReadOnlyList<Guid>? openTicketIds = null,
         IReadOnlyList<TeamMembership>? teamMemberships = null)
@@ -210,28 +210,33 @@ public class AgentUserSnapshotProviderTests
         shiftView.GetUserAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<ShiftUserView>(view));
 
-        var shiftMgmt = Substitute.For<IShiftManagementService>();
-        shiftMgmt.GetActiveAsync().Returns(activeEvent);
+        var burnSettings = Substitute.For<IBurnSettingsService>();
+        burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(activeEvent);
 
         var clock = new FakeClock(Instant.FromUtc(2026, 6, 1, 0, 0));
 
         return new AgentUserSnapshotProvider(
             users, roles, teams, consents, feedback, tickets,
-            shiftView, shiftMgmt, clock);
+            shiftView, burnSettings, clock);
     }
 
-    private static EventSettings MakeEventSettings() => new()
-    {
-        Id = Guid.NewGuid(),
-        EventName = "Nowhere 2026",
-        Year = 2026,
-        TimeZoneId = "Europe/Madrid",
-        GateOpeningDate = new LocalDate(2026, 7, 1),
-        BuildStartOffset = -14,
-        EventEndOffset = 6,
-        StrikeEndOffset = 9,
-        IsActive = true
-    };
+    private static BurnSettingsInfo MakeEventSettings() => new(
+        Id: Guid.NewGuid(),
+        EventName: "Nowhere 2026",
+        Year: 2026,
+        TimeZoneId: "Europe/Madrid",
+        GateOpeningDate: new LocalDate(2026, 7, 1),
+        BuildStartOffset: -14,
+        EventEndOffset: 6,
+        StrikeEndOffset: 9,
+        FirstCrewStartOffset: -25,
+        SetupWeekStartOffset: -16,
+        PreEventWeekStartOffset: -9,
+        FinishingWeekendStartOffset: -4,
+        EarlyEntryCapacity: new Dictionary<int, int>(),
+        BarriosEarlyEntryAllocation: null,
+        EarlyEntryClose: null,
+        IsShiftBrowsingOpen: true);
 
     private static Shift MakeShift(
         Rota rota, int dayOffset, bool isAllDay,

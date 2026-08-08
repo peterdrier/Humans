@@ -21,7 +21,7 @@ public sealed class AgentUserSnapshotProvider(
     IFeedbackService feedback,
     ITicketServiceRead tickets,
     IShiftView shiftView,
-    IShiftManagementService shiftManagement,
+    IBurnSettingsService burnSettings,
     IClock clock) : IAgentUserSnapshotProvider
 {
     public async Task<AgentUserSnapshot> LoadAsync(Guid userId, CancellationToken cancellationToken)
@@ -62,7 +62,7 @@ public sealed class AgentUserSnapshotProvider(
     private async Task<IReadOnlyList<UpcomingShiftEntry>> LoadUpcomingShiftsAsync(
         Guid userId, CancellationToken cancellationToken)
     {
-        var activeEvent = await shiftManagement.GetActiveAsync();
+        var activeEvent = await burnSettings.GetActiveAsync(cancellationToken);
         if (activeEvent is null)
             return [];
 
