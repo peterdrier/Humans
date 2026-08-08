@@ -512,29 +512,48 @@ public class ShiftsController(
         return RedirectToAction(nameof(Settings));
     }
 
+    // A user's signups are not scoped to the active burn — they can span cycles — so
+    // each row is rendered against its OWN rota's burn, never the active one. The
+    // distinct burn ids are resolved once up front and joined in memory; a lookup
+    // inside the projection would be an N+1.
     private async Task<IReadOnlyList<UserSignupConflictItem>> LoadUserActiveSignupsForUiAsync(Guid userId)
     {
-        var allSignups = await signupService.GetByUserAsync(userId);
-        return allSignups
+        var ct = HttpContext.RequestAborted;
+        var active = (await signupService.GetByUserAsync(userId))
             .Where(s => s.Status is SignupStatus.Pending or SignupStatus.Confirmed)
-            .Where(s => s.Shift?.Rota?.EventSettings is not null)
-            .Select(s =>
-            {
-                var sEs = s.Shift.Rota.EventSettings;
-                var absStart = s.Shift.GetAbsoluteStart(sEs);
-                var absEnd = s.Shift.GetAbsoluteEnd(sEs);
-                var tz = DateTimeZoneProviders.Tzdb[sEs.TimeZoneId];
-                var localStart = absStart.InZone(tz).LocalDateTime;
-                var localEnd = absEnd.InZone(tz).LocalDateTime;
-                return new UserSignupConflictItem(
-                    Date: localStart.Date,
-                    RotaName: s.Shift.Rota.Name,
-                    AbsoluteStart: absStart,
-                    AbsoluteEnd: absEnd,
-                    DisplayStart: DateFormattingExtensions.TimeOfDayPattern.Format(localStart.TimeOfDay),
-                    DisplayEnd: DateFormattingExtensions.TimeOfDayPattern.Format(localEnd.TimeOfDay));
-            })
+            .Where(s => s.Shift?.Rota is not null)
             .ToList();
+
+        var burns = new Dictionary<Guid, BurnSettingsInfo>();
+        foreach (var burnId in active.Select(s => s.Shift.Rota.EventSettingsId).Distinct())
+        {
+            if (await burnSettings.GetByIdAsync(burnId, ct) is { } burn)
+                burns[burnId] = burn;
+        }
+
+        var items = new List<UserSignupConflictItem>(active.Count);
+        foreach (var s in active)
+        {
+            // Unresolvable burn → skip, matching the old "no EventSettings on the
+            // graph → drop the row" guard rather than rendering a bogus time.
+            if (!burns.TryGetValue(s.Shift.Rota.EventSettingsId, out var sEs))
+                continue;
+
+            var absStart = s.Shift.GetAbsoluteStart(sEs);
+            var absEnd = s.Shift.GetAbsoluteEnd(sEs);
+            var tz = DateTimeZoneProviders.Tzdb[sEs.TimeZoneId];
+            var localStart = absStart.InZone(tz).LocalDateTime;
+            var localEnd = absEnd.InZone(tz).LocalDateTime;
+            items.Add(new UserSignupConflictItem(
+                Date: localStart.Date,
+                RotaName: s.Shift.Rota.Name,
+                AbsoluteStart: absStart,
+                AbsoluteEnd: absEnd,
+                DisplayStart: DateFormattingExtensions.TimeOfDayPattern.Format(localStart.TimeOfDay),
+                DisplayEnd: DateFormattingExtensions.TimeOfDayPattern.Format(localEnd.TimeOfDay)));
+        }
+
+        return items;
     }
 
     // Admin diagnostic: signups with no Created/Voluntold/Confirmed audit row
