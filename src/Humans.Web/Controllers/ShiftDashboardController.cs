@@ -1,6 +1,7 @@
 using Humans.Application.Enums;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Domain.Enums;
+using Humans.UI.Controllers;
 using Humans.Web.Authorization;
 using Humans.Web.Helpers;
 using Humans.Web.Models;

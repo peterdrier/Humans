@@ -3,6 +3,7 @@ using Humans.Application.Interfaces.Cantina;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;
 using Humans.UI.Authorization;
+using Humans.UI.Controllers;
 using Humans.Web.Cantina;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

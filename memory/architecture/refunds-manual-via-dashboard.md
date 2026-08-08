@@ -11,4 +11,4 @@ Humans never invokes Stripe's refund, payout, or charge-modify APIs. Any operati
 
 **How to apply:** Production Stripe keys (RAKs — see `code/stripe-restricted-keys.md`) must NOT have `refund:write`, `payout:write`, `charge:write`, or any other money-out scopes. The `StripeService` connector must not expose refund/payout methods on `IStripeService` — if a future PR proposes one, push back and route the operation through the dashboard instead. Refund **bookkeeping** within Humans posts a negative `StorePayment` row via FinanceAdmin manual entry (Phase 5.3) — `Method = StorePaymentMethod.Manual`, `AmountEur < 0`, `Notes` cites the Stripe refund id. The Stripe webhook never inserts refund rows; it only handles `checkout.session.completed`.
 
-**Related:** `code/stripe-restricted-keys.md`, `docs/sections/Store.md` "Stripe Configuration".
+**Related:** `code/stripe-restricted-keys.md`, `src/Sections/Humans.Store/Docs/Store.md` "Stripe Configuration".

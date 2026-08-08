@@ -7,4 +7,12 @@
     Humans.Analyzers full-name constants are unaffected by the move.
   -->
 
+  <ItemGroup>
+    <!--
+      ISection names IServiceCollection and IConfiguration. Both live in the
+      shared framework, so this keeps the no-NuGet-packages promise intact.
+    -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
 </Project>

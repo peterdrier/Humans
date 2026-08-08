@@ -9,4 +9,4 @@ When configuring a Stripe API key for the Humans project in production, use a Re
 
 **How to apply:** When adding a new Stripe-using env var, name it `STRIPE_<ACCOUNT>_KEY` (`STRIPE_TICKETS_KEY`, `STRIPE_STORE_KEY`, `STRIPE_BUSSES_KEY`) — one key per Stripe account, not per operation. Document the required scopes in `docs/sections/<Section>.md` so the deploy step can configure the RAK correctly. Test mode (`sk_test_*`) is acceptable in `.claude/settings.local.json` and dev shells because Stripe's test-mode keys cannot move real money. The `StripeStartupSmokeService` makes a low-risk read against each configured key at boot and warns if the expected scope is missing — Stripe does not expose programmatic introspection of RAK scopes, so the probe is positive-confirmation only.
 
-**Related:** `docs/sections/Store.md` "Stripe Configuration", `architecture/refunds-manual-via-dashboard.md`.
+**Related:** `src/Sections/Humans.Store/Docs/Store.md` "Stripe Configuration", `architecture/refunds-manual-via-dashboard.md`.

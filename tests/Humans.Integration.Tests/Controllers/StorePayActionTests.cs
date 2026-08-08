@@ -1,3 +1,5 @@
+using Humans.Store.Data;
+using Humans.Store.Domain;
 using System.Net;
 using System.Text.RegularExpressions;
 using AwesomeAssertions;
@@ -119,7 +121,7 @@ public class StorePayActionTests(HumansTestDatabase database) : IntegrationTestB
         {
             Id = orderId,
             CampSeasonId = seasonId,
-            State = Domain.Enums.StoreOrderState.Open,
+            State = StoreOrderState.Open,
             Lines = new List<StoreOrderLine>
             {
                 new()

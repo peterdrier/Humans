@@ -1,6 +1,8 @@
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.CityPlanning;
 using Humans.Application.Interfaces.Containers;
+using Humans.UI.Authorization;
+using Humans.UI.Controllers;
 using Humans.Web.Authorization;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;

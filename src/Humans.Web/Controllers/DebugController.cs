@@ -5,6 +5,7 @@ using Humans.Application.Interfaces.Admin;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Data;
+using Humans.UI.Controllers;
 using Humans.UI;
 using Humans.UI.Authorization;
 using Humans.UI.Extensions;

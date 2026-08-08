@@ -47,7 +47,9 @@ The `Application` entity is for **Colaborador/Asociado tier applications only**.
 
 ## Section Invariants — `docs/sections/`
 
-Each major section of the app has a terse invariant doc in [`docs/sections/`](docs/sections/) defining: concepts, data model, actors/roles, invariants, negative access rules, triggers, cross-section dependencies, architecture status. Every section follows [`docs/sections/SECTION-TEMPLATE.md`](docs/sections/SECTION-TEMPLATE.md).
+Each major section of the app has a terse invariant doc defining: concepts, data model, actors/roles, invariants, negative access rules, triggers, cross-section dependencies, architecture status. Every section follows [`docs/sections/SECTION-TEMPLATE.md`](docs/sections/SECTION-TEMPLATE.md).
+
+A section that has moved into its own project (nobodies-collective/Humans#866, G5) carries that doc inside the project — Store's is at [`src/Sections/Humans.Store/Docs/Store.md`](src/Sections/Humans.Store/Docs/Store.md). Everything not yet moved is still in [`docs/sections/`](docs/sections/), and [`docs/sections/_Index.md`](docs/sections/_Index.md) is the map to both.
 
 `/Admin/*` is a nav holder, not a section — its services belong to the sections they act on.
 

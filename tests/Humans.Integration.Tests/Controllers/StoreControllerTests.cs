@@ -1,3 +1,5 @@
+using Humans.Store.Data;
+using Humans.Store.Domain;
 using System.Net;
 using AwesomeAssertions;
 using Humans.Domain.Entities;

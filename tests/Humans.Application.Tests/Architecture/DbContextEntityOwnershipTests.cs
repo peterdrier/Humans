@@ -1,14 +1,18 @@
 using System.Reflection;
 using AwesomeAssertions;
 using Humans.Infrastructure.Data;
+using Humans.Infrastructure.Hosting;
+using Humans.Web.Extensions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Application.Tests.Architecture;
 
 /// <summary>
 /// Guards the per-section DbContext split (nobodies-collective/Humans#858):
-/// every <see cref="IEntityTypeConfiguration{TEntity}"/> in
-/// <c>Humans.Infrastructure</c> must be applied by exactly one context's model.
+/// every <see cref="IEntityTypeConfiguration{TEntity}"/> must be applied by exactly
+/// one context's model.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -25,6 +29,13 @@ namespace Humans.Application.Tests.Architecture;
 /// <c>DbContext.Model</c> only needs a provider to resolve type mappings), so
 /// this sees exactly the model <c>dotnet ef</c> sees.
 /// </para>
+/// <para>
+/// Contexts and configurations are discovered from what DI actually registers, not
+/// by reflecting over <c>typeof(HumansDbContext).Assembly</c>: a section that moves
+/// into its own project (nobodies-collective/Humans#866, G5) takes its context and
+/// its configurations with it, and an assembly-anchored scan would drop that section
+/// from the guard without failing.
+/// </para>
 /// </remarks>
 public class DbContextEntityOwnershipTests
 {
@@ -35,14 +46,16 @@ public class DbContextEntityOwnershipTests
     [HumansFact]
     public void EveryEntityConfiguration_IsMappedBy_ExactlyOneDbContext()
     {
-        var infrastructure = typeof(HumansDbContext).Assembly;
+        var contextTypes = RegisteredContextTypes();
+        contextTypes.Should().HaveCountGreaterThan(1, "the section contexts must be discovered too");
 
-        var configurationsByEntity = ConfigurationsByEntity(infrastructure);
+        var configurationsByEntity = ConfigurationsByEntity(
+            contextTypes.Select(t => t.Assembly).Distinct());
         configurationsByEntity.Should().NotBeEmpty(
             "the guard is meaningless if no IEntityTypeConfiguration is discovered");
 
         var contextsByEntity = new Dictionary<Type, List<string>>();
-        foreach (var contextType in DbContextTypes(infrastructure))
+        foreach (var contextType in contextTypes)
         {
             using var db = CreateContext(contextType);
             foreach (var clrType in db.Model.GetEntityTypes().Select(e => e.ClrType).Distinct())
@@ -70,10 +83,11 @@ public class DbContextEntityOwnershipTests
             "every IEntityTypeConfiguration must be applied by exactly one DbContext");
     }
 
-    private static Dictionary<Type, List<string>> ConfigurationsByEntity(Assembly assembly)
+    private static Dictionary<Type, List<string>> ConfigurationsByEntity(IEnumerable<Assembly> assemblies)
     {
         var byEntity = new Dictionary<Type, List<string>>();
-        foreach (var type in assembly.GetTypes().Where(t => t is { IsClass: true, IsAbstract: false }))
+        foreach (var type in assemblies.SelectMany(a => a.GetTypes())
+                     .Where(t => t is { IsClass: true, IsAbstract: false }))
         {
             foreach (var iface in type.GetInterfaces()
                          .Where(i => i.IsGenericType &&
@@ -89,10 +103,27 @@ public class DbContextEntityOwnershipTests
         return byEntity;
     }
 
-    private static IEnumerable<Type> DbContextTypes(Assembly assembly) =>
-        assembly.GetTypes()
-            .Where(t => t is { IsClass: true, IsAbstract: false } && typeof(DbContext).IsAssignableFrom(t))
-            .OrderBy(t => t.Name, StringComparer.Ordinal);
+    /// <summary>
+    /// The authoritative context list — the one the startup migrator uses. Section
+    /// contexts arrive via <c>AddSectionDbContext</c>, whether that call sits in
+    /// <c>AddHumansPersistence</c> or in a moved section's <c>ISection.Register</c>.
+    /// No provider is built: the registrations are read straight off the descriptors.
+    /// </summary>
+    private static IReadOnlyList<Type> RegisteredContextTypes()
+    {
+        var services = new ServiceCollection()
+            .AddHumansPersistence(enableDeveloperDiagnostics: false)
+            .AddDiscoveredSections(new ConfigurationBuilder().Build());
+
+        return
+        [
+            typeof(HumansDbContext),
+            .. services.Select(d => d.ImplementationInstance)
+                .OfType<SectionDbContextRegistration>()
+                .Select(r => r.ContextType)
+                .OrderBy(t => t.Name, StringComparer.Ordinal),
+        ];
+    }
 
     private static DbContext CreateContext(Type contextType)
     {

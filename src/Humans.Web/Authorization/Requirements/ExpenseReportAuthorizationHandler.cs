@@ -1,3 +1,4 @@
+using Humans.UI.Authorization;
 using System.Security.Claims;
 using Humans.Application.Interfaces.Budget;
 using Humans.Application.Interfaces.Teams;

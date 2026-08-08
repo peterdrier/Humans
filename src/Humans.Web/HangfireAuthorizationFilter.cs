@@ -1,4 +1,5 @@
 using Hangfire.Dashboard;
+using Humans.UI.Authorization;
 using Humans.Web.Authorization;
 
 namespace Humans.Web;

@@ -5,6 +5,7 @@ using Humans.Application.Interfaces.Feedback;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;
 using Humans.UI.Authorization;
+using Humans.UI.Controllers;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

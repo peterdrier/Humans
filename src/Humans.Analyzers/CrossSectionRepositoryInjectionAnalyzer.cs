@@ -173,9 +173,21 @@ public sealed class CrossSectionRepositoryInjectionAnalyzer : DiagnosticAnalyzer
     private static string? ExtractServiceSection(INamedTypeSymbol type) =>
         Sections.FromNamespace(type, Sections.ServiceNamespacePrefix);
 
-    private static string? ReadSection(ITypeSymbol type, INamedTypeSymbol sectionAttr)
+    /// <summary>
+    /// The type's own <c>[Section]</c>, else its assembly's. A section project
+    /// (nobodies-collective/Humans#866, G5) declares
+    /// <c>[assembly: Section("…")]</c> once instead of annotating each repository
+    /// interface, so the assembly marker supersedes the per-type one.
+    /// </summary>
+    private static string? ReadSection(ITypeSymbol type, INamedTypeSymbol sectionAttr) =>
+        ReadSectionFrom(type.GetAttributes(), sectionAttr)
+        ?? ReadSectionFrom(type.ContainingAssembly?.GetAttributes() ?? [], sectionAttr);
+
+    private static string? ReadSectionFrom(
+        System.Collections.Immutable.ImmutableArray<AttributeData> attributes,
+        INamedTypeSymbol sectionAttr)
     {
-        foreach (var attr in type.GetAttributes())
+        foreach (var attr in attributes)
         {
             if (!SymbolEqualityComparer.Default.Equals(attr.AttributeClass, sectionAttr))
                 continue;

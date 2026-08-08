@@ -16,12 +16,24 @@ on:
 env:
   DOTNET_VERSION: '10.0.x'
   # The peeled per-section DbContexts (nobodies-collective/Humans#858) in one
-  # place. Both `has-pending-model-changes` loops below iterate
-  # `HumansDbContext $SECTION_DB_CONTEXTS`; the from-scratch baseline apply
-  # iterates this list alone, because HumansDbContext replays its full
-  # historical chain in the step before it. A new peel adds its context here
-  # and nowhere else in this file.
-  SECTION_DB_CONTEXTS: 'SystemSettingsDbContext ContainersDbContext AgentDbContext ExpensesDbContext FinanceDbContext SurveysDbContext EventGuideDbContext StoreDbContext'
+  # place, as `context:project` pairs — a section that moves into its own
+  # project (nobodies-collective/Humans#866, G5) owns its migrations, so
+  # `--project` is no longer the same for every context. Both
+  # `has-pending-model-changes` loops below iterate
+  # `$MAIN_DB_CONTEXT $SECTION_DB_CONTEXTS`; the from-scratch baseline apply
+  # iterates the section list alone, because HumansDbContext replays its full
+  # historical chain in the step before it. A new peel adds its pair here and
+  # nowhere else in this file; a G5 move edits its pair's project here.
+  MAIN_DB_CONTEXT: 'HumansDbContext:src/Humans.Infrastructure'
+  SECTION_DB_CONTEXTS: >-
+    SystemSettingsDbContext:src/Humans.Infrastructure
+    ContainersDbContext:src/Humans.Infrastructure
+    AgentDbContext:src/Humans.Infrastructure
+    ExpensesDbContext:src/Humans.Infrastructure
+    FinanceDbContext:src/Humans.Infrastructure
+    SurveysDbContext:src/Humans.Infrastructure
+    EventGuideDbContext:src/Humans.Infrastructure
+    StoreDbContext:src/Sections/Humans.Store
 
 jobs:
   build:
@@ -58,10 +70,10 @@ jobs:
       # context since the per-section split (nobodies-collective/Humans#858).
       run: |
         dotnet tool install --global dotnet-ef --version 10.0.*
-        for ctx in HumansDbContext $SECTION_DB_CONTEXTS; do
+        for pair in $MAIN_DB_CONTEXT $SECTION_DB_CONTEXTS; do
           dotnet ef migrations has-pending-model-changes \
-            --context "$ctx" \
-            --project src/Humans.Infrastructure \
+            --context "${pair%%:*}" \
+            --project "${pair#*:}" \
             --startup-project src/Humans.Web \
             --no-build --configuration Release
         done
@@ -180,22 +192,23 @@ jobs:
           # empty databases (nobodies-collective/Humans#858) — that is the only
           # place the real-up baselines execute for real via the CLI.
           dotnet ef database update \
-            --context HumansDbContext \
-            --project src/Humans.Infrastructure \
+            --context "${MAIN_DB_CONTEXT%%:*}" \
+            --project "${MAIN_DB_CONTEXT#*:}" \
             --startup-project src/Humans.Web \
             --no-build --configuration Release
 
       - name: Apply per-section baselines from scratch
         run: |
           set -euo pipefail
-          for ctx in $SECTION_DB_CONTEXTS; do
+          for pair in $SECTION_DB_CONTEXTS; do
+            ctx="${pair%%:*}"
             db="humans_$(echo "$ctx" | tr '[:upper:]' '[:lower:]')"
             docker exec "${{ steps.pg.outputs.container }}" \
               psql -U humans -d postgres -c "CREATE DATABASE $db"
             ConnectionStrings__DefaultConnection="Host=${{ steps.pg.outputs.container }};Port=5432;Database=$db;Username=humans;Password=humans" \
               dotnet ef database update \
-                --context "$ctx" \
-                --project src/Humans.Infrastructure \
+                --context "${pair%%:*}" \
+                --project "${pair#*:}" \
                 --startup-project src/Humans.Web \
                 --no-build --configuration Release
           done
@@ -207,10 +220,10 @@ jobs:
           # Belt-and-suspenders: Layer 1 already runs this in the build job,
           # but re-checking after a real apply guards against any state the
           # apply step might have observed differently from a static check.
-          for ctx in HumansDbContext $SECTION_DB_CONTEXTS; do
+          for pair in $MAIN_DB_CONTEXT $SECTION_DB_CONTEXTS; do
             dotnet ef migrations has-pending-model-changes \
-              --context "$ctx" \
-              --project src/Humans.Infrastructure \
+              --context "${pair%%:*}" \
+              --project "${pair#*:}" \
               --startup-project src/Humans.Web \
               --no-build --configuration Release
           done

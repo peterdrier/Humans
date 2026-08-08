@@ -6431,8 +6431,6 @@
   <data name="Enum_SpaceSize_Sqm450" xml:space="preserve"><value>450 m²</value></data>
   <data name="Enum_SpaceSize_Sqm600" xml:space="preserve"><value>600 m²</value></data>
   <data name="Enum_SpaceSize_Sqm800" xml:space="preserve"><value>800 m²</value></data>
-  <data name="Enum_StoreOrderCounterpartyType_Camp" xml:space="preserve"><value>Camp</value></data>
-  <data name="Enum_StoreOrderCounterpartyType_Team" xml:space="preserve"><value>Team</value></data>
   <data name="Enum_TicketTransferStatus_Approved" xml:space="preserve"><value>Abgeschlossen</value></data>
   <data name="Enum_TicketTransferStatus_Cancelled" xml:space="preserve"><value>Storniert</value></data>
   <data name="Enum_TicketTransferStatus_Pending" xml:space="preserve"><value>Prüfung ausstehend</value></data>
@@ -6662,29 +6660,6 @@
   <data name="Search_GlobalPlaceholder" xml:space="preserve"><value>Humans, Teams, Camps, Schichten durchsuchen…</value></data>
   <data name="Search_GlobalPlaceholderEvents" xml:space="preserve"><value>Humans, Teams, Camps, Schichten, Veranstaltungen durchsuchen…</value></data>
   <data name="Search_GlobalTitle" xml:space="preserve"><value>Suche</value></data>
-  <data name="Store_AdminCatalog" xml:space="preserve"><value>Katalog</value></data>
-  <data name="Store_AdminPayments" xml:space="preserve"><value>Zahlungen</value></data>
-  <data name="Store_AdminSummary" xml:space="preserve"><value>Übersicht</value></data>
-  <data name="Store_CatalogHeading" xml:space="preserve"><value>Katalog ({0})</value></data>
-  <data name="Store_ColBalance" xml:space="preserve"><value>Saldo</value></data>
-  <data name="Store_ColDeposit" xml:space="preserve"><value>Kaution</value></data>
-  <data name="Store_ColDeposits" xml:space="preserve"><value>Kautionen</value></data>
-  <data name="Store_ColDescription" xml:space="preserve"><value>Beschreibung</value></data>
-  <data name="Store_ColLines" xml:space="preserve"><value>Positionen</value></data>
-  <data name="Store_ColLinesVat" xml:space="preserve"><value>Positionen + MwSt.</value></data>
-  <data name="Store_ColName" xml:space="preserve"><value>Name</value></data>
-  <data name="Store_ColOrderBy" xml:space="preserve"><value>Bestellen bis</value></data>
-  <data name="Store_ColState" xml:space="preserve"><value>Status</value></data>
-  <data name="Store_ColUnitPrice" xml:space="preserve"><value>Einzelpreis (inkl. MwSt.)</value></data>
-  <data name="Store_CreateOrder" xml:space="preserve"><value>Bestellung erstellen</value></data>
-  <data name="Store_DeleteOrderConfirm" xml:space="preserve"><value>Diese Bestellung mit Saldo null löschen? Dies kann nicht rückgängig gemacht werden.</value></data>
-  <data name="Store_DeleteOrderTitle" xml:space="preserve"><value>Löschen (Saldo null)</value></data>
-  <data name="Store_NoCounterpartiesAlert" xml:space="preserve"><value>Du leitest keine Camps und koordinierst keine Abteilungen mit einer aktiven Saison in diesem Jahr. Der Katalog unten ist schreibgeschützt.</value></data>
-  <data name="Store_NoOrders" xml:space="preserve"><value>Noch keine Bestellungen.</value></data>
-  <data name="Store_NoProducts" xml:space="preserve"><value>Für {0} sind keine Produkte aktiv.</value></data>
-  <data name="Store_OpenOrder" xml:space="preserve"><value>Öffnen</value></data>
-  <data name="Store_StartOrder" xml:space="preserve"><value>Bestellung starten</value></data>
-  <data name="Store_Title" xml:space="preserve"><value>Store</value></data>
   <data name="Teams_Departments" xml:space="preserve"><value>Abteilungen</value></data>
   <data name="Teams_HiddenTeams" xml:space="preserve"><value>Versteckte Teams</value></data>
   <data name="Teams_HiddenTeamsNote" xml:space="preserve"><value>(nur für Admins sichtbar)</value></data>

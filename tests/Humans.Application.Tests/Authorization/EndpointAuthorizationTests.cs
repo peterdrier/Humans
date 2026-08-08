@@ -1,3 +1,4 @@
+using Humans.UI.Controllers;
 using System.Reflection;
 using AwesomeAssertions;
 using Humans.Web.Controllers;

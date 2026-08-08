@@ -2,6 +2,7 @@ using Humans.Application.DTOs;
 using Humans.Application.Interfaces.EarlyEntry;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
+using Humans.UI.Controllers;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

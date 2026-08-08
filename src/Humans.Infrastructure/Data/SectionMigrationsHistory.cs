@@ -10,7 +10,7 @@ namespace Humans.Infrastructure.Data;
 /// must agree exactly, or CI's from-scratch apply records a baseline in a table
 /// the app never reads. Deriving both from this helper makes drift impossible.
 /// </summary>
-internal static class SectionMigrationsHistory
+public static class SectionMigrationsHistory
 {
     /// <summary>
     /// The history table for a section context: <c>AgentDbContext</c> →

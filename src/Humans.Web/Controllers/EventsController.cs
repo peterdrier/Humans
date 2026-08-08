@@ -7,6 +7,7 @@ using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Humans.UI.Authorization;
 using Humans.Web.Authorization;
 using Humans.Web.Filters;
 using Humans.Web.Models.Events;

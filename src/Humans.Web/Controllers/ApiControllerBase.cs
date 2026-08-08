@@ -1,3 +1,4 @@
+using Humans.UI.Controllers;
 using System.Security.Claims;
 using Humans.Application;
 using Humans.Application.Interfaces.Users;

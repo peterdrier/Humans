@@ -50,7 +50,7 @@ public class StripeConnectorArchitectureTests
     [HumansFact]
     public void HumansWebAssembly_HasNoReferenceToStripeNet()
     {
-        var webAssembly = typeof(Humans.Web.Controllers.StoreStripeWebhookController).Assembly;
+        var webAssembly = typeof(Humans.Web.Controllers.AboutController).Assembly;
 
         var referenced = webAssembly.GetReferencedAssemblies()
             .Select(a => a.Name ?? string.Empty)

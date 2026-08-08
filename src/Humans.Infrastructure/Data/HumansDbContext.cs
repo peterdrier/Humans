@@ -99,6 +99,9 @@ internal sealed class HumansDbContext(DbContextOptions<HumansDbContext> options)
     /// model; each peel appends its section here. Derived from a configuration
     /// type per section (not string literals) so a namespace move breaks the
     /// build instead of silently re-adding the section's tables to this model.
+    /// A section that goes on to G5 (its own project, nobodies-collective/Humans#866)
+    /// drops its entry again: ApplyConfigurationsFromAssembly scans this assembly, and
+    /// the section's configurations are no longer in it.
     /// </summary>
     private static readonly string[] PeeledConfigurationNamespaces =
     [
@@ -109,7 +112,6 @@ internal sealed class HumansDbContext(DbContextOptions<HumansDbContext> options)
         typeof(Configurations.Finance.HoldedExpenseDocConfiguration).Namespace!,
         typeof(Configurations.Surveys.SurveyConfiguration).Namespace!,
         typeof(Configurations.EventGuide.EventConfiguration).Namespace!,
-        typeof(Configurations.Store.StoreProductConfiguration).Namespace!,
     ];
 
     protected override void OnModelCreating(ModelBuilder builder)
