@@ -2,7 +2,6 @@
   src/Humans.Application/Services/Issues/**
   src/Humans.Web/Controllers/IssuesController.cs
   src/Humans.Web/Controllers/IssuesApiController.cs
-  src/Humans.Web/ViewComponents/IssuesWidgetViewComponent.cs
   src/Humans.Web/ViewComponents/NavBadgesViewComponent.cs
   src/Humans.Domain/Entities/Issue.cs
   src/Humans.Domain/Entities/IssueComment.cs
@@ -107,7 +106,7 @@ Issues **superseded** Feedback (`docs/features/feedback/feedback-system.md`), wh
 
 ## Data Model
 
-See [`docs/sections/Issues.md`](../../sections/Issues.md) for full field-level detail on `Issue`, `IssueComment`, and the `IssueStatus` / `IssueCategory` enums. Owned tables: `issues`, `issue_comments`. Cross-section FKs (`ReporterUserId`, `AssigneeUserId`, `ResolvedByUserId`, `SenderUserId`) are FK-only — the navigation properties are `[Obsolete]`-marked and display data is stitched in `IssuesService` via `IUserService`.
+See [`docs/sections/Issues.md`](../../sections/Issues.md) for full field-level detail on `Issue`, `IssueComment`, and the `IssueStatus` / `IssueCategory` enums. Owned tables: `issues`, `issue_comments`. Cross-section FKs (`ReporterUserId`, `AssigneeUserId`, `ResolvedByUserId`, `SenderUserId`) are FK-only — the navigation properties were removed entirely, not just deprecated (nobodies-collective/Humans#1188), and display data is stitched in `IssuesService` via `IUserServiceRead.GetUserInfosAsync`.
 
 **Screenshot storage:** `wwwroot/uploads/issues/{issueId}/{guid}.{ext}`
 

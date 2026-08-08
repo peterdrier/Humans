@@ -23,9 +23,10 @@ public class DietaryMedicalViewModel
     [StringLength(4000)]
     public string? MedicalConditions { get; set; }
 
-    // Carryover from the redirect-then-replay flow (see dietary-prompt-tightening design).
+    // Carryover from the redirect-then-replay flow
+    // (see docs/features/profiles/dietary-medical-nudge.md US-35.6).
     // Not bound to VolunteerEventProfile — pure round-trip routing data so the POST handler
-    // can replay the original ShiftsController.SignUp / SignUpRange after a successful save.
+    // can replay the original ShiftsController.ToggleDay signup after a successful save.
     public string? ReturnAction { get; set; }
     public Guid? ShiftId { get; set; }
     public Guid? RotaId { get; set; }

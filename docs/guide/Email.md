@@ -6,7 +6,7 @@
   src/Humans.Application/Services/Email/**
   src/Humans.Application/Services/GoogleIntegration/EmailProvisioningService.cs
   src/Humans.Application/Services/GoogleIntegration/GoogleWorkspaceUserService.cs
-  src/Humans.Application/Services/Profile/UserEmailService.cs
+  src/Humans.Application/Services/Profiles/UserEmailService.cs
   src/Humans.Domain/Entities/UserEmail.cs
   src/Humans.Domain/Entities/EmailOutboxMessage.cs
   src/Humans.Infrastructure/Data/Configurations/Profiles/UserEmailConfiguration.cs

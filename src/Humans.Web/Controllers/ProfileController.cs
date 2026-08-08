@@ -1673,10 +1673,10 @@ public class ProfileController(
             await profileEditorService.SaveDietaryMedicalAsync(user.Id, model.ToCommand());
 
             // Signup-replay — the user was bounced here from
-            // ShiftsController.SignUp/SignUpRange by the dietary gate. After a
+            // ShiftsController.ToggleDay by the dietary gate. After a
             // successful save we re-run the original signup and land them on
             // /Shifts with the appropriate flash. See
-            // docs/superpowers/specs/2026-05-25-dietary-prompt-tightening-design.md.
+            // docs/features/profiles/dietary-medical-nudge.md (US-35.6).
             // Replay failure does NOT roll back the dietary save — the user can
             // retry the signup directly from /Shifts without re-entering it.
             return await ReplayShiftSignupAfterDietaryMedicalSaveAsync(user.Id, model);

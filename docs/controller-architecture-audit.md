@@ -1,6 +1,6 @@
 # Controller Architecture Audit
 
-Living document. Last updated: 2026-08-05 (freshness-sweep regeneration).
+Living document. Last updated: 2026-08-08 (freshness-sweep regeneration).
 
 ## Part 1: Action Name Audit
 
@@ -10,7 +10,9 @@ Living document. Last updated: 2026-08-05 (freshness-sweep regeneration).
 
 `docs/architecture/conventions.md` §"Action Naming" codifies the heuristics: `Index` is for listings, no redundant controller-name prefixes, no bare plural-noun collisions, no generic verbs (`View`/`Show`/`Process`/`Handle`), and conventional form-handler verbs (`Create`/`Edit`/`Delete`/`Confirm`/`Cancel`).
 
-This regeneration (2026-08-05) re-verified the ten controllers touched by commit d34a8b9cc ("burn down all 15 HUM0031-grandfathered controller methods": `AccountController`, `ProfileController`, `EventsController`, `EmailController`, `ShiftsController`, `TeamController`, `TeamAdminController`, `StoreController`, `GovernanceApplicationsController`, `UsersAdminDebugController`) plus `StoreController`/`TeamController` again via c85abc977. That work moved method bodies into services/private helpers to clear complexity budgets — it changed **no** action names, routes, or verbs. Every action in those ten controllers was re-checked against current source and every row below is unchanged. The 89-controller/4-base-class inventory is unchanged.
+This regeneration (2026-08-08) re-verified the controller/action inventory against current source: the 89-controller/4-base-class set is unchanged (no controllers added, removed, or renamed since the 2026-08-05 sweep), and a diff of `src/Humans.Web/Controllers/**` against the last audit-affecting commit turned up no changed `[Http*]` attributes, routes, action names, or `[ActionName]` overrides — the only churn was the mechanical `Humans.Web.Authorization` → `Humans.UI.Authorization` namespace move from PR #1222 ("peel StoreDbContext out of HumansDbContext") and its neighboring Humans.UI-extraction PRs, plus a same-purpose internal body change in `CampAdminController.SeedSystemRoles` (dropped a since-removed lead-migration step; the table's existing "Seed system role definitions" purpose text already matched). Every row below carries forward unchanged.
+
+The 2026-08-05 regeneration re-verified the ten controllers touched by commit d34a8b9cc ("burn down all 15 HUM0031-grandfathered controller methods": `AccountController`, `ProfileController`, `EventsController`, `EmailController`, `ShiftsController`, `TeamController`, `TeamAdminController`, `StoreController`, `GovernanceApplicationsController`, `UsersAdminDebugController`) plus `StoreController`/`TeamController` again via c85abc977. That work moved method bodies into services/private helpers to clear complexity budgets — it changed **no** action names, routes, or verbs. Every action in those ten controllers was re-checked against current source and every row below is unchanged. The 89-controller/4-base-class inventory is unchanged.
 
 The 2026-08-03 regeneration was a full re-audit against the current controller set: every action/verb/route was re-verified. One omission from that sweep was caught: `TeamAdminController.Roster` (`GET /Teams/{slug}/Roster`, Board/Admin-only) had never been recorded.
 

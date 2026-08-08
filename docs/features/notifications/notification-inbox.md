@@ -1,6 +1,6 @@
 <!-- freshness:triggers
   src/Humans.Application/Services/Notifications/**
-  src/Humans.Web/Controllers/NotificationController.cs
+  src/Humans.Web/Controllers/NotificationsController.cs
   src/Humans.Web/ViewComponents/NotificationBellViewComponent.cs
   src/Humans.Domain/Entities/Notification.cs
   src/Humans.Domain/Entities/NotificationRecipient.cs

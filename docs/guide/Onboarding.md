@@ -70,7 +70,7 @@ Visit `/Consent` and sign each required document. Signatures are append-only —
 
 When you enter your legal name, your stored `UserState` becomes `Active` and the app opens. When you have a legal name and all required documents are signed, the scheduled system-team sync adds you to the Volunteers Google Workspace provisioning group. Only a rejected signup (which records a rejection timestamp and reason) removes you from the Volunteers team.
 
-While you are still onboarding, you can reach your profile, consents, feedback, legal documents, public camp pages, calendar, and the home dashboard — most of the app is gated until you are active.
+While you are still onboarding, you can reach your profile, consents, issue filing, legal documents, public camp pages, calendar, and the home dashboard — most of the app is gated until you are active.
 
 ## As a [Coordinator](Glossary.md#coordinator)
 

@@ -40,7 +40,7 @@ In-app issue tracker (bugs, features, questions) with screenshots, role-routed t
 | Property | Type | Notes |
 |----------|------|-------|
 | Id | Guid | PK |
-| ReporterUserId | Guid | FK → User (reporter), Restrict on delete — **FK only**, `[Obsolete]`-marked nav. Restrict is intentional: `IAccountDeletionService` anonymizes the User row in place rather than removing it, so the FK should never trip; if anyone bypasses the deletion service, Restrict makes the DB reject the operation rather than silently wiping reported issues. |
+| ReporterUserId | Guid | FK → User (reporter), Restrict on delete — **FK only, no nav property** (removed nobodies-collective/Humans#1188). Restrict is intentional: `IAccountDeletionService` anonymizes the User row in place rather than removing it, so the FK should never trip; if anyone bypasses the deletion service, Restrict makes the DB reject the operation rather than silently wiping reported issues. |
 | Section | string? | One of `IssueSectionRouting.AllKnownSections` or null. Max 64. Indexed. |
 | Category | IssueCategory | Bug, Feature, Question. Stored as string (max 32). |
 | Title | string | Issue title (max 200) |
@@ -54,15 +54,15 @@ In-app issue tracker (bugs, features, questions) with screenshots, role-routed t
 | Status | IssueStatus | Triage (default), Open, InProgress, Resolved, WontFix, Duplicate. Stored as string (max 32). |
 | GitHubIssueNumber | int? | Linked GitHub issue (org-scoped) |
 | DueDate | LocalDate? | Optional handler-set deadline |
-| AssigneeUserId | Guid? | FK → User, SetNull on delete — **FK only**, `[Obsolete]`-marked nav |
+| AssigneeUserId | Guid? | FK → User, SetNull on delete — **FK only, no nav property** |
 | CreatedAt | Instant | Submission timestamp |
 | UpdatedAt | Instant | Last modification |
 | ResolvedAt | Instant? | When resolved/won't-fix/duplicate |
-| ResolvedByUserId | Guid? | FK → User, SetNull on delete — **FK only**, `[Obsolete]`-marked nav |
+| ResolvedByUserId | Guid? | FK → User, SetNull on delete — **FK only, no nav property** |
 
 **Indexes:** `Status`, `CreatedAt`, `ReporterUserId`, `AssigneeUserId`, `Section`, `(Section, Status)`.
 
-**Cross-section FKs:** `ReporterUserId`, `AssigneeUserId`, `ResolvedByUserId` → `Users/Identity.User` — **FK only**, no navigation property in service code (the `Reporter`, `Assignee`, `ResolvedByUser` props are `[Obsolete]`-marked; EF needs them to wire the FKs but Application code stitches display names via `IUserService.GetByIdsAsync`).
+**Cross-section FKs:** `ReporterUserId`, `AssigneeUserId`, `ResolvedByUserId` → `Users/Identity.User` — **FK only**, no navigation property at all (the `Reporter`, `Assignee`, `ResolvedByUser` nav props were removed, not just deprecated — nobodies-collective/Humans#1188); EF configures the FK/cascade behavior via `HasOne<User>()` with no nav reference, and Application code stitches display names via `IUserServiceRead.GetUserInfosAsync`.
 
 ### IssueComment
 
@@ -82,7 +82,7 @@ There is no per-comment reporter/handler flag — reporter-vs-handler is derived
 
 **Indexes:** `IssueId`, `CreatedAt`.
 
-**Cross-section FKs:** `SenderUserId` → `Users/Identity.User` — **FK only**, `[Obsolete]`-marked nav (`SenderUser`).
+**Cross-section FKs:** `SenderUserId` → `Users/Identity.User` — **FK only**, no navigation property (`SenderUser` was removed, not just deprecated — nobodies-collective/Humans#1188).
 
 ### IssueStatus
 
@@ -156,7 +156,7 @@ Two controllers serve this section:
 
 ## Cross-Section Dependencies
 
-- **Users/Identity:** `IUserService.GetByIdsAsync` — reporter / assignee / resolver / comment-sender display names (cross-domain navs are stripped per `design-rules.md §6c`).
+- **Users/Identity:** `IUserServiceRead.GetUserInfosAsync` — reporter / assignee / resolver / comment-sender display names (cross-domain navs are stripped per `design-rules.md §6c`).
 - **Profiles:** `IUserEmailService.GetNotificationTargetEmailsAsync` — resolves the effective notification email for the reporter when a handler comments, and for the assignee on status/assignment changes.
 - **Auth:** `IRoleAssignmentService` — used by the section-routing logic to fan out notifications to the set of users who currently hold a role mapped to the issue's `Section`.
 - **Email:** `IEmailService.SendAsync` with `IEmailMessageFactory.IssueComment` — comment-thread emails (queued through the outbox in production).
@@ -175,8 +175,8 @@ Two controllers serve this section:
 - `IIssuesRepository` (impl `Humans.Infrastructure/Repositories/Issues/IssuesRepository.cs`) is the only code path that touches `issues` and `issue_comments` via `DbContext`. Singleton + `IDbContextFactory<HumansDbContext>` per `design-rules.md §15b`.
 - **Aggregate-local navs kept:** `Issue.Comments ↔ IssueComment.Issue`. Both sides live in Issues-owned tables, so `.Include(i => i.Comments)` is legal inside the repository.
 - **Decorator decision — no caching decorator.** Issues are per-section queues triaged by handlers, not a hot bulk-read path. Same rationale as Feedback / User / Governance.
-- **Cross-domain navs `[Obsolete]`-marked:** `Issue.Reporter`, `.Assignee`, `.ResolvedByUser`, `IssueComment.SenderUser`. The repository does not `.Include()` them; `IssuesService.StitchCrossDomainNavsAsync` resolves display data in memory from `IUserService` (design-rules §6b). EF still needs the nav refs to wire the DB-level FK + cascade behavior — those references are inside `#pragma warning disable CS0618` blocks in the EF configurations.
-- **Cross-section calls** — the public interfaces this section consumes: `IUserService`, `IUserEmailService`, `IRoleAssignmentService`, `IEmailService`, `INotificationService`, `IAuditLogService`, `INavBadgeCacheInvalidator`, `IIssuesBadgeCacheInvalidator`.
+- **Cross-domain navs removed, not just `[Obsolete]`-marked:** `Issue.Reporter`, `.Assignee`, `.ResolvedByUser`, `IssueComment.SenderUser` no longer exist as nav properties (nobodies-collective/Humans#1188). The repository does not `.Include()` them (there's nothing to include); `IssuesService` resolves display data in memory via `IUserServiceRead.GetUserInfosAsync` (design-rules §6b). EF configures the cross-section FK/cascade behavior with `HasOne<User>()` and no nav reference — there are no `#pragma warning disable CS0618` blocks left in the EF configurations.
+- **Cross-section calls** — the public interfaces this section consumes: `IUserServiceRead`, `IUserEmailService`, `IRoleAssignmentService`, `IEmailService`, `INotificationService`, `IAuditLogService`, `INavBadgeCacheInvalidator`, `IIssuesBadgeCacheInvalidator`.
 - **Nav-badge cache invalidation** uses two invalidators: `INavBadgeCacheInvalidator` (global nav count) and `IIssuesBadgeCacheInvalidator` (per-viewer actionable count). `IssuesService` holds both; the architecture test pins `IIssuesBadgeCacheInvalidator` explicitly. `IssuesBadgeCacheInvalidator` (impl in `Humans.Infrastructure/Caching/MemoryCacheInvalidators.cs`) is registered Scoped.
 - **Architecture test** — `tests/Humans.Application.Tests/Architecture/IssuesArchitectureTests.cs` pins the shape (no EF imports in `IssuesService`, repository is the only `DbContext` consumer for the `issues` / `issue_comments` tables).
 

@@ -1,5 +1,5 @@
 <!-- freshness:triggers
-  src/Humans.Application/Services/Profile/ProfileService.cs
+  src/Humans.Application/Services/Profiles/ProfileService.cs
   src/Humans.Application/Services/Teams/TeamService.cs
   src/Humans.Application/Services/Teams/TeamPageService.cs
   src/Humans.Web/Controllers/ProfileController.cs
@@ -80,7 +80,6 @@ The one-click Google-photo import (`POST /Profile/Me/ImportGooglePhoto`) was rem
 ```
 Profile
 ├── DateOfBirth: LocalDate? [PersonalData]
-├── ProfilePictureData: byte[]? [PersonalData] [Obsolete — unused; pictures live on the file share. Column retained for prod-soak drop, see nobodies-collective#702]
 └── ProfilePictureContentType: string? (100)
 ```
 
@@ -91,7 +90,7 @@ Profile.HasCustomProfilePicture: bool (computed, not mapped)
 ```
 
 ### Storage Approach
-Profile pictures are stored on the application's filesystem via the shared `IFileStorage` abstraction (rooted at `wwwroot/`, the same Coolify-mounted volume that serves camp images and any future uploads). The key format is `uploads/profile-pictures/{profileId}{.ext}` where `.ext` is derived from the content type (`.jpg`, `.png`, `.webp`, or empty for unknown). The original `ProfilePictureData` bytea column on `Profile` is `[Obsolete]` and unused — it is never written or served; it stays only until a post-prod-soak drop PR per [nobodies-collective#702](https://github.com/nobodies-collective/Humans/issues/702) and `memory/architecture/no-drops-until-prod-verified.md`. Writes go to a temporary sibling and rename into place so readers never see a partial file.
+Profile pictures are stored on the application's filesystem via the shared `IFileStorage` abstraction (rooted at `wwwroot/`, the same Coolify-mounted volume that serves camp images and any future uploads). The key format is `uploads/profile-pictures/{profileId}{.ext}` where `.ext` is derived from the content type (`.jpg`, `.png`, `.webp`, or empty for unknown). The filesystem is the only store — the old `Profile.ProfilePictureData` bytea column was dropped (nobodies-collective/Humans#528). Writes go to a temporary sibling and rename into place so readers never see a partial file.
 
 Profile pictures live under `uploads/` but are NOT publicly served — `Program.cs` registers middleware that 404s `/uploads/profile-pictures/*` before `UseStaticFiles` sees it, so reads must go through the controller (and therefore through the GDPR gate below).
 
@@ -99,9 +98,9 @@ The read path lives in `IProfileService.GetProfilePictureAsync` and is the only 
 
 1. Reads the DB `ProfilePictureContentType` column via a cheap scalar projection. If null (no picture, or the row was anonymized), it returns `null` and the endpoint responds with 404 — even if a stale file still exists on disk.
 2. Otherwise reads the filesystem store. A hit is returned immediately.
-3. On a filesystem miss it returns `null`; the obsolete DB bytes column is never a serving fallback.
+3. On a filesystem miss it returns `null` — there is no DB-column fallback.
 
-Saves and removals are filesystem-only: `SaveProfileAsync` writes the bytes through `IFileStorage` (deleting the old-extension file first when the content type changed) and sets only the `ProfilePictureContentType` column; removal/anonymization clears the content-type column AND best-effort deletes the filesystem file. If the filesystem delete fails an error is logged so an operator can clean up the stale file out-of-band, but the read-path content-type gate ensures a stale file is never served to clients (GDPR-compliant). The obsolete `ProfilePictureData` column drops in a follow-up PR after prod soak (#702).
+Saves and removals are filesystem-only: `SaveProfileAsync` writes the bytes through `IFileStorage` (deleting the old-extension file first when the content type changed) and sets only the `ProfilePictureContentType` column; removal/anonymization clears the content-type column AND best-effort deletes the filesystem file. If the filesystem delete fails an error is logged so an operator can clean up the stale file out-of-band, but the read-path content-type gate ensures a stale file is never served to clients (GDPR-compliant).
 
 ## Routes
 

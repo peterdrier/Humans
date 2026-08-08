@@ -2,7 +2,7 @@
   src/Humans.Application/Services/Shifts/ShiftManagementService.cs
   src/Humans.Application/Interfaces/Shifts/IShiftManagementService.cs
   src/Humans.Application/DTOs/PostEventStats.cs
-  src/Humans.Infrastructure/Repositories/Shifts/ShiftManagementRepository.cs
+  src/Humans.Infrastructure/Repositories/Shifts/ShiftRepository.Management.cs
   src/Humans.Web/Controllers/ShiftDashboardController.cs
   src/Humans.Web/Views/ShiftDashboard/PostEventStats.cshtml
 -->

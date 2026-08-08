@@ -156,7 +156,7 @@ In addition to governance roles, `RoleAssignmentClaimsTransformation` stamps the
 
 ### Authorization Policies
 
-The app registers named authorization policies (`PolicyNames` constants in `Humans.Web.Authorization`) backed by custom `IAuthorizationHandler` implementations. These are used in views and tag helpers (`authorize-policy` attribute) alongside role-based `[Authorize(Roles = "...")]` on controllers.
+The app registers named authorization policies (`PolicyNames` constants in `Humans.UI.Authorization`) backed by custom `IAuthorizationHandler` implementations. These are used in views and tag helpers (`authorize-policy` attribute) alongside role-based `[Authorize(Roles = "...")]` on controllers.
 
 ### Onboarding Name Gate
 

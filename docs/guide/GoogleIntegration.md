@@ -7,9 +7,9 @@
   src/Humans.Domain/Entities/GoogleSyncOutboxEvent.cs
   src/Humans.Domain/Entities/SyncServiceSettings.cs
   src/Humans.Domain/Constants/GoogleSyncOutboxEventTypes.cs
-  src/Humans.Infrastructure/Data/Configurations/GoogleResourceConfiguration.cs
-  src/Humans.Infrastructure/Data/Configurations/GoogleSyncOutboxEventConfiguration.cs
-  src/Humans.Infrastructure/Data/Configurations/SyncServiceSettingsConfiguration.cs
+  src/Humans.Infrastructure/Data/Configurations/GoogleIntegration/GoogleResourceConfiguration.cs
+  src/Humans.Infrastructure/Data/Configurations/GoogleIntegration/GoogleSyncOutboxEventConfiguration.cs
+  src/Humans.Infrastructure/Data/Configurations/GoogleIntegration/SyncServiceSettingsConfiguration.cs
 -->
 <!-- freshness:flag-on-change
   Sync mode plumbing, drift detection, workspace account provisioning, Drive activity monitor, and team-resource linking. Review when Google services, sync settings, or related entities change.

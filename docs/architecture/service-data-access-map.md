@@ -3,7 +3,7 @@
 Audit of which services access which database tables and cache keys, organized by section.
 The goal is to identify cross-section table overlap, duplicated caching, and cache configuration issues.
 
-**Generated:** 2026-08-05
+**Generated:** 2026-08-08
 
 > **Methodology.** Tables are resolved by following each service's injected
 > repository interface to its EF-backed implementation in
@@ -11,7 +11,7 @@ The goal is to identify cross-section table overlap, duplicated caching, and cac
 > (or bare `Set<T>()`) usage to the declaring context under
 > `src/Humans.Infrastructure/Data/`. **Since the per-section DbContext split
 > (nobodies-collective/Humans#858) there is no longer a single `HumansDbContext`.**
-> Eight contexts exist, each internal-sealed with its own
+> Nine contexts exist, each internal-sealed with its own
 > `IDbContextFactory<T>`/direct-injection pattern, same database/connection,
 > and its own `__EFMigrationsHistory_<Section>` table (see
 > `src/Humans.Infrastructure/Data/SectionMigrationsHistory.cs`):
@@ -26,6 +26,7 @@ The goal is to identify cross-section table overlap, duplicated caching, and cac
 > | `FinanceDbContext` | `HoldedExpenseDocs`, `HoldedCategoryMap`, `HoldedLedgerLines`, `HoldedCreditorContacts`, `HoldedSyncStates` |
 > | `SurveysDbContext` | `Surveys`, `SurveyQuestions`, `SurveyQuestionOptions`, `SurveyInvitations`, `SurveyResponses`, `SurveyAnswers` |
 > | `EventGuideDbContext` | `EventGuideSettings`, `EventCategories`, `EventVenues`, `Events`, `EventModerationActions`, `EventPreferences`, `EventFavourites` (the Shifts-owned `EventSettings` / `EventParticipations` tables deliberately stay in `HumansDbContext`, despite the name collision) |
+> | `StoreDbContext` | `StoreProducts`, `StoreOrders`, `StoreOrderLines`, `StorePayments`, `StoreInvoices`, `StoreTreasurySyncStates` |
 >
 > Each peeled context applies its `IEntityTypeConfiguration` classes
 > explicitly (no assembly scanning), so a section's model can never
@@ -816,16 +817,28 @@ no cache.
 
 Folder: `src/Humans.Application/Services/Camps/`. **DbContext:**
 `HumansDbContext` (not peeled). Owns `Camps`,
-`CampSeasons`, `CampLeads`, `CampHistoricalNames`, `CampImages`,
+`CampSeasons`, `CampHistoricalNames`, `CampImages`,
 `CampSettings`, `CampMembers`, `CampRoleDefinitions`,
 `CampRoleAssignments`.
 
-> **Change since prior sweep:** `ICampRoleRepository` has been
+> **Change since this sweep (#787, #774 — PR #1199):** the legacy
+> `camp_leads` table is **dropped**. Lead authority moved to
+> `CampRoleAssignment` (against the `SpecialRole=Lead` definition) back in
+> #753/#657, and the physical cleanup — `CampLead` entity, `CampLeadRole`
+> enum, `CampLeadConfiguration`, the `Camp.Leads` nav, the `CampLeads`
+> `DbSet`, and the one-shot lead-migration plumbing
+> (`GetCampLeadsAsync`, `EnsureActiveMemberForMigrationAsync`,
+> `GetLeadMigrationSnapshotsAsync`, `GetCampSeasonForLeadMigrationAsync`,
+> `GetAllLeadAssignmentsForUserAsync`, the `CampLeadAssignments` GDPR
+> export slice) — is now complete. `SeedSystemRolesAndMigrateLeadsAsync`
+> is renamed `SeedSystemRolesAsync` (definition seeding only, for fresh
+> environments).
+>
+> **Prior sweep:** `ICampRoleRepository` has been
 > **consolidated into `ICampRepository`** (PR #809) via a `.Roles.cs` partial.
 > `CampRoleService` now injects `ICampRepository` directly. The Camps
-> section is back to a single repository owning all of its tables. The
-> earlier `GetCampLeadsAsync` cross-section read of `Users` remains retired,
-> and `CampService` continues to implement `IEarlyEntryProvider` — the
+> section is back to a single repository owning all of its tables.
+> `CampService` continues to implement `IEarlyEntryProvider` — the
 > standalone `CampEarlyEntryProjection` helper was deleted and its grant
 > projection folded back into `CampService`. `CampRoleService` no longer
 > injects the full `ICampService`; it takes the narrow intra-section
@@ -848,7 +861,6 @@ Repository: `ICampRepository`.
 |-------|-----|
 | Camps | R/W |
 | CampSeasons | R/W |
-| CampLeads | R/W |
 | CampHistoricalNames | R/W |
 | CampImages | R/W |
 | CampSettings | R/W |
@@ -2776,22 +2788,25 @@ separately below the key table.
 Controllers and view components that inject `HumansDbContext` or
 repositories directly, bypassing the service layer. After the
 `HUM0008` / `HUM0009` analyzers shipped (PR #493, #494), this surface
-shrank to a single dev-only path.
+shrank to a single dev-only path — and that path is now also closed.
 
 ### Controllers
 
-Controllers with direct `HumansDbContext` / repository injection:
+None. `DevLoginController`'s previous direct `HumansDbContext` writes
+(Camps / CampSeasons / CampLead seeding for dev personas) moved into
+`DevPersonaSeeder` (`src/Humans.Web/Infrastructure/DevPersonaSeeder.cs`),
+which itself owns no DbContext — every write (`User`/`Profile`/`UserEmail`,
+system-team membership, dev barrio camp/season/lead via `ICampService` /
+`ICampRoleService`, city-planning team, role assignments, contact fields)
+goes through the owning section's service interface per design-rules §2c.
+`DevLoginController` now only injects `UserManager<User>`,
+`SignInManager<User>`, `IUserEmailService`, and `DevPersonaSeeder`.
 
-| Controller | Notes |
-|------------|-------|
-| **DevLoginController** | Injects `HumansDbContext`. Camps / CampSeasons / CampLeads seeding for dev personas. Legitimate dev-only path; the controller is conditionally registered only when `DevAuth__Enabled=true`. |
-
-`AdminController` is no longer in this list — its previous direct DB
-reads moved behind `IAdminDatabaseDiagnosticsService` (PR #494). All
-other web controllers (Email, Google, Profile, Board, Budget,
-CampAdmin, Guest, Unsubscribe, TeamAdmin, ShiftAdmin, Calendar,
-Feedback, Issues, Tickets, Finance, etc.) go entirely through service
-interfaces.
+`AdminController` is no longer in this list either — its previous direct DB
+reads moved behind `IAdminDatabaseDiagnosticsService` (PR #494). All web
+controllers (Email, Google, Profile, Board, Budget, CampAdmin, Guest,
+Unsubscribe, TeamAdmin, ShiftAdmin, Calendar, Feedback, Issues, Tickets,
+Finance, DevLogin, etc.) go entirely through service interfaces.
 
 ### View Components (cache populators)
 

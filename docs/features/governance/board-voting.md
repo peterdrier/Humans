@@ -1,14 +1,13 @@
 <!-- freshness:triggers
   src/Humans.Application/Services/Governance/**
   src/Humans.Web/Controllers/GovernanceBoardVotingController.cs
-  src/Humans.Web/Controllers/BoardController.cs
   src/Humans.Web/Views/Governance/BoardVoting/**
   src/Humans.Domain/Entities/BoardVote.cs
   src/Humans.Domain/Entities/Application.cs
   src/Humans.Domain/Entities/ApplicationStateHistory.cs
   src/Humans.Domain/TermExpiryCalculator.cs
-  src/Humans.Infrastructure/Data/Configurations/BoardVoteConfiguration.cs
-  src/Humans.Infrastructure/Data/Configurations/ApplicationConfiguration.cs
+  src/Humans.Infrastructure/Data/Configurations/Governance/BoardVoteConfiguration.cs
+  src/Humans.Infrastructure/Data/Configurations/Governance/ApplicationConfiguration.cs
 -->
 <!-- freshness:flag-on-change
   Board voting workflow, finalize/approve/reject effects, BoardVote deletion-on-finalization rule, and voting routes — review when ApplicationDecisionService, BoardVote entity, or GovernanceBoardVotingController actions change.

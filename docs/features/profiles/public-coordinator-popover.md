@@ -2,8 +2,8 @@
   src/Humans.Web/Controllers/ProfileController.cs
   src/Humans.Web/Views/Shared/_HumanPopoverPublic.cshtml
   src/Humans.Web/Models/PublicPopoverViewModel.cs
-  src/Humans.Web/ViewComponents/HumanViewComponent.cs
-  src/Humans.Web/Views/Shared/Components/Human/Default.cshtml
+  src/Humans.UI/ViewComponents/HumanViewComponent.cs
+  src/Humans.UI/Views/Shared/Components/Human/Default.cshtml
   src/Humans.Web/Views/Team/Details.cshtml
   src/Humans.Web/wwwroot/js/site.js
 -->

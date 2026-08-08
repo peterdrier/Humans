@@ -4,8 +4,8 @@
   src/Humans.Web/Views/Shared/Components/HumanSearch/Default.cshtml
   src/Humans.Application/Services/Profiles/PersonSearchMatcher.cs
   src/Humans.Application/DTOs/ProfileSearchResults.cs
-  src/Humans.Application/Services/Profile/ContactFieldService.cs
-  src/Humans.Application/Services/Profile/UserEmailService.cs
+  src/Humans.Application/Services/Profiles/ContactFieldService.cs
+  src/Humans.Application/Services/Profiles/UserEmailService.cs
 -->
 <!-- freshness:flag-on-change
   Detail priority order, avatar visibility rule, or the viewer-access ladder used by ContactFieldService / UserEmailService — review when any of these shift.

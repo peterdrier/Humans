@@ -105,7 +105,7 @@ A contact is identified by `ContactSource != null && LastLoginAt == null`. When 
 
 **Indexes:** unique on `UserId`; non-unique on `ConsentCheckStatus`.
 
-Cross-domain nav `Profile.User` is **stripped** per design-rules §15i. Consumers resolve User data via `IUserService.GetByIdsAsync`. Aggregate-local navs `ContactFields`, `VolunteerHistory`, and `Languages` are kept.
+Cross-domain nav `Profile.User` is **stripped** per design-rules §15i. Consumers resolve User data via `IUserServiceRead.GetUserInfosAsync`. Aggregate-local navs `ContactFields`, `VolunteerHistory`, and `Languages` are kept.
 
 ### ContactField
 
@@ -179,7 +179,7 @@ Per-user email addresses (login, verified, notifications). Cross-domain nav `Use
 
 **Indexes:** `UserId`; **unique partial index** on `Email` filtered to `IsVerified = true` (Postgres `"IsVerified" = true`) — prevents email squatting across accounts.
 
-**Shadow properties (column-only, no C# surface):** `IsOAuth` (bool) and `DisplayOrder` (int) columns remain on disk pending a deferred drop PR per `memory/architecture/no-drops-until-prod-verified.md`. `UserEmailConfiguration.cs:57–62`.
+**Shadow properties (column-only, no C# surface):** `IsOAuth` (bool) remains on disk — `UserEmailProviderBackfillService` still reads it via `EF.Property<T>`, so the column stays until that backfill is retired (nobodies-collective/Humans#507). The companion `DisplayOrder` (int) column was dropped (nobodies-collective/Humans#1217); display sorting is alphabetical on `Email`. `UserEmailConfiguration.cs:57–62`.
 
 ### CommunicationPreference
 
@@ -255,7 +255,7 @@ Tracks pending and resolved merges between duplicate accounts. `AccountMergeServ
 
 **Indexes:** `Status`, `TargetUserId`, `SourceUserId`.
 
-The entity still carries `TargetUser`, `SourceUser`, and `ResolvedByUser` navigation properties (configured with `HasOne(...).WithMany().HasForeignKey(...)`). They predate the §15i nav-strip work; the merge admin views read them directly today. Strip and route through `IUserService.GetByIdsAsync` when this pattern is generalised across the section.
+The entity still carries `TargetUser`, `SourceUser`, and `ResolvedByUser` navigation properties (configured with `HasOne(...).WithMany().HasForeignKey(...)`). They predate the §15i nav-strip work; the merge admin views read them directly today. Strip and route through `IUserServiceRead.GetUserInfosAsync` when this pattern is generalised across the section.
 
 ### MembershipTier
 
@@ -350,6 +350,8 @@ Admin-only flows for the section's cross-account hygiene (routes pre-date `memor
 
 ## Invariants
 
+<!-- wheat: docs/superpowers/specs/2026-05-25-dietary-prompt-tightening-design.md §Out of Scope (YAGNI) -->
+- `Profile.DietaryPreference` is stored as free text (`varchar(200)?`), not a constrained enum. The `/Profile/Me/Edit` and `/Profile/Me/DietaryMedical` radio groups constrain the UI to `DietaryOptions.DietaryPreferences` (Omnivore / Vegetarian / Vegan / Pescatarian), but neither `ProfileController` nor `UserService.SaveDietaryMedicalAsync` re-checks membership on POST — any non-blank string persists. Deliberate: legacy free-text values predating [#279](../features/profiles/dietary-medical-nudge.md) stay readable without a data migration. Allergies are the exception — the Edit path filters them against `DietaryOptions.AllergyOptions` before saving.
 - Every authenticated human can edit their own profile regardless of membership status (available during onboarding).
 - Contact field visibility is enforced per-field: a human viewing their own profile sees everything. Board members see everything. Coordinators see CoordinatorsAndBoard-level and below. Shared-team members see MyTeams-level and below. Other active members see only AllActiveProfiles fields.
 - Birthday stores month and day only — never year. UI text uses "birthday", not "date of birth".
@@ -372,6 +374,8 @@ Admin-only flows for the section's cross-account hygiene (routes pre-date `memor
 
 ## Negative Access Rules
 
+<!-- wheat: docs/superpowers/specs/2026-05-25-dietary-prompt-tightening-design.md §Voluntelling (on-behalf-of signup) -->
+- A privileged signup approver **cannot** use the dietary redirect-and-replay flow to sign up anyone but themselves. `ProfileController.ReplayShiftSignupAfterDietaryMedicalSaveAsync` always replays for the current `user.Id`, and `ShiftRoleChecks.IsPrivilegedSignupApprover` only relaxes signup validation (auto-confirm) — it never switches the actor. There is no target-user parameter on the form or on the `returnAction` / `shiftId` / `rotaId` carryover.
 - Regular humans **cannot** view suspended profiles.
 - Regular humans **cannot** edit another human's profile.
 - Regular humans **cannot** see contact fields above their access level on other humans' profiles.
@@ -397,7 +401,7 @@ Admin-only flows for the section's cross-account hygiene (routes pre-date `memor
 - **Teams:** `ITeamService` — active membership equals membership in the Volunteers system team. Profile activation triggers addition.
 - **Onboarding:** none (one-directional — `OnboardingService` consumes `IProfileService`, never the reverse). The consent-check threshold (`Profile.ConsentCheckStatus → Pending` + Consent Coordinator notification) is director-level work and lives on `IOnboardingService.SetConsentCheckPendingIfEligibleAsync`; controllers call it as a peer call after `ProfileService.SaveProfileAsync`.
 - **Google Integration:** `IGoogleWorkspaceUserService` / `IGoogleSyncService` — a human's Google service email determines which email is used for Google Groups and Drive sync.
-- **Users/Identity:** `IUserService.GetByIdsAsync` — display data for cross-domain nav stitching. `IUserService.AnonymizeForMergeAsync` — invoked by `AccountMergeService.AcceptAsync` to tombstone the source User during fold; AspNetUserLogins + EventParticipation re-FK is handled by the Users section's own `IUserMerge` implementation (`IUserRepository.ReassignLoginsToUserAsync` / `ReassignEventParticipationToUserAsync`).
+- **Users/Identity:** `IUserServiceRead.GetUserInfosAsync` — display data for cross-domain nav stitching. `IUserService.AnonymizeForMergeAsync` — invoked by `AccountMergeService.AcceptAsync` to tombstone the source User during fold; AspNetUserLogins + EventParticipation re-FK is handled by the Users section's own `IUserMerge` implementation (`IUserRepository.ReassignLoginsToUserAsync` / `ReassignEventParticipationToUserAsync`).
 - **Account merge fold fan-out:** `IAccountMergeService.AcceptAsync` fans out across every registered `IUserMerge` implementation (`ReassignAsync`) inside the shared `TransactionScope`. Each owning section — Tickets, Teams, Shifts, Governance, Campaigns, Camps, Notifications, Feedback, Role assignments, and the Profiles sub-aggregates (Profile / UserEmail / ContactField / CommunicationPreference) — registers its own `IUserMerge` impl and re-FKs its user-scoped rows source→target, rather than the orchestrator naming each service.
 
 ## Architecture
@@ -418,7 +422,7 @@ Admin-only flows for the section's cross-account hygiene (routes pre-date `memor
 - **Unlink and Delete operate on disjoint row sets.** `UserEmailService.DeleteEmailAsync` returns `false` for Provider-attached rows (guards non-UI callers; the grid never routes one there), and `UnlinkAsync` operates only on rows with `Provider`+`ProviderKey`: it removes the `AspNetUserLogins` entry via `UserManager.RemoveLoginAsync` **before** deleting the email row, and hard-fails (no row deletion) if login removal fails so `user_logins` and `user_emails` never diverge. `UnlinkAsync` also throws (`ValidationException`) if no *other* verified email would remain — the guard runs even when the row being unlinked is itself unverified, because an unverified row can still carry the user's only OAuth login (issue nobodies-collective/Humans#731). Admin mirror routes exist for both (`/Profile/{id}/Admin/Emails/Unlink/{emailId}`, `/Delete`).
 - **Inner service** is `Humans.Application.Services.Profiles.ProfileService`, registered as `AddKeyedScoped` under `CachingProfileService.InnerServiceKey` (`"profile-inner"`). The decorator resolves it per-call via `IServiceScopeFactory`.
 - **`IFullProfileInvalidator`** is aliased to the same Singleton `CachingProfileService` instance so external sections' writes (Auth, Onboarding, Teams, Google) can invalidate the cache without touching the dict.
-- **Cross-domain navs stripped:** `Profile.User`, `UserEmail.User`, `CommunicationPreference.User`. Display stitching routes through `IUserService.GetByIdsAsync`.
+- **Cross-domain navs stripped:** `Profile.User`, `UserEmail.User`, `CommunicationPreference.User`. Display stitching routes through `IUserServiceRead.GetUserInfosAsync`.
 - **GDPR:** `ProfileService` and `AccountMergeService` both implement `IUserDataContributor` (design-rules §8a). `ProfileService` emits the `Profile`, `ContactFields`, `UserEmails`, `VolunteerHistory`, `Languages`, and `CommunicationPreferences` slices; `AccountMergeService` emits the `AccountMergeRequests` slice. Section keys are constants on `GdprExportSections`. The `ExpectedContributorTypes` in `GdprExportDependencyInjectionTests` enforces registration.
 - **Account merge & duplicates** — `AccountMergeService` and `DuplicateAccountService` (and `IAccountMergeRepository` / the `account_merge_requests` table) moved to the **Users** section in the account-merge consolidation — see [Users.md](Users.md). The Profile sub-aggregates still participate in a fold as `IUserMerge` implementations (`UserEmailService` / `ContactFieldService` / `CommunicationPreferenceService`).
 - **Architecture tests** — `tests/Humans.Application.Tests/Architecture/ProfileArchitectureTests.cs` + `tests/Humans.Application.Tests/Services/Gdpr/GdprExportDependencyInjectionTests.cs`.
@@ -429,6 +433,6 @@ Account deletion cascades (user-requested / admin-initiated / expiry-triggered) 
 
 ### Touch-and-clean guidance
 
-- Cross-section reads for `Profile.User` / `UserEmail.User` / `CommunicationPreference.User` must go through `IUserService.GetByIdsAsync` — do not re-add nav properties to the entities.
+- Cross-section reads for `Profile.User` / `UserEmail.User` / `CommunicationPreference.User` must go through `IUserServiceRead.GetUserInfosAsync` — do not re-add nav properties to the entities.
 <!-- wheat: docs/superpowers/specs/2026-04-30-email-oauth-pr4-grid-and-link.md §Architecture (hard naming rule) -->
 - The token "OAuth" is banned from `IUserEmailService` / `UserEmailRepository` method, parameter, and property names — provider operations are parameterized (`LinkAsync(provider, providerKey, …)`) so new providers add data, not methods. Enforced by `UserArchitectureTests.NoOAuthTokenInUserEmailServiceOrRepositoryMethodNames`; the single allowed exception is `ReconcileOAuthIdentityAsync` (issue nobodies-collective/Humans#697), where "OAuth" is categorical (the OAuth-callback write channel, distinct from user-driven email management).

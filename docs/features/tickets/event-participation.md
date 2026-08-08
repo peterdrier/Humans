@@ -4,7 +4,7 @@
   src/Humans.Web/Controllers/TicketController.cs
   src/Humans.Domain/Entities/EventParticipation.cs
   src/Humans.Domain/Entities/EventSettings.cs
-  src/Humans.Infrastructure/Data/Configurations/Shifts/EventParticipationConfiguration.cs
+  src/Humans.Infrastructure/Data/Configurations/Users/EventParticipationConfiguration.cs
   src/Humans.Infrastructure/Data/Configurations/Shifts/EventSettingsConfiguration.cs
 -->
 <!-- freshness:flag-on-change

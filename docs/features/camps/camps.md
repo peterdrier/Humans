@@ -15,7 +15,7 @@
   src/Humans.Domain/Entities/CampHistoricalName.cs
   src/Humans.Domain/Entities/CampSettings.cs
   src/Humans.Infrastructure/Data/Configurations/Camps/**
-  src/Humans.Infrastructure/Data/Configurations/CampMemberConfiguration.cs
+  src/Humans.Infrastructure/Data/Configurations/Camps/CampMemberConfiguration.cs
 -->
 <!-- freshness:flag-on-change
   Camp registration/season approval workflow, CampMember per-season affiliation, lead management, and route table — review when Camp services, controllers, or entities change.
@@ -69,7 +69,7 @@ Nobodies Collective organizes camping areas ("barrios") at Nowhere and related e
 - Captures season-specific data: description, vibes, kids policy, sound zone, etc.
 - Optional historical names (comma-separated)
 - Creates camp with Pending status
-- Registering user becomes Primary Lead
+- Registering user becomes a Camp Lead (a `CampRoleAssignment` against the `SpecialRole = Lead` role definition, not a separate entity)
 - Redirects to detail page with success message
 
 ### US-20.4: Edit Camp
@@ -83,7 +83,7 @@ Nobodies Collective organizes camping areas ("barrios") at Nowhere and related e
 - Can toggle "Hide historical names" to suppress the "Also known as" section on the public detail page
 - Name change blocked after name lock date
 - Can upload, delete, and reorder images
-- Can manage co-leads (add, remove, transfer primary)
+- Can manage co-leads by assigning/unassigning the Camp Lead role on the Members page's Roles panel — the same mechanism as any other per-camp role (see US-20.12); there is no separate "primary lead" concept
 
 ### US-20.5: Opt-In to New Season
 **As a** camp lead
@@ -217,7 +217,7 @@ Camp
 ├── CreatedByUserId: Guid (FK → User)
 ├── CreatedAt: Instant
 ├── UpdatedAt: Instant
-└── Navigation: Seasons, Leads, HistoricalNames, Images
+└── Navigation: Seasons, HistoricalNames, Images
 ```
 
 ### CampSeason
@@ -431,7 +431,6 @@ Transitions:
 | Register camp | Authenticated |
 | Edit camp | Camp Lead, CampAdmin, or Admin |
 | Opt-in to season | Camp Lead, CampAdmin, or Admin |
-| Manage leads | Camp Lead, CampAdmin, or Admin |
 | Upload/delete images | Camp Lead, CampAdmin, or Admin |
 | Approve/reject season | CampAdmin or Admin |
 | Open/close season | CampAdmin or Admin |
@@ -458,9 +457,6 @@ Transitions:
 | `POST /Camps/{slug}/Edit` | Submit edits |
 | `GET /Camps/{slug}/Edit/Members` | Members + roles management (pending requests, active members, role assignments) |
 | `POST /Camps/{slug}/OptIn/{year}` | Opt-in to season |
-| `POST /Camps/{slug}/Leads/Add` | Add co-lead |
-| `POST /Camps/{slug}/Leads/Remove/{leadId}` | Remove lead |
-| `POST /Camps/{slug}/Leads/TransferPrimary` | Transfer primary lead |
 | `POST /Camps/{slug}/Images/Upload` | Upload image |
 | `POST /Camps/{slug}/Images/Delete/{imageId}` | Delete image |
 | `POST /Camps/{slug}/Images/Reorder` | Reorder images |

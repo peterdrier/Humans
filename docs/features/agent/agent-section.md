@@ -68,7 +68,7 @@ Legacy: `FeedbackReport.Source` (`AgentUnresolved`) and `FeedbackReport.AgentCon
 ## Workflows
 
 ### Turn workflow
-`User submits` → `enabled gate` → `rate-limit check` → `abuse check` → `prompt assembly` → `Anthropic streaming call (with cached prefix)` → `[tool loop, max 3; cap hit triggers one final tool-withheld call so the model synthesizes an answer]` → `empty-reply fallback if the loop still produced no prose` → `persist messages (turn-wide token totals across all loop iterations)` → `stream finalizer`.
+`User submits` → `enabled gate` → `rate-limit check` → `abuse check` → `prompt assembly` → `Anthropic streaming call (with cached prefix)` → `[tool loop, max 3; cap hit triggers one final tool-withheld call so the model synthesizes an answer; a max_tokens cutoff mid tool-call JSON continues the loop rather than dropping the call]` → `empty-reply fallback if the loop still produced no prose` → `persist messages (turn-wide token totals across all loop iterations)` → `stream finalizer`. If the turn throws or the client disconnects at any point after the user message is persisted, a fallback assistant message (`RefusalReason = "error"`) is written and the accumulated usage is billed, so no user message is ever left without a reply (nobodies-collective/Humans#963, #990).
 
 ### Handoff workflow (propose-only)
 Tool call `route_to_issue` with `{title, category, description}` → dispatcher returns a proposal-marker without DB writes → `AgentService.ParseIssueProposalArgs` decodes the args → `AgentService` yields an `AgentIssueProposal` SSE frame → client opens the Issues modal pre-filled → user submits via `/Issues/Submit`. The agent never writes Issue or FeedbackReport rows itself.

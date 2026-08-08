@@ -6,7 +6,7 @@
   src/Humans.Infrastructure/Data/Configurations/Auth/**
   src/Humans.Infrastructure/Repositories/Auth/RoleAssignmentRepository.cs
   src/Humans.Web/Authorization/RoleAssignmentClaimsTransformation.cs
-  src/Humans.Web/Authorization/PolicyNames.cs
+  src/Humans.UI/Authorization/PolicyNames.cs
   src/Humans.Web/Authorization/RoleChecks.cs
   src/Humans.Web/Authorization/Requirements/**
   src/Humans.Application/Authorization/**
@@ -55,8 +55,8 @@ All under `/Account`. Anti-forgery on every POST.
 | Property | Type | Purpose |
 |----------|------|---------|
 | Id | Guid | PK |
-| UserId | Guid | FK → User — paired with `[Obsolete]`-marked `User` nav (stitched in memory, never `.Include()`d) |
-| CreatedByUserId | Guid | FK → User (required) — paired with `[Obsolete]`-marked `CreatedByUser` nav; `OnDelete(DeleteBehavior.Restrict)` |
+| UserId | Guid | FK → User — no nav property (removed, not just deprecated), never `.Include()`d |
+| CreatedByUserId | Guid | FK → User (required) — no nav property (removed, not just deprecated); `OnDelete(DeleteBehavior.Restrict)` |
 | RoleName | string (max 256) | Role name (see constants below) |
 | ValidFrom | Instant | When the role became active |
 | ValidTo | Instant? | When the role ended (null for currently active) |
@@ -65,7 +65,7 @@ All under `/Account`. Anti-forgery on every POST.
 
 **Constraints / indexes:** `CK_role_assignments_valid_window` (`ValidTo IS NULL OR ValidTo > ValidFrom`); indexes on `UserId`, `RoleName`, `(UserId, RoleName, ValidFrom)`, plus a partial index on `(UserId, RoleName)` filtered to `ValidTo IS NULL` for active-row lookups.
 
-Cross-domain navs `RoleAssignment.User` and `RoleAssignment.CreatedByUser` are `[Obsolete]`-marked. The repository does not `.Include()` them; display data stitches via `IUserService.GetByIdsAsync`. Pending full entity strip — tracked with the User nav-strip in design-rules §15i.
+Cross-domain navs `RoleAssignment.User` and `RoleAssignment.CreatedByUser` were removed entirely, not just deprecated. The repository does not `.Include()` them (there's nothing to include); display data stitches via `IUserServiceRead.GetUserInfosAsync`.
 
 ### RoleNames (constants)
 
@@ -93,7 +93,7 @@ Defined in `src/Humans.Domain/Constants/RoleNames.cs`.
 
 The auth surface is mid-transition per `docs/plans/2026-04-03-first-class-authorization-transition.md`:
 
-- **Phase 1 — coarse policies** (`Humans.Web/Authorization/PolicyNames.cs` + `AuthorizationPolicyExtensions.AddHumansAuthorizationPolicies`): **complete.** Controllers use `[Authorize(Policy = PolicyNames.X)]` and views use the `authorize-policy` TagHelper. The legacy `Humans.Domain.Constants.RoleGroups` constants still exist in source but have **zero in-source call sites** — kept around as constants only and slated for deletion.
+- **Phase 1 — coarse policies** (`Humans.UI/Authorization/PolicyNames.cs` + `AuthorizationPolicyExtensions.AddHumansAuthorizationPolicies`): **complete.** Controllers use `[Authorize(Policy = PolicyNames.X)]` and views use the `authorize-policy` TagHelper. The legacy `Humans.Domain.Constants.RoleGroups` constants still exist in source but have **zero in-source call sites** — kept around as constants only and slated for deletion.
 - **Phase 2 — resource-based authorization (first vertical slices):** shipped. Production handlers in place: `TeamAuthorizationHandler` (resource: `Team`; gates the `ManageCoordinators` and `ManageEarlyEntry` team operations — Admin/TeamsAdmin/Board pass any operation on any team, `EETeamAdmin` passes `ManageEarlyEntry` on any team only, and a team's own coordinator passes both for their team), `CampAuthorizationHandler` (resource: `Camp`), `BudgetAuthorizationHandler` (resource: `BudgetCategory`/department-scoped budget edits), `RoleAssignmentAuthorizationHandler` (resource: target role-name string; lives in `Humans.Application.Authorization` because it has no scoped dependencies), `UserEmailAuthorizationHandler` (resource: `UserEmail`), `IssuesAuthorizationHandler` (resource: `Issue`), `ContainerAuthorizationHandler` (resource: `ContainerAuthorizationTarget`), `ExpenseReportAuthorizationHandler` (resource: `ExpenseReportDto`; gates View/Edit/Submit/Withdraw/Endorse/CoordinatorReject/Approve/FinanceReject/CategoryOverride), `IbanAccessHandler` (gates raw IBAN access for self, FinanceAdmin with non-Draft/non-Withdrawn report context, or Admin on admin page), and `StoreOrderAuthorizationHandler` (resource: `StoreOrderAuthorizationTarget` / `StoreOrderLineContext`; also gates line edits past a product's `OrderableUntil` deadline for non-admin paths). Composite custom handlers (`HumanAdminOnlyHandler`, `IsAnyTeamManagerOrCoordinatorHandler`, `CampComplianceAccessHandler` (policy `CampComplianceAccess`: succeeds for CampAdmin/Admin, or any team/sub-team coordinator via the cached `IShiftManagementService.GetCoordinatorTeamIdsAsync` lookup — gates the read-only Barrios role-staffing compliance matrix, broader than the CampAdmin-only `CampAdminOrAdmin` management surface), and `AgentRateLimitHandler`) are also registered. The nav-visibility gate is the single `AppAccess` policy — a plain `RequireAssertion` (`UserState == Active`), no custom handler.
 - **Phase 3 — broad service-layer authorization enforcement:** **cancelled / tombstoned.** Superseded by `docs/architecture/design-rules.md §11`: services are auth-free by default; controllers call `IAuthorizationService.AuthorizeAsync` and do not pass `isPrivileged` booleans. The sole exception is the documented full-Admin destructive-delete/reset guard via `IAdminAuthorizationService`.
 
@@ -136,7 +136,7 @@ The auth surface is mid-transition per `docs/plans/2026-04-03-first-class-author
 
 ## Cross-Section Dependencies
 
-- **Users/Identity:** `IUserService.GetByIdsAsync` — display names for assignee/creator stitched in memory (design-rules §6b). `IUserEmailService.FindVerifiedEmailWithUserAsync` — verified email → owning user for magic-link login.
+- **Users/Identity:** `IUserServiceRead.GetUserInfosAsync` — display names for assignee/creator stitched in memory (design-rules §6b). `IUserEmailService.FindVerifiedEmailWithUserAsync` — verified email → owning user for magic-link login.
 - **Teams:** `ISystemTeamSync.SyncBoardTeamAsync` — Board system team's membership mirrors current `Board` role assignments.
 - **Governance:** Tier applications and board voting flows are a separate concern. Governance concerns association-level affairs; Auth concerns who-has-what-role within the running system. `role_assignments` is owned by Auth, not Governance.
 - **Notifications:** `INotificationEmitter` (the narrow per-user dispatch surface — `INotificationService` extends it but Auth only needs the emitter) — best-effort in-app notifications on role changes.
@@ -163,7 +163,7 @@ Each section's landing page exposes an info-icon button (`AccessMatrixViewCompon
 - `IRoleAssignmentRepository` (impl `Humans.Infrastructure/Repositories/Auth/RoleAssignmentRepository.cs`) owns the SQL surface for `role_assignments`. Uses the Scoped + `HumansDbContext` pattern (mirrors `ApplicationRepository`) because Auth writes are rare.
 - **Decorator decision — no caching decorator.** Role assignments are low-traffic (handful of admin-driven writes per month, few reads per day) and magic links are throwaway; a dict-backed decorator isn't warranted (same rationale as Governance / User / Feedback).
 - **Architecture test** — `tests/Humans.Application.Tests/Architecture/AuthArchitectureTests.cs` pins namespace, no-DbContext, no-IMemoryCache, and constructor-shape rules for both `RoleAssignmentService` and `MagicLinkService`; also asserts `IRoleAssignmentRepository` namespace and `RoleAssignmentRepository` is sealed.
-- **Cross-domain navs `[Obsolete]`-marked:** `RoleAssignment.User`, `RoleAssignment.CreatedByUser`. The repository does not `.Include()` them; the service stitches display data in memory from `IUserService.GetByIdsAsync` (§6b). Controllers (`AboutController`, `GovernanceController`, `ProfileController`) and two daily-digest jobs (`SendAdminDailyDigestJob`, `SendBoardDailyDigestJob`) continue to read `ra.User.DisplayName` / `ra.CreatedByUser.DisplayName` under `#pragma warning disable CS0618` until the broader User-entity nav strip lands.
+- **Cross-domain navs removed, not just `[Obsolete]`-marked:** `RoleAssignment.User`, `RoleAssignment.CreatedByUser` no longer exist as nav properties. The repository does not `.Include()` them; the service stitches display data in memory from `IUserServiceRead.GetUserInfosAsync` (§6b). `AboutController` and `ProfileController` still carry a stale `#pragma warning disable CS0618` (leftover from when they read `ra.User.DisplayName` / `ra.CreatedByUser.DisplayName` directly) but no longer reference either nav — the pragma is now a no-op tracked as cleanup debt, not an active suppression.
 - `MagicLinkService` owns no tables. Its persistent state is `User.MagicLinkSentAt`, mutated via `UserManager<User>`. Verified-email lookup goes through `IUserEmailService.FindVerifiedEmailWithUserAsync`. Data-Protection token generation/validation and URL construction sit behind `IMagicLinkUrlBuilder`; replay-protection and signup rate-limit state sit behind `IMagicLinkRateLimiter`. That arrangement keeps `MagicLinkService` free of `HumansDbContext`, `EmailSettings`, `IDataProtectionProvider`, and `IMemoryCache`.
 - **Cross-cutting invalidation** routes through `INavBadgeCacheInvalidator` (top-nav counters) and `IRoleAssignmentClaimsCacheInvalidator` (per-user claims transform cache) — never raw `IMemoryCache` calls.
 

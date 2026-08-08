@@ -120,7 +120,7 @@ CalendarEvent
 ├── CreatedAt: Instant
 ├── UpdatedAt: Instant
 ├── DeletedAt: Instant? (soft-delete)
-└── Navigation: OwningTeam, CreatedByUser, Exceptions
+└── Navigation: Exceptions
 ```
 
 ### CalendarEventException

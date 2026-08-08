@@ -3,7 +3,6 @@
   src/Humans.Web/Controllers/ProfileController.cs
   src/Humans.Web/Controllers/ProfileApiController.cs
   src/Humans.Web/ViewComponents/ProfileCardViewComponent.cs
-  src/Humans.Web/ViewComponents/UserAvatarViewComponent.cs
   src/Humans.Application/Services/Profile/**
   src/Humans.Application/Services/Users/UserService.cs
   src/Humans.Application/Services/Gdpr/**
