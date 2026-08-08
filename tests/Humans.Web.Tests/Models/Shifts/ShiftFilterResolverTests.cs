@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Humans.Domain.Entities;
+using Humans.Application.Interfaces.Shifts;
 using Humans.Domain.Enums;
 using Humans.Web.Models.Shifts;
 using NodaTime;
@@ -73,16 +73,24 @@ public sealed class ShiftFilterResolverTests
         to.Should().Be(new LocalDate(2026, 7, 15));
     }
 
-    // EventSettings is a plain property-bag entity (see Humans.Domain.Entities.EventSettings) —
-    // existing tests use the object-initializer pattern, e.g.
-    //   tests/Humans.Application.Tests/Services/Shifts/ShiftManagementServiceCoveragePiesTests.cs:346
-    // We mirror that here.
-    private static EventSettings MakeEventSettings(LocalDate gate, int buildStart, int eventEnd, int strikeEnd) =>
-        new()
-        {
-            GateOpeningDate = gate,
-            BuildStartOffset = buildStart,
-            EventEndOffset = eventEnd,
-            StrikeEndOffset = strikeEnd
-        };
+    // Only the four calendar scalars ResolvePeriodRange reads are meaningful here;
+    // the rest are filled with inert defaults.
+    private static BurnSettingsInfo MakeEventSettings(LocalDate gate, int buildStart, int eventEnd, int strikeEnd) =>
+        new(
+            Id: Guid.NewGuid(),
+            EventName: "Test Burn",
+            Year: gate.Year,
+            TimeZoneId: "Europe/Madrid",
+            GateOpeningDate: gate,
+            BuildStartOffset: buildStart,
+            EventEndOffset: eventEnd,
+            StrikeEndOffset: strikeEnd,
+            FirstCrewStartOffset: buildStart,
+            SetupWeekStartOffset: buildStart,
+            PreEventWeekStartOffset: buildStart,
+            FinishingWeekendStartOffset: buildStart,
+            EarlyEntryCapacity: new Dictionary<int, int>(),
+            BarriosEarlyEntryAllocation: null,
+            EarlyEntryClose: null,
+            IsShiftBrowsingOpen: false);
 }

@@ -144,19 +144,31 @@ public sealed class VolunteerTrackingControllerExportXlsxTests
                 volunteerHistory: [],
                 communicationPreferences: [])));
 
-        var activeEvent = new EventSettings
-        {
-            Id = Guid.NewGuid(),
-            TimeZoneId = "Europe/Madrid",
-            GateOpeningDate = new LocalDate(2026, 7, 9),
-            BuildStartOffset = -7,
-            EventEndOffset = 4,
-            StrikeEndOffset = 6,
-        };
-        shiftMgmt.GetActiveAsync().Returns(activeEvent);
+        // Sub-period offsets mirror the EventSettings entity defaults
+        // (FirstCrew=-25, SetupWeek=-16, PreEventWeek=-9, FinishingWeekend=-4),
+        // which the SetupWeek bounds assertion above depends on.
+        var activeEvent = new BurnSettingsInfo(
+            Id: Guid.NewGuid(),
+            EventName: "Test Burn",
+            Year: 2026,
+            TimeZoneId: "Europe/Madrid",
+            GateOpeningDate: new LocalDate(2026, 7, 9),
+            BuildStartOffset: -7,
+            EventEndOffset: 4,
+            StrikeEndOffset: 6,
+            FirstCrewStartOffset: -25,
+            SetupWeekStartOffset: -16,
+            PreEventWeekStartOffset: -9,
+            FinishingWeekendStartOffset: -4,
+            EarlyEntryCapacity: new Dictionary<int, int>(),
+            BarriosEarlyEntryAllocation: null,
+            EarlyEntryClose: null,
+            IsShiftBrowsingOpen: false);
+        var burnSettings = Substitute.For<IBurnSettingsService>();
+        burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(activeEvent);
 
         var ctrl = new VolunteerTrackingController(
-            service, shiftMgmt, exportService, xlsxBuilder,
+            service, shiftMgmt, burnSettings, exportService, xlsxBuilder,
             userService, auditLog, localizer)
         {
             ControllerContext = BuildControllerContext(currentUserId),

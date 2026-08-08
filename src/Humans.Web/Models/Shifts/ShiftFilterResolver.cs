@@ -1,4 +1,4 @@
-using Humans.Domain.Entities;
+using Humans.Application.Interfaces.Shifts;
 using Humans.Domain.Enums;
 using NodaTime;
 
@@ -26,7 +26,7 @@ public static class ShiftFilterResolver
     /// and <c>ShiftsController.GetPeriodDateRange</c> (consolidating those into this single
     /// home is intentional — see CLAUDE.md DRY rule).
     /// </summary>
-    public static (LocalDate From, LocalDate To) ResolvePeriodRange(ShiftPeriod period, EventSettings es) =>
+    public static (LocalDate From, LocalDate To) ResolvePeriodRange(ShiftPeriod period, BurnSettingsInfo es) =>
         period switch
         {
             ShiftPeriod.Build => (
