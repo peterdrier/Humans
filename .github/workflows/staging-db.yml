@@ -1,0 +1,58 @@
+name: Staging Database Refresh
+
+# Rebuilds humans_staging from production on every push to the staging branch, so the
+# staging deploy that follows applies its migrations to a fresh clone of prod data.
+# Runs on the production host — the runner label is `prod`, not `nuc` (that is QA).
+# nobodies-collective/Humans#962 · docs/staging-environment.md
+on:
+  push:
+    branches: [staging]
+  workflow_dispatch:
+    inputs:
+      source:
+        description: "backup = newest Coolify artifact (also tests the restore path); live = pg_dump from prod"
+        type: choice
+        options: [backup, live]
+        default: backup
+
+# Two pushes in quick succession must not race each other into the same DROP DATABASE.
+# Queue rather than cancel: a cancelled refresh leaves a half-restored staging database.
+concurrency:
+  group: staging-db-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: [self-hosted, prod]
+    steps:
+      # `main`, not the pushed commit. This job runs on the production host with Docker
+      # access, so whatever it executes has effectively root there. Checking out the
+      # candidate would mean any commit staged for review could rewrite the script and run
+      # it as root on production *before* the production PR is looked at. `main` is the
+      # reviewed ref; a change to the refresh script therefore takes effect one promotion
+      # after it lands, which is the right way round for infrastructure.
+      #
+      # This does NOT cover the workflow file itself — for `on: push`, GitHub reads that
+      # from the pushed ref. Push access to `staging` is therefore equivalent to root on
+      # the production host, which is why docs/staging-environment.md §7.8 makes branch
+      # protection on `staging` a required step rather than a suggestion.
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+
+      - name: Refresh humans_staging
+        env:
+          DB_CONTAINER: ${{ vars.STAGING_DB_CONTAINER || 'humans-db' }}
+          STAGING_APP_CONTAINER: ${{ vars.STAGING_APP_CONTAINER }}
+          # The restricted role the staging app connects as (docs/staging-environment.md
+          # §7.7). Unset, the script falls back to the production role and says so in the
+          # log — the restored objects would then belong to `humans` and the staging app
+          # would fail on its first query.
+          STAGING_DB_OWNER: ${{ vars.STAGING_DB_OWNER }}
+          COOLIFY_BACKUP_DIR: ${{ vars.COOLIFY_BACKUP_DIR || '/data/coolify/backups' }}
+          # Set to match production's real backup cadence. A stalled backup schedule must
+          # fail the refresh rather than quietly restore a weeks-old artifact.
+          BACKUP_MAX_AGE_HOURS: ${{ vars.BACKUP_MAX_AGE_HOURS }}
+          PROD_UPLOADS_DIR: ${{ vars.PROD_UPLOADS_DIR }}
+          STAGING_UPLOADS_DIR: ${{ vars.STAGING_UPLOADS_DIR }}
+        run: ./scripts/refresh-staging-db.sh "${{ github.event.inputs.source || 'backup' }}"
