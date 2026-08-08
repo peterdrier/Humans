@@ -8,7 +8,7 @@
   src/Humans.Web/Authorization/AuthorizationPolicyExtensions.cs
   src/Humans.Web/Authorization/RoleAssignmentClaimsTransformation.cs
   src/Humans.Web/Views/Admin/**
-  src/Humans.Web/Views/Board/**
+  src/Humans.Web/Views/Governance/**
   src/Humans.Domain/Constants/RoleNames.cs
   src/Humans.Domain/Constants/RoleGroups.cs
 -->
