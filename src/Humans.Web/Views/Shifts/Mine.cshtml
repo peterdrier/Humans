@@ -1,4 +1,5 @@
 @model Humans.Web.Models.MyShiftsViewModel
+@using Humans.Application.Interfaces.Shifts
 @using Humans.UI.Models.Tables
 @using NodaTime
 @using Microsoft.AspNetCore.Html
@@ -9,7 +10,7 @@
 }
 
 @functions {
-    string GetPhase(Shift shift, EventSettings es)
+    string GetPhase(Shift shift, BurnSettingsInfo es)
     {
         var period = shift.GetShiftPeriod(es);
         return period switch
@@ -21,7 +22,7 @@
         };
     }
 
-    string GetPhaseBadge(Shift shift, EventSettings es)
+    string GetPhaseBadge(Shift shift, BurnSettingsInfo es)
     {
         var period = shift.GetShiftPeriod(es);
         return period switch

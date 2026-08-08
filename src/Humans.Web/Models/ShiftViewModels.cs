@@ -304,7 +304,7 @@ public class ShiftDisplayItem
 
 public class MyShiftsViewModel
 {
-    public EventSettings? EventSettings { get; set; }
+    public BurnSettingsInfo? EventSettings { get; set; }
     public Guid UserId { get; set; }
     public List<MySignupItem> Upcoming { get; set; } = [];
     public List<MySignupItem> Pending { get; set; } = [];
@@ -652,7 +652,7 @@ public class ShiftSignupsViewModel
     public List<MySignupItem> Upcoming { get; set; } = [];
     public List<MySignupItem> Pending { get; set; } = [];
     public List<MySignupItem> Past { get; set; } = [];
-    public EventSettings? EventSettings { get; set; }
+    public BurnSettingsInfo? EventSettings { get; set; }
     public ShiftSignupsViewMode ViewMode { get; set; }
     public Guid UserId { get; set; }
     public string? DisplayName { get; set; }

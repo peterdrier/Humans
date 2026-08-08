@@ -25,6 +25,7 @@ namespace Humans.Web.Controllers;
 [Route("Shifts")]
 public class ShiftsController(
     IShiftManagementService shiftMgmt,
+    IBurnSettingsService burnSettings,
     IShiftSignupService signupService,
     IVolunteerTrackingService volunteerTrackingService,
     IShiftView shiftView,
@@ -323,7 +324,7 @@ public class ShiftsController(
             return currentUserNotFound;
         }
 
-        var es = await shiftMgmt.GetActiveAsync();
+        var es = await burnSettings.GetActiveAsync();
 
         // see #720: cached ShiftUserView, event-scoped (empty when no active event).
         var userView = await shiftView.GetUserAsync(user.Id);

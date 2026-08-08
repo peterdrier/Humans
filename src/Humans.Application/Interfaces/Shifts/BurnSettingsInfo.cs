@@ -62,4 +62,17 @@ public sealed record BurnSettingsInfo(
 
         return applicableKey == int.MinValue ? 0 : EarlyEntryCapacity[applicableKey];
     }
+
+    // Forwarders to the sealed bodies on IBurnSettingsInfo — the clock rule's
+    // single home. C# only surfaces interface members through an interface-typed
+    // receiver, so without these every DTO-holding call site would need a cast.
+    // These carry no logic and cannot drift from the interface.
+
+    /// <inheritdoc cref="IBurnSettingsInfo.IsEarlyEntryClosed" />
+    public bool IsEarlyEntryClosed(Instant now) =>
+        ((IBurnSettingsInfo)this).IsEarlyEntryClosed(now);
+
+    /// <inheritdoc cref="IBurnSettingsInfo.IsEarlyEntrySignupsClosedFor" />
+    public bool IsEarlyEntrySignupsClosedFor(bool isPrivileged, Instant now) =>
+        ((IBurnSettingsInfo)this).IsEarlyEntrySignupsClosedFor(isPrivileged, now);
 }

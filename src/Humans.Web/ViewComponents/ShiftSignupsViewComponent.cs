@@ -9,7 +9,7 @@ namespace Humans.Web.ViewComponents;
 
 public class ShiftSignupsViewComponent(
     IShiftView shiftView,
-    IShiftManagementService shiftMgmt,
+    IBurnSettingsService burnSettings,
     ITeamServiceRead teamService,
     IClock clock,
     ILogger<ShiftSignupsViewComponent> logger) : ViewComponent
@@ -25,7 +25,7 @@ public class ShiftSignupsViewComponent(
 
         try
         {
-            var es = await shiftMgmt.GetActiveAsync();
+            var es = await burnSettings.GetActiveAsync();
 
             // T-10: signups come from the cached ShiftUserView (issue #720).
             // ShiftUserView.Signups is pre-filtered to the active event by the

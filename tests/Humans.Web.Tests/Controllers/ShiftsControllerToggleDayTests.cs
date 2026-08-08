@@ -73,7 +73,7 @@ public class ShiftsControllerToggleDayTests
     {
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(userInfo);
         var ctrl = new ShiftsController(
-            _shiftMgmt, _signupService, _volunteerTrackingService, _shiftView, _teamService,
+            _shiftMgmt, Substitute.For<IBurnSettingsService>(), _signupService, _volunteerTrackingService, _shiftView, _teamService,
             _auditLogService, _userService, _localizer, _clock, _builder, _logger);
         var http = new DefaultHttpContext
         {

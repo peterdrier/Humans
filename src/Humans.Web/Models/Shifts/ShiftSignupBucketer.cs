@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces.Shifts;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
@@ -20,7 +21,7 @@ public static class ShiftSignupBucketer
 
     public static ShiftSignupBuckets Build(
         IReadOnlyList<ShiftSignup> signups,
-        EventSettings? eventSettings,
+        BurnSettingsInfo? eventSettings,
         IReadOnlyDictionary<Guid, string> teamNames,
         Instant now,
         bool includeOtherStatusesInPast = true,

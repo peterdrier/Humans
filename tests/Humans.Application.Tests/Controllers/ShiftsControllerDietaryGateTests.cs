@@ -67,6 +67,7 @@ public class ShiftsControllerDietaryGateTests
 
         _controller = new ShiftsController(
             _shiftMgmt,
+            Substitute.For<IBurnSettingsService>(),
             _signupService,
             _volunteerTrackingService,
             _shiftView,
