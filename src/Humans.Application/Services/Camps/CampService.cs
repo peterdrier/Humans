@@ -1,3 +1,4 @@
+using System.Transactions;
 using Humans.Application.DTOs;
 using Humans.Application.Extensions;
 using Humans.Application.Helpers;
@@ -743,25 +744,43 @@ public sealed class CampService : ICampService, ICampRoleCampAccess, IUserDataCo
         // polygon history keyed on CampSeasonId; the Restrict FK that used to make the
         // database refuse this delete was dropped by nobodies-collective/Humans#992, so
         // the Camps section now clears them through the owning section's service.
+        //
+        // Both writes share one ambient transaction (the TeamService.TryAddMemberWithOutboxAsync
+        // shape) so a failure in either does not leave a live camp with its polygon history
+        // already deleted. It does not close the concurrent-insert window — a SaveCampPolygonAsync
+        // landing between the cleanup and the commit still orphans a row — which is the narrowed
+        // trade recorded in docs/plans/2026-08-07-fk-cut-inventory.md.
         var seasonIds = camp.Seasons.Select(s => s.Id).ToList();
-        if (seasonIds.Count > 0)
+        IReadOnlyList<string>? deletedImagePaths;
+
+        using (var scope = new TransactionScope(
+            TransactionScopeOption.Required,
+            new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },
+            TransactionScopeAsyncFlowOption.Enabled))
         {
-            var removed = await _cityPlanningService.Value
-                .DeleteCampPolygonsForSeasonsAsync(seasonIds, cancellationToken);
-            if (removed > 0)
+            if (seasonIds.Count > 0)
             {
-                _logger.LogInformation(
-                    "Deleted {Rows} city-planning polygon/history rows for {Seasons} seasons of camp {CampId}",
-                    removed, seasonIds.Count, campId);
+                var removed = await _cityPlanningService.Value
+                    .DeleteCampPolygonsForSeasonsAsync(seasonIds, cancellationToken);
+                if (removed > 0)
+                {
+                    _logger.LogInformation(
+                        "Deleted {Rows} city-planning polygon/history rows for {Seasons} seasons of camp {CampId}",
+                        removed, seasonIds.Count, campId);
+                }
             }
+
+            deletedImagePaths = await _repo.DeleteCampAsync(campId, cancellationToken);
+            if (deletedImagePaths is null)
+            {
+                throw new InvalidOperationException("Camp not found.");
+            }
+
+            scope.Complete();
         }
 
-        var deletedImagePaths = await _repo.DeleteCampAsync(campId, cancellationToken);
-        if (deletedImagePaths is null)
-        {
-            throw new InvalidOperationException("Camp not found.");
-        }
-
+        // Outside the transaction: file deletes cannot be rolled back, and a failure here
+        // must not undo the DB work.
         foreach (var path in deletedImagePaths)
         {
             try

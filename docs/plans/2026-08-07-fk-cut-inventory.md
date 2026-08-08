@@ -28,6 +28,18 @@ and are not this document's subject.
 >   for the 42 `User`-targeting actions, neither of which is reachable outside the
 >   dev-dashboard reset today, plus the both-doors delete guard from *Follow-up worth filing*.
 >   See nobodies-collective/Humans#1009.
+>
+> **The migration is one-way in practice, and that follows from the `audit_log.ActorUserId`
+> decision.** `Down()` re-adds all 54 constraints, and Postgres validates existing rows when it
+> does. Once the OAuth `CrossUserBlocked` path has deleted an actor whose `audit_log` row
+> survives — exactly the orphan accepted above — `AddForeignKey` on
+> `FK_audit_log_users_ActorUserId` fails and `Down()` cannot complete. Nulling the orphans first
+> is barred twice: it is a data migration ([[no-data-backfills]]), and `prevent_audit_log_update`
+> rejects the `UPDATE` it would need. This costs nothing operationally, because prod rollback is
+> the pre-deploy `pg_dump` snapshot, not `Down()` —
+> [`database-restore-runbook.md`](../database-restore-runbook.md) §5, and its line *"schema
+> changes do not roll back with the image."* `Down()` stays correct for a clean database, which
+> is what CI and local use it for. Recorded rather than fixed.
 
 ---
 
