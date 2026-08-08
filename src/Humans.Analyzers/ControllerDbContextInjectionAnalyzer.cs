@@ -41,7 +41,7 @@ public sealed class ControllerDbContextInjectionAnalyzer : DiagnosticAnalyzer
 
     private static void OnCompilationStart(CompilationStartAnalysisContext context)
     {
-        if (!string.Equals(context.Compilation.Assembly.Name, AssemblyScope.Web, System.StringComparison.Ordinal))
+        if (!AssemblyScope.IsLayerOrSection(context.Compilation.Assembly, AssemblyScope.Web))
             return;
 
         // Since the per-section split (nobodies-collective/Humans#858) the persistence

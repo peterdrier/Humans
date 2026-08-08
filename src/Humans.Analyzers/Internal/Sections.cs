@@ -34,6 +34,38 @@ internal static class Sections
     }
 
     /// <summary>
+    /// The section a type belongs to: its namespace segment under
+    /// <paramref name="namespacePrefix"/>, or — for a type in a section project
+    /// (nobodies-collective/Humans#866) — the name on its assembly's
+    /// <c>[Section("…")]</c>.
+    /// </summary>
+    /// <remarks>
+    /// A section's own types live under <c>Humans.&lt;Section&gt;.*</c>, not under the
+    /// Base prefixes, so namespace resolution alone returns null for every one of them —
+    /// and a section-aware analyzer that exits on null stops inspecting the section
+    /// entirely.
+    /// </remarks>
+    public static string? Of(INamedTypeSymbol type, string namespacePrefix, INamedTypeSymbol? sectionAttr) =>
+        FromNamespace(type, namespacePrefix) ?? FromAssembly(type.ContainingAssembly, sectionAttr);
+
+    /// <summary>The section name on an assembly's <c>[Section("…")]</c>, if it has one.</summary>
+    public static string? FromAssembly(IAssemblySymbol? assembly, INamedTypeSymbol? sectionAttr)
+    {
+        if (sectionAttr is null)
+            return null;
+
+        foreach (var attr in assembly?.GetAttributes() ?? default)
+        {
+            if (!SymbolEqualityComparer.Default.Equals(attr.AttributeClass, sectionAttr))
+                continue;
+            if (attr.ConstructorArguments.Length == 0)
+                continue;
+            return Fold(attr.ConstructorArguments[0].Value as string);
+        }
+        return null;
+    }
+
+    /// <summary>
     /// Mirrors <c>ServiceBoundaryArchitectureTests.ServiceSection</c>: the
     /// Users + Profiles ownership merger means <c>Users</c>, <c>Profile</c>,
     /// and <c>Profiles</c> all resolve to the unified <c>"Humans"</c> section,

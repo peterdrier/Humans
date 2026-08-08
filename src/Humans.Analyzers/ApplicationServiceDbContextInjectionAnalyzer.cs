@@ -65,7 +65,7 @@ public sealed class ApplicationServiceDbContextInjectionAnalyzer : DiagnosticAna
 
     private static void OnCompilationStart(CompilationStartAnalysisContext context)
     {
-        if (!string.Equals(context.Compilation.Assembly.Name, AssemblyScope.Infrastructure, StringComparison.Ordinal))
+        if (!AssemblyScope.IsLayerOrSection(context.Compilation.Assembly, AssemblyScope.Infrastructure))
             return;
 
         // Since the per-section split (nobodies-collective/Humans#858) the persistence

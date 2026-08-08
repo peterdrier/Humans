@@ -89,7 +89,7 @@ public sealed class ControllerBusinessLogicAnalyzer : DiagnosticAnalyzer
 
     private static void OnCompilationStart(CompilationStartAnalysisContext context)
     {
-        if (!string.Equals(context.Compilation.Assembly.Name, AssemblyScope.Web, System.StringComparison.Ordinal))
+        if (!AssemblyScope.IsLayerOrSection(context.Compilation.Assembly, AssemblyScope.Web))
             return;
 
         var grandfatheredAttr = GrandfatheredCheck.Resolve(context.Compilation);

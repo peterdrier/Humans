@@ -87,7 +87,7 @@ public sealed class OrchestratorRepositoryInjectionAnalyzer : DiagnosticAnalyzer
 
     private static void OnCompilationStart(CompilationStartAnalysisContext context)
     {
-        if (!string.Equals(context.Compilation.Assembly.Name, AssemblyScope.Application, System.StringComparison.Ordinal))
+        if (!AssemblyScope.IsLayerOrSection(context.Compilation.Assembly, AssemblyScope.Application))
             return;
 
         var orchestratorMarker = context.Compilation.GetTypeByMetadataName(OrchestratorMarkerFullName);

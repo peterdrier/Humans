@@ -355,7 +355,7 @@ public class ServiceTeamOrdersTests
 
         await _repo.Received(1).DeleteOrderAsync(orderId, Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(
-            AuditAction.StoreOrderDeleted, nameof(Order), orderId,
+            AuditAction.StoreOrderDeleted, AuditEntityTypes.Order, orderId,
             Arg.Any<string>(), actor,
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }

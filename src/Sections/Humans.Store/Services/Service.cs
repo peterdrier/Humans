@@ -22,7 +22,7 @@ internal sealed class Service(
     IClock clock,
     IShiftManagementService shifts,
     IStripeService stripeService,
-    ILogger<Service> logger)
+    ILogger<Service> logger) : IApplicationService
 {
     public Task<IndexData> GetIndexDataAsync(Guid userId, CancellationToken ct = default) =>
         BuildIndexDataAsync(userId, allCounterparties: false, ct);
@@ -174,7 +174,7 @@ internal sealed class Service(
         foreach (var productId in productIds)
         {
             var entries = await audit.GetFilteredEntriesAsync(
-                entityType: nameof(Product),
+                entityType: AuditEntityTypes.Product,
                 entityId: productId,
                 actions: [AuditAction.StoreProductPriceChanged],
                 limit: 50,
@@ -219,7 +219,7 @@ internal sealed class Service(
         };
         await repo.AddProductAsync(product, ct);
         await audit.LogAsync(
-            AuditAction.StoreProductCreated, nameof(Product), product.Id,
+            AuditAction.StoreProductCreated, AuditEntityTypes.Product, product.Id,
             $"Created store product '{product.Name}' for year {product.Year}",
             actorUserId);
         return product.Id;
@@ -246,14 +246,14 @@ internal sealed class Service(
 
         await repo.UpdateProductAsync(product, ct);
         await audit.LogAsync(
-            AuditAction.StoreProductUpdated, nameof(Product), product.Id,
+            AuditAction.StoreProductUpdated, AuditEntityTypes.Product, product.Id,
             $"Updated store product '{product.Name}'",
             actorUserId);
 
         // Dedicated, queryable price-change event for the order-page audit view (#816).
         if (oldPrice != draft.UnitPriceEur)
             await audit.LogAsync(
-                AuditAction.StoreProductPriceChanged, nameof(Product), product.Id,
+                AuditAction.StoreProductPriceChanged, AuditEntityTypes.Product, product.Id,
                 $"Price for {product.Name} changed from {oldPrice:0.00} to {draft.UnitPriceEur:0.00}",
                 actorUserId);
     }
@@ -311,7 +311,7 @@ internal sealed class Service(
         await repo.UpdateProductAsync(product, ct);
 
         await audit.LogAsync(
-            AuditAction.StoreProductDeactivated, nameof(Product), productId,
+            AuditAction.StoreProductDeactivated, AuditEntityTypes.Product, productId,
             $"Deactivated store product '{product.Name}'",
             actorUserId);
     }
@@ -372,7 +372,7 @@ internal sealed class Service(
         };
         await repo.AddOrderAsync(order, ct);
         await audit.LogAsync(
-            AuditAction.StoreOrderCreated, nameof(Order), order.Id,
+            AuditAction.StoreOrderCreated, AuditEntityTypes.Order, order.Id,
             $"Created store order for camp season {campSeasonId}" +
             (string.IsNullOrWhiteSpace(label) ? string.Empty : $" — '{label}'"),
             actorUserId);
@@ -392,7 +392,7 @@ internal sealed class Service(
 
         await repo.DeleteOrderAsync(orderId, ct);
         await audit.LogAsync(
-            AuditAction.StoreOrderDeleted, nameof(Order), orderId,
+            AuditAction.StoreOrderDeleted, AuditEntityTypes.Order, orderId,
             $"Deleted store order {orderId}",
             actorUserId);
     }
@@ -424,7 +424,7 @@ internal sealed class Service(
         };
         await repo.AddOrderAsync(order, ct);
         await audit.LogAsync(
-            AuditAction.StoreOrderCreated, nameof(Order), order.Id,
+            AuditAction.StoreOrderCreated, AuditEntityTypes.Order, order.Id,
             $"Created store order for team '{team.Name}' ({year})",
             actorUserId);
         return order.Id;
@@ -492,10 +492,10 @@ internal sealed class Service(
         }
 
         await audit.LogAsync(
-            AuditAction.StoreLineAdded, nameof(OrderLine), line.Id,
+            AuditAction.StoreLineAdded, AuditEntityTypes.OrderLine, line.Id,
             $"Added {qty} × '{product.Name}' to order {order.Id}"
                 + (deadlinePassed ? $" (past order deadline {product.OrderableUntil})" : string.Empty),
-            actorUserId, order.Id, nameof(Order));
+            actorUserId, order.Id, AuditEntityTypes.Order);
     }
 
     public async Task<MutationResult> AddLineWithResultAsync(
@@ -540,10 +540,10 @@ internal sealed class Service(
 
         await repo.RemoveLineAsync(lineId, ct);
         await audit.LogAsync(
-            AuditAction.StoreLineRemoved, nameof(OrderLine), lineId,
+            AuditAction.StoreLineRemoved, AuditEntityTypes.OrderLine, lineId,
             $"Removed line {lineId} from order {ctx.OrderId}"
                 + (deadlinePassed ? $" (past order deadline {ctx.ProductOrderableUntil})" : string.Empty),
-            actorUserId, ctx.OrderId, nameof(Order));
+            actorUserId, ctx.OrderId, AuditEntityTypes.Order);
     }
 
     public async Task<MutationResult> RemoveLineWithResultAsync(
@@ -580,7 +580,7 @@ internal sealed class Service(
 
         await repo.UpdateOrderAsync(order, ct);
         await audit.LogAsync(
-            AuditAction.StoreCounterpartyEdited, nameof(Order), orderId,
+            AuditAction.StoreCounterpartyEdited, AuditEntityTypes.Order, orderId,
             $"Updated counterparty on order {orderId}",
             actorUserId);
     }
@@ -685,10 +685,10 @@ internal sealed class Service(
             ? "Pending Stripe payment (mandate captured, not yet cleared)"
             : "Recorded Stripe payment";
         await audit.LogAsync(
-            AuditAction.StorePaymentRecorded, nameof(Payment), payment.Id,
+            AuditAction.StorePaymentRecorded, AuditEntityTypes.Payment, payment.Id,
             $"{settlement} of EUR {amountEur:0.00} on order {orderId} (PI {paymentIntentId})",
             "StripeWebhook",
-            orderId, nameof(Order));
+            orderId, AuditEntityTypes.Order);
     }
 
     public async Task<StripeReconciliationReport> GetStripeReconciliationAsync(CancellationToken ct = default)
@@ -940,10 +940,10 @@ internal sealed class Service(
         var action = target == PaymentStatus.Paid ? AuditAction.StorePaymentSettled : AuditAction.StorePaymentFailed;
         var verb = target == PaymentStatus.Paid ? "settled" : "failed";
         await audit.LogAsync(
-            action, nameof(Payment), existing.Id,
+            action, AuditEntityTypes.Payment, existing.Id,
             $"Stripe payment of EUR {existing.AmountEur:0.00} {verb} on order {existing.OrderId} (PI {paymentIntentId})",
             "StripeWebhook",
-            existing.OrderId, nameof(Order));
+            existing.OrderId, AuditEntityTypes.Order);
     }
 
     /// <summary>
@@ -968,10 +968,10 @@ internal sealed class Service(
 
         await repo.DeletePaymentAsync(existing.Id, ct);
         await audit.LogAsync(
-            AuditAction.StorePaymentExpired, nameof(Payment), existing.Id,
+            AuditAction.StorePaymentExpired, AuditEntityTypes.Payment, existing.Id,
             $"Removed orphan pending Stripe payment of EUR {existing.AmountEur:0.00} on order {existing.OrderId} after session expiry (PI {paymentIntentId})",
             "StripeWebhook",
-            existing.OrderId, nameof(Order));
+            existing.OrderId, AuditEntityTypes.Order);
     }
 
     /// <summary>

@@ -31,6 +31,19 @@ internal static class AssemblyScope
         assembly.Name is Application or Web or Infrastructure || IsSection(assembly);
 
     /// <summary>
+    /// True when the compilation is <paramref name="layer"/>, or any section assembly.
+    /// </summary>
+    /// <remarks>
+    /// A section holds what used to be this vertical's Application, Web and Infrastructure
+    /// code in one assembly, so it belongs to all three layer scopes at once. Analyzers
+    /// that gated on a bare <c>assembly.Name == layer</c> comparison went silent inside a
+    /// section the moment it moved; this is the replacement for that comparison wherever
+    /// the rule is still live within a section.
+    /// </remarks>
+    public static bool IsLayerOrSection(IAssemblySymbol assembly, string layer) =>
+        string.Equals(assembly.Name, layer, System.StringComparison.Ordinal) || IsSection(assembly);
+
+    /// <summary>
     /// True for a section assembly — one carrying <c>[assembly: Section("…")]</c>.
     /// A single metadata read, where scanning for <c>ISection</c> implementations
     /// would cost a full declared-type walk per compilation.

@@ -19,6 +19,7 @@ public sealed class WebRepositoryInjectionAnalyzer : DiagnosticAnalyzer
 {
     public const string DiagnosticId = "HUM0014";
 
+    private const string ControllerBaseFullName = "Microsoft.AspNetCore.Mvc.ControllerBase";
     private const string IRepositoryFullName = "Humans.Application.Interfaces.Repositories.IRepository";
 
     private static readonly LocalizableString Title =
@@ -51,7 +52,7 @@ public sealed class WebRepositoryInjectionAnalyzer : DiagnosticAnalyzer
 
     private static void OnCompilationStart(CompilationStartAnalysisContext context)
     {
-        if (!string.Equals(context.Compilation.Assembly.Name, AssemblyScope.Web, System.StringComparison.Ordinal))
+        if (!AssemblyScope.IsLayerOrSection(context.Compilation.Assembly, AssemblyScope.Web))
             return;
 
         var repositoryMarker = context.Compilation.GetTypeByMetadataName(IRepositoryFullName);
@@ -60,18 +61,29 @@ public sealed class WebRepositoryInjectionAnalyzer : DiagnosticAnalyzer
 
         var grandfatheredAttr = GrandfatheredCheck.Resolve(context.Compilation);
 
+        // In Humans.Web every class is Web-layer, so assembly identity is the whole test.
+        // A section assembly holds all three layers at once (nobodies-collective/Humans#866),
+        // so there the subject has to be identified structurally — otherwise the section's
+        // own service, whose entire job is to hold the repository, trips the rule.
+        var controllersOnly = !string.Equals(
+            context.Compilation.Assembly.Name, AssemblyScope.Web, System.StringComparison.Ordinal);
+
         context.RegisterSymbolAction(
-            c => AnalyzeNamedType(c, repositoryMarker, grandfatheredAttr),
+            c => AnalyzeNamedType(c, repositoryMarker, grandfatheredAttr, controllersOnly),
             SymbolKind.NamedType);
     }
 
     private static void AnalyzeNamedType(
         SymbolAnalysisContext context,
         INamedTypeSymbol repositoryMarker,
-        INamedTypeSymbol? grandfatheredAttr)
+        INamedTypeSymbol? grandfatheredAttr,
+        bool controllersOnly)
     {
         var type = (INamedTypeSymbol)context.Symbol;
         if (type.TypeKind != TypeKind.Class || type.IsAbstract)
+            return;
+
+        if (controllersOnly && !type.InheritsFromOrEquals(ControllerBaseFullName))
             return;
 
         // The grandfather decision is made on the containing class, not the

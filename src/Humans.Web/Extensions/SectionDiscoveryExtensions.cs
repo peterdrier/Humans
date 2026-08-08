@@ -53,6 +53,7 @@ public static class SectionDiscoveryExtensions
                         && t.Name.EndsWith("Resource", StringComparison.Ordinal))
             .OrderBy(t => t.Name, StringComparer.Ordinal)];
 
+    /// <summary>Every section's entry point, paired with its section name.</summary>
     /// <remarks>
     /// Named by the assembly's <c>[Section("…")]</c> rather than by the type. The types
     /// are distinct — <c>Humans.Store.Section</c>, <c>Humans.Agent.Section</c> — but the
@@ -76,7 +77,15 @@ public static class SectionDiscoveryExtensions
     /// <c>[assembly: Section("…")]</c> — the same marker the analyzers key on, so a
     /// project cannot be a section for one and not the other.
     /// </summary>
-    private static IReadOnlyList<Assembly> SectionAssemblies()
+    /// <remarks>
+    /// Walks <see cref="DependencyContext"/>, not <c>GetReferencedAssemblies()</c>. A
+    /// section is referenced by Shell only as a ProjectReference — no Shell code names a
+    /// type in it, by design — so the compiler elides the assembly reference and
+    /// <c>GetReferencedAssemblies()</c> returns nothing. Public so tests that sweep the
+    /// app's controllers use the same discovery this does; a sweep with its own copy is a
+    /// sweep that can silently stop seeing sections.
+    /// </remarks>
+    public static IReadOnlyList<Assembly> SectionAssemblies()
     {
         var candidates = DependencyContext.Default?.RuntimeLibraries
             .Where(l => l.Name.StartsWith("Humans.", StringComparison.Ordinal))
