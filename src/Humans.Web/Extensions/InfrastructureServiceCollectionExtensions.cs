@@ -46,7 +46,6 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddEventsSection();
         services.AddCityPlanningSection(configuration);
         services.AddBudgetSection();
-        services.AddStoreSection();
         services.AddShiftsSection();
         services.AddEarlyEntrySection();
         services.AddCalendarSection();
@@ -69,6 +68,11 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddHoldedSection(configuration);
         services.AddMailerSection(configuration);
         services.AddExpensesSection(configuration);
+
+        // Sections that have moved into their own project (nobodies-collective/Humans#866)
+        // register themselves via ISection and are discovered, not named. The roll-call
+        // above loses a line per section as the migration proceeds.
+        services.AddDiscoveredSections(configuration);
 
         return services;
     }

@@ -2,6 +2,7 @@ using Humans.Application;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Enums;
+using Humans.UI.Controllers;
 using Humans.Web.Authorization.Requirements;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

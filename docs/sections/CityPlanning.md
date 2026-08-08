@@ -83,7 +83,7 @@ Append-only per design-rules §12. The repository exposes no `UpdateAsync` / `Re
 | ModifiedAt | Instant | When this version was saved |
 | Note | string (512) | "Saved" or "Restored from {timestamp}" |
 
-Cross-domain User navs `CampPolygon.LastModifiedByUser` and `CampPolygonHistory.ModifiedByUser` have been stripped from the entities (nobodies-collective/Humans#934); the FK scalars remain. The intra-section `CampSeason` navs (`CampPolygon.CampSeason`, `CampPolygonHistory.CampSeason`) remain declared. New code must use `ICampService` / `IUserService` instead of cross-domain navs.
+Cross-domain User navs `CampPolygon.LastModifiedByUser` and `CampPolygonHistory.ModifiedByUser` have been stripped from the entities (nobodies-collective/Humans#934); the FK scalars remain. The intra-section `CampSeason` navs (`CampPolygon.CampSeason`, `CampPolygonHistory.CampSeason`) have since been stripped too — both configurations now use `HasOne<CampSeason>()` with no back-reference. New code must use `ICampService` / `IUserService` instead of navs.
 
 ## Routing
 
@@ -174,7 +174,7 @@ Broadcasts `CampPolygonUpdated(campSeasonId, geoJson, areaSqm, soundZone, campNa
 - **Teams:** `ITeamService` — membership in the city-planning team (slug: `city-planning`) grants admin access.
 - **Profiles:** `IProfileService` — display data for polygon edit attribution.
 - **Containers:** `ContainerController` and `ContainerAuthorizationHandler` inject `ICityPlanningServiceRead` (placement phase gate and city-planning team check). This is the correct read-only cross-section surface — not `ICityPlanningService`.
-- **Users/Identity:** `IUserService.GetByIdsAsync` — `LastModifiedByUser` / `ModifiedByUser` display names (replaces prior cross-domain `.Include`).
+- **Users/Identity:** `IUserServiceRead.GetUserInfosAsync` — `LastModifiedByUser` / `ModifiedByUser` display names (replaces prior cross-domain `.Include`).
 
 ## Architecture
 
@@ -190,7 +190,7 @@ Broadcasts `CampPolygonUpdated(campSeasonId, geoJson, areaSqm, soundZone, campNa
 - **Upload pipeline.** `UpdateLimitZoneFromUploadAsync` / `UpdateOfficialZonesFromUploadAsync` accept `IFormFile?` directly (file read, size limit, and JSON validation moved into the service) and return `GeoJsonUploadResult`. `UpdatePlacementDatesAsync` now accepts raw `string?` date inputs, parses them internally, and returns `PlacementDateUpdateResult` — the controller no longer owns the `LocalDateTime` parse logic or `DateFormattingExtensions`.
 - **`GetSettingsByYearAsync` removed** from `ICityPlanningRepository`; all settings access routes through `GetOrCreateSettingsAsync` (creates the row with `IsPlacementOpen = false` when absent).
 - **`UpdatePlacementDatesAsync` is now `private`** inside `CityPlanningService`; it is no longer part of `ICityPlanningService`.
-- **Cross-section reads** route through `ICampServiceRead`, `ITeamService`, `IProfileService`, and `IUserService`. The previous cross-domain `.Include(h => h.ModifiedByUser)` on `CampPolygonHistories` is replaced by a batched `IUserService.GetByIdsAsync` lookup at the service layer.
+- **Cross-section reads** route through `ICampServiceRead`, `ITeamService`, `IProfileService`, and `IUserService`. The previous cross-domain `.Include(h => h.ModifiedByUser)` on `CampPolygonHistories` is replaced by a batched `IUserServiceRead.GetUserInfosAsync` lookup at the service layer.
 - **Architecture test** — `tests/Humans.Application.Tests/Architecture/CityPlanningArchitectureTests.cs` pins the non-decorator shape and the append-only repository surface.
 - **Per-map screens, not generic layers.** Issue #521 originally proposed a generic `MapFeature` entity with toggleable map layers; the implementation pivoted to dedicated per-map screens (overview / barrio placement / container placement) after thread discussion — see #521 for the rationale.
 

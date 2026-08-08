@@ -2,7 +2,7 @@
   src/Humans.Web/Views/Shifts/**
   src/Humans.Web/Views/ShiftAdmin/**
   src/Humans.Web/Views/ShiftDashboard/**
-  src/Humans.Web/Views/Profile/Me/ShiftInfo.cshtml
+  src/Humans.Web/Views/Profile/ShiftInfo.cshtml
   src/Humans.Web/Controllers/ShiftsController.cs
   src/Humans.Web/Controllers/ShiftAdminController.cs
   src/Humans.Web/Controllers/ShiftDashboardController.cs

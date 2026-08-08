@@ -3,7 +3,7 @@
   src/Humans.Infrastructure/Services/Auth/**
   src/Humans.Web/Controllers/AccountController.cs
   src/Humans.Web/Views/Account/**
-  src/Humans.Application/Services/Profile/UserEmailService.cs
+  src/Humans.Application/Services/Profiles/UserEmailService.cs
   src/Humans.Domain/Entities/User.cs
   src/Humans.Domain/Entities/UserEmail.cs
 -->

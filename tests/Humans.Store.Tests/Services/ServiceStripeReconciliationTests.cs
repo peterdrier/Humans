@@ -1,0 +1,240 @@
+using AwesomeAssertions;
+using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.AuditLog;
+using Humans.Application.Interfaces.Camps;
+using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Interfaces.Shifts;
+using Humans.Application.Interfaces.Teams;
+using Humans.Store.Data;
+using Humans.Store.Domain;
+using Humans.Store.Services;
+using Humans.Store.Services.Dtos;
+using Humans.Domain.Entities;
+using Humans.Domain.Enums;
+using Microsoft.Extensions.Logging.Abstractions;
+using NodaTime;
+using NodaTime.Testing;
+using NSubstitute;
+
+namespace Humans.Store.Tests.Services;
+
+public class ServiceStripeReconciliationTests
+{
+    private readonly IStoreRepository _repo = Substitute.For<IStoreRepository>();
+    private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
+    private readonly ICampServiceRead _campService = Substitute.For<ICampServiceRead>();
+    private readonly ITeamServiceRead _teams = Substitute.For<ITeamServiceRead>();
+    private readonly IShiftManagementService _shifts = Substitute.For<IShiftManagementService>();
+    private readonly IStripeService _stripe = Substitute.For<IStripeService>();
+    private readonly FakeClock _clock = new(Instant.FromUtc(2026, 6, 4, 12, 0));
+    private readonly Service _service;
+
+    public ServiceStripeReconciliationTests()
+    {
+        _shifts.GetActiveAsync().Returns(new EventSettings { Year = 2026, TimeZoneId = "Europe/Madrid" });
+        // Mapping-chain stubs so GetOrderAsync resolves without throwing.
+        _repo.GetAllProductsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(new List<Product>());
+        _repo.GetProductNamesByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, string>());
+        _service = new Service(_repo, _audit, _campService, _teams, _clock, _shifts, _stripe, NullLogger<Service>.Instance);
+    }
+
+    private static Order CampOrder(Guid id) => new()
+    {
+        Id = id,
+        CampSeasonId = Guid.NewGuid(),
+        TeamId = null,
+        Year = 2026,
+        State = OrderState.Open,
+        Lines = [],
+        Payments = [],
+    };
+
+    private static Order TeamOrder(Guid id) => new()
+    {
+        Id = id,
+        CampSeasonId = null,
+        TeamId = Guid.NewGuid(),
+        Year = 2026,
+        State = OrderState.Open,
+        Lines = [],
+        Payments = [],
+    };
+
+    private static StoreCheckoutSessionData Session(
+        string sessionId, Guid? orderId, string? pi, decimal? amount, string status) =>
+        new(sessionId, orderId, pi, amount, status, Instant.FromUtc(2026, 6, 1, 9, 0));
+
+    [HumansFact]
+    public async Task GetStripeReconciliationAsync_classifies_each_session()
+    {
+        var recordedOrder = Guid.NewGuid();
+        var missingOrder = Guid.NewGuid();
+        var teamOrder = Guid.NewGuid();
+
+        _stripe.ListStoreCheckoutSessionsAsync(Arg.Any<CancellationToken>()).Returns(new List<StoreCheckoutSessionData>
+        {
+            Session("cs_recorded", recordedOrder, "pi_recorded", 100m, "paid"),
+            Session("cs_missing", missingOrder, "pi_missing", 1800m, "paid"),
+            Session("cs_team", teamOrder, "pi_team", 50m, "paid"),
+            Session("cs_nometa", null, "pi_nometa", 75m, "paid"),
+            Session("cs_unpaid", missingOrder, null, 200m, "unpaid"),
+        });
+        _repo.GetRecordedStripePaymentsAsync(Arg.Any<CancellationToken>()).Returns(new List<RecordedStripePayment>
+        {
+            new("pi_recorded", recordedOrder, 100m, Instant.FromUtc(2026, 5, 1, 0, 0), PaymentStatus.Paid),
+        });
+        _repo.GetOrderWithLinesAndPaymentsAsync(recordedOrder, Arg.Any<CancellationToken>()).Returns(CampOrder(recordedOrder));
+        _repo.GetOrderWithLinesAndPaymentsAsync(missingOrder, Arg.Any<CancellationToken>()).Returns(CampOrder(missingOrder));
+        _repo.GetOrderWithLinesAndPaymentsAsync(teamOrder, Arg.Any<CancellationToken>()).Returns(TeamOrder(teamOrder));
+
+        var report = await _service.GetStripeReconciliationAsync(Xunit.TestContext.Current.CancellationToken);
+
+        report.Rows.Should().Contain(r => r.SessionId == "cs_recorded" && r.Status == StripeReconciliationStatus.Recorded);
+        report.Rows.Should().Contain(r => r.SessionId == "cs_missing" && r.Status == StripeReconciliationStatus.Missing);
+        report.Rows.Should().Contain(r => r.SessionId == "cs_team" && r.Status == StripeReconciliationStatus.Unmatched);
+        report.Rows.Should().Contain(r => r.SessionId == "cs_nometa" && r.Status == StripeReconciliationStatus.Unmatched);
+        report.Rows.Should().Contain(r => r.SessionId == "cs_unpaid" && r.Status == StripeReconciliationStatus.Unpaid);
+        report.MissingCount.Should().Be(1);
+        report.MissingTotalEur.Should().Be(1800m);
+    }
+
+    [HumansFact]
+    public async Task GetStripeReconciliationAsync_classifies_pending_local_row_as_recorded_pending()
+    {
+        var order = Guid.NewGuid();
+        // Stripe shows the session as paid, but the local row is still Pending (the
+        // async_payment_succeeded webhook hasn't landed) — must not present as plain Recorded.
+        _stripe.ListStoreCheckoutSessionsAsync(Arg.Any<CancellationToken>()).Returns(new List<StoreCheckoutSessionData>
+        {
+            Session("cs_pending", order, "pi_pending", 100m, "paid"),
+        });
+        _repo.GetRecordedStripePaymentsAsync(Arg.Any<CancellationToken>()).Returns(new List<RecordedStripePayment>
+        {
+            new("pi_pending", order, 100m, Instant.FromUtc(2026, 5, 1, 0, 0), PaymentStatus.Pending),
+        });
+        _repo.GetOrderWithLinesAndPaymentsAsync(order, Arg.Any<CancellationToken>()).Returns(CampOrder(order));
+
+        var report = await _service.GetStripeReconciliationAsync(Xunit.TestContext.Current.CancellationToken);
+
+        report.Rows.Should().ContainSingle()
+            .Which.Status.Should().Be(StripeReconciliationStatus.RecordedPending);
+        report.RecordedCount.Should().Be(0);
+        report.RecordedPendingCount.Should().Be(1);
+        report.MissingCount.Should().Be(0);
+    }
+
+    [HumansFact]
+    public async Task GetStripeReconciliationAsync_flags_orphan_recorded_payment_absent_from_stripe()
+    {
+        var order = Guid.NewGuid();
+        _stripe.ListStoreCheckoutSessionsAsync(Arg.Any<CancellationToken>()).Returns(new List<StoreCheckoutSessionData>());
+        _repo.GetRecordedStripePaymentsAsync(Arg.Any<CancellationToken>()).Returns(new List<RecordedStripePayment>
+        {
+            new("pi_orphan", order, 500m, Instant.FromUtc(2026, 5, 1, 0, 0), PaymentStatus.Paid),
+        });
+        _repo.GetOrderWithLinesAndPaymentsAsync(order, Arg.Any<CancellationToken>()).Returns(CampOrder(order));
+
+        var report = await _service.GetStripeReconciliationAsync(Xunit.TestContext.Current.CancellationToken);
+
+        report.Orphans.Should().ContainSingle()
+            .Which.Should().Match<StripeOrphanPayment>(o => o.PaymentIntentId == "pi_orphan" && o.AmountEur == 500m);
+        report.Rows.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task GetStripeReconciliationAsync_surfaces_health_flags()
+    {
+        _stripe.IsStoreWebhookConfigured.Returns(false);
+        _stripe.IsStoreCheckoutConfigured.Returns(true);
+        _stripe.ListStoreCheckoutSessionsAsync(Arg.Any<CancellationToken>()).Returns(new List<StoreCheckoutSessionData>());
+        _repo.GetRecordedStripePaymentsAsync(Arg.Any<CancellationToken>()).Returns(new List<RecordedStripePayment>());
+
+        var report = await _service.GetStripeReconciliationAsync(Xunit.TestContext.Current.CancellationToken);
+
+        report.WebhookConfigured.Should().BeFalse();
+        report.CheckoutConfigured.Should().BeTrue();
+        report.StripeQueried.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task GetStripeReconciliationAsync_suppresses_orphans_when_stripe_unavailable()
+    {
+        var order = Guid.NewGuid();
+        // Stripe could not be queried (key unset or missing read scope) → null, not empty list.
+        _stripe.ListStoreCheckoutSessionsAsync(Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyList<StoreCheckoutSessionData>?)null);
+        _repo.GetRecordedStripePaymentsAsync(Arg.Any<CancellationToken>()).Returns(new List<RecordedStripePayment>
+        {
+            new("pi_x", order, 500m, Instant.FromUtc(2026, 5, 1, 0, 0), PaymentStatus.Paid),
+        });
+
+        var report = await _service.GetStripeReconciliationAsync(Xunit.TestContext.Current.CancellationToken);
+
+        report.StripeQueried.Should().BeFalse();
+        report.Orphans.Should().BeEmpty(); // recorded payment is NOT false-flagged as an orphan
+        report.Rows.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task RecordMissingStripePaymentsAsync_records_only_paid_matched_unrecorded()
+    {
+        var missingOrder = Guid.NewGuid();
+        var recordedOrder = Guid.NewGuid();
+        var teamOrder = Guid.NewGuid();
+        var actor = Guid.NewGuid();
+
+        _stripe.ListStoreCheckoutSessionsAsync(Arg.Any<CancellationToken>()).Returns(new List<StoreCheckoutSessionData>
+        {
+            Session("cs_missing", missingOrder, "pi_missing", 1800m, "paid"),
+            Session("cs_recorded", recordedOrder, "pi_recorded", 100m, "paid"),  // already recorded → skip
+            Session("cs_team", teamOrder, "pi_team", 50m, "paid"),               // non-billable → skip
+            Session("cs_unpaid", missingOrder, "pi_unpaid", 200m, "unpaid"),     // not paid → skip
+        });
+        _repo.GetRecordedStripePaymentsAsync(Arg.Any<CancellationToken>()).Returns(new List<RecordedStripePayment>
+        {
+            new("pi_recorded", recordedOrder, 100m, Instant.FromUtc(2026, 5, 1, 0, 0), PaymentStatus.Paid),
+        });
+        _repo.GetOrderByIdAsync(missingOrder, Arg.Any<CancellationToken>()).Returns(CampOrder(missingOrder));
+        _repo.GetOrderByIdAsync(teamOrder, Arg.Any<CancellationToken>()).Returns(TeamOrder(teamOrder));
+
+        var result = await _service.RecordMissingStripePaymentsAsync(actor, Xunit.TestContext.Current.CancellationToken);
+
+        result.RecordedCount.Should().Be(1);
+        result.TotalEur.Should().Be(1800m);
+        await _repo.Received(1).AddPaymentAsync(
+            Arg.Is<Payment>(p =>
+                p.OrderId == missingOrder &&
+                p.StripePaymentIntentId == "pi_missing" &&
+                p.AmountEur == 1800m &&
+                p.Method == PaymentMethod.Stripe),
+            Arg.Any<CancellationToken>());
+        await _repo.DidNotReceive().AddPaymentAsync(
+            Arg.Is<Payment>(p => p.StripePaymentIntentId == "pi_team" || p.StripePaymentIntentId == "pi_unpaid" || p.StripePaymentIntentId == "pi_recorded"),
+            Arg.Any<CancellationToken>());
+        await _audit.Received(1).LogAsync(
+            AuditAction.StorePaymentsReconciled, "Store", Guid.Empty,
+            Arg.Any<string>(), actor, Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task RecordMissingStripePaymentsAsync_skips_unmatched_order_and_writes_no_audit()
+    {
+        var ghostOrder = Guid.NewGuid();
+        _stripe.ListStoreCheckoutSessionsAsync(Arg.Any<CancellationToken>()).Returns(new List<StoreCheckoutSessionData>
+        {
+            Session("cs_ghost", ghostOrder, "pi_ghost", 300m, "paid"),
+        });
+        _repo.GetRecordedStripePaymentsAsync(Arg.Any<CancellationToken>()).Returns(new List<RecordedStripePayment>());
+        _repo.GetOrderByIdAsync(ghostOrder, Arg.Any<CancellationToken>()).Returns((Order?)null); // deleted/unknown
+
+        var result = await _service.RecordMissingStripePaymentsAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        result.RecordedCount.Should().Be(0);
+        await _repo.DidNotReceive().AddPaymentAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>());
+        await _audit.DidNotReceive().LogAsync(
+            AuditAction.StorePaymentsReconciled, Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+}

@@ -11,13 +11,13 @@
   src/Humans.Domain/Entities/EventVenue.cs
   src/Humans.Domain/Enums/EventStatus.cs
   src/Humans.Domain/Enums/EventModerationActionType.cs
-  src/Humans.Infrastructure/Data/Configurations/EventConfiguration.cs
-  src/Humans.Infrastructure/Data/Configurations/EventCategoryConfiguration.cs
-  src/Humans.Infrastructure/Data/Configurations/EventFavouriteConfiguration.cs
-  src/Humans.Infrastructure/Data/Configurations/EventGuideSettingsConfiguration.cs
-  src/Humans.Infrastructure/Data/Configurations/EventModerationActionConfiguration.cs
-  src/Humans.Infrastructure/Data/Configurations/EventPreferenceConfiguration.cs
-  src/Humans.Infrastructure/Data/Configurations/EventVenueConfiguration.cs
+  src/Humans.Infrastructure/Data/Configurations/EventGuide/EventConfiguration.cs
+  src/Humans.Infrastructure/Data/Configurations/EventGuide/EventCategoryConfiguration.cs
+  src/Humans.Infrastructure/Data/Configurations/EventGuide/EventFavouriteConfiguration.cs
+  src/Humans.Infrastructure/Data/Configurations/EventGuide/EventGuideSettingsConfiguration.cs
+  src/Humans.Infrastructure/Data/Configurations/EventGuide/EventModerationActionConfiguration.cs
+  src/Humans.Infrastructure/Data/Configurations/EventGuide/EventPreferenceConfiguration.cs
+  src/Humans.Infrastructure/Data/Configurations/EventGuide/EventVenueConfiguration.cs
   src/Humans.Infrastructure/Repositories/Events/EventRepository.cs
   src/Humans.Infrastructure/Services/Events/CachingEventService.cs
   src/Humans.Web/Controllers/EventsController.cs

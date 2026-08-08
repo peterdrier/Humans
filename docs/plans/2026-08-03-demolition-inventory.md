@@ -190,12 +190,13 @@ under the Users boundary (`user_…`? keep bare? some stay `profile_` because th
 `Profile` even though the section is Users?) before any of them becomes a work item. This also
 subsumes the `user_emails` naming question already parked in the Unmapped tail.
 
-### Misfiled configuration (not a table-ownership violation, but pre-G5 drift)
-`AccountMergeRequestConfiguration.cs` lives under `Configurations/Profiles/`, but
+### Misfiled configuration (not a table-ownership violation, but pre-G5 drift) — **RESOLVED 2026-08-07 (#1178)**
+`AccountMergeRequestConfiguration.cs` lived under `Configurations/Profiles/`, but
 `design-rules.md` §8 lists `account_merge_requests` under **Users/Identity**, and the only
 repository touching `AccountMergeRequest` is `Repositories/Users/AccountMergeRepository.cs`
 (confirmed by grep — zero other repository references). The table is genuinely Users-owned; the
-configuration class is just in the wrong folder. Flag for a mechanical move at G1, not G2.
+configuration class was just in the wrong folder. Moved to `Configurations/Users/` by #1178 —
+no G1 work item remains.
 
 ---
 
@@ -225,16 +226,16 @@ configuration class is just in the wrong folder. Flag for a mechanical move at G
 None — `UserConfiguration.cs` and `AspNetUser*` configs are the *target* of every cross-section
 FK listed elsewhere in this doc, not a source. No `[Grandfathered(HUM0024)]` on any Users config.
 
-### Misfiled configuration
-`EventParticipationConfiguration.cs` lives under `Configurations/Shifts/`, and
+### Misfiled configuration — **RESOLVED 2026-08-07 (#1178, #1188)**
+`EventParticipationConfiguration.cs` lived under `Configurations/Shifts/`, and
 `VolunteerEventProfileConfiguration.cs`/`GeneralAvailabilityConfiguration.cs` etc. genuinely are
 Shifts-owned — but `event_participations` itself is read/written exclusively by
 `Repositories/Users/UserRepository.cs` (confirmed by grep — the only repository reference) and
-`design-rules.md` §8 lists it under Users/Identity. `EventParticipationConfiguration.cs:41-44`
-even wires the full two-way nav (`HasOne<User>().WithMany(u => u.EventParticipations)`) unlike
-every genuinely-Shifts-owned config in the same folder, which strip navs per §6c. Table is
-Users-owned; the configuration class is in the wrong folder (same class of drift as
-`AccountMergeRequestConfiguration` above). Flag for a mechanical move at G1.
+`design-rules.md` §8 lists it under Users/Identity. It also wired the full two-way nav
+(`HasOne<User>().WithMany(u => u.EventParticipations)`) unlike every genuinely-Shifts-owned
+config in the same folder, which strip navs per §6c. Both are fixed: #1178 moved the class to
+`Configurations/Users/`, and #1188 stripped the nav — it is the bare `HasOne<User>()` typed-FK
+form now. No G1 work item remains.
 
 ---
 
@@ -331,19 +332,21 @@ above — a G2 drop candidate once soaked, not yet tracked as a numbered issue h
 — typed `HasOne<User>()` on `UserId` → `AspNetUsers`. That is **7 Shifts cross-section
 relationships across 5 tables** (corrected 2026-08-03 — see below).
 
-`EventParticipationConfiguration.cs:41-44` — live two-way nav on `UserId` → `AspNetUsers`.
+`EventParticipationConfiguration.cs` — then a live two-way nav on `UserId` → `AspNetUsers`;
+#1188 has since stripped it to the bare `HasOne<User>()` typed-FK form.
 **Not counted as a Shifts relationship (corrected 2026-08-03, hence 7 not 8):** this file's own
 ownership determination above establishes that `event_participations` is Users-owned and the
-configuration class is merely misfiled into `Configurations/Shifts/`. A Users-owned table with a
+configuration class was merely misfiled into `Configurations/Shifts/`. A Users-owned table with a
 FK to the Users-owned `AspNetUsers` is an *internal* Users relationship, so counting it here both
-inflated Shifts and would have scheduled an FK cut that isn't a cross-section cut at all. It stays
-listed in this section only because the configuration class currently sits in the folder — the
-fix is the mechanical class move already flagged at G1.
+inflated Shifts and would have scheduled an FK cut that isn't a cross-section cut at all. It was
+listed in this section only because the configuration class sat in that folder; #1178 moved it to
+`Configurations/Users/`, so it no longer belongs to Shifts at all.
 
 Grandfathered HUM0024 on
-all six configuration classes in the folder: `GeneralAvailabilityConfiguration.cs:9-12`, `RotaConfiguration.cs:8-11`,
-`ShiftSignupConfiguration.cs:8-11`, `VolunteerEventProfileConfiguration.cs:9-12`,
-`VolunteerTagPreferenceConfiguration.cs:8-11`, `EventParticipationConfiguration.cs:8-11`.
+the configuration classes in the folder that carry it: `GeneralAvailabilityConfiguration.cs`,
+`RotaConfiguration.cs`, `ShiftSignupConfiguration.cs`, `VolunteerEventProfileConfiguration.cs`,
+`VolunteerTagPreferenceConfiguration.cs` — and, at the time of the audit,
+`EventParticipationConfiguration.cs`, which #1178 has since moved out to `Configurations/Users/`.
 
 ### Non-conforming table names
 `shift_signups`, `shift_tags`, `rota_shift_tags` conform. `rotas`
@@ -450,9 +453,9 @@ with its own doc comment "TeamService owns TeamMembers/Teams; **we** own GoogleR
 `GoogleResourceRepository.cs`, confirmed at that exact path) to GoogleIntegration. See the
 Google Integration section below for the corrected entry. Moved here to Teams: nothing — this
 was a misfiled item, not a Teams finding. The `GoogleResourceConfiguration.cs` class itself
-(directly under `Configurations/`, no section subfolder) is a misfiled-configuration case, same
-class of drift as `AccountMergeRequestConfiguration`/`EventParticipationConfiguration` above —
-flag for a mechanical move to `Configurations/GoogleIntegration/` at G1.
+(then directly under `Configurations/`, no section subfolder) was a misfiled-configuration case,
+same class of drift as `AccountMergeRequestConfiguration`/`EventParticipationConfiguration`
+above — **RESOLVED 2026-08-07 (#1178)**: it now lives in `Configurations/GoogleIntegration/`.
 
 All `team_*` tables conform.
 
@@ -597,10 +600,11 @@ not be queued as a Shifts FK cut — an earlier revision did exactly that.
 but its drop is owned by #603, so it belongs in that migration's scope rather than this
 inventory's own tagged-dead-column work.
 
-**Two misfiled EF configurations** — `AccountMergeRequestConfiguration.cs` and
+~~**Two misfiled EF configurations** — `AccountMergeRequestConfiguration.cs` and
 `EventParticipationConfiguration.cs` sit in the wrong `Configurations/<Section>/` folder relative
 to who actually owns their table. Not table-ownership violations, just cheap G1 fixes ahead of
-G5's project split.
+G5's project split.~~ **DONE 2026-08-07 (#1178)** — both moved to `Configurations/Users/`, along
+with the third case, `GoogleResourceConfiguration.cs` → `Configurations/GoogleIntegration/`.
 
 ## Unmapped / unclear
 

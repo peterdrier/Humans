@@ -3,9 +3,9 @@
   src/Humans.Domain/Entities/Application.cs
   src/Humans.Domain/Entities/ApplicationStateHistory.cs
   src/Humans.Domain/Entities/BoardVote.cs
-  src/Humans.Infrastructure/Data/Configurations/ApplicationConfiguration.cs
-  src/Humans.Infrastructure/Data/Configurations/ApplicationStateHistoryConfiguration.cs
-  src/Humans.Infrastructure/Data/Configurations/BoardVoteConfiguration.cs
+  src/Humans.Infrastructure/Data/Configurations/Governance/ApplicationConfiguration.cs
+  src/Humans.Infrastructure/Data/Configurations/Governance/ApplicationStateHistoryConfiguration.cs
+  src/Humans.Infrastructure/Data/Configurations/Governance/BoardVoteConfiguration.cs
   src/Humans.Infrastructure/Repositories/Governance/ApplicationRepository.cs
   src/Humans.Web/Controllers/GovernanceApplicationsController.cs
   src/Humans.Web/Controllers/GovernanceBoardVotingController.cs
@@ -172,7 +172,7 @@ Three controllers serve this section directly. `BoardController` composes Govern
 - **Teams:** `ISystemTeamSync` — tier approval or expiry adds/removes the human from Colaboradors/Asociados system teams.
 - **Onboarding:** Tier applications are a separate, optional path — never block Volunteer onboarding.
 - **Consent:** Consent checks are reviewed alongside (but independently of) tier applications.
-- **Users/Identity:** `IUserService.GetByIdsAsync` — display data for applicant/reviewer/voter, stitched into DTOs.
+- **Users/Identity:** `IUserServiceRead.GetUserInfosAsync` — display data for applicant/reviewer/voter, stitched into DTOs.
 - **Auth:** `IRoleAssignmentService.GetActiveUserIdsInRoleAsync` — used by `ApplicationDecisionService.GetBoardVotingDashboardAsync` to enumerate Board member IDs for vote grid headers.
 
 ## Architecture
@@ -187,7 +187,7 @@ Three controllers serve this section directly. `BoardController` composes Govern
 - `IApplicationRepository` (impl `Humans.Infrastructure/Repositories/Governance/ApplicationRepository.cs`) is the only non-test file that touches `DbContext.Applications` / `BoardVotes` / `ApplicationStateHistories`. Aggregate loads include `Application` + `ApplicationStateHistory` + `BoardVote`.
 - `FinalizeAsync(app, ct)` is the atomic approve/reject commit: application update + board-vote bulk delete in one `SaveChangesAsync`.
 - **Decorator decision — no caching decorator.** At this section's traffic level (a handful of Board-driven writes per week and a few admin reads per day) a caching layer isn't worth the complexity. The earlier store/decorator from peterdrier/Humans PR #503 was removed under issue nobodies-collective/Humans#533 once §15 (`CachingProfileService`) established the canonical shape.
-- **Cross-domain navs stripped:** `Application.User`, `Application.ReviewedByUser`, `ApplicationStateHistory.ChangedByUser`, `BoardVote.BoardMemberUser`. Display data resolves via `IUserService.GetByIdsAsync` and is stitched into DTOs (`ApplicationAdminDetailDto`, `ApplicationUserDetailDto`, `ApplicationAdminRowDto`, `ApplicationStateHistoryDto`).
+- **Cross-domain navs stripped:** `Application.User`, `Application.ReviewedByUser`, `ApplicationStateHistory.ChangedByUser`, `BoardVote.BoardMemberUser`. Display data resolves via `IUserServiceRead.GetUserInfosAsync` and is stitched into DTOs (`ApplicationAdminDetailDto`, `ApplicationUserDetailDto`, `ApplicationAdminRowDto`, `ApplicationStateHistoryDto`).
 - **Write-side invalidation** is inline in the service. `ApproveAsync` / `RejectAsync` capture voter ids via `IApplicationRepository.GetVoterIdsForApplicationAsync` **before** `FinalizeAsync` (which deletes the `BoardVote` rows), then after the write invalidate `INavBadgeCacheInvalidator`, `INotificationMeterCacheInvalidator`, and every per-voter `IVotingBadgeCacheInvalidator`. `SubmitAsync` / `WithdrawAsync` invalidate nav badge + notification meter only.
 
 ### Touch-and-clean guidance

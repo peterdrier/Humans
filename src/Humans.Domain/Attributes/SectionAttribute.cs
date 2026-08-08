@@ -15,7 +15,7 @@ namespace Humans.Domain.Attributes;
 /// that section onto the interface so the Application-layer analyzer can read
 /// it without referencing Humans.Infrastructure.
 /// </remarks>
-[AttributeUsage(AttributeTargets.Interface | AttributeTargets.Class)]
+[AttributeUsage(AttributeTargets.Assembly | AttributeTargets.Interface | AttributeTargets.Class)]
 public sealed class SectionAttribute(string name) : Attribute
 {
     public string Name { get; } = name;

@@ -1,9 +1,9 @@
 ---
 name: PR review feedback — fetch from both repos, reply per-thread, resolve when authorized
-description: When handling PR review feedback (Codex, Claude, human reviewers), fetch comments from BOTH repos via the inline-comments API, reply in each finding's own thread, resolve threads when Peter-authorized declines, never ping `@codex review` to re-trigger.
+description: When handling PR review feedback (Codex, Claude, human reviewers), fetch comments from BOTH repos via the inline-comments API, reply in each finding's own thread, resolve threads when Peter-authorized declines, react 👍/👎 on every Codex finding, never ping `@codex review` to re-trigger.
 ---
 
-When handling PR review feedback — Codex bot, Claude bot, or human inline review comments — these four rules fire together. They cover the full "find → triage → reply → close" loop.
+When handling PR review feedback — Codex bot, Claude bot, or human inline review comments — these five rules fire together. They cover the full "find → triage → reply → close" loop.
 
 ## 1. Pull comments from BOTH repos, top-level AND inline
 
@@ -54,3 +54,23 @@ After pushing fixes to a PR, **don't** post `@codex review` or `@claude please r
 When working a PR review fix-loop: push the fix → thread-reply to each finding → stop. Don't add a "please re-review" comment. The Claude bot picks up the new commit on its own; if Codex doesn't, that's intentional.
 
 **Related:** [`.github/workflows/claude-review.yml`](../../.github/workflows/claude-review.yml) — auto-review fires on `synchronize`; the prompt fetches existing thread state so re-flags don't accumulate.
+
+## 5. React 👍 / 👎 on every Codex finding
+
+Codex closes each finding with "Useful? React with 👍 / 👎." That reaction is its feedback signal — it tunes what Codex flags on later PRs. A thread reply alone doesn't reach it.
+
+```bash
+gh api -X POST repos/<owner>/<repo>/pulls/comments/<comment_id>/reactions -f content='+1'   # or '-1'
+```
+
+Note the path: `/pulls/comments/<id>/reactions`, **not** `/pulls/<N>/comments/<id>/reactions` (that's the replies path).
+
+The reaction tracks the triage verdict, one per finding, in the same step as the reply:
+
+| Verdict | Reaction |
+|---|---|
+| VALID + fix | 👍 (`+1`) |
+| INVALID — bot is factually wrong | 👎 (`-1`) |
+| WONTFIX — correct observation, deliberately not changing | 👍 (`+1`) |
+
+WONTFIX still gets 👍: the find was accurate, the decision was ours. Downvote only when Codex's claim about the code is false — otherwise the signal teaches it to stop reporting things that were right.

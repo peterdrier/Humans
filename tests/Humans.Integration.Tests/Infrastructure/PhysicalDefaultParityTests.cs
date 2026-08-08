@@ -3,6 +3,9 @@ using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Humans.Web.Extensions;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Npgsql;
 using Xunit;
@@ -28,8 +31,10 @@ namespace Humans.Integration.Tests.Infrastructure;
 /// generation is not a column default).
 /// </para>
 /// <para>
-/// Coverage spans <b>every</b> DbContext in Humans.Infrastructure, discovered
-/// by reflection: the main pile migrates its historical chain, then each
+/// Coverage spans <b>every</b> DbContext DI registers — not every one in
+/// Humans.Infrastructure, which stopped being the same set once sections began
+/// moving into their own projects (nobodies-collective/Humans#866, G5) and would
+/// have dropped a moved section silently: the main pile migrates its historical chain, then each
 /// section context runs through <see cref="SectionMigrationRunner"/> exactly
 /// as production boot does — so a scaffolded default introduced by a
 /// <em>section's own</em> migration chain fails here too, and future peels are
@@ -54,8 +59,7 @@ public sealed class PhysicalDefaultParityTests(HumansTestDatabase database)
     {
         var connectionString = await CreateDatabaseAsync("default_parity");
 
-        var contextTypes = typeof(HumansDbContext).Assembly.GetTypes()
-            .Where(t => t is { IsClass: true, IsAbstract: false } && typeof(DbContext).IsAssignableFrom(t))
+        var contextTypes = RegisteredContextTypes()
             .OrderBy(t => t == typeof(HumansDbContext) ? 0 : 1) // historical chain provisions everything first
             .ThenBy(t => t.Name, StringComparer.Ordinal)
             .ToList();
@@ -153,11 +157,32 @@ public sealed class PhysicalDefaultParityTests(HumansTestDatabase database)
         optionsBuilder.UseNpgsql(connectionString, npgsql =>
         {
             npgsql.UseNodaTime();
-            npgsql.MigrationsAssembly("Humans.Infrastructure");
+            npgsql.MigrationsAssembly(contextType.Assembly.GetName().Name!);
             if (contextType != typeof(HumansDbContext))
                 npgsql.MigrationsHistoryTable(SectionMigrationsHistory.TableFor(contextType));
         });
         return (DbContext)Activator.CreateInstance(contextType, optionsBuilder.Options)!;
+    }
+
+    /// <summary>
+    /// The authoritative context list — the same set the startup migrator consumes.
+    /// Section contexts arrive via <c>AddSectionDbContext</c>, whether that call sits
+    /// in <c>AddHumansPersistence</c> or in a moved section's <c>ISection.Register</c>.
+    /// No provider is built: the registrations are read straight off the descriptors.
+    /// </summary>
+    private static IReadOnlyList<Type> RegisteredContextTypes()
+    {
+        var services = new ServiceCollection()
+            .AddHumansPersistence(enableDeveloperDiagnostics: false)
+            .AddDiscoveredSections(new ConfigurationBuilder().Build());
+
+        return
+        [
+            typeof(HumansDbContext),
+            .. services.Select(d => d.ImplementationInstance)
+                .OfType<SectionDbContextRegistration>()
+                .Select(r => r.ContextType),
+        ];
     }
 
     /// <summary>

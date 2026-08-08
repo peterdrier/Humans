@@ -474,6 +474,11 @@ var mvcBuilder = builder.Services.AddControllersWithViews(options =>
         options.DataAnnotationLocalizerProvider = (_, factory) => factory.Create(typeof(Humans.UI.SharedResource));
     });
 
+// A section project's controllers are internal (nobodies-collective/Humans#866); MVC's
+// default provider only discovers public ones, and says nothing when it doesn't.
+mvcBuilder.ConfigureApplicationPartManager(apm =>
+    apm.FeatureProviders.Add(new SectionControllerFeatureProvider()));
+
 // DevLoginController depends on DevPersonaSeeder (non-Production only); exclude in Prod so ValidateOnBuild passes and /dev/login/* 404s cleanly.
 if (builder.Environment.IsProduction())
 {
@@ -533,7 +538,8 @@ CurrentUserEnricher.StaticAccessor = app.Services.GetRequiredService<IHttpContex
 {
     using var scope = app.Services.CreateScope();
     var localizerFactory = scope.ServiceProvider.GetRequiredService<IStringLocalizerFactory>();
-    var localizer = localizerFactory.Create(typeof(Humans.UI.SharedResource));
+    var resourceType = typeof(Humans.UI.SharedResource);
+    var localizer = localizerFactory.Create(resourceType);
     var testKey = "Dashboard_Welcome";
     var result = localizer[testKey];
 
@@ -541,11 +547,11 @@ CurrentUserEnricher.StaticAccessor = app.Services.GetRequiredService<IHttpContex
     {
         Log.Error("LOCALIZATION BROKEN: Resource key '{Key}' not found. SearchedLocation: {Location}",
             testKey, result.SearchedLocation);
-        Log.Error("SharedResource type: {TypeName}, Assembly: {Assembly}",
-            typeof(Humans.UI.SharedResource).FullName, typeof(Humans.UI.SharedResource).Assembly.GetName().Name);
+        Log.Error("Resource type: {TypeName}, Assembly: {Assembly}",
+            resourceType.FullName, resourceType.Assembly.GetName().Name);
 
         // List embedded resources for debugging
-        var assembly = typeof(Humans.UI.SharedResource).Assembly;
+        var assembly = resourceType.Assembly;
         var resourceNames = assembly.GetManifestResourceNames();
         Log.Error("Embedded resources in {Assembly}: {Resources}",
             assembly.GetName().Name, string.Join(", ", resourceNames));
@@ -569,6 +575,31 @@ CurrentUserEnricher.StaticAccessor = app.Services.GetRequiredService<IHttpContex
     else
     {
         Log.Information("Localization OK: '{Key}' => '{Value}'", testKey, result.Value);
+    }
+}
+
+// Same check for every section's own resource set (nobodies-collective/Humans#866
+// design §3). A section's .resx manifest name derives from the adjacent .cs file's
+// namespace, not its folder path, and getting that wrong is silent — every string in
+// the set renders as its raw key. Checking that the manifest the localizer will look
+// for is actually embedded needs no key-name convention and no culture, so a new
+// section adds nothing here.
+foreach (var resourceType in SectionDiscoveryExtensions.SectionResourceTypes())
+{
+    var expected = resourceType.FullName + ".resources";
+    var embedded = resourceType.Assembly.GetManifestResourceNames();
+    if (!embedded.Contains(expected, StringComparer.Ordinal))
+    {
+        Log.Error(
+            "LOCALIZATION BROKEN: {Assembly} embeds no '{Expected}'. Its .resx files must sit " +
+            "in the same folder as {TypeName}, whose namespace decides the manifest name. Found: {Embedded}",
+            resourceType.Assembly.GetName().Name, expected, resourceType.FullName,
+            string.Join(", ", embedded));
+    }
+    else
+    {
+        Log.Information("Localization OK: {Expected} embedded in {Assembly}",
+            expected, resourceType.Assembly.GetName().Name);
     }
 }
 

@@ -42,14 +42,40 @@ public class AgentSectionDocReaderTests
     [HumansFact]
     public void Every_whitelisted_section_has_a_matching_doc_file()
     {
-        var folder = Path.Combine(RatchetTestRunner.LocateRepoRoot(), "docs", "sections");
-        var stems = Directory.GetFiles(folder, "*.md").Select(Path.GetFileNameWithoutExtension).ToHashSet(StringComparer.Ordinal);
+        var root = RatchetTestRunner.LocateRepoRoot();
+        var stems = Directory
+            .GetFiles(Path.Combine(root, "docs", "sections"), "*.md")
+            // A section at G5 carries its invariants doc in its own project
+            // (nobodies-collective/Humans#866 design §7a); the reader probes both folders.
+            .Concat(Directory.GetFiles(
+                Path.Combine(root, "src", "Sections"), "*.md", SearchOption.AllDirectories))
+            .Select(Path.GetFileNameWithoutExtension)
+            .ToHashSet(StringComparer.Ordinal);
 
         // Ordinal, not OrdinalIgnoreCase: GitHub paths are case-sensitive, and the reader
         // fetches "{canonicalKey}.md" verbatim.
         MakeReader(new FakeSource()).KnownSections.Should().OnlyContain(
             key => stems.Contains(key),
-            "every whitelisted key is fetched as docs/sections/{key}.md with exact casing");
+            "every whitelisted key is fetched as {key}.md with exact casing");
+    }
+
+    /// <summary>
+    /// A section that has moved to its own project (nobodies-collective/Humans#866) no longer
+    /// has a docs/sections file; the reader must fall through to the section project rather
+    /// than swallowing the 404 and returning null, which is how the agent silently lost a
+    /// whole section's guide.
+    /// </summary>
+    [HumansFact]
+    public async Task ReadAsync_falls_back_to_the_section_project_folder()
+    {
+        var source = new FakeSource { FailFoldersWith404 = [AgentSectionDocReader.FolderPath] };
+        var reader = MakeReader(source);
+
+        var content = await reader.ReadAsync("Store", TestContext.Current.CancellationToken);
+
+        content.Should().NotBeNullOrEmpty();
+        source.LastFolder.Should().Be("src/Sections/Humans.Store/Docs");
+        source.LastStem.Should().Be("Store");
     }
 
     /// <summary>
@@ -156,6 +182,7 @@ public class AgentSectionDocReaderTests
         public string? LastFolder { get; private set; }
         public string? LastStem { get; private set; }
         public Exception? FailWith { get; set; }
+        public IReadOnlyCollection<string> FailFoldersWith404 { get; init; } = [];
 
         public Task<string> GetMarkdownAsync(string fileStem, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException("Agent reader must use the folder-parameterized overload.");
@@ -165,6 +192,8 @@ public class AgentSectionDocReaderTests
             CallCount++;
             LastFolder = folderPath;
             LastStem = fileStem;
+            if (FailFoldersWith404.Contains(folderPath, StringComparer.Ordinal))
+                throw new NotFoundException("missing", System.Net.HttpStatusCode.NotFound);
             if (FailWith is not null) throw FailWith;
             return Task.FromResult($"# {fileStem}\n\nBody.");
         }

@@ -163,10 +163,7 @@ public abstract class ServiceTestHarness : IDisposable
             Id = Guid.NewGuid(),
             TeamId = teamId,
             Team = Db.Teams.Local.Single(t => t.Id == teamId),
-#pragma warning disable CS0618 // TeamMember.User is Obsolete; tests seed nav for DB-roundtrip verification.
             UserId = userId,
-            User = Db.Users.Local.Single(u => u.Id == userId),
-#pragma warning restore CS0618
             Role = role,
             JoinedAt = Clock.GetCurrentInstant(),
             LeftAt = leftAt

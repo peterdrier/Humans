@@ -6431,8 +6431,6 @@
   <data name="Enum_SpaceSize_Sqm450" xml:space="preserve"><value>450 m²</value></data>
   <data name="Enum_SpaceSize_Sqm600" xml:space="preserve"><value>600 m²</value></data>
   <data name="Enum_SpaceSize_Sqm800" xml:space="preserve"><value>800 m²</value></data>
-  <data name="Enum_StoreOrderCounterpartyType_Camp" xml:space="preserve"><value>Camp</value></data>
-  <data name="Enum_StoreOrderCounterpartyType_Team" xml:space="preserve"><value>Équipe</value></data>
   <data name="Enum_TicketTransferStatus_Approved" xml:space="preserve"><value>Terminé</value></data>
   <data name="Enum_TicketTransferStatus_Cancelled" xml:space="preserve"><value>Annulé</value></data>
   <data name="Enum_TicketTransferStatus_Pending" xml:space="preserve"><value>En attente de révision</value></data>
@@ -6662,29 +6660,6 @@
   <data name="Search_GlobalPlaceholder" xml:space="preserve"><value>Rechercher des humans, équipes, camps, quarts…</value></data>
   <data name="Search_GlobalPlaceholderEvents" xml:space="preserve"><value>Rechercher des humans, équipes, camps, quarts, événements…</value></data>
   <data name="Search_GlobalTitle" xml:space="preserve"><value>Recherche</value></data>
-  <data name="Store_AdminCatalog" xml:space="preserve"><value>Catalogue</value></data>
-  <data name="Store_AdminPayments" xml:space="preserve"><value>Paiements</value></data>
-  <data name="Store_AdminSummary" xml:space="preserve"><value>Résumé</value></data>
-  <data name="Store_CatalogHeading" xml:space="preserve"><value>Catalogue ({0})</value></data>
-  <data name="Store_ColBalance" xml:space="preserve"><value>Solde</value></data>
-  <data name="Store_ColDeposit" xml:space="preserve"><value>Caution</value></data>
-  <data name="Store_ColDeposits" xml:space="preserve"><value>Cautions</value></data>
-  <data name="Store_ColDescription" xml:space="preserve"><value>Description</value></data>
-  <data name="Store_ColLines" xml:space="preserve"><value>Lignes</value></data>
-  <data name="Store_ColLinesVat" xml:space="preserve"><value>Lignes + TVA</value></data>
-  <data name="Store_ColName" xml:space="preserve"><value>Nom</value></data>
-  <data name="Store_ColOrderBy" xml:space="preserve"><value>Commander avant le</value></data>
-  <data name="Store_ColState" xml:space="preserve"><value>État</value></data>
-  <data name="Store_ColUnitPrice" xml:space="preserve"><value>Prix unitaire (TVA incluse)</value></data>
-  <data name="Store_CreateOrder" xml:space="preserve"><value>Créer la commande</value></data>
-  <data name="Store_DeleteOrderConfirm" xml:space="preserve"><value>Supprimer cette commande au solde nul ? Cette action est irréversible.</value></data>
-  <data name="Store_DeleteOrderTitle" xml:space="preserve"><value>Supprimer (solde nul)</value></data>
-  <data name="Store_NoCounterpartiesAlert" xml:space="preserve"><value>Vous ne dirigez aucun camp et ne coordonnez aucun département ayant une saison active cette année. Le catalogue ci-dessous est en lecture seule.</value></data>
-  <data name="Store_NoOrders" xml:space="preserve"><value>Aucune commande pour le moment.</value></data>
-  <data name="Store_NoProducts" xml:space="preserve"><value>Aucun produit n'est actif pour {0}.</value></data>
-  <data name="Store_OpenOrder" xml:space="preserve"><value>Ouvrir</value></data>
-  <data name="Store_StartOrder" xml:space="preserve"><value>Démarrer une commande</value></data>
-  <data name="Store_Title" xml:space="preserve"><value>Boutique</value></data>
   <data name="Teams_Departments" xml:space="preserve"><value>Départements</value></data>
   <data name="Teams_HiddenTeams" xml:space="preserve"><value>Équipes masquées</value></data>
   <data name="Teams_HiddenTeamsNote" xml:space="preserve"><value>(visibles par les admins uniquement)</value></data>

@@ -716,12 +716,7 @@
     },
     "Store": {
       "paths": [
-        "src/Humans.Application/Interfaces/Store/**",
-        "src/Humans.Application/Services/Store/**",
-        "src/Humans.Domain/Entities/Store*",
-        "src/Humans.Infrastructure/Repositories/Store/**",
-        "src/Humans.Web/Controllers/Store*",
-        "src/Humans.Web/Models/ProductInputModel.cs"
+        "src/Sections/Humans.Store/**"
       ],
       "symbols": [
         "Store*",

@@ -12,7 +12,7 @@ Thin typed-`HttpClient` surface to the Holded accounting API. The current surfac
 
 - A **Purchase Document** in Holded is the org's incoming invoice/expense record. Expenses creates one per approved expense report.
 - The **API key** is bound from the `HOLDED_API_KEY` environment variable only — never `appsettings.json`. Never logged.
-- Errors are classified at the client boundary: `HoldedTransientException` (5xx, network, timeout) is retry-eligible; `HoldedPermanentException` (4xx) is not.
+- Errors are classified at the client boundary: `HoldedTransientException` (5xx, network, timeout) is retry-eligible; `HoldedPermanentException` (4xx) is not. Malformed-body normalization is **not** client-wide — see the invariant below for which three reads wrap parse failures and which methods still leak raw `JsonException` / `InvalidOperationException`.
 
 ## Data Model
 
@@ -37,6 +37,7 @@ None. Holded has no UI in v1.
 - **Holded REST API v1 only** — every path is `/api/invoicing/v1/…` or `/api/accounting/v1/…`, authenticated with the `key` header. Holded's **API v2** is not usable here (live probe, 2026-05-25): it returned `403 Forbidden` on every endpoint tried, with both `Authorization: Bearer` and the `key` header, because it requires a registered Holded developer OAuth app with scopes this integration does not have. (Distinct from "v1" elsewhere in this doc, which means the first version of the *Humans* Holded section.)
 - Currency is EUR-only. Multi-currency is out of scope.
 - 5xx and network failures throw `HoldedTransientException`. 4xx failures throw `HoldedPermanentException`. Consumers choose retry policy.
+- Parse-failure normalization covers **three** reads only — `ListPurchaseDocumentsPageAsync`, `GetContactAsync`, `ListDailyLedgerAsync` — which wrap `JsonException` / `InvalidOperationException` / `FormatException` / `OverflowException` into `HoldedPermanentException` rather than leaking a raw parse exception (nobodies-collective/Humans#1211). `GetPurchaseDocumentAsync`, `ListExpenseAccountsAsync`, `CreateExpenseAccountAsync`, and the page-level array parse in `ListContactsAsync` still leak raw parse exceptions — a caller catching only the two `Holded*Exception` types will miss those (nobodies-collective/Humans#1004). `ListContactsAsync`'s *per-contact* parse is deliberately different: it skips-and-logs the bad contact instead of throwing, so one malformed record cannot blank every creditor name (nobodies-collective/Humans#994).
 
 ## Negative Access Rules
 

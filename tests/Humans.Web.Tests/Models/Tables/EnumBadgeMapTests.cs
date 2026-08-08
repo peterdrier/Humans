@@ -17,6 +17,6 @@ public class EnumBadgeMapTests
     [HumansFact]
     public void Unmapped_enum_values_fall_back_to_secondary()
     {
-        EnumBadgeMap.For(StoreOrderCounterpartyType.Team).Should().Be("bg-secondary");
+        EnumBadgeMap.For(MembershipTier.Asociado).Should().Be("bg-secondary");
     }
 }

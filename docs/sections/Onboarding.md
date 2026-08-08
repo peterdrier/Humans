@@ -1,7 +1,7 @@
 <!-- freshness:triggers
   src/Humans.Application/Services/Onboarding/**
   src/Humans.Application/Services/HumanLifecycle/**
-  src/Humans.Application/Services/Profile/ProfileService.cs
+  src/Humans.Application/Services/Profiles/ProfileService.cs
   src/Humans.Application/Services/Users/UserService.cs
   src/Humans.Application/Services/Users/AccountProvisioningService.cs
   src/Humans.Application/Services/Consent/**

@@ -1,6 +1,6 @@
 <!-- freshness:triggers
   src/Humans.Web/Views/Admin/**
-  src/Humans.Web/Views/Shared/_AdminLayout.cshtml
+  src/Humans.UI/Views/Shared/_AdminLayout.cshtml
   src/Humans.Web/ViewComponents/AdminNavTree.cs
   src/Humans.Web/Views/UsersAdmin/AdminList.cshtml
   src/Humans.Web/Views/UsersAdmin/AdminDetail.cshtml
@@ -60,7 +60,7 @@ The Coordinator role does not include global admin access; the domain-specific a
 
 ### Work the dashboard
 
-Open `/Admin` for the dashboard. The summary tiles — humans in review, open feedback, pending shifts, and recent audit activity — give you a fast read on what needs attention, and the recent-activity feed shows the latest audit entries so you can see what the system and other admins have been doing. The left sidebar groups every admin tool you have access to. What you see is scoped to your roles: an Admin sees everything; a Board member sees the Members and Governance tools; a domain admin sees just their own area.
+Open `/Admin` for the dashboard. The summary tiles — humans in review, open feedback, pending shifts, and recent audit activity — give you a fast read on what needs attention, and the recent-activity feed shows the latest audit entries so you can see what the system and other admins have been doing. The open-feedback count is **Admin only** — Board members and domain admins don't see it, since Feedback triage itself is Admin only. The left sidebar groups every admin tool you have access to. What you see is scoped to your roles: an Admin sees everything; a Board member sees the Members and Governance tools; a domain admin sees just their own area.
 
 ### Manage humans
 

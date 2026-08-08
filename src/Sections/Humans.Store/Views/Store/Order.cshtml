@@ -1,0 +1,356 @@
+@using Humans.UI.Models.Tables
+@using Microsoft.AspNetCore.Html
+@model Humans.Store.Models.OrderViewModel
+@{
+    ViewData["Title"] = $"Store order — {Model.CounterpartyDisplayName}";
+    var order = Model.Order;
+    var isTeamOrder = order.CounterpartyType == OrderCounterpartyType.Team;
+    var pendingTotal = order.Payments
+        .Where(p => p.Status == PaymentStatus.Pending)
+        .Sum(p => p.AmountEur);
+}
+
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-action="Index">Store</a></li>
+        <li class="breadcrumb-item">@Model.CounterpartyDisplayName</li>
+        <li class="breadcrumb-item active">Order</li>
+    </ol>
+</nav>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="mb-0">Store order</h1>
+    <div class="d-flex align-items-center gap-2">
+        <span class="badge bg-info text-dark fs-6">@order.CounterpartyType</span>
+        <span class="badge bg-secondary fs-6">@order.State</span>
+        @if (Model.CanDelete)
+        {
+            <form asp-action="Delete" asp-route-id="@order.Id" method="post" class="mb-0">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-sm btn-outline-danger"
+                        data-confirm="Delete this zero-balance order? This cannot be undone.">
+                    <i class="fa-solid fa-trash me-1"></i> Delete
+                </button>
+            </form>
+        }
+    </div>
+</div>
+
+
+@if (!isTeamOrder)
+{
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <h6 class="card-subtitle mb-2 text-muted">Lines subtotal</h6>
+                    <h4 class="card-title mb-0">@order.LinesSubtotalEur.ToEuro()</h4>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <h6 class="card-subtitle mb-2 text-muted">VAT</h6>
+                    <h4 class="card-title mb-0">@order.VatTotalEur.ToEuro()</h4>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <h6 class="card-subtitle mb-2 text-muted">Deposits</h6>
+                    <h4 class="card-title mb-0">@order.DepositTotalEur.ToEuro()</h4>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <h6 class="card-subtitle mb-2 text-muted">Total payments</h6>
+                    <h4 class="card-title mb-0 text-success">@order.PaymentsTotalEur.ToEuro()</h4>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md">
+            <div class="card text-center bg-light h-100">
+                <div class="card-body">
+                    <h6 class="card-subtitle mb-2 text-muted">Balance owed</h6>
+                    <h4 class="card-title mb-0 fw-bold">@order.BalanceEur.ToEuro()</h4>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<h2 class="h4 mb-3">Lines</h2>
+@if (order.Lines.Any())
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Product</th>
+                <th class="text-end">Qty</th>
+                @if (!isTeamOrder)
+                {
+                    <th class="text-end">Unit price (incl. VAT)</th>
+                    <th class="text-end">Deposit</th>
+                    <th class="text-end">Line total (incl. VAT &amp; deposit)</th>
+                }
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var line in order.Lines)
+            {
+                <tr>
+                    <td>@line.ProductName</td>
+                    <td class="text-end">@line.Qty</td>
+                    @if (!isTeamOrder)
+                    {
+                        <td class="text-end">
+                            @line.EffectiveUnitPriceInclVat.ToEuro()
+                            <div class="text-muted small">(@line.EffectiveUnitPrice.ToEuro() + @line.EffectiveVatRate.ToString("0.##")% VAT)</div>
+                        </td>
+                        <td class="text-end">@(line.EffectiveDeposit.HasValue ? line.DepositEur.ToEuro() : "—")</td>
+                        <td class="text-end">@line.TotalEur.ToEuro()</td>
+                    }
+                    <td class="text-end">
+                        @if (Model.CanEdit && Model.RemovableLineIds.Contains(line.Id))
+                        {
+                            <form asp-action="RemoveLine" asp-route-id="@order.Id" method="post" class="d-inline">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="lineId" value="@line.Id" />
+                                <button type="submit" class="btn btn-sm btn-outline-danger"
+                                        data-confirm="Remove this line?">Remove</button>
+                            </form>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+else
+{
+    <div class="alert alert-secondary">No lines on this order yet.</div>
+}
+
+@if (Model.PriceChanges.Any())
+{
+    <h2 class="h4 mb-3">Price changes since this order started</h2>
+    Func<Humans.Application.Interfaces.AuditLog.AuditLogEntrySnapshot, IHtmlContent> priceChangeBadgeCell =
+        @<text><span class="badge bg-warning text-dark">Price changed</span></text>;
+    var priceChangesTable = TableModel.For(Model.PriceChanges)
+        .Column("Date", r => r.OccurredAt.ToDateTimeUtc().ToInvariantTimestamp())
+        .Template("Event", priceChangeBadgeCell, c => c.NoSort())
+        .Column("Details", r => r.Description)
+        .Build();
+    <partial name="_Table" model="priceChangesTable" />
+}
+
+@if (Model.CanEdit)
+{
+    <h2 class="h4 mb-3">Add line</h2>
+    <form asp-action="AddLine" asp-route-id="@order.Id" method="post" class="row g-2 mb-4">
+        @Html.AntiForgeryToken()
+        <div class="col-md-7">
+            <select name="productId" class="form-select" required>
+                <option value="">Choose a product…</option>
+                @foreach (var product in Model.Catalog)
+                {
+                    <option value="@product.Id">@product.Name — @product.UnitPriceInclVatEur.ToEuro() incl. VAT (deadline @product.OrderableUntil.ToDate())</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-2">
+            <input type="number" name="qty" class="form-control" min="1" value="1" required />
+        </div>
+        <div class="col-md-3">
+            <button type="submit" class="btn btn-primary w-100">Add line</button>
+        </div>
+    </form>
+}
+
+@if (!isTeamOrder)
+{
+    <h2 class="h4 mb-3">Payments</h2>
+    @if (order.Payments.Any())
+    {
+        <table class="table table-sm mb-3">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Method</th>
+                    <th>Status</th>
+                    <th>Reference</th>
+                    <th class="text-end">Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var payment in order.Payments.OrderBy(p => p.ReceivedAt))
+                {
+                    var isPending = payment.Status == PaymentStatus.Pending;
+                    var isFailed = payment.Status == PaymentStatus.Failed;
+                    <tr class="@(isPending ? "table-warning" : isFailed ? "text-muted" : "")">
+                        <td>@payment.ReceivedAt.ToInvariantTimestamp() UTC</td>
+                        <td><span class="badge bg-secondary">@payment.Method</span></td>
+                        <td>
+                            @switch (payment.Status)
+                            {
+                                case PaymentStatus.Paid:
+                                    <span class="badge bg-success">Paid</span>
+                                    break;
+                                case PaymentStatus.Pending:
+                                    <span class="badge bg-warning text-dark" title="Mandate captured, not yet cleared">Pending settlement</span>
+                                    break;
+                                case PaymentStatus.Failed:
+                                    <span class="badge bg-danger">Failed</span>
+                                    break;
+                            }
+                        </td>
+                        <td>
+                            @if (!string.IsNullOrEmpty(payment.StripePaymentIntentId ?? payment.ExternalRef))
+                            {
+                                <code>@(payment.StripePaymentIntentId ?? payment.ExternalRef)</code>
+                            }
+                            else
+                            {
+                                <span class="text-muted">&mdash;</span>
+                            }
+                        </td>
+                        <td class="text-end @(payment.AmountEur < 0 ? "text-danger" : "")">
+                            @payment.AmountEur.ToEuro()
+                            @if (isPending)
+                            {
+                                <div class="text-muted small">pending settlement</div>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+            <tfoot>
+                <tr class="fw-bold">
+                    <td colspan="4" class="text-end">Total cleared payments</td>
+                    <td class="text-end">@order.PaymentsTotalEur.ToEuro()</td>
+                </tr>
+            </tfoot>
+        </table>
+        if (pendingTotal > 0)
+        {
+            <div class="alert alert-warning py-2">
+                <i class="fa-solid fa-clock me-1"></i>
+                @pendingTotal.ToEuro() pending settlement (mandate captured, not yet cleared) &mdash;
+                not counted toward the outstanding balance until Stripe confirms.
+            </div>
+        }
+    }
+    else
+    {
+        <p class="text-muted">No payments recorded yet.</p>
+    }
+
+    @if (order.BalanceEur > 0 && Model.CanPay)
+    {
+        if (Model.IsStripeConfigured)
+        {
+            <form asp-action="Pay" asp-route-id="@order.Id" method="post" class="row g-2 mb-3 align-items-end">
+                @Html.AntiForgeryToken()
+                <div class="col-md-4">
+                    <label class="form-label">Amount to pay (EUR)</label>
+                    <input type="number" name="amountEur" class="form-control"
+                           min="0.01" max="@order.BalanceEur.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)"
+                           step="0.01"
+                           value="@order.BalanceEur.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)" required />
+                </div>
+                <div class="col-md-4">
+                    <button type="submit" class="btn btn-primary">Pay with Stripe</button>
+                    <small class="form-text text-muted d-block">You'll be redirected to Stripe Checkout.</small>
+                </div>
+            </form>
+        }
+        else
+        {
+            <div class="alert alert-warning">Stripe checkout is not configured for this environment.</div>
+        }
+    }
+    else if (order.BalanceEur <= 0)
+    {
+        <p class="text-muted">No outstanding balance.</p>
+    }
+    else if (pendingTotal > 0)
+    {
+        <p class="text-muted">Payment is disabled while a payment is pending settlement.</p>
+    }
+    else
+    {
+        <p class="text-muted">Payments are recorded by the finance team.</p>
+    }
+
+    <h2 class="h4 mb-3 mt-4">
+        <button class="btn btn-link p-0 text-reset text-decoration-none" type="button"
+                data-bs-toggle="collapse" data-bs-target="#counterpartyCollapse"
+                aria-expanded="false" aria-controls="counterpartyCollapse">
+            <i class="fa-solid fa-chevron-down me-1 small"></i> Counterparty (for invoice)
+        </button>
+    </h2>
+    <div class="collapse" id="counterpartyCollapse">
+        @if (Model.CanEdit)
+        {
+            <form asp-action="UpdateCounterparty" asp-route-id="@order.Id" method="post" class="row g-3 mb-4">
+                @Html.AntiForgeryToken()
+                <div class="col-md-6">
+                    <label class="form-label">Name</label>
+                    <input type="text" name="Name" class="form-control" value="@order.CounterpartyName" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">VAT / NIF / CIF</label>
+                    <input type="text" name="VatId" class="form-control" value="@order.CounterpartyVatId" />
+                </div>
+                <div class="col-md-12">
+                    <label class="form-label">Address</label>
+                    <input type="text" name="Address" class="form-control" value="@order.CounterpartyAddress" />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Country</label>
+                    <input type="text" name="CountryCode" class="form-control" maxlength="2" value="@order.CounterpartyCountryCode" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Email</label>
+                    <input type="email" name="Email" class="form-control" value="@order.CounterpartyEmail" />
+                </div>
+                <div class="col-md-12">
+                    <button type="submit" class="btn btn-primary">Save counterparty</button>
+                </div>
+            </form>
+        }
+        else
+        {
+            <dl class="row">
+                <dt class="col-sm-3">Name</dt><dd class="col-sm-9">@order.CounterpartyName</dd>
+                <dt class="col-sm-3">VAT / NIF / CIF</dt><dd class="col-sm-9">@order.CounterpartyVatId</dd>
+                <dt class="col-sm-3">Address</dt><dd class="col-sm-9">@order.CounterpartyAddress</dd>
+                <dt class="col-sm-3">Country</dt><dd class="col-sm-9">@order.CounterpartyCountryCode</dd>
+                <dt class="col-sm-3">Email</dt><dd class="col-sm-9">@order.CounterpartyEmail</dd>
+            </dl>
+        }
+    </div>
+}
+else
+{
+    <div class="alert alert-info mt-4">
+        <strong>Non-billable.</strong> Team orders count toward supplier totals only — no invoice, no payment.
+    </div>
+}
+
+@section Scripts {
+    <script nonce="@Context.Items["CspNonce"]">
+        document.querySelectorAll('[data-confirm]').forEach(function (button) {
+            button.addEventListener('click', function (e) {
+                if (!confirm(this.getAttribute('data-confirm'))) {
+                    e.preventDefault();
+                }
+            });
+        });
+    </script>
+}

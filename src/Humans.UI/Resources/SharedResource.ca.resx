@@ -6431,8 +6431,6 @@
   <data name="Enum_SpaceSize_Sqm450" xml:space="preserve"><value>450 m²</value></data>
   <data name="Enum_SpaceSize_Sqm600" xml:space="preserve"><value>600 m²</value></data>
   <data name="Enum_SpaceSize_Sqm800" xml:space="preserve"><value>800 m²</value></data>
-  <data name="Enum_StoreOrderCounterpartyType_Camp" xml:space="preserve"><value>Barri</value></data>
-  <data name="Enum_StoreOrderCounterpartyType_Team" xml:space="preserve"><value>Equip</value></data>
   <data name="Enum_TicketTransferStatus_Approved" xml:space="preserve"><value>Completada</value></data>
   <data name="Enum_TicketTransferStatus_Cancelled" xml:space="preserve"><value>Cancel·lada</value></data>
   <data name="Enum_TicketTransferStatus_Pending" xml:space="preserve"><value>Pendent de revisió</value></data>
@@ -6662,29 +6660,6 @@
   <data name="Search_GlobalPlaceholder" xml:space="preserve"><value>Cerca humans, equips, barris, torns…</value></data>
   <data name="Search_GlobalPlaceholderEvents" xml:space="preserve"><value>Cerca humans, equips, barris, torns, esdeveniments…</value></data>
   <data name="Search_GlobalTitle" xml:space="preserve"><value>Cerca</value></data>
-  <data name="Store_AdminCatalog" xml:space="preserve"><value>Catàleg</value></data>
-  <data name="Store_AdminPayments" xml:space="preserve"><value>Pagaments</value></data>
-  <data name="Store_AdminSummary" xml:space="preserve"><value>Resum</value></data>
-  <data name="Store_CatalogHeading" xml:space="preserve"><value>Catàleg ({0})</value></data>
-  <data name="Store_ColBalance" xml:space="preserve"><value>Saldo</value></data>
-  <data name="Store_ColDeposit" xml:space="preserve"><value>Dipòsit</value></data>
-  <data name="Store_ColDeposits" xml:space="preserve"><value>Dipòsits</value></data>
-  <data name="Store_ColDescription" xml:space="preserve"><value>Descripció</value></data>
-  <data name="Store_ColLines" xml:space="preserve"><value>Línies</value></data>
-  <data name="Store_ColLinesVat" xml:space="preserve"><value>Línies + IVA</value></data>
-  <data name="Store_ColName" xml:space="preserve"><value>Nom</value></data>
-  <data name="Store_ColOrderBy" xml:space="preserve"><value>Demana abans del</value></data>
-  <data name="Store_ColState" xml:space="preserve"><value>Estat</value></data>
-  <data name="Store_ColUnitPrice" xml:space="preserve"><value>Preu unitari (IVA inclòs)</value></data>
-  <data name="Store_CreateOrder" xml:space="preserve"><value>Crea una comanda</value></data>
-  <data name="Store_DeleteOrderConfirm" xml:space="preserve"><value>Vols eliminar aquesta comanda amb saldo zero? Això no es pot desfer.</value></data>
-  <data name="Store_DeleteOrderTitle" xml:space="preserve"><value>Elimina (saldo zero)</value></data>
-  <data name="Store_NoCounterpartiesAlert" xml:space="preserve"><value>No lideres cap barri ni coordines cap departament amb una temporada activa enguany. El catàleg de sota és de només lectura.</value></data>
-  <data name="Store_NoOrders" xml:space="preserve"><value>Encara no hi ha comandes.</value></data>
-  <data name="Store_NoProducts" xml:space="preserve"><value>No hi ha cap producte actiu per a {0}.</value></data>
-  <data name="Store_OpenOrder" xml:space="preserve"><value>Obre</value></data>
-  <data name="Store_StartOrder" xml:space="preserve"><value>Inicia una comanda</value></data>
-  <data name="Store_Title" xml:space="preserve"><value>Botiga</value></data>
   <data name="Teams_Departments" xml:space="preserve"><value>Departaments</value></data>
   <data name="Teams_HiddenTeams" xml:space="preserve"><value>Equips ocults</value></data>
   <data name="Teams_HiddenTeamsNote" xml:space="preserve"><value>(visible només per als administradors)</value></data>

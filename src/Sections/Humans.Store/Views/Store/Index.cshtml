@@ -1,0 +1,142 @@
+@using Humans.UI.Extensions
+@using Humans.UI.Models.Tables
+@using Microsoft.AspNetCore.Html
+@model Humans.Store.Models.IndexViewModel
+@{
+    ViewData["Title"] = Localizer["Store_Title"].Value;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="mb-0">@Localizer["Store_Title"]</h1>
+    <div class="d-flex align-items-center gap-2">
+        <div class="btn-group" authorize-policy="StoreCatalogAdmin">
+            <a asp-controller="StoreAdmin" asp-action="Catalog" class="btn btn-sm btn-outline-secondary">@Localizer["Store_AdminCatalog"]</a>
+            <a asp-controller="StoreAdmin" asp-action="Summary" class="btn btn-sm btn-outline-secondary">@Localizer["Store_AdminSummary"]</a>
+            <a asp-controller="StoreAdmin" asp-action="Payments" class="btn btn-sm btn-outline-secondary">@Localizer["Store_AdminPayments"]</a>
+        </div>
+        <span class="badge bg-secondary fs-6">@Model.Year</span>
+    </div>
+</div>
+
+
+@if (!Model.Counterparties.Any())
+{
+    <div class="alert alert-info">
+        @Localizer["Store_NoCounterpartiesAlert"]
+    </div>
+}
+else
+{
+    @foreach (var cp in Model.Counterparties.OrderBy(c => c.CounterpartyType).ThenBy(c => c.DisplayName, StringComparer.OrdinalIgnoreCase))
+    {
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h2 class="h5 mb-0">
+                    @cp.DisplayName
+                    <span class="badge bg-light text-dark ms-2">@Localizer.EnumDisplay(cp.CounterpartyType)</span>
+                </h2>
+                @if (cp.CounterpartyType == OrderCounterpartyType.Camp && cp.Orders.Count == 0 && Model.CanManageByCounterparty[cp.CounterpartyId])
+                {
+                    <form asp-action="Create" asp-route-campSeasonId="@cp.CounterpartyId"
+                          method="post" class="d-flex gap-2 align-items-center mb-0">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-sm btn-primary">@Localizer["Store_StartOrder"]</button>
+                    </form>
+                }
+                else if (cp.CounterpartyType == OrderCounterpartyType.Team && cp.Orders.Count == 0 && Model.CanManageByCounterparty[cp.CounterpartyId])
+                {
+                    <form asp-action="CreateTeamOrder" asp-route-teamId="@cp.CounterpartyId"
+                          method="post" class="mb-0">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-sm btn-primary">@Localizer["Store_CreateOrder"]</button>
+                    </form>
+                }
+            </div>
+            <div class="card-body p-0">
+                @if (cp.Orders.Any())
+                {
+                    <table class="table table-sm mb-0">
+                        <thead>
+                            <tr>
+                                <th>@Localizer["Store_ColState"]</th>
+                                @if (cp.CounterpartyType == OrderCounterpartyType.Camp)
+                                {
+                                    <th class="text-end">@Localizer["Store_ColLinesVat"]</th>
+                                    <th class="text-end">@Localizer["Store_ColDeposits"]</th>
+                                    <th class="text-end">@Localizer["Store_ColBalance"]</th>
+                                }
+                                else
+                                {
+                                    <th class="text-end">@Localizer["Store_ColLines"]</th>
+                                }
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var order in cp.Orders)
+                            {
+                                <tr>
+                                    <td><span class="badge bg-secondary">@order.State</span></td>
+                                    @if (cp.CounterpartyType == OrderCounterpartyType.Camp)
+                                    {
+                                        <td class="text-end">@((order.LinesSubtotalEur + order.VatTotalEur).ToEuro())</td>
+                                        <td class="text-end">@order.DepositTotalEur.ToEuro()</td>
+                                        <td class="text-end fw-bold">@order.BalanceEur.ToEuro()</td>
+                                    }
+                                    else
+                                    {
+                                        <td class="text-end">@order.Lines.Count</td>
+                                    }
+                                    <td class="text-end">
+                                        <div class="d-inline-flex gap-1">
+                                            @if (Model.CanManageByCounterparty[cp.CounterpartyId] && order.BalanceEur == 0m)
+                                            {
+                                                <form asp-action="Delete" asp-route-id="@order.Id" method="post" class="mb-0">
+                                                    @Html.AntiForgeryToken()
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger"
+                                                            title="@Localizer["Store_DeleteOrderTitle"]"
+                                                            data-confirm="@Localizer["Store_DeleteOrderConfirm"].Value">
+                                                        <i class="fa-solid fa-trash"></i>
+                                                    </button>
+                                                </form>
+                                            }
+                                            <a asp-action="Order" asp-route-id="@order.Id" class="btn btn-sm btn-outline-primary">@Localizer["Store_OpenOrder"]</a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+                else
+                {
+                    <div class="p-3 text-muted">@Localizer["Store_NoOrders"]</div>
+                }
+            </div>
+        </div>
+    }
+}
+
+<h2 class="h4 mb-3">@Localizer["Store_CatalogHeading", Model.Year]</h2>
+@if (!Model.Catalog.Any())
+{
+    <div class="alert alert-secondary">@Localizer["Store_NoProducts", Model.Year]</div>
+}
+else
+{
+    Func<Humans.Store.Services.Dtos.ProductDto, IHtmlContent> catalogDescriptionCell =
+        @<text>@Html.SanitizedMarkdown(item.Description)</text>;
+    Func<Humans.Store.Services.Dtos.ProductDto, IHtmlContent> catalogPriceCell =
+        @<text>
+            @item.UnitPriceInclVatEur.ToEuro()
+            <div class="text-muted small">(@item.UnitPriceEur.ToEuro() + @item.VatRatePercent.ToString("0.##", System.Globalization.CultureInfo.CurrentCulture)% VAT)</div>
+        </text>;
+    var catalogTable = TableModel.For(Model.Catalog)
+        .Column(Localizer["Store_ColName"].Value, r => r.Name)
+        .Template(Localizer["Store_ColDescription"].Value, catalogDescriptionCell)
+        .Template(Localizer["Store_ColUnitPrice"].Value, catalogPriceCell, c => c.NoSort().End())
+        .Column(Localizer["Store_ColDeposit"].Value, r => r.DepositAmountEur, c => c.Currency().End())
+        .Column(Localizer["Store_ColOrderBy"].Value, r => r.OrderableUntil.ToDate())
+        .Build();
+    <partial name="_Table" model="catalogTable" />
+}

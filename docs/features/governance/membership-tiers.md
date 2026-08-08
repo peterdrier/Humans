@@ -1,6 +1,6 @@
 <!-- freshness:triggers
   src/Humans.Application/Services/Governance/**
-  src/Humans.Application/Services/Profile/ProfileService.cs
+  src/Humans.Application/Services/Profiles/ProfileService.cs
   src/Humans.Application/Services/Teams/TeamService.cs
   src/Humans.Web/Controllers/GovernanceApplicationsController.cs
   src/Humans.Web/Controllers/GovernanceController.cs

@@ -56,7 +56,7 @@ In-app notification fan-out (stored events + per-user inbox) and live meter coun
 | UserId | Guid | FK → User (Cascade); part of composite PK |
 | ReadAt | Instant? | Personal read state — set when this user has seen the notification |
 
-**PK:** composite `(NotificationId, UserId)`. **Indexes:** `IX_NotificationRecipient_UserId` for badge-count queries. Only the aggregate-local `Notification` nav is kept; the cross-domain `User` nav was dropped (shadow navigation) — recipient display data is stitched in memory via `IUserService.GetByIdsAsync` (see Architecture).
+**PK:** composite `(NotificationId, UserId)`. **Indexes:** `IX_NotificationRecipient_UserId` for badge-count queries. Only the aggregate-local `Notification` nav is kept; the cross-domain `User` nav was dropped (shadow navigation) — recipient display data is stitched in memory via `IUserServiceRead.GetUserInfosAsync` (see Architecture).
 
 ### NotificationSource
 
@@ -116,7 +116,7 @@ The originating system for a notification, mapped to a `MessageCategory` for pre
 
 - **Auth:** `IRoleAssignmentService.GetActiveUserIdsInRoleAsync` (via `INotificationRecipientResolver`) — role-scoped fan-out.
 - **Teams:** `ITeamServiceRead.GetTeamsAsync` (via `NotificationMeterProvider`) — admin team-join-requests meter (pending count summed in-memory from team snapshots).
-- **Profiles / Users:** `IUserService.GetByIdsAsync` — display data for resolver + recipient rendering (stitched in memory). `IUserServiceRead.GetAllUserInfosAsync` — consent-review, onboarding-pending, and admin pending-deletions meters (all counts derived in-memory from the loaded `UserInfo` snapshot).
+- **Profiles / Users:** `IUserServiceRead.GetUserInfosAsync` — display data for resolver + recipient rendering (stitched in memory). `IUserServiceRead.GetAllUserInfosAsync` — consent-review, onboarding-pending, and admin pending-deletions meters (all counts derived in-memory from the loaded `UserInfo` snapshot).
 - **Governance:** `IApplicationDecisionService.GetUnvotedApplicationCountAsync(boardMemberUserId)` — per-board-member voting meter.
 - **Tickets:** `ITicketSyncService.IsInErrorStateAsync` — admin ticket-sync-error meter.
 - **Google Integration:** `IGoogleSyncServiceRead.GetFailedSyncEventCountAsync` — admin failed-sync-events meter.
@@ -153,7 +153,7 @@ Inbound (other sections → Notifications):
 - **Decorator decision — no caching decorator.** Dispatch is fire-and-forget and inbox reads are per-user and per-request-rate. Per-user unread badge counts are cached **inside `NotificationInboxService.GetUnreadBadgeCountsAsync`** via short-TTL `IMemoryCache` (~2 min) keyed by `CacheKeys.NotificationBadgeCounts(userId)`. `NotificationBellViewComponent` no longer owns the cache — it calls `GetUnreadBadgeCountsAsync` directly and the service handles caching. Meter aggregates are cached inside `NotificationMeterProvider` itself with the same TTL. Both are invalidated in-band by the dispatch / inbox services after every write.
 - **Cross-section reads** for meter counts route through `IUserServiceRead.GetAllUserInfosAsync` (consent-review pending, onboarding-pending, and pending-deletion counts derived in-memory from the snapshot), `IGoogleSyncServiceRead.GetFailedSyncEventCountAsync`, `ITeamServiceRead.GetTeamsAsync` (pending join-requests summed in-memory), `ITicketSyncService.IsInErrorStateAsync`, `IApplicationDecisionService.GetUnvotedApplicationCountAsync`, and `ICampServiceRead.GetSettingsAsync` + `GetCampsForYearAsync` (the per-lead pending count is derived in-memory from the returned camp snapshots). `IRoleAssignmentService.GetActiveUserIdsInRoleAsync` powers `SendToRoleAsync` so it doesn't query `role_assignments` directly.
 - **Cleanup:** `CleanupNotificationsJob` is registered with Hangfire as `cleanup-notifications` on cron `30 4 * * *` (daily at 04:30 UTC). It goes through `INotificationRepository.DeleteResolvedOlderThanAsync` (7-day cutoff), `DeleteUnresolvedInformationalOlderThanAsync` (30-day cutoff), and `DeleteUnresolvedBySourcesAsync` (purges unresolved rows of retired sources — currently `ApplicationSubmitted` and `ConsentReviewNeeded` — that have no remaining resolution path). Other actionable unresolved notifications are never auto-deleted.
-- **Cross-domain navs:** `NotificationRecipient.User` and `Notification.ResolvedByUser` navs were dropped (shadow navigations) — EF wires the FK constraints without exposed navigation properties. Recipient + resolver display names resolve via `IUserService.GetByIdsAsync` in `NotificationInboxService` (design-rules §6).
+- **Cross-domain navs:** `NotificationRecipient.User` and `Notification.ResolvedByUser` navs were dropped (shadow navigations) — EF wires the FK constraints without exposed navigation properties. Recipient + resolver display names resolve via `IUserServiceRead.GetUserInfosAsync` in `NotificationInboxService` (design-rules §6).
 
 ### Routes
 

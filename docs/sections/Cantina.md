@@ -39,7 +39,7 @@ None — Cantina owns no tables. The section is a pure read/aggregate compositio
 | `/Cantina/Roster/Day?dayOffset=<int>` | GET | same as above | Per-day drill-down matrix |
 | `/Cantina/Roster/Day/Csv?dayOffset=<int>` | GET | same as above | CSV of the per-day matrix |
 
-`weekStartOffset` is the day-offset of the week's Monday relative to `EventSettings.GateOpeningDate`. When omitted, the controller computes the current week via `ICantinaRosterService.GetCurrentWeekStartOffsetForActiveEvent` (returns `0` and an empty roster when no active event).
+`weekStartOffset` is the day-offset of the week's Monday relative to `BurnSettingsInfo.GateOpeningDate`. When omitted, the controller computes the current week via `ICantinaRosterService.GetCurrentWeekStartOffsetForActiveEvent` (returns `0` and an empty roster when no active event).
 
 ## Actors & Roles
 
@@ -53,6 +53,8 @@ None — Cantina owns no tables. The section is a pure read/aggregate compositio
 
 ## Invariants
 
+<!-- wheat: docs/superpowers/specs/2026-05-25-dietary-prompt-tightening-design.md §Voluntelling; §Behavior Matrix -->
+- The roster tolerates humans with empty dietary fields. The upstream signup gate — `ShiftSignupService.ToggleDayAsync` short-circuits with `ToggleDaySignupOutcome.NeedsDietaryFirst` when the shift `QualifiesForCantinaMeal()` and the human has no `DietaryPreference` — covers **only** the self-service day toggle on `/Shifts`. `IShiftSignupService.VoluntellAsync` / `VoluntellRangeAsync` (coordinator on-behalf-of signup) and `OnboardingWidgetController.SignUp` call `SignUpAsync` directly and are not gated, so a Confirmed signup can exist with no dietary on file. Those humans are chased by the dashboard nudge and the `/Shifts` banner, not blocked — see [`dietary-medical-nudge`](../features/profiles/dietary-medical-nudge.md).
 - **`MedicalConditions` is never surfaced via this section, regardless of viewer role.** The Cantina plans around food, not medical history (GDPR Article 9 boundary). `MedicalConditions` lives on the cached `UserInfo`/`ProfileInfo`, but `CantinaRosterService` simply never reads it, and the output DTOs (`RosterPersonDto`, `DailyPersonRowDto`) have no `MedicalConditions` property. Medical data continues to flow only through the `_VolunteerProfileBadges` partial with `ShowMedical=true`, gated to NoInfoAdmin / Admin — not through Cantina.
 - "On site" is strictly defined as a Confirmed `ShiftSignup` on a Shift with matching `DayOffset`, **plus the arrival day** (`arrivalDay = firstConfirmedShiftDay − 1`). Refused, Bailed, Cancelled, NoShow, and Pending signups do not count. All-day shifts are single-day (one row per signup per day per shift, per Shifts §all-day-window).
 - Weekly aggregates (dietary preference roll-up, allergy / intolerance counters, total head count) are computed over **unique humans** for the week, not summed day-by-day. A human on site Mon + Wed counts once.

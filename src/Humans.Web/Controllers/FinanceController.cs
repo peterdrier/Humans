@@ -4,6 +4,7 @@ using Humans.Application.Interfaces.Finance;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Domain.Enums;
+using Humans.UI.Controllers;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

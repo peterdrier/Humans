@@ -1,6 +1,8 @@
 using Humans.Application;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Users;
+using Humans.UI.Authorization;
+using Humans.UI.Controllers;
 using Humans.Web.Authorization.Requirements;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -36,7 +38,7 @@ public abstract class HumansCampControllerBase(
         var camp = (await campService.GetCampsForYearAsync(campSettings.PublicYear, cancellationToken))
             .FirstOrDefault(c => c.Id == campId);
         var isLead = camp?.IsLead(user.Id) == true;
-        var isCampAdmin = Authorization.RoleChecks.IsCampAdmin(User);
+        var isCampAdmin = RoleChecks.IsCampAdmin(User);
 
         return (isLead, isCampAdmin);
     }

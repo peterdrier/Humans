@@ -1,3 +1,4 @@
+using Humans.UI.Controllers;
 using System.Globalization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

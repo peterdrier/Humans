@@ -1,3 +1,4 @@
+using Humans.Store.Data;
 using System.Net;
 using System.Text.RegularExpressions;
 using AwesomeAssertions;
@@ -113,7 +114,7 @@ public class StoreAdminControllerTests(HumansTestDatabase database) : Integratio
     {
         using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<StoreDbContext>();
-        var p = await db.StoreProducts.AsNoTracking().FirstOrDefaultAsync(x => x.Name == name, Xunit.TestContext.Current.CancellationToken);
+        var p = await db.Products.AsNoTracking().FirstOrDefaultAsync(x => x.Name == name, Xunit.TestContext.Current.CancellationToken);
         return p?.Id ?? Guid.Empty;
     }
 

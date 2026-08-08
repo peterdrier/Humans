@@ -5,6 +5,7 @@ using Humans.Application.Interfaces.Users;
 using Humans.Domain.Constants;
 using Humans.Infrastructure.Jobs;
 using Humans.UI.Authorization;
+using Humans.UI.Controllers;
 using Humans.UI.Extensions;
 using Humans.Web.Authorization;
 using Humans.Web.Models;

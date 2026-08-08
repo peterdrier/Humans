@@ -12,7 +12,7 @@ namespace Humans.Application.Tests.ViewComponents;
 
 /// <summary>
 /// Covers the visibility gate inside <see cref="DietaryMissingBannerViewComponent"/>.
-/// Spec: docs/superpowers/specs/2026-05-25-dietary-prompt-tightening-design.md
+/// Spec: docs/features/profiles/dietary-medical-nudge.md (US-35.6)
 /// </summary>
 public class DietaryMissingBannerViewComponentTests
 {

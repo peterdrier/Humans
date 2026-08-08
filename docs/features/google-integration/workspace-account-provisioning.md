@@ -2,7 +2,7 @@
   src/Humans.Application/Services/GoogleIntegration/GoogleWorkspaceUserService.cs
   src/Humans.Application/Services/GoogleIntegration/EmailProvisioningService.cs
   src/Humans.Application/Services/Users/AccountProvisioningService.cs
-  src/Humans.Application/Services/Profile/UserEmailService.cs
+  src/Humans.Application/Services/Profiles/UserEmailService.cs
   src/Humans.Web/Controllers/AdminController.cs
   src/Humans.Web/Controllers/EmailController.cs
   src/Humans.Web/Controllers/ProfileController.cs

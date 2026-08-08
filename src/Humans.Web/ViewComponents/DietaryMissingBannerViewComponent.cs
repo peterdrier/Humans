@@ -8,7 +8,7 @@ namespace Humans.Web.ViewComponents;
 /// Renders a red banner on /Shifts and /Shifts/Mine when the user has a
 /// qualifying cantina signup but no dietary info on file. The visibility
 /// gate lives inside the component so callers can invoke it unconditionally.
-/// Spec: docs/superpowers/specs/2026-05-25-dietary-prompt-tightening-design.md
+/// Spec: docs/features/profiles/dietary-medical-nudge.md (US-35.6)
 /// </summary>
 public sealed class DietaryMissingBannerViewComponent : ViewComponent
 {

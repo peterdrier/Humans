@@ -1,5 +1,5 @@
 <!-- freshness:triggers
-  src/Humans.Application/Services/Profile/CommunicationPreferenceService.cs
+  src/Humans.Application/Services/Profiles/CommunicationPreferenceService.cs
   src/Humans.Web/Controllers/ProfileController.cs
   src/Humans.Web/Controllers/UnsubscribeController.cs
   src/Humans.Domain/Entities/CommunicationPreference.cs

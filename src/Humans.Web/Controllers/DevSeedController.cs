@@ -1,4 +1,5 @@
 using Humans.Application.Configuration;
+using Humans.UI.Controllers;
 using Humans.Web.Infrastructure;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

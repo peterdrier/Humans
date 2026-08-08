@@ -118,7 +118,7 @@ For configuration:
 
 ## Date/Time Formatting
 
-Date/time format strings live in **one home**: `Humans.Application.Extensions.DateFormattingExtensions`. Render dates by calling a named method on the home — `ToDate` / `ToDateTime` / `ToWeekdayDayMonth` for culture display, `ToInvariantDate` / `ToInvariantTimestamp` / `ToIso8601` for machine output. For an `Instant` in a request/view, the ambient overloads in `Humans.Web.Extensions.DateTimeDisplayExtensions` resolve the user's timezone from session.
+Date/time format strings live in **one home**: `Humans.Application.Extensions.DateFormattingExtensions`. Render dates by calling a named method on the home — `ToDate` / `ToDateTime` / `ToWeekdayDayMonth` for culture display, `ToInvariantDate` / `ToInvariantTimestamp` / `ToIso8601` for machine output. For an `Instant` in a request/view, the ambient overloads in `Humans.UI.Extensions.DateTimeDisplayExtensions` resolve the user's timezone from session.
 
 Never inline a custom format string at the call site (`ToString("d MMM yyyy")`, interpolation `{x:MMM d}`, NodaTime `*Pattern.Create("…")`). If no method fits, add one to the home rather than hand-rolling a literal. Enforced by analyzer **HUM0030** (build error in production assemblies). See [`memory/architecture/datetime-format-single-home.md`](../../memory/architecture/datetime-format-single-home.md) and [`memory/code/datetime-display-formatting.md`](../../memory/code/datetime-display-formatting.md).
 
@@ -249,7 +249,7 @@ Stronger reasons:
 Stop and reconsider when a change introduces any of these:
 
 **Web layer smells:**
-- controller injects `HumansDbContext`
+- controller injects an application `DbContext` (`HumansDbContext` or any per-section context)
 - controller calls `SaveChangesAsync()`
 - controller owns cache logic
 - controller contains the only enforcement of a business rule
@@ -257,7 +257,7 @@ Stop and reconsider when a change introduces any of these:
 
 **Service / persistence smells:**
 - a new service placed in `Humans.Infrastructure/Services/` instead of `Humans.Application/Services/`
-- a service that injects `HumansDbContext` directly instead of going through its owning repository
+- a service that injects an application `DbContext` (`HumansDbContext` or any per-section context) directly instead of going through its owning repository
 - a service that injects another domain's repository or store (should call the other domain's `I{Section}Service` interface instead)
 - a `.Include()` that navigates across a domain boundary (Profile → User, Team → Profile, Camp → Profile, etc.)
 - a repository method that takes or returns another domain's type

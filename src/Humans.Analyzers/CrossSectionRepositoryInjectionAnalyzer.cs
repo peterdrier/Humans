@@ -14,7 +14,7 @@ namespace Humans.Analyzers;
 /// its repository (design-rules §6).
 /// </summary>
 /// <remarks>
-/// Runs in <c>Humans.Application</c> only. The repository's section is
+/// Runs in <c>Humans.Application</c> and in every section project. The repository's section is
 /// declared with <see cref="Humans.Domain.Attributes.SectionAttribute"/>
 /// because repo interfaces sit in the flat
 /// <c>Humans.Application.Interfaces.Repositories</c> namespace (HUM0013) and
@@ -83,7 +83,7 @@ public sealed class CrossSectionRepositoryInjectionAnalyzer : DiagnosticAnalyzer
 
     private static void OnCompilationStart(CompilationStartAnalysisContext context)
     {
-        if (!string.Equals(context.Compilation.Assembly.Name, AssemblyScope.Application, System.StringComparison.Ordinal))
+        if (!AssemblyScope.IsLayerOrSection(context.Compilation.Assembly, AssemblyScope.Application))
             return;
 
         var applicationServiceMarker = context.Compilation.GetTypeByMetadataName(ApplicationServiceMarkerFullName);
@@ -114,7 +114,7 @@ public sealed class CrossSectionRepositoryInjectionAnalyzer : DiagnosticAnalyzer
         // declared under Humans.Application.Services.<Section>) is already the
         // right diagnostic — don't pile on with a HUM0018 here. Just exit; HUM0017
         // cannot be applied to this class until HUM0012 is satisfied.
-        var serviceSection = ExtractServiceSection(type);
+        var serviceSection = ExtractServiceSection(type, sectionAttr);
         if (serviceSection is null)
             return;
 
@@ -170,9 +170,15 @@ public sealed class CrossSectionRepositoryInjectionAnalyzer : DiagnosticAnalyzer
     /// or null if the type is not in a sectioned service namespace. Section
     /// fold lives in <see cref="Sections.Fold"/>.
     /// </summary>
-    private static string? ExtractServiceSection(INamedTypeSymbol type) =>
-        Sections.FromNamespace(type, Sections.ServiceNamespacePrefix);
+    private static string? ExtractServiceSection(INamedTypeSymbol type, INamedTypeSymbol sectionAttr) =>
+        Sections.Of(type, Sections.ServiceNamespacePrefix, sectionAttr);
 
+    /// <summary>
+    /// The type's own <c>[Section]</c>, else its assembly's. A section project
+    /// (nobodies-collective/Humans#866, G5) declares
+    /// <c>[assembly: Section("…")]</c> once instead of annotating each repository
+    /// interface, so the assembly marker supersedes the per-type one.
+    /// </summary>
     private static string? ReadSection(ITypeSymbol type, INamedTypeSymbol sectionAttr)
     {
         foreach (var attr in type.GetAttributes())
@@ -183,6 +189,7 @@ public sealed class CrossSectionRepositoryInjectionAnalyzer : DiagnosticAnalyzer
                 continue;
             return Sections.Fold(attr.ConstructorArguments[0].Value as string);
         }
-        return null;
+
+        return Sections.FromAssembly(type.ContainingAssembly, sectionAttr);
     }
 }

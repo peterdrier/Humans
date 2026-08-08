@@ -1,5 +1,6 @@
 <!-- freshness:triggers
   docs/sections/*.md
+  src/Sections/**
   src/Humans.Web/Controllers/**
   src/Humans.Application/Services/**
   src/Humans.Infrastructure/Repositories/**
@@ -13,13 +14,20 @@
 
 A code-derived map of every section to the concrete classes that implement it. Use it to answer "which controller/service/repository/table belongs to section X" at a glance, and to spot drift (a controller with no owning section, a service with no repository, a table owned by two repos).
 
+A section that has moved into its own project (nobodies-collective/Humans#866, G5) carries its
+invariants doc inside that project rather than in this folder; this index is the map to it:
+
+| Section | Project | Invariants doc |
+|---|---|---|
+| Store | `src/Sections/Humans.Store` | [Store.md](../../src/Sections/Humans.Store/Docs/Store.md) |
+
 **This table is derived from code, not from the section docs — code is authoritative.** Regenerate it when sections move:
 
 - **Controllers** — `src/Humans.Web/Controllers/*.cs`, assigned by `[Route(...)]` prefix (and constructor dependencies where there is no route attribute). Infrastructure/base controllers (`HumansControllerBase`, `HumansTeamControllerBase`, `HumansCampControllerBase`, `ApiControllerBase`, `HomeController`, `AboutController`) are excluded.
 - **Orchestrators** — service classes that inject **no `I*Repository`** and coordinate one or more other services. Per [`peters-hard-rules.md`](../architecture/peters-hard-rules.md): "Some services are orchestrators, organizing calls to multiple services. These should not call repositories."
 - **Services** — service classes that own/inject a repository. Caching decorators (Infrastructure) are listed in italics.
-- **Repositories** — `*Repository.cs` under `src/Humans.Infrastructure/Repositories/`. Per the hard rules, only the repository may touch its section's tables.
-- **Tables** — EF `ToTable(...)` under `src/Humans.Infrastructure/Data/Configurations/`.
+- **Repositories** — `*Repository.cs` under `src/Humans.Infrastructure/Repositories/` or a section project's `Data/`. Per the hard rules, only the repository may touch its section's tables.
+- **Tables** — EF `ToTable(...)` under `src/Humans.Infrastructure/Data/Configurations/` or a section project's `Data/Configurations/`.
 
 Cross-check against [`design-rules.md` §8 (Table Ownership Map)](../architecture/design-rules.md#8-table-ownership-map). Where this table and §8 disagree, the divergence is a drift bug in one of them — fix it.
 
@@ -36,7 +44,7 @@ Cross-check against [`design-rules.md` §8 (Table Ownership Map)](../architectur
 | **Budget** | `BudgetController` | — | `BudgetService` | `BudgetRepository` | `budget_years`, `budget_groups`, `budget_categories`, `budget_line_items`, `budget_audit_logs`, `ticketing_projections` |
 | **Calendar** | `CalendarController` | — | `CalendarService`, *`CachingCalendarService`* | `CalendarRepository` | `calendar_events`, `calendar_event_exceptions` |
 | **Campaigns** | `CampaignController` | — | `CampaignService` | `CampaignRepository` | `campaigns`, `campaign_codes`, `campaign_grants` |
-| **Camps** | `CampController`, `CampAdminController`, `CampApiController` | `CampContactService` | `CampService`, `CampRoleService`, *`CachingCampService`* | `CampRepository` | `camps`, `camp_seasons`, `camp_leads`, `camp_members`, `camp_images`, `camp_historical_names`, `camp_settings`, `camp_role_definitions`, `camp_role_assignments` |
+| **Camps** | `CampController`, `CampAdminController`, `CampApiController` | `CampContactService` | `CampService`, `CampRoleService`, *`CachingCampService`* | `CampRepository` | `camps`, `camp_seasons`, `camp_members`, `camp_images`, `camp_historical_names`, `camp_settings`, `camp_role_definitions`, `camp_role_assignments` |
 | **City Planning** | `CityPlanningController`, `CityPlanningApiController` | — | `CityPlanningService` | `CityPlanningRepository` | `city_planning_settings`, `camp_polygons`, `camp_polygon_histories` |
 | **Containers** | `ContainerController` | — | `ContainerService` | `ContainerRepository` | `containers`, `container_placements` |
 | **Email** | `EmailController` | — | `EmailOutboxService`, `OutboxEmailService` | `EmailOutboxRepository` | `email_outbox_messages`, `system_settings` (key `email_outbox_paused`) |

@@ -63,14 +63,14 @@ No retention policy changes; the data lives only as long as the user account doe
 
 **Acceptance Criteria:**
 - Route: `GET /Profile/Me/DietaryMedical` (form view), `POST /Profile/Me/DietaryMedical` (save).
-- Renders as a standalone full page. URL is shareable / bookmarkable / works without JS. The Things-to-do card item navigates to this page; there is no modal overlay. (Modal-from-dashboard was considered but dropped — no HTMX or modal-coordination infrastructure exists yet in the app, and introducing it for a single nudge is not warranted.)
+- Renders as a standalone full page. URL is shareable / bookmarkable / works without JS. The Things-to-do card item navigates to this page; there is no modal overlay. (Modal-from-dashboard was considered but dropped: a full page is shareable, bookmarkable, and works without JS.)
 - Fields, in order:
   - **Dietary preference** — required radio group: `Omnivore`, `Vegetarian`, `Vegan`, `Pescatarian`.
   - **Allergies** — optional multi-select chips: `Peanut`, `Tree nut`, `Dairy`, `Egg`, `Shellfish`, `Wheat/Gluten`, `Soy`, `Sesame`, `Other`. Choosing `Other` reveals a single-line text input (`AllergyOtherText`, max 500 chars — matches existing DB length).
   - **Intolerances** — optional multi-select chips: `Lactose`, `Gluten`, `Histamine`, `Other`. Choosing `Other` reveals a single-line text input (`IntoleranceOtherText`, max 500 chars — matches existing DB length).
   - **Medical conditions** — optional free-text textarea (max 4000 chars, the existing DB length). Hint copy: "Only visible to you and the No-Info Admins. Anything coordinators should know — diabetes, epilepsy, severe injuries, etc."
 - All values persist to `Profile` columns of the same name (moved from `VolunteerEventProfile`). No new columns.
-- POST validates: dietary preference must be one of the four enum values; "Other" text fields required iff `Other` is selected in their parent chip; medical conditions ≤ 4000 chars; allergy/intolerance items must be from the allowed set or `Other`.
+- POST validates: "Other" text fields required iff `Other` is selected in their parent chip; medical conditions ≤ 4000 chars; allergies are filtered against `DietaryOptions.AllergyOptions` before saving. **Dietary preference is not re-validated on POST** — the radio group constrains the UI, but `Profile.DietaryPreference` is free text and any non-blank string persists (see `docs/sections/Profiles.md` Invariants for the rationale).
 - On success: redirect back to `/` (dashboard). The Things-to-do card re-renders on the dashboard with the dietary/medical item gone (per US-35.1).
 - On validation failure: re-render with errors, preserve all entered values.
 
@@ -102,7 +102,6 @@ No retention policy changes; the data lives only as long as the user account doe
 **Acceptance Criteria:**
 - The dashboard `ThingsToDoViewComponent` dietary item appears whenever `Profile.DietaryPreference` is empty, regardless of signups.
 - Description uses `Todo_DietaryMedical_NoShift_Pending` when there is no qualifying signup; the existing `_Pending` copy is used otherwise.
-- See `docs/superpowers/specs/2026-05-25-dietary-prompt-tightening-design.md`.
 
 ### US-35.6: Hard gate on qualifying-shift signup
 **As** the system
@@ -113,7 +112,6 @@ No retention policy changes; the data lives only as long as the user account doe
 - `ShiftsController.ToggleDay` redirects to `/Profile/Me/DietaryMedical?returnAction=signup&shiftId=...` when `ShiftSignupService.ToggleDayAsync` returns `NeedsDietaryFirst` — i.e. the target shift `QualifiesForCantinaMeal()` and `DietaryPreference` is empty. (`SignUp` / `SignUpRange` no longer exist on the controller.)
 - On successful save, the form replays the signup (`ProfileController.DietaryMedical` POST branches on `returnAction`).
 - A banner on `/Shifts` and `/Shifts/Mine` (`DietaryMissingBannerViewComponent`) plus disabled Sign-Up buttons catch humans who already have a qualifying signup but no dietary on file.
-- See `docs/superpowers/specs/2026-05-25-dietary-prompt-tightening-design.md`.
 
 ### US-35.7: Meal preference + allergies editable from the main profile
 **As a** human filling in my profile
@@ -124,7 +122,6 @@ No retention policy changes; the data lives only as long as the user account doe
 - `/Profile/Me/Edit` → **General Information** shows a meal-preference radio group + allergy chips (with an "Other" free-text reveal), reusing the `Profile_DietaryMedical_*` resource keys and the `DietaryOptions` option sets.
 - These write to the **same** `Profile` fields as the dedicated `/Profile/Me/DietaryMedical` page; the Edit save updates **only** `DietaryPreference` + `Allergies` (+ `AllergyOtherText`) and leaves `Intolerances` / `IntoleranceOtherText` / `MedicalConditions` untouched (those remain owned by the DietaryMedical page — medical is GDPR Art. 9 health data kept off the general profile form).
 - The dedicated `/Profile/Me/DietaryMedical` page is retained (it's the redirect target for the signup hard-gate and the banner CTA).
-- See `docs/superpowers/specs/2026-05-25-dietary-prompt-tightening-design.md` (§ "Edit-page entry point").
 
 ## Qualifying Shift
 

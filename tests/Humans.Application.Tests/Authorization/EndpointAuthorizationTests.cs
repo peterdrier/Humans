@@ -1,6 +1,7 @@
 using System.Reflection;
 using AwesomeAssertions;
 using Humans.Web.Controllers;
+using Humans.Web.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Xunit;
@@ -13,6 +14,39 @@ namespace Humans.Application.Tests.Authorization;
 /// </summary>
 public class EndpointAuthorizationTests
 {
+    /// <summary>
+    /// Every concrete controller in the app: Shell's, plus each section project's
+    /// (nobodies-collective/Humans#866), found the same way
+    /// <c>SectionControllerFeatureProvider</c> finds them at runtime.
+    /// </summary>
+    /// <remarks>
+    /// Anchored on <c>HumansControllerBase</c>'s assembly until that base class moved to
+    /// <c>Humans.UI</c>, which contains no concrete controllers — the three sweeps below
+    /// then passed over an empty set and stopped catching anything. Hence
+    /// <see cref="AssertNonEmpty"/>: a sweep that finds nothing is a broken sweep, not a
+    /// clean bill of health. It reuses the runtime's own section discovery rather than
+    /// <c>GetReferencedAssemblies()</c>, which returns no sections at all — Shell names no
+    /// type in them, so the compiler elides the references.
+    /// </remarks>
+    private static IReadOnlyList<Type> AllControllerTypes()
+    {
+        var controllers = new[] { typeof(HomeController).Assembly }
+            .Concat(SectionDiscoveryExtensions.SectionAssemblies())
+            .SelectMany(a => a.GetTypes())
+            .Where(t => typeof(Controller).IsAssignableFrom(t) && !t.IsAbstract)
+            .ToList();
+
+        AssertNonEmpty(controllers);
+        return controllers;
+    }
+
+    private static void AssertNonEmpty(IReadOnlyCollection<Type> controllers) =>
+        controllers.Should().HaveCountGreaterThan(
+            50,
+            "these sweeps are the repo-wide safety net for missing [Authorize] / " +
+            "[ValidateAntiForgeryToken]; an anchor that resolves to few or no controllers " +
+            "makes them pass vacuously");
+
     public static TheoryData<Type, string?, string> CriticalEndpointPolicies => new()
     {
         { typeof(UsersAdminController), "PurgeHuman", "AdminOnly" },
@@ -177,8 +211,7 @@ public class EndpointAuthorizationTests
     [HumansFact]
     public void AllPostActions_HaveAntiForgeryValidation()
     {
-        var controllerTypes = typeof(HumansControllerBase).Assembly.GetTypes()
-            .Where(t => typeof(Controller).IsAssignableFrom(t) && !t.IsAbstract);
+        var controllerTypes = AllControllerTypes();
 
         var violations = new List<string>();
 
@@ -225,8 +258,7 @@ public class EndpointAuthorizationTests
             "UnsubscribeController"
         };
 
-        var controllerTypes = typeof(HumansControllerBase).Assembly.GetTypes()
-            .Where(t => typeof(Controller).IsAssignableFrom(t) && !t.IsAbstract)
+        var controllerTypes = AllControllerTypes()
             .Where(t => !anonymousControllers.Contains(t.Name));
 
         var violations = new List<string>();
@@ -278,8 +310,7 @@ public class EndpointAuthorizationTests
             "ProfileController.PublicPopover",
         };
 
-        var controllerTypes = typeof(HumansControllerBase).Assembly.GetTypes()
-            .Where(t => typeof(Controller).IsAssignableFrom(t) && !t.IsAbstract)
+        var controllerTypes = AllControllerTypes()
             .Where(t => t.GetCustomAttribute<AuthorizeAttribute>() != null);
 
         var violations = new List<string>();

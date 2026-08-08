@@ -44,11 +44,10 @@ public class TeamRoleAssignmentConfiguration : IEntityTypeConfiguration<TeamRole
             .HasForeignKey(a => a.TeamMemberId)
             .OnDelete(DeleteBehavior.Restrict);
 
-#pragma warning disable CS0618 // Obsolete cross-domain nav kept so EF FK constraint stays modelled.
-        builder.HasOne(a => a.AssignedByUser)
+        // Cross-section FK to Users — bare-FK form, no navigation property.
+        builder.HasOne<User>()
             .WithMany()
             .HasForeignKey(a => a.AssignedByUserId)
             .OnDelete(DeleteBehavior.Restrict);
-#pragma warning restore CS0618
     }
 }

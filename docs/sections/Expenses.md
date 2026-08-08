@@ -163,7 +163,7 @@ Append-on-approve, drained by `HoldedExpenseOutboxJob`. Fields: `EventType` (Cre
 - **Budget**: `IBudgetService.GetCategoryByIdAsync` — category metadata and coordinator team resolution. `ITeamService.GetEffectiveBudgetCoordinatorTeamIdsAsync` — coordinator-scope check.
 - **Teams**: `ITeamService.IsUserCoordinatorOfTeamAsync` — coordinator endorsement gate.
 - **Profiles**: `IProfileService.GetProfileAsync` — IBAN snapshot at submit time; masked IBAN for GDPR export.
-- **Users/Identity**: `IUserService.GetByIdAsync` / `GetByIdsAsync` — display names for Holded contact name. `IUserService.GetMergedSourceIdsAsync` — GDPR merge-tombstone chain-follow.
+- **Users/Identity**: `IUserServiceRead.GetUserInfoAsync` / `GetUserInfosAsync` — display names for Holded contact name. `IUserService.GetMergedSourceIdsAsync` — GDPR merge-tombstone chain-follow.
 - **AuditLog**: `IAuditLogService.LogAsync` — all lifecycle transitions logged. `GetFilteredEntriesAsync` — GDPR export.
 - **Finance**: `IHoldedFinanceService.GetCreditorStatusAsync` — creditor status derived from the cached Holded daybook ledger, for the submitter's owed/paid timeline (Feature 2; full interface for now, read-split to `IHoldedFinanceServiceRead` noted as future tech debt).
 - **Admin (Users section)**: `/Users/Admin/{id}/RevealIban` lives in `UsersAdminController` and calls `IProfileService.GetProfileAsync` + `IAuditLogService.LogAsync`.

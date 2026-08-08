@@ -1,6 +1,6 @@
 <!-- freshness:triggers
-  src/Humans.Application/Services/Profile/ContactFieldService.cs
-  src/Humans.Application/Services/Profile/UserEmailService.cs
+  src/Humans.Application/Services/Profiles/ContactFieldService.cs
+  src/Humans.Application/Services/Profiles/UserEmailService.cs
   src/Humans.Web/Controllers/ProfileController.cs
   src/Humans.Web/Views/Profile/Emails.cshtml
   src/Humans.Domain/Entities/ContactField.cs
@@ -238,7 +238,6 @@ UserEmail
 ├── IsNotificationTarget: bool  ← exactly one per user
 ├── Visibility: ContactFieldVisibility? ← null = hidden from profile
 ├── VerificationSentAt: Instant?
-├── DisplayOrder: int
 ├── CreatedAt: Instant
 └── UpdatedAt: Instant
 ```

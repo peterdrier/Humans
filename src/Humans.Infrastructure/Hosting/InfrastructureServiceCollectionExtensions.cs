@@ -22,7 +22,7 @@ public static class InfrastructureServiceCollectionExtensions
         // optionsLifetime: Singleton so the Singleton IDbContextFactory can consume DbContextOptions.
         services.AddDbContext<HumansDbContext>((sp, options) =>
         {
-            ConfigureNpgsql(sp, options);
+            ConfigureNpgsql(sp, options, typeof(HumansDbContext));
             options.AddInterceptors(sp.GetRequiredService<QueryMonitoringInterceptor>());
             options.AddInterceptors(sp.GetRequiredService<UserInfoSaveChangesInterceptor>());
             // PK lookups via FirstOrDefaultAsync(e => e.Id == id) are deterministic — suppress warning.
@@ -37,7 +37,7 @@ public static class InfrastructureServiceCollectionExtensions
         // Singleton-lifetime factory so Singleton repositories can inject it without scope-validation issues.
         services.AddDbContextFactory<HumansDbContext>((sp, options) =>
         {
-            ConfigureNpgsql(sp, options);
+            ConfigureNpgsql(sp, options, typeof(HumansDbContext));
             options.AddInterceptors(sp.GetRequiredService<UserInfoSaveChangesInterceptor>());
             options.ConfigureWarnings(w => w.Ignore(CoreEventId.FirstWithoutOrderByAndFilterWarning));
         });
@@ -51,7 +51,6 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSectionDbContext<FinanceDbContext>(sentinelTable: "holded_expense_docs");
         services.AddSectionDbContext<SurveysDbContext>(sentinelTable: "surveys");
         services.AddSectionDbContext<EventGuideDbContext>(sentinelTable: "events");
-        services.AddSectionDbContext<StoreDbContext>(sentinelTable: "store_orders");
 
         services.AddHostedService<DatabaseMigrationHostedService>();
 
@@ -69,7 +68,7 @@ public static class InfrastructureServiceCollectionExtensions
     /// <see cref="SectionMigrationRunner"/> at startup.
     /// </summary>
     /// <param name="sentinelTable">See <see cref="SectionDbContextRegistration.SentinelTable"/>.</param>
-    internal static IServiceCollection AddSectionDbContext<TContext>(
+    public static IServiceCollection AddSectionDbContext<TContext>(
         this IServiceCollection services,
         string sentinelTable)
         where TContext : DbContext
@@ -78,7 +77,7 @@ public static class InfrastructureServiceCollectionExtensions
 
         services.AddDbContext<TContext>((sp, options) =>
         {
-            ConfigureNpgsql(sp, options, historyTable);
+            ConfigureNpgsql(sp, options, typeof(TContext), historyTable);
             options.AddInterceptors(sp.GetRequiredService<QueryMonitoringInterceptor>());
             options.AddInterceptors(sp.GetRequiredService<UserInfoSaveChangesInterceptor>());
             options.ConfigureWarnings(w => w.Ignore(CoreEventId.FirstWithoutOrderByAndFilterWarning));
@@ -86,7 +85,7 @@ public static class InfrastructureServiceCollectionExtensions
 
         services.AddDbContextFactory<TContext>((sp, options) =>
         {
-            ConfigureNpgsql(sp, options, historyTable);
+            ConfigureNpgsql(sp, options, typeof(TContext), historyTable);
             options.AddInterceptors(sp.GetRequiredService<UserInfoSaveChangesInterceptor>());
             options.ConfigureWarnings(w => w.Ignore(CoreEventId.FirstWithoutOrderByAndFilterWarning));
         });
@@ -99,12 +98,13 @@ public static class InfrastructureServiceCollectionExtensions
     private static void ConfigureNpgsql(
         IServiceProvider sp,
         DbContextOptionsBuilder options,
+        Type contextType,
         string? migrationsHistoryTable = null)
     {
         options.UseNpgsql(sp.GetRequiredService<NpgsqlDataSource>(), npgsqlOptions =>
         {
             npgsqlOptions.UseNodaTime();
-            npgsqlOptions.MigrationsAssembly("Humans.Infrastructure");
+            npgsqlOptions.MigrationsAssembly(contextType.Assembly.GetName().Name!);
             npgsqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
             if (migrationsHistoryTable is not null)
             {

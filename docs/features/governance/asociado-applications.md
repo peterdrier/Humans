@@ -9,9 +9,9 @@
   src/Humans.Domain/Entities/ApplicationStateHistory.cs
   src/Humans.Domain/Entities/BoardVote.cs
   src/Humans.Domain/TermExpiryCalculator.cs
-  src/Humans.Infrastructure/Data/Configurations/ApplicationConfiguration.cs
-  src/Humans.Infrastructure/Data/Configurations/ApplicationStateHistoryConfiguration.cs
-  src/Humans.Infrastructure/Data/Configurations/BoardVoteConfiguration.cs
+  src/Humans.Infrastructure/Data/Configurations/Governance/ApplicationConfiguration.cs
+  src/Humans.Infrastructure/Data/Configurations/Governance/ApplicationStateHistoryConfiguration.cs
+  src/Humans.Infrastructure/Data/Configurations/Governance/BoardVoteConfiguration.cs
 -->
 <!-- freshness:flag-on-change
   Tier application state machine, approval effects, and renewal flow — review when Application entity or governance/application controllers change.
@@ -136,7 +136,7 @@ Application
 ├── TermExpiresAt: LocalDate? [set on approval: Dec 31 of odd year]
 ├── BoardMeetingDate: LocalDate? [date Board finalized decision]
 ├── DecisionNote: string? (4000) [Board's collective decision note]
-├── Navigation: StateHistory, BoardVotes (transient), User, ReviewedByUser
+├── Navigation: StateHistory, BoardVotes (transient) — no `User`/`ReviewedByUser` navs; resolve via `IUserServiceRead.GetUserInfosAsync` keyed on `UserId`/`ReviewedByUserId`
 ```
 
 The `Language` field records the applicant's UI language at the time of submission, displayed to reviewers as the native language name to help them understand context.

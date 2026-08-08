@@ -6,7 +6,7 @@
   src/Humans.Application/Interfaces/Email/IEmailService.cs
   src/Humans.Application/Interfaces/Email/IEmailRenderer.cs
   src/Humans.Infrastructure/Services/EmailRenderer.cs
-  src/Humans.Web/Resources/SharedResource*.resx
+  src/Humans.UI/Resources/SharedResource*.resx
 -->
 <!-- freshness:flag-on-change
   Variant selection logic, suppression cases, MessageCategory routing, and resource-name fallback — review when sync removal pathways or email-template wiring changes.

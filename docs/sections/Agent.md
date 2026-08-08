@@ -114,6 +114,9 @@ Per-user message and token counters live in the Singleton `IAgentRateLimitStore`
 <!-- wheat: 2026-04-20-agent-section-design.md §Cost Model + prototype-notes §Cost -->
 <!-- NOTE: Model default is Sonnet 4.6 (not Haiku). Prototype validated that Haiku is ~3x cheaper (~$7/mo vs ~$20/mo at 5 sessions/day x 4 turns) but Sonnet's precision and grounding matter for a support helper — both are production-viable but Sonnet is more concise and confidently grounded. The model is admin-configurable at AgentSettings.Model so the org can revisit after real usage data. -->
 
+13. **A `max_tokens` cutoff mid tool-call JSON continues the tool loop, not a dead end.** `AnthropicClient` closes the current content block on truncation regardless of stop reason, so `AgentService` treats `stop_reason == "max_tokens"` the same as `"tool_use"` for loop continuation (nobodies-collective/Humans#963). Truncated/unparseable tool-call arguments are swapped for `{}` before the call is replayed to the provider (`ReplayableToolCalls`) — the API rejects an unmatched `tool_use` block otherwise — while the dispatcher still sees and reports the original malformed payload for the current call.
+14. **A turn that throws or disconnects mid-stream never leaves an orphaned user message.** `AskAsync` drives the turn's async enumerator manually (an `await foreach` can't wrap `yield` in try/catch) so a thrown exception or an early disposal from a client disconnect both fall through to a `finally`: an assistant message with `RefusalReason = "error"` is persisted, stamped with whatever provider usage the turn accumulated before it broke, and that usage is billed through the normal rate-limit path — never a silent zero-cost failure (nobodies-collective/Humans#963, #990). A turn that reached its own finalizer (fully persisted normally) skips this fallback.
+
 ## Negative Access Rules
 
 - Non-authenticated users never see the widget and always receive 401/403 from endpoints.
@@ -126,7 +129,7 @@ Read-only HTTP surface for QA/prod chat-history review by dev tooling and a dev-
 
 | Endpoint | Purpose |
 |----------|---------|
-| `GET /api/agent/conversations?refusalsOnly&handoffsOnly&userId&take&skip` | Conversation summaries. `take` clamped 1–200 (default 50). Each row includes `RefusalCount` (messages with `RefusalReason`), `HandoffCount` (legacy `HandedOffToFeedbackId` links plus `route_to_issue` invocations recorded in `FetchedDocs`), `LastUserMessagePreview` (200 char cap), `UserDisplayName` resolved via `IUserService.GetByIdsAsync`. |
+| `GET /api/agent/conversations?refusalsOnly&handoffsOnly&userId&take&skip` | Conversation summaries. `take` clamped 1–200 (default 50). Each row includes `RefusalCount` (messages with `RefusalReason`), `HandoffCount` (legacy `HandedOffToFeedbackId` links plus `route_to_issue` invocations recorded in `FetchedDocs`), `LastUserMessagePreview` (200 char cap), `UserDisplayName` resolved via `IUserServiceRead.GetUserInfosAsync`. |
 | `GET /api/agent/conversations/{id}` | Full conversation envelope + ordered messages (Role, Content, CreatedAt, Model, RefusalReason, HandedOffToFeedbackId, FetchedDocs). |
 | `GET /api/agent/conversations/{id}/messages` | Messages-only view (same per-message shape). |
 

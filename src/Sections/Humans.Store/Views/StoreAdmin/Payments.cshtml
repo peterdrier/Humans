@@ -1,0 +1,153 @@
+@using Humans.Store.Services.Dtos
+@using Humans.UI.Models.Tables
+@using Humans.Store.Models
+@using Microsoft.AspNetCore.Html
+@model PaymentsReconciliationViewModel
+@{
+    ViewData["Title"] = "Store Stripe Payments";
+    var report = Model.Report;
+}
+
+@functions {
+    private static (string Css, string Label) StatusBadge(StripeReconciliationStatus status) => status switch
+    {
+        StripeReconciliationStatus.Recorded => ("bg-success", "Recorded"),
+        StripeReconciliationStatus.RecordedPending => ("bg-warning text-dark", "Recorded (pending settlement)"),
+        StripeReconciliationStatus.Missing => ("bg-danger", "Missing"),
+        StripeReconciliationStatus.Unmatched => ("bg-warning text-dark", "Unmatched"),
+        _ => ("bg-secondary", "Unpaid"),
+    };
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="mb-0">Stripe Payments</h1>
+    <div class="btn-group">
+        <a asp-action="Catalog" class="btn btn-outline-secondary">Catalog</a>
+        <a asp-action="Summary" class="btn btn-outline-secondary">Summary</a>
+        <a asp-controller="Store" asp-action="Index" class="btn btn-outline-secondary">Back to Store</a>
+    </div>
+</div>
+
+
+@if (!report.WebhookConfigured)
+{
+    <div class="alert alert-danger">
+        <i class="fa-solid fa-triangle-exclamation me-1"></i>
+        <strong>Stripe webhook is not configured.</strong> Paid orders will <em>not</em> record automatically
+        until <code>STRIPE_STORE_WEBHOOK_SECRET</code> is set. Until then, reconcile here after each payment.
+    </div>
+}
+@if (!report.CheckoutConfigured)
+{
+    <div class="alert alert-warning">
+        <i class="fa-solid fa-triangle-exclamation me-1"></i>
+        The Store Stripe key (<code>STRIPE_STORE_KEY</code>) is not configured, so Stripe cannot be read.
+        This list is empty until it is set.
+    </div>
+}
+else if (!report.StripeQueried)
+{
+    <div class="alert alert-warning">
+        <i class="fa-solid fa-triangle-exclamation me-1"></i>
+        The Store Stripe key is set but the session list could not be read (missing
+        <code>checkout_session:read</code> scope). Matching and orphan checks are suppressed
+        until it is fixed.
+    </div>
+}
+
+<div class="card mb-4">
+    <div class="card-body d-flex flex-wrap align-items-center gap-3">
+        <div>
+            <span class="badge bg-success">@report.RecordedCount recorded</span>
+            @if (report.RecordedPendingCount > 0)
+            {
+                <span class="badge bg-warning text-dark">@report.RecordedPendingCount pending settlement</span>
+            }
+            <span class="badge bg-danger">@report.MissingCount missing</span>
+            <span class="badge bg-warning text-dark">@report.UnmatchedCount unmatched</span>
+        </div>
+        <div class="ms-auto d-flex align-items-center gap-3">
+            @if (report.MissingCount > 0)
+            {
+                <span class="text-danger fw-semibold">@report.MissingTotalEur.ToEuro() collected but unrecorded</span>
+                <form asp-action="RecordMissingPayments" method="post" class="mb-0">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fa-solid fa-rotate me-1"></i>Record @report.MissingCount missing payment(s)
+                    </button>
+                </form>
+            }
+            else if (report.StripeQueried)
+            {
+                <span class="text-success"><i class="fa-solid fa-check me-1"></i>Stripe and the ledger are reconciled.</span>
+            }
+        </div>
+    </div>
+</div>
+
+@if (Model.Rows.Count == 0)
+{
+    <div class="card">
+        <div class="card-body text-center py-4 text-muted">No Stripe Checkout payments found for the Store account.</div>
+    </div>
+}
+else
+{
+    Func<StripeReconciliationRow, IHtmlContent> stripeCreatedCell =
+        @<text>@(item.CreatedAt?.ToInvariantTimestamp() ?? "—")</text>;
+    Func<StripeReconciliationRow, IHtmlContent> stripeAmountCell =
+        @<text>@(item.AmountEur.HasValue ? item.AmountEur.Value.ToEuro() : "—")</text>;
+    Func<StripeReconciliationRow, IHtmlContent> stripeStatusCell = @<text>
+        @{
+            var (css, label) = StatusBadge(item.Status);
+        }
+        <span class="badge @css">@label</span>
+    </text>;
+    Func<StripeReconciliationRow, IHtmlContent> stripeOrderCell = @<text>
+        @if (item.OrderId is { } oid)
+        {
+            <a asp-controller="Store" asp-action="Order" asp-route-id="@oid">@(item.OrderLabel ?? oid.ToString())</a>
+        }
+        else
+        {
+            <span class="text-muted">no order metadata</span>
+        }
+    </text>;
+    Func<StripeReconciliationRow, IHtmlContent> stripePiCell =
+        @<text><code class="small">@(item.PaymentIntentId ?? "—")</code></text>;
+    <div class="card">
+        @{
+            var stripeTable = TableModel.For(Model.Rows)
+                .Template("Created (UTC)", stripeCreatedCell)
+                .Template("Amount", stripeAmountCell, c => c.NoSort().End())
+                .Template("Status", stripeStatusCell)
+                .Template("Order", stripeOrderCell)
+                .Template("PaymentIntent", stripePiCell)
+                .Build();
+        }
+        <partial name="_Table" model="stripeTable" />
+    </div>
+}
+
+@if (report.Orphans.Count > 0)
+{
+    <h2 class="h5 mt-4 mb-2 text-warning">Orphan payments — recorded here but not found in Stripe</h2>
+    <p class="text-muted small">Investigate manually; these are never auto-removed.</p>
+    Func<StripeOrphanPayment, IHtmlContent> orphanAmountCell =
+        @<text>@item.AmountEur.ToEuro()</text>;
+    Func<StripeOrphanPayment, IHtmlContent> orphanOrderCell =
+        @<text><a asp-controller="Store" asp-action="Order" asp-route-id="@item.OrderId">@(item.OrderLabel ?? item.OrderId.ToString())</a></text>;
+    Func<StripeOrphanPayment, IHtmlContent> orphanPiCell =
+        @<text><code class="small">@item.PaymentIntentId</code></text>;
+    <div class="card">
+        @{
+            var orphansTable = TableModel.For(report.Orphans)
+                .Column("Recorded (UTC)", o => o.ReceivedAt.ToInvariantTimestamp())
+                .Template("Amount", orphanAmountCell, c => c.NoSort().End())
+                .Template("Order", orphanOrderCell)
+                .Template("PaymentIntent", orphanPiCell)
+                .Build();
+        }
+        <partial name="_Table" model="orphansTable" />
+    </div>
+}

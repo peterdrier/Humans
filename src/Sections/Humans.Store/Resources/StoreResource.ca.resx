@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ReSharper disable MarkupTextTypo -->
+<root xmlns:ns1="urn:schemas-microsoft-com:xml-msdata" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:schema id="root">
+    <xs:element name="root" ns1:IsDataSet="true">
+      <xs:complexType>
+        <xs:choice maxOccurs="unbounded">
+          <xs:element name="data">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element name="value" type="xsd:string" minOccurs="0" ns1:Ordinal="1" />
+                <xs:element name="comment" type="xsd:string" minOccurs="0" ns1:Ordinal="2" />
+              </xs:sequence>
+              <xs:attribute name="name" type="xsd:string" ns1:Ordinal="0" />
+              <xs:attribute name="type" type="xsd:string" />
+              <xs:attribute name="mimetype" type="xsd:string" />
+            </xs:complexType>
+          </xs:element>
+          <xs:element name="resheader">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element name="value" type="xsd:string" minOccurs="0" ns1:Ordinal="1" />
+              </xs:sequence>
+              <xs:attribute name="name" type="xsd:string" use="required" />
+            </xs:complexType>
+          </xs:element>
+        </xs:choice>
+      </xs:complexType>
+    </xs:element>
+  </xs:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>1.3</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="Enum_OrderCounterpartyType_Camp" xml:space="preserve"><value>Barri</value></data>
+  <data name="Enum_OrderCounterpartyType_Team" xml:space="preserve"><value>Equip</value></data>
+  <data name="Store_AdminCatalog" xml:space="preserve"><value>Catàleg</value></data>
+  <data name="Store_AdminPayments" xml:space="preserve"><value>Pagaments</value></data>
+  <data name="Store_AdminSummary" xml:space="preserve"><value>Resum</value></data>
+  <data name="Store_CatalogHeading" xml:space="preserve"><value>Catàleg ({0})</value></data>
+  <data name="Store_ColBalance" xml:space="preserve"><value>Saldo</value></data>
+  <data name="Store_ColDeposit" xml:space="preserve"><value>Dipòsit</value></data>
+  <data name="Store_ColDeposits" xml:space="preserve"><value>Dipòsits</value></data>
+  <data name="Store_ColDescription" xml:space="preserve"><value>Descripció</value></data>
+  <data name="Store_ColLines" xml:space="preserve"><value>Línies</value></data>
+  <data name="Store_ColLinesVat" xml:space="preserve"><value>Línies + IVA</value></data>
+  <data name="Store_ColName" xml:space="preserve"><value>Nom</value></data>
+  <data name="Store_ColOrderBy" xml:space="preserve"><value>Demana abans del</value></data>
+  <data name="Store_ColState" xml:space="preserve"><value>Estat</value></data>
+  <data name="Store_ColUnitPrice" xml:space="preserve"><value>Preu unitari (IVA inclòs)</value></data>
+  <data name="Store_CreateOrder" xml:space="preserve"><value>Crea una comanda</value></data>
+  <data name="Store_DeleteOrderConfirm" xml:space="preserve"><value>Vols eliminar aquesta comanda amb saldo zero? Això no es pot desfer.</value></data>
+  <data name="Store_DeleteOrderTitle" xml:space="preserve"><value>Elimina (saldo zero)</value></data>
+  <data name="Store_NoCounterpartiesAlert" xml:space="preserve"><value>No lideres cap barri ni coordines cap departament amb una temporada activa enguany. El catàleg de sota és de només lectura.</value></data>
+  <data name="Store_NoOrders" xml:space="preserve"><value>Encara no hi ha comandes.</value></data>
+  <data name="Store_NoProducts" xml:space="preserve"><value>No hi ha cap producte actiu per a {0}.</value></data>
+  <data name="Store_OpenOrder" xml:space="preserve"><value>Obre</value></data>
+  <data name="Store_StartOrder" xml:space="preserve"><value>Inicia una comanda</value></data>
+  <data name="Store_Title" xml:space="preserve"><value>Botiga</value></data>
+</root>

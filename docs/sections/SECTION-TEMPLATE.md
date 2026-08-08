@@ -151,7 +151,7 @@ section is a pure read/write surface with no side effects." (rare).
 <!--
 Required. One bullet per other section this one talks to, naming the
 dependency direction and the interface used. Concrete is better than abstract:
-"calls `ITeamService.GetByIdsAsync`" beats "integrates with Teams." Required
+"calls `IUserServiceRead.GetUserInfosAsync`" beats "integrates with Users." Required
 whether the dependency is strong (shared writes) or weak (display labels only).
 -->
 
@@ -188,7 +188,7 @@ Use this single block; delete the (B) and (C) blocks below.
 - **Decorator decision** — one of:
   - Caching decorator (`Caching<Section>Service`, Singleton, dict-backed). Pattern per design-rules §15d. Inherits `TrackedCache<TKey,TValue>` which itself implements `IHostedService`; register the decorator as a hosted service via `services.AddHostedService(sp => sp.GetRequiredService<Caching<Section>Service>())`. No separate `*WarmupHostedService` class.
   - No caching decorator. Rationale: <low-traffic, admin-only, sequential queue drain, etc.>
-- **Cross-domain navs** — stripped or `[Obsolete]`-marked: <list>. Display stitching routes through `<IUserService.GetByIdsAsync, ITeamService.GetTeamNamesByIdsAsync, …>`.
+- **Cross-domain navs** — stripped or `[Obsolete]`-marked: <list>. Display stitching routes through `<IUserServiceRead.GetUserInfosAsync, ITeamServiceRead.GetTeamsAsync, …>`.
 - **Cross-section calls** — the public interfaces this section consumes: `<IUserService, ITeamService, ...>`.
 - **Architecture test** — `tests/Humans.Application.Tests/Architecture/<Section>ArchitectureTests.cs` pins the shape.
 

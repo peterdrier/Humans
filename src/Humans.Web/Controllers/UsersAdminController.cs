@@ -14,6 +14,7 @@ using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Profiles;
 using Humans.Domain.Enums;
+using Humans.UI.Controllers;
 using Humans.UI;
 using Humans.UI.Authorization;
 using Humans.Web.Authorization;

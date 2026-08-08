@@ -21,7 +21,7 @@ PRs keep landing with the sentence *"the agent reported N pre-existing failures 
 1. **CI does not run integration tests.** `.github/workflows/build.yml:50` filters them out (`--filter "FullyQualifiedName!~Integration"`). Integration failures only surface when someone runs locally, then get attributed to "pre-existing" and merged around.
 2. **EF In-Memory** is used in 85 Application test files. It doesn't enforce FKs, NOT NULL, unique constraints, doesn't translate Npgsql LINQ, doesn't fire triggers — so unit tests pass while real-Postgres behavior diverges.
 3. **Per-class Testcontainers Postgres.** ~18 integration test classes × `IClassFixture<HumansWebApplicationFactory>` × no parallelization control = up to 18 concurrent Postgres containers booting, each running all 96 migrations. Resource contention causes intermittent failures.
-4. **Hangfire static state leakage.** `JobStorage.Current` is per-AppDomain. The codebase has six `if (!IsEnvironment("Testing"))` guards in `Program.cs` and infrastructure. Every new Hangfire-touching feature is one missed guard from breaking tests — this is the "Hangfire-init" failure cluster pattern.
+4. **Hangfire static state leakage.** `JobStorage.Current` is per-AppDomain. The codebase has four `if (!IsEnvironment("Testing"))` guards, all in `Program.cs`. Every new Hangfire-touching feature is one missed guard from breaking tests — this is the "Hangfire-init" failure cluster pattern.
 5. **Failures are tolerated.** A test that starts failing can sit on `main` indefinitely because "pre-existing, not my PR" is accepted.
 6. Noise: `longRunningTestSeconds: 1` in `xunit.runner.json` floods integration runs with diagnostics, training the team to ignore xUnit output.
 

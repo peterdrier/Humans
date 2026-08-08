@@ -4,7 +4,7 @@
   src/Humans.Web/Controllers/ShiftAdminController.cs
   src/Humans.Web/Controllers/ShiftDashboardController.cs
   src/Humans.Web/Authorization/ShiftRoleChecks.cs
-  src/Humans.Web/Authorization/PolicyNames.cs
+  src/Humans.UI/Authorization/PolicyNames.cs
   src/Humans.Domain/Entities/EventSettings.cs
   src/Humans.Domain/Entities/Rota.cs
   src/Humans.Domain/Entities/Shift.cs

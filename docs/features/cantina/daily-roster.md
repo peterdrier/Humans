@@ -40,9 +40,9 @@ This tightens the Art. 9 boundary: cantina coordinators don't need health data a
 
 ## Week Boundary
 
-A **week** is Monday 00:00 through Sunday 23:59 in the **active event's timezone** (`EventSettings.TimeZoneId`). The week is identified by a single integer:
+A **week** is Monday 00:00 through Sunday 23:59 in the **active event's timezone** (`BurnSettingsInfo.TimeZoneId`). The week is identified by a single integer:
 
-> `weekStartOffset` = the day-offset (relative to `EventSettings.GateOpeningDate`) of that week's Monday.
+> `weekStartOffset` = the day-offset (relative to `BurnSettingsInfo.GateOpeningDate`) of that week's Monday.
 
 Examples (gate opening on a Friday, `DayOffset = 0`):
 
@@ -77,7 +77,7 @@ If there is no active event, the service returns an empty DTO with `WeekStartDat
 - Below that, a **per-person table** with one row per unique human on-site any day that week. Columns: **Burner Name** · **Arrives on** (single short day label, e.g. "Mon 27 May") · **No shift** (list of short day labels for days within the week with no scheduled shift) · **Dietary chip** · **Allergies (chips)** · **Other allergy text** · **Intolerances (chips)** · **Other intolerance text**.
 - Per-person table default sort: first arrival day asc → has-allergies first → canonical dietary order → cultural-collation burner name (Spanish event, names with `ñ`/`á` sort correctly).
 - Per-person table does **not** include a `MedicalConditions` column under any role.
-- If there is no active event (no `EventSettings` with a `GateOpeningDate` resolvable), the page renders an empty-state message ("no active event") instead of throwing.
+- If there is no active event (no `BurnSettingsInfo` resolvable via `IBurnSettingsService.GetActiveAsync`), the page renders an empty-state message ("no active event") instead of throwing.
 
 ### US-36.2: Coordinator navigates to another week
 **As a** cantina coordinator planning ahead (or looking back)
@@ -164,7 +164,7 @@ Reads:
 | `VolunteerEventProfile.Intolerances` (`List<string>`) | Intolerance chips + roll-up | `jsonb` via `ConfigureJsonbList`, existing |
 | `VolunteerEventProfile.IntoleranceOtherText` | "Other (N): …" list, deduped across the week | Existing field |
 | `User.BurnerName` (or fallback display name) | Per-person table "Burner Name" column | Existing |
-| `EventSettings.GateOpeningDate`, `EventSettings.TimeZoneId` | Compute calendar dates for each day in the week + default week | Existing |
+| `BurnSettingsInfo.GateOpeningDate`, `BurnSettingsInfo.TimeZoneId` | Compute calendar dates for each day in the week + default week | Existing, via `IBurnSettingsService` |
 
 At ~500-user scale, the service issues 7 sequential per-day cohort queries (`GetOnSiteUserIdsForDayAsync`, one per day) plus a single batched `IUserServiceRead.GetUserInfosAsync` for the week's unique cohort (dietary + names from the cached `UserInfo`). For the arrival-day rule it additionally scans per-day cohorts from build start up to the window's end (capped at strike end) to find each human's first confirmed shift.
 

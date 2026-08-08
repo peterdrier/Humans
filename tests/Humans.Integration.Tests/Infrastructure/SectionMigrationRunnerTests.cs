@@ -1,6 +1,7 @@
 using AwesomeAssertions;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Hosting;
+using Humans.Store.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Npgsql;
@@ -189,7 +190,10 @@ public sealed class SectionMigrationRunnerTests(HumansTestDatabase database)
             .UseNpgsql(connectionString, npgsql =>
             {
                 npgsql.UseNodaTime();
-                npgsql.MigrationsAssembly("Humans.Infrastructure");
+                // The context's own assembly, not a literal: a section at G5 owns its
+                // migrations (nobodies-collective/Humans#866), and this must match what
+                // AddSectionDbContext configures at runtime.
+                npgsql.MigrationsAssembly(typeof(TContext).Assembly.GetName().Name!);
                 npgsql.MigrationsHistoryTable(SectionMigrationsHistory.TableFor<TContext>());
             })
             .Options;
@@ -222,7 +226,7 @@ public sealed class SectionMigrationRunnerTests(HumansTestDatabase database)
             .UseNpgsql(connectionString, npgsql =>
             {
                 npgsql.UseNodaTime();
-                npgsql.MigrationsAssembly("Humans.Infrastructure");
+                npgsql.MigrationsAssembly(typeof(HumansDbContext).Assembly.GetName().Name!);
             })
             .Options;
         await using var db = new HumansDbContext(options);

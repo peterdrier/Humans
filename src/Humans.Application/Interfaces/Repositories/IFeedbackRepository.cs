@@ -11,11 +11,11 @@ namespace Humans.Application.Interfaces.Repositories;
 /// DbSets after the Feedback migration lands.
 /// </summary>
 /// <remarks>
-/// Reads never <c>.Include()</c> cross-domain navigation properties
-/// (<c>FeedbackReport.User</c>, <c>FeedbackReport.ResolvedByUser</c>,
-/// <c>FeedbackReport.AssignedToUser</c>, <c>FeedbackReport.AssignedToTeam</c>,
-/// <c>FeedbackMessage.SenderUser</c>). Callers in the Application layer
-/// stitch display data from <c>IUserService</c>, <c>IUserEmailService</c>, and
+/// Feedback's cross-section links are bare FK columns with no navigation
+/// properties (<c>UserId</c>, <c>ResolvedByUserId</c>, <c>AssignedToUserId</c>,
+/// <c>AssignedToTeamId</c>, <c>FeedbackMessage.SenderUserId</c>), so there is
+/// nothing to <c>.Include()</c>. Callers in the Application layer stitch
+/// display data from <c>IUserService</c>, <c>IUserEmailService</c>, and
 /// <c>ITeamService</c>.
 ///
 /// Feedback is admin-review-only and low-traffic. The repository uses the

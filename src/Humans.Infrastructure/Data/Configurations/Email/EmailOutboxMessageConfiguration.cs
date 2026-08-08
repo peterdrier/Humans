@@ -47,7 +47,7 @@ public class EmailOutboxMessageConfiguration : IEntityTypeConfiguration<EmailOut
             .OnDelete(DeleteBehavior.SetNull);
 
         builder.HasOne<CampaignGrant>()
-            .WithMany(g => g.OutboxMessages)
+            .WithMany()
             .HasForeignKey(e => e.CampaignGrantId)
             .OnDelete(DeleteBehavior.SetNull);
 

@@ -1,3 +1,5 @@
+using Humans.Store.Data;
+using Humans.Store.Domain;
 using System.Globalization;
 using System.Net;
 using System.Security.Cryptography;
@@ -59,12 +61,12 @@ public class StoreStripeWebhookControllerTests(HumansTestDatabase database) : In
 
         using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<StoreDbContext>();
-        var payment = await db.StorePayments.AsNoTracking()
+        var payment = await db.Payments.AsNoTracking()
             .SingleOrDefaultAsync(p => p.StripePaymentIntentId == paymentIntentId, Xunit.TestContext.Current.CancellationToken);
         payment.Should().NotBeNull();
         payment.OrderId.Should().Be(orderId);
         payment.AmountEur.Should().Be(42.50m);
-        payment.Method.Should().Be(StorePaymentMethod.Stripe);
+        payment.Method.Should().Be(PaymentMethod.Stripe);
     }
 
     [HumansFact(Timeout = 30000)]
@@ -85,7 +87,7 @@ public class StoreStripeWebhookControllerTests(HumansTestDatabase database) : In
 
         using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<StoreDbContext>();
-        var matches = await db.StorePayments.AsNoTracking()
+        var matches = await db.Payments.AsNoTracking()
             .Where(p => p.StripePaymentIntentId == paymentIntentId)
             .CountAsync(Xunit.TestContext.Current.CancellationToken);
         matches.Should().Be(1);
@@ -113,9 +115,9 @@ public class StoreStripeWebhookControllerTests(HumansTestDatabase database) : In
 
         using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<StoreDbContext>();
-        var payment = await db.StorePayments.AsNoTracking()
+        var payment = await db.Payments.AsNoTracking()
             .SingleAsync(p => p.StripePaymentIntentId == paymentIntentId, Xunit.TestContext.Current.CancellationToken);
-        payment.Status.Should().Be(StorePaymentStatus.Pending);
+        payment.Status.Should().Be(PaymentStatus.Pending);
         payment.AmountEur.Should().Be(50m);
     }
 
@@ -138,9 +140,9 @@ public class StoreStripeWebhookControllerTests(HumansTestDatabase database) : In
 
         using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<StoreDbContext>();
-        var payment = await db.StorePayments.AsNoTracking()
+        var payment = await db.Payments.AsNoTracking()
             .SingleAsync(p => p.StripePaymentIntentId == paymentIntentId, Xunit.TestContext.Current.CancellationToken);
-        payment.Status.Should().Be(StorePaymentStatus.Paid);
+        payment.Status.Should().Be(PaymentStatus.Paid);
     }
 
     [HumansFact(Timeout = 30000)]
@@ -162,9 +164,9 @@ public class StoreStripeWebhookControllerTests(HumansTestDatabase database) : In
 
         using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<StoreDbContext>();
-        var payment = await db.StorePayments.AsNoTracking()
+        var payment = await db.Payments.AsNoTracking()
             .SingleAsync(p => p.StripePaymentIntentId == paymentIntentId, Xunit.TestContext.Current.CancellationToken);
-        payment.Status.Should().Be(StorePaymentStatus.Failed); // never paid-then-reversed
+        payment.Status.Should().Be(PaymentStatus.Failed); // never paid-then-reversed
     }
 
     [HumansFact(Timeout = 30000)]
@@ -187,10 +189,10 @@ public class StoreStripeWebhookControllerTests(HumansTestDatabase database) : In
 
         using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<StoreDbContext>();
-        var payments = await db.StorePayments.AsNoTracking()
+        var payments = await db.Payments.AsNoTracking()
             .Where(p => p.StripePaymentIntentId == paymentIntentId)
             .ToListAsync(Xunit.TestContext.Current.CancellationToken);
-        payments.Should().ContainSingle().Which.Status.Should().Be(StorePaymentStatus.Paid);
+        payments.Should().ContainSingle().Which.Status.Should().Be(PaymentStatus.Paid);
     }
 
     [HumansFact(Timeout = 30000)]
@@ -208,9 +210,9 @@ public class StoreStripeWebhookControllerTests(HumansTestDatabase database) : In
 
         using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<StoreDbContext>();
-        var payment = await db.StorePayments.AsNoTracking()
+        var payment = await db.Payments.AsNoTracking()
             .SingleAsync(p => p.StripePaymentIntentId == paymentIntentId, Xunit.TestContext.Current.CancellationToken);
-        payment.Status.Should().Be(StorePaymentStatus.Paid);
+        payment.Status.Should().Be(PaymentStatus.Paid);
         payment.AmountEur.Should().Be(75m);
     }
 
@@ -232,7 +234,7 @@ public class StoreStripeWebhookControllerTests(HumansTestDatabase database) : In
 
         using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<StoreDbContext>();
-        var exists = await db.StorePayments.AsNoTracking()
+        var exists = await db.Payments.AsNoTracking()
             .AnyAsync(p => p.StripePaymentIntentId == paymentIntentId, Xunit.TestContext.Current.CancellationToken);
         exists.Should().BeFalse();
     }
@@ -277,11 +279,11 @@ public class StoreStripeWebhookControllerTests(HumansTestDatabase database) : In
 
         var orderId = Guid.NewGuid();
         var now = SystemClock.Instance.GetCurrentInstant();
-        db.StoreOrders.Add(new StoreOrder
+        db.Orders.Add(new Order
         {
             Id = orderId,
             CampSeasonId = seasonId,
-            State = StoreOrderState.Open,
+            State = OrderState.Open,
             CreatedAt = now,
             UpdatedAt = now,
         });

@@ -1,5 +1,5 @@
 <!-- freshness:triggers
-  src/Humans.Application/Services/Profile/UserEmailService.cs
+  src/Humans.Application/Services/Profiles/UserEmailService.cs
   src/Humans.Application/Interfaces/Profiles/IUserEmailService.cs
   src/Humans.Web/Controllers/ProfileController.cs
   src/Humans.Web/Controllers/GoogleController.cs

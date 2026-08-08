@@ -1,6 +1,7 @@
 using Humans.Application.Interfaces.Budget;
 using Humans.Application.Interfaces.Users;
 using Humans.UI.Authorization;
+using Humans.UI.Controllers;
 using Humans.Web.Authorization.Requirements;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;

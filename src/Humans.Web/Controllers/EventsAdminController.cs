@@ -1,5 +1,6 @@
 using Humans.Application.Interfaces.Events;
 using Humans.Domain.Entities;
+using Humans.UI.Controllers;
 using Humans.Web.Filters;
 using Humans.Web.Models.Events;
 using Microsoft.AspNetCore.Authorization;
