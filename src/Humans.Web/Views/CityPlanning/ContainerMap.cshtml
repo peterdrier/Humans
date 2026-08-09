@@ -1,3 +1,5 @@
+@using Humans.Containers.Contracts
+@inject Microsoft.Extensions.Localization.IStringLocalizer<Humans.Containers.ContainersResource> ContainersLocalizer
 @model Humans.Web.Models.ContainerMapViewModel
 @{
     ViewData["Title"] = $"Container Placement {Model.Year}";
@@ -46,7 +48,7 @@
     <div id="container-sidebar" class="border-end d-flex flex-column overflow-hidden flex-shrink-0">
         <div class="px-3 py-2 border-bottom d-flex flex-column align-items-center gap-2">
             <div>
-                <div class="fw-semibold">@Localizer["Container_Breadcrumb"] @Model.Year</div>
+                <div class="fw-semibold">@ContainersLocalizer["Container_Breadcrumb"] @Model.Year</div>
                 @if (!string.IsNullOrEmpty(Model.CampName))
                 {
                     <div class="small text-muted">@Model.CampName</div>
@@ -111,7 +113,7 @@
             <form id="placementNotesForm" enctype="multipart/form-data">
                 <div class="modal-header">
                     <h5 class="modal-title">
-                        <span data-role="title-prefix">@Localizer["Container_PlacementNotes_Title"]</span> —
+                        <span data-role="title-prefix">@ContainersLocalizer["Container_PlacementNotes_Title"]</span> —
                         <span data-role="container-name"></span>
                     </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -120,18 +122,18 @@
                     <div class="alert alert-danger d-none" data-role="error"></div>
                     <fieldset data-role="fields">
                         <div class="mb-3">
-                            <label class="form-label">@Localizer["Container_FieldPlacementNotes"]</label>
+                            <label class="form-label">@ContainersLocalizer["Container_FieldPlacementNotes"]</label>
                             <textarea name="PlacementNotes" class="form-control" rows="5" maxlength="5000"
-                                      placeholder="@Localizer["Container_PlacementNotesPlaceholder"]"></textarea>
+                                      placeholder="@ContainersLocalizer["Container_PlacementNotesPlaceholder"]"></textarea>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">@Localizer["Container_FieldPlacementImage"]</label>
+                            <label class="form-label">@ContainersLocalizer["Container_FieldPlacementImage"]</label>
                             <div class="mb-2 d-none" data-role="existing-image-wrap">
                                 <img data-role="existing-image" alt="" class="city-map-image-thumb" />
                             </div>
                             <div class="form-check mb-2 d-none" data-role="remove-image-wrap">
                                 <input type="checkbox" name="RemovePlacementImage" value="true" class="form-check-input" id="removePlacementImageMap" />
-                                <label class="form-check-label" for="removePlacementImageMap">@Localizer["Container_RemovePlacementImage_Label"]</label>
+                                <label class="form-check-label" for="removePlacementImageMap">@ContainersLocalizer["Container_RemovePlacementImage_Label"]</label>
                             </div>
                             <input type="file" name="PlacementImage" class="form-control" accept="image/jpeg,image/png,image/webp" />
                         </div>

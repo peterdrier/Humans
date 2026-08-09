@@ -1,6 +1,8 @@
+@using Humans.Containers.Contracts
+@inject Microsoft.Extensions.Localization.IStringLocalizer<Humans.Containers.ContainersResource> ContainersLocalizer
 @model Humans.Web.Models.OrgContainerIndexViewModel
 @{
-    ViewData["Title"] = $"{Localizer["Container_Breadcrumb"]} {Model.Year}";
+    ViewData["Title"] = $"{ContainersLocalizer["Container_Breadcrumb"]} {Model.Year}";
 
     ContainerCardModel CardFor(ContainerWithPlacementViewModel c) => new()
     {
@@ -17,12 +19,12 @@
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a asp-action="Admin">City Planning Admin</a></li>
-        <li class="breadcrumb-item active" aria-current="page">@Localizer["Container_Breadcrumb"] @Model.Year</li>
+        <li class="breadcrumb-item active" aria-current="page">@ContainersLocalizer["Container_Breadcrumb"] @Model.Year</li>
     </ol>
 </nav>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h1>@Localizer["Container_Breadcrumb"] <small class="text-muted">@Model.Year</small></h1>
+    <h1>@ContainersLocalizer["Container_Breadcrumb"] <small class="text-muted">@Model.Year</small></h1>
     <div class="d-flex gap-2">
         <a href="/api/city-planning/containers/@Model.Year/export.geojson" class="btn btn-outline-secondary btn-sm">
             <i class="fa-solid fa-download me-1"></i> @Localizer["Common_ExportGeoJson"]

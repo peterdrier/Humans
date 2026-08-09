@@ -19,6 +19,7 @@ invariants doc inside that project rather than in this folder; this index is the
 
 | Section | Project | Invariants doc |
 |---|---|---|
+| Containers | `src/Sections/Humans.Containers` | [Containers.md](../../src/Sections/Humans.Containers/Docs/Containers.md) |
 | Event Guide | `src/Sections/Humans.Events` | [Events.md](../../src/Sections/Humans.Events/Docs/Events.md) |
 | Store | `src/Sections/Humans.Store` | [Store.md](../../src/Sections/Humans.Store/Docs/Store.md) |
 | System Settings | `src/Sections/Humans.SystemSettings` | — (no invariants doc; one key/value table) |

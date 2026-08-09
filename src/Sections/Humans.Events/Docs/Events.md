@@ -1,32 +1,5 @@
 <!-- freshness:triggers
-  src/Humans.Application/Services/Events/**
-  src/Humans.Application/Interfaces/Events/**
-  src/Humans.Application/Interfaces/Repositories/IEventRepository.cs
-  src/Humans.Domain/Entities/Event.cs
-  src/Humans.Domain/Entities/EventCategory.cs
-  src/Humans.Domain/Entities/EventFavourite.cs
-  src/Humans.Domain/Entities/EventGuideSettings.cs
-  src/Humans.Domain/Entities/EventModerationAction.cs
-  src/Humans.Domain/Entities/EventPreference.cs
-  src/Humans.Domain/Entities/EventVenue.cs
-  src/Humans.Domain/Enums/EventStatus.cs
-  src/Humans.Domain/Enums/EventModerationActionType.cs
-  src/Humans.Infrastructure/Data/Configurations/EventGuide/EventConfiguration.cs
-  src/Humans.Infrastructure/Data/Configurations/EventGuide/EventCategoryConfiguration.cs
-  src/Humans.Infrastructure/Data/Configurations/EventGuide/EventFavouriteConfiguration.cs
-  src/Humans.Infrastructure/Data/Configurations/EventGuide/EventGuideSettingsConfiguration.cs
-  src/Humans.Infrastructure/Data/Configurations/EventGuide/EventModerationActionConfiguration.cs
-  src/Humans.Infrastructure/Data/Configurations/EventGuide/EventPreferenceConfiguration.cs
-  src/Humans.Infrastructure/Data/Configurations/EventGuide/EventVenueConfiguration.cs
-  src/Humans.Infrastructure/Repositories/Events/EventRepository.cs
-  src/Humans.Infrastructure/Services/Events/CachingEventService.cs
-  src/Humans.Web/Controllers/EventsController.cs
-  src/Humans.Web/Controllers/EventsModerationController.cs
-  src/Humans.Web/Controllers/EventsDashboardController.cs
-  src/Humans.Web/Controllers/EventsExportController.cs
-  src/Humans.Web/Controllers/EventsAdminController.cs
-  src/Humans.Web/Controllers/Api/EventsApiController.cs
-  src/Humans.Web/ViewComponents/EventsCardViewComponent.cs
+  src/Sections/Humans.Events/**
 -->
 <!-- freshness:flag-on-change
   Event submission/moderation lifecycle, guide settings window, public API surface, favourites/preferences, and the IEventServiceRead cross-section read surface — review when Events services/entities/controllers/view component change.

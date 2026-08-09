@@ -1318,9 +1318,10 @@ G5 decision.
 Written before any section existed, §14 read as though the queue were a choice. After Store it is a
 supply problem, and that changes where the effort goes.
 
-- **Seven sections are at G4 today** and could start G5 immediately: **SystemSettings, Containers,
-  Agent, Expenses, Finance, Surveys, EventGuide** — the peeled contexts still pointing at
-  `src/Humans.Infrastructure` in `SECTION_DB_CONTEXTS`.
+- **The sections at G4 and ready to start G5** are exactly the `SECTION_DB_CONTEXTS` rows in
+  `.github/workflows/build.yml` still pointing at `src/Humans.Infrastructure`; a G5 move repoints
+  its own row. Read the list there rather than here — it was seven on 2026-08-07 (SystemSettings,
+  Containers, Agent, Expenses, Finance, Surveys, EventGuide) and drains by one per PR.
 - **Gate needs its G4 peel first.**
 - **The remaining ~27 need G1–G4 before G5 is even a question.**
 
@@ -1451,6 +1452,18 @@ parses `*` as "repeat the previous character" and matches `nameof(Stor)`, `nameo
    from the set it already has; a Shell caller that genuinely needs section strings can inject
    `IStringLocalizer<<Section>Resource>` directly, since Shell references the section. Run
    `grep -rn 'Localizer\["<Section>_' src/` after the carve and expect hits only inside the section.
+   **Prefer keeping a shared partial in the section over promoting it to `Humans.UI`.** A partial in
+   `Views/Shared/` inside a section RCL is found by the host's view engine like any other, and it
+   compiles against the *section's* `_ViewImports`, so it keeps `Localizer` and needs no model
+   plumbing at all. `Humans.UI` is the right home only for a partial with no section vocabulary —
+   a favourite heart, a status pill. Containers keeps `_ContainerCardRow`, `_ContainerCardModals`
+   and `_ContainerFormFields` in the section for exactly this reason and Shell's City Planning views
+   render them unchanged; Events' `_FavouriteButton` went to `Humans.UI` and had to take three
+   labels in on its model. Same trap, opposite answers, and the section-local one is cheaper.
+   **A key used by both the section and a not-yet-moved section stays in `SharedResource`** — carve
+   by *owner*, not by prefix. Containers' 9 `ContainerMap_*` keys belong to City Planning's map page
+   and stayed put while all 20 `Container_*` keys carved; the section's own views reach the leftovers
+   through `SharedLocalizer`.
 4. `Section.cs` at the project root: `public sealed class Section : ISection` with
    `Register(IServiceCollection services, IConfiguration configuration)` — `AddSectionDbContext<…>`,
    repositories, services, section-owned authorization handlers. One of the two `public` types
@@ -1468,6 +1481,13 @@ parses `*` as "repeat the previous character" and matches `nameof(Stor)`, `nameo
    practice that means **`I<Section>Repository` stays and `I<Section>Service` goes** (§6a). Do the
    renames in a **separate commit** after the move compiles, and check the two non-inert rename
    cases (§6a) before running them.
+   **`nameof(<AnotherSection'sEntity>)` stops compiling at the move — replace it with a literal, not
+   with a reference.** Audit `EntityType` discriminators are persisted strings; a section writing
+   `relatedEntityType: nameof(Camp)` has been leaning on a Base type it can no longer see, and the
+   fix is a `const string` beside the section's own discriminators (Store's
+   `Services/AuditEntityTypes.cs`, copied by Containers) — never a project reference to reach the
+   type. Declare the section's *own* entity discriminators as literals in the same file while you
+   are there; that is what makes the step-5 rename schema-inert.
    > **Exercised 2026-08-09 by Events.** `CachingEventService`, its keyed `"event-inner"` inner
    > registration and `IEventService` all moved into the section and all stay `internal` — the only
    > public types are `Section`, `EventsResource` and the `Contracts` project. The decorator keeps
@@ -1496,6 +1516,21 @@ parses `*` as "repeat the previous character" and matches `nameof(Stor)`, `nameo
    > call `SetValueAsync`); Events' is `IEventServiceRead`, two NodaTime-only DTOs and the
    > `EventStatus` enum, which Email's `EventLifecycleNotification` names from Base. Both needed a
    > separate `.Contracts` project on the first build.
+   >
+   > **The folder form was first exercised 2026-08-09 by Containers**, under real fan-in rather than
+   > as the empty-leaf case: `IContainerService`, its DTOs, `ContainerOperationRequirement` /
+   > `ContainerAuthorizationTarget` and the shared card view models are all consumed from
+   > `CityPlanningController` and `CityPlanningApiController` — both in Shell, which references the
+   > section, so nothing needed to move downward. Read the rule as *where the consumer lives*, not
+   > *how much surface there is*: Containers' `Contracts/` is 17 types and still a folder.
+   >
+   > **A DTO the section re-exports from Base forces the split even when nothing else does.** Finance
+   > hit this: `HoldedCreditorLedger.Lines` was `IReadOnlyList<HoldedLedgerLineDto>`, and that DTO
+   > belongs to the Holded *connector*, which stays in Base. `Humans.Finance.Contracts` cannot
+   > reference `Humans.Application` (that is the cycle), and promoting the connector's DTO downward
+   > is the forbidden fix. The section owns a boundary type of its own instead and maps at the edge.
+   > Check every `Contracts/` signature for a type whose home is Base before assuming the carve is
+   > mechanical.
 6. Authorization *policies* stay in Shell's `AuthorizationPolicyExtensions`; resource-based
    *handlers* move into the section. (§8's asymmetry: DI registration moves, policy registration
    does not.)
@@ -1507,7 +1542,10 @@ parses `*` as "repeat the previous character" and matches `nameof(Stor)`, `nameo
 7b. The section's docs move into `Docs/` — invariants doc, feature doc, its own design specs (§7a);
    disambiguate filenames that collide case-insensitively. Fix the inbound links (`docs/README.md`,
    `data-model.md`, **both** `_Index.md` rows, any `memory/` atom citing them, the
-   `freshness-catalog.yml` globs *if the section has an entry*). Point-in-time plans and audits stay
+   `freshness-catalog.yml` globs *if the section has an entry*). **Rewrite the moved doc's own
+   `freshness:triggers` block to `src/Sections/Humans.<Section>/**`** — it is a list of the old
+   scattered paths, every one of which stops existing at the move, so the doc silently stops being
+   swept. Point-in-time plans and audits stay
    in `docs/`. Anything the app *serves or fetches* from `docs/` at runtime stays — `docs/guide/`
    until Guide's own G5, and re-check `AgentSectionDocReader`'s fallback still covers the section.
 8. `tests/Humans.<Section>.Tests` — service, repository, entity and handler tests move in;

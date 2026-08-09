@@ -36,7 +36,7 @@ This file is the **index and cross-cutting rule sheet** for the data model. Per-
 | Camp / CampSeason / CampImage / CampHistoricalName / CampSettings | [Camps](../sections/Camps.md) | |
 | CampMember | [Camps](../sections/Camps.md) | Per-season, post-hoc human/camp affiliation (Pending/Active/Removed). Partial unique on `(CampSeasonId, UserId) WHERE Status <> 'Removed'`. |
 | CampRoleDefinition / CampRoleAssignment | [Camps](../sections/Camps.md) | Per-camp role catalogue + per-season assignments. Owned by `CampRoleService`. Unique on `(CampSeasonId, CampRoleDefinitionId, CampMemberId)`. |
-| Container / ContainerPlacement | [Containers](../sections/Containers.md) | Camp-owned (`CampId` → `camps.Id`, non-nullable). |
+| Container / ContainerPlacement | [Containers](../../src/Sections/Humans.Containers/Docs/Containers.md) | Camp-owned (`CampId` → `camps.Id`, non-nullable). |
 | CityPlanningSettings | [City Planning](../sections/CityPlanning.md) | |
 | CampPolygon | [City Planning](../sections/CityPlanning.md) | |
 | CampPolygonHistory | [City Planning](../sections/CityPlanning.md) | Append-only (§12). |

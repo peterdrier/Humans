@@ -3857,66 +3857,6 @@
   <data name="CityPlanning_Help_ColorsBody" xml:space="preserve">
     <value>Jedes Barrio ist entsprechend seiner bevorzugten Klangzone eingefärbt (auf der Barrio-Seite bearbeitbar).</value>
   </data>
-  <data name="Container_Breadcrumb" xml:space="preserve">
-    <value>Container</value>
-  </data>
-  <data name="Container_PlacementClosed" xml:space="preserve">
-    <value>Die Container-Platzierung ist derzeit geschlossen. Du kannst deine Container verwalten, sie aber noch nicht auf der Karte platzieren.</value>
-  </data>
-  <data name="Container_Empty" xml:space="preserve">
-    <value>Noch keine Container für diese Saison registriert.</value>
-  </data>
-  <data name="Container_AddModal_Title" xml:space="preserve">
-    <value>Container Hinzufügen</value>
-  </data>
-  <data name="Container_EditModal_Title" xml:space="preserve">
-    <value>Container Bearbeiten</value>
-  </data>
-  <data name="Container_FieldName" xml:space="preserve">
-    <value>Name</value>
-  </data>
-  <data name="Container_FieldDescription" xml:space="preserve">
-    <value>Beschreibung</value>
-  </data>
-  <data name="Container_NamePlaceholder" xml:space="preserve">
-    <value>z.B. Container #1</value>
-  </data>
-  <data name="Container_DescPlaceholder" xml:space="preserve">
-    <value>Größe, Typ, besondere Anforderungen…</value>
-  </data>
-  <data name="Container_FieldMainImage" xml:space="preserve">
-    <value>Hauptbild (JPEG, PNG oder WebP — max. 10 MB)</value>
-  </data>
-  <data name="Container_FieldPlacementImage" xml:space="preserve">
-    <value>Platzierungsskizze (JPEG, PNG oder WebP — max. 10 MB)</value>
-  </data>
-  <data name="Container_RemoveMainImage_Label" xml:space="preserve">
-    <value>Hauptbild entfernen</value>
-  </data>
-  <data name="Container_UploadMainImageModal_Title" xml:space="preserve">
-    <value>Hauptbild — {0}</value>
-  </data>
-  <data name="Container_RemoveMainImageConfirm" xml:space="preserve">
-    <value>Hauptbild von {0} entfernen?</value>
-  </data>
-  <data name="Container_RemovePlacementImage_Label" xml:space="preserve">
-    <value>Platzierungsbild entfernen</value>
-  </data>
-  <data name="Container_FieldPlacementNotes" xml:space="preserve">
-    <value>Platzierungshinweise</value>
-  </data>
-  <data name="Container_PlacementNotesPlaceholder" xml:space="preserve">
-    <value>Einschränkungen, Zugriffsanforderungen, Ausrichtung…</value>
-  </data>
-  <data name="Container_PlacementNotes_ButtonLabel" xml:space="preserve">
-    <value>Platzierungshinweise</value>
-  </data>
-  <data name="Container_PlacementNotes_Title" xml:space="preserve">
-    <value>Platzierungshinweise</value>
-  </data>
-  <data name="Container_DeleteConfirm" xml:space="preserve">
-    <value>Container {0} löschen?</value>
-  </data>
   <data name="ContainerMap_Unplaced" xml:space="preserve">
     <value>Nicht platziert</value>
   </data>

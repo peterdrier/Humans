@@ -42,7 +42,7 @@ public class ServiceBoundaryArchitectureTests
             [typeof(ICityPlanningRepository)] = "CityPlanning",
             [typeof(ICommunicationPreferenceRepository)] = "Humans",
             [typeof(IConsentRepository)] = "Consent",
-            [typeof(IContainerRepository)] = "Containers",
+            [SectionRepository("Humans.Containers.Data.IContainerRepository")] = "Containers",
             [typeof(IEmailOutboxRepository)] = "Email",
             [typeof(IExpenseRepository)] = "Expenses",
             [typeof(IFeedbackRepository)] = "Feedback",

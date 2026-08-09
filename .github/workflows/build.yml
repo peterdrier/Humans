@@ -27,7 +27,7 @@ env:
   MAIN_DB_CONTEXT: 'HumansDbContext:src/Humans.Infrastructure'
   SECTION_DB_CONTEXTS: >-
     SystemSettingsDbContext:src/Sections/Humans.SystemSettings
-    ContainersDbContext:src/Humans.Infrastructure
+    ContainersDbContext:src/Sections/Humans.Containers
     AgentDbContext:src/Humans.Infrastructure
     ExpensesDbContext:src/Humans.Infrastructure
     FinanceDbContext:src/Humans.Infrastructure

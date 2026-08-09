@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>1.3</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+
+  <data name="Container_AddModal_Title" xml:space="preserve">
+    <value>Aggiungi Contenitore</value>
+  </data>
+  <data name="Container_Breadcrumb" xml:space="preserve">
+    <value>Contenitori</value>
+  </data>
+  <data name="Container_DeleteConfirm" xml:space="preserve">
+    <value>Eliminare il contenitore {0}?</value>
+  </data>
+  <data name="Container_DescPlaceholder" xml:space="preserve">
+    <value>Dimensione, tipo, requisiti speciali…</value>
+  </data>
+  <data name="Container_EditModal_Title" xml:space="preserve">
+    <value>Modifica Contenitore</value>
+  </data>
+  <data name="Container_Empty" xml:space="preserve">
+    <value>Nessun contenitore registrato per questa stagione.</value>
+  </data>
+  <data name="Container_FieldDescription" xml:space="preserve">
+    <value>Descrizione</value>
+  </data>
+  <data name="Container_FieldMainImage" xml:space="preserve">
+    <value>Immagine principale (JPEG, PNG o WebP — max 10 MB)</value>
+  </data>
+  <data name="Container_FieldName" xml:space="preserve">
+    <value>Nome</value>
+  </data>
+  <data name="Container_FieldPlacementImage" xml:space="preserve">
+    <value>Bozzetto di posizionamento (JPEG, PNG o WebP — max 10 MB)</value>
+  </data>
+  <data name="Container_FieldPlacementNotes" xml:space="preserve">
+    <value>Note di posizionamento</value>
+  </data>
+  <data name="Container_NamePlaceholder" xml:space="preserve">
+    <value>es. Contenitore #1</value>
+  </data>
+  <data name="Container_PlacementClosed" xml:space="preserve">
+    <value>Il posizionamento dei contenitori è attualmente chiuso. Puoi gestire i tuoi contenitori, ma non ancora posizionarli sulla mappa.</value>
+  </data>
+  <data name="Container_PlacementNotesPlaceholder" xml:space="preserve">
+    <value>Vincoli, requisiti di accesso, orientamento…</value>
+  </data>
+  <data name="Container_PlacementNotes_ButtonLabel" xml:space="preserve">
+    <value>Note di posizionamento</value>
+  </data>
+  <data name="Container_PlacementNotes_Title" xml:space="preserve">
+    <value>Note di posizionamento</value>
+  </data>
+  <data name="Container_RemoveMainImageConfirm" xml:space="preserve">
+    <value>Rimuovere l'immagine principale da {0}?</value>
+  </data>
+  <data name="Container_RemoveMainImage_Label" xml:space="preserve">
+    <value>Rimuovi immagine principale</value>
+  </data>
+  <data name="Container_RemovePlacementImage_Label" xml:space="preserve">
+    <value>Rimuovi immagine di posizionamento</value>
+  </data>
+  <data name="Container_UploadMainImageModal_Title" xml:space="preserve">
+    <value>Immagine principale — {0}</value>
+  </data>
+</root>
