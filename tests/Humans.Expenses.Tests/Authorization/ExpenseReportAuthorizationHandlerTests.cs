@@ -66,7 +66,7 @@ public sealed class ExpenseReportAuthorizationHandlerTests
     [HumansFact]
     public async Task Submitter_CannotEdit_OwnSubmittedReport()
     {
-        // Lines are frozen at submission per docs/sections/Expenses.md invariants
+        // Lines are frozen at submission per src/Sections/Humans.Expenses/Docs/Expenses.md invariants
         // and ExpenseReportService.RequireEditableReportAsync enforcement.
         var report = MakeReport(SubmitterId, ExpenseReportStatus.Submitted);
         var result = await EvaluateAsync(CreateUser(SubmitterId), report, ExpenseReportOperation.Edit);
@@ -112,7 +112,7 @@ public sealed class ExpenseReportAuthorizationHandlerTests
     [HumansFact]
     public async Task Submitter_CanWithdraw_ApprovedReport()
     {
-        // Per docs/sections/Expenses.md invariants: terminal alternates include
+        // Per src/Sections/Humans.Expenses/Docs/Expenses.md invariants: terminal alternates include
         // Withdrawn from Approved (before SEPA payout is sent).
         var report = MakeReport(SubmitterId, ExpenseReportStatus.Approved);
         var result = await EvaluateAsync(CreateUser(SubmitterId), report, ExpenseReportOperation.Withdraw);
@@ -254,7 +254,7 @@ public sealed class ExpenseReportAuthorizationHandlerTests
     [HumansFact]
     public async Task FinanceAdmin_CanEndorse_SubmittedReport()
     {
-        // Per docs/sections/Expenses.md actors table: FinanceAdmin has all coordinator
+        // Per src/Sections/Humans.Expenses/Docs/Expenses.md actors table: FinanceAdmin has all coordinator
         // capabilities, including Endorse (gated to Submitted status).
         var report = MakeReport(SubmitterId, ExpenseReportStatus.Submitted);
         var result = await EvaluateAsync(CreateUserWithRole(RoleNames.FinanceAdmin), report, ExpenseReportOperation.Endorse);

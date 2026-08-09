@@ -8,7 +8,7 @@
 
 **Tech Stack:** .NET (C# 12 primary constructors), EF Core + NodaTime, ASP.NET MVC + Razor, xUnit (`[HumansFact]`) + NSubstitute + AwesomeAssertions.
 
-**Spec:** `docs/superpowers/specs/2026-06-06-expense-travel-and-iou-view-design.md`
+**Spec:** `src/Sections/Humans.Expenses/Docs/2026-06-06-expense-travel-and-iou-view-design.md`
 
 **Working directory:** `H:\source\Humans\.worktrees\expense-travel-iou` (branch `feat/expense-travel-iou`). `cd` here once; run all commands from here. Build with `dotnet build Humans.slnx -v quiet`; the `-v quiet` flag is required.
 

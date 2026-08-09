@@ -362,12 +362,8 @@
     },
     "Expenses": {
       "paths": [
-        "src/Humans.Application/Interfaces/Expenses/**",
-        "src/Humans.Application/Services/Expenses/**",
-        "src/Humans.Domain/Entities/Expense*",
-        "src/Humans.Infrastructure/Repositories/Expenses/**",
-        "src/Humans.Web/Controllers/ExpensesController.cs",
-        "src/Humans.Web/Models/ExpensesViewModels.cs"
+        "src/Sections/Humans.Expenses/**",
+        "src/Sections/Humans.Expenses.Contracts/**"
       ],
       "symbols": [
         "Expense*",
@@ -377,7 +373,7 @@
         "IExpenseRepository"
       ],
       "serviceInterfaces": [
-        "IExpenseService"
+        "IExpenseReportService"
       ]
     },
     "Feedback": {

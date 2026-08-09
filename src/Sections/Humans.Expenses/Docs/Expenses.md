@@ -1,17 +1,8 @@
 <!-- freshness:triggers
-  src/Humans.Application/Services/Expenses/**
-  src/Humans.Domain/Entities/ExpenseReport.cs
-  src/Humans.Domain/Entities/ExpenseLine.cs
-  src/Humans.Domain/Entities/ExpenseAttachment.cs
-  src/Humans.Domain/Entities/HoldedExpenseOutboxEvent.cs
-  src/Humans.Domain/Enums/ExpenseReportStatus.cs
-  src/Humans.Domain/Enums/ExpenseLineType.cs
-  src/Humans.Application/Services/Expenses/Dtos/TravelReimbursementConfig.cs
-  src/Humans.Infrastructure/Repositories/Expenses/**
+  src/Sections/Humans.Expenses/**
+  src/Sections/Humans.Expenses.Contracts/**
   src/Humans.Infrastructure/Jobs/HoldedExpenseOutboxJob.cs
-  src/Humans.Web/Controllers/ExpensesController.cs
-  src/Humans.Web/Authorization/Requirements/IbanAccessHandler.cs
-  src/Humans.Application/Interfaces/Finance/IHoldedFinanceService.cs
+  src/Sections/Humans.Finance.Contracts/**
 -->
 <!-- freshness:flag-on-change
   Expense lifecycle, IBAN access rules, Holded sync, and resource-based authorization — review when Expenses services/entities/controllers/auth handlers change.
@@ -19,7 +10,7 @@
 
 # Expenses — Section Invariants
 
-Members submit expense reports for reimbursement. Finance Admin reviews and approves; approval books the report into Holded (async). **`Approved` is terminal for the report** — payment happens externally (pull account balances, pay in the bank/Holded), and paid/unpaid is read back from the member's Holded creditor ledger, never stamped on the report. Full workflow and field-level detail in `docs/superpowers/specs/2026-05-10-expense-reports-design.md` and `src/Sections/Humans.Finance/Docs/2026-06-15-holded-ledger-single-source-design.md`.
+Members submit expense reports for reimbursement. Finance Admin reviews and approves; approval books the report into Holded (async). **`Approved` is terminal for the report** — payment happens externally (pull account balances, pay in the bank/Holded), and paid/unpaid is read back from the member's Holded creditor ledger, never stamped on the report. Full workflow and field-level detail in `src/Sections/Humans.Expenses/Docs/2026-05-10-expense-reports-design.md` and `src/Sections/Humans.Finance/Docs/2026-06-15-holded-ledger-single-source-design.md`.
 
 ## Concepts
 

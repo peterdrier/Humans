@@ -226,5 +226,5 @@ panel shows only the caller's own data (`Index` is already self-scoped). No new 
 
 ## Docs to update on implementation
 
-`docs/sections/Expenses.md` (line types, submit rule, IOU dashboard) and the freshness
+`src/Sections/Humans.Expenses/Docs/Expenses.md` (line types, submit rule, IOU dashboard) and the freshness
 trigger list; `docs/sections/Finance.md` (payment rows now exposed via the existing read DTO).

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Immutable;
 using System.Linq;
+using Humans.Analyzers.Internal;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Operations;
@@ -41,11 +42,6 @@ public sealed class DateTimeFormatStringAnalyzer : DiagnosticAnalyzer
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];
 
-    private static readonly ImmutableHashSet<string> ProductionAssemblies =
-        ImmutableHashSet.Create(
-            StringComparer.Ordinal,
-            "Humans.Application", "Humans.Domain", "Humans.Infrastructure", "Humans.Web");
-
     private static readonly string[] TargetTypeMetadataNames =
     [
         "System.DateTime", "System.DateTimeOffset", "System.DateOnly", "System.TimeOnly",
@@ -63,7 +59,10 @@ public sealed class DateTimeFormatStringAnalyzer : DiagnosticAnalyzer
 
     private static void OnCompilationStart(CompilationStartAnalysisContext context)
     {
-        if (!ProductionAssemblies.Contains(context.Compilation.Assembly.Name))
+        // Section assemblies count as production (nobodies-collective/Humans#866). The
+        // hardcoded four-name set this replaced named none of them, so this rule went
+        // silent inside every section that moved.
+        if (!AssemblyScope.IsProduction(context.Compilation.Assembly))
             return;
 
         var targets = ImmutableHashSet.CreateBuilder<INamedTypeSymbol>(SymbolEqualityComparer.Default);
