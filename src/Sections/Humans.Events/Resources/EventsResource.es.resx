@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ReSharper disable MarkupTextTypo -->
+<root xmlns:ns1="urn:schemas-microsoft-com:xml-msdata" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:schema id="root">
+    <xs:element name="root" ns1:IsDataSet="true">
+      <xs:complexType>
+        <xs:choice maxOccurs="unbounded">
+          <xs:element name="data">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element name="value" type="xsd:string" minOccurs="0" ns1:Ordinal="1" />
+                <xs:element name="comment" type="xsd:string" minOccurs="0" ns1:Ordinal="2" />
+              </xs:sequence>
+              <xs:attribute name="name" type="xsd:string" ns1:Ordinal="0" />
+              <xs:attribute name="type" type="xsd:string" />
+              <xs:attribute name="mimetype" type="xsd:string" />
+            </xs:complexType>
+          </xs:element>
+          <xs:element name="resheader">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element name="value" type="xsd:string" minOccurs="0" ns1:Ordinal="1" />
+              </xs:sequence>
+              <xs:attribute name="name" type="xsd:string" use="required" />
+            </xs:complexType>
+          </xs:element>
+        </xs:choice>
+      </xs:complexType>
+    </xs:element>
+  </xs:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>1.3</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="Enum_EventStatus_Approved" xml:space="preserve"><value>Aprobado</value></data>
+  <data name="Enum_EventStatus_Draft" xml:space="preserve"><value>Borrador</value></data>
+  <data name="Enum_EventStatus_Pending" xml:space="preserve"><value>Pendiente</value></data>
+  <data name="Enum_EventStatus_Rejected" xml:space="preserve"><value>Rechazado</value></data>
+  <data name="Enum_EventStatus_ResubmitRequested" xml:space="preserve"><value>Cambios solicitados</value></data>
+  <data name="Enum_EventStatus_Withdrawn" xml:space="preserve"><value>Retirado</value></data>
+  <data name="Events_AddBarrioEvent" xml:space="preserve"><value>Añadir evento del barrio</value></data>
+  <data name="Events_AddToFavourites" xml:space="preserve"><value>Añadir a favoritos</value></data>
+  <data name="Events_AllCategories" xml:space="preserve"><value>Todas las categorías</value></data>
+  <data name="Events_AllTimesIn" xml:space="preserve"><value>Todas las horas en {0}. ¡Puede aplicarse la Playa Time!</value></data>
+  <data name="Events_AllTimesInShort" xml:space="preserve"><value>Todas las horas en {0}</value></data>
+  <data name="Events_AllVenues" xml:space="preserve"><value>Todos los lugares</value></data>
+  <data name="Events_BrowseTitle" xml:space="preserve"><value>Explorar eventos</value></data>
+  <data name="Events_ColActions" xml:space="preserve"><value>Acciones</value></data>
+  <data name="Events_ColCategory" xml:space="preserve"><value>Categoría</value></data>
+  <data name="Events_ColDateTime" xml:space="preserve"><value>Fecha y hora</value></data>
+  <data name="Events_ColEventName" xml:space="preserve"><value>Nombre del evento</value></data>
+  <data name="Events_ColPriority" xml:space="preserve"><value>Prioridad</value></data>
+  <data name="Events_ConflictBadge" xml:space="preserve"><value>Conflicto de horario con otro evento favorito</value></data>
+  <data name="Events_DownloadCsv" xml:space="preserve"><value>Descargar CSV de eventos</value></data>
+  <data name="Events_DurationMin" xml:space="preserve"><value>{0} min</value></data>
+  <data name="Events_FavouritesOnly" xml:space="preserve"><value>Solo favoritos</value></data>
+  <data name="Events_FilterCategory" xml:space="preserve"><value>Categoría</value></data>
+  <data name="Events_FilterDay" xml:space="preserve"><value>Día</value></data>
+  <data name="Events_FilterSearch" xml:space="preserve"><value>Buscar</value></data>
+  <data name="Events_FilterVenue" xml:space="preserve"><value>Lugar</value></data>
+  <data name="Events_MyPersonalEvents" xml:space="preserve"><value>Mis eventos personales</value></data>
+  <data name="Events_MySchedule" xml:space="preserve"><value>Mi agenda</value></data>
+  <data name="Events_MySubmissions" xml:space="preserve"><value>Mis propuestas</value></data>
+  <data name="Events_MySubmissionsTitle" xml:space="preserve"><value>Mis propuestas de eventos</value></data>
+  <data name="Events_NoBarrioEvents" xml:space="preserve"><value>Aún no se han propuesto eventos para este barrio.</value></data>
+  <data name="Events_NoEventsFound" xml:space="preserve"><value>No se encontraron eventos. Prueba a ajustar tus filtros.</value></data>
+  <data name="Events_NoPersonalEvents" xml:space="preserve"><value>Aún no has propuesto ningún evento personal.</value></data>
+  <data name="Events_RemoveFromFavourites" xml:space="preserve"><value>Quitar de favoritos</value></data>
+  <data name="Events_RemoveFromSchedule" xml:space="preserve"><value>Quitar de la agenda</value></data>
+  <data name="Events_RemoveFromScheduleConfirm" xml:space="preserve"><value>¿Quitar este evento de tu agenda?</value></data>
+  <data name="Events_ScheduleEmpty" xml:space="preserve"><value>Aún no has marcado ningún evento como favorito. Explora la {0} para añadir eventos a tu agenda.</value></data>
+  <data name="Events_ScheduleEmptyLink" xml:space="preserve"><value>guía de eventos</value></data>
+  <data name="Events_ScheduleTitle" xml:space="preserve"><value>Mi agenda</value></data>
+  <data name="Events_SearchPlaceholder" xml:space="preserve"><value>Buscar por título o descripción…</value></data>
+  <data name="Events_StatApproved" xml:space="preserve"><value>Aprobados</value></data>
+  <data name="Events_StatPending" xml:space="preserve"><value>Pendientes</value></data>
+  <data name="Events_StatSubmitted" xml:space="preserve"><value>Enviados</value></data>
+  <data name="Events_SubmissionWindow" xml:space="preserve"><value>Periodo de propuestas:</value></data>
+  <data name="Events_SubmissionWindowClosed" xml:space="preserve"><value>El periodo de propuestas no está abierto en este momento. Contacta con un administrador para configurar los ajustes de la guía.</value></data>
+  <data name="Events_SubmitNewEvent" xml:space="preserve"><value>Proponer nuevo evento</value></data>
+  <data name="Events_UploadColErrors" xml:space="preserve"><value>Errores</value></data>
+  <data name="Events_UploadColEvent" xml:space="preserve"><value>Evento</value></data>
+  <data name="Events_UploadColRow" xml:space="preserve"><value>Fila</value></data>
+  <data name="Events_UploadCsv" xml:space="preserve"><value>Subir CSV</value></data>
+  <data name="Events_UploadFailed" xml:space="preserve"><value>La subida falló.</value></data>
+  <data name="Events_UploadFailedDetail" xml:space="preserve"><value>Corrige los errores de abajo e inténtalo de nuevo. No se guardó ningún evento.</value></data>
+  <data name="Events_WithdrawConfirm" xml:space="preserve"><value>¿Retirar este evento?</value></data>
+</root>

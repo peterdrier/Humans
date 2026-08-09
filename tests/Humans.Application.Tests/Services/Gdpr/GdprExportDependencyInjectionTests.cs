@@ -13,7 +13,6 @@ using ProfilesAccountMergeService = Humans.Application.Services.Users.AccountMer
 using UsersUserService = Humans.Application.Services.Users.UserService;
 using AuditLogService = Humans.Application.Services.AuditLog.AuditLogService;
 using CampService = Humans.Application.Services.Camps.CampService;
-using EventService = Humans.Application.Services.Events.EventService;
 using FeedbackService = Humans.Application.Services.Feedback.FeedbackService;
 using IssuesService = Humans.Application.Services.Issues.IssuesService;
 using RoleAssignmentService = Humans.Application.Services.Auth.RoleAssignmentService;
@@ -86,7 +85,7 @@ public class GdprExportDependencyInjectionTests
         typeof(TicketsTicketQueryService),
         typeof(CampaignService),
         typeof(CampService),
-        typeof(EventService),
+        SectionType("Humans.Events.Services.EventService"),
         typeof(AuditLogService),
         typeof(BudgetService),
         typeof(Humans.Application.Services.Agent.AgentService),
@@ -95,6 +94,19 @@ public class GdprExportDependencyInjectionTests
         typeof(SurveyService),
         typeof(GateService)
     ];
+
+    /// <summary>
+    /// A G5 section's service is <c>internal</c> to its own assembly
+    /// (nobodies-collective/Humans#866), so it cannot be named with <c>typeof</c> here.
+    /// Resolved by reflection instead, which keeps the section in the expected-contributor
+    /// list rather than dropping it — the silent-omission bug this class exists to prevent.
+    /// </summary>
+    private static Type SectionType(string fullName) =>
+        Web.Extensions.SectionDiscoveryExtensions.SectionAssemblies()
+            .Select(a => a.GetType(fullName, throwOnError: false))
+            .FirstOrDefault(t => t is not null)
+        ?? throw new InvalidOperationException(
+            $"{fullName} not found in any section assembly — did the section move or rename it?");
 
     [HumansFact]
     public void EverySectionServiceMustImplementIUserDataContributor()
@@ -110,14 +122,19 @@ public class GdprExportDependencyInjectionTests
     [HumansFact]
     public void EveryIUserDataContributorInInfrastructureIsExpected()
     {
-        // Scan both assemblies where section services live: Humans.Infrastructure
-        // still holds most of them, and Humans.Application is the new target
-        // location per the repository/store/decorator migration — the first
-        // such move is ApplicationDecisionService (Governance, PR #503).
+        // Scan every assembly where section services live: Humans.Infrastructure
+        // still holds most of them, Humans.Application is the intermediate target
+        // per the repository/store/decorator migration (first move:
+        // ApplicationDecisionService, Governance PR #503), and each G5 section
+        // project (nobodies-collective/Humans#866) holds its own. The section
+        // assemblies come from SectionDiscoveryExtensions — the same discovery the
+        // runtime uses, so a section that moves cannot silently drop out of this
+        // sweep the way it would with a hard-coded assembly list (design §10).
         var infrastructureAssembly = typeof(Humans.Infrastructure.Data.HumansDbContext).Assembly;
         var applicationAssembly = typeof(ApplicationDecisionService).Assembly;
 
         var foundContributors = new[] { infrastructureAssembly, applicationAssembly }
+            .Concat(Web.Extensions.SectionDiscoveryExtensions.SectionAssemblies())
             .SelectMany(asm => asm.GetTypes())
             .Where(t => t is { IsClass: true, IsAbstract: false })
             .Where(t => typeof(IUserDataContributor).IsAssignableFrom(t))

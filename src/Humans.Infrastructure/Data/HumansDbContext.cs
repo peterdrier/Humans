@@ -64,13 +64,11 @@ internal sealed class HumansDbContext(DbContextOptions<HumansDbContext> options)
     /// </summary>
     private static readonly string[] PeeledConfigurationNamespaces =
     [
-        typeof(Configurations.SystemSettings.SystemSettingConfiguration).Namespace!,
         typeof(Configurations.Containers.ContainerConfiguration).Namespace!,
         typeof(Configurations.Agent.AgentConversationConfiguration).Namespace!,
         typeof(Configurations.Expenses.ExpenseReportConfiguration).Namespace!,
         typeof(Configurations.Finance.HoldedExpenseDocConfiguration).Namespace!,
         typeof(Configurations.Surveys.SurveyConfiguration).Namespace!,
-        typeof(Configurations.EventGuide.EventConfiguration).Namespace!,
         typeof(Configurations.Auth.RoleAssignmentConfiguration).Namespace!,
         typeof(Configurations.Email.EmailOutboxMessageConfiguration).Namespace!,
         typeof(Configurations.Calendar.CalendarEventConfiguration).Namespace!,

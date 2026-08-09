@@ -346,15 +346,8 @@
     },
     "Events": {
       "paths": [
-        "src/Humans.Application/Interfaces/Events/**",
-        "src/Humans.Application/DTOs/Events/**",
-        "src/Humans.Application/Events/**",
-        "src/Humans.Application/Services/Events/**",
-        "src/Humans.Domain/Entities/Event*",
-        "src/Humans.Infrastructure/Repositories/Events/**",
-        "src/Humans.Infrastructure/Services/Events/**",
-        "src/Humans.Web/Controllers/Events*",
-        "src/Humans.Web/Models/Events/**"
+        "src/Sections/Humans.Events/**",
+        "src/Sections/Humans.Events.Contracts/**"
       ],
       "symbols": [
         "Event*",

@@ -1,9 +1,8 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.GoogleIntegration;
-using Humans.Application.Interfaces.SystemSettings;
+using Humans.SystemSettings.Contracts;
 using Humans.Application.Interfaces.Users;
-using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging.Abstractions;

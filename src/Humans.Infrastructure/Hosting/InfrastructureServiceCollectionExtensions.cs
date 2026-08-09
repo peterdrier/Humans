@@ -44,13 +44,11 @@ public static class InfrastructureServiceCollectionExtensions
 
         // Per-section contexts (nobodies-collective/Humans#858), migrated after
         // HumansDbContext by DatabaseMigrationHostedService in registration order.
-        services.AddSectionDbContext<SystemSettingsDbContext>(sentinelTable: "system_settings");
         services.AddSectionDbContext<ContainersDbContext>(sentinelTable: "containers");
         services.AddSectionDbContext<AgentDbContext>(sentinelTable: "agent_conversations");
         services.AddSectionDbContext<ExpensesDbContext>(sentinelTable: "expense_reports");
         services.AddSectionDbContext<FinanceDbContext>(sentinelTable: "holded_expense_docs");
         services.AddSectionDbContext<SurveysDbContext>(sentinelTable: "surveys");
-        services.AddSectionDbContext<EventGuideDbContext>(sentinelTable: "events");
         services.AddSectionDbContext<AuthDbContext>(sentinelTable: "role_assignments");
         services.AddSectionDbContext<EmailDbContext>(sentinelTable: "email_outbox_messages");
         services.AddSectionDbContext<CalendarDbContext>(sentinelTable: "calendar_events");

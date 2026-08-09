@@ -2,10 +2,12 @@ using AwesomeAssertions;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Hosting;
 using Humans.Store.Data;
+using Humans.SystemSettings.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Npgsql;
 using Xunit;
+using Humans.Events.Data;
 
 namespace Humans.Integration.Tests.Infrastructure;
 

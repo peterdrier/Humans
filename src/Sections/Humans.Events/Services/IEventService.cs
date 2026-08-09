@@ -1,0 +1,130 @@
+using Humans.Events.Services.Dtos;
+using Humans.Application.Interfaces.Shifts;
+using Humans.Events.Domain;
+using NodaTime;
+using Humans.Events.Contracts;
+using Humans.Application.Interfaces;
+
+namespace Humans.Events.Services;
+
+/// <summary>
+/// Service for the Events section (camp-event guide).
+/// </summary>
+internal interface IEventService : IApplicationService, IEventServiceRead
+{
+    // ── Settings ─────────────────────────────────────────────────────────
+    // GetGuideSettingsAsync is declared on IEventServiceRead (cross-section read surface).
+    Task<IReadOnlyList<BurnSettingsInfo>> GetEventSettingsOptionsAsync(CancellationToken ct = default);
+    Task<BurnSettingsInfo?> GetEventSettingsByIdAsync(Guid id, CancellationToken ct = default);
+    Task SaveGuideSettingsAsync(
+        Guid? existingId, Guid eventSettingsId,
+        LocalDateTime submissionOpenAt, LocalDateTime submissionCloseAt, LocalDateTime guidePublishAt,
+        int maxPrintSlots, CancellationToken ct = default);
+
+    // ── Categories ────────────────────────────────────────────────────────
+    Task<IReadOnlyList<EventCategoryView>> GetActiveCategoriesAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<EventCategoryManageInfo>> GetAllCategoriesAsync(CancellationToken ct = default);
+    Task<EventCategoryView?> GetCategoryAsync(Guid id, CancellationToken ct = default);
+    Task<bool> CategorySlugExistsAsync(string slug, Guid? excludeId = null, CancellationToken ct = default);
+    Task<int> GetNextCategoryOrderAsync(CancellationToken ct = default);
+    Task CreateCategoryAsync(EventCategory category, CancellationToken ct = default);
+    Task UpdateCategoryAsync(EventCategory category, CancellationToken ct = default);
+    /// <summary>
+    /// Deletes a category when no guide events reference it.
+    /// </summary>
+    /// <returns>null if not found; (false, count) if has linked events; (true, 0) on success.</returns>
+    Task<(bool deleted, int linkedCount)> DeleteCategoryAsync(Guid id, CancellationToken ct = default);
+    Task MoveCategoryAsync(Guid id, int direction, CancellationToken ct = default);
+
+    // ── Venues ────────────────────────────────────────────────────────────
+    Task<IReadOnlyList<EventVenueView>> GetActiveVenuesAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<EventVenueManageInfo>> GetAllVenuesAsync(CancellationToken ct = default);
+    Task<EventVenueView?> GetVenueAsync(Guid id, CancellationToken ct = default);
+    Task<int> GetNextVenueOrderAsync(CancellationToken ct = default);
+    Task CreateVenueAsync(EventVenue venue, CancellationToken ct = default);
+    Task UpdateVenueAsync(EventVenue venue, CancellationToken ct = default);
+    /// <summary>
+    /// Deletes a shared venue when no guide events reference it.
+    /// </summary>
+    /// <returns>(false, count) if has linked events; (true, 0) on success.</returns>
+    Task<(bool deleted, int linkedCount)> DeleteVenueAsync(Guid id, CancellationToken ct = default);
+    Task MoveVenueAsync(Guid id, int direction, CancellationToken ct = default);
+
+    // ── Submissions ───────────────────────────────────────────────────────
+    Task<IReadOnlyList<EventInfo>> GetUserSubmissionsAsync(Guid userId, CancellationToken ct = default);
+    // Read-then-mutate-then-write round trip: result is mutated and passed to a write
+    // method (WithdrawEventAsync / UpdateAndResubmitAsync), so it returns the entity.
+    Task<Event?> GetUserEventAsync(Guid eventId, Guid userId, CancellationToken ct = default);
+    Task<IReadOnlyList<EventInfo>> GetCampSubmissionsAsync(Guid campId, CancellationToken ct = default);
+    // Read-then-mutate-then-write round trip (see GetUserEventAsync).
+    Task<Event?> GetCampEventAsync(Guid eventId, Guid campId, CancellationToken ct = default);
+    // Status-bucketed + sorted view of a camp's submissions for the submitter's
+    // "My Submissions" barrio block.
+    Task<CampSubmissionsSummary> GetCampSubmissionsSummaryAsync(Guid campId, CancellationToken ct = default);
+    // Persists a new submission and emails the submitter their confirmation (part of
+    // the submit workflow). Null lifecycleActionUrl opts out (bulk import).
+    Task SubmitEventAsync(Event guideEvent, string? lifecycleActionUrl = null, CancellationToken ct = default);
+    Task UpdateAndResubmitAsync(Event guideEvent, CancellationToken ct = default);
+    Task WithdrawEventAsync(Event guideEvent, CancellationToken ct = default);
+
+    /// <summary>
+    /// Admin / moderator in-place edit of a mutated event. Persists the field
+    /// changes and bumps <see cref="Event.LastUpdatedAt"/> but leaves
+    /// <see cref="Event.Status"/> untouched (an Approved event stays Approved /
+    /// published — no re-queue), appending an <see cref="EventModerationActionType.Edited"/>
+    /// history record by <paramref name="actorUserId"/> with the optional
+    /// <paramref name="note"/> as its reason. The authoritative "edit in a pinch"
+    /// path; distinct from <see cref="UpdateAndResubmitAsync"/>, which re-queues to Pending.
+    /// </summary>
+    Task AdminUpdateAsync(Event guideEvent, Guid actorUserId, string? note, CancellationToken ct = default);
+
+    /// <summary>
+    /// All-or-nothing barrio bulk import: validates every parsed row first and,
+    /// if all pass, creates new events (empty Id) and re-queues edited existing
+    /// ones. Returns per-row errors with nothing written when validation fails.
+    /// </summary>
+    Task<BulkImportResult> BulkImportAsync(
+        Guid campId, Guid submitterUserId, IReadOnlyList<BulkCsvRow> rows,
+        LocalDate gateOpeningDate, int eventEndOffset, DateTimeZone timeZone,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Builds the CSV bulk-upload template for a camp: existing non-withdrawn
+    /// submissions (or one example row when there are none), plus the
+    /// instructional banner comments — ready to write as the download body.
+    /// <paramref name="campName"/> is the caller's resolved display name
+    /// (Camps-section concern; Events has no visibility into camp identity).
+    /// </summary>
+    Task<byte[]> BuildBulkUploadTemplateAsync(Guid campId, string campName, CancellationToken ct = default);
+
+    // ── Browse / API ──────────────────────────────────────────────────────
+    // GetApprovedEventsAsync is declared on IEventServiceRead (cross-section read surface).
+    Task<ApprovedEventView?> GetApprovedEventByIdAsync(Guid id, CancellationToken ct = default);
+
+    // ── Favourites ────────────────────────────────────────────────────────
+    // GetFavouriteEventIdsAsync is declared on IEventServiceRead (cross-section read surface).
+    Task<IReadOnlyList<EventFavouriteInfo>> GetFavouritesWithEventsAsync(Guid userId, CancellationToken ct = default);
+    // dayOffset selects one occurrence of a recurring event; null means the whole event.
+    Task ToggleFavouriteAsync(Guid userId, Guid eventId, int? dayOffset, CancellationToken ct = default);
+    Task<bool> AddFavouriteAsync(Guid userId, Guid eventId, int? dayOffset, CancellationToken ct = default);
+    Task<bool> RemoveFavouriteAsync(Guid userId, Guid eventId, int? dayOffset, CancellationToken ct = default);
+
+    // ── Preferences ───────────────────────────────────────────────────────
+    Task<List<string>> GetExcludedCategorySlugsAsync(Guid userId, CancellationToken ct = default);
+    Task SavePreferenceAsync(Guid userId, List<string> slugs, CancellationToken ct = default);
+
+    // ── Moderation ────────────────────────────────────────────────────────
+    Task<Dictionary<EventStatus, int>> GetEventStatusCountsAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<EventInfo>> GetEventsByStatusAsync(EventStatus status, CancellationToken ct = default);
+    // Read-then-mutate-then-write round trip (see GetUserEventAsync).
+    Task<Event?> GetEventForModerationAsync(Guid eventId, CancellationToken ct = default);
+    Task<IReadOnlyList<CampEventOverlap>> GetCampEventsForOverlapAsync(CancellationToken ct = default);
+    // Applies the decision, records history, and emails the submitter the outcome
+    // (part of the moderation workflow). submitterEditUrl is the caller's routing
+    // concern; null opts out of the notification.
+    Task ApplyModerationAsync(Guid eventId, Guid actorUserId, EventModerationActionType actionType, string? reason, string? submitterEditUrl = null, CancellationToken ct = default);
+
+    // ── Dashboard / Export ────────────────────────────────────────────────
+    Task<IReadOnlyList<EventInfo>> GetAllEventsForDashboardAsync(CancellationToken ct = default);
+    Task<ApprovedEventsExportInfo> GetApprovedEventsForExportAsync(CancellationToken ct = default);
+}

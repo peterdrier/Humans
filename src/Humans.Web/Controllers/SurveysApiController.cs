@@ -9,6 +9,8 @@ using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 using NodaTime.Text;
 
+using Humans.UI.Controllers;
+
 namespace Humans.Web.Controllers;
 
 /// <summary>

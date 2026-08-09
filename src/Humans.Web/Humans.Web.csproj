@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk.Web"><PropertyGroup>  <UserSecretsId>f902cc11-ec92-4e4e-bb21-1be0f5af92a3</UserSecretsId>
+<Project Sdk="Microsoft.NET.Sdk.Web"><PropertyGroup>  <UserSecretsId>f902cc11-ec92-4e4e-bb21-1be0f5af92a3</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
@@ -9,7 +9,9 @@
   <ItemGroup>
     <ProjectReference Include="..\Humans.Infrastructure\Humans.Infrastructure.csproj" />
     <ProjectReference Include="..\Humans.UI\Humans.UI.csproj" />
+    <ProjectReference Include="..\Sections\Humans.Events\Humans.Events.csproj" />
     <ProjectReference Include="..\Sections\Humans.Store\Humans.Store.csproj" />
+    <ProjectReference Include="..\Sections\Humans.SystemSettings\Humans.SystemSettings.csproj" />
   </ItemGroup>
 
   <ItemGroup>

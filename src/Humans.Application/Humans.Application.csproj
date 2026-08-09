@@ -7,6 +7,14 @@
   <ItemGroup>
     <ProjectReference Include="..\Humans.Domain\Humans.Domain.csproj" />
     <ProjectReference Include="..\Humans.Interfaces\Humans.Interfaces.csproj" />
+    <!--
+      SystemSettings' contracts leaf. EmailOutboxService and DriveActivityMonitorService
+      call ISystemSettingsService; the leaf references Humans.Interfaces only, so Base
+      depending on it does not cycle (memory/architecture/section-project-cycle-fix.md).
+    -->
+    <ProjectReference Include="..\Sections\Humans.SystemSettings.Contracts\Humans.SystemSettings.Contracts.csproj" />
+    <!-- Events' contracts leaf: SearchService calls IEventServiceRead. -->
+    <ProjectReference Include="..\Sections\Humans.Events.Contracts\Humans.Events.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

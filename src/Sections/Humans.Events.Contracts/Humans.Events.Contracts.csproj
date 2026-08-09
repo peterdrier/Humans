@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Events' cross-section surface, carved into its own leaf project because one of
+    its consumers is still in Base: SearchService lives in Humans.Application, so a
+    Contracts/ *folder* inside Humans.Events would make Base reference a section and
+    cycle (memory/architecture/section-project-cycle-fix.md). References no Humans
+    project at all — the surface is IEventServiceRead plus two NodaTime-only DTOs.
+  -->
+
+  <ItemGroup>
+    <PackageReference Include="NodaTime" />
+  </ItemGroup>
+
+</Project>

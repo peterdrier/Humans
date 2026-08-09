@@ -11,9 +11,25 @@ public class ServiceBoundaryArchitectureTests
     private const string EntityReadReturnBaselinePath =
         "tests/Humans.Application.Tests/Architecture/Baselines/ApplicationServiceEntityReadReturns.baseline.txt";
 
+    /// <summary>
+    /// A G5 section's repository interface is <c>internal</c> to its own assembly
+    /// (nobodies-collective/Humans#866), so it cannot be named with <c>typeof</c> here.
+    /// Resolved by reflection instead — the row stays in the map, and the ownership test
+    /// keeps covering the section after it moves.
+    /// </summary>
+    private static Type SectionRepository(string fullName) =>
+        SectionAssemblies()
+            .Select(a => a.GetType(fullName, throwOnError: false))
+            .FirstOrDefault(t => t is not null)
+        ?? throw new InvalidOperationException(
+            $"{fullName} not found in any section assembly — did the section move or rename it?");
+
     private static readonly IReadOnlyDictionary<Type, string> RepositoryOwners =
         new Dictionary<Type, string>
         {
+            [SectionRepository("Humans.Events.Data.IEventRepository")] = "Events",
+            [SectionRepository("Humans.SystemSettings.Data.ISystemSettingsRepository")] = "SystemSettings",
+            [SectionRepository("Humans.Store.Data.IStoreRepository")] = "Store",
             [typeof(IAccountMergeRepository)] = "Humans",
             [typeof(IAdminDatabaseDiagnosticsRepository)] = "Admin",
             [typeof(IAgentRepository)] = "Agent",
@@ -28,7 +44,6 @@ public class ServiceBoundaryArchitectureTests
             [typeof(IConsentRepository)] = "Consent",
             [typeof(IContainerRepository)] = "Containers",
             [typeof(IEmailOutboxRepository)] = "Email",
-            [typeof(IEventRepository)] = "Events",
             [typeof(IExpenseRepository)] = "Expenses",
             [typeof(IFeedbackRepository)] = "Feedback",
             [typeof(IGateRepository)] = "Gate",
@@ -41,7 +56,6 @@ public class ServiceBoundaryArchitectureTests
             [typeof(IRoleAssignmentRepository)] = "Auth",
             [typeof(IShiftManagementRepository)] = "Shifts",
             [typeof(ISurveyRepository)] = "Surveys",
-            [typeof(ISystemSettingsRepository)] = "SystemSettings",
             [typeof(ISyncSettingsRepository)] = "GoogleIntegration",
             [typeof(ITeamRepository)] = "Teams",
             [typeof(ITicketRepository)] = "Tickets",
@@ -114,9 +128,16 @@ public class ServiceBoundaryArchitectureTests
 
     internal static IEnumerable<string> ScanApplicationServiceEntityReadReturns()
     {
+        // Shell-era entities plus each G5 section's own Domain/ namespace
+        // (nobodies-collective/Humans#866). Without the section half, a section that moves
+        // takes its entity-returning reads out of this ratchet's sight and the removal
+        // reads as "you fixed it" — the exact silent-shrink §10 warns about.
         var entityTypes = typeof(Humans.Domain.Entities.Team).Assembly
             .GetTypes()
             .Where(t => string.Equals(t.Namespace, "Humans.Domain.Entities", StringComparison.Ordinal))
+            .Concat(SectionAssemblies()
+                .SelectMany(a => a.GetTypes())
+                .Where(t => t.Namespace?.EndsWith(".Domain", StringComparison.Ordinal) == true))
             .ToHashSet();
 
         foreach (var serviceType in ApplicationInterfaceTypes()
@@ -143,11 +164,25 @@ public class ServiceBoundaryArchitectureTests
 
     // Anchored to a type that lives in Humans.Application — the marker
     // interfaces (IApplicationService, IRepository, …) moved to the
-    // Humans.Interfaces assembly, keeping their namespaces.
+    // Humans.Interfaces assembly, keeping their namespaces. Section projects
+    // (nobodies-collective/Humans#866) are scanned too: their service and repository
+    // interfaces are internal and live under Humans.<Section>.*, so a namespace filter
+    // anchored on Humans.Application.Interfaces alone would stop seeing a section the
+    // moment it moves, quietly shrinking every ratchet built on this.
     private static IEnumerable<Type> ApplicationInterfaceTypes() =>
         typeof(IUserRepository).Assembly.GetTypes()
             .Where(t => t.IsInterface)
-            .Where(t => t.Namespace?.StartsWith("Humans.Application.Interfaces", StringComparison.Ordinal) == true);
+            .Where(t => t.Namespace?.StartsWith("Humans.Application.Interfaces", StringComparison.Ordinal) == true)
+            .Concat(SectionAssemblies()
+                .SelectMany(a => a.GetTypes())
+                .Where(t => t.IsInterface));
+
+    /// <summary>
+    /// Every G5 section assembly, via the same discovery the runtime uses, so this file
+    /// never carries a hard-coded list of moved sections.
+    /// </summary>
+    private static IEnumerable<Assembly> SectionAssemblies() =>
+        Web.Extensions.SectionDiscoveryExtensions.SectionAssemblies();
 
     private static IEnumerable<Type> RepositoryInterfaceTypes() =>
         ApplicationInterfaceTypes()

@@ -26,13 +26,13 @@ env:
   # nowhere else in this file; a G5 move edits its pair's project here.
   MAIN_DB_CONTEXT: 'HumansDbContext:src/Humans.Infrastructure'
   SECTION_DB_CONTEXTS: >-
-    SystemSettingsDbContext:src/Humans.Infrastructure
+    SystemSettingsDbContext:src/Sections/Humans.SystemSettings
     ContainersDbContext:src/Humans.Infrastructure
     AgentDbContext:src/Humans.Infrastructure
     ExpensesDbContext:src/Humans.Infrastructure
     FinanceDbContext:src/Humans.Infrastructure
     SurveysDbContext:src/Humans.Infrastructure
-    EventGuideDbContext:src/Humans.Infrastructure
+    EventGuideDbContext:src/Sections/Humans.Events
     AuthDbContext:src/Humans.Infrastructure
     EmailDbContext:src/Humans.Infrastructure
     CalendarDbContext:src/Humans.Infrastructure
@@ -115,6 +115,12 @@ jobs:
             migrations:
               - 'src/Humans.Infrastructure/Migrations/**'
               - 'src/Humans.Domain/**'
+              # A G5 section owns its migrations, DbContext, EF configurations and
+              # entities (nobodies-collective/Humans#866). Globbed, not listed per
+              # section, so a section that moves is covered without a workflow edit —
+              # Store's Data/Migrations/** had been unwatched since the pilot.
+              - 'src/Sections/*/Data/**'
+              - 'src/Sections/*/Domain/**'
               - '.github/workflows/build.yml'
 
   verify-migrations-apply:
