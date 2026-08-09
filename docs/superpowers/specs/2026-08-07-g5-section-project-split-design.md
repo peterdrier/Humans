@@ -1442,6 +1442,15 @@ parses `*` as "repeat the previous character" and matches `nameof(Stor)`, `nameo
    leftovers so the pilot never saw this; Events had four, and each would have rendered as its raw
    key in every language. **This survives the step 12 HTML diff only if you capture before and
    after** — the fallback is the key text, not an error.
+   **Grep outside the section too.** A carved `<Section>_*` key can be referenced from a shared
+   partial in `Humans.UI` or a Shell view, which resolve against `SharedResource` and cannot see
+   the section's set — `Humans.UI` is Base and must not reference a section to reach it. Events hit
+   this with `_FavouriteButton.cshtml`, a partial that moved *into* `Humans.UI` in the same PR while
+   its three `Events_*` keys moved *out* into `EventsResource`. Fix by passing the localized strings
+   in on the partial's model, so the shared partial stays resource-neutral and each caller localizes
+   from the set it already has; a Shell caller that genuinely needs section strings can inject
+   `IStringLocalizer<<Section>Resource>` directly, since Shell references the section. Run
+   `grep -rn 'Localizer\["<Section>_' src/` after the carve and expect hits only inside the section.
 4. `Section.cs` at the project root: `public sealed class Section : ISection` with
    `Register(IServiceCollection services, IConfiguration configuration)` — `AddSectionDbContext<…>`,
    repositories, services, section-owned authorization handlers. One of the two `public` types

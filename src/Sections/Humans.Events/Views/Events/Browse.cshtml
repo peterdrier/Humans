@@ -117,7 +117,11 @@ else
                         {
                             EventId = item.EventId,
                             DayOffset = item.FavouriteDayOffset,
-                            IsFavourited = item.IsFavourited
+                            IsFavourited = item.IsFavourited,
+                            AddTitle = Localizer["Events_AddToFavourites"].Value,
+                            RemoveTitle = Localizer["Events_RemoveFromFavourites"].Value,
+                            RemoveRowTitle = Localizer["Events_RemoveFromSchedule"].Value,
+                            ErrorMessage = SharedLocalizer["Common_Error"].Value
                         })
                     </div>
                     <div class="mt-1 small text-muted">

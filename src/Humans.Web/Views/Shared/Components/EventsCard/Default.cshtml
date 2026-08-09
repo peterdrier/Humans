@@ -1,4 +1,6 @@
 @model Humans.Web.Models.Events.EventsCardViewModel
+@* Events strings live in the section's resource set since #866 G5; Shell references the section project, so it localizes them directly. *@
+@inject IStringLocalizer<Humans.Events.EventsResource> EventsLocalizer
 
 @functions {
     static string FormatDuration(int minutes)
@@ -33,7 +35,11 @@
                         @await Html.PartialAsync("_FavouriteButton", new FavouriteButtonModel
                         {
                             EventId = row.EventId,
-                            IsFavourited = row.IsFavourited
+                            IsFavourited = row.IsFavourited,
+                            AddTitle = EventsLocalizer["Events_AddToFavourites"].Value,
+                            RemoveTitle = EventsLocalizer["Events_RemoveFromFavourites"].Value,
+                            RemoveRowTitle = EventsLocalizer["Events_RemoveFromSchedule"].Value,
+                            ErrorMessage = Localizer["Common_Error"].Value
                         })
                     </span>
                 </div>

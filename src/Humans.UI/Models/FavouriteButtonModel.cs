@@ -24,4 +24,23 @@ public sealed class FavouriteButtonModel
 
     /// <summary>Optional confirm prompt shown before acting (My Schedule removal).</summary>
     public string? ConfirmMessage { get; init; }
+
+    // Labels are supplied by the caller rather than looked up in the partial. The strings
+    // are Events' (Events_AddToFavourites and friends) and live in EventsResource since
+    // nobodies-collective/Humans#866 G5, but this model and its partial are Humans.UI —
+    // Base, which must not reference a section. Each caller localizes from the resource
+    // set it already has, and the partial stays resource-neutral for the next section
+    // that needs a favourite heart.
+
+    /// <summary>Title/ARIA label for "add to favourites".</summary>
+    public required string AddTitle { get; init; }
+
+    /// <summary>Title/ARIA label for "remove from favourites".</summary>
+    public required string RemoveTitle { get; init; }
+
+    /// <summary>Title/ARIA label used instead of <see cref="RemoveTitle"/> when <see cref="RemoveRow"/>.</summary>
+    public required string RemoveRowTitle { get; init; }
+
+    /// <summary>Message surfaced by the JS when the toggle request fails.</summary>
+    public required string ErrorMessage { get; init; }
 }
