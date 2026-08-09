@@ -302,6 +302,10 @@ when the *shared* surface renders it.
 `IStringLocalizer<StoreResource>` as `Localizer`, so no view body changes — the keys and the
 `Localizer[...]` call sites are untouched by the move.
 
+The marker class is **`public`**, and today that is load-bearing rather than incidental: the boot
+diagnostic discovers it via `GetExportedTypes()` and skips an `internal` one without complaint
+(§6).
+
 Three pieces of shared machinery are hardcoded to the single resource type and must widen first:
 
 - **`EnumLocalizationExtensions`** — `EnumDisplay<TEnum>` and `EnumSelectItems<TEnum>` extend
@@ -490,9 +494,23 @@ public sealed class Section : ISection
 `ISection` lives in `Humans.Interfaces` — a leaf Base project with no references, which is exactly
 where a marker consumed by both Shell and every section belongs.
 
-It is the **only** `public` non-`Contracts/` type in the section, so the keystone analyzer needs a
-carve-out for one `public sealed class Section : ISection` at the project root, or the first section
-fails its own rule. (That analyzer does not exist yet — §10.)
+**There are two `public` non-`Contracts/` types per section, not one.** §6 originally said one. The
+second is the resource marker `<Section>Resource` (§3): the boot diagnostic finds it through
+`SectionDiscoveryExtensions.SectionResourceTypes()`, which enumerates `GetExportedTypes()` — so an
+`internal` marker is **skipped silently**, and the section ships raw localization keys with the boot
+log still reading OK. Store works only because `StoreResource` is `public`, which was never stated
+as a requirement.
+
+So the keystone analyzer needs **two** carve-outs — `public sealed class Section : ISection` and
+`public class <Section>Resource`, both at known paths — or the first section fails its own rule.
+(That analyzer does not exist yet — §10.)
+
+The alternative is to make the marker `internal` and switch `SectionResourceTypes()` from
+`GetExportedTypes()` to `GetTypes()`: nothing outside the section names the marker — the section's
+own `_ViewImports` injects `IStringLocalizer<<Section>Resource>` and that is the only consumer — so
+one public type per section really is achievable. One word of code, and it makes the diagnostic
+robust against a section that internalises correctly. **Decide it before the keystone analyzer is
+written**, since whichever way it goes the analyzer encodes it.
 
 ### The type is called `Section`, not `<Section>Section`
 
@@ -1356,15 +1374,30 @@ fake-applied in prod/QA/previews). `Humans.UI` exists. Fan-in known: run `reforg
 references before starting; a section with many inbound section references is a knot, goes later,
 and may need `<Section>.Contracts`.
 
-**Before you start — the four searches that cost time if skipped.** Each one caught a silent
-failure in the pilot:
+**Before you start — the five searches that cost time if skipped.** Each one caught a silent
+failure in the pilot. Substitute the section name for `<Section>`; run them as separate lines, never
+chained with `&&`, since a search that finds nothing is the *good* outcome and would kill the rest
+of the chain.
 
 ```bash
-git ls-files 'docs/**' | grep -i <section>      # what actually exists to move (§7a)
-grep -rn "docs/sections\|docs/guide\|docs/features" src/ --include=*.cs   # runtime readers of docs paths (§7a)
-grep -rn "typeof(<AnyTypeYouWillMove>).Assembly" tests/                   # reflection-anchored sweeps (§10)
-grep -rn "nameof(<Section>*)" src/ && grep -rn "Enum_<Section>" src/**/*.resx   # type names that are data (§6a)
+# what actually exists to move (§7a)
+git ls-files 'docs/**' | grep -i <section>
+# runtime readers of docs paths (§7a)
+grep -rn --include='*.cs' 'docs/sections\|docs/guide\|docs/features' src/
+# reflection-anchored sweeps that would silently start covering nothing (§10)
+grep -rn 'typeof(<AnyTypeYouWillMove>).Assembly' tests/
+# type names written to the database (§6a) — plain prefix, no trailing glob
+grep -rn 'nameof(<Section>' src/
+# type names that form resource keys (§3)
+grep -rn --include='*.resx' 'Enum_<Section>' src/
 ```
+
+Two shell notes, because the obvious spellings both fail *silently* and this block exists precisely
+to stop silent failures. `grep`'s default is a basic regular expression, so `nameof(<Section>*)`
+parses `*` as "repeat the previous character" and matches `nameof(Stor)`, `nameof(Store)`,
+`nameof(Storee)` — **not** `nameof(StoreProduct)`, which is the whole point of the search. And
+`src/**/*.resx` is not recursive without `shopt -s globstar`; use `--include` instead.
+(`rg` avoids both, but is not on `PATH` in this repo's Git Bash.)
 
 **Steps.**
 
@@ -1388,18 +1421,21 @@ grep -rn "nameof(<Section>*)" src/ && grep -rn "Enum_<Section>" src/**/*.resx   
    `<Section>Resource.cs` in the section's namespace (§3 — the `.cs`-namespace mechanic decides the
    resource prefix, and getting it wrong degrades every string to its key). **The boot diagnostic
    needs no per-section edit** — it enumerates section resource types and asserts each manifest is
-   embedded. If the section renames an enum in step 5, rename its `Enum_{TypeName}_*` keys in all
-   six languages in the same commit (§3).
+   embedded — **but only if `<Section>Resource` is `public`**, because discovery reads
+   `GetExportedTypes()`. Make it `public` and exempt it in step 5, or the diagnostic skips the
+   section in silence (§6). If the section renames an enum in step 5, rename its
+   `Enum_{TypeName}_*` keys in all six languages in the same commit (§3).
 4. `Section.cs` at the project root: `public sealed class Section : ISection` with
    `Register(IServiceCollection services, IConfiguration configuration)` — `AddSectionDbContext<…>`,
-   repositories, services, section-owned authorization handlers. The only `public` type outside
-   `Contracts/`. Shell discovers it; nothing is added to `Program.cs`. Remove the section's line from
-   the `Add<Section>Section` roll-call (§6).
+   repositories, services, section-owned authorization handlers. One of the two `public` types
+   outside `Contracts/` — `<Section>Resource` is the other (step 3b). Shell discovers it; nothing is
+   added to `Program.cs`. Remove the section's line from the `Add<Section>Section` roll-call (§6).
 4b. `[assembly: Section("<Section>")]` in `Properties/AssemblyInfo.cs` — the analyzer marker, the
    discovery marker and the internal-controller marker, all three (§10, §6, §1). Add
    `[assembly: InternalsVisibleTo("DynamicProxyGenAssembly2")]` beside it if the section's tests
    substitute anything. Delete any per-type `[Section("…")]` the section carried.
-5. Everything else `internal`, and internal types drop the section prefix per §6a — `Repository`,
+5. Everything else `internal` **except `<Section>Resource`, which stays `public`** (step 3b), and
+   internal types drop the section prefix per §6a — `Repository`,
    `Service`, entities, EF configurations, view models. Controllers, `<Section>DbContext`,
    `I<Section>Repository` and `Contracts/` types keep it. Keep an interface only where something
    needs the seam: a caching decorator, a `Contracts/` entry, or a substituting unit test — in
