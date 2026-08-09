@@ -1,7 +1,6 @@
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Application.Interfaces.SystemSettings;
-using Humans.Domain.Constants;
+using Humans.SystemSettings.Contracts;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;

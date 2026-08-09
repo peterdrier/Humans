@@ -6375,12 +6375,6 @@
   <data name="Enum_EmailOutboxStatus_Failed" xml:space="preserve"><value>Fallit</value></data>
   <data name="Enum_EmailOutboxStatus_Queued" xml:space="preserve"><value>A la cua</value></data>
   <data name="Enum_EmailOutboxStatus_Sent" xml:space="preserve"><value>Enviat</value></data>
-  <data name="Enum_EventStatus_Approved" xml:space="preserve"><value>Aprovat</value></data>
-  <data name="Enum_EventStatus_Draft" xml:space="preserve"><value>Esborrany</value></data>
-  <data name="Enum_EventStatus_Pending" xml:space="preserve"><value>Pendent</value></data>
-  <data name="Enum_EventStatus_Rejected" xml:space="preserve"><value>Rebutjat</value></data>
-  <data name="Enum_EventStatus_ResubmitRequested" xml:space="preserve"><value>Canvis sol·licitats</value></data>
-  <data name="Enum_EventStatus_Withdrawn" xml:space="preserve"><value>Retirat</value></data>
   <data name="Enum_ExpenseReportStatus_Approved" xml:space="preserve"><value>Aprovat</value></data>
   <data name="Enum_ExpenseReportStatus_CoordinatorEndorsed" xml:space="preserve"><value>Avalat pel coordinador</value></data>
   <data name="Enum_ExpenseReportStatus_Draft" xml:space="preserve"><value>Esborrany</value></data>
@@ -6438,53 +6432,6 @@
   <data name="Enum_YesNoMaybe_Maybe" xml:space="preserve"><value>Potser</value></data>
   <data name="Enum_YesNoMaybe_No" xml:space="preserve"><value>No</value></data>
   <data name="Enum_YesNoMaybe_Yes" xml:space="preserve"><value>Sí</value></data>
-  <data name="Events_AddBarrioEvent" xml:space="preserve"><value>Afegeix un esdeveniment de barri</value></data>
-  <data name="Events_AddToFavourites" xml:space="preserve"><value>Afegeix als preferits</value></data>
-  <data name="Events_AllCategories" xml:space="preserve"><value>Totes les categories</value></data>
-  <data name="Events_AllTimesIn" xml:space="preserve"><value>Totes les hores en {0}. Pot aplicar-se la Playa Time!</value></data>
-  <data name="Events_AllTimesInShort" xml:space="preserve"><value>Totes les hores en {0}</value></data>
-  <data name="Events_AllVenues" xml:space="preserve"><value>Tots els espais</value></data>
-  <data name="Events_BrowseTitle" xml:space="preserve"><value>Explora els esdeveniments</value></data>
-  <data name="Events_ColActions" xml:space="preserve"><value>Accions</value></data>
-  <data name="Events_ColCategory" xml:space="preserve"><value>Categoria</value></data>
-  <data name="Events_ColDateTime" xml:space="preserve"><value>Data i hora</value></data>
-  <data name="Events_ColEventName" xml:space="preserve"><value>Nom de l'esdeveniment</value></data>
-  <data name="Events_ColPriority" xml:space="preserve"><value>Prioritat</value></data>
-  <data name="Events_ConflictBadge" xml:space="preserve"><value>Conflicte d'horari amb un altre esdeveniment preferit</value></data>
-  <data name="Events_DownloadCsv" xml:space="preserve"><value>Descarrega el CSV d'esdeveniments</value></data>
-  <data name="Events_DurationMin" xml:space="preserve"><value>{0} min</value></data>
-  <data name="Events_FavouritesOnly" xml:space="preserve"><value>Només</value></data>
-  <data name="Events_FilterCategory" xml:space="preserve"><value>Categoria</value></data>
-  <data name="Events_FilterDay" xml:space="preserve"><value>Dia</value></data>
-  <data name="Events_FilterSearch" xml:space="preserve"><value>Cerca</value></data>
-  <data name="Events_FilterVenue" xml:space="preserve"><value>Espai</value></data>
-  <data name="Events_MyPersonalEvents" xml:space="preserve"><value>Els meus esdeveniments personals</value></data>
-  <data name="Events_MySchedule" xml:space="preserve"><value>La meva agenda</value></data>
-  <data name="Events_MySubmissions" xml:space="preserve"><value>Les meves propostes</value></data>
-  <data name="Events_MySubmissionsTitle" xml:space="preserve"><value>Les meves propostes d'esdeveniments</value></data>
-  <data name="Events_NoBarrioEvents" xml:space="preserve"><value>Encara no s'ha proposat cap esdeveniment per a aquest barri.</value></data>
-  <data name="Events_NoEventsFound" xml:space="preserve"><value>No s'ha trobat cap esdeveniment. Prova d'ajustar els filtres.</value></data>
-  <data name="Events_NoPersonalEvents" xml:space="preserve"><value>Encara no has proposat cap esdeveniment personal.</value></data>
-  <data name="Events_RemoveFromFavourites" xml:space="preserve"><value>Treu dels preferits</value></data>
-  <data name="Events_RemoveFromSchedule" xml:space="preserve"><value>Treu de l'agenda</value></data>
-  <data name="Events_RemoveFromScheduleConfirm" xml:space="preserve"><value>Vols treure aquest esdeveniment de la teva agenda?</value></data>
-  <data name="Events_ScheduleEmpty" xml:space="preserve"><value>Encara no has marcat cap esdeveniment com a preferit. Explora la {0} per afegir esdeveniments a la teva agenda.</value></data>
-  <data name="Events_ScheduleEmptyLink" xml:space="preserve"><value>guia d'esdeveniments</value></data>
-  <data name="Events_ScheduleTitle" xml:space="preserve"><value>La meva agenda</value></data>
-  <data name="Events_SearchPlaceholder" xml:space="preserve"><value>Cerca per títol o descripció…</value></data>
-  <data name="Events_StatApproved" xml:space="preserve"><value>Aprovats</value></data>
-  <data name="Events_StatPending" xml:space="preserve"><value>Pendents</value></data>
-  <data name="Events_StatSubmitted" xml:space="preserve"><value>Enviats</value></data>
-  <data name="Events_SubmissionWindow" xml:space="preserve"><value>Període de propostes:</value></data>
-  <data name="Events_SubmissionWindowClosed" xml:space="preserve"><value>El període de propostes no està obert actualment. Contacta amb un administrador per configurar els ajustos de la guia.</value></data>
-  <data name="Events_SubmitNewEvent" xml:space="preserve"><value>Proposa un nou esdeveniment</value></data>
-  <data name="Events_UploadColErrors" xml:space="preserve"><value>Errors</value></data>
-  <data name="Events_UploadColEvent" xml:space="preserve"><value>Esdeveniment</value></data>
-  <data name="Events_UploadColRow" xml:space="preserve"><value>Fila</value></data>
-  <data name="Events_UploadCsv" xml:space="preserve"><value>Puja un CSV</value></data>
-  <data name="Events_UploadFailed" xml:space="preserve"><value>La pujada ha fallat.</value></data>
-  <data name="Events_UploadFailedDetail" xml:space="preserve"><value>Corregeix els errors de sota i torna-ho a provar. No s'ha desat cap esdeveniment.</value></data>
-  <data name="Events_WithdrawConfirm" xml:space="preserve"><value>Vols retirar aquest esdeveniment?</value></data>
   <data name="Expenses_ColReport" xml:space="preserve"><value>Informe</value></data>
   <data name="Expenses_ColSubmitted" xml:space="preserve"><value>Presentat</value></data>
   <data name="Expenses_ColSubmittedBy" xml:space="preserve"><value>Presentat per</value></data>

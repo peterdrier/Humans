@@ -19,7 +19,9 @@ invariants doc inside that project rather than in this folder; this index is the
 
 | Section | Project | Invariants doc |
 |---|---|---|
+| Event Guide | `src/Sections/Humans.Events` | [Events.md](../../src/Sections/Humans.Events/Docs/Events.md) |
 | Store | `src/Sections/Humans.Store` | [Store.md](../../src/Sections/Humans.Store/Docs/Store.md) |
+| System Settings | `src/Sections/Humans.SystemSettings` | — (no invariants doc; one key/value table) |
 
 **This table is derived from code, not from the section docs — code is authoritative.** Regenerate it when sections move:
 
@@ -48,7 +50,7 @@ Cross-check against [`design-rules.md` §8 (Table Ownership Map)](../architectur
 | **City Planning** | `CityPlanningController`, `CityPlanningApiController` | — | `CityPlanningService` | `CityPlanningRepository` | `city_planning_settings`, `camp_polygons`, `camp_polygon_histories` |
 | **Containers** | `ContainerController` | — | `ContainerService` | `ContainerRepository` | `containers`, `container_placements` |
 | **Email** | `EmailController` | — | `EmailOutboxService`, `OutboxEmailService` | `EmailOutboxRepository` | `email_outbox_messages`, `system_settings` (key `email_outbox_paused`) |
-| **Event Guide** | `EventsController`, `EventsAdminController`, `EventsDashboardController`, `EventsExportController`, `EventsModerationController` | — | `EventService`, *`CachingEventService`* | `EventRepository` | `events`, `event_categories`, `event_venues`, `event_guide_settings`, `event_moderation_actions`, `event_favourites`, `event_preferences` |
+| **Event Guide** | `EventsController`, `EventsAdminController`, `EventsDashboardController`, `EventsExportController`, `EventsModerationController`, `EventsApiController` (`Humans.Events.Controllers`) | — | `EventService`, *`CachingEventService`* (`Humans.Events.Services`) | `EventRepository` / `IEventRepository` (`Humans.Events.Data`) | `events`, `event_categories`, `event_venues`, `event_guide_settings`, `event_moderation_actions`, `event_favourites`, `event_preferences` |
 | **Expenses** | `ExpensesController` | — | `ExpenseReportService` | `ExpenseRepository` | `expense_reports`, `expense_lines`, `expense_attachments`, `holded_expense_outbox_events` |
 | **Feedback** | `FeedbackController`, `FeedbackApiController` | — | `FeedbackService` | `FeedbackRepository` | `feedback_reports`, `feedback_messages` |
 | **Finance** | `FinanceController` | — | `HoldedFinanceService` | `HoldedRepository` | `holded_sync_states`, `holded_category_map`, `holded_expense_docs`, `holded_ledger_lines`, `holded_creditor_contacts` |

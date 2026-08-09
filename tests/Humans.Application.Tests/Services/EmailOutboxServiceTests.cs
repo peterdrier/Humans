@@ -1,8 +1,7 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Application.Interfaces.SystemSettings;
+using Humans.SystemSettings.Contracts;
 using Humans.Application.Services.Email;
-using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;

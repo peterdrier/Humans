@@ -1,5 +1,5 @@
 using System.Security.Claims;
-using Humans.Application.Interfaces.Events;
+using Humans.Events.Contracts;
 using Humans.Web.Helpers;
 using Humans.Web.Models.Events;
 using Microsoft.AspNetCore.Mvc;
@@ -61,7 +61,7 @@ public class EventsCardViewComponent(
                     Title = e.Title,
                     CategoryName = e.CategoryName,
                     Description = e.Description,
-                    StartAt = EventsTimeHelpers.ToLocalDateTime(e.StartAt, tz),
+                    StartAt = tz is null ? e.StartAt.ToDateTimeUtc() : e.StartAt.InZone(tz).ToDateTimeUnspecified(),
                     DurationMinutes = e.DurationMinutes,
                     VenueName = e.VenueName,
                     LocationNote = e.LocationNote,

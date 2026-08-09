@@ -739,12 +739,15 @@ Store's six tables are already `store_*` — **no rename migration is needed for
 further reason Store is the right first cut: it exercises the file move without also exercising a
 prod schema change.
 
-> ⚠️ **UNPROVEN.** The table rename has never been executed under G5. It is the single riskiest
-> unexercised step: a prod schema change riding a file-move PR, with raw-SQL, backup-tooling and the
-> #845 runbook to sweep for the old names. First real test: whichever of **SystemSettings**,
-> **Containers**, **Agent**, **Surveys** or **EventGuide** moves first — check each one's table
-> prefix before scheduling it, and prefer an already-prefixed section as section two so the rename
-> lands on its own once the rest of the recipe is settled.
+> **Resolved 2026-08-09 by deferring it, not by doing it.** The table rename is out of scope for
+> every G5 move — a G5 move changes files, never the schema. Renames are deferred wholesale until
+> #858 completes, when each is a small isolated migration against a single section's own snapshot;
+> tracked at nobodies-collective/Humans#1012. A section whose tables do not match its name still
+> moves on schedule keeping its current names, with the mismatch recorded on #1012. See §15 step 10.
+>
+> Events is the first section to hit it: its tables are `event_*` while the section is `Events`
+> and its context is `EventGuideDbContext` — close enough to be untidy, not close enough to rename
+> under a file-move PR.
 
 ---
 
@@ -1401,7 +1404,11 @@ parses `*` as "repeat the previous character" and matches `nameof(Stor)`, `nameo
 
 **Steps.**
 
-1. `src/Sections/Humans.<Section>/Humans.<Section>.csproj` — `Microsoft.NET.Sdk.Razor`,
+1. `src/Sections/Humans.<Section>/Humans.<Section>.csproj` — `Microsoft.NET.Sdk.Razor`
+   **when the section has controllers or views**, plain `Microsoft.NET.Sdk` when it has neither
+   (SystemSettings): discovery keys off `[assembly: Section("…")]`, not off being an MVC
+   application part, so `AddRazorSupportForMvc` and the three `<Using>` items below are dead weight
+   in a view-less section. With Razor:
    `<AddRazorSupportForMvc>true</AddRazorSupportForMvc>`, `<InternalsVisibleTo>` for **both**
    `Humans.<Section>.Tests` **and `Humans.Integration.Tests`** (§5), `FrameworkReference
    Microsoft.AspNetCore.App`, the section's own NuGet packages, `<None Include="**\*.md" />`, and
@@ -1425,6 +1432,25 @@ parses `*` as "repeat the previous character" and matches `nameof(Stor)`, `nameo
    `GetExportedTypes()`. Make it `public` and exempt it in step 5, or the diagnostic skips the
    section in silence (§6). If the section renames an enum in step 5, rename its
    `Enum_{TypeName}_*` keys in all six languages in the same commit (§3).
+   **Then re-grep the moved views for keys the carve did not take.** A section's views also use
+   genuinely shared strings — `Common_*`, `Camp_Plural` — and those stay in `SharedResource`;
+   copying them into 35 section `.resx` files is the wrong direction. Bind a second localizer in
+   the section's `_ViewImports` and switch those call sites to it:
+   `@inject IStringLocalizer<SharedResource> SharedLocalizer`. The check is mechanical — extract
+   every `Localizer["…"]` key in the section's views and controllers, and assert each one exists in
+   the section `.resx`; anything left over is either a missed carve or a shared key. Store had zero
+   leftovers so the pilot never saw this; Events had four, and each would have rendered as its raw
+   key in every language. **This survives the step 12 HTML diff only if you capture before and
+   after** — the fallback is the key text, not an error.
+   **Grep outside the section too.** A carved `<Section>_*` key can be referenced from a shared
+   partial in `Humans.UI` or a Shell view, which resolve against `SharedResource` and cannot see
+   the section's set — `Humans.UI` is Base and must not reference a section to reach it. Events hit
+   this with `_FavouriteButton.cshtml`, a partial that moved *into* `Humans.UI` in the same PR while
+   its three `Events_*` keys moved *out* into `EventsResource`. Fix by passing the localized strings
+   in on the partial's model, so the shared partial stays resource-neutral and each caller localizes
+   from the set it already has; a Shell caller that genuinely needs section strings can inject
+   `IStringLocalizer<<Section>Resource>` directly, since Shell references the section. Run
+   `grep -rn 'Localizer\["<Section>_' src/` after the carve and expect hits only inside the section.
 4. `Section.cs` at the project root: `public sealed class Section : ISection` with
    `Register(IServiceCollection services, IConfiguration configuration)` — `AddSectionDbContext<…>`,
    repositories, services, section-owned authorization handlers. One of the two `public` types
@@ -1442,23 +1468,34 @@ parses `*` as "repeat the previous character" and matches `nameof(Stor)`, `nameo
    practice that means **`I<Section>Repository` stays and `I<Section>Service` goes** (§6a). Do the
    renames in a **separate commit** after the move compiles, and check the two non-inert rename
    cases (§6a) before running them.
-   > ⚠️ **UNPROVEN: the caching-decorator exception.** Store has no decorator, so "keep the
-   > interface for the decorator to wrap" has never been executed under a section boundary. First
-   > real test: any section with a `Cached*` decorator — check `memory/architecture/caching-transparent.md`
-   > for which. The open question is whether the decorator, its keyed inner registration and the
-   > interface all stay `internal` inside the section, and whether `CachingDecoratorRepositoryAnalyzer`
-   > still fires there.
+   > **Exercised 2026-08-09 by Events.** `CachingEventService`, its keyed `"event-inner"` inner
+   > registration and `IEventService` all moved into the section and all stay `internal` — the only
+   > public types are `Section`, `EventsResource` and the `Contracts` project. The decorator keeps
+   > its `Caching*` name (it is not the section's plain `Service`, so the prefix is not stutter),
+   > and it implements `IHostedService` + `ICacheStats` against Base interfaces, which needs no
+   > exception. The keyed-vs-unkeyed registration pair moves verbatim from the Shell extension into
+   > `Section.Register`. `CachingDecoratorRepositoryAnalyzer` still fires: `AssemblyScope` keys off
+   > the section marker, which the new assembly carries.
    >
    > ⚠️ **UNPROVEN: nothing enforces "everything else `internal`".** The keystone analyzer is not
    > built (§10). This step is convention until it is.
-5b. `Contracts/` holds only `I<Section>ServiceRead`, canonical read DTOs and domain events — and may
-   be empty for a leaf section, in which case it ships as a folder with a `README.md` saying why, so
-   the absence reads as a decision.
-   > ⚠️ **UNPROVEN: a non-empty `Contracts/`.** Store's is empty — fan-in of one. Nothing has yet
-   > tested what a section's public read surface looks like from the far side of an assembly
-   > boundary. First real test: the first section with inbound section references; **Users** and
-   > **Teams** are the ones #866 predicts will need it most, and they go last, so expect a mid-rollout
-   > section to be the real first case.
+5b. `Contracts/` holds **everything consumed from outside the section** — read *or* write. Peter,
+   2026-08-09: that rule stands for the whole rollout, and splitting the read surface from the write
+   surface happens once every section has moved, not per-section on the way through. In practice it
+   is `I<Section>ServiceRead`, canonical read DTOs and domain events, plus any full service interface
+   or enum an outside caller still names. It may be empty for a leaf section, in which case it ships
+   as a folder with a `README.md` saying why, so the absence reads as a decision.
+   **When the consumer is in Base, `Contracts/` must be its own project, not a folder.** A folder
+   inside `Humans.<Section>` would make `Humans.Application` reference a section and cycle. Carve
+   `Humans.<Section>.Contracts` referencing the bottom of the graph only — `Humans.Interfaces`,
+   `Humans.Domain`, or nothing at all — and have `Humans.Application` reference *that*
+   (`memory/architecture/section-project-cycle-fix.md`). Expect this for most sections: a section
+   whose consumers are all in Shell is the exception, not the rule.
+   > **Exercised 2026-08-09** by SystemSettings and Events, both in A1. SystemSettings' surface is a
+   > read+write `ISystemSettingsService` plus `SystemSettingKeys` (Email and GoogleIntegration both
+   > call `SetValueAsync`); Events' is `IEventServiceRead`, two NodaTime-only DTOs and the
+   > `EventStatus` enum, which Email's `EventLifecycleNotification` names from Base. Both needed a
+   > separate `.Contracts` project on the first build.
 6. Authorization *policies* stay in Shell's `AuthorizationPolicyExtensions`; resource-based
    *handlers* move into the section. (§8's asymmetry: DI registration moves, policy registration
    does not.)
@@ -1480,11 +1517,17 @@ parses `*` as "repeat the previous character" and matches `nameof(Stor)`, `nameo
 9. `dotnet ef` for this section: `--project src/Sections/Humans.<Section>
    --startup-project src/Humans.Web --context <Section>DbContext --output-dir Data/Migrations`.
    Update the `context:project` pair in `.github/workflows/build.yml`.
-10. Rename the section's tables to the section prefix if not already prefixed — an ordinary
-    migration in the section's own history, but still a prod schema change: EF migration reviewer,
-    then prod-verified. Sweep raw-SQL / backup-tooling / #845-runbook references to the old names.
-    > ⚠️ **UNPROVEN.** Store's tables were already `store_*`. This is the riskiest unexercised step;
-    > see §7 for which section is likely to hit it first.
+10. **Table renames are out of scope for a G5 move. A G5 move changes files, never the schema.**
+    Decision of 2026-08-09, recorded on nobodies-collective/Humans#866 and tracked at
+    nobodies-collective/Humans#1012: renames are deferred wholesale until #858 completes, when each
+    one is a small isolated migration against a single section's own snapshot. If a section's tables
+    do not match its name, it **still moves on schedule, keeping its current table names** — record
+    the mismatch as a comment on #1012 and carry on. Do not rename, do not produce a migration, do
+    not treat it as a blocker.
+    > The same reasoning covers the section's `<Section>DbContext` name, which
+    > `SectionMigrationsHistory.TableFor` turns into a live `__EFMigrationsHistory_*` table. Events
+    > kept `EventGuideDbContext` while the section, its assembly and its analyzer marker are all
+    > `Events`; the context name is schema, the section name is code.
 11. Enforcement: collapse the section's `reforge.surface-score.json` paths to
     `src/Sections/Humans.<Section>/**`; delete the section's `*ArchitectureTests.cs` assertions the
     assembly boundary now subsumes (EF-reference checks, interface-implementation tautologies);
@@ -1492,11 +1535,22 @@ parses `*` as "repeat the previous character" and matches `nameof(Stor)`, `nameo
     **`AssemblyScope` and the thirteen literal gates were generalized once, in the pilot** — but
     re-run `grep -rn 'Assembly.Name' src/Humans.Analyzers/` before each section and confirm any
     analyzer added since is section-aware (§10).
-    > ⚠️ **UNPROVEN: the cycle-fix playbook.** `memory/architecture/section-project-cycle-fix.md`
-    > has never been exercised — Store cannot produce a cycle. First real test: the first section
-    > with a mutual reference; §8 names `IShiftManagementService` as the concrete candidate.
-    > Store also had **zero** `Architecture/Baselines` rows and zero `[Grandfathered]` attributes,
-    > so the deletion half of this step is likewise untested.
+    > **Cycle-fix exercised 2026-08-09**, though not in the shape §8 predicted. The first cycles
+    > were not section-to-section but **section-to-Base**: `Humans.Application` consumes
+    > SystemSettings and Events, so both needed the downward `.Contracts` split on their first
+    > build (step 5b). `IShiftManagementService` remains the predicted section-to-section case.
+    > The deletion half was exercised too, with one trap: Events deleted three namespace-pinning
+    > architecture tests the assembly boundary now subsumes — but the three
+    > `ApplicationServiceEntityReadReturns` baseline rows that *looked* fixed were not: the ratchet
+    > had merely lost sight of `IEventService` when it left the scanned assembly. Review caught it;
+    > the scan now includes section assemblies and the rows are restored under their new names
+    > (`Humans.Events.Services.IEventService.…`). **Delete a baseline row only when the ratchet
+    > still sees the type and passes** — a row that vanishes because the type moved is the same
+    > silent-shrink bug as a reflection sweep keyed on a hard-coded assembly list:
+    > `GdprExportDependencyInjectionTests` scanned only `Humans.Infrastructure` +
+    > `Humans.Application` and silently stopped seeing `EventService`; it now scans
+    > `SectionDiscoveryExtensions.SectionAssemblies()` as well. Store had zero
+    > `[Grandfathered]` attributes and Events has none either, so that half is still untested.
 12. Verify: build; full suite; **render every page in the section and diff HTML against a pre-move
     capture**, re-diffing after *each* risky step rather than once at the end, and proving the
     capture deterministic first by capturing twice pre-move;

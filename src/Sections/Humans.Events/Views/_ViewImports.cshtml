@@ -1,0 +1,23 @@
+@* A section RCL does NOT inherit the host's Views/_ViewImports.cshtml. Omitting a line
+   here ships broken markup with a green build and no runtime error — see design §1/§2.
+   Guarded by the rendered-HTML diff in step 12. *@
+@using Humans.Events
+@using Humans.Events.Contracts
+@using Humans.Events.Domain
+@using Humans.Events.Helpers
+@using Humans.Events.Models
+@using Humans.Events.Services
+@using Humans.Events.Services.Dtos
+@using Humans.Application.Extensions
+@using Humans.UI
+@using Humans.UI.Extensions
+@using Humans.UI.Models
+@using Humans.UI.Models.Tables
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<EventsResource> Localizer
+@* Genuinely shared strings (Common_*, Camp_Plural) stay in SharedResource — copying them
+   into each section's .resx would duplicate them ~35 times. A section view that needs one
+   uses SharedLocalizer explicitly, so which set a key comes from is visible at the call site. *@
+@inject IStringLocalizer<SharedResource> SharedLocalizer
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+@addTagHelper *, Humans.UI

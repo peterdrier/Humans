@@ -16,6 +16,8 @@ using Humans.Application.Services.Camps;
 using Humans.UI;
 using Humans.Web.Models.Camp;
 
+using Humans.UI.Controllers;
+
 namespace Humans.Web.Controllers;
 
 [Route("Barrios")]

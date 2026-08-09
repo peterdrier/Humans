@@ -6375,12 +6375,6 @@
   <data name="Enum_EmailOutboxStatus_Failed" xml:space="preserve"><value>Fehlgeschlagen</value></data>
   <data name="Enum_EmailOutboxStatus_Queued" xml:space="preserve"><value>In Warteschlange</value></data>
   <data name="Enum_EmailOutboxStatus_Sent" xml:space="preserve"><value>Gesendet</value></data>
-  <data name="Enum_EventStatus_Approved" xml:space="preserve"><value>Genehmigt</value></data>
-  <data name="Enum_EventStatus_Draft" xml:space="preserve"><value>Entwurf</value></data>
-  <data name="Enum_EventStatus_Pending" xml:space="preserve"><value>Ausstehend</value></data>
-  <data name="Enum_EventStatus_Rejected" xml:space="preserve"><value>Abgelehnt</value></data>
-  <data name="Enum_EventStatus_ResubmitRequested" xml:space="preserve"><value>Änderungen angefordert</value></data>
-  <data name="Enum_EventStatus_Withdrawn" xml:space="preserve"><value>Zurückgezogen</value></data>
   <data name="Enum_ExpenseReportStatus_Approved" xml:space="preserve"><value>Genehmigt</value></data>
   <data name="Enum_ExpenseReportStatus_CoordinatorEndorsed" xml:space="preserve"><value>Vom Koordinator befürwortet</value></data>
   <data name="Enum_ExpenseReportStatus_Draft" xml:space="preserve"><value>Entwurf</value></data>
@@ -6438,53 +6432,6 @@
   <data name="Enum_YesNoMaybe_Maybe" xml:space="preserve"><value>Vielleicht</value></data>
   <data name="Enum_YesNoMaybe_No" xml:space="preserve"><value>Nein</value></data>
   <data name="Enum_YesNoMaybe_Yes" xml:space="preserve"><value>Ja</value></data>
-  <data name="Events_AddBarrioEvent" xml:space="preserve"><value>Barrio-Veranstaltung hinzufügen</value></data>
-  <data name="Events_AddToFavourites" xml:space="preserve"><value>Zu Favoriten hinzufügen</value></data>
-  <data name="Events_AllCategories" xml:space="preserve"><value>Alle Kategorien</value></data>
-  <data name="Events_AllTimesIn" xml:space="preserve"><value>Alle Zeiten in {0}. Playa Time kann gelten!</value></data>
-  <data name="Events_AllTimesInShort" xml:space="preserve"><value>Alle Zeiten in {0}</value></data>
-  <data name="Events_AllVenues" xml:space="preserve"><value>Alle Orte</value></data>
-  <data name="Events_BrowseTitle" xml:space="preserve"><value>Veranstaltungen durchsuchen</value></data>
-  <data name="Events_ColActions" xml:space="preserve"><value>Aktionen</value></data>
-  <data name="Events_ColCategory" xml:space="preserve"><value>Kategorie</value></data>
-  <data name="Events_ColDateTime" xml:space="preserve"><value>Datum &amp; Uhrzeit</value></data>
-  <data name="Events_ColEventName" xml:space="preserve"><value>Veranstaltungsname</value></data>
-  <data name="Events_ColPriority" xml:space="preserve"><value>Priorität</value></data>
-  <data name="Events_ConflictBadge" xml:space="preserve"><value>Zeitkonflikt mit einer anderen favorisierten Veranstaltung</value></data>
-  <data name="Events_DownloadCsv" xml:space="preserve"><value>Veranstaltungs-CSV herunterladen</value></data>
-  <data name="Events_DurationMin" xml:space="preserve"><value>{0} Min.</value></data>
-  <data name="Events_FavouritesOnly" xml:space="preserve"><value>Nur</value></data>
-  <data name="Events_FilterCategory" xml:space="preserve"><value>Kategorie</value></data>
-  <data name="Events_FilterDay" xml:space="preserve"><value>Tag</value></data>
-  <data name="Events_FilterSearch" xml:space="preserve"><value>Suche</value></data>
-  <data name="Events_FilterVenue" xml:space="preserve"><value>Ort</value></data>
-  <data name="Events_MyPersonalEvents" xml:space="preserve"><value>Meine persönlichen Veranstaltungen</value></data>
-  <data name="Events_MySchedule" xml:space="preserve"><value>Mein Programm</value></data>
-  <data name="Events_MySubmissions" xml:space="preserve"><value>Meine Einreichungen</value></data>
-  <data name="Events_MySubmissionsTitle" xml:space="preserve"><value>Meine eingereichten Veranstaltungen</value></data>
-  <data name="Events_NoBarrioEvents" xml:space="preserve"><value>Für dieses Barrio wurden noch keine Veranstaltungen eingereicht.</value></data>
-  <data name="Events_NoEventsFound" xml:space="preserve"><value>Keine Veranstaltungen gefunden. Passe deine Filter an.</value></data>
-  <data name="Events_NoPersonalEvents" xml:space="preserve"><value>Du hast noch keine persönlichen Veranstaltungen eingereicht.</value></data>
-  <data name="Events_RemoveFromFavourites" xml:space="preserve"><value>Aus Favoriten entfernen</value></data>
-  <data name="Events_RemoveFromSchedule" xml:space="preserve"><value>Aus dem Programm entfernen</value></data>
-  <data name="Events_RemoveFromScheduleConfirm" xml:space="preserve"><value>Diese Veranstaltung aus deinem Programm entfernen?</value></data>
-  <data name="Events_ScheduleEmpty" xml:space="preserve"><value>Du hast noch keine Veranstaltungen favorisiert. Durchsuche {0}, um Veranstaltungen zu deinem Programm hinzuzufügen.</value></data>
-  <data name="Events_ScheduleEmptyLink" xml:space="preserve"><value>den Veranstaltungsguide</value></data>
-  <data name="Events_ScheduleTitle" xml:space="preserve"><value>Mein Programm</value></data>
-  <data name="Events_SearchPlaceholder" xml:space="preserve"><value>Titel oder Beschreibung durchsuchen…</value></data>
-  <data name="Events_StatApproved" xml:space="preserve"><value>Genehmigt</value></data>
-  <data name="Events_StatPending" xml:space="preserve"><value>Ausstehend</value></data>
-  <data name="Events_StatSubmitted" xml:space="preserve"><value>Eingereicht</value></data>
-  <data name="Events_SubmissionWindow" xml:space="preserve"><value>Einreichungszeitraum:</value></data>
-  <data name="Events_SubmissionWindowClosed" xml:space="preserve"><value>Der Einreichungszeitraum ist derzeit nicht geöffnet. Wende dich an einen Admin, um die Guide-Einstellungen zu konfigurieren.</value></data>
-  <data name="Events_SubmitNewEvent" xml:space="preserve"><value>Neue Veranstaltung einreichen</value></data>
-  <data name="Events_UploadColErrors" xml:space="preserve"><value>Fehler</value></data>
-  <data name="Events_UploadColEvent" xml:space="preserve"><value>Veranstaltung</value></data>
-  <data name="Events_UploadColRow" xml:space="preserve"><value>Zeile</value></data>
-  <data name="Events_UploadCsv" xml:space="preserve"><value>CSV hochladen</value></data>
-  <data name="Events_UploadFailed" xml:space="preserve"><value>Upload fehlgeschlagen.</value></data>
-  <data name="Events_UploadFailedDetail" xml:space="preserve"><value>Behebe die folgenden Fehler und versuche es erneut. Es wurden keine Veranstaltungen gespeichert.</value></data>
-  <data name="Events_WithdrawConfirm" xml:space="preserve"><value>Diese Veranstaltung zurückziehen?</value></data>
   <data name="Expenses_ColReport" xml:space="preserve"><value>Abrechnung</value></data>
   <data name="Expenses_ColSubmitted" xml:space="preserve"><value>Eingereicht</value></data>
   <data name="Expenses_ColSubmittedBy" xml:space="preserve"><value>Eingereicht von</value></data>

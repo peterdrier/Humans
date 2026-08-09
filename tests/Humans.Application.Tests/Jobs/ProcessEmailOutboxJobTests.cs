@@ -16,9 +16,8 @@ using Humans.Infrastructure.Services;
 using Humans.Application.Interfaces.Campaigns;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Services.Email;
-using Humans.Application.Services.SystemSettings;
 using Humans.Infrastructure.Repositories.Email;
-using Humans.Infrastructure.Repositories.SystemSettings;
+using Humans.SystemSettings.Contracts;
 using Humans.Infrastructure.Services.Metering;
 
 namespace Humans.Application.Tests.Jobs;
@@ -26,7 +25,6 @@ namespace Humans.Application.Tests.Jobs;
 public class ProcessEmailOutboxJobTests : IDisposable
 {
     private readonly DbContextOptions<EmailDbContext> _options;
-    private readonly DbContextOptions<SystemSettingsDbContext> _systemSettingsOptions;
     private readonly EmailDbContext _dbContext;
     private readonly IEmailTransport _transport;
     private readonly ICampaignService _campaignService;
@@ -35,8 +33,7 @@ public class ProcessEmailOutboxJobTests : IDisposable
     private readonly MetersService _meters;
     private readonly IOptions<EmailSettings> _settings;
     private readonly EmailOutboxRepository _repo;
-    private readonly SystemSettingsRepository _systemSettingsRepository;
-    private readonly SystemSettingsService _systemSettingsService;
+    private readonly ISystemSettingsService _systemSettingsService;
     private readonly EmailOutboxService _outboxService;
     private readonly ProcessEmailOutboxJob _job;
 
@@ -55,12 +52,9 @@ public class ProcessEmailOutboxJobTests : IDisposable
         _settings = Options.Create(new EmailSettings { OutboxBatchSize = 10, OutboxMaxRetries = 10 });
         var logger = Substitute.For<ILogger<ProcessEmailOutboxJob>>();
         _repo = new EmailOutboxRepository(new TestDbContextFactory<EmailDbContext>(_options));
-        _systemSettingsOptions = new DbContextOptionsBuilder<SystemSettingsDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-        _systemSettingsRepository = new SystemSettingsRepository(
-            new TestDbContextFactory<SystemSettingsDbContext>(_systemSettingsOptions));
-        _systemSettingsService = new SystemSettingsService(_systemSettingsRepository);
+        // SystemSettings is its own section (#866 G5): its repository, service and
+        // DbContext are internal to it, so this job test substitutes the contract.
+        _systemSettingsService = Substitute.For<ISystemSettingsService>();
         _outboxService = new EmailOutboxService(_repo, _systemSettingsService, _clock);
 
         _job = new ProcessEmailOutboxJob(
@@ -147,11 +141,9 @@ public class ProcessEmailOutboxJobTests : IDisposable
     [HumansFact]
     public async Task ExecuteAsync_SkipsPaused()
     {
-        await using (var settingsContext = new SystemSettingsDbContext(_systemSettingsOptions))
-        {
-            settingsContext.SystemSettings.Add(new SystemSetting { Key = "IsEmailSendingPaused", Value = "true" });
-            await settingsContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
-        }
+        _systemSettingsService
+            .GetValueAsync(SystemSettingKeys.IsEmailSendingPaused, Arg.Any<CancellationToken>())
+            .Returns("true");
 
         await SeedMessageAsync(EmailOutboxStatus.Queued);
 

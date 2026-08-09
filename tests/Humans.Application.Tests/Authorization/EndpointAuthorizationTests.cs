@@ -175,14 +175,6 @@ public class EndpointAuthorizationTests
         AssertHasPolicy(typeof(FinanceController), null, "FinanceAdminOrAdmin");
     }
 
-    // --- Event guide admin endpoints ---
-
-    [HumansFact]
-    public void EventsAdminController_RequiresEventsAdminOrAdminPolicy()
-    {
-        AssertHasPolicy(typeof(EventsAdminController), null, "EventsAdminOrAdmin");
-    }
-
     // --- Shift dashboard endpoints ---
 
     // Page entry uses the WIDER policy so any team coordinator / sub-team manager

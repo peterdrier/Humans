@@ -3,6 +3,8 @@ using Humans.Application.Interfaces.Users;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
+using Humans.UI.Controllers;
+
 namespace Humans.Web.Controllers.Api;
 
 /// <summary>

@@ -8,6 +8,8 @@ using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
+using Humans.UI.Controllers;
+
 namespace Humans.Web.Controllers;
 
 [Authorize]
