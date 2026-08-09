@@ -7,6 +7,16 @@ namespace Humans.UI.Models.Tables;
 /// Views stop owning color decisions: add new mappings here, never inline in a view.
 /// Unmapped values render as bg-secondary.
 /// </summary>
+/// <remarks>
+/// The literal rows below are the sections that have not yet moved into their own projects
+/// (nobodies-collective/Humans#866, G5), whose enums all still sit in
+/// <c>Humans.Domain.Enums</c>. A section that has moved owns its rows and pushes them in from
+/// <c>Section.Register</c> via <see cref="Register"/> — Base cannot name a moved section's enum,
+/// and referencing the section's contracts leaf to get it back would end with
+/// <c>Humans.UI</c> holding a reference to every section (Peter, 2026-08-09;
+/// <c>memory/architecture/base-ui-registries-are-section-populated.md</c>). Each G5 move
+/// therefore deletes its rows from here and adds one call there, and the literal ends empty.
+/// </remarks>
 public static class EnumBadgeMap
 {
     private static readonly Dictionary<Enum, string> Map = new()
@@ -22,12 +32,6 @@ public static class EnumBadgeMap
         [EmailOutboxStatus.Queued] = "bg-warning text-dark",
         [EmailOutboxStatus.Sent] = "bg-success",
         [EmailOutboxStatus.Failed] = "bg-danger",
-
-        [ExpenseReportStatus.Draft] = "bg-secondary",
-        [ExpenseReportStatus.Submitted] = "bg-primary",
-        [ExpenseReportStatus.CoordinatorEndorsed] = "bg-info text-dark",
-        [ExpenseReportStatus.Approved] = "bg-success",
-        [ExpenseReportStatus.Withdrawn] = "bg-secondary",
 
         [ShiftPeriod.Build] = "bg-info",
         [ShiftPeriod.Event] = "bg-success",
@@ -50,6 +54,44 @@ public static class EnumBadgeMap
         [VoteChoice.No] = "bg-danger",
         [VoteChoice.Abstain] = "bg-secondary",
     };
+
+    /// <summary>
+    /// Adds a moved section's badge rows. Called from <c>ISection.Register</c>, so every write
+    /// happens during <c>AddSections()</c> at composition time and the map is read-only by the
+    /// first request — which is why a static suffices where <see cref="TableColumn{TRow}"/>'s
+    /// render path has no DI to inject a registry through.
+    /// </summary>
+    /// <remarks>
+    /// Idempotent per row, deliberately. A process composes the service collection more than
+    /// once — <c>WebApplicationFactory</c> builds a host per integration-test class, and section
+    /// architecture tests call <c>Register</c> against a throwaway <c>ServiceCollection</c> —
+    /// while this map is static and outlives all of them. Re-registering a row with the same
+    /// class is therefore normal and must be a no-op.
+    /// </remarks>
+    /// <exception cref="ArgumentException">
+    /// The value is already mapped to a <em>different</em> class. That is two owners disagreeing
+    /// about one badge colour — a section-boundary bug — and letting the last registration win
+    /// silently would hide it.
+    /// </exception>
+    public static void Register(IReadOnlyDictionary<Enum, string> rows)
+    {
+        foreach (var (value, cssClass) in rows)
+        {
+            if (Map.TryGetValue(value, out var existing))
+            {
+                if (!string.Equals(existing, cssClass, StringComparison.Ordinal))
+                {
+                    throw new ArgumentException(
+                        $"{value.GetType().Name}.{value} is already mapped to '{existing}'; "
+                        + $"cannot re-map it to '{cssClass}'.",
+                        nameof(rows));
+                }
+                continue;
+            }
+
+            Map[value] = cssClass;
+        }
+    }
 
     public static string For(Enum value) => Map.GetValueOrDefault(value, "bg-secondary");
 }

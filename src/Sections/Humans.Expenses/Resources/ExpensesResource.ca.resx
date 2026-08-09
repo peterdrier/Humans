@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="1" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="Enum_ExpenseReportStatus_Approved" xml:space="preserve"><value>Aprovat</value></data>
+  <data name="Enum_ExpenseReportStatus_CoordinatorEndorsed" xml:space="preserve"><value>Avalat pel coordinador</value></data>
+  <data name="Enum_ExpenseReportStatus_Draft" xml:space="preserve"><value>Esborrany</value></data>
+  <data name="Enum_ExpenseReportStatus_Submitted" xml:space="preserve"><value>Presentat</value></data>
+  <data name="Enum_ExpenseReportStatus_Withdrawn" xml:space="preserve"><value>Retirat</value></data>
+  <data name="Expenses_ColReport" xml:space="preserve"><value>Informe</value></data>
+  <data name="Expenses_ColSubmitted" xml:space="preserve"><value>Presentat</value></data>
+  <data name="Expenses_ColSubmittedBy" xml:space="preserve"><value>Presentat per</value></data>
+  <data name="Expenses_CoordinatorQueue" xml:space="preserve"><value>Cua del coordinador</value></data>
+  <data name="Expenses_CoordinatorQueueTitle" xml:space="preserve"><value>Informes de despeses — Cua del coordinador</value></data>
+  <data name="Expenses_Endorse" xml:space="preserve"><value>Avala</value></data>
+  <data name="Expenses_EndorseConfirm" xml:space="preserve"><value>Vols avalar aquest informe de despeses?</value></data>
+  <data name="Expenses_FileFirst" xml:space="preserve"><value>Presenta el teu primer informe</value></data>
+  <data name="Expenses_IouHeader" xml:space="preserve"><value>El que el col·lectiu et deu</value></data>
+  <data name="Expenses_IouLastPayment" xml:space="preserve"><value>Últim pagament</value></data>
+  <data name="Expenses_IouOtherAmountNote" xml:space="preserve"><value>El teu saldo de Holded inclou {0} no relacionats amb aquests informes (articles avançats en nom del col·lectiu, ajustos, etc.), de manera que les files de sota no sumaran necessàriament aquesta xifra.</value></data>
+  <data name="Expenses_IouOwed" xml:space="preserve"><value>Deute amb tu (saldo de Holded)</value></data>
+  <data name="Expenses_IouPaid" xml:space="preserve"><value>Pagat fins ara</value></data>
+  <data name="Expenses_LedgerColItem" xml:space="preserve"><value>Article</value></data>
+  <data name="Expenses_MyReportsTitle" xml:space="preserve"><value>Els meus informes de despeses</value></data>
+  <data name="Expenses_NewReport" xml:space="preserve"><value>Nou informe</value></data>
+  <data name="Expenses_NoActiveYear" xml:space="preserve"><value>De moment no hi ha cap any pressupostari actiu. No es poden presentar informes de despeses fins que no s'activi un any pressupostari.</value></data>
+  <data name="Expenses_NoIban" xml:space="preserve"><value>Encara no has establert el teu IBAN de pagament. Se't demanarà que l'estableixis quan presentis un informe.</value></data>
+  <data name="Expenses_NoReports" xml:space="preserve"><value>Encara no hi ha informes de despeses.</value></data>
+  <data name="Expenses_NoReportsAwaiting" xml:space="preserve"><value>No hi ha cap informe esperant el teu aval.</value></data>
+  <data name="Expenses_Reject" xml:space="preserve"><value>Rebutja</value></data>
+  <data name="Expenses_RejectModalBody" xml:space="preserve"><value>Qui l'ha presentat veurà aquest motiu. Explica clarament per què l'informe no es pot avalar.</value></data>
+  <data name="Expenses_RejectModalTitle" xml:space="preserve"><value>Rebutja l'informe</value></data>
+  <data name="Expenses_RejectReasonLabel" xml:space="preserve"><value>Motiu del rebuig</value></data>
+  <data name="Expenses_RejectReasonPlaceholder" xml:space="preserve"><value>p. ex. Falten rebuts de la línia 2</value></data>
+</root>

@@ -1,6 +1,6 @@
 using Hangfire;
 using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.Expenses;
+using Humans.Expenses.Contracts;
 using Humans.Infrastructure.Services.Holded;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;

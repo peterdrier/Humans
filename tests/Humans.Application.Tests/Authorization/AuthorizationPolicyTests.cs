@@ -5,7 +5,6 @@ using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Budget;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.CityPlanning;
-using Humans.Application.Interfaces.Expenses;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Stores;
 using Humans.Application.Interfaces.Teams;
@@ -43,9 +42,10 @@ public class AuthorizationPolicyTests : IDisposable
         services.AddScoped(_ => Substitute.For<ITeamServiceRead>());
         services.AddScoped(_ => Substitute.For<IAgentRateLimitStore>());
         services.AddScoped(_ => Substitute.For<IAgentSettingsService>());
-        // Expense resource-based handlers
-        services.AddScoped(_ => Substitute.For<IExpenseReportServiceRead>());
-        services.AddScoped(_ => Substitute.For<IExpenseReportService>());
+        // Expenses' two resource-based handlers moved into the section with it and are
+        // registered by Humans.Expenses' Section.Register, not by
+        // AddHumansAuthorizationPolicies — so this graph no longer needs their collaborators
+        // (design §15 step 6). Their coverage lives in Humans.Expenses.Tests.
         // IsAnyTeamManagerOrCoordinatorHandler reads team-coord ids through this service
         // (cached path); register a single shared substitute so per-test setups stick.
         _shiftManagement = Substitute.For<IShiftManagementService>();

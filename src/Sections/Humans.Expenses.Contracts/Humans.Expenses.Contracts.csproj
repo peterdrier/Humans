@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Expenses' cross-section surface, carved into its own leaf project because one of its
+    consumers is still in Base: HoldedExpenseOutboxJob (Humans.Infrastructure/Jobs), which
+    stays there because recurring jobs are named by concrete type in Shell's
+    UseHumansRecurringJobs roll-call and there is no discovery seam for them yet
+    (design §15.6b). A Contracts/ *folder* inside Humans.Expenses would therefore make Base
+    reference a section and cycle (design §15.5b,
+    memory/architecture/section-project-cycle-fix.md).
+
+    It holds exactly one interface. Everything else Expenses exposes — IExpenseReportServiceRead,
+    ExpenseReportDto, ExpenseReportStatus — has no consumer outside the section once
+    IbanAccessHandler moves in with it (design §15 step 6), so it stays internal.
+
+    References Humans.Interfaces only. In particular it must not name IHoldedClient,
+    HoldedPurchaseDocumentInput, HoldedAttachmentInput or HoldedTransientException: those are
+    the Holded connector's and the connector stays in Base, which is the cycle Finance hit in A2
+    (memory/architecture/vendor-connectors-own-sections.md).
+  -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
+  </ItemGroup>
+
+</Project>

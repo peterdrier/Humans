@@ -44,7 +44,7 @@ public class ServiceBoundaryArchitectureTests
             [typeof(IConsentRepository)] = "Consent",
             [SectionRepository("Humans.Containers.Data.IContainerRepository")] = "Containers",
             [typeof(IEmailOutboxRepository)] = "Email",
-            [typeof(IExpenseRepository)] = "Expenses",
+            [SectionRepository("Humans.Expenses.Data.IExpenseRepository")] = "Expenses",
             [typeof(IFeedbackRepository)] = "Feedback",
             [typeof(IGateRepository)] = "Gate",
             [typeof(IGoogleResourceRepository)] = "GoogleIntegration",

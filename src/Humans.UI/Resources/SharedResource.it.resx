@@ -6315,11 +6315,6 @@
   <data name="Enum_EmailOutboxStatus_Failed" xml:space="preserve"><value>Fallita</value></data>
   <data name="Enum_EmailOutboxStatus_Queued" xml:space="preserve"><value>In coda</value></data>
   <data name="Enum_EmailOutboxStatus_Sent" xml:space="preserve"><value>Inviata</value></data>
-  <data name="Enum_ExpenseReportStatus_Approved" xml:space="preserve"><value>Approvata</value></data>
-  <data name="Enum_ExpenseReportStatus_CoordinatorEndorsed" xml:space="preserve"><value>Avallata dal coordinatore</value></data>
-  <data name="Enum_ExpenseReportStatus_Draft" xml:space="preserve"><value>Bozza</value></data>
-  <data name="Enum_ExpenseReportStatus_Submitted" xml:space="preserve"><value>Presentata</value></data>
-  <data name="Enum_ExpenseReportStatus_Withdrawn" xml:space="preserve"><value>Ritirata</value></data>
   <data name="Enum_FeedbackCategory_Bug" xml:space="preserve"><value>Bug</value></data>
   <data name="Enum_FeedbackCategory_FeatureRequest" xml:space="preserve"><value>Richiesta di funzionalità</value></data>
   <data name="Enum_FeedbackCategory_Question" xml:space="preserve"><value>Domanda</value></data>
@@ -6372,31 +6367,6 @@
   <data name="Enum_YesNoMaybe_Maybe" xml:space="preserve"><value>Forse</value></data>
   <data name="Enum_YesNoMaybe_No" xml:space="preserve"><value>No</value></data>
   <data name="Enum_YesNoMaybe_Yes" xml:space="preserve"><value>Sì</value></data>
-  <data name="Expenses_ColReport" xml:space="preserve"><value>Nota</value></data>
-  <data name="Expenses_ColSubmitted" xml:space="preserve"><value>Presentata</value></data>
-  <data name="Expenses_ColSubmittedBy" xml:space="preserve"><value>Presentata da</value></data>
-  <data name="Expenses_CoordinatorQueue" xml:space="preserve"><value>Coda del coordinatore</value></data>
-  <data name="Expenses_CoordinatorQueueTitle" xml:space="preserve"><value>Note spese — Coda del coordinatore</value></data>
-  <data name="Expenses_Endorse" xml:space="preserve"><value>Avalla</value></data>
-  <data name="Expenses_EndorseConfirm" xml:space="preserve"><value>Avallare questa nota spese?</value></data>
-  <data name="Expenses_FileFirst" xml:space="preserve"><value>Presenta la tua prima nota</value></data>
-  <data name="Expenses_IouHeader" xml:space="preserve"><value>Quanto il collettivo ti deve</value></data>
-  <data name="Expenses_IouLastPayment" xml:space="preserve"><value>Ultimo pagamento</value></data>
-  <data name="Expenses_IouOtherAmountNote" xml:space="preserve"><value>Il tuo saldo Holded include {0} non collegati a queste note (spese anticipate per conto del collettivo, rettifiche, ecc.), quindi le righe qui sotto non corrispondono necessariamente alla somma.</value></data>
-  <data name="Expenses_IouOwed" xml:space="preserve"><value>Dovuto a te (saldo Holded)</value></data>
-  <data name="Expenses_IouPaid" xml:space="preserve"><value>Pagato finora</value></data>
-  <data name="Expenses_LedgerColItem" xml:space="preserve"><value>Voce</value></data>
-  <data name="Expenses_MyReportsTitle" xml:space="preserve"><value>Le mie note spese</value></data>
-  <data name="Expenses_NewReport" xml:space="preserve"><value>Nuova nota</value></data>
-  <data name="Expenses_NoActiveYear" xml:space="preserve"><value>Al momento non c'è alcun anno di budget attivo. Le note spese non possono essere presentate finché un anno di budget non viene attivato.</value></data>
-  <data name="Expenses_NoIban" xml:space="preserve"><value>Non hai ancora impostato il tuo IBAN per i pagamenti. Ti verrà chiesto di impostarlo quando presenti una nota.</value></data>
-  <data name="Expenses_NoReports" xml:space="preserve"><value>Ancora nessuna nota spese.</value></data>
-  <data name="Expenses_NoReportsAwaiting" xml:space="preserve"><value>Nessuna nota in attesa del tuo avallo.</value></data>
-  <data name="Expenses_Reject" xml:space="preserve"><value>Rifiuta</value></data>
-  <data name="Expenses_RejectModalBody" xml:space="preserve"><value>Chi ha presentato la nota vedrà questo motivo. Spiega chiaramente perché la nota non può essere avallata.</value></data>
-  <data name="Expenses_RejectModalTitle" xml:space="preserve"><value>Rifiuta nota</value></data>
-  <data name="Expenses_RejectReasonLabel" xml:space="preserve"><value>Motivo del rifiuto</value></data>
-  <data name="Expenses_RejectReasonPlaceholder" xml:space="preserve"><value>es. Ricevute mancanti per la riga 2</value></data>
   <data name="Feedback_AssignedToName" xml:space="preserve"><value>Assegnato a {0}</value></data>
   <data name="Feedback_CategoryOnPage" xml:space="preserve"><value>{0} su {1}</value></data>
   <data name="Feedback_TeamName" xml:space="preserve"><value>Team: {0}</value></data>

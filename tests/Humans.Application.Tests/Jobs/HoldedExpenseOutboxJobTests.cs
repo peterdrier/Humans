@@ -1,4 +1,4 @@
-using Humans.Application.Interfaces.Expenses;
+using Humans.Expenses.Contracts;
 using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Services.Holded;
 using Microsoft.Extensions.Logging.Abstractions;

@@ -2,6 +2,7 @@ using AwesomeAssertions;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Hosting;
 using Humans.Containers.Data;
+using Humans.Expenses.Data;
 using Humans.Finance.Data;
 using Humans.Store.Data;
 using Humans.SystemSettings.Data;

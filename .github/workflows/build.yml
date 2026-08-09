@@ -29,7 +29,7 @@ env:
     SystemSettingsDbContext:src/Sections/Humans.SystemSettings
     ContainersDbContext:src/Sections/Humans.Containers
     AgentDbContext:src/Humans.Infrastructure
-    ExpensesDbContext:src/Humans.Infrastructure
+    ExpensesDbContext:src/Sections/Humans.Expenses
     FinanceDbContext:src/Sections/Humans.Finance
     SurveysDbContext:src/Humans.Infrastructure
     EventGuideDbContext:src/Sections/Humans.Events

@@ -1,0 +1,1699 @@
+using AwesomeAssertions;
+using Humans.Expenses.Domain;
+using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Budget;
+using Humans.Finance.Contracts;
+using Humans.Application.Interfaces.Holded;
+using Humans.Expenses.Data;
+using Humans.Application.Interfaces.Teams;
+using Humans.Application.Interfaces.Users;
+using Humans.Expenses.Services;
+using Humans.Expenses.Services.Dtos;
+using Microsoft.Extensions.Options;
+using Humans.Application;
+using Humans.Application.Interfaces.AuditLog;
+using Humans.Domain.Entities;
+using Humans.Domain.Enums;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using NodaTime;
+using NodaTime.Testing;
+using NSubstitute;
+using NSubstitute.ExceptionExtensions;
+
+namespace Humans.Expenses.Tests.Services;
+
+/// <summary>
+/// Owns its three fixtures rather than deriving from <c>ServiceTestHarness</c>, which it did
+/// while it lived in <c>Humans.Application.Tests</c>. That harness is built around an in-memory
+/// <c>HumansDbContext</c> and this test never touched it — only the audit substitute, the clock
+/// and the section-context options below. Inheriting it here would have meant granting a section
+/// test project <c>InternalsVisibleTo</c> on <c>HumansDbContext</c>, which is the boundary the
+/// G5 split exists to draw (nobodies-collective/Humans#866).
+/// </summary>
+public sealed class ExpenseReportServiceTests
+{
+    private static readonly Instant FakeNow = Instant.FromUtc(2026, 5, 10, 12, 0);
+
+    private readonly IAuditLogService AuditLog = Substitute.For<IAuditLogService>();
+    private readonly FakeClock Clock = new(FakeNow);
+
+    private static DbContextOptions<TContext> NewSectionDbOptions<TContext>()
+        where TContext : DbContext =>
+        new DbContextOptionsBuilder<TContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
+            .Options;
+
+    private readonly IExpenseRepository _expenseRepo;
+    private readonly IFileStorage _fileStorage;
+    private readonly IBudgetService _budgetService;
+    private readonly ITeamService _teamService;
+    private readonly IUserService _userService;
+    private readonly IHoldedClient _holdedClient = Substitute.For<IHoldedClient>();
+    private readonly IHoldedFinanceService _holdedFinance = Substitute.For<IHoldedFinanceService>();
+    private readonly ExpenseReportService _sut;
+
+    private readonly DbContextOptions<ExpensesDbContext> _expensesOptions =
+        NewSectionDbOptions<ExpensesDbContext>();
+
+    public ExpenseReportServiceTests()
+    {
+        _expenseRepo = new ExpenseRepository(new TestDbContextFactory<ExpensesDbContext>(_expensesOptions));
+
+        _fileStorage = Substitute.For<IFileStorage>();
+        _budgetService = Substitute.For<IBudgetService>();
+        _teamService = Substitute.For<ITeamService>();
+        _userService = Substitute.For<IUserService>();
+
+        _sut = new ExpenseReportService(
+            _expenseRepo,
+            _fileStorage,
+            _budgetService,
+            _teamService,
+            _userService,
+            AuditLog,
+            _holdedClient,
+            _holdedFinance,
+            Clock,
+            NullLogger<ExpenseReportService>.Instance,
+            Options.Create(new TravelReimbursementConfig()));
+    }
+
+    private static UserInfo WrapInUserInfo(Profile profile) => UserInfo.Create(
+        user: new User
+        {
+            Id = profile.UserId,
+            DisplayName = profile.BurnerName,
+            PreferredLanguage = "en",
+            CreatedAt = FakeNow,
+        },
+        userEmails: [],
+        eventParticipations: [],
+        externalLogins: [],
+        profile: profile,
+        contactFields: [],
+        profileLanguages: [],
+        volunteerHistory: [],
+        communicationPreferences: []);
+
+    // ─────────────────────────────── 4.2 ─────────────────────────────────────
+
+    [HumansFact]
+    public async Task CreateDraftAsync_CreatesReport_WithDraftStatusAndZeroTotal()
+    {
+        var (year, category) = SetupActiveYear();
+        var userId = Guid.NewGuid();
+
+        var id = await _sut.CreateDraftAsync(userId, category.Id, "test note", Xunit.TestContext.Current.CancellationToken);
+
+        var loaded = await _sut.GetAsync(id, Xunit.TestContext.Current.CancellationToken);
+        loaded.Should().NotBeNull();
+        loaded.Status.Should().Be(ExpenseReportStatus.Draft);
+        loaded.Total.Should().Be(0m);
+        loaded.SubmitterUserId.Should().Be(userId);
+        loaded.BudgetCategoryId.Should().Be(category.Id);
+        loaded.BudgetYearId.Should().Be(year.Id);
+        loaded.Note.Should().Be("test note");
+    }
+
+    [HumansFact]
+    public async Task CreateDraftAsync_Throws_WhenNoActiveYear()
+    {
+        _budgetService.GetActiveYearAsync().Returns((BudgetYearDetail?)null);
+
+        var act = async () => await _sut.CreateDraftAsync(Guid.NewGuid(), Guid.NewGuid(), null, Xunit.TestContext.Current.CancellationToken);
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*No active budget year*");
+    }
+
+    [HumansFact]
+    public async Task CreateDraftAsync_DoesNotAudit_OnCreate()
+    {
+        var (_, category) = SetupActiveYear();
+        await _sut.CreateDraftAsync(Guid.NewGuid(), category.Id, null, Xunit.TestContext.Current.CancellationToken);
+
+        // No audit on mere draft creation
+        await AuditLog.DidNotReceiveWithAnyArgs().LogAsync(
+            default, null!, Guid.Empty, null!, Guid.Empty);
+    }
+
+    [HumansFact]
+    public async Task UpdateDraftAsync_Throws_WhenNotSubmitter()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var other = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+
+        var act = async () => await _sut.UpdateDraftAsync(id, other, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        await act.Should().ThrowAsync<UnauthorizedAccessException>();
+    }
+
+    [HumansFact]
+    public async Task UpdateDraftWithResultAsync_ReturnsSuccess_WhenDraftUpdated()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+
+        var result = await _sut.UpdateDraftWithResultAsync(id, submitter, category.Id, "updated note", Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue();
+        result.ErrorMessage.Should().BeNull();
+        var loaded = await _sut.GetAsync(id, Xunit.TestContext.Current.CancellationToken);
+        loaded!.Note.Should().Be("updated note");
+    }
+
+    [HumansFact]
+    public async Task UpdateDraftWithResultAsync_ReturnsFailure_WhenNotSubmitter()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var other = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+
+        var result = await _sut.UpdateDraftWithResultAsync(id, other, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("Only the submitter");
+    }
+
+    [HumansFact]
+    public async Task GetAsync_ReturnsNull_ForMissingId()
+    {
+        var result = await _sut.GetAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        result.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task GetForSubmitterAsync_ScopesToSubmitter()
+    {
+        var (_, category) = SetupActiveYear();
+        var me = Guid.NewGuid();
+        var other = Guid.NewGuid();
+
+        await _sut.CreateDraftAsync(me, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        await _sut.CreateDraftAsync(other, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+
+        var mine = await _sut.GetForSubmitterAsync(me, Xunit.TestContext.Current.CancellationToken);
+        mine.Should().HaveCount(1);
+        mine[0].SubmitterUserId.Should().Be(me);
+    }
+
+    // ─────────────────────────────── 4.3 ─────────────────────────────────────
+
+    [HumansFact]
+    public async Task AddLineAsync_AddsLine_AndUpdatesTotal()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+
+        var lineId = await _sut.AddLineAsync(id, submitter, "Supplies", 25.50m, ct: Xunit.TestContext.Current.CancellationToken);
+
+        var loaded = await _sut.GetAsync(id, Xunit.TestContext.Current.CancellationToken);
+        loaded!.Total.Should().Be(25.50m);
+        loaded.Lines.Should().HaveCount(1);
+        loaded.Lines[0].Id.Should().Be(lineId);
+        loaded.Lines[0].Description.Should().Be("Supplies");
+        loaded.Lines[0].Amount.Should().Be(25.50m);
+    }
+
+    [HumansFact]
+    public async Task AddLineAsync_Throws_WhenNotSubmitter()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var other = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+
+        var act = async () => await _sut.AddLineAsync(id, other, "x", 10m, ct: Xunit.TestContext.Current.CancellationToken);
+        await act.Should().ThrowAsync<UnauthorizedAccessException>();
+    }
+
+    [HumansFact]
+    public async Task AddLineWithResultAsync_ReturnsSuccess_WhenLineAdded()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+
+        var result = await _sut.AddLineWithResultAsync(id, submitter, "Supplies", 25.50m, Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue();
+        result.ErrorMessage.Should().BeNull();
+        var loaded = await _sut.GetAsync(id, Xunit.TestContext.Current.CancellationToken);
+        loaded!.Total.Should().Be(25.50m);
+    }
+
+    [HumansFact]
+    public async Task AddLineWithResultAsync_ReturnsFailure_WhenNotSubmitter()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var other = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+
+        var result = await _sut.AddLineWithResultAsync(id, other, "x", 10m, Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("Only the submitter");
+    }
+
+    [HumansFact]
+    public async Task RemoveLineAsync_RemovesLine_AndRecomputesTotal()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var lineA = await _sut.AddLineAsync(id, submitter, "A", 10m, ct: Xunit.TestContext.Current.CancellationToken);
+        await _sut.AddLineAsync(id, submitter, "B", 20m, ct: Xunit.TestContext.Current.CancellationToken);
+
+        await _sut.RemoveLineAsync(id, submitter, lineA, Xunit.TestContext.Current.CancellationToken);
+
+        var loaded = await _sut.GetAsync(id, Xunit.TestContext.Current.CancellationToken);
+        loaded!.Total.Should().Be(20m);
+        loaded.Lines.Should().HaveCount(1);
+    }
+
+    [HumansFact]
+    public async Task RemoveLineWithResultAsync_ReturnsSuccess_WhenLineRemoved()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var lineA = await _sut.AddLineAsync(id, submitter, "A", 10m, ct: Xunit.TestContext.Current.CancellationToken);
+        await _sut.AddLineAsync(id, submitter, "B", 20m, ct: Xunit.TestContext.Current.CancellationToken);
+
+        var result = await _sut.RemoveLineWithResultAsync(id, submitter, lineA, Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue();
+        result.ErrorMessage.Should().BeNull();
+        var loaded = await _sut.GetAsync(id, Xunit.TestContext.Current.CancellationToken);
+        loaded!.Total.Should().Be(20m);
+    }
+
+    [HumansFact]
+    public async Task RemoveLineWithResultAsync_ReturnsFailure_WhenNotSubmitter()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var other = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var lineId = await _sut.AddLineAsync(id, submitter, "A", 10m, ct: Xunit.TestContext.Current.CancellationToken);
+
+        var result = await _sut.RemoveLineWithResultAsync(id, other, lineId, Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("Only the submitter");
+    }
+
+    [HumansFact]
+    public async Task UpdateLineAsync_UpdatesAmount_AndRecomputesTotal()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var lineId = await _sut.AddLineAsync(id, submitter, "A", 10m, ct: Xunit.TestContext.Current.CancellationToken);
+
+        await _sut.UpdateLineAsync(id, submitter, lineId, "A updated", 15m, Xunit.TestContext.Current.CancellationToken);
+
+        var loaded = await _sut.GetAsync(id, Xunit.TestContext.Current.CancellationToken);
+        loaded!.Total.Should().Be(15m);
+        loaded.Lines[0].Description.Should().Be("A updated");
+    }
+
+    // ─────────────────── AttachFileToLineAsync / RemoveAttachmentFromLineAsync ───
+
+    [HumansFact]
+    public async Task UpdateLineWithResultAsync_ReturnsSuccess_WhenLineUpdated()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var lineId = await _sut.AddLineAsync(id, submitter, "A", 10m, ct: Xunit.TestContext.Current.CancellationToken);
+
+        var result = await _sut.UpdateLineWithResultAsync(id, submitter, lineId, "A updated", 15m, Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue();
+        result.ErrorMessage.Should().BeNull();
+        var loaded = await _sut.GetAsync(id, Xunit.TestContext.Current.CancellationToken);
+        loaded!.Total.Should().Be(15m);
+    }
+
+    [HumansFact]
+    public async Task UpdateLineWithResultAsync_ReturnsFailure_WhenNotSubmitter()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var other = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var lineId = await _sut.AddLineAsync(id, submitter, "A", 10m, ct: Xunit.TestContext.Current.CancellationToken);
+
+        var result = await _sut.UpdateLineWithResultAsync(id, other, lineId, "A updated", 15m, Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("Only the submitter");
+    }
+
+    [HumansFact]
+    public async Task UpdateLineWithResultAsync_ReturnsFailure_AndKeepsAmount_ForTravelLine()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        await _sut.AddMileageLineWithResultAsync(id, submitter, "Berlin", "Barcelona", 100m, Xunit.TestContext.Current.CancellationToken);
+        var line = (await _sut.GetAsync(id, Xunit.TestContext.Current.CancellationToken))!.Lines[0];
+        var originalAmount = line.Amount;
+
+        // Editing a computed travel line would bypass the receipt waiver — must be rejected.
+        var result = await _sut.UpdateLineWithResultAsync(id, submitter, line.Id, "hand-edited", 9999m, Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("Travel lines");
+        (await _sut.GetAsync(id, Xunit.TestContext.Current.CancellationToken))!.Lines[0].Amount.Should().Be(originalAmount);
+    }
+
+    [HumansFact]
+    public async Task AttachFileToLineAsync_StoresFile_CreatesRow_LinksLine_Audits()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var lineId = await _sut.AddLineAsync(id, submitter, "Item", 10m, ct: Xunit.TestContext.Current.CancellationToken);
+
+        await using var stream = new MemoryStream([1, 2, 3]);
+        var attachId = await _sut.AttachFileToLineAsync(
+            id, submitter, lineId, "receipt.pdf", "application/pdf", stream, Xunit.TestContext.Current.CancellationToken);
+
+        attachId.Should().NotBe(Guid.Empty);
+        var loaded = await _sut.GetAsync(id, Xunit.TestContext.Current.CancellationToken);
+        loaded!.Lines[0].AttachmentId.Should().Be(attachId);
+
+        await _fileStorage.Received(1).SaveAsync(
+            $"uploads/expense-attachments/{attachId}.pdf",
+            Arg.Any<Stream>(),
+            Arg.Any<CancellationToken>());
+
+        await AuditLog.Received(1).LogAsync(
+            AuditAction.ExpenseAttachmentUploaded,
+            "ExpenseReport", id,
+            Arg.Any<string>(),
+            submitter);
+    }
+
+    [HumansFact]
+    public async Task AttachFileToLineWithResultAsync_ReturnsSuccess_WhenAttachmentUploaded()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var lineId = await _sut.AddLineAsync(id, submitter, "Item", 10m, ct: Xunit.TestContext.Current.CancellationToken);
+
+        await using var stream = new MemoryStream([1, 2, 3]);
+        var result = await _sut.AttachFileToLineWithResultAsync(
+            id, submitter, lineId, "receipt.pdf", "application/pdf", stream, Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue();
+        result.ErrorMessage.Should().BeNull();
+        var loaded = await _sut.GetAsync(id, Xunit.TestContext.Current.CancellationToken);
+        loaded!.Lines[0].AttachmentId.Should().NotBeNull();
+    }
+
+    [HumansFact]
+    public async Task AttachFileToLineWithResultAsync_ReturnsFailure_WhenFileTypeUnsupported()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var lineId = await _sut.AddLineAsync(id, submitter, "Item", 10m, ct: Xunit.TestContext.Current.CancellationToken);
+
+        await using var stream = new MemoryStream([1, 2, 3]);
+        var result = await _sut.AttachFileToLineWithResultAsync(
+            id, submitter, lineId, "receipt.exe", "application/octet-stream", stream, Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("Unsupported file type");
+    }
+
+    [HumansFact]
+    public async Task TryReadAttachmentAsync_ReadsAttachmentFileFromStorage()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var lineId = await _sut.AddLineAsync(id, submitter, "Item", 10m, ct: Xunit.TestContext.Current.CancellationToken);
+
+        await using var stream = new MemoryStream([1, 2, 3]);
+        var attachId = await _sut.AttachFileToLineAsync(
+            id, submitter, lineId, "receipt.pdf", "application/pdf", stream, Xunit.TestContext.Current.CancellationToken);
+        var loaded = await _sut.GetAsync(id, Xunit.TestContext.Current.CancellationToken);
+
+        _fileStorage.TryReadAsync(
+                ExpenseReportService.AttachmentKey(attachId, ".pdf"),
+                Arg.Any<CancellationToken>())
+            .Returns([4, 5, 6]);
+
+        var download = await _sut.TryReadAttachmentAsync(loaded!, attachId, Xunit.TestContext.Current.CancellationToken);
+
+        download.Should().NotBeNull();
+        download.Bytes.Should().Equal(4, 5, 6);
+        download.ContentType.Should().Be("application/pdf");
+        download.OriginalFileName.Should().Be("receipt.pdf");
+    }
+
+    [HumansFact]
+    public async Task AttachFileToLineAsync_Throws_WhenNotSubmitter()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var other = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var lineId = await _sut.AddLineAsync(id, submitter, "Item", 10m, ct: Xunit.TestContext.Current.CancellationToken);
+
+        await using var stream = new MemoryStream([1, 2, 3]);
+        var act = async () => await _sut.AttachFileToLineAsync(
+            id, other, lineId, "receipt.pdf", "application/pdf", stream, Xunit.TestContext.Current.CancellationToken);
+        await act.Should().ThrowAsync<UnauthorizedAccessException>();
+    }
+
+    [HumansFact]
+    public async Task AttachFileToLineAsync_Throws_WhenLineDoesNotBelongToReport()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        await _sut.AddLineAsync(id, submitter, "Item", 10m, ct: Xunit.TestContext.Current.CancellationToken);
+        var wrongLineId = Guid.NewGuid();
+
+        await using var stream = new MemoryStream([1, 2, 3]);
+        var act = async () => await _sut.AttachFileToLineAsync(
+            id, submitter, wrongLineId, "receipt.pdf", "application/pdf", stream, Xunit.TestContext.Current.CancellationToken);
+        await act.Should().ThrowAsync<UnauthorizedAccessException>();
+    }
+
+    [HumansFact]
+    public async Task RemoveAttachmentFromLineAsync_UnlinksAndDeletesFile_Audits()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var lineId = await _sut.AddLineAsync(id, submitter, "Item", 10m, ct: Xunit.TestContext.Current.CancellationToken);
+
+        // Seed attachment directly through repo
+        var attach = MakeAttachment(submitter);
+        await _expenseRepo.AddAttachmentAsync(attach, Xunit.TestContext.Current.CancellationToken);
+        await _expenseRepo.SetLineAttachmentAsync(lineId, attach.Id, Xunit.TestContext.Current.CancellationToken);
+
+        await _sut.RemoveAttachmentFromLineAsync(id, submitter, lineId, Xunit.TestContext.Current.CancellationToken);
+
+        var loaded = await _sut.GetAsync(id, Xunit.TestContext.Current.CancellationToken);
+        loaded!.Lines[0].AttachmentId.Should().BeNull();
+
+        await _fileStorage.Received(1).DeleteAsync(
+            $"uploads/expense-attachments/{attach.Id}{attach.Extension}",
+            Arg.Any<CancellationToken>());
+        await AuditLog.Received(1).LogAsync(
+            AuditAction.ExpenseAttachmentRemoved,
+            "ExpenseReport", id,
+            Arg.Any<string>(),
+            submitter);
+    }
+
+    [HumansFact]
+    public async Task RemoveAttachmentFromLineAsync_IsIdempotent_WhenNoAttachment()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var lineId = await _sut.AddLineAsync(id, submitter, "Item", 10m, ct: Xunit.TestContext.Current.CancellationToken);
+
+        // No attachment on the line — should not throw
+        var act = async () => await _sut.RemoveAttachmentFromLineAsync(id, submitter, lineId, Xunit.TestContext.Current.CancellationToken);
+        await act.Should().NotThrowAsync();
+        await _fileStorage.DidNotReceiveWithAnyArgs().DeleteAsync(null!, Arg.Any<CancellationToken>());
+    }
+
+    // ─────────────────────────────── 4.4 ─────────────────────────────────────
+
+    [HumansFact]
+    public async Task SubmitAsync_FlipsToSubmitted_SnapshotsPayeeData()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+
+        var lineId = await _sut.AddLineAsync(id, submitter, "Item", 100m, ct: Xunit.TestContext.Current.CancellationToken);
+        var attachId = await _expenseRepo.AddAttachmentAsync(MakeAttachment(submitter), Xunit.TestContext.Current.CancellationToken);
+        await _expenseRepo.SetLineAttachmentAsync(lineId, attachId, Xunit.TestContext.Current.CancellationToken);
+
+        SetupUserAndProfile(submitter, "Alice Tester", "ES9121000418450200051332");
+
+        var ok = await _sut.SubmitAsync(id, submitter, Xunit.TestContext.Current.CancellationToken);
+
+        ok.Should().BeTrue();
+        var loaded = await _sut.GetAsync(id, Xunit.TestContext.Current.CancellationToken);
+        loaded!.Status.Should().Be(ExpenseReportStatus.Submitted);
+        loaded.PayeeName.Should().Be("Alice Tester");
+        loaded.PayeeIban.Should().Be("ES9121000418450200051332");
+        loaded.SubmittedAt.Should().Be(FakeNow);
+    }
+
+    [HumansFact]
+    public async Task SubmitAsync_Throws_WhenNoLines()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        SetupUserAndProfile(submitter, "Bob", "ES1234");
+
+        var act = async () => await _sut.SubmitAsync(id, submitter, Xunit.TestContext.Current.CancellationToken);
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*at least one line*");
+    }
+
+    [HumansFact]
+    public async Task SubmitAsync_Throws_WhenLineHasNoAttachment()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        await _sut.AddLineAsync(id, submitter, "No attachment line", 50m, ct: Xunit.TestContext.Current.CancellationToken);
+        SetupUserAndProfile(submitter, "Bob", "ES1234");
+
+        var act = async () => await _sut.SubmitAsync(id, submitter, Xunit.TestContext.Current.CancellationToken);
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*attachment*");
+    }
+
+    [HumansFact]
+    public async Task SubmitAsync_Throws_WhenSubmitterHasNoIban()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var lineId = await _sut.AddLineAsync(id, submitter, "Item", 50m, ct: Xunit.TestContext.Current.CancellationToken);
+        var attachId = await _expenseRepo.AddAttachmentAsync(MakeAttachment(submitter), Xunit.TestContext.Current.CancellationToken);
+        await _expenseRepo.SetLineAttachmentAsync(lineId, attachId, Xunit.TestContext.Current.CancellationToken);
+
+        // Profile with no IBAN
+        _userService.GetUserInfoAsync(submitter, Arg.Any<CancellationToken>())
+            .Returns(WrapInUserInfo(new Profile { Id = Guid.NewGuid(), UserId = submitter }));
+
+        var act = async () => await _sut.SubmitAsync(id, submitter, Xunit.TestContext.Current.CancellationToken);
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*IBAN*");
+    }
+
+    [HumansFact]
+    public async Task SubmitAsync_WritesAudit_AfterSave()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var lineId = await _sut.AddLineAsync(id, submitter, "Item", 100m, ct: Xunit.TestContext.Current.CancellationToken);
+        var attachId = await _expenseRepo.AddAttachmentAsync(MakeAttachment(submitter), Xunit.TestContext.Current.CancellationToken);
+        await _expenseRepo.SetLineAttachmentAsync(lineId, attachId, Xunit.TestContext.Current.CancellationToken);
+        SetupUserAndProfile(submitter, "Alice", "ES9121000418450200051332");
+
+        await _sut.SubmitAsync(id, submitter, Xunit.TestContext.Current.CancellationToken);
+
+        await AuditLog.Received(1).LogAsync(
+            AuditAction.ExpenseSubmit,
+            "ExpenseReport", id,
+            Arg.Any<string>(),
+            submitter);
+    }
+
+    [HumansFact]
+    public async Task SubmitWithResultAsync_ReturnsSuccess_WhenReportSubmitted()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var lineId = await _sut.AddLineAsync(id, submitter, "Item", 100m, ct: Xunit.TestContext.Current.CancellationToken);
+        var attachId = await _expenseRepo.AddAttachmentAsync(MakeAttachment(submitter), Xunit.TestContext.Current.CancellationToken);
+        await _expenseRepo.SetLineAttachmentAsync(lineId, attachId, Xunit.TestContext.Current.CancellationToken);
+        SetupUserAndProfile(submitter, "Alice Tester", "ES9121000418450200051332");
+
+        var result = await _sut.SubmitWithResultAsync(id, submitter, Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue();
+        result.ErrorMessage.Should().BeNull();
+        var loaded = await _sut.GetAsync(id, Xunit.TestContext.Current.CancellationToken);
+        loaded!.Status.Should().Be(ExpenseReportStatus.Submitted);
+    }
+
+    [HumansFact]
+    public async Task SubmitWithResultAsync_ReturnsFailure_WhenLineHasNoAttachment()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        await _sut.AddLineAsync(id, submitter, "No attachment line", 50m, ct: Xunit.TestContext.Current.CancellationToken);
+        SetupUserAndProfile(submitter, "Bob", "ES1234");
+
+        var result = await _sut.SubmitWithResultAsync(id, submitter, Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("attachment");
+    }
+
+    [HumansFact]
+    public async Task SubmitWithResultAsync_Succeeds_WithOnlyMileageLine_NoAttachment()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        await _sut.AddMileageLineWithResultAsync(id, submitter, "Berlin", "Barcelona", 100m, Xunit.TestContext.Current.CancellationToken);
+        SetupUserAndProfile(submitter, "Alice Tester", "ES9121000418450200051332");
+
+        var result = await _sut.SubmitWithResultAsync(id, submitter, Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue();
+        (await _sut.GetAsync(id, Xunit.TestContext.Current.CancellationToken))!.Status.Should().Be(ExpenseReportStatus.Submitted);
+    }
+
+    [HumansFact]
+    public async Task SubmitWithResultAsync_Fails_WhenReceiptLineHasNoAttachment()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        await _sut.AddLineWithResultAsync(id, submitter, "Tent", 50m, Xunit.TestContext.Current.CancellationToken); // Receipt line, no attachment
+        SetupUserAndProfile(submitter, "Alice Tester", "ES9121000418450200051332");
+
+        var result = await _sut.SubmitWithResultAsync(id, submitter, Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task SubmitWithResultAsync_LogsWarning_WithReportId_NoException_WhenValidationFails()
+    {
+        var logger = new CapturingLogger<ExpenseReportService>();
+        var sut = new ExpenseReportService(
+            _expenseRepo, _fileStorage, _budgetService, _teamService, _userService,
+            AuditLog, _holdedClient, _holdedFinance, Clock, logger,
+            Options.Create(new TravelReimbursementConfig()));
+
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var id = await sut.CreateDraftAsync(submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        await sut.AddLineAsync(id, submitter, "No attachment line", 50m, ct: Xunit.TestContext.Current.CancellationToken); // Receipt line, no attachment
+        SetupUserAndProfile(submitter, "Bob", "ES1234");
+
+        var result = await sut.SubmitWithResultAsync(id, submitter, Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        logger.Entries.Should().ContainSingle(e => e.Level == LogLevel.Warning,
+            because: "a validation rejection is an expected, user-driven outcome, not a fault");
+        var warning = logger.Entries.Single(e => e.Level == LogLevel.Warning);
+        warning.Exception.Should().BeNull("no stack trace should be logged for a validation rejection");
+        warning.Message.Should().Contain(id.ToString(),
+            because: "the caller's structured identifiers (report ID) must survive into the warning");
+        warning.Message.Should().Contain("attachment");
+        logger.Entries.Should().NotContain(e => e.Level == LogLevel.Error);
+    }
+
+    [HumansFact]
+    public async Task SubmitWithResultAsync_LogsError_WithException_ForGenuineFault()
+    {
+        var logger = new CapturingLogger<ExpenseReportService>();
+        var sut = new ExpenseReportService(
+            _expenseRepo, _fileStorage, _budgetService, _teamService, _userService,
+            AuditLog, _holdedClient, _holdedFinance, Clock, logger,
+            Options.Create(new TravelReimbursementConfig()));
+
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var id = await sut.CreateDraftAsync(submitter, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+        var lineId = await sut.AddLineAsync(id, submitter, "Item", 50m, ct: Xunit.TestContext.Current.CancellationToken);
+        var attachId = await _expenseRepo.AddAttachmentAsync(MakeAttachment(submitter), Xunit.TestContext.Current.CancellationToken);
+        await _expenseRepo.SetLineAttachmentAsync(lineId, attachId, Xunit.TestContext.Current.CancellationToken);
+
+        // A dependency throwing plain InvalidOperationException for a genuine runtime fault —
+        // NOT the service's own ExpenseValidationException — must still log at Error with the
+        // exception attached, not be misclassified as a validation rejection.
+        _userService.GetUserInfoAsync(submitter, Arg.Any<CancellationToken>())
+            .Throws(new InvalidOperationException("IUserService: profile cache not initialized"));
+
+        var result = await sut.SubmitWithResultAsync(id, submitter, Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        logger.Entries.Should().ContainSingle(e => e.Level == LogLevel.Error,
+            because: "a dependency fault (even one thrown as InvalidOperationException) is not a validation rejection");
+        var error = logger.Entries.Single(e => e.Level == LogLevel.Error);
+        error.Exception.Should().BeOfType<InvalidOperationException>();
+        logger.Entries.Should().NotContain(e => e.Level == LogLevel.Warning);
+    }
+
+    [HumansFact]
+    public async Task WithdrawAsync_FlipsToWithdrawn()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var reportId = Guid.NewGuid();
+        await SeedReportWithStatus(reportId, submitter, category.Id, Guid.NewGuid(),
+            ExpenseReportStatus.Submitted);
+
+        var ok = await _sut.WithdrawAsync(reportId, submitter, Xunit.TestContext.Current.CancellationToken);
+        ok.Should().BeTrue();
+
+        var loaded = await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken);
+        loaded!.Status.Should().Be(ExpenseReportStatus.Withdrawn);
+    }
+
+    [HumansFact]
+    public async Task WithdrawAsync_WritesAudit_AfterSave()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var reportId = Guid.NewGuid();
+        await SeedReportWithStatus(reportId, submitter, category.Id, Guid.NewGuid(),
+            ExpenseReportStatus.Submitted);
+
+        await _sut.WithdrawAsync(reportId, submitter, Xunit.TestContext.Current.CancellationToken);
+
+        await AuditLog.Received(1).LogAsync(
+            AuditAction.ExpenseWithdraw,
+            "ExpenseReport", reportId,
+            Arg.Any<string>(),
+            submitter);
+    }
+    [HumansFact]
+    public async Task WithdrawWithResultAsync_ReturnsSuccess_WhenReportWithdrawn()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var reportId = Guid.NewGuid();
+        await SeedReportWithStatus(reportId, submitter, category.Id, Guid.NewGuid(),
+            ExpenseReportStatus.Submitted);
+
+        var result = await _sut.WithdrawWithResultAsync(reportId, submitter, Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue();
+        result.ErrorMessage.Should().BeNull();
+        var loaded = await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken);
+        loaded!.Status.Should().Be(ExpenseReportStatus.Withdrawn);
+    }
+
+    [HumansFact]
+    public async Task WithdrawWithResultAsync_ReturnsFailure_WhenNotSubmitter()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var other = Guid.NewGuid();
+        var reportId = Guid.NewGuid();
+        await SeedReportWithStatus(reportId, submitter, category.Id, Guid.NewGuid(),
+            ExpenseReportStatus.Submitted);
+
+        var result = await _sut.WithdrawWithResultAsync(reportId, other, Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("Only the submitter");
+    }
+
+    // ─────────────────────────────── 4.5 ─────────────────────────────────────
+
+    [HumansFact]
+    public async Task SaveSubmitterIbanWithResultAsync_ReturnsSuccess_WhenIbanSaved()
+    {
+        var submitter = Guid.NewGuid();
+        _userService
+            .SetProfileIbanAsync(submitter, "ES9121000418450200051332", Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        var result = await _sut.SaveSubmitterIbanWithResultAsync(submitter, "ES91 2100 0418 4502 0005 1332", Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue();
+        result.Message.Should().Be("IBAN saved.");
+        await AuditLog.Received(1).LogAsync(
+            AuditAction.IbanSet,
+            nameof(Profile),
+            submitter,
+            "IBAN set",
+            submitter);
+    }
+
+    [HumansFact]
+    public async Task SaveSubmitterIbanWithResultAsync_ReturnsValidationFailure_WhenIbanInvalid()
+    {
+        var submitter = Guid.NewGuid();
+
+        var result = await _sut.SaveSubmitterIbanWithResultAsync(submitter, "not-an-iban", Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.IsValidationError.Should().BeTrue();
+        result.Message.Should().Be("Invalid IBAN format.");
+    }
+
+    [HumansFact]
+    public async Task CategoryRequiresCoordinatorEndorsementAsync_True_WhenCategoryTeamHasCoordinator()
+    {
+        var teamId = Guid.NewGuid();
+        var categoryId = Guid.NewGuid();
+        var coordinatorUserId = Guid.NewGuid();
+
+        var category = new BudgetCategory
+        {
+            Id = categoryId,
+            BudgetGroupId = Guid.NewGuid(),
+            Name = "Cat",
+            TeamId = teamId,
+            SortOrder = 0,
+            CreatedAt = FakeNow,
+            UpdatedAt = FakeNow
+        };
+        _budgetService.GetCategoryByIdAsync(categoryId).Returns(ToBudgetCategorySnapshot(category));
+        _teamService.GetTeamAsync(teamId, Arg.Any<CancellationToken>())
+            .Returns(MakeTeamInfo(teamId, [(coordinatorUserId, TeamMemberRole.Coordinator)]));
+
+        var result = await _sut.CategoryRequiresCoordinatorEndorsementAsync(categoryId, Xunit.TestContext.Current.CancellationToken);
+        result.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task CategoryRequiresCoordinatorEndorsementAsync_False_WhenCategoryTeamHasNoCoordinator()
+    {
+        var teamId = Guid.NewGuid();
+        var categoryId = Guid.NewGuid();
+
+        var category = new BudgetCategory
+        {
+            Id = categoryId,
+            BudgetGroupId = Guid.NewGuid(),
+            Name = "Cat",
+            TeamId = teamId,
+            SortOrder = 0,
+            CreatedAt = FakeNow,
+            UpdatedAt = FakeNow
+        };
+        _budgetService.GetCategoryByIdAsync(categoryId).Returns(ToBudgetCategorySnapshot(category));
+        _teamService.GetTeamAsync(teamId, Arg.Any<CancellationToken>())
+            .Returns(MakeTeamInfo(teamId, [(Guid.NewGuid(), TeamMemberRole.Member)]));
+
+        var result = await _sut.CategoryRequiresCoordinatorEndorsementAsync(categoryId, Xunit.TestContext.Current.CancellationToken);
+        result.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task CategoryRequiresCoordinatorEndorsementAsync_False_WhenCategoryHasNoTeam()
+    {
+        var categoryId = Guid.NewGuid();
+        var category = new BudgetCategory
+        {
+            Id = categoryId,
+            BudgetGroupId = Guid.NewGuid(),
+            Name = "Cat",
+            TeamId = null,
+            SortOrder = 0,
+            CreatedAt = FakeNow,
+            UpdatedAt = FakeNow
+        };
+        _budgetService.GetCategoryByIdAsync(categoryId).Returns(ToBudgetCategorySnapshot(category));
+
+        var result = await _sut.CategoryRequiresCoordinatorEndorsementAsync(categoryId, Xunit.TestContext.Current.CancellationToken);
+        result.Should().BeFalse();
+    }
+
+    // ─────────────────────────────── 4.6 ─────────────────────────────────────
+
+    [HumansFact]
+    public async Task CoordinatorEndorseAsync_FlipsToCoordinatorEndorsed()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var coordinator = Guid.NewGuid();
+        var reportId = Guid.NewGuid();
+        await SeedReportWithStatus(reportId, submitter, category.Id, Guid.NewGuid(),
+            ExpenseReportStatus.Submitted);
+
+        SetupCoordinatorAuthz(category.Id, category.TeamId!.Value, coordinator);
+
+        var ok = await _sut.CoordinatorEndorseAsync(reportId, coordinator, Xunit.TestContext.Current.CancellationToken);
+        ok.Should().BeTrue();
+
+        var loaded = await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken);
+        loaded!.Status.Should().Be(ExpenseReportStatus.CoordinatorEndorsed);
+        loaded.CoordinatorEndorsedByUserId.Should().Be(coordinator);
+    }
+
+    [HumansFact]
+    public async Task CoordinatorEndorseAsync_Throws_WhenNotCoordinator()
+    {
+        var (_, category) = SetupActiveYear();
+        var reportId = Guid.NewGuid();
+        await SeedReportWithStatus(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
+            ExpenseReportStatus.Submitted);
+
+        var nonCoordinator = Guid.NewGuid();
+        _budgetService.GetCategoryByIdAsync(category.Id).Returns(ToBudgetCategorySnapshot(category));
+        _teamService.IsUserCoordinatorOfTeamAsync(category.TeamId!.Value, nonCoordinator,
+            Arg.Any<CancellationToken>()).Returns(false);
+
+        var act = async () => await _sut.CoordinatorEndorseAsync(reportId, nonCoordinator, Xunit.TestContext.Current.CancellationToken);
+        await act.Should().ThrowAsync<UnauthorizedAccessException>();
+    }
+
+    [HumansFact]
+    public async Task CoordinatorEndorseAsync_WritesAudit()
+    {
+        var (_, category) = SetupActiveYear();
+        var coordinator = Guid.NewGuid();
+        var reportId = Guid.NewGuid();
+        await SeedReportWithStatus(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
+            ExpenseReportStatus.Submitted);
+        SetupCoordinatorAuthz(category.Id, category.TeamId!.Value, coordinator);
+
+        await _sut.CoordinatorEndorseAsync(reportId, coordinator, Xunit.TestContext.Current.CancellationToken);
+
+        await AuditLog.Received(1).LogAsync(
+            AuditAction.ExpenseEndorse,
+            "ExpenseReport", reportId,
+            Arg.Any<string>(),
+            coordinator);
+    }
+
+    [HumansFact]
+    public async Task CoordinatorEndorseWithResultAsync_ReturnsSuccess_WhenEndorsed()
+    {
+        var (_, category) = SetupActiveYear();
+        var coordinator = Guid.NewGuid();
+        var reportId = Guid.NewGuid();
+        await SeedReportWithStatus(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
+            ExpenseReportStatus.Submitted);
+        SetupCoordinatorAuthz(category.Id, category.TeamId!.Value, coordinator);
+
+        var result = await _sut.CoordinatorEndorseWithResultAsync(reportId, coordinator, Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue();
+        result.ErrorMessage.Should().BeNull();
+        var loaded = await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken);
+        loaded!.Status.Should().Be(ExpenseReportStatus.CoordinatorEndorsed);
+    }
+
+    [HumansFact]
+    public async Task CoordinatorEndorseWithResultAsync_ReturnsFailure_WhenNotCoordinator()
+    {
+        var (_, category) = SetupActiveYear();
+        var reportId = Guid.NewGuid();
+        await SeedReportWithStatus(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
+            ExpenseReportStatus.Submitted);
+        var nonCoordinator = Guid.NewGuid();
+        _budgetService.GetCategoryByIdAsync(category.Id).Returns(ToBudgetCategorySnapshot(category));
+        _teamService.IsUserCoordinatorOfTeamAsync(category.TeamId!.Value, nonCoordinator,
+            Arg.Any<CancellationToken>()).Returns(false);
+
+        var result = await _sut.CoordinatorEndorseWithResultAsync(reportId, nonCoordinator, Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("not a coordinator");
+    }
+
+    [HumansFact]
+    public async Task CoordinatorRejectAsync_ReturnsToSubmitted_And_Audits()
+    {
+        var (_, category) = SetupActiveYear();
+        var coordinator = Guid.NewGuid();
+        var reportId = Guid.NewGuid();
+        await SeedReportWithStatus(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
+            ExpenseReportStatus.Submitted);
+        SetupCoordinatorAuthz(category.Id, category.TeamId!.Value, coordinator);
+
+        var ok = await _sut.CoordinatorRejectAsync(reportId, coordinator, "Missing invoice", Xunit.TestContext.Current.CancellationToken);
+        ok.Should().BeTrue();
+
+        var loaded = await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken);
+        loaded!.Status.Should().Be(ExpenseReportStatus.Draft);
+        loaded.LastRejectionReason.Should().Be("Missing invoice");
+
+        await AuditLog.Received(1).LogAsync(
+            AuditAction.ExpenseCoordinatorReject,
+            "ExpenseReport", reportId,
+            Arg.Any<string>(),
+            coordinator);
+    }
+
+    // ─────────────────────────────── 4.7 ─────────────────────────────────────
+
+    [HumansFact]
+    public async Task CoordinatorRejectWithResultAsync_ReturnsSuccess_WhenRejected()
+    {
+        var (_, category) = SetupActiveYear();
+        var coordinator = Guid.NewGuid();
+        var reportId = Guid.NewGuid();
+        await SeedReportWithStatus(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
+            ExpenseReportStatus.Submitted);
+        SetupCoordinatorAuthz(category.Id, category.TeamId!.Value, coordinator);
+
+        var result = await _sut.CoordinatorRejectWithResultAsync(reportId, coordinator, "Missing invoice", Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue();
+        result.ErrorMessage.Should().BeNull();
+        var loaded = await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken);
+        loaded!.Status.Should().Be(ExpenseReportStatus.Draft);
+    }
+
+    [HumansFact]
+    public async Task CoordinatorRejectWithResultAsync_ReturnsFailure_WhenNotCoordinator()
+    {
+        var (_, category) = SetupActiveYear();
+        var reportId = Guid.NewGuid();
+        await SeedReportWithStatus(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
+            ExpenseReportStatus.Submitted);
+        var nonCoordinator = Guid.NewGuid();
+        _budgetService.GetCategoryByIdAsync(category.Id).Returns(ToBudgetCategorySnapshot(category));
+        _teamService.IsUserCoordinatorOfTeamAsync(category.TeamId!.Value, nonCoordinator,
+            Arg.Any<CancellationToken>()).Returns(false);
+
+        var result = await _sut.CoordinatorRejectWithResultAsync(reportId, nonCoordinator, "Missing invoice", Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("not a coordinator");
+    }
+
+    [HumansFact]
+    public async Task ApproveAsync_FlipsToApproved_AndAudits()
+    {
+        var (_, category) = SetupActiveYear();
+        var actor = Guid.NewGuid();
+        var reportId = Guid.NewGuid();
+        await SeedReportWithStatus(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
+            ExpenseReportStatus.Submitted);
+
+        var ok = await _sut.ApproveAsync(reportId, actor, null, Xunit.TestContext.Current.CancellationToken);
+        ok.Should().BeTrue();
+
+        var loaded = await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken);
+        loaded!.Status.Should().Be(ExpenseReportStatus.Approved);
+        loaded.ApprovedByUserId.Should().Be(actor);
+        loaded.ApprovedAt.Should().Be(FakeNow);
+
+        await AuditLog.Received(1).LogAsync(
+            AuditAction.ExpenseApprove,
+            "ExpenseReport", reportId,
+            Arg.Any<string>(),
+            actor);
+    }
+
+    [HumansFact]
+    public async Task ApproveAsync_WithOverrideCategory_AuditsBoth()
+    {
+        var (_, category) = SetupActiveYear();
+        var actor = Guid.NewGuid();
+        var reportId = Guid.NewGuid();
+        var overrideCatId = Guid.NewGuid();
+        await SeedReportWithStatus(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
+            ExpenseReportStatus.Submitted);
+
+        await _sut.ApproveAsync(reportId, actor, overrideCatId, Xunit.TestContext.Current.CancellationToken);
+
+        await AuditLog.Received(1).LogAsync(
+            AuditAction.ExpenseApprove,
+            "ExpenseReport", reportId,
+            Arg.Any<string>(), actor);
+        await AuditLog.Received(1).LogAsync(
+            AuditAction.ExpenseCategoryOverride,
+            "ExpenseReport", reportId,
+            Arg.Any<string>(), actor);
+    }
+
+    [HumansFact]
+    public async Task ApproveWithResultAsync_ReturnsSuccess_WhenApproved()
+    {
+        var (_, category) = SetupActiveYear();
+        var actor = Guid.NewGuid();
+        var reportId = Guid.NewGuid();
+        await SeedReportWithStatus(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
+            ExpenseReportStatus.Submitted);
+
+        var result = await _sut.ApproveWithResultAsync(reportId, actor, null, Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue();
+        result.ErrorMessage.Should().BeNull();
+        var loaded = await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken);
+        loaded!.Status.Should().Be(ExpenseReportStatus.Approved);
+    }
+
+    [HumansFact]
+    public async Task ApproveWithResultAsync_ReturnsFailure_WhenReportMissing()
+    {
+        var result = await _sut.ApproveWithResultAsync(Guid.NewGuid(), Guid.NewGuid(), null, Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("Could not approve");
+    }
+
+    [HumansFact]
+    public async Task FinanceRejectAsync_ReturnsToDraft_AndAudits()
+    {
+        var (_, category) = SetupActiveYear();
+        var actor = Guid.NewGuid();
+        var reportId = Guid.NewGuid();
+        await SeedReportWithStatus(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
+            ExpenseReportStatus.Submitted);
+
+        var ok = await _sut.FinanceRejectAsync(reportId, actor, "Wrong category", Xunit.TestContext.Current.CancellationToken);
+        ok.Should().BeTrue();
+
+        var loaded = await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken);
+        loaded!.Status.Should().Be(ExpenseReportStatus.Draft);
+        loaded.LastRejectionReason.Should().Be("Wrong category");
+
+        await AuditLog.Received(1).LogAsync(
+            AuditAction.ExpenseReject,
+            "ExpenseReport", reportId,
+            Arg.Any<string>(), actor);
+    }
+
+    // ─────────────────────────────── 4.8 ─────────────────────────────────────
+
+    [HumansFact]
+    public async Task FinanceRejectWithResultAsync_ReturnsSuccess_WhenRejected()
+    {
+        var (_, category) = SetupActiveYear();
+        var actor = Guid.NewGuid();
+        var reportId = Guid.NewGuid();
+        await SeedReportWithStatus(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
+            ExpenseReportStatus.Submitted);
+
+        var result = await _sut.FinanceRejectWithResultAsync(reportId, actor, "Wrong category", Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue();
+        result.ErrorMessage.Should().BeNull();
+        var loaded = await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken);
+        loaded!.Status.Should().Be(ExpenseReportStatus.Draft);
+    }
+
+    [HumansFact]
+    public async Task FinanceRejectWithResultAsync_ReturnsFailure_WhenReportMissing()
+    {
+        var result = await _sut.FinanceRejectWithResultAsync(Guid.NewGuid(), Guid.NewGuid(), "Wrong category", Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("Could not reject");
+    }
+
+    [HumansFact]
+    public async Task GetReviewQueueAsync_ReturnsNonDraftNonWithdrawn()
+    {
+        var (_, category) = SetupActiveYear();
+        var yearId = Guid.NewGuid();
+        await SeedReportWithStatus(Guid.NewGuid(), Guid.NewGuid(), category.Id, yearId, ExpenseReportStatus.Draft);
+        await SeedReportWithStatus(Guid.NewGuid(), Guid.NewGuid(), category.Id, yearId, ExpenseReportStatus.Submitted);
+        await SeedReportWithStatus(Guid.NewGuid(), Guid.NewGuid(), category.Id, yearId, ExpenseReportStatus.Approved);
+        await SeedReportWithStatus(Guid.NewGuid(), Guid.NewGuid(), category.Id, yearId, ExpenseReportStatus.Withdrawn);
+
+        var queue = await _sut.GetReviewQueueAsync(Xunit.TestContext.Current.CancellationToken);
+        queue.Should().HaveCount(2);
+        queue.Should().OnlyContain(r =>
+            r.Status != ExpenseReportStatus.Draft && r.Status != ExpenseReportStatus.Withdrawn);
+    }
+
+    [HumansFact]
+    public async Task GetCoordinatorQueueAsync_ReturnsEmptyWhenNoTeams()
+    {
+        _teamService.GetEffectiveBudgetCoordinatorTeamIdsAsync(Arg.Any<Guid>(),
+            Arg.Any<CancellationToken>()).Returns([]);
+
+        var result = await _sut.GetCoordinatorQueueAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        result.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task GetCoordinatorQueueAsync_ReturnsSubmittedReportsForCoordinatedCategories()
+    {
+        var (_, category) = SetupActiveYear();
+        var coordinatorUserId = Guid.NewGuid();
+        var teamId = category.TeamId!.Value;
+        var yearId = Guid.NewGuid();
+
+        var submittedId = Guid.NewGuid();
+        var draftId = Guid.NewGuid();
+        await SeedReportWithStatus(submittedId, Guid.NewGuid(), category.Id, yearId,
+            ExpenseReportStatus.Submitted);
+        await SeedReportWithStatus(draftId, Guid.NewGuid(), category.Id, yearId,
+            ExpenseReportStatus.Draft);
+
+        // Also seed a Submitted report in a category the user does NOT coordinate.
+        var otherCategoryId = Guid.NewGuid();
+        var otherSubmittedId = Guid.NewGuid();
+        await SeedReportWithStatus(otherSubmittedId, Guid.NewGuid(), otherCategoryId, yearId,
+            ExpenseReportStatus.Submitted);
+
+        _teamService.GetEffectiveBudgetCoordinatorTeamIdsAsync(coordinatorUserId,
+            Arg.Any<CancellationToken>()).Returns([teamId]);
+
+        var result = await _sut.GetCoordinatorQueueAsync(coordinatorUserId, Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().HaveCount(1);
+        result[0].Id.Should().Be(submittedId);
+    }
+
+    // ─────────────────────── Holded timeline (submitter view) ───────────────────
+
+    [HumansFact]
+    public async Task GetHoldedTimelineAsync_builds_timeline_with_owed_and_other()
+    {
+        var userId = Guid.NewGuid();
+        var (_, category) = SetupActiveYear();
+        SetupUserAndProfile(userId, "Alice Tester", "ES9121000418450200051332");
+        var reportId = await SeedApprovedReportWithAttachmentAsync(userId, category.Id);
+        await _expenseRepo.SetHoldedContactLinkAsync(reportId, "c1", 40000007, FakeNow, Xunit.TestContext.Current.CancellationToken);
+        await _expenseRepo.SetHoldedDocIdAsync(reportId, "doc-1", FakeNow, Xunit.TestContext.Current.CancellationToken);
+
+        _holdedFinance.GetCreditorStatusAsync(40000007, Arg.Any<CancellationToken>())
+            .Returns(new HoldedCreditorStatus(40000007, Balance: -200m, OwedToMember: 200m,
+                LastPaymentDate: null, TotalPaid: 0m));
+
+        var report = await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken);
+        var timeline = await _sut.GetHoldedTimelineAsync(report!, Xunit.TestContext.Current.CancellationToken);
+
+        timeline.Should().NotBeNull();
+        timeline.RegisteredInHolded.Should().BeTrue();
+        timeline.OwedToMember.Should().Be(200m);
+        timeline.OtherAmount.Should().Be(200m - report!.Total);
+    }
+
+    [HumansFact]
+    public async Task GetHoldedTimelineAsync_CarriesPaymentRows()
+    {
+        var userId = Guid.NewGuid();
+        var (_, category) = SetupActiveYear();
+        SetupUserAndProfile(userId, "Alice Tester", "ES9121000418450200051332");
+        var reportId = await SeedApprovedReportWithAttachmentAsync(userId, category.Id);
+        await _expenseRepo.SetHoldedContactLinkAsync(reportId, "c1", 40000007, FakeNow, Xunit.TestContext.Current.CancellationToken);
+        await _expenseRepo.SetHoldedDocIdAsync(reportId, "doc-1", FakeNow, Xunit.TestContext.Current.CancellationToken);
+
+        _holdedFinance.GetCreditorStatusAsync(40000007, Arg.Any<CancellationToken>())
+            .Returns(new HoldedCreditorStatus(40000007, Balance: -50m, OwedToMember: 50m,
+                LastPaymentDate: new LocalDate(2026, 4, 20), TotalPaid: 50m,
+                Payments: new List<HoldedPaymentInfo> { new(new LocalDate(2026, 4, 20), 50m, "purchase") }));
+
+        var report = await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken);
+        var timeline = await _sut.GetHoldedTimelineAsync(report!, Xunit.TestContext.Current.CancellationToken);
+
+        timeline!.Payments.Should().ContainSingle()
+            .Which.Amount.Should().Be(50m);
+    }
+
+    // ─────────────────────── Travel wizard methods ────────────────────────────
+
+    [HumansFact]
+    public async Task AddMileageLineWithResultAsync_ComputesAmount_FormatsDescription_SetsType()
+    {
+        var (_, category) = SetupActiveYear();
+        var userId = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(userId, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+
+        var result = await _sut.AddMileageLineWithResultAsync(id, userId, "Berlin", "Barcelona", 1281m, Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue();
+        var line = (await _sut.GetAsync(id, Xunit.TestContext.Current.CancellationToken))!.Lines.Single();
+        line.LineType.Should().Be(ExpenseLineType.Mileage);
+        line.Amount.Should().Be(333.06m); // 1281 * 0.26
+        line.Description.Should().Be("Berlin to Barcelona, 1281 km @ €0.26 = €333.06");
+        line.AttachmentId.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task AddPerDiemLineWithResultAsync_Overnight_ComputesAmount_FormatsDescription_SetsType()
+    {
+        var (_, category) = SetupActiveYear();
+        var userId = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(userId, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+
+        var result = await _sut.AddPerDiemLineWithResultAsync(id, userId, PerDiemKind.Overnight, 3, "Assembly Madrid", Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue();
+        var line = (await _sut.GetAsync(id, Xunit.TestContext.Current.CancellationToken))!.Lines.Single();
+        line.LineType.Should().Be(ExpenseLineType.PerDiem);
+        line.Amount.Should().Be(160.02m); // 3 * 53.34
+        line.Description.Should().Be("Per diem: 3 days overnight @ €53.34 = €160.02 — Assembly Madrid");
+        line.AttachmentId.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task AddPerDiemLineWithResultAsync_DayTrip_SingleDay_UsesSingularAndDayTripRate()
+    {
+        var (_, category) = SetupActiveYear();
+        var userId = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(userId, category.Id, null, Xunit.TestContext.Current.CancellationToken);
+
+        await _sut.AddPerDiemLineWithResultAsync(id, userId, PerDiemKind.DayTrip, 1, null, Xunit.TestContext.Current.CancellationToken);
+
+        var line = (await _sut.GetAsync(id, Xunit.TestContext.Current.CancellationToken))!.Lines.Single();
+        line.Amount.Should().Be(26.67m);
+        line.Description.Should().Be("Per diem: 1 day day-trip @ €26.67 = €26.67");
+    }
+
+    // ─────────────────────── Holded contact enrichment ───────────────────────
+
+    [HumansFact]
+    public async Task DrainHoldedOutboxAsync_SecondReport_SeedsContactIdFromTheMembersEarlierReport()
+    {
+        // A member whose Holded contact predates holded_creditor_contacts has a contact id on older
+        // reports and no binding row. Seeding only from the report being pushed sends Finance a null,
+        // which POSTs a second contact and splits their payables — so seed from the earlier report.
+        var (_, category) = SetupActiveYear();
+        var userId = Guid.NewGuid();
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(WrapInUserInfo(new Profile
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                BurnerName = "Meri",
+                FirstName = "Maria",
+                LastName = "Garcia",
+                Iban = "ES9121000418450200051332",
+            }));
+        _budgetService.GetCategoryByIdAsync(category.Id).Returns(
+            ToBudgetCategorySnapshot(new BudgetCategory
+            {
+                Id = category.Id,
+                BudgetGroupId = Guid.NewGuid(),
+                Name = "Test Category",
+                TeamId = null,
+                SortOrder = 0,
+                CreatedAt = FakeNow,
+                UpdatedAt = FakeNow,
+            }));
+        _holdedFinance.EnsureCreditorContactAsync(
+                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns("contact-123");
+        _holdedClient.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>())
+            .Returns("doc-1");
+        _holdedClient.GetContactAsync("contact-123", Arg.Any<CancellationToken>())
+            .Returns(new HoldedContactDto { Id = "contact-123", SupplierAccountNum = 40000007 });
+        _fileStorage.TryReadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new byte[] { 1, 2, 3 });
+
+        // First report links the member to contact-123 — this is the pre-existing Holded contact.
+        await SeedApprovedReportWithAttachmentAsync(userId, category.Id);
+        await _sut.DrainHoldedOutboxAsync(100, Xunit.TestContext.Current.CancellationToken);
+        _holdedFinance.ClearReceivedCalls();
+
+        // Act — a fresh report for the same member carries no contact id of its own.
+        await SeedApprovedReportWithAttachmentAsync(userId, category.Id);
+        await _sut.DrainHoldedOutboxAsync(100, Xunit.TestContext.Current.CancellationToken);
+
+        // Assert — the earlier report's contact id (and its account number) are passed as the seed,
+        // so Finance updates the existing contact instead of creating a duplicate.
+        await _holdedFinance.Received(1).EnsureCreditorContactAsync(
+            userId, Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>(),
+            "contact-123", 40000007, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task DrainHoldedOutboxAsync_DelegatesContactEnrichmentToFinance_PersistsContactLink()
+    {
+        // Arrange — active year + user with distinct legal name and burner
+        var (_, category) = SetupActiveYear();
+        var userId = Guid.NewGuid();
+        const string legalFirst = "Maria";
+        const string legalLast = "Garcia";
+        const string legalName = "Maria Garcia";
+        const string burnerName = "Meri"; // deliberately different from legal name
+        const string iban = "ES9121000418450200051332";
+
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(WrapInUserInfo(new Profile
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                BurnerName = burnerName,
+                FirstName = legalFirst,
+                LastName = legalLast,
+                Iban = iban,
+            }));
+
+        // Seed approved report with an attachment via the real service flow
+        var reportId = await SeedApprovedReportWithAttachmentAsync(userId, category.Id);
+
+        // Reload so we can verify the line's attachment key for fileStorage
+        var reportBefore = await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken);
+        var line = reportBefore!.Lines[0];
+
+        // Configure Holded substitutes — contact enrichment is delegated to Finance now.
+        _holdedFinance.EnsureCreditorContactAsync(
+                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns("contact-123");
+        _holdedClient.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>())
+            .Returns("doc-1");
+        _holdedClient.GetContactAsync("contact-123", Arg.Any<CancellationToken>())
+            .Returns(new HoldedContactDto { Id = "contact-123", SupplierAccountNum = 40000007 });
+        _fileStorage.TryReadAsync(
+                ExpenseReportService.AttachmentKey(line.Attachment!.Id, line.Attachment.Extension),
+                Arg.Any<CancellationToken>())
+            .Returns(new byte[] { 1, 2, 3 });
+
+        // Also set up category for DrainHoldedOutboxAsync (it re-fetches)
+        _budgetService.GetCategoryByIdAsync(category.Id).Returns(
+            ToBudgetCategorySnapshot(new BudgetCategory
+            {
+                Id = category.Id,
+                BudgetGroupId = Guid.NewGuid(),
+                Name = "Test Category",
+                TeamId = null,
+                SortOrder = 0,
+                CreatedAt = FakeNow,
+                UpdatedAt = FakeNow,
+            }));
+
+        // Act
+        await _sut.DrainHoldedOutboxAsync(100, Xunit.TestContext.Current.CancellationToken);
+
+        // Assert — contact enrichment delegated to Finance with the legal name, burner and iban
+        // (the contact payload itself — Name/TradeName/CustomId — is covered in HoldedFinanceServiceTests).
+        await _holdedFinance.Received(1).EnsureCreditorContactAsync(
+            userId, legalName, burnerName, iban,
+            Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>());
+
+        // Assert — the resolved 400000xx number is written back to the member's binding
+        await _holdedFinance.Received(1).SetCreditorAccountNumAsync(
+            userId, 40000007, Arg.Any<CancellationToken>());
+
+        // Assert — contact link mirrored onto the report
+        var loaded = await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken);
+        loaded!.HoldedContactId.Should().Be("contact-123");
+        loaded.HoldedSupplierAccountNum.Should().Be(40000007);
+    }
+
+    /// <summary>
+    /// Seeds a report all the way through Draft → line → attachment → Submit → Approve
+    /// using the real sut + expenseRepo, so the outbox event row is written.
+    /// </summary>
+    private async Task<Guid> SeedApprovedReportWithAttachmentAsync(Guid submitterId, Guid categoryId)
+    {
+        var reportId = await _sut.CreateDraftAsync(submitterId, categoryId, "outbox test note", Xunit.TestContext.Current.CancellationToken);
+        var lineId = await _sut.AddLineAsync(reportId, submitterId, "Test line", 50m, ct: Xunit.TestContext.Current.CancellationToken);
+
+        await using var stream = new MemoryStream([7, 8, 9]);
+        await _sut.AttachFileToLineAsync(
+            reportId, submitterId, lineId, "receipt.pdf", "application/pdf", stream, Xunit.TestContext.Current.CancellationToken);
+
+        var submitted = await _sut.SubmitAsync(reportId, submitterId, Xunit.TestContext.Current.CancellationToken);
+        if (!submitted) throw new InvalidOperationException("SeedApprovedReportWithAttachmentAsync: SubmitAsync returned false");
+
+        var approved = await _sut.ApproveAsync(reportId, Guid.NewGuid(), null, Xunit.TestContext.Current.CancellationToken);
+        if (!approved) throw new InvalidOperationException("SeedApprovedReportWithAttachmentAsync: ApproveAsync returned false");
+
+        return reportId;
+    }
+
+    // ─────────────────────────── Helpers ─────────────────────────────────────
+
+    private (BudgetYear Year, BudgetCategory Category) SetupActiveYear()
+    {
+        var teamId = Guid.NewGuid();
+        var category = new BudgetCategory
+        {
+            Id = Guid.NewGuid(),
+            BudgetGroupId = Guid.NewGuid(),
+            Name = "Test Category",
+            TeamId = teamId,
+            SortOrder = 0,
+            CreatedAt = FakeNow,
+            UpdatedAt = FakeNow
+        };
+        var group = new BudgetGroup
+        {
+            Id = category.BudgetGroupId,
+            BudgetYearId = Guid.NewGuid(),
+            Name = "Test Group",
+            SortOrder = 0,
+            CreatedAt = FakeNow,
+            UpdatedAt = FakeNow
+        };
+        group.Categories.Add(category);
+
+        var year = new BudgetYear
+        {
+            Id = Guid.NewGuid(),
+            Year = "2026",
+            Name = "Test Year 2026",
+            Status = BudgetYearStatus.Active,
+            CreatedAt = FakeNow,
+            UpdatedAt = FakeNow
+        };
+        year.Groups.Add(group);
+
+        var yearDetail = new BudgetYearDetail(
+            year.Id,
+            year.Year,
+            year.Name,
+            year.Status,
+            year.IsDeleted,
+            [
+                new BudgetGroupDetail(
+                    group.Id,
+                    group.BudgetYearId,
+                    group.Name,
+                    group.SortOrder,
+                    group.IsRestricted,
+                    group.IsDepartmentGroup,
+                    group.IsTicketingGroup,
+                    null,
+                    [
+                        new BudgetCategoryDetail(
+                            category.Id,
+                            category.BudgetGroupId,
+                            category.Name,
+                            category.AllocatedAmount,
+                            category.ExpenditureType,
+                            category.TeamId,
+                            category.SortOrder,
+                            [])
+                    ])
+            ]);
+
+        _budgetService.GetActiveYearAsync().Returns(yearDetail);
+        _budgetService.GetCategoryByIdAsync(category.Id).Returns(ToBudgetCategorySnapshot(category));
+
+        return (year, category);
+    }
+
+
+    private static BudgetCategorySnapshot ToBudgetCategorySnapshot(BudgetCategory category) =>
+        new(
+            category.Id,
+            category.BudgetGroupId,
+            category.Name,
+            category.AllocatedAmount,
+            category.ExpenditureType,
+            category.TeamId,
+            category.SortOrder,
+            category.BudgetGroup is null
+                ? null
+                : new BudgetCategoryGroupSnapshot(
+                    category.BudgetGroup.Id,
+                    category.BudgetGroup.BudgetYearId,
+                    category.BudgetGroup.Name,
+                    category.BudgetGroup.IsRestricted,
+                    category.BudgetGroup.IsTicketingGroup,
+                    category.BudgetGroup.BudgetYear is null
+                        ? null
+                        : new BudgetCategoryYearSnapshot(
+                            category.BudgetGroup.BudgetYear.Id,
+                            category.BudgetGroup.BudgetYear.Year,
+                            category.BudgetGroup.BudgetYear.Name,
+                            category.BudgetGroup.BudgetYear.IsDeleted)),
+            []);
+    private void SetupUserAndProfile(Guid userId, string displayName, string iban)
+    {
+        var nameParts = displayName.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+        var firstName = nameParts.Length > 0 ? nameParts[0] : displayName;
+        var lastName = nameParts.Length > 1 ? nameParts[1] : "Tester";
+
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(WrapInUserInfo(new Profile
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                BurnerName = displayName,
+                FirstName = firstName,
+                LastName = lastName,
+                Iban = iban
+            }));
+    }
+
+    private static TeamInfo MakeTeamInfo(Guid teamId,
+        IReadOnlyList<(Guid UserId, TeamMemberRole Role)> members) =>
+        new(
+            Id: teamId,
+            Name: "Test Team",
+            Description: null,
+            Slug: "test-team",
+            IsActive: true,
+            IsSystemTeam: false,
+            SystemTeamType: SystemTeamType.None,
+            RequiresApproval: false,
+            IsPublicPage: false,
+            IsHidden: false,
+            IsPromotedToDirectory: false,
+            CreatedAt: FakeNow,
+            Members: members
+                .Select(m => new TeamMemberInfo(
+                    TeamMemberId: Guid.NewGuid(),
+                    UserId: m.UserId,
+                    DisplayName: "Member",
+                    Email: null,
+                    ProfilePictureUrl: null,
+                    Role: m.Role,
+                    JoinedAt: FakeNow))
+                .ToList());
+
+    private void SetupCoordinatorAuthz(Guid categoryId, Guid teamId, Guid coordinatorUserId)
+    {
+        var cat = new BudgetCategory
+        {
+            Id = categoryId,
+            BudgetGroupId = Guid.NewGuid(),
+            Name = "Cat",
+            TeamId = teamId,
+            SortOrder = 0,
+            CreatedAt = FakeNow,
+            UpdatedAt = FakeNow
+        };
+        _budgetService.GetCategoryByIdAsync(categoryId).Returns(ToBudgetCategorySnapshot(cat));
+        _teamService.IsUserCoordinatorOfTeamAsync(teamId, coordinatorUserId,
+            Arg.Any<CancellationToken>()).Returns(true);
+    }
+
+    private async Task SeedReportWithStatus(
+        Guid reportId, Guid submitter, Guid categoryId, Guid yearId,
+        ExpenseReportStatus status)
+    {
+        var now = Instant.FromUtc(2026, 5, 1, 0, 0);
+        var report = new ExpenseReport
+        {
+            Id = reportId,
+            SubmitterUserId = submitter,
+            BudgetCategoryId = categoryId,
+            BudgetYearId = yearId,
+            Status = status,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        await using var ctx = new ExpensesDbContext(_expensesOptions);
+        ctx.ExpenseReports.Add(report);
+        await ctx.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+    }
+
+    private static ExpenseAttachment MakeAttachment(Guid uploaderId) => new()
+    {
+        Id = Guid.NewGuid(),
+        OriginalFileName = "receipt.pdf",
+        Extension = ".pdf",
+        ContentType = "application/pdf",
+        SizeBytes = 1024,
+        UploadedByUserId = uploaderId,
+        UploadedAt = Instant.FromUtc(2026, 5, 1, 0, 0)
+    };
+}
