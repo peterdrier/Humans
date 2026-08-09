@@ -33,6 +33,7 @@ Atomic rules. Fetch the body when the description's trigger matches your task. T
 - [`no-column-drops-for-decoupling`](architecture/no-column-drops-for-decoupling.md) — HARD RULE. Property override IS the migration; column drop waits for a separate PR after prod verification
 - [`no-concurrency-tokens`](architecture/no-concurrency-tokens.md) — HARD RULE. No `IsConcurrencyToken` / `[ConcurrencyCheck]` / row versioning. Single server, ~500 users.
 - [`no-cross-section-ef-joins`](architecture/no-cross-section-ef-joins.md) — HARD RULE. A section's EF model joins only to its own tables. Cross-section linkage is a bare Guid column, never a `HasOne`/nav property/FK constraint.
+- [`no-db-check-constraints`](architecture/no-db-check-constraints.md) — HARD RULE. Never add a CHECK constraint (`HasCheckConstraint`/`AddCheckConstraint`/raw SQL). Enforce the invariant in service code. Triggers and intra-section FKs unaffected.
 - [`no-drops-until-prod-verified`](architecture/no-drops-until-prod-verified.md) — HARD RULE. Hard storage (DB columns/tables/indexes, files) drops in a separate PR after replacement is verified in prod
 - [`no-hand-edited-migrations`](architecture/no-hand-edited-migrations.md) — HARD RULE. EF migrations AND `HumansDbContextModelSnapshot.cs` 100% auto-generated. Backfills in admin buttons. Pre-commit hook enforces files; snapshot is on you.
 - [`no-linq-at-db-layer`](architecture/no-linq-at-db-layer.md) — services call thick repo methods returning materialized lists, not `db.Set<T>().Where/Select` chains
