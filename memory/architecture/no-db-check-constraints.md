@@ -7,17 +7,14 @@ Invariants are enforced in service code, not by database CHECK constraints. Neve
 `builder.ToTable(t => t.HasCheckConstraint(...))`, never hand-write `migrationBuilder.AddCheckConstraint`,
 and never add one through raw SQL.
 
-**Why:** Peter's call, 2026-08-09. CHECK constraints are disproportionately painful to manage
-through EF: they are invisible to most of the tooling that keeps model and schema honest, they
-survive in chain-built databases after the model stops declaring them, and their `Down` bodies
-re-add constraints referencing columns that no longer exist. A live example — `google_resources`
-carried `CK_google_resources_exactly_one_owner` (a `TeamId` XOR `UserId` rule) that
-`RemoveUserIdFromGoogleResource` had to drop by hand alongside the column; it survives only in
-that migration's `Down`, and it had to be individually audited during the
-nobodies-collective/Humans#858 peels to prove the section could still be split. The same
-invariant expressed in service code would have moved with the code and cost nothing. Service-level
-enforcement also produces an error the user can read, instead of a Postgres constraint violation
-surfacing as a 500.
+**Why:** Peter's call, 2026-08-09. A CHECK constraint puts an invariant where the service that
+owns the write path can't see it, and enforces it as a Postgres error — the user gets a 500
+naming a constraint instead of a message, and the rule goes untested, since the test suite runs
+on EF-InMemory and no constraint fires there. It also pins a business rule to the storage layer:
+`google_resources` carried `CK_google_resources_exactly_one_owner`, a `TeamId` XOR `UserId` rule
+written across two sections' owner columns — exactly the DB-level cross-section coupling
+[`no-cross-section-ef-joins`](no-cross-section-ef-joins.md) bans in its own form. The same
+invariant in service code sits next to the code it governs and moves with it.
 
 **How to apply:** When you reach for a CHECK constraint, write the guard in the service that owns
 the write path and cover it with a test. A singleton table is enforced by the repository addressing
@@ -36,6 +33,11 @@ configuration and regenerate — do not hand-edit the migration
   *cross-section* FKs are banned, and by a different rule —
   [`no-cross-section-ef-joins`](no-cross-section-ef-joins.md).
 - Unique indexes, `NOT NULL`, and column types are not CHECK constraints and are unaffected.
+- **The two constraints already in the model are debt, not precedent.**
+  `ck_agent_settings_singleton` (`AgentSettingsConfiguration.cs`) and
+  `CK_role_assignments_valid_window` (`RoleAssignmentConfiguration.cs`) predate this rule; the
+  comment in `AgentSettingsConfiguration` explaining how to declare one properly documents the
+  old pattern — don't copy it. Removing them is a schema change for its own PR.
 
 **Related:** [`no-cross-section-ef-joins`](no-cross-section-ef-joins.md) ·
 [`no-hand-edited-migrations`](no-hand-edited-migrations.md) ·
