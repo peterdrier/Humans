@@ -1539,13 +1539,17 @@ parses `*` as "repeat the previous character" and matches `nameof(Stor)`, `nameo
     > were not section-to-section but **section-to-Base**: `Humans.Application` consumes
     > SystemSettings and Events, so both needed the downward `.Contracts` split on their first
     > build (step 5b). `IShiftManagementService` remains the predicted section-to-section case.
-    > The deletion half was exercised too: Events removed three
-    > `ApplicationServiceEntityReadReturns` baseline rows (`IEventService`'s entity-returning reads
-    > left the assembly, so the ratchet reported them as fixed) and three namespace-pinning
-    > architecture tests the assembly boundary now subsumes. **Watch for reflection sweeps keyed on
-    > a hard-coded assembly list** — `GdprExportDependencyInjectionTests` scanned only
-    > `Humans.Infrastructure` + `Humans.Application` and silently stopped seeing `EventService`;
-    > it now scans `SectionDiscoveryExtensions.SectionAssemblies()` as well. Store had zero
+    > The deletion half was exercised too, with one trap: Events deleted three namespace-pinning
+    > architecture tests the assembly boundary now subsumes — but the three
+    > `ApplicationServiceEntityReadReturns` baseline rows that *looked* fixed were not: the ratchet
+    > had merely lost sight of `IEventService` when it left the scanned assembly. Review caught it;
+    > the scan now includes section assemblies and the rows are restored under their new names
+    > (`Humans.Events.Services.IEventService.…`). **Delete a baseline row only when the ratchet
+    > still sees the type and passes** — a row that vanishes because the type moved is the same
+    > silent-shrink bug as a reflection sweep keyed on a hard-coded assembly list:
+    > `GdprExportDependencyInjectionTests` scanned only `Humans.Infrastructure` +
+    > `Humans.Application` and silently stopped seeing `EventService`; it now scans
+    > `SectionDiscoveryExtensions.SectionAssemblies()` as well. Store had zero
     > `[Grandfathered]` attributes and Events has none either, so that half is still untested.
 12. Verify: build; full suite; **render every page in the section and diff HTML against a pre-move
     capture**, re-diffing after *each* risky step rather than once at the end, and proving the

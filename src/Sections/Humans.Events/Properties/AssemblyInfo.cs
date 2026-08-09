@@ -7,7 +7,7 @@ using Humans.Domain.Attributes;
 // It also carries the section name HUM0017/HUM0018 used to read from a per-type
 // [Section("Events")] on the repository interface.
 //
-// "Events", not "EventGuide": AgentSectionKeys, docs/sections/Events.md and
+// "Events", not "EventGuide": AgentSectionKeys, src/Sections/Humans.Events/Docs/Events.md and
 // AgentSectionDocReader's src/Sections/Humans.{key}/Docs probe all key off it. The
 // EventGuide name survives only on EventGuideDbContext, which names the live
 // __EFMigrationsHistory_EventGuide table and must not be renamed.
