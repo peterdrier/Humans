@@ -1,10 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using Humans.Domain.Entities;
+using Humans.SystemSettings.Domain;
 
-namespace Humans.Infrastructure.Data.Configurations.SystemSettings;
+namespace Humans.SystemSettings.Data.Configurations;
 
-public class SystemSettingConfiguration : IEntityTypeConfiguration<SystemSetting>
+internal sealed class SystemSettingConfiguration : IEntityTypeConfiguration<SystemSetting>
 {
     public void Configure(EntityTypeBuilder<SystemSetting> builder)
     {

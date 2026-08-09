@@ -1,19 +1,17 @@
 using AwesomeAssertions;
-using Humans.Application.Tests.Infrastructure;
-using Humans.Domain.Entities;
-using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Repositories.SystemSettings;
+using Humans.SystemSettings.Data;
+using Humans.SystemSettings.Domain;
 using Microsoft.EntityFrameworkCore;
 
-namespace Humans.Application.Tests.Repositories;
+namespace Humans.SystemSettings.Tests;
 
-public sealed class SystemSettingsRepositoryTests : IDisposable
+public sealed class RepositoryTests : IDisposable
 {
     private readonly SystemSettingsDbContext _seedContext;
     private readonly TestDbContextFactory<SystemSettingsDbContext> _factory;
-    private readonly SystemSettingsRepository _repository;
+    private readonly Repository _repository;
 
-    public SystemSettingsRepositoryTests()
+    public RepositoryTests()
     {
         var options = new DbContextOptionsBuilder<SystemSettingsDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
@@ -21,7 +19,7 @@ public sealed class SystemSettingsRepositoryTests : IDisposable
 
         _factory = new TestDbContextFactory<SystemSettingsDbContext>(options);
         _seedContext = _factory.CreateDbContext();
-        _repository = new SystemSettingsRepository(_factory);
+        _repository = new Repository(_factory);
     }
 
     public void Dispose()

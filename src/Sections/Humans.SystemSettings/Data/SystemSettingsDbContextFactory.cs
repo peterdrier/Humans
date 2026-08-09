@@ -1,11 +1,12 @@
+using Humans.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 
-namespace Humans.Infrastructure.Data;
+namespace Humans.SystemSettings.Data;
 
 /// <summary>
 /// Design-time factory used by <c>dotnet ef … --context SystemSettingsDbContext</c>.
-/// Mirrors <see cref="HumansDbContextFactory"/>; the migrations-history table comes
+/// Mirrors <c>HumansDbContextFactory</c>; the migrations-history table comes
 /// from <see cref="SectionMigrationsHistory"/> — the same helper the runtime
 /// registration uses — so CI's from-scratch apply records baselines in the table
 /// the app reads.
@@ -24,7 +25,7 @@ internal sealed class SystemSettingsDbContextFactory : IDesignTimeDbContextFacto
             npgsqlOptions =>
             {
                 npgsqlOptions.UseNodaTime();
-                npgsqlOptions.MigrationsAssembly("Humans.Infrastructure");
+                npgsqlOptions.MigrationsAssembly(typeof(SystemSettingsDbContext).Assembly.GetName().Name!);
                 npgsqlOptions.MigrationsHistoryTable(
                     SectionMigrationsHistory.TableFor<SystemSettingsDbContext>());
                 npgsqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);

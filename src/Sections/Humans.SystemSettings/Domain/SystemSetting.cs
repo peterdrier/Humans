@@ -1,6 +1,6 @@
-namespace Humans.Domain.Entities;
+namespace Humans.SystemSettings.Domain;
 
-public class SystemSetting
+internal sealed class SystemSetting
 {
     public string Key { get; set; } = string.Empty;
     public string Value { get; set; } = string.Empty;

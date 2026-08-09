@@ -1,11 +1,9 @@
-using Humans.Application.Interfaces.Repositories;
-using Humans.Domain.Entities;
-using Humans.Infrastructure.Data;
+using Humans.SystemSettings.Domain;
 using Microsoft.EntityFrameworkCore;
 
-namespace Humans.Infrastructure.Repositories.SystemSettings;
+namespace Humans.SystemSettings.Data;
 
-internal sealed class SystemSettingsRepository(IDbContextFactory<SystemSettingsDbContext> factory)
+internal sealed class Repository(IDbContextFactory<SystemSettingsDbContext> factory)
     : ISystemSettingsRepository
 {
     public async Task<string?> GetValueAsync(string key, CancellationToken ct = default)

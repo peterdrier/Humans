@@ -26,7 +26,7 @@ env:
   # nowhere else in this file; a G5 move edits its pair's project here.
   MAIN_DB_CONTEXT: 'HumansDbContext:src/Humans.Infrastructure'
   SECTION_DB_CONTEXTS: >-
-    SystemSettingsDbContext:src/Humans.Infrastructure
+    SystemSettingsDbContext:src/Sections/Humans.SystemSettings
     ContainersDbContext:src/Humans.Infrastructure
     AgentDbContext:src/Humans.Infrastructure
     ExpensesDbContext:src/Humans.Infrastructure
