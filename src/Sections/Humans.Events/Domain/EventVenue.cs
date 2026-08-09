@@ -4,7 +4,7 @@ namespace Humans.Events.Domain;
 /// Admin-managed communal or infrastructure space for individual event submissions
 /// (e.g. "Main Stage", "The Middle of Elsewhere").
 /// </summary>
-public class EventVenue
+internal sealed class EventVenue
 {
     /// <summary>
     /// Unique identifier.

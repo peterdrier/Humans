@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Humans.Events.Data.Configurations;
 
-public class EventFavouriteConfiguration : IEntityTypeConfiguration<EventFavourite>
+internal sealed class EventFavouriteConfiguration : IEntityTypeConfiguration<EventFavourite>
 {
     public void Configure(EntityTypeBuilder<EventFavourite> builder)
     {

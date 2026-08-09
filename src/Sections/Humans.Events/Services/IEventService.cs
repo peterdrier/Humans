@@ -10,7 +10,7 @@ namespace Humans.Events.Services;
 /// <summary>
 /// Service for the Events section (camp-event guide).
 /// </summary>
-public interface IEventService : IApplicationService, IEventServiceRead
+internal interface IEventService : IApplicationService, IEventServiceRead
 {
     // ── Settings ─────────────────────────────────────────────────────────
     // GetGuideSettingsAsync is declared on IEventServiceRead (cross-section read surface).

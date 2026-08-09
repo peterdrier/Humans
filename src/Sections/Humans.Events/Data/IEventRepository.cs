@@ -19,7 +19,7 @@ namespace Humans.Events.Data;
 /// </para>
 /// </summary>
 [Section("Events")]
-public interface IEventRepository : IRepository
+internal interface IEventRepository : IRepository
 {
     // ── Settings ─────────────────────────────────────────────────────────
     Task<EventGuideSettings?> GetGuideSettingsAsync(CancellationToken ct = default);

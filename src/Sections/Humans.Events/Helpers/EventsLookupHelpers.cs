@@ -13,7 +13,7 @@ namespace Humans.Events.Helpers;
 /// thin passes over already-cached read-models (UserInfo + CampInfo), so
 /// the per-id awaits are dictionary hits in the steady state.
 /// </summary>
-public static class EventsLookupHelpers
+internal static class EventsLookupHelpers
 {
     /// <summary>
     /// Builds the day-offset options (one per build/event day from gate opening to

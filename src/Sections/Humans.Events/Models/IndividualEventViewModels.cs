@@ -4,7 +4,7 @@ using Humans.Events.Contracts;
 
 namespace Humans.Events.Models;
 
-public class MySubmissionsViewModel
+internal sealed class MySubmissionsViewModel
 {
     public bool IsSubmissionOpen { get; set; }
     public DateTime? SubmissionOpenAt { get; set; }
@@ -15,7 +15,7 @@ public class MySubmissionsViewModel
     public List<BarrioSubmissionsBlock> Barrios { get; set; } = [];
 }
 
-public class PersonalSubmissionsBlock
+internal sealed class PersonalSubmissionsBlock
 {
     public int SubmittedCount { get; set; }
     public int ApprovedCount { get; set; }
@@ -23,7 +23,7 @@ public class PersonalSubmissionsBlock
     public List<IndividualEventRowViewModel> Events { get; set; } = [];
 }
 
-public class BarrioSubmissionsBlock
+internal sealed class BarrioSubmissionsBlock
 {
     public Guid CampId { get; set; }
     public string CampName { get; set; } = string.Empty;
@@ -35,14 +35,14 @@ public class BarrioSubmissionsBlock
     public List<BulkRowError> BulkUploadErrors { get; set; } = [];
 }
 
-public class BulkRowError
+internal sealed class BulkRowError
 {
     public int RowNumber { get; set; }
     public string Title { get; set; } = string.Empty;
     public List<string> Errors { get; set; } = [];
 }
 
-public class IndividualEventRowViewModel
+internal sealed class IndividualEventRowViewModel
 {
     public Guid Id { get; set; }
     public string Title { get; set; } = string.Empty;
@@ -66,7 +66,7 @@ public class IndividualEventRowViewModel
     };
 }
 
-public class IndividualEventFormViewModel
+internal sealed class IndividualEventFormViewModel
 {
     public Guid? Id { get; set; }
 
@@ -125,19 +125,19 @@ public class IndividualEventFormViewModel
     public bool IsResubmit { get; set; }
 }
 
-public class ScheduleViewModel
+internal sealed class ScheduleViewModel
 {
     public string? TimeZoneId { get; set; }
     public List<ScheduleDayGroup> DayGroups { get; set; } = [];
 }
 
-public class ScheduleDayGroup
+internal sealed class ScheduleDayGroup
 {
     public string DayLabel { get; set; } = string.Empty;
     public List<ScheduleItemViewModel> Items { get; set; } = [];
 }
 
-public class ScheduleItemViewModel
+internal sealed class ScheduleItemViewModel
 {
     public Guid EventId { get; set; }
     public string Title { get; set; } = string.Empty;
@@ -156,13 +156,13 @@ public class ScheduleItemViewModel
     public bool HasConflict { get; set; }
 }
 
-public class VenueOptionViewModel
+internal sealed class VenueOptionViewModel
 {
     public Guid Id { get; set; }
     public string Name { get; set; } = string.Empty;
 }
 
-public class BrowseViewModel
+internal sealed class BrowseViewModel
 {
     public string? TimeZoneId { get; set; }
     public List<BrowseDayGroup> DayGroups { get; set; } = [];
@@ -178,14 +178,14 @@ public class BrowseViewModel
     public bool FavouritesOnly { get; set; }
 }
 
-public class BrowseDayGroup
+internal sealed class BrowseDayGroup
 {
     public int DayOffset { get; set; }
     public string DayLabel { get; set; } = string.Empty;
     public List<BrowseEventItem> Items { get; set; } = [];
 }
 
-public class BrowseEventItem
+internal sealed class BrowseEventItem
 {
     public Guid EventId { get; set; }
     public string Title { get; set; } = string.Empty;
@@ -205,7 +205,7 @@ public class BrowseEventItem
     public string? DisplayHost { get; set; }
 }
 
-public class BrowseCampOption
+internal sealed class BrowseCampOption
 {
     public Guid Id { get; set; }
     public string Name { get; set; } = string.Empty;

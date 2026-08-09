@@ -9,7 +9,7 @@ namespace Humans.Events.Services;
 /// recurring event yields one entry per matching day, a non-recurring (or
 /// unexpanded) event yields itself.
 /// </summary>
-public sealed record EventOccurrence(
+internal sealed record EventOccurrence(
     ApprovedEventView Event,
     Instant StartAt,
     int DayOffset,
@@ -21,7 +21,7 @@ public sealed record EventOccurrence(
 /// events into per-day occurrences, resolving each occurrence's gate-relative
 /// day offset, applying the day filter, and resolving favourite state.
 /// </summary>
-public static class EventOccurrenceExpander
+internal static class EventOccurrenceExpander
 {
     public static IReadOnlyList<EventOccurrence> Expand(
         IReadOnlyList<ApprovedEventView> events,

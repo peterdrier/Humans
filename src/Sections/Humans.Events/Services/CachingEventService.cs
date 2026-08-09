@@ -37,7 +37,7 @@ namespace Humans.Events.Services;
 /// a fresh pending count and the cache only holds approved events.
 /// </para>
 /// </remarks>
-public sealed class CachingEventService(
+internal sealed class CachingEventService(
     IServiceScopeFactory scopeFactory,
     ILogger<CachingEventService> logger) : IEventService, IEventViewInvalidator, IHostedService
 {

@@ -4,7 +4,7 @@ namespace Humans.Events.Domain;
 /// Lookup table for event guide categories (e.g. Workshop, Music, Adult).
 /// Sensitive categories trigger the opt-out UI for attendees.
 /// </summary>
-public class EventCategory
+internal sealed class EventCategory
 {
     /// <summary>
     /// Unique identifier.

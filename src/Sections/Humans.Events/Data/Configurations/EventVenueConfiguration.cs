@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Humans.Events.Data.Configurations;
 
-public class EventVenueConfiguration : IEntityTypeConfiguration<EventVenue>
+internal sealed class EventVenueConfiguration : IEntityTypeConfiguration<EventVenue>
 {
     public void Configure(EntityTypeBuilder<EventVenue> builder)
     {

@@ -11,7 +11,7 @@ namespace Humans.Events.Domain;
 /// <see cref="CampId"/> or <see cref="GuideSharedVenueId"/> must be set.
 /// State transitions are enforced by domain methods with <see cref="IClock"/>.
 /// </summary>
-public class Event
+internal sealed class Event
 {
     /// <summary>
     /// Unique identifier.

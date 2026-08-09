@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Humans.Events.Models;
 
-public class GuideSettingsViewModel
+internal sealed class GuideSettingsViewModel
 {
     public Guid? Id { get; set; }
 
@@ -31,18 +31,18 @@ public class GuideSettingsViewModel
     public string? TimeZoneId { get; set; }
 }
 
-public class EventSettingsOptionViewModel
+internal sealed class EventSettingsOptionViewModel
 {
     public Guid Id { get; set; }
     public string EventName { get; set; } = string.Empty;
 }
 
-public class EventCategoryListViewModel
+internal sealed class EventCategoryListViewModel
 {
     public List<EventCategoryRowViewModel> Categories { get; set; } = [];
 }
 
-public class EventCategoryRowViewModel
+internal sealed class EventCategoryRowViewModel
 {
     public Guid Id { get; set; }
     public string Name { get; set; } = string.Empty;
@@ -53,7 +53,7 @@ public class EventCategoryRowViewModel
     public int EventCount { get; set; }
 }
 
-public class EventCategoryFormViewModel
+internal sealed class EventCategoryFormViewModel
 {
     public Guid? Id { get; set; }
 
@@ -76,12 +76,12 @@ public class EventCategoryFormViewModel
     public int DisplayOrder { get; set; }
 }
 
-public class GuideVenueListViewModel
+internal sealed class GuideVenueListViewModel
 {
     public List<GuideVenueRowViewModel> Venues { get; set; } = [];
 }
 
-public class GuideVenueRowViewModel
+internal sealed class GuideVenueRowViewModel
 {
     public Guid Id { get; set; }
     public string Name { get; set; } = string.Empty;
@@ -91,7 +91,7 @@ public class GuideVenueRowViewModel
     public int EventCount { get; set; }
 }
 
-public class GuideVenueFormViewModel
+internal sealed class GuideVenueFormViewModel
 {
     public Guid? Id { get; set; }
 

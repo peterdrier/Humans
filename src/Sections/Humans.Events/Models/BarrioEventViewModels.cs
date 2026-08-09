@@ -4,7 +4,7 @@ using Humans.Events.Contracts;
 
 namespace Humans.Events.Models;
 
-public class CampEventsTabViewModel
+internal sealed class CampEventsTabViewModel
 {
     public Guid CampId { get; set; }
     public string CampName { get; set; } = string.Empty;
@@ -22,7 +22,7 @@ public class CampEventsTabViewModel
     public List<CampEventRowViewModel> Events { get; set; } = [];
 }
 
-public class CampEventRowViewModel
+internal sealed class CampEventRowViewModel
 {
     public Guid Id { get; set; }
     public string Title { get; set; } = string.Empty;
@@ -46,7 +46,7 @@ public class CampEventRowViewModel
     };
 }
 
-public class CampEventFormViewModel
+internal sealed class CampEventFormViewModel
 {
     public Guid? Id { get; set; }
     public Guid CampId { get; set; }
@@ -108,13 +108,13 @@ public class CampEventFormViewModel
     public bool IsResubmit { get; set; }
 }
 
-public class CategoryOptionViewModel
+internal sealed class CategoryOptionViewModel
 {
     public Guid Id { get; set; }
     public string Name { get; set; } = string.Empty;
 }
 
-public class EventDayOptionViewModel
+internal sealed class EventDayOptionViewModel
 {
     public int DayOffset { get; set; }
     public string Label { get; set; } = string.Empty;

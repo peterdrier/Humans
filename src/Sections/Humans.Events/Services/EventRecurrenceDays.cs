@@ -9,7 +9,7 @@ namespace Humans.Events.Services;
 /// human-friendly day-name form (<c>"Mon Wed Fri"</c>) used in the barrio
 /// bulk-upload CSV.
 /// </summary>
-public static class EventRecurrenceDays
+internal static class EventRecurrenceDays
 {
     private static readonly string[] DayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 

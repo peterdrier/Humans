@@ -6,7 +6,7 @@ namespace Humans.Events.Helpers;
 /// <summary>
 /// Shared NodaTime ↔ <see cref="DateTime"/> helpers for Events-section controllers.
 /// </summary>
-public static class EventsTimeHelpers
+internal static class EventsTimeHelpers
 {
     public static DateTimeZone? GetTimeZone(BurnSettingsInfo? burn)
         => burn != null

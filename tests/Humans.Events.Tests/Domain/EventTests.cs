@@ -7,7 +7,7 @@ using Xunit;
 
 namespace Humans.Events.Tests;
 
-public class EventTests
+public sealed class EventTests
 {
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 3, 18, 12, 0));
 
@@ -137,11 +137,24 @@ public class EventTests
         startTime.Should().Be(isAllDay ? TimeSpan.Zero : new TimeSpan(14, 30, 0));
     }
 
-    [HumansTheory]
-    [InlineData(EventModerationActionType.Approved, EventStatus.Approved)]
-    [InlineData(EventModerationActionType.Rejected, EventStatus.Rejected)]
-    [InlineData(EventModerationActionType.ResubmitRequested, EventStatus.ResubmitRequested)]
-    public void ApplyModerationAction_FromPending_TransitionsToExpectedStatus(
+    // Three facts rather than one theory: EventModerationActionType is internal to the
+    // section (only EventStatus is on the Contracts surface), and xUnit requires a public
+    // test class, so the enum cannot appear in a test method's signature. Naming it in the
+    // body keeps the InternalsVisibleTo access without widening the section's surface.
+    [HumansFact]
+    public void ApplyModerationAction_Approved_FromPending_TransitionsToApproved() =>
+        AssertModerationTransition(EventModerationActionType.Approved, EventStatus.Approved);
+
+    [HumansFact]
+    public void ApplyModerationAction_Rejected_FromPending_TransitionsToRejected() =>
+        AssertModerationTransition(EventModerationActionType.Rejected, EventStatus.Rejected);
+
+    [HumansFact]
+    public void ApplyModerationAction_ResubmitRequested_FromPending_TransitionsToResubmitRequested() =>
+        AssertModerationTransition(
+            EventModerationActionType.ResubmitRequested, EventStatus.ResubmitRequested);
+
+    private void AssertModerationTransition(
         EventModerationActionType action,
         EventStatus expectedStatus)
     {

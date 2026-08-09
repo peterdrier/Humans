@@ -6,7 +6,7 @@ namespace Humans.Events.Domain;
 /// Per-account event guide preferences — stores excluded category slugs.
 /// One row per user, upserted on change.
 /// </summary>
-public class EventPreference
+internal sealed class EventPreference
 {
     /// <summary>
     /// Unique identifier.

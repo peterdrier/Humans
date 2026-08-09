@@ -19,7 +19,7 @@ using Humans.Events.Data;
 
 namespace Humans.Events.Services;
 
-public sealed class EventService(
+internal sealed class EventService(
     IEventRepository repo,
     IBurnSettingsService burnSettings,
     IUserServiceRead userService,

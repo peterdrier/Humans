@@ -4,7 +4,7 @@ using Humans.Events.Contracts;
 
 namespace Humans.Events.Services.Dtos;
 
-public record CampEventOverlap(
+internal sealed record CampEventOverlap(
     Guid Id,
     Guid? CampId,
     string Title,

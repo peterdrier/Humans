@@ -1,6 +1,6 @@
 namespace Humans.Events.Models;
 
-public sealed record GuideEventApiDto(
+internal sealed record GuideEventApiDto(
     Guid Id,
     string Title,
     string Description,
@@ -15,25 +15,25 @@ public sealed record GuideEventApiDto(
     string? Host,
     int PriorityRank);
 
-public sealed record GuideEventCategoryApiDto(
+internal sealed record GuideEventCategoryApiDto(
     Guid Id,
     string Name,
     string Slug,
     bool IsSensitive);
 
-public sealed record GuideEventCampApiDto(Guid Id, string? Name);
+internal sealed record GuideEventCampApiDto(Guid Id, string? Name);
 
-public sealed record GuideEventVenueApiDto(Guid Id, string Name);
+internal sealed record GuideEventVenueApiDto(Guid Id, string Name);
 
-public sealed record GuideCampApiDto(Guid Id, string? Name, string? Slug);
+internal sealed record GuideCampApiDto(Guid Id, string? Name, string? Slug);
 
-public sealed record GuideCampDetailApiDto(
+internal sealed record GuideCampDetailApiDto(
     Guid Id,
     string? Name,
     string? Slug,
     IReadOnlyList<GuideEventApiDto> Events);
 
-public sealed record GuideCategoryApiDto(
+internal sealed record GuideCategoryApiDto(
     Guid Id,
     string Name,
     string Slug,

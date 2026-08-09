@@ -21,7 +21,7 @@ namespace Humans.Events.Controllers;
 [Authorize]
 [Route("Events")]
 [ServiceFilter(typeof(EventsFeatureFilter))]
-public class EventsController(
+internal sealed class EventsController(
     IEventService guide,
     IUserServiceRead users,
     ICampServiceRead camps,

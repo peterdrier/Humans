@@ -18,7 +18,7 @@ namespace Humans.Events.Controllers;
 [Authorize(Policy = PolicyNames.EventsAdminOrAdmin)]
 [Route("Events/Export")]
 [ServiceFilter(typeof(EventsFeatureFilter))]
-public class EventsExportController(
+internal sealed class EventsExportController(
     IEventService guide,
     ICampServiceRead camps,
     IUserServiceRead users,

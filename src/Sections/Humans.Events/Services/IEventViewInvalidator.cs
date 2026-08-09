@@ -31,7 +31,7 @@ namespace Humans.Events.Services;
     justification: "Pre-existing event-view cache flushed cross-section; remains until EventService's caching decorator owns invalidation end-to-end.",
     since: "2026-05-27",
     issueRef: "nobodies-collective/Humans#805")]
-public interface IEventViewInvalidator : IInvalidator
+internal interface IEventViewInvalidator : IInvalidator
 {
     /// <summary>
     /// Reloads the cached <see cref="EventGuideSettingsView"/> singleton

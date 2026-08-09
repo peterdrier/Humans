@@ -12,7 +12,7 @@ namespace Humans.Events.Services.Dtos;
 /// Held as a flat <see cref="IReadOnlyList{T}"/> inside
 /// <c>CachingEventService</c>. ~10–30 categories × ~100 bytes ≈ trivial.
 /// </remarks>
-public sealed record EventCategoryView(
+internal sealed record EventCategoryView(
     Guid Id,
     string Name,
     string Slug,
@@ -27,7 +27,7 @@ public sealed record EventCategoryView(
 /// Held as a flat <see cref="IReadOnlyList{T}"/> inside
 /// <c>CachingEventService</c>. ~10–30 venues × ~200 bytes ≈ trivial.
 /// </remarks>
-public sealed record EventVenueView(
+internal sealed record EventVenueView(
     Guid Id,
     string Name,
     string? Description,
@@ -39,7 +39,7 @@ public sealed record EventVenueView(
 /// Category projection for the admin management list, carrying the linked-event
 /// count so the management UI can render usage without exposing the EF nav.
 /// </summary>
-public sealed record EventCategoryManageInfo(
+internal sealed record EventCategoryManageInfo(
     Guid Id,
     string Name,
     string Slug,
@@ -52,7 +52,7 @@ public sealed record EventCategoryManageInfo(
 /// Venue projection for the admin management list, carrying the linked-event
 /// count so the management UI can render usage without exposing the EF nav.
 /// </summary>
-public sealed record EventVenueManageInfo(
+internal sealed record EventVenueManageInfo(
     Guid Id,
     string Name,
     string? Description,
@@ -65,7 +65,7 @@ public sealed record EventVenueManageInfo(
 /// A single moderation-history entry projected for the moderation queue,
 /// flattened so the presentation layer never touches the EF nav collection.
 /// </summary>
-public sealed record EventModerationHistoryInfo(
+internal sealed record EventModerationHistoryInfo(
     Guid ActorUserId,
     EventModerationActionType Action,
     string? Reason,
@@ -77,7 +77,7 @@ public sealed record EventModerationHistoryInfo(
 /// and — where the source query loaded it — the moderation history. Replaces
 /// the <see cref="Event"/> entity on those read surfaces.
 /// </summary>
-public sealed record EventInfo(
+internal sealed record EventInfo(
     Guid Id,
     Guid? CampId,
     Guid? GuideSharedVenueId,
@@ -143,7 +143,7 @@ public sealed record EventInfo(
 /// the favourite metadata plus the flattened event projection. A null
 /// <see cref="DayOffset"/> means the whole event (every occurrence).
 /// </summary>
-public sealed record EventFavouriteInfo(
+internal sealed record EventFavouriteInfo(
     Guid Id,
     Guid UserId,
     Guid GuideEventId,
@@ -154,7 +154,7 @@ public sealed record EventFavouriteInfo(
 /// <summary>
 /// Approved events plus the guide settings, projected for export surfaces.
 /// </summary>
-public sealed record ApprovedEventsExportInfo(
+internal sealed record ApprovedEventsExportInfo(
     IReadOnlyList<EventInfo> Events,
     EventGuideSettingsView? Settings);
 
@@ -163,7 +163,7 @@ public sealed record ApprovedEventsExportInfo(
 /// most-recently-submitted-first — feeds the barrio block on the submitter's
 /// "My Submissions" dashboard.
 /// </summary>
-public sealed record CampSubmissionsSummary(
+internal sealed record CampSubmissionsSummary(
     int SubmittedCount,
     int ApprovedCount,
     int PendingCount,

@@ -4,7 +4,7 @@ using Humans.Events.Contracts;
 
 namespace Humans.Events.Models;
 
-public class ModerationQueueViewModel
+internal sealed class ModerationQueueViewModel
 {
     public EventStatus ActiveTab { get; set; } = EventStatus.Pending;
     public int PendingCount { get; set; }
@@ -16,7 +16,7 @@ public class ModerationQueueViewModel
     public List<ModerationEventRowViewModel> Events { get; set; } = [];
 }
 
-public class ModerationEventRowViewModel
+internal sealed class ModerationEventRowViewModel
 {
     public Guid Id { get; set; }
     public string Title { get; set; } = string.Empty;
@@ -50,7 +50,7 @@ public class ModerationEventRowViewModel
     };
 }
 
-public class ModerationHistoryItemViewModel
+internal sealed class ModerationHistoryItemViewModel
 {
     public string ActorName { get; set; } = string.Empty;
     public EventModerationActionType Action { get; set; }
@@ -67,7 +67,7 @@ public class ModerationHistoryItemViewModel
     };
 }
 
-public class DuplicateCandidateViewModel
+internal sealed class DuplicateCandidateViewModel
 {
     public Guid Id { get; set; }
     public string Title { get; set; } = string.Empty;
@@ -76,7 +76,7 @@ public class DuplicateCandidateViewModel
     public EventStatus Status { get; set; }
 }
 
-public class ModerationActionFormModel
+internal sealed class ModerationActionFormModel
 {
     public Guid EventId { get; set; }
 
@@ -90,7 +90,7 @@ public class ModerationActionFormModel
 /// <see cref="IsCampEvent"/> drives which block renders. Saving preserves the
 /// event's status — see <see cref="Humans.Application.Interfaces.Events.IEventService.AdminUpdateAsync"/>.
 /// </summary>
-public class AdminEventFormViewModel
+internal sealed class AdminEventFormViewModel
 {
     public Guid Id { get; set; }
 

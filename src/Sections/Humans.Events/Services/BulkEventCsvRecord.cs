@@ -10,7 +10,7 @@ namespace Humans.Events.Services;
 /// <c>EventService.ValidateBulkRows</c> so per-row error messages can be
 /// collected instead of failing on the first bad cell.
 /// </summary>
-public sealed class BulkEventCsvRecord
+internal sealed class BulkEventCsvRecord
 {
     public string Id { get; set; } = string.Empty;
     public string Barrio { get; set; } = string.Empty;
@@ -35,7 +35,7 @@ public sealed class BulkEventCsvRecord
 /// <c>Barrio</c> and <c>Status</c> are informational on download and ignored on
 /// upload; <c>Id</c> is blank for new events.
 /// </summary>
-public sealed class BulkEventCsvRecordMap : ClassMap<BulkEventCsvRecord>
+internal sealed class BulkEventCsvRecordMap : ClassMap<BulkEventCsvRecord>
 {
     public BulkEventCsvRecordMap()
     {

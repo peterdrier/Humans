@@ -7,7 +7,7 @@ namespace Humans.Events.Domain;
 /// Append-only audit log of a moderation decision on a <see cref="Event"/>.
 /// No UPDATE or DELETE — query the latest action for current status.
 /// </summary>
-public class EventModerationAction
+internal sealed class EventModerationAction
 {
     /// <summary>
     /// Unique identifier.

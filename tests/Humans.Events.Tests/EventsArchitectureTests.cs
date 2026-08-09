@@ -73,17 +73,43 @@ public class EventsArchitectureTests
     }
 
     [HumansFact]
-    public void SectionControllers_ArePublic()
+    public void OnlySectionAndResourceArePublic()
     {
-        // ControllerFeatureProvider.IsController requires IsPublic, so an internal
-        // section controller builds green and 404s at runtime
-        // (memory/architecture/section-controllers-need-feature-provider.md).
+        // "Public means Section or Contracts/" (design §15 step 5). Everything else in the
+        // assembly is internal, including the controllers: Shell registers
+        // SectionControllerFeatureProvider, which relaxes MVC's IsPublic check for assemblies
+        // carrying [assembly: Section("…")], so internal controllers still route
+        // (memory/architecture/section-controllers-need-feature-provider.md — which says in
+        // as many words: do not "fix" a 404 by making the controller public).
+        // The section's cross-section surface is the separate Humans.Events.Contracts
+        // assembly, so nothing in *this* one needs to be visible outside it.
+        // Generated migration classes are emitted `public partial` by `dotnet ef` and are
+        // never hand-edited (memory/process/never-hand-edit-migrations); Store's BaselineStore
+        // is public for the same reason. They are excluded rather than internalized.
+        var publicTypes = typeof(Section).Assembly.GetExportedTypes()
+            .Where(t => !string.Equals(t.Namespace, "Humans.Events.Data.Migrations", StringComparison.Ordinal))
+            .Select(t => t.FullName)
+            .Order(StringComparer.Ordinal)
+            .ToList();
+
+        publicTypes.Should().BeEquivalentTo(
+            ["Humans.Events.EventsResource", "Humans.Events.Section"],
+            because: "a section exposes only its ISection entry point and its resource marker; "
+                   + "the resource marker is public because the boot localization diagnostic "
+                   + "discovers it via GetExportedTypes()");
+    }
+
+    [HumansFact]
+    public void SectionControllersAreInternal()
+    {
         var controllers = typeof(Section).Assembly.GetTypes()
             .Where(t => t.Name.EndsWith("Controller", StringComparison.Ordinal))
             .ToList();
 
         controllers.Should().NotBeEmpty();
-        controllers.Should().OnlyContain(t => t.IsPublic);
+        controllers.Should().OnlyContain(t => !t.IsPublic,
+            because: "SectionControllerFeatureProvider discovers internal controllers in section "
+                   + "assemblies; a public one would be nameable from any other section");
     }
 
     [HumansFact]

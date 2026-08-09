@@ -1,6 +1,6 @@
 namespace Humans.Events.Models;
 
-public class EventsDashboardViewModel
+internal sealed class EventsDashboardViewModel
 {
     public int TotalCount { get; set; }
     public int PendingCount { get; set; }
@@ -14,13 +14,13 @@ public class EventsDashboardViewModel
     public List<CampSubmissionRow> TopCamps { get; set; } = [];
 }
 
-public class DayCoverageRow
+internal sealed class DayCoverageRow
 {
     public string DayLabel { get; set; } = string.Empty;
     public int ApprovedCount { get; set; }
 }
 
-public class CategoryCoverageRow
+internal sealed class CategoryCoverageRow
 {
     public string CategoryName { get; set; } = string.Empty;
     public int SubmittedCount { get; set; }
@@ -29,7 +29,7 @@ public class CategoryCoverageRow
     public int RejectedCount { get; set; }
 }
 
-public class CampSubmissionRow
+internal sealed class CampSubmissionRow
 {
     public string CampName { get; set; } = string.Empty;
     public int SubmittedCount { get; set; }

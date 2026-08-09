@@ -8,7 +8,7 @@ namespace Humans.Events.Filters;
 /// Action filter that returns 404 when the Event Guide feature is disabled
 /// via the <c>Features:Events</c> configuration flag.
 /// </summary>
-public class EventsFeatureFilter(IConfiguration configuration) : IActionFilter
+internal sealed class EventsFeatureFilter(IConfiguration configuration) : IActionFilter
 {
     private readonly bool _enabled = configuration.GetValue<bool>("Features:Events");
 

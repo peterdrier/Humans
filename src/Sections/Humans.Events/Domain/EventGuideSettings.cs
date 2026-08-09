@@ -6,7 +6,7 @@ namespace Humans.Events.Domain;
 /// Event guide configuration for a single event edition.
 /// Links to <see cref="EventSettings"/> for shared date/timezone context.
 /// </summary>
-public class EventGuideSettings
+internal sealed class EventGuideSettings
 {
     /// <summary>
     /// Unique identifier.

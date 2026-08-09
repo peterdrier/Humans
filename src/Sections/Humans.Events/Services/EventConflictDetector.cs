@@ -7,7 +7,7 @@ namespace Humans.Events.Services;
 /// half-open [start, start + duration) interval intersection. Used by the
 /// personal-schedule conflict flags and the moderation duplicate-candidate scan.
 /// </summary>
-public static class EventConflictDetector
+internal static class EventConflictDetector
 {
     public static bool Overlaps(
         Instant aStartAt, int aDurationMinutes,

@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Humans.Events.Data.Configurations;
 
-public class EventModerationActionConfiguration : IEntityTypeConfiguration<EventModerationAction>
+internal sealed class EventModerationActionConfiguration : IEntityTypeConfiguration<EventModerationAction>
 {
     public void Configure(EntityTypeBuilder<EventModerationAction> builder)
     {

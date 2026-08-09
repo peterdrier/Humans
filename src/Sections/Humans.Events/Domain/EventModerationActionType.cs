@@ -3,7 +3,7 @@ namespace Humans.Events.Domain;
 /// <summary>
 /// Type of moderation action taken on a guide event submission.
 /// </summary>
-public enum EventModerationActionType
+internal enum EventModerationActionType
 {
     /// <summary>Event approved for publication.</summary>
     Approved = 0,

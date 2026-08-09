@@ -6,7 +6,7 @@ namespace Humans.Events.Domain;
 /// Links a user to a favourited <see cref="Event"/>.
 /// Deleted on unfavourite. Used to build the account-backed personal schedule.
 /// </summary>
-public class EventFavourite
+internal sealed class EventFavourite
 {
     /// <summary>
     /// Unique identifier.

@@ -4,7 +4,7 @@ namespace Humans.Events.Services.Dtos;
 /// A single parsed data row from a barrio bulk-upload CSV. <see cref="Id"/> is
 /// null for new events and set when editing an existing one.
 /// </summary>
-public sealed record BulkCsvRow(
+internal sealed record BulkCsvRow(
     int RowNumber,
     Guid? Id,
     string Title,
@@ -20,13 +20,13 @@ public sealed record BulkCsvRow(
     int PriorityRank);
 
 /// <summary>Per-row validation failure surfaced back to the uploader.</summary>
-public sealed record BulkImportRowError(int RowNumber, string Title, IReadOnlyList<string> Errors);
+internal sealed record BulkImportRowError(int RowNumber, string Title, IReadOnlyList<string> Errors);
 
 /// <summary>
 /// Outcome of a barrio bulk import. When <see cref="Errors"/> is non-empty the
 /// import was rejected wholesale and nothing was written.
 /// </summary>
-public sealed record BulkImportResult(
+internal sealed record BulkImportResult(
     IReadOnlyList<BulkImportRowError> Errors,
     int CreatedCount,
     int UpdatedCount)

@@ -21,7 +21,7 @@ namespace Humans.Events.Controllers;
 [Authorize(Policy = PolicyNames.EventsAdminOrAdmin)]
 [Route("Events/Moderate")]
 [ServiceFilter(typeof(EventsFeatureFilter))]
-public class EventsModerationController(
+internal sealed class EventsModerationController(
     IEventService guide,
     IUserServiceRead userService,
     ICampServiceRead camps,

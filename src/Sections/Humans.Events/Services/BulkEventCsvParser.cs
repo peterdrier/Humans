@@ -15,7 +15,7 @@ namespace Humans.Events.Services;
 /// <see cref="FormatException"/> with ALL row errors (real file row numbers)
 /// on malformed input.
 /// </summary>
-public static class BulkEventCsvParser
+internal static class BulkEventCsvParser
 {
     public static List<BulkCsvRow> Parse(string csvText)
     {

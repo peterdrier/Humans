@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Humans.Events.Data.Configurations;
 
-public class EventGuideSettingsConfiguration : IEntityTypeConfiguration<EventGuideSettings>
+internal sealed class EventGuideSettingsConfiguration : IEntityTypeConfiguration<EventGuideSettings>
 {
     public void Configure(EntityTypeBuilder<EventGuideSettings> builder)
     {
