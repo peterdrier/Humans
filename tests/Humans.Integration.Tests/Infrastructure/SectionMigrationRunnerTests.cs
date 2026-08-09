@@ -87,6 +87,31 @@ public sealed class SectionMigrationRunnerTests(HumansTestDatabase database)
             "store_orders",
             CreateSectionContext<StoreDbContext>,
             null),
+        new(
+            "Auth",
+            "role_assignments",
+            CreateSectionContext<AuthDbContext>,
+            null),
+        new(
+            "Email",
+            "email_outbox_messages",
+            CreateSectionContext<EmailDbContext>,
+            null),
+        new(
+            "Calendar",
+            "calendar_events",
+            CreateSectionContext<CalendarDbContext>,
+            null),
+        new(
+            "Notifications",
+            "notifications",
+            CreateSectionContext<NotificationsDbContext>,
+            null),
+        new(
+            "Issues",
+            "issues",
+            CreateSectionContext<IssuesDbContext>,
+            null),
     ];
 
     [HumansFact]

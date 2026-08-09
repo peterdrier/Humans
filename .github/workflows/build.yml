@@ -33,6 +33,11 @@ env:
     FinanceDbContext:src/Humans.Infrastructure
     SurveysDbContext:src/Humans.Infrastructure
     EventGuideDbContext:src/Humans.Infrastructure
+    AuthDbContext:src/Humans.Infrastructure
+    EmailDbContext:src/Humans.Infrastructure
+    CalendarDbContext:src/Humans.Infrastructure
+    NotificationsDbContext:src/Humans.Infrastructure
+    IssuesDbContext:src/Humans.Infrastructure
     StoreDbContext:src/Sections/Humans.Store
 
 jobs:
