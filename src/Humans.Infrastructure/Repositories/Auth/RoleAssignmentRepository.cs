@@ -11,9 +11,9 @@ namespace Humans.Infrastructure.Repositories.Auth;
 /// only non-test file that writes to <c>DbContext.RoleAssignments</c> after
 /// the Auth migration lands.
 /// Uses <see cref="IDbContextFactory{TContext}"/> so the repository can be
-/// registered as Singleton while <c>HumansDbContext</c> remains Scoped.
+/// registered as Singleton while <c>AuthDbContext</c> remains Scoped.
 /// </summary>
-internal sealed class RoleAssignmentRepository(IDbContextFactory<HumansDbContext> factory) : IRoleAssignmentRepository
+internal sealed class RoleAssignmentRepository(IDbContextFactory<AuthDbContext> factory) : IRoleAssignmentRepository
 {
     // ==========================================================================
     // Reads

@@ -69,6 +69,7 @@ public class MergeAsyncFullFixtureTests(HumansTestDatabase database) : Integrati
         // Assert — all six post-conditions from the EmailProblems spec case 5.
         await using var assertScope = Factory.Services.CreateAsyncScope();
         var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var authDb = assertScope.ServiceProvider.GetRequiredService<AuthDbContext>();
 
         // ----------------------------------------------------------------
         // Post-condition 1: exactly one UserEmail row per normalized email.
@@ -143,7 +144,7 @@ public class MergeAsyncFullFixtureTests(HumansTestDatabase database) : Integrati
                     && tm.LeftAt == null, TestContext.Current.CancellationToken))
             .Should().BeTrue("source-only team membership must be re-FK'd to target");
 
-        (await db.RoleAssignments.AsNoTracking()
+        (await authDb.RoleAssignments.AsNoTracking()
                 .AnyAsync(ra => ra.UserId == targetId && ra.RoleName == sourceOnlyRole, TestContext.Current.CancellationToken))
             .Should().BeTrue("source-only role assignment must be re-FK'd to target");
     }
@@ -156,7 +157,7 @@ public class MergeAsyncFullFixtureTests(HumansTestDatabase database) : Integrati
     {
         await using var scope = Factory.Services.CreateAsyncScope();
         var um = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
-        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var authDb = scope.ServiceProvider.GetRequiredService<AuthDbContext>();
         var now = SystemClock.Instance.GetCurrentInstant();
 
         var adminId = Guid.NewGuid();
@@ -176,7 +177,7 @@ public class MergeAsyncFullFixtureTests(HumansTestDatabase database) : Integrati
                 + string.Join("; ", result.Errors.Select(e => e.Description)));
         }
 
-        db.RoleAssignments.Add(new RoleAssignment
+        authDb.RoleAssignments.Add(new RoleAssignment
         {
             Id = Guid.NewGuid(),
             UserId = adminId,
@@ -186,7 +187,7 @@ public class MergeAsyncFullFixtureTests(HumansTestDatabase database) : Integrati
             CreatedAt = now,
             CreatedByUserId = adminId,
         });
-        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        await authDb.SaveChangesAsync(TestContext.Current.CancellationToken);
         return adminId;
     }
 }

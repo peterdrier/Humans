@@ -13,9 +13,9 @@ namespace Humans.Infrastructure.Repositories.Issues;
 /// non-test file that touches <c>DbContext.Issues</c> or
 /// <c>DbContext.IssueComments</c>. Uses <see cref="IDbContextFactory{TContext}"/>
 /// so the repository can be registered as Singleton while
-/// <c>HumansDbContext</c> remains Scoped.
+/// <c>IssuesDbContext</c> remains Scoped.
 /// </summary>
-internal sealed class IssuesRepository(IDbContextFactory<HumansDbContext> factory) : IIssuesRepository
+internal sealed class IssuesRepository(IDbContextFactory<IssuesDbContext> factory) : IIssuesRepository
 {
     public async Task AddIssueAsync(Issue issue, CancellationToken ct = default)
     {

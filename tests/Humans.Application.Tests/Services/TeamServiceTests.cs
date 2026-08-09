@@ -46,7 +46,7 @@ public sealed class TeamServiceTests : ServiceTestHarness
     public TeamServiceTests()
     {
         _roleAssignmentService = new RoleAssignmentService(
-            new RoleAssignmentRepository(DbFactory),
+            new RoleAssignmentRepository(AuthDbFactory),
             Substitute.For<IUserService>(),
             AuditLog,
             Notifier,

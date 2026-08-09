@@ -14,21 +14,21 @@ namespace Humans.Application.Tests.Notifications;
 
 public class CleanupNotificationsJobTests : IDisposable
 {
-    private readonly HumansDbContext _dbContext;
+    private readonly NotificationsDbContext _dbContext;
     private readonly FakeClock _clock;
     private readonly CleanupNotificationsJob _job;
 
     public CleanupNotificationsJobTests()
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
+        var options = new DbContextOptionsBuilder<NotificationsDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
 
-        _dbContext = new HumansDbContext(options);
+        _dbContext = new NotificationsDbContext(options);
         _clock = new FakeClock(Instant.FromUtc(2026, 4, 10, 12, 0));
 
         var metrics = TestMetrics.Create();
-        var repo = new NotificationRepository(new TestDbContextFactory(options));
+        var repo = new NotificationRepository(new TestDbContextFactory<NotificationsDbContext>(options));
         _job = new CleanupNotificationsJob(repo, _clock, metrics, NullLogger<CleanupNotificationsJob>.Instance);
     }
 

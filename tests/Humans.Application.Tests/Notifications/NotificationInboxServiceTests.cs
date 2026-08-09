@@ -16,26 +16,34 @@ namespace Humans.Application.Tests.Notifications;
 
 public class NotificationInboxServiceTests : IDisposable
 {
-    private readonly HumansDbContext _dbContext;
+    private readonly NotificationsDbContext _dbContext;
     private readonly FakeClock _clock;
     private readonly IMemoryCache _cache;
     private readonly NotificationRepository _repo;
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly NotificationInboxService _service;
+    private readonly HumansDbContext _usersDb;
     private readonly Guid _userId = Guid.NewGuid();
 
     public NotificationInboxServiceTests()
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
+        var options = new DbContextOptionsBuilder<NotificationsDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
 
-        _dbContext = new HumansDbContext(options);
+        _dbContext = new NotificationsDbContext(options);
         _clock = new FakeClock(Instant.FromUtc(2026, 4, 1, 12, 0));
         _cache = new MemoryCache(new MemoryCacheOptions());
-        _repo = new NotificationRepository(new TestDbContextFactory(options));
+        _repo = new NotificationRepository(new TestDbContextFactory<NotificationsDbContext>(options));
 
-        _userService.StubGetUserInfosFromContext(_dbContext);
+        // The inbox stitches display names from users, which stay on the main
+        // pile after the Notifications peel (nobodies-collective/Humans#858).
+        // No test here seeds a user, so an empty context is enough.
+        _usersDb = new HumansDbContext(
+            new DbContextOptionsBuilder<HumansDbContext>()
+                .UseInMemoryDatabase(Guid.NewGuid().ToString())
+                .Options);
+        _userService.StubGetUserInfosFromContext(_usersDb);
 
         _service = new NotificationInboxService(_repo, _userService, _clock, _cache);
     }
@@ -43,6 +51,7 @@ public class NotificationInboxServiceTests : IDisposable
     public void Dispose()
     {
         _dbContext.Dispose();
+        _usersDb.Dispose();
         _cache.Dispose();
         GC.SuppressFinalize(this);
     }

@@ -9,11 +9,11 @@ namespace Humans.Infrastructure.Repositories.Notifications;
 
 /// <summary>
 /// EF-backed implementation of <see cref="INotificationRepository"/>. The
-/// only non-test file that touches <see cref="HumansDbContext.Notifications"/>
-/// and <see cref="HumansDbContext.NotificationRecipients"/> after the
+/// only non-test file that touches <see cref="NotificationsDbContext.Notifications"/>
+/// and <see cref="NotificationsDbContext.NotificationRecipients"/> after the
 /// Notifications §15 migration lands. Uses
 /// <see cref="IDbContextFactory{TContext}"/> so the repository can be
-/// registered as Singleton while <c>HumansDbContext</c> remains Scoped.
+/// registered as Singleton while <c>NotificationsDbContext</c> remains Scoped.
 /// </summary>
 /// <remarks>
 /// Read methods deliberately do not <c>.Include</c> cross-domain user data
@@ -22,7 +22,7 @@ namespace Humans.Infrastructure.Repositories.Notifications;
 /// display names through <c>IUserService</c> and stitch results in memory,
 /// preserving table ownership (§2c) and eliminating cross-domain joins (§6).
 /// </remarks>
-internal sealed class NotificationRepository(IDbContextFactory<HumansDbContext> factory) : INotificationRepository
+internal sealed class NotificationRepository(IDbContextFactory<NotificationsDbContext> factory) : INotificationRepository
 {
     // ==========================================================================
     // Writes — notifications

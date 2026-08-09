@@ -11,18 +11,18 @@ namespace Humans.Application.Tests.Notifications;
 
 public class NotificationRepositoryTests : IDisposable
 {
-    private readonly HumansDbContext _dbContext;
+    private readonly NotificationsDbContext _dbContext;
     private readonly NotificationRepository _repo;
     private readonly Instant _now = Instant.FromUtc(2026, 4, 10, 12, 0);
 
     public NotificationRepositoryTests()
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
+        var options = new DbContextOptionsBuilder<NotificationsDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
 
-        _dbContext = new HumansDbContext(options);
-        _repo = new NotificationRepository(new TestDbContextFactory(options));
+        _dbContext = new NotificationsDbContext(options);
+        _repo = new NotificationRepository(new TestDbContextFactory<NotificationsDbContext>(options));
     }
 
     public void Dispose()

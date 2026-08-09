@@ -20,6 +20,7 @@ namespace Humans.Application.Tests.Notifications;
 public class NotificationServiceTests : IDisposable
 {
     private readonly HumansDbContext _dbContext;
+    private readonly NotificationsDbContext _notificationsDb;
     private readonly FakeClock _clock;
     private readonly IMemoryCache _cache;
     private readonly NotificationRepository _repo;
@@ -34,9 +35,18 @@ public class NotificationServiceTests : IDisposable
             .Options;
 
         _dbContext = new HumansDbContext(options);
+
+        // notifications/notification_recipients live in NotificationsDbContext
+        // since the Notifications peel (nobodies-collective/Humans#858);
+        // communication_preferences stays on the main pile.
+        var notificationsOptions = new DbContextOptionsBuilder<NotificationsDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+
+        _notificationsDb = new NotificationsDbContext(notificationsOptions);
         _clock = new FakeClock(Instant.FromUtc(2026, 4, 1, 12, 0));
         _cache = new MemoryCache(new MemoryCacheOptions());
-        _repo = new NotificationRepository(new TestDbContextFactory(options));
+        _repo = new NotificationRepository(new TestDbContextFactory<NotificationsDbContext>(notificationsOptions));
 
         // Delegate to in-memory DB so seeded preferences are respected.
         _preferenceService.GetUsersWithInboxDisabledAsync(
@@ -63,6 +73,7 @@ public class NotificationServiceTests : IDisposable
     public void Dispose()
     {
         _dbContext.Dispose();
+        _notificationsDb.Dispose();
         _cache.Dispose();
         GC.SuppressFinalize(this);
     }
@@ -82,7 +93,7 @@ public class NotificationServiceTests : IDisposable
             body: "You were added to Logistics",
             actionUrl: "/Teams/logistics", cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
-        var notifications = await _dbContext.Notifications
+        var notifications = await _notificationsDb.Notifications
             .Include(n => n.Recipients)
             .ToListAsync(Xunit.TestContext.Current.CancellationToken);
 
@@ -114,7 +125,7 @@ public class NotificationServiceTests : IDisposable
             actionLabel: "Find cover →",
             targetGroupName: "Coordinators", cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
-        var notification = await _dbContext.Notifications.SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        var notification = await _notificationsDb.Notifications.SingleAsync(Xunit.TestContext.Current.CancellationToken);
         notification.ActionLabel.Should().Be("Find cover →");
         notification.TargetGroupName.Should().Be("Coordinators");
     }
@@ -129,7 +140,7 @@ public class NotificationServiceTests : IDisposable
             "Test",
             [], cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
-        var count = await _dbContext.Notifications.CountAsync(Xunit.TestContext.Current.CancellationToken);
+        var count = await _notificationsDb.Notifications.CountAsync(Xunit.TestContext.Current.CancellationToken);
         count.Should().Be(0);
     }
 
@@ -156,7 +167,7 @@ public class NotificationServiceTests : IDisposable
             "Added to team",
             [userId], cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
-        var count = await _dbContext.Notifications.CountAsync(Xunit.TestContext.Current.CancellationToken);
+        var count = await _notificationsDb.Notifications.CountAsync(Xunit.TestContext.Current.CancellationToken);
         count.Should().Be(0);
     }
 
@@ -183,7 +194,7 @@ public class NotificationServiceTests : IDisposable
             "Consent review needed",
             [userId], cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
-        var count = await _dbContext.Notifications.CountAsync(Xunit.TestContext.Current.CancellationToken);
+        var count = await _notificationsDb.Notifications.CountAsync(Xunit.TestContext.Current.CancellationToken);
         count.Should().Be(1);
     }
 
@@ -204,7 +215,7 @@ public class NotificationServiceTests : IDisposable
             "Board",
             actionUrl: "/Governance/BoardVoting", cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
-        var notifications = await _dbContext.Notifications
+        var notifications = await _notificationsDb.Notifications
             .Include(n => n.Recipients)
             .ToListAsync(Xunit.TestContext.Current.CancellationToken);
 

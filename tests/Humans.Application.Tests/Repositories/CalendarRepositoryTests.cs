@@ -12,21 +12,21 @@ namespace Humans.Application.Tests.Repositories;
 /// Repository tests for <see cref="CalendarRepository"/> — verify the EF-backed
 /// implementation reads/writes <c>calendar_events</c> and
 /// <c>calendar_event_exceptions</c> correctly through
-/// <see cref="IDbContextFactory{HumansDbContext}"/>, with no cross-domain
+/// <see cref="IDbContextFactory{CalendarDbContext}"/>, with no cross-domain
 /// <c>.Include()</c>.
 /// </summary>
 public sealed class CalendarRepositoryTests : IDisposable
 {
-    private readonly HumansDbContext _dbContext;
+    private readonly CalendarDbContext _dbContext;
     private readonly CalendarRepository _repo;
 
     public CalendarRepositoryTests()
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
+        var options = new DbContextOptionsBuilder<CalendarDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
-        _dbContext = new HumansDbContext(options);
-        _repo = new CalendarRepository(new TestDbContextFactory(options));
+        _dbContext = new CalendarDbContext(options);
+        _repo = new CalendarRepository(new TestDbContextFactory<CalendarDbContext>(options));
     }
 
     public void Dispose()

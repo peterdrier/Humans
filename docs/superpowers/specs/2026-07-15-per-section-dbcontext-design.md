@@ -322,6 +322,13 @@ Order (criteria: navs = 0 for all, so ranked by table count, then seeds/PK quirk
 | 7 | `858/07-eventguide` | EventGuide | 7 | `HasData` (8 seed rows) |
 | — | *(deferred)* | Gate | 3 | **§5.1 wall**: `AdminEnrolled` physical default not in model |
 | — | *(deferred)* | Store | 6 | **§5.1 wall**: `Year` physical default not in model |
+| 8 | `track-b` | Auth, Email, Calendar, Notifications, Issues | 8 | **Five per PR.** Batching is safe once a section has its own snapshot — the shared-snapshot conflict that justified one-at-a-time no longer applies. One combined snapshot-only removal migration on `HumansDbContext` |
+
+Both §5.1 walls came down with `20260802203816_RealignScaffoldedPhysicalDefaults` (all 31 scaffolded
+defaults dropped); `PhysicalDefaultParityTests` enforces the parity from here on, so §5.1 is no
+longer a per-section gate. The peel-8 batch was picked against the §3.1 criteria re-derived from
+code after nobodies-collective/Humans#992 cut the cross-section FK constraints — see §10.1 for what
+that audit found still standing.
 
 Each peel PR (branch `858/NN-<section>` off the previous branch; PR base = previous branch):
 
@@ -394,6 +401,22 @@ navs marked ★, the rest are nav-less physical constraints:
 - **AuditLog → Users/GoogleIntegration** (2): AuditLogEntry → User, ★ → GoogleResource (the
   only horizontal→vertical model reference in the codebase; highest-priority drain item).
 - **Calendar → Teams** (1): CalendarEvent★.
+
+### 10.1 Re-audit after #992 (2026-08-09, peel 8)
+
+Measured from `HumansDbContextModelSnapshot.cs` after nobodies-collective/Humans#992 and the nav
+removals in peterdrier#1188/#1225. **Five cross-section model relationships remain** — the drain is
+otherwise done:
+
+- **Profiles → Users** (4): `Profile`, `UserEmail`, `CommunicationPreference`, `AccountMergeRequest`.
+- **Shifts → Users** (1): `EventParticipation`.
+
+They block only the Profiles and Shifts peels; every other main-pile section is now
+relationship-clean. Two sections are blocked by a different wall instead — **Legal**
+(`prevent_consent_record_modification`) and **AuditLog** (`prevent_audit_log_modification`) carry
+plpgsql immutability triggers that exist only as raw SQL in the old chain and in no model, so a
+model-generated baseline would silently omit them. That is the §5 "non-candidate future note", now
+the last structural obstruction besides the five relationships above.
 
 Unblock order fallout: Tickets, Notifications, Legal, Governance, Auth, Issues, Feedback, Calendar,
 Budget, Campaigns, Email, CityPlanning become peelable as their outbound sets drain (most only

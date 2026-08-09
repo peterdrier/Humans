@@ -32,6 +32,15 @@ public abstract class ServiceTestHarness : IDisposable
     private protected DbContextOptions<HumansDbContext> DbOptions { get; }
     private protected HumansDbContext Db { get; }
     private protected TestDbContextFactory DbFactory { get; }
+
+    /// <summary>
+    /// Auth's <c>role_assignments</c> moved to <see cref="AuthDbContext"/> with
+    /// the Auth peel (nobodies-collective/Humans#858), so
+    /// <see cref="SeedRoleAssignment"/> and every repository that reads the
+    /// table go through this context rather than <see cref="Db"/>.
+    /// </summary>
+    private protected AuthDbContext AuthDb { get; }
+    private protected TestDbContextFactory<AuthDbContext> AuthDbFactory { get; }
     private protected FakeClock Clock { get; }
     private protected IMemoryCache Cache { get; } = new MemoryCache(new MemoryCacheOptions());
 
@@ -56,6 +65,11 @@ public abstract class ServiceTestHarness : IDisposable
             .Options;
         Db = new HumansDbContext(DbOptions);
         DbFactory = new TestDbContextFactory(DbOptions);
+
+        var authDbOptions = NewSectionDbOptions<AuthDbContext>();
+        AuthDb = new AuthDbContext(authDbOptions);
+        AuthDbFactory = new TestDbContextFactory<AuthDbContext>(authDbOptions);
+
         Clock = new FakeClock(now ?? Instant.FromUtc(2026, 3, 1, 12, 0));
     }
 
@@ -76,6 +90,7 @@ public abstract class ServiceTestHarness : IDisposable
     {
         Cache.Dispose();
         Db.Dispose();
+        AuthDb.Dispose();
         GC.SuppressFinalize(this);
     }
 
@@ -188,7 +203,12 @@ public abstract class ServiceTestHarness : IDisposable
             CreatedAt = Clock.GetCurrentInstant(),
             CreatedByUserId = Guid.NewGuid()
         };
-        Db.RoleAssignments.Add(ra);
+        // Unlike the Db seeders above, this one saves: role_assignments sits in
+        // its own context since the Auth peel, so callers' `Db.SaveChangesAsync()`
+        // would never reach it, and the row has no ordering dependency on
+        // anything staged in Db.
+        AuthDb.RoleAssignments.Add(ra);
+        AuthDb.SaveChanges();
         return ra;
     }
 
