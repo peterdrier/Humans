@@ -13,7 +13,7 @@ using ProfilesAccountMergeService = Humans.Application.Services.Users.AccountMer
 using UsersUserService = Humans.Application.Services.Users.UserService;
 using AuditLogService = Humans.Application.Services.AuditLog.AuditLogService;
 using CampService = Humans.Application.Services.Camps.CampService;
-using EventService = Humans.Application.Services.Events.EventService;
+using EventService = Humans.Events.Services.EventService;
 using FeedbackService = Humans.Application.Services.Feedback.FeedbackService;
 using IssuesService = Humans.Application.Services.Issues.IssuesService;
 using RoleAssignmentService = Humans.Application.Services.Auth.RoleAssignmentService;
@@ -110,14 +110,19 @@ public class GdprExportDependencyInjectionTests
     [HumansFact]
     public void EveryIUserDataContributorInInfrastructureIsExpected()
     {
-        // Scan both assemblies where section services live: Humans.Infrastructure
-        // still holds most of them, and Humans.Application is the new target
-        // location per the repository/store/decorator migration — the first
-        // such move is ApplicationDecisionService (Governance, PR #503).
+        // Scan every assembly where section services live: Humans.Infrastructure
+        // still holds most of them, Humans.Application is the intermediate target
+        // per the repository/store/decorator migration (first move:
+        // ApplicationDecisionService, Governance PR #503), and each G5 section
+        // project (nobodies-collective/Humans#866) holds its own. The section
+        // assemblies come from SectionDiscoveryExtensions — the same discovery the
+        // runtime uses, so a section that moves cannot silently drop out of this
+        // sweep the way it would with a hard-coded assembly list (design §10).
         var infrastructureAssembly = typeof(Humans.Infrastructure.Data.HumansDbContext).Assembly;
         var applicationAssembly = typeof(ApplicationDecisionService).Assembly;
 
         var foundContributors = new[] { infrastructureAssembly, applicationAssembly }
+            .Concat(Web.Extensions.SectionDiscoveryExtensions.SectionAssemblies())
             .SelectMany(asm => asm.GetTypes())
             .Where(t => t is { IsClass: true, IsAbstract: false })
             .Where(t => typeof(IUserDataContributor).IsAssignableFrom(t))

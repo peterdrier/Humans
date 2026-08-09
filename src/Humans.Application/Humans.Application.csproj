@@ -13,6 +13,8 @@
       depending on it does not cycle (memory/architecture/section-project-cycle-fix.md).
     -->
     <ProjectReference Include="..\Sections\Humans.SystemSettings.Contracts\Humans.SystemSettings.Contracts.csproj" />
+    <!-- Events' contracts leaf: SearchService calls IEventServiceRead. -->
+    <ProjectReference Include="..\Sections\Humans.Events.Contracts\Humans.Events.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

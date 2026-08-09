@@ -4,6 +4,7 @@ using Humans.Application.Interfaces.Camps;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Humans.UI.Authorization;
 using Humans.Web.Authorization.Requirements;
 using Microsoft.AspNetCore.Authorization;
 using NSubstitute;

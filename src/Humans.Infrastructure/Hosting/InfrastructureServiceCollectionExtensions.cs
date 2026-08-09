@@ -49,7 +49,6 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSectionDbContext<ExpensesDbContext>(sentinelTable: "expense_reports");
         services.AddSectionDbContext<FinanceDbContext>(sentinelTable: "holded_expense_docs");
         services.AddSectionDbContext<SurveysDbContext>(sentinelTable: "surveys");
-        services.AddSectionDbContext<EventGuideDbContext>(sentinelTable: "events");
 
         services.AddHostedService<DatabaseMigrationHostedService>();
 

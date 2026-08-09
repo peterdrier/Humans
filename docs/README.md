@@ -6,7 +6,7 @@ Business requirements, user stories, data model, and workflows for each feature 
 
 | Document | Description |
 |----------|-------------|
-| [Event Guide Management](features/26-events.md) | Submission, moderation, and publication of camp and individual events for the digital and print event guide |
+| [Event Guide Management](../src/Sections/Humans.Events/Docs/Events-feature.md) | Submission, moderation, and publication of camp and individual events for the digital and print event guide |
 | [In-App Guide Browser](features/27-guide-browser.md) | Read-only `/Events/Browse` view letting logged-in humans discover, filter, favourite, and schedule approved events without leaving Humans |
 | [Google Group Membership Sync](features/43-google-group-membership-sync.md) | Expected-state reconciliation of Google Group memberships from `IGoogleGroupMembershipSource` plugins, with daily and scoped retry passes |
 | [Volunteer Tracking](features/47-volunteer-tracking.md) | `/ShiftDashboard/VolunteerTracking` heatmap surfacing build-period gaps and declared-but-unbooked volunteers for the VC |
@@ -96,7 +96,7 @@ Terse, authoritative invariant docs for each major section: concepts, data model
 | [Containers](sections/Containers.md) | Physical shipping containers managed per-barrio or at org level, placed on the City Planning map |
 | [Debug](sections/Debug.md) | Developer/diagnostics section: admin-only pages exposing operational insight (client demographics, request health) that no domain section owns — owns no tables |
 | [Email](sections/Email.md) | Transactional email outbox: queue, render, deliver, retry, and pause/resume — backs campaign sends, onboarding, shift, and feedback emails |
-| [Events](sections/Events.md) | Event programming: submission, moderation, browsing, export, and preference management for festival events |
+| [Events](../src/Sections/Humans.Events/Docs/Events.md) | Event programming: submission, moderation, browsing, export, and preference management for festival events |
 | [Expenses](sections/Expenses.md) | Expense reports submitted by members and approved by Finance Admin; approval books into Holded async, and paid/unpaid status is read back from the member's Holded creditor ledger rather than stamped on the report — payment itself happens externally, with no SEPA-file generation in the app |
 | [Feedback](sections/Feedback.md) | Retired — closed to new reports and Admin-only; the historical archive of in-app reports (bugs, feature requests, questions) with screenshots and conversation threads |
 | [Finance](sections/Finance.md) | Treasurer's reality side of money — actuals, reconciliation, and treasurer-facing operational data sharing keys with Budget |

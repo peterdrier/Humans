@@ -7,9 +7,6 @@
 # When the test reports new violations, fix the code — do not add lines to silence it.
 
 Humans.Application.Interfaces.Auth.IMagicLinkService.FindUserByVerifiedEmailAsync:Humans.Domain.Entities.User
-Humans.Application.Interfaces.Events.IEventService.GetCampEventAsync:Humans.Domain.Entities.Event
-Humans.Application.Interfaces.Events.IEventService.GetEventForModerationAsync:Humans.Domain.Entities.Event
-Humans.Application.Interfaces.Events.IEventService.GetUserEventAsync:Humans.Domain.Entities.Event
 Humans.Application.Interfaces.Shifts.IShiftManagementService.GetActiveAsync:Humans.Domain.Entities.EventSettings
 Humans.Application.Interfaces.Shifts.IShiftManagementService.GetBrowseShiftsAsync:Humans.Domain.Entities.Shift
 Humans.Application.Interfaces.Shifts.IShiftManagementService.GetByIdAsync:Humans.Domain.Entities.EventSettings

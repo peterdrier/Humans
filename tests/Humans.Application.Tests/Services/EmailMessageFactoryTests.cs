@@ -5,6 +5,7 @@ using Humans.Domain.Constants;
 using Humans.Domain.Enums;
 using NSubstitute;
 using NSubstitute.Extensions;
+using Humans.Events.Contracts;
 
 namespace Humans.Application.Tests.Services;
 

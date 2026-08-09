@@ -32,7 +32,7 @@ env:
     ExpensesDbContext:src/Humans.Infrastructure
     FinanceDbContext:src/Humans.Infrastructure
     SurveysDbContext:src/Humans.Infrastructure
-    EventGuideDbContext:src/Humans.Infrastructure
+    EventGuideDbContext:src/Sections/Humans.Events
     StoreDbContext:src/Sections/Humans.Store
 
 jobs:

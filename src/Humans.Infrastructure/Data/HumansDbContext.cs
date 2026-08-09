@@ -110,7 +110,6 @@ internal sealed class HumansDbContext(DbContextOptions<HumansDbContext> options)
         typeof(Configurations.Expenses.ExpenseReportConfiguration).Namespace!,
         typeof(Configurations.Finance.HoldedExpenseDocConfiguration).Namespace!,
         typeof(Configurations.Surveys.SurveyConfiguration).Namespace!,
-        typeof(Configurations.EventGuide.EventConfiguration).Namespace!,
     ];
 
     protected override void OnModelCreating(ModelBuilder builder)

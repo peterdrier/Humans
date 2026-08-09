@@ -2,7 +2,7 @@ using Humans.Application.DTOs;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Consent;
 using Humans.Application.Interfaces.EarlyEntry;
-using Humans.Application.Interfaces.Events;
+using Humans.Events.Contracts;
 using Humans.Application.Interfaces.ICalFeed;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Tickets;

@@ -1,5 +1,7 @@
 using Humans.Domain.Enums;
 
+using Humans.Events.Contracts;
+
 namespace Humans.Application.Interfaces.Email;
 
 /// <summary>

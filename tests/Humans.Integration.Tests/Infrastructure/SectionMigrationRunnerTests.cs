@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Npgsql;
 using Xunit;
+using Humans.Events.Data;
 
 namespace Humans.Integration.Tests.Infrastructure;
 

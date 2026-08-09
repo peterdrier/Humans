@@ -28,7 +28,6 @@ public class ServiceBoundaryArchitectureTests
             [typeof(IConsentRepository)] = "Consent",
             [typeof(IContainerRepository)] = "Containers",
             [typeof(IEmailOutboxRepository)] = "Email",
-            [typeof(IEventRepository)] = "Events",
             [typeof(IExpenseRepository)] = "Expenses",
             [typeof(IFeedbackRepository)] = "Feedback",
             [typeof(IGateRepository)] = "Gate",

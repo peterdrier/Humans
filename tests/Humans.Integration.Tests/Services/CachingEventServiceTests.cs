@@ -1,12 +1,13 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces.Events;
+using Humans.Events.Services;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Services.Events;
+using Humans.Events.Contracts;
 using Humans.Integration.Tests.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using Xunit;
+using Humans.Events.Domain;
 
 namespace Humans.Integration.Tests.Services;
 
