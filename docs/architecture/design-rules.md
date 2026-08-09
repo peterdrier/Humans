@@ -484,7 +484,7 @@ Some entities are append-only. They have database triggers or application-level 
 | Entity | Table | Constraint |
 |--------|-------|------------|
 | `ConsentRecord` | `consent_records` | DB triggers block UPDATE and DELETE |
-| `AuditLogEntry` | `audit_log_entries` | Append-only by convention |
+| `AuditLogEntry` | `audit_log` | DB triggers block UPDATE and DELETE |
 | `BudgetAuditLog` | `budget_audit_logs` | Append-only by convention |
 | `CampPolygonHistory` | `camp_polygon_histories` | Append-only by convention |
 | `ApplicationStateHistory` | `application_state_histories` | Append-only by convention |
