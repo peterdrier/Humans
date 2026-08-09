@@ -24,10 +24,15 @@ and are not this document's subject.
 >   deleting the camp. Accepted as recorded orphans: `email_outbox_messages.ShiftSignupId`
 >   and `.CampaignGrantId`, `audit_log.ActorUserId` (the cut *fixes* the trigger/`SET NULL`
 >   contradiction described below) and `audit_log.ResourceId` (no delete path).
->   Deferred with an issue, not silently: the eight `Team` rows and the seeder-side cleanup
->   for the 42 `User`-targeting actions, neither of which is reachable outside the
->   dev-dashboard reset today, plus the both-doors delete guard from *Follow-up worth filing*.
->   See nobodies-collective/Humans#1009.
+>   **No replacement, by decision (Peter, 2026-08-09):** the eight `Team` rows and the 42
+>   `User`-targeting actions. Permanently deleting a team does not happen —
+>   `PermanentlyDeleteTeamAsync` is dev-only surface — and neither does hard-deleting a user,
+>   so none of those orphans is reachable. When a real delete path is wanted, the shape is an
+>   **`IDeleteUser` fanout**: sections with rows to remove implement it, mirroring the existing
+>   `IUserDataContributor` / `IUserMerge` pair on `IFanout`. What each would have to clean up
+>   is recorded in nobodies-collective/Humans#1009 so it does not have to be re-derived. This
+>   supersedes the *Follow-up worth filing* section below, which proposed an analyzer over both
+>   hard-delete doors: the fanout is the mechanism, not a guard against adding one.
 >
 > **The migration is one-way in practice, and that follows from the `audit_log.ActorUserId`
 > decision.** `Down()` re-adds all 54 constraints, and Postgres validates existing rows when it
