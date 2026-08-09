@@ -223,4 +223,43 @@ public class RequestScopedCancellationOnExternalWriteAnalyzerTests
 
         diagnostics.Should().NotContain(d => IsHum0033(d));
     }
+
+    [HumansFact]
+    public async Task Fires_inside_a_section_assembly()
+    {
+        // Assembly attributes must precede every declaration in the file, so this
+        // test composes its own source instead of going through RunAsync's
+        // Stubs-first concatenation.
+        const string Source = """
+            [assembly: Humans.Domain.Attributes.Section("Store")]
+
+            namespace Humans.Domain.Attributes
+            {
+                public sealed class SectionAttribute : System.Attribute
+                {
+                    public SectionAttribute(string name) { Name = name; }
+                    public string Name { get; }
+                }
+            }
+
+            namespace Humans.Store.Controllers
+            {
+                public sealed class StoreController : Microsoft.AspNetCore.Mvc.ControllerBase
+                {
+                    private readonly Humans.Application.Interfaces.ISyncService _sync = null!;
+
+                    [Microsoft.AspNetCore.Mvc.HttpPost]
+                    public System.Threading.Tasks.Task Execute() =>
+                        _sync.SyncAsync(HttpContext.RequestAborted);
+                }
+            }
+            """;
+
+        var diagnostics = await AnalyzerTestHarness.RunAsync(
+            new RequestScopedCancellationOnExternalWriteAnalyzer(),
+            "Humans.Store",
+            Source + Stubs);
+
+        diagnostics.Should().ContainSingle(d => IsHum0033(d));
+    }
 }
