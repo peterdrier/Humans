@@ -1378,10 +1378,22 @@ fake-applied in prod/QA/previews). `Humans.UI` exists. Fan-in known: run `reforg
 references before starting; a section with many inbound section references is a knot, goes later,
 and may need `<Section>.Contracts`.
 
-**Before you start — the five searches that cost time if skipped.** Each one caught a silent
-failure in the pilot. Substitute the section name for `<Section>`; run them as separate lines, never
-chained with `&&`, since a search that finds nothing is the *good* outcome and would kill the rest
-of the chain.
+**Before you start — read the controller, do not assume it.** The most expensive thing A2 found was
+not in any grep: `FinanceController` was 31 actions and **23 of them were Budget CRUD**. A section's
+controller is the one file whose name most reliably lies about what it contains, because route
+prefixes accrete pages from whatever team needed a URL. Go through the action list and ask, per
+action, *which section's tables does this write*. If the answer is mostly "not this one", the
+controller splits before the section moves — keeping the `[Route]` prefix on both halves so no URL
+changes — and the section takes only its own actions and their views. Moving the whole class instead
+drags the other section's service dependencies and view models into your section and forces some of
+them down into Base to stay reachable, all to be undone at that section's own G5. `/Admin/*` is
+already documented as a nav holder rather than a section; `/Finance` turned out to be the same shape
+without saying so, and it will not be the last.
+
+**Then the six searches that cost time if skipped.** Each one caught a silent
+failure in the pilot or in A1/A2. Substitute the section name for `<Section>`; run them as separate
+lines, never chained with `&&`, since a search that finds nothing is the *good* outcome and would
+kill the rest of the chain.
 
 ```bash
 # what actually exists to move (§7a)
@@ -1390,7 +1402,12 @@ git ls-files 'docs/**' | grep -i <section>
 grep -rn --include='*.cs' 'docs/sections\|docs/guide\|docs/features' src/
 # reflection-anchored sweeps that would silently start covering nothing (§10)
 grep -rn 'typeof(<AnyTypeYouWillMove>).Assembly' tests/
-# type names written to the database (§6a) — plain prefix, no trailing glob
+# the same hazard keyed on a namespace prefix instead of an assembly — a different
+# shape, and the one A2 nearly missed (§10, §15.11)
+grep -rn 'Namespace?\.StartsWith\|Namespace\.StartsWith' tests/
+# type names written to the database (§6a) — plain prefix, no trailing glob.
+# Run it for the OTHER sections' entity names too: nameof(Camp) in an audit
+# discriminator stops compiling at the move and must become a literal (step 5).
 grep -rn 'nameof(<Section>' src/
 # type names that form resource keys (§3)
 grep -rn --include='*.resx' 'Enum_<Section>' src/
@@ -1599,6 +1616,18 @@ parses `*` as "repeat the previous character" and matches `nameof(Stor)`, `nameo
     > `Humans.Application` and silently stopped seeing `EventService`; it now scans
     > `SectionDiscoveryExtensions.SectionAssemblies()` as well. Store had zero
     > `[Grandfathered]` attributes and Events has none either, so that half is still untested.
+    >
+    > **The same hazard also hides behind a namespace prefix, which the assembly-list grep misses.**
+    > A2 found `ApplicationServicesTakeNoMemoryCacheRule` filtering on
+    > `t.Namespace.StartsWith("Humans.Application.Services.")` — nothing about it names an assembly,
+    > and Finance's service silently left its coverage along with its allowlist entry. Widened to
+    > scan the section assemblies and match `Humans.<Section>.Services` too. Grep
+    > `Namespace.StartsWith` across `tests/` before each move, not just `typeof(...).Assembly`.
+    >
+    > **Rule for both shapes: widen the sweep, never shrink the expectation.** A row that reads as
+    > "fixed" the moment your section leaves the scan is the failure, not the fix. If a sweep can no
+    > longer name a moved type, resolve it by reflection through the existing `SectionType(...)`
+    > helper rather than deleting the row or inventing a second lookup.
 12. Verify: build; full suite; **render every page in the section and diff HTML against a pre-move
     capture**, re-diffing after *each* risky step rather than once at the end, and proving the
     capture deterministic first by capturing twice pre-move;
