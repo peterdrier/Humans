@@ -8,7 +8,7 @@ namespace Humans.SystemSettings.Contracts;
 /// <c>DriveActivityMonitorService</c> (GoogleIntegration) both read and write
 /// through it. Read and write sit on one interface for the duration of the G5
 /// rollout — splitting the surface is deferred until every section has moved
-/// (design §15.5b).
+/// (G5-SECTION-TEMPLATE.md step 5b).
 /// </summary>
 public interface ISystemSettingsService : IApplicationService
 {

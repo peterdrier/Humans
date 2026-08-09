@@ -15,7 +15,8 @@
 A code-derived map of every section to the concrete classes that implement it. Use it to answer "which controller/service/repository/table belongs to section X" at a glance, and to spot drift (a controller with no owning section, a service with no repository, a table owned by two repos).
 
 A section that has moved into its own project (nobodies-collective/Humans#866, G5) carries its
-invariants doc inside that project rather than in this folder; this index is the map to it:
+invariants doc inside that project rather than in this folder; this index is the map to it. The
+move recipe is [`G5-SECTION-TEMPLATE.md`](G5-SECTION-TEMPLATE.md).
 
 | Section | Project | Invariants doc |
 |---|---|---|

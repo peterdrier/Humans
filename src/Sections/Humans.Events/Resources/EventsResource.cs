@@ -9,6 +9,7 @@ namespace Humans.Events;
 /// </summary>
 /// <remarks>
 /// Public because the boot localization diagnostic discovers section resource markers
-/// via <c>GetExportedTypes()</c>; an internal marker is skipped in silence (§15.3b).
+/// via <c>GetExportedTypes()</c>; an internal marker is skipped in silence
+/// (G5-SECTION-TEMPLATE.md step 3b).
 /// </remarks>
 public class EventsResource { }

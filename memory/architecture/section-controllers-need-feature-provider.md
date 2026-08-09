@@ -25,6 +25,7 @@ controller is clearly present, check the assembly marker first, then that Shell 
 feature provider to `AddControllersWithViews`. Do not "fix" it by making the controller `public`.
 
 The same silent-failure class as a missing section `Views/_ViewImports.cshtml` — both are caught only
-by actually rendering the page, which is why §15 step 12 renders every page in the section. See
+by actually rendering the page, which is why `docs/sections/G5-SECTION-TEMPLATE.md` step 12
+renders every page in the section. See
 [`sections-are-logical-units`](sections-are-logical-units.md) and
 `docs/superpowers/specs/2026-08-07-g5-section-project-split-design.md` §1, §6.
