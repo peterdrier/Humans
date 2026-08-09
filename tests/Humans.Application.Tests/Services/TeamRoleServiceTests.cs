@@ -48,7 +48,7 @@ public sealed class TeamRoleServiceTests : ServiceTestHarness
             .Returns(new Dictionary<Guid, TeamResourceSummary>());
         var userService = NewDbBackedUserService();
         var googleOutboxService = new GoogleSyncOutboxService(
-            new GoogleSyncOutboxRepository(DbFactory));
+            new GoogleSyncOutboxRepository(GoogleIntegrationDbFactory));
         var serviceProvider = new ServiceLocatorBuilder()
             .With<ITeamService>()
             .With<IRoleAssignmentService>(roleAssignmentService)

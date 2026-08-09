@@ -51,8 +51,8 @@ public class GovernanceArchitectureTests
 
         var ctor = typeof(ApplicationRepository).GetConstructors().Single();
         ctor.GetParameters().Should().ContainSingle(
-            p => p.ParameterType == typeof(IDbContextFactory<HumansDbContext>),
-            because: "Governance repositories use IDbContextFactory so they can be registered as Singleton");
+            p => p.ParameterType == typeof(IDbContextFactory<GovernanceDbContext>),
+            because: "Governance repositories use IDbContextFactory over their own peeled context (nobodies-collective/Humans#858) so they can be registered as Singleton");
         ctor.GetParameters().Should().NotContain(
             p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
             because: "repositories should not capture scoped DbContext instances");

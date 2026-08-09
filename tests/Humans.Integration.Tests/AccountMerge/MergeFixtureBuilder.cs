@@ -34,11 +34,17 @@ public sealed class MergeFixtureBuilder
     // stage rows for all three and flush them together.
     private readonly AuthDbContext _authDb;
     private readonly NotificationsDbContext _notificationsDb;
+    private readonly GovernanceDbContext _governanceDb;
+    private readonly CampaignsDbContext _campaignsDb;
+    private readonly FeedbackDbContext _feedbackDb;
 
     private readonly Instant _now;
     private readonly List<Action<HumansDbContext>> _pending = [];
     private readonly List<Action<AuthDbContext>> _pendingAuth = [];
     private readonly List<Action<NotificationsDbContext>> _pendingNotifications = [];
+    private readonly List<Action<GovernanceDbContext>> _pendingGovernance = [];
+    private readonly List<Action<CampaignsDbContext>> _pendingCampaigns = [];
+    private readonly List<Action<FeedbackDbContext>> _pendingFeedback = [];
 
     public Guid SourceUserId { get; }
     public Guid TargetUserId { get; }
@@ -48,6 +54,9 @@ public sealed class MergeFixtureBuilder
         _db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
         _authDb = scope.ServiceProvider.GetRequiredService<AuthDbContext>();
         _notificationsDb = scope.ServiceProvider.GetRequiredService<NotificationsDbContext>();
+        _governanceDb = scope.ServiceProvider.GetRequiredService<GovernanceDbContext>();
+        _campaignsDb = scope.ServiceProvider.GetRequiredService<CampaignsDbContext>();
+        _feedbackDb = scope.ServiceProvider.GetRequiredService<FeedbackDbContext>();
         _now = SystemClock.Instance.GetCurrentInstant();
         SourceUserId = sourceUserId;
         TargetUserId = targetUserId;
@@ -308,7 +317,7 @@ public sealed class MergeFixtureBuilder
 
     private MergeFixtureBuilder AddApplication(Guid userId, MembershipTier tier)
     {
-        _pending.Add(db => db.Applications.Add(new MemberApplication
+        _pendingGovernance.Add(db => db.Applications.Add(new MemberApplication
         {
             Id = Guid.NewGuid(),
             UserId = userId,
@@ -332,7 +341,7 @@ public sealed class MergeFixtureBuilder
 
     private MergeFixtureBuilder AddFeedbackReport(Guid userId, string title)
     {
-        _pending.Add(db => db.FeedbackReports.Add(new FeedbackReport
+        _pendingFeedback.Add(db => db.FeedbackReports.Add(new FeedbackReport
         {
             Id = Guid.NewGuid(),
             UserId = userId,
@@ -503,7 +512,7 @@ public sealed class MergeFixtureBuilder
             CreatedAt = _now,
             CreatedByUserId = creatorUserId,
         };
-        _db.Campaigns.Add(campaign);
+        _campaignsDb.Campaigns.Add(campaign);
 
         // CampaignGrant requires a CampaignCode FK; seed one alongside the
         // campaign so tests can attach grants without extra plumbing.
@@ -515,8 +524,8 @@ public sealed class MergeFixtureBuilder
             ImportOrder = 0,
             ImportedAt = _now,
         };
-        _db.CampaignCodes.Add(code);
-        _db.SaveChanges();
+        _campaignsDb.CampaignCodes.Add(code);
+        _campaignsDb.SaveChanges();
         return campaignId;
     }
 
@@ -528,7 +537,7 @@ public sealed class MergeFixtureBuilder
 
     private MergeFixtureBuilder AddCampaignGrant(Guid userId, Guid campaignId)
     {
-        _pending.Add(db =>
+        _pendingCampaigns.Add(db =>
         {
             // One CampaignCode per grant (1:1 nav on the entity). Seed a
             // fresh code per grant so two grants on the same campaign
@@ -572,8 +581,8 @@ public sealed class MergeFixtureBuilder
             CreatedAt = _now,
             UpdatedAt = _now,
         };
-        _db.FeedbackReports.Add(report);
-        _db.SaveChanges();
+        _feedbackDb.FeedbackReports.Add(report);
+        _feedbackDb.SaveChanges();
         return reportId;
     }
 
@@ -585,7 +594,7 @@ public sealed class MergeFixtureBuilder
 
     private MergeFixtureBuilder AddFeedbackMessage(Guid userId, Guid reportId, string content)
     {
-        _pending.Add(db => db.FeedbackMessages.Add(new FeedbackMessage
+        _pendingFeedback.Add(db => db.FeedbackMessages.Add(new FeedbackMessage
         {
             Id = Guid.NewGuid(),
             FeedbackReportId = reportId,
@@ -756,5 +765,26 @@ public sealed class MergeFixtureBuilder
         }
         _pendingNotifications.Clear();
         await _notificationsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        foreach (var apply in _pendingGovernance)
+        {
+            apply(_governanceDb);
+        }
+        _pendingGovernance.Clear();
+        await _governanceDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        foreach (var apply in _pendingCampaigns)
+        {
+            apply(_campaignsDb);
+        }
+        _pendingCampaigns.Clear();
+        await _campaignsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        foreach (var apply in _pendingFeedback)
+        {
+            apply(_feedbackDb);
+        }
+        _pendingFeedback.Clear();
+        await _feedbackDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
     }
 }

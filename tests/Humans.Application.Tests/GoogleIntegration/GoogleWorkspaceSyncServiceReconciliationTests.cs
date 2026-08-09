@@ -79,7 +79,7 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : ServiceTestH
         _syncSettingsService.GetModeAsync(SyncServiceType.GoogleDrive, Arg.Any<CancellationToken>())
             .Returns(SyncMode.AddAndRemove);
 
-        IGoogleResourceRepository repository = new GoogleResourceRepository(DbFactory);
+        IGoogleResourceRepository repository = new GoogleResourceRepository(GoogleIntegrationDbFactory);
 
         // Real TeamResourceService, resolved through the same service-locator seam
         // GoogleWorkspaceSyncService uses in production
@@ -139,7 +139,7 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : ServiceTestH
         await _drivePermissions.CreatePermissionAsync(googleId, extraEmail, "writer", ct);
 
         var resourceId = SeedDriveResource(teamId, googleId, "Doomed Folder");
-        await Db.SaveChangesAsync(ct);
+        await SaveAllAsync(ct);
 
         // Team.IsActive = false + no active members (every TeamMember.LeftAt set).
         StubTeams((teamId, IsActive: false, Members: []));
@@ -152,7 +152,7 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : ServiceTestH
         var permissions = await _drivePermissions.ListPermissionsAsync(googleId, ct);
         permissions.Permissions.Should().BeEmpty("the extra permission should have been revoked");
 
-        var row = await Db.GoogleResources.AsNoTracking().SingleAsync(r => r.Id == resourceId, ct);
+        var row = await GoogleIntegrationDb.GoogleResources.AsNoTracking().SingleAsync(r => r.Id == resourceId, ct);
         row.IsActive.Should().BeFalse("the soft-deleted team's Drive resource should be deactivated for this type");
 
         await _removalNotifications.Received(1).NotifyRemovalAsync(
@@ -177,7 +177,7 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : ServiceTestH
         const string sharedGoogleId = "unregistered-shared-drive-id";
         var resourceId1 = SeedDriveResource(teamId1, sharedGoogleId, "Shared Folder (Team 1)");
         var resourceId2 = SeedDriveResource(teamId2, sharedGoogleId, "Shared Folder (Team 2)");
-        await Db.SaveChangesAsync(ct);
+        await SaveAllAsync(ct);
 
         StubTeams(
             (teamId1, IsActive: false, Members: []),
@@ -188,7 +188,7 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : ServiceTestH
 
         result.Diffs.Should().ContainSingle(d => d.ErrorMessage != null);
 
-        var rows = await Db.GoogleResources.AsNoTracking()
+        var rows = await GoogleIntegrationDb.GoogleResources.AsNoTracking()
             .Where(r => r.Id == resourceId1 || r.Id == resourceId2)
             .ToListAsync(ct);
         rows.Should().OnlyContain(r => r.IsActive, "no row in an errored GoogleId group may be deactivated");
@@ -210,13 +210,13 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : ServiceTestH
 
         var cleanResourceId = SeedDriveResource(teamId, cleanGoogleId, "Clean Folder");
         var erroredResourceId = SeedDriveResource(teamId, erroredGoogleId, "Errored Folder");
-        await Db.SaveChangesAsync(ct);
+        await SaveAllAsync(ct);
 
         StubTeams((teamId, IsActive: false, Members: []));
 
         await _syncService.SyncResourcesByTypeAsync(GoogleResourceType.DriveFolder, SyncAction.Execute, ct);
 
-        var rows = await Db.GoogleResources.AsNoTracking()
+        var rows = await GoogleIntegrationDb.GoogleResources.AsNoTracking()
             .Where(r => r.Id == cleanResourceId || r.Id == erroredResourceId)
             .ToListAsync(ct);
         rows.Should().OnlyContain(r => r.IsActive,
@@ -237,19 +237,19 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : ServiceTestH
         var folderResourceId = SeedDriveResource(teamId, googleId, "Folder", GoogleResourceType.DriveFolder);
         var groupResourceId = SeedDriveResource(teamId, "group-id", "Group", GoogleResourceType.Group);
         var driveFileResourceId = SeedDriveResource(teamId, "file-id", "File", GoogleResourceType.DriveFile);
-        await Db.SaveChangesAsync(ct);
+        await SaveAllAsync(ct);
 
         StubTeams((teamId, IsActive: false, Members: []));
 
         await _syncService.SyncResourcesByTypeAsync(GoogleResourceType.DriveFolder, SyncAction.Execute, ct);
 
-        var folderRow = await Db.GoogleResources.AsNoTracking().SingleAsync(r => r.Id == folderResourceId, ct);
+        var folderRow = await GoogleIntegrationDb.GoogleResources.AsNoTracking().SingleAsync(r => r.Id == folderResourceId, ct);
         folderRow.IsActive.Should().BeFalse("the DriveFolder row for the soft-deleted team should be deactivated");
 
-        var groupRow = await Db.GoogleResources.AsNoTracking().SingleAsync(r => r.Id == groupResourceId, ct);
+        var groupRow = await GoogleIntegrationDb.GoogleResources.AsNoTracking().SingleAsync(r => r.Id == groupResourceId, ct);
         groupRow.IsActive.Should().BeTrue("the Group row must not be flipped by the DriveFolder pass");
 
-        var fileRow = await Db.GoogleResources.AsNoTracking().SingleAsync(r => r.Id == driveFileResourceId, ct);
+        var fileRow = await GoogleIntegrationDb.GoogleResources.AsNoTracking().SingleAsync(r => r.Id == driveFileResourceId, ct);
         fileRow.IsActive.Should().BeTrue("the DriveFile row must not be flipped by the DriveFolder pass");
     }
 
@@ -278,7 +278,7 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : ServiceTestH
         await _drivePermissions.CreatePermissionAsync(googleId, extraEmail, "writer", ct);
 
         var resourceId = SeedDriveResource(teamId, googleId, "Doomed File", GoogleResourceType.DriveFile);
-        await Db.SaveChangesAsync(ct);
+        await SaveAllAsync(ct);
 
         StubTeams((teamId, IsActive: false, Members: []));
 
@@ -290,7 +290,7 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : ServiceTestH
         var permissions = await _drivePermissions.ListPermissionsAsync(googleId, ct);
         permissions.Permissions.Should().BeEmpty("the extra permission on the DriveFile should have been revoked");
 
-        var row = await Db.GoogleResources.AsNoTracking().SingleAsync(r => r.Id == resourceId, ct);
+        var row = await GoogleIntegrationDb.GoogleResources.AsNoTracking().SingleAsync(r => r.Id == resourceId, ct);
         row.IsActive.Should().BeFalse("the soft-deleted team's DriveFile resource should be deactivated for this type");
     }
 
@@ -313,13 +313,13 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : ServiceTestH
         await _drivePermissions.CreatePermissionAsync(googleId, extraEmail, "writer", ct);
 
         var resourceId = SeedDriveResource(teamId, googleId, "Doomed Folder");
-        await Db.SaveChangesAsync(ct);
+        await SaveAllAsync(ct);
 
         StubTeams((teamId, IsActive: false, Members: []));
 
         await _syncService.SyncResourcesByTypeAsync(GoogleResourceType.DriveFolder, SyncAction.Execute, ct);
 
-        var row = await Db.GoogleResources.AsNoTracking().SingleAsync(r => r.Id == resourceId, ct);
+        var row = await GoogleIntegrationDb.GoogleResources.AsNoTracking().SingleAsync(r => r.Id == resourceId, ct);
         row.IsActive.Should().BeTrue("deactivation only happens when sync mode is AddAndRemove");
 
         var permissions = await _drivePermissions.ListPermissionsAsync(googleId, ct);
@@ -345,7 +345,7 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : ServiceTestH
         GoogleResourceType resourceType = GoogleResourceType.DriveFolder)
     {
         var id = Guid.NewGuid();
-        Db.GoogleResources.Add(new GoogleResource
+        GoogleIntegrationDb.GoogleResources.Add(new GoogleResource
         {
             Id = id,
             TeamId = teamId,

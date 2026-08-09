@@ -323,6 +323,7 @@ Order (criteria: navs = 0 for all, so ranked by table count, then seeds/PK quirk
 | — | *(deferred)* | Gate | 3 | **§5.1 wall**: `AdminEnrolled` physical default not in model |
 | — | *(deferred)* | Store | 6 | **§5.1 wall**: `Year` physical default not in model |
 | 8 | `track-b` | Auth, Email, Calendar, Notifications, Issues | 8 | **Five per PR.** Batching is safe once a section has its own snapshot — the shared-snapshot conflict that justified one-at-a-time no longer applies. One combined snapshot-only removal migration on `HumansDbContext` |
+| 9 | `track-b-2` | Governance, Campaigns, GoogleIntegration, Tickets, Feedback | 15 | Stacked on peel 8 (base = `track-b`), because both edit `HumansDbContextModelSnapshot.cs` and a snapshot generated against the pre-peel-8 model would re-add peel 8's tables on merge. `SyncServiceSettings` and `TicketSyncState` carry model-level `HasData` |
 
 Both §5.1 walls came down with `20260802203816_RealignScaffoldedPhysicalDefaults` (all 31 scaffolded
 defaults dropped); `PhysicalDefaultParityTests` enforces the parity from here on, so §5.1 is no
@@ -412,7 +413,19 @@ otherwise done:
 - **Shifts → Users** (1): `EventParticipation`.
 
 They block only the Profiles and Shifts peels; every other main-pile section is now
-relationship-clean. Two sections are blocked by a different wall instead — **Legal**
+relationship-clean.
+
+A third divergence class was checked and found clean at peel 9, worth recording so it is not
+re-derived: **scaffolded check constraints**. `AddPreProdIntegrityAndGoogleSyncOutbox` added
+`CK_google_resources_exactly_one_owner`, which the model does not declare — but
+`RemoveUserIdFromGoogleResource` drops it in `Up` and restores it only in `Down`, so chain-built
+and model-built schema agree and GoogleIntegration peels cleanly. The other constraint in the
+chain, `CK_role_assignments_valid_window`, *is* model-declared (`RoleAssignmentConfiguration`).
+A constraint that were present physically and absent from the model would wall its section off
+exactly like a scaffolded default; `SectionMigrationRunnerTests`' schema-equivalence check
+compares constraints, so it fails loudly rather than diverging silently.
+
+Two sections are blocked by a different wall instead — **Legal**
 (`prevent_consent_record_modification`) and **AuditLog** (`prevent_audit_log_modification`) carry
 plpgsql immutability triggers that exist only as raw SQL in the old chain and in no model, so a
 model-generated baseline would silently omit them. That is the §5 "non-candidate future note", now

@@ -12,9 +12,9 @@ namespace Humans.Infrastructure.Repositories.Feedback;
 /// non-test file that touches <c>DbContext.FeedbackReports</c> or
 /// <c>DbContext.FeedbackMessages</c> after the Feedback migration lands.
 /// Uses <see cref="IDbContextFactory{TContext}"/> so the repository can be
-/// registered as Singleton while <c>HumansDbContext</c> remains Scoped.
+/// registered as Singleton while <c>FeedbackDbContext</c> remains Scoped.
 /// </summary>
-internal sealed class FeedbackRepository(IDbContextFactory<HumansDbContext> factory) : IFeedbackRepository
+internal sealed class FeedbackRepository(IDbContextFactory<FeedbackDbContext> factory) : IFeedbackRepository
 {
     // ==========================================================================
     // Reads

@@ -13,18 +13,18 @@ namespace Humans.Application.Tests.GoogleIntegration;
 
 public class SyncSettingsServiceTests : IDisposable
 {
-    private readonly HumansDbContext _seedContext;
-    private readonly TestDbContextFactory _factory;
+    private readonly GoogleIntegrationDbContext _seedContext;
+    private readonly TestDbContextFactory<GoogleIntegrationDbContext> _factory;
     private readonly FakeClock _clock;
     private readonly SyncSettingsService _service;
 
     public SyncSettingsServiceTests()
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
+        var options = new DbContextOptionsBuilder<GoogleIntegrationDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
 
-        _factory = new TestDbContextFactory(options);
+        _factory = new TestDbContextFactory<GoogleIntegrationDbContext>(options);
         _seedContext = _factory.CreateDbContext();
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
 

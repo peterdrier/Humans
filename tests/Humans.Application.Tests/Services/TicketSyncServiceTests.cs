@@ -51,11 +51,11 @@ public sealed class TicketSyncServiceTests : ServiceTestHarness
         _campaignService = Substitute.For<ICampaignService>();
         _shiftManagementService = Substitute.For<IShiftManagementService>();
 
-        _ticketRepository = new TicketRepository(DbFactory);
+        _ticketRepository = new TicketRepository(TicketsDbFactory);
 
         _service = new TicketSyncService(
             _ticketRepository,
-            new TicketTransferRepository(DbFactory),
+            new TicketTransferRepository(TicketsDbFactory),
             _vendorService,
             _stripeService,
             Clock,
@@ -68,13 +68,13 @@ public sealed class TicketSyncServiceTests : ServiceTestHarness
             _shiftManagementService);
 
         // Seed the singleton TicketSyncState row
-        Db.TicketSyncStates.Add(new TicketSyncState
+        TicketsDb.TicketSyncStates.Add(new TicketSyncState
         {
             Id = 1,
             SyncStatus = TicketSyncStatus.Idle,
             VendorEventId = string.Empty
         });
-        Db.SaveChanges();
+        SaveAll();
     }
 
     // ==========================================================================
@@ -100,7 +100,7 @@ public sealed class TicketSyncServiceTests : ServiceTestHarness
         result.OrdersSynced.Should().Be(2);
         result.AttendeesSynced.Should().Be(0);
 
-        var dbOrders = await Db.TicketOrders.ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        var dbOrders = await TicketsDb.TicketOrders.ToListAsync(Xunit.TestContext.Current.CancellationToken);
         dbOrders.Should().HaveCount(2);
         dbOrders.Select(o => o.VendorOrderId).Should().BeEquivalentTo("ord_001", "ord_002");
     }
@@ -116,7 +116,7 @@ public sealed class TicketSyncServiceTests : ServiceTestHarness
         SeedUser(userId);
         // Seed email in LOWERCASE — order will use UPPERCASE to test case-insensitivity
         SeedUserEmail(userId, "alice@example.com", isOAuth: true);
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         var orders = new List<VendorOrderDto>
         {
@@ -132,7 +132,7 @@ public sealed class TicketSyncServiceTests : ServiceTestHarness
 
         result.OrdersMatched.Should().Be(1);
 
-        var dbOrder = await Db.TicketOrders.SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        var dbOrder = await TicketsDb.TicketOrders.SingleAsync(Xunit.TestContext.Current.CancellationToken);
         dbOrder.MatchedUserId.Should().Be(userId);
     }
 
@@ -167,7 +167,7 @@ public sealed class TicketSyncServiceTests : ServiceTestHarness
         // Second sync
         await _service.SyncOrdersAndAttendeesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var dbOrders = await Db.TicketOrders.ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        var dbOrders = await TicketsDb.TicketOrders.ToListAsync(Xunit.TestContext.Current.CancellationToken);
         dbOrders.Should().ContainSingle();
         dbOrders[0].BuyerName.Should().Be("Alice Updated");
         dbOrders[0].TotalAmount.Should().Be(75m);
@@ -222,7 +222,7 @@ public sealed class TicketSyncServiceTests : ServiceTestHarness
         var result = await _service.SyncOrdersAndAttendeesAsync(Xunit.TestContext.Current.CancellationToken);
 
         result.OrdersSynced.Should().Be(0);
-        var syncState = await Db.TicketSyncStates.AsNoTracking()
+        var syncState = await TicketsDb.TicketSyncStates.AsNoTracking()
             .FirstAsync(s => s.Id == 1, Xunit.TestContext.Current.CancellationToken);
         syncState.SyncStatus.Should().Be(TicketSyncStatus.Idle);
         syncState.LastError.Should().BeNull();
@@ -238,7 +238,7 @@ public sealed class TicketSyncServiceTests : ServiceTestHarness
 
         await act.Should().ThrowAsync<HttpRequestException>();
 
-        var syncState = await Db.TicketSyncStates.AsNoTracking()
+        var syncState = await TicketsDb.TicketSyncStates.AsNoTracking()
             .FirstAsync(s => s.Id == 1, Xunit.TestContext.Current.CancellationToken);
         syncState.SyncStatus.Should().Be(TicketSyncStatus.Error);
         syncState.LastError.Should().Be("Unauthorized");
@@ -261,7 +261,7 @@ public sealed class TicketSyncServiceTests : ServiceTestHarness
 
         var service = new TicketSyncService(
             _ticketRepository,
-            new TicketTransferRepository(DbFactory),
+            new TicketTransferRepository(TicketsDbFactory),
             _vendorService,
             _stripeService,
             Clock,
@@ -311,10 +311,10 @@ public sealed class TicketSyncServiceTests : ServiceTestHarness
         // Second sync with same data
         await _service.SyncOrdersAndAttendeesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var dbOrders = await Db.TicketOrders.ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        var dbOrders = await TicketsDb.TicketOrders.ToListAsync(Xunit.TestContext.Current.CancellationToken);
         dbOrders.Should().ContainSingle();
 
-        var dbAttendees = await Db.TicketAttendees.ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        var dbAttendees = await TicketsDb.TicketAttendees.ToListAsync(Xunit.TestContext.Current.CancellationToken);
         dbAttendees.Should().ContainSingle();
         dbAttendees[0].AttendeeName.Should().Be("Alice");
     }
@@ -340,7 +340,7 @@ public sealed class TicketSyncServiceTests : ServiceTestHarness
 
         await _service.SyncOrdersAndAttendeesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var order = await Db.TicketOrders.SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        var order = await TicketsDb.TicketOrders.SingleAsync(Xunit.TestContext.Current.CancellationToken);
         order.VatAmount.Should().Be(28.64m);
     }
 
@@ -366,7 +366,7 @@ public sealed class TicketSyncServiceTests : ServiceTestHarness
 
         await _service.SyncOrdersAndAttendeesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var syncedOrders = await Db.TicketOrders
+        var syncedOrders = await TicketsDb.TicketOrders
             .OrderBy(o => o.VendorOrderId)
             .ToListAsync(Xunit.TestContext.Current.CancellationToken);
 
@@ -405,14 +405,14 @@ public sealed class TicketSyncServiceTests : ServiceTestHarness
         result.OrdersSynced.Should().Be(500);
         result.AttendeesSynced.Should().Be(700);
 
-        var dbOrders = await Db.TicketOrders.CountAsync(Xunit.TestContext.Current.CancellationToken);
+        var dbOrders = await TicketsDb.TicketOrders.CountAsync(Xunit.TestContext.Current.CancellationToken);
         dbOrders.Should().Be(500);
 
-        var dbAttendees = await Db.TicketAttendees.CountAsync(Xunit.TestContext.Current.CancellationToken);
+        var dbAttendees = await TicketsDb.TicketAttendees.CountAsync(Xunit.TestContext.Current.CancellationToken);
         dbAttendees.Should().Be(700);
 
         // Sync state should be Idle after success
-        var syncState = await Db.TicketSyncStates.AsNoTracking()
+        var syncState = await TicketsDb.TicketSyncStates.AsNoTracking()
             .FirstAsync(s => s.Id == 1, Xunit.TestContext.Current.CancellationToken);
         syncState.SyncStatus.Should().Be(TicketSyncStatus.Idle);
         syncState.LastSyncAt.Should().NotBeNull();
@@ -432,7 +432,7 @@ public sealed class TicketSyncServiceTests : ServiceTestHarness
         var userId = Guid.NewGuid();
         SeedUser(userId);
         SeedUserEmail(userId, "alice@example.com", isOAuth: true);
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         _shiftManagementService.GetActiveAsync()
             .Returns(new EventSettings { Year = 2026 });
@@ -456,7 +456,7 @@ public sealed class TicketSyncServiceTests : ServiceTestHarness
             checkInInstant, Arg.Any<CancellationToken>());
 
         // Check-in is persisted on the attendee; its status is left "valid".
-        var dbAttendee = await Db.TicketAttendees.SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        var dbAttendee = await TicketsDb.TicketAttendees.SingleAsync(Xunit.TestContext.Current.CancellationToken);
         dbAttendee.CheckedInAt.Should().Be(checkInInstant);
         dbAttendee.Status.Should().Be(TicketAttendeeStatus.Valid);
     }
@@ -467,7 +467,7 @@ public sealed class TicketSyncServiceTests : ServiceTestHarness
         var userId = Guid.NewGuid();
         SeedUser(userId);
         SeedUserEmail(userId, "alice@example.com", isOAuth: true);
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         _shiftManagementService.GetActiveAsync()
             .Returns(new EventSettings { Year = 2026 });
@@ -503,7 +503,7 @@ public sealed class TicketSyncServiceTests : ServiceTestHarness
         var userId = Guid.NewGuid();
         SeedUser(userId);
         SeedUserEmail(userId, "alice@example.com", isOAuth: true);
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         _shiftManagementService.GetActiveAsync()
             .Returns(new EventSettings { Year = 2026 });
@@ -532,7 +532,7 @@ public sealed class TicketSyncServiceTests : ServiceTestHarness
         var userId = Guid.NewGuid();
         SeedUser(userId);
         SeedUserEmail(userId, "alice@example.com", isOAuth: true);
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         _shiftManagementService.GetActiveAsync()
             .Returns(new EventSettings { Year = 2026 });
@@ -568,7 +568,7 @@ public sealed class TicketSyncServiceTests : ServiceTestHarness
         var userId = Guid.NewGuid();
         SeedUser(userId);
         SeedUserEmail(userId, "alice@example.com", isOAuth: true);
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         _shiftManagementService.GetActiveAsync()
             .Returns(new EventSettings { Year = 2026 });
@@ -621,7 +621,7 @@ public sealed class TicketSyncServiceTests : ServiceTestHarness
 
         await _service.SyncOrdersAndAttendeesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var dbAttendee = await Db.TicketAttendees.SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        var dbAttendee = await TicketsDb.TicketAttendees.SingleAsync(Xunit.TestContext.Current.CancellationToken);
         dbAttendee.Barcode.Should().Be("bc-123");
     }
 

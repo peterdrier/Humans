@@ -38,6 +38,11 @@ env:
     CalendarDbContext:src/Humans.Infrastructure
     NotificationsDbContext:src/Humans.Infrastructure
     IssuesDbContext:src/Humans.Infrastructure
+    GovernanceDbContext:src/Humans.Infrastructure
+    CampaignsDbContext:src/Humans.Infrastructure
+    GoogleIntegrationDbContext:src/Humans.Infrastructure
+    TicketsDbContext:src/Humans.Infrastructure
+    FeedbackDbContext:src/Humans.Infrastructure
     StoreDbContext:src/Sections/Humans.Store
 
 jobs:

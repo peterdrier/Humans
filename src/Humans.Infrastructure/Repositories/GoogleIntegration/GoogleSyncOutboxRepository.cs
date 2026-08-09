@@ -10,9 +10,9 @@ namespace Humans.Infrastructure.Repositories.GoogleIntegration;
 /// EF-backed implementation of <see cref="IGoogleSyncOutboxRepository"/>.
 /// Registered as Singleton via <see cref="IDbContextFactory{TContext}"/>
 /// per design-rules §15b — every method creates and disposes a fresh
-/// short-lived <see cref="HumansDbContext"/>.
+/// short-lived <see cref="GoogleIntegrationDbContext"/>.
 /// </summary>
-internal sealed class GoogleSyncOutboxRepository(IDbContextFactory<HumansDbContext> factory)
+internal sealed class GoogleSyncOutboxRepository(IDbContextFactory<GoogleIntegrationDbContext> factory)
     : IGoogleSyncOutboxRepository
 {
     private const int LastErrorMaxLength = 4000;

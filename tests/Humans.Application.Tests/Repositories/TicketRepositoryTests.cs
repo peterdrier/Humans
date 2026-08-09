@@ -13,18 +13,18 @@ namespace Humans.Application.Tests.Repositories;
 
 public sealed class TicketRepositoryTests : IDisposable
 {
-    private readonly HumansDbContext _dbContext;
+    private readonly TicketsDbContext _dbContext;
     private readonly FakeClock _clock;
     private readonly TicketRepository _repo;
 
     public TicketRepositoryTests()
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
+        var options = new DbContextOptionsBuilder<TicketsDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
-        _dbContext = new HumansDbContext(options);
+        _dbContext = new TicketsDbContext(options);
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
-        _repo = new TicketRepository(new TestDbContextFactory(options));
+        _repo = new TicketRepository(new TestDbContextFactory<TicketsDbContext>(options));
 
         _dbContext.TicketSyncStates.Add(new TicketSyncState
         {

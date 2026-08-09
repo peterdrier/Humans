@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Humans.Domain.Entities;
-using MemberApplication = Humans.Domain.Entities.Application;
 
 namespace Humans.Infrastructure.Data;
 
@@ -25,8 +24,6 @@ internal sealed class HumansDbContext(DbContextOptions<HumansDbContext> options)
     public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
 
     public DbSet<Profile> Profiles => Set<Profile>();
-    public DbSet<MemberApplication> Applications => Set<MemberApplication>();
-    public DbSet<ApplicationStateHistory> ApplicationStateHistories => Set<ApplicationStateHistory>();
     public DbSet<LegalDocument> LegalDocuments => Set<LegalDocument>();
     public DbSet<DocumentVersion> DocumentVersions => Set<DocumentVersion>();
     public DbSet<ConsentRecord> ConsentRecords => Set<ConsentRecord>();
@@ -37,14 +34,10 @@ internal sealed class HumansDbContext(DbContextOptions<HumansDbContext> options)
     public DbSet<TeamRoleDefinition> TeamRoleDefinitions => Set<TeamRoleDefinition>();
     public DbSet<TeamRoleAssignment> TeamRoleAssignments => Set<TeamRoleAssignment>();
     public DbSet<TeamEarlyEntryGrant> TeamEarlyEntryGrants => Set<TeamEarlyEntryGrant>();
-    public DbSet<GoogleResource> GoogleResources => Set<GoogleResource>();
-    public DbSet<GoogleSyncOutboxEvent> GoogleSyncOutboxEvents => Set<GoogleSyncOutboxEvent>();
     public DbSet<ContactField> ContactFields => Set<ContactField>();
     public DbSet<UserEmail> UserEmails => Set<UserEmail>();
     public DbSet<VolunteerHistoryEntry> VolunteerHistoryEntries => Set<VolunteerHistoryEntry>();
     public DbSet<AuditLogEntry> AuditLogEntries => Set<AuditLogEntry>();
-    public DbSet<BoardVote> BoardVotes => Set<BoardVote>();
-    public DbSet<SyncServiceSettings> SyncServiceSettings => Set<SyncServiceSettings>();
     public DbSet<Camp> Camps => Set<Camp>();
     public DbSet<CampSeason> CampSeasons => Set<CampSeason>();
     public DbSet<CampHistoricalName> CampHistoricalNames => Set<CampHistoricalName>();
@@ -56,13 +49,6 @@ internal sealed class HumansDbContext(DbContextOptions<HumansDbContext> options)
     public DbSet<CampPolygon> CampPolygons => Set<CampPolygon>();
     public DbSet<CampPolygonHistory> CampPolygonHistories => Set<CampPolygonHistory>();
     public DbSet<CityPlanningSettings> CityPlanningSettings => Set<CityPlanningSettings>();
-    public DbSet<Campaign> Campaigns { get; set; } = null!;
-    public DbSet<CampaignCode> CampaignCodes { get; set; } = null!;
-    public DbSet<CampaignGrant> CampaignGrants { get; set; } = null!;
-    public DbSet<TicketOrder> TicketOrders => Set<TicketOrder>();
-    public DbSet<TicketAttendee> TicketAttendees => Set<TicketAttendee>();
-    public DbSet<TicketSyncState> TicketSyncStates => Set<TicketSyncState>();
-    public DbSet<TicketTransferRequest> TicketTransferRequests => Set<TicketTransferRequest>();
     public DbSet<EventSettings> EventSettings => Set<EventSettings>();
     public DbSet<Rota> Rotas => Set<Rota>();
     public DbSet<Shift> Shifts => Set<Shift>();
@@ -70,8 +56,6 @@ internal sealed class HumansDbContext(DbContextOptions<HumansDbContext> options)
     public DbSet<VolunteerEventProfile> VolunteerEventProfiles => Set<VolunteerEventProfile>();
     public DbSet<GeneralAvailability> GeneralAvailability => Set<GeneralAvailability>();
     public DbSet<VolunteerBuildStatus> VolunteerBuildStatuses => Set<VolunteerBuildStatus>();
-    public DbSet<FeedbackReport> FeedbackReports => Set<FeedbackReport>();
-    public DbSet<FeedbackMessage> FeedbackMessages => Set<FeedbackMessage>();
     public DbSet<AccountMergeRequest> AccountMergeRequests => Set<AccountMergeRequest>();
     public DbSet<CommunicationPreference> CommunicationPreferences => Set<CommunicationPreference>();
     public DbSet<BudgetYear> BudgetYears => Set<BudgetYear>();
@@ -109,6 +93,11 @@ internal sealed class HumansDbContext(DbContextOptions<HumansDbContext> options)
         typeof(Configurations.Calendar.CalendarEventConfiguration).Namespace!,
         typeof(Configurations.Notifications.NotificationConfiguration).Namespace!,
         typeof(Configurations.Issues.IssueConfiguration).Namespace!,
+        typeof(Configurations.Governance.ApplicationConfiguration).Namespace!,
+        typeof(Configurations.Campaigns.CampaignConfiguration).Namespace!,
+        typeof(Configurations.GoogleIntegration.GoogleResourceConfiguration).Namespace!,
+        typeof(Configurations.Tickets.TicketOrderConfiguration).Namespace!,
+        typeof(Configurations.Feedback.FeedbackReportConfiguration).Namespace!,
     ];
 
     protected override void OnModelCreating(ModelBuilder builder)

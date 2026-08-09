@@ -12,16 +12,16 @@ namespace Humans.Application.Tests.Repositories;
 
 public sealed class ApplicationRepositoryTests : IDisposable
 {
-    private readonly HumansDbContext _dbContext;
+    private readonly GovernanceDbContext _dbContext;
     private readonly ApplicationRepository _repo;
 
     public ApplicationRepositoryTests()
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
+        var options = new DbContextOptionsBuilder<GovernanceDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
-        _dbContext = new HumansDbContext(options);
-        _repo = new ApplicationRepository(new TestDbContextFactory(options));
+        _dbContext = new GovernanceDbContext(options);
+        _repo = new ApplicationRepository(new TestDbContextFactory<GovernanceDbContext>(options));
     }
 
     public void Dispose()

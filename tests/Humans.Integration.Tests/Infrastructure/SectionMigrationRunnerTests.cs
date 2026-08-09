@@ -112,6 +112,33 @@ public sealed class SectionMigrationRunnerTests(HumansTestDatabase database)
             "issues",
             CreateSectionContext<IssuesDbContext>,
             null),
+        new(
+            "Governance",
+            "applications",
+            CreateSectionContext<GovernanceDbContext>,
+            null),
+        new(
+            "Campaigns",
+            "campaigns",
+            CreateSectionContext<CampaignsDbContext>,
+            null),
+        new(
+            "GoogleIntegration",
+            "google_resources",
+            CreateSectionContext<GoogleIntegrationDbContext>,
+            // Three seed rows, one per service type — probe a single reserved
+            // Id so the count is 1 on both the fresh and mark-applied paths.
+            """SELECT count(*) FROM sync_service_settings WHERE "Id" = '00000000-0000-0000-0002-000000000002'"""),
+        new(
+            "Tickets",
+            "ticket_orders",
+            CreateSectionContext<TicketsDbContext>,
+            "SELECT count(*) FROM ticket_sync_state"),
+        new(
+            "Feedback",
+            "feedback_reports",
+            CreateSectionContext<FeedbackDbContext>,
+            null),
     ];
 
     [HumansFact]

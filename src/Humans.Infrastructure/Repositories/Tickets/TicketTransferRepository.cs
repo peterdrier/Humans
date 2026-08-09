@@ -10,9 +10,9 @@ namespace Humans.Infrastructure.Repositories.Tickets;
 /// <summary>
 /// EF-backed implementation of <see cref="ITicketTransferRepository"/>. Uses
 /// <see cref="IDbContextFactory{TContext}"/> to maintain singleton registration
-/// while keeping <c>HumansDbContext</c> short-lived (design-rules §15b).
+/// while keeping <c>TicketsDbContext</c> short-lived (design-rules §15b).
 /// </summary>
-internal sealed class TicketTransferRepository(IDbContextFactory<HumansDbContext> factory) : ITicketTransferRepository
+internal sealed class TicketTransferRepository(IDbContextFactory<TicketsDbContext> factory) : ITicketTransferRepository
 {
     public async Task<TicketTransferRequest?> GetByIdAsync(Guid id, CancellationToken ct = default)
     {
@@ -83,7 +83,7 @@ internal sealed class TicketTransferRepository(IDbContextFactory<HumansDbContext
     }
 
     private static async Task ReassignUserCoreAsync(
-        HumansDbContext ctx,
+        TicketsDbContext ctx,
         Guid sourceUserId,
         Guid targetUserId,
         CancellationToken ct)

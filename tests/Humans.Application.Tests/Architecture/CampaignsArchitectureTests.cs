@@ -45,8 +45,8 @@ public class CampaignsArchitectureTests
         var ctor = typeof(CampaignRepository).GetConstructors().Single();
         ctor.GetParameters()
             .Should().ContainSingle(
-                p => p.ParameterType == typeof(IDbContextFactory<HumansDbContext>),
-                because: "Campaigns repository is registered as singleton and must create scoped contexts through the factory");
+                p => p.ParameterType == typeof(IDbContextFactory<CampaignsDbContext>),
+                because: "Campaigns repository is registered as singleton and must create scoped contexts through its own peeled context's factory (nobodies-collective/Humans#858)");
         ctor.GetParameters()
             .Should().NotContain(
                 p => typeof(DbContext).IsAssignableFrom(p.ParameterType),

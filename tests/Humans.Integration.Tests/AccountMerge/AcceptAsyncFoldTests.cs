@@ -434,15 +434,15 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         await AcceptAsync(requestId, adminId);
 
         await using var assertScope = Factory.Services.CreateAsyncScope();
-        var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var governanceDb = assertScope.ServiceProvider.GetRequiredService<GovernanceDbContext>();
 
-        var targetApps = await db.Applications
+        var targetApps = await governanceDb.Applications
             .AsNoTracking()
             .Where(a => a.UserId == targetId)
             .ToListAsync(TestContext.Current.CancellationToken);
         targetApps.Should().HaveCount(3);
 
-        var sourceApps = await db.Applications
+        var sourceApps = await governanceDb.Applications
             .AsNoTracking()
             .Where(a => a.UserId == sourceId)
             .ToListAsync(TestContext.Current.CancellationToken);
@@ -468,9 +468,9 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         await AcceptAsync(requestId, adminId);
 
         await using var assertScope = Factory.Services.CreateAsyncScope();
-        var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var feedbackDb = assertScope.ServiceProvider.GetRequiredService<FeedbackDbContext>();
 
-        var targetReports = await db.FeedbackReports
+        var targetReports = await feedbackDb.FeedbackReports
             .AsNoTracking()
             .Where(r => r.UserId == targetId)
             .ToListAsync(TestContext.Current.CancellationToken);
@@ -479,7 +479,7 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         targetReports.Should().ContainSingle(r => r.Description == "Source bug B");
         targetReports.Should().ContainSingle(r => r.Description == "Target bug C");
 
-        var sourceReports = await db.FeedbackReports
+        var sourceReports = await feedbackDb.FeedbackReports
             .AsNoTracking()
             .Where(r => r.UserId == sourceId)
             .ToListAsync(TestContext.Current.CancellationToken);
@@ -842,9 +842,9 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         await AcceptAsync(requestId, adminId);
 
         await using var assertScope = Factory.Services.CreateAsyncScope();
-        var db2 = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var campaignsDb = assertScope.ServiceProvider.GetRequiredService<CampaignsDbContext>();
 
-        var targetGrants = await db2.CampaignGrants
+        var targetGrants = await campaignsDb.CampaignGrants
             .AsNoTracking()
             .Where(g => g.UserId == targetId
                 && (g.CampaignId == contestedCampaignId || g.CampaignId == sourceOnlyCampaignId))
@@ -853,7 +853,7 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         targetGrants.Should().ContainSingle(g => g.CampaignId == contestedCampaignId);
         targetGrants.Should().ContainSingle(g => g.CampaignId == sourceOnlyCampaignId);
 
-        var sourceGrants = await db2.CampaignGrants
+        var sourceGrants = await campaignsDb.CampaignGrants
             .AsNoTracking()
             .Where(g => g.UserId == sourceId
                 && (g.CampaignId == contestedCampaignId || g.CampaignId == sourceOnlyCampaignId))
@@ -895,17 +895,17 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         await AcceptAsync(requestId, adminId);
 
         await using var assertScope = Factory.Services.CreateAsyncScope();
-        var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var feedbackDb = assertScope.ServiceProvider.GetRequiredService<FeedbackDbContext>();
 
         // Both messages should now be attributed to target.
-        var targetMessages = await db.FeedbackMessages
+        var targetMessages = await feedbackDb.FeedbackMessages
             .AsNoTracking()
             .Where(m => m.SenderUserId == targetId
                 && (m.Content == sourceContent || m.Content == targetContent))
             .ToListAsync(TestContext.Current.CancellationToken);
         targetMessages.Should().HaveCount(2);
 
-        var sourceMessages = await db.FeedbackMessages
+        var sourceMessages = await feedbackDb.FeedbackMessages
             .AsNoTracking()
             .Where(m => m.SenderUserId == sourceId)
             .ToListAsync(TestContext.Current.CancellationToken);

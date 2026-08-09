@@ -25,7 +25,7 @@ public sealed class CampaignServiceTests : ServiceTestHarness
 
     public CampaignServiceTests()
     {
-        var repository = new CampaignRepository(DbFactory);
+        var repository = new CampaignRepository(CampaignsDbFactory);
         var teamService = Substitute.For<ITeamService>();
         var userEmailService = Substitute.For<IUserEmailService>();
         _ticketVendorService = Substitute.For<ITicketVendorService>();
@@ -130,7 +130,7 @@ public sealed class CampaignServiceTests : ServiceTestHarness
     {
         var userId = Guid.NewGuid();
         SeedUser(userId);
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.CreateAsync(
             "Test Campaign", "A description",
@@ -145,7 +145,7 @@ public sealed class CampaignServiceTests : ServiceTestHarness
         result.Campaign.CreatedAt.Should().Be(Clock.GetCurrentInstant());
         result.Campaign.CreatedByUserId.Should().Be(userId);
 
-        var inDb = await Db.Campaigns.FindAsync(result.Campaign.Id, Xunit.TestContext.Current.CancellationToken);
+        var inDb = await CampaignsDb.Campaigns.FindAsync(result.Campaign.Id, Xunit.TestContext.Current.CancellationToken);
         inDb.Should().NotBeNull();
         inDb.Status.Should().Be(CampaignStatus.Draft);
     }
@@ -160,7 +160,7 @@ public sealed class CampaignServiceTests : ServiceTestHarness
 
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("TitleRequired");
-        (await Db.Campaigns.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+        (await CampaignsDb.Campaigns.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
     }
 
     // ==========================================================================
@@ -174,7 +174,7 @@ public sealed class CampaignServiceTests : ServiceTestHarness
 
         await _service.ImportCodesAsync(campaign.Id, ["CODE1", "CODE2", "CODE1", "CODE3"], Xunit.TestContext.Current.CancellationToken);
 
-        var codes = await Db.CampaignCodes
+        var codes = await CampaignsDb.CampaignCodes
             .Where(c => c.CampaignId == campaign.Id)
             .ToListAsync(Xunit.TestContext.Current.CancellationToken);
         codes.Should().HaveCount(3);
@@ -191,7 +191,7 @@ public sealed class CampaignServiceTests : ServiceTestHarness
         // Second import with overlap
         await _service.ImportCodesAsync(campaign.Id, ["CODE2", "CODE3"], Xunit.TestContext.Current.CancellationToken);
 
-        var codes = await Db.CampaignCodes
+        var codes = await CampaignsDb.CampaignCodes
             .Where(c => c.CampaignId == campaign.Id)
             .ToListAsync(Xunit.TestContext.Current.CancellationToken);
         codes.Should().HaveCount(3);
@@ -216,7 +216,7 @@ public sealed class CampaignServiceTests : ServiceTestHarness
                 s.DiscountType == DiscountType.Fixed &&
                 s.DiscountValue == 10m),
             Arg.Any<CancellationToken>());
-        var codes = await Db.CampaignCodes
+        var codes = await CampaignsDb.CampaignCodes
             .Where(c => c.CampaignId == campaign.Id)
             .Select(c => c.Code)
             .ToListAsync(Xunit.TestContext.Current.CancellationToken);
@@ -249,7 +249,7 @@ public sealed class CampaignServiceTests : ServiceTestHarness
 
         await _service.ActivateAsync(campaign.Id, Xunit.TestContext.Current.CancellationToken);
 
-        var updated = await Db.Campaigns.FindAsync(campaign.Id, Xunit.TestContext.Current.CancellationToken);
+        var updated = await CampaignsDb.Campaigns.FindAsync(campaign.Id, Xunit.TestContext.Current.CancellationToken);
         updated!.Status.Should().Be(CampaignStatus.Active);
     }
 
@@ -290,7 +290,7 @@ public sealed class CampaignServiceTests : ServiceTestHarness
 
         updated.Success.Should().BeTrue();
 
-        var refreshed = await Db.Campaigns.FindAsync(campaign.Id, Xunit.TestContext.Current.CancellationToken);
+        var refreshed = await CampaignsDb.Campaigns.FindAsync(campaign.Id, Xunit.TestContext.Current.CancellationToken);
         refreshed.Should().NotBeNull();
         refreshed.Title.Should().Be("Updated Campaign");
         refreshed.Description.Should().Be("Updated description");
@@ -321,10 +321,10 @@ public sealed class CampaignServiceTests : ServiceTestHarness
     {
         var campaign = await SeedActiveCampaignWithCodesAsync(["A", "B", "C"]);
         var user = SeedUser(displayName: "Stats User");
-        var grantedCode = await Db.CampaignCodes
+        var grantedCode = await CampaignsDb.CampaignCodes
             .FirstAsync(c => c.CampaignId == campaign.Id && c.Code == "A", Xunit.TestContext.Current.CancellationToken);
 
-        Db.CampaignGrants.Add(new CampaignGrant
+        CampaignsDb.CampaignGrants.Add(new CampaignGrant
         {
             Id = Guid.NewGuid(),
             CampaignId = campaign.Id,
@@ -334,7 +334,7 @@ public sealed class CampaignServiceTests : ServiceTestHarness
             RedeemedAt = Clock.GetCurrentInstant(),
             LatestEmailStatus = EmailOutboxStatus.Failed
         });
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         var page = await _service.GetDetailPageAsync(campaign.Id, Xunit.TestContext.Current.CancellationToken);
 
@@ -356,7 +356,7 @@ public sealed class CampaignServiceTests : ServiceTestHarness
         SeedTeam("Beta Team");
         var alpha = SeedTeam("Alpha Team");
         SeedTeamMember(alpha.Id, user.Id);
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         var page = await _service.GetSendWavePageAsync(campaign.Id, alpha.Id, Xunit.TestContext.Current.CancellationToken);
 
@@ -375,9 +375,9 @@ public sealed class CampaignServiceTests : ServiceTestHarness
         var user = SeedUser(displayName: "Grant User");
         var team = SeedTeam("Grant Team");
         SeedTeamMember(team.Id, user.Id);
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         await _service.SendWaveAsync(campaign.Id, team.Id, Xunit.TestContext.Current.CancellationToken);
-        var grant = await Db.CampaignGrants.SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        var grant = await CampaignsDb.CampaignGrants.SingleAsync(Xunit.TestContext.Current.CancellationToken);
 
         var campaignId = await _service.GetCampaignIdForGrantAsync(grant.Id, Xunit.TestContext.Current.CancellationToken);
 
@@ -395,7 +395,7 @@ public sealed class CampaignServiceTests : ServiceTestHarness
 
         await _service.CompleteAsync(campaign.Id, Xunit.TestContext.Current.CancellationToken);
 
-        var updated = await Db.Campaigns.FindAsync(campaign.Id, Xunit.TestContext.Current.CancellationToken);
+        var updated = await CampaignsDb.Campaigns.FindAsync(campaign.Id, Xunit.TestContext.Current.CancellationToken);
         updated!.Status.Should().Be(CampaignStatus.Completed);
     }
 
@@ -424,13 +424,13 @@ public sealed class CampaignServiceTests : ServiceTestHarness
         var user = SeedUser(displayName: "Alice");
         var team = SeedTeam("Alpha");
         SeedTeamMember(team.Id, user.Id);
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         var count = await _service.SendWaveAsync(campaign.Id, team.Id, Xunit.TestContext.Current.CancellationToken);
 
         count.Should().Be(1);
 
-        var grants = await Db.CampaignGrants
+        var grants = await CampaignsDb.CampaignGrants
             .Where(g => g.CampaignId == campaign.Id)
             .ToListAsync(Xunit.TestContext.Current.CancellationToken);
         grants.Should().ContainSingle();
@@ -456,7 +456,7 @@ public sealed class CampaignServiceTests : ServiceTestHarness
         var user = SeedUser(displayName: "Charlie");
         var team = SeedTeam("Gamma");
         SeedTeamMember(team.Id, user.Id);
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         await _service.SendWaveAsync(campaign.Id, team.Id, Xunit.TestContext.Current.CancellationToken);
 
@@ -480,7 +480,7 @@ public sealed class CampaignServiceTests : ServiceTestHarness
         var team = SeedTeam("Delta");
         SeedTeamMember(team.Id, user1.Id);
         SeedTeamMember(team.Id, user2.Id);
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         // First wave sends to both
         var count1 = await _service.SendWaveAsync(campaign.Id, team.Id, Xunit.TestContext.Current.CancellationToken);
@@ -501,7 +501,7 @@ public sealed class CampaignServiceTests : ServiceTestHarness
         var team = SeedTeam("Zeta");
         SeedTeamMember(team.Id, user1.Id);
         SeedTeamMember(team.Id, user2.Id);
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         var act = () => _service.SendWaveAsync(campaign.Id, team.Id, Xunit.TestContext.Current.CancellationToken);
 
@@ -521,7 +521,7 @@ public sealed class CampaignServiceTests : ServiceTestHarness
         var user = SeedUser(displayName: "O'Brien & Co");
         var team = SeedTeam("Eta");
         SeedTeamMember(team.Id, user.Id);
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         await _service.SendWaveAsync(campaign.Id, team.Id, Xunit.TestContext.Current.CancellationToken);
 
@@ -543,22 +543,22 @@ public sealed class CampaignServiceTests : ServiceTestHarness
         var user = SeedUser(displayName: "Dave");
         var team = SeedTeam("Theta");
         SeedTeamMember(team.Id, user.Id);
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         await _service.SendWaveAsync(campaign.Id, team.Id, Xunit.TestContext.Current.CancellationToken);
         _emailMessages.ClearReceivedCalls();
 
-        var grant = await Db.CampaignGrants.SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        var grant = await CampaignsDb.CampaignGrants.SingleAsync(Xunit.TestContext.Current.CancellationToken);
         grant.LatestEmailStatus = EmailOutboxStatus.Failed;
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         await _service.ResendToGrantAsync(grant.Id, Xunit.TestContext.Current.CancellationToken);
 
         _emailMessages.Received(1).CampaignCode(
             Arg.Is<CampaignCodeEmailRequest>(r => r.CampaignGrantId == grant.Id));
 
-        Db.ChangeTracker.Clear();
-        var updatedGrant = await Db.CampaignGrants.FindAsync(grant.Id, Xunit.TestContext.Current.CancellationToken);
+        ClearAllTrackers();
+        var updatedGrant = await CampaignsDb.CampaignGrants.FindAsync(grant.Id, Xunit.TestContext.Current.CancellationToken);
         updatedGrant!.LatestEmailStatus.Should().Be(EmailOutboxStatus.Queued);
     }
 
@@ -576,15 +576,15 @@ public sealed class CampaignServiceTests : ServiceTestHarness
         var team = SeedTeam("Iota");
         SeedTeamMember(team.Id, user1.Id);
         SeedTeamMember(team.Id, user2.Id);
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         await _service.SendWaveAsync(campaign.Id, team.Id, Xunit.TestContext.Current.CancellationToken);
         _emailMessages.ClearReceivedCalls();
 
         // Mark one as failed
-        var grants = await Db.CampaignGrants.ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        var grants = await CampaignsDb.CampaignGrants.ToListAsync(Xunit.TestContext.Current.CancellationToken);
         grants[0].LatestEmailStatus = EmailOutboxStatus.Failed;
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         await _service.RetryAllFailedAsync(campaign.Id, Xunit.TestContext.Current.CancellationToken);
 
@@ -592,8 +592,8 @@ public sealed class CampaignServiceTests : ServiceTestHarness
         _emailMessages.Received(1).CampaignCode(
             Arg.Is<CampaignCodeEmailRequest>(r => r.CampaignGrantId == grants[0].Id));
 
-        Db.ChangeTracker.Clear();
-        var retriedGrant = await Db.CampaignGrants.FindAsync(grants[0].Id, Xunit.TestContext.Current.CancellationToken);
+        ClearAllTrackers();
+        var retriedGrant = await CampaignsDb.CampaignGrants.FindAsync(grants[0].Id, Xunit.TestContext.Current.CancellationToken);
         retriedGrant!.LatestEmailStatus.Should().Be(EmailOutboxStatus.Queued);
     }
 
@@ -613,11 +613,11 @@ public sealed class CampaignServiceTests : ServiceTestHarness
         SeedTeamMember(team.Id, eligible.Id);
         SeedTeamMember(team.Id, alreadyGranted.Id);
         SeedTeamMember(team.Id, otherUser.Id);
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         // Grant a code to alreadyGranted user manually
-        var code = await Db.CampaignCodes.FirstAsync(c => c.CampaignId == campaign.Id, Xunit.TestContext.Current.CancellationToken);
-        Db.CampaignGrants.Add(new CampaignGrant
+        var code = await CampaignsDb.CampaignCodes.FirstAsync(c => c.CampaignId == campaign.Id, Xunit.TestContext.Current.CancellationToken);
+        CampaignsDb.CampaignGrants.Add(new CampaignGrant
         {
             Id = Guid.NewGuid(),
             CampaignId = campaign.Id,
@@ -625,7 +625,7 @@ public sealed class CampaignServiceTests : ServiceTestHarness
             UserId = alreadyGranted.Id,
             AssignedAt = Clock.GetCurrentInstant()
         });
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         var preview = await _service.PreviewWaveSendAsync(campaign.Id, team.Id, Xunit.TestContext.Current.CancellationToken);
 
@@ -658,9 +658,9 @@ public sealed class CampaignServiceTests : ServiceTestHarness
             CreatedAt = Clock.GetCurrentInstant(),
             CreatedByUserId = creatorId
         };
-        Db.Campaigns.Add(campaign);
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
-        Db.ChangeTracker.Clear();
+        CampaignsDb.Campaigns.Add(campaign);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+        ClearAllTrackers();
         return campaign;
     }
 
@@ -677,7 +677,7 @@ public sealed class CampaignServiceTests : ServiceTestHarness
         var now = Clock.GetCurrentInstant();
         foreach (var code in codes)
         {
-            Db.CampaignCodes.Add(new CampaignCode
+            CampaignsDb.CampaignCodes.Add(new CampaignCode
             {
                 Id = Guid.NewGuid(),
                 CampaignId = campaign.Id,
@@ -685,8 +685,8 @@ public sealed class CampaignServiceTests : ServiceTestHarness
                 ImportedAt = now
             });
         }
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
-        Db.ChangeTracker.Clear();
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+        ClearAllTrackers();
         return campaign;
     }
 }

@@ -33,14 +33,36 @@ public abstract class ServiceTestHarness : IDisposable
     private protected HumansDbContext Db { get; }
     private protected TestDbContextFactory DbFactory { get; }
 
-    /// <summary>
-    /// Auth's <c>role_assignments</c> moved to <see cref="AuthDbContext"/> with
-    /// the Auth peel (nobodies-collective/Humans#858), so
-    /// <see cref="SeedRoleAssignment"/> and every repository that reads the
-    /// table go through this context rather than <see cref="Db"/>.
-    /// </summary>
+    // ----- Peeled-section contexts (nobodies-collective/Humans#858) ----------
+    // These sections' tables are no longer in Db's model, so seeding them and
+    // wiring their repositories both go through the section context. Each pair
+    // is an independent in-memory store; a test that seeds across two saves on
+    // each. Add a pair here as each further section peels.
+
+    /// <summary>Auth: <c>role_assignments</c> (see <see cref="SeedRoleAssignment"/>).</summary>
     private protected AuthDbContext AuthDb { get; }
     private protected TestDbContextFactory<AuthDbContext> AuthDbFactory { get; }
+
+    /// <summary>Governance: <c>applications</c>, <c>application_state_history</c>, <c>board_votes</c>.</summary>
+    private protected GovernanceDbContext GovernanceDb { get; }
+    private protected TestDbContextFactory<GovernanceDbContext> GovernanceDbFactory { get; }
+
+    /// <summary>Campaigns: <c>campaigns</c>, <c>campaign_codes</c>, <c>campaign_grants</c>.</summary>
+    private protected CampaignsDbContext CampaignsDb { get; }
+    private protected TestDbContextFactory<CampaignsDbContext> CampaignsDbFactory { get; }
+
+    /// <summary>GoogleIntegration: <c>google_resources</c>, <c>google_sync_outbox</c>, <c>sync_service_settings</c>.</summary>
+    private protected GoogleIntegrationDbContext GoogleIntegrationDb { get; }
+    private protected TestDbContextFactory<GoogleIntegrationDbContext> GoogleIntegrationDbFactory { get; }
+
+    /// <summary>Tickets: <c>ticket_orders</c>, <c>ticket_attendees</c>, <c>ticket_sync_state</c>, <c>ticket_transfer_requests</c>.</summary>
+    private protected TicketsDbContext TicketsDb { get; }
+    private protected TestDbContextFactory<TicketsDbContext> TicketsDbFactory { get; }
+
+    /// <summary>Feedback: <c>feedback_reports</c>, <c>feedback_messages</c>.</summary>
+    private protected FeedbackDbContext FeedbackDb { get; }
+    private protected TestDbContextFactory<FeedbackDbContext> FeedbackDbFactory { get; }
+
     private protected FakeClock Clock { get; }
     private protected IMemoryCache Cache { get; } = new MemoryCache(new MemoryCacheOptions());
 
@@ -70,6 +92,26 @@ public abstract class ServiceTestHarness : IDisposable
         AuthDb = new AuthDbContext(authDbOptions);
         AuthDbFactory = new TestDbContextFactory<AuthDbContext>(authDbOptions);
 
+        var governanceDbOptions = NewSectionDbOptions<GovernanceDbContext>();
+        GovernanceDb = new GovernanceDbContext(governanceDbOptions);
+        GovernanceDbFactory = new TestDbContextFactory<GovernanceDbContext>(governanceDbOptions);
+
+        var campaignsDbOptions = NewSectionDbOptions<CampaignsDbContext>();
+        CampaignsDb = new CampaignsDbContext(campaignsDbOptions);
+        CampaignsDbFactory = new TestDbContextFactory<CampaignsDbContext>(campaignsDbOptions);
+
+        var googleIntegrationDbOptions = NewSectionDbOptions<GoogleIntegrationDbContext>();
+        GoogleIntegrationDb = new GoogleIntegrationDbContext(googleIntegrationDbOptions);
+        GoogleIntegrationDbFactory = new TestDbContextFactory<GoogleIntegrationDbContext>(googleIntegrationDbOptions);
+
+        var ticketsDbOptions = NewSectionDbOptions<TicketsDbContext>();
+        TicketsDb = new TicketsDbContext(ticketsDbOptions);
+        TicketsDbFactory = new TestDbContextFactory<TicketsDbContext>(ticketsDbOptions);
+
+        var feedbackDbOptions = NewSectionDbOptions<FeedbackDbContext>();
+        FeedbackDb = new FeedbackDbContext(feedbackDbOptions);
+        FeedbackDbFactory = new TestDbContextFactory<FeedbackDbContext>(feedbackDbOptions);
+
         Clock = new FakeClock(now ?? Instant.FromUtc(2026, 3, 1, 12, 0));
     }
 
@@ -86,11 +128,64 @@ public abstract class ServiceTestHarness : IDisposable
             .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
             .Options;
 
+    /// <summary>
+    /// Flushes <see cref="Db"/> and every peeled-section context. A test that
+    /// stages rows across the main pile and one or more section contexts calls
+    /// this instead of <c>Db.SaveChangesAsync</c>, so it does not have to track
+    /// which context each seed landed in. <c>SaveChanges</c> on a context with
+    /// no pending changes is a no-op, so this is safe everywhere.
+    /// </summary>
+    private protected async Task SaveAllAsync(CancellationToken ct = default)
+    {
+        await Db.SaveChangesAsync(ct);
+        await AuthDb.SaveChangesAsync(ct);
+        await GovernanceDb.SaveChangesAsync(ct);
+        await CampaignsDb.SaveChangesAsync(ct);
+        await GoogleIntegrationDb.SaveChangesAsync(ct);
+        await TicketsDb.SaveChangesAsync(ct);
+        await FeedbackDb.SaveChangesAsync(ct);
+    }
+
+    /// <summary>
+    /// Clears the change tracker on <see cref="Db"/> and every peeled-section
+    /// context. Tests do this after exercising a service so the read-back sees
+    /// what the repository actually wrote rather than the instance the seed
+    /// left tracked — and the entity now lives in whichever context owns its
+    /// section, so clearing only <see cref="Db"/> silently returns stale state.
+    /// </summary>
+    private protected void ClearAllTrackers()
+    {
+        Db.ChangeTracker.Clear();
+        AuthDb.ChangeTracker.Clear();
+        GovernanceDb.ChangeTracker.Clear();
+        CampaignsDb.ChangeTracker.Clear();
+        GoogleIntegrationDb.ChangeTracker.Clear();
+        TicketsDb.ChangeTracker.Clear();
+        FeedbackDb.ChangeTracker.Clear();
+    }
+
+    /// <summary>Synchronous <see cref="SaveAllAsync"/>.</summary>
+    private protected void SaveAll()
+    {
+        Db.SaveChanges();
+        AuthDb.SaveChanges();
+        GovernanceDb.SaveChanges();
+        CampaignsDb.SaveChanges();
+        GoogleIntegrationDb.SaveChanges();
+        TicketsDb.SaveChanges();
+        FeedbackDb.SaveChanges();
+    }
+
     public virtual void Dispose()
     {
         Cache.Dispose();
         Db.Dispose();
         AuthDb.Dispose();
+        GovernanceDb.Dispose();
+        CampaignsDb.Dispose();
+        GoogleIntegrationDb.Dispose();
+        TicketsDb.Dispose();
+        FeedbackDb.Dispose();
         GC.SuppressFinalize(this);
     }
 

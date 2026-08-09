@@ -14,9 +14,9 @@ namespace Humans.Infrastructure.Repositories.Campaigns;
 /// <c>DbContext.CampaignCodes</c>, or <c>DbContext.CampaignGrants</c> after
 /// the Campaigns migration lands.
 /// Uses <see cref="IDbContextFactory{TContext}"/> so the repository can be
-/// registered as Singleton while <c>HumansDbContext</c> remains Scoped.
+/// registered as Singleton while <c>CampaignsDbContext</c> remains Scoped.
 /// </summary>
-internal sealed class CampaignRepository(IDbContextFactory<HumansDbContext> factory) : ICampaignRepository
+internal sealed class CampaignRepository(IDbContextFactory<CampaignsDbContext> factory) : ICampaignRepository
 {
     // ==========================================================================
     // Campaigns

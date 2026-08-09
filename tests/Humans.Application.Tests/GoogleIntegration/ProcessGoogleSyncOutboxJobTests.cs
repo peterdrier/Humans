@@ -20,7 +20,15 @@ namespace Humans.Application.Tests.GoogleIntegration;
 
 public class ProcessGoogleSyncOutboxJobTests : IDisposable
 {
-    private readonly HumansDbContext _dbContext;
+    private readonly GoogleIntegrationDbContext _dbContext;
+
+    /// <summary>
+    /// Users stay on the main pile after the GoogleIntegration peel
+    /// (nobodies-collective/Humans#858); no test here seeds one, so an empty
+    /// context is enough for the display-name stub.
+    /// </summary>
+    private readonly HumansDbContext _usersDb;
+
     private readonly IGoogleSyncOutboxRepository _outboxRepository;
     private readonly IGoogleResourceRepository _resourceRepository;
     private readonly IUserService _userService;
@@ -32,11 +40,11 @@ public class ProcessGoogleSyncOutboxJobTests : IDisposable
 
     public ProcessGoogleSyncOutboxJobTests()
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
+        var options = new DbContextOptionsBuilder<GoogleIntegrationDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
 
-        _dbContext = new HumansDbContext(options);
+        _dbContext = new GoogleIntegrationDbContext(options);
         var factory = new SingleContextFactory(options);
         _outboxRepository = new GoogleSyncOutboxRepository(factory);
         _resourceRepository = Substitute.For<IGoogleResourceRepository>();
@@ -44,7 +52,11 @@ public class ProcessGoogleSyncOutboxJobTests : IDisposable
             .GetActiveByTeamIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns([]);
         _userService = Substitute.For<IUserService>();
-        _userService.StubGetUserInfosFromContext(_dbContext);
+        _usersDb = new HumansDbContext(
+            new DbContextOptionsBuilder<HumansDbContext>()
+                .UseInMemoryDatabase(Guid.NewGuid().ToString())
+                .Options);
+        _userService.StubGetUserInfosFromContext(_usersDb);
         _teamService = Substitute.For<ITeamService>();
         _teamService
             .GetTeamsAsync(Arg.Any<CancellationToken>())
@@ -68,6 +80,7 @@ public class ProcessGoogleSyncOutboxJobTests : IDisposable
     public void Dispose()
     {
         _dbContext.Dispose();
+        _usersDb.Dispose();
         _metrics.Dispose();
         GC.SuppressFinalize(this);
     }
@@ -151,12 +164,12 @@ public class ProcessGoogleSyncOutboxJobTests : IDisposable
         return outboxEvent;
     }
 
-    private sealed class SingleContextFactory(DbContextOptions<HumansDbContext> options)
-        : IDbContextFactory<HumansDbContext>
+    private sealed class SingleContextFactory(DbContextOptions<GoogleIntegrationDbContext> options)
+        : IDbContextFactory<GoogleIntegrationDbContext>
     {
-        public HumansDbContext CreateDbContext() => new(options);
+        public GoogleIntegrationDbContext CreateDbContext() => new(options);
 
-        public Task<HumansDbContext> CreateDbContextAsync(CancellationToken ct = default) =>
-            Task.FromResult(new HumansDbContext(options));
+        public Task<GoogleIntegrationDbContext> CreateDbContextAsync(CancellationToken ct = default) =>
+            Task.FromResult(new GoogleIntegrationDbContext(options));
     }
 }

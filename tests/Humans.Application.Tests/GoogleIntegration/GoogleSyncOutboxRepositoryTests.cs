@@ -24,17 +24,17 @@ namespace Humans.Application.Tests.GoogleIntegration;
 /// </summary>
 public sealed class GoogleSyncOutboxRepositoryTests : IDisposable
 {
-    private readonly DbContextOptions<HumansDbContext> _options;
+    private readonly DbContextOptions<GoogleIntegrationDbContext> _options;
     private readonly IGoogleSyncOutboxRepository _repository;
-    private readonly HumansDbContext _seedContext;
+    private readonly GoogleIntegrationDbContext _seedContext;
 
     public GoogleSyncOutboxRepositoryTests()
     {
-        _options = new DbContextOptionsBuilder<HumansDbContext>()
+        _options = new DbContextOptionsBuilder<GoogleIntegrationDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
         _repository = new GoogleSyncOutboxRepository(new SingleContextFactory(_options));
-        _seedContext = new HumansDbContext(_options);
+        _seedContext = new GoogleIntegrationDbContext(_options);
     }
 
     public void Dispose()
@@ -238,12 +238,12 @@ public sealed class GoogleSyncOutboxRepositoryTests : IDisposable
         DeduplicationKey = Guid.NewGuid().ToString(),
     };
 
-    private sealed class SingleContextFactory(DbContextOptions<HumansDbContext> options)
-        : IDbContextFactory<HumansDbContext>
+    private sealed class SingleContextFactory(DbContextOptions<GoogleIntegrationDbContext> options)
+        : IDbContextFactory<GoogleIntegrationDbContext>
     {
-        public HumansDbContext CreateDbContext() => new(options);
+        public GoogleIntegrationDbContext CreateDbContext() => new(options);
 
-        public Task<HumansDbContext> CreateDbContextAsync(CancellationToken ct = default) =>
-            Task.FromResult(new HumansDbContext(options));
+        public Task<GoogleIntegrationDbContext> CreateDbContextAsync(CancellationToken ct = default) =>
+            Task.FromResult(new GoogleIntegrationDbContext(options));
     }
 }

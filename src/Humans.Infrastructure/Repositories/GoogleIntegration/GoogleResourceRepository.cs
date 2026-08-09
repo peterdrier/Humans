@@ -12,9 +12,9 @@ namespace Humans.Infrastructure.Repositories.GoogleIntegration;
 /// only non-test file that touches <c>DbSet&lt;GoogleResource&gt;</c> after
 /// the Teams sub-task <c>#540c</c> migration lands. Uses
 /// <see cref="IDbContextFactory{TContext}"/> so the repository can be
-/// registered as Singleton while <c>HumansDbContext</c> remains Scoped.
+/// registered as Singleton while <c>GoogleIntegrationDbContext</c> remains Scoped.
 /// </summary>
-internal sealed class GoogleResourceRepository(IDbContextFactory<HumansDbContext> factory) : IGoogleResourceRepository
+internal sealed class GoogleResourceRepository(IDbContextFactory<GoogleIntegrationDbContext> factory) : IGoogleResourceRepository
 {
     public async Task<GoogleResource?> GetByIdAsync(Guid resourceId, CancellationToken ct = default)
     {

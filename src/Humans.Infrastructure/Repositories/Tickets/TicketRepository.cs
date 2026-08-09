@@ -19,10 +19,10 @@ namespace Humans.Infrastructure.Repositories.Tickets;
 /// </summary>
 /// <remarks>
 /// Uses <see cref="IDbContextFactory{TContext}"/> so the repository can be
-/// registered as Singleton while <c>HumansDbContext</c> remains short-lived
+/// registered as Singleton while <c>TicketsDbContext</c> remains short-lived
 /// per method - same pattern as <c>UserRepository</c>.
 /// </remarks>
-internal sealed class TicketRepository(IDbContextFactory<HumansDbContext> factory) : ITicketRepository
+internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> factory) : ITicketRepository
 {
     public async Task<TicketSyncState?> GetSyncStateAsync(CancellationToken ct = default)
     {

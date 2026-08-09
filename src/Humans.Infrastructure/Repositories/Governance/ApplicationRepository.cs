@@ -14,7 +14,7 @@ namespace Humans.Infrastructure.Repositories.Governance;
 /// <c>DbContext.BoardVotes</c>, or <c>DbContext.ApplicationStateHistories</c>
 /// after the Governance migration lands.
 /// </summary>
-internal sealed class ApplicationRepository(IDbContextFactory<HumansDbContext> factory) : IApplicationRepository
+internal sealed class ApplicationRepository(IDbContextFactory<GovernanceDbContext> factory) : IApplicationRepository
 {
     public async Task<MemberApplication?> GetByIdAsync(Guid applicationId, CancellationToken ct = default)
     {
@@ -326,7 +326,7 @@ internal sealed class ApplicationRepository(IDbContextFactory<HumansDbContext> f
     }
 
     private async Task<T> WithContextAsync<T>(
-        Func<HumansDbContext, Task<T>> action,
+        Func<GovernanceDbContext, Task<T>> action,
         CancellationToken ct)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);

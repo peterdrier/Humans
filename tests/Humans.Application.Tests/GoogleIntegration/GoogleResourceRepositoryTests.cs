@@ -28,19 +28,19 @@ namespace Humans.Application.Tests.GoogleIntegration;
 /// </summary>
 public sealed class GoogleResourceRepositoryTests : IDisposable
 {
-    private readonly DbContextOptions<HumansDbContext> _options;
+    private readonly DbContextOptions<GoogleIntegrationDbContext> _options;
     private readonly FakeClock _clock;
     private readonly IGoogleResourceRepository _repository;
-    private readonly HumansDbContext _seedContext;
+    private readonly GoogleIntegrationDbContext _seedContext;
 
     public GoogleResourceRepositoryTests()
     {
-        _options = new DbContextOptionsBuilder<HumansDbContext>()
+        _options = new DbContextOptionsBuilder<GoogleIntegrationDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
         _clock = new FakeClock(Instant.FromUtc(2026, 4, 22, 10, 0));
         _repository = new GoogleResourceRepository(new SingleContextFactory(_options));
-        _seedContext = new HumansDbContext(_options);
+        _seedContext = new GoogleIntegrationDbContext(_options);
     }
 
     public void Dispose()
@@ -187,7 +187,7 @@ public sealed class GoogleResourceRepositoryTests : IDisposable
 
         deactivated.Select(r => r.Id).Should().BeEquivalentTo([drive.Id]);
 
-        await using var check = new HumansDbContext(_options);
+        await using var check = new GoogleIntegrationDbContext(_options);
         (await check.GoogleResources.FindAsync(drive.Id, Xunit.TestContext.Current.CancellationToken))!.IsActive.Should().BeFalse();
         (await check.GoogleResources.FindAsync(group.Id, Xunit.TestContext.Current.CancellationToken))!.IsActive.Should().BeTrue();
     }
@@ -228,12 +228,12 @@ public sealed class GoogleResourceRepositoryTests : IDisposable
     /// production Singleton-plus-factory shape (§15b) without requiring a
     /// real provider.
     /// </summary>
-    private sealed class SingleContextFactory(DbContextOptions<HumansDbContext> options)
-        : IDbContextFactory<HumansDbContext>
+    private sealed class SingleContextFactory(DbContextOptions<GoogleIntegrationDbContext> options)
+        : IDbContextFactory<GoogleIntegrationDbContext>
     {
-        public HumansDbContext CreateDbContext() => new(options);
+        public GoogleIntegrationDbContext CreateDbContext() => new(options);
 
-        public Task<HumansDbContext> CreateDbContextAsync(CancellationToken ct = default) =>
-            Task.FromResult(new HumansDbContext(options));
+        public Task<GoogleIntegrationDbContext> CreateDbContextAsync(CancellationToken ct = default) =>
+            Task.FromResult(new GoogleIntegrationDbContext(options));
     }
 }

@@ -12,18 +12,18 @@ namespace Humans.Application.Tests.Repositories;
 
 public sealed class FeedbackRepositoryTests : IDisposable
 {
-    private readonly HumansDbContext _dbContext;
+    private readonly FeedbackDbContext _dbContext;
     private readonly FakeClock _clock;
     private readonly FeedbackRepository _repo;
 
     public FeedbackRepositoryTests()
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
+        var options = new DbContextOptionsBuilder<FeedbackDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
-        _dbContext = new HumansDbContext(options);
+        _dbContext = new FeedbackDbContext(options);
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 18, 12, 0));
-        _repo = new FeedbackRepository(new TestDbContextFactory(options));
+        _repo = new FeedbackRepository(new TestDbContextFactory<FeedbackDbContext>(options));
     }
 
     public void Dispose()
