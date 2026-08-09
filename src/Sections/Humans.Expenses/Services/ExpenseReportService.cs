@@ -414,7 +414,7 @@ internal sealed class ExpenseReportService(
 
         await auditLogService.LogAsync(
             AuditAction.ExpenseAttachmentUploaded,
-            "ExpenseReport", reportId,
+            AuditEntityTypes.Report, reportId,
             $"Attachment uploaded to line {lineId}.",
             submitterUserId);
 
@@ -460,7 +460,7 @@ internal sealed class ExpenseReportService(
 
         await auditLogService.LogAsync(
             AuditAction.ExpenseAttachmentRemoved,
-            "ExpenseReport", reportId,
+            AuditEntityTypes.Report, reportId,
             $"Attachment removed from line {lineId}.",
             submitterUserId);
     }
@@ -498,7 +498,7 @@ internal sealed class ExpenseReportService(
 
         await auditLogService.LogAsync(
             AuditAction.ExpenseSubmit,
-            "ExpenseReport", reportId,
+            AuditEntityTypes.Report, reportId,
             "Submitted expense report.",
             submitterUserId);
 
@@ -529,7 +529,7 @@ internal sealed class ExpenseReportService(
 
         await auditLogService.LogAsync(
             AuditAction.ExpenseWithdraw,
-            "ExpenseReport", reportId,
+            AuditEntityTypes.Report, reportId,
             "Withdrew expense report.",
             submitterUserId);
 
@@ -646,7 +646,7 @@ internal sealed class ExpenseReportService(
 
         await auditLogService.LogAsync(
             AuditAction.ExpenseEndorse,
-            "ExpenseReport", reportId,
+            AuditEntityTypes.Report, reportId,
             "Coordinator endorsed expense report.",
             coordinatorUserId);
 
@@ -678,7 +678,7 @@ internal sealed class ExpenseReportService(
 
         await auditLogService.LogAsync(
             AuditAction.ExpenseCoordinatorReject,
-            "ExpenseReport", reportId,
+            AuditEntityTypes.Report, reportId,
             $"Coordinator rejected expense report: {reason}",
             coordinatorUserId);
 
@@ -710,7 +710,7 @@ internal sealed class ExpenseReportService(
 
         await auditLogService.LogAsync(
             AuditAction.ExpenseApprove,
-            "ExpenseReport", reportId,
+            AuditEntityTypes.Report, reportId,
             "Finance approved expense report.",
             actorUserId);
 
@@ -718,7 +718,7 @@ internal sealed class ExpenseReportService(
         {
             await auditLogService.LogAsync(
                 AuditAction.ExpenseCategoryOverride,
-                "ExpenseReport", reportId,
+                AuditEntityTypes.Report, reportId,
                 $"Category overridden during approval to {overrideCategoryId.Value}.",
                 actorUserId);
         }
@@ -750,7 +750,7 @@ internal sealed class ExpenseReportService(
 
         await auditLogService.LogAsync(
             AuditAction.ExpenseReject,
-            "ExpenseReport", reportId,
+            AuditEntityTypes.Report, reportId,
             $"Finance rejected expense report: {reason}",
             actorUserId);
 
