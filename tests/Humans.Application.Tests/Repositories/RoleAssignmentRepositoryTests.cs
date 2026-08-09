@@ -12,18 +12,18 @@ namespace Humans.Application.Tests.Repositories;
 
 public class RoleAssignmentRepositoryTests : IDisposable
 {
-    private readonly HumansDbContext _dbContext;
+    private readonly AuthDbContext _dbContext;
     private readonly FakeClock _clock;
     private readonly RoleAssignmentRepository _repo;
 
     public RoleAssignmentRepositoryTests()
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
+        var options = new DbContextOptionsBuilder<AuthDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
-        _dbContext = new HumansDbContext(options);
+        _dbContext = new AuthDbContext(options);
         _clock = new FakeClock(Instant.FromUtc(2026, 4, 22, 12, 0));
-        _repo = new RoleAssignmentRepository(new TestDbContextFactory(options));
+        _repo = new RoleAssignmentRepository(new TestDbContextFactory<AuthDbContext>(options));
     }
 
     public void Dispose()

@@ -10,12 +10,11 @@ namespace Humans.Infrastructure.Repositories.Email;
 /// <summary>
 /// EF-backed implementation of <see cref="IEmailOutboxRepository"/>. The only
 /// non-test file that touches <c>DbContext.EmailOutboxMessages</c> after the
-/// Email §15 migration lands — plus the single <c>IsEmailSendingPaused</c>
-/// row in <c>system_settings</c> which is the Email section's pause flag.
+/// Email §15 migration lands.
 /// Uses <see cref="IDbContextFactory{TContext}"/> so the repository is
-/// registered as Singleton while <c>HumansDbContext</c> stays Scoped.
+/// registered as Singleton while <c>EmailDbContext</c> stays Scoped.
 /// </summary>
-internal sealed class EmailOutboxRepository(IDbContextFactory<HumansDbContext> factory) : IEmailOutboxRepository
+internal sealed class EmailOutboxRepository(IDbContextFactory<EmailDbContext> factory) : IEmailOutboxRepository
 {
     public async Task<int> GetTotalCountAsync(CancellationToken ct = default)
     {

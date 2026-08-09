@@ -27,7 +27,7 @@ public sealed class RoleAssignmentServiceTests : ServiceTestHarness
     public RoleAssignmentServiceTests()
         : base(Instant.FromUtc(2026, 2, 15, 15, 30))
     {
-        _repository = new RoleAssignmentRepository(DbFactory);
+        _repository = new RoleAssignmentRepository(AuthDbFactory);
 
         _userService = NewDbBackedUserService();
 
@@ -209,7 +209,7 @@ public sealed class RoleAssignmentServiceTests : ServiceTestHarness
         var count = await _service.RevokeAllActiveAsync(userId, TestContext.Current.CancellationToken);
 
         count.Should().Be(2);
-        var remaining = await Db.RoleAssignments
+        var remaining = await AuthDb.RoleAssignments
             .AsNoTracking()
             .Where(ra => ra.UserId == userId)
             .ToListAsync(TestContext.Current.CancellationToken);
@@ -333,9 +333,9 @@ public sealed class RoleAssignmentServiceTests : ServiceTestHarness
             CreatedByUserId = createdByUserId ?? Guid.NewGuid()
         };
 
-        Db.RoleAssignments.Add(assignment);
+        AuthDb.RoleAssignments.Add(assignment);
 
-        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        await AuthDb.SaveChangesAsync(TestContext.Current.CancellationToken);
         return assignment;
     }
 }

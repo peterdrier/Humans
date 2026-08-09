@@ -27,8 +27,18 @@ namespace Humans.Integration.Tests.AccountMerge;
 public sealed class MergeFixtureBuilder
 {
     private readonly HumansDbContext _db;
+
+    // role_assignments and notifications/notification_recipients moved to their
+    // own contexts with the Auth and Notifications peels
+    // (nobodies-collective/Humans#858). Same database, so a fixture can still
+    // stage rows for all three and flush them together.
+    private readonly AuthDbContext _authDb;
+    private readonly NotificationsDbContext _notificationsDb;
+
     private readonly Instant _now;
     private readonly List<Action<HumansDbContext>> _pending = [];
+    private readonly List<Action<AuthDbContext>> _pendingAuth = [];
+    private readonly List<Action<NotificationsDbContext>> _pendingNotifications = [];
 
     public Guid SourceUserId { get; }
     public Guid TargetUserId { get; }
@@ -36,6 +46,8 @@ public sealed class MergeFixtureBuilder
     internal MergeFixtureBuilder(IServiceScope scope, Guid sourceUserId, Guid targetUserId)
     {
         _db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        _authDb = scope.ServiceProvider.GetRequiredService<AuthDbContext>();
+        _notificationsDb = scope.ServiceProvider.GetRequiredService<NotificationsDbContext>();
         _now = SystemClock.Instance.GetCurrentInstant();
         SourceUserId = sourceUserId;
         TargetUserId = targetUserId;
@@ -275,7 +287,7 @@ public sealed class MergeFixtureBuilder
 
     private MergeFixtureBuilder AddNotificationRecipient(Guid userId, Guid notificationId)
     {
-        _pending.Add(db => db.NotificationRecipients.Add(new NotificationRecipient
+        _pendingNotifications.Add(db => db.NotificationRecipients.Add(new NotificationRecipient
         {
             NotificationId = notificationId,
             UserId = userId,
@@ -372,7 +384,7 @@ public sealed class MergeFixtureBuilder
     private MergeFixtureBuilder AddRoleAssignment(
         Guid userId, string roleName, Instant? validFrom, Instant? validTo)
     {
-        _pending.Add(db => db.RoleAssignments.Add(new RoleAssignment
+        _pendingAuth.Add(db => db.RoleAssignments.Add(new RoleAssignment
         {
             Id = Guid.NewGuid(),
             UserId = userId,
@@ -469,8 +481,8 @@ public sealed class MergeFixtureBuilder
             Class = NotificationClass.Informational,
             CreatedAt = _now,
         };
-        _db.Notifications.Add(notification);
-        _db.SaveChanges();
+        _notificationsDb.Notifications.Add(notification);
+        _notificationsDb.SaveChanges();
         return notificationId;
     }
 
@@ -730,5 +742,19 @@ public sealed class MergeFixtureBuilder
         }
         _pending.Clear();
         await _db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        foreach (var apply in _pendingAuth)
+        {
+            apply(_authDb);
+        }
+        _pendingAuth.Clear();
+        await _authDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        foreach (var apply in _pendingNotifications)
+        {
+            apply(_notificationsDb);
+        }
+        _pendingNotifications.Clear();
+        await _notificationsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
     }
 }

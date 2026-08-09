@@ -18,7 +18,7 @@ namespace Humans.Application.Tests.Jobs;
 
 public class CleanupEmailOutboxJobTests : IDisposable
 {
-    private readonly HumansDbContext _dbContext;
+    private readonly EmailDbContext _dbContext;
     private readonly FakeClock _clock;
     private readonly HumansMetricsService _metrics;
     private readonly CleanupEmailOutboxJob _job;
@@ -28,16 +28,16 @@ public class CleanupEmailOutboxJobTests : IDisposable
 
     public CleanupEmailOutboxJobTests()
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
+        var options = new DbContextOptionsBuilder<EmailDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
 
-        _dbContext = new HumansDbContext(options);
+        _dbContext = new EmailDbContext(options);
         _clock = new FakeClock(Now);
         _metrics = TestMetrics.Create();
         var logger = Substitute.For<ILogger<CleanupEmailOutboxJob>>();
         var settings = Options.Create(new EmailSettings { OutboxRetentionDays = 150 });
-        var repo = new EmailOutboxRepository(new TestDbContextFactory(options));
+        var repo = new EmailOutboxRepository(new TestDbContextFactory<EmailDbContext>(options));
 
         _job = new CleanupEmailOutboxJob(repo, _clock, settings, _metrics, logger);
     }

@@ -166,7 +166,7 @@ public class ChainFollowReadTests(HumansTestDatabase database) : IntegrationTest
         // which requires the actor to be Admin / Board / TeamsAdmin.
         await using var scope = Factory.Services.CreateAsyncScope();
         var um = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
-        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var authDb = scope.ServiceProvider.GetRequiredService<AuthDbContext>();
         var now = SystemClock.Instance.GetCurrentInstant();
 
         var adminId = Guid.NewGuid();
@@ -186,7 +186,7 @@ public class ChainFollowReadTests(HumansTestDatabase database) : IntegrationTest
                 + string.Join("; ", result.Errors.Select(e => e.Description)));
         }
 
-        db.RoleAssignments.Add(new RoleAssignment
+        authDb.RoleAssignments.Add(new RoleAssignment
         {
             Id = Guid.NewGuid(),
             UserId = adminId,
@@ -196,7 +196,7 @@ public class ChainFollowReadTests(HumansTestDatabase database) : IntegrationTest
             CreatedAt = now,
             CreatedByUserId = adminId,
         });
-        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        await authDb.SaveChangesAsync(TestContext.Current.CancellationToken);
         return adminId;
     }
 

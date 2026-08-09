@@ -12,12 +12,12 @@ namespace Humans.Infrastructure.Repositories.Calendar;
 /// (<c>CalendarEvents</c>, <c>CalendarEventExceptions</c>) after the Calendar
 /// §15 migration (issue #569) lands. Uses
 /// <see cref="IDbContextFactory{TContext}"/> so the repository can be
-/// registered as Singleton while <c>HumansDbContext</c> remains Scoped.
-/// Cross-domain navigation (<c>CalendarEvent.OwningTeam</c>) is never
-/// <c>Include</c>-ed; the service stitches team names via
+/// registered as Singleton while <c>CalendarDbContext</c> remains Scoped.
+/// The owning team is a bare Guid — not in this model at all; the service
+/// stitches team names via
 /// <see cref="Application.Interfaces.Teams.ITeamService"/>.
 /// </summary>
-internal sealed class CalendarRepository(IDbContextFactory<HumansDbContext> factory) : ICalendarRepository
+internal sealed class CalendarRepository(IDbContextFactory<CalendarDbContext> factory) : ICalendarRepository
 {
     // ==========================================================================
     // Reads

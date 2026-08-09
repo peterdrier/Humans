@@ -96,7 +96,7 @@ public class MergeAsyncOrderedTests(HumansTestDatabase database)
         // resolve and authorization succeeds.
         await using var scope = Factory.Services.CreateAsyncScope();
         var um = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
-        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var authDb = scope.ServiceProvider.GetRequiredService<AuthDbContext>();
         var now = SystemClock.Instance.GetCurrentInstant();
 
         var adminId = Guid.NewGuid();
@@ -116,7 +116,7 @@ public class MergeAsyncOrderedTests(HumansTestDatabase database)
                 + string.Join("; ", result.Errors.Select(e => e.Description)));
         }
 
-        db.RoleAssignments.Add(new RoleAssignment
+        authDb.RoleAssignments.Add(new RoleAssignment
         {
             Id = Guid.NewGuid(),
             UserId = adminId,
@@ -126,7 +126,7 @@ public class MergeAsyncOrderedTests(HumansTestDatabase database)
             CreatedAt = now,
             CreatedByUserId = adminId,
         });
-        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        await authDb.SaveChangesAsync(TestContext.Current.CancellationToken);
         return adminId;
     }
 }

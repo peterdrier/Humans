@@ -25,7 +25,6 @@ internal sealed class HumansDbContext(DbContextOptions<HumansDbContext> options)
     public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
 
     public DbSet<Profile> Profiles => Set<Profile>();
-    public DbSet<RoleAssignment> RoleAssignments => Set<RoleAssignment>();
     public DbSet<MemberApplication> Applications => Set<MemberApplication>();
     public DbSet<ApplicationStateHistory> ApplicationStateHistories => Set<ApplicationStateHistory>();
     public DbSet<LegalDocument> LegalDocuments => Set<LegalDocument>();
@@ -57,7 +56,6 @@ internal sealed class HumansDbContext(DbContextOptions<HumansDbContext> options)
     public DbSet<CampPolygon> CampPolygons => Set<CampPolygon>();
     public DbSet<CampPolygonHistory> CampPolygonHistories => Set<CampPolygonHistory>();
     public DbSet<CityPlanningSettings> CityPlanningSettings => Set<CityPlanningSettings>();
-    public DbSet<EmailOutboxMessage> EmailOutboxMessages { get; set; } = null!;
     public DbSet<Campaign> Campaigns { get; set; } = null!;
     public DbSet<CampaignCode> CampaignCodes { get; set; } = null!;
     public DbSet<CampaignGrant> CampaignGrants { get; set; } = null!;
@@ -74,8 +72,6 @@ internal sealed class HumansDbContext(DbContextOptions<HumansDbContext> options)
     public DbSet<VolunteerBuildStatus> VolunteerBuildStatuses => Set<VolunteerBuildStatus>();
     public DbSet<FeedbackReport> FeedbackReports => Set<FeedbackReport>();
     public DbSet<FeedbackMessage> FeedbackMessages => Set<FeedbackMessage>();
-    public DbSet<Issue> Issues => Set<Issue>();
-    public DbSet<IssueComment> IssueComments => Set<IssueComment>();
     public DbSet<AccountMergeRequest> AccountMergeRequests => Set<AccountMergeRequest>();
     public DbSet<CommunicationPreference> CommunicationPreferences => Set<CommunicationPreference>();
     public DbSet<BudgetYear> BudgetYears => Set<BudgetYear>();
@@ -83,13 +79,9 @@ internal sealed class HumansDbContext(DbContextOptions<HumansDbContext> options)
     public DbSet<BudgetCategory> BudgetCategories => Set<BudgetCategory>();
     public DbSet<BudgetLineItem> BudgetLineItems => Set<BudgetLineItem>();
     public DbSet<BudgetAuditLog> BudgetAuditLogs => Set<BudgetAuditLog>();
-    public DbSet<CalendarEvent> CalendarEvents => Set<CalendarEvent>();
-    public DbSet<CalendarEventException> CalendarEventExceptions => Set<CalendarEventException>();
     public DbSet<TicketingProjection> TicketingProjections => Set<TicketingProjection>();
     public DbSet<ShiftTag> ShiftTags => Set<ShiftTag>();
     public DbSet<VolunteerTagPreference> VolunteerTagPreferences => Set<VolunteerTagPreference>();
-    public DbSet<Notification> Notifications => Set<Notification>();
-    public DbSet<NotificationRecipient> NotificationRecipients => Set<NotificationRecipient>();
     public DbSet<ProfileLanguage> ProfileLanguages => Set<ProfileLanguage>();
     public DbSet<EventParticipation> EventParticipations => Set<EventParticipation>();
 
@@ -112,6 +104,11 @@ internal sealed class HumansDbContext(DbContextOptions<HumansDbContext> options)
         typeof(Configurations.Finance.HoldedExpenseDocConfiguration).Namespace!,
         typeof(Configurations.Surveys.SurveyConfiguration).Namespace!,
         typeof(Configurations.EventGuide.EventConfiguration).Namespace!,
+        typeof(Configurations.Auth.RoleAssignmentConfiguration).Namespace!,
+        typeof(Configurations.Email.EmailOutboxMessageConfiguration).Namespace!,
+        typeof(Configurations.Calendar.CalendarEventConfiguration).Namespace!,
+        typeof(Configurations.Notifications.NotificationConfiguration).Namespace!,
+        typeof(Configurations.Issues.IssueConfiguration).Namespace!,
     ];
 
     protected override void OnModelCreating(ModelBuilder builder)

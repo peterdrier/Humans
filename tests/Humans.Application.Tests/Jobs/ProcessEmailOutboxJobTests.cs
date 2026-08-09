@@ -25,9 +25,9 @@ namespace Humans.Application.Tests.Jobs;
 
 public class ProcessEmailOutboxJobTests : IDisposable
 {
-    private readonly DbContextOptions<HumansDbContext> _options;
+    private readonly DbContextOptions<EmailDbContext> _options;
     private readonly DbContextOptions<SystemSettingsDbContext> _systemSettingsOptions;
-    private readonly HumansDbContext _dbContext;
+    private readonly EmailDbContext _dbContext;
     private readonly IEmailTransport _transport;
     private readonly ICampaignService _campaignService;
     private readonly FakeClock _clock;
@@ -42,11 +42,11 @@ public class ProcessEmailOutboxJobTests : IDisposable
 
     public ProcessEmailOutboxJobTests()
     {
-        _options = new DbContextOptionsBuilder<HumansDbContext>()
+        _options = new DbContextOptionsBuilder<EmailDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
 
-        _dbContext = new HumansDbContext(_options);
+        _dbContext = new EmailDbContext(_options);
         _transport = Substitute.For<IEmailTransport>();
         _campaignService = Substitute.For<ICampaignService>();
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 14, 12, 0));
@@ -54,7 +54,7 @@ public class ProcessEmailOutboxJobTests : IDisposable
         _meters = new MetersService(Substitute.For<ILogger<MetersService>>());
         _settings = Options.Create(new EmailSettings { OutboxBatchSize = 10, OutboxMaxRetries = 10 });
         var logger = Substitute.For<ILogger<ProcessEmailOutboxJob>>();
-        _repo = new EmailOutboxRepository(new TestDbContextFactory(_options));
+        _repo = new EmailOutboxRepository(new TestDbContextFactory<EmailDbContext>(_options));
         _systemSettingsOptions = new DbContextOptionsBuilder<SystemSettingsDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
@@ -252,7 +252,7 @@ public class ProcessEmailOutboxJobTests : IDisposable
     // fresh context from the same factory so we read the updated row.
     private IQueryable<EmailOutboxMessage> FreshQuery()
     {
-        var ctx = new HumansDbContext(_options);
+        var ctx = new EmailDbContext(_options);
         return ctx.EmailOutboxMessages.AsNoTracking();
     }
 

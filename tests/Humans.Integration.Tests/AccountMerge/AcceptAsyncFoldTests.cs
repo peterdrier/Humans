@@ -34,7 +34,7 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         // succeeds.
         await using var scope = Factory.Services.CreateAsyncScope();
         var um = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
-        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var authDb = scope.ServiceProvider.GetRequiredService<AuthDbContext>();
         var now = SystemClock.Instance.GetCurrentInstant();
 
         var adminId = Guid.NewGuid();
@@ -54,7 +54,7 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
                 + string.Join("; ", result.Errors.Select(e => e.Description)));
         }
 
-        db.RoleAssignments.Add(new RoleAssignment
+        authDb.RoleAssignments.Add(new RoleAssignment
         {
             Id = Guid.NewGuid(),
             UserId = adminId,
@@ -64,7 +64,7 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
             CreatedAt = now,
             CreatedByUserId = adminId,
         });
-        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        await authDb.SaveChangesAsync(TestContext.Current.CancellationToken);
         return adminId;
     }
 
@@ -647,8 +647,9 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
 
         await using var assertScope = Factory.Services.CreateAsyncScope();
         var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var authDb = assertScope.ServiceProvider.GetRequiredService<AuthDbContext>();
 
-        var targetRows = await db.RoleAssignments
+        var targetRows = await authDb.RoleAssignments
             .AsNoTracking()
             .Where(ra => ra.UserId == targetId
                 && (ra.RoleName == sharedRole || ra.RoleName == sourceOnlyRole))
@@ -658,7 +659,7 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         targetRows.Should().ContainSingle(ra => string.Equals(ra.RoleName, sharedRole, StringComparison.Ordinal));
         targetRows.Should().ContainSingle(ra => string.Equals(ra.RoleName, sourceOnlyRole, StringComparison.Ordinal));
 
-        var sourceRows = await db.RoleAssignments
+        var sourceRows = await authDb.RoleAssignments
             .AsNoTracking()
             .Where(ra => ra.UserId == sourceId
                 && (ra.RoleName == sharedRole || ra.RoleName == sourceOnlyRole))
@@ -787,8 +788,9 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
 
         await using var assertScope = Factory.Services.CreateAsyncScope();
         var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var notificationsDb = assertScope.ServiceProvider.GetRequiredService<NotificationsDbContext>();
 
-        var targetRecipients = await db.NotificationRecipients
+        var targetRecipients = await notificationsDb.NotificationRecipients
             .AsNoTracking()
             .Where(nr => nr.UserId == targetId
                 && (nr.NotificationId == sharedNotificationId || nr.NotificationId == sourceOnlyNotificationId))
@@ -798,7 +800,7 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         targetRecipients.Should().ContainSingle(nr => nr.NotificationId == sharedNotificationId);
         targetRecipients.Should().ContainSingle(nr => nr.NotificationId == sourceOnlyNotificationId);
 
-        var sourceRecipients = await db.NotificationRecipients
+        var sourceRecipients = await notificationsDb.NotificationRecipients
             .AsNoTracking()
             .Where(nr => nr.UserId == sourceId
                 && (nr.NotificationId == sharedNotificationId || nr.NotificationId == sourceOnlyNotificationId))

@@ -12,18 +12,18 @@ namespace Humans.Application.Tests.Repositories;
 
 public sealed class EmailOutboxRepositoryTests : IDisposable
 {
-    private readonly HumansDbContext _dbContext;
+    private readonly EmailDbContext _dbContext;
     private readonly FakeClock _clock;
     private readonly EmailOutboxRepository _repo;
 
     public EmailOutboxRepositoryTests()
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
+        var options = new DbContextOptionsBuilder<EmailDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
-        _dbContext = new HumansDbContext(options);
+        _dbContext = new EmailDbContext(options);
         _clock = new FakeClock(Instant.FromUtc(2026, 4, 1, 12, 0));
-        _repo = new EmailOutboxRepository(new TestDbContextFactory(options));
+        _repo = new EmailOutboxRepository(new TestDbContextFactory<EmailDbContext>(options));
     }
 
     public void Dispose()
