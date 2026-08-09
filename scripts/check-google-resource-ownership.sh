@@ -25,7 +25,9 @@ cd "$ROOT_DIR"
 ALLOWED=(
   "src/Humans.Infrastructure/Repositories/GoogleResourceRepository.cs"
   "src/Humans.Infrastructure/Data/Configurations/TeamConfiguration.cs"
-  "src/Humans.Infrastructure/Data/HumansDbContext.cs"
+  # The owning DbContext declares the DbSet. google_resources moved out of
+  # HumansDbContext with the GoogleIntegration peel (nobodies-collective/Humans#858).
+  "src/Humans.Infrastructure/Data/GoogleIntegrationDbContext.cs"
 )
 
 # Phase 2: still-pending migrations to services that own writes here.

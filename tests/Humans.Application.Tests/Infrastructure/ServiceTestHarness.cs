@@ -38,30 +38,46 @@ public abstract class ServiceTestHarness : IDisposable
     // wiring their repositories both go through the section context. Each pair
     // is an independent in-memory store; a test that seeds across two saves on
     // each. Add a pair here as each further section peels.
+    //
+    // Every pair is built on FIRST TOUCH, not in the constructor: this class is
+    // the base for ~4000 tests and almost none of them touch any given section.
+    // Building all of them eagerly gives each test six extra sets of
+    // DbContextOptions — each with its own EF internal service provider — and
+    // that overhead alone pushed a 5s-budget test over its timeout on CI.
+    // SaveAllAsync/ClearAllTrackers/Dispose therefore visit only the pairs a
+    // test actually created.
+
+    private readonly List<Func<DbContext?>> _sectionContextProbes = [];
 
     /// <summary>Auth: <c>role_assignments</c> (see <see cref="SeedRoleAssignment"/>).</summary>
-    private protected AuthDbContext AuthDb { get; }
-    private protected TestDbContextFactory<AuthDbContext> AuthDbFactory { get; }
+    private readonly Lazy<SectionDb<AuthDbContext>> _authDb;
+    private protected AuthDbContext AuthDb => _authDb.Value.Context;
+    private protected TestDbContextFactory<AuthDbContext> AuthDbFactory => _authDb.Value.Factory;
 
     /// <summary>Governance: <c>applications</c>, <c>application_state_history</c>, <c>board_votes</c>.</summary>
-    private protected GovernanceDbContext GovernanceDb { get; }
-    private protected TestDbContextFactory<GovernanceDbContext> GovernanceDbFactory { get; }
+    private readonly Lazy<SectionDb<GovernanceDbContext>> _governanceDb;
+    private protected GovernanceDbContext GovernanceDb => _governanceDb.Value.Context;
+    private protected TestDbContextFactory<GovernanceDbContext> GovernanceDbFactory => _governanceDb.Value.Factory;
 
     /// <summary>Campaigns: <c>campaigns</c>, <c>campaign_codes</c>, <c>campaign_grants</c>.</summary>
-    private protected CampaignsDbContext CampaignsDb { get; }
-    private protected TestDbContextFactory<CampaignsDbContext> CampaignsDbFactory { get; }
+    private readonly Lazy<SectionDb<CampaignsDbContext>> _campaignsDb;
+    private protected CampaignsDbContext CampaignsDb => _campaignsDb.Value.Context;
+    private protected TestDbContextFactory<CampaignsDbContext> CampaignsDbFactory => _campaignsDb.Value.Factory;
 
     /// <summary>GoogleIntegration: <c>google_resources</c>, <c>google_sync_outbox</c>, <c>sync_service_settings</c>.</summary>
-    private protected GoogleIntegrationDbContext GoogleIntegrationDb { get; }
-    private protected TestDbContextFactory<GoogleIntegrationDbContext> GoogleIntegrationDbFactory { get; }
+    private readonly Lazy<SectionDb<GoogleIntegrationDbContext>> _googleIntegrationDb;
+    private protected GoogleIntegrationDbContext GoogleIntegrationDb => _googleIntegrationDb.Value.Context;
+    private protected TestDbContextFactory<GoogleIntegrationDbContext> GoogleIntegrationDbFactory => _googleIntegrationDb.Value.Factory;
 
     /// <summary>Tickets: <c>ticket_orders</c>, <c>ticket_attendees</c>, <c>ticket_sync_state</c>, <c>ticket_transfer_requests</c>.</summary>
-    private protected TicketsDbContext TicketsDb { get; }
-    private protected TestDbContextFactory<TicketsDbContext> TicketsDbFactory { get; }
+    private readonly Lazy<SectionDb<TicketsDbContext>> _ticketsDb;
+    private protected TicketsDbContext TicketsDb => _ticketsDb.Value.Context;
+    private protected TestDbContextFactory<TicketsDbContext> TicketsDbFactory => _ticketsDb.Value.Factory;
 
     /// <summary>Feedback: <c>feedback_reports</c>, <c>feedback_messages</c>.</summary>
-    private protected FeedbackDbContext FeedbackDb { get; }
-    private protected TestDbContextFactory<FeedbackDbContext> FeedbackDbFactory { get; }
+    private readonly Lazy<SectionDb<FeedbackDbContext>> _feedbackDb;
+    private protected FeedbackDbContext FeedbackDb => _feedbackDb.Value.Context;
+    private protected TestDbContextFactory<FeedbackDbContext> FeedbackDbFactory => _feedbackDb.Value.Factory;
 
     private protected FakeClock Clock { get; }
     private protected IMemoryCache Cache { get; } = new MemoryCache(new MemoryCacheOptions());
@@ -88,32 +104,41 @@ public abstract class ServiceTestHarness : IDisposable
         Db = new HumansDbContext(DbOptions);
         DbFactory = new TestDbContextFactory(DbOptions);
 
-        var authDbOptions = NewSectionDbOptions<AuthDbContext>();
-        AuthDb = new AuthDbContext(authDbOptions);
-        AuthDbFactory = new TestDbContextFactory<AuthDbContext>(authDbOptions);
-
-        var governanceDbOptions = NewSectionDbOptions<GovernanceDbContext>();
-        GovernanceDb = new GovernanceDbContext(governanceDbOptions);
-        GovernanceDbFactory = new TestDbContextFactory<GovernanceDbContext>(governanceDbOptions);
-
-        var campaignsDbOptions = NewSectionDbOptions<CampaignsDbContext>();
-        CampaignsDb = new CampaignsDbContext(campaignsDbOptions);
-        CampaignsDbFactory = new TestDbContextFactory<CampaignsDbContext>(campaignsDbOptions);
-
-        var googleIntegrationDbOptions = NewSectionDbOptions<GoogleIntegrationDbContext>();
-        GoogleIntegrationDb = new GoogleIntegrationDbContext(googleIntegrationDbOptions);
-        GoogleIntegrationDbFactory = new TestDbContextFactory<GoogleIntegrationDbContext>(googleIntegrationDbOptions);
-
-        var ticketsDbOptions = NewSectionDbOptions<TicketsDbContext>();
-        TicketsDb = new TicketsDbContext(ticketsDbOptions);
-        TicketsDbFactory = new TestDbContextFactory<TicketsDbContext>(ticketsDbOptions);
-
-        var feedbackDbOptions = NewSectionDbOptions<FeedbackDbContext>();
-        FeedbackDb = new FeedbackDbContext(feedbackDbOptions);
-        FeedbackDbFactory = new TestDbContextFactory<FeedbackDbContext>(feedbackDbOptions);
+        _authDb = RegisterSection<AuthDbContext>(o => new(o));
+        _governanceDb = RegisterSection<GovernanceDbContext>(o => new(o));
+        _campaignsDb = RegisterSection<CampaignsDbContext>(o => new(o));
+        _googleIntegrationDb = RegisterSection<GoogleIntegrationDbContext>(o => new(o));
+        _ticketsDb = RegisterSection<TicketsDbContext>(o => new(o));
+        _feedbackDb = RegisterSection<FeedbackDbContext>(o => new(o));
 
         Clock = new FakeClock(now ?? Instant.FromUtc(2026, 3, 1, 12, 0));
     }
+
+    /// <summary>A peeled section's in-memory context and the factory over the same store.</summary>
+    private sealed record SectionDb<TContext>(TContext Context, TestDbContextFactory<TContext> Factory)
+        where TContext : DbContext;
+
+    /// <summary>
+    /// Declares a peeled-section context without building it. The options, the
+    /// context and the factory are all created the first time a test reads the
+    /// corresponding property; until then the section costs nothing.
+    /// </summary>
+    private Lazy<SectionDb<TContext>> RegisterSection<TContext>(Func<DbContextOptions<TContext>, TContext> create)
+        where TContext : DbContext
+    {
+        var lazy = new Lazy<SectionDb<TContext>>(() =>
+        {
+            var options = NewSectionDbOptions<TContext>();
+            return new SectionDb<TContext>(create(options), new TestDbContextFactory<TContext>(options));
+        });
+
+        _sectionContextProbes.Add(() => lazy.IsValueCreated ? lazy.Value.Context : null);
+        return lazy;
+    }
+
+    /// <summary>The section contexts this test actually touched, in declaration order.</summary>
+    private IEnumerable<DbContext> CreatedSectionContexts() =>
+        _sectionContextProbes.Select(probe => probe()).OfType<DbContext>();
 
     /// <summary>
     /// In-memory options for a per-section DbContext (nobodies-collective/Humans#858),
@@ -138,12 +163,10 @@ public abstract class ServiceTestHarness : IDisposable
     private protected async Task SaveAllAsync(CancellationToken ct = default)
     {
         await Db.SaveChangesAsync(ct);
-        await AuthDb.SaveChangesAsync(ct);
-        await GovernanceDb.SaveChangesAsync(ct);
-        await CampaignsDb.SaveChangesAsync(ct);
-        await GoogleIntegrationDb.SaveChangesAsync(ct);
-        await TicketsDb.SaveChangesAsync(ct);
-        await FeedbackDb.SaveChangesAsync(ct);
+        foreach (var sectionDb in CreatedSectionContexts())
+        {
+            await sectionDb.SaveChangesAsync(ct);
+        }
     }
 
     /// <summary>
@@ -156,36 +179,30 @@ public abstract class ServiceTestHarness : IDisposable
     private protected void ClearAllTrackers()
     {
         Db.ChangeTracker.Clear();
-        AuthDb.ChangeTracker.Clear();
-        GovernanceDb.ChangeTracker.Clear();
-        CampaignsDb.ChangeTracker.Clear();
-        GoogleIntegrationDb.ChangeTracker.Clear();
-        TicketsDb.ChangeTracker.Clear();
-        FeedbackDb.ChangeTracker.Clear();
+        foreach (var sectionDb in CreatedSectionContexts())
+        {
+            sectionDb.ChangeTracker.Clear();
+        }
     }
 
     /// <summary>Synchronous <see cref="SaveAllAsync"/>.</summary>
     private protected void SaveAll()
     {
         Db.SaveChanges();
-        AuthDb.SaveChanges();
-        GovernanceDb.SaveChanges();
-        CampaignsDb.SaveChanges();
-        GoogleIntegrationDb.SaveChanges();
-        TicketsDb.SaveChanges();
-        FeedbackDb.SaveChanges();
+        foreach (var sectionDb in CreatedSectionContexts())
+        {
+            sectionDb.SaveChanges();
+        }
     }
 
     public virtual void Dispose()
     {
         Cache.Dispose();
         Db.Dispose();
-        AuthDb.Dispose();
-        GovernanceDb.Dispose();
-        CampaignsDb.Dispose();
-        GoogleIntegrationDb.Dispose();
-        TicketsDb.Dispose();
-        FeedbackDb.Dispose();
+        foreach (var sectionDb in CreatedSectionContexts())
+        {
+            sectionDb.Dispose();
+        }
         GC.SuppressFinalize(this);
     }
 
