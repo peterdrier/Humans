@@ -43,6 +43,9 @@ env:
     GoogleIntegrationDbContext:src/Humans.Infrastructure
     TicketsDbContext:src/Humans.Infrastructure
     FeedbackDbContext:src/Humans.Infrastructure
+    CityPlanningDbContext:src/Humans.Infrastructure
+    BudgetDbContext:src/Humans.Infrastructure
+    CampsDbContext:src/Humans.Infrastructure
     StoreDbContext:src/Sections/Humans.Store
 
 jobs:

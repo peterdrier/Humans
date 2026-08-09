@@ -37,7 +37,7 @@ public sealed class CachingCampServiceTests : ServiceTestHarness
     {
         _innerSubstitute = Substitute.For<ICampService, ICampRoleCampAccess>();
         _innerRoleAccess = (ICampRoleCampAccess)_innerSubstitute;
-        var repo = new CampRepository(DbFactory);
+        var repo = new CampRepository(CampsDbFactory);
         _innerSubstitute.GetSettingsAsync(Arg.Any<CancellationToken>())
             .Returns(ci => LoadSettingsAsync(ci.Arg<CancellationToken>()));
         _innerSubstitute.GetCampsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
@@ -106,10 +106,10 @@ public sealed class CachingCampServiceTests : ServiceTestHarness
         // call InvalidateCampAsync — this is the exact path the decorator's
         // write methods (SetEarlyEntryAsync, RemoveCampMemberAsync, …) take:
         // RefreshEntryAsync → _repo.GetByIdAsync → projection.
-        var third = Db.CampMembers
+        var third = CampsDb.CampMembers
             .First(m => m.CampSeasonId == season.Id && !m.HasEarlyEntry);
         third.HasEarlyEntry = true;
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         await _service.InvalidateCampAsync(camp.Id, Xunit.TestContext.Current.CancellationToken);
 
@@ -338,16 +338,16 @@ public sealed class CachingCampServiceTests : ServiceTestHarness
         List<int> openSeasons,
         LocalDate? eeStartDate = null)
     {
-        if (!await Db.CampSettings.AnyAsync(Xunit.TestContext.Current.CancellationToken))
+        if (!await CampsDb.CampSettings.AnyAsync(Xunit.TestContext.Current.CancellationToken))
         {
-            Db.CampSettings.Add(new CampSettings
+            CampsDb.CampSettings.Add(new CampSettings
             {
                 Id = Guid.Parse("00000000-0000-0000-0010-000000000001"),
                 PublicYear = publicYear,
                 OpenSeasons = openSeasons,
                 EeStartDate = eeStartDate
             });
-            await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+            await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         }
     }
 
@@ -433,9 +433,9 @@ public sealed class CachingCampServiceTests : ServiceTestHarness
             CreatedAt = Clock.GetCurrentInstant(),
             UpdatedAt = Clock.GetCurrentInstant(),
         };
-        Db.Camps.Add(camp);
-        Db.CampSeasons.Add(season);
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        CampsDb.Camps.Add(camp);
+        CampsDb.CampSeasons.Add(season);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         return (camp, season);
     }
 
@@ -457,8 +457,8 @@ public sealed class CachingCampServiceTests : ServiceTestHarness
             ConfirmedAt = status == CampMemberStatus.Active ? Clock.GetCurrentInstant() : null,
             HasEarlyEntry = hasEarlyEntry,
         };
-        Db.CampMembers.Add(member);
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        CampsDb.CampMembers.Add(member);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         return member;
     }
 

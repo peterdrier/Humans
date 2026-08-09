@@ -37,6 +37,7 @@ public sealed class MergeFixtureBuilder
     private readonly GovernanceDbContext _governanceDb;
     private readonly CampaignsDbContext _campaignsDb;
     private readonly FeedbackDbContext _feedbackDb;
+    private readonly BudgetDbContext _budgetDb;
 
     private readonly Instant _now;
     private readonly List<Action<HumansDbContext>> _pending = [];
@@ -45,6 +46,7 @@ public sealed class MergeFixtureBuilder
     private readonly List<Action<GovernanceDbContext>> _pendingGovernance = [];
     private readonly List<Action<CampaignsDbContext>> _pendingCampaigns = [];
     private readonly List<Action<FeedbackDbContext>> _pendingFeedback = [];
+    private readonly List<Action<BudgetDbContext>> _pendingBudget = [];
 
     public Guid SourceUserId { get; }
     public Guid TargetUserId { get; }
@@ -57,6 +59,7 @@ public sealed class MergeFixtureBuilder
         _governanceDb = scope.ServiceProvider.GetRequiredService<GovernanceDbContext>();
         _campaignsDb = scope.ServiceProvider.GetRequiredService<CampaignsDbContext>();
         _feedbackDb = scope.ServiceProvider.GetRequiredService<FeedbackDbContext>();
+        _budgetDb = scope.ServiceProvider.GetRequiredService<BudgetDbContext>();
         _now = SystemClock.Instance.GetCurrentInstant();
         SourceUserId = sourceUserId;
         TargetUserId = targetUserId;
@@ -623,15 +626,15 @@ public sealed class MergeFixtureBuilder
             CreatedAt = _now,
             UpdatedAt = _now,
         };
-        _db.BudgetYears.Add(year);
-        _db.SaveChanges();
+        _budgetDb.BudgetYears.Add(year);
+        _budgetDb.SaveChanges();
         return budgetYearId;
     }
 
     public MergeFixtureBuilder WithSourceBudgetAuditLog(
         Guid budgetYearId, string description)
     {
-        _pending.Add(db => db.BudgetAuditLogs.Add(new BudgetAuditLog
+        _pendingBudget.Add(db => db.BudgetAuditLogs.Add(new BudgetAuditLog
         {
             Id = Guid.NewGuid(),
             BudgetYearId = budgetYearId,
@@ -786,5 +789,12 @@ public sealed class MergeFixtureBuilder
         }
         _pendingFeedback.Clear();
         await _feedbackDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        foreach (var apply in _pendingBudget)
+        {
+            apply(_budgetDb);
+        }
+        _pendingBudget.Clear();
+        await _budgetDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
     }
 }

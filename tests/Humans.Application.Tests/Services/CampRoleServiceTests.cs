@@ -33,7 +33,7 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
         _campAccess = Substitute.For<ICampRoleCampAccess>();
         _campInfoInvalidator = Substitute.For<ICampInfoInvalidator>();
 
-        var repo = new CampRepository(DbFactory);
+        var repo = new CampRepository(CampsDbFactory);
 
         _service = new CampRoleService(
             repo,
@@ -252,7 +252,7 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
 
         outcome.Should().Be(AssignCampRoleOutcome.Assigned);
 
-        var assignments = await Db.CampRoleAssignments.AsNoTracking().ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        var assignments = await CampsDb.CampRoleAssignments.AsNoTracking().ToListAsync(Xunit.TestContext.Current.CancellationToken);
         assignments.Should().HaveCount(1);
         assignments[0].CampMemberId.Should().Be(member.Id);
 
@@ -284,7 +284,7 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
         var outcome = await _service.AssignAsync(season.Id, def.Id, member.Id, _actorUserId, Xunit.TestContext.Current.CancellationToken);
 
         outcome.Should().Be(AssignCampRoleOutcome.MemberNotActive);
-        (await Db.CampRoleAssignments.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+        (await CampsDb.CampRoleAssignments.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
     }
 
     [HumansFact]
@@ -368,12 +368,12 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
             .Returns(new CampMemberLookup(season.Id, member.UserId, CampMemberStatus.Active));
 
         await _service.AssignAsync(season.Id, def.Id, member.Id, _actorUserId, Xunit.TestContext.Current.CancellationToken);
-        var assignment = await Db.CampRoleAssignments.FirstAsync(Xunit.TestContext.Current.CancellationToken);
+        var assignment = await CampsDb.CampRoleAssignments.FirstAsync(Xunit.TestContext.Current.CancellationToken);
 
         var ok = await _service.UnassignAsync(assignment.Id, _actorUserId, Xunit.TestContext.Current.CancellationToken);
 
         ok.Should().BeTrue();
-        (await Db.CampRoleAssignments.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+        (await CampsDb.CampRoleAssignments.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
 
         await AuditLog.Received(1).LogAsync(
             AuditAction.CampRoleUnassigned, nameof(CampRoleAssignment),
@@ -396,7 +396,7 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
         var member1 = await SeedActiveMemberAsync(season.Id);
         var member2 = await SeedActiveMemberAsync(season.Id);
 
-        Db.CampRoleAssignments.Add(
+        CampsDb.CampRoleAssignments.Add(
             new CampRoleAssignment
             {
                 Id = Guid.NewGuid(),
@@ -406,7 +406,7 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
                 AssignedAt = Clock.GetCurrentInstant(),
                 AssignedByUserId = _actorUserId
             });
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         var users = new Dictionary<Guid, User>
         {
@@ -439,10 +439,10 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
         var m1 = await SeedActiveMemberAsync(season.Id);
         var m2 = await SeedActiveMemberAsync(season.Id);
 
-        await Db.CampRoleAssignments.AddRangeAsync(
+        await CampsDb.CampRoleAssignments.AddRangeAsync(
             new CampRoleAssignment { Id = Guid.NewGuid(), CampSeasonId = season.Id, CampRoleDefinitionId = def.Id, CampMemberId = m1.Id, AssignedAt = Clock.GetCurrentInstant(), AssignedByUserId = _actorUserId },
             new CampRoleAssignment { Id = Guid.NewGuid(), CampSeasonId = season.Id, CampRoleDefinitionId = def.Id, CampMemberId = m2.Id, AssignedAt = Clock.GetCurrentInstant(), AssignedByUserId = _actorUserId });
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         var users = new Dictionary<Guid, User>
         {
@@ -471,9 +471,9 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
         await SeedDefinitionAsync("Power", slotCount: 3, minimumRequired: 0);
         var member = await SeedActiveMemberAsync(season.Id);
 
-        Db.CampRoleAssignments.Add(
+        CampsDb.CampRoleAssignments.Add(
             new CampRoleAssignment { Id = Guid.NewGuid(), CampSeasonId = season.Id, CampRoleDefinitionId = consent.Id, CampMemberId = member.Id, AssignedAt = Clock.GetCurrentInstant(), AssignedByUserId = _actorUserId });
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         _campAccess.GetCampSeasonsForComplianceAsync(2026, Arg.Any<CancellationToken>())
             .Returns([(camp.Id, season.Name, camp.Slug, season.Id, season.Status, season.MemberCount, null)]);
@@ -509,10 +509,10 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
         var consent = await SeedDefinitionAsync(slotCount: 2, minimumRequired: 1);
         var lnt = await SeedDefinitionAsync("LNT", slotCount: 1, minimumRequired: 1);
         lnt.SortOrder = -5;
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         var member = await SeedActiveMemberAsync(season.Id);
 
-        Db.CampRoleAssignments.Add(new CampRoleAssignment
+        CampsDb.CampRoleAssignments.Add(new CampRoleAssignment
         {
             Id = Guid.NewGuid(),
             CampSeasonId = season.Id,
@@ -521,7 +521,7 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
             AssignedAt = Clock.GetCurrentInstant(),
             AssignedByUserId = _actorUserId,
         });
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         _campAccess.GetCampSeasonsForComplianceAsync(2026, Arg.Any<CancellationToken>())
             .Returns([(camp.Id, season.Name, camp.Slug, season.Id, season.Status, 25, 7)]);
@@ -574,8 +574,8 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
             RequestedAt = Clock.GetCurrentInstant(),
             RemovedAt = Clock.GetCurrentInstant(),
         };
-        Db.CampMembers.Add(removedMember);
-        Db.CampRoleAssignments.Add(new CampRoleAssignment
+        CampsDb.CampMembers.Add(removedMember);
+        CampsDb.CampRoleAssignments.Add(new CampRoleAssignment
         {
             Id = Guid.NewGuid(),
             CampSeasonId = season.Id,
@@ -584,7 +584,7 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
             AssignedAt = Clock.GetCurrentInstant(),
             AssignedByUserId = _actorUserId,
         });
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         _campAccess.GetCampSeasonsForComplianceAsync(2026, Arg.Any<CancellationToken>())
             .Returns([(camp.Id, season.Name, camp.Slug, season.Id, season.Status, 10, null)]);
@@ -602,15 +602,15 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
         var def2 = await SeedDefinitionAsync("LNT");
         var member = await SeedActiveMemberAsync(season.Id);
 
-        await Db.CampRoleAssignments.AddRangeAsync(
+        await CampsDb.CampRoleAssignments.AddRangeAsync(
             new CampRoleAssignment { Id = Guid.NewGuid(), CampSeasonId = season.Id, CampRoleDefinitionId = def1.Id, CampMemberId = member.Id, AssignedAt = Clock.GetCurrentInstant(), AssignedByUserId = _actorUserId },
             new CampRoleAssignment { Id = Guid.NewGuid(), CampSeasonId = season.Id, CampRoleDefinitionId = def2.Id, CampMemberId = member.Id, AssignedAt = Clock.GetCurrentInstant(), AssignedByUserId = _actorUserId });
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         var deletedCount = await _service.RemoveAllForMemberAsync(member.Id, _actorUserId, Xunit.TestContext.Current.CancellationToken);
 
         deletedCount.Should().Be(2);
-        (await Db.CampRoleAssignments.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+        (await CampsDb.CampRoleAssignments.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
     }
 
     // ==========================================================================
@@ -624,7 +624,7 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
         var def = await SeedDefinitionAsync(slug: "consent-lead");
         var member = await SeedActiveMemberAsync(season.Id);
 
-        Db.CampRoleAssignments.Add(new CampRoleAssignment
+        CampsDb.CampRoleAssignments.Add(new CampRoleAssignment
         {
             Id = Guid.NewGuid(),
             CampSeasonId = season.Id,
@@ -633,7 +633,7 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
             AssignedAt = Clock.GetCurrentInstant(),
             AssignedByUserId = _actorUserId,
         });
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         _campAccess.GetSettingsAsync(Arg.Any<CancellationToken>())
             .Returns(new CampSettingsInfo(
@@ -655,7 +655,7 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
         var def = await SeedDefinitionAsync("Old", slug: "old", deactivated: true);
         var member = await SeedActiveMemberAsync(season.Id);
 
-        Db.CampRoleAssignments.Add(new CampRoleAssignment
+        CampsDb.CampRoleAssignments.Add(new CampRoleAssignment
         {
             Id = Guid.NewGuid(),
             CampSeasonId = season.Id,
@@ -664,7 +664,7 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
             AssignedAt = Clock.GetCurrentInstant(),
             AssignedByUserId = _actorUserId,
         });
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         _campAccess.GetSettingsAsync(Arg.Any<CancellationToken>())
             .Returns(new CampSettingsInfo(
@@ -688,7 +688,7 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
         var def = await SeedDefinitionAsync("No Slug Yet", slug: "");
         var member = await SeedActiveMemberAsync(season.Id);
 
-        Db.CampRoleAssignments.Add(new CampRoleAssignment
+        CampsDb.CampRoleAssignments.Add(new CampRoleAssignment
         {
             Id = Guid.NewGuid(),
             CampSeasonId = season.Id,
@@ -697,7 +697,7 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
             AssignedAt = Clock.GetCurrentInstant(),
             AssignedByUserId = _actorUserId,
         });
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         _campAccess.GetSettingsAsync(Arg.Any<CancellationToken>())
             .Returns(new CampSettingsInfo(
@@ -728,11 +728,11 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
             RequestedAt = Clock.GetCurrentInstant(),
             RemovedAt = Clock.GetCurrentInstant(),
         };
-        Db.CampMembers.Add(inactiveMember);
+        CampsDb.CampMembers.Add(inactiveMember);
 
         var activeMember = await SeedActiveMemberAsync(season.Id);
 
-        await Db.CampRoleAssignments.AddRangeAsync(
+        await CampsDb.CampRoleAssignments.AddRangeAsync(
             new CampRoleAssignment
             {
                 Id = Guid.NewGuid(),
@@ -751,7 +751,7 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
                 AssignedAt = Clock.GetCurrentInstant(),
                 AssignedByUserId = _actorUserId,
             });
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         _campAccess.GetSettingsAsync(Arg.Any<CancellationToken>())
             .Returns(new CampSettingsInfo(
@@ -786,8 +786,8 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
             UpdatedAt = Clock.GetCurrentInstant(),
             DeactivatedAt = deactivated ? Clock.GetCurrentInstant() : null,
         };
-        Db.CampRoleDefinitions.Add(def);
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        CampsDb.CampRoleDefinitions.Add(def);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         return def;
     }
 
@@ -806,9 +806,9 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
             Name = "Test Camp",
             Status = CampSeasonStatus.Active,
         };
-        Db.Camps.Add(camp);
-        Db.CampSeasons.Add(season);
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        CampsDb.Camps.Add(camp);
+        CampsDb.CampSeasons.Add(season);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         return (camp, season);
     }
 
@@ -824,8 +824,8 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
             ConfirmedAt = Clock.GetCurrentInstant(),
             ConfirmedByUserId = _actorUserId,
         };
-        Db.CampMembers.Add(member);
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        CampsDb.CampMembers.Add(member);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         return member;
     }
 
@@ -848,8 +848,8 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
             CreatedAt = Clock.GetCurrentInstant(),
             UpdatedAt = Clock.GetCurrentInstant(),
         };
-        Db.CampRoleDefinitions.Add(def);
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        CampsDb.CampRoleDefinitions.Add(def);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         var input = new UpdateCampRoleDefinitionInput(
             Name: "Renamed", Slug: CampSystemRoles.CampLeadSlug, Description: null,
@@ -876,8 +876,8 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
             CreatedAt = Clock.GetCurrentInstant(),
             UpdatedAt = Clock.GetCurrentInstant(),
         };
-        Db.CampRoleDefinitions.Add(def);
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        CampsDb.CampRoleDefinitions.Add(def);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         var input = new UpdateCampRoleDefinitionInput(
             Name: def.Name, Slug: def.Slug, Description: "new description",
@@ -906,8 +906,8 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
             CreatedAt = Clock.GetCurrentInstant(),
             UpdatedAt = Clock.GetCurrentInstant(),
         };
-        Db.CampRoleDefinitions.Add(def);
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        CampsDb.CampRoleDefinitions.Add(def);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         var act = async () => await _service.DeactivateDefinitionAsync(def.Id, _actorUserId, Xunit.TestContext.Current.CancellationToken);
 
@@ -921,7 +921,7 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
 
         definitionsCreated.Should().Be(2);
 
-        var defs = await Db.CampRoleDefinitions
+        var defs = await CampsDb.CampRoleDefinitions
             .Where(d => d.SpecialRole != CampSpecialRole.None)
             .ToListAsync(Xunit.TestContext.Current.CancellationToken);
         defs.Should().HaveCount(2);
@@ -938,7 +938,7 @@ public sealed class CampRoleServiceTests : ServiceTestHarness
         var second = await _service.SeedSystemRolesAsync(_actorUserId, Xunit.TestContext.Current.CancellationToken);
         second.Should().Be(0);
 
-        (await Db.CampRoleDefinitions.CountAsync(d => d.SpecialRole != CampSpecialRole.None, Xunit.TestContext.Current.CancellationToken))
+        (await CampsDb.CampRoleDefinitions.CountAsync(d => d.SpecialRole != CampSpecialRole.None, Xunit.TestContext.Current.CancellationToken))
             .Should().Be(2);
     }
 }

@@ -29,7 +29,7 @@ public sealed class CampServiceEarlyEntryTests : ServiceTestHarness
     {
         _fileStorage = new InMemoryFileStorage();
 
-        var repo = new CampRepository(DbFactory);
+        var repo = new CampRepository(CampsDbFactory);
 
         _campRoleService = Substitute.For<ICampRoleService>();
         _campRoleService.RemoveAllForMemberAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
@@ -88,7 +88,7 @@ public sealed class CampServiceEarlyEntryTests : ServiceTestHarness
 
         await _service.SetCampSeasonEeSlotCountAsync(season.Id, 13, actor, Xunit.TestContext.Current.CancellationToken);
 
-        var reloaded = await Db.CampSeasons.AsNoTracking().FirstAsync(s => s.Id == season.Id, Xunit.TestContext.Current.CancellationToken);
+        var reloaded = await CampsDb.CampSeasons.AsNoTracking().FirstAsync(s => s.Id == season.Id, Xunit.TestContext.Current.CancellationToken);
         reloaded.EeSlotCount.Should().Be(13);
 
         await AuditLog.Received(1).LogAsync(
@@ -110,11 +110,11 @@ public sealed class CampServiceEarlyEntryTests : ServiceTestHarness
         var actor = Guid.NewGuid();
         await _service.SetCampSeasonEeSlotCountAsync(season.Id, 3, actor, Xunit.TestContext.Current.CancellationToken);
 
-        var reloaded = await Db.CampSeasons.AsNoTracking().FirstAsync(s => s.Id == season.Id, Xunit.TestContext.Current.CancellationToken);
+        var reloaded = await CampsDb.CampSeasons.AsNoTracking().FirstAsync(s => s.Id == season.Id, Xunit.TestContext.Current.CancellationToken);
         reloaded.EeSlotCount.Should().Be(3);
 
         // Existing grants persist — no auto-revoke.
-        var grantedCount = await Db.CampMembers
+        var grantedCount = await CampsDb.CampMembers
             .CountAsync(m => m.CampSeasonId == season.Id
                           && m.HasEarlyEntry
                           && m.Status == CampMemberStatus.Active, Xunit.TestContext.Current.CancellationToken);
@@ -127,15 +127,15 @@ public sealed class CampServiceEarlyEntryTests : ServiceTestHarness
 
     private async Task SeedSettingsAsync()
     {
-        if (!await Db.CampSettings.AnyAsync(Xunit.TestContext.Current.CancellationToken))
+        if (!await CampsDb.CampSettings.AnyAsync(Xunit.TestContext.Current.CancellationToken))
         {
-            Db.CampSettings.Add(new CampSettings
+            CampsDb.CampSettings.Add(new CampSettings
             {
                 Id = Guid.Parse("00000000-0000-0000-0010-000000000001"),
                 PublicYear = 2026,
                 OpenSeasons = [2026]
             });
-            await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+            await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         }
     }
 
@@ -176,9 +176,9 @@ public sealed class CampServiceEarlyEntryTests : ServiceTestHarness
             CreatedAt = Clock.GetCurrentInstant(),
             UpdatedAt = Clock.GetCurrentInstant(),
         };
-        Db.Camps.Add(camp);
-        Db.CampSeasons.Add(season);
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        CampsDb.Camps.Add(camp);
+        CampsDb.CampSeasons.Add(season);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         return (camp, season);
     }
 
@@ -194,8 +194,8 @@ public sealed class CampServiceEarlyEntryTests : ServiceTestHarness
             ConfirmedAt = Clock.GetCurrentInstant(),
             HasEarlyEntry = true,
         };
-        Db.CampMembers.Add(member);
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        CampsDb.CampMembers.Add(member);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         return member;
     }
 
@@ -211,8 +211,8 @@ public sealed class CampServiceEarlyEntryTests : ServiceTestHarness
             ConfirmedAt = Clock.GetCurrentInstant(),
             HasEarlyEntry = false,
         };
-        Db.CampMembers.Add(member);
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        CampsDb.CampMembers.Add(member);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         return member;
     }
 
@@ -231,7 +231,7 @@ public sealed class CampServiceEarlyEntryTests : ServiceTestHarness
         var outcome = await _service.SetEarlyEntryAsync(camp.Id, member.Id, granted: true, actor, cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
         outcome.Should().Be(SetEarlyEntryOutcome.Success);
-        var reloaded = await Db.CampMembers.AsNoTracking().FirstAsync(m => m.Id == member.Id, Xunit.TestContext.Current.CancellationToken);
+        var reloaded = await CampsDb.CampMembers.AsNoTracking().FirstAsync(m => m.Id == member.Id, Xunit.TestContext.Current.CancellationToken);
         reloaded.HasEarlyEntry.Should().BeTrue();
 
         await AuditLog.Received(1).LogAsync(
@@ -252,7 +252,7 @@ public sealed class CampServiceEarlyEntryTests : ServiceTestHarness
         var outcome = await _service.SetEarlyEntryAsync(camp.Id, member.Id, granted: false, actor, cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
         outcome.Should().Be(SetEarlyEntryOutcome.Success);
-        var reloaded = await Db.CampMembers.AsNoTracking().FirstAsync(m => m.Id == member.Id, Xunit.TestContext.Current.CancellationToken);
+        var reloaded = await CampsDb.CampMembers.AsNoTracking().FirstAsync(m => m.Id == member.Id, Xunit.TestContext.Current.CancellationToken);
         reloaded.HasEarlyEntry.Should().BeFalse();
 
         await AuditLog.Received(1).LogAsync(
@@ -275,7 +275,7 @@ public sealed class CampServiceEarlyEntryTests : ServiceTestHarness
 
         outcome.Should().Be(SetEarlyEntryOutcome.SlotCapExceeded);
 
-        var reloaded = await Db.CampMembers.AsNoTracking().FirstAsync(m => m.Id == newMember.Id, Xunit.TestContext.Current.CancellationToken);
+        var reloaded = await CampsDb.CampMembers.AsNoTracking().FirstAsync(m => m.Id == newMember.Id, Xunit.TestContext.Current.CancellationToken);
         reloaded.HasEarlyEntry.Should().BeFalse();
 
         await AuditLog.DidNotReceive().LogAsync(
@@ -298,14 +298,14 @@ public sealed class CampServiceEarlyEntryTests : ServiceTestHarness
             Status = CampMemberStatus.Pending,
             RequestedAt = Clock.GetCurrentInstant(),
         };
-        Db.CampMembers.Add(member);
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        CampsDb.CampMembers.Add(member);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         var outcome = await _service.SetEarlyEntryAsync(camp.Id, member.Id, granted: true, Guid.NewGuid(), cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
         outcome.Should().Be(SetEarlyEntryOutcome.MemberNotActive);
 
-        var reloaded = await Db.CampMembers.AsNoTracking().FirstAsync(m => m.Id == member.Id, Xunit.TestContext.Current.CancellationToken);
+        var reloaded = await CampsDb.CampMembers.AsNoTracking().FirstAsync(m => m.Id == member.Id, Xunit.TestContext.Current.CancellationToken);
         reloaded.HasEarlyEntry.Should().BeFalse();
     }
 
@@ -341,7 +341,7 @@ public sealed class CampServiceEarlyEntryTests : ServiceTestHarness
 
         outcome.Should().Be(SetEarlyEntryOutcome.MemberNotFound);
 
-        var reloaded = await Db.CampMembers.AsNoTracking()
+        var reloaded = await CampsDb.CampMembers.AsNoTracking()
             .FirstAsync(m => m.Id == memberInB.Id, Xunit.TestContext.Current.CancellationToken);
         reloaded.HasEarlyEntry.Should().BeFalse();
     }
@@ -359,7 +359,7 @@ public sealed class CampServiceEarlyEntryTests : ServiceTestHarness
 
         await _service.RemoveCampMemberAsync(camp.Id, member.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
-        var reloaded = await Db.CampMembers.AsNoTracking().FirstAsync(m => m.Id == member.Id, Xunit.TestContext.Current.CancellationToken);
+        var reloaded = await CampsDb.CampMembers.AsNoTracking().FirstAsync(m => m.Id == member.Id, Xunit.TestContext.Current.CancellationToken);
         reloaded.HasEarlyEntry.Should().BeFalse();
         reloaded.Status.Should().Be(CampMemberStatus.Removed);
     }
@@ -375,7 +375,7 @@ public sealed class CampServiceEarlyEntryTests : ServiceTestHarness
 
         result.Succeeded.Should().BeTrue();
 
-        var reloaded = await Db.CampMembers.AsNoTracking().FirstAsync(m => m.Id == member.Id, Xunit.TestContext.Current.CancellationToken);
+        var reloaded = await CampsDb.CampMembers.AsNoTracking().FirstAsync(m => m.Id == member.Id, Xunit.TestContext.Current.CancellationToken);
         reloaded.HasEarlyEntry.Should().BeFalse();
     }
 
@@ -419,7 +419,7 @@ public sealed class CampServiceEarlyEntryTests : ServiceTestHarness
 
         outcome.Should().Be(SetEarlyEntryOutcome.MemberAlreadyEntered);
 
-        var reloaded = await Db.CampMembers.AsNoTracking().FirstAsync(m => m.Id == member.Id, Xunit.TestContext.Current.CancellationToken);
+        var reloaded = await CampsDb.CampMembers.AsNoTracking().FirstAsync(m => m.Id == member.Id, Xunit.TestContext.Current.CancellationToken);
         reloaded.HasEarlyEntry.Should().BeTrue();
 
         await AuditLog.DidNotReceive().LogAsync(
@@ -442,7 +442,7 @@ public sealed class CampServiceEarlyEntryTests : ServiceTestHarness
 
         outcome.Should().Be(SetEarlyEntryOutcome.Success);
 
-        var reloaded = await Db.CampMembers.AsNoTracking().FirstAsync(m => m.Id == member.Id, Xunit.TestContext.Current.CancellationToken);
+        var reloaded = await CampsDb.CampMembers.AsNoTracking().FirstAsync(m => m.Id == member.Id, Xunit.TestContext.Current.CancellationToken);
         reloaded.HasEarlyEntry.Should().BeFalse();
     }
 
@@ -470,7 +470,7 @@ public sealed class CampServiceEarlyEntryTests : ServiceTestHarness
 
         await _service.RemoveCampMemberAsync(camp.Id, member.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
-        var reloaded = await Db.CampMembers.AsNoTracking().FirstAsync(m => m.Id == member.Id, Xunit.TestContext.Current.CancellationToken);
+        var reloaded = await CampsDb.CampMembers.AsNoTracking().FirstAsync(m => m.Id == member.Id, Xunit.TestContext.Current.CancellationToken);
         reloaded.Status.Should().Be(CampMemberStatus.Removed);
         reloaded.HasEarlyEntry.Should().BeTrue("the consumed slot must keep counting against the cap");
     }
@@ -487,7 +487,7 @@ public sealed class CampServiceEarlyEntryTests : ServiceTestHarness
 
         result.Succeeded.Should().BeTrue();
 
-        var reloaded = await Db.CampMembers.AsNoTracking().FirstAsync(m => m.Id == member.Id, Xunit.TestContext.Current.CancellationToken);
+        var reloaded = await CampsDb.CampMembers.AsNoTracking().FirstAsync(m => m.Id == member.Id, Xunit.TestContext.Current.CancellationToken);
         reloaded.HasEarlyEntry.Should().BeTrue();
     }
 
@@ -509,7 +509,7 @@ public sealed class CampServiceEarlyEntryTests : ServiceTestHarness
 
         outcome.Should().Be(SetEarlyEntryOutcome.SlotCapExceeded);
 
-        var reloaded = await Db.CampMembers.AsNoTracking().FirstAsync(m => m.Id == second.Id, Xunit.TestContext.Current.CancellationToken);
+        var reloaded = await CampsDb.CampMembers.AsNoTracking().FirstAsync(m => m.Id == second.Id, Xunit.TestContext.Current.CancellationToken);
         reloaded.HasEarlyEntry.Should().BeFalse();
     }
 }

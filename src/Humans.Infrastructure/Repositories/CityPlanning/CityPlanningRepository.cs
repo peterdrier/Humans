@@ -14,7 +14,7 @@ namespace Humans.Infrastructure.Repositories.CityPlanning;
 /// <see cref="IDbContextFactory{TContext}"/> so the repository can be
 /// registered as Singleton while <c>HumansDbContext</c> remains Scoped.
 /// </summary>
-internal sealed class CityPlanningRepository(IDbContextFactory<HumansDbContext> factory) : ICityPlanningRepository
+internal sealed class CityPlanningRepository(IDbContextFactory<CityPlanningDbContext> factory) : ICityPlanningRepository
 {
     // ==========================================================================
     // Reads — CampPolygon

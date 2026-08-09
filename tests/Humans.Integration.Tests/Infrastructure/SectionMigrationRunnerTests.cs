@@ -139,6 +139,21 @@ public sealed class SectionMigrationRunnerTests(HumansTestDatabase database)
             "feedback_reports",
             CreateSectionContext<FeedbackDbContext>,
             null),
+        new(
+            "CityPlanning",
+            "city_planning_settings",
+            CreateSectionContext<CityPlanningDbContext>,
+            null),
+        new(
+            "Budget",
+            "budget_years",
+            CreateSectionContext<BudgetDbContext>,
+            null),
+        new(
+            "Camps",
+            "camps",
+            CreateSectionContext<CampsDbContext>,
+            "SELECT count(*) FROM camp_settings"),
     ];
 
     [HumansFact]

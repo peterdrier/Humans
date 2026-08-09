@@ -106,7 +106,7 @@ public class StoreAdminControllerTests(HumansTestDatabase database) : Integratio
     private async Task<int> GetActiveYearAsync()
     {
         using var scope = Factory.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var db = scope.ServiceProvider.GetRequiredService<CampsDbContext>();
         return (await db.CampSettings.FirstAsync(Xunit.TestContext.Current.CancellationToken)).PublicYear;
     }
 

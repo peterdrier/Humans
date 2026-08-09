@@ -938,12 +938,12 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         await AcceptAsync(requestId, adminId);
 
         await using var assertScope = Factory.Services.CreateAsyncScope();
-        var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var budgetDb = assertScope.ServiceProvider.GetRequiredService<BudgetDbContext>();
 
         // Audit row must still point at the source user — fold doesn't
         // mutate append-only logs; chain-follow at read time stitches them
         // with the target.
-        var rows = await db.BudgetAuditLogs
+        var rows = await budgetDb.BudgetAuditLogs
             .AsNoTracking()
             .Where(l => l.Description == description)
             .ToListAsync(TestContext.Current.CancellationToken);

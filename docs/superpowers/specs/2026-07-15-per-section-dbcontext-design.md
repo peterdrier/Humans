@@ -324,6 +324,7 @@ Order (criteria: navs = 0 for all, so ranked by table count, then seeds/PK quirk
 | — | *(deferred)* | Store | 6 | **§5.1 wall**: `Year` physical default not in model |
 | 8 | `track-b` | Auth, Email, Calendar, Notifications, Issues | 8 | **Five per PR.** Batching is safe once a section has its own snapshot — the shared-snapshot conflict that justified one-at-a-time no longer applies. One combined snapshot-only removal migration on `HumansDbContext` |
 | 9 | `track-b-2` | Governance, Campaigns, GoogleIntegration, Tickets, Feedback | 15 | Stacked on peel 8 (base = `track-b`), because both edit `HumansDbContextModelSnapshot.cs` and a snapshot generated against the pre-peel-8 model would re-add peel 8's tables on merge. `SyncServiceSettings` and `TicketSyncState` carry model-level `HasData` |
+| 10 | `track-b-3` | CityPlanning, Budget, Camps | 17 | Stacked on peel 9 for the same snapshot reason. **Three sections, not five** — every other unpeeled section is walled off (§10.2). `CampSettings` carries a model-level `HasData` singleton |
 
 Both §5.1 walls came down with `20260802203816_RealignScaffoldedPhysicalDefaults` (all 31 scaffolded
 defaults dropped); `PhysicalDefaultParityTests` enforces the parity from here on, so §5.1 is no
@@ -435,6 +436,32 @@ Unblock order fallout: Tickets, Notifications, Legal, Governance, Auth, Issues, 
 Budget, Campaigns, Email, CityPlanning become peelable as their outbound sets drain (most only
 reference Users/Teams); Camps needs CityPlanning's inbound navs removed; Shifts needs Email's
 inbound nav removed; Teams needs 7 inbound removals; Users unblocks last.
+
+### 10.2 What is left after peel 10 (2026-08-09)
+
+Peel 10 took CityPlanning, Budget and Camps — the only three sections that met §3.1 on the
+post-peel-9 snapshot. All three are relationship-clean in both directions (CityPlanning declares no
+`HasOne` at all; Budget's and Camps' are wholly intra-section), each is owned by exactly one
+repository (`CityPlanningRepository`, `BudgetRepository`, `CampRepository` + its `.Roles` partial),
+and no `[Grandfathered]` row or baseline mentions their tables. `camp_leads` is already out of the
+EF model and dies with nobodies-collective/Humans#774, so it was not peeled into `CampsDbContext`.
+
+`HumansDbContext` is down to **29 DbSets**. Everything still in it is walled off, not merely
+unscheduled:
+
+- **Profiles** (4) and **Shifts** (1) — the five surviving `→ User` relationships of §10.1.
+- **Legal** and **AuditLog** — the plpgsql immutability triggers
+  (`prevent_consent_record_modification`, `prevent_audit_log_modification`). Still open on #858:
+  EF `Sql` in the baseline with explicit authorization vs. moving enforcement into the model.
+- **Users**, **Teams** — last in the programme by design.
+- **Gate** — its §5.1 wall is gone (`20260802203816_RealignScaffoldedPhysicalDefaults` dropped all
+  31 scaffolded defaults; `PhysicalDefaultParityTests` enforces parity from here on), so Gate is
+  now technically peelable. The Track B brief says skip and report, so it stays for Peter's call.
+
+Check-constraint audit for this batch: the only two live CHECK constraints are
+`ck_agent_settings_singleton` and `CK_role_assignments_valid_window`, neither on a
+CityPlanning/Budget/Camps table, so all three baselines are constraint-free. Removing those two is
+tracked separately under the new `memory/architecture/no-db-check-constraints.md` rule.
 
 ## 11. `dotnet ef` per-context usage (migration-discipline docs)
 

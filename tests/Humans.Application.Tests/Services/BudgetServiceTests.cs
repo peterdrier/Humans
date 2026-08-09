@@ -24,7 +24,7 @@ public sealed class BudgetServiceTests : ServiceTestHarness
     public BudgetServiceTests()
         : base(Instant.FromUtc(2026, 3, 31, 12, 0))
     {
-        _repository = new BudgetRepository(DbFactory, NullLogger<BudgetRepository>.Instance);
+        _repository = new BudgetRepository(BudgetDbFactory, NullLogger<BudgetRepository>.Instance);
         _teamService = Substitute.For<ITeamServiceRead>();
         var userService = Substitute.For<IUserService>();
         userService.GetMergedSourceIdsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
@@ -97,7 +97,7 @@ public sealed class BudgetServiceTests : ServiceTestHarness
             VatRate = 0
         };
 
-        await using (var ctx = await DbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken))
+        await using (var ctx = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken))
         {
             ctx.BudgetLineItems.Add(lineItem);
             await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
@@ -131,7 +131,7 @@ public sealed class BudgetServiceTests : ServiceTestHarness
             Amount = 100m,
             VatRate = 0
         };
-        await using (var ctx = await DbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken))
+        await using (var ctx = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken))
         {
             ctx.BudgetLineItems.Add(lineItem);
             await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
@@ -355,7 +355,7 @@ public sealed class BudgetServiceTests : ServiceTestHarness
         year.Name.Should().Be("Budget 2026");
         year.Status.Should().Be(BudgetYearStatus.Draft);
 
-        await using var ctx = await DbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
+        await using var ctx = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
         var persistedYear = await ctx.BudgetYears
             .Include(y => y.Groups)
                 .ThenInclude(g => g.Categories)
@@ -387,7 +387,7 @@ public sealed class BudgetServiceTests : ServiceTestHarness
     [HumansFact]
     public async Task UpdateYearStatusAsync_activating_closes_other_active_years()
     {
-        await using (var ctx = await DbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken))
+        await using (var ctx = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken))
         {
             ctx.BudgetYears.Add(new BudgetYear
             {
@@ -408,7 +408,7 @@ public sealed class BudgetServiceTests : ServiceTestHarness
 
         await _service.UpdateYearStatusAsync(_yearId, BudgetYearStatus.Active, Guid.NewGuid());
 
-        await using var ctx2 = await DbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
+        await using var ctx2 = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
         var years = await ctx2.BudgetYears.ToListAsync(TestContext.Current.CancellationToken);
 
         years.Single(y => string.Equals(y.Year, "2025", StringComparison.Ordinal)).Status
@@ -437,7 +437,7 @@ public sealed class BudgetServiceTests : ServiceTestHarness
     [HumansFact]
     public async Task UpdateYearAsync_writes_field_audit_only_for_changed_fields()
     {
-        await using (var ctx = await DbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken))
+        await using (var ctx = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken))
         {
             ctx.BudgetYears.Add(new BudgetYear
             {
@@ -451,7 +451,7 @@ public sealed class BudgetServiceTests : ServiceTestHarness
 
         await _service.UpdateYearAsync(_yearId, "2026", "Budget Twenty Twenty Six", Guid.NewGuid());
 
-        await using var ctx2 = await DbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
+        await using var ctx2 = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
         var auditEntries = await ctx2.BudgetAuditLogs
             .Where(a => a.BudgetYearId == _yearId)
             .ToListAsync(TestContext.Current.CancellationToken);
@@ -465,7 +465,7 @@ public sealed class BudgetServiceTests : ServiceTestHarness
     [HumansFact]
     public async Task DeleteYearAsync_refuses_when_year_is_active()
     {
-        await using (var ctx = await DbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken))
+        await using (var ctx = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken))
         {
             ctx.BudgetYears.Add(new BudgetYear
             {
@@ -486,7 +486,7 @@ public sealed class BudgetServiceTests : ServiceTestHarness
     [HumansFact]
     public async Task DeleteYearAsync_soft_deletes_when_draft()
     {
-        await using (var ctx = await DbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken))
+        await using (var ctx = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken))
         {
             ctx.BudgetYears.Add(new BudgetYear
             {
@@ -500,7 +500,7 @@ public sealed class BudgetServiceTests : ServiceTestHarness
 
         await _service.DeleteYearAsync(_yearId, Guid.NewGuid());
 
-        await using var ctx2 = await DbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
+        await using var ctx2 = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
         var year = await ctx2.BudgetYears.SingleAsync(y => y.Id == _yearId, TestContext.Current.CancellationToken);
         year.IsDeleted.Should().BeTrue();
         year.DeletedAt.Should().NotBeNull();
@@ -512,7 +512,7 @@ public sealed class BudgetServiceTests : ServiceTestHarness
     [HumansFact]
     public async Task CreateGroupAsync_refuses_when_year_is_closed()
     {
-        await using (var ctx = await DbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken))
+        await using (var ctx = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken))
         {
             ctx.BudgetYears.Add(new BudgetYear
             {
@@ -552,7 +552,7 @@ public sealed class BudgetServiceTests : ServiceTestHarness
 
         changed.Should().BeGreaterThan(0);
 
-        await using var ctx = await DbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
+        await using var ctx = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
         var revenueItems = await ctx.BudgetLineItems
             .Where(li => li.BudgetCategoryId == revenueCatId)
             .ToListAsync(TestContext.Current.CancellationToken);
@@ -571,7 +571,7 @@ public sealed class BudgetServiceTests : ServiceTestHarness
     [HumansFact]
     public async Task SyncTicketingActualsAsync_is_noop_when_no_ticketing_group()
     {
-        await using (var ctx = await DbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken))
+        await using (var ctx = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken))
         {
             ctx.BudgetYears.Add(new BudgetYear
             {
@@ -604,7 +604,7 @@ public sealed class BudgetServiceTests : ServiceTestHarness
 
         created.Should().BeGreaterThan(0);
 
-        await using var ctx = await DbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
+        await using var ctx = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
         var projectedRevenueItems = await ctx.BudgetLineItems
             .Where(li => li.BudgetCategoryId == revenueCatId
                 && li.Description.StartsWith("Projected:"))
@@ -645,7 +645,7 @@ public sealed class BudgetServiceTests : ServiceTestHarness
 
         await _service.SyncTicketingActualsAsync(_yearId, actuals, TestContext.Current.CancellationToken);
 
-        await using var ctx = await DbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
+        await using var ctx = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
 
         // The projection was updated in-place before materialization.
         var projection = await ctx.TicketingProjections.SingleAsync(p => p.BudgetGroupId == groupId, TestContext.Current.CancellationToken);
@@ -708,7 +708,7 @@ public sealed class BudgetServiceTests : ServiceTestHarness
             Name = "Operations"
         };
 
-        await using var ctx = await DbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
+        await using var ctx = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
         ctx.BudgetYears.Add(year);
         ctx.BudgetGroups.Add(group);
         ctx.BudgetCategories.Add(category);
@@ -725,7 +725,7 @@ public sealed class BudgetServiceTests : ServiceTestHarness
         var revenueCatId = Guid.NewGuid();
         var feesCatId = Guid.NewGuid();
 
-        await using var ctx = await DbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
+        await using var ctx = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
         ctx.BudgetYears.Add(new BudgetYear
         {
             Id = _yearId,
@@ -774,7 +774,7 @@ public sealed class BudgetServiceTests : ServiceTestHarness
         decimal averageTicketPrice,
         decimal dailySalesRate)
     {
-        await using var ctx = await DbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
+        await using var ctx = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
         var projection = await ctx.TicketingProjections.SingleAsync(p => p.BudgetGroupId == groupId, TestContext.Current.CancellationToken);
         projection.StartDate = startDate;
         projection.EventDate = eventDate;

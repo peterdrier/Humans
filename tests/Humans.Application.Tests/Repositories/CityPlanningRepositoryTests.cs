@@ -11,18 +11,18 @@ namespace Humans.Application.Tests.Repositories;
 
 public sealed class CityPlanningRepositoryTests : IDisposable
 {
-    private readonly HumansDbContext _dbContext;
+    private readonly CityPlanningDbContext _dbContext;
     private readonly FakeClock _clock;
     private readonly CityPlanningRepository _repo;
 
     public CityPlanningRepositoryTests()
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
+        var options = new DbContextOptionsBuilder<CityPlanningDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
-        _dbContext = new HumansDbContext(options);
+        _dbContext = new CityPlanningDbContext(options);
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
-        _repo = new CityPlanningRepository(new TestDbContextFactory(options));
+        _repo = new CityPlanningRepository(new TestDbContextFactory<CityPlanningDbContext>(options));
     }
 
     public void Dispose()

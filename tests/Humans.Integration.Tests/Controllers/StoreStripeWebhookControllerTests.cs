@@ -269,7 +269,7 @@ public class StoreStripeWebhookControllerTests(HumansTestDatabase database) : In
 
         using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<StoreDbContext>();
-        var campsDb = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var campsDb = scope.ServiceProvider.GetRequiredService<CampsDbContext>();
 
         var seasonId = await campsDb.Set<CampSeason>().AsNoTracking()
             .Where(s => s.Camp.Slug == "barrio-1")

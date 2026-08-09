@@ -79,7 +79,7 @@ public class StoreControllerTests(HumansTestDatabase database) : IntegrationTest
     private async Task<int> SeedActiveProductAsync(string name)
     {
         using var scope = Factory.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var db = scope.ServiceProvider.GetRequiredService<CampsDbContext>();
         var storeDb = scope.ServiceProvider.GetRequiredService<StoreDbContext>();
         var year = (await db.CampSettings.FirstAsync(Xunit.TestContext.Current.CancellationToken)).PublicYear;
 
@@ -107,7 +107,7 @@ public class StoreControllerTests(HumansTestDatabase database) : IntegrationTest
     private async Task<Guid> GetBarrioOneCampSeasonIdAsync()
     {
         using var scope = Factory.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var db = scope.ServiceProvider.GetRequiredService<CampsDbContext>();
         var year = (await db.CampSettings.FirstAsync(Xunit.TestContext.Current.CancellationToken)).PublicYear;
         var season = await db.Set<CampSeason>()
             .AsNoTracking()

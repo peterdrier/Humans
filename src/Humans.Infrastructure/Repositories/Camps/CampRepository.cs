@@ -11,9 +11,9 @@ namespace Humans.Infrastructure.Repositories.Camps;
 /// <summary>EF-backed <see cref="ICampRepository"/>.</summary>
 internal sealed partial class CampRepository : ICampRepository
 {
-    private readonly IDbContextFactory<HumansDbContext> _factory;
+    private readonly IDbContextFactory<CampsDbContext> _factory;
 
-    public CampRepository(IDbContextFactory<HumansDbContext> factory)
+    public CampRepository(IDbContextFactory<CampsDbContext> factory)
     {
         _factory = factory;
     }

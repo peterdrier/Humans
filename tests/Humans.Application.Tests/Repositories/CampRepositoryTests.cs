@@ -12,18 +12,18 @@ namespace Humans.Application.Tests.Repositories;
 
 public sealed class CampRepositoryTests : IDisposable
 {
-    private readonly HumansDbContext _dbContext;
+    private readonly CampsDbContext _dbContext;
     private readonly FakeClock _clock;
     private readonly CampRepository _repo;
 
     public CampRepositoryTests()
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
+        var options = new DbContextOptionsBuilder<CampsDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
-        _dbContext = new HumansDbContext(options);
+        _dbContext = new CampsDbContext(options);
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
-        _repo = new CampRepository(new TestDbContextFactory(options));
+        _repo = new CampRepository(new TestDbContextFactory<CampsDbContext>(options));
     }
 
     public void Dispose()

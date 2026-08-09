@@ -91,7 +91,7 @@ public class StorePayActionTests(HumansTestDatabase database) : IntegrationTestB
     private async Task<(Guid OrderId, decimal BalanceEur)> SeedOrderWithLineAsync()
     {
         using var scope = Factory.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var db = scope.ServiceProvider.GetRequiredService<CampsDbContext>();
         var storeDb = scope.ServiceProvider.GetRequiredService<StoreDbContext>();
 
         var year = (await db.CampSettings.FirstAsync(Xunit.TestContext.Current.CancellationToken)).PublicYear;

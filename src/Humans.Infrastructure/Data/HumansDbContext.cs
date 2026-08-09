@@ -38,17 +38,6 @@ internal sealed class HumansDbContext(DbContextOptions<HumansDbContext> options)
     public DbSet<UserEmail> UserEmails => Set<UserEmail>();
     public DbSet<VolunteerHistoryEntry> VolunteerHistoryEntries => Set<VolunteerHistoryEntry>();
     public DbSet<AuditLogEntry> AuditLogEntries => Set<AuditLogEntry>();
-    public DbSet<Camp> Camps => Set<Camp>();
-    public DbSet<CampSeason> CampSeasons => Set<CampSeason>();
-    public DbSet<CampHistoricalName> CampHistoricalNames => Set<CampHistoricalName>();
-    public DbSet<CampImage> CampImages => Set<CampImage>();
-    public DbSet<CampSettings> CampSettings => Set<CampSettings>();
-    public DbSet<CampMember> CampMembers => Set<CampMember>();
-    public DbSet<CampRoleDefinition> CampRoleDefinitions => Set<CampRoleDefinition>();
-    public DbSet<CampRoleAssignment> CampRoleAssignments => Set<CampRoleAssignment>();
-    public DbSet<CampPolygon> CampPolygons => Set<CampPolygon>();
-    public DbSet<CampPolygonHistory> CampPolygonHistories => Set<CampPolygonHistory>();
-    public DbSet<CityPlanningSettings> CityPlanningSettings => Set<CityPlanningSettings>();
     public DbSet<EventSettings> EventSettings => Set<EventSettings>();
     public DbSet<Rota> Rotas => Set<Rota>();
     public DbSet<Shift> Shifts => Set<Shift>();
@@ -58,12 +47,6 @@ internal sealed class HumansDbContext(DbContextOptions<HumansDbContext> options)
     public DbSet<VolunteerBuildStatus> VolunteerBuildStatuses => Set<VolunteerBuildStatus>();
     public DbSet<AccountMergeRequest> AccountMergeRequests => Set<AccountMergeRequest>();
     public DbSet<CommunicationPreference> CommunicationPreferences => Set<CommunicationPreference>();
-    public DbSet<BudgetYear> BudgetYears => Set<BudgetYear>();
-    public DbSet<BudgetGroup> BudgetGroups => Set<BudgetGroup>();
-    public DbSet<BudgetCategory> BudgetCategories => Set<BudgetCategory>();
-    public DbSet<BudgetLineItem> BudgetLineItems => Set<BudgetLineItem>();
-    public DbSet<BudgetAuditLog> BudgetAuditLogs => Set<BudgetAuditLog>();
-    public DbSet<TicketingProjection> TicketingProjections => Set<TicketingProjection>();
     public DbSet<ShiftTag> ShiftTags => Set<ShiftTag>();
     public DbSet<VolunteerTagPreference> VolunteerTagPreferences => Set<VolunteerTagPreference>();
     public DbSet<ProfileLanguage> ProfileLanguages => Set<ProfileLanguage>();
@@ -98,6 +81,9 @@ internal sealed class HumansDbContext(DbContextOptions<HumansDbContext> options)
         typeof(Configurations.GoogleIntegration.GoogleResourceConfiguration).Namespace!,
         typeof(Configurations.Tickets.TicketOrderConfiguration).Namespace!,
         typeof(Configurations.Feedback.FeedbackReportConfiguration).Namespace!,
+        typeof(Configurations.CityPlanning.CampPolygonConfiguration).Namespace!,
+        typeof(Configurations.Budget.BudgetYearConfiguration).Namespace!,
+        typeof(Configurations.Camps.CampConfiguration).Namespace!,
     ];
 
     protected override void OnModelCreating(ModelBuilder builder)
