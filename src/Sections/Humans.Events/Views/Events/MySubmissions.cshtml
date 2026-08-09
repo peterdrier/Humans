@@ -85,7 +85,7 @@
                 @if (item.CanEdit)
                 {
                     <a asp-action="Edit" asp-route-eventId="@item.Id" class="btn btn-sm btn-outline-primary me-1">
-                        <i class="fa-solid fa-pen me-1"></i>@Localizer["Common_Edit"]
+                        <i class="fa-solid fa-pen me-1"></i>@SharedLocalizer["Common_Edit"]
                     </a>
                 }
                 @if (item.CanWithdraw)
@@ -102,7 +102,7 @@
                 .Column(Localizer["Events_ColEventName"].Value, r => r.Title)
                 .Column(Localizer["Events_ColCategory"].Value, r => r.CategoryName)
                 .Column(Localizer["Events_ColDateTime"].Value, r => r.StartAt.ToMonthDayTime())
-                .Template(Localizer["Common_Status"].Value, personalStatusCell)
+                .Template(SharedLocalizer["Common_Status"].Value, personalStatusCell)
                 .Template(Localizer["Events_ColActions"].Value, personalActionsCell, c => c.NoSort())
                 .Build();
             <partial name="_Table" model="personalTable" />
@@ -165,7 +165,7 @@
                     @if (item.CanEdit)
                     {
                         <a asp-action="BarrioEdit" asp-route-slug="@barrio.CampSlug" asp-route-eventId="@item.Id" class="btn btn-sm btn-outline-primary me-1">
-                            <i class="fa-solid fa-pen me-1"></i>@Localizer["Common_Edit"]
+                            <i class="fa-solid fa-pen me-1"></i>@SharedLocalizer["Common_Edit"]
                         </a>
                     }
                     @if (item.CanWithdraw)
@@ -183,7 +183,7 @@
                     .Column(Localizer["Events_ColCategory"].Value, r => r.CategoryName)
                     .Column(Localizer["Events_ColDateTime"].Value, r => r.StartAt.ToMonthDayTime())
                     .Column(Localizer["Events_ColPriority"].Value, r => r.PriorityRank)
-                    .Template(Localizer["Common_Status"].Value, barrioStatusCell)
+                    .Template(SharedLocalizer["Common_Status"].Value, barrioStatusCell)
                     .Template(Localizer["Events_ColActions"].Value, barrioActionsCell, c => c.NoSort())
                     .Build();
                 <partial name="_Table" model="barrioTable" />

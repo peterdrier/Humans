@@ -1432,6 +1432,16 @@ parses `*` as "repeat the previous character" and matches `nameof(Stor)`, `nameo
    `GetExportedTypes()`. Make it `public` and exempt it in step 5, or the diagnostic skips the
    section in silence (§6). If the section renames an enum in step 5, rename its
    `Enum_{TypeName}_*` keys in all six languages in the same commit (§3).
+   **Then re-grep the moved views for keys the carve did not take.** A section's views also use
+   genuinely shared strings — `Common_*`, `Camp_Plural` — and those stay in `SharedResource`;
+   copying them into 35 section `.resx` files is the wrong direction. Bind a second localizer in
+   the section's `_ViewImports` and switch those call sites to it:
+   `@inject IStringLocalizer<SharedResource> SharedLocalizer`. The check is mechanical — extract
+   every `Localizer["…"]` key in the section's views and controllers, and assert each one exists in
+   the section `.resx`; anything left over is either a missed carve or a shared key. Store had zero
+   leftovers so the pilot never saw this; Events had four, and each would have rendered as its raw
+   key in every language. **This survives the step 12 HTML diff only if you capture before and
+   after** — the fallback is the key text, not an error.
 4. `Section.cs` at the project root: `public sealed class Section : ISection` with
    `Register(IServiceCollection services, IConfiguration configuration)` — `AddSectionDbContext<…>`,
    repositories, services, section-owned authorization handlers. One of the two `public` types
