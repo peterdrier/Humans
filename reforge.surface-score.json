@@ -402,10 +402,8 @@
     },
     "Finance": {
       "paths": [
-        "src/Humans.Application/Interfaces/Finance/**",
-        "src/Humans.Application/Services/Finance/**",
-        "src/Humans.Infrastructure/Repositories/Finance/**",
-        "src/Humans.Web/Controllers/FinanceController.cs"
+        "src/Sections/Humans.Finance/**",
+        "src/Sections/Humans.Finance.Contracts/**"
       ],
       "symbols": [
         "Finance*",

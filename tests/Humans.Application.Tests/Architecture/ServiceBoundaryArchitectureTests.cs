@@ -49,7 +49,7 @@ public class ServiceBoundaryArchitectureTests
             [typeof(IGateRepository)] = "Gate",
             [typeof(IGoogleResourceRepository)] = "GoogleIntegration",
             [typeof(IGoogleSyncOutboxRepository)] = "GoogleIntegration",
-            [typeof(IHoldedRepository)] = "Finance",
+            [SectionRepository("Humans.Finance.Data.IHoldedRepository")] = "Finance",
             [typeof(IIssuesRepository)] = "Issues",
             [typeof(ILegalDocumentRepository)] = "Legal",
             [typeof(INotificationRepository)] = "Notifications",

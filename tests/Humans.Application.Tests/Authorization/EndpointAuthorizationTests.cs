@@ -72,7 +72,7 @@ public class EndpointAuthorizationTests
         { typeof(OnboardingReviewController), "Clear", "ConsentCoordinatorBoardOrAdmin" },
         { typeof(OnboardingReviewController), "Flag", "ConsentCoordinatorBoardOrAdmin" },
         { typeof(OnboardingReviewController), "Reject", "ConsentCoordinatorBoardOrAdmin" },
-        { typeof(FinanceController), null, "FinanceAdminOrAdmin" },
+        { typeof(BudgetAdminController), null, "FinanceAdminOrAdmin" },
         { typeof(FeedbackController), null, "AdminOnly" },
         { typeof(FeedbackController), "Index", "AdminOnly" },
         { typeof(FeedbackController), "Detail", "AdminOnly" },
@@ -167,12 +167,14 @@ public class EndpointAuthorizationTests
         postTemplates.Should().BeEquivalentTo(["{id}/messages"]);
     }
 
-    // --- Finance endpoints ---
+    // --- Budget admin endpoints (the /Finance route prefix; the Holded half of this
+    // controller moved to the Humans.Finance section and is asserted in its own test project,
+    // since this sweep can only name Shell's controllers) ---
 
     [HumansFact]
-    public void FinanceController_RequiresFinanceAdminOrAdmin()
+    public void BudgetAdminController_RequiresFinanceAdminOrAdmin()
     {
-        AssertHasPolicy(typeof(FinanceController), null, "FinanceAdminOrAdmin");
+        AssertHasPolicy(typeof(BudgetAdminController), null, "FinanceAdminOrAdmin");
     }
 
     // --- Shift dashboard endpoints ---

@@ -46,7 +46,6 @@ public static class InfrastructureServiceCollectionExtensions
         // HumansDbContext by DatabaseMigrationHostedService in registration order.
         services.AddSectionDbContext<AgentDbContext>(sentinelTable: "agent_conversations");
         services.AddSectionDbContext<ExpensesDbContext>(sentinelTable: "expense_reports");
-        services.AddSectionDbContext<FinanceDbContext>(sentinelTable: "holded_expense_docs");
         services.AddSectionDbContext<SurveysDbContext>(sentinelTable: "surveys");
         services.AddSectionDbContext<AuthDbContext>(sentinelTable: "role_assignments");
         services.AddSectionDbContext<EmailDbContext>(sentinelTable: "email_outbox_messages");

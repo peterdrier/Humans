@@ -60,6 +60,7 @@
        Core reference — it feeds synthetic compilations to analyzers and needs no fixtures. -->
   <ItemGroup Condition="'$(MSBuildProjectName)' != 'Humans.Analyzers.Tests'">
     <Compile Include="$(MSBuildThisFileDirectory)Humans.Testing\TestDbContextFactory.cs" Link="Humans.Testing\TestDbContextFactory.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Humans.Testing\CapturingLogger.cs" Link="Humans.Testing\CapturingLogger.cs" />
   </ItemGroup>
 
   <!-- BannedApiAnalyzers: forbid bare [Fact] and [Theory] in tests. RS0030 suppression

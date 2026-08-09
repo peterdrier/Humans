@@ -1,9 +1,8 @@
 using Humans.Application.Interfaces.Budget;
 using Humans.Application.Interfaces.Expenses;
-using Humans.Application.Interfaces.Finance;
+using Humans.Finance.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Expenses.Dtos;
-using Humans.Application.Services.Finance.Dtos;
 using Humans.Domain.Enums;
 using Humans.Domain.Helpers;
 using Humans.UI.Authorization;

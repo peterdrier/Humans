@@ -19,7 +19,7 @@
 
 # Expenses — Section Invariants
 
-Members submit expense reports for reimbursement. Finance Admin reviews and approves; approval books the report into Holded (async). **`Approved` is terminal for the report** — payment happens externally (pull account balances, pay in the bank/Holded), and paid/unpaid is read back from the member's Holded creditor ledger, never stamped on the report. Full workflow and field-level detail in `docs/superpowers/specs/2026-05-10-expense-reports-design.md` and `docs/superpowers/specs/2026-06-15-holded-ledger-single-source-design.md`.
+Members submit expense reports for reimbursement. Finance Admin reviews and approves; approval books the report into Holded (async). **`Approved` is terminal for the report** — payment happens externally (pull account balances, pay in the bank/Holded), and paid/unpaid is read back from the member's Holded creditor ledger, never stamped on the report. Full workflow and field-level detail in `docs/superpowers/specs/2026-05-10-expense-reports-design.md` and `src/Sections/Humans.Finance/Docs/2026-06-15-holded-ledger-single-source-design.md`.
 
 ## Concepts
 

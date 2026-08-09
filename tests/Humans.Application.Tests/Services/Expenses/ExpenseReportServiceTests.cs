@@ -1,14 +1,13 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Budget;
-using Humans.Application.Interfaces.Finance;
+using Humans.Finance.Contracts;
 using Humans.Application.Interfaces.Holded;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Expenses;
 using Humans.Application.Services.Expenses.Dtos;
-using Humans.Application.Services.Finance.Dtos;
 using Humans.Application.Tests.AuditLog;
 using Humans.Application.Tests.Infrastructure;
 using Microsoft.Extensions.Options;

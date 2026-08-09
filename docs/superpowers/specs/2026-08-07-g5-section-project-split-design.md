@@ -1534,6 +1534,16 @@ parses `*` as "repeat the previous character" and matches `nameof(Stor)`, `nameo
 6. Authorization *policies* stay in Shell's `AuthorizationPolicyExtensions`; resource-based
    *handlers* move into the section. (§8's asymmetry: DI registration moves, policy registration
    does not.)
+6b. **Recurring Hangfire jobs stay in `Humans.Infrastructure/Jobs` for now.** Shell's
+   `UseHumansRecurringJobs` names each job by concrete type in a roll-call, and there is no
+   `ISection`-style discovery seam for jobs the way there is for DI, so a job that moved into a
+   section would have to be `public` to be scheduled — buying a section-owned job at the cost of
+   the one rule step 5 exists to hold. The job keeps working unchanged: it consumes the section
+   through `<Section>.Contracts` like any other Base consumer, which is also why it counts toward
+   step 5b's "is there a consumer in Base" test. First hit 2026-08-09 by Finance's `HoldedSyncJob`;
+   Expenses' `HoldedExpenseOutboxJob` and Tickets' `TicketSyncJob` are next. Building the seam —
+   an `ISectionRecurringJobs` the host calls after `WebApplication` is built — is the fix, and is
+   not a G5 blocker.
 7. `wwwroot/` assets, if any, move with the section and their URLs become
    `/_content/Humans.<Section>/…`. Only Shell's own chrome assets stay in Shell.
    > ⚠️ **UNPROVEN.** Store has no static assets. First real test: **Agent**, **CityPlanning**,

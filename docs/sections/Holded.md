@@ -6,7 +6,7 @@
 
 # Holded — Section Invariants
 
-Thin typed-`HttpClient` surface to the Holded accounting API. The current surface exposes eleven methods: `CreatePurchaseDocumentAsync`, `UpdatePurchaseDocumentTagsAsync`, `UploadAttachmentAsync`, `GetPurchaseDocumentAsync`, `ListExpenseAccountsAsync`, `CreateExpenseAccountAsync`, `ListPurchaseDocumentsPageAsync`, `UpsertContactAsync`, `GetContactAsync`, `ListDailyLedgerAsync`, and `ListContactsAsync`. The broader Finance/Holded reconciliation described in `Finance.md` may extend this surface further without breaking consumers.
+Thin typed-`HttpClient` surface to the Holded accounting API. The current surface exposes eleven methods: `CreatePurchaseDocumentAsync`, `UpdatePurchaseDocumentTagsAsync`, `UploadAttachmentAsync`, `GetPurchaseDocumentAsync`, `ListExpenseAccountsAsync`, `CreateExpenseAccountAsync`, `ListPurchaseDocumentsPageAsync`, `UpsertContactAsync`, `GetContactAsync`, `ListDailyLedgerAsync`, and `ListContactsAsync`. The broader Finance/Holded reconciliation described in Finance's own doc (`src/Sections/Humans.Finance/Docs/Finance.md`) may extend this surface further without breaking consumers.
 
 ## Concepts
 
@@ -42,7 +42,7 @@ None. Holded has no UI in v1.
 ## Negative Access Rules
 
 - The Holded section **does not** read or write any Humans table.
-- The Holded section **does not** maintain its own background sync / pull job in v1. (`HoldedSyncJob`, `holded_transactions`, etc. described in `Finance.md` are future work.)
+- The Holded section **does not** maintain its own background sync / pull job in v1. (`HoldedSyncJob`, `holded_transactions`, etc. described in Finance's own doc (`src/Sections/Humans.Finance/Docs/Finance.md`) are future work.)
 
 ## Triggers
 
@@ -67,4 +67,4 @@ None outbound. Inbound: Expenses calls `IHoldedClient`. Future Finance work will
 
 ### Evolution
 
-The Finance/Holded sync described in `docs/sections/Finance.md` is built. It added `HoldedSyncJob` (nightly Hangfire job), the `Finance`-owned `holded_expense_docs` / `holded_ledger_lines` / `holded_creditor_contacts` tables, and the unmatched-queue UI under `/Finance`. Additional methods (`ListDailyLedgerAsync`, `ListContactsAsync`) were added to `IHoldedClient` as part of the ledger single-source redesign. New methods continue to be added alongside the stable existing surface.
+The Finance/Holded sync described in `src/Sections/Humans.Finance/Docs/Finance.md` is built. It added `HoldedSyncJob` (nightly Hangfire job), the `Finance`-owned `holded_expense_docs` / `holded_ledger_lines` / `holded_creditor_contacts` tables, and the unmatched-queue UI under `/Finance`. Additional methods (`ListDailyLedgerAsync`, `ListContactsAsync`) were added to `IHoldedClient` as part of the ledger single-source redesign. New methods continue to be added alongside the stable existing surface.

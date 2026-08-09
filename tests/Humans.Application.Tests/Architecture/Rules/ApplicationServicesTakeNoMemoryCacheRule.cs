@@ -2,7 +2,6 @@ using AwesomeAssertions;
 using Humans.Application.Services.AuditLog;
 using Humans.Application.Services.Camps;
 using Humans.Application.Services.Feedback;
-using Humans.Application.Services.Finance;
 using Humans.Application.Services.Governance;
 using Humans.Application.Services.Issues;
 using Humans.Application.Services.Legal;
@@ -36,7 +35,7 @@ namespace Humans.Application.Tests.Architecture.Rules;
 ///   <item><see cref="ShiftManagementService"/> — shift data cache</item>
 ///   <item><see cref="FeedbackService"/> — feedback-badge count cache (nav badges)</item>
 ///   <item><see cref="ApplicationDecisionService"/> — voting-badge count cache (nav badges)</item>
-///   <item><see cref="HoldedFinanceService"/> — Holded contact-list cache (nobodies-collective/Humans#976)</item>
+///   <item><c>Humans.Finance.Services.Service</c> — Holded contact-list cache (nobodies-collective/Humans#976)</item>
 /// </list>
 /// Removed (caching moved to decorators):
 /// <list type="bullet">
@@ -73,18 +72,38 @@ public class ApplicationServicesTakeNoMemoryCacheRule
         typeof(ApplicationDecisionService),  // CacheKeys.VotingBadge(userId)
         // CacheKeys.HoldedContacts — 2-min TTL so /Finance/Creditors and /Expenses/{id} don't
         // call Holded live on every admin page load (nobodies-collective/Humans#976).
-        typeof(HoldedFinanceService)
+        SectionType("Humans.Finance.Services.Service")
     ];
+
+    /// <summary>
+    /// A G5 section's service is <c>internal</c> to its own assembly
+    /// (nobodies-collective/Humans#866), so it cannot be named with <c>typeof</c> here.
+    /// Resolved by reflection instead — the same mechanism
+    /// <c>GdprExportDependencyInjectionTests</c> uses, so there is one way to name a moved
+    /// section type from this project rather than two.
+    /// </summary>
+    private static Type SectionType(string fullName) =>
+        Web.Extensions.SectionDiscoveryExtensions.SectionAssemblies()
+            .Select(a => a.GetType(fullName, throwOnError: false))
+            .FirstOrDefault(t => t is not null)
+        ?? throw new InvalidOperationException(
+            $"{fullName} not found in any section assembly — did the section move or rename it?");
 
     [HumansFact]
     public void Application_services_do_not_take_IMemoryCache_unless_allowlisted()
     {
-        var appAssembly = typeof(AuditLogService).Assembly;
+        // Scan Humans.Application *and* every G5 section assembly. Scoping this to
+        // Humans.Application alone would let a section quietly leave the sweep the moment it
+        // moved out — the §10 silent-drop shape: the rule keeps passing while covering less.
+        var assemblies = new[] { typeof(AuditLogService).Assembly }
+            .Concat(Web.Extensions.SectionDiscoveryExtensions.SectionAssemblies());
 
-        var violations = appAssembly
-            .GetTypes()
+        var violations = assemblies
+            .SelectMany(a => a.GetTypes())
             .Where(t => t.IsClass && !t.IsAbstract)
-            .Where(t => t.Namespace?.StartsWith("Humans.Application.Services.", StringComparison.Ordinal) == true)
+            .Where(t => t.Namespace?.StartsWith("Humans.Application.Services.", StringComparison.Ordinal) == true
+                     || (t.Namespace?.StartsWith("Humans.", StringComparison.Ordinal) == true
+                         && t.Namespace.EndsWith(".Services", StringComparison.Ordinal)))
             .Where(t => !Allowlist.Contains(t))
             .SelectMany(t =>
                 t.GetConstructors()

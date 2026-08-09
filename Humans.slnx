@@ -13,6 +13,8 @@
     <Project Path="src/Sections/Humans.Containers/Humans.Containers.csproj" />
     <Project Path="src/Sections/Humans.Events/Humans.Events.csproj" />
     <Project Path="src/Sections/Humans.Events.Contracts/Humans.Events.Contracts.csproj" />
+    <Project Path="src/Sections/Humans.Finance/Humans.Finance.csproj" />
+    <Project Path="src/Sections/Humans.Finance.Contracts/Humans.Finance.Contracts.csproj" />
     <Project Path="src/Sections/Humans.Store/Humans.Store.csproj" />
     <Project Path="src/Sections/Humans.SystemSettings/Humans.SystemSettings.csproj" />
     <Project Path="src/Sections/Humans.SystemSettings.Contracts/Humans.SystemSettings.Contracts.csproj" />
@@ -25,6 +27,7 @@
     <Project Path="tests/Humans.Integration.Tests/Humans.Integration.Tests.csproj" />
     <Project Path="tests/Humans.Containers.Tests/Humans.Containers.Tests.csproj" />
     <Project Path="tests/Humans.Events.Tests/Humans.Events.Tests.csproj" />
+    <Project Path="tests/Humans.Finance.Tests/Humans.Finance.Tests.csproj" />
     <Project Path="tests/Humans.Store.Tests/Humans.Store.Tests.csproj" />
     <Project Path="tests/Humans.SystemSettings.Tests/Humans.SystemSettings.Tests.csproj" />
     <Project Path="tests/Humans.Web.Tests/Humans.Web.Tests.csproj" />

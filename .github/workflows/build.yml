@@ -30,7 +30,7 @@ env:
     ContainersDbContext:src/Sections/Humans.Containers
     AgentDbContext:src/Humans.Infrastructure
     ExpensesDbContext:src/Humans.Infrastructure
-    FinanceDbContext:src/Humans.Infrastructure
+    FinanceDbContext:src/Sections/Humans.Finance
     SurveysDbContext:src/Humans.Infrastructure
     EventGuideDbContext:src/Sections/Humans.Events
     AuthDbContext:src/Humans.Infrastructure

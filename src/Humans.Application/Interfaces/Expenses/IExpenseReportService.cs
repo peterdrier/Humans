@@ -1,4 +1,4 @@
-using Humans.Application.Services.Finance.Dtos;
+using Humans.Finance.Contracts;
 using Humans.Domain.Enums;
 
 namespace Humans.Application.Interfaces.Expenses;

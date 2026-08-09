@@ -20,6 +20,7 @@ invariants doc inside that project rather than in this folder; this index is the
 | Section | Project | Invariants doc |
 |---|---|---|
 | Containers | `src/Sections/Humans.Containers` | [Containers.md](../../src/Sections/Humans.Containers/Docs/Containers.md) |
+| Finance | `src/Sections/Humans.Finance` | [Finance.md](../../src/Sections/Humans.Finance/Docs/Finance.md) |
 | Event Guide | `src/Sections/Humans.Events` | [Events.md](../../src/Sections/Humans.Events/Docs/Events.md) |
 | Store | `src/Sections/Humans.Store` | [Store.md](../../src/Sections/Humans.Store/Docs/Store.md) |
 | System Settings | `src/Sections/Humans.SystemSettings` | — (no invariants doc; one key/value table) |
@@ -44,17 +45,17 @@ Cross-check against [`design-rules.md` §8 (Table Ownership Map)](../architectur
 | Section | Controllers | Orchestrators | Services | Repositories | Tables |
 |---------|-------------|---------------|----------|--------------|--------|
 | **Agent** | `AgentController`, `AgentApiController`, `AdminAgentController` | — | `AgentService`, `AgentAdminStatusService`, `AgentSettingsService`, `AgentPromptAssembler`, `AgentToolDispatcher`, `AgentUserSnapshotProvider`, `AgentAbuseDetector`, `AnthropicClient` | `AgentRepository` | `agent_conversations`, `agent_messages`, `agent_settings` |
-| **Budget** | `BudgetController` | — | `BudgetService` | `BudgetRepository` | `budget_years`, `budget_groups`, `budget_categories`, `budget_line_items`, `budget_audit_logs`, `ticketing_projections` |
+| **Budget** | `BudgetController`, `BudgetAdminController` (the latter routed under `/Finance`) | — | `BudgetService` | `BudgetRepository` | `budget_years`, `budget_groups`, `budget_categories`, `budget_line_items`, `budget_audit_logs`, `ticketing_projections` |
 | **Calendar** | `CalendarController` | — | `CalendarService`, *`CachingCalendarService`* | `CalendarRepository` | `calendar_events`, `calendar_event_exceptions` |
 | **Campaigns** | `CampaignController` | — | `CampaignService` | `CampaignRepository` | `campaigns`, `campaign_codes`, `campaign_grants` |
 | **Camps** | `CampController`, `CampAdminController`, `CampApiController` | `CampContactService` | `CampService`, `CampRoleService`, *`CachingCampService`* | `CampRepository` | `camps`, `camp_seasons`, `camp_members`, `camp_images`, `camp_historical_names`, `camp_settings`, `camp_role_definitions`, `camp_role_assignments` |
 | **City Planning** | `CityPlanningController`, `CityPlanningApiController` | — | `CityPlanningService` | `CityPlanningRepository` | `city_planning_settings`, `camp_polygons`, `camp_polygon_histories` |
-| **Containers** | `ContainerController` | — | `ContainerService` | `ContainerRepository` | `containers`, `container_placements` |
+| **Containers** | `ContainerController` (`Humans.Containers.Controllers`) | — | `Service` (`Humans.Containers.Services`) | `Repository` / `IContainerRepository` (`Humans.Containers.Data`) | `containers`, `container_placements` |
 | **Email** | `EmailController` | — | `EmailOutboxService`, `OutboxEmailService` | `EmailOutboxRepository` | `email_outbox_messages`, `system_settings` (key `email_outbox_paused`) |
 | **Event Guide** | `EventsController`, `EventsAdminController`, `EventsDashboardController`, `EventsExportController`, `EventsModerationController`, `EventsApiController` (`Humans.Events.Controllers`) | — | `EventService`, *`CachingEventService`* (`Humans.Events.Services`) | `EventRepository` / `IEventRepository` (`Humans.Events.Data`) | `events`, `event_categories`, `event_venues`, `event_guide_settings`, `event_moderation_actions`, `event_favourites`, `event_preferences` |
 | **Expenses** | `ExpensesController` | — | `ExpenseReportService` | `ExpenseRepository` | `expense_reports`, `expense_lines`, `expense_attachments`, `holded_expense_outbox_events` |
 | **Feedback** | `FeedbackController`, `FeedbackApiController` | — | `FeedbackService` | `FeedbackRepository` | `feedback_reports`, `feedback_messages` |
-| **Finance** | `FinanceController` | — | `HoldedFinanceService` | `HoldedRepository` | `holded_sync_states`, `holded_category_map`, `holded_expense_docs`, `holded_ledger_lines`, `holded_creditor_contacts` |
+| **Finance** | `FinanceController` (`Humans.Finance.Controllers`) — the Holded/creditor half of the old `/Finance` controller; the Budget-CRUD half stayed in Shell as `BudgetAdminController` under the same route prefix | — | `Service` (`Humans.Finance.Services`) | `Repository` / `IHoldedRepository` (`Humans.Finance.Data`) | `holded_sync_states`, `holded_category_map`, `holded_expense_docs`, `holded_ledger_lines`, `holded_creditor_contacts` |
 | **Gate** | `GateController` | — | `GateService` | `GateRepository` | `gate_scan_events`, `gate_settings` |
 | **Governance** | `GovernanceController`, `GovernanceApplicationsController`, `GovernanceBoardVotingController` | `GovernanceIndexService` | `ApplicationDecisionService` | `ApplicationRepository` | `applications`, `application_state_history`, `board_votes` |
 | **Google Integration** | `GoogleController` | `GoogleGroupSyncService`, `GoogleAdminService`, `EmailProvisioningService`, `GoogleRemovalNotificationService` | `GoogleWorkspaceSyncService`, `GoogleWorkspaceUserService`, `DriveActivityMonitorService`, `SyncSettingsService`, `TeamResourceService`, Google clients (`GoogleDirectoryClient`, `GoogleGroupMembershipClient`, `GoogleGroupProvisioningClient`, `GoogleDriveActivityClient`, `GoogleDrivePermissionsClient`, `WorkspaceUserDirectoryClient`) | `GoogleResourceRepository`, `GoogleSyncOutboxRepository`, `DriveActivityMonitorRepository`, `SyncSettingsRepository` | `google_resources`, `google_sync_outbox`, `sync_service_settings`, `system_settings` (key `DriveActivityMonitor:LastRunAt`) |

@@ -309,9 +309,9 @@ Outbound invoices to members/barrios:
 - **Exit:** Ticket sale income appears against Ticketing budget group
 
 ### V2c: Holded Integration (read-side) — DESIGN APPROVED, pending implementation
-- Current invariants: [`docs/sections/Finance.md`](../../sections/Finance.md) (the original 2026-04-26 read-integration spec was superseded and has been removed)
+- Current invariants: [`Finance.md`](../../../src/Sections/Humans.Finance/Docs/Finance.md) (the original 2026-04-26 read-integration spec was superseded and has been removed)
 - Tracked in: [nobodies-collective/Humans#463](https://github.com/nobodies-collective/Humans/issues/463)
-- Promotes Finance to its own section ([`../sections/Finance.md`](../../sections/Finance.md)); Budget narrows to planning + public summary
+- Promotes Finance to its own section ([`Finance.md`](../../../src/Sections/Humans.Finance/Docs/Finance.md)); Budget narrows to planning + public summary
 - Holded purchase docs sync into a new `HoldedTransaction` entity (Finance-owned), matched to budget categories via `{group-slug}-{category-slug}` tags
 - Adds `Slug` fields on `BudgetGroup` and `BudgetCategory`
 - Treasurer surface at `/Finance/HoldedUnmatched` with one-click reassignment that pushes corrected tag back to Holded
