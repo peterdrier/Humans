@@ -66,7 +66,7 @@ public static class AdminNavTree
             // Members' own expense pages (Index/Coordinator) are member-shell pages
             // linked from the member nav — only the finance review queue is admin.
             new("Expense review", "Expenses",   "Review",    null, null, "fa-solid fa-magnifying-glass-dollar", PolicyNames.FinanceAdminOrAdmin),
-            new("Finance",        "Finance",    "Index",     null, null, "fa-solid fa-coins",        PolicyNames.FinanceAdminOrAdmin),
+            new("Finance",        "BudgetAdmin", "Index",    null, null, "fa-solid fa-coins",        PolicyNames.FinanceAdminOrAdmin),
             new("Store catalog",  "StoreAdmin", "Catalog",   null, null, "fa-solid fa-tags",         PolicyNames.StoreCatalogAdmin),
             new("Store summary",  "StoreAdmin", "Summary",   null, null, "fa-solid fa-chart-column", PolicyNames.StoreCatalogAdmin),
             new("Store payments", "StoreAdmin", "Payments",  null, null, "fa-solid fa-credit-card",  PolicyNames.StoreCatalogAdmin)
