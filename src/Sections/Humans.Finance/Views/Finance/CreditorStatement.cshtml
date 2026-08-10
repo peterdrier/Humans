@@ -7,6 +7,9 @@
     // Holded's sign (Σdebit − Σcredit); /Holded/Accounts/{num} below shows it unflipped.
     var owedBalance = Model.Balance is { } b ? -b : (decimal?)null;
     var c = Model.Contact;
+
+    // Ledger instants are Madrid midnight; the UTC calendar date is the previous day.
+    var madrid = NodaTime.DateTimeZoneProviders.Tzdb["Europe/Madrid"];
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -94,7 +97,7 @@
             @foreach (var l in lines)
             {
                 <tr>
-                    <td class="text-nowrap">@l.Date.ToDateTimeUtc().ToInvariantDate()</td>
+                    <td class="text-nowrap">@l.Date.InZone(madrid).ToDateTimeUnspecified().ToInvariantDate()</td>
                     <td>@l.Description</td>
                     <td class="text-muted small">@l.Type</td>
                     <td class="text-end">@(l.Credit > 0 ? l.Credit.ToEuro() : "")</td>

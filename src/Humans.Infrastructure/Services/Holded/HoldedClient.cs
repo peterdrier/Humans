@@ -332,8 +332,8 @@ public sealed class HoldedClient : IHoldedClient
                 Line = ReadRequiredInt(Prop(n, "line"), "line"),
                 Date = ParseLedgerDate(Prop(n, "date")?.GetValue<string>() ?? ""),
                 AccountNum = ReadRequiredInt(Prop(n, "account"), "account"),
-                Debit = ReadDecimalV2(Prop(n, "debit")),
-                Credit = ReadDecimalV2(Prop(n, "credit")),
+                Debit = ReadRequiredDecimalV2(Prop(n, "debit"), "debit"),
+                Credit = ReadRequiredDecimalV2(Prop(n, "credit"), "credit"),
                 Type = Prop(n, "type")?.GetValue<string>(),
                 Description = Prop(n, "description")?.GetValue<string>(),
             }).ToList();
@@ -381,10 +381,12 @@ public sealed class HoldedClient : IHoldedClient
         AttachAuth(req);
         using var resp = await SendAsync(req, ct);
         await using var stream = await resp.Content.ReadAsStreamAsync(ct);
-        var node = await JsonNode.ParseAsync(stream, cancellationToken: ct)
-            ?? throw new HoldedTransientException("Holded returned empty body");
         try
         {
+            // Parse inside the try: a truncated 200 body must surface as a typed Holded
+            // exception so /Holded degrades to "unreachable" instead of a raw 500.
+            var node = await JsonNode.ParseAsync(stream, cancellationToken: ct)
+                ?? throw new HoldedTransientException("Holded returned empty body");
             var secondary = Prop(node, "secondary_usages") as JsonObject;
             return new HoldedUsageDto
             {
@@ -608,4 +610,12 @@ public sealed class HoldedClient : IHoldedClient
     private static int ReadRequiredInt(JsonNode? node, string field) =>
         ReadInt(node) ?? throw new HoldedPermanentException(
             $"Holded ledger item is missing required field '{field}' — refusing the page.");
+
+    /// <summary>An absent amount must fail the page, not read as 0.00 — replace semantics would
+    /// overwrite the cached line's real amount and still report the sync as a success.</summary>
+    private static decimal ReadRequiredDecimalV2(JsonNode? node, string field) =>
+        node is null
+            ? throw new HoldedPermanentException(
+                $"Holded ledger item is missing required field '{field}' — refusing the page.")
+            : ReadDecimalV2(node);
 }
