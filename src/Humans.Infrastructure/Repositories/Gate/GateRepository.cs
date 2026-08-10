@@ -9,10 +9,10 @@ namespace Humans.Infrastructure.Repositories.Gate;
 
 /// <summary>
 /// EF-backed <see cref="IGateRepository"/>. Singleton registration with a
-/// short-lived <c>HumansDbContext</c> via <see cref="IDbContextFactory{TContext}"/>
+/// short-lived <c>GateDbContext</c> via <see cref="IDbContextFactory{TContext}"/>
 /// (design-rules §15b), mirroring the other section repositories.
 /// </summary>
-internal sealed class GateRepository(IDbContextFactory<HumansDbContext> factory) : IGateRepository
+internal sealed class GateRepository(IDbContextFactory<GateDbContext> factory) : IGateRepository
 {
     public async Task<GateScanEvent?> GetAdmitForBarcodeAsync(string admitDedupeKey, CancellationToken ct = default)
     {

@@ -54,3 +54,7 @@ section (ledger/accounts/usage). Outbound: none — the connector owns no tables
 alongside `HoldedSyncJob` (nightly: Finance doc sync, then the section's ledger sync) and the
 `IHoldedCallLog` singleton. It stays in Base exactly as `IStripeService` does: consumed by
 three sections, owns nothing.
+
+**GDPR** — the connector owns no per-user data. Finance's own `Service` (exposed as
+`IHoldedFinanceService`) is the `IUserDataContributor` that exports the member's
+`holded_creditor_contacts` binding.

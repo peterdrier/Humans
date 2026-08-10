@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Surveys' cross-section surface, carved into its own leaf project because its only
+    consumer outside the section is still in Base: SendSurveyReminderJob
+    (Humans.Infrastructure/Jobs), which stays there because recurring jobs are named by
+    concrete type in Shell's UseHumansRecurringJobs roll-call and there is no discovery
+    seam for them yet (design §15.6b). A Contracts/ *folder* inside Humans.Surveys would
+    therefore make Base reference a section and cycle (design §15.5b,
+    memory/architecture/section-project-cycle-fix.md).
+
+    It holds exactly one interface. Nothing else Surveys exposes has a consumer outside
+    the section — the three controllers, the DI registration and the section's own tests
+    are the whole fan-in — so the rest stays internal. There is deliberately no
+    ISurveyServiceRead here: the read interface shipped empty in v1 and no section ever
+    consumed it (design §15 step 5, "keep an interface only where something needs the seam").
+
+    References Humans.Interfaces only.
+  -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
+  </ItemGroup>
+
+</Project>

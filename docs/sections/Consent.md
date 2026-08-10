@@ -44,9 +44,9 @@ Legal documents synced from GitHub, per-version consent records (append-only), t
 | CreatedAt | Instant | |
 | LastSyncedAt | Instant | |
 
-Aggregate-local nav `LegalDocument.Versions` kept. Cross-domain nav `LegalDocument.Team` is still declared on the entity (`LegalDocument.cs:30`); `LegalDocumentRepository.GetActiveRequiredDocumentsForTeamsAsync` still emits `.Include(d => d.Team)` (`LegalDocumentRepository.cs:101`) because `ConsentService.GetConsentDashboardAsync` reads `g.First().Team` to group dashboard rows by team. Strip is deferred until callers move to a stitched DTO.
+Aggregate-local nav `LegalDocument.Versions` kept. Cross-domain nav `LegalDocument.Team` has been removed — `LegalDocument.cs` carries `TeamId` only. `LegalDocumentRepository` no longer `.Include(d => d.Team)`; `LegalDocumentSyncService` resolves team names via `ITeamService.GetByIdsWithParentsAsync` and stitches `TeamName` onto its DTOs, and `ConsentService.GetConsentDashboardAsync` groups dashboard rows on the stitched `TeamId`/`TeamName` pair instead of walking a nav.
 
-**Cross-domain FK:** `TeamId` → Teams section. `Team.LegalDocuments` reverse nav also exists (`Team.cs:160`) — cross-domain collection on the Teams entity. Both sides are on borrowed time; the FK scalar is the canonical reference.
+**Cross-domain FK:** `TeamId` → Teams section — **FK only**, no navigation property. The `Team.LegalDocuments` reverse nav has also been removed from the Teams entity.
 
 ### DocumentVersion
 
@@ -168,7 +168,7 @@ Three controllers serve this section.
 
 **Owning services:** `LegalDocumentService` (Statutes page), `LegalDocumentSyncService` (document-side — sole writer for `legal_documents`/`document_versions`, owning both the admin write surface `IAdminLegalDocumentService` and the GitHub-sync write surface `ILegalDocumentSyncService`; nobodies-collective/Humans#751), `ConsentService` (consent-side) — all in `Humans.Application.Services.Legal` / `Humans.Application.Services.Consent`.
 **Owned tables:** `legal_documents`, `document_versions`, `consent_records`
-**Status:** (A) Migrated — all three owning services live in `Humans.Application`; all table access routes through owning-section repositories. One cross-domain nav strip deferred (`LegalDocument.Team` — details below).
+**Status:** (A) Migrated — all three owning services live in `Humans.Application`; all table access routes through owning-section repositories. All cross-domain navs (`LegalDocument.Team`, `Team.LegalDocuments`) have been stripped.
 
 - Services live in `Humans.Application.Services.Legal/` and `Humans.Application.Services.Consent/` and never import `Microsoft.EntityFrameworkCore`.
 - `ILegalDocumentRepository` (impl `LegalDocumentRepository` in `Humans.Infrastructure/Repositories/Legal/`) is the only code path that touches `legal_documents` and `document_versions` via `DbContext`.
@@ -179,9 +179,8 @@ Three controllers serve this section.
   - `LegalDocumentService` (Statutes page) keeps its own `IMemoryCache` for the GitHub-fetched anonymous statutes content (zero DB access, pure I/O cache; out of scope for T-04).
   - Architecture tests pin both the inner-service IMemoryCache-free constraint and the decorator's dual-interface shape: `ConsentArchitectureTests.{ConsentService_HasNoIMemoryCacheConstructorParameter, LegalDocumentSyncService_HasNoIMemoryCacheConstructorParameter, CachingConsentService_ImplementsBothServiceAndInvalidator, CachingLegalDocumentSyncService_ImplementsBothServiceAndInvalidator, CachingConsentService_DeclaresSubmitConsentAsync}`.
 - **Read/write interface split.** `IConsentServiceRead` (6 methods: `GetConsentedVersionIdsAsync`, `GetConsentMapForUsersAsync`, `GetRequiredConsentRowsForUserAsync`, `GetPendingDocumentNamesAsync`, `GetConsentRecordCountAsync`, `GetConsentReviewDetailAsync`) is the cross-section read surface — only Consent projections, no EF entities. `IConsentService : IConsentServiceRead` adds `SubmitConsentAsync` (write) and `GetConsentDashboardAsync` (section-internal read). External read-only consumers (MembershipCalculator, OnboardingWidgetState, AgentUserSnapshotProvider, ProfileController) inject `IConsentServiceRead`; OnboardingWidgetController stays on `IConsentService` (writes). See `memory/architecture/section-read-write-split.md`.
-- **Cross-domain navs still declared (strip deferred):**
-  - `LegalDocument.Team` (`LegalDocument.cs:30`) — walked by `LegalDocumentRepository.GetActiveRequiredDocumentsForTeamsAsync` (`.Include(d => d.Team)`, `LegalDocumentRepository.cs:101`) because `ConsentService.GetConsentDashboardAsync` groups by `g.First().Team`. Strip requires moving to a stitched DTO via `ITeamService`.
-  - `Team.LegalDocuments` (`Team.cs:160`) — reverse collection on the Teams entity; not walked by this section. Strip follows the `LegalDocument.Team` strip.
+- **Cross-domain navs removed:** `LegalDocument.Team` and its `Team.LegalDocuments` reverse collection are both gone; `LegalDocumentRepository` no longer `.Include(d => d.Team)`. `LegalDocumentSyncService.GetActiveRequiredDocumentsForTeamsAsync` and `ConsentService.GetConsentDashboardAsync` resolve team names via `ITeamService.GetByIdsWithParentsAsync`, stitched onto the DTO.
+- **Aggregate-local navs still declared (not cross-section):**
   - `ConsentRecord.DocumentVersion` (`ConsentRecord.cs:34`) — walked by `ConsentRepository.GetAllForUserIdsAsync` (`.ThenInclude(v => v.LegalDocument)`, `ConsentRepository.cs:74`) to surface document name + version on the consent-history view. This is aggregate-local for `consent_records` → `document_versions` → `legal_documents`; not a cross-section nav.
   - `DocumentVersion.ConsentRecords` (`DocumentVersion.cs:65`) — declared and configured (`DocumentVersionConfiguration.cs:46`); not navigated by any current service path.
 - **Cross-section calls:** `IProfileService`, `IOnboardingService`, `ITeamService`, `INotificationService`, `INotificationInboxService`, `IHumanLifecycleService`, `IMembershipCalculator`, `IUserService`.
@@ -189,6 +188,5 @@ Three controllers serve this section.
 
 ### Touch-and-clean guidance
 
-- `LegalDocumentRepository.cs:101` — `.Include(d => d.Team)` inside `GetActiveRequiredDocumentsForTeamsAsync`. T-04 sidesteps this path on the hot read (the cache stitches team names via `ITeamService` at warm time), but `LegalDocumentSyncService.GetActiveRequiredDocumentsForTeamsAsync` still feeds the cache miss / fallback path and the `ConsentService.GetConsentDashboardAsync` dashboard view, both of which still read `Team.Name` off the included nav. Strip is still required to drop `LegalDocument.Team`, `Team.LegalDocuments`, and the Include — stitch via `ITeamService.GetTeamNamesByIdsAsync` in the remaining callers.
 - `DocumentVersion.ConsentRecords` (`DocumentVersion.cs:65`) — declared but not navigated by any service. Can be stripped once confirmed no callers in views or tests depend on it.
 - `ConsentArchitectureTests.cs` summary comment (lines 28–32) says Legal services "remain in Infrastructure" — this is stale; all four services are in Application post-migration. Update or remove when next touching that file.

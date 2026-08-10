@@ -1,0 +1,19 @@
+@* A section RCL does NOT inherit the host's Views/_ViewImports.cshtml. Omitting a line
+   here ships broken markup with a green build and no runtime error — see design §1/§2.
+   Guarded by the rendered-HTML diff in step 12. *@
+@using Humans.Surveys
+@using Humans.Surveys.Domain
+@using Humans.Domain.Enums
+@using Humans.Surveys.Models
+@using Humans.Surveys.Services
+@using Humans.Application.Extensions
+@using Humans.UI
+@using Humans.UI.Extensions
+@using Microsoft.Extensions.Localization
+@using NodaTime
+@using NodaTime.Text
+@* Every string these views render is a Survey_* key carved into the section's own set;
+   no Common_* key survives here, so there is deliberately no SharedLocalizer binding. *@
+@inject IStringLocalizer<SurveysResource> Localizer
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+@addTagHelper *, Humans.UI

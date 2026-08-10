@@ -2,6 +2,7 @@
   src/Humans.Application/Services/Auth/**
   src/Humans.Application/Services/Users/**
   src/Humans.Web/Authorization/**
+  src/Humans.UI/Authorization/**
   src/Humans.Web/Controllers/AccountController.cs
   src/Humans.Web/Controllers/DevLoginController.cs
   src/Humans.Domain/Entities/User.cs

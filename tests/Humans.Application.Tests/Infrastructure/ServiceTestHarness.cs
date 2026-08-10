@@ -94,6 +94,21 @@ public abstract class ServiceTestHarness : IDisposable
     private protected CampsDbContext CampsDb => _campsDb.Value.Context;
     private protected TestDbContextFactory<CampsDbContext> CampsDbFactory => _campsDb.Value.Factory;
 
+    /// <summary>Gate: <c>gate_scan_events</c>, <c>gate_settings</c>, <c>gate_staff_pins</c>.</summary>
+    private readonly Lazy<SectionDb<GateDbContext>> _gateDb;
+    private protected GateDbContext GateDb => _gateDb.Value.Context;
+    private protected TestDbContextFactory<GateDbContext> GateDbFactory => _gateDb.Value.Factory;
+
+    /// <summary>Legal: <c>legal_documents</c>, <c>document_versions</c>, <c>consent_records</c>.</summary>
+    private readonly Lazy<SectionDb<LegalDbContext>> _legalDb;
+    private protected LegalDbContext LegalDb => _legalDb.Value.Context;
+    private protected TestDbContextFactory<LegalDbContext> LegalDbFactory => _legalDb.Value.Factory;
+
+    /// <summary>AuditLog: <c>audit_log</c>.</summary>
+    private readonly Lazy<SectionDb<AuditLogDbContext>> _auditLogDb;
+    private protected AuditLogDbContext AuditLogDb => _auditLogDb.Value.Context;
+    private protected TestDbContextFactory<AuditLogDbContext> AuditLogDbFactory => _auditLogDb.Value.Factory;
+
     private protected FakeClock Clock { get; }
     private protected IMemoryCache Cache { get; } = new MemoryCache(new MemoryCacheOptions());
 
@@ -128,6 +143,9 @@ public abstract class ServiceTestHarness : IDisposable
         _cityPlanningDb = RegisterSection<CityPlanningDbContext>(o => new(o));
         _budgetDb = RegisterSection<BudgetDbContext>(o => new(o));
         _campsDb = RegisterSection<CampsDbContext>(o => new(o));
+        _gateDb = RegisterSection<GateDbContext>(o => new(o));
+        _legalDb = RegisterSection<LegalDbContext>(o => new(o));
+        _auditLogDb = RegisterSection<AuditLogDbContext>(o => new(o));
 
         Clock = new FakeClock(now ?? Instant.FromUtc(2026, 3, 1, 12, 0));
     }

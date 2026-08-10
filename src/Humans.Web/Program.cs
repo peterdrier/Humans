@@ -123,7 +123,7 @@ builder.Services.AddHumansPersistence(builder.Environment.IsDevelopment());
 
 // Persist DataProtection keys to DB so auth cookies survive container restarts.
 builder.Services.AddDataProtection()
-    .PersistKeysToHumansDbContext()
+    .PersistKeysToSystemDbContext()
     .SetApplicationName("Humans.Web");
 
 builder.Services.AddIdentity<User, IdentityRole<Guid>>(options =>

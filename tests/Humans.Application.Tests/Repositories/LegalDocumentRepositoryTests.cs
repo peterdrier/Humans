@@ -12,20 +12,22 @@ namespace Humans.Application.Tests.Repositories;
 
 public sealed class LegalDocumentRepositoryTests : IDisposable
 {
-    private readonly HumansDbContext _dbContext;
+    private readonly LegalDbContext _dbContext;
     private readonly FakeClock _clock;
     private readonly LegalDocumentRepository _repo;
     private readonly Team _team;
 
     public LegalDocumentRepositoryTests()
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
+        var options = new DbContextOptionsBuilder<LegalDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
-        _dbContext = new HumansDbContext(options);
+        _dbContext = new LegalDbContext(options);
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
-        _repo = new LegalDocumentRepository(new TestDbContextFactory(options));
+        _repo = new LegalDocumentRepository(new TestDbContextFactory<LegalDbContext>(options));
 
+        // LegalDocument.TeamId is a bare cross-section Guid — the Team is never
+        // persisted; only its Id is referenced.
         _team = new Team
         {
             Id = Guid.NewGuid(),
@@ -36,8 +38,6 @@ public sealed class LegalDocumentRepositoryTests : IDisposable
             CreatedAt = _clock.GetCurrentInstant(),
             UpdatedAt = _clock.GetCurrentInstant()
         };
-        _dbContext.Teams.Add(_team);
-        _dbContext.SaveChanges();
     }
 
     public void Dispose()
@@ -115,18 +115,8 @@ public sealed class LegalDocumentRepositoryTests : IDisposable
         await SeedDocumentAsync("Privacy");
         await SeedDocumentAsync("CoC");
 
-        // Different team
+        // Different team — a bare Guid; no Team row exists in this model.
         var otherTeamId = Guid.NewGuid();
-        _dbContext.Teams.Add(new Team
-        {
-            Id = otherTeamId,
-            Name = "Other",
-            Slug = "other",
-            IsActive = true,
-            SystemTeamType = SystemTeamType.None,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
-        });
         _dbContext.LegalDocuments.Add(new LegalDocument
         {
             Id = Guid.NewGuid(),

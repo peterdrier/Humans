@@ -45,7 +45,6 @@ public static class InfrastructureServiceCollectionExtensions
         // Per-section contexts (nobodies-collective/Humans#858), migrated after
         // HumansDbContext by DatabaseMigrationHostedService in registration order.
         services.AddSectionDbContext<AgentDbContext>(sentinelTable: "agent_conversations");
-        services.AddSectionDbContext<SurveysDbContext>(sentinelTable: "surveys");
         services.AddSectionDbContext<AuthDbContext>(sentinelTable: "role_assignments");
         services.AddSectionDbContext<EmailDbContext>(sentinelTable: "email_outbox_messages");
         services.AddSectionDbContext<CalendarDbContext>(sentinelTable: "calendar_events");
@@ -59,6 +58,10 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSectionDbContext<CityPlanningDbContext>(sentinelTable: "city_planning_settings");
         services.AddSectionDbContext<BudgetDbContext>(sentinelTable: "budget_years");
         services.AddSectionDbContext<CampsDbContext>(sentinelTable: "camps");
+        services.AddSectionDbContext<GateDbContext>(sentinelTable: "gate_settings");
+        services.AddSectionDbContext<SystemDbContext>(sentinelTable: "DataProtectionKeys");
+        services.AddSectionDbContext<LegalDbContext>(sentinelTable: "legal_documents");
+        services.AddSectionDbContext<AuditLogDbContext>(sentinelTable: "audit_log");
 
         services.AddHostedService<DatabaseMigrationHostedService>();
 
@@ -125,7 +128,7 @@ public static class InfrastructureServiceCollectionExtensions
     public static IdentityBuilder AddHumansEntityFrameworkStores(this IdentityBuilder builder) =>
         builder.AddEntityFrameworkStores<HumansDbContext>();
 
-    /// <summary>Typed wrapper so Web never references HumansDbContext directly.</summary>
-    public static IDataProtectionBuilder PersistKeysToHumansDbContext(this IDataProtectionBuilder builder) =>
-        builder.PersistKeysToDbContext<HumansDbContext>();
+    /// <summary>Typed wrapper so Web never references SystemDbContext directly.</summary>
+    public static IDataProtectionBuilder PersistKeysToSystemDbContext(this IDataProtectionBuilder builder) =>
+        builder.PersistKeysToDbContext<SystemDbContext>();
 }

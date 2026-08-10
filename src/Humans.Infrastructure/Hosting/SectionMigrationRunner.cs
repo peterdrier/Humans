@@ -113,10 +113,15 @@ internal static class SectionMigrationRunner
             var command = connection.CreateCommand();
             await using (command.ConfigureAwait(false))
             {
-                command.CommandText = "SELECT to_regclass(@table) IS NOT NULL";
+                // Plain string comparison, not to_regclass: to_regclass parses its
+                // argument as an identifier and lowercases unquoted names, so a
+                // mixed-case sentinel like DataProtectionKeys would never match.
+                command.CommandText =
+                    "SELECT EXISTS (SELECT 1 FROM information_schema.tables " +
+                    "WHERE table_schema = 'public' AND table_name = @table)";
                 var parameter = command.CreateParameter();
                 parameter.ParameterName = "@table";
-                parameter.Value = "public." + sentinelTable;
+                parameter.Value = sentinelTable;
                 command.Parameters.Add(parameter);
                 var result = await command.ExecuteScalarAsync(ct);
                 return result is true;

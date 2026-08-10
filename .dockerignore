@@ -1,1 +1,18 @@
 tests/e2e/
+
+# Host build artifacts and VCS/agent metadata — never needed in the image and
+# would bloat the build context now that COPY src/ src/ pulls the whole tree.
+# bin/, obj/ and TestResults/ live nested under every project (src/*/bin, not
+# just a top-level bin/), so they need the ** prefix to match recursively —
+# a bare "bin/" only matches a top-level directory named bin.
+**/bin/
+**/obj/
+**/TestResults/
+.vs/
+.git/
+.github/
+.claude/
+.worktrees/
+.codex/
+.superpowers/
+local/

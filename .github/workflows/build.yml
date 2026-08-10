@@ -32,7 +32,7 @@ env:
     ExpensesDbContext:src/Sections/Humans.Expenses
     FinanceDbContext:src/Sections/Humans.Finance
     HoldedDbContext:src/Sections/Humans.Holded
-    SurveysDbContext:src/Humans.Infrastructure
+    SurveysDbContext:src/Sections/Humans.Surveys
     EventGuideDbContext:src/Sections/Humans.Events
     AuthDbContext:src/Humans.Infrastructure
     EmailDbContext:src/Humans.Infrastructure
@@ -47,6 +47,10 @@ env:
     CityPlanningDbContext:src/Humans.Infrastructure
     BudgetDbContext:src/Humans.Infrastructure
     CampsDbContext:src/Humans.Infrastructure
+    GateDbContext:src/Humans.Infrastructure
+    SystemDbContext:src/Humans.Infrastructure
+    LegalDbContext:src/Humans.Infrastructure
+    AuditLogDbContext:src/Humans.Infrastructure
     StoreDbContext:src/Sections/Humans.Store
 
 jobs:

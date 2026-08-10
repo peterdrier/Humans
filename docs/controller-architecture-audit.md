@@ -1,16 +1,18 @@
 # Controller Architecture Audit
 
-Living document. Last updated: 2026-08-08 (freshness-sweep regeneration).
+Living document. Last updated: 2026-08-10 (freshness-sweep regeneration).
 
 ## Part 1: Action Name Audit
 
 ### Summary
-- Controllers audited: 89 (excludes 4 base classes: `ApiControllerBase`, `HumansControllerBase`, `HumansTeamControllerBase`, `HumansCampControllerBase`)
+- Controllers audited: 90 (excludes 4 base classes: `ApiControllerBase`, `HumansControllerBase`, `HumansCampControllerBase` — all now in `Humans.UI` — and `HumansTeamControllerBase`, still in `Humans.Web`)
 - Purposes and suggestions preserved from prior audit where the (method, verb) pair still exists; new actions default to a name-derived purpose and `OK`.
 
 `docs/architecture/conventions.md` §"Action Naming" codifies the heuristics: `Index` is for listings, no redundant controller-name prefixes, no bare plural-noun collisions, no generic verbs (`View`/`Show`/`Process`/`Handle`), and conventional form-handler verbs (`Create`/`Edit`/`Delete`/`Confirm`/`Cancel`).
 
-This regeneration (2026-08-08) re-verified the controller/action inventory against current source: the 89-controller/4-base-class set is unchanged (no controllers added, removed, or renamed since the 2026-08-05 sweep), and a diff of `src/Humans.Web/Controllers/**` against the last audit-affecting commit turned up no changed `[Http*]` attributes, routes, action names, or `[ActionName]` overrides — the only churn was the mechanical `Humans.Web.Authorization` → `Humans.UI.Authorization` namespace move from PR #1222 ("peel StoreDbContext out of HumansDbContext") and its neighboring Humans.UI-extraction PRs, plus a same-purpose internal body change in `CampAdminController.SeedSystemRoles` (dropped a since-removed lead-migration step; the table's existing "Seed system role definitions" purpose text already matched). Every row below carries forward unchanged.
+This regeneration (2026-08-10) re-verified the controller/action inventory against current source (`upstream/main`-tracking `origin/main` at commit 2ca3d5241, vs. the prior sweep's 4207f4a42): the G5 section-extraction work (nobodies-collective/Humans#866) split the old combined `FinanceController` in two — the 23 Budget-CRUD actions (years, groups, categories, line items, cash flow, audit log) stayed in `Humans.Web` under the **new** `BudgetAdminController`, keeping the same `[Route("Finance")]` prefix so no URL moved, while the Holded-specific actions (`HoldedAccounts`, `Creditors`, etc.) moved into `src/Sections/Humans.Finance` as the section's own `FinanceController`, which also picked up two new actions along the way: `UnbindCreditor` (`POST /Finance/Creditors/Unbind`) and `ResyncCreditorLedger` (`POST /Finance/Creditors/Resync`, a full-history resweep — the nightly job only covers a trailing year). `ContainerController`, `EventsAdminController`/`EventsApiController`/`EventsController`/`EventsDashboardController`/`EventsExportController`/`EventsModerationController`, `ExpensesController`, `StoreAdminController`/`StoreController`/`StoreStripeWebhookController` also relocated into their own `src/Sections/**` projects as part of the same G5 effort, but carried no action-level changes — every row for those controllers is unchanged. No other controller in the 90-controller/4-base-class inventory was added, removed, or renamed.
+
+The 2026-08-08 regeneration re-verified the controller/action inventory against current source: the 89-controller/4-base-class set is unchanged (no controllers added, removed, or renamed since the 2026-08-05 sweep), and a diff of `src/Humans.Web/Controllers/**` against the last audit-affecting commit turned up no changed `[Http*]` attributes, routes, action names, or `[ActionName]` overrides — the only churn was the mechanical `Humans.Web.Authorization` → `Humans.UI.Authorization` namespace move from PR #1222 ("peel StoreDbContext out of HumansDbContext") and its neighboring Humans.UI-extraction PRs, plus a same-purpose internal body change in `CampAdminController.SeedSystemRoles` (dropped a since-removed lead-migration step; the table's existing "Seed system role definitions" purpose text already matched). Every row below carries forward unchanged.
 
 The 2026-08-05 regeneration re-verified the ten controllers touched by commit d34a8b9cc ("burn down all 15 HUM0031-grandfathered controller methods": `AccountController`, `ProfileController`, `EventsController`, `EmailController`, `ShiftsController`, `TeamController`, `TeamAdminController`, `StoreController`, `GovernanceApplicationsController`, `UsersAdminDebugController`) plus `StoreController`/`TeamController` again via c85abc977. That work moved method bodies into services/private helpers to clear complexity budgets — it changed **no** action names, routes, or verbs. Every action in those ten controllers was re-checked against current source and every row below is unchanged. The 89-controller/4-base-class inventory is unchanged.
 
@@ -103,6 +105,36 @@ The changes captured in the 2026-06-07 sweep — now all stable in the tables be
 | CheckDriveActivity | /AuditLog/CheckDriveActivity | POST | Check drive activity | OK |
 | Resource | /AuditLog/Resource/{id:guid} | GET | Resource sync audit detail | OK |
 | Human | /AuditLog/Human/{id:guid} | GET | Human sync audit detail | OK |
+
+## BudgetAdminController
+
+(`src/Humans.Web/Controllers/BudgetAdminController.cs`) — Budget's admin surface: years, groups, categories, line items, the ticketing projection, cash flow, and the audit log. Named for what it is; the `/Finance` route prefix is unchanged, so no URL moved when the Holded half split off into the Finance section's own `FinanceController` below (nobodies-collective/Humans#866, G5).
+
+| Method | Route | Verb | Purpose | Suggestion |
+|--------|-------|------|---------|------------|
+| Index | /Finance | GET | Finance home (active year or no-year) | OK |
+| YearDetail | /Finance/Years/{id} | GET | Budget year detail | OK |
+| CategoryDetail | /Finance/Categories/{id} | GET | Budget category detail | OK |
+| AuditLog | /Finance/AuditLog/{yearId?} | GET | Budget audit log | OK |
+| CashFlow | /Finance/CashFlow | GET | Cash flow projection view | OK |
+| Admin | /Finance/Admin | GET | Finance admin (manage years/groups) | OK |
+| SyncDepartments | /Finance/Years/{id}/SyncDepartments | POST | Sync team departments into budget | OK |
+| CreateYear | /Finance/Years/Create | POST | Create budget year | OK |
+| UpdateYearStatus | /Finance/Years/{id}/UpdateStatus | POST | Update budget year status | OK |
+| UpdateYear | /Finance/Years/{id}/Update | POST | Update budget year | OK |
+| DeleteYear | /Finance/Years/{id}/Delete | POST | Delete budget year | OK |
+| CreateGroup | /Finance/Groups/Create | POST | Create budget group | OK |
+| UpdateGroup | /Finance/Groups/{id}/Update | POST | Update budget group | OK |
+| DeleteGroup | /Finance/Groups/{id}/Delete | POST | Delete budget group | OK |
+| CreateCategory | /Finance/Categories/Create | POST | Create budget category | OK |
+| UpdateCategory | /Finance/Categories/{id}/Update | POST | Update budget category | OK |
+| DeleteCategory | /Finance/Categories/{id}/Delete | POST | Delete budget category | OK |
+| CreateLineItem | /Finance/LineItems/Create | POST | Create line item | OK |
+| UpdateLineItem | /Finance/LineItems/{id}/Update | POST | Update line item | OK |
+| DeleteLineItem | /Finance/LineItems/{id}/Delete | POST | Delete line item | OK |
+| EnsureTicketingGroup | /Finance/Years/{id}/EnsureTicketingGroup | POST | Ensure the ticketing budget group exists | OK |
+| UpdateTicketingProjection | /Finance/TicketingProjection/{groupId}/Update | POST | Update ticketing projection inputs | OK |
+| SyncTicketingBudget | /Finance/TicketingBudget/{yearId}/Sync | POST | Sync ticketing budget from sales | OK |
 
 ## BudgetController
 
@@ -492,37 +524,18 @@ The changes captured in the 2026-06-07 sweep — now all stable in the tables be
 
 ## FinanceController
 
+(`src/Sections/Humans.Finance/Controllers/FinanceController.cs`) — the Finance section's own pages: Holded account provisioning, the unmatched-document queue, and the creditor-account admin. Shares the `/Finance` route prefix with `BudgetAdminController` above on disjoint action templates; the Budget-CRUD half of the old combined controller stayed in `Humans.Web` as `BudgetAdminController` (nobodies-collective/Humans#866, G5).
+
 | Method | Route | Verb | Purpose | Suggestion |
 |--------|-------|------|---------|------------|
-| Index | /Finance | GET | Finance home (active year or no-year) | OK |
-| YearDetail | /Finance/Years/{id} | GET | Budget year detail | OK |
-| CategoryDetail | /Finance/Categories/{id} | GET | Budget category detail | OK |
-| AuditLog | /Finance/AuditLog/{yearId?} | GET | Budget audit log | OK |
-| CashFlow | /Finance/CashFlow | GET | Cash flow projection view | OK |
-| Admin | /Finance/Admin | GET | Finance admin (manage years/groups) | OK |
-| SyncDepartments | /Finance/Years/{id}/SyncDepartments | POST | Sync team departments into budget | OK |
-| CreateYear | /Finance/Years/Create | POST | Create budget year | OK |
-| UpdateYearStatus | /Finance/Years/{id}/UpdateStatus | POST | Update budget year status | OK |
-| UpdateYear | /Finance/Years/{id}/Update | POST | Update budget year | OK |
-| DeleteYear | /Finance/Years/{id}/Delete | POST | Delete budget year | OK |
-| CreateGroup | /Finance/Groups/Create | POST | Create budget group | OK |
-| UpdateGroup | /Finance/Groups/{id}/Update | POST | Update budget group | OK |
-| DeleteGroup | /Finance/Groups/{id}/Delete | POST | Delete budget group | OK |
-| CreateCategory | /Finance/Categories/Create | POST | Create budget category | OK |
-| UpdateCategory | /Finance/Categories/{id}/Update | POST | Update budget category | OK |
-| DeleteCategory | /Finance/Categories/{id}/Delete | POST | Delete budget category | OK |
-| CreateLineItem | /Finance/LineItems/Create | POST | Create line item | OK |
-| UpdateLineItem | /Finance/LineItems/{id}/Update | POST | Update line item | OK |
-| DeleteLineItem | /Finance/LineItems/{id}/Delete | POST | Delete line item | OK |
-| EnsureTicketingGroup | /Finance/Years/{id}/EnsureTicketingGroup | POST | Ensure the ticketing budget group exists | OK |
-| UpdateTicketingProjection | /Finance/TicketingProjection/{groupId}/Update | POST | Update ticketing projection inputs | OK |
-| SyncTicketingBudget | /Finance/TicketingBudget/{yearId}/Sync | POST | Sync ticketing budget from sales | OK |
 | HoldedAccounts | /Finance/HoldedAccounts | GET | Holded creditor account provisioning view | OK |
 | ProvisionHoldedAccounts | /Finance/HoldedAccounts/Provision | POST | Provision creditor accounts in Holded | OK |
 | HoldedUnmatched | /Finance/HoldedUnmatched | GET | List unmatched Holded creditor entries | OK |
 | Creditors | /Finance/Creditors | GET | Holded creditor accounts list (balances, member bindings) | OK |
 | CreditorStatement | /Finance/Creditors/{accountNum:int} | GET | Per-creditor ledger statement | OK |
 | BindCreditor | /Finance/Creditors/Bind | POST | Bind a member to a Holded creditor account | OK |
+| UnbindCreditor | /Finance/Creditors/Unbind | POST | Clear a member's Holded creditor account binding | OK |
+| ResyncCreditorLedger | /Finance/Creditors/Resync | POST | Full-history resweep of the Holded creditor ledger (the nightly job only covers a trailing year) | OK |
 | RunHoldedSync | /Finance/HoldedSync/Run | POST | Trigger Holded sync (expense actuals) | OK |
 
 ## GateController

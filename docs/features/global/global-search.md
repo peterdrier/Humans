@@ -1,4 +1,6 @@
 <!-- freshness:triggers
+  src/Sections/Humans.Events/Services/CachingEventService.cs
+  src/Sections/Humans.Events/Section.cs
   src/Humans.Application/Services/Search/**
   src/Humans.Application/Interfaces/Search/**
   src/Humans.Web/Controllers/SearchController.cs
@@ -8,8 +10,6 @@
   src/Humans.Infrastructure/Services/Users/CachingUserService.cs
   src/Humans.Infrastructure/Services/Teams/CachingTeamService.cs
   src/Humans.Infrastructure/Services/Camps/CachingCampService.cs
-  src/Humans.Infrastructure/Services/Events/CachingEventService.cs
-  src/Humans.Web/Extensions/Sections/EventsSectionExtensions.cs
   src/Humans.Application/Services/Shifts/ShiftManagementService.cs
   src/Humans.Infrastructure/Repositories/Shifts/ShiftRepository.Management.cs
   src/Humans.Application/Services/Profiles/PersonSearchMatcher.cs
@@ -133,8 +133,8 @@ If privileged search is added later, the right shape is per-bucket scope (TeamsA
 SearchController
    └── ISearchService.SearchAsync(query, onlyType)
          ├── IUserServiceRead.SearchUsersAsync(query, PersonSearchFields.PublicAll, limit)   → IReadOnlyList<HumanSearchResult>
-         ├── ITeamService.SearchAsync(query, max)                                             → IReadOnlyList<TeamSearchHit>
-         ├── ICampService.SearchAsync(query, max)                                             → IReadOnlyList<CampSearchHit>
+         ├── ITeamServiceRead.SearchAsync(query, max)                                         → IReadOnlyList<TeamSearchHit>
+         ├── ICampServiceRead.SearchAsync(query, max)                                         → IReadOnlyList<CampSearchHit>
          ├── IShiftManagementService.SearchAsync(query, max)                                  → IReadOnlyList<RotaSearchHit>
          └── IEventServiceRead.GetApprovedEventsAsync(…, q: query, …)  (skipped when Features:Events is off)  → IReadOnlyList<Event>
 ```
@@ -158,8 +158,8 @@ Counts reflect every match — there is no cap, so the chip count is the true nu
 | DTO | Returned by | Used by |
 |---|---|---|
 | `HumanSearchResult` | `IUserServiceRead.SearchUsersAsync` | View renders via `_HumanSearchResults` partial |
-| `TeamSearchHit (Name, Slug)` | `ITeamService.SearchAsync` | Orchestrator scores → `GlobalSearchResult` |
-| `CampSearchHit (Slug, Name)` | `ICampService.SearchAsync` | Orchestrator scores → `GlobalSearchResult` |
+| `TeamSearchHit (Name, Slug)` | `ITeamServiceRead.SearchAsync` | Orchestrator scores → `GlobalSearchResult` |
+| `CampSearchHit (Slug, Name)` | `ICampServiceRead.SearchAsync` | Orchestrator scores → `GlobalSearchResult` |
 | `RotaSearchHit (Name, TeamId, TeamName)` | `IShiftManagementService.SearchAsync` | Orchestrator scores → `GlobalSearchResult` |
 | `GlobalSearchResult (Type, Title, Subtitle, Url, Score)` | Orchestrator | View renders simple list rows for Teams / Camps / Shifts / Events |
 | `GlobalSearchResults (Query, Humans, Teams, Camps, Shifts, Events)` | `ISearchService` | View-model / view |

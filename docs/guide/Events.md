@@ -1,18 +1,5 @@
 <!-- freshness:triggers
-  src/Humans.Application/Services/Events/**
-  src/Humans.Domain/Entities/Event.cs
-  src/Humans.Domain/Entities/EventCategory.cs
-  src/Humans.Domain/Entities/EventVenue.cs
-  src/Humans.Domain/Entities/EventModerationAction.cs
-  src/Humans.Domain/Entities/EventFavourite.cs
-  src/Humans.Domain/Entities/EventPreference.cs
-  src/Humans.Domain/Entities/EventGuideSettings.cs
-  src/Humans.Web/Controllers/EventsController.cs
-  src/Humans.Web/Controllers/EventsModerationController.cs
-  src/Humans.Web/Controllers/EventsDashboardController.cs
-  src/Humans.Web/Controllers/EventsExportController.cs
-  src/Humans.Web/Controllers/EventsAdminController.cs
-  src/Humans.Web/Controllers/Api/EventsApiController.cs
+  src/Sections/Humans.Events/**
 -->
 <!-- freshness:flag-on-change
   Event submission window, moderation lifecycle, barrio event authority, favourites, category preferences, bulk upload rules, and print guide export — review when Events services/entities/controllers change.
@@ -28,19 +15,19 @@ If you run a camp or a workshop space, you can submit events on behalf of your c
 
 ## Key pages at a glance
 
-- **Browse events** (`/Events`) — the full programme of approved events, searchable and filterable by category, venue, or camp
+- **Browse events** (`/Events/Browse`) — the full programme of approved events, searchable and filterable by category, venue, or camp
 - **Submit a camp event** (`/Events/Barrio/{slug}/Submit`) — submit an event on behalf of your camp (camp & workshop leads)
 - **Bulk upload** (`/Events/Barrio/{slug}/BulkUpload`) — upload a CSV of camp events all at once
 - **Moderation queue** (`/Events/Moderate`) — review pending submissions (moderators only)
 - **Dashboard** (`/Events/Dashboard`) — submission and approval statistics (moderators only)
 - **Export** (`/Events/Export`) — download a CSV of events for print production (moderators only)
-- **Settings & categories** (`/Events/Admin`) — submission window, categories, and venues (moderators only)
+- **Settings & categories** (`/Events/Admin/Settings`) — submission window, categories, and venues (moderators only)
 
 ## As a Volunteer
 
 ### Browse the programme
 
-Go to `/Events` to see every approved event in the guide. Filter by category, venue, or camp to find what interests you.
+Go to `/Events/Browse` to see every approved event in the guide. Filter by category, venue, or camp to find what interests you.
 
 ### Make it your own
 
@@ -74,7 +61,7 @@ Go to `/Events/Moderate` to see everything waiting for review. You can **approve
 
 ### Manage the programme
 
-From `/Events/Admin`, set the submission window (open and close dates) and the guide publish date, create and reorder event categories, and manage the list of venues people can pick when submitting.
+From `/Events/Admin/Settings`, set the submission window (open and close dates) and the guide publish date. Manage event categories from `/Events/Admin/Categories` and the list of venues people can pick when submitting from `/Events/Admin/Venues`.
 
 ### Dashboard and export
 

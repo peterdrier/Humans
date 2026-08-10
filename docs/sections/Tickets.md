@@ -129,6 +129,7 @@ Sender-initiated transfer request. `OriginalTicketAttendeeId` FK → `ticket_att
 | `/Tickets/FullResync` | POST | `AdminOnly` | Trigger full re-sync |
 | `/Tickets/Admin/Contacts` | GET | `TicketAdminOrAdmin` | Preview attendee-contact-import plan |
 | `/Tickets/Admin/Contacts/Apply` | POST | `TicketAdminOrAdmin` | Apply selected attendees |
+| `/Tickets/Admin/Onsite` | GET | `ScannerAccess` | "Who's Onsite" roster |
 | `/Tickets/Admin/Gate` | GET | `TicketAdminOrAdmin` | Gate-terminal account status card |
 | `/Tickets/Admin/Gate/SetPassword` | POST | `TicketAdminOrAdmin` | Set/rotate the gate-terminal password (provisions the account on first set) |
 | `/Tickets/Participation/Backfill` | GET + POST | `AdminOnly` | CSV import of participation records |

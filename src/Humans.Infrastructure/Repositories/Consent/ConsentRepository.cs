@@ -10,7 +10,7 @@ namespace Humans.Infrastructure.Repositories.Consent;
 /// non-test file that touches <c>DbContext.ConsentRecords</c> after the
 /// ConsentService migration lands (issue #547). Uses
 /// <see cref="IDbContextFactory{TContext}"/> so the repository can be
-/// registered as Singleton while <c>HumansDbContext</c> remains Scoped.
+/// registered as Singleton while <c>LegalDbContext</c> remains Scoped.
 /// </summary>
 /// <remarks>
 /// <c>consent_records</c> is append-only per design-rules §12 — only
@@ -18,7 +18,7 @@ namespace Humans.Infrastructure.Repositories.Consent;
 /// <c>DeleteAsync</c>. Database triggers reject any UPDATE/DELETE at the
 /// storage layer as a secondary defense.
 /// </remarks>
-internal sealed class ConsentRepository(IDbContextFactory<HumansDbContext> factory) : IConsentRepository
+internal sealed class ConsentRepository(IDbContextFactory<LegalDbContext> factory) : IConsentRepository
 {
     // ==========================================================================
     // Writes — append-only

@@ -2,7 +2,7 @@
   src/Humans.Application/Services/Budget/**
   src/Humans.Application/Services/Tickets/TicketingBudgetService.cs
   src/Humans.Web/Controllers/BudgetController.cs
-  src/Humans.Web/Controllers/FinanceController.cs
+  src/Humans.Web/Controllers/BudgetAdminController.cs
   src/Humans.Domain/Entities/BudgetYear.cs
   src/Humans.Domain/Entities/BudgetGroup.cs
   src/Humans.Domain/Entities/BudgetCategory.cs
@@ -308,13 +308,13 @@ Outbound invoices to members/barrios:
 - Budget vs actuals view
 - **Exit:** Ticket sale income appears against Ticketing budget group
 
-### V2c: Holded Integration (read-side) — DESIGN APPROVED, pending implementation
-- Current invariants: [`Finance.md`](../../../src/Sections/Humans.Finance/Docs/Finance.md) (the original 2026-04-26 read-integration spec was superseded and has been removed)
+### V2c: Holded Integration (read-side) — IMPLEMENTED (nobodies-collective/Humans#866, G5)
+- Current invariants: [`Finance.md`](../../../src/Sections/Humans.Finance/Docs/Finance.md) — the authoritative doc; the bullets below describe the original design and were superseded during implementation (no `HoldedTransaction` entity or `Slug`-based tag matching landed)
 - Tracked in: [nobodies-collective/Humans#463](https://github.com/nobodies-collective/Humans/issues/463)
-- Promotes Finance to its own section ([`Finance.md`](../../../src/Sections/Humans.Finance/Docs/Finance.md)); Budget narrows to planning + public summary
-- Holded purchase docs sync into a new `HoldedTransaction` entity (Finance-owned), matched to budget categories via `{group-slug}-{category-slug}` tags
-- Adds `Slug` fields on `BudgetGroup` and `BudgetCategory`
-- Treasurer surface at `/Finance/HoldedUnmatched` with one-click reassignment that pushes corrected tag back to Holded
+- Promoted Finance to its own section ([`Finance.md`](../../../src/Sections/Humans.Finance/Docs/Finance.md)); Budget narrowed to planning + public summary
+- Shipped attribution is Account → Tag → Unmatched: Holded purchase docs land in a `HoldedExpenseDoc` entity (Finance-owned), matched to budget categories via `HoldedCategoryMap` (booked Holded account id first, normalized tag fallback second)
+- Treasurer surface at `/Finance/HoldedUnmatched` (unmatched-doc worklist) and `/Finance/HoldedAccounts` (account provisioning)
+- Budget's CRUD half of the old `/Finance` controller stayed in Shell as `BudgetAdminController`, keeping the same route prefix; Finance's own `FinanceController` owns only the Holded/creditor actions
 - **Exit:** Expenses flow into Finance and roll up as planned-vs-actual on the year-detail view
 
 ### V2d: Invoicing (1-2 sessions)

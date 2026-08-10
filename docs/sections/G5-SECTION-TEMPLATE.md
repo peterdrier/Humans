@@ -5,7 +5,8 @@ The recipe for moving one section into its own project under `src/Sections/`
 [`2026-08-07-g5-section-project-split-design.md`](../superpowers/specs/2026-08-07-g5-section-project-split-design.md)
 (cited below as "spec §N") after five sections executed it: Store (peterdrier/Humans#1223),
 SystemSettings + EventGuide (peterdrier/Humans#1235, A1), Containers + Finance
-(peterdrier/Humans#1239, A2). Step numbers match the former §15, so an old "§15 step 3b"
+(peterdrier/Humans#1239, A2), Expenses (peterdrier/Humans#1240, A3), Surveys
+(peterdrier/Humans#1251, A4). Step numbers match the former §15, so an old "§15 step 3b"
 citation reads as "step 3b" here.
 
 **Where this template and `src/Sections/` disagree, the code is right.** Deviations are the
@@ -84,6 +85,12 @@ Git Bash.)
    `Microsoft.Extensions.Logging`. Project references: `Humans.Interfaces`, `Humans.Domain`,
    `Humans.Application`, `Humans.Infrastructure`, `Humans.UI`. Add to `Humans.slnx`. No
    `Directory.Build.props` — `src/Directory.Build.props` resolves from `src/Sections/`.
+   - **"The section's own NuGet packages" excludes anything in the ASP.NET Core shared
+     framework.** Central Package Management fails the build with `NU1010` for a
+     `PackageReference` that has no `PackageVersion`, and the ASP.NET packages deliberately have
+     none — `Microsoft.AspNetCore.DataProtection` and friends arrive through the framework
+     reference Sdk.Razor already adds (proven: Surveys, whose token provider takes
+     `IDataProtectionProvider`). Add EF Core, NodaTime and Npgsql; never an `AspNetCore` one.
 2. [ ] Move the vertical, folders as layers: `Contracts/ Domain/ Data/ Services/ Controllers/
    Models/ Views/ Resources/ Authorization/ Docs/ Properties/ wwwroot/` + `Section.cs`. Migrations
    land at `Data/Migrations/` — their `namespace` line changes to the section's, which is the one
@@ -113,6 +120,16 @@ Git Bash.)
      resolves against `SharedResource` and cannot see the section's set. Fix by passing localized
      strings in on the partial's model; a Shell caller can inject
      `IStringLocalizer<<Section>Resource>` directly (proven: Events, `_FavouriteButton`).
+   - **Check what each moved *controller* injects, not just what the views bind.** `_ViewImports`
+     rebinds `Localizer` for every view in one line, so views are safe by construction and the
+     grep above passes — a controller that still takes `IStringLocalizer<SharedResource>` keeps
+     compiling and renders its carved keys as raw key names. Assert it structurally rather than by
+     eye: no type in the section may take `IStringLocalizer<T>` for any `T` but
+     `<Section>Resource` (`SurveysArchitectureTests.SectionTypesLocalizeThroughTheSectionsOwnResourceSet`
+     is the shape). **A render test is not enough here** — controller-resolved copy tends to sit on
+     the failure paths (validation errors, empty-value fallbacks) that fixtures do not reach, so a
+     page-renders-clean suite passes over it (proven: Surveys shipped three such call sites past
+     four green render tests; caught in review, peterdrier/Humans#1251).
    - **Prefer keeping a shared partial in the section over promoting it to `Humans.UI`.** A
      partial in the section's `Views/Shared/` is found by name across application parts and
      compiles against the *section's* `_ViewImports`, so it keeps `Localizer` with no model
@@ -143,6 +160,20 @@ Git Bash.)
    drop the section prefix: `Repository`, `Service`, entities, EF configurations, view models.
    Controllers, `<Section>DbContext`, `I<Section>Repository` and `Contracts/` types keep it, each
    for a mechanical reason (spec §6a). Renames in a **separate commit** after the move compiles.
+   - **Internalising is also a sealing pass.** `MA0053` ("make class or record sealed") is a
+     warning, `TreatWarningsAsErrors` is on, and the rule only fires once a class stops being
+     `public` — so a clean `public` → `internal` sweep turns every non-sealed class in the
+     section into a build error at once. `internal sealed` is the shape; EF entities included
+     (nothing in this codebase subclasses them or uses EF proxies). Budget for it rather than
+     being surprised by 17 errors (proven: Surveys).
+   - **Ask whether the prefix is the *section* name or the *aggregate* name before dropping
+     it.** Only Containers and Finance actually collapsed to `Service`/`Repository`, because
+     their types duplicated the section name. Store, Expenses and Surveys kept aggregate-derived
+     names — `Humans.Expenses.Domain.ExpenseReport`, `Humans.Surveys.Services.SurveyService` —
+     and stripping those would produce `Question`/`Answer`/`Response`, which is worse in a
+     `Humans.Surveys.Domain` namespace, not better. A rename that buys nothing still costs a
+     pass over the persisted-name hazard below, so the default for an aggregate-named section
+     is: do not rename (proven: Surveys, which renamed nothing).
    - Keep an interface only where something needs the seam: a caching decorator, a `Contracts/`
      entry, or a substituting unit test — in practice **`I<Section>Repository` stays and
      `I<Section>Service` goes**. A decorator that is not the section's plain `Service` keeps its
@@ -159,6 +190,12 @@ Git Bash.)
    (Peter, 2026-08-09: splitting read from write happens once every section has moved, not
    per-section). May be empty for a leaf section; ship the folder with a `README.md` saying why
    (proven: Store).
+   - **An empty `I<Section>ServiceRead` is deleted at the move, not carried into `Contracts/`.**
+     Several sections shipped one pre-emptively "as the boundary other sections would inject",
+     with no members and no consumers. Moving it produces an empty public interface that
+     documents a contract nobody has; the assembly boundary now says the same thing and says it
+     to the compiler. Delete it with its `IsAssignableFrom` architecture test (proven: Surveys).
+     A read interface that has *members* is a different question — that one moves.
    - **Folder vs project is decided by *where the consumer lives*, not how much surface there
      is.** A consumer in Base forces `Humans.<Section>.Contracts` as its own project referencing
      only the bottom of the graph — a folder would cycle
@@ -181,6 +218,17 @@ Git Bash.)
 6. [ ] Authorization *policies* stay in Shell's `AuthorizationPolicyExtensions`; resource-based
    *handlers* move into the section (spec §8's asymmetry: DI registration moves, policy
    registration does not).
+   - **A Shell-resident base class that several sections derive from moves down to `Humans.UI`
+     at the first section's G5.** A section cannot reference `Humans.Web`, so the section's
+     `<Section>ApiKeyAuthFilter` cannot keep deriving from `Humans.Web/Filters`'
+     `ApiKeyAuthFilterBase` — and neither duplicating it nor leaving the filter behind (the
+     section's `[ServiceFilter(typeof(…))]` would name a Shell type) is available. This is
+     **not** the forbidden "promote the shared type into Base": that rule is about DTOs and
+     section vocabulary, and the test is whether the type names anything a section owns.
+     `ApiKeyAuthFilterBase` is an `X-Api-Key` header check with no section vocabulary at all,
+     the same shape as `ApiControllerBase` which already lives in `Humans.UI`. Move the base,
+     leave the per-section subclass + settings type with each section, and expect four more
+     sections (Feedback, Issues, Log, Agent) to take theirs on the way out (proven: Surveys).
    - **Do this on paper *before* step 5b.** Moving the handler is often what takes the read
      surface's fan-in to zero. Expenses' fan-in read as "`IExpenseReportServiceRead`'s only
      outside consumer is Shell's `IbanAccessHandler`", which would have made six types public to
@@ -195,9 +243,19 @@ Git Bash.)
    blocker.
 7. [ ] `wwwroot/` assets move with the section; URLs become `/_content/Humans.<Section>/…` in the
    same PR. Only Shell's own chrome assets stay in Shell.
-   ⚠️ UNPROVEN — no moved section has had static assets. First real test: Agent, CityPlanning,
-   Gate or Scanner. Confirm the Dockerfile's static-asset copy and any `asp-append-version`
+   ⚠️ **STILL UNPROVEN.** A4 was scheduled to be the first execution and deferred Agent, so no
+   moved section has yet had static assets. Next real test: Agent, CityPlanning, Gate or
+   Scanner. Confirm the Dockerfile's static-asset copy and any `asp-append-version`
    cache-busting survive the URL change, and correct this step from what happened.
+   - What A4 established about the Agent case without executing it: `wwwroot/css/agent.css` and
+     `wwwroot/js/agent/widget.js` are referenced from **three** places, and only one is the
+     section's own view — `Views/Agent/Conversation.cshtml:9`, plus Shell's own chrome at
+     `Views/Shared/Components/HelpWidget/Default.cshtml:128` and `:137`. All three use
+     `asp-append-version="true"`, which needs the file resolvable through the host's
+     `IFileProvider`; an RCL's `_content` assets are served by the static-web-assets manifest
+     rather than from `wwwroot` on disk, so this is exactly where the cache-buster is most
+     likely to silently emit no `?v=` rather than fail. Check the emitted `?v=` hash, not just
+     that the asset 200s.
 7b. [ ] The section's docs move into `Docs/` — invariants doc, feature doc, its own design specs;
    disambiguate filenames that collide case-insensitively. Fix inbound links (`docs/README.md`,
    `data-model.md`, **both** `docs/sections/_Index.md` rows, any `memory/` atom citing them, the
@@ -211,6 +269,17 @@ Git Bash.)
    integration tests stay in `Humans.Integration.Tests`. EF-InMemory stays EF-InMemory. **Read
    what each test actually exercises**: a file under `Services/<Section>/` that tests a connector
    is a connector test and does not move (proven: Store, two Stripe files).
+   - The test project is plain `Microsoft.NET.Sdk`, so it does **not** get the ASP.NET Core
+     shared framework. A section test that touches an ASP.NET type — a controller, a filter,
+     `IDataProtectionProvider` — needs an explicit
+     `<FrameworkReference Include="Microsoft.AspNetCore.App" />`, and cannot get there with a
+     `PackageReference` (see step 1's `NU1010` note). Proven: Surveys.
+   - **Scope any bulk `sed`/rewrite over the new test project to tracked files.** A glob over
+     `tests/Humans.<Section>.Tests/**/*.cs` also hits `obj/`, and prepending a `using` above the
+     `<auto-generated>` header of `XunitAutoGeneratedEntryPoint.cs` disables the generated-code
+     suppression — the build then fails inside a file you did not write, with `MA0006`,
+     `MA0053` and `RCS1102` on xunit's own entry point. Use `git ls-files` or `-not -path
+     '*/obj/*'` (proven: Surveys, ~10 minutes lost to it).
    - **A Base test helper the moved tests inherit is not automatically shared-set material.**
      Check what the section's tests actually *use* before linking it into
      `tests/Directory.Build.props`. Expenses' one harness-derived test used three members of
@@ -224,6 +293,21 @@ Git Bash.)
 9. [ ] `dotnet ef` for this section: `--project src/Sections/Humans.<Section>
    --startup-project src/Humans.Web --context <Section>DbContext --output-dir Data/Migrations`.
    Update the `context:project` pair in `.github/workflows/build.yml`.
+   - **Change `MigrationsAssembly` in the moved `<Section>DbContextFactory` to
+     `"Humans.<Section>"`.** Every design-time factory hardcodes the string, so a factory that
+     moves with the section keeps pointing at `Humans.Infrastructure`, EF looks for the section's
+     migrations in an assembly they just left, finds none, and reports **"Changes have been made
+     to the model since the last migration"** — model *drift*, for what is a wiring bug. The
+     runtime is unaffected and hides it: `AddSectionDbContext` → `ConfigureNpgsql` derives the
+     assembly from `contextType.Assembly.GetName().Name`, so the app boots and migrates fine and
+     only `dotnet ef` disagrees. It fails `build` and `verify-migrations-apply` identically, which
+     reads as two problems. Verify with `dotnet ef migrations has-pending-model-changes --context
+     <Section>DbContext --project src/Sections/Humans.<Section> --startup-project src/Humans.Web`
+     before pushing — step 12 already asks for this and it is the check that catches it
+     (`Humans.Expenses` is the correct reference; proven: Surveys, peterdrier/Humans#1251).
+   - Diagnostic tell: `dotnet ef migrations add` on the section answers **"Your target project
+     'Humans.<Section>' doesn't match your migrations assembly 'Humans.Infrastructure'"**, which
+     names the real problem where `has-pending-model-changes` does not.
 10. [ ] **Table renames are out of scope. A G5 move changes files, never the schema** (decision
     2026-08-09, recorded on nobodies-collective/Humans#866; tracked at
     nobodies-collective/Humans#1012). Mismatched table names — or a mismatched
@@ -242,6 +326,11 @@ Git Bash.)
       `ProductionAssemblies` set of the four literal Base names. Fixed with
       `AssemblyScope.IsProduction`; widening produced zero new findings, so the cost of being
       wrong here is nothing and the cost of skipping it is silent.
+    - **Delete the section's row from `HumansDbContext.PeeledConfigurationNamespaces`.** The
+      array names each peeled section's configuration namespace by `typeof(...)`, so the row
+      stops compiling the moment the configurations leave `Humans.Infrastructure` — self-
+      revealing, but it is the first error of the move and it reads like a mistake rather than a
+      step. The comment above the array already says a G5 section drops its entry.
     - **Check `AdminNavTree` after any controller rehoming.** Entries name a controller by
       *name*; one that no longer resolves makes the anchor tag helper omit `href` entirely, so
       the page returns 200 with a dead link and neither the suite nor the step 12 HTML diff
@@ -262,6 +351,34 @@ Git Bash.)
     a non-English resource fallback both survive it — capture in a non-English locale too, or
     check those two by hand. `dotnet watch` hot-reload is not a gate until
     nobodies-collective/Humans#1008 is fixed.
+    - **Prefer writing the check as an integration test over taking a capture.** The capture is
+      a one-off that only helps the person who took it, and it has to be taken *before* the
+      first commit or it cannot be taken at all. A `<Section>PageRenderTests` in
+      `Humans.Integration.Tests` that GETs every page of the section and asserts (a) resolved
+      copy is present and (b) no raw `<Section>_` key appears in the body catches both G5
+      failure modes — incomplete `_ViewImports`, and a key the resx carve missed — and it runs
+      on every build afterwards, including for the *next* section that touches these views
+      (proven: Surveys, 4 tests over 6 pages; the file is the model to copy).
+    - **The non-English case is not optional and is not decoration.** An English-only check
+      passes whether or not the section's satellite assemblies shipped, because the neutral set
+      is embedded in the main assembly and the fallback is silent. One request with
+      `Accept-Language: es` asserting a Spanish string is the only thing that proves an RCL's
+      satellites reach the host's probing path.
+    - **Assert on ASCII-only substrings of the non-English copy.** Razor's default `HtmlEncoder`
+      escapes non-ASCII to numeric entities, so `está` reaches the response body as `est&#xE1;`
+      and a literal assertion on the resx value fails while the page is perfectly correct. Take
+      the longest accent-free run of the string (proven: Surveys, one wasted red run).
+
+## Things outside the steps that bit a wave
+
+- **The `Dockerfile`'s `RUN dotnet restore` layer does not work and has not for some time.** It
+  copies five csprojs, but `Humans.Domain.csproj` references `Humans.Interfaces.csproj`, which is
+  never copied — and neither is `Humans.Analyzers` (pulled in by `src/Directory.Build.props`) nor
+  any of the section projects. The image still builds because `COPY src/ src/` and the `dotnet
+  publish` that follows restore everything again; the layer is a dead cache optimisation. Adding
+  your section's two `COPY` lines (as nobodies-collective/Humans#1006 will eventually automate)
+  costs nothing and fixes nothing — do not spend time debugging it, and do not conclude your move
+  broke the image. Found by A4.
 
 ## The `<vc:*>` rename hazard
 

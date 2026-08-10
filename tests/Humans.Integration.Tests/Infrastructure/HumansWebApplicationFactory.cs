@@ -229,12 +229,13 @@ public class HumansWebApplicationFactory(string connectionString)
         //    user hasn't already consented to. ConsentRecord is append-only
         //    (DB triggers block UPDATE/DELETE) — INSERT is the only mutation
         //    allowed here.
-        await SeedMissingConsentsAsync(db, user.Id);
+        await SeedMissingConsentsAsync(
+            scope.ServiceProvider.GetRequiredService<LegalDbContext>(), user.Id);
 
         return user.Id;
     }
 
-    private static async Task SeedMissingConsentsAsync(HumansDbContext db, Guid userId)
+    private static async Task SeedMissingConsentsAsync(LegalDbContext db, Guid userId)
     {
         var now = SystemClock.Instance.GetCurrentInstant();
 

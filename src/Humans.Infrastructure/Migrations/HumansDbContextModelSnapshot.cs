@@ -74,80 +74,6 @@ namespace Humans.Infrastructure.Migrations
                     b.ToTable("account_merge_requests", (string)null);
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.AuditLogEntry", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Action")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<Guid?>("ActorUserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasMaxLength(4000)
-                        .HasColumnType("character varying(4000)");
-
-                    b.Property<Guid>("EntityId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("EntityType")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<string>("ErrorMessage")
-                        .HasMaxLength(4000)
-                        .HasColumnType("character varying(4000)");
-
-                    b.Property<Instant>("OccurredAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid?>("RelatedEntityId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("RelatedEntityType")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<Guid?>("ResourceId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Role")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<bool?>("Success")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("SyncSource")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<string>("UserEmail")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Action");
-
-                    b.HasIndex("OccurredAt");
-
-                    b.HasIndex("ResourceId");
-
-                    b.HasIndex("EntityType", "EntityId");
-
-                    b.HasIndex("RelatedEntityType", "RelatedEntityId");
-
-                    b.ToTable("audit_log", (string)null);
-                });
-
             modelBuilder.Entity("Humans.Domain.Entities.CommunicationPreference", b =>
                 {
                     b.Property<Guid>("Id")
@@ -190,55 +116,6 @@ namespace Humans.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("communication_preferences", (string)null);
-                });
-
-            modelBuilder.Entity("Humans.Domain.Entities.ConsentRecord", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Instant>("ConsentedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("ContentHash")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
-                    b.Property<Guid>("DocumentVersionId")
-                        .HasColumnType("uuid");
-
-                    b.Property<bool>("ExplicitConsent")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("IpAddress")
-                        .IsRequired()
-                        .HasMaxLength(45)
-                        .HasColumnType("character varying(45)");
-
-                    b.Property<string>("UserAgent")
-                        .IsRequired()
-                        .HasMaxLength(1024)
-                        .HasColumnType("character varying(1024)");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ConsentedAt");
-
-                    b.HasIndex("DocumentVersionId");
-
-                    b.HasIndex("UserId");
-
-                    b.HasIndex("UserId", "DocumentVersionId")
-                        .IsUnique();
-
-                    b.HasIndex("UserId", "ExplicitConsent", "ConsentedAt");
-
-                    b.ToTable("consent_records", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.ContactField", b =>
@@ -285,55 +162,6 @@ namespace Humans.Infrastructure.Migrations
                     b.HasIndex("ProfileId", "Visibility");
 
                     b.ToTable("contact_fields", (string)null);
-                });
-
-            modelBuilder.Entity("Humans.Domain.Entities.DocumentVersion", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("ChangesSummary")
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)");
-
-                    b.Property<string>("CommitSha")
-                        .IsRequired()
-                        .HasMaxLength(40)
-                        .HasColumnType("character varying(40)");
-
-                    b.Property<string>("Content")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("jsonb")
-                        .HasDefaultValueSql("'{}'::jsonb");
-
-                    b.Property<Instant>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Instant>("EffectiveFrom")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("LegalDocumentId")
-                        .HasColumnType("uuid");
-
-                    b.Property<bool>("RequiresReConsent")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("VersionNumber")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CommitSha");
-
-                    b.HasIndex("EffectiveFrom");
-
-                    b.HasIndex("LegalDocumentId");
-
-                    b.ToTable("document_versions", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.EventParticipation", b =>
@@ -458,105 +286,6 @@ namespace Humans.Infrastructure.Migrations
                     b.ToTable("event_settings", (string)null);
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.GateScanEvent", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("AdmitDedupeKey")
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)");
-
-                    b.Property<string>("Barcode")
-                        .IsRequired()
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)");
-
-                    b.Property<Instant?>("ClientScanAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid?>("GuestUserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("LaneId")
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
-                    b.Property<string>("Note")
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
-
-                    b.Property<Instant>("OccurredAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid?>("OverrideByUserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("ScannedByUserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid?>("TicketAttendeeId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Verdict")
-                        .IsRequired()
-                        .HasMaxLength(40)
-                        .HasColumnType("character varying(40)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("AdmitDedupeKey")
-                        .IsUnique()
-                        .HasDatabaseName("ix_gate_scan_events_admit_dedupe_key");
-
-                    b.HasIndex("OccurredAt");
-
-                    b.HasIndex("ScannedByUserId");
-
-                    b.ToTable("gate_scan_events", (string)null);
-                });
-
-            modelBuilder.Entity("Humans.Domain.Entities.GateSettings", b =>
-                {
-                    b.Property<int>("Id")
-                        .HasColumnType("integer");
-
-                    b.Property<Instant>("GeneralEntryOpensAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("MinorAgeThresholdYears")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("gate_settings", (string)null);
-                });
-
-            modelBuilder.Entity("Humans.Domain.Entities.GateStaffPin", b =>
-                {
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<bool>("AdminEnrolled")
-                        .HasColumnType("boolean");
-
-                    b.Property<Instant>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("PinHash")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
-
-                    b.Property<Instant>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("UserId");
-
-                    b.ToTable("gate_staff_pins", (string)null);
-                });
-
             modelBuilder.Entity("Humans.Domain.Entities.GeneralAvailability", b =>
                 {
                     b.Property<Guid>("Id")
@@ -587,55 +316,6 @@ namespace Humans.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("general_availability", (string)null);
-                });
-
-            modelBuilder.Entity("Humans.Domain.Entities.LegalDocument", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Instant>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("CurrentCommitSha")
-                        .IsRequired()
-                        .HasMaxLength(40)
-                        .HasColumnType("character varying(40)");
-
-                    b.Property<string>("GitHubFolderPath")
-                        .HasMaxLength(512)
-                        .HasColumnType("character varying(512)");
-
-                    b.Property<int>("GracePeriodDays")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(7);
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("IsRequired")
-                        .HasColumnType("boolean");
-
-                    b.Property<Instant>("LastSyncedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
-
-                    b.Property<Guid>("TeamId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("IsActive");
-
-                    b.HasIndex("TeamId", "IsActive");
-
-                    b.ToTable("legal_documents", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.Profile", b =>
@@ -1902,25 +1582,6 @@ namespace Humans.Infrastructure.Migrations
                     b.ToTable("volunteer_tag_preferences", (string)null);
                 });
 
-            modelBuilder.Entity("Microsoft.AspNetCore.DataProtection.EntityFrameworkCore.DataProtectionKey", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("FriendlyName")
-                        .HasColumnType("text");
-
-                    b.Property<string>("Xml")
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("DataProtectionKeys");
-                });
-
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole<System.Guid>", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2101,17 +1762,6 @@ namespace Humans.Infrastructure.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.ConsentRecord", b =>
-                {
-                    b.HasOne("Humans.Domain.Entities.DocumentVersion", "DocumentVersion")
-                        .WithMany("ConsentRecords")
-                        .HasForeignKey("DocumentVersionId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("DocumentVersion");
-                });
-
             modelBuilder.Entity("Humans.Domain.Entities.ContactField", b =>
                 {
                     b.HasOne("Humans.Domain.Entities.Profile", "Profile")
@@ -2121,17 +1771,6 @@ namespace Humans.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Profile");
-                });
-
-            modelBuilder.Entity("Humans.Domain.Entities.DocumentVersion", b =>
-                {
-                    b.HasOne("Humans.Domain.Entities.LegalDocument", "LegalDocument")
-                        .WithMany("Versions")
-                        .HasForeignKey("LegalDocumentId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("LegalDocument");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.EventParticipation", b =>
@@ -2405,19 +2044,9 @@ namespace Humans.Infrastructure.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.DocumentVersion", b =>
-                {
-                    b.Navigation("ConsentRecords");
-                });
-
             modelBuilder.Entity("Humans.Domain.Entities.EventSettings", b =>
                 {
                     b.Navigation("Rotas");
-                });
-
-            modelBuilder.Entity("Humans.Domain.Entities.LegalDocument", b =>
-                {
-                    b.Navigation("Versions");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.Profile", b =>

@@ -187,7 +187,7 @@ internal sealed class EventsApiController(IEventService guide, ICampServiceRead 
         return Ok(new { excludedCategorySlugs = request.ExcludedCategorySlugs });
     }
 
-    public sealed class UpdatePreferencesRequest
+    internal sealed class UpdatePreferencesRequest
     {
         public List<string> ExcludedCategorySlugs { get; set; } = [];
     }

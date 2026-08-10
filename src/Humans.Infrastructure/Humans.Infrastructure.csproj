@@ -25,6 +25,7 @@
       (memory/architecture/section-project-cycle-fix.md).
     -->
     <ProjectReference Include="..\Sections\Humans.Expenses.Contracts\Humans.Expenses.Contracts.csproj" />
+    <ProjectReference Include="..\Sections\Humans.Surveys.Contracts\Humans.Surveys.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

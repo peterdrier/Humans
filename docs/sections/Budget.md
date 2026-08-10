@@ -5,7 +5,7 @@
   src/Humans.Infrastructure/Data/Configurations/Budget/**
   src/Humans.Infrastructure/Repositories/Budget/BudgetRepository.cs
   src/Humans.Web/Controllers/BudgetController.cs
-  src/Humans.Web/Controllers/FinanceController.cs
+  src/Humans.Web/Controllers/BudgetAdminController.cs
   src/Humans.Web/Authorization/Requirements/BudgetAuthorizationHandler.cs
   src/Humans.Web/Authorization/Requirements/BudgetOperationRequirement.cs
 -->
@@ -238,10 +238,11 @@ Stored as string via `HasConversion<string>()`.
 **Status:** (A) Migrated (peterdrier/Humans PR for issue nobodies-collective/Humans#544, 2026-04-22).
 
 - `BudgetService` lives in `Humans.Application.Services.Budget` and depends only on Application-layer abstractions.
-- `BudgetRepository` (impl `Humans.Infrastructure/Repositories/BudgetRepository.cs`, §15b Singleton + `IDbContextFactory`) is the only file that touches budget tables via `DbContext`. `IBudgetRepository` exposes atomic per-method operations — multi-entity mutations (e.g. creating a year with its default groups / categories / projection row, or syncing ticketing actuals + re-materializing projected line items) are single repository methods that do all their work inside one short-lived `DbContext`.
+- `BudgetRepository` (impl `Humans.Infrastructure/Repositories/Budget/BudgetRepository.cs`, §15b Singleton + `IDbContextFactory<BudgetDbContext>`) is the only file that touches budget tables via `DbContext`. `IBudgetRepository` exposes atomic per-method operations — multi-entity mutations (e.g. creating a year with its default groups / categories / projection row, or syncing ticketing actuals + re-materializing projected line items) are single repository methods that do all their work inside one short-lived `DbContext`.
 - **Decorator decision — no caching decorator.** Budget is admin-only, low-traffic. Same rationale as Governance / User / Feedback.
 - **Cross-domain navs removed:** `BudgetAuditLog.ActorUser` and `BudgetCategory.Team` were deleted outright (nobodies-collective/Humans#1188), not just `[Obsolete]`-marked; both FKs are now scalar-only. `BudgetLineItem.ResponsibleTeam` is gone the same way — the entity carries `ResponsibleTeamId` only, and the Finance CategoryDetail view renders a stitched-in `ResponsibleTeamName`.
 - **Cross-section calls** route through `ITeamService` (two narrow methods `GetBudgetableTeamsAsync` and `GetEffectiveBudgetCoordinatorTeamIdsAsync`) and `IUserServiceRead.GetUserInfosAsync` for actor display names. The ticketing-actuals data flows *inbound* via `IBudgetService.SyncTicketingActualsAsync`, called by the Tickets-section `TicketingBudgetService` bridge.
+- **Controller split under `/Finance`.** `BudgetAdminController` (`Humans.Web/Controllers/BudgetAdminController.cs`) owns Budget's own admin surface — years, groups, categories, line items, ticketing projection, cash flow, audit log — at `[Route("Finance")]`. It shares that route prefix with `Humans.Finance.Controllers.FinanceController` (own project, nobodies-collective/Humans#866, G5), which owns only the Holded/creditor actions; the two controllers' action templates are disjoint. See [`src/Sections/Humans.Finance/Docs/Finance.md`](../../src/Sections/Humans.Finance/Docs/Finance.md) for the Finance side.
 - **Architecture test** — `tests/Humans.Application.Tests/Architecture/TicketingBudgetArchitectureTests.cs` pins the §15 pattern for the Tickets-section `TicketingBudgetService` bridge (it asserts the constructor takes no Store type). General architecture coverage (`HUM0024`, `HUM0021`, `HUM0009`) applies to Budget code paths. No dedicated `BudgetArchitectureTests.cs` file exists.
 - **Repository shape** — `budget_audit_logs` is append-only; repository exposes `AddAuditLogAsync` / `GetXxxAuditLogAsync` only (§12).
 

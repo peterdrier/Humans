@@ -40,7 +40,7 @@ public sealed class LegalDocumentSyncServiceTests : ServiceTestHarness
     public LegalDocumentSyncServiceTests()
         : base(Instant.FromUtc(2026, 2, 15, 18, 0))
     {
-        _repository = new LegalDocumentRepository(DbFactory);
+        _repository = new LegalDocumentRepository(LegalDbFactory);
 
         _team = new Team
         {
@@ -232,7 +232,7 @@ public sealed class LegalDocumentSyncServiceTests : ServiceTestHarness
         var document = await SeedDocumentAsync("Code of Conduct");
         var versionId = Guid.NewGuid();
 
-        Db.DocumentVersions.Add(new DocumentVersion
+        LegalDb.DocumentVersions.Add(new DocumentVersion
         {
             Id = versionId,
             LegalDocumentId = document.Id,
@@ -241,7 +241,7 @@ public sealed class LegalDocumentSyncServiceTests : ServiceTestHarness
             EffectiveFrom = Clock.GetCurrentInstant(),
             CreatedAt = Clock.GetCurrentInstant()
         });
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         var updated = await _service.UpdateVersionSummaryAsync(
             document.Id, versionId, "  Clarified scope  ", Xunit.TestContext.Current.CancellationToken);
@@ -249,7 +249,7 @@ public sealed class LegalDocumentSyncServiceTests : ServiceTestHarness
         // Repository created its own DbContext via the factory; read the
         // refreshed value through a fresh context rather than the test's
         // change-tracker-polluted one.
-        await using var verifyCtx = DbFactory.CreateDbContext();
+        await using var verifyCtx = LegalDbFactory.CreateDbContext();
         var version = await verifyCtx.DocumentVersions
             .AsNoTracking()
             .FirstOrDefaultAsync(v => v.Id == versionId, Xunit.TestContext.Current.CancellationToken);
@@ -330,8 +330,8 @@ public sealed class LegalDocumentSyncServiceTests : ServiceTestHarness
             LastSyncedAt = Clock.GetCurrentInstant()
         };
 
-        Db.LegalDocuments.Add(document);
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        LegalDb.LegalDocuments.Add(document);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         return document;
     }
 }
