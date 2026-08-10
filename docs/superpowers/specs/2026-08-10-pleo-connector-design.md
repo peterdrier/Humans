@@ -31,7 +31,9 @@ Sync: **nightly full sweep with replace semantics** — the whole entry history 
 
 **Screen `/Pleo`:** sync state + sync-now; entries table (date, employee, merchant, amount, status, 629 code, booked-in-Holded later); per-employee and per-629 totals; a **reconciliation card**: Pleo spend total (COMPLETED entries) vs Holded `57200003` movement (currently 30,000 in / 71.97 booked) — the visible "unbooked spend" gap.
 
-**Chart alignment (recommended, mostly a Pleo-side config task):** make Pleo's categories carry the Holded 629 codes (rename/replace via the Chart of Accounts API, batch create from `holded_category_map` + `holded_accounts`). Members then categorize card spend straight into the same departments; `accountCode` on every entry becomes the 629 account, no mapping table needed on our side.
+**Categorization — per-cardholder mapping (primary; Peter, 2026-08-10):** each Pleo card is held by one department's lead, so an entry's department = its cardholder's department. New table `pleo_employee_map` (PleoEmployeeId → Holded 629 account number), seeded by hand on the `/Pleo` screen; every entry inherits its cardholder's account, with per-entry override possible later. Live-verified 2026-08-10 (all four cardholders resolved via `GET /v2/employees?companyId=…`; card spend joins exactly, −40,600.94 total): Zak Bulpitt −23,989.44 → La Cantina `62900114`; Daniela Marquez −9,300.82; Toby Walpert −5,556.78; Deepak Voigt −1,753.90 (last three mappings TBC by Peter at implementation). Zero of 223 entries carry an `accountCode`, so Pleo-side chart alignment is NOT the mechanism — it stays a possible later refinement only if per-entry categorization inside Pleo ever starts happening.
+
+**Live-probed facts (2026-08-10, read-only key):** company id via `GET /v1/introspect` → `subjectURN` (`urn:pleo:company:{id}`); key + company id stored beside the Holded dev token (`~/.holded/pleo-dev-token`, `pleo-company-id`). Scopes: accounting-entries/accounts/users/vendors/tax-codes/export-items/tag-groups/companies, all read. 223 entries 2026-06-08→08-01, all `COMPLETED`; sign convention: wallet loads positive, card spend negative. Wallet loads total **60,000** (10,000 + 19,980 + 30,000 + 20 test) — Holded's `57200003` carries only the 30,000 one, so the reconciliation card must expect a ~30k inbound gap too, not just the spend gap. 205/223 entries have receipts. Employee list endpoint is `GET /v2/employees` (the `/v1/employees|users` paths RBAC-deny this key).
 
 **Phase 2 — booking into Holded (needs the write key; separate design):** two candidate shapes, decision deferred to Peter + accountant:
 (a) one Holded purchase doc per Pleo entry, receipt attached, `items[].account` = 629 code, paid from the Pleo treasury account — full document trail;
@@ -43,7 +45,8 @@ Sync: **nightly full sweep with replace semantics** — the whole entry history 
 - Webhooks (nothing entry-level exists to subscribe to).
 - OAuth (single-company standalone key is the fit).
 
-## Open questions (blocking step 0 only)
+## Open questions
 
-1. **API key availability:** standalone keys need Pleo to enable them for the org — has that been done / can you request it from Pleo support?
-2. **Chart alignment:** OK to rewrite Pleo's category chart to the 629 codes? (Recommended; it's what makes everything downstream mapping-free.)
+~~1. API key availability~~ — resolved: Peter provided a working read-only key 2026-08-10.
+~~2. Chart alignment~~ — superseded by the per-cardholder mapping (decision above).
+1. Department mappings for Daniela / Toby / Deepak — Peter confirms at implementation (Zak → La Cantina `62900114` already confirmed).
