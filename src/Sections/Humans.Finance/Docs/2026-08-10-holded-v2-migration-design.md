@@ -19,9 +19,23 @@ Holded launched API v2 (June 2026): REST/JSON at `https://api.holded.com/api/v2`
 
 1. v2 migration now; **v1 code deleted in the same PR** — no dual-path period.
 2. Webhooks: later. Nightly polling is 2–3 calls/night.
-3. Ledger mirror widens to **all accounts, full history** (was: creditor range `40000000–40000099` only).
+3. Ledger mirror widens to **all accounts, full history** (was: creditor-block only; #1241 widened that block to `40000000–40000999`).
 4. Admin screen gets a **Full sync** button alongside incremental sync.
-5. Finance project extraction already happened (#1239) — v2 work lands in `src/Sections/Humans.Finance` / shared connector files, no move needed.
+5. **Holded becomes its own vertical section** — `src/Sections/Humans.Holded` + `Humans.Holded.Contracts` — owning the external-system mirror and connection ops. Finance keeps the business meaning. (Supersedes the earlier "lands in Finance" call, made before #1239/#1240 finished the G5 extractions.)
+6. No `I<Section>ServiceRead` interfaces — the post-#1240 convention: the Contracts leaf is the public surface and carries only what other sections/Base actually consume; everything else stays `internal`.
+
+## Section architecture
+
+**`Humans.Holded` (new vertical section, G5-shaped like Finance):**
+- Owns tables (own `HoldedDbContext`, sentinel `holded_ledger_lines`, history `__EFMigrationsHistory_Holded`): `holded_ledger_lines` (moves from Finance), `holded_accounts`, `holded_api_calls`, `holded_sync_states` (kind-keyed: Ledger / Accounts / FullSync).
+- Owns the ledger/accounts sync + balance reconciliation, and the `/Holded` admin screen (its overview view models stay internal).
+- `Humans.Holded.Contracts` (references `Humans.Interfaces` only, like Finance.Contracts): `IHoldedService` — ledger-line reads by account, all-lines read for grouping, account names/balances, and the sync trigger (consumed by the nightly job in Base and by Finance).
+
+**`Humans.Finance` keeps the business meaning:** `holded_category_map`, `holded_expense_docs` (+ matching), `holded_creditor_contacts`, provisioning, actuals, creditor screens. Its ledger-line reads switch from its own repository to `IHoldedService`. Its purchase-doc sync keeps state in a new Finance-owned `holded_doc_sync_state` singleton row (the old shared `holded_sync_states` singleton moves to Holded re-keyed). The `/Finance/Creditors` **Resync button (#1241) relocates to `/Holded`**.
+
+**Connector stays Base:** `IHoldedClient`/`HoldedClient` (Application/Infrastructure) — consumed by Expenses, Finance, and Holded. `HoldedSyncJob` stays in `Humans.Infrastructure/Jobs` (no discovery seam for recurring jobs) and calls `IHoldedFinanceService.SyncAsync` + `IHoldedService.SyncLedgerAsync(full: false)`.
+
+**Table moves cost nothing:** every table the Holded section takes over is a re-derivable mirror — the Finance migration drops them, the Holded migration creates them, the first sync refills them. No data migration.
 
 ## 1. v2 client
 
@@ -48,30 +62,34 @@ Rewrite `HoldedClient` (`src/Humans.Infrastructure/Services/Holded/`) against `a
 
 Every client call appends a record to an in-memory `ConcurrentQueue` on a singleton (`IHoldedCallLog`, registered with the connector): timestamp, endpoint template, method, status code, last-seen `X-RateLimit-Remaining`/`-Window`. `HoldedFinanceService` drains the queue to the repository (new `holded_api_calls` table) during syncs and on admin-screen load. Rationale: a `DelegatingHandler` writing to the DB would bypass the repository/service layering (hard rules); the queue keeps the client DB-free. Crash-loss of a few buffered rows is acceptable — `GET /usage` is the authoritative counter; ours adds per-endpoint/per-day granularity and history beyond the current period.
 
-## 2. Data model (all Finance-owned, `FinanceDbContext`)
+## 2. Data model
+
+**Holded section (`HoldedDbContext`):**
 
 | Table | Change |
 |---|---|
-| `holded_ledger_lines` | **Widen to full mirror** — drop the `CreditorAccountMin/Max` filter in the sync; all accounts, full history. Schema unchanged (unique `(EntryNumber, Line)`, index on `AccountNum`). |
-| `holded_accounts` | **New** — chart-of-accounts cache: `Number` (key), `HoldedId`, `Name`, `Group`, `Debit`, `Credit`, `Balance` (decimals), `Archived`, `SyncedAt`. Refreshed each sync (full replace upsert). Feeds admin account list, reconciliation, and account names on Creditors screens. |
+| `holded_ledger_lines` | **Moves from Finance; widens to full mirror** — no account filter in the sync; all accounts, full history. Schema unchanged (unique `(EntryNumber, Line)`, index on `AccountNum`). |
+| `holded_accounts` | **New** — chart-of-accounts cache: `Number` (key), `HoldedId`, `Name`, `Group`, `Debit`, `Credit`, `Balance` (decimals), `Archived`, `SyncedAt`. Refreshed each sync (full replace upsert). Feeds admin account list, reconciliation, and account names. |
 | `holded_api_calls` | **New** — per-call metering: `Id`, `CalledAt`, `Method`, `Endpoint` (template, not full URL), `StatusCode`, `RateLimitRemaining?`, `RateLimitWindow?`. Monthly stat = `GROUP BY` calendar month. No pruning (rows are tiny; revisit if it ever matters). |
-| `holded_sync_states` | **Re-key from singleton `Id=1` to one row per sync kind** (`Ledger`, `Accounts`, `PurchaseDocs`, `FullSync`): `SyncKind` (key), `SyncStatus`, `LastSyncAt`, `LastError`, `LastCount`. Lazy-seeded on first use; no data backfill (statuses are ephemeral). |
+| `holded_sync_states` | **Moves from Finance, re-keyed** from singleton `Id=1` to one row per sync kind (`Ledger`, `Accounts`, `FullSync`): `Kind` (key), `SyncStatus`, `LastSyncAt`, `LastError`, `LastCount`. Lazy-seeded on first use. |
 
-Schema migrations only — no data migrations. The widened mirror fills itself via the backfill job.
+**Finance section (`FinanceDbContext`):** keeps `holded_category_map`, `holded_expense_docs` (with `ApprovedAt` → `IsApproved`, see plan), `holded_creditor_contacts`; gains `holded_doc_sync_state` (singleton, lazy-seeded) for the purchase-doc sync status.
+
+Schema migrations only — no data migrations. Moved tables are dropped by the Finance migration and created by the Holded migration; the first sync refills them.
 
 ## 3. Sync algorithm
 
 All ledger reads stay derived from `holded_ledger_lines` (June design unchanged): balance = Σdebit − Σcredit, owed = max(0, Σcredit − Σdebit), page loads cost 0 Holded calls.
 
-- **Backfill (once, and on Full sync):** `ledger-entries` from company inception (constant, e.g. 2020-01-01) → today, no account filter, cursor-paged. Falls back to year-chunking only if the API rejects the range. Full-replace semantics: upsert every fetched row on `(EntryNumber, Line)`, delete local rows in the range not present in the fetch.
-- **Nightly incremental:** `start_date = max(local line date) − 7 days`, `end_date = today`. Upsert on `(EntryNumber, Line)`; delete local rows inside the window that the fetch no longer contains.
-- **Reconcile (every sync, ~1 call):** `GET /accounting-accounts` → upsert `holded_accounts`, then compare each account's Holded balance against the local ledger sum. Mismatch → targeted re-pull for that account (`ledger-entries?account=N`, full history, replace semantics) → still mismatched → `LastError` on the Ledger sync state, surfaced on the admin screen. This catches retroactive edits/voids outside the 7-day window; verified live: account 40000004 local sum −53,203.00 == chart balance.
+- **Backfill (cold cache, and on Full sync):** `ledger-entries` from company inception (constant, e.g. 2020-01-01) → today, no account filter, cursor-paged. Falls back to year-chunking only if the API rejects the range. Full-replace semantics: upsert every fetched row on `(EntryNumber, Line)`, delete local rows in the range not present in the fetch.
+- **Nightly incremental:** one trailing 364-day window ending **now** — #1241's anchoring rationale carries over unchanged: the date filter is on the *accounting* date, so anchoring on the newest cached line would drop backdated entries forever, while a trailing window picks them up free. Upsert on `(EntryNumber, Line)`; delete local rows inside the window that the fetch no longer contains. #1241's non-blocking sweep gate (in-process `SemaphoreSlim`, skip-and-report, single-server) also carries over.
+- **Reconcile (every sync, ~1 call):** `GET /accounting-accounts` → upsert `holded_accounts`, then compare each account's Holded balance against the local ledger sum. Mismatch → targeted re-pull for that account (`ledger-entries?account=N`, full history, replace semantics) → still mismatched → `LastError` on the Ledger sync state, surfaced on the admin screen. This catches backdating and edits older than the trailing window automatically — it supersedes #1241's manual-resync-only answer to backdated entries, though the Full sync button remains. Verified live: account 40000004 local sum −53,203.00 == chart balance.
 - **Purchase docs:** current `SyncAsync` behavior ported to `GET /v2/purchases` (still full repage under safety cap; if v2 supports date filters, implementer may use them — not load-bearing).
 - **Outbox push (Expenses → Holded):** unchanged flow, v2 endpoints (`purchases` create/update + attachments, `contacts`).
 
-## 4. Admin screen — `/Finance/Holded`
+## 4. Admin screen — `/Holded`
 
-Actions on `FinanceController` (Finance section project), same authorization as the other `/Finance` screens. View sections:
+`HoldedController` in the Holded section project, `[Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]` (same audience as `/Finance`). The purchase-doc sync status and totals it shows for Finance-owned data come via `IHoldedFinanceService` (ordinary cross-section service read from the controller). View sections:
 
 1. **Connection card:** Holded meter from `GET /usage` (period, usage, limit, by-type breakdown) beside our local count for the month; last-seen rate-limit remaining/window; API key present yes/no.
 2. **Calls per calendar month:** table from `holded_api_calls` (month, total, by endpoint).
@@ -85,9 +103,11 @@ Actions on `FinanceController` (Finance section project), same authorization as 
 
 ## 5. Jobs
 
-- `HoldedSyncJob` (nightly): incremental ledger → accounts refresh → reconcile (+ targeted re-pulls) → purchase-doc sync → drain call-log queue.
-- Full sync: same job entry with a `full` flag, enqueued by the button.
+- `HoldedSyncJob` (nightly, stays in `Humans.Infrastructure/Jobs`): `IHoldedFinanceService.SyncAsync` (purchase docs) then `IHoldedService.SyncLedgerAsync(full: false)` (trailing window → accounts refresh → reconcile + targeted re-pulls → drain call-log queue).
+- Full sync: `SyncLedgerAsync(full: true)` from the `/Holded` button (serialized by the sweep gate).
 - `HoldedExpenseOutboxJob`: unchanged cadence, v2 endpoints underneath.
+
+> This spec file moves to `src/Sections/Humans.Holded/Docs/` when the section project is created (sections carry their own docs).
 
 ## 6. Testing
 
