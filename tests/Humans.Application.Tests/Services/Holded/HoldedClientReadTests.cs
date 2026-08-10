@@ -6,6 +6,7 @@ using Humans.Infrastructure.Services.Holded;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NodaTime;
+using NodaTime.Testing;
 
 namespace Humans.Application.Tests.Services.Holded;
 
@@ -15,7 +16,9 @@ public class HoldedClientReadTests
         new(
             new HttpClient(handler) { BaseAddress = new Uri("https://api.holded.com") },
             Options.Create(new HoldedClientOptions { ApiKey = "test-key" }),
-            NullLogger<HoldedClient>.Instance);
+            NullLogger<HoldedClient>.Instance,
+            new HoldedCallLog(),
+            new FakeClock(Instant.FromUtc(2026, 8, 10, 12, 0)));
 
     [HumansFact]
     public async Task ListExpenseAccounts_parses_num_and_name()

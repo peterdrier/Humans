@@ -6,6 +6,7 @@ using Humans.Infrastructure.Services.Holded;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NodaTime;
+using NodaTime.Testing;
 
 namespace Humans.Application.Tests.Services.Holded;
 
@@ -15,7 +16,9 @@ public class HoldedClientTests
         new(
             new HttpClient(handler) { BaseAddress = new Uri("https://api.holded.com") },
             Options.Create(new HoldedClientOptions { ApiKey = "test-key" }),
-            NullLogger<HoldedClient>.Instance);
+            NullLogger<HoldedClient>.Instance,
+            new HoldedCallLog(),
+            new FakeClock(Instant.FromUtc(2026, 8, 10, 12, 0)));
 
     [HumansFact]
     public async Task CreatePurchaseDocumentAsync_PostsExpectedJson_AndReturnsId()
@@ -24,7 +27,8 @@ public class HoldedClientTests
         {
             req.Method.Method.Should().Be("POST");
             req.RequestUri!.PathAndQuery.Should().Be("/api/invoicing/v1/documents/purchase");
-            req.Headers.GetValues("key").Single().Should().Be("test-key");
+            req.Headers.Authorization!.Scheme.Should().Be("Bearer");
+            req.Headers.Authorization!.Parameter.Should().Be("test-key");
             return Respond(HttpStatusCode.OK, """{"status":1,"id":"doc-123"}""");
         });
 

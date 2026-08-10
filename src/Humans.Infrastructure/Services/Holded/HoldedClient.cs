@@ -1,3 +1,6 @@
+using System.Globalization;
+using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
@@ -12,18 +15,27 @@ namespace Humans.Infrastructure.Services.Holded;
 
 public sealed class HoldedClient : IHoldedClient
 {
+    private const int DefaultRetryAfterSeconds = 5;
+    private const int MaxRetryAfterSeconds = 60;
+
     private readonly HttpClient _http;
     private readonly HoldedClientOptions _options;
     private readonly ILogger<HoldedClient> _logger;
+    private readonly IHoldedCallLog _callLog;
+    private readonly IClock _clock;
 
     public HoldedClient(
         HttpClient http,
         IOptions<HoldedClientOptions> options,
-        ILogger<HoldedClient> logger)
+        ILogger<HoldedClient> logger,
+        IHoldedCallLog callLog,
+        IClock clock)
     {
         _http = http;
         _options = options.Value;
         _logger = logger;
+        _callLog = callLog;
+        _clock = clock;
 
         if (_http.BaseAddress is null && !string.IsNullOrEmpty(_options.BaseUrl))
             _http.BaseAddress = new Uri(_options.BaseUrl);
@@ -384,13 +396,52 @@ public sealed class HoldedClient : IHoldedClient
         Arr(node).Where(t => t is not null).Select(t => t!.GetValue<string>()).ToList();
 
     private void AttachAuth(HttpRequestMessage req) =>
-        req.Headers.Add("key", _options.ApiKey);
+        req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _options.ApiKey);
 
     private async Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage req, CancellationToken ct,
         [CallerMemberName] string caller = "")
     {
         using var _ = _logger.TimeOperation(operation: caller);
+        var resp = await SendOnceAsync(req, caller, ct);
+
+        // 429 is retried once, only for content-free (GET) requests — a content-bearing request
+        // (POST/PUT) is not safely repeatable without knowing whether Holded already applied it.
+        if (resp.StatusCode == HttpStatusCode.TooManyRequests && req.Content is null)
+        {
+            var retryAfterSeconds = Math.Min(
+                ReadRetryAfterSeconds(resp) ?? DefaultRetryAfterSeconds, MaxRetryAfterSeconds);
+            resp.Dispose();
+            await Task.Delay(TimeSpan.FromSeconds(retryAfterSeconds), ct);
+            resp = await SendOnceAsync(CloneForRetry(req), caller, ct);
+        }
+
+        if (resp.StatusCode == HttpStatusCode.TooManyRequests)
+        {
+            var retryAfterSeconds = ReadRetryAfterSeconds(resp);
+            using (resp)
+            {
+                throw new HoldedTransientException(
+                    $"Holded 429 Too Many Requests (retry after {retryAfterSeconds?.ToString(CultureInfo.InvariantCulture) ?? "unknown"}s)");
+            }
+        }
+
+        if (resp.IsSuccessStatusCode) return resp;
+
+        using (resp)
+        {
+            var body = await resp.Content.ReadAsStringAsync(ct);
+            if ((int)resp.StatusCode >= 500)
+                throw new HoldedTransientException(
+                    $"Holded {(int)resp.StatusCode} {resp.ReasonPhrase}");
+            throw new HoldedPermanentException((int)resp.StatusCode, body,
+                $"Holded {(int)resp.StatusCode} {resp.ReasonPhrase}: {body}");
+        }
+    }
+
+    private async Task<HttpResponseMessage> SendOnceAsync(
+        HttpRequestMessage req, string caller, CancellationToken ct)
+    {
         HttpResponseMessage resp;
         try
         {
@@ -405,17 +456,36 @@ public sealed class HoldedClient : IHoldedClient
             throw new HoldedTransientException("Holded HTTP send timed out", ex);
         }
 
-        if (resp.IsSuccessStatusCode) return resp;
+        RecordCall(caller, req.Method.Method, resp);
+        return resp;
+    }
 
-        using (resp)
-        {
-            var body = await resp.Content.ReadAsStringAsync(ct);
-            if ((int)resp.StatusCode >= 500)
-                throw new HoldedTransientException(
-                    $"Holded {(int)resp.StatusCode} {resp.ReasonPhrase}");
-            throw new HoldedPermanentException((int)resp.StatusCode, body,
-                $"Holded {(int)resp.StatusCode} {resp.ReasonPhrase}: {body}");
-        }
+    private void RecordCall(string endpoint, string method, HttpResponseMessage resp)
+    {
+        int? rateLimitRemaining = resp.Headers.TryGetValues("X-RateLimit-Remaining", out var remaining)
+            && int.TryParse(remaining.FirstOrDefault(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed)
+            ? parsed
+            : null;
+        var rateLimitWindow = resp.Headers.TryGetValues("X-RateLimit-Window", out var window)
+            ? window.FirstOrDefault()
+            : null;
+
+        _callLog.Record(new HoldedApiCallRecord(
+            _clock.GetCurrentInstant(), endpoint, method, (int)resp.StatusCode,
+            rateLimitRemaining, rateLimitWindow));
+    }
+
+    private static int? ReadRetryAfterSeconds(HttpResponseMessage resp) =>
+        resp.Headers.RetryAfter?.Delta is { } delta ? (int)delta.TotalSeconds : null;
+
+    /// <summary>A GET <see cref="HttpRequestMessage"/> can only be sent once through <see cref="HttpClient"/>;
+    /// the 429 retry needs a fresh instance carrying the same method, URI, and headers (including auth).</summary>
+    private static HttpRequestMessage CloneForRetry(HttpRequestMessage req)
+    {
+        var clone = new HttpRequestMessage(req.Method, req.RequestUri);
+        foreach (var header in req.Headers)
+            clone.Headers.TryAddWithoutValidation(header.Key, header.Value);
+        return clone;
     }
 
     private static decimal ReadDecimal(JsonNode? node) =>

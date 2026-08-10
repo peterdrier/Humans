@@ -33,6 +33,8 @@ public static class HoldedConnectorExtensions
             opts.BaseUrl = config["Holded:BaseUrl"] ?? "https://api.holded.com";
         });
 
+        services.AddSingleton<IHoldedCallLog, HoldedCallLog>();
+
         services.AddHttpClient<IHoldedClient, HoldedClient>((sp, client) =>
         {
             var opts = sp.GetRequiredService<
