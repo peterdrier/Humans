@@ -130,6 +130,12 @@ internal sealed class Repository(IDbContextFactory<FinanceDbContext> factory)
         return await ctx.HoldedLedgerLines.AsNoTracking().ToListAsync(ct);
     }
 
+    public async Task<bool> HasAnyLedgerLinesAsync(CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.HoldedLedgerLines.AsNoTracking().AnyAsync(ct);
+    }
+
     // ── Creditor contact bindings ─────────────────────────────────────────────
 
     public async Task<HoldedCreditorContact?> GetCreditorContactByUserAsync(

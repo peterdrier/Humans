@@ -25,6 +25,6 @@ public class HoldedSyncJob(
         }
 
         await finance.SyncAsync(cancellationToken);
-        await finance.SyncCreditorLedgerAsync(cancellationToken);
+        await finance.SyncCreditorLedgerAsync(fullHistory: false, cancellationToken);
     }
 }

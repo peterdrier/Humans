@@ -82,7 +82,7 @@ Finance is the **treasurer's reality side** of the money story. Budget owns plan
 
 **Table:** `holded_ledger_lines`
 
-Cached Holded daybook (dailyledger) journal line for a 400000xx creditor account — the **single source of truth** for creditor activity. Unique on `(EntryNumber, Line)` for idempotent upsert (journal lines are immutable facts); indexed on `AccountNum`. Fields: `EntryNumber`, `Line`, `AccountNum`, `Date` (Instant), `Type`, `Description`, `Debit`, `Credit`, plus sync bookkeeping. Refreshed by `SyncCreditorLedgerAsync` (full-history backfill on every nightly run). Everything derives from these lines: balance = Σdebit − Σcredit (negative = org owes), owed = max(0, Σcredit − Σdebit), payments = debit lines, ins = credit lines.
+Cached Holded daybook (dailyledger) journal line for a 400000xx creditor account — the **single source of truth** for creditor activity. Unique on `(EntryNumber, Line)` for idempotent upsert (journal lines are immutable facts); indexed on `AccountNum`. Fields: `EntryNumber`, `Line`, `AccountNum`, `Date` (Instant), `Type`, `Description`, `Debit`, `Credit`, plus sync bookkeeping. Refreshed by `SyncCreditorLedgerAsync` (nightly trailing-window sweep; full-history backfill on request or on a cold cache). Everything derives from these lines: balance = Σdebit − Σcredit (negative = org owes), owed = max(0, Σcredit − Σdebit), payments = debit lines, ins = credit lines.
 
 ### HoldedSyncState
 
@@ -158,6 +158,7 @@ All routes are gated by `[Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]` 
 | `POST /Finance/HoldedAccounts/Provision` | Add one or all pending Holded accounts + map rows |
 | `POST /Finance/HoldedSync/Run` | Manual sync trigger |
 | `POST /Finance/Creditors/Bind` | Manually bind a member to a Holded creditor account by 400000xx number |
+| `POST /Finance/Creditors/Resync` | Full-history creditor-ledger resweep; the nightly job only covers a trailing year |
 | `POST /Finance/Creditors/Unbind` | Clear a member's creditor binding (the remedy for a wrong bind or a collision) |
 
 ## Actors & Roles
@@ -268,7 +269,7 @@ Budget never calls into Finance.
 
 ### Feature 2 — Holded creditor ledger cache
 
-`SyncCreditorLedgerAsync` runs nightly as part of `HoldedSyncJob`. Every run sweeps full history in ≤1-year backward windows until an empty window. It does **not** resume from the newest cached line: the dailyledger filters on the *accounting* date, so an entry posted today but dated to a closed month sits behind that anchor and would never be fetched again. Only `40000000`–`40000999` creditor lines are stored (the dailyledger has no server-side account filter, so the fetch sweeps the whole daybook regardless). Page loads read `holded_ledger_lines` from Postgres and aggregate — **zero Holded calls per view**; the API cost is a fixed nightly job, independent of traffic. The admin creditor overview additionally reads the cached Holded contact list for account names — see Invariants.
+`SyncCreditorLedgerAsync` runs nightly as part of `HoldedSyncJob`. The nightly run sweeps **one** trailing ≤364-day window ending at *now* — a single Holded call, the same API quota an incremental append cost. It deliberately does **not** resume from the newest cached line: the dailyledger filters on the *accounting* date, so an entry posted today but dated to a closed month sits behind that anchor and would never be fetched again; anchoring on now catches it for free. Backdating older than the window, and the first run against an empty cache, need the full backward sweep (≤1-year windows until an empty one) — that costs one call per year of books, so outside the cold-cache case it runs only on request via `POST /Finance/Creditors/Resync` (**Full resync** on `/Finance/Creditors`). Only `40000000`–`40000999` creditor lines are stored (the dailyledger has no server-side account filter, so the fetch sweeps the whole daybook regardless). Page loads read `holded_ledger_lines` from Postgres and aggregate — **zero Holded calls per view**; the API cost is a fixed nightly job, independent of traffic. The admin creditor overview additionally reads the cached Holded contact list for account names — see Invariants.
 
 The Expenses section reads creditor status via `GetCreditorStatusAsync(supplierAccountNum)` and the statement via `GetCreditorLedgerAsync(supplierAccountNum)`. Both derive from the cached lines: balance = Σdebit − Σcredit (balance ≥ 0 = settled), owed = max(0, −balance), payments = debit lines. The debit lines stay internal to the derivation; only the aggregates (`TotalPaid`, `LastPaymentDate`) leave the service.
 

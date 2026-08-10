@@ -269,6 +269,7 @@ public class HoldedFinanceServiceTests
     public async Task SyncCreditorLedger_backfill_stores_only_creditor_account_lines()
     {
         // Sweep backward until an empty window, store only creditor-block lines.
+        _repo.HasAnyLedgerLinesAsync(Arg.Any<CancellationToken>()).Returns(false);
         var page = new List<HoldedLedgerLineDto>
         {
             new() { EntryNumber = 1, Line = 0, AccountNum = 40000001, Date = FixedNow, Debit = 0m, Credit = 100m },
@@ -282,19 +283,39 @@ public class HoldedFinanceServiceTests
         await _repo.UpsertLedgerLinesAsync(
             Arg.Do<IReadOnlyList<HoldedLedgerLine>>(r => stored = r), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
 
-        await MakeService().SyncCreditorLedgerAsync(Xunit.TestContext.Current.CancellationToken);
+        await MakeService().SyncCreditorLedgerAsync(fullHistory: false, Xunit.TestContext.Current.CancellationToken);
 
         stored.Should().NotBeNull();
         stored!.Select(l => l.AccountNum).Should().BeEquivalentTo(new[] { 40000001, 40000999 });
     }
 
     [HumansFact]
-    public async Task SyncCreditorLedger_resweeps_history_so_backdated_entries_are_picked_up()
+    public async Task SyncCreditorLedger_nightly_sweeps_one_window_anchored_on_now()
     {
-        // Regression: the sync used to resume from the newest cached line's date. Holded filters the
-        // dailyledger on the *accounting* date, so an entry posted today but dated to a closed month
-        // sits behind that anchor and was never fetched again. The sweep must always reach back past
-        // the newest cached line, in ≤364-day windows (the API rejects wider ranges).
+        // Regression: the nightly sync used to resume from the newest cached line's date. Holded
+        // filters the dailyledger on the *accounting* date, so an entry posted today but dated to a
+        // closed month sat behind that anchor and was never fetched again. Anchoring the window on
+        // *now* instead picks it up — for the same single call, which is what the quota allows.
+        _repo.HasAnyLedgerLinesAsync(Arg.Any<CancellationToken>()).Returns(true);
+        _client.ListDailyLedgerAsync(Arg.Any<Instant>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+            .Returns(new List<HoldedLedgerLineDto>
+            {
+                new() { EntryNumber = 5, Line = 0, AccountNum = 40000004, Date = FixedNow, Debit = 23m, Credit = 0m },
+            });
+
+        await MakeService().SyncCreditorLedgerAsync(fullHistory: false, Xunit.TestContext.Current.CancellationToken);
+
+        var windows = LedgerWindowsCalled();
+        windows.Should().ContainSingle();
+        windows[0].To.Should().Be(FixedNow);                                  // anchored on now, not on the cache
+        windows[0].From.Should().Be(FixedNow.Minus(Duration.FromDays(364)));  // reaches back a full year
+    }
+
+    [HumansFact]
+    public async Task SyncCreditorLedger_full_history_is_opt_in_and_sweeps_backward()
+    {
+        // Several calls — one per year of books — so it is only ever run on request (or cold cache).
+        _repo.HasAnyLedgerLinesAsync(Arg.Any<CancellationToken>()).Returns(true);
         var pageWithData = new List<HoldedLedgerLineDto>
         {
             new() { EntryNumber = 5, Line = 0, AccountNum = 40000004, Date = FixedNow, Debit = 23m, Credit = 0m },
@@ -302,19 +323,37 @@ public class HoldedFinanceServiceTests
         _client.ListDailyLedgerAsync(Arg.Any<Instant>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>())
             .Returns(pageWithData, pageWithData, new List<HoldedLedgerLineDto>());
 
-        await MakeService().SyncCreditorLedgerAsync(Xunit.TestContext.Current.CancellationToken);
+        await MakeService().SyncCreditorLedgerAsync(fullHistory: true, Xunit.TestContext.Current.CancellationToken);
 
-        var windows = _client.ReceivedCalls()
+        var windows = LedgerWindowsCalled();
+        windows.Count.Should().BeGreaterThan(1);
+        windows.Should().OnlyContain(w => w.To - w.From <= Duration.FromDays(364));
+        windows.Min(w => w.From).Should().BeLessThan(FixedNow.Minus(Duration.FromDays(364)));
+    }
+
+    [HumansFact]
+    public async Task SyncCreditorLedger_cold_cache_sweeps_full_history_without_being_asked()
+    {
+        // Nothing cached: a trailing window would leave the member's older history permanently missing.
+        _repo.HasAnyLedgerLinesAsync(Arg.Any<CancellationToken>()).Returns(false);
+        var pageWithData = new List<HoldedLedgerLineDto>
+        {
+            new() { EntryNumber = 5, Line = 0, AccountNum = 40000004, Date = FixedNow, Debit = 0m, Credit = 23m },
+        };
+        _client.ListDailyLedgerAsync(Arg.Any<Instant>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+            .Returns(pageWithData, new List<HoldedLedgerLineDto>());
+
+        await MakeService().SyncCreditorLedgerAsync(fullHistory: false, Xunit.TestContext.Current.CancellationToken);
+
+        LedgerWindowsCalled().Count.Should().BeGreaterThan(1);
+    }
+
+    private List<(Instant From, Instant To)> LedgerWindowsCalled() =>
+        _client.ReceivedCalls()
             .Where(c => string.Equals(c.GetMethodInfo().Name, nameof(IHoldedClient.ListDailyLedgerAsync), StringComparison.Ordinal))
             .Select(c => c.GetArguments())
             .Select(a => (From: (Instant)a[0]!, To: (Instant)a[1]!))
             .ToList();
-
-        windows.Count.Should().BeGreaterThan(1);
-        windows.Should().OnlyContain(w => w.To - w.From <= Duration.FromDays(364));
-        // Reaches back more than a year before now — i.e. well before anything already cached.
-        windows.Min(w => w.From).Should().BeLessThan(FixedNow.Minus(Duration.FromDays(364)));
-    }
 
     [HumansFact]
     public async Task GetCreditorStatus_derives_balance_owed_and_payments_from_lines()

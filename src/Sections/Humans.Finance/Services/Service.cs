@@ -332,19 +332,25 @@ internal sealed class Service(
     // Backstop on the first-run backward sweep (~25 years); logged if hit so a cap is never silent.
     private const int BackfillWindowCap = 25;
 
-    public async Task SyncCreditorLedgerAsync(CancellationToken ct = default)
+    public async Task SyncCreditorLedgerAsync(bool fullHistory = false, CancellationToken ct = default)
     {
         var now = clock.GetCurrentInstant();
 
         try
         {
-            // Always sweep the full history. An incremental sweep anchored on the newest cached line
-            // cannot work here: the dailyledger is filtered on the *accounting* date, not on when the
-            // entry was posted, so an entry booked today but dated to a closed month sits before the
-            // anchor and is never fetched again — the ledger silently loses backdated lines. The books
-            // are a few years deep and the backward sweep stops at the first empty year, so this is a
-            // handful of calls; the upsert on (EntryNumber, Line) makes re-fetching free.
-            var fetched = await BackfillLedgerAsync(now, ct);
+            // The nightly run sweeps one trailing window ending at *now* — a single API call, the same
+            // quota as an incremental append. It is deliberately not anchored on the newest cached
+            // line: the dailyledger filters on the *accounting* date, so an entry posted today but
+            // dated to a closed month sits behind that anchor and would never be fetched again. Anchoring
+            // on now instead picks up anything backdated inside the window at no extra cost.
+            //
+            // Older backdating, and the first run against an empty cache, need the full backward sweep.
+            // That is several calls, so outside the empty-cache case it is only ever run on request
+            // (POST /Finance/Creditors/Resync). The upsert on (EntryNumber, Line) makes re-fetching free.
+            var sweepAll = fullHistory || !await repo.HasAnyLedgerLinesAsync(ct);
+            var fetched = sweepAll
+                ? await BackfillLedgerAsync(now, ct)
+                : await client.ListDailyLedgerAsync(now.Minus(LedgerWindow), now, ct);
 
             // Persist only creditor-account (4000_0000–4000_0999) lines — the only accounts the read paths derive
             // from. The dailyledger has no server-side account filter, so the fetch sweeps the whole
@@ -370,7 +376,8 @@ internal sealed class Service(
             await repo.UpsertLedgerLinesAsync(lines, now, ct);
 
             logger.LogInformation(
-                "Holded ledger sync cached {Count} creditor journal lines", lines.Count);
+                "Holded ledger sync ({Mode}) cached {Count} creditor journal lines",
+                sweepAll ? "full history" : "trailing window", lines.Count);
         }
         catch (Exception ex)
         {
