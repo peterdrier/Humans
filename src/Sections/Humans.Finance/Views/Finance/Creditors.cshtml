@@ -5,13 +5,21 @@
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1 class="mb-0">Creditor Accounts</h1>
-    <a asp-controller="BudgetAdmin" asp-action="Index" class="btn btn-outline-secondary">
-        <i class="fa-solid fa-arrow-left me-1"></i>Back to Finance
-    </a>
+    <div class="d-flex gap-2">
+        <form asp-action="ResyncCreditorLedger" method="post" class="d-inline">
+            <button type="submit" class="btn btn-outline-secondary"
+                    title="Re-read the full Holded ledger history. The nightly sync only covers the last year, so use this after an entry is backdated further back than that.">
+                <i class="fa-solid fa-rotate me-1"></i>Full resync
+            </button>
+        </form>
+        <a asp-controller="BudgetAdmin" asp-action="Index" class="btn btn-outline-secondary">
+            <i class="fa-solid fa-arrow-left me-1"></i>Back to Finance
+        </a>
+    </div>
 </div>
 
 <p class="text-muted">
-    Holded creditor accounts (400000xx). A negative balance is money the organisation owes the member;
+    Holded creditor accounts (40000000–40000999). A negative balance is money the organisation owes the member;
     <strong>Owed</strong> shows that amount. Bind a member to an account from their expense report, and
     unbind here. An account should carry exactly one member — a row showing two is flagged and needs one
     of them cleared.
@@ -28,7 +36,7 @@
                 These members pushed an expense report but their Holded creditor-account number never
                 resolved — neither the one-shot push lookup nor Holded's own contact list has a number
                 for them. There is no automatic retry; bind each one manually once you know their
-                400000xx account in Holded.
+                creditor account (40000000–40000999) in Holded.
             </p>
             <table class="table table-sm align-middle mb-0">
                 <thead><tr><th>Member</th><th>Source</th><th>Bind to account</th></tr></thead>
@@ -44,8 +52,8 @@
                                 <input type="hidden" name="userId" value="@b.UserId" />
                                 <input type="hidden" name="returnUrl" value="@Context.Request.Path" />
                                 <input type="number" name="supplierAccountNum" class="form-control form-control-sm"
-                                       style="max-width: 10rem" placeholder="400000xx" required
-                                       min="40000000" max="40000099" />
+                                       style="max-width: 10rem" placeholder="e.g. 40000004" required
+                                       min="40000000" max="40000999" />
                                 <button type="submit" class="btn btn-sm btn-outline-primary">Bind</button>
                             </form>
                         </td>

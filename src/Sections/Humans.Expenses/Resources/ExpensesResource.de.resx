@@ -72,14 +72,13 @@
   <data name="Expenses_EndorseConfirm" xml:space="preserve"><value>Diese Spesenabrechnung befürworten?</value></data>
   <data name="Expenses_FileFirst" xml:space="preserve"><value>Reiche deine erste Abrechnung ein</value></data>
   <data name="Expenses_IouHeader" xml:space="preserve"><value>Was das Kollektiv dir schuldet</value></data>
-  <data name="Expenses_IouLastPayment" xml:space="preserve"><value>Letzte Zahlung</value></data>
-  <data name="Expenses_IouOtherAmountNote" xml:space="preserve"><value>Dein Holded-Saldo enthält {0}, die nicht zu diesen Abrechnungen gehören (im Namen des Kollektivs ausgelegte Posten, Anpassungen usw.), daher ergeben die Zeilen unten nicht zwangsläufig diese Summe.</value></data>
   <data name="Expenses_IouOwed" xml:space="preserve"><value>Dir geschuldet (Holded-Saldo)</value></data>
-  <data name="Expenses_IouPaid" xml:space="preserve"><value>Bisher bezahlt</value></data>
   <data name="Expenses_LedgerColItem" xml:space="preserve"><value>Position</value></data>
   <data name="Expenses_MyReportsTitle" xml:space="preserve"><value>Meine Spesenabrechnungen</value></data>
   <data name="Expenses_NewReport" xml:space="preserve"><value>Neue Abrechnung</value></data>
   <data name="Expenses_NoActiveYear" xml:space="preserve"><value>Es gibt derzeit kein aktives Budgetjahr. Spesenabrechnungen können erst eingereicht werden, wenn ein Budgetjahr aktiviert ist.</value></data>
+  <data name="Expenses_CreditorAccountNoActivity" xml:space="preserve"><value>Dein Holded-Kreditorenkonto ({0}) ist verknüpft, es wurde aber noch nichts darauf gebucht. Dein Kontoauszug erscheint, sobald deine erste Spesenabrechnung erfasst ist.</value></data>
+  <data name="Expenses_NoCreditorAccount" xml:space="preserve"><value>Dein Holded-Kreditorenkonto ist noch nicht verknüpft, daher kann dein Kontoauszug nicht angezeigt werden. Bitte das Finanzteam, es zu verknüpfen.</value></data>
   <data name="Expenses_NoIban" xml:space="preserve"><value>Du hast deine Zahlungs-IBAN noch nicht hinterlegt. Du wirst beim Einreichen einer Abrechnung aufgefordert, sie anzugeben.</value></data>
   <data name="Expenses_NoReports" xml:space="preserve"><value>Noch keine Spesenabrechnungen.</value></data>
   <data name="Expenses_NoReportsAwaiting" xml:space="preserve"><value>Keine Abrechnungen, die auf deine Befürwortung warten.</value></data>

@@ -72,14 +72,13 @@
   <data name="Expenses_EndorseConfirm" xml:space="preserve"><value>¿Avalar este informe de gastos?</value></data>
   <data name="Expenses_FileFirst" xml:space="preserve"><value>Presenta tu primer informe</value></data>
   <data name="Expenses_IouHeader" xml:space="preserve"><value>Lo que el colectivo te debe</value></data>
-  <data name="Expenses_IouLastPayment" xml:space="preserve"><value>Último pago</value></data>
-  <data name="Expenses_IouOtherAmountNote" xml:space="preserve"><value>Tu saldo en Holded incluye {0} no relacionado con estos informes (artículos adelantados en nombre del colectivo, ajustes, etc.), así que las filas de abajo no tienen por qué sumar ese total.</value></data>
   <data name="Expenses_IouOwed" xml:space="preserve"><value>Te debe (saldo en Holded)</value></data>
-  <data name="Expenses_IouPaid" xml:space="preserve"><value>Pagado hasta la fecha</value></data>
   <data name="Expenses_LedgerColItem" xml:space="preserve"><value>Concepto</value></data>
   <data name="Expenses_MyReportsTitle" xml:space="preserve"><value>Mis informes de gastos</value></data>
   <data name="Expenses_NewReport" xml:space="preserve"><value>Nuevo informe</value></data>
   <data name="Expenses_NoActiveYear" xml:space="preserve"><value>No hay ningún año presupuestario activo en este momento. No se pueden presentar informes de gastos hasta que se active un año presupuestario.</value></data>
+  <data name="Expenses_CreditorAccountNoActivity" xml:space="preserve"><value>Tu cuenta de acreedor en Holded ({0}) está vinculada, pero aún no se ha registrado nada en ella. Tu extracto aparecerá cuando se registre tu primer informe de gastos.</value></data>
+  <data name="Expenses_NoCreditorAccount" xml:space="preserve"><value>Tu cuenta de acreedor en Holded aún no está vinculada, así que no se puede mostrar tu extracto. Pide a un administrador de Finanzas que la vincule.</value></data>
   <data name="Expenses_NoIban" xml:space="preserve"><value>Aún no has establecido tu IBAN de pago. Se te pedirá que lo establezcas cuando envíes un informe.</value></data>
   <data name="Expenses_NoReports" xml:space="preserve"><value>Aún no hay informes de gastos.</value></data>
   <data name="Expenses_NoReportsAwaiting" xml:space="preserve"><value>No hay informes a la espera de tu aval.</value></data>

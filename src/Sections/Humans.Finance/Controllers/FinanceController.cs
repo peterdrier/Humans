@@ -153,6 +153,27 @@ internal sealed class FinanceController(
         return RedirectToAction(nameof(Creditors));
     }
 
+    /// <summary>Full-history creditor-ledger resweep. The nightly job only covers a trailing year, so
+    /// this is the way to pick up an entry backdated further than that.</summary>
+    [HttpPost("Creditors/Resync")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ResyncCreditorLedger()
+    {
+        try
+        {
+            if (await holdedFinance.SyncCreditorLedgerAsync(fullHistory: true))
+                SetSuccess("Re-read the full Holded creditor ledger history.");
+            else
+                SetError("A Holded ledger sync is already running — try again once it finishes.");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Full creditor-ledger resync failed");
+            SetError("Full creditor-ledger resync failed.");
+        }
+        return RedirectToAction(nameof(Creditors));
+    }
+
     [HttpPost("HoldedSync/Run")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RunHoldedSync()

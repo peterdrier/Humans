@@ -2113,8 +2113,9 @@ actuals computation, creditor ledger sync).
 > windows) and `HoldedCreditorContacts` (user ↔ Holded supplier-account bindings).
 > `HoldedFinanceService` derives balances and payment history in memory from the
 > `HoldedLedgerLines` rows rather than polling a separate balance table.
-> `SyncCreditorLedgerAsync` backfills or incrementally appends creditor-account
-> (400000xx) journal lines; `GetCreditorStatusAsync` /
+> `SyncCreditorLedgerAsync` sweeps a trailing window nightly (full history on
+> request) for creditor-account (40000000–40000999) journal lines;
+> `GetCreditorStatusAsync` /
 > `ListCreditorAccountsAsync` / `GetCreditorLedgerAsync` read from the cached
 > journal lines. The creditor-contact binding surface
 > (`GetCreditorContactByUserAsync`, `SetCreditorContactAsync`,

@@ -45,7 +45,7 @@ Members submit expense reports for reimbursement. Finance Admin reviews and appr
 | ApprovedAt | Instant? | |
 | HoldedDocId | string? | Holded purchase document id |
 | HoldedContactId | string? | Holded contact id for this submitter; set on first push; links to creditor cache |
-| HoldedSupplierAccountNum | int? | 400000xx supplier-account number (supplierRecord.num), cached at push time |
+| HoldedSupplierAccountNum | int? | 40000000–40000999 supplier-account number (supplierRecord.num), cached at push time |
 | LastRejectionReason / LastRejectedByUserId / LastRejectedAt | — | last rejection details |
 | CreatedAt / UpdatedAt | Instant | |
 
@@ -91,7 +91,7 @@ Append-on-approve, drained by `HoldedExpenseOutboxJob`. Fields: `EventType` (Cre
 
 | Route | Method | Auth | Action |
 |-------|--------|------|--------|
-| `/Expenses` | GET | Authenticated | Submitter dashboard — shows member's reports + (when Holded creditor activity exists) the member's Holded IOU summary (balance owed / total paid / last payment) and a combined reports-and-payments ledger, populated via `GetHoldedTimelineAsync`. The balance may include items unrelated to expense reports (`OtherAmount`), so the ledger does not reconcile to zero. When the member is bound to a 400000xx creditor account, also shows the member's full Holded daybook ledger (`AccountLedger`). |
+| `/Expenses` | GET | Authenticated | Submitter dashboard — shows member's reports, plus their Holded creditor-account statement (`AccountLedger`) once bound to a 40000000–40000999 account. The statement is the cached daybook lines for that account verbatim, both sides; it is not mixed with locally-held report rows. Unbound members get an explanatory note instead. |
 | `/Expenses/New` | GET/POST | Authenticated | Create draft |
 | `/Expenses/{id}` | GET | Authenticated (resource-based: owner + Finance) | Detail |
 | `/Expenses/{id}/Edit` | GET/POST | Authenticated (owner, Draft only) | Edit draft |
@@ -125,6 +125,7 @@ Append-on-approve, drained by `HoldedExpenseOutboxJob`. Fields: `EventType` (Cre
 - A report cannot be submitted without at least one line. Every **Receipt** line must have an attachment at submit time; Mileage/PerDiem lines never require one (a pure-travel report submits with zero attachments).
 - Travel lines (Mileage/PerDiem) cannot be edited after creation — their amounts are computed from their inputs and the receipt requirement is waived on that basis, so `UpdateLineAsync` rejects them. To change one, remove it and re-add it so the amount is recomputed. Only Receipt lines accept free-text description/amount edits.
 - `Profile.Iban` must be non-null at submit time. `PayeeIban` is snapshotted at that moment; later IBAN changes do not affect in-flight reports.
+- The `/Expenses/{id}` **Payee** card renders the report's own `PayeeName` (unmasked legal name) and masked `PayeeIban` — the submit-time snapshot, i.e. who Holded actually pays. It is scoped to the submitter and finance admins (`ExpenseDetailViewModel.CanSeePayee`); a coordinator endorsing a report does not see it, because the legal name is unmasked and burner names are the norm elsewhere. The card never shows the *viewer's* own IBAN on someone else's report, and the Set/Change IBAN buttons render only for the submitter (the `Iban` action Forbids everyone else).
 - `PayeeIban` (snapshotted) and `Profile.Iban` (current) MUST pass through `IbanFormatter.Mask` before appearing in any log, audit entry, or error message (enforced by convention; memory atom `memory/code/iban-mask-in-logs.md`).
 - The coordinator endorsement step is required only if the report's category has at least one budget coordinator (`CategoryRequiresCoordinatorEndorsementAsync`). Finance Admin may approve directly from Submitted if no coordinator is assigned.
 - Resource-based authorization (`IbanAccessRequirement` / `IbanAccessHandler`) gates raw IBAN access: self, FinanceAdmin with non-Draft/non-Withdrawn report context, or Admin on admin page.
@@ -142,7 +143,7 @@ Append-on-approve, drained by `HoldedExpenseOutboxJob`. Fields: `EventType` (Cre
 
 ## Triggers
 
-- On **submit**: `Profile.Iban` and `User.DisplayName` are snapshotted into `PayeeIban` / `PayeeName`. Audit entry `ExpenseSubmit` written.
+- On **submit**: `Profile.Iban` and the profile legal name (`FirstName` + `LastName`) are snapshotted into `PayeeIban` / `PayeeName`. Audit entry `ExpenseSubmit` written.
 - On **approve**: `HoldedExpenseOutboxEvent` (CreateIncomingDoc) queued. Audit entry `ExpenseApprove` written.
 - On **category override**: `HoldedExpenseOutboxEvent` (UpdateIncomingDocTag) queued. Audit entry `ExpenseCategoryOverride` written.
 - On **IBAN reveal (admin page)**: `AuditAction.IbanReveal` written recording actor + target user.
@@ -179,6 +180,6 @@ When a report is pushed to Holded (`HoldedExpenseOutboxJob`), the submitter's Ho
 
 The submitter's expense detail view (`/Expenses/{id}`) shows a **payment status timeline**: registered / owed / settled, derived from `GetCreditorStatusAsync`. Paid detection reads the nightly-cached creditor daybook (balance = Σdebit − Σcredit ≥ 0 = settled) — zero live Holded calls on page load.
 
-The submitter dashboard (`/Expenses`) also surfaces the member's Holded IOU summary (balance owed / total paid / last payment date) and a combined reports-and-payments ledger, using `GetHoldedTimelineAsync` which now carries individual `HoldedPaymentInfo` rows from `HoldedCreditorStatus.Payments`. The ledger may include a non-zero `OtherAmount` (items in Holded unrelated to expense reports) and does not need to reconcile.
+The submitter dashboard (`/Expenses`) shows the member's Holded creditor-account statement (`GetCreditorLedgerAsync`) — the cached daybook lines for their 400000xx account, rendered verbatim. It deliberately does **not** blend local `ExpenseReport` rows into that table: doing so nets a locally-held claim against a Holded debit while the Holded credit pairing with it is never shown, which is why the earlier "IOU ledger" card could not reconcile and was removed.
 
 **`TravelReimbursementConfig`** (bound from `appsettings.json` → `TravelReimbursement` section, registered in `AddExpensesSection`) holds the 2026 Spanish IRPF tax-exempt rates: 0.26 €/km, 26.67 €/day (day trip), 53.34 €/day (overnight). Defaults are the live 2026 values; the section works without explicit configuration.

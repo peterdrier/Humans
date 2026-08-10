@@ -1280,7 +1280,7 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task GetHoldedTimelineAsync_CarriesPaymentRows()
+    public async Task GetHoldedTimelineAsync_CarriesPaidTotalAndDate()
     {
         var userId = Guid.NewGuid();
         var (_, category) = SetupActiveYear();
@@ -1291,14 +1291,13 @@ public sealed class ExpenseReportServiceTests
 
         _holdedFinance.GetCreditorStatusAsync(40000007, Arg.Any<CancellationToken>())
             .Returns(new HoldedCreditorStatus(40000007, Balance: -50m, OwedToMember: 50m,
-                LastPaymentDate: new LocalDate(2026, 4, 20), TotalPaid: 50m,
-                Payments: new List<HoldedPaymentInfo> { new(new LocalDate(2026, 4, 20), 50m, "purchase") }));
+                LastPaymentDate: new LocalDate(2026, 4, 20), TotalPaid: 50m));
 
         var report = await _sut.GetAsync(reportId, Xunit.TestContext.Current.CancellationToken);
         var timeline = await _sut.GetHoldedTimelineAsync(report!, Xunit.TestContext.Current.CancellationToken);
 
-        timeline!.Payments.Should().ContainSingle()
-            .Which.Amount.Should().Be(50m);
+        timeline!.TotalPaid.Should().Be(50m);
+        timeline.PaidOn.Should().Be(new LocalDate(2026, 4, 20));
     }
 
     // ─────────────────────── Travel wizard methods ────────────────────────────

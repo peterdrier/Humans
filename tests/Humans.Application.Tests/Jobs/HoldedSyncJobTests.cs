@@ -26,7 +26,7 @@ public class HoldedSyncJobTests
         await job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
 
         await finance.DidNotReceive().SyncAsync(Arg.Any<CancellationToken>());
-        await finance.DidNotReceive().SyncCreditorLedgerAsync(Arg.Any<CancellationToken>());
+        await finance.DidNotReceive().SyncCreditorLedgerAsync(false, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -38,6 +38,6 @@ public class HoldedSyncJobTests
         await job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
 
         await finance.Received(1).SyncAsync(Arg.Any<CancellationToken>());
-        await finance.Received(1).SyncCreditorLedgerAsync(Arg.Any<CancellationToken>());
+        await finance.Received(1).SyncCreditorLedgerAsync(false, Arg.Any<CancellationToken>());
     }
 }

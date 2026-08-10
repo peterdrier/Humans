@@ -3,27 +3,11 @@ using Humans.Expenses.Services;
 using Humans.Expenses.Services.Dtos;
 using Humans.Finance.Contracts;
 using Humans.Domain.Enums;
+using Humans.Domain.Helpers;
 using NodaTime;
 using Humans.Expenses.Domain;
 
 namespace Humans.Expenses.Models;
-
-internal sealed class ExpenseIouSummary
-{
-    public required decimal OwedToMember { get; init; }
-    public required decimal TotalPaid { get; init; }
-    public required decimal OtherAmount { get; init; }
-    public LocalDate? LastPaymentDate { get; init; }
-}
-
-/// <summary>One row in the combined reports-and-payments ledger, sorted by <see cref="Date"/> desc.</summary>
-internal sealed record ExpenseLedgerRow(
-    LocalDate Date,
-    bool IsPayment,
-    string Label,
-    decimal Amount,
-    Guid? ReportId,
-    ExpenseReportStatus? Status);
 
 internal sealed class ExpensesIndexViewModel
 {
@@ -33,12 +17,17 @@ internal sealed class ExpensesIndexViewModel
     public IReadOnlyDictionary<Guid, string> CategoryNames { get; init; } =
         new Dictionary<Guid, string>();
 
-    /// <summary>Non-null when the member has a Holded creditor account with activity.</summary>
-    public ExpenseIouSummary? Iou { get; init; }
-    public IReadOnlyList<ExpenseLedgerRow> Ledger { get; init; } = [];
-
-    /// <summary>The member's own Holded creditor account statement (real ledger lines), once bound. Read-only.</summary>
+    /// <summary>The member's own Holded creditor account statement (real ledger lines), once bound. Read-only.
+    /// Null both when unbound and when bound with no cached journal activity — <see cref="BoundAccountNum"/>
+    /// is what separates the two.</summary>
     public HoldedCreditorLedger? AccountLedger { get; init; }
+
+    /// <summary>The member's bound 400000xx account, or null if they have no binding yet.</summary>
+    public int? BoundAccountNum { get; init; }
+
+    /// <summary>Bound, but Holded has booked nothing to the account yet — expected for a new account
+    /// before its first journal entry, and not the same thing as an unresolved binding.</summary>
+    public bool AwaitingFirstLedgerActivity => BoundAccountNum is not null && AccountLedger is null;
 
     /// <summary>True when this user is a coordinator for any budget-year team, regardless of queue depth.</summary>
     public bool IsCoordinator { get; init; }
@@ -83,8 +72,28 @@ internal sealed class ExpenseDetailViewModel
     public bool CanEdit { get; init; }
     public bool CanSubmit { get; init; }
     public bool CanWithdraw { get; init; }
+
+    public bool IsSubmitter { get; init; }
+
+    /// <summary>The viewer's own profile IBAN state. Only meaningful while they are still setting it up
+    /// on their own draft — a viewer's IBAN says nothing about someone else's report.</summary>
     public bool HasIban { get; init; }
     public string? MaskedIban { get; init; }
+    /// <summary>The Set/Change IBAN actions reject everyone but the submitter, so only they get the button.</summary>
+    public bool CanEditIban => IsSubmitter;
+
+    /// <summary>Payee identity is snapshotted at submit, and the legal name shows unmasked — so it goes
+    /// no wider than the submitter and the finance admins who approve the payment.</summary>
+    public bool CanSeePayee => IsSubmitter || CanBindCreditor;
+
+    /// <summary>Legal name frozen onto the report at submit — who Holded will actually pay, regardless
+    /// of later profile edits. Null on a draft (not yet snapshotted). Not masked.</summary>
+    public string? PayeeName =>
+        CanSeePayee && !string.IsNullOrEmpty(Report.PayeeName) ? Report.PayeeName : null;
+
+    /// <summary>Masked form of the IBAN frozen onto the report at submit.</summary>
+    public string? PayeeMaskedIban =>
+        CanSeePayee && !string.IsNullOrEmpty(Report.PayeeIban) ? IbanFormatter.Mask(Report.PayeeIban) : null;
 
     /// <summary>Non-null when the report was previously rejected.</summary>
     public string? LastRejectionReason => Report.LastRejectionReason;

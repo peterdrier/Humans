@@ -72,14 +72,13 @@
   <data name="Expenses_EndorseConfirm" xml:space="preserve"><value>Avallare questa nota spese?</value></data>
   <data name="Expenses_FileFirst" xml:space="preserve"><value>Presenta la tua prima nota</value></data>
   <data name="Expenses_IouHeader" xml:space="preserve"><value>Quanto il collettivo ti deve</value></data>
-  <data name="Expenses_IouLastPayment" xml:space="preserve"><value>Ultimo pagamento</value></data>
-  <data name="Expenses_IouOtherAmountNote" xml:space="preserve"><value>Il tuo saldo Holded include {0} non collegati a queste note (spese anticipate per conto del collettivo, rettifiche, ecc.), quindi le righe qui sotto non corrispondono necessariamente alla somma.</value></data>
   <data name="Expenses_IouOwed" xml:space="preserve"><value>Dovuto a te (saldo Holded)</value></data>
-  <data name="Expenses_IouPaid" xml:space="preserve"><value>Pagato finora</value></data>
   <data name="Expenses_LedgerColItem" xml:space="preserve"><value>Voce</value></data>
   <data name="Expenses_MyReportsTitle" xml:space="preserve"><value>Le mie note spese</value></data>
   <data name="Expenses_NewReport" xml:space="preserve"><value>Nuova nota</value></data>
   <data name="Expenses_NoActiveYear" xml:space="preserve"><value>Al momento non c'è alcun anno di budget attivo. Le note spese non possono essere presentate finché un anno di budget non viene attivato.</value></data>
+  <data name="Expenses_CreditorAccountNoActivity" xml:space="preserve"><value>Il tuo conto creditore su Holded ({0}) è collegato, ma non vi è ancora stato registrato nulla. Il tuo estratto conto apparirà quando sarà registrata la tua prima nota spese.</value></data>
+  <data name="Expenses_NoCreditorAccount" xml:space="preserve"><value>Il tuo conto creditore su Holded non è ancora collegato, quindi non è possibile mostrare il tuo estratto conto. Chiedi a un amministratore Finanze di collegarlo.</value></data>
   <data name="Expenses_NoIban" xml:space="preserve"><value>Non hai ancora impostato il tuo IBAN per i pagamenti. Ti verrà chiesto di impostarlo quando presenti una nota.</value></data>
   <data name="Expenses_NoReports" xml:space="preserve"><value>Ancora nessuna nota spese.</value></data>
   <data name="Expenses_NoReportsAwaiting" xml:space="preserve"><value>Nessuna nota in attesa del tuo avallo.</value></data>

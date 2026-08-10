@@ -130,14 +130,10 @@ internal sealed class Repository(IDbContextFactory<FinanceDbContext> factory)
         return await ctx.HoldedLedgerLines.AsNoTracking().ToListAsync(ct);
     }
 
-    public async Task<Instant?> GetLatestLedgerLineDateAsync(CancellationToken ct = default)
+    public async Task<bool> HasAnyLedgerLinesAsync(CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.HoldedLedgerLines.AsNoTracking()
-            // arch:db-sort-ok newest-first to read the single latest line date for incremental sync
-            .OrderByDescending(l => l.Date)
-            .Select(l => (Instant?)l.Date)
-            .FirstOrDefaultAsync(ct);
+        return await ctx.HoldedLedgerLines.AsNoTracking().AnyAsync(ct);
     }
 
     // ── Creditor contact bindings ─────────────────────────────────────────────

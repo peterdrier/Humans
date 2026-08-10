@@ -68,7 +68,7 @@ internal sealed class ExpenseReportService(
         if (string.IsNullOrEmpty(report.HoldedContactId))
             return new ExpenseHoldedTimeline(
                 RegisteredInHolded: false, OwedToMember: 0m, MemberRegisteredTotal: 0m,
-                OtherAmount: 0m, Paid: false, PaidOn: null, TotalPaid: 0m, Payments: []);
+                OtherAmount: 0m, Paid: false, PaidOn: null, TotalPaid: 0m);
 
         var status = await holdedFinance.GetCreditorStatusAsync(
             report.HoldedSupplierAccountNum, ct);
@@ -95,8 +95,7 @@ internal sealed class ExpenseReportService(
             OtherAmount: Math.Max(0m, owed - memberRegisteredTotal),
             Paid: paid,
             PaidOn: status?.LastPaymentDate,
-            TotalPaid: totalPaid,
-            Payments: status?.Payments ?? []);
+            TotalPaid: totalPaid);
     }
 
     public Task<IReadOnlyList<ExpenseReportDto>> GetForSubmitterAsync(

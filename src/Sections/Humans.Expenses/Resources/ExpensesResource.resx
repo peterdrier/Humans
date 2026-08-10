@@ -72,14 +72,13 @@
   <data name="Expenses_EndorseConfirm" xml:space="preserve"><value>Endorse this expense report?</value></data>
   <data name="Expenses_FileFirst" xml:space="preserve"><value>File your first report</value></data>
   <data name="Expenses_IouHeader" xml:space="preserve"><value>What the collective owes you</value></data>
-  <data name="Expenses_IouLastPayment" xml:space="preserve"><value>Last payment</value></data>
-  <data name="Expenses_IouOtherAmountNote" xml:space="preserve"><value>Your Holded balance includes {0} unrelated to these reports (items fronted on the collective's behalf, adjustments, etc.), so the rows below won't necessarily sum to it.</value></data>
   <data name="Expenses_IouOwed" xml:space="preserve"><value>Owed to you (Holded balance)</value></data>
-  <data name="Expenses_IouPaid" xml:space="preserve"><value>Paid to date</value></data>
   <data name="Expenses_LedgerColItem" xml:space="preserve"><value>Item</value></data>
   <data name="Expenses_MyReportsTitle" xml:space="preserve"><value>My Expense Reports</value></data>
   <data name="Expenses_NewReport" xml:space="preserve"><value>New Report</value></data>
   <data name="Expenses_NoActiveYear" xml:space="preserve"><value>There is no active budget year at the moment. Expense reports cannot be filed until a budget year is activated.</value></data>
+  <data name="Expenses_CreditorAccountNoActivity" xml:space="preserve"><value>Your Holded creditor account ({0}) is linked, but nothing has been booked to it yet. Your statement will appear once your first expense report is registered.</value></data>
+  <data name="Expenses_NoCreditorAccount" xml:space="preserve"><value>Your Holded creditor account is not linked yet, so your statement cannot be shown. Ask a Finance admin to link it.</value></data>
   <data name="Expenses_NoIban" xml:space="preserve"><value>You have not yet set your payment IBAN. You will be prompted to set it when you submit a report.</value></data>
   <data name="Expenses_NoReports" xml:space="preserve"><value>No expense reports yet.</value></data>
   <data name="Expenses_NoReportsAwaiting" xml:space="preserve"><value>No reports awaiting your endorsement.</value></data>

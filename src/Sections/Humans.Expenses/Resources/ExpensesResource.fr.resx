@@ -72,14 +72,13 @@
   <data name="Expenses_EndorseConfirm" xml:space="preserve"><value>Valider cette note de frais ?</value></data>
   <data name="Expenses_FileFirst" xml:space="preserve"><value>Déposez votre première note</value></data>
   <data name="Expenses_IouHeader" xml:space="preserve"><value>Ce que le collectif vous doit</value></data>
-  <data name="Expenses_IouLastPayment" xml:space="preserve"><value>Dernier paiement</value></data>
-  <data name="Expenses_IouOtherAmountNote" xml:space="preserve"><value>Votre solde Holded inclut {0} sans rapport avec ces notes (achats avancés pour le compte du collectif, ajustements, etc.), si bien que les lignes ci-dessous n'en feront pas nécessairement la somme.</value></data>
   <data name="Expenses_IouOwed" xml:space="preserve"><value>Dû à vous (solde Holded)</value></data>
-  <data name="Expenses_IouPaid" xml:space="preserve"><value>Payé à ce jour</value></data>
   <data name="Expenses_LedgerColItem" xml:space="preserve"><value>Article</value></data>
   <data name="Expenses_MyReportsTitle" xml:space="preserve"><value>Mes notes de frais</value></data>
   <data name="Expenses_NewReport" xml:space="preserve"><value>Nouvelle note</value></data>
   <data name="Expenses_NoActiveYear" xml:space="preserve"><value>Il n'y a aucune année budgétaire active pour le moment. Les notes de frais ne peuvent pas être déposées tant qu'une année budgétaire n'est pas activée.</value></data>
+  <data name="Expenses_CreditorAccountNoActivity" xml:space="preserve"><value>Votre compte créditeur Holded ({0}) est lié, mais rien n'y a encore été enregistré. Votre relevé apparaîtra dès l'enregistrement de votre première note de frais.</value></data>
+  <data name="Expenses_NoCreditorAccount" xml:space="preserve"><value>Votre compte créditeur Holded n'est pas encore lié, votre relevé ne peut donc pas être affiché. Demandez à un administrateur Finances de le lier.</value></data>
   <data name="Expenses_NoIban" xml:space="preserve"><value>Vous n'avez pas encore renseigné votre IBAN de paiement. Vous serez invité à le faire au moment de soumettre une note.</value></data>
   <data name="Expenses_NoReports" xml:space="preserve"><value>Aucune note de frais pour le moment.</value></data>
   <data name="Expenses_NoReportsAwaiting" xml:space="preserve"><value>Aucune note en attente de votre validation.</value></data>

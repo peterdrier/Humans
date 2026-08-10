@@ -368,7 +368,13 @@ public sealed class CachingCampServiceTests : ServiceTestHarness
             Arg.Any<string>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
     }
 
-    [HumansTheory]
+    // Timeout raised from the 5s HumansTheory default: this is the third of three
+    // sequential inline cases, each paying full ServiceTestHarness + EF InMemory
+    // setup, and flaked under CI load with "Test execution timed out after 5000
+    // milliseconds" on the Withdrawn case (never Pending/Rejected) — 4 times in
+    // one week, twice confirmed passing on retry against the identical commit.
+    // 10s matches the codebase's standard bump for CI-load-sensitive tests.
+    [HumansTheory(Timeout = 10000)]
     [InlineData(CampSeasonStatus.Pending)]
     [InlineData(CampSeasonStatus.Rejected)]
     [InlineData(CampSeasonStatus.Withdrawn)]

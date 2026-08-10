@@ -72,14 +72,13 @@
   <data name="Expenses_EndorseConfirm" xml:space="preserve"><value>Vols avalar aquest informe de despeses?</value></data>
   <data name="Expenses_FileFirst" xml:space="preserve"><value>Presenta el teu primer informe</value></data>
   <data name="Expenses_IouHeader" xml:space="preserve"><value>El que el col·lectiu et deu</value></data>
-  <data name="Expenses_IouLastPayment" xml:space="preserve"><value>Últim pagament</value></data>
-  <data name="Expenses_IouOtherAmountNote" xml:space="preserve"><value>El teu saldo de Holded inclou {0} no relacionats amb aquests informes (articles avançats en nom del col·lectiu, ajustos, etc.), de manera que les files de sota no sumaran necessàriament aquesta xifra.</value></data>
   <data name="Expenses_IouOwed" xml:space="preserve"><value>Deute amb tu (saldo de Holded)</value></data>
-  <data name="Expenses_IouPaid" xml:space="preserve"><value>Pagat fins ara</value></data>
   <data name="Expenses_LedgerColItem" xml:space="preserve"><value>Article</value></data>
   <data name="Expenses_MyReportsTitle" xml:space="preserve"><value>Els meus informes de despeses</value></data>
   <data name="Expenses_NewReport" xml:space="preserve"><value>Nou informe</value></data>
   <data name="Expenses_NoActiveYear" xml:space="preserve"><value>De moment no hi ha cap any pressupostari actiu. No es poden presentar informes de despeses fins que no s'activi un any pressupostari.</value></data>
+  <data name="Expenses_CreditorAccountNoActivity" xml:space="preserve"><value>El teu compte de creditor a Holded ({0}) està vinculat, però encara no s'hi ha registrat res. El teu extracte apareixerà quan es registri el teu primer informe de despeses.</value></data>
+  <data name="Expenses_NoCreditorAccount" xml:space="preserve"><value>El teu compte de creditor a Holded encara no està vinculat, així que no es pot mostrar el teu extracte. Demana a un administrador de Finances que el vinculi.</value></data>
   <data name="Expenses_NoIban" xml:space="preserve"><value>Encara no has establert el teu IBAN de pagament. Se't demanarà que l'estableixis quan presentis un informe.</value></data>
   <data name="Expenses_NoReports" xml:space="preserve"><value>Encara no hi ha informes de despeses.</value></data>
   <data name="Expenses_NoReportsAwaiting" xml:space="preserve"><value>No hi ha cap informe esperant el teu aval.</value></data>

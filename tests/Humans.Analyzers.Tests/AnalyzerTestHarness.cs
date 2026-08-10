@@ -17,16 +17,41 @@ internal static class AnalyzerTestHarness
     /// for the negative "scope excludes this assembly" cases) to exercise the
     /// AssemblyScope guard in each analyzer.
     /// </summary>
+    /// <param name="referencedSource">
+    /// Optional: compiled into its own assembly and added as a reference, rather than
+    /// into <paramref name="source"/>'s own compilation. For rules that key off a
+    /// symbol's own accessibility (e.g. HUM0034), a marker/base type the test needs to
+    /// implement or derive from must live outside the assembly under test — exactly
+    /// as it does in production (<c>ISection</c> in <c>Humans.Interfaces</c>,
+    /// <c>Migration</c> in <c>Microsoft.EntityFrameworkCore</c>) — or the marker itself
+    /// would also be a symbol declared in, and analyzed as part of, the compilation
+    /// under test.
+    /// </param>
     public static async Task<ImmutableArray<Diagnostic>> RunAsync(
         DiagnosticAnalyzer analyzer,
         string assemblyName,
-        string source)
+        string source,
+        string? referencedSource = null)
     {
+        var references = BaseReferences;
+        if (referencedSource is not null)
+        {
+            var referencedTree = CSharpSyntaxTree.ParseText(referencedSource, cancellationToken: Xunit.TestContext.Current.CancellationToken);
+            var referencedCompilation = CSharpCompilation.Create(
+                assemblyName: assemblyName + ".Stubs",
+                syntaxTrees: [referencedTree],
+                references: BaseReferences,
+                options: new CSharpCompilationOptions(
+                    OutputKind.DynamicallyLinkedLibrary,
+                    nullableContextOptions: NullableContextOptions.Enable));
+            references = references.Add(referencedCompilation.ToMetadataReference());
+        }
+
         var syntaxTree = CSharpSyntaxTree.ParseText(source, cancellationToken: Xunit.TestContext.Current.CancellationToken);
         var compilation = CSharpCompilation.Create(
             assemblyName: assemblyName,
             syntaxTrees: [syntaxTree],
-            references: BaseReferences,
+            references: references,
             options: new CSharpCompilationOptions(
                 OutputKind.DynamicallyLinkedLibrary,
                 nullableContextOptions: NullableContextOptions.Enable));

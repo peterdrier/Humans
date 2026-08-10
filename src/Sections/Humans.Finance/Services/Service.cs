@@ -325,31 +325,51 @@ internal sealed class Service(
     // ─── Creditor data (Feature 2) ──────────────────────────────────────────────
 
     private const int CreditorAccountMin = 40000000;
-    private const int CreditorAccountMax = 40000099;
+    private const int CreditorAccountMax = 40000999;
 
     // Holded caps a dailyledger window at one year; 364 days stays safely under.
     private static readonly Duration LedgerWindow = Duration.FromDays(364);
     // Backstop on the first-run backward sweep (~25 years); logged if hit so a cap is never silent.
     private const int BackfillWindowCap = 25;
 
-    public async Task SyncCreditorLedgerAsync(CancellationToken ct = default)
+    // One creditor-ledger sweep at a time. Hangfire's DisableConcurrentExecution guards the nightly
+    // job, but the admin resync calls the service directly, so two sweeps can interleave: both read a
+    // given (EntryNumber, Line) as absent in UpsertLedgerLinesAsync and both insert it, and the loser
+    // trips the unique index and records a global sync Error for what is a benign duplicate. Single-server
+    // deployment (see CLAUDE.md), so an in-process gate is the whole requirement.
+    private static readonly SemaphoreSlim LedgerSyncGate = new(1, 1);
+
+    /// <summary>Refreshes the cached creditor daybook lines from Holded.</summary>
+    /// <returns>False when another sweep was already running and this one was skipped.</returns>
+    public async Task<bool> SyncCreditorLedgerAsync(bool fullHistory = false, CancellationToken ct = default)
     {
         var now = clock.GetCurrentInstant();
 
+        // Don't queue behind the running sweep — a full history pass can take a while, and a web
+        // request must not block on it. The caller reports the skip instead.
+        if (!await LedgerSyncGate.WaitAsync(0, ct))
+        {
+            logger.LogInformation("Holded ledger sync already in progress — skipping this request.");
+            return false;
+        }
+
         try
         {
-            var latest = await repo.GetLatestLedgerLineDateAsync(ct);
-
-            // First run (empty cache) → full-history backfill in ≤1-year backward windows.
-            // Steady state → incremental append from the latest cached line forward, also in ≤1-year
-            // windows so a long gap (sync disabled or no creditor activity for >1 year) still catches up
-            // instead of failing on an over-wide request. Idempotent upsert on (EntryNumber, Line) makes
-            // re-fetching the boundary safe.
-            var fetched = latest is null
+            // The nightly run sweeps one trailing window ending at *now* — a single API call, the same
+            // quota as an incremental append. It is deliberately not anchored on the newest cached
+            // line: the dailyledger filters on the *accounting* date, so an entry posted today but
+            // dated to a closed month sits behind that anchor and would never be fetched again. Anchoring
+            // on now instead picks up anything backdated inside the window at no extra cost.
+            //
+            // Older backdating, and the first run against an empty cache, need the full backward sweep.
+            // That is several calls, so outside the empty-cache case it is only ever run on request
+            // (POST /Finance/Creditors/Resync). The upsert on (EntryNumber, Line) makes re-fetching free.
+            var sweepAll = fullHistory || !await repo.HasAnyLedgerLinesAsync(ct);
+            var fetched = sweepAll
                 ? await BackfillLedgerAsync(now, ct)
-                : await IncrementalLedgerAsync(latest.Value, now, ct);
+                : await client.ListDailyLedgerAsync(now.Minus(LedgerWindow), now, ct);
 
-            // Persist only creditor-account (400000xx) lines — the only accounts the read paths derive
+            // Persist only creditor-account (4000_0000–4000_0999) lines — the only accounts the read paths derive
             // from. The dailyledger has no server-side account filter, so the fetch sweeps the whole
             // daybook regardless; we keep the subset we use. (Budget actuals run on a separate path.)
             var lines = fetched
@@ -374,7 +394,8 @@ internal sealed class Service(
 
             logger.LogInformation(
                 "Holded ledger sync ({Mode}) cached {Count} creditor journal lines",
-                latest is null ? "backfill" : "incremental", lines.Count);
+                sweepAll ? "full history" : "trailing window", lines.Count);
+            return true;
         }
         catch (Exception ex)
         {
@@ -394,6 +415,10 @@ internal sealed class Service(
                 logger.LogError(saveEx, "Failed to persist creditor-sync error state");
             }
             throw;
+        }
+        finally
+        {
+            LedgerSyncGate.Release();
         }
     }
 
@@ -419,23 +444,6 @@ internal sealed class Service(
         return all;
     }
 
-    /// <summary>Sweeps forward from the latest cached line in ≤1-year windows (the API rejects wider
-    /// ranges). In steady state this is a single window; after a long dormancy it chunks so the sync
-    /// catches up rather than failing on an over-wide request.</summary>
-    private async Task<IReadOnlyList<HoldedLedgerLineDto>> IncrementalLedgerAsync(Instant from, Instant now, CancellationToken ct)
-    {
-        var all = new List<HoldedLedgerLineDto>();
-        var windowStart = from;
-        while (windowStart < now)
-        {
-            var windowEnd = windowStart.Plus(LedgerWindow);
-            if (windowEnd > now) windowEnd = now;
-            all.AddRange(await client.ListDailyLedgerAsync(windowStart, windowEnd, ct));
-            windowStart = windowEnd.Plus(Duration.FromSeconds(1));
-        }
-        return all;
-    }
-
     public async Task<HoldedCreditorStatus?> GetCreditorStatusAsync(
         int? supplierAccountNum, CancellationToken ct = default)
     {
@@ -454,8 +462,7 @@ internal sealed class Service(
             Balance: balance,
             OwedToMember: Math.Max(0m, -balance),
             LastPaymentDate: payments.Count == 0 ? null : payments.Max(p => p.Date),
-            TotalPaid: payments.Sum(p => p.Amount),
-            Payments: payments);
+            TotalPaid: payments.Sum(p => p.Amount));
     }
 
     // ── Ledger derivations (sign confirmed against live data: Daniela 40000001
