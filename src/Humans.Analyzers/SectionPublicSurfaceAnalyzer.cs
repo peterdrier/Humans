@@ -50,6 +50,24 @@ namespace Humans.Analyzers;
 /// at declaration time is cheaper than re-auditing every nested member on every
 /// future container-visibility change.
 /// </para>
+/// <para>
+/// <b>HUM0034 violations are fixed, never grandfathered.</b>
+/// <c>[Grandfathered]</c>'s <c>AttributeUsage</c> covers classes, interfaces and
+/// methods only, so a public <c>struct</c>, <c>record struct</c>, <c>enum</c> or
+/// <c>delegate</c> — all of which this rule reports, since it runs over every
+/// <see cref="SymbolKind.NamedType"/> — cannot carry the attribute (CS0592). That
+/// is deliberate and not a gap to close by widening the attribute: unlike the
+/// cross-section rules it was built for, every HUM0034 violation has a fix that is
+/// always available and always local — drop the <c>public</c> modifier, or move the
+/// type under <c>Contracts/</c> if another section genuinely needs it. Neither
+/// requires restructuring, so there is no violation this rule can raise that has to
+/// be deferred. Grandfathering exists for debt that cannot be paid down today;
+/// deadline pressure alone does not qualify it
+/// (<c>docs/architecture/peters-hard-rules.md</c>: "fix it right, or record an
+/// issue"). The <c>GrandfatheredCheck</c> call below is retained for consistency
+/// with every other HUM rule and to keep class/interface violators unblockable in
+/// an emergency — it is not an invitation.
+/// </para>
 /// </remarks>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class SectionPublicSurfaceAnalyzer : DiagnosticAnalyzer
