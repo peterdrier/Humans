@@ -15,20 +15,8 @@
     },
     "Agent": {
       "paths": [
-        "src/Humans.Application/Interfaces/Agent/**",
-        "src/Humans.Application/Interfaces/IAnthropicClient.cs",
-        "src/Humans.Application/Configuration/AnthropicOptions.cs",
-        "src/Humans.Application/Models/Agent*",
-        "src/Humans.Application/Models/Anthropic*",
-        "src/Humans.Application/Services/Agent/**",
-        "src/Humans.Domain/Entities/Agent*",
-        "src/Humans.Infrastructure/Repositories/Agent*",
-        "src/Humans.Infrastructure/Services/Anthropic/**",
-        "src/Humans.Infrastructure/Services/Agent/**",
-        "src/Humans.Web/Controllers/Agent*",
-        "src/Humans.Web/Health/AgentDocsHealthCheck.cs",
-        "src/Humans.Web/Health/AnthropicHealthCheck.cs",
-        "src/Humans.Web/ViewComponents/HelpWidgetViewComponent.cs"
+        "src/Sections/Humans.Agent/**",
+        "src/Sections/Humans.Agent.Contracts/**"
       ],
       "symbols": [
         "Agent*",

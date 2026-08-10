@@ -20,6 +20,7 @@ move recipe is [`G5-SECTION-TEMPLATE.md`](G5-SECTION-TEMPLATE.md).
 
 | Section | Project | Invariants doc |
 |---|---|---|
+| Agent | `src/Sections/Humans.Agent` | [Agent.md](../../src/Sections/Humans.Agent/Docs/Agent.md) |
 | Containers | `src/Sections/Humans.Containers` | [Containers.md](../../src/Sections/Humans.Containers/Docs/Containers.md) |
 | Finance | `src/Sections/Humans.Finance` | [Finance.md](../../src/Sections/Humans.Finance/Docs/Finance.md) |
 | Event Guide | `src/Sections/Humans.Events` | [Events.md](../../src/Sections/Humans.Events/Docs/Events.md) |
@@ -47,7 +48,7 @@ Cross-check against [`design-rules.md` §8 (Table Ownership Map)](../architectur
 
 | Section | Controllers | Orchestrators | Services | Repositories | Tables |
 |---------|-------------|---------------|----------|--------------|--------|
-| **Agent** | `AgentController`, `AgentApiController`, `AdminAgentController` | — | `AgentService`, `AgentAdminStatusService`, `AgentSettingsService`, `AgentPromptAssembler`, `AgentToolDispatcher`, `AgentUserSnapshotProvider`, `AgentAbuseDetector`, `AnthropicClient` | `AgentRepository` | `agent_conversations`, `agent_messages`, `agent_settings` |
+| **Agent** | `AgentController`, `AgentApiController`, `AdminAgentController` (`Humans.Agent.Controllers`) | — | `AgentService`, `AgentAdminStatusService`, `AgentSettingsService`, `AgentPromptAssembler`, `AgentToolDispatcher`, `AgentUserSnapshotProvider`, `AgentAbuseDetector`, `AnthropicClient` (`Humans.Agent.Services`) | `AgentRepository` / `IAgentRepository` (`Humans.Agent.Data`) | `agent_conversations`, `agent_messages`, `agent_settings` |
 | **Budget** | `BudgetController`, `BudgetAdminController` (the latter routed under `/Finance`) | — | `BudgetService` | `BudgetRepository` | `budget_years`, `budget_groups`, `budget_categories`, `budget_line_items`, `budget_audit_logs`, `ticketing_projections` |
 | **Calendar** | `CalendarController` | — | `CalendarService`, *`CachingCalendarService`* | `CalendarRepository` | `calendar_events`, `calendar_event_exceptions` |
 | **Campaigns** | `CampaignController` | — | `CampaignService` | `CampaignRepository` | `campaigns`, `campaign_codes`, `campaign_grants` |

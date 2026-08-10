@@ -11,7 +11,7 @@ Business requirements, user stories, data model, and workflows for each feature 
 | [Google Group Membership Sync](features/43-google-group-membership-sync.md) | Expected-state reconciliation of Google Group memberships from `IGoogleGroupMembershipSource` plugins, with daily and scoped retry passes |
 | [Volunteer Tracking](features/47-volunteer-tracking.md) | `/ShiftDashboard/VolunteerTracking` heatmap surfacing build-period gaps and declared-but-unbooked volunteers for the VC |
 | [Active User Metrics](features/active-user-metrics.md) | Distinct authenticated users tracked by trailing window (5m / 1h / 24h), surfaced as Prometheus gauges plus three tiles on `/Admin` |
-| [Agent Section](features/agent/agent-section.md) | Conversational helper grounded on docs and user state, with `route_to_issue` handoff and admin spot-check view |
+| [Agent Section](../src/Sections/Humans.Agent/Docs/Agent-feature.md) | Conversational helper grounded on docs and user state, with `route_to_issue` handoff and admin spot-check view |
 | [F-12: Audit Log](features/audit-log/audit-log.md) | Structured, queryable audit trail for background job and admin actions beyond Serilog text logs |
 | [User Authentication & Accounts](features/auth/authentication.md) | Secure, streamlined authentication integrated with Google Workspace and temporal role tracking for governance compliance |
 | [Feature 30: Magic Link Authentication](features/auth/magic-link-auth.md) | Email-based passwordless login and signup as the foundation for non-Google auth methods |
@@ -84,7 +84,7 @@ Terse, authoritative invariant docs for each major section: concepts, data model
 |----------|-------------|
 | [Sections Index](sections/_Index.md) | Code-derived map of every section to its concrete controllers, orchestrators, services, repositories, and tables |
 | [Admin Shell](sections/admin-shell.md) | Frame-only section providing the shared admin sidebar, breadcrumb, and dashboard skeleton — owns no tables |
-| [Agent](sections/Agent.md) | Conversational helper backed by Anthropic Claude, available to authenticated consented users when `AgentSettings.Enabled = true` |
+| [Agent](../src/Sections/Humans.Agent/Docs/Agent.md) | Conversational helper backed by Anthropic Claude, available to authenticated consented users when `AgentSettings.Enabled = true` |
 | [Audit Log](sections/AuditLog.md) | Append-only system audit trail capturing actor, action, entity, and timestamp; enforced append-only per design-rules §12 |
 | [Auth](sections/Auth.md) | Temporal role assignments, magic-link login/signup, and claims transformation |
 | [Budget](sections/Budget.md) | Fiscal-year budgets (Draft/Active/Closed) with groups, categories, line items, and an append-only audit log |

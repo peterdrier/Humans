@@ -1,6 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces;
-using Humans.Infrastructure.Services.Preload;
+using Humans.Agent.Contracts;
 using Humans.Web.Models;
 using Humans.Web.Services.Agent;
 using Microsoft.Extensions.Caching.Memory;
@@ -70,11 +70,8 @@ public class AgentPreloadAugmentorTests
     /// Every heading emitted here must be a key the reader can actually serve.
     /// </summary>
     [HumansFact]
-    public async Task Every_glossary_heading_is_a_fetchable_section_key()
+    public void Every_glossary_heading_is_a_fetchable_section_key()
     {
-        var reader = new AgentSectionDocReader(
-            new AnySectionSource(), new MemoryCache(new MemoryCacheOptions()),
-            NullLogger<AgentSectionDocReader>.Instance);
         var glossaries = new AgentPreloadAugmentor().BuildGlossariesMarkdown();
 
         var headings = glossaries.Split('\n')
@@ -87,8 +84,12 @@ public class AgentPreloadAugmentorTests
         glossaries.Should().Contain("fetch_section_guide", "the block must say what the headings are for");
         foreach (var heading in headings)
         {
-            var body = await reader.ReadAsync(heading, Xunit.TestContext.Current.CancellationToken);
-            body.Should().NotBeNull($"glossary heading '{heading}' must be a fetch_section_guide key");
+            // Asserted against the key table itself rather than through AgentSectionDocReader,
+            // which is internal to Humans.Agent since the section's G5 move. The reader resolves
+            // the key through exactly this table before it fetches anything, so the check is the
+            // same one, minus a stub GitHub source.
+            AgentSectionKeys.TryResolve(heading, out _).Should().BeTrue(
+                $"glossary heading '{heading}' must be a fetch_section_guide key");
         }
     }
 

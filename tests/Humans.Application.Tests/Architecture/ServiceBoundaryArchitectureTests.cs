@@ -32,7 +32,7 @@ public class ServiceBoundaryArchitectureTests
             [SectionRepository("Humans.Store.Data.IStoreRepository")] = "Store",
             [typeof(IAccountMergeRepository)] = "Humans",
             [typeof(IAdminDatabaseDiagnosticsRepository)] = "Admin",
-            [typeof(IAgentRepository)] = "Agent",
+            [SectionRepository("Humans.Agent.Data.IAgentRepository")] = "Agent",
             [typeof(IApplicationRepository)] = "Governance",
             [typeof(IAuditLogRepository)] = "AuditLog",
             [typeof(IBudgetRepository)] = "Budget",

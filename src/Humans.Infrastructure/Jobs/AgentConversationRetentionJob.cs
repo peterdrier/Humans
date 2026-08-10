@@ -1,36 +1,32 @@
+using Humans.Agent.Contracts;
 using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.Repositories;
-using Humans.Application.Interfaces.Stores;
 using Microsoft.Extensions.Logging;
-using NodaTime;
 
 namespace Humans.Infrastructure.Jobs;
 
+/// <summary>
+/// Nightly purge of agent conversations past the retention window.
+/// </summary>
+/// <remarks>
+/// Stays in Base because recurring jobs are named by concrete type in Shell's
+/// <c>UseHumansRecurringJobs</c> roll-call and there is no <c>ISection</c>-style discovery
+/// seam for them yet (design §15.6b). It reaches Agent through
+/// <see cref="IAgentConversationRetention"/>: the retention window, the purge and the
+/// last-run record all belong to the section, and a Base job holding the section's
+/// repository was a layer skip as well as a contracts-leaf three interfaces wide.
+/// </remarks>
 public class AgentConversationRetentionJob(
-    IAgentRepository repo,
-    IAgentSettingsService settings,
-    IAgentRetentionRunStore runStore,
-    IClock clock,
+    IAgentConversationRetention retention,
     ILogger<AgentConversationRetentionJob> logger) : IRecurringJob
 {
     public async Task ExecuteAsync(CancellationToken cancellationToken = default)
     {
-        var now = clock.GetCurrentInstant();
-        var cutoff = now - Duration.FromDays(settings.Current.RetentionDays);
-        var deleted = await repo.PurgeConversationsOlderThanAsync(cutoff, cancellationToken);
-
-        // Always record the run — the admin status panel needs the timestamp
-        // even when nothing was deleted, so an operator can confirm the job
-        // is alive. Recording happens after Purge so a thrown exception
-        // surfaces as "last run was earlier" rather than a misleading green tick.
-        runStore.Record(now, deleted);
+        var deleted = await retention.PurgeExpiredConversationsAsync(cancellationToken);
 
         if (deleted > 0)
         {
             // Warning so the entry is visible in the prod log viewer (Warning+ default).
-            logger.LogWarning(
-                "AgentConversationRetentionJob deleted {Count} conversations older than {Cutoff}",
-                deleted, cutoff);
+            logger.LogWarning("AgentConversationRetentionJob deleted {Count} conversations", deleted);
         }
     }
 }

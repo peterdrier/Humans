@@ -1,0 +1,116 @@
+@using Humans.UI.Extensions
+@model AgentMyConversationViewModel
+@{
+    ViewData["Title"] = Localizer["Agent_ConversationTitle"].Value;
+    var conv = Model.Conversation;
+    var orderedMessages = conv.Messages.OrderBy(m => m.CreatedAt).ToList();
+}
+
+<link rel="stylesheet" href="~/_content/Humans.Agent/css/agent.css" asp-append-version="true" />
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">@ViewData["Title"]</h2>
+    <a asp-action="Conversations" class="btn btn-outline-secondary btn-sm">
+        @Localizer["Agent_ConversationBackToHistory"]
+    </a>
+</div>
+
+<dl class="row mb-3">
+    <dt class="col-sm-3">@Localizer["Agent_HistoryStarted"]</dt>
+    <dd class="col-sm-9">@conv.StartedAt.ToInvariantTimestamp() UTC</dd>
+    <dt class="col-sm-3">@Localizer["Agent_HistoryLastMessage"]</dt>
+    <dd class="col-sm-9">@conv.LastMessageAt.ToInvariantTimestamp() UTC</dd>
+    <dt class="col-sm-3">@Localizer["Agent_HistoryMessages"]</dt>
+    <dd class="col-sm-9">@conv.MessageCount</dd>
+</dl>
+
+<details class="mb-4 agent-context-card">
+    <summary class="fw-semibold">@Localizer["Agent_ContextCardSummary"]</summary>
+    <div class="alert alert-warning small mb-2 mt-2">@Localizer["Agent_ContextCardCaveat"]</div>
+    @if (!string.IsNullOrWhiteSpace(Model.CurrentUserContextTail))
+    {
+        <pre class="agent-context-body small">@Model.CurrentUserContextTail</pre>
+    }
+    else
+    {
+        <p class="text-muted small mb-0">@Localizer["Agent_ContextCardEmpty"]</p>
+    }
+</details>
+
+<h4>@Localizer["Agent_ConversationTranscript"]</h4>
+@if (orderedMessages.Count == 0)
+{
+    <p class="text-muted">@Localizer["Agent_ConversationEmpty"]</p>
+}
+else
+{
+    <div class="agent-transcript">
+        @foreach (var msg in orderedMessages)
+        {
+            var isUser = msg.Role == AgentRole.User;
+            var isAssistant = msg.Role == AgentRole.Assistant;
+            var isRefusal = !string.IsNullOrEmpty(msg.RefusalReason);
+
+            <div class="agent-transcript-row @(isUser ? "agent-transcript-row-user" : "agent-transcript-row-assistant")">
+                <div class="agent-msg @(isUser ? "agent-msg-user" : "agent-msg-assistant") @(isRefusal ? "agent-msg-refusal" : "")">
+                    @if (isAssistant && !isRefusal)
+                    {
+                        <div class="agent-assistant-content">@Html.SanitizedMarkdown(msg.Content)</div>
+                    }
+                    else if (isUser)
+                    {
+                        @* SanitizedMarkdown for autolink + HTML-strip; swap to #630's linkifier when it lands. *@
+                        <div class="agent-user-content">@Html.SanitizedMarkdown(msg.Content)</div>
+                    }
+                    else if (isRefusal)
+                    {
+                        <div class="agent-refusal text-muted small">
+                            <em>@Localizer["Agent_ConversationRefusedLabel"]</em>
+                            @if (!string.IsNullOrEmpty(msg.RefusalReason))
+                            {
+                                <span> — @msg.RefusalReason</span>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        @* Tool/system roles rendered plainly — assistant messages carry FetchedDocs inline. *@
+                        <div class="agent-msg-other small">@msg.Content</div>
+                    }
+
+                    @* No legacy Feedback handoff link: /Feedback/{id} is Admin-only
+                       (nobodies-collective/Humans#977), so it would 403 for the reporter
+                       reading their own conversation. Admins still see the handoff id on
+                       the admin conversation view. *@
+
+                    @if (isAssistant && msg.FetchedDocs is { Length: > 0 })
+                    {
+                        @* #632: collapsed when >1 call, expanded for 1. `open` is boolean — emit conditionally. *@
+                        var toolSummary = string.Format(System.Globalization.CultureInfo.CurrentCulture,
+                            Localizer["Agent_ConversationToolCallsSummary"].Value,
+                            msg.FetchedDocs.Length);
+                        if (msg.FetchedDocs.Length == 1)
+                        {
+                            <details class="agent-tool-calls mt-2" open>
+                                <summary class="text-muted small">
+                                    <span aria-hidden="true">🔧</span> @toolSummary
+                                </summary>
+                                <partial name="_AgentToolCallsList" model="msg.FetchedDocs" />
+                            </details>
+                        }
+                        else
+                        {
+                            <details class="agent-tool-calls mt-2">
+                                <summary class="text-muted small">
+                                    <span aria-hidden="true">🔧</span> @toolSummary
+                                </summary>
+                                <partial name="_AgentToolCallsList" model="msg.FetchedDocs" />
+                            </details>
+                        }
+                    }
+                </div>
+                <div class="agent-msg-time small text-muted">@msg.CreatedAt.ToInvariantTimestamp() UTC</div>
+            </div>
+        }
+    </div>
+}

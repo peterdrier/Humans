@@ -6,7 +6,6 @@ using Humans.Application.Interfaces.Budget;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.CityPlanning;
 using Humans.Application.Interfaces.Shifts;
-using Humans.Application.Interfaces.Stores;
 using Humans.Application.Interfaces.Teams;
 using Humans.Domain.Constants;
 using Humans.Domain.Enums;
@@ -40,8 +39,9 @@ public class AuthorizationPolicyTests : IDisposable
         services.AddScoped(_ => Substitute.For<ICityPlanningServiceRead>());
         services.AddScoped(_ => Substitute.For<ITeamService>());
         services.AddScoped(_ => Substitute.For<ITeamServiceRead>());
-        services.AddScoped(_ => Substitute.For<IAgentRateLimitStore>());
-        services.AddScoped(_ => Substitute.For<IAgentSettingsService>());
+        // Agent's rate-limit handler moved into Humans.Agent with the section and is registered
+        // by its Section.Register, so this graph no longer needs its collaborators; its coverage
+        // lives in Humans.Agent.Tests.
         // Expenses' two resource-based handlers moved into the section with it and are
         // registered by Humans.Expenses' Section.Register, not by
         // AddHumansAuthorizationPolicies — so this graph no longer needs their collaborators

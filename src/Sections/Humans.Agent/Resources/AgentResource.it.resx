@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a2c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a2c561934e089</value>
+  </resheader>
+  <data name="Agent_ConversationBackToHistory" xml:space="preserve">
+    <value>Torna alla cronologia</value>
+  </data>
+  <data name="Agent_ConversationEmpty" xml:space="preserve">
+    <value>Nessun messaggio in questa conversazione.</value>
+  </data>
+  <data name="Agent_ConversationRefusedLabel" xml:space="preserve">
+    <value>L'assistente ha rifiutato di rispondere in questo turno.</value>
+  </data>
+  <data name="Agent_ConversationTitle" xml:space="preserve">
+    <value>Conversazione con l'assistente</value>
+  </data>
+  <data name="Agent_ConversationToolCallsSummary" xml:space="preserve">
+    <value>{0} chiamata(e) a strumento</value>
+  </data>
+  <data name="Agent_ConversationTranscript" xml:space="preserve">
+    <value>Trascrizione</value>
+  </data>
+  <data name="Agent_ContextCardCaveat" xml:space="preserve">
+    <value>Questo è il tuo contesto attuale. Se i tuoi ruoli o team sono cambiati da questa conversazione, l'assistente ha visto una versione diversa in quel momento.</value>
+  </data>
+  <data name="Agent_ContextCardEmpty" xml:space="preserve">
+    <value>Attualmente non viene inviato alcun contesto personale all'assistente.</value>
+  </data>
+  <data name="Agent_ContextCardSummary" xml:space="preserve">
+    <value>Il tuo contesto (come l'assistente ti vede ora)</value>
+  </data>
+  <data name="Agent_HistoryEmpty" xml:space="preserve">
+    <value>Nessuna conversazione.</value>
+  </data>
+  <data name="Agent_HistoryLastMessage" xml:space="preserve">
+    <value>Ultimo messaggio</value>
+  </data>
+  <data name="Agent_HistoryMessages" xml:space="preserve">
+    <value>Messaggi</value>
+  </data>
+  <data name="Agent_HistoryStarted" xml:space="preserve">
+    <value>Inizio</value>
+  </data>
+  <data name="Agent_HistoryTitle" xml:space="preserve">
+    <value>Assistente — Le mie conversazioni</value>
+  </data>
+</root>

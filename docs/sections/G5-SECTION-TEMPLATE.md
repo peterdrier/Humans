@@ -6,7 +6,8 @@ The recipe for moving one section into its own project under `src/Sections/`
 (cited below as "spec §N") after five sections executed it: Store (peterdrier/Humans#1223),
 SystemSettings + EventGuide (peterdrier/Humans#1235, A1), Containers + Finance
 (peterdrier/Humans#1239, A2), Expenses (peterdrier/Humans#1240, A3), Surveys
-(peterdrier/Humans#1251, A4). Step numbers match the former §15, so an old "§15 step 3b"
+(peterdrier/Humans#1251, A4), Agent (A4b — the first section with static assets, migrations
+and a contracts leaf all at once). Step numbers match the former §15, so an old "§15 step 3b"
 citation reads as "step 3b" here.
 
 **Where this template and `src/Sections/` disagree, the code is right.** Deviations are the
@@ -54,6 +55,10 @@ grep -rn 'typeof(<AnyTypeYouWillMove>).Assembly' tests/
 # the same hazard keyed on a namespace prefix instead of an assembly — a different
 # shape, and the one A2 nearly missed (step 11)
 grep -rn 'Namespace?\.StartsWith\|Namespace\.StartsWith' tests/
+# Base types whose *signatures* name the section's types — the ones recon misses because
+# the filename carries a vendor, not the section (step 5b's connector case). Read the
+# signatures of every hit, not just the filenames.
+grep -rln '<Section>' src/Humans.Application/Interfaces src/Humans.Infrastructure/Services
 # type names written to the database (step 5) — plain prefix, no trailing glob.
 # Run it for the OTHER sections' entity names too: nameof(Camp) in an audit
 # discriminator stops compiling at the move and must become a literal.
@@ -184,8 +189,16 @@ Git Bash.)
      `Services/AuditEntityTypes.cs` is the shape), never with a project reference. Declare the
      section's own discriminators as literals while you are there; that is what makes the rename
      schema-inert. See `memory/code/type-name-as-persisted-string.md`.
-   - ⚠️ UNPROVEN in the mechanical sense: **nothing enforces "everything else `internal`"** until
-     the keystone analyzer lands (nobodies-collective/Humans#1013). Convention until then.
+   - **The keystone analyzer (nobodies-collective/Humans#1013) has landed, so this is a build
+     gate, not a convention — and it collapses the move commit and the visibility commit into
+     one.** HUM0034 fails the build for any public type in a `[assembly: Section("…")]` assembly
+     that is not `Section`, `<Section>Resource`, a generated migration, or under `Contracts/`.
+     A move-only commit therefore does not compile, and "renames in a separate commit after the
+     move compiles" no longer describes a reachable state for the visibility half. Split what is
+     still splittable — the move+internalise commit, then renames, then anything behavioural —
+     and say in the PR why the first two are one (proven: Agent, A4b, ~60 files internalised in
+     the move commit). Nested `public` members of an already-internal type are flagged too, which
+     `internal sealed` at the top level does not cover.
 5b. [ ] `Contracts/` holds **everything consumed from outside the section** — read *or* write
    (Peter, 2026-08-09: splitting read from write happens once every section has moved, not
    per-section). May be empty for a leaf section; ship the folder with a `README.md` saying why
@@ -202,6 +215,16 @@ Git Bash.)
      (`memory/architecture/section-project-cycle-fix.md`; proven: SystemSettings, Events, both on
      first build). Consumers all in Shell → folder is fine at any size (proven: Containers,
      17 types).
+   - **A Base-resident *connector* can be section-owned in disguise.** Agent's recon put the
+     Anthropic client in Base with Stripe and Holded, on the "connectors stay in Base" rule — and
+     the first build said otherwise: `IAnthropicClient` streams the section's own
+     `AgentTurnToken` and `IAgentAnthropicBalanceProvider` returns its `AgentBalanceStatus`.
+     Leaving either in Base means promoting a section DTO downward, which is forbidden, so the
+     whole connector (interface, DTOs, options, client, balance provider, NuGet reference) moves
+     in. The test is not "is it an external API" but **whose types are in its signatures** — a
+     connector serving one section and shaped by that section's model belongs to it (proven:
+     Agent; contrast Stripe, which Store left behind, and `GitHubCommunityKbContentSource`, whose
+     signatures name only `string`).
    - **A DTO the section re-exports from Base forces the project split even when nothing else
      does** — and promoting the connector's DTO downward is the forbidden fix; the section owns a
      boundary type and maps at the edge (proven: Finance, `HoldedLedgerLineDto`). Check every
@@ -236,26 +259,55 @@ Git Bash.)
      Expenses; its `Contracts` project ended up one interface wide).
 6b. [ ] Recurring Hangfire jobs stay in `Humans.Infrastructure/Jobs` for now: there is no
    `ISection`-style discovery seam for jobs, and a section-owned job would have to be `public` —
-   the one thing step 5 exists to prevent. The job consumes the section through
-   `<Section>.Contracts` like any other Base consumer, which also counts toward step 5b's
-   consumer-in-Base test (proven: Finance, `HoldedSyncJob`; Expenses and Tickets are next). The
-   eventual seam — `ISectionRecurringJobs` called after `WebApplication` is built — is not a G5
-   blocker.
+   the one thing step 5 exists to prevent. **Health checks are the same shape** —
+   `Program.cs`'s `AddHealthChecks()` chain names each `IHealthCheck` by concrete type — so a
+   section's health checks stay in Shell and consume it through `Contracts/` (proven: Agent kept
+   `AgentDocsHealthCheck` and `AnthropicHealthCheck` in Shell, which is what put a one-property
+   `IAgentAvailability` on its leaf).
+   The job consumes the section through `<Section>.Contracts` like any other Base consumer,
+   which also counts toward step 5b's consumer-in-Base test (proven: Finance, `HoldedSyncJob`;
+   Expenses and Tickets are next). The eventual seam — `ISectionRecurringJobs` called after
+   `WebApplication` is built — is not a G5 blocker.
+   - **A job that orchestrates across the section's repository + service + store is a layer skip,
+     and the move is when to fix it.** Carving `IAgentConversationRetention` — one method,
+     returning the deleted count — moved the retention rule inside the section and took three
+     public interfaces off the leaf in exchange for one. Look at what the job actually *does*
+     before writing the contract for what it currently *takes* (proven: Agent, A4b).
 7. [ ] `wwwroot/` assets move with the section; URLs become `/_content/Humans.<Section>/…` in the
-   same PR. Only Shell's own chrome assets stay in Shell.
-   ⚠️ **STILL UNPROVEN.** A4 was scheduled to be the first execution and deferred Agent, so no
-   moved section has yet had static assets. Next real test: Agent, CityPlanning, Gate or
-   Scanner. Confirm the Dockerfile's static-asset copy and any `asp-append-version`
-   cache-busting survive the URL change, and correct this step from what happened.
-   - What A4 established about the Agent case without executing it: `wwwroot/css/agent.css` and
-     `wwwroot/js/agent/widget.js` are referenced from **three** places, and only one is the
-     section's own view — `Views/Agent/Conversation.cshtml:9`, plus Shell's own chrome at
-     `Views/Shared/Components/HelpWidget/Default.cshtml:128` and `:137`. All three use
-     `asp-append-version="true"`, which needs the file resolvable through the host's
-     `IFileProvider`; an RCL's `_content` assets are served by the static-web-assets manifest
-     rather than from `wwwroot` on disk, so this is exactly where the cache-buster is most
-     likely to silently emit no `?v=` rather than fail. Check the emitted `?v=` hash, not just
-     that the asset 200s.
+   same PR. Only Shell's own chrome assets stay in Shell. **Proven: Agent (A4b), the first
+   section to move any.** What A4 predicted was right, and the fix is one line — in the *test
+   host*, not in the section.
+   - **The move itself is nothing.** `git mv` the files under the section's `wwwroot/`, rewrite
+     every `~/css/x.css` to `~/_content/Humans.<Section>/css/x.css`, done. Rewrite the
+     references in **Shell's** views too: an asset can be Agent's while the markup linking it is
+     Shell chrome (Agent's two assets have three reference sites and two are Shell's
+     `HelpWidget`). Nothing in the `Dockerfile` or the publish pipeline needs a line: `dotnet
+     publish` copies an RCL's static web assets **physically** into
+     `publish/wwwroot/_content/Humans.<Section>/…` (verified by publishing and listing the
+     folder), so in production `UseStaticFiles` serves them off `WebRootFileProvider` and
+     `asp-append-version` finds them there. `dotnet run` is fine too — `WebApplicationBuilder`
+     calls `UseStaticWebAssets()` in Development, which composes the manifest into the same
+     provider.
+   - **The test host is the gap, and it fails silently in two ways at once.**
+     `WebApplicationFactory` runs under a non-Development environment, so nothing composes the
+     static-web-assets manifest: every `/_content/<Rcl>/…` URL **404s**, and — the half you
+     will not notice — `asp-append-version="true"` emits the bare `href` with **no `?v=` hash**
+     rather than throwing. The page still returns 200 with correct-looking markup. Fix it once,
+     in the factory:
+
+     ```csharp
+     builder.UseEnvironment("Testing");
+     builder.UseStaticWebAssets();   // Humans.Web.staticwebassets.runtime.json is already in
+                                     // the test project's output; nothing else is needed.
+     ```
+
+     This is a standing fix for the whole suite, not a per-section one: before it, *any*
+     integration test asserting an RCL asset would have seen a 404 and called it a section bug.
+   - **Assert both halves.** `html.Should().Contain($"href=\"{AssetPath}?v=")` catches the
+     cache-buster; a separate `GET` on the asset asserting 200 catches the file. Agent's
+     `AgentPageRenderTests` has one of each, and the pre/post HTML capture confirmed the only
+     difference across every page in English and Spanish was the URL prefix — the `?v=` hashes
+     were byte-identical before and after the move.
 7b. [ ] The section's docs move into `Docs/` — invariants doc, feature doc, its own design specs;
    disambiguate filenames that collide case-insensitively. Fix inbound links (`docs/README.md`,
    `data-model.md`, **both** `docs/sections/_Index.md` rows, any `memory/` atom citing them, the
@@ -265,6 +317,18 @@ Git Bash.)
    audits stay in `docs/`. Anything the app *serves or fetches* from `docs/` at runtime stays —
    `docs/guide/` until Guide's own G5 — and re-check `AgentSectionDocReader`'s fallback covers the
    section. **A docs path is an API until you have proved otherwise** (spec §7a).
+   - **The `AgentSectionDocReader` fallback is a convention, not a map, and it has one real
+     constraint: the project folder must be `Humans.{canonical key}` and the file
+     `Docs/{canonical key}.md`.** The reader probes `docs/sections/{key}.md`, then
+     `src/Sections/Humans.{key}/Docs/{key}.md`, for whatever `AgentSectionKeys` resolved — so a
+     section whose project name does not match its agent key becomes unreachable, silently, via a
+     swallowed 404 (`Humans.Events` carries a comment saying exactly this). Of the moved
+     sections only Store, Containers and Events are whitelisted keys; Expenses, Finance, Surveys
+     and SystemSettings are deliberately operator-only and unaffected. Agent's own doc is at
+     `src/Sections/Humans.Agent/Docs/Agent.md` and "Agent" is *not* a whitelisted key — the
+     agent still cannot fetch a guide to itself, which predates the move.
+     `AgentSectionDocReaderTests.Every_whitelisted_section_has_a_matching_doc_file` globs both
+     folders and is the guard (proven: Agent, A4b).
 8. [ ] `tests/Humans.<Section>.Tests` — service, repository, entity and handler tests move in;
    integration tests stay in `Humans.Integration.Tests`. EF-InMemory stays EF-InMemory. **Read
    what each test actually exercises**: a file under `Services/<Section>/` that tests a connector

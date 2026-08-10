@@ -63,6 +63,15 @@ public class HumansWebApplicationFactory(string connectionString)
     {
         builder.UseEnvironment("Testing");
 
+        // Compose the static-web-assets manifest into WebRootFileProvider. WebApplicationBuilder
+        // only does this for Development, so without it every /_content/<Rcl>/… URL 404s under
+        // the test host and — the silent half — asp-append-version emits the bare href with no
+        // ?v= hash rather than failing. Agent is the first section to move wwwroot assets into
+        // its own project (nobodies-collective/Humans#866 design §15 step 7), so it is the first
+        // time that gap is observable. Published output copies the files physically under
+        // wwwroot/_content/, so this is a test-host gap only.
+        builder.UseStaticWebAssets();
+
         builder.ConfigureAppConfiguration((_, config) =>
         {
             // Override connection string and provide required config keys.

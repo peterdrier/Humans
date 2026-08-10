@@ -53,7 +53,7 @@ This file is the **index and cross-cutting rule sheet** for the data model. Per-
 | HoldedExpenseDoc / HoldedCategoryMap / HoldedSyncState / HoldedLedgerLine / HoldedCreditorContact | [Finance](../../src/Sections/Humans.Finance/Docs/Finance.md) | Holded actuals cache (Feature 1) + creditor daybook ledger cache + member→account binding (Feature 2). |
 | Product / Order / OrderLine / Payment / Invoice / TreasurySyncState | [Store](../../src/Sections/Humans.Store/Docs/Store.md) | |
 | Issue / IssueComment | [Issues](../sections/Issues.md) | |
-| AgentConversation / AgentMessage / AgentSettings | [Agent](../sections/Agent.md) | |
+| AgentConversation / AgentMessage / AgentSettings | [Agent](../../src/Sections/Humans.Agent/Docs/Agent.md) | |
 | SyncServiceSettings / GoogleSyncOutboxEvent | [Google Integration](../sections/GoogleIntegration.md) | |
 | Survey / SurveyQuestion / SurveyQuestionOption / SurveyResponse / SurveyAnswer / SurveyInvitation | [Survey](../../src/Sections/Humans.Surveys/Docs/Surveys.md) | Cross-domain refs are bare `Guid` FK columns only — no nav properties, no cross-section EF FK constraints. |
 | SystemSetting | System Settings section | Owned by `SystemSettingsRepository` (exposed via `ISystemSettingsService`); consuming sections read/write keys through it. See [SystemSetting below](#systemsetting-system-settings-section). |
