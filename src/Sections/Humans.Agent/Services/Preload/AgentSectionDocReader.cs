@@ -3,7 +3,6 @@ using Humans.Application.Interfaces;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Octokit;
-using Humans.Agent;
 using Humans.Agent.Contracts;
 
 namespace Humans.Agent.Services.Preload;

@@ -12,7 +12,6 @@ using Humans.Domain.Enums;
 using Humans.Agent.Services.Preload;
 using Microsoft.Extensions.Logging;
 using NodaTime;
-using Humans.Agent.Models;
 using Humans.Agent.Services.Anthropic;
 
 namespace Humans.Agent.Services;

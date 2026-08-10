@@ -1,5 +1,4 @@
 using Humans.Application.Models;
-using Humans.Agent.Data;
 using Humans.Agent.Models;
 using Humans.Application.Interfaces;
 

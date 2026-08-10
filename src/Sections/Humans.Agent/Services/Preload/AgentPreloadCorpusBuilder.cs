@@ -2,18 +2,24 @@ using System.Text;
 using Humans.Application.Interfaces;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Caching.Memory;
-using Humans.Agent;
 using Humans.Agent.Contracts;
 using Humans.Agent.Domain;
 using Humans.Agent.Services;
 
 namespace Humans.Agent.Services.Preload;
 
+/// <remarks>
+/// <see cref="IAgentPreloadAugmentor"/> is required, not optional. It used to default to
+/// <c>null</c> with a <c>is not null</c> guard around its four blocks — which meant a missing
+/// Shell registration produced a corpus quietly stripped of the access matrix, the glossaries,
+/// the route map and the FAQ, with no startup failure and no log line. Required makes DI fail
+/// loudly instead (caught in review of the section's G5 move, peterdrier/Humans#1259).
+/// </remarks>
 internal sealed class AgentPreloadCorpusBuilder(
     AgentSectionDocReader sections,
     CommunityFaqReader community,
     IMemoryCache cache,
-    IAgentPreloadAugmentor? augmentor = null) : IAgentPreloadCorpusBuilder
+    IAgentPreloadAugmentor augmentor) : IAgentPreloadCorpusBuilder
 {
     private static readonly IReadOnlyList<string> Tier1Sections =
         ["Onboarding", "Teams", "Consent", "Governance", "Shifts", "Tickets", "Profiles", "Auth"];
@@ -70,16 +76,13 @@ internal sealed class AgentPreloadCorpusBuilder(
         }
         sb.AppendLine();
 
-        if (augmentor is not null)
-        {
-            sb.AppendLine(augmentor.BuildAccessMatrixMarkdown());
-            sb.AppendLine();
-            sb.AppendLine(augmentor.BuildGlossariesMarkdown());
-            sb.AppendLine();
-            sb.AppendLine(augmentor.BuildRouteMapMarkdown());
-            sb.AppendLine();
-            sb.AppendLine(augmentor.BuildFaqMarkdown());
-        }
+        sb.AppendLine(augmentor.BuildAccessMatrixMarkdown());
+        sb.AppendLine();
+        sb.AppendLine(augmentor.BuildGlossariesMarkdown());
+        sb.AppendLine();
+        sb.AppendLine(augmentor.BuildRouteMapMarkdown());
+        sb.AppendLine();
+        sb.AppendLine(augmentor.BuildFaqMarkdown());
 
         var communityEntries = await community.ListTopicsAsync(cancellationToken);
         if (communityEntries.Count > 0)

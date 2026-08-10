@@ -12,7 +12,6 @@ using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NodaTime;
-using Humans.Agent.Controllers;
 using Humans.Agent.Domain;
 using Humans.Agent.Models;
 using Humans.Agent.Contracts;

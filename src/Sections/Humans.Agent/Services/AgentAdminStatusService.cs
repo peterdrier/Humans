@@ -4,7 +4,6 @@ using Humans.Agent.Services.Stores;
 using Humans.Application.Models;
 using Humans.Domain.Enums;
 using NodaTime;
-using Humans.Agent.Authorization;
 using Humans.Agent.Domain;
 using Humans.Agent.Models;
 using Humans.Agent.Services.Anthropic;

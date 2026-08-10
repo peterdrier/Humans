@@ -1,10 +1,10 @@
 using AwesomeAssertions;
+using Humans.Agent.Contracts;
 using Humans.Application.Interfaces;
 using Humans.Domain.Enums;
 using Humans.Agent.Services.Preload;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
-using Humans.Agent;
 using Humans.Agent.Domain;
 using Humans.Agent.Services;
 
@@ -129,7 +129,20 @@ public class AgentPreloadCorpusBuilderTests
         var reader = new AgentSectionDocReader(
             source, cache, NullLogger<AgentSectionDocReader>.Instance);
         var community = new CommunityFaqReader(source, cache, NullLogger<CommunityFaqReader>.Instance);
-        return new AgentPreloadCorpusBuilder(reader, community, cache);
+        return new AgentPreloadCorpusBuilder(reader, community, cache, new StubAugmentor());
+    }
+
+    /// <summary>
+    /// The augmentor is implemented in Shell and injected through the contracts leaf; these tests
+    /// assert the section-index and community-FAQ halves of the corpus, so the four Shell blocks
+    /// are stubbed to empty rather than substituted.
+    /// </summary>
+    private sealed class StubAugmentor : IAgentPreloadAugmentor
+    {
+        public string BuildAccessMatrixMarkdown() => string.Empty;
+        public string BuildGlossariesMarkdown() => string.Empty;
+        public string BuildRouteMapMarkdown() => string.Empty;
+        public string BuildFaqMarkdown() => string.Empty;
     }
 
     private sealed class StubSource : IGuideContentSource

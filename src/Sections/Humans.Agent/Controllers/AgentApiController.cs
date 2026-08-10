@@ -5,7 +5,6 @@ using Humans.Application.Interfaces.Users;
 using Humans.Domain.Enums;
 using Humans.Agent.Filters;
 using Microsoft.AspNetCore.Mvc;
-using Humans.Agent.Data;
 using Humans.Agent.Domain;
 using Humans.Agent.Services;
 

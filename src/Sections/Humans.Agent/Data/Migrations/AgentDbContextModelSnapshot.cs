@@ -7,7 +7,6 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using NodaTime;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Humans.Agent.Data;
-using Humans.Agent.Domain;
 
 #nullable disable
 

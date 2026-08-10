@@ -15,7 +15,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using NSubstitute;
-using Humans.Agent.Controllers;
 using Humans.Agent.Domain;
 using Humans.Agent.Models;
 using Humans.Agent.Services.Anthropic;

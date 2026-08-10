@@ -1,4 +1,3 @@
-using Humans.Agent.Domain;
 
 namespace Humans.Agent.Services.Anthropic;
 

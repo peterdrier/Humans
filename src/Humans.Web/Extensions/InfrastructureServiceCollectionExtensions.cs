@@ -1,3 +1,4 @@
+using Humans.Agent.Contracts;
 using Humans.Application.Configuration;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Repositories;
@@ -65,6 +66,12 @@ public static class InfrastructureServiceCollectionExtensions
         // type and there is no ISection-style discovery seam for jobs yet (design §15.6b);
         // each reaches its section through that section's contracts leaf.
         services.AddScoped<SendSurveyReminderJob>();
+
+        // Shell-resident collaborators of sections that have already moved out. AgentPreloadAugmentor
+        // builds the access matrix, glossaries, route map and FAQ blocks of the agent's preload
+        // corpus from Shell-owned help content (AccessMatrixDefinitions, SectionHelpContent), so it
+        // cannot move into Humans.Agent; the section consumes it through the contracts leaf.
+        services.AddSingleton<IAgentPreloadAugmentor, Humans.Web.Services.Agent.AgentPreloadAugmentor>();
 
         // Sections that have moved into their own project (nobodies-collective/Humans#866)
         // register themselves via ISection and are discovered, not named. The roll-call

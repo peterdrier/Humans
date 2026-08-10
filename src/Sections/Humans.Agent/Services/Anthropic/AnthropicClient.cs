@@ -10,7 +10,6 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SdkAnthropicClient = Anthropic.AnthropicClient;
 using Humans.Agent.Models;
-using Humans.Agent.Services;
 
 namespace Humans.Agent.Services.Anthropic;
 
