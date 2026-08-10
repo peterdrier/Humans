@@ -2,13 +2,13 @@
   src/Humans.Application/Services/CityPlanning/**
   src/Humans.Web/Controllers/CityPlanningController.cs
   src/Humans.Web/Controllers/CityPlanningApiController.cs
-  src/Humans.Web/Controllers/ContainerController.cs
+  src/Sections/Humans.Containers/Controllers/ContainerController.cs
   src/Humans.Web/Hubs/CityPlanningHub.cs
-  src/Humans.Web/Authorization/RoleChecks.cs
+  src/Humans.UI/Authorization/RoleChecks.cs
   src/Humans.Domain/Entities/CityPlanningSettings.cs
   src/Humans.Domain/Entities/CampPolygon.cs
   src/Humans.Domain/Entities/CampPolygonHistory.cs
-  src/Humans.Domain/Entities/Container.cs
+  src/Sections/Humans.Containers/Domain/Container.cs
   src/Humans.Infrastructure/Data/Configurations/CityPlanning/**
   src/Humans.Web/wwwroot/js/city-planning/**
 -->
@@ -137,7 +137,7 @@ ContainerPlacement
 ## Frontend Architecture
 
 ### Main map (`/js/city-planning/main.js` + `config.js`)
-Minimal read-only map. Fetches `/api/city-planning/state` and renders layers. No draw library. Imports `measure.js` from the container-map module for the measure tool.
+Minimal read-only map. Fetches `/api/city-planning/state` and renders layers. No draw library. Imports `measure.js` from the shared module (`/js/city-planning/shared/measure.js`) for the measure tool.
 
 | Layer | Always visible | Togglable |
 |-------|---------------|-----------|
@@ -183,7 +183,7 @@ Own camp polygon uses 2× outline width and higher fill opacity. Active edit pol
 - Out-of-bounds: red crosshatch pattern (`#ff2222`)
 - Overlap: orange dashed horizontal stripes (`#ff8800`)
 
-### Container placement map (`/js/container-map/`)
+### Container placement map (`/js/city-planning/container-map/`)
 Full-screen map with a sidebar listing placed/unplaced containers. Containers are dragged from the sidebar onto the map as rotatable rectangles. Uses CSS custom properties `--container-fill` (unselected) and `--container-fill-selected` (selected) for colors, defined in `ContainerMap.cshtml`.
 
 ## Authorization

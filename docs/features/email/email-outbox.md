@@ -5,8 +5,8 @@
   src/Humans.Web/Controllers/EmailController.cs
   src/Humans.Web/Views/Email/**
   src/Humans.Domain/Entities/EmailOutboxMessage.cs
-  src/Humans.Domain/Entities/SystemSetting.cs
-  src/Humans.Domain/Constants/SystemSettingKeys.cs
+  src/Sections/Humans.SystemSettings/Domain/SystemSetting.cs
+  src/Sections/Humans.SystemSettings.Contracts/SystemSettingKeys.cs
   src/Humans.Infrastructure/Data/Configurations/Email/**
 -->
 <!-- freshness:flag-on-change

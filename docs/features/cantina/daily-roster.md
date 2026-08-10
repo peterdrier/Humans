@@ -28,7 +28,7 @@ View access to `/Cantina/Roster*`:
 - **Other authenticated users:** 403 Forbidden.
 - **Unauthenticated:** redirected to login per the global `[Authorize]` policy.
 
-The two access paths (role-based and team-membership-based) compose with OR — possessing either is sufficient.
+Access is role-based only. There is no team-membership-based path.
 
 ## GDPR (special-category data)
 

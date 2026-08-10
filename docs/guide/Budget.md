@@ -1,8 +1,8 @@
 <!-- freshness:triggers
   src/Humans.Web/Views/Budget/**
-  src/Humans.Web/Views/Finance/**
+  src/Humans.Web/Views/BudgetAdmin/**
   src/Humans.Web/Controllers/BudgetController.cs
-  src/Humans.Web/Controllers/FinanceController.cs
+  src/Humans.Web/Controllers/BudgetAdminController.cs
   src/Humans.Application/Services/Budget/**
   src/Humans.Application/Services/Tickets/TicketingBudgetService.cs
   src/Humans.Domain/Entities/BudgetYear.cs

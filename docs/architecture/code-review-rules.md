@@ -5,6 +5,7 @@
   src/Humans.Infrastructure/Repositories/**
   src/Humans.Infrastructure/Migrations/**
   src/Humans.Infrastructure/Data/**
+  src/Sections/**
   tests/Humans.Testing/**
 -->
 <!-- freshness:flag-on-change

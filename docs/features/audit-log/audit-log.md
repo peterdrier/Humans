@@ -30,7 +30,7 @@ Background jobs and admin actions make changes on members' behalf (team enrollme
 | ActorUserId | Guid? | Human actor (null for jobs) |
 | RelatedEntityId | Guid? | Secondary entity |
 | RelatedEntityType | string? | "User", "Team", etc. |
-| ResourceId | Guid? | FK to GoogleResource (Google sync only) |
+| ResourceId | Guid? | Guid reference to GoogleResource, no DB-level FK constraint (Google sync only) |
 | Success | bool? | Whether Google API call succeeded (Google sync only) |
 | ErrorMessage | string? | Error details if call failed (Google sync only) |
 | Role | string? | Role granted/revoked, e.g. "writer", "MEMBER" (Google sync only) |
@@ -51,69 +51,13 @@ Stored as string in the database. Values:
 
 ### Immutability
 
-Database triggers prevent UPDATE and DELETE on the `audit_log` table, matching the pattern used for `consent_records`. The `ActorUserId` FK uses `SetNull` on delete, so deleted/anonymized users show as "Deleted User" in the UI.
+Database triggers prevent UPDATE and DELETE on the `audit_log` table, matching the pattern used for `consent_records`. `ActorUserId` is a bare cross-section Guid column with no DB-level FK constraint (nobodies-collective/Humans#992) — a deleted/anonymized actor is handled at the application layer: `AuditViewerService` looks up the actor by id and falls back to displaying "Someone" when no match is found.
 
 ### AuditAction Enum
 
 Stored as string in the database. New values can be appended without migration.
 
-**Team membership:**
-- `TeamMemberAdded` — System sync added a user to a team
-- `TeamMemberRemoved` — System sync removed a user from a team
-- `TeamJoinedDirectly` — User joined an open team directly
-- `TeamLeft` — User left a team voluntarily
-- `TeamJoinRequestApproved` — Approver approved a team join request
-- `TeamJoinRequestRejected` — Approver rejected a team join request
-- `TeamMemberRoleChanged` — Member role changed within a team
-- `TeamPageContentUpdated` — Team page content (markdown, CTAs, visibility) updated
-
-**Member lifecycle:**
-- `MemberSuspended` — Admin or system suspended a member
-- `MemberUnsuspended` — Admin unsuspended a member
-- `AccountAnonymized` — Account deletion job anonymized a user
-- `MembershipsRevokedOnDeletionRequest` — Memberships ended when deletion was requested
-- `VolunteerApproved` — Admin approved a volunteer
-- `ConsentCheckCleared` — Consent Coordinator cleared a consent check
-- `ConsentCheckFlagged` — Consent Coordinator flagged a consent check
-- `SignupRejected` — Signup rejected (sets RejectedAt)
-- `TierApplicationApproved` — Board approved a Colaborador/Asociado application
-- `TierApplicationRejected` — Board rejected a Colaborador/Asociado application
-- `TierDowngraded` — Human's tier was downgraded
-
-**Roles:**
-- `RoleAssigned` — Admin assigned a governance role
-- `RoleEnded` — Admin ended a governance role
-- `TeamRoleDefinitionCreated/Updated/Deleted` — Team role slot managed
-- `TeamRoleAssigned/Unassigned` — Member assigned to/from a team role slot
-
-**Google sync:**
-- `GoogleResourceAccessGranted` — Google resource access granted (Group or Drive folder)
-- `GoogleResourceAccessRevoked` — Google resource access revoked (Group or Drive folder)
-- `GoogleResourceProvisioned` — New Google resource created (Drive folder or Group)
-- `GoogleResourceDeactivated` — Google resource soft-unlinked
-- `GoogleResourceSettingsRemediated` — Group settings drift auto-corrected
-- `GoogleResourceInheritanceDriftCorrected` — Shared Drive inheritance setting fixed
-- `AnomalousPermissionDetected` — Drive Activity API detected a permission change not made by the system
-
-**Workspace accounts:**
-- `WorkspaceAccountProvisioned` — @nobodies.team account created
-- `WorkspaceAccountSuspended` — Workspace account suspended
-- `WorkspaceAccountReactivated` — Workspace account reactivated
-- `WorkspaceAccountPasswordReset` — Workspace account password reset
-- `WorkspaceAccountLinked` — Existing workspace account linked to a human
-- `WorkspaceAccountBackupCodesGenerated` — 2-Step Verification backup codes rotated for a Workspace account
-
-**Other features:**
-- `FacilitatedMessageSent` — User-to-user message sent via Humans
-- `FeedbackResponseSent` / `FeedbackStatusChanged` — Feedback management
-- `CommunicationPreferenceChanged` — User changed email/alert preferences
-- `ContactCreated` — Admin created an external contact
-- `AccountMergeRequested/Accepted/Rejected` — Duplicate account merge flow
-- `CampCreated/Updated/Deleted`, `CampSeasonCreated/Approved/Rejected/Withdrawn/StatusChanged`, etc. — Camp management
-- `ShiftSignupConfirmed/Refused/Voluntold/Bailed/NoShow/Cancelled` — Shift lifecycle
-- `RotaMovedToTeam` — Shift rota reassigned to a different department
-- `GateTerminalPasswordSet` — Gate-terminal shared kiosk password set (Scanner section)
-- `SurveyCreated/Updated/Opened/Closed/InvitesSent/ReminderSent` — Survey lifecycle (Survey section)
+The full value catalog lives in [`docs/sections/AuditLog.md`](../../sections/AuditLog.md) and is regenerated from `src/Humans.Domain/Enums/AuditAction.cs` by `/freshness-sweep`. It is not duplicated here — one source of truth.
 
 ## Service Design
 
@@ -206,7 +150,7 @@ Displays all audit entries for a specific Google resource, queried by `ResourceI
 
 ### Per-User Google Sync Audit (`/AuditLog/Human/{id}`)
 
-Displays all Google sync audit entries affecting a specific user, queried by `RelatedEntityId = userId` where `ResourceId IS NOT NULL`. Includes the Google resource name via navigation property. Accessible to HumanAdmin and Admin. Accessed via the Member Detail page sidebar.
+Displays all Google sync audit entries affecting a specific user, queried by `RelatedEntityId = userId` where `ResourceId IS NOT NULL`. Includes the Google resource name, resolved via `ITeamResourceService.GetResourceNamesByIdsAsync` (no navigation property — cross-section read-interface call). Accessible to HumanAdmin and Admin. Accessed via the Member Detail page sidebar.
 
 ### Per-User Audit View (MemberDetail page)
 

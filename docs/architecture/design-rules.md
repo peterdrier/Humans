@@ -4,6 +4,7 @@
   src/Humans.Infrastructure/Repositories/**
   src/Humans.Infrastructure/Data/**
   src/Humans.Analyzers/**
+  src/Sections/**
   docs/architecture/freshness-catalog.yml
 -->
 <!-- freshness:flag-on-change
@@ -37,6 +38,8 @@ The project reference graph (`Humans.Application.csproj` references only `Humans
 `Humans.Interfaces` is the lowest-level project — no project references, no packages. It holds only the role markers (`IApplicationService`, `IRepository`, `IOrchestrator`, `IFanout`, `IInvalidator`) and the architecture attributes (`GrandfatheredAttribute`, `DontFixAttribute`, `SurfaceBudgetAttribute`). Their namespaces intentionally stay `Humans.Application.*` (namespace ≠ assembly), so call sites and the `Humans.Analyzers` full-name constants are unaffected by the move.
 
 **The Web layer is two projects.** `Humans.UI` is the shared view layer, extracted from `Humans.Web` for the section-project split (nobodies-collective/Humans#866): a Razor class library (`Microsoft.NET.Sdk.Razor`, `AddRazorSupportForMvc`) referencing only `Humans.Application`. It holds `SharedResource` and its satellite resx files, the tag helpers, the shared `Views/Shared` partials and layouts (`_AdminLayout`, `_GateLayout`, `_Table`, `_Pager`, …), the generic table + pager view models, `PolicyNames`, `TempDataKeys`, the display extensions, and the section-agnostic view components (`AuditLog`, `Human`, `TempDataAlerts`). Its types live under `Humans.UI.*` — notably `Humans.UI.Authorization.PolicyNames` and `Humans.UI.Extensions.DateTimeDisplayExtensions`. `Humans.Web` (the Shell) references it, and so will every future section project, since a section project cannot reference the Shell.
+
+**A section moved into its own project (nobodies-collective/Humans#866, G5 — six so far: Store, SystemSettings, Events, Containers, Finance, Expenses, each under `src/Sections/Humans.<Section>/`) is internal by default.** Its only public surface is its `ISection` entry point, its `<Section>Resource` localization marker, EF Core migrations, and types declared under a `Contracts/` folder — everything else must be `internal`. This was convention-only across the first sections that moved; analyzer `HUM0034` (`SectionPublicSurfaceAnalyzer`, nobodies-collective/Humans#1013) now fails the build on any other public type in a section assembly.
 
 **Key change from prior rules:** Services now live in `Humans.Application`, not `Humans.Infrastructure`. The old rule ("services own their data access") meant "services inject `DbContext` directly," which conflated business logic with persistence and made "no cross-domain joins" impossible to enforce structurally. The new rule is "services go through their owning repository."
 
@@ -272,32 +275,32 @@ Ownership is now physical as well as conventional for the peeled sections: the m
 | **Consent** | `LegalDocumentService`, `LegalDocumentSyncService`, `ConsentService` | `legal_documents`, `document_versions`, `consent_records` |
 | **Onboarding** | `OnboardingService` (intake funnel), `HumanLifecycleService` (suspend/unsuspend state-machine) | *(no owned tables — orchestrator pair over Profiles, Consent, Teams, Governance)* |
 | **Camps** | `CampService`, `CampRoleService`, `CampContactService` | `camps`, `camp_seasons`, `camp_members`, `camp_images`, `camp_historical_names`, `camp_settings`, `camp_role_definitions`, `camp_role_assignments` |
-| **Containers** | `ContainerService` | `containers`, `container_placements` |
+| **Containers** | `IContainerService` (G5 project `Humans.Containers`; implemented by the section-internal `Service`) | `containers`, `container_placements` |
 | **City Planning** | `CityPlanningService` | `city_planning_settings`, `camp_polygons`, `camp_polygon_histories` |
 | **Calendar** | `CalendarService` | `calendar_events`, `calendar_event_exceptions` |
 | **Shifts** | `ShiftManagementService`, `ShiftSignupService`, `GeneralAvailabilityService`, `VolunteerTrackingService` | `rotas`, `shifts`, `shift_signups`, `event_settings`, `general_availability`, `volunteer_event_profiles`, `volunteer_build_statuses`, `shift_tags`, `volunteer_tag_preferences`, `rota_shift_tags` |
 | **Cantina** | `CantinaRosterService` | *(no owned tables — reads the on-site cohort via `IShiftManagementService`, the active event via `IBurnSettingsService`, and dietary fields via `IUserServiceRead`)* |
 | **Budget** | `BudgetService` | `budget_years`, `budget_groups`, `budget_categories`, `budget_line_items`, `budget_audit_logs`, `ticketing_projections` |
 | **Expenses** | `ExpenseReportService` | `expense_reports`, `expense_lines`, `expense_attachments`, `holded_expense_outbox_events` |
-| **Finance** | `HoldedFinanceService` | `holded_expense_docs`, `holded_category_map`, `holded_ledger_lines`, `holded_creditor_contacts`, `holded_sync_states` |
+| **Finance** | `IHoldedFinanceService` (G5 project `Humans.Finance`; implemented by the section-internal `Service`) | `holded_expense_docs`, `holded_category_map`, `holded_ledger_lines`, `holded_creditor_contacts`, `holded_sync_states` |
 | **Tickets** | `TicketQueryService`, `TicketSyncService`, `TicketingBudgetService`, `TicketTransferService` | `ticket_orders`, `ticket_attendees`, `ticket_sync_states`, `ticket_transfer_requests` |
-| **Store** | `StoreService` | `store_products`, `store_orders`, `store_order_lines`, `store_payments`, `store_invoices`, `store_treasury_sync_state` |
+| **Store** | `Service` (G5 project `Humans.Store`, internal — no public service interface; Store is self-contained and takes no cross-section calls into it) | `store_products`, `store_orders`, `store_order_lines`, `store_payments`, `store_invoices`, `store_treasury_sync_state` |
 | **Scanner** | none (no business logic — `ScannerController` reads via `ITicketServiceRead`) | none |
 | **Gate** | `GateService` | `gate_scan_events`, `gate_settings`, `gate_staff_pins` |
 | **Campaigns** | `CampaignService` | `campaigns`, `campaign_codes`, `campaign_grants` |
 | **Google Integration** | `GoogleSyncService`, `GoogleAdminService`, `GoogleWorkspaceSyncService`, `GoogleWorkspaceUserService`, `DriveActivityMonitorService`, `SyncSettingsService`, `EmailProvisioningService` | `sync_service_settings`, `google_sync_outbox` |
 | **Email** | `EmailOutboxService`, `OutboxEmailService`, `EmailService` | `email_outbox_messages` (reads the `IsEmailSendingPaused` flag via `ISystemSettingsService`) |
-| **System Settings** | `SystemSettingsService` | `system_settings` (cross-cutting key/value store; consuming sections read/write via `ISystemSettingsService`) |
+| **System Settings** | `ISystemSettingsService` (G5 project `Humans.SystemSettings`; implemented by the section-internal `Service`) | `system_settings` (cross-cutting key/value store; consuming sections read/write via `ISystemSettingsService`) |
 | **Mailer** | `MailerImportService`, `MailerLiteClient` | _(no owned tables — MailerLite is read-only; classifier writes through other sections' services)_ |
 | **Feedback** | `FeedbackService` | `feedback_reports`, `feedback_messages` |
 | **Issues** | `IssuesService` | `issues`, `issue_comments` |
 | **Notifications** | `NotificationService`, `NotificationInboxService`, `NotificationMeterProvider` | `notifications`, `notification_recipients` |
 | **Audit Log** | `AuditLogService` | `audit_log_entries` |
 | **Agent** | `AgentService`, `AgentSettingsService`, `AgentPromptAssembler`, `AgentToolDispatcher`, `AgentUserSnapshotProvider`, `AgentAbuseDetector`, `AnthropicClient`, `AgentConversationRetentionJob` | `agent_conversations`, `agent_messages`, `agent_settings` |
-| **Event Guide** | `EventService` | `events`, `event_guide_settings`, `event_categories`, `event_venues`, `event_moderation_actions`, `event_favourites`, `event_preferences` |
+| **Event Guide** | `Service` (G5 project `Humans.Events`; implements the section-internal `IEventService`, with `IEventServiceRead` published cross-section via `Humans.Events.Contracts`) | `events`, `event_guide_settings`, `event_categories`, `event_venues`, `event_moderation_actions`, `event_favourites`, `event_preferences` |
 | **Survey** | `SurveyService` | `surveys`, `survey_questions`, `survey_question_options`, `survey_invitations`, `survey_responses`, `survey_answers` |
 
-**`system_settings` is owned by the System Settings section** (`SystemSettingsService` / `SystemSettingsRepository`) and exposed cross-section via `ISystemSettingsService`; consuming sections read/write their keys through it rather than touching the table directly. Currently-tracked keys: `IsEmailSendingPaused` (Email's send-pause flag), `DriveActivityMonitor:LastRunAt` (Google Integration's drive-monitor last-run).
+**`system_settings` is owned by the System Settings section** (G5 project `Humans.SystemSettings`; its internal `Service` / `Repository`) and exposed cross-section via `ISystemSettingsService`; consuming sections read/write their keys through it rather than touching the table directly. Currently-tracked keys: `IsEmailSendingPaused` (Email's send-pause flag), `DriveActivityMonitor:LastRunAt` (Google Integration's drive-monitor last-run).
 
 **Admin is not a section.** The `/Admin/*` controllers are a nav holder for admin-only actions that live in other sections (outbox pause in Email, suspend/purge in Profiles, account merge in Users, sync settings in Google Integration, role assignments in Auth, legal-doc management in Consent). Services referenced from `AdminController` belong to their owning section, not to Admin.
 
@@ -339,12 +342,13 @@ See [`docs/features/global/gdpr-export.md`](../features/global/gdpr-export.md) f
 
 §8a's GDPR export is one instance of a recurring shape: an **orchestrator that owns no tables, injects `IEnumerable<IContributor>`, calls only the contributor interface, and merges the returned slices** — never reaching into another section's repository or running cross-section `Include` chains. Sections opt in by implementing the contributor interface; each contributor reads only its own owned tables, and cross-section names flow through the existing `I{Section}ServiceRead` surfaces. The orchestrator iterates sequentially and never appears in §8's table-ownership map. **The original reason for iterating sequentially is obsolete** — it was "the contributors share the scoped `HumansDbContext`, which is not thread-safe", but since the per-section split (nobodies-collective/Humans#858) contributors such as `ExpenseReportService`, `SurveyService`, `AgentService`, `EventService` and `HoldedFinanceService` read through their own `IDbContextFactory<TContext>` against separate contexts, and independent factory-created contexts are safe to use concurrently (EF's restriction is on concurrent operations against the *same* instance). Sequential iteration is now a consistency and simplicity choice, not a correctness requirement.
 
-Two fanouts exist today:
+Three fanouts exist today:
 
 | Orchestrator | Contributor interface | Sections that opt in | Merged result |
 |--------------|----------------------|----------------------|---------------|
 | `IGdprExportService` | `IUserDataContributor` (`Humans.Application.Interfaces.Gdpr`) | every user-scoped §8 section (see §8a) | GDPR Article 15 export document |
 | `IICalFeedService` (`ICalFeedService`) | `ICalendarFeedContributor` (`Humans.Application.Interfaces.ICalFeed`) | `EventService` (Event Guide), `ShiftSignupService` (Shifts) | a user's personal iCal `VCALENDAR` of `CalendarFeedItem` rows |
+| `IEarlyEntryService` (`EarlyEntryOrchestrator`) | `IEarlyEntryProvider` (`Humans.Application.Interfaces.EarlyEntry`) | Camps, Shifts, Teams | a user's assembled early-entry grants |
 
 Each contributor wires up with the same forwarding registration as §8a, so one scoped instance serves both the section's primary interface and the contributor interface:
 
@@ -353,6 +357,9 @@ services.AddScoped<ICalendarFeedContributor>(sp => sp.GetRequiredService<EventSe
 ```
 
 **Invariant:** a new cross-section need of this shape — assembling per-user (or per-aggregate) rows from several sections into one document — MUST follow the contributor pattern (orchestrator owning no tables, fanning out over a contributor interface that sections opt into) rather than the orchestrator making direct cross-section service calls section-by-section. Direct calls couple the orchestrator to every contributing section and bypass the opt-in registration that keeps the fanout list honest.
+
+<!-- wheat: docs/superpowers/plans/2026-06-02-team-early-entry.md §Task 11 -->
+**Which instance a section forwards** to a contributor interface follows where that contributor's read is actually served from, not a fixed lifetime. Forward the caching decorator only when the fanout read comes off the section's cached projection — `CampsSectionExtensions` registers `AddSingleton<IEarlyEntryProvider>(sp => sp.GetRequiredService<CachingCampService>())` because `CachingCampService.GetEarlyEntriesAsync` projects entirely from the cached `CampSettingsInfo` + `CampInfo` snapshot. Otherwise forward the inner scoped service: `TeamsSectionExtensions` and `ShiftsSectionExtensions` both register scoped providers, because `team_early_entry_grants` and the volunteer-tracking rows are read from the repository per call and are not in `TeamInfo`. The orchestrator is keyed-scoped so it resolves either lifetime; registering a decorator that does not itself serve the read buys no caching and only adds a hop.
 
 ### 8c. Special-Category (GDPR Art. 9) Fields Are Guarded by Convention, Not by Type
 

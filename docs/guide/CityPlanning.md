@@ -24,10 +24,12 @@ Three entities back this section: `CityPlanningSettings` (per-year singleton, co
 
 ## Key pages at a glance
 
-- **Barrio map** (`/CityPlanning`) — authenticated humans view the live full-screen map of placed camps.
-- **Admin panel** (`/CityPlanning/Admin`) — map admins (Camp Admin or City Planning team members) toggle placement, set informational placement dates, upload overlays, export and import GeoJSON.
+- **Overview map** (`/CityPlanning`) — authenticated humans view the live full-screen map, with layer toggles for containers and barrio zones and a measuring tool. Read-only.
+- **Barrio map** (`/CityPlanning/BarrioMap`) — where placements are actually drawn and edited. Linked from the overview map for camp leads while placement is open, and for map admins at any time.
+- **Container map** (`/CityPlanning/ContainerMap/{year}`) — the container placement view, linked from the overview map on the same terms.
+- **Admin panel** (`/CityPlanning/BarrioMap/Admin`) — map admins (Camp Admin or City Planning team members) toggle placement, set informational placement dates, upload overlays, export and import GeoJSON. Container admin lives under `/CityPlanning/BarrioMap/Admin/Containers/{year}`.
 
-The map page is a single full-screen view. Editing, polygon history, the placement-phase card, and admin actions are all surfaced through panels inside it. The separate Admin panel is where overlay zones are uploaded and placement is toggled.
+Each map is its own full-screen view. On the barrio map, editing, polygon history and the placement-phase card are surfaced through panels inside it. The separate Admin panel is where overlay zones are uploaded and placement is toggled.
 
 An API under `/api/city-planning/` and a SignalR hub at `/hubs/city-planning` power live polygon updates and cursor broadcast.
 
@@ -40,7 +42,7 @@ Anyone signed in can open the map and watch it evolve:
 - **See who else is on the map.** Other humans' cursors appear live as they move. When anyone saves a placement the map updates for everyone — no refresh needed.
 - **Check the placement phase.** A card shows whether placement is open or closed, and a help modal lists the scheduled open and close dates (informational, Spain time).
 
-If you are a **Camp Lead** and placement is open, you also get tools to place and adjust your own barrio:
+If you are a **Camp Lead** and placement is open, the overview map links you through to the barrio map (`/CityPlanning/BarrioMap`), where you get tools to place and adjust your own barrio:
 
 - **Place your barrio.** Enter edit mode for your camp, draw your placement on the map, and save. Area and edge lengths update live while you draw.
 - **Adjust an existing placement.** Move corners, reshape, or reposition. Saving writes a history entry with the note "Saved".
@@ -55,7 +57,7 @@ Map admin access is held by **Camp Admin**, **[Admin](Glossary.md#admin)**, and 
 - **Edit any camp's placement.** Draw, reshape, or move any placement regardless of who leads the camp and regardless of placement phase.
 - **Place on behalf of a camp.** The admin dropdown lists camp seasons without a placement; pick one to start drawing.
 - **Restore a prior version.** From a placement's history, choose a past version and restore. The current state writes to history first with the note "Restored from {timestamp}", then the placement is overwritten. History is append-only — nothing is ever lost.
-- **Toggle placement.** From [/CityPlanning/Admin](/CityPlanning/Admin), open or close placement. Timestamps are recorded. Closing blocks camp leads from editing but not you.
+- **Toggle placement.** From [/CityPlanning/BarrioMap/Admin](/CityPlanning/BarrioMap/Admin), open or close placement. Timestamps are recorded. Closing blocks camp leads from editing but not you.
 - **Set informational placement dates.** Scheduled open and close datetimes show in the help modal. They do not auto-open or auto-close the phase.
 - **Upload a limit zone.** A GeoJSON FeatureCollection defining the site boundary. Renders as a dashed outline coloured by each feature's `SoundZone` property (white dashes when the property is absent); placements drawn outside it are flagged. Download and delete are supported.
 - **Upload official zones.** A GeoJSON FeatureCollection of named read-only overlay zones (dark gray, labeled). Each Feature needs a `name` property. Download and delete supported.

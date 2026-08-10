@@ -1,10 +1,10 @@
 <!-- freshness:triggers
+  src/Humans.UI/Controllers/HumansCampControllerBase.cs
   src/Humans.Application/Services/Camps/**
   src/Humans.Web/Controllers/CampController.cs
   src/Humans.Web/Controllers/CampAdminController.cs
   src/Humans.Web/Controllers/CampApiController.cs
   src/Humans.Web/Controllers/CampComplianceController.cs
-  src/Humans.Web/Controllers/HumansCampControllerBase.cs
   src/Humans.Web/Views/Camp/**
   src/Humans.Web/Views/CampAdmin/**
   src/Humans.Web/Views/CampCompliance/**

@@ -33,7 +33,7 @@ Admins and coordinators receive many email notifications that lack shared state.
 - `TargetGroupName` (string, nullable, max 100) -- display name for group targets
 - `CreatedAt` (Instant)
 - `ResolvedAt` (Instant, nullable) -- when resolved, shared across all recipients
-- `ResolvedByUserId` (Guid, nullable, FK -> User) -- who resolved it
+- `ResolvedByUserId` (Guid, nullable) -- who resolved it; bare cross-section id, no FK constraint, no nav (#992)
 
 ### NotificationRecipient
 - Composite PK: (NotificationId, UserId)

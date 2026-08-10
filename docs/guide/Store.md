@@ -1,17 +1,5 @@
 <!-- freshness:triggers
-  src/Humans.Application/Services/Store/**
-  src/Humans.Application/Interfaces/Store/**
-  src/Humans.Application/Interfaces/Repositories/IStoreRepository.cs
-  src/Humans.Domain/Entities/StoreOrder.cs
-  src/Humans.Domain/Entities/StoreOrderLine.cs
-  src/Humans.Domain/Entities/StoreProduct.cs
-  src/Humans.Domain/Entities/StorePayment.cs
-  src/Humans.Domain/Entities/StoreInvoice.cs
-  src/Humans.Infrastructure/Data/Configurations/Store/**
-  src/Humans.Infrastructure/Repositories/Store/**
-  src/Humans.Web/Controllers/StoreController.cs
-  src/Humans.Web/Controllers/StoreAdminController.cs
-  src/Humans.Web/Authorization/Requirements/StoreOrderAuthorizationHandler.cs
+  src/Sections/Humans.Store/**
 -->
 <!-- freshness:flag-on-change
   Store catalog editing, order lifecycle, ordering deadline gate, invoice issuance, treasury sync matching, Stripe checkout, and resource-based authorization — review when Store services/entities/controllers/auth handlers change.

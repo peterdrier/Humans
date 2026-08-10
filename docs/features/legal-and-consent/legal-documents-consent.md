@@ -115,8 +115,7 @@ As a nonprofit operating in Spain and the EU, Nobodies Collective must comply wi
 LegalDocument
 +-- Id: Guid
 +-- Name: string (256)
-+-- TeamId: Guid (FK -> Team) [required]
-+-- Team: Team [navigation]
++-- TeamId: Guid (FK -> Team) [required, FK only — no navigation property]
 +-- GracePeriodDays: int (default 7)
 +-- GitHubFolderPath: string? (512)
 +-- CurrentCommitSha: string (40)
@@ -124,7 +123,7 @@ LegalDocument
 +-- IsActive: bool
 +-- CreatedAt: Instant
 +-- LastSyncedAt: Instant
-+-- Navigation: Versions, Team
++-- Navigation: Versions (team name resolved via ITeamService, stitched onto DTOs — not a nav property)
 ```
 
 ### DocumentVersion Entity
