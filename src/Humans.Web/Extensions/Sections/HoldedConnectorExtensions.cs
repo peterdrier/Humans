@@ -5,7 +5,7 @@ using Humans.Infrastructure.Services.Holded;
 namespace Humans.Web.Extensions.Sections;
 
 /// <summary>
-/// The Holded HTTP client and the nightly pull job. **Not** the Finance section — Finance moved
+/// The Holded HTTP client and its recurring jobs. **Not** the Finance section — Finance moved
 /// to <c>src/Sections/Humans.Finance</c> and registers itself (nobodies-collective/Humans#866).
 /// </summary>
 /// <remarks>
@@ -42,6 +42,7 @@ public static class HoldedConnectorExtensions
         });
 
         services.AddScoped<HoldedSyncJob>();
+        services.AddScoped<HoldedExpenseOutboxJob>();
 
         return services;
     }
