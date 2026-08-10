@@ -9,6 +9,8 @@ COPY src/Humans.Application/Humans.Application.csproj src/Humans.Application/
 COPY src/Humans.Infrastructure/Humans.Infrastructure.csproj src/Humans.Infrastructure/
 COPY src/Humans.UI/Humans.UI.csproj src/Humans.UI/
 COPY src/Humans.Web/Humans.Web.csproj src/Humans.Web/
+COPY src/Sections/Humans.Surveys/Humans.Surveys.csproj src/Sections/Humans.Surveys/
+COPY src/Sections/Humans.Surveys.Contracts/Humans.Surveys.Contracts.csproj src/Sections/Humans.Surveys.Contracts/
 
 # Restore packages
 RUN dotnet restore src/Humans.Web/Humans.Web.csproj

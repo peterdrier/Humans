@@ -18,6 +18,8 @@
     <Project Path="src/Sections/Humans.Finance/Humans.Finance.csproj" />
     <Project Path="src/Sections/Humans.Finance.Contracts/Humans.Finance.Contracts.csproj" />
     <Project Path="src/Sections/Humans.Store/Humans.Store.csproj" />
+    <Project Path="src/Sections/Humans.Surveys/Humans.Surveys.csproj" />
+    <Project Path="src/Sections/Humans.Surveys.Contracts/Humans.Surveys.Contracts.csproj" />
     <Project Path="src/Sections/Humans.SystemSettings/Humans.SystemSettings.csproj" />
     <Project Path="src/Sections/Humans.SystemSettings.Contracts/Humans.SystemSettings.Contracts.csproj" />
   </Folder>
@@ -32,6 +34,7 @@
     <Project Path="tests/Humans.Expenses.Tests/Humans.Expenses.Tests.csproj" />
     <Project Path="tests/Humans.Finance.Tests/Humans.Finance.Tests.csproj" />
     <Project Path="tests/Humans.Store.Tests/Humans.Store.Tests.csproj" />
+    <Project Path="tests/Humans.Surveys.Tests/Humans.Surveys.Tests.csproj" />
     <Project Path="tests/Humans.SystemSettings.Tests/Humans.SystemSettings.Tests.csproj" />
     <Project Path="tests/Humans.Web.Tests/Humans.Web.Tests.csproj" />
   </Folder>

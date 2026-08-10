@@ -55,7 +55,7 @@ public class ServiceBoundaryArchitectureTests
             [typeof(INotificationRepository)] = "Notifications",
             [typeof(IRoleAssignmentRepository)] = "Auth",
             [typeof(IShiftManagementRepository)] = "Shifts",
-            [typeof(ISurveyRepository)] = "Surveys",
+            [SectionRepository("Humans.Surveys.Data.ISurveyRepository")] = "Surveys",
             [typeof(ISyncSettingsRepository)] = "GoogleIntegration",
             [typeof(ITeamRepository)] = "Teams",
             [typeof(ITicketRepository)] = "Tickets",

@@ -8,7 +8,7 @@
 
 **Tech Stack:** ASP.NET Core MVC, EF Core (Npgsql/Postgres, jsonb), NodaTime (`Instant`/`IClock`), Hangfire (recurring job), ASP.NET Data Protection (invite tokens), xUnit + FluentAssertions, Roslyn architecture analyzers (HUM0017/HUM0025).
 
-**Spec:** `docs/superpowers/specs/2026-06-03-survey-section-design.md` (decisions resolved 2026-06-04, §15).
+**Spec:** `src/Sections/Humans.Surveys/Docs/2026-06-03-survey-section-design.md` (decisions resolved 2026-06-04, §15).
 
 ---
 

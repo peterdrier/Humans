@@ -11,6 +11,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Npgsql;
 using Xunit;
 using Humans.Events.Data;
+using Humans.Surveys.Data;
 
 namespace Humans.Integration.Tests.Infrastructure;
 

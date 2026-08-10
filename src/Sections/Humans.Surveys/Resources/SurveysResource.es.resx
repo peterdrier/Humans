@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ReSharper disable MarkupTextTypo -->
+<root xmlns:ns1="urn:schemas-microsoft-com:xml-msdata" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:schema id="root">
+    <xs:element name="root" ns1:IsDataSet="true">
+      <xs:complexType>
+        <xs:choice maxOccurs="unbounded">
+          <xs:element name="data">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element name="value" type="xsd:string" minOccurs="0" ns1:Ordinal="1" />
+                <xs:element name="comment" type="xsd:string" minOccurs="0" ns1:Ordinal="2" />
+              </xs:sequence>
+              <xs:attribute name="name" type="xsd:string" ns1:Ordinal="0" />
+              <xs:attribute name="type" type="xsd:string" />
+              <xs:attribute name="mimetype" type="xsd:string" />
+            </xs:complexType>
+          </xs:element>
+          <xs:element name="resheader">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element name="value" type="xsd:string" minOccurs="0" ns1:Ordinal="1" />
+              </xs:sequence>
+              <xs:attribute name="name" type="xsd:string" use="required" />
+            </xs:complexType>
+          </xs:element>
+        </xs:choice>
+      </xs:complexType>
+    </xs:element>
+  </xs:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>1.3</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="Survey_TransparencyNote" xml:space="preserve"><value>Tus respuestas pueden ser revisadas y analizadas, incluso mediante herramientas automatizadas, para mejorar el colectivo.</value></data>
+  <data name="Survey_TitleFallback" xml:space="preserve"><value>Encuesta</value></data>
+  <data name="Survey_ResumeNotice" xml:space="preserve"><value>Tienes respuestas en curso — continúa donde lo dejaste.</value></data>
+  <data name="Survey_Language" xml:space="preserve"><value>Idioma</value></data>
+  <data name="Survey_AnonymityLegend" xml:space="preserve"><value>¿Cómo quieres responder?</value></data>
+  <data name="Survey_Anonymity_Identified" xml:space="preserve"><value>Identificado</value></data>
+  <data name="Survey_Anonymity_IdentifiedHelp" xml:space="preserve"><value>vinculado a ti; puedes parar y continuar más tarde.</value></data>
+  <data name="Survey_Anonymity_CompletionTracked" xml:space="preserve"><value>Participación registrada</value></data>
+  <data name="Survey_Anonymity_CompletionTrackedHelp" xml:space="preserve"><value>tus respuestas no se vinculan a ti, pero tu participación se registra.</value></data>
+  <data name="Survey_Anonymity_Anonymous" xml:space="preserve"><value>Anónimo</value></data>
+  <data name="Survey_Anonymity_AnonymousHelp" xml:space="preserve"><value>sin ningún vínculo contigo.</value></data>
+  <data name="Survey_AnonymityFootnote" xml:space="preserve"><value>Las respuestas anónimas y con participación registrada no se pueden retomar, y aún podrías recibir un recordatorio. Solo una respuesta identificada se puede pausar y continuar más tarde.</value></data>
+  <data name="Survey_Start" xml:space="preserve"><value>Empezar</value></data>
+  <data name="Survey_Continue" xml:space="preserve"><value>Continuar</value></data>
+  <data name="Survey_PageOf" xml:space="preserve"><value>Página {0} de {1}</value></data>
+  <data name="Survey_RequiredAlert" xml:space="preserve"><value>Por favor, responde las preguntas obligatorias antes de continuar.</value></data>
+  <data name="Survey_QuestionRequired" xml:space="preserve"><value>Esta pregunta es obligatoria.</value></data>
+  <data name="Survey_Back" xml:space="preserve"><value>Atrás</value></data>
+  <data name="Survey_Next" xml:space="preserve"><value>Siguiente</value></data>
+  <data name="Survey_Submit" xml:space="preserve"><value>Enviar</value></data>
+  <data name="Survey_Closed_Title" xml:space="preserve"><value>Encuesta no disponible</value></data>
+  <data name="Survey_Closed_Heading" xml:space="preserve"><value>Esta encuesta está cerrada</value></data>
+  <data name="Survey_Closed_Body" xml:space="preserve"><value>Gracias por tu interés — esta encuesta ya no acepta respuestas.</value></data>
+  <data name="Survey_InvalidLink_Heading" xml:space="preserve"><value>Este enlace ya no es válido</value></data>
+  <data name="Survey_InvalidLink_Body" xml:space="preserve"><value>El enlace de la encuesta no es válido o ha caducado. Si crees que es un error, solicita un enlace nuevo.</value></data>
+  <data name="Survey_ThankYou_Heading" xml:space="preserve"><value>Gracias</value></data>
+  <data name="Survey_ThankYouFallback" xml:space="preserve"><value>Gracias por tu respuesta.</value></data>
+</root>

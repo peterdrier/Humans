@@ -1,6 +1,7 @@
 using Humans.Application.Configuration;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Services;
 using Humans.Web.Extensions.Infrastructure;
 using Humans.Web.Extensions.Sections;
@@ -46,7 +47,6 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddGateSection();
         services.AddFeedbackSection();
         services.AddIssuesSection();
-        services.AddSurveySection();
         services.AddNotificationsSection();
         services.AddLegalAndConsentSection();
         services.AddCampaignsSection();
@@ -60,6 +60,12 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSearchSection();
         services.AddHoldedConnector(configuration);
         services.AddMailerSection(configuration);
+
+        // Recurring jobs for sections that have already moved out. The job types stay in
+        // Humans.Infrastructure/Jobs because UseHumansRecurringJobs names them by concrete
+        // type and there is no ISection-style discovery seam for jobs yet (design §15.6b);
+        // each reaches its section through that section's contracts leaf.
+        services.AddScoped<SendSurveyReminderJob>();
 
         // Sections that have moved into their own project (nobodies-collective/Humans#866)
         // register themselves via ISection and are discovered, not named. The roll-call
