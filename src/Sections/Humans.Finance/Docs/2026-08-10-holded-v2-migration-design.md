@@ -23,6 +23,7 @@ Holded launched API v2 (June 2026): REST/JSON at `https://api.holded.com/api/v2`
 4. Admin screen gets a **Full sync** button alongside incremental sync.
 5. **Holded becomes its own vertical section** — `src/Sections/Humans.Holded` + `Humans.Holded.Contracts` — owning the external-system mirror and connection ops. Finance keeps the business meaning. (Supersedes the earlier "lands in Finance" call, made before #1239/#1240 finished the G5 extractions.)
 6. No `I<Section>ServiceRead` interfaces — the post-#1240 convention: the Contracts leaf is the public surface and carries only what other sections/Base actually consume; everything else stays `internal`.
+7. **Tags are dead on the write side** (Peter, 2026-08-10 evening). They were a v1 workaround from before double-entry was understood. v2 books `items[].account` (the mapped 629 expense-account id) at doc creation, so the doc is right from the start; actuals-vs-budget derives from the ledger per 629 account joined through the category map — no matching guesswork. v2 has no tag-update endpoint anyway (confirmed in the OpenAPI spec), so retag-on-recategorize is deleted; a mis-booked doc is reclassified inside Holded and the mirror pulls the correction back. Read-side tag matching survives only for the legacy-doc unmatched queue.
 
 ## Section architecture
 

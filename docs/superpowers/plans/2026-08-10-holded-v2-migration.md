@@ -154,8 +154,8 @@ Task<IReadOnlySet<string>> ListDraftPurchaseIdsAsync(CancellationToken ct = defa
 ```
 
 **v2 wire shapes:**
-- `POST /api/v2/purchases` `{contact_id, contact_name, date:"2026-05-14", description, tags:[…], items:[{name, units:1, price}]}` → 201 `{id}`. The POST item schema has no `tags` — all tags go doc-level (read side already unions doc+line tags).
-- `PUT /api/v2/purchases/{id}` `{tags:[…]}`.
+- `POST /api/v2/purchases` `{contact_id, contact_name, date:"2026-05-14", description, items:[{name, units:1, price, account}]}` → 201 `{id}`. **`items[].account` = the mapped 629 expense-account id** (Holded id string; `holded_category_map.HoldedAccountId`) — the doc is booked to the right department from birth. **No tags are written** (Peter, 2026-08-10: tags were a v1 workaround from before double-entry was understood; the account IS the category). `HoldedPurchaseDocumentLineInput` gains `AccountId`; tag-input properties with zero remaining writers are deleted.
+- **There is no tag/doc update call in v2** (confirmed against the OpenAPI spec: PUT is full-replacement, no tags field; no assignment endpoint). `UpdatePurchaseDocumentTagsAsync` is DELETED; the `UpdateIncomingDocTag` outbox handler completes such events with an informational log (keep the enum member — prod may hold queued rows that must drain, not poison). Recategorize-after-push is now done inside Holded (reclassify the line); the ledger mirror + reconciliation pull the correction back automatically.
 - `POST /api/v2/purchases/{id}/attachments` — multipart, part name `file`.
 - `GET /api/v2/purchases` (cursor) items: `{id, document_number, contact_id, contact_name, date:"2024-01-15", subtotal:"100.00", tax:"21.00", total:"121.00", currency:"EUR", status, tags:[], lines:[{price:"100.00", units:1, account, …}], payments_total, payments_pending}`. `lines[].account`: **probe its runtime type once with the dev token** — v1 sent the account id string; `HoldedMatchEntry` carries both `HoldedAccountId` and `HoldedAccountNumber`, so map whichever arrives (integer → resolve to the mapped id by number before `HoldedMatcher.Match`).
 - `GET /api/v2/purchases/{id}`: has `approved_at` (ISO), `draft`, `payments_total`, `payments_pending` → keep `HoldedPurchaseDocumentDto` shape, parse `approved_at` → Instant?.
@@ -190,8 +190,10 @@ public interface IHoldedService : IApplicationService
 {
     /// <summary>Cached journal lines for one account. Zero Holded calls.</summary>
     Task<IReadOnlyList<HoldedLedgerLineInfo>> GetLedgerLinesAsync(int accountNum, CancellationToken ct = default);
-    /// <summary>Per-account balance (Σdebit − Σcredit) for every account with cached lines.</summary>
-    Task<IReadOnlyDictionary<int, decimal>> GetAccountBalancesAsync(CancellationToken ct = default);
+    /// <summary>Per-account balance (Σdebit − Σcredit) for every account with cached lines,
+    /// optionally restricted to one calendar year (Madrid zone) — the year form feeds Finance's
+    /// ledger-derived actuals.</summary>
+    Task<IReadOnlyDictionary<int, decimal>> GetAccountBalancesAsync(int? calendarYear = null, CancellationToken ct = default);
     /// <summary>Ledger mirror sync; false when a sweep was already running and this one was skipped.
     /// full=false: trailing 364-day window anchored on now. full=true / cold cache: inception → today.
     /// Both refresh the accounts cache, reconcile per-account totals with targeted re-pulls, and
@@ -353,6 +355,7 @@ Finance `Service` rewiring (ctor gains `IHoldedService holded`, drops nothing el
 - `GetCreditorStatusAsync`: `repo.GetLedgerLinesByAccountNumAsync(num)` → `holded.GetLedgerLinesAsync(num)`; derivations unchanged (post-#1241 shape — no `Payments` list).
 - `GetCreditorLedgerAsync`: same swap; map `HoldedLedgerLineInfo` → `CreditorLedgerLine` (existing Finance.Contracts type).
 - `ListCreditorAccountsAsync`: `repo.GetAllLedgerLinesAsync()` grouping → `holded.GetAccountBalancesAsync()` filtered to the creditor block (`CreditorAccountMin/Max` stay in Finance).
+- **`GetActualsForYearAsync` becomes ledger-derived** (the tag-era doc-matching path was guesswork): for each active `holded_category_map` row, actual = `holded.GetAccountBalancesAsync(calendarYear)` value for its `HoldedAccountNumber` (missing → 0). `HoldedActualRow.DocCount` loses meaning — keep the record shape, pass 0, and note it for a later contracts cleanup (or drop the field now if all consumers are in-solution and trivial to fix — prefer dropping). Doc-matching (`MapDoc`/`HoldedMatcher`) survives ONLY to power the `/Finance/HoldedUnmatched` queue for legacy tag-era docs and catch-all bookings.
 - `HoldedSyncJob`: `await finance.SyncAsync(ct); await holded.SyncLedgerAsync(full: false, ct);` (ctor gains `IHoldedService`).
 
 - [ ] **Step 1: failing tests** (`HoldedLedgerSyncTests.cs`: fake `IHoldedClient` + real `Repository` over EF-InMemory + `FakeClock`):
