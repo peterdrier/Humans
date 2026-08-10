@@ -339,6 +339,7 @@ internal sealed class Service(
     // deployment (see CLAUDE.md), so an in-process gate is the whole requirement.
     private static readonly SemaphoreSlim LedgerSyncGate = new(1, 1);
 
+    /// <summary>Refreshes the cached creditor daybook lines from Holded.</summary>
     /// <returns>False when another sweep was already running and this one was skipped.</returns>
     public async Task<bool> SyncCreditorLedgerAsync(bool fullHistory = false, CancellationToken ct = default)
     {

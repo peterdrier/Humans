@@ -10,11 +10,10 @@ public interface IHoldedFinanceService : IApplicationService
     Task<IReadOnlyList<HoldedActualRow>> GetActualsForYearAsync(int calendarYear, CancellationToken ct = default);
     Task<IReadOnlyList<HoldedUnmatchedRow>> GetUnmatchedAsync(CancellationToken ct = default);
 
-    /// <summary>Nightly cache refresh of the Holded daybook (creditor journal lines): full-history
-    /// backfill on first run, incremental append thereafter. Everything else derives from these lines.</summary>
-    /// <summary>Nightly (<paramref name="fullHistory"/> false) sweeps one trailing ≤1-year window —
-    /// a single Holded call. The full backward sweep costs one call per year of books, so it runs only
-    /// on request or against a cold cache.</summary>
+    /// <summary>Cache refresh of the Holded daybook (creditor journal lines); everything else derives
+    /// from these. The nightly run (<paramref name="fullHistory"/> false) sweeps one trailing ≤1-year
+    /// window ending now — a single Holded call. The full backward sweep costs one call per year of
+    /// books, so it runs only on request or against a cold cache. Sweeps are serialized.</summary>
     /// <returns>False when another sweep was already running and this one was skipped.</returns>
     Task<bool> SyncCreditorLedgerAsync(bool fullHistory = false, CancellationToken ct = default);
 
