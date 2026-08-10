@@ -163,20 +163,20 @@ internal sealed class EventsExportController(
         return results;
     }
 
-    public sealed class PrintGuideViewModel
+    internal sealed class PrintGuideViewModel
     {
         public string EventName { get; set; } = string.Empty;
         public string? TimeZoneId { get; set; }
         public List<PrintGuideDayGroup> DayGroups { get; set; } = [];
     }
 
-    public sealed class PrintGuideDayGroup
+    internal sealed class PrintGuideDayGroup
     {
         public string DayLabel { get; set; } = string.Empty;
         public List<PrintGuideEntry> Entries { get; set; } = [];
     }
 
-    public sealed class PrintGuideEntry
+    internal sealed class PrintGuideEntry
     {
         public string Title { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;

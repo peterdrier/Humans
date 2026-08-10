@@ -8,9 +8,9 @@ internal static class BalanceCalculator
     /// Current catalog price components for a product, used to reprice the lines
     /// of an <see cref="OrderState.Open"/> order. See nobodies-collective/Humans#816.
     /// </summary>
-    public readonly record struct ProductPrice(decimal UnitPriceEur, decimal VatRatePercent, decimal? DepositAmountEur);
+    internal readonly record struct ProductPrice(decimal UnitPriceEur, decimal VatRatePercent, decimal? DepositAmountEur);
 
-    public sealed record LineTotals(
+    internal sealed record LineTotals(
         Guid LineId,
         decimal EffectiveUnitPrice,
         decimal EffectiveVatRate,
@@ -20,7 +20,7 @@ internal static class BalanceCalculator
         decimal DepositEur,
         decimal TotalEur);
 
-    public sealed record Result(
+    internal sealed record Result(
         decimal LinesSubtotalEur,
         decimal VatTotalEur,
         decimal DepositTotalEur,
