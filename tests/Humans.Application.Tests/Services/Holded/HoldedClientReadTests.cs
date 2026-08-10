@@ -176,6 +176,23 @@ public class HoldedClientReadTests
     }
 
     [HumansFact]
+    public async Task ListLedgerEntries_throws_when_page_cap_hit()
+    {
+        // A truncated fetch here would drive replace-semantics reconciliation to delete rows that
+        // still exist in Holded — lossy becomes destructive, so the cap must throw, never log-and-return.
+        var handler = new StubHandler(_ => Respond(HttpStatusCode.OK, """
+            {"items":[],"cursor":"c1","has_more":true}
+            """));
+
+        var client = Make(handler);
+        var act = async () => await client.ListLedgerEntriesAsync(
+            new LocalDate(2026, 1, 1), new LocalDate(2026, 1, 31),
+            ct: Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<HoldedTransientException>();
+    }
+
+    [HumansFact]
     public async Task ListLedgerEntries_passes_account_filter()
     {
         string? capturedQuery = null;

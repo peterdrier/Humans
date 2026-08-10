@@ -415,7 +415,9 @@ public sealed class HoldedClient : IHoldedClient
     }
 
     /// <summary>Walks a v2 cursor-paginated collection: follows `cursor` while `has_more`, collecting
-    /// `items` elements. Caps at pageSafetyCap pages and logs when hit (no silent caps).</summary>
+    /// `items` elements. Throws when pageSafetyCap is hit rather than returning a truncated result —
+    /// these lists feed replace-semantics reconciliation downstream, so a silently short fetch would
+    /// drive deletion of rows that still exist in Holded (lossy becomes destructive).</summary>
     private async Task<List<JsonNode>> GetPagedAsync(
         string pathAndQuery, int pageSafetyCap, CancellationToken ct)
     {
@@ -438,10 +440,10 @@ public sealed class HoldedClient : IHoldedClient
             cursor = Prop(root, "cursor")?.GetValue<string>();
             if (!hasMore || cursor is null) return items;
         }
-        _logger.LogWarning(
-            "Holded cursor pagination hit the {Cap}-page safety cap for {PathAndQuery}; results may be truncated.",
-            pageSafetyCap, pathAndQuery);
-        return items;
+
+        var endpoint = pathAndQuery.Split('?', 2)[0];
+        throw new HoldedTransientException(
+            $"Holded cursor pagination for {endpoint} hit the {pageSafetyCap}-page safety cap.");
     }
 
     private static Instant ParseLedgerDate(string s) =>
