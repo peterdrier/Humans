@@ -1,3 +1,5 @@
+using System.Collections.Concurrent;
+
 using Humans.Domain.Enums;
 
 namespace Humans.UI.Models.Tables;
@@ -19,7 +21,11 @@ namespace Humans.UI.Models.Tables;
 /// </remarks>
 public static class EnumBadgeMap
 {
-    private static readonly Dictionary<Enum, string> Map = new()
+    // ConcurrentDictionary, not Dictionary: parallel integration-test classes each compose
+    // their own host (per-test isolation, nobodies-collective/Humans#983), so Section.Register
+    // calls race against this shared static — and a host mid-composition writes while another
+    // host's requests read.
+    private static readonly ConcurrentDictionary<Enum, string> Map = new()
     {
         [TicketAttendeeStatus.Valid] = "bg-success",
         [TicketAttendeeStatus.CheckedIn] = "bg-info",
@@ -77,19 +83,16 @@ public static class EnumBadgeMap
     {
         foreach (var (value, cssClass) in rows)
         {
-            if (Map.TryGetValue(value, out var existing))
+            // GetOrAdd makes check-and-add atomic; two hosts registering the same row
+            // concurrently both see the winning value and agree.
+            var existing = Map.GetOrAdd(value, cssClass);
+            if (!string.Equals(existing, cssClass, StringComparison.Ordinal))
             {
-                if (!string.Equals(existing, cssClass, StringComparison.Ordinal))
-                {
-                    throw new ArgumentException(
-                        $"{value.GetType().Name}.{value} is already mapped to '{existing}'; "
-                        + $"cannot re-map it to '{cssClass}'.",
-                        nameof(rows));
-                }
-                continue;
+                throw new ArgumentException(
+                    $"{value.GetType().Name}.{value} is already mapped to '{existing}'; "
+                    + $"cannot re-map it to '{cssClass}'.",
+                    nameof(rows));
             }
-
-            Map[value] = cssClass;
         }
     }
 
