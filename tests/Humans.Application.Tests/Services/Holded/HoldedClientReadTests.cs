@@ -116,18 +116,139 @@ public class HoldedClientReadTests
     }
 
     [HumansFact]
-    public async Task ListDailyLedger_surfaces_an_unreadable_line_as_permanent_not_a_raw_parse_throw()
+    public async Task ListLedgerEntries_parses_ddMMyyyy_dates_and_string_decimals()
     {
-        // ReadInt's GetValue<decimal> throws on a non-numeric account. Fail the page rather than
-        // drop the line: creditor balances are summed from these debits and credits.
-        var client = Make(new StubHandler(_ => Respond(
-            HttpStatusCode.OK, """[{"entryNumber":1,"account":"not-a-number","debit":10.0}]""")));
+        var json = """
+        {"items":[{"entry_number":2064,"line":2,"date":"09/02/2026","type":"payment",
+          "description":"","doc_description":"","account":40000004,"debit":"0.00",
+          "credit":"1200.00","tags":[],"checked":false}],"cursor":null,"has_more":false}
+        """;
+        var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, json)));
 
-        var act = async () => await client.ListDailyLedgerAsync(
-            Instant.FromUnixTimeSeconds(0), Instant.FromUnixTimeSeconds(86400),
-            Xunit.TestContext.Current.CancellationToken);
+        var lines = await client.ListLedgerEntriesAsync(
+            new LocalDate(2026, 1, 1), new LocalDate(2026, 12, 31),
+            ct: Xunit.TestContext.Current.CancellationToken);
+
+        lines.Should().HaveCount(1);
+        var line = lines[0];
+        line.EntryNumber.Should().Be(2064);
+        line.Line.Should().Be(2);
+        line.AccountNum.Should().Be(40000004);
+        line.Debit.Should().Be(0.00m);
+        line.Credit.Should().Be(1200.00m);
+        line.Type.Should().Be("payment");
+        line.Date.Should().Be(
+            new LocalDate(2026, 2, 9)
+                .AtStartOfDayInZone(DateTimeZoneProviders.Tzdb["Europe/Madrid"])
+                .ToInstant());
+    }
+
+    [HumansFact]
+    public async Task ListLedgerEntries_follows_cursor_until_has_more_false()
+    {
+        var callCount = 0;
+        string? secondQuery = null;
+        var handler = new StubHandler(req =>
+        {
+            callCount++;
+            if (callCount == 1)
+            {
+                return Respond(HttpStatusCode.OK, """
+                {"items":[{"entry_number":1,"line":1,"date":"01/01/2026","account":40000004,
+                  "debit":"0.00","credit":"10.00"}],"cursor":"c1","has_more":true}
+                """);
+            }
+            secondQuery = req.RequestUri!.Query;
+            return Respond(HttpStatusCode.OK, """
+            {"items":[{"entry_number":2,"line":1,"date":"02/01/2026","account":40000004,
+              "debit":"0.00","credit":"5.00"}],"cursor":null,"has_more":false}
+            """);
+        });
+
+        var client = Make(handler);
+        var lines = await client.ListLedgerEntriesAsync(
+            new LocalDate(2026, 1, 1), new LocalDate(2026, 1, 31),
+            ct: Xunit.TestContext.Current.CancellationToken);
+
+        lines.Should().HaveCount(2);
+        callCount.Should().Be(2);
+        secondQuery.Should().Contain("cursor=c1");
+    }
+
+    [HumansFact]
+    public async Task ListLedgerEntries_passes_account_filter()
+    {
+        string? capturedQuery = null;
+        var handler = new StubHandler(req =>
+        {
+            capturedQuery = req.RequestUri!.Query;
+            return Respond(HttpStatusCode.OK, """{"items":[],"cursor":null,"has_more":false}""");
+        });
+
+        var client = Make(handler);
+        await client.ListLedgerEntriesAsync(
+            new LocalDate(2026, 1, 1), new LocalDate(2026, 1, 31), accountNum: 40000004,
+            ct: Xunit.TestContext.Current.CancellationToken);
+
+        capturedQuery.Should().Contain("account=40000004");
+    }
+
+    [HumansFact]
+    public async Task ListLedgerEntries_surfaces_an_unreadable_line_as_permanent_not_a_raw_parse_throw()
+    {
+        // Fail the page rather than drop the line: creditor and account balances are summed from
+        // these debits and credits, and a quietly dropped line reads as a settled entry that never happened.
+        var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK,
+            """{"items":[{"entry_number":1,"account":"not-a-number","debit":"10.00"}],"cursor":null,"has_more":false}""")));
+
+        var act = async () => await client.ListLedgerEntriesAsync(
+            new LocalDate(2026, 1, 1), new LocalDate(2026, 1, 31),
+            ct: Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<HoldedPermanentException>();
+    }
+
+    [HumansFact]
+    public async Task ListAccountingAccounts_parses_totals()
+    {
+        var json = """
+        {"items":[{"id":"a1","color":"#fff","number":10000000,"name":"Capital",
+          "description":"","group":"Equity","debit":"0.00","credit":"1000.00",
+          "balance":"-1000.00","archived":false,"non_deductible":false}],
+         "cursor":null,"has_more":false}
+        """;
+        var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, json)));
+
+        var accounts = await client.ListAccountingAccountsAsync(Xunit.TestContext.Current.CancellationToken);
+
+        accounts.Should().HaveCount(1);
+        var account = accounts[0];
+        account.Id.Should().Be("a1");
+        account.Number.Should().Be(10000000);
+        account.Name.Should().Be("Capital");
+        account.Group.Should().Be("Equity");
+        account.Debit.Should().Be(0.00m);
+        account.Credit.Should().Be(1000.00m);
+        account.Balance.Should().Be(-1000.00m);
+        account.Archived.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task GetUsage_parses_period_usage_limit_and_secondary()
+    {
+        var json = """
+        {"type":"automation_token","period":"2026-08","usage":36,"limit":2000000,
+         "count":1,"secondary_usages":{"api_v1_legacy_1":35},"user_usages":[],
+         "next_plan":null,"next_limit":null}
+        """;
+        var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, json)));
+
+        var usage = await client.GetUsageAsync(Xunit.TestContext.Current.CancellationToken);
+
+        usage.Period.Should().Be("2026-08");
+        usage.Usage.Should().Be(36);
+        usage.Limit.Should().Be(2000000);
+        usage.SecondaryUsages.Should().ContainKey("api_v1_legacy_1").WhoseValue.Should().Be(35);
     }
 
     [HumansFact]

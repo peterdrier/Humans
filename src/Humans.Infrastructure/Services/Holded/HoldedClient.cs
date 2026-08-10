@@ -10,6 +10,7 @@ using Humans.Application.Interfaces.Holded;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NodaTime;
+using NodaTime.Text;
 
 namespace Humans.Infrastructure.Services.Holded;
 
@@ -17,6 +18,10 @@ public sealed class HoldedClient : IHoldedClient
 {
     private const int DefaultRetryAfterSeconds = 5;
     private const int MaxRetryAfterSeconds = 60;
+
+    // v2 ledger-entries dates arrive as DD/MM/YYYY, filtered on the *accounting* date; parsed to
+    // Madrid midnight for a stable Instant.
+    private static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
 
     private readonly HttpClient _http;
     private readonly HoldedClientOptions _options;
@@ -318,57 +323,130 @@ public sealed class HoldedClient : IHoldedClient
     /// throws on a non-object, and Holded is equally happy to send an absent collection as a scalar.</summary>
     private static JsonArray Arr(JsonNode? node) => node as JsonArray ?? [];
 
-    public async Task<IReadOnlyList<HoldedLedgerLineDto>> ListDailyLedgerAsync(
-        Instant from, Instant to, CancellationToken ct = default)
+    public async Task<IReadOnlyList<HoldedLedgerLineDto>> ListLedgerEntriesAsync(
+        LocalDate from, LocalDate to, int? accountNum = null, CancellationToken ct = default)
     {
-        const int pageSize = 250;
-        const int pageSafetyCap = 100; // 25 000 lines/window — far above a small nonprofit's volume
-        var start = from.ToUnixTimeSeconds();
-        var end = to.ToUnixTimeSeconds();
-        var lines = new List<HoldedLedgerLineDto>();
+        const int pageSafetyCap = 100; // 20 000 lines/window — far above a small nonprofit's volume
+        var query =
+            $"/api/v2/ledger-entries?start_date={LocalDatePattern.Iso.Format(from)}" +
+            $"&end_date={LocalDatePattern.Iso.Format(to)}&limit=200";
+        if (accountNum is { } num)
+            query += $"&account={num}";
+
+        var items = await GetPagedAsync(query, pageSafetyCap, ct);
+        try
+        {
+            return items.Select(n => new HoldedLedgerLineDto
+            {
+                EntryNumber = ReadInt(Prop(n, "entry_number")) ?? 0,
+                Line = ReadInt(Prop(n, "line")) ?? 0,
+                Date = ParseLedgerDate(Prop(n, "date")?.GetValue<string>() ?? ""),
+                AccountNum = ReadInt(Prop(n, "account")) ?? 0,
+                Debit = ReadDecimalV2(Prop(n, "debit")),
+                Credit = ReadDecimalV2(Prop(n, "credit")),
+                Type = Prop(n, "type")?.GetValue<string>(),
+                Description = Prop(n, "description")?.GetValue<string>(),
+            }).ToList();
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException
+            or FormatException or OverflowException or UnparsableValueException)
+        {
+            // As in ListPurchaseDocumentsPageAsync — permanent, and the whole page fails rather
+            // than skipping the line. Creditor and account balances are summed from these debits
+            // and credits, so a quietly dropped line reads as a settled entry that never happened.
+            throw new HoldedPermanentException(
+                $"Holded ledger-entries {from}..{to} could not be read.", ex);
+        }
+    }
+
+    public async Task<IReadOnlyList<HoldedAccountDto>> ListAccountingAccountsAsync(
+        CancellationToken ct = default)
+    {
+        const int pageSafetyCap = 5; // 267 accounts today, unpaginated — plenty of headroom
+        var items = await GetPagedAsync("/api/v2/accounting-accounts?limit=200", pageSafetyCap, ct);
+        try
+        {
+            return items.Select(n => new HoldedAccountDto
+            {
+                Id = Prop(n, "id")?.GetValue<string>() ?? "",
+                Number = ReadInt(Prop(n, "number")) ?? 0,
+                Name = Prop(n, "name")?.GetValue<string>() ?? "",
+                Group = Prop(n, "group")?.GetValue<string>(),
+                Debit = ReadDecimalV2(Prop(n, "debit")),
+                Credit = ReadDecimalV2(Prop(n, "credit")),
+                Balance = ReadDecimalV2(Prop(n, "balance")),
+                Archived = Prop(n, "archived")?.GetValue<bool>() ?? false,
+            }).ToList();
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException
+            or FormatException or OverflowException)
+        {
+            throw new HoldedPermanentException("Holded accounting-accounts could not be read.", ex);
+        }
+    }
+
+    public async Task<HoldedUsageDto> GetUsageAsync(CancellationToken ct = default)
+    {
+        using var req = new HttpRequestMessage(HttpMethod.Get, "/api/v2/usage");
+        AttachAuth(req);
+        using var resp = await SendAsync(req, ct);
+        await using var stream = await resp.Content.ReadAsStreamAsync(ct);
+        var node = await JsonNode.ParseAsync(stream, cancellationToken: ct)
+            ?? throw new HoldedTransientException("Holded returned empty body");
+        try
+        {
+            var secondary = Prop(node, "secondary_usages") as JsonObject;
+            return new HoldedUsageDto
+            {
+                Period = Prop(node, "period")?.GetValue<string>() ?? "",
+                Usage = Prop(node, "usage")?.GetValue<long>() ?? 0,
+                Limit = Prop(node, "limit")?.GetValue<long>() ?? 0,
+                SecondaryUsages = secondary is null
+                    ? new Dictionary<string, long>(StringComparer.Ordinal)
+                    : secondary.ToDictionary(
+                        kv => kv.Key, kv => kv.Value?.GetValue<long>() ?? 0, StringComparer.Ordinal),
+            };
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException
+            or FormatException or OverflowException)
+        {
+            throw new HoldedPermanentException("Holded usage could not be read.", ex);
+        }
+    }
+
+    /// <summary>Walks a v2 cursor-paginated collection: follows `cursor` while `has_more`, collecting
+    /// `items` elements. Caps at pageSafetyCap pages and logs when hit (no silent caps).</summary>
+    private async Task<List<JsonNode>> GetPagedAsync(
+        string pathAndQuery, int pageSafetyCap, CancellationToken ct)
+    {
+        var items = new List<JsonNode>();
+        string? cursor = null;
         for (var page = 1; page <= pageSafetyCap; page++)
         {
-            using var req = new HttpRequestMessage(HttpMethod.Get,
-                $"/api/accounting/v1/dailyledger?starttmp={start}&endtmp={end}&page={page}");
+            var url = cursor is null
+                ? pathAndQuery
+                : $"{pathAndQuery}&cursor={Uri.EscapeDataString(cursor)}";
+            using var req = new HttpRequestMessage(HttpMethod.Get, url);
             AttachAuth(req);
             using var resp = await SendAsync(req, ct);
             await using var stream = await resp.Content.ReadAsStreamAsync(ct);
-            JsonArray arr;
-            try
-            {
-                arr = (await JsonNode.ParseAsync(stream, cancellationToken: ct))?.AsArray() ?? [];
-                foreach (var n in arr)
-                {
-                    if (n is null) continue;
-                    lines.Add(new HoldedLedgerLineDto
-                    {
-                        EntryNumber = ReadInt(Prop(n, "entryNumber")) ?? 0,
-                        Line = ReadInt(Prop(n, "line")) ?? 0,
-                        Date = ReadInstant(Prop(n, "timestamp")) ?? Instant.FromUnixTimeSeconds(0),
-                        AccountNum = ReadInt(Prop(n, "account")) ?? 0,
-                        Debit = ReadDecimal(Prop(n, "debit")),
-                        Credit = ReadDecimal(Prop(n, "credit")),
-                        Type = Prop(n, "type")?.GetValue<string>(),
-                        Description = Prop(n, "description")?.GetValue<string>(),
-                    });
-                }
-            }
-            catch (Exception ex) when (ex is JsonException or InvalidOperationException
-                or FormatException or OverflowException)
-            {
-                // As in ListPurchaseDocumentsPageAsync — permanent, and the whole page fails rather
-                // than skipping the line. Creditor balances are summed from these debits and credits,
-                // so a quietly dropped line reads as a settled invoice that was never paid.
-                throw new HoldedPermanentException(
-                    $"Holded daily-ledger page {page} for {from}..{to} could not be read.", ex);
-            }
-            if (arr.Count < pageSize) return lines;
+            var root = await JsonNode.ParseAsync(stream, cancellationToken: ct);
+            foreach (var n in Arr(Prop(root, "items")))
+                if (n is not null) items.Add(n);
+
+            var hasMore = Prop(root, "has_more")?.GetValue<bool>() ?? false;
+            cursor = Prop(root, "cursor")?.GetValue<string>();
+            if (!hasMore || cursor is null) return items;
         }
         _logger.LogWarning(
-            "Holded dailyledger hit the {Cap}-page safety cap for window {From}..{To}; results may be truncated.",
-            pageSafetyCap, from, to);
-        return lines;
+            "Holded cursor pagination hit the {Cap}-page safety cap for {PathAndQuery}; results may be truncated.",
+            pageSafetyCap, pathAndQuery);
+        return items;
     }
+
+    private static Instant ParseLedgerDate(string s) =>
+        DateFormattingExtensions.HoldedLedgerDatePattern.Parse(s).Value
+            .AtStartOfDayInZone(MadridZone).ToInstant();
 
     /// <summary>Projects one purchase document. Every container read goes through <see cref="Prop"/> /
     /// <see cref="Arr"/> rather than the raw indexer, for the reason spelled out on those two.</summary>
@@ -490,6 +568,11 @@ public sealed class HoldedClient : IHoldedClient
 
     private static decimal ReadDecimal(JsonNode? node) =>
         node?.GetValue<decimal>() ?? 0m;
+
+    // v2 endpoints send decimals as strings (e.g. "121.00"); v1 endpoints (not yet migrated) still
+    // send numeric JSON tokens via ReadDecimal above.
+    private static decimal ReadDecimalV2(JsonNode? node) =>
+        decimal.Parse(node?.GetValue<string>() ?? "0", CultureInfo.InvariantCulture);
 
     // GetValue<decimal> (not <long>) so a JSON float token like 40000001.0 parses; cast truncates.
     private static int? ReadInt(JsonNode? node) =>

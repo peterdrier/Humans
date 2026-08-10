@@ -146,4 +146,8 @@ public static class DateFormattingExtensions
     /// <summary>Ops-notice date, "ddd MMMM d" (e.g. "Mon January 5").</summary>
     public static readonly LocalDatePattern OpsNoticeDatePattern =
         LocalDatePattern.CreateWithInvariantCulture("ddd MMMM d");
+
+    /// <summary>Holded v2 ledger-entries date, "dd/MM/yyyy" (e.g. "09/02/2026").</summary>
+    public static readonly LocalDatePattern HoldedLedgerDatePattern =
+        LocalDatePattern.CreateWithInvariantCulture("dd/MM/yyyy");
 }

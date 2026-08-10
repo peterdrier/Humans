@@ -276,7 +276,7 @@ public class HoldedFinanceServiceTests
             new() { EntryNumber = 2, Line = 0, AccountNum = 40000999, Date = FixedNow, Debit = 0m, Credit = 50m },  // top of the block
             new() { EntryNumber = 1, Line = 1, AccountNum = 62900000, Date = FixedNow, Debit = 100m, Credit = 0m }, // not a creditor acct
         };
-        _client.ListDailyLedgerAsync(Arg.Any<Instant>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+        _client.ListLedgerEntriesAsync(Arg.Any<LocalDate>(), Arg.Any<LocalDate>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
             .Returns(page, new List<HoldedLedgerLineDto>()); // first window has data, second is empty → stop
 
         IReadOnlyList<HoldedLedgerLine>? stored = null;
@@ -297,7 +297,7 @@ public class HoldedFinanceServiceTests
         // closed month sat behind that anchor and was never fetched again. Anchoring the window on
         // *now* instead picks it up — for the same single call, which is what the quota allows.
         _repo.HasAnyLedgerLinesAsync(Arg.Any<CancellationToken>()).Returns(true);
-        _client.ListDailyLedgerAsync(Arg.Any<Instant>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+        _client.ListLedgerEntriesAsync(Arg.Any<LocalDate>(), Arg.Any<LocalDate>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
             .Returns(new List<HoldedLedgerLineDto>
             {
                 new() { EntryNumber = 5, Line = 0, AccountNum = 40000004, Date = FixedNow, Debit = 23m, Credit = 0m },
@@ -307,8 +307,8 @@ public class HoldedFinanceServiceTests
 
         var windows = LedgerWindowsCalled();
         windows.Should().ContainSingle();
-        windows[0].To.Should().Be(FixedNow);                                  // anchored on now, not on the cache
-        windows[0].From.Should().Be(FixedNow.Minus(Duration.FromDays(364)));  // reaches back a full year
+        windows[0].To.Should().Be(FixedNow.InZone(MadridZone).Date);                                  // anchored on now, not on the cache
+        windows[0].From.Should().Be(FixedNow.Minus(Duration.FromDays(364)).InZone(MadridZone).Date);  // reaches back a full year
     }
 
     [HumansFact]
@@ -320,7 +320,7 @@ public class HoldedFinanceServiceTests
         _repo.HasAnyLedgerLinesAsync(Arg.Any<CancellationToken>()).Returns(true);
         var firstCallStarted = new TaskCompletionSource();
         var releaseFirstCall = new TaskCompletionSource();
-        _client.ListDailyLedgerAsync(Arg.Any<Instant>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+        _client.ListLedgerEntriesAsync(Arg.Any<LocalDate>(), Arg.Any<LocalDate>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
             .Returns(_ =>
             {
                 firstCallStarted.TrySetResult();
@@ -349,15 +349,15 @@ public class HoldedFinanceServiceTests
         {
             new() { EntryNumber = 5, Line = 0, AccountNum = 40000004, Date = FixedNow, Debit = 23m, Credit = 0m },
         };
-        _client.ListDailyLedgerAsync(Arg.Any<Instant>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+        _client.ListLedgerEntriesAsync(Arg.Any<LocalDate>(), Arg.Any<LocalDate>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
             .Returns(pageWithData, pageWithData, new List<HoldedLedgerLineDto>());
 
         await MakeService().SyncCreditorLedgerAsync(fullHistory: true, Xunit.TestContext.Current.CancellationToken);
 
         var windows = LedgerWindowsCalled();
         windows.Count.Should().BeGreaterThan(1);
-        windows.Should().OnlyContain(w => w.To - w.From <= Duration.FromDays(364));
-        windows.Min(w => w.From).Should().BeLessThan(FixedNow.Minus(Duration.FromDays(364)));
+        windows.Should().OnlyContain(w => Period.Between(w.From, w.To, PeriodUnits.Days).Days <= 364);
+        windows.Min(w => w.From).Should().BeLessThan(FixedNow.Minus(Duration.FromDays(364)).InZone(MadridZone).Date);
     }
 
     [HumansFact]
@@ -369,7 +369,7 @@ public class HoldedFinanceServiceTests
         {
             new() { EntryNumber = 5, Line = 0, AccountNum = 40000004, Date = FixedNow, Debit = 0m, Credit = 23m },
         };
-        _client.ListDailyLedgerAsync(Arg.Any<Instant>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+        _client.ListLedgerEntriesAsync(Arg.Any<LocalDate>(), Arg.Any<LocalDate>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
             .Returns(pageWithData, new List<HoldedLedgerLineDto>());
 
         await MakeService().SyncCreditorLedgerAsync(fullHistory: false, Xunit.TestContext.Current.CancellationToken);
@@ -377,11 +377,13 @@ public class HoldedFinanceServiceTests
         LedgerWindowsCalled().Count.Should().BeGreaterThan(1);
     }
 
-    private List<(Instant From, Instant To)> LedgerWindowsCalled() =>
+    private static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+
+    private List<(LocalDate From, LocalDate To)> LedgerWindowsCalled() =>
         _client.ReceivedCalls()
-            .Where(c => string.Equals(c.GetMethodInfo().Name, nameof(IHoldedClient.ListDailyLedgerAsync), StringComparison.Ordinal))
+            .Where(c => string.Equals(c.GetMethodInfo().Name, nameof(IHoldedClient.ListLedgerEntriesAsync), StringComparison.Ordinal))
             .Select(c => c.GetArguments())
-            .Select(a => (From: (Instant)a[0]!, To: (Instant)a[1]!))
+            .Select(a => (From: (LocalDate)a[0]!, To: (LocalDate)a[1]!))
             .ToList();
 
     [HumansFact]
