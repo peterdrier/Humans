@@ -219,8 +219,11 @@ internal sealed class Service(
     public async Task<HoldedDocSyncInfo> GetDocSyncInfoAsync(CancellationToken ct = default)
     {
         var state = await repo.GetOrCreateDocSyncStateAsync(ct);
+        // The binding count rides along from the repo so /Holded never has to build the full
+        // creditor-account view (a live Holded contacts walk) just to show a number.
+        var bindings = await repo.GetCreditorContactsAsync(ct);
         return new HoldedDocSyncInfo(
-            state.LastSyncAt, state.Status, state.LastError, state.LastSyncedDocCount);
+            state.LastSyncAt, state.Status, state.LastError, state.LastSyncedDocCount, bindings.Count);
     }
 
     private static HoldedExpenseDoc MapDoc(

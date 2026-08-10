@@ -30,20 +30,7 @@ internal sealed class HoldedController(
         var overview = await admin.GetOverviewAsync(ct);
         var docSync = await holdedFinance.GetDocSyncInfoAsync(ct);
 
-        // Finance owns creditor bindings; the screen only reports how many exist. A Holded
-        // outage inside that read must not take the mirror page down with it.
-        int? creditorBindings = null;
-        try
-        {
-            var (accounts, unresolved) = await holdedFinance.ListCreditorAccountsAsync(ct);
-            creditorBindings = accounts.Sum(a => a.Bindings.Count) + unresolved.Count;
-        }
-        catch (Exception ex)
-        {
-            logger.LogWarning(ex, "Creditor binding count unavailable; rendering /Holded without it");
-        }
-
-        return View(new HoldedOverviewVm(overview, docSync, creditorBindings));
+        return View(new HoldedOverviewVm(overview, docSync, docSync.CreditorBindingCount));
     }
 
     /// <summary>The general-ledger page for any account in the chart — a 629x department, a 572x

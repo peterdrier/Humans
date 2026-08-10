@@ -7,7 +7,7 @@ namespace Humans.Holded.Models;
 
 /// <summary>The /Holded page: this section's overview plus the two things only Finance knows —
 /// how its purchase-doc sync is doing and how many creditor bindings exist.</summary>
-/// <param name="CreditorBindings">Null when Finance could not answer (Holded unreachable).</param>
+/// <param name="CreditorBindings">Repo-backed count from Finance — no live Holded read.</param>
 internal sealed record HoldedOverviewVm(
     HoldedAdminOverview Overview, HoldedDocSyncInfo DocSync, int? CreditorBindings);
 

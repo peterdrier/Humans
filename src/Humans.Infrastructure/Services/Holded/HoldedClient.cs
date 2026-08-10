@@ -442,9 +442,16 @@ public sealed class HoldedClient : IHoldedClient
             foreach (var n in itemsArr)
                 if (n is not null) items.Add(n);
 
+            // Absent has_more is a legitimate final page — the live accounting-accounts
+            // response carries items only, no pagination metadata. But has_more:true without
+            // a cursor cannot be followed, and returning the prefix would feed replace
+            // semantics a truncated list.
             var hasMore = Prop(root, "has_more")?.GetValue<bool>() ?? false;
             cursor = Prop(root, "cursor")?.GetValue<string>();
-            if (!hasMore || cursor is null) return items;
+            if (!hasMore) return items;
+            if (string.IsNullOrEmpty(cursor))
+                throw new HoldedTransientException(
+                    $"Holded page for {pathAndQuery.Split('?', 2)[0]} claims has_more but carries no cursor.");
         }
 
         var endpoint = pathAndQuery.Split('?', 2)[0];
