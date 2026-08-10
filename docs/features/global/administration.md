@@ -13,7 +13,7 @@
   src/Humans.Domain/Constants/RoleGroups.cs
 -->
 <!-- freshness:flag-on-change
-  Admin/Board/Profile/Google route tables, role catalog, dashboard metrics, and authorization split between Admin and Board areas — review when admin-area controllers, role names, or authorization policies change.
+  Admin/Profile/Google route tables, role catalog, dashboard metrics, and the Board-vs-Admin role split — review when admin-area controllers, role names, or authorization policies change.
 -->
 
 # Administration
@@ -91,14 +91,7 @@ Human app access is `UserState == Active`, set when the human enters their legal
 
 ## Controller Routes
 
-### BoardController (`/Board/`) — Board, Admin
-
-`BoardController` is now a slim dashboard-only controller. Most human management and Google sync operations have been extracted to `UsersAdminController` and `GoogleController`.
-
-| Route | Action | Description |
-|-------|--------|-------------|
-| `/Board` | Index | Dashboard with stats and recent audit log |
-| `/AuditLog` | AuditLog | Global audit log (paginated, filterable) — *(moved to AuditLogController — see PR #499)* |
+There is no `/Board/*` route prefix. `BoardController` was removed in nobodies-collective/Humans#499 and its work redistributed: the dashboard to `AdminController` (`/Admin`), human management to `UsersAdminController` (`/Users/Admin`), Google sync to `GoogleController`, and the global audit log to `AuditLogController` (`/AuditLog`). **Board** survives as a *role*, not as an area.
 
 ### UsersAdminController (`/Users/Admin`) — Human management actions
 
@@ -323,16 +316,9 @@ public sealed record AdminDashboardViewModel(
 
 ### Role Separation: Board vs Admin
 
-The system uses two distinct controller areas, each with its own route prefix:
+Board and Admin are **roles**, not areas — there is one admin route prefix (`/Admin/`, `AdminController`, Admin only except where noted). Governance operations that used to sit behind `/Board/` now live on the owning section's own routes (`/Users/Admin`, `/Governance/*`, `/AuditLog`, `/Google/*`) and are gated per-route by role.
 
-| Area | Route prefix | Controller | Authorized roles |
-|------|-------------|------------|-----------------|
-| **Board** | `/Board/` | `BoardController` | Board, Admin |
-| **Admin** | `/Admin/` | `AdminController` | Admin only (except where noted) |
-
-**Board area** (`/Board/`): Governance operations — member management, applications, teams, roles, audit log. Accessible to Board and Admin roles.
-
-**Admin area** (`/Admin/`): Technical operations — configuration, sync settings, Hangfire, email preview, system team sync, Google sync (legacy). Accessible to Admin role only.
+Board members reach governance operations — member management, applications, teams, roles, audit log — through those section routes. Admin-only technical operations (configuration, sync settings, Hangfire, email preview, system team sync) stay under `/Admin/`.
 
 A user can hold both roles simultaneously. Admin is a superset for role assignment purposes.
 
@@ -347,8 +333,11 @@ All roles are defined in `RoleNames` constants and use temporal `RoleAssignment`
 | **CampAdmin** | Manage camps, approve/reject season registrations, configure camp settings system-wide. |
 | **TicketAdmin** | Manage ticket vendor integration, trigger syncs, generate discount codes, export ticket data. |
 | **NoInfoAdmin** | Approve/voluntell shift signups (cannot create/edit shifts). Access to volunteer event profile medical data. |
+| **EventsAdmin** | Event Guide dashboard, moderation, settings, categories, venues, and export. |
 | **FeedbackAdmin** | None since nobodies-collective/Humans#977 — Feedback is retired and every screen is `AdminOnly`. The role stays assignable (Staff page, Guide, `AnyAdminRole`) but grants no feedback access. |
 | **FinanceAdmin** | Manage budgets, budget years, groups, categories, and line items. Full Finance section access. |
+| **StoreAdmin** | Store catalog, summary, and payments. |
+| **CantinaAdmin** | Cantina weekly roster. |
 | **ConsentCoordinator** | Safety checks on new humans during onboarding. Can clear or flag consent checks. |
 | **VolunteerCoordinator** | Read-only access to onboarding review queue. |
 | **EETeamAdmin** | Cross-team Early-Entry administrator — grant/edit/revoke early-entry grants on any team that has early entry enabled. Confers nothing else; team coordinators manage EE on their own team without this role. |
@@ -389,14 +378,6 @@ _logger.LogInformation(
 - Role assignments
 
 ## Quick Actions (Dashboard)
-
-### Board Dashboard (`/Board`)
-
-| Action | Link | Badge |
-|--------|------|-------|
-| Manage Humans | `/Users/Admin` | - |
-| Audit Log | `/AuditLog` | - |
-| Sync Status | `/Google/Sync` | - |
 
 ### Admin Dashboard (`/Admin`)
 

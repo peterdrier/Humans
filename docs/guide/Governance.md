@@ -65,7 +65,7 @@ While your application is still **Submitted**, you can withdraw it from the appl
 
 ### Renew your tier
 
-About 90 days before your term expires, a renewal reminder email and in-app notification go out, and a reminder appears on your dashboard. A renewal creates a new application for the same tier and goes through the normal Board vote. Board and Admin see the same upcoming expirations on the Board voting dashboard, so renewals can be prompted or processed proactively. If you do not renew before the term ends, the next nightly system-team sync removes you from the Colaboradors or Asociados system team, so you lose the access tied to that membership. Your profile's stored tier label does not automatically reset — you stay listed at the previous tier on your profile until a new approval changes it. Volunteer access is unaffected.
+About 90 days before your term expires, a renewal reminder email and in-app notification go out, and a reminder appears on your dashboard. A renewal creates a new application for the same tier and goes through the normal Board vote. Board and Admin see the same upcoming expirations on the Board voting dashboard, so renewals can be prompted or processed proactively. If you do not renew before the term ends, the next nightly system-team sync removes you from the Colaboradors or Asociados system team, so you lose the access tied to that membership. Your profile's tier label is updated at the same time — back to another tier you still hold, or to Volunteer if you hold none. Volunteer access is unaffected.
 
 ## As a Board member / Admin
 
@@ -103,7 +103,7 @@ Application state history, past and present role assignments, and the collective
 
 ## Related sections
 
-- [Profiles](Profiles.md) — [membership tier](Glossary.md#membership-tier) lives on the profile and is updated automatically on approval. (It is not auto-reset on term expiry — only the system-team membership changes then.)
+- [Profiles](Profiles.md) — [membership tier](Glossary.md#membership-tier) lives on the profile and is updated automatically on approval, and again on term expiry (down to another still-active tier, or Volunteer).
 - [Legal and Consent](LegalAndConsent.md) — the consent signing flow, independent of Board voting.
 - [Onboarding](Onboarding.md) — how a new human becomes a Volunteer. Tier applications do not replace or block this.
 - [Teams](Teams.md) — the Colaboradors and Asociados system teams that approved applicants join.

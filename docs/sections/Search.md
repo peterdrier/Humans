@@ -1,4 +1,6 @@
 <!-- freshness:triggers
+  src/Sections/Humans.Events/Services/CachingEventService.cs
+  src/Sections/Humans.Events/Section.cs
   src/Humans.Application/Services/Search/**
   src/Humans.Application/Interfaces/Search/**
   src/Humans.Web/Controllers/SearchController.cs
@@ -7,8 +9,6 @@
   src/Humans.Infrastructure/Services/Users/CachingUserService.cs
   src/Humans.Infrastructure/Services/Teams/CachingTeamService.cs
   src/Humans.Infrastructure/Services/Camps/CachingCampService.cs
-  src/Humans.Infrastructure/Services/Events/CachingEventService.cs
-  src/Humans.Web/Extensions/Sections/EventsSectionExtensions.cs
   src/Humans.Application/Services/Shifts/ShiftManagementService.cs
   src/Humans.Infrastructure/Repositories/Shifts/ShiftRepository.Management.cs
   src/Humans.Application/Services/Profiles/PersonSearchMatcher.cs

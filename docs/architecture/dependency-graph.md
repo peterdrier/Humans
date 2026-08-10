@@ -452,6 +452,7 @@ graph LR
     Dash --> MembershipCalc
     Dash --> AppDec
     Dash --> ShiftMgmt
+    Dash --> BurnSettings
     Dash --> ShiftView
     Dash --> TicketQ
     Dash --> User
@@ -572,6 +573,7 @@ graph LR
     Team -. "lazy" .-> GSyncSvc
     TRes -. "lazy" .-> Role
     Camp -. "lazy" .-> CampRole
+    Camp -. "lazy" .-> CityPlan
     Consent -. "lazy" .-> MembershipCalc
     MembershipCalc -. "lazy" .-> Consent
     ShiftMgmt -. "lazy" .-> Team
@@ -589,11 +591,15 @@ graph LR
     %% dashed arrows pop visually against eager solid arrows. The first lazy
     %% edge in this diagram is the (N+1)-th link after the eager arrows
     %% above; recompute the index range whenever edges are added or removed.
-    %% Eager count: 287 eager links, indices 0..286. (Net +3 vs prior sweep's 284:
-    %% +3 ExternalLoginService edges — ExtLogin --> User/UEmail/MagicLink, new service
-    %% added in #857/HUM0031, Services/Users/ExternalLoginService.cs.)
-    %% The 19 lazy edges are indices 287..305.
-    linkStyle 287,288,289,290,291,292,293,294,295,296,297,298,299,300,301,302,303,304,305 stroke:#f97316,stroke-width:2.5px
+    %% Eager count: 288 eager links, indices 0..287. (Net +1 vs prior sweep's 287:
+    %% +1 DashboardService edge — Dash --> BurnSettings, found this sweep — DashboardService
+    %% ctor-injects IBurnSettingsService for the active-event year lookup but the edge was
+    %% missing from the prior diagram.)
+    %% The 20 lazy edges are indices 288..307. (+1 vs prior sweep's 19: new Camp -. lazy .->
+    %% CityPlan edge — CampService now lazy-resolves ICityPlanningService to delete a
+    %% deleted camp's city-planning polygon rows, closing a new cycle with CityPlanningService's
+    %% eager ICampServiceRead dependency. See cycle #6 below.)
+    linkStyle 288,289,290,291,292,293,294,295,296,297,298,299,300,301,302,303,304,305,306,307 stroke:#f97316,stroke-width:2.5px
 ```
 
 ## Cycles broken by lazy-resolution
@@ -605,6 +611,7 @@ The `IServiceProvider` + property-getter lazy-resolution pattern is used to brea
 3. **ShiftManagement ↔ Tickets** — ShiftManagementService lazy-resolves `ITicketServiceRead` (ticket-holder → shift-eligibility lookups); TicketQueryService eagerly injects `IShiftManagementService`.
 4. **Consent ↔ MembershipCalculator** — ConsentService lazy-resolves `IMembershipCalculator` for status recomputes; MembershipCalculator lazy-resolves `IConsentServiceRead` for required-docs-given checks. Both sides are lazy because this cycle is two-way hot.
 5. **GoogleWorkspaceSync ↔ TeamResource** — GoogleWorkspaceSyncService lazy-resolves `ITeamResourceService` inside `ReconcileNobodiesDriveAsync` (ad-hoc `serviceProvider.GetRequiredService<ITeamResourceService>()`) for resource reconciliation; TeamResourceService no longer eagerly takes `IGoogleSyncService` since the last sweep (the eager half of the cycle is gone), but the lazy edge is retained because the call still needs the live scoped instance.
+6. **Camp ↔ CityPlanning** — CampService holds `Lazy<ICityPlanningService>` to delete a deleted camp's city-planning polygon/history rows (`DeleteCampPolygonsForSeasonsAsync`) inside the camp-deletion transaction; CityPlanningService eagerly injects `ICampServiceRead`. Found this sweep — the edge and cycle were missing from the prior diagram, and the "no Application-layer consumer" note under CityPlanning's read-split boundary below is now stale for the write side (see updated note).
 
 Other notable one-way lazy edges (not cycles):
 
@@ -644,7 +651,7 @@ Threshold: services with >= 3 incoming edges (eager + lazy combined). Counts are
 | `NotificationInboxService` | 3 | 0 | In-app inbox read/write; injected by Consent, HumanLifecycle, and IssuesService (added this sweep). |
 | `TicketQueryService` | 5 | 2 | `ITicketServiceRead` — read by Dash, AcctDel, Survey, `TicketingBudgetService` (paid orders via the read interface after the #815 budget-repo removal), and now `GateService` (barcode → attendee lookup, #1066). Lazy-in from ShiftMgmt + UEmail cycles. |
 | `ShiftViewService` (`IShiftView`) | 5 | 0 | Read-only shift-view projection (repo-only adapter, zero outbound service edges). Injected by Dash, AdminDash, OnboardWidget, Survey, Workload; also fanned into the Mailer audiences (per-audience deps, not drawn). |
-| `BurnSettingsService` | 4 | 0 | Burn-event settings (repo-only adapter). Consumers: ShiftSign, EventSvc, `GateService` (gate-open cutoff, #1066), and now `CantinaRosterService` (gate-open cutoff for the on-site cohort window — missing edge found this sweep). |
+| `BurnSettingsService` | 5 | 0 | Burn-event settings (repo-only adapter). Consumers: ShiftSign, EventSvc, `GateService` (gate-open cutoff, #1066), `CantinaRosterService` (gate-open cutoff for the on-site cohort window), and now `DashboardService` (active-event year lookup — missing edge found this sweep). |
 
 Below the >= 3 threshold but tracked for narrative continuity:
 
@@ -679,7 +686,8 @@ Below the >= 3 threshold but tracked for narrative continuity:
 - New thin sections since the previous sweep: **Cantina** (`CantinaRosterService` reads ShiftMgmt + User + BurnSettings), **EarlyEntry** (`EarlyEntryService` fans an `IEnumerable<IEarlyEntryProvider>` — no eager service edges), **Workload** (`WorkloadService` reads Team + User via ShiftView), **RotaCoordinatorMessage/VolunteerTrackingExport** (new Shifts services; `GeneralAvailabilityService` was later deleted in #820), **SystemSettings** (`SystemSettingsService` — see #889 above). None take dependencies beyond existing service interfaces.
 - **ICalFeed section** (`ICalFeedService` — iCal personal feed): orchestrator that fans `IEnumerable<ICalendarFeedContributor>` into one VCALENDAR. Implemented contributors: `EventService` (favourited approved events, with recurrence expansion) and `ShiftSignupService` (signed-up shifts). The fan-out interface pattern means `ICalFeedService` has no direct eager edges to those services — only `ICalFeedService → User` (token validation via `IUserServiceRead`). Same pattern as `EarlyEntryService`.
 - **GoogleTranslationService** (GoogleIntegration section): thin connector facade over `IGoogleTranslationClient` (Infrastructure). No service→service outbound edges. Consumed by `SurveyService` for translation pre-fill (`Survey → GTrans`).
-- **CityPlanning — read-split boundary (`ICityPlanningServiceRead`, #current sweep):** `ICityPlanningService` now extends `ICityPlanningServiceRead`, exposing the per-year settings projection (`GetSettingsAsync`), the registration-info scalar (`GetRegistrationInfoAsync`), and the team-membership check (`IsCityPlanningTeamMemberAsync`) as the cross-section read surface. As of this sweep, no Application-layer service injects `ICityPlanningServiceRead` — the current consumers are Web-layer controllers/view components (`CampController`, `ContainerAuthorizationHandler`, `CampAdminPageBuilder`). When a service consumer is added, the edge must be drawn to the `CityPlan` node per the read-split convention. No Mermaid edges changed.
+- **CityPlanning — read-split boundary (`ICityPlanningServiceRead`):** `ICityPlanningService` extends `ICityPlanningServiceRead`, exposing the per-year settings projection (`GetSettingsAsync`), the registration-info scalar (`GetRegistrationInfoAsync`), and the team-membership check (`IsCityPlanningTeamMemberAsync`) as the cross-section read surface. No Application-layer service injects `ICityPlanningServiceRead` itself — the read-side consumers are still Web-layer controllers/view components (`CampController`, `ContainerAuthorizationHandler`, `CampAdminPageBuilder`). When a read-side service consumer is added, the edge must be drawn to the `CityPlan` node per the read-split convention.
+  **Write side (found this sweep):** `CampService` lazy-resolves the *full* `ICityPlanningService` (`Lazy<ICityPlanningService>`, not the read interface) to call `DeleteCampPolygonsForSeasonsAsync` when a camp is deleted, cleaning up its city-planning polygon/history rows inside the same transaction. This is a genuine Application-layer cross-section consumer — new dashed `Camp -. lazy .-> CityPlan` edge, closing cycle #6 above with `CityPlanningService`'s eager `ICampServiceRead` dependency.
 - **GoogleIntegration — `IGoogleSyncServiceRead` read boundary:** `IGoogleSyncService` extends `IGoogleSyncServiceRead`. The only Application-layer cross-section consumer is `NotificationMeterProvider` (injecting `IGoogleSyncServiceRead` for `GetFailedSyncEventCountAsync`). This is already represented as the `NotifMeter --> GSyncSvc` edge (collapsed per the read-split convention); the `(via IGoogleSyncServiceRead)` label is omitted in the diagram because the fan-in hotspot comment explains it.
 - The Profile section owns `FullProfile` and `IFullProfileInvalidator` as its canonical stitched-DTO implementation of §15. Other sections apply §15's caching decorator and `Full<X>` DTO layers selectively (not universally), as stitching demand warrants.
 - **GoogleIntegration — pending consumer-side gaps (PR #500, 2026-05-12):** Three cross-domain drift items must be resolved on other sections' align runs. These are EF-layer or controller-layer issues, not service→service edges, so the graph above is correct. (1) **AuditLog** reads `GoogleResource` via a `AuditLogEntry.Resource` nav + `.Include` — must switch to `ITeamResourceService.GetResourceNamesByIdsAsync` (added PR #500). (2) **Teams** owns the `GoogleResource.Team` cross-domain nav on our entity — must strip the nav and convert to typed-FK. (3) **Users/Profiles** owns the `InvalidateNobodiesTeamEmails` cache projection — must expose `IUserEmailService.InvalidateNobodiesTeamEmailsAsync()` so `GoogleController` and `ProfileController` can drop their `IMemoryCache` injection.

@@ -1,4 +1,5 @@
 <!-- freshness:triggers
+  src/Humans.UI/Authorization/CampOperationRequirement.cs
   src/Humans.Application/Services/Camps/**
   src/Humans.Domain/Entities/Camp.cs
   src/Humans.Domain/Entities/CampSeason.cs
@@ -15,7 +16,6 @@
   src/Humans.Web/Controllers/CampApiController.cs
   src/Humans.Web/Controllers/CampComplianceController.cs
   src/Humans.Web/Authorization/Requirements/CampAuthorizationHandler.cs
-  src/Humans.Web/Authorization/Requirements/CampOperationRequirement.cs
 -->
 <!-- freshness:flag-on-change
   Camp/Season lifecycle, lead/membership authorization, public-year settings, and notification triggers — review when Camp services/entities/controllers/auth handlers change.
@@ -243,6 +243,8 @@ Admin pages live under `/Camps/Admin/*` — never `/Admin/Camps/*` (per `docs/ar
 ## Triggers
 
 - When a camp is registered, its initial season is created with Pending status.
+<!-- wheat: docs/superpowers/plans/2026-05-20-camp-roster-roles.md §Phase 2 -->
+- Registering a camp persists the camp, its initial season, the creator as an **Active `CampMember`**, and the creator's Camp Lead `CampRoleAssignment` in one `ICampRepository.CreateCampAsync` call — the creator is a lead through the role system from the first save, with nothing to backfill. When the Camp Lead `CampRoleDefinition` has not been seeded, registration still succeeds with the creator as an Active member only and logs a warning pointing at the `/Camps/Admin` "Seed system roles" action; an unseeded catalogue never blocks camp registration.
 - When an existing camp opts into a newly-opened season (`OptInToSeasonAsync`, `/Camps/{slug}/OptIn/{year}`), the new season copies the previous season's details and is **auto-approved to `Active`** when the camp has any prior `Active`/`Full`/`Withdrawn` season (`HasApprovedSeasonAsync`). A camp with only `Pending`/`Rejected` history instead gets `Pending` and requires CampAdmin review. <!-- wheat: docs/superpowers/specs/2026-03-13-barrios-design.md §"Returning Camp Season Opt-In" -->
 - Season approval or rejection is performed by CampAdmin.
 - Approving a membership request sends a `CampMembershipApproved` notification to the requester.

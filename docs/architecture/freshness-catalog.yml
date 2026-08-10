@@ -213,6 +213,9 @@ editorial_trees:
   - docs/sections/
   - docs/features/
   - docs/guide/
+  # Sections that moved into their own project (nobodies-collective/Humans#866, G5)
+  # carry their invariants + feature docs in-project rather than in docs/sections/.
+  - src/Sections/
   - docs/architecture/coding-rules.md
   - docs/architecture/design-rules.md
   - docs/architecture/roslyn-analysis.md
@@ -234,3 +237,7 @@ ignore:
   - docs/guide/README.md
   - docs/guide/GettingStarted.md
   - docs/guide/Glossary.md
+  # G5 in-project docs: sweep the living invariants/feature docs, not the dated
+  # design records (historical, same genre as docs/superpowers/specs/).
+  - src/Sections/*/Docs/20*.md
+  - src/Sections/*/Contracts/README.md

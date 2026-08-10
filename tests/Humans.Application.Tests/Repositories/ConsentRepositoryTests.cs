@@ -12,23 +12,23 @@ namespace Humans.Application.Tests.Repositories;
 /// <summary>
 /// Integration tests for <see cref="ConsentRepository"/>. Covers the
 /// append-only write path and every read shape. Uses the shared
-/// <see cref="TestDbContextFactory"/> so the repository sees a fresh context
-/// per call while the test keeps one for seeding/verification.
+/// <see cref="TestDbContextFactory{TContext}"/> so the repository sees a fresh
+/// context per call while the test keeps one for seeding/verification.
 /// </summary>
 public sealed class ConsentRepositoryTests : IDisposable
 {
-    private readonly HumansDbContext _dbContext;
+    private readonly LegalDbContext _dbContext;
     private readonly FakeClock _clock;
     private readonly ConsentRepository _repo;
 
     public ConsentRepositoryTests()
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
+        var options = new DbContextOptionsBuilder<LegalDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
-        _dbContext = new HumansDbContext(options);
+        _dbContext = new LegalDbContext(options);
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
-        _repo = new ConsentRepository(new TestDbContextFactory(options));
+        _repo = new ConsentRepository(new TestDbContextFactory<LegalDbContext>(options));
     }
 
     public void Dispose()
@@ -389,20 +389,12 @@ public sealed class ConsentRepositoryTests : IDisposable
 
     private async Task<Guid> SeedVersionAsync(string documentName = "Doc")
     {
+        // TeamId is a bare cross-section Guid — no Team row needed in this model.
         var teamId = Guid.NewGuid();
         var docId = Guid.NewGuid();
         var versionId = Guid.NewGuid();
         var now = _clock.GetCurrentInstant();
 
-        _dbContext.Teams.Add(new Team
-        {
-            Id = teamId,
-            Name = "Test Team",
-            Slug = "test-team",
-            IsActive = true,
-            CreatedAt = now,
-            UpdatedAt = now
-        });
         _dbContext.LegalDocuments.Add(new LegalDocument
         {
             Id = docId,

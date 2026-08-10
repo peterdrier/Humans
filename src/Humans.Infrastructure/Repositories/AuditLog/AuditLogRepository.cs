@@ -11,14 +11,14 @@ namespace Humans.Infrastructure.Repositories.AuditLog;
 /// non-test file that touches <c>DbContext.AuditLogEntries</c> after the
 /// Audit Log migration lands. Uses
 /// <see cref="IDbContextFactory{TContext}"/> so the repository can be
-/// registered as Singleton while <c>HumansDbContext</c> remains Scoped.
+/// registered as Singleton while <c>AuditLogDbContext</c> remains Scoped.
 /// </summary>
 /// <remarks>
 /// <c>audit_log</c> is append-only per design-rules §12 — only
 /// <see cref="AddAsync"/> is exposed; there are no <c>UpdateAsync</c> or
 /// <c>DeleteAsync</c>.
 /// </remarks>
-internal sealed class AuditLogRepository(IDbContextFactory<HumansDbContext> factory) : IAuditLogRepository
+internal sealed class AuditLogRepository(IDbContextFactory<AuditLogDbContext> factory) : IAuditLogRepository
 {
     // ==========================================================================
     // Writes — append-only

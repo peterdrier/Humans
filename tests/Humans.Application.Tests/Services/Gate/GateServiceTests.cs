@@ -48,20 +48,20 @@ public class GateServiceTests : ServiceTestHarness
         _burn.GetActiveAsync(Arg.Any<CancellationToken>()).Returns((BurnSettingsInfo?)null);
         _earlyEntry.GetForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns((UserEarlyEntry?)null);
-        _svc = new GateService(new GateRepository(DbFactory), _tickets, _earlyEntry, _burn, _shifts, _roles, _users, _pinHasher, _auditLog, NullLogger<GateService>.Instance, Clock);
+        _svc = new GateService(new GateRepository(GateDbFactory), _tickets, _earlyEntry, _burn, _shifts, _roles, _users, _pinHasher, _auditLog, NullLogger<GateService>.Instance, Clock);
 
         // Baseline: an admin has set the cutoff in the past, so general entry is open.
-        // Seeded directly (sync) since the ctor can't await; Db shares the in-memory
+        // Seeded directly (sync) since the ctor can't await; GateDb shares the in-memory
         // store with the repository's factory. Before-cutoff tests override this, and
         // the unconfigured-cutoff case is tested explicitly. Without a configured
         // cutoff every scan fails safe to AMBER.
-        Db.Set<GateSettings>().Add(new GateSettings
+        GateDb.GateSettings.Add(new GateSettings
         {
             Id = 1,
             GeneralEntryOpensAt = Clock.GetCurrentInstant().Minus(Duration.FromHours(1)),
             MinorAgeThresholdYears = 16,
         });
-        Db.SaveChanges();
+        GateDb.SaveChanges();
     }
 
     private void StubTicket(

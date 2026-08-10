@@ -3,6 +3,7 @@
   src/Humans.Web/Controllers/**
   src/Humans.Web/ViewComponents/**
   src/Humans.Web/Views/**
+  src/Sections/**
   Directory.Build.props
 -->
 <!-- freshness:flag-on-change
@@ -49,6 +50,11 @@ That is service work.
 
 <!-- wheat: docs/superpowers/specs/2026-04-30-account-merge-fold-redesign.md §Transaction model -->
 Cross-repository orchestrations that must commit atomically (e.g. `AccountMergeService`'s fold fan-out) wrap the calls in an ambient `TransactionScope` (`TransactionScopeAsyncFlowOption.Enabled`, `ReadCommitted`). Each repository still creates its own short-lived `DbContext` via `IDbContextFactory`; Npgsql auto-enlists those connections in the ambient scope, so the writes commit or roll back together without sharing a `DbContext` across repositories.
+
+## Cross-Section FK Columns
+
+<!-- wheat: docs/plans/2026-06-13-q3-transition-plan.md §FK-cut carve-out -->
+A bare `Guid` cross-section FK column gets no index for free. EF auto-created `IX_<table>_<column>` for each cross-section relationship and removed it along with the constraint in nobodies-collective/Humans#992, so any cross-section FK column a query filters or sorts on needs an explicit `HasIndex(...)` in its configuration — `CampMemberConfiguration`, `CampaignGrantConfiguration`, `BudgetAuditLogConfiguration` and `FeedbackReportConfiguration` are the pattern. A missing index here is a production regression that no test surfaces.
 
 ## Caching
 
@@ -125,6 +131,9 @@ Never inline a custom format string at the call site (`ToString("d MMM yyyy")`, 
 ## Rendering
 
 Server-rendered Razor is the default rendering approach for all pages.
+
+<!-- wheat: docs/plans/2026-06-11-q3-ui-refactoring-plan.md §Strategic call -->
+A full SPA/Blazor rewrite was considered and rejected. The product is content- and form-centric on a single server, which is what server-rendered MVC is for; an SPA adds a build pipeline, a second state model, and an API layer the layering rules do not want. The consolidation surface is the existing ViewComponent layer (`src/Humans.UI/ViewComponents`, stable `<vc:>` call sites) — a component's template can be redesigned without touching its call sites, so a visual overhaul does not require re-opening the view corpus.
 
 Default rule:
 

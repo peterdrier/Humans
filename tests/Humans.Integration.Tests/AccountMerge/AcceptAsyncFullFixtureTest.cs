@@ -177,6 +177,8 @@ public class AcceptAsyncFullFixtureTest(HumansTestDatabase database)
         var authDb = assertScope.ServiceProvider.GetRequiredService<AuthDbContext>();
         var notificationsDb = assertScope.ServiceProvider.GetRequiredService<NotificationsDbContext>();
         var budgetDb = assertScope.ServiceProvider.GetRequiredService<BudgetDbContext>();
+        var legalDb = assertScope.ServiceProvider.GetRequiredService<LegalDbContext>();
+        var auditLogDb = assertScope.ServiceProvider.GetRequiredService<AuditLogDbContext>();
 
         // ----------------------------------------------------------------
         // Source User: tombstoned with MergedToUserId, MergedAt, lockout.
@@ -252,10 +254,10 @@ public class AcceptAsyncFullFixtureTest(HumansTestDatabase database)
         // ----------------------------------------------------------------
         // Append-only sections: source rows still attached (chain-follow).
         // ----------------------------------------------------------------
-        (await db.AuditLogEntries.AsNoTracking()
+        (await auditLogDb.AuditLogEntries.AsNoTracking()
                 .CountAsync(a => a.Description == auditDescription && a.ActorUserId == sourceId, TestContext.Current.CancellationToken))
             .Should().Be(1, "audit log is append-only — source row stays for chain-follow");
-        (await db.ConsentRecords.AsNoTracking().CountAsync(c => c.UserId == sourceId, TestContext.Current.CancellationToken))
+        (await legalDb.ConsentRecords.AsNoTracking().CountAsync(c => c.UserId == sourceId, TestContext.Current.CancellationToken))
             .Should().BeGreaterThan(0, "consent records are append-only — source rows stay for chain-follow");
         (await budgetDb.BudgetAuditLogs.AsNoTracking()
                 .CountAsync(b => b.Description == budgetDescription && b.ActorUserId == sourceId, TestContext.Current.CancellationToken))

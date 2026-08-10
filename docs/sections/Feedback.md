@@ -38,7 +38,7 @@ Historical in-app feedback reports (bugs, feature requests, questions) with scre
 | Property | Type | Purpose |
 |----------|------|---------|
 | Id | Guid | PK |
-| UserId | Guid | FK → User (reporter), Cascade on delete — **FK only**, `[Obsolete]`-marked nav |
+| UserId | Guid | Reporter — bare cross-section Guid column, **no FK constraint, no nav property** |
 | Category | FeedbackCategory | Bug, FeatureRequest, Question |
 | Description | string | Feedback text (max 5000) |
 | PageUrl | string | URL where feedback was submitted (max 2000) |
@@ -51,14 +51,14 @@ Historical in-app feedback reports (bugs, feature requests, questions) with scre
 | GitHubIssueNumber | int? | Linked GitHub issue |
 | LastReporterMessageAt | Instant? | Timestamp of the most recent reporter message (drives "needs reply") |
 | LastAdminMessageAt | Instant? | Timestamp of the most recent admin message (drives "needs reply") |
-| AssignedToUserId | Guid? | FK → User, SetNull on delete — **FK only**, `[Obsolete]`-marked nav |
-| AssignedToTeamId | Guid? | FK → Team, SetNull on delete — **FK only**, `[Obsolete]`-marked nav |
+| AssignedToUserId | Guid? | Bare cross-section Guid column — **no FK constraint, no nav property** |
+| AssignedToTeamId | Guid? | Bare cross-section Guid column — **no FK constraint, no nav property** |
 | CreatedAt | Instant | Submission timestamp |
 | UpdatedAt | Instant | Last modification |
 | Source | FeedbackSource | `UserReport` (default) or `AgentUnresolved` — was set when created by the agent's retired `route_to_feedback` tool |
 | AgentConversationId | Guid? | FK column only — no EF FK constraint to `agent_conversations`; cross-section join is not modeled |
 | ResolvedAt | Instant? | When resolved/won't-fix |
-| ResolvedByUserId | Guid? | FK → User, SetNull on delete — **FK only**, `[Obsolete]`-marked nav |
+| ResolvedByUserId | Guid? | Bare cross-section Guid column — **no FK constraint, no nav property** |
 
 **Indexes:** `Status`, `CreatedAt`, `UserId`, `AssignedToUserId`, `AssignedToTeamId`, `Source`, `AgentConversationId`.
 
@@ -72,7 +72,7 @@ Conversation thread between reporter and admins. Aggregate-local (same section a
 |----------|------|---------|
 | Id | Guid | PK |
 | FeedbackReportId | Guid | FK → FeedbackReport, Cascade on delete |
-| SenderUserId | Guid? | FK → User, SetNull on delete — null when posted via API key (no user session) |
+| SenderUserId | Guid? | Bare cross-section Guid column — **no FK constraint, no nav property**; null when posted via API key (no user session) |
 | Content | string | Message body (max 5000) |
 | CreatedAt | Instant | When the message was posted |
 
@@ -80,7 +80,7 @@ There is no per-message admin/reporter flag — admin-vs-reporter is derived by 
 
 **Indexes:** `FeedbackReportId`, `CreatedAt`.
 
-Cross-domain nav `FeedbackMessage.SenderUser` is `[Obsolete]`-marked — senders resolve via `IUserServiceRead.GetUserInfosAsync`.
+`FeedbackMessage.SenderUserId` has no navigation property (removed, not just deprecated — nobodies-collective/Humans#996) — senders resolve via `IUserServiceRead.GetUserInfosAsync`.
 
 ### FeedbackCategory
 
@@ -162,7 +162,7 @@ Cross-domain nav `FeedbackMessage.SenderUser` is `[Obsolete]`-marked — senders
 - `IFeedbackRepository` (impl `Humans.Infrastructure/Repositories/Feedback/FeedbackRepository.cs`) owns the SQL surface. Registered as Singleton and uses `IDbContextFactory<HumansDbContext>` to create per-call scoped contexts, so the repository can be a long-lived singleton while EF state stays per-request.
 - **Aggregate-local navs kept:** `FeedbackReport.Messages ↔ FeedbackMessage.FeedbackReport`. Both sides live in Feedback-owned tables, so `.Include(f => f.Messages)` is legal inside the repository.
 - **Decorator decision — no caching decorator.** Feedback reports are per-user and admin-triaged, not a hot bulk-read path (same rationale as Governance / User).
-- **Cross-domain navs `[Obsolete]`-marked:** `FeedbackReport.User`, `.ResolvedByUser`, `.AssignedToUser`, `.AssignedToTeam`, `FeedbackMessage.SenderUser`. The repository does not `.Include()` them; the service stitches display data in memory from `IUserServiceRead.GetUserInfosAsync`, `IUserEmailService`, and `ITeamService` (design-rules §6b). Read methods return `FeedbackReportInfo` / `FeedbackMessageInfo` records with display names pre-resolved (BurnerName-first); controllers and views consume those record fields directly and no longer touch the `[Obsolete]`-marked navs.
+- **Cross-domain navs removed, not just `[Obsolete]`-marked:** `FeedbackReport.User`, `.ResolvedByUser`, `.AssignedToUser`, `.AssignedToTeam`, `FeedbackMessage.SenderUser` no longer exist as nav properties (nobodies-collective/Humans#996) — EF configures the FK columns with no `HasOne(...)` relationship at all, no cross-section FK constraint. The repository does not `.Include()` them (there's nothing to include); the service stitches display data in memory from `IUserServiceRead.GetUserInfosAsync`, `IUserEmailService`, and `ITeamService` (design-rules §6b). Read methods return `FeedbackReportInfo` / `FeedbackMessageInfo` records with display names pre-resolved (BurnerName-first); controllers and views consume those record fields directly.
 - **Nav-badge cache invalidation** routes through `INavBadgeCacheInvalidator` instead of `IMemoryCache` directly.
 - **Architecture test** — `tests/Humans.Application.Tests/Architecture/FeedbackArchitectureTests.cs` pins: service namespace, no `DbContext` constructor param, takes `IFeedbackRepository` and `INavBadgeCacheInvalidator`, `IFeedbackRepository` interface in correct namespace, `FeedbackRepository` is sealed and implements the interface. (`FeedbackService` *does* take `IMemoryCache` for its inline badge-count cache — it is allowlisted in `ApplicationServicesTakeNoMemoryCacheRule`, so the no-`IMemoryCache` check is delegated to that rule rather than pinned here.)
 

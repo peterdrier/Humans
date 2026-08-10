@@ -12,7 +12,7 @@ namespace Humans.Application.Tests.AuditLog;
 /// <summary>
 /// Happy-path tests for <see cref="AuditLogRepository"/> at the repository
 /// boundary — exercises the real EF implementation against an in-memory
-/// database via <see cref="TestDbContextFactory"/>.
+/// database via <see cref="TestDbContextFactory{TContext}"/>.
 ///
 /// The broader <c>AuditLogServiceTests</c> covers most query paths through
 /// the service → repo integration. These tests are here to satisfy the
@@ -22,15 +22,15 @@ namespace Humans.Application.Tests.AuditLog;
 /// </summary>
 public class AuditLogRepositoryTests
 {
-    private readonly IDbContextFactory<HumansDbContext> _factory;
+    private readonly IDbContextFactory<AuditLogDbContext> _factory;
     private readonly AuditLogRepository _sut;
 
     public AuditLogRepositoryTests()
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
+        var options = new DbContextOptionsBuilder<AuditLogDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
-        _factory = new TestDbContextFactory(options);
+        _factory = new TestDbContextFactory<AuditLogDbContext>(options);
         _sut = new AuditLogRepository(_factory);
     }
 

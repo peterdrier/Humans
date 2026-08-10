@@ -38,6 +38,8 @@ public sealed class MergeFixtureBuilder
     private readonly CampaignsDbContext _campaignsDb;
     private readonly FeedbackDbContext _feedbackDb;
     private readonly BudgetDbContext _budgetDb;
+    private readonly LegalDbContext _legalDb;
+    private readonly AuditLogDbContext _auditLogDb;
 
     private readonly Instant _now;
     private readonly List<Action<HumansDbContext>> _pending = [];
@@ -47,6 +49,8 @@ public sealed class MergeFixtureBuilder
     private readonly List<Action<CampaignsDbContext>> _pendingCampaigns = [];
     private readonly List<Action<FeedbackDbContext>> _pendingFeedback = [];
     private readonly List<Action<BudgetDbContext>> _pendingBudget = [];
+    private readonly List<Action<LegalDbContext>> _pendingLegal = [];
+    private readonly List<Action<AuditLogDbContext>> _pendingAuditLog = [];
 
     public Guid SourceUserId { get; }
     public Guid TargetUserId { get; }
@@ -60,6 +64,8 @@ public sealed class MergeFixtureBuilder
         _campaignsDb = scope.ServiceProvider.GetRequiredService<CampaignsDbContext>();
         _feedbackDb = scope.ServiceProvider.GetRequiredService<FeedbackDbContext>();
         _budgetDb = scope.ServiceProvider.GetRequiredService<BudgetDbContext>();
+        _legalDb = scope.ServiceProvider.GetRequiredService<LegalDbContext>();
+        _auditLogDb = scope.ServiceProvider.GetRequiredService<AuditLogDbContext>();
         _now = SystemClock.Instance.GetCurrentInstant();
         SourceUserId = sourceUserId;
         TargetUserId = targetUserId;
@@ -368,7 +374,7 @@ public sealed class MergeFixtureBuilder
 
     public MergeFixtureBuilder WithSourceAuditLogEntry(AuditAction action, string description)
     {
-        _pending.Add(db => db.AuditLogEntries.Add(new AuditLogEntry
+        _pendingAuditLog.Add(db => db.AuditLogEntries.Add(new AuditLogEntry
         {
             Id = Guid.NewGuid(),
             Action = action,
@@ -673,7 +679,7 @@ public sealed class MergeFixtureBuilder
             CreatedAt = _now,
             UpdatedAt = _now,
         });
-        _db.LegalDocuments.Add(new LegalDocument
+        _legalDb.LegalDocuments.Add(new LegalDocument
         {
             Id = docId,
             Name = documentName,
@@ -684,7 +690,7 @@ public sealed class MergeFixtureBuilder
             CreatedAt = _now,
             LastSyncedAt = _now,
         });
-        _db.DocumentVersions.Add(new DocumentVersion
+        _legalDb.DocumentVersions.Add(new DocumentVersion
         {
             Id = versionId,
             LegalDocumentId = docId,
@@ -695,12 +701,13 @@ public sealed class MergeFixtureBuilder
             CreatedAt = _now,
         });
         _db.SaveChanges();
+        _legalDb.SaveChanges();
         return versionId;
     }
 
     public MergeFixtureBuilder WithSourceConsentRecord(Guid documentVersionId, bool explicitConsent = true)
     {
-        _pending.Add(db => db.ConsentRecords.Add(new ConsentRecord
+        _pendingLegal.Add(db => db.ConsentRecords.Add(new ConsentRecord
         {
             Id = Guid.NewGuid(),
             UserId = SourceUserId,
@@ -796,5 +803,19 @@ public sealed class MergeFixtureBuilder
         }
         _pendingBudget.Clear();
         await _budgetDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        foreach (var apply in _pendingLegal)
+        {
+            apply(_legalDb);
+        }
+        _pendingLegal.Clear();
+        await _legalDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        foreach (var apply in _pendingAuditLog)
+        {
+            apply(_auditLogDb);
+        }
+        _pendingAuditLog.Clear();
+        await _auditLogDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
     }
 }

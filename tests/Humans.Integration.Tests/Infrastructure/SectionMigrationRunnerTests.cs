@@ -161,6 +161,26 @@ public sealed class SectionMigrationRunnerTests(HumansTestDatabase database)
             "camps",
             CreateSectionContext<CampsDbContext>,
             "SELECT count(*) FROM camp_settings"),
+        new(
+            "Gate",
+            "gate_settings",
+            CreateSectionContext<GateDbContext>,
+            null),
+        new(
+            "System",
+            "DataProtectionKeys",
+            CreateSectionContext<SystemDbContext>,
+            null),
+        new(
+            "Legal",
+            "legal_documents",
+            CreateSectionContext<LegalDbContext>,
+            null),
+        new(
+            "AuditLog",
+            "audit_log",
+            CreateSectionContext<AuditLogDbContext>,
+            null),
     ];
 
     [HumansFact]
@@ -180,8 +200,10 @@ public sealed class SectionMigrationRunnerTests(HumansTestDatabase database)
 
             foreach (var table in tables)
             {
+                // Quoted: table names come from the EF model in their exact stored
+                // case (e.g. DataProtectionKeys), and to_regclass lowercases bare names.
                 (await ScalarAsync<bool>(connectionString,
-                    $"SELECT to_regclass('public.{table}') IS NOT NULL"))
+                    $"""SELECT to_regclass('public."{table}"') IS NOT NULL"""))
                     .Should().BeTrue($"{section.Name}: {table} must exist after the baseline executes");
             }
 
@@ -323,12 +345,16 @@ public sealed class SectionMigrationRunnerTests(HumansTestDatabase database)
 
     /// <summary>
     /// Ordinal-independent physical description of a table: one line per column
-    /// (name, type, nullability, default), one per index definition, and one per
-    /// constraint (name, type, definition), sorted. Constraints are compared
-    /// because a missing or differently-shaped FK / CHECK is invisible to a
-    /// columns-plus-indexes comparison, and a model-generated baseline that
-    /// silently omits one would produce a fresh database that diverges from
-    /// every chain-built database.
+    /// (name, type, nullability, default), one per index definition, one per
+    /// constraint (name, type, definition), and one per non-internal trigger
+    /// definition, sorted. Constraints are compared because a missing or
+    /// differently-shaped FK / CHECK is invisible to a columns-plus-indexes
+    /// comparison, and a model-generated baseline that silently omits one would
+    /// produce a fresh database that diverges from every chain-built database.
+    /// Triggers are compared for the same reason: the Legal and AuditLog
+    /// immutability triggers exist only as raw SQL in the baselines
+    /// (nobodies-collective/Humans#858), so without this check the Sql block
+    /// could drift from the chain-built schema silently.
     /// </summary>
     private static async Task<List<string>> DescribeTableAsync(string connectionString, string table)
     {
@@ -376,6 +402,21 @@ public sealed class SectionMigrationRunnerTests(HumansTestDatabase database)
             await using var reader = await constraints.ExecuteReaderAsync(TestContext.Current.CancellationToken);
             while (await reader.ReadAsync(TestContext.Current.CancellationToken))
                 rows.Add("constraint:" + reader.GetString(0));
+        }
+
+        await using (var triggers = connection.CreateCommand())
+        {
+            triggers.CommandText = """
+                SELECT pg_get_triggerdef(tg.oid)
+                FROM pg_trigger tg
+                JOIN pg_class t ON t.oid = tg.tgrelid
+                JOIN pg_namespace n ON n.oid = t.relnamespace
+                WHERE n.nspname = 'public' AND t.relname = @table AND NOT tg.tgisinternal
+                """;
+            triggers.Parameters.AddWithValue("table", table);
+            await using var reader = await triggers.ExecuteReaderAsync(TestContext.Current.CancellationToken);
+            while (await reader.ReadAsync(TestContext.Current.CancellationToken))
+                rows.Add("trigger:" + reader.GetString(0));
         }
 
         rows.Sort(StringComparer.Ordinal);

@@ -20,10 +20,10 @@
   src/Humans.Application/Services/Surveys/SurveyService.cs
   src/Humans.Application/Services/Governance/ApplicationDecisionService.cs
   src/Humans.Application/Services/Agent/AgentService.cs
-  src/Humans.Application/Services/Events/EventService.cs
+  src/Sections/Humans.Events/Services/Service.cs
   src/Humans.Application/Services/Issues/IssuesService.cs
-  src/Humans.Application/Services/Expenses/ExpenseReportService.cs
-  src/Humans.Application/Services/Finance/HoldedFinanceService.cs
+  src/Sections/Humans.Expenses/Services/ExpenseReportService.cs
+  src/Sections/Humans.Finance/Services/Service.cs
   src/Humans.Application/Services/Gate/GateService.cs
 -->
 <!-- freshness:flag-on-change

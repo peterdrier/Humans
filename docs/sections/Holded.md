@@ -1,7 +1,7 @@
 <!-- freshness:triggers
   src/Humans.Application/Interfaces/Holded/**
   src/Humans.Infrastructure/Services/Holded/**
-  src/Humans.Web/Extensions/Sections/HoldedSectionExtensions.cs
+  src/Humans.Web/Extensions/Sections/HoldedConnectorExtensions.cs
 -->
 
 # Holded — Section Invariants
@@ -61,9 +61,9 @@ None outbound. Inbound: Expenses calls `IHoldedClient`. Future Finance work will
 
 - `IHoldedClient` lives in `Humans.Application/Interfaces/Holded/`.
 - `HoldedClient` lives in `Humans.Infrastructure/Services/Holded/` and is the single typed `HttpClient` to Holded.
-- Registered via `services.AddHoldedSection(config)` in `Humans.Web/Extensions/Sections/HoldedSectionExtensions.cs`.
+- Registered via `services.AddHoldedConnector(config)` in `Humans.Web/Extensions/Sections/HoldedConnectorExtensions.cs` — kept in Base (not Finance) because `IHoldedClient` is an external API connector consumed by both Expenses and Finance, and owns no tables (nobodies-collective/Humans#866); the recurring `HoldedSyncJob` / `HoldedExpenseOutboxJob` stay alongside it in `Humans.Infrastructure/Jobs` for the same reason.
 - `HoldedClientOptions.ApiKey` is bound from the `HOLDED_API_KEY` env var at startup.
-- **GDPR** — the Holded HTTP client and its sync tables own no per-user data. However, `HoldedFinanceService` (Finance-owned, registered via `AddHoldedSection`) is registered as `IUserDataContributor` and contributes the user's `holded_creditor_contacts` binding to the GDPR export.
+- **GDPR** — the Holded HTTP client and its sync tables own no per-user data. However, Finance's own `Service` (internal to `Humans.Finance`, exposed as `IHoldedFinanceService`, registered by `Humans.Finance.Section`) is registered as `IUserDataContributor` and contributes the user's `holded_creditor_contacts` binding to the GDPR export.
 
 ### Evolution
 

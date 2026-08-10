@@ -127,10 +127,14 @@ Application
 ├── Status: ApplicationStatus [enum]
 ├── Motivation: string (4000) [required]
 ├── AdditionalInfo: string? (4000)
+├── SignificantContribution: string? [Asociado-specific]
+├── RoleUnderstanding: string? [Asociado-specific]
 ├── Language: string? (10) [ISO 639-1 code]
 ├── SubmittedAt: Instant
 ├── UpdatedAt: Instant
+├── ReviewStartedAt: Instant?
 ├── ResolvedAt: Instant?
+├── RenewalReminderSentAt: Instant?
 ├── ReviewedByUserId: Guid?
 ├── ReviewNotes: string? (4000)
 ├── TermExpiresAt: LocalDate? [set on approval: Dec 31 of odd year]
