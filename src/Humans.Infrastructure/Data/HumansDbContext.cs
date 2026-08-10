@@ -21,9 +21,6 @@ internal sealed class HumansDbContext(DbContextOptions<HumansDbContext> options)
     : IdentityDbContext<User, IdentityRole<Guid>, Guid>(options)
 {
     public DbSet<Profile> Profiles => Set<Profile>();
-    public DbSet<LegalDocument> LegalDocuments => Set<LegalDocument>();
-    public DbSet<DocumentVersion> DocumentVersions => Set<DocumentVersion>();
-    public DbSet<ConsentRecord> ConsentRecords => Set<ConsentRecord>();
     public DbSet<Team> Teams => Set<Team>();
     public DbSet<TeamMember> TeamMembers => Set<TeamMember>();
     public DbSet<TeamJoinRequest> TeamJoinRequests => Set<TeamJoinRequest>();
@@ -34,7 +31,6 @@ internal sealed class HumansDbContext(DbContextOptions<HumansDbContext> options)
     public DbSet<ContactField> ContactFields => Set<ContactField>();
     public DbSet<UserEmail> UserEmails => Set<UserEmail>();
     public DbSet<VolunteerHistoryEntry> VolunteerHistoryEntries => Set<VolunteerHistoryEntry>();
-    public DbSet<AuditLogEntry> AuditLogEntries => Set<AuditLogEntry>();
     public DbSet<EventSettings> EventSettings => Set<EventSettings>();
     public DbSet<Rota> Rotas => Set<Rota>();
     public DbSet<Shift> Shifts => Set<Shift>();
@@ -77,6 +73,8 @@ internal sealed class HumansDbContext(DbContextOptions<HumansDbContext> options)
         typeof(Configurations.Budget.BudgetYearConfiguration).Namespace!,
         typeof(Configurations.Camps.CampConfiguration).Namespace!,
         typeof(Configurations.Gate.GateScanEventConfiguration).Namespace!,
+        typeof(Configurations.Legal.LegalDocumentConfiguration).Namespace!,
+        typeof(Configurations.AuditLog.AuditLogEntryConfiguration).Namespace!,
     ];
 
     protected override void OnModelCreating(ModelBuilder builder)

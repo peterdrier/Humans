@@ -48,6 +48,8 @@ env:
     CampsDbContext:src/Humans.Infrastructure
     GateDbContext:src/Humans.Infrastructure
     SystemDbContext:src/Humans.Infrastructure
+    LegalDbContext:src/Humans.Infrastructure
+    AuditLogDbContext:src/Humans.Infrastructure
     StoreDbContext:src/Sections/Humans.Store
 
 jobs:

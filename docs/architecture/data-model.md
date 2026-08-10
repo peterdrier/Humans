@@ -95,9 +95,11 @@ Since the per-section split (nobodies-collective/Humans#858) the model is partit
 | `CampsDbContext` | `camps`, `camp_seasons`, `camp_historical_names`, `camp_images`, `camp_settings`, `camp_members`, `camp_role_definitions`, `camp_role_assignments` |
 | `GateDbContext` | `gate_scan_events`, `gate_settings`, `gate_staff_pins` |
 | `SystemDbContext` | `DataProtectionKeys` — the platform context for framework-owned tables no section can own; adding a table to it is Peter's call |
+| `LegalDbContext` | `legal_documents`, `document_versions`, `consent_records` — the `consent_records` immutability trigger lives as raw SQL in the baseline (Peter-authorized `migrationBuilder.Sql`, 2026-08-10 on #858), not in the EF model |
+| `AuditLogDbContext` | `audit_log` — its immutability trigger likewise lives as raw SQL in the baseline |
 | `HumansDbContext` | everything else, including the Identity tables (which come from the framework base class) |
 
-What is left in `HumansDbContext`: Users/Identity, Teams, Profiles, Legal, Shifts and AuditLog. Profiles and Shifts are blocked by the five surviving `→ User` model relationships; Legal and AuditLog carry plpgsql immutability triggers that go into their baselines as explicit `migrationBuilder.Sql` (Peter's call, 2026-08-10 on #858); Users and Teams peel last by design. See the design doc's §10.1.
+What is left in `HumansDbContext`: Users/Identity, Teams, Profiles and Shifts. Profiles and Shifts are blocked by the five surviving `→ User` model relationships; Users and Teams peel last by design. See the design doc's §10.1.
 
 ## Cross-section FK graph
 

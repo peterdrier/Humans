@@ -37,7 +37,7 @@ public sealed class ConsentServiceTests : ServiceTestHarness
 
         _legalDocumentSyncService
             .GetVersionByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(callInfo => Db.DocumentVersions
+            .Returns(callInfo => LegalDb.DocumentVersions
                 .Include(v => v.LegalDocument)
                 .Where(v => v.Id == callInfo.ArgAt<Guid>(0))
                 .Select(v => new LegalDocumentVersionSnapshot(
@@ -66,7 +66,7 @@ public sealed class ConsentServiceTests : ServiceTestHarness
                     .Where(t => teamIds.Contains(t.Id))
                     .ToDictionaryAsync(t => t.Id, t => t.Name, Xunit.TestContext.Current.CancellationToken);
 
-                var documents = await Db.LegalDocuments
+                var documents = await LegalDb.LegalDocuments
                     .AsNoTracking()
                     .Where(d => d.IsActive && d.IsRequired && teamIds.Contains(d.TeamId))
                     .Include(d => d.Versions)
@@ -75,7 +75,7 @@ public sealed class ConsentServiceTests : ServiceTestHarness
                 return documents.Select(d => ToActiveRequiredDocumentSnapshot(d, teamNamesById)).ToList();
             });
 
-        var consentRepository = new ConsentRepository(DbFactory);
+        var consentRepository = new ConsentRepository(LegalDbFactory);
 
         // Default: no merge tombstones — chain-follow short-circuits to the
         // single-id repo path.
@@ -138,7 +138,7 @@ public sealed class ConsentServiceTests : ServiceTestHarness
         var result = await _service.SubmitConsentAsync(userId, versionId, true, "192.168.1.1", "TestAgent", Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeTrue();
-        var record = await Db.ConsentRecords.FirstAsync(Xunit.TestContext.Current.CancellationToken);
+        var record = await LegalDb.ConsentRecords.FirstAsync(Xunit.TestContext.Current.CancellationToken);
         record.UserId.Should().Be(userId);
         record.DocumentVersionId.Should().Be(versionId);
         record.IpAddress.Should().Be("192.168.1.1");
@@ -156,7 +156,7 @@ public sealed class ConsentServiceTests : ServiceTestHarness
 
         await _service.SubmitConsentAsync(userId, versionId, true, "127.0.0.1", "Agent", Xunit.TestContext.Current.CancellationToken);
 
-        var record = await Db.ConsentRecords.FirstAsync(Xunit.TestContext.Current.CancellationToken);
+        var record = await LegalDb.ConsentRecords.FirstAsync(Xunit.TestContext.Current.CancellationToken);
         var expectedHash = Convert.ToHexString(
             SHA256.HashData(Encoding.UTF8.GetBytes("Spanish text"))).ToLowerInvariant();
         record.ContentHash.Should().Be(expectedHash);
@@ -168,7 +168,7 @@ public sealed class ConsentServiceTests : ServiceTestHarness
         var userId = Guid.NewGuid();
         var versionId = Guid.NewGuid();
         SeedDocumentVersion(versionId, "Test Doc", new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "text" });
-        Db.ConsentRecords.Add(new ConsentRecord
+        LegalDb.ConsentRecords.Add(new ConsentRecord
         {
             Id = Guid.NewGuid(),
             UserId = userId,
@@ -179,7 +179,7 @@ public sealed class ConsentServiceTests : ServiceTestHarness
             ContentHash = "abc",
             ExplicitConsent = true
         });
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.SubmitConsentAsync(userId, versionId, true, "127.0.0.1", "Agent", Xunit.TestContext.Current.CancellationToken);
 
@@ -206,7 +206,7 @@ public sealed class ConsentServiceTests : ServiceTestHarness
 
         await _service.SubmitConsentAsync(userId, versionId, true, "127.0.0.1", longAgent, Xunit.TestContext.Current.CancellationToken);
 
-        var record = await Db.ConsentRecords.FirstAsync(Xunit.TestContext.Current.CancellationToken);
+        var record = await LegalDb.ConsentRecords.FirstAsync(Xunit.TestContext.Current.CancellationToken);
         record.UserAgent.Should().HaveLength(500);
     }
 
@@ -324,7 +324,7 @@ public sealed class ConsentServiceTests : ServiceTestHarness
 
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("StubProfile");
-        (await Db.ConsentRecords.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+        (await LegalDb.ConsentRecords.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
     }
 
     [HumansFact]
@@ -351,7 +351,7 @@ public sealed class ConsentServiceTests : ServiceTestHarness
         var result = await _service.SubmitConsentAsync(userId, versionId, true, "127.0.0.1", "Agent", Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeTrue();
-        (await Db.ConsentRecords.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(1);
+        (await LegalDb.ConsentRecords.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(1);
     }
 
     // --- GetConsentDashboardAsync ---
@@ -369,7 +369,7 @@ public sealed class ConsentServiceTests : ServiceTestHarness
         SeedTeam(teamId2, "Team B");
         SeedDocument(teamId1, "Doc A");
         SeedDocument(teamId2, "Doc B");
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         var (groups, _) = await _service.GetConsentDashboardAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
@@ -387,7 +387,7 @@ public sealed class ConsentServiceTests : ServiceTestHarness
         SeedTeam(teamId, "Team");
         SeedDocument(teamId, "Active Doc");
         SeedDocument(teamId, "Inactive Doc", isActive: false);
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         var (groups, _) = await _service.GetConsentDashboardAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
@@ -408,7 +408,7 @@ public sealed class ConsentServiceTests : ServiceTestHarness
         var docId = Guid.NewGuid();
         var olderVersionId = Guid.NewGuid();
         var newerVersionId = Guid.NewGuid();
-        Db.LegalDocuments.Add(new LegalDocument
+        LegalDb.LegalDocuments.Add(new LegalDocument
         {
             Id = docId,
             Name = "Versioned Doc",
@@ -419,7 +419,7 @@ public sealed class ConsentServiceTests : ServiceTestHarness
             CreatedAt = now,
             LastSyncedAt = now
         });
-        Db.DocumentVersions.Add(new DocumentVersion
+        LegalDb.DocumentVersions.Add(new DocumentVersion
         {
             Id = olderVersionId,
             LegalDocumentId = docId,
@@ -429,7 +429,7 @@ public sealed class ConsentServiceTests : ServiceTestHarness
             Content = new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "old" },
             CreatedAt = now
         });
-        Db.DocumentVersions.Add(new DocumentVersion
+        LegalDb.DocumentVersions.Add(new DocumentVersion
         {
             Id = newerVersionId,
             LegalDocumentId = docId,
@@ -439,7 +439,7 @@ public sealed class ConsentServiceTests : ServiceTestHarness
             Content = new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "new" },
             CreatedAt = now
         });
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         var (groups, _) = await _service.GetConsentDashboardAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
@@ -459,7 +459,7 @@ public sealed class ConsentServiceTests : ServiceTestHarness
         SeedTeam(teamId, "Team");
         var versionId = SeedDocument(teamId, "Doc");
         SeedConsentRecord(userId, versionId);
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         var (groups, _) = await _service.GetConsentDashboardAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
@@ -477,7 +477,7 @@ public sealed class ConsentServiceTests : ServiceTestHarness
 
         SeedTeam(teamId, "Team");
         SeedDocument(teamId, "Doc");
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         var (groups, _) = await _service.GetConsentDashboardAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
@@ -499,7 +499,7 @@ public sealed class ConsentServiceTests : ServiceTestHarness
         var v2 = SeedDocument(teamId, "Doc B");
         SeedConsentRecord(userId, v1, now - Duration.FromHours(2));
         SeedConsentRecord(userId, v2, now - Duration.FromHours(1));
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         var (_, history) = await _service.GetConsentDashboardAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
@@ -518,7 +518,7 @@ public sealed class ConsentServiceTests : ServiceTestHarness
 
         SeedTeam(teamId, "Team");
         SeedDocument(teamId, "Future Doc", effectiveFrom: now + Duration.FromDays(30));
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         var (groups, _) = await _service.GetConsentDashboardAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
@@ -560,7 +560,7 @@ public sealed class ConsentServiceTests : ServiceTestHarness
             UpdatedAt = Clock.GetCurrentInstant()
         };
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(WrapInUserInfo(profile));
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         var detail = await _service.GetConsentReviewDetailAsync(versionId, userId, Xunit.TestContext.Current.CancellationToken);
 
@@ -587,7 +587,7 @@ public sealed class ConsentServiceTests : ServiceTestHarness
             UpdatedAt = Clock.GetCurrentInstant()
         };
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(WrapInUserInfo(profile));
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         var detail = await _service.GetConsentReviewDetailAsync(versionId, userId, Xunit.TestContext.Current.CancellationToken);
 
@@ -633,7 +633,7 @@ public sealed class ConsentServiceTests : ServiceTestHarness
         var versionId = Guid.NewGuid();
         SeedDocumentVersion(versionId, "Test Doc", new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "text" });
         SeedConsentRecord(sourceId, versionId);
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         // Target's chain-follow set includes the source.
         _userService.GetMergedSourceIdsAsync(targetId, Arg.Any<CancellationToken>())
@@ -660,7 +660,7 @@ public sealed class ConsentServiceTests : ServiceTestHarness
         var now = Clock.GetCurrentInstant();
         var docId = Guid.NewGuid();
         var versionId = Guid.NewGuid();
-        Db.LegalDocuments.Add(new LegalDocument
+        LegalDb.LegalDocuments.Add(new LegalDocument
         {
             Id = docId,
             Name = name,
@@ -671,7 +671,7 @@ public sealed class ConsentServiceTests : ServiceTestHarness
             CreatedAt = now,
             LastSyncedAt = now
         });
-        Db.DocumentVersions.Add(new DocumentVersion
+        LegalDb.DocumentVersions.Add(new DocumentVersion
         {
             Id = versionId,
             LegalDocumentId = docId,
@@ -686,7 +686,7 @@ public sealed class ConsentServiceTests : ServiceTestHarness
 
     private void SeedConsentRecord(Guid userId, Guid versionId, Instant? consentedAt = null)
     {
-        Db.ConsentRecords.Add(new ConsentRecord
+        LegalDb.ConsentRecords.Add(new ConsentRecord
         {
             Id = Guid.NewGuid(),
             UserId = userId,
@@ -712,7 +712,7 @@ public sealed class ConsentServiceTests : ServiceTestHarness
             UpdatedAt = Clock.GetCurrentInstant()
         });
         var docId = Guid.NewGuid();
-        Db.LegalDocuments.Add(new LegalDocument
+        LegalDb.LegalDocuments.Add(new LegalDocument
         {
             Id = docId,
             Name = documentName,
@@ -723,7 +723,7 @@ public sealed class ConsentServiceTests : ServiceTestHarness
             CreatedAt = Clock.GetCurrentInstant(),
             LastSyncedAt = Clock.GetCurrentInstant()
         });
-        Db.DocumentVersions.Add(new DocumentVersion
+        LegalDb.DocumentVersions.Add(new DocumentVersion
         {
             Id = versionId,
             LegalDocumentId = docId,
@@ -733,6 +733,6 @@ public sealed class ConsentServiceTests : ServiceTestHarness
             EffectiveFrom = Clock.GetCurrentInstant() - Duration.FromDays(1),
             CreatedAt = Clock.GetCurrentInstant()
         });
-        Db.SaveChanges();
+        SaveAll();
     }
 }

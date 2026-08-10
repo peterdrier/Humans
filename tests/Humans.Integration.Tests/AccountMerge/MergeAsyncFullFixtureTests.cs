@@ -70,6 +70,7 @@ public class MergeAsyncFullFixtureTests(HumansTestDatabase database) : Integrati
         await using var assertScope = Factory.Services.CreateAsyncScope();
         var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
         var authDb = assertScope.ServiceProvider.GetRequiredService<AuthDbContext>();
+        var auditLogDb = assertScope.ServiceProvider.GetRequiredService<AuditLogDbContext>();
 
         // ----------------------------------------------------------------
         // Post-condition 1: exactly one UserEmail row per normalized email.
@@ -129,7 +130,7 @@ public class MergeAsyncFullFixtureTests(HumansTestDatabase database) : Integrati
         // EntityType == nameof(User), EntityId == sourceId (the archived account),
         // and the unified MergeAsync description.
         // ----------------------------------------------------------------
-        var auditRow = await db.AuditLogEntries.AsNoTracking()
+        var auditRow = await auditLogDb.AuditLogEntries.AsNoTracking()
             .FirstOrDefaultAsync(a =>
                 a.Action == AuditAction.AccountMergeAccepted
                 && a.EntityType == nameof(User)

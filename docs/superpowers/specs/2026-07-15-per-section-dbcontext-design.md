@@ -326,6 +326,7 @@ Order (criteria: navs = 0 for all, so ranked by table count, then seeds/PK quirk
 | 9 | `track-b-2` | Governance, Campaigns, GoogleIntegration, Tickets, Feedback | 15 | Stacked on peel 8 (base = `track-b`), because both edit `HumansDbContextModelSnapshot.cs` and a snapshot generated against the pre-peel-8 model would re-add peel 8's tables on merge. `SyncServiceSettings` and `TicketSyncState` carry model-level `HasData` |
 | 10 | `track-b-3` | CityPlanning, Budget, Camps | 17 | Stacked on peel 9 for the same snapshot reason. **Three sections, not five** — every other unpeeled section is walled off (§10.2). `CampSettings` carries a model-level `HasData` singleton |
 | 11 | `858/11-gate-systemdb` | Gate + System (`DataProtectionKeys`) | 4 | Gate unblocked (§5.1 wall down, Peter's call in the sprint of 2026-08-10). `SystemDbContext` created per Peter's 2026-08-10 decision on #858: the platform context for framework-owned tables no section can own, kept under glass — additions are Peter's call. First mixed-case sentinel (`DataProtectionKeys`): the runner's `to_regclass` probe lowercased bare names, so it would have missed the table and re-run the baseline against live schema. Fixed in the runner itself — the sentinel check now queries `information_schema.tables` with a plain string comparison, so callers pass exact stored names and no quoting convention exists to forget |
+| 12 | `858/12-legal-auditlog` | Legal + AuditLog | 4 | The immutability-trigger wall came down with Peter's 2026-08-10 decision on #858: the trigger + function DDL (`prevent_consent_record_modification`, `prevent_audit_log_modification`) is reproduced verbatim from the old chain's Initial migration as explicit `migrationBuilder.Sql` in each baseline — authorized per-instance exception to `no-hand-edited-migrations.md`; enforcement stays in the database, not the EF model. `SectionMigrationRunnerTests.DescribeTableAsync` now also compares non-internal triggers (`pg_get_triggerdef`), so a baseline Sql block that drifts from the chain-built schema fails the equivalence test instead of diverging silently |
 
 Both §5.1 walls came down with `20260802203816_RealignScaffoldedPhysicalDefaults` (all 31 scaffolded
 defaults dropped); `PhysicalDefaultParityTests` enforces the parity from here on, so §5.1 is no
@@ -462,6 +463,10 @@ unscheduled:
   `HumansDbContext` at 26 DbSets: Profiles, Shifts, Legal, AuditLog, Users, Teams — every one
   walled or last-by-design. The Legal/AuditLog wall fell the same day: Peter authorized EF `Sql`
   in the baseline for the immutability triggers, so those two are next.
+  **Peeled in peel 12** (2026-08-10): Legal (`LegalDbContext`) and AuditLog (`AuditLogDbContext`)
+  with the trigger DDL carried verbatim in the baselines, leaving `HumansDbContext` at 24 DbSets
+  across Profiles, Shifts, Users and Teams — §10.1's five `→ User` relationships and the two
+  last-by-design sections are all that remain.
 
 Check-constraint audit for this batch: the only two live CHECK constraints are
 `ck_agent_settings_singleton` and `CK_role_assignments_valid_window`, neither on a

@@ -19,20 +19,20 @@ namespace Humans.Application.Tests.AuditLog;
 
 public class AuditLogServiceTests : IDisposable
 {
-    private readonly HumansDbContext _dbContext;
+    private readonly AuditLogDbContext _dbContext;
     private readonly FakeClock _clock;
     private readonly IUserService _userService;
     private readonly AuditLogService _service;
 
     public AuditLogServiceTests()
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
+        var options = new DbContextOptionsBuilder<AuditLogDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
 
-        _dbContext = new HumansDbContext(options);
+        _dbContext = new AuditLogDbContext(options);
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
-        var repo = new AuditLogRepository(new TestDbContextFactory(options));
+        var repo = new AuditLogRepository(new TestDbContextFactory<AuditLogDbContext>(options));
         _userService = Substitute.For<IUserService>();
         // Default: no merge tombstones — chain-follow short-circuits to the
         // single-id repo path.
