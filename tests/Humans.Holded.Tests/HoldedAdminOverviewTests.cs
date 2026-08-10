@@ -51,9 +51,10 @@ public sealed class HoldedAdminOverviewTests
         Balance = balance, Archived = archived, SyncedAt = FixedNow,
     };
 
-    private static HoldedLedgerLine Line(int entry, int account, decimal debit = 0m, decimal credit = 0m) => new()
+    private static HoldedLedgerLine Line(int entry, int account, decimal debit = 0m, decimal credit = 0m,
+        int line = 1, Instant? date = null) => new()
     {
-        Id = Guid.NewGuid(), EntryNumber = entry, Line = 1, AccountNum = account, Date = FixedNow,
+        Id = Guid.NewGuid(), EntryNumber = entry, Line = line, AccountNum = account, Date = date ?? FixedNow,
         Debit = debit, Credit = credit, CreatedAt = FixedNow, LastSyncedAt = FixedNow,
     };
 
@@ -195,6 +196,60 @@ public sealed class HoldedAdminOverviewTests
         row.Status.Should().Be("Idle");
         row.LastCount.Should().Be(17);
         row.LastError.Should().Contain("57200001");
+    }
+
+    // ─── GL account page ──────────────────────────────────────────────────────────
+
+    [HumansFact]
+    public async Task GetAccountStatement_unknown_number_returns_null()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        await _repo.UpsertAccountsAsync([Account(62900128, 121_684.00m)], FixedNow, ct);
+
+        (await _service.GetAccountStatementAsync(62900999, ct)).Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task GetAccountStatement_returns_header_and_ordered_lines()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var earlier = Instant.FromUtc(2026, 8, 1, 10, 0);
+        await _repo.UpsertAccountsAsync([Account(62900128, 121_684.00m), Account(40000004, -53_203.00m)], FixedNow, ct);
+        await SeedLinesAsync(ct,
+            Line(9, 62900128, debit: 1_684.00m, line: 2),
+            Line(9, 62900128, debit: 120_000.00m, line: 1),
+            Line(3, 62900128, debit: 100m, date: earlier),
+            Line(4, 40000004, credit: 53_203.00m));
+
+        var statement = await _service.GetAccountStatementAsync(62900128, ct);
+
+        statement.Should().NotBeNull();
+        statement.Account.Name.Should().Be("acct 62900128");
+        statement.Account.Group.Should().Be("Gastos");
+        statement.Account.HoldedBalance.Should().Be(121_684.00m);
+        statement.Account.LocalBalance.Should().Be(121_784.00m);
+        statement.Account.LocalLineCount.Should().Be(3);
+        statement.Account.Reconciled.Should().BeFalse();
+        // Date first, then entry/line — the other account's line is not here at all.
+        statement.Lines.Select(l => (l.EntryNumber, l.Line)).Should().Equal((3, 1), (9, 1), (9, 2));
+    }
+
+    [HumansFact]
+    public async Task GetAccountStatement_account_absent_from_the_chart_still_renders_its_cached_lines()
+    {
+        // A line can name an account the chart cache has not seen yet (new account, sync ordering).
+        // Showing the lines beats 404ing on a page whose whole job is the lines.
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        await SeedLinesAsync(ct, Line(1, 57200001, debit: 771_074.85m));
+
+        var statement = await _service.GetAccountStatementAsync(57200001, ct);
+
+        statement.Should().NotBeNull();
+        statement.Account.Number.Should().Be(57200001);
+        statement.Account.HoldedBalance.Should().Be(0m);
+        statement.Account.LocalBalance.Should().Be(771_074.85m);
+        statement.Account.Reconciled.Should().BeFalse();
+        statement.Lines.Should().ContainSingle();
     }
 
     [HumansFact]

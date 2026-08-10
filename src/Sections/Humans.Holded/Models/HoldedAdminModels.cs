@@ -1,5 +1,6 @@
 using Humans.Application.Interfaces.Holded;
 using Humans.Finance.Contracts;
+using Humans.Holded.Contracts;
 using NodaTime;
 
 namespace Humans.Holded.Models;
@@ -37,3 +38,12 @@ internal sealed record HoldedSyncStateRow(
 internal sealed record HoldedAccountRow(
     int Number, string Name, string? Group,
     decimal HoldedBalance, decimal? LocalBalance, int LocalLineCount, bool Reconciled);
+
+/// <summary>
+/// One general-ledger account and every cached line on it, in Holded's own sign convention
+/// (debit and credit columns, balance = Σdebit − Σcredit) so the page reads the same as Holded's
+/// UI. Finance inverts for its creditor pages; this one never does.
+/// </summary>
+/// <param name="Lines">Date first, then entry/line — the order the daybook was written in.</param>
+internal sealed record HoldedAccountStatement(
+    HoldedAccountRow Account, IReadOnlyList<HoldedLedgerLineInfo> Lines);

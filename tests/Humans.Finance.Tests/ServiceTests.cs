@@ -464,6 +464,60 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
+    public async Task GetCreditorLedger_carries_the_contact_header_when_a_cached_contact_holds_the_account()
+    {
+        _holded.GetLedgerLinesAsync(40000004, Arg.Any<CancellationToken>()).Returns(new List<HoldedLedgerLineInfo>
+        {
+            Line(1, 0, 40000004, FixedNow, credit: 50m),
+        });
+        _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedContactDto>
+        {
+            new()
+            {
+                Id = "c1", Name = "Daniela Marquez", SupplierAccountNum = 40000004, TradeName = "Dani",
+                Email = "dani@example.org", Phone = "+34 600 000 000", Mobile = "+34 611 111 111",
+                Iban = "ES9121000418450200051332", TaxCode = "X1234567L", Address = "Calle Mayor 1, 28013 Madrid",
+            },
+            new() { Id = "c2", Name = "Someone Else", SupplierAccountNum = 40000007 },
+        });
+
+        var ledger = await MakeService().GetCreditorLedgerAsync(40000004, Xunit.TestContext.Current.CancellationToken);
+
+        ledger.Should().NotBeNull();
+        ledger.Name.Should().Be("Daniela Marquez");
+        ledger.Contact.Should().NotBeNull();
+        ledger.Contact.TradeName.Should().Be("Dani");
+        ledger.Contact.Email.Should().Be("dani@example.org");
+        ledger.Contact.Phone.Should().Be("+34 600 000 000");
+        ledger.Contact.Mobile.Should().Be("+34 611 111 111");
+        ledger.Contact.Iban.Should().Be("ES9121000418450200051332");
+        ledger.Contact.TaxCode.Should().Be("X1234567L");
+        ledger.Contact.Address.Should().Be("Calle Mayor 1, 28013 Madrid");
+    }
+
+    [HumansFact]
+    public async Task GetCreditorLedger_leaves_the_contact_header_null_when_no_cached_contact_matches()
+    {
+        // Holded unreachable, or an account whose contact carries a different number: the statement
+        // still renders from the mirror, just without a header.
+        _holded.GetLedgerLinesAsync(40000004, Arg.Any<CancellationToken>()).Returns(new List<HoldedLedgerLineInfo>
+        {
+            Line(1, 0, 40000004, FixedNow, credit: 50m),
+        });
+        _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedContactDto>
+        {
+            new() { Id = "c2", Name = "Someone Else", SupplierAccountNum = 40000007 },
+        });
+
+        var ledger = await MakeService().GetCreditorLedgerAsync(40000004, Xunit.TestContext.Current.CancellationToken);
+
+        ledger.Should().NotBeNull();
+        ledger.Contact.Should().BeNull();
+        ledger.Name.Should().BeNull();
+        ledger.Balance.Should().Be(-50m);
+    }
+
+    [HumansFact]
     public async Task GetCreditorLedger_returns_null_when_no_lines()
     {
         _holded.GetLedgerLinesAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())

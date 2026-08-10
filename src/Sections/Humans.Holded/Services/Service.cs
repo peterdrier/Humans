@@ -210,6 +210,31 @@ internal sealed class Service(
             LedgerLineCount: lines.Count);
     }
 
+    public async Task<HoldedAccountStatement?> GetAccountStatementAsync(
+        int number, CancellationToken ct = default)
+    {
+        var lines = await repo.GetLedgerLinesByAccountNumAsync(number, ct);
+        var account = (await repo.GetAccountsAsync(ct)).FirstOrDefault(a => a.Number == number);
+        if (account is null && lines.Count == 0)
+            return null;
+
+        // Archived accounts are not filtered out here the way the overview filters them: a direct
+        // link to one is a deliberate lookup, and its history is still the answer.
+        decimal? localBalance = lines.Count == 0 ? null : lines.Sum(l => l.Debit) - lines.Sum(l => l.Credit);
+        var holdedBalance = account?.Balance ?? 0m;
+
+        return new HoldedAccountStatement(
+            new HoldedAccountRow(
+                number, account?.Name ?? "", account?.Group, holdedBalance,
+                localBalance, lines.Count, holdedBalance == (localBalance ?? 0m)),
+            lines
+                .OrderBy(l => l.Date)
+                .ThenBy(l => l.EntryNumber)
+                .ThenBy(l => l.Line)
+                .Select(ToInfo)
+                .ToList());
+    }
+
     /// <summary>Refreshes the chart cache, then compares every non-archived account's Holded
     /// balance against the local ledger sum. A drifted account gets one targeted full-history
     /// re-pull (replace semantics); accounts still off afterwards are returned.</summary>

@@ -58,7 +58,7 @@ internal sealed class FinanceController(
         => View(await holdedFinance.GetUnmatchedAsync());
 
     [HttpGet("Creditors")]
-    public async Task<IActionResult> Creditors()
+    public async Task<IActionResult> Creditors(string? sort, string? dir)
     {
         var (rows, unresolved) = await holdedFinance.ListCreditorAccountsAsync();
 
@@ -70,18 +70,20 @@ internal sealed class FinanceController(
             foreach (var kv in await UserService.GetUserInfosAsync(boundIds))
                 names[kv.Key] = kv.Value.BurnerName;
 
-        var accounts = rows
+        // The page shows one balance, inverted so a positive figure is money owed to the member.
+        // Only the display flips: the contract row keeps Holded's Σdebit − Σcredit.
+        var vms = rows
             .Select(r => new CreditorAccountRowVm(
-                r.SupplierAccountNum, r.Name, r.Balance, r.OwedToMember,
+                r.SupplierAccountNum, r.Name, r.Balance is { } b ? -b : null,
                 r.Bindings.Select(b => new CreditorAccountBindingVm(
                     b.UserId,
                     names.TryGetValue(b.UserId, out var nm) ? nm : b.UserId.ToString(),
                     b.Source.ToString())).ToList()))
-            // Collisions first — they are the only rows that need a human right now.
-            .OrderByDescending(r => r.HasCollision)
-            .ThenByDescending(r => r.OwedToMember)
-            .ThenBy(r => r.SupplierAccountNum)
             .ToList();
+
+        var sortBy = sort is "name" or "balance" or "member" ? sort : "account";
+        var sortDir = string.Equals(dir, "desc", StringComparison.Ordinal) ? "desc" : "asc";
+        var accounts = SortCreditorRows(vms, sortBy, sortDir);
 
         var unresolvedVm = unresolved
             .Select(b => new UnresolvedCreditorBindingVm(
@@ -90,7 +92,26 @@ internal sealed class FinanceController(
                 b.Source.ToString()))
             .ToList();
 
-        return View(new CreditorsPageVm(accounts, unresolvedVm));
+        return View(new CreditorsPageVm(accounts, unresolvedVm, sortBy, sortDir));
+    }
+
+    /// <summary>Every column on /Finance/Creditors is sortable; ties resolve on the account number
+    /// so the order is stable across reloads.</summary>
+    private static List<CreditorAccountRowVm> SortCreditorRows(
+        IReadOnlyList<CreditorAccountRowVm> rows, string sortBy, string sortDir)
+    {
+        Func<CreditorAccountRowVm, IComparable> key = sortBy switch
+        {
+            "name" => r => r.Name.ToUpperInvariant(),
+            "balance" => r => r.Balance ?? 0m,
+            "member" => r => r.MemberSortKey,
+            _ => r => r.SupplierAccountNum,
+        };
+
+        var ordered = string.Equals(sortDir, "desc", StringComparison.Ordinal)
+            ? rows.OrderByDescending(key)
+            : rows.OrderBy(key);
+        return ordered.ThenBy(r => r.SupplierAccountNum).ToList();
     }
 
     [HttpGet("Creditors/{accountNum:int}")]

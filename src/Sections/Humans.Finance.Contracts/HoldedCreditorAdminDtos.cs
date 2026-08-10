@@ -31,9 +31,25 @@ public sealed record CreditorContactBinding(
     CreditorContactSource Source);
 
 /// <summary>Per-account statement: balance plus itemized journal lines (credit = owed/in, debit = paid/out).</summary>
+/// <param name="Contact">The Holded contact holding this account, for the statement header. Null
+/// when the cached contact list carries no contact for the number — including when Holded is
+/// unreachable, which must cost the header and not the statement.</param>
 public sealed record HoldedCreditorLedger(
     int SupplierAccountNum,
     string? Name,
     decimal? Balance,
     decimal OwedToMember,
-    IReadOnlyList<CreditorLedgerLine> Lines);
+    IReadOnlyList<CreditorLedgerLine> Lines,
+    HoldedContactInfo? Contact = null);
+
+/// <summary>The Holded contact behind a creditor account, as shown on the statement header. Every
+/// field is optional — Holded fills what the contact record happens to carry.</summary>
+public sealed record HoldedContactInfo(
+    string? Name,
+    string? TradeName,
+    string? Email,
+    string? Phone,
+    string? Mobile,
+    string? Iban,
+    string? TaxCode,
+    string? Address);

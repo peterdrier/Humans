@@ -46,6 +46,16 @@ internal sealed class HoldedController(
         return View(new HoldedOverviewVm(overview, docSync, creditorBindings));
     }
 
+    /// <summary>The general-ledger page for any account in the chart — a 629x department, a 572x
+    /// bank, a 400x creditor. Native Holded sign throughout, so it always matches Holded's own view.</summary>
+    [HttpGet("Accounts/{number:int}")]
+    public async Task<IActionResult> Account(int number, CancellationToken ct)
+    {
+        var statement = await admin.GetAccountStatementAsync(number, ct);
+        if (statement is null) return NotFound();
+        return View(statement);
+    }
+
     [HttpPost("SyncNow")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SyncNow(CancellationToken ct)

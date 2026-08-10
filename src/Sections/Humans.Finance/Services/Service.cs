@@ -646,15 +646,19 @@ internal sealed class Service(
     public async Task<HoldedCreditorLedger?> GetCreditorLedgerAsync(
         int supplierAccountNum, CancellationToken ct = default)
     {
-        // Reads cached daybook lines only — zero Holded calls per view.
+        // Lines come from the mirror — no Holded call. The contact header rides the same 2-minute
+        // cached contact list /Finance/Creditors already reads, so a warm page costs nothing either.
         var lines = await holded.GetLedgerLinesAsync(supplierAccountNum, ct);
         if (lines.Count == 0)
             return null;
 
+        var contact = (await ListContactsOrEmptyAsync(ct))
+            .FirstOrDefault(c => c.SupplierAccountNum == supplierAccountNum);
+
         var balance = LedgerBalance(lines);
         return new HoldedCreditorLedger(
             SupplierAccountNum: supplierAccountNum,
-            Name: null,
+            Name: contact?.Name,
             Balance: balance,
             OwedToMember: Math.Max(0m, -balance),
             Lines: lines.Select(l => new CreditorLedgerLine
@@ -667,7 +671,12 @@ internal sealed class Service(
                 Credit = l.Credit,
                 Type = l.Type,
                 Description = l.Description,
-            }).ToList());
+            }).ToList(),
+            Contact: contact is null
+                ? null
+                : new HoldedContactInfo(
+                    contact.Name, contact.TradeName, contact.Email, contact.Phone,
+                    contact.Mobile, contact.Iban, contact.TaxCode, contact.Address));
     }
 
     public async Task<string> EnsureCreditorContactAsync(

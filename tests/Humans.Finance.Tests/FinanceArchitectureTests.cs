@@ -69,6 +69,7 @@ public class FinanceArchitectureTests
             "CreditorContactSource",
             "CreditorLedgerLine",
             "HoldedActualRow",
+            "HoldedContactInfo",
             "HoldedCreditorAccountRow",
             "HoldedCreditorLedger",
             "HoldedCreditorStatus",

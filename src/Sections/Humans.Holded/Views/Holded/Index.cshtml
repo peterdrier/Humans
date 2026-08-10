@@ -197,7 +197,7 @@
                     @foreach (var a in o.DepartmentActuals)
                     {
                         <tr>
-                            <td class="text-nowrap"><code>@a.Number</code></td>
+                            <td class="text-nowrap"><a asp-action="Account" asp-route-number="@a.Number"><code>@a.Number</code></a></td>
                             <td>@a.Name</td>
                             <td class="text-end">@a.HoldedBalance.ToEuro()</td>
                             <td class="text-end">@a.LocalLineCount</td>
@@ -243,7 +243,7 @@
                     @foreach (var a in o.Accounts)
                     {
                         <tr>
-                            <td class="text-nowrap"><code>@a.Number</code></td>
+                            <td class="text-nowrap"><a asp-action="Account" asp-route-number="@a.Number"><code>@a.Number</code></a></td>
                             <td>@a.Name</td>
                             <td class="small text-muted">@a.Group</td>
                             <td class="text-end">@a.HoldedBalance.ToEuro()</td>
