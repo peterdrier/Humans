@@ -7,6 +7,9 @@ public interface IHoldedFinanceService : IApplicationService
     Task<HoldedProvisioningPlan> GetProvisioningPlanAsync(int blockStart, CancellationToken ct = default);
     Task<int> ProvisionAsync(int blockStart, bool addAll, CancellationToken ct = default);
     Task<HoldedSyncResult> SyncAsync(CancellationToken ct = default);
+
+    /// <summary>State of the last purchase-doc sync. Read-only; lazy-creates the state row.</summary>
+    Task<HoldedDocSyncInfo> GetDocSyncInfoAsync(CancellationToken ct = default);
     Task<IReadOnlyList<HoldedActualRow>> GetActualsForYearAsync(int calendarYear, CancellationToken ct = default);
     Task<IReadOnlyList<HoldedUnmatchedRow>> GetUnmatchedAsync(CancellationToken ct = default);
 

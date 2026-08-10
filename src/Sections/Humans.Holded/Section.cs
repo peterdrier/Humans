@@ -1,3 +1,4 @@
+using System.Globalization;
 using Humans.Application.Interfaces;
 using Humans.Holded.Data;
 using Humans.Infrastructure.Hosting;
@@ -28,8 +29,18 @@ public sealed class Section : ISection
         // baseline recreates them under Holded ownership.
         services.AddSectionDbContext<HoldedDbContext>(sentinelTable: "holded_accounts");
 
+        // The plan-tier call allowance, which no Holded endpoint reports (GET /usage's `limit`
+        // is the billable-overage ceiling). Left at the default when unset or unparseable.
+        services.Configure<HoldedSectionOptions>(opts =>
+        {
+            if (int.TryParse(configuration["Holded:MonthlyCallBudget"],
+                    NumberStyles.Integer, CultureInfo.InvariantCulture, out var budget) && budget > 0)
+                opts.MonthlyCallBudget = budget;
+        });
+
         services.AddScoped<IHoldedMirrorRepository, Repository>();
         services.AddScoped<Services.Service>();
         services.AddScoped<Contracts.IHoldedService>(sp => sp.GetRequiredService<Services.Service>());
+        services.AddScoped<Services.IHoldedAdminService>(sp => sp.GetRequiredService<Services.Service>());
     }
 }

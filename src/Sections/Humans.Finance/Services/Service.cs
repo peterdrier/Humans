@@ -216,6 +216,13 @@ internal sealed class Service(
         }
     }
 
+    public async Task<HoldedDocSyncInfo> GetDocSyncInfoAsync(CancellationToken ct = default)
+    {
+        var state = await repo.GetOrCreateDocSyncStateAsync(ct);
+        return new HoldedDocSyncInfo(
+            state.LastSyncAt, state.Status, state.LastError, state.LastSyncedDocCount);
+    }
+
     private static HoldedExpenseDoc MapDoc(
         HoldedPurchaseDocListItemDto doc,
         HoldedMatchEntry[] entries,

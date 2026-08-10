@@ -72,6 +72,7 @@ public class FinanceArchitectureTests
             "HoldedCreditorAccountRow",
             "HoldedCreditorLedger",
             "HoldedCreditorStatus",
+            "HoldedDocSyncInfo",
             "HoldedPaymentInfo",
             "HoldedProvisioningPlan",
             "HoldedProvisioningRow",

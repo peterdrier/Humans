@@ -2,7 +2,9 @@ using Humans.Application.Interfaces.Holded;
 using Humans.Holded.Contracts;
 using Humans.Holded.Data;
 using Humans.Holded.Domain;
+using Humans.Holded.Models;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using NodaTime;
 
 namespace Humans.Holded.Services;
@@ -18,7 +20,8 @@ internal sealed class Service(
     IHoldedClient client,
     IHoldedCallLog callLog,
     IClock clock,
-    ILogger<Service> logger) : IHoldedService
+    IOptions<HoldedSectionOptions> options,
+    ILogger<Service> logger) : IHoldedService, IHoldedAdminService
 {
     private static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
 
@@ -131,6 +134,80 @@ internal sealed class Service(
         {
             LedgerSyncGate.Release();
         }
+    }
+
+    public async Task<HoldedAdminOverview> GetOverviewAsync(CancellationToken ct = default)
+    {
+        // Drain first: the usage call below lands in the log and shows up on the next load,
+        // which is what makes the meter self-reporting rather than a call that hides itself.
+        await DrainCallLogAsync(ct);
+
+        HoldedUsageDto? usage = null;
+        try
+        {
+            usage = await client.GetUsageAsync(ct);
+        }
+        catch (HoldedApiException ex)
+        {
+            // No key, Holded down, key revoked — the mirror still renders in full. The page says
+            // "unreachable" rather than 500ing on the one live call it makes.
+            logger.LogWarning(ex, "Holded usage lookup failed; rendering /Holded from the mirror only");
+        }
+
+        var apiCalls = await repo.GetApiCallsAsync(ct);
+        var callsByMonth = apiCalls
+            .GroupBy(c =>
+            {
+                var d = c.CalledAt.InZone(MadridZone).Date;
+                return (d.Year, d.Month);
+            })
+            .Select(m => new HoldedMonthlyCalls(
+                m.Key.Year,
+                m.Key.Month,
+                m.Count(),
+                m.GroupBy(c => c.Endpoint, StringComparer.Ordinal)
+                    .ToDictionary(e => e.Key, e => e.Count(), StringComparer.Ordinal)))
+            .OrderByDescending(m => m.Year).ThenByDescending(m => m.Month)
+            .ToList();
+
+        var syncStates = (await repo.GetSyncStatesAsync(ct))
+            .Select(s => new HoldedSyncStateRow(
+                s.Kind.ToString(), s.SyncStatus.ToString(), s.LastSyncAt, s.LastError, s.LastCount))
+            .OrderBy(s => s.Kind, StringComparer.Ordinal)
+            .ToList();
+
+        var lines = await repo.GetAllLedgerLinesAsync(ct);
+        var local = lines
+            .GroupBy(l => l.AccountNum)
+            .ToDictionary(
+                g => g.Key,
+                g => (Balance: g.Sum(l => l.Debit) - g.Sum(l => l.Credit), Count: g.Count()));
+
+        var accounts = (await repo.GetAccountsAsync(ct))
+            .Where(a => !a.Archived)
+            .OrderBy(a => a.Number)
+            .Select(a =>
+            {
+                var hasLines = local.TryGetValue(a.Number, out var cached);
+                decimal? localBalance = hasLines ? cached.Balance : null;
+                return new HoldedAccountRow(
+                    a.Number, a.Name, a.Group, a.Balance, localBalance,
+                    hasLines ? cached.Count : 0, a.Balance == (localBalance ?? 0m));
+            })
+            .ToList();
+
+        return new HoldedAdminOverview(
+            ApiReachable: usage is not null,
+            Usage: usage,
+            MonthlyCallBudget: options.Value.MonthlyCallBudget,
+            CallsByMonth: callsByMonth,
+            SyncStates: syncStates,
+            Accounts: accounts,
+            DepartmentActuals: accounts
+                .Where(a => a.Number is >= 62900000 and <= 62999999)
+                .OrderByDescending(a => a.HoldedBalance)
+                .ToList(),
+            LedgerLineCount: lines.Count);
     }
 
     /// <summary>Refreshes the chart cache, then compares every non-archived account's Holded

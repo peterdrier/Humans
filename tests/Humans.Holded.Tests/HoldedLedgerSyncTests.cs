@@ -5,6 +5,7 @@ using Humans.Holded.Domain;
 using Humans.Holded.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
@@ -31,7 +32,8 @@ public sealed class HoldedLedgerSyncTests
         _callLog.DrainAll().Returns([]);
         _client.ListAccountingAccountsAsync(Arg.Any<CancellationToken>())
             .Returns(new List<HoldedAccountDto>());
-        _service = new Service(_repo, _client, _callLog, new FakeClock(FixedNow), NullLogger<Service>.Instance);
+        _service = new Service(_repo, _client, _callLog, new FakeClock(FixedNow),
+            Options.Create(new HoldedSectionOptions()), NullLogger<Service>.Instance);
     }
 
     private static HoldedLedgerLineDto Dto(int entry, int line, int account, Instant date,

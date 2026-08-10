@@ -27,6 +27,9 @@
     <ProjectReference Include="..\..\Humans.Infrastructure\Humans.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Humans.UI\Humans.UI.csproj" />
     <ProjectReference Include="..\Humans.Holded.Contracts\Humans.Holded.Contracts.csproj" />
+    <!-- /Holded shows Finance's doc-sync row and creditor-binding count beside the mirror's own
+         state. Contracts leaf only — the section itself is never referenced. -->
+    <ProjectReference Include="..\Humans.Finance.Contracts\Humans.Finance.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>
