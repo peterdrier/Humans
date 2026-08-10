@@ -27,7 +27,7 @@ public class HoldedClientTransportTests
         var handler = new StubHandler(req =>
         {
             captured = req;
-            return Respond(HttpStatusCode.OK, "[]");
+            return Respond(HttpStatusCode.OK, """{"items":[]}""");
         });
 
         var client = Make(handler);
@@ -52,7 +52,7 @@ public class HoldedClientTransportTests
                 resp.Headers.RetryAfter = new System.Net.Http.Headers.RetryConditionHeaderValue(TimeSpan.Zero);
                 return resp;
             }
-            return Respond(HttpStatusCode.OK, "[]");
+            return Respond(HttpStatusCode.OK, """{"items":[]}""");
         });
 
         var client = Make(handler);
@@ -82,7 +82,7 @@ public class HoldedClientTransportTests
     {
         var handler = new StubHandler(_ =>
         {
-            var resp = Respond(HttpStatusCode.OK, "[]");
+            var resp = Respond(HttpStatusCode.OK, """{"items":[]}""");
             resp.Headers.Add("X-RateLimit-Remaining", "42");
             resp.Headers.Add("X-RateLimit-Window", "minute");
             return resp;

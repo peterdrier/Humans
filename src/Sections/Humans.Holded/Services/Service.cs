@@ -268,6 +268,15 @@ internal sealed class Service(
             .Where(a => !a.Archived && a.Balance != localBalances.GetValueOrDefault(a.Number, 0m))
             .ToList();
 
+        // Rotate the starting point by day so a standing block of more-than-cap drifted accounts
+        // (e.g. entries Holded itself excludes from chart totals) cannot pin the cap to the same
+        // first ten forever and starve the rest of their targeted re-pull.
+        if (drifted.Count > MaxTargetedRepullsPerRun)
+        {
+            var offset = (int)(now.ToUnixTimeSeconds() / 86_400 % drifted.Count);
+            drifted = [.. drifted.Skip(offset), .. drifted.Take(offset)];
+        }
+
         var mismatches = new List<(int, decimal, decimal)>();
         var repulled = 0;
         foreach (var account in drifted)

@@ -425,7 +425,19 @@ public sealed class HoldedClient : IHoldedClient
             using var resp = await SendAsync(req, ct, caller);
             await using var stream = await resp.Content.ReadAsStreamAsync(ct);
             var root = await JsonNode.ParseAsync(stream, cancellationToken: ct);
-            foreach (var n in Arr(Prop(root, "items")))
+
+            // Strict envelope validation, not the forgiving Prop/Arr fallbacks: a 200 carrying
+            // Holded's {"status":0,...} error object — or any body without an `items` array —
+            // would otherwise read as a successfully-empty page, and list results feed
+            // replace-semantics windows where a false empty deletes every cached row in range.
+            if (Prop(root, "items") is not JsonArray itemsArr)
+            {
+                var preview = root?.ToJsonString() ?? "null";
+                throw new HoldedTransientException(
+                    $"Holded returned a 200 without a valid items array for {pathAndQuery.Split('?', 2)[0]} " +
+                    $"(body starts: {preview[..Math.Min(preview.Length, 120)]}).");
+            }
+            foreach (var n in itemsArr)
                 if (n is not null) items.Add(n);
 
             var hasMore = Prop(root, "has_more")?.GetValue<bool>() ?? false;
