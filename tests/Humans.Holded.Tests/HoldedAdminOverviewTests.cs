@@ -41,22 +41,39 @@ public sealed class HoldedAdminOverviewTests
 
     private static HoldedApiCall Call(Instant at, string endpoint) => new()
     {
-        Id = Guid.NewGuid(), CalledAt = at, Endpoint = endpoint, Method = "GET", StatusCode = 200,
+        Id = Guid.NewGuid(),
+        CalledAt = at,
+        Endpoint = endpoint,
+        Method = "GET",
+        StatusCode = 200,
     };
 
     private static HoldedAccount Account(int number, decimal balance, bool archived = false) => new()
     {
-        Number = number, HoldedId = $"id-{number}", Name = $"acct {number}", Group = "Gastos",
-        Debit = balance > 0 ? balance : 0m, Credit = balance < 0 ? -balance : 0m,
-        Balance = balance, Archived = archived, SyncedAt = FixedNow,
+        Number = number,
+        HoldedId = $"id-{number}",
+        Name = $"acct {number}",
+        Group = "Gastos",
+        Debit = balance > 0 ? balance : 0m,
+        Credit = balance < 0 ? -balance : 0m,
+        Balance = balance,
+        Archived = archived,
+        SyncedAt = FixedNow,
     };
 
     private static HoldedLedgerLine Line(int entry, int account, decimal debit = 0m, decimal credit = 0m,
         int line = 1, Instant? date = null) => new()
-    {
-        Id = Guid.NewGuid(), EntryNumber = entry, Line = line, AccountNum = account, Date = date ?? FixedNow,
-        Debit = debit, Credit = credit, CreatedAt = FixedNow, LastSyncedAt = FixedNow,
-    };
+        {
+            Id = Guid.NewGuid(),
+            EntryNumber = entry,
+            Line = line,
+            AccountNum = account,
+            Date = date ?? FixedNow,
+            Debit = debit,
+            Credit = credit,
+            CreatedAt = FixedNow,
+            LastSyncedAt = FixedNow,
+        };
 
     private Task SeedLinesAsync(CancellationToken ct, params HoldedLedgerLine[] lines) =>
         _repo.ReplaceLedgerWindowAsync(
