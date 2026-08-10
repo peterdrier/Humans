@@ -267,7 +267,7 @@ internal sealed class Service(
     {
         var docs = await repo.GetMatchedForYearAsync(calendarYear, ct);
         return docs
-            .Where(d => d.IsApproved && d.BudgetCategoryId is not null)
+            .Where(d => d.IsApproved == true && d.BudgetCategoryId is not null)
             .GroupBy(d => d.BudgetCategoryId!.Value)
             .Select(g => new HoldedActualRow(g.Key, g.Sum(x => x.Total), g.Count()))
             .ToList();

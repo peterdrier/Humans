@@ -169,11 +169,13 @@ public sealed class SectionMigrationRunnerTests(HumansTestDatabase database)
             var connectionString = await CreateDatabaseAsync($"fresh_{section.Name.ToLowerInvariant()}");
 
             List<string> tables;
+            int migrationCount;
             await using (var db = section.CreateContext(connectionString))
             {
                 await SectionMigrationRunner.MigrateAsync(
                     db, section.SentinelTable, NullLogger.Instance, NoSnapshot, TestContext.Current.CancellationToken);
                 tables = SectionTables(db);
+                migrationCount = db.Database.GetMigrations().Count();
             }
 
             foreach (var table in tables)
@@ -189,7 +191,9 @@ public sealed class SectionMigrationRunnerTests(HumansTestDatabase database)
                     .Should().Be(1, $"{section.Name}: the HasData seed must be inserted by the baseline");
             }
 
-            (await HistoryCountAsync(connectionString, section.Name)).Should().Be(1);
+            // One history row per migration in the section's chain — the baseline plus any
+            // post-baseline migrations (the runner executes those for real on every path).
+            (await HistoryCountAsync(connectionString, section.Name)).Should().Be(migrationCount);
         }
     }
 
@@ -215,8 +219,16 @@ public sealed class SectionMigrationRunnerTests(HumansTestDatabase database)
 
         foreach (var section in Sections)
         {
+            int migrationCount;
+            await using (var db = section.CreateContext(connectionString))
+            {
+                migrationCount = db.Database.GetMigrations().Count();
+            }
+
+            // The baseline is mark-applied; post-baseline migrations execute for real on the first
+            // boot. Either way exactly one history row per migration, stable across boots.
             (await HistoryCountAsync(connectionString, section.Name))
-                .Should().Be(1, $"{section.Name}: exactly one baseline history row after two boots");
+                .Should().Be(migrationCount, $"{section.Name}: one history row per migration after two boots");
 
             if (section.SeedProbeSql is not null)
             {
@@ -231,6 +243,16 @@ public sealed class SectionMigrationRunnerTests(HumansTestDatabase database)
     {
         var oldChainConnection = await CreateDatabaseAsync("equiv_old_chain");
         await MigrateOldChainAsync(oldChainConnection);
+
+        // Production boot runs every section runner after the historical chain (mark the baseline
+        // applied, then execute post-baseline migrations for real) — the old-chain path must get the
+        // same pass or any post-baseline migration would read as a false schema divergence.
+        foreach (var section in Sections)
+        {
+            await using var db = section.CreateContext(oldChainConnection);
+            await SectionMigrationRunner.MigrateAsync(
+                db, section.SentinelTable, NullLogger.Instance, NoSnapshot, TestContext.Current.CancellationToken);
+        }
 
         foreach (var section in Sections)
         {
