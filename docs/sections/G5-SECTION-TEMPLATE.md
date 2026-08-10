@@ -6,7 +6,7 @@ The recipe for moving one section into its own project under `src/Sections/`
 (cited below as "spec §N") after five sections executed it: Store (peterdrier/Humans#1223),
 SystemSettings + EventGuide (peterdrier/Humans#1235, A1), Containers + Finance
 (peterdrier/Humans#1239, A2), Expenses (peterdrier/Humans#1240, A3), Surveys
-(peterdrier/Humans#1241, A4). Step numbers match the former §15, so an old "§15 step 3b"
+(peterdrier/Humans#1251, A4). Step numbers match the former §15, so an old "§15 step 3b"
 citation reads as "step 3b" here.
 
 **Where this template and `src/Sections/` disagree, the code is right.** Deviations are the
