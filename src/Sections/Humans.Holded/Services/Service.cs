@@ -103,8 +103,8 @@ internal sealed class Service(
                 // legitimately reads as drifted until Holded confirms the entry.
                 state.LastError = mismatches.Count == 0
                     ? null
-                    : "Unreconciled after re-pull: " + string.Join("; ",
-                        mismatches.Select(m => $"{m.AccountNum}: holded {m.HoldedBalance:0.00}, local {m.LocalBalance:0.00}"));
+                    : TruncateForState("Unreconciled after re-pull: " + string.Join("; ",
+                        mismatches.Select(m => $"{m.AccountNum}: holded {m.HoldedBalance:0.00}, local {m.LocalBalance:0.00}")));
                 await repo.SaveSyncStateAsync(state, ct);
 
                 await DrainCallLogAsync(ct);
@@ -119,7 +119,7 @@ internal sealed class Service(
                 try
                 {
                     state.SyncStatus = HoldedSyncStatus.Error;
-                    state.LastError = ex.Message;
+                    state.LastError = TruncateForState(ex.Message);
                     state.StatusChangedAt = clock.GetCurrentInstant();
                     await repo.SaveSyncStateAsync(state, CancellationToken.None);
                 }
@@ -323,6 +323,11 @@ internal sealed class Service(
 
     /// <summary>The replace window's lower bound as an Instant: local midnight of the sweep's
     /// start date. Rows dated before this are outside the sweep and must survive it.</summary>
+    /// <summary>LastError is varchar(2000); an unbounded mismatch list or exception message
+    /// would fail the save and report a completed refresh as an error.</summary>
+    private static string TruncateForState(string message) =>
+        message.Length <= 2000 ? message : message[..1997] + "…";
+
     private static Instant ToWindowStart(LocalDate from) =>
         from.AtStartOfDayInZone(MadridZone).ToInstant();
 

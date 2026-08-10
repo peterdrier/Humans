@@ -326,10 +326,12 @@ public sealed class HoldedClient : IHoldedClient
         {
             return items.Select(n => new HoldedLedgerLineDto
             {
-                EntryNumber = ReadInt(Prop(n, "entry_number")) ?? 0,
-                Line = ReadInt(Prop(n, "line")) ?? 0,
+                // Identity fields must be present — a manufactured 0 key would survive into
+                // ReplaceLedgerWindowAsync and evict the real cached row it fails to match.
+                EntryNumber = ReadRequiredInt(Prop(n, "entry_number"), "entry_number"),
+                Line = ReadRequiredInt(Prop(n, "line"), "line"),
                 Date = ParseLedgerDate(Prop(n, "date")?.GetValue<string>() ?? ""),
-                AccountNum = ReadInt(Prop(n, "account")) ?? 0,
+                AccountNum = ReadRequiredInt(Prop(n, "account"), "account"),
                 Debit = ReadDecimalV2(Prop(n, "debit")),
                 Credit = ReadDecimalV2(Prop(n, "credit")),
                 Type = Prop(n, "type")?.GetValue<string>(),
@@ -595,4 +597,8 @@ public sealed class HoldedClient : IHoldedClient
     // GetValue<decimal> (not <long>) so a JSON float token like 40000001.0 parses; cast truncates.
     private static int? ReadInt(JsonNode? node) =>
         node is null ? null : (int?)node.GetValue<decimal>();
+
+    private static int ReadRequiredInt(JsonNode? node, string field) =>
+        ReadInt(node) ?? throw new HoldedPermanentException(
+            $"Holded ledger item is missing required field '{field}' — refusing the page.");
 }
