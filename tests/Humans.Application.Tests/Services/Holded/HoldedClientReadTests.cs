@@ -23,7 +23,7 @@ public class HoldedClientReadTests
     [HumansFact]
     public async Task ListExpenseAccounts_parses_num_and_name()
     {
-        var json = """[{"id":"a1","name":"Otros servicios","accountNum":62900000}]""";
+        var json = """{"items":[{"id":"a1","name":"Otros servicios","account_num":62900000,"archived":false}],"cursor":null,"has_more":false}""";
         var handler = new StubHandler(_ => Respond(HttpStatusCode.OK, json));
 
         var client = Make(handler);
@@ -36,31 +36,33 @@ public class HoldedClientReadTests
     }
 
     [HumansFact]
-    public async Task ListPurchaseDocumentsPage_parses_lines_account_and_tags()
+    public async Task ListPurchaseDocuments_parses_lines_account_and_tags()
     {
         var json = """
-        [
+        {"items":[
           {
-            "id":"doc-1","docNumber":"F001","contactName":"Alice",
-            "date":1779141600,"approvedAt":1779228000,
-            "subtotal":100.0,"tax":21.0,"total":121.0,
+            "id":"doc-1","document_number":"F001","contact_name":"Alice",
+            "date":"2026-05-14",
+            "subtotal":"100.00","tax":"21.00","total":"121.00",
             "currency":"eur","tags":["adminstaff"],
-            "products":[
-              {"price":100.0,"account":"acc-629","tags":["adminstaff"]}
+            "lines":[
+              {"price":"100.00","account":"acc-629","tags":["adminstaff"]}
             ]
           }
-        ]
+        ],"cursor":null,"has_more":false}
         """;
         var handler = new StubHandler(_ => Respond(HttpStatusCode.OK, json));
 
         var client = Make(handler);
-        var docs = await client.ListPurchaseDocumentsPageAsync(1, 10, Xunit.TestContext.Current.CancellationToken);
+        var docs = await client.ListPurchaseDocumentsAsync(Xunit.TestContext.Current.CancellationToken);
 
         docs.Should().HaveCount(1);
         var doc = docs[0];
         doc.Id.Should().Be("doc-1");
-        doc.Date.Should().Be(Instant.FromUnixTimeSeconds(1779141600));
-        doc.ApprovedAt.Should().Be(Instant.FromUnixTimeSeconds(1779228000));
+        doc.Date.Should().Be(
+            new LocalDate(2026, 5, 14)
+                .AtStartOfDayInZone(DateTimeZoneProviders.Tzdb["Europe/Madrid"])
+                .ToInstant());
         doc.Tags.Should().ContainSingle("adminstaff");
 
         doc.Lines.Should().HaveCount(1);
@@ -71,31 +73,30 @@ public class HoldedClientReadTests
     }
 
     [HumansFact]
-    public async Task ListPurchaseDocumentsPage_puts_page_and_limit_in_query_string()
+    public async Task ListPurchaseDocuments_puts_limit_in_query_string()
     {
         string? capturedQuery = null;
         var handler = new StubHandler(req =>
         {
             capturedQuery = req.RequestUri!.Query;
-            return Respond(HttpStatusCode.OK, "[]");
+            return Respond(HttpStatusCode.OK, """{"items":[],"cursor":null,"has_more":false}""");
         });
 
         var client = Make(handler);
-        await client.ListPurchaseDocumentsPageAsync(page: 3, limit: 50, ct: Xunit.TestContext.Current.CancellationToken);
+        await client.ListPurchaseDocumentsAsync(Xunit.TestContext.Current.CancellationToken);
 
-        capturedQuery.Should().Contain("page=3");
-        capturedQuery.Should().Contain("limit=50");
+        capturedQuery.Should().Contain("limit=200");
     }
 
     [HumansFact]
-    public async Task ListPurchaseDocumentsPage_treats_a_non_array_products_as_no_lines()
+    public async Task ListPurchaseDocuments_treats_a_non_array_lines_as_no_lines()
     {
         // Holded sends an absent sub-record as an empty array (#994) and is equally free to send an
         // absent collection as something other than an array; AsArray() throws on both.
-        var json = """[{"id":"doc-1","docNumber":"F001","products":{},"tags":""}]""";
+        var json = """{"items":[{"id":"doc-1","document_number":"F001","date":"2026-05-14","lines":{},"tags":""}],"cursor":null,"has_more":false}""";
         var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, json)));
 
-        var docs = await client.ListPurchaseDocumentsPageAsync(1, 10, Xunit.TestContext.Current.CancellationToken);
+        var docs = await client.ListPurchaseDocumentsAsync(Xunit.TestContext.Current.CancellationToken);
 
         docs.Should().ContainSingle();
         docs[0].Lines.Should().BeEmpty();
@@ -103,16 +104,34 @@ public class HoldedClientReadTests
     }
 
     [HumansFact]
-    public async Task ListPurchaseDocumentsPage_surfaces_an_unreadable_doc_as_permanent_not_a_raw_parse_throw()
+    public async Task ListPurchaseDocuments_surfaces_an_unreadable_doc_as_permanent_not_a_raw_parse_throw()
     {
         // Callers handle only IHoldedClient's two typed exceptions; a raw parse throw from a bad
         // stored value would escape the client and leak an Infrastructure detail upward.
         var client = Make(new StubHandler(_ => Respond(
-            HttpStatusCode.OK, """[{"id":42,"docNumber":"F001"}]""")));
+            HttpStatusCode.OK, """{"items":[{"id":42,"document_number":"F001"}],"cursor":null,"has_more":false}""")));
 
-        var act = async () => await client.ListPurchaseDocumentsPageAsync(1, 10, Xunit.TestContext.Current.CancellationToken);
+        var act = async () => await client.ListPurchaseDocumentsAsync(Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<HoldedPermanentException>();
+    }
+
+    [HumansFact]
+    public async Task ListDraftPurchaseIds_sends_approval_status_filter_and_returns_ids()
+    {
+        string? capturedQuery = null;
+        var handler = new StubHandler(req =>
+        {
+            capturedQuery = req.RequestUri!.Query;
+            return Respond(HttpStatusCode.OK,
+                """{"items":[{"id":"d1"},{"id":"d2"}],"cursor":null,"has_more":false}""");
+        });
+
+        var client = Make(handler);
+        var ids = await client.ListDraftPurchaseIdsAsync(Xunit.TestContext.Current.CancellationToken);
+
+        capturedQuery.Should().Contain("approval_status=draft");
+        ids.Should().BeEquivalentTo(["d1", "d2"]);
     }
 
     [HumansFact]

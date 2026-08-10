@@ -26,7 +26,6 @@ internal sealed class Service(
     IMemoryCache cache,
     ILogger<Service> logger) : IHoldedFinanceService, IUserDataContributor
 {
-    private const int SyncPageSafetyCap = 200;
     private static readonly TimeSpan ContactsCacheDuration = TimeSpan.FromMinutes(2);
 
     // ─── Provisioning ───────────────────────────────────────────────────────────
@@ -183,25 +182,10 @@ internal sealed class Service(
                 .Select(m => new HoldedMatchEntry(m.BudgetCategoryId, m.HoldedAccountId, m.HoldedAccountNumber, m.Tag))
                 .ToArray();
 
-            // Page through all purchase documents.
-            var allDocs = new List<HoldedPurchaseDocListItemDto>();
-            for (var page = 1; page <= SyncPageSafetyCap; page++)
-            {
-                var pageDocs = await client.ListPurchaseDocumentsPageAsync(page, 100, ct);
-                if (pageDocs.Count == 0)
-                    break;
+            var allDocs = await client.ListPurchaseDocumentsAsync(ct);
+            var draftIds = await client.ListDraftPurchaseIdsAsync(ct);
 
-                allDocs.AddRange(pageDocs);
-
-                if (page == SyncPageSafetyCap)
-                {
-                    logger.LogWarning(
-                        "Service.SyncAsync: safety cap of {Cap} pages reached — some docs may be missing",
-                        SyncPageSafetyCap);
-                }
-            }
-
-            var docs = allDocs.Select(doc => MapDoc(doc, entries, now)).ToList();
+            var docs = allDocs.Select(doc => MapDoc(doc, entries, draftIds, now)).ToList();
 
             await repo.UpsertDocsAsync(docs, now, ct);
 
@@ -232,6 +216,7 @@ internal sealed class Service(
     private static HoldedExpenseDoc MapDoc(
         HoldedPurchaseDocListItemDto doc,
         HoldedMatchEntry[] entries,
+        IReadOnlySet<string> draftIds,
         Instant now)
     {
         // v1 attributes the whole doc by its FIRST line's account (+ union of doc/line tags)
@@ -261,7 +246,7 @@ internal sealed class Service(
             Tax = doc.Tax,
             Total = doc.Total,
             Currency = doc.Currency,
-            ApprovedAt = doc.ApprovedAt,
+            IsApproved = !draftIds.Contains(doc.Id),
             TagsJson = System.Text.Json.JsonSerializer.Serialize(tags),
             BookedAccountId = bookedAccount,
             BudgetCategoryId = matchResult.CategoryId,
@@ -282,7 +267,7 @@ internal sealed class Service(
     {
         var docs = await repo.GetMatchedForYearAsync(calendarYear, ct);
         return docs
-            .Where(d => d.ApprovedAt is not null && d.BudgetCategoryId is not null)
+            .Where(d => d.IsApproved && d.BudgetCategoryId is not null)
             .GroupBy(d => d.BudgetCategoryId!.Value)
             .Select(g => new HoldedActualRow(g.Key, g.Sum(x => x.Total), g.Count()))
             .ToList();
@@ -303,6 +288,13 @@ internal sealed class Service(
                 // TODO(probe): confirm Holded deep-link URL format
                 $"https://app.holded.com/purchases/{d.HoldedDocId}"))
             .ToList();
+    }
+
+    public async Task<string?> GetHoldedAccountIdForCategoryAsync(
+        Guid budgetCategoryId, CancellationToken ct = default)
+    {
+        var map = await repo.GetCategoryMapAsync(ct);
+        return map.FirstOrDefault(m => m.IsActive && m.BudgetCategoryId == budgetCategoryId)?.HoldedAccountId;
     }
 
     private static string ReasonFor(HoldedExpenseDoc d)

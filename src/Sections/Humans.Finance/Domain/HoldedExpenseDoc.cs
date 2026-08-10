@@ -14,7 +14,7 @@ internal sealed class HoldedExpenseDoc
     public decimal Tax { get; set; }
     public decimal Total { get; set; }
     public string Currency { get; set; } = "eur";
-    public Instant? ApprovedAt { get; set; }
+    public bool IsApproved { get; set; }
     public string TagsJson { get; set; } = "[]";    // raw tags, jsonb
     public string? BookedAccountId { get; set; }    // first line's account id
     public Guid? BudgetCategoryId { get; set; }     // FK-only, null = unmatched

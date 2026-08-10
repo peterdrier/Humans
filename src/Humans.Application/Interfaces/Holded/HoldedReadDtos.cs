@@ -68,7 +68,9 @@ public sealed record HoldedPurchaseDocListItemDto
     public required decimal Subtotal { get; init; }
     public required decimal Tax { get; init; }
     public required decimal Total { get; init; }
-    public Instant? ApprovedAt { get; init; }
+    // v2 list items carry no approval timestamp (only the single-GET does — see
+    // HoldedPurchaseDocumentDto.ApprovedAt); approval state here comes from
+    // IHoldedClient.ListDraftPurchaseIdsAsync instead.
     public string Currency { get; init; } = "eur";
     public IReadOnlyList<string> Tags { get; init; } = []; // doc-level tags
     public IReadOnlyList<HoldedPurchaseLineDto> Lines { get; init; } = [];

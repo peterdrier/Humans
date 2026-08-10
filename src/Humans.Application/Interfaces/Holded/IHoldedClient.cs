@@ -9,12 +9,6 @@ public interface IHoldedClient
         HoldedPurchaseDocumentInput input,
         CancellationToken ct = default);
 
-    /// <summary>Replaces the tags on an existing purchase document.</summary>
-    Task UpdatePurchaseDocumentTagsAsync(
-        string documentId,
-        IReadOnlyList<string> tags,
-        CancellationToken ct = default);
-
     /// <summary>Uploads a single attachment to a purchase document.</summary>
     Task UploadAttachmentAsync(
         string documentId,
@@ -34,9 +28,12 @@ public interface IHoldedClient
     Task<string> CreateExpenseAccountAsync(
         int accountNum, string name, CancellationToken ct = default);
 
-    /// <summary>Reads one page of purchase documents (1-based). Empty list = past the end.</summary>
-    Task<IReadOnlyList<HoldedPurchaseDocListItemDto>> ListPurchaseDocumentsPageAsync(
-        int page, int limit, CancellationToken ct = default);
+    /// <summary>Lists all purchase documents (cursor-paginated internally).</summary>
+    Task<IReadOnlyList<HoldedPurchaseDocListItemDto>> ListPurchaseDocumentsAsync(
+        CancellationToken ct = default);
+
+    /// <summary>Ids of purchases still in draft — GET /purchases?approval_status=draft.</summary>
+    Task<IReadOnlySet<string>> ListDraftPurchaseIdsAsync(CancellationToken ct = default);
 
     /// <summary>Creates or updates a contact; returns the contact id.</summary>
     Task<string> UpsertContactAsync(HoldedContactInput input, CancellationToken ct = default);

@@ -10,6 +10,11 @@ public interface IHoldedFinanceService : IApplicationService
     Task<IReadOnlyList<HoldedActualRow>> GetActualsForYearAsync(int calendarYear, CancellationToken ct = default);
     Task<IReadOnlyList<HoldedUnmatchedRow>> GetUnmatchedAsync(CancellationToken ct = default);
 
+    /// <summary>The active Holded expense-account id mapped to this budget category
+    /// (holded_category_map), or null when no active mapping exists. Used to book a purchase
+    /// line's `items[].account` directly at doc creation.</summary>
+    Task<string?> GetHoldedAccountIdForCategoryAsync(Guid budgetCategoryId, CancellationToken ct = default);
+
     /// <summary>Cache refresh of the Holded daybook (creditor journal lines); everything else derives
     /// from these. The nightly run (<paramref name="fullHistory"/> false) sweeps one trailing ≤1-year
     /// window ending now — a single Holded call. The full backward sweep costs one call per year of

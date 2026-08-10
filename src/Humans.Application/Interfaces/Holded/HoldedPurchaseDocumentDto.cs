@@ -19,17 +19,19 @@ public sealed record HoldedPurchaseDocumentLineInput
 {
     public required string Description { get; init; }
     public required decimal Amount { get; init; }
-    public IReadOnlyList<string> Tags { get; init; } = [];
+    /// <summary>The mapped Holded expense-account id (`holded_category_map.HoldedAccountId`) to book
+    /// this line to — the doc is booked to the right department from creation, so no retag is ever
+    /// needed later. Null when the report's category has no active mapping.</summary>
+    public string? AccountId { get; init; }
 }
 
 public sealed record HoldedPurchaseDocumentInput
 {
     public required string ContactName { get; init; }
-    /// <summary>When set, link the purchase doc to this Holded contact id.</summary>
-    public string? ContactId { get; init; }
+    /// <summary>The Holded contact to link the purchase doc to — required by v2's POST /purchases.</summary>
+    public required string ContactId { get; init; }
     public required Instant Date { get; init; }
     public required IReadOnlyList<HoldedPurchaseDocumentLineInput> Lines { get; init; }
-    public IReadOnlyList<string> Tags { get; init; } = [];
     public string? Description { get; init; }
 }
 

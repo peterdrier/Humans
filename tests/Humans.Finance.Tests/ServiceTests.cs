@@ -171,8 +171,8 @@ public class HoldedFinanceServiceTests
 
         var docDate = Instant.FromUtc(2026, 4, 15, 10, 0);
 
-        // 3 docs: account match, tag match, unmatched.
-        var page1 = new List<HoldedPurchaseDocListItemDto>
+        // 3 docs: account match, tag match, unmatched. d1 is approved; d2 is still a draft.
+        var docs1 = new List<HoldedPurchaseDocListItemDto>
         {
             new()
             {
@@ -197,9 +197,10 @@ public class HoldedFinanceServiceTests
             },
         };
 
-        _client.ListPurchaseDocumentsPageAsync(1, 100, Arg.Any<CancellationToken>())
-            .ReturnsForAnyArgs(ci =>
-                (int)ci[0] == 1 ? (IReadOnlyList<HoldedPurchaseDocListItemDto>)page1 : []);
+        _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>())
+            .ReturnsForAnyArgs((IReadOnlyList<HoldedPurchaseDocListItemDto>)docs1);
+        _client.ListDraftPurchaseIdsAsync(Arg.Any<CancellationToken>())
+            .ReturnsForAnyArgs((IReadOnlySet<string>)new HashSet<string>(StringComparer.Ordinal) { "d2" });
 
         IReadOnlyList<HoldedExpenseDoc>? capturedDocs = null;
         await _repo.UpsertDocsAsync(
@@ -221,11 +222,13 @@ public class HoldedFinanceServiceTests
         d1.MatchStatus.Should().Be(HoldedMatchStatus.Matched);
         d1.MatchSource.Should().Be(HoldedMatchSource.Account);
         d1.BudgetCategoryId.Should().Be(catId);
+        d1.IsApproved.Should().BeTrue();
 
         var d2 = capturedDocs.Single(d => string.Equals(d.HoldedDocId, "d2", StringComparison.Ordinal));
         d2.MatchStatus.Should().Be(HoldedMatchStatus.Matched);
         d2.MatchSource.Should().Be(HoldedMatchSource.Tag);
         d2.BudgetCategoryId.Should().Be(catId);
+        d2.IsApproved.Should().BeFalse();
 
         var d3 = capturedDocs.Single(d => string.Equals(d.HoldedDocId, "d3", StringComparison.Ordinal));
         d3.MatchStatus.Should().Be(HoldedMatchStatus.Unmatched);
@@ -244,7 +247,7 @@ public class HoldedFinanceServiceTests
             SyncStatus = HoldedSyncStatus.Idle
         });
 
-        _client.ListPurchaseDocumentsPageAsync(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+        _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>())
             .Throws(new InvalidOperationException("Holded API unavailable"));
 
         HoldedSyncState? savedState = null;

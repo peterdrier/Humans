@@ -1,5 +1,4 @@
 using Humans.Application.Extensions;
-using Humans.Application.Helpers;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Budget;
@@ -815,17 +814,6 @@ internal sealed class ExpenseReportService(
                     continue;
                 }
 
-                var category = await budgetService.GetCategoryByIdAsync(report.BudgetCategoryId);
-                var groupName = category?.BudgetGroup?.Name;
-                var categoryName = category?.Name;
-                var groupSlug = string.IsNullOrWhiteSpace(groupName)
-                    ? "unknown"
-                    : SlugHelper.GenerateSlug(groupName);
-                var categorySlug = string.IsNullOrWhiteSpace(categoryName)
-                    ? "unknown"
-                    : SlugHelper.GenerateSlug(categoryName);
-                var tag = $"{groupSlug}-{categorySlug}";
-
                 var submitterName = string.IsNullOrWhiteSpace(report.PayeeName)
                     ? "Unknown"
                     : report.PayeeName;
@@ -836,14 +824,21 @@ internal sealed class ExpenseReportService(
                 {
                     case HoldedExpenseOutboxEventType.CreateIncomingDoc:
                         await ProcessHoldedCreateAsync(
-                            outboxEvent.Id, report, tag, submitterName, now, ct);
+                            outboxEvent.Id, report, submitterName, now, ct);
                         break;
 
                     case HoldedExpenseOutboxEventType.UpdateIncomingDocTag:
-                        await holdedClient.UpdatePurchaseDocumentTagsAsync(
-                            report.HoldedDocId!,
-                            [tag],
-                            ct);
+                        // v2 has no tag/doc-update endpoint (PUT /purchases/{id} is a full-replacement
+                        // update with no tags field, and no separate tag-assignment endpoint exists).
+                        // Recategorize-after-push is now done by reclassifying the line inside Holded
+                        // directly; the ledger mirror + reconciliation pull the correction back. The
+                        // enum member stays so any queued rows from before this change still drain
+                        // instead of poisoning the outbox.
+                        logger.LogInformation(
+                            "Skipping UpdateIncomingDocTag outbox event {OutboxEventId} for report " +
+                            "{ReportId} — Holded v2 has no tag/doc-update endpoint; recategorize is " +
+                            "now done by reclassifying the line directly in Holded.",
+                            outboxEvent.Id, report.Id);
                         await repo.MarkOutboxProcessedAsync(outboxEvent.Id, now, ct);
                         break;
 
@@ -876,7 +871,6 @@ internal sealed class ExpenseReportService(
     private async Task ProcessHoldedCreateAsync(
         Guid outboxEventId,
         ExpenseReportDto report,
-        string tag,
         string submitterName,
         Instant now,
         CancellationToken ct)
@@ -913,20 +907,24 @@ internal sealed class ExpenseReportService(
         // retryable doc-create + attachment steps. The supplier-account number is backfilled in step 4.
         await repo.SetHoldedContactLinkAsync(report.Id, holdedContactId, null, now, ct);
 
+        // Books items[].account directly at doc creation (Peter, 2026-08-10: the account IS the
+        // category — tags were a v1 workaround from before double-entry was understood). Null when
+        // the category has no active mapping; the doc still creates, just unbooked.
+        var holdedAccountId = await holdedFinance.GetHoldedAccountIdForCategoryAsync(report.BudgetCategoryId, ct);
+
         var input = new HoldedPurchaseDocumentInput
         {
             ContactId = holdedContactId,
             ContactName = submitterName,
             Date = report.SubmittedAt ?? report.CreatedAt,
             Description = report.Note ?? "",
-            Tags = [tag],
             Lines = report.Lines
                 .OrderBy(l => l.SortOrder)
                 .Select(l => new HoldedPurchaseDocumentLineInput
                 {
                     Description = l.Description,
                     Amount = l.Amount,
-                    Tags = [tag],
+                    AccountId = holdedAccountId,
                 })
                 .ToList(),
         };

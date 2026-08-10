@@ -140,8 +140,6 @@ public class ExpenseReportServiceHoldedOutboxTests
 
         await _holdedClient.DidNotReceiveWithAnyArgs()
             .CreatePurchaseDocumentAsync(null!, Arg.Any<CancellationToken>());
-        await _holdedClient.DidNotReceiveWithAnyArgs()
-            .UpdatePurchaseDocumentTagsAsync(null!, null!, Arg.Any<CancellationToken>());
     }
 
     // ─── CreateIncomingDoc happy path ──────────────────────────────────────────
@@ -164,9 +162,8 @@ public class ExpenseReportServiceHoldedOutboxTests
 
         await _holdedClient.Received(1).CreatePurchaseDocumentAsync(
             Arg.Is<HoldedPurchaseDocumentInput>(i =>
-                i.ContactName == "Alice Smith" &&
-                i.Tags.Contains("camp-build-camp") &&
-                i.Description == "Team expenses"),
+                string.Equals(i.ContactName, "Alice Smith", StringComparison.Ordinal) &&
+                string.Equals(i.Description, "Team expenses", StringComparison.Ordinal)),
             Arg.Any<CancellationToken>());
 
         await _repo.Received(1).SetHoldedDocIdAsync(
@@ -176,23 +173,62 @@ public class ExpenseReportServiceHoldedOutboxTests
     }
 
     [HumansFact]
-    public async Task CreateIncomingDoc_TagFormatIsGroupSlugDashCategorySlug()
+    public async Task CreateIncomingDoc_BooksLinesToTheMappedHoldedAccount()
     {
-        var report = MakeReport();
+        // Tags are dead on the write side (Peter, 2026-08-10) — the doc is booked to the right
+        // department directly via items[].account, resolved from the category's active mapping.
+        var report = MakeReport() with
+        {
+            Lines = new List<ExpenseLineDto>
+            {
+                new() { Id = Guid.NewGuid(), ExpenseReportId = Guid.NewGuid(), Description = "Wood", Amount = 42m, LineType = ExpenseLineType.Receipt, SortOrder = 1 },
+            },
+        };
         var outboxEvent = MakeEvent(report.Id, HoldedExpenseOutboxEventType.CreateIncomingDoc);
 
         _repo.GetUnprocessedOutboxAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns([outboxEvent]);
         _repo.GetByIdAsync(report.Id, Arg.Any<CancellationToken>())
             .Returns(report);
+        _holdedFinance.GetHoldedAccountIdForCategoryAsync(CategoryId, Arg.Any<CancellationToken>())
+            .Returns("holded-acc-629001");
         _holdedClient.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>())
             .Returns("doc-1");
 
         await _sut.DrainHoldedOutboxAsync(BatchSize, Xunit.TestContext.Current.CancellationToken);
 
-        // group "Camp Build" → "camp-build", category "Camp" → "camp"
         await _holdedClient.Received(1).CreatePurchaseDocumentAsync(
-            Arg.Is<HoldedPurchaseDocumentInput>(i => i.Tags.SequenceEqual(new[] { "camp-build-camp" })),
+            Arg.Is<HoldedPurchaseDocumentInput>(i =>
+                i.Lines.Count == 1 &&
+                string.Equals(i.Lines[0].AccountId, "holded-acc-629001", StringComparison.Ordinal)),
+            Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task CreateIncomingDoc_UnmappedCategory_LinesHaveNullAccountId()
+    {
+        var report = MakeReport() with
+        {
+            Lines = new List<ExpenseLineDto>
+            {
+                new() { Id = Guid.NewGuid(), ExpenseReportId = Guid.NewGuid(), Description = "Wood", Amount = 42m, LineType = ExpenseLineType.Receipt, SortOrder = 1 },
+            },
+        };
+        var outboxEvent = MakeEvent(report.Id, HoldedExpenseOutboxEventType.CreateIncomingDoc);
+
+        _repo.GetUnprocessedOutboxAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns([outboxEvent]);
+        _repo.GetByIdAsync(report.Id, Arg.Any<CancellationToken>())
+            .Returns(report);
+        _holdedFinance.GetHoldedAccountIdForCategoryAsync(CategoryId, Arg.Any<CancellationToken>())
+            .Returns((string?)null);
+        _holdedClient.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>())
+            .Returns("doc-1");
+
+        await _sut.DrainHoldedOutboxAsync(BatchSize, Xunit.TestContext.Current.CancellationToken);
+
+        await _holdedClient.Received(1).CreatePurchaseDocumentAsync(
+            Arg.Is<HoldedPurchaseDocumentInput>(i => i.Lines[0].AccountId == null),
             Arg.Any<CancellationToken>());
     }
 
@@ -366,11 +402,13 @@ public class ExpenseReportServiceHoldedOutboxTests
             outboxEvent.Id, Now, Arg.Any<CancellationToken>());
     }
 
-    // ─── UpdateIncomingDocTag happy path ──────────────────────────────────────
+    // ─── UpdateIncomingDocTag: v2 has no tag-update endpoint, so this now just drains ──────────
 
     [HumansFact]
-    public async Task UpdateIncomingDocTag_HappyPath_TagsUpdatedAndMarkedProcessed()
+    public async Task UpdateIncomingDocTag_NoClientCall_MarkedProcessed()
     {
+        // v2 has no tag/doc-update endpoint at all — the event type is kept only so any rows
+        // queued from before this change still drain instead of poisoning the outbox.
         var report = MakeReport(holdedDocId: "holded-existing-doc");
         var outboxEvent = MakeEvent(report.Id, HoldedExpenseOutboxEventType.UpdateIncomingDocTag);
 
@@ -380,11 +418,6 @@ public class ExpenseReportServiceHoldedOutboxTests
             .Returns(report);
 
         await _sut.DrainHoldedOutboxAsync(BatchSize, Xunit.TestContext.Current.CancellationToken);
-
-        await _holdedClient.Received(1).UpdatePurchaseDocumentTagsAsync(
-            "holded-existing-doc",
-            Arg.Is<IReadOnlyList<string>>(tags => tags.SequenceEqual(new[] { "camp-build-camp" })),
-            Arg.Any<CancellationToken>());
 
         await _repo.Received(1).MarkOutboxProcessedAsync(
             outboxEvent.Id, Now, Arg.Any<CancellationToken>());

@@ -43,7 +43,7 @@ internal sealed class Repository(IDbContextFactory<FinanceDbContext> factory)
                 cur.Tax = d.Tax;
                 cur.Total = d.Total;
                 cur.Currency = d.Currency;
-                cur.ApprovedAt = d.ApprovedAt;
+                cur.IsApproved = d.IsApproved;
                 cur.TagsJson = d.TagsJson;
                 cur.BookedAccountId = d.BookedAccountId;
                 cur.BudgetCategoryId = d.BudgetCategoryId;
