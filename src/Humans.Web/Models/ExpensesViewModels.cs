@@ -7,23 +7,6 @@ using NodaTime;
 
 namespace Humans.Web.Models;
 
-public sealed class ExpenseIouSummary
-{
-    public required decimal OwedToMember { get; init; }
-    public required decimal TotalPaid { get; init; }
-    public required decimal OtherAmount { get; init; }
-    public LocalDate? LastPaymentDate { get; init; }
-}
-
-/// <summary>One row in the combined reports-and-payments ledger, sorted by <see cref="Date"/> desc.</summary>
-public sealed record ExpenseLedgerRow(
-    LocalDate Date,
-    bool IsPayment,
-    string Label,
-    decimal Amount,
-    Guid? ReportId,
-    ExpenseReportStatus? Status);
-
 public sealed class ExpensesIndexViewModel
 {
     public required IReadOnlyList<ExpenseReportDto> Reports { get; init; }
@@ -31,10 +14,6 @@ public sealed class ExpensesIndexViewModel
     public bool HasIban { get; init; }
     public IReadOnlyDictionary<Guid, string> CategoryNames { get; init; } =
         new Dictionary<Guid, string>();
-
-    /// <summary>Non-null when the member has a Holded creditor account with activity.</summary>
-    public ExpenseIouSummary? Iou { get; init; }
-    public IReadOnlyList<ExpenseLedgerRow> Ledger { get; init; } = [];
 
     /// <summary>The member's own Holded creditor account statement (real ledger lines), once bound. Read-only.</summary>
     public HoldedCreditorLedger? AccountLedger { get; init; }

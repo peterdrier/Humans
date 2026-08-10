@@ -268,11 +268,11 @@ public class HoldedFinanceServiceTests
     [HumansFact]
     public async Task SyncCreditorLedger_backfill_stores_only_creditor_account_lines()
     {
-        // Empty cache → backfill: sweep backward until an empty window, store only 400000xx lines.
-        _repo.GetLatestLedgerLineDateAsync(Arg.Any<CancellationToken>()).Returns((Instant?)null);
+        // Sweep backward until an empty window, store only creditor-block lines.
         var page = new List<HoldedLedgerLineDto>
         {
             new() { EntryNumber = 1, Line = 0, AccountNum = 40000001, Date = FixedNow, Debit = 0m, Credit = 100m },
+            new() { EntryNumber = 2, Line = 0, AccountNum = 40000999, Date = FixedNow, Debit = 0m, Credit = 50m },  // top of the block
             new() { EntryNumber = 1, Line = 1, AccountNum = 62900000, Date = FixedNow, Debit = 100m, Credit = 0m }, // not a creditor acct
         };
         _client.ListDailyLedgerAsync(Arg.Any<Instant>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>())
@@ -285,50 +285,35 @@ public class HoldedFinanceServiceTests
         await MakeService().SyncCreditorLedgerAsync(Xunit.TestContext.Current.CancellationToken);
 
         stored.Should().NotBeNull();
-        stored!.Select(l => l.AccountNum).Should().BeEquivalentTo(new[] { 40000001 });
+        stored!.Select(l => l.AccountNum).Should().BeEquivalentTo(new[] { 40000001, 40000999 });
     }
 
     [HumansFact]
-    public async Task SyncCreditorLedger_incremental_fetches_single_window_from_latest()
+    public async Task SyncCreditorLedger_resweeps_history_so_backdated_entries_are_picked_up()
     {
-        var latest = Instant.FromUtc(2026, 4, 1, 0, 0);
-        _repo.GetLatestLedgerLineDateAsync(Arg.Any<CancellationToken>()).Returns(latest);
+        // Regression: the sync used to resume from the newest cached line's date. Holded filters the
+        // dailyledger on the *accounting* date, so an entry posted today but dated to a closed month
+        // sits behind that anchor and was never fetched again. The sweep must always reach back past
+        // the newest cached line, in ≤364-day windows (the API rejects wider ranges).
+        var pageWithData = new List<HoldedLedgerLineDto>
+        {
+            new() { EntryNumber = 5, Line = 0, AccountNum = 40000004, Date = FixedNow, Debit = 23m, Credit = 0m },
+        };
         _client.ListDailyLedgerAsync(Arg.Any<Instant>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>())
-            .Returns(new List<HoldedLedgerLineDto>
-            {
-                new() { EntryNumber = 5, Line = 0, AccountNum = 40000004, Date = FixedNow, Debit = 23m, Credit = 0m },
-            });
-
-        IReadOnlyList<HoldedLedgerLine>? stored = null;
-        await _repo.UpsertLedgerLinesAsync(
-            Arg.Do<IReadOnlyList<HoldedLedgerLine>>(r => stored = r), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+            .Returns(pageWithData, pageWithData, new List<HoldedLedgerLineDto>());
 
         await MakeService().SyncCreditorLedgerAsync(Xunit.TestContext.Current.CancellationToken);
 
-        // Incremental = exactly one dailyledger call, windowed from the latest cached date.
-        await _client.Received(1).ListDailyLedgerAsync(latest, Arg.Any<Instant>(), Arg.Any<CancellationToken>());
-        stored.Should().ContainSingle();
-    }
-
-    [HumansFact]
-    public async Task SyncCreditorLedger_incremental_chunks_a_long_gap_into_year_windows()
-    {
-        // A >1-year gap (sync disabled / no creditor activity) must be swept in ≤1-year windows —
-        // the dailyledger API rejects wider ranges, so a single latest..now call would fail forever.
-        var latest = Instant.FromUtc(2024, 1, 1, 0, 0); // ~2.3 years before FixedNow (2026-05-01)
-        _repo.GetLatestLedgerLineDateAsync(Arg.Any<CancellationToken>()).Returns(latest);
-        _client.ListDailyLedgerAsync(Arg.Any<Instant>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>())
-            .Returns(new List<HoldedLedgerLineDto>());
-
-        await MakeService().SyncCreditorLedgerAsync(Xunit.TestContext.Current.CancellationToken);
-
-        // Each call's window must be ≤ 364 days; the gap spans >2 of them, so it took multiple calls.
-        var calls = _client.ReceivedCalls()
+        var windows = _client.ReceivedCalls()
             .Where(c => string.Equals(c.GetMethodInfo().Name, nameof(IHoldedClient.ListDailyLedgerAsync), StringComparison.Ordinal))
             .Select(c => c.GetArguments())
+            .Select(a => (From: (Instant)a[0]!, To: (Instant)a[1]!))
             .ToList();
-        calls.Count.Should().BeGreaterThan(1);
-        calls.Should().OnlyContain(a => ((Instant)a[1]!) - ((Instant)a[0]!) <= Duration.FromDays(364));
+
+        windows.Count.Should().BeGreaterThan(1);
+        windows.Should().OnlyContain(w => w.To - w.From <= Duration.FromDays(364));
+        // Reaches back more than a year before now — i.e. well before anything already cached.
+        windows.Min(w => w.From).Should().BeLessThan(FixedNow.Minus(Duration.FromDays(364)));
     }
 
     [HumansFact]
@@ -348,8 +333,6 @@ public class HoldedFinanceServiceTests
         status.OwedToMember.Should().Be(3180m);
         status.TotalPaid.Should().Be(9540m);                 // debit lines only
         status.LastPaymentDate.Should().Be(new LocalDate(2026, 4, 20));
-        status.Payments!.Should().ContainSingle()
-            .Which.Should().BeEquivalentTo(new HoldedPaymentInfo(new LocalDate(2026, 4, 20), 9540m, "payment"));
     }
 
     [HumansFact]
@@ -915,15 +898,15 @@ public class HoldedFinanceServiceTests
             new() { Id = "c1", Name = "Daniela Marquez", SupplierAccountNum = 40000004 },
             new() { Id = "c2", Name = "Maria Garcia", SupplierAccountNum = 40000012 },  // no ledger lines yet
             new() { Id = "c3", Name = "A Client", SupplierAccountNum = null },          // not a supplier
-            new() { Id = "c4", Name = "Acme Supplies SL", SupplierAccountNum = 40000150 }, // vendor, outside the block
+            new() { Id = "c4", Name = "Acme Supplies SL", SupplierAccountNum = 40001500 }, // vendor, outside the block
         });
 
         var (rows, _) = await MakeService().ListCreditorAccountsAsync(Xunit.TestContext.Current.CancellationToken);
 
-        // Ordinary org vendors carry supplier numbers too — only the 400000xx member-creditor block counts,
-        // or an admin could bind a member onto a vendor's account.
+        // Ordinary org vendors carry supplier numbers too — only the 40000000–40000999 member-creditor
+        // block counts, or an admin could bind a member onto a vendor's account.
         rows.Should().HaveCount(2);
-        rows.Should().NotContain(r => r.SupplierAccountNum == 40000150);
+        rows.Should().NotContain(r => r.SupplierAccountNum == 40001500);
         rows.Should().ContainSingle(r => r.SupplierAccountNum == 40000004)
             .Which.Name.Should().Be("Daniela Marquez");
         // A first-time submitter's contact exists in Holded before any journal activity — still selectable.
@@ -990,7 +973,7 @@ public class HoldedFinanceServiceTests
     {
         // The number arrives on a POST; the filtered dropdown is not a server-side gate.
         var result = await MakeService().SetCreditorContactAsync(
-            Guid.NewGuid(), 40000150, Xunit.TestContext.Current.CancellationToken);
+            Guid.NewGuid(), 40001500, Xunit.TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
         result.ErrorMessage.Should().Contain("outside the member creditor block");

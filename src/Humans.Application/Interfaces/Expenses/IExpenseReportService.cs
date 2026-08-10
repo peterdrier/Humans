@@ -103,5 +103,4 @@ public sealed record ExpenseHoldedTimeline(
     decimal OtherAmount,             // max(0, OwedToMember - MemberRegisteredTotal): fronted / adjustments
     bool Paid,
     NodaTime.LocalDate? PaidOn,
-    decimal TotalPaid,
-    IReadOnlyList<HoldedPaymentInfo> Payments);
+    decimal TotalPaid);

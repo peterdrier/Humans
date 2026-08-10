@@ -22,8 +22,6 @@ internal interface IHoldedRepository : IRepository
     Task UpsertLedgerLinesAsync(IReadOnlyList<HoldedLedgerLine> rows, Instant now, CancellationToken ct = default);
     Task<IReadOnlyList<HoldedLedgerLine>> GetLedgerLinesByAccountNumAsync(int accountNum, CancellationToken ct = default);
     Task<IReadOnlyList<HoldedLedgerLine>> GetAllLedgerLinesAsync(CancellationToken ct = default);
-    /// <summary>The most recent cached line's date, or null when the cache is empty (drives backfill vs incremental).</summary>
-    Task<Instant?> GetLatestLedgerLineDateAsync(CancellationToken ct = default);
 
     // Creditor contact bindings (member -> Holded creditor account)
     Task<HoldedCreditorContact?> GetCreditorContactByUserAsync(Guid userId, CancellationToken ct = default);
