@@ -1,7 +1,5 @@
-using Humans.Domain.Entities;
 using Humans.Surveys.Domain;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 

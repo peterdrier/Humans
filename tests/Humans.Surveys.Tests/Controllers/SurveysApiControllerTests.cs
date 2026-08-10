@@ -12,7 +12,7 @@ using Microsoft.Extensions.Options;
 using NodaTime;
 using NSubstitute;
 
-namespace Humans.Application.Tests.Controllers;
+namespace Humans.Surveys.Tests.Controllers;
 
 /// <summary>
 /// Unit tests for <see cref="SurveysApiController"/> and its <see cref="SurveyApiKeyAuthFilter"/>.

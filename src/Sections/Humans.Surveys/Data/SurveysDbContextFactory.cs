@@ -25,7 +25,7 @@ internal sealed class SurveysDbContextFactory : IDesignTimeDbContextFactory<Surv
             npgsqlOptions =>
             {
                 npgsqlOptions.UseNodaTime();
-                npgsqlOptions.MigrationsAssembly("Humans.Infrastructure");
+                npgsqlOptions.MigrationsAssembly("Humans.Surveys");
                 npgsqlOptions.MigrationsHistoryTable(
                     SectionMigrationsHistory.TableFor<SurveysDbContext>());
                 npgsqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);

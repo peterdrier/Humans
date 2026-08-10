@@ -11,7 +11,6 @@ using Humans.Surveys.Contracts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Surveys.Domain;
 using Microsoft.Extensions.Logging;

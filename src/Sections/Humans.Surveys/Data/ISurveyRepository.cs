@@ -1,6 +1,5 @@
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Attributes;
-using Humans.Domain.Entities;
 using Humans.Surveys.Domain;
 using Humans.Domain.Enums;
 using NodaTime;

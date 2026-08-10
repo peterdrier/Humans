@@ -3,7 +3,7 @@ using Humans.Surveys.Services;
 using Humans.Domain.Enums;
 using Humans.Surveys.Domain;
 
-namespace Humans.Application.Tests.Surveys;
+namespace Humans.Surveys.Tests.Services;
 
 public class SurveyWizardFlowTests
 {

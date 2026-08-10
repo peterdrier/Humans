@@ -5,7 +5,7 @@ using Humans.Domain.Enums;
 using Humans.Surveys.Models;
 using NodaTime;
 
-namespace Humans.Web.Tests.Models.Survey;
+namespace Humans.Surveys.Tests.Models;
 
 public sealed class SurveyResponsesMarkdownBuilderTests
 {

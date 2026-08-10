@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Application;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Gdpr;
@@ -19,7 +20,7 @@ using NodaTime.Testing;
 using NSubstitute;
 using Xunit;
 
-namespace Humans.Application.Tests.Surveys;
+namespace Humans.Surveys.Tests.Services;
 
 public class SurveyServiceTests
 {

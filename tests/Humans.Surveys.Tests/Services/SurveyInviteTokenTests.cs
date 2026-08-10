@@ -3,7 +3,7 @@ using AwesomeAssertions;
 using Humans.Surveys.Services;
 using Microsoft.AspNetCore.DataProtection;
 
-namespace Humans.Application.Tests.Surveys;
+namespace Humans.Surveys.Tests.Services;
 
 public class SurveyInviteTokenTests
 {

@@ -5,7 +5,7 @@ using Humans.Surveys.Domain;
 using Humans.Surveys.Models;
 using Xunit;
 
-namespace Humans.Web.Tests.Models.Survey;
+namespace Humans.Surveys.Tests.Models;
 
 /// <summary>The builder's structured show-if rows must round-trip to/from <see cref="BranchCondition"/>.</summary>
 public sealed class SurveyBuilderViewModelTests

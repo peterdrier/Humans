@@ -28,7 +28,7 @@ internal sealed class SurveyController(
     ISurveyService surveyService,
     IUserServiceRead userService,
     IClock clock,
-    IStringLocalizer<SharedResource> localizer,
+    IStringLocalizer<SurveysResource> localizer,
     ILogger<SurveyController> logger) : HumansControllerBase(userService)
 {
     [HttpGet("Answer")]

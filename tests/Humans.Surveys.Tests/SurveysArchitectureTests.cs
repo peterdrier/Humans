@@ -6,6 +6,7 @@ using Humans.Surveys.Domain;
 using Humans.Surveys.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Localization;
 
 namespace Humans.Surveys.Tests;
 
@@ -183,6 +184,29 @@ public class SurveysArchitectureTests
         services.Single(d => d.ServiceType == typeof(ISurveyReminderSender)).Lifetime
             .Should().Be(ServiceLifetime.Scoped);
         services.Should().ContainSingle(d => d.ServiceType == typeof(IUserDataContributor));
+    }
+
+    [HumansFact]
+    public void SectionTypesLocalizeThroughTheSectionsOwnResourceSet()
+    {
+        // The carve moved every Survey_* key out of SharedResource, so a type still injecting
+        // IStringLocalizer<SharedResource> resolves nothing and renders the raw key — a 200 with
+        // degraded copy, in every language. SurveyController shipped exactly that on three paths
+        // (Survey_QuestionRequired, Survey_ThankYouFallback), and the render tests missed it
+        // because both only fire on validation failure and on a survey with no custom thank-you.
+        // The views were never at risk: _ViewImports binds the section's localizer for all of them.
+        var offenders = typeof(Section).Assembly.GetTypes()
+            .SelectMany(t => t.GetConstructors().SelectMany(c => c.GetParameters()
+                .Where(p => p.ParameterType.IsGenericType
+                         && p.ParameterType.GetGenericTypeDefinition() == typeof(IStringLocalizer<>)
+                         && p.ParameterType.GetGenericArguments()[0] != typeof(SurveysResource))
+                .Select(p => $"{t.FullName} takes IStringLocalizer<{p.ParameterType.GetGenericArguments()[0].Name}>")))
+            .Order(StringComparer.Ordinal)
+            .ToList();
+
+        offenders.Should().BeEmpty(
+            because: "every Survey_* key lives in SurveysResource; resolving one through another "
+                   + "set renders the key itself and no error (§15 step 3b)");
     }
 
     [HumansFact]

@@ -1,8 +1,7 @@
-using Humans.Surveys.Services;
 using AwesomeAssertions;
 using Humans.Surveys.Domain;
 
-namespace Humans.Application.Tests.Surveys;
+namespace Humans.Surveys.Tests.Domain;
 
 public class LocalizedTextTests
 {

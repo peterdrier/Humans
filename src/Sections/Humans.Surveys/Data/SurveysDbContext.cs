@@ -1,4 +1,3 @@
-using Humans.Domain.Entities;
 using Humans.Surveys.Domain;
 using Humans.Surveys.Data.Configurations;
 using Microsoft.EntityFrameworkCore;
