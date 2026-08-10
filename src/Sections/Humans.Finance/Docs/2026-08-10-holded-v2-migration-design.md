@@ -78,7 +78,8 @@ Actions on `FinanceController` (Finance section project), same authorization as 
 3. **Sync status:** one row per sync kind — status, last run, last count, last error.
 4. **Buttons:** **Sync now** (incremental + reconcile), **Full sync** (inception backfill + reconcile), **Refresh accounts** (chart-of-accounts only). Each enqueues the Hangfire job (existing `RunHoldedSync` pattern, `[DisableConcurrentExecution]`).
 5. **Account list:** from `holded_accounts` joined with local sums — number, name, group, Holded balance, local balance, local row count, reconciliation ✓/✗. Filter/sort client-side (267 rows).
-6. **Totals:** ledger lines cached, purchase docs, bound creditor contacts, outbox pending.
+6. **Department actuals (629\*):** per-account booked totals for the `629*` block straight from `holded_accounts` — number, name, debit/balance, share of total. Truer than doc-matching-based `HoldedActualsByCategory` (verified live 2026-08-10: 467,295.09 total, of which 133,416.45 — 28.5% — sits in the `62900000` catch-all that doc-matching can't see).
+7. **Totals:** ledger lines cached, purchase docs, bound creditor contacts, outbox pending.
 
 `GET /usage` is called on screen load (1 call) — acceptable; everything else renders from local tables.
 
@@ -94,14 +95,31 @@ Actions on `FinanceController` (Finance section project), same authorization as 
 - Sync: EF-InMemory (per project rule) — backfill replace semantics, incremental overlap upsert, window delete-detection, reconciliation mismatch → targeted re-pull.
 - Admin screen: service-level tests for the view model assembly (monthly grouping, account join).
 
+## Follow-up PR (specced here, not today's build): bank reconciliation panel
+
+A read-only worklist on `/Finance/Holded` — Peter executes all writes in the Holded GUI (decision 2026-08-10: no API writes for now).
+
+- **New `holded_bank_movements` table** mirroring `GET /treasury/accounts` + `GET /treasury/accounts/{id}/bank-movements` (id, account, description, amount, booking date, `status` pending/partial/reconciled, origin), refreshed by the nightly sync (~2 calls).
+- **Panel per bank account:** unreconciled movement count + list; bank-feed balance vs local ledger-sum gap.
+- **Duplicate-entry detector:** same-date-same-amount ledger-line pairs on `572*` accounts — catches the transfer-doubling failure where reconciling each side of an inter-account transfer creates its own journal entry (5 live Stripe-payout doubles found 2026-08-10, e.g. #1854 "STRIPE PAYOUT" + #1937 "Abono transferencia de stripe", both D 1,358.25 on 08/06).
+- **Match suggestions:** unreconciled movements paired against pending purchases by exact amount + normalized counterparty-name overlap (dry-run 2026-08-10: 5 confident matches out of 53 unreconciled; the rest lacked a purchase doc or were inter-account transfers).
+- Reconcile-via-API (`POST .../bank-movements/{movementId}/reconcile`, body `documents: [{document_id, document_type}]`) exists and supports split reconciliation — wire buttons only if Peter later grants a write key.
+
+## Future (recorded, unscheduled): Pleo connector
+
+~5 members hold Pleo cards funded by a 30k transfer from Sabadell. Ledger `57200003` shows D 30,000.00 / C 71.97 — **~29,928 of card spend is booked nowhere in Holded** and invisible to the 629\* actuals. Ideal end state: pull Pleo's transaction API, book each transaction into Holded against the right `629*` account (requires a Holded write key + a category mapping), giving one consolidated spend view. Separate design when picked up.
+
 ## Out of scope
 
 - Webhooks (deferred — revisit if same-day purchase/payment freshness is ever wanted).
 - The `/Expenses` top-card fix (in flight in another session; the full mirror gives it complete data for account 40000004, but the card's own filter bug is not this spec's).
 - Any expense-report lifecycle changes (June design already settled those).
+- Recategorizing the `62900000` catch-all (manual, with the production coordinator, in the Holded GUI).
 
 ## Implementer notes
 
 - Read-only dev token at `C:\Users\PeterDrier\.holded\dev-token` (Peter's machine) for probing real shapes; it shares the account — keep exploratory calls minimal. It cannot write; write paths are testable only via fixtures until QA.
+- **Full OpenAPI spec: `https://api.holded.com/openapi/api2.json`** (~4.5 MB, 205 paths) — use it for exact request/response schemas instead of the doc pages.
 - `GET /usage/{type}` exists for per-type detail; only needed if `secondary_usages` on the main call proves insufficient.
 - Account `40000004` full history is 6 rows / −53,203.00 balance — a handy known-good reconciliation target.
+- **Chart totals can exclude ledger lines:** live 2026-08-10, `accounting-accounts` showed 57200001 debit 418,840.54 while summed `ledger-entries` gave 771,074.85 — off by exactly one entry (#2412, 352,234.31, likely draft/unconfirmed). The reconciliation check must therefore *report* a mismatch with the delta and nearest-amount candidate entries — never hard-fail or loop re-pulls; a standing known mismatch is displayable state on the admin screen.
