@@ -3,6 +3,7 @@ using Humans.Application.Interfaces.Expenses;
 using Humans.Application.Services.Expenses.Dtos;
 using Humans.Finance.Contracts;
 using Humans.Domain.Enums;
+using Humans.Domain.Helpers;
 using NodaTime;
 
 namespace Humans.Web.Models;
@@ -61,8 +62,28 @@ public sealed class ExpenseDetailViewModel
     public bool CanEdit { get; init; }
     public bool CanSubmit { get; init; }
     public bool CanWithdraw { get; init; }
+
+    public bool IsSubmitter { get; init; }
+
+    /// <summary>The viewer's own profile IBAN state. Only meaningful while they are still setting it up
+    /// on their own draft — a viewer's IBAN says nothing about someone else's report.</summary>
     public bool HasIban { get; init; }
     public string? MaskedIban { get; init; }
+    /// <summary>The Set/Change IBAN actions reject everyone but the submitter, so only they get the button.</summary>
+    public bool CanEditIban => IsSubmitter;
+
+    /// <summary>Payee identity is snapshotted at submit, and the legal name shows unmasked — so it goes
+    /// no wider than the submitter and the finance admins who approve the payment.</summary>
+    public bool CanSeePayee => IsSubmitter || CanBindCreditor;
+
+    /// <summary>Legal name frozen onto the report at submit — who Holded will actually pay, regardless
+    /// of later profile edits. Null on a draft (not yet snapshotted). Not masked.</summary>
+    public string? PayeeName =>
+        CanSeePayee && !string.IsNullOrEmpty(Report.PayeeName) ? Report.PayeeName : null;
+
+    /// <summary>Masked form of the IBAN frozen onto the report at submit.</summary>
+    public string? PayeeMaskedIban =>
+        CanSeePayee && !string.IsNullOrEmpty(Report.PayeeIban) ? IbanFormatter.Mask(Report.PayeeIban) : null;
 
     /// <summary>Non-null when the report was previously rejected.</summary>
     public string? LastRejectionReason => Report.LastRejectionReason;

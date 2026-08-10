@@ -167,7 +167,10 @@ public sealed class ExpensesController(
             var canWithdraw = report.Status is ExpenseReportStatus.Submitted
                 or ExpenseReportStatus.CoordinatorEndorsed
                 or ExpenseReportStatus.Approved;
-            var iban = await GetIbanViewAsync(user.Id);
+            // The viewer's own profile IBAN drives only their own draft's Set/Change flow. Loading it for
+            // someone else's report would answer "has the *submitter* got payment details" with the
+            // viewer's answer — see PayeeName/PayeeIban below for the submitter's own.
+            var iban = isSubmitter ? await GetIbanViewAsync(user.Id) : (HasIban: false, MaskedIban: null);
             var timeline = isSubmitter
                 ? await expenseReadService.GetHoldedTimelineAsync(report)
                 : null;
@@ -192,6 +195,7 @@ public sealed class ExpensesController(
                 CanEdit = isSubmitter && report.Status == ExpenseReportStatus.Draft,
                 CanSubmit = isSubmitter && report.Status == ExpenseReportStatus.Draft,
                 CanWithdraw = isSubmitter && canWithdraw,
+                IsSubmitter = isSubmitter,
                 HasIban = iban.HasIban,
                 MaskedIban = iban.MaskedIban,
                 HoldedTimeline = timeline,
