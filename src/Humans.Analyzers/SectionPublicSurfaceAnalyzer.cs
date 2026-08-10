@@ -38,6 +38,18 @@ namespace Humans.Analyzers;
 /// type, the same way <c>Internal/SectionDbContexts.cs</c> matches "application
 /// DbContext" for HUM0008/09/25/26, so moving migrations cannot silently defeat it.
 /// </para>
+/// <para>
+/// <b>Checked on declared accessibility, not effective (externally-reachable)
+/// accessibility.</b> A <c>public</c> type nested inside an already-<c>internal</c>
+/// container isn't actually exported today — <c>GetExportedTypes()</c> wouldn't
+/// return it — but the rule still fires on it. The declaration itself is the
+/// signal being policed: an unnecessary <c>public</c> modifier is a landmine, not a
+/// currently-harmless no-op — the moment its container (or the type itself, if
+/// later hoisted to top level) flips to <c>public</c>, it exports silently, with no
+/// second review of the nested member's own accessibility. Reviewing the modifier
+/// at declaration time is cheaper than re-auditing every nested member on every
+/// future container-visibility change.
+/// </para>
 /// </remarks>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class SectionPublicSurfaceAnalyzer : DiagnosticAnalyzer
