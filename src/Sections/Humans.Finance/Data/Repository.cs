@@ -139,8 +139,16 @@ internal sealed class Repository(IDbContextFactory<FinanceDbContext> factory)
 
         var created = new HoldedDocSyncState();
         ctx.HoldedDocSyncStates.Add(created);
-        await ctx.SaveChangesAsync(ct);
-        return created;
+        try
+        {
+            await ctx.SaveChangesAsync(ct);
+            return created;
+        }
+        catch (DbUpdateException)
+        {
+            // Lost the Id=1 insert race to a concurrent caller; the winner's row is the singleton.
+            return await ctx.HoldedDocSyncStates.AsNoTracking().FirstAsync(s => s.Id == 1, ct);
+        }
     }
 
     public async Task SaveDocSyncStateAsync(HoldedDocSyncState state, CancellationToken ct = default)

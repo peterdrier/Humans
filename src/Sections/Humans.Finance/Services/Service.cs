@@ -275,17 +275,15 @@ internal sealed class Service(
     public async Task<IReadOnlyList<HoldedActualRow>> GetActualsForYearAsync(
         int calendarYear, CancellationToken ct = default)
     {
-        // Ledger-derived: each mapped category's actual is its 629 account's booked total for the
-        // year, straight from the mirror. The tag-era doc-matching path guessed; the ledger is the
-        // books (spec §"Tags are dead"). Expense accounts accumulate debits, so the actual is
-        // debit − credit as-is. Doc matching survives only for the unmatched queue.
-        var balances = await holded.GetAccountBalancesAsync(calendarYear, ct);
-        var map = await repo.GetCategoryMapAsync(ct);
-        return map
-            .Where(m => m.IsActive)
-            .Select(m => new HoldedActualRow(
-                m.BudgetCategoryId,
-                balances.GetValueOrDefault(m.HoldedAccountNumber, 0m)))
+        // Doc-derived, not ledger balances: the budget pages are gross/IVA-inclusive
+        // (Budget/CategoryDetail.cshtml) while a 629 balance is net — the IVA sits on 472 —
+        // and ledger lines can exist for drafts Holded hasn't approved yet. The doc mirror
+        // carries the gross Total and IsApproved, so it is the basis that matches the UI.
+        var docs = await repo.GetMatchedForYearAsync(calendarYear, ct);
+        return docs
+            .Where(d => d.IsApproved == true && d.BudgetCategoryId is not null)
+            .GroupBy(d => d.BudgetCategoryId!.Value)
+            .Select(g => new HoldedActualRow(g.Key, g.Sum(d => d.Total)))
             .Where(r => r.Actual != 0m)
             .ToList();
     }

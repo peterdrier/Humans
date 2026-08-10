@@ -79,11 +79,13 @@ internal sealed class HoldedController(
 
     [HttpPost("FullSync")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> FullSync(CancellationToken ct)
+    public async Task<IActionResult> FullSync()
     {
         try
         {
-            if (await holded.SyncLedgerAsync(full: true, ct))
+            // The full-history sweep can outlive the HTTP request (proxy timeout, client
+            // disconnect); the request token would cancel it mid-rebuild and record an error.
+            if (await holded.SyncLedgerAsync(full: true, CancellationToken.None))
                 SetSuccess("Full ledger resync complete — the mirror was rebuilt from inception.");
             else
                 SetInfo("A ledger sweep was already running, so the full resync was skipped.");

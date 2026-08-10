@@ -568,8 +568,15 @@ public sealed class HoldedClient : IHoldedClient
             rateLimitRemaining, rateLimitWindow));
     }
 
-    private static int? ReadRetryAfterSeconds(HttpResponseMessage resp) =>
-        resp.Headers.RetryAfter?.Delta is { } delta ? (int)delta.TotalSeconds : null;
+    private int? ReadRetryAfterSeconds(HttpResponseMessage resp)
+    {
+        var retryAfter = resp.Headers.RetryAfter;
+        if (retryAfter?.Delta is { } delta) return (int)delta.TotalSeconds;
+        // Retry-After also has a valid HTTP-date form; a past date clamps to 0 (retry now).
+        if (retryAfter?.Date is { } date)
+            return (int)Math.Max(0, (date - _clock.GetCurrentInstant().ToDateTimeOffset()).TotalSeconds);
+        return null;
+    }
 
     /// <summary>A GET <see cref="HttpRequestMessage"/> can only be sent once through <see cref="HttpClient"/>;
     /// the 429 retry needs a fresh instance carrying the same method, URI, and headers (including auth).</summary>

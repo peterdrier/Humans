@@ -43,6 +43,27 @@ public class HoldedFinanceServiceTests
         decimal debit = 0m, decimal credit = 0m, string? type = null) =>
         new(entry, line, account, date, type, null, debit, credit);
 
+    // ─── GetActualsForYear ────────────────────────────────────────────────────────
+
+    [HumansFact]
+    public async Task GetActualsForYear_SumsGrossDocTotals_ApprovedOnly()
+    {
+        var cat = Guid.NewGuid();
+        _repo.GetMatchedForYearAsync(2026, Arg.Any<CancellationToken>()).Returns(new List<HoldedExpenseDoc>
+        {
+            // The budget pages are gross/IVA-inclusive, so the actual is Total, not Subtotal.
+            new() { HoldedDocId = "d1", BudgetCategoryId = cat, Subtotal = 100m, Total = 121m, IsApproved = true },
+            new() { HoldedDocId = "d2", BudgetCategoryId = cat, Subtotal = 50m, Total = 60.50m, IsApproved = true },
+            new() { HoldedDocId = "d3", BudgetCategoryId = cat, Total = 999m, IsApproved = false },  // draft
+            new() { HoldedDocId = "d4", BudgetCategoryId = cat, Total = 500m, IsApproved = null },   // pre-v2 row
+            new() { HoldedDocId = "d5", BudgetCategoryId = null, Total = 77m, IsApproved = true },
+        });
+
+        var rows = await MakeService().GetActualsForYearAsync(2026, Xunit.TestContext.Current.CancellationToken);
+
+        rows.Should().ContainSingle().Which.Should().Be(new HoldedActualRow(cat, 181.50m));
+    }
+
     // ─── GetProvisioningPlan ──────────────────────────────────────────────────────
 
     [HumansFact]
