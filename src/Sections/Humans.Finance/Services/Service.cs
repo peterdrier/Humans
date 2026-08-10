@@ -1,6 +1,7 @@
 using Humans.Application;
 using Humans.Application.Interfaces.Budget;
 using Humans.Finance.Contracts;
+using Humans.Holded.Contracts;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Holded;
 using Humans.Finance.Data;
@@ -22,6 +23,8 @@ internal sealed class Service(
     // Cross-section read via full IBudgetService matches existing FinanceController usage.
     // Future: narrow to an IBudgetServiceRead via the section read/write split.
     IBudgetService budget,
+    // The ledger mirror moved to the Holded section; all line/balance reads go through its contract.
+    IHoldedService holded,
     IClock clock,
     IMemoryCache cache,
     ILogger<Service> logger) : IHoldedFinanceService, IUserDataContributor
@@ -169,10 +172,10 @@ internal sealed class Service(
     {
         var now = clock.GetCurrentInstant();
 
-        var state = await repo.GetSyncStateAsync(ct);
-        state.SyncStatus = HoldedSyncStatus.Running;
+        var state = await repo.GetOrCreateDocSyncStateAsync(ct);
+        state.Status = "Running";
         state.StatusChangedAt = now;
-        await repo.SaveSyncStateAsync(state, ct);
+        await repo.SaveDocSyncStateAsync(state, ct);
 
         try
         {
@@ -192,22 +195,22 @@ internal sealed class Service(
             var matched = docs.Count(d => d.MatchStatus == HoldedMatchStatus.Matched);
             var unmatched = docs.Count(d => d.MatchStatus == HoldedMatchStatus.Unmatched);
 
-            state.SyncStatus = HoldedSyncStatus.Idle;
+            state.Status = "Idle";
             state.LastSyncAt = now;
             state.StatusChangedAt = now;
             state.LastError = null;
             state.LastSyncedDocCount = docs.Count;
-            await repo.SaveSyncStateAsync(state, ct);
+            await repo.SaveDocSyncStateAsync(state, ct);
 
             return new HoldedSyncResult(docs.Count, matched, unmatched);
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Service.SyncAsync failed");
-            state.SyncStatus = HoldedSyncStatus.Error;
+            state.Status = "Error";
             state.LastError = ex.Message;
             state.StatusChangedAt = now;
-            try { await repo.SaveSyncStateAsync(state, CancellationToken.None); }
+            try { await repo.SaveDocSyncStateAsync(state, CancellationToken.None); }
             catch (Exception saveEx) { logger.LogError(saveEx, "Failed to persist error sync state"); }
             throw;
         }
@@ -265,11 +268,18 @@ internal sealed class Service(
     public async Task<IReadOnlyList<HoldedActualRow>> GetActualsForYearAsync(
         int calendarYear, CancellationToken ct = default)
     {
-        var docs = await repo.GetMatchedForYearAsync(calendarYear, ct);
-        return docs
-            .Where(d => d.IsApproved == true && d.BudgetCategoryId is not null)
-            .GroupBy(d => d.BudgetCategoryId!.Value)
-            .Select(g => new HoldedActualRow(g.Key, g.Sum(x => x.Total), g.Count()))
+        // Ledger-derived: each mapped category's actual is its 629 account's booked total for the
+        // year, straight from the mirror. The tag-era doc-matching path guessed; the ledger is the
+        // books (spec §"Tags are dead"). Expense accounts accumulate debits, so the actual is
+        // debit − credit as-is. Doc matching survives only for the unmatched queue.
+        var balances = await holded.GetAccountBalancesAsync(calendarYear, ct);
+        var map = await repo.GetCategoryMapAsync(ct);
+        return map
+            .Where(m => m.IsActive)
+            .Select(m => new HoldedActualRow(
+                m.BudgetCategoryId,
+                balances.GetValueOrDefault(m.HoldedAccountNumber, 0m)))
+            .Where(r => r.Actual != 0m)
             .ToList();
     }
 
@@ -319,133 +329,13 @@ internal sealed class Service(
     private const int CreditorAccountMin = 40000000;
     private const int CreditorAccountMax = 40000999;
 
-    // Holded caps a dailyledger window at one year; 364 days stays safely under.
-    private static readonly Duration LedgerWindow = Duration.FromDays(364);
-    // Backstop on the first-run backward sweep (~25 years); logged if hit so a cap is never silent.
-    private const int BackfillWindowCap = 25;
-
-    // One creditor-ledger sweep at a time. Hangfire's DisableConcurrentExecution guards the nightly
-    // job, but the admin resync calls the service directly, so two sweeps can interleave: both read a
-    // given (EntryNumber, Line) as absent in UpsertLedgerLinesAsync and both insert it, and the loser
-    // trips the unique index and records a global sync Error for what is a benign duplicate. Single-server
-    // deployment (see CLAUDE.md), so an in-process gate is the whole requirement.
-    private static readonly SemaphoreSlim LedgerSyncGate = new(1, 1);
-
-    /// <summary>Refreshes the cached creditor daybook lines from Holded.</summary>
-    /// <returns>False when another sweep was already running and this one was skipped.</returns>
-    public async Task<bool> SyncCreditorLedgerAsync(bool fullHistory = false, CancellationToken ct = default)
-    {
-        var now = clock.GetCurrentInstant();
-
-        // Don't queue behind the running sweep — a full history pass can take a while, and a web
-        // request must not block on it. The caller reports the skip instead.
-        if (!await LedgerSyncGate.WaitAsync(0, ct))
-        {
-            logger.LogInformation("Holded ledger sync already in progress — skipping this request.");
-            return false;
-        }
-
-        try
-        {
-            // The nightly run sweeps one trailing window ending at *now* — a single API call, the same
-            // quota as an incremental append. It is deliberately not anchored on the newest cached
-            // line: the dailyledger filters on the *accounting* date, so an entry posted today but
-            // dated to a closed month sits behind that anchor and would never be fetched again. Anchoring
-            // on now instead picks up anything backdated inside the window at no extra cost.
-            //
-            // Older backdating, and the first run against an empty cache, need the full backward sweep.
-            // That is several calls, so outside the empty-cache case it is only ever run on request
-            // (POST /Finance/Creditors/Resync). The upsert on (EntryNumber, Line) makes re-fetching free.
-            var zone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
-            var sweepAll = fullHistory || !await repo.HasAnyLedgerLinesAsync(ct);
-            var fetched = sweepAll
-                ? await BackfillLedgerAsync(now, ct)
-                : await client.ListLedgerEntriesAsync(
-                    now.Minus(LedgerWindow).InZone(zone).Date, now.InZone(zone).Date, ct: ct);
-
-            // Persist only creditor-account (4000_0000–4000_0999) lines — the only accounts the read paths derive
-            // from. The dailyledger has no server-side account filter, so the fetch sweeps the whole
-            // daybook regardless; we keep the subset we use. (Budget actuals run on a separate path.)
-            var lines = fetched
-                .Where(l => l.AccountNum >= CreditorAccountMin && l.AccountNum <= CreditorAccountMax)
-                .Select(l => new HoldedLedgerLine
-                {
-                    Id = Guid.NewGuid(),
-                    EntryNumber = l.EntryNumber,
-                    Line = l.Line,
-                    AccountNum = l.AccountNum,
-                    Date = l.Date,
-                    Type = l.Type,
-                    Description = l.Description,
-                    Debit = l.Debit,
-                    Credit = l.Credit,
-                    CreatedAt = now,
-                    LastSyncedAt = now,
-                })
-                .ToList();
-
-            await repo.UpsertLedgerLinesAsync(lines, now, ct);
-
-            logger.LogInformation(
-                "Holded ledger sync ({Mode}) cached {Count} creditor journal lines",
-                sweepAll ? "full history" : "trailing window", lines.Count);
-            return true;
-        }
-        catch (Exception ex)
-        {
-            // Surface the failure in the same sync-state widget the actuals pull uses, then rethrow
-            // so Hangfire records the job failure too.
-            logger.LogError(ex, "Service.SyncCreditorLedgerAsync failed");
-            try
-            {
-                var state = await repo.GetSyncStateAsync(CancellationToken.None);
-                state.SyncStatus = HoldedSyncStatus.Error;
-                state.LastError = ex.Message;
-                state.StatusChangedAt = now;
-                await repo.SaveSyncStateAsync(state, CancellationToken.None);
-            }
-            catch (Exception saveEx)
-            {
-                logger.LogError(saveEx, "Failed to persist creditor-sync error state");
-            }
-            throw;
-        }
-        finally
-        {
-            LedgerSyncGate.Release();
-        }
-    }
-
-    /// <summary>Sweeps inception→now in ≤1-year backward windows, stopping at the first empty window
-    /// (the org's books are contiguous back to inception). Logs if the window cap is hit (no silent caps).</summary>
-    private async Task<IReadOnlyList<HoldedLedgerLineDto>> BackfillLedgerAsync(Instant now, CancellationToken ct)
-    {
-        var zone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
-        var all = new List<HoldedLedgerLineDto>();
-        var to = now;
-        for (var window = 0; window < BackfillWindowCap; window++)
-        {
-            var from = to.Minus(LedgerWindow);
-            var page = await client.ListLedgerEntriesAsync(from.InZone(zone).Date, to.InZone(zone).Date, ct: ct);
-            if (page.Count == 0)
-                return all;
-            all.AddRange(page);
-            to = from.Minus(Duration.FromSeconds(1));
-        }
-
-        logger.LogWarning(
-            "Holded ledger backfill hit the {Cap}-window cap; journal history older than {To} was not swept.",
-            BackfillWindowCap, to);
-        return all;
-    }
-
     public async Task<HoldedCreditorStatus?> GetCreditorStatusAsync(
         int? supplierAccountNum, CancellationToken ct = default)
     {
         if (supplierAccountNum is not { } num)
             return null;
 
-        var lines = await repo.GetLedgerLinesByAccountNumAsync(num, ct);
+        var lines = await holded.GetLedgerLinesAsync(num, ct);
         if (lines.Count == 0)
             return null;
 
@@ -464,10 +354,10 @@ internal sealed class Service(
     //    credit 12720 − debit 9540 = 3180 owed; chart showed −3180) ──────────────
     //    balance = Σdebit − Σcredit (negative = org owes); owed = max(0, −balance); payments = debit lines.
 
-    private static decimal LedgerBalance(IReadOnlyCollection<HoldedLedgerLine> lines) =>
+    private static decimal LedgerBalance(IReadOnlyCollection<HoldedLedgerLineInfo> lines) =>
         lines.Sum(l => l.Debit) - lines.Sum(l => l.Credit);
 
-    private static List<HoldedPaymentInfo> LedgerPayments(IEnumerable<HoldedLedgerLine> lines)
+    private static List<HoldedPaymentInfo> LedgerPayments(IEnumerable<HoldedLedgerLineInfo> lines)
     {
         var zone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
         return lines
@@ -482,9 +372,7 @@ internal sealed class Service(
                        IReadOnlyList<CreditorContactBinding> Unresolved)> ListCreditorAccountsAsync(
         CancellationToken ct = default)
     {
-        var byAccount = (await repo.GetAllLedgerLinesAsync(ct))
-            .GroupBy(l => l.AccountNum)
-            .ToDictionary(g => g.Key, g => (IReadOnlyCollection<HoldedLedgerLine>)g.ToList());
+        var byAccount = await holded.GetAccountBalancesAsync(ct: ct);
 
         // Holded is the only place the chart-account label lives — nothing caches it locally.
         // Range filter is load-bearing: Holded assigns a supplier number to every supplier contact,
@@ -545,17 +433,20 @@ internal sealed class Service(
         // Every creditor account with ledger activity, plus bound accounts that have no lines yet,
         // plus every Holded creditor contact — a first-time submitter's account exists in Holded
         // before it has any journal activity, and that is exactly the row an admin needs to see.
-        var rows = byAccount.Keys.Union(bindings.Keys).Union(contacts.Keys)
+        // The mirror now spans the whole chart, so its balances are range-filtered here.
+        var rows = byAccount.Keys
+            .Where(num => num is >= CreditorAccountMin and <= CreditorAccountMax)
+            .Union(bindings.Keys).Union(contacts.Keys)
             .Select(num =>
             {
-                decimal? balance = byAccount.TryGetValue(num, out var lines) ? LedgerBalance(lines) : null;
+                decimal? balance = byAccount.TryGetValue(num, out var b) ? b : null;
                 bindings.TryGetValue(num, out var bound);
                 contacts.TryGetValue(num, out var contact);
                 return new HoldedCreditorAccountRow(
                     SupplierAccountNum: num,
                     Name: contact?.Name ?? "",
                     Balance: balance,
-                    OwedToMember: balance is { } b ? Math.Max(0m, -b) : 0m,
+                    OwedToMember: balance is { } bal ? Math.Max(0m, -bal) : 0m,
                     Bindings: bound ?? []);
             }).ToList();
 
@@ -749,7 +640,7 @@ internal sealed class Service(
         int supplierAccountNum, CancellationToken ct = default)
     {
         // Reads cached daybook lines only — zero Holded calls per view.
-        var lines = await repo.GetLedgerLinesByAccountNumAsync(supplierAccountNum, ct);
+        var lines = await holded.GetLedgerLinesAsync(supplierAccountNum, ct);
         if (lines.Count == 0)
             return null;
 

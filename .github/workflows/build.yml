@@ -31,6 +31,7 @@ env:
     AgentDbContext:src/Humans.Infrastructure
     ExpensesDbContext:src/Sections/Humans.Expenses
     FinanceDbContext:src/Sections/Humans.Finance
+    HoldedDbContext:src/Sections/Humans.Holded
     SurveysDbContext:src/Humans.Infrastructure
     EventGuideDbContext:src/Sections/Humans.Events
     AuthDbContext:src/Humans.Infrastructure

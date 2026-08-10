@@ -7,7 +7,7 @@ public sealed record HoldedProvisioningRow(
 public sealed record HoldedProvisioningPlan(
     IReadOnlyList<HoldedProvisioningRow> Rows, int NextNumber);
 
-public sealed record HoldedActualRow(Guid BudgetCategoryId, decimal Actual, int DocCount);
+public sealed record HoldedActualRow(Guid BudgetCategoryId, decimal Actual);
 
 public sealed record HoldedUnmatchedRow(
     string HoldedDocId, string DocNumber, string ContactName, decimal Total,

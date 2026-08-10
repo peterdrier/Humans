@@ -1,16 +1,18 @@
 using Hangfire;
 using Humans.Application.Interfaces;
 using Humans.Finance.Contracts;
+using Humans.Holded.Contracts;
 using Humans.Infrastructure.Services.Holded;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Humans.Infrastructure.Jobs;
 
-/// <summary>Nightly Holded pull: purchase docs → budget-category actuals, plus the creditor daybook ledger.</summary>
+/// <summary>Nightly Holded pull: purchase docs (Finance) then the ledger mirror (Holded section).</summary>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
 public class HoldedSyncJob(
     IHoldedFinanceService finance,
+    IHoldedService holded,
     IOptions<HoldedClientOptions> holdedOptions,
     ILogger<HoldedSyncJob> logger) : IRecurringJob
 {
@@ -25,6 +27,6 @@ public class HoldedSyncJob(
         }
 
         await finance.SyncAsync(cancellationToken);
-        await finance.SyncCreditorLedgerAsync(fullHistory: false, cancellationToken);
+        await holded.SyncLedgerAsync(full: false, cancellationToken);
     }
 }

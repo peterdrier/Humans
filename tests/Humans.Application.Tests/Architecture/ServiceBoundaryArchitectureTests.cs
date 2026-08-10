@@ -50,6 +50,7 @@ public class ServiceBoundaryArchitectureTests
             [typeof(IGoogleResourceRepository)] = "GoogleIntegration",
             [typeof(IGoogleSyncOutboxRepository)] = "GoogleIntegration",
             [SectionRepository("Humans.Finance.Data.IHoldedRepository")] = "Finance",
+            [SectionRepository("Humans.Holded.Data.IHoldedMirrorRepository")] = "Holded",
             [typeof(IIssuesRepository)] = "Issues",
             [typeof(ILegalDocumentRepository)] = "Legal",
             [typeof(INotificationRepository)] = "Notifications",

@@ -16,6 +16,7 @@
     <!-- Events' contracts leaf: SearchService calls IEventServiceRead. -->
     <ProjectReference Include="..\Sections\Humans.Events.Contracts\Humans.Events.Contracts.csproj" />
     <ProjectReference Include="..\Sections\Humans.Finance.Contracts\Humans.Finance.Contracts.csproj" />
+    <ProjectReference Include="..\Sections\Humans.Holded.Contracts\Humans.Holded.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

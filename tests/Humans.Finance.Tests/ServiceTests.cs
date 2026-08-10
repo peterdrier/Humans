@@ -7,6 +7,7 @@ using Humans.Finance.Data;
 using Humans.Finance.Services;
 using Humans.Finance.Contracts;
 using Humans.Finance.Domain;
+using Humans.Holded.Contracts;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -24,6 +25,7 @@ public class HoldedFinanceServiceTests
     private readonly IHoldedRepository _repo = Substitute.For<IHoldedRepository>();
     private readonly IHoldedClient _client = Substitute.For<IHoldedClient>();
     private readonly IBudgetService _budget = Substitute.For<IBudgetService>();
+    private readonly IHoldedService _holded = Substitute.For<IHoldedService>();
     private readonly FakeClock _clock = new(FixedNow);
     private readonly IMemoryCache _cache = new MemoryCache(new MemoryCacheOptions());
 
@@ -31,9 +33,15 @@ public class HoldedFinanceServiceTests
         _repo,
         _client,
         _budget,
+        _holded,
         _clock,
         _cache,
         NullLogger<Service>.Instance);
+
+    /// <summary>Ledger-line stub for the mirror reads (positional: entry, line, account, date, type, description, debit, credit).</summary>
+    private static HoldedLedgerLineInfo Line(int entry, int line, int account, Instant date,
+        decimal debit = 0m, decimal credit = 0m, string? type = null) =>
+        new(entry, line, account, date, type, null, debit, credit);
 
     // ─── GetProvisioningPlan ──────────────────────────────────────────────────────
 
@@ -163,11 +171,8 @@ public class HoldedFinanceServiceTests
                 }
             });
 
-        _repo.GetSyncStateAsync(Arg.Any<CancellationToken>()).ReturnsForAnyArgs(new HoldedSyncState
-        {
-            Id = 1,
-            SyncStatus = HoldedSyncStatus.Idle
-        });
+        _repo.GetOrCreateDocSyncStateAsync(Arg.Any<CancellationToken>())
+            .ReturnsForAnyArgs(new HoldedDocSyncState());
 
         var docDate = Instant.FromUtc(2026, 4, 15, 10, 0);
 
@@ -241,18 +246,15 @@ public class HoldedFinanceServiceTests
     {
         _repo.GetCategoryMapAsync(Arg.Any<CancellationToken>()).ReturnsForAnyArgs(new List<HoldedCategoryMap>());
 
-        _repo.GetSyncStateAsync(Arg.Any<CancellationToken>()).ReturnsForAnyArgs(new HoldedSyncState
-        {
-            Id = 1,
-            SyncStatus = HoldedSyncStatus.Idle
-        });
+        _repo.GetOrCreateDocSyncStateAsync(Arg.Any<CancellationToken>())
+            .ReturnsForAnyArgs(new HoldedDocSyncState());
 
         _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>())
             .Throws(new InvalidOperationException("Holded API unavailable"));
 
-        HoldedSyncState? savedState = null;
-        await _repo.SaveSyncStateAsync(
-            Arg.Do<HoldedSyncState>(s => savedState = s),
+        HoldedDocSyncState? savedState = null;
+        await _repo.SaveDocSyncStateAsync(
+            Arg.Do<HoldedDocSyncState>(s => savedState = s),
             Arg.Any<CancellationToken>());
 
         var svc = MakeService();
@@ -262,141 +264,20 @@ public class HoldedFinanceServiceTests
 
         // The last saved state must be Error.
         savedState.Should().NotBeNull();
-        savedState.SyncStatus.Should().Be(HoldedSyncStatus.Error);
+        savedState!.Status.Should().Be("Error");
         savedState.LastError.Should().NotBeNullOrEmpty();
     }
 
-    // ─── Creditor data (derived from the cached daybook ledger) ─────────────────
-
-    [HumansFact]
-    public async Task SyncCreditorLedger_backfill_stores_only_creditor_account_lines()
-    {
-        // Sweep backward until an empty window, store only creditor-block lines.
-        _repo.HasAnyLedgerLinesAsync(Arg.Any<CancellationToken>()).Returns(false);
-        var page = new List<HoldedLedgerLineDto>
-        {
-            new() { EntryNumber = 1, Line = 0, AccountNum = 40000001, Date = FixedNow, Debit = 0m, Credit = 100m },
-            new() { EntryNumber = 2, Line = 0, AccountNum = 40000999, Date = FixedNow, Debit = 0m, Credit = 50m },  // top of the block
-            new() { EntryNumber = 1, Line = 1, AccountNum = 62900000, Date = FixedNow, Debit = 100m, Credit = 0m }, // not a creditor acct
-        };
-        _client.ListLedgerEntriesAsync(Arg.Any<LocalDate>(), Arg.Any<LocalDate>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
-            .Returns(page, new List<HoldedLedgerLineDto>()); // first window has data, second is empty → stop
-
-        IReadOnlyList<HoldedLedgerLine>? stored = null;
-        await _repo.UpsertLedgerLinesAsync(
-            Arg.Do<IReadOnlyList<HoldedLedgerLine>>(r => stored = r), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
-
-        await MakeService().SyncCreditorLedgerAsync(fullHistory: false, Xunit.TestContext.Current.CancellationToken);
-
-        stored.Should().NotBeNull();
-        stored!.Select(l => l.AccountNum).Should().BeEquivalentTo(new[] { 40000001, 40000999 });
-    }
-
-    [HumansFact]
-    public async Task SyncCreditorLedger_nightly_sweeps_one_window_anchored_on_now()
-    {
-        // Regression: the nightly sync used to resume from the newest cached line's date. Holded
-        // filters the dailyledger on the *accounting* date, so an entry posted today but dated to a
-        // closed month sat behind that anchor and was never fetched again. Anchoring the window on
-        // *now* instead picks it up — for the same single call, which is what the quota allows.
-        _repo.HasAnyLedgerLinesAsync(Arg.Any<CancellationToken>()).Returns(true);
-        _client.ListLedgerEntriesAsync(Arg.Any<LocalDate>(), Arg.Any<LocalDate>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
-            .Returns(new List<HoldedLedgerLineDto>
-            {
-                new() { EntryNumber = 5, Line = 0, AccountNum = 40000004, Date = FixedNow, Debit = 23m, Credit = 0m },
-            });
-
-        await MakeService().SyncCreditorLedgerAsync(fullHistory: false, Xunit.TestContext.Current.CancellationToken);
-
-        var windows = LedgerWindowsCalled();
-        windows.Should().ContainSingle();
-        windows[0].To.Should().Be(FixedNow.InZone(MadridZone).Date);                                  // anchored on now, not on the cache
-        windows[0].From.Should().Be(FixedNow.Minus(Duration.FromDays(364)).InZone(MadridZone).Date);  // reaches back a full year
-    }
-
-    [HumansFact]
-    public async Task SyncCreditorLedger_skips_when_another_sweep_is_already_running()
-    {
-        // Hangfire serializes the nightly job, but the admin resync calls the service directly — two
-        // sweeps interleaving both read a (EntryNumber, Line) as absent and both insert it, and the
-        // loser trips the unique index and records a global sync Error for a benign duplicate.
-        _repo.HasAnyLedgerLinesAsync(Arg.Any<CancellationToken>()).Returns(true);
-        var firstCallStarted = new TaskCompletionSource();
-        var releaseFirstCall = new TaskCompletionSource();
-        _client.ListLedgerEntriesAsync(Arg.Any<LocalDate>(), Arg.Any<LocalDate>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
-            .Returns(_ =>
-            {
-                firstCallStarted.TrySetResult();
-                releaseFirstCall.Task.GetAwaiter().GetResult();
-                return new List<HoldedLedgerLineDto>();
-            });
-
-        var inFlight = Task.Run(() => MakeService().SyncCreditorLedgerAsync(
-            fullHistory: false, CancellationToken.None));
-        await firstCallStarted.Task;
-
-        var second = await MakeService().SyncCreditorLedgerAsync(
-            fullHistory: true, Xunit.TestContext.Current.CancellationToken);
-
-        second.Should().BeFalse();          // skipped rather than racing the in-flight sweep
-        releaseFirstCall.SetResult();
-        (await inFlight).Should().BeTrue(); // and the gate is released for the next caller
-    }
-
-    [HumansFact]
-    public async Task SyncCreditorLedger_full_history_is_opt_in_and_sweeps_backward()
-    {
-        // Several calls — one per year of books — so it is only ever run on request (or cold cache).
-        _repo.HasAnyLedgerLinesAsync(Arg.Any<CancellationToken>()).Returns(true);
-        var pageWithData = new List<HoldedLedgerLineDto>
-        {
-            new() { EntryNumber = 5, Line = 0, AccountNum = 40000004, Date = FixedNow, Debit = 23m, Credit = 0m },
-        };
-        _client.ListLedgerEntriesAsync(Arg.Any<LocalDate>(), Arg.Any<LocalDate>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
-            .Returns(pageWithData, pageWithData, new List<HoldedLedgerLineDto>());
-
-        await MakeService().SyncCreditorLedgerAsync(fullHistory: true, Xunit.TestContext.Current.CancellationToken);
-
-        var windows = LedgerWindowsCalled();
-        windows.Count.Should().BeGreaterThan(1);
-        windows.Should().OnlyContain(w => Period.Between(w.From, w.To, PeriodUnits.Days).Days <= 364);
-        windows.Min(w => w.From).Should().BeLessThan(FixedNow.Minus(Duration.FromDays(364)).InZone(MadridZone).Date);
-    }
-
-    [HumansFact]
-    public async Task SyncCreditorLedger_cold_cache_sweeps_full_history_without_being_asked()
-    {
-        // Nothing cached: a trailing window would leave the member's older history permanently missing.
-        _repo.HasAnyLedgerLinesAsync(Arg.Any<CancellationToken>()).Returns(false);
-        var pageWithData = new List<HoldedLedgerLineDto>
-        {
-            new() { EntryNumber = 5, Line = 0, AccountNum = 40000004, Date = FixedNow, Debit = 0m, Credit = 23m },
-        };
-        _client.ListLedgerEntriesAsync(Arg.Any<LocalDate>(), Arg.Any<LocalDate>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
-            .Returns(pageWithData, new List<HoldedLedgerLineDto>());
-
-        await MakeService().SyncCreditorLedgerAsync(fullHistory: false, Xunit.TestContext.Current.CancellationToken);
-
-        LedgerWindowsCalled().Count.Should().BeGreaterThan(1);
-    }
-
-    private static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
-
-    private List<(LocalDate From, LocalDate To)> LedgerWindowsCalled() =>
-        _client.ReceivedCalls()
-            .Where(c => string.Equals(c.GetMethodInfo().Name, nameof(IHoldedClient.ListLedgerEntriesAsync), StringComparison.Ordinal))
-            .Select(c => c.GetArguments())
-            .Select(a => (From: (LocalDate)a[0]!, To: (LocalDate)a[1]!))
-            .ToList();
+    // ─── Creditor data (derived from the cached daybook ledger, via the Holded section) ────
 
     [HumansFact]
     public async Task GetCreditorStatus_derives_balance_owed_and_payments_from_lines()
     {
         // Daniela 40000001: credit 12720 (in) − debit 9540 (paid) ⇒ balance −3180, owed 3180.
-        _repo.GetLedgerLinesByAccountNumAsync(40000001, Arg.Any<CancellationToken>()).Returns(new List<HoldedLedgerLine>
+        _holded.GetLedgerLinesAsync(40000001, Arg.Any<CancellationToken>()).Returns(new List<HoldedLedgerLineInfo>
         {
-            new() { EntryNumber = 1, Line = 0, AccountNum = 40000001, Date = Instant.FromUtc(2026, 4, 1, 0, 0), Credit = 12720m, Type = "purchase" },
-            new() { EntryNumber = 2, Line = 0, AccountNum = 40000001, Date = Instant.FromUtc(2026, 4, 20, 0, 0), Debit = 9540m, Type = "payment" },
+            Line(1, 0, 40000001, Instant.FromUtc(2026, 4, 1, 0, 0), credit: 12720m, type: "purchase"),
+            Line(2, 0, 40000001, Instant.FromUtc(2026, 4, 20, 0, 0), debit: 9540m, type: "payment"),
         });
 
         var status = await MakeService().GetCreditorStatusAsync(40000001, Xunit.TestContext.Current.CancellationToken);
@@ -411,8 +292,8 @@ public class HoldedFinanceServiceTests
     [HumansFact]
     public async Task GetCreditorStatus_returns_null_when_no_lines_cached()
     {
-        _repo.GetLedgerLinesByAccountNumAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(new List<HoldedLedgerLine>());
+        _holded.GetLedgerLinesAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(new List<HoldedLedgerLineInfo>());
 
         var status = await MakeService().GetCreditorStatusAsync(40000099, Xunit.TestContext.Current.CancellationToken);
 
@@ -432,10 +313,8 @@ public class HoldedFinanceServiceTests
     {
         var first = Guid.NewGuid();
         var second = Guid.NewGuid();
-        _repo.GetAllLedgerLinesAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedLedgerLine>
-        {
-            new() { EntryNumber = 1, Line = 0, AccountNum = 40000004, Date = FixedNow, Credit = 10m },
-        });
+        _holded.GetAccountBalancesAsync(Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<int, decimal> { [40000004] = -10m });
         // Two members on the same account number — only UserId is unique in the DB, and the automatic
         // push paths record what Holded assigned rather than refusing, so this state is reachable.
         _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>
@@ -460,7 +339,8 @@ public class HoldedFinanceServiceTests
         // contact id with a null 400000xx indefinitely. Keyed on the number alone the account would
         // render "unbound" while this member holds it — and could not be unbound from that page.
         var userId = Guid.NewGuid();
-        _repo.GetAllLedgerLinesAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedLedgerLine>());
+        _holded.GetAccountBalancesAsync(Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<int, decimal>());
         _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>
         {
             new() { UserId = userId, HoldedContactId = "c1", SupplierAccountNum = null, Source = CreditorContactSource.Auto },
@@ -486,7 +366,8 @@ public class HoldedFinanceServiceTests
         // rows, hiding the contact-id half of the invariant FindConflictingBinding enforces on writes.
         var first = Guid.NewGuid();
         var second = Guid.NewGuid();
-        _repo.GetAllLedgerLinesAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedLedgerLine>());
+        _holded.GetAccountBalancesAsync(Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<int, decimal>());
         _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>
         {
             new() { UserId = first, HoldedContactId = "c1", SupplierAccountNum = 40000004, Source = CreditorContactSource.Manual },
@@ -569,9 +450,9 @@ public class HoldedFinanceServiceTests
     [HumansFact]
     public async Task GetCreditorLedger_derives_balance_and_lines_from_cache()
     {
-        _repo.GetLedgerLinesByAccountNumAsync(40000004, Arg.Any<CancellationToken>()).Returns(new List<HoldedLedgerLine>
+        _holded.GetLedgerLinesAsync(40000004, Arg.Any<CancellationToken>()).Returns(new List<HoldedLedgerLineInfo>
         {
-            new() { EntryNumber = 1, Line = 0, AccountNum = 40000004, Date = FixedNow, Credit = 50m },
+            Line(1, 0, 40000004, FixedNow, credit: 50m),
         });
 
         var ledger = await MakeService().GetCreditorLedgerAsync(40000004, Xunit.TestContext.Current.CancellationToken);
@@ -585,8 +466,8 @@ public class HoldedFinanceServiceTests
     [HumansFact]
     public async Task GetCreditorLedger_returns_null_when_no_lines()
     {
-        _repo.GetLedgerLinesByAccountNumAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(new List<HoldedLedgerLine>());
+        _holded.GetLedgerLinesAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(new List<HoldedLedgerLineInfo>());
 
         var ledger = await MakeService().GetCreditorLedgerAsync(40000004, Xunit.TestContext.Current.CancellationToken);
 
@@ -824,7 +705,7 @@ public class HoldedFinanceServiceTests
         _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>());
         _client.UpsertContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("c1");
 
-        var id = await new Service(_repo, _client, _budget, _clock, _cache, logger)
+        var id = await new Service(_repo, _client, _budget, _holded, _clock, _cache, logger)
             .EnsureCreditorContactAsync(
                 userId, "Peter Drier", null, null, null, 40000004,
                 Xunit.TestContext.Current.CancellationToken);
@@ -858,7 +739,7 @@ public class HoldedFinanceServiceTests
         _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>());
         _client.UpsertContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("c-new");
 
-        var id = await new Service(_repo, _client, _budget, _clock, _cache, logger)
+        var id = await new Service(_repo, _client, _budget, _holded, _clock, _cache, logger)
             .EnsureCreditorContactAsync(
                 userId, "Peter Drier", null, null, null, null,
                 Xunit.TestContext.Current.CancellationToken);
@@ -947,7 +828,7 @@ public class HoldedFinanceServiceTests
             });
         _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>());
 
-        await new Service(_repo, _client, _budget, _clock, _cache, logger)
+        await new Service(_repo, _client, _budget, _holded, _clock, _cache, logger)
             .SetCreditorAccountNumAsync(userId, 40000012, Xunit.TestContext.Current.CancellationToken);
 
         await _repo.DidNotReceive().UpsertCreditorContactAsync(
@@ -961,10 +842,8 @@ public class HoldedFinanceServiceTests
     [HumansFact]
     public async Task ListCreditorAccounts_NamesRowsFromHolded_AndIncludesContactsWithNoLedgerActivity()
     {
-        _repo.GetAllLedgerLinesAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedLedgerLine>
-        {
-            new() { EntryNumber = 1, Line = 0, AccountNum = 40000004, Date = FixedNow, Credit = 40m },
-        });
+        _holded.GetAccountBalancesAsync(Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<int, decimal> { [40000004] = -40m });
         _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>());
         _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedContactDto>
         {
@@ -991,10 +870,8 @@ public class HoldedFinanceServiceTests
     [HumansFact]
     public async Task ListCreditorAccounts_HoldedUnavailable_StillReturnsCachedRowsWithBlankNames()
     {
-        _repo.GetAllLedgerLinesAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedLedgerLine>
-        {
-            new() { EntryNumber = 1, Line = 0, AccountNum = 40000004, Date = FixedNow, Credit = 40m },
-        });
+        _holded.GetAccountBalancesAsync(Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<int, decimal> { [40000004] = -40m });
         _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>());
         // The real client wraps HTTP failures — assert against what production actually throws.
         _client.ListContactsAsync(Arg.Any<CancellationToken>())
@@ -1011,7 +888,8 @@ public class HoldedFinanceServiceTests
     [HumansFact]
     public async Task ListCreditorAccounts_UnexpectedClientFailure_Propagates()
     {
-        _repo.GetAllLedgerLinesAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedLedgerLine>());
+        _holded.GetAccountBalancesAsync(Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<int, decimal>());
         _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>());
         // Only vendor-call failures degrade to blank names; a bug must not be silently absorbed.
         _client.ListContactsAsync(Arg.Any<CancellationToken>())
@@ -1026,10 +904,8 @@ public class HoldedFinanceServiceTests
     [HumansFact]
     public async Task ListCreditorAccounts_UnreadableHoldedResponse_DegradesToBlankNames()
     {
-        _repo.GetAllLedgerLinesAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedLedgerLine>
-        {
-            new() { EntryNumber = 1, Line = 0, AccountNum = 40000004, Date = FixedNow, Credit = 40m },
-        });
+        _holded.GetAccountBalancesAsync(Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<int, decimal> { [40000004] = -40m });
         _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>());
         // A malformed body is still a vendor failure — /Finance/Creditors has no try/catch, so letting
         // this escape would 500 the page instead of costing the names.
@@ -1059,7 +935,8 @@ public class HoldedFinanceServiceTests
     public async Task ListCreditorAccounts_BoundAccountWithNoHoldedContact_YieldsRowWithBlankName()
     {
         var userId = Guid.NewGuid();
-        _repo.GetAllLedgerLinesAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedLedgerLine>());
+        _holded.GetAccountBalancesAsync(Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<int, decimal>());
         _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>
         {
             new() { UserId = userId, HoldedContactId = "c1", SupplierAccountNum = 40000004, Source = CreditorContactSource.Manual },
@@ -1183,7 +1060,7 @@ public class HoldedFinanceServiceTests
             new() { UserId = otherUserId, HoldedContactId = "c-theirs", SupplierAccountNum = 40000012, Source = CreditorContactSource.Manual },
         });
 
-        await new Service(_repo, _client, _budget, _clock, _cache, logger)
+        await new Service(_repo, _client, _budget, _holded, _clock, _cache, logger)
             .SetCreditorAccountNumAsync(userId, 40000012, Xunit.TestContext.Current.CancellationToken);
 
         await _repo.Received(1).UpsertCreditorContactAsync(
@@ -1213,7 +1090,7 @@ public class HoldedFinanceServiceTests
             new() { UserId = userId, HoldedContactId = "c-mine", SupplierAccountNum = 40000012, Source = CreditorContactSource.Auto },
         });
 
-        await new Service(_repo, _client, _budget, _clock, _cache, logger)
+        await new Service(_repo, _client, _budget, _holded, _clock, _cache, logger)
             .SetCreditorAccountNumAsync(userId, 40000012, Xunit.TestContext.Current.CancellationToken);
 
         await _repo.Received(1).UpsertCreditorContactAsync(
@@ -1236,7 +1113,7 @@ public class HoldedFinanceServiceTests
         });
         _client.UpsertContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("c-fresh");
 
-        await new Service(_repo, _client, _budget, _clock, _cache, logger)
+        await new Service(_repo, _client, _budget, _holded, _clock, _cache, logger)
             .EnsureCreditorContactAsync(
                 userId, "Ana Ruiz", null, null, seedContactId: "c-theirs", seedAccountNum: 40000012,
                 Xunit.TestContext.Current.CancellationToken);
@@ -1267,7 +1144,7 @@ public class HoldedFinanceServiceTests
         });
         _client.UpsertContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("c-fresh");
 
-        await new Service(_repo, _client, _budget, _clock, _cache, logger)
+        await new Service(_repo, _client, _budget, _holded, _clock, _cache, logger)
             .EnsureCreditorContactAsync(
                 userId, "Ana Ruiz", null, null, seedContactId: "c-shared", seedAccountNum: null,
                 Xunit.TestContext.Current.CancellationToken);

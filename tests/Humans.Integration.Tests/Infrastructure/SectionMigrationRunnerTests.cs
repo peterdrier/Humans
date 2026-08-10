@@ -4,6 +4,7 @@ using Humans.Infrastructure.Hosting;
 using Humans.Containers.Data;
 using Humans.Expenses.Data;
 using Humans.Finance.Data;
+using Humans.Holded.Data;
 using Humans.Store.Data;
 using Humans.SystemSettings.Data;
 using Microsoft.EntityFrameworkCore;
@@ -76,7 +77,17 @@ public sealed class SectionMigrationRunnerTests(HumansTestDatabase database)
             "Finance",
             "holded_expense_docs",
             CreateSectionContext<FinanceDbContext>,
-            "SELECT count(*) FROM holded_sync_states"),
+            // No seed probe: the old seeded holded_sync_states singleton moved to the Holded
+            // section re-keyed and lazy-created; Finance's doc-sync state is lazy too.
+            null),
+        new(
+            // After Finance, as in production's name-ordered migration: Finance's
+            // HoldedMirrorMovesToHoldedSection drops holded_ledger_lines before this baseline
+            // recreates it under Holded ownership.
+            "Holded",
+            "holded_accounts",
+            CreateSectionContext<HoldedDbContext>,
+            null),
         new(
             "Surveys",
             "surveys",
