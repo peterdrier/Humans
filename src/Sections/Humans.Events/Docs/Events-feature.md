@@ -1,5 +1,6 @@
 <!-- freshness:triggers
   src/Sections/Humans.Events/**
+  src/Sections/Humans.Events.Contracts/**
 -->
 <!-- freshness:flag-on-change
   Submission/moderation workflow, GuideEvent state machine, bulk CSV upload rules, public /api/events surface, and email triggers. Review when Event Guide controllers, service, or entities change.

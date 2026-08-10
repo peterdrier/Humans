@@ -1,5 +1,6 @@
 <!-- freshness:triggers
   src/Sections/Humans.Events/**
+  src/Sections/Humans.Events.Contracts/**
 -->
 <!-- freshness:flag-on-change
   Event submission/moderation lifecycle, guide settings window, public API surface, favourites/preferences, and the IEventServiceRead cross-section read surface — review when Events services/entities/controllers/view component change.
