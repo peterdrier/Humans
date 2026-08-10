@@ -123,23 +123,28 @@ None. Every escalated item was a concrete code-checkable contradiction and was f
 
 ## Proposed for review
 
-Two husks were **analysed and deliberately not deleted** — they turned out to be live documents,
-not history. Both are pending Peter's answer (see *Questions*), and neither was modified.
+None — all candidates resolved this sweep.
 
-- `docs/plans/2026-06-13-q3-transition-plan.md` (538 lines)
-- `docs/plans/2026-06-11-q3-ui-refactoring-plan.md` (243 lines)
+Two husks were analysed and **deliberately kept**: they are live documents, not history. Both
+were left unmodified. Neither is a prune candidate for future sweeps until its work completes —
+age alone does not make them husks.
 
 ## Questions
 
-1. **`2026-06-13-q3-transition-plan.md` is the live gate ladder** — G5 has moved 6 of ~33
-   sections, and five surviving plan docs plus `NoDestructiveMigrationOps.baseline.txt:74` cite
-   it for gate definitions. Delete it, or keep it as the plan of record?
-2. **`2026-06-11-q3-ui-refactoring-plan.md` is an unexecuted 90-finding backlog** whose premises
-   still hold (`_Layout.cshtml` still loads five CDN origins; `tokens.css:6` still double-loads
-   Google Fonts). Delete the backlog, or file it as issues first?
-3. **Was the post-event app feedback survey ever sent?** Nothing else in the repo carries its
-   EN/ES question set; `2026-06-27-post-event-app-feedback-survey.md` was mined for three
-   engine invariants but its survey content is unique to that file.
+All three answered inline by Peter on 2026-08-10:
+
+1. **`2026-06-13-q3-transition-plan.md`** — *keep as the plan of record* until the gate ladder is
+   complete, then reconsider. Not deleted. It remains the cited source for gate definitions in
+   five surviving plan docs and `NoDestructiveMigrationOps.baseline.txt:74`.
+2. **`2026-06-11-q3-ui-refactoring-plan.md`** — *keep for follow-up implementation*, tracked by a
+   single issue covering the whole plan. That issue already exists and is open:
+   [nobodies-collective/Humans#861](https://github.com/nobodies-collective/Humans/issues/861)
+   ("Execute the Q3 UI refactoring plan"), which links the plan doc and carries its five-phase
+   breakdown. No new issue needed; nothing deleted.
+3. **The post-event app feedback survey has not been sent yet**, but likely will be soon.
+   `2026-06-27-post-event-app-feedback-survey.md` is kept — it holds the only copy of the EN/ES
+   question set. (Its three engine invariants were still migrated to `sections/Surveys.md`, which
+   is additive and independent of the survey content.)
 
 ## Skipped (errors)
 
