@@ -8,6 +8,11 @@ using Humans.Agent.Services;
 
 namespace Humans.Agent.Services.Preload;
 
+/// <summary>
+/// Assembles the agent's preload corpus for a given <see cref="AgentPreloadConfig"/> tier —
+/// section docs, the community FAQ and the Shell-owned augmentor blocks — and caches the result
+/// in <see cref="IMemoryCache"/> until an admin-triggered reload swaps it.
+/// </summary>
 /// <remarks>
 /// <see cref="IAgentPreloadAugmentor"/> is required, not optional. It used to default to
 /// <c>null</c> with a <c>is not null</c> guard around its four blocks — which meant a missing
