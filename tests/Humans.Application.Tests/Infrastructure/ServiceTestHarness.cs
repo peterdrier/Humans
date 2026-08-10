@@ -109,6 +109,13 @@ public abstract class ServiceTestHarness : IDisposable
     private protected AuditLogDbContext AuditLogDb => _auditLogDb.Value.Context;
     private protected TestDbContextFactory<AuditLogDbContext> AuditLogDbFactory => _auditLogDb.Value.Factory;
 
+    /// <summary>Shifts: <c>event_settings</c>, <c>rotas</c>, <c>shifts</c>, <c>shift_signups</c>,
+    /// <c>shift_tags</c>, <c>rota_shift_tags</c>, <c>volunteer_event_profiles</c>,
+    /// <c>general_availability</c>, <c>volunteer_build_statuses</c>, <c>volunteer_tag_preferences</c>.</summary>
+    private readonly Lazy<SectionDb<ShiftsDbContext>> _shiftsDb;
+    private protected ShiftsDbContext ShiftsDb => _shiftsDb.Value.Context;
+    private protected TestDbContextFactory<ShiftsDbContext> ShiftsDbFactory => _shiftsDb.Value.Factory;
+
     private protected FakeClock Clock { get; }
     private protected IMemoryCache Cache { get; } = new MemoryCache(new MemoryCacheOptions());
 
@@ -146,6 +153,7 @@ public abstract class ServiceTestHarness : IDisposable
         _gateDb = RegisterSection<GateDbContext>(o => new(o));
         _legalDb = RegisterSection<LegalDbContext>(o => new(o));
         _auditLogDb = RegisterSection<AuditLogDbContext>(o => new(o));
+        _shiftsDb = RegisterSection<ShiftsDbContext>(o => new(o));
 
         Clock = new FakeClock(now ?? Instant.FromUtc(2026, 3, 1, 12, 0));
     }

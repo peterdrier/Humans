@@ -43,7 +43,7 @@ public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ServiceTe
             .With(roleAssignmentService)
             .Build();
 
-        var shiftRepo = new ShiftRepository(DbFactory, Db, Clock);
+        var shiftRepo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);
 
         _shiftMgmt = new ShiftManagementService(
             shiftRepo,
@@ -54,7 +54,7 @@ public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ServiceTe
             Substitute.For<IShiftViewInvalidator>(),
             Clock);
 
-        _repo = new ShiftRepository(DbFactory, Db, Clock);
+        _repo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);
         _service = new ShiftSignupService(
             _repo,
             Substitute.For<IVolunteerTrackingRepository>(),
@@ -75,6 +75,7 @@ public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ServiceTe
     {
         var (_, shift) = SeedShiftScenario(SignupPolicy.Public);
         await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        await ShiftsDb.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var result = await _service.SignUpAsync(_userId, shift.Id, _userId);
 
@@ -87,6 +88,7 @@ public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ServiceTe
     {
         var (_, shift) = SeedShiftScenario(SignupPolicy.Public);
         await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        await ShiftsDb.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var result = await _service.SignUpAsync(_userId, shift.Id, _userId);
 
@@ -99,6 +101,7 @@ public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ServiceTe
     {
         var (_, shift) = SeedShiftScenario(SignupPolicy.RequireApproval);
         await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        await ShiftsDb.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var result = await _service.SignUpAsync(_userId, shift.Id, _userId);
 
@@ -116,11 +119,12 @@ public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ServiceTe
             SeedAllDayShift(rota, day);
         }
         await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        await ShiftsDb.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var result = await _service.SignUpRangeAsync(_userId, rota.Id, -3, -1, _userId);
 
         Assert.True(result.Success);
-        var blockSignups = await Db.ShiftSignups
+        var blockSignups = await ShiftsDb.ShiftSignups
             .Where(s => s.UserId == _userId)
             .ToListAsync(TestContext.Current.CancellationToken);
         Assert.Equal(3, blockSignups.Count);
@@ -145,7 +149,7 @@ public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ServiceTe
             CreatedAt = TestNow,
             UpdatedAt = TestNow
         };
-        Db.EventSettings.Add(es);
+        ShiftsDb.EventSettings.Add(es);
 
         var team = new Team
         {
@@ -172,7 +176,7 @@ public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ServiceTe
             UpdatedAt = TestNow,
             EventSettings = es
         };
-        Db.Rotas.Add(rota);
+        ShiftsDb.Rotas.Add(rota);
 
         var shift = SeedShift(rota, dayOffset: 1, startHour: 10, durationHours: 4);
         return (rota, shift);
@@ -193,7 +197,7 @@ public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ServiceTe
             UpdatedAt = TestNow,
             Rota = rota
         };
-        Db.Shifts.Add(shift);
+        ShiftsDb.Shifts.Add(shift);
         return shift;
     }
 
@@ -213,6 +217,6 @@ public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ServiceTe
             UpdatedAt = TestNow,
             Rota = rota
         };
-        Db.Shifts.Add(shift);
+        ShiftsDb.Shifts.Add(shift);
     }
 }

@@ -26,9 +26,10 @@ public sealed class VolunteerTrackingRepositoryConfirmedShiftsTests(HumansTestDa
     {
         await using var scope = Factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var shiftsDb = scope.ServiceProvider.GetRequiredService<ShiftsDbContext>();
         var repo = scope.ServiceProvider.GetRequiredService<IShiftManagementRepository>();
 
-        var (eventId, _, _, _) = await SeedFixtureAsync(db);
+        var (eventId, _, _, _) = await SeedFixtureAsync(db, shiftsDb);
 
         var start = new LocalDate(2026, 7, 7);
         var end = new LocalDate(2026, 7, 12);
@@ -46,9 +47,10 @@ public sealed class VolunteerTrackingRepositoryConfirmedShiftsTests(HumansTestDa
     {
         await using var scope = Factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var shiftsDb = scope.ServiceProvider.GetRequiredService<ShiftsDbContext>();
         var repo = scope.ServiceProvider.GetRequiredService<IShiftManagementRepository>();
 
-        var (eventId, _, _, _) = await SeedFixtureAsync(db);
+        var (eventId, _, _, _) = await SeedFixtureAsync(db, shiftsDb);
 
         // Range entirely before the seeded shifts.
         var rows = await repo.GetConfirmedShiftsInRangeAsync(
@@ -66,9 +68,10 @@ public sealed class VolunteerTrackingRepositoryConfirmedShiftsTests(HumansTestDa
     {
         await using var scope = Factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var shiftsDb = scope.ServiceProvider.GetRequiredService<ShiftsDbContext>();
         var repo = scope.ServiceProvider.GetRequiredService<IShiftManagementRepository>();
 
-        var (eventId, teamAId, teamBId, _) = await SeedFixtureAsync(db);
+        var (eventId, teamAId, teamBId, _) = await SeedFixtureAsync(db, shiftsDb);
 
         var start = new LocalDate(2026, 7, 7);
         var end = new LocalDate(2026, 7, 12);
@@ -85,9 +88,10 @@ public sealed class VolunteerTrackingRepositoryConfirmedShiftsTests(HumansTestDa
     {
         await using var scope = Factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var shiftsDb = scope.ServiceProvider.GetRequiredService<ShiftsDbContext>();
         var repo = scope.ServiceProvider.GetRequiredService<IShiftManagementRepository>();
 
-        var (eventId, _, _, _) = await SeedFixtureAsync(db);
+        var (eventId, _, _, _) = await SeedFixtureAsync(db, shiftsDb);
 
         // The seed includes a confirmed shift that starts on 2026-07-07 morning.
         // A range starting that same day must include it.
@@ -111,7 +115,7 @@ public sealed class VolunteerTrackingRepositoryConfirmedShiftsTests(HumansTestDa
     ///   (a second user on 7/7), one Cancelled (the 7/9 shift).
     /// - One Confirmed signup on the TeamB shift (7/8).
     /// </summary>
-    private static async Task<(Guid eventId, Guid teamAId, Guid teamBId, Guid userId)> SeedFixtureAsync(HumansDbContext db)
+    private static async Task<(Guid eventId, Guid teamAId, Guid teamBId, Guid userId)> SeedFixtureAsync(HumansDbContext db, ShiftsDbContext shiftsDb)
     {
         var now = SystemClock.Instance.GetCurrentInstant();
         var suffix = Guid.NewGuid().ToString("N");
@@ -130,7 +134,7 @@ public sealed class VolunteerTrackingRepositoryConfirmedShiftsTests(HumansTestDa
             CreatedAt = now,
             UpdatedAt = now,
         };
-        db.EventSettings.Add(es);
+        shiftsDb.EventSettings.Add(es);
 
         var teamA = new Team
         {
@@ -155,16 +159,16 @@ public sealed class VolunteerTrackingRepositoryConfirmedShiftsTests(HumansTestDa
 
         var rotaA = NewRota(es.Id, teamA.Id, now, $"RotaA-{suffix}");
         var rotaB = NewRota(es.Id, teamB.Id, now, $"RotaB-{suffix}");
-        db.Rotas.Add(rotaA);
-        db.Rotas.Add(rotaB);
+        shiftsDb.Rotas.Add(rotaA);
+        shiftsDb.Rotas.Add(rotaB);
 
         // DayOffsets: GateOpeningDate = 2026-07-01, so 6 = 7/7, 7 = 7/8, 8 = 7/9.
         var shiftA77 = NewShift(rotaA.Id, dayOffset: 6, now);   // 2026-07-07
         var shiftA79 = NewShift(rotaA.Id, dayOffset: 8, now);   // 2026-07-09
         var shiftB78 = NewShift(rotaB.Id, dayOffset: 7, now);   // 2026-07-08
-        db.Shifts.Add(shiftA77);
-        db.Shifts.Add(shiftA79);
-        db.Shifts.Add(shiftB78);
+        shiftsDb.Shifts.Add(shiftA77);
+        shiftsDb.Shifts.Add(shiftA79);
+        shiftsDb.Shifts.Add(shiftB78);
 
         var user1 = NewUser(now, suffix + "u1");
         var user2 = NewUser(now, suffix + "u2");
@@ -172,15 +176,16 @@ public sealed class VolunteerTrackingRepositoryConfirmedShiftsTests(HumansTestDa
         db.Users.Add(user2);
 
         // TeamA 7/7: Confirmed (user1)
-        db.ShiftSignups.Add(NewSignup(user1.Id, shiftA77.Id, SignupStatus.Confirmed, now));
+        shiftsDb.ShiftSignups.Add(NewSignup(user1.Id, shiftA77.Id, SignupStatus.Confirmed, now));
         // TeamA 7/7: Pending  (user2) — should be excluded
-        db.ShiftSignups.Add(NewSignup(user2.Id, shiftA77.Id, SignupStatus.Pending, now));
+        shiftsDb.ShiftSignups.Add(NewSignup(user2.Id, shiftA77.Id, SignupStatus.Pending, now));
         // TeamA 7/9: Cancelled (user1) — should be excluded
-        db.ShiftSignups.Add(NewSignup(user1.Id, shiftA79.Id, SignupStatus.Cancelled, now));
+        shiftsDb.ShiftSignups.Add(NewSignup(user1.Id, shiftA79.Id, SignupStatus.Cancelled, now));
         // TeamB 7/8: Confirmed (user1)
-        db.ShiftSignups.Add(NewSignup(user1.Id, shiftB78.Id, SignupStatus.Confirmed, now));
+        shiftsDb.ShiftSignups.Add(NewSignup(user1.Id, shiftB78.Id, SignupStatus.Confirmed, now));
 
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        await shiftsDb.SaveChangesAsync(TestContext.Current.CancellationToken);
         return (es.Id, teamA.Id, teamB.Id, user1.Id);
     }
 

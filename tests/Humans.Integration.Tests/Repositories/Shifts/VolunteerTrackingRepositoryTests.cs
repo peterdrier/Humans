@@ -26,8 +26,8 @@ public class VolunteerTrackingRepositoryTests(HumansTestDatabase database)
     public async Task GetBuildStatusesForEventAsync_returns_empty_when_no_row_exists()
     {
         await using var scope = Factory.Services.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
-        var sut = new VolunteerTrackingRepository(db);
+        var shiftsDb = scope.ServiceProvider.GetRequiredService<ShiftsDbContext>();
+        var sut = new VolunteerTrackingRepository(shiftsDb);
         var userId = Guid.NewGuid();
 
         var result = await sut.GetBuildStatusesForEventAsync(Guid.NewGuid(), [userId], TestContext.Current.CancellationToken);
@@ -39,10 +39,10 @@ public class VolunteerTrackingRepositoryTests(HumansTestDatabase database)
     public async Task UpsertCampSetupAsync_inserts_when_no_row_exists()
     {
         await using var scope = Factory.Services.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
-        var es = await SeedActiveEventAsync(db);
+        var shiftsDb = scope.ServiceProvider.GetRequiredService<ShiftsDbContext>();
+        var es = await SeedActiveEventAsync(shiftsDb);
         var userId = Guid.NewGuid();
-        var sut = new VolunteerTrackingRepository(db);
+        var sut = new VolunteerTrackingRepository(shiftsDb);
 
         var trimmed = await sut.UpsertCampSetupAsync(
             userId, es.Id,
@@ -65,10 +65,10 @@ public class VolunteerTrackingRepositoryTests(HumansTestDatabase database)
     public async Task GetBuildStatusesForEventAsync_returns_only_rows_for_requested_event()
     {
         await using var scope = Factory.Services.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
-        var es1 = await SeedActiveEventAsync(db);
-        var es2 = await SeedActiveEventAsync(db);
-        var sut = new VolunteerTrackingRepository(db);
+        var shiftsDb = scope.ServiceProvider.GetRequiredService<ShiftsDbContext>();
+        var es1 = await SeedActiveEventAsync(shiftsDb);
+        var es2 = await SeedActiveEventAsync(shiftsDb);
+        var sut = new VolunteerTrackingRepository(shiftsDb);
 
         var u1 = Guid.NewGuid();
         var u2 = Guid.NewGuid();
@@ -91,7 +91,8 @@ public class VolunteerTrackingRepositoryTests(HumansTestDatabase database)
     {
         await using var scope = Factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
-        var es = await SeedActiveEventAsync(db);   // BuildStartOffset = -10
+        var shiftsDb = scope.ServiceProvider.GetRequiredService<ShiftsDbContext>();
+        var es = await SeedActiveEventAsync(shiftsDb);   // BuildStartOffset = -10
         var sut = scope.ServiceProvider.GetRequiredService<IShiftManagementRepository>();
 
         var teamId = (await SeedTeamAsync(db)).Id;
@@ -99,24 +100,24 @@ public class VolunteerTrackingRepositoryTests(HumansTestDatabase database)
 
         // Build-period rota with a shift at -7 — shift exists but no signup,
         // so this should NOT appear in the result.
-        var buildRotaA = SeedRota(db, es.Id, teamId, RotaPeriod.Build);
-        SeedShift(db, buildRotaA.Id, dayOffset: -7);
+        var buildRotaA = SeedRota(shiftsDb, es.Id, teamId, RotaPeriod.Build);
+        SeedShift(shiftsDb, buildRotaA.Id, dayOffset: -7);
 
         // Event-period rota with a shift at +1 and a Confirmed signup.
         // Period is Event → NOT eligible.
-        var eventRota = SeedRota(db, es.Id, teamId, RotaPeriod.Event);
-        var shiftEvent = SeedShift(db, eventRota.Id, dayOffset: 1);
-        SeedSignup(db, userId, shiftEvent.Id, SignupStatus.Confirmed);
+        var eventRota = SeedRota(shiftsDb, es.Id, teamId, RotaPeriod.Event);
+        var shiftEvent = SeedShift(shiftsDb, eventRota.Id, dayOffset: 1);
+        SeedSignup(shiftsDb, userId, shiftEvent.Id, SignupStatus.Confirmed);
 
         // Build-period rota with a shift at -3 (Confirmed signup) and another
         // at -2 (Bailed signup). Only the -3 Confirmed should be returned.
-        var buildRotaB = SeedRota(db, es.Id, teamId, RotaPeriod.Build, name: "BuildB");
-        var shiftBuildBNeg3 = SeedShift(db, buildRotaB.Id, dayOffset: -3);
-        var shiftBuildBNeg2 = SeedShift(db, buildRotaB.Id, dayOffset: -2);
-        SeedSignup(db, userId, shiftBuildBNeg3.Id, SignupStatus.Confirmed);
-        SeedSignup(db, userId, shiftBuildBNeg2.Id, SignupStatus.Bailed);
+        var buildRotaB = SeedRota(shiftsDb, es.Id, teamId, RotaPeriod.Build, name: "BuildB");
+        var shiftBuildBNeg3 = SeedShift(shiftsDb, buildRotaB.Id, dayOffset: -3);
+        var shiftBuildBNeg2 = SeedShift(shiftsDb, buildRotaB.Id, dayOffset: -2);
+        SeedSignup(shiftsDb, userId, shiftBuildBNeg3.Id, SignupStatus.Confirmed);
+        SeedSignup(shiftsDb, userId, shiftBuildBNeg2.Id, SignupStatus.Bailed);
 
-        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        await shiftsDb.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var result = await sut.GetEligibleBuildSignupsAsync(es.Id, TestContext.Current.CancellationToken);
 
@@ -138,12 +139,12 @@ public class VolunteerTrackingRepositoryTests(HumansTestDatabase database)
     public async Task UpsertDayOffAsync_inserts_first_entry_and_creates_row_if_absent()
     {
         await using var scope = Factory.Services.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
-        var es = await SeedActiveEventAsync(db);
+        var shiftsDb = scope.ServiceProvider.GetRequiredService<ShiftsDbContext>();
+        var es = await SeedActiveEventAsync(shiftsDb);
         var userId = Guid.NewGuid();
         var actor = Guid.NewGuid();
         var markedAt = SystemClock.Instance.GetCurrentInstant();
-        var sut = new VolunteerTrackingRepository(db);
+        var sut = new VolunteerTrackingRepository(shiftsDb);
 
         await sut.UpsertDayOffAsync(
             userId, es.Id,
@@ -162,13 +163,13 @@ public class VolunteerTrackingRepositoryTests(HumansTestDatabase database)
     public async Task UpsertDayOffAsync_replaces_entry_for_same_day_offset()
     {
         await using var scope = Factory.Services.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
-        var es = await SeedActiveEventAsync(db);
+        var shiftsDb = scope.ServiceProvider.GetRequiredService<ShiftsDbContext>();
+        var es = await SeedActiveEventAsync(shiftsDb);
         var userId = Guid.NewGuid();
         var actor = Guid.NewGuid();
         var t1 = SystemClock.Instance.GetCurrentInstant();
         var t2 = t1 + Duration.FromMinutes(5);
-        var sut = new VolunteerTrackingRepository(db);
+        var sut = new VolunteerTrackingRepository(shiftsDb);
 
         await sut.UpsertDayOffAsync(
             userId, es.Id,
@@ -189,12 +190,12 @@ public class VolunteerTrackingRepositoryTests(HumansTestDatabase database)
     public async Task UpsertDayOffAsync_appends_entries_for_distinct_days_sorted_by_offset()
     {
         await using var scope = Factory.Services.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
-        var es = await SeedActiveEventAsync(db);
+        var shiftsDb = scope.ServiceProvider.GetRequiredService<ShiftsDbContext>();
+        var es = await SeedActiveEventAsync(shiftsDb);
         var userId = Guid.NewGuid();
         var actor = Guid.NewGuid();
         var t = SystemClock.Instance.GetCurrentInstant();
-        var sut = new VolunteerTrackingRepository(db);
+        var sut = new VolunteerTrackingRepository(shiftsDb);
 
         // Insert out of order; persisted layout should sort ascending.
         await sut.UpsertDayOffAsync(userId, es.Id, new DayOffEntry(-3, "a", actor, t), TestContext.Current.CancellationToken);
@@ -210,12 +211,12 @@ public class VolunteerTrackingRepositoryTests(HumansTestDatabase database)
     public async Task RemoveDayOffAsync_drops_only_the_specified_day()
     {
         await using var scope = Factory.Services.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
-        var es = await SeedActiveEventAsync(db);
+        var shiftsDb = scope.ServiceProvider.GetRequiredService<ShiftsDbContext>();
+        var es = await SeedActiveEventAsync(shiftsDb);
         var userId = Guid.NewGuid();
         var actor = Guid.NewGuid();
         var t = SystemClock.Instance.GetCurrentInstant();
-        var sut = new VolunteerTrackingRepository(db);
+        var sut = new VolunteerTrackingRepository(shiftsDb);
 
         await sut.UpsertDayOffAsync(userId, es.Id, new DayOffEntry(-5, "a", actor, t), TestContext.Current.CancellationToken);
         await sut.UpsertDayOffAsync(userId, es.Id, new DayOffEntry(-3, "b", actor, t), TestContext.Current.CancellationToken);
@@ -233,12 +234,12 @@ public class VolunteerTrackingRepositoryTests(HumansTestDatabase database)
     public async Task RemoveDayOffAsync_returns_false_when_entry_absent()
     {
         await using var scope = Factory.Services.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
-        var es = await SeedActiveEventAsync(db);
+        var shiftsDb = scope.ServiceProvider.GetRequiredService<ShiftsDbContext>();
+        var es = await SeedActiveEventAsync(shiftsDb);
         var userId = Guid.NewGuid();
         var actor = Guid.NewGuid();
         var t = SystemClock.Instance.GetCurrentInstant();
-        var sut = new VolunteerTrackingRepository(db);
+        var sut = new VolunteerTrackingRepository(shiftsDb);
 
         // Row does not exist at all.
         (await sut.RemoveDayOffAsync(userId, es.Id, -5, TestContext.Current.CancellationToken)).Should().BeFalse();
@@ -252,12 +253,12 @@ public class VolunteerTrackingRepositoryTests(HumansTestDatabase database)
     public async Task UpsertCampSetupAsync_does_not_disturb_existing_DayOffs()
     {
         await using var scope = Factory.Services.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
-        var es = await SeedActiveEventAsync(db);
+        var shiftsDb = scope.ServiceProvider.GetRequiredService<ShiftsDbContext>();
+        var es = await SeedActiveEventAsync(shiftsDb);
         var userId = Guid.NewGuid();
         var actor = Guid.NewGuid();
         var t = SystemClock.Instance.GetCurrentInstant();
-        var sut = new VolunteerTrackingRepository(db);
+        var sut = new VolunteerTrackingRepository(shiftsDb);
 
         // Seed three day-offs at offsets -8, -5, -3.
         await sut.UpsertDayOffAsync(userId, es.Id, new DayOffEntry(-8, "a", actor, t), TestContext.Current.CancellationToken);
@@ -285,7 +286,7 @@ public class VolunteerTrackingRepositoryTests(HumansTestDatabase database)
     /// test gets an isolated event id (the test container is shared across
     /// tests in the fixture).
     /// </summary>
-    private static async Task<EventSettings> SeedActiveEventAsync(HumansDbContext db)
+    private static async Task<EventSettings> SeedActiveEventAsync(ShiftsDbContext shiftsDb)
     {
         var now = SystemClock.Instance.GetCurrentInstant();
         var es = new EventSettings
@@ -302,8 +303,8 @@ public class VolunteerTrackingRepositoryTests(HumansTestDatabase database)
             CreatedAt = now,
             UpdatedAt = now,
         };
-        db.EventSettings.Add(es);
-        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        shiftsDb.EventSettings.Add(es);
+        await shiftsDb.SaveChangesAsync(TestContext.Current.CancellationToken);
         return es;
     }
 
@@ -341,7 +342,7 @@ public class VolunteerTrackingRepositoryTests(HumansTestDatabase database)
     }
 
     private static Rota SeedRota(
-        HumansDbContext db, Guid eventSettingsId, Guid teamId,
+        ShiftsDbContext shiftsDb, Guid eventSettingsId, Guid teamId,
         RotaPeriod period, string? name = null)
     {
         var now = SystemClock.Instance.GetCurrentInstant();
@@ -358,12 +359,12 @@ public class VolunteerTrackingRepositoryTests(HumansTestDatabase database)
             CreatedAt = now,
             UpdatedAt = now,
         };
-        db.Rotas.Add(rota);
+        shiftsDb.Rotas.Add(rota);
         return rota;
     }
 
     private static Shift SeedShift(
-        HumansDbContext db, Guid rotaId, int dayOffset)
+        ShiftsDbContext shiftsDb, Guid rotaId, int dayOffset)
     {
         var now = SystemClock.Instance.GetCurrentInstant();
         var shift = new Shift
@@ -379,12 +380,12 @@ public class VolunteerTrackingRepositoryTests(HumansTestDatabase database)
             CreatedAt = now,
             UpdatedAt = now,
         };
-        db.Shifts.Add(shift);
+        shiftsDb.Shifts.Add(shift);
         return shift;
     }
 
     private static void SeedSignup(
-        HumansDbContext db, Guid userId, Guid shiftId, SignupStatus status)
+        ShiftsDbContext shiftsDb, Guid userId, Guid shiftId, SignupStatus status)
     {
         var now = SystemClock.Instance.GetCurrentInstant();
         var signup = new ShiftSignup
@@ -396,6 +397,6 @@ public class VolunteerTrackingRepositoryTests(HumansTestDatabase database)
             CreatedAt = now,
             UpdatedAt = now,
         };
-        db.ShiftSignups.Add(signup);
+        shiftsDb.ShiftSignups.Add(signup);
     }
 }

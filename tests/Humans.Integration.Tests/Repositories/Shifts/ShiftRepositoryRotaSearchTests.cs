@@ -30,13 +30,14 @@ public class ShiftRepositoryRotaSearchTests(HumansTestDatabase database)
     {
         await using var scope = Factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var shiftsDb = scope.ServiceProvider.GetRequiredService<ShiftsDbContext>();
         var sut = scope.ServiceProvider.GetRequiredService<IShiftManagementRepository>();
 
-        var es = await SeedActiveEventAsync(db);
+        var es = await SeedActiveEventAsync(shiftsDb);
         var team = await SeedTeamAsync(db);
         var token = $"Kitchen{Guid.NewGuid():N}";
-        await SeedRotaAsync(db, es, team, $"{token} Prep", visibleToVolunteers: true);
-        await SeedRotaAsync(db, es, team, $"{token} Admin", visibleToVolunteers: false);
+        await SeedRotaAsync(shiftsDb, es, team, $"{token} Prep", visibleToVolunteers: true);
+        await SeedRotaAsync(shiftsDb, es, team, $"{token} Admin", visibleToVolunteers: false);
 
         var hits = await sut.SearchVolunteerVisibleRotasAsync(
             token, es.Id, int.MaxValue, TestContext.Current.CancellationToken);
@@ -49,14 +50,15 @@ public class ShiftRepositoryRotaSearchTests(HumansTestDatabase database)
     {
         await using var scope = Factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var shiftsDb = scope.ServiceProvider.GetRequiredService<ShiftsDbContext>();
         var sut = scope.ServiceProvider.GetRequiredService<IShiftManagementRepository>();
 
-        var es = await SeedActiveEventAsync(db);
-        var otherEvent = await SeedActiveEventAsync(db);
+        var es = await SeedActiveEventAsync(shiftsDb);
+        var otherEvent = await SeedActiveEventAsync(shiftsDb);
         var team = await SeedTeamAsync(db);
         var token = $"Gate{Guid.NewGuid():N}";
-        await SeedRotaAsync(db, es, team, $"{token} Crew", visibleToVolunteers: true);
-        await SeedRotaAsync(db, otherEvent, team, $"{token} Crew", visibleToVolunteers: true);
+        await SeedRotaAsync(shiftsDb, es, team, $"{token} Crew", visibleToVolunteers: true);
+        await SeedRotaAsync(shiftsDb, otherEvent, team, $"{token} Crew", visibleToVolunteers: true);
 
         var hits = await sut.SearchVolunteerVisibleRotasAsync(
             token.ToUpperInvariant(), es.Id, int.MaxValue, TestContext.Current.CancellationToken);
@@ -64,7 +66,7 @@ public class ShiftRepositoryRotaSearchTests(HumansTestDatabase database)
         hits.Should().ContainSingle().Which.EventSettingsId.Should().Be(es.Id);
     }
 
-    private static async Task<EventSettings> SeedActiveEventAsync(HumansDbContext db)
+    private static async Task<EventSettings> SeedActiveEventAsync(ShiftsDbContext shiftsDb)
     {
         var now = SystemClock.Instance.GetCurrentInstant();
         var es = new EventSettings
@@ -81,8 +83,8 @@ public class ShiftRepositoryRotaSearchTests(HumansTestDatabase database)
             CreatedAt = now,
             UpdatedAt = now,
         };
-        db.EventSettings.Add(es);
-        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        shiftsDb.EventSettings.Add(es);
+        await shiftsDb.SaveChangesAsync(TestContext.Current.CancellationToken);
         return es;
     }
 
@@ -104,10 +106,10 @@ public class ShiftRepositoryRotaSearchTests(HumansTestDatabase database)
     }
 
     private static async Task SeedRotaAsync(
-        HumansDbContext db, EventSettings es, Team team, string name, bool visibleToVolunteers)
+        ShiftsDbContext shiftsDb, EventSettings es, Team team, string name, bool visibleToVolunteers)
     {
         var now = SystemClock.Instance.GetCurrentInstant();
-        db.Rotas.Add(new Rota
+        shiftsDb.Rotas.Add(new Rota
         {
             Id = Guid.NewGuid(),
             EventSettingsId = es.Id,
@@ -120,6 +122,6 @@ public class ShiftRepositoryRotaSearchTests(HumansTestDatabase database)
             CreatedAt = now,
             UpdatedAt = now,
         });
-        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        await shiftsDb.SaveChangesAsync(TestContext.Current.CancellationToken);
     }
 }

@@ -25,7 +25,7 @@ public sealed class WorkloadServiceTests : ServiceTestHarness
 
     public WorkloadServiceTests() : base(Instant.FromUtc(2026, 7, 1, 12, 0))
     {
-        var repo = new ShiftRepository(DbFactory, Db, Clock);
+        var repo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);
 
         // IShiftView source-of-truth path uses GetRotaAsync only — the inner
         // ShiftViewService also takes signup/availability/tracking repos for
@@ -406,8 +406,8 @@ public sealed class WorkloadServiceTests : ServiceTestHarness
             CreatedAt = now.Minus(Duration.FromDays(60)),
             UpdatedAt = now,
         };
-        Db.EventSettings.Add(es);
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        ShiftsDb.EventSettings.Add(es);
+        await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         return es;
     }
 
@@ -436,8 +436,8 @@ public sealed class WorkloadServiceTests : ServiceTestHarness
             CreatedAt = now,
             UpdatedAt = now,
         };
-        Db.Rotas.Add(rota);
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        ShiftsDb.Rotas.Add(rota);
+        await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         return rota;
     }
 
@@ -458,8 +458,8 @@ public sealed class WorkloadServiceTests : ServiceTestHarness
             CreatedAt = now,
             UpdatedAt = now,
         };
-        Db.Shifts.Add(shift);
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        ShiftsDb.Shifts.Add(shift);
+        await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         return shift;
     }
 
@@ -479,8 +479,8 @@ public sealed class WorkloadServiceTests : ServiceTestHarness
             CreatedAt = now,
             UpdatedAt = now,
         };
-        Db.Shifts.Add(shift);
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        ShiftsDb.Shifts.Add(shift);
+        await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         return shift;
     }
 
@@ -505,7 +505,7 @@ public sealed class WorkloadServiceTests : ServiceTestHarness
     private async Task SeedSignupAsync(Shift shift, Guid userId, SignupStatus status)
     {
         var now = Clock.GetCurrentInstant();
-        Db.ShiftSignups.Add(new ShiftSignup
+        ShiftsDb.ShiftSignups.Add(new ShiftSignup
         {
             Id = Guid.NewGuid(),
             ShiftId = shift.Id,
@@ -514,6 +514,6 @@ public sealed class WorkloadServiceTests : ServiceTestHarness
             CreatedAt = now.Minus(Duration.FromHours(1)),
             UpdatedAt = now,
         });
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
     }
 }

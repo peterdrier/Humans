@@ -126,7 +126,7 @@ public sealed class ShiftSummaryServiceTests : ServiceTestHarness
             .With(_campService)
             .Build();
 
-        var repo = new ShiftRepository(DbFactory, Db, Clock);
+        var repo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);
 
         _service = new ShiftManagementService(
             repo,
@@ -262,7 +262,7 @@ public sealed class ShiftSummaryServiceTests : ServiceTestHarness
 
     private void SeedScenario()
     {
-        Db.EventSettings.Add(_event);
+        ShiftsDb.EventSettings.Add(_event);
 
         SeedTeam(_powerId, "Power");
         var sub = SeedTeam(_subId, "Sub");
@@ -278,12 +278,13 @@ public sealed class ShiftSummaryServiceTests : ServiceTestHarness
         var sSub = SeedShift(_rSub, Duration.FromHours(2));
         var sWater = SeedShift(_rWater, Duration.FromHours(8));
 
-        Db.ShiftSignups.AddRange(
+        ShiftsDb.ShiftSignups.AddRange(
             MakeSignup(_userA, sPower, SignupStatus.Confirmed),
             MakeSignup(_userB, sWater, SignupStatus.Confirmed),
             MakeSignup(_userC, sSub, SignupStatus.Confirmed));
 
         Db.SaveChanges();
+        ShiftsDb.SaveChanges();
 
         _names[_userA] = "Ana";
         _names[_userB] = "Beto";
@@ -294,7 +295,7 @@ public sealed class ShiftSummaryServiceTests : ServiceTestHarness
         _campByUser[_userC] = CampUserInfo.None; // campless
     }
 
-    private void SeedRota(Guid rotaId, Guid teamId) => Db.Rotas.Add(new Rota
+    private void SeedRota(Guid rotaId, Guid teamId) => ShiftsDb.Rotas.Add(new Rota
     {
         Id = rotaId,
         Name = "Rota-" + rotaId.ToString()[..8],
@@ -307,7 +308,7 @@ public sealed class ShiftSummaryServiceTests : ServiceTestHarness
     private Guid SeedShift(Guid rotaId, Duration duration)
     {
         var shiftId = Guid.NewGuid();
-        Db.Shifts.Add(new Shift
+        ShiftsDb.Shifts.Add(new Shift
         {
             Id = shiftId,
             RotaId = rotaId,

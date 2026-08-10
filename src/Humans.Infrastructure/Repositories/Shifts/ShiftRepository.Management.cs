@@ -17,19 +17,19 @@ namespace Humans.Infrastructure.Repositories.Shifts;
 /// <para>
 /// Management methods create short-lived contexts through
 /// <see cref="IDbContextFactory{TContext}"/>. Signup mutation methods use the
-/// scoped <see cref="HumansDbContext"/> so multi-step load/mutate/save flows
+/// scoped <see cref="ShiftsDbContext"/> so multi-step load/mutate/save flows
 /// share one EF change tracker.
 /// </para>
 /// </summary>
 internal sealed partial class ShiftRepository : IShiftManagementRepository
 {
-    private readonly IDbContextFactory<HumansDbContext> _factory;
-    private readonly HumansDbContext _dbContext;
+    private readonly IDbContextFactory<ShiftsDbContext> _factory;
+    private readonly ShiftsDbContext _dbContext;
     private readonly IClock _clock;
 
     public ShiftRepository(
-        IDbContextFactory<HumansDbContext> factory,
-        HumansDbContext dbContext,
+        IDbContextFactory<ShiftsDbContext> factory,
+        ShiftsDbContext dbContext,
         IClock clock)
     {
         _factory = factory;

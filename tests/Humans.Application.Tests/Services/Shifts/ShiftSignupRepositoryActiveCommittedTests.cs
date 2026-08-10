@@ -20,7 +20,7 @@ public sealed class ShiftRepositoryActiveCommittedTests : ServiceTestHarness
     public ShiftRepositoryActiveCommittedTests()
         : base(TestNow)
     {
-        _repo = new ShiftRepository(DbFactory, Db, Clock);
+        _repo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);
     }
 
     [HumansFact]
@@ -93,7 +93,7 @@ public sealed class ShiftRepositoryActiveCommittedTests : ServiceTestHarness
             CreatedAt = TestNow,
             UpdatedAt = TestNow,
         };
-        Db.EventSettings.Add(es);
+        ShiftsDb.EventSettings.Add(es);
 
         var team = new Team
         {
@@ -120,7 +120,7 @@ public sealed class ShiftRepositoryActiveCommittedTests : ServiceTestHarness
             UpdatedAt = TestNow,
             EventSettings = es,
         };
-        Db.Rotas.Add(rota);
+        ShiftsDb.Rotas.Add(rota);
 
         var shift = new Shift
         {
@@ -135,14 +135,15 @@ public sealed class ShiftRepositoryActiveCommittedTests : ServiceTestHarness
             UpdatedAt = TestNow,
             Rota = rota,
         };
-        Db.Shifts.Add(shift);
+        ShiftsDb.Shifts.Add(shift);
         await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         return (es, rota, shift);
     }
 
     private async Task AddSignupAsync(Shift shift, Guid userId, SignupStatus status)
     {
-        Db.ShiftSignups.Add(new ShiftSignup
+        ShiftsDb.ShiftSignups.Add(new ShiftSignup
         {
             Id = Guid.NewGuid(),
             ShiftId = shift.Id,
@@ -152,5 +153,6 @@ public sealed class ShiftRepositoryActiveCommittedTests : ServiceTestHarness
             UpdatedAt = TestNow,
         });
         await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
     }
 }

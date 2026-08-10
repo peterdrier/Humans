@@ -58,7 +58,7 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
             .With(_roleAssignmentService)
             .Build();
 
-        var repo = new ShiftRepository(DbFactory, Db, Clock);
+        var repo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);
 
         _service = new ShiftManagementService(
             repo,
@@ -129,6 +129,7 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
         // Arrange: rota with Period=Build, staffing grid for days -3 to -1
         var (_, rota) = SeedRotaScenario(RotaPeriod.Build);
         await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var staffing = new List<DayStaffingInput>
         {
@@ -148,7 +149,7 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
 
         // Assert: 3 shifts created, all IsAllDay=true, correct DayOffsets.
         // StartTime/Duration are stored as the midnight/24h sentinel (don't-care for IsAllDay rows).
-        var shifts = await Db.Shifts.Where(s => s.RotaId == rota.Id).ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        var shifts = await ShiftsDb.Shifts.Where(s => s.RotaId == rota.Id).ToListAsync(Xunit.TestContext.Current.CancellationToken);
         shifts.Should().HaveCount(3);
         shifts.Should().AllSatisfy(s =>
         {
@@ -164,6 +165,7 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
     {
         var (_, rota) = SeedRotaScenario(RotaPeriod.Build);
         await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.CreateShiftAsync(new CreateShiftInput(
             rota.Id,
@@ -181,7 +183,7 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
         result.Message.Should().Be("Shift created.");
         result.ShiftId.Should().NotBeNull();
 
-        var shift = await Db.Shifts.SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        var shift = await ShiftsDb.Shifts.SingleAsync(Xunit.TestContext.Current.CancellationToken);
         shift.Id.Should().Be(result.ShiftId.Value);
         shift.RotaId.Should().Be(rota.Id);
         shift.Description.Should().Be("Gate crew");
@@ -200,6 +202,7 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
     {
         var (_, rota) = SeedRotaScenario(RotaPeriod.Build);
         await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.CreateShiftAsync(new CreateShiftInput(
             rota.Id,
@@ -215,7 +218,7 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
 
         result.Succeeded.Should().BeFalse();
         result.Message.Should().Be("Shift date must fall within the rota's period.");
-        Db.Shifts.Should().BeEmpty();
+        ShiftsDb.Shifts.Should().BeEmpty();
     }
 
     [HumansFact]
@@ -224,6 +227,7 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
         var (_, rota) = SeedRotaScenario(RotaPeriod.Build);
         var shift = SeedShift(rota, -4);
         await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.UpdateShiftAsync(new UpdateShiftInput(
             shift.Id,
@@ -240,8 +244,8 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
         result.Message.Should().Be("Shift updated.");
         result.ShiftId.Should().Be(shift.Id);
 
-        Db.ChangeTracker.Clear();
-        var updated = await Db.Shifts.SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        ShiftsDb.ChangeTracker.Clear();
+        var updated = await ShiftsDb.Shifts.SingleAsync(Xunit.TestContext.Current.CancellationToken);
         updated.Description.Should().Be("Updated gate crew");
         updated.DayOffset.Should().Be(-3);
         updated.StartTime.Should().Be(new LocalTime(9, 15));
@@ -258,6 +262,7 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
         var (_, rota) = SeedRotaScenario(RotaPeriod.Build);
         var shift = SeedShift(rota, -4);
         await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.UpdateShiftAsync(new UpdateShiftInput(
             shift.Id,
@@ -273,8 +278,8 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
         result.Succeeded.Should().BeFalse();
         result.Message.Should().Be("Shift not found.");
 
-        Db.ChangeTracker.Clear();
-        var unchanged = await Db.Shifts.SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        ShiftsDb.ChangeTracker.Clear();
+        var unchanged = await ShiftsDb.Shifts.SingleAsync(Xunit.TestContext.Current.CancellationToken);
         unchanged.Description.Should().BeNull();
         unchanged.DayOffset.Should().Be(-4);
     }
@@ -285,6 +290,7 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
         // Arrange: staffing grid with varying min/max per day
         var (_, rota) = SeedRotaScenario(RotaPeriod.Build);
         await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var staffing = new List<DayStaffingInput>
         {
@@ -302,7 +308,7 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
         result.Succeeded.Should().BeTrue();
 
         // Assert: each shift has the min/max from its corresponding day in the grid
-        var shifts = await Db.Shifts
+        var shifts = await ShiftsDb.Shifts
             .Where(s => s.RotaId == rota.Id)
             .OrderBy(s => s.DayOffset)
             .ToListAsync(Xunit.TestContext.Current.CancellationToken);
@@ -321,6 +327,7 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
         // Arrange: rota with Period=Event
         var (_, rota) = SeedRotaScenario(RotaPeriod.Event);
         await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var staffing = new List<DayStaffingInput>
         {
@@ -334,7 +341,7 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
 
         result.Succeeded.Should().BeFalse();
         result.Message.Should().Be("Build/strike shift generation is only for Build or Strike rotas.");
-        Db.Shifts.Should().BeEmpty();
+        ShiftsDb.Shifts.Should().BeEmpty();
     }
 
     // ============================================================
@@ -347,6 +354,7 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
         // Arrange: event rota, days 0-2, slots [(08:00, 4h), (14:00, 4h)]
         var (_, rota) = SeedRotaScenario(RotaPeriod.Event);
         await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var timeSlots = new List<ShiftTimeSlotInput>
         {
@@ -368,7 +376,7 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
         result.CreatedCount.Should().Be(6);
 
         // Assert: 6 shifts (3 days × 2 slots), none IsAllDay
-        var shifts = await Db.Shifts.Where(s => s.RotaId == rota.Id).ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        var shifts = await ShiftsDb.Shifts.Where(s => s.RotaId == rota.Id).ToListAsync(Xunit.TestContext.Current.CancellationToken);
         shifts.Should().HaveCount(6);
         shifts.Should().AllSatisfy(s => s.IsAllDay.Should().BeFalse());
 
@@ -388,6 +396,7 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
         // Arrange: rota with Period=Build
         var (_, rota) = SeedRotaScenario(RotaPeriod.Build);
         await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var timeSlots = new List<ShiftTimeSlotInput>
         {
@@ -405,7 +414,7 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
 
         result.Succeeded.Should().BeFalse();
         result.Message.Should().Be("Event shift generation is only for Event-period rotas.");
-        Db.Shifts.Should().BeEmpty();
+        ShiftsDb.Shifts.Should().BeEmpty();
     }
 
     // ============================================================
@@ -426,6 +435,7 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
         SeedSignup(shift, pendingUser, SignupStatus.Pending);
         SeedSignup(shift, bailedUser, SignupStatus.Bailed);
         await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         // Act
         var results = await _service.GetBrowseShiftsAsync(new ShiftBrowseQuery(
@@ -451,6 +461,7 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
         SeedSignup(shift, confirmedUser, SignupStatus.Confirmed);
         SeedSignup(shift, pendingUser, SignupStatus.Pending);
         await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         // Act
         var results = await _service.GetBrowseShiftsAsync(new ShiftBrowseQuery(
@@ -475,6 +486,7 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
         var user = SeedUser("Alice");
         SeedSignup(shift, user, SignupStatus.Confirmed);
         await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         // Act
         var results = await _service.GetBrowseShiftsAsync(new ShiftBrowseQuery(es.Id));
@@ -506,7 +518,7 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
             UpdatedAt = TestNow,
             EventSettings = es
         };
-        Db.Rotas.Add(importantRota);
+        ShiftsDb.Rotas.Add(importantRota);
 
         var understaffedRota = new Rota
         {
@@ -521,7 +533,7 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
             UpdatedAt = TestNow,
             EventSettings = es
         };
-        Db.Rotas.Add(understaffedRota);
+        ShiftsDb.Rotas.Add(understaffedRota);
 
         // Normal+staffed: MinVolunteers=2, two confirmed signups → meets minimum.
         var normalShift = SeedShift(normalStaffedRota, dayOffset: 1);
@@ -537,6 +549,7 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
         SeedShift(understaffedRota, dayOffset: 1);
 
         await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         // Act
         var results = await _service.GetBrowseShiftsAsync(new ShiftBrowseQuery(
@@ -611,13 +624,14 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
             UpdatedAt = TestNow,
             EventSettings = es
         };
-        Db.Rotas.Add(unpromotedRota);
-        Db.Rotas.Add(promotedRota);
+        ShiftsDb.Rotas.Add(unpromotedRota);
+        ShiftsDb.Rotas.Add(promotedRota);
 
         SeedShift(parentRota, dayOffset: 1);
         SeedShift(unpromotedRota, dayOffset: 1);
         SeedShift(promotedRota, dayOffset: 1);
         await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var results = await _service.GetBrowseShiftsAsync(new ShiftBrowseQuery(
             es.Id,
@@ -664,11 +678,12 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
             UpdatedAt = TestNow,
             EventSettings = es
         };
-        Db.Rotas.Add(promotedRota);
+        ShiftsDb.Rotas.Add(promotedRota);
 
         SeedShift(parentRota, dayOffset: 1);
         SeedShift(promotedRota, dayOffset: 1);
         await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var results = await _service.GetBrowseShiftsAsync(new ShiftBrowseQuery(
             es.Id,
@@ -737,13 +752,14 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
             UpdatedAt = TestNow,
             EventSettings = es
         };
-        Db.Rotas.Add(unpromotedRota);
-        Db.Rotas.Add(promotedRota);
+        ShiftsDb.Rotas.Add(unpromotedRota);
+        ShiftsDb.Rotas.Add(promotedRota);
 
         SeedShift(parentRota, dayOffset: 1);
         SeedShift(unpromotedRota, dayOffset: 1);
         SeedShift(promotedRota, dayOffset: 1);
         await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var results = await _service.GetUrgentShiftsAsync(es.Id, departmentId: parentTeamId);
 
@@ -771,7 +787,7 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
             CreatedAt = TestNow,
             UpdatedAt = TestNow
         };
-        Db.Shifts.Add(shift);
+        ShiftsDb.Shifts.Add(shift);
         return shift;
     }
 
@@ -786,7 +802,7 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
             CreatedAt = TestNow,
             UpdatedAt = TestNow
         };
-        Db.ShiftSignups.Add(signup);
+        ShiftsDb.ShiftSignups.Add(signup);
     }
 
     // ============================================================
@@ -804,6 +820,7 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
         var (_, rota) = SeedRotaScenario(RotaPeriod.Event);
         rota.IsVisibleToVolunteers = false;
         await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var results = await _service.SearchAsync(
             rota.Id.ToString(), int.MaxValue, Xunit.TestContext.Current.CancellationToken);
@@ -819,6 +836,7 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
     {
         SeedRotaScenario(RotaPeriod.Event);
         await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var results = await _service.SearchAsync(
             Guid.NewGuid().ToString(), int.MaxValue, Xunit.TestContext.Current.CancellationToken);
@@ -846,6 +864,7 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
         rota.IsVisibleToVolunteers = false;
         SeedShift(rota, dayOffset: 1);
         await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var volunteerView = await _service.GetBrowseShiftsAsync(
             new ShiftBrowseQuery(es.Id, rota.TeamId));
@@ -872,7 +891,7 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
             CreatedAt = TestNow,
             UpdatedAt = TestNow
         };
-        Db.EventSettings.Add(es);
+        ShiftsDb.EventSettings.Add(es);
 
         var team = new Team
         {
@@ -898,7 +917,7 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
             CreatedAt = TestNow,
             UpdatedAt = TestNow
         };
-        Db.Rotas.Add(rota);
+        ShiftsDb.Rotas.Add(rota);
 
         rota.EventSettings = es;
 
@@ -1022,13 +1041,13 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
             CreatedAt = TestNow,
             UpdatedAt = TestNow
         }).ToList();
-        Db.Shifts.AddRange(shifts);
+        ShiftsDb.Shifts.AddRange(shifts);
 
         // 7 confirmed signups on the first 7 shifts
         var userId = Guid.NewGuid();
         for (var i = 0; i < 7; i++)
         {
-            Db.ShiftSignups.Add(new ShiftSignup
+            ShiftsDb.ShiftSignups.Add(new ShiftSignup
             {
                 Id = Guid.NewGuid(),
                 UserId = userId,
@@ -1040,6 +1059,7 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
         }
 
         await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         // Act
         var (filled, total, ratio) = await _service.GetOverallCoverageAsync(Xunit.TestContext.Current.CancellationToken);
@@ -1085,8 +1105,9 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
             CreatedAt = TestNow,
             UpdatedAt = TestNow
         };
-        Db.EventSettings.Add(existing);
+        ShiftsDb.EventSettings.Add(existing);
         await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var second = new EventSettings
         {
@@ -1126,7 +1147,7 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
             CreatedAt = TestNow,
             UpdatedAt = TestNow
         };
-        Db.EventSettings.Add(existing);
+        ShiftsDb.EventSettings.Add(existing);
 
         var inactive = new EventSettings
         {
@@ -1141,8 +1162,9 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
             CreatedAt = TestNow,
             UpdatedAt = TestNow
         };
-        Db.EventSettings.Add(inactive);
+        ShiftsDb.EventSettings.Add(inactive);
         await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         // Act: flip the inactive row to IsActive=true
         inactive.IsActive = true;
@@ -1171,6 +1193,7 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
         var user = SeedUser("Alice");
         SeedSignup(shift, user, SignupStatus.Confirmed);
         await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         // Act + Assert
         var act = () => _service.DeleteRotaAsync(rota.Id);
@@ -1204,8 +1227,9 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
             CreatedAt = TestNow,
             UpdatedAt = TestNow
         };
-        await Db.ShiftSignups.AddRangeAsync(pending1, pending2);
+        await ShiftsDb.ShiftSignups.AddRangeAsync(pending1, pending2);
         await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         // Act
         await _service.DeleteRotaAsync(rota.Id);
@@ -1214,7 +1238,7 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
         // through the service so we hit the same factory-managed context the
         // delete used (the test's Db caches the tracked rota).
         (await _service.GetRotaByIdAsync(rota.Id)).Should().BeNull();
-        (await Db.ShiftSignups
+        (await ShiftsDb.ShiftSignups
             .AsNoTracking()
             .Where(s => s.Id == pending1.Id || s.Id == pending2.Id)
             .ToListAsync(Xunit.TestContext.Current.CancellationToken))
@@ -1231,6 +1255,7 @@ public sealed class ShiftManagementServiceTests : ServiceTestHarness
         // Arrange: rota currently on team A, target team B (no parent).
         var (_, rota) = SeedRotaScenario(RotaPeriod.Event);
         await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var targetTeamId = Guid.NewGuid();
         var actorUserId = Guid.NewGuid();

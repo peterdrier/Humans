@@ -37,7 +37,7 @@ public sealed class ShiftSignupServiceEarlyEntryTests : ServiceTestHarness
             .With(roleAssignmentService)
             .Build();
 
-        var shiftRepo = new ShiftRepository(DbFactory, Db, Clock);
+        var shiftRepo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);
 
         _shiftMgmt = new ShiftManagementService(
             shiftRepo,
@@ -48,7 +48,7 @@ public sealed class ShiftSignupServiceEarlyEntryTests : ServiceTestHarness
             Substitute.For<IShiftViewInvalidator>(),
             Clock);
 
-        _repo = new ShiftRepository(DbFactory, Db, Clock);
+        _repo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);
         _service = new ShiftSignupService(
             _repo,
             Substitute.For<IVolunteerTrackingRepository>(),
@@ -78,6 +78,7 @@ public sealed class ShiftSignupServiceEarlyEntryTests : ServiceTestHarness
         var targetShift = SeedAllDayShift(rota, -2);
         SeedSignup(Guid.NewGuid(), existingShift.Id, SignupStatus.Confirmed);
         await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.SignUpAsync(Guid.NewGuid(), targetShift.Id);
 
@@ -101,6 +102,7 @@ public sealed class ShiftSignupServiceEarlyEntryTests : ServiceTestHarness
         var finalDayShift = SeedAllDayShift(rota, -1);
         SeedSignup(Guid.NewGuid(), finalDayShift.Id, SignupStatus.Confirmed);
         await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.SignUpRangeAsync(Guid.NewGuid(), rota.Id, -3, -1);
 
@@ -124,7 +126,7 @@ public sealed class ShiftSignupServiceEarlyEntryTests : ServiceTestHarness
             CreatedAt = TestNow,
             UpdatedAt = TestNow
         };
-        Db.EventSettings.Add(eventSettings);
+        ShiftsDb.EventSettings.Add(eventSettings);
 
         var team = new Team
         {
@@ -150,7 +152,7 @@ public sealed class ShiftSignupServiceEarlyEntryTests : ServiceTestHarness
             UpdatedAt = TestNow,
             EventSettings = eventSettings
         };
-        Db.Rotas.Add(rota);
+        ShiftsDb.Rotas.Add(rota);
 
         return (eventSettings, rota);
     }
@@ -173,13 +175,13 @@ public sealed class ShiftSignupServiceEarlyEntryTests : ServiceTestHarness
             Rota = rota
         };
 
-        Db.Shifts.Add(shift);
+        ShiftsDb.Shifts.Add(shift);
         return shift;
     }
 
     private void SeedSignup(Guid userId, Guid shiftId, SignupStatus status)
     {
-        Db.ShiftSignups.Add(new ShiftSignup
+        ShiftsDb.ShiftSignups.Add(new ShiftSignup
         {
             Id = Guid.NewGuid(),
             UserId = userId,

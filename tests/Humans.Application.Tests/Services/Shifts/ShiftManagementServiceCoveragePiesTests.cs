@@ -44,7 +44,7 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ServiceTestHarness
             .With<IUserService>()
             .Build();
 
-        var repo = new ShiftRepository(DbFactory, Db, Clock);
+        var repo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);
 
         _service = new ShiftManagementService(
             repo,
@@ -61,6 +61,7 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ServiceTestHarness
     {
         var (es, _, _) = SeedDeptScenario();
         await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.GetDepartmentCoveragePiesAsync(es.Id, ct: Xunit.TestContext.Current.CancellationToken);
 
@@ -75,6 +76,7 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ServiceTestHarness
         AddShift(rota, dayOffset: 0, maxVolunteers: 5, durationHours: 4.0);
         AddShift(rota, dayOffset: 0, maxVolunteers: 3, durationHours: 2.0);
         await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.GetDepartmentCoveragePiesAsync(es.Id, ct: Xunit.TestContext.Current.CancellationToken);
 
@@ -95,6 +97,7 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ServiceTestHarness
         AddShift(AddRota(es, lighting!, name: "LightingRota"),
             dayOffset: 0, maxVolunteers: 3, durationHours: 4.0);
         await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.GetDepartmentCoveragePiesAsync(es.Id, ct: Xunit.TestContext.Current.CancellationToken);
 
@@ -116,6 +119,7 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ServiceTestHarness
         AddShift(AddRota(es, lighting!, name: "LightingRota"),
             dayOffset: 0, maxVolunteers: 3, durationHours: 4.0);
         await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.GetDepartmentCoveragePiesAsync(es.Id, ct: Xunit.TestContext.Current.CancellationToken);
 
@@ -134,6 +138,7 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ServiceTestHarness
         AddShift(AddRota(es, lighting!, name: "LightingRota"),
             dayOffset: 0, maxVolunteers: 3, durationHours: 4.0);
         await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.GetDepartmentCoveragePiesAsync(es.Id, ct: Xunit.TestContext.Current.CancellationToken);
 
@@ -153,6 +158,7 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ServiceTestHarness
         var shift = AddShift(rota, dayOffset: 0, maxVolunteers: 3, durationHours: 4.0);
         AddConfirmedSignup(shift); // 1/3 → 33.3% → 33 (away from zero)
         await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.GetDepartmentCoveragePiesAsync(es.Id, ct: Xunit.TestContext.Current.CancellationToken);
 
@@ -216,6 +222,7 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ServiceTestHarness
         foreach (var t in new[] { mango, appleSlice, banana })
             AddShift(AddRota(es, t), dayOffset: 0, maxVolunteers: 1, durationHours: 4.0);
         await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.GetDepartmentCoveragePiesAsync(es.Id, ct: Xunit.TestContext.Current.CancellationToken);
 
@@ -238,6 +245,7 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ServiceTestHarness
         AddShift(visibleRota, dayOffset: 0, maxVolunteers: 3, durationHours: 4.0, adminOnly: true);
         AddShift(hiddenRota, dayOffset: 0, maxVolunteers: 10, durationHours: 4.0);
         await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.GetDepartmentCoveragePiesAsync(es.Id, ct: Xunit.TestContext.Current.CancellationToken);
 
@@ -253,6 +261,7 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ServiceTestHarness
         var shift = AddShift(rota, dayOffset: 0, maxVolunteers: 5, durationHours: 4.0);
         for (var i = 0; i < 7; i++) AddConfirmedSignup(shift);
         await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.GetDepartmentCoveragePiesAsync(es.Id, ct: Xunit.TestContext.Current.CancellationToken);
 
@@ -269,7 +278,7 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ServiceTestHarness
         AddConfirmedSignup(shift);
         AddConfirmedSignup(shift);
         AddConfirmedSignup(shift);
-        Db.ShiftSignups.Add(new ShiftSignup
+        ShiftsDb.ShiftSignups.Add(new ShiftSignup
         {
             Id = Guid.NewGuid(),
             ShiftId = shift.Id,
@@ -278,7 +287,7 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ServiceTestHarness
             CreatedAt = TestNow,
             UpdatedAt = TestNow
         });
-        Db.ShiftSignups.Add(new ShiftSignup
+        ShiftsDb.ShiftSignups.Add(new ShiftSignup
         {
             Id = Guid.NewGuid(),
             ShiftId = shift.Id,
@@ -288,6 +297,7 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ServiceTestHarness
             UpdatedAt = TestNow
         });
         await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.GetDepartmentCoveragePiesAsync(es.Id, ct: Xunit.TestContext.Current.CancellationToken);
 
@@ -305,6 +315,7 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ServiceTestHarness
         AddConfirmedSignup(shift);
         AddConfirmedSignup(shift);
         await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.GetDepartmentCoveragePiesAsync(es.Id, ct: Xunit.TestContext.Current.CancellationToken);
 
@@ -322,6 +333,7 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ServiceTestHarness
         AddShift(rota, dayOffset: 2, maxVolunteers: 1, durationHours: 4.0);
         AddShift(rota, dayOffset: 8, maxVolunteers: 1, durationHours: 4.0);
         await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.GetDepartmentCoveragePiesAsync(
             es.Id,
@@ -349,7 +361,7 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ServiceTestHarness
             CreatedAt = TestNow,
             UpdatedAt = TestNow
         };
-        Db.EventSettings.Add(es);
+        ShiftsDb.EventSettings.Add(es);
 
         var art = new Team
         {
@@ -401,7 +413,7 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ServiceTestHarness
             CreatedAt = TestNow,
             UpdatedAt = TestNow
         };
-        Db.Rotas.Add(rota);
+        ShiftsDb.Rotas.Add(rota);
         return rota;
     }
 
@@ -423,7 +435,7 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ServiceTestHarness
             CreatedAt = TestNow,
             UpdatedAt = TestNow
         };
-        Db.Shifts.Add(shift);
+        ShiftsDb.Shifts.Add(shift);
         return shift;
     }
 
@@ -438,6 +450,6 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ServiceTestHarness
             CreatedAt = TestNow,
             UpdatedAt = TestNow
         };
-        Db.ShiftSignups.Add(s);
+        ShiftsDb.ShiftSignups.Add(s);
     }
 }

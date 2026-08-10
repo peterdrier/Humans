@@ -21,6 +21,7 @@ public sealed class ShiftRepositoryManagementTests : IDisposable
     private static readonly Instant TestNow = Instant.FromUtc(2026, 4, 1, 12, 0);
 
     private readonly HumansDbContext _dbContext;
+    private readonly ShiftsDbContext _shiftsDbContext;
     private readonly ShiftRepository _repo;
     private readonly FakeClock _clock = new(TestNow);
 
@@ -30,12 +31,18 @@ public sealed class ShiftRepositoryManagementTests : IDisposable
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
         _dbContext = new HumansDbContext(options);
-        _repo = new ShiftRepository(new TestDbContextFactory(options), _dbContext, _clock);
+
+        var shiftsOptions = new DbContextOptionsBuilder<ShiftsDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+        _shiftsDbContext = new ShiftsDbContext(shiftsOptions);
+        _repo = new ShiftRepository(new TestDbContextFactory<ShiftsDbContext>(shiftsOptions), _shiftsDbContext, _clock);
     }
 
     public void Dispose()
     {
         _dbContext.Dispose();
+        _shiftsDbContext.Dispose();
     }
 
     [HumansFact]
@@ -43,8 +50,8 @@ public sealed class ShiftRepositoryManagementTests : IDisposable
     {
         var active = NewEvent(isActive: true);
         var inactive = NewEvent(isActive: false);
-        await _dbContext.EventSettings.AddRangeAsync(active, inactive);
-        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await _shiftsDbContext.EventSettings.AddRangeAsync(active, inactive);
+        await _shiftsDbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _repo.GetActiveEventSettingsAsync(Xunit.TestContext.Current.CancellationToken);
 
@@ -56,8 +63,8 @@ public sealed class ShiftRepositoryManagementTests : IDisposable
     public async Task AnyOtherActiveEventSettingsAsync_ExcludesGivenId()
     {
         var es = NewEvent(isActive: true);
-        _dbContext.EventSettings.Add(es);
-        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        _shiftsDbContext.EventSettings.Add(es);
+        await _shiftsDbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         (await _repo.AnyOtherActiveEventSettingsAsync(excludingId: es.Id, ct: Xunit.TestContext.Current.CancellationToken)).Should().BeFalse();
         (await _repo.AnyOtherActiveEventSettingsAsync(excludingId: null, ct: Xunit.TestContext.Current.CancellationToken)).Should().BeTrue();
@@ -67,11 +74,11 @@ public sealed class ShiftRepositoryManagementTests : IDisposable
     public async Task GetShiftDayOffsetsForRotaAsync_ReturnsDistinctDays()
     {
         var (_, rota) = await SeedRotaAsync(RotaPeriod.Build);
-        await _dbContext.Shifts.AddRangeAsync(
+        await _shiftsDbContext.Shifts.AddRangeAsync(
             NewShift(rota, dayOffset: -3),
             NewShift(rota, dayOffset: -2),
             NewShift(rota, dayOffset: -2)); // duplicate day
-        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await _shiftsDbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var days = await _repo.GetShiftDayOffsetsForRotaAsync(rota.Id, Xunit.TestContext.Current.CancellationToken);
 
@@ -92,19 +99,19 @@ public sealed class ShiftRepositoryManagementTests : IDisposable
         var tagA = new ShiftTag { Id = Guid.NewGuid(), Name = "A" };
         var tagB = new ShiftTag { Id = Guid.NewGuid(), Name = "B" };
         var tagC = new ShiftTag { Id = Guid.NewGuid(), Name = "C" };
-        await _dbContext.ShiftTags.AddRangeAsync(tagA, tagB, tagC);
-        _dbContext.VolunteerTagPreferences.Add(new VolunteerTagPreference
+        await _shiftsDbContext.ShiftTags.AddRangeAsync(tagA, tagB, tagC);
+        _shiftsDbContext.VolunteerTagPreferences.Add(new VolunteerTagPreference
         {
             Id = Guid.NewGuid(),
             UserId = userId,
             ShiftTagId = tagA.Id
         });
-        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await _shiftsDbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         await _repo.SetVolunteerTagPreferencesAsync(userId, [tagB.Id, tagC.Id], Xunit.TestContext.Current.CancellationToken);
 
-        _dbContext.ChangeTracker.Clear();
-        var preferences = await _dbContext.VolunteerTagPreferences
+        _shiftsDbContext.ChangeTracker.Clear();
+        var preferences = await _shiftsDbContext.VolunteerTagPreferences
             .AsNoTracking()
             .Where(v => v.UserId == userId)
             .Select(v => v.ShiftTagId)
@@ -120,13 +127,13 @@ public sealed class ShiftRepositoryManagementTests : IDisposable
         // in PostgreSQL and 500s the whole profile save.
         var userId = Guid.NewGuid();
         var tag = new ShiftTag { Id = Guid.NewGuid(), Name = "A" };
-        _dbContext.ShiftTags.Add(tag);
-        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        _shiftsDbContext.ShiftTags.Add(tag);
+        await _shiftsDbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         await _repo.SetVolunteerTagPreferencesAsync(userId, [tag.Id, tag.Id], Xunit.TestContext.Current.CancellationToken);
 
-        _dbContext.ChangeTracker.Clear();
-        var preferences = await _dbContext.VolunteerTagPreferences
+        _shiftsDbContext.ChangeTracker.Clear();
+        var preferences = await _shiftsDbContext.VolunteerTagPreferences
             .AsNoTracking()
             .Where(v => v.UserId == userId)
             .Select(v => v.ShiftTagId)
@@ -155,7 +162,7 @@ public sealed class ShiftRepositoryManagementTests : IDisposable
     private async Task<(EventSettings es, Rota rota)> SeedRotaAsync(RotaPeriod period)
     {
         var es = NewEvent(isActive: true);
-        _dbContext.EventSettings.Add(es);
+        _shiftsDbContext.EventSettings.Add(es);
 
         var team = new Team
         {
@@ -180,8 +187,9 @@ public sealed class ShiftRepositoryManagementTests : IDisposable
             CreatedAt = TestNow,
             UpdatedAt = TestNow
         };
-        _dbContext.Rotas.Add(rota);
+        _shiftsDbContext.Rotas.Add(rota);
         await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await _shiftsDbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         return (es, rota);
     }
 

@@ -18,6 +18,7 @@ namespace Humans.Application.Tests.Repositories;
 public class ShiftRepositorySummaryTests : IDisposable
 {
     private readonly HumansDbContext _dbContext;
+    private readonly ShiftsDbContext _shiftsDbContext;
     private readonly ShiftRepository _repo;
 
     private static readonly Instant TestNow = Instant.FromUtc(2026, 6, 15, 12, 0);
@@ -39,12 +40,18 @@ public class ShiftRepositorySummaryTests : IDisposable
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
         _dbContext = new HumansDbContext(options);
-        _repo = new ShiftRepository(new TestDbContextFactory(options), _dbContext, new FakeClock(TestNow));
+
+        var shiftsOptions = new DbContextOptionsBuilder<ShiftsDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+        _shiftsDbContext = new ShiftsDbContext(shiftsOptions);
+        _repo = new ShiftRepository(new TestDbContextFactory<ShiftsDbContext>(shiftsOptions), _shiftsDbContext, new FakeClock(TestNow));
     }
 
     public void Dispose()
     {
         _dbContext.Dispose();
+        _shiftsDbContext.Dispose();
         GC.SuppressFinalize(this);
     }
 
@@ -112,8 +119,8 @@ public class ShiftRepositorySummaryTests : IDisposable
         // Build/strike all-day rows store a 24h sentinel Duration, but the effective
         // worked hours are the 08:00–18:00 window (10h) — see Shift.IsAllDay.
         var allDay = SeedShift(_rota1, Duration.FromHours(24), isAllDay: true);
-        _dbContext.ShiftSignups.Add(MakeSignup(_userA, allDay, SignupStatus.Confirmed));
-        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        _shiftsDbContext.ShiftSignups.Add(MakeSignup(_userA, allDay, SignupStatus.Confirmed));
+        await _shiftsDbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var totals = await _repo.GetConfirmedUserShiftTotalsAsync(_event, ct: Xunit.TestContext.Current.CancellationToken);
 
@@ -124,7 +131,7 @@ public class ShiftRepositorySummaryTests : IDisposable
     public async Task GetConfirmedUserShiftTotalsAsync_EmptyEvent_ReturnsEmpty()
     {
         SeedEvent(_event);
-        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await _shiftsDbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var totals = await _repo.GetConfirmedUserShiftTotalsAsync(_event, ct: Xunit.TestContext.Current.CancellationToken);
 
@@ -153,7 +160,7 @@ public class ShiftRepositorySummaryTests : IDisposable
         SeedRota(otherRota, _otherEvent, otherTeam);
         var sOther = SeedShift(otherRota, Duration.FromHours(99));
 
-        _dbContext.ShiftSignups.AddRange(
+        _shiftsDbContext.ShiftSignups.AddRange(
             MakeSignup(_userA, s1, SignupStatus.Confirmed),
             MakeSignup(_userA, s2, SignupStatus.Confirmed),
             MakeSignup(_userB, s3, SignupStatus.Confirmed),
@@ -161,9 +168,10 @@ public class ShiftRepositorySummaryTests : IDisposable
             MakeSignup(_userA, sOther, SignupStatus.Confirmed));
 
         _dbContext.SaveChanges();
+        _shiftsDbContext.SaveChanges();
     }
 
-    private void SeedEvent(Guid esId) => _dbContext.EventSettings.Add(new EventSettings
+    private void SeedEvent(Guid esId) => _shiftsDbContext.EventSettings.Add(new EventSettings
     {
         Id = esId,
         EventName = "TestEvent",
@@ -179,7 +187,7 @@ public class ShiftRepositorySummaryTests : IDisposable
         IsActive = true
     });
 
-    private void SeedRota(Guid rotaId, Guid esId, Guid teamId) => _dbContext.Rotas.Add(new Rota
+    private void SeedRota(Guid rotaId, Guid esId, Guid teamId) => _shiftsDbContext.Rotas.Add(new Rota
     {
         Id = rotaId,
         Name = "Rota-" + rotaId.ToString()[..8],
@@ -192,7 +200,7 @@ public class ShiftRepositorySummaryTests : IDisposable
     private Guid SeedShift(Guid rotaId, Duration duration, bool isAllDay = false)
     {
         var shiftId = Guid.NewGuid();
-        _dbContext.Shifts.Add(new Shift
+        _shiftsDbContext.Shifts.Add(new Shift
         {
             Id = shiftId,
             RotaId = rotaId,

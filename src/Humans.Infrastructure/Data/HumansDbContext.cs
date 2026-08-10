@@ -31,17 +31,8 @@ internal sealed class HumansDbContext(DbContextOptions<HumansDbContext> options)
     public DbSet<ContactField> ContactFields => Set<ContactField>();
     public DbSet<UserEmail> UserEmails => Set<UserEmail>();
     public DbSet<VolunteerHistoryEntry> VolunteerHistoryEntries => Set<VolunteerHistoryEntry>();
-    public DbSet<EventSettings> EventSettings => Set<EventSettings>();
-    public DbSet<Rota> Rotas => Set<Rota>();
-    public DbSet<Shift> Shifts => Set<Shift>();
-    public DbSet<ShiftSignup> ShiftSignups => Set<ShiftSignup>();
-    public DbSet<VolunteerEventProfile> VolunteerEventProfiles => Set<VolunteerEventProfile>();
-    public DbSet<GeneralAvailability> GeneralAvailability => Set<GeneralAvailability>();
-    public DbSet<VolunteerBuildStatus> VolunteerBuildStatuses => Set<VolunteerBuildStatus>();
     public DbSet<AccountMergeRequest> AccountMergeRequests => Set<AccountMergeRequest>();
     public DbSet<CommunicationPreference> CommunicationPreferences => Set<CommunicationPreference>();
-    public DbSet<ShiftTag> ShiftTags => Set<ShiftTag>();
-    public DbSet<VolunteerTagPreference> VolunteerTagPreferences => Set<VolunteerTagPreference>();
     public DbSet<ProfileLanguage> ProfileLanguages => Set<ProfileLanguage>();
     public DbSet<EventParticipation> EventParticipations => Set<EventParticipation>();
 
@@ -74,6 +65,7 @@ internal sealed class HumansDbContext(DbContextOptions<HumansDbContext> options)
         typeof(Configurations.Gate.GateScanEventConfiguration).Namespace!,
         typeof(Configurations.Legal.LegalDocumentConfiguration).Namespace!,
         typeof(Configurations.AuditLog.AuditLogEntryConfiguration).Namespace!,
+        typeof(Configurations.Shifts.RotaConfiguration).Namespace!,
     ];
 
     protected override void OnModelCreating(ModelBuilder builder)

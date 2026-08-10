@@ -50,6 +50,7 @@ env:
     SystemDbContext:src/Humans.Infrastructure
     LegalDbContext:src/Humans.Infrastructure
     AuditLogDbContext:src/Humans.Infrastructure
+    ShiftsDbContext:src/Humans.Infrastructure
     StoreDbContext:src/Sections/Humans.Store
 
 jobs:

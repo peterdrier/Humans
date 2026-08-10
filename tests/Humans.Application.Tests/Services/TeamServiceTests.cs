@@ -78,7 +78,7 @@ public sealed class TeamServiceTests : ServiceTestHarness
             .With(userService)
             .Build();
         var shiftManagementService = new ShiftManagementService(
-            new ShiftRepository(DbFactory, Db, Clock),
+            new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock),
             AuditLog,
             AdminAuthorization,
             serviceProvider,
@@ -2385,6 +2385,7 @@ public sealed class TeamServiceTests : ServiceTestHarness
         SeedShiftSignup(oldShift.Id, user.Id, SignupStatus.Pending);
 
         await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.GetAdminTeamListAsync(1, 500, Xunit.TestContext.Current.CancellationToken);
 
@@ -2405,6 +2406,7 @@ public sealed class TeamServiceTests : ServiceTestHarness
         SeedShiftSignup(shift.Id, user.Id, SignupStatus.Pending);
 
         await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.GetAdminTeamListAsync(1, 500, Xunit.TestContext.Current.CancellationToken);
 
@@ -2547,7 +2549,7 @@ public sealed class TeamServiceTests : ServiceTestHarness
             CreatedAt = Clock.GetCurrentInstant(),
             UpdatedAt = Clock.GetCurrentInstant()
         };
-        Db.EventSettings.Add(es);
+        ShiftsDb.EventSettings.Add(es);
         return es;
     }
 
@@ -2562,7 +2564,7 @@ public sealed class TeamServiceTests : ServiceTestHarness
             CreatedAt = Clock.GetCurrentInstant(),
             UpdatedAt = Clock.GetCurrentInstant()
         };
-        Db.Rotas.Add(rota);
+        ShiftsDb.Rotas.Add(rota);
         return rota;
     }
 
@@ -2580,7 +2582,7 @@ public sealed class TeamServiceTests : ServiceTestHarness
             CreatedAt = Clock.GetCurrentInstant(),
             UpdatedAt = Clock.GetCurrentInstant()
         };
-        Db.Shifts.Add(shift);
+        ShiftsDb.Shifts.Add(shift);
         return shift;
     }
 
@@ -2595,6 +2597,6 @@ public sealed class TeamServiceTests : ServiceTestHarness
             CreatedAt = Clock.GetCurrentInstant(),
             UpdatedAt = Clock.GetCurrentInstant()
         };
-        Db.ShiftSignups.Add(signup);
+        ShiftsDb.ShiftSignups.Add(signup);
     }
 }

@@ -327,6 +327,7 @@ Order (criteria: navs = 0 for all, so ranked by table count, then seeds/PK quirk
 | 10 | `track-b-3` | CityPlanning, Budget, Camps | 17 | Stacked on peel 9 for the same snapshot reason. **Three sections, not five** — every other unpeeled section is walled off (§10.2). `CampSettings` carries a model-level `HasData` singleton |
 | 11 | `858/11-gate-systemdb` | Gate + System (`DataProtectionKeys`) | 4 | Gate unblocked (§5.1 wall down, Peter's call in the sprint of 2026-08-10). `SystemDbContext` created per Peter's 2026-08-10 decision on #858: the platform context for framework-owned tables no section can own, kept under glass — additions are Peter's call. First mixed-case sentinel (`DataProtectionKeys`): the runner's `to_regclass` probe lowercased bare names, so it would have missed the table and re-run the baseline against live schema. Fixed in the runner itself — the sentinel check now queries `information_schema.tables` with a plain string comparison, so callers pass exact stored names and no quoting convention exists to forget |
 | 12 | `858/12-legal-auditlog` | Legal + AuditLog | 4 | The immutability-trigger wall came down with Peter's 2026-08-10 decision on #858: the trigger + function DDL (`prevent_consent_record_modification`, `prevent_audit_log_modification`) is reproduced verbatim from the old chain's Initial migration as explicit `migrationBuilder.Sql` in each baseline — authorized per-instance exception to `no-hand-edited-migrations.md`; enforcement stays in the database, not the EF model. `SectionMigrationRunnerTests.DescribeTableAsync` now also compares non-internal triggers (`pg_get_triggerdef`), so a baseline Sql block that drifts from the chain-built schema fails the equivalence test instead of diverging silently |
+| 13 | `858/13-peel-shifts` | Shifts | 10 | §10.1's "Shifts → Users (1): `EventParticipation`" dissolved on re-audit: `event_participations` is a Users-section table (§8 ownership map, `Configurations/Users/EventParticipationConfiguration`, `UserRepository`), so its `→ User` relationship is Users-internal and never blocked Shifts. Shifts was relationship-clean in both directions — no FK severing needed; all 8 baseline FKs are intra-section. The old chain's only raw SQL against Shifts tables is data-only (`event_settings.Year` backfill, dietary/medical copy-out), so no Sql blocks in the baseline. `shift_tags` carries the 8-row model-level `HasData` seed |
 
 Both §5.1 walls came down with `20260802203816_RealignScaffoldedPhysicalDefaults` (all 31 scaffolded
 defaults dropped); `PhysicalDefaultParityTests` enforces the parity from here on, so §5.1 is no
@@ -467,6 +468,13 @@ unscheduled:
   with the trigger DDL carried verbatim in the baselines, leaving `HumansDbContext` at 24 DbSets
   across Profiles, Shifts, Users and Teams — §10.1's five `→ User` relationships and the two
   last-by-design sections are all that remain.
+  **Peeled in peel 13** (2026-08-11): Shifts (`ShiftsDbContext`, 10 tables). The re-audit for
+  this peel reclassified §10.1's five relationships against the §8 ownership map:
+  `EventParticipation → User` and `AccountMergeRequest → User` ×3 sit on Users-section tables
+  (`Configurations/Users`, `UserRepository`) and are Users-internal, so Shifts was already
+  relationship-clean and only Profiles' three (`Profile`, `UserEmail`,
+  `CommunicationPreference` → User) still block a peel. `HumansDbContext` is at 15 DbSets:
+  Profiles (6), Teams (7), Users (2 + Identity).
 
 Check-constraint audit for this batch: the only two live CHECK constraints are
 `ck_agent_settings_singleton` and `CK_role_assignments_valid_window`, neither on a

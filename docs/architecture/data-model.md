@@ -97,9 +97,10 @@ Since the per-section split (nobodies-collective/Humans#858) the model is partit
 | `SystemDbContext` | `DataProtectionKeys` — the platform context for framework-owned tables no section can own; adding a table to it is Peter's call |
 | `LegalDbContext` | `legal_documents`, `document_versions`, `consent_records` — the `consent_records` immutability trigger lives as raw SQL in the baseline (Peter-authorized `migrationBuilder.Sql`, 2026-08-10 on #858), not in the EF model |
 | `AuditLogDbContext` | `audit_log` — its immutability trigger likewise lives as raw SQL in the baseline |
+| `ShiftsDbContext` | `event_settings`, `rotas`, `shifts`, `shift_signups`, `shift_tags`, `rota_shift_tags`, `volunteer_event_profiles`, `general_availability`, `volunteer_build_statuses`, `volunteer_tag_preferences` |
 | `HumansDbContext` | everything else, including the Identity tables (which come from the framework base class) |
 
-What is left in `HumansDbContext`: Users/Identity, Teams, Profiles and Shifts. Profiles and Shifts are blocked by the five surviving `→ User` model relationships; Users and Teams peel last by design. See the design doc's §10.1.
+What is left in `HumansDbContext`: Users/Identity, Teams and Profiles. Profiles is blocked by its three surviving `→ User` model relationships (`Profile`, `UserEmail`, `CommunicationPreference`); the other two of §10.1's five (`AccountMergeRequest` ×3 and `EventParticipation`) are on Users-section tables and Users-internal. Users and Teams peel last by design. See the design doc's §10.1.
 
 ## Cross-section FK graph
 

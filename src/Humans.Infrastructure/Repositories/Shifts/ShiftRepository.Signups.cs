@@ -15,7 +15,7 @@ namespace Humans.Infrastructure.Repositories.Shifts;
 /// Signup-focused portion of <see cref="ShiftRepository"/>.
 /// </summary>
 /// <remarks>
-/// Uses the Scoped <see cref="HumansDbContext"/> directly (not
+/// Uses the Scoped <see cref="ShiftsDbContext"/> directly (not
 /// <see cref="IDbContextFactory{TContext}"/>) — same pattern as
 /// <see cref="RoleAssignmentRepository"/> and <see cref="ApplicationRepository"/>.
 /// Because <see cref="ShiftSignupService"/>'s mutation paths are

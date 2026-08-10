@@ -180,6 +180,11 @@ public sealed class SectionMigrationRunnerTests(HumansTestDatabase database)
             "audit_log",
             CreateSectionContext<AuditLogDbContext>,
             null),
+        new(
+            "Shifts",
+            "shifts",
+            CreateSectionContext<ShiftsDbContext>,
+            "SELECT count(*) FROM shift_tags WHERE \"Id\" = '00000000-0000-0000-0003-000000000001'"),
     ];
 
     [HumansFact]

@@ -12,11 +12,11 @@ namespace Humans.Infrastructure.Repositories.Shifts;
 /// and <c>DbContext.GeneralAvailability</c>.
 /// </summary>
 /// <remarks>
-/// Uses the Scoped <see cref="HumansDbContext"/> directly (same pattern as
+/// Uses the Scoped <see cref="ShiftsDbContext"/> directly (same pattern as
 /// <see cref="ShiftRepository"/>) so multi-step mutations on
 /// <see cref="VolunteerBuildStatus"/> share one EF change-tracker.
 /// </remarks>
-internal sealed class VolunteerTrackingRepository(HumansDbContext db) : IVolunteerTrackingRepository
+internal sealed class VolunteerTrackingRepository(ShiftsDbContext db) : IVolunteerTrackingRepository
 {
     public async Task<IReadOnlyList<VolunteerBuildStatus>> GetBuildStatusesForEventAsync(
         Guid eventSettingsId,

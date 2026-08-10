@@ -47,7 +47,7 @@ public sealed class ShiftDashboardMetricsTests : ServiceTestHarness
             .With<IRoleAssignmentService>()
             .Build();
 
-        var repo = new ShiftRepository(DbFactory, Db, Clock);
+        var repo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);
 
         _service = new ShiftManagementService(
             repo,
@@ -225,7 +225,7 @@ public sealed class ShiftDashboardMetricsTests : ServiceTestHarness
             CreatedAt = TestNow.Minus(Duration.FromDays(3)),
             UpdatedAt = TestNow,
         };
-        Db.ShiftSignups.Add(signup);
+        ShiftsDb.ShiftSignups.Add(signup);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.GetDashboardOverviewAsync(es.Id);
@@ -251,7 +251,7 @@ public sealed class ShiftDashboardMetricsTests : ServiceTestHarness
             CreatedAt = TestNow.Minus(Duration.FromDays(3)).Minus(Duration.FromMinutes(1)),
             UpdatedAt = TestNow,
         };
-        Db.ShiftSignups.Add(signup);
+        ShiftsDb.ShiftSignups.Add(signup);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.GetDashboardOverviewAsync(es.Id);
@@ -395,7 +395,7 @@ public sealed class ShiftDashboardMetricsTests : ServiceTestHarness
         for (var day = -5; day <= -1; day++)
         {
             var shift = await SeedShiftAsync(buildRota, dayOffset: day, min: 1, max: 3);
-            Db.ShiftSignups.Add(new ShiftSignup
+            ShiftsDb.ShiftSignups.Add(new ShiftSignup
             {
                 Id = Guid.NewGuid(),
                 ShiftId = shift.Id,
@@ -626,7 +626,7 @@ public sealed class ShiftDashboardMetricsTests : ServiceTestHarness
         var shift = await SeedShiftAsync(rota, dayOffset: 1, min: 1, max: 3);
         var user = await SeedUserAsync("u");
 
-        Db.ShiftSignups.Add(new ShiftSignup
+        ShiftsDb.ShiftSignups.Add(new ShiftSignup
         {
             Id = Guid.NewGuid(),
             ShiftId = shift.Id,
@@ -909,7 +909,7 @@ public sealed class ShiftDashboardMetricsTests : ServiceTestHarness
             CreatedAt = TestNow.Minus(Duration.FromDays(60)),
             UpdatedAt = TestNow,
         };
-        Db.EventSettings.Add(es);
+        ShiftsDb.EventSettings.Add(es);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         return es;
     }
@@ -947,7 +947,7 @@ public sealed class ShiftDashboardMetricsTests : ServiceTestHarness
             CreatedAt = TestNow,
             UpdatedAt = TestNow,
         };
-        Db.Rotas.Add(rota);
+        ShiftsDb.Rotas.Add(rota);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         return rota;
     }
@@ -967,7 +967,7 @@ public sealed class ShiftDashboardMetricsTests : ServiceTestHarness
             CreatedAt = TestNow,
             UpdatedAt = TestNow,
         };
-        Db.Shifts.Add(shift);
+        ShiftsDb.Shifts.Add(shift);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         return shift;
     }
@@ -987,7 +987,7 @@ public sealed class ShiftDashboardMetricsTests : ServiceTestHarness
             CreatedAt = TestNow,
             UpdatedAt = TestNow,
         };
-        Db.Shifts.Add(shift);
+        ShiftsDb.Shifts.Add(shift);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
     }
 
@@ -1006,7 +1006,7 @@ public sealed class ShiftDashboardMetricsTests : ServiceTestHarness
             CreatedAt = TestNow,
             UpdatedAt = TestNow,
         };
-        Db.Shifts.Add(shift);
+        ShiftsDb.Shifts.Add(shift);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
     }
 
@@ -1034,7 +1034,7 @@ public sealed class ShiftDashboardMetricsTests : ServiceTestHarness
         for (var i = 0; i < count; i++)
         {
             var user = await SeedUserAsync($"u-{shift.Id:N}-{i}");
-            Db.ShiftSignups.Add(new ShiftSignup
+            ShiftsDb.ShiftSignups.Add(new ShiftSignup
             {
                 Id = Guid.NewGuid(),
                 ShiftId = shift.Id,
@@ -1049,7 +1049,7 @@ public sealed class ShiftDashboardMetricsTests : ServiceTestHarness
 
     private async Task SeedOneSignupAsync(Shift shift, Guid userId, SignupStatus status)
     {
-        Db.ShiftSignups.Add(new ShiftSignup
+        ShiftsDb.ShiftSignups.Add(new ShiftSignup
         {
             Id = Guid.NewGuid(),
             ShiftId = shift.Id,

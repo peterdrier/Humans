@@ -263,7 +263,7 @@ If audit calls become noisy across many methods inside one service, the next evo
 
 Each section's service owns these tables. Cross-service access goes through the service interface, never through direct DB queries, never through another domain's repository or store.
 
-Ownership is now physical as well as conventional for the peeled sections: the map below is **per DbContext**, not per single model. Most sections now own their tables in their own `<Section>DbContext` and migration chain; only Users/Identity, Teams, Profiles and Shifts are still mapped by `HumansDbContext` (framework-owned tables live in `SystemDbContext`). See [`data-model.md`](data-model.md#dbcontext-ownership) for the context-to-table listing.
+Ownership is now physical as well as conventional for the peeled sections: the map below is **per DbContext**, not per single model. Most sections now own their tables in their own `<Section>DbContext` and migration chain; only Users/Identity, Teams and Profiles are still mapped by `HumansDbContext` (framework-owned tables live in `SystemDbContext`). See [`data-model.md`](data-model.md#dbcontext-ownership) for the context-to-table listing.
 
 | Section | Service(s) | Owned Tables |
 |---------|-----------|--------------|

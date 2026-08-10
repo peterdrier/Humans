@@ -20,6 +20,7 @@ namespace Humans.Application.Tests.Repositories;
 public class ShiftRepositorySignupTests : IDisposable
 {
     private readonly HumansDbContext _dbContext;
+    private readonly ShiftsDbContext _shiftsDbContext;
     private readonly ShiftRepository _repo;
 
     private static readonly Instant TestNow = Instant.FromUtc(2026, 6, 15, 12, 0);
@@ -30,12 +31,18 @@ public class ShiftRepositorySignupTests : IDisposable
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
         _dbContext = new HumansDbContext(options);
-        _repo = new ShiftRepository(new TestDbContextFactory(options), _dbContext, new FakeClock(TestNow));
+
+        var shiftsOptions = new DbContextOptionsBuilder<ShiftsDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+        _shiftsDbContext = new ShiftsDbContext(shiftsOptions);
+        _repo = new ShiftRepository(new TestDbContextFactory<ShiftsDbContext>(shiftsOptions), _shiftsDbContext, new FakeClock(TestNow));
     }
 
     public void Dispose()
     {
         _dbContext.Dispose();
+        _shiftsDbContext.Dispose();
         GC.SuppressFinalize(this);
     }
 
@@ -47,10 +54,10 @@ public class ShiftRepositorySignupTests : IDisposable
         var bailed = Guid.NewGuid();
         var otherUserShift = Guid.NewGuid();
 
-        _dbContext.ShiftSignups.Add(MakeSignup(userId, active, SignupStatus.Confirmed));
-        _dbContext.ShiftSignups.Add(MakeSignup(userId, bailed, SignupStatus.Bailed));
-        _dbContext.ShiftSignups.Add(MakeSignup(Guid.NewGuid(), otherUserShift, SignupStatus.Confirmed));
-        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        _shiftsDbContext.ShiftSignups.Add(MakeSignup(userId, active, SignupStatus.Confirmed));
+        _shiftsDbContext.ShiftSignups.Add(MakeSignup(userId, bailed, SignupStatus.Bailed));
+        _shiftsDbContext.ShiftSignups.Add(MakeSignup(Guid.NewGuid(), otherUserShift, SignupStatus.Confirmed));
+        await _shiftsDbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _repo.GetActiveShiftIdsForUserAsync(
             userId, [active, bailed, otherUserShift], Xunit.TestContext.Current.CancellationToken);
@@ -64,11 +71,11 @@ public class ShiftRepositorySignupTests : IDisposable
         var shiftA = Guid.NewGuid();
         var shiftB = Guid.NewGuid();
 
-        _dbContext.ShiftSignups.Add(MakeSignup(Guid.NewGuid(), shiftA, SignupStatus.Confirmed));
-        _dbContext.ShiftSignups.Add(MakeSignup(Guid.NewGuid(), shiftA, SignupStatus.Confirmed));
-        _dbContext.ShiftSignups.Add(MakeSignup(Guid.NewGuid(), shiftA, SignupStatus.Pending));
-        _dbContext.ShiftSignups.Add(MakeSignup(Guid.NewGuid(), shiftB, SignupStatus.Cancelled));
-        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        _shiftsDbContext.ShiftSignups.Add(MakeSignup(Guid.NewGuid(), shiftA, SignupStatus.Confirmed));
+        _shiftsDbContext.ShiftSignups.Add(MakeSignup(Guid.NewGuid(), shiftA, SignupStatus.Confirmed));
+        _shiftsDbContext.ShiftSignups.Add(MakeSignup(Guid.NewGuid(), shiftA, SignupStatus.Pending));
+        _shiftsDbContext.ShiftSignups.Add(MakeSignup(Guid.NewGuid(), shiftB, SignupStatus.Cancelled));
+        await _shiftsDbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var counts = await _repo.GetConfirmedSignupCountsByShiftAsync([shiftA, shiftB], Xunit.TestContext.Current.CancellationToken);
 
@@ -92,7 +99,7 @@ public class ShiftRepositorySignupTests : IDisposable
         _repo.AddRange([MakeSignup(userId, shiftId, SignupStatus.Pending)]);
         await _repo.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        (await _dbContext.ShiftSignups.AsNoTracking().CountAsync(s => s.UserId == userId, Xunit.TestContext.Current.CancellationToken))
+        (await _shiftsDbContext.ShiftSignups.AsNoTracking().CountAsync(s => s.UserId == userId, Xunit.TestContext.Current.CancellationToken))
             .Should().Be(1);
     }
 
@@ -113,15 +120,15 @@ public class ShiftRepositorySignupTests : IDisposable
         var pendingUser = Guid.NewGuid();
 
         // Same user, two EE shifts on day -3 → counts once.
-        _dbContext.ShiftSignups.Add(MakeSignup(user1, shiftDayMinus3A, SignupStatus.Confirmed));
-        _dbContext.ShiftSignups.Add(MakeSignup(user1, shiftDayMinus3B, SignupStatus.Confirmed));
-        _dbContext.ShiftSignups.Add(MakeSignup(user2, shiftDayMinus3A, SignupStatus.Confirmed));
+        _shiftsDbContext.ShiftSignups.Add(MakeSignup(user1, shiftDayMinus3A, SignupStatus.Confirmed));
+        _shiftsDbContext.ShiftSignups.Add(MakeSignup(user1, shiftDayMinus3B, SignupStatus.Confirmed));
+        _shiftsDbContext.ShiftSignups.Add(MakeSignup(user2, shiftDayMinus3A, SignupStatus.Confirmed));
         // Different day or different event → excluded.
-        _dbContext.ShiftSignups.Add(MakeSignup(user1, shiftDayMinus4, SignupStatus.Confirmed));
-        _dbContext.ShiftSignups.Add(MakeSignup(user2, shiftOtherEs, SignupStatus.Confirmed));
+        _shiftsDbContext.ShiftSignups.Add(MakeSignup(user1, shiftDayMinus4, SignupStatus.Confirmed));
+        _shiftsDbContext.ShiftSignups.Add(MakeSignup(user2, shiftOtherEs, SignupStatus.Confirmed));
         // Non-confirmed → excluded.
-        _dbContext.ShiftSignups.Add(MakeSignup(pendingUser, shiftDayMinus3A, SignupStatus.Pending));
-        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        _shiftsDbContext.ShiftSignups.Add(MakeSignup(pendingUser, shiftDayMinus3A, SignupStatus.Pending));
+        await _shiftsDbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var confirmed = await _repo.GetUserIdsForDayAsync(
             esId, -3, ShiftDayUserStatusScope.ConfirmedOnly, Xunit.TestContext.Current.CancellationToken);
@@ -146,7 +153,7 @@ public class ShiftRepositorySignupTests : IDisposable
 
     private Guid SeedShiftWithRota(Guid esId, int dayOffset)
     {
-        var teamId = _dbContext.Rotas.AsNoTracking()
+        var teamId = _shiftsDbContext.Rotas.AsNoTracking()
             .Where(r => r.EventSettingsId == esId)
             .Select(r => r.TeamId)
             .FirstOrDefault();
@@ -164,9 +171,9 @@ public class ShiftRepositorySignupTests : IDisposable
         }
 
         // Reuse/create EventSettings for this esId.
-        if (!_dbContext.EventSettings.Any(e => e.Id == esId))
+        if (!_shiftsDbContext.EventSettings.Any(e => e.Id == esId))
         {
-            _dbContext.EventSettings.Add(new EventSettings
+            _shiftsDbContext.EventSettings.Add(new EventSettings
             {
                 Id = esId,
                 EventName = "TestEvent",
@@ -176,7 +183,7 @@ public class ShiftRepositorySignupTests : IDisposable
         }
 
         var rotaId = Guid.NewGuid();
-        _dbContext.Rotas.Add(new Rota
+        _shiftsDbContext.Rotas.Add(new Rota
         {
             Id = rotaId,
             Name = "TestRota",
@@ -187,7 +194,7 @@ public class ShiftRepositorySignupTests : IDisposable
         });
 
         var shiftId = Guid.NewGuid();
-        _dbContext.Shifts.Add(new Shift
+        _shiftsDbContext.Shifts.Add(new Shift
         {
             Id = shiftId,
             RotaId = rotaId,
@@ -199,6 +206,7 @@ public class ShiftRepositorySignupTests : IDisposable
         });
 
         _dbContext.SaveChanges();
+        _shiftsDbContext.SaveChanges();
         return shiftId;
     }
 }
