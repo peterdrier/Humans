@@ -76,7 +76,7 @@
     <PackageVersion Include="Microsoft.Extensions.Localization" Version="10.0.10" />
     <!-- Data Protection: 10.0.7 patches GHSA-9mv3-2cwr-p262; 10.0.8 backports ManagedAuthenticatedEncryptor calc fix -->
     <PackageVersion Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore" Version="10.0.10" />
-    <PackageVersion Include="Microsoft.AspNetCore.DataProtection.Extensions" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.AspNetCore.DataProtection.Extensions" Version="10.0.10" />
     <!-- Health Checks -->
     <PackageVersion Include="AspNetCore.HealthChecks.NpgSql" Version="9.0.0" />
     <PackageVersion Include="AspNetCore.HealthChecks.Hangfire" Version="9.0.0" />
