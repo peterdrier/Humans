@@ -16,7 +16,7 @@ The **Holded vertical section** (ledger mirror, sync, `/Holded` admin screen) ha
 - A **Purchase Document** in Holded is the org's incoming invoice/expense record. Expenses
   creates one per approved expense report, **booked to its 629 expense account at creation**
   (`items[].account`); tags are never written (dead v1 workaround).
-- The **API key** is bound from the `HOLDED_API_KEY` env var only — never `appsettings.json`,
+- The **API key** is bound from the `HOLDED_API_KEY_V2` env var only — never `appsettings.json`,
   never logged. Jobs and pages no-op cleanly when it is unset (PR-preview / local dev).
 - Errors are classified at the client boundary: `HoldedTransientException` (5xx, network,
   timeout, persistent 429) is retry-eligible; `HoldedPermanentException` (other 4xx, unreadable

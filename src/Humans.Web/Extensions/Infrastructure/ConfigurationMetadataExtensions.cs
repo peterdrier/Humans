@@ -99,7 +99,7 @@ internal static class ConfigurationMetadataExtensions
             configRegistry.RegisterEnvironmentVariable("MAILERLITE_API_KEY", "MailerLite", isSensitive: true,
                 importance: ConfigurationImportance.Recommended);
             // Holded flat env-var — required for Expenses integration.
-            configRegistry.RegisterEnvironmentVariable("HOLDED_API_KEY", "Holded", isSensitive: true,
+            configRegistry.RegisterEnvironmentVariable("HOLDED_API_KEY_V2", "Holded", isSensitive: true,
                 importance: ConfigurationImportance.Recommended);
             // SEPA IBAN override — env-var wins over Sepa:CreditorIban appsetting.
             configRegistry.RegisterEnvironmentVariable("SEPA_CREDITOR_IBAN", "SEPA", isSensitive: true);

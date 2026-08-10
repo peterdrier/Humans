@@ -22,7 +22,7 @@ public class HoldedSyncJob(
         // would 401. Skip cleanly rather than fail the job each night.
         if (string.IsNullOrWhiteSpace(holdedOptions.Value.ApiKey))
         {
-            logger.LogInformation("HOLDED_API_KEY not configured — skipping Holded sync.");
+            logger.LogInformation("HOLDED_API_KEY_V2 not configured — skipping Holded sync.");
             return;
         }
 
