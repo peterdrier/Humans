@@ -1,7 +1,7 @@
 
 namespace Humans.Surveys.Domain;
 
-public class SurveyQuestionOption
+internal sealed class SurveyQuestionOption
 {
     public Guid Id { get; init; }
     public Guid QuestionId { get; init; }

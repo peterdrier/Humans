@@ -11,7 +11,7 @@ namespace Humans.Surveys.Models;
 /// Assembles the dumb <see cref="SurveyResultsViewModel"/> from the service's <see cref="SurveyResultsView"/>.
 /// Formatting only (percent rounding, date display, rating-average rounding) — no business logic.
 /// </summary>
-public static class SurveyResultsBuilder
+internal static class SurveyResultsBuilder
 {
     private static readonly DateTimeZone Zone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
 
@@ -52,7 +52,7 @@ public static class SurveyResultsBuilder
 }
 
 /// <summary>Admin results page: response-rate header, funnel, per-question aggregates, and the Identified drill-down.</summary>
-public sealed class SurveyResultsViewModel
+internal sealed class SurveyResultsViewModel
 {
     public Guid SurveyId { get; init; }
     public string Title { get; init; } = string.Empty;
@@ -66,7 +66,7 @@ public sealed class SurveyResultsViewModel
 }
 
 /// <summary>One question's display aggregate. Populated collection depends on <see cref="Type"/> (reused from the service DTO).</summary>
-public sealed class SurveyResultsQuestionViewModel
+internal sealed class SurveyResultsQuestionViewModel
 {
     public Guid QuestionId { get; init; }
     public string Prompt { get; init; } = string.Empty;
@@ -80,7 +80,7 @@ public sealed class SurveyResultsQuestionViewModel
 }
 
 /// <summary>One Identified respondent's drill-down row (name + formatted submit time + their answers).</summary>
-public sealed class SurveyResultsRespondentViewModel
+internal sealed class SurveyResultsRespondentViewModel
 {
     public Guid UserId { get; init; }
     public string Name { get; init; } = string.Empty;

@@ -25,7 +25,7 @@ namespace Humans.Surveys.Controllers;
 [ApiController]
 [Route("api/surveys")]
 [ServiceFilter(typeof(SurveyApiKeyAuthFilter))]
-public class SurveysApiController(ISurveyService surveyService, IUserServiceRead userService)
+internal sealed class SurveysApiController(ISurveyService surveyService, IUserServiceRead userService)
     : ApiControllerBase(userService)
 {
     private const int DefaultLimit = 100;

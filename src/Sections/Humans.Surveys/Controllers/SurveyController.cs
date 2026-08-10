@@ -24,7 +24,7 @@ namespace Humans.Surveys.Controllers;
 /// </summary>
 [AllowAnonymous]
 [Route("Survey")]
-public class SurveyController(
+internal sealed class SurveyController(
     ISurveyService surveyService,
     IUserServiceRead userService,
     IClock clock,

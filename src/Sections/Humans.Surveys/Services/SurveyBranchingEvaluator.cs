@@ -11,7 +11,7 @@ namespace Humans.Surveys.Services;
 /// an absent entry means unanswered. <c>Is</c>/<c>IsNot</c> match selected option values;
 /// <c>Answered</c>/<c>NotAnswered</c> consider options, text, and rating alike.
 /// </summary>
-public static class SurveyBranchingEvaluator
+internal static class SurveyBranchingEvaluator
 {
     /// <summary>True when <paramref name="cond"/> is null/empty or its clauses combine (All/Any) to true against <paramref name="answers"/>.</summary>
     public static bool IsVisible(BranchCondition? cond, IReadOnlyDictionary<Guid, AnswerState> answers)

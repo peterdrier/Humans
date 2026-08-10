@@ -21,7 +21,7 @@ namespace Humans.Surveys.Data;
 /// Declared <c>partial</c>; each phase extends it with that phase's reads/writes.
 /// </remarks>
 [Section("Surveys")]
-public partial interface ISurveyRepository : IRepository
+internal partial interface ISurveyRepository : IRepository
 {
     /// <summary>Loads a survey with its questions (ordered) and their options (ordered). Null if not found. Read-only.</summary>
     Task<Survey?> GetByIdAsync(Guid id, CancellationToken ct = default);

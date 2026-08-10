@@ -9,13 +9,13 @@ using NodaTime.Text;
 namespace Humans.Surveys.Models;
 
 /// <summary>Admin index: the survey list (sorting done in the controller).</summary>
-public sealed class SurveyAdminIndexViewModel
+internal sealed class SurveyAdminIndexViewModel
 {
     public IReadOnlyList<SurveySummary> Surveys { get; init; } = [];
 }
 
 /// <summary>A team choice for the audience picker.</summary>
-public sealed record SurveyTeamOption(Guid Id, string Name);
+internal sealed record SurveyTeamOption(Guid Id, string Name);
 
 // ── Answering wizard (entry) ────────────────────────────────────────────────
 
@@ -24,7 +24,7 @@ public sealed record SurveyTeamOption(Guid Id, string Name);
 /// a language picker, and (only when the survey allows it) the anonymity-tier selector. Carries the
 /// token through to the Start POST.
 /// </summary>
-public sealed class SurveyIntroViewModel
+internal sealed class SurveyIntroViewModel
 {
     public string Token { get; init; } = string.Empty;
     public string Title { get; init; } = string.Empty;
@@ -55,7 +55,7 @@ public sealed class SurveyIntroViewModel
 }
 
 /// <summary>Posted by the intro form to begin the wizard.</summary>
-public sealed class SurveyStartViewModel
+internal sealed class SurveyStartViewModel
 {
     public string Token { get; set; } = string.Empty;
     public ResponseAnonymity Anonymity { get; set; } = ResponseAnonymity.Identified;
@@ -63,13 +63,13 @@ public sealed class SurveyStartViewModel
 }
 
 /// <summary>Closed / invalid-link page. <see cref="Reason"/> is a friendly explanation key.</summary>
-public sealed class SurveyClosedViewModel
+internal sealed class SurveyClosedViewModel
 {
     public string? Reason { get; init; }
 }
 
 /// <summary>Admin Send page: header (title/status/audience), resolved audience size, and per-invite status rows (sorted in the controller).</summary>
-public sealed class SurveySendViewModel
+internal sealed class SurveySendViewModel
 {
     public Guid Id { get; init; }
     public string Title { get; init; } = string.Empty;
@@ -86,20 +86,20 @@ public sealed class SurveySendViewModel
 /// bound name without the culture key (e.g. <c>Title</c> or <c>Questions[k].Prompt</c>); the partial
 /// emits <c>NamePrefix[culture]</c>.
 /// </summary>
-public sealed record SurveyLocalizedFieldModel(
+internal sealed record SurveyLocalizedFieldModel(
     string NamePrefix,
     string Label,
     IReadOnlyDictionary<string, string> Values,
     bool Multiline = false);
 
 /// <summary>One question card in the builder. <paramref name="Key"/> is the non-sequential indexer key (or the <c>__QKEY__</c> placeholder in the JS template).</summary>
-public sealed record SurveyQuestionCardModel(string Key, SurveyQuestionBuilderViewModel Question);
+internal sealed record SurveyQuestionCardModel(string Key, SurveyQuestionBuilderViewModel Question);
 
 /// <summary>One option row in the builder. Keys are non-sequential indexers (or <c>__QKEY__</c>/<c>__OKEY__</c> placeholders in templates).</summary>
-public sealed record SurveyOptionRowModel(string QuestionKey, string OptionKey, SurveyOptionBuilderViewModel Option);
+internal sealed record SurveyOptionRowModel(string QuestionKey, string OptionKey, SurveyOptionBuilderViewModel Option);
 
 /// <summary>One show-if clause row in the builder. Keys are non-sequential indexers (or <c>__QKEY__</c>/<c>__CKEY__</c> placeholders in templates).</summary>
-public sealed record SurveyBranchClauseRowModel(string QuestionKey, string ClauseKey, SurveyBranchClauseBuilderViewModel Clause);
+internal sealed record SurveyBranchClauseRowModel(string QuestionKey, string ClauseKey, SurveyBranchClauseBuilderViewModel Clause);
 
 /// <summary>
 /// The full survey builder form. Localized fields bind per culture (<c>Title[en]</c>, …); questions,
@@ -110,7 +110,7 @@ public sealed record SurveyBranchClauseRowModel(string QuestionKey, string Claus
 /// <see cref="SurveyQuestionBuilderViewModel.Id"/> pre-assigned client-side so clauses can reference
 /// questions that haven't been saved yet (the service honours supplied ids).
 /// </summary>
-public sealed class SurveyBuilderViewModel
+internal sealed class SurveyBuilderViewModel
 {
     public Guid? Id { get; set; }
     public SurveyStatus Status { get; set; } = SurveyStatus.Draft;
@@ -198,7 +198,7 @@ public sealed class SurveyBuilderViewModel
         => instant?.InZone(zone).LocalDateTime;
 }
 
-public sealed class SurveyQuestionBuilderViewModel
+internal sealed class SurveyQuestionBuilderViewModel
 {
     public Guid? Id { get; set; }
     public int PageNumber { get; set; } = 1;
@@ -258,7 +258,7 @@ public sealed class SurveyQuestionBuilderViewModel
 }
 
 /// <summary>One structured show-if clause: an earlier question, an operator, and (for Is/IsNot) the option values to match.</summary>
-public sealed class SurveyBranchClauseBuilderViewModel
+internal sealed class SurveyBranchClauseBuilderViewModel
 {
     public Guid? QuestionId { get; set; }
     public BranchOperator Operator { get; set; } = BranchOperator.Is;
@@ -279,7 +279,7 @@ public sealed class SurveyBranchClauseBuilderViewModel
     };
 }
 
-public sealed class SurveyOptionBuilderViewModel
+internal sealed class SurveyOptionBuilderViewModel
 {
     public Guid? Id { get; set; }
     public string Value { get; set; } = string.Empty;

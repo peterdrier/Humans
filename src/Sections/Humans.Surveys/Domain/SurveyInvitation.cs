@@ -3,7 +3,7 @@ using NodaTime;
 
 namespace Humans.Surveys.Domain;
 
-public class SurveyInvitation
+internal sealed class SurveyInvitation
 {
     public Guid Id { get; init; }
     public Guid SurveyId { get; init; }

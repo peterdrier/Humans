@@ -8,7 +8,7 @@ namespace Humans.Surveys.Services;
 /// One question's captured answer in the wizard, carrying enough to derive both branch visibility
 /// (from <paramref name="Options"/>) and answered-ness (any of options/text/rating present).
 /// </summary>
-public sealed record AnswerState(IReadOnlyList<string> Options, string? Text, int? Rating)
+internal sealed record AnswerState(IReadOnlyList<string> Options, string? Text, int? Rating)
 {
     /// <summary>An empty/unanswered state — no option, text, or rating.</summary>
     public static AnswerState None { get; } = new([], null, null);
@@ -24,7 +24,7 @@ public sealed record AnswerState(IReadOnlyList<string> Options, string? Text, in
 /// questions is visible under the answers gathered so far. Operates on builder DTOs
 /// (<see cref="QuestionInput"/>) so the controller passes them straight through.
 /// </summary>
-public static class SurveyWizardFlow
+internal static class SurveyWizardFlow
 {
     /// <summary>Distinct page numbers present in the graph, ascending.</summary>
     public static IReadOnlyList<int> OrderedPages(IReadOnlyList<QuestionInput> questions)

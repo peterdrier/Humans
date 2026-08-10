@@ -1,7 +1,7 @@
 namespace Humans.Surveys.Domain;
 
 /// <summary>Survey lifecycle. Authored in <see cref="Draft"/>, accepts responses while <see cref="Open"/>, no longer accepts responses once <see cref="Closed"/>.</summary>
-public enum SurveyStatus
+internal enum SurveyStatus
 {
     Draft = 0,
     Open = 1,

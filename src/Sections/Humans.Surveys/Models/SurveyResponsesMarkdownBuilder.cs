@@ -16,7 +16,7 @@ namespace Humans.Surveys.Models;
 /// <b>values</b> (<c>a|b</c>), not labels, so the table joins cleanly against the definition endpoint.
 /// Cells escape Markdown table specials: newlines collapse to a space and <c>|</c> becomes <c>\|</c>.
 /// </summary>
-public static class SurveyResponsesMarkdownBuilder
+internal static class SurveyResponsesMarkdownBuilder
 {
     private static readonly InstantPattern SubmittedPattern = InstantPattern.General; // ISO-8601 UTC, invariant.
 

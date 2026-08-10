@@ -15,7 +15,7 @@ namespace Humans.Surveys.Models;
 /// analysis. Quoting, injection escaping, and invariant formatting come from the shared
 /// <see cref="HumansCsv"/> conventions.
 /// </summary>
-public static class SurveyCsvExportBuilder
+internal static class SurveyCsvExportBuilder
 {
     private static readonly InstantPattern SubmittedPattern = InstantPattern.General; // ISO-8601 UTC, invariant.
 

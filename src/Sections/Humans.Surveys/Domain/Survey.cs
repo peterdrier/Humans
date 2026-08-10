@@ -2,7 +2,7 @@ using NodaTime;
 
 namespace Humans.Surveys.Domain;
 
-public class Survey
+internal sealed class Survey
 {
     public Guid Id { get; init; }
     public LocalizedText Title { get; set; } = LocalizedText.Empty;

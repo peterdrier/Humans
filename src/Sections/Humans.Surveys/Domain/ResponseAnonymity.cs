@@ -5,7 +5,7 @@ namespace Humans.Surveys.Domain;
 /// (links UserId + InvitationId, resumable, GDPR-exported). <see cref="CompletionTracked"/> counts
 /// participation but stores no link. <see cref="Anonymous"/> leaves no trace.
 /// </summary>
-public enum ResponseAnonymity
+internal enum ResponseAnonymity
 {
     Identified = 0,
     CompletionTracked = 1,

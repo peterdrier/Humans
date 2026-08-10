@@ -10,7 +10,7 @@ namespace Humans.Surveys.Models;
 /// controller does all <c>LocalizedText</c> resolution). Pages are numbered for the visible subset
 /// (e.g. "Page 2 of 3"), not by the survey's raw page numbers.
 /// </summary>
-public sealed class SurveyPageViewModel
+internal sealed class SurveyPageViewModel
 {
     public string Token { get; init; } = string.Empty;
 
@@ -41,7 +41,7 @@ public sealed class SurveyPageViewModel
 }
 
 /// <summary>One resolved question on a wizard page, with its prior answer pre-filled for re-render.</summary>
-public sealed class SurveyPageQuestion
+internal sealed class SurveyPageQuestion
 {
     public Guid Id { get; init; }
     public SurveyQuestionType Type { get; init; }
@@ -61,10 +61,10 @@ public sealed class SurveyPageQuestion
 }
 
 /// <summary>One resolved choice option: stable machine <see cref="Value"/> + display <see cref="Label"/>.</summary>
-public sealed record SurveyPageOption(string Value, string Label);
+internal sealed record SurveyPageOption(string Value, string Label);
 
 /// <summary>Posted by one wizard page. <see cref="Answers"/> binds via indexed form fields.</summary>
-public sealed class SurveyPageInputModel
+internal sealed class SurveyPageInputModel
 {
     public string Token { get; set; } = string.Empty;
     public int Page { get; set; }
@@ -75,7 +75,7 @@ public sealed class SurveyPageInputModel
 }
 
 /// <summary>One posted answer for a question on the current page.</summary>
-public sealed class SurveyPostedAnswer
+internal sealed class SurveyPostedAnswer
 {
     public Guid QuestionId { get; set; }
     public List<string> SelectedOptionValues { get; set; } = [];
@@ -84,7 +84,7 @@ public sealed class SurveyPostedAnswer
 }
 
 /// <summary>The closing thank-you page, with the survey's ThankYou copy resolved for display.</summary>
-public sealed class SurveyThankYouViewModel
+internal sealed class SurveyThankYouViewModel
 {
     public string Title { get; init; } = string.Empty;
     public string ThankYou { get; init; } = string.Empty;

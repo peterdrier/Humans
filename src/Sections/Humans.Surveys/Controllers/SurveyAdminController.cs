@@ -22,7 +22,7 @@ namespace Humans.Surveys.Controllers;
 /// </summary>
 [Authorize(Policy = PolicyNames.BoardOrAdmin)]
 [Route("Survey/Admin")]
-public class SurveyAdminController(
+internal sealed class SurveyAdminController(
     ISurveyService surveyService,
     ITeamServiceRead teamService,
     IUserServiceRead userService,

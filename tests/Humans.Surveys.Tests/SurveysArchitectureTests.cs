@@ -24,6 +24,55 @@ namespace Humans.Surveys.Tests;
 public class SurveysArchitectureTests
 {
     [HumansFact]
+    public void OnlySectionAndResourceArePublic()
+    {
+        // "Public means Section or Contracts/" (design §15 step 5). SurveysResource is the one
+        // sanctioned extra: the boot localization diagnostic discovers section resource markers
+        // through GetExportedTypes(), so an internal marker is skipped in silence (§15 step 3b).
+        //
+        // All three controllers are internal. Shell registers SectionControllerFeatureProvider,
+        // which relaxes MVC's IsPublic check for assemblies carrying [assembly: Section("…")]
+        // (memory/architecture/section-controllers-need-feature-provider.md — which says in as
+        // many words: do not "fix" a 404 by making the controller public).
+        //
+        // Generated migration classes are emitted `public partial` by `dotnet ef` and are never
+        // hand-edited (memory/process/never-hand-edit-migrations); they are excluded rather
+        // than internalized.
+        var publicTypes = typeof(Section).Assembly.GetExportedTypes()
+            .Where(t => !string.Equals(t.Namespace, "Humans.Surveys.Data.Migrations", StringComparison.Ordinal))
+            .Select(t => t.FullName)
+            .Order(StringComparer.Ordinal)
+            .ToList();
+
+        publicTypes.Should().BeEquivalentTo(
+        [
+            "Humans.Surveys.Section",
+            "Humans.Surveys.SurveysResource",
+        ]);
+    }
+
+    [HumansFact]
+    public void SectionControllersAreInternal()
+    {
+        var controllers = typeof(Section).Assembly.GetTypes()
+            .Where(t => t.Name.EndsWith("Controller", StringComparison.Ordinal))
+            .ToList();
+
+        controllers.Should().HaveCount(3);
+        controllers.Should().OnlyContain(t => !t.IsPublic);
+    }
+
+    [HumansFact]
+    public void AuditDiscriminatorsAreLiteralsNotDerivedFromTypeNames()
+    {
+        // The audit_log rows already in the database carry these strings and are matched by
+        // exact equality on read. Pinning them is what makes a future rename over this section
+        // schema-inert (memory/code/type-name-as-persisted-string.md).
+        AuditEntityTypes.Survey.Should().Be("Survey");
+        AuditEntityTypes.ReminderJob.Should().Be("SurveyService");
+    }
+
+    [HumansFact]
     public void ContractsExposeOnlyTheCrossSectionSurface()
     {
         // Pins the whole Contracts assembly, so widening Surveys' cross-section surface is a

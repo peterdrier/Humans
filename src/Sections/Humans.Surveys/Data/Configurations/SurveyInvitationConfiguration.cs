@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Humans.Surveys.Data.Configurations;
 
-public class SurveyInvitationConfiguration : IEntityTypeConfiguration<SurveyInvitation>
+internal sealed class SurveyInvitationConfiguration : IEntityTypeConfiguration<SurveyInvitation>
 {
     public void Configure(EntityTypeBuilder<SurveyInvitation> b)
     {

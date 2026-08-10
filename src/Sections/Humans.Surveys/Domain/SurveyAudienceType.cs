@@ -5,7 +5,7 @@ namespace Humans.Surveys.Domain;
 /// service and reads cross-section membership via I…ServiceRead interfaces. Provisional placeholder
 /// for the locked idempotent send model (plan Deviation #2).
 /// </summary>
-public enum SurveyAudienceType
+internal enum SurveyAudienceType
 {
     Team = 0,
     AllActiveMembers = 1,

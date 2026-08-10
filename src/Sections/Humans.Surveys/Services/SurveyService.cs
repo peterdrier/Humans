@@ -25,7 +25,7 @@ namespace Humans.Surveys.Services;
 /// repository never resolves user/team navs. Authoring lives here; send/submit/results/export/GDPR
 /// are added in their phases (constructor grows with them).
 /// </summary>
-public sealed class SurveyService(
+internal sealed class SurveyService(
     ISurveyRepository repo,
     IAuditLogService auditLog,
     IClock clock,
@@ -104,7 +104,7 @@ public sealed class SurveyService(
 
         await repo.AddAsync(survey, ct);
         logger.LogInformation("Survey {SurveyId} created by {UserId}", surveyId, actorUserId);
-        await auditLog.LogAsync(AuditAction.SurveyCreated, nameof(Survey), surveyId,
+        await auditLog.LogAsync(AuditAction.SurveyCreated, AuditEntityTypes.Survey, surveyId,
             $"Created survey '{survey.Title.Resolve(survey.DefaultCulture, survey.DefaultCulture)}'", actorUserId);
         return surveyId;
     }
@@ -134,7 +134,7 @@ public sealed class SurveyService(
         };
 
         await repo.UpdateAsync(survey, ct);
-        await auditLog.LogAsync(AuditAction.SurveyUpdated, nameof(Survey), surveyId, "Updated survey", actorUserId);
+        await auditLog.LogAsync(AuditAction.SurveyUpdated, AuditEntityTypes.Survey, surveyId, "Updated survey", actorUserId);
     }
 
     public async Task<int> PreFillTranslationsAsync(
@@ -217,7 +217,7 @@ public sealed class SurveyService(
         if (status == SurveyStatus.Open) return;
 
         await repo.SetStatusAsync(surveyId, SurveyStatus.Open, clock.GetCurrentInstant(), ct);
-        await auditLog.LogAsync(AuditAction.SurveyOpened, nameof(Survey), surveyId, "Opened survey", actorUserId);
+        await auditLog.LogAsync(AuditAction.SurveyOpened, AuditEntityTypes.Survey, surveyId, "Opened survey", actorUserId);
     }
 
     public async Task CloseAsync(Guid surveyId, Guid actorUserId, CancellationToken ct = default)
@@ -227,7 +227,7 @@ public sealed class SurveyService(
         if (status == SurveyStatus.Closed) return;
 
         await repo.SetStatusAsync(surveyId, SurveyStatus.Closed, clock.GetCurrentInstant(), ct);
-        await auditLog.LogAsync(AuditAction.SurveyClosed, nameof(Survey), surveyId, "Closed survey", actorUserId);
+        await auditLog.LogAsync(AuditAction.SurveyClosed, AuditEntityTypes.Survey, surveyId, "Closed survey", actorUserId);
     }
 
     public async Task<int> PreviewAudienceCountAsync(Guid surveyId, CancellationToken ct = default)
@@ -303,7 +303,7 @@ public sealed class SurveyService(
             }
         }
 
-        await auditLog.LogAsync(AuditAction.SurveyInvitesSent, nameof(Survey), surveyId,
+        await auditLog.LogAsync(AuditAction.SurveyInvitesSent, AuditEntityTypes.Survey, surveyId,
             $"Sent {invitationsCreated} invitation(s)", actorUserId);
 
         return new SendResult(invitationsCreated, emailsQueued, failed);
@@ -365,8 +365,8 @@ public sealed class SurveyService(
             }
         }
 
-        await auditLog.LogAsync(AuditAction.SurveyReminderSent, nameof(Survey), Guid.Empty,
-            $"Sent {reminded} survey reminder(s)", jobName: nameof(SurveyService));
+        await auditLog.LogAsync(AuditAction.SurveyReminderSent, AuditEntityTypes.Survey, Guid.Empty,
+            $"Sent {reminded} survey reminder(s)", jobName: AuditEntityTypes.ReminderJob);
 
         return reminded;
     }

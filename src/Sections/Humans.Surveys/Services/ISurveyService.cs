@@ -16,7 +16,7 @@ namespace Humans.Surveys.Services;
 /// the section is the reminder job in Base, which sees
 /// <see cref="Contracts.ISurveyReminderSender"/> and nothing else.
 /// </remarks>
-public interface ISurveyService : IApplicationService
+internal interface ISurveyService : IApplicationService
 {
     // ── Authoring ──────────────────────────────────────────────────────────
     /// <summary>All surveys for the admin index (newest first), with invited/response counts.</summary>
@@ -139,13 +139,13 @@ public interface ISurveyService : IApplicationService
 // ── Authoring DTOs (co-located) ─────────────────────────────────────────────
 
 /// <summary>Admin-index row: title resolved in the survey's default culture, plus participation counts.</summary>
-public sealed record SurveySummary(Guid Id, string Title, SurveyStatus Status, int InvitedCount, int ResponseCount);
+internal sealed record SurveySummary(Guid Id, string Title, SurveyStatus Status, int InvitedCount, int ResponseCount);
 
 /// <summary>A survey loaded for editing: identity + status + the editable graph.</summary>
-public sealed record SurveyDetail(Guid Id, SurveyStatus Status, SurveyEditInput Editable);
+internal sealed record SurveyDetail(Guid Id, SurveyStatus Status, SurveyEditInput Editable);
 
 /// <summary>Everything the builder edits. Question/option <c>Id</c> null = new (assigned on save).</summary>
-public sealed record SurveyEditInput(
+internal sealed record SurveyEditInput(
     LocalizedText Title,
     LocalizedText Intro,
     LocalizedText ThankYou,
@@ -160,7 +160,7 @@ public sealed record SurveyEditInput(
     IReadOnlyList<QuestionInput> Questions);
 
 /// <summary>One question in the builder graph.</summary>
-public sealed record QuestionInput(
+internal sealed record QuestionInput(
     Guid? Id,
     int PageNumber,
     int Order,
@@ -176,17 +176,17 @@ public sealed record QuestionInput(
     IReadOnlyList<OptionInput> Options);
 
 /// <summary>One choice option in the builder graph. <c>Value</c> is the stable machine key.</summary>
-public sealed record OptionInput(
+internal sealed record OptionInput(
     Guid? Id,
     int Order,
     string Value,
     LocalizedText Label);
 
 /// <summary>Outcome of a send wave: net-new invitations created, emails queued, and enqueue failures.</summary>
-public sealed record SendResult(int InvitationsCreated, int EmailsQueued, int Failed);
+internal sealed record SendResult(int InvitationsCreated, int EmailsQueued, int Failed);
 
 /// <summary>One invitee's row on the admin Send page: display name + latest email status + funnel flags.</summary>
-public sealed record SurveyInviteStatus(
+internal sealed record SurveyInviteStatus(
     Guid UserId,
     string Name,
     EmailOutboxStatus? EmailStatus,
@@ -203,7 +203,7 @@ public sealed record SurveyInviteStatus(
 /// Identified draft. <see cref="HasResumableDraft"/> is true only when an in-progress Identified
 /// response already exists for this invitee.
 /// </summary>
-public sealed record SurveyAnswerContext(
+internal sealed record SurveyAnswerContext(
     Guid SurveyId,
     Guid InvitationId,
     Guid UserId,
@@ -216,10 +216,10 @@ public sealed record SurveyAnswerContext(
 /// reused editable definition (<see cref="SurveyDetail"/>). No invitation/identity — the slug path is
 /// always <see cref="ResponseAnonymity.Anonymous"/>.
 /// </summary>
-public sealed record SurveyPublicContext(Guid SurveyId, SurveyDetail Definition);
+internal sealed record SurveyPublicContext(Guid SurveyId, SurveyDetail Definition);
 
 /// <summary>One saved answer from a resumable draft, keyed by question id.</summary>
-public sealed record SurveyDraftAnswer(
+internal sealed record SurveyDraftAnswer(
     Guid QuestionId,
     IReadOnlyList<string> SelectedOptionValues,
     string? TextValue,
@@ -232,7 +232,7 @@ public sealed record SurveyDraftAnswer(
 /// Anonymous leaves the invitation untouched. <c>DraftResponseId</c> is set only when resuming an
 /// Identified draft. <see cref="InputMethod"/> lets the public-slug path (Task 4.4) reuse submit.
 /// </summary>
-public sealed record SurveySubmission(
+internal sealed record SurveySubmission(
     Guid SurveyId,
     Guid? InvitationId,
     Guid? UserId,
@@ -243,7 +243,7 @@ public sealed record SurveySubmission(
     IReadOnlyList<SurveyAnswerInput> Answers);
 
 /// <summary>One answer in a submission (or a draft autosave), keyed by question id.</summary>
-public sealed record SurveyAnswerInput(
+internal sealed record SurveyAnswerInput(
     Guid QuestionId,
     IReadOnlyList<string> SelectedOptionValues,
     string? TextValue,
@@ -255,7 +255,7 @@ public sealed record SurveyAnswerInput(
 /// Answers are keyed by <c>QuestionId.ToString()</c> (Guid object keys don't round-trip through JSON
 /// cleanly; string keys do).
 /// </summary>
-public sealed class SurveyWizardState
+internal sealed class SurveyWizardState
 {
     public Guid SurveyId { get; set; }
     public Guid? InvitationId { get; set; }   // the token's invitation — all invited tiers (drives Started/Completed funnel flags)
@@ -270,7 +270,7 @@ public sealed class SurveyWizardState
 }
 
 /// <summary>One captured answer in the wizard session.</summary>
-public sealed class SurveyWizardAnswer
+internal sealed class SurveyWizardAnswer
 {
     public List<string> SelectedOptionValues { get; set; } = [];
     public string? TextValue { get; set; }
@@ -278,7 +278,7 @@ public sealed class SurveyWizardAnswer
 }
 
 /// <summary>Where one wizard advance landed. <c>ValidationFailed</c> carries the missing required question ids.</summary>
-public enum SurveyWizardOutcome
+internal enum SurveyWizardOutcome
 {
     /// <summary>The survey no longer exists (treat as an invalid link).</summary>
     NotFound,
@@ -297,7 +297,7 @@ public enum SurveyWizardOutcome
 }
 
 /// <summary>Outcome of one wizard advance. <see cref="MissingRequired"/> is empty except on <see cref="SurveyWizardOutcome.ValidationFailed"/>.</summary>
-public sealed record SurveyWizardAdvanceResult(SurveyWizardOutcome Outcome, IReadOnlyList<Guid> MissingRequired);
+internal sealed record SurveyWizardAdvanceResult(SurveyWizardOutcome Outcome, IReadOnlyList<Guid> MissingRequired);
 
 // ── Results DTOs (co-located) ───────────────────────────────────────────────
 
@@ -306,7 +306,7 @@ public sealed record SurveyWizardAdvanceResult(SurveyWizardOutcome Outcome, IRea
 /// <see cref="InvitedCount"/> (0 when no one was invited). All prompts/labels are resolved in the
 /// survey's default culture.
 /// </summary>
-public sealed record SurveyResultsView(
+internal sealed record SurveyResultsView(
     Guid SurveyId,
     string Title,
     SurveyStatus Status,
@@ -322,7 +322,7 @@ public sealed record SurveyResultsView(
 /// <c>Started</c> flag vs submitted link responses) and the public slug path (the survey's
 /// <c>PublicStartedCount</c> vs submitted slug responses).
 /// </summary>
-public sealed record SurveyFunnel(int LinkStarted, int LinkFinished, int SlugStarted, int SlugFinished);
+internal sealed record SurveyFunnel(int LinkStarted, int LinkFinished, int SlugStarted, int SlugFinished);
 
 /// <summary>
 /// One question's aggregate over submitted responses. The populated collection depends on the
@@ -330,7 +330,7 @@ public sealed record SurveyFunnel(int LinkStarted, int LinkFinished, int SlugSta
 /// plus <see cref="RatingAverage"/> for rating questions, <see cref="FreeTextAnswers"/> for text
 /// questions. The others are empty/null.
 /// </summary>
-public sealed record QuestionAggregate(
+internal sealed record QuestionAggregate(
     Guid QuestionId,
     string Prompt,
     SurveyQuestionType Type,
@@ -340,16 +340,16 @@ public sealed record QuestionAggregate(
     IReadOnlyList<string> FreeTextAnswers);
 
 /// <summary>One choice option's tally. <see cref="Percent"/> is the share of responses to that question (0 when none).</summary>
-public sealed record OptionCount(string Value, string Label, int Count, double Percent);
+internal sealed record OptionCount(string Value, string Label, int Count, double Percent);
 
 /// <summary>One rating value's tally; empty buckets are included across the question's range.</summary>
-public sealed record RatingBucket(int Value, int Count);
+internal sealed record RatingBucket(int Value, int Count);
 
 /// <summary>One Identified respondent's drill-down row: stitched display name + their answers.</summary>
-public sealed record RespondentDetail(Guid UserId, string Name, Instant? SubmittedAt, IReadOnlyList<RespondentAnswer> Answers);
+internal sealed record RespondentDetail(Guid UserId, string Name, Instant? SubmittedAt, IReadOnlyList<RespondentAnswer> Answers);
 
 /// <summary>One answer in an Identified respondent's drill-down, with choice labels resolved in the default culture.</summary>
-public sealed record RespondentAnswer(Guid QuestionId, string Prompt, IReadOnlyList<string> SelectedLabels, string? TextValue, int? RatingValue);
+internal sealed record RespondentAnswer(Guid QuestionId, string Prompt, IReadOnlyList<string> SelectedLabels, string? TextValue, int? RatingValue);
 
 // ── Export DTOs (co-located; raw per-response, shared by CSV/JSON download and the analysis API) ──
 
@@ -358,7 +358,7 @@ public sealed record RespondentAnswer(Guid QuestionId, string Prompt, IReadOnlyL
 /// plus one row per response (ordered by submission time). Prompts/labels are resolved in
 /// <see cref="DefaultCulture"/>.
 /// </summary>
-public sealed record SurveyResponseExport(
+internal sealed record SurveyResponseExport(
     Guid SurveyId,
     string Title,
     string DefaultCulture,
@@ -366,20 +366,20 @@ public sealed record SurveyResponseExport(
     IReadOnlyList<SurveyExportRow> Rows);
 
 /// <summary>One question in the export schema. <see cref="Options"/> is empty for non-choice questions.</summary>
-public sealed record SurveyExportQuestion(
+internal sealed record SurveyExportQuestion(
     Guid QuestionId,
     string Prompt,
     SurveyQuestionType Type,
     IReadOnlyList<SurveyExportOption> Options);
 
 /// <summary>One choice option in the export schema: the stable machine <see cref="Value"/> + its resolved <see cref="Label"/>.</summary>
-public sealed record SurveyExportOption(string Value, string Label);
+internal sealed record SurveyExportOption(string Value, string Label);
 
 /// <summary>
 /// One exported response. <see cref="UserId"/>/<see cref="UserName"/> are populated only for
 /// <see cref="ResponseAnonymity.Identified"/> rows; both are null for CompletionTracked/Anonymous.
 /// </summary>
-public sealed record SurveyExportRow(
+internal sealed record SurveyExportRow(
     Guid ResponseId,
     ResponseAnonymity Anonymity,
     SurveyInputMethod InputMethod,
@@ -390,7 +390,7 @@ public sealed record SurveyExportRow(
     IReadOnlyList<SurveyExportAnswer> Answers);
 
 /// <summary>One answer in an exported response: choice keys + resolved labels, free text, or a rating.</summary>
-public sealed record SurveyExportAnswer(
+internal sealed record SurveyExportAnswer(
     Guid QuestionId,
     IReadOnlyList<string> SelectedValues,
     IReadOnlyList<string> SelectedLabels,

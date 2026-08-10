@@ -8,7 +8,7 @@ namespace Humans.Surveys.Services;
 /// payload is just the invitation id; a per-survey lifetime tied to <c>ClosesAt</c> is a later
 /// refinement (fixed 60-day lifetime is fine for v1).
 /// </summary>
-public sealed class SurveyInviteTokenProvider(IDataProtectionProvider dataProtection) : ISurveyInviteTokenProvider
+internal sealed class SurveyInviteTokenProvider(IDataProtectionProvider dataProtection) : ISurveyInviteTokenProvider
 {
     private const string ProtectorPurpose = "SurveyInvite";
     private static readonly TimeSpan TokenLifetime = TimeSpan.FromDays(60);
