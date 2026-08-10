@@ -65,7 +65,6 @@ internal sealed class HumansDbContext(DbContextOptions<HumansDbContext> options)
     private static readonly string[] PeeledConfigurationNamespaces =
     [
         typeof(Configurations.Agent.AgentConversationConfiguration).Namespace!,
-        typeof(Configurations.Expenses.ExpenseReportConfiguration).Namespace!,
         typeof(Configurations.Surveys.SurveyConfiguration).Namespace!,
         typeof(Configurations.Auth.RoleAssignmentConfiguration).Namespace!,
         typeof(Configurations.Email.EmailOutboxMessageConfiguration).Namespace!,

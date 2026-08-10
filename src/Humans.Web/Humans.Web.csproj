@@ -11,6 +11,7 @@
     <ProjectReference Include="..\Humans.UI\Humans.UI.csproj" />
     <ProjectReference Include="..\Sections\Humans.Containers\Humans.Containers.csproj" />
     <ProjectReference Include="..\Sections\Humans.Events\Humans.Events.csproj" />
+    <ProjectReference Include="..\Sections\Humans.Expenses\Humans.Expenses.csproj" />
     <ProjectReference Include="..\Sections\Humans.Finance\Humans.Finance.csproj" />
     <ProjectReference Include="..\Sections\Humans.Store\Humans.Store.csproj" />
     <ProjectReference Include="..\Sections\Humans.SystemSettings\Humans.SystemSettings.csproj" />

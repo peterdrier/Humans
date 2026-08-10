@@ -35,14 +35,6 @@ public sealed class ConcurrencyTokenAnalyzer : DiagnosticAnalyzer
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];
 
-    private static readonly ImmutableHashSet<string> ProductionAssemblies =
-        ImmutableHashSet.Create(
-            StringComparer.Ordinal,
-            "Humans.Application",
-            "Humans.Domain",
-            "Humans.Infrastructure",
-            "Humans.Web");
-
     private static readonly ImmutableHashSet<string> ForbiddenEfMethods =
         ImmutableHashSet.Create(StringComparer.Ordinal, "IsConcurrencyToken", "IsRowVersion");
 
@@ -64,7 +56,10 @@ public sealed class ConcurrencyTokenAnalyzer : DiagnosticAnalyzer
 
     private static void OnCompilationStart(CompilationStartAnalysisContext context)
     {
-        if (!ProductionAssemblies.Contains(context.Compilation.Assembly.Name))
+        // Section assemblies count as production (nobodies-collective/Humans#866). The
+        // hardcoded four-name set this replaced named none of them, so this rule went
+        // silent inside every section that moved.
+        if (!AssemblyScope.IsProduction(context.Compilation.Assembly))
             return;
 
         var grandfatheredAttr = GrandfatheredCheck.Resolve(context.Compilation);

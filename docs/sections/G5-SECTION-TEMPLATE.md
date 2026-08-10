@@ -37,7 +37,7 @@ section's dependencies into your section and forces some of them down into Base,
 at that section's own G5. `/Admin/*` is documented as a nav holder rather than a section;
 `/Finance` turned out to be the same shape without saying so, and it will not be the last.
 
-## The six pre-flight searches
+## The seven pre-flight searches
 
 Each one caught a silent failure in the pilot or in A1/A2. Substitute the section name for
 `<Section>`; run them as separate lines, never chained with `&&` — a search that finds nothing is
@@ -59,6 +59,10 @@ grep -rn 'Namespace?\.StartsWith\|Namespace\.StartsWith' tests/
 grep -rn 'nameof(<Section>' src/
 # type names that form resource keys (step 3b)
 grep -rn --include='*.resx' 'Enum_<Section>' src/
+# whether those Enum_ keys are LIVE — grep the CALL SITES, never the helper class (step 3b).
+# Added by Expenses (A3): the methods are EnumDisplay/EnumSelectItems and nothing is named
+# "Localize", so looking for the helper by name reports a live key set as orphaned.
+grep -rn 'EnumDisplay\|EnumSelectItems' src/
 ```
 
 Two shell notes, because the obvious spellings both fail *silently*: `grep`'s default is a basic
@@ -118,6 +122,14 @@ Git Bash.)
    - **A key used by both this section and a not-yet-moved section stays in `SharedResource`** —
      carve by *owner*, not by prefix (proven: Containers left the 9 `ContainerMap_*` keys with
      City Planning's map page).
+   - **Never conclude an `Enum_*` key set is dead from the helper class alone.** Those keys are
+     read through `EnumLocalizationExtensions`, whose methods are `EnumDisplay` and
+     `EnumSelectItems` — no method contains "Localize", so grepping for one returns nothing and
+     makes a live set look orphaned. Grep the **call sites**, per the seventh pre-flight search
+     (proven: Expenses' five `Enum_ExpenseReportStatus_*` keys arrived flagged as dead and are
+     rendered by the status filter in `Views/Expenses/Index.cshtml`; carving them out would have
+     degraded it to `Humanize(value.ToString())` — English-looking text in every locale, and a
+     resource fallback survives the step 12 HTML diff).
 4. [ ] `Section.cs` at the project root: `public sealed class Section : ISection` with
    `Register(IServiceCollection services, IConfiguration configuration)` — `AddSectionDbContext`,
    repositories, services, section-owned authorization handlers (keyed caching-decorator pairs
@@ -157,9 +169,23 @@ Git Bash.)
      does** — and promoting the connector's DTO downward is the forbidden fix; the section owns a
      boundary type and maps at the edge (proven: Finance, `HoldedLedgerLineDto`). Check every
      `Contracts/` signature for a Base-owned type before assuming the carve is mechanical.
+   - **A Base *registry* keyed by the section's enum is not a `Contracts/` case — invert it.**
+     `Humans.UI` holds lookup tables naming ten sections' status enums (`EnumBadgeMap`,
+     `StatusBadgeExtensions`); each move breaks one. Referencing the section's contracts leaf
+     from `Humans.UI` is locally cheapest and globally worst — ten moves later Base references
+     every section. Peter, 2026-08-09: the registry gains a `Register(...)` the section calls
+     from `Section.Register`, and the literal ends empty
+     (`memory/architecture/base-ui-registries-are-section-populated.md`; proven: Expenses). If
+     the helper's only callers were the section's own views, it is not a registry problem at all
+     — move it in and delete it from Base.
 6. [ ] Authorization *policies* stay in Shell's `AuthorizationPolicyExtensions`; resource-based
    *handlers* move into the section (spec §8's asymmetry: DI registration moves, policy
    registration does not).
+   - **Do this on paper *before* step 5b.** Moving the handler is often what takes the read
+     surface's fan-in to zero. Expenses' fan-in read as "`IExpenseReportServiceRead`'s only
+     outside consumer is Shell's `IbanAccessHandler`", which would have made six types public to
+     serve one handler — a handler that this step moves into the section anyway (proven:
+     Expenses; its `Contracts` project ended up one interface wide).
 6b. [ ] Recurring Hangfire jobs stay in `Humans.Infrastructure/Jobs` for now: there is no
    `ISection`-style discovery seam for jobs, and a section-owned job would have to be `public` —
    the one thing step 5 exists to prevent. The job consumes the section through
@@ -185,6 +211,16 @@ Git Bash.)
    integration tests stay in `Humans.Integration.Tests`. EF-InMemory stays EF-InMemory. **Read
    what each test actually exercises**: a file under `Services/<Section>/` that tests a connector
    is a connector test and does not move (proven: Store, two Stripe files).
+   - **A Base test helper the moved tests inherit is not automatically shared-set material.**
+     Check what the section's tests actually *use* before linking it into
+     `tests/Directory.Build.props`. Expenses' one harness-derived test used three members of
+     `ServiceTestHarness` — an audit substitute, a clock, a static options builder — out of a
+     211-line base class built around an in-memory `HumansDbContext`; sharing it would have
+     granted a **section** test project `InternalsVisibleTo` on `HumansDbContext` and pushed the
+     harness's `Humans.Infrastructure` + `NodaTime.Testing` dependencies into every test project
+     compiling the shared set. It owned the three fixtures instead, in five lines. Share when the
+     section needs the *harness*; inline when it needs three of its members (contrast: A2's
+     `CapturingLogger`, which was genuinely shared).
 9. [ ] `dotnet ef` for this section: `--project src/Sections/Humans.<Section>
    --startup-project src/Humans.Web --context <Section>DbContext --output-dir Data/Migrations`.
    Update the `context:project` pair in `.github/workflows/build.yml`.
@@ -199,7 +235,19 @@ Git Bash.)
     the assembly boundary now subsumes; delete its `Architecture/Baselines` rows and
     `[Grandfathered]` attributes (⚠️ UNPROVEN — no moved section has had any).
     - Re-run `grep -rn 'Assembly.Name' src/Humans.Analyzers/` and confirm any analyzer added
-      since the pilot is section-aware (spec §10).
+      since the pilot is section-aware (spec §10). **Do not treat this as a formality because
+      earlier moves found nothing** — Expenses was the first to find something, and what it found
+      had been silently off inside all five previously-moved sections:
+      `ConcurrencyTokenAnalyzer` and `DateTimeFormatStringAnalyzer` each carried a private
+      `ProductionAssemblies` set of the four literal Base names. Fixed with
+      `AssemblyScope.IsProduction`; widening produced zero new findings, so the cost of being
+      wrong here is nothing and the cost of skipping it is silent.
+    - **Check `AdminNavTree` after any controller rehoming.** Entries name a controller by
+      *name*; one that no longer resolves makes the anchor tag helper omit `href` entirely, so
+      the page returns 200 with a dead link and neither the suite nor the step 12 HTML diff
+      notices. `AdminNavTreeRoutingTests` walks the table against the running app's
+      `IActionDescriptorCollectionProvider` (proven: A2's `FinanceController` split shipped the
+      Finance entry broken; caught and fixed in A3).
     - **Watch for reflection sweeps keyed on a hard-coded assembly list or a namespace prefix** —
       both fail by finding nothing and reporting success (proven: `EndpointAuthorizationTests`,
       `GdprExportDependencyInjectionTests`, `ApplicationServicesTakeNoMemoryCacheRule`). **Widen

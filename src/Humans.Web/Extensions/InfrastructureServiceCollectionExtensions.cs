@@ -60,7 +60,6 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSearchSection();
         services.AddHoldedConnector(configuration);
         services.AddMailerSection(configuration);
-        services.AddExpensesSection(configuration);
 
         // Sections that have moved into their own project (nobodies-collective/Humans#866)
         // register themselves via ISection and are discovered, not named. The roll-call

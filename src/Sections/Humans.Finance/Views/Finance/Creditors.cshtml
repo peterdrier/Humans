@@ -36,7 +36,7 @@
                 These members pushed an expense report but their Holded creditor-account number never
                 resolved — neither the one-shot push lookup nor Holded's own contact list has a number
                 for them. There is no automatic retry; bind each one manually once you know their
-                400000xx account in Holded.
+                creditor account (40000000–40000999) in Holded.
             </p>
             <table class="table table-sm align-middle mb-0">
                 <thead><tr><th>Member</th><th>Source</th><th>Bind to account</th></tr></thead>
@@ -52,8 +52,8 @@
                                 <input type="hidden" name="userId" value="@b.UserId" />
                                 <input type="hidden" name="returnUrl" value="@Context.Request.Path" />
                                 <input type="number" name="supplierAccountNum" class="form-control form-control-sm"
-                                       style="max-width: 10rem" placeholder="400000xx" required
-                                       min="40000000" max="40000099" />
+                                       style="max-width: 10rem" placeholder="e.g. 40000004" required
+                                       min="40000000" max="40000999" />
                                 <button type="submit" class="btn btn-sm btn-outline-primary">Bind</button>
                             </form>
                         </td>

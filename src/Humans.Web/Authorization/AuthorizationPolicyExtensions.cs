@@ -27,9 +27,6 @@ public static class AuthorizationPolicyExtensions
         services.AddScoped<IAuthorizationHandler, TeamAuthorizationHandler>();
         services.AddSingleton<IAuthorizationHandler, IssuesAuthorizationHandler>();
 
-        services.AddScoped<IAuthorizationHandler, ExpenseReportAuthorizationHandler>();
-        services.AddScoped<IAuthorizationHandler, IbanAccessHandler>();
-
         services.AddSingleton<IAuthorizationHandler, RoleAssignmentAuthorizationHandler>();
         services.AddSingleton<IAuthorizationHandler, UserEmailAuthorizationHandler>();
 

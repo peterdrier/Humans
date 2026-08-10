@@ -31,21 +31,6 @@ public static class StatusBadgeExtensions
     }
 
     /// <summary>
-    /// Gets the Bootstrap badge CSS class for an expense report status.
-    /// </summary>
-    public static string GetBadgeClass(this ExpenseReportStatus status)
-    {
-        return status switch
-        {
-            ExpenseReportStatus.Draft => "bg-secondary",
-            ExpenseReportStatus.Submitted => "bg-primary",
-            ExpenseReportStatus.CoordinatorEndorsed => "bg-info text-dark",
-            ExpenseReportStatus.Approved => "bg-success",
-            _ => "bg-secondary"
-        };
-    }
-
-    /// <summary>
     /// Gets the Bootstrap badge CSS class for a budget year status.
     /// </summary>
     public static string GetBadgeClass(this BudgetYearStatus status)

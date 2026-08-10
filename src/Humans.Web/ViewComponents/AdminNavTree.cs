@@ -66,6 +66,11 @@ public static class AdminNavTree
             // Members' own expense pages (Index/Coordinator) are member-shell pages
             // linked from the member nav — only the finance review queue is admin.
             new("Expense review", "Expenses",   "Review",    null, null, "fa-solid fa-magnifying-glass-dollar", PolicyNames.FinanceAdminOrAdmin),
+            // "BudgetAdmin", not "Finance": A2's controller split (peterdrier/Humans#1239) moved
+            // the 23 Budget-CRUD actions — Index among them — out of FinanceController and into
+            // BudgetAdminController, which keeps the same [Route("Finance")] prefix. The URL is
+            // unchanged; the controller *name* the tag helper resolves against is not, and a
+            // name that resolves to no action renders the anchor with no href at all.
             new("Finance",        "BudgetAdmin", "Index",    null, null, "fa-solid fa-coins",        PolicyNames.FinanceAdminOrAdmin),
             new("Store catalog",  "StoreAdmin", "Catalog",   null, null, "fa-solid fa-tags",         PolicyNames.StoreCatalogAdmin),
             new("Store summary",  "StoreAdmin", "Summary",   null, null, "fa-solid fa-chart-column", PolicyNames.StoreCatalogAdmin),
