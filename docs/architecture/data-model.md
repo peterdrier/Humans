@@ -93,9 +93,11 @@ Since the per-section split (nobodies-collective/Humans#858) the model is partit
 | `CityPlanningDbContext` | `city_planning_settings`, `camp_polygons`, `camp_polygon_histories` |
 | `BudgetDbContext` | `budget_years`, `budget_groups`, `budget_categories`, `budget_line_items`, `budget_audit_logs`, `ticketing_projections` |
 | `CampsDbContext` | `camps`, `camp_seasons`, `camp_historical_names`, `camp_images`, `camp_settings`, `camp_members`, `camp_role_definitions`, `camp_role_assignments` |
-| `HumansDbContext` | everything else, including the Identity and Data Protection tables (which stay here permanently — they come from the framework base classes) |
+| `GateDbContext` | `gate_scan_events`, `gate_settings`, `gate_staff_pins` |
+| `SystemDbContext` | `DataProtectionKeys` — the platform context for framework-owned tables no section can own; adding a table to it is Peter's call |
+| `HumansDbContext` | everything else, including the Identity tables (which come from the framework base class) |
 
-What is left in `HumansDbContext`: Users/Identity, Teams, Profiles, Legal, Shifts, AuditLog and Gate. Profiles and Shifts are blocked by the five surviving `→ User` model relationships, Legal and AuditLog by their plpgsql immutability triggers (raw SQL in the old chain, in no model); Users and Teams peel last by design. Gate's §5.1 blocker was cleared by `20260802203816_RealignScaffoldedPhysicalDefaults` (as was Store's, which then peeled as PR A of nobodies-collective/Humans#866) — it is peelable but not yet scheduled. See the design doc's §10.1.
+What is left in `HumansDbContext`: Users/Identity, Teams, Profiles, Legal, Shifts and AuditLog. Profiles and Shifts are blocked by the five surviving `→ User` model relationships; Legal and AuditLog carry plpgsql immutability triggers that go into their baselines as explicit `migrationBuilder.Sql` (Peter's call, 2026-08-10 on #858); Users and Teams peel last by design. See the design doc's §10.1.
 
 ## Cross-section FK graph
 

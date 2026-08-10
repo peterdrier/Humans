@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -19,10 +18,8 @@ namespace Humans.Infrastructure.Data;
 /// </para>
 /// </remarks>
 internal sealed class HumansDbContext(DbContextOptions<HumansDbContext> options)
-    : IdentityDbContext<User, IdentityRole<Guid>, Guid>(options), IDataProtectionKeyContext
+    : IdentityDbContext<User, IdentityRole<Guid>, Guid>(options)
 {
-    public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
-
     public DbSet<Profile> Profiles => Set<Profile>();
     public DbSet<LegalDocument> LegalDocuments => Set<LegalDocument>();
     public DbSet<DocumentVersion> DocumentVersions => Set<DocumentVersion>();
@@ -79,6 +76,7 @@ internal sealed class HumansDbContext(DbContextOptions<HumansDbContext> options)
         typeof(Configurations.CityPlanning.CampPolygonConfiguration).Namespace!,
         typeof(Configurations.Budget.BudgetYearConfiguration).Namespace!,
         typeof(Configurations.Camps.CampConfiguration).Namespace!,
+        typeof(Configurations.Gate.GateScanEventConfiguration).Namespace!,
     ];
 
     protected override void OnModelCreating(ModelBuilder builder)

@@ -59,6 +59,8 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSectionDbContext<CityPlanningDbContext>(sentinelTable: "city_planning_settings");
         services.AddSectionDbContext<BudgetDbContext>(sentinelTable: "budget_years");
         services.AddSectionDbContext<CampsDbContext>(sentinelTable: "camps");
+        services.AddSectionDbContext<GateDbContext>(sentinelTable: "gate_settings");
+        services.AddSectionDbContext<SystemDbContext>(sentinelTable: "DataProtectionKeys");
 
         services.AddHostedService<DatabaseMigrationHostedService>();
 
@@ -125,7 +127,7 @@ public static class InfrastructureServiceCollectionExtensions
     public static IdentityBuilder AddHumansEntityFrameworkStores(this IdentityBuilder builder) =>
         builder.AddEntityFrameworkStores<HumansDbContext>();
 
-    /// <summary>Typed wrapper so Web never references HumansDbContext directly.</summary>
-    public static IDataProtectionBuilder PersistKeysToHumansDbContext(this IDataProtectionBuilder builder) =>
-        builder.PersistKeysToDbContext<HumansDbContext>();
+    /// <summary>Typed wrapper so Web never references SystemDbContext directly.</summary>
+    public static IDataProtectionBuilder PersistKeysToSystemDbContext(this IDataProtectionBuilder builder) =>
+        builder.PersistKeysToDbContext<SystemDbContext>();
 }

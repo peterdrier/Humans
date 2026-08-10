@@ -159,6 +159,16 @@ public sealed class SectionMigrationRunnerTests(HumansTestDatabase database)
             "camps",
             CreateSectionContext<CampsDbContext>,
             "SELECT count(*) FROM camp_settings"),
+        new(
+            "Gate",
+            "gate_settings",
+            CreateSectionContext<GateDbContext>,
+            null),
+        new(
+            "System",
+            "DataProtectionKeys",
+            CreateSectionContext<SystemDbContext>,
+            null),
     ];
 
     [HumansFact]
@@ -178,8 +188,10 @@ public sealed class SectionMigrationRunnerTests(HumansTestDatabase database)
 
             foreach (var table in tables)
             {
+                // Quoted: table names come from the EF model in their exact stored
+                // case (e.g. DataProtectionKeys), and to_regclass lowercases bare names.
                 (await ScalarAsync<bool>(connectionString,
-                    $"SELECT to_regclass('public.{table}') IS NOT NULL"))
+                    $"""SELECT to_regclass('public."{table}"') IS NOT NULL"""))
                     .Should().BeTrue($"{section.Name}: {table} must exist after the baseline executes");
             }
 
