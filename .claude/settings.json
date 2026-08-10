@@ -12,7 +12,7 @@
           },
           {
             "type": "command",
-            "command": "cmd=$(jq -r '.tool_input.command // \"\"'); echo \"$cmd\" | grep -qE 'dotnet ef migrations' && echo \"$cmd\" | grep -qE 'output-dir' && ! echo \"$cmd\" | grep -qE -- '--project +\\S*src/Sections/' && echo 'BLOCKED: --output-dir is only for a section that has moved into its own project under src/Sections/ (G5), where migrations live at Data/Migrations/. For a section still in HumansDbContext the default output directory (Migrations/) is correct — drop the flag and re-run.' && exit 1 || true",
+            "command": "bash .claude/check-ef-output-dir.sh",
             "timeout": 5,
             "statusMessage": "Checking EF migration command..."
           },
