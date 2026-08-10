@@ -112,13 +112,16 @@ Add one private cursor-pager reused by every v2 list endpoint:
 
 ```csharp
 /// <summary>Walks a v2 cursor-paginated collection: follows `cursor` while `has_more`, collecting
-/// `items` elements. Caps at pageSafetyCap pages and logs when hit (no silent caps).</summary>
+/// `items` elements. THROWS HoldedTransientException when the pageSafetyCap is hit — a truncated
+/// list must never be returned: ledger results feed replace-semantics reconciliation, where a
+/// short fetch would delete rows that still exist in Holded (destructive, not just lossy).</summary>
 private async Task<List<JsonNode>> GetPagedAsync(string pathAndQuery, int pageSafetyCap, CancellationToken ct)
 ```
 
 - [ ] **Step 1: failing tests** (canned v2 JSON exactly as above):
   - `ListLedgerEntries_parses_ddMMyyyy_dates_and_string_decimals` (`"09/02/2026"` → Feb 9 Madrid midnight Instant; `Credit == 1200.00m`; `AccountNum == 40000004`).
   - `ListLedgerEntries_follows_cursor_until_has_more_false` (2 pages; second request query contains `cursor=c1`).
+  - `ListLedgerEntries_throws_when_page_cap_hit` (stub always answers `has_more:true` → `HoldedTransientException`, nothing returned).
   - `ListLedgerEntries_passes_account_filter` (`account=40000004` in query).
   - `ListAccountingAccounts_parses_totals`.
   - `GetUsage_parses_period_usage_limit_and_secondary`.
@@ -234,7 +237,10 @@ internal sealed class HoldedApiCall
 internal interface IHoldedMirrorRepository : IRepository
 {
     /// <summary>Upserts the fetched window on (EntryNumber, Line) and deletes local rows inside
-    /// [from,to] (optionally one account) absent from rows — the fetch is the truth for its window.</summary>
+    /// [from,to] (optionally one account) absent from rows — the fetch is the truth for its window.
+    /// An EMPTY rows list is a valid sweep result and deletes everything cached in the window; do
+    /// NOT early-return on rows.Count == 0 (the append-only early return is the bug being fixed:
+    /// deleted/reclassified Holded lines lingered forever — e.g. a phantom €23 debit on 40000004).</summary>
     Task ReplaceLedgerWindowAsync(Instant from, Instant to, int? accountNum,
         IReadOnlyList<HoldedLedgerLine> rows, Instant now, CancellationToken ct = default);
     Task<IReadOnlyList<HoldedLedgerLine>> GetLedgerLinesByAccountNumAsync(int accountNum, CancellationToken ct = default);
@@ -258,6 +264,7 @@ Section registration (`Section.cs`, copying Finance's): `services.AddSectionDbCo
   - `GetOrCreateSyncState_creates_then_returns_same_row`.
   - `ReplaceLedgerWindow_upserts_and_deletes_missing`: seed A(entry 1/1, in window), B(2/1, in window), C(3/1, outside); replace with A′(changed credit) + D → A updated, B gone, C untouched, D inserted.
   - `ReplaceLedgerWindow_scoped_to_account_leaves_other_accounts`.
+  - `ReplaceLedgerWindow_empty_fetch_deletes_everything_in_window` (rows: `[]` → in-window rows gone, out-of-window rows survive).
   - `UpsertAccounts_replaces_totals`.
 - [ ] **Step 2:** run, verify FAIL (missing projects — wire csproj/slnx first so the failure is assertions, not compile).
 - [ ] **Step 3:** implement (entities, configs, DbContext, factory, repository — `ReplaceLedgerWindowAsync` follows Finance's `UpsertLedgerLinesAsync` dictionary pattern plus the window delete).
@@ -421,7 +428,7 @@ internal sealed class HoldedController(
 View sections in order (plain tables, Bootstrap classes as in `Finance/HoldedAccounts.cshtml`): connection card (usage meter, `ApiReachable` warning), sync states (incl. the Finance doc-sync row) + the two buttons, calls-by-month, department actuals (629*), full account list (number, name, group, Holded balance, local balance, line count, ✓/✗), ledger-line total footer.
 
 - [ ] **Step 1:** implement controller + views + nav links; build green.
-- [ ] **Step 2:** live check: `HOLDED_API_KEY=$(cat ~/.holded/dev-token) dotnet run --project src/Humans.Web`, load `/Holded` — usage card shows period `2026-08`; ~267 account rows; 629 table led by `62900000 Otros servicios 133,416.45`; `40000004` local balance `−53,203.00` ✓; Sabadell `57200001` shows the known mismatch (352,234.31 — entry #2412 excluded from chart totals). **Read-only key: ledger sync buttons are safe; do not run the doc sync against live (SyncNow calls it — expect its write-free read path to succeed; if the purchase list read is all it does, it is safe).**
+- [ ] **Step 2:** live check: `HOLDED_API_KEY=$(cat ~/.holded/dev-token) dotnet run --project src/Humans.Web`, load `/Holded` — usage card shows period `2026-08`; ~267 account rows; 629 table led by `62900000 Otros servicios 133,416.45`; `40000004` local balance `−53,203.00` ✓; Sabadell `57200001` shows the known mismatch (352,234.31 — entry #2412 excluded from chart totals). **Stale-row verification (the bug this PR fixes):** after the first full sync against a copy of the QA cache — or simply on the fresh mirror — account 40000004 must show exactly 6 rows (all credits); the cache's phantom €23 debit from 13 May and the two zero-debit-zero-credit "loan" rows dated 22 June must NOT survive (live v2 shows no such rows — they are cache-only artifacts that replace-semantics remove). **Read-only key: ledger sync buttons are safe; do not run the doc sync against live (SyncNow calls it — expect its write-free read path to succeed; if the purchase list read is all it does, it is safe).**
 - [ ] **Step 3:** commit `feat(holded): /Holded admin screen`, push.
 
 ### Task 9: v1 sweep, docs, PR
@@ -440,3 +447,4 @@ View sections in order (plain tables, Bootstrap classes as in `Finance/HoldedAcc
 - Admin: overview → T7; screen + buttons + doc-sync row → T8.
 - v1 deletion → T2/T3 (methods) + T9 (sweep). Webhooks / bank-reconciliation panel / Pleo: excluded (spec: deferred/follow-up).
 - #1241 preserved: sweep gate (T6), trailing-window-anchored-on-now (T6), widened creditor block constants stay in Finance (T6), `HasAnyLedgerLinesAsync` (T4 repo).
+- Stale-line bug (Peter, 2026-08-10 evening) folded in: append-only cache + pre-upsert creditor filter left deleted/reclassified lines forever (confirmed: phantom €23 debit + two zero-amount rows on 40000004). Fixed structurally — full mirror has no pre-upsert filter (a reclassified line's account just updates on upsert), window-replace deletes what a sweep no longer returns including on an empty fetch (T4), truncated pagination hard-fails before it can drive deletions (T2), and balance reconciliation catches anything outside the swept window (T6). nobodies-collective/Humans#1019 (widened block's uncached history) is covered by the full-mirror backfill.
