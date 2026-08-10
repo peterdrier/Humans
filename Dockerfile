@@ -2,19 +2,15 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
-# Copy project files for restore
+# Copy the whole source tree, then restore. This trades the restore layer's cache
+# granularity (any source edit now re-runs restore) for a Dockerfile that never
+# needs a per-project COPY line — the project count is heading from 9 to ~40 as
+# G5 (nobodies-collective/Humans#866) peels sections into their own projects.
 COPY .editorconfig Directory.Build.props Directory.Packages.props ./
-COPY src/Humans.Domain/Humans.Domain.csproj src/Humans.Domain/
-COPY src/Humans.Application/Humans.Application.csproj src/Humans.Application/
-COPY src/Humans.Infrastructure/Humans.Infrastructure.csproj src/Humans.Infrastructure/
-COPY src/Humans.UI/Humans.UI.csproj src/Humans.UI/
-COPY src/Humans.Web/Humans.Web.csproj src/Humans.Web/
+COPY src/ src/
 
 # Restore packages
 RUN dotnet restore src/Humans.Web/Humans.Web.csproj
-
-# Copy source code
-COPY src/ src/
 
 # Coolify passes SOURCE_COMMIT and MINVER_VERSION as build args; deploy-qa.sh sets them from the host repo
 ARG SOURCE_COMMIT=""

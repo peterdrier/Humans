@@ -1,1 +1,15 @@
 tests/e2e/
+
+# Host build artifacts and VCS/agent metadata — never needed in the image and
+# would bloat the build context now that COPY src/ src/ pulls the whole tree.
+bin/
+obj/
+.vs/
+.git/
+.github/
+.claude/
+.worktrees/
+.codex/
+.superpowers/
+TestResults/
+local/
