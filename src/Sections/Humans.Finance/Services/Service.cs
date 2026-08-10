@@ -364,10 +364,12 @@ internal sealed class Service(
             // Older backdating, and the first run against an empty cache, need the full backward sweep.
             // That is several calls, so outside the empty-cache case it is only ever run on request
             // (POST /Finance/Creditors/Resync). The upsert on (EntryNumber, Line) makes re-fetching free.
+            var zone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
             var sweepAll = fullHistory || !await repo.HasAnyLedgerLinesAsync(ct);
             var fetched = sweepAll
                 ? await BackfillLedgerAsync(now, ct)
-                : await client.ListDailyLedgerAsync(now.Minus(LedgerWindow), now, ct);
+                : await client.ListLedgerEntriesAsync(
+                    now.Minus(LedgerWindow).InZone(zone).Date, now.InZone(zone).Date, ct: ct);
 
             // Persist only creditor-account (4000_0000–4000_0999) lines — the only accounts the read paths derive
             // from. The dailyledger has no server-side account filter, so the fetch sweeps the whole
@@ -426,12 +428,13 @@ internal sealed class Service(
     /// (the org's books are contiguous back to inception). Logs if the window cap is hit (no silent caps).</summary>
     private async Task<IReadOnlyList<HoldedLedgerLineDto>> BackfillLedgerAsync(Instant now, CancellationToken ct)
     {
+        var zone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
         var all = new List<HoldedLedgerLineDto>();
         var to = now;
         for (var window = 0; window < BackfillWindowCap; window++)
         {
             var from = to.Minus(LedgerWindow);
-            var page = await client.ListDailyLedgerAsync(from, to, ct);
+            var page = await client.ListLedgerEntriesAsync(from.InZone(zone).Date, to.InZone(zone).Date, ct: ct);
             if (page.Count == 0)
                 return all;
             all.AddRange(page);

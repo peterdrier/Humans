@@ -160,7 +160,7 @@ Task<IReadOnlySet<string>> ListDraftPurchaseIdsAsync(CancellationToken ct = defa
 - `GET /api/v2/purchases` (cursor) items: `{id, document_number, contact_id, contact_name, date:"2024-01-15", subtotal:"100.00", tax:"21.00", total:"121.00", currency:"EUR", status, tags:[], lines:[{price:"100.00", units:1, account, …}], payments_total, payments_pending}`. `lines[].account`: **probe its runtime type once with the dev token** — v1 sent the account id string; `HoldedMatchEntry` carries both `HoldedAccountId` and `HoldedAccountNumber`, so map whichever arrives (integer → resolve to the mapped id by number before `HoldedMatcher.Match`).
 - `GET /api/v2/purchases/{id}`: has `approved_at` (ISO), `draft`, `payments_total`, `payments_pending` → keep `HoldedPurchaseDocumentDto` shape, parse `approved_at` → Instant?.
 - `GET/POST /api/v2/expenses-accounts`: `{items:[{id, name, account_num:6290001, archived}]}` / POST `{name, account_num}` → `{id}`.
-- `GET /api/v2/contacts` (cursor): items carry `{id, custom_id, name, trade_name, type, iban, supplier_record:{num, name}}` → `HoldedContactDto.SupplierAccountNum = supplier_record.num`. `POST/PUT /api/v2/contacts` `{name, trade_name, custom_id, type, iban}` → `{id}`.
+- `GET /api/v2/contacts` (cursor): items carry `{id, custom_id, name, trade_name, type, iban, email, phone, mobile, code, bill_address, supplier_record:{num, name}}` → `HoldedContactDto.SupplierAccountNum = supplier_record.num`, and the DTO **gains contact-info fields** for the creditor-statement header (Task 8b): `TradeName`, `Email`, `Phone`, `Mobile`, `Iban`, `TaxCode` (`code`), `Address` (one display string assembled from `bill_address`'s parts — check the OpenAPI spec for its exact property names and join the non-empty ones). All nullable; parse defensively via `Prop`. `POST/PUT /api/v2/contacts` `{name, trade_name, custom_id, type, iban}` → `{id}`.
 
 - [ ] **Step 1: failing tests:** rewrite affected cases to v2 fixtures — purchase create posts snake_case to `/api/v2/purchases` (assert `contact_id` + ISO date in captured body); list parses string decimals + ISO dates; draft-ids call sends `approval_status=draft`; contact parse reads `supplier_record.num`; expense-account create posts `{name, account_num}`; attachment posts multipart to `/attachments`.
 - [ ] **Step 2:** run, verify FAIL.
@@ -330,7 +330,12 @@ Holded `Service` (internal sealed, `IHoldedService`; ctor `IHoldedMirrorReposito
 
 ```csharp
 private static readonly LocalDate LedgerInception = new(2020, 1, 1);
-private static readonly Duration TrailingWindow = Duration.FromDays(364);
+// 45 days, not #1241's 364: the API's real free budget is the plan tier (~2,000 calls/month on
+// Basic; the 2M "limit" from GET /usage is a billable-overage ceiling). A year-wide window costs
+// ~20 pages/night; 45 days costs 1–2. Backdating/deletion OLDER than the window is caught by the
+// balance reconciliation below at one call/night, which triggers a targeted per-account re-pull
+// only when an account actually drifted — correctness no longer depends on window width.
+private static readonly Duration TrailingWindow = Duration.FromDays(45);
 private const int MaxTargetedRepullsPerRun = 10;
 private static readonly SemaphoreSlim LedgerSyncGate = new(1, 1);   // #1241 semantics: WaitAsync(0), skip + report
 ```
@@ -352,7 +357,7 @@ Finance `Service` rewiring (ctor gains `IHoldedService holded`, drops nothing el
 
 - [ ] **Step 1: failing tests** (`HoldedLedgerSyncTests.cs`: fake `IHoldedClient` + real `Repository` over EF-InMemory + `FakeClock`):
   - `Cold_cache_sweeps_from_inception` (client sees `from == 2020-01-01`; all accounts cached — 40000004 and 57200001 both present).
-  - `Warm_cache_sweeps_trailing_window` (`from == today − 364 days`).
+  - `Warm_cache_sweeps_trailing_window` (`from == today − 45 days`).
   - `Full_flag_forces_inception_sweep_and_replaces_deleted_lines`.
   - `Reconcile_repulls_mismatched_account_and_reports_residual` (one account off even after re-pull → in `LastError`; matching account → no targeted call).
   - `Second_concurrent_sweep_skips` (`WaitAsync(0)` path → returns false).
@@ -387,6 +392,7 @@ internal interface IHoldedAdminService : IApplicationService
 internal sealed record HoldedAdminOverview(
     bool ApiReachable,
     HoldedUsageDto? Usage,                                   // null when the usage call fails / no key
+    int MonthlyCallBudget,                                   // config Holded:MonthlyCallBudget, default 2000
     IReadOnlyList<HoldedMonthlyCalls> CallsByMonth,          // newest first
     IReadOnlyList<HoldedSyncStateRow> SyncStates,
     IReadOnlyList<HoldedAccountRow> Accounts,                // non-archived chart, by number
@@ -398,7 +404,7 @@ internal sealed record HoldedAccountRow(int Number, string Name, string? Group,
     decimal HoldedBalance, decimal? LocalBalance, int LocalLineCount, bool Reconciled);
 ```
 
-Assembly (on the Holded `Service`): drain call log to repo first (so this page-load's calls appear next load); `Usage` = `client.GetUsageAsync()` in try/catch (`HoldedTransientException`/`HoldedPermanentException` → null); `ApiReachable = Usage is not null`; `CallsByMonth` from `repo.GetApiCallsAsync()` grouped by Madrid-zone year/month with per-endpoint counts; `Accounts` = `repo.GetAccountsAsync()` (non-archived) joined with ledger sums (`LocalBalance` null when no lines; `Reconciled = HoldedBalance == (LocalBalance ?? 0m)`); `DepartmentActuals` = `Number is >= 62900000 and <= 62999999` ordered by `HoldedBalance` desc; `LedgerLineCount` from `GetAllLedgerLinesAsync().Count`. (Finance's doc-sync info + bindings count are fetched by the *controller* in Task 8 via `IHoldedFinanceService` — the Holded service never references Finance.)
+Assembly (on the Holded `Service`): drain call log to repo first (so this page-load's calls appear next load); `Usage` = `client.GetUsageAsync()` in try/catch (`HoldedTransientException`/`HoldedPermanentException` → null); `ApiReachable = Usage is not null`; `MonthlyCallBudget` from a section-owned options class bound in `Section.Register` (`configuration["Holded:MonthlyCallBudget"]`, default 2000 — the API's `limit` field is Holded's billable-overage ceiling, NOT the free allowance, so the screen budgets against this config value and merely displays the API number); `CallsByMonth` from `repo.GetApiCallsAsync()` grouped by Madrid-zone year/month with per-endpoint counts; `Accounts` = `repo.GetAccountsAsync()` (non-archived) joined with ledger sums (`LocalBalance` null when no lines; `Reconciled = HoldedBalance == (LocalBalance ?? 0m)`); `DepartmentActuals` = `Number is >= 62900000 and <= 62999999` ordered by `HoldedBalance` desc; `LedgerLineCount` from `GetAllLedgerLinesAsync().Count`. (Finance's doc-sync info + bindings count are fetched by the *controller* in Task 8 via `IHoldedFinanceService` — the Holded service never references Finance.)
 
 - [ ] **Step 1: failing tests:** monthly grouping (two months → two buckets, newest first); 629 slice filter + ordering; `Reconciled` false on a mismatch; usage failure → `Usage` null, rest populated.
 - [ ] **Step 2:** run, verify FAIL.
@@ -430,6 +436,37 @@ View sections in order (plain tables, Bootstrap classes as in `Finance/HoldedAcc
 - [ ] **Step 1:** implement controller + views + nav links; build green.
 - [ ] **Step 2:** live check: `HOLDED_API_KEY=$(cat ~/.holded/dev-token) dotnet run --project src/Humans.Web`, load `/Holded` — usage card shows period `2026-08`; ~267 account rows; 629 table led by `62900000 Otros servicios 133,416.45`; `40000004` local balance `−53,203.00` ✓; Sabadell `57200001` shows the known mismatch (352,234.31 — entry #2412 excluded from chart totals). **Stale-row verification (the bug this PR fixes):** after the first full sync against a copy of the QA cache — or simply on the fresh mirror — account 40000004 must show exactly 6 rows (all credits); the cache's phantom €23 debit from 13 May and the two zero-debit-zero-credit "loan" rows dated 22 June must NOT survive (live v2 shows no such rows — they are cache-only artifacts that replace-semantics remove). **Read-only key: ledger sync buttons are safe; do not run the doc sync against live (SyncNow calls it — expect its write-free read path to succeed; if the purchase list read is all it does, it is safe).**
 - [ ] **Step 3:** commit `feat(holded): /Holded admin screen`, push.
+
+### Task 8b: GL account page + Creditors UX (Peter, 2026-08-10 evening)
+
+**Files:**
+- Modify: `src/Sections/Humans.Holded/Controllers/HoldedController.cs`, `Services/Service.cs`, `Services/IHoldedAdminService.cs`, `Models/HoldedAdminModels.cs`
+- Create: `src/Sections/Humans.Holded/Views/Holded/Account.cshtml`
+- Modify: `src/Sections/Humans.Finance/Views/Finance/Creditors.cshtml`, `CreditorStatement.cshtml`, `Controllers/FinanceController.cs`, `Services/Service.cs`, `src/Sections/Humans.Finance.Contracts/HoldedCreditorAdminDtos.cs`
+- Test: `tests/Humans.Holded.Tests/HoldedAdminOverviewTests.cs` (statement cases), `tests/Humans.Finance.Tests/ServiceTests.cs`
+
+**1. Generic GL account page — `/Holded/Accounts/{number}`** (any account: 629x department, 572x bank, 400x creditor):
+
+```csharp
+// IHoldedAdminService:
+Task<HoldedAccountStatement?> GetAccountStatementAsync(int number, CancellationToken ct = default);
+// Models:
+internal sealed record HoldedAccountStatement(
+    HoldedAccountRow Account,                       // reuses Task 7's row (Holded vs local balance, reconciled flag)
+    IReadOnlyList<HoldedLedgerLineInfo> Lines);     // all cached lines, date then entry/line order
+```
+
+Null when the number is neither in `holded_accounts` nor has cached lines → controller 404s. View: header (number, name, group, Holded balance, local balance, reconciled ✓/✗ — **native Holded sign**, so the page always matches Holded's own UI) + lines table (date, entry/line, type, description, debit, credit). `HoldedController`: `[HttpGet("Accounts/{number:int}")]`.
+
+**2. `/Finance/Creditors` list:** drop the Owed column; show one **inverted Balance** (`credit − debit`; +53,203 = owed to the person; negative = they owe us) — display-level inversion, derivations elsewhere unchanged. All columns sortable: first Grep the repo's views for an existing sortable-table pattern (`sortable`, `data-sort`, `th a[href*=sort]`) and copy it; if none exists, controller-side `?sort=col&dir=asc|desc` query params with toggling header links (hard rules: sorting is the controller's job). Default sort: account number.
+
+**3. `/Finance/Creditors/{num}` statement:** balance shown inverted (same rule), plus a contact header rendered from the account's Holded contact — name, trade name, email, phone, mobile, IBAN, tax code, address; omit empty fields. Data path: Finance's cached contact list (`ListContactsOrEmptyAsync`) now carries these fields after Task 3's DTO extension; extend `HoldedCreditorLedger` (Finance.Contracts) with a nullable `HoldedContactInfo` record carrying them. Add a small link to the GL page (`/Holded/Accounts/{num}`) for the raw native-sign view.
+
+- [ ] **Step 1: failing tests:** `GetAccountStatement_unknown_number_returns_null`; `GetAccountStatement_returns_header_and_ordered_lines`; Finance: statement carries contact info when the cached contact matches, null when absent.
+- [ ] **Step 2:** run, verify FAIL.
+- [ ] **Step 3:** implement all three surfaces.
+- [ ] **Step 4:** build + full suite green; live check `/Holded/Accounts/62900128` (Toilets — 121,684.00 debit) and `/Finance/Creditors/40000004` (+53,203.00, contact header shows Peter D).
+- [ ] **Step 5:** commit `feat(holded): GL account page; sortable Creditors with inverted balances and contact header`, push.
 
 ### Task 9: v1 sweep, docs, PR
 
