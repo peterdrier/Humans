@@ -32,7 +32,7 @@ No new role; no new policy. Reuse existing `ShowMedical` plumbing and the existi
 `MedicalConditions` is health data under GDPR Art. 9. No new handling is required — the fields now live on `Profile`, which is already covered by the existing right-to-erasure and data-export flows:
 
 - **Erasure:** `AccountDeletionService` anonymizes the user's `Profile` row (including dietary/medical fields) as part of the normal deletion cascade.
-- **Export:** the user's `Profile` fields are emitted by `ProfileService` via `GdprExportSections.Profile`.
+- **Export:** the user's `Profile` fields are emitted by `UserService` via `GdprExportSections.Profile`.
 
 No retention policy changes; the data lives only as long as the user account does.
 

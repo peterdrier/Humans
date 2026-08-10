@@ -109,7 +109,7 @@ Stored as string via `HasConversion<string>()`.
 Colaborador and Asociado memberships have 2-year synchronized terms expiring Dec 31 of **odd years** (2027, 2029, 2031...). `TermExpiryCalculator.ComputeTermExpiry()` computes the expiry as the next Dec 31 of an odd year that is at least 2 years from the approval date.
 
 - On approval: `Application.TermExpiresAt` is set.
-- On expiry without renewal: the next `SystemTeamSyncJob` run removes the human from the Colaboradors / Asociados system team (computed via `HasActiveApprovedTierAsync`). The profile's `MembershipTier` field is not automatically reset to Volunteer — it remains until a new approval changes it.
+- On expiry without renewal: the next `SystemTeamSyncJob` run removes the human from the Colaboradors / Asociados system team (computed via `HasActiveApprovedTierAsync`) **and downgrades the profile's `MembershipTier`** via `IUserService.DowngradeMembershipTierForExpiredAsync` — to another tier the human still holds an active approval for, otherwise to `Volunteer`. Each downgrade writes an `AuditAction.TierDowngraded` entry.
 - Renewal: new Application entity (same tier), goes through normal Board voting.
 - Reminder: `TermRenewalReminderJob` sends reminders 90 days before expiry.
 
@@ -161,7 +161,7 @@ Three controllers serve this section directly. `BoardController` composes Govern
 - When an application is rejected: an audit-log entry is written (`AuditAction.TierApplicationRejected`), a rejection email is sent (`IEmailMessageFactory.ApplicationRejected` via `IEmailService.SendAsync`), and an in-app notification is dispatched (`NotificationSource.ApplicationRejected`). Email + notification are best-effort.
 - When an application is approved or rejected: all Board vote records for that application are deleted (atomic inside `IApplicationRepository.FinalizeAsync`).
 - A renewal reminder email + in-app notification is dispatched 90 days before term expiry (`TermRenewalReminderJob`, `NotificationSource.TermRenewalReminder`).
-- On term expiry without renewal: the next `SystemTeamSyncJob` removes the human from the Colaboradors / Asociados system team (driven by `HasActiveApprovedTierAsync`). The profile's `MembershipTier` field is **not** automatically reset — it remains set until a new approval changes it.
+- On term expiry without renewal: the next `SystemTeamSyncJob` removes the human from the Colaboradors / Asociados system team (driven by `HasActiveApprovedTierAsync`) and calls `IUserService.DowngradeMembershipTierForExpiredAsync`, which **resets the profile's `MembershipTier`** — to another still-active tier the human holds, otherwise to `Volunteer` — and writes an `AuditAction.TierDowngraded` entry per downgrade.
 - After every write, `ApplicationDecisionService` invalidates `INavBadgeCacheInvalidator` and `INotificationMeterCacheInvalidator`; on approve/reject it also invalidates each affected voter's `IVotingBadgeCacheInvalidator` entry; on Board-vote upsert it invalidates the voter's `IVotingBadgeCacheInvalidator` entry.
 - When an account merge accepts, `AccountMergeService.AcceptAsync` fans out to all `IUserMerge` implementations; `ApplicationDecisionService.ReassignAsync` re-FKs `Application.UserId` (the applicant) from source to target. `BoardVote.BoardMemberUserId` is not re-FK'd — votes are transient, deleted on finalization.
 - `UpdateDraftApplicationAsync` silently updates a Submitted application's tier, motivation, and Asociado fields. Allowed only while Status = Submitted; no cache invalidation, no state history append, no notifications.

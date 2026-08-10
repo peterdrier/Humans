@@ -42,7 +42,7 @@ In-app notification fan-out (stored events + per-user inbox) and live meter coun
 | TargetGroupName | string (100)? | Display label for group-targeted notifications (e.g. "Coordinators", team name); null for individual targets |
 | CreatedAt | Instant | When emitted |
 | ResolvedAt | Instant? | Set when any recipient resolves (shared across all recipients) |
-| ResolvedByUserId | Guid? | FK → User (`SetNull` on user delete) — who resolved |
+| ResolvedByUserId | Guid? | Bare cross-section id (User) — who resolved; no FK constraint, no nav (#992/#996) |
 
 **Indexes:** `(CreatedAt)`.
 
@@ -53,10 +53,10 @@ In-app notification fan-out (stored events + per-user inbox) and live meter coun
 | Property | Type | Purpose |
 |----------|------|---------|
 | NotificationId | Guid | FK → Notification (Cascade); part of composite PK |
-| UserId | Guid | FK → User (Cascade); part of composite PK |
+| UserId | Guid | Bare cross-section id (User); part of composite PK — no FK constraint, no nav (#992/#996) |
 | ReadAt | Instant? | Personal read state — set when this user has seen the notification |
 
-**PK:** composite `(NotificationId, UserId)`. **Indexes:** `IX_NotificationRecipient_UserId` for badge-count queries. Only the aggregate-local `Notification` nav is kept; the cross-domain `User` nav was dropped (shadow navigation) — recipient display data is stitched in memory via `IUserServiceRead.GetUserInfosAsync` (see Architecture).
+**PK:** composite `(NotificationId, UserId)`. **Indexes:** `IX_NotificationRecipient_UserId` for badge-count queries. Only the aggregate-local `Notification` nav is kept; the cross-domain `User` id carries no FK constraint or nav — recipient display data is stitched in memory via `IUserServiceRead.GetUserInfosAsync` (see Architecture).
 
 ### NotificationSource
 
@@ -148,12 +148,12 @@ Inbound (other sections → Notifications):
 **Status:** (A) Migrated (peterdrier/Humans PR for issue nobodies-collective/Humans#550, 2026-04-22).
 
 - All services live in `Humans.Application.Services.Notifications/` and depend only on Application-layer abstractions.
-- `INotificationRepository` (impl `Humans.Infrastructure/Repositories/Notifications/NotificationRepository.cs`) is the only non-test file that touches `notifications` / `notification_recipients` via `DbContext`. The repository uses `IDbContextFactory<HumansDbContext>` so it can be registered as **Singleton** while `HumansDbContext` remains Scoped.
+- `INotificationRepository` (impl `Humans.Infrastructure/Repositories/Notifications/NotificationRepository.cs`) is the only non-test file that touches `notifications` / `notification_recipients` via `DbContext`. The repository uses `IDbContextFactory<NotificationsDbContext>` (peeled out of `HumansDbContext` in #858) so it can be registered as **Singleton** while `NotificationsDbContext` remains Scoped.
 - **DI cycle break — `INotificationEmitter` vs `INotificationService`.** `INotificationEmitter` is the narrow outbound interface (`SendAsync` to a known recipient list). `INotificationService` extends it with `SendToRoleAsync`, which requires `INotificationRecipientResolver` (which itself depends on `IRoleAssignmentService`). Since `IRoleAssignmentService` already depends on the notification surface, it injects the narrower `INotificationEmitter` (implemented by a separate `NotificationEmitter` type, **not** `NotificationService`) to avoid closing the DI cycle.
 - **Decorator decision — no caching decorator.** Dispatch is fire-and-forget and inbox reads are per-user and per-request-rate. Per-user unread badge counts are cached **inside `NotificationInboxService.GetUnreadBadgeCountsAsync`** via short-TTL `IMemoryCache` (~2 min) keyed by `CacheKeys.NotificationBadgeCounts(userId)`. `NotificationBellViewComponent` no longer owns the cache — it calls `GetUnreadBadgeCountsAsync` directly and the service handles caching. Meter aggregates are cached inside `NotificationMeterProvider` itself with the same TTL. Both are invalidated in-band by the dispatch / inbox services after every write.
 - **Cross-section reads** for meter counts route through `IUserServiceRead.GetAllUserInfosAsync` (consent-review pending, onboarding-pending, and pending-deletion counts derived in-memory from the snapshot), `IGoogleSyncServiceRead.GetFailedSyncEventCountAsync`, `ITeamServiceRead.GetTeamsAsync` (pending join-requests summed in-memory), `ITicketSyncService.IsInErrorStateAsync`, `IApplicationDecisionService.GetUnvotedApplicationCountAsync`, and `ICampServiceRead.GetSettingsAsync` + `GetCampsForYearAsync` (the per-lead pending count is derived in-memory from the returned camp snapshots). `IRoleAssignmentService.GetActiveUserIdsInRoleAsync` powers `SendToRoleAsync` so it doesn't query `role_assignments` directly.
 - **Cleanup:** `CleanupNotificationsJob` is registered with Hangfire as `cleanup-notifications` on cron `30 4 * * *` (daily at 04:30 UTC). It goes through `INotificationRepository.DeleteResolvedOlderThanAsync` (7-day cutoff), `DeleteUnresolvedInformationalOlderThanAsync` (30-day cutoff), and `DeleteUnresolvedBySourcesAsync` (purges unresolved rows of retired sources — currently `ApplicationSubmitted` and `ConsentReviewNeeded` — that have no remaining resolution path). Other actionable unresolved notifications are never auto-deleted.
-- **Cross-domain navs:** `NotificationRecipient.User` and `Notification.ResolvedByUser` navs were dropped (shadow navigations) — EF wires the FK constraints without exposed navigation properties. Recipient + resolver display names resolve via `IUserServiceRead.GetUserInfosAsync` in `NotificationInboxService` (design-rules §6).
+- **Cross-domain navs:** `NotificationRecipient.UserId` and `Notification.ResolvedByUserId` are bare Guid columns — no FK constraint, no nav property (#992 cut the FK, #996 cut the last navs). Recipient + resolver display names resolve via `IUserServiceRead.GetUserInfosAsync` in `NotificationInboxService` (design-rules §6).
 
 ### Routes
 

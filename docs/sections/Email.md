@@ -36,9 +36,9 @@ Transactional email outbox: queue, render, deliver, retry, pause/resume. Backs c
 | HtmlBody | string | Rendered HTML body |
 | PlainTextBody | string? | Optional plain-text alternative |
 | TemplateName | string | Template identifier used to render this message |
-| UserId | Guid? | FK → User (optional) — **FK only**, no nav |
-| CampaignGrantId | Guid? | FK → CampaignGrant (Campaigns) — **FK only**, no nav; status mirroring writes through `ICampaignService` |
-| ShiftSignupId | Guid? | FK → ShiftSignup (Shifts) — **FK only**, no nav; dedup query filters on the FK column directly |
+| UserId | Guid? | Bare cross-section id (optional) — no FK constraint, no nav |
+| CampaignGrantId | Guid? | Bare cross-section id (CampaignGrant, Campaigns) — no FK constraint, no nav; status mirroring writes through `ICampaignService` |
+| ShiftSignupId | Guid? | Bare cross-section id (ShiftSignup, Shifts) — no FK constraint, no nav; dedup query filters on the column directly |
 | ReplyTo | string? | Reply-To header value |
 | ExtraHeaders | string? | JSON-encoded additional headers (e.g., `List-Unsubscribe`) |
 | Status | EmailOutboxStatus | Queued / Sent / Failed |
@@ -145,9 +145,9 @@ Per design-rules §8, each `system_settings` key is owned by its consuming secti
 **Status:** (A) Migrated.
 
 - `EmailOutboxService` and `OutboxEmailService` live in `Humans.Application.Services.Email/` and depend only on Application-layer abstractions.
-- `IEmailOutboxRepository` (impl `src/Humans.Infrastructure/Repositories/Email/EmailOutboxRepository.cs`) is the only file that touches `DbContext.EmailOutboxMessages`. The `IsEmailSendingPaused` row in `system_settings` is no longer read or written here — `EmailOutboxService` reaches it through `ISystemSettingsService` (SystemSettings section owns the table). Registered Singleton via `IDbContextFactory<HumansDbContext>` so it can be injected into Application services and the recurring job alike.
+- `IEmailOutboxRepository` (impl `src/Humans.Infrastructure/Repositories/Email/EmailOutboxRepository.cs`) is the only file that touches `DbContext.EmailOutboxMessages`. The `IsEmailSendingPaused` row in `system_settings` is no longer read or written here — `EmailOutboxService` reaches it through `ISystemSettingsService` (SystemSettings section owns the table). Registered Singleton via `IDbContextFactory<EmailDbContext>` (peeled out of `HumansDbContext` in #858) so it can be injected into Application services and the recurring job alike.
 - **Decorator decision — no caching decorator.** Outbox is a sequential queue drain, not a hot-path read shape.
-- **Cross-domain navs stripped:** `EmailOutboxMessage` carries no navigation properties at all — `User`, `CampaignGrant`, and `ShiftSignup` are all shadow relationships in `EmailOutboxMessageConfiguration` (FK + `ON DELETE SET NULL` only). User display data resolves via `IUserService`; grant status mirroring goes through `ICampaignService`; the shift-signup dedup query filters on `ShiftSignupId` directly.
+- **Cross-domain navs stripped:** `EmailOutboxMessage` carries no navigation properties at all — `UserId`, `CampaignGrantId`, and `ShiftSignupId` are bare Guid columns in `EmailOutboxMessageConfiguration` with no FK constraint and no nav (#992 cut the FK, #996 cut the last navs). A stale id is an accepted orphan on this append-only send log, pruned on age by `DeleteSentOlderThanAsync`. User display data resolves via `IUserService`; grant status mirroring goes through `ICampaignService`; the shift-signup dedup query filters on `ShiftSignupId` directly.
 - **Four Application-layer connector abstractions keep Infrastructure concerns out of Application** (all in `Humans.Application.Interfaces.Email`):
   - `IEmailBodyComposer` — wraps rendered HTML into the branded shell and produces the plain-text alternative. Implementation `BrandedEmailBodyComposer` lives in Infrastructure.
   - `IImmediateOutboxProcessor` — triggers an out-of-band processor run for time-sensitive templates. Implementation `HangfireImmediateOutboxProcessor` lives in Infrastructure.

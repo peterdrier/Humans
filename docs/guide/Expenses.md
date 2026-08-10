@@ -1,12 +1,5 @@
 <!-- freshness:triggers
-  src/Humans.Application/Services/Expenses/**
-  src/Humans.Domain/Entities/ExpenseReport.cs
-  src/Humans.Domain/Entities/ExpenseLine.cs
-  src/Humans.Domain/Entities/ExpenseAttachment.cs
-  src/Humans.Domain/Entities/HoldedExpenseOutboxEvent.cs
-  src/Humans.Domain/Enums/ExpenseReportStatus.cs
-  src/Humans.Infrastructure/Repositories/Expenses/**
-  src/Humans.Web/Controllers/ExpensesController.cs
+  src/Sections/Humans.Expenses/**
 -->
 <!-- freshness:flag-on-change
   Expense lifecycle, IBAN access rules, Holded sync, and resource-based authorization — review when Expenses services/entities/controllers/auth handlers change.
@@ -66,7 +59,7 @@ Once every purchase item has a receipt and your IBAN is set, submit. You can wit
 
 ### See what you're owed
 
-Once one of your reports has reached the org's accounting system, **My expenses** shows a card with what the collective currently owes you, what's been paid to date, and when the last payment went out — plus a ledger of your submitted reports and the payments received against them. The balance can include amounts unrelated to your reports, so the rows won't always sum to it exactly.
+Once one of your reports has reached the org's accounting system, **My expenses** shows a card with your current balance and a ledger of every line Holded has booked to your account — what's owed to you and what's been paid, shown exactly as Holded records it. It's the account's real statement, not a summary of your reports, so the rows won't map one-to-one to what you submitted. If your account is linked but nothing's posted yet, or it isn't linked at all, you'll see a note instead.
 
 ## As a Coordinator
 
@@ -84,7 +77,7 @@ Go to `/Expenses/Review` to see every report waiting for Finance. Open one to ch
 
 ### Pay people
 
-Approved reports are booked into the org's accounting system (Holded) automatically. Payment is made outside the app by bank transfer. Once paid, the member's creditor balance in Holded updates, and their **My expenses** page shows the owed/paid summary.
+Approved reports are booked into the org's accounting system (Holded) automatically. Payment is made outside the app by bank transfer. Once paid, the member's creditor balance in Holded updates, and their **My expenses** page reflects it in their account ledger.
 
 ## Related sections
 

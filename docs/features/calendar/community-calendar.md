@@ -107,8 +107,8 @@ The following are explicitly deferred to future slices:
 ```
 CalendarEvent
 ├── Id: Guid
-├── OwningTeamId: Guid (FK → Team)
-├── CreatedByUserId: Guid (FK → User)
+├── OwningTeamId: Guid (bare cross-section reference to Team, no DB FK)
+├── CreatedByUserId: Guid (bare cross-section reference to User, no DB FK)
 ├── Title: string (required, 256)
 ├── Description: string? (4000)
 ├── StartUtc: Instant (required)

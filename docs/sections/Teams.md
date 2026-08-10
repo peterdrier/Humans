@@ -217,6 +217,8 @@ Three controllers serve this section. `TeamController` (`[Route("Teams")]`) hand
 - Toggling `EarlyEntryEnabled` off never deletes existing grants — they simply stop appearing on the roster while disabled.
 - `RemoveEarlyEntryGrantAsync` is idempotent (removing an absent grant is a no-op).
 - `ManageEarlyEntry` authority: Admin / TeamsAdmin / Board on any team; `EETeamAdmin` on any team (this operation only); a team coordinator (or parent-department coordinator) on their own team.
+<!-- wheat: docs/superpowers/plans/2026-06-02-team-early-entry.md §As-built amendments -->
+- `EETeamAdmin` is in `RoleNames.All` and `RoleNames.BoardManageableRoles` (board-grantable, surfaces in the role-assignment UI) but deliberately **not** in the `AnyAdminRole` policy — its only surface is the per-team `Teams/{slug}/EarlyEntry` page reached from Team Details, not the admin shell. The omission is the design, not a gap.
 
 ## Negative Access Rules
 

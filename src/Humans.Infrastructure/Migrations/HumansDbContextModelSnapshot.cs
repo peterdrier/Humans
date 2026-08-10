@@ -458,105 +458,6 @@ namespace Humans.Infrastructure.Migrations
                     b.ToTable("event_settings", (string)null);
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.GateScanEvent", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("AdmitDedupeKey")
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)");
-
-                    b.Property<string>("Barcode")
-                        .IsRequired()
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)");
-
-                    b.Property<Instant?>("ClientScanAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid?>("GuestUserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("LaneId")
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
-                    b.Property<string>("Note")
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
-
-                    b.Property<Instant>("OccurredAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid?>("OverrideByUserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("ScannedByUserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid?>("TicketAttendeeId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Verdict")
-                        .IsRequired()
-                        .HasMaxLength(40)
-                        .HasColumnType("character varying(40)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("AdmitDedupeKey")
-                        .IsUnique()
-                        .HasDatabaseName("ix_gate_scan_events_admit_dedupe_key");
-
-                    b.HasIndex("OccurredAt");
-
-                    b.HasIndex("ScannedByUserId");
-
-                    b.ToTable("gate_scan_events", (string)null);
-                });
-
-            modelBuilder.Entity("Humans.Domain.Entities.GateSettings", b =>
-                {
-                    b.Property<int>("Id")
-                        .HasColumnType("integer");
-
-                    b.Property<Instant>("GeneralEntryOpensAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("MinorAgeThresholdYears")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("gate_settings", (string)null);
-                });
-
-            modelBuilder.Entity("Humans.Domain.Entities.GateStaffPin", b =>
-                {
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<bool>("AdminEnrolled")
-                        .HasColumnType("boolean");
-
-                    b.Property<Instant>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("PinHash")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
-
-                    b.Property<Instant>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("UserId");
-
-                    b.ToTable("gate_staff_pins", (string)null);
-                });
-
             modelBuilder.Entity("Humans.Domain.Entities.GeneralAvailability", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1900,25 +1801,6 @@ namespace Humans.Infrastructure.Migrations
                         .HasDatabaseName("IX_volunteer_tag_preferences_user_tag_unique");
 
                     b.ToTable("volunteer_tag_preferences", (string)null);
-                });
-
-            modelBuilder.Entity("Microsoft.AspNetCore.DataProtection.EntityFrameworkCore.DataProtectionKey", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("FriendlyName")
-                        .HasColumnType("text");
-
-                    b.Property<string>("Xml")
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("DataProtectionKeys");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole<System.Guid>", b =>

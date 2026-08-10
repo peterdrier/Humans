@@ -62,7 +62,7 @@ No new tables or columns. Derived from existing `event_settings`, `rotas`, `shif
 
 ### Period assignment
 
-A shift's period bucket is computed from its day offset via `Shift.GetShiftPeriod(EventSettings)`, regardless of the rota's `RotaPeriod`:
+A shift's period bucket is computed from its day offset via `Shift.GetShiftPeriod(IBurnSettingsInfo)`, regardless of the rota's `RotaPeriod`:
 - Day offset < 0 → `ShiftPeriod.Build`
 - Day offset 0..`EventEndOffset` → `ShiftPeriod.Event`
 - Day offset > `EventEndOffset` → `ShiftPeriod.Strike`

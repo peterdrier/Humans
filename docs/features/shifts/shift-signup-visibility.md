@@ -59,21 +59,21 @@ Coordinators and admins managing shifts cannot currently see who has signed up f
 
 ## Data Model
 
-**No schema changes.** `ShiftSignup` already carries `UserId`, `Status`, and navigation to `User` (with `DisplayName`, profile picture data). Signup data is already loaded on the admin page via navigation properties.
+**No schema changes.** `ShiftSignup` carries `UserId` and `Status` as bare columns — the `User` navigation was stripped in #541 and the FK went with the cross-section FK cut in #992. Display data (`DisplayName`, profile picture) resolves through `IUserServiceRead.GetUserInfosAsync` from the cached user snapshot.
 
 ### Service Layer
 
-`GetBrowseShiftsAsync` is called with `includeSignups: true` unconditionally on `/Shifts` while the public policy is in effect. The service includes `User` navigation on `ShiftSignup` entities and filters to Confirmed + Pending status only. When the policy is reverted, both `ShowSignups` and `includeSignups` flip back to `isPrivileged` together.
+`GetBrowseShiftsAsync` is called with `includeSignups: true` unconditionally on `/Shifts` while the public policy is in effect. The service loads signups filtered to Confirmed + Pending status only and stitches display names in memory from the user snapshot. When the policy is reverted, both `ShowSignups` and `includeSignups` flip back to `isPrivileged` together.
 
 ### ViewModel Changes
 
 Add signup user data to `ShiftDisplayItem` (or a new nested DTO):
 
 ```csharp
-public record ShiftSignupInfo(Guid UserId, string DisplayName, SignupStatus Status, string? ProfilePictureUrl);
+public record ShiftSignupInfo(Guid UserId, string DisplayName, SignupStatus Status);
 ```
 
-`ProfilePictureUrl` is the route `/Human/{userId}/Picture` (or null if no picture uploaded). This is passed directly to `UserAvatarViewComponent`.
+The avatar is rendered from `UserId` via the `/Human/{userId}/Picture` route; the record carries no picture URL of its own.
 
 `ShiftDisplayItem` gains: `IReadOnlyList<ShiftSignupInfo> Signups`. The view chooses name-list vs avatar display based on the parent rota's `RotaPeriod`.
 

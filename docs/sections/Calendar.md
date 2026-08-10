@@ -33,14 +33,14 @@ A community-calendar event belonging to a team. May be a single event or a recur
 | Description | string (4000) | Optional |
 | Location | string (500) | Optional |
 | LocationUrl | string (2000) | Optional |
-| OwningTeamId | Guid | FK → Team (`OnDelete: Restrict`) — **FK only**, no nav. `CalendarEventConfiguration` wires the FK + cascade behavior via `HasOne<Team>()` (shadow relationship), per design-rules §6c. The Application service stitches team display names via `ITeamService.GetTeamNamesByIdsAsync` (§6b). |
+| OwningTeamId | Guid | Bare cross-section Guid column — no FK constraint, no nav (all cross-section FK constraints were cut in nobodies-collective/Humans#992; `memory/architecture/no-cross-section-ef-joins.md`). The Application service stitches team display names via `ITeamService.GetTeamNamesByIdsAsync` (§6b). |
 | StartUtc | Instant | First (or only) occurrence start in UTC |
 | EndUtc | Instant? | Required iff `IsAllDay = false`. For all-day events, set to half-open exclusive midnight (`EndDate + 1 day` 00:00 in `RecurrenceTimezone`). May be null on legacy single-day all-day rows |
 | IsAllDay | bool | All-day event |
 | RecurrenceRule | string (500)? | RFC 5545 RRULE (no `RRULE:` prefix). Null = single event |
 | RecurrenceTimezone | string (100)? | IANA TZ. Required iff `RecurrenceRule` is set |
 | RecurrenceUntilUtc | Instant? | Denormalised UNTIL — supports indexable "rule reaches window" queries |
-| CreatedByUserId | Guid | FK → User — **FK only**, no nav |
+| CreatedByUserId | Guid | Bare cross-section Guid column — no FK constraint, no nav |
 | CreatedAt | Instant | |
 | UpdatedAt | Instant | |
 | DeletedAt | Instant? | Soft delete; global query filter excludes non-null |
@@ -67,7 +67,7 @@ Per-occurrence override or cancellation for a recurring `CalendarEvent`. Cascade
 | OverrideDescription | string (4000)? | |
 | OverrideLocation | string (500)? | |
 | OverrideLocationUrl | string (2000)? | |
-| CreatedByUserId | Guid | FK → User — **FK only**, no nav |
+| CreatedByUserId | Guid | Bare cross-section Guid column — no FK constraint, no nav |
 | CreatedAt | Instant | |
 | UpdatedAt | Instant | |
 
@@ -135,18 +135,18 @@ The calendar is intentionally open: no resource-based authorization gates edit/d
 
 **Owning services:** `CalendarService` (keyed inner write/read service), `CachingCalendarService` (decorator exposing `ICalendarService` and `ICalendarServiceRead`)
 **Owned tables:** `calendar_events`, `calendar_event_exceptions`
-**Status:** (A) Migrated (peterdrier/Humans PR for issue nobodies-collective/Humans#569, 2026-04-23, design-rules §15i). Caching decorator added 2026-05-16.
+**Status:** (A) Migrated (peterdrier/Humans PR for issue nobodies-collective/Humans#569, 2026-04-23, design-rules §15i). Caching decorator added 2026-05-16. Per-section `CalendarDbContext` split out of `HumansDbContext` in nobodies-collective/Humans#858 (live in prod 2026-08-02).
 
 - Service lives in `Humans.Application/Services/Calendar/CalendarService.cs` and never imports `Microsoft.EntityFrameworkCore` (enforced by the project's reference graph, design-rules §2b).
-- `ICalendarRepository` (impl in `Humans.Infrastructure/Repositories/Calendar/CalendarRepository.cs`) is the only code path that touches `calendar_events` / `calendar_event_exceptions` via `DbContext`.
+- `ICalendarRepository` (impl in `Humans.Infrastructure/Repositories/Calendar/CalendarRepository.cs`) is the only code path that touches `calendar_events` / `calendar_event_exceptions`, via `IDbContextFactory<CalendarDbContext>` (per-section DbContext, nobodies-collective/Humans#858) for per-call scoped contexts. `OwningTeamId` is a bare Guid, so the Teams tables stay in `HumansDbContext` and are deliberately absent from `CalendarDbContext`.
 - **Caching decorator** — `CachingCalendarService` (Singleton, in `Humans.Infrastructure/Services/Calendar/`) wraps the keyed Scoped inner `ICalendarService` and owns the `CalendarEventInfo` projection — every non-soft-deleted event row with its `Exceptions` collection embedded, keyed by event id. Load-all warmup uses the normal `ICalendarService.GetAllEventInfosAsync` read method; per-key refresh uses `GetEventInfoAsync`. Window queries (`GetOccurrencesInWindowAsync`) are answered by snapshot-scanning the dict and delegating expansion to `CalendarOccurrenceExpander`. All five mutation paths (`Create`, `Update`, `Delete`, `CancelOccurrence`, `OverrideOccurrence`) flow through the decorator, which delegates to the inner and then reloads the affected event through the same read surface to refresh the single cache entry (or removes it if soft-deleted). **Per-occurrence writes (cancel/override) evict the PARENT event entry** — there is no separate cache row for `CalendarEventException`. Documented at the call site (`CachingCalendarService.InvalidateEventAsync` remarks) and on the projection record (`CalendarEventInfo` `<remarks>`). Surfaced on `/Debug/CacheStats` as `Calendar.Event`. `TrackedCache` owns startup warmup; the decorator is registered as the hosted service.
-- **Cross-domain navs** — `CalendarEvent.OwningTeamId` is FK-only, per §6c; `CalendarEventConfiguration` declares the FK + cascade via `HasOne<Team>()` (shadow relationship) with no `OwningTeam` nav property. Display stitching routes through `ITeamServiceRead.GetTeamsAsync` (§6b in-memory join). Aggregate-local nav `CalendarEvent.Exceptions` is kept and eagerly loaded by the repository.
+- **Cross-domain navs** — `CalendarEvent.OwningTeamId` is a bare Guid column with no FK constraint and no `OwningTeam` nav property (nobodies-collective/Humans#992). Display stitching routes through `ITeamServiceRead.GetTeamsAsync` (§6b in-memory join). Aggregate-local nav `CalendarEvent.Exceptions` is kept and eagerly loaded by the repository.
 - **Cross-section calls** — public interfaces this section consumes: `ITeamServiceRead` (display names, team picker), `IAuditLogService` (mutation audit).
 - **Architecture test** — `tests/Humans.Application.Tests/Architecture/CalendarArchitectureTests.cs` pins the §15 shape and the decorator invariants (`CachingCalendarService` is sealed, implements `ICalendarService`/`ICalendarServiceRead`, surfaces `ICacheStats`, and keeps the read interface DTO-only).
 
 ### Touch-and-clean guidance
 
-- When adding new read-only controller actions, route through `ICalendarServiceRead`; mutations route through `ICalendarService`. Do not inject `HumansDbContext` into `CalendarController`.
+- When adding new read-only controller actions, route through `ICalendarServiceRead`; mutations route through `ICalendarService`. Do not inject `CalendarDbContext` (or any `DbContext`) into `CalendarController`.
 - Do not add `.Include(e => e.OwningTeam)` or `.Include(e => e.CreatedByUser)` — the entity carries FKs only.
 - Every new mutation must write an `AuditLogEntry` via `IAuditLogService`; do not skip audit for "admin convenience" operations.
 - Every new page must have a nav link (CLAUDE.md coding rules — no orphan pages).

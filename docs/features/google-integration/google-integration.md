@@ -162,7 +162,7 @@ GoogleResource
 ├── GoogleId: string (256) [unique, Google's ID]
 ├── Name: string (512)
 ├── Url: string? (2048) [Google Drive URL]
-├── TeamId: Guid (FK → Team, required)
+├── TeamId: Guid (required; bare cross-section id — no FK constraint, no nav, per #992)
 ├── ProvisionedAt: Instant
 ├── LastSyncedAt: Instant?
 ├── IsActive: bool
@@ -330,7 +330,7 @@ SyncServiceSettings
 ├── ServiceType: SyncServiceType [enum]
 ├── SyncMode: SyncMode [enum]
 ├── UpdatedAt: Instant
-└── UpdatedByUserId: Guid? (FK → User)
+└── UpdatedByUserId: Guid? (bare cross-section id — no FK constraint, no nav, per #992)
 ```
 
 ### SyncServiceType Enum

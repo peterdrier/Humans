@@ -13,7 +13,7 @@
 
 # Roslyn Analyzer Candidates
 
-Forward-looking inventory of *additional* in-repo analyzer rules beyond the currently-shipped set (`HUM0001`–`HUM0021`, `HUM0024`–`HUM0033`; catalogued in [`code-analysis.md`](code-analysis.md)). **IDs are assigned at ship time from the next free slot in `AnalyzerReleases.Unshipped.md` — currently `HUM0034`.** The candidate headings below are deliberately *un-numbered*: several once carried provisional `HUM00xx` numbers that later shipped for unrelated rules, so do not pre-claim an id here. This file is the queue we draw from when adding the next analyzer; do not start writing one without checking here first.
+Forward-looking inventory of *additional* in-repo analyzer rules beyond the currently-shipped set (`HUM0001`–`HUM0021`, `HUM0024`–`HUM0034`; catalogued in [`code-analysis.md`](code-analysis.md)). **IDs are assigned at ship time from the next free slot in `AnalyzerReleases.Unshipped.md` — currently `HUM0035`.** The candidate headings below are deliberately *un-numbered*: several once carried provisional `HUM00xx` numbers that later shipped for unrelated rules, so do not pre-claim an id here. This file is the queue we draw from when adding the next analyzer; do not start writing one without checking here first.
 
 ## Framing
 

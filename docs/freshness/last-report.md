@@ -1,103 +1,159 @@
-# Freshness Sweep Report
+# Freshness Sweep — 2026-08-10
 
-**Date:** 2026-08-08
-**Mode:** diff
-**Previous anchor:** `980896a1d` · **New anchor:** `upstream/main` `80f14b801`
-**Worktree base:** `origin/main` `38682230b`
-**Dirty set:** 11 of 12 mechanical entries (9 prompt + 2 script) + 108 editorial docs + 0 unmarked docs
-**Outcome:** 67 docs drift-fixed · 6 mechanical regens updated (+5 verified clean) · **59 dead `freshness:triggers` paths repaired across 40 docs** · **~25 living-doc references to the deleted `IUserService.GetByIdsAsync` corrected** · 4 husks pruned (−4,416 lines, target 3,246 / cap 4,544) · 6 code-verified wheat migrations · 9 inbound-ref rewrites (6 of them in C#/test source) · 0 errors
+| | |
+|---|---|
+| Mode | diff |
+| Previous anchor | `80f14b801` |
+| New anchor | `04d2490f0` |
+| Commits in window | 33 (30 non-merge) |
+| Changed files in window | 1,108 |
+| Worktree base | `origin/main` @ `2ca3d5241` (frozen) |
+| Mechanical entries dirty | 11 |
+| Editorial docs dirty | 125 (+3 recovered, see *Systematic findings*) |
 
-`upstream/main` is an ancestor of `origin/main` — normal mid-batch state.
+The window is dominated by four refactors: **#866 (G5)** moved six sections into their own
+projects under `src/Sections/`; **#858** peeled thirteen more per-section DbContexts out of
+`HumansDbContext`; **#992/#996** cut all 54 cross-section FK constraints and stripped the last
+cross-section EF navigation properties; **#809** replaced direct `EventSettings` reads with
+`IBurnSettingsInfo`. Most drift this sweep is a consequence of one of those four.
 
-Range themes (upstream `980896a1d..80f14b801`, 49 commits): **three columns dropped outright** — `Profile.IsSuspended`, `Profile.ProfilePictureData`, `UserEmail.DisplayOrder` (#1217) — plus the **`camp_leads` table** and its obsolete `SpecialRole` SQL default (#1199); **16 dead cross-section EF navs stripped across 8 sections** (#1188); **`IUserService.GetByIdsAsync` removed** as an entity leak, callers consolidated on `GetUserInfosAsync` (#1182); **Feedback creation stopped entirely and its screens restricted to full admins** (#1185), with **Issues taking over Feedback's membership-gate exemption** so non-Active users can still file (#1189); a **Finance/Holded hardening run** (creditor at-most-one-member invariant on all three write paths #1194, re-check-before-write #1216, dropped paid-poll backfill promise #1214, parse-throw normalization #1211, malformed-contact isolation #1201, paginated+cached contact list #1193, account names on the bind card #1173); **Search reclassified as an orchestrator** with a new `sections/Search.md` (#1197, #1200); **HUM0033 cancellation-token-propagation analyzer established** (#1183) alongside the **HUM0031 ratchet freeze** (#1205) and a HUM0024 root-namespace bug fix (#1184); Cantina off `EventSettings` onto `BurnSettingsInfo` (#1202); Shifts returning a failure instead of throwing on repeat no-show (#1190); DataAnnotations localization + resx parity test (#1207). The worktree base additionally carries the **`Humans.UI` extraction** (#1220) and the **`StoreDbContext` peel-out** (#1222), both of which the docs are now aligned to.
+## Systematic findings
 
-## Two systematic findings (not per-doc drift)
+**37 dead `freshness:triggers` globs across 8 docs.** Every one pointed at a path killed by the
+G5 moves or the `Humans.UI` extraction. Two docs — `docs/guide/Events.md` and
+`docs/guide/Expenses.md` — had *every* trigger dead, so they had silently stopped firing and had
+not been drift-checked for several sweeps. Globs repaired against real paths
+(`src/Sections/Humans.<Section>/**`, `src/Humans.UI/...`), blocks reformatted, and a full
+content pass run over the recovered docs. A glob-aware verifier now reports **0 dead paths**
+across all 131 trigger-bearing docs.
 
-**1. 64 dead `freshness:triggers` paths across 44 docs.** Docs whose trigger globs name a specific file stopped firing when that file moved — `src/Humans.Web/Authorization/*` → `src/Humans.UI/Authorization/*`, `Data/Configurations/<X>Configuration.cs` → `Data/Configurations/<Section>/<X>Configuration.cs`, `Services/Profile/*` → `Services/Profiles/*`. All 64 repaired: retargeted where the file still exists, dropped where it does not, with four hand-resolved renames (`BoardController` → `GovernanceBoardVotingController`, `NotificationController` → `NotificationsController`, `ShiftManagementRepository` → `ShiftRepository.Management`, and `IssuesWidgetViewComponent` dropped — `NavBadgesViewComponent` already covers the badge). The sweep's own verifier missed the last 5 (`Services/Profile/**` ×2, `Views/Board/**`, `HostedServices/**`, `Web/Resources/SharedResource*.resx`) because it only checked literal file paths, not `**`/`*` globs — caught in PR review and repaired with a glob-aware re-scan. Verifier now reports zero, and every trigger block was re-checked for structural integrity.
+This is the second sweep running to find a large batch of dead triggers (last sweep: 64 across
+44 docs). The failure is silent by construction — a doc with a dead glob never appears in the
+dirty list, so it looks *clean* rather than *unchecked*. Worth a CI check.
 
-This is a recurring failure mode, not a one-off: any PR that moves a file silently unhooks every doc that names it. Worth a lint.
+**A doc-set duplicate resolved.** `docs/features/audit-log/audit-log.md` carried a
+hand-maintained copy of the `AuditAction` catalog that had fallen 40+ values behind the
+`freshness:auto` block in `docs/sections/AuditLog.md`. Deleted the copy in favour of a pointer —
+a second auto-block on the same source would just recreate the drift.
 
-**2. `IUserService.GetByIdsAsync` no longer exists anywhere in `src/`** (removed by #1182), but ~25 living-doc sentences still named it as *the* display-stitching path — including `docs/sections/SECTION-TEMPLATE.md`, which would have propagated the dead name into every new section doc. Corrected to `IUserServiceRead.GetUserInfosAsync` (or `GetUserInfoAsync` for the single-id form) after checking, per section, which interface the service actually injects. The same pass caught `IUserService.GetByIdAsync`, `GetCountByContactSourceAsync` and `GetByIdsWithEmailsAsync` — none of which exist either.
+## Updated automatically
 
-## Updated automatically (mechanical)
+| Entry | Summary |
+|---|---|
+| `dev-stats` | script; 2 rows appended (table now 141 data rows) |
+| `reforge-history` | script; CSV now 130 distinct days |
+| `data-model-index` | Store entity names corrected to their post-G5 class names (`StoreProduct`→`Product` etc.) |
+| `controller-architecture-audit` | 90 controllers (was 89): G5 split `FinanceController` into `BudgetAdminController` (Budget CRUD, stays in Web) + a Holded-only `FinanceController` in `src/Sections/Humans.Finance`, which gained `UnbindCreditor` and `ResyncCreditorLedger` |
+| `dependency-graph` | two missing edges: `DashboardService → IBurnSettingsService`, and a **new cycle #6** — `CampService` holds `Lazy<ICityPlanningService>` to delete polygon rows on camp deletion while `CityPlanningService` eagerly injects `ICampServiceRead` |
+| `service-data-access-map` | 14 sections repointed to their peeled DbContexts; intro context table 9→24; 6 stale G5 folder paths; #992/#996 note added |
+| `authorization-inventory` | regenerated across `src/Humans.Web`, `src/Sections`, `src/Humans.UI` |
+| `guid-reservations` | 2 stale source links (blocks `0002`, `0026` moved under G5) |
+| `code-analysis-suppressions` | verified clean — already matched both `Directory.Build.props` |
+| `docs-readme-index` | index tables already complete (no dead links, G5 in-project docs pointed at correctly); fixed the *Historical Design Records* description of `docs/plans/`, which still said "semantic versioning, Google Groups" against contents that are now the Q3 gate ladder, G0 audit, demolition/frozen-section inventories, section DAG and FK-cut inventory |
+| `about-page-packages` | package versions refreshed against `Directory.Packages.props` + all `.csproj` |
 
-- `reforge-history.csv` — script: 128 rows (128 distinct days), ok=3 fail=0
-- `development-stats.md` — script: +3 daily rows (table now 139 data rows); class/interface source reforge=3 days, regex-fallback=0
-- `authorization-inventory.md` — no controller, policy or handler added or removed. #1220 moved `PolicyNames.cs`, `AuthorizeViewTagHelper.cs` + 3 other TagHelpers, 3 ViewComponents and `_LoginPartial.cshtml` into `Humans.UI` with content unchanged; ~30 line-number references across §2/§6 corrected for the shift caused by the new `using Humans.UI.Authorization;` imports. `RoleChecks.cs` and `RoleNames` did **not** move. The #1185/#1189 Feedback→Issues exemption swap was already reflected pre-sweep — verified against `MembershipRequiredFilter.cs` rather than assumed
-- `service-data-access-map.md` — `StoreDbContext` added to the intro context table (the Store body was fixed inside #1222 but the intro table and count were missed); dropped `CampLeads` from Camps; Appendix A corrected — `DevLoginController` no longer injects `HumansDbContext`, that moved into `DevPersonaSeeder`, which itself now goes through owning-section services. Date → 2026-08-08
-- `controller-architecture-audit.md` — 89-controller/4-base-class set unchanged; no `[Http*]` attribute, route, action name or `[ActionName]` override changed in range. The only churn was the `Humans.Web.Authorization` → `Humans.UI.Authorization` namespace move and a same-purpose body change in `CampAdminController.SeedSystemRoles` (dropped a since-removed lead-migration step). Date → 2026-08-08
-- `docs/README.md` — one gap: `docs/sections/Search.md` (added by #1200) was unlisted. Features and guide tables re-verified complete against every file on disk
-- Verified clean, with evidence: `architecture/data-model.md` (entity index 106 rows vs 106 files under `Domain/Entities/`, exact match both directions, no `CampLead` row) · `architecture/dependency-graph.md` (all 287 eager + 19 lazy edges re-walked against current constructors; the only code edges absent from the diagram are its own documented exclusions) · `guid-reservations.md` (all 6 blocks still match; the `camp_leads`/`SpecialRole` removal had no deterministic GUID tied to it) · `architecture/code-analysis.md` (`Directory.Build.props` dropped `HUM_PROFILE_ISSUSPENDED` from `NoWarn`, but the generated block never listed it, so it was already consistent post-removal)
-- Not triggered: `about-page-packages` (no `.csproj` or `Directory.Packages.props` change in range)
+## Editorial drift fixed
 
-## Updated (editorial drift fixes — 67 docs)
+57 docs: `docs/sections/` (24), `docs/features/` (21), `docs/guide/` (7),
+`docs/architecture/` (4), plus `docs/seed-data.md`. Dominant themes:
 
-**Feedback / Issues / Auth (5).** `sections/Issues.md` + `features/issues/issues-system.md` — the `Issue.Reporter` / `.Assignee` / `.ResolvedByUser` and `IssueComment.SenderUser` navs were **removed outright**, not `[Obsolete]`-marked; EF now uses `HasOne<User>()` with no nav reference and no `CS0618` pragma. Every table row and prose mention corrected. `sections/Auth.md` — same for `RoleAssignment.User` / `.CreatedByUser`; also corrected the claim that `AboutController`/`ProfileController` still read `ra.User.DisplayName` under `CS0618` (they don't — the pragma is a dead no-op), and **dropped a false claim naming `SendAdminDailyDigestJob` / `SendBoardDailyDigestJob`**, neither of which exists anywhere in `src/`. `features/auth/authentication.md` — `PolicyNames.cs` path/namespace. Verified *not* drift: the Feedback admin-lockdown descriptions were already correct; the code in this window caught up to what the docs said.
+- **#992/#996 propagation** — the largest class by far. Docs across Shifts, Teams, Camps, Email,
+  Notifications, GoogleIntegration, Feedback, Issues, AuditLog, Calendar, Consent, Governance and
+  Campaigns still described cross-section FK constraints, `ON DELETE SET NULL`/`Cascade`
+  behaviour, `.Include(...)` chains, or navigation properties that no longer exist. All corrected
+  to bare-Guid columns with in-memory stitching via the `I*ServiceRead` surfaces.
+- **#858 DbContext ownership** — `IDbContextFactory<HumansDbContext>` corrected to the peeled
+  per-section context in Email, Notifications, Auth, Calendar and others.
+- **G5 / `Humans.UI` path drift** — moved types recited at their old paths.
+- **#809** — `Shift.GetShiftPeriod` now takes `IBurnSettingsInfo`, not `EventSettings`.
+- **#1241** — `HoldedSyncJob` trailing-window behaviour; Holded's `AddHoldedSection` renamed
+  `AddHoldedConnector`.
 
-**Profiles / Users (6).** `sections/Profiles.md`, `sections/Users.md` — dropped-column fallout: `IsSuspended` dual-write text now says the column is gone, `DisplayOrder` shadow-property note updated, and the `EventParticipationConfiguration.cs` path corrected (Shifts → Users folder). `features/profiles/contact-fields.md`, `preferred-email.md` — `UserEmail.DisplayOrder` removed from the entity diagram; the notification-target hand-off is **alphabetical by email**, not display-order (confirmed in `UserEmailService.cs`). `profile-pictures-birthdays.md` — `ProfilePictureData` removed and the Storage Approach prose rewritten from "pending deferred drop (#702)" to already-dropped (#528). `profiles.md` — `Profile.State` replaces `IsSuspended` in the entity diagram and the admin suspend action.
+### Escalated by agents, then verified and fixed inline
 
-**Camps / City Planning (4).** `sections/Camps.md` — stale `/Camps/{slug}/Leads/*` routing row removed (no such action; lead add/remove goes through `/Camps/{slug}/Roles/*`). `features/camps/camps.md` — `Leads` dropped from `Camp`'s nav list; US-20.3/20.4 rewritten around `CampRoleAssignment` instead of the retired `CampLead`; three dead `/Leads/*` URL rows and a dead authorization row removed. `guide/Camps.md` (end-user) — "co-leads" removed from the registration-form field list (no such field; you're auto-added as the only lead) and the "Manage co-leads" bullet rewritten around the Members-page Roles panel. `sections/CityPlanning.md` — the note claiming `CampPolygon.CampSeason` navs "remain declared" is false; the configs use `HasOne<CampSeason>()` with no back-reference.
+Every one of these was reported as "flag for a later pass". Each was a concrete, code-checkable
+contradiction, so it was fixed this sweep rather than queued:
 
-**Finance / Budget / Holded (2).** `sections/Budget.md` — `BudgetCategory.Team` and `BudgetAuditLog.ActorUser` deleted outright, not `[Obsolete]`-marked (3 sites); plus the orchestrator fixed a fourth, flagged claim that `BudgetLineItem.ResponsibleTeam` "is NOT yet `[Obsolete]`-marked — still read by the Finance CategoryDetail view under `#pragma warning disable CS0618`" — the nav does not exist at all and `CategoryDetail.cshtml` renders a stitched-in `ResponsibleTeamName`. `sections/Holded.md` — #1211 also normalizes malformed/unexpected-shape **2xx** bodies into `HoldedPermanentException`, not just 4xx. `Finance.md`, `Expenses.md` and the budget/expenses guides were kept in sync commit-by-commit and needed nothing.
-
-**Shifts / Cantina (3).** `sections/Shifts.md` — `MarkNoShowAsync` now guards non-Confirmed signups at the service layer and returns `SignupResult.Fail` rather than relying on the entity's `InvalidOperationException` (#1190). `sections/Cantina.md` + `features/cantina/daily-roster.md` — stale `EventSettings.GateOpeningDate`/`TimeZoneId` reads replaced with `BurnSettingsInfo` via `IBurnSettingsService` (#1202), plus the "no active event" phrasing and the Data Model reads table.
-
-**Governance / Onboarding / Teams (4).** `features/governance/asociado-applications.md` — the `Application` Data Model block claimed `User` / `ReviewedByUser` navs that do not exist. `sections/Teams.md` — three places described `TeamService` stitching `TeamMember.User` / `TeamJoinRequest.User` in memory; those stitchers are gone, display data resolves into DTOs, and the file-wide `CS0618` pragmas no longer gate any live `.User` read. `guide/Onboarding.md` — "feedback" replaced with "issue filing" in the list of pages reachable during onboarding, matching the #1189 exemption swap. `guide/Governance.md` — `CantinaAdmin` was missing from the `BoardManageableRoles` list.
-
-**Architecture rules (3).** `design-rules.md` — §1 documents the new `Humans.UI` shared-view-layer project; §8 adds Store to the peeled per-section DbContext list and drops `camp_leads` from the Camps row (the orchestrator also filled in `camp_members`, `camp_role_definitions`, `camp_role_assignments` and `CampRoleService`, which had been missing); §14 points the section-agnostic view models and view components at `Humans.UI`; the §7a audit-ordering **code sample** was rewritten off the dropped `profile.IsSuspended` onto `Profile.State`; the §6c forbidden-nav example swapped off the deleted `CampLead.User`; the §15i landmark now records that `IsSuspended` was dropped outright, not merely obsoleted. `conventions.md` — `DateTimeDisplayExtensions` namespace corrected to `Humans.UI.Extensions`, and both Smell-Checklist bullets generalized from `HumansDbContext` to "an application `DbContext`", since HUM0008/HUM0009 now match any section context structurally. `roslyn-analysis.md` — shipped set HUM0024–HUM0032 → HUM0024–**HUM0033**, next free id → HUM0034. `code-review-rules.md` and `coding-rules.md`: no drift.
-
-**Email / Mailer / Notifications / Campaigns / Calendar (5).** `sections/Email.md` — `EmailOutboxMessage` lost **all three** cross-domain navs (`User`, `CampaignGrant`, `ShiftSignup`), not just `User`. `sections/Campaigns.md` — `Campaign.CreatedByUser` and `CampaignGrant.User` fully removed. `sections/Calendar.md` + `features/calendar/community-calendar.md` — `CalendarEvent.OwningTeam` fully removed (and `CreatedByUser`, which never existed as a nav, dropped from the Navigation line). `sections/Notifications.md` — three stitching references. `sections/Mailer.md` — the Users dependency named three methods that do not exist; rewritten around `IUserServiceRead` via `MailerAudienceBase`.
-
-**Tickets / Store (1).** `sections/Tickets.md` — five stitching references. The other eight docs in the cluster were verified against their diffs and needed nothing (the changes were `[ExternalWrite]` attributes, `CancellationToken.None` hardening per #950, and the `Humans.UI` namespace move — none described at that level).
-
-**Global / Agent / AuditLog / Google (6).** `sections/Agent.md` + `features/agent/agent-section.md` — two new invariants: a `max_tokens` cutoff mid tool-call JSON **continues** the tool loop (truncated arguments swapped for `{}` before replay, since the API rejects an unmatched `tool_use` block), and a turn that throws or disconnects mid-stream never leaves an orphaned user message — the `finally` persists an `error`-refusal assistant message and bills the accumulated usage (#963, #990). `sections/AuditLog.md` — two false "`ResourceId` has no FK constraint" claims: the DB FK exists, only the C# nav was dropped. `sections/GoogleIntegration.md` — stale stitching reference, a resolved consumer-side item removed, and a new invariant that manual Google sync `Execute` ignores admin tab-close. `features/global/administration.md` + `guide/Admin.md` — the dashboard's open-feedback count is now Admin-only. The `freshness:auto` AuditAction catalog was left byte-identical: `AuditAction.cs` has zero diff in range.
-
-**Index / misc (2).** `sections/_Index.md` — `camp_leads` dropped from the Camps row. `features/test-system-reliability.md` — "six `if (!IsEnvironment("Testing"))` guards in `Program.cs` and infrastructure" is four, all in `Program.cs`.
-
-**Verified clean with evidence (no edit):** all three Search docs (`ISearchService : IOrchestrator`, the destination-page visibility model, and the #1198 test counts — 17 `SearchServiceTests`, 7 `SearchControllerTests` — all already matched); `sections/Finance.md`, `sections/Expenses.md`, `features/budget/budget.md`, `guide/Budget.md`, `guide/Expenses.md`; `sections/Mailer.md` retry/clamp invariant (0–90 s, default 60 s) re-verified against `MailerLiteClient.cs`; 10 of 15 email/mailer-cluster docs; 8 of 9 tickets/store docs; 6 of 7 shifts docs; `seed-data.md`, `features/active-user-metrics.md`, `features/expires-on-deadline.md`, `sections/Debug.md`, `sections/admin-shell.md`.
+| Doc | What was wrong |
+|---|---|
+| `guide/CityPlanning.md` | documented `/CityPlanning/Admin` and a single map page; real routes are `/CityPlanning`, `/CityPlanning/BarrioMap`, `/CityPlanning/ContainerMap/{year}`, `/CityPlanning/BarrioMap/Admin` |
+| `features/city-planning/city-planning.md` | cited `/js/container-map/` and a container-map `measure.js` import; both resolve under `/js/city-planning/` |
+| `sections/Profiles.md` ×2, `sections/Users.md` ×2, `features/profiles/dietary-medical-nudge.md` | credited `ProfileService` with six GDPR export slices; `UserService` absorbed profile storage in #745 and `ProfileService` implements no contributor interface |
+| `architecture/design-rules.md` §8b | "Two fanouts exist today" — there are three (`IEarlyEntryProvider`: Camps + Shifts + Teams) |
+| `features/global/administration.md` | full route table, area-split table and dashboard table for `BoardController` / `/Board/*`, deleted in #499. Board survives as a *role*, not an area |
+| `sections/Governance.md` ×2, `guide/Governance.md` ×2 | claimed term expiry never resets `Profile.MembershipTier`; `DowngradeMembershipTierForExpiredAsync` resets it (to another still-active tier, else Volunteer) and audits `TierDowngraded` |
+| `features/shifts/shift-signup-visibility.md` | `ShiftSignup.User` nav (stripped in #541) and a `ShiftSignupInfo` sample with a `ProfilePictureUrl` field that does not exist |
+| `features/cantina/daily-roster.md` | stray "two access paths compose with OR" contradicting the no-team-heuristic rule directly above it |
+| `sections/Tickets.md` | missing `/Tickets/Admin/Onsite` (`ScannerAccess`) routing row |
+| `sections/Mailer.md` | missing `POST /Mailer/Admin/SyncAll` and `POST /Mailer/Admin/Refresh` |
+| `features/governance/asociado-applications.md` | `Application` block missing `SignificantContribution`, `RoleUnderstanding`, `ReviewStartedAt`, `RenewalReminderSentAt` |
 
 ## Pruned
 
-4 husks, **−4,416 lines** (5% target 3,246 · 7% cap 4,544 · under cap).
+5 husks, **−3,039 lines** (5% target = 2,925; 7% cap = 4,095 of 58,514 total doc lines).
 
-| Husk | Lines | Reason |
+| Husk | Lines | Why it was all chaff after mining |
 |---|---|---|
-| `superpowers/plans/2026-05-25-holded-finance-feature2-creditor.md` | 1,642 | Shipped, then **structurally superseded** by the 2026-06-15 ledger single-source redesign — its central data model (`holded_creditor_balances` + `holded_payments`, `ListChartOfAccountsAsync` / `ListPaymentsAsync`) no longer exists, and its paid-signal design is dead (`SepaSent`/`Paid` statuses gone, `Approved` terminal, paid state read live from the ledger). Everything still true is already in `sections/Finance.md` / `sections/Expenses.md`. |
-| `superpowers/plans/2026-05-25-dietary-prompt-tightening.md` | 1,562 | Task/step checkboxes, verbatim code and test bodies, per-task `git`/`gh` commands. Its code is superseded: `PeekRangeShiftsAsync` exists nowhere, and `ShiftsController.SignUp`/`SignUpRange` plus the `RedirectIfDietaryMissingAsync` helpers are gone — the gate is service-side now. |
-| `superpowers/plans/2026-05-25-holded-finance-feature1-actuals.md` | 988 | Task-by-task build script. Durable findings already in `Holded.md`/`Finance.md`; residual unknowns resolved, and its stated provisioning rule is now false (`GetProvisioningPlanAsync` also seeds collision avoidance from the live Holded chart of accounts). |
-| `superpowers/specs/2026-05-25-dietary-prompt-tightening-design.md` | 224 | Goal/non-goals, behavior matrix, per-file change list, resource keys, test plan — all shipped and restated as US-35.5/35.6/35.7 in the surviving feature doc. |
+| `superpowers/plans/2026-06-02-team-early-entry.md` | 1,143 | body describes a shape that never shipped (art-specific labels, `EarlyEntryArtAdmin` role); as-built amendments already in `Teams.md` |
+| `superpowers/plans/2026-05-20-camp-roster-roles.md` | 886 | end state recorded in `Camps.md`; the `camp_leads` world it plans against was dropped in #774 |
+| `superpowers/plans/2026-06-16-voluntell-past-shifts.md` | 408 | absorbed into `Shifts.md`, and its split-button view design is superseded by the shipped unified Manage control |
+| `superpowers/plans/2026-06-05-e2e-auth-state-reuse.md` | 318 | fully shipped; every code sample is now the real file, with guards the plan never had |
+| `superpowers/plans/2026-06-24-cantina-arrival-and-fodmap.md` | 284 | absorbed into `Cantina.md` + `daily-roster.md`; FODMAP gone from `DietaryOptions` with zero references left |
 
-### Wheat migrated (6 items, each verified against code before migrating)
+### Wheat migrated
 
-- `holded-finance-feature1` §Task 7 → **`sections/Finance.md` Invariants** — a purchase doc is attributed **as a whole by its first product line's** booked account and its full `Total` lands on that one category; multi-account docs are not split (verified `HoldedFinanceService.MapDoc`, `bookedAccount = doc.Lines[0].AccountId`).
-- `holded-finance-feature1` §self-review → **`sections/Finance.md` Invariants** — actuals are keyed on the **calendar year** of the doc's Europe/Madrid date matched against `BudgetYear.Year` parsed as an int, so a non-numeric or non-calendar budget year shows no actuals (verified `FinanceController:719-724`, `HoldedRepository:77-83`).
-- `dietary-…-design` §Out of Scope → **`sections/Profiles.md` Invariants** — `Profile.DietaryPreference` is free text, not an enum; the radio group constrains the UI but nothing re-checks membership on POST, deliberately, so legacy pre-#279 values stay readable. Allergies are the exception (verified `ProfileController:427-428`, `UserService.SaveDietaryMedicalAsync`).
-- `dietary-…-design` §Voluntelling → **`sections/Profiles.md` Negative Access Rules** — a privileged approver cannot use the dietary redirect-and-replay to sign anyone else up; `IsPrivilegedSignupApprover` relaxes validation, it never switches the actor (verified `ProfileController:1673,1698-1748`).
-- `dietary-…-design` §Behavior Matrix → **`sections/Cantina.md` Invariants** — the roster must tolerate empty dietary fields: the `NeedsDietaryFirst` gate covers only the self-service `/Shifts` day toggle, while `VoluntellAsync` and `OnboardingWidgetController.SignUp` call `SignUpAsync` directly and are ungated (verified — `NeedsDietaryFirst` appears in exactly two files).
-- `dietary-…-design` §Risks → **`sections/Shifts.md` Invariants** — a disabled Sign-Up button is a hint, not the enforcement; the four Shifts views that render one pair `disabled` with `aria-disabled="true"` and a localized `title`, because `disabled` alone drops the control out of tab order. (The prune agent flagged this as having no allowed home; `sections/Shifts.md` **is** an allowed destination, so it was migrated rather than queued.)
+All six verified against current source before migration:
 
-### Inbound refs retargeted (9)
+| Wheat | → | Verified by |
+|---|---|---|
+| Camp registration persists camp + season + creator `CampMember` + Lead `CampRoleAssignment` in one `CreateCampAsync`; unseeded role catalogue degrades to member-only + warning, never blocks registration | `sections/Camps.md` | `CampService.CreateCampAsync` |
+| `EETeamAdmin` is board-grantable but deliberately **not** in `AnyAdminRole` — omission is the design | `sections/Teams.md` | `RoleNames.cs`, `AuthorizationPolicyExtensions.cs` |
+| Contributor forwarding lifetime: forward the caching decorator only when the fanout read comes off the cached projection (Camps), else forward scoped (Teams, Shifts) | `architecture/design-rules.md` §8b | `CampsSectionExtensions.cs:45`, `TeamsSectionExtensions.cs:30`, `ShiftsSectionExtensions.cs:59`, `CachingCampService.GetEarlyEntriesAsync` |
+| A bare-Guid cross-section FK column gets no index for free — #992 removed the EF auto-index with the constraint, so filtered/sorted columns need explicit `HasIndex(...)` | `architecture/conventions.md` | `CampMemberConfiguration`, `CampaignGrantConfiguration`, `BudgetAuditLogConfiguration`, `FeedbackReportConfiguration` |
+| SPA/Blazor rewrite was considered and rejected; ViewComponent layer is the consolidation surface | `architecture/conventions.md` | `src/Humans.UI/ViewComponents`, existing "server-rendered Razor is the default" rule |
+| Three survey authoring invariants: empty option `Value` ⇒ unanswerable; no free-text flag on options; anonymity chooser pre-selects Identified | `sections/Surveys.md` | `SurveyWizardFlow.cs`, `SurveyQuestionOption`, `SurveyViewModels.cs`, `Survey/Intro.cshtml` |
 
-`docs/features/profiles/dietary-medical-nudge.md` ×3 (bare "See \<spec\>." trailers removed — the acceptance criteria above each already carry the content) · `src/Humans.Web/Controllers/ProfileController.cs:1675` · `src/Humans.Web/Models/DietaryMedicalViewModel.cs:26` · `src/Humans.Web/ViewComponents/DietaryMissingBannerViewComponent.cs:11` · `src/Humans.Web/ViewComponents/ThingsToDoViewComponent.cs:128` · `tests/…/ProfileControllerDietaryMedicalReplayTests.cs:47` · `tests/…/DietaryMissingBannerViewComponentTests.cs:15` · `tests/…/ThingsToDoViewComponentDietaryGateTests.cs:22`. Four of these also named `ShiftsController.SignUp`/`SignUpRange`, actions that no longer exist; corrected to `ToggleDay` in passing. The only remaining mention of the deleted husks is in the previous sweep's report, which this file replaces.
-
-Two further stale claims in the surviving `dietary-medical-nudge.md`, surfaced while verifying wheat and fixed rather than queued: US-35.2 asserted "POST validates: dietary preference must be one of the four enum values" (nothing enforces that — see the migrated Profiles invariant), and its rationale for rejecting a modal ("no HTMX or modal-coordination infrastructure exists yet") no longer holds now that `ToggleDay` does partial-row swaps with `X-Redirect`/`X-Toast-*` headers and `_BuildStrikeRotaTable` uses confirm modals. The full-page decision stands on its own merits; only the dead reason was cut.
+No inbound refs needed retargeting — the deleted husks were referenced only by the
+`<!-- wheat: -->` provenance comments this sweep added.
 
 ## Flagged for human review
 
-None. Every concrete factual contradiction found this sweep was fixed in place, including the items the subagents escalated as out-of-scope (`BudgetLineItem.ResponsibleTeam`, `CantinaAdmin` in `BoardManageableRoles`, the `IsEnvironment("Testing")` count, `Campaigns.md` stitching methods, the `community-calendar.md` phantom nav, and the §7a code sample).
+None. Every escalated item was a concrete code-checkable contradiction and was fixed inline
+(see the table above).
 
 ## Proposed for review
 
 None — all candidates resolved this sweep.
 
-## Questions raised with Peter inline
+Two husks were analysed and **deliberately kept**: they are live documents, not history. Both
+were left unmodified. Neither is a prune candidate for future sweeps until its work completes —
+age alone does not make them husks.
 
-See the session transcript. Three items, none blocking this PR:
+## Questions
 
-1. `EmailOutboxMessageConfiguration.cs` still carries a `[Grandfathered]` attribute justified as "migrating to bare FK + service-level stitching" — that migration is now complete (no navs remain), so the attribute looks like a marker for finished work. Code change, out of a docs sweep's scope.
-2. `docs/plans/2026-08-03-demolition-inventory.md` lists `AccountMergeRequestConfiguration.cs` and `EventParticipationConfiguration.cs` as misfiled, to be moved at G1 — both were already moved to `Configurations/Users/` by #1178, inside this window.
-3. Dead literal `freshness:triggers` paths are a recurring silent failure. Worth a check that fails CI when a trigger path names a file that does not exist.
+All three answered inline by Peter on 2026-08-10:
+
+1. **`2026-06-13-q3-transition-plan.md`** — *keep as the plan of record* until the gate ladder is
+   complete, then reconsider. Not deleted. It remains the cited source for gate definitions in
+   five surviving plan docs and `NoDestructiveMigrationOps.baseline.txt:74`.
+2. **`2026-06-11-q3-ui-refactoring-plan.md`** — *keep for follow-up implementation*, tracked by a
+   single issue covering the whole plan. That issue already exists and is open:
+   [nobodies-collective/Humans#861](https://github.com/nobodies-collective/Humans/issues/861)
+   ("Execute the Q3 UI refactoring plan"), which links the plan doc and carries its five-phase
+   breakdown. No new issue needed; nothing deleted.
+3. **The post-event app feedback survey has not been sent yet**, but likely will be soon.
+   `2026-06-27-post-event-app-feedback-survey.md` is kept — it holds the only copy of the EN/ES
+   question set. (Its three engine invariants were still migrated to `sections/Surveys.md`, which
+   is additive and independent of the survey content.)
 
 ## Skipped (errors)
 
-None. Several subagents went idle without their reply landing (the same failure as the last two sweeps) — worked around by having agents write their payload to a file and by re-requesting; every cluster was ultimately accounted for, and the two systematic repairs were finished by the orchestrator directly.
+None.
+
+## Notes
+
+- Six subagents went idle without returning their JSON payload (fourth sweep running with this
+  failure). Worked around by having agents write payloads to files and by verifying delivered
+  work from the worktree diff; two agents were re-sent and completed their remaining docs.
+- The freshness catalog's `editorial_trees` does **not** cover `src/Sections/**/Docs/*.md`, so
+  the six G5 sections' in-project invariants docs are outside the sweep. Worth adding.

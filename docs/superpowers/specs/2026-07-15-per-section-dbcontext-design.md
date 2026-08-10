@@ -325,6 +325,7 @@ Order (criteria: navs = 0 for all, so ranked by table count, then seeds/PK quirk
 | 8 | `track-b` | Auth, Email, Calendar, Notifications, Issues | 8 | **Five per PR.** Batching is safe once a section has its own snapshot — the shared-snapshot conflict that justified one-at-a-time no longer applies. One combined snapshot-only removal migration on `HumansDbContext` |
 | 9 | `track-b-2` | Governance, Campaigns, GoogleIntegration, Tickets, Feedback | 15 | Stacked on peel 8 (base = `track-b`), because both edit `HumansDbContextModelSnapshot.cs` and a snapshot generated against the pre-peel-8 model would re-add peel 8's tables on merge. `SyncServiceSettings` and `TicketSyncState` carry model-level `HasData` |
 | 10 | `track-b-3` | CityPlanning, Budget, Camps | 17 | Stacked on peel 9 for the same snapshot reason. **Three sections, not five** — every other unpeeled section is walled off (§10.2). `CampSettings` carries a model-level `HasData` singleton |
+| 11 | `858/11-gate-systemdb` | Gate + System (`DataProtectionKeys`) | 4 | Gate unblocked (§5.1 wall down, Peter's call in the sprint of 2026-08-10). `SystemDbContext` created per Peter's 2026-08-10 decision on #858: the platform context for framework-owned tables no section can own, kept under glass — additions are Peter's call. First mixed-case sentinel (`DataProtectionKeys`): the runner's `to_regclass` probe lowercased bare names, so it would have missed the table and re-run the baseline against live schema. Fixed in the runner itself — the sentinel check now queries `information_schema.tables` with a plain string comparison, so callers pass exact stored names and no quoting convention exists to forget |
 
 Both §5.1 walls came down with `20260802203816_RealignScaffoldedPhysicalDefaults` (all 31 scaffolded
 defaults dropped); `PhysicalDefaultParityTests` enforces the parity from here on, so §5.1 is no
@@ -457,6 +458,10 @@ unscheduled:
 - **Gate** — its §5.1 wall is gone (`20260802203816_RealignScaffoldedPhysicalDefaults` dropped all
   31 scaffolded defaults; `PhysicalDefaultParityTests` enforces parity from here on), so Gate is
   now technically peelable. The Track B brief says skip and report, so it stays for Peter's call.
+  **Peeled in peel 11** (2026-08-10, with `SystemDbContext` for `DataProtectionKeys`), leaving
+  `HumansDbContext` at 26 DbSets: Profiles, Shifts, Legal, AuditLog, Users, Teams — every one
+  walled or last-by-design. The Legal/AuditLog wall fell the same day: Peter authorized EF `Sql`
+  in the baseline for the immutability triggers, so those two are next.
 
 Check-constraint audit for this batch: the only two live CHECK constraints are
 `ck_agent_settings_singleton` and `CK_role_assignments_valid_window`, neither on a

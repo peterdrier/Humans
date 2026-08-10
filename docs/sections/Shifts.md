@@ -53,7 +53,7 @@ Shift container, belongs to department + event. Has `Period` (Build/Event/Strike
 
 **Table:** `rotas`
 
-Aggregate-local navs: `Rota.Shifts`, `Rota.EventSettings`, `Rota.Tags`. Cross-domain nav to `Team` is stripped from the entity; FK preserved via typed-FK form. Team display data resolves through `ITeamService`.
+Aggregate-local navs: `Rota.Shifts`, `Rota.EventSettings`, `Rota.Tags`. Cross-domain nav to `Team` is stripped from the entity; `TeamId` is a bare Guid column with no FK constraint (nobodies-collective/Humans#992). Team display data resolves through `ITeamService`.
 
 ### Shift
 
@@ -76,7 +76,7 @@ Other transitions throw `InvalidOperationException`. `Cancel` is system-only (ro
 
 **Table:** `shift_signups`
 
-Aggregate-local navs: `ShiftSignup.Shift`. Cross-domain navs to `User` (volunteer / enroller / reviewer) are **stripped from the entity** — FKs preserved via typed-FK form (`HasOne<User>().WithMany().HasForeignKey(...)`). Display data resolves through `IUserServiceRead.GetUserInfosAsync`.
+Aggregate-local navs: `ShiftSignup.Shift`. Cross-domain navs to `User` (volunteer / enroller / reviewer) are **stripped from the entity** — `UserId` / `EnrolledByUserId` / `ReviewedByUserId` are bare Guid columns with no FK constraint (nobodies-collective/Humans#992). Display data resolves through `IUserServiceRead.GetUserInfosAsync`.
 
 ### GeneralAvailability
 
@@ -84,7 +84,7 @@ Per-user per-event day availability. `AvailableDayOffsets` stored as jsonb. Uniq
 
 **Table:** `general_availability`
 
-Cross-domain nav `GeneralAvailability.User` was **stripped** in peterdrier/Humans PR for sub-task nobodies-collective/Humans#541c (FK kept via `HasOne<User>().WithMany().HasForeignKey(...)`).
+Cross-domain nav `GeneralAvailability.User` was **stripped** in peterdrier/Humans PR for sub-task nobodies-collective/Humans#541c; `UserId` is now a bare Guid column with no FK constraint (nobodies-collective/Humans#992).
 
 ### VolunteerBuildStatus
 
@@ -112,7 +112,7 @@ Per-user shift-matching profile (1:1 with User) capturing `Skills`, `Quirks`, `L
 
 **Table:** `volunteer_event_profiles`
 
-Cross-domain nav to `User` is stripped from the entity; FK preserved via typed-FK form with `OnDelete(Cascade)`.
+Cross-domain nav to `User` is stripped from the entity; `UserId` is a bare Guid column with no FK constraint (nobodies-collective/Humans#992) — the DB-level cascade delete no longer applies.
 
 ### EventParticipation (owned by Users)
 
@@ -121,7 +121,7 @@ The `event_participations` entity is owned by Users — the natural key is User 
 ### Shift tag tables
 
 - `shift_tags` — read/written by `ShiftManagementService` via `IShiftManagementRepository`. Many-to-many with rotas via the `rota_shift_tags` join table. Seeded with 8 initial values in `ShiftTagConfiguration`. Name column is unique (`IX_shift_tags_name_unique`).
-- `volunteer_tag_preferences` — read/written by `ShiftManagementService` via `IShiftManagementRepository`. Unique on `(UserId, ShiftTagId)`. Cross-domain FK to `User` via typed-FK form; section-local FK to `ShiftTag`.
+- `volunteer_tag_preferences` — read/written by `ShiftManagementService` via `IShiftManagementRepository`. Unique on `(UserId, ShiftTagId)`. Cross-domain `UserId` is a bare Guid column with no FK constraint (nobodies-collective/Humans#992); section-local FK to `ShiftTag`.
 
 Both tables are listed under Shifts in `design-rules.md §8`.
 
@@ -317,7 +317,7 @@ Selected routes:
 
 **Owning services:** `ShiftManagementService`, `ShiftSignupService`, `VolunteerTrackingService`, `BurnSettingsService` (cross-section read DTO supplier — returns `BurnSettingsInfo` over `event_settings`, issue nobodies-collective/Humans#719), `WorkloadService` (read-only aggregations, no DbSet writes)
 **Owned tables:** `rotas`, `shifts`, `shift_signups`, `event_settings`, `general_availability`, `volunteer_event_profiles`, `volunteer_build_statuses`, `shift_tags`, `volunteer_tag_preferences`, `rota_shift_tags` (join table). `event_participations` is owned by Users (see [`Users.md`](Users.md)); Shifts only reads it via `IUserService`.
-**Status:** (A) Fully migrated. The services live in `Humans.Application.Services.Shifts` and route through `IShiftManagementRepository` / `IVolunteerTrackingRepository`. Cross-domain navs on Shifts-owned entities deleted 2026-04-25 in nobodies-collective/Humans#541 final pass; FKs stay wired in EF via the typed-FK form.
+**Status:** (A) Fully migrated. The services live in `Humans.Application.Services.Shifts` and route through `IShiftManagementRepository` / `IVolunteerTrackingRepository`. Cross-domain navs on Shifts-owned entities deleted 2026-04-25 in nobodies-collective/Humans#541 final pass; the remaining cross-section FK constraints were cut in nobodies-collective/Humans#992 — cross-section links are now bare Guid columns with no FK constraint.
 
 - Services live in `Humans.Application.Services.Shifts/` and never import `Microsoft.EntityFrameworkCore`.
 - `IShiftManagementRepository`, `IVolunteerTrackingRepository` (impls in `Humans.Infrastructure/Repositories/Shifts/`) are the only code paths touching this section's tables via `DbContext`.
@@ -334,7 +334,7 @@ Selected routes:
   - Aggregate-local navs kept: `Rota.Shifts`, `Rota.EventSettings`, `Rota.Tags`, `Shift.Rota`, `Shift.ShiftSignups` (read-side, capacity counts), `EventSettings.Rotas`, `ShiftSignup.Shift` (read-only projection chain).
   - Cross-domain navs stripped: `Rota.Team` (team display via `ITeamService.GetByIdsWithParentsAsync` / `GetTeamNamesByIdsAsync`); `ShiftSignup.User`, `ShiftSignup.ReviewedByUser` (display via `IUserServiceRead.GetUserInfosAsync`).
 - **`IVolunteerTrackingRepository`** (impl: `VolunteerTrackingRepository`) — owns `general_availability`, `volunteer_build_statuses` and **only** those two tables (#882). The Build-period signup reads it formerly surfaced (`GetEligibleBuildSignupsAsync`, `GetConfirmedShiftsInRangeAsync` over `shift_signups` / `shifts` / `rotas`) were converged onto `IShiftManagementRepository` so each Shifts table has a single repository owner; `VolunteerTrackingService` and `VolunteerTrackingExportService` now read them via `IShiftManagementRepository`. The HUM0025 grandfathered markers on the two repositories were removed in the same pass.
-  - Cross-domain navs stripped: `GeneralAvailability.User` (removed 2026-04-22 in #541c; FK kept via typed-FK form — schema unchanged).
+  - Cross-domain navs stripped: `GeneralAvailability.User` (removed 2026-04-22 in #541c; the FK constraint was later cut in #992 — `UserId` is now a bare Guid column).
 
 ### Touch-and-clean guidance
 

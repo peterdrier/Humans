@@ -104,7 +104,7 @@ Removed fields (from previous version): `AdminNotes`, `AdminResponseSentAt`.
 
 **Table:** `feedback_messages`
 
-Key fields: Id, FeedbackReportId (FK), SenderUserId (nullable FK), Content, CreatedAt.
+Key fields: Id, FeedbackReportId (FK), SenderUserId (nullable, bare cross-section Guid column — no FK constraint, no nav), Content, CreatedAt.
 
 Relationship: `FeedbackReport` has many `FeedbackMessage` (cascade delete). `SenderUserId` is nullable to support system/API messages.
 

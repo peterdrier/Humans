@@ -78,7 +78,7 @@ Records the assignment of a specific code to a specific user.
 **Indexes:** unique `(CampaignCodeId)` (one grant per code) and unique `(CampaignId, UserId)` (one grant per user per campaign).
 
 **Aggregate-local navs:** `CampaignGrant.Campaign`, `CampaignGrant.Code`.
-Cross-domain nav `CampaignGrant.OutboxMessages` (Email) — not `[Obsolete]`-marked; retained for Email outbox FK navigation. Campaigns code never traverses it; email delivery goes through `IEmailOutboxService`.
+Cross-domain nav `CampaignGrant.OutboxMessages` (Email) has been removed — Email outbox rows reference the grant by bare FK only, resolved through the Email section's services. Campaigns code never traversed it; email delivery goes through `IEmailOutboxService`.
 
 ### CampaignStatus
 
@@ -142,7 +142,7 @@ Stored as string (`HasConversion<string>()`, max length 20).
 - `ICampaignRepository` (interface `Humans.Application/Interfaces/Repositories/ICampaignRepository.cs`, impl `Humans.Infrastructure/Repositories/Campaigns/CampaignRepository.cs`) is the only file that touches this section's tables via `DbContext`.
 - **Decorator decision — no caching decorator.** Admin-only, low write/read volume.
 - **Cross-section reads** route through `ITeamService.GetActiveTeamOptionsAsync` / `GetTeamMembersAsync`, `IUserEmailService.GetNotificationTargetEmailsAsync`, `IUserServiceRead.GetUserInfoAsync` / `GetUserInfosAsync` for display data, and `ICommunicationPreferenceService.IsOptedOutAsync` for opt-out filtering. Outbound email queueing goes through `IEmailService.SendAsync` with `IEmailMessageFactory.CampaignCode` (the outbox service owns the email_outbox_messages table).
-- **Cross-domain navs removed:** `Campaign.CreatedByUserId` and `CampaignGrant.UserId` are FK-only — no `CreatedByUser` / `User` nav property exists on either entity. `CampaignConfiguration` / `CampaignGrantConfiguration` wire the FK constraint via `HasOne<User>()` (shadow relationship) instead. All callers — including `TicketQueryService.GetCodeTrackingDataAsync` via `ICampaignService.GetCodeTrackingAsync` — resolve display names through `IUserService`.
+- **Cross-domain navs removed:** `Campaign.CreatedByUserId` and `CampaignGrant.UserId` are FK-only — no `CreatedByUser` / `User` nav property exists on either entity. `CampaignConfiguration` / `CampaignGrantConfiguration` wire the FK constraint via `HasOne<User>()` (shadow relationship) instead. All callers — including `TicketQueryService.GetCodeTrackingDataAsync` via `ICampaignService.GetCodeTrackingAsync` — resolve display names through `IUserService`. `CampaignGrant.OutboxMessages` (Email) is also gone — Email outbox rows reference the grant by bare FK only.
 - **Architecture test** — no dedicated `CampaignArchitectureTests.cs` exists. Cross-cutting architecture coverage (`HUM0024`, `HUM0021`, `HUM0009`) covers this section generically.
 
 ### Touch-and-clean guidance

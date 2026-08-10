@@ -33,6 +33,8 @@ Mailer owns no tables. MailerLite is the system of record for subscriber state; 
 - `/Mailer/Admin/Import` — preview (GET)
 - `/Mailer/Admin/Import/Commit` — apply (POST)
 - `/Mailer/Admin/Audiences/{key}/Sync` — on-demand audience push (POST)
+- `/Mailer/Admin/SyncAll` — "Push All": push every audience in one action (POST)
+- `/Mailer/Admin/Refresh` — manual MailerLite cache refresh (POST)
 - `/Mailer/Admin/Audiences/{key}/Debug` — per-audience debug (GET) — five paged/sortable sections (expected, currently-in-ML, to-add, to-remove, non-primary diagnostic); Apply button posts to the existing `/Sync` action
 
 All routes are `AdminOnly`.
