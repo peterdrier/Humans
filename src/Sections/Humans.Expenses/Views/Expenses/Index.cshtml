@@ -64,6 +64,14 @@
         }
     </div>
 }
+else if (Model.AwaitingFirstLedgerActivity)
+{
+    @* Bound, but Holded has booked nothing to the account yet. Telling a correctly-bound member to
+       go get bound again would send them to Finance for a non-problem. *@
+    <div class="alert alert-secondary">
+        <i class="fa-solid fa-circle-info me-1"></i>@Localizer["Expenses_CreditorAccountNoActivity", Model.BoundAccountNum!]
+    </div>
+}
 else
 {
     <div class="alert alert-secondary">

@@ -332,9 +332,25 @@ internal sealed class Service(
     // Backstop on the first-run backward sweep (~25 years); logged if hit so a cap is never silent.
     private const int BackfillWindowCap = 25;
 
-    public async Task SyncCreditorLedgerAsync(bool fullHistory = false, CancellationToken ct = default)
+    // One creditor-ledger sweep at a time. Hangfire's DisableConcurrentExecution guards the nightly
+    // job, but the admin resync calls the service directly, so two sweeps can interleave: both read a
+    // given (EntryNumber, Line) as absent in UpsertLedgerLinesAsync and both insert it, and the loser
+    // trips the unique index and records a global sync Error for what is a benign duplicate. Single-server
+    // deployment (see CLAUDE.md), so an in-process gate is the whole requirement.
+    private static readonly SemaphoreSlim LedgerSyncGate = new(1, 1);
+
+    /// <returns>False when another sweep was already running and this one was skipped.</returns>
+    public async Task<bool> SyncCreditorLedgerAsync(bool fullHistory = false, CancellationToken ct = default)
     {
         var now = clock.GetCurrentInstant();
+
+        // Don't queue behind the running sweep — a full history pass can take a while, and a web
+        // request must not block on it. The caller reports the skip instead.
+        if (!await LedgerSyncGate.WaitAsync(0, ct))
+        {
+            logger.LogInformation("Holded ledger sync already in progress — skipping this request.");
+            return false;
+        }
 
         try
         {
@@ -378,6 +394,7 @@ internal sealed class Service(
             logger.LogInformation(
                 "Holded ledger sync ({Mode}) cached {Count} creditor journal lines",
                 sweepAll ? "full history" : "trailing window", lines.Count);
+            return true;
         }
         catch (Exception ex)
         {
@@ -397,6 +414,10 @@ internal sealed class Service(
                 logger.LogError(saveEx, "Failed to persist creditor-sync error state");
             }
             throw;
+        }
+        finally
+        {
+            LedgerSyncGate.Release();
         }
     }
 

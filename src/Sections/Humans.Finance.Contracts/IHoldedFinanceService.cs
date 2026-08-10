@@ -15,7 +15,8 @@ public interface IHoldedFinanceService : IApplicationService
     /// <summary>Nightly (<paramref name="fullHistory"/> false) sweeps one trailing ≤1-year window —
     /// a single Holded call. The full backward sweep costs one call per year of books, so it runs only
     /// on request or against a cold cache.</summary>
-    Task SyncCreditorLedgerAsync(bool fullHistory = false, CancellationToken ct = default);
+    /// <returns>False when another sweep was already running and this one was skipped.</returns>
+    Task<bool> SyncCreditorLedgerAsync(bool fullHistory = false, CancellationToken ct = default);
 
     /// <summary>Derives cached creditor status (balance, owed, payments) for a member's 400000xx account
     /// from the cached daybook lines. Returns null when no lines are cached for the account.</summary>

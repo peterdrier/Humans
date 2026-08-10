@@ -312,6 +312,35 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
+    public async Task SyncCreditorLedger_skips_when_another_sweep_is_already_running()
+    {
+        // Hangfire serializes the nightly job, but the admin resync calls the service directly — two
+        // sweeps interleaving both read a (EntryNumber, Line) as absent and both insert it, and the
+        // loser trips the unique index and records a global sync Error for a benign duplicate.
+        _repo.HasAnyLedgerLinesAsync(Arg.Any<CancellationToken>()).Returns(true);
+        var firstCallStarted = new TaskCompletionSource();
+        var releaseFirstCall = new TaskCompletionSource();
+        _client.ListDailyLedgerAsync(Arg.Any<Instant>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                firstCallStarted.TrySetResult();
+                releaseFirstCall.Task.GetAwaiter().GetResult();
+                return new List<HoldedLedgerLineDto>();
+            });
+
+        var inFlight = Task.Run(() => MakeService().SyncCreditorLedgerAsync(
+            fullHistory: false, CancellationToken.None));
+        await firstCallStarted.Task;
+
+        var second = await MakeService().SyncCreditorLedgerAsync(
+            fullHistory: true, Xunit.TestContext.Current.CancellationToken);
+
+        second.Should().BeFalse();          // skipped rather than racing the in-flight sweep
+        releaseFirstCall.SetResult();
+        (await inFlight).Should().BeTrue(); // and the gate is released for the next caller
+    }
+
+    [HumansFact]
     public async Task SyncCreditorLedger_full_history_is_opt_in_and_sweeps_backward()
     {
         // Several calls — one per year of books — so it is only ever run on request (or cold cache).

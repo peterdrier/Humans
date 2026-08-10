@@ -17,8 +17,17 @@ internal sealed class ExpensesIndexViewModel
     public IReadOnlyDictionary<Guid, string> CategoryNames { get; init; } =
         new Dictionary<Guid, string>();
 
-    /// <summary>The member's own Holded creditor account statement (real ledger lines), once bound. Read-only.</summary>
+    /// <summary>The member's own Holded creditor account statement (real ledger lines), once bound. Read-only.
+    /// Null both when unbound and when bound with no cached journal activity — <see cref="BoundAccountNum"/>
+    /// is what separates the two.</summary>
     public HoldedCreditorLedger? AccountLedger { get; init; }
+
+    /// <summary>The member's bound 400000xx account, or null if they have no binding yet.</summary>
+    public int? BoundAccountNum { get; init; }
+
+    /// <summary>Bound, but Holded has booked nothing to the account yet — expected for a new account
+    /// before its first journal entry, and not the same thing as an unresolved binding.</summary>
+    public bool AwaitingFirstLedgerActivity => BoundAccountNum is not null && AccountLedger is null;
 
     /// <summary>True when this user is a coordinator for any budget-year team, regardless of queue depth.</summary>
     public bool IsCoordinator { get; init; }

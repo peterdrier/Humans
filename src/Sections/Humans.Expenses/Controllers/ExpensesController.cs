@@ -49,11 +49,14 @@ internal sealed class ExpensesController(
             var coordinatorQueue = await expenseReadService.GetCoordinatorQueueAsync(user.Id);
             var coordinatorTeamIds = await budgetService.GetEffectiveCoordinatorTeamIdsAsync(user.Id);
 
-            // The member's own Holded creditor-account statement (read-only, real ledger lines). Only
-            // populated once they're bound to a 400000xx account; nothing shows until then. Own account only.
+            // The member's own Holded creditor-account statement (read-only, real ledger lines). Own
+            // account only. The binding is tracked separately from the ledger: GetCreditorLedgerAsync
+            // returns null both for "not bound" and for "bound, but no journal activity cached yet",
+            // and telling a correctly-bound member to go get bound again is worse than saying nothing.
             HoldedCreditorLedger? accountLedger = null;
             var binding = await holdedFinance.GetCreditorContactByUserAsync(user.Id);
-            if (binding?.SupplierAccountNum is { } accNum)
+            var boundAccountNum = binding?.SupplierAccountNum;
+            if (boundAccountNum is { } accNum)
             {
                 var led = await holdedFinance.GetCreditorLedgerAsync(accNum);
                 if (led is not null)
@@ -74,6 +77,7 @@ internal sealed class ExpensesController(
                 HasIban = !string.IsNullOrEmpty(info?.Profile?.Iban),
                 CategoryNames = categoryNames,
                 AccountLedger = accountLedger,
+                BoundAccountNum = boundAccountNum,
                 IsCoordinator = coordinatorTeamIds.Count > 0,
                 CoordinatorQueueCount = coordinatorQueue.Count,
             };

@@ -161,8 +161,10 @@ internal sealed class FinanceController(
     {
         try
         {
-            await holdedFinance.SyncCreditorLedgerAsync(fullHistory: true);
-            SetSuccess("Re-read the full Holded creditor ledger history.");
+            if (await holdedFinance.SyncCreditorLedgerAsync(fullHistory: true))
+                SetSuccess("Re-read the full Holded creditor ledger history.");
+            else
+                SetError("A Holded ledger sync is already running — try again once it finishes.");
         }
         catch (Exception ex)
         {
