@@ -120,6 +120,16 @@ Git Bash.)
      resolves against `SharedResource` and cannot see the section's set. Fix by passing localized
      strings in on the partial's model; a Shell caller can inject
      `IStringLocalizer<<Section>Resource>` directly (proven: Events, `_FavouriteButton`).
+   - **Check what each moved *controller* injects, not just what the views bind.** `_ViewImports`
+     rebinds `Localizer` for every view in one line, so views are safe by construction and the
+     grep above passes — a controller that still takes `IStringLocalizer<SharedResource>` keeps
+     compiling and renders its carved keys as raw key names. Assert it structurally rather than by
+     eye: no type in the section may take `IStringLocalizer<T>` for any `T` but
+     `<Section>Resource` (`SurveysArchitectureTests.SectionTypesLocalizeThroughTheSectionsOwnResourceSet`
+     is the shape). **A render test is not enough here** — controller-resolved copy tends to sit on
+     the failure paths (validation errors, empty-value fallbacks) that fixtures do not reach, so a
+     page-renders-clean suite passes over it (proven: Surveys shipped three such call sites past
+     four green render tests; caught in review, peterdrier/Humans#1251).
    - **Prefer keeping a shared partial in the section over promoting it to `Humans.UI`.** A
      partial in the section's `Views/Shared/` is found by name across application parts and
      compiles against the *section's* `_ViewImports`, so it keeps `Localizer` with no model
@@ -283,6 +293,21 @@ Git Bash.)
 9. [ ] `dotnet ef` for this section: `--project src/Sections/Humans.<Section>
    --startup-project src/Humans.Web --context <Section>DbContext --output-dir Data/Migrations`.
    Update the `context:project` pair in `.github/workflows/build.yml`.
+   - **Change `MigrationsAssembly` in the moved `<Section>DbContextFactory` to
+     `"Humans.<Section>"`.** Every design-time factory hardcodes the string, so a factory that
+     moves with the section keeps pointing at `Humans.Infrastructure`, EF looks for the section's
+     migrations in an assembly they just left, finds none, and reports **"Changes have been made
+     to the model since the last migration"** — model *drift*, for what is a wiring bug. The
+     runtime is unaffected and hides it: `AddSectionDbContext` → `ConfigureNpgsql` derives the
+     assembly from `contextType.Assembly.GetName().Name`, so the app boots and migrates fine and
+     only `dotnet ef` disagrees. It fails `build` and `verify-migrations-apply` identically, which
+     reads as two problems. Verify with `dotnet ef migrations has-pending-model-changes --context
+     <Section>DbContext --project src/Sections/Humans.<Section> --startup-project src/Humans.Web`
+     before pushing — step 12 already asks for this and it is the check that catches it
+     (`Humans.Expenses` is the correct reference; proven: Surveys, peterdrier/Humans#1251).
+   - Diagnostic tell: `dotnet ef migrations add` on the section answers **"Your target project
+     'Humans.<Section>' doesn't match your migrations assembly 'Humans.Infrastructure'"**, which
+     names the real problem where `has-pending-model-changes` does not.
 10. [ ] **Table renames are out of scope. A G5 move changes files, never the schema** (decision
     2026-08-09, recorded on nobodies-collective/Humans#866; tracked at
     nobodies-collective/Humans#1012). Mismatched table names — or a mismatched
