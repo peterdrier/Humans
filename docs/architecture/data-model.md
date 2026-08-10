@@ -76,7 +76,8 @@ Since the per-section split (nobodies-collective/Humans#858) the model is partit
 | `ContainersDbContext` | `containers`, `container_placements` |
 | `AgentDbContext` | `agent_conversations`, `agent_messages`, `agent_settings` |
 | `ExpensesDbContext` | `expense_reports`, `expense_lines`, `expense_attachments`, `holded_expense_outbox_events` |
-| `FinanceDbContext` | `holded_expense_docs`, `holded_category_map`, `holded_ledger_lines`, `holded_creditor_contacts`, `holded_sync_states` |
+| `FinanceDbContext` | `holded_expense_docs`, `holded_category_map`, `holded_creditor_contacts`, `holded_doc_sync_state` |
+| `HoldedDbContext` | `holded_ledger_lines`, `holded_accounts`, `holded_api_calls`, `holded_sync_states` |
 | `SurveysDbContext` | `surveys`, `survey_questions`, `survey_question_options`, `survey_invitations`, `survey_responses`, `survey_answers` |
 | `EventGuideDbContext` | `events`, `event_categories`, `event_venues`, `event_guide_settings`, `event_moderation_actions`, `event_favourites`, `event_preferences` |
 | `StoreDbContext` | `store_products`, `store_orders`, `store_order_lines`, `store_payments`, `store_invoices`, `store_treasury_sync_state` |
