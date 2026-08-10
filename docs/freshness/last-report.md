@@ -49,7 +49,7 @@ a second auto-block on the same source would just recreate the drift.
 | `authorization-inventory` | regenerated across `src/Humans.Web`, `src/Sections`, `src/Humans.UI` |
 | `guid-reservations` | 2 stale source links (blocks `0002`, `0026` moved under G5) |
 | `code-analysis-suppressions` | verified clean — already matched both `Directory.Build.props` |
-| `docs-readme-index` | verified clean — index already complete, no dead links, G5 in-project docs already pointed at correctly |
+| `docs-readme-index` | index tables already complete (no dead links, G5 in-project docs pointed at correctly); fixed the *Historical Design Records* description of `docs/plans/`, which still said "semantic versioning, Google Groups" against contents that are now the Q3 gate ladder, G0 audit, demolition/frozen-section inventories, section DAG and FK-cut inventory |
 | `about-page-packages` | package versions refreshed against `Directory.Packages.props` + all `.csproj` |
 
 ## Editorial drift fixed

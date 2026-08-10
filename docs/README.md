@@ -181,7 +181,7 @@ Design specs and implementation plans preserved for historical context. These do
 
 | Directory | Contents |
 |-----------|----------|
-| [plans/](plans/) | Early design and implementation plans (semantic versioning, Google Groups) |
+| [plans/](plans/) | Programme-level plans and audits — the Q3 transition gate ladder, the G0 section audit, the demolition and frozen-section inventories, the section dependency DAG, and the cross-section FK-cut inventory |
 | [superpowers/specs/](superpowers/specs/) | Feature design specifications |
 | [superpowers/plans/](superpowers/plans/) | Feature implementation plans |
 
