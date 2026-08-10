@@ -85,7 +85,7 @@ public class GdprExportDependencyInjectionTests
         SectionType("Humans.Events.Services.EventService"),
         typeof(AuditLogService),
         typeof(BudgetService),
-        typeof(Humans.Application.Services.Agent.AgentService),
+        SectionType("Humans.Agent.Services.AgentService"),
         SectionType("Humans.Expenses.Services.ExpenseReportService"),
         SectionType("Humans.Finance.Services.Service"),
         SectionType("Humans.Surveys.Services.SurveyService"),

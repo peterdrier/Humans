@@ -1,7 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application.DTOs.Shifts;
 using Humans.Application.Interfaces.Shifts;
-using Humans.Infrastructure.Services.Agent;
 using Humans.Infrastructure.Services.Shifts;
 using Xunit;
 using ShiftManagementService = Humans.Application.Services.Shifts.ShiftManagementService;
@@ -142,11 +141,21 @@ public class ShiftViewArchitectureTests
     // every snapshot / get_shift_details turn. T-09 (issue #720) migrated
     // those reads to the cached IShiftView. Pin the dependency direction so
     // the next refactor can't quietly regress the hot path.
+    // Both types are internal to Humans.Agent since its G5 move
+    // (nobodies-collective/Humans#866), so they are resolved by reflection rather than named
+    // with typeof — the sweep must widen with the section, not quietly stop covering it.
     public static TheoryData<Type> AgentTypesThatReadShiftSignups =>
     [
-        typeof(AgentUserSnapshotProvider),
-        typeof(AgentToolDispatcher),
+        SectionType("Humans.Agent.Services.AgentUserSnapshotProvider"),
+        SectionType("Humans.Agent.Services.AgentToolDispatcher"),
     ];
+
+    private static Type SectionType(string fullName) =>
+        Web.Extensions.SectionDiscoveryExtensions.SectionAssemblies()
+            .Select(a => a.GetType(fullName, throwOnError: false))
+            .FirstOrDefault(t => t is not null)
+        ?? throw new InvalidOperationException(
+            $"{fullName} not found in any section assembly — did the section move or rename it?");
 
     [HumansTheory]
     [MemberData(nameof(AgentTypesThatReadShiftSignups))]

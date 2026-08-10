@@ -28,7 +28,7 @@ env:
   SECTION_DB_CONTEXTS: >-
     SystemSettingsDbContext:src/Sections/Humans.SystemSettings
     ContainersDbContext:src/Sections/Humans.Containers
-    AgentDbContext:src/Humans.Infrastructure
+    AgentDbContext:src/Sections/Humans.Agent
     ExpensesDbContext:src/Sections/Humans.Expenses
     FinanceDbContext:src/Sections/Humans.Finance
     SurveysDbContext:src/Sections/Humans.Surveys

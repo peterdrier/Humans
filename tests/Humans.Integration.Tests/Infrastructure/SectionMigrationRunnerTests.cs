@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Agent.Data;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Hosting;
 using Humans.Containers.Data;

@@ -8,7 +8,7 @@
 
 **Tech Stack:** C# / .NET, ASP.NET Core, Octokit, `IMemoryCache`, xUnit (`[HumansFact]`/`[HumansTheory]`), AwesomeAssertions, NSubstitute.
 
-**Reference spec:** `docs/superpowers/specs/2026-06-14-community-knowledge-base-agent-design.md`
+**Reference spec:** `src/Sections/Humans.Agent/Docs/2026-06-14-community-knowledge-base-agent-design.md`
 
 ---
 

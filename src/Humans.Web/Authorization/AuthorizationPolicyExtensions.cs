@@ -1,7 +1,6 @@
 using Humans.Application.Authorization;
 using Humans.Domain.Constants;
 using Humans.UI.Authorization;
-using Humans.Web.Authorization.Handlers;
 using Humans.Web.Authorization.Requirements;
 using Microsoft.AspNetCore.Authorization;
 
@@ -19,7 +18,6 @@ public static class AuthorizationPolicyExtensions
         services.AddSingleton<IAuthorizationHandler, HumanAdminOnlyHandler>();
 
         // Scoped: depend on scoped services.
-        services.AddScoped<IAuthorizationHandler, AgentRateLimitHandler>();
         services.AddScoped<IAuthorizationHandler, BudgetAuthorizationHandler>();
         services.AddScoped<IAuthorizationHandler, CampAuthorizationHandler>();
         services.AddScoped<IAuthorizationHandler, CampComplianceAccessHandler>();
@@ -147,9 +145,6 @@ public static class AuthorizationPolicyExtensions
 
             options.AddPolicy(PolicyNames.MedicalDataViewer, policy =>
                 policy.RequireRole(RoleNames.Admin, RoleNames.NoInfoAdmin));
-
-            options.AddPolicy(PolicyNames.AgentRateLimit, policy =>
-                policy.AddRequirements(new AgentRateLimitRequirement()));
 
             // Single nav-visibility gate: only Active users see app navigation.
             options.AddPolicy(PolicyNames.AppAccess, policy =>

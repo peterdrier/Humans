@@ -1,10 +1,9 @@
 using System.Net;
 using AwesomeAssertions;
-using Humans.Application.Interfaces;
+using Humans.Agent.Data;
+using Humans.Agent.Domain;
+using Humans.Agent.Services;
 using Humans.Application.Interfaces.Users;
-using Humans.Domain.Entities;
-using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
 using Humans.Integration.Tests.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
@@ -44,9 +43,9 @@ public class AgentPageRenderTests(HumansTestDatabase database) : IntegrationTest
     /// Where the agent's stylesheet is served from. Shell's <c>HelpWidget</c> and the section's
     /// own <c>Conversation.cshtml</c> both link it, so it pins step 7 from both sides.
     /// </summary>
-    private const string AgentCssPath = "/css/agent.css";
+    private const string AgentCssPath = "/_content/Humans.Agent/css/agent.css";
 
-    private const string AgentWidgetJsPath = "/js/agent/widget.js";
+    private const string AgentWidgetJsPath = "/_content/Humans.Agent/js/agent/widget.js";
 
     [HumansFact(Timeout = 60000)]
     public async Task My_conversations_renders_localized_copy_from_the_sections_own_resource_set()
@@ -145,6 +144,21 @@ public class AgentPageRenderTests(HumansTestDatabase database) : IntegrationTest
         html.Should().Contain("Assistant");                       // Agent_PanelTitle — widget is on
         html.Should().Contain($"href=\"{AgentCssPath}?v=");
         html.Should().Contain($"src=\"{AgentWidgetJsPath}?v=");
+    }
+
+    [HumansFact(Timeout = 60000)]
+    public async Task The_sections_static_assets_are_served_from_its_own_RCL()
+    {
+        // The other half of §15 step 7: the href resolving is not the same as the file being
+        // there. Before the test host composed the static-web-assets manifest both agent assets
+        // 404'd here while the pages still returned 200 — the exact shape the step warns about.
+        var ct = Xunit.TestContext.Current.CancellationToken;
+
+        foreach (var asset in new[] { AgentCssPath, AgentWidgetJsPath })
+        {
+            var response = await Client.GetAsync(asset, ct);
+            response.StatusCode.Should().Be(HttpStatusCode.OK, $"GET {asset} must be served");
+        }
     }
 
     [HumansFact(Timeout = 60000)]

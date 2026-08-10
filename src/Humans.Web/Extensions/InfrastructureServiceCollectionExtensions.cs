@@ -56,7 +56,6 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddAdminSection();
         services.AddGoogleIntegrationSection();
         services.AddGuideSection(configuration);
-        services.AddAgentSection(configuration);
         services.AddSearchSection();
         services.AddHoldedConnector(configuration);
         services.AddMailerSection(configuration);

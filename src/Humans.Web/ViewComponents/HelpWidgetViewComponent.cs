@@ -1,4 +1,4 @@
-using Humans.Application.Interfaces;
+using Humans.Agent.Contracts;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Web.ViewComponents;
@@ -12,7 +12,7 @@ namespace Humans.Web.ViewComponents;
 /// links to the AI Terms (<c>/Legal/agent-chat</c>) below the composer
 /// instead of gating use behind explicit consent.
 /// </summary>
-public class HelpWidgetViewComponent(IAgentSettingsService settings) : ViewComponent
+public class HelpWidgetViewComponent(IAgentAvailability agent) : ViewComponent
 {
     public IViewComponentResult Invoke()
     {
@@ -20,7 +20,7 @@ public class HelpWidgetViewComponent(IAgentSettingsService settings) : ViewCompo
             return Content(string.Empty);
 
         var pagePath = Request?.Path.Value ?? string.Empty;
-        var agentAvailable = settings.Current.Enabled;
+        var agentAvailable = agent.IsEnabled;
 
         return View(new HelpWidgetModel(pagePath, agentAvailable));
     }

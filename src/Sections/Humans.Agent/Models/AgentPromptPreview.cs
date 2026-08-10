@@ -1,0 +1,20 @@
+namespace Humans.Agent.Models;
+
+/// <summary>
+/// Admin-only diagnostic snapshot of what would be sent to Anthropic for a
+/// given conversation if a new turn started right now. Regenerated on demand
+/// — never stored — so the preview reflects the *current* preload corpus,
+/// system prompt, and user snapshot, not what was sent at the time of any
+/// historical turn.
+/// </summary>
+internal sealed record AgentPromptPreview(
+    string Model,
+    string SystemPrompt,
+    string UserContextTail,
+    IReadOnlyList<AgentPromptToolDefinition> Tools,
+    IReadOnlyList<AgentPromptHistoryTurn> ReplayedHistory,
+    int? SystemPromptTokens);
+
+internal sealed record AgentPromptToolDefinition(string Name, string Description, string JsonSchema);
+
+internal sealed record AgentPromptHistoryTurn(string Role, string Text);

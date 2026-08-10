@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Agent's cross-section surface, carved into its own leaf project because two of its
+    consumers are outside Shell:
+
+      * AgentConversationRetentionJob (Humans.Infrastructure/Jobs) — recurring jobs are named
+        by concrete type in Shell's UseHumansRecurringJobs roll-call and there is no
+        ISection-style discovery seam for them yet (design §15.6b), so the job stays in Base
+        and reaches the section through IAgentConversationRetention.
+      * AnthropicBalanceProvider (Humans.Infrastructure/Services/Anthropic) does NOT appear
+        here — it implements a Base-owned connector interface and the section consumes it.
+
+    A Contracts/ *folder* inside Humans.Agent would therefore make Base reference a section
+    and cycle (design §15.5b, memory/architecture/section-project-cycle-fix.md).
+
+    IAgentAvailability and AgentSectionKeys are here for Shell rather than Base: Shell's
+    HelpWidget/health checks need "is the agent on", and Shell's AgentPreloadAugmentor
+    resolves the section keys the agent's own tool accepts. Both would have been fine in a
+    folder; with the project forced into existence, everything cross-section lives in one
+    place (the Events/Finance shape).
+
+    References Humans.Interfaces only.
+  -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
+  </ItemGroup>
+
+</Project>

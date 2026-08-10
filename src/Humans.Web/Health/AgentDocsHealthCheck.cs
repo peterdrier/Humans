@@ -1,6 +1,5 @@
+using Humans.Agent.Contracts;
 using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.Stores;
-using Humans.Infrastructure.Services.Preload;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace Humans.Web.Health;
@@ -15,16 +14,21 @@ namespace Humans.Web.Health;
 /// Skipped (Healthy) when the agent feature is disabled.
 ///
 /// Goes through <see cref="IGuideContentSource"/> directly rather than the cached
-/// <see cref="AgentSectionDocReader"/> / <see cref="AgentFeatureSpecReader"/> so the
-/// probe genuinely re-tests GitHub on every call. A cached reader would refresh the
-/// sliding expiration off one warm fetch and keep reporting Healthy through a revoked
-/// token / outage / moved canary.
+/// readers inside Humans.Agent so the probe genuinely re-tests GitHub on every call.
+/// A cached reader would refresh the sliding expiration off one warm fetch and keep
+/// reporting Healthy through a revoked token / outage / moved canary. That is also why
+/// the two folder paths below are spelled out here rather than read off the section:
+/// both canaries are Base docs (docs/sections/Shifts.md, docs/features/26-events.md),
+/// so this check depends on nothing Agent owns except whether the feature is on.
 /// </summary>
 public sealed class AgentDocsHealthCheck(
-    IAgentSettingsStore store,
+    IAgentAvailability agent,
     IGuideContentSource source,
     ILogger<AgentDocsHealthCheck> logger) : IHealthCheck
 {
+    private const string SectionsFolder = "docs/sections";
+    private const string FeaturesFolder = "docs/features";
+
     // A section that is always whitelisted and always preloaded (Tier1) — if its
     // doc cannot be fetched, GitHub connectivity for docs/sections is broken.
     private const string ProbeSection = "Shifts";
@@ -38,15 +42,15 @@ public sealed class AgentDocsHealthCheck(
         HealthCheckContext context,
         CancellationToken cancellationToken = default)
     {
-        if (!store.Current.Enabled)
+        if (!agent.IsEnabled)
             return HealthCheckResult.Healthy("agent disabled");
 
-        if (!await TryFetchAsync(AgentSectionDocReader.FolderPath, ProbeSection, cancellationToken))
+        if (!await TryFetchAsync(SectionsFolder, ProbeSection, cancellationToken))
             return HealthCheckResult.Degraded(
                 $"agent grounding docs unreachable — docs/sections/{ProbeSection}.md could not be fetched from GitHub; " +
                 "fetch_section_guide will return errors and the preload index will be empty");
 
-        if (!await TryFetchAsync(AgentFeatureSpecReader.FolderPath, ProbeFeature, cancellationToken))
+        if (!await TryFetchAsync(FeaturesFolder, ProbeFeature, cancellationToken))
             return HealthCheckResult.Degraded(
                 $"agent grounding docs unreachable — docs/features/{ProbeFeature}.md could not be fetched from GitHub; " +
                 "fetch_feature_spec will return errors");

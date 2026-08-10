@@ -1,0 +1,19 @@
+@* A section RCL does NOT inherit the host's Views/_ViewImports.cshtml. Omitting a line
+   here ships broken markup with a green build and no runtime error — see design §1/§2.
+   Guarded by AgentPageRenderTests (step 12). *@
+@using Humans.Agent
+@using Humans.Agent.Controllers
+@using Humans.Agent.Domain
+@using Humans.Agent.Models
+@using Humans.Agent.Services
+@using Humans.Application.Extensions
+@using Humans.UI
+@using Humans.UI.Extensions
+@using Humans.UI.Models
+@using Humans.UI.Models.Tables
+@using Microsoft.AspNetCore.Html
+@using Microsoft.Extensions.Localization
+@using NodaTime
+@inject IStringLocalizer<AgentResource> Localizer
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+@addTagHelper *, Humans.UI

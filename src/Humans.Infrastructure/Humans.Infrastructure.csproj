@@ -24,6 +24,7 @@
       only, so Base depending on it does not cycle
       (memory/architecture/section-project-cycle-fix.md).
     -->
+    <ProjectReference Include="..\Sections\Humans.Agent.Contracts\Humans.Agent.Contracts.csproj" />
     <ProjectReference Include="..\Sections\Humans.Expenses.Contracts\Humans.Expenses.Contracts.csproj" />
     <ProjectReference Include="..\Sections\Humans.Surveys.Contracts\Humans.Surveys.Contracts.csproj" />
   </ItemGroup>
@@ -44,7 +45,6 @@
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL.NodaTime" />
     <PackageReference Include="Octokit" />
-    <PackageReference Include="Anthropic" />
     <PackageReference Include="Polly" />
     <PackageReference Include="Serilog" />
     <PackageReference Include="Google.Apis.Admin.Directory.directory_v1" />

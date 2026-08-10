@@ -1,6 +1,5 @@
 using System.Text;
-using Humans.Application.Constants;
-using Humans.Application.Interfaces;
+using Humans.Agent.Contracts;
 using Humans.Web.Models;
 
 namespace Humans.Web.Services.Agent;
