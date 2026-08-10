@@ -22,8 +22,12 @@ case "$cmd" in
   *) exit 0 ;;
 esac
 
-outdir=$(printf '%s' "$cmd" | grep -oE -- '--output-dir[= ]+[^ ]+' | head -1 | sed -E 's/--output-dir[= ]+//')
-project=$(printf '%s' "$cmd" | grep -oE -- '--project[= ]+[^ ]+'    | head -1 | sed -E 's/--project[= ]+//')
+# Quoting is harmless to EF — the shell strips it before dotnet sees the value — so strip it
+# here too, or a legitimate `--output-dir "Data/Migrations"` fails the exact match below.
+unquote() { sed -E 's/^["'"'"']//; s/["'"'"']$//'; }
+
+outdir=$(printf '%s' "$cmd" | grep -oE -- '--output-dir[= ]+("[^"]*"|'"'"'[^'"'"']*'"'"'|[^ ]+)' | head -1 | sed -E 's/--output-dir[= ]+//' | unquote)
+project=$(printf '%s' "$cmd" | grep -oE -- '--project[= ]+("[^"]*"|'"'"'[^'"'"']*'"'"'|[^ ]+)'    | head -1 | sed -E 's/--project[= ]+//'    | unquote)
 
 # G5: section owns its project; the project already scopes the folder, so no per-section subdir.
 if printf '%s' "$project" | grep -qE 'src/Sections/Humans\.[A-Za-z0-9.]+/?$' \
