@@ -1,0 +1,137 @@
+@model Humans.Consent.Models.ConsentIndexViewModel
+@{
+    ViewData["Title"] = Localizer["ConsentIndex_Title"].Value;
+    var totalPending = Model.TeamGroups.Sum(g => g.Documents.Count(d => !d.HasConsented));
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-controller="Profile" asp-action="Index">Profile</a></li>
+        <li class="breadcrumb-item active" aria-current="page">@Localizer["ConsentIndex_Title"]</li>
+    </ol>
+</nav>
+
+<h1>@Localizer["ConsentIndex_Title"]</h1>
+
+
+<div class="row">
+    <div class="col-md-8">
+        @if (Model.TeamGroups.Count == 0)
+        {
+            <div class="card mb-4">
+                <div class="card-body">
+                    <p class="text-muted mb-0">@Localizer["Consent_NoDocumentsRequired"]</p>
+                </div>
+            </div>
+        }
+        else
+        {
+            @foreach (var group in Model.TeamGroups)
+            {
+                <div class="card mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span class="fw-bold">@group.TeamName</span>
+                        @if (group.AllConsented)
+                        {
+                            <span class="badge bg-success">@Localizer["Consent_AllConsented"]</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-warning">@Localizer["Consent_ActionRequired"]</span>
+                        }
+                    </div>
+                    <div class="list-group list-group-flush">
+                        @foreach (var doc in group.Documents)
+                        {
+                            <div class="list-group-item d-flex justify-content-between align-items-start">
+                                <div class="ms-2 me-auto">
+                                    <div class="fw-bold">
+                                        @doc.DocumentName
+                                    </div>
+                                    <small class="text-muted">
+                                        @Localizer["Consent_Version"] @doc.VersionNumber - @Localizer["Consent_EffectiveFrom"] @doc.EffectiveFrom.ToDate()
+                                    </small>
+                                    @if (doc.LastUpdated.HasValue)
+                                    {
+                                        <br />
+                                        <small class="text-muted">@Localizer["Consent_LastUpdated"] @doc.LastUpdated.Value.ToDate()</small>
+                                    }
+                                    @if (!string.IsNullOrEmpty(doc.ChangesSummary))
+                                    {
+                                        <br />
+                                        <small class="text-info">@doc.ChangesSummary</small>
+                                    }
+                                </div>
+                                <div class="text-end">
+                                    @if (doc.HasConsented)
+                                    {
+                                        <span class="badge bg-success mb-2">@Localizer["Consent_Consented"]</span>
+                                        <br />
+                                        <small class="text-muted">@doc.ConsentedAt.ToDate()</small>
+                                    }
+                                    else
+                                    {
+                                        <a asp-action="Review" asp-route-id="@doc.DocumentVersionId" class="btn btn-warning btn-sm">
+                                            @Localizer["Consent_ReviewAndConsent"]
+                                        </a>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+
+            @if (totalPending > 0)
+            {
+                <div class="alert alert-warning">
+                    @string.Format(Localizer["Consent_PendingCount"].Value, totalPending)
+                </div>
+            }
+            else
+            {
+                <div class="alert alert-success">
+                    @Localizer["Consent_AllConsented"]
+                </div>
+            }
+        }
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                @Localizer["Consent_History"]
+            </div>
+            <div class="card-body">
+                @if (Model.ConsentHistory.Count == 0)
+                {
+                    <p class="text-muted">@Localizer["Consent_NoRecords"]</p>
+                }
+                else
+                {
+                    <ul class="list-unstyled">
+                        @foreach (var history in Model.ConsentHistory)
+                        {
+                            <li class="mb-2">
+                                <a asp-action="Review" asp-route-id="@history.DocumentVersionId">
+                                    <strong>@history.DocumentName</strong> (@history.VersionNumber)
+                                </a>
+                                <br />
+                                <small class="text-muted">@history.ConsentedAt.ToDateTime()</small>
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-body">
+                <h6 class="card-title">@Localizer["Consent_AboutTitle"]</h6>
+                <p class="card-text small text-muted">
+                    @Localizer["Consent_AboutDescription"]
+                </p>
+            </div>
+        </div>
+    </div>
+</div>

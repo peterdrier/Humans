@@ -45,7 +45,6 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddShiftsSection();
         services.AddEarlyEntrySection();
         services.AddTicketsSection();
-        services.AddLegalAndConsentSection();
         services.AddAuditLogSection();
         services.AddGdprSection();
         services.AddICalFeedSection();
@@ -65,6 +64,8 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<GateVendorCheckInJob>();
         services.AddScoped<CleanupIssuesJob>();
         services.AddScoped<TermRenewalReminderJob>();
+        services.AddScoped<SyncLegalDocumentsJob>();
+        services.AddScoped<SendReConsentReminderJob>();
 
         // Base collaborators that Governance's section file used to register on the way past.
         // The three badge-cache invalidators are Humans.Infrastructure implementations of

@@ -6,7 +6,7 @@ using Humans.Application.DTOs;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Camps;
-using Humans.Application.Interfaces.Consent;
+using Humans.Consent.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.HumanLifecycle;
@@ -49,7 +49,7 @@ public class DevPersonaSeederTests
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly ICampService _camps = Substitute.For<ICampService>();
     private readonly ICampRoleService _campRoles = Substitute.For<ICampRoleService>();
-    private readonly IConsentService _consents = Substitute.For<IConsentService>();
+    private readonly IConsentSubmission _consents = Substitute.For<IConsentSubmission>();
     private readonly IMembershipCalculatorRead _membershipCalculator = Substitute.For<IMembershipCalculatorRead>();
     private readonly IHumanLifecycleService _humanLifecycle = Substitute.For<IHumanLifecycleService>();
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 7, 13, 12, 0));

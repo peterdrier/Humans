@@ -1,4 +1,4 @@
-using Humans.Application.Interfaces.Consent;
+using Humans.Consent.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Shifts;

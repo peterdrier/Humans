@@ -7,8 +7,7 @@ using NSubstitute;
 using Humans.Governance.Services;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
-using Humans.Application.Interfaces.Consent;
-using Humans.Application.Interfaces.Legal;
+using Humans.Consent.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Governance.Contracts;
 using Humans.Domain.Enums;
@@ -22,11 +21,11 @@ public class MembershipPartitionTests
     private readonly IMembershipQuery _membershipQuery = Substitute.For<IMembershipQuery>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IConsentServiceRead _consentService = Substitute.For<IConsentServiceRead>();
-    private readonly ILegalDocumentSyncService _legalDocumentSyncService = Substitute.For<ILegalDocumentSyncService>();
+    private readonly ILegalDocumentSyncServiceRead _legalDocumentSyncService = Substitute.For<ILegalDocumentSyncServiceRead>();
 
     private readonly Dictionary<Guid, User> _usersById = new();
     private readonly Dictionary<Guid, Profile> _profilesByUserId = new();
-    private readonly Dictionary<Guid, List<DocumentVersion>> _requiredVersionsByTeam = new();
+    private readonly Dictionary<Guid, List<RequiredDocumentVersionSnapshot>> _requiredVersionsByTeam = new();
     private readonly Dictionary<Guid, HashSet<Guid>> _consentedVersionsByUser = new();
 
     public MembershipPartitionTests()
@@ -63,8 +62,7 @@ public class MembershipPartitionTests
             {
                 var teamId = ci.Arg<Guid>();
                 var versions = _requiredVersionsByTeam.GetValueOrDefault(teamId) ?? [];
-                return Task.FromResult<IReadOnlyList<RequiredDocumentVersionSnapshot>>(
-                    versions.Select(ToRequiredVersionSnapshot).ToList());
+                return Task.FromResult<IReadOnlyList<RequiredDocumentVersionSnapshot>>(versions);
             });
 
         _consentService.GetConsentMapForUsersAsync(
@@ -79,16 +77,6 @@ public class MembershipPartitionTests
             });
     }
 
-    private static RequiredDocumentVersionSnapshot ToRequiredVersionSnapshot(DocumentVersion version) =>
-        new(
-            version.Id,
-            version.LegalDocumentId,
-            version.LegalDocument?.Name ?? string.Empty,
-            version.LegalDocument?.GracePeriodDays ?? 7,
-            version.VersionNumber,
-            version.EffectiveFrom,
-            version.RequiresReConsent,
-            version.ChangesSummary);
 
     [HumansFact]
     public async Task PartitionUsersAsync_ActiveUser_GoesToActiveBucket()
@@ -309,29 +297,15 @@ public class MembershipPartitionTests
         var now = _clock.GetCurrentInstant();
         var docId = Guid.NewGuid();
         var versionId = Guid.NewGuid();
-        var doc = new LegalDocument
-        {
-            Id = docId,
-            Name = $"Doc-{docId}",
-            TeamId = teamId,
-            IsRequired = true,
-            IsActive = true,
-            GracePeriodDays = 0,
-            CurrentCommitSha = "test",
-            CreatedAt = now,
-            LastSyncedAt = now
-        };
-        var version = new DocumentVersion
-        {
-            Id = versionId,
-            LegalDocumentId = docId,
-            VersionNumber = "v1",
-            CommitSha = "abc123",
-            EffectiveFrom = now - Duration.FromDays(1),
-            RequiresReConsent = false,
-            CreatedAt = now,
-            LegalDocument = doc
-        };
+        var version = new RequiredDocumentVersionSnapshot(
+            Id: versionId,
+            LegalDocumentId: docId,
+            LegalDocumentName: $"Doc-{docId}",
+            LegalDocumentGracePeriodDays: 0,
+            VersionNumber: "v1",
+            EffectiveFrom: now - Duration.FromDays(1),
+            RequiresReConsent: false,
+            ChangesSummary: null);
         if (!_requiredVersionsByTeam.TryGetValue(teamId, out var list))
         {
             list = [];

@@ -3,8 +3,7 @@ using NodaTime;
 using Humans.Application.DTOs;
 using Humans.Domain.Constants;
 using Humans.Domain.Enums;
-using Humans.Application.Interfaces.Consent;
-using Humans.Application.Interfaces.Legal;
+using Humans.Consent.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Governance.Contracts;
 
@@ -13,7 +12,7 @@ namespace Humans.Governance.Services;
 internal sealed class MembershipCalculator(
     IMembershipQuery membershipQuery,
     IUserServiceRead userService,
-    ILegalDocumentSyncService legalDocumentSyncService,
+    ILegalDocumentSyncServiceRead legalDocumentSyncService,
     IServiceProvider serviceProvider,
     IClock clock) : IMembershipCalculator
 {

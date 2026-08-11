@@ -9,6 +9,7 @@ using Humans.Domain.Enums;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Caching;
+using Humans.Consent.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Application.Interfaces.Users;
 

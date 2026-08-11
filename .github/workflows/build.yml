@@ -49,7 +49,7 @@ env:
     CampsDbContext:src/Humans.Infrastructure
     GateDbContext:src/Sections/Humans.Gate
     SystemDbContext:src/Humans.Infrastructure
-    LegalDbContext:src/Humans.Infrastructure
+    LegalDbContext:src/Sections/Humans.Consent
     AuditLogDbContext:src/Humans.Infrastructure
     ShiftsDbContext:src/Humans.Infrastructure
     StoreDbContext:src/Sections/Humans.Store

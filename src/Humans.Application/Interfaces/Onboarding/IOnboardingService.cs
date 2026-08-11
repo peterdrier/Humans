@@ -1,3 +1,5 @@
+using Humans.Consent.Contracts;
+
 namespace Humans.Application.Interfaces.Onboarding;
 
 public record OnboardingResult(bool Success, string? ErrorKey = null);
@@ -10,7 +12,7 @@ public record BulkOnboardingResult(int ApprovedCount);
 /// <see cref="CurrentIndex"/> is 1-based progress within <see cref="TotalRequired"/>.
 /// </summary>
 public record NextConsentStepData(
-    Consent.ConsentReviewDetail? Next,
+    ConsentReviewDetail? Next,
     int CurrentIndex,
     int TotalRequired);
 

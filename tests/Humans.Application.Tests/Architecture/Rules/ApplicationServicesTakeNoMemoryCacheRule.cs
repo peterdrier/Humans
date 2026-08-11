@@ -1,7 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application.Services.AuditLog;
 using Humans.Application.Services.Camps;
-using Humans.Application.Services.Legal;
 using Humans.Application.Services.Shifts;
 using Microsoft.Extensions.Caching.Memory;
 
@@ -51,7 +50,7 @@ public class ApplicationServicesTakeNoMemoryCacheRule
     [
         typeof(CampContactService),
         SectionType("Humans.Issues.Services.IssuesService"),  // CacheKeys.IssuesBadge(userId)
-        typeof(LegalDocumentService),
+        SectionType("Humans.Consent.Services.LegalDocumentService"),
         SectionType("Humans.Notifications.Services.NotificationEmitter"),
         SectionType("Humans.Notifications.Services.NotificationInboxService"),
         SectionType("Humans.Notifications.Services.NotificationMeterProvider"),

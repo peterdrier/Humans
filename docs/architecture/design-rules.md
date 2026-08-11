@@ -272,7 +272,7 @@ Ownership is now physical as well as conventional for the peeled sections: the m
 | **Teams** | `TeamService`, `TeamPageService`, `TeamResourceService` | `teams`, `team_members`, `team_join_requests`, `team_join_request_state_histories`, `team_role_definitions`, `team_role_assignments`, `team_pages`, `google_resources` |
 | **Auth** | `RoleAssignmentService`, `MagicLinkService` | `role_assignments` |
 | **Governance** | `ApplicationDecisionService` | `applications`, `application_state_histories`, `board_votes` |
-| **Consent** | `LegalDocumentService`, `LegalDocumentSyncService`, `ConsentService` | `legal_documents`, `document_versions`, `consent_records` |
+| **Consent** | `LegalDocumentService`, `LegalDocumentSyncService`, `ConsentService` (`src/Sections/Humans.Consent`) | `legal_documents`, `document_versions`, `consent_records` |
 | **Onboarding** | `OnboardingService` (intake funnel), `HumanLifecycleService` (suspend/unsuspend state-machine) | *(no owned tables — orchestrator pair over Profiles, Consent, Teams, Governance)* |
 | **Camps** | `CampService`, `CampRoleService`, `CampContactService` | `camps`, `camp_seasons`, `camp_members`, `camp_images`, `camp_historical_names`, `camp_settings`, `camp_role_definitions`, `camp_role_assignments` |
 | **Containers** | `IContainerService` (G5 project `Humans.Containers`; implemented by the section-internal `Service`) | `containers`, `container_placements` |

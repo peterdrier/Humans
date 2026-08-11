@@ -1,5 +1,6 @@
 using System.Security.Claims;
-using Humans.Application.Interfaces.Consent;
+using Humans.Consent;
+using Humans.Consent.Contracts;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Shifts;
@@ -36,9 +37,12 @@ public class OnboardingWidgetControllerShiftsTests
     private readonly IShiftManagementService _shiftMgmt = Substitute.For<IShiftManagementService>();
     private readonly IBurnSettingsService _burnSettings = Substitute.For<IBurnSettingsService>();
     private readonly IShiftView _shiftView = Substitute.For<IShiftView>();
-    private readonly IConsentService _consents = Substitute.For<IConsentService>();
+    private readonly IConsentSubmission _consents = Substitute.For<IConsentSubmission>();
     private readonly IOnboardingService _onboardingService = Substitute.For<IOnboardingService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
+    private readonly IStringLocalizer<ConsentResource> _consentLocalizer =
+        Substitute.For<IStringLocalizer<ConsentResource>>();
+
     private readonly IStringLocalizer<SharedResource> _localizer =
         Substitute.For<IStringLocalizer<SharedResource>>();
     private readonly DefaultHttpContext _http = new();
@@ -49,6 +53,8 @@ public class OnboardingWidgetControllerShiftsTests
         _userManager = Substitute.For<UserManager<User>>(
             userStore, null, null, null, null, null, null, null, null);
         _localizer[Arg.Any<string>()].Returns(ci =>
+            new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
+        _consentLocalizer[Arg.Any<string>()].Returns(ci =>
             new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
     }
 
@@ -63,7 +69,7 @@ public class OnboardingWidgetControllerShiftsTests
         var services = new ServiceCollection();
         services.AddSingleton<ILoggerFactory>(NullLoggerFactory.Instance);
         _http.RequestServices = services.BuildServiceProvider();
-        var ctrl = new OnboardingWidgetController(_userService, _state, _profileEditor, _signups, _shiftMgmt, _burnSettings, _shiftView, _consents, _onboardingService, NodaTime.SystemClock.Instance, _localizer);
+        var ctrl = new OnboardingWidgetController(_userService, _state, _profileEditor, _signups, _shiftMgmt, _burnSettings, _shiftView, _consents, _onboardingService, NodaTime.SystemClock.Instance, _localizer, _consentLocalizer);
         ctrl.ControllerContext = new ControllerContext
         {
             HttpContext = _http,

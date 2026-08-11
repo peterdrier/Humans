@@ -1,0 +1,74 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>1.3</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+
+  <!-- ======================== -->
+  <!-- Common / Shared          -->
+  <!-- ======================== -->
+  <data name="ConsentIndex_Title" xml:space="preserve"><value>Agreements</value></data>
+  <data name="ConsentReview_Title" xml:space="preserve"><value>Review: {0}</value><comment>{0} = document name</comment></data>
+  <data name="ConsentReview_Progress" xml:space="preserve"><value>Document {0} of {1}</value><comment>{0} = current document index, {1} = total required documents</comment></data>
+  <data name="Consent_RequiredDocuments" xml:space="preserve"><value>Required Documents</value></data>
+  <data name="Consent_NoDocumentsRequired" xml:space="preserve"><value>No documents require consent at this time.</value></data>
+  <data name="Consent_Version" xml:space="preserve"><value>Version</value></data>
+  <data name="Consent_EffectiveFrom" xml:space="preserve"><value>Effective from</value></data>
+  <data name="Consent_Consented" xml:space="preserve"><value>Consented</value></data>
+  <data name="Consent_ReviewAndConsent" xml:space="preserve"><value>Review &amp; Consent</value></data>
+  <data name="Consent_PendingCount" xml:space="preserve"><value>{0} document(s) require your consent. Please review and consent to maintain your active membership.</value><comment>{0} = pending document count</comment></data>
+  <data name="Consent_AllConsented" xml:space="preserve"><value>You have consented to all required documents.</value></data>
+  <data name="Consent_ActionRequired" xml:space="preserve"><value>Action Required</value></data>
+  <data name="Consent_LastUpdated" xml:space="preserve"><value>Last updated</value></data>
+  <data name="Consent_History" xml:space="preserve"><value>Consent History</value></data>
+  <data name="Consent_NoRecords" xml:space="preserve"><value>No consent records yet.</value></data>
+  <data name="Consent_AboutTitle" xml:space="preserve"><value>About Consent</value></data>
+  <data name="Consent_AboutDescription" xml:space="preserve"><value>By consenting to these documents, you agree to be bound by their terms. The Spanish version is the legally binding text. Translations are provided for convenience only.</value></data>
+  <data name="ConsentReview_AlreadyConsented" xml:space="preserve"><value>Already Consented</value></data>
+  <data name="ConsentReview_ChangesInVersion" xml:space="preserve"><value>Changes in this version:</value></data>
+  <data name="ConsentReview_Important" xml:space="preserve"><value>Important:</value></data>
+  <data name="ConsentReview_SpanishIsLegal" xml:space="preserve"><value>The Spanish version below is the legally binding text. The English translation is provided for your convenience only and is not legally binding.</value></data>
+  <data name="ConsentReview_SpanishTab" xml:space="preserve"><value>Spanish (Legal)</value></data>
+  <data name="ConsentReview_EnglishTab" xml:space="preserve"><value>English (Translation)</value></data>
+  <data name="ConsentReview_ContentNotAvailable" xml:space="preserve"><value>Content not available.</value></data>
+  <data name="ConsentReview_EnglishNotAvailable" xml:space="preserve"><value>English translation not available.</value></data>
+  <data name="ConsentReview_TranslationDisclaimer" xml:space="preserve"><value>This translation is provided for convenience only. The Spanish version is legally binding.</value></data>
+  <data name="ConsentReview_ConsentCheckbox" xml:space="preserve"><value>I have read and understood this document, and I agree to be bound by its terms.</value></data>
+  <data name="ConsentReview_SpanishLegalNote" xml:space="preserve"><value>I understand that the Spanish version is the legally binding text.</value></data>
+  <data name="ConsentReview_BackToList" xml:space="preserve"><value>Back to List</value></data>
+  <data name="ConsentReview_GiveConsent" xml:space="preserve"><value>Give Consent</value></data>
+  <data name="ConsentReview_CheckboxRequired" xml:space="preserve"><value>Please check this box to confirm you have read and agree to the terms.</value></data>
+  <data name="Consent_MustCheck" xml:space="preserve"><value>You must check the consent checkbox to continue.</value></data>
+  <data name="Consent_AlreadyConsented" xml:space="preserve"><value>You have already consented to this document.</value></data>
+  <data name="Consent_ThankYou" xml:space="preserve"><value>Thank you for consenting to {0}.</value><comment>{0} = document name</comment></data>
+  <data name="Consent_SubmitError" xml:space="preserve"><value>Something went wrong while recording your consent. Please try again.</value></data>
+  <data name="Consent_StubProfile_AddName" xml:space="preserve"><value>Add your legal name before signing consents.</value></data>
+</root>

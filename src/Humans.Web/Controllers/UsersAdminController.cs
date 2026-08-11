@@ -5,7 +5,7 @@ using Humans.Application.Interfaces.Admin;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Auth;
 using Humans.Campaigns.Contracts;
-using Humans.Application.Interfaces.Consent;
+using Humans.Consent.Contracts;
 using Humans.Email.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Application.Interfaces.HumanLifecycle;

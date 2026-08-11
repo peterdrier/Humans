@@ -1,5 +1,5 @@
 using Humans.Governance.Contracts;
-using Humans.Application.Interfaces.Legal;
+using Humans.Consent.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Enums;
 

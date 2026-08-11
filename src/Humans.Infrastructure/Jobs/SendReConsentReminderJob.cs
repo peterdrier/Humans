@@ -5,7 +5,7 @@ using NodaTime;
 using Humans.Application.Interfaces;
 using Humans.Infrastructure.Configuration;
 using Humans.Email.Contracts;
-using Humans.Application.Interfaces.Legal;
+using Humans.Consent.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Application.Interfaces.Users;
 
@@ -24,7 +24,7 @@ namespace Humans.Infrastructure.Jobs;
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
 public class SendReConsentReminderJob(
     IMembershipCalculatorRead membershipCalculator,
-    ILegalDocumentSyncService legalDocService,
+    ILegalDocumentSyncServiceRead legalDocService,
     IUserService userService,
     IEmailService emailService,
     IEmailMessageFactory emailMessages,

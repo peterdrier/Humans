@@ -25,6 +25,7 @@
       TicketQueryService builds the code-tracking dashboard.
     -->
     <ProjectReference Include="..\Sections\Humans.Campaigns.Contracts\Humans.Campaigns.Contracts.csproj" />
+    <ProjectReference Include="..\Sections\Humans.Consent.Contracts\Humans.Consent.Contracts.csproj" />
     <!--
       Notifications' contracts leaf: eleven services here emit through INotificationEmitter,
       AccountMergeService takes INotificationService, and ConsentService /

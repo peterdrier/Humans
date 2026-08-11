@@ -5,7 +5,7 @@ using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Camps;
-using Humans.Application.Interfaces.Consent;
+using Humans.Consent.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.HumanLifecycle;
@@ -51,7 +51,7 @@ public sealed class DevPersonaSeeder(
     IAuditLogService auditLogService,
     ICampService campService,
     ICampRoleService campRoleService,
-    IConsentService consentService,
+    IConsentSubmission consentService,
     IMembershipCalculatorRead membershipCalculator,
     IHumanLifecycleService humanLifecycleService,
     IClock clock,

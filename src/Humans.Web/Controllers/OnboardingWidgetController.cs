@@ -2,7 +2,8 @@ using Humans.UI.Controllers;
 using System.Security.Claims;
 using Humans.Application;
 using Humans.Application.DTOs;
-using Humans.Application.Interfaces.Consent;
+using Humans.Consent;
+using Humans.Consent.Contracts;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Shifts;
@@ -31,10 +32,11 @@ public class OnboardingWidgetController(
     IShiftManagementService shiftMgmt,
     IBurnSettingsService burnSettings,
     IShiftView shiftView,
-    IConsentService consents,
+    IConsentSubmission consents,
     IOnboardingService onboardingService,
     IClock clock,
-    IStringLocalizer<SharedResource> localizer) : HumansControllerBase(userService)
+    IStringLocalizer<SharedResource> localizer,
+    IStringLocalizer<ConsentResource> consentLocalizer) : HumansControllerBase(userService)
 {
     private readonly IUserServiceRead _userService = userService;
 
@@ -214,7 +216,7 @@ public class OnboardingWidgetController(
     {
         if (!explicitConsent)
         {
-            SetError(localizer["Consent_MustCheck"].Value);
+            SetError(consentLocalizer["Consent_MustCheck"].Value);
             return RedirectToAction(nameof(Consents));
         }
 
@@ -240,7 +242,7 @@ public class OnboardingWidgetController(
                 case "StubProfile":
                     return RedirectToNamesForStub();
                 case "AlreadyConsented":
-                    SetInfo(localizer["Consent_AlreadyConsented"].Value);
+                    SetInfo(consentLocalizer["Consent_AlreadyConsented"].Value);
                     break;
             }
         }
@@ -258,7 +260,7 @@ public class OnboardingWidgetController(
 
     private IActionResult RedirectToNamesForStub()
     {
-        SetInfo(localizer["Consent_StubProfile_AddName"].Value);
+        SetInfo(consentLocalizer["Consent_StubProfile_AddName"].Value);
         return RedirectToAction(nameof(Names));
     }
 }

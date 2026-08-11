@@ -1,0 +1,155 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- ReSharper disable MarkupTextTypo -->
+<root xmlns:ns1="urn:schemas-microsoft-com:xml-msdata" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:schema id="root">
+    <xs:element name="root" ns1:IsDataSet="true">
+      <xs:complexType>
+        <xs:choice maxOccurs="unbounded">
+          <xs:element name="data">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element name="value" type="xsd:string" minOccurs="0" ns1:Ordinal="1" />
+                <xs:element name="comment" type="xsd:string" minOccurs="0" ns1:Ordinal="2" />
+              </xs:sequence>
+              <xs:attribute name="name" type="xsd:string" ns1:Ordinal="0" />
+              <xs:attribute name="type" type="xsd:string" />
+              <xs:attribute name="mimetype" type="xsd:string" />
+            </xs:complexType>
+          </xs:element>
+          <xs:element name="resheader">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element name="value" type="xsd:string" minOccurs="0" ns1:Ordinal="1" />
+              </xs:sequence>
+              <xs:attribute name="name" type="xsd:string" use="required" />
+            </xs:complexType>
+          </xs:element>
+        </xs:choice>
+      </xs:complexType>
+    </xs:element>
+  </xs:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>1.3</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="ConsentIndex_Title" xml:space="preserve">
+    <value>Acuerdos</value>
+  </data>
+  <data name="ConsentReview_Title" xml:space="preserve">
+    <value>Revisar: {0}</value>
+    <comment>{0} = document name</comment>
+  </data>
+  <data name="ConsentReview_Progress" xml:space="preserve">
+    <value>Documento {0} de {1}</value>
+    <comment>{0} = current document index, {1} = total required documents</comment>
+  </data>
+  <data name="Consent_RequiredDocuments" xml:space="preserve">
+    <value>Documentos requeridos</value>
+  </data>
+  <data name="Consent_NoDocumentsRequired" xml:space="preserve">
+    <value>No se requiere consentimiento en este momento.</value>
+  </data>
+  <data name="Consent_Version" xml:space="preserve">
+    <value>Versión</value>
+  </data>
+  <data name="Consent_EffectiveFrom" xml:space="preserve">
+    <value>Vigente desde</value>
+  </data>
+  <data name="Consent_Consented" xml:space="preserve">
+    <value>Consentido</value>
+  </data>
+  <data name="Consent_ReviewAndConsent" xml:space="preserve">
+    <value>Revisar y consentir</value>
+  </data>
+  <data name="Consent_PendingCount" xml:space="preserve">
+    <value>{0} documento(s) requieren su consentimiento. Por favor, revíselos y otorgue su consentimiento para mantener Su estado de voluntario activa.</value>
+    <comment>{0} = pending document count</comment>
+  </data>
+  <data name="Consent_AllConsented" xml:space="preserve">
+    <value>Ha otorgado su consentimiento a todos los documentos requeridos.</value>
+  </data>
+  <data name="Consent_ActionRequired" xml:space="preserve">
+    <value>Acción requerida</value>
+  </data>
+  <data name="Consent_LastUpdated" xml:space="preserve">
+    <value>Última actualización</value>
+  </data>
+  <data name="Consent_History" xml:space="preserve">
+    <value>Historial de consentimientos</value>
+  </data>
+  <data name="Consent_NoRecords" xml:space="preserve">
+    <value>Aún no hay registros de consentimiento.</value>
+  </data>
+  <data name="Consent_AboutTitle" xml:space="preserve">
+    <value>Acerca del consentimiento</value>
+  </data>
+  <data name="Consent_AboutDescription" xml:space="preserve">
+    <value>Al otorgar su consentimiento a estos documentos, acepta quedar vinculado por sus términos. La versión en español es el texto legalmente vinculante. Las traducciones se proporcionan únicamente a título informativo.</value>
+  </data>
+  <data name="ConsentReview_AlreadyConsented" xml:space="preserve">
+    <value>Ya ha otorgado su consentimiento</value>
+  </data>
+  <data name="ConsentReview_ChangesInVersion" xml:space="preserve">
+    <value>Cambios en esta versión:</value>
+  </data>
+  <data name="ConsentReview_Important" xml:space="preserve">
+    <value>Importante:</value>
+  </data>
+  <data name="ConsentReview_SpanishIsLegal" xml:space="preserve">
+    <value>La versión en español que aparece a continuación es el texto legalmente vinculante. La traducción al inglés se proporciona únicamente para su comodidad y no tiene carácter vinculante.</value>
+  </data>
+  <data name="ConsentReview_SpanishTab" xml:space="preserve">
+    <value>Español (Legal)</value>
+  </data>
+  <data name="ConsentReview_EnglishTab" xml:space="preserve">
+    <value>Inglés (Traducción)</value>
+  </data>
+  <data name="ConsentReview_ContentNotAvailable" xml:space="preserve">
+    <value>Contenido no disponible.</value>
+  </data>
+  <data name="ConsentReview_EnglishNotAvailable" xml:space="preserve">
+    <value>Traducción al inglés no disponible.</value>
+  </data>
+  <data name="ConsentReview_TranslationDisclaimer" xml:space="preserve">
+    <value>Esta traducción se proporciona únicamente a título informativo. La versión en español es la legalmente vinculante.</value>
+  </data>
+  <data name="ConsentReview_ConsentCheckbox" xml:space="preserve">
+    <value>He leído y comprendido este documento, y acepto quedar vinculado por sus términos.</value>
+  </data>
+  <data name="ConsentReview_SpanishLegalNote" xml:space="preserve">
+    <value>Entiendo que la versión en español es el texto legalmente vinculante.</value>
+  </data>
+  <data name="ConsentReview_BackToList" xml:space="preserve">
+    <value>Volver a la lista</value>
+  </data>
+  <data name="ConsentReview_GiveConsent" xml:space="preserve">
+    <value>Otorgar consentimiento</value>
+  </data>
+  <data name="ConsentReview_CheckboxRequired" xml:space="preserve">
+    <value>Marca esta casilla para confirmar que has leído y aceptas los términos.</value>
+  </data>
+  <data name="Consent_MustCheck" xml:space="preserve">
+    <value>Debe marcar la casilla de consentimiento para continuar.</value>
+  </data>
+  <data name="Consent_AlreadyConsented" xml:space="preserve">
+    <value>Ya ha otorgado su consentimiento a este documento.</value>
+  </data>
+  <data name="Consent_ThankYou" xml:space="preserve">
+    <value>Gracias por otorgar su consentimiento a {0}.</value>
+    <comment>{0} = document name</comment>
+  </data>
+  <data name="Consent_SubmitError" xml:space="preserve">
+    <value>Algo salió mal al registrar su consentimiento. Por favor, inténtelo de nuevo.</value>
+  </data>
+  <data name="Consent_StubProfile_AddName" xml:space="preserve">
+    <value>Añada su nombre legal antes de firmar los consentimientos.</value>
+  </data>
+</root>

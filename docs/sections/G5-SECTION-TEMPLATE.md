@@ -27,9 +27,12 @@ block of markup *out* of a Shell view to bring its resource keys home, and the f
 is consumed by eleven Base services), Governance (the first whose resx carve had to
 leave four whole prefixes behind because Shell renders the same form, the first to bind two
 localizers by design, and the first whose contracts leaf carries write members under an
-unchanged name), and Email (the first whose resource set is *other sections'* copy, carved by
+unchanged name), Email (the first whose resource set is *other sections'* copy, carved by
 moving the renderer; the first whose leaf carries an interface Base *implements*; and the
-first whose recurring job was the section's entire write path). Step numbers match the former §15, so an old
+first whose recurring job was the section's entire write path), and Consent (the first whose
+resx carve had to rebind call sites in *three* assemblies — Shell, another section and a
+section partial's `ResourceManager` — and the first whose contracts leaf carries a view
+model). Step numbers match the former §15, so an old
 "§15 step 3b" citation reads as "step 3b" here.
 
 **Where this template and `src/Sections/` disagree, the code is right.** Deviations are the
@@ -186,6 +189,13 @@ Git Bash.)
      `IStringLocalizerFactory.Create("SharedResource", "Humans.UI")` and take
      `IStringLocalizer<<Section>Resource>` instead — the string-keyed overload silently keeps
      reading the old set (proven: Email).
+     **A Razor view can do the same thing, and `_ViewImports` does not reach it.**
+     `_ConsentReviewBody.cshtml` builds a per-language JSON blob for its checkbox script with
+     `new System.Resources.ResourceManager(typeof(SharedResource))` and three `GetString(key,
+     culture)` calls. Rebinding `Localizer` in `_ViewImports` leaves that constructor pointing
+     at the old set, so the tabbed-language checkbox text degrades to raw keys in every
+     language while the surrounding markup is perfectly localized. Grep the moved `.cshtml`
+     for `ResourceManager` as well as the `.cs` (proven: Consent).
    - **A section can have a resource set and no localized page copy.** Email's two admin views
      carry zero `Localizer[…]` calls, so the step-12 resx assertion has nothing to hang on in
      the section's own HTML. The probe was the template-gallery page (`/Email/EmailPreview`),
@@ -225,6 +235,16 @@ Git Bash.)
      plumbing. `Humans.UI` is right only for a partial with no section vocabulary (proven both
      ways: Containers kept three card partials, Shell renders them unchanged; Events promoted
      `_FavouriteButton` and had to take three labels on its model).
+   - **…and the mirror: when carving the *whole* prefix is available, take it and rebind the
+     outside call sites.** Governance left four prefixes behind because claiming five keys out
+     of nine splits a message set. Consent's `Consent_*` / `ConsentReview_*` are read by Shell's
+     onboarding widget (which renders the same consent form) and by Governance's statutes page,
+     which reads exactly Governance's case — except nothing gets split: all 36 keys moved, and
+     the three outside call sites bind `IStringLocalizer<<Section>Resource>` instead
+     (`OnboardingWidgetController`, `Views/OnboardingWidget/Consents.cshtml`, and
+     `Humans.Governance` taking a reference to `Humans.<Section>` per Budget's rule). **Ask
+     "would carving split a set?" before applying Governance's rule** — if the answer is no,
+     the keys go home and the outside callers rebind (proven: Consent).
    - **A key used by both this section and a not-yet-moved section stays in `SharedResource`** —
      carve by *owner*, not by prefix (proven: Containers left the 9 `ContainerMap_*` keys with
      City Planning's map page).
@@ -446,6 +466,16 @@ Git Bash.)
      decision service minus the decisions — and renaming it `…ServiceRead` would have been a lie
      about six write members. Campaigns' shape, reached from the write side (proven:
      Governance).
+   - **A *view model* belongs on the leaf when a Base view constructs it for the section's own
+     partial.** Consent's `_ConsentReviewBody` is rendered from both `/Consent/Review` and
+     Shell's onboarding-widget Consents step; the partial moves into the section's
+     `Views/Shared/` and Shell keeps finding it by name, but `<partial model="new
+     ConsentReviewFormViewModel { … }" />` needs the model type. Step 3b's "move the markup"
+     is not available here — the widget's step view binds `ConsentsStepViewModel`, a Shell type
+     a section cannot name — and duplicating the model forks the shape the shared partial
+     exists to keep. It is genuinely consumed from outside the section, which is what
+     `Contracts/` is for; it names no ASP.NET type, so the leaf stays plain
+     `Microsoft.NET.Sdk` (proven: Consent).
    - **Folder vs project is decided by *where the consumer lives*, not how much surface there
      is.** A consumer in Base forces `Humans.<Section>.Contracts` as its own project referencing
      only the bottom of the graph — a folder would cycle
@@ -829,8 +859,16 @@ Git Bash.)
     stale path where it sits rather than inventing one**; Scanner's controller was one line in
     the `Platform` catch-all, and adding a `Scanner` bucket would have been a scoring change on
     top of a file move. Delete the section's `*ArchitectureTests.cs` assertions
-    the assembly boundary now subsumes; delete its `[Grandfathered]` attributes
-    (⚠️ UNPROVEN — no moved section has had any).
+    the assembly boundary now subsumes.
+    - **A `[Grandfathered]` attribute *moves with its type*; deleting it is the same mistake as
+      deleting a baseline row.** The template used to say to delete them (⚠️ UNPROVEN — no
+      moved section had any until Consent, which has two: `IConsentCacheInvalidator` and
+      `ILegalDocumentCacheInvalidator`, both `[Grandfathered("HUM0028")]`). The violation they
+      record — a cache flushed from outside the owning service — is byte-identical after a file
+      move (`AccountMergeService` still evicts the consent cache on merge accept), so dropping
+      the attribute reports the ratchet as advanced while the code stands still, and turns
+      HUM0028 from Warning back into an Error on unchanged code. Campaigns' "retarget, not
+      delete" reasoning, applied to an analyzer suppression (proven: Consent).
     - **An `Architecture/Baselines` row is a *retarget*, not a deletion — and the rule's scan
       is probably keyed on the Base path.** Campaigns was the first moved section to carry one
       (`DisplaySortInControllers`, one `OrderByDescending` in the repository). Deleting the row
@@ -963,6 +1001,13 @@ Git Bash.)
       either way because `TrackedCache` lazy-loads a missing key, which makes the broken half
       look like a data problem rather than a caching one (proven: Calendar; contrast Budget,
       which has no decorator and seeds through its context).
+      **Second sighting, with the cheaper fix: call the invalidator.** Consent's document-side
+      decorator warms at startup with `warmOnStartup: true`, so the same trap fires — but its
+      `I<Section>CacheInvalidator` is already on the leaf for another consumer, and the test
+      project sees section internals either way. A context write followed by
+      `Factory.Services.GetRequiredService<I…CacheInvalidator>().InvalidateAll()` keeps the
+      fixture a plain `db.Add` and needs no service-shaped seeding path. Prefer it when the
+      section already ships an invalidator (proven: Consent).
     - **The non-English case is not optional and is not decoration.** An English-only check
       passes whether or not the section's satellite assemblies shipped, because the neutral set
       is embedded in the main assembly and the fallback is silent. One request with

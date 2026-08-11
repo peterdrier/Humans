@@ -1,4 +1,8 @@
 using Humans.Domain.Entities;
+using Humans.Consent.Services;
+using Humans.Consent.Contracts;
+using Humans.Consent.Domain;
+using Humans.Consent.Data;
 using Humans.Domain.Enums;
 using Humans.Budget.Data;
 using Humans.Budget.Domain;
