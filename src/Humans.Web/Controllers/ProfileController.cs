@@ -1,3 +1,4 @@
+using Humans.UI.Models;
 using Humans.UI.Models.Tables;
 // @e2e: board.spec.ts
 // @e2e: profile.spec.ts

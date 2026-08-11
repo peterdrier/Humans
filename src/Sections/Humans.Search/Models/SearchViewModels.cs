@@ -1,14 +1,15 @@
-using Humans.Application.DTOs;
-using Humans.Application.Interfaces.Search;
+using Humans.Search.Services;
+using Humans.Search.Services.Dtos;
+using Humans.UI.Models;
 
-namespace Humans.Web.Models;
+namespace Humans.Search.Models;
 
 /// <summary>
 /// View-model for the global <c>/Search</c> page. Built by
 /// <c>SearchController</c> from the <see cref="GlobalSearchResults"/>
 /// returned by <see cref="ISearchService"/>.
 /// </summary>
-public sealed class GlobalSearchViewModel
+internal sealed class GlobalSearchViewModel
 {
     public string? Query { get; init; }
 

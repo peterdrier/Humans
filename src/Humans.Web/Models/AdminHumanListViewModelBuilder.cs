@@ -1,5 +1,6 @@
 using Humans.Application.DTOs;
 using Humans.Domain.Enums;
+using Humans.UI.Models;
 
 namespace Humans.Web.Models;
 

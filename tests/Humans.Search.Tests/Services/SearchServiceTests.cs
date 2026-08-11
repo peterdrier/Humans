@@ -6,13 +6,14 @@ using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Profiles;
-using Humans.Application.Services.Search;
+using Humans.Search.Services;
+using Humans.Search.Services.Dtos;
 using Microsoft.Extensions.Configuration;
 using NodaTime;
 using NSubstitute;
 using Xunit;
 
-namespace Humans.Application.Tests.Services.Search;
+namespace Humans.Search.Tests.Services;
 
 /// <summary>
 /// Orchestration tests for <see cref="SearchService"/> against substitutes for the five
@@ -100,14 +101,31 @@ public sealed class SearchServiceTests
     // onlyType short-circuit
     // ==========================================================================
 
-    [HumansTheory]
-    [InlineData(SearchResultType.Human)]
-    [InlineData(SearchResultType.Team)]
-    [InlineData(SearchResultType.Camp)]
-    [InlineData(SearchResultType.Shift)]
-    [InlineData(SearchResultType.Event)]
-    public async Task SearchAsync_OnlyType_QueriesThatSectionAndSkipsTheOtherFour(SearchResultType onlyType)
+    /// <remarks>
+    /// One <c>[Fact]</c> over the five cases rather than a <c>[HumansTheory]</c> with five
+    /// <c>[InlineData]</c>: <c>SearchResultType</c> turned <c>internal</c> at the G5 move, and a
+    /// <c>public</c> test method cannot take an internal parameter (CS0051) even with
+    /// <c>InternalsVisibleTo</c>. Each case clears the substitutes' received calls first, which
+    /// is what the per-case theory instance used to give for free
+    /// (G5-SECTION-TEMPLATE.md step 8, Issues' rule).
+    /// </remarks>
+    [HumansFact]
+    public async Task SearchAsync_OnlyType_QueriesThatSectionAndSkipsTheOtherFour()
     {
+        foreach (var onlyType in Enum.GetValues<SearchResultType>())
+        {
+            await AssertOnlyTypeQueriesOneSection(onlyType);
+        }
+    }
+
+    private async Task AssertOnlyTypeQueriesOneSection(SearchResultType onlyType)
+    {
+        _users.ClearReceivedCalls();
+        _teams.ClearReceivedCalls();
+        _camps.ClearReceivedCalls();
+        _shifts.ClearReceivedCalls();
+        _events.ClearReceivedCalls();
+
         var results = await Build().SearchAsync("Kitchen", onlyType, TestContext.Current.CancellationToken);
 
         results.Humans.Should().HaveCount(onlyType == SearchResultType.Human ? 1 : 0);

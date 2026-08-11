@@ -43,6 +43,7 @@ move recipe is [`G5-SECTION-TEMPLATE.md`](G5-SECTION-TEMPLATE.md).
 | Notifications | `src/Sections/Humans.Notifications` | [Notifications.md](../../src/Sections/Humans.Notifications/Docs/Notifications.md) |
 | Onboarding | `src/Sections/Humans.Onboarding` | [Onboarding.md](../../src/Sections/Humans.Onboarding/Docs/Onboarding.md) |
 | Scanner | `src/Sections/Humans.Scanner` | [Scanner.md](../../src/Sections/Humans.Scanner/Docs/Scanner.md) |
+| Search | `src/Sections/Humans.Search` | [Search.md](../../src/Sections/Humans.Search/Docs/Search.md) |
 | Store | `src/Sections/Humans.Store` | [Store.md](../../src/Sections/Humans.Store/Docs/Store.md) |
 | Surveys | `src/Sections/Humans.Surveys` | [Surveys.md](../../src/Sections/Humans.Surveys/Docs/Surveys.md) |
 | System Settings | `src/Sections/Humans.SystemSettings` | — (no invariants doc; one key/value table) |
@@ -98,7 +99,7 @@ Cross-check against [`design-rules.md` §8 (Table Ownership Map)](../architectur
 | **Early Entry** | `EarlyEntryRosterController` | `EarlyEntryService` | *`CachingEarlyEntryService`* | — | — |
 | **Cantina** | `CantinaController` (`Humans.Cantina.Controllers`) | — | `CantinaRosterService` (`Humans.Cantina.Services`) | — | — (reads Shifts via `IShiftManagementService`; owns no tables) |
 | **Dashboard** | — (rendered on Home) | `DashboardService`, `AdminDashboardService` | — | — | — |
-| **Search** | `SearchController` | `SearchService` | — | — | — |
+| **Search** | `SearchController` (`Humans.Search.Controllers`, internal) | `SearchService` (`Humans.Search.Services`, internal) | — | — | — (owns no tables; fans out to Users, Teams, Camps, Shifts and Events through their service interfaces) |
 | **Mailer** | `MailerAdminController` (`Humans.Mailer.Controllers`) | `MailerImportService`, `MailerAudienceSyncService` | `MailerLiteClient` (`Humans.Mailer.Services.MailerLite`) | — | — (MailerLite is the system of record; in-Humans writes route through other sections' services) |
 | **Scanner** | `ScannerController` (`src/Sections/Humans.Scanner`) | — | — | — | — (presentational; owns no tables) |
 | **Debug** | `DebugController` (`Humans.Debug.Controllers`), `LogApiController`, `ColorPaletteController`, `WidgetGalleryController`, `TimezoneApiController` | — | — | `AdminDatabaseDiagnosticsRepository` | — (Debug owns no tables; it reads in-memory trackers and `IAdminDatabaseDiagnosticsService`) |

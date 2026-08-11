@@ -560,30 +560,8 @@ public class HumanSearchViewModel
     public List<HumanSearchResultViewModel> Results { get; set; } = [];
 }
 
-public class HumanSearchResultViewModel
-{
-    public Guid UserId { get; set; }
-    public string BurnerName { get; set; } = string.Empty;
-    public string? ProfilePictureUrl { get; set; }
-    public string? MatchField { get; set; }
-    public string? MatchSnippet { get; set; }
-
-    /// <summary>
-    /// Verified email address that matched, when the controller passed the
-    /// <c>PersonSearchFields.Admin</c> bit. Always null on public surfaces.
-    /// </summary>
-    public string? MatchedEmail { get; set; }
-
-    // Set by the AdminList controller to surface partition status, primary
-    // email, and admin-detail deep-link in the canonical _HumanSearchResults
-    // partial. Always null on the public Profile/Search page.
-
-    public string? AdminEmail { get; set; }
-    public string? MembershipStatus { get; set; }
-    public DateTime? CreatedAt { get; set; }
-    public DateTime? LastLoginAt { get; set; }
-    public string? AdminDetailUrl { get; set; }
-}
+// HumanSearchResultViewModel moved to Humans.UI/Models: the Search section's /Search page
+// binds it too and a section cannot name a Humans.Web type (G5-SECTION-TEMPLATE.md step 6).
 
 public class AdminTeamListViewModel
 {

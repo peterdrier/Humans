@@ -560,12 +560,8 @@
     },
     "Search": {
       "paths": [
-        "src/Humans.Application/Interfaces/Search/**",
-        "src/Humans.Application/Services/Search/**",
-        "src/Humans.Application/DTOs/GlobalSearchResults.cs",
-        "src/Humans.Application/DTOs/SectionSearchHits.cs",
-        "src/Humans.Web/Controllers/SearchController.cs",
-        "src/Humans.Web/Models/SearchViewModels.cs"
+        "src/Sections/Humans.Search/**",
+        "src/Humans.Application/DTOs/SectionSearchHits.cs"
       ],
       "symbols": [
         "Search*",

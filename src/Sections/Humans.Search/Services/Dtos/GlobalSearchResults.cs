@@ -1,11 +1,13 @@
-namespace Humans.Application.DTOs;
+using Humans.Application.DTOs;
+
+namespace Humans.Search.Services.Dtos;
 
 /// <summary>
 /// Top-level result type for the global /Search page. Drives the per-type
 /// group filter chips ("All | Humans | Teams | Camps | Shifts | Events") and the
 /// type-grouped section headers in the results view.
 /// </summary>
-public enum SearchResultType
+internal enum SearchResultType
 {
     Human = 0,
     Team = 1,
@@ -28,7 +30,7 @@ public enum SearchResultType
 /// <param name="Score">Higher = better match. Derived from name-match
 /// strength (exact > prefix > contains). The controller orders each
 /// type bucket by descending Score then ascending Title.</param>
-public record GlobalSearchResult(
+internal sealed record GlobalSearchResult(
     SearchResultType Type,
     string Title,
     string Subtitle,
@@ -54,7 +56,7 @@ public record GlobalSearchResult(
 /// <param name="Events">Approved event hits, scored but in unspecified order —
 /// the controller sorts by score desc then title asc before rendering. Empty
 /// when the <c>Features:Events</c> flag is off.</param>
-public record GlobalSearchResults(
+internal sealed record GlobalSearchResults(
     string Query,
     IReadOnlyList<HumanSearchResult> Humans,
     IReadOnlyList<GlobalSearchResult> Teams,

@@ -1,20 +1,20 @@
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Camps;
 using Humans.Events.Contracts;
-using Humans.Application.Interfaces.Search;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Profiles;
+using Humans.Search.Services.Dtos;
 using Microsoft.Extensions.Configuration;
 
-namespace Humans.Application.Services.Search;
+namespace Humans.Search.Services;
 
 /// <summary>
 /// Per-entity-field search orchestrator (no cross-modal traversal): each section runs its own ILike, this scores hits and returns five buckets (unsorted).
 /// See docs/features/global/global-search.md. Display ordering lives in SearchController.
 /// </summary>
-public sealed class SearchService(
+internal sealed class SearchService(
     IUserServiceRead userService,
     ITeamServiceRead teamService,
     ICampServiceRead campService,

@@ -4506,18 +4506,6 @@
   <data name="Roster_StatusFilter" xml:space="preserve"><value>Statut : {0}</value></data>
   <data name="Roster_StatusOpen" xml:space="preserve"><value>À pourvoir</value></data>
   <data name="Roster_Title" xml:space="preserve"><value>Liste de l'équipe</value></data>
-  <data name="Search_FilterAll" xml:space="preserve"><value>Tous</value></data>
-  <data name="Search_FilterCamps" xml:space="preserve"><value>Camps</value></data>
-  <data name="Search_FilterEvents" xml:space="preserve"><value>Événements</value></data>
-  <data name="Search_FilterHumans" xml:space="preserve"><value>Humans</value></data>
-  <data name="Search_FilterShifts" xml:space="preserve"><value>Quarts</value></data>
-  <data name="Search_FilterTeams" xml:space="preserve"><value>Équipes</value></data>
-  <data name="Search_GlobalHint" xml:space="preserve"><value>Tapez au moins 2 caractères pour rechercher parmi les humans, équipes, camps et quarts.</value></data>
-  <data name="Search_GlobalHintEvents" xml:space="preserve"><value>Tapez au moins 2 caractères pour rechercher parmi les humans, équipes, camps, quarts et événements.</value></data>
-  <data name="Search_GlobalNoResults" xml:space="preserve"><value>Aucun résultat pour {0}.</value></data>
-  <data name="Search_GlobalPlaceholder" xml:space="preserve"><value>Rechercher des humans, équipes, camps, quarts…</value></data>
-  <data name="Search_GlobalPlaceholderEvents" xml:space="preserve"><value>Rechercher des humans, équipes, camps, quarts, événements…</value></data>
-  <data name="Search_GlobalTitle" xml:space="preserve"><value>Recherche</value></data>
   <data name="Teams_Departments" xml:space="preserve"><value>Départements</value></data>
   <data name="Teams_HiddenTeams" xml:space="preserve"><value>Équipes masquées</value></data>
   <data name="Teams_HiddenTeamsNote" xml:space="preserve"><value>(visibles par les admins uniquement)</value></data>

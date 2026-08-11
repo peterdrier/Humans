@@ -1,20 +1,19 @@
-using Humans.Application.DTOs;
-using Humans.Application.Interfaces.Search;
+using Humans.Search.Models;
+using Humans.Search.Services;
+using Humans.Search.Services.Dtos;
 using Humans.UI.Controllers;
 using Humans.UI.Extensions;
-using Humans.Web.Extensions;
-using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 using Humans.Application.Interfaces.Users;
 
-namespace Humans.Web.Controllers;
+namespace Humans.Search.Controllers;
 
 /// <summary>Global search: matches each entity's own public fields (for humans: name + bio/city/interests/pronouns/contact) across humans/teams/camps/rotas/events, with no cross-modal traversal. Text queries match the public surface only; a GUID query resolves straight to the entity, and the destination page — not search — enforces visibility (one known gap, nobodies-collective/Humans#993; docs/features/global/global-search.md).</summary>
 [Authorize]
 [Route("Search")]
-public sealed class SearchController(
+internal sealed class SearchController(
     ISearchService searchService,
     IUserServiceRead userService,
     ILogger<SearchController> logger) : HumansControllerBase(userService)

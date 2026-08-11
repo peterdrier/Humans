@@ -2354,7 +2354,7 @@ Outbound API client over `AnthropicOptions`. No DB access, no cache.
 
 ## Search
 
-Folder: `src/Humans.Application/Services/Search/`. No owned DB tables.
+Project: `src/Sections/Humans.Search` (G5, nobodies-collective/Humans#866). No owned DB tables.
 
 ### SearchService (Scoped)
 

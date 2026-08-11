@@ -1,7 +1,6 @@
-@using Humans.Application.DTOs
 @using Microsoft.AspNetCore.Html
 @inject IConfiguration Configuration
-@model Humans.Web.Models.GlobalSearchViewModel
+@model GlobalSearchViewModel
 
 @{
     ViewData["Title"] = Localizer["Search_GlobalTitle"].Value;
@@ -52,7 +51,7 @@ else if (Model.QueryIsTooShort)
 {
     <div class="alert alert-info">
         <i class="fa-solid fa-circle-info me-2"></i>
-        @Localizer["Search_MinChars"]
+        @SharedLocalizer["Search_MinChars"]
     </div>
 }
 else

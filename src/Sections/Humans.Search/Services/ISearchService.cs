@@ -1,6 +1,7 @@
-using Humans.Application.DTOs;
+using Humans.Application.Interfaces;
+using Humans.Search.Services.Dtos;
 
-namespace Humans.Application.Interfaces.Search;
+namespace Humans.Search.Services;
 
 /// <summary>
 /// Top-level search orchestrator for the global <c>/Search</c> page. Fans
@@ -49,7 +50,7 @@ namespace Humans.Application.Interfaces.Search;
 /// (<c>CachingUserService.SearchUsersAsync</c>).
 /// </para>
 /// </summary>
-public interface ISearchService : IOrchestrator
+internal interface ISearchService : IOrchestrator
 {
     /// <summary>
     /// Run a global search. Empty/whitespace <paramref name="query"/>, or

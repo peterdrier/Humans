@@ -52,7 +52,10 @@ first with neither a controller, a view, a table nor a resource set, and the fir
 its invariants doc because the section never had one), and Onboarding (the first whose
 leaf exists because the section it consumes also consumes *it*, the first to hand another
 section's presentation layer back to Shell behind a new view component, and the first whose
-resx carve had to leave keys behind for MVC's global data-annotation localizer). Step
+resx carve had to leave keys behind for MVC's global data-annotation localizer), and Search
+(the widest fan-out of any section and the *smallest* outward surface — the first whose
+`Contracts/` is empty because every consumer moved in with it, and the first whose resx carve
+had to split a single prefix by renderer three ways). Step
 numbers match the former §15,
 so an old "§15 step 3b" citation reads as "step 3b" here.
 
@@ -171,7 +174,13 @@ Git Bash.)
      `IHostingEnvironment` overload and the error is `CS1929: 'IWebHostEnvironment' does not
      contain a definition for 'IsProduction'`, which reads as a broken type. A global `<Using>`
      also reaches the generated Razor code, so an `@inject` in a moved view resolves from the
-     `.csproj` rather than needing a `_ViewImports` line (proven: Development).
+     `.csproj` rather than needing a `_ViewImports` line (proven: Development). **When the
+     view is the *only* thing that needs it, put it in `_ViewImports` instead** — Search's one
+     gap was `@inject IConfiguration Configuration` for the `Features:Events` flag, and the
+     `<Using>` group's stated job is keeping *moved `.cs` files* byte-identical, which a
+     view-only need is not. The error is the same either way and names the type, not the
+     mechanism: `CS0246: The type or namespace name 'IConfiguration' could not be found`,
+     reported at the `@inject` line of the `.cshtml` (proven: Search).
    - **"The section's own NuGet packages" excludes anything in the ASP.NET Core shared
      framework.** Central Package Management fails the build with `NU1010` for a
      `PackageReference` that has no `PackageVersion`, and the ASP.NET packages deliberately have
@@ -351,6 +360,18 @@ Git Bash.)
        section and diff it against the section `.resx` key list — anything the diff reports is a
        call site on the wrong localizer (proven: Governance, six caught this way and six more by
        the step 12 render test).
+     - **…and a *prefix* can be three owners deep, so run the renderer test per key before
+       trusting either rule.** Governance's rule keeps a whole prefix when one key is co-owned;
+       Consent's asks whether carving would split a *message set*. Neither answers `Search_*` on
+       its own: 17 keys, one prefix, three renderers. Twelve (`Search_Filter*`,
+       `Search_Global*`) are the section's page. `Search_Title`/`Search_Placeholder` belong to
+       Shell's `/Profile/Search`, and `Search_NoResults`/`Search_MatchedIn` to the shared
+       `_HumanSearchResults` partial in `Humans.UI` — Feedback's carve-by-renderer, twice over.
+       And `Search_MinChars` is read by the section's page **and** by `/Profile/Search`, which
+       is Consent's question with the answer "yes, it would split a set": it stayed, and the
+       section binds `SharedLocalizer` for that one call site. The whole-prefix reflex would
+       have moved five keys that render elsewhere, or left twelve behind; **group the prefix's
+       keys by who renders them first, then apply the rules to each group** (proven: Search).
    - **The mirror image: a key *this* section owns that an already-moved section reads goes into
      this section's set, and that section takes a reference to the section *project*.** Not the
      leaf — a resource marker is a section type (`public` only so `GetExportedTypes()` finds it),
@@ -524,6 +545,15 @@ Git Bash.)
    (Peter, 2026-08-09: splitting read from write happens once every section has moved, not
    per-section). May be empty for a leaf section; ship the folder with a `README.md` saying why
    (proven: Store).
+   - **Fan-*out* is not fan-in, and an orchestrator section can be the widest consumer in the
+     repo with an empty `Contracts/`.** Search injects five sections' service interfaces and its
+     recon touches ten already-moved projects, which reads as the knot the preconditions warn
+     about. It is the opposite: what a leaf publishes is what points *at* the section, and the
+     only thing that did was `SearchController` — which moves in. `ISearchService`, its three
+     DTOs and the view model all turned `internal`, and the assembly exports `Section` and
+     `<Section>Resource` and nothing else. **Count inbound references before scheduling a
+     section, never outbound ones**; the two are unrelated and the scary-looking number is the
+     one that costs nothing (proven: Search, the last section of the batch).
    - **An empty `I<Section>ServiceRead` is deleted at the move, not carried into `Contracts/`.**
      Several sections shipped one pre-emptively "as the boundary other sections would inject",
      with no members and no consumers. Moving it produces an empty public interface that
@@ -830,6 +860,19 @@ Git Bash.)
      `_TabbedMarkdownDocuments.cshtml` came with it (the statutes tabs, also rendered by the
      legal and consent pages). Both went to `Humans.UI/Models` and `Humans.UI/Views/Shared/`
      for three `using` lines (proven: Governance).
+     **…and the same move can be forced by a *partial* rather than a type, in which case take
+     the model, the mapper and the `.cshtml` together.** A section view calling
+     `Html.PartialAsync("_X")` resolves the partial by name across application parts, so a
+     Shell-resident `Views/Shared/_X.cshtml` would in principle keep working — but its
+     `@model` type would not be nameable from the section, and neither would whatever projects
+     onto it. `_HumanSearchResults.cshtml` is the person-search result card four Shell pages
+     and `/Search` all bind; it went to `Humans.UI/Views/Shared/` with
+     `HumanSearchResultViewModel` (out of `Humans.Web/Models/TeamViewModels.cs`) and
+     `SearchResultMappingExtensions.ToHumanSearchViewModel`, beside the `OrderByRelevance`
+     Gate had already pushed down. Splitting the three would have left a `Humans.UI` partial
+     binding a `Humans.Web` model. Blast radius: two `using Humans.UI.Models;` lines and the
+     partial's own `@model` line, because Shell's `Views/_ViewImports.cshtml` already has the
+     `@using` (proven: Search).
      **Fourth sighting, and it says `Humans.UI` is the rule's *example*, not its depth.**
      `Humans.Web/Infrastructure/InMemoryLogSink` is the Serilog ring buffer `/Debug/Logs`
      renders; `Program.cs`'s logger configuration writes to it and Shell's `LogApiController`
@@ -1055,6 +1098,14 @@ Git Bash.)
      classes; folding the cases into one `[Fact]` with an assertion per value provably still
      runs. Same for a `public static TheoryData<TInternalEnum, …>` member (proven: Issues,
      `IssueStatusTransitionTests`).
+     **The fold is not always mechanical: a theory that asserts `Received(n)` loses its fresh
+     substitutes.** xunit builds one test-class instance per case, so per-case
+     `Substitute.For<…>` fields reset for free; a `foreach` inside one `[Fact]` shares them and
+     the received-call counts accumulate — the second iteration fails, or worse, a
+     `Received(0)` assertion silently stops meaning anything. `ClearReceivedCalls()` on each
+     substitute at the top of the per-case helper restores exactly what was lost, and keeps the
+     configured returns (proven: Search, whose `onlyType` theory is five cases of "this section
+     was called once, the other four zero times").
    - **…and the opt-out is per *helper*, not per item group.** `CapturingLogger` was
      `Compile`-included in the same `ItemGroup` as `TestDbContextFactory`, inside the condition
      that excludes the table-less test projects — so a section with no EF on its compile path

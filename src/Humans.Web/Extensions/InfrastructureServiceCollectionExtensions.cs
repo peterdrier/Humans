@@ -49,7 +49,6 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddICalFeedSection();
         services.AddAdminSection();
         services.AddGoogleIntegrationSection();
-        services.AddSearchSection();
         services.AddHoldedConnector(configuration);
 
         // Recurring jobs for sections that have already moved out. The job types stay in

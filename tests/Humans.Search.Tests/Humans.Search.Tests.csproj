@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Sections\Humans.Search\Humans.Search.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      SearchControllerTests constructs the real SearchController and gives it a
+      ControllerContext, so the project names ASP.NET types directly. Cantina's rule: take the
+      framework reference because a test names one, not because the section is Sdk.Razor.
+    -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NodaTime" />
+    <PackageReference Include="NodaTime.Testing" />
+  </ItemGroup>
+
+  <!--
+    No EF Core package and no tests/Directory.Build.props exclusion: Search owns no tables, but
+    Microsoft.EntityFrameworkCore still reaches the compile path transitively through
+    Humans.Application -> Humans.Domain -> Microsoft.AspNetCore.Identity.EntityFrameworkCore, so
+    the shared TestDbContextFactory compiles (Debug's criterion — "no EF on the compile path",
+    which is only knowable from a build; Gdpr and Onboarding hit the same counter-example).
+  -->
+
+</Project>

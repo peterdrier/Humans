@@ -1,9 +1,10 @@
 using AwesomeAssertions;
 using Humans.Application.DTOs;
-using Humans.Application.Interfaces.Search;
 using Humans.Application.Interfaces.Users;
-using Humans.Web.Controllers;
-using Humans.Web.Models;
+using Humans.Search.Controllers;
+using Humans.Search.Models;
+using Humans.Search.Services;
+using Humans.Search.Services.Dtos;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
@@ -13,7 +14,7 @@ using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 using Xunit;
 
-namespace Humans.Web.Tests.Controllers;
+namespace Humans.Search.Tests.Controllers;
 
 /// <summary>
 /// <see cref="SearchController"/> owns two things the service deliberately does not:

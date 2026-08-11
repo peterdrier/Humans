@@ -4506,18 +4506,6 @@
   <data name="Roster_StatusFilter" xml:space="preserve"><value>Stato: {0}</value></data>
   <data name="Roster_StatusOpen" xml:space="preserve"><value>Aperto</value></data>
   <data name="Roster_Title" xml:space="preserve"><value>Elenco del team</value></data>
-  <data name="Search_FilterAll" xml:space="preserve"><value>Tutti</value></data>
-  <data name="Search_FilterCamps" xml:space="preserve"><value>Camp</value></data>
-  <data name="Search_FilterEvents" xml:space="preserve"><value>Eventi</value></data>
-  <data name="Search_FilterHumans" xml:space="preserve"><value>Humans</value></data>
-  <data name="Search_FilterShifts" xml:space="preserve"><value>Turni</value></data>
-  <data name="Search_FilterTeams" xml:space="preserve"><value>Team</value></data>
-  <data name="Search_GlobalHint" xml:space="preserve"><value>Scrivi almeno 2 caratteri per cercare tra humans, team, camp e turni.</value></data>
-  <data name="Search_GlobalHintEvents" xml:space="preserve"><value>Scrivi almeno 2 caratteri per cercare tra humans, team, camp, turni ed eventi.</value></data>
-  <data name="Search_GlobalNoResults" xml:space="preserve"><value>Nessun risultato per {0}.</value></data>
-  <data name="Search_GlobalPlaceholder" xml:space="preserve"><value>Cerca humans, team, camp, turni…</value></data>
-  <data name="Search_GlobalPlaceholderEvents" xml:space="preserve"><value>Cerca humans, team, camp, turni, eventi…</value></data>
-  <data name="Search_GlobalTitle" xml:space="preserve"><value>Cerca</value></data>
   <data name="Teams_Departments" xml:space="preserve"><value>Dipartimenti</value></data>
   <data name="Teams_HiddenTeams" xml:space="preserve"><value>Team nascosti</value></data>
   <data name="Teams_HiddenTeamsNote" xml:space="preserve"><value>(visibile solo agli admin)</value></data>

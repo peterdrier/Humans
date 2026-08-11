@@ -4506,18 +4506,6 @@
   <data name="Roster_StatusFilter" xml:space="preserve"><value>Estat: {0}</value></data>
   <data name="Roster_StatusOpen" xml:space="preserve"><value>Oberta</value></data>
   <data name="Roster_Title" xml:space="preserve"><value>Llista de l'equip</value></data>
-  <data name="Search_FilterAll" xml:space="preserve"><value>Tot</value></data>
-  <data name="Search_FilterCamps" xml:space="preserve"><value>Barris</value></data>
-  <data name="Search_FilterEvents" xml:space="preserve"><value>Esdeveniments</value></data>
-  <data name="Search_FilterHumans" xml:space="preserve"><value>Humans</value></data>
-  <data name="Search_FilterShifts" xml:space="preserve"><value>Torns</value></data>
-  <data name="Search_FilterTeams" xml:space="preserve"><value>Equips</value></data>
-  <data name="Search_GlobalHint" xml:space="preserve"><value>Escriu almenys 2 caràcters per cercar entre humans, equips, barris i torns.</value></data>
-  <data name="Search_GlobalHintEvents" xml:space="preserve"><value>Escriu almenys 2 caràcters per cercar entre humans, equips, barris, torns i esdeveniments.</value></data>
-  <data name="Search_GlobalNoResults" xml:space="preserve"><value>Cap resultat per a {0}.</value></data>
-  <data name="Search_GlobalPlaceholder" xml:space="preserve"><value>Cerca humans, equips, barris, torns…</value></data>
-  <data name="Search_GlobalPlaceholderEvents" xml:space="preserve"><value>Cerca humans, equips, barris, torns, esdeveniments…</value></data>
-  <data name="Search_GlobalTitle" xml:space="preserve"><value>Cerca</value></data>
   <data name="Teams_Departments" xml:space="preserve"><value>Departaments</value></data>
   <data name="Teams_HiddenTeams" xml:space="preserve"><value>Equips ocults</value></data>
   <data name="Teams_HiddenTeamsNote" xml:space="preserve"><value>(visible només per als administradors)</value></data>
