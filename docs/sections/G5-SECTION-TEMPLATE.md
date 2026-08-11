@@ -22,7 +22,9 @@ reference `Humans.Domain`), Feedback (the first whose `Contracts/` is a folder d
 consumer in another section, and the first to drop `I<Section>Service` entirely — its whole
 DTO surface stayed internal behind two primitive-returning reads), Issues (the first to take a
 block of markup *out* of a Shell view to bring its resource keys home, and the first whose
-`Contracts/` leaf is two one-method interfaces). Step numbers match the former §15, so an old
+`Contracts/` leaf is two one-method interfaces), Notifications (the first section to own a
+*view component*, which needed a Shell feature provider of its own, and the first whose leaf
+is consumed by eleven Base services). Step numbers match the former §15, so an old
 "§15 step 3b" citation reads as "step 3b" here.
 
 **Where this template and `src/Sections/` disagree, the code is right.** Deviations are the
@@ -335,6 +337,18 @@ Git Bash.)
      string "Calendar" pulls all of it in; a pass keyed on *whose types are in the signatures*
      does not — the same test as step 5b's connector case, applied to a name collision instead of
      a vendor (proven: Calendar).
+   - **Carve the leaf from the *call sites*, not the interface.** Notifications' inbox service
+     has twelve members and three consumers outside the section, which between them call three
+     of them — two auto-resolve calls and, before the bell moved in, the badge count. Moving
+     `INotificationInboxService` whole would have published four inbox read-model records and
+     nine members nobody outside calls. Grepping each member's out-of-section call sites first
+     produced `INotificationAutoResolve` (two methods, no DTO) on the leaf, with the internal
+     `INotificationInboxService : IApplicationService, INotificationAutoResolve,
+     INotificationRetention` inheriting it so the section's own controller is unchanged. Same
+     mechanic on the other three: `INotificationMeterProvider` had **zero** consumers once the
+     controller moved in and was deleted outright (step 5's "keep an interface only where
+     something needs the seam"), and `INotificationRecipientResolver` survived internal only
+     because a section test substitutes it (proven: Notifications).
    - **A leaf may be two one-method interfaces, and splitting them beats one misnamed one.**
      Issues' whole outside surface is a nav-badge count (Shell's `NavBadgesViewComponent`) and
      the retention sweep (Base's `CleanupIssuesJob`). Both return `int`. Putting the purge on
@@ -441,6 +455,26 @@ Git Bash.)
      `MapHub` and the section's `IHubContext<…>` resolve it. A hub whose signatures *do* name
      section types would stay in Shell with a contract in between, the way a health check does
      (proven: CityPlanning; nothing has hit the second case yet).
+   - **The third case: the component belongs to the section, and moving it in needs a feature
+     provider Shell did not have.** Gate's rule moves a section-neutral component *down* to
+     `Humans.UI`; City Planning's leaves a registry-reading one in Shell and invokes it by
+     name. Notifications' bell is neither — it renders the section's own unread counts and two
+     of its resource keys, so leaving it in Shell would split a 38-key set. Taking it in costs
+     two things. First, MVC's `ViewComponentConventions.IsComponent` requires `IsPublic`, so an
+     `internal` component is silently never discovered — exactly the hazard
+     `SectionControllerFeatureProvider` exists for on the controller side. The counterpart is
+     `Humans.Web/Infrastructure/SectionViewComponentFeatureProvider`: a second
+     `IApplicationFeatureProvider<ViewComponentFeature>` pass (the base one is not virtual and
+     `ViewComponentConventions` is internal to MVC) that adds non-public components from
+     assemblies carrying `[assembly: Section("…")]`. Write it once; every later section with a
+     view component inherits it. Second, **every `<vc:…>` call site in Shell must become
+     `@await Component.InvokeAsync("Name")`** — the tag helper is generated at compile time
+     from *public* types in referenced assemblies, so it cannot see the section's. Shell's
+     `_Layout`/`_AdminLayout` already invoked the bell by name and needed no edit; the widget
+     gallery's `<vc:notification-bell />` did. Failure mode is loud in one direction and silent
+     in the other: an unresolvable `Component.InvokeAsync` **throws**, so one render test on any
+     authenticated page catches the provider being missing, while a stray `<vc:>` renders as
+     inert markup and needs the `NotContain("<vc:")` assertion (proven: Notifications).
    - **A `<vc:…>` whose component reads a Shell-owned *cross-section registry* does not move —
      invoke it by name.** The Gate fix (move the component down to `Humans.UI`) is right when the
      component is self-contained. `<vc:access-matrix>` is not: `AccessMatrixViewComponent` reads
@@ -497,6 +531,15 @@ Git Bash.)
      returning the deleted count — moved the retention rule inside the section and took three
      public interfaces off the leaf in exchange for one. Look at what the job actually *does*
      before writing the contract for what it currently *takes* (proven: Agent, A4b).
+     - **Third sighting, and the tuple is what keeps it a pure carve.** `CleanupNotificationsJob`
+       injected `INotificationRepository` and applied three cutoffs itself — a job reaching past
+       the service layer into a repository, which the move is the moment to fix. The obstacle is
+       that the job logs the three delete counts separately, so a single `Task<int>` would change
+       the log line. `Task<(int Resolved, int StaleInformational, int RetiredSource)>` needs no
+       DTO on the leaf and leaves the message byte-identical; the cutoffs and the retired-source
+       list move into the section beside the repository. Its job test becomes a retention test in
+       the section's own project — the job left is a try/catch and a metric (proven:
+       Notifications, `INotificationRetention`).
 7. [ ] `wwwroot/` assets move with the section; URLs become `/_content/Humans.<Section>/…` in the
    same PR. Only Shell's own chrome assets stay in Shell. **Proven: Agent (A4b), the first
    section to move any; and Gate, which also proved a section may take a *layout* with it —

@@ -10,7 +10,7 @@
   src/Humans.Application/Services/Auth/RoleAssignmentService.cs
   src/Humans.Application/Services/Shifts/ShiftSignupService.cs
   src/Humans.Application/Services/Feedback/FeedbackService.cs
-  src/Humans.Application/Services/Notifications/NotificationInboxService.cs
+  src/Sections/Humans.Notifications/Services/NotificationInboxService.cs
   src/Humans.Application/Services/Tickets/TicketQueryService.cs
   src/Humans.Application/Services/Campaigns/CampaignService.cs
   src/Humans.Application/Services/Camps/**

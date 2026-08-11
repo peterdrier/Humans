@@ -561,11 +561,8 @@
     },
     "Notifications": {
       "paths": [
-        "src/Humans.Application/Interfaces/Notifications/**",
-        "src/Humans.Application/Services/Notifications/**",
-        "src/Humans.Domain/Entities/Notification*",
-        "src/Humans.Infrastructure/Repositories/Notifications/**",
-        "src/Humans.Web/Controllers/NotificationsController.cs"
+        "src/Sections/Humans.Notifications/**",
+        "src/Sections/Humans.Notifications.Contracts/**"
       ],
       "symbols": [
         "Notification*",

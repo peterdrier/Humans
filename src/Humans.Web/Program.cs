@@ -478,6 +478,11 @@ var mvcBuilder = builder.Services.AddControllersWithViews(options =>
 mvcBuilder.ConfigureApplicationPartManager(apm =>
     apm.FeatureProviders.Add(new SectionControllerFeatureProvider()));
 
+// …and the same for a section's view components, which MVC discovers through a separate,
+// equally public-only convention (Notifications' bell).
+mvcBuilder.ConfigureApplicationPartManager(apm =>
+    apm.FeatureProviders.Add(new SectionViewComponentFeatureProvider()));
+
 // DevLoginController depends on DevPersonaSeeder (non-Production only); exclude in Prod so ValidateOnBuild passes and /dev/login/* 404s cleanly.
 if (builder.Environment.IsProduction())
 {

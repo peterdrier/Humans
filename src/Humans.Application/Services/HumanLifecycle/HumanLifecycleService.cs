@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.HumanLifecycle;
-using Humans.Application.Interfaces.Notifications;
+using Humans.Notifications.Contracts;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Users;
@@ -14,7 +14,7 @@ namespace Humans.Application.Services.HumanLifecycle;
 public sealed class HumanLifecycleService(
     IUserService userService,
     INotificationEmitter notificationService,
-    INotificationInboxService notificationInboxService,
+    INotificationAutoResolve notificationAutoResolve,
     IAuditLogService auditLogService,
     IHumansMetrics metrics,
     ILogger<HumanLifecycleService> logger) : IHumanLifecycleService
@@ -88,7 +88,7 @@ public sealed class HumanLifecycleService(
 
         try
         {
-            await notificationInboxService.ResolveBySourceAsync(userId, NotificationSource.AccessSuspended, ct);
+            await notificationAutoResolve.ResolveBySourceAsync(userId, NotificationSource.AccessSuspended, ct);
         }
         catch (Exception ex)
         {

@@ -1,0 +1,30 @@
+using NodaTime;
+
+namespace Humans.Notifications.Domain;
+
+/// <summary>
+/// Junction entity linking a Notification to a recipient User.
+/// Tracks personal read state (ReadAt). Resolution is on the Notification, not here.
+/// </summary>
+internal sealed class NotificationRecipient
+{
+    /// <summary>
+    /// FK to the notification. Part of composite PK.
+    /// </summary>
+    public Guid NotificationId { get; init; }
+
+    /// <summary>
+    /// FK to the recipient user. Part of composite PK.
+    /// </summary>
+    public Guid UserId { get; init; }
+
+    /// <summary>
+    /// When the recipient read this notification. Null = unread.
+    /// </summary>
+    public Instant? ReadAt { get; set; }
+
+    /// <summary>
+    /// Navigation to the notification.
+    /// </summary>
+    public Notification Notification { get; init; } = null!;
+}

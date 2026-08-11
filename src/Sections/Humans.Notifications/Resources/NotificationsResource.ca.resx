@@ -1,0 +1,157 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- ReSharper disable MarkupTextTypo -->
+<root xmlns:ns1="urn:schemas-microsoft-com:xml-msdata" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:schema id="root">
+    <xs:element name="root" ns1:IsDataSet="true">
+      <xs:complexType>
+        <xs:choice maxOccurs="unbounded">
+          <xs:element name="data">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element name="value" type="xsd:string" minOccurs="0" ns1:Ordinal="1" />
+                <xs:element name="comment" type="xsd:string" minOccurs="0" ns1:Ordinal="2" />
+              </xs:sequence>
+              <xs:attribute name="name" type="xsd:string" ns1:Ordinal="0" />
+              <xs:attribute name="type" type="xsd:string" />
+              <xs:attribute name="mimetype" type="xsd:string" />
+            </xs:complexType>
+          </xs:element>
+          <xs:element name="resheader">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element name="value" type="xsd:string" minOccurs="0" ns1:Ordinal="1" />
+              </xs:sequence>
+              <xs:attribute name="name" type="xsd:string" use="required" />
+            </xs:complexType>
+          </xs:element>
+        </xs:choice>
+      </xs:complexType>
+    </xs:element>
+  </xs:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>1.3</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="Notification_Bell_AriaLabel" xml:space="preserve">
+    <value>Notificacions</value>
+  </data>
+  <data name="Notification_Popup_AriaLabel" xml:space="preserve">
+    <value>Finestra de notificacions</value>
+  </data>
+  <data name="Notification_Popup_Title" xml:space="preserve">
+    <value>Notificacions</value>
+  </data>
+  <data name="Notification_Popup_NeedAction" xml:space="preserve">
+    <value>requereixen acció</value>
+  </data>
+  <data name="Notification_Popup_Close" xml:space="preserve">
+    <value>Tancar notificacions</value>
+  </data>
+  <data name="Notification_Popup_CaughtUp" xml:space="preserve">
+    <value>Estàs al dia.</value>
+  </data>
+  <data name="Notification_Popup_NoUnread" xml:space="preserve">
+    <value>No hi ha notificacions sense llegir.</value>
+  </data>
+  <data name="Notification_Section_NeedsAttention" xml:space="preserve">
+    <value>Requereix la teva atenció</value>
+  </data>
+  <data name="Notification_Section_Recent" xml:space="preserve">
+    <value>Recents</value>
+  </data>
+  <data name="Notification_Section_Informational" xml:space="preserve">
+    <value>Informatius</value>
+  </data>
+  <data name="Notification_Section_Resolved" xml:space="preserve">
+    <value>Resolts</value>
+  </data>
+  <data name="Notification_Section_WorkQueues" xml:space="preserve">
+    <value>Cues de treball</value>
+  </data>
+  <data name="Notification_MarkAllRead" xml:space="preserve">
+    <value>Marcar tot com a llegit</value>
+  </data>
+  <data name="Notification_SeeAll" xml:space="preserve">
+    <value>Veure totes les notificacions</value>
+  </data>
+  <data name="Notification_PageTitle" xml:space="preserve">
+    <value>Totes les notificacions</value>
+  </data>
+  <data name="Notification_SearchPlaceholder" xml:space="preserve">
+    <value>Cercar notificacions...</value>
+  </data>
+  <data name="Notification_Filter_All" xml:space="preserve">
+    <value>Totes</value>
+  </data>
+  <data name="Notification_Filter_NeedsAction" xml:space="preserve">
+    <value>Requereix acció</value>
+  </data>
+  <data name="Notification_Filter_Shifts" xml:space="preserve">
+    <value>Torns</value>
+  </data>
+  <data name="Notification_Filter_Approvals" xml:space="preserve">
+    <value>Aprovacions</value>
+  </data>
+  <data name="Notification_Filter_Resolved" xml:space="preserve">
+    <value>Resolts</value>
+  </data>
+  <data name="Notification_Tab_Unread" xml:space="preserve">
+    <value>Sense llegir</value>
+  </data>
+  <data name="Notification_Tab_All" xml:space="preserve">
+    <value>Totes</value>
+  </data>
+  <data name="Notification_Inbox_Title" xml:space="preserve">
+    <value>Notificacions</value>
+  </data>
+  <data name="Notification_Tag_Urgent" xml:space="preserve">
+    <value>Urgent</value>
+  </data>
+  <data name="Notification_Tag_Action" xml:space="preserve">
+    <value>Acció</value>
+  </data>
+  <data name="Notification_Tag_Info" xml:space="preserve">
+    <value>Info</value>
+  </data>
+  <data name="Notification_Dismiss" xml:space="preserve">
+    <value>Descartar</value>
+  </data>
+  <data name="Notification_HandledBy" xml:space="preserve">
+    <value>Gestionat per {0}, {1}</value>
+  </data>
+  <data name="Notification_Pref_InboxEnabled" xml:space="preserve">
+    <value>Notificacions dins l'aplicació</value>
+  </data>
+  <data name="Notification_DefaultActionLabel" xml:space="preserve">
+    <value>Veure →</value>
+  </data>
+  <data name="Notification_TimeAgo_JustNow" xml:space="preserve">
+    <value>ara mateix</value>
+  </data>
+  <data name="Notification_TimeAgo_Minutes" xml:space="preserve">
+    <value>fa {0}m</value>
+  </data>
+  <data name="Notification_TimeAgo_Hours" xml:space="preserve">
+    <value>fa {0}h</value>
+  </data>
+  <data name="Notification_TimeAgo_Days" xml:space="preserve">
+    <value>fa {0}d</value>
+  </data>
+  <data name="Notification_Bulk_Selected" xml:space="preserve">
+    <value>{0} seleccionats</value>
+  </data>
+  <data name="Notification_Bulk_Resolve" xml:space="preserve">
+    <value>Resoldre seleccionats</value>
+  </data>
+  <data name="Notification_Bulk_Dismiss" xml:space="preserve">
+    <value>Descartar seleccionats</value>
+  </data>
+</root>

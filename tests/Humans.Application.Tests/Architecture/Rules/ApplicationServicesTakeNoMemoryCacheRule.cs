@@ -3,7 +3,6 @@ using Humans.Application.Services.AuditLog;
 using Humans.Application.Services.Camps;
 using Humans.Application.Services.Governance;
 using Humans.Application.Services.Legal;
-using Humans.Application.Services.Notifications;
 using Humans.Application.Services.Shifts;
 using Microsoft.Extensions.Caching.Memory;
 
@@ -54,10 +53,10 @@ public class ApplicationServicesTakeNoMemoryCacheRule
         typeof(CampContactService),
         SectionType("Humans.Issues.Services.IssuesService"),  // CacheKeys.IssuesBadge(userId)
         typeof(LegalDocumentService),
-        typeof(NotificationEmitter),
-        typeof(NotificationInboxService),
-        typeof(NotificationMeterProvider),
-        typeof(NotificationService),
+        SectionType("Humans.Notifications.Services.NotificationEmitter"),
+        SectionType("Humans.Notifications.Services.NotificationInboxService"),
+        SectionType("Humans.Notifications.Services.NotificationMeterProvider"),
+        SectionType("Humans.Notifications.Services.NotificationService"),
         typeof(ShiftManagementService),
         // Nav-badge count caches moved out of NavBadgesViewComponent into their
         // owning services (memory/code/viewcomponent-no-cache.md) — same inline

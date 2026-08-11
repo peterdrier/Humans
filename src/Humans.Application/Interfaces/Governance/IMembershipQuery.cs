@@ -1,5 +1,5 @@
 using Humans.Application.Interfaces.Auth;
-using Humans.Application.Interfaces.Notifications;
+using Humans.Notifications.Contracts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Domain.Enums;
 

@@ -10,7 +10,7 @@ using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Gdpr;
-using Humans.Application.Interfaces.Notifications;
+using Humans.Notifications.Contracts;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Constants;
@@ -34,7 +34,7 @@ internal sealed class IssuesService(
     IEmailService email,
     IEmailMessageFactory emailMessages,
     INotificationEmitter notifications,
-    INotificationInboxService notificationInbox,
+    INotificationAutoResolve notificationInbox,
     IAuditLogService audit,
     INavBadgeCacheInvalidator navBadge,
     IIssuesBadgeCacheInvalidator issuesBadge,

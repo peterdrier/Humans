@@ -1,0 +1,41 @@
+using Humans.Application.Interfaces;
+
+namespace Humans.Notifications.Contracts;
+
+/// <summary>
+/// Dispatches in-app notifications to users. Handles recipient materialization,
+/// preference checks, and optional email queuing.
+/// </summary>
+/// <remarks>
+/// Extends <see cref="INotificationEmitter"/> with team- and role-based
+/// dispatch methods. Callers that already know their recipients should
+/// depend on <see cref="INotificationEmitter"/> instead — that narrower
+/// interface avoids the DI cycle through
+/// <c>INotificationRecipientResolver</c>.
+/// </remarks>
+public interface INotificationService : IApplicationService, INotificationEmitter
+{
+    /// <summary>
+    /// Sends a single shared notification to all users with a specific role.
+    /// Group resolution: when any recipient resolves, it resolves for all.
+    /// </summary>
+    Task SendToRoleAsync(
+        NotificationSource source,
+        NotificationClass notificationClass,
+        NotificationPriority priority,
+        string title,
+        string roleName,
+        string? body = null,
+        string? actionUrl = null,
+        string? actionLabel = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Evicts the per-user notification badge cache for each id in
+    /// <paramref name="userIds"/>. Called post-commit by
+    /// <c>AccountMergeService.AcceptAsync</c> after a fold so the next
+    /// badge read for source/target re-derives unread counts from the
+    /// committed <c>NotificationRecipient</c> state.
+    /// </summary>
+    void InvalidateBadgeCachesForUsers(IEnumerable<Guid> userIds);
+}

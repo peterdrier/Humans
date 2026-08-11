@@ -36,7 +36,7 @@ env:
     AuthDbContext:src/Humans.Infrastructure
     EmailDbContext:src/Humans.Infrastructure
     CalendarDbContext:src/Sections/Humans.Calendar
-    NotificationsDbContext:src/Humans.Infrastructure
+    NotificationsDbContext:src/Sections/Humans.Notifications
     IssuesDbContext:src/Sections/Humans.Issues
     GovernanceDbContext:src/Humans.Infrastructure
     CampaignsDbContext:src/Sections/Humans.Campaigns

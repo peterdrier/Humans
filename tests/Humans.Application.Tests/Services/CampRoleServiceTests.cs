@@ -1,3 +1,4 @@
+using Humans.Notifications.Contracts;
 using AwesomeAssertions;
 using Humans.Application.Configuration;
 using Humans.Application.Interfaces.Camps;

@@ -10,7 +10,7 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using ShiftSignupService = Humans.Application.Services.Shifts.ShiftSignupService;
 using Humans.Application.Interfaces.Teams;
-using Humans.Application.Interfaces.Notifications;
+using Humans.Notifications.Contracts;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.EarlyEntry;

@@ -1,59 +1,32 @@
 using Hangfire;
 using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.Repositories;
-using Humans.Domain.Enums;
+using Humans.Notifications.Contracts;
 using Microsoft.Extensions.Logging;
-using NodaTime;
 
 namespace Humans.Infrastructure.Jobs;
 
 /// <summary>
-/// Purges old notifications. Runs daily.
-/// - Resolved notifications older than 7 days
-/// - Unresolved informational notifications older than 30 days
-/// - Unresolved rows of retired sources (no longer emitted, no resolution path)
-/// Other actionable notifications are never auto-cleaned (they represent real work items).
+/// Purges old notifications. Runs daily. The retention rule itself — resolved older than
+/// 7 days, unresolved informational older than 30 days, unresolved rows of retired
+/// sources — lives inside the Notifications section behind
+/// <see cref="INotificationRetention"/>; this job is the scheduler shim around it.
 /// </summary>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
 public class CleanupNotificationsJob(
-    INotificationRepository notificationRepository,
-    IClock clock,
+    INotificationRetention notifications,
     IHumansMetrics metrics,
     ILogger<CleanupNotificationsJob> logger) : IRecurringJob
 {
-    private static readonly Duration ResolvedRetentionPeriod = Duration.FromDays(7);
-    private static readonly Duration InformationalRetentionPeriod = Duration.FromDays(30);
-
-    /// <summary>
-    /// Sources removed in PR-642 (replaced by live work-queue meters). No new rows
-    /// are emitted, but legacy Actionable rows have no resolution path and linger in
-    /// "Needs your attention" forever — so they are purged outright.
-    /// </summary>
-    private static readonly NotificationSource[] RetiredSources =
-        [NotificationSource.ApplicationSubmitted, NotificationSource.ConsentReviewNeeded];
-
     public async Task ExecuteAsync(CancellationToken cancellationToken = default)
     {
         try
         {
-            var now = clock.GetCurrentInstant();
-            var resolvedCutoff = now - ResolvedRetentionPeriod;
-            var informationalCutoff = now - InformationalRetentionPeriod;
-
-            var resolvedDeleted = await notificationRepository
-                .DeleteResolvedOlderThanAsync(resolvedCutoff, cancellationToken);
-
-            var staleDeleted = await notificationRepository
-                .DeleteUnresolvedInformationalOlderThanAsync(informationalCutoff, cancellationToken);
-
-            var retiredDeleted = await notificationRepository
-                .DeleteUnresolvedBySourcesAsync(RetiredSources, cancellationToken);
+            var (resolvedDeleted, staleDeleted, retiredDeleted) =
+                await notifications.PurgeExpiredAsync(cancellationToken);
 
             logger.LogInformation(
-                "CleanupNotificationsJob: deleted {ResolvedCount} resolved (>{ResolvedDays}d), {StaleCount} stale informational (>{StaleDays}d), and {RetiredCount} retired-source notifications",
-                resolvedDeleted, ResolvedRetentionPeriod.Days,
-                staleDeleted, InformationalRetentionPeriod.Days,
-                retiredDeleted);
+                "CleanupNotificationsJob: deleted {ResolvedCount} resolved, {StaleCount} stale informational, and {RetiredCount} retired-source notifications",
+                resolvedDeleted, staleDeleted, retiredDeleted);
 
             metrics.RecordJobRun("cleanup_notifications", "success");
         }

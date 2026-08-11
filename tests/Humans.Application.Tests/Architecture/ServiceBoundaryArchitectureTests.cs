@@ -52,7 +52,7 @@ public class ServiceBoundaryArchitectureTests
             [SectionRepository("Humans.Finance.Data.IHoldedRepository")] = "Finance",
             [SectionRepository("Humans.Issues.Data.IIssuesRepository")] = "Issues",
             [typeof(ILegalDocumentRepository)] = "Legal",
-            [typeof(INotificationRepository)] = "Notifications",
+            [SectionRepository("Humans.Notifications.Data.INotificationRepository")] = "Notifications",
             [typeof(IRoleAssignmentRepository)] = "Auth",
             [typeof(IShiftManagementRepository)] = "Shifts",
             [SectionRepository("Humans.Surveys.Data.ISurveyRepository")] = "Surveys",

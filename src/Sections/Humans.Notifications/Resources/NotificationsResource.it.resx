@@ -1,0 +1,157 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- ReSharper disable MarkupTextTypo -->
+<root xmlns:ns1="urn:schemas-microsoft-com:xml-msdata" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:schema id="root">
+    <xs:element name="root" ns1:IsDataSet="true">
+      <xs:complexType>
+        <xs:choice maxOccurs="unbounded">
+          <xs:element name="data">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element name="value" type="xsd:string" minOccurs="0" ns1:Ordinal="1" />
+                <xs:element name="comment" type="xsd:string" minOccurs="0" ns1:Ordinal="2" />
+              </xs:sequence>
+              <xs:attribute name="name" type="xsd:string" ns1:Ordinal="0" />
+              <xs:attribute name="type" type="xsd:string" />
+              <xs:attribute name="mimetype" type="xsd:string" />
+            </xs:complexType>
+          </xs:element>
+          <xs:element name="resheader">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element name="value" type="xsd:string" minOccurs="0" ns1:Ordinal="1" />
+              </xs:sequence>
+              <xs:attribute name="name" type="xsd:string" use="required" />
+            </xs:complexType>
+          </xs:element>
+        </xs:choice>
+      </xs:complexType>
+    </xs:element>
+  </xs:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>1.3</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="Notification_Bell_AriaLabel" xml:space="preserve">
+    <value>Notifiche</value>
+  </data>
+  <data name="Notification_Popup_AriaLabel" xml:space="preserve">
+    <value>Popup notifiche</value>
+  </data>
+  <data name="Notification_Popup_Title" xml:space="preserve">
+    <value>Notifiche</value>
+  </data>
+  <data name="Notification_Popup_NeedAction" xml:space="preserve">
+    <value>richiedono azione</value>
+  </data>
+  <data name="Notification_Popup_Close" xml:space="preserve">
+    <value>Chiudi notifiche</value>
+  </data>
+  <data name="Notification_Popup_CaughtUp" xml:space="preserve">
+    <value>Sei in pari.</value>
+  </data>
+  <data name="Notification_Popup_NoUnread" xml:space="preserve">
+    <value>Nessuna notifica non letta.</value>
+  </data>
+  <data name="Notification_Section_NeedsAttention" xml:space="preserve">
+    <value>Richiede la tua attenzione</value>
+  </data>
+  <data name="Notification_Section_Recent" xml:space="preserve">
+    <value>Recenti</value>
+  </data>
+  <data name="Notification_Section_Informational" xml:space="preserve">
+    <value>Informativi</value>
+  </data>
+  <data name="Notification_Section_Resolved" xml:space="preserve">
+    <value>Risolte</value>
+  </data>
+  <data name="Notification_Section_WorkQueues" xml:space="preserve">
+    <value>Code di lavoro</value>
+  </data>
+  <data name="Notification_MarkAllRead" xml:space="preserve">
+    <value>Segna tutto come letto</value>
+  </data>
+  <data name="Notification_SeeAll" xml:space="preserve">
+    <value>Vedi tutte le notifiche</value>
+  </data>
+  <data name="Notification_PageTitle" xml:space="preserve">
+    <value>Tutte le notifiche</value>
+  </data>
+  <data name="Notification_SearchPlaceholder" xml:space="preserve">
+    <value>Cerca notifiche...</value>
+  </data>
+  <data name="Notification_Filter_All" xml:space="preserve">
+    <value>Tutte</value>
+  </data>
+  <data name="Notification_Filter_NeedsAction" xml:space="preserve">
+    <value>Azione necessaria</value>
+  </data>
+  <data name="Notification_Filter_Shifts" xml:space="preserve">
+    <value>Turni</value>
+  </data>
+  <data name="Notification_Filter_Approvals" xml:space="preserve">
+    <value>Approvazioni</value>
+  </data>
+  <data name="Notification_Filter_Resolved" xml:space="preserve">
+    <value>Risolte</value>
+  </data>
+  <data name="Notification_Tab_Unread" xml:space="preserve">
+    <value>Non lette</value>
+  </data>
+  <data name="Notification_Tab_All" xml:space="preserve">
+    <value>Tutte</value>
+  </data>
+  <data name="Notification_Inbox_Title" xml:space="preserve">
+    <value>Notifiche</value>
+  </data>
+  <data name="Notification_Tag_Urgent" xml:space="preserve">
+    <value>Urgente</value>
+  </data>
+  <data name="Notification_Tag_Action" xml:space="preserve">
+    <value>Azione</value>
+  </data>
+  <data name="Notification_Tag_Info" xml:space="preserve">
+    <value>Info</value>
+  </data>
+  <data name="Notification_Dismiss" xml:space="preserve">
+    <value>Ignora</value>
+  </data>
+  <data name="Notification_HandledBy" xml:space="preserve">
+    <value>Gestito da {0}, {1}</value>
+  </data>
+  <data name="Notification_Pref_InboxEnabled" xml:space="preserve">
+    <value>Notifiche in-app</value>
+  </data>
+  <data name="Notification_DefaultActionLabel" xml:space="preserve">
+    <value>Vedi →</value>
+  </data>
+  <data name="Notification_TimeAgo_JustNow" xml:space="preserve">
+    <value>proprio ora</value>
+  </data>
+  <data name="Notification_TimeAgo_Minutes" xml:space="preserve">
+    <value>{0}m fa</value>
+  </data>
+  <data name="Notification_TimeAgo_Hours" xml:space="preserve">
+    <value>{0}h fa</value>
+  </data>
+  <data name="Notification_TimeAgo_Days" xml:space="preserve">
+    <value>{0}g fa</value>
+  </data>
+  <data name="Notification_Bulk_Selected" xml:space="preserve">
+    <value>{0} selezionati</value>
+  </data>
+  <data name="Notification_Bulk_Resolve" xml:space="preserve">
+    <value>Risolvi selezionati</value>
+  </data>
+  <data name="Notification_Bulk_Dismiss" xml:space="preserve">
+    <value>Ignora selezionati</value>
+  </data>
+</root>

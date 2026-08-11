@@ -7,7 +7,7 @@ using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.HumanLifecycle;
 using Humans.Application.Interfaces.Legal;
-using Humans.Application.Interfaces.Notifications;
+using Humans.Notifications.Contracts;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
@@ -22,7 +22,7 @@ namespace Humans.Application.Services.Consent;
 public sealed class ConsentService(
     IConsentRepository repo,
     ILegalDocumentSyncService legalDocumentSyncService,
-    INotificationInboxService notificationInboxService,
+    INotificationAutoResolve notificationAutoResolve,
     IHumanLifecycleService humanLifecycleService,
     IUserServiceRead userService,
     IServiceProvider serviceProvider,
@@ -177,7 +177,7 @@ public sealed class ConsentService(
             var membershipCalc = serviceProvider.GetRequiredService<IMembershipCalculatorRead>();
             if (await membershipCalc.HasAllRequiredConsentsAsync(userId, ct))
             {
-                await notificationInboxService.ResolveBySourceAsync(userId, NotificationSource.AccessSuspended, ct);
+                await notificationAutoResolve.ResolveBySourceAsync(userId, NotificationSource.AccessSuspended, ct);
                 await humanLifecycleService.RestoreConsentSuspensionAsync(userId, ct);
             }
         }

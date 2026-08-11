@@ -1,7 +1,7 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.AuditLog;
-using Humans.Application.Interfaces.Notifications;
+using Humans.Notifications.Contracts;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.HumanLifecycle;
@@ -23,7 +23,7 @@ public class HumanLifecycleServiceTests
 {
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly INotificationEmitter _notificationService = Substitute.For<INotificationEmitter>();
-    private readonly INotificationInboxService _notificationInboxService = Substitute.For<INotificationInboxService>();
+    private readonly INotificationAutoResolve _notificationInboxService = Substitute.For<INotificationAutoResolve>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
     private readonly IHumansMetrics _metrics = Substitute.For<IHumansMetrics>();
 

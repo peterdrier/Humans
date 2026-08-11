@@ -58,7 +58,7 @@ This file is the **index and cross-cutting rule sheet** for the data model. Per-
 | Survey / SurveyQuestion / SurveyQuestionOption / SurveyResponse / SurveyAnswer / SurveyInvitation | [Survey](../../src/Sections/Humans.Surveys/Docs/Surveys.md) | Cross-domain refs are bare `Guid` FK columns only — no nav properties, no cross-section EF FK constraints. |
 | SystemSetting | System Settings section | Owned by `SystemSettingsRepository` (exposed via `ISystemSettingsService`); consuming sections read/write keys through it. See [SystemSetting below](#systemsetting-system-settings-section). |
 | AuditLogEntry | [Audit Log](../sections/AuditLog.md) | Append-only (§12). |
-| Notification / NotificationRecipient | [Notifications](../sections/Notifications.md) | |
+| Notification / NotificationRecipient | [Notifications](../../src/Sections/Humans.Notifications/Docs/Notifications.md) | |
 
 <!-- /freshness:auto -->
 

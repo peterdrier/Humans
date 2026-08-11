@@ -838,13 +838,15 @@
                             <span class="wg-card-name">&lt;vc:notification-bell&gt;</span>
                             <span class="wg-card-kind kind-vc">ViewComponent</span>
                         </div>
-                        <span class="wg-card-path">src/Humans.Web/ViewComponents/NotificationBellViewComponent.cs</span>
+                        <span class="wg-card-path">src/Sections/Humans.Notifications/ViewComponents/NotificationBellViewComponent.cs</span>
                     </div>
                     <div class="wg-card-note">Unread-counts bell rendered in the topbar. Caches per-human counts for 2 minutes.</div>
                     @ParamsBlock()
                     @AuthLine("Authenticated only — empty model when unauthenticated.")
                     <div class="wg-card-example">
-                        <vc:notification-bell />
+                        @* Internal to the Notifications section, so the <vc:> tag helper cannot see it
+                           from Shell — invoke by name across application parts instead (design §15 step 6). *@
+                        @await Component.InvokeAsync("NotificationBell")
                     </div>
                 </div>
 

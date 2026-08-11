@@ -10,7 +10,7 @@ using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using ConsentService = Humans.Application.Services.Consent.ConsentService;
 using Humans.Application.Interfaces.Legal;
-using Humans.Application.Interfaces.Notifications;
+using Humans.Notifications.Contracts;
 using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.HumanLifecycle;
 using Humans.Domain.Enums;
@@ -24,7 +24,7 @@ public sealed class ConsentServiceTests : ServiceTestHarness
     private readonly ConsentService _service;
     private readonly IMembershipCalculatorRead _membershipCalculator = Substitute.For<IMembershipCalculatorRead>();
     private readonly ILegalDocumentSyncService _legalDocumentSyncService = Substitute.For<ILegalDocumentSyncService>();
-    private readonly INotificationInboxService _notificationInboxService = Substitute.For<INotificationInboxService>();
+    private readonly INotificationAutoResolve _notificationInboxService = Substitute.For<INotificationAutoResolve>();
     private readonly IHumanLifecycleService _humanLifecycleService = Substitute.For<IHumanLifecycleService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IHumansMetrics _metrics = Substitute.For<IHumansMetrics>();

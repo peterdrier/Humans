@@ -1,3 +1,6 @@
+using Humans.Notifications.Data;
+using Humans.Notifications.Domain;
+using Humans.Notifications.Contracts;
 using Humans.Budget.Data;
 using Humans.Calendar.Data;
 using Humans.Campaigns.Data;

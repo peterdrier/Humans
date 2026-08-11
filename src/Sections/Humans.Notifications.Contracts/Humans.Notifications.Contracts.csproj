@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Notifications' cross-section surface, carved into its own leaf project because most of
+    its consumers are still in Base: eleven Humans.Application services emit through
+    INotificationEmitter, AccountMergeService and GoogleResourceReconciliationJob take
+    INotificationService, ConsentService and HumanLifecycleService auto-resolve through
+    INotificationAutoResolve, and CleanupNotificationsJob drives INotificationRetention.
+    A Contracts/ *folder* inside Humans.Notifications would therefore make Base reference a
+    section and cycle (design §15.5b, memory/architecture/section-project-cycle-fix.md).
+
+    It holds exactly what lives outside the section: the four dispatch/auto-resolve/retention
+    interfaces, and the three enums those signatures name — NotificationSource,
+    NotificationClass and NotificationPriority cannot follow the entities into the section's
+    internal Domain/ because every emit call site outside the section names them
+    (design §15 step 5, Budget's rule). The inbox read models, the meter surface, the
+    recipient resolver and the repository have no consumer outside the section and stay
+    internal.
+
+    References Humans.Interfaces only — the bottom of the graph.
+  -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
+  </ItemGroup>
+
+</Project>

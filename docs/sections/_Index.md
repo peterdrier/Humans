@@ -32,6 +32,7 @@ move recipe is [`G5-SECTION-TEMPLATE.md`](G5-SECTION-TEMPLATE.md).
 | Expenses | `src/Sections/Humans.Expenses` | [Expenses.md](../../src/Sections/Humans.Expenses/Docs/Expenses.md) |
 | Gate | `src/Sections/Humans.Gate` | [Gate.md](../../src/Sections/Humans.Gate/Docs/Gate.md) |
 | Issues | `src/Sections/Humans.Issues` | [Issues.md](../../src/Sections/Humans.Issues/Docs/Issues.md) |
+| Notifications | `src/Sections/Humans.Notifications` | [Notifications.md](../../src/Sections/Humans.Notifications/Docs/Notifications.md) |
 | Scanner | `src/Sections/Humans.Scanner` | [Scanner.md](../../src/Sections/Humans.Scanner/Docs/Scanner.md) |
 | Store | `src/Sections/Humans.Store` | [Store.md](../../src/Sections/Humans.Store/Docs/Store.md) |
 | Surveys | `src/Sections/Humans.Surveys` | [Surveys.md](../../src/Sections/Humans.Surveys/Docs/Surveys.md) |
@@ -100,7 +101,7 @@ The technical services the business verticals use. Per the hard rules these are 
 |---------|-------------|---------------|----------|--------------|--------|
 | **Audit Log** | `AuditLogController` | `AuditViewerService` | `AuditLogService` | `AuditLogRepository` | `audit_log` |
 | **Auth** | `AccountController`, `DevLoginController` | `MagicLinkService` | `RoleAssignmentService`, `AdminAuthorizationService`, *`CachingRoleAssignmentService`* | `RoleAssignmentRepository` | `role_assignments` |
-| **Notifications** | `NotificationsController` | — | `NotificationService`, `NotificationInboxService`, `NotificationMeterProvider` | `NotificationRepository` | `notifications`, `notification_recipients` |
+| **Notifications** | `NotificationsController` (`Humans.Notifications.Controllers`) | — | `NotificationService`, `NotificationEmitter`, `NotificationInboxService`, `NotificationMeterProvider` (`Humans.Notifications.Services`) | `NotificationRepository` / `INotificationRepository` (`Humans.Notifications.Data`) | `notifications`, `notification_recipients` |
 | **GDPR** | — (export/delete via `GuestController` / `ProfileController`) | `GdprExportService` | — | — | — |
 | **Admin Shell** | `AdminController` (`/Admin` dashboard tile only) | — | `AdminNavTree`, `AdminSidebarViewComponent`, `AdminBreadcrumbViewComponent` (Web layer) | — | — (frame only; owns no tables) |
 

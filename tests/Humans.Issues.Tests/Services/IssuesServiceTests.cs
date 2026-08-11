@@ -4,7 +4,7 @@ using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Email;
-using Humans.Application.Interfaces.Notifications;
+using Humans.Notifications.Contracts;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Constants;
@@ -59,7 +59,7 @@ public sealed class IssuesServiceTests
     private readonly IUserEmailService _userEmailService;
     private readonly IRoleAssignmentService _roleService;
     private readonly INotificationEmitter _notificationService;
-    private readonly INotificationInboxService _notificationInbox;
+    private readonly INotificationAutoResolve _notificationInbox;
     private readonly INavBadgeCacheInvalidator _navBadge;
     private readonly IIssuesBadgeCacheInvalidator _issuesBadge;
     private readonly IIssuesRepository _repository;
@@ -100,7 +100,7 @@ public sealed class IssuesServiceTests
             .Returns(Task.FromResult<IReadOnlyList<Guid>>([]));
 
         _notificationService = Substitute.For<INotificationEmitter>();
-        _notificationInbox = Substitute.For<INotificationInboxService>();
+        _notificationInbox = Substitute.For<INotificationAutoResolve>();
         _navBadge = Substitute.For<INavBadgeCacheInvalidator>();
         _issuesBadge = Substitute.For<IIssuesBadgeCacheInvalidator>();
 
@@ -760,7 +760,7 @@ public sealed class IssuesServiceTests
         env.ContentRootPath.Returns(Path.GetTempPath());
         var svc = new IssuesApplicationService(
             repo, _userService, _userEmailService, _roleService,
-            _emailService, _emailMessages, _notificationService, Substitute.For<INotificationInboxService>(), AuditLog, _navBadge,
+            _emailService, _emailMessages, _notificationService, Substitute.For<INotificationAutoResolve>(), AuditLog, _navBadge,
             _issuesBadge, Cache,
             Clock, env, NullLogger<IssuesApplicationService>.Instance);
 
@@ -788,7 +788,7 @@ public sealed class IssuesServiceTests
         env.ContentRootPath.Returns(Path.GetTempPath());
         var svc = new IssuesApplicationService(
             repo, _userService, _userEmailService, _roleService,
-            _emailService, _emailMessages, _notificationService, Substitute.For<INotificationInboxService>(), AuditLog, _navBadge,
+            _emailService, _emailMessages, _notificationService, Substitute.For<INotificationAutoResolve>(), AuditLog, _navBadge,
             _issuesBadge, Cache,
             Clock, env, NullLogger<IssuesApplicationService>.Instance);
 
@@ -820,7 +820,7 @@ public sealed class IssuesServiceTests
         env.ContentRootPath.Returns(Path.GetTempPath());
         var svc = new IssuesApplicationService(
             repo, _userService, _userEmailService, _roleService,
-            _emailService, _emailMessages, _notificationService, Substitute.For<INotificationInboxService>(), AuditLog, _navBadge,
+            _emailService, _emailMessages, _notificationService, Substitute.For<INotificationAutoResolve>(), AuditLog, _navBadge,
             _issuesBadge, Cache,
             Clock, env, NullLogger<IssuesApplicationService>.Instance);
 
@@ -903,7 +903,7 @@ public sealed class IssuesServiceTests
         env.ContentRootPath.Returns(Path.GetTempPath());
         var svc = new IssuesApplicationService(
             repo, _userService, _userEmailService, _roleService,
-            _emailService, _emailMessages, _notificationService, Substitute.For<INotificationInboxService>(), AuditLog, _navBadge,
+            _emailService, _emailMessages, _notificationService, Substitute.For<INotificationAutoResolve>(), AuditLog, _navBadge,
             _issuesBadge, Cache,
             Clock, env, NullLogger<IssuesApplicationService>.Instance);
 
@@ -930,7 +930,7 @@ public sealed class IssuesServiceTests
         env.ContentRootPath.Returns(Path.GetTempPath());
         var svc = new IssuesApplicationService(
             repo, _userService, _userEmailService, _roleService,
-            _emailService, _emailMessages, _notificationService, Substitute.For<INotificationInboxService>(), AuditLog, _navBadge,
+            _emailService, _emailMessages, _notificationService, Substitute.For<INotificationAutoResolve>(), AuditLog, _navBadge,
             _issuesBadge, Cache,
             Clock, env, NullLogger<IssuesApplicationService>.Instance);
 

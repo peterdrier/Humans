@@ -5,14 +5,14 @@
   src/Humans.Web/Views/UsersAdmin/AdminList.cshtml
   src/Humans.Web/Views/UsersAdmin/AdminDetail.cshtml
   src/Humans.Web/Views/UsersAdminAccountMerges/**
-  src/Humans.Web/Views/Notifications/**
+  src/Sections/Humans.Notifications/Views/**
   src/Humans.Web/Controllers/AdminController.cs
   src/Humans.Web/Controllers/UsersAdminAccountMergesController.cs
   src/Humans.Web/Controllers/UsersAdminController.cs
   src/Humans.Web/Controllers/AdminLegalDocumentsController.cs
-  src/Humans.Web/Controllers/NotificationsController.cs
+  src/Sections/Humans.Notifications/Controllers/NotificationsController.cs
   src/Humans.Application/Services/AuditLog/**
-  src/Humans.Application/Services/Notifications/**
+  src/Sections/Humans.Notifications/Services/**
   src/Humans.Application/Services/Users/AccountMergeService.cs
   src/Humans.Application/Services/Users/DuplicateAccountService.cs
   src/Humans.Application/Services/Auth/RoleAssignmentService.cs

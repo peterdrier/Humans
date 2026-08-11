@@ -10,7 +10,7 @@ using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Services;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Application.Interfaces.GoogleIntegration;
-using Humans.Application.Interfaces.Notifications;
+using Humans.Notifications.Contracts;
 
 namespace Humans.Application.Tests.GoogleIntegration;
 
