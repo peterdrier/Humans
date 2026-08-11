@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    City Planning's cross-section surface, carved into its own leaf project because a
+    consumer is in Base: Humans.Application's CampService clears a deleted camp's polygons
+    through ICityPlanningService.DeleteCampPolygonsForSeasonsAsync (the Restrict FK that
+    used to make the database refuse the delete was dropped by
+    nobodies-collective/Humans#992). A Contracts/ *folder* inside Humans.CityPlanning would
+    make Humans.Application reference a section and cycle (design §15.5b,
+    memory/architecture/section-project-cycle-fix.md).
+
+    The leaf is also what keeps the Containers <-> CityPlanning pair acyclic:
+    Humans.Containers references this project, Humans.CityPlanning references
+    Humans.Containers for IContainerService and the container view models.
+
+    References Humans.Interfaces only — the bottom of the graph.
+  -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NodaTime" />
+  </ItemGroup>
+
+</Project>

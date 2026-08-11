@@ -1,6 +1,7 @@
 using AwesomeAssertions;
 using Humans.Application;
 using Humans.Application.Configuration;
+using Humans.CityPlanning.Contracts;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Auth;

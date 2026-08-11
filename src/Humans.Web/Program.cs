@@ -28,7 +28,7 @@ using Humans.Infrastructure.Hosting;
 using Humans.Infrastructure.Services;
 using Humans.Web.Authorization;
 using Humans.Web.Health;
-using Humans.Web.Hubs;
+using Humans.UI.Hubs;
 using Humans.Web.Middleware;
 using Microsoft.Extensions.Localization;
 using Npgsql;

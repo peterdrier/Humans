@@ -14,6 +14,7 @@ using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Camps;
 using Humans.Application.Configuration;
+using Humans.CityPlanning.Contracts;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;

@@ -16,6 +16,8 @@
     <!-- Events' contracts leaf: SearchService calls IEventServiceRead. -->
     <ProjectReference Include="..\Sections\Humans.Events.Contracts\Humans.Events.Contracts.csproj" />
     <ProjectReference Include="..\Sections\Humans.Finance.Contracts\Humans.Finance.Contracts.csproj" />
+    <!-- City Planning's contracts leaf: CampService clears a deleted camp's polygons. -->
+    <ProjectReference Include="..\Sections\Humans.CityPlanning.Contracts\Humans.CityPlanning.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

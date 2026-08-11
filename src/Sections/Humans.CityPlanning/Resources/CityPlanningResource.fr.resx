@@ -1,0 +1,344 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>1.3</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+
+  <data name="CityPlanning_BarrioMapTitle" xml:space="preserve">
+    <value>Carte de placement des barrios</value>
+  </data>
+  <data name="CityPlanning_PlacementPhase" xml:space="preserve">
+    <value>Phase de placement</value>
+  </data>
+  <data name="CityPlanning_StatusOpen" xml:space="preserve">
+    <value>Ouverte</value>
+  </data>
+  <data name="CityPlanning_StatusClosed" xml:space="preserve">
+    <value>Fermée</value>
+  </data>
+  <data name="CityPlanning_HelpButton" xml:space="preserve">
+    <value>Aide</value>
+  </data>
+  <data name="CityPlanning_AddMyBarrioButton" xml:space="preserve">
+    <value>Ajouter mon barrio sur la carte</value>
+  </data>
+  <data name="CityPlanning_AddABarrioOption" xml:space="preserve">
+    <value>Ajouter un barrio…</value>
+  </data>
+  <data name="CityPlanning_SaveButton" xml:space="preserve">
+    <value>Enregistrer</value>
+  </data>
+  <data name="CityPlanning_HistoryButton" xml:space="preserve">
+    <value>Historique</value>
+  </data>
+  <data name="CityPlanning_MeasureButton" xml:space="preserve">
+    <value>Mesurer</value>
+  </data>
+  <data name="CityPlanning_ClearMeasurementsButton" xml:space="preserve">
+    <value>Effacer toutes les mesures</value>
+  </data>
+  <data name="CityPlanning_CampLimits" xml:space="preserve">
+    <value>Limites du camp</value>
+  </data>
+  <data name="CityPlanning_BarrioZones" xml:space="preserve">
+    <value>Zones de barrio</value>
+  </data>
+  <data name="CityPlanning_Layers" xml:space="preserve">
+    <value>Couches</value>
+  </data>
+  <data name="CityPlanning_AdminLink" xml:space="preserve">
+    <value>Admin</value>
+  </data>
+  <data name="CityPlanning_GoToPlacementMap" xml:space="preserve">
+    <value>Aller au placement des barrios</value>
+  </data>
+  <data name="CityPlanning_GoToContainerMap" xml:space="preserve">
+    <value>Aller au placement des conteneurs</value>
+  </data>
+  <data name="CityPlanning_PlacementPhaseInfo" xml:space="preserve">
+    <value>Placement phase info</value>
+  </data>
+  <data name="CityPlanning_Admin_Title" xml:space="preserve">
+    <value>Admin Carte des Barrios</value>
+  </data>
+  <data name="CityPlanning_Admin_ViewMap" xml:space="preserve">
+    <value>Voir la carte</value>
+  </data>
+  <data name="CityPlanning_Admin_PlacementPhaseCard" xml:space="preserve">
+    <value>Phase de Placement</value>
+  </data>
+  <data name="CityPlanning_Admin_Status" xml:space="preserve">
+    <value>Statut :</value>
+  </data>
+  <data name="CityPlanning_Admin_OpenedAt" xml:space="preserve">
+    <value>Ouverte {0}</value>
+  </data>
+  <data name="CityPlanning_Admin_ClosedAt" xml:space="preserve">
+    <value>Fermée {0}</value>
+  </data>
+  <data name="CityPlanning_Admin_ClosePlacement" xml:space="preserve">
+    <value>Fermer la phase</value>
+  </data>
+  <data name="CityPlanning_Admin_OpenPlacement" xml:space="preserve">
+    <value>Ouvrir la phase</value>
+  </data>
+  <data name="CityPlanning_Admin_PlacementDatesCard" xml:space="preserve">
+    <value>Dates de placement</value>
+  </data>
+  <data name="CityPlanning_Admin_PlacementDatesHint" xml:space="preserve">
+    <value>Indicatif uniquement — affiché dans la modale d'aide (heure espagnole). N'ouvre ni ne ferme la phase automatiquement.</value>
+  </data>
+  <data name="CityPlanning_Admin_OpensAt" xml:space="preserve">
+    <value>Ouvre le</value>
+  </data>
+  <data name="CityPlanning_Admin_ClosesAt" xml:space="preserve">
+    <value>Ferme le</value>
+  </data>
+  <data name="CityPlanning_Admin_SaveDates" xml:space="preserve">
+    <value>Enregistrer les dates</value>
+  </data>
+  <data name="CityPlanning_Admin_LimitZoneCard" xml:space="preserve">
+    <value>Zone limite des barrios</value>
+  </data>
+  <data name="CityPlanning_Admin_LimitZoneUploaded" xml:space="preserve">
+    <value>Zone limite importée</value>
+  </data>
+  <data name="CityPlanning_Admin_LimitZoneDeleteConfirm" xml:space="preserve">
+    <value>Supprimer la zone limite ?</value>
+  </data>
+  <data name="CityPlanning_Admin_LimitZoneEmpty" xml:space="preserve">
+    <value>Aucune zone limite importée.</value>
+  </data>
+  <data name="CityPlanning_Admin_LimitZoneHint" xml:space="preserve">
+    <value>Les entités peuvent inclure une propriété SoundZone optionnelle. Valeurs valides : blue, green, yellow, orange, red, ou deux combinées avec un tiret bas (ex. yellow_orange).</value>
+  </data>
+  <data name="CityPlanning_Admin_OfficialZonesCard" xml:space="preserve">
+    <value>Zones officielles</value>
+  </data>
+  <data name="CityPlanning_Admin_OfficialZonesUploaded" xml:space="preserve">
+    <value>Zones officielles importées</value>
+  </data>
+  <data name="CityPlanning_Admin_OfficialZonesDeleteConfirm" xml:space="preserve">
+    <value>Supprimer les zones officielles ?</value>
+  </data>
+  <data name="CityPlanning_Admin_OfficialZonesEmpty" xml:space="preserve">
+    <value>Aucune zone officielle importée.</value>
+  </data>
+  <data name="CityPlanning_Admin_OfficialZonesHint" xml:space="preserve">
+    <value>Le libellé de chaque entité est lu depuis la propriété Name, si elle est présente.</value>
+  </data>
+  <data name="CityPlanning_Admin_UploadGeoJson" xml:space="preserve">
+    <value>Importer un fichier GeoJSON</value>
+  </data>
+  <data name="CityPlanning_Admin_Upload" xml:space="preserve">
+    <value>Importer</value>
+  </data>
+  <data name="CityPlanning_Admin_Download" xml:space="preserve">
+    <value>Télécharger</value>
+  </data>
+  <data name="CityPlanning_Admin_Remove" xml:space="preserve">
+    <value>Supprimer</value>
+  </data>
+  <data name="CityPlanning_Admin_ExportCard" xml:space="preserve">
+    <value>Exporter</value>
+  </data>
+  <data name="CityPlanning_Admin_ExportDescription" xml:space="preserve">
+    <value>Télécharger tous les polygones de barrios pour {0} en tant que GeoJSON FeatureCollection.</value>
+  </data>
+  <data name="CityPlanning_Admin_DownloadGeoJson" xml:space="preserve">
+    <value>Télécharger GeoJSON ({0})</value>
+  </data>
+  <data name="CityPlanning_Admin_ContainersCard" xml:space="preserve">
+    <value>Conteneurs ({0})</value>
+  </data>
+  <data name="CityPlanning_Admin_ContainersDesc" xml:space="preserve">
+    <value>Gérer tous les conteneurs — de l'organisation et des barrios.</value>
+  </data>
+  <data name="CityPlanning_Admin_ManageContainers" xml:space="preserve">
+    <value>Gérer les Conteneurs</value>
+  </data>
+  <data name="CityPlanning_Admin_ContainerPlacement" xml:space="preserve">
+    <value>Placement des conteneurs</value>
+  </data>
+  <data name="CityPlanning_Admin_OpenContainerPlacement" xml:space="preserve">
+    <value>Ouvrir</value>
+  </data>
+  <data name="CityPlanning_Admin_CloseContainerPlacement" xml:space="preserve">
+    <value>Fermer</value>
+  </data>
+  <data name="CityPlanning_Admin_BarrioContainersEmpty" xml:space="preserve">
+    <value>Pas encore de conteneurs pour {0}.</value>
+  </data>
+  <data name="CityPlanning_Admin_AddBarrioContainer" xml:space="preserve">
+    <value>Ajouter Conteneur — {0}</value>
+  </data>
+  <data name="CityPlanning_Admin_ImportCard" xml:space="preserve">
+    <value>Importer des polygones</value>
+  </data>
+  <data name="CityPlanning_Admin_ImportDescription" xml:space="preserve">
+    <value>Téléversez une FeatureCollection GeoJSON pour mettre à jour en bloc les polygones des barrios pour {0}. Les entités sont associées par la propriété campName ou campSlug.</value>
+  </data>
+  <data name="CityPlanning_Admin_ImportFileLabel" xml:space="preserve">
+    <value>Fichier GeoJSON</value>
+  </data>
+  <data name="CityPlanning_Admin_ImportPreviewBtn" xml:space="preserve">
+    <value>Aperçu</value>
+  </data>
+  <data name="CityPlanning_Admin_ImportModalTitle" xml:space="preserve">
+    <value>Aperçu de l'import</value>
+  </data>
+  <data name="CityPlanning_Admin_ImportWillBeUpdated" xml:space="preserve">
+    <value>Seront mis à jour</value>
+  </data>
+  <data name="CityPlanning_Admin_ImportCampHeader" xml:space="preserve">
+    <value>Barrio</value>
+  </data>
+  <data name="CityPlanning_Admin_ImportPreviousArea" xml:space="preserve">
+    <value>Surface précédente</value>
+  </data>
+  <data name="CityPlanning_Admin_ImportNewArea" xml:space="preserve">
+    <value>Nouvelle surface</value>
+  </data>
+  <data name="CityPlanning_Admin_ImportUnrecognized" xml:space="preserve">
+    <value>Entités non reconnues (seront ignorées)</value>
+  </data>
+  <data name="CityPlanning_Admin_ImportConfirmBtn" xml:space="preserve">
+    <value>Confirmer l'import</value>
+  </data>
+  <data name="CityPlanning_Admin_ImportSelectFileError" xml:space="preserve">
+    <value>Veuillez sélectionner un fichier GeoJSON.</value>
+  </data>
+  <data name="CityPlanning_Admin_ImportInvalidJsonError" xml:space="preserve">
+    <value>Fichier non valide — JSON non valide.</value>
+  </data>
+  <data name="CityPlanning_Admin_ImportNotFeatureCollectionError" xml:space="preserve">
+    <value>Le fichier doit être une FeatureCollection GeoJSON.</value>
+  </data>
+  <data name="CityPlanning_Admin_ImportFetchStateError" xml:space="preserve">
+    <value>Impossible de charger la liste des barrios. Veuillez réessayer.</value>
+  </data>
+  <data name="CityPlanning_Admin_ImportNoCampsMatched" xml:space="preserve">
+    <value>Aucun barrio correspondant.</value>
+  </data>
+  <data name="CityPlanning_Admin_ImportTokenMissingError" xml:space="preserve">
+    <value>Jeton de sécurité manquant. Veuillez actualiser la page.</value>
+  </data>
+  <data name="CityPlanning_Admin_ImportFileTooLargeError" xml:space="preserve">
+    <value>Fichier trop volumineux (max. 10 Mo).</value>
+  </data>
+  <data name="CityPlanning_Admin_ImportNotPolygonSuffix" xml:space="preserve">
+    <value>(pas un polygone)</value>
+  </data>
+  <data name="CityPlanning_Admin_ImportUpdating" xml:space="preserve">
+    <value>Mise à jour de {0} polygone(s)…</value>
+  </data>
+  <data name="CityPlanning_Admin_ImportSuccess" xml:space="preserve">
+    <value>{0} polygone(s) mis à jour.</value>
+  </data>
+  <data name="CityPlanning_Admin_ImportPartialFailure" xml:space="preserve">
+    <value>{0} mis à jour, {1} en échec : {2}.</value>
+  </data>
+  <data name="CityPlanning_HistoryTitle" xml:space="preserve">
+    <value>Historique des polygones</value>
+  </data>
+  <data name="CityPlanning_Loading" xml:space="preserve">
+    <value>Chargement…</value>
+  </data>
+  <data name="CityPlanning_Help_WhenIsIt" xml:space="preserve">
+    <value>C'est quand ?</value>
+  </data>
+  <data name="CityPlanning_Help_Opens" xml:space="preserve">
+    <value>Ouvre :</value>
+  </data>
+  <data name="CityPlanning_Help_Closes" xml:space="preserve">
+    <value>Ferme :</value>
+  </data>
+  <data name="CityPlanning_Help_SpainTime" xml:space="preserve">
+    <value>(heure espagnole)</value>
+  </data>
+  <data name="CityPlanning_Help_WhenPlaceholder" xml:space="preserve">
+    <value>La phase de placement dure un temps limité — les dates exactes seront affichées ici bientôt. Place ton barrio avant la fermeture !</value>
+  </data>
+  <data name="CityPlanning_Help_PlacingTitle" xml:space="preserve">
+    <value>Placer ton barrio</value>
+  </data>
+  <data name="CityPlanning_Help_PlacingBody" xml:space="preserve">
+    <value>Clique sur {0} pour commencer à dessiner. Clique ensuite sur la carte pour poser des points définissant ton espace — chaque clic ajoute un coin. Ferme la forme en cliquant sur le premier point.</value>
+  </data>
+  <data name="CityPlanning_Help_AdjustingTitle" xml:space="preserve">
+    <value>Ajuster la forme</value>
+  </data>
+  <data name="CityPlanning_Help_Adjusting_VertexMove" xml:space="preserve">
+    <value>Fais glisser un point de coin pour le déplacer</value>
+  </data>
+  <data name="CityPlanning_Help_Adjusting_Reposition" xml:space="preserve">
+    <value>Fais glisser toute la forme pour la repositionner</value>
+  </data>
+  <data name="CityPlanning_Help_Adjusting_AddVertex" xml:space="preserve">
+    <value>Clique sur le milieu d'un bord (où la longueur en mètres est affichée) pour ajouter un nouveau coin</value>
+  </data>
+  <data name="CityPlanning_Help_Adjusting_DeleteVertex" xml:space="preserve">
+    <value>Clique sur un point pour le sélectionner (il devient orange), puis appuie sur Delete ou Backspace pour le supprimer</value>
+  </data>
+  <data name="CityPlanning_Help_Adjusting_MultiSelect" xml:space="preserve">
+    <value>Maintiens Shift et clique sur des points pour en sélectionner plusieurs à la fois, ou clique et fais glisser dans un espace vide pour dessiner un rectangle de sélection</value>
+  </data>
+  <data name="CityPlanning_Help_Adjusting_Area" xml:space="preserve">
+    <value>La surface en m² est affichée au centre et se met à jour lors de l'édition</value>
+  </data>
+  <data name="CityPlanning_Help_SavingTitle" xml:space="preserve">
+    <value>Enregistrer &amp; modifier plus tard</value>
+  </data>
+  <data name="CityPlanning_Help_SavingBody" xml:space="preserve">
+    <value>Content du résultat ? Clique sur Save. Ensuite, clique sur ton barrio sur la carte pour voir sa surface, puis Edit pour revenir en mode édition. Chaque sauvegarde crée une entrée dans l'historique — utilise le bouton History pour parcourir et restaurer une version précédente. Pas de stress, tu ne peux rien casser !</value>
+  </data>
+  <data name="CityPlanning_Help_ZonesTitle" xml:space="preserve">
+    <value>Reste dans les zones en pointillés</value>
+  </data>
+  <data name="CityPlanning_Help_ZonesBody" xml:space="preserve">
+    <value>Les zones en pointillés délimitent les zones de camping sécurisées, protégées par des paratonnerres. La couleur des pointillés indique le niveau sonore de la zone — du bleu (plus calme) au rouge (plus bruyant). Camper en dehors est interdit, garde donc ton barrio à l'intérieur de ces limites.</value>
+  </data>
+  <data name="CityPlanning_Help_OverlapsTitle" xml:space="preserve">
+    <value>Chevauchements ? Parlez-en !</value>
+  </data>
+  <data name="CityPlanning_Help_OverlapsBody" xml:space="preserve">
+    <value>Si ton barrio chevauche un autre, contacte-nous sur {0} et réglez ça ensemble. Si des conflits ne sont pas résolus en fin de phase, l'équipe city planning s'en chargera.</value>
+  </data>
+  <data name="CityPlanning_Help_OverlapsDiscordChannel" xml:space="preserve">
+    <value>Discord #city-planning</value>
+  </data>
+  <data name="CityPlanning_Help_ColorsTitle" xml:space="preserve">
+    <value>Couleurs &amp; zones sonores</value>
+  </data>
+  <data name="CityPlanning_Help_ColorsBody" xml:space="preserve">
+    <value>Chaque barrio est coloré selon sa zone sonore préférée (modifiable depuis la page de ton barrio).</value>
+  </data>
+</root>

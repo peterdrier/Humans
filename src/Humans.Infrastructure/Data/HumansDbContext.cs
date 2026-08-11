@@ -58,7 +58,6 @@ internal sealed class HumansDbContext(DbContextOptions<HumansDbContext> options)
         typeof(Configurations.GoogleIntegration.GoogleResourceConfiguration).Namespace!,
         typeof(Configurations.Tickets.TicketOrderConfiguration).Namespace!,
         typeof(Configurations.Feedback.FeedbackReportConfiguration).Namespace!,
-        typeof(Configurations.CityPlanning.CampPolygonConfiguration).Namespace!,
         typeof(Configurations.Budget.BudgetYearConfiguration).Namespace!,
         typeof(Configurations.Camps.CampConfiguration).Namespace!,
         typeof(Configurations.Legal.LegalDocumentConfiguration).Namespace!,

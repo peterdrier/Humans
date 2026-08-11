@@ -1,0 +1,26 @@
+@* A section RCL does NOT inherit the host's Views/_ViewImports.cshtml. Omitting a line
+   here ships broken markup with a green build and no runtime error — see design §1/§2.
+   Guarded by CityPlanningPageRenderTests (step 12). *@
+@using Humans.Application.Extensions
+@using Humans.CityPlanning
+@using Humans.CityPlanning.Contracts
+@using Humans.CityPlanning.Controllers
+@using Humans.CityPlanning.Models
+@using Humans.CityPlanning.Services
+@using Humans.Containers
+@using Humans.Containers.Contracts
+@using Humans.UI
+@using Humans.UI.Extensions
+@using Humans.UI.Models
+@using Microsoft.Extensions.Localization
+@using NodaTime
+@inject IStringLocalizer<CityPlanningResource> Localizer
+@* Genuinely shared strings (Common_*) stay in SharedResource — copying them into each
+   section's .resx would duplicate them ~35 times. Container_* / ContainerMap_* are
+   Containers' vocabulary and stay in its set: the barrio container list and the container
+   map are City Planning's URLs over Containers' data, so both localizers are bound and
+   which set a key comes from is visible at the call site. *@
+@inject IStringLocalizer<SharedResource> SharedLocalizer
+@inject IStringLocalizer<ContainersResource> ContainersLocalizer
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+@addTagHelper *, Humans.UI

@@ -6,7 +6,7 @@ using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Camps;
-using Humans.Application.Interfaces.CityPlanning;
+using Humans.CityPlanning.Contracts;
 using Humans.Application.Interfaces.EarlyEntry;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.GoogleIntegration;

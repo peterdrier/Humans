@@ -37,9 +37,9 @@ This file is the **index and cross-cutting rule sheet** for the data model. Per-
 | CampMember | [Camps](../sections/Camps.md) | Per-season, post-hoc human/camp affiliation (Pending/Active/Removed). Partial unique on `(CampSeasonId, UserId) WHERE Status <> 'Removed'`. |
 | CampRoleDefinition / CampRoleAssignment | [Camps](../sections/Camps.md) | Per-camp role catalogue + per-season assignments. Owned by `CampRoleService`. Unique on `(CampSeasonId, CampRoleDefinitionId, CampMemberId)`. |
 | Container / ContainerPlacement | [Containers](../../src/Sections/Humans.Containers/Docs/Containers.md) | Camp-owned (`CampId` → `camps.Id`, non-nullable). |
-| CityPlanningSettings | [City Planning](../sections/CityPlanning.md) | |
-| CampPolygon | [City Planning](../sections/CityPlanning.md) | |
-| CampPolygonHistory | [City Planning](../sections/CityPlanning.md) | Append-only (§12). |
+| CityPlanningSettings | [City Planning](../../src/Sections/Humans.CityPlanning/Docs/CityPlanning.md) | |
+| CampPolygon | [City Planning](../../src/Sections/Humans.CityPlanning/Docs/CityPlanning.md) | |
+| CampPolygonHistory | [City Planning](../../src/Sections/Humans.CityPlanning/Docs/CityPlanning.md) | Append-only (§12). |
 | CalendarEvent / CalendarEventException | [Calendar](../sections/Calendar.md) | |
 | EmailOutboxMessage | [Email](../sections/Email.md) | |
 | Campaign / CampaignCode / CampaignGrant | [Campaigns](../sections/Campaigns.md) | |
@@ -213,7 +213,7 @@ The following entities are append-only — no `UpdateAsync` / `DeleteAsync` on t
 | ConsentRecord | [Consent](../sections/Consent.md) | DB triggers block UPDATE / DELETE |
 | AuditLogEntry | [Audit Log](../sections/AuditLog.md) | Architecture test: `AuditLogArchitectureTests.IAuditLogRepository_HasNoUpdateOrDeleteMethods` |
 | BudgetAuditLog | [Budget](../sections/Budget.md) | Repository shape — no update/delete methods |
-| CampPolygonHistory | [City Planning](../sections/CityPlanning.md) | Architecture test: `CityPlanningArchitectureTests` pins append-only repo surface |
+| CampPolygonHistory | [City Planning](../../src/Sections/Humans.CityPlanning/Docs/CityPlanning.md) | Architecture test: `CityPlanningArchitectureTests` pins append-only repo surface |
 | ApplicationStateHistory | [Governance](../sections/Governance.md) | Repository shape — no update/delete methods |
 | TeamJoinRequestStateHistory | [Teams](../sections/Teams.md) | Repository shape (target; pending sub-task nobodies-collective/Humans#540a) |
 

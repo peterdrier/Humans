@@ -43,7 +43,7 @@ env:
     GoogleIntegrationDbContext:src/Humans.Infrastructure
     TicketsDbContext:src/Humans.Infrastructure
     FeedbackDbContext:src/Humans.Infrastructure
-    CityPlanningDbContext:src/Humans.Infrastructure
+    CityPlanningDbContext:src/Sections/Humans.CityPlanning
     BudgetDbContext:src/Humans.Infrastructure
     CampsDbContext:src/Humans.Infrastructure
     GateDbContext:src/Sections/Humans.Gate

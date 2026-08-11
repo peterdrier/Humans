@@ -1,5 +1,5 @@
 using Humans.Application.Interfaces.Camps;
-using Humans.Application.Interfaces.CityPlanning;
+using Humans.CityPlanning.Contracts;
 using Humans.Containers.Contracts;
 using Humans.UI.Controllers;
 using Microsoft.AspNetCore.Authorization;

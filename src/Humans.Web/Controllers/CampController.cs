@@ -9,7 +9,7 @@ using Microsoft.Extensions.Localization;
 using NodaTime;
 using Humans.Application;
 using Humans.Application.Interfaces.Camps;
-using Humans.Application.Interfaces.CityPlanning;
+using Humans.CityPlanning.Contracts;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Camps;

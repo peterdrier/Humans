@@ -92,7 +92,7 @@ Terse, authoritative invariant docs for each major section: concepts, data model
 | [Campaigns](sections/Campaigns.md) | Bulk code-distribution campaigns: codes imported or generated, assigned to humans, delivered via email waves |
 | [Camps](sections/Camps.md) | Themed community camps (Barrios) with per-year season registrations, leads, images, and renaming history |
 | [Cantina](sections/Cantina.md) | Read-only weekly roster surface for the food-service team — who is on site each day and what they can/cannot eat; composes over Shifts, owns no tables |
-| [City Planning](sections/CityPlanning.md) | Interactive map surface with three screens: read-only overview, barrio polygon editing, and container placement |
+| [City Planning](../src/Sections/Humans.CityPlanning/Docs/CityPlanning.md) | Interactive map surface with three screens: read-only overview, barrio polygon editing, and container placement |
 | [Containers](../src/Sections/Humans.Containers/Docs/Containers.md) | Physical shipping containers managed per-barrio or at org level, placed on the City Planning map |
 | [Debug](sections/Debug.md) | Developer/diagnostics section: admin-only pages exposing operational insight (client demographics, request health) that no domain section owns — owns no tables |
 | [Email](sections/Email.md) | Transactional email outbox: queue, render, deliver, retry, and pause/resume — backs campaign sends, onboarding, shift, and feedback emails |

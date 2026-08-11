@@ -4,7 +4,7 @@ using AwesomeAssertions;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Budget;
 using Humans.Application.Interfaces.Camps;
-using Humans.Application.Interfaces.CityPlanning;
+using Humans.CityPlanning.Contracts;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Domain.Constants;

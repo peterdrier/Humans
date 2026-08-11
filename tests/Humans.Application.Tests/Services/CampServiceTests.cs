@@ -2,19 +2,17 @@ using AwesomeAssertions;
 using Humans.Application.Configuration;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Camps;
-using Humans.Application.Interfaces.CityPlanning;
+using Humans.CityPlanning.Contracts;
 using Humans.Application.Interfaces.EarlyEntry;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Camps;
-using Humans.Application.Services.CityPlanning;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Domain.ValueObjects;
 using Humans.Infrastructure.Repositories.Camps;
-using Humans.Infrastructure.Repositories.CityPlanning;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -44,15 +42,10 @@ public sealed class CampServiceTests : ServiceTestHarness
 
         _earlyEntryInvalidator = Substitute.For<IEarlyEntryInvalidator>();
 
-        // Real City Planning service over the same in-memory store: the camp-delete
-        // path must actually remove the polygons now that the FK no longer does.
-        _cityPlanningService = new CityPlanningService(
-            new CityPlanningRepository(CityPlanningDbFactory),
-            Clock,
-            Options.Create(new CityPlanningOptions()),
-            Substitute.For<ICampServiceRead>(),
-            Substitute.For<ITeamServiceRead>(),
-            Substitute.For<IUserServiceRead>());
+        // Substituted since City Planning became its own assembly (G5, #866): the section's
+        // own tests own "the rows actually go"; what Camps must prove is that DeleteCampAsync
+        // asks for the deletion, with the right season ids.
+        _cityPlanningService = Substitute.For<ICityPlanningService>();
 
         _service = new CampService(
             repo,
@@ -1521,19 +1514,13 @@ public sealed class CampServiceTests : ServiceTestHarness
         var camp = await CreateTestCamp();
         var season = await CampsDb.CampSeasons.FirstAsync(s => s.CampId == camp.Id, ct);
 
-        await _cityPlanningService.SaveCampPolygonAsync(
-            season.Id, "{\"type\":\"Polygon\",\"coordinates\":[]}", 42.0, Guid.NewGuid(),
-            cancellationToken: ct);
-
-        (await CityPlanningDb.CampPolygons.CountAsync(ct)).Should().Be(1);
-        (await CityPlanningDb.CampPolygonHistories.CountAsync(ct)).Should().Be(1);
-
         await _service.DeleteCampAsync(camp.Id, ct);
 
         // The Restrict FK that used to block this delete is gone; the Camps section
         // now clears the rows through ICityPlanningService instead of orphaning them.
-        (await CityPlanningDb.CampPolygons.CountAsync(ct)).Should().Be(0);
-        (await CityPlanningDb.CampPolygonHistories.CountAsync(ct)).Should().Be(0);
+        await _cityPlanningService.Received(1).DeleteCampPolygonsForSeasonsAsync(
+            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(season.Id)),
+            Arg.Any<CancellationToken>());
         (await CampsDb.Camps.AnyAsync(c => c.Id == camp.Id, ct)).Should().BeFalse();
     }
 

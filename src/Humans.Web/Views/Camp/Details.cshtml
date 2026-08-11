@@ -1,5 +1,10 @@
 @using Humans.UI.Extensions
+@using Humans.CityPlanning
 @model Humans.Web.Models.CampDetailViewModel
+@* The placement strip's copy is City Planning's resource set, not SharedResource: the
+   section carved its keys out at G5 (#866) and a Shell view cannot see them through the
+   ambient Localizer. Shell references the section, so it injects the marker directly. *@
+@inject Microsoft.Extensions.Localization.IStringLocalizer<CityPlanningResource> CityPlanningLocalizer
 @{
     ViewData["Title"] = Model.Name;
     var isCityPlanningMember = ViewBag.IsCityPlanningTeamMember as bool? ?? false;
@@ -197,21 +202,21 @@
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <span><i class="fa-solid fa-map-location-dot me-1"></i> Placement</span>
                         <div class="d-flex align-items-center gap-2">
-                            <span class="text-muted small">@Localizer["CityPlanning_PlacementPhase"]:</span>
+                            <span class="text-muted small">@CityPlanningLocalizer["CityPlanning_PlacementPhase"]:</span>
                             @if (isPlacementOpen)
                             {
-                                <span class="badge bg-success">@Localizer["CityPlanning_StatusOpen"]</span>
+                                <span class="badge bg-success">@CityPlanningLocalizer["CityPlanning_StatusOpen"]</span>
                                 <a asp-controller="CityPlanning" asp-action="BarrioMap" class="btn btn-sm btn-outline-primary">
-                                    <i class="fa-solid fa-map me-1"></i> @Localizer["CityPlanning_GoToPlacementMap"]
+                                    <i class="fa-solid fa-map me-1"></i> @CityPlanningLocalizer["CityPlanning_GoToPlacementMap"]
                                 </a>
                             }
                             else
                             {
-                                <span class="badge bg-secondary">@Localizer["CityPlanning_StatusClosed"]</span>
+                                <span class="badge bg-secondary">@CityPlanningLocalizer["CityPlanning_StatusClosed"]</span>
                             }
                             <button type="button" class="btn btn-link btn-sm p-0"
                                     data-bs-toggle="modal" data-bs-target="#placement-help-modal"
-                                    title="@Localizer["CityPlanning_PlacementPhaseInfo"]">
+                                    title="@CityPlanningLocalizer["CityPlanning_PlacementPhaseInfo"]">
                                 <i class="fa-solid fa-circle-info text-muted"></i>
                             </button>
                         </div>
@@ -250,7 +255,9 @@
                         </div>
                     </div>
                 </div>
-                @await Html.PartialAsync("~/Views/CityPlanning/_PlacementHelpModal.cshtml", (placementOpensAt, placementClosesAt))
+                @* By name, not by path: the partial moved into the City Planning RCL's Views/Shared,
+                   and a name lookup searches every application part. *@
+                @await Html.PartialAsync("_PlacementHelpModal", (placementOpensAt, placementClosesAt))
             }
         }
     </div>

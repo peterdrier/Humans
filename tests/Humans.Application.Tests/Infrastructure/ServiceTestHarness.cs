@@ -79,11 +79,6 @@ public abstract class ServiceTestHarness : IDisposable
     private protected FeedbackDbContext FeedbackDb => _feedbackDb.Value.Context;
     private protected TestDbContextFactory<FeedbackDbContext> FeedbackDbFactory => _feedbackDb.Value.Factory;
 
-    /// <summary>CityPlanning: <c>city_planning_settings</c>, <c>camp_polygons</c>, <c>camp_polygon_histories</c>.</summary>
-    private readonly Lazy<SectionDb<CityPlanningDbContext>> _cityPlanningDb;
-    private protected CityPlanningDbContext CityPlanningDb => _cityPlanningDb.Value.Context;
-    private protected TestDbContextFactory<CityPlanningDbContext> CityPlanningDbFactory => _cityPlanningDb.Value.Factory;
-
     /// <summary>Budget: <c>budget_years</c>, <c>budget_groups</c>, <c>budget_categories</c>, <c>budget_line_items</c>, <c>budget_audit_logs</c>, <c>ticketing_projections</c>.</summary>
     private readonly Lazy<SectionDb<BudgetDbContext>> _budgetDb;
     private protected BudgetDbContext BudgetDb => _budgetDb.Value.Context;
@@ -142,7 +137,6 @@ public abstract class ServiceTestHarness : IDisposable
         _googleIntegrationDb = RegisterSection<GoogleIntegrationDbContext>(o => new(o));
         _ticketsDb = RegisterSection<TicketsDbContext>(o => new(o));
         _feedbackDb = RegisterSection<FeedbackDbContext>(o => new(o));
-        _cityPlanningDb = RegisterSection<CityPlanningDbContext>(o => new(o));
         _budgetDb = RegisterSection<BudgetDbContext>(o => new(o));
         _campsDb = RegisterSection<CampsDbContext>(o => new(o));
         _legalDb = RegisterSection<LegalDbContext>(o => new(o));

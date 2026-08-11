@@ -39,7 +39,7 @@ public class ServiceBoundaryArchitectureTests
             [typeof(ICalendarRepository)] = "Calendar",
             [typeof(ICampaignRepository)] = "Campaigns",
             [typeof(ICampRepository)] = "Camps",
-            [typeof(ICityPlanningRepository)] = "CityPlanning",
+            [SectionRepository("Humans.CityPlanning.Data.ICityPlanningRepository")] = "CityPlanning",
             [typeof(ICommunicationPreferenceRepository)] = "Humans",
             [typeof(IConsentRepository)] = "Consent",
             [SectionRepository("Humans.Containers.Data.IContainerRepository")] = "Containers",

@@ -187,13 +187,8 @@
     },
     "CityPlanning": {
       "paths": [
-        "src/Humans.Application/Interfaces/CityPlanning/**",
-        "src/Humans.Application/Configuration/CityPlanningOptions.cs",
-        "src/Humans.Application/Services/CityPlanning/**",
-        "src/Humans.Domain/Entities/CampPolygon*",
-        "src/Humans.Infrastructure/Repositories/CityPlanning/**",
-        "src/Humans.Web/Controllers/CityPlanningController.cs",
-        "src/Humans.Web/Hubs/CityPlanningHub.cs"
+        "src/Sections/Humans.CityPlanning/**",
+        "src/Sections/Humans.CityPlanning.Contracts/**"
       ],
       "symbols": [
         "CityPlanning*",

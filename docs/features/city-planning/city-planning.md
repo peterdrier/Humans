@@ -1,16 +1,10 @@
 <!-- freshness:triggers
-  src/Humans.Application/Services/CityPlanning/**
-  src/Humans.Web/Controllers/CityPlanningController.cs
-  src/Humans.Web/Controllers/CityPlanningApiController.cs
+  src/Sections/Humans.CityPlanning/**
+  src/Sections/Humans.CityPlanning.Contracts/**
   src/Sections/Humans.Containers/Controllers/ContainerController.cs
-  src/Humans.Web/Hubs/CityPlanningHub.cs
-  src/Humans.UI/Authorization/RoleChecks.cs
-  src/Humans.Domain/Entities/CityPlanningSettings.cs
-  src/Humans.Domain/Entities/CampPolygon.cs
-  src/Humans.Domain/Entities/CampPolygonHistory.cs
   src/Sections/Humans.Containers/Domain/Container.cs
-  src/Humans.Infrastructure/Data/Configurations/CityPlanning/**
-  src/Humans.Web/wwwroot/js/city-planning/**
+  src/Humans.UI/Hubs/CityPlanningHub.cs
+  src/Humans.UI/Authorization/RoleChecks.cs
 -->
 <!-- freshness:flag-on-change
   Polygon entities, container entity, MVC/API/SignalR routes, sound-zone color encoding, or map-admin authorization may have shifted.

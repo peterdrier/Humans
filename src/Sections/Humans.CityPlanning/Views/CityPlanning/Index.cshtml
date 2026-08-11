@@ -1,0 +1,59 @@
+@model CityPlanningIndexViewModel
+@{
+    ViewData["Title"] = "City Planning";
+    ViewData["BodyClass"] = "city-map-fullscreen";
+    var year = Model.Year;
+    var showBarrioMapLink = Model.IsMapAdmin || (Model.IsBarrioLead && Model.IsPlacementOpen);
+    var showContainerMapLink = Model.IsMapAdmin || (Model.IsBarrioLead && Model.IsContainerPlacementOpen);
+}
+
+@section Styles {
+    <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.20.1/dist/maplibre-gl.css" />
+}
+
+<div id="map-page" class="city-map-page">
+    <div id="map" class="city-map-canvas" data-year="@year"></div>
+
+    <div class="position-absolute top-0 end-0 m-3 d-grid gap-3 city-map-controls">
+        @await Html.PartialAsync("_MeasurePanel", new CityPlanningMeasurePanelViewModel
+        {
+            AccessMatrixSection = "CityPlanningOverview"
+        })
+        <div class="card shadow-sm">
+            <div class="card-body py-2 px-3 d-flex flex-column gap-1">
+                <div class="fw-semibold text-muted text-uppercase mb-1 city-map-panel-label">@Localizer["CityPlanning_Layers"]</div>
+                <button id="toggle-containers" class="btn btn-outline-secondary btn-sm" aria-pressed="false">
+                    <i class="fa-solid fa-box me-1"></i> @ContainersLocalizer["Container_Breadcrumb"]
+                </button>
+                <button id="toggle-camp-limits" class="btn btn-outline-secondary btn-sm" aria-pressed="false">
+                    <i class="fa-solid fa-draw-polygon me-1"></i> @Localizer["CityPlanning_BarrioZones"]
+                </button>
+            </div>
+        </div>
+        @if (showBarrioMapLink || showContainerMapLink)
+        {
+            <div class="card shadow-sm">
+                <div class="card-body py-2 px-3 d-flex flex-column gap-1">
+                    @if (showBarrioMapLink)
+                    {
+                        <a asp-action="BarrioMap" class="btn btn-outline-primary btn-sm w-100">
+                            <i class="fa-solid fa-map-location-dot me-1"></i> @Localizer["CityPlanning_GoToPlacementMap"]
+                        </a>
+                    }
+                    @if (showContainerMapLink)
+                    {
+                        <a asp-action="ContainerMap" asp-route-year="@year" class="btn btn-outline-primary btn-sm w-100">
+                            <i class="fa-solid fa-box me-1"></i> @Localizer["CityPlanning_GoToContainerMap"]
+                        </a>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://unpkg.com/maplibre-gl@5.20.1/dist/maplibre-gl.js"></script>
+    <script src="https://unpkg.com/&#64;turf/turf@7.1.0/turf.min.js"></script>
+    <script type="module" src="~/_content/Humans.CityPlanning/js/city-planning/main.js" asp-append-version="true"></script>
+}

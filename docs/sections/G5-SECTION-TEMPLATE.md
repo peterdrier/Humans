@@ -8,7 +8,9 @@ SystemSettings + EventGuide (peterdrier/Humans#1235, A1), Containers + Finance
 (peterdrier/Humans#1239, A2), Expenses (peterdrier/Humans#1240, A3), Surveys
 (peterdrier/Humans#1251, A4), Agent (A4b — the first section with static assets, migrations
 and a contracts leaf all at once), Gate (the first with no resource set, the first to take a
-layout with it, and the first to hit a Shell-resident view component). Step numbers match the former §15, so an old "§15 step 3b"
+layout with it, and the first to hit a Shell-resident view component), CityPlanning (the first
+with a SignalR hub, the first to reference another section's project, and the first whose
+resource carve had to *return* keys to an already-moved section). Step numbers match the former §15, so an old "§15 step 3b"
 citation reads as "step 3b" here.
 
 **Where this template and `src/Sections/` disagree, the code is right.** Deviations are the
@@ -153,6 +155,15 @@ Git Bash.)
    - **A key used by both this section and a not-yet-moved section stays in `SharedResource`** —
      carve by *owner*, not by prefix (proven: Containers left the 9 `ContainerMap_*` keys with
      City Planning's map page).
+   - **When the other owner has already moved, the key goes home rather than staying shared, and
+     the shared binding on *both* sides has to move with it.** The reverse of the rule above:
+     once both consumers are sections, `SharedResource` owns nothing and the key belongs to
+     whichever section's vocabulary it is. City Planning's move took the 9 `ContainerMap_*` keys
+     into `ContainersResource` and bound `@inject IStringLocalizer<ContainersResource>` in its
+     own `_ViewImports` — and had to switch **Containers'** two call sites from `SharedLocalizer`
+     to `Localizer` in the same commit, because the key left the set they were reading. Grep
+     `SharedLocalizer["<Prefix>_` across both sections before moving a key out of
+     `SharedResource`; missing the other side is a silent raw-key render (proven: CityPlanning).
    - **Never conclude an `Enum_*` key set is dead from the helper class alone.** Those keys are
      read through `EnumLocalizationExtensions`, whose methods are `EnumDisplay` and
      `EnumSelectItems` — no method contains "Localize", so grepping for one returns nothing and
@@ -224,6 +235,16 @@ Git Bash.)
      (`memory/architecture/section-project-cycle-fix.md`; proven: SystemSettings, Events, both on
      first build). Consumers all in Shell → folder is fine at any size (proven: Containers,
      17 types).
+   - **A consumer in *another section* whose `Contracts/` is a folder: reference that section's
+     project directly.** Not a cycle, and not a reason to re-carve the other section. City
+     Planning's barrio container pages inject Containers' `IContainerService` and render its card
+     partials; Containers kept `Contracts/` as a folder because its own consumers were all in
+     Shell. `Humans.CityPlanning` references `Humans.Containers`, and the assembly boundary
+     already limits what that buys — the only public types over there *are* the `Contracts/`
+     ones plus `Section` and `ContainersResource`. Acyclic because the pair goes through the leaf
+     in the other direction: `Humans.Containers` → `Humans.CityPlanning.Contracts`, never the
+     section project. Check that direction before adding the reference (proven: CityPlanning;
+     contrast Expenses → `Humans.Finance.Contracts`, where the other side had a leaf already).
    - **A Base-resident *connector* can be section-owned in disguise.** Agent's recon put the
      Anthropic client in Base with Stripe and Holded, on the "connectors stay in Base" rule — and
      the first build said otherwise: `IAnthropicClient` streams the section's own
@@ -272,6 +293,27 @@ Git Bash.)
      Gate's `Claim` and `Admin` pages render. `Humans.UI/Views/_ViewImports.cshtml` needs the
      matching `@using` for the moved model. Same test as the filter base: the picker names no
      section's vocabulary. Caught by the step 12 render test, never by the build (proven: Gate).
+   - **A SignalR hub is the health-check shape, and where it goes depends on whose types are in
+     it.** `Program.cs`'s `app.MapHub<TheHub>("/hubs/…")` names the concrete type, so a hub cannot
+     live in the section — HUM0034 fails the build for a public section type, and the section's
+     `IHubContext<TheHub>` injection needs the type visible to it either way. Apply the same test
+     as the filter base: `CityPlanningHub` relays a connection id, a display name and a lat/lng
+     and names no City Planning type at all, so it went to `Humans.UI/Hubs` and both Shell's
+     `MapHub` and the section's `IHubContext<…>` resolve it. A hub whose signatures *do* name
+     section types would stay in Shell with a contract in between, the way a health check does
+     (proven: CityPlanning; nothing has hit the second case yet).
+   - **A `<vc:…>` whose component reads a Shell-owned *cross-section registry* does not move —
+     invoke it by name.** The Gate fix (move the component down to `Humans.UI`) is right when the
+     component is self-contained. `<vc:access-matrix>` is not: `AccessMatrixViewComponent` reads
+     `AccessMatrixDefinitions` and `SectionHelpContent`, ~900 lines naming every section's roles,
+     routes and FAQ, which `Humans.Web`'s agent preloader reads too. Dragging that into
+     `Humans.UI` to satisfy one section is the registry-inversion problem (step 5b) wearing a
+     different hat. `@await Component.InvokeAsync("AccessMatrix", new { section = "…" })` resolves
+     the component **by name across application parts**, so the widget renders from a section
+     view with the registry left in Shell. Assert it rendered — the component emits a modal id
+     built from the section key, and a component that fails to resolve throws rather than
+     degrading, so one assertion per call site is enough (proven: CityPlanning, the first moved
+     section to use the widget).
    - **A Shell-only *helper* a moved controller calls moves the same way.** Gate's `/Gate/Search`
      used `Humans.Web.Models.HumanLookupSearchResult` and
      `SearchResultMappingExtensions.OrderByRelevance` — a JSON row shape and the canonical
@@ -416,6 +458,14 @@ Git Bash.)
      <Section>DbContext --project src/Sections/Humans.<Section> --startup-project src/Humans.Web`
      before pushing — step 12 already asks for this and it is the check that catches it
      (`Humans.Expenses` is the correct reference; proven: Surveys, peterdrier/Humans#1251).
+   - **The `Humans.Domain.Entities.<Entity>` strings left in the moved Designer and snapshot are
+     schema-inert — do not touch them.** They look like the loudest thing in the diff and they are
+     the one thing that is fine: EF's differ compares the *relational* model (tables, columns,
+     keys), and the CLR type name only feeds model construction, so a namespace change produces
+     an identical relational model and no migration. Regenerating to "fix" the strings would
+     change the migration id and orphan the baseline already applied in prod/QA.
+     `has-pending-model-changes` is the proof and it is already step 12 (proven: Gate left them,
+     CityPlanning verified clean).
    - Diagnostic tell: `dotnet ef migrations add` on the section answers **"Your target project
      'Humans.<Section>' doesn't match your migrations assembly 'Humans.Infrastructure'"**, which
      names the real problem where `has-pending-model-changes` does not.
@@ -481,6 +531,14 @@ Git Bash.)
       is embedded in the main assembly and the fallback is silent. One request with
       `Accept-Language: es` asserting a Spanish string is the only thing that proves an RCL's
       satellites reach the host's probing path.
+    - **`Accept-Language` does not reach a signed-in page.** `Program.cs` registers an *initial*
+      `CustomRequestCultureProvider` that returns the authenticated user's `PreferredLanguage`
+      and short-circuits the rest of the chain, so the header provider never runs — the page
+      renders `lang="en"` and the Spanish assertion fails while the satellites are perfectly
+      fine. Surveys got away with the header because its Spanish case is the anonymous public
+      page. For a section whose pages are all `[Authorize]`, switch the language the way the UI
+      does: GET any section page for the antiforgery token, POST it to `/Language/SetLanguage`
+      with `culture=es`, then GET the page under test (proven: CityPlanning).
     - **Assert on ASCII-only substrings of the non-English copy.** Razor's default `HtmlEncoder`
       escapes non-ASCII to numeric entities, so `está` reaches the response body as `est&#xE1;`
       and a literal assertion on the resx value fails while the page is perfectly correct. Take
