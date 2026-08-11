@@ -42,7 +42,6 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddShiftsSection();
         services.AddEarlyEntrySection();
         services.AddTicketsSection();
-        services.AddFeedbackSection();
         services.AddIssuesSection();
         services.AddNotificationsSection();
         services.AddLegalAndConsentSection();

@@ -28,6 +28,11 @@
     <ProjectReference Include="..\..\Humans.Infrastructure\Humans.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Humans.UI\Humans.UI.csproj" />
     <ProjectReference Include="..\Humans.Agent.Contracts\Humans.Agent.Contracts.csproj" />
+    <!-- The agent's user snapshot lists the caller's still-open feedback reports.
+         Contracts/ is a folder on Humans.Feedback (its other consumers are all in Shell),
+         so the reference is to the section project — acyclic, and the assembly boundary
+         limits it to IFeedbackServiceRead (design §15 step 5b). -->
+    <ProjectReference Include="..\Humans.Feedback\Humans.Feedback.csproj" />
   </ItemGroup>
 
   <ItemGroup>

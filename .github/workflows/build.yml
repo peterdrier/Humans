@@ -42,7 +42,7 @@ env:
     CampaignsDbContext:src/Sections/Humans.Campaigns
     GoogleIntegrationDbContext:src/Humans.Infrastructure
     TicketsDbContext:src/Humans.Infrastructure
-    FeedbackDbContext:src/Humans.Infrastructure
+    FeedbackDbContext:src/Sections/Humans.Feedback
     CityPlanningDbContext:src/Sections/Humans.CityPlanning
     BudgetDbContext:src/Sections/Humans.Budget
     CampsDbContext:src/Humans.Infrastructure

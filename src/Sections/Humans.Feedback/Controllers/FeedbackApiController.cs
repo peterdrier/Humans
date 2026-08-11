@@ -1,0 +1,197 @@
+using Microsoft.AspNetCore.Mvc;
+using Humans.Feedback.Domain;
+using Humans.Feedback.Filters;
+using Humans.Feedback.Models;
+using Humans.Feedback.Services;
+
+namespace Humans.Feedback.Controllers;
+
+[ApiController]
+[Route("api/feedback")]
+[ServiceFilter(typeof(FeedbackApiKeyAuthFilter))]
+internal sealed class FeedbackApiController(FeedbackService feedbackService, ILogger<FeedbackApiController> logger)
+    : ControllerBase
+{
+    [HttpGet]
+    public async Task<IActionResult> List(
+        [FromQuery] FeedbackStatus? status,
+        [FromQuery] FeedbackCategory? category,
+        [FromQuery] int limit = 50)
+    {
+        var reports = await feedbackService.GetFeedbackListAsync(status, category, limit: limit);
+
+        var result = reports.Select(r => new
+        {
+            r.Id,
+            Category = r.Category.ToString(),
+            Status = r.Status.ToString(),
+            r.Description,
+            r.PageUrl,
+            r.UserAgent,
+            r.AdditionalContext,
+            r.ReporterName,
+            r.ReporterEmail,
+            ReporterUserId = r.UserId,
+            r.ReporterLanguage,
+            r.GitHubIssueNumber,
+            ScreenshotUrl = r.ScreenshotStoragePath is not null ? $"/{r.ScreenshotStoragePath}" : null,
+            CreatedAt = r.CreatedAt.ToDateTimeUtc(),
+            UpdatedAt = r.UpdatedAt.ToDateTimeUtc(),
+            LastReporterMessageAt = r.LastReporterMessageAt?.ToDateTimeUtc(),
+            LastAdminMessageAt = r.LastAdminMessageAt?.ToDateTimeUtc(),
+            ResolvedAt = r.ResolvedAt?.ToDateTimeUtc(),
+            r.ResolvedByName,
+            MessageCount = r.Messages.Count,
+            r.AssignedToUserId,
+            r.AssignedToName,
+            r.AssignedToTeamId,
+            r.AssignedToTeamName
+        });
+
+        return Ok(result);
+    }
+
+    [HttpGet("{id}")]
+    public async Task<IActionResult> Get(Guid id)
+    {
+        var r = await feedbackService.GetFeedbackByIdAsync(id);
+        if (r is null) return NotFound();
+
+        return Ok(new
+        {
+            r.Id,
+            Category = r.Category.ToString(),
+            Status = r.Status.ToString(),
+            r.Description,
+            r.PageUrl,
+            r.UserAgent,
+            r.AdditionalContext,
+            r.ReporterName,
+            r.ReporterEmail,
+            ReporterUserId = r.UserId,
+            r.ReporterLanguage,
+            r.GitHubIssueNumber,
+            ScreenshotUrl = r.ScreenshotStoragePath is not null ? $"/{r.ScreenshotStoragePath}" : null,
+            CreatedAt = r.CreatedAt.ToDateTimeUtc(),
+            UpdatedAt = r.UpdatedAt.ToDateTimeUtc(),
+            LastReporterMessageAt = r.LastReporterMessageAt?.ToDateTimeUtc(),
+            LastAdminMessageAt = r.LastAdminMessageAt?.ToDateTimeUtc(),
+            ResolvedAt = r.ResolvedAt?.ToDateTimeUtc(),
+            r.ResolvedByName,
+            r.AssignedToUserId,
+            r.AssignedToName,
+            r.AssignedToTeamId,
+            r.AssignedToTeamName,
+            Messages = r.Messages.Select(m => new
+            {
+                m.Id,
+                SenderName = m.SenderName ?? "Unknown",
+                m.SenderUserId,
+                m.Content,
+                CreatedAt = m.CreatedAt.ToDateTimeUtc(),
+                IsReporter = m.SenderUserId.HasValue && m.SenderUserId == r.UserId
+            })
+        });
+    }
+
+    [HttpGet("{id}/messages")]
+    public async Task<IActionResult> GetMessages(Guid id)
+    {
+        var report = await feedbackService.GetFeedbackByIdAsync(id);
+        if (report is null) return NotFound();
+
+        return Ok(report.Messages.Select(m => new
+        {
+            m.Id,
+            SenderName = m.SenderName ?? "Unknown",
+            m.SenderUserId,
+            m.Content,
+            CreatedAt = m.CreatedAt.ToDateTimeUtc(),
+            IsReporter = m.SenderUserId.HasValue && m.SenderUserId == report.UserId
+        }));
+    }
+
+    [HttpPost("{id}/messages")]
+    public async Task<IActionResult> PostMessage(Guid id, [FromBody] PostFeedbackMessageModel model)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        try
+        {
+            var message = await feedbackService.PostMessageAsync(id, null, model.Content);
+            return Ok(new
+            {
+                message.Id,
+                message.Content,
+                CreatedAt = message.CreatedAt.ToDateTimeUtc()
+            });
+        }
+        catch (InvalidOperationException)
+        {
+            return NotFound();
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to post message on feedback {FeedbackId}", id);
+            return StatusCode(500, new { error = "Failed to post message" });
+        }
+    }
+
+    [HttpPatch("{id}/status")]
+    public async Task<IActionResult> UpdateStatus(Guid id, [FromBody] UpdateFeedbackStatusModel model)
+    {
+        try
+        {
+            await feedbackService.UpdateStatusAsync(id, model.Status, null);
+            return Ok(new { success = true });
+        }
+        catch (InvalidOperationException)
+        {
+            return NotFound();
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to update feedback {FeedbackId} status", id);
+            return StatusCode(500, new { error = "Failed to update status" });
+        }
+    }
+
+    [HttpPatch("{id}/assignment")]
+    public async Task<IActionResult> UpdateAssignment(Guid id, [FromBody] UpdateFeedbackAssignmentModel model)
+    {
+        try
+        {
+            await feedbackService.UpdateAssignmentAsync(id, model.AssignedToUserId, model.AssignedToTeamId, null);
+            return Ok(new { success = true });
+        }
+        catch (InvalidOperationException)
+        {
+            return NotFound();
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to update assignment for feedback {FeedbackId}", id);
+            return StatusCode(500, new { error = "Failed to update assignment" });
+        }
+    }
+
+    [HttpPatch("{id}/github-issue")]
+    public async Task<IActionResult> SetGitHubIssue(Guid id, [FromBody] SetGitHubIssueModel model)
+    {
+        try
+        {
+            await feedbackService.SetGitHubIssueNumberAsync(id, model.IssueNumber);
+            return Ok(new { success = true });
+        }
+        catch (InvalidOperationException)
+        {
+            return NotFound();
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to set GitHub issue for feedback {FeedbackId}", id);
+            return StatusCode(500, new { error = "Failed to set GitHub issue" });
+        }
+    }
+}

@@ -463,10 +463,24 @@ public class AuthorizationPolicyTests : IDisposable
     }
 
     private static string FeedbackControllerPolicy =>
-        typeof(Humans.Web.Controllers.FeedbackController)
+        SectionType("Humans.Feedback.Controllers.FeedbackController")
             .GetCustomAttribute<AuthorizeAttribute>()?.Policy
         ?? throw new InvalidOperationException(
             "FeedbackController must carry a policy-bearing [Authorize] attribute.");
+
+    /// <summary>
+    /// A G5 section's controller is <c>internal</c> to its own assembly
+    /// (nobodies-collective/Humans#866), so it cannot be named with <c>typeof</c> here.
+    /// Resolved by reflection instead — the same helper
+    /// <c>EndpointAuthorizationTests</c> carries — and it throws on a miss, so a renamed
+    /// or dropped controller fails the test rather than quietly leaving the sweep.
+    /// </summary>
+    private static Type SectionType(string fullName) =>
+        Humans.Web.Extensions.SectionDiscoveryExtensions.SectionAssemblies()
+            .Select(a => a.GetType(fullName, throwOnError: false))
+            .FirstOrDefault(t => t is not null)
+        ?? throw new InvalidOperationException(
+            $"{fullName} not found in any section assembly — did the section move or rename it?");
 
     // --- FinanceAdminOrAdmin ---
 

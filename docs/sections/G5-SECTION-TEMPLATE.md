@@ -18,8 +18,10 @@ one-method contract), Calendar (the first to keep an *internal* `I<Section>Servi
 shipping an empty `Contracts/`, the first whose name collided with a Base concern, and the first
 whose render test had to seed through a §15 caching decorator), Campaigns (the first moved
 section carrying an `Architecture/Baselines` row, and the first whose contracts leaf had to
-reference `Humans.Domain`). Step numbers match the former §15, so an old "§15 step 3b" citation
-reads as "step 3b" here.
+reference `Humans.Domain`), Feedback (the first whose `Contracts/` is a folder despite a
+consumer in another section, and the first to drop `I<Section>Service` entirely — its whole
+DTO surface stayed internal behind two primitive-returning reads). Step numbers match the
+former §15, so an old "§15 step 3b" citation reads as "step 3b" here.
 
 **Where this template and `src/Sections/` disagree, the code is right.** Deviations are the
 exception and get stated in the PR. Steps marked ⚠️ UNPROVEN have never been executed; whoever
@@ -112,7 +114,7 @@ Git Bash.)
      reference Sdk.Razor already adds (proven: Surveys, whose token provider takes
      `IDataProtectionProvider`). Add EF Core, NodaTime and Npgsql; never an `AspNetCore` one.
 2. [ ] Move the vertical, folders as layers: `Contracts/ Domain/ Data/ Services/ Controllers/
-   Models/ Views/ Resources/ Authorization/ Docs/ Properties/ wwwroot/` + `Section.cs`. Migrations
+   Models/ Views/ Resources/ Authorization/ Filters/ Docs/ Properties/ wwwroot/` + `Section.cs`. Migrations
    land at `Data/Migrations/` — their `namespace` line changes to the section's, which is the one
    sanctioned edit to a migration file (spec §7); say so in the PR. **Everything the section needs
    comes with it — no exceptions.**
@@ -134,6 +136,19 @@ Git Bash.)
    every string in the set degrades to its key at runtime. The boot diagnostic needs no
    per-section edit, **but only if `<Section>Resource` is `public`** — discovery reads
    `GetExportedTypes()` and skips an `internal` marker in silence.
+   - **Carve the `.resx` block-aware, not line-by-line.** `SharedResource.resx` writes each entry
+     on one line; the five translations do **not** — theirs are three lines
+     (`<data …>` / `<value>…</value>` / `</data>`). A line-based filter that matches the opening
+     tag takes the opening line and leaves the orphaned `<value>`/`</data>` behind, producing five
+     invalid `.resx` files. That one fails loudly (`MSB3103: Invalid Resx file`) rather than
+     silently, but it costs a full build cycle; consume to the closing `</data>` (proven: Feedback).
+   - **A key whose *renderer* lives in Base stays in Base — carve by renderer, not by prefix.**
+     The third direction, after "carve by owner" and "the key goes home". Feedback's
+     `Email_FeedbackResponse_{Subject,Body}` look like the section's, and are read by
+     `Humans.Infrastructure/Services/EmailRenderer.cs`, which composes every transactional email
+     and cannot see a section's resource set. Taking them would degrade that email to raw keys in
+     all six languages, and no render test covers an email body. Grep each candidate key's call
+     sites before moving it, exactly as with `Enum_*` (proven: Feedback).
    - If step 5 renames an enum, rename its `Enum_{TypeName}_*` keys in all six languages in the
      same commit — the key is the **live CLR type name** (spec §3; proven the hard way: Store).
    - **Re-grep the moved views for keys the carve did not take.** Genuinely shared strings
@@ -415,6 +430,14 @@ Git Bash.)
      person-search ordering, both section-neutral and both used by three other Shell controllers.
      They went to `Humans.UI/Models` and `Humans.UI/Extensions`; inlining the ordering into the
      section would have forked a rule the codebase documents as having one owner (proven: Gate).
+     **Second sighting, and the cheapest yet: a plain view model two sections bind.**
+     `AssigneeOption` and `ReporterDropdownItem` (an id + label, and a reporter + label + count)
+     sit in `Humans.Web.Models/FeedbackViewModels.cs` and are bound by Issues' triage pages too —
+     `IssueViewModels.cs` says so in a comment. Taking them into the section breaks Issues;
+     duplicating them forks the shape the comment exists to keep. Same test as the filter base
+     and the helper: they name no section vocabulary, so `Humans.UI/Models`. Shell's
+     `Views/_ViewImports.cshtml` already has `@using Humans.UI.Models`, so only the two `.cs`
+     files needed a `using` (proven: Feedback).
    - **Do this on paper *before* step 5b.** Moving the handler is often what takes the read
      surface's fan-in to zero. Expenses' fan-in read as "`IExpenseReportServiceRead`'s only
      outside consumer is Shell's `IbanAccessHandler`", which would have made six types public to
@@ -654,6 +677,15 @@ Git Bash.)
       `typeof`** — its repository-interface → section map. It already carries a
       `SectionRepository(fullName)` reflection helper for the sections that moved before yours;
       swap the row rather than dropping it (proven: Budget, `IBudgetRepository`).
+    - **…and `AuthorizationPolicyTests` is a fifth, which reads the policy *off* the controller
+      rather than naming it in a table.** `FeedbackControllerPolicy` is
+      `typeof(FeedbackController).GetCustomAttribute<AuthorizeAttribute>()?.Policy` — four tests
+      run the real authorization pipeline against whatever the controller actually carries, which
+      is the point of it. That file had no `SectionType(...)` helper of its own, so the first
+      section whose controllers it names has to add one (copy `EndpointAuthorizationTests`'; it
+      throws on a miss). Grep `typeof(<Section>` across `tests/` rather than waiting for the
+      compiler — three of the five sites are in files whose names suggest nothing about your
+      section (proven: Feedback).
     - **A Base badge helper has two shapes and only one of them is `EnumBadgeMap`.** The registry
       inversion (step 5b) covers `EnumBadgeMap`'s literal rows, read by `CellFormat.EnumBadge`
       table columns. `Humans.UI/Extensions/StatusBadgeExtensions` is the other: a

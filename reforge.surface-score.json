@@ -348,12 +348,7 @@
     },
     "Feedback": {
       "paths": [
-        "src/Humans.Application/Interfaces/Feedback/**",
-        "src/Humans.Application/Services/Feedback/**",
-        "src/Humans.Domain/Entities/Feedback*",
-        "src/Humans.Infrastructure/Repositories/Feedback/**",
-        "src/Humans.Web/Controllers/FeedbackController.cs",
-        "src/Humans.Web/Models/FeedbackViewModels.cs"
+        "src/Sections/Humans.Feedback/**"
       ],
       "symbols": [
         "Feedback*",
@@ -363,7 +358,7 @@
         "IFeedbackRepository"
       ],
       "serviceInterfaces": [
-        "IFeedbackService"
+        "IFeedbackServiceRead"
       ]
     },
     "Finance": {

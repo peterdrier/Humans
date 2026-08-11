@@ -89,13 +89,13 @@ public class EndpointAuthorizationTests
         { typeof(OnboardingReviewController), "Flag", "ConsentCoordinatorBoardOrAdmin" },
         { typeof(OnboardingReviewController), "Reject", "ConsentCoordinatorBoardOrAdmin" },
         { SectionType("Humans.Budget.Controllers.BudgetAdminController"), null, "FinanceAdminOrAdmin" },
-        { typeof(FeedbackController), null, "AdminOnly" },
-        { typeof(FeedbackController), "Index", "AdminOnly" },
-        { typeof(FeedbackController), "Detail", "AdminOnly" },
-        { typeof(FeedbackController), "PostMessage", "AdminOnly" },
-        { typeof(FeedbackController), "UpdateStatus", "AdminOnly" },
-        { typeof(FeedbackController), "UpdateAssignment", "AdminOnly" },
-        { typeof(FeedbackController), "SetGitHubIssue", "AdminOnly" },
+        { SectionType("Humans.Feedback.Controllers.FeedbackController"), null, "AdminOnly" },
+        { SectionType("Humans.Feedback.Controllers.FeedbackController"), "Index", "AdminOnly" },
+        { SectionType("Humans.Feedback.Controllers.FeedbackController"), "Detail", "AdminOnly" },
+        { SectionType("Humans.Feedback.Controllers.FeedbackController"), "PostMessage", "AdminOnly" },
+        { SectionType("Humans.Feedback.Controllers.FeedbackController"), "UpdateStatus", "AdminOnly" },
+        { SectionType("Humans.Feedback.Controllers.FeedbackController"), "UpdateAssignment", "AdminOnly" },
+        { SectionType("Humans.Feedback.Controllers.FeedbackController"), "SetGitHubIssue", "AdminOnly" },
         { SectionType("Humans.Scanner.Controllers.ScannerController"), null, "ScannerAccess" },
         { typeof(TicketsOnsiteAdminController), null, "ScannerAccess" },
         { typeof(TicketsGateAdminController), null, "TicketAdminOrAdmin" },
@@ -159,7 +159,7 @@ public class EndpointAuthorizationTests
     [HumansFact]
     public void FeedbackController_HasNoReportCreationRoute()
     {
-        var rootPosts = typeof(FeedbackController)
+        var rootPosts = SectionType("Humans.Feedback.Controllers.FeedbackController")
             .GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
             .Select(m => m.GetCustomAttribute<HttpPostAttribute>())
             .Where(a => a is not null)
@@ -173,7 +173,7 @@ public class EndpointAuthorizationTests
     [HumansFact]
     public void FeedbackApiController_OnlyPostsMessages()
     {
-        var postTemplates = typeof(FeedbackApiController)
+        var postTemplates = SectionType("Humans.Feedback.Controllers.FeedbackApiController")
             .GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
             .Select(m => m.GetCustomAttribute<HttpPostAttribute>())
             .Where(a => a is not null)

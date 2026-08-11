@@ -51,7 +51,6 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSectionDbContext<GovernanceDbContext>(sentinelTable: "applications");
         services.AddSectionDbContext<GoogleIntegrationDbContext>(sentinelTable: "google_resources");
         services.AddSectionDbContext<TicketsDbContext>(sentinelTable: "ticket_orders");
-        services.AddSectionDbContext<FeedbackDbContext>(sentinelTable: "feedback_reports");
         services.AddSectionDbContext<CampsDbContext>(sentinelTable: "camps");
         services.AddSectionDbContext<SystemDbContext>(sentinelTable: "DataProtectionKeys");
         services.AddSectionDbContext<LegalDbContext>(sentinelTable: "legal_documents");

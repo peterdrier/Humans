@@ -3,7 +3,7 @@ using Humans.Application;
 using Humans.Application.DTOs.Shifts;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Consent;
-using Humans.Application.Interfaces.Feedback;
+using Humans.Feedback.Contracts;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Tickets;
@@ -187,7 +187,7 @@ public class AgentUserSnapshotProviderTests
         consents.GetPendingDocumentNamesAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns([]);
 
-        var feedback = Substitute.For<IFeedbackService>();
+        var feedback = Substitute.For<IFeedbackServiceRead>();
         feedback.GetOpenFeedbackIdsForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns([]);
 

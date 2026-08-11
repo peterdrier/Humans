@@ -1,11 +1,6 @@
 <!-- freshness:triggers
-  src/Humans.Application/Services/Feedback/**
-  src/Humans.Web/Controllers/FeedbackController.cs
-  src/Humans.Web/Controllers/FeedbackApiController.cs
+  src/Sections/Humans.Feedback/**
   src/Humans.Web/ViewComponents/NavBadgesViewComponent.cs
-  src/Humans.Domain/Entities/FeedbackReport.cs
-  src/Humans.Domain/Entities/FeedbackMessage.cs
-  src/Humans.Infrastructure/Data/Configurations/Feedback/**
 -->
 <!-- freshness:flag-on-change
   Feedback entities, controller routes, API surface, or status transitions may have changed; verify the auth matrix and routes table. The section is retired — if any change reintroduces a creation path or a reporter-facing view, this spec is wrong.
@@ -13,7 +8,7 @@
 
 # 27 — Feedback System
 
-> **Retired — nobodies-collective/Humans#977.** Feedback no longer accepts new reports; Issues (`docs/features/issues/issues-system.md`) superseded it. This spec is kept as the record of what was built. The sections below are marked where the as-shipped behaviour now differs: there is no submission path, no reporter-facing view, and every remaining screen is full-`Admin` only. For the current invariants see `docs/sections/Feedback.md`.
+> **Retired — nobodies-collective/Humans#977.** Feedback no longer accepts new reports; Issues (`docs/features/issues/issues-system.md`) superseded it. This spec is kept as the record of what was built. The sections below are marked where the as-shipped behaviour now differs: there is no submission path, no reporter-facing view, and every remaining screen is full-`Admin` only. For the current invariants see `src/Sections/Humans.Feedback/Docs/Feedback.md`.
 
 ## Business Context
 

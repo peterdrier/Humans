@@ -2,7 +2,7 @@ using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Consent;
-using Humans.Application.Interfaces.Feedback;
+using Humans.Feedback.Contracts;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Tickets;
@@ -19,7 +19,7 @@ internal sealed class AgentUserSnapshotProvider(
     IRoleAssignmentService roles,
     ITeamServiceRead teams,
     IConsentServiceRead consents,
-    IFeedbackService feedback,
+    IFeedbackServiceRead feedback,
     ITicketServiceRead tickets,
     IShiftView shiftView,
     IBurnSettingsService burnSettings,

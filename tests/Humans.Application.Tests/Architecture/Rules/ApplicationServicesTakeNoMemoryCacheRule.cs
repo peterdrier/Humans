@@ -1,7 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application.Services.AuditLog;
 using Humans.Application.Services.Camps;
-using Humans.Application.Services.Feedback;
 using Humans.Application.Services.Governance;
 using Humans.Application.Services.Issues;
 using Humans.Application.Services.Legal;
@@ -33,7 +32,7 @@ namespace Humans.Application.Tests.Architecture.Rules;
 ///   <item><see cref="NotificationMeterProvider"/> — meter cache</item>
 ///   <item><see cref="NotificationService"/> — notification preferences cache</item>
 ///   <item><see cref="ShiftManagementService"/> — shift data cache</item>
-///   <item><see cref="FeedbackService"/> — feedback-badge count cache (nav badges)</item>
+///   <item><c>Humans.Feedback.Services.FeedbackService</c> — feedback-badge count cache (nav badges)</item>
 ///   <item><see cref="ApplicationDecisionService"/> — voting-badge count cache (nav badges)</item>
 ///   <item><c>Humans.Finance.Services.Service</c> — Holded contact-list cache (nobodies-collective/Humans#976)</item>
 /// </list>
@@ -68,7 +67,7 @@ public class ApplicationServicesTakeNoMemoryCacheRule
         // INavBadgeCacheInvalidator / IVotingBadgeCacheInvalidator. (The review
         // count is NOT here — its read is already cache-served by CachingUserService,
         // so AdminDashboardService stays cache-free; double-caching it would be §4b.)
-        typeof(FeedbackService),        // CacheKeys.FeedbackBadgeCount
+        SectionType("Humans.Feedback.Services.FeedbackService"),  // CacheKeys.FeedbackBadgeCount
         typeof(ApplicationDecisionService),  // CacheKeys.VotingBadge(userId)
         // CacheKeys.HoldedContacts — 2-min TTL so /Finance/Creditors and /Expenses/{id} don't
         // call Holded live on every admin page load (nobodies-collective/Humans#976).

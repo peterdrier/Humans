@@ -1,7 +1,7 @@
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Dashboard;
-using Humans.Application.Interfaces.Feedback;
+using Humans.Feedback.Contracts;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;
 using Humans.UI.Authorization;
@@ -21,7 +21,7 @@ public class AdminController(IUserServiceRead userService) : HumansControllerBas
     [Authorize(Policy = PolicyNames.AnyAdminRole)]
     public async Task<IActionResult> Index(
         [FromServices] IShiftManagementService shifts,
-        [FromServices] IFeedbackService feedback,
+        [FromServices] IFeedbackServiceRead feedback,
         [FromServices] IAuditViewerService auditViewer,
         [FromServices] IAdminDashboardService adminDashboardService,
         [FromServices] IUserServiceRead userService,

@@ -1470,27 +1470,6 @@
   <!-- ======================== -->
   <!-- User-Facing Views        -->
   <!-- ======================== -->
-  <data name="Feedback_PageTitle" xml:space="preserve"><value>Feedback</value></data>
-  <data name="Feedback_AllStatuses" xml:space="preserve"><value>All Statuses</value></data>
-  <data name="Feedback_AllCategories" xml:space="preserve"><value>All Categories</value></data>
-  <data name="Feedback_AllReporters" xml:space="preserve"><value>All Reporters</value></data>
-  <data name="Feedback_AllAssignees" xml:space="preserve"><value>All Assignees</value></data>
-  <data name="Feedback_AssignedToMe" xml:space="preserve"><value>Assigned to me</value></data>
-  <data name="Feedback_AllTeams" xml:space="preserve"><value>All Teams</value></data>
-  <data name="Feedback_UnassignedOnly" xml:space="preserve"><value>Unassigned only</value></data>
-  <data name="Feedback_Clear" xml:space="preserve"><value>Clear</value></data>
-  <data name="Feedback_NoReports" xml:space="preserve"><value>No feedback reports found.</value></data>
-  <data name="Feedback_Unassigned" xml:space="preserve"><value>Unassigned</value></data>
-  <data name="Feedback_NeedsReply" xml:space="preserve"><value>needs reply</value></data>
-  <data name="Feedback_SelectReport" xml:space="preserve"><value>Select a report to view details</value></data>
-  <data name="Feedback_Conversation" xml:space="preserve"><value>Conversation</value></data>
-  <data name="Feedback_NoMessages" xml:space="preserve"><value>No messages yet.</value></data>
-  <data name="Feedback_MessagePlaceholder" xml:space="preserve"><value>Type a message...</value></data>
-  <data name="Feedback_Send" xml:space="preserve"><value>Send</value></data>
-  <data name="Feedback_ResolvedAt" xml:space="preserve"><value>Resolved {0}</value><comment>{0} = date/time</comment></data>
-  <data name="Feedback_ResolvedBy" xml:space="preserve"><value>by {0}</value><comment>{0} = name</comment></data>
-  <data name="Feedback_NoTeam" xml:space="preserve"><value>No team</value></data>
-  <data name="Feedback_ScreenshotLink" xml:space="preserve"><value>Screenshot</value></data>
   <data name="Unsub_Title" xml:space="preserve"><value>Unsubscribe from Emails</value></data>
   <data name="Unsub_Heading" xml:space="preserve"><value>Unsubscribe from {0} emails?</value><comment>{0} = category name</comment></data>
   <data name="Unsub_Greeting" xml:space="preserve"><value>Hi {0},</value><comment>{0} = display name</comment></data>
@@ -2449,13 +2428,6 @@
   <data name="Enum_EmailOutboxStatus_Failed" xml:space="preserve"><value>Failed</value></data>
   <data name="Enum_EmailOutboxStatus_Queued" xml:space="preserve"><value>Queued</value></data>
   <data name="Enum_EmailOutboxStatus_Sent" xml:space="preserve"><value>Sent</value></data>
-  <data name="Enum_FeedbackCategory_Bug" xml:space="preserve"><value>Bug</value></data>
-  <data name="Enum_FeedbackCategory_FeatureRequest" xml:space="preserve"><value>Feature request</value></data>
-  <data name="Enum_FeedbackCategory_Question" xml:space="preserve"><value>Question</value></data>
-  <data name="Enum_FeedbackStatus_Acknowledged" xml:space="preserve"><value>Acknowledged</value></data>
-  <data name="Enum_FeedbackStatus_Open" xml:space="preserve"><value>Open</value></data>
-  <data name="Enum_FeedbackStatus_Resolved" xml:space="preserve"><value>Resolved</value></data>
-  <data name="Enum_FeedbackStatus_WontFix" xml:space="preserve"><value>Won't fix</value></data>
   <data name="Enum_IssueCategory_Bug" xml:space="preserve"><value>Bug</value></data>
   <data name="Enum_IssueCategory_Feature" xml:space="preserve"><value>Feature</value></data>
   <data name="Enum_IssueCategory_Question" xml:space="preserve"><value>Question</value></data>
@@ -2501,9 +2473,6 @@
   <data name="Enum_YesNoMaybe_Maybe" xml:space="preserve"><value>Maybe</value></data>
   <data name="Enum_YesNoMaybe_No" xml:space="preserve"><value>No</value></data>
   <data name="Enum_YesNoMaybe_Yes" xml:space="preserve"><value>Yes</value></data>
-  <data name="Feedback_AssignedToName" xml:space="preserve"><value>Assigned to {0}</value></data>
-  <data name="Feedback_CategoryOnPage" xml:space="preserve"><value>{0} on {1}</value></data>
-  <data name="Feedback_TeamName" xml:space="preserve"><value>Team: {0}</value></data>
   <data name="Issue_ColComments" xml:space="preserve"><value>Comments</value></data>
   <data name="Issue_ColReporter" xml:space="preserve"><value>Reporter</value></data>
   <data name="Issue_ColStatus" xml:space="preserve"><value>Status</value></data>

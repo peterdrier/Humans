@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using NodaTime;
 using Humans.Domain.Constants;
 using Humans.Domain.Enums;
+using Humans.UI.Models;
 
 namespace Humans.Web.Models;
 
@@ -140,7 +141,7 @@ public class IssueDetailViewModel
 
     /// <summary>
     /// Active humans the handler can assign this issue to. Empty for non-handlers.
-    /// Reuses <see cref="AssigneeOption"/> from the Feedback view models so the
+    /// Reuses <see cref="AssigneeOption"/> from <c>Humans.UI.Models</c> so the
     /// shape stays consistent across triage UIs.
     /// </summary>
     public List<AssigneeOption> AssigneeOptions { get; set; } = [];

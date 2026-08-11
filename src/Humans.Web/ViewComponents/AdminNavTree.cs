@@ -189,7 +189,7 @@ internal static class PillCounts
 
     public static async ValueTask<int?> FeedbackQueue(IServiceProvider sp)
     {
-        var feedback = sp.GetRequiredService<Application.Interfaces.Feedback.IFeedbackService>();
+        var feedback = sp.GetRequiredService<Humans.Feedback.Contracts.IFeedbackServiceRead>();
         var count = await feedback.GetActionableCountAsync(CancellationToken.None);
         return count > 0 ? count : null;
     }

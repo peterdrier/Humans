@@ -10,6 +10,7 @@ using Humans.Domain.Enums;
 using Humans.Web.Authorization.Requirements;
 using Humans.Web.Helpers;
 using Humans.Web.Models;
+using Humans.UI.Models;
 
 namespace Humans.Web.Controllers;
 

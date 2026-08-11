@@ -4,6 +4,8 @@ using Humans.Budget.Data;
 using Humans.Budget.Domain;
 using Humans.Campaigns.Data;
 using Humans.Campaigns.Domain;
+using Humans.Feedback.Data;
+using Humans.Feedback.Domain;
 using Humans.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;

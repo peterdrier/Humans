@@ -8,6 +8,7 @@ using Humans.Infrastructure.Hosting;
 using Humans.CityPlanning.Data;
 using Humans.Containers.Data;
 using Humans.Expenses.Data;
+using Humans.Feedback.Data;
 using Humans.Finance.Data;
 using Humans.Gate.Data;
 using Humans.Store.Data;
