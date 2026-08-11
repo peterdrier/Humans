@@ -1,6 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.AuditLog;
-using Humans.Application.Interfaces.Budget;
+using Humans.Budget.Contracts;
 using Humans.Application.Interfaces.Consent;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Users;
@@ -131,11 +131,11 @@ public class ChainFollowReadTests(HumansTestDatabase database) : IntegrationTest
 
         // Act: GDPR contributor path for the TARGET should surface the
         // source-attributed BudgetAuditLog row. BudgetService implements
-        // both IBudgetService and IUserDataContributor; resolve the former
+        // both IBudgetServiceRead and IUserDataContributor; resolve the former
         // (single DI registration to that ID) and cast for the contributor
         // method.
         await using var assertScope = Factory.Services.CreateAsyncScope();
-        var budgetService = assertScope.ServiceProvider.GetRequiredService<IBudgetService>();
+        var budgetService = assertScope.ServiceProvider.GetRequiredService<IBudgetServiceRead>();
         var contributor = (IUserDataContributor)budgetService;
         var slices = await contributor.ContributeForUserAsync(targetId, TestContext.Current.CancellationToken);
 

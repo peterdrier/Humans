@@ -1,5 +1,5 @@
 using Humans.Application;
-using Humans.Application.Interfaces.Budget;
+using Humans.Budget.Contracts;
 using Humans.Finance.Contracts;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Holded;
@@ -19,9 +19,9 @@ namespace Humans.Finance.Services;
 internal sealed class Service(
     IHoldedRepository repo,
     IHoldedClient client,
-    // Cross-section read via full IBudgetService matches existing FinanceController usage.
+    // Cross-section read via full IBudgetServiceRead matches existing FinanceController usage.
     // Future: narrow to an IBudgetServiceRead via the section read/write split.
-    IBudgetService budget,
+    IBudgetServiceRead budget,
     IClock clock,
     IMemoryCache cache,
     ILogger<Service> logger) : IHoldedFinanceService, IUserDataContributor

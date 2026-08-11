@@ -88,7 +88,7 @@ public class EndpointAuthorizationTests
         { typeof(OnboardingReviewController), "Clear", "ConsentCoordinatorBoardOrAdmin" },
         { typeof(OnboardingReviewController), "Flag", "ConsentCoordinatorBoardOrAdmin" },
         { typeof(OnboardingReviewController), "Reject", "ConsentCoordinatorBoardOrAdmin" },
-        { typeof(BudgetAdminController), null, "FinanceAdminOrAdmin" },
+        { SectionType("Humans.Budget.Controllers.BudgetAdminController"), null, "FinanceAdminOrAdmin" },
         { typeof(FeedbackController), null, "AdminOnly" },
         { typeof(FeedbackController), "Index", "AdminOnly" },
         { typeof(FeedbackController), "Detail", "AdminOnly" },
@@ -190,7 +190,7 @@ public class EndpointAuthorizationTests
     [HumansFact]
     public void BudgetAdminController_RequiresFinanceAdminOrAdmin()
     {
-        AssertHasPolicy(typeof(BudgetAdminController), null, "FinanceAdminOrAdmin");
+        AssertHasPolicy(SectionType("Humans.Budget.Controllers.BudgetAdminController"), null, "FinanceAdminOrAdmin");
     }
 
     // --- Shift dashboard endpoints ---

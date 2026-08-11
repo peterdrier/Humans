@@ -12,7 +12,9 @@ layout with it, and the first to hit a Shell-resident view component), CityPlann
 with a SignalR hub, the first to reference another section's project, and the first whose
 resource carve had to *return* keys to an already-moved section), Scanner (the first section
 owning no tables at all — no G4 gate, no `Humans.Infrastructure` reference, an empty
-`Section.Register`). Step numbers match the former §15, so an old "§15 step 3b"
+`Section.Register`), Budget (the first to keep an *internal* `I<Section>Service`, the first
+whose enums had to move onto the contracts leaf, and the first to hand a Shell dev seeder a
+one-method contract). Step numbers match the former §15, so an old "§15 step 3b"
 citation reads as "step 3b" here.
 
 **Where this template and `src/Sections/` disagree, the code is right.** Deviations are the
@@ -161,6 +163,18 @@ Git Bash.)
    - **A key used by both this section and a not-yet-moved section stays in `SharedResource`** —
      carve by *owner*, not by prefix (proven: Containers left the 9 `ContainerMap_*` keys with
      City Planning's map page).
+   - **The mirror image: a key *this* section owns that an already-moved section reads goes into
+     this section's set, and that section takes a reference to the section *project*.** Not the
+     leaf — a resource marker is a section type (`public` only so `GetExportedTypes()` finds it),
+     so the consumer needs `Humans.<Section>`, binds `@inject IStringLocalizer<<Section>Resource>`
+     in its own `_ViewImports`, and switches the call site off `SharedLocalizer`. Cheap, because
+     the assembly boundary means the only public types over there are `Section`,
+     `<Section>Resource` and whatever sits under `Contracts/`. Check the reference direction
+     first (proven: Budget, whose `Budget_ColCategory` is rendered by Expenses' report grid;
+     `Humans.Expenses` → `Humans.Budget` is acyclic because Budget's own graph names only
+     `Humans.Finance.Contracts`). The alternative — leaving one key of a set behind in
+     `SharedResource` — splits a three-column header across two resource sets and weakens the
+     step 12 `NotContain("<Section>_")` assertion to nothing.
    - **When the other owner has already moved, the key goes home rather than staying shared, and
      the shared binding on *both* sides has to move with it.** The reverse of the rule above:
      once both consumers are sections, `SharedResource` owns nothing and the key belongs to
@@ -215,6 +229,22 @@ Git Bash.)
      entry, or a substituting unit test — in practice **`I<Section>Repository` stays and
      `I<Section>Service` goes**. A decorator that is not the section's plain `Service` keeps its
      `Caching*` name (proven: Events, fully internal decorator).
+     - **"`I<Section>Service` goes" has a real exception, and NSubstitute is what surfaces it.**
+       Internalising makes the service `internal sealed` (MA0053), and Castle DynamicProxy
+       cannot substitute a sealed class — so any *other* type in the section whose unit tests
+       stub the service forces the interface to stay. Keep it, `internal`, as
+       `I<Section>Service : I<Section>ServiceRead, IApplicationService`: the section's own code
+       carries on injecting it unchanged, and the split that matters (four public read methods
+       on the leaf versus forty internal ones) is unaffected. Discovering this after replacing
+       every `I<Section>Service` injection with the concrete type costs a second sweep — decide
+       it from the *test* files before touching the source (proven: Budget, whose ticketing
+       bridge substitutes it).
+   - **A `Humans.Domain.Enums` enum named in a `Contracts/` signature moves onto the leaf, and
+     its `EnumStringStabilityTests` row moves with it.** The entities go to `Domain/` and turn
+     internal; an enum in a public DTO cannot. `Humans.Domain.Tests` then cannot name it either
+     — take the row into `tests/Humans.<Section>.Tests`, do not delete it: these enums are
+     persisted with `HasConversion<string>()` and the row is the only thing standing between a
+     rename and silent data mismatch (proven: Budget, `BudgetYearStatus` and `ExpenditureType`).
    - Two renames are **not** inert: a type name written to the database and a type name that
      forms a resource key. `nameof(<AnotherSection'sEntity>)` stops compiling at the move —
      replace it with a literal beside the section's own audit discriminators (Store's
@@ -271,6 +301,13 @@ Git Bash.)
      does** — and promoting the connector's DTO downward is the forbidden fix; the section owns a
      boundary type and maps at the edge (proven: Finance, `HoldedLedgerLineDto`). Check every
      `Contracts/` signature for a Base-owned type before assuming the carve is mechanical.
+   - **A Shell *dev seeder* is the job shape wearing different clothes.** `DevSeedController`
+     does `GetRequiredService<Development<Section>Seeder>()` on a concrete type, and the seeder
+     drives the section's whole write surface — fifteen methods that would otherwise have to go
+     public on the leaf to serve one dev button. Same answer as step 6b's job: one method on the
+     leaf returning what the caller actually uses (`Task<string>`, the operator-facing success
+     message), the seeder internal in the section, registered from `Section.Register`. The
+     ten-field result record it built stays internal (proven: Budget, `IBudgetDemoSeeder`).
    - **A Base *registry* keyed by the section's enum is not a `Contracts/` case — invert it.**
      `Humans.UI` holds lookup tables naming ten sections' status enums (`EnumBadgeMap`,
      `StatusBadgeExtensions`); each move breaks one. Referencing the section's contracts leaf
@@ -453,6 +490,12 @@ Git Bash.)
      suppression — the build then fails inside a file you did not write, with `MA0006`,
      `MA0053` and `RCS1102` on xunit's own entry point. Use `git ls-files` or `-not -path
      '*/obj/*'` (proven: Surveys, ~10 minutes lost to it).
+   - **Delete the section's `SectionDb<…>` pair from `ServiceTestHarness` in the same commit.**
+     `Humans.Application.Tests`' harness declares a lazy context+factory pair per peeled section
+     (§858); the one for a moving section stops compiling the moment its `DbContext` leaves Base.
+     Its former user is the section's own service test, which needs two members of the harness —
+     the clock and that factory — and owns them in about ten lines rather than inheriting a base
+     class built around an in-memory `HumansDbContext` (proven: Budget; same call as Expenses').
    - **A Base test helper the moved tests inherit is not automatically shared-set material.**
      Check what the section's tests actually *use* before linking it into
      `tests/Directory.Build.props`. Expenses' one harness-derived test used three members of
@@ -537,6 +580,17 @@ Git Bash.)
       reflection helper `GdprExportDependencyInjectionTests` and
       `ApplicationServicesTakeNoMemoryCacheRule` already use, throwing on a miss so the row
       cannot silently drop out of the table (proven: Scanner; Gate's controllers were not in it).
+    - **`ServiceBoundaryArchitectureTests` is a fourth place a section type is named by
+      `typeof`** — its repository-interface → section map. It already carries a
+      `SectionRepository(fullName)` reflection helper for the sections that moved before yours;
+      swap the row rather than dropping it (proven: Budget, `IBudgetRepository`).
+    - **A Base badge helper has two shapes and only one of them is `EnumBadgeMap`.** The registry
+      inversion (step 5b) covers `EnumBadgeMap`'s literal rows, read by `CellFormat.EnumBadge`
+      table columns. `Humans.UI/Extensions/StatusBadgeExtensions` is the other: a
+      `GetBadgeClass(this <Section>Enum)` overload the section's own views call directly. When the
+      section's views are its only callers, that is not a registry problem — delete the overload
+      from Base and ship an `internal static` extension in the section's `Models/`, which is what
+      Expenses already did for `ExpenseReportStatus` (proven: Budget).
     - **Check `AdminNavTree` after any controller rehoming.** Entries name a controller by
       *name*; one that no longer resolves makes the anchor tag helper omit `href` entirely, so
       the page returns 200 with a dead link and neither the suite nor the step 12 HTML diff

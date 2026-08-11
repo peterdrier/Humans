@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="1" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <data name="Budget_ColAmount" xml:space="preserve"><value>Amount (€)</value></data>
+  <data name="Budget_ColCategory" xml:space="preserve"><value>Category</value></data>
+  <data name="Budget_ColShare" xml:space="preserve"><value>Share</value></data>
+  <data name="Budget_DepartmentDetail" xml:space="preserve"><value>Department Detail</value></data>
+  <data name="Budget_Expenses" xml:space="preserve"><value>Expenses</value></data>
+  <data name="Budget_ExpensesBreakdown" xml:space="preserve"><value>Expenses Breakdown</value></data>
+  <data name="Budget_Income" xml:space="preserve"><value>Income</value></data>
+  <data name="Budget_IncomeBreakdown" xml:space="preserve"><value>Income Breakdown</value></data>
+  <data name="Budget_NetBalance" xml:space="preserve"><value>Net Balance</value></data>
+  <data name="Budget_NoActiveBudget" xml:space="preserve"><value>No Active Budget</value></data>
+  <data name="Budget_NoActiveBudgetSubtitle" xml:space="preserve"><value>There is no active budget year to display. A finance admin will set one up when budget planning begins.</value></data>
+  <data name="Budget_NoDataSubtitle" xml:space="preserve"><value>Budget allocations will appear here once they are set up by the finance team.</value></data>
+  <data name="Budget_NoDataYet" xml:space="preserve"><value>Budget data not available yet</value></data>
+  <data name="Budget_NoExpenseItems" xml:space="preserve"><value>No expense line items yet.</value></data>
+  <data name="Budget_NoIncomeItems" xml:space="preserve"><value>No income line items yet.</value></data>
+  <data name="Budget_OverviewSubtitle" xml:space="preserve"><value>How the {0} budget is allocated across departments and infrastructure.</value></data>
+  <data name="Budget_OverviewTitle" xml:space="preserve"><value>Budget Overview</value></data>
+  <data name="Budget_Title" xml:space="preserve"><value>Budget</value></data>
+  <data name="Budget_TitleYear" xml:space="preserve"><value>Budget - {0}</value></data>
+  <data name="Budget_TotalExpenses" xml:space="preserve"><value>Total Expenses</value></data>
+  <data name="Budget_TotalIncome" xml:space="preserve"><value>Total Income</value></data>
+</root>

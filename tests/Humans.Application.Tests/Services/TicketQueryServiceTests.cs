@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces.Budget;
+using Humans.Budget.Contracts;
 using Humans.Application.Interfaces.Campaigns;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
@@ -21,7 +21,7 @@ public sealed class TicketQueryServiceTests : ServiceTestHarness
 {
     private readonly TicketRepository _repo;
     private readonly ITicketTransferRepository _transferRepo = Substitute.For<ITicketTransferRepository>();
-    private readonly IBudgetService _budgetService = Substitute.For<IBudgetService>();
+    private readonly IBudgetServiceRead _budgetService = Substitute.For<IBudgetServiceRead>();
     private readonly ICampaignServiceRead _campaignService = Substitute.For<ICampaignServiceRead>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();

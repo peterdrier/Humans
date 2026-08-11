@@ -1,0 +1,243 @@
+@using Humans.UI.Models.Tables
+@model Humans.Budget.Models.BudgetSummaryViewModel
+@{
+    ViewData["Title"] = Localizer["Budget_TitleYear", Model.YearName].Value;
+    var jsonOpts = new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase };
+    var incomeLabels = Model.IncomeSlices.Select(s => s.Name).ToList();
+    var incomeData = Model.IncomeSlices.Select(s => s.Amount).ToList();
+    var expenseLabels = Model.ExpenseSlices.Select(s => s.Name).ToList();
+    var expenseData = Model.ExpenseSlices.Select(s => s.Amount).ToList();
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="mb-0">@Localizer["Budget_OverviewTitle"]</h1>
+    <div class="d-flex gap-2">
+        <a asp-controller="Expenses" asp-action="Index" class="btn btn-outline-primary">
+            <i class="fa-solid fa-receipt me-1"></i>Expenses
+        </a>
+        @if (Model.IsCoordinator)
+        {
+            <a asp-action="Index" class="btn btn-outline-primary">
+                <i class="fa-solid fa-list me-1"></i>@Localizer["Budget_DepartmentDetail"]
+            </a>
+        }
+    </div>
+</div>
+
+
+<p class="text-muted mb-4">@Localizer["Budget_OverviewSubtitle", Model.YearName]</p>
+
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <h6 class="card-subtitle mb-2 text-muted">@Localizer["Budget_TotalIncome"]</h6>
+                <h3 class="card-title mb-0 text-success">@Model.TotalIncome.ToEuro()</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <h6 class="card-subtitle mb-2 text-muted">@Localizer["Budget_TotalExpenses"]</h6>
+                <h3 class="card-title mb-0 text-danger">@Math.Abs(Model.TotalExpenses).ToEuro()</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <h6 class="card-subtitle mb-2 text-muted">@Localizer["Budget_NetBalance"]</h6>
+                <h3 class="card-title mb-0 @(Model.NetBalance >= 0 ? "text-success" : "text-danger")">
+                    @Model.NetBalance.ToEuro()
+                </h3>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (Model.IncomeSlices.Any() || Model.ExpenseSlices.Any())
+{
+    <div class="row">
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <i class="fa-solid fa-arrow-trend-up me-1 text-success"></i>@Localizer["Budget_Income"]
+                </div>
+                <div class="card-body">
+                    @if (Model.IncomeSlices.Any())
+                    {
+                        <canvas id="incomeChart"></canvas>
+                    }
+                    else
+                    {
+                        <div class="text-center text-muted py-4">
+                            <i class="fa-solid fa-chart-pie fa-2x mb-2"></i>
+                            <p class="mb-0">@Localizer["Budget_NoIncomeItems"]</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <i class="fa-solid fa-arrow-trend-down me-1 text-danger"></i>@Localizer["Budget_Expenses"]
+                </div>
+                <div class="card-body">
+                    @if (Model.ExpenseSlices.Any())
+                    {
+                        <canvas id="expenseChart"></canvas>
+                    }
+                    else
+                    {
+                        <div class="text-center text-muted py-4">
+                            <i class="fa-solid fa-chart-pie fa-2x mb-2"></i>
+                            <p class="mb-0">@Localizer["Budget_NoExpenseItems"]</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        @if (Model.IncomeSlices.Any())
+        {
+            <div class="col-lg-6 mb-4">
+                <div class="card">
+                    <div class="card-header">@Localizer["Budget_IncomeBreakdown"]</div>
+                    <div class="card-body p-0">
+                        @{
+                            var incomeTable = TableModel.For(Model.IncomeSlices)
+                                .Column(Localizer["Budget_ColCategory"].Value, r => r.Name)
+                                .Column(Localizer["Budget_ColAmount"].Value, r => r.Amount, c => c.Currency().End())
+                                .Column(Localizer["Budget_ColShare"].Value, r => r.Percentage.ToString("N1", System.Globalization.CultureInfo.CurrentCulture) + "%", c => c.End())
+                                .Build();
+                        }
+                        <partial name="_Table" model="incomeTable" />
+                    </div>
+                </div>
+            </div>
+        }
+        @if (Model.ExpenseSlices.Any())
+        {
+            <div class="col-lg-6 mb-4">
+                <div class="card">
+                    <div class="card-header">@Localizer["Budget_ExpensesBreakdown"]</div>
+                    <div class="card-body p-0">
+                        @{
+                            var expenseTable = TableModel.For(Model.ExpenseSlices)
+                                .Column(Localizer["Budget_ColCategory"].Value, r => r.Name)
+                                .Column(Localizer["Budget_ColAmount"].Value, r => r.Amount, c => c.Currency().End())
+                                .Column(Localizer["Budget_ColShare"].Value, r => r.Percentage.ToString("N1", System.Globalization.CultureInfo.CurrentCulture) + "%", c => c.End())
+                                .Build();
+                        }
+                        <partial name="_Table" model="expenseTable" />
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    <script>
+    if (typeof Chart === 'undefined') {
+        var s = document.createElement('script');
+        s.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js';
+        s.integrity = 'sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ';
+        s.crossOrigin = 'anonymous';
+        s.onload = function() { renderBudgetCharts(); };
+        document.head.appendChild(s);
+    } else {
+        document.addEventListener('DOMContentLoaded', function() { renderBudgetCharts(); });
+    }
+
+    function renderBudgetCharts() {
+        var cs = getComputedStyle(document.documentElement);
+        var cv = function(n) { return cs.getPropertyValue(n).trim(); };
+        var incomeColors = [
+            cv('--h-chart-cat-1'), cv('--h-chart-cat-2'), cv('--h-chart-cat-3'),
+            cv('--h-chart-cat-4'), cv('--h-chart-cat-5'), cv('--h-chart-cat-6'),
+            cv('--h-chart-cat-7'), cv('--h-chart-cat-8'), cv('--h-chart-cat-9'),
+            cv('--h-chart-cat-10'), cv('--h-chart-cat-11'), cv('--h-chart-cat-12'),
+            cv('--h-chart-cat-13'), cv('--h-chart-cat-14'), cv('--h-chart-cat-15')
+        ];
+        var expenseColors = [
+            cv('--h-chart-exp-1'), cv('--h-chart-exp-2'), cv('--h-chart-exp-3'),
+            cv('--h-chart-exp-4'), cv('--h-chart-exp-5'), cv('--h-chart-exp-6'),
+            cv('--h-chart-exp-7'), cv('--h-chart-exp-8'), cv('--h-chart-exp-9'),
+            cv('--h-chart-exp-10'), cv('--h-chart-exp-11'), cv('--h-chart-exp-12'),
+            cv('--h-chart-exp-13'), cv('--h-chart-exp-14'), cv('--h-chart-exp-15')
+        ];
+        var tooltipCallback = {
+            label: function(ctx) {
+                return ctx.label + ': \u20ac' + ctx.raw.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            }
+        };
+        var legendOpts = {
+            position: 'bottom',
+            labels: { padding: 16, usePointStyle: true }
+        };
+
+        var incomeLabels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(incomeLabels, jsonOpts));
+        var incomeData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(incomeData, jsonOpts));
+        var expenseLabels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(expenseLabels, jsonOpts));
+        var expenseData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(expenseData, jsonOpts));
+
+        if (incomeData.length > 0) {
+            new Chart(document.getElementById('incomeChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: incomeLabels,
+                    datasets: [{
+                        data: incomeData,
+                        backgroundColor: incomeColors.slice(0, incomeData.length),
+                        borderWidth: 2,
+                        borderColor: cv('--h-bg-elevated')
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: legendOpts,
+                        tooltip: { callbacks: tooltipCallback }
+                    }
+                }
+            });
+        }
+
+        if (expenseData.length > 0) {
+            new Chart(document.getElementById('expenseChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: expenseLabels,
+                    datasets: [{
+                        data: expenseData,
+                        backgroundColor: expenseColors.slice(0, expenseData.length),
+                        borderWidth: 2,
+                        borderColor: cv('--h-bg-elevated')
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: legendOpts,
+                        tooltip: { callbacks: tooltipCallback }
+                    }
+                }
+            });
+        }
+    }
+    </script>
+}
+else
+{
+    <div class="card">
+        <div class="card-body text-center py-5">
+            <i class="fa-solid fa-chart-pie fa-3x text-muted mb-3"></i>
+            <h4 class="text-muted">@Localizer["Budget_NoDataYet"]</h4>
+            <p class="text-muted mb-0">@Localizer["Budget_NoDataSubtitle"]</p>
+        </div>
+    </div>
+}

@@ -48,7 +48,7 @@ This file is the **index and cross-cutting rule sheet** for the data model. Per-
 | EventSettings / Rota / Shift / ShiftSignup / GeneralAvailability / VolunteerEventProfile / VolunteerBuildStatus / ShiftTag / VolunteerTagPreference | [Shifts](../sections/Shifts.md) | |
 | Event / EventCategory / EventVenue / EventGuideSettings / EventModerationAction / EventFavourite / EventPreference | [Events](../../src/Sections/Humans.Events/Docs/Events.md) | Event Guide submissions, moderation, categories, shared venues, per-user favourites/preferences. `EventModerationAction` append-only (§12 — Restrict on delete). |
 | FeedbackReport / FeedbackMessage | [Feedback](../sections/Feedback.md) | |
-| BudgetYear / BudgetGroup / BudgetCategory / BudgetLineItem / BudgetAuditLog / TicketingProjection | [Budget](../sections/Budget.md) | `BudgetAuditLog` append-only (§12). `BudgetGroup.Slug` and `BudgetCategory.Slug` are the Holded-tag-safe identifiers consumed by Finance. |
+| BudgetYear / BudgetGroup / BudgetCategory / BudgetLineItem / BudgetAuditLog / TicketingProjection | [Budget](../../src/Sections/Humans.Budget/Docs/Budget.md) | `BudgetAuditLog` append-only (§12). `BudgetGroup.Slug` and `BudgetCategory.Slug` are the Holded-tag-safe identifiers consumed by Finance. |
 | ExpenseReport / ExpenseLine / ExpenseAttachment / HoldedExpenseOutboxEvent | [Expenses](../../src/Sections/Humans.Expenses/Docs/Expenses.md) | Expense reports and Holded sync outbox. |
 | HoldedExpenseDoc / HoldedCategoryMap / HoldedSyncState / HoldedLedgerLine / HoldedCreditorContact | [Finance](../../src/Sections/Humans.Finance/Docs/Finance.md) | Holded actuals cache (Feature 1) + creditor daybook ledger cache + member→account binding (Feature 2). |
 | Product / Order / OrderLine / Payment / Invoice / TreasurySyncState | [Store](../../src/Sections/Humans.Store/Docs/Store.md) | |
@@ -200,7 +200,7 @@ Append-only sections (§12) cannot rewrite their `UserId` / `ActorUserId` column
 |---------|---------------|------------------------------|
 | [Audit Log](../sections/AuditLog.md) | `AuditLogEntry` | `GetByUserAsync`, `GetUserAuditLogPageAsync`, per-entity history when entity is User, `ContributeForUserAsync` |
 | [Consent](../sections/Consent.md) | `ConsentRecord` | `GetUserConsentsAsync`, `HasAllRequiredConsentsAsync`, consent dashboard, `ContributeForUserAsync` |
-| [Budget](../sections/Budget.md) | `BudgetAuditLog` | `ContributeForUserAsync` (GDPR) |
+| [Budget](../../src/Sections/Humans.Budget/Docs/Budget.md) | `BudgetAuditLog` | `ContributeForUserAsync` (GDPR) |
 
 When adding a new append-only entity that carries a `UserId` / `ActorUserId` column, decide at design time whether per-user reads need chain-follow and add the union explicitly — `IUserService.GetMergedSourceIdsAsync` is the only sanctioned primitive.
 
@@ -212,7 +212,7 @@ The following entities are append-only — no `UpdateAsync` / `DeleteAsync` on t
 |--------|---------------|-------------|
 | ConsentRecord | [Consent](../sections/Consent.md) | DB triggers block UPDATE / DELETE |
 | AuditLogEntry | [Audit Log](../sections/AuditLog.md) | Architecture test: `AuditLogArchitectureTests.IAuditLogRepository_HasNoUpdateOrDeleteMethods` |
-| BudgetAuditLog | [Budget](../sections/Budget.md) | Repository shape — no update/delete methods |
+| BudgetAuditLog | [Budget](../../src/Sections/Humans.Budget/Docs/Budget.md) | Repository shape — no update/delete methods |
 | CampPolygonHistory | [City Planning](../../src/Sections/Humans.CityPlanning/Docs/CityPlanning.md) | Architecture test: `CityPlanningArchitectureTests` pins append-only repo surface |
 | ApplicationStateHistory | [Governance](../sections/Governance.md) | Repository shape — no update/delete methods |
 | TeamJoinRequestStateHistory | [Teams](../sections/Teams.md) | Repository shape (target; pending sub-task nobodies-collective/Humans#540a) |

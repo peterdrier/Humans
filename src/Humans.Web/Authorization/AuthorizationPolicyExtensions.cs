@@ -18,7 +18,6 @@ public static class AuthorizationPolicyExtensions
         services.AddSingleton<IAuthorizationHandler, HumanAdminOnlyHandler>();
 
         // Scoped: depend on scoped services.
-        services.AddScoped<IAuthorizationHandler, BudgetAuthorizationHandler>();
         services.AddScoped<IAuthorizationHandler, CampAuthorizationHandler>();
         services.AddScoped<IAuthorizationHandler, CampComplianceAccessHandler>();
         services.AddScoped<IAuthorizationHandler, IsAnyTeamManagerOrCoordinatorHandler>();

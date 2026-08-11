@@ -28,6 +28,14 @@
     <ProjectReference Include="..\..\Humans.Infrastructure\Humans.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Humans.UI\Humans.UI.csproj" />
     <ProjectReference Include="..\Humans.Expenses.Contracts\Humans.Expenses.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Budget.Contracts\Humans.Budget.Contracts.csproj" />
+    <!--
+      The report grid's category column renders Budget's own Budget_ColCategory key, so the
+      view binds IStringLocalizer<BudgetResource> and needs the section project, not just its
+      leaf. Acyclic: Humans.Budget references Humans.Finance.Contracts and this project's
+      leaf is never on its graph (memory/architecture/section-project-cycle-fix.md).
+    -->
+    <ProjectReference Include="..\Humans.Budget\Humans.Budget.csproj" />
     <!--
       Creditor bindings and the payment round-trip come from Finance's contracts leaf, never
       from Humans.Finance itself (memory/architecture/section-project-cycle-fix.md).

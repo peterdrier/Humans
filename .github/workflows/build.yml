@@ -44,7 +44,7 @@ env:
     TicketsDbContext:src/Humans.Infrastructure
     FeedbackDbContext:src/Humans.Infrastructure
     CityPlanningDbContext:src/Sections/Humans.CityPlanning
-    BudgetDbContext:src/Humans.Infrastructure
+    BudgetDbContext:src/Sections/Humans.Budget
     CampsDbContext:src/Humans.Infrastructure
     GateDbContext:src/Sections/Humans.Gate
     SystemDbContext:src/Humans.Infrastructure

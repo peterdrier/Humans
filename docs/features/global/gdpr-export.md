@@ -15,7 +15,7 @@
   src/Humans.Application/Services/Campaigns/CampaignService.cs
   src/Humans.Application/Services/Camps/**
   src/Humans.Application/Services/AuditLog/**
-  src/Humans.Application/Services/Budget/BudgetService.cs
+  src/Sections/Humans.Budget/Services/BudgetService.cs
   src/Humans.Application/Services/Users/AccountMergeService.cs
   src/Humans.Application/Services/Surveys/SurveyService.cs
   src/Humans.Application/Services/Governance/ApplicationDecisionService.cs

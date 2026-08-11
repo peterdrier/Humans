@@ -18,6 +18,7 @@
     <ProjectReference Include="..\Sections\Humans.Finance.Contracts\Humans.Finance.Contracts.csproj" />
     <!-- City Planning's contracts leaf: CampService clears a deleted camp's polygons. -->
     <ProjectReference Include="..\Sections\Humans.CityPlanning.Contracts\Humans.CityPlanning.Contracts.csproj" />
+    <ProjectReference Include="..\Sections\Humans.Budget.Contracts\Humans.Budget.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

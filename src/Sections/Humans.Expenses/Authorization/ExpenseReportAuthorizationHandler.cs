@@ -1,6 +1,6 @@
 using Humans.UI.Authorization;
 using System.Security.Claims;
-using Humans.Application.Interfaces.Budget;
+using Humans.Budget.Contracts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Expenses.Services.Dtos;
 using Humans.Domain.Enums;
@@ -16,7 +16,7 @@ namespace Humans.Expenses.Authorization;
 /// submitter / coordinator-of-the-report's-category / FinanceAdmin / Admin × operation.
 /// Deny-by-default: only explicit Succeed paths grant access.
 /// </summary>
-internal sealed class ExpenseReportAuthorizationHandler(IBudgetService budgetService, ITeamServiceRead teamService)
+internal sealed class ExpenseReportAuthorizationHandler(IBudgetServiceRead budgetService, ITeamServiceRead teamService)
     : AuthorizationHandler<ExpenseReportOperationRequirement, ExpenseReportDto>
 {
     protected override async Task HandleRequirementAsync(

@@ -1,7 +1,6 @@
 using Hangfire;
 using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.Budget;
-using Humans.Application.Interfaces.Tickets;
+using Humans.Budget.Contracts;
 using Microsoft.Extensions.Logging;
 
 namespace Humans.Infrastructure.Jobs;
@@ -13,7 +12,7 @@ namespace Humans.Infrastructure.Jobs;
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
 public class TicketingBudgetSyncJob(
     ITicketingBudgetService ticketingBudgetService,
-    IBudgetService budgetService,
+    IBudgetServiceRead budgetService,
     ILogger<TicketingBudgetSyncJob> logger) : IRecurringJob
 {
     public async Task ExecuteAsync(CancellationToken cancellationToken = default)

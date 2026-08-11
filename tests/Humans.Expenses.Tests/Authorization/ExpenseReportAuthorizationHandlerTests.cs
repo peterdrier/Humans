@@ -1,7 +1,7 @@
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Expenses.Domain;
-using Humans.Application.Interfaces.Budget;
+using Humans.Budget.Contracts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Expenses.Services.Dtos;
 using Humans.Domain.Constants;
@@ -20,7 +20,7 @@ namespace Humans.Expenses.Tests.Authorization;
 /// </summary>
 public sealed class ExpenseReportAuthorizationHandlerTests
 {
-    private readonly IBudgetService _budgetService = Substitute.For<IBudgetService>();
+    private readonly IBudgetServiceRead _budgetService = Substitute.For<IBudgetServiceRead>();
     private readonly ITeamServiceRead _teamService = Substitute.For<ITeamServiceRead>();
     private readonly ExpenseReportAuthorizationHandler _handler;
 

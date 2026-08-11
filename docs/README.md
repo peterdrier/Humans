@@ -87,7 +87,7 @@ Terse, authoritative invariant docs for each major section: concepts, data model
 | [Agent](../src/Sections/Humans.Agent/Docs/Agent.md) | Conversational helper backed by Anthropic Claude, available to authenticated consented users when `AgentSettings.Enabled = true` |
 | [Audit Log](sections/AuditLog.md) | Append-only system audit trail capturing actor, action, entity, and timestamp; enforced append-only per design-rules §12 |
 | [Auth](sections/Auth.md) | Temporal role assignments, magic-link login/signup, and claims transformation |
-| [Budget](sections/Budget.md) | Fiscal-year budgets (Draft/Active/Closed) with groups, categories, line items, and an append-only audit log |
+| [Budget](../src/Sections/Humans.Budget/Docs/Budget.md) | Fiscal-year budgets (Draft/Active/Closed) with groups, categories, line items, and an append-only audit log |
 | [Calendar](sections/Calendar.md) | Per-team community calendar with one-off and recurring events plus per-occurrence overrides and cancellations |
 | [Campaigns](sections/Campaigns.md) | Bulk code-distribution campaigns: codes imported or generated, assigned to humans, delivered via email waves |
 | [Camps](sections/Camps.md) | Themed community camps (Barrios) with per-year season registrations, leads, images, and renaming history |

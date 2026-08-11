@@ -73,14 +73,8 @@
     },
     "Budget": {
       "paths": [
-        "src/Humans.Application/Interfaces/Budget/**",
-        "src/Humans.Application/Services/Budget/**",
-        "src/Humans.Application/DTOs/Budget*",
-        "src/Humans.Application/DTOs/TicketingBudget*",
-        "src/Humans.Domain/Entities/Budget*",
-        "src/Humans.Infrastructure/Repositories/Budget/**",
-        "src/Humans.Web/Controllers/BudgetController.cs",
-        "src/Humans.Web/Models/BudgetViewModels.cs"
+        "src/Sections/Humans.Budget/**",
+        "src/Sections/Humans.Budget.Contracts/**"
       ],
       "symbols": [
         "Budget*",
@@ -91,7 +85,11 @@
         "IBudgetRepository"
       ],
       "serviceInterfaces": [
-        "IBudgetService"
+        "IBudgetService",
+        "ITicketingBudgetService"
+      ],
+      "readServiceInterfaces": [
+        "IBudgetServiceRead"
       ]
     },
     "Calendar": {
@@ -762,7 +760,6 @@
       ],
       "serviceInterfaces": [
         "ITicketService",
-        "ITicketingBudgetService",
         "ITicketTransferService"
       ],
       "readServiceInterfaces": [

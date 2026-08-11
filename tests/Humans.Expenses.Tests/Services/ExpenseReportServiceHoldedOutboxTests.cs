@@ -3,7 +3,7 @@ using Humans.Application;
 using Humans.Expenses.Domain;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.AuditLog;
-using Humans.Application.Interfaces.Budget;
+using Humans.Budget.Contracts;
 using Humans.Finance.Contracts;
 using Humans.Application.Interfaces.Holded;
 using Humans.Expenses.Data;
@@ -26,7 +26,7 @@ public class ExpenseReportServiceHoldedOutboxTests
     private const int BatchSize = 100;
 
     private readonly IExpenseRepository _repo;
-    private readonly IBudgetService _budgetService;
+    private readonly IBudgetServiceRead _budgetService;
     private readonly IUserService _userService;
     private readonly IHoldedClient _holdedClient;
     private readonly IHoldedFinanceService _holdedFinance;
@@ -55,7 +55,7 @@ public class ExpenseReportServiceHoldedOutboxTests
             []);
 
         _repo = Substitute.For<IExpenseRepository>();
-        _budgetService = Substitute.For<IBudgetService>();
+        _budgetService = Substitute.For<IBudgetServiceRead>();
         _userService = Substitute.For<IUserService>();
         _holdedClient = Substitute.For<IHoldedClient>();
         _fileStorage = Substitute.For<IFileStorage>();

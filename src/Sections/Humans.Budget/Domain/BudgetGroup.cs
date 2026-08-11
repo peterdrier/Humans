@@ -1,0 +1,22 @@
+using NodaTime;
+
+namespace Humans.Budget.Domain;
+
+/// <summary>
+/// Second-level budget container within a year (e.g., "Departments", "Site Infrastructure").
+/// </summary>
+internal sealed class BudgetGroup
+{
+    public Guid Id { get; init; }
+    public Guid BudgetYearId { get; init; }
+    public BudgetYear? BudgetYear { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public int SortOrder { get; set; }
+    public bool IsRestricted { get; set; }
+    public bool IsDepartmentGroup { get; set; }
+    public bool IsTicketingGroup { get; set; }
+    public Instant CreatedAt { get; init; }
+    public Instant UpdatedAt { get; set; }
+    public ICollection<BudgetCategory> Categories { get; } = new List<BudgetCategory>();
+    public TicketingProjection? TicketingProjection { get; set; }
+}

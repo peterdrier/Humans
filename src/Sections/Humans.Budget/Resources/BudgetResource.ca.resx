@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="1" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <data name="Budget_ColAmount" xml:space="preserve"><value>Import (€)</value></data>
+  <data name="Budget_ColCategory" xml:space="preserve"><value>Categoria</value></data>
+  <data name="Budget_ColShare" xml:space="preserve"><value>Percentatge</value></data>
+  <data name="Budget_DepartmentDetail" xml:space="preserve"><value>Detall del departament</value></data>
+  <data name="Budget_Expenses" xml:space="preserve"><value>Despeses</value></data>
+  <data name="Budget_ExpensesBreakdown" xml:space="preserve"><value>Desglossament de despeses</value></data>
+  <data name="Budget_Income" xml:space="preserve"><value>Ingressos</value></data>
+  <data name="Budget_IncomeBreakdown" xml:space="preserve"><value>Desglossament d'ingressos</value></data>
+  <data name="Budget_NetBalance" xml:space="preserve"><value>Saldo net</value></data>
+  <data name="Budget_NoActiveBudget" xml:space="preserve"><value>Cap pressupost actiu</value></data>
+  <data name="Budget_NoActiveBudgetSubtitle" xml:space="preserve"><value>No hi ha cap any pressupostari actiu per mostrar. Un administrador de finances en configurarà un quan comenci la planificació del pressupost.</value></data>
+  <data name="Budget_NoDataSubtitle" xml:space="preserve"><value>Les assignacions del pressupost apareixeran aquí un cop l'equip de finances les hagi configurat.</value></data>
+  <data name="Budget_NoDataYet" xml:space="preserve"><value>Encara no hi ha dades de pressupost disponibles</value></data>
+  <data name="Budget_NoExpenseItems" xml:space="preserve"><value>Encara no hi ha cap partida de despeses.</value></data>
+  <data name="Budget_NoIncomeItems" xml:space="preserve"><value>Encara no hi ha cap partida d'ingressos.</value></data>
+  <data name="Budget_OverviewSubtitle" xml:space="preserve"><value>Com es distribueix el pressupost de {0} entre departaments i infraestructura.</value></data>
+  <data name="Budget_OverviewTitle" xml:space="preserve"><value>Resum del pressupost</value></data>
+  <data name="Budget_Title" xml:space="preserve"><value>Pressupost</value></data>
+  <data name="Budget_TitleYear" xml:space="preserve"><value>Pressupost - {0}</value></data>
+  <data name="Budget_TotalExpenses" xml:space="preserve"><value>Despeses totals</value></data>
+  <data name="Budget_TotalIncome" xml:space="preserve"><value>Ingressos totals</value></data>
+</root>

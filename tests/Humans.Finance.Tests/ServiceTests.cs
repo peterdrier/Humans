@@ -1,7 +1,7 @@
 using System.Text.Json;
 using Humans.Domain.Enums;
 using AwesomeAssertions;
-using Humans.Application.Interfaces.Budget;
+using Humans.Budget.Contracts;
 using Humans.Application.Interfaces.Holded;
 using Humans.Finance.Data;
 using Humans.Finance.Services;
@@ -23,7 +23,7 @@ public class HoldedFinanceServiceTests
 
     private readonly IHoldedRepository _repo = Substitute.For<IHoldedRepository>();
     private readonly IHoldedClient _client = Substitute.For<IHoldedClient>();
-    private readonly IBudgetService _budget = Substitute.For<IBudgetService>();
+    private readonly IBudgetServiceRead _budget = Substitute.For<IBudgetServiceRead>();
     private readonly FakeClock _clock = new(FixedNow);
     private readonly IMemoryCache _cache = new MemoryCache(new MemoryCacheOptions());
 

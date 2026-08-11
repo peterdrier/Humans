@@ -5578,27 +5578,6 @@
   <data name="AccountStatus_ConsentSuspendedBody" xml:space="preserve"><value>Dein Zugang ist gesperrt, bis du die erforderlichen rechtlichen Einwilligungen abschließt.</value></data>
   <data name="AccountStatus_HeadingAdminSuspended" xml:space="preserve"><value>Dein Konto wurde von einem Administrator gesperrt</value></data>
   <data name="AccountStatus_ReviewConsents" xml:space="preserve"><value>Erforderliche Einwilligungen prüfen</value></data>
-  <data name="Budget_ColAmount" xml:space="preserve"><value>Betrag (€)</value></data>
-  <data name="Budget_ColCategory" xml:space="preserve"><value>Kategorie</value></data>
-  <data name="Budget_ColShare" xml:space="preserve"><value>Anteil</value></data>
-  <data name="Budget_DepartmentDetail" xml:space="preserve"><value>Abteilungsdetails</value></data>
-  <data name="Budget_Expenses" xml:space="preserve"><value>Ausgaben</value></data>
-  <data name="Budget_ExpensesBreakdown" xml:space="preserve"><value>Aufschlüsselung der Ausgaben</value></data>
-  <data name="Budget_Income" xml:space="preserve"><value>Einnahmen</value></data>
-  <data name="Budget_IncomeBreakdown" xml:space="preserve"><value>Aufschlüsselung der Einnahmen</value></data>
-  <data name="Budget_NetBalance" xml:space="preserve"><value>Nettosaldo</value></data>
-  <data name="Budget_NoActiveBudget" xml:space="preserve"><value>Kein aktives Budget</value></data>
-  <data name="Budget_NoActiveBudgetSubtitle" xml:space="preserve"><value>Es gibt kein aktives Budgetjahr zum Anzeigen. Ein Finanz-Admin richtet eines ein, sobald die Budgetplanung beginnt.</value></data>
-  <data name="Budget_NoDataSubtitle" xml:space="preserve"><value>Budgetzuweisungen erscheinen hier, sobald sie vom Finanzteam eingerichtet wurden.</value></data>
-  <data name="Budget_NoDataYet" xml:space="preserve"><value>Budgetdaten noch nicht verfügbar</value></data>
-  <data name="Budget_NoExpenseItems" xml:space="preserve"><value>Noch keine Ausgabenposten.</value></data>
-  <data name="Budget_NoIncomeItems" xml:space="preserve"><value>Noch keine Einnahmenposten.</value></data>
-  <data name="Budget_OverviewSubtitle" xml:space="preserve"><value>Wie das {0}-Budget auf Abteilungen und Infrastruktur verteilt wird.</value></data>
-  <data name="Budget_OverviewTitle" xml:space="preserve"><value>Budget-Übersicht</value></data>
-  <data name="Budget_Title" xml:space="preserve"><value>Budget</value></data>
-  <data name="Budget_TitleYear" xml:space="preserve"><value>Budget - {0}</value></data>
-  <data name="Budget_TotalExpenses" xml:space="preserve"><value>Gesamtausgaben</value></data>
-  <data name="Budget_TotalIncome" xml:space="preserve"><value>Gesamteinnahmen</value></data>
   <data name="Calendar_Agenda" xml:space="preserve"><value>Agenda</value></data>
   <data name="Calendar_AllDay" xml:space="preserve"><value>ganztägig</value></data>
   <data name="Calendar_AllDayEvent" xml:space="preserve"><value>Ganztägige Veranstaltung</value></data>

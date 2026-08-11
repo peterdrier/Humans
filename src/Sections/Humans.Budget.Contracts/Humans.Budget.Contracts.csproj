@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Budget's cross-section surface, carved into its own leaf project because two of its
+    consumers are still in Base: TicketQueryService (Humans.Application) reads the active
+    year to compute the break-even summary, and TicketingBudgetSyncJob
+    (Humans.Infrastructure/Jobs) drives the nightly actuals sync — recurring jobs are named
+    by concrete type in Shell's UseHumansRecurringJobs roll-call and there is no discovery
+    seam for them yet (design §15.6b). A Contracts/ *folder* inside Humans.Budget would
+    therefore make Base reference a section and cycle (design §15.5b,
+    memory/architecture/section-project-cycle-fix.md).
+
+    It holds the read surface the other sections actually call — four methods out of
+    IBudgetService's forty — plus the DTOs and the two enums that appear in their
+    signatures. Everything else Budget does (year/group/category/line-item CRUD, the audit
+    log, the cash-flow and VAT projections, the ticketing projection parameters) has no
+    consumer outside the section and stays internal to Humans.Budget.
+
+    References Humans.Interfaces only — the bottom of the graph.
+  -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NodaTime" />
+  </ItemGroup>
+
+</Project>

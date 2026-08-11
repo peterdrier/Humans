@@ -1,16 +1,6 @@
 <!-- freshness:triggers
-  src/Humans.Web/Views/Budget/**
-  src/Humans.Web/Views/BudgetAdmin/**
-  src/Humans.Web/Controllers/BudgetController.cs
-  src/Humans.Web/Controllers/BudgetAdminController.cs
-  src/Humans.Application/Services/Budget/**
-  src/Humans.Application/Services/Tickets/TicketingBudgetService.cs
-  src/Humans.Domain/Entities/BudgetYear.cs
-  src/Humans.Domain/Entities/BudgetGroup.cs
-  src/Humans.Domain/Entities/BudgetCategory.cs
-  src/Humans.Domain/Entities/BudgetLineItem.cs
-  src/Humans.Domain/Entities/BudgetAuditLog.cs
-  src/Humans.Infrastructure/Data/Configurations/Budget/**
+  src/Sections/Humans.Budget/**
+  src/Sections/Humans.Budget.Contracts/**
 -->
 <!-- freshness:flag-on-change
   Year/group/category/line-item structure, FinanceAdmin permissions, ticketing projection, cash flow, and audit log behavior. Review when budget views, services, entities, or EF configurations change.

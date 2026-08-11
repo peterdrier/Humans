@@ -1,7 +1,7 @@
 using AwesomeAssertions;
 using Humans.Expenses.Domain;
 using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.Budget;
+using Humans.Budget.Contracts;
 using Humans.Finance.Contracts;
 using Humans.Application.Interfaces.Holded;
 using Humans.Expenses.Data;
@@ -49,7 +49,7 @@ public sealed class ExpenseReportServiceTests
 
     private readonly IExpenseRepository _expenseRepo;
     private readonly IFileStorage _fileStorage;
-    private readonly IBudgetService _budgetService;
+    private readonly IBudgetServiceRead _budgetService;
     private readonly ITeamService _teamService;
     private readonly IUserService _userService;
     private readonly IHoldedClient _holdedClient = Substitute.For<IHoldedClient>();
@@ -64,7 +64,7 @@ public sealed class ExpenseReportServiceTests
         _expenseRepo = new ExpenseRepository(new TestDbContextFactory<ExpensesDbContext>(_expensesOptions));
 
         _fileStorage = Substitute.For<IFileStorage>();
-        _budgetService = Substitute.For<IBudgetService>();
+        _budgetService = Substitute.For<IBudgetServiceRead>();
         _teamService = Substitute.For<ITeamService>();
         _userService = Substitute.For<IUserService>();
 
@@ -858,17 +858,8 @@ public sealed class ExpenseReportServiceTests
         var categoryId = Guid.NewGuid();
         var coordinatorUserId = Guid.NewGuid();
 
-        var category = new BudgetCategory
-        {
-            Id = categoryId,
-            BudgetGroupId = Guid.NewGuid(),
-            Name = "Cat",
-            TeamId = teamId,
-            SortOrder = 0,
-            CreatedAt = FakeNow,
-            UpdatedAt = FakeNow
-        };
-        _budgetService.GetCategoryByIdAsync(categoryId).Returns(ToBudgetCategorySnapshot(category));
+        _budgetService.GetCategoryByIdAsync(categoryId)
+            .Returns(MakeCategorySnapshot(categoryId, teamId));
         _teamService.GetTeamAsync(teamId, Arg.Any<CancellationToken>())
             .Returns(MakeTeamInfo(teamId, [(coordinatorUserId, TeamMemberRole.Coordinator)]));
 
@@ -882,17 +873,8 @@ public sealed class ExpenseReportServiceTests
         var teamId = Guid.NewGuid();
         var categoryId = Guid.NewGuid();
 
-        var category = new BudgetCategory
-        {
-            Id = categoryId,
-            BudgetGroupId = Guid.NewGuid(),
-            Name = "Cat",
-            TeamId = teamId,
-            SortOrder = 0,
-            CreatedAt = FakeNow,
-            UpdatedAt = FakeNow
-        };
-        _budgetService.GetCategoryByIdAsync(categoryId).Returns(ToBudgetCategorySnapshot(category));
+        _budgetService.GetCategoryByIdAsync(categoryId)
+            .Returns(MakeCategorySnapshot(categoryId, teamId));
         _teamService.GetTeamAsync(teamId, Arg.Any<CancellationToken>())
             .Returns(MakeTeamInfo(teamId, [(Guid.NewGuid(), TeamMemberRole.Member)]));
 
@@ -904,17 +886,8 @@ public sealed class ExpenseReportServiceTests
     public async Task CategoryRequiresCoordinatorEndorsementAsync_False_WhenCategoryHasNoTeam()
     {
         var categoryId = Guid.NewGuid();
-        var category = new BudgetCategory
-        {
-            Id = categoryId,
-            BudgetGroupId = Guid.NewGuid(),
-            Name = "Cat",
-            TeamId = null,
-            SortOrder = 0,
-            CreatedAt = FakeNow,
-            UpdatedAt = FakeNow
-        };
-        _budgetService.GetCategoryByIdAsync(categoryId).Returns(ToBudgetCategorySnapshot(category));
+        _budgetService.GetCategoryByIdAsync(categoryId)
+            .Returns(MakeCategorySnapshot(categoryId, teamId: null));
 
         var result = await _sut.CategoryRequiresCoordinatorEndorsementAsync(categoryId, Xunit.TestContext.Current.CancellationToken);
         result.Should().BeFalse();
@@ -951,7 +924,7 @@ public sealed class ExpenseReportServiceTests
             ExpenseReportStatus.Submitted);
 
         var nonCoordinator = Guid.NewGuid();
-        _budgetService.GetCategoryByIdAsync(category.Id).Returns(ToBudgetCategorySnapshot(category));
+        _budgetService.GetCategoryByIdAsync(category.Id).Returns(category);
         _teamService.IsUserCoordinatorOfTeamAsync(category.TeamId!.Value, nonCoordinator,
             Arg.Any<CancellationToken>()).Returns(false);
 
@@ -1004,7 +977,7 @@ public sealed class ExpenseReportServiceTests
         await SeedReportWithStatus(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
             ExpenseReportStatus.Submitted);
         var nonCoordinator = Guid.NewGuid();
-        _budgetService.GetCategoryByIdAsync(category.Id).Returns(ToBudgetCategorySnapshot(category));
+        _budgetService.GetCategoryByIdAsync(category.Id).Returns(category);
         _teamService.IsUserCoordinatorOfTeamAsync(category.TeamId!.Value, nonCoordinator,
             Arg.Any<CancellationToken>()).Returns(false);
 
@@ -1066,7 +1039,7 @@ public sealed class ExpenseReportServiceTests
         await SeedReportWithStatus(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
             ExpenseReportStatus.Submitted);
         var nonCoordinator = Guid.NewGuid();
-        _budgetService.GetCategoryByIdAsync(category.Id).Returns(ToBudgetCategorySnapshot(category));
+        _budgetService.GetCategoryByIdAsync(category.Id).Returns(category);
         _teamService.IsUserCoordinatorOfTeamAsync(category.TeamId!.Value, nonCoordinator,
             Arg.Any<CancellationToken>()).Returns(false);
 
@@ -1371,16 +1344,7 @@ public sealed class ExpenseReportServiceTests
                 Iban = "ES9121000418450200051332",
             }));
         _budgetService.GetCategoryByIdAsync(category.Id).Returns(
-            ToBudgetCategorySnapshot(new BudgetCategory
-            {
-                Id = category.Id,
-                BudgetGroupId = Guid.NewGuid(),
-                Name = "Test Category",
-                TeamId = null,
-                SortOrder = 0,
-                CreatedAt = FakeNow,
-                UpdatedAt = FakeNow,
-            }));
+            MakeCategorySnapshot(category.Id, teamId: null, "Test Category"));
         _holdedFinance.EnsureCreditorContactAsync(
                 Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>(),
                 Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
@@ -1454,16 +1418,7 @@ public sealed class ExpenseReportServiceTests
 
         // Also set up category for DrainHoldedOutboxAsync (it re-fetches)
         _budgetService.GetCategoryByIdAsync(category.Id).Returns(
-            ToBudgetCategorySnapshot(new BudgetCategory
-            {
-                Id = category.Id,
-                BudgetGroupId = Guid.NewGuid(),
-                Name = "Test Category",
-                TeamId = null,
-                SortOrder = 0,
-                CreatedAt = FakeNow,
-                UpdatedAt = FakeNow,
-            }));
+            MakeCategorySnapshot(category.Id, teamId: null, "Test Category"));
 
         // Act
         await _sut.DrainHoldedOutboxAsync(100, Xunit.TestContext.Current.CancellationToken);
@@ -1508,102 +1463,68 @@ public sealed class ExpenseReportServiceTests
 
     // ─────────────────────────── Helpers ─────────────────────────────────────
 
-    private (BudgetYear Year, BudgetCategory Category) SetupActiveYear()
+    /// <summary>
+    /// Stubs the active budget year and one category on <c>IBudgetServiceRead</c>. Builds the
+    /// contract DTOs directly: Budget's entities are internal to <c>Humans.Budget</c> since its
+    /// G5 move (nobodies-collective/Humans#866), and the DTOs are all this test ever asserted on.
+    /// </summary>
+    private (BudgetYearDetail Year, BudgetCategorySnapshot Category) SetupActiveYear()
     {
         var teamId = Guid.NewGuid();
-        var category = new BudgetCategory
-        {
-            Id = Guid.NewGuid(),
-            BudgetGroupId = Guid.NewGuid(),
-            Name = "Test Category",
-            TeamId = teamId,
-            SortOrder = 0,
-            CreatedAt = FakeNow,
-            UpdatedAt = FakeNow
-        };
-        var group = new BudgetGroup
-        {
-            Id = category.BudgetGroupId,
-            BudgetYearId = Guid.NewGuid(),
-            Name = "Test Group",
-            SortOrder = 0,
-            CreatedAt = FakeNow,
-            UpdatedAt = FakeNow
-        };
-        group.Categories.Add(category);
-
-        var year = new BudgetYear
-        {
-            Id = Guid.NewGuid(),
-            Year = "2026",
-            Name = "Test Year 2026",
-            Status = BudgetYearStatus.Active,
-            CreatedAt = FakeNow,
-            UpdatedAt = FakeNow
-        };
-        year.Groups.Add(group);
+        var groupId = Guid.NewGuid();
+        var yearId = Guid.NewGuid();
+        var categoryId = Guid.NewGuid();
 
         var yearDetail = new BudgetYearDetail(
-            year.Id,
-            year.Year,
-            year.Name,
-            year.Status,
-            year.IsDeleted,
+            yearId,
+            "2026",
+            "Test Year 2026",
+            BudgetYearStatus.Active,
+            false,
             [
                 new BudgetGroupDetail(
-                    group.Id,
-                    group.BudgetYearId,
-                    group.Name,
-                    group.SortOrder,
-                    group.IsRestricted,
-                    group.IsDepartmentGroup,
-                    group.IsTicketingGroup,
+                    groupId,
+                    yearId,
+                    "Test Group",
+                    0,
+                    false,
+                    false,
+                    false,
                     null,
                     [
                         new BudgetCategoryDetail(
-                            category.Id,
-                            category.BudgetGroupId,
-                            category.Name,
-                            category.AllocatedAmount,
-                            category.ExpenditureType,
-                            category.TeamId,
-                            category.SortOrder,
+                            categoryId,
+                            groupId,
+                            "Test Category",
+                            0m,
+                            ExpenditureType.CapEx,
+                            teamId,
+                            0,
                             [])
                     ])
             ]);
 
-        _budgetService.GetActiveYearAsync().Returns(yearDetail);
-        _budgetService.GetCategoryByIdAsync(category.Id).Returns(ToBudgetCategorySnapshot(category));
+        var category = MakeCategorySnapshot(categoryId, teamId, "Test Category", groupId);
 
-        return (year, category);
+        _budgetService.GetActiveYearAsync().Returns(yearDetail);
+        _budgetService.GetCategoryByIdAsync(categoryId).Returns(category);
+
+        return (yearDetail, category);
     }
 
-
-    private static BudgetCategorySnapshot ToBudgetCategorySnapshot(BudgetCategory category) =>
+    private static BudgetCategorySnapshot MakeCategorySnapshot(
+        Guid id, Guid? teamId, string name = "Cat", Guid? groupId = null) =>
         new(
-            category.Id,
-            category.BudgetGroupId,
-            category.Name,
-            category.AllocatedAmount,
-            category.ExpenditureType,
-            category.TeamId,
-            category.SortOrder,
-            category.BudgetGroup is null
-                ? null
-                : new BudgetCategoryGroupSnapshot(
-                    category.BudgetGroup.Id,
-                    category.BudgetGroup.BudgetYearId,
-                    category.BudgetGroup.Name,
-                    category.BudgetGroup.IsRestricted,
-                    category.BudgetGroup.IsTicketingGroup,
-                    category.BudgetGroup.BudgetYear is null
-                        ? null
-                        : new BudgetCategoryYearSnapshot(
-                            category.BudgetGroup.BudgetYear.Id,
-                            category.BudgetGroup.BudgetYear.Year,
-                            category.BudgetGroup.BudgetYear.Name,
-                            category.BudgetGroup.BudgetYear.IsDeleted)),
+            id,
+            groupId ?? Guid.NewGuid(),
+            name,
+            0m,
+            ExpenditureType.CapEx,
+            teamId,
+            0,
+            null,
             []);
+
     private void SetupUserAndProfile(Guid userId, string displayName, string iban)
     {
         var nameParts = displayName.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
@@ -1650,17 +1571,8 @@ public sealed class ExpenseReportServiceTests
 
     private void SetupCoordinatorAuthz(Guid categoryId, Guid teamId, Guid coordinatorUserId)
     {
-        var cat = new BudgetCategory
-        {
-            Id = categoryId,
-            BudgetGroupId = Guid.NewGuid(),
-            Name = "Cat",
-            TeamId = teamId,
-            SortOrder = 0,
-            CreatedAt = FakeNow,
-            UpdatedAt = FakeNow
-        };
-        _budgetService.GetCategoryByIdAsync(categoryId).Returns(ToBudgetCategorySnapshot(cat));
+        _budgetService.GetCategoryByIdAsync(categoryId)
+            .Returns(MakeCategorySnapshot(categoryId, teamId));
         _teamService.IsUserCoordinatorOfTeamAsync(teamId, coordinatorUserId,
             Arg.Any<CancellationToken>()).Returns(true);
     }

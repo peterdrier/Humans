@@ -1,0 +1,760 @@
+using Humans.Application.Extensions;
+using Humans.Budget.Contracts;
+using Humans.Budget.Services;
+using Humans.Finance.Contracts;
+using Humans.Application.Interfaces.Teams;
+using Humans.Application.Interfaces.Tickets;
+using Humans.Domain.Enums;
+using Humans.UI.Controllers;
+using Humans.Budget.Models;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using NodaTime;
+
+using Humans.Application.Interfaces.Users;
+using Humans.UI.Authorization;
+
+namespace Humans.Budget.Controllers;
+
+/// <summary>
+/// Budget's admin surface: years, groups, categories, line items, the ticketing projection,
+/// cash flow and the audit log. Named for what it is; the <c>/Finance</c> route prefix is
+/// unchanged, so no URL moved when the Holded half left for the Finance section
+/// (nobodies-collective/Humans#866, G5). It shares the prefix with
+/// <c>Humans.Finance.Controllers.FinanceController</c> — the action templates are disjoint.
+/// </summary>
+/// <remarks>
+/// It still calls <c>IHoldedFinanceService</c> for one thing: the per-category actuals shown on
+/// the year overview. That is an ordinary cross-section service call through the Finance
+/// section's contract, not a reason to keep the controllers merged.
+/// </remarks>
+[Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]
+[Route("Finance")]
+internal sealed class BudgetAdminController(
+    IBudgetService budgetService,
+    ITeamServiceRead teamService,
+    TicketingBudgetService ticketingBudgetService,
+    ITicketServiceRead ticketQueryService,
+    IClock clock,
+    IUserServiceRead userService,
+    IHoldedFinanceService holdedFinance,
+    ILogger<BudgetAdminController> logger) : HumansControllerBase(userService)
+{
+    [HttpGet("")]
+    public async Task<IActionResult> Index()
+    {
+        try
+        {
+            var activeYear = await budgetService.GetActiveYearAsync();
+            if (activeYear is null)
+            {
+                ViewBag.Years = await budgetService.GetAllYearsAsync();
+                return View("NoActiveYear");
+            }
+
+            var allYears = await budgetService.GetAllYearsAsync();
+            var model = await BuildFinanceOverviewAsync(activeYear, allYears);
+            return View("YearDetail", model);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error loading finance index");
+            SetError("Failed to load budget data.");
+            return View("NoActiveYear");
+        }
+    }
+
+    [HttpGet("Years/{id:guid}")]
+    public async Task<IActionResult> YearDetail(Guid id)
+    {
+        try
+        {
+            var year = await budgetService.GetYearByIdAsync(id);
+            if (year is null) return NotFound();
+
+            var allYears = await budgetService.GetAllYearsAsync();
+            var model = await BuildFinanceOverviewAsync(year, allYears);
+            return View(model);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error loading budget year {YearId}", id);
+            SetError("Failed to load budget year.");
+            return RedirectToAction(nameof(Index));
+        }
+    }
+
+    [HttpGet("Categories/{id:guid}")]
+    public async Task<IActionResult> CategoryDetail(Guid id)
+    {
+        try
+        {
+            var category = await budgetService.GetCategoryByIdAsync(id);
+            if (category is null) return NotFound();
+
+            ViewBag.Teams = (await teamService.GetTeamsAsync()).Values
+                .Where(t => t.IsActive)
+                .OrderBy(t => t.Name, StringComparer.Ordinal)
+                .ToList();
+
+            return View(category);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error loading budget category {CategoryId}", id);
+            SetError("Failed to load category.");
+            return RedirectToAction(nameof(Index));
+        }
+    }
+
+    [HttpGet("AuditLog/{yearId:guid?}")]
+    public async Task<IActionResult> AuditLog(Guid? yearId)
+    {
+        try
+        {
+            if (!yearId.HasValue)
+            {
+                var active = await budgetService.GetActiveYearAsync();
+                yearId = active?.Id;
+            }
+
+            var entries = await budgetService.GetAuditLogAsync(yearId);
+            ViewBag.YearId = yearId;
+            ViewBag.Years = await budgetService.GetAllYearsAsync(includeArchived: true);
+            return View(entries);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error loading budget audit log");
+            SetError("Failed to load audit log.");
+            return RedirectToAction(nameof(Index));
+        }
+    }
+
+    [HttpGet("CashFlow")]
+    public async Task<IActionResult> CashFlow(string period = "monthly")
+    {
+        try
+        {
+            var activeYear = await budgetService.GetActiveYearAsync();
+            if (activeYear is null)
+            {
+                SetInfo("No active budget year.");
+                return RedirectToAction(nameof(Index));
+            }
+
+            var grossTicketRevenue = (await ticketQueryService.GetTicketOrdersAsync())
+                .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid)
+                .Sum(o => o.TotalAmount);
+            var model = BuildCashFlowModel(activeYear, period, grossTicketRevenue);
+            return View(model);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error loading cash flow view");
+            SetError("Failed to load cash flow data.");
+            return RedirectToAction(nameof(Index));
+        }
+    }
+
+    [HttpGet("Admin")]
+    public async Task<IActionResult> Admin()
+    {
+        try
+        {
+            var years = await budgetService.GetAllYearsAsync(includeArchived: true);
+            return View(years);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error loading finance admin");
+            SetError("Failed to load finance admin.");
+            return RedirectToAction(nameof(Index));
+        }
+    }
+
+    [HttpPost("Years/{id:guid}/SyncDepartments")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SyncDepartments(Guid id)
+    {
+        var (errorResult, user) = await RequireCurrentUserAsync();
+        if (errorResult is not null) return errorResult;
+
+        try
+        {
+            var count = await budgetService.SyncDepartmentsAsync(id, user.Id);
+            if (count > 0)
+                SetSuccess($"Synced {count} new department(s) into budget.");
+            else
+                SetInfo("All budget-enabled teams are already in the Departments group.");
+            return RedirectToAction(nameof(YearDetail), new { id });
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error syncing departments for year {YearId}", id);
+            SetError($"Failed to sync departments: {ex.Message}");
+            return RedirectToAction(nameof(YearDetail), new { id });
+        }
+    }
+
+    [HttpPost("Years/Create")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CreateYear(string year, string name)
+    {
+        var (errorResult, user) = await RequireCurrentUserAsync();
+        if (errorResult is not null) return errorResult;
+
+        if (string.IsNullOrWhiteSpace(year) || string.IsNullOrWhiteSpace(name))
+        {
+            SetError("Year identifier and name are required.");
+            return RedirectToAction(nameof(Admin));
+        }
+
+        try
+        {
+            await budgetService.CreateYearAsync(year, name, user.Id);
+            SetSuccess($"Budget year '{name}' created.");
+            return RedirectToAction(nameof(Admin));
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error creating budget year {Year}", year);
+            SetError($"Failed to create budget year: {ex.Message}");
+            return RedirectToAction(nameof(Admin));
+        }
+    }
+
+    [HttpPost("Years/{id:guid}/UpdateStatus")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UpdateYearStatus(Guid id, BudgetYearStatus status)
+    {
+        var (errorResult, user) = await RequireCurrentUserAsync();
+        if (errorResult is not null) return errorResult;
+
+        try
+        {
+            await budgetService.UpdateYearStatusAsync(id, status, user.Id);
+            SetSuccess($"Budget year status updated to {status}.");
+            return RedirectToAction(nameof(Admin));
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error updating budget year {YearId} status to {Status}", id, status);
+            SetError($"Failed to update status: {ex.Message}");
+            return RedirectToAction(nameof(Admin));
+        }
+    }
+
+    [HttpPost("Years/{id:guid}/Update")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UpdateYear(Guid id, string year, string name)
+    {
+        var (errorResult, user) = await RequireCurrentUserAsync();
+        if (errorResult is not null) return errorResult;
+
+        try
+        {
+            await budgetService.UpdateYearAsync(id, year, name, user.Id);
+            SetSuccess("Budget year updated.");
+            return RedirectToAction(nameof(Admin));
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error updating budget year {YearId}", id);
+            SetError($"Failed to update budget year: {ex.Message}");
+            return RedirectToAction(nameof(Admin));
+        }
+    }
+
+    [HttpPost("Years/{id:guid}/Delete")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeleteYear(Guid id)
+    {
+        var (errorResult, user) = await RequireCurrentUserAsync();
+        if (errorResult is not null) return errorResult;
+
+        try
+        {
+            await budgetService.DeleteYearAsync(id, user.Id);
+            SetSuccess("Budget year deleted.");
+            return RedirectToAction(nameof(Admin));
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error deleting budget year {YearId}", id);
+            SetError($"Failed to delete budget year: {ex.Message}");
+            return RedirectToAction(nameof(Admin));
+        }
+    }
+
+    [HttpPost("Groups/Create")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CreateGroup(Guid budgetYearId, string name, bool isRestricted)
+    {
+        var (errorResult, user) = await RequireCurrentUserAsync();
+        if (errorResult is not null) return errorResult;
+
+        try
+        {
+            await budgetService.CreateGroupAsync(budgetYearId, name, isRestricted, user.Id);
+            SetSuccess($"Group '{name}' created.");
+            return RedirectToAction(nameof(Admin));
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error creating budget group in year {YearId}", budgetYearId);
+            SetError($"Failed to create group: {ex.Message}");
+            return RedirectToAction(nameof(Admin));
+        }
+    }
+
+    [HttpPost("Groups/{id:guid}/Update")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UpdateGroup(Guid id, string name, int sortOrder, bool isRestricted)
+    {
+        var (errorResult, user) = await RequireCurrentUserAsync();
+        if (errorResult is not null) return errorResult;
+
+        try
+        {
+            await budgetService.UpdateGroupAsync(id, name, sortOrder, isRestricted, user.Id);
+            SetSuccess($"Group '{name}' updated.");
+            return RedirectToAction(nameof(Admin));
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error updating budget group {GroupId}", id);
+            SetError($"Failed to update group: {ex.Message}");
+            return RedirectToAction(nameof(Admin));
+        }
+    }
+
+    [HttpPost("Groups/{id:guid}/Delete")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeleteGroup(Guid id)
+    {
+        var (errorResult, user) = await RequireCurrentUserAsync();
+        if (errorResult is not null) return errorResult;
+
+        try
+        {
+            await budgetService.DeleteGroupAsync(id, user.Id);
+            SetSuccess("Group deleted.");
+            return RedirectToAction(nameof(Admin));
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error deleting budget group {GroupId}", id);
+            SetError($"Failed to delete group: {ex.Message}");
+            return RedirectToAction(nameof(Admin));
+        }
+    }
+
+    [HttpPost("Categories/Create")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CreateCategory(Guid budgetGroupId, string name, decimal allocatedAmount,
+        ExpenditureType expenditureType, Guid? teamId, Guid budgetYearId)
+    {
+        var (errorResult, user) = await RequireCurrentUserAsync();
+        if (errorResult is not null) return errorResult;
+
+        try
+        {
+            await budgetService.CreateCategoryAsync(budgetGroupId, name, allocatedAmount, expenditureType, teamId, user.Id);
+            SetSuccess($"Category '{name}' created.");
+            return RedirectToAction(nameof(YearDetail), new { id = budgetYearId });
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error creating budget category in group {GroupId}", budgetGroupId);
+            SetError($"Failed to create category: {ex.Message}");
+            return RedirectToAction(nameof(YearDetail), new { id = budgetYearId });
+        }
+    }
+
+    [HttpPost("Categories/{id:guid}/Update")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UpdateCategory(Guid id, string name, decimal allocatedAmount,
+        ExpenditureType expenditureType)
+    {
+        var (errorResult, user) = await RequireCurrentUserAsync();
+        if (errorResult is not null) return errorResult;
+
+        try
+        {
+            await budgetService.UpdateCategoryAsync(id, name, allocatedAmount, expenditureType, user.Id);
+            SetSuccess($"Category '{name}' updated.");
+            return RedirectToAction(nameof(CategoryDetail), new { id });
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error updating budget category {CategoryId}", id);
+            SetError($"Failed to update category: {ex.Message}");
+            return RedirectToAction(nameof(CategoryDetail), new { id });
+        }
+    }
+
+    [HttpPost("Categories/{id:guid}/Delete")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeleteCategory(Guid id, Guid budgetYearId)
+    {
+        var (errorResult, user) = await RequireCurrentUserAsync();
+        if (errorResult is not null) return errorResult;
+
+        try
+        {
+            await budgetService.DeleteCategoryAsync(id, user.Id);
+            SetSuccess("Category deleted.");
+            return RedirectToAction(nameof(YearDetail), new { id = budgetYearId });
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error deleting budget category {CategoryId}", id);
+            SetError($"Failed to delete category: {ex.Message}");
+            return RedirectToAction(nameof(YearDetail), new { id = budgetYearId });
+        }
+    }
+
+    [HttpPost("LineItems/Create")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CreateLineItem(Guid budgetCategoryId, string description, decimal amount,
+        Guid? responsibleTeamId, string? notes, DateTime? expectedDate, int vatRate)
+    {
+        var (errorResult, user) = await RequireCurrentUserAsync();
+        if (errorResult is not null) return errorResult;
+
+        var nodaDate = expectedDate.HasValue ? LocalDate.FromDateTime(expectedDate.Value) : (LocalDate?)null;
+
+        try
+        {
+            await budgetService.CreateLineItemAsync(budgetCategoryId, description, amount, responsibleTeamId, notes, nodaDate, vatRate, user.Id);
+            SetSuccess($"Line item '{description}' created.");
+            return RedirectToAction(nameof(CategoryDetail), new { id = budgetCategoryId });
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error creating line item in category {CategoryId}", budgetCategoryId);
+            SetError($"Failed to create line item: {ex.Message}");
+            return RedirectToAction(nameof(CategoryDetail), new { id = budgetCategoryId });
+        }
+    }
+
+    [HttpPost("LineItems/{id:guid}/Update")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UpdateLineItem(Guid id, string description, decimal amount,
+        Guid? responsibleTeamId, string? notes, DateTime? expectedDate, int vatRate, Guid budgetCategoryId)
+    {
+        var (errorResult, user) = await RequireCurrentUserAsync();
+        if (errorResult is not null) return errorResult;
+
+        var nodaDate = expectedDate.HasValue ? LocalDate.FromDateTime(expectedDate.Value) : (LocalDate?)null;
+
+        try
+        {
+            await budgetService.UpdateLineItemAsync(id, description, amount, responsibleTeamId, notes, nodaDate, vatRate, user.Id);
+            SetSuccess($"Line item '{description}' updated.");
+            return RedirectToAction(nameof(CategoryDetail), new { id = budgetCategoryId });
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error updating line item {LineItemId}", id);
+            SetError($"Failed to update line item: {ex.Message}");
+            return RedirectToAction(nameof(CategoryDetail), new { id = budgetCategoryId });
+        }
+    }
+
+    [HttpPost("LineItems/{id:guid}/Delete")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeleteLineItem(Guid id, Guid budgetCategoryId)
+    {
+        var (errorResult, user) = await RequireCurrentUserAsync();
+        if (errorResult is not null) return errorResult;
+
+        try
+        {
+            await budgetService.DeleteLineItemAsync(id, user.Id);
+            SetSuccess("Line item deleted.");
+            return RedirectToAction(nameof(CategoryDetail), new { id = budgetCategoryId });
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error deleting line item {LineItemId}", id);
+            SetError($"Failed to delete line item: {ex.Message}");
+            return RedirectToAction(nameof(CategoryDetail), new { id = budgetCategoryId });
+        }
+    }
+
+    [HttpPost("Years/{id:guid}/EnsureTicketingGroup")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> EnsureTicketingGroup(Guid id)
+    {
+        var (errorResult, user) = await RequireCurrentUserAsync();
+        if (errorResult is not null) return errorResult;
+
+        try
+        {
+            var result = await budgetService.EnsureTicketingGroupAsync(id, user.Id);
+            if (result.Created)
+                SetSuccess(result.Message);
+            else
+                SetInfo(result.Message);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error ensuring ticketing group for year {YearId}", id);
+            SetError($"Failed to add ticketing group: {ex.Message}");
+        }
+
+        return RedirectToAction(nameof(YearDetail), new { id });
+    }
+
+    [HttpPost("TicketingProjection/{groupId:guid}/Update")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UpdateTicketingProjection(Guid groupId, TicketingProjectionUpdateForm form)
+    {
+        var (errorResult, user) = await RequireCurrentUserAsync();
+        if (errorResult is not null) return errorResult;
+
+        try
+        {
+            var count = await ticketingBudgetService.UpdateProjectionAndRefreshAsync(
+                new TicketingProjectionUpdateCommand(
+                    groupId,
+                    form.BudgetYearId,
+                    form.StartDate.HasValue ? LocalDate.FromDateTime(form.StartDate.Value) : null,
+                    form.EventDate.HasValue ? LocalDate.FromDateTime(form.EventDate.Value) : null,
+                    form.InitialSalesCount,
+                    form.DailySalesRate,
+                    form.AverageTicketPrice,
+                    form.VatRate,
+                    form.StripeFeePercent,
+                    form.StripeFeeFixed,
+                    form.TicketTailorFeePercent),
+                user.Id);
+            SetSuccess($"Ticketing projection saved - {count} projected line item(s) generated.");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error updating ticketing projection for group {GroupId}", groupId);
+            SetError($"Failed to update projection: {ex.Message}");
+        }
+
+        return RedirectToAction(nameof(YearDetail), new { id = form.BudgetYearId });
+    }
+    [HttpPost("TicketingBudget/{yearId:guid}/Sync")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SyncTicketingBudget(Guid yearId)
+    {
+        try
+        {
+            var count = await ticketingBudgetService.SyncActualsAsync(yearId);
+            if (count > 0)
+                SetSuccess($"Synced {count} ticketing line item(s) from ticket sales data.");
+            else
+                SetInfo("No new ticket sales data to sync.");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error syncing ticketing budget for year {YearId}", yearId);
+            SetError($"Failed to sync ticketing data: {ex.Message}");
+        }
+
+        return RedirectToAction(nameof(YearDetail), new { id = yearId });
+    }
+
+    /// <summary>FinanceOverviewViewModel via shared summary + actual tickets in ViewBag.</summary>
+    private async Task<FinanceOverviewViewModel> BuildFinanceOverviewAsync(BudgetYearDetail year, IReadOnlyList<BudgetYearSummarySnapshot> allYears)
+    {
+        var summary = budgetService.ComputeBudgetSummaryWithBuffers(year.Groups);
+
+        var ticketingGroup = year.Groups.FirstOrDefault(g => g.IsTicketingGroup);
+        if (ticketingGroup is not null)
+        {
+            var actualSold = budgetService.GetActualTicketsSold(ticketingGroup);
+            ViewBag.ActualTicketsSold = actualSold;
+
+            var projections = await ticketingBudgetService.GetProjectionsAsync(ticketingGroup.Id);
+            if (projections.Count > 0)
+            {
+                var projectedRemaining = projections.Sum(p => p.ProjectedTickets);
+                var today = clock.GetCurrentInstant().InUtc().Date;
+                var proj = ticketingGroup.TicketingProjection!;
+                var daysToEvent = Period.Between(today, proj.EventDate!.Value, PeriodUnits.Days).Days;
+
+                ViewBag.RemainingDays = Math.Max(0, daysToEvent);
+                ViewBag.ProjectedRemaining = projectedRemaining;
+                ViewBag.TotalTickets = actualSold + projectedRemaining;
+            }
+        }
+
+        IReadOnlyDictionary<Guid, decimal> holdedActuals = new Dictionary<Guid, decimal>();
+        if (int.TryParse(year.Year, System.Globalization.NumberStyles.None,
+                System.Globalization.CultureInfo.InvariantCulture, out var calendarYear))
+        {
+            var actuals = await holdedFinance.GetActualsForYearAsync(calendarYear);
+            holdedActuals = actuals.ToDictionary(r => r.BudgetCategoryId, r => r.Actual);
+        }
+
+        return new FinanceOverviewViewModel
+        {
+            Year = year,
+            AllYears = allYears,
+            TotalIncome = summary.TotalIncome,
+            TotalExpenses = summary.TotalExpenses,
+            NetBalance = summary.NetBalance,
+            IncomeSlices = summary.IncomeSlices.Select(s => new BudgetSlice { Name = s.Name, Amount = s.Amount, Percentage = s.Percentage }).ToList(),
+            ExpenseSlices = summary.ExpenseSlices.Select(s => new BudgetSlice { Name = s.Name, Amount = s.Amount, Percentage = s.Percentage }).ToList(),
+            HoldedActualsByCategory = holdedActuals
+        };
+    }
+
+    /// <summary>CashFlow VM: aggregate by period; synthesize VAT settlements; FinanceAdmin-only.</summary>
+    private CashFlowViewModel BuildCashFlowModel(BudgetYearDetail year, string period, decimal grossTicketRevenue)
+    {
+        if (!string.Equals(period, "weekly", StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(period, "monthly", StringComparison.OrdinalIgnoreCase))
+        {
+            period = "monthly";
+        }
+
+        var allEntries = year.Groups
+            .SelectMany(g => g.Categories.Select(c => new { GroupName = g.Name, CategoryName = c.Name, Category = c }))
+            .SelectMany(ctx => ctx.Category.LineItems.Select(li => new CashFlowEntry(
+                ctx.GroupName, ctx.CategoryName, li.Amount, li.ExpectedDate)))
+            .ToList();
+
+        var vatEntries = budgetService.ComputeVatCashFlowEntries(year.Groups);
+        allEntries.AddRange(vatEntries.Select(v => new CashFlowEntry("VAT", v.CategoryName, v.Amount, v.SettlementDate)));
+
+        var scheduled = allEntries.Where(x => x.Date.HasValue).ToList();
+        var unscheduled = allEntries.Where(x => !x.Date.HasValue).ToList();
+
+        var periodRows = new List<CashFlowPeriodRow>();
+
+        if (scheduled.Count > 0)
+        {
+            var isWeekly = string.Equals(period, "weekly", StringComparison.OrdinalIgnoreCase);
+            var grouped = isWeekly ? GroupByWeek(scheduled) : GroupByMonth(scheduled);
+
+            decimal runningNet = 0;
+            // Expense-only runway: gross ticket revenue minus expenses; income lines don't extend it.
+            decimal runningExpenseBalance = grossTicketRevenue;
+            var fundsExhausted = false;
+            foreach (var pg in grouped.OrderBy(g => g.PeriodStart))
+            {
+                var periodIncome = pg.Items.Where(x => x.Amount > 0).Sum(x => x.Amount);
+                var periodExpense = pg.Items.Where(x => x.Amount < 0).Sum(x => x.Amount);
+                var periodNet = periodIncome + periodExpense;
+                runningNet += periodNet;
+
+                runningExpenseBalance += periodExpense;
+                var isExhausted = !fundsExhausted && runningExpenseBalance <= 0;
+                if (isExhausted)
+                {
+                    fundsExhausted = true;
+                }
+
+                var categories = BuildCategoryRows(pg.Items);
+
+                periodRows.Add(new CashFlowPeriodRow
+                {
+                    Label = pg.Label,
+                    PeriodStart = pg.PeriodStart,
+                    PeriodEnd = pg.PeriodEnd,
+                    IncomeTotal = periodIncome,
+                    ExpenseTotal = periodExpense,
+                    Net = periodNet,
+                    RunningNet = runningNet,
+                    FundsExhausted = isExhausted,
+                    Categories = categories
+                });
+            }
+        }
+
+        var unscheduledIncome = unscheduled.Where(x => x.Amount > 0).Sum(x => x.Amount);
+        var unscheduledExpense = unscheduled.Where(x => x.Amount < 0).Sum(x => x.Amount);
+        var unscheduledCategories = BuildCategoryRows(unscheduled);
+
+        return new CashFlowViewModel
+        {
+            YearName = year.Name,
+            Period = period.ToLowerInvariant(),
+            Periods = periodRows,
+            Unscheduled = new CashFlowUnscheduledSummary
+            {
+                IncomeTotal = unscheduledIncome,
+                ExpenseTotal = unscheduledExpense,
+                Net = unscheduledIncome + unscheduledExpense,
+                Categories = unscheduledCategories
+            }
+        };
+    }
+
+    private static List<CashFlowCategoryRow> BuildCategoryRows(List<CashFlowEntry> items)
+    {
+        return items
+            .GroupBy(x => new { x.CategoryName, x.GroupName })
+            .Select(cg => new CashFlowCategoryRow
+            {
+                CategoryName = cg.Key.CategoryName,
+                GroupName = cg.Key.GroupName,
+                Amount = cg.Sum(x => x.Amount)
+            })
+            .OrderBy(c => c.GroupName, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(c => c.CategoryName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private static List<CashFlowPeriodGroup> GroupByWeek(List<CashFlowEntry> items)
+    {
+        return items
+            .GroupBy(x =>
+            {
+                var date = x.Date!.Value;
+                var dayOfWeek = date.DayOfWeek;
+                var monday = date.PlusDays(-(((int)dayOfWeek + 6) % 7));
+                return monday;
+            })
+            .Select(g =>
+            {
+                var monday = g.Key;
+                var sunday = monday.PlusDays(6);
+                return new CashFlowPeriodGroup(
+                    $"{monday.ToDateTimeUnspecified().ToWeekdayDayMonth()} - {sunday.ToDate()}",
+                    monday,
+                    sunday,
+                    g.ToList());
+            })
+            .ToList();
+    }
+
+    private static List<CashFlowPeriodGroup> GroupByMonth(List<CashFlowEntry> items)
+    {
+        return items
+            .GroupBy(x =>
+            {
+                var date = x.Date!.Value;
+                return new { date.Year, date.Month };
+            })
+            .Select(g =>
+            {
+                var firstDay = new LocalDate(g.Key.Year, g.Key.Month, 1);
+                var lastDay = firstDay.PlusDays(firstDay.Calendar.GetDaysInMonth(g.Key.Year, g.Key.Month) - 1);
+                return new CashFlowPeriodGroup(
+                    firstDay.ToDateTimeUnspecified().ToMonthYear(),
+                    firstDay,
+                    lastDay,
+                    g.ToList());
+            })
+            .ToList();
+    }
+
+    /// <summary>Cash flow entry — real line item or synthetic VAT settlement.</summary>
+    private sealed record CashFlowEntry(string GroupName, string CategoryName, decimal Amount, LocalDate? Date);
+
+    private sealed record CashFlowPeriodGroup(
+        string Label,
+        LocalDate PeriodStart,
+        LocalDate PeriodEnd,
+        List<CashFlowEntry> Items);
+}

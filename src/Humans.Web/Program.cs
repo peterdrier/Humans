@@ -76,7 +76,6 @@ builder.Services.AddSingleton(configRegistry);
 builder.Services.AddSingleton<IClock>(SystemClock.Instance);
 if (!builder.Environment.IsProduction())
 {
-    builder.Services.AddScoped<DevelopmentBudgetSeeder>();
     builder.Services.AddScoped<DevelopmentCampRoleSeeder>();
     builder.Services.AddScoped<DevelopmentDashboardSeeder>();
     builder.Services.AddScoped<DevPersonaSeeder>();

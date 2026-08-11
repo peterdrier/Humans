@@ -1,3 +1,4 @@
+using Humans.Budget.Data;
 using AwesomeAssertions;
 using Humans.Agent.Data;
 using Humans.Infrastructure.Data;

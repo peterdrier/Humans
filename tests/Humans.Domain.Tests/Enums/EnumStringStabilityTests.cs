@@ -129,12 +129,6 @@ public class EnumStringStabilityTests
             typeof(DrivePermissionLevel), ["None", "Viewer", "Commenter", "Contributor", "ContentManager", "Manager"]
         },
         {
-            typeof(BudgetYearStatus), ["Draft", "Active", "Closed"]
-        },
-        {
-            typeof(ExpenditureType), ["CapEx", "OpEx"]
-        },
-        {
             typeof(MessageCategory), [
                 "System", "EventOperations", "CommunityUpdates", "Marketing", "Governance",
                 "CampaignCodes", "FacilitatedMessages", "Ticketing", "VolunteerUpdates", "TeamUpdates"

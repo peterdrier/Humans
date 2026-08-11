@@ -459,7 +459,7 @@ await _budgetService.DeleteLineItemAsync(id);
 | Handler | Requirement | Resource | Purpose |
 |---------|-------------|----------|---------|
 | `TeamAuthorizationHandler` | `TeamOperationRequirement` | `Team` | Coordinator/manager/admin checks |
-| `BudgetAuthorizationHandler` | `BudgetOperationRequirement` | `BudgetCategory` | Finance role + coordinator checks |
+| `BudgetAuthorizationHandler` (`Humans.Budget.Authorization`) | `BudgetOperationRequirement` | `BudgetCategorySnapshot` | Finance role + coordinator checks |
 | `CampAuthorizationHandler` | `CampOperationRequirement` | `Camp` | Lead/CampAdmin checks |
 | `RoleAssignmentAuthorizationHandler` | `RoleAssignmentOperationRequirement` | `string` (role name) | Who can assign which roles |
 | `HumanAdminOnlyHandler` | `HumanAdminOnlyRequirement` | — | Admin profile operations |

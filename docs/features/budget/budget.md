@@ -1,15 +1,6 @@
 <!-- freshness:triggers
-  src/Humans.Application/Services/Budget/**
-  src/Humans.Application/Services/Tickets/TicketingBudgetService.cs
-  src/Humans.Web/Controllers/BudgetController.cs
-  src/Humans.Web/Controllers/BudgetAdminController.cs
-  src/Humans.Domain/Entities/BudgetYear.cs
-  src/Humans.Domain/Entities/BudgetGroup.cs
-  src/Humans.Domain/Entities/BudgetCategory.cs
-  src/Humans.Domain/Entities/BudgetLineItem.cs
-  src/Humans.Domain/Entities/BudgetAuditLog.cs
-  src/Humans.Domain/Entities/TicketingProjection.cs
-  src/Humans.Infrastructure/Data/Configurations/Budget/**
+  src/Sections/Humans.Budget/**
+  src/Sections/Humans.Budget.Contracts/**
   src/Humans.Infrastructure/Jobs/TicketingBudgetSyncJob.cs
 -->
 <!-- freshness:flag-on-change

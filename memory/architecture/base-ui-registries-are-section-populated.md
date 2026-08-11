@@ -45,8 +45,10 @@ wrong home for one whose only cross-boundary use is a colour lookup. The test is
   Expenses' own views.
 
 First applied 2026-08-09 by Expenses' move (peterdrier/Humans#1240), for `EnumBadgeMap`.
-`StatusBadgeExtensions` still carries `ApplicationStatus` and `BudgetYearStatus`; those move when
-Governance and Budget do.
+`StatusBadgeExtensions` still carries `ApplicationStatus`; that moves when Governance does.
+Budget took its `BudgetYearStatus` overload with it at its G5 move — an extension in the
+section rather than an `EnumBadgeMap.Register` row, because its three admin views call
+`GetBadgeClass()` directly and the map serves `CellFormat.EnumBadge` table columns.
 
 Related: [`section-project-cycle-fix`](section-project-cycle-fix.md),
 [`sections-are-logical-units`](sections-are-logical-units.md),

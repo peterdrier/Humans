@@ -1,4 +1,4 @@
-using Humans.Application.Interfaces.Budget;
+using Humans.Budget.Contracts;
 using Humans.Expenses.Services;
 using Humans.Finance.Contracts;
 using Humans.Application.Interfaces.Users;
@@ -22,7 +22,7 @@ internal sealed class ExpensesController(
     IUserServiceRead userService,
     IExpenseReportServiceRead expenseReadService,
     IExpenseReportService service,
-    IBudgetService budgetService,
+    IBudgetServiceRead budgetService,
     IHoldedFinanceService holdedFinance,
     IAuthorizationService authService,
     ILogger<ExpensesController> logger) : HumansControllerBase(userService)

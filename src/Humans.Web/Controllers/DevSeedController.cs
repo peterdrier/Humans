@@ -1,4 +1,5 @@
 using Humans.Application.Configuration;
+using Humans.Budget.Contracts;
 using Humans.UI.Controllers;
 using Humans.Web.Infrastructure;
 using Microsoft.AspNetCore.Authorization;
@@ -37,9 +38,8 @@ public class DevSeedController(
 
         try
         {
-            var seeder = serviceProvider.GetRequiredService<DevelopmentBudgetSeeder>();
-            var result = await seeder.SeedAsync(user.Id, cancellationToken);
-            SetSuccess(result.SuccessMessage);
+            var seeder = serviceProvider.GetRequiredService<IBudgetDemoSeeder>();
+            SetSuccess(await seeder.SeedAsync(user.Id, cancellationToken));
         }
         catch (Exception ex)
         {
