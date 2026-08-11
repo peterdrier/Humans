@@ -184,7 +184,8 @@
             <div class="form-check form-switch mb-0">
                 <input class="form-check-input" type="checkbox" role="switch"
                        id="hide-empty-accounts" checked>
-                <label class="form-check-label small" for="hide-empty-accounts">
+                <label class="form-check-label small" for="hide-empty-accounts"
+                       title="An account with no lines but a Holded balance is a hole in the mirror, not an unused account — those stay visible.">
                     Hide accounts with no lines
                 </label>
             </div>
@@ -215,7 +216,8 @@
                         </tr>
                         @foreach (var a in group)
                         {
-                            <tr class="js-account-row" data-lines="@a.LocalLineCount">
+                            <tr class="js-account-row" data-lines="@a.LocalLineCount"
+                                data-reconciled="@(a.Reconciled ? "1" : "0")">
                                 <td class="text-nowrap"><a asp-action="Account" asp-route-number="@a.Number"><code>@a.Number</code></a></td>
                                 <td>@a.Name</td>
                                 <td class="text-end">@a.HoldedBalance.ToEuro()</td>
@@ -241,7 +243,8 @@
             Archived accounts are hidden. Groups are the Spanish chart's own, named from the
             account number's leading digit. <strong>Local</strong> is Σdebit − Σcredit over the
             cached lines; a ✗ means the nightly reconciliation still sees drift after its targeted
-            re-pull. Total cached lines: @o.LedgerLineCount.ToString("N0", CultureInfo.InvariantCulture).
+            re-pull, and a ✗ account stays listed even with no lines. Total cached lines:
+            @o.LedgerLineCount.ToString("N0", CultureInfo.InvariantCulture).
         </div>
     }
 </div>
@@ -249,6 +252,11 @@
 <script>
     // Most of the 267-account chart has never carried a line; hiding those is the default view.
     // A group whose every account is hidden goes with them, header and all.
+    //
+    // "No lines" alone is not the test: an account Holded gives a balance for but the mirror has
+    // no line for reconciles ✗ with zero lines, and that is a missing-ledger-data alarm. Hiding it
+    // by default would hide the one thing this table exists to surface, so only a zero-line account
+    // that also reconciles counts as unused.
     (function () {
         var toggle = document.getElementById('hide-empty-accounts');
         var count = document.getElementById('account-count');
@@ -260,8 +268,8 @@
             document.querySelectorAll('.js-account-group').forEach(function (group) {
                 var shown = 0;
                 group.querySelectorAll('.js-account-row').forEach(function (row) {
-                    var empty = row.dataset.lines === '0';
-                    row.hidden = hide && empty;
+                    var unused = row.dataset.lines === '0' && row.dataset.reconciled === '1';
+                    row.hidden = hide && unused;
                     if (!row.hidden) shown++;
                 });
                 group.hidden = shown === 0;
