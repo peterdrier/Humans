@@ -1,0 +1,379 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- ReSharper disable MarkupTextTypo -->
+<root xmlns:ns1="urn:schemas-microsoft-com:xml-msdata" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:schema id="root">
+    <xs:element name="root" ns1:IsDataSet="true">
+      <xs:complexType>
+        <xs:choice maxOccurs="unbounded">
+          <xs:element name="data">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element name="value" type="xsd:string" minOccurs="0" ns1:Ordinal="1" />
+                <xs:element name="comment" type="xsd:string" minOccurs="0" ns1:Ordinal="2" />
+              </xs:sequence>
+              <xs:attribute name="name" type="xsd:string" ns1:Ordinal="0" />
+              <xs:attribute name="type" type="xsd:string" />
+              <xs:attribute name="mimetype" type="xsd:string" />
+            </xs:complexType>
+          </xs:element>
+          <xs:element name="resheader">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element name="value" type="xsd:string" minOccurs="0" ns1:Ordinal="1" />
+              </xs:sequence>
+              <xs:attribute name="name" type="xsd:string" use="required" />
+            </xs:complexType>
+          </xs:element>
+        </xs:choice>
+      </xs:complexType>
+    </xs:element>
+  </xs:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>1.3</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="Governance_Title" xml:space="preserve">
+    <value>Gobernanza</value>
+  </data>
+  <data name="GovernanceApplication_Title" xml:space="preserve">
+    <value>Solicitud de gobernanza</value>
+  </data>
+  <data name="ApplicationDetail_Title" xml:space="preserve">
+    <value>Detalles de la solicitud</value>
+  </data>
+  <data name="Governance_NotYetApplied" xml:space="preserve">
+    <value>Aún no ha solicitado</value>
+  </data>
+  <data name="Governance_AsociadoDescription" xml:space="preserve">
+    <value>Los asociados son los miembros con derecho a voto de Nobodies Collective. Como asociado, puede asistir a asambleas generales, votar en decisiones colectivas y participar en elecciones.</value>
+  </data>
+  <data name="Governance_Optional" xml:space="preserve">
+    <value>Esto es opcional. La mayoría de los humans no necesitan convertirse en asociados. Ya tiene acceso a los recursos una vez que haya completado su perfil y consentimientos.</value>
+  </data>
+  <data name="Governance_ApplyButton" xml:space="preserve">
+    <value>Solicitar ser asociado</value>
+  </data>
+  <data name="Governance_ColaboradorCanApply" xml:space="preserve">
+    <value>Los Colaboradores también pueden solicitar el estatus de Asociado si desean participar en la gobernanza.</value>
+  </data>
+  <data name="Governance_ApplyForAsociado" xml:space="preserve">
+    <value>Solicitar ser Asociado</value>
+  </data>
+  <data name="Governance_YourApplication" xml:space="preserve">
+    <value>Su solicitud</value>
+  </data>
+  <data name="Governance_Submitted" xml:space="preserve">
+    <value>Enviada</value>
+  </data>
+  <data name="Governance_Resolved" xml:space="preserve">
+    <value>Resuelta</value>
+  </data>
+  <data name="Governance_UnderReviewMessage" xml:space="preserve">
+    <value>Su solicitud está siendo revisada. Le notificaremos por correo electrónico cuando se tome una decisión.</value>
+  </data>
+  <data name="Governance_ApprovedMessage" xml:space="preserve">
+    <value>¡Bienvenido/a! Ahora es asociado de Nobodies Collective.</value>
+  </data>
+  <data name="Governance_ApprovedMessageColaborador" xml:space="preserve">
+    <value>Es un/a Colaborador/a aprobado/a de Nobodies Collective.</value>
+  </data>
+  <data name="Governance_ApprovedMessageAsociado" xml:space="preserve">
+    <value>¡Bienvenido/a! Ahora es Asociado/a de Nobodies Collective.</value>
+  </data>
+  <data name="Governance_Tier" xml:space="preserve">
+    <value>Nivel</value>
+  </data>
+  <data name="Governance_TermExpiry" xml:space="preserve">
+    <value>El mandato expira</value>
+  </data>
+  <data name="Governance_RejectedMessage" xml:space="preserve">
+    <value>Su solicitud no fue aprobada. Si tiene preguntas, por favor contacte con la junta directiva.</value>
+  </data>
+  <data name="Governance_WhatIsAsociado" xml:space="preserve">
+    <value>¿Qué es un asociado?</value>
+  </data>
+  <data name="Governance_AsociadoLawDescription" xml:space="preserve">
+    <value>Los asociados son los miembros con derecho a voto de la asociación según la legislación española.</value>
+  </data>
+  <data name="Governance_AsociadoCanDo" xml:space="preserve">
+    <value>Como asociado puede:</value>
+  </data>
+  <data name="Governance_AttendAssemblies" xml:space="preserve">
+    <value>Asistir a asambleas generales</value>
+  </data>
+  <data name="Governance_VoteOnDecisions" xml:space="preserve">
+    <value>Votar en decisiones colectivas</value>
+  </data>
+  <data name="Governance_ParticipateElections" xml:space="preserve">
+    <value>Participar en elecciones de la junta</value>
+  </data>
+  <data name="Governance_WhoShouldApply" xml:space="preserve">
+    <value>¿Quién debería solicitarlo?</value>
+  </data>
+  <data name="Governance_WhoShouldApplyDescription" xml:space="preserve">
+    <value>La membresía de gobernanza está destinada a humans en roles de liderazgo:</value>
+  </data>
+  <data name="Governance_CampLeads" xml:space="preserve">
+    <value>Líderes y coordinadores de campamentos</value>
+  </data>
+  <data name="Governance_MetaVolunteers" xml:space="preserve">
+    <value>Meta-voluntarios y líderes de equipo</value>
+  </data>
+  <data name="Governance_LongTermMembers" xml:space="preserve">
+    <value>Miembros comprometidos a largo plazo</value>
+  </data>
+  <data name="Governance_BoardReviews" xml:space="preserve">
+    <value>La junta directiva revisa las solicitudes en función de la implicación comunitaria y la alineación con la misión del colectivo.</value>
+  </data>
+  <data name="Governance_NoteNotRequired" xml:space="preserve">
+    <value>Nota: No necesita ser asociado para acceder a los recursos o participar en eventos.</value>
+  </data>
+  <data name="Governance_Statutes" xml:space="preserve">
+    <value>Estatutos</value>
+  </data>
+  <data name="Governance_MemberCounts" xml:space="preserve">
+    <value>Comunidad</value>
+  </data>
+  <data name="Governance_Colaboradores" xml:space="preserve">
+    <value>Colaboradores</value>
+  </data>
+  <data name="Governance_Asociados" xml:space="preserve">
+    <value>Asociados</value>
+  </data>
+  <data name="MyApplications_Title" xml:space="preserve">
+    <value>Mis solicitudes</value>
+  </data>
+  <data name="GovernanceCreate_NewApplication" xml:space="preserve">
+    <value>Nueva solicitud</value>
+  </data>
+  <data name="GovernanceCreate_Lead" xml:space="preserve">
+    <value>Colaboradores y Asociados asumen responsabilidades de gobernanza. Elige el nivel que mejor se adapte a tu nivel de participación.</value>
+  </data>
+  <data name="GovernanceCreate_MotivationPlaceholder" xml:space="preserve">
+    <value>Por favor, comparta su motivación para unirse...</value>
+  </data>
+  <data name="GovernanceCreate_MotivationHelp" xml:space="preserve">
+    <value>Mínimo 50 caracteres. Cuéntenos sobre usted y por qué desea formar parte del colectivo.</value>
+  </data>
+  <data name="GovernanceCreate_AdditionalInfoPlaceholder" xml:space="preserve">
+    <value>Cualquier información adicional que desee compartir...</value>
+  </data>
+  <data name="GovernanceCreate_AdditionalInfoHelp" xml:space="preserve">
+    <value>Opcional. Incluya habilidades relevantes, experiencia o cómo nos conoció.</value>
+  </data>
+  <data name="GovernanceCreate_ConfirmAccuracy" xml:space="preserve">
+    <value>Confirmo que toda la información proporcionada en esta solicitud es precisa y veraz.</value>
+  </data>
+  <data name="GovernanceCreate_SubmitApplication" xml:space="preserve">
+    <value>Enviar solicitud</value>
+  </data>
+  <data name="GovernanceCreate_IsThisRightForMe" xml:space="preserve">
+    <value>¿Es esto adecuado para mí?</value>
+  </data>
+  <data name="GovernanceCreate_IdealFor" xml:space="preserve">
+    <value>La gobernanza es ideal para:</value>
+  </data>
+  <data name="GovernanceCreate_WhatHappensNext" xml:space="preserve">
+    <value>¿Qué sucede después?</value>
+  </data>
+  <data name="GovernanceCreate_Step1" xml:space="preserve">
+    <value>Su solicitud será revisada por la junta directiva</value>
+  </data>
+  <data name="GovernanceCreate_Step2" xml:space="preserve">
+    <value>La junta considera la implicación comunitaria y la idoneidad</value>
+  </data>
+  <data name="GovernanceCreate_Step3" xml:space="preserve">
+    <value>Es posible que nos pongamos en contacto con usted para más información</value>
+  </data>
+  <data name="GovernanceCreate_Step4" xml:space="preserve">
+    <value>Recibirá un correo electrónico cuando se tome una decisión</value>
+  </data>
+  <data name="ApplicationDetail_Details" xml:space="preserve">
+    <value>Detalles</value>
+  </data>
+  <data name="ApplicationDetail_ApplicationInfo" xml:space="preserve">
+    <value>Información de la solicitud</value>
+  </data>
+  <data name="ApplicationDetail_ReviewStarted" xml:space="preserve">
+    <value>Revisión iniciada</value>
+  </data>
+  <data name="ApplicationDetail_ReviewedBy" xml:space="preserve">
+    <value>Revisada por</value>
+  </data>
+  <data name="ApplicationDetail_YourMotivation" xml:space="preserve">
+    <value>Su motivación</value>
+  </data>
+  <data name="ApplicationDetail_AdditionalInfo" xml:space="preserve">
+    <value>Información adicional</value>
+  </data>
+  <data name="ApplicationDetail_ReviewerNotes" xml:space="preserve">
+    <value>Notas del revisor</value>
+  </data>
+  <data name="ApplicationDetail_WithdrawTitle" xml:space="preserve">
+    <value>Retirar solicitud</value>
+  </data>
+  <data name="ApplicationDetail_WithdrawDescription" xml:space="preserve">
+    <value>Si ya no desea continuar con esta solicitud, puede retirarla.</value>
+  </data>
+  <data name="ApplicationDetail_WithdrawConfirm" xml:space="preserve">
+    <value>¿Está seguro de que desea retirar esta solicitud?</value>
+  </data>
+  <data name="ApplicationDetail_WithdrawButton" xml:space="preserve">
+    <value>Retirar solicitud</value>
+  </data>
+  <data name="ApplicationDetail_History" xml:space="preserve">
+    <value>Historial de la solicitud</value>
+  </data>
+  <data name="ApplicationDetail_NoHistory" xml:space="preserve">
+    <value>No hay historial disponible.</value>
+  </data>
+  <data name="ApplicationDetail_By" xml:space="preserve">
+    <value>por</value>
+  </data>
+  <data name="ApplicationDetail_BackToApplications" xml:space="preserve">
+    <value>Volver a solicitudes</value>
+  </data>
+  <data name="AdminApplications_Title" xml:space="preserve">
+    <value>Solicitudes de asociado</value>
+  </data>
+  <data name="AdminApplicationDetail_Title" xml:space="preserve">
+    <value>Revisar solicitud</value>
+  </data>
+  <data name="AdminAppDetail_ApplicationReview" xml:space="preserve">
+    <value>Revisión de solicitud</value>
+  </data>
+  <data name="AdminAppDetail_ViewProfile" xml:space="preserve">
+    <value>Ver perfil</value>
+  </data>
+  <data name="AdminAppDetail_Motivation" xml:space="preserve">
+    <value>Motivación</value>
+  </data>
+  <data name="AdminAppDetail_Reviewer" xml:space="preserve">
+    <value>Revisor</value>
+  </data>
+  <data name="AdminAppDetail_StartReview" xml:space="preserve">
+    <value>Iniciar revisión</value>
+  </data>
+  <data name="AdminAppDetail_NotesLabel" xml:space="preserve">
+    <value>Notas (obligatorias para rechazar/solicitar información)</value>
+  </data>
+  <data name="AdminAppDetail_NotesPlaceholder" xml:space="preserve">
+    <value>Añadir notas...</value>
+  </data>
+  <data name="AdminAppDetail_ApproveConfirm" xml:space="preserve">
+    <value>¿Aprobar esta solicitud?</value>
+  </data>
+  <data name="AdminAppDetail_Approve" xml:space="preserve">
+    <value>Aprobar</value>
+  </data>
+  <data name="AdminAppDetail_RejectConfirm" xml:space="preserve">
+    <value>¿Rechazar esta solicitud?</value>
+  </data>
+  <data name="AdminAppDetail_Reject" xml:space="preserve">
+    <value>Rechazar</value>
+  </data>
+  <data name="AdminAppDetail_RequestMoreInfo" xml:space="preserve">
+    <value>Solicitar más información</value>
+  </data>
+  <data name="AdminAppDetail_Language" xml:space="preserve">
+    <value>Idioma</value>
+  </data>
+  <data name="BoardVoting_Title" xml:space="preserve">
+    <value>Panel de votación de la Junta</value>
+  </data>
+  <data name="BoardVoting_DetailTitle" xml:space="preserve">
+    <value>Votación: {0}</value>
+  </data>
+  <data name="BoardVoting_NoApplications" xml:space="preserve">
+    <value>No hay solicitudes pendientes de votación.</value>
+  </data>
+  <data name="BoardVoting_Applicant" xml:space="preserve">
+    <value>Solicitante</value>
+  </data>
+  <data name="BoardVoting_Tier" xml:space="preserve">
+    <value>Nivel</value>
+  </data>
+  <data name="BoardVoting_Details" xml:space="preserve">
+    <value>Detalles</value>
+  </data>
+  <data name="BoardVoting_Vote" xml:space="preserve">
+    <value>Voto</value>
+  </data>
+  <data name="BoardVoting_Note" xml:space="preserve">
+    <value>Nota</value>
+  </data>
+  <data name="BoardVoting_Date" xml:space="preserve">
+    <value>Fecha</value>
+  </data>
+  <data name="BoardVoting_CastVote" xml:space="preserve">
+    <value>Emitir tu voto</value>
+  </data>
+  <data name="BoardVoting_YourVote" xml:space="preserve">
+    <value>Tu voto</value>
+  </data>
+  <data name="BoardVoting_VotesSoFar" xml:space="preserve">
+    <value>Votos hasta ahora</value>
+  </data>
+  <data name="BoardVoting_BoardMember" xml:space="preserve">
+    <value>Miembro de la Junta</value>
+  </data>
+  <data name="BoardVoting_VoteSaved" xml:space="preserve">
+    <value>Tu voto ha sido registrado.</value>
+  </data>
+  <data name="BoardVoting_FinalizeDecision" xml:space="preserve">
+    <value>Finalizar decisión</value>
+  </data>
+  <data name="BoardVoting_MeetingDate" xml:space="preserve">
+    <value>Fecha de la reunión</value>
+  </data>
+  <data name="BoardVoting_DecisionNote" xml:space="preserve">
+    <value>Nota de decisión</value>
+  </data>
+  <data name="BoardVoting_DecisionNotePlaceholder" xml:space="preserve">
+    <value>Resumen de la decisión de la Junta...</value>
+  </data>
+  <data name="BoardVoting_Approve" xml:space="preserve">
+    <value>Aprobar</value>
+  </data>
+  <data name="BoardVoting_Reject" xml:space="preserve">
+    <value>Rechazar</value>
+  </data>
+  <data name="BoardVoting_ApproveConfirm" xml:space="preserve">
+    <value>Esto aprobará la solicitud y otorgará el nivel de membresía. ¿Continuar?</value>
+  </data>
+  <data name="BoardVoting_RejectConfirm" xml:space="preserve">
+    <value>Esto rechazará la solicitud. ¿Continuar?</value>
+  </data>
+  <data name="BoardVoting_Finalized" xml:space="preserve">
+    <value>La decisión sobre la solicitud ha sido finalizada.</value>
+  </data>
+  <data name="BoardVoting_ApplicationNotVotable" xml:space="preserve">
+    <value>Esta solicitud ya no está abierta para votación.</value>
+  </data>
+  <data name="BoardVoting_ApplicationNotVotable_WithStatus" xml:space="preserve">
+    <value>No se puede votar esta solicitud (estado actual: {0}).</value>
+  </data>
+  <data name="BoardVoting_ApplicationNotFound" xml:space="preserve">
+    <value>Solicitud no encontrada.</value>
+  </data>
+  <data name="BoardVoting_ConcurrencyConflict" xml:space="preserve">
+    <value>Esta solicitud fue modificada por otro usuario. Recarga e inténtalo de nuevo.</value>
+  </data>
+  <data name="BoardVoting_AdditionalInfo" xml:space="preserve">
+    <value>Información adicional</value>
+  </data>
+  <data name="BoardVoting_NoVotes" xml:space="preserve">
+    <value>No se puede finalizar: se requiere al menos un voto del consejo.</value>
+  </data>
+  <data name="BoardVoting_MeetingDateRequired" xml:space="preserve">
+    <value>No se puede finalizar: se requiere una fecha de reunión del consejo.</value>
+  </data>
+</root>

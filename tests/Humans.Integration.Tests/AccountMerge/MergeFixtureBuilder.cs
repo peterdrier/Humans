@@ -5,6 +5,8 @@ using Humans.Budget.Domain;
 using Humans.Campaigns.Data;
 using Humans.Campaigns.Domain;
 using Humans.Feedback.Data;
+using Humans.Governance.Data;
+using Humans.Governance.Domain;
 using Humans.Feedback.Domain;
 using Humans.Notifications.Data;
 using Humans.Notifications.Domain;
@@ -16,7 +18,7 @@ using NodaTime;
 
 // Mirror the DbContext alias: the CLR type is Humans.Domain.Entities.Application
 // but a sibling Humans.Application namespace shadows it inside this project.
-using MemberApplication = Humans.Domain.Entities.Application;
+using MemberApplication = Humans.Governance.Domain.Application;
 
 namespace Humans.Integration.Tests.AccountMerge;
 

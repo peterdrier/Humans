@@ -11,7 +11,7 @@ using Humans.Domain.Entities;
 using ConsentService = Humans.Application.Services.Consent.ConsentService;
 using Humans.Application.Interfaces.Legal;
 using Humans.Notifications.Contracts;
-using Humans.Application.Interfaces.Governance;
+using Humans.Governance.Contracts;
 using Humans.Application.Interfaces.HumanLifecycle;
 using Humans.Domain.Enums;
 using Humans.Application.Interfaces.Users;

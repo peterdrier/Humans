@@ -2,6 +2,8 @@ using Humans.Domain.Enums;
 using Humans.Campaigns.Contracts;
 using Humans.Application.Interfaces.Email;
 using Humans.UI.Authorization;
+using Humans.UI.Models;
+using Humans.Governance.Contracts;
 
 namespace Humans.Web.Models;
 
@@ -90,40 +92,6 @@ public class AdminHumanApplicationViewModel
     public Guid Id { get; set; }
     public ApplicationStatus Status { get; set; }
     public DateTime SubmittedAt { get; set; }
-}
-
-public class AdminApplicationListViewModel : PagedListViewModel
-{
-    public List<AdminApplicationViewModel> Applications { get; set; } = [];
-    public string? StatusFilter { get; set; }
-    public string? TierFilter { get; set; }
-}
-
-public class AdminApplicationViewModel
-{
-    public Guid Id { get; set; }
-    public Guid UserId { get; set; }
-    public string UserEmail { get; set; } = string.Empty;
-    public ApplicationStatus Status { get; set; }
-    public string StatusBadgeClass { get; set; } = "bg-secondary";
-    public DateTime SubmittedAt { get; set; }
-    public string MotivationPreview { get; set; } = string.Empty;
-    public MembershipTier MembershipTier { get; set; }
-}
-
-public class AdminApplicationDetailViewModel : ApplicationDetailViewModelBase
-{
-    public Guid UserId { get; set; }
-    public string UserEmail { get; set; } = string.Empty;
-    public string? Language { get; set; }
-    public bool CanApproveReject { get; set; }
-}
-
-public class AdminApplicationActionModel
-{
-    public Guid ApplicationId { get; set; }
-    public string Action { get; set; } = string.Empty;
-    public string? Notes { get; set; }
 }
 
 public class AdminRoleAssignmentListViewModel() : PagedListViewModel(50)

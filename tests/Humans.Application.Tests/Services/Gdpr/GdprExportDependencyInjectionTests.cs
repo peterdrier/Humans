@@ -4,7 +4,6 @@ using Humans.Application.Interfaces.Gdpr;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.Memory;
 using Microsoft.Extensions.DependencyInjection;
-using ApplicationDecisionService = Humans.Application.Services.Governance.ApplicationDecisionService;
 using ProfilesAccountMergeService = Humans.Application.Services.Users.AccountMergeService;
 using UsersUserService = Humans.Application.Services.Users.UserService;
 using AuditLogService = Humans.Application.Services.AuditLog.AuditLogService;
@@ -65,7 +64,7 @@ public class GdprExportDependencyInjectionTests
     [
         typeof(UsersUserService),
         typeof(ProfilesAccountMergeService),
-        typeof(ApplicationDecisionService),
+        SectionType("Humans.Governance.Services.ApplicationDecisionService"),
         typeof(ConsentService),
         typeof(TeamService),
         typeof(RoleAssignmentService),
@@ -116,13 +115,13 @@ public class GdprExportDependencyInjectionTests
         // Scan every assembly where section services live: Humans.Infrastructure
         // still holds most of them, Humans.Application is the intermediate target
         // per the repository/store/decorator migration (first move:
-        // ApplicationDecisionService, Governance PR #503), and each G5 section
+        // ApplicationDecisionService, Governance PR #503, since moved to G5), and each G5 section
         // project (nobodies-collective/Humans#866) holds its own. The section
         // assemblies come from SectionDiscoveryExtensions — the same discovery the
         // runtime uses, so a section that moves cannot silently drop out of this
         // sweep the way it would with a hard-coded assembly list (design §10).
         var infrastructureAssembly = typeof(Humans.Infrastructure.Data.HumansDbContext).Assembly;
-        var applicationAssembly = typeof(ApplicationDecisionService).Assembly;
+        var applicationAssembly = typeof(Humans.Application.Services.Users.UserService).Assembly;
 
         var foundContributors = new[] { infrastructureAssembly, applicationAssembly }
             .Concat(Web.Extensions.SectionDiscoveryExtensions.SectionAssemblies())

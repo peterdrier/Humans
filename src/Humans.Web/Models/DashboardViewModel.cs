@@ -1,3 +1,4 @@
+using Humans.Governance.Contracts;
 using Humans.Domain.Enums;
 
 namespace Humans.Web.Models;

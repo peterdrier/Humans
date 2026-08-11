@@ -1,0 +1,81 @@
+@using Humans.UI.Models
+@using Humans.UI.Models.Tables
+@using Microsoft.AspNetCore.Html
+@model Humans.Governance.Models.AdminApplicationListViewModel
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-controller="Admin" asp-action="Index">Admin</a></li>
+        <li class="breadcrumb-item active" aria-current="page">@Localizer["AdminApplications_Title"]</li>
+    </ol>
+</nav>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>@Localizer["AdminApplications_Title"]</h1>
+    <span class="text-muted">@string.Format(SharedLocalizer["Admin_TotalCount"].Value, Model.TotalCount)</span>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body d-flex flex-wrap gap-3 align-items-center">
+        <div class="btn-group" role="group">
+            <a asp-action="Admin" asp-route-tier="@Model.TierFilter" class="btn @(string.IsNullOrEmpty(Model.StatusFilter) ? "btn-primary" : "btn-outline-primary")">
+                @SharedLocalizer["AdminApp_Pending"]
+            </a>
+            <a asp-action="Admin" asp-route-status="Approved" asp-route-tier="@Model.TierFilter" class="btn @(Model.StatusFilter == "Approved" ? "btn-primary" : "btn-outline-primary")">
+                @SharedLocalizer["AdminHuman_Approved"]
+            </a>
+            <a asp-action="Admin" asp-route-status="Rejected" asp-route-tier="@Model.TierFilter" class="btn @(Model.StatusFilter == "Rejected" ? "btn-primary" : "btn-outline-primary")">
+                @SharedLocalizer["AdminApp_Rejected"]
+            </a>
+            <a asp-action="Admin" asp-route-status="Withdrawn" asp-route-tier="@Model.TierFilter" class="btn @(Model.StatusFilter == "Withdrawn" ? "btn-primary" : "btn-outline-primary")">
+                @SharedLocalizer["AdminApp_Withdrawn"]
+            </a>
+        </div>
+        <div class="btn-group" role="group">
+            <a asp-action="Admin" asp-route-status="@Model.StatusFilter" class="btn @(string.IsNullOrEmpty(Model.TierFilter) ? "btn-secondary" : "btn-outline-secondary") btn-sm">
+                All Tiers
+            </a>
+            <a asp-action="Admin" asp-route-status="@Model.StatusFilter" asp-route-tier="Colaborador" class="btn @(Model.TierFilter == "Colaborador" ? "btn-secondary" : "btn-outline-secondary") btn-sm">
+                Colaborador
+            </a>
+            <a asp-action="Admin" asp-route-status="@Model.StatusFilter" asp-route-tier="Asociado" class="btn @(Model.TierFilter == "Asociado" ? "btn-secondary" : "btn-outline-secondary") btn-sm">
+                Asociado
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        @{
+            Func<Humans.Governance.Models.AdminApplicationViewModel, IHtmlContent> applicantCell =
+                @<text>
+                    <vc:human user-id="@item.UserId" />
+                    <div><small class="text-muted">@item.UserEmail</small></div>
+                </text>;
+            Func<Humans.Governance.Models.AdminApplicationViewModel, IHtmlContent> tierCell =
+                @<text><span class="badge bg-info">@item.MembershipTier</span></text>;
+            Func<Humans.Governance.Models.AdminApplicationViewModel, IHtmlContent> statusCell =
+                @<text><span class="badge @item.StatusBadgeClass">@item.Status</span></text>;
+            Func<Humans.Governance.Models.AdminApplicationViewModel, IHtmlContent> previewCell =
+                @<text><small class="text-muted">@item.MotivationPreview</small></text>;
+            Func<Humans.Governance.Models.AdminApplicationViewModel, IHtmlContent> detailCell =
+                @<text>
+                    <a asp-action="AdminDetail" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary">
+                        @SharedLocalizer["AdminApp_Review"]
+                    </a>
+                </text>;
+            var appTable = TableModel.For(Model.Applications)
+                .Template(SharedLocalizer["AdminApp_Applicant"].Value, applicantCell)
+                .Template(Localizer["BoardVoting_Tier"].Value, tierCell, c => c.NoSort())
+                .Column(Localizer["Governance_Submitted"].Value, a => a.SubmittedAt.ToDate())
+                .Template(SharedLocalizer["Common_Status"].Value, statusCell, c => c.NoSort())
+                .Template(SharedLocalizer["AdminApp_Preview"].Value, previewCell)
+                .Template("", detailCell, c => c.NoSort().End())
+                .Empty(SharedLocalizer["AdminApp_NoApplicationsFound"].Value)
+                .ServerMode(null, false, new PagerViewModel(Model.TotalPages, Model.PageNumber, "Admin") { NavCssClass = "mt-4" })
+                .Build();
+        }
+        <partial name="_Table" model="appTable" />
+    </div>
+</div>

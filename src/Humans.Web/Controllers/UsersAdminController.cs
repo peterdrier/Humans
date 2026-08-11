@@ -7,7 +7,7 @@ using Humans.Application.Interfaces.Auth;
 using Humans.Campaigns.Contracts;
 using Humans.Application.Interfaces.Consent;
 using Humans.Application.Interfaces.Email;
-using Humans.Application.Interfaces.Governance;
+using Humans.Governance.Contracts;
 using Humans.Application.Interfaces.HumanLifecycle;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Profiles;

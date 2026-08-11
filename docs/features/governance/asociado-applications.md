@@ -1,17 +1,6 @@
 <!-- freshness:triggers
-  src/Humans.Application/Services/Governance/**
-  src/Humans.Web/Controllers/GovernanceApplicationsController.cs
-  src/Humans.Web/Controllers/GovernanceBoardVotingController.cs
-  src/Humans.Web/Controllers/GovernanceController.cs
-  src/Humans.Web/Views/Governance/Applications/**
-  src/Humans.Web/Views/Governance/**
-  src/Humans.Domain/Entities/Application.cs
-  src/Humans.Domain/Entities/ApplicationStateHistory.cs
-  src/Humans.Domain/Entities/BoardVote.cs
+  src/Sections/Humans.Governance/**
   src/Humans.Domain/TermExpiryCalculator.cs
-  src/Humans.Infrastructure/Data/Configurations/Governance/ApplicationConfiguration.cs
-  src/Humans.Infrastructure/Data/Configurations/Governance/ApplicationStateHistoryConfiguration.cs
-  src/Humans.Infrastructure/Data/Configurations/Governance/BoardVoteConfiguration.cs
 -->
 <!-- freshness:flag-on-change
   Tier application state machine, approval effects, and renewal flow — review when Application entity or governance/application controllers change.

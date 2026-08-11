@@ -433,14 +433,8 @@
     },
     "Governance": {
       "paths": [
-        "src/Humans.Application/Interfaces/Governance/**",
-        "src/Humans.Application/DTOs/MembershipPartition.cs",
-        "src/Humans.Application/DTOs/MembershipSnapshot.cs",
-        "src/Humans.Application/Services/Governance/**",
-        "src/Humans.Domain/Entities/Application*",
-        "src/Humans.Domain/Entities/Board*",
-        "src/Humans.Infrastructure/Repositories/Governance/**",
-        "src/Humans.Web/Controllers/Governance*"
+        "src/Sections/Humans.Governance/**",
+        "src/Sections/Humans.Governance.Contracts/**"
       ],
       "symbols": [
         "Application*",

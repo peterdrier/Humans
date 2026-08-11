@@ -1,4 +1,5 @@
 <!-- freshness:triggers
+  src/Sections/Humans.Governance/**
   src/Humans.Application/Services/Gdpr/**
   src/Humans.Application/Interfaces/Gdpr/**
   src/Humans.Web/Controllers/ProfileController.cs
@@ -18,7 +19,6 @@
   src/Sections/Humans.Budget/Services/BudgetService.cs
   src/Humans.Application/Services/Users/AccountMergeService.cs
   src/Humans.Application/Services/Surveys/SurveyService.cs
-  src/Humans.Application/Services/Governance/ApplicationDecisionService.cs
   src/Humans.Application/Services/Agent/AgentService.cs
   src/Sections/Humans.Events/Services/Service.cs
   src/Humans.Application/Services/Issues/IssuesService.cs

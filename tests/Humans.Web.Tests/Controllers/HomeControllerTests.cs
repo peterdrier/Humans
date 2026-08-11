@@ -1,3 +1,4 @@
+using Humans.Governance.Contracts;
 using System.Security.Claims;
 using Humans.Application;
 using Humans.Application.Configuration;

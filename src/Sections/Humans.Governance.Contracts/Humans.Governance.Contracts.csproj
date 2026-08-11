@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Governance's cross-section surface, carved into its own leaf project because most of its
+    consumers are still in Base: OnboardingService, DashboardService, AdminDashboardService and
+    ConsentService read through IApplicationServiceRead / IMembershipCalculatorRead,
+    SystemTeamSyncJob, SuspendNonCompliantMembersJob, SendReConsentReminderJob and
+    HumansMetricsService do the same from Humans.Infrastructure, and TermRenewalReminderJob
+    drives the three renewal members. A Contracts/ *folder* inside Humans.Governance would
+    therefore make Base reference a section and cycle (design §15.5b,
+    memory/architecture/section-project-cycle-fix.md).
+
+    It holds exactly what lives outside the section: the tier-application read surface, the
+    three members the renewal job needs, the membership-calculator read surface, the DTOs
+    those signatures name, and ApplicationStatus — which cannot follow the entities into the
+    section's internal Domain/ because UserApplicationSnapshot names it and so do a dozen Base
+    and Shell read paths (design §15 step 5, Budget's rule).
+
+    References Humans.Interfaces (IApplicationService) and Humans.Domain (MembershipTier,
+    MembershipStatus — Profiles' vocabulary this section re-exports), the same pair
+    Humans.Campaigns.Contracts takes. Acyclic: Humans.Domain names only Humans.Interfaces.
+  -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
+    <ProjectReference Include="..\..\Humans.Domain\Humans.Domain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NodaTime" />
+  </ItemGroup>
+
+</Project>

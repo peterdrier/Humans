@@ -1,5 +1,7 @@
 using Humans.Domain.Enums;
 
+using Humans.UI.Models;
+
 namespace Humans.Web.Models;
 
 public class AuditLogListViewModel() : PagedListViewModel(50)

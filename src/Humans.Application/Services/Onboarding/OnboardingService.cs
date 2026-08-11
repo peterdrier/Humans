@@ -2,7 +2,7 @@ using Microsoft.Extensions.Logging;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Consent;
-using Humans.Application.Interfaces.Governance;
+using Humans.Governance.Contracts;
 using Humans.Application.Interfaces.HumanLifecycle;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;

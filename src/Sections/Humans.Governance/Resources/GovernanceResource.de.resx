@@ -1,0 +1,379 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- ReSharper disable MarkupTextTypo -->
+<root xmlns:ns1="urn:schemas-microsoft-com:xml-msdata" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:schema id="root">
+    <xs:element name="root" ns1:IsDataSet="true">
+      <xs:complexType>
+        <xs:choice maxOccurs="unbounded">
+          <xs:element name="data">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element name="value" type="xsd:string" minOccurs="0" ns1:Ordinal="1" />
+                <xs:element name="comment" type="xsd:string" minOccurs="0" ns1:Ordinal="2" />
+              </xs:sequence>
+              <xs:attribute name="name" type="xsd:string" ns1:Ordinal="0" />
+              <xs:attribute name="type" type="xsd:string" />
+              <xs:attribute name="mimetype" type="xsd:string" />
+            </xs:complexType>
+          </xs:element>
+          <xs:element name="resheader">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element name="value" type="xsd:string" minOccurs="0" ns1:Ordinal="1" />
+              </xs:sequence>
+              <xs:attribute name="name" type="xsd:string" use="required" />
+            </xs:complexType>
+          </xs:element>
+        </xs:choice>
+      </xs:complexType>
+    </xs:element>
+  </xs:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>1.3</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="Governance_Title" xml:space="preserve">
+    <value>Governance</value>
+  </data>
+  <data name="GovernanceApplication_Title" xml:space="preserve">
+    <value>Governance-Antrag</value>
+  </data>
+  <data name="ApplicationDetail_Title" xml:space="preserve">
+    <value>Antragsdetails</value>
+  </data>
+  <data name="Governance_NotYetApplied" xml:space="preserve">
+    <value>Noch nicht beworben</value>
+  </data>
+  <data name="Governance_AsociadoDescription" xml:space="preserve">
+    <value>Asociados sind die formellen stimmberechtigten Mitglieder von Nobodies Collective. Als Asociado können Sie an Mitgliederversammlungen teilnehmen, über kollektive Entscheidungen abstimmen und an Wahlen teilnehmen.</value>
+  </data>
+  <data name="Governance_Optional" xml:space="preserve">
+    <value>Dies ist freiwillig. Die meisten humans müssen keine Asociados werden. Sie haben bereits Zugang zu Ressourcen, sobald Sie Ihr Profil und Ihre Einwilligungen abgeschlossen haben.</value>
+  </data>
+  <data name="Governance_ApplyButton" xml:space="preserve">
+    <value>Als Asociado bewerben</value>
+  </data>
+  <data name="Governance_ColaboradorCanApply" xml:space="preserve">
+    <value>Colaboradores können sich auch für den Asociado-Status bewerben, wenn sie an der Governance teilnehmen möchten.</value>
+  </data>
+  <data name="Governance_ApplyForAsociado" xml:space="preserve">
+    <value>Als Asociado bewerben</value>
+  </data>
+  <data name="Governance_YourApplication" xml:space="preserve">
+    <value>Ihr Antrag</value>
+  </data>
+  <data name="Governance_Submitted" xml:space="preserve">
+    <value>Eingereicht</value>
+  </data>
+  <data name="Governance_Resolved" xml:space="preserve">
+    <value>Abgeschlossen</value>
+  </data>
+  <data name="Governance_UnderReviewMessage" xml:space="preserve">
+    <value>Ihr Antrag wird geprüft. Wir benachrichtigen Sie per E-Mail, sobald eine Entscheidung getroffen wurde.</value>
+  </data>
+  <data name="Governance_ApprovedMessage" xml:space="preserve">
+    <value>Willkommen! Sie sind jetzt Asociado von Nobodies Collective.</value>
+  </data>
+  <data name="Governance_ApprovedMessageColaborador" xml:space="preserve">
+    <value>Sie sind ein/e genehmigte/r Colaborador/a von Nobodies Collective.</value>
+  </data>
+  <data name="Governance_ApprovedMessageAsociado" xml:space="preserve">
+    <value>Willkommen! Sie sind jetzt Asociado/a von Nobodies Collective.</value>
+  </data>
+  <data name="Governance_Tier" xml:space="preserve">
+    <value>Stufe</value>
+  </data>
+  <data name="Governance_TermExpiry" xml:space="preserve">
+    <value>Amtszeit endet</value>
+  </data>
+  <data name="Governance_RejectedMessage" xml:space="preserve">
+    <value>Ihr Antrag wurde nicht genehmigt. Bei Fragen wenden Sie sich bitte an den Vorstand.</value>
+  </data>
+  <data name="Governance_WhatIsAsociado" xml:space="preserve">
+    <value>Was ist ein Asociado?</value>
+  </data>
+  <data name="Governance_AsociadoLawDescription" xml:space="preserve">
+    <value>Asociados sind die formellen stimmberechtigten Mitglieder des Vereins nach spanischem Recht.</value>
+  </data>
+  <data name="Governance_AsociadoCanDo" xml:space="preserve">
+    <value>Als Asociado können Sie:</value>
+  </data>
+  <data name="Governance_AttendAssemblies" xml:space="preserve">
+    <value>An Mitgliederversammlungen teilnehmen</value>
+  </data>
+  <data name="Governance_VoteOnDecisions" xml:space="preserve">
+    <value>Über kollektive Entscheidungen abstimmen</value>
+  </data>
+  <data name="Governance_ParticipateElections" xml:space="preserve">
+    <value>An Vorstandswahlen teilnehmen</value>
+  </data>
+  <data name="Governance_WhoShouldApply" xml:space="preserve">
+    <value>Wer sollte sich bewerben?</value>
+  </data>
+  <data name="Governance_WhoShouldApplyDescription" xml:space="preserve">
+    <value>Die Governance-Mitgliedschaft ist für humans in Führungspositionen gedacht:</value>
+  </data>
+  <data name="Governance_CampLeads" xml:space="preserve">
+    <value>Camp Leads und Koordinatoren</value>
+  </data>
+  <data name="Governance_MetaVolunteers" xml:space="preserve">
+    <value>Meta-Freiwillige und Team Leads</value>
+  </data>
+  <data name="Governance_LongTermMembers" xml:space="preserve">
+    <value>Langfristig engagierte Community-Mitglieder</value>
+  </data>
+  <data name="Governance_BoardReviews" xml:space="preserve">
+    <value>Der Vorstand prüft Anträge auf Grundlage des Community-Engagements und der Übereinstimmung mit der Mission des Kollektivs.</value>
+  </data>
+  <data name="Governance_NoteNotRequired" xml:space="preserve">
+    <value>Hinweis: Sie müssen kein Asociado sein, um auf Ressourcen zuzugreifen oder an Veranstaltungen teilzunehmen.</value>
+  </data>
+  <data name="Governance_Statutes" xml:space="preserve">
+    <value>Satzung</value>
+  </data>
+  <data name="Governance_MemberCounts" xml:space="preserve">
+    <value>Gemeinschaft</value>
+  </data>
+  <data name="Governance_Colaboradores" xml:space="preserve">
+    <value>Colaboradores</value>
+  </data>
+  <data name="Governance_Asociados" xml:space="preserve">
+    <value>Asociados</value>
+  </data>
+  <data name="MyApplications_Title" xml:space="preserve">
+    <value>Meine Anträge</value>
+  </data>
+  <data name="GovernanceCreate_NewApplication" xml:space="preserve">
+    <value>Neuer Antrag</value>
+  </data>
+  <data name="GovernanceCreate_Lead" xml:space="preserve">
+    <value>Colaboradors und Asociados übernehmen Governance-Verantwortung. Wähle die Stufe, die am besten zu deinem Engagement passt.</value>
+  </data>
+  <data name="GovernanceCreate_MotivationPlaceholder" xml:space="preserve">
+    <value>Bitte teilen Sie Ihre Motivation für den Beitritt mit...</value>
+  </data>
+  <data name="GovernanceCreate_MotivationHelp" xml:space="preserve">
+    <value>Mindestens 50 Zeichen. Erzählen Sie uns von sich und warum Sie Teil des Kollektivs werden möchten.</value>
+  </data>
+  <data name="GovernanceCreate_AdditionalInfoPlaceholder" xml:space="preserve">
+    <value>Weitere Informationen, die Sie teilen möchten...</value>
+  </data>
+  <data name="GovernanceCreate_AdditionalInfoHelp" xml:space="preserve">
+    <value>Optional. Geben Sie relevante Fähigkeiten, Erfahrungen oder an, wie Sie von uns erfahren haben.</value>
+  </data>
+  <data name="GovernanceCreate_ConfirmAccuracy" xml:space="preserve">
+    <value>Ich bestätige, dass alle in diesem Antrag gemachten Angaben korrekt und wahrheitsgemäß sind.</value>
+  </data>
+  <data name="GovernanceCreate_SubmitApplication" xml:space="preserve">
+    <value>Antrag einreichen</value>
+  </data>
+  <data name="GovernanceCreate_IsThisRightForMe" xml:space="preserve">
+    <value>Ist das das Richtige für mich?</value>
+  </data>
+  <data name="GovernanceCreate_IdealFor" xml:space="preserve">
+    <value>Governance ist ideal für:</value>
+  </data>
+  <data name="GovernanceCreate_WhatHappensNext" xml:space="preserve">
+    <value>Was passiert als Nächstes?</value>
+  </data>
+  <data name="GovernanceCreate_Step1" xml:space="preserve">
+    <value>Ihr Antrag wird vom Vorstand geprüft</value>
+  </data>
+  <data name="GovernanceCreate_Step2" xml:space="preserve">
+    <value>Der Vorstand berücksichtigt Community-Engagement und Eignung</value>
+  </data>
+  <data name="GovernanceCreate_Step3" xml:space="preserve">
+    <value>Möglicherweise kontaktieren wir Sie für weitere Informationen</value>
+  </data>
+  <data name="GovernanceCreate_Step4" xml:space="preserve">
+    <value>Sie erhalten eine E-Mail, sobald eine Entscheidung getroffen wurde</value>
+  </data>
+  <data name="ApplicationDetail_Details" xml:space="preserve">
+    <value>Details</value>
+  </data>
+  <data name="ApplicationDetail_ApplicationInfo" xml:space="preserve">
+    <value>Antragsinformationen</value>
+  </data>
+  <data name="ApplicationDetail_ReviewStarted" xml:space="preserve">
+    <value>Prüfung begonnen</value>
+  </data>
+  <data name="ApplicationDetail_ReviewedBy" xml:space="preserve">
+    <value>Geprüft von</value>
+  </data>
+  <data name="ApplicationDetail_YourMotivation" xml:space="preserve">
+    <value>Ihre Motivation</value>
+  </data>
+  <data name="ApplicationDetail_AdditionalInfo" xml:space="preserve">
+    <value>Zusätzliche Informationen</value>
+  </data>
+  <data name="ApplicationDetail_ReviewerNotes" xml:space="preserve">
+    <value>Anmerkungen des Prüfers</value>
+  </data>
+  <data name="ApplicationDetail_WithdrawTitle" xml:space="preserve">
+    <value>Antrag zurückziehen</value>
+  </data>
+  <data name="ApplicationDetail_WithdrawDescription" xml:space="preserve">
+    <value>Wenn Sie den Antrag nicht mehr fortführen möchten, können Sie ihn zurückziehen.</value>
+  </data>
+  <data name="ApplicationDetail_WithdrawConfirm" xml:space="preserve">
+    <value>Sind Sie sicher, dass Sie diesen Antrag zurückziehen möchten?</value>
+  </data>
+  <data name="ApplicationDetail_WithdrawButton" xml:space="preserve">
+    <value>Antrag zurückziehen</value>
+  </data>
+  <data name="ApplicationDetail_History" xml:space="preserve">
+    <value>Antragsverlauf</value>
+  </data>
+  <data name="ApplicationDetail_NoHistory" xml:space="preserve">
+    <value>Kein Verlauf verfügbar.</value>
+  </data>
+  <data name="ApplicationDetail_By" xml:space="preserve">
+    <value>von</value>
+  </data>
+  <data name="ApplicationDetail_BackToApplications" xml:space="preserve">
+    <value>Zurück zu den Anträgen</value>
+  </data>
+  <data name="AdminApplications_Title" xml:space="preserve">
+    <value>Asociado-Anträge</value>
+  </data>
+  <data name="AdminApplicationDetail_Title" xml:space="preserve">
+    <value>Antrag prüfen</value>
+  </data>
+  <data name="AdminAppDetail_ApplicationReview" xml:space="preserve">
+    <value>Antragsprüfung</value>
+  </data>
+  <data name="AdminAppDetail_ViewProfile" xml:space="preserve">
+    <value>Profil anzeigen</value>
+  </data>
+  <data name="AdminAppDetail_Motivation" xml:space="preserve">
+    <value>Motivation</value>
+  </data>
+  <data name="AdminAppDetail_Reviewer" xml:space="preserve">
+    <value>Prüfer</value>
+  </data>
+  <data name="AdminAppDetail_StartReview" xml:space="preserve">
+    <value>Prüfung starten</value>
+  </data>
+  <data name="AdminAppDetail_NotesLabel" xml:space="preserve">
+    <value>Notizen (erforderlich für Ablehnung/Rückfrage)</value>
+  </data>
+  <data name="AdminAppDetail_NotesPlaceholder" xml:space="preserve">
+    <value>Notizen hinzufügen...</value>
+  </data>
+  <data name="AdminAppDetail_ApproveConfirm" xml:space="preserve">
+    <value>Diesen Antrag genehmigen?</value>
+  </data>
+  <data name="AdminAppDetail_Approve" xml:space="preserve">
+    <value>Genehmigen</value>
+  </data>
+  <data name="AdminAppDetail_RejectConfirm" xml:space="preserve">
+    <value>Diesen Antrag ablehnen?</value>
+  </data>
+  <data name="AdminAppDetail_Reject" xml:space="preserve">
+    <value>Ablehnen</value>
+  </data>
+  <data name="AdminAppDetail_RequestMoreInfo" xml:space="preserve">
+    <value>Weitere Informationen anfordern</value>
+  </data>
+  <data name="AdminAppDetail_Language" xml:space="preserve">
+    <value>Sprache</value>
+  </data>
+  <data name="BoardVoting_Title" xml:space="preserve">
+    <value>Abstimmungsübersicht des Vorstands</value>
+  </data>
+  <data name="BoardVoting_DetailTitle" xml:space="preserve">
+    <value>Abstimmung: {0}</value>
+  </data>
+  <data name="BoardVoting_NoApplications" xml:space="preserve">
+    <value>Keine Anträge warten auf Abstimmung.</value>
+  </data>
+  <data name="BoardVoting_Applicant" xml:space="preserve">
+    <value>Antragsteller</value>
+  </data>
+  <data name="BoardVoting_Tier" xml:space="preserve">
+    <value>Stufe</value>
+  </data>
+  <data name="BoardVoting_Details" xml:space="preserve">
+    <value>Details</value>
+  </data>
+  <data name="BoardVoting_Vote" xml:space="preserve">
+    <value>Stimme</value>
+  </data>
+  <data name="BoardVoting_Note" xml:space="preserve">
+    <value>Notiz</value>
+  </data>
+  <data name="BoardVoting_Date" xml:space="preserve">
+    <value>Datum</value>
+  </data>
+  <data name="BoardVoting_CastVote" xml:space="preserve">
+    <value>Deine Stimme abgeben</value>
+  </data>
+  <data name="BoardVoting_YourVote" xml:space="preserve">
+    <value>Deine Stimme</value>
+  </data>
+  <data name="BoardVoting_VotesSoFar" xml:space="preserve">
+    <value>Bisherige Stimmen</value>
+  </data>
+  <data name="BoardVoting_BoardMember" xml:space="preserve">
+    <value>Vorstandsmitglied</value>
+  </data>
+  <data name="BoardVoting_VoteSaved" xml:space="preserve">
+    <value>Deine Stimme wurde erfasst.</value>
+  </data>
+  <data name="BoardVoting_FinalizeDecision" xml:space="preserve">
+    <value>Entscheidung finalisieren</value>
+  </data>
+  <data name="BoardVoting_MeetingDate" xml:space="preserve">
+    <value>Datum der Vorstandssitzung</value>
+  </data>
+  <data name="BoardVoting_DecisionNote" xml:space="preserve">
+    <value>Entscheidungsnotiz</value>
+  </data>
+  <data name="BoardVoting_DecisionNotePlaceholder" xml:space="preserve">
+    <value>Zusammenfassung der Vorstandsentscheidung...</value>
+  </data>
+  <data name="BoardVoting_Approve" xml:space="preserve">
+    <value>Genehmigen</value>
+  </data>
+  <data name="BoardVoting_Reject" xml:space="preserve">
+    <value>Ablehnen</value>
+  </data>
+  <data name="BoardVoting_ApproveConfirm" xml:space="preserve">
+    <value>Dies genehmigt den Antrag und gewährt die Mitgliedschaftsstufe. Fortfahren?</value>
+  </data>
+  <data name="BoardVoting_RejectConfirm" xml:space="preserve">
+    <value>Dies lehnt den Antrag ab. Fortfahren?</value>
+  </data>
+  <data name="BoardVoting_Finalized" xml:space="preserve">
+    <value>Die Antragsentscheidung wurde finalisiert.</value>
+  </data>
+  <data name="BoardVoting_ApplicationNotVotable" xml:space="preserve">
+    <value>Dieser Antrag ist nicht mehr zur Abstimmung offen.</value>
+  </data>
+  <data name="BoardVoting_ApplicationNotVotable_WithStatus" xml:space="preserve">
+    <value>Über diesen Antrag kann nicht abgestimmt werden (aktueller Status: {0}).</value>
+  </data>
+  <data name="BoardVoting_ApplicationNotFound" xml:space="preserve">
+    <value>Antrag nicht gefunden.</value>
+  </data>
+  <data name="BoardVoting_ConcurrencyConflict" xml:space="preserve">
+    <value>Dieser Antrag wurde von einem anderen Benutzer geändert. Bitte neu laden und erneut versuchen.</value>
+  </data>
+  <data name="BoardVoting_AdditionalInfo" xml:space="preserve">
+    <value>Zusätzliche Informationen</value>
+  </data>
+  <data name="BoardVoting_NoVotes" xml:space="preserve">
+    <value>Kann nicht abgeschlossen werden: Mindestens eine Vorstandsstimme ist erforderlich.</value>
+  </data>
+  <data name="BoardVoting_MeetingDateRequired" xml:space="preserve">
+    <value>Kann nicht abgeschlossen werden: Ein Datum der Vorstandssitzung ist erforderlich.</value>
+  </data>
+</root>

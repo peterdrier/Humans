@@ -1,7 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application.Services.AuditLog;
 using Humans.Application.Services.Camps;
-using Humans.Application.Services.Governance;
 using Humans.Application.Services.Legal;
 using Humans.Application.Services.Shifts;
 using Microsoft.Extensions.Caching.Memory;
@@ -66,7 +65,7 @@ public class ApplicationServicesTakeNoMemoryCacheRule
         // count is NOT here — its read is already cache-served by CachingUserService,
         // so AdminDashboardService stays cache-free; double-caching it would be §4b.)
         SectionType("Humans.Feedback.Services.FeedbackService"),  // CacheKeys.FeedbackBadgeCount
-        typeof(ApplicationDecisionService),  // CacheKeys.VotingBadge(userId)
+        SectionType("Humans.Governance.Services.ApplicationDecisionService"),  // CacheKeys.VotingBadge(userId)
         // CacheKeys.HoldedContacts — 2-min TTL so /Finance/Creditors and /Expenses/{id} don't
         // call Holded live on every admin page load (nobodies-collective/Humans#976).
         SectionType("Humans.Finance.Services.Service")

@@ -19,9 +19,9 @@ This file is the **index and cross-cutting rule sheet** for the data model. Per-
 | ProfileLanguage | [Profiles](../sections/Profiles.md) | |
 | VolunteerHistoryEntry | [Profiles](../sections/Profiles.md) | Sub-aggregate of Profile. |
 | AccountMergeRequest | [Profiles](../sections/Profiles.md) | `AccountMergeService` + `DuplicateAccountService` live in `Humans.Application.Services.Profiles/`. |
-| Application | [Governance](../sections/Governance.md) | |
-| ApplicationStateHistory | [Governance](../sections/Governance.md) | Append-only (§12). |
-| BoardVote | [Governance](../sections/Governance.md) | Transient — deleted on finalization. |
+| Application | [Governance](../../src/Sections/Humans.Governance/Docs/Governance.md) | |
+| ApplicationStateHistory | [Governance](../../src/Sections/Humans.Governance/Docs/Governance.md) | Append-only (§12). |
+| BoardVote | [Governance](../../src/Sections/Humans.Governance/Docs/Governance.md) | Transient — deleted on finalization. |
 | RoleAssignment | [Auth](../sections/Auth.md) | |
 | LegalDocument / DocumentVersion | [Consent](../sections/Consent.md) | |
 | ConsentRecord | [Consent](../sections/Consent.md) | Append-only via DB triggers (§12). |
@@ -214,7 +214,7 @@ The following entities are append-only — no `UpdateAsync` / `DeleteAsync` on t
 | AuditLogEntry | [Audit Log](../sections/AuditLog.md) | Architecture test: `AuditLogArchitectureTests.IAuditLogRepository_HasNoUpdateOrDeleteMethods` |
 | BudgetAuditLog | [Budget](../../src/Sections/Humans.Budget/Docs/Budget.md) | Repository shape — no update/delete methods |
 | CampPolygonHistory | [City Planning](../../src/Sections/Humans.CityPlanning/Docs/CityPlanning.md) | Architecture test: `CityPlanningArchitectureTests` pins append-only repo surface |
-| ApplicationStateHistory | [Governance](../sections/Governance.md) | Repository shape — no update/delete methods |
+| ApplicationStateHistory | [Governance](../../src/Sections/Humans.Governance/Docs/Governance.md) | Repository shape — no update/delete methods |
 | TeamJoinRequestStateHistory | [Teams](../sections/Teams.md) | Repository shape (target; pending sub-task nobodies-collective/Humans#540a) |
 
 ## Constants

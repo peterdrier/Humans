@@ -5,6 +5,8 @@ using Humans.Domain.Enums;
 using Humans.Domain.ValueObjects;
 using NodaTime;
 
+using Humans.UI.Models;
+
 namespace Humans.Web.Models;
 
 public class TeamIndexViewModel

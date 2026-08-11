@@ -1,6 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application;
-using Humans.Application.Interfaces.Governance;
+using Humans.Governance.Contracts;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;

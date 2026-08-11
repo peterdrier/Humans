@@ -4,6 +4,8 @@ using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
+using Humans.UI.Models;
+
 namespace Humans.Web.Controllers;
 
 [Route("Legal")]

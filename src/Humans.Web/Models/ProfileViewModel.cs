@@ -1,3 +1,4 @@
+using Humans.Governance.Contracts;
 using System.ComponentModel.DataAnnotations;
 using NodaTime;
 using Humans.Application.Extensions;

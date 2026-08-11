@@ -29,6 +29,8 @@
     <Project Path="src/Sections/Humans.Finance.Contracts/Humans.Finance.Contracts.csproj" />
     <Project Path="src/Sections/Humans.Gate/Humans.Gate.csproj" />
     <Project Path="src/Sections/Humans.Gate.Contracts/Humans.Gate.Contracts.csproj" />
+    <Project Path="src/Sections/Humans.Governance/Humans.Governance.csproj" />
+    <Project Path="src/Sections/Humans.Governance.Contracts/Humans.Governance.Contracts.csproj" />
     <Project Path="src/Sections/Humans.Issues/Humans.Issues.csproj" />
     <Project Path="src/Sections/Humans.Issues.Contracts/Humans.Issues.Contracts.csproj" />
     <Project Path="src/Sections/Humans.Notifications/Humans.Notifications.csproj" />
@@ -57,6 +59,7 @@
     <Project Path="tests/Humans.Feedback.Tests/Humans.Feedback.Tests.csproj" />
     <Project Path="tests/Humans.Finance.Tests/Humans.Finance.Tests.csproj" />
     <Project Path="tests/Humans.Gate.Tests/Humans.Gate.Tests.csproj" />
+    <Project Path="tests/Humans.Governance.Tests/Humans.Governance.Tests.csproj" />
     <Project Path="tests/Humans.Issues.Tests/Humans.Issues.Tests.csproj" />
     <Project Path="tests/Humans.Notifications.Tests/Humans.Notifications.Tests.csproj" />
     <Project Path="tests/Humans.Scanner.Tests/Humans.Scanner.Tests.csproj" />

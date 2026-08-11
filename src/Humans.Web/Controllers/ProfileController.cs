@@ -1,3 +1,4 @@
+using Humans.UI.Models.Tables;
 // @e2e: board.spec.ts
 // @e2e: profile.spec.ts
 using Humans.UI.Controllers;
@@ -31,7 +32,7 @@ using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Interfaces.Onboarding;
-using Humans.Application.Interfaces.Governance;
+using Humans.Governance.Contracts;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Models;
 using Humans.Application.Services.Profiles;
@@ -150,7 +151,7 @@ public class ProfileController(
         {
             viewModel.TierApplicationStatus = latestApplication.Status;
             viewModel.TierApplicationTier = latestApplication.MembershipTier;
-            viewModel.TierApplicationBadgeClass = latestApplication.Status.GetBadgeClass();
+            viewModel.TierApplicationBadgeClass = EnumBadgeMap.For(latestApplication.Status);
         }
 
         return View("Index", viewModel);

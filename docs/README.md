@@ -102,7 +102,7 @@ Terse, authoritative invariant docs for each major section: concepts, data model
 | [Finance](../src/Sections/Humans.Finance/Docs/Finance.md) | Treasurer's reality side of money — actuals, reconciliation, and treasurer-facing operational data sharing keys with Budget |
 | [Gate](../src/Sections/Humans.Gate/Docs/Gate.md) | Gate ticket scanning that decides entry at the event door and writes the durable admission record — distinct from the read-only Scanner section, which must never check anyone in |
 | [Google Integration](sections/GoogleIntegration.md) | Shared-Drive-only sync for Drive folders, Groups, and Workspace accounts with reconciliation and Drive-activity monitoring |
-| [Governance](sections/Governance.md) | Colaborador and Asociado tier applications, Board voting workflow, and term lifecycle (not volunteer onboarding) |
+| [Governance](../src/Sections/Humans.Governance/Docs/Governance.md) | Colaborador and Asociado tier applications, Board voting workflow, and term lifecycle (not volunteer onboarding) |
 | [Guide](sections/Guide.md) | The in-app `/Guide` renderer for `docs/guide/` markdown with role-scoped block filtering |
 | [Holded](sections/Holded.md) | Thin typed-`HttpClient` surface to the Holded accounting API, shared by Expenses (purchase documents) and Finance (ledger reconciliation) |
 | [Issues](../src/Sections/Humans.Issues/Docs/Issues.md) | In-app issue tracker (bugs, features, questions) with screenshots, role-routed triage, and a reporter↔handler conversation thread |

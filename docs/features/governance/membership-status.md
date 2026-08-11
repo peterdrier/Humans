@@ -1,6 +1,5 @@
 <!-- freshness:triggers
-  src/Humans.Application/Services/Governance/MembershipCalculator.cs
-  src/Humans.Application/Services/Governance/MembershipQuery.cs
+  src/Sections/Humans.Governance/**
   src/Humans.Application/Services/Consent/ConsentService.cs
   src/Humans.Domain/Constants/MembershipStatusLabels.cs
   src/Humans.Domain/Constants/SystemTeamIds.cs

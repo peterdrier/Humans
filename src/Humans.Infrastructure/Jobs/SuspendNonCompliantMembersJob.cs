@@ -6,7 +6,7 @@ using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.GoogleIntegration;
-using Humans.Application.Interfaces.Governance;
+using Humans.Governance.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;

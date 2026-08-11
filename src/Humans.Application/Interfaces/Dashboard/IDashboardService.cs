@@ -1,3 +1,4 @@
+using Humans.Governance.Contracts;
 using Humans.Application.DTOs;
 using Humans.Domain.Enums;
 using NodaTime;

@@ -4,20 +4,14 @@ using Humans.Domain.Enums;
 using Humans.Web.Controllers;
 using Humans.Web.Helpers;
 using Humans.Web.Models;
+using Humans.UI.ViewComponents;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
-using Humans.Application.Interfaces.Governance;
+using Humans.Governance.Contracts;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Profiles;
 
 namespace Humans.Web.ViewComponents;
-
-public enum ProfileCardViewMode
-{
-    Self,
-    Public,
-    Admin
-}
 
 public class ProfileCardViewComponent(
     IUserServiceRead userService,

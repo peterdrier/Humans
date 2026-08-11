@@ -12,6 +12,7 @@ using Humans.CityPlanning.Data;
 using Humans.Containers.Data;
 using Humans.Expenses.Data;
 using Humans.Feedback.Data;
+using Humans.Governance.Data;
 using Humans.Issues.Data;
 using Humans.Finance.Data;
 using Humans.Gate.Data;

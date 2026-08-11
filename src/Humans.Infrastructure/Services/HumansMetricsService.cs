@@ -10,7 +10,7 @@ using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Legal;
 using Humans.Application.Interfaces.Teams;
-using Humans.Application.Interfaces.Governance;
+using Humans.Governance.Contracts;
 
 namespace Humans.Infrastructure.Services;
 

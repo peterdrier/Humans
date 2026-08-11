@@ -1,11 +1,8 @@
 <!-- freshness:triggers
-  src/Humans.Application/Services/Governance/**
+  src/Sections/Humans.Governance/**
   src/Humans.Application/Services/Profiles/ProfileService.cs
   src/Humans.Application/Services/Teams/TeamService.cs
-  src/Humans.Web/Controllers/GovernanceApplicationsController.cs
-  src/Humans.Web/Controllers/GovernanceController.cs
   src/Humans.Web/Controllers/ProfileController.cs
-  src/Humans.Domain/Entities/Application.cs
   src/Humans.Domain/Entities/Profile.cs
   src/Humans.Domain/Constants/SystemTeamIds.cs
   src/Humans.Domain/Constants/MembershipStatusLabels.cs

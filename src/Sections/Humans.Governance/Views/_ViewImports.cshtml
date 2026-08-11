@@ -1,0 +1,24 @@
+@* A section RCL does NOT inherit the host's Views/_ViewImports.cshtml. Omitting a line
+   here ships broken markup with a green build and no runtime error — see design §1/§2.
+   Guarded by GovernancePageRenderTests (step 12). *@
+@using Humans.Application.Extensions
+@using Humans.Domain.Enums
+@using Humans.Governance
+@using Humans.Governance.Contracts
+@using Humans.Governance.Controllers
+@using Humans.Governance.Domain
+@using Humans.Governance.Models
+@using Humans.Governance.Services.Dtos
+@using Humans.UI
+@using Humans.UI.Extensions
+@using Humans.UI.Models
+@using Humans.UI.Models.Tables
+@using Humans.UI.ViewComponents
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<GovernanceResource> Localizer
+@* Application_*, ApplicationStatus_*, AdminApp_Applicant and the Profile / OnboardingReview
+   singles stay in SharedResource: ProfileController renders the same tier-application form
+   during profile setup and the Onboarding review queue renders the rest (§15.3b). *@
+@inject IStringLocalizer<SharedResource> SharedLocalizer
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+@addTagHelper *, Humans.UI

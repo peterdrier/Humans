@@ -1,6 +1,8 @@
 using Humans.Domain.Enums;
 using NodaTime;
 
+using Humans.UI.Models;
+
 namespace Humans.Web.Models;
 
 public class TicketDashboardViewModel

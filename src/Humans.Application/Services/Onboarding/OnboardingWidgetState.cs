@@ -1,5 +1,5 @@
 using Humans.Application.Interfaces.Consent;
-using Humans.Application.Interfaces.Governance;
+using Humans.Governance.Contracts;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;

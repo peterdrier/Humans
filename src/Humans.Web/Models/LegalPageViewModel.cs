@@ -1,5 +1,7 @@
 using Humans.Application.Interfaces.Legal;
 
+using Humans.UI.Models;
+
 namespace Humans.Web.Models;
 
 public class LegalPageViewModel

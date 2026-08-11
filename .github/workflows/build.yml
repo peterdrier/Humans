@@ -38,7 +38,7 @@ env:
     CalendarDbContext:src/Sections/Humans.Calendar
     NotificationsDbContext:src/Sections/Humans.Notifications
     IssuesDbContext:src/Sections/Humans.Issues
-    GovernanceDbContext:src/Humans.Infrastructure
+    GovernanceDbContext:src/Sections/Humans.Governance
     CampaignsDbContext:src/Sections/Humans.Campaigns
     GoogleIntegrationDbContext:src/Humans.Infrastructure
     TicketsDbContext:src/Humans.Infrastructure

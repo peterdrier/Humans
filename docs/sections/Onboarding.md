@@ -36,7 +36,7 @@ Pure orchestrator over Profiles, Consent, Teams, and Governance. Owns no tables.
 
 ## Data Model
 
-This section owns no tables. Entity detail for the objects Onboarding reads / mutates lives in the owning sections: `docs/sections/Profiles.md` (Profile, User, ConsentCheckStatus), `docs/sections/Consent.md` (ConsentRecord), `docs/sections/Governance.md` (Application, BoardVote), `docs/sections/Teams.md` (TeamMember, Volunteers system team).
+This section owns no tables. Entity detail for the objects Onboarding reads / mutates lives in the owning sections: `docs/sections/Profiles.md` (Profile, User, ConsentCheckStatus), `docs/sections/Consent.md` (ConsentRecord), `src/Sections/Humans.Governance/Docs/Governance.md` (Application, BoardVote), `docs/sections/Teams.md` (TeamMember, Volunteers system team).
 
 Onboarding-specific value types: `OnboardingResult`, `BulkOnboardingResult`. The consent-check threshold (`Profile.ConsentCheckStatus → Pending` + Consent Coordinator notification) lives on `IOnboardingService.SetConsentCheckPendingIfEligibleAsync` — a director method invoked by controllers as a **peer call** after `IProfileEditorService.SaveProfileAsync` or `ConsentService.SubmitConsentAsync`. The leaf services never call back into Onboarding (that was the inverted arrow this PR removed).
 

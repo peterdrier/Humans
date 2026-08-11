@@ -29,6 +29,7 @@
       AccountMergeService takes INotificationService, and ConsentService /
       HumanLifecycleService auto-resolve through INotificationAutoResolve.
     -->
+    <ProjectReference Include="..\Sections\Humans.Governance.Contracts\Humans.Governance.Contracts.csproj" />
     <ProjectReference Include="..\Sections\Humans.Notifications.Contracts\Humans.Notifications.Contracts.csproj" />
   </ItemGroup>
 

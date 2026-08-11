@@ -24,7 +24,10 @@ DTO surface stayed internal behind two primitive-returning reads), Issues (the f
 block of markup *out* of a Shell view to bring its resource keys home, and the first whose
 `Contracts/` leaf is two one-method interfaces), Notifications (the first section to own a
 *view component*, which needed a Shell feature provider of its own, and the first whose leaf
-is consumed by eleven Base services). Step numbers match the former §15, so an old
+is consumed by eleven Base services), and Governance (the first whose resx carve had to
+leave four whole prefixes behind because Shell renders the same form, the first to bind two
+localizers by design, and the first whose contracts leaf carries write members under an
+unchanged name). Step numbers match the former §15, so an old
 "§15 step 3b" citation reads as "step 3b" here.
 
 **Where this template and `src/Sections/` disagree, the code is right.** Deviations are the
@@ -186,7 +189,11 @@ Git Bash.)
      compiling and renders its carved keys as raw key names. Assert it structurally rather than by
      eye: no type in the section may take `IStringLocalizer<T>` for any `T` but
      `<Section>Resource` (`SurveysArchitectureTests.SectionTypesLocalizeThroughTheSectionsOwnResourceSet`
-     is the shape). **A render test is not enough here** — controller-resolved copy tends to sit on
+     is the shape). **A section that deliberately keeps reading shared keys allows two
+     markers, not one** — Governance's applications controller renders *only* keys that stayed
+     in `SharedResource`, so its guard is "`<Section>Resource` or `SharedResource`, nothing
+     else", which still catches a controller bound to some third set (proven: Governance).
+     **A render test is not enough here** — controller-resolved copy tends to sit on
      the failure paths (validation errors, empty-value fallbacks) that fixtures do not reach, so a
      page-renders-clean suite passes over it (proven: Surveys shipped three such call sites past
      four green render tests; caught in review, peterdrier/Humans#1251).
@@ -199,6 +206,18 @@ Git Bash.)
    - **A key used by both this section and a not-yet-moved section stays in `SharedResource`** —
      carve by *owner*, not by prefix (proven: Containers left the 9 `ContainerMap_*` keys with
      City Planning's map page).
+     - **…and the unit that stays is the whole *prefix*, not the individual key.** Governance's
+       views read 139 keys across 22 prefixes; nine were its alone and moved (112 keys), and
+       four stayed *entirely* because one key in each is co-owned — `Application_*` and
+       `ApplicationStatus_*` (Shell's `ProfileController` renders the same tier-application form
+       and maps the same `ErrorKey`s to the same messages during profile setup), `AdminApp_*`
+       (one label read by `TeamAdmin/Members.cshtml`), and the `Profile*`/`OnboardingReview_*`
+       singles. Splitting a nine-key message set to claim five of them is worse than leaving all
+       nine. **Then verify mechanically**, because the section now binds two localizers and a
+       half-switched call site renders the raw key: extract every `Localizer["…"]` key from the
+       section and diff it against the section `.resx` key list — anything the diff reports is a
+       call site on the wrong localizer (proven: Governance, six caught this way and six more by
+       the step 12 render test).
    - **The mirror image: a key *this* section owns that an already-moved section reads goes into
      this section's set, and that section takes a reference to the section *project*.** Not the
      leaf — a resource marker is a section type (`public` only so `GetExportedTypes()` finds it),
@@ -239,6 +258,14 @@ Git Bash.)
      `SectionDiscoveryExtensions`'s discovered-sections log, which is the first thing you read
      when a section's page 404s. It is *not* what makes the controllers route — that is step
      4b's assembly attribute, which is independent (proven: Scanner).
+   - **…and it is not a parking lot either: read the old extension's registrations against the
+     section's scope doc, not its filename.** `GovernanceSectionExtensions` also registered
+     three Base cache invalidators that four sections evict through, and the Base human-lifecycle
+     service — none of which the section owns
+     (`memory/architecture/governance-scope.md` says Governance is tier applications and board
+     voting, full stop). Those moved to Shell's `InfrastructureServiceCollectionExtensions`
+     beside the moved-out sections' jobs. The section that owns the *file* is not always the
+     section that owns the *line* (proven: Governance).
 4b. [ ] `[assembly: Section("<Section>")]` in `Properties/AssemblyInfo.cs` — the analyzer marker,
    the discovery marker and the internal-controller marker, all three (spec §10, §6, §1). Add
    `[assembly: InternalsVisibleTo("DynamicProxyGenAssembly2")]` beside it if the section's tests
@@ -357,6 +384,14 @@ Git Bash.)
      internal `I<Section>Service` inherit both — the interface count is not the thing to
      minimise, the *surface* is (proven: Issues; the retention half is Agent's
      `IAgentConversationRetention` shape, step 6b).
+   - **A leaf may keep the full service's *name* while carrying only its writes, when the writes
+     are what leaves.** `IApplicationDecisionService` had 16 members and six outside callers:
+     three on Shell's `ProfileController` (which submits a tier application from the profile
+     setup form) and three on Base's `TermRenewalReminderJob`. Approve, reject, withdraw and the
+     whole board-voting surface have no consumer outside the section, so the leaf is the
+     decision service minus the decisions — and renaming it `…ServiceRead` would have been a lie
+     about six write members. Campaigns' shape, reached from the write side (proven:
+     Governance).
    - **Folder vs project is decided by *where the consumer lives*, not how much surface there
      is.** A consumer in Base forces `Humans.<Section>.Contracts` as its own project referencing
      only the bottom of the graph — a folder would cycle
@@ -446,6 +481,17 @@ Git Bash.)
      the `Default.cshtml` uses no `@using` that `Humans.UI/Views/_ViewImports.cshtml` lacks
      (proven: Scanner moved `TicketStubViewComponent`, which four Shell views also render, and
      touched none of them).
+   - **Fourth case, a rider on City Planning's: invoking by name still needs the component's
+     *argument types* to be nameable from the section.** `ProfileCardViewComponent` stitches
+     contact fields, emails, teams and roles from seven Base services, so it stays in Shell and
+     `<vc:profile-card view-mode="@ProfileCardViewMode.Admin" />` becomes
+     `@await Component.InvokeAsync("ProfileCard", new { userId, viewMode })` — except the enum
+     was declared beside the component in `Humans.Web.ViewComponents` and the section cannot
+     name it, so the invocation does not compile. The enum moved to `Humans.UI/ViewComponents/`
+     (Self/Public/Admin carries no section vocabulary, the same test as the filter base),
+     Shell's `Views/_ViewImports.cshtml` gained `@using Humans.UI.ViewComponents`, and Shell's
+     own `<vc:profile-card>` call sites were untouched. Check the component's parameter types
+     before choosing invoke-by-name (proven: Governance).
    - **A SignalR hub is the health-check shape, and where it goes depends on whose types are in
      it.** `Program.cs`'s `app.MapHub<TheHub>("/hubs/…")` names the concrete type, so a hub cannot
      live in the section — HUM0034 fails the build for a public section type, and the section's
@@ -501,6 +547,12 @@ Git Bash.)
      and the helper: they name no section vocabulary, so `Humans.UI/Models`. Shell's
      `Views/_ViewImports.cshtml` already has `@using Humans.UI.Models`, so only the two `.cs`
      files needed a `using` (proven: Feedback).
+     **Third sighting, and this one is done for everybody: `PagedListViewModel`.** Any section
+     with an admin list page derives its list view model from Shell's pagination base;
+     Governance was the first, and `TabbedMarkdownDocumentsViewModel` +
+     `_TabbedMarkdownDocuments.cshtml` came with it (the statutes tabs, also rendered by the
+     legal and consent pages). Both went to `Humans.UI/Models` and `Humans.UI/Views/Shared/`
+     for three `using` lines (proven: Governance).
    - **Do this on paper *before* step 5b.** Moving the handler is often what takes the read
      surface's fan-in to zero. Expenses' fan-in read as "`IExpenseReportServiceRead`'s only
      outside consumer is Shell's `IbanAccessHandler`", which would have made six types public to
@@ -648,6 +700,15 @@ Git Bash.)
      compiling the shared set. It owned the three fixtures instead, in five lines. Share when the
      section needs the *harness*; inline when it needs three of its members (contrast: A2's
      `CapturingLogger`, which was genuinely shared).
+   - **Split the helper before deciding — "share it" and "inline it" can both be right for one
+     file.** `Humans.Application.Tests`' `ServiceLocatorBuilder` (46 lines, NSubstitute only) is
+     genuinely shared: it moved to `tests/Humans.Testing/` and is `Compile`-included from
+     `tests/Directory.Build.props`, and the ~25 existing users needed no edit because
+     `<Using Include="Humans.Testing" />` is already global. `UserInfoStubHelpers` is not: its
+     pure `ToUserInfo` projection is 12 lines, but the same file carries
+     `StubGetUserInfosFromDb` overloads over an in-memory `HumansDbContext`, so sharing it would
+     push `InternalsVisibleTo` on `HumansDbContext` into every section test project. The section
+     copied the projection (proven: Governance).
    - **An enum that turns `internal` breaks every `[InlineData]` theory that names it, and the
      fix is a `[Fact]`.** `InternalsVisibleTo` makes the type *visible* to the test project but
      a `public` test method still cannot take an `internal` parameter — CS0051. Making the test
@@ -772,6 +833,14 @@ Git Bash.)
       section's views are its only callers, that is not a registry problem — delete the overload
       from Base and ship an `internal static` extension in the section's `Models/`, which is what
       Expenses already did for `ExpenseReportStatus` (proven: Budget).
+      **When a *Shell* caller also reads it, neither half works and the answer is the registry.**
+      `GetBadgeClass(this ApplicationStatus)` was called from the section's views and from
+      `ProfileController`'s tier block; reshipping it in the section leaves Shell unable to spell
+      it, and keeping it in `Humans.UI` makes Base reference the section's contracts leaf for the
+      enum. Delete both overloads, push the rows in from `Section.Register` via
+      `EnumBadgeMap.Register`, and let both sides call `EnumBadgeMap.For(value)` — the colours are
+      identical because `For` returns `bg-secondary` for an unmapped value, which is the switch's
+      `_` arm (proven: Governance).
     - **A Shell-resident presentation helper is the badge-helper rule's third shape, and it is
       the easy one.** `EnumBadgeMap` inverts (step 5b); `Humans.UI/Extensions/
       StatusBadgeExtensions` gets deleted and reshipped in the section (Budget finding 35).

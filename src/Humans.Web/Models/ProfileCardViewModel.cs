@@ -3,6 +3,8 @@ using Humans.Application.Extensions;
 using Humans.Domain.Enums;
 using Humans.Web.ViewComponents;
 
+using Humans.UI.ViewComponents;
+
 namespace Humans.Web.Models;
 
 /// <summary>

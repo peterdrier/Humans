@@ -51,6 +51,11 @@
     <Compile Include="$(MSBuildThisFileDirectory)Humans.Testing\HumansTheoryAttribute.cs" Link="Humans.Testing\HumansTheoryAttribute.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Humans.Testing\BrokenFactAttribute.cs" Link="Humans.Testing\BrokenFactAttribute.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Humans.Testing\DebuggerOnlyFactAttribute.cs" Link="Humans.Testing\DebuggerOnlyFactAttribute.cs" />
+    <!-- Fluent IServiceProvider-substitute builder. Shared here (rather than left in
+         Humans.Application.Tests) so a section test project whose service resolves a
+         dependency through IServiceProvider inherits it — Governance's MembershipCalculator
+         does, to break a DI cycle (nobodies-collective/Humans#866). NSubstitute only. -->
+    <Compile Include="$(MSBuildThisFileDirectory)Humans.Testing\ServiceLocatorBuilder.cs" Link="Humans.Testing\ServiceLocatorBuilder.cs" />
     <Using Include="Humans.Testing" />
   </ItemGroup>
 

@@ -1,3 +1,4 @@
+using Humans.Governance.Contracts;
 using AwesomeAssertions;
 using OnboardingService = Humans.Application.Services.Onboarding.OnboardingService;
 

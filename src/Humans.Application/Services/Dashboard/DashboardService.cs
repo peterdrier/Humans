@@ -1,7 +1,7 @@
 using Humans.Application.Configuration;
 using Humans.Application.Helpers;
 using Humans.Application.Interfaces.Dashboard;
-using Humans.Application.Interfaces.Governance;
+using Humans.Governance.Contracts;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Tickets;

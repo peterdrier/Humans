@@ -6,7 +6,7 @@ using Humans.Application.Interfaces;
 using Humans.Infrastructure.Configuration;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Legal;
-using Humans.Application.Interfaces.Governance;
+using Humans.Governance.Contracts;
 using Humans.Application.Interfaces.Users;
 
 namespace Humans.Infrastructure.Jobs;

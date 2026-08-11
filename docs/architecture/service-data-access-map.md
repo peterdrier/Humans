@@ -473,7 +473,8 @@ the unified User+Profile read-model downstream.
 
 ## Governance
 
-Folder: `src/Humans.Application/Services/Governance/`. **DbContext:**
+Project: `src/Sections/Humans.Governance` (G5, nobodies-collective/Humans#866);
+services under `Services/`, repository under `Data/`. **DbContext:**
 `GovernanceDbContext` — **peeled** (nobodies-collective/Humans#1236,
 part of #858). `ApplicationRepository` injects
 `IDbContextFactory<GovernanceDbContext>` directly. Owns

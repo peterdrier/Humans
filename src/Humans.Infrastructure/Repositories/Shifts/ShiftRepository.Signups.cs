@@ -5,7 +5,6 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.Auth;
-using Humans.Infrastructure.Repositories.Governance;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 
@@ -17,7 +16,7 @@ namespace Humans.Infrastructure.Repositories.Shifts;
 /// <remarks>
 /// Uses the Scoped <see cref="ShiftsDbContext"/> directly (not
 /// <see cref="IDbContextFactory{TContext}"/>) — same pattern as
-/// <see cref="RoleAssignmentRepository"/> and <see cref="ApplicationRepository"/>.
+/// <see cref="RoleAssignmentRepository"/> and Governance's <c>ApplicationRepository</c>.
 /// Because <see cref="ShiftSignupService"/>'s mutation paths are
 /// multi-step (load, mutate, audit-log, save), a Scoped context lets all
 /// steps participate in a single EF change-tracker, which is simpler than

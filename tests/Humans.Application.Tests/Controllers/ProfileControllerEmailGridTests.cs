@@ -7,7 +7,7 @@ using Humans.Campaigns.Contracts;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Gdpr;
-using Humans.Application.Interfaces.Governance;
+using Humans.Governance.Contracts;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Shifts;

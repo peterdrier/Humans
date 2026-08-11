@@ -1,7 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Application.Interfaces.Dashboard;
-using Humans.Application.Interfaces.Governance;
+using Humans.Governance.Contracts;
 using Humans.Issues.Contracts;
 using Humans.Domain.Constants;
 
