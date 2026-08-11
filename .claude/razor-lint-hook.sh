@@ -12,6 +12,11 @@
 
 set -euo pipefail
 
+# Locate razor-lint.sh beside this script rather than relative to the caller's cwd — a hook
+# fires before the tool command runs, so cwd is whatever the previous Bash call left behind
+# (a worktree, or a directory that has since been deleted).
+HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 INPUT=$(cat)
 CMD=$(echo "$INPUT" | jq -r '.tool_input.command // ""')
 
@@ -22,9 +27,9 @@ echo "$CMD" | grep -qE '^\s*git\s+commit\b' || exit 0
 if echo "$CMD" | grep -qE '(\s-[a-zA-Z]*a[a-zA-Z]*(\s|$|")|\s--all(\s|=|$|"))'; then
     # -a mode: check tracked modifications (staged + unstaged)
     git diff HEAD --name-only 2>/dev/null | grep -qE '\.cshtml$' || exit 0
-    bash .claude/razor-lint.sh --commit-all --hook
+    bash "$HOOK_DIR/razor-lint.sh" --commit-all --hook
 else
     # plain commit: check only staged files
     git diff --cached --name-only 2>/dev/null | grep -qE '\.cshtml$' || exit 0
-    bash .claude/razor-lint.sh --staged --hook
+    bash "$HOOK_DIR/razor-lint.sh" --staged --hook
 fi
