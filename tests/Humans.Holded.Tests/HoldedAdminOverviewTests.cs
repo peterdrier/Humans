@@ -51,19 +51,19 @@ public sealed class HoldedAdminOverviewTests
     private static HoldedAccount Account(
         int number, decimal balance, bool archived = false,
         decimal? debit = null, decimal? credit = null) => new()
-    {
-        Number = number,
-        HoldedId = $"id-{number}",
-        Name = $"acct {number}",
-        Group = "Gastos",
-        // Overridable together for the accounts whose debits and credits cancel: balance alone
-        // cannot tell "never posted to" from "posted to all year and back to zero".
-        Debit = debit ?? (balance > 0 ? balance : 0m),
-        Credit = credit ?? (balance < 0 ? -balance : 0m),
-        Balance = balance,
-        Archived = archived,
-        SyncedAt = FixedNow,
-    };
+        {
+            Number = number,
+            HoldedId = $"id-{number}",
+            Name = $"acct {number}",
+            Group = "Gastos",
+            // Overridable together for the accounts whose debits and credits cancel: balance alone
+            // cannot tell "never posted to" from "posted to all year and back to zero".
+            Debit = debit ?? (balance > 0 ? balance : 0m),
+            Credit = credit ?? (balance < 0 ? -balance : 0m),
+            Balance = balance,
+            Archived = archived,
+            SyncedAt = FixedNow,
+        };
 
     private static HoldedLedgerLine Line(int entry, int account, decimal debit = 0m, decimal credit = 0m,
         int line = 1, Instant? date = null) => new()
