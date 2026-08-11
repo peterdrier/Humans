@@ -48,14 +48,18 @@ public sealed class HoldedAdminOverviewTests
         StatusCode = 200,
     };
 
-    private static HoldedAccount Account(int number, decimal balance, bool archived = false) => new()
+    private static HoldedAccount Account(
+        int number, decimal balance, bool archived = false,
+        decimal? debit = null, decimal? credit = null) => new()
     {
         Number = number,
         HoldedId = $"id-{number}",
         Name = $"acct {number}",
         Group = "Gastos",
-        Debit = balance > 0 ? balance : 0m,
-        Credit = balance < 0 ? -balance : 0m,
+        // Overridable together for the accounts whose debits and credits cancel: balance alone
+        // cannot tell "never posted to" from "posted to all year and back to zero".
+        Debit = debit ?? (balance > 0 ? balance : 0m),
+        Credit = credit ?? (balance < 0 ? -balance : 0m),
         Balance = balance,
         Archived = archived,
         SyncedAt = FixedNow,
@@ -123,6 +127,31 @@ public sealed class HoldedAdminOverviewTests
         var overview = await _service.GetOverviewAsync(ct);
 
         overview.Accounts.Select(a => a.Number).Should().Equal(40000004, 62900000, 62900128);
+    }
+
+    [HumansFact]
+    public async Task Holded_postings_are_reported_even_when_debits_and_credits_cancel()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        await _repo.UpsertAccountsAsync(
+        [
+            Account(55500001, 0m, debit: 5_000m, credit: 5_000m),   // posted to, back to zero
+            Account(62900140, 0m),                                  // never posted to
+            Account(62900141, 10m),                                 // posted to, drifted
+        ], FixedNow, ct);
+
+        var overview = await _service.GetOverviewAsync(ct);
+        var byNumber = overview.Accounts.ToDictionary(a => a.Number);
+
+        // The cancelling account reconciles against an empty mirror, so Reconciled cannot carry
+        // this and HoldedBalance cannot either — both read exactly like the untouched account.
+        byNumber[55500001].Reconciled.Should().BeTrue();
+        byNumber[55500001].HoldedBalance.Should().Be(0m);
+        byNumber[55500001].LocalLineCount.Should().Be(0);
+        byNumber[55500001].HoldedHasPostings.Should().BeTrue();
+
+        byNumber[62900140].HoldedHasPostings.Should().BeFalse();
+        byNumber[62900141].HoldedHasPostings.Should().BeTrue();
     }
 
     [HumansFact]

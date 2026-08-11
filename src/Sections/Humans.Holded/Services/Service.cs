@@ -192,7 +192,8 @@ internal sealed class Service(
                 decimal? localBalance = hasLines ? cached.Balance : null;
                 return new HoldedAccountRow(
                     a.Number, a.Name, GroupName(a.Number), a.Balance, localBalance,
-                    hasLines ? cached.Count : 0, a.Balance == (localBalance ?? 0m));
+                    hasLines ? cached.Count : 0, a.Balance == (localBalance ?? 0m),
+                    a.Debit != 0m || a.Credit != 0m);
             })
             .ToList();
 
@@ -222,7 +223,8 @@ internal sealed class Service(
         return new HoldedAccountStatement(
             new HoldedAccountRow(
                 number, account?.Name ?? "", GroupName(number), holdedBalance,
-                localBalance, lines.Count, holdedBalance == (localBalance ?? 0m)),
+                localBalance, lines.Count, holdedBalance == (localBalance ?? 0m),
+                account is { } a && (a.Debit != 0m || a.Credit != 0m)),
             lines
                 .OrderBy(l => l.Date)
                 .ThenBy(l => l.EntryNumber)
