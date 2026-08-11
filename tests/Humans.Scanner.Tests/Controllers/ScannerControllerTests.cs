@@ -9,8 +9,8 @@ using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Web.Controllers;
-using Humans.Web.Models;
+using Humans.Scanner.Controllers;
+using Humans.Scanner.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Controllers;
@@ -19,7 +19,7 @@ using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using NSubstitute;
 
-namespace Humans.Web.Tests.Controllers;
+namespace Humans.Scanner.Tests.Controllers;
 
 public class ScannerControllerTests
 {

@@ -10,7 +10,9 @@ SystemSettings + EventGuide (peterdrier/Humans#1235, A1), Containers + Finance
 and a contracts leaf all at once), Gate (the first with no resource set, the first to take a
 layout with it, and the first to hit a Shell-resident view component), CityPlanning (the first
 with a SignalR hub, the first to reference another section's project, and the first whose
-resource carve had to *return* keys to an already-moved section). Step numbers match the former §15, so an old "§15 step 3b"
+resource carve had to *return* keys to an already-moved section), Scanner (the first section
+owning no tables at all — no G4 gate, no `Humans.Infrastructure` reference, an empty
+`Section.Register`). Step numbers match the former §15, so an old "§15 step 3b"
 citation reads as "step 3b" here.
 
 **Where this template and `src/Sections/` disagree, the code is right.** Deviations are the
@@ -26,7 +28,11 @@ visibility flip in one diff is unreviewable.
 ## Preconditions
 
 - [ ] Section is at G4: own `<Section>DbContext`, own history table, baseline fake-applied in
-      prod/QA/previews.
+      prod/QA/previews. **A section that owns no tables has no G4 gate** and skips every
+      Data/DbContext/migration step below — steps 9 and 10 vanish, step 11's
+      `AddSectionDbContext` and `PeeledConfigurationNamespaces` bullets have nothing to move,
+      and the project takes **no `Humans.Infrastructure` reference at all** (proven: Scanner,
+      the first such section — one controller, one view model, four views, two JS modules).
 - [ ] Fan-in known: run `reforge` for inbound references before starting. A section with many
       inbound section references is a knot, goes later, and may need `<Section>.Contracts`.
 
@@ -177,6 +183,12 @@ Git Bash.)
    repositories, services, section-owned authorization handlers (keyed caching-decorator pairs
    move verbatim). Shell discovers it; nothing is added to `Program.cs`. Remove the section's
    line from the `Add<Section>Section` roll-call (spec §6).
+   - **`Register` may legitimately be empty, and the class still ships.** A section that is one
+     controller over other sections' read interfaces registers nothing — its dependencies are
+     registered by their owners. Keep the type anyway: `ISection` is what puts the assembly in
+     `SectionDiscoveryExtensions`'s discovered-sections log, which is the first thing you read
+     when a section's page 404s. It is *not* what makes the controllers route — that is step
+     4b's assembly attribute, which is independent (proven: Scanner).
 4b. [ ] `[assembly: Section("<Section>")]` in `Properties/AssemblyInfo.cs` — the analyzer marker,
    the discovery marker and the internal-controller marker, all three (spec §10, §6, §1). Add
    `[assembly: InternalsVisibleTo("DynamicProxyGenAssembly2")]` beside it if the section's tests
@@ -293,6 +305,14 @@ Git Bash.)
      Gate's `Claim` and `Admin` pages render. `Humans.UI/Views/_ViewImports.cshtml` needs the
      matching `@using` for the moved model. Same test as the filter base: the picker names no
      section's vocabulary. Caught by the step 12 render test, never by the build (proven: Gate).
+     **Shell keeps rendering when the component moves down, so this is cheaper than it looks**:
+     `Humans.Web/Views/_ViewImports.cshtml` already carries `@addTagHelper *, Humans.UI`, so
+     every existing `<vc:…>` in Shell resolves the moved component with no edit. The whole
+     change is `git mv` of the component class and its
+     `Views/Shared/Components/<Name>/Default.cshtml` plus the namespace line — check only that
+     the `Default.cshtml` uses no `@using` that `Humans.UI/Views/_ViewImports.cshtml` lacks
+     (proven: Scanner moved `TicketStubViewComponent`, which four Shell views also render, and
+     touched none of them).
    - **A SignalR hub is the health-check shape, and where it goes depends on whose types are in
      it.** `Program.cs`'s `app.MapHub<TheHub>("/hubs/…")` names the concrete type, so a hub cannot
      live in the section — HUM0034 fails the build for a public section type, and the section's
@@ -443,6 +463,14 @@ Git Bash.)
      compiling the shared set. It owned the three fixtures instead, in five lines. Share when the
      section needs the *harness*; inline when it needs three of its members (contrast: A2's
      `CapturingLogger`, which was genuinely shared).
+   - **A table-less section's test project must opt out of the shared EF fixture, not take an EF
+     package to satisfy it.** `tests/Directory.Build.props` `Compile`-includes
+     `TestDbContextFactory` (and `CapturingLogger`) into every test project but
+     `Humans.Analyzers.Tests`, and `TestDbContextFactory` needs `Microsoft.EntityFrameworkCore`
+     to compile. A section with no `DbContext` therefore fails to build until it either takes an
+     EF `PackageReference` it never uses or is added to that exclusion — take the exclusion; the
+     package would be a lie about what the section is (proven: Scanner, the second project on
+     that list).
 9. [ ] `dotnet ef` for this section: `--project src/Sections/Humans.<Section>
    --startup-project src/Humans.Web --context <Section>DbContext --output-dir Data/Migrations`.
    Update the `context:project` pair in `.github/workflows/build.yml`.
@@ -476,7 +504,10 @@ Git Bash.)
     history-table name — move on schedule unchanged; record the mismatch on #1012 and carry on
     (proven: Events kept `EventGuideDbContext` and `event_*` tables).
 11. [ ] Enforcement: collapse the section's `reforge.surface-score.json` paths to
-    `src/Sections/Humans.<Section>/**`; delete the section's `*ArchitectureTests.cs` assertions
+    `src/Sections/Humans.<Section>/**` — **if the section has no bucket of its own, retarget the
+    stale path where it sits rather than inventing one**; Scanner's controller was one line in
+    the `Platform` catch-all, and adding a `Scanner` bucket would have been a scoring change on
+    top of a file move. Delete the section's `*ArchitectureTests.cs` assertions
     the assembly boundary now subsumes; delete its `Architecture/Baselines` rows and
     `[Grandfathered]` attributes (⚠️ UNPROVEN — no moved section has had any).
     - Re-run `grep -rn 'Assembly.Name' src/Humans.Analyzers/` and confirm any analyzer added
@@ -498,6 +529,14 @@ Git Bash.)
       stops compiling the moment the configurations leave `Humans.Infrastructure` — self-
       revealing, but it is the first error of the move and it reads like a mistake rather than a
       step. The comment above the array already says a G5 section drops its entry.
+    - **A controller named with `typeof(...)` outside its own test project stops compiling.**
+      Two shapes, both easy to miss because neither is a "reference to the section": a Shell XML
+      doc comment's `<see cref="<Section>Controller"/>` (becomes `<c>…</c>` prose), and
+      `EndpointAuthorizationTests.CriticalEndpointPolicies`, which names critical controllers by
+      `typeof` — that one takes the same `SectionType("Humans.<Section>.Controllers.…")`
+      reflection helper `GdprExportDependencyInjectionTests` and
+      `ApplicationServicesTakeNoMemoryCacheRule` already use, throwing on a miss so the row
+      cannot silently drop out of the table (proven: Scanner; Gate's controllers were not in it).
     - **Check `AdminNavTree` after any controller rehoming.** Entries name a controller by
       *name*; one that no longer resolves makes the anchor tag helper omit `href` entirely, so
       the page returns 200 with a dead link and neither the suite nor the step 12 HTML diff

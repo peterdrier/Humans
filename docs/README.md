@@ -111,7 +111,7 @@ Terse, authoritative invariant docs for each major section: concepts, data model
 | [Notifications](sections/Notifications.md) | In-app notification fan-out (stored events plus per-user inbox) and live meter counts (computed) |
 | [Onboarding](sections/Onboarding.md) | Pure orchestrator over Profiles, Consent, Teams, and Governance — owns no tables |
 | [Profiles](sections/Profiles.md) | Per-human personal data: profile, contact fields, emails, communication preferences — reference implementation for §15 caching |
-| [Scanner](sections/Scanner.md) | In-browser camera tools for barcode decode (`/Scanner/Barcode`) and read-only ticket lookup (`/Scanner/Tickets`); no owned tables |
+| [Scanner](../src/Sections/Humans.Scanner/Docs/Scanner.md) | In-browser camera tools for barcode decode (`/Scanner/Barcode`) and read-only ticket lookup (`/Scanner/Tickets`); no owned tables |
 | [Search](sections/Search.md) | Orchestrator behind the global `/Search` page — fans out to five sections' read surfaces, scores each independently, owns no tables |
 | [Shifts](sections/Shifts.md) | Event shifts, rotas, signups, range blocks, event settings, general availability, and per-event volunteer profiles |
 | [Store](../src/Sections/Humans.Store/Docs/Store.md) | Per-camp catalog ordering, multi-method payments, and consolidated Holded factura issuance for Camp Lead purchases |

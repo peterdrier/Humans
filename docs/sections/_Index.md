@@ -27,6 +27,7 @@ move recipe is [`G5-SECTION-TEMPLATE.md`](G5-SECTION-TEMPLATE.md).
 | Event Guide | `src/Sections/Humans.Events` | [Events.md](../../src/Sections/Humans.Events/Docs/Events.md) |
 | Expenses | `src/Sections/Humans.Expenses` | [Expenses.md](../../src/Sections/Humans.Expenses/Docs/Expenses.md) |
 | Gate | `src/Sections/Humans.Gate` | [Gate.md](../../src/Sections/Humans.Gate/Docs/Gate.md) |
+| Scanner | `src/Sections/Humans.Scanner` | [Scanner.md](../../src/Sections/Humans.Scanner/Docs/Scanner.md) |
 | Store | `src/Sections/Humans.Store` | [Store.md](../../src/Sections/Humans.Store/Docs/Store.md) |
 | Surveys | `src/Sections/Humans.Surveys` | [Surveys.md](../../src/Sections/Humans.Surveys/Docs/Surveys.md) |
 | System Settings | `src/Sections/Humans.SystemSettings` | — (no invariants doc; one key/value table) |
@@ -83,7 +84,7 @@ Cross-check against [`design-rules.md` §8 (Table Ownership Map)](../architectur
 | **Dashboard** | — (rendered on Home) | `DashboardService`, `AdminDashboardService` | — | — | — |
 | **Search** | `SearchController` | `SearchService` | — | — | — |
 | **Mailer** | — (background sync) | `MailerImportService`, `MailerAudienceSyncService` | `MailerLiteClient` | — | — (MailerLite is read-only; writes route through other sections) |
-| **Scanner** | `ScannerController` | — | — | — | — (presentational, phase 1) |
+| **Scanner** | `ScannerController` (`src/Sections/Humans.Scanner`) | — | — | — | — (presentational; owns no tables) |
 | **Debug / Dev** | `DebugController`, `DevSeedController`, `LogApiController`, `ColorPaletteController`, `WidgetGalleryController`, `TimezoneApiController` | — | — | `AdminDatabaseDiagnosticsRepository` | — |
 
 ## Cross-cutting concerns

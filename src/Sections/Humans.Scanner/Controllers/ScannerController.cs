@@ -8,17 +8,17 @@ using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
 using Humans.UI.Authorization;
-using Humans.Web.Models;
+using Humans.Scanner.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 
-namespace Humans.Web.Controllers;
+namespace Humans.Scanner.Controllers;
 
 /// <summary>Scanner section — in-browser barcode/QR decoders; no server-side writes. See nobodies-collective/Humans#525.</summary>
 [Authorize(Policy = PolicyNames.ScannerAccess)]
 [Route("Scanner")]
-public class ScannerController(
+internal sealed class ScannerController(
     ITicketServiceRead tickets,
     IUserServiceRead users,
     IEarlyEntryService earlyEntry,

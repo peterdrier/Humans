@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Sections\Humans.Scanner\Humans.Scanner.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      The section is one controller; a plain Microsoft.NET.Sdk test project does not get the
+      shared framework and cannot get there with a PackageReference (design §15 step 1/8).
+    -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <!--
+    No EF Core package: Scanner owns no tables, so there is no DbContext to fixture. That is
+    why tests/Directory.Build.props excludes this project from the shared TestDbContextFactory
+    /CapturingLogger compile items — see the comment there.
+  -->
+
+</Project>

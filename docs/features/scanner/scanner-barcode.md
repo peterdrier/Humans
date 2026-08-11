@@ -1,9 +1,5 @@
 <!-- freshness:triggers
-  src/Humans.Web/Controllers/ScannerController.cs
-  src/Humans.Web/Views/Scanner/Barcode.cshtml
-  src/Humans.Web/Views/Scanner/Tickets.cshtml
-  src/Humans.Web/wwwroot/js/scanner/barcode.js
-  src/Humans.Web/wwwroot/js/scanner/tickets.js
+  src/Sections/Humans.Scanner/**
 -->
 <!-- freshness:flag-on-change
   Camera barcode decode (BarcodeDetector + ZXing fallback), /Scanner/Barcode tool, /Scanner/Tickets camera pane + manual entry field, and the never-a-check-in-tool invariant — review when ScannerController, the scanner views, or the scanner JS change.
@@ -58,7 +54,7 @@ Phase 1 stands up the section (`Scanner`) as its own top-level nav area because 
 - Camera start/stop with feature-detect + ZXing fallback.
 - Decoded list rendered in the page, client-side only.
 - Localized copy across all six supported locales.
-- Section invariant doc (`docs/sections/Scanner.md`) and this feature spec.
+- Section invariant doc (`src/Sections/Humans.Scanner/Docs/Scanner.md`) and this feature spec.
 
 ### Out of Scope (explicitly, for phase 1)
 

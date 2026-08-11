@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>1.3</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+
+  <data name="Scanner_Barcode_CardBlurb" xml:space="preserve">
+    <value>Dekodiert QR-Codes und CODE128-Barcodes mit der Gerätekamera.</value>
+  </data>
+  <data name="Scanner_Barcode_DecodedHelp" xml:space="preserve">
+    <value>Neueste oben. Diese Liste bleibt nur in deinem Browser und wird beim Verlassen der Seite gelöscht.</value>
+  </data>
+  <data name="Scanner_Barcode_DecodedTitle" xml:space="preserve">
+    <value>Dekodierte Codes</value>
+  </data>
+  <data name="Scanner_Barcode_Error_Camera" xml:space="preserve">
+    <value>Kein Zugriff auf die Kamera. Stelle sicher, dass du die Berechtigung erteilt hast und die Seite über HTTPS ausgeliefert wird.</value>
+  </data>
+  <data name="Scanner_Barcode_Error_NoDecoder" xml:space="preserve">
+    <value>Dein Browser hat keinen eingebauten Dekodierer und die Fallback-Bibliothek konnte nicht geladen werden. Versuche es mit aktuellem Chrome oder Safari auf einem Mobilgerät.</value>
+  </data>
+  <data name="Scanner_Barcode_Intro" xml:space="preserve">
+    <value>Tippe auf Scannen, um die Kamera zu öffnen, richte sie auf den Barcode, und der dekodierte Wert erscheint unten. Nichts wird gespeichert.</value>
+  </data>
+  <data name="Scanner_Barcode_NoResultsYet" xml:space="preserve">
+    <value>Noch keine Codes dekodiert.</value>
+  </data>
+  <data name="Scanner_Barcode_NotForCheckIn" xml:space="preserve">
+    <value>Dies ist ein Testwerkzeug — es wird nicht für den Check-in verwendet. Ein Ticket hier zu scannen markiert niemanden als angekommen.</value>
+  </data>
+  <data name="Scanner_Barcode_Open" xml:space="preserve">
+    <value>Scanner öffnen</value>
+  </data>
+  <data name="Scanner_Barcode_Path_Native" xml:space="preserve">
+    <value>nativer Detektor</value>
+  </data>
+  <data name="Scanner_Barcode_Path_ZXing" xml:space="preserve">
+    <value>ZXing-Fallback</value>
+  </data>
+  <data name="Scanner_Barcode_Scan" xml:space="preserve">
+    <value>Scannen</value>
+  </data>
+  <data name="Scanner_Barcode_Status_Running" xml:space="preserve">
+    <value>Scanne</value>
+  </data>
+  <data name="Scanner_Barcode_Status_Starting" xml:space="preserve">
+    <value>Kamera wird gestartet…</value>
+  </data>
+  <data name="Scanner_Barcode_Status_Stopped" xml:space="preserve">
+    <value>Gestoppt</value>
+  </data>
+  <data name="Scanner_Barcode_Stop" xml:space="preserve">
+    <value>Stopp</value>
+  </data>
+  <data name="Scanner_Barcode_Title" xml:space="preserve">
+    <value>Barcode-Scanner</value>
+  </data>
+  <data name="Scanner_Barcode_VideoAria" xml:space="preserve">
+    <value>Live-Kameravorschau</value>
+  </data>
+  <data name="Scanner_Index_Intro" xml:space="preserve">
+    <value>Scanner-Tools im Browser. Es werden keine Daten an den Server gesendet — alles läuft auf deinem Gerät.</value>
+  </data>
+  <data name="Scanner_Index_Title" xml:space="preserve">
+    <value>Scanner-Tools</value>
+  </data>
+  <data name="Scanner_Section" xml:space="preserve">
+    <value>Scanner</value>
+  </data>
+  <data name="Scanner_Tickets_CardBlurb" xml:space="preserve">
+    <value>Scanne den Barcode eines Tickets, um Inhaber, Status und Übertragungsverlauf zu sehen.</value>
+  </data>
+  <data name="Scanner_Tickets_CheckedInAt" xml:space="preserve">
+    <value>Eingecheckt am</value>
+  </data>
+  <data name="Scanner_Tickets_ConsentsMissing" xml:space="preserve">
+    <value>Fehlende Einwilligungen</value>
+  </data>
+  <data name="Scanner_Tickets_ConsentsOk" xml:space="preserve">
+    <value>Alle Einwilligungen unterschrieben</value>
+  </data>
+  <data name="Scanner_Tickets_EarlyEntryVia" xml:space="preserve">
+    <value>Früher Einlass über</value>
+  </data>
+  <data name="Scanner_Tickets_Intro" xml:space="preserve">
+    <value>Scanne ein Ticket, um seine Details zu sehen.</value>
+  </data>
+  <data name="Scanner_Tickets_ManualEntry_Lookup" xml:space="preserve">
+    <value>Suchen</value>
+  </data>
+  <data name="Scanner_Tickets_ManualEntry_Placeholder" xml:space="preserve">
+    <value>Barcode eingeben oder einfügen</value>
+  </data>
+  <data name="Scanner_Tickets_NotFound" xml:space="preserve">
+    <value>Kein Ticket für diesen Code gefunden:</value>
+  </data>
+  <data name="Scanner_Tickets_Open" xml:space="preserve">
+    <value>Ticket-Suche öffnen</value>
+  </data>
+  <data name="Scanner_Tickets_Provides" xml:space="preserve">
+    <value>Beiträge laut Anmeldung</value>
+  </data>
+  <data name="Scanner_Tickets_ProvidesNone" xml:space="preserve">
+    <value>Keine Schichten oder Veranstaltungen</value>
+  </data>
+  <data name="Scanner_Tickets_Status" xml:space="preserve">
+    <value>Status</value>
+  </data>
+  <data name="Scanner_Tickets_Title" xml:space="preserve">
+    <value>Ticket-Suche</value>
+  </data>
+  <data name="Scanner_Tickets_TransferredOn" xml:space="preserve">
+    <value>Übertragen am</value>
+  </data>
+  <data name="Scanner_Tickets_TransferredTo" xml:space="preserve">
+    <value>Übertragen an</value>
+  </data>
+  <data name="Scanner_Tickets_Type" xml:space="preserve">
+    <value>Ticket-Typ</value>
+  </data>
+</root>

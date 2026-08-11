@@ -40,6 +40,22 @@ public class EndpointAuthorizationTests
         return controllers;
     }
 
+    /// <summary>
+    /// A G5 section's controller is <c>internal</c> to its own assembly
+    /// (nobodies-collective/Humans#866), so it cannot be named with <c>typeof</c> here.
+    /// Resolved by reflection instead — the same mechanism
+    /// <c>GdprExportDependencyInjectionTests</c> uses, so there is one way to name a moved
+    /// section type from this project rather than two. Throwing on a miss is the point: a
+    /// critical endpoint that quietly drops out of the table is the failure this class exists
+    /// to prevent.
+    /// </summary>
+    private static Type SectionType(string fullName) =>
+        SectionDiscoveryExtensions.SectionAssemblies()
+            .Select(a => a.GetType(fullName, throwOnError: false))
+            .FirstOrDefault(t => t is not null)
+        ?? throw new InvalidOperationException(
+            $"{fullName} not found in any section assembly — did the section move or rename it?");
+
     private static void AssertNonEmpty(IReadOnlyCollection<Type> controllers) =>
         controllers.Should().HaveCountGreaterThan(
             50,
@@ -80,7 +96,7 @@ public class EndpointAuthorizationTests
         { typeof(FeedbackController), "UpdateStatus", "AdminOnly" },
         { typeof(FeedbackController), "UpdateAssignment", "AdminOnly" },
         { typeof(FeedbackController), "SetGitHubIssue", "AdminOnly" },
-        { typeof(ScannerController), null, "ScannerAccess" },
+        { SectionType("Humans.Scanner.Controllers.ScannerController"), null, "ScannerAccess" },
         { typeof(TicketsOnsiteAdminController), null, "ScannerAccess" },
         { typeof(TicketsGateAdminController), null, "TicketAdminOrAdmin" },
         { typeof(ShiftDashboardController), null, "ShiftDepartmentManager" },

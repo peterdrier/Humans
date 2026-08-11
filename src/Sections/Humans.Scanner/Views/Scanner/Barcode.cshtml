@@ -1,20 +1,25 @@
 @{
-    ViewData["Title"] = Localizer["Scanner_Tickets_Title"].Value;
+    ViewData["Title"] = Localizer["Scanner_Barcode_Title"].Value;
 }
 
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Scanner_Section"]</a></li>
-        <li class="breadcrumb-item active" aria-current="page">@Localizer["Scanner_Tickets_Title"]</li>
+        <li class="breadcrumb-item active" aria-current="page">@Localizer["Scanner_Barcode_Title"]</li>
     </ol>
 </nav>
 
-<h1>@Localizer["Scanner_Tickets_Title"]</h1>
+<h1>@Localizer["Scanner_Barcode_Title"]</h1>
 
-<p class="text-muted">@Localizer["Scanner_Tickets_Intro"]</p>
+<div class="alert alert-warning d-flex align-items-center" role="alert">
+    <i class="fa-solid fa-triangle-exclamation me-2" aria-hidden="true"></i>
+    <div>@Localizer["Scanner_Barcode_NotForCheckIn"]</div>
+</div>
+
+<p class="text-muted">@Localizer["Scanner_Barcode_Intro"]</p>
 
 <div class="row g-3">
-    <div class="col-lg-5">
+    <div class="col-lg-7">
         <div class="card">
             <div class="card-body">
                 <div class="d-flex gap-2 mb-3">
@@ -42,24 +47,18 @@
         </div>
     </div>
 
-    <div class="col-lg-7">
-        <form id="scanner-manual" class="mb-3">
-            <div class="input-group">
-                <input type="text"
-                       id="scanner-manual-input"
-                       class="form-control"
-                       autocomplete="off"
-                       autocapitalize="off"
-                       spellcheck="false"
-                       placeholder="@Localizer["Scanner_Tickets_ManualEntry_Placeholder"]"
-                       aria-label="@Localizer["Scanner_Tickets_ManualEntry_Placeholder"]">
-                <button type="submit" class="btn btn-outline-primary">
-                    <i class="fa-solid fa-magnifying-glass me-1" aria-hidden="true"></i>
-                    @Localizer["Scanner_Tickets_ManualEntry_Lookup"]
-                </button>
+    <div class="col-lg-5">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">@Localizer["Scanner_Barcode_DecodedTitle"]</h5>
+                <p class="small text-muted">@Localizer["Scanner_Barcode_DecodedHelp"]</p>
+                <ul id="scanner-results" class="list-group list-group-flush">
+                    <li id="scanner-results-empty" class="list-group-item text-muted small">
+                        @Localizer["Scanner_Barcode_NoResultsYet"]
+                    </li>
+                </ul>
             </div>
-        </form>
-        <div id="scanner-card"></div>
+        </div>
     </div>
 </div>
 
@@ -68,18 +67,16 @@
     @* Cache-bust the module import (the tag-helper asp-append-version can't reach an import
        statement) so a deployed update reaches long-cached tablets. Mirrors Gate/Index. *@
     <script nonce="@Context.Items["CspNonce"]" type="module">
-        import { initTicketScanner } from '@FileVersionProvider.AddFileVersionToPath(Context.Request.PathBase, Url.Content("~/js/scanner/tickets.js"))';
+        import { initBarcodeScanner } from '@FileVersionProvider.AddFileVersionToPath(Context.Request.PathBase, Url.Content("~/_content/Humans.Scanner/js/scanner/barcode.js"))';
 
-        initTicketScanner({
+        initBarcodeScanner({
             startButton: document.getElementById('scanner-start'),
             stopButton: document.getElementById('scanner-stop'),
             video: document.getElementById('scanner-video'),
+            results: document.getElementById('scanner-results'),
+            resultsEmpty: document.getElementById('scanner-results-empty'),
             status: document.getElementById('scanner-status'),
             error: document.getElementById('scanner-error'),
-            card: document.getElementById('scanner-card'),
-            manualForm: document.getElementById('scanner-manual'),
-            manualInput: document.getElementById('scanner-manual-input'),
-            cardUrl: '@Url.Action("Card", "Scanner")',
             labels: {
                 starting: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Localizer["Scanner_Barcode_Status_Starting"].Value)),
                 running: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Localizer["Scanner_Barcode_Status_Running"].Value)),

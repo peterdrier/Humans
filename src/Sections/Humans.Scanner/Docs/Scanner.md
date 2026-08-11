@@ -1,8 +1,5 @@
 <!-- freshness:triggers
-  src/Humans.Web/Controllers/ScannerController.cs
-  src/Humans.Web/Views/Scanner/**
-  src/Humans.Web/wwwroot/js/scanner/**
-  src/Humans.Web/Models/ScannerTicketCardViewModel.cs
+  src/Sections/Humans.Scanner/**
 -->
 <!-- freshness:flag-on-change
   Client-only barcode decode, read-only ticket lookup via ITicketServiceRead, door context (EE/check-in/consents/provide), and the never-a-check-in-tool negative rules — review when ScannerController, the scanner views, or the scanner JS change.
@@ -69,10 +66,11 @@
 
 **Owning services:** none — no business logic. `ScannerController` injects cross-section read interfaces directly (no Application.Services.Scanner namespace).
 **Owned tables:** none.
-**Status:** (A) Migrated (issue nobodies-collective/Humans#525, 2026-04-26); `/Scanner/Tickets` added in scanner-ticket-lookup feature; door context (EE, check-in, consents, provide list) added in nobodies-collective/Humans#860.
+**Status:** (A) Migrated (issue nobodies-collective/Humans#525, 2026-04-26); `/Scanner/Tickets` added in scanner-ticket-lookup feature; door context (EE, check-in, consents, provide list) added in nobodies-collective/Humans#860. Own project since G5 (nobodies-collective/Humans#866).
 
+- `src/Sections/Humans.Scanner` — one internal controller, one internal view model, four views, two JS modules and its own `ScannerResource` set. No `Data/`, no migrations, no `Humans.Infrastructure` reference: nothing to persist.
+- `Section.Register` is empty and `Contracts/` holds only a README. Scanner is a pure consumer — it registers nothing and nothing outside it names a Scanner type.
 - No `Humans.Application.Services.Scanner/` namespace — correct, no business logic in this section.
-- No `ScannerSectionExtensions.cs` — correct, no DI registrations beyond the injected cross-section read interfaces.
 - **Decorator decision:** no caching decorator. Scanner reads through existing section interfaces (each section owns its own caching).
 - **Cross-domain navs:** none.
 - **Cross-section calls (ticket card):** `ITicketServiceRead`, `IEarlyEntryService`, `IConsentServiceRead`, `IUserServiceRead`, `IBurnSettingsService`, `IICalFeedService`, `IEventServiceRead` — all injected into `ScannerController`.

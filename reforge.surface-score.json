@@ -852,7 +852,7 @@
         "src/Humans.Web/Controllers/GuideController.cs",
         "src/Humans.Web/Controllers/LogApiController.cs",
         "src/Humans.Web/Controllers/ApiControllerBase.cs",
-        "src/Humans.Web/Controllers/ScannerController.cs",
+        "src/Sections/Humans.Scanner/**",
         "src/Humans.Web/Controllers/TimezoneApiController.cs",
         "src/Humans.Web/Controllers/WelcomeController.cs",
         "src/Humans.Web/Controllers/WidgetGalleryController.cs",
