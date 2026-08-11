@@ -2,15 +2,24 @@ using System.Collections.Concurrent;
 using Serilog.Core;
 using Serilog.Events;
 
-namespace Humans.Web.Infrastructure;
+namespace Humans.Infrastructure.Logging;
 
 /// <summary>
 /// Serilog sink that keeps the last N log events in per-severity circular buffers.
 /// Warnings go to their own buffer; Error and Fatal share a separate buffer so that
 /// high-volume warnings cannot evict error events.
-/// Used by the Admin/Logs page to display recent warnings and errors
+/// Used by the /Debug/Logs page to display recent warnings and errors
 /// without needing to query Docker logs.
 /// </summary>
+/// <remarks>
+/// Lives in Base rather than in the Debug section: it is a Serilog sink registered from
+/// <c>Program.cs</c>'s logger configuration and read by two callers on opposite sides of the
+/// section boundary — <c>Humans.Debug</c>'s <c>/Debug/Logs</c> page and Shell's
+/// <c>LogApiController</c>. It names no section vocabulary at all, so it takes the same
+/// disposition as <c>ApiKeyAuthFilterBase</c> and <c>HumanLookupSearchResult</c> did
+/// (G5-SECTION-TEMPLATE.md step 6), one layer further down because the sink is infrastructure
+/// rather than presentation.
+/// </remarks>
 public sealed class InMemoryLogSink(int warningCapacity = 1000, int errorCapacity = 1000) : ILogEventSink
 {
     private readonly ConcurrentQueue<LogEvent> _warnings = new();

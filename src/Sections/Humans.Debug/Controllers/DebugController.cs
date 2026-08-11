@@ -4,27 +4,34 @@ using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Admin;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Users;
+using Humans.Debug.Models;
 using Humans.Infrastructure.Data;
+using Humans.Infrastructure.Logging;
 using Humans.UI.Controllers;
 using Humans.UI;
 using Humans.UI.Authorization;
 using Humans.UI.Extensions;
-using Humans.Web.Infrastructure;
-using Humans.Web.Models;
+using Humans.UI.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
 using Serilog.Events;
 
-namespace Humans.Web.Controllers;
+namespace Humans.Debug.Controllers;
 
 /// <summary>
 /// Developer / diagnostics pages. The whole section is admin-gated, so pages
 /// live at <c>/Debug/*</c> directly.
 /// </summary>
+/// <remarks>
+/// Internal, and routed anyway: Shell registers <c>SectionControllerFeatureProvider</c>, which
+/// relaxes MVC's <c>IsPublic</c> check for assemblies carrying <c>[assembly: Section("…")]</c>
+/// (memory/architecture/section-controllers-need-feature-provider.md — do not "fix" a 404 by
+/// making this public).
+/// </remarks>
 [Authorize(Policy = PolicyNames.AdminOnly)]
 [Route("Debug")]
-public class DebugController(
+internal sealed class DebugController(
     IUserServiceRead userService,
     IClientStatsTracker clientStats,
     IHttpStatusTracker httpStatus,

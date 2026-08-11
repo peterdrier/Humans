@@ -1,9 +1,8 @@
 using System.Globalization;
-using Humans.UI;
 using Humans.UI.Extensions;
 using Microsoft.Extensions.Localization;
 
-namespace Humans.Web.Models;
+namespace Humans.UI.Models;
 
 /// <summary>
 /// Every SharedResource key with its value in each supported culture, grouped by key
@@ -11,6 +10,14 @@ namespace Humans.Web.Models;
 /// <c>/Debug/Translations</c>. Enumerated through the real localizer — not a hand list —
 /// so a new key can never hide from the audit.
 /// </summary>
+/// <remarks>
+/// Moved down from <c>Humans.Web/Models</c> at Debug's G5 (nobodies-collective/Humans#866)
+/// rather than into the section. It enumerates <c>SharedResource</c> and reads
+/// <c>CultureCatalog</c> — both <c>Humans.UI</c>'s own vocabulary, none of it Debug's — and it
+/// has a second consumer outside the section: <c>SharedResourceParityTests</c> asserts
+/// translation parity through this same enumeration. Taking it into the section would have
+/// turned it internal and stranded that test (step 6's "names no section vocabulary" test).
+/// </remarks>
 public sealed record TranslationsGalleryViewModel(
     IReadOnlyList<string> Languages,
     IReadOnlyList<TranslationGroup> Groups,

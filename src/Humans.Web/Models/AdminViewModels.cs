@@ -130,21 +130,6 @@ public class EndRoleAssignmentViewModel
     public string? Notes { get; set; }
 }
 
-public class ConfigurationItemViewModel
-{
-    public string Section { get; set; } = string.Empty;
-    public string Key { get; set; } = string.Empty;
-    public bool IsSet { get; set; }
-    public string? DisplayValue { get; set; }
-    public bool IsSensitive { get; set; }
-    public string Importance { get; set; } = "optional";
-}
-
-public class AdminConfigurationViewModel
-{
-    public List<ConfigurationItemViewModel> Items { get; set; } = [];
-}
-
 public class AccountMergeQueueViewModel
 {
     public List<AccountMergeRowViewModel> Rows { get; set; } = [];
@@ -212,65 +197,6 @@ public class ProfileSummaryViewModel
     public bool HasProfile { get; set; } = true;
 }
 
-public class DbStatsViewModel
-{
-    public long TotalQueryCount { get; set; }
-    public List<DbStatEntryViewModel> Entries { get; set; } = [];
-}
-
-public class DbStatEntryViewModel
-{
-    public string Operation { get; set; } = string.Empty;
-    public string Table { get; set; } = string.Empty;
-    public long Count { get; set; }
-    public double AverageMs { get; set; }
-    public double MaxMs { get; set; }
-    public double TotalMs { get; set; }
-}
-
-public class CacheStatsViewModel
-{
-    public long TotalHits { get; set; }
-    public long TotalMisses { get; set; }
-    public int TotalActiveEntries { get; set; }
-
-    public double OverallHitRatePercent => TotalHits + TotalMisses > 0
-        ? Math.Round(TotalHits * 100.0 / (TotalHits + TotalMisses), 1)
-        : 0;
-
-    public List<CacheStatEntryViewModel> Entries { get; set; } = [];
-
-    /// <summary>
-    /// Stats for the in-memory caching decorators (Profile / User / Team /
-    /// ShiftView), rendered in a separate table below the IMemoryCache stats.
-    /// These caches have no TTL and track invalidation count instead.
-    /// </summary>
-    public List<DecoratorCacheStatEntryViewModel> DecoratorEntries { get; set; } = [];
-}
-
-public class CacheStatEntryViewModel
-{
-    public string KeyType { get; set; } = string.Empty;
-    public long Hits { get; set; }
-    public long Misses { get; set; }
-    public double HitRatePercent { get; set; }
-    public int ActiveEntries { get; set; }
-    public string Ttl { get; set; } = string.Empty;
-    public string Type { get; set; } = string.Empty;
-}
-
-public class DecoratorCacheStatEntryViewModel
-{
-    public string Name { get; set; } = string.Empty;
-    public int Entries { get; set; }
-    public long Hits { get; set; }
-    public long Misses { get; set; }
-    public long KeyRemovals { get; set; }
-    public long BulkInvalidations { get; set; }
-    public double HitRatePercent { get; set; }
-    public bool IsWarmedUp { get; set; }
-}
-
 /// <summary>
 /// Audience segmentation gauges for admin view.
 /// Shows total accounts, accounts with tickets, with profiles, both, or neither.
@@ -288,28 +214,4 @@ public class AudienceSegmentationViewModel
 
     /// <summary>Currently selected event year filter, or null for all time.</summary>
     public int? SelectedYear { get; set; }
-}
-
-public class TimingsViewModel
-{
-    public List<TimingEntryViewModel> Entries { get; set; } = [];
-    public List<SwallowedEntryViewModel> Swallowed { get; set; } = [];
-}
-
-public class TimingEntryViewModel
-{
-    public string Operation { get; set; } = string.Empty;
-    public long Count { get; set; }
-    public double LastMs { get; set; }
-    public double AvgMs { get; set; }
-    public double MinMs { get; set; }
-    public double MaxMs { get; set; }
-    public double TotalMs { get; set; }
-    public DateTime LastAtUtc { get; set; }
-}
-
-public class SwallowedEntryViewModel
-{
-    public string Operation { get; set; } = string.Empty;
-    public long Count { get; set; }
 }

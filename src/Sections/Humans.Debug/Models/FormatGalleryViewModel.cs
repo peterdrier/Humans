@@ -4,7 +4,7 @@ using Humans.Application.Extensions;
 using NodaTime;
 using NodaTime.Text;
 
-namespace Humans.Web.Models;
+namespace Humans.Debug.Models;
 
 /// <summary>
 /// Reflection-built catalog of every formatter on <see cref="DateFormattingExtensions"/>
@@ -13,7 +13,7 @@ namespace Humans.Web.Models;
 /// <c>/Debug/FormatGallery</c>. Reflection — not a hand list — so a new formatter can
 /// never hide from the audit.
 /// </summary>
-public sealed record FormatGalleryViewModel(
+internal sealed record FormatGalleryViewModel(
     string SampleUtc,
     string SampleLocal,
     string SampleZone,
@@ -22,7 +22,7 @@ public sealed record FormatGalleryViewModel(
     IReadOnlyList<PatternCard> Patterns);
 
 /// <summary>One string-returning formatter method (overloads collapsed to a single card).</summary>
-public sealed record FormatterCard(
+internal sealed record FormatterCard(
     string Name,
     string InputType,
     string EsOutput,
@@ -30,13 +30,13 @@ public sealed record FormatterCard(
     IReadOnlyList<string> SameOutputAs);
 
 /// <summary>One NodaTime <c>*Pattern</c> field — its pattern text and a sample render.</summary>
-public sealed record PatternCard(
+internal sealed record PatternCard(
     string Name,
     string ValueType,
     string PatternText,
     string SampleOutput);
 
-public static class FormatGalleryModelBuilder
+internal static class FormatGalleryModelBuilder
 {
     // A fixed UTC instant, then converted: afternoon (16:23 local, so 24h time reads
     // clearly), day 25 (> 12, so it can't be mistaken for a month), and August (es "ago"

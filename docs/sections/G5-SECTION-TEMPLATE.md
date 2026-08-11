@@ -37,7 +37,10 @@ model), and Guide (the first to reach a green build and a green suite with the s
 same-named connector stayed in Base), and Cantina (the second table-less section, the first
 whose *whole* outward surface is a policy name and a controller name — both `string` constants
 in Base — and the first whose move corrected an invariants doc that had been asserting the
-wrong HTTP status for its own access gate). Step numbers match the former §15, so an old
+wrong HTTP status for its own access gate), and Debug (the first section whose only localizer
+binding is `SharedResource` *by design*, the first to send a Shell helper further down than
+`Humans.UI`, and the first table-less section whose test project needed no
+`tests/Directory.Build.props` exclusion). Step numbers match the former §15, so an old
 "§15 step 3b" citation reads as "step 3b" here.
 
 **Where this template and `src/Sections/` disagree, the code is right.** Deviations are the
@@ -244,6 +247,15 @@ Git Bash.)
      markers, not one** — Governance's applications controller renders *only* keys that stayed
      in `SharedResource`, so its guard is "`<Section>Resource` or `SharedResource`, nothing
      else", which still catches a controller bound to some third set (proven: Governance).
+     **A section with no keys at all can still need the guard in its bound form rather than
+     Gate's "takes no `IStringLocalizer<T>` at all".** Debug ships no `Resources/` folder — its
+     copy is English developer text — and yet `/Debug/Translations` injects
+     `IStringLocalizer<SharedResource>` on the action, because the page renders the whole shared
+     set *as data*: every key in every culture, as a coverage gallery. Gate's structural
+     assertion would fail on it and Surveys' would have nothing to name, so the guard is the
+     one-marker form with `SharedResource` as the marker, and it sweeps method parameters as
+     well as constructor ones. Ask what the localizer is *for* before choosing between the two
+     shapes (proven: Debug).
      **A render test is not enough here** — controller-resolved copy tends to sit on
      the failure paths (validation errors, empty-value fallbacks) that fixtures do not reach, so a
      page-renders-clean suite passes over it (proven: Surveys shipped three such call sites past
@@ -683,6 +695,27 @@ Git Bash.)
      `_TabbedMarkdownDocuments.cshtml` came with it (the statutes tabs, also rendered by the
      legal and consent pages). Both went to `Humans.UI/Models` and `Humans.UI/Views/Shared/`
      for three `using` lines (proven: Governance).
+     **Fourth sighting, and it says `Humans.UI` is the rule's *example*, not its depth.**
+     `Humans.Web/Infrastructure/InMemoryLogSink` is the Serilog ring buffer `/Debug/Logs`
+     renders; `Program.cs`'s logger configuration writes to it and Shell's `LogApiController`
+     reads it, so it cannot come into the section and the section cannot name it where it is.
+     It carries no section vocabulary — which is the test — but it is also not presentation, so
+     `Humans.UI` would be the wrong shelf: it went to `Humans.Infrastructure/Logging`, beside
+     the two Serilog enrichers already there, and the section takes the `Serilog` package
+     reference it now names directly. Pick the layer from what the type *is*, then apply the
+     no-section-vocabulary test (proven: Debug).
+     **…and the split that decides between moving a helper in and pushing it down is the
+     second consumer's *subject*, not its location.** Debug's two reflection-built gallery
+     builders sat in the same folder and went opposite ways.
+     `FormatGalleryModelBuilder` reflects over `DateFormattingExtensions` for
+     `/Debug/FormatGallery` and had one other caller, its own unit test — it moved in,
+     `internal`, and the test moved to `tests/Humans.<Section>.Tests`.
+     `TranslationsGalleryModelBuilder` enumerates `IStringLocalizer<SharedResource>` through
+     `CultureCatalog`, and its second caller is `SharedResourceParityTests`, whose subject is
+     **`SharedResource`** — a `Humans.UI` concern the section merely displays. Taking it in
+     would have internalised it and stranded a Base resx gate in a section test project, so it
+     went down to `Humans.UI/Models` with the view model it builds. "Move the test with the
+     helper" is right only when the test is about the helper (proven: Debug).
    - **Do this on paper *before* step 5b.** Moving the handler is often what takes the read
      surface's fan-in to zero. Expenses' fan-in read as "`IExpenseReportServiceRead`'s only
      outside consumer is Shell's `IbanAccessHandler`", which would have made six types public to
@@ -896,6 +929,13 @@ Git Bash.)
      package would be a lie about what the section is (proven: Scanner, the second project on
      that list; Cantina is the third, so the condition is now three `MSBuildProjectName`
      clauses and the comment beside it needs updating rather than a new one added).
+     **The criterion is "no EF on the compile path", not "the section owns no tables" — and the
+     comment beside the condition says the second.** Debug owns no tables and needs *no*
+     exclusion, because it references `Humans.Infrastructure` for `QueryStatistics` /
+     `TrackingMemoryCache` / `InMemoryLogSink` and `Microsoft.EntityFrameworkCore` arrives
+     transitively, so `TestDbContextFactory` compiles. Add a fourth clause only after the build
+     actually fails; the two facts came apart at the first section that had one without the
+     other (proven: Debug).
 9. [ ] `dotnet ef` for this section: `--project src/Sections/Humans.<Section>
    --startup-project src/Humans.Web --context <Section>DbContext --output-dir Data/Migrations`.
    Update the `context:project` pair in `.github/workflows/build.yml`.
@@ -1011,6 +1051,12 @@ Git Bash.)
       reflection helper `GdprExportDependencyInjectionTests` and
       `ApplicationServicesTakeNoMemoryCacheRule` already use, throwing on a miss so the row
       cannot silently drop out of the table (proven: Scanner; Gate's controllers were not in it).
+      **The same file's other Debug-shaped list survives untouched, and the difference is worth
+      knowing before you go looking**: `AllowAnonymousOnAuthorizedControllers_IsExplicitlyAllowlisted`
+      keys its allowlist by the `"<Controller>.<Action>"` *string* and sweeps
+      `AllControllerTypes()`, so `[AllowAnonymous]` on an action of an `[Authorize]` section
+      controller needs no edit at all. One file, two rows about the same controller, only one
+      of which is a `typeof` (proven: Debug, `DebugController.DbVersion`).
     - **`ServiceBoundaryArchitectureTests` is a fourth place a section type is named by
       `typeof`** — its repository-interface → section map. It already carries a
       `SectionRepository(fullName)` reflection helper for the sections that moved before yours;
@@ -1074,6 +1120,14 @@ Git Bash.)
       failure modes — incomplete `_ViewImports`, and a key the resx carve missed — and it runs
       on every build afterwards, including for the *next* section that touches these views
       (proven: Surveys, 4 tests over 6 pages; the file is the model to copy).
+      - **A section with no keys and no assets still has a probe, and it is the element name of
+        whatever `Humans.UI` tag helper its pages open with.** An unbound tag helper neither
+        throws nor degrades — it survives into the response as its own start tag, so the page is
+        a 200 with correct-looking source and a missing widget, exactly like a stray `<vc:>`.
+        Debug's ten pages all open with `<page-header>`, so `NotContain("<page-header")` beside
+        the existing `NotContain("<vc:")` covers the whole section in one line. Grep the moved
+        views for `<[a-z]+-` and assert on what comes back (proven: Debug, whose only other
+        halves would have been a resx carve and a `?v=` hash it does not have).
     - **A §15-decorated section's render test must seed through the service, not the
       `DbContext`.** The decorator is a Singleton that warms at startup, i.e. before the test
       body runs, so a row written straight into `<Section>DbContext` is invisible to every

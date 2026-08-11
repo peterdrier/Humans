@@ -1,7 +1,7 @@
 using AwesomeAssertions;
-using Humans.Web.Models;
+using Humans.Debug.Models;
 
-namespace Humans.Web.Tests.Models;
+namespace Humans.Debug.Tests;
 
 /// <summary>
 /// The format gallery's value comes from the reflection builder being faithful: it must

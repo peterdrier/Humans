@@ -1,5 +1,5 @@
 <!-- freshness:triggers
-  src/Humans.Web/Controllers/DebugController.cs
+  src/Sections/Humans.Debug/**
   src/Humans.Web/ViewComponents/AdminNavTree.cs
 -->
 
@@ -43,7 +43,7 @@ All pages live under `/Debug` on `DebugController`. Pages sit at `/Debug/<Page>`
 | Actor | Capabilities |
 |-------|--------------|
 | Admin | Full access to every Debug page except `/Debug/DbVersion`, which is intentionally anonymous |
-| All other roles | None - no access to admin-gated `/Debug/*` pages |
+| All other roles | None - an authenticated non-Admin gets `302 -> /Account/AccessDenied` on every admin-gated `/Debug/*` page (cookie authentication's `AccessDeniedPath`, app-wide) |
 
 ## Invariants
 
@@ -54,8 +54,9 @@ All pages live under `/Debug` on `DebugController`. Pages sit at `/Debug/<Page>`
 
 ## Negative Access Rules
 
-- A non-Admin user cannot reach admin-gated Debug pages.
+- A non-Admin user cannot reach admin-gated Debug pages: `302 -> /Account/AccessDenied`, pinned by `DebugPageRenderTests`.
 - Debug pages cannot change domain state. Operational writes must stay explicitly named maintenance actions.
+- No type in the section may bind `IStringLocalizer<T>` for any `T` but `SharedResource`. Debug carries no resource set of its own - every string is English developer copy - and the one localizer it touches is the shared set read as *data* by `/Debug/Translations`. Enforced by `DebugArchitectureTests`.
 
 ## Triggers
 
@@ -69,8 +70,11 @@ Debug consumes in-memory telemetry trackers (`IClientStatsTracker`, `IHttpStatus
 
 **Owning services:** None - controller-only diagnostics.
 **Owned tables:** None.
-**Status:** (B) Legacy diagnostics migrated from `/Admin/*` to `/Debug/*` in 2026-06 route cleanup.
+**Status:** (G5) Own project at `src/Sections/Humans.Debug` (nobodies-collective/Humans#866). Previously (B), legacy diagnostics migrated from `/Admin/*` to `/Debug/*` in the 2026-06 route cleanup.
 
-- `DebugController` lives in `Humans.Web/Controllers`; it consumes telemetry trackers, configuration metadata, query/cache counters, and admin database diagnostics.
+- `DebugController` is `internal sealed` in `Humans.Debug.Controllers`, routed by Shell's `SectionControllerFeatureProvider`; it consumes telemetry trackers, configuration metadata, query/cache counters, and admin database diagnostics, all of them Base singletons registered by their owners.
+- `Section.Register` is **empty**, and the class ships anyway: `ISection` is what puts the assembly in the discovered-sections log. `Contracts/` is an empty folder - nothing outside the section names a Debug type, and `AdminNavTree` reaches the pages by controller *name*.
+- The section references `Humans.Infrastructure` despite owning no tables: it names `QueryStatistics`, `TrackingMemoryCache` and `InMemoryLogSink` (the last of which moved down from `Humans.Web/Infrastructure` at G5, because Shell's `LogApiController` reads it too and a section cannot be referenced from Shell's own code).
+- `TranslationsGalleryModelBuilder` did *not* move in: it enumerates `SharedResource` and `CultureCatalog`, both `Humans.UI` vocabulary, and `SharedResourceParityTests` asserts translation parity through it. It lives in `Humans.UI/Models`. `FormatGalleryModelBuilder` did move in - its only consumer is `/Debug/FormatGallery`.
 - **Decorator decision - no caching decorator.** Owns no data; the trackers are already in-memory singletons.
 - **Cross-domain navs:** N/A - owns no entities.

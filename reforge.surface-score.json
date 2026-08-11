@@ -794,7 +794,7 @@
         "src/Humans.Infrastructure/Services/StripeStartupSmokeService.cs",
         "src/Humans.Infrastructure/Stores/**",
         "src/Humans.Web/Controllers/ColorPaletteController.cs",
-        "src/Humans.Web/Controllers/DebugController.cs",
+        "src/Sections/Humans.Debug/**",
         "src/Humans.Web/Controllers/DevLoginController.cs",
         "src/Humans.Web/Controllers/DevSeedController.cs",
         "src/Humans.Web/Controllers/LogApiController.cs",

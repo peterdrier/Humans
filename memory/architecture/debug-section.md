@@ -14,4 +14,4 @@ metadata:
 - New developer/diagnostics pages: `/Debug/<Page>` on `DebugController`, all `AdminOnly`.
 - Pages sit at `/Debug/*` directly, **not** `/Debug/Admin/*`: the whole section is admin-gated with no user-facing pages, so there is no public-vs-admin split. (The `/<Section>/Admin/*` shape in [[no-admin-url-section]] disambiguates admin from public actions inside a *mixed* section; Debug is admin-only end to end.)
 - Do **not** migrate the legacy `/Admin/*` diagnostics (Logs, DbStats, CacheStats, Configuration, Maintenance) as part of unrelated work — that's a separate refactor Peter will scope; they land in `/Debug/*` when he does.
-- Section contract: [`docs/sections/Debug.md`](../../docs/sections/Debug.md).
+- Section contract: [`Debug.md`](../../src/Sections/Humans.Debug/Docs/Debug.md) — the section moved into its own project at G5 (nobodies-collective/Humans#866) and carries its invariants doc with it.

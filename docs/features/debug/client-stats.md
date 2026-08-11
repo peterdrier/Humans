@@ -5,7 +5,7 @@
   src/Humans.Infrastructure/Services/HttpStatusTracker.cs
   src/Humans.Infrastructure/Services/UserAgentClassifier.cs
   src/Humans.Web/Middleware/ClientStatsMiddleware.cs
-  src/Humans.Web/Controllers/DebugController.cs
+  src/Sections/Humans.Debug/**
   src/Humans.Web/wwwroot/js/client-metrics.js
 -->
 <!-- freshness:flag-on-change
@@ -114,6 +114,6 @@ every request → ASP.NET Core records http.server.request.duration
 ## Related Features
 
 - [`docs/features/debug/http-errors.md`](http-errors.md) — the per-request detail buffer behind the status-code tally (status > 399, last 1000).
-- [`docs/sections/Debug.md`](../../sections/Debug.md) — the Debug section that owns this screen.
+- [`Debug.md`](../../../src/Sections/Humans.Debug/Docs/Debug.md) — the Debug section that owns this screen.
 - [`docs/features/active-user-metrics.md`](../active-user-metrics.md) — the sibling in-memory metric (active users); same reset-on-restart constraint.
 - `OpenTelemetry` / Prometheus `/metrics` — the existing export the status-code MeterListener rides alongside.
