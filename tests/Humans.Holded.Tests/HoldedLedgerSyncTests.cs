@@ -40,16 +40,24 @@ public sealed class HoldedLedgerSyncTests
         decimal debit = 0m, decimal credit = 0m) =>
         new()
         {
-            EntryNumber = entry, Line = line, AccountNum = account, Date = date,
-            Debit = debit, Credit = credit,
+            EntryNumber = entry,
+            Line = line,
+            AccountNum = account,
+            Date = date,
+            Debit = debit,
+            Credit = credit,
         };
 
     private static HoldedAccountDto Account(int number, decimal balance, bool archived = false) =>
         new()
         {
-            Id = $"id-{number}", Number = number, Name = $"acct {number}",
-            Debit = balance > 0 ? balance : 0m, Credit = balance < 0 ? -balance : 0m,
-            Balance = balance, Archived = archived,
+            Id = $"id-{number}",
+            Number = number,
+            Name = $"acct {number}",
+            Debit = balance > 0 ? balance : 0m,
+            Credit = balance < 0 ? -balance : 0m,
+            Balance = balance,
+            Archived = archived,
         };
 
     private void StubWindowFetch(params HoldedLedgerLineDto[] lines) =>

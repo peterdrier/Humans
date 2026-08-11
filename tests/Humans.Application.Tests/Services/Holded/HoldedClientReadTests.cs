@@ -93,7 +93,7 @@ public class HoldedClientReadTests
     {
         // Holded sends an absent sub-record as an empty array (#994) and is equally free to send an
         // absent collection as something other than an array; AsArray() throws on both.
-        var json = """{"items":[{"id":"doc-1","document_number":"F001","date":"2026-05-14","lines":{},"tags":""}],"cursor":null,"has_more":false}""";
+        var json = """{"items":[{"id":"doc-1","document_number":"F001","date":"2026-05-14","total":"121.00","lines":{},"tags":""}],"cursor":null,"has_more":false}""";
         var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, json)));
 
         var docs = await client.ListPurchaseDocumentsAsync(Xunit.TestContext.Current.CancellationToken);

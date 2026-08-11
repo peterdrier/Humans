@@ -485,7 +485,8 @@ public sealed class HoldedClient : IHoldedClient
         Date = ParseIsoDate(Prop(n, "date")?.GetValue<string>() ?? ""),
         Subtotal = ReadDecimalV2(Prop(n, "subtotal")),
         Tax = ReadDecimalV2(Prop(n, "tax")),
-        Total = ReadDecimalV2(Prop(n, "total")),
+        // Total feeds the budget actuals; an absent field must fail the page, not upsert 0.00.
+        Total = ReadRequiredDecimalV2(Prop(n, "total"), "total"),
         Currency = Prop(n, "currency")?.GetValue<string>() ?? "eur",
         Tags = ReadTags(Prop(n, "tags")),
         Lines = Arr(Prop(n, "lines")).Select(p => new HoldedPurchaseLineDto
@@ -609,13 +610,13 @@ public sealed class HoldedClient : IHoldedClient
 
     private static int ReadRequiredInt(JsonNode? node, string field) =>
         ReadInt(node) ?? throw new HoldedPermanentException(
-            $"Holded ledger item is missing required field '{field}' — refusing the page.");
+            $"Holded item is missing required field '{field}' — refusing the page.");
 
     /// <summary>An absent amount must fail the page, not read as 0.00 — replace semantics would
     /// overwrite the cached line's real amount and still report the sync as a success.</summary>
     private static decimal ReadRequiredDecimalV2(JsonNode? node, string field) =>
         node is null
             ? throw new HoldedPermanentException(
-                $"Holded ledger item is missing required field '{field}' — refusing the page.")
+                $"Holded item is missing required field '{field}' — refusing the page.")
             : ReadDecimalV2(node);
 }

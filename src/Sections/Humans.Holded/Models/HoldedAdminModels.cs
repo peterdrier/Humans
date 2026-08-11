@@ -33,6 +33,7 @@ internal sealed record HoldedMonthlyCalls(
 internal sealed record HoldedSyncStateRow(
     string Kind, string Status, Instant? LastSyncAt, string? LastError, int LastCount);
 
+/// <summary>One chart account on the /Holded reconciliation table.</summary>
 /// <param name="LocalBalance">Null when the mirror holds no line for the account — distinct
 /// from a cached zero, which reconciles a zero Holded balance.</param>
 internal sealed record HoldedAccountRow(
