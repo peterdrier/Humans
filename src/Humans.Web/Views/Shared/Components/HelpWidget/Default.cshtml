@@ -1,10 +1,4 @@
 @model Humans.Web.ViewComponents.HelpWidgetModel
-@{
-    var pagePath = Model.PagePath;
-    var toastSuccessTemplate = Localizer["Issue_Widget_ToastSuccess"].Value;
-    var toastValidationFailed = Localizer["Issue_Widget_ToastValidationFailed"].Value;
-    var toastNetworkError = Localizer["Issue_Widget_ToastNetworkError"].Value;
-}
 
 <!-- Floating "Help" bubble + popover menu -->
 <div class="help-widget position-fixed" style="bottom: 24px; right: 24px; z-index: 1050;">
@@ -77,53 +71,11 @@
     </div>
 }
 
-<!-- Issue submission modal (opened via menu item; markup moved verbatim from former IssuesWidget) -->
-<div class="modal fade" id="issuesWidgetModal" tabindex="-1" aria-labelledby="issuesWidgetModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <form id="issuesWidgetForm" asp-controller="Issues" asp-action="Submit" method="post" enctype="multipart/form-data"
-                  data-toast-success="@toastSuccessTemplate"
-                  data-toast-validation-failed="@toastValidationFailed"
-                  data-toast-network-error="@toastNetworkError">
-                @Html.AntiForgeryToken()
-                <div class="modal-header">
-                    <h5 class="modal-title" id="issuesWidgetModalLabel">@Localizer["Issue_FileAnIssue"]</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label">@Localizer["Issue_Title"]</label>
-                        <input type="text" name="Title" class="form-control" required maxlength="200" />
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">@Localizer["Issue_Type"]</label>
-                        <select name="Category" class="form-select" required>
-                            @foreach (var c in Enum.GetValues<IssueCategory>())
-                            {
-                                <option value="@c">@IssuePresentation.CategoryEmoji(c) @c</option>
-                            }
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">@Localizer["Issue_Description"]</label>
-                        <textarea name="Description" class="form-control" rows="5" required maxlength="5000"
-                                  placeholder="@Localizer["Issue_Description_Placeholder"]"></textarea>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">@Localizer["Issue_Attachment"]</label>
-                        <input type="file" name="Screenshot" class="form-control" accept="image/*" />
-                    </div>
-                    <input type="hidden" name="PageUrl" id="issuesWidgetPageUrl" value="@pagePath" />
-                    <input type="hidden" name="UserAgent" id="issuesWidgetUserAgent" />
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">@Localizer["Issue_Cancel"]</button>
-                    <button type="submit" class="btn btn-primary">@Localizer["Issue_FileIssue"]</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
+@* Issue submission modal. The markup lives in the Issues section
+   (Views/Shared/_IssueWidgetModal.cshtml) so its Issue_* copy resolves against
+   IssuesResource; partial lookup by name spans application parts. The submit/pre-fill
+   JS below stays here with the rest of the widget's script. *@
+@await Html.PartialAsync("_IssueWidgetModal", Model.PagePath)
 
 <link rel="stylesheet" href="~/_content/Humans.Agent/css/agent.css" asp-append-version="true" />
 @if (Model.AgentAvailable)

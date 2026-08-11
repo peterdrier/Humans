@@ -2,7 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Application.Interfaces.Dashboard;
 using Humans.Application.Interfaces.Governance;
-using Humans.Application.Interfaces.Issues;
+using Humans.Issues.Contracts;
 using Humans.Domain.Constants;
 
 namespace Humans.Web.ViewComponents;
@@ -15,7 +15,7 @@ namespace Humans.Web.ViewComponents;
 public class NavBadgesViewComponent(
     IAdminDashboardService adminDashboardService,
     IApplicationServiceRead applicationDecisionService,
-    IIssuesService issuesService) : ViewComponent
+    IIssuesServiceRead issuesService) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync(string queue)
     {

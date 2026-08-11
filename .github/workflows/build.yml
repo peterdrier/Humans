@@ -37,7 +37,7 @@ env:
     EmailDbContext:src/Humans.Infrastructure
     CalendarDbContext:src/Sections/Humans.Calendar
     NotificationsDbContext:src/Humans.Infrastructure
-    IssuesDbContext:src/Humans.Infrastructure
+    IssuesDbContext:src/Sections/Humans.Issues
     GovernanceDbContext:src/Humans.Infrastructure
     CampaignsDbContext:src/Sections/Humans.Campaigns
     GoogleIntegrationDbContext:src/Humans.Infrastructure

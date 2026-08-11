@@ -42,7 +42,6 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddShiftsSection();
         services.AddEarlyEntrySection();
         services.AddTicketsSection();
-        services.AddIssuesSection();
         services.AddNotificationsSection();
         services.AddLegalAndConsentSection();
         services.AddAuditLogSection();
@@ -62,6 +61,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<SendSurveyReminderJob>();
         services.AddScoped<GateRetentionJob>();
         services.AddScoped<GateVendorCheckInJob>();
+        services.AddScoped<CleanupIssuesJob>();
 
         // Shell-resident collaborators of sections that have already moved out. AgentPreloadAugmentor
         // builds the access matrix, glossaries, route map and FAQ blocks of the agent's preload

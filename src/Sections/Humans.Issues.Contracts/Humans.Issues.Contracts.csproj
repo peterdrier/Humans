@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Issues' cross-section surface, carved into its own leaf project because one of its
+    consumers is still in Base: CleanupIssuesJob (Humans.Infrastructure/Jobs) purges
+    terminal issues nightly, and recurring jobs are named by concrete type in Shell's
+    roll-call with no discovery seam yet (design §15.6b). A Contracts/ *folder* inside
+    Humans.Issues would therefore make Base reference a section and cycle
+    (design §15.5b, memory/architecture/section-project-cycle-fix.md).
+
+    It holds exactly what lives outside the section: the nav-badge count Shell's
+    NavBadgesViewComponent renders, the retention call the job drives, and IssueCategory —
+    the one Issues enum another section names (Humans.Agent's route_to_issue proposal) and
+    which therefore cannot follow the entities into the section's internal Domain/.
+    Everything else Issues does — the triage surface, the thread, the list projection, the
+    mutation results — has no consumer outside the section and stays internal.
+
+    References Humans.Interfaces only — the bottom of the graph.
+  -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
+  </ItemGroup>
+
+</Project>

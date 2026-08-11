@@ -545,13 +545,8 @@
     },
     "Issues": {
       "paths": [
-        "src/Humans.Application/Interfaces/Issues/**",
-        "src/Humans.Application/Interfaces/Repositories/IIssuesRepository.cs",
-        "src/Humans.Application/Services/Issues/**",
-        "src/Humans.Domain/Entities/Issue*",
-        "src/Humans.Infrastructure/Repositories/Issues/**",
-        "src/Humans.Web/Controllers/Issues*",
-        "src/Humans.Web/Models/IssueViewModels.cs"
+        "src/Sections/Humans.Issues/**",
+        "src/Sections/Humans.Issues.Contracts/**"
       ],
       "symbols": [
         "Issue*",

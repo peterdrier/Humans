@@ -8,7 +8,7 @@
 # Feedback — Section Invariants
 
 > **Retired and closed to new input (nobodies-collective/Humans#977).** Feedback was
-> superseded by [Issues](../../../../docs/sections/Issues.md) — same shape (bug/feature/question, screenshots,
+> superseded by [Issues](../../Humans.Issues/Docs/Issues.md) — same shape (bug/feature/question, screenshots,
 > reporter↔handler thread) but with role-routed triage. There is **no creation path
 > left**: no widget, no `POST /Feedback`, no `IFeedbackService` create method, no
 > `IFeedbackRepository.AddReportAsync`. What survives is a **read-and-triage surface

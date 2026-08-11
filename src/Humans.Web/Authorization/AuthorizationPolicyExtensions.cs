@@ -22,7 +22,6 @@ public static class AuthorizationPolicyExtensions
         services.AddScoped<IAuthorizationHandler, CampComplianceAccessHandler>();
         services.AddScoped<IAuthorizationHandler, IsAnyTeamManagerOrCoordinatorHandler>();
         services.AddScoped<IAuthorizationHandler, TeamAuthorizationHandler>();
-        services.AddSingleton<IAuthorizationHandler, IssuesAuthorizationHandler>();
 
         services.AddSingleton<IAuthorizationHandler, RoleAssignmentAuthorizationHandler>();
         services.AddSingleton<IAuthorizationHandler, UserEmailAuthorizationHandler>();

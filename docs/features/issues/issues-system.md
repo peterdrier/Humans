@@ -1,12 +1,7 @@
 <!-- freshness:triggers
-  src/Humans.Application/Services/Issues/**
-  src/Humans.Web/Controllers/IssuesController.cs
-  src/Humans.Web/Controllers/IssuesApiController.cs
+  src/Sections/Humans.Issues/**
+  src/Sections/Humans.Issues.Contracts/**
   src/Humans.Web/ViewComponents/NavBadgesViewComponent.cs
-  src/Humans.Domain/Entities/Issue.cs
-  src/Humans.Domain/Entities/IssueComment.cs
-  src/Humans.Domain/Constants/IssueSectionRouting.cs
-  src/Humans.Infrastructure/Data/Configurations/Issues/**
 -->
 <!-- freshness:flag-on-change
   Issues entities, controller routes, API surface, status transitions, section routing, or handler-vs-reporter auth rules may have changed; verify the auth matrix and routes table.
@@ -106,7 +101,7 @@ Issues **superseded** Feedback (`docs/features/feedback/feedback-system.md`), wh
 
 ## Data Model
 
-See [`docs/sections/Issues.md`](../../sections/Issues.md) for full field-level detail on `Issue`, `IssueComment`, and the `IssueStatus` / `IssueCategory` enums. Owned tables: `issues`, `issue_comments`. Cross-section FKs (`ReporterUserId`, `AssigneeUserId`, `ResolvedByUserId`, `SenderUserId`) are FK-only — the navigation properties were removed entirely, not just deprecated (nobodies-collective/Humans#1188), and display data is stitched in `IssuesService` via `IUserServiceRead.GetUserInfosAsync`.
+See [`src/Sections/Humans.Issues/Docs/Issues.md`](../../../src/Sections/Humans.Issues/Docs/Issues.md) for full field-level detail on `Issue`, `IssueComment`, and the `IssueStatus` / `IssueCategory` enums. Owned tables: `issues`, `issue_comments`. Cross-section FKs (`ReporterUserId`, `AssigneeUserId`, `ResolvedByUserId`, `SenderUserId`) are FK-only — the navigation properties were removed entirely, not just deprecated (nobodies-collective/Humans#1188), and display data is stitched in `IssuesService` via `IUserServiceRead.GetUserInfosAsync`.
 
 **Screenshot storage:** `wwwroot/uploads/issues/{issueId}/{guid}.{ext}`
 

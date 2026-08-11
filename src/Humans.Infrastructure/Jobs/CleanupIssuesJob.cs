@@ -1,6 +1,6 @@
 using Hangfire;
 using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.Issues;
+using Humans.Issues.Contracts;
 using Microsoft.Extensions.Logging;
 
 namespace Humans.Infrastructure.Jobs;
@@ -10,7 +10,7 @@ namespace Humans.Infrastructure.Jobs;
 /// at least 6 months ago, plus their screenshot directories. Runs daily.
 /// </summary>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
-public class CleanupIssuesJob(IIssuesService issues, IHumansMetrics metrics, ILogger<CleanupIssuesJob> logger)
+public class CleanupIssuesJob(IIssuesRetention issues, IHumansMetrics metrics, ILogger<CleanupIssuesJob> logger)
     : IRecurringJob
 {
     public async Task ExecuteAsync(CancellationToken cancellationToken = default)

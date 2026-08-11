@@ -9,7 +9,6 @@ using ProfilesAccountMergeService = Humans.Application.Services.Users.AccountMer
 using UsersUserService = Humans.Application.Services.Users.UserService;
 using AuditLogService = Humans.Application.Services.AuditLog.AuditLogService;
 using CampService = Humans.Application.Services.Camps.CampService;
-using IssuesService = Humans.Application.Services.Issues.IssuesService;
 using RoleAssignmentService = Humans.Application.Services.Auth.RoleAssignmentService;
 using ConsentService = Humans.Application.Services.Consent.ConsentService;
 using ShiftSignupService = Humans.Application.Services.Shifts.ShiftSignupService;
@@ -73,7 +72,7 @@ public class GdprExportDependencyInjectionTests
         typeof(RoleAssignmentService),
         typeof(ShiftSignupService),
         SectionType("Humans.Feedback.Services.FeedbackService"),
-        typeof(IssuesService),
+        SectionType("Humans.Issues.Services.IssuesService"),
         typeof(NotificationInboxService),
         typeof(TicketsTicketQueryService),
         SectionType("Humans.Campaigns.Services.CampaignService"),

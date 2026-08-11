@@ -1,0 +1,17 @@
+@* A section RCL does NOT inherit the host's Views/_ViewImports.cshtml. Omitting a line
+   here ships broken markup with a green build and no runtime error — see design §1/§2.
+   Guarded by IssuePageRenderTests (step 12). *@
+@using Humans.Application.Extensions
+@using Humans.Issues
+@using Humans.Issues.Contracts
+@using Humans.Issues.Controllers
+@using Humans.Issues.Domain
+@using Humans.Issues.Models
+@using Humans.UI
+@using Humans.UI.Extensions
+@using Humans.UI.Models
+@using Humans.UI.ViewComponents
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<IssuesResource> Localizer
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+@addTagHelper *, Humans.UI

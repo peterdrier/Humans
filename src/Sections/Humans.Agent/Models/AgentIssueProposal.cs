@@ -1,4 +1,4 @@
-using Humans.Domain.Enums;
+using Humans.Issues.Contracts;
 
 namespace Humans.Agent.Models;
 

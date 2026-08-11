@@ -20,8 +20,10 @@ whose render test had to seed through a §15 caching decorator), Campaigns (the 
 section carrying an `Architecture/Baselines` row, and the first whose contracts leaf had to
 reference `Humans.Domain`), Feedback (the first whose `Contracts/` is a folder despite a
 consumer in another section, and the first to drop `I<Section>Service` entirely — its whole
-DTO surface stayed internal behind two primitive-returning reads). Step numbers match the
-former §15, so an old "§15 step 3b" citation reads as "step 3b" here.
+DTO surface stayed internal behind two primitive-returning reads), Issues (the first to take a
+block of markup *out* of a Shell view to bring its resource keys home, and the first whose
+`Contracts/` leaf is two one-method interfaces). Step numbers match the former §15, so an old
+"§15 step 3b" citation reads as "step 3b" here.
 
 **Where this template and `src/Sections/` disagree, the code is right.** Deviations are the
 exception and get stated in the PR. Steps marked ⚠️ UNPROVEN have never been executed; whoever
@@ -151,6 +153,19 @@ Git Bash.)
      sites before moving it, exactly as with `Enum_*` (proven: Feedback).
    - If step 5 renames an enum, rename its `Enum_{TypeName}_*` keys in all six languages in the
      same commit — the key is the **live CLR type name** (spec §3; proven the hard way: Store).
+   - **…and the fourth direction: move the *markup* instead of the key.** "Carve by renderer"
+     (above) leaves a key in Base because the renderer cannot see a section set. The other way
+     out is to move the renderer. The floating help widget in `Humans.Web/Views/Shared/
+     Components/HelpWidget/Default.cshtml` is Shell chrome, but its issue-submission modal is
+     eleven `Issue_*` keys, an `IssueCategory` loop and a badge helper — leaving them behind
+     would have split one resource set across two and forced the presentation helper public.
+     The modal moved to the section's `Views/Shared/_IssueWidgetModal.cshtml` and Shell calls
+     `@await Html.PartialAsync("_IssueWidgetModal", model)`; partial lookup resolves by name
+     across application parts, the same mechanism as `_GateLayout` and
+     `Component.InvokeAsync`. Available when the block is self-contained *markup* — the
+     widget's JS addresses DOM ids, not Razor, so it stayed in Shell untouched. Prefer this
+     over binding a second localizer in a Base view when the Base view owns none of the copy
+     (proven: Issues).
    - **Re-grep the moved views for keys the carve did not take.** Genuinely shared strings
      (`Common_*`, `Camp_Plural`) stay in `SharedResource`; bind a second localizer —
      `@inject IStringLocalizer<SharedResource> SharedLocalizer` — and switch those call sites.
@@ -258,6 +273,12 @@ Git Bash.)
        every `I<Section>Service` injection with the concrete type costs a second sweep — decide
        it from the *test* files before touching the source (proven: Budget, whose ticketing
        bridge substitutes it).
+   - **Decide the leaf-vs-`Domain/` question per enum, not per section.** Budget moved both of
+     its enums because both appeared in contract signatures. Issues' two split: `IssueCategory`
+     is named by `Humans.Agent`'s `route_to_issue` proposal, so it went to the leaf;
+     `IssueStatus` has no consumer outside the section and turned `internal` in `Domain/`
+     beside the entities. Grep each enum's out-of-section references separately (proven:
+     Issues).
    - **A `Humans.Domain.Enums` enum named in a `Contracts/` signature moves onto the leaf, and
      its `EnumStringStabilityTests` row moves with it.** The entities go to `Domain/` and turn
      internal; an enum in a public DTO cannot. `Humans.Domain.Tests` then cannot name it either
@@ -314,6 +335,14 @@ Git Bash.)
      string "Calendar" pulls all of it in; a pass keyed on *whose types are in the signatures*
      does not — the same test as step 5b's connector case, applied to a name collision instead of
      a vendor (proven: Calendar).
+   - **A leaf may be two one-method interfaces, and splitting them beats one misnamed one.**
+     Issues' whole outside surface is a nav-badge count (Shell's `NavBadgesViewComponent`) and
+     the retention sweep (Base's `CleanupIssuesJob`). Both return `int`. Putting the purge on
+     `I<Section>ServiceRead` would name a write "Read"; putting the count on the retention
+     contract is worse. Ship `IIssuesServiceRead` and `IIssuesRetention` and let the section's
+     internal `I<Section>Service` inherit both — the interface count is not the thing to
+     minimise, the *surface* is (proven: Issues; the retention half is Agent's
+     `IAgentConversationRetention` shape, step 6b).
    - **Folder vs project is decided by *where the consumer lives*, not how much surface there
      is.** A consumer in Base forces `Humans.<Section>.Contracts` as its own project referencing
      only the bottom of the graph — a folder would cycle
@@ -576,6 +605,13 @@ Git Bash.)
      compiling the shared set. It owned the three fixtures instead, in five lines. Share when the
      section needs the *harness*; inline when it needs three of its members (contrast: A2's
      `CapturingLogger`, which was genuinely shared).
+   - **An enum that turns `internal` breaks every `[InlineData]` theory that names it, and the
+     fix is a `[Fact]`.** `InternalsVisibleTo` makes the type *visible* to the test project but
+     a `public` test method still cannot take an `internal` parameter — CS0051. Making the test
+     class `internal` would satisfy the compiler and is a bet on xunit v3 discovering non-public
+     classes; folding the cases into one `[Fact]` with an assertion per value provably still
+     runs. Same for a `public static TheoryData<TInternalEnum, …>` member (proven: Issues,
+     `IssueStatusTransitionTests`).
    - **A table-less section's test project must opt out of the shared EF fixture, not take an EF
      package to satisfy it.** `tests/Directory.Build.props` `Compile`-includes
      `TestDbContextFactory` (and `CapturingLogger`) into every test project but
@@ -693,6 +729,13 @@ Git Bash.)
       section's views are its only callers, that is not a registry problem — delete the overload
       from Base and ship an `internal static` extension in the section's `Models/`, which is what
       Expenses already did for `ExpenseReportStatus` (proven: Budget).
+    - **A Shell-resident presentation helper is the badge-helper rule's third shape, and it is
+      the easy one.** `EnumBadgeMap` inverts (step 5b); `Humans.UI/Extensions/
+      StatusBadgeExtensions` gets deleted and reshipped in the section (Budget finding 35).
+      `Humans.Web/Helpers/IssuePresentation` was neither: it sits in *Shell*, not `Humans.UI`,
+      so no Base type ever named it, and once its only non-section caller moved into the
+      section (step 3b's fourth direction) it went in whole and turned `internal`. Check which
+      of the three you have from *where the helper lives* before reaching for the inversion.
     - **Check `AdminNavTree` after any controller rehoming.** Entries name a controller by
       *name*; one that no longer resolves makes the anchor tag helper omit `href` entirely, so
       the page returns 200 with a dead link and neither the suite nor the step 12 HTML diff

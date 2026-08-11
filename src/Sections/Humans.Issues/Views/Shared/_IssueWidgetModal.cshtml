@@ -1,0 +1,59 @@
+@model string
+@* The floating help widget's issue-submission modal. Lives in the Issues section rather
+   than beside the widget in Shell: every string in it is an Issue_* key and the category
+   select binds IssueCategory + IssuePresentation, so leaving it in Humans.Web would have
+   split the Issue_* resource set across two sets and forced the presentation helper public
+   (design §15 step 3b). Shell's HelpWidget renders it by name across application parts;
+   the modal's JS stays with the widget because it addresses DOM ids, not Razor.
+   Model is the page path pre-filled into the hidden PageUrl field. *@
+@{
+    var toastSuccessTemplate = Localizer["Issue_Widget_ToastSuccess"].Value;
+    var toastValidationFailed = Localizer["Issue_Widget_ToastValidationFailed"].Value;
+    var toastNetworkError = Localizer["Issue_Widget_ToastNetworkError"].Value;
+}
+<div class="modal fade" id="issuesWidgetModal" tabindex="-1" aria-labelledby="issuesWidgetModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="issuesWidgetForm" asp-controller="Issues" asp-action="Submit" method="post" enctype="multipart/form-data"
+                  data-toast-success="@toastSuccessTemplate"
+                  data-toast-validation-failed="@toastValidationFailed"
+                  data-toast-network-error="@toastNetworkError">
+                @Html.AntiForgeryToken()
+                <div class="modal-header">
+                    <h5 class="modal-title" id="issuesWidgetModalLabel">@Localizer["Issue_FileAnIssue"]</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">@Localizer["Issue_Title"]</label>
+                        <input type="text" name="Title" class="form-control" required maxlength="200" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">@Localizer["Issue_Type"]</label>
+                        <select name="Category" class="form-select" required>
+                            @foreach (var c in Enum.GetValues<IssueCategory>())
+                            {
+                                <option value="@c">@IssuePresentation.CategoryEmoji(c) @c</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">@Localizer["Issue_Description"]</label>
+                        <textarea name="Description" class="form-control" rows="5" required maxlength="5000"
+                                  placeholder="@Localizer["Issue_Description_Placeholder"]"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">@Localizer["Issue_Attachment"]</label>
+                        <input type="file" name="Screenshot" class="form-control" accept="image/*" />
+                    </div>
+                    <input type="hidden" name="PageUrl" id="issuesWidgetPageUrl" value="@Model" />
+                    <input type="hidden" name="UserAgent" id="issuesWidgetUserAgent" />
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">@Localizer["Issue_Cancel"]</button>
+                    <button type="submit" class="btn btn-primary">@Localizer["Issue_FileIssue"]</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
