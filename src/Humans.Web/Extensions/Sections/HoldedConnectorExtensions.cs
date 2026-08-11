@@ -29,9 +29,15 @@ public static class HoldedConnectorExtensions
     {
         services.Configure<HoldedClientOptions>(opts =>
         {
-            opts.ApiKey = Environment.GetEnvironmentVariable("HOLDED_API_KEY") ?? "";
+            // HOLDED_API_KEY_V2, not HOLDED_API_KEY: a v2-generated key is rejected by the v1 API
+            // (probed 2026-08-11: 400 Invalid key), so a same-name cutover would break whichever
+            // build held the wrong key. Distinct names let both keys coexist in the environment
+            // while the old build drains; delete HOLDED_API_KEY once this build is confirmed live.
+            opts.ApiKey = Environment.GetEnvironmentVariable("HOLDED_API_KEY_V2") ?? "";
             opts.BaseUrl = config["Holded:BaseUrl"] ?? "https://api.holded.com";
         });
+
+        services.AddSingleton<IHoldedCallLog, HoldedCallLog>();
 
         services.AddHttpClient<IHoldedClient, HoldedClient>((sp, client) =>
         {

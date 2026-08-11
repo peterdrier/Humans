@@ -1,8 +1,8 @@
-using Humans.Finance.Domain;
+using Humans.Holded.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace Humans.Finance.Data.Configurations;
+namespace Humans.Holded.Data.Configurations;
 
 internal sealed class HoldedLedgerLineConfiguration : IEntityTypeConfiguration<HoldedLedgerLine>
 {
@@ -10,7 +10,7 @@ internal sealed class HoldedLedgerLineConfiguration : IEntityTypeConfiguration<H
     {
         b.ToTable("holded_ledger_lines");
         b.HasKey(x => x.Id);
-        // Natural key for idempotent upsert; journal lines are immutable facts.
+        // Natural key for the idempotent upsert half of the window replace.
         b.HasIndex(x => new { x.EntryNumber, x.Line }).IsUnique();
         b.HasIndex(x => x.AccountNum);
         b.Property(x => x.Type).HasMaxLength(32);

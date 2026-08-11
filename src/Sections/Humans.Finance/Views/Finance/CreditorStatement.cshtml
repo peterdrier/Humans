@@ -2,28 +2,79 @@
 @{
     ViewData["Title"] = $"Creditor {Model.SupplierAccountNum}";
     var lines = (IReadOnlyList<Humans.Finance.Contracts.CreditorLedgerLine>)ViewBag.Lines;
+
+    // Shown from the member's side: positive = the organisation owes them. The mirror keeps
+    // Holded's sign (Σdebit − Σcredit); /Holded/Accounts/{num} below shows it unflipped.
+    var owedBalance = Model.Balance is { } b ? -b : (decimal?)null;
+    var c = Model.Contact;
+
+    // Ledger instants are Madrid midnight; the UTC calendar date is the previous day.
+    var madrid = NodaTime.DateTimeZoneProviders.Tzdb["Europe/Madrid"];
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1 class="mb-0">@Model.SupplierAccountNum@(string.IsNullOrEmpty(Model.Name) ? "" : $" · {Model.Name}")</h1>
-    <a asp-action="Creditors" class="btn btn-outline-secondary">
-        <i class="fa-solid fa-arrow-left me-1"></i>All Creditors
-    </a>
+    <div class="d-flex gap-2">
+        <a href="/Holded/Accounts/@Model.SupplierAccountNum" class="btn btn-outline-secondary"
+           title="The same account in Holded's own sign convention — debit and credit as posted.">
+            <i class="fa-solid fa-book me-1"></i>General ledger
+        </a>
+        <a asp-action="Creditors" class="btn btn-outline-secondary">
+            <i class="fa-solid fa-arrow-left me-1"></i>All Creditors
+        </a>
+    </div>
 </div>
 
 <div class="row mb-4">
     <div class="col-md-4">
         <div class="card text-center"><div class="card-body">
-            <h6 class="card-subtitle mb-2 text-muted">Owed to member</h6>
-            <span class="fs-4 @(Model.OwedToMember > 0 ? "text-danger" : "")">@Model.OwedToMember.ToEuro()</span>
-        </div></div>
-    </div>
-    <div class="col-md-4">
-        <div class="card text-center"><div class="card-body">
             <h6 class="card-subtitle mb-2 text-muted">Balance</h6>
-            <span class="fs-4">@(Model.Balance.HasValue ? Model.Balance.Value.ToEuro() : "—")</span>
+            <span class="fs-4 @(owedBalance > 0 ? "text-danger" : "")">@(owedBalance.HasValue ? owedBalance.Value.ToEuro() : "—")</span>
+            <div class="text-muted small mt-1">positive = owed to the member</div>
         </div></div>
     </div>
+    @if (c is not null)
+    {
+        <div class="col-md-8">
+            <div class="card h-100"><div class="card-body">
+                <h6 class="card-subtitle mb-3 text-muted"><i class="fa-solid fa-address-card me-1"></i>Holded contact</h6>
+                <dl class="row mb-0 small">
+                    @if (!string.IsNullOrWhiteSpace(c.Name))
+                    {
+                        <dt class="col-sm-3">Name</dt><dd class="col-sm-9">@c.Name</dd>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(c.TradeName))
+                    {
+                        <dt class="col-sm-3">Trade name</dt><dd class="col-sm-9">@c.TradeName</dd>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(c.Email))
+                    {
+                        <dt class="col-sm-3">Email</dt><dd class="col-sm-9"><a href="mailto:@c.Email">@c.Email</a></dd>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(c.Phone))
+                    {
+                        <dt class="col-sm-3">Phone</dt><dd class="col-sm-9">@c.Phone</dd>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(c.Mobile))
+                    {
+                        <dt class="col-sm-3">Mobile</dt><dd class="col-sm-9">@c.Mobile</dd>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(c.Iban))
+                    {
+                        <dt class="col-sm-3">IBAN</dt><dd class="col-sm-9"><code>@c.Iban</code></dd>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(c.TaxCode))
+                    {
+                        <dt class="col-sm-3">Tax code</dt><dd class="col-sm-9">@c.TaxCode</dd>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(c.Address))
+                    {
+                        <dt class="col-sm-3">Address</dt><dd class="col-sm-9">@c.Address</dd>
+                    }
+                </dl>
+            </div></div>
+        </div>
+    }
 </div>
 
 <div class="card">
@@ -46,7 +97,7 @@
             @foreach (var l in lines)
             {
                 <tr>
-                    <td class="text-nowrap">@l.Date.ToDateTimeUtc().ToInvariantDate()</td>
+                    <td class="text-nowrap">@l.Date.InZone(madrid).ToDateTimeUnspecified().ToInvariantDate()</td>
                     <td>@l.Description</td>
                     <td class="text-muted small">@l.Type</td>
                     <td class="text-end">@(l.Credit > 0 ? l.Credit.ToEuro() : "")</td>

@@ -1,13 +1,17 @@
 using NodaTime;
 
-namespace Humans.Finance.Domain;
+namespace Humans.Holded.Domain;
 
 /// <summary>
-/// One cached Holded daybook (dailyledger) journal line — the single source of truth for creditor
-/// activity. Everything is derived from these facts: balance = Σdebit − Σcredit;
-/// owed = max(0, Σcredit − Σdebit); payments (outs) = debit lines; ins = credit lines.
-/// Scoped to creditor accounts (400000xx) at sync time. Idempotent on (<see cref="EntryNumber"/>, <see cref="Line"/>).
+/// One mirrored Holded journal line, for <em>every</em> account in the chart — not just the
+/// creditor block. Balances and statements are derived from these facts: balance =
+/// Σdebit − Σcredit. Idempotent on (<see cref="EntryNumber"/>, <see cref="Line"/>).
 /// </summary>
+/// <remarks>
+/// The mirror is re-derivable and window-replaced, never append-only: a sweep that no longer
+/// returns a line deletes it. Filtering by account before the upsert is what let deleted and
+/// reclassified lines linger forever, so nothing here is filtered on the way in.
+/// </remarks>
 internal sealed class HoldedLedgerLine
 {
     public Guid Id { get; init; }
@@ -18,7 +22,7 @@ internal sealed class HoldedLedgerLine
     /// <summary>Line index within the journal entry.</summary>
     public int Line { get; set; }
 
-    /// <summary>Literal 400000xx supplier-account number this line posts to.</summary>
+    /// <summary>The literal chart-of-accounts number this line posts to.</summary>
     public int AccountNum { get; set; }
 
     /// <summary>Entry timestamp (the journal line's date).</summary>

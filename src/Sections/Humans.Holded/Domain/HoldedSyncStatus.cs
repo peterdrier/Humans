@@ -1,3 +1,3 @@
-namespace Humans.Finance.Domain;
+namespace Humans.Holded.Domain;
 
 internal enum HoldedSyncStatus { Idle, Running, Error }

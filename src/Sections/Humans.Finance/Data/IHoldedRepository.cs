@@ -17,14 +17,6 @@ internal interface IHoldedRepository : IRepository
     Task<IReadOnlyList<HoldedExpenseDoc>> GetUnmatchedAsync(CancellationToken ct = default);
     Task<IReadOnlyList<HoldedExpenseDoc>> GetMatchedForYearAsync(int calendarYear, CancellationToken ct = default);
 
-    // Daybook journal lines (the single source of truth — balance/owed/payments all derive from these).
-    /// <summary>Idempotent upsert keyed on (EntryNumber, Line); journal lines are immutable facts.</summary>
-    Task UpsertLedgerLinesAsync(IReadOnlyList<HoldedLedgerLine> rows, Instant now, CancellationToken ct = default);
-    Task<IReadOnlyList<HoldedLedgerLine>> GetLedgerLinesByAccountNumAsync(int accountNum, CancellationToken ct = default);
-    Task<IReadOnlyList<HoldedLedgerLine>> GetAllLedgerLinesAsync(CancellationToken ct = default);
-    /// <summary>False only on a cold cache, which forces the sync's full-history sweep.</summary>
-    Task<bool> HasAnyLedgerLinesAsync(CancellationToken ct = default);
-
     // Creditor contact bindings (member -> Holded creditor account)
     Task<HoldedCreditorContact?> GetCreditorContactByUserAsync(Guid userId, CancellationToken ct = default);
     Task<IReadOnlyList<HoldedCreditorContact>> GetCreditorContactsAsync(CancellationToken ct = default);
@@ -33,7 +25,7 @@ internal interface IHoldedRepository : IRepository
     /// <summary>Removes the member's binding row. Returns false when there was none.</summary>
     Task<bool> DeleteCreditorContactAsync(Guid userId, CancellationToken ct = default);
 
-    // Sync state (singleton, seeded by migration)
-    Task<HoldedSyncState> GetSyncStateAsync(CancellationToken ct = default);
-    Task SaveSyncStateAsync(HoldedSyncState state, CancellationToken ct = default);
+    // Purchase-doc sync state (singleton, lazy-created)
+    Task<HoldedDocSyncState> GetOrCreateDocSyncStateAsync(CancellationToken ct = default);
+    Task SaveDocSyncStateAsync(HoldedDocSyncState state, CancellationToken ct = default);
 }

@@ -43,7 +43,7 @@ internal sealed class Repository(IDbContextFactory<FinanceDbContext> factory)
                 cur.Tax = d.Tax;
                 cur.Total = d.Total;
                 cur.Currency = d.Currency;
-                cur.ApprovedAt = d.ApprovedAt;
+                cur.IsApproved = d.IsApproved;
                 cur.TagsJson = d.TagsJson;
                 cur.BookedAccountId = d.BookedAccountId;
                 cur.BudgetCategoryId = d.BudgetCategoryId;
@@ -78,62 +78,6 @@ internal sealed class Repository(IDbContextFactory<FinanceDbContext> factory)
         return await ctx.HoldedExpenseDocs.AsNoTracking()
             .Where(d => d.MatchStatus == HoldedMatchStatus.Matched && d.Date.Year == calendarYear)
             .ToListAsync(ct);
-    }
-
-    // ── Daybook journal lines (single source of truth) ────────────────────────
-
-    public async Task UpsertLedgerLinesAsync(
-        IReadOnlyList<HoldedLedgerLine> rows, Instant now, CancellationToken ct = default)
-    {
-        if (rows.Count == 0) return;
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        // Match existing by the natural key (EntryNumber, Line). Load by the incoming entry numbers,
-        // then key in memory — journal lines are immutable, so this re-fetch is purely defensive idempotency.
-        var entryNums = rows.Select(r => r.EntryNumber).Distinct().ToList();
-        var existing = (await ctx.HoldedLedgerLines
-                .Where(l => entryNums.Contains(l.EntryNumber))
-                .ToListAsync(ct))
-            .ToDictionary(l => (l.EntryNumber, l.Line));
-        foreach (var r in rows)
-        {
-            if (existing.TryGetValue((r.EntryNumber, r.Line), out var cur))
-            {
-                cur.AccountNum = r.AccountNum;
-                cur.Date = r.Date;
-                cur.Type = r.Type;
-                cur.Description = r.Description;
-                cur.Debit = r.Debit;
-                cur.Credit = r.Credit;
-                cur.LastSyncedAt = now;
-            }
-            else
-            {
-                r.LastSyncedAt = now;
-                ctx.HoldedLedgerLines.Add(r);
-            }
-        }
-        await ctx.SaveChangesAsync(ct);
-    }
-
-    public async Task<IReadOnlyList<HoldedLedgerLine>> GetLedgerLinesByAccountNumAsync(
-        int accountNum, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.HoldedLedgerLines.AsNoTracking()
-            .Where(l => l.AccountNum == accountNum)
-            .ToListAsync(ct);
-    }
-
-    public async Task<IReadOnlyList<HoldedLedgerLine>> GetAllLedgerLinesAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.HoldedLedgerLines.AsNoTracking().ToListAsync(ct);
-    }
-
-    public async Task<bool> HasAnyLedgerLinesAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.HoldedLedgerLines.AsNoTracking().AnyAsync(ct);
     }
 
     // ── Creditor contact bindings ─────────────────────────────────────────────
@@ -185,19 +129,40 @@ internal sealed class Repository(IDbContextFactory<FinanceDbContext> factory)
         return true;
     }
 
-    // ── Sync state (singleton, seeded by migration) ──────────────────────────
+    // ── Purchase-doc sync state (singleton, lazy-created) ─────────────────────
 
-    public async Task<HoldedSyncState> GetSyncStateAsync(CancellationToken ct = default)
+    public async Task<HoldedDocSyncState> GetOrCreateDocSyncStateAsync(CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.HoldedSyncStates.AsNoTracking().FirstAsync(s => s.Id == 1, ct);
+        var existing = await ctx.HoldedDocSyncStates.AsNoTracking().FirstOrDefaultAsync(s => s.Id == 1, ct);
+        if (existing is not null) return existing;
+
+        var created = new HoldedDocSyncState();
+        ctx.HoldedDocSyncStates.Add(created);
+        try
+        {
+            await ctx.SaveChangesAsync(ct);
+            return created;
+        }
+        catch (DbUpdateException)
+        {
+            // Lost the Id=1 insert race to a concurrent caller; the winner's row is the singleton.
+            return await ctx.HoldedDocSyncStates.AsNoTracking().FirstAsync(s => s.Id == 1, ct);
+        }
     }
 
-    public async Task SaveSyncStateAsync(HoldedSyncState state, CancellationToken ct = default)
+    public async Task SaveDocSyncStateAsync(HoldedDocSyncState state, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        var existing = await ctx.HoldedSyncStates.FirstAsync(s => s.Id == 1, ct);
-        ctx.Entry(existing).CurrentValues.SetValues(state);
+        var existing = await ctx.HoldedDocSyncStates.FirstOrDefaultAsync(s => s.Id == 1, ct);
+        if (existing is null)
+        {
+            ctx.HoldedDocSyncStates.Add(state);
+        }
+        else
+        {
+            ctx.Entry(existing).CurrentValues.SetValues(state);
+        }
         await ctx.SaveChangesAsync(ct);
     }
 }

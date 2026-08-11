@@ -1,6 +1,6 @@
 # Holded ledger as single source of truth — design
 
-**Status:** Draft — awaiting Peter's sign-off
+**Status:** Superseded — the daybook-as-single-source decision stands, but the cache, sync mechanics and creditor scoping were replaced by the Holded v2 migration (see src/Sections/Humans.Holded/Docs/2026-08-10-holded-v2-migration-design.md): full all-accounts mirror in the Holded section, replace-semantics windows, balance reconciliation.
 **Date:** 2026-06-15
 **Depends on:** PR #1021 (`HoldedCreditorContact` person→account binding) merged to `main` first.
 **Sequencing:** focused follow-up PR, branched off merged `origin/main` (not stacked on #1021).

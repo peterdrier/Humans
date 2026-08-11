@@ -26,7 +26,7 @@ public class HoldedExpenseOutboxJob(
         // this job runs every minute. Skip until a key is configured.
         if (string.IsNullOrWhiteSpace(holdedOptions.Value.ApiKey))
         {
-            logger.LogDebug("HOLDED_API_KEY not configured — skipping Holded expense outbox drain.");
+            logger.LogDebug("HOLDED_API_KEY_V2 not configured — skipping Holded expense outbox drain.");
             return;
         }
 

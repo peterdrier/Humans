@@ -10,9 +10,15 @@
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1 class="mb-0">Holded Account Provisioning</h1>
-    <a asp-controller="BudgetAdmin" asp-action="Index" class="btn btn-outline-secondary">
-        <i class="fa-solid fa-arrow-left me-1"></i>Back to Finance
-    </a>
+    <div class="d-flex gap-2">
+        <a href="/Holded" class="btn btn-outline-secondary"
+           title="Ledger mirror status, sync buttons and the full account list live on the Holded admin screen.">
+            <i class="fa-solid fa-rotate me-1"></i>Holded sync
+        </a>
+        <a asp-controller="BudgetAdmin" asp-action="Index" class="btn btn-outline-secondary">
+            <i class="fa-solid fa-arrow-left me-1"></i>Back to Finance
+        </a>
+    </div>
 </div>
 
 

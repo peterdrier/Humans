@@ -4,67 +4,57 @@
   src/Humans.Web/Extensions/Sections/HoldedConnectorExtensions.cs
 -->
 
-# Holded — Section Invariants
+# Holded — Connector Invariants
 
-Thin typed-`HttpClient` surface to the Holded accounting API. The current surface exposes eleven methods: `CreatePurchaseDocumentAsync`, `UpdatePurchaseDocumentTagsAsync`, `UploadAttachmentAsync`, `GetPurchaseDocumentAsync`, `ListExpenseAccountsAsync`, `CreateExpenseAccountAsync`, `ListPurchaseDocumentsPageAsync`, `UpsertContactAsync`, `GetContactAsync`, `ListDailyLedgerAsync`, and `ListContactsAsync`. The broader Finance/Holded reconciliation described in Finance's own doc (`src/Sections/Humans.Finance/Docs/Finance.md`) may extend this surface further without breaking consumers.
+Thin typed-`HttpClient` surface to the **Holded API v2** (`https://api.holded.com/api/v2`,
+Bearer auth, cursor pagination). This doc covers the *connector* — the shared client in Base.
+The **Holded vertical section** (ledger mirror, sync, `/Holded` admin screen) has its own doc:
+[`src/Sections/Humans.Holded/Docs/Holded.md`](../../src/Sections/Humans.Holded/Docs/Holded.md).
 
 ## Concepts
 
-- A **Purchase Document** in Holded is the org's incoming invoice/expense record. Expenses creates one per approved expense report.
-- The **API key** is bound from the `HOLDED_API_KEY` environment variable only — never `appsettings.json`. Never logged.
-- Errors are classified at the client boundary: `HoldedTransientException` (5xx, network, timeout) is retry-eligible; `HoldedPermanentException` (4xx) is not. Malformed-body normalization is **not** client-wide — see the invariant below for which three reads wrap parse failures and which methods still leak raw `JsonException` / `InvalidOperationException`.
-
-## Data Model
-
-None. Holded owns no Humans tables in v1.
-
-## Routing
-
-None. Holded has no UI in v1.
-
-## Actors & Roles
-
-| Actor | Capabilities |
-|-------|--------------|
-| Other sections (Expenses) | Call `IHoldedClient` via DI. |
-| Any human | None directly. |
+- A **Purchase Document** in Holded is the org's incoming invoice/expense record. Expenses
+  creates one per approved expense report, **booked to its 629 expense account at creation**
+  (`items[].account`); tags are never written (dead v1 workaround).
+- The **API key** is bound from the `HOLDED_API_KEY_V2` env var only — never `appsettings.json`,
+  never logged. Jobs and pages no-op cleanly when it is unset (PR-preview / local dev).
+- Errors are classified at the client boundary: `HoldedTransientException` (5xx, network,
+  timeout, persistent 429) is retry-eligible; `HoldedPermanentException` (other 4xx, unreadable
+  page bodies) is not.
+- Every call is metered into the singleton `IHoldedCallLog` (in-memory queue) with its
+  `X-RateLimit-*` headers; the Holded section drains it to `holded_api_calls`. The plan-tier
+  budget (~2,000 calls/month) is the real allowance — `GET /usage`'s `limit` is Holded's
+  billable-overage ceiling, displayed but never budgeted against.
 
 ## Invariants
 
-- API key is read from `HOLDED_API_KEY` env var only and is never written to logs, audit entries, or error messages.
-- All HTTP calls go through one typed `HttpClient` (`HoldedClient`). No raw `HttpClient.Send` elsewhere.
-<!-- wheat: docs/superpowers/specs/2026-05-25-holded-finance-integration-design.md §1 API reality -->
-- **Holded REST API v1 only** — every path is `/api/invoicing/v1/…` or `/api/accounting/v1/…`, authenticated with the `key` header. Holded's **API v2** is not usable here (live probe, 2026-05-25): it returned `403 Forbidden` on every endpoint tried, with both `Authorization: Bearer` and the `key` header, because it requires a registered Holded developer OAuth app with scopes this integration does not have. (Distinct from "v1" elsewhere in this doc, which means the first version of the *Humans* Holded section.)
+- All HTTP calls go through one typed `HttpClient` (`HoldedClient`); Bearer auth via
+  `Authorization` header.
+- 429 with `Retry-After` is honored (wait capped at 60 s) and retried once for content-free
+  requests; content-bearing requests surface it as transient immediately.
+- Cursor pagination (`{items, cursor, has_more}`, `limit` ≤ 200) runs to completion or
+  **throws** — a truncated list is never returned, because list results feed replace-semantics
+  reconciliation where a short fetch would delete live rows.
+- `ledger-entries` dates arrive as `DD/MM/YYYY` (parsed via `HoldedLedgerDatePattern` in
+  `DateFormattingExtensions`); purchases/contacts dates are ISO. Decimals arrive as strings.
 - Currency is EUR-only. Multi-currency is out of scope.
-- 5xx and network failures throw `HoldedTransientException`. 4xx failures throw `HoldedPermanentException`. Consumers choose retry policy.
-- Parse-failure normalization covers **three** reads only — `ListPurchaseDocumentsPageAsync`, `GetContactAsync`, `ListDailyLedgerAsync` — which wrap `JsonException` / `InvalidOperationException` / `FormatException` / `OverflowException` into `HoldedPermanentException` rather than leaking a raw parse exception (nobodies-collective/Humans#1211). `GetPurchaseDocumentAsync`, `ListExpenseAccountsAsync`, `CreateExpenseAccountAsync`, and the page-level array parse in `ListContactsAsync` still leak raw parse exceptions — a caller catching only the two `Holded*Exception` types will miss those (nobodies-collective/Humans#1004). `ListContactsAsync`'s *per-contact* parse is deliberately different: it skips-and-logs the bad contact instead of throwing, so one malformed record cannot blank every creditor name (nobodies-collective/Humans#994).
-
-## Negative Access Rules
-
-- The Holded section **does not** read or write any Humans table.
-- The Holded section **does not** maintain its own background sync / pull job in v1. (`HoldedSyncJob`, `holded_transactions`, etc. described in Finance's own doc (`src/Sections/Humans.Finance/Docs/Finance.md`) are future work.)
-
-## Triggers
-
-None. The client is pure on-demand.
+- There is **no tag/doc-update endpoint in v2**; recategorizing a pushed doc is done inside
+  Holded (reclassify the line) and the ledger mirror picks the correction up.
 
 ## Cross-Section Dependencies
 
-None outbound. Inbound: Expenses calls `IHoldedClient`. Future Finance work will extend.
+Inbound: Expenses (doc push via outbox), Finance (provisioning, contacts, doc sync), Holded
+section (ledger/accounts/usage). Outbound: none — the connector owns no tables and no UI.
 
 ## Architecture
 
-**Owning section:** `Holded`
-**Owning services:** `IHoldedClient` (impl `HoldedClient`)
-**Owned tables:** none
-**Status:** (A) New section.
+**Owning surface:** `IHoldedClient` (`Humans.Application/Interfaces/Holded/`), impl
+`HoldedClient` (`Humans.Infrastructure/Services/Holded/`), registered by
+`AddHoldedConnector` in `Humans.Web/Extensions/Sections/HoldedConnectorExtensions.cs`
+alongside `HoldedSyncJob` (nightly: Finance doc sync, then the section's ledger sync) and the
+`IHoldedCallLog` singleton. It stays in Base exactly as `IStripeService` does: consumed by
+three sections, owns nothing.
 
-- `IHoldedClient` lives in `Humans.Application/Interfaces/Holded/`.
-- `HoldedClient` lives in `Humans.Infrastructure/Services/Holded/` and is the single typed `HttpClient` to Holded.
-- Registered via `services.AddHoldedConnector(config)` in `Humans.Web/Extensions/Sections/HoldedConnectorExtensions.cs` — kept in Base (not Finance) because `IHoldedClient` is an external API connector consumed by both Expenses and Finance, and owns no tables (nobodies-collective/Humans#866); the recurring `HoldedSyncJob` / `HoldedExpenseOutboxJob` stay alongside it in `Humans.Infrastructure/Jobs` for the same reason.
-- `HoldedClientOptions.ApiKey` is bound from the `HOLDED_API_KEY` env var at startup.
-- **GDPR** — the Holded HTTP client and its sync tables own no per-user data. However, Finance's own `Service` (internal to `Humans.Finance`, exposed as `IHoldedFinanceService`, registered by `Humans.Finance.Section`) is registered as `IUserDataContributor` and contributes the user's `holded_creditor_contacts` binding to the GDPR export.
-
-### Evolution
-
-The Finance/Holded sync described in `src/Sections/Humans.Finance/Docs/Finance.md` is built. It added `HoldedSyncJob` (nightly Hangfire job), the `Finance`-owned `holded_expense_docs` / `holded_ledger_lines` / `holded_creditor_contacts` tables, and the unmatched-queue UI under `/Finance`. Additional methods (`ListDailyLedgerAsync`, `ListContactsAsync`) were added to `IHoldedClient` as part of the ledger single-source redesign. New methods continue to be added alongside the stable existing surface.
+**GDPR** — the connector owns no per-user data. Finance's own `Service` (exposed as
+`IHoldedFinanceService`) is the `IUserDataContributor` that exports the member's
+`holded_creditor_contacts` binding.

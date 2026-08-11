@@ -6,6 +6,7 @@ using Humans.Infrastructure.Services.Holded;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NodaTime;
+using NodaTime.Testing;
 
 namespace Humans.Application.Tests.Services.Holded;
 
@@ -15,28 +16,40 @@ public class HoldedClientTests
         new(
             new HttpClient(handler) { BaseAddress = new Uri("https://api.holded.com") },
             Options.Create(new HoldedClientOptions { ApiKey = "test-key" }),
-            NullLogger<HoldedClient>.Instance);
+            NullLogger<HoldedClient>.Instance,
+            new HoldedCallLog(),
+            new FakeClock(Instant.FromUtc(2026, 8, 10, 12, 0)));
 
     [HumansFact]
     public async Task CreatePurchaseDocumentAsync_PostsExpectedJson_AndReturnsId()
     {
+        string? capturedBody = null;
         var handler = new StubHandler(req =>
         {
             req.Method.Method.Should().Be("POST");
-            req.RequestUri!.PathAndQuery.Should().Be("/api/invoicing/v1/documents/purchase");
-            req.Headers.GetValues("key").Single().Should().Be("test-key");
-            return Respond(HttpStatusCode.OK, """{"status":1,"id":"doc-123"}""");
+            req.RequestUri!.PathAndQuery.Should().Be("/api/v2/purchases");
+            req.Headers.Authorization!.Scheme.Should().Be("Bearer");
+            req.Headers.Authorization!.Parameter.Should().Be("test-key");
+            capturedBody = req.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
+            return Respond(HttpStatusCode.Created, """{"id":"doc-123"}""");
         });
 
         var client = Make(handler);
         var id = await client.CreatePurchaseDocumentAsync(new HoldedPurchaseDocumentInput
         {
+            ContactId = "contact-1",
             ContactName = "Alice",
             Date = Instant.FromUtc(2026, 5, 10, 0, 0),
-            Lines = [new() { Description = "Train", Amount = 19.52m }]
+            Lines = [new() { Description = "Train", Amount = 19.52m, AccountId = "acc-629001" }]
         }, Xunit.TestContext.Current.CancellationToken);
 
         id.Should().Be("doc-123");
+        capturedBody.Should().Contain("\"contact_id\":\"contact-1\"");
+        capturedBody.Should().Contain("\"date\":\"2026-05-10\"");
+        capturedBody.Should().Contain("\"account\":\"acc-629001\"");
+        // Tags are dead on the write side (Peter, 2026-08-10) — the mapped account books the doc
+        // to the right category from creation, so no tags are sent at all.
+        capturedBody.Should().NotContain("tags");
     }
 
     [HumansFact]
@@ -44,10 +57,10 @@ public class HoldedClientTests
     {
         var json = """
         {
-          "id":"doc-123","docNumber":"F260009",
-          "subtotal":19.52,"tax":0,"total":19.52,
-          "paymentsTotal":19.52,"paymentsPending":0,
-          "approvedAt":1746835200,
+          "id":"doc-123","document_number":"F260009",
+          "subtotal":"19.52","tax":"0.00","total":"19.52",
+          "payments_total":"19.52","payments_pending":"0.00",
+          "approved_at":"2026-05-10T09:00:00",
           "tags":["camp-build-camp"]
         }
         """;
@@ -55,7 +68,7 @@ public class HoldedClientTests
         {
             req.Method.Method.Should().Be("GET");
             req.RequestUri!.PathAndQuery
-                .Should().Be("/api/invoicing/v1/documents/purchase/doc-123");
+                .Should().Be("/api/v2/purchases/doc-123");
             return Respond(HttpStatusCode.OK, json);
         });
 
@@ -63,6 +76,7 @@ public class HoldedClientTests
         var doc = await client.GetPurchaseDocumentAsync("doc-123", Xunit.TestContext.Current.CancellationToken);
 
         doc.Id.Should().Be("doc-123");
+        doc.DocNumber.Should().Be("F260009");
         doc.PaymentsPending.Should().Be(0);
         doc.ApprovedAt.Should().NotBeNull();
         doc.Tags.Should().ContainSingle("camp-build-camp");

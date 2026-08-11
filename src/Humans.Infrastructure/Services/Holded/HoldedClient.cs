@@ -1,3 +1,6 @@
+using System.Globalization;
+using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
@@ -7,23 +10,37 @@ using Humans.Application.Interfaces.Holded;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NodaTime;
+using NodaTime.Text;
 
 namespace Humans.Infrastructure.Services.Holded;
 
 public sealed class HoldedClient : IHoldedClient
 {
+    private const int DefaultRetryAfterSeconds = 5;
+    private const int MaxRetryAfterSeconds = 60;
+
+    // v2 ledger-entries dates arrive as DD/MM/YYYY, filtered on the *accounting* date; parsed to
+    // Madrid midnight for a stable Instant.
+    private static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+
     private readonly HttpClient _http;
     private readonly HoldedClientOptions _options;
     private readonly ILogger<HoldedClient> _logger;
+    private readonly IHoldedCallLog _callLog;
+    private readonly IClock _clock;
 
     public HoldedClient(
         HttpClient http,
         IOptions<HoldedClientOptions> options,
-        ILogger<HoldedClient> logger)
+        ILogger<HoldedClient> logger,
+        IHoldedCallLog callLog,
+        IClock clock)
     {
         _http = http;
         _options = options.Value;
         _logger = logger;
+        _callLog = callLog;
+        _clock = clock;
 
         if (_http.BaseAddress is null && !string.IsNullOrEmpty(_options.BaseUrl))
             _http.BaseAddress = new Uri(_options.BaseUrl);
@@ -34,22 +51,23 @@ public sealed class HoldedClient : IHoldedClient
     {
         var payload = new
         {
-            contactId = input.ContactId, // TODO(probe): confirm field name (contactId vs contact)
-            contactName = input.ContactName,
-            date = input.Date.ToUnixTimeSeconds(),
-            desc = input.Description,
-            tags = input.Tags,
+            contact_id = input.ContactId,
+            contact_name = input.ContactName,
+            date = LocalDatePattern.Iso.Format(input.Date.InZone(MadridZone).Date),
+            description = input.Description,
+            // Tags are dead on the write side (Peter, 2026-08-10): they were a v1 workaround from
+            // before double-entry was understood. items[].account books the doc to the right
+            // department directly, so no tag/retag round-trip is ever needed.
             items = input.Lines.Select(l => new
             {
                 name = l.Description,
                 units = 1,
-                subtotal = l.Amount,
-                tags = l.Tags
+                price = l.Amount,
+                account = l.AccountId,
             })
         };
 
-        using var req = new HttpRequestMessage(HttpMethod.Post,
-            "/api/invoicing/v1/documents/purchase")
+        using var req = new HttpRequestMessage(HttpMethod.Post, "/api/v2/purchases")
         { Content = JsonContent.Create(payload) };
         AttachAuth(req);
 
@@ -62,17 +80,6 @@ public sealed class HoldedClient : IHoldedClient
         return id;
     }
 
-    public async Task UpdatePurchaseDocumentTagsAsync(
-        string documentId, IReadOnlyList<string> tags, CancellationToken ct = default)
-    {
-        using var req = new HttpRequestMessage(HttpMethod.Put,
-            $"/api/invoicing/v1/documents/purchase/{documentId}")
-        { Content = JsonContent.Create(new { tags }) };
-        AttachAuth(req);
-
-        using var resp = await SendAsync(req, ct);
-    }
-
     public async Task UploadAttachmentAsync(
         string documentId, HoldedAttachmentInput attachment, CancellationToken ct = default)
     {
@@ -83,7 +90,7 @@ public sealed class HoldedClient : IHoldedClient
         content.Add(streamContent, "file", attachment.FileName);
 
         using var req = new HttpRequestMessage(HttpMethod.Post,
-            $"/api/invoicing/v1/documents/purchase/{documentId}/attach")
+            $"/api/v2/purchases/{documentId}/attachments")
         { Content = content };
         AttachAuth(req);
 
@@ -93,8 +100,7 @@ public sealed class HoldedClient : IHoldedClient
     public async Task<HoldedPurchaseDocumentDto> GetPurchaseDocumentAsync(
         string documentId, CancellationToken ct = default)
     {
-        using var req = new HttpRequestMessage(HttpMethod.Get,
-            $"/api/invoicing/v1/documents/purchase/{documentId}");
+        using var req = new HttpRequestMessage(HttpMethod.Get, $"/api/v2/purchases/{documentId}");
         AttachAuth(req);
 
         using var resp = await SendAsync(req, ct);
@@ -104,42 +110,36 @@ public sealed class HoldedClient : IHoldedClient
 
         return new HoldedPurchaseDocumentDto
         {
-            Id = node["id"]?.GetValue<string>() ?? "",
-            DocNumber = node["docNumber"]?.GetValue<string>() ?? "",
-            Subtotal = ReadDecimal(node["subtotal"]),
-            Tax = ReadDecimal(node["tax"]),
-            Total = ReadDecimal(node["total"]),
-            PaymentsTotal = ReadDecimal(node["paymentsTotal"]),
-            PaymentsPending = ReadDecimal(node["paymentsPending"]),
-            ApprovedAt = ReadInstant(node["approvedAt"]),
-            Tags = node["tags"]?.AsArray()
-                .Select(n => n!.GetValue<string>())
-                .ToList() ?? []
+            Id = Prop(node, "id")?.GetValue<string>() ?? "",
+            DocNumber = Prop(node, "document_number")?.GetValue<string>() ?? "",
+            Subtotal = ReadDecimalV2(Prop(node, "subtotal")),
+            Tax = ReadDecimalV2(Prop(node, "tax")),
+            Total = ReadDecimalV2(Prop(node, "total")),
+            PaymentsTotal = ReadDecimalV2(Prop(node, "payments_total")),
+            PaymentsPending = ReadDecimalV2(Prop(node, "payments_pending")),
+            ApprovedAt = ParseApprovedAt(Prop(node, "approved_at")?.GetValue<string>()),
+            Tags = ReadTags(Prop(node, "tags")),
         };
     }
 
     public async Task<IReadOnlyList<HoldedExpenseAccountDto>> ListExpenseAccountsAsync(
         CancellationToken ct = default)
     {
-        using var req = new HttpRequestMessage(HttpMethod.Get, "/api/invoicing/v1/expensesaccounts");
-        AttachAuth(req);
-        using var resp = await SendAsync(req, ct);
-        await using var stream = await resp.Content.ReadAsStreamAsync(ct);
-        var arr = (await JsonNode.ParseAsync(stream, cancellationToken: ct))?.AsArray() ?? [];
-        return arr.Select(n => new HoldedExpenseAccountDto
+        const int pageSafetyCap = 5; // a handful of expense accounts today, unpaginated in practice
+        var items = await GetPagedAsync("/api/v2/expenses-accounts?limit=200", pageSafetyCap, ct);
+        return items.Select(n => new HoldedExpenseAccountDto
         {
-            Id = n!["id"]?.GetValue<string>() ?? "",
-            AccountNum = (int)(n["accountNum"]?.GetValue<long>() ?? 0),
-            Name = n["name"]?.GetValue<string>() ?? "",
+            Id = Prop(n, "id")?.GetValue<string>() ?? "",
+            AccountNum = ReadInt(Prop(n, "account_num")) ?? 0,
+            Name = Prop(n, "name")?.GetValue<string>() ?? "",
         }).ToList();
     }
 
     public async Task<string> CreateExpenseAccountAsync(
         int accountNum, string name, CancellationToken ct = default)
     {
-        // TODO(probe): confirm create-expenses-account payload field names against live API
-        var payload = new { name, accountNum };
-        using var req = new HttpRequestMessage(HttpMethod.Post, "/api/invoicing/v1/expensesaccounts")
+        var payload = new { name, account_num = accountNum };
+        using var req = new HttpRequestMessage(HttpMethod.Post, "/api/v2/expenses-accounts")
         { Content = JsonContent.Create(payload) };
         AttachAuth(req);
         using var resp = await SendAsync(req, ct);
@@ -149,18 +149,14 @@ public sealed class HoldedClient : IHoldedClient
             ?? throw new HoldedTransientException("Holded create-account response missing id");
     }
 
-    public async Task<IReadOnlyList<HoldedPurchaseDocListItemDto>> ListPurchaseDocumentsPageAsync(
-        int page, int limit, CancellationToken ct = default)
+    public async Task<IReadOnlyList<HoldedPurchaseDocListItemDto>> ListPurchaseDocumentsAsync(
+        CancellationToken ct = default)
     {
-        using var req = new HttpRequestMessage(HttpMethod.Get,
-            $"/api/invoicing/v1/documents/purchase?page={page}&limit={limit}");
-        AttachAuth(req);
-        using var resp = await SendAsync(req, ct);
-        await using var stream = await resp.Content.ReadAsStreamAsync(ct);
+        const int pageSafetyCap = 200; // 40 000 docs — far above a small nonprofit's volume
+        var items = await GetPagedAsync("/api/v2/purchases?limit=200", pageSafetyCap, ct);
         try
         {
-            var arr = (await JsonNode.ParseAsync(stream, cancellationToken: ct))?.AsArray() ?? [];
-            return arr.Select(ParsePurchaseDoc).ToList();
+            return items.Select(ParsePurchaseDoc).ToList();
         }
         catch (Exception ex) when (ex is JsonException or InvalidOperationException
             or FormatException or OverflowException)
@@ -169,21 +165,33 @@ public sealed class HoldedClient : IHoldedClient
             // stored document, not to this request, so retrying cannot help. Raw parse throws would
             // escape past IHoldedClient's two typed exceptions and leak an Infrastructure detail into
             // the Application layer. Unlike the per-contact skip in ListContactsAsync this fails the
-            // page rather than dropping the doc — these totals become budget-category actuals, and a
-            // silently short page is wrong money rather than a missing name.
-            throw new HoldedPermanentException(
-                $"Holded purchase-document page {page} could not be read.", ex);
+            // whole list rather than dropping the doc — these totals become budget-category actuals,
+            // and a silently short list is wrong money rather than a missing name.
+            throw new HoldedPermanentException("Holded purchase documents could not be read.", ex);
         }
+    }
+
+    public async Task<IReadOnlySet<string>> ListDraftPurchaseIdsAsync(CancellationToken ct = default)
+    {
+        const int pageSafetyCap = 200;
+        var items = await GetPagedAsync("/api/v2/purchases?approval_status=draft&limit=200", pageSafetyCap, ct);
+        // A draft without an id cannot be dropped: MapDoc marks any doc absent from this set
+        // as approved, so an incomplete set silently feeds a draft into the budget actuals.
+        return items
+            .Select(n => Prop(n, "id")?.GetValue<string>() is { Length: > 0 } id
+                ? id
+                : throw new HoldedPermanentException(
+                    "Holded item is missing required field 'id' — refusing the page."))
+            .ToHashSet(StringComparer.Ordinal);
     }
 
     public async Task<string> UpsertContactAsync(HoldedContactInput input, CancellationToken ct = default)
     {
-        // TODO(probe): confirm contact payload field names (name/tradeName/customId/type/iban) against live API.
+        // v2 contacts POST/PUT have no `custom_id` field (see HoldedContactInput.CustomId) — not sent.
         var payload = new
         {
             name = input.Name,
-            tradeName = input.TradeName,
-            customId = input.CustomId,
+            trade_name = input.TradeName,
             type = input.Type,
             iban = input.Iban,
         };
@@ -192,8 +200,8 @@ public sealed class HoldedClient : IHoldedClient
         using var req = new HttpRequestMessage(
             isUpdate ? HttpMethod.Put : HttpMethod.Post,
             isUpdate
-                ? $"/api/invoicing/v1/contacts/{input.ExistingContactId}"
-                : "/api/invoicing/v1/contacts")
+                ? $"/api/v2/contacts/{input.ExistingContactId}"
+                : "/api/v2/contacts")
         { Content = JsonContent.Create(payload) };
         AttachAuth(req);
 
@@ -207,7 +215,7 @@ public sealed class HoldedClient : IHoldedClient
 
     public async Task<HoldedContactDto> GetContactAsync(string contactId, CancellationToken ct = default)
     {
-        using var req = new HttpRequestMessage(HttpMethod.Get, $"/api/invoicing/v1/contacts/{contactId}");
+        using var req = new HttpRequestMessage(HttpMethod.Get, $"/api/v2/contacts/{contactId}");
         AttachAuth(req);
         using var resp = await SendAsync(req, ct);
         await using var stream = await resp.Content.ReadAsStreamAsync(ct);
@@ -234,50 +242,31 @@ public sealed class HoldedClient : IHoldedClient
 
     public async Task<IReadOnlyList<HoldedContactDto>> ListContactsAsync(CancellationToken ct = default)
     {
-        // Paginates by walking `page` until an empty page comes back — the same
-        // "empty list = past the end" contract already verified for this API family
-        // via ListPurchaseDocumentsPageAsync. No `limit` param: unlike dailyledger/
-        // documents-purchase, the contacts endpoint's page size has never been probed
-        // live, so we don't assume it honors a requested limit.
-        const int pageSafetyCap = 50; // 5 000+ contacts — far above a small nonprofit's vendor/member list
+        const int pageSafetyCap = 50; // 10 000+ contacts (limit=200/page) — far above a small nonprofit's vendor/member list
+        var items = await GetPagedAsync("/api/v2/contacts?limit=200", pageSafetyCap, ct);
+
         var contacts = new List<HoldedContactDto>();
         var skipped = 0;
-        var page = 1;
-        for (; page <= pageSafetyCap; page++)
+        foreach (var n in items)
         {
-            using var req = new HttpRequestMessage(HttpMethod.Get, $"/api/invoicing/v1/contacts?page={page}");
-            AttachAuth(req);
-            using var resp = await SendAsync(req, ct);
-            await using var stream = await resp.Content.ReadAsStreamAsync(ct);
-            var arr = (await JsonNode.ParseAsync(stream, cancellationToken: ct))?.AsArray() ?? [];
-            if (arr.Count == 0) break;
-
-            foreach (var n in arr)
+            try
             {
-                if (n is null) continue;
-                try
-                {
-                    contacts.Add(ParseContact(n));
-                }
-                catch (Exception ex) when (ex is JsonException or InvalidOperationException
-                    or FormatException or OverflowException)
-                {
-                    // One contact carrying an unexpected value must not cost every other contact its name.
-                    // This list is the sole source of creditor account names on /Finance/Creditors and the
-                    // bind dropdown, and its caller degrades a throw to *all* names blank — which is how a
-                    // single contact silently emptied the whole card (nobodies-collective/Humans#994).
-                    // Detail on the first one only; the rest are counted, so a bad page cannot flood the log.
-                    if (skipped == 0)
-                        _logger.LogWarning(ex, "Unreadable Holded contact on page {Page}; skipping it.", page);
-                    skipped++;
-                }
+                contacts.Add(ParseContact(n));
+            }
+            catch (Exception ex) when (ex is JsonException or InvalidOperationException
+                or FormatException or OverflowException)
+            {
+                // One contact carrying an unexpected value must not cost every other contact its name.
+                // This list is the sole source of creditor account names on /Finance/Creditors and the
+                // bind dropdown, and its caller degrades a throw to *all* names blank — which is how a
+                // single contact silently emptied the whole card (nobodies-collective/Humans#994).
+                // Detail on the first one only; the rest are counted, so a bad page cannot flood the log.
+                if (skipped == 0)
+                    _logger.LogWarning(ex, "Unreadable Holded contact; skipping it.");
+                skipped++;
             }
         }
 
-        if (page > pageSafetyCap)
-            _logger.LogWarning(
-                "Holded contacts hit the {Cap}-page safety cap; results may be truncated.",
-                pageSafetyCap);
         if (skipped > 0)
             _logger.LogWarning(
                 "Skipped {Skipped} unreadable Holded contact(s); those accounts will show without a name.",
@@ -292,8 +281,27 @@ public sealed class HoldedClient : IHoldedClient
     {
         Id = Prop(node, "id")?.GetValue<string>() ?? fallbackId ?? "",
         Name = Prop(node, "name")?.GetValue<string>(),
-        SupplierAccountNum = ReadInt(Prop(Prop(node, "supplierRecord"), "num")),
+        SupplierAccountNum = ReadInt(Prop(Prop(node, "supplier_record"), "num")),
+        TradeName = Prop(node, "trade_name")?.GetValue<string>(),
+        Email = Prop(node, "email")?.GetValue<string>(),
+        Phone = Prop(node, "phone")?.GetValue<string>(),
+        Mobile = Prop(node, "mobile")?.GetValue<string>(),
+        Iban = Prop(node, "iban")?.GetValue<string>(),
+        TaxCode = Prop(node, "code")?.GetValue<string>(),
+        Address = FormatAddress(Prop(node, "bill_address")),
     };
+
+    /// <summary>One display string joined from bill_address's non-empty parts, or null when the
+    /// address is absent/empty. Holded sends an absent bill_address as null (not an empty array like
+    /// supplierRecord), but <see cref="Prop"/> is still the safe read for the same reason as elsewhere.</summary>
+    private static string? FormatAddress(JsonNode? billAddress)
+    {
+        var parts = new[] { "address", "postal_code", "city", "province", "country" }
+            .Select(k => Prop(billAddress, k)?.GetValue<string>())
+            .Where(v => !string.IsNullOrWhiteSpace(v));
+        var joined = string.Join(", ", parts);
+        return joined.Length == 0 ? null : joined;
+    }
 
     /// <summary>A property of <paramref name="node"/>, or null when it is not an object. The raw
     /// <c>node["x"]</c> indexer throws InvalidOperationException on a non-object, which for a list read
@@ -306,75 +314,187 @@ public sealed class HoldedClient : IHoldedClient
     /// throws on a non-object, and Holded is equally happy to send an absent collection as a scalar.</summary>
     private static JsonArray Arr(JsonNode? node) => node as JsonArray ?? [];
 
-    public async Task<IReadOnlyList<HoldedLedgerLineDto>> ListDailyLedgerAsync(
-        Instant from, Instant to, CancellationToken ct = default)
+    public async Task<IReadOnlyList<HoldedLedgerLineDto>> ListLedgerEntriesAsync(
+        LocalDate from, LocalDate to, int? accountNum = null, CancellationToken ct = default)
     {
-        const int pageSize = 250;
-        const int pageSafetyCap = 100; // 25 000 lines/window — far above a small nonprofit's volume
-        var start = from.ToUnixTimeSeconds();
-        var end = to.ToUnixTimeSeconds();
-        var lines = new List<HoldedLedgerLineDto>();
+        const int pageSafetyCap = 100; // 20 000 lines/window — far above a small nonprofit's volume
+        var query =
+            $"/api/v2/ledger-entries?start_date={LocalDatePattern.Iso.Format(from)}" +
+            $"&end_date={LocalDatePattern.Iso.Format(to)}&limit=200";
+        if (accountNum is { } num)
+            query += $"&account={num}";
+
+        var items = await GetPagedAsync(query, pageSafetyCap, ct);
+        try
+        {
+            return items.Select(n => new HoldedLedgerLineDto
+            {
+                // Identity fields must be present — a manufactured 0 key would survive into
+                // ReplaceLedgerWindowAsync and evict the real cached row it fails to match.
+                EntryNumber = ReadRequiredInt(Prop(n, "entry_number"), "entry_number"),
+                Line = ReadRequiredInt(Prop(n, "line"), "line"),
+                Date = ParseLedgerDate(Prop(n, "date")?.GetValue<string>() ?? ""),
+                AccountNum = ReadRequiredInt(Prop(n, "account"), "account"),
+                Debit = ReadRequiredDecimalV2(Prop(n, "debit"), "debit"),
+                Credit = ReadRequiredDecimalV2(Prop(n, "credit"), "credit"),
+                Type = Prop(n, "type")?.GetValue<string>(),
+                Description = Prop(n, "description")?.GetValue<string>(),
+            }).ToList();
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException
+            or FormatException or OverflowException or UnparsableValueException)
+        {
+            // As in ListPurchaseDocumentsPageAsync — permanent, and the whole page fails rather
+            // than skipping the line. Creditor and account balances are summed from these debits
+            // and credits, so a quietly dropped line reads as a settled entry that never happened.
+            throw new HoldedPermanentException(
+                $"Holded ledger-entries {from}..{to} could not be read.", ex);
+        }
+    }
+
+    public async Task<IReadOnlyList<HoldedAccountDto>> ListAccountingAccountsAsync(
+        CancellationToken ct = default)
+    {
+        const int pageSafetyCap = 5; // 267 accounts today, unpaginated — plenty of headroom
+        var items = await GetPagedAsync("/api/v2/accounting-accounts?limit=200", pageSafetyCap, ct);
+        try
+        {
+            return items.Select(n => new HoldedAccountDto
+            {
+                Id = Prop(n, "id")?.GetValue<string>() ?? "",
+                Number = ReadInt(Prop(n, "number")) ?? 0,
+                Name = Prop(n, "name")?.GetValue<string>() ?? "",
+                Group = Prop(n, "group")?.GetValue<string>(),
+                Debit = ReadDecimalV2(Prop(n, "debit")),
+                Credit = ReadDecimalV2(Prop(n, "credit")),
+                Balance = ReadDecimalV2(Prop(n, "balance")),
+                Archived = Prop(n, "archived")?.GetValue<bool>() ?? false,
+            }).ToList();
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException
+            or FormatException or OverflowException)
+        {
+            throw new HoldedPermanentException("Holded accounting-accounts could not be read.", ex);
+        }
+    }
+
+    public async Task<HoldedUsageDto> GetUsageAsync(CancellationToken ct = default)
+    {
+        using var req = new HttpRequestMessage(HttpMethod.Get, "/api/v2/usage");
+        AttachAuth(req);
+        using var resp = await SendAsync(req, ct);
+        await using var stream = await resp.Content.ReadAsStreamAsync(ct);
+        try
+        {
+            // Parse inside the try: a truncated 200 body must surface as a typed Holded
+            // exception so /Holded degrades to "unreachable" instead of a raw 500.
+            var node = await JsonNode.ParseAsync(stream, cancellationToken: ct)
+                ?? throw new HoldedTransientException("Holded returned empty body");
+            var secondary = Prop(node, "secondary_usages") as JsonObject;
+            return new HoldedUsageDto
+            {
+                Period = Prop(node, "period")?.GetValue<string>() ?? "",
+                Usage = Prop(node, "usage")?.GetValue<long>() ?? 0,
+                Limit = Prop(node, "limit")?.GetValue<long>() ?? 0,
+                SecondaryUsages = secondary is null
+                    ? new Dictionary<string, long>(StringComparer.Ordinal)
+                    : secondary.ToDictionary(
+                        kv => kv.Key, kv => kv.Value?.GetValue<long>() ?? 0, StringComparer.Ordinal),
+            };
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException
+            or FormatException or OverflowException)
+        {
+            throw new HoldedPermanentException("Holded usage could not be read.", ex);
+        }
+    }
+
+    /// <summary>Walks a v2 cursor-paginated collection: follows `cursor` while `has_more`, collecting
+    /// `items` elements. Throws when pageSafetyCap is hit rather than returning a truncated result —
+    /// these lists feed replace-semantics reconciliation downstream, so a silently short fetch would
+    /// drive deletion of rows that still exist in Holded (lossy becomes destructive).</summary>
+    private async Task<List<JsonNode>> GetPagedAsync(
+        string pathAndQuery, int pageSafetyCap, CancellationToken ct,
+        [CallerMemberName] string caller = "")
+    {
+        var items = new List<JsonNode>();
+        string? cursor = null;
         for (var page = 1; page <= pageSafetyCap; page++)
         {
-            using var req = new HttpRequestMessage(HttpMethod.Get,
-                $"/api/accounting/v1/dailyledger?starttmp={start}&endtmp={end}&page={page}");
+            var url = cursor is null
+                ? pathAndQuery
+                : $"{pathAndQuery}&cursor={Uri.EscapeDataString(cursor)}";
+            using var req = new HttpRequestMessage(HttpMethod.Get, url);
             AttachAuth(req);
-            using var resp = await SendAsync(req, ct);
+            // Forward the real caller (ListLedgerEntriesAsync, ListContactsAsync, …) — SendAsync's own
+            // [CallerMemberName] would otherwise record every paginated endpoint as "GetPagedAsync",
+            // collapsing the call log's per-endpoint breakdown (used by the admin overview, Task 7).
+            using var resp = await SendAsync(req, ct, caller);
             await using var stream = await resp.Content.ReadAsStreamAsync(ct);
-            JsonArray arr;
-            try
+            var root = await JsonNode.ParseAsync(stream, cancellationToken: ct);
+
+            // Strict envelope validation, not the forgiving Prop/Arr fallbacks: a 200 carrying
+            // Holded's {"status":0,...} error object — or any body without an `items` array —
+            // would otherwise read as a successfully-empty page, and list results feed
+            // replace-semantics windows where a false empty deletes every cached row in range.
+            if (Prop(root, "items") is not JsonArray itemsArr)
             {
-                arr = (await JsonNode.ParseAsync(stream, cancellationToken: ct))?.AsArray() ?? [];
-                foreach (var n in arr)
-                {
-                    if (n is null) continue;
-                    lines.Add(new HoldedLedgerLineDto
-                    {
-                        EntryNumber = ReadInt(Prop(n, "entryNumber")) ?? 0,
-                        Line = ReadInt(Prop(n, "line")) ?? 0,
-                        Date = ReadInstant(Prop(n, "timestamp")) ?? Instant.FromUnixTimeSeconds(0),
-                        AccountNum = ReadInt(Prop(n, "account")) ?? 0,
-                        Debit = ReadDecimal(Prop(n, "debit")),
-                        Credit = ReadDecimal(Prop(n, "credit")),
-                        Type = Prop(n, "type")?.GetValue<string>(),
-                        Description = Prop(n, "description")?.GetValue<string>(),
-                    });
-                }
+                var preview = root?.ToJsonString() ?? "null";
+                throw new HoldedTransientException(
+                    $"Holded returned a 200 without a valid items array for {pathAndQuery.Split('?', 2)[0]} " +
+                    $"(body starts: {preview[..Math.Min(preview.Length, 120)]}).");
             }
-            catch (Exception ex) when (ex is JsonException or InvalidOperationException
-                or FormatException or OverflowException)
-            {
-                // As in ListPurchaseDocumentsPageAsync — permanent, and the whole page fails rather
-                // than skipping the line. Creditor balances are summed from these debits and credits,
-                // so a quietly dropped line reads as a settled invoice that was never paid.
-                throw new HoldedPermanentException(
-                    $"Holded daily-ledger page {page} for {from}..{to} could not be read.", ex);
-            }
-            if (arr.Count < pageSize) return lines;
+            foreach (var n in itemsArr)
+                if (n is not null) items.Add(n);
+
+            // Absent has_more is a legitimate final page — the live accounting-accounts
+            // response carries items only, no pagination metadata. But has_more:true without
+            // a cursor cannot be followed, and returning the prefix would feed replace
+            // semantics a truncated list.
+            var hasMore = Prop(root, "has_more")?.GetValue<bool>() ?? false;
+            cursor = Prop(root, "cursor")?.GetValue<string>();
+            if (!hasMore) return items;
+            if (string.IsNullOrEmpty(cursor))
+                throw new HoldedTransientException(
+                    $"Holded page for {pathAndQuery.Split('?', 2)[0]} claims has_more but carries no cursor.");
         }
-        _logger.LogWarning(
-            "Holded dailyledger hit the {Cap}-page safety cap for window {From}..{To}; results may be truncated.",
-            pageSafetyCap, from, to);
-        return lines;
+
+        var endpoint = pathAndQuery.Split('?', 2)[0];
+        throw new HoldedTransientException(
+            $"Holded cursor pagination for {endpoint} hit the {pageSafetyCap}-page safety cap.");
     }
+
+    private static Instant ParseLedgerDate(string s) =>
+        DateFormattingExtensions.HoldedLedgerDatePattern.Parse(s).Value
+            .AtStartOfDayInZone(MadridZone).ToInstant();
+
+    private static Instant ParseIsoDate(string s) =>
+        LocalDatePattern.Iso.Parse(s).Value.AtStartOfDayInZone(MadridZone).ToInstant();
+
+    /// <summary>`approved_at` arrives as an offset-less ISO date-time (e.g. "2024-01-15T13:00:00");
+    /// treated as Madrid local time, consistent with every other Holded date/time on this client.</summary>
+    private static Instant? ParseApprovedAt(string? s) =>
+        string.IsNullOrEmpty(s)
+            ? null
+            : LocalDateTimePattern.GeneralIso.Parse(s).Value.InZoneLeniently(MadridZone).ToInstant();
 
     /// <summary>Projects one purchase document. Every container read goes through <see cref="Prop"/> /
     /// <see cref="Arr"/> rather than the raw indexer, for the reason spelled out on those two.</summary>
     private static HoldedPurchaseDocListItemDto ParsePurchaseDoc(JsonNode? n) => new()
     {
         Id = Prop(n, "id")?.GetValue<string>() ?? "",
-        DocNumber = Prop(n, "docNumber")?.GetValue<string>() ?? "",
-        ContactName = Prop(n, "contactName")?.GetValue<string>() ?? "",
-        Date = ReadInstant(Prop(n, "date")) ?? Instant.FromUnixTimeSeconds(0),
-        Subtotal = ReadDecimal(Prop(n, "subtotal")),
-        Tax = ReadDecimal(Prop(n, "tax")),
-        Total = ReadDecimal(Prop(n, "total")),
-        ApprovedAt = ReadInstant(Prop(n, "approvedAt")),
+        DocNumber = Prop(n, "document_number")?.GetValue<string>() ?? "",
+        ContactName = Prop(n, "contact_name")?.GetValue<string>() ?? "",
+        Date = ParseIsoDate(Prop(n, "date")?.GetValue<string>() ?? ""),
+        Subtotal = ReadDecimalV2(Prop(n, "subtotal")),
+        Tax = ReadDecimalV2(Prop(n, "tax")),
+        // Total feeds the budget actuals; an absent field must fail the page, not upsert 0.00.
+        Total = ReadRequiredDecimalV2(Prop(n, "total"), "total"),
         Currency = Prop(n, "currency")?.GetValue<string>() ?? "eur",
         Tags = ReadTags(Prop(n, "tags")),
-        Lines = Arr(Prop(n, "products")).Select(p => new HoldedPurchaseLineDto
+        Lines = Arr(Prop(n, "lines")).Select(p => new HoldedPurchaseLineDto
         {
-            Amount = ReadDecimal(Prop(p, "price")),
+            Amount = ReadDecimalV2(Prop(p, "price")),
             AccountId = Prop(p, "account")?.GetValue<string>(),
             Tags = ReadTags(Prop(p, "tags")),
         }).ToList(),
@@ -384,25 +504,34 @@ public sealed class HoldedClient : IHoldedClient
         Arr(node).Where(t => t is not null).Select(t => t!.GetValue<string>()).ToList();
 
     private void AttachAuth(HttpRequestMessage req) =>
-        req.Headers.Add("key", _options.ApiKey);
+        req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _options.ApiKey);
 
     private async Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage req, CancellationToken ct,
         [CallerMemberName] string caller = "")
     {
         using var _ = _logger.TimeOperation(operation: caller);
-        HttpResponseMessage resp;
-        try
+        var resp = await SendOnceAsync(req, caller, ct);
+
+        // 429 is retried once, only for content-free (GET) requests — a content-bearing request
+        // (POST/PUT) is not safely repeatable without knowing whether Holded already applied it.
+        if (resp.StatusCode == HttpStatusCode.TooManyRequests && req.Content is null)
         {
-            resp = await _http.SendAsync(req, ct);
+            var retryAfterSeconds = Math.Min(
+                ReadRetryAfterSeconds(resp) ?? DefaultRetryAfterSeconds, MaxRetryAfterSeconds);
+            resp.Dispose();
+            await Task.Delay(TimeSpan.FromSeconds(retryAfterSeconds), ct);
+            resp = await SendOnceAsync(CloneForRetry(req), caller, ct);
         }
-        catch (HttpRequestException ex)
+
+        if (resp.StatusCode == HttpStatusCode.TooManyRequests)
         {
-            throw new HoldedTransientException("Holded HTTP send failed", ex);
-        }
-        catch (TaskCanceledException ex) when (!ct.IsCancellationRequested)
-        {
-            throw new HoldedTransientException("Holded HTTP send timed out", ex);
+            var retryAfterSeconds = ReadRetryAfterSeconds(resp);
+            using (resp)
+            {
+                throw new HoldedTransientException(
+                    $"Holded 429 Too Many Requests (retry after {retryAfterSeconds?.ToString(CultureInfo.InvariantCulture) ?? "unknown"}s)");
+            }
         }
 
         if (resp.IsSuccessStatusCode) return resp;
@@ -418,17 +547,79 @@ public sealed class HoldedClient : IHoldedClient
         }
     }
 
-    private static decimal ReadDecimal(JsonNode? node) =>
-        node?.GetValue<decimal>() ?? 0m;
+    private async Task<HttpResponseMessage> SendOnceAsync(
+        HttpRequestMessage req, string caller, CancellationToken ct)
+    {
+        HttpResponseMessage resp;
+        try
+        {
+            resp = await _http.SendAsync(req, ct);
+        }
+        catch (HttpRequestException ex)
+        {
+            throw new HoldedTransientException("Holded HTTP send failed", ex);
+        }
+        catch (TaskCanceledException ex) when (!ct.IsCancellationRequested)
+        {
+            throw new HoldedTransientException("Holded HTTP send timed out", ex);
+        }
+
+        RecordCall(caller, req.Method.Method, resp);
+        return resp;
+    }
+
+    private void RecordCall(string endpoint, string method, HttpResponseMessage resp)
+    {
+        int? rateLimitRemaining = resp.Headers.TryGetValues("X-RateLimit-Remaining", out var remaining)
+            && int.TryParse(remaining.FirstOrDefault(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed)
+            ? parsed
+            : null;
+        var rateLimitWindow = resp.Headers.TryGetValues("X-RateLimit-Window", out var window)
+            ? window.FirstOrDefault()
+            : null;
+
+        _callLog.Record(new HoldedApiCallRecord(
+            _clock.GetCurrentInstant(), endpoint, method, (int)resp.StatusCode,
+            rateLimitRemaining, rateLimitWindow));
+    }
+
+    private int? ReadRetryAfterSeconds(HttpResponseMessage resp)
+    {
+        var retryAfter = resp.Headers.RetryAfter;
+        if (retryAfter?.Delta is { } delta) return (int)delta.TotalSeconds;
+        // Retry-After also has a valid HTTP-date form; a past date clamps to 0 (retry now).
+        if (retryAfter?.Date is { } date)
+            return (int)Math.Max(0, (date - _clock.GetCurrentInstant().ToDateTimeOffset()).TotalSeconds);
+        return null;
+    }
+
+    /// <summary>A GET <see cref="HttpRequestMessage"/> can only be sent once through <see cref="HttpClient"/>;
+    /// the 429 retry needs a fresh instance carrying the same method, URI, and headers (including auth).</summary>
+    private static HttpRequestMessage CloneForRetry(HttpRequestMessage req)
+    {
+        var clone = new HttpRequestMessage(req.Method, req.RequestUri);
+        foreach (var header in req.Headers)
+            clone.Headers.TryAddWithoutValidation(header.Key, header.Value);
+        return clone;
+    }
+
+    // v2 sends decimals as strings (e.g. "121.00").
+    private static decimal ReadDecimalV2(JsonNode? node) =>
+        decimal.Parse(node?.GetValue<string>() ?? "0", CultureInfo.InvariantCulture);
 
     // GetValue<decimal> (not <long>) so a JSON float token like 40000001.0 parses; cast truncates.
     private static int? ReadInt(JsonNode? node) =>
         node is null ? null : (int?)node.GetValue<decimal>();
 
-    private static Instant? ReadInstant(JsonNode? node)
-    {
-        if (node is null) return null;
-        var seconds = node.GetValue<long>();
-        return seconds == 0 ? null : Instant.FromUnixTimeSeconds(seconds);
-    }
+    private static int ReadRequiredInt(JsonNode? node, string field) =>
+        ReadInt(node) ?? throw new HoldedPermanentException(
+            $"Holded item is missing required field '{field}' — refusing the page.");
+
+    /// <summary>An absent amount must fail the page, not read as 0.00 — replace semantics would
+    /// overwrite the cached line's real amount and still report the sync as a success.</summary>
+    private static decimal ReadRequiredDecimalV2(JsonNode? node, string field) =>
+        node is null
+            ? throw new HoldedPermanentException(
+                $"Holded item is missing required field '{field}' — refusing the page.")
+            : ReadDecimalV2(node);
 }

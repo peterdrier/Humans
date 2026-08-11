@@ -7,15 +7,16 @@ public interface IHoldedFinanceService : IApplicationService
     Task<HoldedProvisioningPlan> GetProvisioningPlanAsync(int blockStart, CancellationToken ct = default);
     Task<int> ProvisionAsync(int blockStart, bool addAll, CancellationToken ct = default);
     Task<HoldedSyncResult> SyncAsync(CancellationToken ct = default);
+
+    /// <summary>State of the last purchase-doc sync. Read-only; lazy-creates the state row.</summary>
+    Task<HoldedDocSyncInfo> GetDocSyncInfoAsync(CancellationToken ct = default);
     Task<IReadOnlyList<HoldedActualRow>> GetActualsForYearAsync(int calendarYear, CancellationToken ct = default);
     Task<IReadOnlyList<HoldedUnmatchedRow>> GetUnmatchedAsync(CancellationToken ct = default);
 
-    /// <summary>Cache refresh of the Holded daybook (creditor journal lines); everything else derives
-    /// from these. The nightly run (<paramref name="fullHistory"/> false) sweeps one trailing ≤1-year
-    /// window ending now — a single Holded call. The full backward sweep costs one call per year of
-    /// books, so it runs only on request or against a cold cache. Sweeps are serialized.</summary>
-    /// <returns>False when another sweep was already running and this one was skipped.</returns>
-    Task<bool> SyncCreditorLedgerAsync(bool fullHistory = false, CancellationToken ct = default);
+    /// <summary>The active Holded expense-account id mapped to this budget category
+    /// (holded_category_map), or null when no active mapping exists. Used to book a purchase
+    /// line's `items[].account` directly at doc creation.</summary>
+    Task<string?> GetHoldedAccountIdForCategoryAsync(Guid budgetCategoryId, CancellationToken ct = default);
 
     /// <summary>Derives cached creditor status (balance, owed, payments) for a member's 400000xx account
     /// from the cached daybook lines. Returns null when no lines are cached for the account.</summary>

@@ -7,8 +7,8 @@ namespace Humans.Finance.Data;
 /// <summary>
 /// Per-section database context for the Finance section
 /// (nobodies-collective/Humans#858): maps only <c>holded_expense_docs</c>,
-/// <c>holded_category_map</c>, <c>holded_ledger_lines</c>,
-/// <c>holded_creditor_contacts</c> and <c>holded_sync_states</c>, with its own
+/// <c>holded_category_map</c>, <c>holded_creditor_contacts</c> and
+/// <c>holded_doc_sync_state</c> (the ledger mirror moved to the Holded section), with its own
 /// <c>__EFMigrationsHistory_Finance</c> table and migrations under
 /// <c>Migrations/Finance/</c>. Same database, same connection — the split
 /// is a code-side partition of the EF model.
@@ -23,9 +23,8 @@ internal sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> option
 {
     public DbSet<HoldedExpenseDoc> HoldedExpenseDocs => Set<HoldedExpenseDoc>();
     public DbSet<HoldedCategoryMap> HoldedCategoryMap => Set<HoldedCategoryMap>();
-    public DbSet<HoldedLedgerLine> HoldedLedgerLines => Set<HoldedLedgerLine>();
     public DbSet<HoldedCreditorContact> HoldedCreditorContacts => Set<HoldedCreditorContact>();
-    public DbSet<HoldedSyncState> HoldedSyncStates => Set<HoldedSyncState>();
+    public DbSet<HoldedDocSyncState> HoldedDocSyncStates => Set<HoldedDocSyncState>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -33,8 +32,7 @@ internal sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> option
 
         builder.ApplyConfiguration(new HoldedExpenseDocConfiguration());
         builder.ApplyConfiguration(new HoldedCategoryMapConfiguration());
-        builder.ApplyConfiguration(new HoldedLedgerLineConfiguration());
         builder.ApplyConfiguration(new HoldedCreditorContactConfiguration());
-        builder.ApplyConfiguration(new HoldedSyncStateConfiguration());
+        builder.ApplyConfiguration(new HoldedDocSyncStateConfiguration());
     }
 }

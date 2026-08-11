@@ -18,12 +18,12 @@ namespace Humans.Finance.Data.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.9")
+                .HasAnnotation("ProductVersion", "10.0.10")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("Humans.Domain.Entities.HoldedCategoryMap", b =>
+            modelBuilder.Entity("Humans.Finance.Domain.HoldedCategoryMap", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -68,7 +68,7 @@ namespace Humans.Finance.Data.Migrations
                     b.ToTable("holded_category_map", (string)null);
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.HoldedCreditorContact", b =>
+            modelBuilder.Entity("Humans.Finance.Domain.HoldedCreditorContact", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -106,14 +106,39 @@ namespace Humans.Finance.Data.Migrations
                     b.ToTable("holded_creditor_contacts", (string)null);
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.HoldedExpenseDoc", b =>
+            modelBuilder.Entity("Humans.Finance.Domain.HoldedDocSyncState", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<Instant?>("LastSyncAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("LastSyncedDocCount")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<Instant?>("StatusChangedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("holded_doc_sync_state", (string)null);
+                });
+
+            modelBuilder.Entity("Humans.Finance.Domain.HoldedExpenseDoc", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
-
-                    b.Property<Instant?>("ApprovedAt")
-                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("BookedAccountId")
                         .HasColumnType("text");
@@ -144,6 +169,9 @@ namespace Humans.Finance.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
+
+                    b.Property<bool?>("IsApproved")
+                        .HasColumnType("boolean");
 
                     b.Property<Instant>("LastSyncedAt")
                         .HasColumnType("timestamp with time zone");
@@ -190,92 +218,6 @@ namespace Humans.Finance.Data.Migrations
                     b.HasIndex("MatchStatus");
 
                     b.ToTable("holded_expense_docs", (string)null);
-                });
-
-            modelBuilder.Entity("Humans.Domain.Entities.HoldedLedgerLine", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("AccountNum")
-                        .HasColumnType("integer");
-
-                    b.Property<Instant>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<decimal>("Credit")
-                        .HasColumnType("decimal(12,2)");
-
-                    b.Property<Instant>("Date")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<decimal>("Debit")
-                        .HasColumnType("decimal(12,2)");
-
-                    b.Property<string>("Description")
-                        .HasColumnType("text");
-
-                    b.Property<int>("EntryNumber")
-                        .HasColumnType("integer");
-
-                    b.Property<Instant>("LastSyncedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("Line")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Type")
-                        .HasMaxLength(32)
-                        .HasColumnType("character varying(32)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("AccountNum");
-
-                    b.HasIndex("EntryNumber", "Line")
-                        .IsUnique();
-
-                    b.ToTable("holded_ledger_lines", (string)null);
-                });
-
-            modelBuilder.Entity("Humans.Domain.Entities.HoldedSyncState", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("LastError")
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)");
-
-                    b.Property<Instant?>("LastSyncAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("LastSyncedDocCount")
-                        .HasColumnType("integer");
-
-                    b.Property<Instant?>("StatusChangedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("SyncStatus")
-                        .IsRequired()
-                        .HasMaxLength(16)
-                        .HasColumnType("character varying(16)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("holded_sync_states", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            LastSyncedDocCount = 0,
-                            SyncStatus = "Idle"
-                        });
                 });
 #pragma warning restore 612, 618
         }

@@ -6,6 +6,7 @@ using Humans.Infrastructure.Services.Holded;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NodaTime;
+using NodaTime.Testing;
 
 namespace Humans.Application.Tests.Services.Holded;
 
@@ -15,12 +16,14 @@ public class HoldedClientReadTests
         new(
             new HttpClient(handler) { BaseAddress = new Uri("https://api.holded.com") },
             Options.Create(new HoldedClientOptions { ApiKey = "test-key" }),
-            NullLogger<HoldedClient>.Instance);
+            NullLogger<HoldedClient>.Instance,
+            new HoldedCallLog(),
+            new FakeClock(Instant.FromUtc(2026, 8, 10, 12, 0)));
 
     [HumansFact]
     public async Task ListExpenseAccounts_parses_num_and_name()
     {
-        var json = """[{"id":"a1","name":"Otros servicios","accountNum":62900000}]""";
+        var json = """{"items":[{"id":"a1","name":"Otros servicios","account_num":62900000,"archived":false}],"cursor":null,"has_more":false}""";
         var handler = new StubHandler(_ => Respond(HttpStatusCode.OK, json));
 
         var client = Make(handler);
@@ -33,31 +36,33 @@ public class HoldedClientReadTests
     }
 
     [HumansFact]
-    public async Task ListPurchaseDocumentsPage_parses_lines_account_and_tags()
+    public async Task ListPurchaseDocuments_parses_lines_account_and_tags()
     {
         var json = """
-        [
+        {"items":[
           {
-            "id":"doc-1","docNumber":"F001","contactName":"Alice",
-            "date":1779141600,"approvedAt":1779228000,
-            "subtotal":100.0,"tax":21.0,"total":121.0,
+            "id":"doc-1","document_number":"F001","contact_name":"Alice",
+            "date":"2026-05-14",
+            "subtotal":"100.00","tax":"21.00","total":"121.00",
             "currency":"eur","tags":["adminstaff"],
-            "products":[
-              {"price":100.0,"account":"acc-629","tags":["adminstaff"]}
+            "lines":[
+              {"price":"100.00","account":"acc-629","tags":["adminstaff"]}
             ]
           }
-        ]
+        ],"cursor":null,"has_more":false}
         """;
         var handler = new StubHandler(_ => Respond(HttpStatusCode.OK, json));
 
         var client = Make(handler);
-        var docs = await client.ListPurchaseDocumentsPageAsync(1, 10, Xunit.TestContext.Current.CancellationToken);
+        var docs = await client.ListPurchaseDocumentsAsync(Xunit.TestContext.Current.CancellationToken);
 
         docs.Should().HaveCount(1);
         var doc = docs[0];
         doc.Id.Should().Be("doc-1");
-        doc.Date.Should().Be(Instant.FromUnixTimeSeconds(1779141600));
-        doc.ApprovedAt.Should().Be(Instant.FromUnixTimeSeconds(1779228000));
+        doc.Date.Should().Be(
+            new LocalDate(2026, 5, 14)
+                .AtStartOfDayInZone(DateTimeZoneProviders.Tzdb["Europe/Madrid"])
+                .ToInstant());
         doc.Tags.Should().ContainSingle("adminstaff");
 
         doc.Lines.Should().HaveCount(1);
@@ -68,31 +73,30 @@ public class HoldedClientReadTests
     }
 
     [HumansFact]
-    public async Task ListPurchaseDocumentsPage_puts_page_and_limit_in_query_string()
+    public async Task ListPurchaseDocuments_puts_limit_in_query_string()
     {
         string? capturedQuery = null;
         var handler = new StubHandler(req =>
         {
             capturedQuery = req.RequestUri!.Query;
-            return Respond(HttpStatusCode.OK, "[]");
+            return Respond(HttpStatusCode.OK, """{"items":[],"cursor":null,"has_more":false}""");
         });
 
         var client = Make(handler);
-        await client.ListPurchaseDocumentsPageAsync(page: 3, limit: 50, ct: Xunit.TestContext.Current.CancellationToken);
+        await client.ListPurchaseDocumentsAsync(Xunit.TestContext.Current.CancellationToken);
 
-        capturedQuery.Should().Contain("page=3");
-        capturedQuery.Should().Contain("limit=50");
+        capturedQuery.Should().Contain("limit=200");
     }
 
     [HumansFact]
-    public async Task ListPurchaseDocumentsPage_treats_a_non_array_products_as_no_lines()
+    public async Task ListPurchaseDocuments_treats_a_non_array_lines_as_no_lines()
     {
         // Holded sends an absent sub-record as an empty array (#994) and is equally free to send an
         // absent collection as something other than an array; AsArray() throws on both.
-        var json = """[{"id":"doc-1","docNumber":"F001","products":{},"tags":""}]""";
+        var json = """{"items":[{"id":"doc-1","document_number":"F001","date":"2026-05-14","total":"121.00","lines":{},"tags":""}],"cursor":null,"has_more":false}""";
         var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, json)));
 
-        var docs = await client.ListPurchaseDocumentsPageAsync(1, 10, Xunit.TestContext.Current.CancellationToken);
+        var docs = await client.ListPurchaseDocumentsAsync(Xunit.TestContext.Current.CancellationToken);
 
         docs.Should().ContainSingle();
         docs[0].Lines.Should().BeEmpty();
@@ -100,31 +104,187 @@ public class HoldedClientReadTests
     }
 
     [HumansFact]
-    public async Task ListPurchaseDocumentsPage_surfaces_an_unreadable_doc_as_permanent_not_a_raw_parse_throw()
+    public async Task ListPurchaseDocuments_surfaces_an_unreadable_doc_as_permanent_not_a_raw_parse_throw()
     {
         // Callers handle only IHoldedClient's two typed exceptions; a raw parse throw from a bad
         // stored value would escape the client and leak an Infrastructure detail upward.
         var client = Make(new StubHandler(_ => Respond(
-            HttpStatusCode.OK, """[{"id":42,"docNumber":"F001"}]""")));
+            HttpStatusCode.OK, """{"items":[{"id":42,"document_number":"F001"}],"cursor":null,"has_more":false}""")));
 
-        var act = async () => await client.ListPurchaseDocumentsPageAsync(1, 10, Xunit.TestContext.Current.CancellationToken);
+        var act = async () => await client.ListPurchaseDocumentsAsync(Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<HoldedPermanentException>();
     }
 
     [HumansFact]
-    public async Task ListDailyLedger_surfaces_an_unreadable_line_as_permanent_not_a_raw_parse_throw()
+    public async Task ListDraftPurchaseIds_sends_approval_status_filter_and_returns_ids()
     {
-        // ReadInt's GetValue<decimal> throws on a non-numeric account. Fail the page rather than
-        // drop the line: creditor balances are summed from these debits and credits.
-        var client = Make(new StubHandler(_ => Respond(
-            HttpStatusCode.OK, """[{"entryNumber":1,"account":"not-a-number","debit":10.0}]""")));
+        string? capturedQuery = null;
+        var handler = new StubHandler(req =>
+        {
+            capturedQuery = req.RequestUri!.Query;
+            return Respond(HttpStatusCode.OK,
+                """{"items":[{"id":"d1"},{"id":"d2"}],"cursor":null,"has_more":false}""");
+        });
 
-        var act = async () => await client.ListDailyLedgerAsync(
-            Instant.FromUnixTimeSeconds(0), Instant.FromUnixTimeSeconds(86400),
-            Xunit.TestContext.Current.CancellationToken);
+        var client = Make(handler);
+        var ids = await client.ListDraftPurchaseIdsAsync(Xunit.TestContext.Current.CancellationToken);
+
+        capturedQuery.Should().Contain("approval_status=draft");
+        ids.Should().BeEquivalentTo(["d1", "d2"]);
+    }
+
+    [HumansFact]
+    public async Task ListLedgerEntries_parses_ddMMyyyy_dates_and_string_decimals()
+    {
+        var json = """
+        {"items":[{"entry_number":2064,"line":2,"date":"09/02/2026","type":"payment",
+          "description":"","doc_description":"","account":40000004,"debit":"0.00",
+          "credit":"1200.00","tags":[],"checked":false}],"cursor":null,"has_more":false}
+        """;
+        var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, json)));
+
+        var lines = await client.ListLedgerEntriesAsync(
+            new LocalDate(2026, 1, 1), new LocalDate(2026, 12, 31),
+            ct: Xunit.TestContext.Current.CancellationToken);
+
+        lines.Should().HaveCount(1);
+        var line = lines[0];
+        line.EntryNumber.Should().Be(2064);
+        line.Line.Should().Be(2);
+        line.AccountNum.Should().Be(40000004);
+        line.Debit.Should().Be(0.00m);
+        line.Credit.Should().Be(1200.00m);
+        line.Type.Should().Be("payment");
+        line.Date.Should().Be(
+            new LocalDate(2026, 2, 9)
+                .AtStartOfDayInZone(DateTimeZoneProviders.Tzdb["Europe/Madrid"])
+                .ToInstant());
+    }
+
+    [HumansFact]
+    public async Task ListLedgerEntries_follows_cursor_until_has_more_false()
+    {
+        var callCount = 0;
+        string? secondQuery = null;
+        var handler = new StubHandler(req =>
+        {
+            callCount++;
+            if (callCount == 1)
+            {
+                return Respond(HttpStatusCode.OK, """
+                {"items":[{"entry_number":1,"line":1,"date":"01/01/2026","account":40000004,
+                  "debit":"0.00","credit":"10.00"}],"cursor":"c1","has_more":true}
+                """);
+            }
+            secondQuery = req.RequestUri!.Query;
+            return Respond(HttpStatusCode.OK, """
+            {"items":[{"entry_number":2,"line":1,"date":"02/01/2026","account":40000004,
+              "debit":"0.00","credit":"5.00"}],"cursor":null,"has_more":false}
+            """);
+        });
+
+        var client = Make(handler);
+        var lines = await client.ListLedgerEntriesAsync(
+            new LocalDate(2026, 1, 1), new LocalDate(2026, 1, 31),
+            ct: Xunit.TestContext.Current.CancellationToken);
+
+        lines.Should().HaveCount(2);
+        callCount.Should().Be(2);
+        secondQuery.Should().Contain("cursor=c1");
+    }
+
+    [HumansFact]
+    public async Task ListLedgerEntries_throws_when_page_cap_hit()
+    {
+        // A truncated fetch here would drive replace-semantics reconciliation to delete rows that
+        // still exist in Holded — lossy becomes destructive, so the cap must throw, never log-and-return.
+        var handler = new StubHandler(_ => Respond(HttpStatusCode.OK, """
+            {"items":[],"cursor":"c1","has_more":true}
+            """));
+
+        var client = Make(handler);
+        var act = async () => await client.ListLedgerEntriesAsync(
+            new LocalDate(2026, 1, 1), new LocalDate(2026, 1, 31),
+            ct: Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<HoldedTransientException>();
+    }
+
+    [HumansFact]
+    public async Task ListLedgerEntries_passes_account_filter()
+    {
+        string? capturedQuery = null;
+        var handler = new StubHandler(req =>
+        {
+            capturedQuery = req.RequestUri!.Query;
+            return Respond(HttpStatusCode.OK, """{"items":[],"cursor":null,"has_more":false}""");
+        });
+
+        var client = Make(handler);
+        await client.ListLedgerEntriesAsync(
+            new LocalDate(2026, 1, 1), new LocalDate(2026, 1, 31), accountNum: 40000004,
+            ct: Xunit.TestContext.Current.CancellationToken);
+
+        capturedQuery.Should().Contain("account=40000004");
+    }
+
+    [HumansFact]
+    public async Task ListLedgerEntries_surfaces_an_unreadable_line_as_permanent_not_a_raw_parse_throw()
+    {
+        // Fail the page rather than drop the line: creditor and account balances are summed from
+        // these debits and credits, and a quietly dropped line reads as a settled entry that never happened.
+        var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK,
+            """{"items":[{"entry_number":1,"account":"not-a-number","debit":"10.00"}],"cursor":null,"has_more":false}""")));
+
+        var act = async () => await client.ListLedgerEntriesAsync(
+            new LocalDate(2026, 1, 1), new LocalDate(2026, 1, 31),
+            ct: Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<HoldedPermanentException>();
+    }
+
+    [HumansFact]
+    public async Task ListAccountingAccounts_parses_totals()
+    {
+        var json = """
+        {"items":[{"id":"a1","color":"#fff","number":10000000,"name":"Capital",
+          "description":"","group":"Equity","debit":"0.00","credit":"1000.00",
+          "balance":"-1000.00","archived":false,"non_deductible":false}],
+         "cursor":null,"has_more":false}
+        """;
+        var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, json)));
+
+        var accounts = await client.ListAccountingAccountsAsync(Xunit.TestContext.Current.CancellationToken);
+
+        accounts.Should().HaveCount(1);
+        var account = accounts[0];
+        account.Id.Should().Be("a1");
+        account.Number.Should().Be(10000000);
+        account.Name.Should().Be("Capital");
+        account.Group.Should().Be("Equity");
+        account.Debit.Should().Be(0.00m);
+        account.Credit.Should().Be(1000.00m);
+        account.Balance.Should().Be(-1000.00m);
+        account.Archived.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task GetUsage_parses_period_usage_limit_and_secondary()
+    {
+        var json = """
+        {"type":"automation_token","period":"2026-08","usage":36,"limit":2000000,
+         "count":1,"secondary_usages":{"api_v1_legacy_1":35},"user_usages":[],
+         "next_plan":null,"next_limit":null}
+        """;
+        var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, json)));
+
+        var usage = await client.GetUsageAsync(Xunit.TestContext.Current.CancellationToken);
+
+        usage.Period.Should().Be("2026-08");
+        usage.Usage.Should().Be(36);
+        usage.Limit.Should().Be(2000000);
+        usage.SecondaryUsages.Should().ContainKey("api_v1_legacy_1").WhoseValue.Should().Be(35);
     }
 
     [HumansFact]

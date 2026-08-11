@@ -1,17 +1,20 @@
 @model Humans.Finance.Models.CreditorsPageVm
 @{
     ViewData["Title"] = "Creditor Accounts";
+
+    // Header links toggle the direction of the active column and open every other one ascending.
+    string ToggleDir(string col) => Model.SortBy == col && Model.SortDir == "asc" ? "desc" : "asc";
+    string Header(string label, string col) =>
+        Model.SortBy == col ? label + (Model.SortDir == "asc" ? " ▲" : " ▼") : label;
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1 class="mb-0">Creditor Accounts</h1>
     <div class="d-flex gap-2">
-        <form asp-action="ResyncCreditorLedger" method="post" class="d-inline">
-            <button type="submit" class="btn btn-outline-secondary"
-                    title="Re-read the full Holded ledger history. The nightly sync only covers the last year, so use this after an entry is backdated further back than that.">
-                <i class="fa-solid fa-rotate me-1"></i>Full resync
-            </button>
-        </form>
+        <a href="/Holded" class="btn btn-outline-secondary"
+           title="Ledger mirror status, sync buttons and the full account list live on the Holded admin screen.">
+            <i class="fa-solid fa-rotate me-1"></i>Holded sync
+        </a>
         <a asp-controller="BudgetAdmin" asp-action="Index" class="btn btn-outline-secondary">
             <i class="fa-solid fa-arrow-left me-1"></i>Back to Finance
         </a>
@@ -19,10 +22,11 @@
 </div>
 
 <p class="text-muted">
-    Holded creditor accounts (40000000–40000999). A negative balance is money the organisation owes the member;
-    <strong>Owed</strong> shows that amount. Bind a member to an account from their expense report, and
-    unbind here. An account should carry exactly one member — a row showing two is flagged and needs one
-    of them cleared.
+    Holded creditor accounts (40000000–40000999). <strong>Balance</strong> is shown from the member's
+    side: a positive figure is money the organisation owes them, a negative one is money they owe it.
+    Holded's own view of the same account, debit and credit as posted, is linked from each statement.
+    Bind a member to an account from their expense report, and unbind here. An account should carry
+    exactly one member — a row showing two is flagged and needs one of them cleared.
 </p>
 
 @if (Model.Unresolved.Count > 0)
@@ -77,11 +81,22 @@ else
         <table class="table table-hover mb-0 align-middle">
             <thead>
                 <tr>
-                    <th>Account</th>
-                    <th>Name</th>
-                    <th class="text-end">Balance</th>
-                    <th class="text-end">Owed</th>
-                    <th>Member</th>
+                    <th>
+                        <a asp-action="Creditors" asp-route-sort="account" asp-route-dir="@ToggleDir("account")"
+                           class="text-decoration-none">@Header("Account", "account")</a>
+                    </th>
+                    <th>
+                        <a asp-action="Creditors" asp-route-sort="name" asp-route-dir="@ToggleDir("name")"
+                           class="text-decoration-none">@Header("Name", "name")</a>
+                    </th>
+                    <th class="text-end">
+                        <a asp-action="Creditors" asp-route-sort="balance" asp-route-dir="@ToggleDir("balance")"
+                           class="text-decoration-none">@Header("Balance", "balance")</a>
+                    </th>
+                    <th>
+                        <a asp-action="Creditors" asp-route-sort="member" asp-route-dir="@ToggleDir("member")"
+                           class="text-decoration-none">@Header("Member", "member")</a>
+                    </th>
                 </tr>
             </thead>
             <tbody>
@@ -102,9 +117,15 @@ else
                         }
                     </td>
                     <td>@(string.IsNullOrWhiteSpace(r.Name) ? "—" : r.Name)</td>
-                    <td class="text-end">@(r.Balance.HasValue ? r.Balance.Value.ToEuro() : "—")</td>
                     <td class="text-end">
-                        <span class="@(r.OwedToMember > 0 ? "text-danger fw-semibold" : "text-muted")">@r.OwedToMember.ToEuro()</span>
+                        @if (r.Balance is { } bal)
+                        {
+                            <span class="@(bal > 0 ? "text-danger fw-semibold" : "")">@bal.ToEuro()</span>
+                        }
+                        else
+                        {
+                            <span class="text-muted">—</span>
+                        }
                     </td>
                     @* Every binding is listed, not just one. Two members on a single 400000xx point one
                        person's expense payments at the other's creditor account; the automatic push
