@@ -2,7 +2,7 @@ using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Application.Configuration;
 using Humans.Application.Interfaces.Users;
-using Humans.Web.Controllers;
+using Humans.Development.Controllers;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -12,7 +12,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 
-namespace Humans.Web.Tests.Controllers;
+namespace Humans.Development.Tests;
 
 /// <summary>
 /// Covers <c>Shifts.md</c> invariant line 239:

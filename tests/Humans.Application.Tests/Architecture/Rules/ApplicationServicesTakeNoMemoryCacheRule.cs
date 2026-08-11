@@ -76,7 +76,16 @@ public class ApplicationServicesTakeNoMemoryCacheRule
         // section's invariants doc; it entered this sweep at Guide's G5 move, because the
         // rule scans Humans.Application plus the section assemblies and Guide's code used
         // to sit in Humans.Infrastructure, which neither covers.
-        SectionType("Humans.Guide.Services.GuideContentService")
+        SectionType("Humans.Guide.Services.GuideContentService"),
+        // Not a cache at all: DevPersonaSeeder *evicts* one. Three calls to
+        // MemoryCacheExtensions.InvalidateUserAccess(userId) after it changes a dev persona's
+        // roles or team memberships — the same call Shell's GateTerminalAccountSeeder makes,
+        // and the eviction helper is an IMemoryCache extension, so there is no invalidator
+        // interface to inject instead. It entered this sweep at Development's G5 move for
+        // Guide's reason, one step further: the code is unchanged and used to sit in
+        // Humans.Web/Infrastructure, which the sweep covers neither before nor after. A move
+        // can put code into a sweep as easily as out of one.
+        SectionType("Humans.Development.Services.DevPersonaSeeder")
     ];
 
     /// <summary>

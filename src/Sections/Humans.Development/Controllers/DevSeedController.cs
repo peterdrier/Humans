@@ -1,18 +1,21 @@
 using Humans.Application.Configuration;
 using Humans.Budget.Contracts;
+using Humans.Development.Services;
 using Humans.UI.Controllers;
-using Humans.Web.Infrastructure;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 using Humans.Application.Interfaces.Users;
 using Humans.UI.Authorization;
 
-namespace Humans.Web.Controllers;
+namespace Humans.Development.Controllers;
 
+// The two redirects below name "Index"/"Admin" as literals rather than
+// nameof(AdminController.Index): AdminController is Shell's and a section cannot name it
+// (step 5). AdminNavTreeRoutingTests walks the admin table against the running app.
 [Authorize]
 [Route("dev/seed")]
-public class DevSeedController(
+internal sealed class DevSeedController(
     IWebHostEnvironment environment,
     IConfiguration configuration,
     ConfigurationRegistry configRegistry,
@@ -47,7 +50,7 @@ public class DevSeedController(
             SetError("Budget seeding failed. Check logs for details.");
         }
 
-        return RedirectToAction(nameof(AdminController.Index), "Admin");
+        return RedirectToAction("Index", "Admin");
     }
 
     [Authorize(Policy = PolicyNames.CampAdminOrAdmin)]
@@ -78,7 +81,7 @@ public class DevSeedController(
             SetError("Camp role seeding failed. Check logs for details.");
         }
 
-        return RedirectToAction(nameof(AdminController.Index), "Admin");
+        return RedirectToAction("Index", "Admin");
     }
 
     private bool IsDevSeedEnabled()

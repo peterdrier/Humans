@@ -23,12 +23,11 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using NodaTime;
 
-namespace Humans.Web.Infrastructure;
+namespace Humans.Development.Services;
 
 /// <summary>
 /// Dev-only persona seeding helper. Owns the writes that
-/// <see cref="Controllers.DevLoginController"/> used to do directly against
-/// <see cref="HumansDbContext"/>.
+/// <c>DevLoginController</c> used to do directly against <c>HumansDbContext</c>.
 ///
 /// Cross-section writes (User, Profile, UserEmail) flow through the owning
 /// section's services per design-rules §2c
@@ -38,7 +37,7 @@ namespace Humans.Web.Infrastructure;
 /// team, role assignments, sample contact fields) also go through section
 /// ownership services, so this seeder no longer depends on DbContext writes.
 /// </summary>
-public sealed class DevPersonaSeeder(
+internal sealed class DevPersonaSeeder(
     UserManager<User> userManager,
     IProfileEditorService profileEditorService,
     IUserEmailService userEmailService,

@@ -1,0 +1,42 @@
+@inject IWebHostEnvironment HostEnv
+@*
+    The dev sign-in panel on Shell's /Account/Login. It lives here rather than in that view
+    because it enumerates DevLoginController.AllPersonas, which is internal to this section
+    (step 3b's "move the markup instead of the key" applied to a type instead of a resource
+    key). Shell renders it with @await Html.PartialAsync("_DevLoginPanel") — partial lookup
+    resolves by name across application parts, the same mechanism as _GateLayout and
+    _IssueWidgetModal.
+
+    Shell keeps the `devAuthEnabled` guard around the call, so this partial is never rendered
+    in Production. ViewData flows from the calling view, which is where ReturnUrl comes from.
+
+    No Localizer: the whole panel is English developer copy, like the rest of the section.
+*@
+<div class="row justify-content-center mt-3">
+    <div class="col-md-6">
+        <div class="card border-warning">
+            <div class="card-header bg-warning text-dark py-2">
+                <small><strong>Dev login — @HostEnv.EnvironmentName</strong></small>
+            </div>
+            <div class="card-body py-3 text-center">
+                <p class="text-muted small mb-3">Skip Google OAuth and sign in directly.</p>
+                <div class="d-flex gap-2 justify-content-center flex-wrap mb-3">
+                    @foreach (var persona in DevLoginController.AllPersonas)
+                    {
+                        <a asp-controller="DevLogin" asp-action="SignIn"
+                           asp-route-persona="@persona.Slug"
+                           asp-route-returnUrl="@ViewData["ReturnUrl"]"
+                           class="btn btn-sm btn-outline-secondary">
+                            @persona.DisplayName
+                        </a>
+                    }
+                </div>
+                <a asp-controller="DevLogin" asp-action="Users"
+                   asp-route-returnUrl="@ViewData["ReturnUrl"]"
+                   class="btn btn-sm btn-outline-warning">
+                    Choose any user...
+                </a>
+            </div>
+        </div>
+    </div>
+</div>

@@ -40,7 +40,10 @@ in Base — and the first whose move corrected an invariants doc that had been a
 wrong HTTP status for its own access gate), and Debug (the first section whose only localizer
 binding is `SharedResource` *by design*, the first to send a Shell helper further down than
 `Humans.UI`, and the first table-less section whose test project needed no
-`tests/Directory.Build.props` exclusion). Step numbers match the former §15, so an old
+`tests/Directory.Build.props` exclusion), and Development (the first whose `Section.Register`
+had to gate on the **host environment**, the first whose move took a block of markup out of a
+Shell view to keep a *type* internal rather than a resource key, and the first named by
+`typeof` from Shell's own production code). Step numbers match the former §15, so an old
 "§15 step 3b" citation reads as "step 3b" here.
 
 **Where this template and `src/Sections/` disagree, the code is right.** Deviations are the
@@ -141,6 +144,18 @@ Git Bash.)
      test; the cheaper one is `grep '<Section>' src/Humans.Web/Humans.Web.csproj` before you
      build (proven: Guide, which reached a green build and a green 5,400-test suite with the
      section unreachable).
+   - **The three `<Using>` items are the *minimum*, not the list.** Sdk.Web's implicit usings
+     are nine; a section that names anything outside those three gets a compile error whose
+     text does not say "missing using". Development's two controllers gate on the host
+     environment and the dev-auth setting, so they needed `Microsoft.AspNetCore.Hosting`
+     (`IWebHostEnvironment`), `Microsoft.Extensions.Configuration` (`IConfiguration`),
+     `Microsoft.Extensions.DependencyInjection` (`GetRequiredService`) **and**
+     `Microsoft.Extensions.Hosting` — the last of which is the one to know about, because
+     without it the only `IsProduction()`/`IsDevelopment()` extension in scope is the obsolete
+     `IHostingEnvironment` overload and the error is `CS1929: 'IWebHostEnvironment' does not
+     contain a definition for 'IsProduction'`, which reads as a broken type. A global `<Using>`
+     also reaches the generated Razor code, so an `@inject` in a moved view resolves from the
+     `.csproj` rather than needing a `_ViewImports` line (proven: Development).
    - **"The section's own NuGet packages" excludes anything in the ASP.NET Core shared
      framework.** Central Package Management fails the build with `NU1010` for a
      `PackageReference` that has no `PackageVersion`, and the ASP.NET packages deliberately have
@@ -198,6 +213,18 @@ Git Bash.)
      widget's JS addresses DOM ids, not Razor, so it stayed in Shell untouched. Prefer this
      over binding a second localizer in a Base view when the Base view owns none of the copy
      (proven: Issues).
+     **The same move is the answer when a Base view names a section *type* rather than a
+     resource key, and that case has nothing to do with the resx carve.**
+     `Views/Account/Login.cshtml` enumerated `DevLoginController.AllPersonas` — a `public
+     static` list on the controller, which step 5 turns `internal`. The alternatives are all
+     worse: publishing the persona list on a contracts leaf makes dev-login vocabulary a
+     cross-section contract, and duplicating the list in Shell forks the thing the route
+     depends on. The block moved to the section's `Views/Shared/_DevLoginPanel.cshtml` and
+     Shell kept only its `@if (devAuthEnabled)` guard around
+     `@await Html.PartialAsync("_DevLoginPanel")`. **Grep Shell's views for the section's type
+     names, not just for `Localizer["<Section>_`** — a `.cshtml` that names a moved type is a
+     compile error at publish time and, if the view is one Razor runtime compilation reaches
+     first, at request time (proven: Development).
    - **…and the fifth: move the *renderer*, not the key and not the markup.** "Carve by
      renderer" (above) leaves a key in Base when the renderer cannot see a section set;
      Issues' fourth direction moves a block of Razor. Email's 70 `Email_*` keys are neither:
@@ -350,6 +377,22 @@ Git Bash.)
      and pushing the check into a service factory would first throw on a real send instead of
      at boot. The section keeps the half that is genuinely its own: which of its two internal
      transports to bind, off `configuration["Email:SmtpHost"]` (proven: Email).
+   - **…and when the thing being gated on the environment is one of the section's own
+     internal types, there is no half that can stay in Shell — read the environment out of
+     the configuration.** Email split the decision because `EmailSettings` is Base's and only
+     the *guard* needed the environment. Development cannot: `Program.cs` registered its three
+     dev fixture seeders inside `if (!builder.Environment.IsProduction())`, and after the move
+     Shell cannot name an `internal` type to register it conditionally. `ISection.Register`
+     still has no `IHostEnvironment`, but the configuration it *is* handed carries the
+     environment — `WebApplicationBuilder.Configuration` includes host configuration, so
+     `configuration[HostDefaults.EnvironmentKey]` is the environment name, including under
+     `WebApplicationFactory.UseEnvironment`. **Write the check so it fails closed**: register
+     nothing when the name is missing *or* Production, rather than "register unless
+     Production". The two failure modes are not symmetric — a key that stops resolving then
+     shows up as the dev seeder being unregistered (loud: every integration test signs in
+     through `/dev/login/{slug}`) instead of a dev seeder reaching Production (silent). Pin
+     both directions in the section's architecture tests; they are four lines over a
+     `ConfigurationBuilder().AddInMemoryCollection(...)` (proven: Development).
 
 4b. [ ] `[assembly: Section("<Section>")]` in `Properties/AssemblyInfo.cs` — the analyzer marker,
    the discovery marker and the internal-controller marker, all three (spec §10, §6, §1). Add
@@ -933,9 +976,11 @@ Git Bash.)
      comment beside the condition says the second.** Debug owns no tables and needs *no*
      exclusion, because it references `Humans.Infrastructure` for `QueryStatistics` /
      `TrackingMemoryCache` / `InMemoryLogSink` and `Microsoft.EntityFrameworkCore` arrives
-     transitively, so `TestDbContextFactory` compiles. Add a fourth clause only after the build
+     transitively, so `TestDbContextFactory` compiles. Add a clause only after the build
      actually fails; the two facts came apart at the first section that had one without the
-     other (proven: Debug).
+     other (proven: Debug). Development is the section where the build *did* fail — table-less
+     **and** no `Humans.Infrastructure` reference — so the condition is four
+     `MSBuildProjectName` clauses now and the comment beside it states the real criterion.
 9. [ ] `dotnet ef` for this section: `--project src/Sections/Humans.<Section>
    --startup-project src/Humans.Web --context <Section>DbContext --output-dir Data/Migrations`.
    Update the `context:project` pair in `.github/workflows/build.yml`.
@@ -1057,6 +1102,15 @@ Git Bash.)
       `AllControllerTypes()`, so `[AllowAnonymous]` on an action of an `[Authorize]` section
       controller needs no edit at all. One file, two rows about the same controller, only one
       of which is a `typeof` (proven: Debug, `DebugController.DbVersion`).
+      **And a third shape, which is not in `tests/` at all: Shell's own production code.**
+      `Humans.Web/Infrastructure/DevLoginControllerExclusionProvider` removes
+      `typeof(Controllers.DevLoginController)` from MVC's controller feature in Production —
+      the thing that keeps the dev sign-in page out of prod. It cannot move into the section
+      (`Program.cs` constructs it by name, which would make it a public section type) and it
+      cannot keep the `typeof`. Give it the same `SectionType(fullName)` reflection the tests
+      use, resolved once into a `static readonly Type` that **throws** when the name misses, so
+      a rename fails at Production startup rather than shipping a routable `/dev/login/*`.
+      Grep `typeof(<Section>` over `src/` as well as `tests/` (proven: Development).
     - **`ServiceBoundaryArchitectureTests` is a fourth place a section type is named by
       `typeof`** — its repository-interface → section map. It already carries a
       `SectionRepository(fullName)` reflection helper for the sections that moved before yours;

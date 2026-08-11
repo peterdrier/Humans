@@ -2908,7 +2908,7 @@ shrank to a single dev-only path — and that path is now also closed.
 
 None. `DevLoginController`'s previous direct `HumansDbContext` writes
 (Camps / CampSeasons / CampLead seeding for dev personas) moved into
-`DevPersonaSeeder` (`src/Humans.Web/Infrastructure/DevPersonaSeeder.cs`),
+`DevPersonaSeeder` (`src/Sections/Humans.Development/Services/DevPersonaSeeder.cs`),
 which itself owns no DbContext — every write (`User`/`Profile`/`UserEmail`,
 system-team membership, dev barrio camp/season/lead via `ICampService` /
 `ICampRoleService`, city-planning team, role assignments, contact fields)

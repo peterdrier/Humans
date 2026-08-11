@@ -1,8 +1,8 @@
 using Humans.Application.Interfaces.Camps;
 
-namespace Humans.Web.Infrastructure;
+namespace Humans.Development.Services;
 
-public sealed class DevelopmentCampRoleSeeder(ICampRoleService campRoleService)
+internal sealed class DevelopmentCampRoleSeeder(ICampRoleService campRoleService)
 {
     private static readonly CreateCampRoleDefinitionInput[] Seeds =
     [
@@ -38,7 +38,7 @@ public sealed class DevelopmentCampRoleSeeder(ICampRoleService campRoleService)
     }
 }
 
-public sealed record DevelopmentCampRoleSeedResult(int Created, int Skipped)
+internal sealed record DevelopmentCampRoleSeedResult(int Created, int Skipped)
 {
     public string SuccessMessage => $"Camp roles seeded: {Created} created, {Skipped} already existed.";
 }

@@ -8,16 +8,16 @@ using Humans.Domain.Enums;
 using Microsoft.AspNetCore.Identity;
 using NodaTime;
 
-namespace Humans.Web.Infrastructure;
+namespace Humans.Development.Services;
 
-public sealed record DashboardSeedResult(
+internal sealed record DashboardSeedResult(
     bool AlreadySeeded,
     int TeamsCreated,
     int UsersCreated,
     int ShiftsCreated,
     int SignupsCreated);
 
-public sealed record DashboardResetResult(
+internal sealed record DashboardResetResult(
     int EventsDeleted,
     int TeamsDeleted,
     int UsersDeleted);
@@ -29,7 +29,7 @@ public sealed record DashboardResetResult(
 /// All writes go through the owning section services. The controller keeps destructive
 /// reset behind full Admin authorization.
 /// </summary>
-public sealed class DevelopmentDashboardSeeder(
+internal sealed class DevelopmentDashboardSeeder(
     IShiftManagementService shiftManagementService,
     IShiftSignupService shiftSignupService,
     ITeamService teamService,

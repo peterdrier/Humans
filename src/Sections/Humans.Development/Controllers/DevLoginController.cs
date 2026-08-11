@@ -2,19 +2,19 @@ using System.Reflection;
 using System.Text;
 using Humans.Application.Configuration;
 using Humans.Application.Interfaces.Profiles;
+using Humans.Development.Services;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
-using Humans.Web.Infrastructure;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
-namespace Humans.Web.Controllers;
+namespace Humans.Development.Controllers;
 
-public record DevPersonaInfo(string Slug, string DisplayName);
+internal sealed record DevPersonaInfo(string Slug, string DisplayName);
 
 // Dev/preview sign-in. Gated by DevAuth:Enabled=true AND non-Production env. Personas from RoleNames.
 [Route("dev/login")]
-public class DevLoginController(
+internal sealed class DevLoginController(
     UserManager<User> userManager,
     SignInManager<User> signInManager,
     IUserEmailService userEmailService,
@@ -24,7 +24,11 @@ public class DevLoginController(
     ConfigurationRegistry configRegistry,
     ILogger<DevLoginController> logger) : Controller
 {
-    public static IReadOnlyList<DevPersonaInfo> AllPersonas { get; } = BuildPersonaList();
+    // Rendered by the section's own Views/Shared/_DevLoginPanel.cshtml, which Shell's
+    // /Account/Login pulls in by name across application parts. It used to be public because
+    // Shell's view named the type directly; the markup moved instead (step 3b), so the persona
+    // list never leaves the section.
+    internal static IReadOnlyList<DevPersonaInfo> AllPersonas { get; } = BuildPersonaList();
 
     private static readonly SemaphoreSlim SeedLock = new(1, 1);
 
@@ -124,8 +128,10 @@ public class DevLoginController(
 
     private IActionResult RedirectToLocalOrHome(string? returnUrl) =>
         Url.IsLocalUrl(returnUrl)
+            // "Index" as a literal: HomeController is Shell's and a section cannot name it
+            // (step 5). Covered by DevelopmentPageRenderTests, which follows the redirect.
             ? LocalRedirect(returnUrl)
-            : RedirectToAction(nameof(HomeController.Index), "Home");
+            : RedirectToAction("Index", "Home");
 
     private bool IsDevAuthEnabled()
     {

@@ -16,7 +16,7 @@ using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Web.Infrastructure;
+using Humans.Development.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -25,7 +25,7 @@ using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 
-namespace Humans.Web.Tests.Infrastructure;
+namespace Humans.Development.Tests;
 
 /// <summary>
 /// Covers the #867 persona repair: dev personas hold governance roles but never signed
