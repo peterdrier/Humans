@@ -1,5 +1,5 @@
 using Humans.Domain.Enums;
-using Humans.Application.Interfaces.Campaigns;
+using Humans.Campaigns.Contracts;
 using Humans.Application.Interfaces.Email;
 using Humans.UI.Authorization;
 

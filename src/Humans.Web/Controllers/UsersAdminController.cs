@@ -4,7 +4,7 @@ using Humans.Application.Authorization;
 using Humans.Application.Interfaces.Admin;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Auth;
-using Humans.Application.Interfaces.Campaigns;
+using Humans.Campaigns.Contracts;
 using Humans.Application.Interfaces.Consent;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Governance;

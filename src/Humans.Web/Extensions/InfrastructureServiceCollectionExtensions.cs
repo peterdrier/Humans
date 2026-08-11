@@ -46,7 +46,6 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddIssuesSection();
         services.AddNotificationsSection();
         services.AddLegalAndConsentSection();
-        services.AddCampaignsSection();
         services.AddAuditLogSection();
         services.AddGdprSection();
         services.AddICalFeedSection();

@@ -4,7 +4,7 @@ using Humans.Application.Configuration;
 using Humans.Application.DTOs;
 using Humans.Application.DTOs.Shifts;
 using Humans.Application.Interfaces.AuditLog;
-using Humans.Application.Interfaces.Campaigns;
+using Humans.Campaigns.Contracts;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Gdpr;

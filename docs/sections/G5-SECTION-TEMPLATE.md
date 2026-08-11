@@ -16,8 +16,10 @@ owning no tables at all — no G4 gate, no `Humans.Infrastructure` reference, an
 whose enums had to move onto the contracts leaf, and the first to hand a Shell dev seeder a
 one-method contract), Calendar (the first to keep an *internal* `I<Section>ServiceRead` while
 shipping an empty `Contracts/`, the first whose name collided with a Base concern, and the first
-whose render test had to seed through a §15 caching decorator). Step numbers match the former
-§15, so an old "§15 step 3b" citation reads as "step 3b" here.
+whose render test had to seed through a §15 caching decorator), Campaigns (the first moved
+section carrying an `Architecture/Baselines` row, and the first whose contracts leaf had to
+reference `Humans.Domain`). Step numbers match the former §15, so an old "§15 step 3b" citation
+reads as "step 3b" here.
 
 **Where this template and `src/Sections/` disagree, the code is right.** Deviations are the
 exception and get stated in the PR. Steps marked ⚠️ UNPROVEN have never been executed; whoever
@@ -323,6 +325,16 @@ Git Bash.)
      connector serving one section and shaped by that section's model belongs to it (proven:
      Agent; contrast Stripe, which Store left behind, and `GitHubCommunityKbContentSource`, whose
      signatures name only `string`).
+   - **A Base *enum* in a leaf signature is not Budget's case — reference `Humans.Domain` from
+     the leaf.** Budget's rule (step 5) is about enums the *section* owns: they cannot follow the
+     entities into internal `Domain/`, so they move onto the leaf. `EmailOutboxStatus` is the
+     opposite — the Email section's enum, Base vocabulary that Campaigns re-exports in
+     `CampaignGrantSummary` and `UpdateGrantEmailStatusAsync`. Moving it onto the leaf would
+     steal another section's type; retyping the member to `string` is behavioural. The leaf takes
+     `Humans.Domain` alongside `Humans.Interfaces`, which is acyclic — `Humans.Domain` references
+     only `Humans.Interfaces`, and both sit below `Humans.Application`. Every earlier leaf
+     referenced `Humans.Interfaces` alone, so this reads as a break with the pattern and is not
+     one (proven: Campaigns).
    - **A DTO the section re-exports from Base forces the project split even when nothing else
      does** — and promoting the connector's DTO downward is the forbidden fix; the section owns a
      boundary type and maps at the edge (proven: Finance, `HoldedLedgerLineDto`). Check every
@@ -522,6 +534,15 @@ Git Bash.)
      Its former user is the section's own service test, which needs two members of the harness —
      the clock and that factory — and owns them in about ten lines rather than inheriting a base
      class built around an in-memory `HumansDbContext` (proven: Budget; same call as Expenses').
+   - **When the section test needs the *whole* harness, the replacement is a registry, not
+     three inlined fields.** Budget's and Expenses' service tests used a clock and a factory, so
+     "own them in ten lines" worked. Campaigns' used `Db.Users`/`Db.Teams` through
+     `SeedUser`/`SeedTeam`/`SeedTeamMember` and DB-backed `ITeamService`/`IUserService` stubs —
+     none of which a section test project can see. Rewriting the *stubs* rather than the tests
+     is what keeps it small: two `Dictionary<Guid, …>` of `UserInfo`/`TeamInfo`, seeders that
+     keep their old signatures, and the ~500 lines of test bodies compile unchanged. Decide
+     between the two shapes from what the tests read, not from how many harness members they
+     name (proven: Campaigns).
    - **A Base test helper the moved tests inherit is not automatically shared-set material.**
      Check what the section's tests actually *use* before linking it into
      `tests/Directory.Build.props`. Expenses' one harness-derived test used three members of
@@ -577,8 +598,20 @@ Git Bash.)
     stale path where it sits rather than inventing one**; Scanner's controller was one line in
     the `Platform` catch-all, and adding a `Scanner` bucket would have been a scoring change on
     top of a file move. Delete the section's `*ArchitectureTests.cs` assertions
-    the assembly boundary now subsumes; delete its `Architecture/Baselines` rows and
-    `[Grandfathered]` attributes (⚠️ UNPROVEN — no moved section has had any).
+    the assembly boundary now subsumes; delete its `[Grandfathered]` attributes
+    (⚠️ UNPROVEN — no moved section has had any).
+    - **An `Architecture/Baselines` row is a *retarget*, not a deletion — and the rule's scan
+      is probably keyed on the Base path.** Campaigns was the first moved section to carry one
+      (`DisplaySortInControllers`, one `OrderByDescending` in the repository). Deleting the row
+      would say the violation was fixed while the code is byte-identical; the row moves to
+      `src/Sections/Humans.<Section>/Data/…`. But the rule only *sees* it if the scan does:
+      `DisplaySortInControllersRule.Scan` walked `src/Humans.Infrastructure/Repositories` alone,
+      so every section repository that moved before Campaigns had silently left the sweep and
+      the rule was reporting success by finding nothing. Widened it to Base plus each section's
+      `Data/` (skipping `Data/Migrations/`) — the same "widen the sweep, never shrink the
+      expectation" call as the reflection sweeps below, applied to a path-keyed one. Widening
+      surfaced no other violation, so the cost of being right here was one retargeted line
+      (proven: Campaigns).
     - **One assertion shape does not survive the move and must be restated rather than deleted:
       `typeof(<Section>Service).Assembly.GetReferencedAssemblies()` must not contain
       `Microsoft.EntityFrameworkCore`.** It was a true statement about `Humans.Application`; the

@@ -8,7 +8,7 @@ using Humans.Domain.Constants;
 using Humans.Domain.Enums;
 using Humans.Budget.Contracts;
 using Humans.Application.Interfaces.Profiles;
-using Humans.Application.Interfaces.Campaigns;
+using Humans.Campaigns.Contracts;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Tickets;

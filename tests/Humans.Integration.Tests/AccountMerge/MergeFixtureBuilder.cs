@@ -2,6 +2,8 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Budget.Data;
 using Humans.Budget.Domain;
+using Humans.Campaigns.Data;
+using Humans.Campaigns.Domain;
 using Humans.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;

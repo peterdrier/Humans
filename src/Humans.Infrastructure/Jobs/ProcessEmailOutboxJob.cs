@@ -1,7 +1,7 @@
 using System.Text.Json;
 using Hangfire;
 using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.Campaigns;
+using Humans.Campaigns.Contracts;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Metering;
 using Humans.Application.Interfaces.Repositories;

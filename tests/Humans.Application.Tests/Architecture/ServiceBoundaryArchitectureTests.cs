@@ -37,7 +37,7 @@ public class ServiceBoundaryArchitectureTests
             [typeof(IAuditLogRepository)] = "AuditLog",
             [SectionRepository("Humans.Budget.Data.IBudgetRepository")] = "Budget",
             [SectionRepository("Humans.Calendar.Data.ICalendarRepository")] = "Calendar",
-            [typeof(ICampaignRepository)] = "Campaigns",
+            [SectionRepository("Humans.Campaigns.Data.ICampaignRepository")] = "Campaigns",
             [typeof(ICampRepository)] = "Camps",
             [SectionRepository("Humans.CityPlanning.Data.ICityPlanningRepository")] = "CityPlanning",
             [typeof(ICommunicationPreferenceRepository)] = "Humans",

@@ -31,10 +31,6 @@ public static class EnumBadgeMap
         [TicketAttendeeStatus.CheckedIn] = "bg-info",
         [TicketAttendeeStatus.Void] = "bg-danger",
 
-        [CampaignStatus.Draft] = "bg-secondary",
-        [CampaignStatus.Active] = "bg-success",
-        [CampaignStatus.Completed] = "bg-info",
-
         [EmailOutboxStatus.Queued] = "bg-warning text-dark",
         [EmailOutboxStatus.Sent] = "bg-success",
         [EmailOutboxStatus.Failed] = "bg-danger",

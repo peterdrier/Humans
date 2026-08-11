@@ -1,4 +1,5 @@
 using Humans.Budget.Data;
+using Humans.Campaigns.Data;
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;

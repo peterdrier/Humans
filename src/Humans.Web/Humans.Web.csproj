@@ -12,6 +12,7 @@
     <ProjectReference Include="..\Sections\Humans.Agent\Humans.Agent.csproj" />
     <ProjectReference Include="..\Sections\Humans.Budget\Humans.Budget.csproj" />
     <ProjectReference Include="..\Sections\Humans.Calendar\Humans.Calendar.csproj" />
+    <ProjectReference Include="..\Sections\Humans.Campaigns\Humans.Campaigns.csproj" />
     <ProjectReference Include="..\Sections\Humans.CityPlanning\Humans.CityPlanning.csproj" />
     <ProjectReference Include="..\Sections\Humans.Containers\Humans.Containers.csproj" />
     <ProjectReference Include="..\Sections\Humans.Events\Humans.Events.csproj" />

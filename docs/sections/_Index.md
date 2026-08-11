@@ -22,6 +22,7 @@ move recipe is [`G5-SECTION-TEMPLATE.md`](G5-SECTION-TEMPLATE.md).
 |---|---|---|
 | Agent | `src/Sections/Humans.Agent` | [Agent.md](../../src/Sections/Humans.Agent/Docs/Agent.md) |
 | Calendar | `src/Sections/Humans.Calendar` | [Calendar.md](../../src/Sections/Humans.Calendar/Docs/Calendar.md) |
+| Campaigns | `src/Sections/Humans.Campaigns` | [Campaigns.md](../../src/Sections/Humans.Campaigns/Docs/Campaigns.md) |
 | Budget | `src/Sections/Humans.Budget` | [Budget.md](../../src/Sections/Humans.Budget/Docs/Budget.md) |
 | City Planning | `src/Sections/Humans.CityPlanning` | [CityPlanning.md](../../src/Sections/Humans.CityPlanning/Docs/CityPlanning.md) |
 | Containers | `src/Sections/Humans.Containers` | [Containers.md](../../src/Sections/Humans.Containers/Docs/Containers.md) |
@@ -56,7 +57,7 @@ Cross-check against [`design-rules.md` §8 (Table Ownership Map)](../architectur
 | **Agent** | `AgentController`, `AgentApiController`, `AdminAgentController` (`Humans.Agent.Controllers`) | — | `AgentService`, `AgentAdminStatusService`, `AgentSettingsService`, `AgentPromptAssembler`, `AgentToolDispatcher`, `AgentUserSnapshotProvider`, `AgentAbuseDetector`, `AnthropicClient` (`Humans.Agent.Services`) | `AgentRepository` / `IAgentRepository` (`Humans.Agent.Data`) | `agent_conversations`, `agent_messages`, `agent_settings` |
 | **Budget** | `BudgetController`, `BudgetAdminController` (the latter routed under `/Finance`) (`Humans.Budget.Controllers`) | `TicketingBudgetService` (`Humans.Budget.Services`) | `BudgetService` (`Humans.Budget.Services`) | `BudgetRepository` / `IBudgetRepository` (`Humans.Budget.Data`) | `budget_years`, `budget_groups`, `budget_categories`, `budget_line_items`, `budget_audit_logs`, `ticketing_projections` |
 | **Calendar** | `CalendarController` (`src/Sections/Humans.Calendar`) | — | `CalendarService`, *`CachingCalendarService`* | `CalendarRepository` | `calendar_events`, `calendar_event_exceptions` |
-| **Campaigns** | `CampaignController` | — | `CampaignService` | `CampaignRepository` | `campaigns`, `campaign_codes`, `campaign_grants` |
+| **Campaigns** | `CampaignController` (section) | — | `CampaignService` (section) | `CampaignRepository` (section) | `campaigns`, `campaign_codes`, `campaign_grants` |
 | **Camps** | `CampController`, `CampAdminController`, `CampApiController` | `CampContactService` | `CampService`, `CampRoleService`, *`CachingCampService`* | `CampRepository` | `camps`, `camp_seasons`, `camp_members`, `camp_images`, `camp_historical_names`, `camp_settings`, `camp_role_definitions`, `camp_role_assignments` |
 | **City Planning** | `CityPlanningController`, `CityPlanningApiController` (`Humans.CityPlanning.Controllers`) | — | `CityPlanningService` (`Humans.CityPlanning.Services`) | `CityPlanningRepository` / `ICityPlanningRepository` (`Humans.CityPlanning.Data`) | `city_planning_settings`, `camp_polygons`, `camp_polygon_histories` |
 | **Containers** | `ContainerController` (`Humans.Containers.Controllers`) | — | `Service` (`Humans.Containers.Services`) | `Repository` / `IContainerRepository` (`Humans.Containers.Data`) | `containers`, `container_placements` |

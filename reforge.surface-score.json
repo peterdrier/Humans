@@ -115,12 +115,8 @@
     },
     "Campaigns": {
       "paths": [
-        "src/Humans.Application/Interfaces/Campaigns/**",
-        "src/Humans.Application/Interfaces/Repositories/ICampaignRepository.cs",
-        "src/Humans.Application/Services/Campaigns/**",
-        "src/Humans.Domain/Entities/Campaign*",
-        "src/Humans.Infrastructure/Repositories/Campaigns/**",
-        "src/Humans.Web/Controllers/CampaignController.cs"
+        "src/Sections/Humans.Campaigns/**",
+        "src/Sections/Humans.Campaigns.Contracts/**"
       ],
       "symbols": [
         "Campaign*",

@@ -37,10 +37,7 @@ public class DisplaySortInControllersRule
 
     internal static IEnumerable<string> Scan(string repoRoot)
     {
-        var reposRoot = Path.Combine(repoRoot, "src", "Humans.Infrastructure", "Repositories");
-        if (!Directory.Exists(reposRoot)) yield break;
-
-        foreach (var path in Directory.EnumerateFiles(reposRoot, "*.cs", SearchOption.AllDirectories))
+        foreach (var path in RepositoryFiles(repoRoot))
         {
             var content = File.ReadAllText(path);
             if (!SortRegex.IsMatch(content)) continue;
@@ -63,6 +60,51 @@ public class DisplaySortInControllersRule
                 counts.TryGetValue(op, out var n);
                 counts[op] = ++n;
                 yield return $"{rel}:{op}#{n} # L{lineNumber}";
+            }
+        }
+    }
+
+    /// <summary>
+    /// Every file that owns a repository: Base's <c>Humans.Infrastructure/Repositories</c>
+    /// plus each G5 section's <c>Data/</c> folder.
+    /// </summary>
+    /// <remarks>
+    /// The section half is not cosmetic. Scanning only the Base folder means a section's
+    /// repository silently leaves the sweep on the day it moves — the rule then reports
+    /// success by finding nothing, and the ratchet reads the abandoned baseline rows as
+    /// "fixed" while the code is byte-identical. Campaigns is the first moved section that
+    /// carried a baseline row, so it is where this surfaced; the rows the widening brings
+    /// back are all pre-existing sorts in sections that moved earlier
+    /// (nobodies-collective/Humans#866, G5 template step 11: widen the sweep, never shrink
+    /// the expectation).
+    /// </remarks>
+    private static IEnumerable<string> RepositoryFiles(string repoRoot)
+    {
+        var baseRepos = Path.Combine(repoRoot, "src", "Humans.Infrastructure", "Repositories");
+        if (Directory.Exists(baseRepos))
+        {
+            foreach (var path in Directory.EnumerateFiles(baseRepos, "*.cs", SearchOption.AllDirectories))
+            {
+                yield return path;
+            }
+        }
+
+        var sections = Path.Combine(repoRoot, "src", "Sections");
+        if (!Directory.Exists(sections)) yield break;
+
+        foreach (var sectionData in Directory.EnumerateDirectories(sections)
+                     .Select(d => Path.Combine(d, "Data"))
+                     .Where(Directory.Exists))
+        {
+            foreach (var path in Directory.EnumerateFiles(sectionData, "*.cs", SearchOption.AllDirectories))
+            {
+                // Generated migrations and the model snapshot are not hand-written queries.
+                if (path.Contains($"{Path.DirectorySeparatorChar}Migrations{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                yield return path;
             }
         }
     }

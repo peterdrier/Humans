@@ -19,6 +19,11 @@
     <!-- City Planning's contracts leaf: CampService clears a deleted camp's polygons. -->
     <ProjectReference Include="..\Sections\Humans.CityPlanning.Contracts\Humans.CityPlanning.Contracts.csproj" />
     <ProjectReference Include="..\Sections\Humans.Budget.Contracts\Humans.Budget.Contracts.csproj" />
+    <!--
+      Campaigns' contracts leaf: TicketSyncService marks redeemed discount codes and
+      TicketQueryService builds the code-tracking dashboard.
+    -->
+    <ProjectReference Include="..\Sections\Humans.Campaigns.Contracts\Humans.Campaigns.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

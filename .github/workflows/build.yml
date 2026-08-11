@@ -39,7 +39,7 @@ env:
     NotificationsDbContext:src/Humans.Infrastructure
     IssuesDbContext:src/Humans.Infrastructure
     GovernanceDbContext:src/Humans.Infrastructure
-    CampaignsDbContext:src/Humans.Infrastructure
+    CampaignsDbContext:src/Sections/Humans.Campaigns
     GoogleIntegrationDbContext:src/Humans.Infrastructure
     TicketsDbContext:src/Humans.Infrastructure
     FeedbackDbContext:src/Humans.Infrastructure

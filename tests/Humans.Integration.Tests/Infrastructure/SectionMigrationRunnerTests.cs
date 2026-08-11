@@ -1,5 +1,6 @@
 using Humans.Budget.Data;
 using Humans.Calendar.Data;
+using Humans.Campaigns.Data;
 using AwesomeAssertions;
 using Humans.Agent.Data;
 using Humans.Infrastructure.Data;

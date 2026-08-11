@@ -53,7 +53,6 @@ internal sealed class HumansDbContext(DbContextOptions<HumansDbContext> options)
         typeof(Configurations.Notifications.NotificationConfiguration).Namespace!,
         typeof(Configurations.Issues.IssueConfiguration).Namespace!,
         typeof(Configurations.Governance.ApplicationConfiguration).Namespace!,
-        typeof(Configurations.Campaigns.CampaignConfiguration).Namespace!,
         typeof(Configurations.GoogleIntegration.GoogleResourceConfiguration).Namespace!,
         typeof(Configurations.Tickets.TicketOrderConfiguration).Namespace!,
         typeof(Configurations.Feedback.FeedbackReportConfiguration).Namespace!,
