@@ -1,0 +1,21 @@
+@* A section RCL does NOT inherit the host's Views/_ViewImports.cshtml. Omitting a line
+   here ships broken markup with a green build and no runtime error — see design §1/§2.
+   Guarded by CalendarPageRenderTests (step 12). *@
+@using Humans.Application.Extensions
+@using Humans.Calendar
+@using Humans.Calendar.Controllers
+@using Humans.Calendar.Domain
+@using Humans.Calendar.Models
+@using Humans.Calendar.Services
+@using Humans.Calendar.Services.Dtos
+@using Humans.UI
+@using Humans.UI.Extensions
+@using Humans.UI.Models
+@using Microsoft.Extensions.Localization
+@using NodaTime
+@inject IStringLocalizer<CalendarResource> Localizer
+@* Common_* and Profile_Location stay in SharedResource: they are genuinely shared copy,
+   not Calendar's vocabulary, and other sections render them too (§15.3b). *@
+@inject IStringLocalizer<SharedResource> SharedLocalizer
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+@addTagHelper *, Humans.UI

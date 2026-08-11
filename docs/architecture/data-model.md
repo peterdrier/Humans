@@ -40,7 +40,7 @@ This file is the **index and cross-cutting rule sheet** for the data model. Per-
 | CityPlanningSettings | [City Planning](../../src/Sections/Humans.CityPlanning/Docs/CityPlanning.md) | |
 | CampPolygon | [City Planning](../../src/Sections/Humans.CityPlanning/Docs/CityPlanning.md) | |
 | CampPolygonHistory | [City Planning](../../src/Sections/Humans.CityPlanning/Docs/CityPlanning.md) | Append-only (§12). |
-| CalendarEvent / CalendarEventException | [Calendar](../sections/Calendar.md) | |
+| CalendarEvent / CalendarEventException | [Calendar](../../src/Sections/Humans.Calendar/Docs/Calendar.md) | |
 | EmailOutboxMessage | [Email](../sections/Email.md) | |
 | Campaign / CampaignCode / CampaignGrant | [Campaigns](../sections/Campaigns.md) | |
 | TicketOrder / TicketAttendee / TicketSyncState / TicketTransferRequest | [Tickets](../sections/Tickets.md) | |

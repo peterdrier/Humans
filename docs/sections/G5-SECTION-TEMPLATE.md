@@ -14,8 +14,10 @@ resource carve had to *return* keys to an already-moved section), Scanner (the f
 owning no tables at all — no G4 gate, no `Humans.Infrastructure` reference, an empty
 `Section.Register`), Budget (the first to keep an *internal* `I<Section>Service`, the first
 whose enums had to move onto the contracts leaf, and the first to hand a Shell dev seeder a
-one-method contract). Step numbers match the former §15, so an old "§15 step 3b"
-citation reads as "step 3b" here.
+one-method contract), Calendar (the first to keep an *internal* `I<Section>ServiceRead` while
+shipping an empty `Contracts/`, the first whose name collided with a Base concern, and the first
+whose render test had to seed through a §15 caching decorator). Step numbers match the former
+§15, so an old "§15 step 3b" citation reads as "step 3b" here.
 
 **Where this template and `src/Sections/` disagree, the code is right.** Deviations are the
 exception and get stated in the PR. Steps marked ⚠️ UNPROVEN have never been executed; whoever
@@ -251,6 +253,13 @@ Git Bash.)
      `Services/AuditEntityTypes.cs` is the shape), never with a project reference. Declare the
      section's own discriminators as literals while you are there; that is what makes the rename
      schema-inert. See `memory/code/type-name-as-persisted-string.md`.
+     - **"Stops compiling" only holds when the other section has already moved; otherwise the
+       `nameof` survives the move and becomes that section's problem.** `nameof(Team)` in
+       Calendar's audit calls compiles fine today — `Team` is still a public
+       `Humans.Domain.Entities` type — so nothing forces the fix, and the day Teams goes to G5 it
+       breaks in a section nobody is editing. Grep the moved code for `nameof(` over *every* type
+       the section does not own, not just the ones the build complains about, and take them all
+       into `AuditEntityTypes` (proven: Calendar).
    - **The keystone analyzer (nobodies-collective/Humans#1013) has landed, so this is a build
      gate, not a convention — and it collapses the move commit and the visibility commit into
      one.** HUM0034 fails the build for any public type in a `[assembly: Section("…")]` assembly
@@ -271,6 +280,23 @@ Git Bash.)
      documents a contract nobody has; the assembly boundary now says the same thing and says it
      to the compiler. Delete it with its `IsAssignableFrom` architecture test (proven: Surveys).
      A read interface that has *members* is a different question — that one moves.
+     - **…and "moves" can mean "stays inside the section, `internal`".** A populated
+       `I<Section>ServiceRead` whose only consumers are the section's own controller is not a
+       cross-section contract; it is the seam between the §15 caching decorator and the write
+       path, and it belongs in `Services/` beside `I<Section>Service`. Promoting it to
+       `Contracts/` because it is named `…Read` publishes a boundary nobody crosses — the same
+       mistake as carrying the empty one, one step later. Decide from the *consumer list*, never
+       from the name (proven: Calendar, whose `Contracts/` is empty while both interfaces live on
+       internal).
+   - **A Base type that shares the section's name prefix may belong to an entirely different
+     concern — read the signatures before adopting it.** `Humans.Application.Interfaces.ICalFeed`
+     holds `ICalendarFeedContributor`, `CalendarFeedItem` and `IICalFeedService`: a Base-owned
+     fan-out that assembles a user's personal iCal feed from Shifts and Events. It names nothing
+     the Calendar section owns and Calendar does not implement it, so it stayed in Base along with
+     Shell's `UserCalendarViewComponent` and `ICalFeedApiController`. A recon pass keyed on the
+     string "Calendar" pulls all of it in; a pass keyed on *whose types are in the signatures*
+     does not — the same test as step 5b's connector case, applied to a name collision instead of
+     a vendor (proven: Calendar).
    - **Folder vs project is decided by *where the consumer lives*, not how much surface there
      is.** A consumer in Base forces `Humans.<Section>.Contracts` as its own project referencing
      only the bottom of the graph — a folder would cycle
@@ -553,6 +579,17 @@ Git Bash.)
     top of a file move. Delete the section's `*ArchitectureTests.cs` assertions
     the assembly boundary now subsumes; delete its `Architecture/Baselines` rows and
     `[Grandfathered]` attributes (⚠️ UNPROVEN — no moved section has had any).
+    - **One assertion shape does not survive the move and must be restated rather than deleted:
+      `typeof(<Section>Service).Assembly.GetReferencedAssemblies()` must not contain
+      `Microsoft.EntityFrameworkCore`.** It was a true statement about `Humans.Application`; the
+      section assembly holds the repository and legitimately references EF, so the test either
+      fails or — worse, when written as a "does not contain" that now runs over a different
+      assembly — keeps passing while asserting nothing. Restate it on the constructor: no
+      parameter is a `DbContext`, an `IDbContextFactory<>`, or a
+      `Humans.Application.Interfaces.Stores` type. That is what the original was reaching for and
+      it is stronger. Ten unmoved sections carry the shape (`CampaignsArchitectureTests`,
+      `GovernanceArchitectureTests`, `TeamsArchitectureTests`, …), so expect it every time
+      (proven: Calendar).
     - Re-run `grep -rn 'Assembly.Name' src/Humans.Analyzers/` and confirm any analyzer added
       since the pilot is section-aware (spec §10). **Do not treat this as a formality because
       earlier moves found nothing** — Expenses was the first to find something, and what it found
@@ -619,6 +656,16 @@ Git Bash.)
       failure modes — incomplete `_ViewImports`, and a key the resx carve missed — and it runs
       on every build afterwards, including for the *next* section that touches these views
       (proven: Surveys, 4 tests over 6 pages; the file is the model to copy).
+    - **A §15-decorated section's render test must seed through the service, not the
+      `DbContext`.** The decorator is a Singleton that warms at startup, i.e. before the test
+      body runs, so a row written straight into `<Section>DbContext` is invisible to every
+      snapshot-scan read — the section's list/index/window pages render empty and the resx-carve
+      assertion covers whatever copy is left on an empty page. Resolve the section's own
+      `I<Section>Service` (the test project already sees internals) and create the fixture
+      through it; the decorator refreshes its entry on the write path. By-id pages happen to work
+      either way because `TrackedCache` lazy-loads a missing key, which makes the broken half
+      look like a data problem rather than a caching one (proven: Calendar; contrast Budget,
+      which has no decorator and seeds through its context).
     - **The non-English case is not optional and is not decoration.** An English-only check
       passes whether or not the section's satellite assemblies shipped, because the neutral set
       is embedded in the main assembly and the fallback is silent. One request with

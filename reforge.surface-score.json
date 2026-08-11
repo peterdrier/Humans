@@ -94,14 +94,7 @@
     },
     "Calendar": {
       "paths": [
-        "src/Humans.Application/Interfaces/Calendar/**",
-        "src/Humans.Application/DTOs/Calendar/**",
-        "src/Humans.Application/Services/Calendar/**",
-        "src/Humans.Domain/Entities/Calendar*",
-        "src/Humans.Infrastructure/Repositories/Calendar/**",
-        "src/Humans.Infrastructure/Services/Calendar/**",
-        "src/Humans.Web/Controllers/CalendarController.cs",
-        "src/Humans.Web/Models/Calendar/**"
+        "src/Sections/Humans.Calendar/**"
       ],
       "symbols": [
         "Calendar*",

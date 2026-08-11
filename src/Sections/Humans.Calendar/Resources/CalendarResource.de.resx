@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="1" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="Calendar_Agenda" xml:space="preserve"><value>Agenda</value></data>
+  <data name="Calendar_AllDay" xml:space="preserve"><value>ganztägig</value></data>
+  <data name="Calendar_AllDayEvent" xml:space="preserve"><value>Ganztägige Veranstaltung</value></data>
+  <data name="Calendar_AllDayLabel" xml:space="preserve"><value>Ganztägig</value></data>
+  <data name="Calendar_AllTeamsMonthView" xml:space="preserve"><value>Alle Teams (Monatsansicht)</value></data>
+  <data name="Calendar_AllTimesShownIn" xml:space="preserve"><value>Alle Zeiten werden in {0} angezeigt.</value></data>
+  <data name="Calendar_BackToCalendar" xml:space="preserve"><value>Zurück zum Kalender</value></data>
+  <data name="Calendar_CancelOccurrenceConfirm" xml:space="preserve"><value>Nur diesen Termin absagen?</value></data>
+  <data name="Calendar_CancelThisOccurrence" xml:space="preserve"><value>Diesen absagen</value></data>
+  <data name="Calendar_ChangeHistory" xml:space="preserve"><value>Änderungsverlauf</value></data>
+  <data name="Calendar_Continues" xml:space="preserve"><value>Fortsetzung</value></data>
+  <data name="Calendar_Created" xml:space="preserve"><value>Erstellt {0}</value></data>
+  <data name="Calendar_CreateEvent" xml:space="preserve"><value>Veranstaltung erstellen</value></data>
+  <data name="Calendar_DeleteConfirm" xml:space="preserve"><value>Diese Veranstaltung und alle ihre Termine löschen?</value></data>
+  <data name="Calendar_Description" xml:space="preserve"><value>Beschreibung</value></data>
+  <data name="Calendar_EditEvent" xml:space="preserve"><value>Veranstaltung bearbeiten</value></data>
+  <data name="Calendar_EditSingleOccurrence" xml:space="preserve"><value>Einzelnen Termin bearbeiten</value></data>
+  <data name="Calendar_EditSingleOccurrenceHeading" xml:space="preserve"><value>Einen einzelnen Termin bearbeiten</value></data>
+  <data name="Calendar_EditThisOccurrence" xml:space="preserve"><value>Diesen Termin bearbeiten</value></data>
+  <data name="Calendar_End" xml:space="preserve"><value>Ende</value></data>
+  <data name="Calendar_EndDate" xml:space="preserve"><value>Enddatum</value></data>
+  <data name="Calendar_EndDateHelp" xml:space="preserve"><value>Einschließlich — leer lassen für eine eintägige Veranstaltung.</value></data>
+  <data name="Calendar_EventTitle" xml:space="preserve"><value>Veranstaltung</value></data>
+  <data name="Calendar_FirstStart" xml:space="preserve"><value>Erster Beginn</value></data>
+  <data name="Calendar_FormTitle" xml:space="preserve"><value>Titel</value></data>
+  <data name="Calendar_LastUpdated" xml:space="preserve"><value>· Zuletzt aktualisiert {0}</value></data>
+  <data name="Calendar_LocationUrl" xml:space="preserve"><value>Orts-URL</value></data>
+  <data name="Calendar_MoreCount" xml:space="preserve"><value>+{0} weitere</value></data>
+  <data name="Calendar_NewEvent" xml:space="preserve"><value>Neue Veranstaltung</value></data>
+  <data name="Calendar_Next" xml:space="preserve"><value>Weiter</value></data>
+  <data name="Calendar_NoEventsInRange" xml:space="preserve"><value>Keine Veranstaltungen im ausgewählten Zeitraum.</value></data>
+  <data name="Calendar_OverrideDescription" xml:space="preserve"><value>Beschreibung überschreiben</value></data>
+  <data name="Calendar_OverrideEnd" xml:space="preserve"><value>Ende überschreiben</value></data>
+  <data name="Calendar_OverrideInstructions" xml:space="preserve"><value>Überschreibe nur diesen Termin der wiederkehrenden Veranstaltung. Lass ein Feld leer, um den Wert von der übergeordneten Veranstaltung zu übernehmen.</value></data>
+  <data name="Calendar_OverrideLocation" xml:space="preserve"><value>Ort überschreiben</value></data>
+  <data name="Calendar_OverrideLocationUrl" xml:space="preserve"><value>Orts-URL überschreiben</value></data>
+  <data name="Calendar_OverrideStart" xml:space="preserve"><value>Beginn überschreiben</value></data>
+  <data name="Calendar_OverrideTitle" xml:space="preserve"><value>Titel überschreiben</value></data>
+  <data name="Calendar_OwningTeam" xml:space="preserve"><value>Verantwortliches Team</value></data>
+  <data name="Calendar_Prev" xml:space="preserve"><value>Zurück</value></data>
+  <data name="Calendar_Recurrence" xml:space="preserve"><value>Wiederholung</value></data>
+  <data name="Calendar_RecurrenceTimezoneHelpPrefix" xml:space="preserve"><value>IANA-Zeitzone, z. B.</value></data>
+  <data name="Calendar_RecurrenceTimezoneLabel" xml:space="preserve"><value>Zeitzone der Wiederholung</value></data>
+  <data name="Calendar_RecurrenceTimezoneNote" xml:space="preserve"><value>Zeitzone: {0}</value></data>
+  <data name="Calendar_RecurringEvent" xml:space="preserve"><value>Wiederkehrende Veranstaltung</value></data>
+  <data name="Calendar_RRule" xml:space="preserve"><value>RRULE</value></data>
+  <data name="Calendar_RRuleHelpPrefix" xml:space="preserve"><value>RFC 5545 RRULE. Leer lassen für eine einzelne Veranstaltung. Beispiel:</value></data>
+  <data name="Calendar_SaveOverride" xml:space="preserve"><value>Überschreibung speichern</value></data>
+  <data name="Calendar_Start" xml:space="preserve"><value>Beginn</value></data>
+  <data name="Calendar_StartDate" xml:space="preserve"><value>Startdatum</value></data>
+  <data name="Calendar_TeamFallback" xml:space="preserve"><value>Team</value></data>
+  <data name="Calendar_Title" xml:space="preserve"><value>Kalender</value></data>
+  <data name="Calendar_Today" xml:space="preserve"><value>Heute</value></data>
+  <data name="Calendar_UpcomingOccurrences" xml:space="preserve"><value>Kommende Termine</value></data>
+  <data name="Calendar_ViewAriaLabel" xml:space="preserve"><value>Kalenderansicht</value></data>
+  <data name="Calendar_ViewGrid" xml:space="preserve"><value>Raster</value></data>
+  <data name="Calendar_ViewList" xml:space="preserve"><value>Liste</value></data>
+  <data name="Calendar_Yes" xml:space="preserve"><value>Ja</value></data>
+</root>

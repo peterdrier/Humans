@@ -35,7 +35,7 @@ env:
     EventGuideDbContext:src/Sections/Humans.Events
     AuthDbContext:src/Humans.Infrastructure
     EmailDbContext:src/Humans.Infrastructure
-    CalendarDbContext:src/Humans.Infrastructure
+    CalendarDbContext:src/Sections/Humans.Calendar
     NotificationsDbContext:src/Humans.Infrastructure
     IssuesDbContext:src/Humans.Infrastructure
     GovernanceDbContext:src/Humans.Infrastructure

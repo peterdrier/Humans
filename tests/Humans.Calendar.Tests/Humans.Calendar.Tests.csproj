@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Sections\Humans.Calendar\Humans.Calendar.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      The section's controller is an ASP.NET type, and a plain Microsoft.NET.Sdk test project
+      does not get the shared framework — a PackageReference cannot supply it either
+      (NU1010 under Central Package Management, design §15 step 8).
+    -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />
+    <PackageReference Include="NodaTime.Testing" />
+  </ItemGroup>
+
+</Project>

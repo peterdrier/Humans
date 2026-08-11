@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using AwesomeAssertions;
-using Humans.Application.DTOs.Calendar;
-using Humans.Application.Interfaces.Calendar;
+using Humans.Calendar.Services.Dtos;
+using Humans.Calendar.Services;
 using Humans.Domain.Entities;
 using Humans.Infrastructure.Data;
 using Humans.Integration.Tests.Infrastructure;
