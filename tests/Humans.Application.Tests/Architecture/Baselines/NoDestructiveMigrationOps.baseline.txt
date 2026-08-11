@@ -154,4 +154,10 @@ src/Humans.Infrastructure/Migrations/20260808191329_DropCrossSectionForeignKeys.
 src/Humans.Infrastructure/Migrations/20260808191329_DropCrossSectionForeignKeys.cs:DropIndex(name=IX_team_join_request_state_history_ChangedByUserId)#1
 src/Humans.Infrastructure/Migrations/20260808191329_DropCrossSectionForeignKeys.cs:DropIndex(name=IX_team_join_requests_ReviewedByUserId)#1
 src/Humans.Infrastructure/Migrations/20260808191329_DropCrossSectionForeignKeys.cs:DropIndex(name=IX_team_role_assignments_AssignedByUserId)#1
+# Peter-approved per-incident (2026-08-11): the chain's hand-written functional index
+# (TeamId, lower(Name)) from AddTeamRoleSlots' raw Sql diverges from the model's plain
+# (TeamId, Name) declaration and walls off the Teams peel (nobodies-collective/Humans#858).
+# Same-migration swap under the same name — index-only, no data touched, rebuildable; the
+# functional index is strictly stronger, so existing data cannot violate the replacement.
+# Recorded in memory/architecture/no-drops-until-prod-verified.md.
 src/Humans.Infrastructure/Migrations/20260811145603_RealignTeamRoleNameIndex.cs:DropIndex(name=IX_team_role_definitions_team_name_unique)#1

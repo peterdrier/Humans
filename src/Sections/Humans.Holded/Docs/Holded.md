@@ -35,8 +35,9 @@ mirror tables runs before this baseline recreates them.
 
 - `/Holded` — admin screen: usage meter (API's number displayed; budget = config
   `Holded:MonthlyCallBudget`, default 2000), calls-by-month, per-kind sync states plus
-  Finance's doc-sync row, Sync now / Full sync buttons, 629 department actuals, full account
-  list with reconciliation flags.
+  Finance's doc-sync row, Sync now / Full sync buttons, and the chart of accounts with
+  reconciliation flags — split by PGC group (named in English from the account number's leading
+  digit, not Holded's Spanish `group` string), accounts with no cached lines hidden by default.
 - `/Holded/Accounts/{number}` — the general-ledger page for ANY account (departments, banks,
   creditors), native Holded sign, header + all cached journal lines.
 

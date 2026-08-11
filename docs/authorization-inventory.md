@@ -143,7 +143,7 @@ The `Source` column reflects the constant referenced in the attribute as it appe
 | `ExpensesController.Approve` | Action | `FinanceAdmin, Admin` | `PolicyNames.FinanceAdminOrAdmin` |
 | `ExpensesController.Reject` | Action | `FinanceAdmin, Admin` | `PolicyNames.FinanceAdminOrAdmin` |
 | `ExpensesController` runtime guards | In-method | `authService.AuthorizeAsync(User, report, new ExpenseReportOperationRequirement(ExpenseReportOperation.X))` — `View` (Detail + Attachment), `Endorse`, `CoordinatorReject`, `Approve`, `FinanceReject` | Resource-based (see §6) |
-| `ExpensesController` owner guards | In-method | Submitter-side actions (`Edit` GET/POST, `AddLine`, `AddMileage`, `AddPerDiem`, `UpdateLine`, `RemoveLine`, `AttachFile`, `RemoveAttachment`, `Submit`, `Withdraw`, `Iban` GET/POST) gate on `report.SubmitterUserId != user.Id → Forbid()` (13 sites — travel lines added in #900) | Inline owner check |
+| `ExpensesController` owner guards | In-method | Submitter-side actions (`Edit` GET/POST, `AddLine`, `UpdateLine`, `RemoveLine`, `AttachFile`, `RemoveAttachment`, `Submit`, `Withdraw`, `Iban` GET/POST) gate on `report.SubmitterUserId != user.Id → Forbid()` (11 sites — the `AddMileage`/`AddPerDiem` travel-line actions added in #900 were removed when travel-line creation was retired) | Inline owner check |
 
 ### Store Section
 
@@ -604,7 +604,7 @@ These actions rely on `if` checks + early return/forbid instead of `[Authorize(P
 | `ContainerController` | All non-public actions | `_authorizationService.AuthorizeAsync(User, target, ContainerOperationRequirement.{Manage, Place})` (resource-based) |
 | `EventsController` | Barrio-event submit/create/edit/update/withdraw | `_authorizationService.AuthorizeAsync(User, camp, CampOperationRequirement.SubmitEvent)` via `HumansCampControllerBase.ResolveCampEventManagementAsync` (resource-based); plus owner-or-`RoleChecks.IsEventsAdmin` gate on Edit/Update endpoints |
 | `ExpensesController` | Detail/Attachment view, Endorse, CoordinatorReject, Approve, FinanceReject | `authService.AuthorizeAsync(User, report, new ExpenseReportOperationRequirement(ExpenseReportOperation.X))` (resource-based) |
-| `ExpensesController` | Submitter-side actions (Edit, line CRUD incl. AddMileage/AddPerDiem, Submit, Withdraw, Iban) | Inline owner check `report.SubmitterUserId != user.Id → Forbid()` (#900) |
+| `ExpensesController` | Submitter-side actions (Edit, line CRUD, Submit, Withdraw, Iban) | Inline owner check `report.SubmitterUserId != user.Id → Forbid()` (#900) |
 | `TeamController` | `EditTeam` (POST) `IsSensitive` flag | `authorizationService.AuthorizeAsync(User, PolicyNames.AdminOnly)` — non-Admin posts leave `IsSensitive` unchanged |
 | `StoreController` | Order CRUD/pay | `_authService.AuthorizeAsync(User, order, OrderOperationRequirement.*)` (resource-based) |
 | `IssuesController` | All mutating actions | `_authorization.AuthorizeAsync(User, issue, IssuesOperationRequirement.Handle)` (resource-based) |

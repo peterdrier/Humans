@@ -177,52 +177,20 @@
     }
 </div>
 
-<div class="card mb-4">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <span><i class="fa-solid fa-chart-simple me-1"></i>Department actuals</span>
-        <span class="badge bg-secondary">629xxxxx</span>
-    </div>
-    @if (o.DepartmentActuals.Count == 0)
-    {
-        <div class="card-body"><p class="mb-0 text-muted">No department accounts cached — run a sync.</p></div>
-    }
-    else
-    {
-        <div class="table-responsive">
-            <table class="table table-sm align-middle mb-0">
-                <thead>
-                    <tr><th>Account</th><th>Name</th><th class="text-end">Spent</th><th class="text-end">Lines</th><th class="text-center">OK</th></tr>
-                </thead>
-                <tbody>
-                    @foreach (var a in o.DepartmentActuals)
-                    {
-                        <tr>
-                            <td class="text-nowrap"><a asp-action="Account" asp-route-number="@a.Number"><code>@a.Number</code></a></td>
-                            <td>@a.Name</td>
-                            <td class="text-end">@a.HoldedBalance.ToEuro()</td>
-                            <td class="text-end">@a.LocalLineCount</td>
-                            <td class="text-center">
-                                @if (a.Reconciled)
-                                {
-                                    <i class="fa-solid fa-check text-success" title="Local ledger sum matches Holded"></i>
-                                }
-                                else
-                                {
-                                    <i class="fa-solid fa-xmark text-danger" title="Local @a.LocalBalance.ToEuro() vs Holded @a.HoldedBalance.ToEuro()"></i>
-                                }
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
-    }
-</div>
-
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
         <span><i class="fa-solid fa-list me-1"></i>Chart of accounts</span>
-        <span class="badge bg-secondary">@o.Accounts.Count accounts</span>
+        <div class="d-flex align-items-center gap-3">
+            <div class="form-check form-switch mb-0">
+                <input class="form-check-input" type="checkbox" role="switch"
+                       id="hide-empty-accounts" checked>
+                <label class="form-check-label small" for="hide-empty-accounts"
+                       title="Only accounts Holded has never posted to either. Anything Holded shows activity for stays visible, balance or no balance.">
+                    Hide accounts with no lines
+                </label>
+            </div>
+            <span class="badge bg-secondary" id="account-count">@o.Accounts.Count accounts</span>
+        </div>
     </div>
     @if (o.Accounts.Count == 0)
     {
@@ -231,48 +199,94 @@
     else
     {
         <div class="table-responsive">
-            <table class="table table-sm table-striped align-middle mb-0">
+            <table class="table table-sm table-striped align-middle mb-0" id="chart-of-accounts">
                 <thead>
                     <tr>
-                        <th>Account</th><th>Name</th><th>Group</th>
+                        <th>Account</th><th>Name</th>
                         <th class="text-end">Holded</th><th class="text-end">Local</th>
                         <th class="text-end">Lines</th><th class="text-center">OK</th>
                     </tr>
                 </thead>
-                <tbody>
-                    @foreach (var a in o.Accounts)
-                    {
-                        <tr>
-                            <td class="text-nowrap"><a asp-action="Account" asp-route-number="@a.Number"><code>@a.Number</code></a></td>
-                            <td>@a.Name</td>
-                            <td class="small text-muted">@a.Group</td>
-                            <td class="text-end">@a.HoldedBalance.ToEuro()</td>
-                            <td class="text-end">@(a.LocalBalance is null ? "—" : a.LocalBalance.ToEuro())</td>
-                            <td class="text-end">@a.LocalLineCount</td>
-                            <td class="text-center">
-                                @if (a.Reconciled)
-                                {
-                                    <i class="fa-solid fa-check text-success"></i>
-                                }
-                                else
-                                {
-                                    <i class="fa-solid fa-xmark text-danger"></i>
-                                }
-                            </td>
+                @* Accounts arrive ordered by number, so grouping keeps the PGC groups in 1..9 order. *@
+                @foreach (var group in o.Accounts.GroupBy(a => a.Group))
+                {
+                    <tbody class="js-account-group">
+                        <tr class="table-light">
+                            <th colspan="6" class="fw-semibold">@group.Key</th>
                         </tr>
-                    }
-                </tbody>
+                        @foreach (var a in group)
+                        {
+                            <tr class="js-account-row" data-lines="@a.LocalLineCount"
+                                data-reconciled="@(a.Reconciled ? "1" : "0")"
+                                data-holded-postings="@(a.HoldedHasPostings ? "1" : "0")">
+                                <td class="text-nowrap"><a asp-action="Account" asp-route-number="@a.Number"><code>@a.Number</code></a></td>
+                                <td>@a.Name</td>
+                                <td class="text-end">@a.HoldedBalance.ToEuro()</td>
+                                <td class="text-end">@(a.LocalBalance is null ? "—" : a.LocalBalance.ToEuro())</td>
+                                <td class="text-end">@a.LocalLineCount</td>
+                                <td class="text-center">
+                                    @if (a.Reconciled)
+                                    {
+                                        <i class="fa-solid fa-check text-success"></i>
+                                    }
+                                    else
+                                    {
+                                        <i class="fa-solid fa-xmark text-danger"></i>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                }
             </table>
         </div>
         <div class="card-footer text-muted small">
-            Archived accounts are hidden. <strong>Local</strong> is Σdebit − Σcredit over the cached
-            lines; a ✗ means the nightly reconciliation still sees drift after its targeted re-pull.
-            Total cached lines: @o.LedgerLineCount.ToString("N0", CultureInfo.InvariantCulture).
+            Archived accounts are hidden. Groups are the Spanish chart's own, named from the
+            account number's leading digit. <strong>Local</strong> is Σdebit − Σcredit over the
+            cached lines; a ✗ means the nightly reconciliation still sees drift after its targeted
+            re-pull. An account Holded has posted to stays listed even when the mirror has no line
+            for it — that gap is the point. Total cached lines:
+            @o.LedgerLineCount.ToString("N0", CultureInfo.InvariantCulture).
         </div>
     }
 </div>
 
 <script>
+    // Most of the 267-account chart has never carried a line; hiding those is the default view.
+    // A group whose every account is hidden goes with them, header and all.
+    //
+    // "No lines" alone is not the test — twice over. An account Holded gives a balance for but the
+    // mirror has no line for reconciles ✗ with zero lines. And an account whose debits and credits
+    // cancel nets to zero, so it reconciles ✓ against an empty mirror while Holded shows a year of
+    // postings. Both are missing-ledger-data alarms, which is the one thing this table exists to
+    // raise. Unused means all three: nothing locally, nothing at Holded, and no disagreement.
+    (function () {
+        var toggle = document.getElementById('hide-empty-accounts');
+        var count = document.getElementById('account-count');
+        if (!toggle) return;
+
+        function apply() {
+            var hide = toggle.checked;
+            var visible = 0;
+            document.querySelectorAll('.js-account-group').forEach(function (group) {
+                var shown = 0;
+                group.querySelectorAll('.js-account-row').forEach(function (row) {
+                    var unused = row.dataset.lines === '0'
+                        && row.dataset.holdedPostings === '0'
+                        && row.dataset.reconciled === '1';
+                    row.hidden = hide && unused;
+                    if (!row.hidden) shown++;
+                });
+                group.hidden = shown === 0;
+                visible += shown;
+            });
+            count.textContent = visible + ' accounts';
+        }
+
+        toggle.addEventListener('change', apply);
+        apply();
+    })();
+
     // A sweep can take a while and a second submit only earns a "skipped" toast; disable on click.
     document.querySelectorAll('.js-sync-form').forEach(function (form) {
         form.addEventListener('submit', function () {

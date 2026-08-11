@@ -480,8 +480,6 @@ The changes captured in the 2026-06-07 sweep — now all stable in the tables be
 | Edit | /Expenses/{id:guid}/Edit | GET | Edit expense form | OK |
 | Edit | /Expenses/{id:guid}/Edit | POST | Save expense edits | OK |
 | AddLine | /Expenses/{id:guid}/Lines/Add | POST | Add an expense line | OK |
-| AddMileage | /Expenses/{id:guid}/Lines/AddMileage | POST | Add a mileage travel line | OK |
-| AddPerDiem | /Expenses/{id:guid}/Lines/AddPerDiem | POST | Add a per-diem travel line | OK |
 | UpdateLine | /Expenses/{id:guid}/Lines/Update | POST | Update an expense line | OK |
 | RemoveLine | /Expenses/{id:guid}/Lines/{lineId:guid}/Remove | POST | Remove an expense line | OK |
 | AttachFile | /Expenses/{id:guid}/Lines/{lineId:guid}/Attach | POST | Attach a file to a line | OK |
