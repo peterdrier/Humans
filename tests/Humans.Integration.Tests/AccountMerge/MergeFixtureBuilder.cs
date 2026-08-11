@@ -52,6 +52,7 @@ public sealed class MergeFixtureBuilder
     private readonly LegalDbContext _legalDb;
     private readonly AuditLogDbContext _auditLogDb;
     private readonly ShiftsDbContext _shiftsDb;
+    private readonly TeamsDbContext _teamsDb;
 
     private readonly Instant _now;
     private readonly List<Action<HumansDbContext>> _pending = [];
@@ -64,6 +65,7 @@ public sealed class MergeFixtureBuilder
     private readonly List<Action<LegalDbContext>> _pendingLegal = [];
     private readonly List<Action<AuditLogDbContext>> _pendingAuditLog = [];
     private readonly List<Action<ShiftsDbContext>> _pendingShifts = [];
+    private readonly List<Action<TeamsDbContext>> _pendingTeams = [];
 
     public Guid SourceUserId { get; }
     public Guid TargetUserId { get; }
@@ -80,6 +82,7 @@ public sealed class MergeFixtureBuilder
         _legalDb = scope.ServiceProvider.GetRequiredService<LegalDbContext>();
         _auditLogDb = scope.ServiceProvider.GetRequiredService<AuditLogDbContext>();
         _shiftsDb = scope.ServiceProvider.GetRequiredService<ShiftsDbContext>();
+        _teamsDb = scope.ServiceProvider.GetRequiredService<TeamsDbContext>();
         _now = SystemClock.Instance.GetCurrentInstant();
         SourceUserId = sourceUserId;
         TargetUserId = targetUserId;
@@ -452,8 +455,8 @@ public sealed class MergeFixtureBuilder
             CreatedAt = _now,
             UpdatedAt = _now,
         };
-        _db.Teams.Add(team);
-        _db.SaveChanges();
+        _teamsDb.Teams.Add(team);
+        _teamsDb.SaveChanges();
         return teamId;
     }
 
@@ -465,7 +468,7 @@ public sealed class MergeFixtureBuilder
 
     private MergeFixtureBuilder AddTeamMember(Guid userId, Guid teamId)
     {
-        _pending.Add(db => db.TeamMembers.Add(new TeamMember
+        _pendingTeams.Add(db => db.TeamMembers.Add(new TeamMember
         {
             Id = Guid.NewGuid(),
             TeamId = teamId,
@@ -486,7 +489,7 @@ public sealed class MergeFixtureBuilder
     private MergeFixtureBuilder AddTeamJoinRequest(
         Guid userId, Guid teamId, TeamJoinRequestStatus status)
     {
-        _pending.Add(db => db.TeamJoinRequests.Add(new TeamJoinRequest
+        _pendingTeams.Add(db => db.TeamJoinRequests.Add(new TeamJoinRequest
         {
             Id = Guid.NewGuid(),
             TeamId = teamId,
@@ -684,7 +687,7 @@ public sealed class MergeFixtureBuilder
         var docId = Guid.NewGuid();
         var versionId = Guid.NewGuid();
 
-        _db.Teams.Add(new Team
+        _teamsDb.Teams.Add(new Team
         {
             Id = teamId,
             Name = $"ConsentTeam-{teamId:N}".Substring(0, 16),
@@ -714,7 +717,7 @@ public sealed class MergeFixtureBuilder
             EffectiveFrom = _now,
             CreatedAt = _now,
         });
-        _db.SaveChanges();
+        _teamsDb.SaveChanges();
         _legalDb.SaveChanges();
         return versionId;
     }
@@ -838,5 +841,12 @@ public sealed class MergeFixtureBuilder
         }
         _pendingShifts.Clear();
         await _shiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        foreach (var apply in _pendingTeams)
+        {
+            apply(_teamsDb);
+        }
+        _pendingTeams.Clear();
+        await _teamsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
     }
 }

@@ -704,9 +704,10 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
 
         await using var assertScope = Factory.Services.CreateAsyncScope();
         var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var teamsDb = assertScope.ServiceProvider.GetRequiredService<TeamsDbContext>();
 
         // Target should have ACTIVE memberships (LeftAt == null) on both teams.
-        var targetActiveTeams = await db.TeamMembers
+        var targetActiveTeams = await teamsDb.TeamMembers
             .AsNoTracking()
             .Where(tm => tm.UserId == targetId && tm.LeftAt == null
                 && (tm.TeamId == sharedTeamId || tm.TeamId == sourceOnlyTeamId))
@@ -716,7 +717,7 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         targetActiveTeams.Should().Contain(sourceOnlyTeamId);
 
         // Source should have NO active memberships on either team after the fold.
-        var sourceActive = await db.TeamMembers
+        var sourceActive = await teamsDb.TeamMembers
             .AsNoTracking()
             .Where(tm => tm.UserId == sourceId && tm.LeftAt == null
                 && (tm.TeamId == sharedTeamId || tm.TeamId == sourceOnlyTeamId))
@@ -752,8 +753,9 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
 
         await using var assertScope = Factory.Services.CreateAsyncScope();
         var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var teamsDb = assertScope.ServiceProvider.GetRequiredService<TeamsDbContext>();
 
-        var targetRequests = await db.TeamJoinRequests
+        var targetRequests = await teamsDb.TeamJoinRequests
             .AsNoTracking()
             .Where(r => r.UserId == targetId
                 && (r.TeamId == contestedTeamId || r.TeamId == sourceOnlyTeamId))
@@ -764,7 +766,7 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         targetRequests.Should().ContainSingle(r => r.TeamId == contestedTeamId);
         targetRequests.Should().ContainSingle(r => r.TeamId == sourceOnlyTeamId);
 
-        var sourceRequests = await db.TeamJoinRequests
+        var sourceRequests = await teamsDb.TeamJoinRequests
             .AsNoTracking()
             .Where(r => r.UserId == sourceId
                 && (r.TeamId == contestedTeamId || r.TeamId == sourceOnlyTeamId))

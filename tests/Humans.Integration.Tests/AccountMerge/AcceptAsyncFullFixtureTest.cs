@@ -180,6 +180,7 @@ public class AcceptAsyncFullFixtureTest(HumansTestDatabase database)
         // Assert — comprehensive post-merge state.
         await using var assertScope = Factory.Services.CreateAsyncScope();
         var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var teamsDb = assertScope.ServiceProvider.GetRequiredService<TeamsDbContext>();
         var governanceDb = assertScope.ServiceProvider.GetRequiredService<GovernanceDbContext>();
         var campaignsDb = assertScope.ServiceProvider.GetRequiredService<CampaignsDbContext>();
         var feedbackDb = assertScope.ServiceProvider.GetRequiredService<FeedbackDbContext>();
@@ -224,11 +225,11 @@ public class AcceptAsyncFullFixtureTest(HumansTestDatabase database)
         (await authDb.RoleAssignments.AsNoTracking().CountAsync(ra =>
                 ra.UserId == sourceId && (ra.RoleName == sharedRole || ra.RoleName == sourceOnlyRole), TestContext.Current.CancellationToken))
             .Should().Be(0);
-        (await db.TeamMembers.AsNoTracking().CountAsync(tm =>
+        (await teamsDb.TeamMembers.AsNoTracking().CountAsync(tm =>
                 tm.UserId == sourceId && tm.LeftAt == null
                 && (tm.TeamId == sharedTeamId || tm.TeamId == sourceOnlyTeamId), TestContext.Current.CancellationToken))
             .Should().Be(0, "no active source memberships remain");
-        (await db.TeamJoinRequests.AsNoTracking().CountAsync(r =>
+        (await teamsDb.TeamJoinRequests.AsNoTracking().CountAsync(r =>
                 r.UserId == sourceId && r.TeamId == joinTeamId, TestContext.Current.CancellationToken))
             .Should().Be(0);
         (await notificationsDb.NotificationRecipients.AsNoTracking().CountAsync(nr =>
@@ -327,16 +328,16 @@ public class AcceptAsyncFullFixtureTest(HumansTestDatabase database)
                 .CountAsync(ra => ra.UserId == targetId && ra.RoleName == sharedRole, TestContext.Current.CancellationToken))
             .Should().Be(1, "shared role stays as target's single active assignment");
 
-        (await db.TeamMembers.AsNoTracking()
+        (await teamsDb.TeamMembers.AsNoTracking()
                 .AnyAsync(tm => tm.UserId == targetId && tm.TeamId == sourceOnlyTeamId
                     && tm.LeftAt == null, TestContext.Current.CancellationToken))
             .Should().BeTrue("target gained active membership on source-only team");
-        (await db.TeamMembers.AsNoTracking()
+        (await teamsDb.TeamMembers.AsNoTracking()
                 .CountAsync(tm => tm.UserId == targetId && tm.TeamId == sharedTeamId
                     && tm.LeftAt == null, TestContext.Current.CancellationToken))
             .Should().Be(1, "target keeps its single active membership on shared team");
 
-        (await db.TeamJoinRequests.AsNoTracking()
+        (await teamsDb.TeamJoinRequests.AsNoTracking()
                 .AnyAsync(r => r.UserId == targetId && r.TeamId == joinTeamId, TestContext.Current.CancellationToken))
             .Should().BeTrue("source's team-join request re-FK'd to target");
 

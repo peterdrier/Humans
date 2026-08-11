@@ -20,17 +20,17 @@ public sealed class ShiftRepositoryManagementTests : IDisposable
 {
     private static readonly Instant TestNow = Instant.FromUtc(2026, 4, 1, 12, 0);
 
-    private readonly HumansDbContext _dbContext;
+    private readonly TeamsDbContext _teamsDbContext;
     private readonly ShiftsDbContext _shiftsDbContext;
     private readonly ShiftRepository _repo;
     private readonly FakeClock _clock = new(TestNow);
 
     public ShiftRepositoryManagementTests()
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
+        var teamsOptions = new DbContextOptionsBuilder<TeamsDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
-        _dbContext = new HumansDbContext(options);
+        _teamsDbContext = new TeamsDbContext(teamsOptions);
 
         var shiftsOptions = new DbContextOptionsBuilder<ShiftsDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
@@ -41,7 +41,7 @@ public sealed class ShiftRepositoryManagementTests : IDisposable
 
     public void Dispose()
     {
-        _dbContext.Dispose();
+        _teamsDbContext.Dispose();
         _shiftsDbContext.Dispose();
     }
 
@@ -173,7 +173,7 @@ public sealed class ShiftRepositoryManagementTests : IDisposable
             CreatedAt = TestNow,
             UpdatedAt = TestNow
         };
-        _dbContext.Teams.Add(team);
+        _teamsDbContext.Teams.Add(team);
 
         var rota = new Rota
         {
@@ -188,7 +188,7 @@ public sealed class ShiftRepositoryManagementTests : IDisposable
             UpdatedAt = TestNow
         };
         _shiftsDbContext.Rotas.Add(rota);
-        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await _teamsDbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         await _shiftsDbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         return (es, rota);
     }

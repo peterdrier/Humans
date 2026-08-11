@@ -17,7 +17,7 @@ namespace Humans.Application.Tests.Repositories;
 /// </summary>
 public class ShiftRepositorySummaryTests : IDisposable
 {
-    private readonly HumansDbContext _dbContext;
+    private readonly TeamsDbContext _teamsDbContext;
     private readonly ShiftsDbContext _shiftsDbContext;
     private readonly ShiftRepository _repo;
 
@@ -36,10 +36,10 @@ public class ShiftRepositorySummaryTests : IDisposable
 
     public ShiftRepositorySummaryTests()
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
+        var teamsOptions = new DbContextOptionsBuilder<TeamsDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
-        _dbContext = new HumansDbContext(options);
+        _teamsDbContext = new TeamsDbContext(teamsOptions);
 
         var shiftsOptions = new DbContextOptionsBuilder<ShiftsDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
@@ -50,7 +50,7 @@ public class ShiftRepositorySummaryTests : IDisposable
 
     public void Dispose()
     {
-        _dbContext.Dispose();
+        _teamsDbContext.Dispose();
         _shiftsDbContext.Dispose();
         GC.SuppressFinalize(this);
     }
@@ -167,7 +167,7 @@ public class ShiftRepositorySummaryTests : IDisposable
             MakeSignup(_userC, s1, SignupStatus.Pending),
             MakeSignup(_userA, sOther, SignupStatus.Confirmed));
 
-        _dbContext.SaveChanges();
+        _teamsDbContext.SaveChanges();
         _shiftsDbContext.SaveChanges();
     }
 
@@ -179,7 +179,7 @@ public class ShiftRepositorySummaryTests : IDisposable
         TimeZoneId = "UTC"
     });
 
-    private void SeedTeam(Guid teamId) => _dbContext.Teams.Add(new Team
+    private void SeedTeam(Guid teamId) => _teamsDbContext.Teams.Add(new Team
     {
         Id = teamId,
         Name = "Team-" + teamId.ToString()[..8],

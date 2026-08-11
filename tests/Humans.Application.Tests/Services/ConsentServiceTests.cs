@@ -61,7 +61,7 @@ public sealed class ConsentServiceTests : ServiceTestHarness
                 if (teamIds.Count == 0)
                     return (IReadOnlyList<ActiveRequiredLegalDocumentSnapshot>)[];
 
-                var teamNamesById = await Db.Teams
+                var teamNamesById = await TeamsDb.Teams
                     .AsNoTracking()
                     .Where(t => teamIds.Contains(t.Id))
                     .ToDictionaryAsync(t => t.Id, t => t.Name, Xunit.TestContext.Current.CancellationToken);
@@ -702,7 +702,7 @@ public sealed class ConsentServiceTests : ServiceTestHarness
     private void SeedDocumentVersion(Guid versionId, string documentName, Dictionary<string, string> content)
     {
         var teamId = Guid.NewGuid();
-        Db.Teams.Add(new Team
+        TeamsDb.Teams.Add(new Team
         {
             Id = teamId,
             Name = "Volunteers",

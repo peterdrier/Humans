@@ -19,7 +19,7 @@ namespace Humans.Application.Tests.Repositories;
 /// </summary>
 public class ShiftRepositorySignupTests : IDisposable
 {
-    private readonly HumansDbContext _dbContext;
+    private readonly TeamsDbContext _teamsDbContext;
     private readonly ShiftsDbContext _shiftsDbContext;
     private readonly ShiftRepository _repo;
 
@@ -27,10 +27,10 @@ public class ShiftRepositorySignupTests : IDisposable
 
     public ShiftRepositorySignupTests()
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
+        var teamsOptions = new DbContextOptionsBuilder<TeamsDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
-        _dbContext = new HumansDbContext(options);
+        _teamsDbContext = new TeamsDbContext(teamsOptions);
 
         var shiftsOptions = new DbContextOptionsBuilder<ShiftsDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
@@ -41,7 +41,7 @@ public class ShiftRepositorySignupTests : IDisposable
 
     public void Dispose()
     {
-        _dbContext.Dispose();
+        _teamsDbContext.Dispose();
         _shiftsDbContext.Dispose();
         GC.SuppressFinalize(this);
     }
@@ -161,7 +161,7 @@ public class ShiftRepositorySignupTests : IDisposable
         if (teamId == Guid.Empty)
         {
             teamId = Guid.NewGuid();
-            _dbContext.Teams.Add(new Team
+            _teamsDbContext.Teams.Add(new Team
             {
                 Id = teamId,
                 Name = "TestTeam-" + teamId.ToString()[..8],
@@ -205,7 +205,7 @@ public class ShiftRepositorySignupTests : IDisposable
             MaxVolunteers = 10,
         });
 
-        _dbContext.SaveChanges();
+        _teamsDbContext.SaveChanges();
         _shiftsDbContext.SaveChanges();
         return shiftId;
     }

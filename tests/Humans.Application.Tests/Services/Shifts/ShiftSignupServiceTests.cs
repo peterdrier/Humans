@@ -76,7 +76,7 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
     {
         var (_, _, shift) = SeedShiftScenario(SignupPolicy.Public);
         var userId = Guid.NewGuid();
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.SignUpAsync(userId, shift.Id);
@@ -91,7 +91,7 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
     {
         var (_, _, shift) = SeedShiftScenario(SignupPolicy.RequireApproval);
         var userId = Guid.NewGuid();
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.SignUpAsync(userId, shift.Id);
@@ -107,7 +107,7 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
         var (_, _, shift) = SeedShiftScenario(SignupPolicy.Public);
         var userId = Guid.NewGuid();
         SeedSignup(userId, shift.Id, SignupStatus.Confirmed);
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.SignUpAsync(userId, shift.Id);
@@ -124,7 +124,7 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
         var shift2 = SeedShift(rota, dayOffset: 1, startHour: 10, durationHours: 4);
         var userId = Guid.NewGuid();
         SeedSignup(userId, shift1.Id, SignupStatus.Confirmed);
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         // shift1: day 1, 10:00-14:00 — shift2: day 1, 10:00-14:00 (identical times)
@@ -149,7 +149,7 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
         var allDay = SeedAllDayShift(rota, dayOffset: 1);
         var userId = Guid.NewGuid();
         SeedSignup(userId, nightWatch.Id, SignupStatus.Confirmed);
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.SignUpAsync(userId, allDay.Id);
@@ -173,7 +173,7 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
         var allDay = SeedAllDayShift(rota, dayOffset: 0);
         var userId = Guid.NewGuid();
         SeedSignup(userId, allDay.Id, SignupStatus.Confirmed);
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.SignUpAsync(userId, earlyShift.Id);
@@ -188,7 +188,7 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
         var (es, _, shift) = SeedShiftScenario(SignupPolicy.Public);
         es.IsShiftBrowsingOpen = false;
         var userId = Guid.NewGuid();
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.SignUpAsync(userId, shift.Id);
@@ -203,7 +203,7 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
         var (_, _, shift) = SeedShiftScenario(SignupPolicy.Public);
         shift.AdminOnly = true;
         var userId = Guid.NewGuid();
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.SignUpAsync(userId, shift.Id);
@@ -223,7 +223,7 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
         var userId = Guid.NewGuid();
         var signup = SeedSignup(userId, shift.Id, SignupStatus.Pending);
         var reviewerId = Guid.NewGuid();
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.ApproveAsync(signup.Id, reviewerId);
@@ -244,7 +244,7 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
         // User has pending signup for shift2 (same time slot)
         var pendingSignup = SeedSignup(userId, shift2.Id, SignupStatus.Pending);
         var reviewerId = Guid.NewGuid();
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.ApproveAsync(pendingSignup.Id, reviewerId);
@@ -264,7 +264,7 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
         var (_, _, shift) = SeedShiftScenario(SignupPolicy.Public);
         var userId = Guid.NewGuid();
         var signup = SeedSignup(userId, shift.Id, SignupStatus.Confirmed);
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.BailAsync(signup.Id, userId, "Can't make it");
@@ -284,7 +284,7 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
         es.EarlyEntryClose = TestNow - Duration.FromHours(1);
         var userId = Guid.NewGuid();
         var signup = SeedSignup(userId, shift.Id, SignupStatus.Confirmed);
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.BailAsync(signup.Id, userId, null);
@@ -303,7 +303,7 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
         var (es, rota, _) = SeedShiftScenario(SignupPolicy.Public);
         var shift = SeedAllDayShift(rota, dayOffset: 1); // qualifies for cantina meal
         var userId = Guid.NewGuid();
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var outcome = await _service.ToggleDayAsync(
@@ -321,7 +321,7 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
         var (es, rota, _) = SeedShiftScenario(SignupPolicy.Public);
         var shift = SeedAllDayShift(rota, dayOffset: 1); // qualifies for cantina meal
         var userId = Guid.NewGuid();
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var outcome = await _service.ToggleDayAsync(
@@ -340,7 +340,7 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
         // dietary gate never applies regardless of hasDietaryPreference.
         var (es, _, shift) = SeedShiftScenario(SignupPolicy.Public);
         var userId = Guid.NewGuid();
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var outcome = await _service.ToggleDayAsync(
@@ -358,7 +358,7 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
         var shift = SeedAllDayShift(rota, dayOffset: 1); // qualifies for cantina meal
         var userId = Guid.NewGuid();
         SeedSignup(userId, shift.Id, SignupStatus.Confirmed);
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var outcome = await _service.ToggleDayAsync(
@@ -375,7 +375,7 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
     {
         var (es, _, shift) = SeedShiftScenario(SignupPolicy.Public);
         var userId = Guid.NewGuid();
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var outcome = await _service.ToggleDayAsync(
@@ -389,7 +389,7 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
     {
         var (es, _, shift) = SeedShiftScenario(SignupPolicy.Public);
         var userId = Guid.NewGuid();
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var outcome = await _service.ToggleDayAsync(
@@ -408,7 +408,7 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
         var (_, _, shift) = SeedShiftScenario(SignupPolicy.RequireApproval);
         var volunteerId = Guid.NewGuid();
         var enrollerId = Guid.NewGuid();
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.VoluntellAsync(volunteerId, shift.Id, enrollerId);
@@ -427,7 +427,7 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
         var (_, _, shift) = SeedShiftScenario(SignupPolicy.RequireApproval);
         var volunteerId = Guid.NewGuid();
         var enrollerId = Guid.NewGuid();
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.VoluntellAsync(volunteerId, shift.Id, enrollerId);
@@ -448,7 +448,7 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
         shift.Duration = Duration.FromHours(2);
         var volunteerId = Guid.NewGuid();
         var enrollerId = Guid.NewGuid();
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.VoluntellAsync(volunteerId, shift.Id, enrollerId);
@@ -489,7 +489,7 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
         var userId = Guid.NewGuid();
         var signup = SeedSignup(userId, shift.Id, SignupStatus.Confirmed);
         var reviewerId = Guid.NewGuid();
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.MarkNoShowAsync(signup.Id, reviewerId);
@@ -513,7 +513,7 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
         var userId = Guid.NewGuid();
         var signup = SeedSignup(userId, shift.Id, SignupStatus.Confirmed);
         var reviewerId = Guid.NewGuid();
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.MarkNoShowAsync(signup.Id, reviewerId);
@@ -541,7 +541,7 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
         var userId = Guid.NewGuid();
         var signup = SeedSignup(userId, shift.Id, status);
         var reviewerId = Guid.NewGuid();
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.MarkNoShowAsync(signup.Id, reviewerId);
@@ -564,7 +564,7 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
         for (var day = -5; day <= -1; day++)
             SeedAllDayShift(rota, day);
         var userId = Guid.NewGuid();
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         // Act
@@ -590,12 +590,12 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
             SeedAllDayShift(rota, day);
         var userId = Guid.NewGuid();
         // Find the day -2 shift and create an existing signup
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         var dayMinus2Shift = await ShiftsDb.Shifts
             .FirstAsync(s => s.RotaId == rota.Id && s.DayOffset == -2, Xunit.TestContext.Current.CancellationToken);
         SeedSignup(userId, dayMinus2Shift.Id, SignupStatus.Confirmed);
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         // Act: try to sign up for days -3 to -1
@@ -615,13 +615,13 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
         for (var day = -3; day <= -1; day++)
             SeedAllDayShift(rota, day);
         var userId = Guid.NewGuid();
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var dayMinus2Shift = await ShiftsDb.Shifts
             .FirstAsync(s => s.RotaId == rota.Id && s.DayOffset == -2, Xunit.TestContext.Current.CancellationToken);
         var existingSignup = SeedSignup(userId, dayMinus2Shift.Id, SignupStatus.Confirmed);
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         // Act
@@ -660,7 +660,7 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
         for (var day = -4; day <= -1; day++)
             SeedAllDayShift(rota, day);
         var userId = Guid.NewGuid();
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var dayMinus3Shift = await ShiftsDb.Shifts
@@ -672,7 +672,7 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
         // SeedAllDayShift sets MaxVolunteers = 5; fill day -2 with 5 distinct other users.
         for (var i = 0; i < dayMinus2Shift.MaxVolunteers; i++)
             SeedSignup(Guid.NewGuid(), dayMinus2Shift.Id, SignupStatus.Confirmed);
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         // Act
@@ -739,7 +739,7 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
 
         var userId = Guid.NewGuid();
         SeedSignup(userId, conflictingShift.Id, SignupStatus.Confirmed);
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         // Act
@@ -773,12 +773,12 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
         var shifts = new List<Shift>();
         for (var day = -3; day <= -1; day++)
             shifts.Add(SeedAllDayShift(rota, day));
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         foreach (var shift in shifts)
             SeedSignup(userId, shift.Id, SignupStatus.Confirmed);
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         // Act
@@ -842,14 +842,14 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
         ShiftsDb.Shifts.Add(crossRotaShift);
 
         var userId = Guid.NewGuid();
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var dayMinus3Shift = await ShiftsDb.Shifts
             .FirstAsync(s => s.RotaId == buildRota.Id && s.DayOffset == -3, Xunit.TestContext.Current.CancellationToken);
         SeedSignup(userId, dayMinus3Shift.Id, SignupStatus.Confirmed);  // already-signed-up case
         SeedSignup(userId, crossRotaShift.Id, SignupStatus.Confirmed);  // time-conflict case
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         // Act
@@ -915,7 +915,7 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
 
         var userId = Guid.NewGuid();
         SeedSignup(userId, conflictingShift.Id, SignupStatus.Confirmed);
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         // Act — no skipConflicts argument; defaults to false.
@@ -952,7 +952,7 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
             var signup = SeedSignup(userId, shift.Id, SignupStatus.Confirmed);
             signup.SignupBlockId = blockId;
         }
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         // Act
@@ -980,7 +980,7 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
             SeedAllDayShift(rota, day);
         var volunteerId = Guid.NewGuid();
         var enrollerId = Guid.NewGuid();
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         // Act
@@ -1012,14 +1012,14 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
             SeedAllDayShift(rota, day);
         var volunteerId = Guid.NewGuid();
         var enrollerId = Guid.NewGuid();
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         // Pre-existing signup on day -2
         var dayMinus2Shift = await ShiftsDb.Shifts
             .FirstAsync(s => s.RotaId == rota.Id && s.DayOffset == -2, Xunit.TestContext.Current.CancellationToken);
         SeedSignup(volunteerId, dayMinus2Shift.Id, SignupStatus.Confirmed);
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         // Act
@@ -1056,7 +1056,7 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
             SeedAllDayShift(rota, day);
         var volunteerId = Guid.NewGuid();
         var enrollerId = Guid.NewGuid();
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.VoluntellRangeAsync(volunteerId, rota.Id, -3, -1, enrollerId);
@@ -1077,7 +1077,7 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
             SeedAllDayShift(rota, day);
         var volunteerId = Guid.NewGuid();
         var enrollerId = Guid.NewGuid();
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.VoluntellRangeAsync(volunteerId, rota.Id, -3, -1, enrollerId);
@@ -1095,7 +1095,7 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
     {
         var (_, _, shift) = SeedShiftScenario(SignupPolicy.Public);
         var userId = Guid.NewGuid();
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.SignUpAsync(userId, shift.Id);
@@ -1113,7 +1113,7 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
     {
         var (_, _, shift) = SeedShiftScenario(SignupPolicy.RequireApproval);
         var userId = Guid.NewGuid();
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.SignUpAsync(userId, shift.Id);
@@ -1135,7 +1135,7 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
         for (var day = -3; day <= -1; day++)
             SeedAllDayShift(rota, day);
         var userId = Guid.NewGuid();
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.SignUpRangeAsync(userId, rota.Id, -3, -1);
@@ -1160,7 +1160,7 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
         var targetUserId = Guid.NewGuid();
         var actorUserId = Guid.NewGuid();
         SeedSignup(sourceUserId, shift.Id, SignupStatus.Confirmed);
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         await _service.ReassignAsync(sourceUserId, targetUserId, actorUserId, TestNow, Xunit.TestContext.Current.CancellationToken);
@@ -1179,7 +1179,7 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
         var sourceUserId = Guid.NewGuid();
         var targetUserId = Guid.NewGuid();
         var actorUserId = Guid.NewGuid();
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         await _service.ReassignAsync(sourceUserId, targetUserId, actorUserId, TestNow, Xunit.TestContext.Current.CancellationToken);
@@ -1224,7 +1224,7 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
             CreatedAt = TestNow,
             UpdatedAt = TestNow
         };
-        Db.Teams.Add(team);
+        TeamsDb.Teams.Add(team);
 
         var rota = new Rota
         {

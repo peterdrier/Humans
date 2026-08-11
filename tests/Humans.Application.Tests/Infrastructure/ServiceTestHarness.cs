@@ -86,6 +86,14 @@ public abstract class ServiceTestHarness : IDisposable
     private protected ShiftsDbContext ShiftsDb => _shiftsDb.Value.Context;
     private protected TestDbContextFactory<ShiftsDbContext> ShiftsDbFactory => _shiftsDb.Value.Factory;
 
+    /// <summary>Teams: <c>teams</c>, <c>team_members</c>, <c>team_join_requests</c>,
+    /// <c>team_join_request_state_history</c>, <c>team_role_definitions</c>,
+    /// <c>team_role_assignments</c>, <c>team_early_entry_grants</c>
+    /// (see <see cref="SeedTeam(string, SystemTeamType, Guid?, bool, bool)"/>).</summary>
+    private readonly Lazy<SectionDb<TeamsDbContext>> _teamsDb;
+    private protected TeamsDbContext TeamsDb => _teamsDb.Value.Context;
+    private protected TestDbContextFactory<TeamsDbContext> TeamsDbFactory => _teamsDb.Value.Factory;
+
     private protected FakeClock Clock { get; }
     private protected IMemoryCache Cache { get; } = new MemoryCache(new MemoryCacheOptions());
 
@@ -118,6 +126,7 @@ public abstract class ServiceTestHarness : IDisposable
         _legalDb = RegisterSection<LegalDbContext>(o => new(o));
         _auditLogDb = RegisterSection<AuditLogDbContext>(o => new(o));
         _shiftsDb = RegisterSection<ShiftsDbContext>(o => new(o));
+        _teamsDb = RegisterSection<TeamsDbContext>(o => new(o));
 
         Clock = new FakeClock(now ?? Instant.FromUtc(2026, 3, 1, 12, 0));
     }
@@ -283,7 +292,7 @@ public abstract class ServiceTestHarness : IDisposable
             CreatedAt = Clock.GetCurrentInstant(),
             UpdatedAt = Clock.GetCurrentInstant()
         };
-        Db.Teams.Add(team);
+        TeamsDb.Teams.Add(team);
         return team;
     }
 
@@ -297,13 +306,13 @@ public abstract class ServiceTestHarness : IDisposable
         {
             Id = Guid.NewGuid(),
             TeamId = teamId,
-            Team = Db.Teams.Local.Single(t => t.Id == teamId),
+            Team = TeamsDb.Teams.Local.Single(t => t.Id == teamId),
             UserId = userId,
             Role = role,
             JoinedAt = Clock.GetCurrentInstant(),
             LeftAt = leftAt
         };
-        Db.TeamMembers.Add(member);
+        TeamsDb.TeamMembers.Add(member);
         return member;
     }
 
@@ -345,7 +354,7 @@ public abstract class ServiceTestHarness : IDisposable
             Status = status,
             RequestedAt = Clock.GetCurrentInstant()
         };
-        Db.TeamJoinRequests.Add(request);
+        TeamsDb.TeamJoinRequests.Add(request);
         return request;
     }
 }

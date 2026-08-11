@@ -40,12 +40,12 @@ public sealed class ShiftManagementWriteGuardTests : ServiceTestHarness
 
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(_ => Task.FromResult<IReadOnlyDictionary<Guid, TeamInfo>>(
-                Db.Teams.AsEnumerable().ToDictionary(t => t.Id, ToTeamInfo)));
+                TeamsDb.Teams.AsEnumerable().ToDictionary(t => t.Id, ToTeamInfo)));
         _teamService.GetTeamAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(ci =>
             {
                 var id = ci.Arg<Guid>();
-                var team = Db.Teams.AsEnumerable().FirstOrDefault(t => t.Id == id);
+                var team = TeamsDb.Teams.AsEnumerable().FirstOrDefault(t => t.Id == id);
                 return Task.FromResult(team is null ? null : ToTeamInfo(team));
             });
 
@@ -98,7 +98,7 @@ public sealed class ShiftManagementWriteGuardTests : ServiceTestHarness
         var userId = Guid.NewGuid();
         var department = SeedDepartment("Gate");
         var other = SeedDepartment("Sanctuary");
-        await Db.SaveChangesAsync(Ct);
+        await SaveAllAsync(Ct);
         await ShiftsDb.SaveChangesAsync(Ct);
         _teamService.GetUserCoordinatedTeamIdsAsync(userId, Arg.Any<CancellationToken>())
             .Returns([department.Id]);
@@ -115,7 +115,7 @@ public sealed class ShiftManagementWriteGuardTests : ServiceTestHarness
     public async Task CreateRotaAsync_Throws_WhenTeamNotFound()
     {
         var es = SeedEventSettings();
-        await Db.SaveChangesAsync(Ct);
+        await SaveAllAsync(Ct);
         await ShiftsDb.SaveChangesAsync(Ct);
 
         var act = () => _service.CreateRotaAsync(NewRota(es.Id, Guid.NewGuid()));
@@ -129,7 +129,7 @@ public sealed class ShiftManagementWriteGuardTests : ServiceTestHarness
     {
         var es = SeedEventSettings();
         var team = SeedDepartment("Volunteers", systemTeamType: SystemTeamType.Volunteers);
-        await Db.SaveChangesAsync(Ct);
+        await SaveAllAsync(Ct);
         await ShiftsDb.SaveChangesAsync(Ct);
 
         var act = () => _service.CreateRotaAsync(NewRota(es.Id, team.Id));
@@ -143,7 +143,7 @@ public sealed class ShiftManagementWriteGuardTests : ServiceTestHarness
     public async Task CreateRotaAsync_Throws_WhenEventSettingsMissing()
     {
         var team = SeedDepartment("Gate");
-        await Db.SaveChangesAsync(Ct);
+        await SaveAllAsync(Ct);
         await ShiftsDb.SaveChangesAsync(Ct);
 
         var act = () => _service.CreateRotaAsync(NewRota(Guid.NewGuid(), team.Id));
@@ -158,7 +158,7 @@ public sealed class ShiftManagementWriteGuardTests : ServiceTestHarness
     {
         var es = SeedEventSettings(isActive: false);
         var team = SeedDepartment("Gate");
-        await Db.SaveChangesAsync(Ct);
+        await SaveAllAsync(Ct);
         await ShiftsDb.SaveChangesAsync(Ct);
 
         var act = () => _service.CreateRotaAsync(NewRota(es.Id, team.Id));
@@ -174,7 +174,7 @@ public sealed class ShiftManagementWriteGuardTests : ServiceTestHarness
         var es = SeedEventSettings();
         var team = SeedDepartment("Gate");
         var tag = SeedTag("Heavy lifting");
-        await Db.SaveChangesAsync(Ct);
+        await SaveAllAsync(Ct);
         await ShiftsDb.SaveChangesAsync(Ct);
 
         var rota = NewRota(es.Id, team.Id);
@@ -194,7 +194,7 @@ public sealed class ShiftManagementWriteGuardTests : ServiceTestHarness
         var es = SeedEventSettings();
         var team = SeedDepartment("Gate");
         SeedTag("Heavy lifting");
-        await Db.SaveChangesAsync(Ct);
+        await SaveAllAsync(Ct);
         await ShiftsDb.SaveChangesAsync(Ct);
 
         var rota = NewRota(es.Id, team.Id);
@@ -214,7 +214,7 @@ public sealed class ShiftManagementWriteGuardTests : ServiceTestHarness
     {
         var (_, rota, _) = SeedRotaScenario(RotaPeriod.Event);
         var tag = SeedTag("Heavy lifting");
-        await Db.SaveChangesAsync(Ct);
+        await SaveAllAsync(Ct);
         await ShiftsDb.SaveChangesAsync(Ct);
         await _service.UpdateRotaAsync(rota, [tag.Id]);
 
@@ -232,7 +232,7 @@ public sealed class ShiftManagementWriteGuardTests : ServiceTestHarness
     {
         var (_, rota, _) = SeedRotaScenario(RotaPeriod.Event);
         var tag = SeedTag("Heavy lifting");
-        await Db.SaveChangesAsync(Ct);
+        await SaveAllAsync(Ct);
         await ShiftsDb.SaveChangesAsync(Ct);
         await _service.UpdateRotaAsync(rota, [tag.Id]);
 
@@ -251,7 +251,7 @@ public sealed class ShiftManagementWriteGuardTests : ServiceTestHarness
     public async Task MoveRotaToTeamAsync_Fails_WhenRotaMissing()
     {
         var target = SeedDepartment("Target");
-        await Db.SaveChangesAsync(Ct);
+        await SaveAllAsync(Ct);
         await ShiftsDb.SaveChangesAsync(Ct);
 
         var result = await _service.MoveRotaToTeamAsync(
@@ -266,7 +266,7 @@ public sealed class ShiftManagementWriteGuardTests : ServiceTestHarness
     {
         var (_, rota, _) = SeedRotaScenario(RotaPeriod.Event);
         var target = SeedDepartment("Target");
-        await Db.SaveChangesAsync(Ct);
+        await SaveAllAsync(Ct);
         await ShiftsDb.SaveChangesAsync(Ct);
 
         var result = await _service.MoveRotaToTeamAsync(
@@ -282,7 +282,7 @@ public sealed class ShiftManagementWriteGuardTests : ServiceTestHarness
     public async Task MoveRotaToTeamAsync_Fails_WhenTargetTeamMissing()
     {
         var (_, rota, _) = SeedRotaScenario(RotaPeriod.Event);
-        await Db.SaveChangesAsync(Ct);
+        await SaveAllAsync(Ct);
         await ShiftsDb.SaveChangesAsync(Ct);
 
         var result = await _service.MoveRotaToTeamAsync(
@@ -297,7 +297,7 @@ public sealed class ShiftManagementWriteGuardTests : ServiceTestHarness
     {
         var (_, rota, department) = SeedRotaScenario(RotaPeriod.Event);
         var subTeam = SeedDepartment("Sub", parentTeamId: department.Id);
-        await Db.SaveChangesAsync(Ct);
+        await SaveAllAsync(Ct);
         await ShiftsDb.SaveChangesAsync(Ct);
 
         var result = await _service.MoveRotaToTeamAsync(
@@ -312,7 +312,7 @@ public sealed class ShiftManagementWriteGuardTests : ServiceTestHarness
     {
         var (_, rota, _) = SeedRotaScenario(RotaPeriod.Event);
         var systemTeam = SeedDepartment("Volunteers", systemTeamType: SystemTeamType.Volunteers);
-        await Db.SaveChangesAsync(Ct);
+        await SaveAllAsync(Ct);
         await ShiftsDb.SaveChangesAsync(Ct);
 
         var result = await _service.MoveRotaToTeamAsync(
@@ -326,7 +326,7 @@ public sealed class ShiftManagementWriteGuardTests : ServiceTestHarness
     public async Task MoveRotaToTeamAsync_Fails_WhenRotaIsAlreadyOnTheTargetTeam()
     {
         var (_, rota, department) = SeedRotaScenario(RotaPeriod.Event);
-        await Db.SaveChangesAsync(Ct);
+        await SaveAllAsync(Ct);
         await ShiftsDb.SaveChangesAsync(Ct);
 
         var result = await _service.MoveRotaToTeamAsync(
@@ -344,7 +344,7 @@ public sealed class ShiftManagementWriteGuardTests : ServiceTestHarness
     {
         var (_, rota, _) = SeedRotaScenario(RotaPeriod.Event);
         var target = SeedDepartment("Target");
-        await Db.SaveChangesAsync(Ct);
+        await SaveAllAsync(Ct);
         await ShiftsDb.SaveChangesAsync(Ct);
 
         var result = await _service.MoveRotaToTeamAsync(
@@ -377,7 +377,7 @@ public sealed class ShiftManagementWriteGuardTests : ServiceTestHarness
         var (_, rota, _) = SeedRotaScenario(RotaPeriod.Event);
         var shift = SeedShift(rota, dayOffset: 1);
         SeedSignup(shift, SeedUser("Alice").Id, SignupStatus.Confirmed);
-        await Db.SaveChangesAsync(Ct);
+        await SaveAllAsync(Ct);
         await ShiftsDb.SaveChangesAsync(Ct);
 
         var act = () => _service.DeleteShiftAsync(shift.Id);
@@ -395,7 +395,7 @@ public sealed class ShiftManagementWriteGuardTests : ServiceTestHarness
         var bob = SeedUser("Bob");
         SeedSignup(shift, alice.Id, SignupStatus.Pending);
         SeedSignup(shift, bob.Id, SignupStatus.Bailed);
-        await Db.SaveChangesAsync(Ct);
+        await SaveAllAsync(Ct);
         await ShiftsDb.SaveChangesAsync(Ct);
 
         await _service.DeleteShiftAsync(shift.Id);
@@ -417,7 +417,7 @@ public sealed class ShiftManagementWriteGuardTests : ServiceTestHarness
     public async Task CreateBuildStrikeShifts_Fails_WhenRotaBelongsToAnotherTeam()
     {
         var (_, rota, _) = SeedRotaScenario(RotaPeriod.Build);
-        await Db.SaveChangesAsync(Ct);
+        await SaveAllAsync(Ct);
         await ShiftsDb.SaveChangesAsync(Ct);
 
         var result = await _service.CreateBuildStrikeShiftsAsync(
@@ -432,7 +432,7 @@ public sealed class ShiftManagementWriteGuardTests : ServiceTestHarness
     public async Task CreateBuildStrikeShifts_Fails_WhenNoStaffingDaysSupplied()
     {
         var (_, rota, _) = SeedRotaScenario(RotaPeriod.Build);
-        await Db.SaveChangesAsync(Ct);
+        await SaveAllAsync(Ct);
         await ShiftsDb.SaveChangesAsync(Ct);
 
         var result = await _service.CreateBuildStrikeShiftsAsync(
@@ -446,7 +446,7 @@ public sealed class ShiftManagementWriteGuardTests : ServiceTestHarness
     public async Task CreateBuildStrikeShifts_Fails_WhenAnyDayHasMinAboveMax()
     {
         var (_, rota, _) = SeedRotaScenario(RotaPeriod.Build);
-        await Db.SaveChangesAsync(Ct);
+        await SaveAllAsync(Ct);
         await ShiftsDb.SaveChangesAsync(Ct);
 
         var result = await _service.CreateBuildStrikeShiftsAsync(
@@ -465,7 +465,7 @@ public sealed class ShiftManagementWriteGuardTests : ServiceTestHarness
     public async Task CreateBuildStrikeShifts_Succeeds_WhenMinEqualsMax()
     {
         var (_, rota, _) = SeedRotaScenario(RotaPeriod.Build);
-        await Db.SaveChangesAsync(Ct);
+        await SaveAllAsync(Ct);
         await ShiftsDb.SaveChangesAsync(Ct);
 
         var result = await _service.CreateBuildStrikeShiftsAsync(
@@ -481,7 +481,7 @@ public sealed class ShiftManagementWriteGuardTests : ServiceTestHarness
     public async Task CreateBuildStrikeShifts_Throws_WhenBuildDayOffsetIsOutsideTheBuildWindow(int dayOffset)
     {
         var (_, rota, _) = SeedRotaScenario(RotaPeriod.Build);
-        await Db.SaveChangesAsync(Ct);
+        await SaveAllAsync(Ct);
         await ShiftsDb.SaveChangesAsync(Ct);
 
         var act = () => _service.CreateBuildStrikeShiftsAsync(
@@ -497,7 +497,7 @@ public sealed class ShiftManagementWriteGuardTests : ServiceTestHarness
     public async Task CreateBuildStrikeShifts_Accepts_BuildWindowEdges(int dayOffset)
     {
         var (_, rota, _) = SeedRotaScenario(RotaPeriod.Build);
-        await Db.SaveChangesAsync(Ct);
+        await SaveAllAsync(Ct);
         await ShiftsDb.SaveChangesAsync(Ct);
 
         var result = await _service.CreateBuildStrikeShiftsAsync(
@@ -513,7 +513,7 @@ public sealed class ShiftManagementWriteGuardTests : ServiceTestHarness
     public async Task CreateBuildStrikeShifts_Throws_WhenStrikeDayOffsetIsOutsideTheStrikeWindow(int dayOffset)
     {
         var (_, rota, _) = SeedRotaScenario(RotaPeriod.Strike);
-        await Db.SaveChangesAsync(Ct);
+        await SaveAllAsync(Ct);
         await ShiftsDb.SaveChangesAsync(Ct);
 
         var act = () => _service.CreateBuildStrikeShiftsAsync(
@@ -528,7 +528,7 @@ public sealed class ShiftManagementWriteGuardTests : ServiceTestHarness
     public async Task CreateBuildStrikeShifts_Accepts_StrikeWindowEdges(int dayOffset)
     {
         var (_, rota, _) = SeedRotaScenario(RotaPeriod.Strike);
-        await Db.SaveChangesAsync(Ct);
+        await SaveAllAsync(Ct);
         await ShiftsDb.SaveChangesAsync(Ct);
 
         var result = await _service.CreateBuildStrikeShiftsAsync(
@@ -543,7 +543,7 @@ public sealed class ShiftManagementWriteGuardTests : ServiceTestHarness
     {
         var (_, rota, _) = SeedRotaScenario(RotaPeriod.Build);
         var existing = SeedShift(rota, dayOffset: -3);
-        await Db.SaveChangesAsync(Ct);
+        await SaveAllAsync(Ct);
         await ShiftsDb.SaveChangesAsync(Ct);
 
         var result = await _service.CreateBuildStrikeShiftsAsync(
@@ -565,7 +565,7 @@ public sealed class ShiftManagementWriteGuardTests : ServiceTestHarness
     public async Task CreateBuildStrikeShifts_LastEntryWins_WhenADayIsListedTwice()
     {
         var (_, rota, _) = SeedRotaScenario(RotaPeriod.Build);
-        await Db.SaveChangesAsync(Ct);
+        await SaveAllAsync(Ct);
         await ShiftsDb.SaveChangesAsync(Ct);
 
         var result = await _service.CreateBuildStrikeShiftsAsync(
@@ -592,7 +592,7 @@ public sealed class ShiftManagementWriteGuardTests : ServiceTestHarness
     public async Task GenerateEventShifts_Fails_WhenTheDayRangeLeavesTheEventWindow(int start, int end)
     {
         var (_, rota, _) = SeedRotaScenario(RotaPeriod.Event);
-        await Db.SaveChangesAsync(Ct);
+        await SaveAllAsync(Ct);
         await ShiftsDb.SaveChangesAsync(Ct);
 
         var result = await _service.GenerateEventShiftsAsync(new GenerateEventShiftsInput(
@@ -607,7 +607,7 @@ public sealed class ShiftManagementWriteGuardTests : ServiceTestHarness
     public async Task GenerateEventShifts_Accepts_ASingleDayAtTheEndOfTheEventWindow()
     {
         var (_, rota, _) = SeedRotaScenario(RotaPeriod.Event);
-        await Db.SaveChangesAsync(Ct);
+        await SaveAllAsync(Ct);
         await ShiftsDb.SaveChangesAsync(Ct);
 
         var result = await _service.GenerateEventShiftsAsync(new GenerateEventShiftsInput(
@@ -622,7 +622,7 @@ public sealed class ShiftManagementWriteGuardTests : ServiceTestHarness
     public async Task GenerateEventShifts_Fails_WhenNoTimeSlotsSupplied()
     {
         var (_, rota, _) = SeedRotaScenario(RotaPeriod.Event);
-        await Db.SaveChangesAsync(Ct);
+        await SaveAllAsync(Ct);
         await ShiftsDb.SaveChangesAsync(Ct);
 
         var result = await _service.GenerateEventShiftsAsync(new GenerateEventShiftsInput(
@@ -636,7 +636,7 @@ public sealed class ShiftManagementWriteGuardTests : ServiceTestHarness
     public async Task GenerateEventShifts_Fails_WhenMinExceedsMax()
     {
         var (_, rota, _) = SeedRotaScenario(RotaPeriod.Event);
-        await Db.SaveChangesAsync(Ct);
+        await SaveAllAsync(Ct);
         await ShiftsDb.SaveChangesAsync(Ct);
 
         var result = await _service.GenerateEventShiftsAsync(new GenerateEventShiftsInput(
@@ -650,7 +650,7 @@ public sealed class ShiftManagementWriteGuardTests : ServiceTestHarness
     public async Task GenerateEventShifts_Succeeds_WhenMinEqualsMax()
     {
         var (_, rota, _) = SeedRotaScenario(RotaPeriod.Event);
-        await Db.SaveChangesAsync(Ct);
+        await SaveAllAsync(Ct);
         await ShiftsDb.SaveChangesAsync(Ct);
 
         var result = await _service.GenerateEventShiftsAsync(new GenerateEventShiftsInput(
@@ -673,7 +673,7 @@ public sealed class ShiftManagementWriteGuardTests : ServiceTestHarness
         RotaPeriod period, int firstDay, int lastDay)
     {
         var (_, rota, _) = SeedRotaScenario(period);
-        await Db.SaveChangesAsync(Ct);
+        await SaveAllAsync(Ct);
         await ShiftsDb.SaveChangesAsync(Ct);
 
         foreach (var dayOffset in new[] { firstDay, lastDay })
@@ -695,7 +695,7 @@ public sealed class ShiftManagementWriteGuardTests : ServiceTestHarness
         RotaPeriod period, int beforeFirst, int afterLast)
     {
         var (_, rota, _) = SeedRotaScenario(period);
-        await Db.SaveChangesAsync(Ct);
+        await SaveAllAsync(Ct);
         await ShiftsDb.SaveChangesAsync(Ct);
 
         foreach (var dayOffset in new[] { beforeFirst, afterLast })
@@ -712,7 +712,7 @@ public sealed class ShiftManagementWriteGuardTests : ServiceTestHarness
     public async Task CreateShiftAsync_Fails_WhenMinExceedsMax()
     {
         var (_, rota, _) = SeedRotaScenario(RotaPeriod.Build);
-        await Db.SaveChangesAsync(Ct);
+        await SaveAllAsync(Ct);
         await ShiftsDb.SaveChangesAsync(Ct);
 
         var result = await _service.CreateShiftAsync(NewShiftInput(rota, -3) with
@@ -730,7 +730,7 @@ public sealed class ShiftManagementWriteGuardTests : ServiceTestHarness
     public async Task CreateShiftAsync_Succeeds_WhenMinEqualsMax_AndInvalidatesRotaView()
     {
         var (_, rota, _) = SeedRotaScenario(RotaPeriod.Build);
-        await Db.SaveChangesAsync(Ct);
+        await SaveAllAsync(Ct);
         await ShiftsDb.SaveChangesAsync(Ct);
 
         var result = await _service.CreateShiftAsync(NewShiftInput(rota, -3) with
@@ -748,7 +748,7 @@ public sealed class ShiftManagementWriteGuardTests : ServiceTestHarness
     {
         var (_, rota, _) = SeedRotaScenario(RotaPeriod.Build);
         var shift = SeedShift(rota, dayOffset: -4);
-        await Db.SaveChangesAsync(Ct);
+        await SaveAllAsync(Ct);
         await ShiftsDb.SaveChangesAsync(Ct);
 
         var result = await _service.UpdateShiftAsync(NewUpdateInput(shift, rota.TeamId, dayOffset: 0));
@@ -764,7 +764,7 @@ public sealed class ShiftManagementWriteGuardTests : ServiceTestHarness
     {
         var (_, rota, _) = SeedRotaScenario(RotaPeriod.Build);
         var shift = SeedShift(rota, dayOffset: -4);
-        await Db.SaveChangesAsync(Ct);
+        await SaveAllAsync(Ct);
         await ShiftsDb.SaveChangesAsync(Ct);
 
         var result = await _service.UpdateShiftAsync(
@@ -781,7 +781,7 @@ public sealed class ShiftManagementWriteGuardTests : ServiceTestHarness
     {
         var (_, rota, _) = SeedRotaScenario(RotaPeriod.Build);
         var shift = SeedShift(rota, dayOffset: -4);
-        await Db.SaveChangesAsync(Ct);
+        await SaveAllAsync(Ct);
         await ShiftsDb.SaveChangesAsync(Ct);
 
         await _service.UpdateShiftAsync(NewUpdateInput(shift, rota.TeamId, dayOffset: -3));
@@ -859,7 +859,7 @@ public sealed class ShiftManagementWriteGuardTests : ServiceTestHarness
             CreatedAt = TestNow,
             UpdatedAt = TestNow
         };
-        Db.Teams.Add(team);
+        TeamsDb.Teams.Add(team);
         return team;
     }
 
