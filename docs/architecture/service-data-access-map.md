@@ -1978,7 +1978,7 @@ reads that were previously `[Grandfathered("HUM0025", …)]` on
 
 ## Mailer
 
-Folder: `src/Humans.Application/Services/Mailer/`. No owned DB tables —
+Folder: `src/Sections/Humans.Mailer/Services/` (G5, nobodies-collective/Humans#866). No owned DB tables —
 MailerLite is the external system; classifier writes through other
 sections' services.
 

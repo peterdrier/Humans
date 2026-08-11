@@ -43,7 +43,10 @@ binding is `SharedResource` *by design*, the first to send a Shell helper furthe
 `tests/Directory.Build.props` exclusion), and Development (the first whose `Section.Register`
 had to gate on the **host environment**, the first whose move took a block of markup out of a
 Shell view to keep a *type* internal rather than a resource key, and the first named by
-`typeof` from Shell's own production code). Step numbers match the former §15, so an old
+`typeof` from Shell's own production code), and Mailer (the first whose *whole* outward
+surface is one `int`, the first whose vendor connector left `Humans.Infrastructure` without
+needing a reference back to it, and the first whose controller names its views by absolute
+path). Step numbers match the former §15, so an old
 "§15 step 3b" citation reads as "step 3b" here.
 
 **Where this template and `src/Sections/` disagree, the code is right.** Deviations are the
@@ -163,7 +166,12 @@ Git Bash.)
      reference Sdk.Razor already adds (proven: Surveys, whose token provider takes
      `IDataProtectionProvider`). Add EF Core, NodaTime and Npgsql; never an `AspNetCore` one.
 2. [ ] Move the vertical, folders as layers: `Contracts/ Domain/ Data/ Services/ Controllers/
-   Models/ Views/ Resources/ Authorization/ Filters/ Docs/ Properties/ wwwroot/` + `Section.cs`. Migrations
+   Models/ Views/ Resources/ Authorization/ Filters/ Docs/ Properties/ wwwroot/` + `Section.cs`.
+   **A controller that names its views by absolute path pins the folder layout** — an RCL's
+   compiled view paths are project-relative, so `View("~/Views/Mailer/Admin/Index.cshtml")`
+   keeps resolving only if `Views/Mailer/Admin/` moves verbatim rather than being tidied into
+   the `Views/<Controller>/` shape. Renaming it compiles, then 500s on every page and reads as
+   a routing bug (proven: Mailer). Migrations
    land at `Data/Migrations/` — their `namespace` line changes to the section's, which is the one
    sanctioned edit to a migration file (spec §7); say so in the PR. **Everything the section needs
    comes with it — no exceptions.**
@@ -588,6 +596,14 @@ Git Bash.)
      connector serving one section and shaped by that section's model belongs to it (proven:
      Agent; contrast Stripe, which Store left behind, and `GitHubCommunityKbContentSource`, whose
      signatures name only `string`).
+     - **…and check what the connector uses *from Base*, not only what it exposes.** The
+       instinct after deciding the connector moves in is that the section must therefore
+       reference `Humans.Infrastructure`, because that is where the file was.
+       `MailerLiteClient` is a `Humans.Infrastructure/Services` file whose every dependency is
+       either the ASP.NET shared framework (`IHttpClientFactory`) or `Humans.Application`
+       (`Extensions`, `Threading`), so `Humans.Mailer` took **no `Humans.Infrastructure`
+       reference at all** — Scanner's table-less shape, reached by a section that had code in
+       Base's service folder on the way in (proven: Mailer).
      **The same test can keep a connector in Base when the connector carries the section's own
      name.** `IGuideContentSource` / `GitHubGuideContentSource` / `GuideSettings` read as the
      whole point of the Guide section — they are the thing that fetches `docs/guide/*.md`. They
@@ -963,6 +979,13 @@ Git Bash.)
      classes; folding the cases into one `[Fact]` with an assertion per value provably still
      runs. Same for a `public static TheoryData<TInternalEnum, …>` member (proven: Issues,
      `IssueStatusTransitionTests`).
+   - **…and the opt-out is per *helper*, not per item group.** `CapturingLogger` was
+     `Compile`-included in the same `ItemGroup` as `TestDbContextFactory`, inside the condition
+     that excludes the table-less test projects — so a section with no EF on its compile path
+     that still wants an in-memory `ILogger` (Mailer's client asserts on its own 429 warning)
+     could have neither, or take the EF package to get one. Split the group: `CapturingLogger`
+     is unconditional, `TestDbContextFactory` keeps the exclusion list. Governance's "split the
+     helper before deciding", applied to an MSBuild item (proven: Mailer).
    - **A table-less section's test project must opt out of the shared EF fixture, not take an EF
      package to satisfy it.** `tests/Directory.Build.props` `Compile`-includes
      `TestDbContextFactory` (and `CapturingLogger`) into every test project but
@@ -1211,6 +1234,17 @@ Git Bash.)
       before writing the assertion. Correct the doc in the move commit and say so; `Forbid()`
       in a *controller* is the same story, since it runs through the cookie handler's
       `HandleForbiddenAsync` (proven: Cantina).
+    - **When the section's backing store is a vendor API, replace the client in the test
+      factory.** The fourth sibling to Calendar's "seed through the service", Consent's "call
+      the invalidator" and Guide's "seed the cache" — and the one the first three do not cover,
+      because the thing to seed *is* the thing under replacement. `HumansWebApplicationFactory`
+      already does this for Stripe; removing the `IMailerLiteService` descriptor and adding a
+      stub is the same three lines. Two details cost a cycle each: NSubstitute cannot serve an
+      interface exposing `IAsyncEnumerable<T>` (a default substitute returns `null` and the
+      first `await foreach` NREs, so the stub is hand-written), and the page whose action calls
+      the vendor *outside* a `try` is a 500 rather than the error banner its sibling degrades
+      to — so "the pages handle a dead vendor" is not a substitute for the stub (proven:
+      Mailer).
     - **The non-English case is not optional and is not decoration.** An English-only check
       passes whether or not the section's satellite assemblies shipped, because the neutral set
       is embedded in the main assembly and the fallback is silent. One request with

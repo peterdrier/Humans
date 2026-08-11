@@ -107,7 +107,7 @@ Terse, authoritative invariant docs for each major section: concepts, data model
 | [Holded](sections/Holded.md) | Thin typed-`HttpClient` surface to the Holded accounting API, shared by Expenses (purchase documents) and Finance (ledger reconciliation) |
 | [Issues](../src/Sections/Humans.Issues/Docs/Issues.md) | In-app issue tracker (bugs, features, questions) with screenshots, role-routed triage, and a reporter↔handler conversation thread |
 | [Consent](../src/Sections/Humans.Consent/Docs/Consent.md) | GitHub-synced legal documents, per-version append-only consent records, and the Consent Coordinator audit/review queue |
-| [Mailer](sections/Mailer.md) | Humans ↔ MailerLite synchronisation: inbound import and outbound audience management |
+| [Mailer](../src/Sections/Humans.Mailer/Docs/Mailer.md) | Humans ↔ MailerLite synchronisation: inbound import and outbound audience management |
 | [Notifications](../src/Sections/Humans.Notifications/Docs/Notifications.md) | In-app notification fan-out (stored events plus per-user inbox) and live meter counts (computed) |
 | [Onboarding](sections/Onboarding.md) | Pure orchestrator over Profiles, Consent, Teams, and Governance — owns no tables |
 | [Profiles](sections/Profiles.md) | Per-human personal data: profile, contact fields, emails, communication preferences — reference implementation for §15 caching |

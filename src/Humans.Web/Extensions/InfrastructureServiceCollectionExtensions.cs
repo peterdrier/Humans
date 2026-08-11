@@ -53,7 +53,6 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddGoogleIntegrationSection();
         services.AddSearchSection();
         services.AddHoldedConnector(configuration);
-        services.AddMailerSection(configuration);
 
         // Recurring jobs for sections that have already moved out. The job types stay in
         // Humans.Infrastructure/Jobs because UseHumansRecurringJobs names them by concrete
@@ -66,6 +65,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<TermRenewalReminderJob>();
         services.AddScoped<SyncLegalDocumentsJob>();
         services.AddScoped<SendReConsentReminderJob>();
+        services.AddTransient<MailerAudienceSyncJob>();
 
         // Base collaborators that Governance's section file used to register on the way past.
         // The three badge-cache invalidators are Humans.Infrastructure implementations of

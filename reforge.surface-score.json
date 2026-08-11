@@ -266,14 +266,12 @@
       "paths": [
         "src/Sections/Humans.Email/**",
         "src/Sections/Humans.Email.Contracts/**",
-        "src/Humans.Application/Interfaces/Mailer/**",
-        "src/Humans.Application/Services/Mailer/**",
-        "src/Humans.Web/Controllers/Mailer/**",
+        "src/Sections/Humans.Mailer/**",
+        "src/Sections/Humans.Mailer.Contracts/**",
         "src/Humans.Web/Controllers/UnsubscribeController.cs",
         "src/Humans.Web/Health/SmtpHealthCheck.cs",
         "src/Humans.Web/Models/Email*.cs",
-        "src/Humans.Web/Models/EmailProblems/**",
-        "src/Humans.Web/Models/Mailer/**"
+        "src/Humans.Web/Models/EmailProblems/**"
       ],
       "symbols": [
         "Email*",
