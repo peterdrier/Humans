@@ -1,15 +1,15 @@
 using Humans.Application.Extensions;
-using Humans.Application.Interfaces.Gdpr;
+using Humans.Gdpr.Contracts;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 
-namespace Humans.Application.Services.Gdpr;
+namespace Humans.Gdpr.Services;
 
 /// <summary>
 /// Fans out GDPR Article 15 export across <see cref="IUserDataContributor"/>s into one keyed document.
 /// Sequential, not Task.WhenAll: contributors share the scoped HumansDbContext which is not thread-safe.
 /// </summary>
-public sealed class GdprExportService(
+internal sealed class GdprExportService(
     IEnumerable<IUserDataContributor> contributors,
     IClock clock,
     ILogger<GdprExportService> logger) : IGdprExportService

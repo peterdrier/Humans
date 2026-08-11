@@ -3,7 +3,7 @@ using Humans.Application.Architecture;
 using Humans.Application.DTOs;
 using Humans.Application.Extensions;
 using Humans.Email.Contracts;
-using Humans.Application.Interfaces.Gdpr;
+using Humans.Gdpr.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Teams;

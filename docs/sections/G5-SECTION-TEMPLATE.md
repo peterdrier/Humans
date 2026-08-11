@@ -46,8 +46,11 @@ Shell view to keep a *type* internal rather than a resource key, and the first n
 `typeof` from Shell's own production code), and Mailer (the first whose *whole* outward
 surface is one `int`, the first whose vendor connector left `Humans.Infrastructure` without
 needing a reference back to it, and the first whose controller names its views by absolute
-path). Step numbers match the former §15, so an old
-"§15 step 3b" citation reads as "step 3b" here.
+path), and Gdpr (the first whose leaf exists because Base *implements* its contract at
+scale rather than calling it — 21 implementers across Base and thirteen sections — the
+first with neither a controller, a view, a table nor a resource set, and the first to write
+its invariants doc because the section never had one). Step numbers match the former §15,
+so an old "§15 step 3b" citation reads as "step 3b" here.
 
 **Where this template and `src/Sections/` disagree, the code is right.** Deviations are the
 exception and get stated in the PR. Steps marked ⚠️ UNPROVEN have never been executed; whoever
@@ -111,6 +114,12 @@ grep -rln '<Section>' src/Humans.Application/Interfaces src/Humans.Infrastructur
 grep -rn 'nameof(<Section>' src/
 # type names that form resource keys (step 3b)
 grep -rn --include='*.resx' 'Enum_<Section>' src/
+# references to the section's namespace that are only PARTIALLY qualified. The sed that
+# repoints `Humans.Application.Interfaces.<Section>` → `Humans.<Section>.Contracts` matches
+# the full name and misses `Interfaces.<Section>.SomeType`, which C# resolves through the
+# enclosing namespace. One such site exists in the repo and it is in a test file whose
+# usings say nothing about the section (step 5).
+grep -rn 'Interfaces\.<Section>\.\|Services\.<Section>\.' src/ tests/
 # whether those Enum_ keys are LIVE — grep the CALL SITES, never the helper class (step 3b).
 # Added by Expenses (A3): the methods are EnumDisplay/EnumSelectItems and nothing is named
 # "Localize", so looking for the helper by name reports a live key set as orphaned.
@@ -544,6 +553,24 @@ Git Bash.)
      before deciding: Email's four connector abstractions split three internal
      (`IEmailRenderer`, `IEmailBodyComposer`, `IEmailTransport`) to one on the leaf
      (proven: Email).
+     **The rule does not soften as the implementer count grows — it is the *only* thing
+     that decides a fan-out section's leaf.** Gdpr's `IUserDataContributor` has exactly one
+     consumer, the section's own orchestrator, and **21 implementers**: eight services still
+     in `Humans.Application` and thirteen already-moved sections. Read consumer-first it looks
+     internal; read implementer-first it is obviously public, and the whole contract —
+     the interface, its `UserDataSlice` return DTO and the `GdprExportSections` constants
+     the implementers key their slices by — goes on the leaf together, because splitting
+     them would leave the section's own vocabulary in Base. Cost: `Humans.Application` and
+     thirteen section projects gain a `ProjectReference` and ~40 files gain a one-line
+     `using` swap. Notifications' lesson holds at the limit — **a wide fan-in over a narrow
+     interface is cheap; it is the *surface* that costs**, and here the surface is five
+     types with no method bodies (proven: Gdpr).
+     - **A section whose whole substance *is* the contract has no "leave it in Base"
+       option.** The tempting alternative — move only the orchestrator and leave the
+       contributor contract behind — is what makes the move zero-risk and is wrong: the
+       section would ship a 70-line class whose own DTO and constants live in another
+       assembly, which no moved section has done. Ask what is left in the section project
+       if the contract stays; if the answer is "not the section", the contract moves.
    - **A leaf may be two one-method interfaces, and splitting them beats one misnamed one.**
      Issues' whole outside surface is a nav-badge count (Shell's `NavBadgesViewComponent`) and
      the retention sweep (Base's `CleanupIssuesJob`). Both return `int`. Putting the purge on
@@ -1205,6 +1232,19 @@ Git Bash.)
         the existing `NotContain("<vc:")` covers the whole section in one line. Grep the moved
         views for `<[a-z]+-` and assert on what comes back (proven: Debug, whose only other
         halves would have been a resx carve and a `?v=` hash it does not have).
+      - **A section with no pages at all has no render test — so find what else drives
+        `AddDiscoveredSections`, because that is the half of step 12 you still need.**
+        Guide's missing `Humans.Web` `ProjectReference` (step 1) is normally caught by the
+        render test 404ing; a section with no controller and no view cannot have one. What
+        substitutes is any existing test that calls the *real*
+        `InfrastructureServiceCollectionExtensions.AddHumansInfrastructure` and asserts the
+        section's own registration came out of it — Gdpr's
+        `GdprExportDependencyInjectionTests.GdprExportServiceIsRegistered` does exactly that,
+        and it can only pass if `Section.Register` ran, which needs the assembly in Shell's
+        dependency graph. Check that such a test exists *before* concluding a page-less
+        section is untestable at step 12; if none does, the `grep '<Section>'
+        src/Humans.Web/Humans.Web.csproj` check from step 1 is the whole of your coverage
+        (proven: Gdpr).
     - **A §15-decorated section's render test must seed through the service, not the
       `DbContext`.** The decorator is a Singleton that warms at startup, i.e. before the test
       body runs, so a row written straight into `<Section>DbContext` is invisible to every

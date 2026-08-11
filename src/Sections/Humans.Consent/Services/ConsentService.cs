@@ -3,7 +3,7 @@ using System.Text;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
 using Humans.Consent.Contracts;
-using Humans.Application.Interfaces.Gdpr;
+using Humans.Gdpr.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Application.Interfaces.HumanLifecycle;
 using Humans.Notifications.Contracts;

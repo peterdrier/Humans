@@ -1,4 +1,4 @@
-namespace Humans.Application.Interfaces.Gdpr;
+namespace Humans.Gdpr.Contracts;
 
 /// <summary>
 /// One contributor's slice of a user's GDPR export. A contributor returns the

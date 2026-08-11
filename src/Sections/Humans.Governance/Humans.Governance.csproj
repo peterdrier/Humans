@@ -32,6 +32,7 @@
          home at Consent's G5. Acyclic — Humans.Consent references
          Humans.Governance.Contracts, never this project (design §15 step 3b). -->
     <ProjectReference Include="..\Humans.Consent\Humans.Consent.csproj" />
+    <ProjectReference Include="..\Humans.Gdpr.Contracts\Humans.Gdpr.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

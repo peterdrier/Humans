@@ -1,4 +1,6 @@
-namespace Humans.Application.Interfaces.Gdpr;
+using Humans.Application.Interfaces;
+
+namespace Humans.Gdpr.Contracts;
 
 /// <summary>
 /// Orchestrates GDPR Article 15 data exports. Owns no tables — fans out to every

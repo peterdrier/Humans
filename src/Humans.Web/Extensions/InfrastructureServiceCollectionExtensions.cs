@@ -47,7 +47,6 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddEarlyEntrySection();
         services.AddTicketsSection();
         services.AddAuditLogSection();
-        services.AddGdprSection();
         services.AddICalFeedSection();
         services.AddAdminSection();
         services.AddGoogleIntegrationSection();

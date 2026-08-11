@@ -25,6 +25,7 @@
     <ProjectReference Include="..\Sections\Humans.Feedback\Humans.Feedback.csproj" />
     <ProjectReference Include="..\Sections\Humans.Finance\Humans.Finance.csproj" />
     <ProjectReference Include="..\Sections\Humans.Gate\Humans.Gate.csproj" />
+    <ProjectReference Include="..\Sections\Humans.Gdpr\Humans.Gdpr.csproj" />
     <ProjectReference Include="..\Sections\Humans.Governance\Humans.Governance.csproj" />
     <ProjectReference Include="..\Sections\Humans.Guide\Humans.Guide.csproj" />
     <ProjectReference Include="..\Sections\Humans.Issues\Humans.Issues.csproj" />

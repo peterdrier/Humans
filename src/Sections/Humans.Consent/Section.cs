@@ -1,6 +1,6 @@
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Caching;
-using Humans.Application.Interfaces.Gdpr;
+using Humans.Gdpr.Contracts;
 using Humans.Consent.Contracts;
 using Humans.Consent.Data;
 using Humans.Consent.Services;

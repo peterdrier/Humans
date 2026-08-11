@@ -10,7 +10,7 @@ using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.EarlyEntry;
 using Humans.Email.Contracts;
-using Humans.Application.Interfaces.Gdpr;
+using Humans.Gdpr.Contracts;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Notifications.Contracts;
 using Humans.Application.Interfaces.Repositories;

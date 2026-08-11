@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces.Gdpr;
+using Humans.Gdpr.Contracts;
 using Humans.Finance.Contracts;
 using Humans.Finance.Controllers;
 using Humans.Finance.Data;

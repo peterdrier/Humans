@@ -308,11 +308,11 @@ See [`docs/architecture/dependency-graph.md`](dependency-graph.md) for the full 
 
 ### 8a. User-Scoped Sections Must Contribute to the GDPR Export
 
-Every section whose owned tables hold per-user rows MUST implement `IUserDataContributor` (`Humans.Application.Interfaces.Gdpr`) so the GDPR Article 15 data export (`IGdprExportService`) can assemble a complete document without any cross-section database reads. The orchestrator injects `IEnumerable<IUserDataContributor>`, fans out one call per contributor, and merges the returned slices into the JSON document the user downloads from `/Profile/Me/DownloadData`.
+Every section whose owned tables hold per-user rows MUST implement `IUserDataContributor` (`Humans.Gdpr.Contracts`) so the GDPR Article 15 data export (`IGdprExportService`) can assemble a complete document without any cross-section database reads. The orchestrator injects `IEnumerable<IUserDataContributor>`, fans out one call per contributor, and merges the returned slices into the JSON document the user downloads from `/Profile/Me/DownloadData`.
 
 Adding a new user-scoped section to §8 above requires four coupled steps — all four, in any order, before the PR can land:
 
-1. Add the new section-name constants to `GdprExportSections` (`Humans.Application.Interfaces.Gdpr`).
+1. Add the new section-name constants to `GdprExportSections` (`Humans.Gdpr.Contracts`).
 2. Make the owning service implement `IUserDataContributor` and return its own slice. A contributor reads only its own section's tables — cross-section data flows through other contributors, not through `Include` chains. Collection slices must always return the shaped list (empty when the user has no records); `null` data is reserved for single-object sections whose entity doesn't exist for this user.
 3. Register the service in `InfrastructureServiceCollectionExtensions` using the forwarding pattern so the same scoped instance serves both the primary interface and `IUserDataContributor`:
 
@@ -346,7 +346,7 @@ Three fanouts exist today:
 
 | Orchestrator | Contributor interface | Sections that opt in | Merged result |
 |--------------|----------------------|----------------------|---------------|
-| `IGdprExportService` | `IUserDataContributor` (`Humans.Application.Interfaces.Gdpr`) | every user-scoped §8 section (see §8a) | GDPR Article 15 export document |
+| `IGdprExportService` | `IUserDataContributor` (`Humans.Gdpr.Contracts`) | every user-scoped §8 section (see §8a) | GDPR Article 15 export document |
 | `IICalFeedService` (`ICalFeedService`) | `ICalendarFeedContributor` (`Humans.Application.Interfaces.ICalFeed`) | `EventService` (Event Guide), `ShiftSignupService` (Shifts) | a user's personal iCal `VCALENDAR` of `CalendarFeedItem` rows |
 | `IEarlyEntryService` (`EarlyEntryOrchestrator`) | `IEarlyEntryProvider` (`Humans.Application.Interfaces.EarlyEntry`) | Camps, Shifts, Teams | a user's assembled early-entry grants |
 

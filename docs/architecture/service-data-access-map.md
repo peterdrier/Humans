@@ -2387,7 +2387,7 @@ No DB access, no cache.
 
 ## Gdpr
 
-Folder: `src/Humans.Application/Services/Gdpr/`. No owned DB tables —
+Folder: `src/Sections/Humans.Gdpr/Services/` (G5, nobodies-collective/Humans#866). No owned DB tables —
 the export orchestrator runs over per-section `IUserDataContributor`
 fan-out.
 

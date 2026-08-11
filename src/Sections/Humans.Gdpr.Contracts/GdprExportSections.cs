@@ -1,4 +1,4 @@
-namespace Humans.Application.Interfaces.Gdpr;
+namespace Humans.Gdpr.Contracts;
 
 /// <summary>
 /// Stable JSON top-level keys used in the GDPR data export document. Every

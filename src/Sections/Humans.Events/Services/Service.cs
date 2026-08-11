@@ -6,7 +6,7 @@ using Humans.Events.Services.Dtos;
 using Humans.Events.Services;
 using Humans.Application.Extensions;
 using Humans.Email.Contracts;
-using Humans.Application.Interfaces.Gdpr;
+using Humans.Gdpr.Contracts;
 using Humans.Application.Interfaces.ICalFeed;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;

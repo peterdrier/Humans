@@ -1,4 +1,6 @@
-namespace Humans.Application.Interfaces.Gdpr;
+using Humans.Application.Interfaces;
+
+namespace Humans.Gdpr.Contracts;
 
 /// <summary>
 /// Contributes one or more sections of the GDPR Article 15 data export for a

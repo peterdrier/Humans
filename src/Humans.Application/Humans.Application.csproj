@@ -34,6 +34,14 @@
     <ProjectReference Include="..\Sections\Humans.Governance.Contracts\Humans.Governance.Contracts.csproj" />
     <ProjectReference Include="..\Sections\Humans.Notifications.Contracts\Humans.Notifications.Contracts.csproj" />
     <ProjectReference Include="..\Sections\Humans.Holded.Contracts\Humans.Holded.Contracts.csproj" />
+    <!--
+      Gdpr's contracts leaf, and the one reference here that exists because Base
+      *implements* a section's contract rather than calling it: eight services in this
+      project (UserService, TeamService, AccountMergeService, RoleAssignmentService,
+      CampService, ShiftSignupService, TicketQueryService, AuditLogService) implement
+      IUserDataContributor for the Article 15 export fan-out.
+    -->
+    <ProjectReference Include="..\Sections\Humans.Gdpr.Contracts\Humans.Gdpr.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

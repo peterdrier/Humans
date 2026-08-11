@@ -37,6 +37,7 @@
          Issues' own IssueCategory. That enum sits on Issues' contracts leaf precisely
          because another section names it (design §15 step 5). -->
     <ProjectReference Include="..\Humans.Issues.Contracts\Humans.Issues.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Gdpr.Contracts\Humans.Gdpr.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

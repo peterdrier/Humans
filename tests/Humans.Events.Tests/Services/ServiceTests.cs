@@ -2,7 +2,7 @@ using AwesomeAssertions;
 using Humans.Application.Csv;
 using Humans.Events.Services.Dtos;
 using Humans.Email.Contracts;
-using Humans.Application.Interfaces.Gdpr;
+using Humans.Gdpr.Contracts;
 using Humans.Events.Data;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;

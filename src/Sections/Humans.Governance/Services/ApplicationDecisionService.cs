@@ -9,7 +9,7 @@ using Humans.Governance.Services.Dtos;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Caching;
-using Humans.Application.Interfaces.Gdpr;
+using Humans.Gdpr.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain;

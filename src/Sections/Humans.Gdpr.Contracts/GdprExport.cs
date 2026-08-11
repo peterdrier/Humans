@@ -1,4 +1,4 @@
-namespace Humans.Application.Interfaces.Gdpr;
+namespace Humans.Gdpr.Contracts;
 
 /// <summary>
 /// Envelope returned by <see cref="IGdprExportService"/> — a timestamped bag of

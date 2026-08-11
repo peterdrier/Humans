@@ -1,11 +1,11 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces.Gdpr;
-using Humans.Application.Services.Gdpr;
+using Humans.Gdpr.Contracts;
+using Humans.Gdpr.Services;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 
-namespace Humans.Application.Tests.Services.Gdpr;
+namespace Humans.Gdpr.Tests.Services;
 
 public class GdprExportServiceTests
 {

@@ -8,7 +8,7 @@ using Humans.Agent.Services.Preload;
 using Humans.Agent.Services.Stores;
 using Humans.Application.Configuration;
 using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.Gdpr;
+using Humans.Gdpr.Contracts;
 using Humans.Infrastructure.Configuration;
 using Humans.Infrastructure.Hosting;
 using Humans.Infrastructure.Services;
