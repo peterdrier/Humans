@@ -40,6 +40,13 @@
     <ProjectReference Include="..\Humans.Notifications.Contracts\Humans.Notifications.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Gdpr.Contracts\Humans.Gdpr.Contracts.csproj" />
+    <!--
+      Onboarding's leaf, for the consent-check threshold ConsentController peer-calls after
+      a submit. It is a leaf *project* precisely so this reference is not a cycle:
+      Humans.Onboarding references Humans.Consent back, for ConsentResource and the
+      _ConsentReviewBody partial the widget's Consents step renders.
+    -->
+    <ProjectReference Include="..\Humans.Onboarding.Contracts\Humans.Onboarding.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -9,6 +9,7 @@ using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Humans.Onboarding;
 using Humans.UI;
 using Humans.UI.Authorization;
 using Humans.Web.Authorization;
@@ -34,6 +35,10 @@ public class ShiftsController(
     IAuditLogService auditLogService,
     IUserService userService,
     IStringLocalizer<SharedResource> localizer,
+    // The name-gate message is Onboarding's copy, rendered from here: the key came home
+    // with that section's G5 and a Shell caller injects the section's marker directly
+    // (design §15 step 3b).
+    IStringLocalizer<OnboardingResource> onboardingLocalizer,
     IClock clock,
     ShiftBrowsePageBuilder browsePageBuilder,
     ILogger<ShiftsController> logger) : HumansControllerBase(userService)
@@ -96,8 +101,8 @@ public class ShiftsController(
     private IActionResult? RedirectIfNameMissing(UserInfo user)
     {
         if (user.HasRequiredNameFields) return null;
-        SetInfo(localizer["Onboarding_NameRequiredBeforeShifts"].Value);
-        return RedirectToAction(nameof(OnboardingWidgetController.Index), "OnboardingWidget");
+        SetInfo(onboardingLocalizer["Onboarding_NameRequiredBeforeShifts"].Value);
+        return RedirectToAction("Index", "OnboardingWidget");
     }
 
     // ── Shift Summary by Camp (read-only) ─────────────────────────────────────
@@ -173,7 +178,7 @@ public class ShiftsController(
 
         if (RedirectIfNameMissing(user) is not null)
             return RedirectHeader(Url.Action(
-                nameof(OnboardingWidgetController.Index), "OnboardingWidget"));
+                "Index", "OnboardingWidget"));
 
         var es = await burnSettings.GetActiveAsync(ct)
             ?? throw new InvalidOperationException("ToggleDay requires an active event.");

@@ -1,5 +1,5 @@
 <!-- freshness:triggers
-  src/Humans.Application/Services/Onboarding/**
+  src/Sections/Humans.Onboarding/**
   src/Humans.Application/Services/Profiles/ProfileService.cs
   src/Humans.Application/Services/Consent/**
   src/Humans.Application/Services/Teams/TeamService.cs
@@ -7,8 +7,6 @@
   src/Humans.Web/Controllers/HomeController.cs
   src/Humans.Web/Controllers/ProfileController.cs
   src/Humans.Web/Controllers/ConsentController.cs
-  src/Humans.Web/Controllers/OnboardingReviewController.cs
-  src/Humans.Web/Controllers/OnboardingWidgetController.cs
   src/Humans.Web/Controllers/GovernanceApplicationsController.cs
   src/Humans.Web/Views/Home/**
   src/Humans.Web/Views/OnboardingReview/**

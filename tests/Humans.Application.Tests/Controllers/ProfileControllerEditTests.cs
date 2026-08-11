@@ -9,7 +9,7 @@ using Humans.Application.Interfaces.Camps;
 using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Governance.Contracts;
-using Humans.Application.Interfaces.Onboarding;
+using Humans.Onboarding.Contracts;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
@@ -57,7 +57,7 @@ public class ProfileControllerEditTests
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IApplicationDecisionService _applicationDecisionService =
         Substitute.For<IApplicationDecisionService>();
-    private readonly IOnboardingService _onboardingService = Substitute.For<IOnboardingService>();
+    private readonly IOnboardingIntake _onboardingService = Substitute.For<IOnboardingIntake>();
     private readonly IAccountDeletionService _accountDeletionService = Substitute.For<IAccountDeletionService>();
     private readonly IConfiguration _configuration = Substitute.For<IConfiguration>();
     private readonly IShiftManagementService _shiftMgmt = Substitute.For<IShiftManagementService>();

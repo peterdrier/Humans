@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Humans.Application;
 using Humans.Application.Extensions;
 using Humans.Gdpr.Contracts;
-using Humans.Application.Interfaces.Onboarding;
+using Humans.Onboarding.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Enums;
 using Humans.Web.Models;

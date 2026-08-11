@@ -1,0 +1,64 @@
+using Humans.Application.Interfaces.Shifts;
+using Humans.Domain.Entities;
+using Humans.Domain.Enums;
+
+namespace Humans.Onboarding.Models;
+
+/// <summary>
+/// Step 2 of the onboarding widget — surfaces shifts ranked by urgency,
+/// filtered by a Critical / Important / All pill, with event-wide stats
+/// rendered above the list ("X% of critical filled, Y important open").
+/// </summary>
+/// <remarks>
+/// The rota tables themselves are not modelled here. They are Shifts' presentation —
+/// <c>ShiftBrowseViewModel</c>, <c>RotaShiftGroup</c>, <c>ShiftBrowseMapper</c> and the
+/// <c>_BuildStrikeRotaTable</c>/<c>_EventRotaTable</c> partials all live in Shell and
+/// Shifts has not moved — so the view hands this model's Base-typed contents to Shell's
+/// <c>OnboardingShiftsList</c> view component and invokes it by name (design §15 step 6,
+/// CityPlanning's <c>&lt;vc:access-matrix&gt;</c> case). Everything on this record is a
+/// <c>Humans.Domain</c> or <c>Humans.Application</c> type, which is what makes that
+/// invocation compile from a section.
+/// </remarks>
+internal sealed class ShiftsStepViewModel
+{
+    /// <summary>
+    /// Currently-selected pill. One of "critical", "important", "all".
+    /// Default lands on "critical" so first-time users see the most-urgent
+    /// shortfall first.
+    /// </summary>
+    public required string SelectedPriority { get; init; }
+
+    /// <summary>
+    /// Percentage of slots filled across Essential-priority shifts in the
+    /// active event. Null when the event has no Essential shifts at all.
+    /// </summary>
+    public int? CriticalFilledPercent { get; init; }
+
+    /// <summary>True when the event has at least one Essential-priority shift.</summary>
+    public bool HasAnyCritical { get; init; }
+
+    /// <summary>
+    /// Count of Important-priority shifts (Shift entities) that still have
+    /// at least one open slot — i.e. confirmed signups &lt; max volunteers.
+    /// </summary>
+    public int ImportantOpenCount { get; init; }
+
+    /// <summary>True when the event has at least one Important-priority shift.</summary>
+    public bool HasAnyImportant { get; init; }
+
+    /// <summary>Null when no event is active — the view renders its no-event empty state.</summary>
+    public BurnSettingsInfo? EventSettings { get; init; }
+
+    /// <summary>The event's shifts already filtered to <see cref="SelectedPriority"/>.</summary>
+    public IReadOnlyList<UrgentShift> Shifts { get; init; } = [];
+
+    public HashSet<Guid> UserSignupShiftIds { get; init; } = [];
+
+    public Dictionary<Guid, SignupStatus> UserSignupStatuses { get; init; } = new();
+
+    /// <summary>
+    /// True when early-entry (build) signups have closed and the viewer is not
+    /// privileged. Onboarding viewers are always regular volunteers.
+    /// </summary>
+    public bool EarlyEntrySignupsClosed { get; init; }
+}

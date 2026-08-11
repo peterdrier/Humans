@@ -49,7 +49,11 @@ needing a reference back to it, and the first whose controller names its views b
 path), and Gdpr (the first whose leaf exists because Base *implements* its contract at
 scale rather than calling it — 21 implementers across Base and thirteen sections — the
 first with neither a controller, a view, a table nor a resource set, and the first to write
-its invariants doc because the section never had one). Step numbers match the former §15,
+its invariants doc because the section never had one), and Onboarding (the first whose
+leaf exists because the section it consumes also consumes *it*, the first to hand another
+section's presentation layer back to Shell behind a new view component, and the first whose
+resx carve had to leave keys behind for MVC's global data-annotation localizer). Step
+numbers match the former §15,
 so an old "§15 step 3b" citation reads as "step 3b" here.
 
 **Where this template and `src/Sections/` disagree, the code is right.** Deviations are the
@@ -262,6 +266,18 @@ Git Bash.)
      at the old set, so the tabbed-language checkbox text degrades to raw keys in every
      language while the surrounding markup is perfectly localized. Grep the moved `.cshtml`
      for `ResourceManager` as well as the `.cs` (proven: Consent).
+   - **…and the sixth: MVC's global `DataAnnotationLocalizerProvider` is a renderer too.**
+     `Program.cs`'s `AddDataAnnotationsLocalization` sets
+     `options.DataAnnotationLocalizerProvider = (_, factory) => factory.Create(typeof(SharedResource))`
+     — type-agnostic, so a `[Display(Name = "<Section>_…")]` on a *section's* view model still
+     resolves against `SharedResource` and cannot be pointed at a section set. Feedback's
+     carve-by-renderer applies: those keys stay behind, and a key moved out of `SharedResource`
+     renders as its own name on that one form. **The half that bites is when the same key is
+     also rendered from a view** — the section's `_ViewImports` rebinds `Localizer`, so one key
+     ends up read by two renderers against two sets and the view call site has to switch to
+     `SharedLocalizer` in the same commit. Both failure modes look identical in the HTML, so
+     fixing one reads as fixing both. Grep `[Display(Name = "<Section>_` beside
+     `Localizer["<Section>_` (proven: Onboarding, `NamesViewModel`'s three labels).
    - **A section can have a resource set and no localized page copy.** Email's two admin views
      carry zero `Localizer[…]` calls, so the step-12 resx assertion has nothing to hang on in
      the section's own HTML. The probe was the template-gallery page (`/Email/EmailPreview`),
@@ -597,6 +613,25 @@ Git Bash.)
      exists to keep. It is genuinely consumed from outside the section, which is what
      `Contracts/` is for; it names no ASP.NET type, so the leaf stays plain
      `Microsoft.NET.Sdk` (proven: Consent).
+   - **…and the test has a second half: does the *other section* name anything of yours?**
+     "No consumer in Base" is not sufficient for a folder. Onboarding's entire fan-in is Shell
+     plus `Humans.Consent`'s controller, which by the rule below reads as "folder, and Consent
+     references the section project". It cannot: `Humans.Onboarding` names `ConsentResource`,
+     because the widget's Consents step renders Consent's copy through Consent's own
+     `_ConsentReviewBody` partial — so a folder would make the two *section projects* reference
+     each other. `Humans.Onboarding.Contracts` breaks the cycle
+     (`Humans.Consent` → the leaf, `Humans.Onboarding` → `Humans.Consent`). CityPlanning's
+     rule is the one-way case of this shape; the two-way case needs a leaf regardless of where
+     the consumers live (proven: Onboarding).
+   - **When "who returns it" and "who named it" disagree about a leaf type, ask where the other
+     returners came from.** `OnboardingResult` is `(bool Success, string? ErrorKey)` — primitives
+     only, so the connector signature test says Base — and ten `Humans.Application` members
+     return it against four in the section, which reads as Base vocabulary wearing the section's
+     name (`EmailSettings`' case). It is not: three of the four Base owners are the section's own
+     *siblings* from an earlier narrowing that left them in Base, so the fan-out is an artefact
+     of that split. It went on the leaf, for one `ProjectReference` from `Humans.Application` and
+     `Humans.Infrastructure` each plus ten one-line `using` swaps — Gdpr's trade at a tenth of
+     the size (proven: Onboarding).
    - **Folder vs project is decided by *where the consumer lives*, not how much surface there
      is.** A consumer in Base forces `Humans.<Section>.Contracts` as its own project referencing
      only the bottom of the graph — a folder would cycle
@@ -720,6 +755,20 @@ Git Bash.)
      Shell's `Views/_ViewImports.cshtml` gained `@using Humans.UI.ViewComponents`, and Shell's
      own `<vc:profile-card>` call sites were untouched. Check the component's parameter types
      before choosing invoke-by-name (proven: Governance).
+   - **A section that renders *another section's* presentation layer gets a new Shell view
+     component, invoked by name.** The three earlier answers are about a component that already
+     exists; this is the case where one has to be written. The onboarding widget's shift step
+     renders Shifts' rota tables — `ShiftBrowseViewModel`, `RotaShiftGroup`, `ShiftBrowseMapper`
+     (`internal` to `Humans.Web`) and two `Views/Shared/` partials, ~400 lines of a section that
+     has not moved. Pushing them to `Humans.UI` is the registry inversion at scale and would be
+     undone at that section's own G5; taking them in steals its presentation; leaving the whole
+     view in Shell splits the moving section's page. So the mapping and the markup became a new
+     `Humans.Web` view component and the section's view calls
+     `@await Component.InvokeAsync("…", new { … })`. Governance's rider is the constraint that
+     shapes it: **every parameter must be nameable from a section**, so the component takes
+     `Humans.Domain` / `Humans.Application` types only and the controller passes what it already
+     fetched — otherwise the component re-queries and the move quietly doubles a page's reads
+     (proven: Onboarding).
    - **A SignalR hub is the health-check shape, and where it goes depends on whose types are in
      it.** `Program.cs`'s `app.MapHub<TheHub>("/hubs/…")` names the concrete type, so a hub cannot
      live in the section — HUM0034 fails the build for a public section type, and the section's
@@ -1161,6 +1210,14 @@ Git Bash.)
       use, resolved once into a `static readonly Type` that **throws** when the name misses, so
       a rename fails at Production startup rather than shipping a routable `/dev/login/*`.
       Grep `typeof(<Section>` over `src/` as well as `tests/` (proven: Development).
+      **And a fourth, in Shell's *own* test project rather than `Humans.Application.Tests`:**
+      `Humans.Web.Tests`' `MembershipRequiredFilterTests` and `NameRequiredFilterTests` build a
+      `ControllerActionDescriptor` around a **real** controller type so the filter's
+      `AllowAnonymous` reflection check has something to read. Neither filename mentions the
+      section, and neither project carries a `SectionType(...)` helper, so each needs its own
+      `static readonly Type` resolved through `SectionDiscoveryExtensions.SectionAssemblies()`
+      that throws on a miss. Grep `typeof(<Section>` across **every** test project, not just the
+      four that usually carry rows (proven: Onboarding).
     - **`ServiceBoundaryArchitectureTests` is a fourth place a section type is named by
       `typeof`** — its repository-interface → section map. It already carries a
       `SectionRepository(fullName)` reflection helper for the sections that moved before yours;

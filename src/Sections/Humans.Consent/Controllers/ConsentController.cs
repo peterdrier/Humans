@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
 using Humans.Consent.Contracts;
-using Humans.Application.Interfaces.Onboarding;
+using Humans.Onboarding.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.UI;
 using Humans.Consent.Models;
@@ -15,7 +15,7 @@ namespace Humans.Consent.Controllers;
 internal sealed class ConsentController(
     IUserServiceRead userService,
     IConsentService consentService,
-    IOnboardingService onboardingService,
+    IOnboardingIntake onboardingService,
     IStringLocalizer<ConsentResource> localizer,
     ILogger<ConsentController> logger) : HumansControllerBase(userService)
 {

@@ -1,5 +1,5 @@
 using Humans.Application.Interfaces.Repositories;
-using Humans.Application.Interfaces.Onboarding;
+using Humans.Onboarding.Contracts;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;

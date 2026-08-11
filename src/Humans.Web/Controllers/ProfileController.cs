@@ -31,7 +31,7 @@ using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
-using Humans.Application.Interfaces.Onboarding;
+using Humans.Onboarding.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Models;
@@ -58,7 +58,7 @@ public class ProfileController(
     IUserEmailService userEmailService,
     ICommunicationPreferenceService commPrefService,
     IAuditLogService auditLogService,
-    IOnboardingService onboardingService,
+    IOnboardingIntake onboardingService,
     IShiftSignupService shiftSignupService,
     IShiftManagementService shiftMgmt,
     IShiftView shiftView,

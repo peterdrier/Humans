@@ -1,0 +1,194 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- ReSharper disable MarkupTextTypo -->
+<root xmlns:ns1="urn:schemas-microsoft-com:xml-msdata" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:schema id="root">
+    <xs:element name="root" ns1:IsDataSet="true">
+      <xs:complexType>
+        <xs:choice maxOccurs="unbounded">
+          <xs:element name="data">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element name="value" type="xsd:string" minOccurs="0" ns1:Ordinal="1" />
+                <xs:element name="comment" type="xsd:string" minOccurs="0" ns1:Ordinal="2" />
+              </xs:sequence>
+              <xs:attribute name="name" type="xsd:string" ns1:Ordinal="0" />
+              <xs:attribute name="type" type="xsd:string" />
+              <xs:attribute name="mimetype" type="xsd:string" />
+            </xs:complexType>
+          </xs:element>
+          <xs:element name="resheader">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element name="value" type="xsd:string" minOccurs="0" ns1:Ordinal="1" />
+              </xs:sequence>
+              <xs:attribute name="name" type="xsd:string" use="required" />
+            </xs:complexType>
+          </xs:element>
+        </xs:choice>
+      </xs:complexType>
+    </xs:element>
+  </xs:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>1.3</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="OnboardingReview_Title" xml:space="preserve">
+    <value>Cola de revisión de incorporación</value>
+  </data>
+  <data name="OnboardingReview_DetailTitle" xml:space="preserve">
+    <value>Revisar: {0}</value>
+  </data>
+  <data name="OnboardingReview_NoPending" xml:space="preserve">
+    <value>Ningún humano está esperando revisión.</value>
+  </data>
+  <data name="OnboardingReview_PendingSection" xml:space="preserve">
+    <value>Pendientes de revisión</value>
+  </data>
+  <data name="OnboardingReview_FlaggedSection" xml:space="preserve">
+    <value>Marcados para seguimiento</value>
+  </data>
+  <data name="OnboardingReview_FlaggedBadge" xml:space="preserve">
+    <value>Marcado</value>
+  </data>
+  <data name="OnboardingReview_ProfileSummary" xml:space="preserve">
+    <value>Resumen del perfil</value>
+  </data>
+  <data name="OnboardingReview_NewHumanSummary" xml:space="preserve">
+    <value>Resumen del nuevo human</value>
+  </data>
+  <data name="OnboardingReview_LegalName" xml:space="preserve">
+    <value>Nombre legal</value>
+  </data>
+  <data name="OnboardingReview_HasApplication" xml:space="preserve">
+    <value>Tiene solicitud</value>
+  </data>
+  <data name="OnboardingReview_Consents" xml:space="preserve">
+    <value>Consentimientos</value>
+  </data>
+  <data name="OnboardingReview_Signed" xml:space="preserve">
+    <value>firmados</value>
+  </data>
+  <data name="OnboardingReview_ApplicationMotivation" xml:space="preserve">
+    <value>Motivación de la solicitud</value>
+  </data>
+  <data name="OnboardingReview_PreviousNotes" xml:space="preserve">
+    <value>Notas de revisión anteriores</value>
+  </data>
+  <data name="OnboardingReview_Actions" xml:space="preserve">
+    <value>Acciones</value>
+  </data>
+  <data name="OnboardingReview_NotesPlaceholder" xml:space="preserve">
+    <value>Notas opcionales...</value>
+  </data>
+  <data name="OnboardingReview_ClearButton" xml:space="preserve">
+    <value>Aprobar y activar</value>
+  </data>
+  <data name="OnboardingReview_ClearHelp" xml:space="preserve">
+    <value>Aprueba la revisión del perfil. El humano se unirá a Voluntarios cuando los documentos legales también estén firmados.</value>
+  </data>
+  <data name="OnboardingReview_ClearConfirm" xml:space="preserve">
+    <value>Esto aprobará la revisión del perfil de este humano. ¿Continuar?</value>
+  </data>
+  <data name="OnboardingReview_FlagButton" xml:space="preserve">
+    <value>Marcar para revisión</value>
+  </data>
+  <data name="OnboardingReview_FlagReasonPlaceholder" xml:space="preserve">
+    <value>Motivo del marcado...</value>
+  </data>
+  <data name="OnboardingReview_FlagConfirm" xml:space="preserve">
+    <value>Esto marcará a este humano para revisión adicional. ¿Continuar?</value>
+  </data>
+  <data name="OnboardingReview_AlreadyCleared" xml:space="preserve">
+    <value>Este humano ya ha sido aprobado.</value>
+  </data>
+  <data name="OnboardingReview_Cleared" xml:space="preserve">
+    <value>Revisión de perfil aprobada.</value>
+  </data>
+  <data name="OnboardingReview_BulkClearedNone" xml:space="preserve">
+    <value>No se aprobó ningún humano seleccionado.</value>
+  </data>
+  <data name="OnboardingReview_BulkCleared" xml:space="preserve">
+    <value>Se aprobaron {0} humanos seleccionados.</value>
+  </data>
+  <data name="OnboardingReview_BulkClearedPartial" xml:space="preserve">
+    <value>Se aprobaron {0} de {1} seleccionados — los demás ya no son elegibles.</value>
+  </data>
+  <data name="OnboardingReview_BulkClearButton" xml:space="preserve">
+    <value>Aprobar todos los seleccionados</value>
+  </data>
+  <data name="OnboardingReview_Flagged" xml:space="preserve">
+    <value>Humano marcado para revisión adicional.</value>
+  </data>
+  <data name="OnboardingReview_RejectButton" xml:space="preserve">
+    <value>Rechazar registro</value>
+  </data>
+  <data name="OnboardingReview_RejectReasonPlaceholder" xml:space="preserve">
+    <value>Motivo del rechazo...</value>
+  </data>
+  <data name="OnboardingReview_RejectConfirm" xml:space="preserve">
+    <value>¿Está seguro de que desea rechazar el registro de este human? Esta acción no se puede deshacer.</value>
+  </data>
+  <data name="OnboardingReview_RejectHelp" xml:space="preserve">
+    <value>Rechazar denegará permanentemente el registro de este human y enviará un email de notificación.</value>
+  </data>
+  <data name="OnboardingReview_Rejected" xml:space="preserve">
+    <value>El registro ha sido rechazado.</value>
+  </data>
+  <data name="OnboardingReview_AlreadyRejected" xml:space="preserve">
+    <value>Este human ya ha sido rechazado.</value>
+  </data>
+  <data name="OnboardingReview_LegalDocuments" xml:space="preserve">
+    <value>Documentos legales</value>
+  </data>
+  <data name="OnboardingReview_DocsComplete" xml:space="preserve">
+    <value>Completo</value>
+  </data>
+  <data name="OnboardingReview_DocsPending" xml:space="preserve">
+    <value>Pendiente</value>
+  </data>
+  <data name="OnboardingReview_DocsNote" xml:space="preserve">
+    <value>La revisión del perfil puede realizarse de forma independiente. El humano se unirá a Voluntarios cuando todos los documentos estén firmados.</value>
+  </data>
+  <data name="OnboardingBanner_Text" xml:space="preserve">
+    <value>¡Termina de configurar tu cuenta para empezar a participar!</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="OnboardingBanner_Cta" xml:space="preserve">
+    <value>Terminar configuración →</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="Onboarding_BurnerNameExplainer" xml:space="preserve"><value>El nombre que ve todo el mundo en el sistema. Que sea único ayuda, pero no es obligatorio, aunque puede ser difícil encontrar a "Bob" entre los pocos miles de humans que hay aquí si alguien viene buscándote.</value></data>
+  <data name="Onboarding_BurnerNameHelp" xml:space="preserve"><value>El nombre por el que todos te conocerán.</value></data>
+  <data name="Onboarding_Continue" xml:space="preserve"><value>Continuar</value></data>
+  <data name="Onboarding_LegalNameExplainerEmphasis" xml:space="preserve"><value>no</value></data>
+  <data name="Onboarding_LegalNameExplainerPost" xml:space="preserve"><value>exportamos esta información, y solo la revelaríamos si lo exigiera la ley o una auditoría formal.</value></data>
+  <data name="Onboarding_LegalNameExplainerPre" xml:space="preserve"><value>Se guarda internamente, solo es visible para los administradores y se usa únicamente donde la ley española lo exige — por ejemplo, en nuestro registro de auditoría de que aceptaste el Acuerdo de Voluntariado en una fecha y hora concretas. Explícitamente</value></data>
+  <data name="Onboarding_LegalNameLabel" xml:space="preserve"><value>Nombre legal</value></data>
+  <data name="Onboarding_NameRequiredBeforeShifts" xml:space="preserve"><value>Añade tu nombre primero — lo necesitamos antes de que puedas apuntarte a turnos.</value></data>
+  <data name="Onboarding_NamesSubtitle" xml:space="preserve"><value>Dos pasos cortos antes de que elijas un turno.</value></data>
+  <data name="Onboarding_NamesTitle" xml:space="preserve"><value>Bienvenido — empecemos por tu nombre</value></data>
+  <data name="Onboarding_PriorityCritical" xml:space="preserve"><value>Crítico</value></data>
+  <data name="Onboarding_PriorityImportant" xml:space="preserve"><value>Importante</value></data>
+  <data name="Onboarding_ShiftsCriticalBody" xml:space="preserve"><value>Solo está cubierto el {0}% de los turnos "críticos". Ayúdanos a hacer posible el evento cubriendo algunos cuando puedas.</value></data>
+  <data name="Onboarding_ShiftsCriticalCta" xml:space="preserve"><value>Si puedes venir antes para el montaje o quedarte al desmontaje, esos son los turnos más difíciles de cubrir — por favor, priorízalos al elegir tus turnos.</value></data>
+  <data name="Onboarding_ShiftsCriticalCtaSetupClosed" xml:space="preserve"><value>Las inscripciones de montaje están cerradas — ya estamos en el sitio. Por favor, céntrate en los turnos del evento y de desmontaje.</value></data>
+  <data name="Onboarding_ShiftsCriticalHeading" xml:space="preserve"><value>¡Te necesitamos!</value></data>
+  <data name="Onboarding_ShiftsImportantAlsoOpen" xml:space="preserve"><value>También hay {0} turnos "importantes" abiertos.</value></data>
+  <data name="Onboarding_ShiftsImportantBody" xml:space="preserve"><value>Hay {0} turnos "importantes" abiertos. Si puedes venir antes para el montaje o quedarte al desmontaje, por favor, priorízalos.</value></data>
+  <data name="Onboarding_ShiftsImportantBodySetupClosed" xml:space="preserve"><value>Hay {0} turnos "importantes" abiertos — por favor, céntrate en los turnos del evento y de desmontaje.</value></data>
+  <data name="Onboarding_ShiftsNoActiveEvent" xml:space="preserve"><value>No hay ningún evento activo ahora mismo. Puedes terminar la incorporación sin elegir un turno.</value></data>
+  <data name="Onboarding_ShiftsNoCritical" xml:space="preserve"><value>No hay turnos críticos abiertos en este momento — prueba con Importantes o Todos.</value></data>
+  <data name="Onboarding_ShiftsNoImportant" xml:space="preserve"><value>No hay turnos importantes abiertos en este momento — prueba con Todos.</value></data>
+  <data name="Onboarding_ShiftsNotNow" xml:space="preserve"><value>Ahora no</value></data>
+  <data name="Onboarding_ShiftsSignUpFailed" xml:space="preserve"><value>No se pudo inscribir.</value></data>
+  <data name="Onboarding_ShiftsSignUpRangeFailed" xml:space="preserve"><value>No se pudo inscribir para el rango de fechas.</value></data>
+  <data name="Onboarding_ShiftsTitle" xml:space="preserve"><value>Elige un turno</value></data>
+</root>

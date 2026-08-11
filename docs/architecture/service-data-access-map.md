@@ -439,7 +439,7 @@ caller, pinned by HUM0005), `IMagicLinkService`
 
 ## Onboarding
 
-Folder: `src/Humans.Application/Services/Onboarding/`. Orchestrator
+Folder: `src/Sections/Humans.Onboarding/Services/`. Orchestrator
 section — owns no DB tables, holds no `IMemoryCache` injection.
 
 ### OnboardingService (Scoped)

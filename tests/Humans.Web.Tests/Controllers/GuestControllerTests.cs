@@ -1,7 +1,7 @@
 using System.Security.Claims;
 using Humans.Application;
 using Humans.Gdpr.Contracts;
-using Humans.Application.Interfaces.Onboarding;
+using Humans.Onboarding.Contracts;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;

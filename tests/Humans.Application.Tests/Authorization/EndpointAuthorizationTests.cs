@@ -84,10 +84,10 @@ public class EndpointAuthorizationTests
         { typeof(GoogleController), "SyncResults", "AdminOnly" },
         { typeof(GoogleController), "CheckGroupSettings", "AdminOnly" },
         { typeof(GoogleController), "GroupSettingsResults", "AdminOnly" },
-        { typeof(OnboardingReviewController), null, "ReviewQueueAccess" },
-        { typeof(OnboardingReviewController), "Clear", "ConsentCoordinatorBoardOrAdmin" },
-        { typeof(OnboardingReviewController), "Flag", "ConsentCoordinatorBoardOrAdmin" },
-        { typeof(OnboardingReviewController), "Reject", "ConsentCoordinatorBoardOrAdmin" },
+        { SectionType("Humans.Onboarding.Controllers.OnboardingReviewController"), null, "ReviewQueueAccess" },
+        { SectionType("Humans.Onboarding.Controllers.OnboardingReviewController"), "Clear", "ConsentCoordinatorBoardOrAdmin" },
+        { SectionType("Humans.Onboarding.Controllers.OnboardingReviewController"), "Flag", "ConsentCoordinatorBoardOrAdmin" },
+        { SectionType("Humans.Onboarding.Controllers.OnboardingReviewController"), "Reject", "ConsentCoordinatorBoardOrAdmin" },
         { SectionType("Humans.Budget.Controllers.BudgetAdminController"), null, "FinanceAdminOrAdmin" },
         { SectionType("Humans.Feedback.Controllers.FeedbackController"), null, "AdminOnly" },
         { SectionType("Humans.Feedback.Controllers.FeedbackController"), "Index", "AdminOnly" },
@@ -139,7 +139,7 @@ public class EndpointAuthorizationTests
     [HumansFact]
     public void OnboardingReviewController_RequiresReviewQueueAccess()
     {
-        AssertHasPolicy(typeof(OnboardingReviewController), null, "ReviewQueueAccess");
+        AssertHasPolicy(SectionType("Humans.Onboarding.Controllers.OnboardingReviewController"), null, "ReviewQueueAccess");
     }
 
     [HumansTheory]
@@ -148,7 +148,7 @@ public class EndpointAuthorizationTests
     [InlineData("Reject")]
     public void OnboardingReviewConsentActions_RequireConsentCoordinatorBoardOrAdmin(string actionName)
     {
-        AssertHasPolicy(typeof(OnboardingReviewController), actionName, "ConsentCoordinatorBoardOrAdmin");
+        AssertHasPolicy(SectionType("Humans.Onboarding.Controllers.OnboardingReviewController"), actionName, "ConsentCoordinatorBoardOrAdmin");
     }
 
     // --- Feedback is closed to new reports (nobodies-collective/Humans#977) ---

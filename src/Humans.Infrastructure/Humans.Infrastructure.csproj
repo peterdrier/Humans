@@ -34,6 +34,7 @@
     <ProjectReference Include="..\Sections\Humans.Issues.Contracts\Humans.Issues.Contracts.csproj" />
     <ProjectReference Include="..\Sections\Humans.Mailer.Contracts\Humans.Mailer.Contracts.csproj" />
     <ProjectReference Include="..\Sections\Humans.Notifications.Contracts\Humans.Notifications.Contracts.csproj" />
+    <ProjectReference Include="..\Sections\Humans.Onboarding.Contracts\Humans.Onboarding.Contracts.csproj" />
     <ProjectReference Include="..\Sections\Humans.Surveys.Contracts\Humans.Surveys.Contracts.csproj" />
   </ItemGroup>
 

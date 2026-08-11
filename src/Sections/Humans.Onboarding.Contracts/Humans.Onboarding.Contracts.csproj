@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Onboarding's cross-section surface. This leaf is a *project* rather than a Contracts/
+    folder for a reason no earlier section had: the pair Onboarding/Consent points both
+    ways. Humans.Consent's ConsentController peer-calls
+    IOnboardingIntake.SetConsentCheckPendingIfEligibleAsync after a consent submit, and
+    Humans.Onboarding names ConsentResource (the widget's Consents step renders Consent's
+    copy through Consent's own _ConsentReviewBody partial), so a folder inside
+    Humans.Onboarding would make the two section projects reference each other. The leaf
+    breaks it: Humans.Consent -> Humans.Onboarding.Contracts, and Humans.Onboarding ->
+    Humans.Consent, with nothing in this project naming a Consent type
+    (design §15 step 5b, memory/architecture/section-project-cycle-fix.md).
+
+    OnboardingResult is here because it is the funnel's result vocabulary and four Base
+    services return it: IUserService.ApplyProfileOnboardingMutationAsync,
+    IHumanLifecycleService's three lifecycle transitions, IAccountDeletionService's
+    cancel/purge and IRoleAssignmentService's assign/end. Three of those four are
+    Onboarding's own siblings in the three-concerns split (nobodies-collective#583/#584)
+    that stayed in Humans.Application, so Humans.Application referencing this leaf for a
+    two-field record is the Gdpr IUserDataContributor trade: a wide fan-in over a narrow
+    surface is cheap.
+
+    Everything with no consumer outside the section stays internal: the review-queue
+    reads and their DTOs, the consent-check clear/flag pair, the widget's next-document
+    resolver and the session-state seam.
+
+    References nothing at all - every member is primitives, Guids and this project's own
+    two types - so it sits below Humans.Interfaces and the graph stays acyclic.
+  -->
+
+</Project>

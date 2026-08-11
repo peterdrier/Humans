@@ -42,6 +42,7 @@
       IUserDataContributor for the Article 15 export fan-out.
     -->
     <ProjectReference Include="..\Sections\Humans.Gdpr.Contracts\Humans.Gdpr.Contracts.csproj" />
+    <ProjectReference Include="..\Sections\Humans.Onboarding.Contracts\Humans.Onboarding.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

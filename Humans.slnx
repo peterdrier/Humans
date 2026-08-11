@@ -22,6 +22,8 @@
     <Project Path="src/Sections/Humans.CityPlanning.Contracts/Humans.CityPlanning.Contracts.csproj" />
     <Project Path="src/Sections/Humans.Containers/Humans.Containers.csproj" />
     <Project Path="src/Sections/Humans.Consent/Humans.Consent.csproj" />
+    <Project Path="src/Sections/Humans.Onboarding/Humans.Onboarding.csproj" />
+    <Project Path="src/Sections/Humans.Onboarding.Contracts/Humans.Onboarding.Contracts.csproj" />
     <Project Path="src/Sections/Humans.Consent.Contracts/Humans.Consent.Contracts.csproj" />
     <Project Path="src/Sections/Humans.Debug/Humans.Debug.csproj" />
     <Project Path="src/Sections/Humans.Development/Humans.Development.csproj" />
@@ -70,6 +72,7 @@
     <Project Path="tests/Humans.CityPlanning.Tests/Humans.CityPlanning.Tests.csproj" />
     <Project Path="tests/Humans.Containers.Tests/Humans.Containers.Tests.csproj" />
     <Project Path="tests/Humans.Consent.Tests/Humans.Consent.Tests.csproj" />
+    <Project Path="tests/Humans.Onboarding.Tests/Humans.Onboarding.Tests.csproj" />
     <Project Path="tests/Humans.Debug.Tests/Humans.Debug.Tests.csproj" />
     <Project Path="tests/Humans.Development.Tests/Humans.Development.Tests.csproj" />
     <Project Path="tests/Humans.Email.Tests/Humans.Email.Tests.csproj" />

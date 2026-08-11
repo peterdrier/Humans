@@ -6,7 +6,7 @@ using Humans.Consent.Domain;
 using Humans.Application;
 using Humans.Consent;
 using Humans.Consent.Contracts;
-using Humans.Application.Interfaces.Onboarding;
+using Humans.Onboarding.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -35,7 +35,7 @@ public sealed class ConsentControllerTests
 {
     private readonly UserManager<User> _userManager;
     private readonly IConsentService _consentService = Substitute.For<IConsentService>();
-    private readonly IOnboardingService _onboardingService = Substitute.For<IOnboardingService>();
+    private readonly IOnboardingIntake _onboardingService = Substitute.For<IOnboardingIntake>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IStringLocalizer<ConsentResource> _localizer =
         Substitute.For<IStringLocalizer<ConsentResource>>();
