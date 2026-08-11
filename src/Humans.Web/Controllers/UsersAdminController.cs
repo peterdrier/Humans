@@ -6,7 +6,7 @@ using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Auth;
 using Humans.Campaigns.Contracts;
 using Humans.Application.Interfaces.Consent;
-using Humans.Application.Interfaces.Email;
+using Humans.Email.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Application.Interfaces.HumanLifecycle;
 using Humans.Application.Interfaces.Onboarding;

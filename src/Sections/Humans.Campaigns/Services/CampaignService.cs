@@ -2,7 +2,7 @@ using Humans.Application;
 using Humans.Application.Architecture;
 using Humans.Application.DTOs;
 using Humans.Application.Extensions;
-using Humans.Application.Interfaces.Email;
+using Humans.Email.Contracts;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Notifications.Contracts;
 using Humans.Application.Interfaces.Profiles;

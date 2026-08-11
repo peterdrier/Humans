@@ -5,7 +5,7 @@ using Humans.Application.Csv;
 using Humans.Events.Services.Dtos;
 using Humans.Events.Services;
 using Humans.Application.Extensions;
-using Humans.Application.Interfaces.Email;
+using Humans.Email.Contracts;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.ICalFeed;
 using Humans.Application.Interfaces.Repositories;

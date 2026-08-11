@@ -11,7 +11,8 @@ namespace Humans.Application.Tests.Architecture.Rules;
 /// Source rule: <c>memory/architecture/no-drops-until-prod-verified.md</c>.
 /// Hard storage drops belong in a separate PR after prod soak.
 ///
-/// Detection: scan <c>src/Humans.Infrastructure/Migrations/*.cs</c>
+/// Detection: scan <c>src/Humans.Infrastructure/Migrations/*.cs</c> and each G5 section's
+/// <c>src/Sections/Humans.&lt;Section&gt;/Data/Migrations/*.cs</c>
 /// (excluding <c>.Designer.cs</c> and <c>HumansDbContextModelSnapshot.cs</c>),
 /// find every <c>migrationBuilder.Drop*</c> call inside the <c>Up</c> method
 /// body, emit one locator per call. The first <c>name: "X"</c> argument is
@@ -40,19 +41,44 @@ public class NoDestructiveMigrationOpsRule
     public void No_new_destructive_migration_ops_in_Up()
     {
         var repoRoot = RatchetTestRunner.LocateRepoRoot();
-        var migrationsDir = Path.Combine(repoRoot, "src", "Humans.Infrastructure", "Migrations");
-        var violations = ScanMigrations(repoRoot, migrationsDir);
+        var violations = ScanMigrations(repoRoot, MigrationDirectories(repoRoot));
         RatchetTestRunner.Run("NoDestructiveMigrationOps", BaselinePath, violations);
     }
 
-    internal static IEnumerable<string> ScanMigrations(string repoRoot, string migrationsDir)
+    /// <summary>
+    /// Base's migrations folder plus each G5 section's own <c>Data/Migrations</c>.
+    /// </summary>
+    /// <remarks>
+    /// The section half is not cosmetic. Scanning only the Base folder means a section's
+    /// migrations silently leave the sweep on the day the section moves, and the rule then
+    /// reports success by finding nothing — the same failure
+    /// <c>DisplaySortInControllersRule</c> hit at Campaigns, on a second path-keyed rule
+    /// (nobodies-collective/Humans#866, G5 template step 11: widen the sweep, never shrink
+    /// the expectation).
+    /// </remarks>
+    internal static IEnumerable<string> MigrationDirectories(string repoRoot)
     {
-        if (!Directory.Exists(migrationsDir)) yield break;
+        var baseMigrations = Path.Combine(repoRoot, "src", "Humans.Infrastructure", "Migrations");
+        if (Directory.Exists(baseMigrations)) yield return baseMigrations;
 
+        var sections = Path.Combine(repoRoot, "src", "Sections");
+        if (!Directory.Exists(sections)) yield break;
+
+        foreach (var sectionMigrations in Directory.EnumerateDirectories(sections)
+                     .Select(d => Path.Combine(d, "Data", "Migrations"))
+                     .Where(Directory.Exists))
+        {
+            yield return sectionMigrations;
+        }
+    }
+
+    internal static IEnumerable<string> ScanMigrations(string repoRoot, IEnumerable<string> migrationDirs)
+    {
         // AllDirectories: per-section migration folders (Migrations/<Section>/,
         // nobodies-collective/Humans#858) are in scope too. Every context's
         // snapshot (<Context>ModelSnapshot.cs) is excluded by suffix.
-        foreach (var path in Directory.EnumerateFiles(migrationsDir, "*.cs", SearchOption.AllDirectories))
+        foreach (var path in migrationDirs
+                     .SelectMany(d => Directory.EnumerateFiles(d, "*.cs", SearchOption.AllDirectories)))
         {
             var name = Path.GetFileName(path);
             if (name.EndsWith(".Designer.cs", StringComparison.Ordinal)) continue;

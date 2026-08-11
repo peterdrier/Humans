@@ -72,7 +72,7 @@ public class EndpointAuthorizationTests
         { typeof(DebugController), "CacheStats", "AdminOnly" },
         { typeof(UsersAdminController), "Audience", "AdminOnly" },
         { typeof(UsersAdminAccountMergesController), null, "AdminOnly" },
-        { typeof(EmailController), null, "AdminOnly" },
+        { SectionType("Humans.Email.Controllers.EmailController"), null, "AdminOnly" },
         { typeof(AdminController), "Index", "AnyAdminRole" },
         { typeof(AuditLogController), "Index", "BoardOrAdmin" },
         { typeof(AuditLogController), "CheckDriveActivity", "BoardOrAdmin" },

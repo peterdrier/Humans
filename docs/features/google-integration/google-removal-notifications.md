@@ -2,10 +2,8 @@
   src/Humans.Application/Services/GoogleIntegration/GoogleRemovalNotificationService.cs
   src/Humans.Application/Interfaces/GoogleIntegration/IGoogleRemovalNotificationService.cs
   src/Humans.Application/Services/GoogleIntegration/GoogleWorkspaceSyncService.cs
-  src/Humans.Application/Services/Email/OutboxEmailService.cs
-  src/Humans.Application/Interfaces/Email/IEmailService.cs
-  src/Humans.Application/Interfaces/Email/IEmailRenderer.cs
-  src/Humans.Infrastructure/Services/EmailRenderer.cs
+  src/Sections/Humans.Email/**
+  src/Sections/Humans.Email.Contracts/**
   src/Humans.UI/Resources/SharedResource*.resx
 -->
 <!-- freshness:flag-on-change

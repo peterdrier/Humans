@@ -154,3 +154,11 @@ src/Humans.Infrastructure/Migrations/20260808191329_DropCrossSectionForeignKeys.
 src/Humans.Infrastructure/Migrations/20260808191329_DropCrossSectionForeignKeys.cs:DropIndex(name=IX_team_join_request_state_history_ChangedByUserId)#1
 src/Humans.Infrastructure/Migrations/20260808191329_DropCrossSectionForeignKeys.cs:DropIndex(name=IX_team_join_requests_ReviewedByUserId)#1
 src/Humans.Infrastructure/Migrations/20260808191329_DropCrossSectionForeignKeys.cs:DropIndex(name=IX_team_role_assignments_AssignedByUserId)#1
+# Three pre-existing, already-shipped drops in a G5 section's own Data/Migrations folder.
+# They are new to this file only because the rule's scan was widened to section migration
+# folders at Email's G5 move (nobodies-collective/Humans#866) — before that, every moved
+# section's migrations silently left the sweep and the rule reported success by finding
+# nothing. The code is byte-identical to what merged; deleting it is not this PR's business.
+src/Sections/Humans.Finance/Data/Migrations/20260810195350_HoldedExpenseDocIsApproved.cs:DropColumn(name=ApprovedAt)#1
+src/Sections/Humans.Finance/Data/Migrations/20260810204942_HoldedMirrorMovesToHoldedSection.cs:DropTable(name=holded_ledger_lines)#1
+src/Sections/Humans.Finance/Data/Migrations/20260810204942_HoldedMirrorMovesToHoldedSection.cs:DropTable(name=holded_sync_states)#1

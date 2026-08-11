@@ -22,7 +22,7 @@ using Humans.Application.Tests.Infrastructure;
 using Humans.Infrastructure.Repositories.Teams;
 using RoleAssignmentService = Humans.Application.Services.Auth.RoleAssignmentService;
 using TeamService = Humans.Application.Services.Teams.TeamService;
-using Humans.Application.Interfaces.Email;
+using Humans.Email.Contracts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.DTOs;

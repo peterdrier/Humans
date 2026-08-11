@@ -7,7 +7,7 @@ using Humans.Application.Interfaces.HumanLifecycle;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Application.Interfaces.Email;
+using Humans.Email.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Notifications.Contracts;

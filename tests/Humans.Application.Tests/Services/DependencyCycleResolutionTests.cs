@@ -4,7 +4,7 @@ using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Caching;
-using Humans.Application.Interfaces.Email;
+using Humans.Email.Contracts;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Notifications.Contracts;
 using Humans.Application.Interfaces.Profiles;
@@ -13,7 +13,6 @@ using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Auth;
-using Humans.Application.Services.Email;
 using Humans.Application.Services.Profiles;
 using Humans.Application.Services.Shifts;
 using Humans.Application.Services.Teams;
@@ -82,77 +81,6 @@ public sealed class DependencyCycleResolutionTests : ServiceTestHarness
 
         resolve.Should().NotThrow();
         resolve().Should().BeOfType<UserService>();
-    }
-
-    [HumansFact]
-    public void IUserService_And_IEmailService_Resolve_WhenRealEmailChainIsRegistered()
-    {
-        var services = new ServiceCollection();
-        var userStore = Substitute.For<IUserStore<User>>();
-
-        services.AddScoped(_ => new HumansDbContext(DbOptions));
-        services.AddSingleton<IMemoryCache>(_ => new MemoryCache(new MemoryCacheOptions()));
-
-        services.AddScoped<IUserRepository>(_ => Substitute.For<IUserRepository>());
-        services.AddScoped<IUserRepository>(_ => Substitute.For<IUserRepository>());
-        services.AddScoped<ICommunicationPreferenceRepository>(_ => Substitute.For<ICommunicationPreferenceRepository>());
-        services.AddScoped<IUserInfoInvalidator>(_ => Substitute.For<IUserInfoInvalidator>());
-        services.AddScoped<IRoleAssignmentRepository>(_ => Substitute.For<IRoleAssignmentRepository>());
-        services.AddScoped<IShiftManagementRepository>(_ => Substitute.For<IShiftManagementRepository>());
-        services.AddScoped<IAuditLogService>(_ => AuditLog);
-        services.AddScoped<INotificationEmitter>(_ => Notifier);
-        services.AddScoped<ISystemTeamSync>(_ => Substitute.For<ISystemTeamSync>());
-        services.AddScoped<INavBadgeCacheInvalidator>(_ => Substitute.For<INavBadgeCacheInvalidator>());
-        services.AddScoped<IRoleAssignmentClaimsCacheInvalidator>(_ => Substitute.For<IRoleAssignmentClaimsCacheInvalidator>());
-        services.AddScoped<ITeamRepository>(_ => Substitute.For<ITeamRepository>());
-        services.AddScoped<INotificationMeterCacheInvalidator>(_ => Substitute.For<INotificationMeterCacheInvalidator>());
-        services.AddScoped<IShiftAuthorizationInvalidator>(_ => ShiftAuthInvalidator);
-        services.AddScoped<IAdminAuthorizationService>(_ => AdminAuthorization);
-        services.AddScoped<IEmailOutboxRepository>(_ => Substitute.For<IEmailOutboxRepository>());
-        services.AddScoped<IEmailRenderer>(_ => Substitute.For<IEmailRenderer>());
-        services.AddScoped<IEmailBodyComposer>(_ => Substitute.For<IEmailBodyComposer>());
-        services.AddScoped<IImmediateOutboxProcessor>(_ => Substitute.For<IImmediateOutboxProcessor>());
-        services.AddScoped<IHumansMetrics>(_ => Substitute.For<IHumansMetrics>());
-        services.AddScoped<ICommunicationPreferenceService>(_ => Substitute.For<ICommunicationPreferenceService>());
-        services.AddScoped<NodaTime.IClock>(_ => Substitute.For<NodaTime.IClock>());
-        services.AddScoped<UserManager<User>>(_ =>
-            Substitute.For<UserManager<User>>(userStore, null, null, null, null, null, null, null, null));
-
-        services.AddScoped<UserService>();
-        services.AddScoped<IUserService>(sp => sp.GetRequiredService<UserService>());
-
-        services.AddScoped<RoleAssignmentService>();
-        services.AddScoped<IRoleAssignmentService>(sp => sp.GetRequiredService<RoleAssignmentService>());
-
-        services.AddScoped<ShiftManagementService>();
-        services.AddScoped<IShiftManagementService>(sp => sp.GetRequiredService<ShiftManagementService>());
-
-        services.AddScoped<UserEmailService>();
-        services.AddScoped<IUserEmailService>(sp => sp.GetRequiredService<UserEmailService>());
-
-        services.AddScoped<OutboxEmailService>();
-        services.AddScoped<IEmailService>(sp => sp.GetRequiredService<OutboxEmailService>());
-
-        services.AddScoped<TeamService>();
-        services.AddScoped<ITeamService>(sp => sp.GetRequiredService<TeamService>());
-
-        services.AddScoped<Microsoft.Extensions.Logging.ILogger<UserService>>(_ => NullLogger<UserService>.Instance);
-        services.AddScoped<Microsoft.Extensions.Logging.ILogger<RoleAssignmentService>>(_ => NullLogger<RoleAssignmentService>.Instance);
-        services.AddScoped<Microsoft.Extensions.Logging.ILogger<ShiftManagementService>>(_ => NullLogger<ShiftManagementService>.Instance);
-        services.AddScoped<Microsoft.Extensions.Logging.ILogger<TeamService>>(_ => NullLogger<TeamService>.Instance);
-        services.AddScoped<Microsoft.Extensions.Logging.ILogger<OutboxEmailService>>(_ => NullLogger<OutboxEmailService>.Instance);
-        services.AddScoped<Microsoft.Extensions.Logging.ILogger<UserEmailService>>(_ => NullLogger<UserEmailService>.Instance);
-
-        using var provider = services.BuildServiceProvider(validateScopes: true);
-        using var scope = provider.CreateScope();
-
-        var resolveUserService = () => scope.ServiceProvider.GetRequiredService<IUserService>();
-        var resolveEmailService = () => scope.ServiceProvider.GetRequiredService<IEmailService>();
-
-        resolveUserService.Should().NotThrow();
-        resolveEmailService.Should().NotThrow();
-        resolveUserService().Should().BeOfType<UserService>();
-        resolveEmailService().Should().BeOfType<OutboxEmailService>();
     }
 
     /// <summary>

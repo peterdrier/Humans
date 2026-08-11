@@ -17,7 +17,7 @@ using NodaTime;
 using NSubstitute;
 using Xunit;
 using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.Email;
+using Humans.Email.Contracts;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Infrastructure.Services;
 

@@ -20,6 +20,8 @@
     <Project Path="src/Sections/Humans.CityPlanning/Humans.CityPlanning.csproj" />
     <Project Path="src/Sections/Humans.CityPlanning.Contracts/Humans.CityPlanning.Contracts.csproj" />
     <Project Path="src/Sections/Humans.Containers/Humans.Containers.csproj" />
+    <Project Path="src/Sections/Humans.Email/Humans.Email.csproj" />
+    <Project Path="src/Sections/Humans.Email.Contracts/Humans.Email.Contracts.csproj" />
     <Project Path="src/Sections/Humans.Events/Humans.Events.csproj" />
     <Project Path="src/Sections/Humans.Events.Contracts/Humans.Events.Contracts.csproj" />
     <Project Path="src/Sections/Humans.Expenses/Humans.Expenses.csproj" />
@@ -56,6 +58,7 @@
     <Project Path="tests/Humans.Campaigns.Tests/Humans.Campaigns.Tests.csproj" />
     <Project Path="tests/Humans.CityPlanning.Tests/Humans.CityPlanning.Tests.csproj" />
     <Project Path="tests/Humans.Containers.Tests/Humans.Containers.Tests.csproj" />
+    <Project Path="tests/Humans.Email.Tests/Humans.Email.Tests.csproj" />
     <Project Path="tests/Humans.Events.Tests/Humans.Events.Tests.csproj" />
     <Project Path="tests/Humans.Expenses.Tests/Humans.Expenses.Tests.csproj" />
     <Project Path="tests/Humans.Feedback.Tests/Humans.Feedback.Tests.csproj" />

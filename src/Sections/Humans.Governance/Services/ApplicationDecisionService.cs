@@ -17,7 +17,7 @@ using Humans.Domain.Constants;
 using Humans.Domain.Enums;
 using MemberApplication = Humans.Governance.Domain.Application;
 using Humans.Application.Interfaces.AuditLog;
-using Humans.Application.Interfaces.Email;
+using Humans.Email.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Notifications.Contracts;
 using Humans.Application.Interfaces.GoogleIntegration;

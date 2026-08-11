@@ -1900,7 +1900,7 @@ Cross-section calls via `ITeamServiceRead`, `IUserEmailService`,
 
 ## Email
 
-Folder: `src/Humans.Application/Services/Email/`. **DbContext:**
+Folder: `src/Sections/Humans.Email/Services/`. **DbContext:**
 `EmailDbContext` — **peeled** (nobodies-collective/Humans#1234, part of
 #858). `EmailOutboxRepository` injects `IDbContextFactory<EmailDbContext>`
 directly. Owns

@@ -1,6 +1,5 @@
 using Humans.Domain.Enums;
 using Humans.Campaigns.Contracts;
-using Humans.Application.Interfaces.Email;
 using Humans.UI.Authorization;
 using Humans.UI.Models;
 using Humans.Governance.Contracts;
@@ -146,21 +145,6 @@ public class AdminConfigurationViewModel
     public List<ConfigurationItemViewModel> Items { get; set; } = [];
 }
 
-public class EmailPreviewViewModel
-{
-    public Dictionary<string, List<EmailPreviewItem>> Previews { get; set; } = new(StringComparer.Ordinal);
-    public string FromAddress { get; set; } = string.Empty;
-}
-
-public class EmailPreviewItem
-{
-    public string Id { get; set; } = string.Empty;
-    public string Name { get; set; } = string.Empty;
-    public string Recipient { get; set; } = string.Empty;
-    public string Subject { get; set; } = string.Empty;
-    public string Body { get; set; } = string.Empty;
-}
-
 public class AccountMergeQueueViewModel
 {
     public List<AccountMergeRowViewModel> Rows { get; set; } = [];
@@ -226,16 +210,6 @@ public class ProfileSummaryViewModel
     /// "imported account" card in that case instead of 404'ing.
     /// </summary>
     public bool HasProfile { get; set; } = true;
-}
-
-public class EmailOutboxViewModel
-{
-    public int TotalMessageCount { get; set; }
-    public int QueuedCount { get; set; }
-    public int SentLast24HoursCount { get; set; }
-    public int FailedCount { get; set; }
-    public bool IsPaused { get; set; }
-    public List<EmailOutboxMessageDto> Messages { get; set; } = [];
 }
 
 public class DbStatsViewModel

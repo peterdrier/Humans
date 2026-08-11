@@ -6,7 +6,7 @@ using Humans.Application.DTOs.Shifts;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Campaigns.Contracts;
 using Humans.Application.Interfaces.Camps;
-using Humans.Application.Interfaces.Email;
+using Humans.Email.Contracts;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Governance.Contracts;
 using Humans.Application.Interfaces.Onboarding;
@@ -112,7 +112,7 @@ public class ProfileControllerEditTests
             Substitute.For<ITeamService>(),
             Substitute.For<ICampaignService>(),
             Substitute.For<ICampServiceRead>(),
-            Substitute.For<IEmailOutboxService>(),
+            Substitute.For<IEmailOutboxServiceRead>(),
             new FakeClock(Instant.FromUtc(2026, 5, 9, 12, 0)),
             authorizationService,
             _applicationDecisionService,

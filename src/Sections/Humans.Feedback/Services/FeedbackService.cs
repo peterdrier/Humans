@@ -11,7 +11,7 @@ using Humans.Feedback.Data;
 using Humans.Feedback.Domain;
 using Humans.Feedback.Services.Dtos;
 using Humans.Application.Interfaces.AuditLog;
-using Humans.Application.Interfaces.Email;
+using Humans.Email.Contracts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.Notifications.Contracts;

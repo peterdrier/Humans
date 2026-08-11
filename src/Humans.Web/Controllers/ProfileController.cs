@@ -26,7 +26,7 @@ using NodaTime;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Campaigns.Contracts;
 using Humans.Application.Interfaces.Camps;
-using Humans.Application.Interfaces.Email;
+using Humans.Email.Contracts;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Tickets;

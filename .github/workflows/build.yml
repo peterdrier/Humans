@@ -35,7 +35,7 @@ env:
     SurveysDbContext:src/Sections/Humans.Surveys
     EventGuideDbContext:src/Sections/Humans.Events
     AuthDbContext:src/Humans.Infrastructure
-    EmailDbContext:src/Humans.Infrastructure
+    EmailDbContext:src/Sections/Humans.Email
     CalendarDbContext:src/Sections/Humans.Calendar
     NotificationsDbContext:src/Sections/Humans.Notifications
     IssuesDbContext:src/Sections/Humans.Issues

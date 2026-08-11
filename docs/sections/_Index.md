@@ -26,6 +26,7 @@ move recipe is [`G5-SECTION-TEMPLATE.md`](G5-SECTION-TEMPLATE.md).
 | Budget | `src/Sections/Humans.Budget` | [Budget.md](../../src/Sections/Humans.Budget/Docs/Budget.md) |
 | City Planning | `src/Sections/Humans.CityPlanning` | [CityPlanning.md](../../src/Sections/Humans.CityPlanning/Docs/CityPlanning.md) |
 | Containers | `src/Sections/Humans.Containers` | [Containers.md](../../src/Sections/Humans.Containers/Docs/Containers.md) |
+| Email | `src/Sections/Humans.Email` | [Email.md](../../src/Sections/Humans.Email/Docs/Email.md) |
 | Feedback | `src/Sections/Humans.Feedback` | [Feedback.md](../../src/Sections/Humans.Feedback/Docs/Feedback.md) |
 | Finance | `src/Sections/Humans.Finance` | [Finance.md](../../src/Sections/Humans.Finance/Docs/Finance.md) |
 | Event Guide | `src/Sections/Humans.Events` | [Events.md](../../src/Sections/Humans.Events/Docs/Events.md) |
@@ -65,7 +66,7 @@ Cross-check against [`design-rules.md` §8 (Table Ownership Map)](../architectur
 | **Camps** | `CampController`, `CampAdminController`, `CampApiController` | `CampContactService` | `CampService`, `CampRoleService`, *`CachingCampService`* | `CampRepository` | `camps`, `camp_seasons`, `camp_members`, `camp_images`, `camp_historical_names`, `camp_settings`, `camp_role_definitions`, `camp_role_assignments` |
 | **City Planning** | `CityPlanningController`, `CityPlanningApiController` (`Humans.CityPlanning.Controllers`) | — | `CityPlanningService` (`Humans.CityPlanning.Services`) | `CityPlanningRepository` / `ICityPlanningRepository` (`Humans.CityPlanning.Data`) | `city_planning_settings`, `camp_polygons`, `camp_polygon_histories` |
 | **Containers** | `ContainerController` (`Humans.Containers.Controllers`) | — | `Service` (`Humans.Containers.Services`) | `Repository` / `IContainerRepository` (`Humans.Containers.Data`) | `containers`, `container_placements` |
-| **Email** | `EmailController` | — | `EmailOutboxService`, `OutboxEmailService` | `EmailOutboxRepository` | `email_outbox_messages`, `system_settings` (key `email_outbox_paused`) |
+| **Email** | `EmailController` (`Humans.Email.Controllers`) | — | `EmailOutboxService`, `OutboxEmailService`, `EmailOutboxProcessor`, `EmailMessageFactory`, `EmailRenderer` (`Humans.Email.Services`) | `EmailOutboxRepository` / `IEmailOutboxRepository` (`Humans.Email.Data`) | `email_outbox_messages`, `system_settings` (key `IsEmailSendingPaused`) |
 | **Event Guide** | `EventsController`, `EventsAdminController`, `EventsDashboardController`, `EventsExportController`, `EventsModerationController`, `EventsApiController` (`Humans.Events.Controllers`) | — | `EventService`, *`CachingEventService`* (`Humans.Events.Services`) | `EventRepository` / `IEventRepository` (`Humans.Events.Data`) | `events`, `event_categories`, `event_venues`, `event_guide_settings`, `event_moderation_actions`, `event_favourites`, `event_preferences` |
 | **Expenses** | `ExpensesController` (`Humans.Expenses.Controllers`) | — | `ExpenseReportService` (`Humans.Expenses.Services`) | `ExpenseRepository` / `IExpenseRepository` (`Humans.Expenses.Data`) | `expense_reports`, `expense_lines`, `expense_attachments`, `holded_expense_outbox_events` |
 | **Feedback** | `FeedbackController`, `FeedbackApiController` (section) | — | `FeedbackService` (section) | `FeedbackRepository` (section) | `feedback_reports`, `feedback_messages` |

@@ -41,7 +41,7 @@ This file is the **index and cross-cutting rule sheet** for the data model. Per-
 | CampPolygon | [City Planning](../../src/Sections/Humans.CityPlanning/Docs/CityPlanning.md) | |
 | CampPolygonHistory | [City Planning](../../src/Sections/Humans.CityPlanning/Docs/CityPlanning.md) | Append-only (§12). |
 | CalendarEvent / CalendarEventException | [Calendar](../../src/Sections/Humans.Calendar/Docs/Calendar.md) | |
-| EmailOutboxMessage | [Email](../sections/Email.md) | |
+| EmailOutboxMessage | [Email](../../src/Sections/Humans.Email/Docs/Email.md) | |
 | Campaign / CampaignCode / CampaignGrant | [Campaigns](../../src/Sections/Humans.Campaigns/Docs/Campaigns.md) | |
 | TicketOrder / TicketAttendee / TicketSyncState / TicketTransferRequest | [Tickets](../sections/Tickets.md) | |
 | GateScanEvent / GateSettings / GateStaffPin | [Gate](../../src/Sections/Humans.Gate/Docs/Gate.md) | `GateScanEvent` is the append-only gate admission log (retention-purged by `GateRetentionJob`; user ids re-pointed on merge). Cross-section refs (`ScannedByUserId`, `GuestUserId`, `OverrideByUserId`, `TicketAttendeeId`, `GateStaffPin.UserId`) are bare Guid columns — no navs, no cross-section EF FK constraints. |
@@ -176,7 +176,7 @@ CampaignGrant (Campaigns)
 
 | Key | Consuming section | Purpose |
 |-----|-------------------|---------|
-| `IsEmailSendingPaused` | [Email](../sections/Email.md) | When `"true"`, `ProcessEmailOutboxJob` skips processing |
+| `IsEmailSendingPaused` | [Email](../../src/Sections/Humans.Email/Docs/Email.md) | When `"true"`, `ProcessEmailOutboxJob` skips processing |
 | `DriveActivityMonitor:LastRunAt` | [Google Integration](../sections/GoogleIntegration.md) | Last-run timestamp for drive-activity monitor |
 
 | Property | Type | Purpose |

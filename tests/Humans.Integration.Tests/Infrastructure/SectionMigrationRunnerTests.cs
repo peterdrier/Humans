@@ -1,3 +1,4 @@
+using Humans.Email.Data;
 using Humans.Notifications.Data;
 using Humans.Notifications.Domain;
 using Humans.Notifications.Contracts;

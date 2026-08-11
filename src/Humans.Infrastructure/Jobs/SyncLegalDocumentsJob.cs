@@ -3,7 +3,7 @@ using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Application.Interfaces.Email;
+using Humans.Email.Contracts;
 using Humans.Application.Interfaces.Legal;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;

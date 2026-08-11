@@ -24,10 +24,12 @@ DTO surface stayed internal behind two primitive-returning reads), Issues (the f
 block of markup *out* of a Shell view to bring its resource keys home, and the first whose
 `Contracts/` leaf is two one-method interfaces), Notifications (the first section to own a
 *view component*, which needed a Shell feature provider of its own, and the first whose leaf
-is consumed by eleven Base services), and Governance (the first whose resx carve had to
+is consumed by eleven Base services), Governance (the first whose resx carve had to
 leave four whole prefixes behind because Shell renders the same form, the first to bind two
 localizers by design, and the first whose contracts leaf carries write members under an
-unchanged name). Step numbers match the former §15, so an old
+unchanged name), and Email (the first whose resource set is *other sections'* copy, carved by
+moving the renderer; the first whose leaf carries an interface Base *implements*; and the
+first whose recurring job was the section's entire write path). Step numbers match the former §15, so an old
 "§15 step 3b" citation reads as "step 3b" here.
 
 **Where this template and `src/Sections/` disagree, the code is right.** Deviations are the
@@ -171,6 +173,26 @@ Git Bash.)
      widget's JS addresses DOM ids, not Razor, so it stayed in Shell untouched. Prefer this
      over binding a second localizer in a Base view when the Base view owns none of the copy
      (proven: Issues).
+   - **…and the fifth: move the *renderer*, not the key and not the markup.** "Carve by
+     renderer" (above) leaves a key in Base when the renderer cannot see a section set;
+     Issues' fourth direction moves a block of Razor. Email's 70 `Email_*` keys are neither:
+     they are every section's transactional-email subject/body text, and
+     `Humans.Infrastructure/Services/EmailRenderer.cs` — the file Feedback's rule pointed at
+     as immovable Base — turned out to have exactly two consumers, both of which move in
+     (`EmailMessageFactory` and the section's own preview page). So the renderer moved, the
+     whole key set came with it, and `SharedResource` kept nothing. **Check the renderer's
+     consumer list before concluding a key is stuck**; the earlier finding named the file
+     correctly and the ownership wrongly. The renderer also has to stop using
+     `IStringLocalizerFactory.Create("SharedResource", "Humans.UI")` and take
+     `IStringLocalizer<<Section>Resource>` instead — the string-keyed overload silently keeps
+     reading the old set (proven: Email).
+   - **A section can have a resource set and no localized page copy.** Email's two admin views
+     carry zero `Localizer[…]` calls, so the step-12 resx assertion has nothing to hang on in
+     the section's own HTML. The probe was the template-gallery page (`/Email/EmailPreview`),
+     which renders 20 templates in all six cultures in one response — a single GET proving the
+     neutral set *and* the satellite assemblies, with no `/Language/SetLanguage` round trip.
+     Look for a page that renders the copy before assuming the language-switcher dance
+     (proven: Email).
    - **Re-grep the moved views for keys the carve did not take.** Genuinely shared strings
      (`Common_*`, `Camp_Plural`) stay in `SharedResource`; bind a second localizer —
      `@inject IStringLocalizer<SharedResource> SharedLocalizer` — and switch those call sites.
@@ -266,6 +288,18 @@ Git Bash.)
      voting, full stop). Those moved to Shell's `InfrastructureServiceCollectionExtensions`
      beside the moved-out sections' jobs. The section that owns the *file* is not always the
      section that owns the *line* (proven: Governance).
+   - **A configuration type named after the section can still be Base's, and
+     `Section.Register` cannot see `IHostEnvironment`.** `EmailSettings` binds `Email:*`, lives
+     in `Humans.Infrastructure/Configuration`, and is read by Auth's `MagicLinkUrlBuilder`,
+     Profiles' `UnsubscribeTokenProvider`, `SendReConsentReminderJob` and Shell's
+     `SmtpHealthCheck` — so its `services.Configure<…>` call stayed in Shell (Governance's
+     rule: the section that owns the file is not always the section that owns the line). The
+     startup guard beside it — "Production must have SMTP configured" — stayed for a second
+     reason: `ISection.Register(IServiceCollection, IConfiguration)` has no `IHostEnvironment`,
+     and pushing the check into a service factory would first throw on a real send instead of
+     at boot. The section keeps the half that is genuinely its own: which of its two internal
+     transports to bind, off `configuration["Email:SmtpHost"]` (proven: Email).
+
 4b. [ ] `[assembly: Section("<Section>")]` in `Properties/AssemblyInfo.cs` — the analyzer marker,
    the discovery marker and the internal-controller marker, all three (spec §10, §6, §1). Add
    `[assembly: InternalsVisibleTo("DynamicProxyGenAssembly2")]` beside it if the section's tests
@@ -302,6 +336,16 @@ Git Bash.)
        every `I<Section>Service` injection with the concrete type costs a second sweep — decide
        it from the *test* files before touching the source (proven: Budget, whose ticketing
        bridge substitutes it).
+   - **A third answer to the enum question: it stays in `Humans.Domain.Enums`.** Budget's
+     rule moves the section's own enums onto the leaf; Issues' splits them per enum. Neither
+     fits an enum that *other sections persist on their own tables*: `EmailOutboxStatus` is
+     Email's vocabulary, and it is also a `HasConversion<string>()` column on Campaigns'
+     `campaign_grants` and on Surveys' `survey_invitations`. Moving it onto Email's leaf would
+     make two other sections' **domain** depend on Email's contracts, and would drag its
+     `Enum_EmailOutboxStatus_*` keys and its `EnumBadgeMap` rows along for nothing. Left in
+     Base, with its resx keys and badge rows; `Humans.Campaigns.Contracts` keeps referencing
+     `Humans.Domain` for it (Campaigns finding 47's case, unchanged). The test is *who writes
+     it to a table*, not who named it (proven: Email).
    - **Decide the leaf-vs-`Domain/` question per enum, not per section.** Budget moved both of
      its enums because both appeared in contract signatures. Issues' two split: `IssueCategory`
      is named by `Humans.Agent`'s `route_to_issue` proposal, so it went to the leaf;
@@ -376,6 +420,16 @@ Git Bash.)
      controller moved in and was deleted outright (step 5's "keep an interface only where
      something needs the seam"), and `INotificationRecipientResolver` survived internal only
      because a section test substitutes it (proven: Notifications).
+   - **A leaf entry can exist because Base *implements* it, not because Base calls it.**
+     Every other rule here reads "the consumer is in Base, so the contract goes on the leaf".
+     `IImmediateOutboxProcessor` is the mirror: the section's `OutboxEmailService` is the
+     consumer, and the implementation — `HangfireImmediateOutboxProcessor`, which enqueues the
+     recurring job — has to stay in Base because it names the Base job type. An interface with
+     an implementer in Base belongs on the leaf for exactly the same reason as one with a
+     caller there. Sort the section's abstractions by *which side the implementation is on*
+     before deciding: Email's four connector abstractions split three internal
+     (`IEmailRenderer`, `IEmailBodyComposer`, `IEmailTransport`) to one on the leaf
+     (proven: Email).
    - **A leaf may be two one-method interfaces, and splitting them beats one misnamed one.**
      Issues' whole outside surface is a nav-badge count (Shell's `NavBadgesViewComponent`) and
      the retention sweep (Base's `CleanupIssuesJob`). Both return `int`. Putting the purge on
@@ -592,6 +646,20 @@ Git Bash.)
        list move into the section beside the repository. Its job test becomes a retention test in
        the section's own project — the job left is a try/catch and a metric (proven:
        Notifications, `INotificationRetention`).
+   - **Fourth sighting, and the one where the carve is not optional.** Notifications' and
+     Agent's jobs *should* have been carved; `ProcessEmailOutboxJob` had to be. It injected
+     `IEmailOutboxRepository`, `IEmailTransport` and the `EmailOutboxMessage` entity and ran
+     the whole drain — pause check, batch pick-up, per-message send, retry backoff,
+     campaign-grant mirror — from Base. All three of those turn internal at step 5, so there
+     is no version of the move where the job compiles unchanged. The carve is
+     `IEmailOutboxProcessor.ProcessQueuedAsync(ct)` returning `Task`, with the per-message log
+     lines and the pending-count meter moving into the section beside the repository; what is
+     left in Base is one call plus `RecordJobRun`. `IHumansMetrics` and `IMeters` are
+     `Humans.Application` interfaces, so the section keeps the metric calls verbatim. Its job
+     test became `EmailOutboxProcessorTests` in the section's own project. **Read the job body
+     before writing the contract: if it names the entity or the repository, the contract is
+     "do the thing", never "give me the rows"** (proven: Email).
+
 7. [ ] `wwwroot/` assets move with the section; URLs become `/_content/Humans.<Section>/…` in the
    same PR. Only Shell's own chrome assets stay in Shell. **Proven: Agent (A4b), the first
    section to move any; and Gate, which also proved a section may take a *layout* with it —
@@ -775,6 +843,15 @@ Git Bash.)
       expectation" call as the reflection sweeps below, applied to a path-keyed one. Widening
       surfaced no other violation, so the cost of being right here was one retargeted line
       (proven: Campaigns).
+      **Second sighting, and it was a different rule with the identical bug.**
+      `NoDestructiveMigrationOpsRule.ScanMigrations` walked
+      `src/Humans.Infrastructure/Migrations` alone, so every G5 section's `Data/Migrations`
+      had silently left that sweep too — thirteen sections deep, nobody had noticed, because
+      the rule reports success by finding nothing. Widened to Base plus each section's
+      `Data/Migrations`; it immediately surfaced three already-shipped drops in
+      `Humans.Finance`'s own migrations, which were baselined with a comment rather than
+      reverted. **Treat "is this sweep keyed on a Base path?" as a question to ask of every
+      ratchet rule at every move, not once** (proven: Email).
     - **One assertion shape does not survive the move and must be restated rather than deleted:
       `typeof(<Section>Service).Assembly.GetReferencedAssemblies()` must not contain
       `Microsoft.EntityFrameworkCore`.** It was a true statement about `Humans.Application`; the

@@ -1,7 +1,7 @@
 using AwesomeAssertions;
 using Humans.Application;
 using Humans.Application.Interfaces.AuditLog;
-using Humans.Application.Interfaces.Email;
+using Humans.Email.Contracts;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Profiles;

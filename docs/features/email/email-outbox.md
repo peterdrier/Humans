@@ -1,13 +1,10 @@
 <!-- freshness:triggers
-  src/Humans.Application/Services/Email/**
+  src/Sections/Humans.Email/**
+  src/Sections/Humans.Email.Contracts/**
   src/Humans.Infrastructure/Jobs/ProcessEmailOutboxJob.cs
   src/Humans.Infrastructure/Jobs/CleanupEmailOutboxJob.cs
-  src/Humans.Web/Controllers/EmailController.cs
-  src/Humans.Web/Views/Email/**
-  src/Humans.Domain/Entities/EmailOutboxMessage.cs
   src/Sections/Humans.SystemSettings/Domain/SystemSetting.cs
   src/Sections/Humans.SystemSettings.Contracts/SystemSettingKeys.cs
-  src/Humans.Infrastructure/Data/Configurations/Email/**
 -->
 <!-- freshness:flag-on-change
   Outbox queue/process/cleanup behavior, retry/backoff config keys, global pause toggle, and admin dashboard route — review when OutboxEmailService, outbox jobs, or EmailController change.
