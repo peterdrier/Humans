@@ -739,10 +739,7 @@
     },
     "Cantina": {
       "paths": [
-        "src/Humans.Application/Interfaces/Cantina/**",
-        "src/Humans.Application/Services/Cantina/**",
-        "src/Humans.Web/Cantina/**",
-        "src/Humans.Web/Controllers/CantinaController.cs"
+        "src/Sections/Humans.Cantina/**"
       ],
       "symbols": [
         "Cantina*",

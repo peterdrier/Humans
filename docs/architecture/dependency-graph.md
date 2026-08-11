@@ -214,7 +214,7 @@ graph LR
     CampRole --> NotifEmitter
     CampRole --> Audit
 
-    %% Cantina section (own thin section, registered via Shifts ext)
+    %% Cantina section (own project since G5; registered by its own Section.Register)
     %% CantinaRosterService also reads IBurnSettingsService (gate-open cutoff for the
     %% on-site cohort window) — missing from the prior diagram; added this sweep.
     Cantina --> ShiftMgmt

@@ -17,6 +17,7 @@
     <Project Path="src/Sections/Humans.Calendar/Humans.Calendar.csproj" />
     <Project Path="src/Sections/Humans.Campaigns/Humans.Campaigns.csproj" />
     <Project Path="src/Sections/Humans.Campaigns.Contracts/Humans.Campaigns.Contracts.csproj" />
+    <Project Path="src/Sections/Humans.Cantina/Humans.Cantina.csproj" />
     <Project Path="src/Sections/Humans.CityPlanning/Humans.CityPlanning.csproj" />
     <Project Path="src/Sections/Humans.CityPlanning.Contracts/Humans.CityPlanning.Contracts.csproj" />
     <Project Path="src/Sections/Humans.Containers/Humans.Containers.csproj" />
@@ -59,6 +60,7 @@
     <Project Path="tests/Humans.Budget.Tests/Humans.Budget.Tests.csproj" />
     <Project Path="tests/Humans.Calendar.Tests/Humans.Calendar.Tests.csproj" />
     <Project Path="tests/Humans.Campaigns.Tests/Humans.Campaigns.Tests.csproj" />
+    <Project Path="tests/Humans.Cantina.Tests/Humans.Cantina.Tests.csproj" />
     <Project Path="tests/Humans.CityPlanning.Tests/Humans.CityPlanning.Tests.csproj" />
     <Project Path="tests/Humans.Containers.Tests/Humans.Containers.Tests.csproj" />
     <Project Path="tests/Humans.Consent.Tests/Humans.Consent.Tests.csproj" />

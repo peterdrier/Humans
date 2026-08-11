@@ -63,10 +63,12 @@
        section test project created at G5 (nobodies-collective/Humans#866) inherits it with
        the rest of the harness. Two test projects have no EF Core reference and are excluded:
        Humans.Analyzers.Tests feeds synthetic compilations to analyzers, and
-       Humans.Scanner.Tests covers a section that owns no tables. Both would otherwise have to
-       take an EF package purely so a fixture they never use compiles. -->
+       Humans.Scanner.Tests / Humans.Cantina.Tests cover sections that own no tables. All
+       would otherwise have to take an EF package purely so a fixture they never use
+       compiles. -->
   <ItemGroup Condition="'$(MSBuildProjectName)' != 'Humans.Analyzers.Tests'
-                        AND '$(MSBuildProjectName)' != 'Humans.Scanner.Tests'">
+                        AND '$(MSBuildProjectName)' != 'Humans.Scanner.Tests'
+                        AND '$(MSBuildProjectName)' != 'Humans.Cantina.Tests'">
     <Compile Include="$(MSBuildThisFileDirectory)Humans.Testing\TestDbContextFactory.cs" Link="Humans.Testing\TestDbContextFactory.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Humans.Testing\CapturingLogger.cs" Link="Humans.Testing\CapturingLogger.cs" />
   </ItemGroup>

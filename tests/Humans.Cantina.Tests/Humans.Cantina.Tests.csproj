@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Sections\Humans.Cantina\Humans.Cantina.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NodaTime.Testing" />
+  </ItemGroup>
+
+  <!--
+    No EF Core package: Cantina owns no tables, so there is no DbContext to fixture. That is
+    why tests/Directory.Build.props excludes this project from the shared TestDbContextFactory
+    /CapturingLogger compile items — see the comment there.
+
+    No FrameworkReference either, unlike Humans.Scanner.Tests: these tests cover the roster
+    service, the display-sort assembler and the two CSV writers, none of which names an
+    ASP.NET type. The controller is exercised by CantinaPageRenderTests in
+    Humans.Integration.Tests.
+  -->
+
+</Project>

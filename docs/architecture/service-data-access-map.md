@@ -1308,7 +1308,7 @@ Stateless calculators / projections — no DI dependencies, no DB access.
 
 ## Cantina
 
-Folder: `src/Humans.Application/Services/Cantina/`. Owns no DB tables —
+Project: `src/Sections/Humans.Cantina` (G5). Owns no DB tables —
 orchestrator only. Dietary data moved to `Profile` and is read through
 the unified `UserInfo` read-model.
 

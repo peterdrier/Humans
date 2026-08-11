@@ -1,10 +1,8 @@
 <!-- freshness:triggers
   src/Humans.Domain/Entities/VolunteerEventProfile.cs
   src/Humans.Infrastructure/Data/Configurations/Shifts/VolunteerEventProfileConfiguration.cs
-  src/Humans.Application/Services/Cantina/CantinaRosterService.cs
   src/Humans.Application/Interfaces/Repositories/IShiftManagementRepository.cs
-  src/Humans.Web/Controllers/CantinaController.cs
-  src/Humans.Web/Views/Cantina/Roster.cshtml
+  src/Sections/Humans.Cantina/**
 -->
 <!-- freshness:flag-on-change
   "On-site" definition (which signup statuses count, all-day single-day semantics), week boundary policy (Monday-Sunday in event tz), allergy/intolerance option sets, authorization roles, or MedicalConditions exclusion rule.

@@ -23,6 +23,7 @@ move recipe is [`G5-SECTION-TEMPLATE.md`](G5-SECTION-TEMPLATE.md).
 | Agent | `src/Sections/Humans.Agent` | [Agent.md](../../src/Sections/Humans.Agent/Docs/Agent.md) |
 | Calendar | `src/Sections/Humans.Calendar` | [Calendar.md](../../src/Sections/Humans.Calendar/Docs/Calendar.md) |
 | Campaigns | `src/Sections/Humans.Campaigns` | [Campaigns.md](../../src/Sections/Humans.Campaigns/Docs/Campaigns.md) |
+| Cantina | `src/Sections/Humans.Cantina` | [Cantina.md](../../src/Sections/Humans.Cantina/Docs/Cantina.md) |
 | Budget | `src/Sections/Humans.Budget` | [Budget.md](../../src/Sections/Humans.Budget/Docs/Budget.md) |
 | Consent | `src/Sections/Humans.Consent` | [Consent.md](../../src/Sections/Humans.Consent/Docs/Consent.md) |
 | City Planning | `src/Sections/Humans.CityPlanning` | [CityPlanning.md](../../src/Sections/Humans.CityPlanning/Docs/CityPlanning.md) |
@@ -91,7 +92,7 @@ Cross-check against [`design-rules.md` §8 (Table Ownership Map)](../architectur
 | **Onboarding** | `OnboardingReviewController`, `OnboardingWidgetController`, `WelcomeController` | `OnboardingService` | — | — | — |
 | **Human Lifecycle** | — (admin actions via `AdminController`) | `HumanLifecycleService` | — | — | — |
 | **Early Entry** | `EarlyEntryRosterController` | `EarlyEntryService` | *`CachingEarlyEntryService`* | — | — |
-| **Cantina** | `CantinaController` | `CantinaRosterService` | — | — | — (reads Shifts via `IShiftManagementService`) |
+| **Cantina** | `CantinaController` (`Humans.Cantina.Controllers`) | — | `CantinaRosterService` (`Humans.Cantina.Services`) | — | — (reads Shifts via `IShiftManagementService`; owns no tables) |
 | **Dashboard** | — (rendered on Home) | `DashboardService`, `AdminDashboardService` | — | — | — |
 | **Search** | `SearchController` | `SearchService` | — | — | — |
 | **Mailer** | — (background sync) | `MailerImportService`, `MailerAudienceSyncService` | `MailerLiteClient` | — | — (MailerLite is read-only; writes route through other sections) |
