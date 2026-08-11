@@ -23,7 +23,6 @@ internal sealed record HoldedAdminOverview(
     IReadOnlyList<HoldedMonthlyCalls> CallsByMonth,
     IReadOnlyList<HoldedSyncStateRow> SyncStates,
     IReadOnlyList<HoldedAccountRow> Accounts,
-    IReadOnlyList<HoldedAccountRow> DepartmentActuals,
     int LedgerLineCount);
 
 /// <summary>Metered API calls for one Madrid-zone month.</summary>
@@ -34,6 +33,9 @@ internal sealed record HoldedSyncStateRow(
     string Kind, string Status, Instant? LastSyncAt, string? LastError, int LastCount);
 
 /// <summary>One chart account on the /Holded reconciliation table.</summary>
+/// <param name="Group">The PGC group's English name, derived from the account number's leading
+/// digit — not Holded's own <c>group</c> string, which is Spanish ("Existencias", "Activo no
+/// corriente"). The number is the authority: it is what the group means.</param>
 /// <param name="LocalBalance">Null when the mirror holds no line for the account — distinct
 /// from a cached zero, which reconciles a zero Holded balance.</param>
 internal sealed record HoldedAccountRow(
