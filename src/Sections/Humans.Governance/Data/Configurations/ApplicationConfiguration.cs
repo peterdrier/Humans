@@ -1,7 +1,6 @@
 using Humans.Governance.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using Humans.Domain.Entities;
 using MemberApplication = Humans.Governance.Domain.Application;
 
 namespace Humans.Governance.Data.Configurations;

@@ -1,5 +1,4 @@
 using Humans.Governance.Domain;
-using Humans.Domain.Entities;
 using Humans.Governance.Data.Configurations;
 using Microsoft.EntityFrameworkCore;
 using MemberApplication = Humans.Governance.Domain.Application;

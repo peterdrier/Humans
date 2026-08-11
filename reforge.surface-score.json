@@ -378,6 +378,22 @@
         "IHoldedFinanceService"
       ]
     },
+    "Gate": {
+      "paths": [
+        "src/Sections/Humans.Gate/**",
+        "src/Sections/Humans.Gate.Contracts/**"
+      ],
+      "symbols": [
+        "Gate*",
+        "IGate*"
+      ],
+      "repositoryInterfaces": [
+        "IGateRepository"
+      ],
+      "serviceInterfaces": [
+        "IGateService"
+      ]
+    },
     "Gdpr": {
       "paths": [
         "src/Humans.Application/Interfaces/Gdpr/**",
