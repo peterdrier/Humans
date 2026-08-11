@@ -6,6 +6,7 @@ using Humans.Application.Interfaces.HumanLifecycle;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Services.HumanLifecycle;
 using Humans.Infrastructure.Caching;
+using Humans.Infrastructure.Configuration;
 using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Services;
 using Humans.Web.Extensions.Infrastructure;
@@ -50,7 +51,6 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddICalFeedSection();
         services.AddAdminSection();
         services.AddGoogleIntegrationSection();
-        services.AddGuideSection(configuration);
         services.AddSearchSection();
         services.AddHoldedConnector(configuration);
         services.AddMailerSection(configuration);
@@ -76,6 +76,14 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<INotificationMeterCacheInvalidator, NotificationMeterCacheInvalidator>();
         services.AddScoped<IVotingBadgeCacheInvalidator, VotingBadgeCacheInvalidator>();
         services.AddScoped<IHumanLifecycleService, HumanLifecycleService>();
+
+        // Same call for Guide's section file: IGuideContentSource is a plain GitHub-markdown
+        // fetcher (its signatures name only string) and three of its four consumers are not
+        // Guide's — Humans.Agent's three preload readers, AgentDocsHealthCheck, and
+        // GitHubCommunityKbContentSource — so the abstraction, the implementation and the
+        // GuideSettings it binds all stay in Base.
+        services.Configure<GuideSettings>(configuration.GetSection(GuideSettings.SectionName));
+        services.AddSingleton<IGuideContentSource, GitHubGuideContentSource>();
 
         // Shell-resident collaborators of sections that have already moved out. AgentPreloadAugmentor
         // builds the access matrix, glossaries, route map and FAQ blocks of the agent's preload

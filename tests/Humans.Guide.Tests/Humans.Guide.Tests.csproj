@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Sections\Humans.Guide\Humans.Guide.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      GuideController and the role resolver take ASP.NET types (ClaimsPrincipal aside, the
+      renderer chain binds IOptions); a plain Microsoft.NET.Sdk test project does not get the
+      shared framework and cannot get there with a PackageReference (design §15 step 1/8).
+    -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- GuideRoleResolverTests drives the resolver off a FakeClock-dated team snapshot. -->
+    <PackageReference Include="NodaTime.Testing" />
+  </ItemGroup>
+
+</Project>

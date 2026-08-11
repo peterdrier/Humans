@@ -29,10 +29,12 @@ leave four whole prefixes behind because Shell renders the same form, the first 
 localizers by design, and the first whose contracts leaf carries write members under an
 unchanged name), Email (the first whose resource set is *other sections'* copy, carved by
 moving the renderer; the first whose leaf carries an interface Base *implements*; and the
-first whose recurring job was the section's entire write path), and Consent (the first whose
+first whose recurring job was the section's entire write path), Consent (the first whose
 resx carve had to rebind call sites in *three* assemblies — Shell, another section and a
 section partial's `ResourceManager` — and the first whose contracts leaf carries a view
-model). Step numbers match the former §15, so an old
+model), and Guide (the first to reach a green build and a green suite with the section
+*unreferenced by Shell and therefore absent at runtime*, and the first whose
+same-named connector stayed in Base). Step numbers match the former §15, so an old
 "§15 step 3b" citation reads as "step 3b" here.
 
 **Where this template and `src/Sections/` disagree, the code is right.** Deviations are the
@@ -51,8 +53,11 @@ visibility flip in one diff is unreviewable.
       prod/QA/previews. **A section that owns no tables has no G4 gate** and skips every
       Data/DbContext/migration step below — steps 9 and 10 vanish, step 11's
       `AddSectionDbContext` and `PeeledConfigurationNamespaces` bullets have nothing to move,
-      and the project takes **no `Humans.Infrastructure` reference at all** (proven: Scanner,
+      and the project may take **no `Humans.Infrastructure` reference at all** (proven: Scanner,
       the first such section — one controller, one view model, four views, two JS modules).
+      **"Table-less" does not imply that, though** — Guide owns no tables and still references
+      `Humans.Infrastructure`, for the `GuideSettings` its Base-resident content source binds.
+      Decide the reference from what the section *names*, not from whether it has a `DbContext`.
 - [ ] Fan-in known: run `reforge` for inbound references before starting. A section with many
       inbound section references is a knot, goes later, and may need `<Section>.Contracts`.
 
@@ -117,8 +122,19 @@ Git Bash.)
    `<None Include="**\*.md" />`, and the three `<Using>` items Sdk.Razor does not inherit from
    Sdk.Web (spec §2): `Microsoft.AspNetCore.Http`, `Microsoft.AspNetCore.Routing`,
    `Microsoft.Extensions.Logging`. Project references: `Humans.Interfaces`, `Humans.Domain`,
-   `Humans.Application`, `Humans.Infrastructure`, `Humans.UI`. Add to `Humans.slnx`. No
+   `Humans.Application`, `Humans.Infrastructure`, `Humans.UI`. Add to `Humans.slnx` **and add a
+   `<ProjectReference>` to it from `src/Humans.Web/Humans.Web.csproj`**. No
    `Directory.Build.props` — `src/Directory.Build.props` resolves from `src/Sections/`.
+   - **The `Humans.Web` reference is the whole of what makes a section exist at runtime, and
+     forgetting it is silent in every direction.** `SectionDiscoveryExtensions.SectionAssemblies()`
+     walks `DependencyContext`, so a section outside Shell's dependency graph is simply not
+     there: `Section.Register` never runs, `SectionControllerFeatureProvider` never sees the
+     controllers, every page 404s — and the solution builds, the full suite passes, and each
+     reflection-anchored architecture sweep quietly covers one section fewer. Nothing in the
+     section's own project or in `Humans.slnx` implies it. The cheap proof is the step 12 render
+     test; the cheaper one is `grep '<Section>' src/Humans.Web/Humans.Web.csproj` before you
+     build (proven: Guide, which reached a green build and a green 5,400-test suite with the
+     section unreachable).
    - **"The section's own NuGet packages" excludes anything in the ASP.NET Core shared
      framework.** Central Package Management fails the build with `NU1010` for a
      `PackageReference` that has no `PackageVersion`, and the ASP.NET packages deliberately have
@@ -502,6 +518,21 @@ Git Bash.)
      connector serving one section and shaped by that section's model belongs to it (proven:
      Agent; contrast Stripe, which Store left behind, and `GitHubCommunityKbContentSource`, whose
      signatures name only `string`).
+     **The same test can keep a connector in Base when the connector carries the section's own
+     name.** `IGuideContentSource` / `GitHubGuideContentSource` / `GuideSettings` read as the
+     whole point of the Guide section — they are the thing that fetches `docs/guide/*.md`. They
+     are not Guide's: the signatures name only `string`, and three of the four consumers are
+     elsewhere (the Agent section's `AgentSectionDocReader` / `AgentFeatureSpecReader` /
+     `CommunityFaqReader` over `docs/sections`, `docs/features` and `docs/community-kb`,
+     Shell's `AgentDocsHealthCheck`, and Base's `GitHubCommunityKbContentSource`, which
+     *implements* the same interface against a different repo). Taking it in would have forced
+     a contracts leaf, made Base and another section consume a section's contracts for a plain
+     string fetch, and split `GuideSettings` from the type binding it. Left in
+     `Humans.Application/Interfaces` + `Humans.Infrastructure/Services`, with the two
+     registrations moving from the section extension into Shell's
+     `InfrastructureServiceCollectionExtensions` (Governance's rule: the section that owns the
+     *file* is not always the section that owns the *line*). Calendar's name-collision test,
+     applied to the section's own vocabulary rather than a neighbour's (proven: Guide).
    - **A Base *enum* in a leaf signature is not Budget's case — reference `Humans.Domain` from
      the leaf.** Budget's rule (step 5) is about enums the *section* owns: they cannot follow the
      entities into internal `Domain/`, so they move onto the leaf. `EmailOutboxStatus` is the
@@ -650,6 +681,16 @@ Git Bash.)
    predicate does not match it, which is the honest classification rather than a dodge: these
    types *are* the cache, where the rule is about a service that has acquired one. Gate's
    `GatePinThrottle` and `GateVendorMirrorLedger` moved there (proven: Gate).
+   - **When the offender is the section's actual service, the answer is the allowlist, not
+     `Stores/`.** `GuideContentService` is `IGuideContentService`, the type the controller
+     injects; relocating it to dodge the sweep's namespace predicate would be the dodge step 6a
+     says `Stores/` is not. Guide has no tables to decorate and guide HTML is not an entity
+     read, so §15's other two options do not exist either — it went on the allowlist with that
+     rationale, beside Finance's and Feedback's. Note what surfaced it: the code was unchanged
+     and had sat in `Humans.Infrastructure`, which the sweep covers neither before nor after;
+     it became visible only because the sweep scans **section assemblies**. Email's "ask whether
+     the sweep is keyed on a Base path" has a mirror — *a move can put code into a sweep as
+     easily as out of one* (proven: Guide).
 
 6b. [ ] Recurring Hangfire jobs stay in `Humans.Infrastructure/Jobs` for now: there is no
    `ISection`-style discovery seam for jobs, and a section-owned job would have to be `public` —
@@ -743,9 +784,19 @@ Git Bash.)
    `freshness-catalog.yml` globs if the section has an entry) and **rewrite the moved doc's own
    `freshness:triggers` block to `src/Sections/Humans.<Section>/**`** — the old scattered paths
    stop existing at the move and the doc silently stops being swept. Point-in-time plans and
-   audits stay in `docs/`. Anything the app *serves or fetches* from `docs/` at runtime stays —
-   `docs/guide/` until Guide's own G5 — and re-check `AgentSectionDocReader`'s fallback covers the
-   section. **A docs path is an API until you have proved otherwise** (spec §7a).
+   audits stay in `docs/`. Anything the app *serves or fetches* from `docs/` at runtime stays,
+   and re-check `AgentSectionDocReader`'s fallback covers the section.
+   **A docs path is an API until you have proved otherwise** (spec §7a).
+   - **`docs/guide/**` stays put, at Guide's own G5 and after.** The template used to say
+     "until Guide's own G5", which read as a scheduled move; it is not one.
+     `GitHubGuideContentSource` fetches `{GuideSettings.FolderPath}/{stem}.md` from
+     `nobodies-collective/Humans@main` **over the network at request time**, so the folder is a
+     live API against *production's* branch with no fallback and no whitelist — the
+     `AgentFeatureSpecReader` case (Gate finding 4), one step worse. Moving it into `Docs/`
+     would 404 all 28 files on every deployed instance from the moment the fork's `main`
+     deploys until the change reached production `main`, and would need `FolderPath`'s default
+     changed in the same commit. The section's *invariants* doc still moves — that probe has a
+     second path (proven: Guide).
    - **The `AgentSectionDocReader` fallback is a convention, not a map, and it has one real
      constraint: the project folder must be `Humans.{canonical key}` and the file
      `Docs/{canonical key}.md`.** The reader probes `docs/sections/{key}.md`, then

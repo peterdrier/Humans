@@ -1,0 +1,12 @@
+@* A section RCL does NOT inherit the host's Views/_ViewImports.cshtml. Omitting a line
+   here ships broken markup with a green build and no runtime error — see design §1/§2.
+   Guarded by GuidePageRenderTests (step 12). No @inject IStringLocalizer: Guide has no
+   resource set at all and GuideArchitectureTests pins that structurally (step 3b). *@
+@using Humans.Guide
+@using Humans.Guide.Controllers
+@using Humans.Guide.Models
+@using Humans.UI
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+@* authorize-policy on the refresh form is Humans.UI's AuthorizeViewTagHelper: a section can
+   only addTagHelper against Humans.UI, and a Shell-resident helper would render inert (step 6). *@
+@addTagHelper *, Humans.UI
