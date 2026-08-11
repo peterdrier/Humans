@@ -17,7 +17,7 @@
 
 The laptop at gate originally used the ticket lookup tool (`/Scanner/Tickets`) to
 check people's ticket status and early-entry date as they arrive; the same shared
-account now fronts the Gate admissions terminal (`/Gate` — `docs/sections/Gate.md`)
+account now fronts the Gate admissions terminal (`/Gate` — `src/Sections/Humans.Gate/Docs/Gate.md`)
 instead. The device is shared
 between whoever is on gate shift, so tying it to one human's login is wrong: their
 session, their personal permissions, their magic-link email. And the previous
@@ -56,7 +56,7 @@ in depth on top of the zero roles.
 - **Login:** `/Account/GateLogin` (anonymous GET form + POST). Username is the fixed
   constant `gate`; password checked via `CheckPasswordSignInAsync` with
   `lockoutOnFailure: false`. Success signs in with `isPersistent: true` and redirects
-  to the Gate admissions terminal (`/Gate` — see `docs/sections/Gate.md`; originally
+  to the Gate admissions terminal (`/Gate` — see `src/Sections/Humans.Gate/Docs/Gate.md`; originally
   `/Scanner/Tickets`, repointed when the Gate section landed). Signing the kiosk out
   again is the gate terminal's "logout"-typed-into-the-scan-field escape hatch, which
   POSTs the standard `/Account/Logout`.

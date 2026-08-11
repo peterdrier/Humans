@@ -27,7 +27,7 @@ Business requirements, user stories, data model, and workflows for each feature 
 | [Feature 21: Email Outbox](features/email/email-outbox.md) | Outbox pattern for reliable transactional email delivery with retry and crash recovery |
 | [`[ExpiresOn]` — Hard removal deadlines](features/expires-on-deadline.md) | Analyzer-enforced removal deadlines that escalate deprecation warnings to errors on a fixed date |
 | [Feedback System](features/feedback/feedback-system.md) | Retired (nobodies-collective/Humans#977) — closed to new reports and Admin-only; superseded by Issues |
-| [Gate Admissions](features/gate-admissions.md) | Gate QR scanning on rugged tablets deciding entry against ticket validity, photo-ID name check, and Early Entry grants — shipped design draft; `sections/Gate.md` is the authoritative current-state doc |
+| [Gate Admissions](features/gate-admissions.md) | Gate QR scanning on rugged tablets deciding entry against ticket validity, photo-ID name check, and Early Entry grants — shipped design draft; `src/Sections/Humans.Gate/Docs/Gate.md` is the authoritative current-state doc |
 | [Administration](features/global/administration.md) | Admin dashboards and management screens for members, applications, teams, and organizational compliance |
 | [Background Jobs](features/global/background-jobs.md) | Hangfire-scheduled automated operations for syncing, reminders, compliance enforcement, and system team maintenance |
 | [GDPR Data Export](features/global/gdpr-export.md) | Self-service download fulfilling GDPR Article 15 right to a copy of all personal data held |
@@ -100,7 +100,7 @@ Terse, authoritative invariant docs for each major section: concepts, data model
 | [Expenses](../src/Sections/Humans.Expenses/Docs/Expenses.md) | Expense reports submitted by members and approved by Finance Admin; approval books into Holded async, and paid/unpaid status is read back from the member's Holded creditor ledger rather than stamped on the report — payment itself happens externally, with no SEPA-file generation in the app |
 | [Feedback](sections/Feedback.md) | Retired — closed to new reports and Admin-only; the historical archive of in-app reports (bugs, feature requests, questions) with screenshots and conversation threads |
 | [Finance](../src/Sections/Humans.Finance/Docs/Finance.md) | Treasurer's reality side of money — actuals, reconciliation, and treasurer-facing operational data sharing keys with Budget |
-| [Gate](sections/Gate.md) | Gate ticket scanning that decides entry at the event door and writes the durable admission record — distinct from the read-only Scanner section, which must never check anyone in |
+| [Gate](../src/Sections/Humans.Gate/Docs/Gate.md) | Gate ticket scanning that decides entry at the event door and writes the durable admission record — distinct from the read-only Scanner section, which must never check anyone in |
 | [Google Integration](sections/GoogleIntegration.md) | Shared-Drive-only sync for Drive folders, Groups, and Workspace accounts with reconciliation and Drive-activity monitoring |
 | [Governance](sections/Governance.md) | Colaborador and Asociado tier applications, Board voting workflow, and term lifecycle (not volunteer onboarding) |
 | [Guide](sections/Guide.md) | The in-app `/Guide` renderer for `docs/guide/` markdown with role-scoped block filtering |

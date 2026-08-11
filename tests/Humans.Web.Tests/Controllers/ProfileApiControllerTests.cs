@@ -9,6 +9,7 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Controllers;
 using NodaTime;
+using Humans.UI.Models;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;

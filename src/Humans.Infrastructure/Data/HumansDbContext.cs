@@ -61,7 +61,6 @@ internal sealed class HumansDbContext(DbContextOptions<HumansDbContext> options)
         typeof(Configurations.CityPlanning.CampPolygonConfiguration).Namespace!,
         typeof(Configurations.Budget.BudgetYearConfiguration).Namespace!,
         typeof(Configurations.Camps.CampConfiguration).Namespace!,
-        typeof(Configurations.Gate.GateScanEventConfiguration).Namespace!,
         typeof(Configurations.Legal.LegalDocumentConfiguration).Namespace!,
         typeof(Configurations.AuditLog.AuditLogEntryConfiguration).Namespace!,
         typeof(Configurations.Shifts.RotaConfiguration).Namespace!,

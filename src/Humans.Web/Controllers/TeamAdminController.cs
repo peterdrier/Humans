@@ -9,6 +9,8 @@ using Humans.Web.Authorization;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Extensions;
+using Humans.UI.Extensions;
+using Humans.UI.Models;
 using Humans.Web.Models;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Teams;

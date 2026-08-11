@@ -45,7 +45,6 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddEarlyEntrySection();
         services.AddCalendarSection();
         services.AddTicketsSection();
-        services.AddGateSection();
         services.AddFeedbackSection();
         services.AddIssuesSection();
         services.AddNotificationsSection();
@@ -66,6 +65,8 @@ public static class InfrastructureServiceCollectionExtensions
         // type and there is no ISection-style discovery seam for jobs yet (design §15.6b);
         // each reaches its section through that section's contracts leaf.
         services.AddScoped<SendSurveyReminderJob>();
+        services.AddScoped<GateRetentionJob>();
+        services.AddScoped<GateVendorCheckInJob>();
 
         // Shell-resident collaborators of sections that have already moved out. AgentPreloadAugmentor
         // builds the access matrix, glossaries, route map and FAQ blocks of the agent's preload

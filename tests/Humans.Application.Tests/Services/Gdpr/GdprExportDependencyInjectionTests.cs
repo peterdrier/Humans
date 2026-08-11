@@ -19,7 +19,6 @@ using ShiftSignupService = Humans.Application.Services.Shifts.ShiftSignupService
 using TicketsTicketQueryService = Humans.Application.Services.Tickets.TicketQueryService;
 using NotificationInboxService = Humans.Application.Services.Notifications.NotificationInboxService;
 using TeamService = Humans.Application.Services.Teams.TeamService;
-using GateService = Humans.Application.Services.Gate.GateService;
 
 namespace Humans.Application.Tests.Services.Gdpr;
 
@@ -89,7 +88,7 @@ public class GdprExportDependencyInjectionTests
         SectionType("Humans.Expenses.Services.ExpenseReportService"),
         SectionType("Humans.Finance.Services.Service"),
         SectionType("Humans.Surveys.Services.SurveyService"),
-        typeof(GateService)
+        SectionType("Humans.Gate.Services.GateService")
     ];
 
     /// <summary>

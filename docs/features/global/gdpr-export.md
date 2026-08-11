@@ -24,7 +24,7 @@
   src/Humans.Application/Services/Issues/IssuesService.cs
   src/Sections/Humans.Expenses/Services/ExpenseReportService.cs
   src/Sections/Humans.Finance/Services/Service.cs
-  src/Humans.Application/Services/Gate/GateService.cs
+  src/Sections/Humans.Gate/Services/GateService.cs
 -->
 <!-- freshness:flag-on-change
   Contributor list, JSON section names/shapes, or fan-out orchestration may have shifted; per-section table must stay in sync with each contributor's slice.

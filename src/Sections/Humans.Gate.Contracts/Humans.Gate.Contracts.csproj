@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Gate's cross-section surface, carved into its own leaf project because its one consumer
+    is in Base: GateRetentionJob (Humans.Infrastructure/Jobs) — recurring jobs are named by
+    concrete type in Shell's UseHumansRecurringJobs roll-call and there is no ISection-style
+    discovery seam for them yet (design §15.6b), so the job stays in Base and reaches the
+    section through IGateScanRetention. A Contracts/ *folder* inside Humans.Gate would
+    therefore make Base reference a section and cycle (design §15.5b,
+    memory/architecture/section-project-cycle-fix.md).
+
+    GateVendorCheckInJob also stays in Base but needs nothing from here: it takes
+    ITicketVendorService and a vendor ticket id, no Gate type in its signature.
+
+    References Humans.Interfaces only — the bottom of the graph.
+  -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NodaTime" />
+  </ItemGroup>
+
+</Project>

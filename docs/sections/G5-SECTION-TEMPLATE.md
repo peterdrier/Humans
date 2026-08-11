@@ -7,7 +7,8 @@ The recipe for moving one section into its own project under `src/Sections/`
 SystemSettings + EventGuide (peterdrier/Humans#1235, A1), Containers + Finance
 (peterdrier/Humans#1239, A2), Expenses (peterdrier/Humans#1240, A3), Surveys
 (peterdrier/Humans#1251, A4), Agent (A4b — the first section with static assets, migrations
-and a contracts leaf all at once). Step numbers match the former §15, so an old "§15 step 3b"
+and a contracts leaf all at once), Gate (the first with no resource set, the first to take a
+layout with it, and the first to hit a Shell-resident view component). Step numbers match the former §15, so an old "§15 step 3b"
 citation reads as "step 3b" here.
 
 **Where this template and `src/Sections/` disagree, the code is right.** Deviations are the
@@ -104,7 +105,15 @@ Git Bash.)
 3. [ ] **Write `Views/_ViewImports.cshtml` in the same commit as the views.** Start from the
    shipped Store example (spec §2) but derive the `@using` list from the section's own folders.
    Omitting a line — or one `@addTagHelper` — ships broken HTML with a green build.
-3b. [ ] Carve the section's `.resx`: the `<Section>_*` and `Enum_<Section>*` keys move out of
+3b. [ ] **First ask whether the section has any keys at all.** A section whose views carry no
+   `Localizer[…]` call and no `<Section>_*` key in `SharedResource` ships **no `Resources/`
+   folder and no `<Section>Resource`** — `SectionResourceTypes()` simply returns one fewer
+   marker and the boot diagnostic is happy (proven both ways: Finance and Gate ship none; the
+   `GateLogin_*` keys that look like Gate's belong to Shell's `/Account/GateLogin` page and stay).
+   Assert it structurally instead: *no* type in the section may take `IStringLocalizer<T>` for
+   any `T` (`GateArchitectureTests.SectionTypesTakeNoStringLocalizer`), so the day someone adds
+   copy the build tells them to carve a resource set first. Skip the rest of this step.
+   Otherwise: carve the section's `.resx` — the `<Section>_*` and `Enum_<Section>*` keys move out of
    `Humans.UI`'s set into `Resources/<Section>Resource.{resx,es,ca,de,fr,it}` beside a
    `<Section>Resource.cs` in the section's namespace. The `.cs` and `.resx` must sit in the same
    folder, and the `.cs` namespace determines the manifest prefix (spec §3) — get it wrong and
@@ -252,11 +261,37 @@ Git Bash.)
      the same shape as `ApiControllerBase` which already lives in `Humans.UI`. Move the base,
      leave the per-section subclass + settings type with each section, and expect four more
      sections (Feedback, Issues, Log, Agent) to take theirs on the way out (proven: Surveys).
+   - **The same rule catches a Shell-resident *view component*, and that one fails at runtime,
+     not at build.** A section's `Views/_ViewImports.cshtml` can only `@addTagHelper *,
+     Humans.UI` — it cannot name `Humans.Web` — so any `<vc:…>` whose component class lives in
+     Shell renders as **inert literal markup**: green build, 200 response, element silently
+     dropped by the browser. Grep the moved views for `<vc:` and check where each component
+     actually lives before writing `_ViewImports`. `<vc:human>` was already in `Humans.UI`;
+     `<vc:human-search>` was not, and moving it (component + `HumanSearchPickerViewModel` +
+     `HumanSearchScope` + `Views/Shared/Components/HumanSearch/Default.cshtml`) is what made
+     Gate's `Claim` and `Admin` pages render. `Humans.UI/Views/_ViewImports.cshtml` needs the
+     matching `@using` for the moved model. Same test as the filter base: the picker names no
+     section's vocabulary. Caught by the step 12 render test, never by the build (proven: Gate).
+   - **A Shell-only *helper* a moved controller calls moves the same way.** Gate's `/Gate/Search`
+     used `Humans.Web.Models.HumanLookupSearchResult` and
+     `SearchResultMappingExtensions.OrderByRelevance` — a JSON row shape and the canonical
+     person-search ordering, both section-neutral and both used by three other Shell controllers.
+     They went to `Humans.UI/Models` and `Humans.UI/Extensions`; inlining the ordering into the
+     section would have forked a rule the codebase documents as having one owner (proven: Gate).
    - **Do this on paper *before* step 5b.** Moving the handler is often what takes the read
      surface's fan-in to zero. Expenses' fan-in read as "`IExpenseReportServiceRead`'s only
      outside consumer is Shell's `IbanAccessHandler`", which would have made six types public to
      serve one handler — a handler that this step moves into the section anyway (proven:
      Expenses; its `Contracts` project ended up one interface wide).
+6a. [ ] **A section's in-memory state holders go under `Services/Stores/`, not `Services/`.**
+   `ApplicationServicesTakeNoMemoryCacheRule` sweeps every namespace matching `Humans.*.Services`
+   — widened at Expenses so a moved section cannot fall out of it — so a throttle bucket or a
+   sent-ledger that was fine in `Humans.Web/Infrastructure` becomes a violation the moment it
+   lands in `Humans.<Section>.Services`. Agent's `Services/Stores/` is the shape and the sweep's
+   predicate does not match it, which is the honest classification rather than a dodge: these
+   types *are* the cache, where the rule is about a service that has acquired one. Gate's
+   `GatePinThrottle` and `GateVendorMirrorLedger` moved there (proven: Gate).
+
 6b. [ ] Recurring Hangfire jobs stay in `Humans.Infrastructure/Jobs` for now: there is no
    `ISection`-style discovery seam for jobs, and a section-owned job would have to be `public` —
    the one thing step 5 exists to prevent. **Health checks are the same shape** —
@@ -275,7 +310,11 @@ Git Bash.)
      before writing the contract for what it currently *takes* (proven: Agent, A4b).
 7. [ ] `wwwroot/` assets move with the section; URLs become `/_content/Humans.<Section>/…` in the
    same PR. Only Shell's own chrome assets stay in Shell. **Proven: Agent (A4b), the first
-   section to move any.** What A4 predicted was right, and the fix is one line — in the *test
+   section to move any; and Gate, which also proved a section may take a *layout* with it —
+   `_GateLayout` moved from `Humans.UI/Views/Shared` into the section's own `Views/Shared`, and
+   the kiosk `_ViewStart`'s `Layout = "_GateLayout"` string still resolves across application
+   parts. A layout miss throws at request time rather than degrading, so one render test per
+   layout is enough.** What A4 predicted was right, and the fix is one line — in the *test
    host*, not in the section.
    - **The move itself is nothing.** `git mv` the files under the section's `wwwroot/`, rewrite
      every `~/css/x.css` to `~/_content/Humans.<Section>/css/x.css`, done. Rewrite the
@@ -308,7 +347,15 @@ Git Bash.)
      `AgentPageRenderTests` has one of each, and the pre/post HTML capture confirmed the only
      difference across every page in English and Spanish was the URL prefix — the `?v=` hashes
      were byte-identical before and after the move.
-7b. [ ] The section's docs move into `Docs/` — invariants doc, feature doc, its own design specs;
+7b. [ ] The section's **invariants doc** moves into `Docs/` along with its own design specs;
+   **its `docs/features/*.md` spec does not.** `AgentFeatureSpecReader` lists and fetches
+   `docs/features/{stem}.md` from GitHub at runtime with **no whitelist** — the stem set is the
+   folder listing — so moving a feature doc silently removes it from what the agent can serve,
+   with no probe and no fallback (contrast `AgentSectionDocReader`, which probes
+   `src/Sections/Humans.{key}/Docs/{key}.md` second and is why the *invariants* doc may move).
+   Rewrite the feature doc's own `freshness:triggers` to `src/Sections/Humans.<Section>/**` and
+   leave the file where it is (proven: Gate, whose `gate-admissions.md` stayed).
+   Also:
    disambiguate filenames that collide case-insensitively. Fix inbound links (`docs/README.md`,
    `data-model.md`, **both** `docs/sections/_Index.md` rows, any `memory/` atom citing them, the
    `freshness-catalog.yml` globs if the section has an entry) and **rewrite the moved doc's own
@@ -390,6 +437,12 @@ Git Bash.)
       `ProductionAssemblies` set of the four literal Base names. Fixed with
       `AssemblyScope.IsProduction`; widening produced zero new findings, so the cost of being
       wrong here is nothing and the cost of skipping it is silent.
+    - **Move the section's `AddSectionDbContext<…>` line out of
+      `Humans.Infrastructure/Hosting/InfrastructureServiceCollectionExtensions.cs` into
+      `Section.Register`, sentinel table included.** Leaving it behind is a compile error the
+      moment the context leaves Base, and copying the *wrong* sentinel into `Section.cs` is a
+      silent baseline-detection change — read the line you are deleting rather than guessing
+      (Gate's is `gate_settings`, not the obvious `gate_scan_events`).
     - **Delete the section's row from `HumansDbContext.PeeledConfigurationNamespaces`.** The
       array names each peeled section's configuration namespace by `typeof(...)`, so the row
       stops compiling the moment the configurations leave `Humans.Infrastructure` — self-

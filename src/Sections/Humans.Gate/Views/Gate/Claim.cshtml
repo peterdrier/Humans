@@ -1,0 +1,35 @@
+@model GateClaimViewModel
+@{
+    ViewData["Title"] = "Who is scanning?";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="@Url.Content("~/_content/Humans.Gate/css/gate/gate.css")" asp-append-version="true" />
+}
+
+<h1>Who is scanning?</h1>
+<p class="text-muted">Tap your name, or search below. Every scan is recorded against you.</p>
+
+@if (Model.Roster.Count > 0)
+{
+    <h2 class="h5 mt-3">On the gate roster</h2>
+    <form method="post" asp-action="Claim" class="gate-roster">
+        @foreach (var member in Model.Roster)
+        {
+            <button type="submit" name="userId" value="@member.UserId" class="gate-roster-pick">
+                @member.DisplayName
+            </button>
+        }
+    </form>
+    <p class="text-muted mt-2">Not on the roster? Search for anyone below.</p>
+}
+
+<form method="post" asp-action="Claim" style="max-width: 480px;">
+    <div class="mb-3">
+        @* The kiosk is route-locked away from /api/profiles/search, so the picker resolves
+           names through the Gate-scoped /Gate/Search (names only). *@
+        <vc:human-search field-name="userId" scope="Name" ticket-lookup-url="/Gate/Search"
+                         placeholder="Search your name" />
+    </div>
+    <button type="submit" class="btn btn-primary btn-lg">Start scanning</button>
+</form>

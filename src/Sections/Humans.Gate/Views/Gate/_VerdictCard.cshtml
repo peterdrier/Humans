@@ -1,0 +1,79 @@
+@model GateScanCardViewModel
+
+<div class="gate-card gate-@Model.Kind.ToString().ToLowerInvariant()" data-kind="@Model.Kind" role="status" aria-live="assertive">
+    <div class="gate-icon" aria-hidden="true">
+        @if (Model.Kind == GateCardKind.Admit)
+        {
+            <i class="fa-solid fa-circle-check"></i>
+        }
+        else if (Model.Kind == GateCardKind.Stop)
+        {
+            <i class="fa-solid fa-octagon-xmark"></i>
+        }
+        else if (Model.Kind == GateCardKind.Amber)
+        {
+            <i class="fa-solid fa-user-shield"></i>
+        }
+        else
+        {
+            <i class="fa-solid fa-id-card"></i>
+        }
+    </div>
+
+    <div class="gate-word">@Model.Headline</div>
+
+    @if (!string.IsNullOrEmpty(Model.GuestName))
+    {
+        <div class="gate-name">@Model.GuestName</div>
+    }
+
+    @if (Model.IsEarly)
+    {
+        <div class="gate-badge"><i class="fa-solid fa-sun me-1" aria-hidden="true"></i>Early entry</div>
+    }
+
+    @if (!string.IsNullOrEmpty(Model.Reason))
+    {
+        <div class="gate-reason">@Model.Reason</div>
+    }
+
+    @* Imperative next step for a refusal — a 2-minute-trained volunteer needs to be told what to DO,
+       and where to escalate if the guest disputes it, not just the diagnosis. *@
+    @if (Model.Kind == GateCardKind.Stop)
+    {
+        <div class="gate-action">Do not admit · if the guest disputes it, get the gate lead</div>
+    }
+
+    @if (Model.Kind == GateCardKind.IdConfirm)
+    {
+        <div class="gate-decide" data-barcode="@Model.Barcode">
+            <div class="gate-yesno">
+                <button type="button" class="gate-btn gate-no" data-confirm="false">
+                    <i class="fa-solid fa-xmark" aria-hidden="true"></i> No — turn away
+                </button>
+                <button type="button" class="gate-btn gate-yes" data-confirm="true">
+                    <i class="fa-solid fa-check" aria-hidden="true"></i> Yes — admit
+                </button>
+            </div>
+            @if (Model.AllowChildWithAdult)
+            {
+                <button type="button" class="gate-btn gate-child" data-child="true">
+                    Child — with adult
+                </button>
+            }
+            @* Scanned the wrong code (caught a neighbouring ticket)? Bail back to Ready and rescan. *@
+            <button type="button" class="gate-btn gate-cancel-scan" data-cancel-scan>
+                <i class="fa-solid fa-rotate-left" aria-hidden="true"></i> Wrong ticket — scan again
+            </button>
+        </div>
+    }
+
+    @* Too-early scans carry an override affordance; tapping it opens the override panel, where a
+       single confirm tap admits (no PIN, no supervisor pick). *@
+    @if (Model.AllowSupervisorOverride)
+    {
+        <button type="button" class="gate-btn gate-override-btn" data-override="early" data-barcode="@Model.Barcode">
+            <i class="fa-solid fa-user-shield" aria-hidden="true"></i> Override — admit
+        </button>
+    }
+</div>

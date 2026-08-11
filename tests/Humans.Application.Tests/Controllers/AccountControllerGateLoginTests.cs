@@ -223,7 +223,8 @@ public class AccountControllerGateLoginTests
         var result = await _controller.GateLogin(SystemUserIds.GateTerminalLoginName, "correct");
 
         var redirect = result.Should().BeOfType<RedirectToActionResult>().Subject;
-        redirect.ActionName.Should().Be(nameof(GateController.Index));
+        // "Index" as a literal: GateController is internal to Humans.Gate since its G5 move.
+        redirect.ActionName.Should().Be("Index");
         redirect.ControllerName.Should().Be("Gate");
 
         // Persistent session so the laptop survives restarts without an admin.

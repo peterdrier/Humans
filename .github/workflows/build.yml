@@ -46,7 +46,7 @@ env:
     CityPlanningDbContext:src/Humans.Infrastructure
     BudgetDbContext:src/Humans.Infrastructure
     CampsDbContext:src/Humans.Infrastructure
-    GateDbContext:src/Humans.Infrastructure
+    GateDbContext:src/Sections/Humans.Gate
     SystemDbContext:src/Humans.Infrastructure
     LegalDbContext:src/Humans.Infrastructure
     AuditLogDbContext:src/Humans.Infrastructure

@@ -83,11 +83,11 @@ if (!builder.Environment.IsProduction())
 }
 
 // All environments: gate-terminal account management (provisioned from /Tickets/Admin/Gate)
-// + the per-source-IP sign-in failure throttle for /Account/GateLogin.
+// + the per-source-IP sign-in failure throttle for /Account/GateLogin. Both are Shell's:
+// the terminal's Identity account and the /Account/GateLogin page belong to Auth, not to
+// the Gate section (whose own PIN throttle and mirror ledger moved with it at G5).
 builder.Services.AddScoped<GateTerminalAccountSeeder>();
 builder.Services.AddSingleton<GateLoginThrottle>();
-builder.Services.AddSingleton<GatePinThrottle>();
-builder.Services.AddSingleton<GateVendorMirrorLedger>();
 
 builder.Services.ConfigureHttpJsonOptions(options =>
 {

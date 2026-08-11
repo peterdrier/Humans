@@ -1,19 +1,10 @@
 <!-- freshness:triggers
-  src/Humans.Web/Controllers/GateController.cs
-  src/Humans.Web/Views/Gate/**
-  src/Humans.Web/wwwroot/js/gate/**
-  src/Humans.Web/wwwroot/css/gate/**
-  src/Humans.Application/Services/Gate/**
-  src/Humans.Application/Interfaces/Gate/**
-  src/Humans.Domain/Entities/GateScanEvent.cs
-  src/Humans.Domain/Entities/GateSettings.cs
-  src/Humans.Web/Infrastructure/GatePinThrottle.cs
-  src/Humans.Infrastructure/Repositories/Gate/**
+  src/Sections/Humans.Gate/**
   src/Humans.Infrastructure/Jobs/GateRetentionJob.cs
   src/Humans.Infrastructure/Jobs/GateVendorCheckInJob.cs
 -->
 <!-- freshness:flag-on-change
-  Historical design draft for the Gate section — docs/sections/Gate.md is the authoritative
+  Historical design draft for the Gate section — src/Sections/Humans.Gate/Docs/Gate.md is the authoritative
   current-state doc. Review the Status note and the "resolved" annotations when Gate services,
   entities, controller, or jobs change materially.
 -->
@@ -23,7 +14,7 @@
 > Status: **SHIPPED** (peterdrier#1066 plus follow-ups) — this design draft is kept for the
 > rationale. The posture change and the new public surface were signed off by Peter
 > (attendance-gateway posture 2026-07-02). The authoritative current-state doc is
-> [`docs/sections/Gate.md`](../sections/Gate.md); where this draft and shipped behaviour
+> [`Gate.md`](../../src/Sections/Humans.Gate/Docs/Gate.md); where this draft and shipped behaviour
 > disagree, that doc wins. Notable post-draft changes: personal staff/supervisor PINs were
 > shipped, then disabled (peterdrier#1075) in favour of a shared override PIN
 > (`Gate:SupervisorPin`, peterdrier#1079); scans attribute to the shared gate account (no

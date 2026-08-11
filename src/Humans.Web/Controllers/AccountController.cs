@@ -318,7 +318,10 @@ public class AccountController(
 
         // Land the kiosk on the new gate terminal (which redirects to the claim screen
         // to pick who's scanning), not the old read-only Scanner section.
-        return RedirectToAction(nameof(GateController.Index), "Gate");
+        // GateController is internal to Humans.Gate since its G5 move, so the action name is
+        // a literal here rather than a nameof. Guarded by AdminNavTreeRoutingTests' sibling
+        // route sweep — a rename on either side fails a routed-endpoint assertion, not the build.
+        return RedirectToAction("Index", "Gate");
     }
 
     // --- Standard Auth ---

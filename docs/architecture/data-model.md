@@ -44,7 +44,7 @@ This file is the **index and cross-cutting rule sheet** for the data model. Per-
 | EmailOutboxMessage | [Email](../sections/Email.md) | |
 | Campaign / CampaignCode / CampaignGrant | [Campaigns](../sections/Campaigns.md) | |
 | TicketOrder / TicketAttendee / TicketSyncState / TicketTransferRequest | [Tickets](../sections/Tickets.md) | |
-| GateScanEvent / GateSettings / GateStaffPin | [Gate](../sections/Gate.md) | `GateScanEvent` is the append-only gate admission log (retention-purged by `GateRetentionJob`; user ids re-pointed on merge). Cross-section refs (`ScannedByUserId`, `GuestUserId`, `OverrideByUserId`, `TicketAttendeeId`, `GateStaffPin.UserId`) are bare Guid columns — no navs, no cross-section EF FK constraints. |
+| GateScanEvent / GateSettings / GateStaffPin | [Gate](../../src/Sections/Humans.Gate/Docs/Gate.md) | `GateScanEvent` is the append-only gate admission log (retention-purged by `GateRetentionJob`; user ids re-pointed on merge). Cross-section refs (`ScannedByUserId`, `GuestUserId`, `OverrideByUserId`, `TicketAttendeeId`, `GateStaffPin.UserId`) are bare Guid columns — no navs, no cross-section EF FK constraints. |
 | EventSettings / Rota / Shift / ShiftSignup / GeneralAvailability / VolunteerEventProfile / VolunteerBuildStatus / ShiftTag / VolunteerTagPreference | [Shifts](../sections/Shifts.md) | |
 | Event / EventCategory / EventVenue / EventGuideSettings / EventModerationAction / EventFavourite / EventPreference | [Events](../../src/Sections/Humans.Events/Docs/Events.md) | Event Guide submissions, moderation, categories, shared venues, per-user favourites/preferences. `EventModerationAction` append-only (§12 — Restrict on delete). |
 | FeedbackReport / FeedbackMessage | [Feedback](../sections/Feedback.md) | |

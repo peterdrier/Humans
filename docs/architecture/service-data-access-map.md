@@ -1757,7 +1757,8 @@ no DI dependencies.
 
 ## Gate
 
-Folder: `src/Humans.Application/Services/Gate/`. **DbContext:**
+Folder: `src/Sections/Humans.Gate/` (its own project since
+nobodies-collective/Humans#866 G5). **DbContext:**
 `GateDbContext` — **peeled** (nobodies-collective/Humans#1244, the last
 section peeled in #858). `GateRepository` injects
 `IDbContextFactory<GateDbContext>` directly. Owns `gate_scan_events`,
@@ -1770,7 +1771,7 @@ check-in mirror back to TicketTailor.
 > **Change since prior sweep (#1244):** `GateDbContext` now declares real
 > `DbSet<GateScanEvent>` / `DbSet<GateSettings>` / `DbSet<GateStaffPin>`
 > properties (table names still come from the `IEntityTypeConfiguration`
-> classes under `src/Humans.Infrastructure/Data/Configurations/Gate/`,
+> classes under `src/Sections/Humans.Gate/Data/Configurations/`,
 > `ToTable("gate_…")`) — previously these entities had no `DbSet<>` at all
 > and were reached only via `ctx.Set<T>()` on the shared `HumansDbContext`.
 > `GateRepository` still accesses them via `ctx.Set<T>()` and remains a

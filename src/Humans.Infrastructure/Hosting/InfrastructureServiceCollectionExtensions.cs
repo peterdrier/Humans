@@ -57,7 +57,6 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSectionDbContext<CityPlanningDbContext>(sentinelTable: "city_planning_settings");
         services.AddSectionDbContext<BudgetDbContext>(sentinelTable: "budget_years");
         services.AddSectionDbContext<CampsDbContext>(sentinelTable: "camps");
-        services.AddSectionDbContext<GateDbContext>(sentinelTable: "gate_settings");
         services.AddSectionDbContext<SystemDbContext>(sentinelTable: "DataProtectionKeys");
         services.AddSectionDbContext<LegalDbContext>(sentinelTable: "legal_documents");
         services.AddSectionDbContext<AuditLogDbContext>(sentinelTable: "audit_log");

@@ -1,0 +1,57 @@
+@model GateSettingsViewModel
+@{
+    ViewData["Title"] = "Gate settings";
+    // Admin desktop task (set the cutoff before doors) — keep the normal admin chrome,
+    // not the chromeless gate kiosk layout that the tablet-facing views use.
+    Layout = "_AdminLayout";
+}
+
+<h1>Gate settings</h1>
+
+<form method="post" asp-action="Admin" style="max-width: 540px;">
+    <div class="mb-3">
+        <label class="form-label" asp-for="GeneralEntryOpensAtUtc">General entry opens at (UTC, ISO instant)</label>
+        <input class="form-control" asp-for="GeneralEntryOpensAtUtc" placeholder="2026-07-06T10:00:00Z" />
+        <div class="form-text">
+            Before this instant only Early Entry holders are admitted; at or after it, every valid
+            ticket is admissible. Example: <code>2026-07-06T10:00:00Z</code> is noon in Madrid (CEST).
+        </div>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label" asp-for="MinorAgeThresholdYears">Minor age threshold (no photo ID required under)</label>
+        <input class="form-control" type="number" min="0" max="21" asp-for="MinorAgeThresholdYears" style="max-width: 8rem;" />
+    </div>
+
+    <button type="submit" class="btn btn-primary">Save settings</button>
+</form>
+
+<hr class="my-4" />
+
+<h2 class="h4">Staff PINs</h2>
+<p class="text-muted" style="max-width: 540px;">
+    Each staffer sets their own 4-digit PIN the first time they claim the gate. <strong>Supervisors</strong>
+    (Admin / Board / Ticket Admin) can't self-enrol — their PIN carries override authority, so enrol it here.
+    Resetting a PIN clears it; that person sets a new one on their next claim.
+</p>
+
+<form method="post" asp-action="SetStaffPin" style="max-width: 540px;" class="mb-3">
+    <label class="form-label">Enrol or change a PIN</label>
+    <div class="d-flex gap-2 align-items-start mb-2">
+        <vc:human-search field-name="userId" instance-key="setpin" scope="Name" allow-email="true"
+                         placeholder="Search a person" />
+        <input class="form-control" type="text" name="pin" inputmode="numeric" pattern="[0-9]*"
+               maxlength="4" placeholder="4-digit PIN" style="max-width: 9rem;" autocomplete="off" />
+        <button type="submit" class="btn btn-primary text-nowrap">Set PIN</button>
+    </div>
+    <div class="form-text">4 digits, and not trivially guessable (no 1234, 0000, or repeats).</div>
+</form>
+
+<form method="post" asp-action="ResetStaffPin" style="max-width: 540px;">
+    <label class="form-label">Reset a PIN</label>
+    <div class="d-flex gap-2 align-items-start">
+        <vc:human-search field-name="userId" instance-key="resetpin" scope="Name" allow-email="true"
+                         placeholder="Search a person" />
+        <button type="submit" class="btn btn-outline-danger text-nowrap">Reset PIN</button>
+    </div>
+</form>

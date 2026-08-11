@@ -46,7 +46,7 @@ public class ServiceBoundaryArchitectureTests
             [typeof(IEmailOutboxRepository)] = "Email",
             [SectionRepository("Humans.Expenses.Data.IExpenseRepository")] = "Expenses",
             [typeof(IFeedbackRepository)] = "Feedback",
-            [typeof(IGateRepository)] = "Gate",
+            [SectionRepository("Humans.Gate.Data.IGateRepository")] = "Gate",
             [typeof(IGoogleResourceRepository)] = "GoogleIntegration",
             [typeof(IGoogleSyncOutboxRepository)] = "GoogleIntegration",
             [SectionRepository("Humans.Finance.Data.IHoldedRepository")] = "Finance",

@@ -26,6 +26,7 @@
     -->
     <ProjectReference Include="..\Sections\Humans.Agent.Contracts\Humans.Agent.Contracts.csproj" />
     <ProjectReference Include="..\Sections\Humans.Expenses.Contracts\Humans.Expenses.Contracts.csproj" />
+    <ProjectReference Include="..\Sections\Humans.Gate.Contracts\Humans.Gate.Contracts.csproj" />
     <ProjectReference Include="..\Sections\Humans.Surveys.Contracts\Humans.Surveys.Contracts.csproj" />
   </ItemGroup>
 
