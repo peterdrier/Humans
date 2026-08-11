@@ -175,10 +175,13 @@ public sealed class HoldedClient : IHoldedClient
     {
         const int pageSafetyCap = 200;
         var items = await GetPagedAsync("/api/v2/purchases?approval_status=draft&limit=200", pageSafetyCap, ct);
+        // A draft without an id cannot be dropped: MapDoc marks any doc absent from this set
+        // as approved, so an incomplete set silently feeds a draft into the budget actuals.
         return items
-            .Select(n => Prop(n, "id")?.GetValue<string>())
-            .Where(id => !string.IsNullOrEmpty(id))
-            .Select(id => id!)
+            .Select(n => Prop(n, "id")?.GetValue<string>() is { Length: > 0 } id
+                ? id
+                : throw new HoldedPermanentException(
+                    "Holded item is missing required field 'id' — refusing the page."))
             .ToHashSet(StringComparer.Ordinal);
     }
 
