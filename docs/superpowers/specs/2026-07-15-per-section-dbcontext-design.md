@@ -535,10 +535,14 @@ intact") is what the deletion overturns. The failure mode is silent: `SectionMig
 records a section baseline as applied *without executing it* when the sentinel table is present, so
 a DB that has a section's sentinel but is missing a table or column added by a later root migration
 never acquires that schema once the chain is gone — and nothing reports it. **Precondition for the
-deletion PR: every live database — prod, QA, every preview clone, and dev — verified at the root
-chain tip first.** Preview DBs clone QA so QA covers them; dev boxes are the loose end, and a dev DB
-found behind gets dropped and recreated rather than caught up. Verify with `/Debug/DbVersion` before
-it is repointed, not after.
+deletion PR: every live database — prod, QA, every open PR's preview clone, and every dev box —
+verified at the root chain tip first**, with `/Debug/DbVersion` before it is repointed, not after.
+
+Preview DBs need checking one by one; QA does **not** cover them. `.github/workflows/preview-db.yml`
+clones from QA on `opened`/`reopened` only (its `if:` guard, line 9), never on later pushes, so a
+preview created weeks earlier sits at whatever QA looked like then and drifts independently.
+Cheapest remedy for any preview or dev DB found behind: drop and recreate rather than catch up —
+close/reopen the PR re-clones it.
 
 Three things the delete has to clear:
 
@@ -552,6 +556,11 @@ Three things the delete has to clear:
    (2026-08-12): drop it, in its own PR once QA and prod are both live on `UsersDbContext` and
    `HumansDbContext` is gone** — same sequencing shape as `no-drops-until-prod-verified`. The peel
    PR itself leaves the table inert. The §13 Q2 orphan row dies with the table.
+   **That drop is the point of no return for §12's rollback story**, which is why it is sequenced
+   last and separately: while the table survives, reverting peel 15 restores `HumansDbContext` and
+   it reads its history normally. Once dropped, a revert leaves EF treating the whole root chain as
+   pending, and the initial migrations collide with tables that already exist. Do not run the drop
+   PR until peel 15 is settled in prod and you would not revert it.
 3. **References to the name, in C# *and* build wiring.** 159 `.cs` files outside `Migrations/` name
    `HumansDbContext`; most are XML doc comments on repository interfaces and analyzer diagnostic
    descriptions, but the load-bearing ones are the `UserStore<…, HumansDbContext, …>` Identity
@@ -591,6 +600,18 @@ dotnet ef migrations has-pending-model-changes --context <C> ...   # per context
 A `memory/process/ef-multi-context-commands.md` atom ships with peel 1 (the PR that makes
 `--context` mandatory), updating `INDEX.md` in the same commit.
 
+**After peel 15 (§10.3) there is no main pile.** `HumansDbContext` no longer exists, so the first
+command above fails with an unknown-context error; Users/Profiles is a section like any other and
+takes the section form:
+
+```bash
+dotnet ef migrations add <Name> --context UsersDbContext --output-dir Migrations/Users \
+  --project src/Humans.Infrastructure --startup-project src/Humans.Web
+```
+
+The `ef-multi-context-commands` atom and `build.yml`'s `MAIN_DB_CONTEXT` (§10.3 item 3) update in
+the same PR that deletes the context.
+
 ## 12. Rollback story
 
 Rollback of a peel = **revert the PR** (code-only: context, baseline files, DI, repo constructors,
@@ -600,6 +621,12 @@ baseline is gone by design: the baseline's `Down()` would drop the section's tab
 acceptable on a shared DB — exactly why the fake-applied path exists on the way in and why there is
 deliberately no symmetric path out. Physical schema is untouched by the entire stack, so no
 rollback scenario involves data.
+
+**This holds through peel 15 and ends at the history drop** (§10.3 item 2). Peel 15 itself is
+revertible on the same code-only terms — `HumansDbContext` comes back and reads `__EFMigrationsHistory`
+as before. The separate drop PR is what closes the path: without the history table EF sees the
+entire root chain as pending and the initial migrations collide with existing tables. Sequence the
+drop accordingly.
 
 ## 13. Open questions for Peter
 
