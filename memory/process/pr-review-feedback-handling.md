@@ -3,6 +3,13 @@ name: PR review feedback — fetch from both repos, reply per-thread, resolve wh
 description: When handling PR review feedback (Codex, Claude, human reviewers), fetch comments from BOTH repos via the inline-comments API, reply in each finding's own thread, resolve threads when Peter-authorized declines, react 👍/👎 on every Codex finding, never ping `@codex review` to re-trigger.
 ---
 
+<!-- freshness:triggers
+  .github/workflows/claude-review.yml
+-->
+<!-- freshness:flag-on-change
+  Flag if the auto-review workflow's trigger changes from `synchronize` or the job is renamed/removed.
+-->
+
 When handling PR review feedback — Codex bot, Claude bot, or human inline review comments — these five rules fire together. They cover the full "find → triage → reply → close" loop.
 
 ## 1. Pull comments from BOTH repos, top-level AND inline

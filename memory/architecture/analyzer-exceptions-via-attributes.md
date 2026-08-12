@@ -4,6 +4,14 @@ description: Per-declaration `[Grandfathered("HUM####", ...)]` attributes (on th
 type: feedback
 ---
 
+<!-- freshness:triggers
+  src/Humans.Interfaces/Architecture/GrandfatheredAttribute.cs
+  Directory.Build.props
+-->
+<!-- freshness:flag-on-change
+  Flag if GrandfatheredAttribute's constructor shape changes or WarningsNotAsErrors wiring in Directory.Build.props is restructured.
+-->
+
 When an analyzer rule (HUMxxxx) needs to allow existing violators while still blocking new ones, the exception **lives as an attribute on the violating declaration itself** (class, interface, or — for method-level rules like HUM0031 — the method). Use `[Grandfathered(ruleId, justification, since, issueRef)]` from `Humans.Application.Architecture`. The analyzer detects the attribute and downgrades the diagnostic from Error to Warning for that declaration only.
 
 **Why:** Centralised lists conflict on every merge and pull cleanup attention away from the violating code. We've been bitten by this pattern enough times (analyzer-internal allowlists, baseline-text-files, surface-budget history blocks, `.editorconfig` per-file overrides) that the project's posture is now: **lists for this purpose are dead**.
