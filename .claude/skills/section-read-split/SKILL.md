@@ -18,7 +18,7 @@ Every cross-section-consumed service has a narrow read interface that returns on
 
 ## Input
 
-- `<SectionName>` — section to split (e.g., `Users`, `Camps`, `Calendar`). Resolves to `docs/sections/<SectionName>.md` + `src/Humans.Application/Interfaces/<SectionName>/I<SectionName>Service.cs`.
+- `<SectionName>` — section to split (e.g., `Users`, `Camps`, `Calendar`). Resolves to `docs/sections/<SectionName>.md` + the section's `I<SectionName>Service` interface — `src/Sections/Humans.<SectionName>/Services/I<SectionName>Service.cs` if the section has moved to its own project (nobodies-collective/Humans#866, G5), else `src/Humans.Application/Interfaces/<SectionName>/I<SectionName>Service.cs`.
 - `<empty>` — ask which section.
 
 ## Phase 0 — Pre-flight (in-session, before worktree)
@@ -27,9 +27,12 @@ Run sequentially. If any check fails or surfaces ambiguity, stop and ask the use
 
 ### 0.1 — Section is real and cross-section-consumed
 
+Check the G5 location first; fall back to legacy if it doesn't exist:
+
 ```
 test -f docs/sections/<Section>.md                 # invariant doc must exist
-test -f src/Humans.Application/Interfaces/<Section>/I<Section>Service.cs
+test -f src/Sections/Humans.<Section>/Services/I<Section>Service.cs \
+  || test -f src/Humans.Application/Interfaces/<Section>/I<Section>Service.cs
 ```
 
 Use the `reforge` skill to count external (non-section) callers of `I<Section>Service`:
@@ -41,7 +44,7 @@ Filter out callers inside the section's own folder tree (Application/Services/<S
 
 ### 0.2 — Section has an `*Info` projection
 
-Look for `<Section>Info` (or analogous DTO name) in `src/Humans.Application/Services/<Section>/Models/` or `src/Humans.Application/Models/<Section>/`. The architectural rule requires the read interface to return projections, never entities. If the section has no `*Info` type:
+Look for `<Section>Info` (or analogous DTO name) in `src/Sections/Humans.<Section>/Services/Models/` (G5) or, for a not-yet-moved section, `src/Humans.Application/Services/<Section>/Models/` / `src/Humans.Application/Models/<Section>/`. The architectural rule requires the read interface to return projections, never entities. If the section has no `*Info` type:
 
 - **Stop.** Tell the user the section needs a projection PR first (extract `<Section>Info` from the entity, populate via service, cache if applicable). Reference Teams' `TeamInfo` as the shape template. Do not attempt to invent the projection inside this PR — it's a separate concern with its own callsite migration.
 
@@ -152,7 +155,7 @@ Commit (or fold into B.2): `refactor(<section>): rename entity-returning <method
 
 #### B.2 — Create the read interface
 
-New file: `src/Humans.Application/Interfaces/<Section>/I<Section>ServiceRead.cs`
+New file: `src/Sections/Humans.<Section>/Services/I<Section>ServiceRead.cs` (G5) or `src/Humans.Application/Interfaces/<Section>/I<Section>ServiceRead.cs` (not yet moved) — same project as `I<Section>Service` from Phase 0.1.
 
 ```csharp
 namespace Humans.Application.Interfaces.<Section>;
@@ -181,7 +184,7 @@ public interface I<Section>ServiceRead
 
 #### B.5 — DI registration
 
-In the section's DI extension method (likely `src/Humans.Web/Extensions/Sections/<Section>SectionExtensions.cs`):
+In the section's DI registration — `src/Sections/Humans.<Section>/Section.cs` (`ISection.Register`, G5) or `src/Humans.Web/Extensions/Sections/<Section>SectionExtensions.cs` (not yet moved):
 
 ```csharp
 services.AddSingleton<Caching<Section>Service>();
@@ -211,7 +214,7 @@ Commit: `feat(<section>): introduce I<Section>ServiceRead boundary`
 grep -rnE 'I<Section>Service\b' --include='*.cs' src/ tests/ | grep -v 'I<Section>ServiceRead'
 ```
 
-For each file outside the section's own folder tree (exclude `src/Humans.Application/{Services,Interfaces}/<Section>/**`, `src/Humans.Infrastructure/{Services,Repositories}/<Section>/**`, `src/Humans.Web/Controllers/<Section>*Controller.cs`, the section's auth handlers, the section's ViewModels):
+For each file outside the section's own folder tree (exclude `src/Sections/Humans.<Section>/**` (G5) or `src/Humans.Application/{Services,Interfaces}/<Section>/**` + `src/Humans.Infrastructure/{Services,Repositories}/<Section>/**` (not yet moved), `src/Humans.Web/Controllers/<Section>*Controller.cs`, the section's auth handlers, the section's ViewModels):
 
 1. Read the file's actual `I<Section>Service` usages.
 2. If **every call** is to a method on `I<Section>ServiceRead`, swap the field/ctor parameter type from `I<Section>Service` → `I<Section>ServiceRead`. Update field name if it follows a `_section`/`section` convention.

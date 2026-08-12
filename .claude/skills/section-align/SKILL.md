@@ -26,6 +26,10 @@ A section is "aligned" when **all three axes hold**:
 
 **Camps is the reference.**
 
+## Section location resolution
+
+Sections progressively move into their own project at `src/Sections/Humans.<Section>/` (nobodies-collective/Humans#866, G5), owning `Services/`, `Data/` (its own DbContext + `Data/Migrations/`), and usually its own `tests/Humans.<Section>.Tests/` project. **Before applying any Axis 2 path reference in this skill, check whether `src/Sections/Humans.<Section>/` exists** — if so, that project's `Services/` and `Data/` are the section's home and everything below resolves relative to it (its own tests project, not `tests/Humans.Application.Tests/<Section>/`; its own DbContext, not `HumansDbContext`; `dotnet ef` commands need `--context <Section>DbContext --project src/Sections/Humans.<Section>`, see `memory/process/ef-multi-context-commands.md`). Otherwise fall back to the legacy paths (`src/Humans.Application/Services/<Section>/`, `src/Humans.Infrastructure/Repositories/<Section>/`) as written throughout.
+
 ## Boundary-fix protocol
 
 **Zero-tolerance rule:** the only allowed cross-section data link going forward is the **User ↔ Profile** relationship (identity row ↔ volunteer profile). Every other cross-section read or write is a violation, including patterns previously documented as "sanctioned exceptions" in section docs (narrow display lookups like `ctx.Users.Select(u => u.DisplayName)`, `ctx.Teams.Select(t => t.Name)`, etc.). "Sanctioned" is not a category in this skill.
@@ -182,7 +186,7 @@ git grep -nE '(IMemoryCache|MemoryCache|IDistributedCache|_cache\b)' src/Humans.
 
 Caching belongs in the service layer **only** per §15 — either via a `Caching<Section>Service` decorator (Singleton, dict-backed) or service-internal `IMemoryCache` for short-TTL request acceleration. Never in repositories. Never in controllers. ViewComponents per `feedback_viewcomponent_no_cache`.
 
-**A2.3 DI lifetimes.** Read `Extensions/Sections/<Section>SectionExtensions.cs`. Verify:
+**A2.3 DI lifetimes.** Read the section's DI registration — `src/Sections/Humans.<Section>/Section.cs` (`ISection.Register`, G5) or `Extensions/Sections/<Section>SectionExtensions.cs` (not yet moved). Verify:
 - Repository: Singleton, depends on `IDbContextFactory<HumansDbContext>`
 - Service: Scoped (or Singleton if stateless + factory-based dependencies)
 - Decorator (if present): Singleton
@@ -561,7 +565,7 @@ Axis 1 items:
 - **Inbound cross-section DB access (producer-side)** — ensure our public API satisfies the need. Add the method if missing (budget bump if interface ≥10, add `InterfaceMethodBudgetTests.Budgets` entry). The caller's section becomes a follow-up /section-align target; do not touch their call site in this PR unless trivial (one or two lines).
 - **Outbound cross-section access (consumer-side)** — if the supplier section has the public API, switch to it. If not, document the gap, leave the code, flag their section as follow-up. Never reach into another section's repository or DbContext.
 - **Controller-DI-DbContext** — extract service+repo layer.
-- **Hand-edited migration** — `dotnet ef migrations remove` + redo `dotnet ef migrations add`. Verify snapshot is byte-for-byte EF output.
+- **Hand-edited migration** — `dotnet ef migrations remove --context <C>` + redo `dotnet ef migrations add --context <C>` (per `memory/process/ef-multi-context-commands.md`). Verify snapshot is byte-for-byte EF output.
 - **URL aliases / cross-section URL exposure** — remove; surface downstream consumer risk.
 - **Prior review threads** — fix or reply with reasoning via `gh api .../comments/<id>/replies`; never top-level.
 

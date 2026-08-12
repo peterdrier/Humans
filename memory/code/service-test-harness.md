@@ -14,6 +14,9 @@ description: Service tests in Humans.Application.Tests should inherit ServiceTes
 - `Cache` — fresh `IMemoryCache`
 - `NewDbBackedUserService()` — NSubstitute `IUserService` whose `GetByIdAsync` / `GetByIdsAsync` / `GetUserInfoAsync` / `GetUserInfosAsync` read from `Db`
 - Seed helpers: `SeedUser`, `SeedTeam`, `SeedTeamMember`, `SeedRoleAssignment`, `SeedJoinRequest` — match the field-set the legacy local helpers had
+- `NewSectionDbOptions<TContext>()` — `private protected static DbContextOptions<TContext> NewSectionDbOptions<TContext>() where TContext : DbContext`, builds in-memory options (`UseInMemoryDatabase`, transaction-warning ignored) for a peeled-section context (nobodies-collective/Humans#858). Pair with `new TestDbContextFactory<TContext>(options)` for the repository under test; construct the context directly from the options for seeding. `RegisterSection<TContext>(create)` wraps this in a `Lazy<SectionDb<TContext>>` exposed as e.g. `TeamsDb`/`TeamsDbFactory` properties, built only on first touch (this class is the base for ~4000 tests). `SaveAllAsync()` flushes `Db` plus every section context a test actually touched.
+
+**G5-moved sections** (own project at `src/Sections/Humans.<Section>/`, own test project) do **not** inherit `ServiceTestHarness` — it lives in `Humans.Application.Tests` and can't be referenced from a section's separate test assembly. Their test classes declare a local `private static DbContextOptions<TContext> NewSectionDbOptions<TContext>()` with the same signature/body (see `tests/Humans.Email.Tests/Services/OutboxEmailServiceTests.cs`, `tests/Humans.Expenses.Tests/Services/ExpenseReportServiceTests.cs`, `tests/Humans.Issues.Tests/Services/IssuesServiceTests.cs`). Match that shape rather than inventing a new one.
 
 The harness owns disposal of `Db` and `Cache`; do not write a `Dispose` in derived test classes unless you have extra resources.
 

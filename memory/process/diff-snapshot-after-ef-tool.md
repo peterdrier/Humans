@@ -1,11 +1,11 @@
 ---
 name: Diff the snapshot after running an EF tool
-description: After running any EF tool (`migrations add`, `migrations remove`, `database update`, `dbcontext optimize`), always `git diff` the context's `*DbContextModelSnapshot.cs` before committing — empty migration body does NOT mean clean snapshot.
+description: After running any EF tool (`migrations add`, `migrations remove`, `database update`, `dbcontext optimize`) with `--context <C>`, always `git diff` the touched context's `*DbContextModelSnapshot.cs` before committing — empty migration body does NOT mean clean snapshot.
 ---
 
 # Always `git diff` the snapshot after running an EF tool
 
-`dotnet ef migrations add` rewrites the target context's `<Context>DbContextModelSnapshot.cs` (e.g. `Migrations/Users/UsersDbContextModelSnapshot.cs`) to reflect EF's view of the current model. The migration **body** (`Up`/`Down` methods) shows the schema diff between the prior snapshot and the new one. The **snapshot file** is a full rewrite of the model state.
+`dotnet ef migrations add --context <C>` rewrites that context's snapshot, named after the context class — `src/Humans.Infrastructure/Migrations/Users/UsersDbContextModelSnapshot.cs` for `UsersDbContext`, `src/Sections/Humans.Holded/Data/Migrations/HoldedDbContextModelSnapshot.cs` for a G5-moved section (see [[ef-multi-context-commands]]) — to reflect EF's view of the current model. The migration **body** (`Up`/`Down` methods) shows the schema diff between the prior snapshot and the new one. The **snapshot file** is a full rewrite of the model state.
 
 These can diverge. EF can produce an empty migration body (no `Up`/`Down` content) while still rewriting the snapshot file substantially. Causes include:
 - Transient model-building soft failures (e.g., a custom `ValueConverter` / `ValueComparer` throws or warns during one specific invocation and the affected entity gets silently skipped from the produced model).
@@ -19,10 +19,13 @@ These can diverge. EF can produce an empty migration body (no `Up`/`Down` conten
 After every EF tool run, before staging anything:
 
 ```
-git diff src/Humans.Infrastructure/Migrations/<Section>/<Section>DbContextModelSnapshot.cs
+# context still hosted in Infrastructure
+git diff src/Humans.Infrastructure/Migrations/<Area>/<Context>ModelSnapshot.cs
+# G5-moved section
+git diff src/Sections/Humans.<Section>/Data/Migrations/<Context>ModelSnapshot.cs
 ```
 
-If the diff touches entities you did NOT change in your code, **STOP** — your snapshot is corrupt. Restore from `origin/main` (or branch base) and figure out why EF's view of the model differs. Never commit unexplained snapshot diff.
+If the diff touches entities you did NOT change in your code, **STOP** — your snapshot is corrupt. Restore from `origin/main` (or branch base) and figure out why EF's view of the model differs. Never commit unexplained snapshot diff. A diff on a *different* context's snapshot than the one you ran `--context` against is the same signal — something ran without it.
 
 ## Stronger principle: don't run EF tooling for code-only changes
 
@@ -37,4 +40,4 @@ If you do run an EF tool for a real schema change, the snapshot diff IS expected
 
 Origin: section-align AuditLog run, Phase 2A — commit `1c49fc078` corrupted the snapshot by running `dotnet ef migrations add` for a pure nav-property removal. The "empty migration body, removed" claim hid a 52-line snapshot rewrite that nuked `VolunteerBuildStatus` entity metadata and an unrelated `DataProtectionKeys` table call.
 
-See also [[no-hand-edited-migrations]] for the broader migration discipline.
+See also [[no-hand-edited-migrations]] for the broader migration discipline, and [[ef-multi-context-commands]] for the `--context`/`--project` forms per context.

@@ -22,6 +22,18 @@ Deterministic recovery: throw away the in-flight migrations on this branch and l
 - The migration you want to redo is already in production. Production migrations are frozen — write a new corrective migration on top, do not regen.
 - Only one migration is in flight and it's still end-of-chain. In that case use `dotnet ef migrations remove` directly — that's the canonical EF tool for the simple case.
 
+## Determine the touched context(s)
+
+Since the per-context DbContext split (nobodies-collective/Humans#858, #866), migrations live under one of three shapes — see `memory/process/ef-multi-context-commands.md` for the full partition:
+
+| Location | Context | `--project` |
+|---|---|---|
+| `src/Humans.Infrastructure/Migrations/*.cs` | `HumansDbContext` | `src/Humans.Infrastructure` |
+| `src/Humans.Infrastructure/Migrations/<Section>/*.cs` | `<Section>DbContext` (peeled, not yet moved) | `src/Humans.Infrastructure` |
+| `src/Sections/Humans.<Section>/Data/Migrations/*.cs` | `<Section>DbContext` (moved, G5) | `src/Sections/Humans.<Section>` |
+
+Everything below refers to "the touched context" and "the migrations folder" — resolve them from the branch's in-flight migration files (step 1) before proceeding. If the branch touches more than one context, run steps 2–8 once per context; each context gets its own consolidated migration and its own commit.
+
 ## Hard preconditions
 
 Confirm BEFORE deleting anything:
@@ -37,31 +49,32 @@ If any of those is unmet, stop and ask the user.
 
 ### 1. List the in-flight migrations
 
-Migrations added on this branch since divergence from `origin/main`:
+Migrations added on this branch since divergence from `origin/main`, across all migration folders:
 
 ```bash
-git log --diff-filter=A --name-only origin/main..HEAD -- 'src/Humans.Infrastructure/Migrations/*.cs' \
-  | grep -E '^src/Humans.Infrastructure/Migrations/[0-9]{14}_.*\.cs$' \
+git log --diff-filter=A --name-only origin/main..HEAD \
+    -- 'src/Humans.Infrastructure/Migrations/*.cs' 'src/Sections/Humans.*/Data/Migrations/*.cs' \
+  | grep -E '/(Migrations|Data/Migrations)(/[A-Za-z]+)?/[0-9]{14}_.*\.cs$' \
   | sort -u
 ```
 
-This includes both `<timestamp>_<Name>.cs` and `<timestamp>_<Name>.Designer.cs` for each migration. Show the list to the user and confirm "yes, scrap all of these and consolidate" before proceeding.
+This includes both `<timestamp>_<Name>.cs` and `<timestamp>_<Name>.Designer.cs` for each migration. Group the results by owning context per the table above. Show the list (grouped by context) to the user and confirm "yes, scrap all of these and consolidate" before proceeding — per context if more than one is touched.
 
 ### 2. Delete the migration files
 
-Delete the `.cs` and `.Designer.cs` for every migration in the list:
+Delete the `.cs` and `.Designer.cs` for every migration in the list, from the touched context's migrations folder:
 
 ```bash
-git rm src/Humans.Infrastructure/Migrations/<timestamp>_<Name>.cs \
-       src/Humans.Infrastructure/Migrations/<timestamp>_<Name>.Designer.cs
+git rm <migrations-folder>/<timestamp>_<Name>.cs \
+       <migrations-folder>/<timestamp>_<Name>.Designer.cs
 ```
 
-Repeat for each in-flight migration. Do NOT delete migrations from `origin/main`.
+Repeat for each in-flight migration in this context. Do NOT delete migrations from `origin/main`.
 
 ### 3. Restore the cumulative snapshot from main
 
 ```bash
-git checkout origin/main -- src/Humans.Infrastructure/Migrations/HumansDbContextModelSnapshot.cs
+git checkout origin/main -- <migrations-folder>/<Context>ModelSnapshot.cs
 ```
 
 This puts the snapshot in a known-clean state matching what `origin/main` believes the model looks like — i.e. as if your branch's migrations had never existed. EF will then compute "model has all the new tables/columns; snapshot doesn't" and generate one fresh migration containing everything.
@@ -80,11 +93,12 @@ If this fails, stop — EF tooling can't run against a model that doesn't compil
 
 ```bash
 dotnet ef migrations add <MigrationName> \
-  --project src/Humans.Infrastructure \
+  --context <Context> \
+  --project <context's project> \
   --startup-project src/Humans.Web
 ```
 
-Use the `<MigrationName>` from `$ARGUMENTS`. The new migration gets the current UTC timestamp, which lands at the END of the chain — past all of main's interleaved migrations.
+`--context` and `--project` per the table above (see `memory/process/ef-multi-context-commands.md` for exact flag forms, including `--output-dir` for a peeled-not-moved section). Use the `<MigrationName>` from `$ARGUMENTS`. The new migration gets the current UTC timestamp, which lands at the END of the chain — past all of main's interleaved migrations.
 
 ### 6. Inspect the generated migration
 
@@ -105,7 +119,7 @@ Both green.
 
 ### 8. Commit the regen as ONE standalone commit
 
-The entire regen — deletions of the old migration files, snapshot restore from `origin/main`, the new consolidated migration `.cs` and `.Designer.cs`, and the updated `HumansDbContextModelSnapshot.cs` — must land as **one single commit**, separate from any other work.
+The entire regen — deletions of the old migration files, snapshot restore from `origin/main`, the new consolidated migration `.cs` and `.Designer.cs`, and the updated `<Context>ModelSnapshot.cs` — must land as **one single commit**, separate from any other work. If more than one context was touched, one commit per context.
 
 This matters for history: a reviewer or future archaeologist scrolling through `git log` should be able to point at one commit and say "that's where the migration stack was consolidated." If the regen is bundled with unrelated changes (entity refactors, controller edits, test fixes), the audit trail becomes muddy and it stops being obvious which file changes are the regen itself versus the surrounding work.
 
@@ -143,6 +157,7 @@ This bypasses the broken state of `dotnet ef migrations remove` after main's mig
 
 ## Cross-references
 
+- `memory/process/ef-multi-context-commands.md` — exact `--context`/`--project`/`--output-dir` forms per context shape; this skill's step 5 defers to it.
 - `memory/architecture/no-hand-edited-migrations.md` — the broader "never hand-edit migrations or snapshots" rule. The snapshot restore in step 3 is the one carve-out, sanctioned only inside this skill.
 - `memory/architecture/migration-regen-after-rebase.md` — describes the mid-chain failure mode. This skill is the canonical recovery action.
 - `memory/process/no-data-backfills.md` — why this skill produces schema-only migrations and where data movement belongs instead.
