@@ -1,16 +1,16 @@
 {
     "generatedDate":  "2026-08-12",
-    "totalCommits":  2120,
-    "mergedPrs":  1193,
+    "totalCommits":  2125,
+    "mergedPrs":  1194,
     "closedIssues":  686,
-    "testCount":  4602,
+    "testCount":  4681,
     "analyzerRuleCount":  31,
     "contributors":  [
                          {
                              "name":  "Peter Drier",
-                             "commits":  1979,
-                             "linesAdded":  1486123,
-                             "linesDeleted":  437996
+                             "commits":  1984,
+                             "linesAdded":  1500260,
+                             "linesDeleted":  444604
                          },
                          {
                              "name":  "Frank Fanteev",
@@ -47,12 +47,6 @@
                              "commits":  4,
                              "linesAdded":  1154,
                              "linesDeleted":  41
-                         },
-                         {
-                             "name":  "dependabot[bot]",
-                             "commits":  65,
-                             "linesAdded":  515,
-                             "linesDeleted":  154
                          },
                          {
                              "name":  "Jokin C",

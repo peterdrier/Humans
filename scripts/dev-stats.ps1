@@ -33,7 +33,7 @@ git log --numstat --format='AUTHOR:%an' | ForEach-Object {
         $authors[$current].deleted += [int]$Matches[2]
     }
 }
-$contributors = $authors.GetEnumerator() | Sort-Object { $_.Value.added } -Descending | ForEach-Object {
+$contributors = $authors.GetEnumerator() | Where-Object { $_.Key -notmatch '\[bot\]$' } | Sort-Object { $_.Value.added } -Descending | ForEach-Object {
     [ordered]@{ name = $_.Key; commits = $_.Value.commits; linesAdded = $_.Value.added; linesDeleted = $_.Value.deleted }
 }
 
@@ -67,5 +67,5 @@ $out = [ordered]@{
 $json = $out | ConvertTo-Json -Depth 4
 $dataDir = Join-Path $repoRoot "src/Humans.Web/wwwroot/data"
 New-Item -ItemType Directory -Force $dataDir | Out-Null
-[System.IO.File]::WriteAllText((Join-Path $dataDir "dev-stats.json"), $json)
+[System.IO.File]::WriteAllText((Join-Path $dataDir "dev-stats.json"), "$json`n")
 Write-Host "Wrote dev-stats.json: $totalCommits commits, $mergedPrs PRs, $closedIssues issues, $testCount tests, $analyzerRuleCount analyzer rules"

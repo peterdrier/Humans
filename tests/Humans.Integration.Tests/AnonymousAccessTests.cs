@@ -23,7 +23,7 @@ public class AnonymousAccessTests(HumansTestDatabase database) : IntegrationTest
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         html.Should().Contain("How it");           // "How it's built" heading
-        html.Should().Contain("analyzer");         // stats panel rendered from dev-stats.json
+        html.Should().Contain("By the numbers");   // stats panel rendered from dev-stats.json
     }
 
     [HumansFact(Timeout = 30000)]

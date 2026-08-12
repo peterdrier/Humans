@@ -1,7 +1,7 @@
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Dashboard;
-using Humans.Application.Interfaces.Email;
+using Humans.Email.Contracts;
 using Humans.Feedback.Contracts;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
@@ -29,7 +29,7 @@ public class AdminController(IUserServiceRead userService) : HumansControllerBas
         [FromServices] IUserServiceRead userService,
         [FromServices] IUserActivityTracker activityTracker,
         [FromServices] ITeamServiceRead teams,
-        [FromServices] IEmailOutboxService emailOutbox,
+        [FromServices] IEmailOutboxServiceRead emailOutbox,
         CancellationToken ct)
     {
         var firstName = User.Identity?.Name?.Split(' ').FirstOrDefault() ?? "";
