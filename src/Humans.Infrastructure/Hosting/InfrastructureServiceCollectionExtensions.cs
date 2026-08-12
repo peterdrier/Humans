@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Npgsql;
 
 namespace Humans.Infrastructure.Hosting;
@@ -59,6 +60,11 @@ public static class InfrastructureServiceCollectionExtensions
             options.AddInterceptors(sp.GetRequiredService<QueryMonitoringInterceptor>());
             options.AddInterceptors(sp.GetRequiredService<UserInfoSaveChangesInterceptor>());
             options.ConfigureWarnings(w => w.Ignore(CoreEventId.FirstWithoutOrderByAndFilterWarning));
+            if (sp.GetRequiredService<IHostEnvironment>().IsDevelopment())
+            {
+                options.EnableSensitiveDataLogging();
+                options.EnableDetailedErrors();
+            }
         }, optionsLifetime: ServiceLifetime.Singleton);
 
         services.AddDbContextFactory<TContext>((sp, options) =>

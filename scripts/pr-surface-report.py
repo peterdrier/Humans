@@ -55,14 +55,14 @@ def is_real_migration_file(path: str) -> bool:
 
 
 def max_migrations_per_context(migration_files: list[str]) -> int:
-    """Max real migrations in any one migration directory.
+    """Max real migrations ADDED in any one migration directory.
 
     Since the per-section DbContext split (nobodies-collective/Humans#858) each
     context owns its own chain in its own directory (Migrations/<Section>/;
     the root Migrations/ chain was deleted at #858 peel 15). The
-    one-migration-per-PR rule applies per chain: a peel PR legitimately carries
-    one snapshot-only migration on the main chain plus one baseline in the new
-    section's directory.
+    one-migration-per-PR rule applies per chain and only to additions —
+    deleting or relocating a chain authors no migration (the peel-15 chain
+    deletion tripped the old changed-files count at 144/1).
     """
     per_dir: dict[str, int] = {}
     for path in migration_files:
@@ -86,8 +86,8 @@ def parse_name_status(base: str, head: str) -> tuple[list[str], list[str], list[
         changed_files.append(path)
         if status.startswith("A"):
             added_files.append(path)
-        if is_real_migration_file(path):
-            migration_files.append(path)
+            if is_real_migration_file(path):
+                migration_files.append(path)
 
     return added_files, changed_files, migration_files
 
@@ -323,7 +323,7 @@ def build_markdown(
     migration_status = "OK" if max_per_context <= 1 else "BLOCK"
     summary = (
         f"{len(changed_files)} changed file(s) | EF migrations: "
-        f"{len(migration_files)} file(s), max {max_per_context}/1 per context"
+        f"{len(migration_files)} added file(s), max {max_per_context}/1 per context"
     )
 
     compared_line = f"Compared `{short_ref(base_label)}`...`{short_ref(head_label)}`."
