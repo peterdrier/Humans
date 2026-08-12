@@ -9,7 +9,7 @@
 
 ## What this section is for
 
-Expenses is where you ask to be paid back when you've spent your own money on something for the org. You build a report with one or more items — purchases with a receipt attached, plus travel items (mileage and per diem) that are worked out for you — and submit it. Once it's approved and paid, you're told automatically.
+Expenses is where you ask to be paid back when you've spent your own money on something for the org. You build a report with one or more items — purchases with a receipt attached — and submit it. Once it's approved and paid, you're told automatically.
 
 Finance handles the approval and pays you by bank transfer, and the org's accounting system is updated behind the scenes.
 
@@ -26,20 +26,15 @@ Finance handles the approval and pays you by bank transfer, and the org's accoun
 
 ### Start a report
 
-Go to `/Expenses/New` to start a draft. A report is a container — you add items to it: purchases with a description, an amount, and a **receipt**, and travel items (mileage and per diem) that don't need one. A report with no items can't be submitted.
+Go to `/Expenses/New` to start a draft. A report is a container — you add items to it: purchases with a description, an amount, and a **receipt**. A report with no items can't be submitted.
 
 ### Add items and attach receipts
 
 Add each thing you spent money on as an item, and attach the receipt or supporting document when you add it. Every purchase item needs a receipt before you can submit.
 
-### Add travel items (mileage and per diem)
+### Travel items (mileage and per diem)
 
-Travel doesn't need receipts. On the draft's edit page:
-
-- **Add mileage** — enter where you went from and to and the distance in km; the amount is worked out for you at the official per-km rate.
-- **Add per diem** — pick day trip or overnight, enter the number of days and an optional note; the amount is worked out at the Spanish tax-exempt daily rate.
-
-Because their amounts are computed, travel items can't be edited afterwards — remove one and add it again if something's wrong.
+Mileage and per diem can no longer be added to a report. Reports filed before this changed still show their travel items, and those items still count towards the total, but they can't be edited — remove one if it's wrong.
 
 ### Add your bank details (IBAN)
 

@@ -191,8 +191,9 @@ internal sealed class Service(
                 var hasLines = local.TryGetValue(a.Number, out var cached);
                 decimal? localBalance = hasLines ? cached.Balance : null;
                 return new HoldedAccountRow(
-                    a.Number, a.Name, a.Group, a.Balance, localBalance,
-                    hasLines ? cached.Count : 0, a.Balance == (localBalance ?? 0m));
+                    a.Number, a.Name, GroupName(a.Number), a.Balance, localBalance,
+                    hasLines ? cached.Count : 0, a.Balance == (localBalance ?? 0m),
+                    a.Debit != 0m || a.Credit != 0m);
             })
             .ToList();
 
@@ -203,10 +204,6 @@ internal sealed class Service(
             CallsByMonth: callsByMonth,
             SyncStates: syncStates,
             Accounts: accounts,
-            DepartmentActuals: accounts
-                .Where(a => a.Number is >= 62900000 and <= 62999999)
-                .OrderByDescending(a => a.HoldedBalance)
-                .ToList(),
             LedgerLineCount: lines.Count);
     }
 
@@ -225,8 +222,9 @@ internal sealed class Service(
 
         return new HoldedAccountStatement(
             new HoldedAccountRow(
-                number, account?.Name ?? "", account?.Group, holdedBalance,
-                localBalance, lines.Count, holdedBalance == (localBalance ?? 0m)),
+                number, account?.Name ?? "", GroupName(number), holdedBalance,
+                localBalance, lines.Count, holdedBalance == (localBalance ?? 0m),
+                account is { } a && (a.Debit != 0m || a.Credit != 0m)),
             lines
                 .OrderBy(l => l.Date)
                 .ThenBy(l => l.EntryNumber)
@@ -327,6 +325,32 @@ internal sealed class Service(
     /// would fail the save and report a completed refresh as an error.</summary>
     private static string TruncateForState(string message) =>
         message.Length <= 2000 ? message : message[..1997] + "…";
+
+    /// <summary>
+    /// The Spanish PGC group an account belongs to, in English. Read from the account number's
+    /// leading digit rather than Holded's own <c>group</c> field, which returns Spanish
+    /// ("Financiación básica", "Acreedores y deudores operaciones de la actividad") and is
+    /// free text we would be translating by string match. The digit is the definition.
+    /// </summary>
+    private static string GroupName(int number)
+    {
+        var leading = Math.Abs(number);
+        while (leading >= 10) leading /= 10;
+
+        return leading switch
+        {
+            1 => "Equity and long-term financing",
+            2 => "Non-current assets",
+            3 => "Inventory",
+            4 => "Receivables and payables",
+            5 => "Financial accounts",
+            6 => "Purchases and expenses",
+            7 => "Sales and income",
+            8 => "Expenses charged to equity",
+            9 => "Income charged to equity",
+            _ => "Unclassified",
+        };
+    }
 
     private static Instant ToWindowStart(LocalDate from) =>
         from.AtStartOfDayInZone(MadridZone).ToInstant();

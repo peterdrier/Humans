@@ -23,7 +23,6 @@ internal sealed record HoldedAdminOverview(
     IReadOnlyList<HoldedMonthlyCalls> CallsByMonth,
     IReadOnlyList<HoldedSyncStateRow> SyncStates,
     IReadOnlyList<HoldedAccountRow> Accounts,
-    IReadOnlyList<HoldedAccountRow> DepartmentActuals,
     int LedgerLineCount);
 
 /// <summary>Metered API calls for one Madrid-zone month.</summary>
@@ -34,11 +33,18 @@ internal sealed record HoldedSyncStateRow(
     string Kind, string Status, Instant? LastSyncAt, string? LastError, int LastCount);
 
 /// <summary>One chart account on the /Holded reconciliation table.</summary>
+/// <param name="Group">The PGC group's English name, derived from the account number's leading
+/// digit — not Holded's own <c>group</c> string, which is Spanish ("Existencias", "Activo no
+/// corriente"). The number is the authority: it is what the group means.</param>
 /// <param name="LocalBalance">Null when the mirror holds no line for the account — distinct
 /// from a cached zero, which reconciles a zero Holded balance.</param>
+/// <param name="HoldedHasPostings">Holded's own debit or credit total is non-zero. Not derivable
+/// from <paramref name="HoldedBalance"/>: an account with equal debits and credits — a clearing
+/// account, a bank drained to nothing — nets to zero while having been posted to all year.</param>
 internal sealed record HoldedAccountRow(
     int Number, string Name, string? Group,
-    decimal HoldedBalance, decimal? LocalBalance, int LocalLineCount, bool Reconciled);
+    decimal HoldedBalance, decimal? LocalBalance, int LocalLineCount, bool Reconciled,
+    bool HoldedHasPostings);
 
 /// <summary>
 /// One general-ledger account and every cached line on it, in Holded's own sign convention

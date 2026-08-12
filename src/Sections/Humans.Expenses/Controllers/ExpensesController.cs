@@ -308,53 +308,11 @@ internal sealed class ExpensesController(
         return RedirectToAction(nameof(Edit), new { id });
     }
 
-    [HttpPost("{id:guid}/Lines/AddMileage")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> AddMileage(Guid id, AddMileageInputModel input)
-    {
-        var (errorResult, user) = await RequireCurrentUserAsync();
-        if (errorResult is not null) return errorResult;
-
-        var report = await expenseReadService.GetAsync(id);
-        if (report is null) return NotFound();
-        if (report.SubmitterUserId != user.Id) return Forbid();
-
-        if (!ModelState.IsValid)
-        {
-            SetError("Invalid mileage data.");
-            return RedirectToAction(nameof(Edit), new { id });
-        }
-
-        var result = await service.AddMileageLineWithResultAsync(
-            id, user.Id, input.Origin, input.Destination, input.Km);
-        SetMutationResultWithDetails(result, "Mileage line added.", "Failed to add mileage line");
-
-        return RedirectToAction(nameof(Edit), new { id });
-    }
-
-    [HttpPost("{id:guid}/Lines/AddPerDiem")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> AddPerDiem(Guid id, AddPerDiemInputModel input)
-    {
-        var (errorResult, user) = await RequireCurrentUserAsync();
-        if (errorResult is not null) return errorResult;
-
-        var report = await expenseReadService.GetAsync(id);
-        if (report is null) return NotFound();
-        if (report.SubmitterUserId != user.Id) return Forbid();
-
-        if (!ModelState.IsValid)
-        {
-            SetError("Invalid per-diem data.");
-            return RedirectToAction(nameof(Edit), new { id });
-        }
-
-        var result = await service.AddPerDiemLineWithResultAsync(
-            id, user.Id, input.Kind, input.Days, input.Note);
-        SetMutationResultWithDetails(result, "Per-diem line added.", "Failed to add per-diem line");
-
-        return RedirectToAction(nameof(Edit), new { id });
-    }
+    // Mileage and per-diem lines can no longer be created: the Add mileage / Add per diem forms and
+    // their POST endpoints are gone. The service-layer plumbing
+    // (AddMileageLineWithResultAsync / AddPerDiemLineWithResultAsync, ExpenseLineType.Mileage/PerDiem,
+    // TravelReimbursementConfig) is retained so existing travel lines keep rendering and so the
+    // feature can be turned back on by restoring the two actions and the two Edit.cshtml forms.
 
     [HttpPost("{id:guid}/Lines/Update")]
     [ValidateAntiForgeryToken]

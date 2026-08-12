@@ -6,25 +6,25 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/db-migration-checklist-hook.sh",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/db-migration-checklist-hook.sh\"",
             "timeout": 10,
             "statusMessage": "Checking for database changes..."
           },
           {
             "type": "command",
-            "command": "bash .claude/check-ef-output-dir.sh",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/check-ef-output-dir.sh\"",
             "timeout": 5,
             "statusMessage": "Checking EF migration command..."
           },
           {
             "type": "command",
-            "command": "bash .claude/razor-lint-hook.sh || true",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/razor-lint-hook.sh\" || true",
             "timeout": 15,
             "statusMessage": "Linting Razor views..."
           },
           {
             "type": "command",
-            "command": "bash .claude/block-data-migration-hook.sh",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/block-data-migration-hook.sh\"",
             "timeout": 10,
             "statusMessage": "Checking for data migration commit..."
           }
@@ -35,7 +35,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/block-data-migration-hook.sh",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/block-data-migration-hook.sh\"",
             "timeout": 10,
             "statusMessage": "Checking for data migration..."
           }

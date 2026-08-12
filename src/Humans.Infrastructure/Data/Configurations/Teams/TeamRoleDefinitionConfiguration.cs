@@ -49,7 +49,6 @@ public class TeamRoleDefinitionConfiguration : IEntityTypeConfiguration<TeamRole
         builder.Property(d => d.UpdatedAt)
             .IsRequired();
 
-        // Case-insensitive unique index — will be replaced with lower() in migration
         builder.HasIndex(d => new { d.TeamId, d.Name })
             .IsUnique()
             .HasDatabaseName("IX_team_role_definitions_team_name_unique");
