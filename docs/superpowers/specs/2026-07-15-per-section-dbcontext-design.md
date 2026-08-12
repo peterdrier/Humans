@@ -83,7 +83,7 @@ tables. The §8 table-ownership map in `design-rules.md` is directionally right 
 | Issues | issues, issue_comments | 4 / 0 | main pile |
 | Notifications | notifications, notification_recipients | 2 / 0 | main pile |
 | AuditLog | audit_log | 2 / 0 | main pile (horizontal) |
-| Agent-adjacent framework | DataProtectionKeys | 0 / 0 | stays in HumansDbContext permanently (framework-owned: `IDataProtectionKeyContext`), as do the Identity tables (`IdentityDbContext` base) |
+| Agent-adjacent framework | DataProtectionKeys | 0 / 0 | ~~stays in HumansDbContext permanently~~ — **superseded**: peeled into `SystemDbContext` in peel 11 (2026-08-10). The Identity tables (`IdentityDbContext` base) move to `UsersDbContext` in peel 15, §10.3 |
 
 Scanner and Onboarding own no tables. Hangfire owns its own schema outside EF.
 
@@ -481,6 +481,63 @@ Check-constraint audit for this batch: the only two live CHECK constraints are
 CityPlanning/Budget/Camps table, so all three baselines are constraint-free. Removing those two is
 tracked separately under the new `memory/architecture/no-db-check-constraints.md` rule.
 
+### 10.3 End state — peels 14 and 15 (decided 2026-08-12)
+
+Two peels remain, and the programme ends with `HumansDbContext` deleted rather than renamed.
+
+**Peel 14 — Teams** (`TeamsDbContext`, 7 tables). Standard shape: real-up baseline under
+`Migrations/Teams/`, snapshot-only removal migration on `HumansDbContext`. The §10.1 blocker list
+must be re-derived against the §8 ownership map before starting, exactly as peel 13 did — it
+reclassified five relationships and found only three real ones.
+
+**Peel 15 — Users *and* Profiles together, into one `UsersDbContext`.** Not two peels. The two
+sections are already fused at the repository layer: `UserRepository` — a Users-section repository —
+reads six of Profiles' seven tables, and its partials (`UserRepository.Profiles.cs`,
+`.UserEmails.cs`, `.ContactFields.cs`) join `.Users` to `.Profiles` inside single queries. Separate
+contexts would require splitting that repository first, which nobody has scoped and which would
+break joins that exist today. Only `CommunicationPreferenceRepository` sits cleanly on the Profiles
+side.
+
+Consequences of taking them together:
+
+- **§10.1's three surviving blockers evaporate.** `Profile`, `UserEmail` and
+  `CommunicationPreference` → `User` (`ProfileConfiguration.cs:118`, `UserEmailConfiguration.cs:69`,
+  `CommunicationPreferenceConfiguration.cs:40` — already nav-less, bare `HasOne<User>()`) stop being
+  cross-context the moment both sections share one. No drain PR, no constraint drops, no QA→prod
+  soak, and the FKs stay physically enforced.
+- **`UsersDbContext` carries the Identity base**: `IdentityDbContext<User, IdentityRole<Guid>, Guid>`.
+  Nothing pins Identity to the `HumansDbContext` *name*; the base class moves with the context. Its
+  baseline covers the eight section DbSets **and** the seven Identity tables.
+- **The cost, stated plainly:** one context spanning two sections means nothing structurally
+  prevents a future profiles↔users EF join. That is the de-facto state today; this records it as
+  deliberate rather than pretending the boundary exists.
+
+**Then `HumansDbContext` is deleted, chain and all** — the type, `HumansDbContextModelSnapshot.cs`,
+and the root chain at `src/Humans.Infrastructure/Migrations/*.cs` (287 files, 652,274 lines as of
+2026-08-12). Three things the delete has to clear:
+
+1. **Raw SQL.** 16 root migrations call `migrationBuilder.Sql(`. Every peel so far audited these and
+   carried the live ones into its baseline (Legal/AuditLog took their plpgsql immutability triggers;
+   Shifts confirmed it had none, only data backfills). The Users baseline needs the same audit for
+   anything still applying to `users`, `profiles`, `user_emails` or the Identity tables. This is the
+   one class of thing a model-generated baseline silently omits, and once the chain is gone there is
+   nothing left to recover it from.
+2. **`__EFMigrationsHistory`** (the main-pile history table) goes orphaned. **Peter's call
+   (2026-08-12): drop it, in its own PR once QA and prod are both live on `UsersDbContext` and
+   `HumansDbContext` is gone** — same sequencing shape as `no-drops-until-prod-verified`. The peel
+   PR itself leaves the table inert. The §13 Q2 orphan row dies with the table.
+3. **159 files outside `Migrations/` name `HumansDbContext`.** Most are XML doc comments on
+   repository interfaces and analyzer diagnostic descriptions, but the load-bearing ones are the
+   `UserStore<…, HumansDbContext, …>` Identity wiring, `Humans.Analyzers/Internal/SectionDbContexts.cs`,
+   and `/Debug/DbVersion` (§13 Q1). These are cleanup work belonging to this programme, not
+   follow-ups to hand off.
+
+**Open contradiction to settle at peel 15:** §3.1 and `docs/sections/Profiles.md` both list
+`account_merge_requests` under Profiles, but `AccountMergeRepository.cs` lives in
+`Repositories/Users/` and peel 13's re-audit classified `AccountMergeRequest → User` as
+Users-internal on that basis. One of the two is wrong. Moot for the peel itself — both sections land
+in the same context — but it decides which section's docs own the table.
+
 ## 11. `dotnet ef` per-context usage (migration-discipline docs)
 
 With >1 context in the assembly, **every** `dotnet ef` invocation needs `--context`:
@@ -517,8 +574,13 @@ rollback scenario involves data.
    for. Extending it to enumerate per-section histories is a small follow-up. Options: leave as-is
    (my default), or I add per-section rows to the payload in a later peel. Implementer-decides is
    fine here.
+   **ANSWERED 2026-08-12:** leave-as-is is not an option — `HumansDbContext` is deleted at peel 15
+   (§10.3), so the endpoint has nothing to report. Repointing it is cleanup work owned by this
+   programme.
 2. **QA/dev orphan history row** (`20260322172854_AddDrivePermissionLevel`, §2) — leave in place
    (my default; EF ignores it) or note it for cleanup during the future history shrink?
+   **ANSWERED 2026-08-12:** it dies with `__EFMigrationsHistory`, dropped in its own PR once QA and
+   prod are live on `UsersDbContext` (§10.3).
 3. **CI Layer 2 cost** — the per-section isolated-apply step adds one empty-DB `database update`
    per peeled context to migration-touching PRs (~seconds each on the self-hosted runner).
    Acceptable? Alternative is trusting the Testcontainers helper tests alone (they run in
