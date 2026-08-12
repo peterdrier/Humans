@@ -84,7 +84,7 @@ public sealed class ShiftSignupServiceCalendarFeedTests : ServiceTestHarness
             CreatedAt = TestNow,
             UpdatedAt = TestNow
         };
-        Db.Teams.Add(team);
+        TeamsDb.Teams.Add(team);
 
         var rota = new Rota
         {
@@ -159,8 +159,7 @@ public sealed class ShiftSignupServiceCalendarFeedTests : ServiceTestHarness
                     CreatedAt: TestNow,
                     Members: [])
             });
-        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
-        await ShiftsDb.SaveChangesAsync(TestContext.Current.CancellationToken);
+        await SaveAllAsync(TestContext.Current.CancellationToken);
 
         var items = await _service.GetCalendarItemsForUserAsync(userId, TestContext.Current.CancellationToken);
 
@@ -184,8 +183,7 @@ public sealed class ShiftSignupServiceCalendarFeedTests : ServiceTestHarness
         SeedSignup(shift, userId, SignupStatus.Pending);
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamInfo>());
-        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
-        await ShiftsDb.SaveChangesAsync(TestContext.Current.CancellationToken);
+        await SaveAllAsync(TestContext.Current.CancellationToken);
 
         var items = await _service.GetCalendarItemsForUserAsync(userId, TestContext.Current.CancellationToken);
 
@@ -203,8 +201,7 @@ public sealed class ShiftSignupServiceCalendarFeedTests : ServiceTestHarness
         var (_, _, shift) = SeedShiftScenario();
         var userId = Guid.NewGuid();
         SeedSignup(shift, userId, status);
-        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
-        await ShiftsDb.SaveChangesAsync(TestContext.Current.CancellationToken);
+        await SaveAllAsync(TestContext.Current.CancellationToken);
 
         var items = await _service.GetCalendarItemsForUserAsync(userId, TestContext.Current.CancellationToken);
 
@@ -229,8 +226,7 @@ public sealed class ShiftSignupServiceCalendarFeedTests : ServiceTestHarness
         SeedSignup(shift, userId, SignupStatus.Confirmed);
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamInfo>());
-        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
-        await ShiftsDb.SaveChangesAsync(TestContext.Current.CancellationToken);
+        await SaveAllAsync(TestContext.Current.CancellationToken);
 
         var items = await _service.GetCalendarItemsForUserAsync(userId, TestContext.Current.CancellationToken);
 
@@ -247,8 +243,7 @@ public sealed class ShiftSignupServiceCalendarFeedTests : ServiceTestHarness
         SeedSignup(shift, userId, SignupStatus.Confirmed);
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamInfo>());
-        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
-        await ShiftsDb.SaveChangesAsync(TestContext.Current.CancellationToken);
+        await SaveAllAsync(TestContext.Current.CancellationToken);
 
         var items = await _service.GetCalendarItemsForUserAsync(userId, TestContext.Current.CancellationToken);
 

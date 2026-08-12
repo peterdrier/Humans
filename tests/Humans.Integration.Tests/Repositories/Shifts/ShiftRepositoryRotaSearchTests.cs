@@ -29,7 +29,7 @@ public class ShiftRepositoryRotaSearchTests(HumansTestDatabase database)
     public async Task SearchVolunteerVisibleRotasAsync_ExcludesRotasHiddenFromVolunteers()
     {
         await using var scope = Factory.Services.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var db = scope.ServiceProvider.GetRequiredService<TeamsDbContext>();
         var shiftsDb = scope.ServiceProvider.GetRequiredService<ShiftsDbContext>();
         var sut = scope.ServiceProvider.GetRequiredService<IShiftManagementRepository>();
 
@@ -49,7 +49,7 @@ public class ShiftRepositoryRotaSearchTests(HumansTestDatabase database)
     public async Task SearchVolunteerVisibleRotasAsync_MatchesCaseInsensitively_WithinTheGivenEventOnly()
     {
         await using var scope = Factory.Services.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var db = scope.ServiceProvider.GetRequiredService<TeamsDbContext>();
         var shiftsDb = scope.ServiceProvider.GetRequiredService<ShiftsDbContext>();
         var sut = scope.ServiceProvider.GetRequiredService<IShiftManagementRepository>();
 
@@ -88,7 +88,7 @@ public class ShiftRepositoryRotaSearchTests(HumansTestDatabase database)
         return es;
     }
 
-    private static async Task<Team> SeedTeamAsync(HumansDbContext db)
+    private static async Task<Team> SeedTeamAsync(TeamsDbContext db)
     {
         var now = SystemClock.Instance.GetCurrentInstant();
         var team = new Team

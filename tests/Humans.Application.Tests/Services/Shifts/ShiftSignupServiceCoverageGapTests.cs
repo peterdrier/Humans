@@ -168,7 +168,7 @@ public sealed class ShiftSignupServiceCoverageGapTests : ServiceTestHarness
             CreatedAt = TestNow,
             UpdatedAt = TestNow
         };
-        Db.Teams.Add(team);
+        TeamsDb.Teams.Add(team);
 
         var rota = new Rota
         {
@@ -221,8 +221,7 @@ public sealed class ShiftSignupServiceCoverageGapTests : ServiceTestHarness
             UpdatedAt = TestNow
         });
 
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
-        await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         return (es, rota, shift, userA, userB);
     }
 

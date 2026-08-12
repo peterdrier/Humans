@@ -20,18 +20,12 @@ public sealed class ShiftRepositoryManagementTests : IDisposable
 {
     private static readonly Instant TestNow = Instant.FromUtc(2026, 4, 1, 12, 0);
 
-    private readonly HumansDbContext _dbContext;
     private readonly ShiftsDbContext _shiftsDbContext;
     private readonly ShiftRepository _repo;
     private readonly FakeClock _clock = new(TestNow);
 
     public ShiftRepositoryManagementTests()
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-        _dbContext = new HumansDbContext(options);
-
         var shiftsOptions = new DbContextOptionsBuilder<ShiftsDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
@@ -39,11 +33,7 @@ public sealed class ShiftRepositoryManagementTests : IDisposable
         _repo = new ShiftRepository(new TestDbContextFactory<ShiftsDbContext>(shiftsOptions), _shiftsDbContext, _clock);
     }
 
-    public void Dispose()
-    {
-        _dbContext.Dispose();
-        _shiftsDbContext.Dispose();
-    }
+    public void Dispose() => _shiftsDbContext.Dispose();
 
     [HumansFact]
     public async Task GetActiveEventSettingsAsync_ReturnsActive_IgnoresInactive()
@@ -164,22 +154,11 @@ public sealed class ShiftRepositoryManagementTests : IDisposable
         var es = NewEvent(isActive: true);
         _shiftsDbContext.EventSettings.Add(es);
 
-        var team = new Team
-        {
-            Id = Guid.NewGuid(),
-            Name = "Dept",
-            Slug = "dept",
-            SystemTeamType = SystemTeamType.None,
-            CreatedAt = TestNow,
-            UpdatedAt = TestNow
-        };
-        _dbContext.Teams.Add(team);
-
         var rota = new Rota
         {
             Id = Guid.NewGuid(),
             EventSettingsId = es.Id,
-            TeamId = team.Id,
+            TeamId = Guid.NewGuid(),
             Name = "Rota",
             Priority = ShiftPriority.Normal,
             Policy = SignupPolicy.Public,
@@ -188,7 +167,6 @@ public sealed class ShiftRepositoryManagementTests : IDisposable
             UpdatedAt = TestNow
         };
         _shiftsDbContext.Rotas.Add(rota);
-        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         await _shiftsDbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         return (es, rota);
     }

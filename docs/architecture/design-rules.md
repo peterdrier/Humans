@@ -263,13 +263,13 @@ If audit calls become noisy across many methods inside one service, the next evo
 
 Each section's service owns these tables. Cross-service access goes through the service interface, never through direct DB queries, never through another domain's repository or store.
 
-Ownership is now physical as well as conventional for the peeled sections: the map below is **per DbContext**, not per single model. Most sections now own their tables in their own `<Section>DbContext` and migration chain; only Users/Identity, Teams and Profiles are still mapped by `HumansDbContext` (framework-owned tables live in `SystemDbContext`). See [`data-model.md`](data-model.md#dbcontext-ownership) for the context-to-table listing.
+Ownership is now physical as well as conventional for the peeled sections: the map below is **per DbContext**, not per single model. Most sections now own their tables in their own `<Section>DbContext` and migration chain; only Users/Identity and Profiles are still mapped by `HumansDbContext` (framework-owned tables live in `SystemDbContext`). See [`data-model.md`](data-model.md#dbcontext-ownership) for the context-to-table listing.
 
 | Section | Service(s) | Owned Tables |
 |---------|-----------|--------------|
 | **Profiles** | `ProfileService`, `ContactFieldService`, `ContactService`, `UserEmailService`, `CommunicationPreferenceService` | `profiles`, `contact_fields`, `user_emails`, `communication_preferences`, `volunteer_history_entries` |
 | **Users/Identity** | `UserService`, `AccountProvisioningService`, `UnsubscribeService`, `AccountMergeService`, `DuplicateAccountService`, `ExternalLoginService` | `AspNetUsers`, `AspNetUserClaims`, `AspNetUserLogins`, `AspNetUserTokens`, `AspNetRoles` (legacy), `AspNetUserRoles` (legacy), `event_participations`, `account_merge_requests` |
-| **Teams** | `TeamService`, `TeamPageService`, `TeamResourceService` | `teams`, `team_members`, `team_join_requests`, `team_join_request_state_histories`, `team_role_definitions`, `team_role_assignments`, `team_pages`, `google_resources` |
+| **Teams** | `TeamService`, `TeamPageService` | `teams`, `team_members`, `team_join_requests`, `team_join_request_state_history`, `team_role_definitions`, `team_role_assignments`, `team_early_entry_grants` |
 | **Auth** | `RoleAssignmentService`, `MagicLinkService` | `role_assignments` |
 | **Governance** | `ApplicationDecisionService` | `applications`, `application_state_histories`, `board_votes` |
 | **Consent** | `LegalDocumentService`, `LegalDocumentSyncService`, `ConsentService` (`src/Sections/Humans.Consent`) | `legal_documents`, `document_versions`, `consent_records` |
@@ -288,7 +288,7 @@ Ownership is now physical as well as conventional for the peeled sections: the m
 | **Scanner** | none (no business logic — `ScannerController` reads via `ITicketServiceRead`) | none |
 | **Gate** | `GateService` | `gate_scan_events`, `gate_settings`, `gate_staff_pins` |
 | **Campaigns** | `CampaignService` | `campaigns`, `campaign_codes`, `campaign_grants` |
-| **Google Integration** | `GoogleSyncService`, `GoogleAdminService`, `GoogleWorkspaceSyncService`, `GoogleWorkspaceUserService`, `DriveActivityMonitorService`, `SyncSettingsService`, `EmailProvisioningService` | `sync_service_settings`, `google_sync_outbox` |
+| **Google Integration** | `GoogleSyncService`, `GoogleAdminService`, `GoogleWorkspaceSyncService`, `GoogleWorkspaceUserService`, `DriveActivityMonitorService`, `SyncSettingsService`, `EmailProvisioningService`, `TeamResourceService` | `sync_service_settings`, `google_sync_outbox`, `google_resources` |
 | **Email** | `EmailOutboxService`, `OutboxEmailService`, `EmailService` | `email_outbox_messages` (reads the `IsEmailSendingPaused` flag via `ISystemSettingsService`) |
 | **System Settings** | `ISystemSettingsService` (G5 project `Humans.SystemSettings`; implemented by the section-internal `Service`) | `system_settings` (cross-cutting key/value store; consuming sections read/write via `ISystemSettingsService`) |
 | **Mailer** | `MailerImportService`, `MailerLiteClient` | _(no owned tables — MailerLite is read-only; classifier writes through other sections' services)_ |

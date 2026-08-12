@@ -1,5 +1,5 @@
-// TeamMember.User / TeamJoinRequest.User are Obsolete per §6c; tests seed
-// them on raw entities before SaveChanges.
+// User.DisplayName is Obsolete; SeedUserAsync sets it on the unpersisted User
+// it hands back to callers.
 #pragma warning disable CS0618
 using AwesomeAssertions;
 using Humans.Application.Tests.Infrastructure;
@@ -22,18 +22,18 @@ namespace Humans.Application.Tests.Repositories;
 /// </summary>
 public sealed class TeamRepositoryTests : IDisposable
 {
-    private readonly HumansDbContext _dbContext;
+    private readonly TeamsDbContext _dbContext;
     private readonly FakeClock _clock;
     private readonly TeamRepository _repo;
 
     public TeamRepositoryTests()
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
+        var options = new DbContextOptionsBuilder<TeamsDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
-        _dbContext = new HumansDbContext(options);
+        _dbContext = new TeamsDbContext(options);
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
-        _repo = new TeamRepository(new TestDbContextFactory(options));
+        _repo = new TeamRepository(new TestDbContextFactory<TeamsDbContext>(options));
     }
 
     public void Dispose()
@@ -282,8 +282,10 @@ public sealed class TeamRepositoryTests : IDisposable
         return team;
     }
 
-    private async Task<User> SeedUserAsync()
+    private Task<User> SeedUserAsync()
     {
+        // Not persisted: users live outside TeamsDbContext, and the repository
+        // only ever sees the bare Guid on TeamMember.UserId.
         var user = new User
         {
             Id = Guid.NewGuid(),
@@ -292,9 +294,7 @@ public sealed class TeamRepositoryTests : IDisposable
             DisplayName = "Seeded User",
             CreatedAt = _clock.GetCurrentInstant(),
         };
-        _dbContext.Users.Add(user);
-        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
-        return user;
+        return Task.FromResult(user);
     }
 
     private async Task<TeamMember> SeedActiveMemberAsync(Team team, User user, TeamMemberRole role = TeamMemberRole.Member)

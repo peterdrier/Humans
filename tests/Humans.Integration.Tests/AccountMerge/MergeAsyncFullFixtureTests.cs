@@ -69,6 +69,7 @@ public class MergeAsyncFullFixtureTests(HumansTestDatabase database) : Integrati
         // Assert — all six post-conditions from the EmailProblems spec case 5.
         await using var assertScope = Factory.Services.CreateAsyncScope();
         var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var teamsDb = assertScope.ServiceProvider.GetRequiredService<TeamsDbContext>();
         var authDb = assertScope.ServiceProvider.GetRequiredService<AuthDbContext>();
         var auditLogDb = assertScope.ServiceProvider.GetRequiredService<AuditLogDbContext>();
 
@@ -140,7 +141,7 @@ public class MergeAsyncFullFixtureTests(HumansTestDatabase database) : Integrati
             "the audit description records the archived→survivor fold");
 
         // Bonus: source's team membership and role assignment moved to target.
-        (await db.TeamMembers.AsNoTracking()
+        (await teamsDb.TeamMembers.AsNoTracking()
                 .AnyAsync(tm => tm.UserId == targetId && tm.TeamId == sourceOnlyTeamId
                     && tm.LeftAt == null, TestContext.Current.CancellationToken))
             .Should().BeTrue("source-only team membership must be re-FK'd to target");

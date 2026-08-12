@@ -140,15 +140,22 @@ mechanical:
     triggers:
       - "src/Humans.Application/Services/**/*.cs"
       - "src/Humans.Infrastructure/Repositories/**/*.cs"
-      - "src/Humans.Infrastructure/Data/HumansDbContext.cs"
+      - "src/Humans.Infrastructure/Data/*DbContext.cs"
+      - "src/Sections/**/Data/*DbContext.cs"
     update: prompt
     prompt: |
       Regenerate docs/architecture/service-data-access-map.md.
 
       For every service under src/Humans.Application/Services/, identify:
       1. Which repository interfaces it depends on.
-      2. Which database tables those repositories ultimately access (resolve
-         via the HumansDbContext.cs DbSet<> declarations).
+      2. Which database tables those repositories ultimately access, and which
+         DbContext maps each one. Since the per-section split
+         (nobodies-collective/Humans#858) there is no single context: resolve
+         the DbSet<> declarations across every src/Humans.Infrastructure/Data/
+         *DbContext.cs plus each G5 section's own Data/*DbContext.cs, and
+         report the owning context per table. Do not assume a table is on
+         HumansDbContext because a previous revision of this doc said so —
+         re-resolve it from the context sources.
       3. Which IMemoryCache keys the service reads/writes.
 
       Group by section (use folder name under Services/). Match the existing

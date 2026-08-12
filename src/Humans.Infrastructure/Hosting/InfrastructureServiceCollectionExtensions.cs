@@ -51,6 +51,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSectionDbContext<SystemDbContext>(sentinelTable: "DataProtectionKeys");
         services.AddSectionDbContext<AuditLogDbContext>(sentinelTable: "audit_log");
         services.AddSectionDbContext<ShiftsDbContext>(sentinelTable: "shifts");
+        services.AddSectionDbContext<TeamsDbContext>(sentinelTable: "teams");
 
         services.AddHostedService<DatabaseMigrationHostedService>();
 
