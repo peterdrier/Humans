@@ -305,7 +305,7 @@ Outbound invoices to members/barrios:
 - Promoted Finance to its own section ([`Finance.md`](../../../src/Sections/Humans.Finance/Docs/Finance.md)); Budget narrowed to planning + public summary
 - Shipped attribution is Account → Tag → Unmatched: Holded purchase docs land in a `HoldedExpenseDoc` entity (Finance-owned), matched to budget categories via `HoldedCategoryMap` (booked Holded account id first, normalized tag fallback second)
 - Treasurer surface at `/Finance/HoldedUnmatched` (unmatched-doc worklist) and `/Finance/HoldedAccounts` (account provisioning)
-- Budget's CRUD half of the old `/Finance` controller stayed in Shell as `BudgetAdminController`, keeping the same route prefix; Finance's own `FinanceController` owns only the Holded/creditor actions
+- Budget's CRUD half of the old `/Finance` controller became `BudgetAdminController`, keeping the same route prefix; Finance's own `FinanceController` owns only the Holded/creditor actions. Both controllers now live in their own section projects (`Humans.Budget.Controllers` / `Humans.Finance.Controllers`) with disjoint action templates under `[Route("Finance")]`
 - **Exit:** Expenses flow into Finance and roll up as planned-vs-actual on the year-detail view
 
 ### V2d: Invoicing (1-2 sessions)
@@ -330,6 +330,7 @@ Outbound invoices to members/barrios:
 
 ## Related Features
 
+- [Budget section invariants](../../../src/Sections/Humans.Budget/Docs/Budget.md) — current data model, routing, and architecture status (own project since G5, nobodies-collective/Humans#866; `BudgetDbContext` owns the `budget_*` tables)
 - **Shift Management** (25): Department coordinators overlap with budget coordinators
 - **Teams** (06): Department structure aligns with team structure
 - **Ticket Vendor Integration** (24): Stripe income source for budget actuals

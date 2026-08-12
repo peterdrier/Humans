@@ -78,10 +78,8 @@ Board voting only applies to tier applications (Colaborador and Asociado). Volun
 **Acceptance Criteria:**
 - Shows applicant's profile (including Board-visible fields)
 - Shows motivation statement and tier-specific application fields
-- Shows consent check clearance date
 - Shows all Board member votes cast so far (before finalization)
-- Shows previous applications (if any) and their outcomes
-- Shows current team memberships
+- Shows current team memberships (via the admin-mode ProfileCard)
 
 ## Data Model
 
@@ -99,7 +97,7 @@ VoteChoice:
 BoardVote
 ├── Id: Guid
 ├── ApplicationId: Guid (FK → Application)
-├── BoardMemberUserId: Guid (FK → User)
+├── BoardMemberUserId: Guid [bare cross-section column — no FK constraint, no nav]
 ├── Vote: VoteChoice
 ├── Note: string? (4000)
 ├── VotedAt: Instant
@@ -108,7 +106,7 @@ BoardVote
 
 **Important:** BoardVote records are **deleted** when the application is finalized. They are working data used during the decision process, not audit records. Only the Application's DecisionNote, BoardMeetingDate, and final Status are preserved.
 
-### Application Changes (from 15-membership-tiers.md)
+### Application Changes (from [Membership Tiers](../governance/membership-tiers.md))
 ```
 Application (new fields)
 ├── MembershipTier: MembershipTier (Colaborador or Asociado)

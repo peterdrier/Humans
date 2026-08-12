@@ -10,18 +10,18 @@
   src/Humans.Application/Services/Teams/TeamService.cs
   src/Humans.Application/Services/Auth/RoleAssignmentService.cs
   src/Humans.Application/Services/Shifts/ShiftSignupService.cs
-  src/Humans.Application/Services/Feedback/FeedbackService.cs
+  src/Sections/Humans.Feedback/Services/FeedbackService.cs
   src/Sections/Humans.Notifications/Services/NotificationInboxService.cs
   src/Humans.Application/Services/Tickets/TicketQueryService.cs
-  src/Humans.Application/Services/Campaigns/CampaignService.cs
+  src/Sections/Humans.Campaigns/Services/CampaignService.cs
   src/Humans.Application/Services/Camps/**
   src/Humans.Application/Services/AuditLog/**
   src/Sections/Humans.Budget/Services/BudgetService.cs
   src/Humans.Application/Services/Users/AccountMergeService.cs
-  src/Humans.Application/Services/Surveys/SurveyService.cs
-  src/Humans.Application/Services/Agent/AgentService.cs
+  src/Sections/Humans.Surveys/Services/SurveyService.cs
+  src/Sections/Humans.Agent/Services/AgentService.cs
   src/Sections/Humans.Events/Services/Service.cs
-  src/Humans.Application/Services/Issues/IssuesService.cs
+  src/Sections/Humans.Issues/Services/IssuesService.cs
   src/Sections/Humans.Expenses/Services/ExpenseReportService.cs
   src/Sections/Humans.Finance/Services/Service.cs
   src/Sections/Humans.Gate/Services/GateService.cs

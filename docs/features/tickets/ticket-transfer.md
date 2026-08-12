@@ -7,9 +7,9 @@
   src/Humans.Infrastructure/Repositories/Tickets/TicketTransferRepository.cs
   src/Humans.Web/Controllers/TicketTransferController.cs
   src/Humans.Web/Controllers/TicketTransferAdminController.cs
-  src/Humans.Web/Views/TicketTransfer/
-  src/Humans.Web/Views/TicketTransferAdmin/
-  src/Humans.Web/ViewComponents/TicketStubViewComponent.cs
+  src/Humans.Web/Views/TicketTransfer/**
+  src/Humans.Web/Views/TicketTransferAdmin/**
+  src/Humans.UI/ViewComponents/TicketStubViewComponent.cs
 -->
 <!-- freshness:flag-on-change
   The two processing paths (automated void+reissue vs manual mark-successful), lifecycle states, email

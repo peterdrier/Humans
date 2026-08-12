@@ -6,7 +6,7 @@
   src/Humans.Domain/Entities/TicketOrder.cs
   src/Humans.Domain/Entities/TicketAttendee.cs
   src/Humans.Domain/Entities/TicketSyncState.cs
-  src/Humans.Domain/Entities/CampaignGrant.cs
+  src/Sections/Humans.Campaigns/Domain/CampaignGrant.cs
   src/Humans.Domain/Constants/TicketConstants.cs
   src/Humans.Infrastructure/Data/Configurations/Tickets/**
   src/Humans.Infrastructure/Jobs/TicketSyncJob.cs

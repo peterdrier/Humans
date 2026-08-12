@@ -1,13 +1,13 @@
 <!-- freshness:triggers
-  src/Humans.Web/Views/Governance/**
-  src/Humans.Web/Controllers/GovernanceApplicationsController.cs
-  src/Humans.Web/Controllers/GovernanceBoardVotingController.cs
-  src/Humans.Web/Controllers/GovernanceController.cs
-  src/Humans.Application/Services/Governance/**
+  src/Sections/Humans.Governance/Views/**
+  src/Sections/Humans.Governance/Controllers/GovernanceApplicationsController.cs
+  src/Sections/Humans.Governance/Controllers/GovernanceBoardVotingController.cs
+  src/Sections/Humans.Governance/Controllers/GovernanceController.cs
+  src/Sections/Humans.Governance/Services/**
   src/Humans.Application/Services/Auth/RoleAssignmentService.cs
-  src/Humans.Domain/Entities/Application.cs
-  src/Humans.Domain/Entities/ApplicationStateHistory.cs
-  src/Humans.Domain/Entities/BoardVote.cs
+  src/Sections/Humans.Governance/Domain/Application.cs
+  src/Sections/Humans.Governance/Domain/ApplicationStateHistory.cs
+  src/Sections/Humans.Governance/Domain/BoardVote.cs
   src/Humans.Domain/Entities/RoleAssignment.cs
   src/Humans.Domain/Constants/RoleNames.cs
   src/Humans.Domain/Constants/RoleGroups.cs

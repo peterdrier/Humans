@@ -111,7 +111,7 @@ Two controllers serve this section:
 | Any authenticated human | Submit an issue (with optional screenshot). View, comment on, and reopen by commenting on issues they reported. Cannot triage or change status. |
 | Section role-holder (e.g., `TicketAdmin`, `CampAdmin`, `TeamsAdmin`, `Board`, …) | All reporter capabilities. Additionally: list, view, comment on, change status, assign, change section, link GitHub issue **on issues whose `Section` maps to their role** (per `IssueSectionRouting.RolesFor`). |
 | Admin | All section-role-holder capabilities, on every section including null-section issues. |
-| API (key auth) | List, get, post comments, update status, update assignee, set GitHub issue, change section via `/api/issues/*` (no user session required; `ApiKeyAuthFilter` enforces the key). |
+| API (key auth) | List, get, create, post comments, update status, update assignee, set GitHub issue, change section via `/api/issues/*` (no user session required; the section's own `IssuesApiKeyAuthFilter`, over the `IssuesApi` config section, enforces the key). |
 
 ## Invariants
 

@@ -50,6 +50,7 @@ graph LR
     classDef surveys fill:#0ea5e9,color:#fff
     classDef icalfeed fill:#38bdf8,color:#000
     classDef gate fill:#b45309,color:#fff
+    classDef holded fill:#ca8a04,color:#fff
     classDef crosscut fill:#334155,color:#fff
 
     %% ── Cross-cutting services (hub) ──
@@ -122,7 +123,8 @@ graph LR
     HumanLifecycle[HumanLifecycleService]:::onboarding
     Feedback[FeedbackService]:::feedback
     Budget[BudgetService]:::budget
-    Holded[HoldedFinanceService]:::finance
+    Finance[HoldedFinanceService]:::finance
+    Holded[HoldedService]:::holded
 
     User[UserService]:::users
     AcctProv[AccountProvisioningService]:::users
@@ -400,7 +402,12 @@ graph LR
     %% Budget + Finance sections
     Budget --> Team
     Budget --> User
-    Holded --> Budget
+    Finance --> Budget
+    %% #Holded-split (2026-08-10): the ledger mirror moved out of Finance into its own
+    %% Holded section (HoldedDbContext, migration 20260810204942_HoldedMirrorMovesToHoldedSection).
+    %% HoldedFinanceService now reads ledger lines / account balances cross-section via IHoldedService
+    %% instead of computing them itself.
+    Finance --> Holded
 
     %% Users section
     User --> AdminAuth
@@ -531,7 +538,7 @@ graph LR
     ExpenseReport --> Budget
     ExpenseReport --> Team
     ExpenseReport --> User
-    ExpenseReport --> Holded
+    ExpenseReport --> Finance
     ExpenseReport --> Audit
     Container --> Camp
     Container --> Audit
@@ -591,15 +598,14 @@ graph LR
     %% dashed arrows pop visually against eager solid arrows. The first lazy
     %% edge in this diagram is the (N+1)-th link after the eager arrows
     %% above; recompute the index range whenever edges are added or removed.
-    %% Eager count: 288 eager links, indices 0..287. (Net +1 vs prior sweep's 287:
-    %% +1 DashboardService edge — Dash --> BurnSettings, found this sweep — DashboardService
-    %% ctor-injects IBurnSettingsService for the active-event year lookup but the edge was
-    %% missing from the prior diagram.)
-    %% The 20 lazy edges are indices 288..307. (+1 vs prior sweep's 19: new Camp -. lazy .->
-    %% CityPlan edge — CampService now lazy-resolves ICityPlanningService to delete a
-    %% deleted camp's city-planning polygon rows, closing a new cycle with CityPlanningService's
-    %% eager ICampServiceRead dependency. See cycle #6 below.)
-    linkStyle 288,289,290,291,292,293,294,295,296,297,298,299,300,301,302,303,304,305,306,307 stroke:#f97316,stroke-width:2.5px
+    %% Eager count: 289 eager links, indices 0..288. (Net +1 vs prior sweep's 288:
+    %% +1 Finance --> Holded edge, found this sweep — the Holded ledger mirror split out of
+    %% Finance into its own section (migration 20260810204942_HoldedMirrorMovesToHoldedSection);
+    %% HoldedFinanceService now reads ledger data cross-section via IHoldedService instead of
+    %% computing it itself.)
+    %% The 20 lazy edges are indices 289..308. (unchanged count vs prior sweep — only the eager
+    %% indices shifted by the +1 above.)
+    linkStyle 289,290,291,292,293,294,295,296,297,298,299,300,301,302,303,304,305,306,307,308 stroke:#f97316,stroke-width:2.5px
 ```
 
 ## Cycles broken by lazy-resolution
@@ -659,7 +665,8 @@ Below the >= 3 threshold but tracked for narrative continuity:
 - `CampaignService` — 2 eager (TicketQ, TicketSync). Profile dropped its dependency in #685.
 - `GoogleWorkspaceSyncService` — 2 eager (GAdmin, NotifMeter). `NotifMeter` injects the narrow `IGoogleSyncServiceRead` (for `GetFailedSyncEventCountAsync`); GAdmin injects the full `IGoogleSyncService`.
 - `ProfileService` (`IProfilePictureService`) — 1 eager (UserService graph anchor only). After #685 wound down, the picture-only ProfileService injects just `IUserService`. Removed entirely from `Onboard`, `AppDec`, `AcctProv`, `AcctDel`, `ExpenseReport`, `NotifMeter`.
-- `HoldedFinanceService` (Finance section) — 1 eager (`ExpenseReportService`). New section landed in #791.
+- `HoldedFinanceService` (Finance section) — 1 eager (`ExpenseReportService`). New section landed in #791. Itself now depends eagerly on `Budget` (`IBudgetServiceRead`) and, new this sweep, `Holded` (`IHoldedService` — ledger-line / account-balance reads, since the ledger mirror split out of Finance).
+- `HoldedService` (Holded section, node `Holded`) — 1 eager (`HoldedFinanceService`). **New section this sweep** — the ledger mirror (daybook sync, chart-of-accounts cache, API call-log) split out of Finance so the two Holded-touching sections are structurally isolated (migration `20260810204942_HoldedMirrorMovesToHoldedSection`). No outbound service edges — depends only on Infrastructure (`IHoldedClient`, `IHoldedCallLog`).
 - `AccountDeletionService` — 0 dependents. After #685 it has zero service-level dependents — invoked only from `ProfileController` / `GuestController` as the single deletion-orchestration entry point. Owns the User-section deletion cascade so foundational User/Profile services stay outbound-edge-free.
 
 ## Notes on architectural follow-ups
@@ -670,7 +677,9 @@ Below the >= 3 threshold but tracked for narrative continuity:
 - **#580** — `HumansMetricsService` push-model inversion: sections register their own metrics instead of the service spidering across every section. After that lands, the current `Metrics` node becomes pure registry infrastructure with zero outgoing edges.
 - **#581** — `NotificationMeterProvider` push-model inversion: same pattern as #580 for the navbar-badge meter counts. Post-inversion, `NotifMeter` has zero outgoing edges.
 - **#570** — final slice (Google-writing jobs through service interfaces) doesn't change service→service edges; it affects Job → Service edges, which aren't part of this graph.
-- **#791** — Holded Finance section landed: `HoldedFinanceService` (Application/Services/Finance) now owns the creditor-balance / purchase-doc sync. `ExpenseReportService` eagerly injects it; otherwise it's a leaf.
+- **#791** — Holded Finance section landed: `HoldedFinanceService` (`src/Sections/Humans.Finance`, G5) now owns Holded-account provisioning, purchase-doc sync, and the creditor-contact binding surface. `ExpenseReportService` eagerly injects it (node `Finance`).
+- **Holded mirror split (2026-08-10, migration `20260810204942_HoldedMirrorMovesToHoldedSection`)** — the ledger mirror (daybook journal sync, chart-of-accounts cache, API call-log/metering) moved out of Finance into a brand-new **Holded** section (`src/Sections/Humans.Holded`, G5; `HoldedService` implementing `IHoldedService` + `IHoldedAdminService`). `HoldedFinanceService` no longer computes ledger balances itself — it eagerly injects `IHoldedService` (new `Finance --> Holded` edge) for `GetLedgerLinesAsync` / `GetAccountBalancesAsync`, alongside its existing `Finance --> Budget` edge. The renamed node `Finance` (was `Holded` in the prior diagram) now represents `HoldedFinanceService`; the new node `Holded` represents the ledger-mirror `HoldedService`.
+- **G5 overnight batch (PR #1263, 2026-08-11)** — Budget, Calendar, Campaigns, CityPlanning, Feedback, Issues, and Notifications all moved from `src/Humans.Application/Services/<Section>/` into their own `src/Sections/Humans.<Section>/` projects (alongside Surveys, PR #1251, and Agent, PR #1259, both 2026-08-10/11). None of these moves changed any service→service edge — same ctor dependencies, new project location — so no diagram changes resulted from them beyond this note.
 - **#815** — Ticketing budget repository removed: `TicketingBudgetService` no longer owns tables. The old `ITicketingBudgetRepository` was dropped; the service now reads paid orders through `ITicketServiceRead.GetTicketOrdersAsync` (eager `TicketBudget → TicketQ` edge) and delegates all writes to `IBudgetService`. It is now marked `IOrchestrator` (Tickets read + Budget writes), so HUM0026 catches any future repo-injection regression.
 - **#889** — drive-monitor adapter deleted + SystemSettings centralization + Google sync outbox:
   - `IDriveActivityMonitorRepository` / `DriveActivityMonitorRepository` were deleted. `DriveActivityMonitorService` no longer owns a repo: it logs anomalies through `IAuditLogService.LogAsync` (eager `DriveMon → Audit`) and reads/writes its last-run marker via `ISystemSettingsService` (new eager `DriveMon → SysSettings`). The prior "pending direct-write to `ctx.AuditLogEntries`" dashed annotation is gone — the violation is resolved.

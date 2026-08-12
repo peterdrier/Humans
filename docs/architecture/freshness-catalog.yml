@@ -226,6 +226,7 @@ editorial_trees:
 # Files to exclude from both mechanical and editorial walks.
 ignore:
   - docs/sections/SECTION-TEMPLATE.md
+  - docs/sections/G5-SECTION-TEMPLATE.md
   - docs/architecture/maintenance-log.md
   - docs/architecture/tech-debt-*.md
   - docs/architecture/screenshot-maintenance.md

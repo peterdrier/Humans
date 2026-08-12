@@ -111,7 +111,7 @@ The Application entity also serves **upgrades** (Volunteer→Colaborador, Volunt
 ```
 Application
 ├── Id: Guid
-├── UserId: Guid (FK → User)
+├── UserId: Guid [bare cross-section column — no FK constraint, no nav]
 ├── MembershipTier: MembershipTier [Colaborador or Asociado — never Volunteer]
 ├── Status: ApplicationStatus [enum]
 ├── Motivation: string (4000) [required]
@@ -141,7 +141,7 @@ ApplicationStateHistory
 ├── ApplicationId: Guid (FK → Application)
 ├── Status: ApplicationStatus
 ├── ChangedAt: Instant
-├── ChangedByUserId: Guid (FK → User)
+├── ChangedByUserId: Guid [bare cross-section column — no FK constraint, no nav]
 └── Notes: string? (4000)
 ```
 
@@ -150,7 +150,7 @@ ApplicationStateHistory
 BoardVote
 ├── Id: Guid
 ├── ApplicationId: Guid (FK → Application)
-├── BoardMemberUserId: Guid (FK → User)
+├── BoardMemberUserId: Guid [bare cross-section column — no FK constraint, no nav]
 ├── Vote: VoteChoice [Yay, Maybe, No, Abstain]
 ├── Note: string? (4000)
 ├── VotedAt: Instant

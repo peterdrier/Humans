@@ -265,7 +265,7 @@ IUserEmailService
 │   → Adds new email and returns verification token
 ├── VerifyEmailAsync(userId, token)
 │   → Verifies email, returns verified address
-├── SetNotificationTargetAsync(userId, emailId)
+├── SetPrimaryAsync(userId, emailId)
 │   → Sets which verified email receives notifications
 ├── SetVisibilityAsync(userId, emailId, visibility)
 │   → Updates profile visibility for an email

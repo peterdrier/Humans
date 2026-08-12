@@ -163,15 +163,16 @@ Append-on-approve, drained by `HoldedExpenseOutboxJob`. Fields: `EventType` (Cre
 
 **Owning services:** `ExpenseReportService`
 **Owned tables:** `expense_reports`, `expense_lines`, `expense_attachments`, `holded_expense_outbox_events`
-**Status:** (A) Migrated (2026-05-10, this PR).
+**Status:** (A) Migrated (2026-05-10). Moved into its own project `src/Sections/Humans.Expenses` at G5 (nobodies-collective/Humans#866), with the cross-section leaf `Humans.Expenses.Contracts`.
 
-- `ExpenseReportService` lives in `Humans.Application.Services.Expenses` and depends only on Application-layer abstractions.
-- `ExpenseRepository` (impl `Humans.Infrastructure/Repositories/Expenses/ExpenseRepository.cs`, §15b Singleton + `IDbContextFactory<ExpensesDbContext>`) is the only file that touches expense tables via `DbContext`.
-- **DbContext** — `ExpensesDbContext` (`src/Humans.Infrastructure/Data/ExpensesDbContext.cs`, `internal sealed`) is the section's own per-section EF model (nobodies-collective/Humans#858 split): maps only `expense_reports`, `expense_lines`, `expense_attachments`, `holded_expense_outbox_events`, with its own `__EFMigrationsHistory_Expenses` table and migrations under `Migrations/Expenses/`. Same database and connection as `HumansDbContext` — the split partitions the EF model, not the database.
+- `ExpenseReportService` lives in `Humans.Expenses.Services` and depends only on Application-layer abstractions. `IExpenseReportServiceRead` is the internal read surface (`[SurfaceBudget(7)]`); `IExpenseReportService` adds the mutations. The only public surface is `Section` plus the contracts leaf's `IExpenseReportBackgroundProcessor` (`DrainHoldedOutboxAsync`), which is how `HoldedExpenseOutboxJob` — still in `Humans.Infrastructure/Jobs`, because recurring jobs are named by concrete type in Shell's roll-call — reaches the section.
+- `ExpenseRepository` (impl `src/Sections/Humans.Expenses/Data/ExpenseRepository.cs`, §15b Singleton + `IDbContextFactory<ExpensesDbContext>`) is the only file that touches expense tables via `DbContext`.
+- **DbContext** — `ExpensesDbContext` (`src/Sections/Humans.Expenses/Data/ExpensesDbContext.cs`, `internal sealed`) is the section's own per-section EF model (nobodies-collective/Humans#858 split): maps only `expense_reports`, `expense_lines`, `expense_attachments`, `holded_expense_outbox_events`, with its own `__EFMigrationsHistory_Expenses` table and migrations under `Data/Migrations/` (baseline `20260715101338_BaselineExpenses`). Same database and connection as `HumansDbContext` — the split partitions the EF model, not the database.
+- **DI registration** lives in `Section.Register` at the project root, discovered by Shell through `ISection`. It also registers the section's `ExpenseReportStatus` badge colours into `EnumBadgeMap` rather than Base holding a literal row per section enum.
 - **Decorator decision — no caching decorator.** Expense data is mutable and user-specific; low-traffic at ~500 users.
 - **Cross-domain navs** — none declared. All cross-section linkage is scalar FK only.
 - **Cross-section calls** route through `IBudgetService`, `ITeamService`, `IProfileService`, `IUserService`, `IAuditLogService`, `IHoldedFinanceService` (Finance, Feature 2).
-- **Architecture test** — `tests/Humans.Application.Tests/Architecture/ExpensesArchitectureTests.cs` pins the shape.
+- **Architecture test** — `tests/Humans.Expenses.Tests/ExpensesArchitectureTests.cs` pins the shape.
 
 ### Feature 2 — Holded contact enrichment and payment status
 
@@ -181,4 +182,4 @@ The submitter's expense detail view (`/Expenses/{id}`) shows a **payment status 
 
 The submitter dashboard (`/Expenses`) shows the member's Holded creditor-account statement (`GetCreditorLedgerAsync`) — the cached daybook lines for their 400000xx account, rendered verbatim. It deliberately does **not** blend local `ExpenseReport` rows into that table: doing so nets a locally-held claim against a Holded debit while the Holded credit pairing with it is never shown, which is why the earlier "IOU ledger" card could not reconcile and was removed.
 
-**`TravelReimbursementConfig`** (bound from `appsettings.json` → `TravelReimbursement` section, registered in `AddExpensesSection`) holds the 2026 Spanish IRPF tax-exempt rates: 0.26 €/km, 26.67 €/day (day trip), 53.34 €/day (overnight). Defaults are the live 2026 values; the section works without explicit configuration.
+**`TravelReimbursementConfig`** (bound from `appsettings.json` → `TravelReimbursement` section, registered in `Section.Register`) holds the 2026 Spanish IRPF tax-exempt rates: 0.26 €/km, 26.67 €/day (day trip), 53.34 €/day (overnight). Defaults are the live 2026 values; the section works without explicit configuration.

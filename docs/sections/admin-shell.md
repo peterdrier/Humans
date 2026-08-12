@@ -63,12 +63,14 @@ None — this section is a pure rendering surface with no DB writes and no side 
 
 ## Cross-Section Dependencies
 
-- **Profiles:** `IProfileService` — humans-in-review count for dashboard stat tile.
-- **Onboarding:** `IOnboardingService` — pending consent review count for dashboard stat tile.
-- **Feedback:** `IFeedbackService` — open report count for dashboard stat tile.
-- **Shifts:** `IShiftManagementService` — pending shift signup count for dashboard stat tile.
-- **Audit Log:** `IAuditLogService` — recent audit entries for dashboard activity feed.
+- **Users:** `IUserServiceRead` — user snapshot for the totals / active / ticket-holder stat tiles.
+- **Feedback:** `Humans.Feedback.Contracts.IFeedbackServiceRead` — actionable report count for the dashboard stat tile and the Feedback sidebar pill.
+- **Shifts:** `IShiftManagementService` — active event plus overall shift coverage for the dashboard stat tiles.
+- **Audit Log:** `IAuditViewerService.GetRecentAsync(8)` — recent audit entries for the dashboard activity feed.
+- **Governance:** `Humans.Governance.Contracts.IApplicationServiceRead` — unvoted-application count for the Voting sidebar pill.
 - **Admin Dashboard:** `IAdminDashboardService` — aggregated stat DTO for the dashboard landing page. Reads only — no writes.
+
+All of these are read-side section contracts (`I*ServiceRead` / `I*Contracts`) called from the controller and the nav tree — the shell holds no repository and writes nothing.
 
 ## Architecture
 

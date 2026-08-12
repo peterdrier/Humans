@@ -33,6 +33,17 @@ and the 5 boundary scans in `ServiceBoundaryArchitectureTests.cs` all fall
 outside the analyzer envelope and stay as tests. Tier 3 below lists them so
 they aren't re-proposed.
 
+**Scope every new analyzer through `Internal/AssemblyScope.cs`, never through a
+hardcoded assembly-name set.** A G5 section project is a separate assembly
+(`Humans.<Section>`), so a rule keyed on the literal names
+`Humans.Application` / `Humans.Web` / `Humans.Infrastructure` / `Humans.Domain`
+goes *silent* inside every section that has moved — the split would then reduce
+enforcement rather than preserve it. `AssemblyScope` recognises a section by its
+`[assembly: Section("…")]` marker and folds it into the right predicate
+(`IsApplicationOrWeb`, `IsApplicationWebOrInfrastructure`, …). Section-aware
+rules that need the section *name* use `Internal/Sections.cs`, which resolves it
+from the namespace segment or, for a section project, from that same marker.
+
 ---
 
 ## Tier 1 — High value, ready to ship
@@ -236,10 +247,15 @@ have the supporting machinery. Each notes the missing piece.
   + the §15i landmark commentary). Call-site shape is clean
   (`IInvocationOperation` on `EntityFrameworkQueryableExtensions.Include`),
   but the rule is "no `.Include()` whose target navigation crosses a section
-  boundary" — requires a section-ownership map for entity types, which
-  currently comes from the EF-config namespace layout used by `HUM0024`.
-  Include enforcement should either reuse that helper or move the ownership
-  data behind a shared analyzer helper first.
+  boundary" — requires a section-ownership map for entity types. Half the
+  prerequisite has since landed: `Internal/Sections.cs` resolves a *type's*
+  section from its namespace segment or, for a G5 section project, from its
+  assembly's `[Section("…")]` marker, and `Internal/SectionDbContexts.cs`
+  enumerates the DbSets on every application context. What is still missing is
+  the entity→section direction — `Sections.cs` keys on service/interface
+  namespaces, not on `Humans.Domain` entity types, and HUM0024 still derives
+  entity ownership from EF-config namespace layout. Land that mapping as a
+  shared helper before writing the Include analyzer.
 
 - **`Display sort in repositories/services`** (HARD-ish rule, see
   [`memory/architecture/display-sort-in-controllers.md`](../../memory/architecture/display-sort-in-controllers.md)).

@@ -210,9 +210,9 @@ If any field differs:
 
 Modified:
 
-- `src/Humans.Web/Controllers/EventsController.cs` — add `BulkUploadTemplate` (GET), `BulkUploadImport` (POST); parse the upload via the shared `BulkEventCsvParser.Parse` helper (`src/Humans.Application/Events/`); update `MySubmissions` to read bulk upload errors from TempData. Row validation lives in `EventService.ValidateBulkRows` (private static), not in the controller
-- `src/Humans.Web/Models/Events/BarrioEventViewModels.cs` — add `BulkRowError` (row number, title, error list); add `BulkUploadErrors` to the barrio block view model
-- `src/Humans.Web/Views/Events/MySubmissions.cshtml` — add download link, file upload form, and error table to each barrio block
+- `src/Sections/Humans.Events/Controllers/EventsController.cs` — add `BulkUploadTemplate` (GET), `BulkUploadImport` (POST); parse the upload via the shared `BulkEventCsvParser.Parse` helper (`src/Sections/Humans.Events/Services/`); update `MySubmissions` to read bulk upload errors from TempData. Row validation lives in `EventService.ValidateBulkRows` (private static), not in the controller
+- `src/Sections/Humans.Events/Models/BarrioEventViewModels.cs` — add `BulkRowError` (row number, title, error list); add `BulkUploadErrors` to the barrio block view model
+- `src/Sections/Humans.Events/Views/Events/MySubmissions.cshtml` — add download link, file upload form, and error table to each barrio block
 
 No changes needed to domain or repository; no EF migration. (`IEventService` later gained `BuildBulkUploadTemplateAsync`, which absorbed the template CSV/banner assembly — see below.)
 

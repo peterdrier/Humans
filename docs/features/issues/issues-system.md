@@ -22,12 +22,12 @@ Issues **superseded** Feedback (`docs/features/feedback/feedback-system.md`), wh
 **As** an authenticated human, **I want** to file an issue from any page, **so that** I can report a problem against the right area without leaving my current workflow.
 
 **Acceptance Criteria:**
-- Floating widget on every page (`IssuesWidgetViewComponent`), authenticated users only
+- Floating help widget on every page, authenticated users only — its "Create issue" action opens `_IssueWidgetModal.cshtml`, a partial that lives in the Issues section but is rendered from Shell's `HelpWidget` view component (so `Issue_*` copy resolves against `IssuesResource`)
 - `/Issues/New` page with full form (title, type, optional section override, description, optional screenshot)
 - `Section` defaults to auto-detected from `PageUrl` via `IssueSectionInference.FromPath` when the widget is used; the `/Issues/New` form lets the reporter pick or leave blank for auto-detection
 - Page URL, user agent, and the reporter's roles captured automatically into `AdditionalContext`
 - Screenshot upload limited to JPEG/PNG/WebP, max 10 MB
-- Issues are retained for 6 months after entering a terminal state (Resolved / WontFix / Duplicate); a daily Hangfire job (`CleanupIssuesJob`) then deletes the row, comments, and screenshot directory
+- Issues are retained for 6 months after entering a terminal state (Resolved / WontFix / Duplicate); a daily Hangfire job (`CleanupIssuesJob`) then deletes the row, comments, and screenshot directory. The job is a scheduler shim — the policy lives behind `IIssuesRetention.PurgeExpiredAsync` inside the section
 - Success/error feedback via TempData toast
 - Submission lands at `Status = Triage` with `Section` from the form (or auto-inferred, or null → Admin queue)
 
@@ -92,11 +92,11 @@ Issues **superseded** Feedback (`docs/features/feedback/feedback-system.md`), wh
 **As** the org **and** as the system, **I want** issues to land in the right queue automatically based on which section they're about, **so that** triage scales as we add coordinators per section.
 
 **Acceptance Criteria:**
-- `Issue.Section` is one of the constants in `IssueSectionRouting.AllKnownSections` (Tickets, Camps, Teams, Shifts, Onboarding, Profiles, Budget, Governance, Legal, CityPlanning) or null
+- `Issue.Section` is one of the constants in `IssueSectionRouting.AllKnownSections` (Tickets, Camps, Teams, Shifts, Onboarding, Profiles, Budget, Governance, Legal, CityPlanning, Scanner) or null
 - `IssueSectionRouting.RolesFor(section)` is the routing table mapping section → role(s) whose holders see that section; Admin is always implicit
 - Null `Section` falls to the Admin queue only
 - Routing is data-driven: a change to `IssueSectionRouting.RolesFor` takes effect immediately (sections are stored as strings; no migration needed)
-- The widget infers `Section` from `PageUrl` via `IssueSectionInference.FromPath` when the reporter doesn't pick one explicitly
+- `IssuesController.Submit` infers `Section` from the submitted `PageUrl`'s first path segment via `IssueSectionInference.FromPath` when the reporter doesn't pick one explicitly
 - Handlers can re-route (change `Section`) on any non-terminal issue
 
 ## Data Model
@@ -149,7 +149,7 @@ See [`src/Sections/Humans.Issues/Docs/Issues.md`](../../../src/Sections/Humans.I
 
 The Issues API is the read/write surface Claude Code agents use to triage and follow up on issues during dev sessions. This replaces the older `/triage` skill that worked exclusively against the Feedback API.
 
-- **API key:** `ISSUES_API_KEY` env var on the server. `ApiKeyAuthFilter` enforces the `X-Api-Key` header on every `/api/issues/*` route. 503 if the key isn't configured at all (so we don't silently accept anonymous traffic on a missing-key server); 401 if the key is wrong.
+- **API key:** `ISSUES_API_KEY` env var on the server. `IssuesApiKeyAuthFilter` (section-local, applied to `IssuesApiController` via `[ServiceFilter]`) enforces the `X-Api-Key` header on every `/api/issues/*` route. 503 if the key isn't configured at all (so we don't silently accept anonymous traffic on a missing-key server); 401 if the key is wrong.
 - **Workflow:** an agent calls `GET /api/issues?status=Triage` to pull the current triage queue, optionally narrowed by `section=` for per-section sweeps. For each issue it can `POST /api/issues/{id}/comments` to ask a clarifying question, `PATCH /api/issues/{id}/status` to advance through the lifecycle, `PATCH /api/issues/{id}/assignee` to route the issue to a human, `PATCH /api/issues/{id}/section` to re-route, or `PATCH /api/issues/{id}/github-issue` to link a freshly-created GitHub issue.
 - **Audit:** API-initiated changes are audit-logged (`AuditAction.IssueStatusChanged`, etc.). Because the API path has no user session, the actor is recorded as `null` and the audit metadata records that the change came from the API.
 - **Local config:** `ISSUES_API_URL` / `ISSUES_API_KEY` go in `.claude/settings.local.json` (gitignored) so the agent picks them up without leaking the key into the repo.
@@ -158,7 +158,7 @@ The Issues API is the read/write surface Claude Code agents use to triage and fo
 ## Navigation
 
 - **Top nav:** "Issues" link visible to all authenticated users; nav badge (`NavBadges` ViewComponent, queue `issues`) shows the actionable count for the current viewer (sum across all sections they own + their own reported issues that need their reply).
-- **Floating widget:** `IssuesWidgetViewComponent` renders on every page for authenticated users.
+- **Floating widget:** Shell's `HelpWidget` view component renders on every page for authenticated users and hosts the Issues section's `_IssueWidgetModal` partial.
 - **`/Debug/Configuration`:** shows whether `ISSUES_API_KEY` is configured.
 
 ## Related Features

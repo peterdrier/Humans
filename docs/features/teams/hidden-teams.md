@@ -1,6 +1,6 @@
 <!-- freshness:triggers
   src/Humans.Application/Services/Teams/**
-  src/Humans.Application/Services/Campaigns/CampaignService.cs
+  src/Sections/Humans.Campaigns/Services/CampaignService.cs
   src/Humans.Web/Controllers/TeamController.cs
   src/Humans.Web/Controllers/TeamAdminController.cs
   src/Humans.Domain/Entities/Team.cs

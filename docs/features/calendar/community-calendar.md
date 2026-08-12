@@ -13,8 +13,8 @@ Nobodies Collective teams coordinate through meetings, workshops, and gatherings
 
 ## Scope — Slice 1 (v1)
 
-- Month view and agenda (upcoming events) view
-- Team-filtered view — show only events from selected team(s)
+- Month view (`/Calendar`), list view (`/Calendar/List` — same month window, flat list), and agenda (upcoming events) view (`/Calendar/Agenda`); switched via the `_CalendarViewPills` partial
+- Team-filtered view — show only events from selected team(s), plus a per-team page at `/Calendar/Team/{teamId}`
 - Single and recurring events (RFC 5545 recurrence rules)
 - Cancel or override individual occurrences without deleting the entire series
 - Team-owned events; any authenticated human can create, edit, or delete events for any team
@@ -107,6 +107,8 @@ CalendarEvent
 ├── CreatedByUserId: Guid (bare cross-section reference to User, no DB FK)
 ├── Title: string (required, 256)
 ├── Description: string? (4000)
+├── Location: string? (500)
+├── LocationUrl: string? (2000)
 ├── StartUtc: Instant (required)
 ├── EndUtc: Instant? (required iff IsAllDay = false)
 ├── IsAllDay: bool (default false)
@@ -125,14 +127,20 @@ CalendarEventException
 ├── Id: Guid
 ├── EventId: Guid (FK → CalendarEvent, cascade-delete)
 ├── OriginalOccurrenceStartUtc: Instant (the occurrence being modified)
-├── Title: string? (override title, null = use parent event title)
-├── StartUtc: Instant? (override start time, null = use recurrence result)
-├── EndUtc: Instant? (override end time, null = use recurrence result)
 ├── IsCancelled: bool (true = skip this occurrence in calendar view)
+├── OverrideTitle: string? (200; null = use parent event title)
+├── OverrideDescription: string? (4000)
+├── OverrideStartUtc: Instant? (null = use recurrence result)
+├── OverrideEndUtc: Instant? (null = use recurrence result)
+├── OverrideLocation: string? (500)
+├── OverrideLocationUrl: string? (2000)
+├── CreatedByUserId: Guid (bare cross-section reference to User, no DB FK)
 ├── CreatedAt: Instant
 ├── UpdatedAt: Instant
 └── Navigation: Event
 ```
+
+Unique on `(EventId, OriginalOccurrenceStartUtc)`. `Validate()` requires the row to either cancel the occurrence or override at least one field. A query filter mirrors the parent event's soft-delete so exceptions of deleted events are never returned.
 
 ## Authorization
 
@@ -157,4 +165,5 @@ This ensures a recurring "19:00 weekly on Monday" stays at 19:00 local time even
 
 ## Related Features
 
+- [Calendar section invariants](../../../src/Sections/Humans.Calendar/Docs/Calendar.md) — current data model, routing, and architecture status (own project since G5, nobodies-collective/Humans#866; `CalendarDbContext` owns the `calendar_*` tables, and `CachingCalendarService` decorates the read path)
 - [Teams & Working Groups](../teams/teams.md) — Calendar events are owned by teams; the team reference is recorded on every audit entry for team-scoped audit filtering

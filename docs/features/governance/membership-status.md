@@ -23,13 +23,13 @@ Every human in the system falls into exactly one of 6 mutually exclusive status 
 | **Active** | Approved, not suspended, all required consents signed | Green |
 | **Pending Approval** | Profile exists, not yet approved by Consent Coordinator | Yellow |
 | **Missing Consents** | Approved but missing one or more required legal consents | Blue/Info |
-| **Incomplete Signup** | Signed in via Google but no Profile created | Gray |
+| **Incomplete Signup** | Signed in via Google but no Profile created — or the profile was rejected (`RejectedAt` set) | Gray |
 | **Suspended** | Manually suspended by admin or auto-suspended for expired consents | Red |
 | **Pending Deletion** | Requested account deletion (30-day window) | Dark |
 
 **Invariant:** All 6 bucket counts sum to total humans. No human appears in more than one bucket.
 
-**Priority order:** PendingDeletion > Suspended > IncompleteSignup > PendingApproval > MissingConsents/Active
+**Priority order:** PendingDeletion > IncompleteSignup (no profile) > Suspended > PendingApproval > MissingConsents/Active. Rejected profiles (`RejectedAt` set) fall out at the PendingApproval step and land in IncompleteSignup.
 
 ## State Diagram
 

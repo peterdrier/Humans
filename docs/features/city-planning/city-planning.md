@@ -48,6 +48,7 @@ City Planning organizes the physical layout of the event site across three disti
 - **US-38.14: Admin — Export All Placements** — Download all polygons as a GeoJSON FeatureCollection
 - **US-38.15: Admin — Add Polygon on Behalf of a Camp** — Place a polygon for any unmapped camp season via admin dropdown
 - **US-38.16: Distance Measuring Tool** — Any authenticated user can toggle a two-point ruler. First click drops a point and starts a live rubber-band line with a distance label; second click locks the measurement; a third click starts a new one. Distance shows as `NNN m` under 1 km and `N.NN km` at or above. Escape or re-clicking the button exits and clears all measure layers.
+- **US-38.24: Admin — Bulk Import Polygons from GeoJSON** — Map admins upload a GeoJSON FeatureCollection (10 MB cap) on the admin panel; features are matched to camp seasons by name, previewed, then saved one polygon at a time through the existing polygon `PUT`. Entirely client-side (`barrio-map/admin-import.js`) — no dedicated import endpoint.
 
 ### Containers
 - **US-38.17: Manage Containers (admin)** — Map admins create, edit, and delete containers for the whole event year via `/CityPlanning/BarrioMap/Admin/Containers/{year}`. Each container has a name, description, and an optional photo.
@@ -57,6 +58,7 @@ City Planning organizes the physical layout of the event site across three disti
 - **US-38.21: Export Containers as GeoJSON** — Map admins can download all placed containers for the year as a GeoJSON FeatureCollection. Barrio leads download only their own camp's containers.
 - **US-38.22: Place Containers on Map** — During the container placement phase, barrio leads (own containers) and map admins (all containers) place containers on the map by dragging from the sidebar. Containers are represented as rotatable rectangles with configurable dimensions.
 - **US-38.23: Admin — Manage Container Placement Phase** — Toggle container placement open/closed independently of barrio placement.
+- **US-38.25: Placement Notes and Sketch** — Whoever may place a container can also attach free-text placement notes and one sketch image to that year's placement (replaceable and removable). Stored on `ContainerPlacement`, separate from the container's own photo.
 
 ## Data Model
 
@@ -95,6 +97,8 @@ CityPlanningSettings
 ├── PlacementClosesAt: LocalDateTime? (informational scheduled close; not enforced)
 ├── IsContainerPlacementOpen: bool
 ├── ContainerPlacementOpenedAt: Instant?
+├── ContainerPlacementClosedAt: Instant?
+├── RegistrationInfo: string? (admin-editable markdown shown at the top of /Barrios/Register)
 ├── LimitZoneGeoJson: string? (GeoJSON FeatureCollection — site boundary)
 ├── OfficialZonesGeoJson: string? (GeoJSON FeatureCollection — named overlay zones)
 └── UpdatedAt: Instant
@@ -151,7 +155,10 @@ Minimal read-only map. Fetches `/api/city-planning/state` and renders layers. No
 | `edit.js` | Edit mode lifecycle, draw event handlers, popup, history offcanvas |
 | `signalr.js` | SignalR connection, cursor broadcast, polygon update handler |
 | `config.js` | Server-rendered config values read from DOM data attributes |
-| `measure.js` | Distance measuring tool — sources/layers, click state machine, rubber-band preview |
+| `marquee-direct-select.js` | Custom MapboxDraw `direct_select` mode adding marquee (drag-box) vertex selection |
+| `admin-import.js` | Admin-page bulk GeoJSON import: parse, name-match camps, preview, then `PUT` each polygon |
+
+The distance measuring tool lives in the shared module (`/js/city-planning/shared/measure.js`) and is imported by both maps; `container-map/measure.js` is a one-line re-export.
 
 **State flow:**
 1. Page loads → `GET /api/city-planning/state` fetches settings + all polygons
@@ -193,7 +200,7 @@ Full-screen map with a sidebar listing placed/unplaced containers. Containers ar
 | Admin panel (placement toggle, dates, zone uploads) | Map admin |
 | View container placement map | Map admin, or barrio lead + `IsContainerPlacementOpen` |
 | Manage containers (create/edit/delete/image) | Map admin (all), barrio lead (own camp) |
-| Place / remove containers on map | Map admin (all), barrio lead (own camp) + `IsContainerPlacementOpen` |
+| Place / remove containers on map, edit placement notes/sketch | Map admin (all), barrio lead (own camp) + `IsContainerPlacementOpen` — enforced by `ContainerOperationRequirement.Place` |
 | Export container GeoJSON | Map admin (all), barrio lead (own camp) |
 
 Map admin = `RoleChecks.IsCampAdmin(User)` **or** member of the City Planning team (`ICityPlanningServiceRead.IsCityPlanningTeamMemberAsync`).
@@ -239,6 +246,7 @@ Map admin = `RoleChecks.IsCampAdmin(User)` **or** member of the City Planning te
 | `GET /api/city-planning/export.geojson?year={year}` | Export all barrio polygons as GeoJSON |
 | `GET /api/city-planning/containers/{year}` | All containers for year with `canEdit` flag |
 | `PUT /api/city-planning/containers/{id}/placement/{year}` | Set container location GeoJSON |
+| `PUT /api/city-planning/containers/{id}/placement/{year}/notes` | Set placement notes and/or sketch image (multipart form) |
 | `DELETE /api/city-planning/containers/{id}/placement/{year}` | Remove container from map |
 | `GET /api/city-planning/containers/{year}/export.geojson` | Export placed containers as GeoJSON |
 
@@ -248,6 +256,7 @@ Map admin = `RoleChecks.IsCampAdmin(User)` **or** member of the City Planning te
 
 ## Related Features
 
+- [City Planning section invariants](../../../src/Sections/Humans.CityPlanning/Docs/CityPlanning.md) — current data model, routing, and architecture status (the section became its own project in G5, nobodies-collective/Humans#866)
 - [Camps](../camps/camps.md) — `CampSeason` is the anchor entity; placement requires an approved camp season for the current year
 - [Authentication](../auth/authentication.md) — All map routes require authentication
 - [Administration](../global/administration.md) — Admin role gates map admin actions

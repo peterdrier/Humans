@@ -1,10 +1,11 @@
 <!-- freshness:triggers
-  src/Humans.Application/Services/Agent/AgentService.cs
-  src/Humans.Application/Constants/AgentToolNames.cs
-  src/Humans.Infrastructure/Services/Agent/AgentToolDispatcher.cs
+  src/Sections/Humans.Agent/Services/AgentService.cs
+  src/Sections/Humans.Agent/Services/AgentToolNames.cs
+  src/Sections/Humans.Agent/Services/AgentToolDispatcher.cs
   src/Humans.Web/ViewComponents/HelpWidgetViewComponent.cs
-  src/Humans.Web/Controllers/AgentController.cs
-  src/Humans.Web/Views/Agent/**
+  src/Humans.Web/Views/Shared/Components/HelpWidget/Default.cshtml
+  src/Sections/Humans.Agent/Controllers/AgentController.cs
+  src/Sections/Humans.Agent/Views/Agent/**
 -->
 <!-- freshness:flag-on-change
   End-user behaviour of the in-app AI helper: how to open it (the help-button menu), what it can answer, the talk-with-AI / create-issue / send-feedback menu options, and that it explains-but-never-acts — review only when user-visible agent behaviour changes, not internal preload/store refactors.
@@ -15,8 +16,8 @@
 See the round **help button** in the bottom-right corner of the app (it's got a
 question mark on it)? Tap it and you'll get a short menu: **talk with the AI
 helper** — a friendly chat assistant that can answer questions about the app and
-your account — plus **create an issue** and **send feedback** for when something's
-broken or you have an idea.
+your account — plus **create an issue** for when something's broken or you have
+an idea.
 
 Think of it as someone who has read this whole guide and knows your account, who
 you can ask things in plain words like *"how do I sign up for a shift?"* or
