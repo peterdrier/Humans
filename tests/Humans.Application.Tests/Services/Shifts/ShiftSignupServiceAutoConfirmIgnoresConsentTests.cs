@@ -75,7 +75,6 @@ public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ServiceTe
     {
         var (_, shift) = SeedShiftScenario(SignupPolicy.Public);
         await SaveAllAsync(TestContext.Current.CancellationToken);
-        await ShiftsDb.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var result = await _service.SignUpAsync(_userId, shift.Id, _userId);
 
@@ -88,7 +87,6 @@ public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ServiceTe
     {
         var (_, shift) = SeedShiftScenario(SignupPolicy.Public);
         await SaveAllAsync(TestContext.Current.CancellationToken);
-        await ShiftsDb.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var result = await _service.SignUpAsync(_userId, shift.Id, _userId);
 
@@ -101,7 +99,6 @@ public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ServiceTe
     {
         var (_, shift) = SeedShiftScenario(SignupPolicy.RequireApproval);
         await SaveAllAsync(TestContext.Current.CancellationToken);
-        await ShiftsDb.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var result = await _service.SignUpAsync(_userId, shift.Id, _userId);
 
@@ -119,7 +116,6 @@ public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ServiceTe
             SeedAllDayShift(rota, day);
         }
         await SaveAllAsync(TestContext.Current.CancellationToken);
-        await ShiftsDb.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var result = await _service.SignUpRangeAsync(_userId, rota.Id, -3, -1, _userId);
 

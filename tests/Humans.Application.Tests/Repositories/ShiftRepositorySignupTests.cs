@@ -19,7 +19,6 @@ namespace Humans.Application.Tests.Repositories;
 /// </summary>
 public class ShiftRepositorySignupTests : IDisposable
 {
-    private readonly TeamsDbContext _teamsDbContext;
     private readonly ShiftsDbContext _shiftsDbContext;
     private readonly ShiftRepository _repo;
 
@@ -27,11 +26,6 @@ public class ShiftRepositorySignupTests : IDisposable
 
     public ShiftRepositorySignupTests()
     {
-        var teamsOptions = new DbContextOptionsBuilder<TeamsDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-        _teamsDbContext = new TeamsDbContext(teamsOptions);
-
         var shiftsOptions = new DbContextOptionsBuilder<ShiftsDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
@@ -41,7 +35,6 @@ public class ShiftRepositorySignupTests : IDisposable
 
     public void Dispose()
     {
-        _teamsDbContext.Dispose();
         _shiftsDbContext.Dispose();
         GC.SuppressFinalize(this);
     }
@@ -161,13 +154,6 @@ public class ShiftRepositorySignupTests : IDisposable
         if (teamId == Guid.Empty)
         {
             teamId = Guid.NewGuid();
-            _teamsDbContext.Teams.Add(new Team
-            {
-                Id = teamId,
-                Name = "TestTeam-" + teamId.ToString()[..8],
-                Slug = "team-" + teamId.ToString()[..8],
-                IsActive = true
-            });
         }
 
         // Reuse/create EventSettings for this esId.
@@ -205,7 +191,6 @@ public class ShiftRepositorySignupTests : IDisposable
             MaxVolunteers = 10,
         });
 
-        _teamsDbContext.SaveChanges();
         _shiftsDbContext.SaveChanges();
         return shiftId;
     }

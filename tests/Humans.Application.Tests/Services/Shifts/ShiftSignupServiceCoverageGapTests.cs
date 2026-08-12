@@ -222,7 +222,6 @@ public sealed class ShiftSignupServiceCoverageGapTests : ServiceTestHarness
         });
 
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
-        await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         return (es, rota, shift, userA, userB);
     }
 

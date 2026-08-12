@@ -269,7 +269,7 @@ Ownership is now physical as well as conventional for the peeled sections: the m
 |---------|-----------|--------------|
 | **Profiles** | `ProfileService`, `ContactFieldService`, `ContactService`, `UserEmailService`, `CommunicationPreferenceService` | `profiles`, `contact_fields`, `user_emails`, `communication_preferences`, `volunteer_history_entries` |
 | **Users/Identity** | `UserService`, `AccountProvisioningService`, `UnsubscribeService`, `AccountMergeService`, `DuplicateAccountService`, `ExternalLoginService` | `AspNetUsers`, `AspNetUserClaims`, `AspNetUserLogins`, `AspNetUserTokens`, `AspNetRoles` (legacy), `AspNetUserRoles` (legacy), `event_participations`, `account_merge_requests` |
-| **Teams** | `TeamService`, `TeamPageService`, `TeamResourceService` | `teams`, `team_members`, `team_join_requests`, `team_join_request_state_histories`, `team_role_definitions`, `team_role_assignments`, `team_pages`, `google_resources` |
+| **Teams** | `TeamService`, `TeamPageService` | `teams`, `team_members`, `team_join_requests`, `team_join_request_state_history`, `team_role_definitions`, `team_role_assignments`, `team_early_entry_grants` |
 | **Auth** | `RoleAssignmentService`, `MagicLinkService` | `role_assignments` |
 | **Governance** | `ApplicationDecisionService` | `applications`, `application_state_histories`, `board_votes` |
 | **Consent** | `LegalDocumentService`, `LegalDocumentSyncService`, `ConsentService` | `legal_documents`, `document_versions`, `consent_records` |
@@ -288,7 +288,7 @@ Ownership is now physical as well as conventional for the peeled sections: the m
 | **Scanner** | none (no business logic — `ScannerController` reads via `ITicketServiceRead`) | none |
 | **Gate** | `GateService` | `gate_scan_events`, `gate_settings`, `gate_staff_pins` |
 | **Campaigns** | `CampaignService` | `campaigns`, `campaign_codes`, `campaign_grants` |
-| **Google Integration** | `GoogleSyncService`, `GoogleAdminService`, `GoogleWorkspaceSyncService`, `GoogleWorkspaceUserService`, `DriveActivityMonitorService`, `SyncSettingsService`, `EmailProvisioningService` | `sync_service_settings`, `google_sync_outbox` |
+| **Google Integration** | `GoogleSyncService`, `GoogleAdminService`, `GoogleWorkspaceSyncService`, `GoogleWorkspaceUserService`, `DriveActivityMonitorService`, `SyncSettingsService`, `EmailProvisioningService`, `TeamResourceService` | `sync_service_settings`, `google_sync_outbox`, `google_resources` |
 | **Email** | `EmailOutboxService`, `OutboxEmailService`, `EmailService` | `email_outbox_messages` (reads the `IsEmailSendingPaused` flag via `ISystemSettingsService`) |
 | **System Settings** | `ISystemSettingsService` (G5 project `Humans.SystemSettings`; implemented by the section-internal `Service`) | `system_settings` (cross-cutting key/value store; consuming sections read/write via `ISystemSettingsService`) |
 | **Mailer** | `MailerImportService`, `MailerLiteClient` | _(no owned tables — MailerLite is read-only; classifier writes through other sections' services)_ |

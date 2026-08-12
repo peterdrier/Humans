@@ -160,7 +160,6 @@ public sealed class ShiftSignupServiceCalendarFeedTests : ServiceTestHarness
                     Members: [])
             });
         await SaveAllAsync(TestContext.Current.CancellationToken);
-        await ShiftsDb.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var items = await _service.GetCalendarItemsForUserAsync(userId, TestContext.Current.CancellationToken);
 
@@ -185,7 +184,6 @@ public sealed class ShiftSignupServiceCalendarFeedTests : ServiceTestHarness
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamInfo>());
         await SaveAllAsync(TestContext.Current.CancellationToken);
-        await ShiftsDb.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var items = await _service.GetCalendarItemsForUserAsync(userId, TestContext.Current.CancellationToken);
 
@@ -204,7 +202,6 @@ public sealed class ShiftSignupServiceCalendarFeedTests : ServiceTestHarness
         var userId = Guid.NewGuid();
         SeedSignup(shift, userId, status);
         await SaveAllAsync(TestContext.Current.CancellationToken);
-        await ShiftsDb.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var items = await _service.GetCalendarItemsForUserAsync(userId, TestContext.Current.CancellationToken);
 
@@ -230,7 +227,6 @@ public sealed class ShiftSignupServiceCalendarFeedTests : ServiceTestHarness
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamInfo>());
         await SaveAllAsync(TestContext.Current.CancellationToken);
-        await ShiftsDb.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var items = await _service.GetCalendarItemsForUserAsync(userId, TestContext.Current.CancellationToken);
 
@@ -248,7 +244,6 @@ public sealed class ShiftSignupServiceCalendarFeedTests : ServiceTestHarness
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamInfo>());
         await SaveAllAsync(TestContext.Current.CancellationToken);
-        await ShiftsDb.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var items = await _service.GetCalendarItemsForUserAsync(userId, TestContext.Current.CancellationToken);
 

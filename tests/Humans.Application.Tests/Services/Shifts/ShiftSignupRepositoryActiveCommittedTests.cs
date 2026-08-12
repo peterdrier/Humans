@@ -137,7 +137,6 @@ public sealed class ShiftRepositoryActiveCommittedTests : ServiceTestHarness
         };
         ShiftsDb.Shifts.Add(shift);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
-        await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         return (es, rota, shift);
     }
 
@@ -153,6 +152,5 @@ public sealed class ShiftRepositoryActiveCommittedTests : ServiceTestHarness
             UpdatedAt = TestNow,
         });
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
-        await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
     }
 }

@@ -78,7 +78,6 @@ public sealed class ShiftManagementReadMathTests : ServiceTestHarness
         var (es, rota) = SeedScenario();
         SeedShift(rota, dayOffset: 2, min: 1, max: 4);
         await SaveAllAsync(Ct);
-        await ShiftsDb.SaveChangesAsync(Ct);
 
         var snapshot = await _service.GetStaffingSnapshotAsync(es.Id);
 
@@ -98,7 +97,6 @@ public sealed class ShiftManagementReadMathTests : ServiceTestHarness
         SeedSignup(morning, SeedUser("Bob").Id, SignupStatus.Pending);
         SeedSignup(evening, SeedUser("Carol").Id, SignupStatus.Confirmed);
         await SaveAllAsync(Ct);
-        await ShiftsDb.SaveChangesAsync(Ct);
 
         var day = (await _service.GetStaffingSnapshotAsync(es.Id))
             .StaffingData.Single(d => d.DayOffset == 2);
@@ -117,7 +115,6 @@ public sealed class ShiftManagementReadMathTests : ServiceTestHarness
     {
         var (es, _) = SeedScenario();
         await SaveAllAsync(Ct);
-        await ShiftsDb.SaveChangesAsync(Ct);
 
         var snapshot = await _service.GetStaffingSnapshotAsync(es.Id);
 
@@ -134,7 +131,6 @@ public sealed class ShiftManagementReadMathTests : ServiceTestHarness
         SeedShift(importantRota, dayOffset: 2, min: 1, max: 2, durationHours: 5, startHour: 13);
         SeedShift(normalRota, dayOffset: 2, min: 1, max: 1, durationHours: 6, startHour: 19);
         await SaveAllAsync(Ct);
-        await ShiftsDb.SaveChangesAsync(Ct);
 
         var hours = (await _service.GetStaffingSnapshotAsync(es.Id))
             .StaffingHours.Single(h => h.DayOffset == 2);
@@ -152,7 +148,6 @@ public sealed class ShiftManagementReadMathTests : ServiceTestHarness
         shift.IsAllDay = true;
         shift.StartTime = LocalTime.Midnight;
         await SaveAllAsync(Ct);
-        await ShiftsDb.SaveChangesAsync(Ct);
 
         var hours = (await _service.GetStaffingSnapshotAsync(es.Id))
             .StaffingHours.Single(h => h.DayOffset == -2);
@@ -175,7 +170,6 @@ public sealed class ShiftManagementReadMathTests : ServiceTestHarness
     {
         var (es, rota) = SeedScenario();
         await SaveAllAsync(Ct);
-        await ShiftsDb.SaveChangesAsync(Ct);
 
         (await _service.GetShiftsSummaryAsync(es.Id, [rota.TeamId])).Should().BeNull();
     }
@@ -191,7 +185,6 @@ public sealed class ShiftManagementReadMathTests : ServiceTestHarness
         SeedSignup(second, alice.Id, SignupStatus.Confirmed);
         SeedSignup(second, SeedUser("Bob").Id, SignupStatus.Bailed);
         await SaveAllAsync(Ct);
-        await ShiftsDb.SaveChangesAsync(Ct);
 
         var summary = await _service.GetShiftsSummaryAsync(es.Id, [rota.TeamId]);
 
@@ -213,7 +206,6 @@ public sealed class ShiftManagementReadMathTests : ServiceTestHarness
         SeedSignup(second, alice.Id, SignupStatus.Pending, blockId);
         SeedSignup(third, SeedUser("Bob").Id, SignupStatus.Pending);
         await SaveAllAsync(Ct);
-        await ShiftsDb.SaveChangesAsync(Ct);
 
         var summary = await _service.GetShiftsSummaryAsync(es.Id, [rota.TeamId]);
 
@@ -228,7 +220,6 @@ public sealed class ShiftManagementReadMathTests : ServiceTestHarness
         var emptyRota = SeedRota(es, otherTeam.Id, ShiftPriority.Normal);
         SeedShift(rota, dayOffset: 1, min: 1, max: 3);
         await SaveAllAsync(Ct);
-        await ShiftsDb.SaveChangesAsync(Ct);
 
         var summary = await _service.GetShiftsSummaryAsync(es.Id, [rota.TeamId, emptyRota.TeamId]);
 
@@ -246,7 +237,6 @@ public sealed class ShiftManagementReadMathTests : ServiceTestHarness
         SeedShift(rota, dayOffset: 4, min: 1, max: 3);
         var future = SeedShift(rota, dayOffset: 8, min: 1, max: 3);
         await SaveAllAsync(Ct);
-        await ShiftsDb.SaveChangesAsync(Ct);
 
         var urgent = await _service.GetUrgentShiftsAsync(es.Id);
 
@@ -262,7 +252,6 @@ public sealed class ShiftManagementReadMathTests : ServiceTestHarness
         SeedSignup(full, SeedUser("Alice").Id, SignupStatus.Confirmed);
         SeedSignup(full, SeedUser("Bob").Id, SignupStatus.Confirmed);
         await SaveAllAsync(Ct);
-        await ShiftsDb.SaveChangesAsync(Ct);
 
         var urgent = await _service.GetUrgentShiftsAsync(es.Id);
 
@@ -277,7 +266,6 @@ public sealed class ShiftManagementReadMathTests : ServiceTestHarness
         var early = SeedShift(rota, dayOffset: 6, min: 1, max: 3);
         var late = SeedShift(rota, dayOffset: 8, min: 1, max: 3);
         await SaveAllAsync(Ct);
-        await ShiftsDb.SaveChangesAsync(Ct);
 
         var urgent = await _service.GetUrgentShiftsAsync(
             es.Id,
@@ -295,7 +283,6 @@ public sealed class ShiftManagementReadMathTests : ServiceTestHarness
         var onBound = SeedShift(rota, dayOffset: 8, min: 1, max: 3);
         var afterBound = SeedShift(rota, dayOffset: 9, min: 1, max: 3);
         await SaveAllAsync(Ct);
-        await ShiftsDb.SaveChangesAsync(Ct);
 
         var urgent = await _service.GetUrgentShiftsAsync(es.Id, startDate: GateOpening.PlusDays(8));
 
@@ -310,7 +297,6 @@ public sealed class ShiftManagementReadMathTests : ServiceTestHarness
         var onBound = SeedShift(rota, dayOffset: 8, min: 1, max: 3);
         SeedShift(rota, dayOffset: 9, min: 1, max: 3);
         await SaveAllAsync(Ct);
-        await ShiftsDb.SaveChangesAsync(Ct);
 
         var urgent = await _service.GetUrgentShiftsAsync(es.Id, endDate: GateOpening.PlusDays(8));
 

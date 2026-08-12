@@ -2385,7 +2385,6 @@ public sealed class TeamServiceTests : ServiceTestHarness
         SeedShiftSignup(oldShift.Id, user.Id, SignupStatus.Pending);
 
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
-        await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.GetAdminTeamListAsync(1, 500, Xunit.TestContext.Current.CancellationToken);
 
@@ -2406,7 +2405,6 @@ public sealed class TeamServiceTests : ServiceTestHarness
         SeedShiftSignup(shift.Id, user.Id, SignupStatus.Pending);
 
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
-        await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.GetAdminTeamListAsync(1, 500, Xunit.TestContext.Current.CancellationToken);
 

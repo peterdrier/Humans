@@ -19,7 +19,7 @@ namespace Humans.Infrastructure.Data;
 /// are the only consumers. Configurations are applied explicitly (not by
 /// assembly scanning) so this model can never accrete another section's tables.
 /// Every user reference on these tables (<c>UserId</c>, <c>ReviewedByUserId</c>,
-/// <c>ChangedByUserId</c>, <c>AssignedByUserId</c>,
+/// <c>ChangedByUserId</c>, <c>AssignedByUserId</c>, <c>CreatedByUserId</c>,
 /// <c>PageContentUpdatedByUserId</c>) is a bare Guid, so the Identity tables
 /// stay outside this model and are deliberately absent here.
 /// </remarks>

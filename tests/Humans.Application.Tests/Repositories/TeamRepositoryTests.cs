@@ -1,5 +1,5 @@
-// TeamMember.User / TeamJoinRequest.User are Obsolete per §6c; tests seed
-// them on raw entities before SaveChanges.
+// User.DisplayName is Obsolete; SeedUserAsync sets it on the unpersisted User
+// it hands back to callers.
 #pragma warning disable CS0618
 using AwesomeAssertions;
 using Humans.Application.Tests.Infrastructure;
