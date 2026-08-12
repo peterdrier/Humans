@@ -3,6 +3,14 @@ name: No suppressions of Humans architecture analyzers
 description: HARD RULE — never use #pragma warning disable, [SuppressMessage], or // ReSharper disable to silence HUM* analyzers or other architecture findings. Always fix the underlying structural mistake. The sole exception is a Peter-applied [DontFix] (intentional permanent exception).
 ---
 
+<!-- freshness:triggers
+  memory/architecture/team-resources-google-integration-section.md
+-->
+<!-- freshness:flag-on-change
+  Rule: no-analyzer-suppressions
+  Flag if a symbol, path, namespace or behavior this rule names has changed.
+-->
+
 There is no path under which *silencing* a Humans architecture analyzer (HUM* diagnostic id) with `#pragma` / `[SuppressMessage]` / ReSharper-disable is the right answer. Always fix the underlying architectural mistake — or, for a deliberate **permanent** exception, use a Peter-applied `[DontFix]` (see below).
 
 `#pragma warning disable HUM<NNNN>`, `[SuppressMessage("HUM<NNNN>", ...)]`, and `// ReSharper disable [once] <RuleId>` for HUM rules are forbidden as a way to silence a custom architecture analyzer finding. The same prohibition applies to ReSharper findings that flag real architectural drift.

@@ -3,6 +3,16 @@ name: Avoid magic strings — use nameof, constants, or enum references
 description: When a string literal refers to a code identifier (property, method, role, entity type), replace it with a compile-time reference. Magic strings break silently on rename.
 ---
 
+<!-- freshness:triggers
+  src/Humans.Domain/Constants/RoleGroups.cs
+  src/Humans.Domain/Constants/RoleNames.cs
+  src/Humans.UI/Authorization/RoleChecks.cs
+-->
+<!-- freshness:flag-on-change
+  Rule: no-magic-strings
+  Flag if a symbol, path, namespace or behavior this rule names has changed.
+-->
+
 Use `nameof()`, constants, or enum references instead of string literals that refer to code identifiers. Magic strings are fragile — they silently break on rename and can't be caught by the compiler.
 
 **Rule:** When a string literal refers to a code element (property, method, class, role, entity type), replace it with a compile-time reference.

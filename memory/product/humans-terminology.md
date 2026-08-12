@@ -3,6 +3,16 @@ name: UI terminology — "humans", not "members" or "volunteers"
 description: Public-facing text uses "humans" — never "members" or "volunteers". Admin screens may say "users" when literally referring to the users table / IUserService. Branded org terminology. Applies across all locales (the word stays in English in es/de/fr/it). Internal code unaffected.
 ---
 
+<!-- freshness:triggers
+  src/Humans.Application/Interfaces/Users/IUserService.cs
+  src/Humans.Domain/Entities/CampMember.cs
+  src/Humans.Domain/Entities/User.cs
+-->
+<!-- freshness:flag-on-change
+  Rule: humans-terminology
+  Flag if a symbol, path, namespace or behavior this rule names has changed.
+-->
+
 In **public-facing** text (views non-admin members see, localization strings, emails to humans, public copy), use **"humans"** — not "members" or "volunteers". This is the org's branded terminology.
 
 It applies across all locales (the word "humans" is kept in English even in es/de/fr/it translations). Internal code (entity names, variable names) is unaffected.

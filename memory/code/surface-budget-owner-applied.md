@@ -3,6 +3,17 @@ name: SurfaceBudget is owner-applied only — never add it, never suggest it
 description: HARD RULE. `[SurfaceBudget(N)]` is placed by the repo owner by hand on the surfaces they choose. Agents NEVER add it to a type and NEVER suggest adding it — not in a PR, review, or aside. It lives predominantly on read interfaces. An agent's only job is to keep an already-present N accurate when it edits that type.
 ---
 
+<!-- freshness:triggers
+  src/Humans.Application/Interfaces/Consent/IConsentServiceRead.cs
+  src/Humans.Application/Interfaces/Teams/ITeamServiceRead.cs
+  src/Humans.Application/Interfaces/Users/IUserServiceRead.cs
+  src/Humans.Interfaces/Architecture/SurfaceBudgetAttribute.cs
+-->
+<!-- freshness:flag-on-change
+  Rule: surface-budget-owner-applied
+  Flag if a symbol, path, namespace or behavior this rule names has changed.
+-->
+
 `[SurfaceBudget(N)]` is **owner-applied only**. Peter decides where it goes and places it by hand. Agents never add the attribute and never suggest adding it — not in a PR, a review, or in passing.
 
 **Why:** Agents over-applied it, spraying it onto healthy classes one "good candidate, +1" at a time. That broke builds (HUM0016 slack failures) and the cleanup cost outran any benefit. It's a deliberately narrow consolidation ratchet, not a quality badge to spread.

@@ -3,6 +3,19 @@ name: Every interface-method addition is long-term technical debt — default to
 description: Adding a method to ANY interface (budgeted or not) is durable technical debt, not a refactor. Methods accrete; they compound across interfaces; they take weeks to consolidate. Before adding any method, audit existing methods on that interface for one whose return shape already covers the need — most of the time a list-returning method + a short LINQ chain at the call site is the right answer. The long-term cost of every additional method outweighs the short-term gain of "a cleaner-feeling call site" nearly every time. Stop and ask Peter before adding.
 ---
 
+<!-- freshness:triggers
+  src/Humans.Application/Interfaces/AuditLog/IAuditLogService.cs
+  src/Humans.Application/Interfaces/Camps/ICampService.cs
+  src/Humans.Application/Interfaces/Profiles/IUserEmailService.cs
+  src/Humans.Application/Interfaces/Shifts/IShiftManagementService.cs
+  src/Humans.Application/Interfaces/Teams/ITeamService.cs
+  src/Humans.Application/Interfaces/Users/IUserService.cs
+-->
+<!-- freshness:flag-on-change
+  Rule: interface-method-additions-are-debt
+  Flag if a symbol, path, namespace or behavior this rule names has changed.
+-->
+
 Adding a method to an interface is **technical debt**, not a refactor. New methods accrete — they don't decay — and they compound across `IUserService` + `IUserEmailService` + `IProfileService` + `ITeamService` + `ICampService` + … into surfaces that take weeks of focused work to audit and consolidate.
 
 **Why:** Past instance (the durable lesson behind this atom) — over the two weeks leading to 2026-05-09, multiple agent-generated PRs added methods one well-justified increment at a time across budgeted and unbudgeted service interfaces. Cleaning that up has been the dominant maintenance cost since: the `audit-surface` skill and the `peterdrier#673` person-search consolidation (`-3` net) both exist because of this exact accretion pattern. The PR that produced this atom (#468 / issue #690) added an 11th email-lookup method to `IUserEmailService` (which already exposed ~20) just to satisfy a review-bot warning; reverted same session.

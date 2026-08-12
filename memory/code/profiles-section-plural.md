@@ -3,6 +3,14 @@ name: Profile section namespace is "Profiles" (plural)
 description: `Humans.*.Services.Profiles` (plural). Singular `Profile` collides with the `Profile` entity class and triggers C# CS0135 ambiguity errors.
 ---
 
+<!-- freshness:triggers
+  src/Humans.Domain/Entities/Profile.cs
+-->
+<!-- freshness:flag-on-change
+  Rule: profiles-section-plural
+  Flag if a symbol, path, namespace or behavior this rule names has changed.
+-->
+
 The section folder and namespace for Profile is **`Profiles`** (plural), not `Profile`.
 
 **Why:** The `Profile` entity class exists in `Humans.Domain.Entities`. If the section namespace were also `Profile`, C# emits `CS0135`/similar ambiguity errors wherever both need to be referenced ("Profile is both a type and a namespace in this scope"). The fix is the plural form.

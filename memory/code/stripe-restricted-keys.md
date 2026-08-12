@@ -3,6 +3,15 @@ name: Stripe production keys must be Restricted API Keys (rk_*), never full secr
 description: HARD RULE. When wiring any Stripe integration, the production env-var holds a `rk_live_*` RAK with the minimum scopes the integration uses — never `sk_live_*`. Test mode (`sk_test_*` / `rk_test_*`) is fine for dev.
 ---
 
+<!-- freshness:triggers
+  src/Humans.Infrastructure/Services/StripeStartupSmokeService.cs
+  src/Sections/Humans.Store/Docs/Store.md
+-->
+<!-- freshness:flag-on-change
+  Rule: stripe-restricted-keys
+  Flag if a symbol, path, namespace or behavior this rule names has changed.
+-->
+
 When configuring a Stripe API key for the Humans project in production, use a Restricted API Key (`rk_live_*`) scoped to exactly the operations the integration performs — never a full secret key (`sk_live_*`).
 
 **Why:** Stripe's official guidance is that secret keys grant god-mode (refunds, payouts, charge modifications, customer writes, everything). A compromised secret key can move money out of the account before anyone notices. RAKs limit blast radius — a compromised RAK can do only what its scopes allow. For Humans specifically, **all money-out operations (refunds, payouts, chargebacks) are policy-bound to be Stripe-dashboard manual** — a human deliberately clicks something on stripe.com — so production keys should not even have those scopes.

@@ -129,7 +129,6 @@ Inbound (other sections → Notifications):
 
 ## Design Rationale
 
-<!-- wheat: docs/specs/2026-03-31-notification-inbox-design.md §4 ADR-1, ADR-5; §Decisions Log -->
 
 - **Materialized recipients at dispatch time.** Each `NotificationRecipient` row is created when the alert fires. The membership of a target group ("Coordinators of Geeks") is resolved *then*, not at query time. This captures "who was responsible when the alert fired" — late-added team members do not retroactively see older notifications, which is the intended behavior. Same pattern as the email outbox.
 - **Caller decides resolution scope.** Group-targeted notifications (role) create one `Notification` shared by all recipients — "any one of you handle this" — so the resolved state collapses to a single row. Individual-targeted notifications create one `Notification` per user — "each of you needs to see this" — so per-user dismissal is real. No `GroupKey` concept; the choice is explicit at the dispatch call site.

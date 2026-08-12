@@ -3,6 +3,14 @@ name: No schema-changing deploy during the live event
 description: HARD RULE. From build week through strike, deploys with pending EF migrations are frozen. If one truly cannot wait it needs a confirmed pre-deploy snapshot plus an admin awake at a keyboard. Code-only deploys stay allowed.
 ---
 
+<!-- freshness:triggers
+  docs/database-restore-runbook.md
+-->
+<!-- freshness:flag-on-change
+  Rule: event-deploy-freeze
+  Flag if a symbol, path, namespace or behavior this rule names has changed.
+-->
+
 During the live event — build week through the end of strike — **do not deploy anything with a
 pending EF migration.** Any `Up()` counts: `AddColumn` is as frozen as `DropColumn`.
 

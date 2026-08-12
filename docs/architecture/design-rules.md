@@ -359,7 +359,6 @@ services.AddScoped<ICalendarFeedContributor>(sp => sp.GetRequiredService<EventSe
 
 **Invariant:** a new cross-section need of this shape — assembling per-user (or per-aggregate) rows from several sections into one document — MUST follow the contributor pattern (orchestrator owning no tables, fanning out over a contributor interface that sections opt into) rather than the orchestrator making direct cross-section service calls section-by-section. Direct calls couple the orchestrator to every contributing section and bypass the opt-in registration that keeps the fanout list honest.
 
-<!-- wheat: docs/superpowers/plans/2026-06-02-team-early-entry.md §Task 11 -->
 **Which instance a section forwards** to a contributor interface follows where that contributor's read is actually served from, not a fixed lifetime. Forward the caching decorator only when the fanout read comes off the section's cached projection — `CampsSectionExtensions` registers `AddSingleton<IEarlyEntryProvider>(sp => sp.GetRequiredService<CachingCampService>())` because `CachingCampService.GetEarlyEntriesAsync` projects entirely from the cached `CampSettingsInfo` + `CampInfo` snapshot. Otherwise forward the inner scoped service: `TeamsSectionExtensions` and `ShiftsSectionExtensions` both register scoped providers, because `team_early_entry_grants` and the volunteer-tracking rows are read from the repository per call and are not in `TeamInfo`. The orchestrator is keyed-scoped so it resolves either lifetime; registering a decorator that does not itself serve the read buys no caching and only adds a hop.
 
 ### 8c. Special-Category (GDPR Art. 9) Fields Are Guarded by Convention, Not by Type
@@ -372,7 +371,6 @@ What keeps it contained is a convention with three parts, and all three are load
 2. Each such surface pins the omission with a test — e.g. `CantinaRosterServiceTests.GetWeeklyRoster_MedicalConditionsNeverInDto` reflects over the DTO to assert the property does not exist, *then* serializes a result containing medical text to JSON and asserts it does not appear.
 3. Write paths document the caller's obligation (`IUserService`, `UserProfileCommands`: "MedicalConditions is GDPR Art. 9 — callers must already have verified the caller is allowed"), and the section docs carry the matching negative access rules (department coordinators and VolunteerCoordinator cannot view medical data).
 
-<!-- wheat: docs/superpowers/specs/2026-05-25-dietary-medical-to-profile-design.md §Medical access control -->
 **A wrapper type was considered and rejected.** The alternative was a `Sensitive<T>`-style wrapper that forces the caller to present a policy token to read the value, which would turn an accidental leak into a compile error rather than a review miss. It was rejected as over-engineering at this scale — but it is the designated fallback: **if medical data ever does leak through a serializer, the fix is the wrapper type, not another one-off test.** Adding `MedicalConditions` (or any future Art. 9 field) to a DTO therefore requires the omission test on that surface, and a leak is the trigger to escalate to type-level enforcement. There is no analyzer covering this today.
 
 ## 9. Cross-Service Communication
@@ -507,7 +505,6 @@ Some entities are append-only. They have database triggers or application-level 
 
 The two trigger-backed tables now live in peeled contexts, and their `prevent_*_update` / `prevent_*_delete` triggers were re-issued in the peel baselines: `consent_records` in `Migrations/Legal/…_BaselineLegal.cs` (`LegalDbContext`), `audit_log` in `Migrations/AuditLog/…_BaselineAuditLog.cs` (`AuditLogDbContext`). A section peel must carry its triggers forward — dropping them silently converts a DB-enforced invariant into a convention.
 
-<!-- wheat: docs/superpowers/plans/2026-05-01-account-merge-fold-redesign.md §Chain-Follow Read Paths -->
 **Merge chain-follow on append-only reads.** Account merge folds a source User into a target by re-FKing live rows, but append-only history (`audit_log`, `consent_records`, `budget_audit_logs`, plus per-user Expenses reads) stays at the source by design. Per-user reads of these tables therefore union the source-tombstone ids via `IUserService.GetMergedSourceIdsAsync(targetId)` before querying. That lookup is **cache-backed only** — it scans the cached `UserInfo` snapshot for `MergedToUserId` tombstones in `CachingUserService`; the inner `UserService.GetMergedSourceIdsAsync` throws `NotSupportedException`, so callers must depend on the cached service. Redirect-follow paths that walk `MergedToUserId` (Google Workspace/Group sync, Mailer import, attendee contact import) must follow the chain transitively (A→B→C when B is later merged into C) and **cap the walk at 16 hops** to defuse a circular-merge anomaly rather than spin forever.
 
 ## 13. Google Resource Ownership
@@ -631,7 +628,6 @@ Old names that no longer exist: `CachedProfile`, `IProfileStore`, `ProfileStore`
 
 ### 15g-bis. Decorator-Integrity Hazards
 
-<!-- wheat: docs/plans/2026-04-17-architectural-review-and-pr235-impact.md Part 4 (NEW-A) -->
 
 Architecture tests verify *structure* (namespace, no-DbContext, no-IMemoryCache, required-constructor-deps). They do **not** verify that a caching decorator actually calls its private `RefreshEntryAsync` / dict upsert after delegating a write. The bug class "decorator forgot to invalidate after a write" is silent — stale data persists until process restart, with no error and no timeout. Unit tests of the inner service won't catch it because the inner service is correct in isolation.
 

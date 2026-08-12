@@ -3,6 +3,19 @@ name: Email Mutation Paths
 description: HARD RULE. `UserEmail.Email` is written only by the OAuth-callback reconcile primitive via `(Provider, ProviderKey)` match; `User.Email` is a vestigial Identity field computed from the verified `IsPrimary` row, never written by application code.
 ---
 
+<!-- freshness:triggers
+  docs/architecture/code-analysis.md
+  src/Humans.Analyzers/EmailMutationPathsAnalyzer.cs
+  src/Humans.Application/Services/Profiles/UserEmailService.cs
+  src/Humans.Domain/Entities/User.cs
+  src/Humans.Domain/Entities/UserEmail.cs
+  src/Humans.Web/Controllers/AccountController.cs
+-->
+<!-- freshness:flag-on-change
+  Rule: Email Mutation Paths
+  Flag if a symbol, path, namespace or behavior this rule names has changed.
+-->
+
 # Email Mutation Paths
 
 HARD RULE. The OAuth-callback write path is collapsed to a single service entry point with `AspNetUserLogins` as the authoritative store for OAuth identity. `User.Email` is a vestigial ASP.NET Identity field — it is a computed projection of the user's verified `IsPrimary` `UserEmail` row, never written by application code.

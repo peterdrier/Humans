@@ -3,6 +3,16 @@ name: Check feature spec / section invariant docs after a fix, before commit
 description: After completing a fix or feature, review the relevant `docs/features/*.md` and `docs/sections/*.md`. Update inline if behavior, auth, workflow, data model, or routes changed. Reduces churn from doc-only follow-up commits.
 ---
 
+<!-- freshness:triggers
+  docs/features/**
+  docs/sections/**
+  docs/sections/SECTION-TEMPLATE.md
+-->
+<!-- freshness:flag-on-change
+  Rule: post-fix-doc-check
+  Flag if a symbol, path, namespace or behavior this rule names has changed.
+-->
+
 **After completing a fix or feature but before committing**, check the relevant BRDs in `docs/features/` and section invariants in `docs/sections/`, and update them if the change affects:
 
 - Documented behavior

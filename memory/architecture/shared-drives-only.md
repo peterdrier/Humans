@@ -3,6 +3,15 @@ name: Google Drive — Shared Drives only, never My Drive
 description: All Google Drive resources live on Shared Drives. API calls must use `SupportsAllDrives = true` and request `permissionDetails`. Only direct permissions are managed; inherited Shared Drive permissions are excluded from drift.
 ---
 
+<!-- freshness:triggers
+  src/Humans.Infrastructure/Jobs/GoogleResourceReconciliationJob.cs
+  src/Humans.Infrastructure/Jobs/SystemTeamSyncJob.cs
+-->
+<!-- freshness:flag-on-change
+  Rule: shared-drives-only
+  Flag if a symbol, path, namespace or behavior this rule names has changed.
+-->
+
 **All Google Drive resources are on Shared Drives.** This system does NOT use regular (My Drive) folders.
 
 **Required Drive API conventions:**

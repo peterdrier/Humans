@@ -3,6 +3,14 @@ name: Don't drop columns for decoupling work — the property override IS the mi
 description: HARD RULE. When decoupling code from a column, the property override + read sweeps complete the work. Column drops are separate, optional, and waited until the full sequence is verified end-to-end in production.
 ---
 
+<!-- freshness:triggers
+  src/Humans.Domain/Entities/UserEmail.cs
+-->
+<!-- freshness:flag-on-change
+  Rule: no-column-drops-for-decoupling
+  Flag if a symbol, path, namespace or behavior this rule names has changed.
+-->
+
 When the goal is "stop relying on a column as the source of truth," the **property override + read sweeps are the migration.** The column drop is separate, optional, and dangerous — defer it until the entire multi-PR sequence has run through production successfully.
 
 **Why:** For email-identity decoupling specifically, the `User.Email` override that returns first-verified-`UserEmail` (with `?? base.Email` fallback) means new code paths use UserEmails as canonical, while legacy LINQ filters that hit the column continue working unchanged. **No code is broken. No schema is changed. The architectural goal is achieved.** When an earlier PR 361 had attempted the column drop / `Ignore()` path, every existing user on the preview environment disappeared from the UI and Peter had to reset the PR environment. The "What's deferred" section in PR 361's body was the walk-back. Concrete fingerprint of getting this wrong: cloned QA users present in the DB but invisible to the app.

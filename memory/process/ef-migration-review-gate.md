@@ -3,6 +3,13 @@ name: Run the EF migration reviewer agent before committing any migration
 description: MANDATORY for all DB schema changes. Run `.claude/agents/ef-migration-reviewer.md` before commit/PR. Don't proceed if it reports CRITICAL issues.
 ---
 
+<!-- freshness:triggers
+  .claude/agents/ef-migration-reviewer.md
+-->
+<!-- freshness:flag-on-change
+  Flag if the EF migration reviewer agent file moves or is removed.
+-->
+
 **Before committing any EF Core migration**, run the EF migration reviewer agent at `.claude/agents/ef-migration-reviewer.md`. Mandatory for all database changes — do not commit or create PRs until it passes with no CRITICAL issues.
 
 **Why:** EF Core migrations have surprising failure modes (snapshot/Designer drift, ordering bugs, accidental column drops, missing nullable defaults) that don't surface in local builds but break production. The reviewer agent catches them before merge.

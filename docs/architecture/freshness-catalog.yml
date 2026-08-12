@@ -222,6 +222,9 @@ editorial_trees:
   - docs/architecture/code-review-rules.md
   - docs/architecture/conventions.md
   - docs/seed-data.md
+  # Atomic project rules. They name concrete symbols, namespaces and paths, so a
+  # refactor rots them exactly like a section doc — and agents read them as rules.
+  - memory/
 
 # Files to exclude from both mechanical and editorial walks.
 ignore:
@@ -242,3 +245,6 @@ ignore:
   # design records (historical, same genre as docs/superpowers/specs/).
   - src/Sections/*/Docs/20*.md
   - src/Sections/*/Contracts/README.md
+  # memory/ meta files: the catalog and the how-to, not rules that can rot against code.
+  - memory/INDEX.md
+  - memory/META.md

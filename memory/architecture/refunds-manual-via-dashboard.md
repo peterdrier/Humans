@@ -3,6 +3,16 @@ name: Refunds, payouts, and chargebacks are Stripe-dashboard manual — never vi
 description: HARD RULE. Humans never calls Stripe refund/payout APIs. Money-out is human-initiated on stripe.com. The app's role is bookkeeping (negative `StorePayment` rows when a refund occurs), not refund execution.
 ---
 
+<!-- freshness:triggers
+  src/Humans.Application/Interfaces/IStripeService.cs
+  src/Humans.Infrastructure/Services/StripeService.cs
+  src/Sections/Humans.Store/Docs/Store.md
+-->
+<!-- freshness:flag-on-change
+  Rule: refunds-manual-via-dashboard
+  Flag if a symbol, path, namespace or behavior this rule names has changed.
+-->
+
 Humans never invokes Stripe's refund, payout, or charge-modify APIs. Any operation that moves money OUT of a Stripe account is performed manually by a finance admin on stripe.com.
 
 **Why:** Two reasons compounding:

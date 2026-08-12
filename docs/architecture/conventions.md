@@ -49,7 +49,6 @@ Do not make the controller the coordinator of:
 
 That is service work.
 
-<!-- wheat: docs/superpowers/specs/2026-04-30-account-merge-fold-redesign.md §Transaction model -->
 Cross-repository orchestrations that must commit atomically (e.g. `AccountMergeService`'s fold fan-out) wrap the calls in an ambient `TransactionScope` (`TransactionScopeAsyncFlowOption.Enabled`, `ReadCommitted`). Each repository still creates its own short-lived `DbContext` via `IDbContextFactory`; Npgsql auto-enlists those connections in the ambient scope, so the writes commit or roll back together without sharing a `DbContext` across repositories.
 
 ## Cross-Section FK Columns
@@ -103,7 +102,6 @@ Non-production stub implementations are preferred over scattered environment che
 
 ## Versioning
 
-<!-- wheat: docs/plans/2026-03-08-semantic-versioning-design.md -->
 
 Version strings are derived from git tags via [MinVer](https://github.com/adamralph/minver) at build time — there is no hardcoded `Version` / `FileVersion` / `AssemblyVersion` in `Directory.Build.props`. Tag prefix is `v` (e.g., `v0.8.0`). Between tags MinVer emits `0.8.1-alpha.0.N` where N is commits-since-tag. The `+<hash>` suffix on `InformationalVersion` comes from the existing `SourceRevisionId` MSBuild target.
 
@@ -151,7 +149,6 @@ Razor provides:
 
 ### View Components vs Partials
 
-<!-- wheat: docs/specs/view-components.md §1, §4 -->
 
 A **view component fetches its own data**. A **partial is pure presentation** and takes a typed model. Choose by data-source ownership, not by reuse count.
 

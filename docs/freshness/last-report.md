@@ -152,9 +152,24 @@ judgment calls or out-of-scope app gaps, and were delivered to Peter inline (see
 
 None — all prune candidates resolved this sweep.
 
-## Questions
+## Questions — all answered inline, all resolved this sweep
 
-Raised with Peter inline at the end of this sweep. Recorded here for the next sweep's benefit:
+Peter answered every item. Resolutions applied in this PR:
+
+| # | Answer | What was done |
+|---|---|---|
+| 1 | Campaign codes stay **not** opt-out-able | Code fix filed as nobodies-collective/Humans#1032 — suppress the footer link + `List-Unsubscribe` headers for always-on categories. Docs already corrected to match the code. |
+| 2 | City Planning issues go to **City Planning**, not Admin | Filed nobodies-collective/Humans#1033. |
+| 3 | Add `/Holded` to the **Money** group | Filed nobodies-collective/Humans#1034. |
+| 4 | Add the Camp Coordinator role mapping | Filed nobodies-collective/Humans#1035. |
+| 5 | Not orphaned — they have **dev-only** links | Doc was wrong. The buttons are `AdminNavTree`'s **Dev** group, gated `EnvironmentGate: env => !env.IsProduction()`. The worker only searched `.cshtml` form markup and missed the nav tree. `seed-data.md` corrected. |
+| 6 | Google Integration owns it | §8 change stands — and it matches the pre-existing rule atom [`team-resources-google-integration-section`](../../memory/architecture/team-resources-google-integration-section.md), which says section labels follow *code locality*, not table aggregate ownership. |
+| 7 | Leave for now | No action. `CampaignService.ImportCodesAsync` keeps its UI-only status gate. |
+| 8 | **Frozen until 2027** | `roslyn-analysis.md` retied the freeze to a **date** instead of #866 — tying it to an issue is why agents kept re-raising it every time #866 advanced. Captured as a rule atom: [`hum0031-frozen-until-2027`](../../memory/architecture/hum0031-frozen-until-2027.md). Do not raise this again in any form. |
+| 9 | Add `memory/` to the catalog | Added to `editorial_trees`, with `INDEX.md`/`META.md` ignored. The two stale `Humans.Web.Extensions.DateTimeDisplayExtensions` atoms corrected to `Humans.UI.Extensions`. Its 152 rule atoms carried **zero** freshness markers, so adding the tree bare would have flooded the next sweep with ~152 "unmarked" flags — **91 atoms marked in the same pass**, each glob resolved against a real file and verified. The other 61 are pure policy (git etiquette, working habits) that cannot rot against source and were deliberately left bare. |
+| 10 | Remove if gone, rewrite if moved | **54 of 57** wheat markers pointed at sources deleted by earlier prunes; none of those files exist anywhere in the repo, so none could be rewritten — all 54 removed, prose preserved. The 3 survivors point at the three live docs kept last sweep (both Q3 plans and the post-event survey). |
+
+### Original question text, for the record
 
 **Product / code decisions**
 1. **Campaign unsubscribe is a no-op.** Campaign emails render the footer link *and* RFC 8058
@@ -187,8 +202,8 @@ Raised with Peter inline at the end of this sweep. Recorded here for the next sw
    `ITeamService`, `ITicketSyncService`, and `IApplicationDecisionService`.
    `peters-hard-rules.md` says horizontals *"are strictly forbidden from referencing vertical
    sections … as that will cause loops in the call graph."* Pre-existing; not resolved here.
-10. **HUM0031's controller thresholds** are recorded as "frozen at 40/15 until #866". #866 is now 19
-    sections deep and controllers have moved into section projects. Freeze still intended?
+10. **HUM0031's controller thresholds.** *Answered: frozen until 2027, permanently settled — see
+    `memory/architecture/hum0031-frozen-until-2027.md`. Never raise this again.*
 
 **Sweep mechanics**
 11. **Dangling wheat provenance.** Several G5 docs carry `<!-- wheat: docs/superpowers/specs/… -->`

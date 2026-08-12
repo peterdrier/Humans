@@ -3,6 +3,13 @@ name: Pagination helpers — shared utilities
 description: Use `ClampPageSize()` for page-size clamping. No inline `Math.Clamp`. (CSV moved to its own rule: csv-use-csvhelper.)
 ---
 
+<!-- freshness:triggers
+  src/Humans.UI/Extensions/PageSizeExtensions.cs
+-->
+<!-- freshness:flag-on-change
+  Flag if ClampPageSize is renamed/removed or moves out of PageSizeExtensions.
+-->
+
 Small repeated mechanics should use the shared helpers once they exist.
 
 **Rule:**

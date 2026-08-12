@@ -3,6 +3,19 @@ name: decorators-talk-only-to-inner
 description: HARD RULE. A caching/wrapping decorator over interface I may only depend on I (via its keyed inner registration) and the cache plumbing. No sideways repository, service, or sibling-section injections — ever.
 ---
 
+<!-- freshness:triggers
+  docs/architecture/design-rules.md
+  src/Humans.Application/Interfaces/Caching/ICacheStats.cs
+  src/Humans.Application/Interfaces/Caching/TrackedCache.cs
+  src/Humans.Application/Interfaces/Repositories/IUserRepository.cs
+  src/Humans.Application/Interfaces/Users/IUserService.cs
+  src/Humans.Application/Services/Dashboard/AdminDashboardService.cs
+-->
+<!-- freshness:flag-on-change
+  Rule: decorators-talk-only-to-inner
+  Flag if a symbol, path, namespace or behavior this rule names has changed.
+-->
+
 A class that decorates interface `I` (e.g. `CachingXService : IX, IHostedService` over a keyed-Scoped inner `IX`) is allowed exactly two kinds of collaborator:
 
 1. The inner `IX` it wraps (resolved via `IServiceScopeFactory` per call for Singleton-over-Scoped decorators).

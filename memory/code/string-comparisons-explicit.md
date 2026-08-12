@@ -3,6 +3,14 @@ name: Always use explicit StringComparison
 description: `StringComparison.Ordinal` for exact matches, `OrdinalIgnoreCase` for case-insensitive. For user search input, use shared `Humans.Web.Extensions` helpers.
 ---
 
+<!-- freshness:triggers
+  src/Humans.Application/Services/Profiles/PersonSearchFields.cs
+-->
+<!-- freshness:flag-on-change
+  Rule: string-comparisons-explicit
+  Flag if a symbol, path, namespace or behavior this rule names has changed.
+-->
+
 Always use explicit `StringComparison` parameter on string operations.
 
 **Rule:** Use `StringComparison.Ordinal` for exact matches, `StringComparison.OrdinalIgnoreCase` for case-insensitive.

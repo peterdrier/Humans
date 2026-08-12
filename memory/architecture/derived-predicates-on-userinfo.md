@@ -3,6 +3,16 @@ name: Derived user/profile predicates live on UserInfo, not ProfileInfo
 description: When adding a calculated property that answers a question about a user (IsActive, IsStub, NeedsConsentReview, HasRequiredNameFields, etc.), put it on `UserInfo`. Do NOT add to `ProfileInfo` or to the `Profile` entity. ProfileInfo is a flat projection of Profile fields; UserInfo is the canonical "everything-about-a-person" surface and the going-forward read API.
 ---
 
+<!-- freshness:triggers
+  src/Humans.Application/Interfaces/Users/IUserService.cs
+  src/Humans.Application/UserInfo.cs
+  src/Humans.Domain/Entities/Profile.cs
+-->
+<!-- freshness:flag-on-change
+  Rule: derived-predicates-on-userinfo
+  Flag if a symbol, path, namespace or behavior this rule names has changed.
+-->
+
 `UserInfo` is the one-stop-shop read model (see [`iuserservice-onestop-userinfo`](iuserservice-onestop-userinfo.md)). Every derived predicate about a user — including ones that read off `Profile` fields — lives on `UserInfo`, not on `ProfileInfo`.
 
 `ProfileInfo` stays a flat immutable projection of `Profile` columns. Don't add `IsX`/`HasX`/`NeedsX` properties to it.

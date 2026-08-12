@@ -3,6 +3,18 @@ name: repository required for every DB-accessing service
 description: HARD RULE. Every service that reads or writes a DB table goes through a repository class; no service injects a DbContext directly, even for singleton-row tables. The repository derives from `IRepository` — including inside a G5 section project, where the interface stays because the section's tests substitute it.
 ---
 
+<!-- freshness:triggers
+  src/Humans.Infrastructure/Data/HumansDbContext.cs
+  src/Humans.Interfaces/Interfaces/Repositories/IRepository.cs
+  src/Sections/Humans.Agent/Data/IAgentRepository.cs
+  src/Sections/Humans.Agent/Services/AgentSettingsService.cs
+  src/Sections/Humans.Store/Data/IStoreRepository.cs
+-->
+<!-- freshness:flag-on-change
+  Rule: repository-required-for-db-access
+  Flag if a symbol, path, namespace or behavior this rule names has changed.
+-->
+
 If a service stores or reads anything in the database, it goes through a repository class. No exceptions — not for singleton-row settings tables, not for "trivial" lookups, not for "this is a tiny convenience" cases.
 
 **The repository derives from `IRepository`, everywhere.** `peters-hard-rules.md` says so unconditionally, and the G5 pilot confirmed the line rather than retiring it. An earlier draft of this atom said the interface was optional inside a G5 section assembly, on the reasoning that there is no assembly boundary to cross. Measured, that was wrong: deleting `IStoreRepository` cost **28 `public virtual` members and an unsealed class**, purely so NSubstitute had something to proxy — more ceremony than the interface removed, and moved from a test-facing interface into production code. It was restored in peterdrier/Humans#1223.

@@ -1,3 +1,11 @@
+<!-- freshness:triggers
+  tests/Humans.Integration.Tests/Infrastructure/PhysicalDefaultParityTests.cs
+-->
+<!-- freshness:flag-on-change
+  Rule: Adding a required column to an existing table needs Peter's approval
+  Flag if a symbol, path, namespace or behavior this rule names has changed.
+-->
+
 # Adding a required column to an existing table needs Peter's approval
 
 **Rule:** Never add a `NOT NULL` (required) column to an existing table without Peter's

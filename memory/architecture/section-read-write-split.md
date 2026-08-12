@@ -5,6 +5,19 @@ metadata:
   type: project
 ---
 
+<!-- freshness:triggers
+  docs/architecture/design-rules.md
+  src/Humans.Analyzers/CrossSectionFullServiceInjectionAnalyzer.cs
+  src/Humans.Application/Interfaces/Teams/ITeamService.cs
+  src/Humans.Application/Interfaces/Teams/ITeamServiceRead.cs
+  src/Humans.Domain/Entities/Team.cs
+  src/Humans.Domain/Entities/TeamMember.cs
+-->
+<!-- freshness:flag-on-change
+  Rule: Section read/write interface split
+  Flag if a symbol, path, namespace or behavior this rule names has changed.
+-->
+
 # Section read/write interface split
 
 When a section's service is consumed by code in other sections, that service exposes two interfaces:

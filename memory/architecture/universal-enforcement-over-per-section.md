@@ -3,6 +3,17 @@ name: universal-enforcement-over-per-section
 description: when adding/reviewing an architecture analyzer or arch test — it must be universal (derived from a hard rule), never per-section; a per-section enforcer or a workaround mechanism is itself a smell
 ---
 
+<!-- freshness:triggers
+  docs/superpowers/specs/2026-05-25-analyzer-consolidation.md
+  memory/**
+  src/Humans.Analyzers/CrossSectionEfJoinAnalyzer.cs
+  src/Sections/Humans.Notifications/Data/NotificationRepository.cs
+-->
+<!-- freshness:flag-on-change
+  Rule: universal-enforcement-over-per-section
+  Flag if a symbol, path, namespace or behavior this rule names has changed.
+-->
+
 Architecture enforcement is **universal** — derived from a hard rule and applied to every section the same way — never a per-section analyzer or per-class test. A per-section enforcer is a smell, and resolves to exactly one of: **(a) redundant** — it duplicates an existing universal enforcer → delete it; **(b) a gap** — a real hard rule with no universal enforcer yet → build the universal enforcer, then delete the instances; **(c) a genuine one-off** domain invariant → keep, but only after proving it cannot be restated generally.
 
 **Why:** Per-section enforcers multiply without bound — one ~140-line analyzer or a cluster of reflection tests per section — and drift apart (e.g. DbSet-write enforcement became Notifications=analyzer HUM0022 vs Events/AuditLog=ratchet tests, same rule, three shapes). The hard rules in `peters-hard-rules.md` are already universal; the enforcer should be too. Corollary: the *existence of a workaround mechanism is itself the warning.* A `SaveChangesInterceptor`, a dual-writer allowlist, a per-class "is-not-present" tombstone — each exists because a cross-section boundary wasn't closed. Done right (section read/write interfaces, owning-repository writes), the workaround has nothing to do and disappears. The rule is "none should exist," not "this named one must stay gone."

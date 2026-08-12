@@ -3,6 +3,15 @@ name: Every dotnet ef command needs --context since the per-section split
 description: More than one DbContext is in play (HumansDbContext + one per peeled section, nobodies-collective/Humans#858). Every `dotnet ef` invocation MUST pass `--context <C>`, and `--project` is per-context once a section owns its own project (nobodies-collective/Humans#866).
 ---
 
+<!-- freshness:triggers
+  docs/superpowers/specs/2026-07-15-per-section-dbcontext-design.md
+  src/Humans.Infrastructure/**
+-->
+<!-- freshness:flag-on-change
+  Rule: ef-multi-context-commands
+  Flag if a symbol, path, namespace or behavior this rule names has changed.
+-->
+
 Since the per-section DbContext split (nobodies-collective/Humans#858), more than one DbContext
 is in play. `dotnet ef` errors out ("More than one DbContext was found") unless every invocation
 names its context. Since the section-project split (nobodies-collective/Humans#866), `--project`

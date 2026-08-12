@@ -5,6 +5,15 @@ metadata:
   type: project
 ---
 
+<!-- freshness:triggers
+  docs/architecture/code-analysis.md
+  src/Humans.Analyzers/ServiceReadInterfaceDtoOnlyAnalyzer.cs
+-->
+<!-- freshness:flag-on-change
+  Rule: I*Read interfaces are DTO-only
+  Flag if a symbol, path, namespace or behavior this rule names has changed.
+-->
+
 # I*Read interfaces are DTO-only
 
 Method signatures on any interface in `Humans.Application` whose name ends with `Read` must not reference, at any depth of generic nesting or array element:

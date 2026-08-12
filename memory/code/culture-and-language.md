@@ -3,6 +3,13 @@ name: Culture support via CultureCatalog / CultureCodeExtensions
 description: Use the shared culture helpers for supported lists, ordering, default selection, and display labels. No per-view language dictionaries.
 ---
 
+<!-- freshness:triggers
+  src/Humans.UI/Extensions/CultureCodeExtensions.cs
+-->
+<!-- freshness:flag-on-change
+  Flag if CultureCatalog is split out of CultureCodeExtensions.cs or the class is renamed.
+-->
+
 Culture support and display names must be centralized.
 
 **Rule:**

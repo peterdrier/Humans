@@ -3,6 +3,17 @@ name: BurnerName is THE display name when a Profile exists
 description: For any human with a Profile row, BurnerName is the only public-facing name we render. User.DisplayName is a legacy field — fallback only when no Profile exists. UserInfo.BurnerName / FullProfile.DisplayName resolve this — never read user.DisplayName or UserInfo.DisplayName directly for rendering.
 ---
 
+<!-- freshness:triggers
+  src/Humans.Application/UserInfo.cs
+  src/Humans.Domain/Entities/Profile.cs
+  src/Humans.Domain/Entities/User.cs
+  src/Humans.Infrastructure/Repositories/Users/UserRepository.cs
+-->
+<!-- freshness:flag-on-change
+  Rule: burnername-is-the-display-name
+  Flag if a symbol, path, namespace or behavior this rule names has changed.
+-->
+
 When a `Profile` row exists for a `User`, `Profile.BurnerName` is the only name we ever render in the UI. `User.DisplayName` is a legacy field we can't remove; it's a fallback only when no Profile exists.
 
 Canonical resolved accessors:

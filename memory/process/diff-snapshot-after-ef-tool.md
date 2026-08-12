@@ -3,6 +3,15 @@ name: Diff the snapshot after running an EF tool
 description: After running any EF tool (`migrations add`, `migrations remove`, `database update`, `dbcontext optimize`), always `git diff HumansDbContextModelSnapshot.cs` before committing — empty migration body does NOT mean clean snapshot.
 ---
 
+<!-- freshness:triggers
+  src/Humans.Domain/Entities/VolunteerBuildStatus.cs
+  src/Humans.Infrastructure/Migrations/HumansDbContextModelSnapshot.cs
+-->
+<!-- freshness:flag-on-change
+  Rule: Always `git diff` the snapshot after running an EF tool
+  Flag if a symbol, path, namespace or behavior this rule names has changed.
+-->
+
 # Always `git diff` the snapshot after running an EF tool
 
 `dotnet ef migrations add` rewrites `src/Humans.Infrastructure/Migrations/HumansDbContextModelSnapshot.cs` to reflect EF's view of the current model. The migration **body** (`Up`/`Down` methods) shows the schema diff between the prior snapshot and the new one. The **snapshot file** is a full rewrite of the model state.

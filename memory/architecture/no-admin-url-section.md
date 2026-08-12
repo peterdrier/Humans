@@ -3,6 +3,15 @@ name: No /Admin/ URL section — legacy, never extend
 description: HARD RULE. Top-level `/Admin/*` is legacy; never add new `/Admin/foo` routes. New admin pages always live at `/<Section>/Admin/*`.
 ---
 
+<!-- freshness:triggers
+  src/Humans.Web/Controllers/TicketTransferAdminController.cs
+  src/Humans.Web/Controllers/TicketTransferController.cs
+-->
+<!-- freshness:flag-on-change
+  Rule: no-admin-url-section
+  Flag if a symbol, path, namespace or behavior this rule names has changed.
+-->
+
 **HARD RULE — `/Admin/*` is legacy and frozen.** No new top-level `/Admin/foo` routes, controllers, or links can be added to the application going forwards. There is no "Admin" section. New admin pages live at `/<Section>/Admin/*` (e.g. `/Store/Admin/Catalog`, `/Camps/Admin/Settings`, `/Tickets/Admin/Transfers`).
 
 **Why:** Section ownership is sharper when admin pages live inside the section's own URL tree — it matches the "services own their data" rule at the URL level. Peter (PR #421 review, 2026-05-05): *"/Admin is not allowed to be added to, it's legacy and must go away. We do NOT have an 'Admin' section, thus no top level /Admin/foo links can be added to the application going forwards."* Earlier framing (/Store brainstorm 2026-04-30): *"there is NO /Admin/ Section going forwards.. /Store/Admin is the right url."*

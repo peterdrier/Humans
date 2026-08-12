@@ -3,6 +3,14 @@ name: CSV — CsvHelper via HumansCsv, never hand-rolled
 description: ALL CSV reading and writing goes through the CsvHelper package using the shared `HumansCsv` config factories. Hand-rolled splitting, quoting, escaping, or `string.Split(',')` parsing is not allowed.
 ---
 
+<!-- freshness:triggers
+  src/Humans.Application/Csv/HumansCsv.cs
+  tests/Humans.Application.Tests/Csv/HumansCsvTests.cs
+-->
+<!-- freshness:flag-on-change
+  Flag if HumansCsv's factory methods (WriteBytes, ReadConfig) are renamed or the CsvHelper dependency is swapped.
+-->
+
 Every CSV read or write uses **CsvHelper** built from the shared factories in `Humans.Application.Csv.HumansCsv`:
 
 - **Writing:** `HumansCsv.WriteBytes(csv => ...)` (+ `csv.WriteRow(...)` for loose values, `WriteRecords`/ClassMap for typed rows). Gives UTF-8 BOM, CRLF, invariant culture, RFC 4180 conditional quoting, and OWASP CSV-injection escaping (`= + - @ \t \r` → leading apostrophe) on every export.

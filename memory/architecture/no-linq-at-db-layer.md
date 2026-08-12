@@ -3,6 +3,16 @@ name: Don't overuse LINQ at the DB layer — thick repos return materialized lis
 description: At ~500-user scale, prefer hand-written repo methods that materialize at the boundary over IQueryable composed across services. LINQ-against-EF-mapped-properties scatters DB shape concerns and breaks badly when mappings change.
 ---
 
+<!-- freshness:triggers
+  src/Humans.Application/Services/Profiles/ProfileService.cs
+  src/Humans.Application/Services/Users/DuplicateAccountService.cs
+  src/Humans.Web/Controllers/DevLoginController.cs
+-->
+<!-- freshness:flag-on-change
+  Rule: no-linq-at-db-layer
+  Flag if a symbol, path, namespace or behavior this rule names has changed.
+-->
+
 Don't reach for LINQ-on-EF-entities (`db.Users.Where(u => u.Email.Contains(...))`, `db.Users.Select(u => u.Email)`) when designing service methods. Prefer **hand-written repository methods that materialize at the boundary** — the repo runs the query and returns a `List`/`IReadOnlyList` of plain DTOs (or domain objects with all needed data Include'd).
 
 **Why:** Surfaced 2026-04-29 during PR 2 of the email-identity-decoupling work. When `User.Email` was overridden to compute from `UserEmails` and the column was `Ignore()`-d in EF mapping, every LINQ filter site that translated `u.Email` to SQL (5+ sites: `ProfileService` admin search, `DuplicateAccountService`, `DriveActivityMonitorRepository`, `DevLoginController`, etc.) broke at translation time. EF can't translate a C# property override body to SQL. Peter: "this is why your overuse of LINQ at the db layer is causing us so many problems."

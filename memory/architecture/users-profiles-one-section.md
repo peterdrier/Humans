@@ -3,6 +3,17 @@ name: Users And Profiles Are One Section
 description: HARD RULE. Users, Profiles, and UserEmail are one ownership section (Humans); don't move code between Users/Profile just to satisfy a section-boundary rule.
 ---
 
+<!-- freshness:triggers
+  src/Humans.Analyzers/CrossSectionRepositoryInjectionAnalyzer.cs
+  src/Humans.Application/Interfaces/Repositories/IAccountMergeRepository.cs
+  src/Humans.Application/Interfaces/Repositories/ICommunicationPreferenceRepository.cs
+  src/Humans.Application/Interfaces/Repositories/IUserRepository.cs
+-->
+<!-- freshness:flag-on-change
+  Rule: Users And Profiles Are One Section
+  Flag if a symbol, path, namespace or behavior this rule names has changed.
+-->
+
 # Users And Profiles Are One Section
 
 HARD RULE. Users, Profiles, and UserEmail are one ownership section: Humans.

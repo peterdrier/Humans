@@ -3,6 +3,15 @@ name: Never create a subfolder/namespace named "System"
 description: A `System/` subfolder shadows the BCL `System` namespace in every sibling subfolder, breaking fully-qualified `System.X` references across the tree. Use `SystemSettings/`, `Platform/`, `Infra/` instead.
 ---
 
+<!-- freshness:triggers
+  src/Humans.Infrastructure/Data/Configurations/Shifts/VolunteerEventProfileConfiguration.cs
+  src/Sections/Humans.SystemSettings/Data/Configurations/SystemSettingConfiguration.cs
+-->
+<!-- freshness:flag-on-change
+  Rule: no-system-subfolder
+  Flag if a symbol, path, namespace or behavior this rule names has changed.
+-->
+
 Never propose a subfolder named `System` inside any namespace in this codebase (`Humans.Infrastructure.Data.Configurations.System`, `Humans.Domain.Entities.System`, `Humans.Application.Services.System`, etc.).
 
 **Why:** C# namespace resolution is relative-then-absolute. Any file inside `Humans.Infrastructure.Data.Configurations.<anything>` that writes `System.Linq.Expressions.Expression<…>` (or `System.Text.Json`, `System.Collections.Generic`, etc.) will try `Humans.Infrastructure.Data.Configurations.System.Linq.Expressions.Expression` first, **find the inner `System` namespace**, then fail because `.Linq.Expressions` doesn't exist under it. This hit `VolunteerEventProfileConfiguration` when a `Configurations/System/` folder was briefly introduced during the 2026-04-23 reorganization — broke compile across every sibling section folder.

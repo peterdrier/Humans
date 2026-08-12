@@ -121,7 +121,6 @@ The auth surface is mid-transition per `docs/plans/2026-04-03-first-class-author
 - Magic-link signup sends are rate-limited to 1 email per 60 seconds per target address. The reservation is released on downstream send failure so the caller can retry.
 - Verified-email resolution goes through `IUserEmailService.FindVerifiedEmailWithUserAsync` — never through raw `DbContext.UserEmails` queries. Unverified rows are ignored (their auto-link would bypass the merge-request review gate).
 - Every sign-in path signs in with `isPersistent: true`, and the Identity application cookie carries a **14-day sliding** lifetime (`ExpireTimeSpan` + `SlidingExpiration` in `Program.cs`): a visit inside the window extends it, 14 days away requires re-login. Session-scoped cookies (`isPersistent: false`) have no `Expires` and die on browser close — that was the re-login-every-visit bug (nobodies-collective#925). Cookie lifetime is **not** a revocation mechanism and doesn't need to be short: `MembershipRequiredFilter` re-checks `UserState` on every request, `RoleAssignmentClaimsTransformation` re-derives roles (60 s cache), and Identity's security-stamp validation invalidates server-side. DataProtection keys persist to the DB, so cookies also survive container restarts.
-<!-- wheat: docs/superpowers/specs/2026-03-23-session1-auth-google-sync-design.md §Batch 1 -->
 - Google OAuth remote failures (missing/expired correlation cookie, user-cancelled consent, browser cookie restrictions) are handled by an `OnRemoteFailure` handler on the Google authentication options in `Program.cs` that logs at Warning and redirects to `/Account/Login?error=sign-in-failed`; the unhandled `CorrelationException` would otherwise propagate as a 500. The login view reads `Request.Query["error"]` and renders a localized dismissible alert.
 
 ## Negative Access Rules
@@ -148,7 +147,6 @@ The auth surface is mid-transition per `docs/plans/2026-04-03-first-class-author
 
 ## Access Matrix UI (per-section)
 
-<!-- wheat: docs/specs/2026-03-18-access-matrix-card-design.md §Overview, §Sections & Matrices, §Maintenance -->
 
 Each section's landing page exposes an info-icon button (`AccessMatrixViewComponent`, invoked as `<vc:access-matrix section="…" />`) that opens a modal showing which roles can do what in that section. Definitions live in `src/Humans.Web/Models/AccessMatrixDefinitions.cs` as **static data, not DB-driven** — there is intentionally no `access_matrix` table.
 

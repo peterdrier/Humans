@@ -3,6 +3,18 @@ name: Service tests inherit ServiceTestHarness
 description: Service tests in Humans.Application.Tests should inherit ServiceTestHarness (Db, DbFactory, Clock, Cache, NewDbBackedUserService) instead of hand-rolling per-class scaffolding.
 ---
 
+<!-- freshness:triggers
+  src/Humans.Application/Interfaces/Users/IUserService.cs
+  src/Humans.Infrastructure/Data/HumansDbContext.cs
+  tests/Humans.Application.Tests/Infrastructure/ServiceTestHarness.cs
+  tests/Humans.Application.Tests/Infrastructure/TestDbContextFactory.cs
+  tests/Humans.Testing/TestDbContextFactory.cs
+-->
+<!-- freshness:flag-on-change
+  Rule: service-test-harness
+  Flag if a symbol, path, namespace or behavior this rule names has changed.
+-->
+
 `tests/Humans.Application.Tests/Infrastructure/ServiceTestHarness.cs` is the base class for service tests that need an in-memory `HumansDbContext` + `FakeClock` + `IMemoryCache` + a DB-backed `IUserService` stub. Inherit it instead of repeating the constructor boilerplate.
 
 **What the harness provides** (members are `private protected` — accessible from derived test classes within the test assembly):

@@ -3,6 +3,19 @@ name: No Identity-derived column reads from Application or Web
 description: HARD RULE. Application/Web code must not read `User.Email`/`NormalizedEmail`/`UserName`/`NormalizedUserName`; use `UserInfo.Email` / `IUserEmailService` instead. Enforced by HUM0019.
 ---
 
+<!-- freshness:triggers
+  memory/architecture/email-mutation-paths.md
+  src/Humans.Analyzers/IdentityColumnReadAnalyzer.cs
+  src/Humans.Analyzers/IdentityColumnWriteAnalyzer.cs
+  src/Humans.Analyzers/IdentityFindByEmailAnalyzer.cs
+  src/Humans.Application/Interfaces/Profiles/IUserEmailService.cs
+  src/Humans.Domain/Entities/User.cs
+-->
+<!-- freshness:flag-on-change
+  Rule: No Identity-derived column reads from Application or Web
+  Flag if a symbol, path, namespace or behavior this rule names has changed.
+-->
+
 # No Identity-derived column reads from Application or Web
 
 HARD RULE. Application and Web code MUST NOT read the four Identity-derived `User` columns:

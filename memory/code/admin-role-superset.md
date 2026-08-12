@@ -3,6 +3,14 @@ name: Admin and domain-admin roles are supersets
 description: Admin can do everything system-wide. Domain-specific *Admin roles (TeamsAdmin, CampAdmin, TicketAdmin) are supersets within their domain. Always include both in role lists.
 ---
 
+<!-- freshness:triggers
+  src/Humans.Domain/Constants/RoleGroups.cs
+  src/Humans.UI/Authorization/PolicyNames.cs
+-->
+<!-- freshness:flag-on-change
+  Flag if TeamsAdmin/CampAdmin/TicketAdmin roles are renamed/removed or RoleGroups.BoardOrAdmin changes shape.
+-->
+
 **Admin** can do everything in the entire system that any other role can do. Hard rule, no known exceptions.
 
 Each domain-specific `*Admin` role is a superset of all capabilities within its domain:

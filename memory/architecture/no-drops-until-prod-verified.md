@@ -3,6 +3,14 @@ name: Never drop hard storage in the same PR that ships its replacement
 description: HARD RULE. DB columns/tables/indexes/constraints, persistent filesystem data, and external persisted state must wait for a separate follow-up PR AFTER the replacement has shipped and been verified in production. Code-only deletions are exempt.
 ---
 
+<!-- freshness:triggers
+  docs/database-restore-runbook.md
+-->
+<!-- freshness:flag-on-change
+  Rule: no-drops-until-prod-verified
+  Flag if a symbol, path, namespace or behavior this rule names has changed.
+-->
+
 **Hard-storage drops** wait for a separate PR after the replacement has shipped and been verified in production. Code drops (classes, methods, files) are exempt — code rolls back via `git revert` + redeploy.
 
 **In scope (require split):**
