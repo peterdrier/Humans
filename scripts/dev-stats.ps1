@@ -17,6 +17,11 @@ $testCount = (git grep -E '^\s*\[(Fact|Theory|HumansFact|HumansTheory)' -- 'test
 # Analyzer rules: distinct HUMxxxx diagnostic ids in the analyzer project.
 $analyzerRuleCount = (git grep -ohE 'HUM[0-9]{4}' -- 'src/Humans.Analyzers/*.cs' | Sort-Object -Unique | Measure-Object).Count
 
+# Section count: [assembly: Section("...")] declarations under src/Sections. Line-anchored so
+# doc-comment mentions of the attribute (e.g. Scanner's own docs) don't inflate the count.
+# G5 moves land weekly — this is generated, never hand-maintained.
+$sectionCount = (git grep -E '^\[assembly: Section\(' -- 'src/Sections/*' | Measure-Object -Line).Lines
+
 # Per-author commit + line counts over the whole history.
 $authors = @{}
 $current = $null
@@ -61,6 +66,7 @@ $out = [ordered]@{
     closedIssues = $closedIssues
     testCount = $testCount
     analyzerRuleCount = $analyzerRuleCount
+    sectionCount = $sectionCount
     contributors = @($contributors)
     claudeCoauthoredCommitPercent = $claudePercent
 }
@@ -68,4 +74,4 @@ $json = $out | ConvertTo-Json -Depth 4
 $dataDir = Join-Path $repoRoot "src/Humans.Web/wwwroot/data"
 New-Item -ItemType Directory -Force $dataDir | Out-Null
 [System.IO.File]::WriteAllText((Join-Path $dataDir "dev-stats.json"), "$json`n")
-Write-Host "Wrote dev-stats.json: $totalCommits commits, $mergedPrs PRs, $closedIssues issues, $testCount tests, $analyzerRuleCount analyzer rules"
+Write-Host "Wrote dev-stats.json: $totalCommits commits, $mergedPrs PRs, $closedIssues issues, $testCount tests, $analyzerRuleCount analyzer rules, $sectionCount sections"

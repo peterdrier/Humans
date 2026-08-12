@@ -34,6 +34,7 @@ public class AdminController(IUserServiceRead userService) : HumansControllerBas
         [FromServices] IEmailOutboxServiceRead emailOutbox,
         [FromServices] IStoreServiceRead storeService,
         [FromServices] IExpenseReportServiceRead expenseReportService,
+        [FromServices] IAuthorizationService authorizationService,
         CancellationToken ct)
     {
         var firstName = User.Identity?.Name?.Split(' ').FirstOrDefault() ?? "";
@@ -67,13 +68,29 @@ public class AdminController(IUserServiceRead userService) : HumansControllerBas
         var auditTotal = (await auditViewer.GetPageAsync(null, 1, 1, ct)).TotalCount;
         var emailStats = await emailOutbox.GetOutboxStatsAsync(0, ct);
 
-        var storeSummary = activeEvent is { Year: > 0 }
-            ? await storeService.GetStoreSummaryAsync(activeEvent.Year, ct)
-            : null;
-        var storeOrders = storeSummary?.ByCounterparty.Count ?? 0;
-        var storeTotalEur = storeSummary?.ByCounterparty.Sum(o => o.TotalDueEur) ?? 0m;
+        // The Store/Expenses tiles are policy-gated below AnyAdminRole (mirroring their source
+        // pages' own tighter policies), and the computation is skipped along with the tile for
+        // the roles that can't see it — no point pulling the whole store summary or every
+        // expense report for a viewer who will never see the number.
+        var canSeeStoreTile = (await authorizationService.AuthorizeAsync(User, PolicyNames.StoreCatalogAdmin)).Succeeded;
+        int? storeOrders = null;
+        decimal? storeTotalEur = null;
+        if (canSeeStoreTile && activeEvent is { Year: > 0 })
+        {
+            var storeSummary = await storeService.GetStoreSummaryAsync(activeEvent.Year, ct);
+            storeOrders = storeSummary.ByCounterparty.Count;
+            storeTotalEur = storeSummary.ByCounterparty.Sum(o => o.TotalDueEur);
+        }
 
-        var expenseReports = await expenseReportService.GetAllAsync(ct);
+        var canSeeExpenseTile = (await authorizationService.AuthorizeAsync(User, PolicyNames.FinanceAdminOrAdmin)).Succeeded;
+        var expenseReportCount = 0;
+        var expenseTotalEur = 0m;
+        if (canSeeExpenseTile)
+        {
+            var expenseReports = await expenseReportService.GetAllAsync(ct);
+            expenseReportCount = expenseReports.Count;
+            expenseTotalEur = expenseReports.Sum(r => r.Total);
+        }
 
         var vm = new AdminDashboardViewModel(
             GreetingFirstName: firstName,
@@ -97,8 +114,8 @@ public class AdminController(IUserServiceRead userService) : HumansControllerBas
             TotalEmails: emailStats.TotalCount,
             StoreOrders: storeOrders,
             StoreTotalEur: storeTotalEur,
-            ExpenseReports: expenseReports.Count,
-            ExpenseTotalEur: expenseReports.Sum(r => r.Total));
+            ExpenseReports: expenseReportCount,
+            ExpenseTotalEur: expenseTotalEur);
         return View(vm);
     }
 }

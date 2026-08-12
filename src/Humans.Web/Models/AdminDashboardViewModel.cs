@@ -24,8 +24,8 @@ public sealed record AdminDashboardViewModel(
     int TotalTeams,
     int TotalAuditEvents,
     int TotalEmails,
-    int StoreOrders,
-    decimal StoreTotalEur,
+    int? StoreOrders,
+    decimal? StoreTotalEur,
     int ExpenseReports,
     decimal ExpenseTotalEur);
 

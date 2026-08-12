@@ -1,6 +1,5 @@
 using Humans.Application.Interfaces.Camps;
 using Humans.Store.Contracts;
-using Humans.Store.Domain;
 using Humans.Store.Services;
 using Humans.Store.Services.Dtos;
 using Humans.UI.Authorization;

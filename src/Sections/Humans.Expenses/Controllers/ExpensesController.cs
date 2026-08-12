@@ -13,7 +13,6 @@ using Humans.Expenses.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
-using Humans.Expenses.Domain;
 
 namespace Humans.Expenses.Controllers;
 

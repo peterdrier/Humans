@@ -12,6 +12,7 @@ public sealed record DevStatsViewModel(
     int ClosedIssues,
     int TestCount,
     int AnalyzerRuleCount,
+    int SectionCount,
     IReadOnlyList<DevStatsContributor> Contributors,
     int ClaudeCoauthoredCommitPercent);
 
