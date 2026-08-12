@@ -1,0 +1,7 @@
+@* A section RCL does NOT inherit the host's Views/_ViewImports.cshtml. Omitting a line
+   here ships broken markup with a green build — guarded by TourPageRenderTests.
+   No localizer binding: Tour is deliberately English-only (spec 2026-08-12). *@
+@using Humans.Tour
+@using Humans.Tour.Controllers
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+@addTagHelper *, Humans.UI
