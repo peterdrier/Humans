@@ -44,7 +44,7 @@ public sealed class DatabaseIsolationTests(HumansTestDatabase database) : Integr
 
         using (var scope = Factory.Services.CreateScope())
         {
-            var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+            var db = scope.ServiceProvider.GetRequiredService<TeamsDbContext>();
 
             db.Teams.Add(new Team
             {

@@ -17,7 +17,6 @@ namespace Humans.Application.Tests.Repositories;
 /// </summary>
 public class ShiftRepositorySummaryTests : IDisposable
 {
-    private readonly HumansDbContext _dbContext;
     private readonly ShiftsDbContext _shiftsDbContext;
     private readonly ShiftRepository _repo;
 
@@ -36,11 +35,6 @@ public class ShiftRepositorySummaryTests : IDisposable
 
     public ShiftRepositorySummaryTests()
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-        _dbContext = new HumansDbContext(options);
-
         var shiftsOptions = new DbContextOptionsBuilder<ShiftsDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
@@ -50,7 +44,6 @@ public class ShiftRepositorySummaryTests : IDisposable
 
     public void Dispose()
     {
-        _dbContext.Dispose();
         _shiftsDbContext.Dispose();
         GC.SuppressFinalize(this);
     }
@@ -114,7 +107,6 @@ public class ShiftRepositorySummaryTests : IDisposable
     public async Task GetConfirmedUserShiftTotalsAsync_AllDayShift_UsesWindowHoursNotStoredDuration()
     {
         SeedEvent(_event);
-        SeedTeam(_team1);
         SeedRota(_rota1, _event, _team1);
         // Build/strike all-day rows store a 24h sentinel Duration, but the effective
         // worked hours are the 08:00–18:00 window (10h) — see Shift.IsAllDay.
@@ -144,8 +136,6 @@ public class ShiftRepositorySummaryTests : IDisposable
     {
         SeedEvent(_event);
         SeedEvent(_otherEvent);
-        SeedTeam(_team1);
-        SeedTeam(_team2);
         SeedRota(_rota1, _event, _team1);
         SeedRota(_rota2, _event, _team2);
 
@@ -156,7 +146,6 @@ public class ShiftRepositorySummaryTests : IDisposable
         // Other-event rota + shift for the leakage check.
         var otherTeam = Guid.NewGuid();
         var otherRota = Guid.NewGuid();
-        SeedTeam(otherTeam);
         SeedRota(otherRota, _otherEvent, otherTeam);
         var sOther = SeedShift(otherRota, Duration.FromHours(99));
 
@@ -167,7 +156,6 @@ public class ShiftRepositorySummaryTests : IDisposable
             MakeSignup(_userC, s1, SignupStatus.Pending),
             MakeSignup(_userA, sOther, SignupStatus.Confirmed));
 
-        _dbContext.SaveChanges();
         _shiftsDbContext.SaveChanges();
     }
 
@@ -177,14 +165,6 @@ public class ShiftRepositorySummaryTests : IDisposable
         EventName = "TestEvent",
         GateOpeningDate = new LocalDate(2026, 7, 1),
         TimeZoneId = "UTC"
-    });
-
-    private void SeedTeam(Guid teamId) => _dbContext.Teams.Add(new Team
-    {
-        Id = teamId,
-        Name = "Team-" + teamId.ToString()[..8],
-        Slug = "team-" + teamId.ToString()[..8],
-        IsActive = true
     });
 
     private void SeedRota(Guid rotaId, Guid esId, Guid teamId) => _shiftsDbContext.Rotas.Add(new Rota

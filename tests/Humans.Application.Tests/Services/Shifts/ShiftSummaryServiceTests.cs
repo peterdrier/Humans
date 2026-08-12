@@ -85,12 +85,12 @@ public sealed class ShiftSummaryServiceTests : ServiceTestHarness
         // Team reads: by-id dictionary (team-set resolution) and by-slug.
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(_ => Task.FromResult<IReadOnlyDictionary<Guid, TeamInfo>>(
-                Db.Teams.AsEnumerable().ToDictionary(t => t.Id, ToTeamInfo)));
+                TeamsDb.Teams.AsEnumerable().ToDictionary(t => t.Id, ToTeamInfo)));
         _teamService.GetTeamBySlugAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(ci =>
             {
                 var slug = ci.Arg<string>();
-                var team = Db.Teams.AsEnumerable()
+                var team = TeamsDb.Teams.AsEnumerable()
                     .FirstOrDefault(t => string.Equals(t.Slug, slug, StringComparison.Ordinal));
                 return Task.FromResult(team is null ? null : ToTeamInfo(team));
             });
@@ -283,7 +283,7 @@ public sealed class ShiftSummaryServiceTests : ServiceTestHarness
             MakeSignup(_userB, sWater, SignupStatus.Confirmed),
             MakeSignup(_userC, sSub, SignupStatus.Confirmed));
 
-        Db.SaveChanges();
+        SaveAll();
         ShiftsDb.SaveChanges();
 
         _names[_userA] = "Ana";

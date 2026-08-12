@@ -53,8 +53,8 @@ public sealed class LegalDocumentSyncServiceTests : ServiceTestHarness
             UpdatedAt = Clock.GetCurrentInstant()
         };
 
-        Db.Teams.Add(_team);
-        Db.SaveChanges();
+        TeamsDb.Teams.Add(_team);
+        SaveAll();
 
         // Team-name stitch: return the seed team when queried.
         _teamService

@@ -91,11 +91,12 @@ public class VolunteerTrackingRepositoryTests(HumansTestDatabase database)
     {
         await using var scope = Factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var teamsDb = scope.ServiceProvider.GetRequiredService<TeamsDbContext>();
         var shiftsDb = scope.ServiceProvider.GetRequiredService<ShiftsDbContext>();
         var es = await SeedActiveEventAsync(shiftsDb);   // BuildStartOffset = -10
         var sut = scope.ServiceProvider.GetRequiredService<IShiftManagementRepository>();
 
-        var teamId = (await SeedTeamAsync(db)).Id;
+        var teamId = (await SeedTeamAsync(teamsDb)).Id;
         var userId = (await SeedUserAsync(db)).Id;
 
         // Build-period rota with a shift at -7 — shift exists but no signup,
@@ -308,7 +309,7 @@ public class VolunteerTrackingRepositoryTests(HumansTestDatabase database)
         return es;
     }
 
-    private static async Task<Team> SeedTeamAsync(HumansDbContext db)
+    private static async Task<Team> SeedTeamAsync(TeamsDbContext db)
     {
         var now = SystemClock.Instance.GetCurrentInstant();
         var team = new Team

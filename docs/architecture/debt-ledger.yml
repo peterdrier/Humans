@@ -250,6 +250,9 @@ themes:
 inbox:
   # Seeded from the open items in docs/architecture/tech-debt-2026-04-23.md.
   - added: 2026-08-11
+    what: "TeamConfiguration's six system-team HasData rows declare RequiresApproval = false, but false is the CLR default so EF omits the column from the INSERT and the DB default (true) applies — model believes false, database holds true, on both chain-built and baseline-built schema. Long-standing (Initial did the same); surfaced by the EF migration review of the Teams peel (peel 14, nobodies-collective/Humans#858)"
+    review: light
+  - added: 2026-08-11
     what: "EventSettingsConfiguration.cs:44-47 declares HasDefaultValue(-25/-16/-9/-4) on four int offsets without HasSentinel — EF's int sentinel stays 0, so explicitly assigning 0 to any of these offsets is skipped and the DB default written instead (int-flavoured bool-sentinel trap). Pre-existing; surfaced by the EF migration review of the Shifts peel (peel 13, nobodies-collective/Humans#858)"
     review: light
   # Excluded from seed: User.GoogleEmail unique index (schema work — out of

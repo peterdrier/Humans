@@ -36,7 +36,7 @@ public sealed class ShiftDashboardMetricsTests : ServiceTestHarness
         // is backed by the same in-memory options via TestDbContextFactory.
         var fakeUserService = new FakeUserService(Db);
         var fakeTicketService = new FakeTicketQueryService(TicketsDb);
-        var fakeTeamService = new FakeTeamService(Db);
+        var fakeTeamService = new FakeTeamService(TeamsDb);
         var serviceProvider = new ServiceLocatorBuilder()
             .With<ITeamService>(fakeTeamService)
             .With<ITeamServiceRead>(fakeTeamService)
@@ -927,7 +927,7 @@ public sealed class ShiftDashboardMetricsTests : ServiceTestHarness
             CreatedAt = TestNow,
             UpdatedAt = TestNow,
         };
-        Db.Teams.Add(team);
+        TeamsDb.Teams.Add(team);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         return team;
     }
@@ -1081,7 +1081,7 @@ public sealed class ShiftDashboardMetricsTests : ServiceTestHarness
 
     private async Task SeedCoordinatorAsync(Team team, User user)
     {
-        Db.TeamMembers.Add(new TeamMember
+        TeamsDb.TeamMembers.Add(new TeamMember
         {
             Id = Guid.NewGuid(),
             TeamId = team.Id,
@@ -1218,7 +1218,7 @@ public sealed class ShiftDashboardMetricsTests : ServiceTestHarness
         public Task ReassignAsync(Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now, CancellationToken ct) => throw new NotSupportedException();
     }
 
-    private sealed class FakeTeamService(HumansDbContext db) : ITeamService
+    private sealed class FakeTeamService(TeamsDbContext db) : ITeamService
     {
         public async Task<IReadOnlyDictionary<Guid, Team>> GetByIdsWithParentsAsync(IReadOnlyCollection<Guid> teamIds, CancellationToken cancellationToken = default)
         {

@@ -52,6 +52,7 @@ env:
     LegalDbContext:src/Humans.Infrastructure
     AuditLogDbContext:src/Humans.Infrastructure
     ShiftsDbContext:src/Humans.Infrastructure
+    TeamsDbContext:src/Humans.Infrastructure
     StoreDbContext:src/Sections/Humans.Store
 
 jobs:

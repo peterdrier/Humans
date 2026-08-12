@@ -105,7 +105,7 @@ public sealed class ShiftRepositoryActiveCommittedTests : ServiceTestHarness
             CreatedAt = TestNow,
             UpdatedAt = TestNow,
         };
-        Db.Teams.Add(team);
+        TeamsDb.Teams.Add(team);
 
         var rota = new Rota
         {
@@ -136,8 +136,7 @@ public sealed class ShiftRepositoryActiveCommittedTests : ServiceTestHarness
             Rota = rota,
         };
         ShiftsDb.Shifts.Add(shift);
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
-        await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         return (es, rota, shift);
     }
 
@@ -152,7 +151,6 @@ public sealed class ShiftRepositoryActiveCommittedTests : ServiceTestHarness
             CreatedAt = TestNow,
             UpdatedAt = TestNow,
         });
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
-        await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
     }
 }

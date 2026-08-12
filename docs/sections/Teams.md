@@ -39,7 +39,7 @@ Departments and sub-teams, join requests, role definitions, team pages, and link
 
 **Table:** `teams`
 
-Aggregate-local navs kept: `Team.ParentTeam`, `Team.ChildTeams`, `Team.Members`, `Team.JoinRequests`, `Team.RoleDefinitions`. Public/member team page content lives directly on the row as `PageContent` / `PageContentUpdatedAt` / `PageContentUpdatedByUserId` / `CallsToAction` (JSONB) / `ShowCoordinatorsOnPublicPage` columns (no separate `team_pages` table or entity). Cross-domain nav `Team.LegalDocuments` (Legal section) is declared on the entity but should be FK-only; not used by `ITeamRepository`.
+Aggregate-local navs kept: `Team.ParentTeam`, `Team.ChildTeams`, `Team.Members`, `Team.EarlyEntryGrants`, `Team.JoinRequests`, `Team.RoleDefinitions` — all intra-section, and the only navs on the entity. Public/member team page content lives directly on the row as `PageContent` / `PageContentUpdatedAt` / `PageContentUpdatedByUserId` / `CallsToAction` (JSONB) / `ShowCoordinatorsOnPublicPage` columns (no separate `team_pages` table or entity).
 
 ### TeamMember
 

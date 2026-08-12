@@ -2626,11 +2626,12 @@ responses.
 `SurveyRepository` is registered as a **Singleton** (uses `IDbContextFactory`
 pattern). `SurveyService` is **Scoped** with no caching decorator (per the spec:
 response data is write-heavy and append-only; no hot read path merits a
-`TrackedCache` at ~500-user scale). `ISurveyServiceRead` is empty in v1 — no
-cross-section consumer has appeared yet; the interface is pre-registered so a
-future consumer does not need to open the service surface.
+`TrackedCache` at ~500-user scale). There is no `ISurveyServiceRead`: it shipped
+empty in v1, no cross-section consumer ever appeared, and it was deleted at G5.
+The section's only outbound contract is the single-member
+`Humans.Surveys.Contracts.ISurveyReminderSender`.
 
-### SurveyService (Scoped — `ISurveyService`, `ISurveyServiceRead`, `IUserDataContributor`)
+### SurveyService (Scoped — `ISurveyService`, `IUserDataContributor`)
 
 Repository: `ISurveyRepository`.
 

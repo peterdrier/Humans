@@ -42,7 +42,7 @@ public sealed class WorkloadServiceTests : ServiceTestHarness
 
     private Task<IReadOnlyDictionary<Guid, TeamInfo>> GetTeamInfosAsync() =>
         Task.FromResult<IReadOnlyDictionary<Guid, TeamInfo>>(
-            Db.Teams.AsEnumerable().ToDictionary(
+            TeamsDb.Teams.AsEnumerable().ToDictionary(
                 t => t.Id,
                 t => new TeamInfo(
                     t.Id, t.Name, t.Description, t.Slug,
@@ -416,7 +416,7 @@ public sealed class WorkloadServiceTests : ServiceTestHarness
     private async Task<Team> SeedWorkloadTeamAsync(string name)
     {
         var team = SeedTeam(name);
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         return team;
     }
 
@@ -498,7 +498,7 @@ public sealed class WorkloadServiceTests : ServiceTestHarness
             CreatedAt = now,
             UpdatedAt = now,
         });
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         return user;
     }
 
