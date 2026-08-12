@@ -46,4 +46,17 @@
         <div class="label">Active (24h)</div>
         <div class="value">@Model.OnlineLast24h</div>
     </div>
+    <div class="stat">
+        <div class="label">Teams</div>
+        <div class="value">@Model.TotalTeams</div>
+    </div>
+    <div class="stat">
+        <div class="label">Audit events</div>
+        <div class="value">@Model.TotalAuditEvents.ToString("N0")</div>
+        <div class="delta">every automated action, logged</div>
+    </div>
+    <div class="stat">
+        <div class="label">Emails sent</div>
+        <div class="value">@Model.TotalEmails.ToString("N0")</div>
+    </div>
 </div>

@@ -1,8 +1,10 @@
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Dashboard;
+using Humans.Application.Interfaces.Email;
 using Humans.Feedback.Contracts;
 using Humans.Application.Interfaces.Shifts;
+using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.UI.Authorization;
 using Humans.UI.Controllers;
@@ -26,6 +28,8 @@ public class AdminController(IUserServiceRead userService) : HumansControllerBas
         [FromServices] IAdminDashboardService adminDashboardService,
         [FromServices] IUserServiceRead userService,
         [FromServices] IUserActivityTracker activityTracker,
+        [FromServices] ITeamServiceRead teams,
+        [FromServices] IEmailOutboxService emailOutbox,
         CancellationToken ct)
     {
         var firstName = User.Identity?.Name?.Split(' ').FirstOrDefault() ?? "";
@@ -54,6 +58,11 @@ public class AdminController(IUserServiceRead userService) : HumansControllerBas
             .Select(l => new DashboardLanguageCount(l.Language, l.Count))
             .ToArray();
 
+        var teamCount = (await teams.GetTeamsAsync(ct)).Count;
+        // Reuse of the existing page read: page size 1, no filter — TotalCount is the tile.
+        var auditTotal = (await auditViewer.GetPageAsync(null, 1, 1, ct)).TotalCount;
+        var emailStats = await emailOutbox.GetOutboxStatsAsync(0, ct);
+
         var vm = new AdminDashboardViewModel(
             GreetingFirstName: firstName,
             TotalUsers: totalUsers,
@@ -70,7 +79,10 @@ public class AdminController(IUserServiceRead userService) : HumansControllerBas
             RecentActivity: recent,
             AppStats: appStats,
             LanguageDistribution: languages,
-            SetMembership: dashboardData.SetMembership);
+            SetMembership: dashboardData.SetMembership,
+            TotalTeams: teamCount,
+            TotalAuditEvents: auditTotal,
+            TotalEmails: emailStats.TotalCount);
         return View(vm);
     }
 }
