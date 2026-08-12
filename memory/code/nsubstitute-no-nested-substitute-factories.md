@@ -3,6 +3,13 @@ name: NSubstitute — capture substitute factories to a local before passing int
 description: A method that creates and configures an NSubstitute mock must not be called inline as the argument to another .Returns(...) — NSubstitute can't tell which "last call" the outer Returns attaches to. Capture to a local first.
 ---
 
+<!-- freshness:triggers
+  tests/Humans.Application.Tests/Infrastructure/ServiceTestHarness.cs
+-->
+<!-- freshness:flag-on-change
+  Flag if NewDbBackedUserService is renamed/removed from ServiceTestHarness.
+-->
+
 If a helper method internally creates a substitute and configures `.Returns(...)` on it, calling that helper inline as the argument of another `.Returns(...)` produces `CouldNotSetReturnDueToNoLastCallException` at runtime.
 
 **Broken:**

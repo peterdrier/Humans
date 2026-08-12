@@ -1,13 +1,14 @@
+---
+name: Use `MemberApplication` alias for the Application entity
+description: Namespace collision between `Humans.Domain.Entities.Application` and the framework `Application` type — use `using MemberApplication = Humans.Domain.Entities.Application;`.
+---
+
 <!-- freshness:triggers
   src/Sections/Humans.Governance/Domain/Application.cs
 -->
 <!-- freshness:flag-on-change
   Flag if the Application entity moves out of Humans.Governance.Domain or is renamed — the alias target namespace in this rule would be stale.
 -->
----
-name: Use `MemberApplication` alias for the Application entity
-description: Namespace collision between `Humans.Domain.Entities.Application` and the framework `Application` type — use `using MemberApplication = Humans.Domain.Entities.Application;`.
----
 
 <!-- freshness:triggers
   src/Sections/Humans.Governance/Domain/Application.cs

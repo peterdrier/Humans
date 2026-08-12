@@ -4,6 +4,9 @@ description: When a shared `Humans.UI` lookup table names a section's enum and t
 ---
 
 <!-- freshness:triggers
+  src/Humans.UI/Models/Tables/EnumBadgeMap.cs
+  src/Humans.UI/Extensions/StatusBadgeExtensions.cs
+  src/Humans.UI/Models/Tables/TableColumn.cs
   src/Humans.Domain/Enums/TicketPaymentStatus.cs
   src/Sections/Humans.Budget.Contracts/BudgetYearStatus.cs
   src/Sections/Humans.Campaigns/Domain/CampaignStatus.cs
@@ -12,8 +15,7 @@ description: When a shared `Humans.UI` lookup table names a section's enum and t
   src/Sections/Humans.Governance/Domain/VoteChoice.cs
 -->
 <!-- freshness:flag-on-change
-  Rule: base-ui-registries-are-section-populated
-  Flag if a symbol, path, namespace or behavior this rule names has changed.
+  Flag if EnumBadgeMap gains/loses a Register method, or one of the still-literal enums (TicketPaymentStatus + five more) moves to a section without a corresponding Register call.
 -->
 
 `Humans.UI` is Base. It holds cross-cutting presentation machinery — the table widget, the badge

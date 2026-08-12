@@ -5,13 +5,13 @@ description: timers/pollers/pre-warmers that query the DB must arm in IHostedSer
 
 <!-- freshness:triggers
   src/Humans.Infrastructure/Hosting/DatabaseMigrationHostedService.cs
-  src/Humans.Infrastructure/Services/HttpStatusTracker.cs
   src/Humans.Infrastructure/Services/HumansMetricsService.cs
+  src/Humans.Infrastructure/Services/HttpStatusTracker.cs
   src/Humans.Web/Extensions/Infrastructure/TelemetryInfrastructureExtensions.cs
+  src/Humans.Web/Program.cs
 -->
 <!-- freshness:flag-on-change
-  Rule: background-db-work-after-migration-barrier
-  Flag if a symbol, path, namespace or behavior this rule names has changed.
+  Flag if a DB-touching background worker's registration or arming point moves, or DatabaseMigrationHostedService's lifecycle stage changes.
 -->
 
 Any background worker that touches the database (refresh timers, pollers, cache pre-warmers) must arm/start its work from `IHostedService.StartAsync`, **not** from a constructor and **not** from an eager `GetRequiredService<T>()` before `app.Run()`. The host runs every `IHostedLifecycleService.StartingAsync` — including `DatabaseMigrationHostedService`, which applies pending migrations — to completion before *any* `StartAsync`. Arming in the constructor escapes that barrier and can query a not-yet-migrated schema.

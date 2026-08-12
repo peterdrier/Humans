@@ -9,9 +9,9 @@ description: When a string literal refers to a code identifier (property, method
   src/Humans.UI/Authorization/RoleChecks.cs
 -->
 <!-- freshness:flag-on-change
-  Rule: no-magic-strings
-  Flag if a symbol, path, namespace or behavior this rule names has changed.
+  Flag if RoleNames/RoleGroups/RoleChecks are renamed/removed, or the per-section AuditEntityTypes naming convention changes.
 -->
+
 
 Use `nameof()`, constants, or enum references instead of string literals that refer to code identifiers. Magic strings are fragile — they silently break on rename and can't be caught by the compiler.
 
@@ -29,7 +29,7 @@ return RedirectToAction(nameof(HumanDetail));
 await _auditLog.LogAsync("Teem", ...);
 
 // CORRECT — constants catch typos at compile time
-await _auditLog.LogAsync(AuditLogEntityTypes.Team, ...);
+await _auditLog.LogAsync(AuditEntityTypes.Team, ...);
 ```
 
 **Applies to:** `RedirectToAction`/`RedirectToPage` targets, `TempData`/`ViewData` keys, `IsInRole()` role names, audit log entity types, claim types, and any other string that mirrors a code identifier.

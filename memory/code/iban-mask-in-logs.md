@@ -1,3 +1,9 @@
+---
+name: iban-mask-in-logs
+description: All IBAN output to logs / audit / errors goes through IbanFormatter.Mask
+type: code
+---
+
 <!-- freshness:triggers
   src/Humans.Domain/Helpers/IbanFormatter.cs
   src/Sections/Humans.Expenses/Domain/ExpenseReport.cs
@@ -7,11 +13,6 @@
 <!-- freshness:flag-on-change
   Flag if IbanFormatter.Mask is renamed/removed, or the Expenses section's IBAN surface moves again.
 -->
----
-name: iban-mask-in-logs
-description: All IBAN output to logs / audit / errors goes through IbanFormatter.Mask
-type: code
----
 
 All IBAN output to logs / audit / errors goes through `IbanFormatter.Mask`.
 

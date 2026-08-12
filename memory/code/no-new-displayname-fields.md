@@ -11,9 +11,9 @@ description: HARD RULE. Never add a new field/property/parameter named `DisplayN
   src/Humans.Domain/Entities/User.cs
 -->
 <!-- freshness:flag-on-change
-  Rule: no-new-displayname-fields
-  Flag if a symbol, path, namespace or behavior this rule names has changed.
+  Flag if any listed legacy DisplayName holder is renamed/removed, or BurnerName/LegalName/GroupName/TeamName naming guidance changes.
 -->
+
 
 `DisplayName` as a field name conflates unrelated concepts (human display names, group titles, role labels, audit-actor labels…) into one bag, which has repeatedly caused PII leaks: a code path expecting a group label receives a user's legal name (because the type system can't tell `string DisplayName` from `string DisplayName`), or vice-versa. The fix is at the naming layer — make the concept impossible to mis-pipe by name alone.
 

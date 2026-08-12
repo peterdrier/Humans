@@ -8,9 +8,9 @@ description: A `System/` subfolder shadows the BCL `System` namespace in every s
   src/Sections/Humans.SystemSettings/Data/Configurations/SystemSettingConfiguration.cs
 -->
 <!-- freshness:flag-on-change
-  Rule: no-system-subfolder
-  Flag if a symbol, path, namespace or behavior this rule names has changed.
+  Flag if VolunteerEventProfileConfiguration moves/renames, or SystemSettingConfiguration's folder changes away from SystemSettings/.
 -->
+
 
 Never propose a subfolder named `System` inside any namespace in this codebase (`Humans.Infrastructure.Data.Configurations.System`, `Humans.Domain.Entities.System`, `Humans.Application.Services.System`, etc.).
 
