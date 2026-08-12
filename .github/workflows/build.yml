@@ -267,6 +267,13 @@ jobs:
     steps:
     - uses: actions/checkout@v7
 
+    - name: Verify Humans.slnx and SECTION_DB_CONTEXTS are complete
+      # Two hand-maintained lists that silently skip a new section if
+      # forgotten — a project missing from Humans.slnx gets no build/test/
+      # format, and a DbContext missing from SECTION_DB_CONTEXTS gets no
+      # migration check. This makes both fail loud instead.
+      run: bash scripts/check-ci-completeness.sh
+
     - name: Setup .NET
       uses: actions/setup-dotnet@v6
       with:
