@@ -175,7 +175,7 @@ public static class RatchetTestRunner
             {
                 var name = Path.GetFileName(path);
                 if (name.EndsWith(".Designer.cs", StringComparison.Ordinal)) continue;
-                if (name.Equals("HumansDbContextModelSnapshot.cs", StringComparison.Ordinal)) continue;
+                if (name.EndsWith("DbContextModelSnapshot.cs", StringComparison.Ordinal)) continue;
             }
             yield return path;
         }

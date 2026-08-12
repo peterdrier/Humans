@@ -10,9 +10,8 @@ namespace Humans.Infrastructure.Hosting;
 /// <summary>
 /// Applies pending EF migrations in <c>StartingAsync</c>, before cache warmup
 /// and other hosted services read tables that may not exist yet.
-/// <c>HumansDbContext</c> migrates first (its historical chain provisions the
-/// whole schema on fresh databases), then each per-section context registered
-/// via <c>AddSectionDbContext</c> runs through <see cref="SectionMigrationRunner"/>
+/// Each per-section context registered via <c>AddSectionDbContext</c> runs
+/// through <see cref="SectionMigrationRunner"/> in registration order
 /// (nobodies-collective/Humans#858).
 /// Immediately before the first schema change of the boot — whichever context
 /// causes it — a <see cref="PreMigrationSnapshot"/> is taken, so no deploy can
@@ -32,8 +31,6 @@ internal sealed class DatabaseMigrationHostedService(
     public async Task StartingAsync(CancellationToken cancellationToken)
     {
         using var scope = scopeFactory.CreateScope();
-        var dbContext = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
-        var dbName = dbContext.Database.GetDbConnection().Database;
         var sectionContextInstances = sectionContexts
             .Select(section => (
                 section, Context: (DbContext)scope.ServiceProvider.GetRequiredService(section.ContextType)))
@@ -51,11 +48,9 @@ internal sealed class DatabaseMigrationHostedService(
             // frontier the whole deploy needs to clear - not just whichever context happens to
             // trigger the dump (nobodies-collective/Humans#989).
             var pendingFrontier = await CollectPendingFrontierAsync(
-                dbContext, sectionContextInstances.Select(instance => instance.Context), cancellationToken);
+                sectionContextInstances.Select(instance => instance.Context), cancellationToken);
             beforeSchemaChange = ct => snapshot.EnsureCapturedAsync(pendingFrontier, ct);
         }
-
-        await MigrateAsync(dbContext, dbName, beforeSchemaChange, cancellationToken);
 
         foreach (var (section, sectionContext) in sectionContextInstances)
         {
@@ -69,16 +64,16 @@ internal sealed class DatabaseMigrationHostedService(
     }
 
     /// <summary>
-    /// Every migration pending across <paramref name="dbContext"/> and every section context,
-    /// qualified by context type so identically-timestamped IDs from different contexts can never
-    /// collide. A dry read via <c>GetPendingMigrationsAsync</c> per context - nothing here applies
-    /// anything (nobodies-collective/Humans#989).
+    /// Every migration pending across every section context, qualified by context type so
+    /// identically-timestamped IDs from different contexts can never collide. A dry read via
+    /// <c>GetPendingMigrationsAsync</c> per context - nothing here applies anything
+    /// (nobodies-collective/Humans#989).
     /// </summary>
     private static async Task<List<string>> CollectPendingFrontierAsync(
-        HumansDbContext dbContext, IEnumerable<DbContext> sectionContexts, CancellationToken cancellationToken)
+        IEnumerable<DbContext> sectionContexts, CancellationToken cancellationToken)
     {
         var frontier = new List<string>();
-        foreach (var context in sectionContexts.Prepend((DbContext)dbContext))
+        foreach (var context in sectionContexts)
         {
             var contextName = context.GetType().Name;
             var pending = await context.Database.GetPendingMigrationsAsync(cancellationToken);
@@ -120,49 +115,4 @@ internal sealed class DatabaseMigrationHostedService(
         return new PreMigrationSnapshot(connectionString, _logger);
     }
 
-    private async Task MigrateAsync(
-        HumansDbContext dbContext,
-        string dbName,
-        Func<CancellationToken, Task> beforeSchemaChange,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            var pending = (await dbContext.Database.GetPendingMigrationsAsync(cancellationToken)).ToList();
-            var applied = (await dbContext.Database.GetAppliedMigrationsAsync(cancellationToken)).ToList();
-
-            // Warning level so the per-boot migration breadcrumb survives
-            // production's default log filtering.
-            _logger.LogWarning(
-                "Database {Database}: {AppliedCount} applied migrations, {PendingCount} pending",
-                dbName, applied.Count, pending.Count);
-
-            if (pending.Count > 0)
-            {
-                foreach (var migration in pending)
-                {
-                    _logger.LogWarning("Applying pending migration: {Migration}", migration);
-                }
-
-                await beforeSchemaChange(cancellationToken);
-                await dbContext.Database.MigrateAsync(cancellationToken);
-
-                var nowApplied = (await dbContext.Database.GetAppliedMigrationsAsync(cancellationToken)).ToList();
-                _logger.LogWarning(
-                    "Database {Database}: migrations complete - {AppliedCount} total applied",
-                    dbName, nowApplied.Count);
-            }
-            else
-            {
-                _logger.LogInformation("Database {Database}: schema is up to date", dbName);
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex,
-                "Database migration failed for {Database}. The application may not function correctly",
-                dbName);
-            throw;
-        }
-    }
 }

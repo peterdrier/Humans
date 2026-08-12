@@ -35,24 +35,29 @@ namespace Humans.Integration.Tests.Infrastructure;
 
 /// <summary>
 /// Proves both branches of the real-up baseline mechanism
-/// (nobodies-collective/Humans#858) against a real Postgres, for every peeled
-/// section:
+/// (nobodies-collective/Humans#858) against a real Postgres:
 /// <list type="bullet">
-/// <item><b>Fresh database</b> (section tables absent): the baseline migration
-/// executes for real — tables, seed data, and history row all appear.</item>
-/// <item><b>Existing database</b> (tables created by the historical
-/// <c>HumansDbContext</c> chain, section history empty): the baseline is
-/// recorded as applied WITHOUT executing — no DDL error, no duplicate seed,
-/// and the path is idempotent across repeated boots.</item>
-/// <item><b>Schema equivalence</b>: both paths yield the same physical shape
-/// for the section's tables (columns, types, nullability, defaults, indexes,
-/// and constraints), ignoring ordinal position, which legitimately differs
-/// between a table evolved incrementally and one created from the model in one
-/// shot.</item>
+/// <item><b>Fresh database</b> (section tables absent), for every section: the
+/// baseline migration executes for real — tables, seed data, and history row
+/// all appear.</item>
+/// <item><b>Existing database</b> (tables present, section history empty): the
+/// baseline is recorded as applied WITHOUT executing — no DDL error, no
+/// duplicate seed, and the path is idempotent across repeated boots. Exercised
+/// for <c>UsersDbContext</c>, the one context still facing a first mark-applied
+/// boot in the wild: the historical root chain that used to build this fixture
+/// was deleted at peel 15, and every other section's mark-applied path was
+/// proven against the real chain in its own peel PR while the chain existed.
+/// The fixture is the model's create script — equivalent to the chain-built
+/// shape for Users because its baseline carries no raw-SQL blocks (peel-15
+/// audit: all chain raw SQL against Users tables was data-only).</item>
+/// <item><b>Schema equivalence</b> (Users): both paths yield the same physical
+/// shape (columns, types, nullability, defaults, indexes, and constraints),
+/// ignoring ordinal position, which legitimately differs between a table
+/// evolved incrementally and one created from the model in one shot.</item>
 /// </list>
-/// Each peel adds one entry to <see cref="Sections"/>. The tables to check come
-/// from the context model, not a literal list, so a table added to a section
-/// context is covered without touching this file.
+/// Each new section adds one entry to <see cref="Sections"/>. The tables to
+/// check come from the context model, not a literal list, so a table added to a
+/// section context is covered without touching this file.
 /// </summary>
 public sealed class SectionMigrationRunnerTests(HumansTestDatabase database)
 {
@@ -220,6 +225,11 @@ public sealed class SectionMigrationRunnerTests(HumansTestDatabase database)
             // Six system-team seed rows — probe a single reserved Id so the
             // count is 1 on both the fresh and mark-applied paths.
             "SELECT count(*) FROM teams WHERE \"Id\" = '00000000-0000-0000-0001-000000000001'"),
+        new(
+            "Users",
+            "users",
+            CreateSectionContext<UsersDbContext>,
+            null),
     ];
 
     [HumansFact]
@@ -261,82 +271,61 @@ public sealed class SectionMigrationRunnerTests(HumansTestDatabase database)
     }
 
     [HumansFact]
-    public async Task ExistingDatabase_BaselineMarkedApplied_WithoutExecuting_AndIdempotent()
+    public async Task ExistingDatabase_UsersBaselineMarkedApplied_WithoutExecuting_AndIdempotent()
     {
-        var connectionString = await CreateDatabaseAsync("existing_old_chain");
-        await MigrateOldChainAsync(connectionString);
+        // Tables present, history empty — what QA/prod look like on the first boot
+        // after peel 15 deploys (their Users tables are chain-built; the Users
+        // history table does not exist yet).
+        var connectionString = await CreateDatabaseAsync("existing_users");
+        await CreateUsersSchemaWithoutHistoryAsync(connectionString);
 
-        // The old chain already created every section's tables (+ seeds). The
-        // runner must record each baseline without executing it (a real execute
-        // would fail on CREATE TABLE and duplicate seeds). Two passes prove
-        // idempotency — the second boot sees history rows and no-ops.
+        // The runner must record the baseline without executing it (a real execute
+        // would fail on CREATE TABLE). Two passes prove idempotency — the second
+        // boot sees the history row and no-ops.
         for (var boot = 1; boot <= 2; boot++)
         {
-            foreach (var section in Sections)
-            {
-                await using var db = section.CreateContext(connectionString);
-                await SectionMigrationRunner.MigrateAsync(
-                    db, section.SentinelTable, NullLogger.Instance, NoSnapshot, TestContext.Current.CancellationToken);
-            }
+            await using var db = CreateSectionContext<UsersDbContext>(connectionString);
+            await SectionMigrationRunner.MigrateAsync(
+                db, "users", NullLogger.Instance, NoSnapshot, TestContext.Current.CancellationToken);
         }
 
-        foreach (var section in Sections)
+        int migrationCount;
+        await using (var db = CreateSectionContext<UsersDbContext>(connectionString))
         {
-            int migrationCount;
-            await using (var db = section.CreateContext(connectionString))
-            {
-                migrationCount = db.Database.GetMigrations().Count();
-            }
-
-            // The baseline is mark-applied; post-baseline migrations execute for real on the first
-            // boot. Either way exactly one history row per migration, stable across boots.
-            (await HistoryCountAsync(connectionString, section.Name))
-                .Should().Be(migrationCount, $"{section.Name}: one history row per migration after two boots");
-
-            if (section.SeedProbeSql is not null)
-            {
-                (await ScalarAsync<long>(connectionString, section.SeedProbeSql))
-                    .Should().Be(1, $"{section.Name}: mark-applied must not duplicate the seed");
-            }
+            migrationCount = db.Database.GetMigrations().Count();
         }
+
+        (await HistoryCountAsync(connectionString, "Users"))
+            .Should().Be(migrationCount, "Users: one history row per migration after two boots");
     }
 
     [HumansFact]
-    public async Task BothPaths_ProduceEquivalentSectionSchema()
+    public async Task BothPaths_ProduceEquivalentUsersSchema()
     {
-        var oldChainConnection = await CreateDatabaseAsync("equiv_old_chain");
-        await MigrateOldChainAsync(oldChainConnection);
+        // Model create-script path (the stand-in for a chain-built database — valid
+        // for Users because its baseline carries no raw-SQL blocks) vs the baseline
+        // executing for real. Divergence here means the baseline migration's
+        // operations no longer produce the model's schema.
+        var scriptConnection = await CreateDatabaseAsync("equiv_users_script");
+        await CreateUsersSchemaWithoutHistoryAsync(scriptConnection);
 
-        // Production boot runs every section runner after the historical chain (mark the baseline
-        // applied, then execute post-baseline migrations for real) — the old-chain path must get the
-        // same pass or any post-baseline migration would read as a false schema divergence.
-        foreach (var section in Sections)
+        var freshConnection = await CreateDatabaseAsync("equiv_users_baseline");
+
+        List<string> tables;
+        await using (var db = CreateSectionContext<UsersDbContext>(freshConnection))
         {
-            await using var db = section.CreateContext(oldChainConnection);
             await SectionMigrationRunner.MigrateAsync(
-                db, section.SentinelTable, NullLogger.Instance, NoSnapshot, TestContext.Current.CancellationToken);
+                db, "users", NullLogger.Instance, NoSnapshot, TestContext.Current.CancellationToken);
+            tables = SectionTables(db);
         }
 
-        foreach (var section in Sections)
+        foreach (var table in tables)
         {
-            var freshConnection = await CreateDatabaseAsync($"equiv_{section.Name.ToLowerInvariant()}");
+            var fromBaseline = await DescribeTableAsync(freshConnection, table);
+            var fromScript = await DescribeTableAsync(scriptConnection, table);
 
-            List<string> tables;
-            await using (var db = section.CreateContext(freshConnection))
-            {
-                await SectionMigrationRunner.MigrateAsync(
-                    db, section.SentinelTable, NullLogger.Instance, NoSnapshot, TestContext.Current.CancellationToken);
-                tables = SectionTables(db);
-            }
-
-            foreach (var table in tables)
-            {
-                var fromBaseline = await DescribeTableAsync(freshConnection, table);
-                var fromOldChain = await DescribeTableAsync(oldChainConnection, table);
-
-                fromBaseline.Should().BeEquivalentTo(
-                    fromOldChain, $"{section.Name}: {table} must be physically identical on both paths");
-            }
+            fromBaseline.Should().BeEquivalentTo(
+                fromScript, $"Users: {table} must be physically identical on both paths");
         }
     }
 
@@ -377,17 +366,15 @@ public sealed class SectionMigrationRunnerTests(HumansTestDatabase database)
     private Task<string> CreateDatabaseAsync(string name) =>
         database.CreateEmptyDatabaseAsync(name, TestContext.Current.CancellationToken);
 
-    private static async Task MigrateOldChainAsync(string connectionString)
+    /// <summary>
+    /// Users tables and seeds from the model's create script, with no migration
+    /// history — the shape QA/prod present on the first boot after peel 15.
+    /// </summary>
+    private static async Task CreateUsersSchemaWithoutHistoryAsync(string connectionString)
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
-            .UseNpgsql(connectionString, npgsql =>
-            {
-                npgsql.UseNodaTime();
-                npgsql.MigrationsAssembly(typeof(HumansDbContext).Assembly.GetName().Name!);
-            })
-            .Options;
-        await using var db = new HumansDbContext(options);
-        await db.Database.MigrateAsync(TestContext.Current.CancellationToken);
+        await using var db = CreateSectionContext<UsersDbContext>(connectionString);
+        var script = db.Database.GenerateCreateScript();
+        await db.Database.ExecuteSqlRawAsync(script, TestContext.Current.CancellationToken);
     }
 
     private static Task<long> HistoryCountAsync(string connectionString, string sectionName) =>

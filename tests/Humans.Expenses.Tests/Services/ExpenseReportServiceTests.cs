@@ -28,9 +28,9 @@ namespace Humans.Expenses.Tests.Services;
 /// <summary>
 /// Owns its three fixtures rather than deriving from <c>ServiceTestHarness</c>, which it did
 /// while it lived in <c>Humans.Application.Tests</c>. That harness is built around an in-memory
-/// <c>HumansDbContext</c> and this test never touched it — only the audit substitute, the clock
+/// <c>UsersDbContext</c> and this test never touched it — only the audit substitute, the clock
 /// and the section-context options below. Inheriting it here would have meant granting a section
-/// test project <c>InternalsVisibleTo</c> on <c>HumansDbContext</c>, which is the boundary the
+/// test project <c>InternalsVisibleTo</c> on <c>UsersDbContext</c>, which is the boundary the
 /// G5 split exists to draw (nobodies-collective/Humans#866).
 /// </summary>
 public sealed class ExpenseReportServiceTests

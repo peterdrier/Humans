@@ -25,7 +25,7 @@ namespace Humans.Application.Tests.GoogleIntegration;
 /// <see cref="GoogleWorkspaceSyncService.SyncResourcesByTypeAsync"/>, per
 /// nobodies-collective/Humans#508. PR #227 (sprint/20260415/batch-3) layered
 /// several fixes onto this flow and every bug was caught by review rather
-/// than by a failing test — this file seeds a real (InMemory) <c>HumansDbContext</c>
+/// than by a failing test — this file seeds a real (InMemory) <c>UsersDbContext</c>
 /// through the real <see cref="GoogleResourceRepository"/> and a real
 /// <see cref="TeamResourceService"/> (resolved via the service-locator seam
 /// exactly as production does), and drives Drive reconciliation against the

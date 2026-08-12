@@ -8,7 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Humans.Infrastructure.Repositories.Admin;
 
 internal sealed class AdminDatabaseDiagnosticsRepository(
-    IDbContextFactory<HumansDbContext> factory,
+    IDbContextFactory<UsersDbContext> factory,
     IServiceScopeFactory scopeFactory,
     IEnumerable<SectionDbContextRegistration> sectionContexts)
     : IAdminDatabaseDiagnosticsRepository

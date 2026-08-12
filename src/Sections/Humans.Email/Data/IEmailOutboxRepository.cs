@@ -14,7 +14,7 @@ namespace Humans.Email.Data;
 /// <remarks>
 /// Uses <see cref="Microsoft.EntityFrameworkCore.IDbContextFactory{TContext}"/>
 /// so the repository can be registered as Singleton while
-/// <c>HumansDbContext</c> remains Scoped. Each method creates and disposes
+/// <c>EmailDbContext</c> remains Scoped. Each method creates and disposes
 /// its own short-lived context.
 /// </remarks>
 internal interface IEmailOutboxRepository : IRepository

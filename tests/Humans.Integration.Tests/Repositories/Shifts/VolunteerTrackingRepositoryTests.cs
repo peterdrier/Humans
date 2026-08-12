@@ -15,7 +15,7 @@ namespace Humans.Integration.Tests.Repositories.Shifts;
 /// Integration tests for <see cref="VolunteerTrackingRepository"/>. Takes the
 /// assembly-shared <see cref="HumansWebApplicationFactory"/> through
 /// <see cref="IntegrationTestBase"/>, resolves the Scoped
-/// <see cref="HumansDbContext"/> per test through a DI scope off
+/// <see cref="UsersDbContext"/> per test through a DI scope off
 /// <see cref="IntegrationTestBase.Factory"/>, and exercises the repository
 /// against the run's single PostgreSQL container.
 /// </summary>
@@ -90,7 +90,7 @@ public class VolunteerTrackingRepositoryTests(HumansTestDatabase database)
     public async Task GetEligibleBuildSignupsAsync_returns_only_build_period_active_signups_in_event()
     {
         await using var scope = Factory.Services.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var db = scope.ServiceProvider.GetRequiredService<UsersDbContext>();
         var teamsDb = scope.ServiceProvider.GetRequiredService<TeamsDbContext>();
         var shiftsDb = scope.ServiceProvider.GetRequiredService<ShiftsDbContext>();
         var es = await SeedActiveEventAsync(shiftsDb);   // BuildStartOffset = -10
@@ -326,7 +326,7 @@ public class VolunteerTrackingRepositoryTests(HumansTestDatabase database)
         return team;
     }
 
-    private static async Task<User> SeedUserAsync(HumansDbContext db)
+    private static async Task<User> SeedUserAsync(UsersDbContext db)
     {
         var now = SystemClock.Instance.GetCurrentInstant();
         var user = new User

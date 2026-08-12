@@ -37,7 +37,7 @@ public class ReconcileOrphanTests(HumansTestDatabase database)
         }
 
         await using var assertScope = Factory.Services.CreateAsyncScope();
-        var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var db = assertScope.ServiceProvider.GetRequiredService<UsersDbContext>();
         (await db.AccountMergeRequests.AsNoTracking().FirstOrDefaultAsync(r => r.Id == requestId, TestContext.Current.CancellationToken))!.Status
             .Should().Be(AccountMergeRequestStatus.Accepted,
                 "merging the pair must auto-close its pending request — no orphan is left behind");

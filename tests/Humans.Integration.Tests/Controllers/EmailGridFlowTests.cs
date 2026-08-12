@@ -61,7 +61,7 @@ public class EmailGridFlowTests(HumansTestDatabase database) : IntegrationTestBa
 
         await using (var scope = Factory.Services.CreateAsyncScope())
         {
-            var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+            var db = scope.ServiceProvider.GetRequiredService<UsersDbContext>();
             var merge = await db.Set<AccountMergeRequest>()
                 .AsNoTracking()
                 .SingleAsync(m => m.TargetUserId == userAId && m.SourceUserId == userBId, Xunit.TestContext.Current.CancellationToken);
@@ -96,7 +96,7 @@ public class EmailGridFlowTests(HumansTestDatabase database) : IntegrationTestBa
         {
             var email = $"target-{Guid.NewGuid():N}@x.test";
             targetUserId = await SeedUserWithVerifiedEmailAsync(scope, email);
-            var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+            var db = scope.ServiceProvider.GetRequiredService<UsersDbContext>();
             targetEmailId = await db.Set<UserEmail>()
                 .Where(e => e.UserId == targetUserId && e.Email == email)
                 .Select(e => e.Id)
@@ -131,7 +131,7 @@ public class EmailGridFlowTests(HumansTestDatabase database) : IntegrationTestBa
 
         // Sanity check: the underlying email row was not mutated.
         await using var verifyScope = Factory.Services.CreateAsyncScope();
-        var verifyDb = verifyScope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var verifyDb = verifyScope.ServiceProvider.GetRequiredService<UsersDbContext>();
         var row = await verifyDb.Set<UserEmail>().AsNoTracking().SingleAsync(e => e.Id == targetEmailId, Xunit.TestContext.Current.CancellationToken);
         row.IsGoogle.Should().BeFalse("SetGoogle must not have run for the unprivileged actor.");
     }
@@ -167,7 +167,7 @@ public class EmailGridFlowTests(HumansTestDatabase database) : IntegrationTestBa
         }
 
         await using var assertScope = Factory.Services.CreateAsyncScope();
-        var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var db = assertScope.ServiceProvider.GetRequiredService<UsersDbContext>();
         var merges = await db.Set<AccountMergeRequest>()
             .AsNoTracking()
             .Where(m => m.TargetUserId == targetUserId && m.SourceUserId == sourceUserId)
@@ -217,7 +217,7 @@ public class EmailGridFlowTests(HumansTestDatabase database) : IntegrationTestBa
     private static async Task<Guid> SeedUserWithVerifiedEmailAsync(IServiceScope scope, string email)
     {
         var um = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
-        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var db = scope.ServiceProvider.GetRequiredService<UsersDbContext>();
         var now = SystemClock.Instance.GetCurrentInstant();
 
         var user = new User

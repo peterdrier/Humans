@@ -19,7 +19,7 @@ namespace Humans.Application.Tests.Services;
 /// side of #494 that flips <c>IsActive</c> and writes audit entries. After the
 /// <c>#540c</c> migration there is a single <see cref="TeamResourceService"/>
 /// implementation in the Application layer; this test drives it through an
-/// <see cref="IDbContextFactory{HumansDbContext}"/>-backed repository and a
+/// <see cref="IDbContextFactory{UsersDbContext}"/>-backed repository and a
 /// stubbed <see cref="ITeamResourceGoogleClient"/>.
 /// </summary>
 public sealed class TeamResourceServiceDeactivateTests : ServiceTestHarness

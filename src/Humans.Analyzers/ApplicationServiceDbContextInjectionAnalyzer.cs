@@ -9,7 +9,7 @@ namespace Humans.Analyzers;
 /// <summary>
 /// HUM0009 — Only repository classes (transitive implementers of
 /// <c>Humans.Application.Interfaces.Repositories.IRepository</c>) may use
-/// <c>HumansDbContext</c>. Every other class must go through a repository or
+/// a section DbContext. Every other class must go through a repository or
 /// service. Existing pre-rule violators may carry
 /// <c>[Grandfathered("HUM0009", …)]</c> — the analyzer downgrades the
 /// diagnostic to <c>Warning</c> for those, but new violators (no attribute)
@@ -17,9 +17,9 @@ namespace Humans.Analyzers;
 /// </summary>
 /// <remarks>
 /// Runs in <c>Humans.Infrastructure</c> only. That's the only compilation
-/// where both <c>HumansDbContext</c> and every candidate user type are
+/// where both the section DbContexts and every candidate user type are
 /// declared: Application has no project reference to Infrastructure so
-/// <c>HumansDbContext</c> is unresolvable there, and Web's analysis only sees
+/// they are unresolvable there, and Web's analysis only sees
 /// types declared in Web (controllers).
 /// </remarks>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
@@ -41,7 +41,7 @@ public sealed class ApplicationServiceDbContextInjectionAnalyzer : DiagnosticAna
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,
         description:
-            "An application DbContext (HumansDbContext or any per-section context) is the persistence " +
+            "An application DbContext (any section context) is the persistence " +
             "boundary; only repositories may touch it. Classes outside the repository layer that need " +
             "persisted state must call a service or repository. Existing violators may carry " +
             "[Grandfathered(\"HUM0009\", …)] which downgrades this diagnostic to a warning for the tagged " +
@@ -185,10 +185,10 @@ public sealed class ApplicationServiceDbContextInjectionAnalyzer : DiagnosticAna
     /// Finds the first structural reference to a Humans persistence context on
     /// the type — base type, implemented interface, field, property, or method
     /// (parameter or return type). Recurses through generic type arguments
-    /// so <c>UserStore&lt;…, HumansDbContext, …&gt;</c> also matches. Returns
+    /// so <c>UserStore&lt;…, UsersDbContext, …&gt;</c> also matches. Returns
     /// both the location and the actual context type that matched (e.g.
     /// <c>ContainersDbContext</c>), so the diagnostic can name it instead of a
-    /// generic "HumansDbContext". Returns null if the type does not use a
+    /// generic context name. Returns null if the type does not use a
     /// context structurally.
     /// </summary>
     private static (Location Location, INamedTypeSymbol ContextType)? FindFirstDbContextReference(

@@ -17,7 +17,7 @@ using NSubstitute;
 namespace Humans.Application.Tests.Infrastructure;
 
 /// <summary>
-/// Base class for service tests. Owns the per-test in-memory <see cref="HumansDbContext"/>,
+/// Base class for service tests. Owns the per-test in-memory <see cref="UsersDbContext"/>,
 /// an <see cref="IDbContextFactory{TContext}"/>, a deterministic <see cref="FakeClock"/>,
 /// and an <see cref="IMemoryCache"/>, plus the most common entity seeders. Tests construct
 /// their service-under-test in their own ctor using these resources; the harness does not
@@ -29,8 +29,8 @@ public abstract class ServiceTestHarness : IDisposable
         typeof(User).GetProperty("DisplayName")
         ?? throw new InvalidOperationException("User.DisplayName property missing.");
 
-    private protected DbContextOptions<HumansDbContext> DbOptions { get; }
-    private protected HumansDbContext Db { get; }
+    private protected DbContextOptions<UsersDbContext> DbOptions { get; }
+    private protected UsersDbContext Db { get; }
     private protected TestDbContextFactory DbFactory { get; }
 
     // ----- Peeled-section contexts (nobodies-collective/Humans#858) ----------
@@ -107,11 +107,11 @@ public abstract class ServiceTestHarness : IDisposable
 
     protected ServiceTestHarness(Instant? now = null)
     {
-        DbOptions = new DbContextOptionsBuilder<HumansDbContext>()
+        DbOptions = new DbContextOptionsBuilder<UsersDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
             .Options;
-        Db = new HumansDbContext(DbOptions);
+        Db = new UsersDbContext(DbOptions);
         DbFactory = new TestDbContextFactory(DbOptions);
 
         _authDb = RegisterSection<AuthDbContext>(o => new(o));

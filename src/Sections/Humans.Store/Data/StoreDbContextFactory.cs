@@ -6,7 +6,7 @@ namespace Humans.Store.Data;
 
 /// <summary>
 /// Design-time factory used by <c>dotnet ef … --context StoreDbContext</c>.
-/// Mirrors <see cref="HumansDbContextFactory"/>; the migrations-history table comes
+/// The migrations-history table comes
 /// from <see cref="SectionMigrationsHistory"/> — the same helper the runtime
 /// registration uses — so CI's from-scratch apply records baselines in the table
 /// the app reads.

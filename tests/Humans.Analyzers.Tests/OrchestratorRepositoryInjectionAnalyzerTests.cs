@@ -6,7 +6,7 @@ namespace Humans.Analyzers.Tests;
 public class OrchestratorRepositoryInjectionAnalyzerTests
 {
     // IOrchestrator and IApplicationService live in Humans.Application.Interfaces;
-    // IRepository in Humans.Application.Interfaces.Repositories; HumansDbContext
+    // IRepository in Humans.Application.Interfaces.Repositories; UsersDbContext
     // in Humans.Infrastructure.Data. All four are stubbed so the analyzer can
     // resolve them — production builds reference them transitively.
     private const string Stubs = """
@@ -30,7 +30,7 @@ public class OrchestratorRepositoryInjectionAnalyzerTests
 
         namespace Humans.Infrastructure.Data
         {
-            public class HumansDbContext : Microsoft.EntityFrameworkCore.DbContext { }
+            public class UsersDbContext : Microsoft.EntityFrameworkCore.DbContext { }
             public class SystemSettingsDbContext : Microsoft.EntityFrameworkCore.DbContext { }
         }
         """;
@@ -68,7 +68,7 @@ public class OrchestratorRepositoryInjectionAnalyzerTests
     }
 
     [HumansFact]
-    public async Task HUM0026_fires_when_orchestrator_injects_HumansDbContext()
+    public async Task HUM0026_fires_when_orchestrator_injects_UsersDbContext()
     {
         var source = Stubs + """
 
@@ -76,7 +76,7 @@ public class OrchestratorRepositoryInjectionAnalyzerTests
             {
                 public sealed class DemoOrchestrator : Humans.Application.Interfaces.IOrchestrator
                 {
-                    public DemoOrchestrator(Humans.Infrastructure.Data.HumansDbContext db)
+                    public DemoOrchestrator(Humans.Infrastructure.Data.UsersDbContext db)
                     {
                     }
                 }
@@ -116,7 +116,7 @@ public class OrchestratorRepositoryInjectionAnalyzerTests
     }
 
     [HumansFact]
-    public async Task HUM0026_fires_when_orchestrator_injects_DbContextFactory_of_HumansDbContext()
+    public async Task HUM0026_fires_when_orchestrator_injects_DbContextFactory_of_UsersDbContext()
     {
         var source = Stubs + """
 
@@ -124,7 +124,7 @@ public class OrchestratorRepositoryInjectionAnalyzerTests
             {
                 public sealed class DemoOrchestrator : Humans.Application.Interfaces.IOrchestrator
                 {
-                    public DemoOrchestrator(Microsoft.EntityFrameworkCore.IDbContextFactory<Humans.Infrastructure.Data.HumansDbContext> factory)
+                    public DemoOrchestrator(Microsoft.EntityFrameworkCore.IDbContextFactory<Humans.Infrastructure.Data.UsersDbContext> factory)
                     {
                     }
                 }

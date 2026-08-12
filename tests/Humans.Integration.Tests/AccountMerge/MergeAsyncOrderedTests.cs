@@ -47,7 +47,7 @@ public class MergeAsyncOrderedTests(HumansTestDatabase database)
         }
 
         await using var assertScope = Factory.Services.CreateAsyncScope();
-        var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var db = assertScope.ServiceProvider.GetRequiredService<UsersDbContext>();
         var survivor = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == survivorId, TestContext.Current.CancellationToken);
         var archived = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == archivedId, TestContext.Current.CancellationToken);
         survivor!.MergedToUserId.Should().BeNull("the survivor is never tombstoned");
@@ -79,7 +79,7 @@ public class MergeAsyncOrderedTests(HumansTestDatabase database)
         await act.Should().NotThrowAsync();
 
         await using var assertScope = Factory.Services.CreateAsyncScope();
-        var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var db = assertScope.ServiceProvider.GetRequiredService<UsersDbContext>();
         (await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == archivedId, TestContext.Current.CancellationToken))!.MergedToUserId
             .Should().Be(survivorId, "the tombstone must still be written when the pending email is gone");
     }

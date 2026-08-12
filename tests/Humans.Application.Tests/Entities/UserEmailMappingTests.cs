@@ -10,11 +10,11 @@ public class UserEmailMappingTests
     [HumansFact]
     public void IsPrimary_IsMappedToLegacyIsNotificationTargetColumn()
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
+        var options = new DbContextOptionsBuilder<UsersDbContext>()
             .UseInMemoryDatabase(databaseName: nameof(IsPrimary_IsMappedToLegacyIsNotificationTargetColumn))
             .Options;
 
-        using var ctx = new HumansDbContext(options);
+        using var ctx = new UsersDbContext(options);
         var entity = ctx.Model.FindEntityType(typeof(UserEmail))!;
         var prop = entity.FindProperty(nameof(UserEmail.IsPrimary))!;
 

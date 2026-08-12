@@ -5,7 +5,7 @@ namespace Humans.Analyzers.Tests;
 
 public sealed class SingleRepositoryPerTableAnalyzerTests
 {
-    // A minimal HumansDbContext with three DbSets — Events and AuditLogEntries
+    // A minimal UsersDbContext with three DbSets — Events and AuditLogEntries
     // declared directly, Users inherited from a base context (mirrors the real
     // IdentityDbContext-derived Users DbSet). Plus the IRepository marker and a
     // GrandfatheredAttribute whose 5th ctor arg is the optional scope.
@@ -56,7 +56,7 @@ public sealed class SingleRepositoryPerTableAnalyzerTests
                 public DbSet<User> Users => Set<User>();
             }
 
-            public sealed class HumansDbContext : IdentityishContext
+            public sealed class UsersDbContext : IdentityishContext
             {
                 public DbSet<Event> Events => Set<Event>();
                 public DbSet<AuditLogEntry> AuditLogEntries => Set<AuditLogEntry>();
@@ -92,7 +92,7 @@ public sealed class SingleRepositoryPerTableAnalyzerTests
             {
                 public sealed class EventRepository : Humans.Application.Interfaces.Repositories.IRepository
                 {
-                    public void Save(Humans.Infrastructure.Data.HumansDbContext ctx) =>
+                    public void Save(Humans.Infrastructure.Data.UsersDbContext ctx) =>
                         ctx.Events.Add(new Humans.Domain.Entities.Event());
                 }
             }
@@ -101,7 +101,7 @@ public sealed class SingleRepositoryPerTableAnalyzerTests
             {
                 public sealed class AuditLogRepository : Humans.Application.Interfaces.Repositories.IRepository
                 {
-                    public void Touch(Humans.Infrastructure.Data.HumansDbContext ctx) =>
+                    public void Touch(Humans.Infrastructure.Data.UsersDbContext ctx) =>
                         ctx.Events.Add(new Humans.Domain.Entities.Event());
                 }
             }
@@ -155,9 +155,9 @@ public sealed class SingleRepositoryPerTableAnalyzerTests
             {
                 public sealed class EventRepository : Humans.Application.Interfaces.Repositories.IRepository
                 {
-                    public void Save(Humans.Infrastructure.Data.HumansDbContext ctx) =>
+                    public void Save(Humans.Infrastructure.Data.UsersDbContext ctx) =>
                         ctx.Events.Add(new Humans.Domain.Entities.Event());
-                    public int Count(Humans.Infrastructure.Data.HumansDbContext ctx) =>
+                    public int Count(Humans.Infrastructure.Data.UsersDbContext ctx) =>
                         ctx.Events.Count();
                 }
             }
@@ -178,7 +178,7 @@ public sealed class SingleRepositoryPerTableAnalyzerTests
             {
                 public sealed class EventRepository : Humans.Application.Interfaces.Repositories.IRepository
                 {
-                    public void Save(Humans.Infrastructure.Data.HumansDbContext ctx) =>
+                    public void Save(Humans.Infrastructure.Data.UsersDbContext ctx) =>
                         ctx.Events.Add(new Humans.Domain.Entities.Event());
                 }
             }
@@ -187,7 +187,7 @@ public sealed class SingleRepositoryPerTableAnalyzerTests
             {
                 public sealed class AuditLogRepository : Humans.Application.Interfaces.Repositories.IRepository
                 {
-                    public int Count(Humans.Infrastructure.Data.HumansDbContext ctx) =>
+                    public int Count(Humans.Infrastructure.Data.UsersDbContext ctx) =>
                         ctx.Events.Count();
                 }
             }
@@ -208,7 +208,7 @@ public sealed class SingleRepositoryPerTableAnalyzerTests
                 [Humans.Application.Architecture.Grandfathered("HUM0025", "j", "2026-05-25", "i", scope: "Events")]
                 public sealed class EventRepository : Humans.Application.Interfaces.Repositories.IRepository
                 {
-                    public void Save(Humans.Infrastructure.Data.HumansDbContext ctx) =>
+                    public void Save(Humans.Infrastructure.Data.UsersDbContext ctx) =>
                         ctx.Events.Add(new Humans.Domain.Entities.Event());
                 }
             }
@@ -218,7 +218,7 @@ public sealed class SingleRepositoryPerTableAnalyzerTests
                 [Humans.Application.Architecture.Grandfathered("HUM0025", "j", "2026-05-25", "i", scope: "Events")]
                 public sealed class AuditLogRepository : Humans.Application.Interfaces.Repositories.IRepository
                 {
-                    public void Touch(Humans.Infrastructure.Data.HumansDbContext ctx) =>
+                    public void Touch(Humans.Infrastructure.Data.UsersDbContext ctx) =>
                         ctx.Events.Add(new Humans.Domain.Entities.Event());
                 }
             }
@@ -242,7 +242,7 @@ public sealed class SingleRepositoryPerTableAnalyzerTests
                 [Humans.Application.Architecture.Grandfathered("HUM0025", "j", "2026-05-25", "i", scope: "Events")]
                 public sealed class EventRepository : Humans.Application.Interfaces.Repositories.IRepository
                 {
-                    public void Save(Humans.Infrastructure.Data.HumansDbContext ctx) =>
+                    public void Save(Humans.Infrastructure.Data.UsersDbContext ctx) =>
                         ctx.Events.Add(new Humans.Domain.Entities.Event());
                 }
             }
@@ -251,7 +251,7 @@ public sealed class SingleRepositoryPerTableAnalyzerTests
             {
                 public sealed class AuditLogRepository : Humans.Application.Interfaces.Repositories.IRepository
                 {
-                    public void Touch(Humans.Infrastructure.Data.HumansDbContext ctx) =>
+                    public void Touch(Humans.Infrastructure.Data.UsersDbContext ctx) =>
                         ctx.Events.Add(new Humans.Domain.Entities.Event());
                 }
             }
@@ -274,7 +274,7 @@ public sealed class SingleRepositoryPerTableAnalyzerTests
             {
                 public sealed class EventRepository : Humans.Application.Interfaces.Repositories.IRepository
                 {
-                    public void Save(Humans.Infrastructure.Data.HumansDbContext ctx) =>
+                    public void Save(Humans.Infrastructure.Data.UsersDbContext ctx) =>
                         ctx.Events.Add(new Humans.Domain.Entities.Event());
                 }
             }
@@ -284,7 +284,7 @@ public sealed class SingleRepositoryPerTableAnalyzerTests
                 [Humans.Application.Architecture.Grandfathered("HUM0025", "j", "2026-05-25", "i", scope: "AuditLogEntries")]
                 public sealed class AuditLogRepository : Humans.Application.Interfaces.Repositories.IRepository
                 {
-                    public void Touch(Humans.Infrastructure.Data.HumansDbContext ctx) =>
+                    public void Touch(Humans.Infrastructure.Data.UsersDbContext ctx) =>
                         ctx.Events.Add(new Humans.Domain.Entities.Event());
                 }
             }
@@ -307,7 +307,7 @@ public sealed class SingleRepositoryPerTableAnalyzerTests
             {
                 public sealed class EventRepository : Humans.Application.Interfaces.Repositories.IRepository
                 {
-                    public void Save(Humans.Infrastructure.Data.HumansDbContext ctx) =>
+                    public void Save(Humans.Infrastructure.Data.UsersDbContext ctx) =>
                         ctx.Events.Add(new Humans.Domain.Entities.Event());
                 }
             }
@@ -316,7 +316,7 @@ public sealed class SingleRepositoryPerTableAnalyzerTests
             {
                 public sealed class RogueService
                 {
-                    public void Save(Humans.Infrastructure.Data.HumansDbContext ctx) =>
+                    public void Save(Humans.Infrastructure.Data.UsersDbContext ctx) =>
                         ctx.Events.Add(new Humans.Domain.Entities.Event());
                 }
             }
@@ -338,7 +338,7 @@ public sealed class SingleRepositoryPerTableAnalyzerTests
             {
                 public sealed class UserRepository : Humans.Application.Interfaces.Repositories.IRepository
                 {
-                    public int Count(Humans.Infrastructure.Data.HumansDbContext ctx) =>
+                    public int Count(Humans.Infrastructure.Data.UsersDbContext ctx) =>
                         ctx.Users.Count();
                 }
             }
@@ -347,7 +347,7 @@ public sealed class SingleRepositoryPerTableAnalyzerTests
             {
                 public sealed class DriveActivityMonitorRepository : Humans.Application.Interfaces.Repositories.IRepository
                 {
-                    public void Touch(Humans.Infrastructure.Data.HumansDbContext ctx) =>
+                    public void Touch(Humans.Infrastructure.Data.UsersDbContext ctx) =>
                         ctx.Set<Humans.Domain.Entities.User>().Add(new Humans.Domain.Entities.User());
                 }
             }
@@ -368,7 +368,7 @@ public sealed class SingleRepositoryPerTableAnalyzerTests
             {
                 public sealed class EventRepository : Humans.Application.Interfaces.Repositories.IRepository
                 {
-                    public void Save(Humans.Infrastructure.Data.HumansDbContext ctx) =>
+                    public void Save(Humans.Infrastructure.Data.UsersDbContext ctx) =>
                         ctx.Events.Add(new Humans.Domain.Entities.Event());
                 }
             }
@@ -377,7 +377,7 @@ public sealed class SingleRepositoryPerTableAnalyzerTests
             {
                 public sealed class AuditLogRepository : Humans.Application.Interfaces.Repositories.IRepository
                 {
-                    public void Touch(Humans.Infrastructure.Data.HumansDbContext ctx) =>
+                    public void Touch(Humans.Infrastructure.Data.UsersDbContext ctx) =>
                         ctx.Events.Add(new Humans.Domain.Entities.Event());
                 }
             }

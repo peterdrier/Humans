@@ -19,7 +19,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// <para>
 /// Uses <see cref="Microsoft.EntityFrameworkCore.IDbContextFactory{TContext}"/>
 /// so the repository can be registered as Singleton while
-/// <c>HumansDbContext</c> remains Scoped.
+/// <c>AuditLogDbContext</c> remains Scoped.
 /// </para>
 /// </remarks>
 [Section("AuditLog")]

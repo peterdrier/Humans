@@ -114,7 +114,7 @@ public class ExpenseReportServiceHoldedOutboxTests
     };
 
     // Replaces UserInfoStubHelpers.ToUserInfo(), which reads through an in-memory
-    // HumansDbContext a section test project cannot see. Only the no-argument shape was
+    // UsersDbContext a section test project cannot see. Only the no-argument shape was
     // ever used here, and it is two lines.
     private static UserInfo MinimalUserInfo(User user) =>
         UserInfo.Create(user, [], [], [], profile: null, [], [], [], []);

@@ -32,8 +32,8 @@ namespace Humans.Governance.Tests.Services;
 /// <summary>
 /// Owns its fixture rather than deriving from <c>Humans.Application.Tests</c>'
 /// <c>ServiceTestHarness</c>: that harness is built around an in-memory
-/// <c>HumansDbContext</c>, and inheriting it would grant a section test project
-/// <c>InternalsVisibleTo</c> on <c>HumansDbContext</c> — the boundary the G5 split exists to
+/// <c>UsersDbContext</c>, and inheriting it would grant a section test project
+/// <c>InternalsVisibleTo</c> on <c>UsersDbContext</c> — the boundary the G5 split exists to
 /// draw (nobodies-collective/Humans#866). These tests used four of its members (the clock,
 /// the audit substitute, the Governance context and its factory) and stub every user read
 /// they care about themselves, so the replacement is a handful of fields.

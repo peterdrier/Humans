@@ -58,8 +58,8 @@ def max_migrations_per_context(migration_files: list[str]) -> int:
     """Max real migrations in any one migration directory.
 
     Since the per-section DbContext split (nobodies-collective/Humans#858) each
-    context owns its own chain in its own directory (Migrations/ for
-    HumansDbContext, Migrations/<Section>/ for a peeled section). The
+    context owns its own chain in its own directory (Migrations/<Section>/;
+    the root Migrations/ chain was deleted at #858 peel 15). The
     one-migration-per-PR rule applies per chain: a peel PR legitimately carries
     one snapshot-only migration on the main chain plus one baseline in the new
     section's directory.

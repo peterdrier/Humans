@@ -11,12 +11,12 @@ namespace Humans.Email.Data;
 /// code-side partition of the EF model.
 /// </summary>
 /// <remarks>
-/// Internal-sealed like <see cref="HumansDbContext"/> (issue #750): repositories
+/// Internal-sealed like every section context (issue #750): repositories
 /// are the only consumers. Configurations are applied explicitly (not by
 /// assembly scanning) so this model can never accrete another section's tables.
 /// The outbox rows carry bare Guid references to the campaign grants, shift
 /// signups and users they were raised for; those sections' tables stay in
-/// <see cref="HumansDbContext"/> and are deliberately absent here.
+/// <see cref="UsersDbContext"/> and are deliberately absent here.
 /// </remarks>
 internal sealed class EmailDbContext(DbContextOptions<EmailDbContext> options)
     : DbContext(options)

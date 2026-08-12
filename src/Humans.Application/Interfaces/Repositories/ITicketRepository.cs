@@ -19,7 +19,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// <c>TicketSyncService</c> needs. Business rules (VAT computation, OAuth
 /// tie-breaking, status parsing) stay in the service; this interface just
 /// loads and persists. Every method opens its own short-lived
-/// <c>HumansDbContext</c> via <c>IDbContextFactory</c> and disposes it before
+/// <c>TicketsDbContext</c> via <c>IDbContextFactory</c> and disposes it before
 /// returning — returned entities are therefore detached (<c>AsNoTracking</c>);
 /// callers mutate them in memory and pass them back to the matching write
 /// method.

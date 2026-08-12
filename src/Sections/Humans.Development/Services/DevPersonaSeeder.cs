@@ -27,7 +27,7 @@ namespace Humans.Development.Services;
 
 /// <summary>
 /// Dev-only persona seeding helper. Owns the writes that
-/// <c>DevLoginController</c> used to do directly against <c>HumansDbContext</c>.
+/// <c>DevLoginController</c> used to do directly against the DbContext.
 ///
 /// Cross-section writes (User, Profile, UserEmail) flow through the owning
 /// section's services per design-rules §2c

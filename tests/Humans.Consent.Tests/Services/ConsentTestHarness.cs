@@ -15,8 +15,8 @@ namespace Humans.Consent.Tests.Services;
 /// in-memory store, and a team registry.
 /// </summary>
 /// <remarks>
-/// The harness itself is built around an in-memory <c>HumansDbContext</c> and cannot come
-/// here — sharing it would push <c>InternalsVisibleTo</c> on <c>HumansDbContext</c> into a
+/// The harness itself is built around an in-memory <c>UsersDbContext</c> and cannot come
+/// here — sharing it would push <c>InternalsVisibleTo</c> on <c>UsersDbContext</c> into a
 /// section test project (design §15 step 8). The teams half is Campaigns' "rewrite the
 /// stub, not the tests" call: <c>LegalDocument.TeamId</c> is a bare cross-section Guid and
 /// nothing persists a <see cref="Team"/>, so a dictionary keyed the same way leaves every

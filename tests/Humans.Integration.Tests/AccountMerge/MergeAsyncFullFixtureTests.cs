@@ -68,7 +68,7 @@ public class MergeAsyncFullFixtureTests(HumansTestDatabase database) : Integrati
 
         // Assert — all six post-conditions from the EmailProblems spec case 5.
         await using var assertScope = Factory.Services.CreateAsyncScope();
-        var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var db = assertScope.ServiceProvider.GetRequiredService<UsersDbContext>();
         var teamsDb = assertScope.ServiceProvider.GetRequiredService<TeamsDbContext>();
         var authDb = assertScope.ServiceProvider.GetRequiredService<AuthDbContext>();
         var auditLogDb = assertScope.ServiceProvider.GetRequiredService<AuditLogDbContext>();

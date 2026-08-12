@@ -119,7 +119,7 @@ public class GdprExportDependencyInjectionTests
         // assemblies come from SectionDiscoveryExtensions — the same discovery the
         // runtime uses, so a section that moves cannot silently drop out of this
         // sweep the way it would with a hard-coded assembly list (design §10).
-        var infrastructureAssembly = typeof(Humans.Infrastructure.Data.HumansDbContext).Assembly;
+        var infrastructureAssembly = typeof(Humans.Infrastructure.Data.UsersDbContext).Assembly;
         var applicationAssembly = typeof(Humans.Application.Services.Users.UserService).Assembly;
 
         var foundContributors = new[] { infrastructureAssembly, applicationAssembly }

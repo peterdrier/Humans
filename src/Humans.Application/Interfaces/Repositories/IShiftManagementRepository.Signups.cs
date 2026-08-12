@@ -18,7 +18,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// Read methods are <c>AsNoTracking</c> by default; methods named
 /// <c>ForMutation</c> return tracking-enabled entities whose changes are
 /// persisted by a matching <c>SaveChangesAsync</c> on the same repository
-/// (same Scoped <c>HumansDbContext</c> instance).
+/// (same Scoped <c>ShiftsDbContext</c> instance).
 /// </para>
 /// </remarks>
 public partial interface IShiftManagementRepository

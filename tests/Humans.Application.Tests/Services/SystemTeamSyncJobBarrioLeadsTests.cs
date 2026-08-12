@@ -26,7 +26,7 @@ namespace Humans.Application.Tests.Services;
 /// </summary>
 /// <remarks>
 /// Rewritten for the §15 Google-writing jobs migration (issue #570): the job no
-/// longer owns a <c>HumansDbContext</c>, so the test coordinates through the
+/// longer owns a <c>UsersDbContext</c>, so the test coordinates through the
 /// <see cref="ITeamService"/> / <see cref="ICampRepository"/> seams. The
 /// Barrio Leads system team's <see cref="Team.Members"/> collection is stubbed
 /// so the job's idempotency guard can see the existing active membership

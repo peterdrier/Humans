@@ -7,7 +7,7 @@
     <!--
       Humans.Web is granted internals access because its section-DI extensions
       register the concrete repository implementations (which take
-      IDbContextFactory<HumansDbContext> in their constructors). HumansDbContext
+      IDbContextFactory<UsersDbContext> in their constructors). UsersDbContext
       itself is no longer referenced in live Web code — see issue #750. A
       follow-up can relocate the repository DI registrations into Infrastructure
       and drop this entry.

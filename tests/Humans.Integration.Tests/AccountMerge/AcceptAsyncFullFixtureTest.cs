@@ -183,7 +183,7 @@ public class AcceptAsyncFullFixtureTest(HumansTestDatabase database)
 
         // Assert — comprehensive post-merge state.
         await using var assertScope = Factory.Services.CreateAsyncScope();
-        var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var db = assertScope.ServiceProvider.GetRequiredService<UsersDbContext>();
         var teamsDb = assertScope.ServiceProvider.GetRequiredService<TeamsDbContext>();
         var governanceDb = assertScope.ServiceProvider.GetRequiredService<GovernanceDbContext>();
         var campaignsDb = assertScope.ServiceProvider.GetRequiredService<CampaignsDbContext>();

@@ -35,7 +35,7 @@ public sealed class DependencyCycleResolutionTests : ServiceTestHarness
     {
         var services = new ServiceCollection();
 
-        services.AddScoped(_ => new HumansDbContext(DbOptions));
+        services.AddScoped(_ => new UsersDbContext(DbOptions));
         services.AddSingleton<IMemoryCache>(_ => new MemoryCache(new MemoryCacheOptions()));
 
         services.AddScoped<IUserRepository>(_ => Substitute.For<IUserRepository>());
@@ -108,7 +108,7 @@ public sealed class DependencyCycleResolutionTests : ServiceTestHarness
         var assemblies = new[]
         {
             typeof(UserService).Assembly,
-            typeof(HumansDbContext).Assembly,
+            typeof(UsersDbContext).Assembly,
             typeof(Humans.Web.Controllers.HomeController).Assembly,
         };
 

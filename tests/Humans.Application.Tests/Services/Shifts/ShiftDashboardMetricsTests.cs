@@ -1135,7 +1135,7 @@ public sealed class ShiftDashboardMetricsTests : ServiceTestHarness
         public Task<IReadOnlyList<OrderDriftRow>> GetOrderDriftAsync(CancellationToken ct = default) => throw new NotSupportedException();
     }
 
-    private sealed class FakeUserService(HumansDbContext db) : IUserService
+    private sealed class FakeUserService(UsersDbContext db) : IUserService
     {
         public ValueTask<UserInfo?> GetUserInfoAsync(Guid userId, CancellationToken ct = default)
             => throw new NotSupportedException();

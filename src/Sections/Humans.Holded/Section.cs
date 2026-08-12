@@ -20,7 +20,7 @@ public sealed class Section : ISection
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
         // Sentinel choice is load-bearing: "the sentinel exists" must PROVE this baseline already
-        // ran. holded_ledger_lines cannot carry that proof — the historical HumansDbContext chain
+        // ran. holded_ledger_lines cannot carry that proof — the historical root migration chain
         // and Finance's pre-split model both created it, so on existing databases it exists while
         // holded_accounts/holded_api_calls/holded_sync_states do not, and a sentinel hit would
         // record the baseline as applied with three tables missing. holded_accounts is created by

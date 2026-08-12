@@ -672,7 +672,7 @@ public interface ITeamService : ITeamServiceRead, IApplicationService
     // System team sync support (issue #570 — §15 Google-writing jobs)
     //
     // Narrow read/write methods used exclusively by SystemTeamSyncJob so the
-    // job can drop its HumansDbContext dependency. Each mutation commits in
+    // job can drop its DbContext dependency. Each mutation commits in
     // its own repository-owned unit of work; the caller fan-outs Google sync
     // calls externally.
     // ==========================================================================

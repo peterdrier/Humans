@@ -481,7 +481,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
             Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 // UserInfo.Create inline rather than linking Base's UserInfoStubHelpers: this
-                // suite needs one of its members, and the helper is built around HumansDbContext
+                // suite needs one of its members, and the helper is built around UsersDbContext
                 // (design §15 step 8).
                 new Dictionary<Guid, UserInfo>
                 {

@@ -6,7 +6,7 @@ namespace Humans.Analyzers.Internal;
 /// <summary>
 /// Matcher for Humans persistence contexts (nobodies-collective/Humans#858).
 /// Since the per-section DbContext split, the persistence boundary is no longer
-/// the single <c>HumansDbContext</c> type but every application context — the
+/// a single root context type but every application context — the
 /// main pile plus each <c>&lt;Section&gt;DbContext</c>. Analyzers that police
 /// context access use this helper instead of a hard-coded type name so peeled
 /// sections stay covered.
@@ -55,7 +55,7 @@ internal static class SectionDbContexts
     /// <summary>
     /// Recursively walks a type and its generic arguments / array elements,
     /// looking for any Humans persistence context. Handles
-    /// <c>IDbContextFactory&lt;TContext&gt;</c>, <c>UserStore&lt;…, HumansDbContext, …&gt;</c>,
+    /// <c>IDbContextFactory&lt;TContext&gt;</c>, <c>UserStore&lt;…, UsersDbContext, …&gt;</c>,
     /// and arbitrarily-nested constructions.
     /// </summary>
     public static bool ReferencesSectionDbContext(ITypeSymbol? candidate, INamedTypeSymbol efDbContext) =>
@@ -65,7 +65,7 @@ internal static class SectionDbContexts
     /// Same walk as <see cref="ReferencesSectionDbContext"/>, but returns the
     /// specific context type that matched (e.g. <c>ContainersDbContext</c>)
     /// instead of a bool, so callers can name the actual context in a
-    /// diagnostic message rather than a generic "HumansDbContext".
+    /// diagnostic message rather than a generic context name.
     /// </summary>
     public static INamedTypeSymbol? FindReferencedSectionDbContext(ITypeSymbol? candidate, INamedTypeSymbol efDbContext)
     {

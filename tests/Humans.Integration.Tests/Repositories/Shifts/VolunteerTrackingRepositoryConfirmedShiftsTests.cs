@@ -25,7 +25,7 @@ public sealed class VolunteerTrackingRepositoryConfirmedShiftsTests(HumansTestDa
     public async Task ReturnsOnlyConfirmedSignups()
     {
         await using var scope = Factory.Services.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var db = scope.ServiceProvider.GetRequiredService<UsersDbContext>();
         var teamsDb = scope.ServiceProvider.GetRequiredService<TeamsDbContext>();
         var shiftsDb = scope.ServiceProvider.GetRequiredService<ShiftsDbContext>();
         var repo = scope.ServiceProvider.GetRequiredService<IShiftManagementRepository>();
@@ -47,7 +47,7 @@ public sealed class VolunteerTrackingRepositoryConfirmedShiftsTests(HumansTestDa
     public async Task ExcludesShiftsOutsideRange()
     {
         await using var scope = Factory.Services.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var db = scope.ServiceProvider.GetRequiredService<UsersDbContext>();
         var teamsDb = scope.ServiceProvider.GetRequiredService<TeamsDbContext>();
         var shiftsDb = scope.ServiceProvider.GetRequiredService<ShiftsDbContext>();
         var repo = scope.ServiceProvider.GetRequiredService<IShiftManagementRepository>();
@@ -69,7 +69,7 @@ public sealed class VolunteerTrackingRepositoryConfirmedShiftsTests(HumansTestDa
     public async Task DepartmentFilter_ExcludesOtherTeams()
     {
         await using var scope = Factory.Services.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var db = scope.ServiceProvider.GetRequiredService<UsersDbContext>();
         var teamsDb = scope.ServiceProvider.GetRequiredService<TeamsDbContext>();
         var shiftsDb = scope.ServiceProvider.GetRequiredService<ShiftsDbContext>();
         var repo = scope.ServiceProvider.GetRequiredService<IShiftManagementRepository>();
@@ -90,7 +90,7 @@ public sealed class VolunteerTrackingRepositoryConfirmedShiftsTests(HumansTestDa
     public async Task ShiftThatOverlapsStartBoundary_IsIncluded()
     {
         await using var scope = Factory.Services.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var db = scope.ServiceProvider.GetRequiredService<UsersDbContext>();
         var teamsDb = scope.ServiceProvider.GetRequiredService<TeamsDbContext>();
         var shiftsDb = scope.ServiceProvider.GetRequiredService<ShiftsDbContext>();
         var repo = scope.ServiceProvider.GetRequiredService<IShiftManagementRepository>();
@@ -119,7 +119,7 @@ public sealed class VolunteerTrackingRepositoryConfirmedShiftsTests(HumansTestDa
     ///   (a second user on 7/7), one Cancelled (the 7/9 shift).
     /// - One Confirmed signup on the TeamB shift (7/8).
     /// </summary>
-    private static async Task<(Guid eventId, Guid teamAId, Guid teamBId, Guid userId)> SeedFixtureAsync(HumansDbContext db, TeamsDbContext teamsDb, ShiftsDbContext shiftsDb)
+    private static async Task<(Guid eventId, Guid teamAId, Guid teamBId, Guid userId)> SeedFixtureAsync(UsersDbContext db, TeamsDbContext teamsDb, ShiftsDbContext shiftsDb)
     {
         var now = SystemClock.Instance.GetCurrentInstant();
         var suffix = Guid.NewGuid().ToString("N");
