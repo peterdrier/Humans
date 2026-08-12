@@ -1,4 +1,4 @@
-﻿using Humans.Consent.Data;
+using Humans.Consent.Data;
 using Humans.Domain.Entities;
 using Humans.Notifications.Contracts;
 using Microsoft.EntityFrameworkCore;

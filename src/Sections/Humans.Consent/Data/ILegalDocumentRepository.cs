@@ -1,6 +1,5 @@
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
-using Humans.Domain.Entities;
 using NodaTime;
 using Humans.Domain.Attributes;
 using Humans.Consent.Domain;
@@ -26,7 +25,7 @@ namespace Humans.Consent.Data;
 /// <para>
 /// Legal documents carry a cross-section TeamId only. Callers that need team
 /// data call <see cref="Teams.ITeamService"/> and stitch by
-/// <see cref="Humans.Domain.Entities.LegalDocument.TeamId"/>.
+/// <see cref="LegalDocument.TeamId"/>.
 /// </para>
 /// </remarks>
 [Section("Legal")]

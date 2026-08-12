@@ -46,6 +46,9 @@ public class SearchArchitectureTests
             because: "every SearchService dependency must be an interface to preserve its orchestrator shape");
     }
 
+    /// <summary>
+    /// No type anywhere in the section assembly takes an EF or repository dependency.
+    /// </summary>
     /// <remarks>
     /// The two tests above are about one constructor. An orchestrator section's claim is wider
     /// than that — it owns no tables at all — so the sweep is over every type in the assembly
@@ -78,6 +81,9 @@ public class SearchArchitectureTests
         }
     }
 
+    /// <summary>
+    /// The assembly exports only <c>Section</c> and the resource marker; everything else is internal.
+    /// </summary>
     /// <remarks>
     /// States in the section's own terms what HUM0034 enforces mechanically, and what
     /// <c>Contracts/README.md</c> explains in prose: nothing outside the section names a Search

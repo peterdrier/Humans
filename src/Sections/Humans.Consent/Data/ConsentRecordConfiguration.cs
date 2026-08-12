@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using Humans.Domain.Entities;
 using Humans.Consent.Domain;
 
 namespace Humans.Consent.Data;

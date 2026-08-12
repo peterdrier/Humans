@@ -6,7 +6,6 @@ using Humans.Application.Configuration;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Consent.Contracts;
 using Humans.Notifications.Contracts;

@@ -1,6 +1,5 @@
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
-using Humans.Domain.Entities;
 using NodaTime;
 using Humans.Consent.Domain;
 

@@ -1,4 +1,3 @@
-using Humans.Domain.Entities;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Attributes;
 using Humans.Consent.Domain;

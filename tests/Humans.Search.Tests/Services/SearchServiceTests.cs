@@ -101,6 +101,9 @@ public sealed class SearchServiceTests
     // onlyType short-circuit
     // ==========================================================================
 
+    /// <summary>
+    /// Each <c>onlyType</c> value queries just that section's source and skips the other four.
+    /// </summary>
     /// <remarks>
     /// One <c>[Fact]</c> over the five cases rather than a <c>[HumansTheory]</c> with five
     /// <c>[InlineData]</c>: <c>SearchResultType</c> turned <c>internal</c> at the G5 move, and a

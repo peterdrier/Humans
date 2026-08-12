@@ -23,7 +23,7 @@ Changes:
    `["Lactose", "Gluten", "Histamine", "FODMAP", OtherOption]` → `["Lactose", "Gluten", "Histamine", OtherOption]`.
 2. Delete the `Profile_DietaryMedical_Intolerance_FODMAP` entry from all six locale files:
    `SharedResource.resx`, `.es`, `.de`, `.ca`, `.fr`, `.it`.
-3. `tests/Humans.Application.Tests/Services/Cantina/CantinaRosterServiceTests.cs:307` — remove the
+3. `tests/Humans.Cantina.Tests/Services/CantinaRosterServiceTests.cs:307` — remove the
    `intolerance["FODMAP"].Should().Be(0)` assertion (the key no longer exists in the rollup).
 
 ### Existing data — leave inert (decided)

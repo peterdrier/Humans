@@ -61,7 +61,7 @@ Aggregate-local nav `DocumentVersion.LegalDocument` kept. Aggregate-local nav `D
 
 ### ConsentRecord
 
-Append-only per design-rules §12. **DB triggers** (`prevent_consent_record_update` / `prevent_consent_record_delete`, both calling `prevent_consent_record_modification()`) raise an exception on any UPDATE or DELETE against `consent_records`; only INSERT is allowed, to maintain GDPR audit-trail integrity. Architecture test `ConsentArchitectureTests.IConsentRepository_HasNoUpdateOrDeleteOrRemoveMethods` (`tests/Humans.Application.Tests/Architecture/ConsentArchitectureTests.cs`) pins the interface-level constraint.
+Append-only per design-rules §12. **DB triggers** (`prevent_consent_record_update` / `prevent_consent_record_delete`, both calling `prevent_consent_record_modification()`) raise an exception on any UPDATE or DELETE against `consent_records`; only INSERT is allowed, to maintain GDPR audit-trail integrity. Architecture test `ConsentArchitectureTests.IConsentRepository_HasNoUpdateOrDeleteOrRemoveMethods` (`tests/Humans.Consent.Tests/Architecture/ConsentArchitectureTests.cs`) pins the interface-level constraint.
 
 **Table:** `consent_records`
 
@@ -155,7 +155,7 @@ Three controllers serve this section.
 - **Governance:** `IMembershipCalculator.GetRequiredTeamIdsForUserAsync` / `HasAllRequiredConsentsAsync` — `ConsentService` resolves which teams' documents apply to a given user and whether all required consents are complete.
 - **Users/Identity:** `IUserService.GetMergedSourceIdsAsync` — chain-follow merge tombstones on every per-user consent read so consents signed under a source id surface for the fold target. Consent records are immutable per §12 and stay at source.
 
-`IGitHubLegalDocumentConnector` is owned by this section (interface in `Humans.Application.Interfaces.Legal`, implementation in `Humans.Infrastructure`); not a cross-section dependency.
+`IGitHubLegalDocumentConnector` is owned by this section (interface and implementation both `internal` in `Humans.Consent.Services`); not a cross-section dependency.
 
 ## Architecture
 
