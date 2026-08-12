@@ -5,17 +5,6 @@ metadata:
   type: project
 ---
 
-<!-- freshness:triggers
-  docs/architecture/code-analysis.md
-  src/Humans.Analyzers/ServiceReadInterfaceDtoOnlyAnalyzer.cs
--->
-<!-- freshness:flag-on-change
-  Rule: service-read-no-ef
-  Flag only if the code this rule constrains changed in a way that makes the rule
-  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
-  analyzer. Routine edits to these files are the rule being followed, not drift.
--->
-
 # I*Read interfaces are DTO-only
 
 Method signatures on any interface in `Humans.Application` whose name ends with `Read` must not reference, at any depth of generic nesting or array element:

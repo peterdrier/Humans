@@ -3,15 +3,6 @@ name: Audit log is the concurrency safety net (not optimistic concurrency)
 description: At ~500-user scale, the audit log makes lost-update races tolerable. Don't reach for `IsConcurrencyToken`, row versioning, or repo-redesign-around-races. Service-level audit is the architectural defense.
 ---
 
-<!-- freshness:triggers
-  src/Humans.Domain/Entities/AuditLogEntry.cs
-  src/Humans.Application/Services/AuditLog/AuditLogService.cs
--->
-<!-- freshness:flag-on-change
-  Flag if AuditLog stops being written on every business-meaningful mutation, or IAuditLogService.LogAsync's signature changes.
--->
-
-
 At Humans' scale (~500 users, single-server, admin-heavy writes), the audit log is the architectural defense against concurrent-write races — **not** optimistic concurrency, not property-level change tracking, not lock primitives.
 
 Every business-meaningful mutation (role assignments, feedback status/assignment changes, team membership edits, budget changes, etc.) writes an `AuditLog` row. If two admins both mutate the same entity and one silently clobbers a field the other just set, the audit log still shows exactly what each admin changed and when. The intended state is reconstructible. Operators can detect the race post-hoc and re-apply the overwritten change.

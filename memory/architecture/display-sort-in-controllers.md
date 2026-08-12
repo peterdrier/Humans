@@ -3,16 +3,6 @@ name: Display sort belongs at the presentation layer, not in services or reposit
 description: Display ordering is a presentation concern. Sorting in controllers, views, view-model assembly, or `@Html` partials is fine. Sorting in Application services, repositories, or DB-layer code is a layer leak. Repository-layer `OrderBy`/`OrderByDescending` is allowed only for pagination tie-breakers, top-N selectors, and identity-ordered chronological sequences — each marked with an inline `// arch:db-sort-ok <reason>` comment.
 ---
 
-<!-- freshness:triggers
-  tests/Humans.Application.Tests/Architecture/Rules/DisplaySortInControllersRule.cs
--->
-<!-- freshness:flag-on-change
-  Rule: Display sort belongs at the presentation layer, not in services or repositories
-  Flag only if the code this rule constrains changed in a way that makes the rule
-  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
-  analyzer. Routine edits to these files are the rule being followed, not drift.
--->
-
 Display ordering is presentation. Anything **above** the service boundary may sort: controllers, views (`.cshtml`), view-model assembly, partials, tag helpers — all fine. Anything **at or below** the service boundary should not: a repo file (`src/Humans.Infrastructure/Repositories/**/*.cs`) or an Application service (`src/Humans.Application/Services/**/*.cs`) calling `.OrderBy(...)` / `.OrderByDescending(...)` for display ordering is a layer leak.
 
 **Why:** Presentation concerns leaking into the data/business layer make queries brittle (changing the UI requires a query change), prevent cache reuse (two views sorting the same dataset differently double the cache footprint), and mix concerns (a repo method is no longer "give me the data" — it's "give me the data the way View X needs it"). Repos return materialized lists per the project's thick-repo doctrine; the consumer chooses the order. Services orchestrate domain logic; "in what order should the UI display this list" is not their job.

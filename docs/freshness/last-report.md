@@ -41,29 +41,41 @@ shipped with no `freshness:triggers` marker at all, so the newest section in the
 never have been drift-checked. Marker added. `docs/sections/G5-SECTION-TEMPLATE.md` was also
 unmarked; it is a template, so it went into the catalog's `ignore` list beside `SECTION-TEMPLATE.md`.
 
-**A marking pass that had to be walked back.** Bringing `memory/` into the catalog needed its 153
+**A marking pass that was reverted outright.** Bringing `memory/` into the catalog needed its 153
 atoms marked, and the first pass at that was script-assisted: it scraped backticked identifiers out
 of each atom and resolved them to real files. Every glob it produced existed — the verifier was
-green — but a green verifier is not the same as a correct trigger, and roughly a sixth of them were
-wrong in a way no path check could catch:
+green — but a green verifier is not a correct trigger, and roughly a sixth were wrong in ways no
+path check catches: process rules got code triggers scraped from paths they merely cite as examples
+(`no-direct-to-main.md` got `docs/architecture/**`); several rules were set to fire on the artifact
+whose update *is* the rule being obeyed (`about-page-license-attribution.md` on `About/Index.cshtml`,
+`maintenance-log-update.md` on this log); `rules-maintenance.md` fired on `memory/**`, so every atom
+edit would flag it forever.
 
-- **Process rules got code triggers.** `no-direct-to-main.md` is a git-workflow rule; it mentions
-  `docs/architecture/**` as an *example of what needs a PR*, and the scraper turned that into a
-  trigger. The rule has no code surface at all.
-- **Triggers that fire when the rule is obeyed, not when it rots.** `about-page-license-attribution.md`
-  says *update the About page after a NuGet bump*; it was set to fire on `About/Index.cshtml`. That
-  file changing is the rule **working**. Same shape on `maintenance-log-update.md`,
-  `widget-gallery-up-to-date.md`, `feature-spec-on-new-feature.md`, `post-fix-doc-check.md`.
-- **Self-referential triggers.** `rules-maintenance.md` ("write an atom, update INDEX") was set to
-  fire on `memory/**`, so every atom edit would flag it forever.
-- **Boilerplate reasons.** A generic *"Flag if a symbol, path, namespace or behavior this rule names
-  has changed"* on every block, and the title was scraped from the first heading — which on one atom
-  produced `Rule: write the atom(s), edit INDEX.md`.
+That got culled — 14 markers removed, 60 reasons rewritten, 2 glob sets narrowed. Then Peter asked
+the question that should have been asked before any of it: **is marking the atoms worth it at all?**
 
-14 markers were removed outright, 60 reasons rewritten from each atom's own frontmatter `name:`, and
-two over-broad glob sets narrowed (`memory/**`, `src/Humans.Web/**`). Caught by a subagent that
-pushed back on the output rather than accepting it — the correction is worth more than the original
-pass, and the lesson is that *"every glob resolves"* is a necessary check, not a sufficient one.
+It is not, and the measurement is decisive: **865 lines of marker across 89 atoms — 16% of the
+memory corpus.** Average atom is 33 lines, average marker 9, and the block sits *between* the
+`description:` frontmatter and the rule body, so every agent reading an atom to apply a rule wades
+through sweep plumbing first. On files whose entire value is being terse and fast to consume, that
+is backwards.
+
+**All markers were removed and `memory/` dropped from `editorial_trees`** (the two are coupled —
+markerless atoms in the tree just become 155 "unmarked editorial" flags). The catalog carries a
+comment recording the attempt so a future sweep does not re-propose it. Stale symbol references in
+atoms get noticed and fixed when an agent goes to apply the rule; that is cheap and reactive, and
+does not tax every read.
+
+Kept from the attempt, because they were real: two atoms naming
+`Humans.Web.Extensions.DateTimeDisplayExtensions` corrected to `Humans.UI.Extensions`;
+`issue-fetch-protocol.md`'s claim to be hook-enforced by `require-gh-comments.sh`, which exists
+nowhere in the repo; three path/symbol fixes found while marking (`Humans.Expenses` G5 paths,
+`AuditLogEntityTypes` → `AuditEntityTypes`, and a dual-write exception for a column since dropped by
+`DropProfileIsSuspended`); and the new `hum0031-frozen-until-2027` atom.
+
+The generalizable lesson is two-part: *"every glob resolves"* is necessary but not sufficient, and
+a mechanism that needs 14 removals plus 60 rewrites to become coherent is the wrong mechanism for
+the material.
 
 **A trigger gap in `conventions.md` itself.** Its trigger block covered
 `src/Humans.Web/ViewComponents/**` and `src/Humans.Web/Views/**` but not `src/Humans.UI/**`, where
@@ -190,7 +202,7 @@ Peter answered every item. Resolutions applied in this PR:
 | 6 | Google Integration owns it | §8 change stands — and it matches the pre-existing rule atom [`team-resources-google-integration-section`](../../memory/architecture/team-resources-google-integration-section.md), which says section labels follow *code locality*, not table aggregate ownership. |
 | 7 | Leave for now | No action. `CampaignService.ImportCodesAsync` keeps its UI-only status gate. |
 | 8 | **Frozen until 2027** | `roslyn-analysis.md` retied the freeze to a **date** instead of #866 — tying it to an issue is why agents kept re-raising it every time #866 advanced. Captured as a rule atom: [`hum0031-frozen-until-2027`](../../memory/architecture/hum0031-frozen-until-2027.md). Do not raise this again in any form. |
-| 9 | Add `memory/` to the catalog | Added to `editorial_trees`, with `INDEX.md`/`META.md` ignored. The two stale `Humans.Web.Extensions.DateTimeDisplayExtensions` atoms corrected to `Humans.UI.Extensions`. Its 152 rule atoms carried **zero** freshness markers, so adding the tree bare would have flooded the next sweep with ~152 "unmarked" flags — **89 atoms marked**, each glob resolved against a real file and verified; the other 64 are pure policy left deliberately bare. A first automated pass over-marked (see *A marking pass that had to be walked back* below) and was culled. |
+| 9 | Add `memory/` to the catalog — then **reverted** | Added, marked, and taken back out. Marking cost 865 lines (16% of the memory corpus) sitting above each rule body; Peter's call was that stale atoms get fixed reactively when an agent applies the rule rather than by a daily proactive check. `memory/` is out of `editorial_trees` and the catalog records why. The real fixes found while marking were kept — see *A marking pass that was reverted outright*. |
 | 10 | Remove if gone, rewrite if moved | **54 of 57** wheat markers pointed at sources deleted by earlier prunes; none of those files exist anywhere in the repo, so none could be rewritten — all 54 removed, prose preserved. The 3 survivors point at the three live docs kept last sweep (both Q3 plans and the post-event survey). |
 
 ### Original question text, for the record

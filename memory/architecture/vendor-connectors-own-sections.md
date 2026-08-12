@@ -3,20 +3,6 @@ name: Vendor connectors stay their own sections — never merged with app code
 description: HARD RULE. External-vendor connector sections (Holded, Mailer/MailerLite, GoogleIntegration) are never merged into the app sections that consume them — vendors can be swapped. (Peter, 2026-08-03 inventory freeze.)
 ---
 
-<!-- freshness:triggers
-  src/Humans.Application/Interfaces/Holded/IHoldedClient.cs
-  src/Humans.Application/Interfaces/IStripeService.cs
-  src/Humans.Infrastructure/Services/Holded/HoldedClient.cs
-  src/Humans.Infrastructure/Services/Holded/HoldedClientOptions.cs
-  src/Sections/Humans.Finance.Contracts/CreditorLedgerLine.cs
--->
-<!-- freshness:flag-on-change
-  Rule: Vendor connectors stay their own sections — never merged with app code
-  Flag only if the code this rule constrains changed in a way that makes the rule
-  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
-  analyzer. Routine edits to these files are the rule being followed, not drift.
--->
-
 A section that wraps an **external vendor** (Holded accounting, MailerLite via Mailer, Google Workspace via GoogleIntegration) stays its **own section**, even when a single app section is its only consumer. Vendor connectors are never merged with application code.
 
 **Why:** Vendors can change. Finance is likely Holded's only user, but folding the Holded connector into Finance would weld a replaceable vendor surface into domain code. Peter, at the 2026-08-03 inventory freeze: "that's an external vendor which could change … vendors don't get merged with app code ever." Same ruling for Mailer (MailerLite) vs Email.

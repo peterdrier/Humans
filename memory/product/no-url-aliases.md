@@ -3,17 +3,6 @@ name: No URL aliases except Barrios↔Camps
 description: Single canonical URL per page. The only sanctioned alias is Barrios↔Camps (Spanish UX). No singular/plural variants, no second-controller route splits.
 ---
 
-<!-- freshness:triggers
-  src/Humans.Web/Controllers/CampAdminController.cs
-  src/Humans.Web/Controllers/CampController.cs
--->
-<!-- freshness:flag-on-change
-  Rule: No URL aliases except Barrios↔Camps
-  Flag only if the code this rule constrains changed in a way that makes the rule
-  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
-  analyzer. Routine edits to these files are the rule being followed, not drift.
--->
-
 When adding new pages to an existing section, route them on the existing controller using the existing route convention. Do **NOT** add singular-form aliases (`/Camp/Admin` alongside `/Camps/Admin`), do **NOT** split into a new controller just to vary the URL, do **NOT** introduce any second route prefix.
 
 The single sanctioned alias is **`Barrios` ↔ `Camps`** (Spanish-language UX equivalent). Every camp-section controller that exposes `[Route("Camps")]` also exposes `[Route("Barrios")]`, and `[Route("Camps/Admin")]` is paired with `[Route("Barrios/Admin")]`. That's it.

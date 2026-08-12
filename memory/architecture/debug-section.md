@@ -5,17 +5,6 @@ metadata:
   type: project
 ---
 
-<!-- freshness:triggers
-  docs/sections/Debug.md
-  src/Humans.Web/Controllers/DebugController.cs
--->
-<!-- freshness:flag-on-change
-  Rule: Debug section — developer/diagnostics home at /Debug
-  Flag only if the code this rule constrains changed in a way that makes the rule
-  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
-  analyzer. Routine edits to these files are the rule being followed, not drift.
--->
-
 **Developer and diagnostics pages live in the `Debug` section at `/Debug/*`** (`DebugController`, class-level `[Authorize(Policy = AdminOnly)]`). This is the forward home for logs, DB/cache stats, client/request stats, and any "tool a developer wants" — replacing the legacy, frozen `/Admin/*` diagnostics tree.
 
 **Why:** Per [[no-admin-url-section]] there is no `/Admin/` section going forward. Diagnostics are cross-cutting — owned by no domain section — so they get their own `Debug` section. Peter (2026-05-22): *"Gut says Debug.. DebugController, /Debug/foo. that honestly holds logs/diagnostics/anything a developer wants. db/cache stats, etc."*

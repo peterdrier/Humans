@@ -1,9 +1,3 @@
-<!-- freshness:triggers
-  docs/architecture/debt-ledger.yml
--->
-<!-- freshness:flag-on-change
-  Flag if the ledger's top-level schema (themes/inbox/last_swept/review keys) changes.
--->
 # Debt found mid-task goes in the debt ledger
 
 **Rule:** When you spot tech debt you are not going to fix in the current task, record it in [`docs/architecture/debt-ledger.yml`](../../docs/architecture/debt-ledger.yml) so `/debt-sweep` picks it up — don't let it evaporate in a chat transcript, and don't derail the current task to chase it.

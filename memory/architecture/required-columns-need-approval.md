@@ -1,13 +1,3 @@
-<!-- freshness:triggers
-  tests/Humans.Integration.Tests/Infrastructure/PhysicalDefaultParityTests.cs
--->
-<!-- freshness:flag-on-change
-  Rule: required-columns-need-approval
-  Flag only if the code this rule constrains changed in a way that makes the rule
-  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
-  analyzer. Routine edits to these files are the rule being followed, not drift.
--->
-
 # Adding a required column to an existing table needs Peter's approval
 
 **Rule:** Never add a `NOT NULL` (required) column to an existing table without Peter's

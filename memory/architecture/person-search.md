@@ -3,18 +3,6 @@ name: Person search uses one bit-flag service method and two canonical UI patter
 description: HARD RULE. All person-search call sites route through `IUserServiceRead.SearchUsersAsync(query, PersonSearchFields, limit)`. UI is one of two patterns — `<vc:human-search>` (inline picker) or `_HumanSearchResults` (page-style). Admin-bit fields require admin auth at the controller. Emergency-contact data is never searchable. Shift volunteer search is exempt.
 ---
 
-<!-- freshness:triggers
-  src/Humans.Application/Services/Profiles/PersonSearchMatcher.cs
-  src/Humans.UI/ViewComponents/HumanSearchViewComponent.cs
-  src/Humans.Web/Helpers/ShiftVolunteerSearchBuilder.cs
--->
-<!-- freshness:flag-on-change
-  Rule: Person search uses one bit-flag service method and two canonical UI patterns
-  Flag only if the code this rule constrains changed in a way that makes the rule
-  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
-  analyzer. Routine edits to these files are the rule being followed, not drift.
--->
-
 Person search shows up across the app — Camp role assignment, team-admin member picker, public profile search page, admin humans list, ticket-transfer recipient lookup, etc. Today they all consolidate behind a single service method and two UI partials. Don't fork.
 
 **Service API — single method, bit-flag input:**

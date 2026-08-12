@@ -4,16 +4,6 @@ description: A section's tables can carry user FK columns (AddedByUserId, Record
 type: architecture
 ---
 
-<!-- freshness:triggers
-  src/Humans.Application/Interfaces/Gdpr/IUserDataContributor.cs
--->
-<!-- freshness:flag-on-change
-  Rule: Provenance FKs are not user-scoped data
-  Flag only if the code this rule constrains changed in a way that makes the rule
-  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
-  analyzer. Routine edits to these files are the rule being followed, not drift.
--->
-
 A section's owned tables can carry user FK columns that record *who performed an action* (`AddedByUserId`, `RecordedByUserId`, `IssuedByUserId`, `CreatedByUserId`, etc.) without the section's data being user-scoped under design-rules §8a. The §8a obligation to implement `IUserDataContributor` only fires when the rows themselves *belong to* the user.
 
 **Test:** if you delete the user, do their rows go with them, or do they belong to a different aggregate (a camp, a team, an event) and merely lose their actor reference? If the latter, the section is not user-scoped — those FKs are provenance/audit, not ownership. The data flows out of GDPR export through the audit log, not through a section-level contributor.

@@ -3,17 +3,6 @@ name: Crosscuts call no section; gather cross-lane data in an Orchestrator
 description: A Crosscut (Audit, Email, Notification, Metrics) owns its own data and carries no section-specific logic — it must never call into another section. When a crosscut operation needs cross-lane data, an Orchestrator gathers it and calls the crosscut WITH the data.
 ---
 
-<!-- freshness:triggers
-  src/Humans.Application/Services/AuditLog/AuditLogService.cs
-  src/Humans.Application/Services/Auth/RoleAssignmentService.cs
--->
-<!-- freshness:flag-on-change
-  Rule: Crosscuts call no section; gather cross-lane data in an Orchestrator
-  Flag only if the code this rule constrains changed in a way that makes the rule
-  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
-  analyzer. Routine edits to these files are the rule being followed, not drift.
--->
-
 Role vocabulary: [`CONTEXT.md`](../../CONTEXT.md) (Section / Crosscut / Orchestrator).
 
 A **Crosscut** is a service every other section may call that carries no section-specific logic — Audit, Email, Notification, Metrics. It owns its own data (e.g. the audit log) but **reaches into no other section.** A Crosscut calling a Section is wrong-direction: everything calls the Crosscut, so a back-call risks a loop and couples the tool to a section's schema.

@@ -3,16 +3,6 @@ name: Google service account uses bare auth (no impersonation)
 description: HARD RULE. The Google Workspace service account authenticates as itself — no domain-wide delegation, no admin-user impersonation. Never propose adding impersonation/DWD when a Google API call fails.
 ---
 
-<!-- freshness:triggers
-  src/Humans.Infrastructure/Services/GoogleWorkspace/GoogleCredentialLoader.cs
--->
-<!-- freshness:flag-on-change
-  Rule: Google service account uses bare auth (no impersonation)
-  Flag only if the code this rule constrains changed in a way that makes the rule
-  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
-  analyzer. Routine edits to these files are the rule being followed, not drift.
--->
-
 The Google Workspace service account authenticates **as itself** — bare service-account credentials loaded by `GoogleCredentialLoader.LoadScopedAsync`, scoped to the OAuth scopes a given client needs. There is **no domain-wide delegation and no admin-user impersonation** anywhere in this codebase. The service account holds Workspace admin roles granted to it **directly** (e.g. Groups Admin / `groups.admin`), which is what authorizes its Directory/Cloud Identity/Drive writes.
 
 **Why:** This is the established, working setup. Impersonation/DWD has been raised repeatedly as a suspected cause of Google API failures and has been wrong every single time — it is not how this integration is wired, and proposing it wastes time and derails diagnosis. `GoogleCredentialLoader`'s own summary states it: "Authenticates as the service account itself — no domain-wide delegation / impersonation."

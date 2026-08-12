@@ -3,16 +3,6 @@ name: no CHECK constraints in the database
 description: HARD RULE. Never put a CHECK constraint into the forward model — no `HasCheckConstraint` in an entity configuration, no hand-written `AddCheckConstraint`, no raw-SQL `ALTER TABLE ... ADD CONSTRAINT ... CHECK`. Enforce the invariant in service code instead. An EF-generated `AddCheckConstraint` in a migration's `Down`, triggers, and intra-section FKs are unaffected.
 ---
 
-<!-- freshness:triggers
-  src/Sections/Humans.Agent/Data/Configurations/AgentSettingsConfiguration.cs
--->
-<!-- freshness:flag-on-change
-  Rule: no CHECK constraints in the database
-  Flag only if the code this rule constrains changed in a way that makes the rule
-  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
-  analyzer. Routine edits to these files are the rule being followed, not drift.
--->
-
 Invariants are enforced in service code, not by database CHECK constraints. Never write
 `builder.ToTable(t => t.HasCheckConstraint(...))`, never hand-write `migrationBuilder.AddCheckConstraint`
 into a migration's `Up`, and never add one through raw SQL.

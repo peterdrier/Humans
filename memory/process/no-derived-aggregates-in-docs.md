@@ -1,10 +1,3 @@
-<!-- freshness:triggers
-  docs/architecture/freshness-catalog.yml
-  docs/architecture/debt-ledger.yml
--->
-<!-- freshness:flag-on-change
-  Flag if either generated-rollup example file is renamed or restructured.
--->
 # No derived aggregates in docs
 
 **HARD RULE.** Never write a number into documentation that is derived from data already

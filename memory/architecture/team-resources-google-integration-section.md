@@ -3,21 +3,6 @@ name: TeamResourceService lives in the GoogleIntegration section
 description: ITeamResourceService and TeamResourceService live under Humans.Application.{Interfaces,Services}.GoogleIntegration even though google_resources is a Team Resources sub-aggregate, so HUM0017 sees the IGoogleResourceRepository injection as intra-section.
 ---
 
-<!-- freshness:triggers
-  docs/sections/GoogleIntegration.md
-  docs/sections/Teams.md
-  src/Humans.Application/Interfaces/GoogleIntegration/IGoogleDrivePermissionsClient.cs
-  src/Humans.Application/Interfaces/GoogleIntegration/ITeamResourceGoogleClient.cs
-  src/Humans.Application/Interfaces/GoogleIntegration/ITeamResourceService.cs
-  src/Humans.Application/Interfaces/Repositories/IGoogleResourceRepository.cs
--->
-<!-- freshness:flag-on-change
-  Rule: TeamResourceService lives in the GoogleIntegration section
-  Flag only if the code this rule constrains changed in a way that makes the rule
-  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
-  analyzer. Routine edits to these files are the rule being followed, not drift.
--->
-
 `ITeamResourceService` and its implementation `TeamResourceService` live under `Humans.Application.Interfaces.GoogleIntegration` and `Humans.Application.Services.GoogleIntegration`. The `IGoogleResourceRepository` interface stays `[Section("GoogleIntegration")]` (matches its EF impl namespace), and the arch-test `RepositoryOwners` map records `IGoogleResourceRepository → "GoogleIntegration"` to match.
 
 `google_resources` is still a Team Resources sub-aggregate (see `docs/sections/Teams.md`), but the table is heavily Google-Workspace-coupled — its repository, EF entity configuration, and the `ITeamResourceGoogleClient` / `IGoogleDrivePermissionsClient` connectors all live in GoogleIntegration. Section labels follow code locality so HUM0017 (and `ServiceBoundaryArchitectureTests`) treat the service ↔ repo edge as intra-section.

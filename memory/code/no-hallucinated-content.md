@@ -3,13 +3,6 @@ name: Never hardcode fabricated content into views
 description: Don't invent user-facing copy (benefits, policies, pricing, deadlines, vendor lists, "tips", FAQs) and ship it hardcoded. If there's no authoritative source, wire to an admin-editable field or ask.
 ---
 
-<!-- freshness:triggers
-  src/Sections/Humans.CityPlanning/Domain/CityPlanningSettings.cs
--->
-<!-- freshness:flag-on-change
-  Flag if CityPlanningSettings.RegistrationInfo is renamed/removed — the worked example cites it as the correct admin-editable-field pattern.
--->
-
 Never fabricate user-facing content and ship it hardcoded in a view, partial, seed, or localization string. This includes benefits lists, obligations, policies, pricing, deadlines, resource links, vendor lists, "tips", FAQs, event rules, or any domain copy that sounds like it should come from an admin or a document.
 
 **Why:** PR 216 invented a full "What You Need to Know Before Registering Your Barrio" accordion with made-up benefits (power access tiers, water supply, placement rules), obligations (shifts, Leave No Trace), and resources (containers, pricing, vendors) — none grounded in any source. The actual design was an admin-editable markdown textarea (`CityPlanningSettings.RegistrationInfo`) rendered at the top of the register page. The hardcoded accordion had to be ripped out.

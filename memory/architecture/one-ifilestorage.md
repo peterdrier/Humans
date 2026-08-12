@@ -3,17 +3,6 @@ name: one-ifilestorage
 description: HARD RULE — one shared `IFileStorage`, key-namespaced under `uploads/`, rooted at `wwwroot/`. Never introduce a per-domain storage interface or a parallel filesystem root.
 ---
 
-<!-- freshness:triggers
-  src/Humans.Application/Interfaces/IFileStorage.cs
-  src/Humans.Infrastructure/Services/FileSystemFileStorage.cs
--->
-<!-- freshness:flag-on-change
-  Rule: one-ifilestorage
-  Flag only if the code this rule constrains changed in a way that makes the rule
-  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
-  analyzer. Routine edits to these files are the rule being followed, not drift.
--->
-
 When a section needs to persist user-uploaded files (images, PDFs, receipts, exports), it MUST go through `Humans.Application.Interfaces.IFileStorage` (impl `FileSystemFileStorage`). Pick a key prefix under `uploads/` for the section (`uploads/profile-pictures/`, `uploads/camps/{campId}/`, `uploads/expense-attachments/`, etc.) and call `SaveAsync` / `TryReadAsync` / `DeleteAsync` with that key.
 
 Do NOT:

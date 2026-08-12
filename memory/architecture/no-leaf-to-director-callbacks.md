@@ -3,21 +3,6 @@ name: No leaf-to-director callbacks
 description: Reject any ctor or call edge where a leaf service (ProfileService, ConsentService, etc.) reaches up to a director (OnboardingService, AdminDashboardService, etc.). Director-to-leaf is one-way.
 ---
 
-<!-- freshness:triggers
-  src/Humans.Application/Interfaces/HumanLifecycle/IHumanLifecycleService.cs
-  src/Humans.Application/Interfaces/Onboarding/IOnboardingService.cs
-  src/Humans.Application/Interfaces/Users/IAccountDeletionService.cs
-  src/Humans.Application/Services/Users/UserService.cs
-  src/Humans.Web/Controllers/OnboardingWidgetController.cs
-  src/Sections/Humans.Notifications.Contracts/INotificationService.cs
--->
-<!-- freshness:flag-on-change
-  Rule: No leaf-to-director callbacks
-  Flag only if the code this rule constrains changed in a way that makes the rule
-  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
-  analyzer. Routine edits to these files are the rule being followed, not drift.
--->
-
 > Vocabulary ([`CONTEXT.md`](../../CONTEXT.md)): here **leaf** = a low-level **Section** (Profile/Consent/User); **director** = **Orchestrator**. The rule is the section→orchestrator direction — a Section never calls *up* into an Orchestrator; Orchestrator→Section is one-way.
 
 Leaf services never depend on or call back into directors. If you find yourself extracting a "narrow query interface" so a leaf can summon an orchestrator — stop. The predicate or side-effect is housed in the wrong class. Move it to the leaf that owns the field, or to the call site that already drives the leaf.

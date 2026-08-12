@@ -3,16 +3,6 @@ name: Tier is derived from approved Application state, not a Profile concept
 description: A human exists. They either have an open Application or not. An Approved Application with active term *makes* them a Colaborador/Asociado. There is no separate "tier-locking" domain rule — that was a UI artifact of the initial-setup form combining two concerns. The only enforcement boundary is "no duplicate Submitted Applications", which lives on `IApplicationDecisionService.SubmitAsync`.
 ---
 
-<!-- freshness:triggers
-  src/Sections/Humans.Governance.Contracts/IApplicationDecisionService.cs
--->
-<!-- freshness:flag-on-change
-  Rule: Tier is derived from approved Application state, not a Profile concept
-  Flag only if the code this rule constrains changed in a way that makes the rule
-  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
-  analyzer. Routine edits to these files are the rule being followed, not drift.
--->
-
 A human exists. They either have an open (`Submitted`) Application or they don't. An `Approved` Application with an active term *is* what makes someone a Colaborador or Asociado — there is no parallel "tier" state for the Application section to negotiate with.
 
 The initial-setup profile form (`Views/Profile/Edit.cshtml`) keeps tier radios for onboarding efficiency — a new Colaborador/Asociado can apply without bouncing to a second page. That UI combination is intentional, but it's a *form* concern, not a *domain* concern.

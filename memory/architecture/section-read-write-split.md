@@ -5,21 +5,6 @@ metadata:
   type: project
 ---
 
-<!-- freshness:triggers
-  docs/architecture/design-rules.md
-  src/Humans.Analyzers/CrossSectionFullServiceInjectionAnalyzer.cs
-  src/Humans.Application/Interfaces/Teams/ITeamService.cs
-  src/Humans.Application/Interfaces/Teams/ITeamServiceRead.cs
-  src/Humans.Domain/Entities/Team.cs
-  src/Humans.Domain/Entities/TeamMember.cs
--->
-<!-- freshness:flag-on-change
-  Rule: section-read-write-split
-  Flag only if the code this rule constrains changed in a way that makes the rule
-  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
-  analyzer. Routine edits to these files are the rule being followed, not drift.
--->
-
 # Section read/write interface split
 
 When a section's service is consumed by code in other sections, that service exposes two interfaces:

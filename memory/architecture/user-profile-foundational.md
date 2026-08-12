@@ -3,21 +3,6 @@ name: User and Profile are foundational — no outbound calls to higher-level se
 description: UserService and ProfileService sit at the bottom of the dependency stack. They must not call out to Teams, Shifts, Tickets, Campaigns, Applications, Google, Legal, Governance. Crosscuts (Audit, Email, Notification, Metrics) are the only OK exceptions.
 ---
 
-<!-- freshness:triggers
-  src/Humans.Application/Interfaces/AuditLog/IAuditLogService.cs
-  src/Humans.Application/Interfaces/Caching/INavBadgeCacheInvalidator.cs
-  src/Humans.Application/Interfaces/Email/IEmailService.cs
-  src/Humans.Application/Interfaces/IHumansMetrics.cs
-  src/Humans.Application/Interfaces/Users/IAccountDeletionService.cs
-  src/Sections/Humans.Notifications.Contracts/INotificationService.cs
--->
-<!-- freshness:flag-on-change
-  Rule: User and Profile are foundational — no outbound calls to higher-level sections
-  Flag only if the code this rule constrains changed in a way that makes the rule
-  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
-  analyzer. Routine edits to these files are the rule being followed, not drift.
--->
-
 > Vocabulary ([`CONTEXT.md`](../../CONTEXT.md)): **foundational** is a *descriptor* (a Section with outbound-width-into-sections = 0), not a separate tier; the "universal crosscuts" below are **Crosscuts** (Audit/Email/Notification/Metrics).
 
 User and Profile sit at the bottom of the service dependency hierarchy. Higher-level sections (Teams, Shifts, Tickets, Campaigns, Applications, Google, Legal, Governance) can freely call into User/Profile. **The reverse is wrong direction and must be avoided.**

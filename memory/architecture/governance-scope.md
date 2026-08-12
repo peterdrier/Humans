@@ -3,18 +3,6 @@ name: Governance is tier applications + board voting only
 description: The Governance section owns Colaborador/Asociado applications and Board voting — nothing else. Do not file features (nav groups, docs, code) under Governance because Board members happen to use them; audience is not ownership.
 ---
 
-<!-- freshness:triggers
-  docs/sections/_Index.md
-  src/Humans.Web/ViewComponents/AdminNavTree.cs
-  src/Sections/Humans.Governance/Domain/Application.cs
--->
-<!-- freshness:flag-on-change
-  Rule: Governance is tier applications + board voting only
-  Flag only if the code this rule constrains changed in a way that makes the rule
-  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
-  analyzer. Routine edits to these files are the rule being followed, not drift.
--->
-
 The Governance section is exactly: **tier applications** (Colaborador/Asociado, the `Application` entity) and **Board voting** on them. Its tables are `applications`, `application_state_history`, `board_votes`.
 
 Repeated failure mode: filing something under Governance because its users are the Board or it feels "governance-y". **The Board uses every feature in the app** — Board usage carries ZERO filing signal, and a `BoardOrAdmin` policy describes the *audience*, never the owning section. Past wrong examples: the **Audit log** (a Crosscut — see [[crosscut-purity]] — owned by no vertical) and **Surveys** (its own section; Board is merely its main user today).

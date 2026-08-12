@@ -3,16 +3,6 @@ name: No extension methods for classes we own
 description: Don't write extension methods on types defined in this repo. Add the method or computed property directly on the class. Extensions are only for types we don't control (BCL, third-party).
 ---
 
-<!-- freshness:triggers
-  src/Humans.Domain/Entities/Camp.cs
--->
-<!-- freshness:flag-on-change
-  Rule: No extension methods for classes we own
-  Flag only if the code this rule constrains changed in a way that makes the rule
-  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
-  analyzer. Routine edits to these files are the rule being followed, not drift.
--->
-
 Don't add extension methods (`public static X Foo(this OwnedType ...)`) for classes the project owns. Add the method or computed property directly on the class itself.
 
 **Why:** Extensions for owned types fragment the surface area — readers have to look in two places to know what a class can do. Properties/methods on the class itself are discoverable via IDE navigation and live next to the data they operate on. Extensions are for types we can't modify (BCL primitives, third-party libs).

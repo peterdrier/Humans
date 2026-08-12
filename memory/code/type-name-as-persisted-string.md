@@ -3,17 +3,6 @@ name: Never rename a type whose name is persisted or used as a lookup key
 description: `nameof(T)` written to a DB column, and `Enum_{typeof(T).Name}_*` resx keys, turn a CLR rename into a silent data or translation break — build green, tests green, no exception. Two different remedies: pin the persisted one, rename the resource keys with the type. Read before renaming any entity, enum, or DTO, and always before a G5 section prefix drop.
 ---
 
-<!-- freshness:triggers
-  src/Sections/Humans.Store/Domain/Product.cs
-  src/Sections/Humans.Store/Services/AuditEntityTypes.cs
--->
-<!-- freshness:flag-on-change
-  Rule: Never rename a type whose name is persisted or used as a lookup key
-  Flag only if the code this rule constrains changed in a way that makes the rule
-  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
-  analyzer. Routine edits to these files are the rule being followed, not drift.
--->
-
 A CLR type name is inert only where nothing outside the compiler reads it. Two places in this
 codebase read it, and **both fail silently** — green build, green tests, no exception, a 200 response.
 

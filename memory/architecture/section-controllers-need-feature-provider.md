@@ -3,21 +3,6 @@ name: internal section controllers need SectionControllerFeatureProvider
 description: MVC's ControllerFeatureProvider requires IsPublic, so an `internal` controller in a G5 section project is never discovered — green build, zero warnings, 404 at runtime. Read when moving a section into its own project, making a controller internal, or debugging a route that 404s with the controller clearly present.
 ---
 
-<!-- freshness:triggers
-  docs/sections/G5-SECTION-TEMPLATE.md
-  docs/superpowers/specs/2026-08-07-g5-section-project-split-design.md
-  src/Humans.Web/Infrastructure/**
-  src/Humans.Web/Infrastructure/SectionControllerFeatureProvider.cs
-  src/Sections/Humans.Agent/Section.cs
-  src/Sections/Humans.Budget/Section.cs
--->
-<!-- freshness:flag-on-change
-  Rule: internal section controllers need SectionControllerFeatureProvider
-  Flag only if the code this rule constrains changed in a way that makes the rule
-  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
-  analyzer. Routine edits to these files are the rule being followed, not drift.
--->
-
 MVC's `ControllerFeatureProvider.IsController` requires `typeInfo.IsPublic`. A controller that is
 `internal` — which every G5 section project's "public means `Section` or `Contracts/`" rule requires —
 is simply not added to the application part's controller feature. **Nothing says so:** the build is

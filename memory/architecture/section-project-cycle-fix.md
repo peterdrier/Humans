@@ -3,18 +3,6 @@ name: A section-project cycle is fixed by splitting contracts downward, never by
 description: When MSBuild refuses a section project reference as circular (nobodies-collective/Humans#866, G5), carve `<Section>.Contracts` out of the UPSTREAM section. Never move the shared type into a Base project to make the error go away — that is how Base silently becomes a global blob.
 ---
 
-<!-- freshness:triggers
-  docs/superpowers/specs/2026-08-07-g5-section-project-split-design.md
-  src/Humans.Application/UserInfo.cs
-  src/Humans.Domain/Entities/User.cs
--->
-<!-- freshness:flag-on-change
-  Rule: A section-project cycle is fixed by splitting contracts downward, never by promoting the shared t…
-  Flag only if the code this rule constrains changed in a way that makes the rule
-  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
-  analyzer. Routine edits to these files are the rule being followed, not drift.
--->
-
 The tier model is `Shell → Section → Base`: Shell owns composition and nav, a section owns its
 vertical, Base holds what they share. Nothing in Base references a section; no section references
 Shell. Cross-section dependencies are ordinary project references, so a cycle is an MSBuild error

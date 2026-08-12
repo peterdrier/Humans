@@ -3,14 +3,6 @@ name: Date/time formatting via the shared home (which method to call)
 description: Render dates through the named methods on `DateFormattingExtensions` — `ToDate`/`ToDateTime`/`ToWeekdayDayMonth` for display, `ToInvariantDate`/`ToInvariantTimestamp`/`ToIso8601` for machine. Never inline `ToString("d MMM yyyy")`. Enforced by HUM0030.
 ---
 
-<!-- freshness:triggers
-  src/Humans.Application/Extensions/DateFormattingExtensions.cs
-  src/Humans.UI/Extensions/DateTimeDisplayExtensions.cs
--->
-<!-- freshness:flag-on-change
-  Flag if a formatter method is renamed/removed or the ambient overloads move namespace.
--->
-
 All date/time formatting goes through the one home `Humans.Application.Extensions.DateFormattingExtensions`; an inline format string anywhere else is a build error — see [`datetime-format-single-home`](../architecture/datetime-format-single-home.md) (HUM0030).
 
 **Display** — 5 culture-ordered methods (no `Display` prefix; bare name = culture display, `ToInvariant*` = machine). Day/month order *and* names follow the request culture (`en` → `Jun 5`, `es` → `5 jun`):

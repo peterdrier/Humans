@@ -3,17 +3,6 @@ name: Background DB workers arm behind the migration barrier
 description: timers/pollers/pre-warmers that query the DB must arm in IHostedService.StartAsync — never a constructor Timer or an eager GetRequiredService before app.Run() — so they run after DatabaseMigrationHostedService applies migrations
 ---
 
-<!-- freshness:triggers
-  src/Humans.Infrastructure/Hosting/DatabaseMigrationHostedService.cs
-  src/Humans.Infrastructure/Services/HumansMetricsService.cs
-  src/Humans.Infrastructure/Services/HttpStatusTracker.cs
-  src/Humans.Web/Extensions/Infrastructure/TelemetryInfrastructureExtensions.cs
-  src/Humans.Web/Program.cs
--->
-<!-- freshness:flag-on-change
-  Flag if a DB-touching background worker's registration or arming point moves, or DatabaseMigrationHostedService's lifecycle stage changes.
--->
-
 Any background worker that touches the database (refresh timers, pollers, cache pre-warmers) must arm/start its work from `IHostedService.StartAsync`, **not** from a constructor and **not** from an eager `GetRequiredService<T>()` before `app.Run()`. The host runs every `IHostedLifecycleService.StartingAsync` — including `DatabaseMigrationHostedService`, which applies pending migrations — to completion before *any* `StartAsync`. Arming in the constructor escapes that barrier and can query a not-yet-migrated schema.
 
 **Why:** Incident on the #804 prod deploy (2026-05-25). `HumansMetricsService` armed a `Timer(dueTime: TimeSpan.Zero)` in its constructor, eager-resolved in `Program.cs` before `app.Run()`. The immediate first tick raced the `MoveDietaryMedicalToProfile` migration's `ADD COLUMN` and ran `SELECT … p."Allergies" … FROM profiles` before the column existed → `42703 column p.Allergies does not exist`. It was non-fatal (caught, retried in 60 s) but produced an alarming production error and looked exactly like impossible schema/history drift, costing real triage time. Note HTTP requests never hit it — Kestrel only starts listening in `StartAsync`, already behind the barrier — so the constructor-armed timer was the *only* thing that escaped.

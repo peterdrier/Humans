@@ -3,13 +3,6 @@ name: Issue fetch protocol — always include comments + author, stop on non-Pet
 description: HARD RULE. Before implementing ANY GitHub issue or PR, fetch it with both comments AND author included. The OP is often not Peter; his comments often flip OP intent. If `.author.login != peterdrier`, STOP and get Peter's input first — never branch or code from a non-Peter issue without explicit per-issue approval.
 ---
 
-<!-- freshness:triggers
-  .claude/settings.json
--->
-<!-- freshness:flag-on-change
-  Flag if a PreToolUse hook is added/removed there — this rule currently describes discipline only, no hook enforces it.
--->
-
 Two coupled rules fire on every `gh issue view` (and on every batch dispatch that hands an issue to a worker). Both data points come from the same fetch, so they're covered together here.
 
 ## 1. Always fetch comments — never body-only

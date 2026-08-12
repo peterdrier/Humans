@@ -3,18 +3,6 @@ name: Never coin a new DisplayName field
 description: HARD RULE. Never add a new field/property/parameter named `DisplayName` (or a `*DisplayName` variant) on any new class, interface, struct, record, or method. Pick a concept-specific name — `BurnerName`, `LegalName`, `GroupName`, `TeamName`, `Title`, etc. `User.DisplayName` and the existing `*DisplayName` fields throughout the codebase are legacy debt; do not extend the pattern.
 ---
 
-<!-- freshness:triggers
-  src/Humans.Application/DTOs/AdminHumanRow.cs
-  src/Humans.Application/DTOs/MemberSummary.cs
-  src/Humans.Application/Interfaces/Mailer/IMailerAudience.cs
-  src/Humans.Application/UserInfo.cs
-  src/Humans.Domain/Entities/User.cs
--->
-<!-- freshness:flag-on-change
-  Flag if any listed legacy DisplayName holder is renamed/removed, or BurnerName/LegalName/GroupName/TeamName naming guidance changes.
--->
-
-
 `DisplayName` as a field name conflates unrelated concepts (human display names, group titles, role labels, audit-actor labels…) into one bag, which has repeatedly caused PII leaks: a code path expecting a group label receives a user's legal name (because the type system can't tell `string DisplayName` from `string DisplayName`), or vice-versa. The fix is at the naming layer — make the concept impossible to mis-pipe by name alone.
 
 **Why:** Peter's hard rule (PR #671 review). Existing `DisplayName` properties exist in dozens of places (`User`, `UserInfo`, `MemberSummary`, `AdminHumanRow`, `IMailerAudience`, audit DTOs, etc.) and won't be cleaned up retroactively — but every new addition compounds the problem. "If it were up to me, use of the letters DisplayName together would be a compiler error."

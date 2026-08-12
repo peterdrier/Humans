@@ -3,17 +3,6 @@ name: Cancellation-token propagation into external API calls
 description: An outbound call that MUTATES a third-party system never receives a request-scoped token (HttpContext.RequestAborted / a controller action CancellationToken). Read-only outbound GETs may keep it. Three-way distinction — request-scoped vs process-lifetime vs genuine caller cancellation. Enforced by HUM0033 + [ExternalWrite].
 ---
 
-<!-- freshness:triggers
-  src/Humans.Analyzers/RequestScopedCancellationOnExternalWriteAnalyzer.cs
-  src/Humans.Interfaces/Architecture/ExternalWriteAttribute.cs
--->
-<!-- freshness:flag-on-change
-  Rule: Cancellation-token propagation into external API calls
-  Flag only if the code this rule constrains changed in a way that makes the rule
-  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
-  analyzer. Routine edits to these files are the rule being followed, not drift.
--->
-
 Never hand a **request-scoped** cancellation token to an outbound call that
 writes to a third-party system. Read-only outbound fetches may keep it.
 Forwarding a token because "the parameter is there" is not a decision — pick

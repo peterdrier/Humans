@@ -3,15 +3,6 @@ name: Authorization — policy-attribute, never raw role strings
 description: All controller/route gates use `[Authorize(Policy = PolicyNames.X)]`. Views use `authorize-policy="X"` (tag helper) or inject `IAuthorizationService`. Never `[Authorize(Roles = "...")]`, never inline `User.IsInRole` chains for visibility checks.
 ---
 
-<!-- freshness:triggers
-  src/Humans.UI/Authorization/PolicyNames.cs
-  src/Humans.Web/Authorization/AuthorizationPolicyExtensions.cs
-  src/Humans.Web/Authorization/RoleAssignmentClaimsTransformation.cs
--->
-<!-- freshness:flag-on-change
-  Flag if PolicyNames/AuthorizationPolicyExtensions move again or RoleAssignmentClaimsTransformation is renamed/removed.
--->
-
 Authorization in Humans is **policy-based, end to end** — controllers, views, and view components all speak the same `PolicyNames` vocabulary. ASP.NET Core's `IAuthorizationService` is the single evaluator.
 
 **Rules:**

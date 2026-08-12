@@ -3,16 +3,6 @@ name: No business logic in controllers — controllers are HTTP adapters
 description: Controllers parse input, authorize, dispatch to services, return responses. Branching on domain state, computing derived values, or coordinating multi-step domain operations belongs in a service. Enforced by analyzer HUM0031 — any controller method (action or private helper) with > 40 statements or cyclomatic complexity > 15 is a build error.
 ---
 
-<!-- freshness:triggers
-  src/Humans.Analyzers/ControllerBusinessLogicAnalyzer.cs
--->
-<!-- freshness:flag-on-change
-  Rule: No business logic in controllers — controllers are HTTP adapters
-  Flag only if the code this rule constrains changed in a way that makes the rule
-  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
-  analyzer. Routine edits to these files are the rule being followed, not drift.
--->
-
 Controllers parse input, authorize, dispatch to a service, and return a response. They do **not** contain business logic — branching on domain state, computing derived values, or coordinating multi-step domain operations.
 
 **Why:** Controllers are HTTP adapters. Mixing domain concerns in makes them un-testable (require HTTP context to exercise), un-reusable across surfaces (the API and MVC controllers should be able to share the same domain calls), and impossible to authorize uniformly (the same domain rule has to be re-checked at every adapter). The thicker the controller, the harder it is to keep authorization rules consistent across the codebase. Past instance: every refactor that pulled logic *out* of a controller and into a service revealed already-inconsistent role checks across surfaces.

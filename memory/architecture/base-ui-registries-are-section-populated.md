@@ -3,21 +3,6 @@ name: A Base UI registry holding section vocabulary becomes section-populated, n
 description: When a shared `Humans.UI` lookup table names a section's enum and that section moves out at G5, the section registers its rows from `Section.Register` — Base must not gain a reference to the section's contracts leaf to keep naming the type. (Peter, 2026-08-09.)
 ---
 
-<!-- freshness:triggers
-  src/Humans.UI/Models/Tables/EnumBadgeMap.cs
-  src/Humans.UI/Extensions/StatusBadgeExtensions.cs
-  src/Humans.UI/Models/Tables/TableColumn.cs
-  src/Humans.Domain/Enums/TicketPaymentStatus.cs
-  src/Sections/Humans.Budget.Contracts/BudgetYearStatus.cs
-  src/Sections/Humans.Campaigns/Domain/CampaignStatus.cs
-  src/Sections/Humans.Expenses/Domain/ExpenseReportStatus.cs
-  src/Sections/Humans.Governance.Contracts/ApplicationStatus.cs
-  src/Sections/Humans.Governance/Domain/VoteChoice.cs
--->
-<!-- freshness:flag-on-change
-  Flag if EnumBadgeMap gains/loses a Register method, or one of the still-literal enums (TicketPaymentStatus + five more) moves to a section without a corresponding Register call.
--->
-
 `Humans.UI` is Base. It holds cross-cutting presentation machinery — the table widget, the badge
 map, the status-badge extensions — and several of those are **registries keyed by section enums**:
 literal tables naming `CampaignStatus`, `ExpenseReportStatus`, `TicketPaymentStatus`, `VoteChoice`

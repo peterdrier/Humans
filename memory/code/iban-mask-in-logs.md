@@ -4,16 +4,6 @@ description: All IBAN output to logs / audit / errors goes through IbanFormatter
 type: code
 ---
 
-<!-- freshness:triggers
-  src/Humans.Domain/Helpers/IbanFormatter.cs
-  src/Sections/Humans.Expenses/Domain/ExpenseReport.cs
-  src/Sections/Humans.Expenses/Controllers/ExpensesController.cs
-  src/Humans.Infrastructure/Jobs/HoldedExpenseOutboxJob.cs
--->
-<!-- freshness:flag-on-change
-  Flag if IbanFormatter.Mask is renamed/removed, or the Expenses section's IBAN surface moves again.
--->
-
 All IBAN output to logs / audit / errors goes through `IbanFormatter.Mask`.
 
 **Why:** Spanish data protection + GDPR; raw IBAN is personal financial data.

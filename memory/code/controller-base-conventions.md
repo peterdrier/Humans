@@ -3,14 +3,6 @@ name: Controllers inherit shared bases for user resolution and TempData messagin
 description: MVC controllers extend `HumansControllerBase`; JSON API controllers extend `ApiControllerBase`. Don't write direct `_userManager.GetUserAsync` or `TempData["..."]` calls in either.
 ---
 
-<!-- freshness:triggers
-  src/Humans.UI/Controllers/HumansControllerBase.cs
-  src/Humans.UI/Controllers/ApiControllerBase.cs
--->
-<!-- freshness:flag-on-change
-  Flag if the base classes' shared helper methods (GetCurrentUserAsync, ResolveCurrentUserOrChallengeAsync, SetSuccess/SetError/SetInfo, ResolveCurrentUserOrUnauthorizedAsync) are renamed or removed.
--->
-
 Controllers that resolve the current human or set TempData messages must use the shared base classes instead of duplicating those patterns. The base is split by controller flavor so an API controller doesn't drag in view-rendering / TempData machinery it never uses.
 
 **Rule:**

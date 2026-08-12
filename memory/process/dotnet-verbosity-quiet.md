@@ -3,13 +3,6 @@ name: dotnet build/test always with -v quiet
 description: Always pass `-v quiet` to `dotnet build` / `dotnet test`. Never pipe their output through `tail`/`head`/`grep` — truncation hides failure details.
 ---
 
-<!-- freshness:triggers
-  Humans.slnx
--->
-<!-- freshness:flag-on-change
-  Flag if the solution file is renamed/removed — the rule names it directly in every example command.
--->
-
 Always invoke `dotnet build` and `dotnet test` with `-v quiet` (or `--verbosity quiet`). Never pipe their output through `tail`, `head`, or `grep` to shorten it.
 
 **Why:** The default verbosity is noisy, which tempts truncation like `| tail -4`. But truncation throws away failure details — when a test fails, the failing test name, assertion message, and stack trace live *above* the final summary. Truncating forces a full re-run just to see what failed. With `-v quiet`, a passing build/test run is already ~3 lines, and failures still surface with their reasons intact.

@@ -3,18 +3,6 @@ name: No enum comparison operators in EF Core queries
 description: Enums stored with `HasConversion<string>()` translate to lexicographic SQL string comparison — `>=` doesn't match enum ordering. Use `Contains()` with explicit allowed-values lists.
 ---
 
-<!-- freshness:triggers
-  src/Humans.Application/Services/Profiles/ContactFieldService.cs
-  src/Humans.Application/Services/Profiles/UserEmailService.cs
-  src/Humans.Domain/Enums/ContactFieldVisibility.cs
--->
-<!-- freshness:flag-on-change
-  Rule: No enum comparison operators in EF Core queries
-  Flag only if the code this rule constrains changed in a way that makes the rule
-  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
-  analyzer. Routine edits to these files are the rule being followed, not drift.
--->
-
 Enums stored with `HasConversion<string>()` are persisted as their string names in the database. Comparison operators (`>`, `>=`, `<`, `<=`) translate to **lexicographic string comparison** in SQL, which does NOT match the numeric enum ordering. For example, `'AllActiveProfiles' >= 'BoardOnly'` is FALSE in SQL (because `'A' < 'B'`), even though the enum value 3 >= 0.
 
 **Rule:** Never use `>`, `>=`, `<`, `<=` on enum properties in EF Core LINQ queries. Use explicit `Contains()` checks with a list of allowed values instead.

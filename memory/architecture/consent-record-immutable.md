@@ -3,16 +3,6 @@ name: ConsentRecord is database-immutable — INSERT only
 description: The `consent_records` table has DB triggers preventing UPDATE and DELETE. Only INSERT. New consent state = new row. Required for GDPR audit trail integrity.
 ---
 
-<!-- freshness:triggers
-  src/Humans.Application/Interfaces/Consent/IConsentService.cs
--->
-<!-- freshness:flag-on-change
-  Rule: ConsentRecord is database-immutable — INSERT only
-  Flag only if the code this rule constrains changed in a way that makes the rule
-  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
-  analyzer. Routine edits to these files are the rule being followed, not drift.
--->
-
 The `consent_records` table has database triggers that prevent UPDATE and DELETE operations. Only INSERT is allowed.
 
 **Why:** GDPR audit trail integrity. Every consent decision must be reconstructible from the historical record — mutating or deleting a row would erase evidence of when a user gave/withdrew consent, which is the whole point of the table.

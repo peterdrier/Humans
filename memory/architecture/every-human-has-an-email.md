@@ -3,16 +3,6 @@ name: Every human has an email address
 description: HARD RULE — every human has an email, period. Never design for, defend against, or file findings about an emailless user; treat a no-email code path as unreachable.
 ---
 
-<!-- freshness:triggers
-  src/Humans.Domain/Entities/UserEmail.cs
--->
-<!-- freshness:flag-on-change
-  Rule: Every human has an email address
-  Flag only if the code this rule constrains changed in a way that makes the rule
-  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
-  analyzer. Routine edits to these files are the rule being followed, not drift.
--->
-
 Every human in this system has an email address. Period. It is not optional, not nullable-in-practice, not a case to handle.
 
 **Why:** Sign-in is Google OAuth or magic link — both require a working address to exist at all. `IUserEmailService.GetNotificationTargetEmailsAsync` reinforces it: when no `UserEmail` row is flagged as a notification target, it falls back to `User.Email` from the Identity record. There is no realistic population left after that fallback.

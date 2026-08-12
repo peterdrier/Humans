@@ -3,24 +3,6 @@ name: Use `MemberApplication` alias for the Application entity
 description: Namespace collision between `Humans.Domain.Entities.Application` and the framework `Application` type — use `using MemberApplication = Humans.Domain.Entities.Application;`.
 ---
 
-<!-- freshness:triggers
-  src/Sections/Humans.Governance/Domain/Application.cs
--->
-<!-- freshness:flag-on-change
-  Rule: Use `MemberApplication` alias for the Application entity
-  Flag only if the code this rule constrains changed in a way that makes the rule
-  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
-  analyzer. Routine edits to these files are the rule being followed, not drift.
--->
-
-<!-- freshness:triggers
-  src/Sections/Humans.Governance/Domain/Application.cs
--->
-<!-- freshness:flag-on-change
-  Rule: namespace-alias-application
-  Flag if a symbol, path, namespace or behavior this rule names has changed.
--->
-
 Due to namespace collision, use the `MemberApplication` alias when referencing `Humans.Domain.Entities.Application`:
 
 ```csharp

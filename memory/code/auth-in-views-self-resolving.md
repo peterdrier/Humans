@@ -4,17 +4,6 @@ description: Reusable views/components inject `IAuthorizationService` and resolv
 type: feedback
 ---
 
-<!-- freshness:triggers
-  src/Sections/Humans.Campaigns/Views/Campaign/Detail.cshtml
-  src/Humans.Web/Views/Team/Summary.cshtml
-  src/Humans.Web/Views/Profile/Index.cshtml
-  src/Humans.Web/Views/Shared/_HumanPopover.cshtml
-  src/Humans.Web/Views/Shared/Components/ProfileCard/Default.cshtml
--->
-<!-- freshness:flag-on-change
-  Flag if any listed example view stops injecting IAuthorizationService, or is deleted/moved.
--->
-
 Reusable views and view components should resolve their own authorization decisions in the template via `@inject IAuthorizationService AuthService` (or in the component's view) — not via auth-derived booleans plumbed onto the view model by the caller or the component's `InvokeAsync`.
 
 **Why:** Components that depend on the caller (or the component model) to pre-compute who-can-see-what aren't actually reusable — every new call site has to know the component's auth needs and supply the bools. A self-contained component that does its own `(await AuthService.AuthorizeAsync(User, PolicyNames.X)).Succeeded` check is a drop-in: hand it the data, it figures out what to render.

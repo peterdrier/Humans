@@ -3,21 +3,6 @@ name: Orchestrators own no tables and carry IOrchestrator (sibling of IApplicati
 description: An Orchestrator coordinates ≥2 sections, owns no tables, and injects no repository. Its marker IOrchestrator is a SIBLING of IApplicationService, never a child — IApplicationService grants own-lane repo access, which an orchestrator is banned from. Owns-a-table ⇒ it is a Section, not an orchestrator.
 ---
 
-<!-- freshness:triggers
-  src/Humans.Application/Interfaces/Gdpr/IGdprExportService.cs
-  src/Humans.Application/Interfaces/Search/ISearchService.cs
-  src/Humans.Interfaces/Interfaces/IApplicationService.cs
-  src/Humans.Interfaces/Interfaces/IFanout.cs
-  src/Humans.Interfaces/Interfaces/IInvalidator.cs
-  src/Humans.Interfaces/Interfaces/IOrchestrator.cs
--->
-<!-- freshness:flag-on-change
-  Rule: Orchestrators own no tables and carry IOrchestrator (sibling of IApplicationService)
-  Flag only if the code this rule constrains changed in a way that makes the rule
-  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
-  analyzer. Routine edits to these files are the rule being followed, not drift.
--->
-
 Role vocabulary: [`CONTEXT.md`](../../CONTEXT.md) (Section / Crosscut / Orchestrator).
 
 An **Orchestrator** exists because an action genuinely crosses multiple sections — GDPR export fans out to every `IUserDataContributor`; Onboarding sets up user/profile + gets the person into shifts + runs consent sign-offs. It coordinates sections through their public service interfaces and holds only coordination logic.

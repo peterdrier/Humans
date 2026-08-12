@@ -3,20 +3,6 @@ name: iuserservice-onestop-userinfo
 description: Long-term direction. `IUserService` is the one-stop-shop for every field in `UserInfo` — reads AND writes. New callers prefer it; new write paths land on it; sibling services (`IProfileService`, `IUserEmailService`, `ICommunicationPreferenceService`) drain into it over time.
 ---
 
-<!-- freshness:triggers
-  src/Humans.Application/Interfaces/Profiles/ICommunicationPreferenceService.cs
-  src/Humans.Application/Interfaces/Profiles/IUserEmailService.cs
-  src/Humans.Application/Interfaces/Users/IUserService.cs
-  src/Humans.Application/UserInfo.cs
-  src/Humans.Domain/Entities/User.cs
--->
-<!-- freshness:flag-on-change
-  Rule: iuserservice-onestop-userinfo
-  Flag only if the code this rule constrains changed in a way that makes the rule
-  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
-  analyzer. Routine edits to these files are the rule being followed, not drift.
--->
-
 `IUserService` owns the canonical `UserInfo` read-model AND the write paths for every field on it. When you need to read or write anything inside `UserInfo`'s scope — user identity columns, user-email rows, external logins, event participations, profile fields, contact fields, profile languages, volunteer history, communication preferences — prefer `IUserService`.
 
 **Why:** `UserInfo` is already the cached canonical "everything-about-a-person" projection ([UserInfo.cs](../../src/Humans.Application/UserInfo.cs), issue #703). Today the *read* side is consolidated there; the *write* side is still scattered across `IProfileService`, `IUserEmailService`, `ICommunicationPreferenceService`, etc. Long-term, those drain into `IUserService` so there is one service surface for "data about a person." Two services for two halves of the same projection is the tech debt; one-stop-shop is the destination.
