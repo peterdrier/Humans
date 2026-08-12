@@ -8,7 +8,7 @@
 
 # Governance — Section Invariants
 
-Colaborador and Asociado tier applications, Board voting workflow, term lifecycle. **Not** volunteer onboarding — that lives under `docs/sections/Onboarding.md` and is explicitly a separate track.
+Colaborador and Asociado tier applications, Board voting workflow, term lifecycle. **Not** volunteer onboarding — that lives under `src/Sections/Humans.Onboarding/Docs/Onboarding.md` and is explicitly a separate track.
 
 ## Concepts
 

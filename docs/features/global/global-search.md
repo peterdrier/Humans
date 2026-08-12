@@ -1,11 +1,7 @@
 <!-- freshness:triggers
   src/Sections/Humans.Events/Services/CachingEventService.cs
   src/Sections/Humans.Events/Section.cs
-  src/Humans.Application/Services/Search/**
-  src/Humans.Application/Interfaces/Search/**
-  src/Humans.Web/Controllers/SearchController.cs
-  src/Humans.Web/Views/Search/**
-  src/Humans.Application/DTOs/GlobalSearchResults.cs
+  src/Sections/Humans.Search/**
   src/Humans.Application/DTOs/SectionSearchHits.cs
   src/Humans.Infrastructure/Services/Users/CachingUserService.cs
   src/Humans.Infrastructure/Services/Teams/CachingTeamService.cs

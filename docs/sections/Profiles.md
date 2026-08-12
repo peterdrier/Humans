@@ -425,7 +425,7 @@ Admin-only flows for the section's cross-account hygiene (routes pre-date `memor
 - **Cross-domain navs stripped:** `Profile.User`, `UserEmail.User`, `CommunicationPreference.User`. Display stitching routes through `IUserServiceRead.GetUserInfosAsync`.
 - **GDPR:** `AccountMergeService` implements `IUserDataContributor` (design-rules §8a) and emits the `AccountMergeRequests` slice. The `Profile`, `ContactFields`, `UserEmails`, `VolunteerHistory`, `Languages` and `CommunicationPreferences` slices are emitted by `UserService` (Users section), which absorbed profile storage in nobodies-collective/Humans#745 — `ProfileService` implements no contributor interface. Section keys are constants on `GdprExportSections`. The `ExpectedContributorTypes` in `GdprExportDependencyInjectionTests` enforces registration.
 - **Account merge & duplicates** — `AccountMergeService` and `DuplicateAccountService` (and `IAccountMergeRepository` / the `account_merge_requests` table) moved to the **Users** section in the account-merge consolidation — see [Users.md](Users.md). The Profile sub-aggregates still participate in a fold as `IUserMerge` implementations (`UserEmailService` / `ContactFieldService` / `CommunicationPreferenceService`).
-- **Architecture tests** — `tests/Humans.Application.Tests/Architecture/ProfileArchitectureTests.cs` + `tests/Humans.Application.Tests/Services/Gdpr/GdprExportDependencyInjectionTests.cs`.
+- **Architecture tests** — `tests/Humans.Application.Tests/Architecture/ProfileArchitectureTests.cs` + `tests/Humans.Application.Tests/Services/Gdpr/GdprExportDependencyInjectionTests.cs` (the DI wiring; the orchestrator's own tests moved to `tests/Humans.Gdpr.Tests/`).
 
 ### Account deletion cascade
 

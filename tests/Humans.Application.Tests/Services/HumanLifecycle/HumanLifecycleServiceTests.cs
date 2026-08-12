@@ -2,7 +2,7 @@ using AwesomeAssertions;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Notifications.Contracts;
-using Humans.Application.Interfaces.Onboarding;
+using Humans.Onboarding.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.HumanLifecycle;
 using Humans.Domain.Entities;

@@ -23,11 +23,11 @@ public class BaselineSeeder
 
         var repoRoot = RatchetTestRunner.LocateRepoRoot();
 
-        var migrationsDir = Path.Combine(repoRoot, "src", "Humans.Infrastructure", "Migrations");
         WriteBaseline(
             repoRoot,
             "tests/Humans.Application.Tests/Architecture/Baselines/NoDestructiveMigrationOps.baseline.txt",
-            NoDestructiveMigrationOpsRule.ScanMigrations(repoRoot, migrationsDir),
+            NoDestructiveMigrationOpsRule.ScanMigrations(
+                repoRoot, NoDestructiveMigrationOpsRule.MigrationDirectories(repoRoot)),
             "no destructive migration ops in Up() (memory/architecture/no-drops-until-prod-verified.md)");
 
         WriteBaseline(

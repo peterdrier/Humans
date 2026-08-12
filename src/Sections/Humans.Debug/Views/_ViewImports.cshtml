@@ -1,0 +1,22 @@
+@* A section RCL does NOT inherit the host's Views/_ViewImports.cshtml. Omitting a line
+   here ships broken markup with a green build and no runtime error — see design §1/§2.
+   Guarded by DebugPageRenderTests (step 12). *@
+@using Humans.Application.Extensions
+@using Humans.Debug
+@using Humans.Debug.Controllers
+@using Humans.Debug.Models
+@using Humans.Infrastructure.Logging
+@using Humans.UI
+@using Humans.UI.Models
+@using Humans.UI.Models.Tables
+@using Microsoft.AspNetCore.Html
+@using Microsoft.Extensions.Localization
+@* Debug carries no resource set of its own — every string on these pages is English
+   developer copy (step 3b's "does the section have any keys" opens with no). The one
+   localizer the section touches is SharedResource, and only as *data*: /Debug/Translations
+   enumerates the whole shared set as a coverage gallery. DebugArchitectureTests pins that
+   to SharedResource so a future page cannot quietly bind some third set. *@
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+@* A section can only addTagHelper against Humans.UI — a Shell-resident component renders
+   as inert literal markup (step 6). <vc:human> is in Humans.UI already. *@
+@addTagHelper *, Humans.UI

@@ -2,7 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using NodaTime;
 using Humans.Application.DTOs;
 using Humans.Application.Extensions;
-using Humans.Application.Interfaces.Gdpr;
+using Humans.Gdpr.Contracts;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Constants;
 using Humans.Domain.Enums;

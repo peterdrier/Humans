@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Security.Claims;
+using Humans.Web.Extensions;
 using Humans.Application;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
@@ -24,6 +25,16 @@ namespace Humans.Web.Tests.Authorization;
 /// </summary>
 public class NameRequiredFilterTests
 {
+
+    // OnboardingWidgetController is internal to Humans.Onboarding since that section's G5,
+    // so it cannot be named by typeof here. Resolved by reflection through the discovered
+    // section assemblies, throwing on a miss so a rename cannot quietly drop the row.
+    private static readonly Type OnboardingWidgetControllerType =
+        SectionDiscoveryExtensions.SectionAssemblies()
+            .Select(a => a.GetType("Humans.Onboarding.Controllers.OnboardingWidgetController", throwOnError: false))
+            .FirstOrDefault(t => t is not null)
+        ?? throw new InvalidOperationException(
+            "Humans.Onboarding.Controllers.OnboardingWidgetController not found in any section assembly.");
     private static readonly Guid UserId = Guid.NewGuid();
 
     [HumansFact]
@@ -184,7 +195,7 @@ public class NameRequiredFilterTests
 
         var controllerType = controllerName switch
         {
-            "OnboardingWidget" => typeof(OnboardingWidgetController),
+            "OnboardingWidget" => OnboardingWidgetControllerType,
             "Account" => typeof(AccountController),
             _ => typeof(HomeController),
         };

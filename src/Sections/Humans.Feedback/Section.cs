@@ -1,5 +1,5 @@
 using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.Gdpr;
+using Humans.Gdpr.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Feedback.Contracts;
 using Humans.Feedback.Data;

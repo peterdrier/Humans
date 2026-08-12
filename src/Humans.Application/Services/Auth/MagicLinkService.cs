@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Domain.Entities;
-using Humans.Application.Interfaces.Email;
+using Humans.Email.Contracts;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;

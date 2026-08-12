@@ -1,0 +1,32 @@
+@* A section RCL does NOT inherit the host's Views/_ViewImports.cshtml. Omitting a line
+   here ships broken markup with a green build and no runtime error — see design §1/§2.
+
+   Three localizers by design (design §15 step 3b, Governance's two-marker variant plus
+   one): the section owns its 67 Onboarding_* / OnboardingReview_* / OnboardingBanner_*
+   keys; SharedResource keeps the genuinely shared vocabulary the widget renders
+   (Common_*, Shifts_*) and the three Onboarding_*Label keys MVC's global
+   DataAnnotationLocalizerProvider resolves; and the widget's Consents step renders
+   Consent's copy through Consent's own _ConsentReviewBody partial.
+
+   The review pages' three <vc:> elements resolve as follows: <vc:human> is already in
+   Humans.UI, while <vc:profile-card> and <vc:access-matrix> read Shell-owned registries
+   and stay there — both are invoked by name instead (design §15 step 6, CityPlanning's
+   and Governance's cases). Guarded by OnboardingPageRenderTests (step 12). *@
+@using Humans.Application.DTOs
+@using Humans.Application.Extensions
+@using Humans.Consent
+@using Humans.Consent.Contracts
+@using Humans.Domain.Enums
+@using Humans.Onboarding
+@using Humans.Onboarding.Controllers
+@using Humans.Onboarding.Models
+@using Humans.UI
+@using Humans.UI.Extensions
+@using Humans.UI.Models
+@using Humans.UI.Models.Tables
+@using Humans.UI.ViewComponents
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<OnboardingResource> Localizer
+@inject IStringLocalizer<SharedResource> SharedLocalizer
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+@addTagHelper *, Humans.UI

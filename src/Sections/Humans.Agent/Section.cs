@@ -8,7 +8,7 @@ using Humans.Agent.Services.Preload;
 using Humans.Agent.Services.Stores;
 using Humans.Application.Configuration;
 using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.Gdpr;
+using Humans.Gdpr.Contracts;
 using Humans.Infrastructure.Configuration;
 using Humans.Infrastructure.Hosting;
 using Humans.Infrastructure.Services;
@@ -68,8 +68,9 @@ public sealed class Section : ISection
         services.AddScoped<IAgentAnthropicBalanceProvider, AnthropicBalanceProvider>();
 
         // Singletons: stateless readers that own a per-stem MemoryCache slot via the shared
-        // IMemoryCache. IGuideContentSource is registered as a singleton by AddGuideSection,
-        // so capturing it here is safe.
+        // IMemoryCache. IGuideContentSource is registered as a singleton by
+        // InfrastructureServiceCollectionExtensions — it stayed in Base at Guide's G5 move
+        // because these three readers are its main consumers — so capturing it here is safe.
         services.AddSingleton<AgentSectionDocReader>();
         services.AddSingleton<AgentFeatureSpecReader>();
         services.AddSingleton<GitHubCommunityKbContentSource>();

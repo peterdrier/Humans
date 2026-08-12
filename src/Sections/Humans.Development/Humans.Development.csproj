@@ -1,0 +1,79 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <!-- MVC views/controllers, not Blazor components. -->
+    <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Humans.Development.Tests" />
+    <!-- The one assembly allowed to see many sections (design §5). -->
+    <InternalsVisibleTo Include="Humans.Integration.Tests" />
+    <!-- DevPersonaSeederTests substitutes UserManager<User> and a dozen section services. -->
+    <InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      Microsoft.NET.Sdk.Web adds these to ImplicitUsings; Microsoft.NET.Sdk.Razor does not.
+      Declaring them keeps the files moved out of Humans.Web byte-identical to their originals.
+    -->
+    <Using Include="Microsoft.AspNetCore.Http" />
+    <Using Include="Microsoft.AspNetCore.Routing" />
+    <Using Include="Microsoft.Extensions.Logging" />
+    <!--
+      Two more than the sections before this one, because both controllers gate on the host
+      environment and the dev-auth setting: IWebHostEnvironment (Microsoft.AspNetCore.Hosting)
+      and IConfiguration / GetValue (Microsoft.Extensions.Configuration). A global using
+      reaches the generated Razor code too, so _DevLoginPanel.cshtml's @inject resolves from
+      here rather than from a fourth _ViewImports line.
+    -->
+    <Using Include="Microsoft.AspNetCore.Hosting" />
+    <Using Include="Microsoft.Extensions.Configuration" />
+    <Using Include="Microsoft.Extensions.DependencyInjection" />
+    <!--
+      …and Microsoft.Extensions.Hosting for IsProduction()/IsDevelopment(). Without it the
+      only extension in scope is the obsolete IHostingEnvironment overload, and the error
+      names a type nobody wrote (CS1929 on IWebHostEnvironment) rather than a missing using.
+    -->
+    <Using Include="Microsoft.Extensions.Hosting" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      No Humans.Infrastructure reference (Scanner's and Cantina's shape, not Debug's):
+      Development owns no tables, and every write the seeders make goes through a
+      Humans.Application or contracts-leaf interface — IUserService, IProfileEditorService,
+      ITeamService, ICampService, IShiftManagementService, IConsentSubmission,
+      IMembershipCalculatorRead, IBudgetDemoSeeder. The one framework type it names directly is
+      UserManager<User>, which is Identity's, not Infrastructure's (docs/sections/Users.md's
+      §2a exception). Decide the reference from what the section names
+      (G5-SECTION-TEMPLATE.md, Preconditions).
+
+      The four contracts leaves the seeders and DevSeedController name — Budget, CityPlanning,
+      Consent and Governance — arrive transitively through Humans.Application, which already
+      references all four.
+    -->
+    <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
+    <ProjectReference Include="..\..\Humans.Domain\Humans.Domain.csproj" />
+    <ProjectReference Include="..\..\Humans.Application\Humans.Application.csproj" />
+    <ProjectReference Include="..\..\Humans.UI\Humans.UI.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      No AspNetCore package here: those ship with no PackageVersion on purpose and would fail
+      the build with NU1010 under Central Package Management. UserManager<User>,
+      SignInManager<User> and IWebHostEnvironment all arrive through the framework reference
+      Sdk.Razor already adds (step 1). NodaTime: the seeders stamp Instant/Duration/LocalTime
+      on every fixture they create. No EF Core — the section owns no tables.
+    -->
+    <PackageReference Include="NodaTime" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The section owns its documentation (design §7a); keep it visible in Solution Explorer. -->
+    <None Include="**\*.md" />
+  </ItemGroup>
+
+</Project>

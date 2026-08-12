@@ -8,7 +8,7 @@ using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Services;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Caching;
-using Humans.Application.Interfaces.Email;
+using Humans.Email.Contracts;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Teams;
 using Humans.Notifications.Contracts;

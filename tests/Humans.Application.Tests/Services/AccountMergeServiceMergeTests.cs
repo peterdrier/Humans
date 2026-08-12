@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Consent.Contracts;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Auth;

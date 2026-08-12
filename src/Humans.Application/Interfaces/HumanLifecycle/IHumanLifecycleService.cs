@@ -1,4 +1,4 @@
-using Humans.Application.Interfaces.Onboarding;
+using Humans.Onboarding.Contracts;
 
 namespace Humans.Application.Interfaces.HumanLifecycle;
 
@@ -7,7 +7,7 @@ namespace Humans.Application.Interfaces.HumanLifecycle;
 /// (suspend / unsuspend, and — over time — re-consent suspensions, status
 /// recomputes triggered by external events, and term-renewal flows). This
 /// service is the lifecycle state-machine counterpart to
-/// <see cref="IOnboardingService"/> (the intake funnel) and the future
+/// <c>IOnboardingService</c> (the intake funnel) and the future
 /// account-deletion service (the cascade). All three were originally
 /// bundled into <c>OnboardingService</c>; the split is by mission and
 /// workflow stage, not by dependency shape (see umbrella issue

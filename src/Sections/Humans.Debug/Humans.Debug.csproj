@@ -1,0 +1,58 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <!-- MVC views/controllers, not Blazor components. -->
+    <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Humans.Debug.Tests" />
+    <!-- The one assembly allowed to see many sections (design §5). -->
+    <InternalsVisibleTo Include="Humans.Integration.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      Microsoft.NET.Sdk.Web adds these to ImplicitUsings; Microsoft.NET.Sdk.Razor does not.
+      Declaring them keeps the files moved out of Humans.Web byte-identical to their originals.
+    -->
+    <Using Include="Microsoft.AspNetCore.Http" />
+    <Using Include="Microsoft.AspNetCore.Routing" />
+    <Using Include="Microsoft.Extensions.Logging" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      Humans.Infrastructure is referenced even though Debug owns no tables (contrast Scanner
+      and Cantina, which take none): the diagnostics pages name QueryStatistics
+      (Humans.Infrastructure.Data), TrackingMemoryCache (Humans.Infrastructure.Services) and
+      InMemoryLogSink (Humans.Infrastructure.Logging). Decide the reference from what the
+      section names, not from whether it has a DbContext
+      (G5-SECTION-TEMPLATE.md, Preconditions).
+    -->
+    <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
+    <ProjectReference Include="..\..\Humans.Domain\Humans.Domain.csproj" />
+    <ProjectReference Include="..\..\Humans.Application\Humans.Application.csproj" />
+    <ProjectReference Include="..\..\Humans.Infrastructure\Humans.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Humans.UI\Humans.UI.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      No AspNetCore package here: those ship with no PackageVersion on purpose and would fail
+      the build with NU1010 under Central Package Management. Everything the controller needs
+      arrives through the framework reference Sdk.Razor already adds (step 1).
+      Serilog: /Debug/Logs binds IReadOnlyList<LogEvent> and filters on LogEventLevel.
+      NodaTime: the format gallery renders every DateFormattingExtensions formatter.
+      No EF Core — the section owns no tables.
+    -->
+    <PackageReference Include="NodaTime" />
+    <PackageReference Include="Serilog" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The section owns its documentation (design §7a); keep it visible in Solution Explorer. -->
+    <None Include="**\*.md" />
+  </ItemGroup>
+
+</Project>

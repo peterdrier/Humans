@@ -8,7 +8,7 @@ using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.GoogleIntegration;
-using Humans.Application.Interfaces.Legal;
+using Humans.Consent.Contracts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Governance.Contracts;
 
@@ -306,7 +306,7 @@ public sealed class HumansMetricsService : IHumansMetrics, IHostedService, IDisp
             var googleResources = await teamResourceService.GetResourceCountAsync();
 
             // Via ILegalDocumentSyncService cached projection — service does not touch legal_documents directly (design-rules §2c, #749).
-            var legalDocumentSyncService = scope.ServiceProvider.GetRequiredService<ILegalDocumentSyncService>();
+            var legalDocumentSyncService = scope.ServiceProvider.GetRequiredService<ILegalDocumentSyncServiceRead>();
             var legalDocumentsActive = await legalDocumentSyncService.GetActiveRequiredCountAsync();
 
             var applicationsSubmitted = await applicationDecisionService.GetPendingApplicationCountAsync();

@@ -2,7 +2,7 @@ using System.Globalization;
 using Humans.Budget.Services;
 using Humans.Application.Extensions;
 using Humans.Budget.Contracts;
-using Humans.Application.Interfaces.Gdpr;
+using Humans.Gdpr.Contracts;
 using Humans.Budget.Data;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;

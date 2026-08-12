@@ -1,38 +1,29 @@
 using Hangfire;
 using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.Repositories;
-using Humans.Infrastructure.Configuration;
+using Humans.Email.Contracts;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-using NodaTime;
 
 namespace Humans.Infrastructure.Jobs;
 
 /// <summary>
-/// Purges old sent messages from the email outbox. Runs weekly.
+/// Purges old sent messages from the email outbox. Runs weekly. The retention cutoff —
+/// <c>Email:OutboxRetentionDays</c> back from now — lives inside the Email section behind
+/// <see cref="IEmailOutboxRetention"/>; this job is the scheduler shim around it.
 /// </summary>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
 public class CleanupEmailOutboxJob(
-    IEmailOutboxRepository outboxRepo,
-    IClock clock,
-    IOptions<EmailSettings> settings,
+    IEmailOutboxRetention outbox,
     IHumansMetrics metrics,
     ILogger<CleanupEmailOutboxJob> logger) : IRecurringJob
 {
-    private readonly EmailSettings _settings = settings.Value;
-
     public async Task ExecuteAsync(CancellationToken cancellationToken = default)
     {
         try
         {
-            var cutoff = clock.GetCurrentInstant() - Duration.FromDays(_settings.OutboxRetentionDays);
-
-            var deletedCount = await outboxRepo.DeleteSentOlderThanAsync(cutoff, cancellationToken);
+            var deletedCount = await outbox.PurgeExpiredAsync(cancellationToken);
 
             logger.LogInformation(
-                "CleanupEmailOutboxJob deleted {Count} sent messages older than {Cutoff}",
-                deletedCount,
-                cutoff);
+                "CleanupEmailOutboxJob deleted {Count} sent messages", deletedCount);
 
             metrics.RecordJobRun("cleanup_email_outbox", "success");
         }

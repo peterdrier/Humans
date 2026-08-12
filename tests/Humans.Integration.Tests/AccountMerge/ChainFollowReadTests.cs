@@ -1,8 +1,11 @@
 using AwesomeAssertions;
+using Humans.Consent.Services;
+using Humans.Consent.Domain;
+using Humans.Consent.Data;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Budget.Contracts;
-using Humans.Application.Interfaces.Consent;
-using Humans.Application.Interfaces.Gdpr;
+using Humans.Consent.Contracts;
+using Humans.Gdpr.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;

@@ -1,0 +1,404 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- ReSharper disable MarkupTextTypo -->
+<root xmlns:ns1="urn:schemas-microsoft-com:xml-msdata" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:schema id="root">
+    <xs:element name="root" ns1:IsDataSet="true">
+      <xs:complexType>
+        <xs:choice maxOccurs="unbounded">
+          <xs:element name="data">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element name="value" type="xsd:string" minOccurs="0" ns1:Ordinal="1" />
+                <xs:element name="comment" type="xsd:string" minOccurs="0" ns1:Ordinal="2" />
+              </xs:sequence>
+              <xs:attribute name="name" type="xsd:string" ns1:Ordinal="0" />
+              <xs:attribute name="type" type="xsd:string" />
+              <xs:attribute name="mimetype" type="xsd:string" />
+            </xs:complexType>
+          </xs:element>
+          <xs:element name="resheader">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element name="value" type="xsd:string" minOccurs="0" ns1:Ordinal="1" />
+              </xs:sequence>
+              <xs:attribute name="name" type="xsd:string" use="required" />
+            </xs:complexType>
+          </xs:element>
+        </xs:choice>
+      </xs:complexType>
+    </xs:element>
+  </xs:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>1.3</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="Email_ApplicationSubmitted_Subject" xml:space="preserve">
+    <value>Nueva solicitud de membresía: {0}</value>
+    <comment>{0} = applicant name</comment>
+  </data>
+  <data name="Email_ApplicationApproved_Subject" xml:space="preserve">
+    <value>¡Bienvenido/a a Humans!</value>
+  </data>
+  <data name="Email_ApplicationApproved_Heading" xml:space="preserve">
+    <value>¡Su solicitud ha sido aprobada!</value>
+  </data>
+  <data name="Email_ApplicationRejected_Subject" xml:space="preserve">
+    <value>Acerca de su solicitud de membresía</value>
+  </data>
+  <data name="Email_SignupRejected_Subject" xml:space="preserve">
+    <value>Acerca de su registro</value>
+  </data>
+  <data name="Email_SurveyInvitation_Subject" xml:space="preserve">
+    <value>Por favor, completa: {0}</value>
+    <comment>{0} = survey title</comment>
+  </data>
+  <data name="Email_SurveyReminder_Subject" xml:space="preserve">
+    <value>Recordatorio: {0}</value>
+    <comment>{0} = survey title</comment>
+  </data>
+  <data name="Email_ReConsentRequired_Subject_Single" xml:space="preserve">
+    <value>Acción requerida: {0} actualizado</value>
+    <comment>{0} = document name</comment>
+  </data>
+  <data name="Email_ReConsentRequired_Subject_Multiple" xml:space="preserve">
+    <value>Acción requerida: Varios documentos legales actualizados</value>
+  </data>
+  <data name="Email_ReConsentReminder_Subject" xml:space="preserve">
+    <value>Recordatorio: {0} días para revisar documentos actualizados</value>
+    <comment>{0} = days remaining</comment>
+  </data>
+  <data name="Email_Welcome_Subject" xml:space="preserve">
+    <value>¡Bienvenido/a a Humans!</value>
+  </data>
+  <data name="Email_Welcome_Heading" xml:space="preserve">
+    <value>¡Bienvenido/a!</value>
+  </data>
+  <data name="Email_AccessSuspended_Subject" xml:space="preserve">
+    <value>Su acceso de membresía ha sido suspendido</value>
+  </data>
+  <data name="Email_VerifyEmail_Subject" xml:space="preserve">
+    <value>Verifique su dirección de correo electrónico</value>
+  </data>
+  <data name="Email_DeletionRequested_Subject" xml:space="preserve">
+    <value>Solicitud de eliminación de cuenta</value>
+  </data>
+  <data name="Email_AccountDeleted_Subject" xml:space="preserve">
+    <value>Su cuenta ha sido eliminada</value>
+  </data>
+  <data name="Email_AddedToTeam_Subject" xml:space="preserve">
+    <value>Se le ha añadido al equipo {0}</value>
+    <comment>{0} = team name</comment>
+  </data>
+  <data name="Email_TermRenewalReminder_Subject" xml:space="preserve">
+    <value>Tu mandato de {0} está por expirar</value>
+    <comment>{0} = tier name</comment>
+  </data>
+  <data name="Email_ReasonLine" xml:space="preserve">
+    <value>&lt;p&gt;&lt;strong&gt;Motivo:&lt;/strong&gt; {0}&lt;/p&gt;</value>
+    <comment>{0} = reason text (HTML-encoded by caller)</comment>
+  </data>
+  <data name="Email_ResourcesSection" xml:space="preserve">
+    <value>&lt;p&gt;Tu equipo tiene los siguientes recursos:&lt;/p&gt;&lt;ul&gt;{0}&lt;/ul&gt;</value>
+    <comment>{0} = resource list items HTML</comment>
+  </data>
+  <data name="Email_ApplicationSubmitted_Body" xml:space="preserve">
+    <value>&lt;h2&gt;Nueva solicitud de membresía&lt;/h2&gt;
+&lt;p&gt;Se ha enviado una nueva solicitud de membresía.&lt;/p&gt;
+&lt;ul&gt;
+    &lt;li&gt;&lt;strong&gt;Solicitante:&lt;/strong&gt; {0}&lt;/li&gt;
+    &lt;li&gt;&lt;strong&gt;ID de solicitud:&lt;/strong&gt; {1}&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;a href="{2}/Governance/Applications/Admin/{1}"&gt;Revisar solicitud&lt;/a&gt;&lt;/p&gt;</value>
+    <comment>{0} = applicant name, {1} = application ID, {2} = base URL</comment>
+  </data>
+  <data name="Email_ApplicationApproved_Body" xml:space="preserve">
+    <value>&lt;h2&gt;¡Tu solicitud ha sido aprobada!&lt;/h2&gt;
+&lt;p&gt;Hola {0},&lt;/p&gt;
+&lt;p&gt;Nos complace informarte de que tu solicitud de {1} ha sido aprobada. ¡Bienvenido/a a Humans!&lt;/p&gt;
+&lt;p&gt;Ahora puedes acceder a tu perfil y explorar equipos:&lt;/p&gt;
+&lt;ul&gt;
+    &lt;li&gt;&lt;a href="{2}/Profile"&gt;Ver tu perfil&lt;/a&gt;&lt;/li&gt;
+    &lt;li&gt;&lt;a href="{2}/Teams"&gt;Explorar equipos&lt;/a&gt;&lt;/li&gt;
+    &lt;li&gt;&lt;a href="{2}/Consent"&gt;Revisar documentos legales&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;Si tienes alguna pregunta, no dudes en contactarnos.&lt;/p&gt;
+&lt;p&gt;¡Bienvenido/a!&lt;br/&gt;El equipo de Humans&lt;/p&gt;</value>
+    <comment>{0} = user name, {1} = tier, {2} = base URL</comment>
+  </data>
+  <data name="Email_ApplicationRejected_Body" xml:space="preserve">
+    <value>&lt;h2&gt;Actualización de solicitud&lt;/h2&gt;
+&lt;p&gt;Hola {0},&lt;/p&gt;
+&lt;p&gt;Gracias por tu interés en unirte a nosotros. Tras una revisión cuidadosa, lamentamos informarte de que no podemos aprobar tu solicitud de {1} en este momento.&lt;/p&gt;
+{2}
+&lt;p&gt;Si tienes alguna pregunta o deseas comentar esta decisión, contáctanos en &lt;a href="mailto:{3}"&gt;{3}&lt;/a&gt;.&lt;/p&gt;
+&lt;p&gt;Un saludo,&lt;br/&gt;El equipo de Humans&lt;/p&gt;</value>
+    <comment>{0} = user name, {1} = tier, {2} = reason HTML (or empty), {3} = admin email</comment>
+  </data>
+  <data name="Email_SignupRejected_Body" xml:space="preserve">
+    <value>&lt;h2&gt;Actualización de registro&lt;/h2&gt;
+&lt;p&gt;Hola {0},&lt;/p&gt;
+&lt;p&gt;Gracias por tu interés en unirte a nosotros. Tras una revisión cuidadosa, lamentamos informarte de que no podemos aprobar tu registro en este momento.&lt;/p&gt;
+{1}
+&lt;p&gt;Si tienes alguna pregunta o deseas comentar esta decisión, contáctanos en &lt;a href="mailto:{2}"&gt;{2}&lt;/a&gt;.&lt;/p&gt;
+&lt;p&gt;Un saludo,&lt;br/&gt;El equipo de Humans&lt;/p&gt;</value>
+    <comment>{0} = user name, {1} = reason HTML (or empty), {2} = admin email</comment>
+  </data>
+  <data name="Email_SurveyInvitation_Body" xml:space="preserve">
+    <value>&lt;h2&gt;{1}&lt;/h2&gt;
+&lt;p&gt;Hola {0},&lt;/p&gt;
+&lt;p&gt;Te invitamos a completar la encuesta &lt;strong&gt;{1}&lt;/strong&gt;. Solo te llevará unos minutos.&lt;/p&gt;
+&lt;p&gt;&lt;a href="{2}"&gt;Abrir la encuesta&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;Gracias,&lt;br/&gt;Nobodies Collective&lt;/p&gt;</value>
+    <comment>{0} = user name, {1} = survey title, {2} = answer URL</comment>
+  </data>
+  <data name="Email_SurveyReminder_Body" xml:space="preserve">
+    <value>&lt;h2&gt;{1}&lt;/h2&gt;
+&lt;p&gt;Hola {0},&lt;/p&gt;
+&lt;p&gt;Solo un recordatorio de que la encuesta &lt;strong&gt;{1}&lt;/strong&gt; aún espera tu respuesta.&lt;/p&gt;
+&lt;p&gt;&lt;a href="{2}"&gt;Abrir la encuesta&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;Gracias,&lt;br/&gt;Nobodies Collective&lt;/p&gt;</value>
+    <comment>{0} = user name, {1} = survey title, {2} = answer URL</comment>
+  </data>
+  <data name="Email_ReConsentsRequired_Body" xml:space="preserve">
+    <value>&lt;h2&gt;Actualización de documentos legales&lt;/h2&gt;
+&lt;p&gt;Hola {0},&lt;/p&gt;
+&lt;p&gt;Hemos actualizado los siguientes documentos requeridos:&lt;/p&gt;
+&lt;ul&gt;
+    {1}
+&lt;/ul&gt;
+&lt;p&gt;Como human, necesitas revisar y aceptar estos documentos actualizados para mantener tu estado activo.&lt;/p&gt;
+&lt;p&gt;&lt;a href="{2}/Consent"&gt;Revisar y aceptar&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;Si tienes alguna pregunta sobre los cambios, contáctanos.&lt;/p&gt;
+&lt;p&gt;Gracias,&lt;br/&gt;El equipo de Humans&lt;/p&gt;</value>
+    <comment>{0} = user name, {1} = document list items HTML, {2} = base URL</comment>
+  </data>
+  <data name="Email_ReConsentReminder_Body" xml:space="preserve">
+    <value>&lt;h2&gt;Recordatorio de consentimiento&lt;/h2&gt;
+&lt;p&gt;Hola {0},&lt;/p&gt;
+&lt;p&gt;Te recordamos que tienes &lt;strong&gt;{1} días&lt;/strong&gt; restantes para revisar y aceptar los siguientes documentos actualizados:&lt;/p&gt;
+&lt;ul&gt;
+    {2}
+&lt;/ul&gt;
+&lt;p&gt;Si no aceptas estos documentos antes de la fecha límite, tu acceso podría ser suspendido temporalmente.&lt;/p&gt;
+&lt;p&gt;&lt;a href="{3}/Consent"&gt;Revisar documentos ahora&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;Gracias,&lt;br/&gt;El equipo de Humans&lt;/p&gt;</value>
+    <comment>{0} = user name, {1} = days remaining, {2} = document list items HTML, {3} = base URL</comment>
+  </data>
+  <data name="Email_Welcome_Body" xml:space="preserve">
+    <value>&lt;h2&gt;¡Bienvenido/a!&lt;/h2&gt;
+&lt;p&gt;Hola {0},&lt;/p&gt;
+&lt;p&gt;¡Bienvenido/a al portal de Humans!&lt;/p&gt;
+&lt;p&gt;Esto es lo que puedes hacer:&lt;/p&gt;
+&lt;ul&gt;
+    &lt;li&gt;&lt;a href="{1}/Profile"&gt;Completar tu perfil&lt;/a&gt;&lt;/li&gt;
+    &lt;li&gt;&lt;a href="{1}/Teams"&gt;Unirte a equipos y grupos de trabajo&lt;/a&gt;&lt;/li&gt;
+    &lt;li&gt;&lt;a href="{1}/Consent"&gt;Revisar documentos legales&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;Si tienes alguna pregunta, no dudes en contactarnos.&lt;/p&gt;
+&lt;p&gt;Un saludo,&lt;br/&gt;El equipo de Humans&lt;/p&gt;</value>
+    <comment>{0} = user name, {1} = base URL</comment>
+  </data>
+  <data name="Email_AccessSuspended_Body" xml:space="preserve">
+    <value>&lt;h2&gt;Acceso suspendido&lt;/h2&gt;
+&lt;p&gt;Hola {0},&lt;/p&gt;
+&lt;p&gt;Tu acceso ha sido suspendido temporalmente.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Motivo:&lt;/strong&gt; {1}&lt;/p&gt;
+&lt;p&gt;Para restaurar tu acceso, por favor realiza la acción requerida:&lt;/p&gt;
+&lt;ul&gt;
+    &lt;li&gt;&lt;a href="{2}/Consent"&gt;Revisar requisitos de consentimiento pendientes&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;Si crees que esto es un error o tienes preguntas, contáctanos en &lt;a href="mailto:{3}"&gt;{3}&lt;/a&gt;.&lt;/p&gt;
+&lt;p&gt;El equipo de Humans&lt;/p&gt;</value>
+    <comment>{0} = user name, {1} = reason, {2} = base URL, {3} = admin email</comment>
+  </data>
+  <data name="Email_EmailVerification_Body" xml:space="preserve">
+    <value>&lt;h2&gt;Verificación de correo electrónico&lt;/h2&gt;
+&lt;p&gt;Hola {0},&lt;/p&gt;
+&lt;p&gt;Has solicitado establecer &lt;strong&gt;{1}&lt;/strong&gt; como tu dirección de correo preferida.&lt;/p&gt;
+&lt;p&gt;Haz clic en el siguiente enlace para verificar esta dirección:&lt;/p&gt;
+&lt;p&gt;&lt;a href="{2}" style="display:inline-block; padding:12px 24px; background-color:#0d6efd; color:#ffffff; text-decoration:none; border-radius:6px; font-weight:bold; font-size:16px;"&gt;Verificar dirección de correo&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;Este enlace expira en 24 horas.&lt;/p&gt;
+&lt;p&gt;Si no has solicitado este cambio, puedes ignorar este correo.&lt;/p&gt;
+&lt;p&gt;El equipo de Humans&lt;/p&gt;</value>
+    <comment>{0} = user name, {1} = email address, {2} = verification URL</comment>
+  </data>
+  <data name="Email_EmailVerification_Merge_Body" xml:space="preserve">
+    <value>&lt;h2&gt;Verificación de fusión de cuentas&lt;/h2&gt;&lt;p&gt;Hola {0},&lt;/p&gt;&lt;p&gt;Has solicitado agregar &lt;strong&gt;{1}&lt;/strong&gt; a tu cuenta. Esta dirección de correo está actualmente vinculada a otra cuenta.&lt;/p&gt;&lt;p&gt;Si verificas este correo, se enviará una solicitud de fusión para revisión del administrador. Una vez aprobada, los datos de la otra cuenta se fusionarán con la tuya y la cuenta duplicada será archivada.&lt;/p&gt;&lt;p&gt;Haz clic en el siguiente enlace para verificar y solicitar la fusión:&lt;/p&gt;&lt;p&gt;&lt;a href="{2}" style="display:inline-block; padding:12px 24px; background-color:#0d6efd; color:#ffffff; text-decoration:none; border-radius:6px; font-weight:bold; font-size:16px;"&gt;Verificar y solicitar fusión&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Este enlace expira en 24 horas.&lt;/p&gt;&lt;p&gt;Si no solicitaste esto, puedes ignorar este correo. No se realizarán cambios.&lt;/p&gt;&lt;p&gt;El equipo de Humans&lt;/p&gt;</value>
+  </data>
+  <data name="Email_AccountDeletionRequested_Body" xml:space="preserve">
+    <value>&lt;h2&gt;Solicitud de eliminación de cuenta recibida&lt;/h2&gt;
+&lt;p&gt;Hola {0},&lt;/p&gt;
+&lt;p&gt;Hemos recibido tu solicitud para eliminar tu cuenta. Tu cuenta y todos los datos asociados serán eliminados permanentemente el &lt;strong&gt;{1}&lt;/strong&gt;.&lt;/p&gt;
+&lt;p&gt;Si cambias de opinión, puedes cancelar esta solicitud antes de la fecha de eliminación visitando:&lt;/p&gt;
+&lt;p&gt;&lt;a href="{2}/Profile/Privacy"&gt;Cancelar solicitud de eliminación&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;Después de la eliminación, esta acción no se puede deshacer y todos tus datos serán eliminados permanentemente.&lt;/p&gt;
+&lt;p&gt;El equipo de Humans&lt;/p&gt;</value>
+    <comment>{0} = user name, {1} = formatted deletion date, {2} = base URL</comment>
+  </data>
+  <data name="Email_AccountDeleted_Body" xml:space="preserve">
+    <value>&lt;h2&gt;Cuenta eliminada&lt;/h2&gt;
+&lt;p&gt;Hola {0},&lt;/p&gt;
+&lt;p&gt;Según lo solicitado, tu cuenta de Humans ha sido eliminada permanentemente. Todos tus datos personales han sido eliminados de nuestros sistemas.&lt;/p&gt;
+&lt;p&gt;Gracias por haber sido parte de nuestra comunidad. Si alguna vez deseas volver, puedes crear una nueva cuenta.&lt;/p&gt;
+&lt;p&gt;Un saludo,&lt;br/&gt;El equipo de Humans&lt;/p&gt;</value>
+    <comment>{0} = user name</comment>
+  </data>
+  <data name="Email_AddedToTeam_Body" xml:space="preserve">
+    <value>&lt;h2&gt;¡Bienvenido/a a {1}!&lt;/h2&gt;
+&lt;p&gt;Hola {0},&lt;/p&gt;
+&lt;p&gt;Has sido añadido/a al equipo &lt;strong&gt;{1}&lt;/strong&gt;.&lt;/p&gt;
+{2}
+&lt;p&gt;&lt;a href="{3}"&gt;Ver página del equipo&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;El equipo de Humans&lt;/p&gt;</value>
+    <comment>{0} = user name, {1} = team name, {2} = resources HTML (or empty), {3} = team URL</comment>
+  </data>
+  <data name="Email_TermRenewalReminder_Body" xml:space="preserve">
+    <value>&lt;h2&gt;Renovación de mandato&lt;/h2&gt;
+&lt;p&gt;Hola {0},&lt;/p&gt;
+&lt;p&gt;Tu mandato de &lt;strong&gt;{1}&lt;/strong&gt; expira el &lt;strong&gt;{2}&lt;/strong&gt;.&lt;/p&gt;
+&lt;p&gt;Si deseas continuar como {1}, envía una solicitud de renovación antes de que finalice tu mandato.&lt;/p&gt;
+&lt;p&gt;&lt;a href="{3}/Governance/Applications/Create"&gt;Enviar solicitud de renovación&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;Si no renuevas, seguirás siendo un human activo pero ya no tendrás acceso de nivel {1}.&lt;/p&gt;
+&lt;p&gt;¡Gracias por tu participación!&lt;br/&gt;El equipo de Humans&lt;/p&gt;</value>
+    <comment>{0} = user name, {1} = tier name, {2} = expiry date, {3} = base URL</comment>
+  </data>
+  <data name="Email_FacilitatedMessage_Subject" xml:space="preserve">
+    <value>Mensaje de Humans de: {0}</value>
+  </data>
+  <data name="Email_FacilitatedMessage_Body" xml:space="preserve">
+    <value>&lt;h2&gt;Mensaje de {1}&lt;/h2&gt;&lt;p&gt;Hola {0},&lt;/p&gt;&lt;p&gt;{1} te ha enviado un mensaje a través de Humans:&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;{2}&lt;/p&gt;&lt;hr /&gt;{3}</value>
+  </data>
+  <data name="Email_FacilitatedMessage_NoContactInfo" xml:space="preserve">
+    <value>Este human ha decidido no compartir su información de contacto.</value>
+  </data>
+  <data name="Email_FeedbackResponse_Subject" xml:space="preserve">
+    <value>Actualización sobre tu feedback</value>
+  </data>
+  <data name="Email_FeedbackResponse_Body" xml:space="preserve">
+    <value>&lt;h2&gt;Actualización sobre tu Feedback&lt;/h2&gt;
+&lt;p&gt;Hola {0},&lt;/p&gt;
+&lt;p&gt;Hemos revisado tu feedback:&lt;/p&gt;
+&lt;blockquote style="border-left: 3px solid #ccc; padding-left: 12px; color: #666;"&gt;{1}&lt;/blockquote&gt;
+&lt;p&gt;&lt;strong&gt;Nuestra respuesta:&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;{2}&lt;/p&gt;
+&lt;p&gt;¡Gracias por ayudarnos a mejorar!&lt;/p&gt;
+&lt;p&gt;El equipo de Humans&lt;/p&gt;</value>
+    <comment>{0} = user name, {1} = original description, {2} = response message</comment>
+  </data>
+  <data name="Email_IssueComment_Subject" xml:space="preserve">
+    <value>Nuevo comentario en tu issue: {0}</value>
+  </data>
+  <data name="Email_IssueComment_Body" xml:space="preserve">
+    <value>&lt;h2&gt;Nuevo comentario en tu issue&lt;/h2&gt;
+&lt;p&gt;Hola {0},&lt;/p&gt;
+&lt;p&gt;Hay un nuevo comentario en tu issue:&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Issue:&lt;/strong&gt; {1}&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Comentario:&lt;/strong&gt;&lt;/p&gt;
+&lt;blockquote style="border-left: 3px solid #ccc; padding-left: 12px; color: #666;"&gt;{2}&lt;/blockquote&gt;
+&lt;p&gt;&lt;a href="{3}"&gt;Abrir issue&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;— El equipo de Humans&lt;/p&gt;</value>
+    <comment>{0} = display name, {1} = issue title, {2} = comment HTML, {3} = issue URL</comment>
+  </data>
+  <data name="Email_MagicLinkLogin_Subject" xml:space="preserve">
+    <value>Tu enlace de inicio de sesión para Nobodies</value>
+  </data>
+  <data name="Email_MagicLinkLogin_Body" xml:space="preserve">
+    <value>&lt;p&gt;Hola {0},&lt;/p&gt;&lt;p&gt;Haz clic en el siguiente enlace para iniciar sesión:&lt;/p&gt;&lt;p&gt;&lt;a href="{1}"&gt;Iniciar sesión en Nobodies&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Este enlace expira en 15 minutos y solo se puede usar una vez.&lt;/p&gt;&lt;p&gt;Si no solicitaste esto, puedes ignorar este correo.&lt;/p&gt;</value>
+  </data>
+  <data name="Email_MagicLinkSignup_Subject" xml:space="preserve">
+    <value>Bienvenido a Nobodies — confirma tu correo electrónico</value>
+  </data>
+  <data name="Email_MagicLinkSignup_Body" xml:space="preserve">
+    <value>&lt;p&gt;¡Bienvenido a Nobodies!&lt;/p&gt;&lt;p&gt;Haz clic en el siguiente enlace para crear tu cuenta:&lt;/p&gt;&lt;p&gt;&lt;a href="{0}"&gt;Crear tu cuenta&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Este enlace expira en 15 minutos y solo se puede usar una vez.&lt;/p&gt;&lt;p&gt;Si no solicitaste esto, puedes ignorar este correo.&lt;/p&gt;</value>
+  </data>
+  <data name="Email_WorkspaceCredentials_Subject" xml:space="preserve">
+    <value>Tu cuenta @nobodies.team está lista</value>
+  </data>
+  <data name="Email_WorkspaceCredentials_Body" xml:space="preserve">
+    <value>&lt;h2&gt;Tu cuenta @nobodies.team está lista&lt;/h2&gt;
+&lt;p&gt;Hola {0},&lt;/p&gt;
+&lt;p&gt;Tu cuenta de Google Workspace ha sido creada:&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Usuario:&lt;/strong&gt; {1}&lt;br/&gt;
+&lt;strong&gt;Contraseña temporal:&lt;/strong&gt; {2}&lt;/p&gt;
+&lt;p&gt;Inicia sesión en &lt;a href="https://mail.google.com/"&gt;mail.google.com&lt;/a&gt; y se te pedirá cambiar tu contraseña en el primer inicio de sesión.&lt;/p&gt;
+&lt;p&gt;Nuestra organización tiene la autenticación en dos pasos (2FA) activada, por lo que también tendrás que configurar un segundo factor (como un teléfono o una app de autenticación) durante el inicio de sesión.&lt;/p&gt;
+&lt;p&gt;El equipo de Humans&lt;/p&gt;</value>
+    <comment>{0} = user name, {1} = workspace email, {2} = temporary password</comment>
+  </data>
+  <data name="Email_GoogleGroupRemoval_LossOfAccess_Subject" xml:space="preserve">
+    <value>Se te ha quitado del grupo {0}</value>
+    <comment>{0} = group email</comment>
+  </data>
+  <data name="Email_GoogleGroupRemoval_LossOfAccess_Body" xml:space="preserve">
+    <value>&lt;h2&gt;Acceso al grupo retirado&lt;/h2&gt;
+&lt;p&gt;Hola {0},&lt;/p&gt;
+&lt;p&gt;Se ha retirado tu acceso al Grupo de Google &lt;strong&gt;{1}&lt;/strong&gt; (&lt;code&gt;{2}&lt;/code&gt;).&lt;/p&gt;
+&lt;p&gt;Esta acción fue automática según tus equipos y roles actuales en Nobodies. Ya no recibirás los mensajes enviados a este grupo.&lt;/p&gt;
+&lt;p&gt;Si crees que esto se hizo por error, ponte en contacto con la persona coordinadora de tu equipo.&lt;/p&gt;
+&lt;p&gt;El equipo de Humans&lt;/p&gt;</value>
+    <comment>{0} = user name, {1} = group display name, {2} = group email</comment>
+  </data>
+  <data name="Email_GoogleDriveRemoval_LossOfAccess_Subject" xml:space="preserve">
+    <value>Se ha retirado tu acceso a {0}</value>
+    <comment>{0} = folder name</comment>
+  </data>
+  <data name="Email_GoogleDriveRemoval_LossOfAccess_Body" xml:space="preserve">
+    <value>&lt;h2&gt;Acceso a Drive retirado&lt;/h2&gt;
+&lt;p&gt;Hola {0},&lt;/p&gt;
+&lt;p&gt;Se ha retirado tu acceso a la carpeta compartida &lt;strong&gt;{1}&lt;/strong&gt;.&lt;/p&gt;
+&lt;p&gt;Esta acción fue automática según tus equipos y roles actuales en Nobodies.&lt;/p&gt;
+&lt;p&gt;Si crees que esto se hizo por error, ponte en contacto con la persona coordinadora de tu equipo.&lt;/p&gt;
+&lt;p&gt;El equipo de Humans&lt;/p&gt;</value>
+    <comment>{0} = user name, {1} = folder name</comment>
+  </data>
+  <data name="Email_GoogleAccessRemoval_SecondaryCleanup_Subject" xml:space="preserve">
+    <value>{0} ya no tiene acceso a los grupos de Nobodies</value>
+    <comment>{0} = removed email</comment>
+  </data>
+  <data name="Email_GoogleAccessRemoval_SecondaryCleanup_Body" xml:space="preserve">
+    <value>&lt;h2&gt;Correo secundario depurado&lt;/h2&gt;
+&lt;p&gt;Hola {0},&lt;/p&gt;
+&lt;p&gt;Se ha retirado la dirección &lt;strong&gt;{1}&lt;/strong&gt; de los grupos y carpetas compartidas de Nobodies.&lt;/p&gt;
+&lt;p&gt;Tu dirección principal en Nobodies es ahora &lt;strong&gt;{2}&lt;/strong&gt;, y tu acceso a los grupos y carpetas compartidas a través de esa dirección no ha cambiado. Este mensaje es para que tengas constancia de la dirección que se ha depurado.&lt;/p&gt;
+&lt;p&gt;Si crees que {1} debería seguir teniendo acceso, ponte en contacto con la persona coordinadora de tu equipo.&lt;/p&gt;
+&lt;p&gt;El equipo de Humans&lt;/p&gt;</value>
+    <comment>{0} = user name, {1} = removed email, {2} = current Google email</comment>
+  </data>
+  <data name="Email_CoordinatorRotaMessage_Subject" xml:space="preserve">
+    <value>Un mensaje sobre tus franjas en {0}</value>
+  </data>
+  <data name="Email_CoordinatorRotaMessage_Body" xml:space="preserve">
+    <value>&lt;p&gt;Hola {0},&lt;/p&gt;&lt;p&gt;Un mensaje del coordinador de &lt;strong&gt;{2}&lt;/strong&gt;:&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;{3}&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;Para tu informaci&#xF3;n, tus franjas en este turno son:&lt;/p&gt;{4}&lt;p&gt;Gracias,&lt;/p&gt;{5}</value>
+  </data>
+  <data name="Email_CoordinatorRotaMessage_NoShifts" xml:space="preserve">
+    <value>(todav&#xED;a no hay franjas en este turno)</value>
+  </data>
+  <data name="Email_CoordinatorTeamRotasMessage_Subject" xml:space="preserve">
+    <value>Un mensaje sobre tus franjas con {0}</value>
+  </data>
+  <data name="Email_CoordinatorTeamRotasMessage_Body" xml:space="preserve">
+    <value>&lt;p&gt;Hola {0},&lt;/p&gt;&lt;p&gt;Un mensaje del coordinador de &lt;strong&gt;{2}&lt;/strong&gt;:&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;{3}&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;Para tu informaci&#xF3;n, tus franjas en los pr&#xF3;ximos turnos del equipo:&lt;/p&gt;{4}&lt;p&gt;Gracias,&lt;/p&gt;{5}</value>
+  </data>
+  <data name="Email_BoardDailyDigest_Subject" xml:space="preserve"><value>Resumen de la Junta: {0}</value><comment>{0} = date (YYYY-MM-DD)</comment></data>
+  <data name="Email_BoardDailyDigest_Body" xml:space="preserve"><value>&lt;h2&gt;Resumen de la Junta &amp;mdash; {1}&lt;/h2&gt;
+&lt;p&gt;Hola {0},&lt;/p&gt;
+{3}
+{2}
+&lt;p&gt;El equipo de Humans&lt;/p&gt;</value><comment>{0} = board member name, {1} = date, {2} = approvals HTML, {3} = outstanding HTML</comment></data>
+  <data name="Email_BoardDigest_OutstandingHeader" xml:space="preserve"><value>Elementos pendientes</value></data>
+  <data name="Email_BoardDigest_NoApprovals" xml:space="preserve"><value>No hubo nuevas aprobaciones ayer.</value></data>
+  <data name="Email_BoardDigest_OnboardingReview" xml:space="preserve"><value>{0} en espera de revisi&#xF3;n de incorporaci&#xF3;n</value><comment>{0} = count</comment></data>
+  <data name="Email_BoardDigest_StillOnboarding" xml:space="preserve"><value>{0} a&#xFA;n completando la incorporaci&#xF3;n</value><comment>{0} = count</comment></data>
+  <data name="Email_BoardDigest_BoardVoting" xml:space="preserve"><value>{0} solicitudes de nivel pendientes de voto ({1} necesitan el tuyo)</value><comment>{0} = total count, {1} = member's unvoted count</comment></data>
+  <data name="Email_BoardDigest_TeamJoinRequests" xml:space="preserve"><value>{0} solicitudes de equipo pendientes</value><comment>{0} = count</comment></data>
+  <data name="Email_BoardDigest_PendingConsents" xml:space="preserve"><value>{0} con requisitos de consentimiento pendientes</value><comment>{0} = count</comment></data>
+  <data name="Email_BoardDigest_PendingDeletions" xml:space="preserve"><value>{0} eliminaciones de cuenta pendientes</value><comment>{0} = count</comment></data>
+</root>

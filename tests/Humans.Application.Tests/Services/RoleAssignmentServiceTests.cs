@@ -301,7 +301,7 @@ public sealed class RoleAssignmentServiceTests : ServiceTestHarness
 
         slices.Should().ContainSingle();
         slices[0].SectionName.Should().Be(
-            Interfaces.Gdpr.GdprExportSections.RoleAssignments);
+            Humans.Gdpr.Contracts.GdprExportSections.RoleAssignments);
     }
 
     private async Task SeedUserAsync(Guid userId, string displayName)

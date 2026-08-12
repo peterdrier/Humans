@@ -1,4 +1,4 @@
-using Humans.Application.Interfaces.Onboarding;
+using Humans.Onboarding.Contracts;
 using NodaTime;
 
 namespace Humans.Application.Interfaces.Users;

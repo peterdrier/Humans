@@ -23,18 +23,27 @@ move recipe is [`G5-SECTION-TEMPLATE.md`](G5-SECTION-TEMPLATE.md).
 | Agent | `src/Sections/Humans.Agent` | [Agent.md](../../src/Sections/Humans.Agent/Docs/Agent.md) |
 | Calendar | `src/Sections/Humans.Calendar` | [Calendar.md](../../src/Sections/Humans.Calendar/Docs/Calendar.md) |
 | Campaigns | `src/Sections/Humans.Campaigns` | [Campaigns.md](../../src/Sections/Humans.Campaigns/Docs/Campaigns.md) |
+| Cantina | `src/Sections/Humans.Cantina` | [Cantina.md](../../src/Sections/Humans.Cantina/Docs/Cantina.md) |
 | Budget | `src/Sections/Humans.Budget` | [Budget.md](../../src/Sections/Humans.Budget/Docs/Budget.md) |
+| Consent | `src/Sections/Humans.Consent` | [Consent.md](../../src/Sections/Humans.Consent/Docs/Consent.md) |
 | City Planning | `src/Sections/Humans.CityPlanning` | [CityPlanning.md](../../src/Sections/Humans.CityPlanning/Docs/CityPlanning.md) |
 | Containers | `src/Sections/Humans.Containers` | [Containers.md](../../src/Sections/Humans.Containers/Docs/Containers.md) |
+| Debug | `src/Sections/Humans.Debug` | [Debug.md](../../src/Sections/Humans.Debug/Docs/Debug.md) |
+| Development | `src/Sections/Humans.Development` | [Development.md](../../src/Sections/Humans.Development/Docs/Development.md) |
+| Email | `src/Sections/Humans.Email` | [Email.md](../../src/Sections/Humans.Email/Docs/Email.md) |
 | Feedback | `src/Sections/Humans.Feedback` | [Feedback.md](../../src/Sections/Humans.Feedback/Docs/Feedback.md) |
 | Finance | `src/Sections/Humans.Finance` | [Finance.md](../../src/Sections/Humans.Finance/Docs/Finance.md) |
 | Event Guide | `src/Sections/Humans.Events` | [Events.md](../../src/Sections/Humans.Events/Docs/Events.md) |
 | Expenses | `src/Sections/Humans.Expenses` | [Expenses.md](../../src/Sections/Humans.Expenses/Docs/Expenses.md) |
 | Gate | `src/Sections/Humans.Gate` | [Gate.md](../../src/Sections/Humans.Gate/Docs/Gate.md) |
+| Gdpr | `src/Sections/Humans.Gdpr` | [Gdpr.md](../../src/Sections/Humans.Gdpr/Docs/Gdpr.md) |
 | Governance | `src/Sections/Humans.Governance` | [Governance.md](../../src/Sections/Humans.Governance/Docs/Governance.md) |
+| Guide | `src/Sections/Humans.Guide` | [Guide.md](../../src/Sections/Humans.Guide/Docs/Guide.md) |
 | Issues | `src/Sections/Humans.Issues` | [Issues.md](../../src/Sections/Humans.Issues/Docs/Issues.md) |
 | Notifications | `src/Sections/Humans.Notifications` | [Notifications.md](../../src/Sections/Humans.Notifications/Docs/Notifications.md) |
+| Onboarding | `src/Sections/Humans.Onboarding` | [Onboarding.md](../../src/Sections/Humans.Onboarding/Docs/Onboarding.md) |
 | Scanner | `src/Sections/Humans.Scanner` | [Scanner.md](../../src/Sections/Humans.Scanner/Docs/Scanner.md) |
+| Search | `src/Sections/Humans.Search` | [Search.md](../../src/Sections/Humans.Search/Docs/Search.md) |
 | Store | `src/Sections/Humans.Store` | [Store.md](../../src/Sections/Humans.Store/Docs/Store.md) |
 | Surveys | `src/Sections/Humans.Surveys` | [Surveys.md](../../src/Sections/Humans.Surveys/Docs/Surveys.md) |
 | System Settings | `src/Sections/Humans.SystemSettings` | — (no invariants doc; one key/value table) |
@@ -66,7 +75,7 @@ Cross-check against [`design-rules.md` §8 (Table Ownership Map)](../architectur
 | **Camps** | `CampController`, `CampAdminController`, `CampApiController` | `CampContactService` | `CampService`, `CampRoleService`, *`CachingCampService`* | `CampRepository` | `camps`, `camp_seasons`, `camp_members`, `camp_images`, `camp_historical_names`, `camp_settings`, `camp_role_definitions`, `camp_role_assignments` |
 | **City Planning** | `CityPlanningController`, `CityPlanningApiController` (`Humans.CityPlanning.Controllers`) | — | `CityPlanningService` (`Humans.CityPlanning.Services`) | `CityPlanningRepository` / `ICityPlanningRepository` (`Humans.CityPlanning.Data`) | `city_planning_settings`, `camp_polygons`, `camp_polygon_histories` |
 | **Containers** | `ContainerController` (`Humans.Containers.Controllers`) | — | `Service` (`Humans.Containers.Services`) | `Repository` / `IContainerRepository` (`Humans.Containers.Data`) | `containers`, `container_placements` |
-| **Email** | `EmailController` | — | `EmailOutboxService`, `OutboxEmailService` | `EmailOutboxRepository` | `email_outbox_messages`, `system_settings` (key `email_outbox_paused`) |
+| **Email** | `EmailController` (`Humans.Email.Controllers`) | — | `EmailOutboxService`, `OutboxEmailService`, `EmailOutboxProcessor`, `EmailMessageFactory`, `EmailRenderer` (`Humans.Email.Services`) | `EmailOutboxRepository` / `IEmailOutboxRepository` (`Humans.Email.Data`) | `email_outbox_messages`, `system_settings` (key `IsEmailSendingPaused`) |
 | **Event Guide** | `EventsController`, `EventsAdminController`, `EventsDashboardController`, `EventsExportController`, `EventsModerationController`, `EventsApiController` (`Humans.Events.Controllers`) | — | `EventService`, *`CachingEventService`* (`Humans.Events.Services`) | `EventRepository` / `IEventRepository` (`Humans.Events.Data`) | `events`, `event_categories`, `event_venues`, `event_guide_settings`, `event_moderation_actions`, `event_favourites`, `event_preferences` |
 | **Expenses** | `ExpensesController` (`Humans.Expenses.Controllers`) | — | `ExpenseReportService` (`Humans.Expenses.Services`) | `ExpenseRepository` / `IExpenseRepository` (`Humans.Expenses.Data`) | `expense_reports`, `expense_lines`, `expense_attachments`, `holded_expense_outbox_events` |
 | **Feedback** | `FeedbackController`, `FeedbackApiController` (section) | — | `FeedbackService` (section) | `FeedbackRepository` (section) | `feedback_reports`, `feedback_messages` |
@@ -75,10 +84,10 @@ Cross-check against [`design-rules.md` §8 (Table Ownership Map)](../architectur
 | **Gate** | `GateController`, `GateVendorBackfillAdminController` (`Humans.Gate.Controllers`) | — | `GateService` (`Humans.Gate.Services`) | `GateRepository` / `IGateRepository` (`Humans.Gate.Data`) | `gate_scan_events`, `gate_settings`, `gate_staff_pins` |
 | **Governance** | `GovernanceController`, `GovernanceApplicationsController`, `GovernanceBoardVotingController` (`Humans.Governance.Controllers`) | `GovernanceIndexService`, `MembershipCalculator` (`Humans.Governance.Services`) | `ApplicationDecisionService` (`Humans.Governance.Services`) | `ApplicationRepository` / `IApplicationRepository` (`Humans.Governance.Data`) | `applications`, `application_state_history`, `board_votes` |
 | **Google Integration** | `GoogleController` | `GoogleGroupSyncService`, `GoogleAdminService`, `EmailProvisioningService`, `GoogleRemovalNotificationService` | `GoogleWorkspaceSyncService`, `GoogleWorkspaceUserService`, `DriveActivityMonitorService`, `SyncSettingsService`, `TeamResourceService`, Google clients (`GoogleDirectoryClient`, `GoogleGroupMembershipClient`, `GoogleGroupProvisioningClient`, `GoogleDriveActivityClient`, `GoogleDrivePermissionsClient`, `WorkspaceUserDirectoryClient`) | `GoogleResourceRepository`, `GoogleSyncOutboxRepository`, `DriveActivityMonitorRepository`, `SyncSettingsRepository` | `google_resources`, `google_sync_outbox`, `sync_service_settings`, `system_settings` (key `DriveActivityMonitor:LastRunAt`) |
-| **Guide** | `GuideController` | — | `GuideContentService`, `GuideRoleResolver`, `GuideRenderer`, `GitHubGuideContentSource` | — | — (content served from GitHub `docs/guide/`, cached via `IMemoryCache`) |
+| **Guide** | `GuideController` (`Humans.Guide.Controllers`) | — | `GuideContentService`, `GuideRoleResolver`, `GuideRenderer` (`Humans.Guide.Services`); `GitHubGuideContentSource` stays in `Humans.Infrastructure` — a shared GitHub-markdown fetcher, three of whose four consumers are not Guide's | — | — (content served from GitHub `docs/guide/`, cached via `IMemoryCache`) |
 | **Holded** | — (no UI) | — | `HoldedClient` | — | — (thin API client; owns no tables) |
 | **Issues** | `IssuesController`, `IssuesApiController` (`Humans.Issues.Controllers`) | — | `IssuesService` (`Humans.Issues.Services`) | `IssuesRepository` / `IIssuesRepository` (`Humans.Issues.Data`) | `issues`, `issue_comments` |
-| **Consent** | `LegalController`, `AdminLegalDocumentsController`, `ConsentController` | — | `LegalDocumentService`, `LegalDocumentSyncService`, `ConsentService`, *`CachingLegalDocumentSyncService`*, *`CachingConsentService`* | `LegalDocumentRepository`, `ConsentRepository` | `legal_documents`, `document_versions`, `consent_records` |
+| **Consent** | `LegalController`, `AdminLegalDocumentsController`, `ConsentController` (`Humans.Consent.Controllers`) | — | `LegalDocumentService`, `LegalDocumentSyncService`, `ConsentService`, `LegalDocumentSyncRunner`, *`CachingLegalDocumentSyncService`*, *`CachingConsentService`* (`Humans.Consent.Services`) | `LegalDocumentRepository`, `ConsentRepository` (`Humans.Consent.Data`) | `legal_documents`, `document_versions`, `consent_records` |
 | **Profiles** | `ProfileController`, `ProfileApiController`, `ProfileAdminController`, `ProfileBackfillAdminController`, `ProfilePictureMigrationAdminController`, `AdminDuplicateAccountsController`, `AdminMergeController` | `ProfileEditorService`, `EmailProblemsService`, `AdminHumanListAssembler` | `ProfileService`, `ContactFieldService`, `CommunicationPreferenceService`, `UserEmailService`, `AccountMergeService`, `DuplicateAccountService` | `AccountMergeRepository`, `CommunicationPreferenceRepository` (+ `ProfileService` via `UserRepository`) | `profiles`, `profile_languages`, `contact_fields`, `user_emails`, `communication_preferences`, `volunteer_history_entries`, `account_merge_requests` |
 | **Shifts** | `ShiftsController`, `ShiftAdminController`, `ShiftDashboardController`, `ShiftWorkloadAdminController`, `VolunteerTrackingController` | — | `ShiftManagementService`, `ShiftSignupService`, `GeneralAvailabilityService`, `VolunteerTrackingService`, `VolunteerTrackingExportService`, `ShiftViewService`, `RotaCoordinatorMessageService`, `BurnSettingsService`, `WorkloadService`, *`CachingShiftViewService`* | `VolunteerTrackingRepository` (+ shift/rota repos) | `rotas`, `shifts`, `shift_signups`, `shift_tags`, `rota_shift_tags`, `event_settings`, `general_availability`, `volunteer_event_profiles`, `volunteer_build_statuses`, `volunteer_tag_preferences`, `event_participations` |
 | **Store** | `StoreController`, `StoreAdminController`, `StoreStripeWebhookController` | — | `Service` (`Humans.Store.Services`) | `Repository` / `IStoreRepository` (`Humans.Store.Data`) | `store_products`, `store_orders`, `store_order_lines`, `store_payments`, `store_invoices`, `store_treasury_sync_state` |
@@ -86,16 +95,17 @@ Cross-check against [`design-rules.md` §8 (Table Ownership Map)](../architectur
 | **Teams** | `TeamController`, `TeamAdminController` | — | `TeamService`, `TeamPageService`, *`CachingTeamService`* | `TeamRepository` | `teams`, `team_members`, `team_join_requests`, `team_join_request_state_history`, `team_role_definitions`, `team_role_assignments`, `team_early_entry_grants` |
 | **Tickets** | `TicketController`, `TicketTransferController`, `TicketTransferAdminController`, `TicketsContactsAdminController`, `TicketsOnsiteAdminController` | `OnsiteRosterService` | `TicketQueryService`, `TicketSyncService`, `TicketTransferService`, `AttendeeContactImportService`, *`CachingTicketQueryService`* | `TicketRepository`, `TicketTransferRepository` | `ticket_orders`, `ticket_attendees`, `ticket_sync_state`, `ticket_transfer_requests` |
 | **Users / Identity** | `UsersAdminDebugController`, `UnsubscribeController`, `LanguageController` | `AccountDeletionService`, `UserParticipationBackfillService`, `ExternalLoginService` | `UserService`, `AccountProvisioningService`, `UnsubscribeService`, `UserEmailProviderBackfillService`, *`CachingUserService`* | `UserRepository` | `AspNetUsers`, `AspNetUserClaims`, `AspNetUserLogins`, `AspNetUserTokens`, `AspNetRoles` (legacy), `AspNetUserRoles` (legacy) |
-| **Onboarding** | `OnboardingReviewController`, `OnboardingWidgetController`, `WelcomeController` | `OnboardingService` | — | — | — |
+| **Onboarding** | `OnboardingReviewController`, `OnboardingWidgetController` (`Humans.Onboarding.Controllers`), `WelcomeController` (Shell) | `OnboardingService` (`Humans.Onboarding.Services`, internal) | `OnboardingWidgetState` (`Humans.Onboarding.Services`, internal) | — | — (owns no tables; orchestrates Profiles, Consent, Teams and Governance through their service interfaces) |
 | **Human Lifecycle** | — (admin actions via `AdminController`) | `HumanLifecycleService` | — | — | — |
 | **Early Entry** | `EarlyEntryRosterController` | `EarlyEntryService` | *`CachingEarlyEntryService`* | — | — |
-| **Cantina** | `CantinaController` | `CantinaRosterService` | — | — | — (reads Shifts via `IShiftManagementService`) |
+| **Cantina** | `CantinaController` (`Humans.Cantina.Controllers`) | — | `CantinaRosterService` (`Humans.Cantina.Services`) | — | — (reads Shifts via `IShiftManagementService`; owns no tables) |
 | **Dashboard** | — (rendered on Home) | `DashboardService`, `AdminDashboardService` | — | — | — |
-| **Search** | `SearchController` | `SearchService` | — | — | — |
-| **Mailer** | — (background sync) | `MailerImportService`, `MailerAudienceSyncService` | `MailerLiteClient` | — | — (MailerLite is read-only; writes route through other sections) |
+| **Search** | `SearchController` (`Humans.Search.Controllers`, internal) | `SearchService` (`Humans.Search.Services`, internal) | — | — | — (owns no tables; fans out to Users, Teams, Camps, Shifts and Events through their service interfaces) |
+| **Mailer** | `MailerAdminController` (`Humans.Mailer.Controllers`) | `MailerImportService`, `MailerAudienceSyncService` | `MailerLiteClient` (`Humans.Mailer.Services.MailerLite`) | — | — (MailerLite is the system of record; in-Humans writes route through other sections' services) |
 | **Scanner** | `ScannerController` (`src/Sections/Humans.Scanner`) | — | — | — | — (presentational; owns no tables) |
 | **Tour** | `TourController` (`src/Sections/Humans.Tour`) | — | — | — | — (presentational; owns no tables) |
-| **Debug / Dev** | `DebugController`, `DevSeedController`, `LogApiController`, `ColorPaletteController`, `WidgetGalleryController`, `TimezoneApiController` | — | — | `AdminDatabaseDiagnosticsRepository` | — |
+| **Debug** | `DebugController` (`Humans.Debug.Controllers`), `LogApiController`, `ColorPaletteController`, `WidgetGalleryController`, `TimezoneApiController` | — | — | `AdminDatabaseDiagnosticsRepository` | — (Debug owns no tables; it reads in-memory trackers and `IAdminDatabaseDiagnosticsService`) |
+| **Development** | `DevLoginController`, `DevSeedController` (`Humans.Development.Controllers`) | — | `DevPersonaSeeder`, `DevelopmentCampRoleSeeder`, `DevelopmentDashboardSeeder` (`Humans.Development.Services`) — dev fixture seeders, not application services; registered outside Production only | — | — (dev-only tooling; owns no tables and writes only through other sections' services) |
 
 ## Cross-cutting concerns
 
@@ -104,9 +114,9 @@ The technical services the business verticals use. Per the hard rules these are 
 | Section | Controllers | Orchestrators | Services | Repositories | Tables |
 |---------|-------------|---------------|----------|--------------|--------|
 | **Audit Log** | `AuditLogController` | `AuditViewerService` | `AuditLogService` | `AuditLogRepository` | `audit_log` |
-| **Auth** | `AccountController`, `DevLoginController` | `MagicLinkService` | `RoleAssignmentService`, `AdminAuthorizationService`, *`CachingRoleAssignmentService`* | `RoleAssignmentRepository` | `role_assignments` |
+| **Auth** | `AccountController` | `MagicLinkService` | `RoleAssignmentService`, `AdminAuthorizationService`, *`CachingRoleAssignmentService`* | `RoleAssignmentRepository` | `role_assignments` |
 | **Notifications** | `NotificationsController` (`Humans.Notifications.Controllers`) | — | `NotificationService`, `NotificationEmitter`, `NotificationInboxService`, `NotificationMeterProvider` (`Humans.Notifications.Services`) | `NotificationRepository` / `INotificationRepository` (`Humans.Notifications.Data`) | `notifications`, `notification_recipients` |
-| **GDPR** | — (export/delete via `GuestController` / `ProfileController`) | `GdprExportService` | — | — | — |
+| **GDPR** | — (export download via Shell's `ProfileController` / `GuestController`) | `GdprExportService` (`Humans.Gdpr.Services`, internal) | — | — | — (owns no tables; fans out to every `IUserDataContributor` on `Humans.Gdpr.Contracts`) |
 | **Admin Shell** | `AdminController` (`/Admin` dashboard tile only) | — | `AdminNavTree`, `AdminSidebarViewComponent`, `AdminBreadcrumbViewComponent` (Web layer) | — | — (frame only; owns no tables) |
 
 ## Notes & known drift

@@ -1,7 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application.Services.AuditLog;
 using Humans.Application.Services.Camps;
-using Humans.Application.Services.Legal;
 using Humans.Application.Services.Shifts;
 using Microsoft.Extensions.Caching.Memory;
 
@@ -32,6 +31,7 @@ namespace Humans.Application.Tests.Architecture.Rules;
 ///   <item><c>Humans.Feedback.Services.FeedbackService</c> — feedback-badge count cache (nav badges)</item>
 ///   <item><see cref="ApplicationDecisionService"/> — voting-badge count cache (nav badges)</item>
 ///   <item><c>Humans.Finance.Services.Service</c> — Holded contact-list cache (nobodies-collective/Humans#976)</item>
+///   <item><c>Humans.Guide.Services.GuideContentService</c> — rendered guide-page cache</item>
 /// </list>
 /// Removed (caching moved to decorators):
 /// <list type="bullet">
@@ -51,7 +51,7 @@ public class ApplicationServicesTakeNoMemoryCacheRule
     [
         typeof(CampContactService),
         SectionType("Humans.Issues.Services.IssuesService"),  // CacheKeys.IssuesBadge(userId)
-        typeof(LegalDocumentService),
+        SectionType("Humans.Consent.Services.LegalDocumentService"),
         SectionType("Humans.Notifications.Services.NotificationEmitter"),
         SectionType("Humans.Notifications.Services.NotificationInboxService"),
         SectionType("Humans.Notifications.Services.NotificationMeterProvider"),
@@ -68,7 +68,24 @@ public class ApplicationServicesTakeNoMemoryCacheRule
         SectionType("Humans.Governance.Services.ApplicationDecisionService"),  // CacheKeys.VotingBadge(userId)
         // CacheKeys.HoldedContacts — 2-min TTL so /Finance/Creditors and /Expenses/{id} don't
         // call Holded live on every admin page load (nobodies-collective/Humans#976).
-        SectionType("Humans.Finance.Services.Service")
+        SectionType("Humans.Finance.Services.Service"),
+        // guide:<stem> — the rendered HTML of 28 markdown files fetched from GitHub, held
+        // with a sliding TTL from Guide:CacheTtlHours. Not an entity read, so §15's
+        // repository/decorator options do not apply: the service *is* the cache, and
+        // Guide owns no tables to decorate. Pre-existing and documented as accepted in the
+        // section's invariants doc; it entered this sweep at Guide's G5 move, because the
+        // rule scans Humans.Application plus the section assemblies and Guide's code used
+        // to sit in Humans.Infrastructure, which neither covers.
+        SectionType("Humans.Guide.Services.GuideContentService"),
+        // Not a cache at all: DevPersonaSeeder *evicts* one. Three calls to
+        // MemoryCacheExtensions.InvalidateUserAccess(userId) after it changes a dev persona's
+        // roles or team memberships — the same call Shell's GateTerminalAccountSeeder makes,
+        // and the eviction helper is an IMemoryCache extension, so there is no invalidator
+        // interface to inject instead. It entered this sweep at Development's G5 move for
+        // Guide's reason, one step further: the code is unchanged and used to sit in
+        // Humans.Web/Infrastructure, which the sweep covers neither before nor after. A move
+        // can put code into a sweep as easily as out of one.
+        SectionType("Humans.Development.Services.DevPersonaSeeder")
     ];
 
     /// <summary>

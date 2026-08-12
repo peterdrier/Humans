@@ -1,6 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application;
-using Humans.Application.Interfaces.Consent;
+using Humans.Consent.Contracts;
 using Humans.Application.Interfaces.EarlyEntry;
 using Humans.Events.Contracts;
 using Humans.Application.Interfaces.ICalFeed;

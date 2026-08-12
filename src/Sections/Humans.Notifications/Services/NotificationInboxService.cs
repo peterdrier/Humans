@@ -1,7 +1,7 @@
 using Humans.Application;
 using Humans.Notifications.Data;
 using Humans.Application.Extensions;
-using Humans.Application.Interfaces.Gdpr;
+using Humans.Gdpr.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Notifications.Domain;
 using Humans.Notifications.Contracts;

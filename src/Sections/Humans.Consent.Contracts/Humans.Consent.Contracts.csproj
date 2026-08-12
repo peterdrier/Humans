@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Consent's cross-section surface, carved into its own leaf project because most of its
+    consumers are still in Base: Humans.Application's OnboardingService and
+    OnboardingWidgetState read IConsentServiceRead, AccountMergeService evicts through
+    IConsentCacheInvalidator, and Humans.Infrastructure's SyncLegalDocumentsJob /
+    SendReConsentReminderJob / HumansMetricsService drive ILegalDocumentSyncRunner and
+    ILegalDocumentSyncServiceRead. A Contracts/ *folder* inside Humans.Consent would
+    therefore make Base reference a section and cycle (design §15.5b,
+    memory/architecture/section-project-cycle-fix.md).
+
+    ConsentReviewFormViewModel is here for the reason step 3b's "move the markup" case
+    does not apply: the onboarding widget's Consents step is Onboarding's view over
+    Consent's form, so Shell constructs the model for the section's
+    _ConsentReviewBody partial. It names no ASP.NET type.
+
+    Everything with no consumer outside the section stays internal: the admin
+    legal-document surface, the GitHub connector, the sync service's write half, the
+    consent dashboard, both repositories and all three entities.
+
+    References Humans.Interfaces (IApplicationService, IInvalidator) and NodaTime
+    (Instant on the snapshots). Both sit below Humans.Application, so the graph stays
+    acyclic.
+  -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NodaTime" />
+  </ItemGroup>
+
+</Project>

@@ -214,7 +214,7 @@ graph LR
     CampRole --> NotifEmitter
     CampRole --> Audit
 
-    %% Cantina section (own thin section, registered via Shifts ext)
+    %% Cantina section (own project since G5; registered by its own Section.Register)
     %% CantinaRosterService also reads IBurnSettingsService (gate-open cutoff for the
     %% on-site cohort window) — missing from the prior diagram; added this sweep.
     Cantina --> ShiftMgmt
@@ -542,7 +542,7 @@ graph LR
     MailerImport --> AcctProv
     MailerImport --> CommPref
     MailerImport --> Audit
-    %% Mailer audience classes (Services/Mailer/Audiences) are IMailerAudience implementations
+    %% Mailer audience classes (Humans.Mailer/Services/Audiences) are IMailerAudience implementations
     %% fanned into MailerAudienceSyncService via IEnumerable<IMailerAudience>. Each audience
     %% ctor-injects IUserServiceRead / IShiftView / ITicketServiceRead directly — per-audience
     %% deps, not MailerSync ctor edges, so they are not drawn as MailerSync arrows.

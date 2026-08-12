@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Email's cross-section surface, carved into its own leaf project because almost all of
+    its consumers are still in Base: nine Humans.Application services and six
+    Humans.Infrastructure jobs build messages through IEmailMessageFactory and send them
+    through IEmailService, Shell's ProfileController and UsersAdminController read a
+    human's outbox through IEmailOutboxServiceRead, and ProcessEmailOutboxJob /
+    CleanupEmailOutboxJob drive IEmailOutboxProcessor / IEmailOutboxRetention. A
+    Contracts/ *folder* inside Humans.Email would therefore make Base reference a section
+    and cycle (design §15.5b, memory/architecture/section-project-cycle-fix.md).
+
+    IImmediateOutboxProcessor is here for the opposite reason: Base *implements* it
+    (HangfireImmediateOutboxProcessor enqueues the recurring job), and the section's
+    OutboxEmailService consumes it.
+
+    Everything with no consumer outside the section stays internal: the outbox admin
+    surface (IEmailOutboxService), the renderer, the body composer, the SMTP transport,
+    the repository and the entity.
+
+    References Humans.Interfaces (IApplicationService), Humans.Domain (MembershipTier,
+    MessageCategory and EmailOutboxStatus — Base vocabulary the DTOs name, Campaigns'
+    rule), and Humans.Events.Contracts (EventStatus, named by EventLifecycleNotification).
+    All three sit below Humans.Application, so the graph stays acyclic.
+  -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
+    <ProjectReference Include="..\..\Humans.Domain\Humans.Domain.csproj" />
+    <ProjectReference Include="..\Humans.Events.Contracts\Humans.Events.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NodaTime" />
+  </ItemGroup>
+
+</Project>

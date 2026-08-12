@@ -26,11 +26,15 @@
     -->
     <ProjectReference Include="..\Sections\Humans.Agent.Contracts\Humans.Agent.Contracts.csproj" />
     <ProjectReference Include="..\Sections\Humans.Budget.Contracts\Humans.Budget.Contracts.csproj" />
+    <ProjectReference Include="..\Sections\Humans.Consent.Contracts\Humans.Consent.Contracts.csproj" />
+    <ProjectReference Include="..\Sections\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
     <ProjectReference Include="..\Sections\Humans.Expenses.Contracts\Humans.Expenses.Contracts.csproj" />
     <ProjectReference Include="..\Sections\Humans.Gate.Contracts\Humans.Gate.Contracts.csproj" />
     <ProjectReference Include="..\Sections\Humans.Governance.Contracts\Humans.Governance.Contracts.csproj" />
     <ProjectReference Include="..\Sections\Humans.Issues.Contracts\Humans.Issues.Contracts.csproj" />
+    <ProjectReference Include="..\Sections\Humans.Mailer.Contracts\Humans.Mailer.Contracts.csproj" />
     <ProjectReference Include="..\Sections\Humans.Notifications.Contracts\Humans.Notifications.Contracts.csproj" />
+    <ProjectReference Include="..\Sections\Humans.Onboarding.Contracts\Humans.Onboarding.Contracts.csproj" />
     <ProjectReference Include="..\Sections\Humans.Surveys.Contracts\Humans.Surveys.Contracts.csproj" />
   </ItemGroup>
 
@@ -39,7 +43,6 @@
     <PackageReference Include="Hangfire.PostgreSql" />
     <PackageReference Include="Ical.Net" />
     <PackageReference Include="MailKit" />
-    <PackageReference Include="Markdig" />
     <PackageReference Include="MyCSharp.HttpUserAgentParser" />
     <PackageReference Include="Microsoft.Extensions.Localization" />
     <PackageReference Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore" />

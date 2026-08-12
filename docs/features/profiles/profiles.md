@@ -1,6 +1,6 @@
 <!-- freshness:triggers
   src/Humans.Application/Services/Profiles/**
-  src/Humans.Application/Services/Gdpr/**
+  src/Sections/Humans.Gdpr/**
   src/Humans.Web/Controllers/ProfileController.cs
   src/Humans.Web/Controllers/ProfileApiController.cs
   src/Humans.Web/Views/Profile/**

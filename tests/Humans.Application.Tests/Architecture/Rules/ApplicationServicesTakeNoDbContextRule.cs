@@ -15,10 +15,10 @@ namespace Humans.Application.Tests.Architecture.Rules;
 /// implementations. A service that directly injects a DbContext bypasses the
 /// repository boundary, violating design-rules §3.
 ///
-/// Reflects over the Application assembly (via an anchor type) to find every
-/// non-abstract class whose namespace starts with
-/// <c>Humans.Application.Services.</c> and checks its public constructor
-/// parameters. Abstract classes and the repository layer are excluded.
+/// Reflects over the Application assembly (via an anchor type) and over every
+/// G5 section assembly to find each non-abstract class in a <c>*.Services</c>
+/// namespace, and checks its public constructor parameters. Abstract classes
+/// and the repository layer are excluded.
 ///
 /// This rule generalises per-section tests such as
 /// <c>AuditLogService_HasNoDbContextConstructorParameter</c> — those can be
@@ -29,13 +29,21 @@ public class ApplicationServicesTakeNoDbContextRule
     [HumansFact]
     public void Application_services_do_not_take_HumansDbContext()
     {
-        // Anchor: any Application type gives us the assembly to scan.
-        var appAssembly = typeof(AuditLogService).Assembly;
+        // Scan Humans.Application *and* every G5 section assembly, the way the sibling
+        // IMemoryCache rule already does. Anchored on Humans.Application alone, this rule kept
+        // passing while covering one section fewer at every G5 move — the §10 silent-drop
+        // shape, and the same bug Campaigns found in DisplaySortInControllersRule and Email
+        // found in NoDestructiveMigrationOpsRule (nobodies-collective/Humans#866). Widening it
+        // surfaced no violation, so the cost of being right here was nothing.
+        var assemblies = new[] { typeof(AuditLogService).Assembly }
+            .Concat(Web.Extensions.SectionDiscoveryExtensions.SectionAssemblies());
 
-        var violations = appAssembly
-            .GetTypes()
+        var violations = assemblies
+            .SelectMany(a => a.GetTypes())
             .Where(t => t.IsClass && !t.IsAbstract)
-            .Where(t => t.Namespace?.StartsWith("Humans.Application.Services.", StringComparison.Ordinal) == true)
+            .Where(t => t.Namespace?.StartsWith("Humans.Application.Services.", StringComparison.Ordinal) == true
+                     || (t.Namespace?.StartsWith("Humans.", StringComparison.Ordinal) == true
+                         && t.Namespace.EndsWith(".Services", StringComparison.Ordinal)))
             .SelectMany(t =>
                 t.GetConstructors()
                     .SelectMany(c => c.GetParameters())

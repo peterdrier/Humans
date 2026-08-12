@@ -1031,118 +1031,6 @@
   <data name="Application_Withdrawn" xml:space="preserve">
     <value>Ihr Antrag wurde zurückgezogen.</value>
   </data>
-  <data name="ConsentIndex_Title" xml:space="preserve">
-    <value>Vereinbarungen</value>
-  </data>
-  <data name="ConsentReview_Title" xml:space="preserve">
-    <value>Prüfung: {0}</value>
-    <comment>{0} = document name</comment>
-  </data>
-  <data name="ConsentReview_Progress" xml:space="preserve">
-    <value>Dokument {0} von {1}</value>
-    <comment>{0} = current document index, {1} = total required documents</comment>
-  </data>
-  <data name="Consent_RequiredDocuments" xml:space="preserve">
-    <value>Erforderliche Dokumente</value>
-  </data>
-  <data name="Consent_NoDocumentsRequired" xml:space="preserve">
-    <value>Derzeit sind keine Einwilligungen für Dokumente erforderlich.</value>
-  </data>
-  <data name="Consent_Version" xml:space="preserve">
-    <value>Version</value>
-  </data>
-  <data name="Consent_EffectiveFrom" xml:space="preserve">
-    <value>Gültig ab</value>
-  </data>
-  <data name="Consent_Consented" xml:space="preserve">
-    <value>Zugestimmt</value>
-  </data>
-  <data name="Consent_ReviewAndConsent" xml:space="preserve">
-    <value>Prüfen &amp; Zustimmen</value>
-  </data>
-  <data name="Consent_PendingCount" xml:space="preserve">
-    <value>{0} Dokument(e) erfordern Ihre Einwilligung. Bitte prüfen und stimmen Sie zu, um Ihre aktive Mitgliedschaft aufrechtzuerhalten.</value>
-    <comment>{0} = pending document count</comment>
-  </data>
-  <data name="Consent_AllConsented" xml:space="preserve">
-    <value>Sie haben allen erforderlichen Dokumenten zugestimmt.</value>
-  </data>
-  <data name="Consent_ActionRequired" xml:space="preserve">
-    <value>Handlung erforderlich</value>
-  </data>
-  <data name="Consent_LastUpdated" xml:space="preserve">
-    <value>Zuletzt aktualisiert</value>
-  </data>
-  <data name="Consent_History" xml:space="preserve">
-    <value>Einwilligungsverlauf</value>
-  </data>
-  <data name="Consent_NoRecords" xml:space="preserve">
-    <value>Noch keine Einwilligungsnachweise vorhanden.</value>
-  </data>
-  <data name="Consent_AboutTitle" xml:space="preserve">
-    <value>Über Einwilligungen</value>
-  </data>
-  <data name="Consent_AboutDescription" xml:space="preserve">
-    <value>Mit Ihrer Zustimmung zu diesen Dokumenten erklären Sie sich mit deren Bedingungen einverstanden. Die spanische Fassung ist der rechtsverbindliche Text. Englische Übersetzungen dienen ausschließlich der Verständlichkeit.</value>
-  </data>
-  <data name="ConsentReview_AlreadyConsented" xml:space="preserve">
-    <value>Bereits zugestimmt</value>
-  </data>
-  <data name="ConsentReview_ChangesInVersion" xml:space="preserve">
-    <value>Änderungen in dieser Version:</value>
-  </data>
-  <data name="ConsentReview_Important" xml:space="preserve">
-    <value>Wichtig:</value>
-  </data>
-  <data name="ConsentReview_SpanishIsLegal" xml:space="preserve">
-    <value>Die nachstehende spanische Fassung ist der rechtsverbindliche Text. Die englische Übersetzung dient ausschließlich Ihrer Information und ist rechtlich nicht bindend.</value>
-  </data>
-  <data name="ConsentReview_SpanishTab" xml:space="preserve">
-    <value>Spanisch (Rechtsverbindlich)</value>
-  </data>
-  <data name="ConsentReview_EnglishTab" xml:space="preserve">
-    <value>Englisch (Übersetzung)</value>
-  </data>
-  <data name="ConsentReview_ContentNotAvailable" xml:space="preserve">
-    <value>Inhalt nicht verfügbar.</value>
-  </data>
-  <data name="ConsentReview_EnglishNotAvailable" xml:space="preserve">
-    <value>Englische Übersetzung nicht verfügbar.</value>
-  </data>
-  <data name="ConsentReview_TranslationDisclaimer" xml:space="preserve">
-    <value>Diese Übersetzung dient ausschließlich der Verständlichkeit. Die spanische Fassung ist rechtsverbindlich.</value>
-  </data>
-  <data name="ConsentReview_ConsentCheckbox" xml:space="preserve">
-    <value>Ich habe dieses Dokument gelesen und verstanden und erkläre mich mit dessen Bedingungen einverstanden.</value>
-  </data>
-  <data name="ConsentReview_SpanishLegalNote" xml:space="preserve">
-    <value>Ich verstehe, dass die spanische Fassung der rechtsverbindliche Text ist.</value>
-  </data>
-  <data name="ConsentReview_BackToList" xml:space="preserve">
-    <value>Zurück zur Liste</value>
-  </data>
-  <data name="ConsentReview_GiveConsent" xml:space="preserve">
-    <value>Einwilligung erteilen</value>
-  </data>
-  <data name="ConsentReview_CheckboxRequired" xml:space="preserve">
-    <value>Bitte aktivieren Sie dieses Kontrollkästchen, um zu bestätigen, dass Sie die Bedingungen gelesen haben und ihnen zustimmen.</value>
-  </data>
-  <data name="Consent_MustCheck" xml:space="preserve">
-    <value>Sie müssen das Einwilligungsfeld ankreuzen, um fortzufahren.</value>
-  </data>
-  <data name="Consent_AlreadyConsented" xml:space="preserve">
-    <value>Sie haben diesem Dokument bereits zugestimmt.</value>
-  </data>
-  <data name="Consent_ThankYou" xml:space="preserve">
-    <value>Vielen Dank für Ihre Einwilligung zu {0}.</value>
-    <comment>{0} = document name</comment>
-  </data>
-  <data name="Consent_SubmitError" xml:space="preserve">
-    <value>Beim Speichern Ihrer Einwilligung ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut.</value>
-  </data>
-  <data name="Consent_StubProfile_AddName" xml:space="preserve">
-    <value>Bitte tragen Sie Ihren amtlichen Namen ein, bevor Sie Einwilligungen unterzeichnen.</value>
-  </data>
   <data name="Teams_Title" xml:space="preserve">
     <value>Teams</value>
   </data>
@@ -1520,55 +1408,6 @@
   </data>
   <data name="Admin_GoogleSyncFailed" xml:space="preserve">
     <value>Synchronisierung fehlgeschlagen. Prüfen Sie die Protokolle für Details.</value>
-  </data>
-  <data name="Email_ApplicationSubmitted_Subject" xml:space="preserve">
-    <value>Neuer Mitgliedschaftsantrag: {0}</value>
-    <comment>{0} = applicant name</comment>
-  </data>
-  <data name="Email_ApplicationApproved_Subject" xml:space="preserve">
-    <value>Willkommen bei Humans!</value>
-  </data>
-  <data name="Email_ApplicationApproved_Heading" xml:space="preserve">
-    <value>Ihr Antrag wurde genehmigt!</value>
-  </data>
-  <data name="Email_ApplicationRejected_Subject" xml:space="preserve">
-    <value>Bezüglich Ihres Mitgliedschaftsantrags</value>
-  </data>
-  <data name="Email_SignupRejected_Subject" xml:space="preserve">
-    <value>Bezüglich Ihrer Anmeldung</value>
-  </data>
-  <data name="Email_ReConsentRequired_Subject_Single" xml:space="preserve">
-    <value>Handlungsbedarf: Aktualisiertes Dokument {0}</value>
-    <comment>{0} = document name</comment>
-  </data>
-  <data name="Email_ReConsentRequired_Subject_Multiple" xml:space="preserve">
-    <value>Handlungsbedarf: Mehrere rechtliche Dokumente aktualisiert</value>
-  </data>
-  <data name="Email_ReConsentReminder_Subject" xml:space="preserve">
-    <value>Erinnerung: Noch {0} Tage zur Prüfung aktualisierter Dokumente</value>
-    <comment>{0} = days remaining</comment>
-  </data>
-  <data name="Email_Welcome_Subject" xml:space="preserve">
-    <value>Willkommen bei Humans!</value>
-  </data>
-  <data name="Email_Welcome_Heading" xml:space="preserve">
-    <value>Willkommen!</value>
-  </data>
-  <data name="Email_AccessSuspended_Subject" xml:space="preserve">
-    <value>Ihr Mitgliedschaftszugang wurde gesperrt</value>
-  </data>
-  <data name="Email_VerifyEmail_Subject" xml:space="preserve">
-    <value>Bestätigen Sie Ihre E-Mail-Adresse</value>
-  </data>
-  <data name="Email_DeletionRequested_Subject" xml:space="preserve">
-    <value>Kontolöschung beantragt</value>
-  </data>
-  <data name="Email_AccountDeleted_Subject" xml:space="preserve">
-    <value>Ihr Konto wurde gelöscht</value>
-  </data>
-  <data name="Email_AddedToTeam_Subject" xml:space="preserve">
-    <value>Sie wurden dem Team {0} hinzugefügt</value>
-    <comment>{0} = team name</comment>
   </data>
   <data name="MyTeams_LeaveConfirm" xml:space="preserve">
     <value>Sind Sie sicher, dass Sie {0} verlassen möchten?</value>
@@ -2215,123 +2054,6 @@
   <data name="Profile_WhatsApp" xml:space="preserve">
     <value>WhatsApp</value>
   </data>
-  <data name="OnboardingReview_Title" xml:space="preserve">
-    <value>Onboarding-Prüfwarteschlange</value>
-  </data>
-  <data name="OnboardingReview_DetailTitle" xml:space="preserve">
-    <value>Prüfung: {0}</value>
-  </data>
-  <data name="OnboardingReview_NoPending" xml:space="preserve">
-    <value>Keine Humans warten auf eine Prüfung.</value>
-  </data>
-  <data name="OnboardingReview_PendingSection" xml:space="preserve">
-    <value>Ausstehende Prüfung</value>
-  </data>
-  <data name="OnboardingReview_FlaggedSection" xml:space="preserve">
-    <value>Zur Nachverfolgung markiert</value>
-  </data>
-  <data name="OnboardingReview_FlaggedBadge" xml:space="preserve">
-    <value>Markiert</value>
-  </data>
-  <data name="OnboardingReview_ProfileSummary" xml:space="preserve">
-    <value>Profilübersicht</value>
-  </data>
-  <data name="OnboardingReview_NewHumanSummary" xml:space="preserve">
-    <value>Neuer Human – Zusammenfassung</value>
-  </data>
-  <data name="OnboardingReview_LegalName" xml:space="preserve">
-    <value>Bürgerlicher Name</value>
-  </data>
-  <data name="OnboardingReview_HasApplication" xml:space="preserve">
-    <value>Hat Antrag</value>
-  </data>
-  <data name="OnboardingReview_Consents" xml:space="preserve">
-    <value>Einwilligungen</value>
-  </data>
-  <data name="OnboardingReview_Signed" xml:space="preserve">
-    <value>unterzeichnet</value>
-  </data>
-  <data name="OnboardingReview_ApplicationMotivation" xml:space="preserve">
-    <value>Antragsmotivation</value>
-  </data>
-  <data name="OnboardingReview_PreviousNotes" xml:space="preserve">
-    <value>Frühere Prüfnotizen</value>
-  </data>
-  <data name="OnboardingReview_Actions" xml:space="preserve">
-    <value>Aktionen</value>
-  </data>
-  <data name="OnboardingReview_NotesPlaceholder" xml:space="preserve">
-    <value>Optionale Notizen...</value>
-  </data>
-  <data name="OnboardingReview_ClearButton" xml:space="preserve">
-    <value>Freigeben &amp; Genehmigen</value>
-  </data>
-  <data name="OnboardingReview_ClearHelp" xml:space="preserve">
-    <value>Genehmigt die Profilüberprüfung. Der Human tritt Freiwilligen bei, wenn auch die rechtlichen Dokumente unterzeichnet sind.</value>
-  </data>
-  <data name="OnboardingReview_ClearConfirm" xml:space="preserve">
-    <value>Die Profilüberprüfung dieses Humans wird freigegeben. Fortfahren?</value>
-  </data>
-  <data name="OnboardingReview_FlagButton" xml:space="preserve">
-    <value>Zur Prüfung markieren</value>
-  </data>
-  <data name="OnboardingReview_FlagReasonPlaceholder" xml:space="preserve">
-    <value>Grund der Markierung...</value>
-  </data>
-  <data name="OnboardingReview_FlagConfirm" xml:space="preserve">
-    <value>Dieser Human wird zur weiteren Prüfung markiert. Fortfahren?</value>
-  </data>
-  <data name="OnboardingReview_AlreadyCleared" xml:space="preserve">
-    <value>Dieser Human wurde bereits freigegeben.</value>
-  </data>
-  <data name="OnboardingReview_Cleared" xml:space="preserve">
-    <value>Profilüberprüfung freigegeben.</value>
-  </data>
-  <data name="OnboardingReview_BulkClearedNone" xml:space="preserve">
-    <value>Keine ausgewählten Humans wurden freigegeben.</value>
-  </data>
-  <data name="OnboardingReview_BulkCleared" xml:space="preserve">
-    <value>{0} ausgewählte Humans freigegeben.</value>
-  </data>
-  <data name="OnboardingReview_BulkClearedPartial" xml:space="preserve">
-    <value>{0} von {1} ausgewählten freigegeben — die anderen sind nicht mehr berechtigt.</value>
-  </data>
-  <data name="OnboardingReview_BulkClearButton" xml:space="preserve">
-    <value>Alle ausgewählten freigeben</value>
-  </data>
-  <data name="OnboardingReview_Flagged" xml:space="preserve">
-    <value>Human zur weiteren Prüfung markiert.</value>
-  </data>
-  <data name="OnboardingReview_RejectButton" xml:space="preserve">
-    <value>Anmeldung ablehnen</value>
-  </data>
-  <data name="OnboardingReview_RejectReasonPlaceholder" xml:space="preserve">
-    <value>Ablehnungsgrund...</value>
-  </data>
-  <data name="OnboardingReview_RejectConfirm" xml:space="preserve">
-    <value>Sind Sie sicher, dass Sie die Anmeldung dieses Humans ablehnen möchten? Dies kann nicht rückgängig gemacht werden.</value>
-  </data>
-  <data name="OnboardingReview_RejectHelp" xml:space="preserve">
-    <value>Die Ablehnung verweigert die Anmeldung dieses Humans dauerhaft und sendet eine Benachrichtigungs-E-Mail.</value>
-  </data>
-  <data name="OnboardingReview_Rejected" xml:space="preserve">
-    <value>Die Anmeldung wurde abgelehnt.</value>
-  </data>
-  <data name="OnboardingReview_AlreadyRejected" xml:space="preserve">
-    <value>Dieser Human wurde bereits abgelehnt.</value>
-  </data>
-  <data name="OnboardingReview_LegalDocuments" xml:space="preserve">
-    <value>Rechtliche Dokumente</value>
-  </data>
-  <data name="OnboardingReview_DocsComplete" xml:space="preserve">
-    <value>Vollständig</value>
-  </data>
-  <data name="OnboardingReview_DocsPending" xml:space="preserve">
-    <value>Ausstehend</value>
-  </data>
-  <data name="OnboardingReview_DocsNote" xml:space="preserve">
-    <value>Die Profilüberprüfung kann unabhängig erfolgen. Der Human tritt Freiwilligen bei, wenn alle Dokumente unterzeichnet sind.</value>
-  </data>
   <data name="Nav_BoardVoting" xml:space="preserve">
     <value>Vorstandsabstimmung</value>
   </data>
@@ -2348,163 +2070,6 @@
   </data>
   <data name="Dashboard_RenewNow" xml:space="preserve">
     <value>Jetzt verlängern</value>
-  </data>
-  <data name="Email_TermRenewalReminder_Subject" xml:space="preserve">
-    <value>Deine {0}-Mitgliedschaft läuft bald aus</value>
-    <comment>{0} = tier name</comment>
-  </data>
-  <data name="Email_ReasonLine" xml:space="preserve">
-    <value>&lt;p&gt;&lt;strong&gt;Grund:&lt;/strong&gt; {0}&lt;/p&gt;</value>
-    <comment>{0} = reason text (HTML-encoded by caller)</comment>
-  </data>
-  <data name="Email_ResourcesSection" xml:space="preserve">
-    <value>&lt;p&gt;Dein Team hat folgende Ressourcen:&lt;/p&gt;&lt;ul&gt;{0}&lt;/ul&gt;</value>
-    <comment>{0} = resource list items HTML</comment>
-  </data>
-  <data name="Email_ApplicationSubmitted_Body" xml:space="preserve">
-    <value>&lt;h2&gt;Neuer Mitgliedschaftsantrag&lt;/h2&gt;
-&lt;p&gt;Ein neuer Mitgliedschaftsantrag wurde eingereicht.&lt;/p&gt;
-&lt;ul&gt;
-    &lt;li&gt;&lt;strong&gt;Antragsteller:&lt;/strong&gt; {0}&lt;/li&gt;
-    &lt;li&gt;&lt;strong&gt;Antrags-ID:&lt;/strong&gt; {1}&lt;/li&gt;
-&lt;/ul&gt;
-&lt;p&gt;&lt;a href="{2}/Governance/Applications/Admin/{1}"&gt;Antrag prüfen&lt;/a&gt;&lt;/p&gt;</value>
-    <comment>{0} = applicant name, {1} = application ID, {2} = base URL</comment>
-  </data>
-  <data name="Email_ApplicationApproved_Body" xml:space="preserve">
-    <value>&lt;h2&gt;Dein Antrag wurde genehmigt!&lt;/h2&gt;
-&lt;p&gt;Hallo {0},&lt;/p&gt;
-&lt;p&gt;Wir freuen uns, dir mitteilen zu können, dass dein {1}-Antrag genehmigt wurde. Willkommen bei Humans!&lt;/p&gt;
-&lt;p&gt;Du kannst jetzt auf dein Profil zugreifen und Teams erkunden:&lt;/p&gt;
-&lt;ul&gt;
-    &lt;li&gt;&lt;a href="{2}/Profile"&gt;Dein Profil ansehen&lt;/a&gt;&lt;/li&gt;
-    &lt;li&gt;&lt;a href="{2}/Teams"&gt;Teams durchsuchen&lt;/a&gt;&lt;/li&gt;
-    &lt;li&gt;&lt;a href="{2}/Consent"&gt;Rechtliche Dokumente prüfen&lt;/a&gt;&lt;/li&gt;
-&lt;/ul&gt;
-&lt;p&gt;Bei Fragen zögere nicht, uns zu kontaktieren.&lt;/p&gt;
-&lt;p&gt;Willkommen!&lt;br/&gt;Das Humans-Team&lt;/p&gt;</value>
-    <comment>{0} = user name, {1} = tier, {2} = base URL</comment>
-  </data>
-  <data name="Email_ApplicationRejected_Body" xml:space="preserve">
-    <value>&lt;h2&gt;Aktualisierung zum Antrag&lt;/h2&gt;
-&lt;p&gt;Hallo {0},&lt;/p&gt;
-&lt;p&gt;Vielen Dank für dein Interesse. Nach sorgfältiger Prüfung müssen wir dir leider mitteilen, dass wir deinen {1}-Antrag derzeit nicht genehmigen können.&lt;/p&gt;
-{2}
-&lt;p&gt;Bei Fragen oder wenn du diese Entscheidung besprechen möchtest, kontaktiere uns unter &lt;a href="mailto:{3}"&gt;{3}&lt;/a&gt;.&lt;/p&gt;
-&lt;p&gt;Mit freundlichen Grüßen,&lt;br/&gt;Das Humans-Team&lt;/p&gt;</value>
-    <comment>{0} = user name, {1} = tier, {2} = reason HTML (or empty), {3} = admin email</comment>
-  </data>
-  <data name="Email_SignupRejected_Body" xml:space="preserve">
-    <value>&lt;h2&gt;Aktualisierung zur Anmeldung&lt;/h2&gt;
-&lt;p&gt;Hallo {0},&lt;/p&gt;
-&lt;p&gt;Vielen Dank für dein Interesse. Nach sorgfältiger Prüfung müssen wir dir leider mitteilen, dass wir deine Anmeldung derzeit nicht genehmigen können.&lt;/p&gt;
-{1}
-&lt;p&gt;Bei Fragen oder wenn du diese Entscheidung besprechen möchtest, kontaktiere uns unter &lt;a href="mailto:{2}"&gt;{2}&lt;/a&gt;.&lt;/p&gt;
-&lt;p&gt;Mit freundlichen Grüßen,&lt;br/&gt;Das Humans-Team&lt;/p&gt;</value>
-    <comment>{0} = user name, {1} = reason HTML (or empty), {2} = admin email</comment>
-  </data>
-  <data name="Email_ReConsentsRequired_Body" xml:space="preserve">
-    <value>&lt;h2&gt;Aktualisierung rechtlicher Dokumente&lt;/h2&gt;
-&lt;p&gt;Hallo {0},&lt;/p&gt;
-&lt;p&gt;Wir haben die folgenden erforderlichen Dokumente aktualisiert:&lt;/p&gt;
-&lt;ul&gt;
-    {1}
-&lt;/ul&gt;
-&lt;p&gt;Als Human musst du diese aktualisierten Dokumente prüfen und akzeptieren, um deinen aktiven Status zu behalten.&lt;/p&gt;
-&lt;p&gt;&lt;a href="{2}/Consent"&gt;Prüfen und akzeptieren&lt;/a&gt;&lt;/p&gt;
-&lt;p&gt;Bei Fragen zu den Änderungen kontaktiere uns bitte.&lt;/p&gt;
-&lt;p&gt;Danke,&lt;br/&gt;Das Humans-Team&lt;/p&gt;</value>
-    <comment>{0} = user name, {1} = document list items HTML, {2} = base URL</comment>
-  </data>
-  <data name="Email_ReConsentReminder_Body" xml:space="preserve">
-    <value>&lt;h2&gt;Erinnerung zur Zustimmung&lt;/h2&gt;
-&lt;p&gt;Hallo {0},&lt;/p&gt;
-&lt;p&gt;Dies ist eine Erinnerung, dass du noch &lt;strong&gt;{1} Tage&lt;/strong&gt; Zeit hast, die folgenden aktualisierten Dokumente zu prüfen und zu akzeptieren:&lt;/p&gt;
-&lt;ul&gt;
-    {2}
-&lt;/ul&gt;
-&lt;p&gt;Wenn du diese Dokumente nicht vor Ablauf der Frist akzeptierst, kann dein Zugang vorübergehend gesperrt werden.&lt;/p&gt;
-&lt;p&gt;&lt;a href="{3}/Consent"&gt;Dokumente jetzt prüfen&lt;/a&gt;&lt;/p&gt;
-&lt;p&gt;Danke,&lt;br/&gt;Das Humans-Team&lt;/p&gt;</value>
-    <comment>{0} = user name, {1} = days remaining, {2} = document list items HTML, {3} = base URL</comment>
-  </data>
-  <data name="Email_Welcome_Body" xml:space="preserve">
-    <value>&lt;h2&gt;Willkommen!&lt;/h2&gt;
-&lt;p&gt;Hallo {0},&lt;/p&gt;
-&lt;p&gt;Willkommen im Humans-Portal!&lt;/p&gt;
-&lt;p&gt;Das kannst du tun:&lt;/p&gt;
-&lt;ul&gt;
-    &lt;li&gt;&lt;a href="{1}/Profile"&gt;Dein Profil vervollständigen&lt;/a&gt;&lt;/li&gt;
-    &lt;li&gt;&lt;a href="{1}/Teams"&gt;Teams und Arbeitsgruppen beitreten&lt;/a&gt;&lt;/li&gt;
-    &lt;li&gt;&lt;a href="{1}/Consent"&gt;Rechtliche Dokumente prüfen&lt;/a&gt;&lt;/li&gt;
-&lt;/ul&gt;
-&lt;p&gt;Bei Fragen melde dich gerne bei uns.&lt;/p&gt;
-&lt;p&gt;Mit freundlichen Grüßen,&lt;br/&gt;Das Humans-Team&lt;/p&gt;</value>
-    <comment>{0} = user name, {1} = base URL</comment>
-  </data>
-  <data name="Email_AccessSuspended_Body" xml:space="preserve">
-    <value>&lt;h2&gt;Zugang gesperrt&lt;/h2&gt;
-&lt;p&gt;Hallo {0},&lt;/p&gt;
-&lt;p&gt;Dein Zugang wurde vorübergehend gesperrt.&lt;/p&gt;
-&lt;p&gt;&lt;strong&gt;Grund:&lt;/strong&gt; {1}&lt;/p&gt;
-&lt;p&gt;Um deinen Zugang wiederherzustellen, führe bitte die erforderliche Aktion durch:&lt;/p&gt;
-&lt;ul&gt;
-    &lt;li&gt;&lt;a href="{2}/Consent"&gt;Ausstehende Zustimmungsanforderungen prüfen&lt;/a&gt;&lt;/li&gt;
-&lt;/ul&gt;
-&lt;p&gt;Wenn du glaubst, dass es sich um einen Fehler handelt, kontaktiere uns unter &lt;a href="mailto:{3}"&gt;{3}&lt;/a&gt;.&lt;/p&gt;
-&lt;p&gt;Das Humans-Team&lt;/p&gt;</value>
-    <comment>{0} = user name, {1} = reason, {2} = base URL, {3} = admin email</comment>
-  </data>
-  <data name="Email_EmailVerification_Body" xml:space="preserve">
-    <value>&lt;h2&gt;E-Mail-Verifizierung&lt;/h2&gt;
-&lt;p&gt;Hallo {0},&lt;/p&gt;
-&lt;p&gt;Du hast angefordert, &lt;strong&gt;{1}&lt;/strong&gt; als bevorzugte E-Mail-Adresse festzulegen.&lt;/p&gt;
-&lt;p&gt;Klicke auf den folgenden Link, um diese E-Mail-Adresse zu verifizieren:&lt;/p&gt;
-&lt;p&gt;&lt;a href="{2}" style="display:inline-block; padding:12px 24px; background-color:#0d6efd; color:#ffffff; text-decoration:none; border-radius:6px; font-weight:bold; font-size:16px;"&gt;E-Mail-Adresse verifizieren&lt;/a&gt;&lt;/p&gt;
-&lt;p&gt;Dieser Link läuft in 24 Stunden ab.&lt;/p&gt;
-&lt;p&gt;Wenn du diese Änderung nicht angefordert hast, kannst du diese E-Mail ignorieren.&lt;/p&gt;
-&lt;p&gt;Das Humans-Team&lt;/p&gt;</value>
-    <comment>{0} = user name, {1} = email address, {2} = verification URL</comment>
-  </data>
-  <data name="Email_EmailVerification_Merge_Body" xml:space="preserve">
-    <value>&lt;h2&gt;Kontoverknüpfung bestätigen&lt;/h2&gt;&lt;p&gt;Hallo {0},&lt;/p&gt;&lt;p&gt;Du hast angefordert, &lt;strong&gt;{1}&lt;/strong&gt; zu deinem Konto hinzuzufügen. Diese E-Mail-Adresse ist derzeit mit einem anderen Konto verknüpft.&lt;/p&gt;&lt;p&gt;Wenn du diese E-Mail bestätigst, wird eine Zusammenführungsanfrage zur Überprüfung durch einen Administrator eingereicht. Nach Genehmigung werden die Daten des anderen Kontos in dein Konto übernommen und das doppelte Konto wird archiviert.&lt;/p&gt;&lt;p&gt;Bitte klicke auf den folgenden Link, um die Zusammenführung zu bestätigen und anzufordern:&lt;/p&gt;&lt;p&gt;&lt;a href="{2}" style="display:inline-block; padding:12px 24px; background-color:#0d6efd; color:#ffffff; text-decoration:none; border-radius:6px; font-weight:bold; font-size:16px;"&gt;Bestätigen und Zusammenführung anfordern&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Dieser Link läuft in 24 Stunden ab.&lt;/p&gt;&lt;p&gt;Falls du dies nicht angefordert hast, kannst du diese E-Mail ignorieren. Es werden keine Änderungen vorgenommen.&lt;/p&gt;&lt;p&gt;Das Humans Team&lt;/p&gt;</value>
-  </data>
-  <data name="Email_AccountDeletionRequested_Body" xml:space="preserve">
-    <value>&lt;h2&gt;Kontolöschungsanfrage erhalten&lt;/h2&gt;
-&lt;p&gt;Hallo {0},&lt;/p&gt;
-&lt;p&gt;Wir haben deine Anfrage zur Kontolöschung erhalten. Dein Konto und alle zugehorigen Daten werden am &lt;strong&gt;{1}&lt;/strong&gt; dauerhaft gelöscht.&lt;/p&gt;
-&lt;p&gt;Wenn du es dir anders überlegst, kannst du diese Anfrage vor dem Löschdatum stornieren:&lt;/p&gt;
-&lt;p&gt;&lt;a href="{2}/Profile/Privacy"&gt;Löschungsanfrage stornieren&lt;/a&gt;&lt;/p&gt;
-&lt;p&gt;Nach der Löschung kann diese Aktion nicht rückgängig gemacht werden und alle Daten werden dauerhaft entfernt.&lt;/p&gt;
-&lt;p&gt;Das Humans-Team&lt;/p&gt;</value>
-    <comment>{0} = user name, {1} = formatted deletion date, {2} = base URL</comment>
-  </data>
-  <data name="Email_AccountDeleted_Body" xml:space="preserve">
-    <value>&lt;h2&gt;Konto gelöscht&lt;/h2&gt;
-&lt;p&gt;Hallo {0},&lt;/p&gt;
-&lt;p&gt;Wie gewünscht wurde dein Humans-Konto dauerhaft gelöscht. Alle deine persönlichen Daten wurden aus unseren Systemen entfernt.&lt;/p&gt;
-&lt;p&gt;Vielen Dank, dass du Teil unserer Gemeinschaft warst. Wenn du jemals zurückkehren möchtest, kannst du ein neues Konto erstellen.&lt;/p&gt;
-&lt;p&gt;Alles Gute,&lt;br/&gt;Das Humans-Team&lt;/p&gt;</value>
-    <comment>{0} = user name</comment>
-  </data>
-  <data name="Email_AddedToTeam_Body" xml:space="preserve">
-    <value>&lt;h2&gt;Willkommen bei {1}!&lt;/h2&gt;
-&lt;p&gt;Hallo {0},&lt;/p&gt;
-&lt;p&gt;Du wurdest zum Team &lt;strong&gt;{1}&lt;/strong&gt; hinzugefügt.&lt;/p&gt;
-{2}
-&lt;p&gt;&lt;a href="{3}"&gt;Teamseite ansehen&lt;/a&gt;&lt;/p&gt;
-&lt;p&gt;Das Humans-Team&lt;/p&gt;</value>
-    <comment>{0} = user name, {1} = team name, {2} = resources HTML (or empty), {3} = team URL</comment>
-  </data>
-  <data name="Email_TermRenewalReminder_Body" xml:space="preserve">
-    <value>&lt;h2&gt;Verlängerung der Amtszeit&lt;/h2&gt;
-&lt;p&gt;Hallo {0},&lt;/p&gt;
-&lt;p&gt;Deine &lt;strong&gt;{1}&lt;/strong&gt;-Amtszeit läuft am &lt;strong&gt;{2}&lt;/strong&gt; ab.&lt;/p&gt;
-&lt;p&gt;Wenn du als {1} weitermachen möchtest, reiche bitte vor Ablauf einen Verlängerungsantrag ein.&lt;/p&gt;
-&lt;p&gt;&lt;a href="{3}/Governance/Applications/Create"&gt;Verlängerungsantrag einreichen&lt;/a&gt;&lt;/p&gt;
-&lt;p&gt;Ohne Verlängerung bleibst du ein aktiver Human, hast aber keinen {1}-Zugang mehr.&lt;/p&gt;
-&lt;p&gt;Vielen Dank für dein Engagement!&lt;br/&gt;Das Humans-Team&lt;/p&gt;</value>
-    <comment>{0} = user name, {1} = tier name, {2} = expiry date, {3} = base URL</comment>
   </data>
   <data name="Nav_Review" xml:space="preserve">
     <value>Überprüfung</value>
@@ -2539,15 +2104,6 @@
   <data name="TeamAdmin_TicketLabel" xml:space="preserve">
     <value>Ticket #{0}</value>
     <comment>{0} = ticket barcode; shown as the detail line on a ticket-resolved person-picker result</comment>
-  </data>
-  <data name="Email_FacilitatedMessage_Subject" xml:space="preserve">
-    <value>Humans Nachricht von: {0}</value>
-  </data>
-  <data name="Email_FacilitatedMessage_Body" xml:space="preserve">
-    <value>&lt;h2&gt;Nachricht von {1}&lt;/h2&gt;&lt;p&gt;Hallo {0},&lt;/p&gt;&lt;p&gt;{1} hat dir eine Nachricht über Humans gesendet:&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;{2}&lt;/p&gt;&lt;hr /&gt;{3}</value>
-  </data>
-  <data name="Email_FacilitatedMessage_NoContactInfo" xml:space="preserve">
-    <value>Dieser Mensch hat sich entschieden, seine Kontaktdaten nicht zu teilen.</value>
   </data>
   <data name="SendMessage_Title" xml:space="preserve">
     <value>{0} eine Nachricht senden</value>
@@ -2677,34 +2233,6 @@
   <data name="Shifts_Pending" xml:space="preserve">
     <value>(ausstehend)</value>
   </data>
-  <data name="Email_FeedbackResponse_Subject" xml:space="preserve">
-    <value>Update zu deinem Feedback</value>
-  </data>
-  <data name="Email_FeedbackResponse_Body" xml:space="preserve">
-    <value>&lt;h2&gt;Update zu deinem Feedback&lt;/h2&gt;
-&lt;p&gt;Hallo {0},&lt;/p&gt;
-&lt;p&gt;Wir haben dein Feedback geprüft:&lt;/p&gt;
-&lt;blockquote style="border-left: 3px solid #ccc; padding-left: 12px; color: #666;"&gt;{1}&lt;/blockquote&gt;
-&lt;p&gt;&lt;strong&gt;Unsere Antwort:&lt;/strong&gt;&lt;/p&gt;
-&lt;p&gt;{2}&lt;/p&gt;
-&lt;p&gt;Danke, dass du uns hilfst, besser zu werden!&lt;/p&gt;
-&lt;p&gt;Das Humans Team&lt;/p&gt;</value>
-    <comment>{0} = user name, {1} = original description, {2} = response message</comment>
-  </data>
-  <data name="Email_IssueComment_Subject" xml:space="preserve">
-    <value>Neuer Kommentar zu deinem Issue: {0}</value>
-  </data>
-  <data name="Email_IssueComment_Body" xml:space="preserve">
-    <value>&lt;h2&gt;Neuer Kommentar zu deinem Issue&lt;/h2&gt;
-&lt;p&gt;Hallo {0},&lt;/p&gt;
-&lt;p&gt;Es gibt einen neuen Kommentar zu deinem Issue:&lt;/p&gt;
-&lt;p&gt;&lt;strong&gt;Issue:&lt;/strong&gt; {1}&lt;/p&gt;
-&lt;p&gt;&lt;strong&gt;Kommentar:&lt;/strong&gt;&lt;/p&gt;
-&lt;blockquote style="border-left: 3px solid #ccc; padding-left: 12px; color: #666;"&gt;{2}&lt;/blockquote&gt;
-&lt;p&gt;&lt;a href="{3}"&gt;Issue öffnen&lt;/a&gt;&lt;/p&gt;
-&lt;p&gt;— Das Humans-Team&lt;/p&gt;</value>
-    <comment>{0} = display name, {1} = issue title, {2} = comment HTML, {3} = issue URL</comment>
-  </data>
   <data name="Agent_InputPlaceholder" xml:space="preserve">
     <value>Frage, wie das System funktioniert…</value>
   </data>
@@ -2737,18 +2265,6 @@
   </data>
   <data name="Nav_Agent" xml:space="preserve">
     <value>Assistent</value>
-  </data>
-  <data name="Email_MagicLinkLogin_Subject" xml:space="preserve">
-    <value>Dein Anmeldelink für Nobodies</value>
-  </data>
-  <data name="Email_MagicLinkLogin_Body" xml:space="preserve">
-    <value>&lt;p&gt;Hallo {0},&lt;/p&gt;&lt;p&gt;Klicke auf den folgenden Link, um dich anzumelden:&lt;/p&gt;&lt;p&gt;&lt;a href="{1}"&gt;Bei Nobodies anmelden&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Dieser Link läuft in 15 Minuten ab und kann nur einmal verwendet werden.&lt;/p&gt;&lt;p&gt;Falls du dies nicht angefordert hast, kannst du diese E-Mail ignorieren.&lt;/p&gt;</value>
-  </data>
-  <data name="Email_MagicLinkSignup_Subject" xml:space="preserve">
-    <value>Willkommen bei Nobodies — bestätige deine E-Mail</value>
-  </data>
-  <data name="Email_MagicLinkSignup_Body" xml:space="preserve">
-    <value>&lt;p&gt;Willkommen bei Nobodies!&lt;/p&gt;&lt;p&gt;Klicke auf den folgenden Link, um dein Konto zu erstellen:&lt;/p&gt;&lt;p&gt;&lt;a href="{0}"&gt;Konto erstellen&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Dieser Link läuft in 15 Minuten ab und kann nur einmal verwendet werden.&lt;/p&gt;&lt;p&gt;Falls du dies nicht angefordert hast, kannst du diese E-Mail ignorieren.&lt;/p&gt;</value>
   </data>
   <data name="Login_MagicLink_Title" xml:space="preserve">
     <value>Oder per E-Mail anmelden</value>
@@ -2837,20 +2353,6 @@
   </data>
   <data name="MagicLinkConfirm_SignIn" xml:space="preserve">
     <value>Anmelden</value>
-  </data>
-  <data name="Email_WorkspaceCredentials_Subject" xml:space="preserve">
-    <value>Dein @nobodies.team-Konto ist bereit</value>
-  </data>
-  <data name="Email_WorkspaceCredentials_Body" xml:space="preserve">
-    <value>&lt;h2&gt;Dein @nobodies.team-Konto ist bereit&lt;/h2&gt;
-&lt;p&gt;Hallo {0},&lt;/p&gt;
-&lt;p&gt;Dein Google Workspace-Konto wurde erstellt:&lt;/p&gt;
-&lt;p&gt;&lt;strong&gt;Benutzername:&lt;/strong&gt; {1}&lt;br/&gt;
-&lt;strong&gt;Temporäres Passwort:&lt;/strong&gt; {2}&lt;/p&gt;
-&lt;p&gt;Melde dich bei &lt;a href="https://mail.google.com/"&gt;mail.google.com&lt;/a&gt; an — du wirst beim ersten Login aufgefordert, dein Passwort zu ändern.&lt;/p&gt;
-&lt;p&gt;Unsere Organisation hat die Zwei-Faktor-Authentifizierung (2FA) aktiviert. Du musst beim Anmelden auch einen zweiten Faktor einrichten (z.B. ein Telefon oder eine Authenticator-App).&lt;/p&gt;
-&lt;p&gt;Das Humans-Team&lt;/p&gt;</value>
-    <comment>{0} = user name, {1} = workspace email, {2} = temporary password</comment>
   </data>
   <data name="CampCard_NeedsPhoto" xml:space="preserve">
     <value>Dieses Barrio braucht ein Foto!</value>
@@ -4166,53 +3668,6 @@
   <data name="Welcome_Contact" xml:space="preserve">
     <value>Fragen? Schreib uns an</value>
   </data>
-  <data name="Email_GoogleGroupRemoval_LossOfAccess_Subject" xml:space="preserve">
-    <value>Du wurdest aus der Gruppe {0} entfernt</value>
-    <comment>{0} = group email</comment>
-  </data>
-  <data name="Email_GoogleGroupRemoval_LossOfAccess_Body" xml:space="preserve">
-    <value>&lt;h2&gt;Gruppenzugang entfernt&lt;/h2&gt;
-&lt;p&gt;Hallo {0},&lt;/p&gt;
-&lt;p&gt;Dein Zugang zur Google-Gruppe &lt;strong&gt;{1}&lt;/strong&gt; (&lt;code&gt;{2}&lt;/code&gt;) wurde entfernt.&lt;/p&gt;
-&lt;p&gt;Dies geschah automatisch auf Grundlage deiner aktuellen Team- und Rollenzuweisungen bei Nobodies. Nachrichten an diese Gruppe erhältst du ab sofort nicht mehr.&lt;/p&gt;
-&lt;p&gt;Falls dies ein Fehler ist, wende dich bitte an deine Team-Koordination.&lt;/p&gt;
-&lt;p&gt;Das Humans-Team&lt;/p&gt;</value>
-    <comment>{0} = user name, {1} = group display name, {2} = group email</comment>
-  </data>
-  <data name="Email_GoogleDriveRemoval_LossOfAccess_Subject" xml:space="preserve">
-    <value>Dein Zugang zu {0} wurde entfernt</value>
-    <comment>{0} = folder name</comment>
-  </data>
-  <data name="Email_GoogleDriveRemoval_LossOfAccess_Body" xml:space="preserve">
-    <value>&lt;h2&gt;Drive-Zugang entfernt&lt;/h2&gt;
-&lt;p&gt;Hallo {0},&lt;/p&gt;
-&lt;p&gt;Dein Zugang zum freigegebenen Ordner &lt;strong&gt;{1}&lt;/strong&gt; wurde entfernt.&lt;/p&gt;
-&lt;p&gt;Dies geschah automatisch auf Grundlage deiner aktuellen Team- und Rollenzuweisungen bei Nobodies.&lt;/p&gt;
-&lt;p&gt;Falls dies ein Fehler ist, wende dich bitte an deine Team-Koordination.&lt;/p&gt;
-&lt;p&gt;Das Humans-Team&lt;/p&gt;</value>
-    <comment>{0} = user name, {1} = folder name</comment>
-  </data>
-  <data name="Email_GoogleAccessRemoval_SecondaryCleanup_Subject" xml:space="preserve">
-    <value>{0} hat keinen Zugang mehr zu den Nobodies-Gruppen</value>
-    <comment>{0} = removed email</comment>
-  </data>
-  <data name="Email_GoogleAccessRemoval_SecondaryCleanup_Body" xml:space="preserve">
-    <value>&lt;h2&gt;Zweit-E-Mail aufgeräumt&lt;/h2&gt;
-&lt;p&gt;Hallo {0},&lt;/p&gt;
-&lt;p&gt;Die Adresse &lt;strong&gt;{1}&lt;/strong&gt; wurde aus den Nobodies-Gruppen und freigegebenen Ordnern entfernt.&lt;/p&gt;
-&lt;p&gt;Deine Haupt-E-Mail bei Nobodies ist jetzt &lt;strong&gt;{2}&lt;/strong&gt;, und dein Zugang zu Gruppen und freigegebenen Ordnern über diese Adresse bleibt unverändert. Diese Nachricht ist nur ein Hinweis darauf, welche Adresse aufgeräumt wurde.&lt;/p&gt;
-&lt;p&gt;Falls {1} weiterhin Zugang haben sollte, wende dich bitte an deine Team-Koordination.&lt;/p&gt;
-&lt;p&gt;Das Humans-Team&lt;/p&gt;</value>
-    <comment>{0} = user name, {1} = removed email, {2} = current Google email</comment>
-  </data>
-  <data name="OnboardingBanner_Text" xml:space="preserve">
-    <value>Schließe die Einrichtung deines Kontos ab, um auf Schichten und Teamfunktionen zuzugreifen.</value>
-    <comment>TODO: translate</comment>
-  </data>
-  <data name="OnboardingBanner_Cta" xml:space="preserve">
-    <value>Einrichtung fortsetzen →</value>
-    <comment>TODO: translate</comment>
-  </data>
   <data name="VolTrack_Title" xml:space="preserve">
     <value>Freiwilligen-Tracking</value>
     <comment>TODO: translate</comment>
@@ -4592,15 +4047,6 @@
     <value>Camp-Aufbaudatum entfernt</value>
     <comment>TODO: translate</comment>
   </data>
-  <data name="Email_CoordinatorRotaMessage_Subject" xml:space="preserve">
-    <value>Eine Nachricht zu deinen Schichten in {0}</value>
-  </data>
-  <data name="Email_CoordinatorRotaMessage_Body" xml:space="preserve">
-    <value>&lt;p&gt;Liebe/r {0},&lt;/p&gt;&lt;p&gt;Eine Nachricht vom Koordinator von &lt;strong&gt;{2}&lt;/strong&gt;:&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;{3}&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;Zur Info, deine Schichten in diesem Dienstplan sind:&lt;/p&gt;{4}&lt;p&gt;Danke,&lt;/p&gt;{5}</value>
-  </data>
-  <data name="Email_CoordinatorRotaMessage_NoShifts" xml:space="preserve">
-    <value>(noch keine Schichten in diesem Dienstplan)</value>
-  </data>
   <data name="EmailRota_Title" xml:space="preserve">
     <value>E-Mail an Dienstplan senden: {0}</value>
   </data>
@@ -4633,12 +4079,6 @@
   </data>
   <data name="EmailRota_NoActiveSignups" xml:space="preserve">
     <value>Dieser Dienstplan hat keine aktiven Anmeldungen, denen eine E-Mail gesendet werden k&#xF6;nnte.</value>
-  </data>
-  <data name="Email_CoordinatorTeamRotasMessage_Subject" xml:space="preserve">
-    <value>Eine Nachricht zu deinen Schichten bei {0}</value>
-  </data>
-  <data name="Email_CoordinatorTeamRotasMessage_Body" xml:space="preserve">
-    <value>&lt;p&gt;Liebe/r {0},&lt;/p&gt;&lt;p&gt;Eine Nachricht vom Koordinator von &lt;strong&gt;{2}&lt;/strong&gt;:&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;{3}&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;Zur Info, deine Schichten in den kommenden Dienstpl&#xE4;nen dieses Teams:&lt;/p&gt;{4}&lt;p&gt;Danke,&lt;/p&gt;{5}</value>
   </data>
   <data name="EmailTeamRotas_Title" xml:space="preserve">
     <value>E-Mail an Team senden: {0}</value>
@@ -4678,20 +4118,6 @@
   <data name="Profile_ImportGooglePhoto_FetchFailed" xml:space="preserve"><value>Dein Google-Foto konnte nicht abgerufen werden. Versuche es sp&#xE4;ter erneut oder lade direkt eines hoch.</value></data>
   <data name="Profile_ImportGooglePhoto_InvalidFormat" xml:space="preserve"><value>Dein Google-Foto konnte nicht verarbeitet werden: Nicht unterst&#xFC;tztes Format oder fehlerhafte Antwort von Google.</value></data>
   <data name="Profile_ImportGooglePhoto_NotGoogleUrl" xml:space="preserve"><value>Dein Google-Foto konnte nicht importiert werden: Die gespeicherte Avatar-URL sieht nicht nach einer Google-Adresse aus. Bitte lade direkt ein Foto hoch.</value></data>
-  <data name="Email_BoardDailyDigest_Subject" xml:space="preserve"><value>Vorstandsbericht: {0}</value><comment>{0} = date (YYYY-MM-DD)</comment></data>
-  <data name="Email_BoardDailyDigest_Body" xml:space="preserve"><value>&lt;h2&gt;Vorstandsbericht &amp;mdash; {1}&lt;/h2&gt;
-&lt;p&gt;Hallo {0},&lt;/p&gt;
-{3}
-{2}
-&lt;p&gt;Das Humans-Team&lt;/p&gt;</value><comment>{0} = board member name, {1} = date, {2} = approvals HTML, {3} = outstanding HTML</comment></data>
-  <data name="Email_BoardDigest_OutstandingHeader" xml:space="preserve"><value>Offene Punkte</value></data>
-  <data name="Email_BoardDigest_NoApprovals" xml:space="preserve"><value>Gestern gab es keine neuen Genehmigungen.</value></data>
-  <data name="Email_BoardDigest_OnboardingReview" xml:space="preserve"><value>{0} warten auf Onboarding-Pr&#xFC;fung</value><comment>{0} = count</comment></data>
-  <data name="Email_BoardDigest_StillOnboarding" xml:space="preserve"><value>{0} schlie&#xDF;en noch das Onboarding ab</value><comment>{0} = count</comment></data>
-  <data name="Email_BoardDigest_BoardVoting" xml:space="preserve"><value>{0} Stufenantr&#xE4;ge warten auf Abstimmung ({1} brauchen deine)</value><comment>{0} = total count, {1} = member's unvoted count</comment></data>
-  <data name="Email_BoardDigest_TeamJoinRequests" xml:space="preserve"><value>{0} Team-Beitrittsanfragen ausstehend</value><comment>{0} = count</comment></data>
-  <data name="Email_BoardDigest_PendingConsents" xml:space="preserve"><value>{0} mit ausstehenden Einwilligungen</value><comment>{0} = count</comment></data>
-  <data name="Email_BoardDigest_PendingDeletions" xml:space="preserve"><value>{0} Kontol&#xF6;schungen ausstehend</value><comment>{0} = count</comment></data>
   <data name="Todo_DietaryMedical_Title" xml:space="preserve"><value>Tell us about your food needs</value></data>
   <data name="Todo_DietaryMedical_Pending" xml:space="preserve"><value>We need this to plan cantina meals</value></data>
   <data name="Todo_DietaryMedical_Done" xml:space="preserve"><value>Thanks — we've got it</value></data>
@@ -4716,50 +4142,6 @@
   <data name="Profile_DietaryMedical_IntoleranceOther_Required" xml:space="preserve"><value>Please describe your "Other" intolerance.</value></data>
   <data name="Profile_DietaryMedical_LoadFailed" xml:space="preserve"><value>Failed to load dietary and medical info.</value></data>
   <data name="Profile_DietaryMedical_SaveFailed" xml:space="preserve"><value>Failed to save dietary and medical info.</value></data>
-  <data name="Cantina_Roster_PageTitle" xml:space="preserve"><value>Cantina weekly roster</value></data>
-  <data name="Cantina_Roster_NoActiveEvent" xml:space="preserve"><value>No active event</value></data>
-  <data name="Cantina_Roster_TotalOnSite" xml:space="preserve"><value>unique humans on site this week</value></data>
-  <data name="Cantina_Roster_Unanswered" xml:space="preserve"><value>haven't answered yet</value></data>
-  <data name="Cantina_Roster_DietaryBreakdown" xml:space="preserve"><value>Dietary breakdown</value></data>
-  <data name="Cantina_Roster_AllergyRollup" xml:space="preserve"><value>Allergies</value></data>
-  <data name="Cantina_Roster_IntoleranceRollup" xml:space="preserve"><value>Intolerances</value></data>
-  <data name="Cantina_Roster_OtherAllergies" xml:space="preserve"><value>Other allergies (free-text)</value></data>
-  <data name="Cantina_Roster_OtherIntolerances" xml:space="preserve"><value>Other intolerances (free-text)</value></data>
-  <data name="Cantina_Roster_TablePerson" xml:space="preserve"><value>Burner name</value></data>
-  <data name="Cantina_Roster_TableArrivesOn" xml:space="preserve"><value>Arrives on</value></data>
-  <data name="Cantina_Roster_TableNoShift" xml:space="preserve"><value>No shift</value></data>
-  <data name="Cantina_Roster_NoShift_FullWeek" xml:space="preserve"><value>(scheduled every day)</value></data>
-  <data name="Cantina_Roster_Unanswered_RowLabel" xml:space="preserve"><value>(unanswered)</value></data>
-  <data name="Cantina_Roster_TableDietary" xml:space="preserve"><value>Dietary</value></data>
-  <data name="Cantina_Roster_TableAllergies" xml:space="preserve"><value>Allergies</value></data>
-  <data name="Cantina_Roster_TableAllergyOther" xml:space="preserve"><value>Other allergy</value></data>
-  <data name="Cantina_Roster_TableIntolerances" xml:space="preserve"><value>Intolerances</value></data>
-  <data name="Cantina_Roster_TableIntoleranceOther" xml:space="preserve"><value>Other intolerance</value></data>
-  <data name="Cantina_Roster_DownloadCsv" xml:space="preserve"><value>Download CSV</value></data>
-  <data name="Cantina_Roster_EmptyState" xml:space="preserve"><value>No humans signed up for this week yet.</value></data>
-  <data name="Cantina_Roster_WeekPickerLabel" xml:space="preserve"><value>Week</value></data>
-  <data name="Cantina_Roster_ThisWeek" xml:space="preserve"><value>This week</value></data>
-  <data name="Cantina_Roster_PrevWeek" xml:space="preserve"><value>Previous week</value></data>
-  <data name="Cantina_Roster_NextWeek" xml:space="preserve"><value>Next week</value></data>
-  <data name="Cantina_Roster_WeekOf" xml:space="preserve"><value>Week of</value></data>
-  <data name="Cantina_Roster_PerDayTable_Heading" xml:space="preserve"><value>By day</value></data>
-  <data name="Cantina_Roster_PerDayTable_Date" xml:space="preserve"><value>Day</value></data>
-  <data name="Cantina_Roster_PerDayTable_Total" xml:space="preserve"><value>On site</value></data>
-  <data name="Cantina_Roster_PerDayTable_Unanswered" xml:space="preserve"><value>Unanswered</value></data>
-  <data name="Cantina_Roster_RosterHeading" xml:space="preserve"><value>Roster</value></data>
-  <data name="Cantina_Roster_ShowRoster" xml:space="preserve"><value>Show roster ({0} humans)</value></data>
-  <data name="Cantina_Day_PageTitle" xml:space="preserve"><value>Daily roster</value></data>
-  <data name="Cantina_Day_TodayBadge" xml:space="preserve"><value>Today</value></data>
-  <data name="Cantina_Day_TotalOnSite" xml:space="preserve"><value>humans on site</value></data>
-  <data name="Cantina_Day_Unanswered" xml:space="preserve"><value>haven't answered yet</value></data>
-  <data name="Cantina_Day_DownloadCsv" xml:space="preserve"><value>Download matrix CSV</value></data>
-  <data name="Cantina_Day_EmptyState" xml:space="preserve"><value>No humans signed up for this day yet.</value></data>
-  <data name="Cantina_Matrix_BurnerColumn" xml:space="preserve"><value>Burner name</value></data>
-  <data name="Cantina_Matrix_OtherAllergy" xml:space="preserve"><value>Other allergy</value></data>
-  <data name="Cantina_Matrix_OtherAllergyText" xml:space="preserve"><value>Other allergy text</value></data>
-  <data name="Cantina_Matrix_OtherIntolerance" xml:space="preserve"><value>Other intolerance</value></data>
-  <data name="Cantina_Matrix_OtherIntoleranceText" xml:space="preserve"><value>Other intolerance text</value></data>
-  <data name="Cantina_Matrix_Totals" xml:space="preserve"><value>TOTALS</value></data>
   <data name="Shifts_SignupDisabledTooltip_MissingDietary" xml:space="preserve"><value>Tell us your food needs first.</value></data>
   <data name="Shifts_SetupClosedBadge" xml:space="preserve"><value>Aufbau geschlossen</value></data>
   <data name="Shifts_SignupDisabledTooltip_EarlyEntryClosed" xml:space="preserve"><value>Aufbau-Anmeldungen sind geschlossen — wir sind bereits vor Ort.</value></data>
@@ -4949,18 +4331,6 @@
   <data name="Common_Total" xml:space="preserve"><value>Gesamt</value></data>
   <data name="Common_View" xml:space="preserve"><value>Ansehen</value></data>
   <data name="CommPrefs_AlwaysOn" xml:space="preserve"><value>Immer aktiv</value></data>
-  <data name="Email_SurveyInvitation_Body" xml:space="preserve"><value>&lt;h2&gt;{1}&lt;/h2&gt;
-&lt;p&gt;Hallo {0},&lt;/p&gt;
-&lt;p&gt;du bist eingeladen, die Umfrage &lt;strong&gt;{1}&lt;/strong&gt; auszufüllen. Es dauert nur ein paar Minuten.&lt;/p&gt;
-&lt;p&gt;&lt;a href="{2}"&gt;Umfrage öffnen&lt;/a&gt;&lt;/p&gt;
-&lt;p&gt;Vielen Dank,&lt;br/&gt;Das Nobodies Collective&lt;/p&gt;</value></data>
-  <data name="Email_SurveyInvitation_Subject" xml:space="preserve"><value>Bitte ausfüllen: {0}</value></data>
-  <data name="Email_SurveyReminder_Body" xml:space="preserve"><value>&lt;h2&gt;{1}&lt;/h2&gt;
-&lt;p&gt;Hallo {0},&lt;/p&gt;
-&lt;p&gt;nur eine Erinnerung, dass die Umfrage &lt;strong&gt;{1}&lt;/strong&gt; noch auf deine Antwort wartet.&lt;/p&gt;
-&lt;p&gt;&lt;a href="{2}"&gt;Umfrage öffnen&lt;/a&gt;&lt;/p&gt;
-&lt;p&gt;Vielen Dank,&lt;br/&gt;Das Nobodies Collective&lt;/p&gt;</value></data>
-  <data name="Email_SurveyReminder_Subject" xml:space="preserve"><value>Erinnerung: {0}</value></data>
   <data name="EmailGrid_OrphanProviderTag" xml:space="preserve"><value>Mit {0} getaggt, aber keine passende AspNetUserLogins-Zeile — korrigiert sich beim nächsten OAuth-Login von selbst.</value></data>
   <data name="EmailGrid_WorkspaceLocked" xml:space="preserve"><value>Gesperrt durch die Workspace-E-Mail-Zeile</value></data>
   <data name="Enum_AdultPlayspacePolicy_NightOnly" xml:space="preserve"><value>Nur nachts</value></data>
@@ -5071,35 +4441,6 @@
   <data name="MarkdownHelp_TaskListsHeading" xml:space="preserve"><value>Aufgabenlisten</value></data>
   <data name="MarkdownHelp_TaskToDo" xml:space="preserve"><value>Zu erledigen</value></data>
   <data name="MarkdownHelp_Title" xml:space="preserve"><value>Markdown-Kurzreferenz</value></data>
-  <data name="Onboarding_BurnerNameExplainer" xml:space="preserve"><value>Der Name, den alle im System sehen. Eindeutigkeit hilft, ist aber nicht erforderlich, auch wenn es schwierig sein kann, „Bob“ unter den paar Tausend Humans hier zu finden, falls jemand nach dir sucht.</value></data>
-  <data name="Onboarding_BurnerNameHelp" xml:space="preserve"><value>Der Name, unter dem dich alle kennen werden.</value></data>
-  <data name="Onboarding_BurnerNameLabel" xml:space="preserve"><value>Burner Name</value></data>
-  <data name="Onboarding_Continue" xml:space="preserve"><value>Weiter</value></data>
-  <data name="Onboarding_LegalFirstNameLabel" xml:space="preserve"><value>Bürgerlicher Vorname</value></data>
-  <data name="Onboarding_LegalLastNameLabel" xml:space="preserve"><value>Bürgerlicher Nachname</value></data>
-  <data name="Onboarding_LegalNameExplainerEmphasis" xml:space="preserve"><value>nicht</value></data>
-  <data name="Onboarding_LegalNameExplainerPost" xml:space="preserve"><value>und würden sie nur offenlegen, wenn das Gesetz oder eine förmliche Prüfung es erfordert.</value></data>
-  <data name="Onboarding_LegalNameExplainerPre" xml:space="preserve"><value>Wird intern gespeichert, ist nur für Admins sichtbar und wird nur dort verwendet, wo das spanische Recht es verlangt — zum Beispiel für unseren Prüfnachweis, dass du der Volunteer-Vereinbarung zu einem bestimmten Datum und einer bestimmten Uhrzeit zugestimmt hast. Wir exportieren diese Information ausdrücklich</value></data>
-  <data name="Onboarding_LegalNameLabel" xml:space="preserve"><value>Bürgerlicher Name</value></data>
-  <data name="Onboarding_NameRequiredBeforeShifts" xml:space="preserve"><value>Füge zuerst deinen Namen hinzu — wir brauchen ihn, bevor du dich für Schichten anmelden kannst.</value></data>
-  <data name="Onboarding_NamesSubtitle" xml:space="preserve"><value>Zwei kurze Schritte, bevor du eine Schicht auswählst.</value></data>
-  <data name="Onboarding_NamesTitle" xml:space="preserve"><value>Willkommen — fangen wir mit deinem Namen an</value></data>
-  <data name="Onboarding_PriorityCritical" xml:space="preserve"><value>Kritisch</value></data>
-  <data name="Onboarding_PriorityImportant" xml:space="preserve"><value>Wichtig</value></data>
-  <data name="Onboarding_ShiftsCriticalBody" xml:space="preserve"><value>Nur {0}% der „kritischen“ Schichten sind besetzt. Hilf uns, die Veranstaltung möglich zu machen, indem du ein paar übernimmst, wo du kannst.</value></data>
-  <data name="Onboarding_ShiftsCriticalCta" xml:space="preserve"><value>Wenn du früh zum Aufbau kommen oder zum Abbau bleiben kannst, sind das die am schwersten zu besetzenden Schichten — bitte priorisiere sie bei der Auswahl deiner Schichten.</value></data>
-  <data name="Onboarding_ShiftsCriticalCtaSetupClosed" xml:space="preserve"><value>Aufbau-Anmeldungen sind geschlossen — wir sind bereits vor Ort. Bitte konzentriere dich auf Schichten während der Veranstaltung und beim Abbau.</value></data>
-  <data name="Onboarding_ShiftsCriticalHeading" xml:space="preserve"><value>Wir brauchen dich!</value></data>
-  <data name="Onboarding_ShiftsImportantAlsoOpen" xml:space="preserve"><value>Es sind außerdem {0} „wichtige“ Schichten offen.</value></data>
-  <data name="Onboarding_ShiftsImportantBody" xml:space="preserve"><value>Es sind {0} „wichtige“ Schichten offen. Wenn du früh zum Aufbau kommen oder zum Abbau bleiben kannst, priorisiere diese bitte.</value></data>
-  <data name="Onboarding_ShiftsImportantBodySetupClosed" xml:space="preserve"><value>Es sind {0} „wichtige“ Schichten offen — bitte konzentriere dich auf Schichten während der Veranstaltung und beim Abbau.</value></data>
-  <data name="Onboarding_ShiftsNoActiveEvent" xml:space="preserve"><value>Derzeit keine aktive Veranstaltung. Du kannst das Onboarding abschließen, ohne eine Schicht auszuwählen.</value></data>
-  <data name="Onboarding_ShiftsNoCritical" xml:space="preserve"><value>Derzeit keine kritischen Schichten offen — probiere Wichtig oder Alle.</value></data>
-  <data name="Onboarding_ShiftsNoImportant" xml:space="preserve"><value>Derzeit keine wichtigen Schichten offen — probiere Alle.</value></data>
-  <data name="Onboarding_ShiftsNotNow" xml:space="preserve"><value>Nicht jetzt</value></data>
-  <data name="Onboarding_ShiftsSignUpFailed" xml:space="preserve"><value>Anmeldung fehlgeschlagen.</value></data>
-  <data name="Onboarding_ShiftsSignUpRangeFailed" xml:space="preserve"><value>Anmeldung für den Datumsbereich fehlgeschlagen.</value></data>
-  <data name="Onboarding_ShiftsTitle" xml:space="preserve"><value>Wähle eine Schicht</value></data>
   <data name="Outbox_AdminTitle" xml:space="preserve"><value>E-Mails</value></data>
   <data name="Outbox_BackToAdmin" xml:space="preserve"><value>Zurück zur Administration</value></data>
   <data name="Outbox_BackToProfile" xml:space="preserve"><value>Zurück zum Profil</value></data>
@@ -5165,18 +4506,6 @@
   <data name="Roster_StatusFilter" xml:space="preserve"><value>Status: {0}</value></data>
   <data name="Roster_StatusOpen" xml:space="preserve"><value>Offen</value></data>
   <data name="Roster_Title" xml:space="preserve"><value>Team-Dienstplan</value></data>
-  <data name="Search_FilterAll" xml:space="preserve"><value>Alle</value></data>
-  <data name="Search_FilterCamps" xml:space="preserve"><value>Camps</value></data>
-  <data name="Search_FilterEvents" xml:space="preserve"><value>Veranstaltungen</value></data>
-  <data name="Search_FilterHumans" xml:space="preserve"><value>Humans</value></data>
-  <data name="Search_FilterShifts" xml:space="preserve"><value>Schichten</value></data>
-  <data name="Search_FilterTeams" xml:space="preserve"><value>Teams</value></data>
-  <data name="Search_GlobalHint" xml:space="preserve"><value>Gib mindestens 2 Zeichen ein, um Humans, Teams, Camps und Schichten zu durchsuchen.</value></data>
-  <data name="Search_GlobalHintEvents" xml:space="preserve"><value>Gib mindestens 2 Zeichen ein, um Humans, Teams, Camps, Schichten und Veranstaltungen zu durchsuchen.</value></data>
-  <data name="Search_GlobalNoResults" xml:space="preserve"><value>Keine Ergebnisse für {0}.</value></data>
-  <data name="Search_GlobalPlaceholder" xml:space="preserve"><value>Humans, Teams, Camps, Schichten durchsuchen…</value></data>
-  <data name="Search_GlobalPlaceholderEvents" xml:space="preserve"><value>Humans, Teams, Camps, Schichten, Veranstaltungen durchsuchen…</value></data>
-  <data name="Search_GlobalTitle" xml:space="preserve"><value>Suche</value></data>
   <data name="Teams_Departments" xml:space="preserve"><value>Abteilungen</value></data>
   <data name="Teams_HiddenTeams" xml:space="preserve"><value>Versteckte Teams</value></data>
   <data name="Teams_HiddenTeamsNote" xml:space="preserve"><value>(nur für Admins sichtbar)</value></data>
@@ -5205,4 +4534,7 @@
   <data name="TicketTransfer_Step3" xml:space="preserve"><value>3. Bestätigen</value></data>
   <data name="TicketTransfer_Title" xml:space="preserve"><value>Ticket übertragen</value></data>
   <data name="TicketTransfer_YourRequests" xml:space="preserve"><value>Deine Übertragungsanfragen</value></data>
+  <data name="Onboarding_BurnerNameLabel" xml:space="preserve"><value>Burner Name</value></data>
+  <data name="Onboarding_LegalFirstNameLabel" xml:space="preserve"><value>Bürgerlicher Vorname</value></data>
+  <data name="Onboarding_LegalLastNameLabel" xml:space="preserve"><value>Bürgerlicher Nachname</value></data>
 </root>

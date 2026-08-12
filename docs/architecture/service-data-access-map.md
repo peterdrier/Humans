@@ -439,7 +439,7 @@ caller, pinned by HUM0005), `IMagicLinkService`
 
 ## Onboarding
 
-Folder: `src/Humans.Application/Services/Onboarding/`. Orchestrator
+Folder: `src/Sections/Humans.Onboarding/Services/`. Orchestrator
 section — owns no DB tables, holds no `IMemoryCache` injection.
 
 ### OnboardingService (Scoped)
@@ -1308,7 +1308,7 @@ Stateless calculators / projections — no DI dependencies, no DB access.
 
 ## Cantina
 
-Folder: `src/Humans.Application/Services/Cantina/`. Owns no DB tables —
+Project: `src/Sections/Humans.Cantina` (G5). Owns no DB tables —
 orchestrator only. Dietary data moved to `Profile` and is read through
 the unified `UserInfo` read-model.
 
@@ -1900,7 +1900,7 @@ Cross-section calls via `ITeamServiceRead`, `IUserEmailService`,
 
 ## Email
 
-Folder: `src/Humans.Application/Services/Email/`. **DbContext:**
+Folder: `src/Sections/Humans.Email/Services/`. **DbContext:**
 `EmailDbContext` — **peeled** (nobodies-collective/Humans#1234, part of
 #858). `EmailOutboxRepository` injects `IDbContextFactory<EmailDbContext>`
 directly. Owns
@@ -1978,7 +1978,7 @@ reads that were previously `[Grandfathered("HUM0025", …)]` on
 
 ## Mailer
 
-Folder: `src/Humans.Application/Services/Mailer/`. No owned DB tables —
+Folder: `src/Sections/Humans.Mailer/Services/` (G5, nobodies-collective/Humans#866). No owned DB tables —
 MailerLite is the external system; classifier writes through other
 sections' services.
 
@@ -2354,7 +2354,7 @@ Outbound API client over `AnthropicOptions`. No DB access, no cache.
 
 ## Search
 
-Folder: `src/Humans.Application/Services/Search/`. No owned DB tables.
+Project: `src/Sections/Humans.Search` (G5, nobodies-collective/Humans#866). No owned DB tables.
 
 ### SearchService (Scoped)
 
@@ -2387,7 +2387,7 @@ No DB access, no cache.
 
 ## Gdpr
 
-Folder: `src/Humans.Application/Services/Gdpr/`. No owned DB tables —
+Folder: `src/Sections/Humans.Gdpr/Services/` (G5, nobodies-collective/Humans#866). No owned DB tables —
 the export orchestrator runs over per-section `IUserDataContributor`
 fan-out.
 
@@ -2908,7 +2908,7 @@ shrank to a single dev-only path — and that path is now also closed.
 
 None. `DevLoginController`'s previous direct `HumansDbContext` writes
 (Camps / CampSeasons / CampLead seeding for dev personas) moved into
-`DevPersonaSeeder` (`src/Humans.Web/Infrastructure/DevPersonaSeeder.cs`),
+`DevPersonaSeeder` (`src/Sections/Humans.Development/Services/DevPersonaSeeder.cs`),
 which itself owns no DbContext — every write (`User`/`Profile`/`UserEmail`,
 system-team membership, dev barrio camp/season/lead via `ICampService` /
 `ICampRoleService`, city-planning team, role assignments, contact fields)

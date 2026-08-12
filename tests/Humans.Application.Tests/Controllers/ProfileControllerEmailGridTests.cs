@@ -5,10 +5,10 @@ using Humans.Domain.Enums;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Campaigns.Contracts;
 using Humans.Application.Interfaces.Camps;
-using Humans.Application.Interfaces.Email;
-using Humans.Application.Interfaces.Gdpr;
+using Humans.Email.Contracts;
+using Humans.Gdpr.Contracts;
 using Humans.Governance.Contracts;
-using Humans.Application.Interfaces.Onboarding;
+using Humans.Onboarding.Contracts;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
@@ -84,7 +84,7 @@ public class ProfileControllerEmailGridTests
             _userEmailService,
             Substitute.For<ICommunicationPreferenceService>(),
             _auditLogService,
-            Substitute.For<IOnboardingService>(),
+            Substitute.For<IOnboardingIntake>(),
             Substitute.For<IShiftSignupService>(),
             Substitute.For<IShiftManagementService>(),
             Substitute.For<IShiftView>(),
@@ -97,7 +97,7 @@ public class ProfileControllerEmailGridTests
             Substitute.For<ITeamService>(),
             Substitute.For<ICampaignService>(),
             Substitute.For<ICampServiceRead>(),
-            Substitute.For<IEmailOutboxService>(),
+            Substitute.For<IEmailOutboxServiceRead>(),
             new FakeClock(Instant.FromUtc(2026, 4, 30, 12, 0)),
             _authorizationService,
             Substitute.For<IApplicationDecisionService>(),

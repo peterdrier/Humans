@@ -1,3 +1,4 @@
+using Humans.UI.Models;
 using Humans.UI.Models.Tables;
 // @e2e: board.spec.ts
 // @e2e: profile.spec.ts
@@ -14,7 +15,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
 using Humans.Application;
 using Humans.Application.DTOs;
-using Humans.Application.Interfaces.Gdpr;
+using Humans.Gdpr.Contracts;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -26,12 +27,12 @@ using NodaTime;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Campaigns.Contracts;
 using Humans.Application.Interfaces.Camps;
-using Humans.Application.Interfaces.Email;
+using Humans.Email.Contracts;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
-using Humans.Application.Interfaces.Onboarding;
+using Humans.Onboarding.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Models;
@@ -58,7 +59,7 @@ public class ProfileController(
     IUserEmailService userEmailService,
     ICommunicationPreferenceService commPrefService,
     IAuditLogService auditLogService,
-    IOnboardingService onboardingService,
+    IOnboardingIntake onboardingService,
     IShiftSignupService shiftSignupService,
     IShiftManagementService shiftMgmt,
     IShiftView shiftView,

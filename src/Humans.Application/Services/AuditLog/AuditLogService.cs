@@ -1,7 +1,7 @@
 using Humans.Application.Architecture;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces.AuditLog;
-using Humans.Application.Interfaces.Gdpr;
+using Humans.Gdpr.Contracts;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;

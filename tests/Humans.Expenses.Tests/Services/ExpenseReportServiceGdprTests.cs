@@ -5,7 +5,7 @@ using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Budget.Contracts;
 using Humans.Finance.Contracts;
-using Humans.Application.Interfaces.Gdpr;
+using Humans.Gdpr.Contracts;
 using Humans.Application.Interfaces.Holded;
 using Humans.Expenses.Data;
 using Humans.Application.Interfaces.Teams;

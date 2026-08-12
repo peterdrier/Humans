@@ -1,9 +1,8 @@
 <!-- freshness:triggers
   src/Humans.Application/Interfaces/Shifts/IRotaCoordinatorMessageService.cs
   src/Humans.Application/Services/Shifts/RotaCoordinatorMessageService.cs
-  src/Humans.Application/Interfaces/Email/IEmailService.cs
-  src/Humans.Application/Services/Email/OutboxEmailService.cs
-  src/Humans.Infrastructure/Services/EmailRenderer.cs
+  src/Sections/Humans.Email/**
+  src/Sections/Humans.Email.Contracts/**
   src/Humans.Web/Controllers/ShiftAdminController.cs
   src/Humans.Web/Models/Shifts/EmailRotaViewModel.cs
   src/Humans.Web/Views/ShiftAdmin/EmailRota.cshtml

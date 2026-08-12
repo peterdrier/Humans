@@ -3,7 +3,7 @@ using Humans.Agent.Contracts;
 using Humans.Agent.Data;
 using Humans.Agent.Domain;
 using Humans.Agent.Services;
-using Humans.Application.Interfaces.Gdpr;
+using Humans.Gdpr.Contracts;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;

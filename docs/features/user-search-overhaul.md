@@ -2,7 +2,7 @@
   src/Humans.Application/Services/Profiles/PersonSearchMatcher.cs
   src/Humans.Application/Services/Profiles/PersonSearchFields.cs
   src/Humans.Infrastructure/Services/Users/CachingUserService.cs
-  src/Humans.Web/Controllers/SearchController.cs
+  src/Sections/Humans.Search/Controllers/SearchController.cs
   src/Humans.Web/Controllers/ProfileApiController.cs
   src/Humans.Web/Controllers/TeamAdminController.cs
   src/Humans.Web/Controllers/ShiftAdminController.cs

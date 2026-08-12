@@ -5,11 +5,11 @@ using Humans.Application.Interfaces.Admin;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Auth;
 using Humans.Campaigns.Contracts;
-using Humans.Application.Interfaces.Consent;
-using Humans.Application.Interfaces.Email;
+using Humans.Consent.Contracts;
+using Humans.Email.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Application.Interfaces.HumanLifecycle;
-using Humans.Application.Interfaces.Onboarding;
+using Humans.Onboarding.Contracts;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Profiles;
@@ -37,7 +37,7 @@ public sealed class UsersAdminController(
     IConsentServiceRead consentService,
     ICampaignService campaignService,
     IHumanLifecycleService humanLifecycleService,
-    IOnboardingService onboardingService,
+    IOnboardingIntake onboardingService,
     IAuditLogService auditLogService,
     IAdminDatabaseDiagnosticsService databaseDiagnostics,
     IAccountDeletionService accountDeletionService,

@@ -28,6 +28,7 @@
     <ProjectReference Include="..\..\Humans.Infrastructure\Humans.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Humans.UI\Humans.UI.csproj" />
     <ProjectReference Include="..\Humans.Gate.Contracts\Humans.Gate.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Gdpr.Contracts\Humans.Gdpr.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

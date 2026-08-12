@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Humans.Onboarding;
 using Humans.Application;
 using Humans.Application.DTOs.Shifts;
 using Humans.Application.Interfaces.AuditLog;
@@ -158,7 +159,7 @@ public class ShiftsControllerUserActiveSignupsTests
 
         var ctrl = new ShiftsController(
             _shiftMgmt, _burnSettings, _signupService, _volunteerTracking, _shiftView, _teamService,
-            _auditLog, _userService, _localizer, _clock,
+            _auditLog, _userService, _localizer, Substitute.For<IStringLocalizer<OnboardingResource>>(), _clock,
             new ShiftBrowsePageBuilder(_shiftMgmt, _burnSettings, _teamService),
             NullLogger<ShiftsController>.Instance);
 

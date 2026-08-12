@@ -66,13 +66,13 @@ public class EndpointAuthorizationTests
     public static TheoryData<Type, string?, string> CriticalEndpointPolicies => new()
     {
         { typeof(UsersAdminController), "PurgeHuman", "AdminOnly" },
-        { typeof(DebugController), "Logs", "AdminOnly" },
-        { typeof(DebugController), "Configuration", "AdminOnly" },
-        { typeof(DebugController), "DbStats", "AdminOnly" },
-        { typeof(DebugController), "CacheStats", "AdminOnly" },
+        { SectionType("Humans.Debug.Controllers.DebugController"), "Logs", "AdminOnly" },
+        { SectionType("Humans.Debug.Controllers.DebugController"), "Configuration", "AdminOnly" },
+        { SectionType("Humans.Debug.Controllers.DebugController"), "DbStats", "AdminOnly" },
+        { SectionType("Humans.Debug.Controllers.DebugController"), "CacheStats", "AdminOnly" },
         { typeof(UsersAdminController), "Audience", "AdminOnly" },
         { typeof(UsersAdminAccountMergesController), null, "AdminOnly" },
-        { typeof(EmailController), null, "AdminOnly" },
+        { SectionType("Humans.Email.Controllers.EmailController"), null, "AdminOnly" },
         { typeof(AdminController), "Index", "AnyAdminRole" },
         { typeof(AuditLogController), "Index", "BoardOrAdmin" },
         { typeof(AuditLogController), "CheckDriveActivity", "BoardOrAdmin" },
@@ -84,10 +84,10 @@ public class EndpointAuthorizationTests
         { typeof(GoogleController), "SyncResults", "AdminOnly" },
         { typeof(GoogleController), "CheckGroupSettings", "AdminOnly" },
         { typeof(GoogleController), "GroupSettingsResults", "AdminOnly" },
-        { typeof(OnboardingReviewController), null, "ReviewQueueAccess" },
-        { typeof(OnboardingReviewController), "Clear", "ConsentCoordinatorBoardOrAdmin" },
-        { typeof(OnboardingReviewController), "Flag", "ConsentCoordinatorBoardOrAdmin" },
-        { typeof(OnboardingReviewController), "Reject", "ConsentCoordinatorBoardOrAdmin" },
+        { SectionType("Humans.Onboarding.Controllers.OnboardingReviewController"), null, "ReviewQueueAccess" },
+        { SectionType("Humans.Onboarding.Controllers.OnboardingReviewController"), "Clear", "ConsentCoordinatorBoardOrAdmin" },
+        { SectionType("Humans.Onboarding.Controllers.OnboardingReviewController"), "Flag", "ConsentCoordinatorBoardOrAdmin" },
+        { SectionType("Humans.Onboarding.Controllers.OnboardingReviewController"), "Reject", "ConsentCoordinatorBoardOrAdmin" },
         { SectionType("Humans.Budget.Controllers.BudgetAdminController"), null, "FinanceAdminOrAdmin" },
         { SectionType("Humans.Feedback.Controllers.FeedbackController"), null, "AdminOnly" },
         { SectionType("Humans.Feedback.Controllers.FeedbackController"), "Index", "AdminOnly" },
@@ -139,7 +139,7 @@ public class EndpointAuthorizationTests
     [HumansFact]
     public void OnboardingReviewController_RequiresReviewQueueAccess()
     {
-        AssertHasPolicy(typeof(OnboardingReviewController), null, "ReviewQueueAccess");
+        AssertHasPolicy(SectionType("Humans.Onboarding.Controllers.OnboardingReviewController"), null, "ReviewQueueAccess");
     }
 
     [HumansTheory]
@@ -148,7 +148,7 @@ public class EndpointAuthorizationTests
     [InlineData("Reject")]
     public void OnboardingReviewConsentActions_RequireConsentCoordinatorBoardOrAdmin(string actionName)
     {
-        AssertHasPolicy(typeof(OnboardingReviewController), actionName, "ConsentCoordinatorBoardOrAdmin");
+        AssertHasPolicy(SectionType("Humans.Onboarding.Controllers.OnboardingReviewController"), actionName, "ConsentCoordinatorBoardOrAdmin");
     }
 
     // --- Feedback is closed to new reports (nobodies-collective/Humans#977) ---

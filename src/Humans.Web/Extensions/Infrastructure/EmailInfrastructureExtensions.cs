@@ -1,16 +1,19 @@
-using Humans.Application.Interfaces.Repositories;
+using Humans.Email.Contracts;
 using Humans.Infrastructure.Configuration;
 using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Services;
-using EmailOutboxService = Humans.Application.Services.Email.EmailOutboxService;
-using EmailMessageFactory = Humans.Application.Services.Email.EmailMessageFactory;
-using OutboxEmailService = Humans.Application.Services.Email.OutboxEmailService;
-using InfrastructureEmailBodyComposer = Humans.Infrastructure.Services.BrandedEmailBodyComposer;
-using Humans.Application.Interfaces.Email;
-using Humans.Infrastructure.Repositories.Email;
 
 namespace Humans.Web.Extensions.Infrastructure;
 
+/// <summary>
+/// What is left in Shell after the Email section's G5 move: the <c>EmailSettings</c>
+/// binding — read by Auth's magic-link URL builder, Profiles' unsubscribe token provider,
+/// <c>SendReConsentReminderJob</c> and <c>SmtpHealthCheck</c>, so it is Base configuration
+/// the section is merely named after — plus the startup guard that Production must have
+/// SMTP configured, the Hangfire-backed <see cref="IImmediateOutboxProcessor"/> and the two
+/// recurring jobs (design §15 step 6b). Everything else moved into <c>Humans.Email</c>'s
+/// <c>Section.Register</c>.
+/// </summary>
 internal static class EmailInfrastructureExtensions
 {
     internal static IServiceCollection AddEmailInfrastructure(
@@ -32,32 +35,22 @@ internal static class EmailInfrastructureExtensions
             }
         });
 
-        var hasSmtpConfig = !string.IsNullOrEmpty(configuration["Email:SmtpHost"]);
-
-        if (hasSmtpConfig)
-        {
-            services.AddScoped<IEmailTransport, SmtpEmailTransport>();
-        }
-        else if (environment.IsProduction())
+        // The section binds the transport off the same key; this is the startup half of
+        // that decision, kept here because IHostEnvironment is not a Section.Register
+        // argument and a deferred throw would first fire on a real send.
+        if (string.IsNullOrEmpty(configuration["Email:SmtpHost"]) && environment.IsProduction())
         {
             throw new InvalidOperationException(
                 "Email SMTP configuration is required in production. Set Email:Host.");
         }
-        else
-        {
-            services.AddScoped<IEmailTransport, StubEmailTransport>();
-        }
 
-        services.AddScoped<IEmailRenderer, EmailRenderer>();
-
-        services.AddSingleton<IEmailOutboxRepository, EmailOutboxRepository>();
-        services.AddSingleton<IEmailBodyComposer, InfrastructureEmailBodyComposer>();
+        // Stays in Shell rather than the section: the implementation is Hangfire-backed and
+        // lives in Humans.Infrastructure, and Program.cs already treats the
+        // HangfireImmediateOutboxProcessor → IImmediateOutboxProcessor → OutboxEmailService
+        // chain as Shell's (see the Testing-environment Hangfire skip). The section registers
+        // OutboxEmailService as IEmailService and takes this as a constructor dependency, so
+        // ValidateOnBuild fails at startup without it.
         services.AddScoped<IImmediateOutboxProcessor, HangfireImmediateOutboxProcessor>();
-        services.AddScoped<IEmailMessageFactory, EmailMessageFactory>();
-        services.AddScoped<IEmailService, OutboxEmailService>();
-        services.AddScoped<EmailOutboxService>();
-        services.AddScoped<IEmailOutboxService>(sp => sp.GetRequiredService<EmailOutboxService>());
-        services.AddScoped<IEmailOutboxServiceRead>(sp => sp.GetRequiredService<EmailOutboxService>());
 
         services.AddScoped<ProcessEmailOutboxJob>();
         services.AddScoped<CleanupEmailOutboxJob>();

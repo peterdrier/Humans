@@ -2,8 +2,7 @@
   src/Humans.Application/Interfaces/IClientStatsTracker.cs
   src/Humans.Infrastructure/Services/ClientStatsTracker.cs
   src/Humans.Web/Middleware/ClientStatsMiddleware.cs
-  src/Humans.Web/Controllers/DebugController.cs
-  src/Humans.Web/Views/Debug/HttpErrors.cshtml
+  src/Sections/Humans.Debug/**
 -->
 <!-- freshness:flag-on-change
   The >399 capture predicate, the 499-for-aborted convention, the re-execute

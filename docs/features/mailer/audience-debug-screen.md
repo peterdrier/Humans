@@ -1,11 +1,5 @@
 <!-- freshness:triggers
-  src/Humans.Web/Controllers/Mailer/MailerAdminController.cs
-  src/Humans.Web/Views/Mailer/Admin/Debug.cshtml
-  src/Humans.Web/Views/Mailer/Admin/_DebugPager.cshtml
-  src/Humans.Web/Views/Mailer/Admin/_DebugSortHeader.cshtml
-  src/Humans.Web/Models/Mailer/MailerAudienceDebugViewModel.cs
-  src/Humans.Web/Models/Mailer/MailerAudienceDebugSnapshotBuilder.cs
-  src/Humans.Application/Services/Mailer/Audiences/TicketNoShiftsAudience.cs
+  src/Sections/Humans.Mailer/**
 -->
 
 # Mailer Audience Debug Screen
@@ -71,5 +65,5 @@ Bottom-right of the page; JS `confirm()` with the two counts. POSTs to the exist
 
 ## Related
 
-- [`docs/sections/Mailer.md`](../../sections/Mailer.md) — section invariants, including the new route.
+- [`src/Sections/Humans.Mailer/Docs/Mailer.md`](../../../src/Sections/Humans.Mailer/Docs/Mailer.md) — section invariants, including the new route.
 - Issue [nobodies-collective/Humans#773](https://github.com/nobodies-collective/Humans/issues/773) — original spec.

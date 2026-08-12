@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Sections\Humans.Development\Humans.Development.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NodaTime.Testing" />
+  </ItemGroup>
+
+  <!--
+    FrameworkReference, unlike Humans.Cantina.Tests and like Humans.Scanner.Tests: both test
+    classes name ASP.NET types. DevSeedControllerTests constructs the controller and builds a
+    DefaultHttpContext; DevPersonaSeederTests substitutes UserManager<User> (Identity). Take
+    the reference because a test names one, not because the section is Sdk.Razor
+    (G5-SECTION-TEMPLATE.md step 8, Cantina's rule).
+
+    No EF Core package: Development owns no tables and takes no Humans.Infrastructure
+    reference, so Microsoft.EntityFrameworkCore is not on the compile path — which is why
+    tests/Directory.Build.props excludes this project from the shared TestDbContextFactory /
+    CapturingLogger compile items. Debug's criterion, stated there: "no EF on the compile
+    path", not "the section owns no tables".
+  -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+</Project>

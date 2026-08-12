@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Security.Claims;
+using Humans.Web.Extensions;
 using Humans.Domain.Constants;
 using Humans.Domain.Enums;
 using Humans.Web.Authorization;
@@ -22,6 +23,16 @@ namespace Humans.Web.Tests.Authorization;
 /// </summary>
 public class MembershipRequiredFilterTests
 {
+
+    // OnboardingWidgetController is internal to Humans.Onboarding since that section's G5,
+    // so it cannot be named by typeof here. Resolved by reflection through the discovered
+    // section assemblies, throwing on a miss so a rename cannot quietly drop the row.
+    private static readonly Type OnboardingWidgetControllerType =
+        SectionDiscoveryExtensions.SectionAssemblies()
+            .Select(a => a.GetType("Humans.Onboarding.Controllers.OnboardingWidgetController", throwOnError: false))
+            .FirstOrDefault(t => t is not null)
+        ?? throw new InvalidOperationException(
+            "Humans.Onboarding.Controllers.OnboardingWidgetController not found in any section assembly.");
     [HumansFact]
     public async Task Active_user_reaches_a_non_exempt_controller()
     {
@@ -173,7 +184,7 @@ public class MembershipRequiredFilterTests
         // ControllerTypeInfo — required for the AllowAnonymous reflection check.
         var controllerType = controllerName switch
         {
-            "OnboardingWidget" => typeof(OnboardingWidgetController),
+            "OnboardingWidget" => OnboardingWidgetControllerType,
             _ => typeof(HomeController),
         };
         var actionDescriptor = new ControllerActionDescriptor

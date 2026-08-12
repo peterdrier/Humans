@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Humans.Onboarding;
 using Humans.Application;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Shifts;
@@ -38,6 +39,9 @@ public class ShiftsControllerNameGateTests
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IStringLocalizer<SharedResource> _localizer = Substitute.For<IStringLocalizer<SharedResource>>();
+    // The name-gate message came home with Onboarding's G5; the controller now resolves it
+    // through the section's own resource set.
+    private readonly IStringLocalizer<OnboardingResource> _onboardingLocalizer = Substitute.For<IStringLocalizer<OnboardingResource>>();
     private readonly IClock _clock = Substitute.For<IClock>();
     private readonly IBurnSettingsService _burnSettings = Substitute.For<IBurnSettingsService>();
     private readonly ShiftBrowsePageBuilder _builder;
@@ -47,6 +51,8 @@ public class ShiftsControllerNameGateTests
     {
         _localizer[Arg.Any<string>()].Returns(ci =>
             new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
+        _onboardingLocalizer[Arg.Any<string>()].Returns(ci =>
+            new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
         _builder = new ShiftBrowsePageBuilder(_shiftMgmt, _burnSettings, _teamService);
     }
 
@@ -55,7 +61,7 @@ public class ShiftsControllerNameGateTests
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(userInfo);
         var ctrl = new ShiftsController(
             _shiftMgmt, _burnSettings, _signupService, _volunteerTrackingService, _shiftView, _teamService,
-            _auditLogService, _userService, _localizer, _clock, _builder, _logger);
+            _auditLogService, _userService, _localizer, _onboardingLocalizer, _clock, _builder, _logger);
         var http = new DefaultHttpContext
         {
             User = new ClaimsPrincipal(new ClaimsIdentity(
@@ -110,7 +116,7 @@ public class ShiftsControllerNameGateTests
             departmentId: null, fromDate: null, toDate: null, period: null);
 
         var redirect = Assert.IsType<RedirectToActionResult>(result);
-        Assert.Equal(nameof(OnboardingWidgetController.Index), redirect.ActionName);
+        Assert.Equal("Index", redirect.ActionName);
         Assert.Equal("OnboardingWidget", redirect.ControllerName);
         await _burnSettings.DidNotReceiveWithAnyArgs().GetActiveAsync();
     }
