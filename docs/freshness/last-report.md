@@ -224,6 +224,16 @@ None.
 
 Subagents again went idle without delivering payloads — **fifth consecutive sweep** with this
 failure. Worked around with the established file-payload pattern (agents write JSON to a scratchpad
-path outside the worktree) plus worktree-diff verification for the one lane that never delivered at
-all. Two inter-lane contradictions were caught only because the orchestrator cross-checked lanes
-against each other and against source; that cross-check is worth keeping in the procedure.
+path outside the worktree).
+
+The sharper version of this finding: the payloads are not *lost*, they are **very late**. Every lane
+that looked dead eventually reported, but several arrived *after* the sweep had verified their work
+from the worktree diff, written the report, committed, and opened the PR. Waiting for them would
+have stalled the sweep indefinitely; the diff-verification fallback is what kept it moving, and it
+should stay in the procedure alongside the file-payload pattern rather than being treated as an
+emergency measure.
+
+Two inter-lane contradictions were caught only because the orchestrator cross-checked lanes against
+each other and against source (`ISurveyServiceRead`, `TicketingBudgetService` ownership). Neither
+lane flagged its own error. That cross-check is the most valuable step added this sweep and is worth
+making explicit in the skill.
