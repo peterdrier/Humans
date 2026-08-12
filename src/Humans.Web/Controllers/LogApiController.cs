@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Humans.Infrastructure.Logging;
 using Humans.Web.Filters;
-using Humans.Web.Infrastructure;
 using Serilog.Events;
 
 namespace Humans.Web.Controllers;

@@ -35,7 +35,7 @@ env:
     SurveysDbContext:src/Sections/Humans.Surveys
     EventGuideDbContext:src/Sections/Humans.Events
     AuthDbContext:src/Humans.Infrastructure
-    EmailDbContext:src/Humans.Infrastructure
+    EmailDbContext:src/Sections/Humans.Email
     CalendarDbContext:src/Sections/Humans.Calendar
     NotificationsDbContext:src/Sections/Humans.Notifications
     IssuesDbContext:src/Sections/Humans.Issues
@@ -49,7 +49,7 @@ env:
     CampsDbContext:src/Humans.Infrastructure
     GateDbContext:src/Sections/Humans.Gate
     SystemDbContext:src/Humans.Infrastructure
-    LegalDbContext:src/Humans.Infrastructure
+    LegalDbContext:src/Sections/Humans.Consent
     AuditLogDbContext:src/Humans.Infrastructure
     ShiftsDbContext:src/Humans.Infrastructure
     TeamsDbContext:src/Humans.Infrastructure

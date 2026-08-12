@@ -1,0 +1,567 @@
+using System.Text.Json;
+using AwesomeAssertions;
+using Humans.Application;
+using Humans.Application.Interfaces.Shifts;
+using Humans.Application.Interfaces.Users;
+using Humans.Cantina.Services;
+using Humans.Domain.Constants;
+using Humans.Domain.Entities;
+using NodaTime;
+using NodaTime.Testing;
+using NSubstitute;
+
+namespace Humans.Cantina.Tests.Services;
+
+/// <summary>
+/// Unit tests for <see cref="CantinaRosterService"/>. The on-site cohort comes
+/// from <see cref="IShiftManagementService.GetOnSiteUserIdsForDayAsync"/>;
+/// dietary data is read from <see cref="IUserServiceRead"/> (cached UserInfo —
+/// dietary lives on Profile). Tests exercise the "unique humans across the week"
+/// contract: a single human on-site multiple days contributes exactly once to
+/// every aggregate, while still showing up in the correct per-day counts.
+/// </summary>
+public class CantinaRosterServiceTests
+{
+    private readonly IShiftManagementService _shiftMgmt;
+    private readonly IBurnSettingsService _burnSettings;
+    private readonly IUserServiceRead _userRead;
+    private readonly IClock _clock;
+    private readonly CantinaRosterService _service;
+
+    private static readonly LocalDate GateOpening = new(2026, 7, 7);
+    private const string EventName = "Elsewhere 2026";
+    private const int WeekStartOffset = 0;
+
+    public CantinaRosterServiceTests()
+    {
+        _shiftMgmt = Substitute.For<IShiftManagementService>();
+        _burnSettings = Substitute.For<IBurnSettingsService>();
+        _userRead = Substitute.For<IUserServiceRead>();
+        // Fixed clock pinned to noon UTC on the gate-opening day; tests that
+        // care about EventTodayDate semantics override on a per-test basis.
+        _clock = new FakeClock(Instant.FromUtc(2026, 7, 7, 12, 0));
+
+        // Default: no humans known (each test stubs its own via SetupHumans).
+        _userRead.GetUserInfosAsync(
+                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                new Dictionary<Guid, UserInfo>()));
+
+        // Default: every day returns an empty on-site cohort.
+        _shiftMgmt.GetOnSiteUserIdsForDayAsync(
+                Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<Guid>>(Array.Empty<Guid>()));
+
+        _service = new CantinaRosterService(_shiftMgmt, _burnSettings, _userRead, _clock);
+    }
+
+    /// <summary>Builds a Profile carrying burner name + dietary (dietary now lives on Profile).</summary>
+    private static Profile Human(
+        Guid userId,
+        string burner,
+        string? dietary = null,
+        IReadOnlyList<string>? allergies = null,
+        string? allergyOther = null,
+        IReadOnlyList<string>? intolerances = null,
+        string? intoleranceOther = null) => new()
+        {
+            UserId = userId,
+            BurnerName = burner,
+            DietaryPreference = dietary,
+            Allergies = allergies is null ? [] : [.. allergies],
+            AllergyOtherText = allergyOther,
+            Intolerances = intolerances is null ? [] : [.. intolerances],
+            IntoleranceOtherText = intoleranceOther,
+        };
+
+    private static BurnSettingsInfo ActiveEvent() => new(
+        Id: Guid.NewGuid(),
+        EventName: EventName,
+        Year: GateOpening.Year,
+        TimeZoneId: "Europe/Madrid",
+        GateOpeningDate: GateOpening,
+        BuildStartOffset: 0,
+        EventEndOffset: 0,
+        StrikeEndOffset: 0,
+        FirstCrewStartOffset: 0,
+        SetupWeekStartOffset: 0,
+        PreEventWeekStartOffset: 0,
+        FinishingWeekendStartOffset: 0,
+        EarlyEntryCapacity: new Dictionary<int, int>(),
+        BarriosEarlyEntryAllocation: null,
+        EarlyEntryClose: null,
+        IsShiftBrowsingOpen: false);
+
+    /// <summary>
+    /// Active event with an explicit build→strike offset range so the
+    /// arrival-day scan (<c>BuildFirstConfirmedOffsetByUserAsync</c>) covers
+    /// days outside the visible week. The default <see cref="ActiveEvent"/>
+    /// leaves both offsets at 0, which would scan only day 0.
+    /// </summary>
+    private static BurnSettingsInfo ActiveEventWithRange(int buildStart, int strikeEnd) =>
+        ActiveEvent() with { BuildStartOffset = buildStart, StrikeEndOffset = strikeEnd };
+
+    [HumansFact]
+    public async Task GetWeeklyRoster_NoActiveEventSettings_ReturnsDtoWithNullDatesAndNoPeople()
+    {
+        _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns((BurnSettingsInfo?)null);
+
+        var result = await _service.GetWeeklyRosterAsync(WeekStartOffset, Xunit.TestContext.Current.CancellationToken);
+
+        result.WeekStartOffset.Should().Be(WeekStartOffset);
+        result.WeekStartDate.Should().BeNull();
+        result.WeekEndDate.Should().BeNull();
+        result.EventName.Should().BeNull();
+        result.TotalUniqueOnSite.Should().Be(0);
+        result.UnansweredCount.Should().Be(0);
+        result.People.Should().BeEmpty();
+        result.AllergyOtherEntries.Should().BeEmpty();
+        result.IntoleranceOtherEntries.Should().BeEmpty();
+
+        result.Days.Should().HaveCount(7);
+        result.Days.Should().OnlyContain(d => d.CalendarDate == null && d.TotalOnSite == 0 && d.UnansweredOnDay == 0);
+        result.Days.Select(d => d.DayOffset).Should().Equal(
+            WeekStartOffset + 0, WeekStartOffset + 1, WeekStartOffset + 2,
+            WeekStartOffset + 3, WeekStartOffset + 4, WeekStartOffset + 5,
+            WeekStartOffset + 6);
+
+        result.DietaryBreakdown.Should().ContainKey("Unanswered").WhoseValue.Should().Be(0);
+        foreach (var pref in DietaryOptions.DietaryPreferences)
+            result.DietaryBreakdown.Should().ContainKey(pref).WhoseValue.Should().Be(0);
+
+        result.AllergyRollup.Select(r => r.Label).Should().Equal(DietaryOptions.AllergyOptions);
+        result.AllergyRollup.Should().OnlyContain(r => r.Count == 0);
+        result.IntoleranceRollup.Select(r => r.Label).Should().Equal(DietaryOptions.IntoleranceOptions);
+        result.IntoleranceRollup.Should().OnlyContain(r => r.Count == 0);
+    }
+
+    [HumansFact]
+    public async Task GetWeeklyRoster_NoOnSiteUsers_AnyDay_ReturnsZeroState()
+    {
+        var es = ActiveEvent();
+        _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(es);
+
+        var result = await _service.GetWeeklyRosterAsync(WeekStartOffset, Xunit.TestContext.Current.CancellationToken);
+
+        result.WeekStartDate.Should().Be(GateOpening);
+        result.WeekEndDate.Should().Be(GateOpening.PlusDays(6));
+        result.EventName.Should().Be(EventName);
+        result.TotalUniqueOnSite.Should().Be(0);
+        result.UnansweredCount.Should().Be(0);
+        result.People.Should().BeEmpty();
+        result.Days.Should().HaveCount(7);
+        result.Days.Should().OnlyContain(d => d.TotalOnSite == 0 && d.UnansweredOnDay == 0);
+        for (var i = 0; i < 7; i++)
+            result.Days[i].CalendarDate.Should().Be(GateOpening.PlusDays(i));
+        result.DietaryBreakdown.Values.Should().OnlyContain(v => v == 0);
+        result.AllergyRollup.Should().OnlyContain(r => r.Count == 0);
+        result.IntoleranceRollup.Should().OnlyContain(r => r.Count == 0);
+    }
+
+    [HumansFact]
+    public async Task GetWeeklyRoster_OneOmnivoreOnOneDay_AggregatesCorrectly()
+    {
+        var es = ActiveEvent();
+        _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(es);
+
+        var userId = Guid.NewGuid();
+
+        // On-site Monday only (day 0 of the week).
+        SetupDay(WeekStartOffset + 0, userId);
+        SetupHumans(Human(userId, "AlicePrime", "Omnivore"));
+
+        var result = await _service.GetWeeklyRosterAsync(WeekStartOffset, Xunit.TestContext.Current.CancellationToken);
+
+        result.TotalUniqueOnSite.Should().Be(1);
+        result.UnansweredCount.Should().Be(0);
+        result.DietaryBreakdown["Omnivore"].Should().Be(1);
+        result.DietaryBreakdown["Unanswered"].Should().Be(0);
+
+        result.Days.Should().HaveCount(7);
+        result.Days[0].TotalOnSite.Should().Be(1);
+        result.Days[0].UnansweredOnDay.Should().Be(0);
+        for (var i = 1; i < 7; i++)
+            result.Days[i].TotalOnSite.Should().Be(0);
+
+        result.People.Should().HaveCount(1);
+        var p = result.People[0];
+        p.UserId.Should().Be(userId);
+        p.BurnerName.Should().Be("AlicePrime");
+        p.DietaryPreference.Should().Be("Omnivore");
+        p.ArrivesOn.Should().Be(GateOpening);
+        p.NoShift.Should().HaveCount(6);
+        p.NoShift.Should().Equal(
+            GateOpening.PlusDays(1),
+            GateOpening.PlusDays(2),
+            GateOpening.PlusDays(3),
+            GateOpening.PlusDays(4),
+            GateOpening.PlusDays(5),
+            GateOpening.PlusDays(6));
+    }
+
+    [HumansFact]
+    public async Task GetWeeklyRoster_OnePersonOnMultipleDays_CountedOnce()
+    {
+        var es = ActiveEvent();
+        _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(es);
+
+        var userId = Guid.NewGuid();
+
+        // On-site Mon, Wed, Fri.
+        SetupDay(WeekStartOffset + 0, userId);
+        SetupDay(WeekStartOffset + 2, userId);
+        SetupDay(WeekStartOffset + 4, userId);
+        SetupHumans(Human(userId, "Alice", "Vegan"));
+
+        var result = await _service.GetWeeklyRosterAsync(WeekStartOffset, Xunit.TestContext.Current.CancellationToken);
+
+        result.TotalUniqueOnSite.Should().Be(1);
+        result.DietaryBreakdown["Vegan"].Should().Be(1);
+        result.UnansweredCount.Should().Be(0);
+
+        result.Days[0].TotalOnSite.Should().Be(1);
+        result.Days[1].TotalOnSite.Should().Be(0);
+        result.Days[2].TotalOnSite.Should().Be(1);
+        result.Days[3].TotalOnSite.Should().Be(0);
+        result.Days[4].TotalOnSite.Should().Be(1);
+        result.Days[5].TotalOnSite.Should().Be(0);
+        result.Days[6].TotalOnSite.Should().Be(0);
+
+        result.People.Should().HaveCount(1);
+        var p = result.People[0];
+        p.ArrivesOn.Should().Be(GateOpening);
+        p.NoShift.Should().HaveCount(4);
+        p.NoShift.Should().Equal(
+            GateOpening.PlusDays(1),
+            GateOpening.PlusDays(3),
+            GateOpening.PlusDays(5),
+            GateOpening.PlusDays(6));
+    }
+
+    [HumansFact]
+    public async Task GetWeeklyRoster_VolunteerWithoutDietary_CountsAsUnanswered_Once()
+    {
+        var es = ActiveEvent();
+        _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(es);
+
+        var userId = Guid.NewGuid();
+
+        // On-site Mon, Tue, Wed — no dietary preference recorded.
+        SetupDay(WeekStartOffset + 0, userId);
+        SetupDay(WeekStartOffset + 1, userId);
+        SetupDay(WeekStartOffset + 2, userId);
+        SetupHumans(Human(userId, "BobBurner"));
+
+        var result = await _service.GetWeeklyRosterAsync(WeekStartOffset, Xunit.TestContext.Current.CancellationToken);
+
+        result.TotalUniqueOnSite.Should().Be(1);
+        result.UnansweredCount.Should().Be(1);
+        result.DietaryBreakdown["Unanswered"].Should().Be(1);
+        result.DietaryBreakdown.Values.Where(v => v > 0).Should().HaveCount(1);
+
+        result.Days[0].UnansweredOnDay.Should().Be(1);
+        result.Days[1].UnansweredOnDay.Should().Be(1);
+        result.Days[2].UnansweredOnDay.Should().Be(1);
+
+        result.People.Should().HaveCount(1);
+        var p = result.People[0];
+        p.BurnerName.Should().Be("BobBurner");
+        p.DietaryPreference.Should().BeNull();
+        p.Allergies.Should().BeEmpty();
+        p.AllergyOtherText.Should().BeNull();
+        p.Intolerances.Should().BeEmpty();
+        p.IntoleranceOtherText.Should().BeNull();
+        p.ArrivesOn.Should().Be(GateOpening);
+        p.NoShift.Should().HaveCount(4);
+    }
+
+    [HumansFact]
+    public async Task GetWeeklyRoster_MixedCohort_RollsUpUniqueAcrossWeek()
+    {
+        var es = ActiveEvent();
+        _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(es);
+
+        var a = Guid.NewGuid();
+        var b = Guid.NewGuid();
+        var c = Guid.NewGuid();
+        var d = Guid.NewGuid();
+
+        // A on-site Mon+Tue, B on Wed, C on Thu, D on Fri. D has no dietary.
+        SetupDay(WeekStartOffset + 0, a);
+        SetupDay(WeekStartOffset + 1, a);
+        SetupDay(WeekStartOffset + 2, b);
+        SetupDay(WeekStartOffset + 3, c);
+        SetupDay(WeekStartOffset + 4, d);
+        SetupHumans(
+            Human(a, "Ava", "Vegetarian", allergies: ["Peanut", "Shellfish"], intolerances: ["Lactose"]),
+            Human(b, "Beth", "Vegan", allergies: ["Peanut"]),
+            Human(c, "Cleo", "Omnivore", allergies: ["Other"], allergyOther: "MSG"),
+            Human(d, "Dee"));
+
+        var result = await _service.GetWeeklyRosterAsync(WeekStartOffset, Xunit.TestContext.Current.CancellationToken);
+
+        result.TotalUniqueOnSite.Should().Be(4);
+        result.UnansweredCount.Should().Be(1);
+        result.DietaryBreakdown["Vegetarian"].Should().Be(1);
+        result.DietaryBreakdown["Vegan"].Should().Be(1);
+        result.DietaryBreakdown["Omnivore"].Should().Be(1);
+        result.DietaryBreakdown["Pescatarian"].Should().Be(0);
+        result.DietaryBreakdown["Unanswered"].Should().Be(1);
+
+        var allergy = result.AllergyRollup.ToDictionary(r => r.Label, r => r.Count, StringComparer.Ordinal);
+        allergy["Peanut"].Should().Be(2);
+        allergy["Shellfish"].Should().Be(1);
+        allergy["Other"].Should().Be(1);
+        allergy["Tree nut"].Should().Be(0);
+        allergy["Dairy"].Should().Be(0);
+        allergy["Egg"].Should().Be(0);
+        allergy["Wheat/Gluten"].Should().Be(0);
+        allergy["Soy"].Should().Be(0);
+        allergy["Sesame"].Should().Be(0);
+
+        result.AllergyOtherEntries.Should().BeEquivalentTo(new[] { "MSG" });
+
+        var intolerance = result.IntoleranceRollup.ToDictionary(r => r.Label, r => r.Count, StringComparer.Ordinal);
+        intolerance["Lactose"].Should().Be(1);
+        intolerance["Gluten"].Should().Be(0);
+        intolerance["Histamine"].Should().Be(0);
+        intolerance["Other"].Should().Be(0);
+        result.IntoleranceOtherEntries.Should().BeEmpty();
+
+        result.Days[0].TotalOnSite.Should().Be(1);
+        result.Days[1].TotalOnSite.Should().Be(1);
+        result.Days[2].TotalOnSite.Should().Be(1);
+        result.Days[3].TotalOnSite.Should().Be(1);
+        result.Days[4].TotalOnSite.Should().Be(1);
+        result.Days[5].TotalOnSite.Should().Be(0);
+        result.Days[6].TotalOnSite.Should().Be(0);
+    }
+
+    [HumansFact]
+    public async Task GetWeeklyRoster_OtherTextDeduplicatedAcrossWeek()
+    {
+        var es = ActiveEvent();
+        _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(es);
+
+        var a = Guid.NewGuid();
+        var b = Guid.NewGuid();
+
+        SetupDay(WeekStartOffset + 0, a);
+        SetupDay(WeekStartOffset + 2, b);
+        SetupHumans(
+            Human(a, "Ava", "Omnivore", allergies: ["Other"], allergyOther: "MSG"),
+            // identical free-text — must dedup
+            Human(b, "Beth", "Omnivore", allergies: ["Other"], allergyOther: "MSG"));
+
+        var result = await _service.GetWeeklyRosterAsync(WeekStartOffset, Xunit.TestContext.Current.CancellationToken);
+
+        result.TotalUniqueOnSite.Should().Be(2);
+        result.AllergyOtherEntries.Should().BeEquivalentTo(new[] { "MSG" });
+        result.AllergyOtherEntries.Should().HaveCount(1);
+    }
+
+    [HumansFact]
+    public async Task GetWeeklyRoster_MedicalConditionsNeverInDto()
+    {
+        // The cantina output DTO must not expose MedicalConditions, even though
+        // medical now lives on the cached UserInfo/ProfileInfo. GDPR Art.9 boundary.
+        typeof(Humans.Cantina.Services.Dtos.RosterPersonDto)
+            .GetProperty("MedicalConditions").Should().BeNull(
+            "RosterPersonDto must not expose MedicalConditions — GDPR Art.9 boundary.");
+
+        var es = ActiveEvent();
+        _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(es);
+
+        var userId = Guid.NewGuid();
+        SetupDay(WeekStartOffset + 0, userId);
+        // Profile carries medical; the cantina DTO/JSON must still omit it.
+        SetupHumans(new Profile
+        {
+            UserId = userId,
+            BurnerName = "Sensitive",
+            DietaryPreference = "Omnivore",
+            MedicalConditions = "Severe peanut allergy",
+        });
+
+        var result = await _service.GetWeeklyRosterAsync(WeekStartOffset, Xunit.TestContext.Current.CancellationToken);
+
+        var json = JsonSerializer.Serialize(result);
+        json.Should().NotContain("MedicalConditions");
+        json.Should().NotContain("Severe peanut allergy");
+    }
+
+    // Display-sort tests live in Humans.Web.Tests/Cantina/CantinaRosterAssemblerTests.cs.
+
+    [HumansFact]
+    public async Task GetWeeklyRoster_ArrivesOn_IsEarliestOnSiteDay_AndNoShift_IsComplement()
+    {
+        // Single human on-site Mon + Wed + Sat (days 0, 2, 5).
+        // Expected: ArrivesOn = Mon (earliest), NoShift = [Tue, Thu, Fri, Sun].
+        // Also verifies the cohort-exclusion invariant: a known human with NO
+        // signups all week does NOT appear in People.
+        var es = ActiveEvent();
+        _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(es);
+
+        var onSiteUserId = Guid.NewGuid();
+        var excludedUserId = Guid.NewGuid(); // never appears on any day → must be excluded
+
+        SetupDay(WeekStartOffset + 0, onSiteUserId);
+        SetupDay(WeekStartOffset + 2, onSiteUserId);
+        SetupDay(WeekStartOffset + 5, onSiteUserId);
+        SetupHumans(Human(onSiteUserId, "OnSite", "Omnivore"), Human(excludedUserId, "Excluded"));
+
+        var result = await _service.GetWeeklyRosterAsync(WeekStartOffset, Xunit.TestContext.Current.CancellationToken);
+
+        result.People.Should().HaveCount(1);
+        result.People.Should().NotContain(p => p.UserId == excludedUserId);
+
+        var p = result.People[0];
+        p.UserId.Should().Be(onSiteUserId);
+        p.ArrivesOn.Should().Be(GateOpening); // Mon = week day 0
+        p.NoShift.Should().HaveCount(4);
+        p.NoShift.Should().Equal(
+            GateOpening.PlusDays(1), // Tue
+            GateOpening.PlusDays(3), // Thu
+            GateOpening.PlusDays(4), // Fri
+            GateOpening.PlusDays(6)); // Sun
+    }
+
+    [HumansFact]
+    public async Task GetWeeklyRoster_FeedsHumanDayBeforeFirstConfirmedShift()
+    {
+        // Human's only confirmed shift is Wednesday (offset 2). They have no
+        // signup on any visible-week day other than via that shift, so the
+        // roster must feed them the day before — Tuesday (offset 1) — as their
+        // arrival day, pulling them into the cohort even though they were not
+        // returned for any visible-week load except day 2.
+        var ev = ActiveEventWithRange(buildStart: -2, strikeEnd: 8);
+        _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(ev);
+
+        var id = Guid.NewGuid();
+        _shiftMgmt.GetOnSiteUserIdsForDayAsync(ev.Id, 2, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<Guid>>(new[] { id }));
+        SetupHumans(Human(id, "Ash"));
+
+        var result = await _service.GetWeeklyRosterAsync(0, Xunit.TestContext.Current.CancellationToken);
+
+        var person = result.People.Single(p => p.UserId == id);
+        // Arrival = day before the first confirmed shift (offset 2 → offset 1).
+        person.ArrivesOn.Should().Be(GateOpening.PlusDays(1));
+        // The arrival day is fed in as a real on-site day, so it is NOT in
+        // NoShift (NoShift is the complement of on-site days). The human is
+        // "present, no shift" on the arrival day in the sense that they have no
+        // confirmed signup there — but the day still counts as on-site for the
+        // cohort, which is what pulls an otherwise arrival-only human into the
+        // roster. Their only confirmed-shift day (offset 2) is likewise on-site.
+        person.NoShift.Should().NotContain(GateOpening.PlusDays(1)); // arrival is on-site
+        person.NoShift.Should().NotContain(GateOpening.PlusDays(2)); // confirmed shift is on-site
+        // The weekly per-day strip counts the arrival person on Tuesday (offset 1),
+        // matching what the daily drill-down will show (Task 2.4).
+        result.Days[1].TotalOnSite.Should().Be(1);
+    }
+
+    [HumansFact]
+    public async Task GetWeeklyRoster_ArrivalOnlyHuman_PulledIntoWeek()
+    {
+        // Human's ONLY confirmed shift is offset 7 (next week's first day).
+        // Viewing week 0 (offsets 0..6), their arrival = offset 6, which IS in
+        // this week. They have NO shift in offsets 0..6 — the arrival day alone
+        // pulls them into the cohort.
+        var ev = ActiveEventWithRange(buildStart: -2, strikeEnd: 8);
+        _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(ev);
+
+        var id = Guid.NewGuid();
+        _shiftMgmt.GetOnSiteUserIdsForDayAsync(ev.Id, 7, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<Guid>>(new[] { id }));
+        SetupHumans(Human(id, "Bo"));
+
+        var result = await _service.GetWeeklyRosterAsync(0, Xunit.TestContext.Current.CancellationToken);
+
+        result.People.Should().ContainSingle(p => p.UserId == id);
+        var person = result.People.Single(p => p.UserId == id);
+        person.ArrivesOn.Should().Be(GateOpening.PlusDays(6));
+        result.TotalUniqueOnSite.Should().Be(1);
+        result.Days[6].TotalOnSite.Should().Be(1);
+    }
+
+    [HumansFact]
+    public async Task GetWeeklyRoster_ArrivalDayBeforeEvent_NotClamped()
+    {
+        // Human's first confirmed shift is offset 0 (gate opening). Arrival =
+        // offset -1. Viewing the PREVIOUS week (offsets -7..-1); offset -1 is
+        // the last day of that window (index 6). The pre-event/negative arrival
+        // day must NOT be clamped — the human must appear with ArrivesOn at -1.
+        var ev = ActiveEventWithRange(buildStart: -7, strikeEnd: 2);
+        _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(ev);
+
+        var id = Guid.NewGuid();
+        _shiftMgmt.GetOnSiteUserIdsForDayAsync(ev.Id, 0, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<Guid>>(new[] { id }));
+        SetupHumans(Human(id, "Cy"));
+
+        var result = await _service.GetWeeklyRosterAsync(-7, Xunit.TestContext.Current.CancellationToken);
+
+        var person = result.People.Single(p => p.UserId == id);
+        person.ArrivesOn.Should().Be(GateOpening.PlusDays(-1));
+        result.Days[6].TotalOnSite.Should().Be(1); // offset -1 is index 6 of the -7..-1 window
+    }
+
+    [HumansFact]
+    public async Task GetWeeklyRoster_FirstShiftInPriorWeek_NoSpuriousArrivalInLaterWeek()
+    {
+        // Guards the GLOBAL-minimum logic. Human has confirmed shifts on offset
+        // 2 (a prior week) AND offset 8 (the viewed week, offsets 7..13).
+        // Their global min is 2 → arrival offset 1, which is NOT in the viewed
+        // week. So viewing week 7, no arrival day must be injected — their
+        // earliest in-week day is the offset-8 shift, and offset 7 (index 0)
+        // must have zero on-site.
+        var ev = ActiveEventWithRange(buildStart: -2, strikeEnd: 14);
+        _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(ev);
+
+        var id = Guid.NewGuid();
+        _shiftMgmt.GetOnSiteUserIdsForDayAsync(ev.Id, 2, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<Guid>>(new[] { id }));
+        _shiftMgmt.GetOnSiteUserIdsForDayAsync(ev.Id, 8, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<Guid>>(new[] { id }));
+        SetupHumans(Human(id, "Di"));
+
+        var result = await _service.GetWeeklyRosterAsync(7, Xunit.TestContext.Current.CancellationToken);
+
+        var person = result.People.Single(p => p.UserId == id);
+        // ArrivesOn must be the first shift IN this week, not a spurious arrival
+        // day derived from the prior-week global minimum.
+        person.ArrivesOn.Should().Be(GateOpening.PlusDays(8));
+        result.Days[0].TotalOnSite.Should().Be(0); // offset 7 — no shift and no arrival
+    }
+
+    // ---- helpers ----
+
+    /// <summary>Stubs the on-site cohort for a single day (dietary comes from SetupHumans).</summary>
+    private void SetupDay(int dayOffset, params Guid[] onSiteIds) =>
+        _shiftMgmt.GetOnSiteUserIdsForDayAsync(
+                Arg.Any<Guid>(), dayOffset, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<Guid>>(onSiteIds));
+
+    /// <summary>
+    /// Stubs <see cref="IUserServiceRead.GetUserInfosAsync"/> to return a
+    /// <c>UserInfo</c> per profile. Dietary + burner name are read off the Profile.
+    /// </summary>
+    private void SetupHumans(params Profile[] profiles)
+    {
+        var dict = profiles.ToDictionary(
+            p => p.UserId,
+            p => UserInfo.Create(
+                user: new User { Id = p.UserId, DisplayName = p.BurnerName, PreferredLanguage = "en" },
+                userEmails: [],
+                eventParticipations: [],
+                externalLogins: [],
+                profile: p,
+                contactFields: [],
+                profileLanguages: [],
+                volunteerHistory: [],
+                communicationPreferences: []));
+        _userRead.GetUserInfosAsync(
+                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(dict));
+    }
+}

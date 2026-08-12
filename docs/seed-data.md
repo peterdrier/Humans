@@ -1,7 +1,7 @@
 <!-- freshness:triggers
   src/Humans.Infrastructure/Data/Configurations/**
   src/Humans.Domain/Constants/**
-  src/Humans.Web/Controllers/DevSeedController.cs
+  src/Sections/Humans.Development/**
   src/Humans.Infrastructure/Migrations/**
   src/Sections/**/Data/**
 -->

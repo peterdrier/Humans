@@ -3,7 +3,7 @@ using System.Text;
 using Humans.Application.Configuration;
 using Humans.Application.Constants;
 using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.Gdpr;
+using Humans.Gdpr.Contracts;
 using Humans.Agent.Data;
 using Humans.Agent.Services.Stores;
 using Humans.Application.Models;

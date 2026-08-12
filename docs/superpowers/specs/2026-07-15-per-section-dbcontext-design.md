@@ -18,7 +18,9 @@ Decisions fixed before this design (not relitigated here):
   for both paths. No hand-run SQL against any live DB, ever.
 - **Old migrations in `src/Humans.Infrastructure/Migrations/` are not deleted or edited.**
   Retroactive history shrink is a separate future effort; straggler DBs mid-chain need the old
-  chain intact.
+  chain intact. **Superseded at peel 15 (§10.3):** the chain is deleted with `HumansDbContext`, and
+  the no-stragglers assumption is retired deliberately, behind a verify-every-live-DB-at-tip
+  precondition.
 - **Peel-off strategy**: clean sections only, least complicated first. `HumansDbContext` keeps
   everything dirty (the main pile).
 - Each peel's `HumansDbContext` removal migration has **hand-emptied `Up()`/`Down()` bodies**
@@ -66,7 +68,7 @@ tables. The §8 table-ownership map in `design-rules.md` is directionally right 
 | **EventGuide** | events, event_categories, event_venues, event_guide_settings, event_moderation_actions, event_favourites, event_preferences | 0 / 0 | **CLEAN — peel 9** |
 | Users/Identity | users, roles, user_roles, user_claims, user_logins, role_claims, user_tokens | 0 / 20+ | main pile (hub; peels last, after drain) |
 | Teams | teams, team_members, team_join_requests, team_join_request_state_history, team_role_definitions, team_role_assignments, team_early_entry_grants | 5 / 7 | main pile |
-| Profiles | profiles, contact_fields, user_emails, volunteer_history_entries, communication_preferences, profile_languages, account_merge_requests | 6 / 0 | main pile |
+| Profiles | profiles, contact_fields, user_emails, volunteer_history_entries, communication_preferences, profile_languages | 6 / 0 | main pile (`account_merge_requests` moved to Users in the account-merge consolidation — `Users.md:201`, `Profiles.md:427`) |
 | Auth | role_assignments | 2 / 0 | main pile |
 | Governance | applications, application_state_history, board_votes | 4 / 0 | main pile |
 | Legal | legal_documents, document_versions, consent_records | 2 / 0 | main pile |
@@ -83,7 +85,7 @@ tables. The §8 table-ownership map in `design-rules.md` is directionally right 
 | Issues | issues, issue_comments | 4 / 0 | main pile |
 | Notifications | notifications, notification_recipients | 2 / 0 | main pile |
 | AuditLog | audit_log | 2 / 0 | main pile (horizontal) |
-| Agent-adjacent framework | DataProtectionKeys | 0 / 0 | stays in HumansDbContext permanently (framework-owned: `IDataProtectionKeyContext`), as do the Identity tables (`IdentityDbContext` base) |
+| Agent-adjacent framework | DataProtectionKeys | 0 / 0 | ~~stays in HumansDbContext permanently~~ — **superseded**: peeled into `SystemDbContext` in peel 11 (2026-08-10). The Identity tables (`IdentityDbContext` base) move to `UsersDbContext` in peel 15, §10.3 |
 
 Scanner and Onboarding own no tables. Hangfire owns its own schema outside EF.
 
@@ -487,6 +489,104 @@ Check-constraint audit for this batch: the only two live CHECK constraints are
 CityPlanning/Budget/Camps table, so all three baselines are constraint-free. Removing those two is
 tracked separately under the new `memory/architecture/no-db-check-constraints.md` rule.
 
+### 10.3 End state — peels 14 and 15 (decided 2026-08-12)
+
+Two peels remain, and the programme ends with `HumansDbContext` deleted rather than renamed.
+
+**Peel 14 — Teams** (`TeamsDbContext`, 7 tables). Standard shape: real-up baseline under
+`Migrations/Teams/`, snapshot-only removal migration on `HumansDbContext`. The §10.1 blocker list
+must be re-derived against the §8 ownership map before starting, exactly as peel 13 did — it
+reclassified five relationships and found only three real ones.
+
+**Peel 15 — Users *and* Profiles together, into one `UsersDbContext`.** Not two peels. **Profiles
+was mid-transition into Users and the move was never finished; peel 15 accepts the merged state as
+the end state.** The half-done move is visible in the code: `UserRepository` — a Users-section
+repository — owns five of Profiles' seven tables (`profiles`, `profile_languages`, `contact_fields`,
+`user_emails`, `volunteer_history_entries`) across its partials `UserRepository.Profiles.cs`,
+`.UserEmails.cs` and `.ContactFields.cs`. Of the remaining two, `communication_preferences` went to
+`CommunicationPreferenceRepository` on the Profiles side and `account_merge_requests` to
+`AccountMergeRepository` under `Repositories/Users/`.
+
+The coupling is a **shared unit of work**, not a join: these are sequential lookups against one
+`DbContext` — read `UserEmails`, then `Users` — so no single query would break under a split. What
+would break is one repository needing two contexts, which is why finishing the split means a
+`UserRepository` split nobody has scoped, to restore a boundary we are choosing not to have.
+
+Naming — section names, table names, doc homes — is **deliberately deferred**. Renames are cheap
+later and are not a peel-15 concern.
+
+Consequences of taking them together:
+
+- **§10.1's three surviving blockers evaporate.** `Profile`, `UserEmail` and
+  `CommunicationPreference` → `User` stop being cross-context the moment both sections share one. No
+  drain PR, no constraint drops, no QA→prod soak, and the FKs stay physically enforced. Two of the
+  three are already nav-less — `ProfileConfiguration.cs:118` is `HasOne<User>().WithOne()` and
+  `CommunicationPreferenceConfiguration.cs:40` is `HasOne<User>().WithMany()`, both stripped under
+  #635 §15i. **`UserEmailConfiguration.cs:69` is not**: it configures
+  `.WithMany(u => u.UserEmails)`, so the `User.UserEmails` navigation survives and is the one piece
+  of remaining navigation surface across the merged boundary.
+- **`UsersDbContext` carries the Identity base**: `IdentityDbContext<User, IdentityRole<Guid>, Guid>`.
+  Nothing pins Identity to the `HumansDbContext` *name*; the base class moves with the context. Its
+  baseline covers the eight section DbSets **and** the seven Identity tables.
+- **The cost, stated plainly:** nothing structurally prevents a profiles↔users EF join. That is the
+  de-facto state today; this records it as deliberate rather than pretending the boundary exists.
+
+**Then `HumansDbContext` is deleted, chain and all** — the type, `HumansDbContextModelSnapshot.cs`,
+and the root chain at `src/Humans.Infrastructure/Migrations/*.cs` (287 files, 652,274 lines as of
+2026-08-12).
+
+**This retires the no-stragglers assumption, and that has to be explicit.** The framing at the top
+of this doc ("old migrations are not deleted or edited… straggler DBs mid-chain need the old chain
+intact") is what the deletion overturns. The failure mode is silent: `SectionMigrationRunner`
+records a section baseline as applied *without executing it* when the sentinel table is present, so
+a DB that has a section's sentinel but is missing a table or column added by a later root migration
+never acquires that schema once the chain is gone — and nothing reports it. **Precondition for the
+deletion PR: every live database — prod, QA, every open PR's preview clone, and every dev box —
+verified at the root chain tip first**, with `/Debug/DbVersion` before it is repointed, not after.
+
+Preview DBs need checking one by one; QA does **not** cover them. `.github/workflows/preview-db.yml`
+clones from QA on `opened`/`reopened` only (its `if:` guard, line 9), never on later pushes, so a
+preview created weeks earlier sits at whatever QA looked like then and drifts independently.
+Cheapest remedy for any preview or dev DB found behind: drop and recreate rather than catch up —
+close/reopen the PR re-clones it.
+
+Three things the delete has to clear:
+
+1. **Raw SQL.** 16 root migrations call `migrationBuilder.Sql(`. Every peel so far audited these and
+   carried the live ones into its baseline (Legal/AuditLog took their plpgsql immutability triggers;
+   Shifts confirmed it had none, only data backfills). The Users baseline needs the same audit for
+   anything still applying to `users`, `profiles`, `user_emails` or the Identity tables. This is the
+   one class of thing a model-generated baseline silently omits, and once the chain is gone there is
+   nothing left to recover it from.
+2. **`__EFMigrationsHistory`** (the main-pile history table) goes orphaned. **Peter's call
+   (2026-08-12): drop it, in its own PR once QA and prod are both live on `UsersDbContext` and
+   `HumansDbContext` is gone** — same sequencing shape as `no-drops-until-prod-verified`. The peel
+   PR itself leaves the table inert. The §13 Q2 orphan row dies with the table.
+   **That drop is the point of no return for §12's rollback story**, which is why it is sequenced
+   last and separately: while the table survives, reverting peel 15 restores `HumansDbContext` and
+   it reads its history normally. Once dropped, a revert leaves EF treating the whole root chain as
+   pending, and the initial migrations collide with tables that already exist. Do not run the drop
+   PR until peel 15 is settled in prod and you would not revert it.
+3. **References to the name, in C# *and* build wiring.** 159 `.cs` files outside `Migrations/` name
+   `HumansDbContext`; most are XML doc comments on repository interfaces and analyzer diagnostic
+   descriptions, but the load-bearing ones are the `UserStore<…, HumansDbContext, …>` Identity
+   wiring, `Humans.Analyzers/Internal/SectionDbContexts.cs`, and `/Debug/DbVersion` (§13 Q1).
+   **The sweep is not C#-only**: `.github/workflows/build.yml:27` sets
+   `MAIN_DB_CONTEXT: 'HumansDbContext:src/Humans.Infrastructure'`, consumed by both
+   migration-validation loops (lines 92, 248) and the from-scratch apply step (lines 220–221).
+   Delete the context while grepping only `*.cs` and CI ends up targeting a context that no longer
+   exists. Grep workflows and scripts too. All of this is cleanup work belonging to this programme,
+   not follow-ups to hand off.
+
+**`account_merge_requests` ownership is already settled — §3.1 above is the stale one.** The
+canonical section docs put it under Users: `docs/sections/Users.md:201` lists it in Users' owned
+tables and `docs/sections/Profiles.md:427` records that it moved there in the account-merge
+consolidation. `AccountMergeRepository.cs` under `Repositories/Users/` agrees, and peel 13's
+re-audit classified `AccountMergeRequest → User` as Users-internal on that basis. §3.1's Profiles
+row is corrected in this edit; the residual `**Table:** account_merge_requests` block at
+`Profiles.md:241` is stale and belongs in Users.md. Peel 15 must not treat this as an open decision
+and rewrite the correct docs to match the stale map.
+
 ## 11. `dotnet ef` per-context usage (migration-discipline docs)
 
 With >1 context in the assembly, **every** `dotnet ef` invocation needs `--context`:
@@ -506,6 +606,18 @@ dotnet ef migrations has-pending-model-changes --context <C> ...   # per context
 A `memory/process/ef-multi-context-commands.md` atom ships with peel 1 (the PR that makes
 `--context` mandatory), updating `INDEX.md` in the same commit.
 
+**After peel 15 (§10.3) there is no main pile.** `HumansDbContext` no longer exists, so the first
+command above fails with an unknown-context error; Users/Profiles is a section like any other and
+takes the section form:
+
+```bash
+dotnet ef migrations add <Name> --context UsersDbContext --output-dir Migrations/Users \
+  --project src/Humans.Infrastructure --startup-project src/Humans.Web
+```
+
+The `ef-multi-context-commands` atom and `build.yml`'s `MAIN_DB_CONTEXT` (§10.3 item 3) update in
+the same PR that deletes the context.
+
 ## 12. Rollback story
 
 Rollback of a peel = **revert the PR** (code-only: context, baseline files, DI, repo constructors,
@@ -516,6 +628,12 @@ acceptable on a shared DB — exactly why the fake-applied path exists on the wa
 deliberately no symmetric path out. Physical schema is untouched by the entire stack, so no
 rollback scenario involves data.
 
+**This holds through peel 15 and ends at the history drop** (§10.3 item 2). Peel 15 itself is
+revertible on the same code-only terms — `HumansDbContext` comes back and reads `__EFMigrationsHistory`
+as before. The separate drop PR is what closes the path: without the history table EF sees the
+entire root chain as pending and the initial migrations collide with existing tables. Sequence the
+drop accordingly.
+
 ## 13. Open questions for Peter
 
 1. **`/Debug/DbVersion` scope** — it reports `HumansDbContext`'s history only. Post-split that
@@ -523,8 +641,13 @@ rollback scenario involves data.
    for. Extending it to enumerate per-section histories is a small follow-up. Options: leave as-is
    (my default), or I add per-section rows to the payload in a later peel. Implementer-decides is
    fine here.
+   **ANSWERED 2026-08-12:** leave-as-is is not an option — `HumansDbContext` is deleted at peel 15
+   (§10.3), so the endpoint has nothing to report. Repointing it is cleanup work owned by this
+   programme.
 2. **QA/dev orphan history row** (`20260322172854_AddDrivePermissionLevel`, §2) — leave in place
    (my default; EF ignores it) or note it for cleanup during the future history shrink?
+   **ANSWERED 2026-08-12:** it dies with `__EFMigrationsHistory`, dropped in its own PR once QA and
+   prod are live on `UsersDbContext` (§10.3).
 3. **CI Layer 2 cost** — the per-section isolated-apply step adds one empty-DB `database update`
    per peeled context to migration-touching PRs (~seconds each on the self-hosted runner).
    Acceptable? Alternative is trusting the Testcontainers helper tests alone (they run in

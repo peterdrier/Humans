@@ -4,7 +4,7 @@
   src/Humans.Web/Authorization/**
   src/Humans.UI/Authorization/**
   src/Humans.Web/Controllers/AccountController.cs
-  src/Humans.Web/Controllers/DevLoginController.cs
+  src/Sections/Humans.Development/Controllers/DevLoginController.cs
   src/Humans.Domain/Entities/User.cs
   src/Humans.Domain/Entities/RoleAssignment.cs
   src/Humans.Domain/Constants/RoleNames.cs

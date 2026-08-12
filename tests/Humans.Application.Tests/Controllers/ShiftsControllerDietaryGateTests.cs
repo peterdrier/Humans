@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using AwesomeAssertions;
+using Humans.Onboarding;
 using Humans.Application.DTOs.Shifts;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Shifts;
@@ -76,6 +77,7 @@ public class ShiftsControllerDietaryGateTests
             _auditLogService,
             _userService,
             localizer,
+            Substitute.For<IStringLocalizer<OnboardingResource>>(),
             new FakeClock(Instant.FromUtc(2026, 5, 25, 12, 0)),
             builder,
             NullLogger<ShiftsController>.Instance);

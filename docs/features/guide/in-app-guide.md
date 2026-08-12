@@ -1,19 +1,7 @@
 <!-- freshness:triggers
-  src/Humans.Web/Controllers/GuideController.cs
-  src/Humans.Web/Views/Guide/**
-  src/Humans.Web/Models/GuideViewModel.cs
-  src/Humans.Web/Models/GuideSidebarModel.cs
-  src/Humans.Web/Extensions/Sections/GuideSectionExtensions.cs
-  src/Humans.Application/Services/GuideFilter.cs
-  src/Humans.Application/Services/GuideRolePrivilegeMap.cs
-  src/Humans.Application/Constants/GuideFiles.cs
-  src/Humans.Application/Models/GuideRoleContext.cs
-  src/Humans.Infrastructure/Services/GuideContentService.cs
-  src/Humans.Infrastructure/Services/GuideRenderer.cs
-  src/Humans.Infrastructure/Services/GuideRoleResolver.cs
-  src/Humans.Infrastructure/Services/GuideHtmlPostprocessor.cs
-  src/Humans.Infrastructure/Services/GuideMarkdownPreprocessor.cs
+  src/Sections/Humans.Guide/**
   src/Humans.Infrastructure/Services/GitHubGuideContentSource.cs
+  src/Humans.Infrastructure/Configuration/GuideSettings.cs
 -->
 <!-- freshness:flag-on-change
   Guide rendering pipeline, role-filtering rules, refresh route, or anonymous-access policy may have shifted.
@@ -78,7 +66,7 @@ cached in-memory from GitHub. No migrations, no new tables.
 
 ## Role filtering rules
 
-See `docs/sections/Guide.md` §Invariants and §Actors for the authoritative
+See `src/Sections/Humans.Guide/Docs/Guide.md` §Invariants and §Actors for the authoritative
 role-filtering rules (per-block visibility, within-file superset,
 parenthetical parsing).
 

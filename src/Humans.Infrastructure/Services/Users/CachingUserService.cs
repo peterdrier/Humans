@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application;
 using Humans.Application.DTOs;
-using Humans.Application.Interfaces.Onboarding;
+using Humans.Onboarding.Contracts;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Profiles;

@@ -1,7 +1,7 @@
 <!-- freshness:triggers
   src/Sections/Humans.Governance/**
-  src/Humans.Application/Services/Gdpr/**
-  src/Humans.Application/Interfaces/Gdpr/**
+  src/Sections/Humans.Gdpr/**
+  src/Sections/Humans.Gdpr.Contracts/**
   src/Humans.Web/Controllers/ProfileController.cs
   src/Humans.Web/Controllers/GuestController.cs
   src/Humans.Application/Services/Profiles/ProfileService.cs
@@ -41,7 +41,7 @@ shape.
 
 ## Architecture
 
-The export is assembled by `IGdprExportService` (in `Humans.Application`), a
+The export is assembled by `IGdprExportService` (declared on `Humans.Gdpr.Contracts`, implemented by the internal `GdprExportService` in `Humans.Gdpr`), a
 pure orchestrator that owns no database tables and has no `DbContext`
 dependency. It injects `IEnumerable<IUserDataContributor>` and fans out one
 call per contributor, merging the returned slices into a single document keyed
@@ -62,7 +62,7 @@ change.
              ▼  ExportForUserAsync(userId)
 ┌─────────────────────────────────────────────────┐
 │             IGdprExportService                  │
-│          (Humans.Application layer)             │
+│          (Humans.Gdpr section project)          │
 │                                                 │
 │   foreach contributor in IEnumerable<IUDC>      │
 │       slices += contributor.ContributeForUser() │
@@ -104,7 +104,7 @@ become parallel in place without changing the contract.
 ## Section registry
 
 Section names are defined as constants in
-`Humans.Application.Interfaces.Gdpr.GdprExportSections`. Renaming a value is a
+`Humans.Gdpr.Contracts.GdprExportSections`. Renaming a value is a
 breaking change for any human who has previously downloaded their export and
 expects the same JSON keys on a re-download. Add new sections; don't rename
 existing ones.

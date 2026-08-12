@@ -1,5 +1,5 @@
 using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.Gdpr;
+using Humans.Gdpr.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Hosting;
 using Humans.Notifications.Contracts;

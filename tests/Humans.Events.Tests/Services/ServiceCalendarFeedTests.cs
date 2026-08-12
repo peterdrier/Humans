@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces.Email;
+using Humans.Email.Contracts;
 using Humans.Events.Data;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;

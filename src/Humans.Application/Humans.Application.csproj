@@ -14,6 +14,7 @@
     -->
     <ProjectReference Include="..\Sections\Humans.SystemSettings.Contracts\Humans.SystemSettings.Contracts.csproj" />
     <!-- Events' contracts leaf: SearchService calls IEventServiceRead. -->
+    <ProjectReference Include="..\Sections\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
     <ProjectReference Include="..\Sections\Humans.Events.Contracts\Humans.Events.Contracts.csproj" />
     <ProjectReference Include="..\Sections\Humans.Finance.Contracts\Humans.Finance.Contracts.csproj" />
     <!-- City Planning's contracts leaf: CampService clears a deleted camp's polygons. -->
@@ -24,6 +25,7 @@
       TicketQueryService builds the code-tracking dashboard.
     -->
     <ProjectReference Include="..\Sections\Humans.Campaigns.Contracts\Humans.Campaigns.Contracts.csproj" />
+    <ProjectReference Include="..\Sections\Humans.Consent.Contracts\Humans.Consent.Contracts.csproj" />
     <!--
       Notifications' contracts leaf: eleven services here emit through INotificationEmitter,
       AccountMergeService takes INotificationService, and ConsentService /
@@ -32,6 +34,15 @@
     <ProjectReference Include="..\Sections\Humans.Governance.Contracts\Humans.Governance.Contracts.csproj" />
     <ProjectReference Include="..\Sections\Humans.Notifications.Contracts\Humans.Notifications.Contracts.csproj" />
     <ProjectReference Include="..\Sections\Humans.Holded.Contracts\Humans.Holded.Contracts.csproj" />
+    <!--
+      Gdpr's contracts leaf, and the one reference here that exists because Base
+      *implements* a section's contract rather than calling it: eight services in this
+      project (UserService, TeamService, AccountMergeService, RoleAssignmentService,
+      CampService, ShiftSignupService, TicketQueryService, AuditLogService) implement
+      IUserDataContributor for the Article 15 export fan-out.
+    -->
+    <ProjectReference Include="..\Sections\Humans.Gdpr.Contracts\Humans.Gdpr.Contracts.csproj" />
+    <ProjectReference Include="..\Sections\Humans.Onboarding.Contracts\Humans.Onboarding.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

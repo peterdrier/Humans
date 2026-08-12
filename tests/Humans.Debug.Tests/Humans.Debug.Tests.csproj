@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Sections\Humans.Debug\Humans.Debug.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NodaTime" />
+  </ItemGroup>
+
+  <!--
+    No FrameworkReference: neither test class names an ASP.NET type. The format gallery is a
+    reflection walk over DateFormattingExtensions, and the architecture tests read the
+    assembly. DebugController is exercised by DebugPageRenderTests in Humans.Integration.Tests
+    (Cantina's rule — take the reference because a test names one, not because the section is
+    Sdk.Razor).
+
+    No exclusion from tests/Directory.Build.props' TestDbContextFactory compile item either,
+    unlike Humans.Scanner.Tests / Humans.Cantina.Tests: Debug owns no tables but does
+    reference Humans.Infrastructure for QueryStatistics / TrackingMemoryCache /
+    InMemoryLogSink, so Microsoft.EntityFrameworkCore is on the compile path and the shared
+    fixture builds.
+  -->
+
+</Project>

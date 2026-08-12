@@ -1,6 +1,6 @@
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces.AuditLog;
-using Humans.Application.Interfaces.Email;
+using Humans.Email.Contracts;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;

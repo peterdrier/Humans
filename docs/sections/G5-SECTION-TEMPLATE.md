@@ -24,11 +24,40 @@ DTO surface stayed internal behind two primitive-returning reads), Issues (the f
 block of markup *out* of a Shell view to bring its resource keys home, and the first whose
 `Contracts/` leaf is two one-method interfaces), Notifications (the first section to own a
 *view component*, which needed a Shell feature provider of its own, and the first whose leaf
-is consumed by eleven Base services), and Governance (the first whose resx carve had to
+is consumed by eleven Base services), Governance (the first whose resx carve had to
 leave four whole prefixes behind because Shell renders the same form, the first to bind two
 localizers by design, and the first whose contracts leaf carries write members under an
-unchanged name). Step numbers match the former §15, so an old
-"§15 step 3b" citation reads as "step 3b" here.
+unchanged name), Email (the first whose resource set is *other sections'* copy, carved by
+moving the renderer; the first whose leaf carries an interface Base *implements*; and the
+first whose recurring job was the section's entire write path), Consent (the first whose
+resx carve had to rebind call sites in *three* assemblies — Shell, another section and a
+section partial's `ResourceManager` — and the first whose contracts leaf carries a view
+model), and Guide (the first to reach a green build and a green suite with the section
+*unreferenced by Shell and therefore absent at runtime*, and the first whose
+same-named connector stayed in Base), and Cantina (the second table-less section, the first
+whose *whole* outward surface is a policy name and a controller name — both `string` constants
+in Base — and the first whose move corrected an invariants doc that had been asserting the
+wrong HTTP status for its own access gate), and Debug (the first section whose only localizer
+binding is `SharedResource` *by design*, the first to send a Shell helper further down than
+`Humans.UI`, and the first table-less section whose test project needed no
+`tests/Directory.Build.props` exclusion), and Development (the first whose `Section.Register`
+had to gate on the **host environment**, the first whose move took a block of markup out of a
+Shell view to keep a *type* internal rather than a resource key, and the first named by
+`typeof` from Shell's own production code), and Mailer (the first whose *whole* outward
+surface is one `int`, the first whose vendor connector left `Humans.Infrastructure` without
+needing a reference back to it, and the first whose controller names its views by absolute
+path), and Gdpr (the first whose leaf exists because Base *implements* its contract at
+scale rather than calling it — 21 implementers across Base and thirteen sections — the
+first with neither a controller, a view, a table nor a resource set, and the first to write
+its invariants doc because the section never had one), and Onboarding (the first whose
+leaf exists because the section it consumes also consumes *it*, the first to hand another
+section's presentation layer back to Shell behind a new view component, and the first whose
+resx carve had to leave keys behind for MVC's global data-annotation localizer), and Search
+(the widest fan-out of any section and the *smallest* outward surface — the first whose
+`Contracts/` is empty because every consumer moved in with it, and the first whose resx carve
+had to split a single prefix by renderer three ways). Step
+numbers match the former §15,
+so an old "§15 step 3b" citation reads as "step 3b" here.
 
 **Where this template and `src/Sections/` disagree, the code is right.** Deviations are the
 exception and get stated in the PR. Steps marked ⚠️ UNPROVEN have never been executed; whoever
@@ -46,8 +75,11 @@ visibility flip in one diff is unreviewable.
       prod/QA/previews. **A section that owns no tables has no G4 gate** and skips every
       Data/DbContext/migration step below — steps 9 and 10 vanish, step 11's
       `AddSectionDbContext` and `PeeledConfigurationNamespaces` bullets have nothing to move,
-      and the project takes **no `Humans.Infrastructure` reference at all** (proven: Scanner,
+      and the project may take **no `Humans.Infrastructure` reference at all** (proven: Scanner,
       the first such section — one controller, one view model, four views, two JS modules).
+      **"Table-less" does not imply that, though** — Guide owns no tables and still references
+      `Humans.Infrastructure`, for the `GuideSettings` its Base-resident content source binds.
+      Decide the reference from what the section *names*, not from whether it has a `DbContext`.
 - [ ] Fan-in known: run `reforge` for inbound references before starting. A section with many
       inbound section references is a knot, goes later, and may need `<Section>.Contracts`.
 
@@ -89,6 +121,12 @@ grep -rln '<Section>' src/Humans.Application/Interfaces src/Humans.Infrastructur
 grep -rn 'nameof(<Section>' src/
 # type names that form resource keys (step 3b)
 grep -rn --include='*.resx' 'Enum_<Section>' src/
+# references to the section's namespace that are only PARTIALLY qualified. The sed that
+# repoints `Humans.Application.Interfaces.<Section>` → `Humans.<Section>.Contracts` matches
+# the full name and misses `Interfaces.<Section>.SomeType`, which C# resolves through the
+# enclosing namespace. One such site exists in the repo and it is in a test file whose
+# usings say nothing about the section (step 5).
+grep -rn 'Interfaces\.<Section>\.\|Services\.<Section>\.' src/ tests/
 # whether those Enum_ keys are LIVE — grep the CALL SITES, never the helper class (step 3b).
 # Added by Expenses (A3): the methods are EnumDisplay/EnumSelectItems and nothing is named
 # "Localize", so looking for the helper by name reports a live key set as orphaned.
@@ -112,8 +150,37 @@ Git Bash.)
    `<None Include="**\*.md" />`, and the three `<Using>` items Sdk.Razor does not inherit from
    Sdk.Web (spec §2): `Microsoft.AspNetCore.Http`, `Microsoft.AspNetCore.Routing`,
    `Microsoft.Extensions.Logging`. Project references: `Humans.Interfaces`, `Humans.Domain`,
-   `Humans.Application`, `Humans.Infrastructure`, `Humans.UI`. Add to `Humans.slnx`. No
+   `Humans.Application`, `Humans.Infrastructure`, `Humans.UI`. Add to `Humans.slnx` **and add a
+   `<ProjectReference>` to it from `src/Humans.Web/Humans.Web.csproj`**. No
    `Directory.Build.props` — `src/Directory.Build.props` resolves from `src/Sections/`.
+   - **The `Humans.Web` reference is the whole of what makes a section exist at runtime, and
+     forgetting it is silent in every direction.** `SectionDiscoveryExtensions.SectionAssemblies()`
+     walks `DependencyContext`, so a section outside Shell's dependency graph is simply not
+     there: `Section.Register` never runs, `SectionControllerFeatureProvider` never sees the
+     controllers, every page 404s — and the solution builds, the full suite passes, and each
+     reflection-anchored architecture sweep quietly covers one section fewer. Nothing in the
+     section's own project or in `Humans.slnx` implies it. The cheap proof is the step 12 render
+     test; the cheaper one is `grep '<Section>' src/Humans.Web/Humans.Web.csproj` before you
+     build (proven: Guide, which reached a green build and a green 5,400-test suite with the
+     section unreachable).
+   - **The three `<Using>` items are the *minimum*, not the list.** Sdk.Web's implicit usings
+     are nine; a section that names anything outside those three gets a compile error whose
+     text does not say "missing using". Development's two controllers gate on the host
+     environment and the dev-auth setting, so they needed `Microsoft.AspNetCore.Hosting`
+     (`IWebHostEnvironment`), `Microsoft.Extensions.Configuration` (`IConfiguration`),
+     `Microsoft.Extensions.DependencyInjection` (`GetRequiredService`) **and**
+     `Microsoft.Extensions.Hosting` — the last of which is the one to know about, because
+     without it the only `IsProduction()`/`IsDevelopment()` extension in scope is the obsolete
+     `IHostingEnvironment` overload and the error is `CS1929: 'IWebHostEnvironment' does not
+     contain a definition for 'IsProduction'`, which reads as a broken type. A global `<Using>`
+     also reaches the generated Razor code, so an `@inject` in a moved view resolves from the
+     `.csproj` rather than needing a `_ViewImports` line (proven: Development). **When the
+     view is the *only* thing that needs it, put it in `_ViewImports` instead** — Search's one
+     gap was `@inject IConfiguration Configuration` for the `Features:Events` flag, and the
+     `<Using>` group's stated job is keeping *moved `.cs` files* byte-identical, which a
+     view-only need is not. The error is the same either way and names the type, not the
+     mechanism: `CS0246: The type or namespace name 'IConfiguration' could not be found`,
+     reported at the `@inject` line of the `.cshtml` (proven: Search).
    - **"The section's own NuGet packages" excludes anything in the ASP.NET Core shared
      framework.** Central Package Management fails the build with `NU1010` for a
      `PackageReference` that has no `PackageVersion`, and the ASP.NET packages deliberately have
@@ -121,7 +188,12 @@ Git Bash.)
      reference Sdk.Razor already adds (proven: Surveys, whose token provider takes
      `IDataProtectionProvider`). Add EF Core, NodaTime and Npgsql; never an `AspNetCore` one.
 2. [ ] Move the vertical, folders as layers: `Contracts/ Domain/ Data/ Services/ Controllers/
-   Models/ Views/ Resources/ Authorization/ Filters/ Docs/ Properties/ wwwroot/` + `Section.cs`. Migrations
+   Models/ Views/ Resources/ Authorization/ Filters/ Docs/ Properties/ wwwroot/` + `Section.cs`.
+   **A controller that names its views by absolute path pins the folder layout** — an RCL's
+   compiled view paths are project-relative, so `View("~/Views/Mailer/Admin/Index.cshtml")`
+   keeps resolving only if `Views/Mailer/Admin/` moves verbatim rather than being tidied into
+   the `Views/<Controller>/` shape. Renaming it compiles, then 500s on every page and reads as
+   a routing bug (proven: Mailer). Migrations
    land at `Data/Migrations/` — their `namespace` line changes to the section's, which is the one
    sanctioned edit to a migration file (spec §7); say so in the PR. **Everything the section needs
    comes with it — no exceptions.**
@@ -171,6 +243,57 @@ Git Bash.)
      widget's JS addresses DOM ids, not Razor, so it stayed in Shell untouched. Prefer this
      over binding a second localizer in a Base view when the Base view owns none of the copy
      (proven: Issues).
+     **The same move is the answer when a Base view names a section *type* rather than a
+     resource key, and that case has nothing to do with the resx carve.**
+     `Views/Account/Login.cshtml` enumerated `DevLoginController.AllPersonas` — a `public
+     static` list on the controller, which step 5 turns `internal`. The alternatives are all
+     worse: publishing the persona list on a contracts leaf makes dev-login vocabulary a
+     cross-section contract, and duplicating the list in Shell forks the thing the route
+     depends on. The block moved to the section's `Views/Shared/_DevLoginPanel.cshtml` and
+     Shell kept only its `@if (devAuthEnabled)` guard around
+     `@await Html.PartialAsync("_DevLoginPanel")`. **Grep Shell's views for the section's type
+     names, not just for `Localizer["<Section>_`** — a `.cshtml` that names a moved type is a
+     compile error at publish time and, if the view is one Razor runtime compilation reaches
+     first, at request time (proven: Development).
+   - **…and the fifth: move the *renderer*, not the key and not the markup.** "Carve by
+     renderer" (above) leaves a key in Base when the renderer cannot see a section set;
+     Issues' fourth direction moves a block of Razor. Email's 70 `Email_*` keys are neither:
+     they are every section's transactional-email subject/body text, and
+     `Humans.Infrastructure/Services/EmailRenderer.cs` — the file Feedback's rule pointed at
+     as immovable Base — turned out to have exactly two consumers, both of which move in
+     (`EmailMessageFactory` and the section's own preview page). So the renderer moved, the
+     whole key set came with it, and `SharedResource` kept nothing. **Check the renderer's
+     consumer list before concluding a key is stuck**; the earlier finding named the file
+     correctly and the ownership wrongly. The renderer also has to stop using
+     `IStringLocalizerFactory.Create("SharedResource", "Humans.UI")` and take
+     `IStringLocalizer<<Section>Resource>` instead — the string-keyed overload silently keeps
+     reading the old set (proven: Email).
+     **A Razor view can do the same thing, and `_ViewImports` does not reach it.**
+     `_ConsentReviewBody.cshtml` builds a per-language JSON blob for its checkbox script with
+     `new System.Resources.ResourceManager(typeof(SharedResource))` and three `GetString(key,
+     culture)` calls. Rebinding `Localizer` in `_ViewImports` leaves that constructor pointing
+     at the old set, so the tabbed-language checkbox text degrades to raw keys in every
+     language while the surrounding markup is perfectly localized. Grep the moved `.cshtml`
+     for `ResourceManager` as well as the `.cs` (proven: Consent).
+   - **…and the sixth: MVC's global `DataAnnotationLocalizerProvider` is a renderer too.**
+     `Program.cs`'s `AddDataAnnotationsLocalization` sets
+     `options.DataAnnotationLocalizerProvider = (_, factory) => factory.Create(typeof(SharedResource))`
+     — type-agnostic, so a `[Display(Name = "<Section>_…")]` on a *section's* view model still
+     resolves against `SharedResource` and cannot be pointed at a section set. Feedback's
+     carve-by-renderer applies: those keys stay behind, and a key moved out of `SharedResource`
+     renders as its own name on that one form. **The half that bites is when the same key is
+     also rendered from a view** — the section's `_ViewImports` rebinds `Localizer`, so one key
+     ends up read by two renderers against two sets and the view call site has to switch to
+     `SharedLocalizer` in the same commit. Both failure modes look identical in the HTML, so
+     fixing one reads as fixing both. Grep `[Display(Name = "<Section>_` beside
+     `Localizer["<Section>_` (proven: Onboarding, `NamesViewModel`'s three labels).
+   - **A section can have a resource set and no localized page copy.** Email's two admin views
+     carry zero `Localizer[…]` calls, so the step-12 resx assertion has nothing to hang on in
+     the section's own HTML. The probe was the template-gallery page (`/Email/EmailPreview`),
+     which renders 20 templates in all six cultures in one response — a single GET proving the
+     neutral set *and* the satellite assemblies, with no `/Language/SetLanguage` round trip.
+     Look for a page that renders the copy before assuming the language-switcher dance
+     (proven: Email).
    - **Re-grep the moved views for keys the carve did not take.** Genuinely shared strings
      (`Common_*`, `Camp_Plural`) stay in `SharedResource`; bind a second localizer —
      `@inject IStringLocalizer<SharedResource> SharedLocalizer` — and switch those call sites.
@@ -193,6 +316,15 @@ Git Bash.)
      markers, not one** — Governance's applications controller renders *only* keys that stayed
      in `SharedResource`, so its guard is "`<Section>Resource` or `SharedResource`, nothing
      else", which still catches a controller bound to some third set (proven: Governance).
+     **A section with no keys at all can still need the guard in its bound form rather than
+     Gate's "takes no `IStringLocalizer<T>` at all".** Debug ships no `Resources/` folder — its
+     copy is English developer text — and yet `/Debug/Translations` injects
+     `IStringLocalizer<SharedResource>` on the action, because the page renders the whole shared
+     set *as data*: every key in every culture, as a coverage gallery. Gate's structural
+     assertion would fail on it and Surveys' would have nothing to name, so the guard is the
+     one-marker form with `SharedResource` as the marker, and it sweeps method parameters as
+     well as constructor ones. Ask what the localizer is *for* before choosing between the two
+     shapes (proven: Debug).
      **A render test is not enough here** — controller-resolved copy tends to sit on
      the failure paths (validation errors, empty-value fallbacks) that fixtures do not reach, so a
      page-renders-clean suite passes over it (proven: Surveys shipped three such call sites past
@@ -203,6 +335,16 @@ Git Bash.)
      plumbing. `Humans.UI` is right only for a partial with no section vocabulary (proven both
      ways: Containers kept three card partials, Shell renders them unchanged; Events promoted
      `_FavouriteButton` and had to take three labels on its model).
+   - **…and the mirror: when carving the *whole* prefix is available, take it and rebind the
+     outside call sites.** Governance left four prefixes behind because claiming five keys out
+     of nine splits a message set. Consent's `Consent_*` / `ConsentReview_*` are read by Shell's
+     onboarding widget (which renders the same consent form) and by Governance's statutes page,
+     which reads exactly Governance's case — except nothing gets split: all 36 keys moved, and
+     the three outside call sites bind `IStringLocalizer<<Section>Resource>` instead
+     (`OnboardingWidgetController`, `Views/OnboardingWidget/Consents.cshtml`, and
+     `Humans.Governance` taking a reference to `Humans.<Section>` per Budget's rule). **Ask
+     "would carving split a set?" before applying Governance's rule** — if the answer is no,
+     the keys go home and the outside callers rebind (proven: Consent).
    - **A key used by both this section and a not-yet-moved section stays in `SharedResource`** —
      carve by *owner*, not by prefix (proven: Containers left the 9 `ContainerMap_*` keys with
      City Planning's map page).
@@ -218,6 +360,18 @@ Git Bash.)
        section and diff it against the section `.resx` key list — anything the diff reports is a
        call site on the wrong localizer (proven: Governance, six caught this way and six more by
        the step 12 render test).
+     - **…and a *prefix* can be three owners deep, so run the renderer test per key before
+       trusting either rule.** Governance's rule keeps a whole prefix when one key is co-owned;
+       Consent's asks whether carving would split a *message set*. Neither answers `Search_*` on
+       its own: 17 keys, one prefix, three renderers. Twelve (`Search_Filter*`,
+       `Search_Global*`) are the section's page. `Search_Title`/`Search_Placeholder` belong to
+       Shell's `/Profile/Search`, and `Search_NoResults`/`Search_MatchedIn` to the shared
+       `_HumanSearchResults` partial in `Humans.UI` — Feedback's carve-by-renderer, twice over.
+       And `Search_MinChars` is read by the section's page **and** by `/Profile/Search`, which
+       is Consent's question with the answer "yes, it would split a set": it stayed, and the
+       section binds `SharedLocalizer` for that one call site. The whole-prefix reflex would
+       have moved five keys that render elsewhere, or left twelve behind; **group the prefix's
+       keys by who renders them first, then apply the rules to each group** (proven: Search).
    - **The mirror image: a key *this* section owns that an already-moved section reads goes into
      this section's set, and that section takes a reference to the section *project*.** Not the
      leaf — a resource marker is a section type (`public` only so `GetExportedTypes()` finds it),
@@ -266,6 +420,34 @@ Git Bash.)
      voting, full stop). Those moved to Shell's `InfrastructureServiceCollectionExtensions`
      beside the moved-out sections' jobs. The section that owns the *file* is not always the
      section that owns the *line* (proven: Governance).
+   - **A configuration type named after the section can still be Base's, and
+     `Section.Register` cannot see `IHostEnvironment`.** `EmailSettings` binds `Email:*`, lives
+     in `Humans.Infrastructure/Configuration`, and is read by Auth's `MagicLinkUrlBuilder`,
+     Profiles' `UnsubscribeTokenProvider`, `SendReConsentReminderJob` and Shell's
+     `SmtpHealthCheck` — so its `services.Configure<…>` call stayed in Shell (Governance's
+     rule: the section that owns the file is not always the section that owns the line). The
+     startup guard beside it — "Production must have SMTP configured" — stayed for a second
+     reason: `ISection.Register(IServiceCollection, IConfiguration)` has no `IHostEnvironment`,
+     and pushing the check into a service factory would first throw on a real send instead of
+     at boot. The section keeps the half that is genuinely its own: which of its two internal
+     transports to bind, off `configuration["Email:SmtpHost"]` (proven: Email).
+   - **…and when the thing being gated on the environment is one of the section's own
+     internal types, there is no half that can stay in Shell — read the environment out of
+     the configuration.** Email split the decision because `EmailSettings` is Base's and only
+     the *guard* needed the environment. Development cannot: `Program.cs` registered its three
+     dev fixture seeders inside `if (!builder.Environment.IsProduction())`, and after the move
+     Shell cannot name an `internal` type to register it conditionally. `ISection.Register`
+     still has no `IHostEnvironment`, but the configuration it *is* handed carries the
+     environment — `WebApplicationBuilder.Configuration` includes host configuration, so
+     `configuration[HostDefaults.EnvironmentKey]` is the environment name, including under
+     `WebApplicationFactory.UseEnvironment`. **Write the check so it fails closed**: register
+     nothing when the name is missing *or* Production, rather than "register unless
+     Production". The two failure modes are not symmetric — a key that stops resolving then
+     shows up as the dev seeder being unregistered (loud: every integration test signs in
+     through `/dev/login/{slug}`) instead of a dev seeder reaching Production (silent). Pin
+     both directions in the section's architecture tests; they are four lines over a
+     `ConfigurationBuilder().AddInMemoryCollection(...)` (proven: Development).
+
 4b. [ ] `[assembly: Section("<Section>")]` in `Properties/AssemblyInfo.cs` — the analyzer marker,
    the discovery marker and the internal-controller marker, all three (spec §10, §6, §1). Add
    `[assembly: InternalsVisibleTo("DynamicProxyGenAssembly2")]` beside it if the section's tests
@@ -302,6 +484,28 @@ Git Bash.)
        every `I<Section>Service` injection with the concrete type costs a second sweep — decide
        it from the *test* files before touching the source (proven: Budget, whose ticketing
        bridge substitutes it).
+     - **…and a second exception, which is not a seam at all: the interface is where
+       `IApplicationService` lives.** The hard rules define the service layer by that marker
+       ("Services must derive from `IApplicationService`"), and a section whose service has no
+       cross-section consumer, no decorator and no substituting test still has to carry it
+       somewhere. Both places compile — the marker can sit on the `internal sealed` class — but
+       moving it there means relocating the interface's XML contract onto the implementation
+       and repointing the DI registration, which is a rename that buys nothing (step 5's own
+       test) done inside the move commit. Keep the interface, `internal`, in `Services/`.
+       Guide's `IGuideContentService` and Cantina's `ICantinaRosterService` are both this
+       shape: one member set, one consumer, the section's own controller (proven: Guide,
+       Cantina). Contrast Feedback and CityPlanning, where the marker had somewhere else to be
+       — the leaf's read interface — and the plain `I<Section>Service` really did go.
+   - **A third answer to the enum question: it stays in `Humans.Domain.Enums`.** Budget's
+     rule moves the section's own enums onto the leaf; Issues' splits them per enum. Neither
+     fits an enum that *other sections persist on their own tables*: `EmailOutboxStatus` is
+     Email's vocabulary, and it is also a `HasConversion<string>()` column on Campaigns'
+     `campaign_grants` and on Surveys' `survey_invitations`. Moving it onto Email's leaf would
+     make two other sections' **domain** depend on Email's contracts, and would drag its
+     `Enum_EmailOutboxStatus_*` keys and its `EnumBadgeMap` rows along for nothing. Left in
+     Base, with its resx keys and badge rows; `Humans.Campaigns.Contracts` keeps referencing
+     `Humans.Domain` for it (Campaigns finding 47's case, unchanged). The test is *who writes
+     it to a table*, not who named it (proven: Email).
    - **Decide the leaf-vs-`Domain/` question per enum, not per section.** Budget moved both of
      its enums because both appeared in contract signatures. Issues' two split: `IssueCategory`
      is named by `Humans.Agent`'s `route_to_issue` proposal, so it went to the leaf;
@@ -341,6 +545,15 @@ Git Bash.)
    (Peter, 2026-08-09: splitting read from write happens once every section has moved, not
    per-section). May be empty for a leaf section; ship the folder with a `README.md` saying why
    (proven: Store).
+   - **Fan-*out* is not fan-in, and an orchestrator section can be the widest consumer in the
+     repo with an empty `Contracts/`.** Search injects five sections' service interfaces and its
+     recon touches ten already-moved projects, which reads as the knot the preconditions warn
+     about. It is the opposite: what a leaf publishes is what points *at* the section, and the
+     only thing that did was `SearchController` — which moves in. `ISearchService`, its three
+     DTOs and the view model all turned `internal`, and the assembly exports `Section` and
+     `<Section>Resource` and nothing else. **Count inbound references before scheduling a
+     section, never outbound ones**; the two are unrelated and the scary-looking number is the
+     one that costs nothing (proven: Search, the last section of the batch).
    - **An empty `I<Section>ServiceRead` is deleted at the move, not carried into `Contracts/`.**
      Several sections shipped one pre-emptively "as the boundary other sections would inject",
      with no members and no consumers. Moving it produces an empty public interface that
@@ -376,6 +589,34 @@ Git Bash.)
      controller moved in and was deleted outright (step 5's "keep an interface only where
      something needs the seam"), and `INotificationRecipientResolver` survived internal only
      because a section test substitutes it (proven: Notifications).
+   - **A leaf entry can exist because Base *implements* it, not because Base calls it.**
+     Every other rule here reads "the consumer is in Base, so the contract goes on the leaf".
+     `IImmediateOutboxProcessor` is the mirror: the section's `OutboxEmailService` is the
+     consumer, and the implementation — `HangfireImmediateOutboxProcessor`, which enqueues the
+     recurring job — has to stay in Base because it names the Base job type. An interface with
+     an implementer in Base belongs on the leaf for exactly the same reason as one with a
+     caller there. Sort the section's abstractions by *which side the implementation is on*
+     before deciding: Email's four connector abstractions split three internal
+     (`IEmailRenderer`, `IEmailBodyComposer`, `IEmailTransport`) to one on the leaf
+     (proven: Email).
+     **The rule does not soften as the implementer count grows — it is the *only* thing
+     that decides a fan-out section's leaf.** Gdpr's `IUserDataContributor` has exactly one
+     consumer, the section's own orchestrator, and **21 implementers**: eight services still
+     in `Humans.Application` and thirteen already-moved sections. Read consumer-first it looks
+     internal; read implementer-first it is obviously public, and the whole contract —
+     the interface, its `UserDataSlice` return DTO and the `GdprExportSections` constants
+     the implementers key their slices by — goes on the leaf together, because splitting
+     them would leave the section's own vocabulary in Base. Cost: `Humans.Application` and
+     thirteen section projects gain a `ProjectReference` and ~40 files gain a one-line
+     `using` swap. Notifications' lesson holds at the limit — **a wide fan-in over a narrow
+     interface is cheap; it is the *surface* that costs**, and here the surface is five
+     types with no method bodies (proven: Gdpr).
+     - **A section whose whole substance *is* the contract has no "leave it in Base"
+       option.** The tempting alternative — move only the orchestrator and leave the
+       contributor contract behind — is what makes the move zero-risk and is wrong: the
+       section would ship a 70-line class whose own DTO and constants live in another
+       assembly, which no moved section has done. Ask what is left in the section project
+       if the contract stays; if the answer is "not the section", the contract moves.
    - **A leaf may be two one-method interfaces, and splitting them beats one misnamed one.**
      Issues' whole outside surface is a nav-badge count (Shell's `NavBadgesViewComponent`) and
      the retention sweep (Base's `CleanupIssuesJob`). Both return `int`. Putting the purge on
@@ -392,6 +633,35 @@ Git Bash.)
      decision service minus the decisions — and renaming it `…ServiceRead` would have been a lie
      about six write members. Campaigns' shape, reached from the write side (proven:
      Governance).
+   - **A *view model* belongs on the leaf when a Base view constructs it for the section's own
+     partial.** Consent's `_ConsentReviewBody` is rendered from both `/Consent/Review` and
+     Shell's onboarding-widget Consents step; the partial moves into the section's
+     `Views/Shared/` and Shell keeps finding it by name, but `<partial model="new
+     ConsentReviewFormViewModel { … }" />` needs the model type. Step 3b's "move the markup"
+     is not available here — the widget's step view binds `ConsentsStepViewModel`, a Shell type
+     a section cannot name — and duplicating the model forks the shape the shared partial
+     exists to keep. It is genuinely consumed from outside the section, which is what
+     `Contracts/` is for; it names no ASP.NET type, so the leaf stays plain
+     `Microsoft.NET.Sdk` (proven: Consent).
+   - **…and the test has a second half: does the *other section* name anything of yours?**
+     "No consumer in Base" is not sufficient for a folder. Onboarding's entire fan-in is Shell
+     plus `Humans.Consent`'s controller, which by the rule below reads as "folder, and Consent
+     references the section project". It cannot: `Humans.Onboarding` names `ConsentResource`,
+     because the widget's Consents step renders Consent's copy through Consent's own
+     `_ConsentReviewBody` partial — so a folder would make the two *section projects* reference
+     each other. `Humans.Onboarding.Contracts` breaks the cycle
+     (`Humans.Consent` → the leaf, `Humans.Onboarding` → `Humans.Consent`). CityPlanning's
+     rule is the one-way case of this shape; the two-way case needs a leaf regardless of where
+     the consumers live (proven: Onboarding).
+   - **When "who returns it" and "who named it" disagree about a leaf type, ask where the other
+     returners came from.** `OnboardingResult` is `(bool Success, string? ErrorKey)` — primitives
+     only, so the connector signature test says Base — and ten `Humans.Application` members
+     return it against four in the section, which reads as Base vocabulary wearing the section's
+     name (`EmailSettings`' case). It is not: three of the four Base owners are the section's own
+     *siblings* from an earlier narrowing that left them in Base, so the fan-out is an artefact
+     of that split. It went on the leaf, for one `ProjectReference` from `Humans.Application` and
+     `Humans.Infrastructure` each plus ten one-line `using` swaps — Gdpr's trade at a tenth of
+     the size (proven: Onboarding).
    - **Folder vs project is decided by *where the consumer lives*, not how much surface there
      is.** A consumer in Base forces `Humans.<Section>.Contracts` as its own project referencing
      only the bottom of the graph — a folder would cycle
@@ -418,6 +688,29 @@ Git Bash.)
      connector serving one section and shaped by that section's model belongs to it (proven:
      Agent; contrast Stripe, which Store left behind, and `GitHubCommunityKbContentSource`, whose
      signatures name only `string`).
+     - **…and check what the connector uses *from Base*, not only what it exposes.** The
+       instinct after deciding the connector moves in is that the section must therefore
+       reference `Humans.Infrastructure`, because that is where the file was.
+       `MailerLiteClient` is a `Humans.Infrastructure/Services` file whose every dependency is
+       either the ASP.NET shared framework (`IHttpClientFactory`) or `Humans.Application`
+       (`Extensions`, `Threading`), so `Humans.Mailer` took **no `Humans.Infrastructure`
+       reference at all** — Scanner's table-less shape, reached by a section that had code in
+       Base's service folder on the way in (proven: Mailer).
+     **The same test can keep a connector in Base when the connector carries the section's own
+     name.** `IGuideContentSource` / `GitHubGuideContentSource` / `GuideSettings` read as the
+     whole point of the Guide section — they are the thing that fetches `docs/guide/*.md`. They
+     are not Guide's: the signatures name only `string`, and three of the four consumers are
+     elsewhere (the Agent section's `AgentSectionDocReader` / `AgentFeatureSpecReader` /
+     `CommunityFaqReader` over `docs/sections`, `docs/features` and `docs/community-kb`,
+     Shell's `AgentDocsHealthCheck`, and Base's `GitHubCommunityKbContentSource`, which
+     *implements* the same interface against a different repo). Taking it in would have forced
+     a contracts leaf, made Base and another section consume a section's contracts for a plain
+     string fetch, and split `GuideSettings` from the type binding it. Left in
+     `Humans.Application/Interfaces` + `Humans.Infrastructure/Services`, with the two
+     registrations moving from the section extension into Shell's
+     `InfrastructureServiceCollectionExtensions` (Governance's rule: the section that owns the
+     *file* is not always the section that owns the *line*). Calendar's name-collision test,
+     applied to the section's own vocabulary rather than a neighbour's (proven: Guide).
    - **A Base *enum* in a leaf signature is not Budget's case — reference `Humans.Domain` from
      the leaf.** Budget's rule (step 5) is about enums the *section* owns: they cannot follow the
      entities into internal `Domain/`, so they move onto the leaf. `EmailOutboxStatus` is the
@@ -492,6 +785,20 @@ Git Bash.)
      Shell's `Views/_ViewImports.cshtml` gained `@using Humans.UI.ViewComponents`, and Shell's
      own `<vc:profile-card>` call sites were untouched. Check the component's parameter types
      before choosing invoke-by-name (proven: Governance).
+   - **A section that renders *another section's* presentation layer gets a new Shell view
+     component, invoked by name.** The three earlier answers are about a component that already
+     exists; this is the case where one has to be written. The onboarding widget's shift step
+     renders Shifts' rota tables — `ShiftBrowseViewModel`, `RotaShiftGroup`, `ShiftBrowseMapper`
+     (`internal` to `Humans.Web`) and two `Views/Shared/` partials, ~400 lines of a section that
+     has not moved. Pushing them to `Humans.UI` is the registry inversion at scale and would be
+     undone at that section's own G5; taking them in steals its presentation; leaving the whole
+     view in Shell splits the moving section's page. So the mapping and the markup became a new
+     `Humans.Web` view component and the section's view calls
+     `@await Component.InvokeAsync("…", new { … })`. Governance's rider is the constraint that
+     shapes it: **every parameter must be nameable from a section**, so the component takes
+     `Humans.Domain` / `Humans.Application` types only and the controller passes what it already
+     fetched — otherwise the component re-queries and the move quietly doubles a page's reads
+     (proven: Onboarding).
    - **A SignalR hub is the health-check shape, and where it goes depends on whose types are in
      it.** `Program.cs`'s `app.MapHub<TheHub>("/hubs/…")` names the concrete type, so a hub cannot
      live in the section — HUM0034 fails the build for a public section type, and the section's
@@ -553,6 +860,40 @@ Git Bash.)
      `_TabbedMarkdownDocuments.cshtml` came with it (the statutes tabs, also rendered by the
      legal and consent pages). Both went to `Humans.UI/Models` and `Humans.UI/Views/Shared/`
      for three `using` lines (proven: Governance).
+     **…and the same move can be forced by a *partial* rather than a type, in which case take
+     the model, the mapper and the `.cshtml` together.** A section view calling
+     `Html.PartialAsync("_X")` resolves the partial by name across application parts, so a
+     Shell-resident `Views/Shared/_X.cshtml` would in principle keep working — but its
+     `@model` type would not be nameable from the section, and neither would whatever projects
+     onto it. `_HumanSearchResults.cshtml` is the person-search result card four Shell pages
+     and `/Search` all bind; it went to `Humans.UI/Views/Shared/` with
+     `HumanSearchResultViewModel` (out of `Humans.Web/Models/TeamViewModels.cs`) and
+     `SearchResultMappingExtensions.ToHumanSearchViewModel`, beside the `OrderByRelevance`
+     Gate had already pushed down. Splitting the three would have left a `Humans.UI` partial
+     binding a `Humans.Web` model. Blast radius: two `using Humans.UI.Models;` lines and the
+     partial's own `@model` line, because Shell's `Views/_ViewImports.cshtml` already has the
+     `@using` (proven: Search).
+     **Fourth sighting, and it says `Humans.UI` is the rule's *example*, not its depth.**
+     `Humans.Web/Infrastructure/InMemoryLogSink` is the Serilog ring buffer `/Debug/Logs`
+     renders; `Program.cs`'s logger configuration writes to it and Shell's `LogApiController`
+     reads it, so it cannot come into the section and the section cannot name it where it is.
+     It carries no section vocabulary — which is the test — but it is also not presentation, so
+     `Humans.UI` would be the wrong shelf: it went to `Humans.Infrastructure/Logging`, beside
+     the two Serilog enrichers already there, and the section takes the `Serilog` package
+     reference it now names directly. Pick the layer from what the type *is*, then apply the
+     no-section-vocabulary test (proven: Debug).
+     **…and the split that decides between moving a helper in and pushing it down is the
+     second consumer's *subject*, not its location.** Debug's two reflection-built gallery
+     builders sat in the same folder and went opposite ways.
+     `FormatGalleryModelBuilder` reflects over `DateFormattingExtensions` for
+     `/Debug/FormatGallery` and had one other caller, its own unit test — it moved in,
+     `internal`, and the test moved to `tests/Humans.<Section>.Tests`.
+     `TranslationsGalleryModelBuilder` enumerates `IStringLocalizer<SharedResource>` through
+     `CultureCatalog`, and its second caller is `SharedResourceParityTests`, whose subject is
+     **`SharedResource`** — a `Humans.UI` concern the section merely displays. Taking it in
+     would have internalised it and stranded a Base resx gate in a section test project, so it
+     went down to `Humans.UI/Models` with the view model it builds. "Move the test with the
+     helper" is right only when the test is about the helper (proven: Debug).
    - **Do this on paper *before* step 5b.** Moving the handler is often what takes the read
      surface's fan-in to zero. Expenses' fan-in read as "`IExpenseReportServiceRead`'s only
      outside consumer is Shell's `IbanAccessHandler`", which would have made six types public to
@@ -566,6 +907,16 @@ Git Bash.)
    predicate does not match it, which is the honest classification rather than a dodge: these
    types *are* the cache, where the rule is about a service that has acquired one. Gate's
    `GatePinThrottle` and `GateVendorMirrorLedger` moved there (proven: Gate).
+   - **When the offender is the section's actual service, the answer is the allowlist, not
+     `Stores/`.** `GuideContentService` is `IGuideContentService`, the type the controller
+     injects; relocating it to dodge the sweep's namespace predicate would be the dodge step 6a
+     says `Stores/` is not. Guide has no tables to decorate and guide HTML is not an entity
+     read, so §15's other two options do not exist either — it went on the allowlist with that
+     rationale, beside Finance's and Feedback's. Note what surfaced it: the code was unchanged
+     and had sat in `Humans.Infrastructure`, which the sweep covers neither before nor after;
+     it became visible only because the sweep scans **section assemblies**. Email's "ask whether
+     the sweep is keyed on a Base path" has a mirror — *a move can put code into a sweep as
+     easily as out of one* (proven: Guide).
 
 6b. [ ] Recurring Hangfire jobs stay in `Humans.Infrastructure/Jobs` for now: there is no
    `ISection`-style discovery seam for jobs, and a section-owned job would have to be `public` —
@@ -592,6 +943,20 @@ Git Bash.)
        list move into the section beside the repository. Its job test becomes a retention test in
        the section's own project — the job left is a try/catch and a metric (proven:
        Notifications, `INotificationRetention`).
+   - **Fourth sighting, and the one where the carve is not optional.** Notifications' and
+     Agent's jobs *should* have been carved; `ProcessEmailOutboxJob` had to be. It injected
+     `IEmailOutboxRepository`, `IEmailTransport` and the `EmailOutboxMessage` entity and ran
+     the whole drain — pause check, batch pick-up, per-message send, retry backoff,
+     campaign-grant mirror — from Base. All three of those turn internal at step 5, so there
+     is no version of the move where the job compiles unchanged. The carve is
+     `IEmailOutboxProcessor.ProcessQueuedAsync(ct)` returning `Task`, with the per-message log
+     lines and the pending-count meter moving into the section beside the repository; what is
+     left in Base is one call plus `RecordJobRun`. `IHumansMetrics` and `IMeters` are
+     `Humans.Application` interfaces, so the section keeps the metric calls verbatim. Its job
+     test became `EmailOutboxProcessorTests` in the section's own project. **Read the job body
+     before writing the contract: if it names the entity or the repository, the contract is
+     "do the thing", never "give me the rows"** (proven: Email).
+
 7. [ ] `wwwroot/` assets move with the section; URLs become `/_content/Humans.<Section>/…` in the
    same PR. Only Shell's own chrome assets stay in Shell. **Proven: Agent (A4b), the first
    section to move any; and Gate, which also proved a section may take a *layout* with it —
@@ -645,9 +1010,19 @@ Git Bash.)
    `freshness-catalog.yml` globs if the section has an entry) and **rewrite the moved doc's own
    `freshness:triggers` block to `src/Sections/Humans.<Section>/**`** — the old scattered paths
    stop existing at the move and the doc silently stops being swept. Point-in-time plans and
-   audits stay in `docs/`. Anything the app *serves or fetches* from `docs/` at runtime stays —
-   `docs/guide/` until Guide's own G5 — and re-check `AgentSectionDocReader`'s fallback covers the
-   section. **A docs path is an API until you have proved otherwise** (spec §7a).
+   audits stay in `docs/`. Anything the app *serves or fetches* from `docs/` at runtime stays,
+   and re-check `AgentSectionDocReader`'s fallback covers the section.
+   **A docs path is an API until you have proved otherwise** (spec §7a).
+   - **`docs/guide/**` stays put, at Guide's own G5 and after.** The template used to say
+     "until Guide's own G5", which read as a scheduled move; it is not one.
+     `GitHubGuideContentSource` fetches `{GuideSettings.FolderPath}/{stem}.md` from
+     `nobodies-collective/Humans@main` **over the network at request time**, so the folder is a
+     live API against *production's* branch with no fallback and no whitelist — the
+     `AgentFeatureSpecReader` case (Gate finding 4), one step worse. Moving it into `Docs/`
+     would 404 all 28 files on every deployed instance from the moment the fork's `main`
+     deploys until the change reached production `main`, and would need `FolderPath`'s default
+     changed in the same commit. The section's *invariants* doc still moves — that probe has a
+     second path (proven: Guide).
    - **The `AgentSectionDocReader` fallback is a convention, not a map, and it has one real
      constraint: the project folder must be `Humans.{canonical key}` and the file
      `Docs/{canonical key}.md`.** The reader probes `docs/sections/{key}.md`, then
@@ -669,6 +1044,13 @@ Git Bash.)
      `IDataProtectionProvider` — needs an explicit
      `<FrameworkReference Include="Microsoft.AspNetCore.App" />`, and cannot get there with a
      `PackageReference` (see step 1's `NU1010` note). Proven: Surveys.
+     - **Add it because a test names one, not because the section has a controller.** Scanner
+       needs the framework reference — its section *is* a controller and its one test class
+       constructs it. Cantina has the same controller shape and needs none: its four test
+       classes cover the roster service, the display-sort assembler and the two CSV writers,
+       and the controller is covered by the step 12 render test in `Humans.Integration.Tests`
+       instead. Taking the reference "because the section is Sdk.Razor" is cargo cult
+       (proven: Cantina).
    - **Scope any bulk `sed`/rewrite over the new test project to tracked files.** A glob over
      `tests/Humans.<Section>.Tests/**/*.cs` also hits `obj/`, and prepending a `using` above the
      `<auto-generated>` header of `XunitAutoGeneratedEntryPoint.cs` disables the generated-code
@@ -716,6 +1098,21 @@ Git Bash.)
      classes; folding the cases into one `[Fact]` with an assertion per value provably still
      runs. Same for a `public static TheoryData<TInternalEnum, …>` member (proven: Issues,
      `IssueStatusTransitionTests`).
+     **The fold is not always mechanical: a theory that asserts `Received(n)` loses its fresh
+     substitutes.** xunit builds one test-class instance per case, so per-case
+     `Substitute.For<…>` fields reset for free; a `foreach` inside one `[Fact]` shares them and
+     the received-call counts accumulate — the second iteration fails, or worse, a
+     `Received(0)` assertion silently stops meaning anything. `ClearReceivedCalls()` on each
+     substitute at the top of the per-case helper restores exactly what was lost, and keeps the
+     configured returns (proven: Search, whose `onlyType` theory is five cases of "this section
+     was called once, the other four zero times").
+   - **…and the opt-out is per *helper*, not per item group.** `CapturingLogger` was
+     `Compile`-included in the same `ItemGroup` as `TestDbContextFactory`, inside the condition
+     that excludes the table-less test projects — so a section with no EF on its compile path
+     that still wants an in-memory `ILogger` (Mailer's client asserts on its own 429 warning)
+     could have neither, or take the EF package to get one. Split the group: `CapturingLogger`
+     is unconditional, `TestDbContextFactory` keeps the exclusion list. Governance's "split the
+     helper before deciding", applied to an MSBuild item (proven: Mailer).
    - **A table-less section's test project must opt out of the shared EF fixture, not take an EF
      package to satisfy it.** `tests/Directory.Build.props` `Compile`-includes
      `TestDbContextFactory` (and `CapturingLogger`) into every test project but
@@ -723,7 +1120,17 @@ Git Bash.)
      to compile. A section with no `DbContext` therefore fails to build until it either takes an
      EF `PackageReference` it never uses or is added to that exclusion — take the exclusion; the
      package would be a lie about what the section is (proven: Scanner, the second project on
-     that list).
+     that list; Cantina is the third, so the condition is now three `MSBuildProjectName`
+     clauses and the comment beside it needs updating rather than a new one added).
+     **The criterion is "no EF on the compile path", not "the section owns no tables" — and the
+     comment beside the condition says the second.** Debug owns no tables and needs *no*
+     exclusion, because it references `Humans.Infrastructure` for `QueryStatistics` /
+     `TrackingMemoryCache` / `InMemoryLogSink` and `Microsoft.EntityFrameworkCore` arrives
+     transitively, so `TestDbContextFactory` compiles. Add a clause only after the build
+     actually fails; the two facts came apart at the first section that had one without the
+     other (proven: Debug). Development is the section where the build *did* fail — table-less
+     **and** no `Humans.Infrastructure` reference — so the condition is four
+     `MSBuildProjectName` clauses now and the comment beside it states the real criterion.
 9. [ ] `dotnet ef` for this section: `--project src/Sections/Humans.<Section>
    --startup-project src/Humans.Web --context <Section>DbContext --output-dir Data/Migrations`.
    Update the `context:project` pair in `.github/workflows/build.yml`.
@@ -761,8 +1168,16 @@ Git Bash.)
     stale path where it sits rather than inventing one**; Scanner's controller was one line in
     the `Platform` catch-all, and adding a `Scanner` bucket would have been a scoring change on
     top of a file move. Delete the section's `*ArchitectureTests.cs` assertions
-    the assembly boundary now subsumes; delete its `[Grandfathered]` attributes
-    (⚠️ UNPROVEN — no moved section has had any).
+    the assembly boundary now subsumes.
+    - **A `[Grandfathered]` attribute *moves with its type*; deleting it is the same mistake as
+      deleting a baseline row.** The template used to say to delete them (⚠️ UNPROVEN — no
+      moved section had any until Consent, which has two: `IConsentCacheInvalidator` and
+      `ILegalDocumentCacheInvalidator`, both `[Grandfathered("HUM0028")]`). The violation they
+      record — a cache flushed from outside the owning service — is byte-identical after a file
+      move (`AccountMergeService` still evicts the consent cache on merge accept), so dropping
+      the attribute reports the ratchet as advanced while the code stands still, and turns
+      HUM0028 from Warning back into an Error on unchanged code. Campaigns' "retarget, not
+      delete" reasoning, applied to an analyzer suppression (proven: Consent).
     - **An `Architecture/Baselines` row is a *retarget*, not a deletion — and the rule's scan
       is probably keyed on the Base path.** Campaigns was the first moved section to carry one
       (`DisplaySortInControllers`, one `OrderByDescending` in the repository). Deleting the row
@@ -775,6 +1190,24 @@ Git Bash.)
       expectation" call as the reflection sweeps below, applied to a path-keyed one. Widening
       surfaced no other violation, so the cost of being right here was one retargeted line
       (proven: Campaigns).
+      **Second sighting, and it was a different rule with the identical bug.**
+      `NoDestructiveMigrationOpsRule.ScanMigrations` walked
+      `src/Humans.Infrastructure/Migrations` alone, so every G5 section's `Data/Migrations`
+      had silently left that sweep too — thirteen sections deep, nobody had noticed, because
+      the rule reports success by finding nothing. Widened to Base plus each section's
+      `Data/Migrations`; it immediately surfaced three already-shipped drops in
+      `Humans.Finance`'s own migrations, which were baselined with a comment rather than
+      reverted. **Treat "is this sweep keyed on a Base path?" as a question to ask of every
+      ratchet rule at every move, not once** (proven: Email).
+      **Third sighting, and the keying was an *assembly*, not a path.**
+      `ApplicationServicesTakeNoDbContextRule` anchored on `typeof(AuditLogService).Assembly`
+      and filtered to the `Humans.Application.Services.` namespace, so every G5 section's
+      services had silently left it — while its sibling
+      `ApplicationServicesTakeNoMemoryCacheRule`, three files away, had already been widened to
+      `SectionAssemblies()` plus a `Humans.*.Services` namespace clause. Copy that clause
+      verbatim; widening surfaced nothing, which is the usual answer and is why nobody had
+      noticed. **Ask the question of assembly-anchored sweeps too, and check whether a sibling
+      rule in the same folder has already been fixed** (proven: Cantina).
     - **One assertion shape does not survive the move and must be restated rather than deleted:
       `typeof(<Section>Service).Assembly.GetReferencedAssemblies()` must not contain
       `Microsoft.EntityFrameworkCore`.** It was a true statement about `Humans.Application`; the
@@ -813,6 +1246,29 @@ Git Bash.)
       reflection helper `GdprExportDependencyInjectionTests` and
       `ApplicationServicesTakeNoMemoryCacheRule` already use, throwing on a miss so the row
       cannot silently drop out of the table (proven: Scanner; Gate's controllers were not in it).
+      **The same file's other Debug-shaped list survives untouched, and the difference is worth
+      knowing before you go looking**: `AllowAnonymousOnAuthorizedControllers_IsExplicitlyAllowlisted`
+      keys its allowlist by the `"<Controller>.<Action>"` *string* and sweeps
+      `AllControllerTypes()`, so `[AllowAnonymous]` on an action of an `[Authorize]` section
+      controller needs no edit at all. One file, two rows about the same controller, only one
+      of which is a `typeof` (proven: Debug, `DebugController.DbVersion`).
+      **And a third shape, which is not in `tests/` at all: Shell's own production code.**
+      `Humans.Web/Infrastructure/DevLoginControllerExclusionProvider` removes
+      `typeof(Controllers.DevLoginController)` from MVC's controller feature in Production —
+      the thing that keeps the dev sign-in page out of prod. It cannot move into the section
+      (`Program.cs` constructs it by name, which would make it a public section type) and it
+      cannot keep the `typeof`. Give it the same `SectionType(fullName)` reflection the tests
+      use, resolved once into a `static readonly Type` that **throws** when the name misses, so
+      a rename fails at Production startup rather than shipping a routable `/dev/login/*`.
+      Grep `typeof(<Section>` over `src/` as well as `tests/` (proven: Development).
+      **And a fourth, in Shell's *own* test project rather than `Humans.Application.Tests`:**
+      `Humans.Web.Tests`' `MembershipRequiredFilterTests` and `NameRequiredFilterTests` build a
+      `ControllerActionDescriptor` around a **real** controller type so the filter's
+      `AllowAnonymous` reflection check has something to read. Neither filename mentions the
+      section, and neither project carries a `SectionType(...)` helper, so each needs its own
+      `static readonly Type` resolved through `SectionDiscoveryExtensions.SectionAssemblies()`
+      that throws on a miss. Grep `typeof(<Section>` across **every** test project, not just the
+      four that usually carry rows (proven: Onboarding).
     - **`ServiceBoundaryArchitectureTests` is a fourth place a section type is named by
       `typeof`** — its repository-interface → section map. It already carries a
       `SectionRepository(fullName)` reflection helper for the sections that moved before yours;
@@ -876,6 +1332,27 @@ Git Bash.)
       failure modes — incomplete `_ViewImports`, and a key the resx carve missed — and it runs
       on every build afterwards, including for the *next* section that touches these views
       (proven: Surveys, 4 tests over 6 pages; the file is the model to copy).
+      - **A section with no keys and no assets still has a probe, and it is the element name of
+        whatever `Humans.UI` tag helper its pages open with.** An unbound tag helper neither
+        throws nor degrades — it survives into the response as its own start tag, so the page is
+        a 200 with correct-looking source and a missing widget, exactly like a stray `<vc:>`.
+        Debug's ten pages all open with `<page-header>`, so `NotContain("<page-header")` beside
+        the existing `NotContain("<vc:")` covers the whole section in one line. Grep the moved
+        views for `<[a-z]+-` and assert on what comes back (proven: Debug, whose only other
+        halves would have been a resx carve and a `?v=` hash it does not have).
+      - **A section with no pages at all has no render test — so find what else drives
+        `AddDiscoveredSections`, because that is the half of step 12 you still need.**
+        Guide's missing `Humans.Web` `ProjectReference` (step 1) is normally caught by the
+        render test 404ing; a section with no controller and no view cannot have one. What
+        substitutes is any existing test that calls the *real*
+        `InfrastructureServiceCollectionExtensions.AddHumansInfrastructure` and asserts the
+        section's own registration came out of it — Gdpr's
+        `GdprExportDependencyInjectionTests.GdprExportServiceIsRegistered` does exactly that,
+        and it can only pass if `Section.Register` ran, which needs the assembly in Shell's
+        dependency graph. Check that such a test exists *before* concluding a page-less
+        section is untestable at step 12; if none does, the `grep '<Section>'
+        src/Humans.Web/Humans.Web.csproj` check from step 1 is the whole of your coverage
+        (proven: Gdpr).
     - **A §15-decorated section's render test must seed through the service, not the
       `DbContext`.** The decorator is a Singleton that warms at startup, i.e. before the test
       body runs, so a row written straight into `<Section>DbContext` is invisible to every
@@ -886,6 +1363,36 @@ Git Bash.)
       either way because `TrackedCache` lazy-loads a missing key, which makes the broken half
       look like a data problem rather than a caching one (proven: Calendar; contrast Budget,
       which has no decorator and seeds through its context).
+      **Second sighting, with the cheaper fix: call the invalidator.** Consent's document-side
+      decorator warms at startup with `warmOnStartup: true`, so the same trap fires — but its
+      `I<Section>CacheInvalidator` is already on the leaf for another consumer, and the test
+      project sees section internals either way. A context write followed by
+      `Factory.Services.GetRequiredService<I…CacheInvalidator>().InvalidateAll()` keeps the
+      fixture a plain `db.Add` and needs no service-shaped seeding path. Prefer it when the
+      section already ships an invalidator (proven: Consent).
+    - **Add the section's negative access rule to the render test, and read the status code
+      off the app rather than off the invariants doc.** The move rehomes the controller into an
+      internal type in another assembly routed by `SectionControllerFeatureProvider`, while its
+      policy stays in Shell's `AuthorizationPolicyExtensions` (step 6's asymmetry) — one GET as
+      a non-privileged persona is what proves the two halves still meet, and it is three lines
+      beside the pages loop. Expect **`302` to `Program.cs`'s `AccessDeniedPath`, not `403`**:
+      cookie authentication redirects an authenticated-but-unauthorized request, app-wide.
+      Cantina's doc asserted a bare `403 (Forbid())` the app has never returned — the shape of
+      claim that survives forever because nothing tests it, and worth grepping your own doc for
+      before writing the assertion. Correct the doc in the move commit and say so; `Forbid()`
+      in a *controller* is the same story, since it runs through the cookie handler's
+      `HandleForbiddenAsync` (proven: Cantina).
+    - **When the section's backing store is a vendor API, replace the client in the test
+      factory.** The fourth sibling to Calendar's "seed through the service", Consent's "call
+      the invalidator" and Guide's "seed the cache" — and the one the first three do not cover,
+      because the thing to seed *is* the thing under replacement. `HumansWebApplicationFactory`
+      already does this for Stripe; removing the `IMailerLiteService` descriptor and adding a
+      stub is the same three lines. Two details cost a cycle each: NSubstitute cannot serve an
+      interface exposing `IAsyncEnumerable<T>` (a default substitute returns `null` and the
+      first `await foreach` NREs, so the stub is hand-written), and the page whose action calls
+      the vendor *outside* a `try` is a 500 rather than the error banner its sibling degrades
+      to — so "the pages handle a dead vendor" is not a substitute for the stub (proven:
+      Mailer).
     - **The non-English case is not optional and is not decoration.** An English-only check
       passes whether or not the section's satellite assemblies shipped, because the neutral set
       is embedded in the main assembly and the fallback is silent. One request with

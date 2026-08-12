@@ -13,7 +13,7 @@ The goal is to identify cross-section table overlap, duplicated caching, and cac
 > `src/Humans.Infrastructure/Data/` (or the section's own `Data/` under
 > `src/Sections/`). **Since the per-section DbContext split
 > (nobodies-collective/Humans#858) there is no longer a single `HumansDbContext`.**
-> The split has continued past "nearly complete" — 28 contexts exist (27
+> The split has continued past "nearly complete" — 29 contexts exist (28
 > peeled contexts plus `HumansDbContext` itself), each internal-sealed with
 > its own `IDbContextFactory<T>`/direct-injection pattern, same
 > database/connection, and its own
@@ -22,10 +22,11 @@ The goal is to identify cross-section table overlap, duplicated caching, and cac
 >
 > | DbContext | Owns |
 > |-----------|------|
-> | `HumansDbContext` | What's left after every peel below: `Profiles`, Identity (`users`/`roles`/`user_roles`/`user_claims`/`user_logins`/`role_claims`/`user_tokens`), `Teams`, `TeamMembers`, `TeamJoinRequests`, `TeamJoinRequestStateHistories`, `TeamRoleDefinitions`, `TeamRoleAssignments`, `TeamEarlyEntryGrants`, `ContactFields`, `UserEmails`, `VolunteerHistoryEntries`, `AccountMergeRequests`, `CommunicationPreferences`, `ProfileLanguages`, `EventParticipations` — i.e. Profiles, Users, and Teams. **Legal, Consent, Shifts, and AuditLog are gone from this list this sweep** — see the three new rows below. |
+> | `HumansDbContext` | What's left after every peel below: `Profiles`, Identity (`users`/`roles`/`user_roles`/`user_claims`/`user_logins`/`role_claims`/`user_tokens`), `ContactFields`, `UserEmails`, `VolunteerHistoryEntries`, `AccountMergeRequests`, `CommunicationPreferences`, `ProfileLanguages`, `EventParticipations` — i.e. Profiles and Users only. **Legal, Consent, Shifts, AuditLog and now Teams are gone from this list** — see the rows below. Peel 15 (nobodies-collective/Humans#1271) takes Users+Profiles too, at which point this context is deleted outright. |
+> | `TeamsDbContext` | `Teams`, `TeamMembers`, `TeamJoinRequests`, `TeamJoinRequestStateHistories`, `TeamRoleDefinitions`, `TeamRoleAssignments`, `TeamEarlyEntryGrants` — peeled in nobodies-collective/Humans#1264; `TeamRepository` injects `IDbContextFactory<TeamsDbContext>` |
 > | `AuditLogDbContext` | `AuditLogEntries` — **new peel this sweep**, still `src/Humans.Infrastructure/Data/` (not G5) |
-> | `LegalDbContext` | `LegalDocuments`, `DocumentVersions`, `ConsentRecords` — **new peel this sweep**, still `src/Humans.Infrastructure/Data/` (not G5). `ConsentRecords` living here (not a separate Consent context) is unchanged from before the peel — Consent has never owned its own DbContext. |
-> | `ShiftsDbContext` | `EventSettings`, `Rotas`, `Shifts`, `ShiftSignups`, `ShiftTags`, `VolunteerEventProfiles`, `GeneralAvailability`, `VolunteerBuildStatuses`, `VolunteerTagPreferences` — **new peel this sweep**, still `src/Humans.Infrastructure/Data/` (not G5) |
+> | `LegalDbContext` | `LegalDocuments`, `DocumentVersions`, `ConsentRecords` — peeled this sweep, then moved into the Consent section project at G5 (`src/Sections/Humans.Consent/Data/`). `ConsentRecords` living here (not a separate Consent context) is unchanged from before the peel — Consent has never owned its own DbContext. |
+> | `ShiftsDbContext` | `EventSettings`, `Rotas`, `Shifts`, `ShiftSignups`, `ShiftTags`, `RotaShiftTags` (`rota_shift_tags` — the implicit many-to-many mapped by `ShiftTagConfiguration` via `UsingEntity`), `VolunteerEventProfiles`, `GeneralAvailability`, `VolunteerBuildStatuses`, `VolunteerTagPreferences` — **new peel this sweep**, still `src/Humans.Infrastructure/Data/` (not G5) |
 > | `AuthDbContext` | `RoleAssignments` (peeled #1234) |
 > | `GovernanceDbContext` | `Applications`, `ApplicationStateHistories`, `BoardVotes` (own project, `src/Sections/Humans.Governance/`, G5) |
 > | `CampaignsDbContext` | `Campaigns`, `CampaignCodes`, `CampaignGrants` (own project, `src/Sections/Humans.Campaigns/`, G5 since PR #1263, 2026-08-11) |
@@ -462,7 +463,7 @@ caller, pinned by HUM0005), `IMagicLinkService`
 
 ## Onboarding
 
-Folder: `src/Humans.Application/Services/Onboarding/`. Orchestrator
+Folder: `src/Sections/Humans.Onboarding/Services/`. Orchestrator
 section — owns no DB tables, holds no `IMemoryCache` injection.
 
 ### OnboardingService (Scoped)
@@ -1345,7 +1346,7 @@ Stateless calculators / projections — no DI dependencies, no DB access.
 
 ## Cantina
 
-Folder: `src/Humans.Application/Services/Cantina/`. Owns no DB tables —
+Project: `src/Sections/Humans.Cantina` (G5). Owns no DB tables —
 orchestrator only. Dietary data moved to `Profile` and is read through
 the unified `UserInfo` read-model.
 
@@ -1966,7 +1967,7 @@ Cross-section calls via `ITeamServiceRead`, `IUserEmailService`,
 
 ## Email
 
-Folder: `src/Humans.Application/Services/Email/`. **DbContext:**
+Folder: `src/Sections/Humans.Email/Services/`. **DbContext:**
 `EmailDbContext` — **peeled** (nobodies-collective/Humans#1234, part of
 #858). `EmailOutboxRepository` injects `IDbContextFactory<EmailDbContext>`
 directly. Owns
@@ -2044,7 +2045,7 @@ reads that were previously `[Grandfathered("HUM0025", …)]` on
 
 ## Mailer
 
-Folder: `src/Humans.Application/Services/Mailer/`. No owned DB tables —
+Folder: `src/Sections/Humans.Mailer/Services/` (G5, nobodies-collective/Humans#866). No owned DB tables —
 MailerLite is the external system; classifier writes through other
 sections' services.
 
@@ -2511,7 +2512,7 @@ Outbound API client over `AnthropicOptions`. No DB access, no cache.
 
 ## Search
 
-Folder: `src/Humans.Application/Services/Search/`. No owned DB tables.
+Project: `src/Sections/Humans.Search` (G5, nobodies-collective/Humans#866). No owned DB tables.
 
 ### SearchService (Scoped)
 
@@ -2544,7 +2545,7 @@ No DB access, no cache.
 
 ## Gdpr
 
-Folder: `src/Humans.Application/Services/Gdpr/`. No owned DB tables —
+Folder: `src/Sections/Humans.Gdpr/Services/` (G5, nobodies-collective/Humans#866). No owned DB tables —
 the export orchestrator runs over per-section `IUserDataContributor`
 fan-out.
 
@@ -3071,7 +3072,7 @@ shrank to a single dev-only path — and that path is now also closed.
 
 None. `DevLoginController`'s previous direct `HumansDbContext` writes
 (Camps / CampSeasons / CampLead seeding for dev personas) moved into
-`DevPersonaSeeder` (`src/Humans.Web/Infrastructure/DevPersonaSeeder.cs`),
+`DevPersonaSeeder` (`src/Sections/Humans.Development/Services/DevPersonaSeeder.cs`),
 which itself owns no DbContext — every write (`User`/`Profile`/`UserEmail`,
 system-team membership, dev barrio camp/season/lead via `ICampService` /
 `ICampRoleService`, city-planning team, role assignments, contact fields)

@@ -2,7 +2,7 @@ using Microsoft.Extensions.Logging;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.HumanLifecycle;
 using Humans.Notifications.Contracts;
-using Humans.Application.Interfaces.Onboarding;
+using Humans.Onboarding.Contracts;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;

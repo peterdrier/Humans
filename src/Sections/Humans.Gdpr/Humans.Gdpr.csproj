@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Microsoft.NET.Sdk, not Sdk.Razor: Gdpr has no controllers and no views. The export
+    download action lives on Shell's ProfileController and stays there — moving it would
+    be a URL change, which is out of a G5 move's scope (G5-SECTION-TEMPLATE.md step 1,
+    SystemSettings' shape).
+  -->
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Humans.Gdpr.Tests" />
+    <!-- The one assembly allowed to see many sections (design §5). -->
+    <InternalsVisibleTo Include="Humans.Integration.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      No Humans.Infrastructure and no Humans.UI reference: Gdpr owns no tables, so there is
+      no DbContext, no repository and no AddSectionDbContext call, and it has no views. The
+      orchestrator injects IEnumerable<IUserDataContributor> from its own leaf, IClock and
+      ILogger — nothing else. Humans.Application is here for one extension method
+      (NodaTimeFormattingExtensions.ToIso8601) and Humans.Domain for nothing at all, so it
+      is not referenced either.
+    -->
+    <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
+    <ProjectReference Include="..\..\Humans.Application\Humans.Application.csproj" />
+    <ProjectReference Include="..\Humans.Gdpr.Contracts\Humans.Gdpr.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NodaTime" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The section owns its documentation (design §7a); keep it visible in Solution Explorer. -->
+    <None Include="**\*.md" />
+  </ItemGroup>
+
+</Project>

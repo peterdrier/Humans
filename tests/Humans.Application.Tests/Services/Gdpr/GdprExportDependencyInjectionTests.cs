@@ -1,6 +1,6 @@
 using System.Runtime.CompilerServices;
 using AwesomeAssertions;
-using Humans.Application.Interfaces.Gdpr;
+using Humans.Gdpr.Contracts;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.Memory;
 using Microsoft.Extensions.DependencyInjection;
@@ -9,7 +9,6 @@ using UsersUserService = Humans.Application.Services.Users.UserService;
 using AuditLogService = Humans.Application.Services.AuditLog.AuditLogService;
 using CampService = Humans.Application.Services.Camps.CampService;
 using RoleAssignmentService = Humans.Application.Services.Auth.RoleAssignmentService;
-using ConsentService = Humans.Application.Services.Consent.ConsentService;
 using ShiftSignupService = Humans.Application.Services.Shifts.ShiftSignupService;
 using TicketsTicketQueryService = Humans.Application.Services.Tickets.TicketQueryService;
 using TeamService = Humans.Application.Services.Teams.TeamService;
@@ -65,7 +64,7 @@ public class GdprExportDependencyInjectionTests
         typeof(UsersUserService),
         typeof(ProfilesAccountMergeService),
         SectionType("Humans.Governance.Services.ApplicationDecisionService"),
-        typeof(ConsentService),
+        SectionType("Humans.Consent.Services.ConsentService"),
         typeof(TeamService),
         typeof(RoleAssignmentService),
         typeof(ShiftSignupService),

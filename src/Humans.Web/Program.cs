@@ -74,12 +74,11 @@ var configRegistry = new ConfigurationRegistry();
 builder.Services.AddSingleton(configRegistry);
 
 builder.Services.AddSingleton<IClock>(SystemClock.Instance);
-if (!builder.Environment.IsProduction())
-{
-    builder.Services.AddScoped<DevelopmentCampRoleSeeder>();
-    builder.Services.AddScoped<DevelopmentDashboardSeeder>();
-    builder.Services.AddScoped<DevPersonaSeeder>();
-}
+
+// The three dev fixture seeders moved into src/Sections/Humans.Development at G5
+// (nobodies-collective/Humans#866) and are internal there, so Shell can no longer name them.
+// Their non-Production gate moved with them into that section's Section.Register, which reads
+// HostDefaults.EnvironmentKey off the configuration passed to it and fails closed.
 
 // All environments: gate-terminal account management (provisioned from /Tickets/Admin/Gate)
 // + the per-source-IP sign-in failure throttle for /Account/GateLogin. Both are Shell's:
@@ -483,7 +482,10 @@ mvcBuilder.ConfigureApplicationPartManager(apm =>
 mvcBuilder.ConfigureApplicationPartManager(apm =>
     apm.FeatureProviders.Add(new SectionViewComponentFeatureProvider()));
 
-// DevLoginController depends on DevPersonaSeeder (non-Production only); exclude in Prod so ValidateOnBuild passes and /dev/login/* 404s cleanly.
+// DevLoginController depends on DevPersonaSeeder (non-Production only); exclude in Prod so
+// ValidateOnBuild passes and /dev/login/* 404s cleanly. Must be added after
+// SectionControllerFeatureProvider above, which is what puts the internal controller in the
+// list in the first place.
 if (builder.Environment.IsProduction())
 {
     mvcBuilder.ConfigureApplicationPartManager(apm =>

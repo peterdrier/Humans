@@ -1,14 +1,11 @@
 <!-- freshness:triggers
-  src/Humans.Web/Views/Email/**
+  src/Sections/Humans.Email/**
   src/Humans.Web/Views/Profile/Emails.cshtml
-  src/Humans.Web/Controllers/EmailController.cs
   src/Humans.Web/Controllers/ProfileController.cs
-  src/Humans.Application/Services/Email/**
   src/Humans.Application/Services/GoogleIntegration/EmailProvisioningService.cs
   src/Humans.Application/Services/GoogleIntegration/GoogleWorkspaceUserService.cs
   src/Humans.Application/Services/Profiles/UserEmailService.cs
   src/Humans.Domain/Entities/UserEmail.cs
-  src/Humans.Domain/Entities/EmailOutboxMessage.cs
   src/Humans.Infrastructure/Data/Configurations/Profiles/UserEmailConfiguration.cs
 -->
 <!-- freshness:flag-on-change

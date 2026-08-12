@@ -1,0 +1,46 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>1.3</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="Search_FilterAll" xml:space="preserve"><value>Tot</value></data>
+  <data name="Search_FilterCamps" xml:space="preserve"><value>Barris</value></data>
+  <data name="Search_FilterEvents" xml:space="preserve"><value>Esdeveniments</value></data>
+  <data name="Search_FilterHumans" xml:space="preserve"><value>Humans</value></data>
+  <data name="Search_FilterShifts" xml:space="preserve"><value>Torns</value></data>
+  <data name="Search_FilterTeams" xml:space="preserve"><value>Equips</value></data>
+  <data name="Search_GlobalHint" xml:space="preserve"><value>Escriu almenys 2 caràcters per cercar entre humans, equips, barris i torns.</value></data>
+  <data name="Search_GlobalHintEvents" xml:space="preserve"><value>Escriu almenys 2 caràcters per cercar entre humans, equips, barris, torns i esdeveniments.</value></data>
+  <data name="Search_GlobalNoResults" xml:space="preserve"><value>Cap resultat per a {0}.</value></data>
+  <data name="Search_GlobalPlaceholder" xml:space="preserve"><value>Cerca humans, equips, barris, torns…</value></data>
+  <data name="Search_GlobalPlaceholderEvents" xml:space="preserve"><value>Cerca humans, equips, barris, torns, esdeveniments…</value></data>
+  <data name="Search_GlobalTitle" xml:space="preserve"><value>Cerca</value></data>
+</root>

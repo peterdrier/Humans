@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using AwesomeAssertions;
+using Humans.Onboarding;
 using Humans.Application;
 using Humans.Application.DTOs.Shifts;
 using Humans.Application.Interfaces.AuditLog;
@@ -149,7 +150,7 @@ public class ShiftsControllerSummaryTests
             .Returns(MakeUserInfo(userId));
         var ctrl = new ShiftsController(
             _shiftMgmt, _burnSettings, _signupService, _volunteerTrackingService, _shiftView, _teamService,
-            _auditLogService, _userService, _localizer, _clock, _builder, _logger);
+            _auditLogService, _userService, _localizer, Substitute.For<IStringLocalizer<OnboardingResource>>(), _clock, _builder, _logger);
         var http = new DefaultHttpContext
         {
             User = new ClaimsPrincipal(new ClaimsIdentity(

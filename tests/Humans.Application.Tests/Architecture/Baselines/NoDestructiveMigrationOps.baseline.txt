@@ -161,3 +161,11 @@ src/Humans.Infrastructure/Migrations/20260808191329_DropCrossSectionForeignKeys.
 # functional index is strictly stronger, so existing data cannot violate the replacement.
 # Recorded in memory/architecture/no-drops-until-prod-verified.md.
 src/Humans.Infrastructure/Migrations/20260811145603_RealignTeamRoleNameIndex.cs:DropIndex(name=IX_team_role_definitions_team_name_unique)#1
+# Three pre-existing, already-shipped drops in a G5 section's own Data/Migrations folder.
+# They are new to this file only because the rule's scan was widened to section migration
+# folders at Email's G5 move (nobodies-collective/Humans#866) — before that, every moved
+# section's migrations silently left the sweep and the rule reported success by finding
+# nothing. The code is byte-identical to what merged; deleting it is not this PR's business.
+src/Sections/Humans.Finance/Data/Migrations/20260810195350_HoldedExpenseDocIsApproved.cs:DropColumn(name=ApprovedAt)#1
+src/Sections/Humans.Finance/Data/Migrations/20260810204942_HoldedMirrorMovesToHoldedSection.cs:DropTable(name=holded_ledger_lines)#1
+src/Sections/Humans.Finance/Data/Migrations/20260810204942_HoldedMirrorMovesToHoldedSection.cs:DropTable(name=holded_sync_states)#1

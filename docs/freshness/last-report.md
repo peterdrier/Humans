@@ -34,7 +34,9 @@ A glob-aware verifier now reports **0 dead paths across all 138 trigger-bearing 
 This is the **third consecutive sweep** to find a large dead-trigger batch: 64 across 44 docs two
 sweeps ago, 37 across 8 docs last sweep, 27+ across 16 docs now. The failure is silent by
 construction — a doc with a dead glob looks *clean*, not *unchecked* — and it recurs every time a
-refactor moves files. This wants a CI check, not a once-per-sweep repair.
+refactor moves files — which is exactly what the in-flight G5 migration is doing. Repair it per
+sweep and expect it to keep recurring until G5 finishes; it stops on its own when the moves stop.
+**Do not propose a CI check for this** (see `memory/process/no-new-ci-checks.md`).
 
 **A brand-new section was invisible to the sweep.** `src/Sections/Humans.Holded/Docs/Holded.md`
 shipped with no `freshness:triggers` marker at all, so the newest section in the codebase would

@@ -1,6 +1,6 @@
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Caching;
-using Humans.Application.Interfaces.Gdpr;
+using Humans.Gdpr.Contracts;
 using Humans.Application.Interfaces.ICalFeed;
 using Humans.Events.Contracts;
 using Humans.Events.Data;

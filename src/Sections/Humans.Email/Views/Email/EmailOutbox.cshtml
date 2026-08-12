@@ -1,0 +1,180 @@
+@using Microsoft.AspNetCore.Html
+@using Humans.Email.Contracts
+@using Humans.UI.Models.Tables
+@model Humans.Email.Models.EmailOutboxViewModel
+@{
+    ViewData["Title"] = "Email Outbox";
+}
+@functions {
+    static string FormatApproxCount(int count)
+    {
+        if (count < 1000) return count.ToString();
+        if (count < 10_000) return $"~{count / 1000.0:0.#}k";
+        return $"~{count / 1000}k";
+    }
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-controller="Admin" asp-action="Index">Admin</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Email Outbox</li>
+    </ol>
+</nav>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="mb-0">Email Outbox</h1>
+        @if (Model.IsPaused)
+        {
+            <span class="text-warning fw-semibold"><i class="fa-solid fa-circle-pause me-1"></i>Sending paused</span>
+        }
+        else
+        {
+            <span class="text-success fw-semibold"><i class="fa-solid fa-circle-check me-1"></i>Sending active</span>
+        }
+    </div>
+    <div class="d-flex gap-2 align-items-center">
+        @if (Model.IsPaused)
+        {
+            <form method="post" asp-action="ResumeEmailSending">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-success">
+                    <i class="fa-solid fa-play me-1"></i>Resume Sending
+                </button>
+            </form>
+        }
+        else
+        {
+            <form method="post" asp-action="PauseEmailSending">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-danger">
+                    <i class="fa-solid fa-pause me-1"></i>Pause All Sending
+                </button>
+            </form>
+        }
+        <a asp-controller="Admin" asp-action="Index" class="btn btn-outline-secondary">Back</a>
+    </div>
+</div>
+
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md">
+        <div class="card text-center">
+            <div class="card-body">
+                <div class="display-6 fw-bold text-primary">@FormatApproxCount(Model.TotalMessageCount)</div>
+                <div class="text-muted small">Total Messages</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md">
+        <div class="card text-center">
+            <div class="card-body">
+                <div class="display-6 fw-bold text-warning">@Model.QueuedCount</div>
+                <div class="text-muted small">Queued</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md">
+        <div class="card text-center">
+            <div class="card-body">
+                <div class="display-6 fw-bold text-success">@Model.SentLast24HoursCount</div>
+                <div class="text-muted small">Sent (24h)</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md">
+        <div class="card text-center">
+            <div class="card-body">
+                <div class="display-6 fw-bold text-danger">@Model.FailedCount</div>
+                <div class="text-muted small">Failed</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md">
+        <div class="card text-center">
+            <div class="card-body">
+                <div class="display-6 fw-bold text-secondary">10/min</div>
+                <div class="text-muted small">Throttle</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">Recent Messages (last 50)</div>
+    @if (!Model.Messages.Any())
+    {
+        <div class="card-body text-muted">No messages in the outbox.</div>
+    }
+    else
+    {
+        Func<EmailOutboxMessageDto, IHtmlContent> recipientCell = @<text>
+            @if (item.UserId.HasValue)
+            {
+                <vc:human user-id="@item.UserId.Value" />
+            }
+            else
+            {
+                @(item.RecipientName ?? "—")
+            }
+        </text>;
+        Func<EmailOutboxMessageDto, IHtmlContent> templateCell = @<text><code class="small">@item.TemplateName</code></text>;
+        Func<EmailOutboxMessageDto, IHtmlContent> statusCell = @<text>
+            @{
+                var badgeClass = item.Status switch
+                {
+                    EmailOutboxStatus.Queued => "bg-warning text-dark",
+                    EmailOutboxStatus.Sent => "bg-success",
+                    EmailOutboxStatus.Failed => "bg-danger",
+                    _ => "bg-secondary"
+                };
+            }
+            <span class="badge @badgeClass">@item.Status</span>
+            @if (item.RetryCount > 0)
+            {
+                <small class="text-muted ms-1">×@item.RetryCount</small>
+            }
+        </text>;
+        Func<EmailOutboxMessageDto, IHtmlContent> sentAtCell = @<text>
+            @if (item.SentAt.HasValue)
+            {
+                @item.SentAt.Value.ToInvariantTimestamp()
+            }
+            else
+            {
+                <span class="text-muted">—</span>
+            }
+        </text>;
+        Func<EmailOutboxMessageDto, IHtmlContent> actionsCell = @<text>
+            @if (item.Status == EmailOutboxStatus.Failed)
+            {
+                <form method="post" asp-action="RetryEmailOutboxMessage" asp-route-id="@item.Id" class="d-inline">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-sm btn-outline-primary">Retry</button>
+                </form>
+                <form method="post" asp-action="DiscardEmailOutboxMessage" asp-route-id="@item.Id" class="d-inline ms-1">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-sm btn-outline-danger"
+                            data-confirm="Discard this message? It cannot be recovered.">Discard</button>
+                </form>
+            }
+        </text>;
+        Func<EmailOutboxMessageDto, IHtmlContent> lastErrorCell = @<text>
+            @if (!string.IsNullOrEmpty(item.LastError))
+            {
+                <span class="text-danger" title="@item.LastError">@item.LastError[..Math.Min(80, item.LastError.Length)]@(item.LastError.Length > 80 ? "…" : "")</span>
+            }
+        </text>;
+        var outboxTable = TableModel.For(Model.Messages)
+            .Template("Name", recipientCell)
+            .Template("Template", templateCell)
+            .Column("Email Address", r => r.RecipientEmail, c => c.Css("small"))
+            .Template("Status", statusCell)
+            .Column("Queued At", r => r.CreatedAt.ToInvariantTimestamp(), c => c.Css("text-nowrap small"))
+            .Template("Sent At", sentAtCell, c => c.Css("text-nowrap small"))
+            .Template("Actions", actionsCell, c => c.NoSort())
+            .Template("Error", lastErrorCell)
+            .Build();
+        <partial name="_Table" model="outboxTable" />
+    }
+</div>

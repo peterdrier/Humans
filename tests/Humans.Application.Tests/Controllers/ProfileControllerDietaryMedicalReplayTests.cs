@@ -4,10 +4,10 @@ using Humans.Application.Configuration;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Campaigns.Contracts;
 using Humans.Application.Interfaces.Camps;
-using Humans.Application.Interfaces.Email;
-using Humans.Application.Interfaces.Gdpr;
+using Humans.Email.Contracts;
+using Humans.Gdpr.Contracts;
 using Humans.Governance.Contracts;
-using Humans.Application.Interfaces.Onboarding;
+using Humans.Onboarding.Contracts;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
@@ -90,7 +90,7 @@ public class ProfileControllerDietaryMedicalReplayTests
             Substitute.For<IUserEmailService>(),
             Substitute.For<ICommunicationPreferenceService>(),
             Substitute.For<IAuditLogService>(),
-            Substitute.For<IOnboardingService>(),
+            Substitute.For<IOnboardingIntake>(),
             _signupService,
             _shiftMgmt,
             Substitute.For<IShiftView>(),
@@ -103,7 +103,7 @@ public class ProfileControllerDietaryMedicalReplayTests
             Substitute.For<ITeamService>(),
             Substitute.For<ICampaignService>(),
             Substitute.For<ICampServiceRead>(),
-            Substitute.For<IEmailOutboxService>(),
+            Substitute.For<IEmailOutboxServiceRead>(),
             new FakeClock(Instant.FromUtc(2026, 5, 25, 12, 0)),
             authorizationService,
             Substitute.For<IApplicationDecisionService>(),

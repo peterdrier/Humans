@@ -1,4 +1,8 @@
 using System.Net;
+using Humans.Consent.Services;
+using Humans.Consent.Contracts;
+using Humans.Consent.Domain;
+using Humans.Consent.Data;
 using System.Security.Cryptography;
 using System.Text;
 using Hangfire;
@@ -17,7 +21,8 @@ using NodaTime;
 using NSubstitute;
 using Xunit;
 using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.Email;
+using Humans.Email.Contracts;
+using Humans.Mailer.Services;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Infrastructure.Services;
 
@@ -56,6 +61,13 @@ public class HumansWebApplicationFactory(string connectionString)
     /// Tests can assert against ReceivedCalls() to verify enqueue behavior.
     /// </summary>
     public IBackgroundJobClient BackgroundJobClientStub { get; } = Substitute.For<IBackgroundJobClient>();
+
+    /// <summary>
+    /// In-memory MailerLite so the /Mailer/Admin pages render without reaching
+    /// connect.mailerlite.com. Same call as <see cref="StripeServiceStub"/>; hand-written
+    /// rather than substituted because the interface yields an IAsyncEnumerable.
+    /// </summary>
+    internal StubMailerLiteService MailerLiteServiceStub { get; } = new();
 
     public IReadOnlyList<ServiceDescriptor> RegisteredServices { get; private set; } = [];
 
@@ -129,6 +141,13 @@ public class HumansWebApplicationFactory(string connectionString)
             var stripeDescriptor = services.SingleOrDefault(d => d.ServiceType == typeof(IStripeService));
             if (stripeDescriptor != null) services.Remove(stripeDescriptor);
             services.AddScoped(_ => StripeServiceStub);
+
+            // Replace IMailerLiteService with the in-memory stub so /Mailer/Admin renders
+            // against a deterministic account instead of the live MailerLite API. The real
+            // client is a Singleton registered from Humans.Mailer's Section.Register.
+            var mailerDescriptor = services.SingleOrDefault(d => d.ServiceType == typeof(IMailerLiteService));
+            if (mailerDescriptor != null) services.Remove(mailerDescriptor);
+            services.AddSingleton<IMailerLiteService>(MailerLiteServiceStub);
 
             // Bind IBackgroundJobClient — Hangfire's own registration is skipped in
             // Testing (Program.cs), so injecting consumers like

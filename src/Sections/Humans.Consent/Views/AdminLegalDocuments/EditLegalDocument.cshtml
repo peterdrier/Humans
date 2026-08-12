@@ -1,0 +1,123 @@
+@model Humans.Consent.Models.LegalDocumentEditViewModel
+@{
+    ViewData["Title"] = $"Edit: {Model.Name}";
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-controller="Admin" asp-action="Index">Admin</a></li>
+        <li class="breadcrumb-item"><a asp-controller="AdminLegalDocuments" asp-action="LegalDocuments">Legal Documents</a></li>
+        <li class="breadcrumb-item active" aria-current="page">@Model.Name</li>
+    </ol>
+</nav>
+
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">Edit Legal Document</h4>
+            </div>
+            <div class="card-body">
+                <form asp-controller="AdminLegalDocuments" asp-action="EditLegalDocument" asp-route-id="@Model.Id" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" asp-for="Id" />
+
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+
+                    <partial name="~/Views/Shared/_LegalDocumentFormFields.cshtml"
+                             model="Model"
+                             view-data='new ViewDataDictionary(ViewData) { ["GitHubHelpText"] = "Paste a GitHub URL or enter a folder path. Sync discovers translations by convention." }' />
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                        <a asp-controller="AdminLegalDocuments" asp-action="LegalDocuments" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card mb-3">
+            <div class="card-header">Document Info</div>
+            <div class="card-body">
+                <dl class="mb-0">
+                    <dt>Current Version</dt>
+                    <dd>@(Model.CurrentVersion ?? "No versions")</dd>
+                    <dt>Total Versions</dt>
+                    <dd>@Model.VersionCount</dd>
+                    <dt>Last Synced</dt>
+                        <dd>@(Model.LastSyncedAt?.ToDateTime() ?? "Never")</dd>
+                </dl>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">GitHub Sync</div>
+            <div class="card-body">
+                <p class="small text-muted">Trigger a manual sync from the GitHub repository to fetch the latest content.</p>
+                <form asp-controller="AdminLegalDocuments" asp-action="SyncLegalDocument" asp-route-id="@Model.Id" method="post">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-outline-primary btn-sm w-100">Sync Now</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (Model.Versions.Count > 0)
+{
+    <div class="card mt-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Version History</h5>
+            <span class="badge bg-secondary">@Model.Versions.Count version(s)</span>
+        </div>
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Version</th>
+                        <th>Languages</th>
+                        <th>Effective From</th>
+                        <th>Changes Summary</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var version in Model.Versions)
+                    {
+                        <tr>
+                            <td>
+                                <strong>@version.VersionNumber</strong>
+                                @if (version.RequiresReConsent)
+                                {
+                                    <span class="badge bg-warning ms-1" title="Humans must re-consent">Re-consent</span>
+                                }
+                            </td>
+                            <td>
+                                @foreach (var lang in version.Languages)
+                                {
+                                    <span class="badge bg-light text-dark me-1">@lang</span>
+                                }
+                            </td>
+                                    <td>@version.EffectiveFrom.ToDateTime()</td>
+                            <td colspan="2">
+                                <form asp-controller="AdminLegalDocuments" asp-action="UpdateVersionSummary" asp-route-id="@Model.Id" asp-route-versionId="@version.Id" method="post" class="d-flex gap-2">
+                                    @Html.AntiForgeryToken()
+                                    <input type="text" name="changesSummary" value="@version.ChangesSummary" class="form-control form-control-sm" placeholder="Describe changes..." />
+                                    <button type="submit" class="btn btn-outline-secondary btn-sm">Save</button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <partial name="~/Views/Shared/_GitHubFolderPathScript.cshtml" />
+}

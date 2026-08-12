@@ -6,6 +6,7 @@ using Humans.Application.Interfaces.HumanLifecycle;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Services.HumanLifecycle;
 using Humans.Infrastructure.Caching;
+using Humans.Infrastructure.Configuration;
 using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Services;
 using Humans.Web.Extensions.Infrastructure;
@@ -40,21 +41,15 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddUsersSection();
         services.AddAuthSection();
         services.AddTeamsSection();
-        services.AddOnboardingSection();
         services.AddCampsSection();
         services.AddShiftsSection();
         services.AddEarlyEntrySection();
         services.AddTicketsSection();
-        services.AddLegalAndConsentSection();
         services.AddAuditLogSection();
-        services.AddGdprSection();
         services.AddICalFeedSection();
         services.AddAdminSection();
         services.AddGoogleIntegrationSection();
-        services.AddGuideSection(configuration);
-        services.AddSearchSection();
         services.AddHoldedConnector(configuration);
-        services.AddMailerSection(configuration);
 
         // Recurring jobs for sections that have already moved out. The job types stay in
         // Humans.Infrastructure/Jobs because UseHumansRecurringJobs names them by concrete
@@ -65,6 +60,9 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<GateVendorCheckInJob>();
         services.AddScoped<CleanupIssuesJob>();
         services.AddScoped<TermRenewalReminderJob>();
+        services.AddScoped<SyncLegalDocumentsJob>();
+        services.AddScoped<SendReConsentReminderJob>();
+        services.AddTransient<MailerAudienceSyncJob>();
 
         // Base collaborators that Governance's section file used to register on the way past.
         // The three badge-cache invalidators are Humans.Infrastructure implementations of
@@ -75,6 +73,14 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<INotificationMeterCacheInvalidator, NotificationMeterCacheInvalidator>();
         services.AddScoped<IVotingBadgeCacheInvalidator, VotingBadgeCacheInvalidator>();
         services.AddScoped<IHumanLifecycleService, HumanLifecycleService>();
+
+        // Same call for Guide's section file: IGuideContentSource is a plain GitHub-markdown
+        // fetcher (its signatures name only string) and three of its four consumers are not
+        // Guide's — Humans.Agent's three preload readers, AgentDocsHealthCheck, and
+        // GitHubCommunityKbContentSource — so the abstraction, the implementation and the
+        // GuideSettings it binds all stay in Base.
+        services.Configure<GuideSettings>(configuration.GetSection(GuideSettings.SectionName));
+        services.AddSingleton<IGuideContentSource, GitHubGuideContentSource>();
 
         // Shell-resident collaborators of sections that have already moved out. AgentPreloadAugmentor
         // builds the access matrix, glossaries, route map and FAQ blocks of the agent's preload

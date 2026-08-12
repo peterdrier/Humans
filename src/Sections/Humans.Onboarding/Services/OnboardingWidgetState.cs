@@ -1,0 +1,48 @@
+using Humans.Consent.Contracts;
+using Humans.Governance.Contracts;
+using Humans.Onboarding.Contracts;
+using Humans.Application.Interfaces.Shifts;
+using Humans.Application.Interfaces.Users;
+using Humans.Domain.Constants;
+
+namespace Humans.Onboarding.Services;
+
+internal sealed class OnboardingWidgetState(
+    IUserServiceRead users,
+    IShiftView shiftView,
+    IMembershipCalculatorRead membership,
+    IShiftManagementService shiftMgmt,
+    IConsentServiceRead consents,
+    IOnboardingWidgetSessionState session) : IOnboardingWidgetState
+{
+    public async Task<OnboardingWidgetStep> GetCurrentStepAsync(Guid userId, CancellationToken ct = default)
+    {
+        if (await membership.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, ct))
+            return OnboardingWidgetStep.Complete;
+
+        // HasRequiredNameFields (not IsStub) catches Active profiles with blank names from data drift.
+        var info = await users.GetUserInfoAsync(userId, ct);
+        if (info is null || !info.HasRequiredNameFields)
+            return OnboardingWidgetStep.Names;
+
+        // Returning member with any prior signature → skip Shifts, go to Consents (renew/new docs).
+        var requiredRows = await consents.GetRequiredConsentRowsForUserAsync(
+            userId, SystemTeamIds.Volunteers, ct);
+        if (requiredRows.Any(r => r.Signed))
+            return OnboardingWidgetStep.Consents;
+
+        var hasSkip = session.ShiftSkipActive;
+
+        var activeEvent = await shiftMgmt.GetActiveAsync();
+        var hasCurrentEventSignup = false;
+        if (activeEvent is not null)
+        {
+            var shifts = await shiftView.GetUserAsync(userId, ct);
+            hasCurrentEventSignup = shifts.HasShift;
+        }
+
+        return (hasSkip || hasCurrentEventSignup)
+            ? OnboardingWidgetStep.Consents
+            : OnboardingWidgetStep.Shifts;
+    }
+}

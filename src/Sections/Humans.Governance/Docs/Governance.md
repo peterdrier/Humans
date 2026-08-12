@@ -8,7 +8,7 @@
 
 # Governance — Section Invariants
 
-Colaborador and Asociado tier applications, Board voting workflow, term lifecycle. **Not** volunteer onboarding — that lives under `docs/sections/Onboarding.md` and is explicitly a separate track.
+Colaborador and Asociado tier applications, Board voting workflow, term lifecycle. **Not** volunteer onboarding — that lives under `src/Sections/Humans.Onboarding/Docs/Onboarding.md` and is explicitly a separate track.
 
 ## Concepts
 
@@ -170,7 +170,7 @@ Three controllers serve this section directly. `BoardController` composes Govern
 
 **Owning services:** `ApplicationDecisionService`, `MembershipCalculator`, `MembershipQuery`
 **Owned tables:** `applications`, `application_state_history`, `board_votes`
-**Status:** (A) Migrated (peterdrier/Humans PR #503, 2026-04-15). Store/decorator layer subsequently removed under issue nobodies-collective/Humans#533. Moved into its own project `src/Sections/Humans.Governance` at G5 (nobodies-collective/Humans#866); the cross-section surface — `IApplicationServiceRead` (ten reads, including `GetUnvotedApplicationCountAsync` for the nav badge and admin nav tree), `IMembershipCalculatorRead`, the five-member `IApplicationDecisionService` (submit / update-draft / the two renewal-reminder reads / mark-reminder-sent), `ApplicationStatus` and the membership snapshot records — sits on the `Humans.Governance.Contracts` leaf, everything else is `internal`.
+**Status:** (A) Migrated (peterdrier/Humans PR #503, 2026-04-15). Store/decorator layer subsequently removed under issue nobodies-collective/Humans#533. Moved into its own project `src/Sections/Humans.Governance` at G5 (nobodies-collective/Humans#866); the cross-section surface — `IApplicationServiceRead` (ten reads, including `GetUnvotedApplicationCountAsync` for the nav badge and admin nav tree), `IMembershipCalculatorRead`, the six-member `IApplicationDecisionService` (validate-submission / submit / update-draft / the two renewal-reminder reads / mark-reminder-sent), `ApplicationStatus` and the membership snapshot records — sits on the `Humans.Governance.Contracts` leaf, everything else is `internal`.
 
 - **Architecture test:** `tests/Humans.Governance.Tests/Architecture/GovernanceArchitectureTests.cs` — pins namespace, no-`DbContext`, `IApplicationRepository` dep, no store types. (The `IMemoryCache` check is delegated to `ApplicationServicesTakeNoMemoryCacheRule`, which allowlists `ApplicationDecisionService` — see below.)
 - `ApplicationDecisionService`, `MembershipCalculator`, and `MembershipQuery` all live in `Humans.Governance/Services/` and depend only on Application-layer abstractions. No `HumansDbContext`. `ApplicationDecisionService` caches the per-board-member unvoted-application count inline via `IMemoryCache` (`CacheKeys.VotingBadge`, 2-min TTL, PerUser — allowlisted in `ApplicationServicesTakeNoMemoryCacheRule`); `MembershipCalculator` and `MembershipQuery` hold no cache.

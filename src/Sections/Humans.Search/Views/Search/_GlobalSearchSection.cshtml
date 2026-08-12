@@ -1,0 +1,27 @@
+@* One type-grouped section (teams/camps/shifts) of global search. Humans use _HumanSearchResults. ViewData["Icon"] = FA class. *@
+@model IReadOnlyList<GlobalSearchResult>
+
+@{
+    var icon = ViewData["Icon"] as string ?? "fa-solid fa-circle";
+}
+
+<div class="list-group">
+    @foreach (var result in Model)
+    {
+        <a href="@result.Url" class="list-group-item list-group-item-action">
+            <div class="d-flex align-items-start gap-3">
+                <div class="d-flex align-items-center justify-content-center rounded bg-light"
+                     style="width: 40px; height: 40px; flex-shrink: 0;">
+                    <i class="@icon text-muted"></i>
+                </div>
+                <div class="flex-grow-1">
+                    <strong>@result.Title</strong>
+                    @if (!string.IsNullOrEmpty(result.Subtitle))
+                    {
+                        <div class="small text-muted">@result.Subtitle</div>
+                    }
+                </div>
+            </div>
+        </a>
+    }
+</div>

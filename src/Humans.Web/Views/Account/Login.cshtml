@@ -58,34 +58,11 @@
     </div>
 </div>
 
+@* The panel itself is the Development section's (nobodies-collective/Humans#866): it
+   enumerates DevLoginController.AllPersonas, which is internal to that assembly. Partial
+   lookup resolves by name across application parts, so the markup moved and this view kept
+   the guard. *@
 @if (devAuthEnabled)
 {
-    <div class="row justify-content-center mt-3">
-        <div class="col-md-6">
-            <div class="card border-warning">
-                <div class="card-header bg-warning text-dark py-2">
-                    <small><strong>Dev login — @HostEnv.EnvironmentName</strong></small>
-                </div>
-                <div class="card-body py-3 text-center">
-                    <p class="text-muted small mb-3">Skip Google OAuth and sign in directly.</p>
-                    <div class="d-flex gap-2 justify-content-center flex-wrap mb-3">
-                        @foreach (var persona in Humans.Web.Controllers.DevLoginController.AllPersonas)
-                        {
-                            <a asp-controller="DevLogin" asp-action="SignIn"
-                               asp-route-persona="@persona.Slug"
-                               asp-route-returnUrl="@ViewData["ReturnUrl"]"
-                               class="btn btn-sm btn-outline-secondary">
-                                @persona.DisplayName
-                            </a>
-                        }
-                    </div>
-                    <a asp-controller="DevLogin" asp-action="Users"
-                       asp-route-returnUrl="@ViewData["ReturnUrl"]"
-                       class="btn btn-sm btn-outline-warning">
-                        Choose any user...
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
+    @await Html.PartialAsync("_DevLoginPanel")
 }

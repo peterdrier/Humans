@@ -3,7 +3,9 @@
    Guarded by GovernancePageRenderTests (step 12). *@
 @using Humans.Application.Extensions
 @using Humans.Domain.Enums
+@using Humans.Consent
 @using Humans.Governance
+@using Humans.Onboarding
 @using Humans.Governance.Contracts
 @using Humans.Governance.Controllers
 @using Humans.Governance.Domain
@@ -20,5 +22,11 @@
    singles stay in SharedResource: ProfileController renders the same tier-application form
    during profile setup and the Onboarding review queue renders the rest (§15.3b). *@
 @inject IStringLocalizer<SharedResource> SharedLocalizer
+@* The statutes tabs' empty-state string is Consent vocabulary; its whole set moved
+   to ConsentResource at Consent's G5, so this view binds the section marker (§15.3b). *@
+@inject IStringLocalizer<ConsentResource> ConsentLocalizer
+@* Four OnboardingReview_* applicant-summary labels came home with Onboarding's G5;
+   this page renders the same four over a tier application. *@
+@inject IStringLocalizer<OnboardingResource> OnboardingLocalizer
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
 @addTagHelper *, Humans.UI

@@ -1,4 +1,8 @@
 using Humans.Notifications.Data;
+using Humans.Consent.Services;
+using Humans.Consent.Contracts;
+using Humans.Consent.Domain;
+using Humans.Consent.Data;
 using Humans.Notifications.Domain;
 using Humans.Notifications.Contracts;
 using Humans.Budget.Data;

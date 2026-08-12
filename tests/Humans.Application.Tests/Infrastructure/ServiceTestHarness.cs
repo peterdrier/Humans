@@ -69,11 +69,6 @@ public abstract class ServiceTestHarness : IDisposable
     private protected CampsDbContext CampsDb => _campsDb.Value.Context;
     private protected TestDbContextFactory<CampsDbContext> CampsDbFactory => _campsDb.Value.Factory;
 
-    /// <summary>Legal: <c>legal_documents</c>, <c>document_versions</c>, <c>consent_records</c>.</summary>
-    private readonly Lazy<SectionDb<LegalDbContext>> _legalDb;
-    private protected LegalDbContext LegalDb => _legalDb.Value.Context;
-    private protected TestDbContextFactory<LegalDbContext> LegalDbFactory => _legalDb.Value.Factory;
-
     /// <summary>AuditLog: <c>audit_log</c>.</summary>
     private readonly Lazy<SectionDb<AuditLogDbContext>> _auditLogDb;
     private protected AuditLogDbContext AuditLogDb => _auditLogDb.Value.Context;
@@ -123,7 +118,6 @@ public abstract class ServiceTestHarness : IDisposable
         _googleIntegrationDb = RegisterSection<GoogleIntegrationDbContext>(o => new(o));
         _ticketsDb = RegisterSection<TicketsDbContext>(o => new(o));
         _campsDb = RegisterSection<CampsDbContext>(o => new(o));
-        _legalDb = RegisterSection<LegalDbContext>(o => new(o));
         _auditLogDb = RegisterSection<AuditLogDbContext>(o => new(o));
         _shiftsDb = RegisterSection<ShiftsDbContext>(o => new(o));
         _teamsDb = RegisterSection<TeamsDbContext>(o => new(o));
