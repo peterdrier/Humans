@@ -185,7 +185,7 @@ All weekly aggregates are computed over the **unique-humans cohort** for the wee
 | `IntoleranceRollup` | Same shape as `AllergyRollup`. |
 | `IntoleranceOtherEntries` | Same dedup rule as `AllergyOtherEntries`. |
 
-In addition, a **per-day mini-summary** carries 7 entries:
+In addition, a **per-day mini-summary** carries:
 
 | Field | Definition |
 |---|---|

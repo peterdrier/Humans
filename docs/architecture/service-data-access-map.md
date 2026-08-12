@@ -13,8 +13,8 @@ The goal is to identify cross-section table overlap, duplicated caching, and cac
 > `src/Humans.Infrastructure/Data/` (or the section's own `Data/` under
 > `src/Sections/`). **Since the per-section DbContext split
 > (nobodies-collective/Humans#858) there is no longer a single `HumansDbContext`.**
-> The split has continued past "nearly complete" — 29 contexts exist (28
-> peeled contexts plus `HumansDbContext` itself), each internal-sealed with
+> The split has continued past "nearly complete" — every context below is
+> internal-sealed with
 > its own `IDbContextFactory<T>`/direct-injection pattern, same
 > database/connection, and its own
 > `__EFMigrationsHistory_<Section>` table (see
@@ -68,10 +68,10 @@ The goal is to identify cross-section table overlap, duplicated caching, and cac
 > — see the new [Holded](#holded) section below. Separately, **AuditLog,
 > Legal, and Shifts each gained their own `DbContext`** (still
 > `src/Humans.Infrastructure/Data/`, not G5), narrowing what's left on
-> `HumansDbContext` to Profiles, Users/Identity, and Teams.
-> `HumansDbContext.PeeledConfigurationNamespaces` now lists 8 entries
-> (Auth, Email, GoogleIntegration, Tickets, Camps, Legal, AuditLog,
-> Shifts) — the sections that peeled into their own Infrastructure-internal
+> `HumansDbContext` to Profiles and Users/Identity (Teams peeled in #1264).
+> `HumansDbContext.PeeledConfigurationNamespaces` lists
+> Auth, Email, GoogleIntegration, Tickets, Camps, Legal, AuditLog and
+> Shifts — the sections that peeled into their own Infrastructure-internal
 > `DbContext` but have not (yet, or ever, for Camps) moved to a G5 project;
 > a section that goes on to G5 drops back out of this list since its
 > configurations leave the `Humans.Infrastructure` assembly entirely.
@@ -2949,8 +2949,8 @@ former HUM0025 `[Grandfathered]` markers have been retired:
     Profiles, Users, and Teams, plus ASP.NET Identity's own tables — for
     these the "one table, one repository" rule remains a review-time
     convention, same as before the split. Plus `SystemDbContext`
-    (`DataProtectionKeys`, framework-only, no owning section). All 28
-    contexts point at the same physical database/connection — this is a
+    (`DataProtectionKeys`, framework-only, no owning section). Every
+    context points at the same physical database/connection — this is a
     code-side EF model partition, not a database migration — and each
     peeled context has its own `__EFMigrationsHistory_<Section>` table
     (`HumansDbContext`'s tables keep using the original
