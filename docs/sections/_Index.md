@@ -20,6 +20,7 @@ move recipe is [`G5-SECTION-TEMPLATE.md`](G5-SECTION-TEMPLATE.md).
 
 | Section | Project | Invariants doc |
 |---|---|---|
+| Audit Log | `src/Sections/Humans.AuditLog` | [AuditLog.md](../../src/Sections/Humans.AuditLog/Docs/AuditLog.md) — the append path and the `/AuditLog` pages; the name-resolving read path (`AuditViewerService`, `AuditEvent`) stays in `Humans.Application`, because it injects Users', Teams' and GoogleIntegration's read interfaces and a *horizontal* section may not reference a vertical |
 | Agent | `src/Sections/Humans.Agent` | [Agent.md](../../src/Sections/Humans.Agent/Docs/Agent.md) |
 | Calendar | `src/Sections/Humans.Calendar` | [Calendar.md](../../src/Sections/Humans.Calendar/Docs/Calendar.md) |
 | Campaigns | `src/Sections/Humans.Campaigns` | [Campaigns.md](../../src/Sections/Humans.Campaigns/Docs/Campaigns.md) |
@@ -116,7 +117,7 @@ The technical services the business verticals use. Per the hard rules these are 
 
 | Section | Controllers | Orchestrators | Services | Repositories | Tables |
 |---------|-------------|---------------|----------|--------------|--------|
-| **Audit Log** | `AuditLogController` | `AuditViewerService` | `AuditLogService` | `AuditLogRepository` | `audit_log` |
+| **Audit Log** | `AuditLogController` (`Humans.AuditLog.Controllers`) | `AuditViewerService` (`Humans.Application.Services.AuditLog` — a cross-section orchestrator; see below) | `AuditLogService` (`Humans.AuditLog.Services`) | `AuditLogRepository` / `IAuditLogRepository` (`Humans.AuditLog.Data`) | `audit_log` |
 | **Auth** | `AccountController` | `MagicLinkService` | `RoleAssignmentService`, `AdminAuthorizationService`, *`CachingRoleAssignmentService`* | `RoleAssignmentRepository` | `role_assignments` |
 | **Notifications** | `NotificationsController` (`Humans.Notifications.Controllers`) | — | `NotificationService`, `NotificationEmitter`, `NotificationInboxService`, `NotificationMeterProvider` (`Humans.Notifications.Services`) | `NotificationRepository` / `INotificationRepository` (`Humans.Notifications.Data`) | `notifications`, `notification_recipients` |
 | **GDPR** | — (export download via Shell's `ProfileController` / `GuestController`) | `GdprExportService` (`Humans.Gdpr.Services`, internal) | — | — | — (owns no tables; fans out to every `IUserDataContributor` on `Humans.Gdpr.Contracts`) |

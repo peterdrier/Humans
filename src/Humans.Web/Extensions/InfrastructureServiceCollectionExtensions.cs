@@ -1,4 +1,6 @@
 using Humans.Agent.Contracts;
+using Humans.Application.Interfaces.AuditLog;
+using Humans.Application.Services.AuditLog;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Users;
 using Humans.Application.Configuration;
@@ -46,7 +48,13 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddCampsSection();
         services.AddShiftsSection();
         services.AddEarlyEntrySection();
-        services.AddAuditLogSection();
+        // AuditLog's read+render owner. It resolves actor/subject/team display names
+        // through IUserServiceRead, ITeamServiceRead and ITeamResourceService, which makes
+        // it a cross-section orchestrator rather than part of the horizontal AuditLog
+        // section (peters-hard-rules.md: a horizontal may not reference a vertical), so it
+        // stays in Humans.Application and is registered here — Governance's rule, that the
+        // section owning the file is not always the section owning the line.
+        services.AddScoped<IAuditViewerService, AuditViewerService>();
         services.AddICalFeedSection();
         services.AddAdminSection();
         services.AddGoogleIntegrationSection();

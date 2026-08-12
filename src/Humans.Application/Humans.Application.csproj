@@ -7,6 +7,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Humans.Domain\Humans.Domain.csproj" />
     <ProjectReference Include="..\Humans.Interfaces\Humans.Interfaces.csproj" />
+    <ProjectReference Include="..\Sections\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
     <!--
       SystemSettings' contracts leaf. EmailOutboxService and DriveActivityMonitorService
       call ISystemSettingsService; the leaf references Humans.Interfaces only, so Base

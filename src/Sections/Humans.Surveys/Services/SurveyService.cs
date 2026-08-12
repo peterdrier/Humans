@@ -1,6 +1,6 @@
 using Humans.Application;
 using Humans.Application.Extensions;
-using Humans.Application.Interfaces.AuditLog;
+using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Application.Interfaces.GoogleIntegration;

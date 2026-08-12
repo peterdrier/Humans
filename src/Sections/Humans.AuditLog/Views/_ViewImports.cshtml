@@ -1,0 +1,19 @@
+@* A section RCL does NOT inherit the host's Views/_ViewImports.cshtml. Omitting a line
+   here ships broken markup with a green build and no runtime error — see design §1/§2.
+   Guarded by AuditLogPageRenderTests (step 12).
+
+   No @inject IStringLocalizer line: the section carries no resource set at all. Its two
+   pages are admin-only English (design §3b's first question), and
+   AuditLogArchitectureTests.SectionTypesTakeNoStringLocalizer pins that, so the day
+   someone adds copy the build tells them to carve a resource set first. *@
+@using Humans.Application.Extensions
+@using Humans.Application.Services.AuditLog
+@using Humans.AuditLog
+@using Humans.AuditLog.Models
+@using Humans.Domain.Enums
+@using Humans.UI
+@using Humans.UI.Extensions
+@using Humans.UI.Models
+@using Humans.UI.ViewComponents
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+@addTagHelper *, Humans.UI

@@ -1,0 +1,124 @@
+using Humans.Application.Interfaces;
+using Humans.Domain.Enums;
+using NodaTime;
+
+namespace Humans.AuditLog.Contracts;
+
+/// <summary>
+/// Service for recording audit log entries. Each <c>LogAsync</c> call persists
+/// its entry immediately (auto-saved by the Audit Log repository). The audit
+/// log table is append-only per design-rules §12 — only appends are exposed;
+/// there is no update or delete path. Persistence is best-effort per §7a:
+/// save failures are logged at error level and swallowed so audit problems
+/// never break the business operation that invoked them. Call audit
+/// <em>after</em> the business save so a business rollback never leaves a
+/// ghost audit row.
+/// </summary>
+public interface IAuditLogService : IApplicationService
+{
+    /// <summary>
+    /// Logs an action performed by a background job (no human actor).
+    /// </summary>
+    Task LogAsync(AuditAction action, string entityType, Guid entityId,
+        string description, string jobName,
+        Guid? relatedEntityId = null, string? relatedEntityType = null);
+
+    /// <summary>
+    /// Logs an action performed by a human actor.
+    /// </summary>
+    Task LogAsync(AuditAction action, string entityType, Guid entityId,
+        string description, Guid actorUserId,
+        Guid? relatedEntityId = null, string? relatedEntityType = null);
+
+    /// <summary>
+    /// Logs a Google sync action with structured detail fields.
+    /// </summary>
+    Task LogGoogleSyncAsync(AuditAction action, Guid resourceId,
+        string description, string jobName,
+        string userEmail, string role, GoogleSyncSource source, bool success,
+        string? errorMessage = null,
+        Guid? relatedEntityId = null, string? relatedEntityType = null);
+
+    /// <summary>
+    /// Gets audit entries for a specific Google resource.
+    /// </summary>
+    Task<IReadOnlyList<AuditLogEntrySnapshot>> GetByResourceAsync(Guid resourceId);
+
+    /// <summary>
+    /// Gets Google sync audit entries for a specific user.
+    /// </summary>
+    Task<IReadOnlyList<AuditLogEntrySnapshot>> GetGoogleSyncByUserAsync(Guid userId);
+
+    /// <summary>
+    /// Gets the most recent audit log entries.
+    /// </summary>
+    Task<IReadOnlyList<AuditLogEntrySnapshot>> GetRecentAsync(int count, CancellationToken ct = default);
+
+    /// <summary>
+    /// Gets filtered audit log entries with pagination.
+    /// </summary>
+    Task<(IReadOnlyList<AuditLogEntrySnapshot> Items, int TotalCount, int AnomalyCount)> GetFilteredAsync(
+        string? actionFilter, int page, int pageSize, CancellationToken ct = default);
+
+    /// <summary>
+    /// Gets audit entries where the user is either the primary or related entity.
+    /// </summary>
+    Task<IReadOnlyList<AuditLogEntrySnapshot>> GetByUserAsync(Guid userId, int count, CancellationToken ct = default);
+
+    /// <summary>
+    /// Gets audit entries matching flexible filter criteria.
+    /// Used by the shared AuditLog ViewComponent for rendering audit history on any page.
+    /// </summary>
+    Task<IReadOnlyList<AuditLogEntrySnapshot>> GetFilteredEntriesAsync(
+        string? entityType = null,
+        Guid? entityId = null,
+        Guid? userId = null,
+        IReadOnlyList<AuditAction>? actions = null,
+        int limit = 20,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the distinct entity ids for audit entries whose
+    /// <c>AuditLogEntry.Action</c> matches <paramref name="action"/>
+    /// and whose <c>AuditLogEntry.OccurredAt</c> falls inside the
+    /// half-open window <c>[windowStart, windowEnd)</c>. Used by the Board
+    /// daily digest to enumerate approvals without reading
+    /// <c>audit_log_entries</c> directly (design-rules §2c).
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetEntityIdsForActionInWindowAsync(
+        Instant windowStart,
+        Instant windowEnd,
+        AuditAction action,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the distinct set of <c>AuditLogEntry.EntityId</c> values
+    /// across all-time audit entries whose <c>AuditLogEntry.EntityType</c>
+    /// matches <paramref name="entityType"/> and whose
+    /// <c>AuditLogEntry.Action</c> is one of <paramref name="actions"/>.
+    /// Used by orphan-signup reconciliation to find ShiftSignups missing a
+    /// creation-event audit row without crossing the AuditLog section boundary
+    /// (design-rules §2c).
+    /// </summary>
+    Task<IReadOnlySet<Guid>> GetEntityIdsForEntityTypeActionsAsync(
+        string entityType,
+        IReadOnlyList<AuditAction> actions,
+        CancellationToken ct = default);
+}
+
+public sealed record AuditLogEntrySnapshot(
+    Guid Id,
+    AuditAction Action,
+    string EntityType,
+    Guid EntityId,
+    string Description,
+    Instant OccurredAt,
+    Guid? ActorUserId,
+    Guid? RelatedEntityId,
+    string? RelatedEntityType,
+    Guid? ResourceId,
+    bool? Success,
+    string? ErrorMessage,
+    string? Role,
+    GoogleSyncSource? SyncSource,
+    string? UserEmail);

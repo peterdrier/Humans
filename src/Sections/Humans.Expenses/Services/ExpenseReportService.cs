@@ -1,6 +1,6 @@
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.AuditLog;
+using Humans.AuditLog.Contracts;
 using Humans.Budget.Contracts;
 using Humans.Expenses.Services;
 using Humans.Finance.Contracts;

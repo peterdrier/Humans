@@ -1,4 +1,4 @@
-using Humans.Application.Interfaces.AuditLog;
+using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;

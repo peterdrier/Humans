@@ -1,4 +1,4 @@
-using Humans.Application.Interfaces.AuditLog;
+using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.EarlyEntry;
 using Humans.Notifications.Contracts;
@@ -66,10 +66,6 @@ public abstract class ServiceTestHarness : IDisposable
     private protected CampsDbContext CampsDb => _campsDb.Value.Context;
     private protected TestDbContextFactory<CampsDbContext> CampsDbFactory => _campsDb.Value.Factory;
 
-    /// <summary>AuditLog: <c>audit_log</c>.</summary>
-    private readonly Lazy<SectionDb<AuditLogDbContext>> _auditLogDb;
-    private protected AuditLogDbContext AuditLogDb => _auditLogDb.Value.Context;
-    private protected TestDbContextFactory<AuditLogDbContext> AuditLogDbFactory => _auditLogDb.Value.Factory;
 
     /// <summary>Shifts: <c>event_settings</c>, <c>rotas</c>, <c>shifts</c>, <c>shift_signups</c>,
     /// <c>shift_tags</c>, <c>rota_shift_tags</c>, <c>volunteer_event_profiles</c>,
@@ -114,7 +110,6 @@ public abstract class ServiceTestHarness : IDisposable
         _authDb = RegisterSection<AuthDbContext>(o => new(o));
         _googleIntegrationDb = RegisterSection<GoogleIntegrationDbContext>(o => new(o));
         _campsDb = RegisterSection<CampsDbContext>(o => new(o));
-        _auditLogDb = RegisterSection<AuditLogDbContext>(o => new(o));
         _shiftsDb = RegisterSection<ShiftsDbContext>(o => new(o));
         _teamsDb = RegisterSection<TeamsDbContext>(o => new(o));
 

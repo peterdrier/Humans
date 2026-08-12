@@ -35,7 +35,7 @@ public class ServiceBoundaryArchitectureTests
             [typeof(IAdminDatabaseDiagnosticsRepository)] = "Admin",
             [SectionRepository("Humans.Agent.Data.IAgentRepository")] = "Agent",
             [SectionRepository("Humans.Governance.Data.IApplicationRepository")] = "Governance",
-            [typeof(IAuditLogRepository)] = "AuditLog",
+            [SectionRepository("Humans.AuditLog.Data.IAuditLogRepository")] = "AuditLog",
             [SectionRepository("Humans.Budget.Data.IBudgetRepository")] = "Budget",
             [SectionRepository("Humans.Calendar.Data.ICalendarRepository")] = "Calendar",
             [SectionRepository("Humans.Campaigns.Data.ICampaignRepository")] = "Campaigns",

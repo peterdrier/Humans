@@ -88,6 +88,20 @@ visibility flip in one diff is unreviewable.
       **"Table-less" does not imply that, though** — Guide owns no tables and still references
       `Humans.Infrastructure`, for the `GuideSettings` its Base-resident content source binds.
       Decide the reference from what the section *names*, not from whether it has a `DbContext`.
+- [ ] **The section is actually unmoved.** The §858 peel roster is a list of *DbContexts*,
+      not a list of sections, and a context can ride into another section's project — Legal's
+      lane was a no-op for exactly that reason. One line settles it:
+      `ls src/Sections | grep -i <section>`, plus a look at `docs/sections/_Index.md`.
+- [ ] **If the section is *horizontal* (Auth, Audit, GDPR, Notifications), ask which of its
+      services are orchestrators before planning the move.** `peters-hard-rules.md` forbids a
+      horizontal from referencing a vertical, and the rule bites at the `ProjectReference`
+      level: a horizontal service that injects another section's `I<Section>ServiceRead`
+      cannot move into the horizontal's project, because a vertical's read interface is on a
+      *section leaf* once that section has gone to G5. Grep the section's services for
+      `I*ServiceRead` and `Humans.*.Contracts` first — the answer changes what the move
+      *is*. (AuditLog: the append path and the raw queries moved; `AuditViewerService`, which
+      resolves actor/subject/team names through Users, Teams and Google Integration, stayed in
+      `Humans.Application` as the cross-section orchestrator it is.)
 - [ ] Fan-in known: run `reforge` for inbound references before starting. A section with many
       inbound section references is a knot, goes later, and may need `<Section>.Contracts`.
 
@@ -577,6 +591,23 @@ Git Bash.)
    (Peter, 2026-08-09: splitting read from write happens once every section has moved, not
    per-section). May be empty for a leaf section; ship the folder with a `README.md` saying why
    (proven: Store).
+   - **A *horizontal* section's read+render layer may not be the section's at all, and
+     leaving it in Base is the cheap answer as well as the correct one.** Every other rule
+     here asks where a type's consumers are. This one asks what the type *injects*:
+     `AuditViewerService` wraps the section's own `IAuditLogService` with actor, subject and
+     team display names, so it names `IUserServiceRead`, `ITeamServiceRead` (which is
+     `Humans.Teams.Contracts` since Teams' G5) and `ITeamResourceService` — a horizontal
+     referencing three verticals, which `peters-hard-rules.md` forbids at any size. It is an
+     orchestrator by the hard rules' own definition (it calls no repository), so it stayed in
+     `Humans.Application` with its `AuditEvent` DTO and its verb table, registered from
+     Shell. The section kept the append path and the raw entry queries on its leaf. **The
+     move got cheaper, not more expensive, for splitting it**: `Humans.UI`'s
+     `AuditLogViewComponent` injects that interface and binds that DTO, and `Humans.UI`
+     cannot reference a section at any price (Teams' hard floor), so the alternative was
+     dragging a ten-call-site shared widget out of Base to satisfy a file's name. Pin the
+     result with an assembly-level test — `GetReferencedAssemblies()` naming no vertical
+     section — because nothing else stops the next lane from adding the reference
+     (proven: AuditLog).
    - **Fan-*out* is not fan-in, and an orchestrator section can be the widest consumer in the
      repo with an empty `Contracts/`.** Search injects five sections' service interfaces and its
      recon touches ten already-moved projects, which reads as the knot the preconditions warn
@@ -1326,7 +1357,26 @@ Git Bash.)
       `Humans.Finance`'s own migrations, which were baselined with a comment rather than
       reverted. **Treat "is this sweep keyed on a Base path?" as a question to ask of every
       ratchet rule at every move, not once** (proven: Email).
-      **Third sighting, and the keying was an *assembly*, not a path.**
+      **…and the assembly-anchored form has a second, sharper failure: the anchor type is
+      *yours*.** Widening a sweep protects the sections that already left it. It does not
+      help when the `typeof(X).Assembly` naming "the Base assembly" is a type your own lane
+      is moving — then the sweep does not lose one section, it silently relocates
+      wholesale onto the section and stops covering Base at all. Four rules were anchored on
+      AuditLog's two types: `ApplicationServicesTakeNoDbContextRule` and
+      `ApplicationServicesTakeNoMemoryCacheRule` on `typeof(AuditLogService).Assembly`,
+      `IRepositoryImplementationsAreSealedRule` and
+      `RepositoryImplementationsLiveInInfrastructureRule` on
+      `typeof(AuditLogRepository).Assembly` — the last of which would have started asserting
+      that repositories live in `Humans.Infrastructure.Repositories` *while scanning the
+      section*, i.e. reporting every one of its own repositories as a violation, or (had the
+      namespace matched) nothing at all. Re-anchored on types that cannot leave their layer
+      (`DontFixAttribute`, `InfrastructureServiceCollectionExtensions`) and the two
+      repository sweeps widened to `SectionAssemblies()` besides. **Grep
+      `typeof(<AnyTypeYouAreMoving>).Assembly` across `tests/` as its own pre-flight search**
+      — it is not the same grep as `typeof(<Section>` for the row-in-a-table case, and it
+      fails silently in the opposite direction (proven: AuditLog).
+
+      **Fourth sighting, and the keying was an *assembly*, not a path.**
       `ApplicationServicesTakeNoDbContextRule` anchored on `typeof(AuditLogService).Assembly`
       and filtered to the `Humans.Application.Services.` namespace, so every G5 section's
       services had silently left it — while its sibling

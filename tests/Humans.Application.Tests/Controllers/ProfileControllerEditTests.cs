@@ -5,6 +5,7 @@ using Humans.Tickets.Contracts;
 using Humans.Application.DTOs;
 using Humans.Application.DTOs.Shifts;
 using Humans.Application.Interfaces.AuditLog;
+using Humans.AuditLog.Contracts;
 using Humans.Campaigns.Contracts;
 using Humans.Application.Interfaces.Camps;
 using Humans.Email.Contracts;

@@ -1,6 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.AuditLog;
+using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.Camps;
 using Humans.Containers.Data;
 using Humans.Containers.Domain;

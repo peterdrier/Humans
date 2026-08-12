@@ -50,7 +50,7 @@ env:
     GateDbContext:src/Sections/Humans.Gate
     SystemDbContext:src/Humans.Infrastructure
     LegalDbContext:src/Sections/Humans.Consent
-    AuditLogDbContext:src/Humans.Infrastructure
+    AuditLogDbContext:src/Sections/Humans.AuditLog
     ShiftsDbContext:src/Humans.Infrastructure
     TeamsDbContext:src/Sections/Humans.Teams
     StoreDbContext:src/Sections/Humans.Store

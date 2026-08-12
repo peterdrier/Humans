@@ -1,6 +1,6 @@
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.AuditLog;
+using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.EarlyEntry;
 using Humans.Gdpr.Contracts;

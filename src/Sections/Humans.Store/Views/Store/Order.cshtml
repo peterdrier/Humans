@@ -139,7 +139,7 @@ else
 @if (Model.PriceChanges.Any())
 {
     <h2 class="h4 mb-3">Price changes since this order started</h2>
-    Func<Humans.Application.Interfaces.AuditLog.AuditLogEntrySnapshot, IHtmlContent> priceChangeBadgeCell =
+    Func<Humans.AuditLog.Contracts.AuditLogEntrySnapshot, IHtmlContent> priceChangeBadgeCell =
         @<text><span class="badge bg-warning text-dark">Price changed</span></text>;
     var priceChangesTable = TableModel.For(Model.PriceChanges)
         .Column("Date", r => r.OccurredAt.ToDateTimeUtc().ToInvariantTimestamp())

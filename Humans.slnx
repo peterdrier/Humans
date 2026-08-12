@@ -12,6 +12,8 @@
   <Folder Name="/src/Sections/">
     <Project Path="src/Sections/Humans.Agent/Humans.Agent.csproj" />
     <Project Path="src/Sections/Humans.Agent.Contracts/Humans.Agent.Contracts.csproj" />
+    <Project Path="src/Sections/Humans.AuditLog/Humans.AuditLog.csproj" />
+    <Project Path="src/Sections/Humans.AuditLog.Contracts/Humans.AuditLog.Contracts.csproj" />
     <Project Path="src/Sections/Humans.Budget/Humans.Budget.csproj" />
     <Project Path="src/Sections/Humans.Budget.Contracts/Humans.Budget.Contracts.csproj" />
     <Project Path="src/Sections/Humans.Calendar/Humans.Calendar.csproj" />
@@ -69,6 +71,7 @@
     <Project Path="tests/Humans.Domain.Tests/Humans.Domain.Tests.csproj" />
     <Project Path="tests/Humans.Analyzers.Tests/Humans.Analyzers.Tests.csproj" />
     <Project Path="tests/Humans.Application.Tests/Humans.Application.Tests.csproj" />
+    <Project Path="tests/Humans.AuditLog.Tests/Humans.AuditLog.Tests.csproj" />
     <Project Path="tests/Humans.Integration.Tests/Humans.Integration.Tests.csproj" />
     <Project Path="tests/Humans.Agent.Tests/Humans.Agent.Tests.csproj" />
     <Project Path="tests/Humans.Budget.Tests/Humans.Budget.Tests.csproj" />

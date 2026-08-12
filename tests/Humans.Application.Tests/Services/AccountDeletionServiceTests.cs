@@ -1,6 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.AuditLog;
+using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Caching;
 using Humans.Email.Contracts;

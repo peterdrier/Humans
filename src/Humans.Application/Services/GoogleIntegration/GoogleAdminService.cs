@@ -1,6 +1,6 @@
 using Humans.Application.DTOs;
 using Humans.Application.Helpers;
-using Humans.Application.Interfaces.AuditLog;
+using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Teams.Contracts;

@@ -57,7 +57,7 @@ This file is the **index and cross-cutting rule sheet** for the data model. Per-
 | SyncServiceSettings / GoogleSyncOutboxEvent | [Google Integration](../sections/GoogleIntegration.md) | |
 | Survey / SurveyQuestion / SurveyQuestionOption / SurveyResponse / SurveyAnswer / SurveyInvitation | [Survey](../../src/Sections/Humans.Surveys/Docs/Surveys.md) | Cross-domain refs are bare `Guid` FK columns only — no nav properties, no cross-section EF FK constraints. |
 | SystemSetting | System Settings section | Owned by `SystemSettingsRepository` (exposed via `ISystemSettingsService`); consuming sections read/write keys through it. See [SystemSetting below](#systemsetting-system-settings-section). |
-| AuditLogEntry | [Audit Log](../sections/AuditLog.md) | Append-only (§12). |
+| AuditLogEntry | [Audit Log](../../src/Sections/Humans.AuditLog/Docs/AuditLog.md) | Append-only (§12). |
 | Notification / NotificationRecipient | [Notifications](../../src/Sections/Humans.Notifications/Docs/Notifications.md) | |
 
 <!-- /freshness:auto -->
@@ -200,7 +200,7 @@ Append-only sections (§12) cannot rewrite their `UserId` / `ActorUserId` column
 
 | Section | Owning entity | Read paths that chain-follow |
 |---------|---------------|------------------------------|
-| [Audit Log](../sections/AuditLog.md) | `AuditLogEntry` | `GetByUserAsync`, `GetUserAuditLogPageAsync`, per-entity history when entity is User, `ContributeForUserAsync` |
+| [Audit Log](../../src/Sections/Humans.AuditLog/Docs/AuditLog.md) | `AuditLogEntry` | `GetByUserAsync`, `GetUserAuditLogPageAsync`, per-entity history when entity is User, `ContributeForUserAsync` |
 | [Consent](../../src/Sections/Humans.Consent/Docs/Consent.md) | `ConsentRecord` | `GetUserConsentsAsync`, `HasAllRequiredConsentsAsync`, consent dashboard, `ContributeForUserAsync` |
 | [Budget](../../src/Sections/Humans.Budget/Docs/Budget.md) | `BudgetAuditLog` | `ContributeForUserAsync` (GDPR) |
 
@@ -213,7 +213,7 @@ The following entities are append-only — no `UpdateAsync` / `DeleteAsync` on t
 | Entity | Owning section | Enforcement |
 |--------|---------------|-------------|
 | ConsentRecord | [Consent](../../src/Sections/Humans.Consent/Docs/Consent.md) | DB triggers block UPDATE / DELETE |
-| AuditLogEntry | [Audit Log](../sections/AuditLog.md) | Architecture test: `AuditLogArchitectureTests.IAuditLogRepository_HasNoUpdateOrDeleteMethods` |
+| AuditLogEntry | [Audit Log](../../src/Sections/Humans.AuditLog/Docs/AuditLog.md) | Architecture test: `AuditLogArchitectureTests.IAuditLogRepository_HasNoUpdateOrDeleteMethods` |
 | BudgetAuditLog | [Budget](../../src/Sections/Humans.Budget/Docs/Budget.md) | Repository shape — no update/delete methods |
 | CampPolygonHistory | [City Planning](../../src/Sections/Humans.CityPlanning/Docs/CityPlanning.md) | Architecture test: `CityPlanningArchitectureTests` pins append-only repo surface |
 | ApplicationStateHistory | [Governance](../../src/Sections/Humans.Governance/Docs/Governance.md) | Repository shape — no update/delete methods |

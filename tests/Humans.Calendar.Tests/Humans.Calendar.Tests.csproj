@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Sections\Humans.Calendar\Humans.Calendar.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -3,7 +3,7 @@ using System.Globalization;
 using System.Text.Json;
 using Humans.Application;
 using Humans.Application.Extensions;
-using Humans.Application.Interfaces.AuditLog;
+using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;

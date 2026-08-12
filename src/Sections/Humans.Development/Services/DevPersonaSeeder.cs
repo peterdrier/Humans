@@ -3,7 +3,7 @@ using System.Text;
 using Humans.Application.DTOs;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Auth;
-using Humans.Application.Interfaces.AuditLog;
+using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.Camps;
 using Humans.Consent.Contracts;
 using Humans.Governance.Contracts;

@@ -1,6 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application;
-using Humans.Application.Interfaces.AuditLog;
+using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.EarlyEntry;
 using Humans.Gdpr.Contracts;
 using Humans.Application.Interfaces.Shifts;

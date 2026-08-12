@@ -1,6 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application.DTOs;
-using Humans.Application.Interfaces.AuditLog;
+using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Tickets.Data;

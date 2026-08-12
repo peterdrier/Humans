@@ -6,7 +6,7 @@ using Humans.Application.DTOs;
 using Humans.Domain.Enums;
 using Humans.Web.Models;
 using Humans.Web.Models.Google;
-using Humans.Application.Interfaces.AuditLog;
+using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Teams.Contracts;

@@ -1,6 +1,6 @@
+using Humans.Infrastructure.Hosting;
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Infrastructure.Repositories.AuditLog;
 
 namespace Humans.Application.Tests.Architecture.Rules;
 
@@ -21,11 +21,16 @@ public class IRepositoryImplementationsAreSealedRule
     [HumansFact]
     public void All_IRepository_implementations_are_sealed()
     {
-        // Anchor: any Infrastructure type gives us the assembly to scan.
-        var infraAssembly = typeof(AuditLogRepository).Assembly;
+        // Anchor: any Infrastructure type gives us the assembly to scan — but it must be one
+        // that stays there. AuditLogRepository was the anchor until its own G5 move, which
+        // would have silently repointed "the Infrastructure assembly" at a section.
+        // Widened to the section assemblies too: a repository that moves out of
+        // Humans.Infrastructure must not stop being swept (G5-SECTION-TEMPLATE.md step 11).
+        var assemblies = new[] { typeof(InfrastructureServiceCollectionExtensions).Assembly }
+            .Concat(Web.Extensions.SectionDiscoveryExtensions.SectionAssemblies());
 
-        var unsealed = infraAssembly
-            .GetTypes()
+        var unsealed = assemblies
+            .SelectMany(a => a.GetTypes())
             .Where(t => t.IsClass && !t.IsAbstract && !t.IsSealed)
             .Where(t => typeof(IRepository).IsAssignableFrom(t))
             .Select(t => t.FullName ?? t.Name)

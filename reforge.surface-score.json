@@ -31,11 +31,9 @@
     },
     "AuditLog": {
       "paths": [
-        "src/Humans.Application/Interfaces/AuditLog/**",
-        "src/Humans.Application/Services/AuditLog/**",
-        "src/Humans.Domain/Entities/AuditLog*",
-        "src/Humans.Infrastructure/Repositories/AuditLog/**",
-        "src/Humans.Web/Controllers/AuditLogController.cs"
+        "src/Sections/Humans.AuditLog/**",
+        "src/Sections/Humans.AuditLog.Contracts/**",
+        "src/Humans.Application/Services/AuditLog/**"
       ],
       "symbols": [
         "AuditLog*",

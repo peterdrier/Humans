@@ -10,7 +10,7 @@ using Humans.Feedback.Contracts;
 using Humans.Feedback.Data;
 using Humans.Feedback.Domain;
 using Humans.Feedback.Services.Dtos;
-using Humans.Application.Interfaces.AuditLog;
+using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;

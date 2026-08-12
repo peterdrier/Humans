@@ -28,6 +28,7 @@
     <ProjectReference Include="..\..\Humans.Infrastructure\Humans.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Humans.UI\Humans.UI.csproj" />
     <ProjectReference Include="..\Humans.Governance.Contracts\Humans.Governance.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
     <!-- ConsentResource only: the statutes page renders one Consent key, whose set came
          home at Consent's G5. Acyclic — Humans.Consent references
          Humans.Governance.Contracts, never this project (design §15 step 3b). -->

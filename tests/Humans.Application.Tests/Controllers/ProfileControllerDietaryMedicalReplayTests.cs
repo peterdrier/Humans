@@ -3,6 +3,7 @@ using AwesomeAssertions;
 using Humans.Application.Configuration;
 using Humans.Tickets.Contracts;
 using Humans.Application.Interfaces.AuditLog;
+using Humans.AuditLog.Contracts;
 using Humans.Campaigns.Contracts;
 using Humans.Application.Interfaces.Camps;
 using Humans.Email.Contracts;

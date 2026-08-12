@@ -11,7 +11,7 @@ using Humans.Expenses.Services;
 using Humans.Expenses.Services.Dtos;
 using Microsoft.Extensions.Options;
 using Humans.Application;
-using Humans.Application.Interfaces.AuditLog;
+using Humans.AuditLog.Contracts;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.EntityFrameworkCore;

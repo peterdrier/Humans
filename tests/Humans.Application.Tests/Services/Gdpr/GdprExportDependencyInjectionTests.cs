@@ -6,7 +6,6 @@ using Microsoft.Extensions.Configuration.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using ProfilesAccountMergeService = Humans.Application.Services.Users.AccountMergeService;
 using UsersUserService = Humans.Application.Services.Users.UserService;
-using AuditLogService = Humans.Application.Services.AuditLog.AuditLogService;
 using CampService = Humans.Application.Services.Camps.CampService;
 using RoleAssignmentService = Humans.Application.Services.Auth.RoleAssignmentService;
 using ShiftSignupService = Humans.Application.Services.Shifts.ShiftSignupService;
@@ -74,7 +73,7 @@ public class GdprExportDependencyInjectionTests
         SectionType("Humans.Campaigns.Services.CampaignService"),
         typeof(CampService),
         SectionType("Humans.Events.Services.EventService"),
-        typeof(AuditLogService),
+        SectionType("Humans.AuditLog.Services.AuditLogService"),
         SectionType("Humans.Budget.Services.BudgetService"),
         SectionType("Humans.Agent.Services.AgentService"),
         SectionType("Humans.Expenses.Services.ExpenseReportService"),

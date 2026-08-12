@@ -4,7 +4,7 @@ using NodaTime.Testing;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 using Humans.Application.Tests.Infrastructure;
-using Humans.Application.Interfaces.AuditLog;
+using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;

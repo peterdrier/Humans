@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces.AuditLog;
+using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;

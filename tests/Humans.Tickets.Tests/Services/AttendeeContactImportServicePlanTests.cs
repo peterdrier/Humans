@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces.AuditLog;
+using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Tickets.Data;
 using Humans.Application.Interfaces.Shifts;

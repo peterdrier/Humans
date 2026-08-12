@@ -1,6 +1,6 @@
 using Humans.Teams.Domain;
 using AwesomeAssertions;
-using Humans.Application.Interfaces.AuditLog;
+using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Teams.Contracts;

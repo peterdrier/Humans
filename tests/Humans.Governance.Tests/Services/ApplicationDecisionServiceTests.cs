@@ -2,7 +2,7 @@ using Humans.Governance.Domain;
 using Humans.Testing;
 using NodaTime.Testing;
 using Microsoft.EntityFrameworkCore.Diagnostics;
-using Humans.Application.Interfaces.AuditLog;
+using Humans.AuditLog.Contracts;
 using Humans.Application;
 using Humans.Governance.Contracts;
 using AwesomeAssertions;

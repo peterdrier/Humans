@@ -3,7 +3,7 @@ using AwesomeAssertions;
 using Humans.Onboarding;
 using Humans.Application;
 using Humans.Application.DTOs.Shifts;
-using Humans.Application.Interfaces.AuditLog;
+using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;

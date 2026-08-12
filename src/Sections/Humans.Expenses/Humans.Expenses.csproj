@@ -29,6 +29,7 @@
     <ProjectReference Include="..\..\Humans.UI\Humans.UI.csproj" />
     <ProjectReference Include="..\Humans.Expenses.Contracts\Humans.Expenses.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Budget.Contracts\Humans.Budget.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
     <!--
       The report grid's category column renders Budget's own Budget_ColCategory key, so the
       view binds IStringLocalizer<BudgetResource> and needs the section project, not just its

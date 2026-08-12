@@ -85,7 +85,7 @@ Terse, authoritative invariant docs for each major section: concepts, data model
 | [Sections Index](sections/_Index.md) | Code-derived map of every section to its concrete controllers, orchestrators, services, repositories, and tables |
 | [Admin Shell](sections/admin-shell.md) | Frame-only section providing the shared admin sidebar, breadcrumb, and dashboard skeleton — owns no tables |
 | [Agent](../src/Sections/Humans.Agent/Docs/Agent.md) | Conversational helper backed by Anthropic Claude, available to authenticated consented users when `AgentSettings.Enabled = true` |
-| [Audit Log](sections/AuditLog.md) | Append-only system audit trail capturing actor, action, entity, and timestamp; enforced append-only per design-rules §12 |
+| [Audit Log](../src/Sections/Humans.AuditLog/Docs/AuditLog.md) | Append-only system audit trail capturing actor, action, entity, and timestamp; enforced append-only per design-rules §12 |
 | [Auth](sections/Auth.md) | Temporal role assignments, magic-link login/signup, and claims transformation |
 | [Budget](../src/Sections/Humans.Budget/Docs/Budget.md) | Fiscal-year budgets (Draft/Active/Closed) with groups, categories, line items, and an append-only audit log |
 | [Calendar](../src/Sections/Humans.Calendar/Docs/Calendar.md) | Per-team community calendar with one-off and recurring events plus per-occurrence overrides and cancellations |

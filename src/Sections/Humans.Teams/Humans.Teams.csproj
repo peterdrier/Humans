@@ -38,6 +38,7 @@
     <ProjectReference Include="..\..\Humans.UI\Humans.UI.csproj" />
     <ProjectReference Include="..\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Gdpr.Contracts\Humans.Gdpr.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

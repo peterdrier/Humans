@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces.AuditLog;
+using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.SystemSettings.Contracts;
 using Humans.Application.Interfaces.Users;

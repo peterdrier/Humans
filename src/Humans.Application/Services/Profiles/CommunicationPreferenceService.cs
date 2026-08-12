@@ -3,7 +3,7 @@ using NodaTime;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Application.Interfaces.AuditLog;
+using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Interfaces.Profiles;
 

@@ -48,7 +48,6 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSectionDbContext<GoogleIntegrationDbContext>(sentinelTable: "google_resources");
         services.AddSectionDbContext<CampsDbContext>(sentinelTable: "camps");
         services.AddSectionDbContext<SystemDbContext>(sentinelTable: "DataProtectionKeys");
-        services.AddSectionDbContext<AuditLogDbContext>(sentinelTable: "audit_log");
         services.AddSectionDbContext<ShiftsDbContext>(sentinelTable: "shifts");
 
         services.AddHostedService<DatabaseMigrationHostedService>();

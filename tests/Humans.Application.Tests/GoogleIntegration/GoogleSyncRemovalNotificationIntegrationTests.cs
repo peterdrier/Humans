@@ -1,5 +1,5 @@
 using Humans.Teams.Domain;
-using Humans.Application.Interfaces.AuditLog;
+using Humans.AuditLog.Contracts;
 using Humans.Application.Configuration;
 using Humans.Email.Contracts;
 using Humans.Application.Interfaces.GoogleIntegration;

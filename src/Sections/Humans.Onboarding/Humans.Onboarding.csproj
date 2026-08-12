@@ -55,4 +55,8 @@
     <None Include="**\*.md" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
+  </ItemGroup>
+
 </Project>

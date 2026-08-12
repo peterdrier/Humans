@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.DTOs;
 using Humans.Tickets.Contracts;
-using Humans.Application.Interfaces.AuditLog;
+using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
