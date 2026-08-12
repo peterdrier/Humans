@@ -84,7 +84,7 @@ assertion families that are plausible analyzer candidates:
   rather than constructing an application context directly (`HumansDbContext`
   or any per-section context). The first two are already generalized arch tests
   (`IRepositoryImplementationsAreSealedRule`,
-  `RepositoryImplementationsLiveInInfrastructureRule`).
+  `RepositoryImplementationsLiveInExpectedNamespaceRule`).
 - Interface marker obligations should be compile-time enforced:
   `I*Service`/`I*Query`/`I*Calculator` extend `IApplicationService`, and
   `I*Repository` extends `IRepository`.
