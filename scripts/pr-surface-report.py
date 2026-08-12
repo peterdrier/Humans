@@ -11,8 +11,19 @@ from collections import defaultdict
 from pathlib import Path
 
 
-INTERFACES_PREFIX = "src/Humans.Application/Interfaces/"
-MIGRATIONS_PREFIX = "src/Humans.Infrastructure/Migrations/"
+LEGACY_INTERFACES_PREFIX = "src/Humans.Application/Interfaces/"
+INTERFACE_SEARCH_ROOTS = ("src/Humans.Application/Interfaces", "src/Sections")
+# Section-owned interfaces live either in a dedicated `Humans.<Section>.Contracts`
+# project or, when a section hasn't earned a separate Contracts project yet, in an
+# in-project `Contracts/` folder (e.g. Humans.Store).
+SECTION_CONTRACTS_PROJECT_RE = re.compile(r"^src/Sections/[^/]+\.Contracts/")
+SECTION_CONTRACTS_FOLDER_RE = re.compile(r"^src/Sections/[^/]+/Contracts/")
+
+LEGACY_MIGRATIONS_PREFIX = "src/Humans.Infrastructure/Migrations/"
+# Since the per-section DbContext split (nobodies-collective/Humans#858) and the
+# move to standalone section projects (nobodies-collective/Humans#866), migrations
+# also live under src/Sections/<Project>/Data/Migrations/.
+SECTION_MIGRATIONS_RE = re.compile(r"^src/Sections/([^/]+)/Data/Migrations/")
 
 
 def run_git(args: list[str]) -> str:
@@ -30,9 +41,23 @@ def normalize(path: str) -> str:
     return path.replace("\\", "/")
 
 
+def is_migration_path(path: str) -> bool:
+    path = normalize(path)
+    return path.startswith(LEGACY_MIGRATIONS_PREFIX) or bool(SECTION_MIGRATIONS_RE.match(path))
+
+
+def is_interface_path(path: str) -> bool:
+    path = normalize(path)
+    return (
+        path.startswith(LEGACY_INTERFACES_PREFIX)
+        or bool(SECTION_CONTRACTS_PROJECT_RE.match(path))
+        or bool(SECTION_CONTRACTS_FOLDER_RE.match(path))
+    )
+
+
 def classify_path(path: str) -> str:
     path = normalize(path)
-    if path.startswith(MIGRATIONS_PREFIX):
+    if is_migration_path(path):
         return "migrations"
     if path.startswith("tests/") or ".Tests/" in path:
         return "tests"
@@ -47,28 +72,41 @@ def is_real_migration_file(path: str) -> bool:
     path = normalize(path)
     name = Path(path).name
     return (
-        path.startswith(MIGRATIONS_PREFIX)
+        is_migration_path(path)
         and name.endswith(".cs")
         and not name.endswith(".Designer.cs")
         and not name.endswith("ModelSnapshot.cs")
     )
 
 
-def max_migrations_per_context(migration_files: list[str]) -> int:
-    """Max real migrations in any one migration directory.
+def migration_context(path: str) -> str:
+    """Grouping key identifying which DbContext chain a migration file belongs to."""
+    path = normalize(path)
+    match = SECTION_MIGRATIONS_RE.match(path)
+    if match:
+        return match.group(1)
+    return str(Path(path).parent)
 
-    Since the per-section DbContext split (nobodies-collective/Humans#858) each
+
+def max_migrations_per_context(migration_files: list[str]) -> int:
+    """Max real migrations in any one migration context.
+
+    Two layouts feed this: the legacy Humans.Infrastructure monolith, where
+    since the per-section DbContext split (nobodies-collective/Humans#858) each
     context owns its own chain in its own directory (Migrations/ for
-    HumansDbContext, Migrations/<Section>/ for a peeled section). The
-    one-migration-per-PR rule applies per chain: a peel PR legitimately carries
-    one snapshot-only migration on the main chain plus one baseline in the new
-    section's directory.
+    HumansDbContext, Migrations/<Section>/ for a peeled section still living in
+    Infrastructure); and standalone section projects (nobodies-collective/Humans#866),
+    where each section owns its migrations under its own project and the context
+    is the section project name (the Humans.<Section> path segment under
+    src/Sections/). The one-migration-per-PR rule applies per chain: a peel PR
+    legitimately carries one snapshot-only migration on the main chain plus one
+    baseline in the new section's directory or project.
     """
-    per_dir: dict[str, int] = {}
+    per_context: dict[str, int] = {}
     for path in migration_files:
-        directory = str(Path(normalize(path)).parent)
-        per_dir[directory] = per_dir.get(directory, 0) + 1
-    return max(per_dir.values(), default=0)
+        context = migration_context(path)
+        per_context[context] = per_context.get(context, 0) + 1
+    return max(per_context.values(), default=0)
 
 
 def parse_name_status(base: str, head: str) -> tuple[list[str], list[str], list[str]]:
@@ -166,8 +204,8 @@ def groups_by_name(score: dict) -> dict[str, int]:
     }
 
 
-def git_files(ref: str, prefix: str) -> list[str]:
-    raw = run_git(["ls-tree", "-r", "--name-only", ref, "--", prefix])
+def git_files(ref: str, prefixes: tuple[str, ...]) -> list[str]:
+    raw = run_git(["ls-tree", "-r", "--name-only", ref, "--", *prefixes])
     return [normalize(line) for line in raw.splitlines() if line.endswith(".cs")]
 
 
@@ -179,7 +217,9 @@ def extract_interface_symbols(ref: str) -> dict[str, dict[str, object]]:
     interfaces: dict[str, dict[str, object]] = {}
     interface_re = re.compile(r"\binterface\s+(I[A-Za-z0-9_]*)\b")
 
-    for path in git_files(ref, INTERFACES_PREFIX):
+    for path in git_files(ref, INTERFACE_SEARCH_ROOTS):
+        if not is_interface_path(path):
+            continue
         content = try_run_git(["show", f"{ref}:{path}"])
         current: str | None = None
         depth = 0

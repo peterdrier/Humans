@@ -23,9 +23,10 @@ jobs:
               per_page: 100
             });
 
+            const sectionMigrationsRe = /^src\/Sections\/[^/]+\/Data\/Migrations\//;
             const hasMigration = files.some(f =>
-              f.filename.startsWith('src/Humans.Infrastructure/Migrations/') &&
-              f.status !== 'removed'
+              f.status !== 'removed' &&
+              (f.filename.startsWith('src/Humans.Infrastructure/Migrations/') || sectionMigrationsRe.test(f.filename))
             );
 
             const labels = context.payload.pull_request.labels.map(l => l.name);
