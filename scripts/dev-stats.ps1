@@ -8,8 +8,13 @@ $totalCommits = [int](git rev-list --count HEAD)
 
 # Merged PRs on the fork (dev flow) + closed issues on upstream (the tracker).
 # gh caps list output; use the search API count instead for real totals.
+# $ErrorActionPreference does not make native-command failures terminating, so a dead
+# gh (no auth, no network) would cast empty output to 0 and silently ship a bogus
+# snapshot — check $LASTEXITCODE and abort before anything is written.
 $mergedPrs = [int](gh api "search/issues?q=repo:peterdrier/Humans+is:pr+is:merged&per_page=1" --jq '.total_count')
+if ($LASTEXITCODE -ne 0) { throw "gh api failed (merged PRs); snapshot not written" }
 $closedIssues = [int](gh api "search/issues?q=repo:nobodies-collective/Humans+is:issue+is:closed&per_page=1" --jq '.total_count')
+if ($LASTEXITCODE -ne 0) { throw "gh api failed (closed issues); snapshot not written" }
 
 # Test count: attribute occurrences across test sources (HumansFact/HumansTheory included).
 $testCount = (git grep -E '^\s*\[(Fact|Theory|HumansFact|HumansTheory)' -- 'tests/*.cs' | Measure-Object -Line).Lines
