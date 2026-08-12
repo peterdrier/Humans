@@ -38,6 +38,7 @@ move recipe is [`G5-SECTION-TEMPLATE.md`](G5-SECTION-TEMPLATE.md).
 | Store | `src/Sections/Humans.Store` | [Store.md](../../src/Sections/Humans.Store/Docs/Store.md) |
 | Surveys | `src/Sections/Humans.Surveys` | [Surveys.md](../../src/Sections/Humans.Surveys/Docs/Surveys.md) |
 | System Settings | `src/Sections/Humans.SystemSettings` | — (no invariants doc; one key/value table) |
+| Tour | `src/Sections/Humans.Tour` | [Tour.md](../../src/Sections/Humans.Tour/Docs/Tour.md) |
 
 **This table is derived from code, not from the section docs — code is authoritative.** Regenerate it when sections move:
 
@@ -93,6 +94,7 @@ Cross-check against [`design-rules.md` §8 (Table Ownership Map)](../architectur
 | **Search** | `SearchController` | `SearchService` | — | — | — |
 | **Mailer** | — (background sync) | `MailerImportService`, `MailerAudienceSyncService` | `MailerLiteClient` | — | — (MailerLite is read-only; writes route through other sections) |
 | **Scanner** | `ScannerController` (`src/Sections/Humans.Scanner`) | — | — | — | — (presentational; owns no tables) |
+| **Tour** | `TourController` (`src/Sections/Humans.Tour`) | — | — | — | — (presentational; owns no tables) |
 | **Debug / Dev** | `DebugController`, `DevSeedController`, `LogApiController`, `ColorPaletteController`, `WidgetGalleryController`, `TimezoneApiController` | — | — | `AdminDatabaseDiagnosticsRepository` | — |
 
 ## Cross-cutting concerns
