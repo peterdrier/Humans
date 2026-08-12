@@ -132,6 +132,9 @@
                                 <a class="nav-link" asp-controller="Legal" asp-action="Index">Legal</a>
                             </li>
                         }
+                        <li class="nav-item">
+                            <a class="nav-link" asp-area="" asp-controller="Tour" asp-action="Index">Tour</a>
+                        </li>
                         <li class="nav-item" authorize-policy="AppAccess">
                             <a class="nav-link" asp-area="" asp-controller="Shifts" asp-action="Index">@Localizer["Nav_Shifts"]</a>
                         </li>

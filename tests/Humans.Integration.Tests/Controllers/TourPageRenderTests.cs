@@ -30,4 +30,17 @@ public class TourPageRenderTests(HumansTestDatabase database) : IntegrationTestB
         html.Should().Contain("href=\"/About\"");
         html.Should().NotContain("<vc:", because: "an unresolved view component tag renders as inert literal markup");
     }
+
+    [HumansFact(Timeout = 60000)]
+    public async Task Anonymous_visitors_can_reach_Tour_from_the_nav_and_the_Welcome_page()
+    {
+        var ct = TestContext.Current.CancellationToken;
+
+        var welcomeHtml = await (await Client.GetAsync("/Welcome", ct)).Content.ReadAsStringAsync(ct);
+        welcomeHtml.Should().Contain("href=\"/Tour\"",
+            because: "the Welcome landing is where anonymous visitors arrive (no-orphan-pages rule)");
+
+        var tourHtml = await (await Client.GetAsync("/Tour", ct)).Content.ReadAsStringAsync(ct);
+        tourHtml.Should().Contain("nav-link", because: "the shared layout's navbar must render on the page itself");
+    }
 }
