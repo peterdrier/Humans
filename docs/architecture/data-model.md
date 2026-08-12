@@ -25,14 +25,14 @@ This file is the **index and cross-cutting rule sheet** for the data model. Per-
 | RoleAssignment | [Auth](../sections/Auth.md) | |
 | LegalDocument / DocumentVersion | [Consent](../../src/Sections/Humans.Consent/Docs/Consent.md) | |
 | ConsentRecord | [Consent](../../src/Sections/Humans.Consent/Docs/Consent.md) | Append-only via DB triggers (§12). |
-| Team | [Teams](../sections/Teams.md) | |
-| TeamMember | [Teams](../sections/Teams.md) | |
-| TeamJoinRequest | [Teams](../sections/Teams.md) | |
-| TeamJoinRequestStateHistory | [Teams](../sections/Teams.md) | Append-only (§12). |
-| TeamRoleDefinition | [Teams](../sections/Teams.md) | |
-| TeamRoleAssignment | [Teams](../sections/Teams.md) | |
-| TeamEarlyEntryGrant | [Teams](../sections/Teams.md) | Per-team Early Entry grant (gated by `Team.EarlyEntryEnabled`). Cross-section `UserId` FK — nav stripped, resolved via `IUserServiceRead`. |
-| GoogleResource | [Teams](../sections/Teams.md) | Team Resources sub-aggregate. |
+| Team | [Teams](../../src/Sections/Humans.Teams/Docs/Teams.md) | |
+| TeamMember | [Teams](../../src/Sections/Humans.Teams/Docs/Teams.md) | |
+| TeamJoinRequest | [Teams](../../src/Sections/Humans.Teams/Docs/Teams.md) | |
+| TeamJoinRequestStateHistory | [Teams](../../src/Sections/Humans.Teams/Docs/Teams.md) | Append-only (§12). |
+| TeamRoleDefinition | [Teams](../../src/Sections/Humans.Teams/Docs/Teams.md) | |
+| TeamRoleAssignment | [Teams](../../src/Sections/Humans.Teams/Docs/Teams.md) | |
+| TeamEarlyEntryGrant | [Teams](../../src/Sections/Humans.Teams/Docs/Teams.md) | Per-team Early Entry grant (gated by `Team.EarlyEntryEnabled`). Cross-section `UserId` FK — nav stripped, resolved via `IUserServiceRead`. |
+| GoogleResource | [Teams](../../src/Sections/Humans.Teams/Docs/Teams.md) | Team Resources sub-aggregate. |
 | Camp / CampSeason / CampImage / CampHistoricalName / CampSettings | [Camps](../sections/Camps.md) | |
 | CampMember | [Camps](../sections/Camps.md) | Per-season, post-hoc human/camp affiliation (Pending/Active/Removed). Partial unique on `(CampSeasonId, UserId) WHERE Status <> 'Removed'`. |
 | CampRoleDefinition / CampRoleAssignment | [Camps](../sections/Camps.md) | Per-camp role catalogue + per-season assignments. Owned by `CampRoleService`. Unique on `(CampSeasonId, CampRoleDefinitionId, CampMemberId)`. |
@@ -217,13 +217,13 @@ The following entities are append-only — no `UpdateAsync` / `DeleteAsync` on t
 | BudgetAuditLog | [Budget](../../src/Sections/Humans.Budget/Docs/Budget.md) | Repository shape — no update/delete methods |
 | CampPolygonHistory | [City Planning](../../src/Sections/Humans.CityPlanning/Docs/CityPlanning.md) | Architecture test: `CityPlanningArchitectureTests` pins append-only repo surface |
 | ApplicationStateHistory | [Governance](../../src/Sections/Humans.Governance/Docs/Governance.md) | Repository shape — no update/delete methods |
-| TeamJoinRequestStateHistory | [Teams](../sections/Teams.md) | Repository shape (target; pending sub-task nobodies-collective/Humans#540a) |
+| TeamJoinRequestStateHistory | [Teams](../../src/Sections/Humans.Teams/Docs/Teams.md) | Repository shape (target; pending sub-task nobodies-collective/Humans#540a) |
 
 ## Constants
 
 ### SystemTeamIds
 
-See [`../sections/Teams.md`](../sections/Teams.md#systemteamids-constants) for the authoritative list.
+See [`Teams.md`](../../src/Sections/Humans.Teams/Docs/Teams.md#systemteamids-constants) for the authoritative list.
 
 ### RoleNames
 

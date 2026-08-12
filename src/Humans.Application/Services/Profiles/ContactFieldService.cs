@@ -4,7 +4,7 @@ using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Application.Interfaces.Teams;
+using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;

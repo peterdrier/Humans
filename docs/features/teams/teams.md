@@ -1,18 +1,13 @@
 <!-- freshness:triggers
-  src/Humans.Application/Services/Teams/**
-  src/Humans.Web/Controllers/TeamController.cs
-  src/Humans.Web/Controllers/TeamAdminController.cs
-  src/Humans.Web/Controllers/HumansTeamControllerBase.cs
-  src/Humans.Web/Views/Team/**
-  src/Humans.Web/Views/TeamAdmin/**
+  src/Sections/Humans.Teams/**
 -->
 <!-- freshness:flag-on-change
-  User-facing flows: browse/join/leave, public team pages, role assignment UX. Section invariants and data model live in docs/sections/Teams.md.
+  User-facing flows: browse/join/leave, public team pages, role assignment UX. Section invariants and data model live in src/Sections/Humans.Teams/Docs/Teams.md.
 -->
 
 # Teams & Working Groups
 
-> **Section invariants** (data model, entity fields, system-team sync rules, routing, authorization, owning services): [`docs/sections/Teams.md`](../../sections/Teams.md). This file is the user-facing spec — stories, acceptance criteria, and workflows.
+> **Section invariants** (data model, entity fields, system-team sync rules, routing, authorization, owning services): [`src/Sections/Humans.Teams/Docs/Teams.md`](../../../src/Sections/Humans.Teams/Docs/Teams.md). This file is the user-facing spec — stories, acceptance criteria, and workflows.
 
 ## Business Context
 

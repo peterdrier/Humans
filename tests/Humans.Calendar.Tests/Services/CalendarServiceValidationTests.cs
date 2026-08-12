@@ -3,7 +3,7 @@ using AwesomeAssertions;
 using Humans.Calendar.Services.Dtos;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Calendar.Data;
-using Humans.Application.Interfaces.Teams;
+using Humans.Teams.Contracts;
 using Humans.Calendar.Services;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;

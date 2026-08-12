@@ -1,5 +1,5 @@
 using Humans.Application.Interfaces.Shifts;
-using Humans.Application.Interfaces.Teams;
+using Humans.Teams.Contracts;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Authorization;
@@ -51,7 +51,7 @@ public class ShiftAdminController(
         if (es is null)
         {
             SetError("No active event settings configured.");
-            return RedirectToAction(nameof(TeamController.Details), "Team", new { slug });
+            return RedirectToAction("Details", "Team", new { slug });
         }
 
         var teamEntity = await _teamService.GetTeamAsync(team.Id);

@@ -7,6 +7,8 @@ using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
+using Humans.Teams.Data;
+using Humans.Teams.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Caching.Memory;
@@ -259,10 +261,10 @@ public abstract class ServiceTestHarness : IDisposable
     /// Id-first overload — absorbs <c>SeedTeam(teamId, "name")</c> call sites that
     /// pre-existing local helpers used.
     /// </summary>
-    protected Team SeedTeam(Guid teamId, string name) =>
+    private protected Team SeedTeam(Guid teamId, string name) =>
         SeedTeam(name, SystemTeamType.None, teamId);
 
-    protected Team SeedTeam(
+    private protected Team SeedTeam(
         string name,
         SystemTeamType type = SystemTeamType.None,
         Guid? id = null,
@@ -284,7 +286,7 @@ public abstract class ServiceTestHarness : IDisposable
         return team;
     }
 
-    protected TeamMember SeedTeamMember(
+    private protected TeamMember SeedTeamMember(
         Guid teamId,
         Guid userId,
         TeamMemberRole role = TeamMemberRole.Member,
@@ -329,7 +331,7 @@ public abstract class ServiceTestHarness : IDisposable
         return ra;
     }
 
-    protected TeamJoinRequest SeedJoinRequest(
+    private protected TeamJoinRequest SeedJoinRequest(
         Guid teamId,
         Guid userId,
         TeamJoinRequestStatus status = TeamJoinRequestStatus.Pending)

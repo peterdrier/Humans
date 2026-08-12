@@ -4,7 +4,7 @@
   src/Humans.Application/Interfaces/GoogleIntegration/IGoogleGroupMembershipSource.cs
   src/Humans.Application/Interfaces/GoogleIntegration/IGoogleGroupSyncScheduler.cs
   src/Humans.Application/Interfaces/GoogleIntegration/IGoogleGroupMembershipClient.cs
-  src/Humans.Application/Services/Teams/TeamService.cs
+  src/Sections/Humans.Teams/**
   src/Humans.Infrastructure/GoogleIntegration/HangfireGoogleGroupSyncScheduler.cs
   src/Humans.Infrastructure/Jobs/SystemTeamSyncJob.cs
   src/Humans.Web/Controllers/GoogleController.cs

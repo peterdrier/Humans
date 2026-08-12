@@ -24,8 +24,8 @@ public class MembershipCalculatorTests
 
     // Seed backing state — section service substitutes read from these maps.
     private readonly Dictionary<Guid, Profile> _profilesByUserId = new();
-    private readonly Dictionary<Guid, List<TeamMember>> _teamMembershipsByUserId = new();
-    private readonly Dictionary<Guid, Team> _teamsById = new();
+    private readonly Dictionary<Guid, List<SeedMembership>> _teamMembershipsByUserId = new();
+    private readonly Dictionary<Guid, SeedTeamRow> _teamsById = new();
     private readonly Dictionary<Guid, List<RequiredDocumentVersionSnapshot>> _requiredVersionsByTeam = new();
     private readonly Dictionary<Guid, HashSet<Guid>> _consentedVersionsByUser = new();
 
@@ -712,18 +712,22 @@ public class MembershipCalculatorTests
 
     // --- Seed helpers ---
 
-    private Team SeedTeam(string name, SystemTeamType systemType, Guid? id = null)
+    /// <summary>
+    /// Stand-ins for the <c>Team</c> / <c>TeamMember</c> entities the seed maps used to hold.
+    /// Both turned internal to <c>Humans.Teams</c> at that section's G5; the substitutes only
+    /// ever read the four members below, and keeping the property names identical leaves every
+    /// call site in the test bodies unchanged (design §15 step 8, Campaigns' "rewrite the stub").
+    /// </summary>
+    private sealed record SeedTeamRow(Guid Id, string Name, SystemTeamType SystemTeamType);
+
+    private sealed record SeedMembership(Guid TeamId, Guid UserId, TeamMemberRole Role, SeedTeamRow Team)
     {
-        var team = new Team
-        {
-            Id = id ?? Guid.NewGuid(),
-            Name = name,
-            Slug = name.ToLowerInvariant(),
-            SystemTeamType = systemType,
-            IsActive = true,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
-        };
+        public Instant? LeftAt { get; init; }
+    }
+
+    private SeedTeamRow SeedTeam(string name, SystemTeamType systemType, Guid? id = null)
+    {
+        var team = new SeedTeamRow(id ?? Guid.NewGuid(), name, systemType);
         _teamsById[team.Id] = team;
         return team;
     }
@@ -734,15 +738,7 @@ public class MembershipCalculatorTests
         {
             team = SeedTeam($"team-{teamId}", SystemTeamType.None, teamId);
         }
-        var tm = new TeamMember
-        {
-            Id = Guid.NewGuid(),
-            TeamId = teamId,
-            UserId = userId,
-            Role = role,
-            JoinedAt = _clock.GetCurrentInstant(),
-            Team = team
-        };
+        var tm = new SeedMembership(teamId, userId, role, team);
         if (!_teamMembershipsByUserId.TryGetValue(userId, out var list))
         {
             list = [];

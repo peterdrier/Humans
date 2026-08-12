@@ -6,7 +6,7 @@ using Humans.Notifications.Services.Dtos;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Governance.Contracts;
-using Humans.Application.Interfaces.Teams;
+using Humans.Teams.Contracts;
 
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Constants;

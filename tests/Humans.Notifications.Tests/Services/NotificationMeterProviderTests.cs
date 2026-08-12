@@ -9,7 +9,7 @@ using AwesomeAssertions;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Governance.Contracts;
-using Humans.Application.Interfaces.Teams;
+using Humans.Teams.Contracts;
 
 using Humans.Application.Interfaces.Users;
 using static Humans.Notifications.Tests.NotificationTestFixtures;
@@ -60,7 +60,6 @@ public class NotificationMeterProviderTests : IDisposable
         _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(MakeNeedsConsentReview(1)));
         _googleSyncService.GetFailedSyncEventCountAsync(Arg.Any<CancellationToken>()).Returns(0);
-        _teamService.GetTotalPendingJoinRequestCountAsync(Arg.Any<CancellationToken>()).Returns(0);
         _ticketSyncService.IsInErrorStateAsync(Arg.Any<CancellationToken>()).Returns(false);
         _applicationDecisionService.GetUnvotedApplicationCountAsync(
             Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(0);
@@ -78,7 +77,6 @@ public class NotificationMeterProviderTests : IDisposable
         _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(MakeNeedsConsentReview(1)));
         _googleSyncService.GetFailedSyncEventCountAsync(Arg.Any<CancellationToken>()).Returns(0);
-        _teamService.GetTotalPendingJoinRequestCountAsync(Arg.Any<CancellationToken>()).Returns(0);
         _ticketSyncService.IsInErrorStateAsync(Arg.Any<CancellationToken>()).Returns(false);
 
         var meters = await _provider.GetMetersForUserAsync(CreatePrincipal(RoleNames.VolunteerCoordinator), Xunit.TestContext.Current.CancellationToken);
@@ -94,7 +92,6 @@ public class NotificationMeterProviderTests : IDisposable
         _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(MakeNeedsConsentReview(3)));
         _googleSyncService.GetFailedSyncEventCountAsync(Arg.Any<CancellationToken>()).Returns(0);
-        _teamService.GetTotalPendingJoinRequestCountAsync(Arg.Any<CancellationToken>()).Returns(0);
         _ticketSyncService.IsInErrorStateAsync(Arg.Any<CancellationToken>()).Returns(false);
 
         var meters = await _provider.GetMetersForUserAsync(CreatePrincipal(RoleNames.ConsentCoordinator), Xunit.TestContext.Current.CancellationToken);
@@ -144,7 +141,6 @@ public class NotificationMeterProviderTests : IDisposable
         _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyCollection<UserInfo>>([]));
         _googleSyncService.GetFailedSyncEventCountAsync(Arg.Any<CancellationToken>()).Returns(0);
-        _teamService.GetTotalPendingJoinRequestCountAsync(Arg.Any<CancellationToken>()).Returns(0);
         _ticketSyncService.IsInErrorStateAsync(Arg.Any<CancellationToken>()).Returns(false);
         _applicationDecisionService.GetUnvotedApplicationCountAsync(
             boardUserId, Arg.Any<CancellationToken>()).Returns(4);

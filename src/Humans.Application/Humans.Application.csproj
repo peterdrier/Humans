@@ -49,6 +49,13 @@
       through ITicketServiceRead.
     -->
     <ProjectReference Include="..\Sections\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />
+    <!--
+      Teams' contracts leaf: DashboardService, AuditViewerService, ContactFieldService, the
+      three Shifts services and GoogleIntegration's TeamResourceService / GoogleAdminService /
+      GoogleGroupSyncService / GoogleWorkspaceSyncService read teams through ITeamServiceRead
+      or ITeamService, and AccountDeletionService / DuplicateAccountService write through it.
+    -->
+    <ProjectReference Include="..\Sections\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

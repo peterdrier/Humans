@@ -55,7 +55,11 @@ section's presentation layer back to Shell behind a new view component, and the 
 resx carve had to leave keys behind for MVC's global data-annotation localizer), and Search
 (the widest fan-out of any section and the *smallest* outward surface — the first whose
 `Contracts/` is empty because every consumer moved in with it, and the first whose resx carve
-had to split a single prefix by renderer three ways), and Tickets (the first section to carve
+had to split a single prefix by renderer three ways), and Teams (the widest fan-in of any
+section — ~55 consumers of a read interface it split years earlier — the first to ship three
+levels of service interface, the first whose enums were pinned in Base by a `Humans.UI`
+renderer, and the first to hand another section's dev seeders a leaf interface implemented
+explicitly), and Tickets (the first section to carve
 a *sibling adapter section* — `Humans.TicketTailor` — out of a Base connector while leaving the
 port in Base; the first to ship both a `.Contracts` leaf and a `Contracts/` folder; the first
 to take a view component back *out* of `Humans.UI`; and the first whose lane closed a
@@ -376,6 +380,19 @@ Git Bash.)
        section binds `SharedLocalizer` for that one call site. The whole-prefix reflex would
        have moved five keys that render elsewhere, or left twelve behind; **group the prefix's
        keys by who renders them first, then apply the rules to each group** (proven: Search).
+     - **…and the one renderer that ends the argument is a `Humans.UI` partial.** Search's
+       group-by-renderer pass resolves most prefixes; Teams' 193 keys across thirteen prefixes
+       came down to five stragglers, and the two that were *forced* are `Teams_Member`
+       (`_RoleBadge.cshtml`) and `MyTeams_View` (`_HumanSearchResults.cshtml`). A Shell view can
+       inject `IStringLocalizer<<Section>Resource>`; `Humans.UI` cannot reference a section, so a
+       key it renders stays in `SharedResource` and the section binds `SharedLocalizer` for it.
+       Run the renderer test per key and treat a `Humans.UI` hit as a stop (proven: Teams).
+     - **`Localizer.EnumDisplay(value)` is a call site the extract-and-diff pass cannot see.**
+       Governance's mechanical check extracts `Localizer["…"]`; an `EnumDisplay` /
+       `EnumSelectItems` call resolves `Enum_{Type}_{Value}` at runtime and shows up in neither
+       the extraction nor the key diff. When the enum stayed in Base, that call has to be
+       switched to `SharedLocalizer.EnumDisplay(...)` by hand or the whole badge column renders
+       raw keys (proven: Teams).
    - **The mirror image: a key *this* section owns that an already-moved section reads goes into
      this section's set, and that section takes a reference to the section *project*.** Not the
      leaf — a resource marker is a section type (`public` only so `GetExportedTypes()` finds it),
@@ -510,6 +527,17 @@ Git Bash.)
      Base, with its resx keys and badge rows; `Humans.Campaigns.Contracts` keeps referencing
      `Humans.Domain` for it (Campaigns finding 47's case, unchanged). The test is *who writes
      it to a table*, not who named it (proven: Email).
+   - **…and a fourth answer, which is forced rather than chosen: the enum stays in
+     `Humans.Domain.Enums` because a `Humans.UI` partial renders it.** Email's rule keeps an
+     enum in Base when another section *persists* it. Teams persists `TeamMemberRole`,
+     `SystemTeamType` and `TeamJoinRequestStatus` alone, so that test says "move" — but
+     `Humans.UI/Views/Shared/_RoleBadge.cshtml` binds `TeamMemberRole` and `Humans.UI` cannot
+     reference a section leaf at any price (that is the registry-inversion rule, step 5b). A
+     Shell renderer can be rebound; a `Humans.UI` one cannot. All three stayed in Base with
+     their `EnumStringStabilityTests` rows, the leaf took `Humans.Domain` alongside
+     `Humans.Interfaces` (Campaigns' reference, here for the section's *own* vocabulary), and
+     ~30 consumer files needed no `using` change at all. **Ask who renders it, not only who
+     writes it** (proven: Teams).
    - **Decide the leaf-vs-`Domain/` question per enum, not per section.** Budget moved both of
      its enums because both appeared in contract signatures. Issues' two split: `IssueCategory`
      is named by `Humans.Agent`'s `route_to_issue` proposal, so it went to the leaf;
@@ -762,6 +790,25 @@ Git Bash.)
      leaf returning what the caller actually uses (`Task<string>`, the operator-facing success
      message), the seeder internal in the section, registered from `Section.Register`. The
      ten-field result record it built stays internal (proven: Budget, `IBudgetDemoSeeder`).
+   - **…and the seeder can be in *another section*, in which case the leaf takes the verbs and
+     the class implements them explicitly.** Budget's rule carves one method when a *Shell* dev
+     seeder drives the section's write surface. Three seeders drive Teams' — two in
+     `Humans.Development`, one in `Humans.Budget` — and they build multi-section fixtures, so
+     taking the seeding in would steal three sections' fixtures. `ITeamSeeding` on the leaf
+     carries `CreateTeamAsync` / `UpdateTeamAsync` / `AddSeededMemberAsync` returning DTOs;
+     each collides with the section's entity-returning member of the same name and parameters,
+     **differing only in return type, which C# permits only through explicit interface
+     implementation**. That is what keeps the seeder call sites unchanged and the names honest —
+     the alternative is `CreateTeamForSeedAsync` (proven: Teams).
+   - **A Shell controller *base class* goes into the section under `Contracts/`, not down to
+     `Humans.UI`.** `HumansTeamControllerBase` resolves a team by slug and authorizes, so it
+     names the section's whole vocabulary — and Shell's `ShiftAdminController` derives from it
+     because a rota's "department" is a team row. `Humans.UI` would make Base name a section
+     leaf; staying in Shell would make the section's own controller name a `Humans.Web` type.
+     `Contracts/` takes it, `public abstract`: HUM0034's carve-out is the folder, the section
+     project is `Sdk.Razor`, and its protected members return `IActionResult`, which the
+     framework-free leaf could not have named. Everything the base *body* touches — here the
+     section's `IAuthorizationRequirement` — stays internal (proven: Teams).
    - **A Base *registry* keyed by the section's enum is not a `Contracts/` case — invert it.**
      `Humans.UI` holds lookup tables naming ten sections' status enums (`EnumBadgeMap`,
      `StatusBadgeExtensions`); each move breaks one. Referencing the section's contracts leaf
@@ -1131,6 +1178,18 @@ Git Bash.)
      Its former user is the section's own service test, which needs two members of the harness —
      the clock and that factory — and owns them in about ten lines rather than inheriting a base
      class built around an in-memory `HumansDbContext` (proven: Budget; same call as Expenses').
+   - **…and when it needs the whole harness *and* two unmoved sections' tests need the
+     section's entities, both directions get an `InternalsVisibleTo` and both are temporary.**
+     Teams' moved tests make 208 `SeedTeam`, 193 `SeedUser` and 172 `SaveAllAsync` calls — the
+     whole harness, so `TeamsTestHarness` is a trimmed *copy* rather than a share or a registry
+     (Campaigns' rewrite does not scale, Governance's split has nothing to split). Two entries
+     fall out of that: `Humans.Infrastructure` → `Humans.<Section>.Tests`, because the section's
+     service tests build the real service over other sections' still-internal Base contexts; and
+     `Humans.<Section>` → `Humans.Application.Tests`, because five test files belonging to
+     sections that have *not* moved seed this section's rows through `ServiceTestHarness`.
+     Rewriting those five inside a move commit changes five unrelated sections' fixtures and is
+     redone at their own lanes. State both entries with the condition that removes them
+     (proven: Teams).
    - **When the section test needs the *whole* harness, the replacement is a registry, not
      three inlined fields.** Budget's and Expenses' service tests used a clock and a factory, so
      "own them in ten lines" worked. Campaigns' used `Db.Users`/`Db.Teams` through

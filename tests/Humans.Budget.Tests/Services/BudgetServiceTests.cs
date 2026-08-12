@@ -1,7 +1,7 @@
 using AwesomeAssertions;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using NodaTime.Testing;
-using Humans.Application.Interfaces.Teams;
+using Humans.Teams.Contracts;
 using Humans.Domain.Enums;
 using Humans.Application.Interfaces.Users;
 using Humans.Budget.Domain;

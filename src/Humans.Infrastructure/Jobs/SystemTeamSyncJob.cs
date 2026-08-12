@@ -11,7 +11,7 @@ using Humans.Email.Contracts;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Governance.Contracts;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Application.Interfaces.Teams;
+using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
@@ -571,7 +571,10 @@ public class SystemTeamSyncJob(
         foreach (var (auditUserId, userName) in addedAudits)
         {
             await auditLogService.LogAsync(
-                AuditAction.TeamMemberAdded, nameof(Team), team.Id,
+                // "Team" is a persisted audit discriminator, matched by exact equality when the log is
+                // read back, so it stays a literal now that the entity lives in Humans.Teams and Base
+                // cannot name it (memory/code/type-name-as-persisted-string.md).
+                AuditAction.TeamMemberAdded, "Team", team.Id,
                 $"{userName} added to {team.Name} by system sync",
                 nameof(SystemTeamSyncJob),
                 relatedEntityId: auditUserId, relatedEntityType: nameof(User));
@@ -580,7 +583,7 @@ public class SystemTeamSyncJob(
         foreach (var (auditUserId, userName) in removedAudits)
         {
             await auditLogService.LogAsync(
-                AuditAction.TeamMemberRemoved, nameof(Team), team.Id,
+                AuditAction.TeamMemberRemoved, "Team", team.Id,
                 $"{userName} removed from {team.Name} by system sync",
                 nameof(SystemTeamSyncJob),
                 relatedEntityId: auditUserId, relatedEntityType: nameof(User));

@@ -634,7 +634,7 @@ hot reads can migrate to the cached row set incrementally).
 
 ## Teams
 
-Folder: `src/Humans.Application/Services/Teams/`. **DbContext:**
+Folder: `src/Sections/Humans.Teams/Services/`. **DbContext:**
 `TeamsDbContext` (peeled in nobodies-collective/Humans#1264; `TeamRepository`
 injects `IDbContextFactory<TeamsDbContext>`). Owns `Teams`,
 `TeamMembers`, `TeamJoinRequests`, `TeamJoinRequestStateHistories`,
@@ -663,7 +663,7 @@ table is therefore owned wholly by Google Integration.
 
 The inner `ITeamService`
 registration is wrapped by
-`Humans.Infrastructure.Services.Teams.CachingTeamService` (Singleton
+`Humans.Teams.Services.CachingTeamService` (Singleton
 decorator inheriting `TrackedCache<Guid, TeamInfo>`); it exposes the
 budgeted cross-section read surface as `ITeamServiceRead`.
 

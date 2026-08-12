@@ -7,7 +7,7 @@ using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
-using Humans.Application.Interfaces.Teams;
+using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Constants;
@@ -232,7 +232,10 @@ public sealed class ShiftManagementService(
             AuditAction.RotaMovedToTeam, nameof(Rota), rota.Id,
             $"Moved rota '{rota.Name}' from '{oldTeamName}' to '{targetTeam.Name}'",
             input.ActorUserId,
-            relatedEntityId: input.TargetTeamId, relatedEntityType: nameof(Team));
+            // "Team" is a persisted audit discriminator, matched by exact equality when the log is
+            // read back, so it stays a literal now that the entity lives in Humans.Teams and Base
+            // cannot name it (memory/code/type-name-as-persisted-string.md).
+            relatedEntityId: input.TargetTeamId, relatedEntityType: "Team");
 
         return RotaMoveResult.Success($"Rota '{rota.Name}' moved to {targetTeam.Name}.", targetTeam.Slug);
     }

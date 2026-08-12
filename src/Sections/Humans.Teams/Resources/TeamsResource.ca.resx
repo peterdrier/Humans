@@ -1,0 +1,597 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- ReSharper disable MarkupTextTypo -->
+<root xmlns:ns1="urn:schemas-microsoft-com:xml-msdata" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:schema id="root">
+    <xs:element name="root" ns1:IsDataSet="true">
+      <xs:complexType>
+        <xs:choice maxOccurs="unbounded">
+          <xs:element name="data">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element name="value" type="xsd:string" minOccurs="0" ns1:Ordinal="1" />
+                <xs:element name="comment" type="xsd:string" minOccurs="0" ns1:Ordinal="2" />
+              </xs:sequence>
+              <xs:attribute name="name" type="xsd:string" ns1:Ordinal="0" />
+              <xs:attribute name="type" type="xsd:string" />
+              <xs:attribute name="mimetype" type="xsd:string" />
+            </xs:complexType>
+          </xs:element>
+          <xs:element name="resheader">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element name="value" type="xsd:string" minOccurs="0" ns1:Ordinal="1" />
+              </xs:sequence>
+              <xs:attribute name="name" type="xsd:string" use="required" />
+            </xs:complexType>
+          </xs:element>
+        </xs:choice>
+      </xs:complexType>
+    </xs:element>
+  </xs:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>1.3</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+    <data name="MyTeams_Title" xml:space="preserve">
+    <value>Els meus equips</value>
+  </data>
+  <data name="JoinTeam_Title" xml:space="preserve">
+    <value>Unir-se a {0}</value>
+    <comment>{0} = team name</comment>
+  </data>
+  <data name="Teams_CreateTeam" xml:space="preserve">
+    <value>Crea equip</value>
+  </data>
+  <data name="Teams_MemberCount" xml:space="preserve">
+    <value>{0} human(s)</value>
+    <comment>{0} = member count</comment>
+  </data>
+  <data name="Teams_RequiresApproval" xml:space="preserve">
+    <value>Requereix aprovació</value>
+  </data>
+  <data name="Teams_ViewDetails" xml:space="preserve">
+    <value>Veure detalls</value>
+  </data>
+  <data name="Teams_Manage" xml:space="preserve">
+    <value>Gestiona</value>
+  </data>
+  <data name="Teams_NoTeams" xml:space="preserve">
+    <value>Encara no s'han creat equips.</value>
+  </data>
+  <data name="Teams_MyTeamsSection" xml:space="preserve">
+    <value>Els meus equips</value>
+  </data>
+  <data name="Teams_OtherTeamsSection" xml:space="preserve">
+    <value>Altres equips</value>
+  </data>
+  <data name="Teams_NotOnAnyTeam" xml:space="preserve">
+    <value>Encara no t'has unit a cap equip.</value>
+  </data>
+  <data name="Teams_NoOtherTeams" xml:space="preserve">
+    <value>No hi ha altres equips disponibles.</value>
+  </data>
+  <data name="Teams_System" xml:space="preserve">
+    <value>Sistema</value>
+  </data>
+  <data name="TeamDetail_NoDescription" xml:space="preserve">
+    <value>Sense descripció.</value>
+  </data>
+  <data name="TeamDetail_SystemTeamInfo" xml:space="preserve">
+    <value>Aquest és un equip gestionat pel sistema. La pertinença es sincronitza automàticament segons els criteris de {0}.</value>
+    <comment>{0} = system team type</comment>
+  </data>
+  <data name="TeamDetail_Members" xml:space="preserve">
+    <value>Membres ({0})</value>
+    <comment>{0} = count</comment>
+  </data>
+  <data name="TeamDetail_ManageMembers" xml:space="preserve">
+    <value>Gestiona membres</value>
+  </data>
+  <data name="TeamDetail_Joined" xml:space="preserve">
+    <value>Incorporació</value>
+  </data>
+  <data name="TeamDetail_AndMoreMembers" xml:space="preserve">
+    <value>I {0} humans més...</value>
+    <comment>{0} = remaining count</comment>
+  </data>
+  <data name="TeamDetail_NoMembers" xml:space="preserve">
+    <value>Encara no hi ha humans.</value>
+  </data>
+  <data name="TeamDetail_RequestToJoin" xml:space="preserve">
+    <value>Sol·licitar unir-se</value>
+  </data>
+  <data name="TeamDetail_JoinTeam" xml:space="preserve">
+    <value>Unir-se a l'equip</value>
+  </data>
+  <data name="TeamDetail_PendingApproval" xml:space="preserve">
+    <value>La teva sol·licitud d'ingrés està pendent d'aprovació.</value>
+  </data>
+  <data name="TeamDetail_WithdrawRequest" xml:space="preserve">
+    <value>Retirar sol·licitud</value>
+  </data>
+  <data name="TeamDetail_LeaveTeam" xml:space="preserve">
+    <value>Abandona equip</value>
+  </data>
+  <data name="TeamDetail_SystemMembership" xml:space="preserve">
+    <value>La pertinença a equips del sistema es gestiona automàticament.</value>
+  </data>
+  <data name="TeamDetail_TeamManagement" xml:space="preserve">
+    <value>Gestió de l'equip</value>
+  </data>
+  <data name="TeamDetail_EditTeam" xml:space="preserve">
+    <value>Edita equip</value>
+  </data>
+  <data name="TeamDetail_PendingRequests" xml:space="preserve">
+    <value>Sol·licituds pendents</value>
+  </data>
+  <data name="TeamDetail_ManageResources" xml:space="preserve">
+    <value>Gestionar recursos</value>
+  </data>
+  <data name="TeamDetail_Resources" xml:space="preserve">
+    <value>Recursos</value>
+  </data>
+  <data name="TeamDetail_ManageConsents" xml:space="preserve">
+    <value>Documents legals</value>
+  </data>
+  <data name="MyTeams_TeamMemberships" xml:space="preserve">
+    <value>Pertinences a equips</value>
+  </data>
+  <data name="MyTeams_Team" xml:space="preserve">
+    <value>Equip</value>
+  </data>
+  <data name="MyTeams_Joined" xml:space="preserve">
+    <value>Incorporació</value>
+  </data>
+  <data name="MyTeams_Actions" xml:space="preserve">
+    <value>Accions</value>
+  </data>
+  <data name="MyTeams_Leave" xml:space="preserve">
+    <value>Abandona</value>
+  </data>
+  <data name="MyTeams_NoTeams" xml:space="preserve">
+    <value>Encara no formes part de cap equip.</value>
+  </data>
+  <data name="MyTeams_BrowseTeams" xml:space="preserve">
+    <value>Explorar equips</value>
+  </data>
+  <data name="MyTeams_PendingRequests" xml:space="preserve">
+    <value>Sol·licituds pendents</value>
+  </data>
+  <data name="MyTeams_Status" xml:space="preserve">
+    <value>Estat</value>
+  </data>
+  <data name="MyTeams_Requested" xml:space="preserve">
+    <value>Sol·licitat</value>
+  </data>
+  <data name="MyTeams_Withdraw" xml:space="preserve">
+    <value>Retirar</value>
+  </data>
+  <data name="JoinTeam_RequiresApproval" xml:space="preserve">
+    <value>Aquest equip requereix aprovació per unir-s'hi. La teva sol·licitud serà revisada pels leads de l'equip o membres de la junta.</value>
+  </data>
+  <data name="JoinTeam_MessageLabel" xml:space="preserve">
+    <value>Missatge (opcional)</value>
+  </data>
+  <data name="JoinTeam_MessagePlaceholder" xml:space="preserve">
+    <value>Indica a l'equip per què vols unir-te...</value>
+  </data>
+  <data name="JoinTeam_SubmitRequest" xml:space="preserve">
+    <value>Envia la sol·licitud</value>
+  </data>
+  <data name="JoinTeam_NoApprovalNeeded" xml:space="preserve">
+    <value>Pots unir-te a aquest equip immediatament sense necessitat d'aprovació.</value>
+  </data>
+  <data name="JoinTeam_JoinTeamButton" xml:space="preserve">
+    <value>Unir-se a l'equip</value>
+  </data>
+  <data name="Team_CannotJoinSystem" xml:space="preserve">
+    <value>No és possible unir-se directament a equips del sistema.</value>
+  </data>
+  <data name="Team_AlreadyMember" xml:space="preserve">
+    <value>Ja formes part d'aquest equip.</value>
+  </data>
+  <data name="Team_AlreadyPendingRequest" xml:space="preserve">
+    <value>Ja tens una sol·licitud pendent per a aquest equip.</value>
+  </data>
+  <data name="Team_JoinRequestSubmitted" xml:space="preserve">
+    <value>La teva sol·licitud d'ingrés s'ha enviat i està pendent d'aprovació.</value>
+  </data>
+  <data name="Team_Joined" xml:space="preserve">
+    <value>T'has unit a l'equip correctament!</value>
+  </data>
+  <data name="Team_Left" xml:space="preserve">
+    <value>Has abandonat l'equip.</value>
+  </data>
+  <data name="Team_RequestWithdrawn" xml:space="preserve">
+    <value>La teva sol·licitud s'ha retirat.</value>
+  </data>
+  <data name="TeamAdmin_RequestApproved" xml:space="preserve">
+    <value>Sol·licitud aprovada. El human ja forma part de l'equip.</value>
+  </data>
+  <data name="TeamAdmin_ProvideRejectionReason" xml:space="preserve">
+    <value>Si us plau, indica un motiu per al rebuig.</value>
+  </data>
+  <data name="TeamAdmin_RequestRejected" xml:space="preserve">
+    <value>Sol·licitud rebutjada.</value>
+  </data>
+  <data name="TeamAdmin_RoleUpdated" xml:space="preserve">
+    <value>Rol del membre actualitzat a {0}.</value>
+    <comment>{0} = role name</comment>
+  </data>
+  <data name="TeamAdmin_MemberRemoved" xml:space="preserve">
+    <value>Membre eliminat de l'equip.</value>
+  </data>
+  <data name="TeamAdmin_InvalidDriveUrl" xml:space="preserve">
+    <value>Si us plau, introdueix una URL vàlida de carpeta de Google Drive.</value>
+  </data>
+  <data name="TeamAdmin_DriveFolderLinked" xml:space="preserve">
+    <value>Carpeta de Drive “{0}” vinculada correctament.</value>
+    <comment>{0} = folder name</comment>
+  </data>
+  <data name="TeamAdmin_DriveFolderLinkFailed" xml:space="preserve">
+    <value>No s'ha pogut vincular la carpeta de Drive.</value>
+  </data>
+  <data name="TeamAdmin_ServiceAccount" xml:space="preserve">
+    <value>Compte de servei: {0}</value>
+    <comment>{0} = service account email</comment>
+  </data>
+  <data name="TeamAdmin_InvalidGroupEmail" xml:space="preserve">
+    <value>Si us plau, introdueix una adreça de correu vàlida de Google Group.</value>
+  </data>
+  <data name="TeamAdmin_GroupLinked" xml:space="preserve">
+    <value>Google Group "{0}" vinculat correctament.</value>
+    <comment>{0} = group name</comment>
+  </data>
+  <data name="TeamAdmin_GroupLinkFailed" xml:space="preserve">
+    <value>No s'ha pogut vincular el Google Group.</value>
+  </data>
+  <data name="TeamAdmin_ResourceUnlinked" xml:space="preserve">
+    <value>Recurs desvinculat de l'equip.</value>
+  </data>
+  <data name="TeamAdmin_ResourceSynced" xml:space="preserve">
+    <value>Permisos del recurs sincronitzats correctament.</value>
+  </data>
+  <data name="TeamAdmin_ResourceSyncFailed" xml:space="preserve">
+    <value>Error al sincronitzar els permisos del recurs: {0}</value>
+    <comment>{0} = error message</comment>
+  </data>
+  <data name="AdminTeams_Title" xml:space="preserve">
+    <value>Administració d'equips</value>
+  </data>
+  <data name="AdminCreateTeam_Title" xml:space="preserve">
+    <value>Crear equip</value>
+  </data>
+  <data name="AdminEditTeam_Title" xml:space="preserve">
+    <value>Edita equip</value>
+  </data>
+  <data name="MyTeams_LeaveConfirm" xml:space="preserve">
+    <value>Segur que vols abandonar {0}?</value>
+    <comment>{0} = team name</comment>
+  </data>
+  <data name="MyTeams_WithdrawConfirm" xml:space="preserve">
+    <value>Segur que vols retirar aquesta sol·licitud?</value>
+  </data>
+  <data name="JoinTeam_Join" xml:space="preserve">
+    <value>Unir-se</value>
+  </data>
+  <data name="TeamDetail_Created" xml:space="preserve">
+    <value>Creat</value>
+  </data>
+  <data name="TeamDetail_WithdrawConfirm" xml:space="preserve">
+    <value>Segur que vols retirar la teva sol·licitud?</value>
+  </data>
+  <data name="TeamDetail_LeaveConfirm" xml:space="preserve">
+    <value>Segur que vols abandonar aquest equip?</value>
+  </data>
+  <data name="AdminTeams_Name" xml:space="preserve">
+    <value>Nom</value>
+  </data>
+  <data name="AdminTeams_Type" xml:space="preserve">
+    <value>Tipus</value>
+  </data>
+  <data name="AdminTeams_Members" xml:space="preserve">
+    <value>Membres</value>
+  </data>
+  <data name="AdminTeams_PendingJoins" xml:space="preserve">
+    <value>Sol·licituds pendents</value>
+  </data>
+  <data name="AdminTeams_PendingShifts" xml:space="preserve">
+    <value>Torns pendents</value>
+  </data>
+  <data name="AdminTeams_MailGroup" xml:space="preserve">
+    <value>Grup de correu</value>
+  </data>
+  <data name="AdminTeams_DriveResources" xml:space="preserve">
+    <value>Drive</value>
+  </data>
+  <data name="AdminTeams_Created" xml:space="preserve">
+    <value>Creat</value>
+  </data>
+  <data name="AdminTeams_Open" xml:space="preserve">
+    <value>Obert</value>
+  </data>
+  <data name="AdminTeams_Inactive" xml:space="preserve">
+    <value>Inactiu</value>
+  </data>
+  <data name="AdminTeams_DeactivateConfirm" xml:space="preserve">
+    <value>Desactivar aquest equip?</value>
+  </data>
+  <data name="AdminTeams_Deactivate" xml:space="preserve">
+    <value>Desactivar</value>
+  </data>
+  <data name="AdminTeams_SystemManaged" xml:space="preserve">
+    <value>Gestionat pel sistema</value>
+  </data>
+  <data name="AdminTeams_TeamName" xml:space="preserve">
+    <value>Nom de l'equip</value>
+  </data>
+  <data name="AdminTeams_DescriptionOptional" xml:space="preserve">
+    <value>Descripció (opcional)</value>
+  </data>
+  <data name="AdminTeams_RequireApproval" xml:space="preserve">
+    <value>Requereix aprovació per unir-se</value>
+  </data>
+  <data name="AdminTeams_RequireApprovalHelp" xml:space="preserve">
+    <value>Quan està activat, els nous membres han de ser aprovats per un lead de l'equip o un membre de la junta.</value>
+  </data>
+  <data name="AdminEditTeam_SystemTeamWarning" xml:space="preserve">
+    <value>Aquest és un equip gestionat pel sistema. La majoria de la configuració no es pot modificar.</value>
+  </data>
+  <data name="AdminEditTeam_TeamIsActive" xml:space="preserve">
+    <value>L'equip està actiu</value>
+  </data>
+  <data name="TeamAdmin_ManageMembers" xml:space="preserve">
+    <value>Gestiona membres</value>
+  </data>
+  <data name="TeamAdmin_ManageResources" xml:space="preserve">
+    <value>Gestionar recursos</value>
+  </data>
+  <data name="TeamAdmin_SystemTeam" xml:space="preserve">
+    <value>Equip del sistema</value>
+  </data>
+  <data name="TeamAdmin_SystemTeamRolesInfo" xml:space="preserve">
+    <value>Aquest és un equip gestionat pel sistema. Els rols dels membres no es poden canviar manualment.</value>
+  </data>
+  <data name="TeamAdmin_RemoveConfirm" xml:space="preserve">
+    <value>Eliminar aquest human de l'equip?</value>
+  </data>
+  <data name="TeamAdmin_Remove" xml:space="preserve">
+    <value>Elimina</value>
+  </data>
+  <data name="TeamAdmin_NoMembers" xml:space="preserve">
+    <value>Encara no hi ha humans en aquest equip.</value>
+  </data>
+  <data name="TeamAdmin_BackToTeam" xml:space="preserve">
+    <value>Torna a l'equip</value>
+  </data>
+  <data name="TeamAdmin_ViewPendingRequests" xml:space="preserve">
+    <value>Veure sol·licituds pendents</value>
+  </data>
+  <data name="TeamAdmin_Message" xml:space="preserve">
+    <value>Missatge</value>
+  </data>
+  <data name="TeamAdmin_NoMessage" xml:space="preserve">
+    <value>Sense missatge</value>
+  </data>
+  <data name="TeamAdmin_ApproveConfirm" xml:space="preserve">
+    <value>Aprova aquesta sol·licitud?</value>
+  </data>
+  <data name="TeamAdmin_Approve" xml:space="preserve">
+    <value>Aprova</value>
+  </data>
+  <data name="TeamAdmin_Reject" xml:space="preserve">
+    <value>Rebutja</value>
+  </data>
+  <data name="TeamAdmin_RejectRequest" xml:space="preserve">
+    <value>Rebutja sol·licitud</value>
+  </data>
+  <data name="TeamAdmin_RejectingFrom" xml:space="preserve">
+    <value>Rebutjant sol·licitud de &lt;strong&gt;{0}&lt;/strong&gt;</value>
+    <comment>{0} = display name</comment>
+  </data>
+  <data name="TeamAdmin_RejectionReason" xml:space="preserve">
+    <value>Motiu del rebuig (obligatori)</value>
+  </data>
+  <data name="TeamAdmin_NoPendingRequests" xml:space="preserve">
+    <value>No hi ha sol·licituds pendents en aquest moment.</value>
+  </data>
+  <data name="TeamAdmin_Resources" xml:space="preserve">
+    <value>Recursos</value>
+  </data>
+  <data name="TeamAdmin_ServiceAccountTitle" xml:space="preserve">
+    <value>Compte de servei</value>
+  </data>
+  <data name="TeamAdmin_ShareWithServiceAccount" xml:space="preserve">
+    <value>Per vincular un recurs de Google, primer has de compartir-lo amb el compte de servei:</value>
+  </data>
+  <data name="TeamAdmin_Copy" xml:space="preserve">
+    <value>Copia</value>
+  </data>
+  <data name="TeamAdmin_DriveFolders" xml:space="preserve">
+    <value>Carpetes de Drive</value>
+  </data>
+  <data name="TeamAdmin_DriveFoldersHelp" xml:space="preserve">
+    <value>Comparteix la carpeta amb aquest correu com a Editor</value>
+  </data>
+  <data name="TeamAdmin_GoogleGroups" xml:space="preserve">
+    <value>Google Groups</value>
+  </data>
+  <data name="TeamAdmin_GoogleGroupsHelp" xml:space="preserve">
+    <value>Afegeix aquest correu com a Administrador del grup</value>
+  </data>
+  <data name="TeamAdmin_LinkedResources" xml:space="preserve">
+    <value>Recursos vinculats</value>
+  </data>
+  <data name="TeamAdmin_LastSynced" xml:space="preserve">
+    <value>Última sincronització</value>
+  </data>
+  <data name="TeamAdmin_Sync" xml:space="preserve">
+    <value>Sincronitzar</value>
+  </data>
+  <data name="TeamAdmin_UnlinkConfirm" xml:space="preserve">
+    <value>Segur que vols desvincular aquest recurs?</value>
+  </data>
+  <data name="TeamAdmin_Unlink" xml:space="preserve">
+    <value>Desvincula</value>
+  </data>
+  <data name="TeamAdmin_NoResources" xml:space="preserve">
+    <value>Encara no hi ha recursos vinculats a aquest equip. Fes servir els formularis de sota per vincular una carpeta de Google Drive o un Google Group.</value>
+  </data>
+  <data name="TeamAdmin_LinkDriveFolder" xml:space="preserve">
+    <value>Vincula carpeta de Drive</value>
+  </data>
+  <data name="TeamAdmin_FolderUrl" xml:space="preserve">
+    <value>URL de la carpeta</value>
+  </data>
+  <data name="TeamAdmin_FolderUrlHelp" xml:space="preserve">
+    <value>Enganxa la URL de la carpeta de Google Drive. La carpeta ha d'estar compartida amb el compte de servei.</value>
+  </data>
+  <data name="TeamAdmin_LinkFolder" xml:space="preserve">
+    <value>Vincula carpeta</value>
+  </data>
+  <data name="TeamAdmin_LinkGoogleGroup" xml:space="preserve">
+    <value>Vincula Google Group</value>
+  </data>
+  <data name="TeamAdmin_GroupEmail" xml:space="preserve">
+    <value>Correu del grup</value>
+  </data>
+  <data name="TeamAdmin_GroupEmailHelp" xml:space="preserve">
+    <value>Introdueix l'adreça de correu del Google Group. El compte de servei ha de ser Administrador del grup.</value>
+  </data>
+  <data name="TeamAdmin_LinkGroup" xml:space="preserve">
+    <value>Vincula grup</value>
+  </data>
+  <data name="TeamDetail_TeamCoordinators" xml:space="preserve">
+    <value>Coordinadors</value>
+  </data>
+  <data name="TeamDetail_AboutTeam" xml:space="preserve">
+    <value>Sobre</value>
+  </data>
+  <data name="TeamDetail_EditPage" xml:space="preserve">
+    <value>Editar pàgina</value>
+  </data>
+  <data name="TeamDetail_LastUpdated" xml:space="preserve">
+    <value>Última actualització</value>
+  </data>
+  <data name="TeamDetail_NoPageContent" xml:space="preserve">
+    <value>Aquest equip encara no té una pàgina. Afegeix contingut per explicar als humans de què es tracta.</value>
+  </data>
+  <data name="TeamDetail_AddPageContent" xml:space="preserve">
+    <value>Afegeix contingut</value>
+  </data>
+  <data name="TeamDetail_ChildTeamMembers" xml:space="preserve">
+    <value>Humans via sub-teams ({0})</value>
+    <comment>{0} = count</comment>
+  </data>
+  <data name="TeamDetail_ManageRoles" xml:space="preserve">
+    <value>Gestionar Rols</value>
+  </data>
+  <data name="TeamDetail_SubTeams" xml:space="preserve">
+    <value>Sub-teams</value>
+  </data>
+  <data name="Teams_PublicDirectory" xml:space="preserve">
+    <value>Equips</value>
+  </data>
+  <data name="Teams_PublicDirectorySubtitle" xml:space="preserve">
+    <value>Descobreix els equips que fan que les coses passin.</value>
+  </data>
+  <data name="Teams_LearnMore" xml:space="preserve">
+    <value>Més informació</value>
+  </data>
+  <data name="Teams_NoPublicTeams" xml:space="preserve">
+    <value>Encara no hi ha pàgines d'equips públiques.</value>
+  </data>
+  <data name="EditTeamPage_Saved" xml:space="preserve">
+    <value>Pàgina de l'equip actualitzada.</value>
+  </data>
+  <data name="Birthdays_Title" xml:space="preserve">
+    <value>Calendari d'aniversaris</value>
+  </data>
+  <data name="Birthdays_Count" xml:space="preserve">
+    <value>{0} aniversaris a {1}</value>
+  </data>
+  <data name="Birthdays_Count_One" xml:space="preserve">
+    <value>{0} aniversaris a {1}</value>
+  </data>
+  <data name="Birthdays_None" xml:space="preserve">
+    <value>No hi ha aniversaris a {0}.</value>
+  </data>
+  <data name="Birthdays_Privacy" xml:space="preserve">
+    <value>Només es mostren els humans que han establert el seu aniversari.</value>
+  </data>
+  <data name="Map_Title" xml:space="preserve">
+    <value>Mapa de Humans</value>
+  </data>
+  <data name="Map_Count" xml:space="preserve">
+    <value>{0} humans amb ubicació</value>
+  </data>
+  <data name="Map_None" xml:space="preserve">
+    <value>Cap human no ha establert encara la seva ubicació.</value>
+  </data>
+  <data name="Map_Privacy" xml:space="preserve">
+    <value>Només es mostren els humans que han establert la seva ubicació. La ubicació és aproximada i es basa en la ciutat.</value>
+  </data>
+  <data name="TeamAdmin_AddMember" xml:space="preserve">
+    <value>Afegeix membre</value>
+  </data>
+  <data name="TeamAdmin_SearchHumans" xml:space="preserve">
+    <value>Cerca humans</value>
+  </data>
+  <data name="TeamAdmin_SearchPlaceholder" xml:space="preserve">
+    <value>Escriu un nom o correu...</value>
+  </data>
+  <data name="TeamAdmin_MemberAdded" xml:space="preserve">
+    <value>Membre afegit correctament.</value>
+  </data>
+  <data name="TeamAdmin_NoResults" xml:space="preserve">
+    <value>No s’han trobat humans</value>
+  </data>
+  <data name="TeamAdmin_Add" xml:space="preserve">
+    <value>Afegeix</value>
+  </data>
+  <data name="TeamAdmin_TicketLabel" xml:space="preserve">
+    <value>Entrada #{0}</value>
+    <comment>{0} = ticket barcode; shown as the detail line on a ticket-resolved person-picker result</comment>
+  </data>
+  <data name="Roster_All" xml:space="preserve"><value>Tots</value></data>
+  <data name="Roster_ColAssignedTo" xml:space="preserve"><value>Assignat a</value></data>
+  <data name="Roster_ColPeriod" xml:space="preserve"><value>Període</value></data>
+  <data name="Roster_ColPriority" xml:space="preserve"><value>Prioritat</value></data>
+  <data name="Roster_ColRole" xml:space="preserve"><value>Rol</value></data>
+  <data name="Roster_ColSlot" xml:space="preserve"><value>Plaça</value></data>
+  <data name="Roster_ColTeam" xml:space="preserve"><value>Equip</value></data>
+  <data name="Roster_NoSlots" xml:space="preserve"><value>No hi ha places de rol definides als equips.</value></data>
+  <data name="Roster_PeriodFilter" xml:space="preserve"><value>Període: {0}</value></data>
+  <data name="Roster_PriorityFilter" xml:space="preserve"><value>Prioritat: {0}</value></data>
+  <data name="Roster_SlotOpen" xml:space="preserve"><value>Oberta</value></data>
+  <data name="Roster_StatusFilled" xml:space="preserve"><value>Coberta</value></data>
+  <data name="Roster_StatusFilter" xml:space="preserve"><value>Estat: {0}</value></data>
+  <data name="Roster_StatusOpen" xml:space="preserve"><value>Oberta</value></data>
+  <data name="Roster_Title" xml:space="preserve"><value>Llista de l'equip</value></data>
+  <data name="Teams_Departments" xml:space="preserve"><value>Departaments</value></data>
+  <data name="Teams_HiddenTeams" xml:space="preserve"><value>Equips ocults</value></data>
+  <data name="Teams_HiddenTeamsNote" xml:space="preserve"><value>(visible només per als administradors)</value></data>
+  <data name="Teams_Summary" xml:space="preserve"><value>Resum</value></data>
+  <data name="Teams_SyncStatus" xml:space="preserve"><value>Estat de sincronització</value></data>
+  <data name="Teams_SystemTeams" xml:space="preserve"><value>Equips del sistema</value></data>
+  <data name="TeamAdminResources_Title" xml:space="preserve">
+    <value>Gestionar recursos - {0}</value>
+    <comment>{0} = team name</comment>
+  </data>
+  <data name="TeamAdminMembers_Title" xml:space="preserve">
+    <value>Gestiona membres - {0}</value>
+    <comment>{0} = team name</comment>
+  </data>
+  <data name="TeamAdminRequests_Title" xml:space="preserve">
+    <value>Sol·licituds pendents - {0}</value>
+    <comment>{0} = team name</comment>
+  </data>
+</root>

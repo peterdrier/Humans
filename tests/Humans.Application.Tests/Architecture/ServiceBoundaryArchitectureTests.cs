@@ -1,3 +1,4 @@
+using Humans.Teams.Data;
 using System.Reflection;
 using AwesomeAssertions;
 using Humans.Application.Interfaces;
@@ -58,7 +59,7 @@ public class ServiceBoundaryArchitectureTests
             [typeof(IShiftManagementRepository)] = "Shifts",
             [SectionRepository("Humans.Surveys.Data.ISurveyRepository")] = "Surveys",
             [typeof(ISyncSettingsRepository)] = "GoogleIntegration",
-            [typeof(ITeamRepository)] = "Teams",
+            [SectionRepository("Humans.Teams.Data.ITeamRepository")] = "Teams",
             [SectionRepository("Humans.Tickets.Data.ITicketRepository")] = "Tickets",
             [SectionRepository("Humans.Tickets.Data.ITicketTransferRepository")] = "Tickets",
             [typeof(IUserRepository)] = "Humans",
@@ -133,7 +134,7 @@ public class ServiceBoundaryArchitectureTests
         // (nobodies-collective/Humans#866). Without the section half, a section that moves
         // takes its entity-returning reads out of this ratchet's sight and the removal
         // reads as "you fixed it" — the exact silent-shrink §10 warns about.
-        var entityTypes = typeof(Humans.Domain.Entities.Team).Assembly
+        var entityTypes = typeof(Humans.Domain.Entities.User).Assembly
             .GetTypes()
             .Where(t => string.Equals(t.Namespace, "Humans.Domain.Entities", StringComparison.Ordinal))
             .Concat(SectionAssemblies()

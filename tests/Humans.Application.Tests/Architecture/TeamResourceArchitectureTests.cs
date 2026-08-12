@@ -1,3 +1,4 @@
+using Humans.Teams.Domain;
 using AwesomeAssertions;
 using Humans.Application.Interfaces.GoogleIntegration;
 using TeamResourceService = Humans.Application.Services.GoogleIntegration.TeamResourceService;

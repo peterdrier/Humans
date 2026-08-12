@@ -16,11 +16,11 @@ Humans.Application.Interfaces.Shifts.IShiftManagementService.GetShiftByIdAsync:H
 Humans.Application.Interfaces.Shifts.IShiftManagementService.GetShiftProfileAsync:Humans.Domain.Entities.VolunteerEventProfile
 Humans.Application.Interfaces.Shifts.IShiftManagementService.GetUrgentShiftsAsync:Humans.Domain.Entities.Shift
 Humans.Application.Interfaces.Shifts.IShiftSignupService.GetByUserAsync:Humans.Domain.Entities.ShiftSignup
-Humans.Application.Interfaces.Teams.ITeamService.GetAllTeamsAsync:Humans.Domain.Entities.Team
-Humans.Application.Interfaces.Teams.ITeamService.GetByIdsWithParentsAsync:Humans.Domain.Entities.Team
-Humans.Application.Interfaces.Teams.ITeamService.GetTeamByIdAsync:Humans.Domain.Entities.Team
-Humans.Application.Interfaces.Teams.ITeamService.GetTeamEntityBySlugAsync:Humans.Domain.Entities.Team
-Humans.Application.Interfaces.Teams.ITeamService.GetUserTeamsAsync:Humans.Domain.Entities.TeamMember
+Humans.Teams.Services.ITeamManagementService.GetAllTeamsAsync:Humans.Teams.Domain.Team
+Humans.Teams.Services.ITeamManagementService.GetByIdsWithParentsAsync:Humans.Teams.Domain.Team
+Humans.Teams.Services.ITeamManagementService.GetTeamByIdAsync:Humans.Teams.Domain.Team
+Humans.Teams.Services.ITeamManagementService.GetTeamEntityBySlugAsync:Humans.Teams.Domain.Team
+Humans.Teams.Services.ITeamManagementService.GetUserTeamsAsync:Humans.Teams.Domain.TeamMember
 Humans.Application.Interfaces.Users.IAccountProvisioningService.FindOrCreateUserByEmailAsync:Humans.Domain.Entities.User
 Humans.Events.Services.IEventService.GetCampEventAsync:Humans.Events.Domain.Event
 Humans.Events.Services.IEventService.GetEventForModerationAsync:Humans.Events.Domain.Event

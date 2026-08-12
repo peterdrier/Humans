@@ -1,0 +1,231 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>1.3</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+
+  <!-- ======================== -->
+  <!-- Common / Shared          -->
+  <!-- ======================== -->
+    <data name="MyTeams_Title" xml:space="preserve"><value>My Teams</value></data>
+  <data name="JoinTeam_Title" xml:space="preserve"><value>Join {0}</value><comment>{0} = team name</comment></data>
+  <data name="Teams_CreateTeam" xml:space="preserve"><value>Create Team</value></data>
+  <data name="Teams_MemberCount" xml:space="preserve"><value>{0} human(s)</value><comment>{0} = member count</comment></data>
+  <data name="Teams_RequiresApproval" xml:space="preserve"><value>Requires Approval</value></data>
+  <data name="Teams_ViewDetails" xml:space="preserve"><value>View Details</value></data>
+  <data name="Teams_Manage" xml:space="preserve"><value>Manage</value></data>
+  <data name="Teams_NoTeams" xml:space="preserve"><value>No teams have been created yet.</value></data>
+  <data name="Teams_MyTeamsSection" xml:space="preserve"><value>My Teams</value></data>
+  <data name="Teams_OtherTeamsSection" xml:space="preserve"><value>Other Teams</value></data>
+  <data name="Teams_NotOnAnyTeam" xml:space="preserve"><value>You haven't joined any teams yet.</value></data>
+  <data name="Teams_NoOtherTeams" xml:space="preserve"><value>No other teams available.</value></data>
+  <data name="Teams_System" xml:space="preserve"><value>System</value></data>
+  <data name="TeamDetail_NoDescription" xml:space="preserve"><value>No description provided.</value></data>
+  <data name="TeamDetail_SystemTeamInfo" xml:space="preserve"><value>This is a system-managed team. Membership is automatically synchronized based on {0} criteria.</value><comment>{0} = system team type</comment></data>
+  <data name="TeamDetail_Members" xml:space="preserve"><value>Members ({0})</value><comment>{0} = count</comment></data>
+  <data name="TeamDetail_ManageMembers" xml:space="preserve"><value>Manage Members</value></data>
+  <data name="TeamDetail_Joined" xml:space="preserve"><value>Joined</value></data>
+  <data name="TeamDetail_AndMoreMembers" xml:space="preserve"><value>And {0} more humans...</value><comment>{0} = remaining count</comment></data>
+  <data name="TeamDetail_NoMembers" xml:space="preserve"><value>No humans yet.</value></data>
+  <data name="TeamDetail_RequestToJoin" xml:space="preserve"><value>Request to Join</value></data>
+  <data name="TeamDetail_JoinTeam" xml:space="preserve"><value>Join Team</value></data>
+  <data name="TeamDetail_PendingApproval" xml:space="preserve"><value>Your join request is pending approval.</value></data>
+  <data name="TeamDetail_WithdrawRequest" xml:space="preserve"><value>Withdraw Request</value></data>
+  <data name="TeamDetail_LeaveTeam" xml:space="preserve"><value>Leave Team</value></data>
+  <data name="TeamDetail_SystemMembership" xml:space="preserve"><value>Membership in system teams is managed automatically.</value></data>
+  <data name="TeamDetail_TeamManagement" xml:space="preserve"><value>Team Management</value></data>
+  <data name="TeamDetail_EditTeam" xml:space="preserve"><value>Edit Team</value></data>
+  <data name="TeamDetail_PendingRequests" xml:space="preserve"><value>Pending Requests</value></data>
+  <data name="TeamDetail_ManageResources" xml:space="preserve"><value>Manage Resources</value></data>
+  <data name="TeamDetail_Resources" xml:space="preserve"><value>Resources</value></data>
+  <data name="TeamDetail_ManageConsents" xml:space="preserve"><value>Legal Documents</value></data>
+  <data name="MyTeams_TeamMemberships" xml:space="preserve"><value>Team Memberships</value></data>
+  <data name="MyTeams_Team" xml:space="preserve"><value>Team</value></data>
+  <data name="MyTeams_Joined" xml:space="preserve"><value>Joined</value></data>
+  <data name="MyTeams_Actions" xml:space="preserve"><value>Actions</value></data>
+  <data name="MyTeams_Leave" xml:space="preserve"><value>Leave</value></data>
+  <data name="MyTeams_NoTeams" xml:space="preserve"><value>You are not part of any teams yet.</value></data>
+  <data name="MyTeams_BrowseTeams" xml:space="preserve"><value>Browse teams</value></data>
+  <data name="MyTeams_PendingRequests" xml:space="preserve"><value>Pending Requests</value></data>
+  <data name="MyTeams_Status" xml:space="preserve"><value>Status</value></data>
+  <data name="MyTeams_Requested" xml:space="preserve"><value>Requested</value></data>
+  <data name="MyTeams_Withdraw" xml:space="preserve"><value>Withdraw</value></data>
+  <data name="JoinTeam_RequiresApproval" xml:space="preserve"><value>This team requires approval to join. Your request will be reviewed by the team leads or board members.</value></data>
+  <data name="JoinTeam_MessageLabel" xml:space="preserve"><value>Message (optional)</value></data>
+  <data name="JoinTeam_MessagePlaceholder" xml:space="preserve"><value>Tell the team why you want to join...</value></data>
+  <data name="JoinTeam_SubmitRequest" xml:space="preserve"><value>Submit Request</value></data>
+  <data name="JoinTeam_NoApprovalNeeded" xml:space="preserve"><value>You can join this team immediately without approval.</value></data>
+  <data name="JoinTeam_JoinTeamButton" xml:space="preserve"><value>Join Team</value></data>
+  <data name="Team_CannotJoinSystem" xml:space="preserve"><value>Cannot join system teams directly.</value></data>
+  <data name="Team_AlreadyMember" xml:space="preserve"><value>You are already part of this team.</value></data>
+  <data name="Team_AlreadyPendingRequest" xml:space="preserve"><value>You already have a pending request for this team.</value></data>
+  <data name="Team_JoinRequestSubmitted" xml:space="preserve"><value>Your request to join has been submitted and is pending approval.</value></data>
+  <data name="Team_Joined" xml:space="preserve"><value>You have successfully joined the team!</value></data>
+  <data name="Team_Left" xml:space="preserve"><value>You have left the team.</value></data>
+  <data name="Team_RequestWithdrawn" xml:space="preserve"><value>Your request has been withdrawn.</value></data>
+  <data name="TeamAdmin_RequestApproved" xml:space="preserve"><value>Request approved. The human is now part of the team.</value></data>
+  <data name="TeamAdmin_ProvideRejectionReason" xml:space="preserve"><value>Please provide a reason for rejection.</value></data>
+  <data name="TeamAdmin_RequestRejected" xml:space="preserve"><value>Request rejected.</value></data>
+  <data name="TeamAdmin_RoleUpdated" xml:space="preserve"><value>Member role updated to {0}.</value><comment>{0} = role name</comment></data>
+  <data name="TeamAdmin_MemberRemoved" xml:space="preserve"><value>Member removed from team.</value></data>
+  <data name="TeamAdmin_InvalidDriveUrl" xml:space="preserve"><value>Please enter a valid Google Drive folder URL.</value></data>
+  <data name="TeamAdmin_DriveFolderLinked" xml:space="preserve"><value>Drive folder "{0}" linked successfully.</value><comment>{0} = folder name</comment></data>
+  <data name="TeamAdmin_DriveFolderLinkFailed" xml:space="preserve"><value>Failed to link Drive folder.</value></data>
+  <data name="TeamAdmin_ServiceAccount" xml:space="preserve"><value>Service account: {0}</value><comment>{0} = service account email</comment></data>
+  <data name="TeamAdmin_InvalidGroupEmail" xml:space="preserve"><value>Please enter a valid Google Group email address.</value></data>
+  <data name="TeamAdmin_GroupLinked" xml:space="preserve"><value>Google Group "{0}" linked successfully.</value><comment>{0} = group name</comment></data>
+  <data name="TeamAdmin_GroupLinkFailed" xml:space="preserve"><value>Failed to link Google Group.</value></data>
+  <data name="TeamAdmin_ResourceUnlinked" xml:space="preserve"><value>Resource unlinked from team.</value></data>
+  <data name="TeamAdmin_ResourceSynced" xml:space="preserve"><value>Resource permissions synced successfully.</value></data>
+  <data name="TeamAdmin_ResourceSyncFailed" xml:space="preserve"><value>Failed to sync resource permissions: {0}</value><comment>{0} = error message</comment></data>
+  <data name="AdminTeams_Title" xml:space="preserve"><value>Teams Administration</value></data>
+  <data name="AdminCreateTeam_Title" xml:space="preserve"><value>Create Team</value></data>
+  <data name="AdminEditTeam_Title" xml:space="preserve"><value>Edit Team</value></data>
+  <data name="MyTeams_LeaveConfirm" xml:space="preserve"><value>Are you sure you want to leave {0}?</value><comment>{0} = team name</comment></data>
+  <data name="MyTeams_WithdrawConfirm" xml:space="preserve"><value>Are you sure you want to withdraw this request?</value></data>
+  <data name="JoinTeam_Join" xml:space="preserve"><value>Join</value></data>
+  <data name="TeamDetail_Created" xml:space="preserve"><value>Created</value></data>
+  <data name="TeamDetail_WithdrawConfirm" xml:space="preserve"><value>Are you sure you want to withdraw your request?</value></data>
+  <data name="TeamDetail_LeaveConfirm" xml:space="preserve"><value>Are you sure you want to leave this team?</value></data>
+  <data name="AdminTeams_Name" xml:space="preserve"><value>Name</value></data>
+  <data name="AdminTeams_Type" xml:space="preserve"><value>Type</value></data>
+  <data name="AdminTeams_Members" xml:space="preserve"><value>Members</value></data>
+  <data name="AdminTeams_PendingJoins" xml:space="preserve"><value>Pending Joins</value></data>
+  <data name="AdminTeams_PendingShifts" xml:space="preserve"><value>Pending Shifts</value></data>
+  <data name="AdminTeams_MailGroup" xml:space="preserve"><value>Mail Group</value></data>
+  <data name="AdminTeams_DriveResources" xml:space="preserve"><value>Drive</value></data>
+  <data name="AdminTeams_Created" xml:space="preserve"><value>Created</value></data>
+  <data name="AdminTeams_Open" xml:space="preserve"><value>Open</value></data>
+  <data name="AdminTeams_Inactive" xml:space="preserve"><value>Inactive</value></data>
+  <data name="AdminTeams_DeactivateConfirm" xml:space="preserve"><value>Deactivate this team?</value></data>
+  <data name="AdminTeams_Deactivate" xml:space="preserve"><value>Deactivate</value></data>
+  <data name="AdminTeams_SystemManaged" xml:space="preserve"><value>System managed</value></data>
+  <data name="AdminTeams_TeamName" xml:space="preserve"><value>Team Name</value></data>
+  <data name="AdminTeams_DescriptionOptional" xml:space="preserve"><value>Description (optional)</value></data>
+  <data name="AdminTeams_RequireApproval" xml:space="preserve"><value>Require approval to join</value></data>
+  <data name="AdminTeams_RequireApprovalHelp" xml:space="preserve"><value>When enabled, new members must be approved by a team lead or board member.</value></data>
+  <data name="AdminEditTeam_SystemTeamWarning" xml:space="preserve"><value>This is a system-managed team. Most settings cannot be modified.</value></data>
+  <data name="AdminEditTeam_TeamIsActive" xml:space="preserve"><value>Team is active</value></data>
+  <data name="TeamAdmin_ManageMembers" xml:space="preserve"><value>Manage Members</value></data>
+  <data name="TeamAdmin_ManageResources" xml:space="preserve"><value>Manage Resources</value></data>
+  <data name="TeamAdmin_SystemTeam" xml:space="preserve"><value>System Team</value></data>
+  <data name="TeamAdmin_SystemTeamRolesInfo" xml:space="preserve"><value>This is a system-managed team. Member roles cannot be changed manually.</value></data>
+  <data name="TeamAdmin_RemoveConfirm" xml:space="preserve"><value>Remove this human from the team?</value></data>
+  <data name="TeamAdmin_Remove" xml:space="preserve"><value>Remove</value></data>
+  <data name="TeamAdmin_NoMembers" xml:space="preserve"><value>No humans in this team yet.</value></data>
+  <data name="TeamAdmin_BackToTeam" xml:space="preserve"><value>Back to Team</value></data>
+  <data name="TeamAdmin_ViewPendingRequests" xml:space="preserve"><value>View Pending Requests</value></data>
+  <data name="TeamAdmin_Message" xml:space="preserve"><value>Message</value></data>
+  <data name="TeamAdmin_NoMessage" xml:space="preserve"><value>No message</value></data>
+  <data name="TeamAdmin_ApproveConfirm" xml:space="preserve"><value>Approve this request?</value></data>
+  <data name="TeamAdmin_Approve" xml:space="preserve"><value>Approve</value></data>
+  <data name="TeamAdmin_Reject" xml:space="preserve"><value>Reject</value></data>
+  <data name="TeamAdmin_RejectRequest" xml:space="preserve"><value>Reject Request</value></data>
+  <data name="TeamAdmin_RejectingFrom" xml:space="preserve"><value>Rejecting request from &lt;strong&gt;{0}&lt;/strong&gt;</value><comment>{0} = display name</comment></data>
+  <data name="TeamAdmin_RejectionReason" xml:space="preserve"><value>Reason for rejection (required)</value></data>
+  <data name="TeamAdmin_NoPendingRequests" xml:space="preserve"><value>No pending requests at this time.</value></data>
+  <data name="TeamAdmin_Resources" xml:space="preserve"><value>Resources</value></data>
+  <data name="TeamAdmin_ServiceAccountTitle" xml:space="preserve"><value>Service Account</value></data>
+  <data name="TeamAdmin_ShareWithServiceAccount" xml:space="preserve"><value>To link a Google resource, you must first share it with the service account:</value></data>
+  <data name="TeamAdmin_Copy" xml:space="preserve"><value>Copy</value></data>
+  <data name="TeamAdmin_DriveFolders" xml:space="preserve"><value>Drive folders</value></data>
+  <data name="TeamAdmin_DriveFoldersHelp" xml:space="preserve"><value>Share the folder with this email as Editor</value></data>
+  <data name="TeamAdmin_GoogleGroups" xml:space="preserve"><value>Google Groups</value></data>
+  <data name="TeamAdmin_GoogleGroupsHelp" xml:space="preserve"><value>Add this email as a Manager of the group</value></data>
+  <data name="TeamAdmin_LinkedResources" xml:space="preserve"><value>Linked Resources</value></data>
+  <data name="TeamAdmin_LastSynced" xml:space="preserve"><value>Last Synced</value></data>
+  <data name="TeamAdmin_Sync" xml:space="preserve"><value>Sync</value></data>
+  <data name="TeamAdmin_UnlinkConfirm" xml:space="preserve"><value>Are you sure you want to unlink this resource?</value></data>
+  <data name="TeamAdmin_Unlink" xml:space="preserve"><value>Unlink</value></data>
+  <data name="TeamAdmin_NoResources" xml:space="preserve"><value>No resources linked to this team yet. Use the forms below to link a Google Drive folder or Google Group.</value></data>
+  <data name="TeamAdmin_LinkDriveFolder" xml:space="preserve"><value>Link Drive Folder</value></data>
+  <data name="TeamAdmin_FolderUrl" xml:space="preserve"><value>Folder URL</value></data>
+  <data name="TeamAdmin_FolderUrlHelp" xml:space="preserve"><value>Paste the Google Drive folder URL. The folder must be shared with the service account.</value></data>
+  <data name="TeamAdmin_LinkFolder" xml:space="preserve"><value>Link Folder</value></data>
+  <data name="TeamAdmin_LinkGoogleGroup" xml:space="preserve"><value>Link Google Group</value></data>
+  <data name="TeamAdmin_GroupEmail" xml:space="preserve"><value>Group Email</value></data>
+  <data name="TeamAdmin_GroupEmailHelp" xml:space="preserve"><value>Enter the Google Group email address. The service account must be a Manager of the group.</value></data>
+  <data name="TeamAdmin_LinkGroup" xml:space="preserve"><value>Link Group</value></data>
+  <data name="TeamDetail_TeamCoordinators" xml:space="preserve"><value>Coordinators</value></data>
+  <data name="TeamDetail_AboutTeam" xml:space="preserve"><value>About</value></data>
+  <data name="TeamDetail_EditPage" xml:space="preserve"><value>Edit Page</value></data>
+  <data name="TeamDetail_LastUpdated" xml:space="preserve"><value>Last updated</value></data>
+  <data name="TeamDetail_NoPageContent" xml:space="preserve"><value>This team doesn't have a page yet. Add content to tell humans what you're about.</value></data>
+  <data name="TeamDetail_AddPageContent" xml:space="preserve"><value>Add Page Content</value></data>
+  <data name="TeamDetail_ChildTeamMembers" xml:space="preserve"><value>Humans via sub-teams ({0})</value><comment>{0} = count</comment></data>
+  <data name="TeamDetail_ManageRoles" xml:space="preserve"><value>Manage Roles</value></data>
+  <data name="TeamDetail_SubTeams" xml:space="preserve"><value>Sub-teams</value></data>
+  <data name="Teams_PublicDirectory" xml:space="preserve"><value>Teams</value></data>
+  <data name="Teams_PublicDirectorySubtitle" xml:space="preserve"><value>Discover the teams that make things happen.</value></data>
+  <data name="Teams_LearnMore" xml:space="preserve"><value>Learn More</value></data>
+  <data name="Teams_NoPublicTeams" xml:space="preserve"><value>No public team pages available yet.</value></data>
+  <data name="EditTeamPage_Saved" xml:space="preserve"><value>Team page updated successfully.</value></data>
+  <data name="Birthdays_Title" xml:space="preserve"><value>Birthday Calendar</value></data>
+  <data name="Birthdays_Count" xml:space="preserve"><value>{0} birthdays in {1}</value></data>
+  <data name="Birthdays_Count_One" xml:space="preserve"><value>{0} birthday in {1}</value></data>
+  <data name="Birthdays_None" xml:space="preserve"><value>No birthdays in {0}.</value></data>
+  <data name="Birthdays_Privacy" xml:space="preserve"><value>Only humans who have set their birthday are shown.</value></data>
+  <data name="Map_Title" xml:space="preserve"><value>Humans Map</value></data>
+  <data name="Map_Count" xml:space="preserve"><value>{0} humans with location</value></data>
+  <data name="Map_None" xml:space="preserve"><value>No humans have set their location yet.</value></data>
+  <data name="Map_Privacy" xml:space="preserve"><value>Only humans who have set their location are shown. Location is approximate and based on city.</value></data>
+  <data name="TeamAdmin_AddMember" xml:space="preserve"><value>Add Member</value></data>
+  <data name="TeamAdmin_SearchHumans" xml:space="preserve"><value>Search humans</value></data>
+  <data name="TeamAdmin_SearchPlaceholder" xml:space="preserve"><value>Type a name or email...</value></data>
+  <data name="TeamAdmin_MemberAdded" xml:space="preserve"><value>Member added successfully.</value></data>
+  <data name="TeamAdmin_NoResults" xml:space="preserve"><value>No matching humans found</value></data>
+  <data name="TeamAdmin_Add" xml:space="preserve"><value>Add</value></data>
+  <data name="TeamAdmin_TicketLabel" xml:space="preserve"><value>Ticket #{0}</value><comment>{0} = ticket barcode; shown as the detail line on a ticket-resolved person-picker result</comment></data>
+  <data name="Roster_All" xml:space="preserve"><value>All</value></data>
+  <data name="Roster_ColAssignedTo" xml:space="preserve"><value>Assigned To</value></data>
+  <data name="Roster_ColPeriod" xml:space="preserve"><value>Period</value></data>
+  <data name="Roster_ColPriority" xml:space="preserve"><value>Priority</value></data>
+  <data name="Roster_ColRole" xml:space="preserve"><value>Role</value></data>
+  <data name="Roster_ColSlot" xml:space="preserve"><value>Slot</value></data>
+  <data name="Roster_ColTeam" xml:space="preserve"><value>Team</value></data>
+  <data name="Roster_NoSlots" xml:space="preserve"><value>No role slots defined across teams.</value></data>
+  <data name="Roster_PeriodFilter" xml:space="preserve"><value>Period: {0}</value></data>
+  <data name="Roster_PriorityFilter" xml:space="preserve"><value>Priority: {0}</value></data>
+  <data name="Roster_SlotOpen" xml:space="preserve"><value>Open</value></data>
+  <data name="Roster_StatusFilled" xml:space="preserve"><value>Filled</value></data>
+  <data name="Roster_StatusFilter" xml:space="preserve"><value>Status: {0}</value></data>
+  <data name="Roster_StatusOpen" xml:space="preserve"><value>Open</value></data>
+  <data name="Roster_Title" xml:space="preserve"><value>Team Roster</value></data>
+  <data name="Teams_Departments" xml:space="preserve"><value>Departments</value></data>
+  <data name="Teams_HiddenTeams" xml:space="preserve"><value>Hidden Teams</value></data>
+  <data name="Teams_HiddenTeamsNote" xml:space="preserve"><value>(visible to admins only)</value></data>
+  <data name="Teams_Summary" xml:space="preserve"><value>Summary</value></data>
+  <data name="Teams_SyncStatus" xml:space="preserve"><value>Sync Status</value></data>
+  <data name="Teams_SystemTeams" xml:space="preserve"><value>System Teams</value></data>
+  <data name="TeamAdminResources_Title" xml:space="preserve"><value>Manage Resources - {0}</value><comment>{0} = team name</comment></data>
+  <data name="TeamAdminMembers_Title" xml:space="preserve"><value>Manage Members - {0}</value><comment>{0} = team name</comment></data>
+  <data name="TeamAdminRequests_Title" xml:space="preserve"><value>Pending Requests - {0}</value><comment>{0} = team name</comment></data>
+</root>

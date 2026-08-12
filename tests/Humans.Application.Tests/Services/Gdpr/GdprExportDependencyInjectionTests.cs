@@ -10,7 +10,7 @@ using AuditLogService = Humans.Application.Services.AuditLog.AuditLogService;
 using CampService = Humans.Application.Services.Camps.CampService;
 using RoleAssignmentService = Humans.Application.Services.Auth.RoleAssignmentService;
 using ShiftSignupService = Humans.Application.Services.Shifts.ShiftSignupService;
-using TeamService = Humans.Application.Services.Teams.TeamService;
+using TeamService = Humans.Teams.Services.TeamService;
 
 namespace Humans.Application.Tests.Services.Gdpr;
 

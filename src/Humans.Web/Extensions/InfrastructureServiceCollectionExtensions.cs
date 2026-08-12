@@ -4,6 +4,7 @@ using Humans.Application.Services.Users;
 using Humans.Application.Configuration;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Caching;
+using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.HumanLifecycle;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Services.HumanLifecycle;
@@ -42,7 +43,6 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddProfileSection(configuration);
         services.AddUsersSection();
         services.AddAuthSection();
-        services.AddTeamsSection();
         services.AddCampsSection();
         services.AddShiftsSection();
         services.AddEarlyEntrySection();
@@ -66,6 +66,16 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<SyncLegalDocumentsJob>();
         services.AddScoped<SendReConsentReminderJob>();
         services.AddTransient<MailerAudienceSyncJob>();
+
+        // Base collaborators that Teams' section file used to register on the way past.
+        // ActiveTeamsCacheInvalidator is a Humans.Infrastructure implementation of a
+        // Humans.Application interface (the IInvalidator family other sections evict Teams'
+        // master cache entry through), and SystemTeamSyncJob is a Humans.Infrastructure job
+        // bound to GoogleIntegration's ISystemTeamSync — neither is Teams' to own
+        // (design §15 step 4, Governance's rule: the section that owns the file is not always
+        // the section that owns the line).
+        services.AddScoped<IActiveTeamsCacheInvalidator, ActiveTeamsCacheInvalidator>();
+        services.AddScoped<ISystemTeamSync, SystemTeamSyncJob>();
 
         // Base collaborators that Governance's section file used to register on the way past.
         // The three badge-cache invalidators are Humans.Infrastructure implementations of

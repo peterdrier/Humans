@@ -1,5 +1,5 @@
 <!-- freshness:triggers
-  src/Humans.Application/Services/Teams/**
+  src/Sections/Humans.Teams/**
   src/Sections/Humans.Onboarding/**
   src/Humans.Application/Services/Consent/**
   src/Humans.Application/Services/Auth/**

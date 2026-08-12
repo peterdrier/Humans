@@ -41,7 +41,7 @@ Flat record — already clean. Holds `TeamId`/`UserId` scalars with no navs. Two
 
 ### Google resource entities
 
-`GoogleResource` rows (`google_resources` table) are documented under `docs/sections/Teams.md` (Team Resources sub-aggregate) — owned by `TeamResourceService`. Google Integration services call `ITeamResourceService` rather than querying the table.
+`GoogleResource` rows (`google_resources` table) are documented under `src/Sections/Humans.Teams/Docs/Teams.md` (Team Resources sub-aggregate) — owned by `TeamResourceService`. Google Integration services call `ITeamResourceService` rather than querying the table.
 
 ### External-API surfaces
 

@@ -1,6 +1,6 @@
 using Humans.Application.Interfaces.Shifts;
 using Humans.Tickets.Contracts;
-using Humans.Application.Interfaces.Teams;
+using Humans.Teams.Contracts;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.UI.Controllers;

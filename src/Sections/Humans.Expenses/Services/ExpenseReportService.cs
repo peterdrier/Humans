@@ -7,7 +7,7 @@ using Humans.Finance.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Application.Interfaces.Holded;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Application.Interfaces.Teams;
+using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Expenses.Services.Dtos;
 using Humans.Domain.Entities;

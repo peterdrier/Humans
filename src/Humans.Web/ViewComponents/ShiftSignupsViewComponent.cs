@@ -1,5 +1,5 @@
 using Humans.Application.Interfaces.Shifts;
-using Humans.Application.Interfaces.Teams;
+using Humans.Teams.Contracts;
 using Humans.Web.Models;
 using Humans.Web.Models.Shifts;
 using Microsoft.AspNetCore.Mvc;

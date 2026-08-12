@@ -12,7 +12,7 @@ using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.HumanLifecycle;
 using Humans.Onboarding.Contracts;
 using Humans.Application.Interfaces.Profiles;
-using Humans.Application.Interfaces.Teams;
+using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -44,6 +44,7 @@ public class DevPersonaSeederTests
     private readonly IRoleAssignmentService _roleAssignments = Substitute.For<IRoleAssignmentService>();
     private readonly IUserInfoInvalidator _userInfoInvalidator = Substitute.For<IUserInfoInvalidator>();
     private readonly ITeamService _teams = Substitute.For<ITeamService>();
+    private readonly ITeamSeeding _teamSeeding = Substitute.For<ITeamSeeding>();
     private readonly ISystemTeamSync _systemTeamSync = Substitute.For<ISystemTeamSync>();
     private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
@@ -63,6 +64,7 @@ public class DevPersonaSeederTests
         _roleAssignments,
         _userInfoInvalidator,
         _teams,
+        _teamSeeding,
         _systemTeamSync,
         _users,
         _audit,

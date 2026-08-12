@@ -2,7 +2,7 @@ using Humans.Store.Domain;
 using System.Security.Claims;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Shifts;
-using Humans.Application.Interfaces.Teams;
+using Humans.Teams.Contracts;
 using Humans.Store.Services.Dtos;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;

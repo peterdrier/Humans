@@ -4,7 +4,7 @@ using Humans.Campaigns.Contracts;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Tickets.Data;
 using Humans.Application.Interfaces.Shifts;
-using Humans.Application.Interfaces.Teams;
+using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Tickets.Services;
 using Humans.Domain.Constants;

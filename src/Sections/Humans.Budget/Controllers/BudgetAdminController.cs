@@ -2,7 +2,7 @@ using Humans.Application.Extensions;
 using Humans.Budget.Contracts;
 using Humans.Budget.Services;
 using Humans.Finance.Contracts;
-using Humans.Application.Interfaces.Teams;
+using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Domain.Enums;
 using Humans.UI.Controllers;

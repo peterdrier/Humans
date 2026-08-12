@@ -6,7 +6,7 @@ using Humans.Budget.Contracts;
 using Humans.Application.Interfaces.Camps;
 using Humans.CityPlanning.Contracts;
 using Humans.Application.Interfaces.Shifts;
-using Humans.Application.Interfaces.Teams;
+using Humans.Teams.Contracts;
 using Humans.Domain.Constants;
 using Humans.Domain.Enums;
 using Humans.UI.Authorization;

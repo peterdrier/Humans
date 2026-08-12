@@ -654,15 +654,8 @@
     },
     "Teams": {
       "paths": [
-        "src/Humans.Application/Interfaces/Teams/**",
-        "src/Humans.Application/Services/Teams/**",
-        "src/Humans.Domain/Entities/Team*",
-        "src/Humans.Infrastructure/Repositories/Teams/**",
-        "src/Humans.Infrastructure/Services/Teams/**",
-        "src/Humans.Web/Controllers/Team*",
-        "src/Humans.Web/Models/TeamResourceViewModels.cs",
-        "src/Humans.Web/Models/TeamSyncViewModels.cs",
-        "src/Humans.Web/Models/TeamViewModels.cs"
+        "src/Sections/Humans.Teams/**",
+        "src/Sections/Humans.Teams.Contracts/**"
       ],
       "symbols": [
         "Team*",

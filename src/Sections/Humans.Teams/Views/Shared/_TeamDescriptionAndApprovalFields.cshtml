@@ -1,0 +1,38 @@
+@using Humans.UI.Extensions
+@model Humans.Teams.Models.TeamFormViewModelBase
+@{
+    var isReadOnly = (bool?)ViewData["IsReadOnly"] ?? false;
+    var hideRequiresApproval = (bool?)ViewData["HideRequiresApproval"] ?? false;
+    var showRequiresApprovalHelp = (bool?)ViewData["ShowRequiresApprovalHelp"] ?? true;
+}
+
+<div class="mb-3">
+    <label asp-for="Description" class="form-label">@Localizer["AdminTeams_DescriptionOptional"]</label>
+    @if (isReadOnly)
+    {
+        <div class="form-control bg-light" style="min-height: 6rem;">@Html.SanitizedMarkdown(Model.Description)</div>
+    }
+    else
+    {
+        <markdown-editor asp-for="Description" rows="4" />
+    }
+    <span asp-validation-for="Description" class="text-danger"></span>
+</div>
+
+@if (!hideRequiresApproval)
+{
+    <div class="mb-3 form-check">
+        <input asp-for="RequiresApproval" type="checkbox" class="form-check-input" disabled="@(isReadOnly ? "disabled" : null)" />
+        <label asp-for="RequiresApproval" class="form-check-label">@Localizer["AdminTeams_RequireApproval"]</label>
+        @if (showRequiresApprovalHelp)
+        {
+            <div class="form-text">@Localizer["AdminTeams_RequireApprovalHelp"]</div>
+        }
+    </div>
+
+    <div class="mb-3 form-check">
+        <input asp-for="IsHidden" type="checkbox" class="form-check-input" disabled="@(isReadOnly ? "disabled" : null)" />
+        <label asp-for="IsHidden" class="form-check-label">Hidden team</label>
+        <div class="form-text">When enabled, this team is invisible to non-admin users. It will not appear on profile cards, team listings, or public pages. Useful for privacy-sensitive groups (e.g., assistance programs).</div>
+    </div>
+}

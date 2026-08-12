@@ -46,7 +46,6 @@ internal sealed class HumansDbContext(DbContextOptions<HumansDbContext> options)
         typeof(Configurations.Camps.CampConfiguration).Namespace!,
         typeof(Configurations.AuditLog.AuditLogEntryConfiguration).Namespace!,
         typeof(Configurations.Shifts.RotaConfiguration).Namespace!,
-        typeof(Configurations.Teams.TeamConfiguration).Namespace!,
     ];
 
     protected override void OnModelCreating(ModelBuilder builder)

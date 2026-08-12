@@ -7,7 +7,7 @@ using Humans.Budget.Contracts;
 using Humans.Finance.Contracts;
 using Humans.Application.Interfaces.Holded;
 using Humans.Expenses.Data;
-using Humans.Application.Interfaces.Teams;
+using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Expenses.Services;
 using Humans.Expenses.Services.Dtos;

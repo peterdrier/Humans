@@ -1,3 +1,4 @@
+using Humans.Teams.Domain;
 using AwesomeAssertions;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -12,7 +13,7 @@ using Humans.Application.Interfaces.EarlyEntry;
 using Humans.Notifications.Contracts;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
-using Humans.Application.Interfaces.Teams;
+using Humans.Teams.Contracts;
 using Humans.Infrastructure.Repositories.Shifts;
 
 namespace Humans.Application.Tests.Services.Shifts;

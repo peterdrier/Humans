@@ -118,7 +118,7 @@ Terse, authoritative invariant docs for each major section: concepts, data model
 | [Shifts](sections/Shifts.md) | Event shifts, rotas, signups, range blocks, event settings, general availability, and per-event volunteer profiles |
 | [Store](../src/Sections/Humans.Store/Docs/Store.md) | Per-camp catalog ordering, multi-method payments, and consolidated Holded factura issuance for Camp Lead purchases |
 | [Survey](../src/Sections/Humans.Surveys/Docs/Surveys.md) | First-party, GDPR-compliant surveys: author typed/branching multi-language surveys, send tokenised email invitations to a resolved audience, collect responses across three anonymity tiers (invite link or public slug), and read results in-app, via CSV/JSON export, or a key-authed analysis API |
-| [Teams](sections/Teams.md) | Departments and sub-teams, join requests, role definitions, team pages, and linked Google resources |
+| [Teams](../src/Sections/Humans.Teams/Docs/Teams.md) | Departments and sub-teams, join requests, role definitions, team pages, and linked Google resources |
 | [Tickets](../src/Sections/Humans.Tickets/Docs/Tickets.md) | External ticket vendor sync (orders + attendees), Stripe-fee enrichment, auto-matching by email, event-participation derivation |
 | [Users/Identity](sections/Users.md) | The User aggregate, identity-framework extensions, account provisioning, unsubscribe surface, and event participation |
 

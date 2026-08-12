@@ -1,6 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Shifts;
-using Humans.Application.Interfaces.Teams;
+using Humans.Teams.Contracts;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Models.Shifts;

@@ -1,3 +1,4 @@
+using Humans.Teams.Domain;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using NodaTime.Testing;
@@ -10,7 +11,7 @@ using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Caching;
 using Humans.Email.Contracts;
 using Humans.Application.Interfaces.GoogleIntegration;
-using Humans.Application.Interfaces.Teams;
+using Humans.Teams.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Application.Interfaces.Shifts;

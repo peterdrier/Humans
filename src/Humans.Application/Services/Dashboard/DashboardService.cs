@@ -3,7 +3,7 @@ using Humans.Application.Helpers;
 using Humans.Application.Interfaces.Dashboard;
 using Humans.Governance.Contracts;
 using Humans.Application.Interfaces.Shifts;
-using Humans.Application.Interfaces.Teams;
+using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Enums;

@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Caching.Memory;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Caching;
-using Humans.Application.Interfaces.Teams;
+using Humans.Teams.Contracts;
 
 namespace Humans.Infrastructure.Caching;
 

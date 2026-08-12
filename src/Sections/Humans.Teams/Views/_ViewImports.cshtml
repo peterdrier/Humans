@@ -1,0 +1,28 @@
+@* A section RCL does NOT inherit the host's Views/_ViewImports.cshtml. Omitting a line
+   here ships broken markup with a green build and no runtime error — see design §1/§2.
+   Guarded by TeamsPageRenderTests (step 12). *@
+@using Humans.Application.Extensions
+@using Humans.Domain.Enums
+@using Humans.Teams
+@using Humans.Teams.Contracts
+@using Humans.Teams.Controllers
+@using Humans.Teams.Models
+@using Humans.Teams.Services
+@using Humans.UI
+@using Humans.UI.Authorization
+@using Humans.UI.Extensions
+@using Humans.UI.Models
+@using Humans.UI.Models.Tables
+@using Humans.UI.ViewComponents
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Html
+@using Microsoft.AspNetCore.Mvc.ViewFeatures
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<TeamsResource> Localizer
+@* Teams_Title, Teams_Member, MyTeams_View, MyTeams_Role and TeamDetail_Actions stay in
+   SharedResource — something outside the section renders each of them, and two of those
+   renderers are Humans.UI partials that cannot see a section resource set. So do the
+   Enum_SlotPriority_* / Enum_RolePeriod_* keys, whose enums are Base's (§15.3b). *@
+@inject IStringLocalizer<SharedResource> SharedLocalizer
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+@addTagHelper *, Humans.UI
