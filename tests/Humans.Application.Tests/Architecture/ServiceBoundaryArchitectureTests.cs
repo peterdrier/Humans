@@ -59,8 +59,8 @@ public class ServiceBoundaryArchitectureTests
             [SectionRepository("Humans.Surveys.Data.ISurveyRepository")] = "Surveys",
             [typeof(ISyncSettingsRepository)] = "GoogleIntegration",
             [typeof(ITeamRepository)] = "Teams",
-            [typeof(ITicketRepository)] = "Tickets",
-            [typeof(ITicketTransferRepository)] = "Tickets",
+            [SectionRepository("Humans.Tickets.Data.ITicketRepository")] = "Tickets",
+            [SectionRepository("Humans.Tickets.Data.ITicketTransferRepository")] = "Tickets",
             [typeof(IUserRepository)] = "Humans",
             [typeof(IVolunteerTrackingRepository)] = "Shifts",
         };

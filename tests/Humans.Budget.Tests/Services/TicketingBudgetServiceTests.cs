@@ -1,7 +1,7 @@
 using AwesomeAssertions;
 using Humans.Budget.Services;
 using Humans.Budget.Contracts;
-using Humans.Application.Interfaces.Tickets;
+using Humans.Tickets.Contracts;
 using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Domain.Enums;

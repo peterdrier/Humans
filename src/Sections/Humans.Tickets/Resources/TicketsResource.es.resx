@@ -1,0 +1,78 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- ReSharper disable MarkupTextTypo -->
+<root xmlns:ns1="urn:schemas-microsoft-com:xml-msdata" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:schema id="root">
+    <xs:element name="root" ns1:IsDataSet="true">
+      <xs:complexType>
+        <xs:choice maxOccurs="unbounded">
+          <xs:element name="data">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element name="value" type="xsd:string" minOccurs="0" ns1:Ordinal="1" />
+                <xs:element name="comment" type="xsd:string" minOccurs="0" ns1:Ordinal="2" />
+              </xs:sequence>
+              <xs:attribute name="name" type="xsd:string" ns1:Ordinal="0" />
+              <xs:attribute name="type" type="xsd:string" />
+              <xs:attribute name="mimetype" type="xsd:string" />
+            </xs:complexType>
+          </xs:element>
+          <xs:element name="resheader">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element name="value" type="xsd:string" minOccurs="0" ns1:Ordinal="1" />
+              </xs:sequence>
+              <xs:attribute name="name" type="xsd:string" use="required" />
+            </xs:complexType>
+          </xs:element>
+        </xs:choice>
+      </xs:complexType>
+    </xs:element>
+  </xs:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>1.3</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="TicketTransfer_Pending" xml:space="preserve">
+    <value>Pendiente de revisión</value>
+  </data>
+  <data name="TicketTransfer_SendButton" xml:space="preserve">
+    <value>Enviar</value>
+  </data>
+  <data name="TicketTransfer_CancelButton" xml:space="preserve">
+    <value>Cancelar</value>
+  </data>
+  <data name="Enum_TicketTransferStatus_Approved" xml:space="preserve"><value>Completada</value></data>
+  <data name="Enum_TicketTransferStatus_Cancelled" xml:space="preserve"><value>Cancelada</value></data>
+  <data name="Enum_TicketTransferStatus_Pending" xml:space="preserve"><value>Pendiente de revisión</value></data>
+  <data name="Enum_TicketTransferStatus_Rejected" xml:space="preserve"><value>Cancelada por el equipo</value></data>
+  <data name="TicketTransfer_AlreadyPending" xml:space="preserve"><value>Transferencia ya pendiente</value></data>
+  <data name="TicketTransfer_CancelRequest" xml:space="preserve"><value>Cancelar solicitud</value></data>
+  <data name="TicketTransfer_CheckedIn" xml:space="preserve"><value>Ya has hecho el check-in — no se puede transferir</value></data>
+  <data name="TicketTransfer_ConfirmDetails" xml:space="preserve"><value>Esto solicitará transferir la entrada {0} ({1}) a {2}.</value></data>
+  <data name="TicketTransfer_ConfirmNote" xml:space="preserve"><value>Nuestro equipo de entradas lo procesará y te avisará en breve.</value></data>
+  <data name="TicketTransfer_Continue" xml:space="preserve"><value>Continuar</value></data>
+  <data name="TicketTransfer_NoneTransferable" xml:space="preserve"><value>Ninguna de tus entradas se puede transferir ahora mismo.</value></data>
+  <data name="TicketTransfer_NoRequests" xml:space="preserve"><value>No has solicitado ninguna transferencia.</value></data>
+  <data name="TicketTransfer_NoTickets" xml:space="preserve"><value>No tienes ninguna entrada para transferir.</value></data>
+  <data name="TicketTransfer_NotTransferable" xml:space="preserve"><value>No transferible</value></data>
+  <data name="TicketTransfer_ReasonLabel" xml:space="preserve"><value>Motivo de la transferencia (opcional, visible para el equipo de entradas)</value></data>
+  <data name="TicketTransfer_RecipientPlaceholder" xml:space="preserve"><value>Busca por nombre o pega su correo exacto…</value></data>
+  <data name="TicketTransfer_Requested" xml:space="preserve"><value>Solicitada</value></data>
+  <data name="TicketTransfer_RequestTransfer" xml:space="preserve"><value>Solicitar transferencia</value></data>
+  <data name="TicketTransfer_StatusApproved" xml:space="preserve"><value>Completada</value></data>
+  <data name="TicketTransfer_StatusCancelled" xml:space="preserve"><value>Cancelada</value></data>
+  <data name="TicketTransfer_StatusRejected" xml:space="preserve"><value>Cancelada por el equipo</value></data>
+  <data name="TicketTransfer_Step1" xml:space="preserve"><value>1. Elige la entrada que vas a transferir</value></data>
+  <data name="TicketTransfer_Step2" xml:space="preserve"><value>2. ¿A quién se la envías?</value></data>
+  <data name="TicketTransfer_Step3" xml:space="preserve"><value>3. Confirmar</value></data>
+  <data name="TicketTransfer_Title" xml:space="preserve"><value>Transferir una entrada</value></data>
+  <data name="TicketTransfer_YourRequests" xml:space="preserve"><value>Tus solicitudes de transferencia</value></data>
+</root>

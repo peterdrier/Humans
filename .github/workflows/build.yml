@@ -42,7 +42,7 @@ env:
     GovernanceDbContext:src/Sections/Humans.Governance
     CampaignsDbContext:src/Sections/Humans.Campaigns
     GoogleIntegrationDbContext:src/Humans.Infrastructure
-    TicketsDbContext:src/Humans.Infrastructure
+    TicketsDbContext:src/Sections/Humans.Tickets
     FeedbackDbContext:src/Sections/Humans.Feedback
     CityPlanningDbContext:src/Sections/Humans.CityPlanning
     BudgetDbContext:src/Sections/Humans.Budget

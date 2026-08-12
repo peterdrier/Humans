@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Sections\Humans.TicketTailor\Humans.TicketTailor.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NodaTime.Testing" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      The client tests build a TicketTailorService over a stubbed HttpMessageHandler and a
+      MemoryCache, so this project names ASP.NET / Extensions types the shared framework
+      carries (G5-SECTION-TEMPLATE.md step 8).
+    -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <!--
+    No EF Core package: the adapter owns no tables, so there is no DbContext to fixture.
+    That is why tests/Directory.Build.props excludes this project from the shared
+    TestDbContextFactory compile item — see the comment there.
+  -->
+
+</Project>

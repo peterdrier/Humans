@@ -58,6 +58,9 @@
     <Project Path="src/Sections/Humans.Surveys.Contracts/Humans.Surveys.Contracts.csproj" />
     <Project Path="src/Sections/Humans.SystemSettings/Humans.SystemSettings.csproj" />
     <Project Path="src/Sections/Humans.SystemSettings.Contracts/Humans.SystemSettings.Contracts.csproj" />
+    <Project Path="src/Sections/Humans.TicketTailor/Humans.TicketTailor.csproj" />
+    <Project Path="src/Sections/Humans.Tickets/Humans.Tickets.csproj" />
+    <Project Path="src/Sections/Humans.Tickets.Contracts/Humans.Tickets.Contracts.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <File Path="tests/Directory.Build.props" />
@@ -93,6 +96,8 @@
     <Project Path="tests/Humans.Search.Tests/Humans.Search.Tests.csproj" />
     <Project Path="tests/Humans.Store.Tests/Humans.Store.Tests.csproj" />
     <Project Path="tests/Humans.Surveys.Tests/Humans.Surveys.Tests.csproj" />
+    <Project Path="tests/Humans.TicketTailor.Tests/Humans.TicketTailor.Tests.csproj" />
+    <Project Path="tests/Humans.Tickets.Tests/Humans.Tickets.Tests.csproj" />
     <Project Path="tests/Humans.SystemSettings.Tests/Humans.SystemSettings.Tests.csproj" />
     <Project Path="tests/Humans.Web.Tests/Humans.Web.Tests.csproj" />
   </Folder>

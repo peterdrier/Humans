@@ -38,6 +38,8 @@
     <ProjectReference Include="..\Sections\Humans.Store\Humans.Store.csproj" />
     <ProjectReference Include="..\Sections\Humans.Surveys\Humans.Surveys.csproj" />
     <ProjectReference Include="..\Sections\Humans.SystemSettings\Humans.SystemSettings.csproj" />
+    <ProjectReference Include="..\Sections\Humans.Tickets\Humans.Tickets.csproj" />
+    <ProjectReference Include="..\Sections\Humans.TicketTailor\Humans.TicketTailor.csproj" />
   </ItemGroup>
 
   <ItemGroup>

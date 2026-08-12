@@ -1,7 +1,7 @@
 using Hangfire;
 using Humans.Application.Configuration;
 using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.Tickets;
+using Humans.Tickets.Contracts;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -13,7 +13,7 @@ namespace Humans.Infrastructure.Jobs;
 /// </summary>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
 public class TicketSyncJob(
-    ITicketSyncService syncService,
+    ITicketSync syncService,
     IOptions<TicketVendorSettings> settings,
     ILogger<TicketSyncJob> logger) : IRecurringJob
 {

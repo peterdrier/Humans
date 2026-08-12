@@ -460,15 +460,6 @@
   <data name="Dashboard_DeclareNotAttending" xml:space="preserve">
     <value>Non vengo quest'anno</value>
   </data>
-  <data name="TicketTransfer_Pending" xml:space="preserve">
-    <value>In attesa di revisione</value>
-  </data>
-  <data name="TicketTransfer_SendButton" xml:space="preserve">
-    <value>Invia</value>
-  </data>
-  <data name="TicketTransfer_CancelButton" xml:space="preserve">
-    <value>Annulla</value>
-  </data>
   <data name="Guest_Greeting" xml:space="preserve">
     <value>Ciao, {0}.</value>
   </data>
@@ -4399,10 +4390,6 @@
   <data name="Enum_SpaceSize_Sqm450" xml:space="preserve"><value>450 m²</value></data>
   <data name="Enum_SpaceSize_Sqm600" xml:space="preserve"><value>600 m²</value></data>
   <data name="Enum_SpaceSize_Sqm800" xml:space="preserve"><value>800 m²</value></data>
-  <data name="Enum_TicketTransferStatus_Approved" xml:space="preserve"><value>Completato</value></data>
-  <data name="Enum_TicketTransferStatus_Cancelled" xml:space="preserve"><value>Annullato</value></data>
-  <data name="Enum_TicketTransferStatus_Pending" xml:space="preserve"><value>In attesa di revisione</value></data>
-  <data name="Enum_TicketTransferStatus_Rejected" xml:space="preserve"><value>Annullato dal team</value></data>
   <data name="Enum_YesNoMaybe_Maybe" xml:space="preserve"><value>Forse</value></data>
   <data name="Enum_YesNoMaybe_No" xml:space="preserve"><value>No</value></data>
   <data name="Enum_YesNoMaybe_Yes" xml:space="preserve"><value>Sì</value></data>
@@ -4512,28 +4499,6 @@
   <data name="Teams_Summary" xml:space="preserve"><value>Riepilogo</value></data>
   <data name="Teams_SyncStatus" xml:space="preserve"><value>Stato sincronizzazione</value></data>
   <data name="Teams_SystemTeams" xml:space="preserve"><value>Team di sistema</value></data>
-  <data name="TicketTransfer_AlreadyPending" xml:space="preserve"><value>Trasferimento già in sospeso</value></data>
-  <data name="TicketTransfer_CancelRequest" xml:space="preserve"><value>Annulla richiesta</value></data>
-  <data name="TicketTransfer_CheckedIn" xml:space="preserve"><value>Check-in già effettuato — non può essere trasferito</value></data>
-  <data name="TicketTransfer_ConfirmDetails" xml:space="preserve"><value>Questo richiederà il trasferimento del biglietto {0} ({1}) a {2}.</value></data>
-  <data name="TicketTransfer_ConfirmNote" xml:space="preserve"><value>Il nostro team biglietti lo elaborerà e ti farà sapere a breve.</value></data>
-  <data name="TicketTransfer_Continue" xml:space="preserve"><value>Continua</value></data>
-  <data name="TicketTransfer_NoneTransferable" xml:space="preserve"><value>Nessuno dei tuoi biglietti può essere trasferito in questo momento.</value></data>
-  <data name="TicketTransfer_NoRequests" xml:space="preserve"><value>Non hai richiesto alcun trasferimento.</value></data>
-  <data name="TicketTransfer_NoTickets" xml:space="preserve"><value>Non hai biglietti da trasferire.</value></data>
-  <data name="TicketTransfer_NotTransferable" xml:space="preserve"><value>Non trasferibile</value></data>
-  <data name="TicketTransfer_ReasonLabel" xml:space="preserve"><value>Motivo del trasferimento (facoltativo, visibile al team biglietti)</value></data>
-  <data name="TicketTransfer_RecipientPlaceholder" xml:space="preserve"><value>Cerca per nome, o incolla la sua email esatta…</value></data>
-  <data name="TicketTransfer_Requested" xml:space="preserve"><value>Richiesto</value></data>
-  <data name="TicketTransfer_RequestTransfer" xml:space="preserve"><value>Richiedi trasferimento</value></data>
-  <data name="TicketTransfer_StatusApproved" xml:space="preserve"><value>Completato</value></data>
-  <data name="TicketTransfer_StatusCancelled" xml:space="preserve"><value>Annullato</value></data>
-  <data name="TicketTransfer_StatusRejected" xml:space="preserve"><value>Annullato dal team</value></data>
-  <data name="TicketTransfer_Step1" xml:space="preserve"><value>1. Scegli il biglietto da trasferire</value></data>
-  <data name="TicketTransfer_Step2" xml:space="preserve"><value>2. A chi lo stai inviando?</value></data>
-  <data name="TicketTransfer_Step3" xml:space="preserve"><value>3. Conferma</value></data>
-  <data name="TicketTransfer_Title" xml:space="preserve"><value>Trasferisci un biglietto</value></data>
-  <data name="TicketTransfer_YourRequests" xml:space="preserve"><value>Le tue richieste di trasferimento</value></data>
   <data name="Onboarding_BurnerNameLabel" xml:space="preserve"><value>Burner name</value></data>
   <data name="Onboarding_LegalFirstNameLabel" xml:space="preserve"><value>Nome legale</value></data>
   <data name="Onboarding_LegalLastNameLabel" xml:space="preserve"><value>Cognome legale</value></data>

@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Application.Configuration;
+using Humans.Tickets.Contracts;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Campaigns.Contracts;
 using Humans.Application.Interfaces.Camps;
@@ -11,7 +12,7 @@ using Humans.Onboarding.Contracts;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
-using Humans.Application.Interfaces.Tickets;
+
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -84,7 +85,7 @@ public class ProfileControllerPopoverTests
             new ConfigurationRegistry(),
             NullLogger<ProfileController>.Instance,
             localizer,
-            Substitute.For<ITicketService>(),
+            Substitute.For<ITicketServiceRead>(),
             _teamService,
             Substitute.For<ICampaignService>(),
             _campService,

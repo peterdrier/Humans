@@ -3,7 +3,7 @@ using Humans.Application;
 using Humans.Gdpr.Contracts;
 using Humans.Onboarding.Contracts;
 using Humans.Application.Interfaces.Profiles;
-using Humans.Application.Interfaces.Tickets;
+using Humans.Tickets.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.UI.Constants;
@@ -30,7 +30,7 @@ public class GuestControllerTests
 {
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly ICommunicationPreferenceService _commPrefService = Substitute.For<ICommunicationPreferenceService>();
-    private readonly ITicketService _ticketQueryService = Substitute.For<ITicketService>();
+    private readonly ITicketServiceRead _ticketQueryService = Substitute.For<ITicketServiceRead>();
     private readonly IGdprExportService _gdprExportService = Substitute.For<IGdprExportService>();
     private readonly IOnboardingWidgetState _widgetState = Substitute.For<IOnboardingWidgetState>();
     private readonly IAccountDeletionService _accountDeletionService = Substitute.For<IAccountDeletionService>();

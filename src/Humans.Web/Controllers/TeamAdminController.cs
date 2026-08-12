@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
 using Humans.Application;
 using Humans.Application.DTOs;
-using Humans.Application.Interfaces.Tickets;
+using Humans.Tickets.Contracts;
 using Humans.Web.Authorization;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;

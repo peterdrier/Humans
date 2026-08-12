@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application;
+using Humans.Tickets.Contracts;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Controllers;

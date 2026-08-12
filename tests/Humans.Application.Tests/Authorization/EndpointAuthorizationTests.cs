@@ -97,7 +97,7 @@ public class EndpointAuthorizationTests
         { SectionType("Humans.Feedback.Controllers.FeedbackController"), "UpdateAssignment", "AdminOnly" },
         { SectionType("Humans.Feedback.Controllers.FeedbackController"), "SetGitHubIssue", "AdminOnly" },
         { SectionType("Humans.Scanner.Controllers.ScannerController"), null, "ScannerAccess" },
-        { typeof(TicketsOnsiteAdminController), null, "ScannerAccess" },
+        { SectionType("Humans.Tickets.Controllers.TicketsOnsiteAdminController"), null, "ScannerAccess" },
         { typeof(TicketsGateAdminController), null, "TicketAdminOrAdmin" },
         { typeof(ShiftDashboardController), null, "ShiftDepartmentManager" },
         { typeof(ShiftDashboardController), "SearchVolunteers", "ShiftDashboardAccess" },

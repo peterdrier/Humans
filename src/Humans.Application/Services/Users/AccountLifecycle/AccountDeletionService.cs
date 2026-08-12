@@ -6,7 +6,7 @@ using Humans.Onboarding.Contracts;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
-using Humans.Application.Interfaces.Tickets;
+using Humans.Tickets.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Interfaces;
 using Humans.Application.Services.Profiles;

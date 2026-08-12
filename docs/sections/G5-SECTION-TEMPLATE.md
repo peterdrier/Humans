@@ -55,7 +55,11 @@ section's presentation layer back to Shell behind a new view component, and the 
 resx carve had to leave keys behind for MVC's global data-annotation localizer), and Search
 (the widest fan-out of any section and the *smallest* outward surface — the first whose
 `Contracts/` is empty because every consumer moved in with it, and the first whose resx carve
-had to split a single prefix by renderer three ways). Step
+had to split a single prefix by renderer three ways), and Tickets (the first section to carve
+a *sibling adapter section* — `Humans.TicketTailor` — out of a Base connector while leaving the
+port in Base; the first to ship both a `.Contracts` leaf and a `Contracts/` folder; the first
+to take a view component back *out* of `Humans.UI`; and the first whose lane closed a
+cross-section cow path by moving two call sites off a Base port onto its own leaf). Step
 numbers match the former §15,
 so an old "§15 step 3b" citation reads as "step 3b" here.
 
@@ -662,6 +666,15 @@ Git Bash.)
      of that split. It went on the leaf, for one `ProjectReference` from `Humans.Application` and
      `Humans.Infrastructure` each plus ten one-line `using` swaps — Gdpr's trade at a tenth of
      the size (proven: Onboarding).
+   - **A section can ship both a `.Contracts` leaf and a `Contracts/` folder, and the split
+     is what each half may name.** Five sections ship the folder (Store, Containers, Feedback,
+     Calendar, Scanner) and a dozen ship the leaf; Tickets is the first with both, because its
+     `TicketStubViewComponent` is public surface that needs ASP.NET while its six Base
+     consumers need a framework-free leaf. **The leaf carries what Base consumers need and
+     must stay `Microsoft.NET.Sdk`; the folder carries public surface that needs the ASP.NET
+     framework reference the section project already has.** Nothing forbids the pair — say so
+     in both csproj comments so the next reader does not have to re-derive it (proven:
+     Tickets).
    - **Folder vs project is decided by *where the consumer lives*, not how much surface there
      is.** A consumer in Base forces `Humans.<Section>.Contracts` as its own project referencing
      only the bottom of the graph — a folder would cycle
@@ -696,6 +709,23 @@ Git Bash.)
        (`Extensions`, `Threading`), so `Humans.Mailer` took **no `Humans.Infrastructure`
        reference at all** — Scanner's table-less shape, reached by a section that had code in
        Base's service folder on the way in (proven: Mailer).
+     - **…and a third disposition, when the connector is *replaceable*: give it its own
+       section, and leave the port in Base.** Agent's rule takes the connector into the
+       section; Guide's leaves it in Base. Neither fits a vendor that is expected to
+       change: `ITicketVendorService` is shaped in the application's terms (no vendor type
+       in its signatures), the TicketTailor client is one implementation of it, and a 2027
+       vendor swap should be one project deleted and one added. So the port stayed in
+       `Humans.Application/Interfaces/TicketVendor/` beside `IStripeService`, the client and
+       its dev stub went to `src/Sections/Humans.TicketTailor` — plain `Microsoft.NET.Sdk`,
+       no tables, no `Humans.Infrastructure` reference, an empty `Contracts/` — and the
+       owning section (`Humans.Tickets`) became the application's only door to ticketing.
+       **The load-bearing half is the invariant, not the folder:** an architecture test
+       asserts that only the owning section and Shell's health check inject the port, because
+       what actually breaks a vendor swap is a second section reaching past the door
+       (Campaigns was doing exactly that for discount codes, and this lane closed it). Where
+       a consumer needs a port operation, the section publishes it on its own leaf in its own
+       vocabulary and maps at the edge — Finance's `CreditorLedgerLine` shape, applied to a
+       write (proven: Tickets/TicketTailor).
      **The same test can keep a connector in Base when the connector carries the section's own
      name.** `IGuideContentSource` / `GitHubGuideContentSource` / `GuideSettings` read as the
      whole point of the Guide section — they are the thing that fetches `docs/guide/*.md`. They
@@ -774,6 +804,44 @@ Git Bash.)
      the `Default.cshtml` uses no `@using` that `Humans.UI/Views/_ViewImports.cshtml` lacks
      (proven: Scanner moved `TicketStubViewComponent`, which four Shell views also render, and
      touched none of them).
+     **…and that parking is temporary: a component whose *model* belongs to a not-yet-moved
+     section comes back out at that section's own lane.** `TicketStubViewComponent` looks
+     section-neutral — no constructor, no registry, one `Invoke(TicketStubInfo)` — but
+     `TicketStubInfo`'s factories name Tickets DTOs and it carries a Tickets enum, so at
+     Tickets' G5 the model could not stay in Base and the component followed it out of
+     `Humans.UI`. Blast radius was again zero, in the other direction: the five `<vc:>` call
+     sites (Scanner's ticket card, three Shell partials, the widget gallery) were untouched,
+     because the component went **`public` under the section's `Contracts/` folder** and
+     Scanner + Shell each gained one `@addTagHelper *, Humans.<Section>` line. Read Gate's
+     rule as "park it in `Humans.UI` until the owning section moves", not as a final home
+     (proven: Tickets, correcting Scanner finding 22).
+   - **Whether a section's view component is `public` under `Contracts/` or `internal`
+     behind `SectionViewComponentFeatureProvider` is decided by its *constructor*, not by
+     policy.** HUM0034's carve-out is not the contracts *leaf* — read
+     `src/Humans.Analyzers/SectionPublicSurfaceAnalyzer.cs`, `IsUnderContracts`: it matches a
+     namespace segment **or file-path segment** named `Contracts`, so a `Contracts/` folder
+     inside the section project qualifies, and the section project is `Sdk.Razor` with the
+     ASP.NET framework reference, so it can host an MVC `ViewComponent`. When the component
+     is public, the default MVC provider discovers it, the `<vc:>` tag helper is generated
+     (it reads *public* view components at compile time), and every call site is unchanged —
+     callers just add `@addTagHelper *, Humans.<Section>`. Notifications' bell genuinely
+     cannot take that path: `NotificationBellViewComponent(INotificationInboxService)`
+     injects an internal service, and a public constructor cannot take an internal parameter
+     type (CS0051). **Check the constructor before reaching for the feature provider**; the
+     bell's precedent is a consequence of *its* dependencies, not a rule about components.
+     Failure modes are asymmetric either way: an unresolvable `Component.InvokeAsync`
+     **throws**, so one render test catches it, while a `<vc:…>` whose component is not
+     visible renders as **inert literal markup** — green build, 200 response, element
+     silently dropped — which is what the `NotContain("<vc:")` assertion is for
+     (proven: Tickets).
+     **Get this right before the Users lane.** `HumanViewComponent` (public in `Humans.UI`,
+     **116** `<vc:human>` call sites) and `HumanSearchViewComponent` (13) belong to
+     Users/Profiles and are parked in `Humans.UI` under the rule above. Read "public lives
+     only on the leaf" and that lane converts 129 call sites to runtime-resolved strings on
+     the codebase's most-used component; read HUM0034 correctly and both go `public` under
+     `Humans.Users/Contracts/` — `IUserServiceRead` belongs on a leaf anyway and
+     `IUrlHelperFactory` is framework, so neither constructor blocks it — and nothing changes
+     at the call sites.
    - **Fourth case, a rider on City Planning's: invoking by name still needs the component's
      *argument types* to be nameable from the section.** `ProfileCardViewComponent` stitches
      contact fields, emails, teams and roles from seven Base services, so it stays in Shell and

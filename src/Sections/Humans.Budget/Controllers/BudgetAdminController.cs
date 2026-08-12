@@ -3,7 +3,7 @@ using Humans.Budget.Contracts;
 using Humans.Budget.Services;
 using Humans.Finance.Contracts;
 using Humans.Application.Interfaces.Teams;
-using Humans.Application.Interfaces.Tickets;
+using Humans.Tickets.Contracts;
 using Humans.Domain.Enums;
 using Humans.UI.Controllers;
 using Humans.Budget.Models;

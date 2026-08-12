@@ -4,7 +4,7 @@ using Humans.Application.Interfaces.Dashboard;
 using Humans.Governance.Contracts;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
-using Humans.Application.Interfaces.Tickets;
+using Humans.Tickets.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging;

@@ -10,7 +10,6 @@ using AuditLogService = Humans.Application.Services.AuditLog.AuditLogService;
 using CampService = Humans.Application.Services.Camps.CampService;
 using RoleAssignmentService = Humans.Application.Services.Auth.RoleAssignmentService;
 using ShiftSignupService = Humans.Application.Services.Shifts.ShiftSignupService;
-using TicketsTicketQueryService = Humans.Application.Services.Tickets.TicketQueryService;
 using TeamService = Humans.Application.Services.Teams.TeamService;
 
 namespace Humans.Application.Tests.Services.Gdpr;
@@ -71,7 +70,7 @@ public class GdprExportDependencyInjectionTests
         SectionType("Humans.Feedback.Services.FeedbackService"),
         SectionType("Humans.Issues.Services.IssuesService"),
         SectionType("Humans.Notifications.Services.NotificationInboxService"),
-        typeof(TicketsTicketQueryService),
+        SectionType("Humans.Tickets.Services.TicketQueryService"),
         SectionType("Humans.Campaigns.Services.CampaignService"),
         typeof(CampService),
         SectionType("Humans.Events.Services.EventService"),

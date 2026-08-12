@@ -59,11 +59,6 @@ public abstract class ServiceTestHarness : IDisposable
     private protected GoogleIntegrationDbContext GoogleIntegrationDb => _googleIntegrationDb.Value.Context;
     private protected TestDbContextFactory<GoogleIntegrationDbContext> GoogleIntegrationDbFactory => _googleIntegrationDb.Value.Factory;
 
-    /// <summary>Tickets: <c>ticket_orders</c>, <c>ticket_attendees</c>, <c>ticket_sync_state</c>, <c>ticket_transfer_requests</c>.</summary>
-    private readonly Lazy<SectionDb<TicketsDbContext>> _ticketsDb;
-    private protected TicketsDbContext TicketsDb => _ticketsDb.Value.Context;
-    private protected TestDbContextFactory<TicketsDbContext> TicketsDbFactory => _ticketsDb.Value.Factory;
-
     /// <summary>Camps: <c>camps</c>, <c>camp_seasons</c>, <c>camp_historical_names</c>, <c>camp_images</c>, <c>camp_settings</c>, <c>camp_members</c>, <c>camp_role_definitions</c>, <c>camp_role_assignments</c>.</summary>
     private readonly Lazy<SectionDb<CampsDbContext>> _campsDb;
     private protected CampsDbContext CampsDb => _campsDb.Value.Context;
@@ -116,7 +111,6 @@ public abstract class ServiceTestHarness : IDisposable
 
         _authDb = RegisterSection<AuthDbContext>(o => new(o));
         _googleIntegrationDb = RegisterSection<GoogleIntegrationDbContext>(o => new(o));
-        _ticketsDb = RegisterSection<TicketsDbContext>(o => new(o));
         _campsDb = RegisterSection<CampsDbContext>(o => new(o));
         _auditLogDb = RegisterSection<AuditLogDbContext>(o => new(o));
         _shiftsDb = RegisterSection<ShiftsDbContext>(o => new(o));

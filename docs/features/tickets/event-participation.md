@@ -1,7 +1,6 @@
 <!-- freshness:triggers
-  src/Humans.Application/Services/Tickets/**
+  src/Sections/Humans.Tickets/**
   src/Humans.Application/Services/Shifts/ShiftManagementService.cs
-  src/Humans.Web/Controllers/TicketController.cs
   src/Humans.Domain/Entities/EventParticipation.cs
   src/Humans.Domain/Entities/EventSettings.cs
   src/Humans.Infrastructure/Data/Configurations/Users/EventParticipationConfiguration.cs

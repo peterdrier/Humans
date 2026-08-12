@@ -43,6 +43,12 @@
     -->
     <ProjectReference Include="..\Sections\Humans.Gdpr.Contracts\Humans.Gdpr.Contracts.csproj" />
     <ProjectReference Include="..\Sections\Humans.Onboarding.Contracts\Humans.Onboarding.Contracts.csproj" />
+    <!--
+      Tickets' contracts leaf: DashboardService and AccountDeletionService read a human's
+      holdings, UserEmailService and ShiftManagementService read the order projection, all
+      through ITicketServiceRead.
+    -->
+    <ProjectReference Include="..\Sections\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

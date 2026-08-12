@@ -1,6 +1,7 @@
 using AwesomeAssertions;
 using Humans.Gdpr.Contracts;
-using Humans.Application.Interfaces.Tickets;
+using Humans.Tickets.Contracts;
+using Humans.Application.Interfaces.TicketVendor;
 using Humans.Application.Interfaces.Users;
 using Humans.Gate.Contracts;
 using Humans.Gate.Data;
@@ -116,8 +117,14 @@ public class GateArchitectureTests
             .GetParameters().Select(p => p.ParameterType).ToList();
 
         paramTypes.Should().Contain(typeof(ITicketServiceRead));
-        paramTypes.Should().NotContain(typeof(ITicketService),
-            because: "cross-section ticket reads must use the read interface (section-read-write-split / HUM0032)");
+
+        // The full ticket service is internal to Humans.Tickets since that section's G5 move,
+        // so it can no longer be named here — assert on the namespace instead, which also
+        // catches a future Tickets type that is public but not on the contracts leaf.
+        paramTypes
+            .Where(t => t.Namespace?.StartsWith("Humans.Tickets", StringComparison.Ordinal) == true)
+            .Should().OnlyContain(t => t.Namespace == "Humans.Tickets.Contracts",
+                because: "cross-section ticket reads must use the contracts leaf (section-read-write-split / HUM0032)");
     }
 
     [HumansFact]

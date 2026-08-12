@@ -1,6 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Profiles;
-using Humans.Application.Interfaces.Tickets;
+using Humans.Tickets.Contracts;
 using Humans.Domain.Enums;
 using Humans.Web.Models;
 using Humans.Web.ViewComponents;
@@ -70,7 +70,7 @@ public class CommunicationPreferencesPanelViewComponentTests
         commPrefs.GetPreferencesReadOnlyAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(prefs);
 
-        var tickets = Substitute.For<ITicketService>();
+        var tickets = Substitute.For<ITicketServiceRead>();
         tickets.GetUserTicketHoldingsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(new UserTicketHoldings(0, []));
 

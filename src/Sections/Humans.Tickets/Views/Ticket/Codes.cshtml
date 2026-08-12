@@ -1,0 +1,143 @@
+@model Humans.Tickets.Models.TicketCodeTrackingViewModel
+@{
+    ViewData["Title"] = "Code Tracking";
+}
+
+<div class="container-fluid px-4">
+    <h1 class="mt-4">Code Tracking</h1>
+    <partial name="_TicketNav" />
+
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="card-subtitle mb-2 text-muted">Codes Sent</h6>
+                    <h3 class="card-title">@Model.TotalCodesSent</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="card-subtitle mb-2 text-muted">Redeemed</h6>
+                    <h3 class="card-title text-success">@Model.CodesRedeemed</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="card-subtitle mb-2 text-muted">Unused</h6>
+                    <h3 class="card-title text-warning">@Model.CodesUnused</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="card-subtitle mb-2 text-muted">Redemption Rate</h6>
+                    <h3 class="card-title">@Model.RedemptionRate%</h3>
+                    <div class="progress mt-2" style="height: 6px;">
+                        <div class="progress-bar bg-success" style="width: @Model.RedemptionRate%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (Model.Campaigns.Count > 0)
+    {
+        <h4 class="mb-3">By Campaign</h4>
+        <div class="row mb-4">
+            @foreach (var campaign in Model.Campaigns)
+            {
+                <div class="col-md-4 mb-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <h6>
+                                <a asp-controller="Campaign" asp-action="Detail" asp-route-id="@campaign.CampaignId">
+                                    @campaign.CampaignTitle
+                                </a>
+                            </h6>
+                            <div class="d-flex justify-content-between mb-1">
+                                <small>@campaign.Redeemed / @campaign.TotalGrants redeemed</small>
+                                <small>@campaign.RedemptionRate%</small>
+                            </div>
+                            <div class="progress" style="height: 8px;">
+                                <div class="progress-bar bg-success" style="width: @campaign.RedemptionRate%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+
+    <h4 class="mb-3">Individual Codes</h4>
+    <form method="get" class="mb-3">
+        <div class="input-group" style="max-width: 400px;">
+            <input type="text" name="search" value="@Model.Search" class="form-control" placeholder="Search code or recipient..." />
+            <button type="submit" class="btn btn-primary"><i class="fa-solid fa-search"></i></button>
+        </div>
+    </form>
+
+    @{
+        Func<CodeDetailRow, IHtmlContent> codeCell =
+            @<text><code>@item.Code</code></text>;
+        Func<CodeDetailRow, IHtmlContent> recipientCell =
+            @<text><vc:human user-id="@item.RecipientUserId" link="Admin" /></text>;
+        Func<CodeDetailRow, IHtmlContent> statusCell = @<text>
+            @{
+                var badgeClass = item.Status switch
+                {
+                    "Redeemed" => "bg-success",
+                    "Sent" or "Delivered" => "bg-primary",
+                    _ => "bg-secondary"
+                };
+            }
+            <span class="badge @badgeClass">@item.Status</span>
+        </text>;
+        Func<CodeDetailRow, IHtmlContent> redeemedAtCell = @<text>
+            @if (item.RedeemedAt.HasValue)
+            {
+                @item.RedeemedAt.Value.ToDate()
+            }
+            else
+            {
+                <span class="text-muted">&mdash;</span>
+            }
+        </text>;
+        Func<CodeDetailRow, IHtmlContent> redeemedByCell = @<text>
+            @if (item.RedeemedByName != null)
+            {
+                <text>@item.RedeemedByName</text>
+                <br /><small class="text-muted">@item.RedeemedByEmail</small>
+            }
+            else
+            {
+                <span class="text-muted">&mdash;</span>
+            }
+        </text>;
+        Func<CodeDetailRow, IHtmlContent> orderCell = @<text>
+            @if (item.RedeemedOrderVendorId != null)
+            {
+                <small><code>@item.RedeemedOrderVendorId</code></small>
+            }
+            else
+            {
+                <span class="text-muted">&mdash;</span>
+            }
+        </text>;
+        var table = TableModel.For(Model.Codes.ToList())
+            .Template("Code", codeCell)
+            .Template("Recipient", recipientCell)
+            .Column("Campaign", tc => tc.CampaignTitle)
+            .Template("Status", statusCell)
+            .Template("Redeemed At", redeemedAtCell)
+            .Template("Redeemed By", redeemedByCell)
+            .Template("Order", orderCell)
+            .Empty("No codes found")
+            .Build();
+    }
+    <partial name="_Table" model="table" />
+</div>

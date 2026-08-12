@@ -30,7 +30,7 @@ using Humans.Application.Interfaces.Camps;
 using Humans.Email.Contracts;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
-using Humans.Application.Interfaces.Tickets;
+using Humans.Tickets.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Onboarding.Contracts;
 using Humans.Governance.Contracts;
@@ -1346,7 +1346,6 @@ public class ProfileController(
             SetInfo($"Email {email} already exists on this user — no change.");
             return;
         }
-
 
         await auditLogService.LogAsync(
             AuditAction.UserEmailAdded,
