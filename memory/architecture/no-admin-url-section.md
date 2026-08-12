@@ -8,8 +8,10 @@ description: HARD RULE. Top-level `/Admin/*` is legacy; never add new `/Admin/fo
   src/Humans.Web/Controllers/TicketTransferController.cs
 -->
 <!-- freshness:flag-on-change
-  Rule: no-admin-url-section
-  Flag if a symbol, path, namespace or behavior this rule names has changed.
+  Rule: No /Admin/ URL section — legacy, never extend
+  Flag only if the code this rule constrains changed in a way that makes the rule
+  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
+  analyzer. Routine edits to these files are the rule being followed, not drift.
 -->
 
 **HARD RULE — `/Admin/*` is legacy and frozen.** No new top-level `/Admin/foo` routes, controllers, or links can be added to the application going forwards. There is no "Admin" section. New admin pages live at `/<Section>/Admin/*` (e.g. `/Store/Admin/Catalog`, `/Camps/Admin/Settings`, `/Tickets/Admin/Transfers`).

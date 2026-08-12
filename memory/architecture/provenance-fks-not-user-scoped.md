@@ -8,8 +8,10 @@ type: architecture
   src/Humans.Application/Interfaces/Gdpr/IUserDataContributor.cs
 -->
 <!-- freshness:flag-on-change
-  Rule: provenance-fks-not-user-scoped
-  Flag if a symbol, path, namespace or behavior this rule names has changed.
+  Rule: Provenance FKs are not user-scoped data
+  Flag only if the code this rule constrains changed in a way that makes the rule
+  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
+  analyzer. Routine edits to these files are the rule being followed, not drift.
 -->
 
 A section's owned tables can carry user FK columns that record *who performed an action* (`AddedByUserId`, `RecordedByUserId`, `IssuedByUserId`, `CreatedByUserId`, etc.) without the section's data being user-scoped under design-rules §8a. The §8a obligation to implement `IUserDataContributor` only fires when the rows themselves *belong to* the user.

@@ -8,8 +8,10 @@ description: The DontFix attribute marks an intentional PERMANENT exception to a
   src/Humans.Application/Services/Auth/RoleAssignmentService.cs
 -->
 <!-- freshness:flag-on-change
-  Rule: dontfix-attribute
-  Flag if a symbol, path, namespace or behavior this rule names has changed.
+  Rule: DontFix is the one sanctioned permanent analyzer exception, Peter-applied only
+  Flag only if the code this rule constrains changed in a way that makes the rule
+  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
+  analyzer. Routine edits to these files are the rule being followed, not drift.
 -->
 
 `[DontFix]` (`Humans.Application.Architecture.DontFixAttribute`) marks a class as an **intentional, permanent** exception to an architecture rule. Unlike `[Grandfathered]` — a TODO that should be refactored away and is fair game for automated tech-debt passes — a `[DontFix]` class is meant to stay. See [[analyzer-exceptions-via-attributes]] for the debt counterpart and [[no-analyzer-suppressions]] for the ban it carves out of.

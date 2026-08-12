@@ -7,8 +7,10 @@ description: Don't write extension methods on types defined in this repo. Add th
   src/Humans.Domain/Entities/Camp.cs
 -->
 <!-- freshness:flag-on-change
-  Rule: no-extensions-for-owned-classes
-  Flag if a symbol, path, namespace or behavior this rule names has changed.
+  Rule: No extension methods for classes we own
+  Flag only if the code this rule constrains changed in a way that makes the rule
+  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
+  analyzer. Routine edits to these files are the rule being followed, not drift.
 -->
 
 Don't add extension methods (`public static X Foo(this OwnedType ...)`) for classes the project owns. Add the method or computed property directly on the class itself.

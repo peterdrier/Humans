@@ -9,8 +9,10 @@ description: At ~500-user scale, prefer hand-written repo methods that materiali
   src/Humans.Web/Controllers/DevLoginController.cs
 -->
 <!-- freshness:flag-on-change
-  Rule: no-linq-at-db-layer
-  Flag if a symbol, path, namespace or behavior this rule names has changed.
+  Rule: Don't overuse LINQ at the DB layer — thick repos return materialized lists
+  Flag only if the code this rule constrains changed in a way that makes the rule
+  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
+  analyzer. Routine edits to these files are the rule being followed, not drift.
 -->
 
 Don't reach for LINQ-on-EF-entities (`db.Users.Where(u => u.Email.Contains(...))`, `db.Users.Select(u => u.Email)`) when designing service methods. Prefer **hand-written repository methods that materialize at the boundary** — the repo runs the query and returns a `List`/`IReadOnlyList` of plain DTOs (or domain objects with all needed data Include'd).

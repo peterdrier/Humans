@@ -12,8 +12,10 @@ description: UserService and ProfileService sit at the bottom of the dependency 
   src/Sections/Humans.Notifications.Contracts/INotificationService.cs
 -->
 <!-- freshness:flag-on-change
-  Rule: user-profile-foundational
-  Flag if a symbol, path, namespace or behavior this rule names has changed.
+  Rule: User and Profile are foundational — no outbound calls to higher-level sections
+  Flag only if the code this rule constrains changed in a way that makes the rule
+  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
+  analyzer. Routine edits to these files are the rule being followed, not drift.
 -->
 
 > Vocabulary ([`CONTEXT.md`](../../CONTEXT.md)): **foundational** is a *descriptor* (a Section with outbound-width-into-sections = 0), not a separate tier; the "universal crosscuts" below are **Crosscuts** (Audit/Email/Notification/Metrics).

@@ -7,8 +7,10 @@ description: The `consent_records` table has DB triggers preventing UPDATE and D
   src/Humans.Application/Interfaces/Consent/IConsentService.cs
 -->
 <!-- freshness:flag-on-change
-  Rule: consent-record-immutable
-  Flag if a symbol, path, namespace or behavior this rule names has changed.
+  Rule: ConsentRecord is database-immutable — INSERT only
+  Flag only if the code this rule constrains changed in a way that makes the rule
+  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
+  analyzer. Routine edits to these files are the rule being followed, not drift.
 -->
 
 The `consent_records` table has database triggers that prevent UPDATE and DELETE operations. Only INSERT is allowed.

@@ -12,8 +12,10 @@ description: Reject any ctor or call edge where a leaf service (ProfileService, 
   src/Sections/Humans.Notifications.Contracts/INotificationService.cs
 -->
 <!-- freshness:flag-on-change
-  Rule: no-leaf-to-director-callbacks
-  Flag if a symbol, path, namespace or behavior this rule names has changed.
+  Rule: No leaf-to-director callbacks
+  Flag only if the code this rule constrains changed in a way that makes the rule
+  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
+  analyzer. Routine edits to these files are the rule being followed, not drift.
 -->
 
 > Vocabulary ([`CONTEXT.md`](../../CONTEXT.md)): here **leaf** = a low-level **Section** (Profile/Consent/User); **director** = **Orchestrator**. The rule is the section→orchestrator direction — a Section never calls *up* into an Orchestrator; Orchestrator→Section is one-way.

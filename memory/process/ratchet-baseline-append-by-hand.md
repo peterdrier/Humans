@@ -7,8 +7,10 @@ description: The architecture ratchet baselines under tests/Humans.Application.T
   tests/Humans.Application.Tests/Architecture/Ratchet/BaselineSeeder.cs
 -->
 <!-- freshness:flag-on-change
-  Rule: ratchet-baseline-append-by-hand
-  Flag if a symbol, path, namespace or behavior this rule names has changed.
+  Rule: Append ratchet baselines by hand — never re-run the seeder to absorb new entries
+  Flag only if the code this rule constrains changed in a way that makes the rule
+  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
+  analyzer. Routine edits to these files are the rule being followed, not drift.
 -->
 
 When a ratchet test reports new violations that are genuinely intentional, add the locator lines to that rule's `.baseline.txt` **by hand**, preceded by a comment block saying why. Do not run `HUMANS_SEED_RATCHET_BASELINES=1 dotnet test --filter Seed_all_baselines`.

@@ -11,7 +11,9 @@ description: When a read surface is served from an in-memory cache that holds th
 -->
 <!-- freshness:flag-on-change
   Rule: cached-reads-no-shape-variants
-  Flag if a symbol, path, namespace or behavior this rule names has changed.
+  Flag only if the code this rule constrains changed in a way that makes the rule
+  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
+  analyzer. Routine edits to these files are the rule being followed, not drift.
 -->
 
 When a read method serves from an in-memory cache of a fully-populated DTO (e.g. `UserInfo`, `TeamInfo`, `FullProfile`), the surface returns one shape: whatever the cache holds. **Do not** add `WithEmails` / `WithChildren` / `includeFoo` variants or boolean flags that gate which navigations are populated.

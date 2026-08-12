@@ -8,8 +8,10 @@ description: HARD RULE. When wiring any Stripe integration, the production env-v
   src/Sections/Humans.Store/Docs/Store.md
 -->
 <!-- freshness:flag-on-change
-  Rule: stripe-restricted-keys
-  Flag if a symbol, path, namespace or behavior this rule names has changed.
+  Rule: Stripe production keys must be Restricted API Keys (rk_*), never full secret keys
+  Flag only if the code this rule constrains changed in a way that makes the rule
+  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
+  analyzer. Routine edits to these files are the rule being followed, not drift.
 -->
 
 When configuring a Stripe API key for the Humans project in production, use a Restricted API Key (`rk_live_*`) scoped to exactly the operations the integration performs — never a full secret key (`sk_live_*`).

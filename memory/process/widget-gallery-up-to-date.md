@@ -3,17 +3,6 @@ name: Register new widgets in /WidgetGallery when adding them
 description: When adding or removing a TagHelper, ViewComponent, or user-facing shared partial under `src/Humans.Web/`, update `Views/WidgetGallery/Index.cshtml` (and the controller if real sample data is needed) so the admin Widget Gallery stays a complete catalog. The Skipped section is the legitimate exception list.
 ---
 
-<!-- freshness:triggers
-  docs/architecture/code-review-rules.md
-  src/Humans.Web/**
-  src/Humans.Web/Controllers/WidgetGalleryController.cs
-  src/Humans.Web/Views/WidgetGallery/Index.cshtml
--->
-<!-- freshness:flag-on-change
-  Rule: widget-gallery-up-to-date
-  Flag if a symbol, path, namespace or behavior this rule names has changed.
--->
-
 When you **add** a new TagHelper, ViewComponent, or user-facing shared partial under `src/Humans.Web/`, also register it in the Widget Gallery in the same PR:
 
 - Add a card in the appropriate section of `src/Humans.Web/Views/WidgetGallery/Index.cshtml` — header (name, type badge, source path), one-line note, parameters table via `@ParamsBlock(...)`, optional `@AuthLine(...)` for role/policy gating, and an example rendered against real data.

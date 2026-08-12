@@ -3,15 +3,6 @@ name: No manual DB writes — any environment, any reason
 description: HARD RULE. Never modify a database row by hand — no INSERT/UPDATE/DELETE via psql/admin UI, no `__EFMigrationsHistory` patching, no fix-up migrations to paper over regen mismatches. Code + EF migrations are the only ways state changes.
 ---
 
-<!-- freshness:triggers
-  src/Humans.Infrastructure/Services/StubTicketVendorService.cs
-  src/Humans.Web/Controllers/DevSeedController.cs
--->
-<!-- freshness:flag-on-change
-  Rule: no-manual-db-writes
-  Flag if a symbol, path, namespace or behavior this rule names has changed.
--->
-
 **HARD RULE.** Direct database writes are never allowed in any environment — production, QA, preview, or local-dev. This includes:
 
 - Manual `INSERT` / `UPDATE` / `DELETE` via `psql`, Coolify's DB UI, pgAdmin, or any other ad-hoc tool

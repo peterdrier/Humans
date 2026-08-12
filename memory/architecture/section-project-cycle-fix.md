@@ -9,8 +9,10 @@ description: When MSBuild refuses a section project reference as circular (nobod
   src/Humans.Domain/Entities/User.cs
 -->
 <!-- freshness:flag-on-change
-  Rule: section-project-cycle-fix
-  Flag if a symbol, path, namespace or behavior this rule names has changed.
+  Rule: A section-project cycle is fixed by splitting contracts downward, never by promoting the shared t…
+  Flag only if the code this rule constrains changed in a way that makes the rule
+  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
+  analyzer. Routine edits to these files are the rule being followed, not drift.
 -->
 
 The tier model is `Shell → Section → Base`: Shell owns composition and nav, a section owns its

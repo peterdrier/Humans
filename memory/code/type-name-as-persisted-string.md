@@ -8,8 +8,10 @@ description: `nameof(T)` written to a DB column, and `Enum_{typeof(T).Name}_*` r
   src/Sections/Humans.Store/Services/AuditEntityTypes.cs
 -->
 <!-- freshness:flag-on-change
-  Rule: type-name-as-persisted-string
-  Flag if a symbol, path, namespace or behavior this rule names has changed.
+  Rule: Never rename a type whose name is persisted or used as a lookup key
+  Flag only if the code this rule constrains changed in a way that makes the rule
+  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
+  analyzer. Routine edits to these files are the rule being followed, not drift.
 -->
 
 A CLR type name is inert only where nothing outside the compiler reads it. Two places in this

@@ -3,15 +3,6 @@ name: Create a feature spec when implementing a new feature
 description: When implementing a non-trivial new feature, create a `docs/features/<feature>.md` spec in the same PR as the implementation. Covers create-new; `post-fix-doc-check.md` covers update-existing.
 ---
 
-<!-- freshness:triggers
-  docs/features/**
-  docs/sections/SECTION-TEMPLATE.md
--->
-<!-- freshness:flag-on-change
-  Rule: feature-spec-on-new-feature
-  Flag if a symbol, path, namespace or behavior this rule names has changed.
--->
-
 When implementing a non-trivial new feature, **create** a corresponding spec file at `docs/features/<feature-name>.md` in the same PR as the implementation.
 
 **Why:** Feature specs are the durable record of *intent* — the business context, user stories, and acceptance criteria the code implements. Without one, the next person to touch the feature (human or agent) only sees the *what* (code) and not the *why* (intent), which leads to plausible-but-wrong refactors that satisfy the code surface but break the original product reasoning. The spec is also the diffable target for `/spec-review` and `/spec-check` skills.

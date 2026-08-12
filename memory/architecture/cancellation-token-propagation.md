@@ -4,13 +4,14 @@ description: An outbound call that MUTATES a third-party system never receives a
 ---
 
 <!-- freshness:triggers
-  src/Humans.Web/ViewComponents/MyTicketStubsViewComponent.cs
-  src/Humans.Web/ViewComponents/TicketHoldingsViewComponent.cs
-  src/Humans.Web/ViewComponents/UserCalendarViewComponent.cs
+  src/Humans.Analyzers/RequestScopedCancellationOnExternalWriteAnalyzer.cs
+  src/Humans.Interfaces/Architecture/ExternalWriteAttribute.cs
 -->
 <!-- freshness:flag-on-change
-  Rule: cancellation-token-propagation
-  Flag if a symbol, path, namespace or behavior this rule names has changed.
+  Rule: Cancellation-token propagation into external API calls
+  Flag only if the code this rule constrains changed in a way that makes the rule
+  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
+  analyzer. Routine edits to these files are the rule being followed, not drift.
 -->
 
 Never hand a **request-scoped** cancellation token to an outbound call that

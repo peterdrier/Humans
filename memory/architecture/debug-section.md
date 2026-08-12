@@ -10,8 +10,10 @@ metadata:
   src/Humans.Web/Controllers/DebugController.cs
 -->
 <!-- freshness:flag-on-change
-  Rule: debug-section
-  Flag if a symbol, path, namespace or behavior this rule names has changed.
+  Rule: Debug section — developer/diagnostics home at /Debug
+  Flag only if the code this rule constrains changed in a way that makes the rule
+  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
+  analyzer. Routine edits to these files are the rule being followed, not drift.
 -->
 
 **Developer and diagnostics pages live in the `Debug` section at `/Debug/*`** (`DebugController`, class-level `[Authorize(Policy = AdminOnly)]`). This is the forward home for logs, DB/cache stats, client/request stats, and any "tool a developer wants" — replacing the legacy, frozen `/Admin/*` diagnostics tree.

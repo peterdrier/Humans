@@ -7,7 +7,10 @@ description: Namespace collision between `Humans.Domain.Entities.Application` an
   src/Sections/Humans.Governance/Domain/Application.cs
 -->
 <!-- freshness:flag-on-change
-  Flag if the Application entity moves out of Humans.Governance.Domain or is renamed — the alias target namespace in this rule would be stale.
+  Rule: Use `MemberApplication` alias for the Application entity
+  Flag only if the code this rule constrains changed in a way that makes the rule
+  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
+  analyzer. Routine edits to these files are the rule being followed, not drift.
 -->
 
 <!-- freshness:triggers

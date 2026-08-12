@@ -7,8 +7,10 @@ description: A new grantable narrow admin role (e.g. CantinaAdmin) that gates an
   src/Humans.Web/Authorization/AuthorizationPolicyExtensions.cs
 -->
 <!-- freshness:flag-on-change
-  Rule: narrow-admin-role-needs-anyadminrole
-  Flag if a symbol, path, namespace or behavior this rule names has changed.
+  Rule: Narrow admin/console roles must join the AnyAdminRole policy
+  Flag only if the code this rule constrains changed in a way that makes the rule
+  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
+  analyzer. Routine edits to these files are the rule being followed, not drift.
 -->
 
 When you introduce a new grantable **narrow** admin/console role (e.g. `CantinaAdmin`) that gates a single admin-shell page, add it to the `AnyAdminRole` policy as well as to `RoleNames.All` and (if board-grantable) `BoardManageableRoles`.

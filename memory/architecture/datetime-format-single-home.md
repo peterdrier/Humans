@@ -7,8 +7,10 @@ description: HARD RULE. Custom date/time format strings (`.ToString("d MMM yyyy"
   src/Humans.Application/Extensions/DateFormattingExtensions.cs
 -->
 <!-- freshness:flag-on-change
-  Rule: datetime-format-single-home
-  Flag if a symbol, path, namespace or behavior this rule names has changed.
+  Rule: Date/time format strings live in one home (HUM0030)
+  Flag only if the code this rule constrains changed in a way that makes the rule
+  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
+  analyzer. Routine edits to these files are the rule being followed, not drift.
 -->
 
 Custom (multi-character) date/time format strings may live **only** in the single sanctioned home, `Humans.Application.Extensions.DateFormattingExtensions`. Anywhere else in a production assembly (`Humans.Application`/`Domain`/`Infrastructure`/`Web`) a hand-rolled format string is a build **error** (HUM0030).

@@ -7,8 +7,10 @@ description: HARD RULE. When decoupling code from a column, the property overrid
   src/Humans.Domain/Entities/UserEmail.cs
 -->
 <!-- freshness:flag-on-change
-  Rule: no-column-drops-for-decoupling
-  Flag if a symbol, path, namespace or behavior this rule names has changed.
+  Rule: Don't drop columns for decoupling work — the property override IS the migration
+  Flag only if the code this rule constrains changed in a way that makes the rule
+  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
+  analyzer. Routine edits to these files are the rule being followed, not drift.
 -->
 
 When the goal is "stop relying on a column as the source of truth," the **property override + read sweeps are the migration.** The column drop is separate, optional, and dangerous — defer it until the entire multi-PR sequence has run through production successfully.

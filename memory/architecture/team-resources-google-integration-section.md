@@ -12,8 +12,10 @@ description: ITeamResourceService and TeamResourceService live under Humans.Appl
   src/Humans.Application/Interfaces/Repositories/IGoogleResourceRepository.cs
 -->
 <!-- freshness:flag-on-change
-  Rule: team-resources-google-integration-section
-  Flag if a symbol, path, namespace or behavior this rule names has changed.
+  Rule: TeamResourceService lives in the GoogleIntegration section
+  Flag only if the code this rule constrains changed in a way that makes the rule
+  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
+  analyzer. Routine edits to these files are the rule being followed, not drift.
 -->
 
 `ITeamResourceService` and its implementation `TeamResourceService` live under `Humans.Application.Interfaces.GoogleIntegration` and `Humans.Application.Services.GoogleIntegration`. The `IGoogleResourceRepository` interface stays `[Section("GoogleIntegration")]` (matches its EF impl namespace), and the arch-test `RepositoryOwners` map records `IGoogleResourceRepository → "GoogleIntegration"` to match.

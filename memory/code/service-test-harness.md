@@ -11,8 +11,10 @@ description: Service tests in Humans.Application.Tests should inherit ServiceTes
   tests/Humans.Testing/TestDbContextFactory.cs
 -->
 <!-- freshness:flag-on-change
-  Rule: service-test-harness
-  Flag if a symbol, path, namespace or behavior this rule names has changed.
+  Rule: Service tests inherit ServiceTestHarness
+  Flag only if the code this rule constrains changed in a way that makes the rule
+  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
+  analyzer. Routine edits to these files are the rule being followed, not drift.
 -->
 
 `tests/Humans.Application.Tests/Infrastructure/ServiceTestHarness.cs` is the base class for service tests that need an in-memory `HumansDbContext` + `FakeClock` + `IMemoryCache` + a DB-backed `IUserService` stub. Inherit it instead of repeating the constructor boilerplate.

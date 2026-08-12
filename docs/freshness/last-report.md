@@ -41,6 +41,30 @@ shipped with no `freshness:triggers` marker at all, so the newest section in the
 never have been drift-checked. Marker added. `docs/sections/G5-SECTION-TEMPLATE.md` was also
 unmarked; it is a template, so it went into the catalog's `ignore` list beside `SECTION-TEMPLATE.md`.
 
+**A marking pass that had to be walked back.** Bringing `memory/` into the catalog needed its 153
+atoms marked, and the first pass at that was script-assisted: it scraped backticked identifiers out
+of each atom and resolved them to real files. Every glob it produced existed — the verifier was
+green — but a green verifier is not the same as a correct trigger, and roughly a sixth of them were
+wrong in a way no path check could catch:
+
+- **Process rules got code triggers.** `no-direct-to-main.md` is a git-workflow rule; it mentions
+  `docs/architecture/**` as an *example of what needs a PR*, and the scraper turned that into a
+  trigger. The rule has no code surface at all.
+- **Triggers that fire when the rule is obeyed, not when it rots.** `about-page-license-attribution.md`
+  says *update the About page after a NuGet bump*; it was set to fire on `About/Index.cshtml`. That
+  file changing is the rule **working**. Same shape on `maintenance-log-update.md`,
+  `widget-gallery-up-to-date.md`, `feature-spec-on-new-feature.md`, `post-fix-doc-check.md`.
+- **Self-referential triggers.** `rules-maintenance.md` ("write an atom, update INDEX") was set to
+  fire on `memory/**`, so every atom edit would flag it forever.
+- **Boilerplate reasons.** A generic *"Flag if a symbol, path, namespace or behavior this rule names
+  has changed"* on every block, and the title was scraped from the first heading — which on one atom
+  produced `Rule: write the atom(s), edit INDEX.md`.
+
+14 markers were removed outright, 60 reasons rewritten from each atom's own frontmatter `name:`, and
+two over-broad glob sets narrowed (`memory/**`, `src/Humans.Web/**`). Caught by a subagent that
+pushed back on the output rather than accepting it — the correction is worth more than the original
+pass, and the lesson is that *"every glob resolves"* is a necessary check, not a sufficient one.
+
 **A trigger gap in `conventions.md` itself.** Its trigger block covered
 `src/Humans.Web/ViewComponents/**` and `src/Humans.Web/Views/**` but not `src/Humans.UI/**`, where
 the shared view layer, the section-agnostic view components, and `DateTimeDisplayExtensions` now
@@ -166,7 +190,7 @@ Peter answered every item. Resolutions applied in this PR:
 | 6 | Google Integration owns it | §8 change stands — and it matches the pre-existing rule atom [`team-resources-google-integration-section`](../../memory/architecture/team-resources-google-integration-section.md), which says section labels follow *code locality*, not table aggregate ownership. |
 | 7 | Leave for now | No action. `CampaignService.ImportCodesAsync` keeps its UI-only status gate. |
 | 8 | **Frozen until 2027** | `roslyn-analysis.md` retied the freeze to a **date** instead of #866 — tying it to an issue is why agents kept re-raising it every time #866 advanced. Captured as a rule atom: [`hum0031-frozen-until-2027`](../../memory/architecture/hum0031-frozen-until-2027.md). Do not raise this again in any form. |
-| 9 | Add `memory/` to the catalog | Added to `editorial_trees`, with `INDEX.md`/`META.md` ignored. The two stale `Humans.Web.Extensions.DateTimeDisplayExtensions` atoms corrected to `Humans.UI.Extensions`. Its 152 rule atoms carried **zero** freshness markers, so adding the tree bare would have flooded the next sweep with ~152 "unmarked" flags — **103 atoms marked in the same pass**, each glob resolved against a real file and verified. The other 50 are pure policy (git etiquette, working habits) that cannot rot against source and were deliberately left bare. |
+| 9 | Add `memory/` to the catalog | Added to `editorial_trees`, with `INDEX.md`/`META.md` ignored. The two stale `Humans.Web.Extensions.DateTimeDisplayExtensions` atoms corrected to `Humans.UI.Extensions`. Its 152 rule atoms carried **zero** freshness markers, so adding the tree bare would have flooded the next sweep with ~152 "unmarked" flags — **89 atoms marked**, each glob resolved against a real file and verified; the other 64 are pure policy left deliberately bare. A first automated pass over-marked (see *A marking pass that had to be walked back* below) and was culled. |
 | 10 | Remove if gone, rewrite if moved | **54 of 57** wheat markers pointed at sources deleted by earlier prunes; none of those files exist anywhere in the repo, so none could be rewritten — all 54 removed, prose preserved. The 3 survivors point at the three live docs kept last sweep (both Q3 plans and the post-event survey). |
 
 ### Original question text, for the record

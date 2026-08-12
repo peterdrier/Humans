@@ -7,8 +7,10 @@ description: Display ordering is a presentation concern. Sorting in controllers,
   tests/Humans.Application.Tests/Architecture/Rules/DisplaySortInControllersRule.cs
 -->
 <!-- freshness:flag-on-change
-  Rule: display-sort-in-controllers
-  Flag if a symbol, path, namespace or behavior this rule names has changed.
+  Rule: Display sort belongs at the presentation layer, not in services or repositories
+  Flag only if the code this rule constrains changed in a way that makes the rule
+  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
+  analyzer. Routine edits to these files are the rule being followed, not drift.
 -->
 
 Display ordering is presentation. Anything **above** the service boundary may sort: controllers, views (`.cshtml`), view-model assembly, partials, tag helpers — all fine. Anything **at or below** the service boundary should not: a repo file (`src/Humans.Infrastructure/Repositories/**/*.cs`) or an Application service (`src/Humans.Application/Services/**/*.cs`) calling `.OrderBy(...)` / `.OrderByDescending(...)` for display ordering is a layer leak.

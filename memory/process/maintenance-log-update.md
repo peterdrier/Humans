@@ -3,14 +3,6 @@ name: Update maintenance log after running any recurring maintenance process
 description: After context cleanup, freshness sweep, NuGet check, /simplify pass, etc., update `docs/architecture/maintenance-log.md` with the current date and next-due date.
 ---
 
-<!-- freshness:triggers
-  docs/architecture/maintenance-log.md
--->
-<!-- freshness:flag-on-change
-  Rule: maintenance-log-update
-  Flag if a symbol, path, namespace or behavior this rule names has changed.
--->
-
 **After running any recurring maintenance process** (context cleanup, feature spec sync, NuGet check, code simplification, etc.), update `docs/architecture/maintenance-log.md` with the current date and next-due date.
 
 **Why:** Without the log, the next session has no way to know what's overdue versus what was just done. The log is what `/maintenance` reads to decide what to prioritize.

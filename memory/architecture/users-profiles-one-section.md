@@ -11,7 +11,9 @@ description: HARD RULE. Users, Profiles, and UserEmail are one ownership section
 -->
 <!-- freshness:flag-on-change
   Rule: Users And Profiles Are One Section
-  Flag if a symbol, path, namespace or behavior this rule names has changed.
+  Flag only if the code this rule constrains changed in a way that makes the rule
+  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
+  analyzer. Routine edits to these files are the rule being followed, not drift.
 -->
 
 # Users And Profiles Are One Section

@@ -9,8 +9,10 @@ description: When adding a calculated property that answers a question about a u
   src/Humans.Domain/Entities/Profile.cs
 -->
 <!-- freshness:flag-on-change
-  Rule: derived-predicates-on-userinfo
-  Flag if a symbol, path, namespace or behavior this rule names has changed.
+  Rule: Derived user/profile predicates live on UserInfo, not ProfileInfo
+  Flag only if the code this rule constrains changed in a way that makes the rule
+  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
+  analyzer. Routine edits to these files are the rule being followed, not drift.
 -->
 
 `UserInfo` is the one-stop-shop read model (see [`iuserservice-onestop-userinfo`](iuserservice-onestop-userinfo.md)). Every derived predicate about a user — including ones that read off `Profile` fields — lives on `UserInfo`, not on `ProfileInfo`.

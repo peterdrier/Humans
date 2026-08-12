@@ -10,8 +10,10 @@ metadata:
   src/Humans.Analyzers/ServiceReadInterfaceDtoOnlyAnalyzer.cs
 -->
 <!-- freshness:flag-on-change
-  Rule: I*Read interfaces are DTO-only
-  Flag if a symbol, path, namespace or behavior this rule names has changed.
+  Rule: service-read-no-ef
+  Flag only if the code this rule constrains changed in a way that makes the rule
+  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
+  analyzer. Routine edits to these files are the rule being followed, not drift.
 -->
 
 # I*Read interfaces are DTO-only

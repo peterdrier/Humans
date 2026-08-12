@@ -7,8 +7,10 @@ description: `Humans.*.Services.Profiles` (plural). Singular `Profile` collides 
   src/Humans.Domain/Entities/Profile.cs
 -->
 <!-- freshness:flag-on-change
-  Rule: profiles-section-plural
-  Flag if a symbol, path, namespace or behavior this rule names has changed.
+  Rule: Profile section namespace is "Profiles" (plural)
+  Flag only if the code this rule constrains changed in a way that makes the rule
+  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
+  analyzer. Routine edits to these files are the rule being followed, not drift.
 -->
 
 The section folder and namespace for Profile is **`Profiles`** (plural), not `Profile`.

@@ -7,8 +7,10 @@ description: HARD RULE. DB columns/tables/indexes/constraints, persistent filesy
   docs/database-restore-runbook.md
 -->
 <!-- freshness:flag-on-change
-  Rule: no-drops-until-prod-verified
-  Flag if a symbol, path, namespace or behavior this rule names has changed.
+  Rule: Never drop hard storage in the same PR that ships its replacement
+  Flag only if the code this rule constrains changed in a way that makes the rule
+  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
+  analyzer. Routine edits to these files are the rule being followed, not drift.
 -->
 
 **Hard-storage drops** wait for a separate PR after the replacement has shipped and been verified in production. Code drops (classes, methods, files) are exempt — code rolls back via `git revert` + redeploy.

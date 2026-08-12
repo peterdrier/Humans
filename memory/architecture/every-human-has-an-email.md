@@ -7,8 +7,10 @@ description: HARD RULE — every human has an email, period. Never design for, d
   src/Humans.Domain/Entities/UserEmail.cs
 -->
 <!-- freshness:flag-on-change
-  Rule: every-human-has-an-email
-  Flag if a symbol, path, namespace or behavior this rule names has changed.
+  Rule: Every human has an email address
+  Flag only if the code this rule constrains changed in a way that makes the rule
+  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
+  analyzer. Routine edits to these files are the rule being followed, not drift.
 -->
 
 Every human in this system has an email address. Period. It is not optional, not nullable-in-practice, not a case to handle.

@@ -3,14 +3,6 @@ name: When you learn a new project rule, write an atom + update INDEX in the sam
 description: Discovered rules become atom files under `memory/<bucket>/` with frontmatter + Why/How-to-apply, plus a one-line entry in `INDEX.md`. Same commit. Don't rely on external memory for project rules.
 ---
 
-<!-- freshness:triggers
-  memory/**
--->
-<!-- freshness:flag-on-change
-  Rule: rules-maintenance
-  Flag if a symbol, path, namespace or behavior this rule names has changed.
--->
-
 When a new project rule surfaces during a conversation — Peter corrects a pattern, an incident produces a rule, a "from now on" emerges — capture it as a `memory/` atom **in the same commit as the work that discovered it**, and add a line to `INDEX.md`. Do not rely on per-machine external memory for project rules.
 
 **Why:** External memories don't sync across Peter's machines (Windows, NUC, laptop) — that's why this whole system exists. A rule that lives only in external memory becomes drift between machines. A rule in `memory/` is git-versioned, syncs everywhere, reviewable on PR, and grep-able by every Claude session that opens the repo.

@@ -11,8 +11,10 @@ description: HARD RULE. External-vendor connector sections (Holded, Mailer/Maile
   src/Sections/Humans.Finance.Contracts/CreditorLedgerLine.cs
 -->
 <!-- freshness:flag-on-change
-  Rule: vendor-connectors-own-sections
-  Flag if a symbol, path, namespace or behavior this rule names has changed.
+  Rule: Vendor connectors stay their own sections — never merged with app code
+  Flag only if the code this rule constrains changed in a way that makes the rule
+  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
+  analyzer. Routine edits to these files are the rule being followed, not drift.
 -->
 
 A section that wraps an **external vendor** (Holded accounting, MailerLite via Mailer, Google Workspace via GoogleIntegration) stays its **own section**, even when a single app section is its only consumer. Vendor connectors are never merged with application code.

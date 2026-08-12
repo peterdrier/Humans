@@ -8,8 +8,10 @@ description: When a caller needs stable facts about an aggregate already exposed
   src/Humans.Application/UserInfo.cs
 -->
 <!-- freshness:flag-on-change
-  Rule: read-model-enrichment
-  Flag if a symbol, path, namespace or behavior this rule names has changed.
+  Rule: Read-Model Enrichment Before New Surfaces
+  Flag only if the code this rule constrains changed in a way that makes the rule
+  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
+  analyzer. Routine edits to these files are the rule being followed, not drift.
 -->
 
 If a caller needs stable facts about an aggregate already exposed through a bounded or cached canonical read model, prefer adding scalar fields to that DTO over adding a new interface, repository, service method, implementation, or DI registration. A few numbers/strings on `UserInfo`, `TeamInfo`, `TicketOrderInfo`, etc. are usually cheaper and clearer than a one-off read surface.

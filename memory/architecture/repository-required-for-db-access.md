@@ -11,8 +11,10 @@ description: HARD RULE. Every service that reads or writes a DB table goes throu
   src/Sections/Humans.Store/Data/IStoreRepository.cs
 -->
 <!-- freshness:flag-on-change
-  Rule: repository-required-for-db-access
-  Flag if a symbol, path, namespace or behavior this rule names has changed.
+  Rule: repository required for every DB-accessing service
+  Flag only if the code this rule constrains changed in a way that makes the rule
+  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
+  analyzer. Routine edits to these files are the rule being followed, not drift.
 -->
 
 If a service stores or reads anything in the database, it goes through a repository class. No exceptions — not for singleton-row settings tables, not for "trivial" lookups, not for "this is a tiny convenience" cases.

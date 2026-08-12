@@ -10,8 +10,10 @@ description: When writing CommunicationPreference (or any audited preference wri
   tests/Humans.Integration.Tests/Controllers/UnsubscribeFlowTests.cs
 -->
 <!-- freshness:flag-on-change
-  Rule: update-source-attribution
-  Flag if a symbol, path, namespace or behavior this rule names has changed.
+  Rule: UpdateSource attribution — distinguish actor + channel
+  Flag only if the code this rule constrains changed in a way that makes the rule
+  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
+  analyzer. Routine edits to these files are the rule being followed, not drift.
 -->
 
 When a controller writes a `CommunicationPreference` via `ICommunicationPreferenceService.UpdatePreferenceAsync`, the `source` parameter must reflect both the **actor** (signed-in vs. anonymous) and the **channel** (which UI/endpoint). Don't use one label for two channels.

@@ -7,8 +7,10 @@ description: Controllers parse input, authorize, dispatch to services, return re
   src/Humans.Analyzers/ControllerBusinessLogicAnalyzer.cs
 -->
 <!-- freshness:flag-on-change
-  Rule: no-business-logic-in-controllers
-  Flag if a symbol, path, namespace or behavior this rule names has changed.
+  Rule: No business logic in controllers — controllers are HTTP adapters
+  Flag only if the code this rule constrains changed in a way that makes the rule
+  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
+  analyzer. Routine edits to these files are the rule being followed, not drift.
 -->
 
 Controllers parse input, authorize, dispatch to a service, and return a response. They do **not** contain business logic — branching on domain state, computing derived values, or coordinating multi-step domain operations.

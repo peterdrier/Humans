@@ -13,7 +13,9 @@ description: HARD RULE. Application/Web code must not read `User.Email`/`Normali
 -->
 <!-- freshness:flag-on-change
   Rule: No Identity-derived column reads from Application or Web
-  Flag if a symbol, path, namespace or behavior this rule names has changed.
+  Flag only if the code this rule constrains changed in a way that makes the rule
+  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
+  analyzer. Routine edits to these files are the rule being followed, not drift.
 -->
 
 # No Identity-derived column reads from Application or Web

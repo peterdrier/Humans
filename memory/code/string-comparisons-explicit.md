@@ -7,8 +7,10 @@ description: `StringComparison.Ordinal` for exact matches, `OrdinalIgnoreCase` f
   src/Humans.Application/Services/Profiles/PersonSearchFields.cs
 -->
 <!-- freshness:flag-on-change
-  Rule: string-comparisons-explicit
-  Flag if a symbol, path, namespace or behavior this rule names has changed.
+  Rule: Always use explicit StringComparison
+  Flag only if the code this rule constrains changed in a way that makes the rule
+  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
+  analyzer. Routine edits to these files are the rule being followed, not drift.
 -->
 
 Always use explicit `StringComparison` parameter on string operations.

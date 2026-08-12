@@ -13,7 +13,9 @@ description: HARD RULE. A caching/wrapping decorator over interface I may only d
 -->
 <!-- freshness:flag-on-change
   Rule: decorators-talk-only-to-inner
-  Flag if a symbol, path, namespace or behavior this rule names has changed.
+  Flag only if the code this rule constrains changed in a way that makes the rule
+  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
+  analyzer. Routine edits to these files are the rule being followed, not drift.
 -->
 
 A class that decorates interface `I` (e.g. `CachingXService : IX, IHostedService` over a keyed-Scoped inner `IX`) is allowed exactly two kinds of collaborator:

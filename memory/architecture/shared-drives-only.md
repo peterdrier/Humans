@@ -8,8 +8,10 @@ description: All Google Drive resources live on Shared Drives. API calls must us
   src/Humans.Infrastructure/Jobs/SystemTeamSyncJob.cs
 -->
 <!-- freshness:flag-on-change
-  Rule: shared-drives-only
-  Flag if a symbol, path, namespace or behavior this rule names has changed.
+  Rule: Google Drive — Shared Drives only, never My Drive
+  Flag only if the code this rule constrains changed in a way that makes the rule
+  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
+  analyzer. Routine edits to these files are the rule being followed, not drift.
 -->
 
 **All Google Drive resources are on Shared Drives.** This system does NOT use regular (My Drive) folders.

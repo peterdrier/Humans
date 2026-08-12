@@ -4,14 +4,14 @@ description: when adding/reviewing an architecture analyzer or arch test — it 
 ---
 
 <!-- freshness:triggers
-  docs/superpowers/specs/2026-05-25-analyzer-consolidation.md
-  memory/**
   src/Humans.Analyzers/CrossSectionEfJoinAnalyzer.cs
   src/Sections/Humans.Notifications/Data/NotificationRepository.cs
 -->
 <!-- freshness:flag-on-change
   Rule: universal-enforcement-over-per-section
-  Flag if a symbol, path, namespace or behavior this rule names has changed.
+  Flag only if the code this rule constrains changed in a way that makes the rule
+  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
+  analyzer. Routine edits to these files are the rule being followed, not drift.
 -->
 
 Architecture enforcement is **universal** — derived from a hard rule and applied to every section the same way — never a per-section analyzer or per-class test. A per-section enforcer is a smell, and resolves to exactly one of: **(a) redundant** — it duplicates an existing universal enforcer → delete it; **(b) a gap** — a real hard rule with no universal enforcer yet → build the universal enforcer, then delete the instances; **(c) a genuine one-off** domain invariant → keep, but only after proving it cannot be restated generally.

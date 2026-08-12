@@ -12,7 +12,9 @@ description: Long-term direction. `IUserService` is the one-stop-shop for every 
 -->
 <!-- freshness:flag-on-change
   Rule: iuserservice-onestop-userinfo
-  Flag if a symbol, path, namespace or behavior this rule names has changed.
+  Flag only if the code this rule constrains changed in a way that makes the rule
+  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
+  analyzer. Routine edits to these files are the rule being followed, not drift.
 -->
 
 `IUserService` owns the canonical `UserInfo` read-model AND the write paths for every field on it. When you need to read or write anything inside `UserInfo`'s scope — user identity columns, user-email rows, external logins, event participations, profile fields, contact fields, profile languages, volunteer history, communication preferences — prefer `IUserService`.

@@ -9,8 +9,10 @@ description: HARD RULE. All person-search call sites route through `IUserService
   src/Humans.Web/Helpers/ShiftVolunteerSearchBuilder.cs
 -->
 <!-- freshness:flag-on-change
-  Rule: person-search
-  Flag if a symbol, path, namespace or behavior this rule names has changed.
+  Rule: Person search uses one bit-flag service method and two canonical UI patterns
+  Flag only if the code this rule constrains changed in a way that makes the rule
+  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
+  analyzer. Routine edits to these files are the rule being followed, not drift.
 -->
 
 Person search shows up across the app — Camp role assignment, team-admin member picker, public profile search page, admin humans list, ticket-transfer recipient lookup, etc. Today they all consolidate behind a single service method and two UI partials. Don't fork.

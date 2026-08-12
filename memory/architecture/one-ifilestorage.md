@@ -9,7 +9,9 @@ description: HARD RULE — one shared `IFileStorage`, key-namespaced under `uplo
 -->
 <!-- freshness:flag-on-change
   Rule: one-ifilestorage
-  Flag if a symbol, path, namespace or behavior this rule names has changed.
+  Flag only if the code this rule constrains changed in a way that makes the rule
+  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
+  analyzer. Routine edits to these files are the rule being followed, not drift.
 -->
 
 When a section needs to persist user-uploaded files (images, PDFs, receipts, exports), it MUST go through `Humans.Application.Interfaces.IFileStorage` (impl `FileSystemFileStorage`). Pick a key prefix under `uploads/` for the section (`uploads/profile-pictures/`, `uploads/camps/{campId}/`, `uploads/expense-attachments/`, etc.) and call `SaveAsync` / `TryReadAsync` / `DeleteAsync` with that key.

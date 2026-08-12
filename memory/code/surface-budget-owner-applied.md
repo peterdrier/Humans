@@ -10,8 +10,10 @@ description: HARD RULE. `[SurfaceBudget(N)]` is placed by the repo owner by hand
   src/Humans.Interfaces/Architecture/SurfaceBudgetAttribute.cs
 -->
 <!-- freshness:flag-on-change
-  Rule: surface-budget-owner-applied
-  Flag if a symbol, path, namespace or behavior this rule names has changed.
+  Rule: SurfaceBudget is owner-applied only — never add it, never suggest it
+  Flag only if the code this rule constrains changed in a way that makes the rule
+  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
+  analyzer. Routine edits to these files are the rule being followed, not drift.
 -->
 
 `[SurfaceBudget(N)]` is **owner-applied only**. Peter decides where it goes and places it by hand. Agents never add the attribute and never suggest adding it — not in a PR, a review, or in passing.

@@ -8,8 +8,10 @@ description: In member-facing text (guide docs, views, emails), a camp's map sha
   src/Sections/Humans.CityPlanning/Domain/CampPolygonHistory.cs
 -->
 <!-- freshness:flag-on-change
-  Rule: placement-not-polygon
-  Flag if a symbol, path, namespace or behavior this rule names has changed.
+  Rule: User-facing copy says "placement", not "polygon"
+  Flag only if the code this rule constrains changed in a way that makes the rule
+  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
+  analyzer. Routine edits to these files are the rule being followed, not drift.
 -->
 
 In **member-facing** copy — guide docs, Razor views, emails, notifications — refer to a camp's shape on the City Planning map as its **placement** ("edit your camp's placement", "placements outside the limit zone"). Never "polygon".

@@ -8,8 +8,10 @@ description: Single canonical URL per page. The only sanctioned alias is Barrios
   src/Humans.Web/Controllers/CampController.cs
 -->
 <!-- freshness:flag-on-change
-  Rule: no-url-aliases
-  Flag if a symbol, path, namespace or behavior this rule names has changed.
+  Rule: No URL aliases except Barrios↔Camps
+  Flag only if the code this rule constrains changed in a way that makes the rule
+  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
+  analyzer. Routine edits to these files are the rule being followed, not drift.
 -->
 
 When adding new pages to an existing section, route them on the existing controller using the existing route convention. Do **NOT** add singular-form aliases (`/Camp/Admin` alongside `/Camps/Admin`), do **NOT** split into a new controller just to vary the URL, do **NOT** introduce any second route prefix.

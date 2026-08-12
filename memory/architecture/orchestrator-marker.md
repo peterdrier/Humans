@@ -12,8 +12,10 @@ description: An Orchestrator coordinates ≥2 sections, owns no tables, and inje
   src/Humans.Interfaces/Interfaces/IOrchestrator.cs
 -->
 <!-- freshness:flag-on-change
-  Rule: orchestrator-marker
-  Flag if a symbol, path, namespace or behavior this rule names has changed.
+  Rule: Orchestrators own no tables and carry IOrchestrator (sibling of IApplicationService)
+  Flag only if the code this rule constrains changed in a way that makes the rule
+  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
+  analyzer. Routine edits to these files are the rule being followed, not drift.
 -->
 
 Role vocabulary: [`CONTEXT.md`](../../CONTEXT.md) (Section / Crosscut / Orchestrator).

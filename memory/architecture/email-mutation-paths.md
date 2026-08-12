@@ -13,7 +13,9 @@ description: HARD RULE. `UserEmail.Email` is written only by the OAuth-callback 
 -->
 <!-- freshness:flag-on-change
   Rule: Email Mutation Paths
-  Flag if a symbol, path, namespace or behavior this rule names has changed.
+  Flag only if the code this rule constrains changed in a way that makes the rule
+  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
+  analyzer. Routine edits to these files are the rule being followed, not drift.
 -->
 
 # Email Mutation Paths

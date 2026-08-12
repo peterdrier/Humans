@@ -12,8 +12,10 @@ description: Adding a method to ANY interface (budgeted or not) is durable techn
   src/Humans.Application/Interfaces/Users/IUserService.cs
 -->
 <!-- freshness:flag-on-change
-  Rule: interface-method-additions-are-debt
-  Flag if a symbol, path, namespace or behavior this rule names has changed.
+  Rule: Every interface-method addition is long-term technical debt — default to reuse, not add
+  Flag only if the code this rule constrains changed in a way that makes the rule
+  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
+  analyzer. Routine edits to these files are the rule being followed, not drift.
 -->
 
 Adding a method to an interface is **technical debt**, not a refactor. New methods accrete — they don't decay — and they compound across `IUserService` + `IUserEmailService` + `IProfileService` + `ITeamService` + `ICampService` + … into surfaces that take weeks of focused work to audit and consolidate.

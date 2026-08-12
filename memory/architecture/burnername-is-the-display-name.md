@@ -10,8 +10,10 @@ description: For any human with a Profile row, BurnerName is the only public-fac
   src/Humans.Infrastructure/Repositories/Users/UserRepository.cs
 -->
 <!-- freshness:flag-on-change
-  Rule: burnername-is-the-display-name
-  Flag if a symbol, path, namespace or behavior this rule names has changed.
+  Rule: BurnerName is THE display name when a Profile exists
+  Flag only if the code this rule constrains changed in a way that makes the rule
+  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
+  analyzer. Routine edits to these files are the rule being followed, not drift.
 -->
 
 When a `Profile` row exists for a `User`, `Profile.BurnerName` is the only name we ever render in the UI. `User.DisplayName` is a legacy field we can't remove; it's a fallback only when no Profile exists.

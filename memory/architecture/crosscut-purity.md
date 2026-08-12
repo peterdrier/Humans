@@ -8,8 +8,10 @@ description: A Crosscut (Audit, Email, Notification, Metrics) owns its own data 
   src/Humans.Application/Services/Auth/RoleAssignmentService.cs
 -->
 <!-- freshness:flag-on-change
-  Rule: crosscut-purity
-  Flag if a symbol, path, namespace or behavior this rule names has changed.
+  Rule: Crosscuts call no section; gather cross-lane data in an Orchestrator
+  Flag only if the code this rule constrains changed in a way that makes the rule
+  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
+  analyzer. Routine edits to these files are the rule being followed, not drift.
 -->
 
 Role vocabulary: [`CONTEXT.md`](../../CONTEXT.md) (Section / Crosscut / Orchestrator).

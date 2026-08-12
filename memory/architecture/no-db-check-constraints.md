@@ -7,8 +7,10 @@ description: HARD RULE. Never put a CHECK constraint into the forward model — 
   src/Sections/Humans.Agent/Data/Configurations/AgentSettingsConfiguration.cs
 -->
 <!-- freshness:flag-on-change
-  Rule: no-db-check-constraints
-  Flag if a symbol, path, namespace or behavior this rule names has changed.
+  Rule: no CHECK constraints in the database
+  Flag only if the code this rule constrains changed in a way that makes the rule
+  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
+  analyzer. Routine edits to these files are the rule being followed, not drift.
 -->
 
 Invariants are enforced in service code, not by database CHECK constraints. Never write

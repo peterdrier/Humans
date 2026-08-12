@@ -10,8 +10,10 @@ description: View Component when the component fetches its own data. Partial Vie
   src/Humans.Web/ViewComponents/ProfileCardViewComponent.cs
 -->
 <!-- freshness:flag-on-change
-  Rule: view-components-vs-partials
-  Flag if a symbol, path, namespace or behavior this rule names has changed.
+  Rule: View Components vs Partial Views — pick by data-fetching responsibility
+  Flag only if the code this rule constrains changed in a way that makes the rule
+  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
+  analyzer. Routine edits to these files are the rule being followed, not drift.
 -->
 
 ASP.NET Core offers two reusable view mechanisms. Use the right one:

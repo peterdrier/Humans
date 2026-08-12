@@ -7,8 +7,10 @@ description: A human exists. They either have an open Application or not. An App
   src/Sections/Humans.Governance.Contracts/IApplicationDecisionService.cs
 -->
 <!-- freshness:flag-on-change
-  Rule: tier-derived-from-applications
-  Flag if a symbol, path, namespace or behavior this rule names has changed.
+  Rule: Tier is derived from approved Application state, not a Profile concept
+  Flag only if the code this rule constrains changed in a way that makes the rule
+  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
+  analyzer. Routine edits to these files are the rule being followed, not drift.
 -->
 
 A human exists. They either have an open (`Submitted`) Application or they don't. An `Approved` Application with an active term *is* what makes someone a Colaborador or Asociado — there is no parallel "tier" state for the Application section to negotiate with.

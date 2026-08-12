@@ -14,8 +14,10 @@ metadata:
   src/Humans.Domain/Entities/TeamMember.cs
 -->
 <!-- freshness:flag-on-change
-  Rule: Section read/write interface split
-  Flag if a symbol, path, namespace or behavior this rule names has changed.
+  Rule: section-read-write-split
+  Flag only if the code this rule constrains changed in a way that makes the rule
+  wrong or unenforceable — a renamed/removed symbol, a moved namespace, a dropped
+  analyzer. Routine edits to these files are the rule being followed, not drift.
 -->
 
 # Section read/write interface split
