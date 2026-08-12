@@ -12,9 +12,20 @@ namespace Humans.Analyzers;
 /// namespace exactly (the repo interface folder is flat, not per-section).
 /// </summary>
 /// <remarks>
+/// <para>
 /// Runs in <c>Humans.Application</c> only. Replaces ~20 per-section reflection
 /// assertions of the form
 /// <c>IXxxRepository_LivesInApplicationInterfacesRepositoriesNamespace</c>.
+/// </para>
+/// <para>
+/// Deliberately not widened to section assemblies (nobodies-collective/Humans#866,
+/// G5): a section's repository interfaces and their DbContext live under
+/// <c>Humans.&lt;Section&gt;.Data</c>, not the flat
+/// <c>Humans.Application.Interfaces.Repositories</c> namespace this rule enforces —
+/// a shape incompatible with the rule by construction, so widening the gate would
+/// false-positive on every repository in every moved section. This rule retires on
+/// its own once the last section peels out of <c>Humans.Application</c>.
+/// </para>
 /// </remarks>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class RepositoryInterfaceLocationAnalyzer : DiagnosticAnalyzer

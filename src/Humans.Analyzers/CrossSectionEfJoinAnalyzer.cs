@@ -19,6 +19,7 @@ public sealed class CrossSectionEfJoinAnalyzer : DiagnosticAnalyzer
     private const string ConfigurationNamespacePrefix = "Humans.Infrastructure.Data.Configurations";
     private const string EntityTypeConfigurationFullName = "Microsoft.EntityFrameworkCore.IEntityTypeConfiguration`1";
     private const string EfBuilderNamespacePrefix = "Microsoft.EntityFrameworkCore";
+    private const string SectionAttributeFullName = "Humans.Domain.Attributes.SectionAttribute";
 
     /// <summary>
     /// Section identity for a configuration that sits directly in the
@@ -71,7 +72,13 @@ public sealed class CrossSectionEfJoinAnalyzer : DiagnosticAnalyzer
         if (entityTypeConfiguration is null)
             return;
 
-        var ownership = BuildOwnershipMap(context.Compilation, entityTypeConfiguration);
+        // Nullable on purpose: without it section resolution falls back to the
+        // Infrastructure namespace prefix alone, which is exactly the pre-#866
+        // behaviour. Returning early instead would switch the whole rule off for
+        // any compilation that does not reference Humans.Domain.
+        var sectionAttr = context.Compilation.GetTypeByMetadataName(SectionAttributeFullName);
+
+        var ownership = BuildOwnershipMap(context.Compilation, entityTypeConfiguration, sectionAttr);
         if (ownership.EntitySections.Count == 0 || ownership.ConfigurationSections.Count == 0)
             return;
 
@@ -128,14 +135,15 @@ public sealed class CrossSectionEfJoinAnalyzer : DiagnosticAnalyzer
 
     private static OwnershipMap BuildOwnershipMap(
         Compilation compilation,
-        INamedTypeSymbol entityTypeConfiguration)
+        INamedTypeSymbol entityTypeConfiguration,
+        INamedTypeSymbol? sectionAttr)
     {
         var configurationSections = new Dictionary<string, string>(StringComparer.Ordinal);
         var entitySections = new Dictionary<string, string>(StringComparer.Ordinal);
 
         foreach (var type in EnumerateNamedTypes(compilation.GlobalNamespace))
         {
-            var section = SectionFromConfigurationNamespace(type);
+            var section = SectionFromConfigurationNamespace(type, sectionAttr);
             if (section is null)
                 continue;
 
@@ -170,23 +178,29 @@ public sealed class CrossSectionEfJoinAnalyzer : DiagnosticAnalyzer
 
     /// <summary>
     /// Resolves the section that owns a configuration class from the namespace
-    /// segment directly beneath <c>…Data.Configurations</c>. Returns
-    /// <c>null</c> only when the type is not under that namespace at all (so it
-    /// is not an EF configuration this rule governs); a configuration that sits
-    /// in the <c>Configurations</c> root namespace resolves to
-    /// <see cref="UnsectionedSection"/> rather than to <c>null</c>.
+    /// segment directly beneath <c>…Data.Configurations</c>. A configuration that
+    /// sits in the <c>Configurations</c> root namespace resolves to
+    /// <see cref="UnsectionedSection"/> rather than to <c>null</c>. When the type
+    /// isn't under that namespace at all, falls back to the containing assembly's
+    /// <c>[assembly: Section("…")]</c> marker — the same pattern
+    /// <see cref="CrossSectionRepositoryInjectionAnalyzer"/> (HUM0017) uses via
+    /// <see cref="Sections.FromAssembly"/> — because a section project
+    /// (nobodies-collective/Humans#866, G5) puts its EF configurations under
+    /// <c>Humans.&lt;Section&gt;.Data.Configurations</c> instead. Only <c>null</c>
+    /// when neither resolves, meaning the type is not an EF configuration this
+    /// rule governs.
     /// </summary>
-    private static string? SectionFromConfigurationNamespace(INamedTypeSymbol type)
+    private static string? SectionFromConfigurationNamespace(INamedTypeSymbol type, INamedTypeSymbol? sectionAttr)
     {
         var ns = type.ContainingNamespace?.ToDisplayString();
         if (ns is null || !ns.StartsWith(ConfigurationNamespacePrefix, StringComparison.Ordinal))
-            return null;
+            return Sections.FromAssembly(type.ContainingAssembly, sectionAttr);
 
         if (ns.Length == ConfigurationNamespacePrefix.Length)
             return UnsectionedSection;
 
         if (ns[ConfigurationNamespacePrefix.Length] != '.')
-            return null;
+            return Sections.FromAssembly(type.ContainingAssembly, sectionAttr);
 
         var start = ConfigurationNamespacePrefix.Length + 1;
         var dot = ns.IndexOf('.', start);

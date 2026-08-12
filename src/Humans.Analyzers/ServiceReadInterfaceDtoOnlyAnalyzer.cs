@@ -16,9 +16,14 @@ namespace Humans.Analyzers;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Trigger: an interface declared in the <c>Humans.Application</c> assembly
-/// whose name ends with <c>Read</c>. Mirrors the <c>I&lt;Section&gt;ServiceRead</c>
-/// pattern in <c>memory/architecture/section-read-write-split.md</c>.
+/// Trigger: an interface whose name ends with <c>Read</c>, declared in
+/// <c>Humans.Application</c>, a section assembly (nobodies-collective/Humans#866,
+/// G5, <see cref="AssemblyScope.IsSection"/>), or a section's paired
+/// <c>Humans.&lt;Section&gt;.Contracts</c> leaf project
+/// (<see cref="AssemblyScope.IsSectionContracts"/>) — e.g.
+/// <c>Humans.Email.Contracts.IEmailOutboxServiceRead</c>. Mirrors the
+/// <c>I&lt;Section&gt;ServiceRead</c> pattern in
+/// <c>memory/architecture/section-read-write-split.md</c>.
 /// </para>
 /// <para>
 /// Exposing an entity through the read surface couples the consuming section
@@ -74,10 +79,9 @@ public sealed class ServiceReadInterfaceDtoOnlyAnalyzer : DiagnosticAnalyzer
 
     private static void OnCompilationStart(CompilationStartAnalysisContext context)
     {
-        if (!string.Equals(
-                context.Compilation.Assembly.Name,
-                AssemblyScope.Application,
-                System.StringComparison.Ordinal))
+        var assembly = context.Compilation.Assembly;
+        if (!AssemblyScope.IsLayerOrSection(assembly, AssemblyScope.Application) &&
+            !AssemblyScope.IsSectionContracts(assembly))
         {
             return;
         }

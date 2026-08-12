@@ -97,6 +97,69 @@ public sealed class CrossSectionEfJoinAnalyzerTests
         }
         """;
 
+    // Assembly attributes must precede every namespace/type declaration in the file
+    // (CS1730), so this goes first in any source that needs the assembly under test
+    // to be recognised as a section by AssemblyScope.IsSection. Self-contained
+    // (no shared "Stubs" reuse, no "using System;") because a using-directive can't
+    // legally follow an assembly attribute in the same compilation unit.
+    private const string SectionAssemblyAttribute = """
+        [assembly: Humans.Domain.Attributes.Section("Email")]
+
+        """;
+
+    private const string SectionScenarioStub = """
+
+        namespace Humans.Domain.Attributes
+        {
+            [System.AttributeUsage(System.AttributeTargets.Assembly)]
+            public sealed class SectionAttribute : System.Attribute
+            {
+                public SectionAttribute(string name) { Name = name; }
+                public string Name { get; }
+            }
+        }
+
+        namespace Microsoft.EntityFrameworkCore
+        {
+            public interface IEntityTypeConfiguration<TEntity>
+            {
+                void Configure(Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder<TEntity> builder);
+            }
+        }
+
+        namespace Microsoft.EntityFrameworkCore.Metadata.Builders
+        {
+            public sealed class EntityTypeBuilder<TEntity>
+            {
+                public ReferenceNavigationBuilder HasOne<TRelatedEntity>(System.Func<TEntity, TRelatedEntity?> navigationExpression) => new();
+            }
+
+            public sealed class ReferenceNavigationBuilder { }
+        }
+
+        namespace Humans.Domain.Entities
+        {
+            public sealed class Team { }
+
+            public sealed class EmailOutboxMessage
+            {
+                public Team Team { get; set; } = new();
+                public EmailTemplate Template { get; set; } = new();
+            }
+
+            public sealed class EmailTemplate { }
+        }
+
+        namespace Humans.Infrastructure.Data.Configurations.Teams
+        {
+            public sealed class TeamConfiguration :
+                Microsoft.EntityFrameworkCore.IEntityTypeConfiguration<Humans.Domain.Entities.Team>
+            {
+                public void Configure(Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder<Humans.Domain.Entities.Team> builder) { }
+            }
+        }
+        """;
+
     private static bool IsHum0024(Diagnostic d) =>
         string.Equals(d.Id, CrossSectionEfJoinAnalyzer.DiagnosticId, StringComparison.Ordinal);
 
@@ -351,6 +414,70 @@ public sealed class CrossSectionEfJoinAnalyzerTests
 
         var hit = diagnostics.Where(IsHum0024).Should().ContainSingle().Subject;
         hit.Severity.Should().Be(DiagnosticSeverity.Warning);
+    }
+
+    [HumansFact]
+    public async Task Fires_for_a_section_assemblys_own_configuration_joining_another_sections_entity()
+    {
+        // Section project (nobodies-collective/Humans#866, G5): configs live outside
+        // the Infrastructure prefix (e.g. Humans.Email.Data), so ownership resolution
+        // must fall back to the assembly's [assembly: Section("…")] marker for the
+        // map to populate at all -- without the fallback, OnCompilationStart bails
+        // early on an empty map and the rule never fires inside a section compilation.
+        var source = SectionAssemblyAttribute + SectionScenarioStub + """
+
+            namespace Humans.Email.Data
+            {
+                public sealed class EmailOutboxMessageConfiguration :
+                    Microsoft.EntityFrameworkCore.IEntityTypeConfiguration<Humans.Domain.Entities.EmailOutboxMessage>
+                {
+                    public void Configure(Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder<Humans.Domain.Entities.EmailOutboxMessage> builder) =>
+                        builder.HasOne(m => m.Team);
+                }
+            }
+            """;
+
+        var diagnostics = await AnalyzerTestHarness.RunAsync(
+            new CrossSectionEfJoinAnalyzer(),
+            "Humans.Email",
+            source);
+
+        var hit = diagnostics.Where(IsHum0024).Should().ContainSingle().Subject;
+        hit.GetMessage().Should().Contain("Email");
+        hit.GetMessage().Should().Contain("Teams");
+    }
+
+    [HumansFact]
+    public async Task Does_not_fire_for_a_section_assemblys_own_intra_section_join()
+    {
+        // Both configs resolve via the same assembly-level fallback ("Email"), so
+        // this proves the fallback populates the ownership map without flagging a
+        // same-section join as a false positive.
+        var source = SectionAssemblyAttribute + SectionScenarioStub + """
+
+            namespace Humans.Email.Data
+            {
+                public sealed class EmailTemplateConfiguration :
+                    Microsoft.EntityFrameworkCore.IEntityTypeConfiguration<Humans.Domain.Entities.EmailTemplate>
+                {
+                    public void Configure(Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder<Humans.Domain.Entities.EmailTemplate> builder) { }
+                }
+
+                public sealed class EmailOutboxMessageConfiguration :
+                    Microsoft.EntityFrameworkCore.IEntityTypeConfiguration<Humans.Domain.Entities.EmailOutboxMessage>
+                {
+                    public void Configure(Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder<Humans.Domain.Entities.EmailOutboxMessage> builder) =>
+                        builder.HasOne(m => m.Template);
+                }
+            }
+            """;
+
+        var diagnostics = await AnalyzerTestHarness.RunAsync(
+            new CrossSectionEfJoinAnalyzer(),
+            "Humans.Email",
+            source);
+
+        diagnostics.Where(IsHum0024).Should().BeEmpty();
     }
 
     [HumansFact]

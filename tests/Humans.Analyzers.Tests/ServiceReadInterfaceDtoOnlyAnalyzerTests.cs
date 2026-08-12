@@ -5,8 +5,16 @@ namespace Humans.Analyzers.Tests;
 
 public class ServiceReadInterfaceDtoOnlyAnalyzerTests
 {
-    // Stub the section-owned DTO, an EF entity, a DbSet, and the
-    // GrandfatheredAttribute. IQueryable<T> comes from the real BCL via the
+    // Assembly attributes must precede every namespace/type declaration in the file
+    // (CS1730), so this goes first in any source that needs the assembly under test
+    // to be recognised as a section by AssemblyScope.IsSection.
+    private const string SectionAssemblyAttribute = """
+        [assembly: Humans.Domain.Attributes.Section("Test")]
+
+        """;
+
+    // Stub the section-owned DTO, an EF entity, a DbSet, the SectionAttribute, and
+    // the GrandfatheredAttribute. IQueryable<T> comes from the real BCL via the
     // harness's trusted-platform-assemblies reference list.
     private const string Stubs = """
         namespace Humans.Application.DTOs
@@ -33,6 +41,16 @@ public class ServiceReadInterfaceDtoOnlyAnalyzerTests
             public sealed class GrandfatheredAttribute : System.Attribute
             {
                 public GrandfatheredAttribute(string ruleId, string justification, string since, string issueRef) { }
+            }
+        }
+
+        namespace Humans.Domain.Attributes
+        {
+            [System.AttributeUsage(System.AttributeTargets.Assembly)]
+            public sealed class SectionAttribute : System.Attribute
+            {
+                public SectionAttribute(string name) { Name = name; }
+                public string Name { get; }
             }
         }
         """;
@@ -324,6 +342,79 @@ public class ServiceReadInterfaceDtoOnlyAnalyzerTests
         var diagnostics = await AnalyzerTestHarness.RunAsync(
             new ServiceReadInterfaceDtoOnlyAnalyzer(),
             "Humans.Application",
+            source);
+
+        diagnostics.Where(IsHum0029).Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task Fires_inside_a_section_assembly_when_interface_leaks_an_entity()
+    {
+        // A moved section (nobodies-collective/Humans#866, G5) carries
+        // [assembly: Section("…")] instead of being named "Humans.Application" —
+        // the assembly-scope gate must still catch its own I*Read interfaces.
+        var source = SectionAssemblyAttribute + Stubs + """
+
+            namespace Humans.Test.Interfaces
+            {
+                public interface ITestServiceRead
+                {
+                    System.Threading.Tasks.Task<Humans.Domain.Entities.Camp?> GetAsync(System.Guid id);
+                }
+            }
+            """;
+
+        var diagnostics = await AnalyzerTestHarness.RunAsync(
+            new ServiceReadInterfaceDtoOnlyAnalyzer(),
+            "Humans.Test",
+            source);
+
+        diagnostics.Where(IsHum0029).Should().ContainSingle();
+    }
+
+    [HumansFact]
+    public async Task Fires_inside_a_section_Contracts_assembly_when_interface_leaks_an_entity()
+    {
+        // A section's paired leaf project (Humans.<Section>.Contracts, e.g.
+        // Humans.Email.Contracts.IEmailOutboxServiceRead) carries no
+        // [assembly: Section("…")] of its own — it's recognised by the ".Contracts"
+        // assembly-name suffix instead.
+        var source = Stubs + """
+
+            namespace Humans.Email.Contracts
+            {
+                public interface IEmailOutboxServiceRead
+                {
+                    System.Threading.Tasks.Task<Humans.Domain.Entities.Camp?> GetAsync(System.Guid id);
+                }
+            }
+            """;
+
+        var diagnostics = await AnalyzerTestHarness.RunAsync(
+            new ServiceReadInterfaceDtoOnlyAnalyzer(),
+            "Humans.Email.Contracts",
+            source);
+
+        diagnostics.Where(IsHum0029).Should().ContainSingle();
+    }
+
+    [HumansFact]
+    public async Task Does_not_fire_inside_a_section_Contracts_assembly_for_DTO_only_interface()
+    {
+        var source = Stubs + """
+
+            namespace Humans.Email.Contracts
+            {
+                public interface IEmailOutboxServiceRead
+                {
+                    System.Threading.Tasks.Task<Humans.Application.DTOs.CampInfo?> GetAsync(System.Guid id);
+                }
+            }
+            """;
+
+        var diagnostics = await AnalyzerTestHarness.RunAsync(
+            new ServiceReadInterfaceDtoOnlyAnalyzer(),
+            "Humans.Email.Contracts",
             source);
 
         diagnostics.Where(IsHum0029).Should().BeEmpty();

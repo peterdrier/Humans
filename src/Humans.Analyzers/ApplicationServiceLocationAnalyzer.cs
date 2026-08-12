@@ -27,6 +27,14 @@ namespace Humans.Analyzers;
 /// <c>ServiceName_LivesInHumansApplicationServices&lt;Section&gt;Namespace</c>
 /// AND enforces per-section ownership (which the looser prefix check did not).
 /// </para>
+/// <para>
+/// Deliberately not widened to section assemblies (nobodies-collective/Humans#866,
+/// G5): a section's services live under <c>Humans.&lt;Section&gt;.Services</c>, not
+/// <c>Humans.Application.Services.&lt;Section&gt;</c> — a namespace shape this rule's
+/// convention cannot express without a false positive on every service in every
+/// moved section. This rule retires on its own once the last section peels out of
+/// <c>Humans.Application</c>.
+/// </para>
 /// </remarks>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class ApplicationServiceLocationAnalyzer : DiagnosticAnalyzer
