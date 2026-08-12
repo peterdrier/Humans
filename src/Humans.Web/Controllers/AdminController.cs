@@ -2,10 +2,12 @@ using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Dashboard;
 using Humans.Email.Contracts;
+using Humans.Expenses.Contracts;
 using Humans.Feedback.Contracts;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
+using Humans.Store.Contracts;
 using Humans.UI.Authorization;
 using Humans.UI.Controllers;
 using Humans.Web.Models;
@@ -30,6 +32,8 @@ public class AdminController(IUserServiceRead userService) : HumansControllerBas
         [FromServices] IUserActivityTracker activityTracker,
         [FromServices] ITeamServiceRead teams,
         [FromServices] IEmailOutboxServiceRead emailOutbox,
+        [FromServices] IStoreServiceRead storeService,
+        [FromServices] IExpenseReportServiceRead expenseReportService,
         CancellationToken ct)
     {
         var firstName = User.Identity?.Name?.Split(' ').FirstOrDefault() ?? "";
@@ -63,6 +67,14 @@ public class AdminController(IUserServiceRead userService) : HumansControllerBas
         var auditTotal = (await auditViewer.GetPageAsync(null, 1, 1, ct)).TotalCount;
         var emailStats = await emailOutbox.GetOutboxStatsAsync(0, ct);
 
+        var storeSummary = activeEvent is { Year: > 0 }
+            ? await storeService.GetStoreSummaryAsync(activeEvent.Year, ct)
+            : null;
+        var storeOrders = storeSummary?.ByCounterparty.Count ?? 0;
+        var storeTotalEur = storeSummary?.ByCounterparty.Sum(o => o.TotalDueEur) ?? 0m;
+
+        var expenseReports = await expenseReportService.GetAllAsync(ct);
+
         var vm = new AdminDashboardViewModel(
             GreetingFirstName: firstName,
             TotalUsers: totalUsers,
@@ -82,7 +94,11 @@ public class AdminController(IUserServiceRead userService) : HumansControllerBas
             SetMembership: dashboardData.SetMembership,
             TotalTeams: teamCount,
             TotalAuditEvents: auditTotal,
-            TotalEmails: emailStats.TotalCount);
+            TotalEmails: emailStats.TotalCount,
+            StoreOrders: storeOrders,
+            StoreTotalEur: storeTotalEur,
+            ExpenseReports: expenseReports.Count,
+            ExpenseTotalEur: expenseReports.Sum(r => r.Total));
         return View(vm);
     }
 }

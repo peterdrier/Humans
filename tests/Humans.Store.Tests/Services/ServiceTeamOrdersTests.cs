@@ -5,6 +5,7 @@ using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
+using Humans.Store.Contracts;
 using Humans.Store.Data;
 using Humans.Store.Domain;
 using Humans.Store.Services;

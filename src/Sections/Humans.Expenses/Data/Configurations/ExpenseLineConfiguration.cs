@@ -2,6 +2,7 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Humans.Expenses.Contracts;
 using Humans.Expenses.Domain;
 
 namespace Humans.Expenses.Data;

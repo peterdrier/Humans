@@ -1,5 +1,5 @@
 using Humans.Application.Interfaces.AuditLog;
-using Humans.Store.Domain;
+using Humans.Store.Contracts;
 
 namespace Humans.Store.Services.Dtos;
 

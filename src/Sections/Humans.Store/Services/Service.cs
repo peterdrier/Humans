@@ -3,6 +3,7 @@ using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Domain.Enums;
+using Humans.Store.Contracts;
 using Humans.Store.Data;
 using Humans.Store.Domain;
 using Humans.Store.Services;
@@ -22,7 +23,7 @@ internal sealed class Service(
     IClock clock,
     IShiftManagementService shifts,
     IStripeService stripeService,
-    ILogger<Service> logger) : IApplicationService
+    ILogger<Service> logger) : IStoreServiceRead
 {
     public Task<IndexData> GetIndexDataAsync(Guid userId, CancellationToken ct = default) =>
         BuildIndexDataAsync(userId, allCounterparties: false, ct);

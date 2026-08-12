@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Expenses.Contracts;
 using Humans.Expenses.Domain;
 using Humans.Application.Interfaces;
 using Humans.Budget.Contracts;

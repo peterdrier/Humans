@@ -1,10 +1,8 @@
-using Humans.Domain.Enums;
 using NodaTime;
-using Humans.Expenses.Domain;
 
-namespace Humans.Expenses.Services.Dtos;
+namespace Humans.Expenses.Contracts;
 
-internal sealed record ExpenseReportDto
+public sealed record ExpenseReportDto
 {
     public required Guid Id { get; init; }
     public required Guid SubmitterUserId { get; init; }

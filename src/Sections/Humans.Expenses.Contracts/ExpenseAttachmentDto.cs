@@ -1,8 +1,8 @@
 using NodaTime;
 
-namespace Humans.Expenses.Services.Dtos;
+namespace Humans.Expenses.Contracts;
 
-internal sealed record ExpenseAttachmentDto
+public sealed record ExpenseAttachmentDto
 {
     public required Guid Id { get; init; }
     public required string OriginalFileName { get; init; }

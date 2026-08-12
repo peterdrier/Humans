@@ -1,4 +1,5 @@
 using Humans.Budget.Contracts;
+using Humans.Expenses.Contracts;
 using Humans.Expenses.Services;
 using Humans.Finance.Contracts;
 using Humans.Application.Interfaces.Users;

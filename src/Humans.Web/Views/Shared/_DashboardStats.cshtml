@@ -60,4 +60,14 @@
         <div class="value">@Model.TotalEmails.ToString("N0")</div>
         <div class="delta">outbox total</div>
     </div>
+    <div class="stat">
+        <div class="label">Store orders</div>
+        <div class="value">@Model.StoreOrders.ToString("N0")</div>
+        <div class="delta">€@Model.StoreTotalEur.ToString("N0") total</div>
+    </div>
+    <div class="stat">
+        <div class="label">Expense reports</div>
+        <div class="value">@Model.ExpenseReports.ToString("N0")</div>
+        <div class="delta">€@Model.ExpenseTotalEur.ToString("N0") total</div>
+    </div>
 </div>

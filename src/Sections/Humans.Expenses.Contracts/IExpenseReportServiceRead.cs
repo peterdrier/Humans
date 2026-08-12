@@ -1,14 +1,14 @@
 using Humans.Application.Architecture;
-using Humans.Expenses.Services.Dtos;
+using NodaTime;
 
-namespace Humans.Expenses.Services;
+namespace Humans.Expenses.Contracts;
 
 /// <summary>
 /// Cross-section read surface for expense reports. External readers should use
 /// this interface instead of the mutation service.
 /// </summary>
-[SurfaceBudget(7)]
-internal interface IExpenseReportServiceRead
+[SurfaceBudget(8)]
+public interface IExpenseReportServiceRead
 {
     Task<ExpenseReportDto?> GetAsync(Guid id, CancellationToken ct = default);
 
@@ -35,4 +35,22 @@ internal interface IExpenseReportServiceRead
         Guid coordinatorUserId, CancellationToken ct = default);
 
     Task<IReadOnlyList<ExpenseReportDto>> GetReviewQueueAsync(CancellationToken ct = default);
+
+    /// <summary>All expense reports, all statuses — dashboard/aggregate reads sum client-side (~500-user scale).</summary>
+    Task<IReadOnlyList<ExpenseReportDto>> GetAllAsync(CancellationToken ct = default);
 }
+
+public sealed record ExpenseAttachmentDownload(
+    byte[] Bytes,
+    string ContentType,
+    string OriginalFileName);
+
+/// <summary>Round-trip timeline for the submitter, derived from the cached Holded creditor ledger.</summary>
+public sealed record ExpenseHoldedTimeline(
+    bool RegisteredInHolded,
+    decimal OwedToMember,
+    decimal MemberRegisteredTotal,   // sum of this member's registered-but-unpaid ER totals
+    decimal OtherAmount,             // max(0, OwedToMember - MemberRegisteredTotal): fronted / adjustments
+    bool Paid,
+    LocalDate? PaidOn,
+    decimal TotalPaid);

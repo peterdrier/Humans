@@ -56,6 +56,9 @@ internal sealed class ExpenseReportService(
     public Task<ExpenseReportDto?> GetAsync(Guid id, CancellationToken ct = default)
         => repo.GetByIdAsync(id, ct);
 
+    public Task<IReadOnlyList<ExpenseReportDto>> GetAllAsync(CancellationToken ct = default)
+        => repo.GetAllAsync(ct);
+
     /// <summary>
     /// Aggregates the submitter's owed/paid round-trip from the cached Holded creditor balance.
     /// The balance already sums all of a member's outstanding docs; when it exceeds the member's

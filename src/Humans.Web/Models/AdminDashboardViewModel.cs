@@ -23,7 +23,11 @@ public sealed record AdminDashboardViewModel(
     UserSetMembership SetMembership,
     int TotalTeams,
     int TotalAuditEvents,
-    int TotalEmails);
+    int TotalEmails,
+    int StoreOrders,
+    decimal StoreTotalEur,
+    int ExpenseReports,
+    decimal ExpenseTotalEur);
 
 public sealed record DepartmentCoverage(string Name, int Filled, int Total)
 {

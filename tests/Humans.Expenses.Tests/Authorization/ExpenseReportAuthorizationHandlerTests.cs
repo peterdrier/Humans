@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using AwesomeAssertions;
+using Humans.Expenses.Contracts;
 using Humans.Expenses.Domain;
 using Humans.Budget.Contracts;
 using Humans.Application.Interfaces.Teams;

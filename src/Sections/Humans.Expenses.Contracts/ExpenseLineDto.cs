@@ -1,9 +1,6 @@
-using Humans.Domain.Enums;
-using Humans.Expenses.Domain;
+namespace Humans.Expenses.Contracts;
 
-namespace Humans.Expenses.Services.Dtos;
-
-internal sealed record ExpenseLineDto
+public sealed record ExpenseLineDto
 {
     public required Guid Id { get; init; }
     public required Guid ExpenseReportId { get; init; }
