@@ -21,9 +21,18 @@ public class AboutController(
     private readonly IUserServiceRead _userService = userService;
 
     [HttpGet("")]
-    public IActionResult Index()
+    public IActionResult Index([FromServices] IWebHostEnvironment env)
     {
-        return View();
+        // Committed snapshot, not a live API: demo must work on playa connectivity.
+        DevStatsViewModel? stats = null;
+        var file = env.WebRootFileProvider.GetFileInfo("data/dev-stats.json");
+        if (file.Exists)
+        {
+            using var stream = file.CreateReadStream();
+            stats = System.Text.Json.JsonSerializer.Deserialize<DevStatsViewModel>(
+                stream, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        }
+        return View(stats);
     }
 
     [Authorize]
