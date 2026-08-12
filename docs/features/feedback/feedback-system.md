@@ -97,7 +97,7 @@ See `docs/architecture/data-model.md` — `FeedbackReport` and `FeedbackMessage`
 
 Key fields: Id, UserId, Category (enum→string), Description, PageUrl, UserAgent, AdditionalContext (auto-populated with user roles at submission), Screenshot* (FileName/StoragePath/ContentType), Status (enum→string), Source (`FeedbackSource`: UserReport / AgentUnresolved, enum→string with an out-of-range EF sentinel), GitHubIssueNumber, AgentConversationId (bare Guid, no EF FK), AssignedToUserId, AssignedToTeamId (both bare Guids, no nav), LastReporterMessageAt, LastAdminMessageAt, CreatedAt, UpdatedAt, ResolvedAt, ResolvedByUserId.
 
-`Source` and `AgentConversationId` are vestigial: no creation path remains, so every row is `UserReport` with a null conversation id.
+`Source` and `AgentConversationId` are vestigial **for new rows**: the agent's `route_to_feedback` auto-create flow is gone and no creation path remains, so nothing writes `AgentUnresolved` any more. Existing databases still hold historical rows with `Source = AgentUnresolved` and a populated `AgentConversationId`, and those stay queryable through the Feedback admin filter — do not assume `Source == UserReport` when reading.
 
 Removed fields (from previous version): `AdminNotes`, `AdminResponseSentAt`.
 

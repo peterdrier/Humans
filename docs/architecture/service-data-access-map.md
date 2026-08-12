@@ -632,7 +632,8 @@ hot reads can migrate to the cached row set incrementally).
 ## Teams
 
 Folder: `src/Humans.Application/Services/Teams/`. **DbContext:**
-`HumansDbContext` (not peeled). Owns `Teams`,
+`TeamsDbContext` (peeled in nobodies-collective/Humans#1264; `TeamRepository`
+injects `IDbContextFactory<TeamsDbContext>`). Owns `Teams`,
 `TeamMembers`, `TeamJoinRequests`, `TeamJoinRequestStateHistories`,
 `TeamRoleAssignments`, `TeamRoleDefinitions`, `TeamEarlyEntryGrants`. On team
 mutations it also emits `GoogleSyncOutboxEvents` — but as of #889 those go
@@ -1398,9 +1399,9 @@ No direct DB access, no cache.
 > **Change since prior sweep:** the original "providers share the scoped
 > `HumansDbContext` and EF is not thread-safe" rationale for sequential
 > fan-out no longer holds — Camps reads via the peeled `CampsDbContext`,
-> Shifts via the peeled `ShiftsDbContext` (new this sweep), and only Teams
-> stays on `HumansDbContext`, so the providers no longer share a single
-> context instance. Fan-out is kept sequential for consistency with the
+> Shifts via the peeled `ShiftsDbContext` (new this sweep), and Teams via
+> the peeled `TeamsDbContext` (#1264), so the providers no longer share a
+> single context instance. Fan-out is kept sequential for consistency with the
 > other contributor orchestrators (`GdprExportService`, `ICalFeedService`),
 > not because parallelism would be unsafe.
 
