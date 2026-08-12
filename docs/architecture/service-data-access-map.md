@@ -15,10 +15,13 @@ The goal is to identify cross-section table overlap, duplicated caching, and cac
 > (nobodies-collective/Humans#858) there is no longer a single `HumansDbContext`.**
 > The split has continued past "nearly complete" — every context below is
 > internal-sealed with
-> its own `IDbContextFactory<T>`/direct-injection pattern, same
-> database/connection, and its own
+> its own `IDbContextFactory<T>`/direct-injection pattern, against the same
+> database/connection. Each **peeled** context also gets its own
 > `__EFMigrationsHistory_<Section>` table (see
-> `src/Humans.Infrastructure/Data/SectionMigrationsHistory.cs`):
+> `src/Humans.Infrastructure/Data/SectionMigrationsHistory.cs`);
+> `HumansDbContext` is the exception — its factory sets no
+> `MigrationsHistoryTable`, so its tables keep EF's original
+> unsuffixed `__EFMigrationsHistory`:
 >
 > | DbContext | Owns |
 > |-----------|------|
