@@ -490,13 +490,17 @@ Two peels remain, and the programme ends with `HumansDbContext` deleted rather t
 must be re-derived against the §8 ownership map before starting, exactly as peel 13 did — it
 reclassified five relationships and found only three real ones.
 
-**Peel 15 — Users *and* Profiles together, into one `UsersDbContext`.** Not two peels. The two
-sections are already fused at the repository layer: `UserRepository` — a Users-section repository —
-reads six of Profiles' seven tables, and its partials (`UserRepository.Profiles.cs`,
-`.UserEmails.cs`, `.ContactFields.cs`) join `.Users` to `.Profiles` inside single queries. Separate
-contexts would require splitting that repository first, which nobody has scoped and which would
-break joins that exist today. Only `CommunicationPreferenceRepository` sits cleanly on the Profiles
-side.
+**Peel 15 — Users *and* Profiles together, into one `UsersDbContext`.** Not two peels. **Profiles
+was mid-transition into Users and the move was never finished; peel 15 accepts the merged state as
+the end state.** The half-done move is visible in the code: `UserRepository` — a Users-section
+repository — reads six of Profiles' seven tables, and its partials (`UserRepository.Profiles.cs`,
+`.UserEmails.cs`, `.ContactFields.cs`) join `.Users` to `.Profiles` inside single queries. Only
+`CommunicationPreferenceRepository` was ever carved onto the Profiles side. Finishing the split
+instead would mean a `UserRepository` split nobody has scoped, to restore a boundary we are choosing
+not to have.
+
+Naming — section names, table names, doc homes — is **deliberately deferred**. Renames are cheap
+later and are not a peel-15 concern.
 
 Consequences of taking them together:
 
@@ -508,9 +512,8 @@ Consequences of taking them together:
 - **`UsersDbContext` carries the Identity base**: `IdentityDbContext<User, IdentityRole<Guid>, Guid>`.
   Nothing pins Identity to the `HumansDbContext` *name*; the base class moves with the context. Its
   baseline covers the eight section DbSets **and** the seven Identity tables.
-- **The cost, stated plainly:** one context spanning two sections means nothing structurally
-  prevents a future profiles↔users EF join. That is the de-facto state today; this records it as
-  deliberate rather than pretending the boundary exists.
+- **The cost, stated plainly:** nothing structurally prevents a profiles↔users EF join. That is the
+  de-facto state today; this records it as deliberate rather than pretending the boundary exists.
 
 **Then `HumansDbContext` is deleted, chain and all** — the type, `HumansDbContextModelSnapshot.cs`,
 and the root chain at `src/Humans.Infrastructure/Migrations/*.cs` (287 files, 652,274 lines as of
@@ -532,11 +535,12 @@ and the root chain at `src/Humans.Infrastructure/Migrations/*.cs` (287 files, 65
    and `/Debug/DbVersion` (§13 Q1). These are cleanup work belonging to this programme, not
    follow-ups to hand off.
 
-**Open contradiction to settle at peel 15:** §3.1 and `docs/sections/Profiles.md` both list
-`account_merge_requests` under Profiles, but `AccountMergeRepository.cs` lives in
+**Not a contradiction, more evidence of the unfinished move:** §3.1 and `docs/sections/Profiles.md`
+list `account_merge_requests` under Profiles, while `AccountMergeRepository.cs` lives in
 `Repositories/Users/` and peel 13's re-audit classified `AccountMergeRequest → User` as
-Users-internal on that basis. One of the two is wrong. Moot for the peel itself — both sections land
-in the same context — but it decides which section's docs own the table.
+Users-internal on that basis. The table was part-way across when the transition stopped. Both land
+in the same context, so nothing about the peel turns on it; the docs get reconciled to Users
+whenever the deferred renaming happens.
 
 ## 11. `dotnet ef` per-context usage (migration-discipline docs)
 
