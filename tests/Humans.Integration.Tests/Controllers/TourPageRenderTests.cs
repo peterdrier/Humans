@@ -21,6 +21,13 @@ public class TourPageRenderTests(HumansTestDatabase database) : IntegrationTestB
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         html.Should().Contain("What is Humans");
+        html.Should().Contain("People");
+        html.Should().Contain("Organize");
+        html.Should().Contain("Money");
+        html.Should().Contain("Govern");
+        html.Should().Contain("Communicate");
+        html.Should().Contain("Humans for your burn");
+        html.Should().Contain("href=\"/About\"");
         html.Should().NotContain("<vc:", because: "an unresolved view component tag renders as inert literal markup");
     }
 }
