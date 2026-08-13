@@ -195,7 +195,7 @@ public class ShiftsControllerToggleDayTests
         var ctrl = BuildSut(userId, MakeUserInfo(userId, "B", "F", "L", dietary: "Vegan"));
 
         var created = ActiveSignup(Guid.NewGuid(), userId, shiftId, SignupStatus.Confirmed);
-        StubToggleOutcome(new ToggleDaySignupOutcome(false, SignupResult.Ok(created), true, false, [created]));
+        StubToggleOutcome(new ToggleDaySignupOutcome(false, SignupResult.Ok(created.Id), true, false, [created]));
         StubBrowseRow(shiftId, userId, SignupStatus.Confirmed);
 
         var result = await ctrl.ToggleDay(shiftId, Xunit.TestContext.Current.CancellationToken);
@@ -216,7 +216,7 @@ public class ShiftsControllerToggleDayTests
         var ctrl = BuildSut(userId, MakeUserInfo(userId, "B", "F", "L", dietary: "Vegan"));
 
         var existing = ActiveSignup(signupId, userId, shiftId, SignupStatus.Confirmed);
-        StubToggleOutcome(new ToggleDaySignupOutcome(false, SignupResult.Ok(existing), false, false, []));
+        StubToggleOutcome(new ToggleDaySignupOutcome(false, SignupResult.Ok(existing.Id), false, false, []));
         StubBrowseRow(shiftId, userId, rowStatus: null);
 
         var result = await ctrl.ToggleDay(shiftId, Xunit.TestContext.Current.CancellationToken);
@@ -252,7 +252,7 @@ public class ShiftsControllerToggleDayTests
         var ctrl = BuildSut(userId, MakeUserInfo(userId, "B", "F", "L", dietary: "Vegan"));
 
         var pending = ActiveSignup(Guid.NewGuid(), userId, shiftId, SignupStatus.Pending);
-        StubToggleOutcome(new ToggleDaySignupOutcome(false, SignupResult.Ok(pending), true, false, [pending]));
+        StubToggleOutcome(new ToggleDaySignupOutcome(false, SignupResult.Ok(pending.Id), true, false, [pending]));
         StubBrowseRow(shiftId, userId, SignupStatus.Pending);
 
         var result = await ctrl.ToggleDay(shiftId, Xunit.TestContext.Current.CancellationToken);
@@ -272,7 +272,7 @@ public class ShiftsControllerToggleDayTests
         var ctrl = BuildSut(userId, MakeUserInfo(userId, "B", "F", "L", dietary: "Vegan"));
 
         var created = ActiveSignup(Guid.NewGuid(), userId, shiftId, SignupStatus.Confirmed);
-        StubToggleOutcome(new ToggleDaySignupOutcome(false, SignupResult.Ok(created), true, false, [created]));
+        StubToggleOutcome(new ToggleDaySignupOutcome(false, SignupResult.Ok(created.Id), true, false, [created]));
         // Active event present, but the toggled shift isn't in the browse set → BuildRowAsync
         // returns null; the controller must resync (204) instead of throwing.
         _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(Event);

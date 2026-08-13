@@ -1,4 +1,4 @@
-using Humans.Domain.Entities;
+using Humans.Domain.Enums;
 
 using NodaTime;
 
@@ -18,47 +18,42 @@ namespace Humans.Shifts.Contracts;
 ///
 /// <para>
 /// Nothing else outside the section calls any of these — every other
-/// <c>GetActiveAsync</c> / <c>GetByIdAsync</c> / <c>CreateAsync</c> /
-/// <c>UpdateAsync</c> hit in the repo is a different service's member of the
-/// same name; the burn other sections read is
+/// <c>CreateAsync</c> / <c>UpdateAsync</c> hit in the repo is a different
+/// service's member of the same name; the burn other sections read is
 /// <see cref="IBurnSettingsService"/>, which returns
 /// <see cref="BurnSettingsInfo"/> rather than the entity.
 /// </para>
 ///
 /// <para>
-/// <c>EventSettings</c> and <c>Rota</c> are still public
-/// <c>Humans.Domain.Entities</c> types. These five members are the largest
-/// remaining entity leak on the leaf and need request records before the
-/// entities can turn internal at the section move. Recorded in
-/// <c>local/shifts-g5/findings.md</c>.
+/// The verbs take input records rather than <c>EventSettings</c> / <c>Rota</c>
+/// rows, and the two reads the seeder used to make through here
+/// (<c>GetActiveAsync</c> / <c>GetByIdAsync</c>) are gone: they duplicated
+/// <see cref="IBurnSettingsService"/> exactly, which the seeder now injects.
+/// Deactivating whatever burn is currently active was a read-modify-write of
+/// the entity across the boundary and is now one verb
+/// (nobodies-collective/Humans#866).
 /// </para>
 /// </remarks>
 public interface IShiftSeeding
 {
     /// <summary>
-    /// Gets the single active EventSettings, or null if none.
+    /// Deactivates the currently active burn so a newly created one can take
+    /// over (only one may be active). Returns <c>true</c> when one was
+    /// deactivated, <c>false</c> when none was active.
     /// </summary>
-    Task<EventSettings?> GetActiveAsync();
+    Task<bool> DeactivateActiveBurnAsync();
 
     /// <summary>
-    /// Gets an EventSettings by primary key.
+    /// Creates a burn and makes it the active one. Fails if another burn is
+    /// already active — call <see cref="DeactivateActiveBurnAsync"/> first.
     /// </summary>
-    Task<EventSettings?> GetByIdAsync(Guid id);
+    Task CreateBurnAsync(CreateBurnInput input);
 
     /// <summary>
-    /// Creates a new EventSettings. Validates only one IsActive=true.
+    /// Creates a rota on a department team of an active burn, optionally
+    /// tagging it. Returns the new rota's id.
     /// </summary>
-    Task CreateAsync(EventSettings entity);
-
-    /// <summary>
-    /// Updates an existing EventSettings.
-    /// </summary>
-    Task UpdateAsync(EventSettings entity);
-
-    /// <summary>
-    /// Creates a new rota. Validates team is a department and event is active.
-    /// </summary>
-    Task CreateRotaAsync(Rota rota, IReadOnlyList<Guid>? tagIds = null);
+    Task<Guid> CreateRotaAsync(CreateRotaInput input, IReadOnlyList<Guid>? tagIds = null);
 
     /// <summary>
     /// Creates a new shift for a department rota. Validates rota ownership,
@@ -73,6 +68,28 @@ public interface IShiftSeeding
     /// </summary>
     Task<int> DeleteEventAsync(Guid eventSettingsId, CancellationToken cancellationToken = default);
 }
+
+/// <summary>The burn fields a seeded fixture sets; everything else takes its schema default.</summary>
+public sealed record CreateBurnInput(
+    Guid Id,
+    string EventName,
+    int Year,
+    string TimeZoneId,
+    LocalDate GateOpeningDate,
+    int BuildStartOffset,
+    int EventEndOffset,
+    int StrikeEndOffset,
+    bool IsShiftBrowsingOpen);
+
+/// <summary>The rota fields a seeded fixture sets; everything else takes its schema default.</summary>
+public sealed record CreateRotaInput(
+    Guid TeamId,
+    Guid EventSettingsId,
+    string Name,
+    ShiftPriority Priority,
+    SignupPolicy Policy,
+    RotaPeriod Period,
+    bool IsVisibleToVolunteers);
 
 public sealed record CreateShiftInput(
     Guid RotaId,

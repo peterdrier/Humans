@@ -126,7 +126,7 @@ public sealed class ShiftSignupService(
                 $"New confirmed signup for '{shift.Rota.Name}' on day {shift.DayOffset}.");
         }
 
-        return SignupResult.Ok(signup, warning);
+        return SignupResult.Ok(signup.Id, warning);
     }
 
     public async Task<SignupResult> ApproveAsync(Guid signupId, Guid reviewerUserId)
@@ -180,7 +180,7 @@ public sealed class ShiftSignupService(
         await DispatchSignupChangeNotificationAsync(signup, signup.Shift,
             $"Signup approved for '{signup.Shift.Rota.Name}' on day {signup.Shift.DayOffset}.");
 
-        return SignupResult.Ok(signup, warning);
+        return SignupResult.Ok(signup.Id, warning);
     }
 
     public async Task<SignupResult> RefuseAsync(Guid signupId, Guid reviewerUserId, string? reason)
@@ -203,7 +203,7 @@ public sealed class ShiftSignupService(
         await DispatchSignupChangeNotificationAsync(signup, signup.Shift,
             $"Signup refused for '{signup.Shift.Rota.Name}' on day {signup.Shift.DayOffset}.");
 
-        return SignupResult.Ok(signup);
+        return SignupResult.Ok(signup.Id);
     }
 
     public async Task<SignupResult> BailAsync(Guid signupId, Guid actorUserId, string? reason)
@@ -248,7 +248,7 @@ public sealed class ShiftSignupService(
 
         await CheckAndNotifyCoverageGapAsync(signup, signup.Shift);
 
-        return SignupResult.Ok(signup);
+        return SignupResult.Ok(signup.Id);
     }
 
     public async Task<SignupResult> VoluntellAsync(Guid userId, Guid shiftId, Guid enrollerUserId)
@@ -321,7 +321,7 @@ public sealed class ShiftSignupService(
             }
         }
 
-        return SignupResult.Ok(signup);
+        return SignupResult.Ok(signup.Id);
     }
 
     public async Task<SignupResult> VoluntellRangeAsync(Guid userId, Guid rotaId, int startDayOffset, int endDayOffset, Guid enrollerUserId)
@@ -448,7 +448,7 @@ public sealed class ShiftSignupService(
             }
         }
 
-        return SignupResult.Ok(firstSignup!, warning);
+        return SignupResult.Ok(firstSignup!.Id, warning);
     }
 
     public async Task<SignupResult> MarkNoShowAsync(Guid signupId, Guid reviewerUserId)
@@ -478,7 +478,7 @@ public sealed class ShiftSignupService(
             reviewerUserId,
             signup.UserId, nameof(User));
 
-        return SignupResult.Ok(signup);
+        return SignupResult.Ok(signup.Id);
     }
 
     public async Task<SignupResult> RemoveSignupAsync(Guid signupId, Guid removedByUserId, string? reason)
@@ -508,7 +508,7 @@ public sealed class ShiftSignupService(
             $"Removed from '{signup.Shift.Rota.Name}' on day {signup.Shift.DayOffset}.");
         await CheckAndNotifyCoverageGapAsync(signup, signup.Shift);
 
-        return SignupResult.Ok(signup);
+        return SignupResult.Ok(signup.Id);
     }
 
     public async Task<SignupResult> SignUpRangeAsync(
@@ -604,7 +604,7 @@ public sealed class ShiftSignupService(
                 $"Range signup for '{rota.Name}' ({shiftsInRange.Count} shifts, confirmed).");
         }
 
-        return SignupResult.Ok(createdSignups.LastSignup, warning);
+        return SignupResult.Ok(createdSignups.LastSignup.Id, warning);
     }
 
     private static RangeSignupCandidateSelection PruneDuplicateRangeShifts(
@@ -899,7 +899,7 @@ public sealed class ShiftSignupService(
             $"Range approved ({approved.Count} shifts) for '{approved[0].Shift.Rota.Name}'.");
 
         var warning = warnings.Count > 0 ? string.Join(" ", warnings.Distinct(StringComparer.Ordinal)) : null;
-        return SignupResult.Ok(approved[0], warning);
+        return SignupResult.Ok(approved[0].Id, warning);
     }
 
     public async Task<SignupResult> RefuseRangeAsync(Guid signupBlockId, Guid reviewerUserId, string? reason)
@@ -932,7 +932,7 @@ public sealed class ShiftSignupService(
         await DispatchSignupChangeNotificationAsync(signups[0], signups[0].Shift,
             $"Range refused ({signups.Count} shifts) for '{signups[0].Shift.Rota.Name}'.");
 
-        return SignupResult.Ok(signups[0]);
+        return SignupResult.Ok(signups[0].Id);
     }
 
     public async Task BailRangeAsync(Guid signupBlockId, Guid actorUserId, string? reason = null)

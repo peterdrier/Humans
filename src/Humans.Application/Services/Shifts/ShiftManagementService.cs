@@ -165,6 +165,52 @@ public sealed class ShiftManagementService(
         viewInvalidator.InvalidateAll();
     }
 
+    // ── IShiftSeeding — the dev-fixture verbs, over input records so the
+    //    boundary never names EventSettings or Rota (nobodies-collective/Humans#866).
+
+    public async Task<bool> DeactivateActiveBurnAsync()
+    {
+        var active = await GetActiveAsync();
+        if (active is null) return false;
+
+        active.IsActive = false;
+        await UpdateAsync(active);
+        return true;
+    }
+
+    public Task CreateBurnAsync(CreateBurnInput input) => CreateAsync(new EventSettings
+    {
+        Id = input.Id,
+        EventName = input.EventName,
+        Year = input.Year,
+        TimeZoneId = input.TimeZoneId,
+        GateOpeningDate = input.GateOpeningDate,
+        BuildStartOffset = input.BuildStartOffset,
+        EventEndOffset = input.EventEndOffset,
+        StrikeEndOffset = input.StrikeEndOffset,
+        IsShiftBrowsingOpen = input.IsShiftBrowsingOpen,
+        IsActive = true,
+        CreatedAt = clock.GetCurrentInstant(),
+    });
+
+    public async Task<Guid> CreateRotaAsync(CreateRotaInput input, IReadOnlyList<Guid>? tagIds = null)
+    {
+        var rota = new Rota
+        {
+            Id = Guid.NewGuid(),
+            TeamId = input.TeamId,
+            EventSettingsId = input.EventSettingsId,
+            Name = input.Name,
+            Priority = input.Priority,
+            Policy = input.Policy,
+            Period = input.Period,
+            IsVisibleToVolunteers = input.IsVisibleToVolunteers,
+            CreatedAt = clock.GetCurrentInstant(),
+        };
+        await CreateRotaAsync(rota, tagIds);
+        return rota.Id;
+    }
+
     public async Task<int> DeleteEventAsync(
         Guid eventSettingsId,
         CancellationToken cancellationToken = default)

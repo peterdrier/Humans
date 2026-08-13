@@ -174,7 +174,7 @@ public class ProfileControllerDietaryMedicalReplayTests
     {
         var shiftId = Guid.NewGuid();
         _signupService.SignUpAsync(_userId, shiftId, Arg.Any<Guid?>(), Arg.Any<ShiftSignupRequestFlags>())
-                      .Returns(SignupResult.Ok(new ShiftSignup { Id = Guid.NewGuid() }));
+                      .Returns(SignupResult.Ok(Guid.NewGuid()));
 
         var model = MakeValidModel();
         model.ReturnAction = "signup";
@@ -201,7 +201,7 @@ public class ProfileControllerDietaryMedicalReplayTests
                 2,
                 Arg.Any<Guid?>(),
                 Arg.Any<ShiftSignupRequestFlags>())
-                      .Returns(SignupResult.Ok(new ShiftSignup { Id = Guid.NewGuid() }));
+                      .Returns(SignupResult.Ok(Guid.NewGuid()));
 
         var model = MakeValidModel();
         model.ReturnAction = "signuprange";

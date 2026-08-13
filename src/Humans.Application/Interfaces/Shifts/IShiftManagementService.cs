@@ -28,6 +28,37 @@ public record ShiftTagPreferenceSummary(Guid Id, string Name);
 public interface IShiftManagementService
     : IShiftManagementServiceRead, IShiftVolunteerProfiles, IShiftSeeding, IApplicationService
 {
+    // === Event settings ===
+    //
+    // The entity-shaped reads and writes. IShiftSeeding carries the input-record
+    // forms of the two creates for Humans.Development's fixture; these are the
+    // section's own (nobodies-collective/Humans#866).
+
+    /// <summary>
+    /// Gets the single active EventSettings, or null if none.
+    /// </summary>
+    Task<EventSettings?> GetActiveAsync();
+
+    /// <summary>
+    /// Gets an EventSettings by primary key.
+    /// </summary>
+    Task<EventSettings?> GetByIdAsync(Guid id);
+
+    /// <summary>
+    /// Creates a new EventSettings. Validates only one IsActive=true.
+    /// </summary>
+    Task CreateAsync(EventSettings entity);
+
+    /// <summary>
+    /// Updates an existing EventSettings.
+    /// </summary>
+    Task UpdateAsync(EventSettings entity);
+
+    /// <summary>
+    /// Creates a new rota. Validates team is a department and event is active.
+    /// </summary>
+    Task CreateRotaAsync(Rota rota, IReadOnlyList<Guid>? tagIds = null);
+
     // === Authorization ===
 
     /// <summary>

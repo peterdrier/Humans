@@ -118,20 +118,22 @@ public record NoShowHistoryEntry(
 /// Result of a signup operation.
 /// </summary>
 /// <remarks>
-/// <see cref="Signup"/> is a public <c>Humans.Domain.Entities</c> row today and
-/// is read by the section's own tests and by the dev seeder (for the id alone).
-/// It needs a projection before the entity can turn internal at the section
-/// move; recorded in <c>local/shifts-g5/findings.md</c>.
+/// <see cref="SignupId"/> used to be the <c>ShiftSignup</c> row itself. Nothing
+/// outside the section read anything but its id — the dev seeder marks the
+/// created signup as reviewed — so the boundary carries the id, matching
+/// <see cref="ShiftMutationResult.ShiftId"/> (nobodies-collective/Humans#866).
+/// For a block signup it is the last row created, which is what the entity
+/// return was.
 /// </remarks>
 public record SignupResult
 {
     public bool Success { get; init; }
     public string? Warning { get; init; }
     public string? Error { get; init; }
-    public ShiftSignup? Signup { get; init; }
+    public Guid? SignupId { get; init; }
 
-    public static SignupResult Ok(ShiftSignup signup, string? warning = null) =>
-        new() { Success = true, Signup = signup, Warning = warning };
+    public static SignupResult Ok(Guid signupId, string? warning = null) =>
+        new() { Success = true, SignupId = signupId, Warning = warning };
 
     public static SignupResult Fail(string error) =>
         new() { Success = false, Error = error };

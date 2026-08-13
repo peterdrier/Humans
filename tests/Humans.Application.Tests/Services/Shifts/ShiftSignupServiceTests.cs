@@ -83,8 +83,8 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
         var result = await _service.SignUpAsync(userId, shift.Id);
 
         result.Success.Should().BeTrue();
-        result.Signup!.Status.Should().Be(SignupStatus.Confirmed);
-        result.Signup.ReviewedByUserId.Should().Be(userId);
+        Saved(result).Status.Should().Be(SignupStatus.Confirmed);
+        Saved(result).ReviewedByUserId.Should().Be(userId);
     }
 
     [HumansFact]
@@ -97,8 +97,8 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
         var result = await _service.SignUpAsync(userId, shift.Id);
 
         result.Success.Should().BeTrue();
-        result.Signup!.Status.Should().Be(SignupStatus.Pending);
-        result.Signup.ReviewedByUserId.Should().BeNull();
+        Saved(result).Status.Should().Be(SignupStatus.Pending);
+        Saved(result).ReviewedByUserId.Should().BeNull();
     }
 
     [HumansFact]
@@ -222,8 +222,8 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
         var result = await _service.ApproveAsync(signup.Id, reviewerId);
 
         result.Success.Should().BeTrue();
-        result.Signup!.Status.Should().Be(SignupStatus.Confirmed);
-        result.Signup.ReviewedByUserId.Should().Be(reviewerId);
+        Saved(result).Status.Should().Be(SignupStatus.Confirmed);
+        Saved(result).ReviewedByUserId.Should().Be(reviewerId);
     }
 
     [HumansFact]
@@ -261,8 +261,8 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
         var result = await _service.BailAsync(signup.Id, userId, "Can't make it");
 
         result.Success.Should().BeTrue();
-        result.Signup!.Status.Should().Be(SignupStatus.Bailed);
-        result.Signup.StatusReason.Should().Be("Can't make it");
+        Saved(result).Status.Should().Be(SignupStatus.Bailed);
+        Saved(result).StatusReason.Should().Be("Can't make it");
     }
 
     [HumansFact]
@@ -353,7 +353,7 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
         outcome.NeedsDietaryFirst.Should().BeFalse();
         outcome.SignedUp.Should().BeFalse();
         outcome.Result!.Success.Should().BeTrue();
-        outcome.Result.Signup!.Status.Should().Be(SignupStatus.Bailed);
+        Saved(outcome.Result).Status.Should().Be(SignupStatus.Bailed);
     }
 
     [HumansFact]
@@ -397,10 +397,10 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
         var result = await _service.VoluntellAsync(volunteerId, shift.Id, enrollerId);
 
         result.Success.Should().BeTrue();
-        result.Signup!.Status.Should().Be(SignupStatus.Confirmed);
-        result.Signup.Enrolled.Should().BeTrue();
-        result.Signup.EnrolledByUserId.Should().Be(enrollerId);
-        result.Signup.ReviewedByUserId.Should().Be(enrollerId);
+        Saved(result).Status.Should().Be(SignupStatus.Confirmed);
+        Saved(result).Enrolled.Should().BeTrue();
+        Saved(result).EnrolledByUserId.Should().Be(enrollerId);
+        Saved(result).ReviewedByUserId.Should().Be(enrollerId);
     }
 
     [HumansFact]
@@ -435,7 +435,7 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
         var result = await _service.VoluntellAsync(volunteerId, shift.Id, enrollerId);
 
         result.Success.Should().BeTrue();
-        result.Signup!.Status.Should().Be(SignupStatus.Confirmed);
+        Saved(result).Status.Should().Be(SignupStatus.Confirmed);
 
         // Volunteer-facing ShiftAssigned must NOT be sent for a past shift...
         await AssertShiftAssignedNotSent(Notifier);
@@ -498,7 +498,7 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
         var result = await _service.MarkNoShowAsync(signup.Id, reviewerId);
 
         result.Success.Should().BeTrue();
-        result.Signup!.Status.Should().Be(SignupStatus.NoShow);
+        Saved(result).Status.Should().Be(SignupStatus.NoShow);
     }
 
     [HumansTheory(Timeout = 10000)]
@@ -1060,7 +1060,7 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
 
         result.Success.Should().BeTrue();
         await AuditLog.Received(1).LogAsync(
-            AuditAction.ShiftSignupCreated, nameof(ShiftSignup), result.Signup!.Id,
+            AuditAction.ShiftSignupCreated, nameof(ShiftSignup), Saved(result).Id,
             Arg.Is<string>(s => s.Contains("(confirmed)")),
             userId,
             userId, nameof(User));
@@ -1076,9 +1076,9 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
         var result = await _service.SignUpAsync(userId, shift.Id);
 
         result.Success.Should().BeTrue();
-        result.Signup!.Status.Should().Be(SignupStatus.Pending);
+        Saved(result).Status.Should().Be(SignupStatus.Pending);
         await AuditLog.Received(1).LogAsync(
-            AuditAction.ShiftSignupCreated, nameof(ShiftSignup), result.Signup.Id,
+            AuditAction.ShiftSignupCreated, nameof(ShiftSignup), Saved(result).Id,
             Arg.Is<string>(s => s.Contains("(pending)")),
             userId,
             userId, nameof(User));
@@ -1271,4 +1271,14 @@ public sealed class ShiftSignupServiceTests : ServiceTestHarness
             Arg.Any<string>(), Arg.Any<IReadOnlyList<Guid>>(),
             Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
             Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+
+    /// <summary>
+    /// The persisted signup row a <see cref="SignupResult"/> refers to.
+    /// The result carries the id rather than the entity — the row is the
+    /// section's own and does not cross the boundary
+    /// (nobodies-collective/Humans#866).
+    /// </summary>
+    private ShiftSignup Saved(SignupResult result) =>
+        ShiftsDb.ShiftSignups.Single(s => s.Id == result.SignupId!.Value);
+
 }

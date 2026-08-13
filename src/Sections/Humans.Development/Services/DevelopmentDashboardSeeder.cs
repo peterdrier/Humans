@@ -31,6 +31,7 @@ internal sealed record DashboardResetResult(
 /// </summary>
 internal sealed class DevelopmentDashboardSeeder(
     IShiftSeeding shiftManagementService,
+    IBurnSettingsService burnSettings,
     IShiftSignupSeeding shiftSignupService,
     ITeamService teamService,
     ITeamSeeding teamSeeding,
@@ -40,6 +41,9 @@ internal sealed class DevelopmentDashboardSeeder(
     IClock clock,
     ILogger<DevelopmentDashboardSeeder> logger)
 {
+    /// <summary>The rota fields the fixture needs back after creating one.</summary>
+    private sealed record SeededRota(Guid Id, Guid TeamId, RotaPeriod Period);
+
     private static readonly Guid SeededEventId = Guid.Parse("2f38bf0c-46fd-4f7d-a05b-7ec9e26d8e6b");
 
     private const string SeededEventName = "Seeded Elsewhere 2026 (dev)";
@@ -76,7 +80,7 @@ internal sealed class DevelopmentDashboardSeeder(
 
     public async Task<DashboardSeedResult> SeedAsync(CancellationToken cancellationToken)
     {
-        var existing = await shiftManagementService.GetByIdAsync(SeededEventId);
+        var existing = await burnSettings.GetByIdAsync(SeededEventId, cancellationToken);
         if (existing is not null)
         {
             logger.LogInformation("Dashboard seed already applied (event '{EventName}' exists).", SeededEventName);
@@ -87,31 +91,20 @@ internal sealed class DevelopmentDashboardSeeder(
         var todayUtc = now.InUtc().Date;
 
         // Deactivate any existing active event so ours becomes the one resolved by GetActiveAsync.
-        var existingActive = await shiftManagementService.GetActiveAsync();
-        if (existingActive is not null)
-        {
-            existingActive.IsActive = false;
-            await shiftManagementService.UpdateAsync(existingActive);
-        }
+        await shiftManagementService.DeactivateActiveBurnAsync();
 
-        var es = new EventSettings
-        {
-            Id = SeededEventId,
-            EventName = SeededEventName,
-            Year = todayUtc.Year,
-            TimeZoneId = "Europe/Madrid",
-            GateOpeningDate = todayUtc.PlusDays(60),
-            BuildStartOffset = -14,
-            EventEndOffset = 6,
-            StrikeEndOffset = 9,
-            IsActive = true,
+        await shiftManagementService.CreateBurnAsync(new CreateBurnInput(
+            Id: SeededEventId,
+            EventName: SeededEventName,
+            Year: todayUtc.Year,
+            TimeZoneId: "Europe/Madrid",
+            GateOpeningDate: todayUtc.PlusDays(60),
+            BuildStartOffset: -14,
+            EventEndOffset: 6,
+            StrikeEndOffset: 9,
             // Enable volunteer browsing so /Shifts/ and /Teams/{slug}/Shifts render
             // the seeded rotas side-by-side with /Shifts/Dashboard for QA comparisons.
-            IsShiftBrowsingOpen = true,
-            CreatedAt = now.Minus(Duration.FromDays(30)),
-            UpdatedAt = now,
-        };
-        await shiftManagementService.CreateAsync(es);
+            IsShiftBrowsingOpen: true));
 
         // Teams: create parents, then subteams. Goes through ITeamService so slug
         // generation, validation, and cache seeding match production.
@@ -171,27 +164,21 @@ internal sealed class DevelopmentDashboardSeeder(
             rotaConfigs.Add((subteams[subName], RotaPeriod.Event, "Event", rate));
         }
 
-        var allRotas = new List<(Rota Rota, double ConfirmedRate)>();
+        var allRotas = new List<(SeededRota Rota, double ConfirmedRate)>();
         foreach (var (team, period, label, confirmedRate) in rotaConfigs)
         {
-            var rota = new Rota
-            {
-                Id = Guid.NewGuid(),
-                TeamId = team.Id,
-                EventSettingsId = es.Id,
-                Name = $"{team.Name} - {label}",
-                Priority = ShiftPriority.Normal,
+            var rotaId = await shiftManagementService.CreateRotaAsync(new CreateRotaInput(
+                TeamId: team.Id,
+                EventSettingsId: SeededEventId,
+                Name: $"{team.Name} - {label}",
+                Priority: ShiftPriority.Normal,
                 // Public so the volunteer-facing /Shifts/ page lists them for any
                 // logged-in user - otherwise the browse view hides approval-only
                 // rotas and QA can't compare across the three surfaces.
-                Policy = SignupPolicy.Public,
-                Period = period,
-                IsVisibleToVolunteers = true,
-                CreatedAt = now,
-                UpdatedAt = now,
-            };
-            await shiftManagementService.CreateRotaAsync(rota);
-            allRotas.Add((rota, confirmedRate));
+                Policy: SignupPolicy.Public,
+                Period: period,
+                IsVisibleToVolunteers: true));
+            allRotas.Add((new SeededRota(rotaId, team.Id, period), confirmedRate));
         }
 
         // Shifts: 8-12 per rota with varied min/max/duration and day offsets by period.
@@ -417,14 +404,14 @@ internal sealed class DevelopmentDashboardSeeder(
                 ? await shiftSignupService.VoluntellAsync(
                     user.Id, shift.Id, users[0].Id)
                 : await shiftSignupService.SignUpAsync(user.Id, shift.Id);
-            if (!signup.Success || signup.Signup is null)
+            if (!signup.Success || signup.SignupId is null)
                 continue;
 
             var final = i % 2 == 0
                 ? await shiftSignupService.BailAsync(
-                    signup.Signup.Id, user.Id, "Seeded for demo")
+                    signup.SignupId.Value, user.Id, "Seeded for demo")
                 : await shiftSignupService.RefuseAsync(
-                    signup.Signup.Id, users[0].Id, "Seeded for demo");
+                    signup.SignupId.Value, users[0].Id, "Seeded for demo");
             if (final.Success)
                 signupsCreated++;
         }

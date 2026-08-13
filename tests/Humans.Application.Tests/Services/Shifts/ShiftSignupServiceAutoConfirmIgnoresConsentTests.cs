@@ -81,7 +81,7 @@ public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ServiceTe
         var result = await _service.SignUpAsync(_userId, shift.Id, _userId);
 
         Assert.True(result.Success);
-        Assert.Equal(SignupStatus.Confirmed, result.Signup!.Status);
+        Assert.Equal(SignupStatus.Confirmed, Saved(result).Status);
     }
 
     [HumansFact]
@@ -93,7 +93,7 @@ public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ServiceTe
         var result = await _service.SignUpAsync(_userId, shift.Id, _userId);
 
         Assert.True(result.Success);
-        Assert.Equal(SignupStatus.Confirmed, result.Signup!.Status);
+        Assert.Equal(SignupStatus.Confirmed, Saved(result).Status);
     }
 
     [HumansFact]
@@ -105,7 +105,7 @@ public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ServiceTe
         var result = await _service.SignUpAsync(_userId, shift.Id, _userId);
 
         Assert.True(result.Success);
-        Assert.Equal(SignupStatus.Pending, result.Signup!.Status);
+        Assert.Equal(SignupStatus.Pending, Saved(result).Status);
     }
 
     [HumansFact]
@@ -217,4 +217,14 @@ public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ServiceTe
         };
         ShiftsDb.Shifts.Add(shift);
     }
+
+    /// <summary>
+    /// The persisted signup row a <see cref="SignupResult"/> refers to.
+    /// The result carries the id rather than the entity — the row is the
+    /// section's own and does not cross the boundary
+    /// (nobodies-collective/Humans#866).
+    /// </summary>
+    private ShiftSignup Saved(SignupResult result) =>
+        ShiftsDb.ShiftSignups.Single(s => s.Id == result.SignupId!.Value);
+
 }

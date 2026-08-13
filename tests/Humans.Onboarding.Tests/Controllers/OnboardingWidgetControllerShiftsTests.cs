@@ -88,7 +88,7 @@ public class OnboardingWidgetControllerShiftsTests
         var userId = Guid.NewGuid();
         var shiftId = Guid.NewGuid();
         _signups.SignUpAsync(userId, shiftId, actorUserId: userId)
-            .Returns(SignupResult.Ok(new ShiftSignup()));
+            .Returns(SignupResult.Ok(Guid.NewGuid()));
         var ctrl = BuildSut(userId);
 
         var result = await ctrl.SignUp(shiftId, TestContext.Current.CancellationToken);
