@@ -84,7 +84,11 @@ def parse_name_status(base: str, head: str) -> tuple[list[str], list[str], list[
         status = parts[0]
         path = normalize(parts[-1])
         changed_files.append(path)
-        if status.startswith("A"):
+        # A = added; C<score> = copy destination, which is equally a new file —
+        # --find-copies can classify a new migration that resembles an existing
+        # one as C, and treating only A as an addition would let it evade the
+        # one-migration-per-PR gate. Deletions and pure renames stay excluded.
+        if status.startswith(("A", "C")):
             added_files.append(path)
             if is_real_migration_file(path):
                 migration_files.append(path)
