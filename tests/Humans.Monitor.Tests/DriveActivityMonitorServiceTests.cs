@@ -1,3 +1,4 @@
+using Humans.GoogleIntegration.Contracts;
 using Humans.Application;
 using Humans.Monitor.Contracts;
 using AwesomeAssertions;

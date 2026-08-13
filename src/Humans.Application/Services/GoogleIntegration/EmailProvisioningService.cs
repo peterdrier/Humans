@@ -1,3 +1,4 @@
+using Humans.GoogleIntegration.Contracts;
 using System.Globalization;
 using System.Text;
 using Microsoft.Extensions.Logging;

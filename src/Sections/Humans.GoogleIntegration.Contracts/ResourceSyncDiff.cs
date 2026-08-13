@@ -1,5 +1,5 @@
 
-namespace Humans.Application.DTOs;
+namespace Humans.GoogleIntegration.Contracts;
 
 /// <summary>
 /// Lightweight team reference for sync display (name + slug for linking).

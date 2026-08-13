@@ -1,3 +1,4 @@
+using Humans.GoogleIntegration.Contracts;
 using Google.Apis.Admin.Directory.directory_v1;
 using Google.Apis.Services;
 using Humans.Application.Extensions;

@@ -1,4 +1,5 @@
-namespace Humans.Application.Interfaces.GoogleIntegration;
+using Humans.Application.Interfaces;
+namespace Humans.GoogleIntegration.Contracts;
 
 /// <summary>
 /// GoogleIntegration-section service exposing machine translation to other sections (spec

@@ -1,3 +1,4 @@
+using Humans.GoogleIntegration.Contracts;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.GoogleIntegration;

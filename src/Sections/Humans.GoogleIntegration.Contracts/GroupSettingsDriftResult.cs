@@ -1,4 +1,4 @@
-namespace Humans.Application.DTOs;
+namespace Humans.GoogleIntegration.Contracts;
 
 /// <summary>
 /// A single setting that differs from the expected value.

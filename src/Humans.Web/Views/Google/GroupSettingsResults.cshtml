@@ -1,6 +1,6 @@
 @using Humans.UI.Models.Tables
 @using Microsoft.AspNetCore.Html
-@model Humans.Application.DTOs.GroupSettingsDriftResult
+@model Humans.GoogleIntegration.Contracts.GroupSettingsDriftResult
 @{
     ViewData["Title"] = "Google Group Settings Check";
 }
@@ -84,11 +84,11 @@
 
             @if (report.HasDrift)
             {
-                Func<Humans.Application.DTOs.GroupSettingDrift, IHtmlContent> driftSettingCell =
+                Func<Humans.GoogleIntegration.Contracts.GroupSettingDrift, IHtmlContent> driftSettingCell =
                     @<text><code>@item.SettingName</code></text>;
-                Func<Humans.Application.DTOs.GroupSettingDrift, IHtmlContent> driftExpectedCell =
+                Func<Humans.GoogleIntegration.Contracts.GroupSettingDrift, IHtmlContent> driftExpectedCell =
                     @<text><span class="badge bg-success">@item.ExpectedValue</span></text>;
-                Func<Humans.Application.DTOs.GroupSettingDrift, IHtmlContent> driftActualCell =
+                Func<Humans.GoogleIntegration.Contracts.GroupSettingDrift, IHtmlContent> driftActualCell =
                     @<text><span class="badge bg-danger">@item.ActualValue</span></text>;
                 var driftTable = TableModel.For(report.Drifts)
                     .Template("Setting", driftSettingCell)

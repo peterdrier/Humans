@@ -1,3 +1,4 @@
+using Humans.GoogleIntegration.Contracts;
 using Humans.Teams.Domain;
 using Humans.AuditLog.Contracts;
 using Humans.Application.Configuration;

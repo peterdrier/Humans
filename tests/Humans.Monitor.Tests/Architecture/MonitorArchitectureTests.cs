@@ -41,9 +41,13 @@ public class MonitorArchitectureTests
             .ToList();
 
         sectionRefs.Should().BeEquivalentTo(
-            ["Humans.AuditLog.Contracts", "Humans.SystemSettings.Contracts"],
-            because: "Monitor consumes AuditLog and SystemSettings through their leaves; "
-                     + "GoogleIntegration is still Base-resident and arrives via Humans.Application");
+            [
+                "Humans.AuditLog.Contracts",
+                "Humans.GoogleIntegration.Contracts",
+                "Humans.SystemSettings.Contracts",
+            ],
+            because: "Monitor consumes AuditLog, GoogleIntegration and SystemSettings through "
+                     + "their leaves, and nothing else");
     }
 
     [HumansFact]

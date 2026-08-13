@@ -1,3 +1,4 @@
+using Humans.GoogleIntegration.Contracts;
 using Humans.Application.Extensions;
 using Humans.UI.Controllers;
 using Humans.Teams.Services;

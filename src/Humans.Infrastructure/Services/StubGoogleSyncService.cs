@@ -1,3 +1,4 @@
+using Humans.GoogleIntegration.Contracts;
 using Microsoft.Extensions.Logging;
 using Humans.Application.DTOs;
 using Humans.Domain.Entities;
@@ -107,6 +108,12 @@ public class StubGoogleSyncService(ILogger<StubGoogleSyncService> logger) : IGoo
     }
 
     public Task<int> GetFailedSyncEventCountAsync(CancellationToken cancellationToken = default)
+    {
+        // Stub: no outbox in non-production environments.
+        return Task.FromResult(0);
+    }
+
+    public Task<int> GetPendingSyncEventCountAsync(CancellationToken cancellationToken = default)
     {
         // Stub: no outbox in non-production environments.
         return Task.FromResult(0);

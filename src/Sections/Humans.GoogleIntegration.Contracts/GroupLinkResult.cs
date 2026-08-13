@@ -1,4 +1,4 @@
-namespace Humans.Application.DTOs;
+namespace Humans.GoogleIntegration.Contracts;
 
 public class GroupLinkResult
 {

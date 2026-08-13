@@ -1,5 +1,6 @@
+using Humans.Application.Interfaces;
 using Humans.Application.Architecture;
-namespace Humans.Application.Interfaces.GoogleIntegration;
+namespace Humans.GoogleIntegration.Contracts;
 
 /// <summary>
 /// Service for provisioning @nobodies.team email accounts.

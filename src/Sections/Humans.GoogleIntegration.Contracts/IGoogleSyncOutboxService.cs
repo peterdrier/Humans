@@ -1,6 +1,7 @@
+using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 
-namespace Humans.Application.Interfaces.GoogleIntegration;
+namespace Humans.GoogleIntegration.Contracts;
 
 /// <summary>
 /// Write surface for the Google Integration sync outbox.

@@ -174,10 +174,10 @@ else
                                 {
                                     var (stateLabel, badgeClass) = m.State switch
                                     {
-                                        Humans.Application.DTOs.MemberSyncState.Correct => ("Correct", "bg-success"),
-                                        Humans.Application.DTOs.MemberSyncState.Missing => ("Missing", "bg-warning text-dark"),
-                                        Humans.Application.DTOs.MemberSyncState.Inherited => ("Inherited", "bg-secondary"),
-                                        Humans.Application.DTOs.MemberSyncState.WrongRole => ("Wrong Role", "bg-info text-dark"),
+                                        Humans.GoogleIntegration.Contracts.MemberSyncState.Correct => ("Correct", "bg-success"),
+                                        Humans.GoogleIntegration.Contracts.MemberSyncState.Missing => ("Missing", "bg-warning text-dark"),
+                                        Humans.GoogleIntegration.Contracts.MemberSyncState.Inherited => ("Inherited", "bg-secondary"),
+                                        Humans.GoogleIntegration.Contracts.MemberSyncState.WrongRole => ("Wrong Role", "bg-info text-dark"),
                                         _ => ("Extra", "bg-danger")
                                     };
 

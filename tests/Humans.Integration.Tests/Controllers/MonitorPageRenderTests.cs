@@ -1,3 +1,4 @@
+using Humans.GoogleIntegration.Contracts;
 using System.Net;
 using AwesomeAssertions;
 using Humans.Integration.Tests.Infrastructure;

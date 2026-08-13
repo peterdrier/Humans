@@ -1,0 +1,49 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    GoogleIntegration's cross-section surface, carved into its own leaf project because the
+    section is referenced in both directions: it consumes Humans.Teams.Contracts,
+    Humans.Auth.Contracts, Humans.AuditLog.Contracts, Humans.Email.Contracts,
+    Humans.Notifications.Contracts and Humans.SystemSettings.Contracts, while Teams,
+    Notifications, Surveys and Monitor inject its services. A Contracts/ *folder* inside
+    Humans.GoogleIntegration would therefore cycle at the assembly level (design §15.5b,
+    memory/architecture/section-project-cycle-fix.md) — and would cycle a second way, because
+    Humans.Application's AuditViewerService and Humans.Infrastructure's SystemTeamSyncJob,
+    SuspendNonCompliantMembersJob and HumansMetricsService consume it from Base.
+
+    It holds exactly the eight interfaces something outside the section injects, plus the flat
+    projections their signatures name. The rest — the Google API connector abstractions
+    (IGoogleDirectoryClient, IGoogleDrivePermissionsClient, ITeamResourceGoogleClient, …),
+    IGoogleAdminService, IGoogleWorkspaceUserService, ISyncSettingsService and
+    IGoogleRemovalNotificationService — have no consumer outside
+    Humans.{Application,Infrastructure,Web} and stay with the section.
+
+    Two absences are load-bearing. ISystemTeamSync is NOT here: it syncs system-team
+    membership, names Google nowhere in its signature, and its implementation
+    (SystemTeamSyncJob) is a cross-section orchestrator in Humans.Infrastructure. Putting it
+    on this leaf would have made Auth — a horizontal — reference a vertical section, which
+    peters-hard-rules.md forbids; leaving it in Base keeps Auth, Development, Governance and
+    Onboarding off this leaf entirely. And IDriveActivityMonitorService is not here because it
+    moved to Humans.Monitor for the same reason, one lane earlier.
+
+    IGoogleGroupSync is here despite having no *section* consumer: SystemTeamSyncJob injects
+    it from Base, and a Base file cannot reference the section project. If that job ever moves
+    into a section, this interface goes back to internal.
+
+    References Humans.Interfaces (IApplicationService, ExternalWriteAttribute) and Humans.Domain
+    (GoogleResourceType, DrivePermissionLevel, SyncAction, and the GoogleResource /
+    GoogleSyncOutboxEvent entities two members still expose — an existing leak recorded on the
+    debt ledger, not introduced here), the same pair Humans.Teams.Contracts and
+    Humans.Campaigns.Contracts take. Acyclic: Humans.Domain names only Humans.Interfaces.
+  -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
+    <ProjectReference Include="..\..\Humans.Domain\Humans.Domain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NodaTime" />
+  </ItemGroup>
+
+</Project>

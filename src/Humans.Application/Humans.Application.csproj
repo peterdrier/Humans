@@ -58,6 +58,7 @@
       or ITeamService, and AccountDeletionService / DuplicateAccountService write through it.
     -->
     <ProjectReference Include="..\Sections\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
+    <ProjectReference Include="..\Sections\Humans.GoogleIntegration.Contracts\Humans.GoogleIntegration.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

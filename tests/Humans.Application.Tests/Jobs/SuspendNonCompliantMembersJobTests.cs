@@ -1,3 +1,4 @@
+using Humans.GoogleIntegration.Contracts;
 using Humans.Teams.Domain;
 using Microsoft.Extensions.Logging;
 using NodaTime;

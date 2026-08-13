@@ -1,3 +1,4 @@
+using Humans.GoogleIntegration.Contracts;
 using Humans.Auth.Contracts;
 using Hangfire;
 using Microsoft.Extensions.DependencyInjection;

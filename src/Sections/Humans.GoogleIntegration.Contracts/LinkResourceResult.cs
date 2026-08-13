@@ -1,6 +1,6 @@
 using Humans.Domain.Entities;
 
-namespace Humans.Application.DTOs;
+namespace Humans.GoogleIntegration.Contracts;
 
 /// <summary>
 /// Result of attempting to link a Google resource to a team.

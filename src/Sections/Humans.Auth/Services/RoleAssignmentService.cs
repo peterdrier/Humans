@@ -1,3 +1,4 @@
+using Humans.GoogleIntegration.Contracts;
 using Humans.Domain.Entities;
 using Humans.Application;
 using Humans.Auth.Data;

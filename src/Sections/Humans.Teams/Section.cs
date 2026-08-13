@@ -1,3 +1,4 @@
+using Humans.GoogleIntegration.Contracts;
 using Humans.Application.Interfaces;
 using Humans.Teams.Authorization;
 using Microsoft.AspNetCore.Authorization;

@@ -1,9 +1,9 @@
+using Humans.Application.Interfaces;
 using Humans.Application.Architecture;
-using Humans.Application.DTOs;
 using Humans.Domain.Enums;
 using NodaTime;
 
-namespace Humans.Application.Interfaces.GoogleIntegration;
+namespace Humans.GoogleIntegration.Contracts;
 
 /// <summary>
 /// Aggregate summary of a team's Google resources, used by admin listings that need

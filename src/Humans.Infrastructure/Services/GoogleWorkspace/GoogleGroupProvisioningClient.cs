@@ -1,3 +1,4 @@
+using Humans.GoogleIntegration.Contracts;
 using Google.Apis.CloudIdentity.v1;
 using Google.Apis.CloudIdentity.v1.Data;
 using Google.Apis.Groupssettings.v1;

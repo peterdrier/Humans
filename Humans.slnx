@@ -33,6 +33,7 @@
     <Project Path="src/Sections/Humans.Development/Humans.Development.csproj" />
     <Project Path="src/Sections/Humans.Email/Humans.Email.csproj" />
     <Project Path="src/Sections/Humans.Email.Contracts/Humans.Email.Contracts.csproj" />
+    <Project Path="src/Sections/Humans.GoogleIntegration.Contracts/Humans.GoogleIntegration.Contracts.csproj" />
     <Project Path="src/Sections/Humans.Events/Humans.Events.csproj" />
     <Project Path="src/Sections/Humans.Events.Contracts/Humans.Events.Contracts.csproj" />
     <Project Path="src/Sections/Humans.Expenses/Humans.Expenses.csproj" />

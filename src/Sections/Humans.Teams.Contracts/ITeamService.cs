@@ -168,7 +168,7 @@ public interface ITeamService : ITeamServiceRead, IApplicationService
     /// current authenticated user to hold the full Admin role. The team must
     /// have no linked Google resources — <c>GoogleResource → Team</c> is
     /// configured with <c>OnDelete(Restrict)</c>, so the caller must unlink
-    /// resources via <see cref="ITeamResourceService"/> first.
+    /// resources via <c>ITeamResourceService</c> first.
     /// </summary>
     Task<bool> PermanentlyDeleteTeamAsync(
         Guid teamId,

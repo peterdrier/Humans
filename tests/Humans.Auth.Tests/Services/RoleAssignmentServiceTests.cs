@@ -1,3 +1,4 @@
+using Humans.GoogleIntegration.Contracts;
 using AwesomeAssertions;
 using Xunit;
 using Microsoft.EntityFrameworkCore;

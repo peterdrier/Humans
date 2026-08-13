@@ -1,3 +1,4 @@
+using Humans.GoogleIntegration.Contracts;
 using Humans.Auth.Contracts;
 using Humans.Application.Services.Profiles;
 using AwesomeAssertions;

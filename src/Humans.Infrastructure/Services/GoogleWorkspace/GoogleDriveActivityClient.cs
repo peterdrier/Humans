@@ -1,3 +1,4 @@
+using Humans.GoogleIntegration.Contracts;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using Google.Apis.Admin.Directory.directory_v1;

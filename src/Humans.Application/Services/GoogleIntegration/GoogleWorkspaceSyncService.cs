@@ -1,3 +1,4 @@
+using Humans.GoogleIntegration.Contracts;
 using Humans.Application.Configuration;
 using Humans.Application.DTOs;
 using Humans.Application.Helpers;
@@ -1575,6 +1576,10 @@ public sealed class GoogleWorkspaceSyncService(
     /// <inheritdoc />
     public Task<int> GetFailedSyncEventCountAsync(CancellationToken cancellationToken = default)
         => googleSyncOutboxRepository.CountFailedAsync(cancellationToken);
+
+    /// <inheritdoc />
+    public Task<int> GetPendingSyncEventCountAsync(CancellationToken cancellationToken = default)
+        => googleSyncOutboxRepository.CountPendingAsync(cancellationToken);
 
     /// <inheritdoc />
     public async Task<IReadOnlyList<GoogleSyncOutboxEventSnapshot>> GetRecentOutboxEventsAsync(

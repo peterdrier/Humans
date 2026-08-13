@@ -1,3 +1,4 @@
+using Humans.GoogleIntegration.Contracts;
 using Humans.Auth.Contracts;
 using System.Diagnostics.Metrics;
 using Microsoft.Extensions.DependencyInjection;
@@ -312,9 +313,9 @@ public sealed class HumansMetricsService : IHumansMetrics, IHostedService, IDisp
 
             var applicationsSubmitted = await applicationDecisionService.GetPendingApplicationCountAsync();
 
-            // Repository read — service must not touch google_sync_outbox_events directly (#554).
-            var outboxRepo = scope.ServiceProvider.GetRequiredService<IGoogleSyncOutboxRepository>();
-            var pendingOutboxEvents = await outboxRepo.CountPendingAsync();
+            // Via IGoogleSyncServiceRead — service does not touch google_sync_outbox_events directly (design-rules §2c, #554).
+            var googleSyncService = scope.ServiceProvider.GetRequiredService<IGoogleSyncServiceRead>();
+            var pendingOutboxEvents = await googleSyncService.GetPendingSyncEventCountAsync();
 
             _snapshot = new GaugeSnapshot
             {
