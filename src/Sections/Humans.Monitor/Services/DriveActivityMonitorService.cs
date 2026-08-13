@@ -1,3 +1,5 @@
+using Humans.Application;
+using Humans.Monitor.Contracts;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.Extensions;
@@ -8,12 +10,12 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Application.Interfaces.GoogleIntegration;
 
-namespace Humans.Application.Services.GoogleIntegration;
+namespace Humans.Monitor.Services;
 
 /// <summary>
 /// Monitors Drive Activity API for non-service-account permission changes on managed resources and logs anomaly audit entries.
 /// </summary>
-public sealed class DriveActivityMonitorService(
+internal sealed class DriveActivityMonitorService(
     IGoogleDriveActivityClient driveActivityClient,
     ITeamResourceService teamResourceService,
     ISystemSettingsService systemSettings,

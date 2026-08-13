@@ -1,4 +1,5 @@
-namespace Humans.Application.Interfaces.GoogleIntegration;
+using Humans.Application.Interfaces;
+namespace Humans.Monitor.Contracts;
 
 /// <summary>
 /// Service for monitoring Google Drive Activity API for anomalous permission changes

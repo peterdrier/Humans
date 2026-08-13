@@ -130,7 +130,7 @@ else
                     @if (canViewAudit)
                     {
                         <a class="btn btn-sm btn-outline-secondary"
-                           href="@Url.Action("Resource", "AuditLog", new { id = diff.ResourceId })">Audit</a>
+                           href="@Url.Action("Resource", "Monitor", new { id = diff.ResourceId })">Audit</a>
                     }
                     @if (canExecuteActions && !diff.IsInSync && !hasError)
                     {

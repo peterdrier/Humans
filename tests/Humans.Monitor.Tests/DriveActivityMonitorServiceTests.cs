@@ -1,3 +1,5 @@
+using Humans.Application;
+using Humans.Monitor.Contracts;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.GoogleIntegration;
@@ -9,9 +11,9 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
-using DriveActivityMonitorService = Humans.Application.Services.GoogleIntegration.DriveActivityMonitorService;
+using Humans.Monitor.Services;
 
-namespace Humans.Application.Tests.GoogleIntegration;
+namespace Humans.Monitor.Tests;
 
 /// <summary>
 /// Behavioral tests for the §15-migrated

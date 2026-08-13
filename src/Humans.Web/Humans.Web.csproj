@@ -35,6 +35,7 @@
     <ProjectReference Include="..\Sections\Humans.Mailer\Humans.Mailer.csproj" />
     <ProjectReference Include="..\Sections\Humans.Notifications\Humans.Notifications.csproj" />
     <ProjectReference Include="..\Sections\Humans.Scanner\Humans.Scanner.csproj" />
+    <ProjectReference Include="..\Sections\Humans.Monitor\Humans.Monitor.csproj" />
     <ProjectReference Include="..\Sections\Humans.Search\Humans.Search.csproj" />
     <ProjectReference Include="..\Sections\Humans.Holded\Humans.Holded.csproj" />
     <ProjectReference Include="..\Sections\Humans.Store\Humans.Store.csproj" />

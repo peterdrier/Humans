@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Sections\Humans.Monitor\Humans.Monitor.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- FakeClock: the service stamps its last-run marker off IClock. -->
+    <PackageReference Include="NodaTime.Testing" />
+  </ItemGroup>
+
+  <!--
+    No FrameworkReference: the section has a controller, but nothing here constructs it —
+    MonitorController is covered by the step 12 render test in Humans.Integration.Tests.
+    These tests cover DriveActivityMonitorService and the section's assembly boundary, neither
+    of which names an ASP.NET type. Taking the reference "because the section is Sdk.Razor"
+    is cargo cult (Cantina's rule, G5-SECTION-TEMPLATE.md step 8).
+
+    No EF Core package either: Monitor owns no tables, so there is no DbContext to fixture.
+    That is why tests/Directory.Build.props excludes this project from the shared
+    TestDbContextFactory compile item — see the comment there.
+  -->
+
+</Project>

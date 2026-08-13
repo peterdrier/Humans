@@ -1,9 +1,10 @@
+using Humans.Monitor.Contracts;
 using System.Reflection;
 using AwesomeAssertions;
 using Humans.Application.Interfaces.GoogleIntegration;
-using DriveActivityMonitorService = Humans.Application.Services.GoogleIntegration.DriveActivityMonitorService;
+using Humans.Monitor.Services;
 
-namespace Humans.Application.Tests.Architecture;
+namespace Humans.Monitor.Tests.Architecture;
 
 /// <summary>
 /// Architecture tests enforcing the §15 pattern for the Google Integration

@@ -1,0 +1,22 @@
+@* A section RCL does NOT inherit the host's Views/_ViewImports.cshtml. Omitting a line
+   here ships broken markup with a green build and no runtime error — see design §1/§2.
+   The <page-header> tag helper in GoogleSync.cshtml comes from Humans.UI and needs the
+   @addTagHelper line, not just the @using; an unbound tag helper survives into the response
+   as its own start tag rather than throwing (G5-SECTION-TEMPLATE.md step 12).
+   Guarded by MonitorPageRenderTests.
+
+   No @inject IStringLocalizer line: the section carries no resource set at all. Its one page
+   is admin-only English (design §3b's first question), and
+   MonitorArchitectureTests.SectionTypesTakeNoStringLocalizer pins that, so the day someone
+   adds copy the build tells them to carve a resource set first. *@
+@using Humans.Application.Extensions
+@using Humans.Application.Services.AuditLog
+@using Humans.Domain.Enums
+@using Humans.Monitor
+@using Humans.Monitor.Models
+@using Humans.UI
+@using Humans.UI.Extensions
+@using Humans.UI.Models
+@using Humans.UI.ViewComponents
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+@addTagHelper *, Humans.UI

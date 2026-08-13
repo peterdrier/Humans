@@ -85,7 +85,8 @@
                         AND '$(MSBuildProjectName)' != 'Humans.Scanner.Tests'
                         AND '$(MSBuildProjectName)' != 'Humans.Cantina.Tests'
                         AND '$(MSBuildProjectName)' != 'Humans.Development.Tests'
-                        AND '$(MSBuildProjectName)' != 'Humans.Mailer.Tests'">
+                        AND '$(MSBuildProjectName)' != 'Humans.Mailer.Tests'
+                        AND '$(MSBuildProjectName)' != 'Humans.Monitor.Tests'">
     <Compile Include="$(MSBuildThisFileDirectory)Humans.Testing\TestDbContextFactory.cs" Link="Humans.Testing\TestDbContextFactory.cs" />
   </ItemGroup>
 
