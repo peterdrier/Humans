@@ -93,9 +93,21 @@ left for the next sweep, and **the false clean turned out to be hiding a real bu
 - **`guid-reservations`** — genuinely clean on inspection: all 6 GUID blocks accounted for, and the two
   whose owners moved (Teams `0001`, Events `0026`) already point at their section paths.
 
-Prompts were fixed alongside triggers wherever they named a directory: a trigger that fires into a
-prompt still walking the old tree produces a doc that looks *freshly audited* while its new rows go
-stale — worse than not firing at all.
+Prompts must be fixed alongside triggers: a trigger that fires into a prompt still walking the old tree
+produces a doc that looks *freshly audited* while its new rows go stale — worse than not firing at all.
+
+**That lesson was written down here and then not applied.** Codex came back with three more P2s on the
+same defect, and a systematic re-audit found a fourth: `docs-readme-index`, `guid-reservations`,
+`authorization-inventory`, and `data-model-index` had widened triggers but untouched prompts. All four
+are now aligned, verified by a script that compares each entry's trigger scope against its prompt scope
+rather than by reading them.
+
+The `data-model-index` case is the one worth remembering. Its authority chain is **catalog → prompt-file
+→ inline `freshness:auto` marker**, and the prompt-file explicitly defers to the marker. The earlier fix
+edited the prompt-file, which is *dead code* during normal regeneration — the inline marker in
+`data-model.md` is what actually runs, and it still walked only `src/Humans.Domain/Entities/`. Three
+places had to agree and only one was changed. The marker is now correct, and the catalog entry carries
+a note saying which of the three is authoritative, so the next person doesn't have to discover it.
 
 ### 3. New sections keep shipping with no freshness marker — second consecutive occurrence
 

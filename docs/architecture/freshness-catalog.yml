@@ -51,10 +51,17 @@ mechanical:
       - "src/Sections/*/Docs/*.md"
     update: prompt
     prompt: |
-      Walk docs/features/, docs/sections/, and docs/guide/. For each .md file
-      (excluding SECTION-TEMPLATE.md, README.md, GettingStarted.md, Glossary.md),
-      derive a one-line description from the first paragraph of the file (or
-      the H1 + first sentence if the first paragraph is too long).
+      Walk docs/features/, docs/sections/, docs/guide/, AND src/Sections/*/Docs/
+      — a section that has moved into its own project keeps its invariants doc
+      in-project, and README indexes those rows too, so a walk restricted to
+      docs/ would drop or omit exactly the in-project doc whose change fired
+      this entry. Exclude SECTION-TEMPLATE.md, G5-SECTION-TEMPLATE.md, README.md,
+      GettingStarted.md, Glossary.md, and the dated design records matching
+      src/Sections/*/Docs/20*.md. docs/sections/_Index.md is the authoritative
+      map of which section's doc lives where — read it first and agree with it.
+
+      For each .md file, derive a one-line description from the first paragraph
+      of the file (or the H1 + first sentence if the first paragraph is too long).
 
       Update docs/README.md to list every doc found, grouped by directory,
       using the existing table layout (file name → relative link → description).
@@ -78,7 +85,10 @@ mechanical:
     prompt: |
       Regenerate docs/authorization-inventory.md from scratch.
 
-      Find every:
+      Search BOTH src/Humans.Web/ (Controllers/, Authorization/), src/Humans.Application/,
+      AND every src/Sections/*/ project (its Controllers/ and Authorization/ folders).
+      Most controllers and eight sections' resource handlers now live in section
+      projects; an earlier revision of this doc silently omitted them. Find every:
       - [Authorize(Roles = ...)] / [Authorize(Policy = ...)] attribute on
         controllers and actions
       - RoleChecks.* / ShiftRoleChecks.* invocation
@@ -220,6 +230,14 @@ mechanical:
       - "src/Sections/*/Domain/**/*.cs"
       - "src/Sections/*/Data/Configurations/**/*.cs"
     update: prompt
+    # NOTE — the authoritative instruction for this entry is NOT this file. The
+    # prompt-file below explicitly defers to the inline `freshness:auto
+    # id="entity-index"` marker in docs/architecture/data-model.md, so that
+    # marker is what actually runs. Three places must agree (triggers here,
+    # prompt-file, inline marker); editing only the prompt-file is dead code —
+    # exactly the trap hit on 2026-08-13. If you widen these triggers, widen the
+    # INLINE MARKER first. Both currently cover src/Sections/*/Domain/ and
+    # src/Sections/*/Data/Configurations/ alongside the src/Humans.* roots.
     prompt-file: ".claude/skills/freshness-sweep/prompts/data-model-index.md"
 
   - id: guid-reservations
@@ -234,10 +252,14 @@ mechanical:
     prompt: |
       Regenerate the "Current Reservations" table in docs/guid-reservations.md.
 
-      Walk src/Humans.Domain/Constants/ and src/Humans.Infrastructure/Data/Configurations/.
-      Find every deterministic GUID literal (`new Guid("0000...")` or string
-      literals in HasData/HasData<T>). Group GUIDs by their leading 4-hex
-      block (e.g., `0001`, `0002`).
+      Walk src/Humans.Domain/Constants/, src/Humans.Infrastructure/Data/Configurations/,
+      AND src/Sections/*/Data/Configurations/ — G5 sections carry their own EF
+      configurations and therefore their own HasData seed GUIDs, so scanning only
+      the two root directories can omit the very section-owned GUID that fired
+      this entry (blocks 0001/Teams and 0026/Events already live in sections).
+      Find every deterministic GUID literal (`new Guid("0000...")`, `Guid.Parse(...)`,
+      or string literals in HasData/HasData<T>). Group GUIDs by their leading
+      4-hex block (e.g., `0001`, `0002`).
 
       For each block, derive Purpose from the file path / class name and
       Source as a relative link to that file.
