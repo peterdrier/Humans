@@ -12,7 +12,7 @@
                 <tr>
                     <th>@Localizer["Shifts_Date"]</th>
                     <th>@Localizer["Shifts_Filled"]</th>
-                    <th>@Localizer["Common_Status"]</th>
+                    <th>@SharedLocalizer["Common_Status"]</th>
                     <th>@Localizer["Shifts_SignedUp"]</th>
                 </tr>
             </thead>
@@ -96,14 +96,14 @@ else
                         disabled
                         aria-disabled="true"
                         title="@Localizer["Shifts_SignupDisabledTooltip_MissingDietary"]">
-                    @string.Format(Localizer["Shifts_SignUpForDates"].Value, rotaGroup.Rota.Period == RotaPeriod.Build ? Localizer["Shifts_SetUp"].Value.ToLowerInvariant() : Localizer["Shifts_Strike"].Value.ToLowerInvariant())
+                    @string.Format(Localizer["Shifts_SignUpForDates"].Value, rotaGroup.Rota.Period == RotaPeriod.Build ? SharedLocalizer["Shifts_SetUp"].Value.ToLowerInvariant() : SharedLocalizer["Shifts_Strike"].Value.ToLowerInvariant())
                 </button>
             }
             else
             {
                 <button type="button" class="btn btn-sm btn-success js-open-confirm-signup"
                         data-bs-toggle="modal" data-bs-target="#confirmSignup-@rotaGroup.Rota.Id">
-                    @string.Format(Localizer["Shifts_SignUpForDates"].Value, rotaGroup.Rota.Period == RotaPeriod.Build ? Localizer["Shifts_SetUp"].Value.ToLowerInvariant() : Localizer["Shifts_Strike"].Value.ToLowerInvariant())
+                    @string.Format(Localizer["Shifts_SignUpForDates"].Value, rotaGroup.Rota.Period == RotaPeriod.Build ? SharedLocalizer["Shifts_SetUp"].Value.ToLowerInvariant() : SharedLocalizer["Shifts_Strike"].Value.ToLowerInvariant())
                 </button>
             }
         </div>
@@ -139,7 +139,7 @@ else
                     <div class="modal-header">
                         <h5 class="modal-title" id="confirmSignupTitle-@rotaGroup.Rota.Id">
                             @string.Format(Localizer["Shifts_ConfirmSignup_Title"].Value,
-                                rotaGroup.Rota.Period == RotaPeriod.Build ? Localizer["Shifts_SetUp"].Value.ToLowerInvariant() : Localizer["Shifts_Strike"].Value.ToLowerInvariant())
+                                rotaGroup.Rota.Period == RotaPeriod.Build ? SharedLocalizer["Shifts_SetUp"].Value.ToLowerInvariant() : SharedLocalizer["Shifts_Strike"].Value.ToLowerInvariant())
                         </h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
@@ -147,7 +147,7 @@ else
                         <p class="js-phase-line">
                             @string.Format(Localizer["Shifts_ConfirmSignup_Phase"].Value,
                                 rotaGroup.Rota.Name,
-                                rotaGroup.Rota.Period == RotaPeriod.Build ? Localizer["Shifts_SetUp"].Value.ToLowerInvariant() : Localizer["Shifts_Strike"].Value.ToLowerInvariant())
+                                rotaGroup.Rota.Period == RotaPeriod.Build ? SharedLocalizer["Shifts_SetUp"].Value.ToLowerInvariant() : SharedLocalizer["Shifts_Strike"].Value.ToLowerInvariant())
                         </p>
                         <p class="js-range-line"></p>
 
@@ -169,7 +169,7 @@ else
                         <p class="text-muted small mb-0">@Localizer["Shifts_ConfirmSignup_Prompt"]</p>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">@Localizer["Common_Cancel"]</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">@SharedLocalizer["Common_Cancel"]</button>
                         <button type="submit" class="btn btn-success js-confirm-submit">@Localizer["Shifts_ConfirmSignup_Confirm"]</button>
                     </div>
                 </div>
@@ -309,7 +309,7 @@ else if (allDayShifts.All(s => s.RemainingSlots <= 0) && allDayShifts.Any(s => s
 <div class="table-responsive">
     <table class="table table-sm">
         <thead>
-            <tr><th>@Localizer["Shifts_Date"]</th><th>@Localizer["Shifts_Filled"]</th><th>@Localizer["Common_Status"]</th><th>@Localizer["Shifts_SignedUp"]</th></tr>
+            <tr><th>@Localizer["Shifts_Date"]</th><th>@Localizer["Shifts_Filled"]</th><th>@SharedLocalizer["Common_Status"]</th><th>@Localizer["Shifts_SignedUp"]</th></tr>
         </thead>
         <tbody>
             @foreach (var range in dateRanges)

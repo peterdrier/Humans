@@ -29,9 +29,9 @@
                 @if (!Model.SelectedPeriod.HasValue)
                 {
                     <div class="mt-2">
-                        <span class="badge @PctClass(o.PeriodFillRates.BuildPct) me-1">@Localizer["Shifts_SetUp"] @o.PeriodFillRates.BuildPct.ToString("0")% <span class="visually-hidden">@PctStatusLabel(o.PeriodFillRates.BuildPct)</span></span>
-                        <span class="badge @PctClass(o.PeriodFillRates.EventPct) me-1">@Localizer["Shifts_Event"] @o.PeriodFillRates.EventPct.ToString("0")% <span class="visually-hidden">@PctStatusLabel(o.PeriodFillRates.EventPct)</span></span>
-                        <span class="badge @PctClass(o.PeriodFillRates.StrikePct)">@Localizer["Shifts_Strike"] @o.PeriodFillRates.StrikePct.ToString("0")% <span class="visually-hidden">@PctStatusLabel(o.PeriodFillRates.StrikePct)</span></span>
+                        <span class="badge @PctClass(o.PeriodFillRates.BuildPct) me-1">@SharedLocalizer["Shifts_SetUp"] @o.PeriodFillRates.BuildPct.ToString("0")% <span class="visually-hidden">@PctStatusLabel(o.PeriodFillRates.BuildPct)</span></span>
+                        <span class="badge @PctClass(o.PeriodFillRates.EventPct) me-1">@SharedLocalizer["Shifts_Event"] @o.PeriodFillRates.EventPct.ToString("0")% <span class="visually-hidden">@PctStatusLabel(o.PeriodFillRates.EventPct)</span></span>
+                        <span class="badge @PctClass(o.PeriodFillRates.StrikePct)">@SharedLocalizer["Shifts_Strike"] @o.PeriodFillRates.StrikePct.ToString("0")% <span class="visually-hidden">@PctStatusLabel(o.PeriodFillRates.StrikePct)</span></span>
                     </div>
                 }
             </div>
@@ -48,7 +48,7 @@
                 }
                 else
                 {
-                    <div class="fs-3 fw-bold text-muted">@Localizer["Common_NotAvailable"]</div>
+                    <div class="fs-3 fw-bold text-muted">@SharedLocalizer["Common_NotAvailable"]</div>
                     <div class="text-muted small">@Localizer["ShiftDash_Overview_TicketData_Hidden"]</div>
                 }
             </div>
@@ -65,7 +65,7 @@
                 }
                 else
                 {
-                    <div class="fs-3 fw-bold text-muted">@Localizer["Common_NotAvailable"]</div>
+                    <div class="fs-3 fw-bold text-muted">@SharedLocalizer["Common_NotAvailable"]</div>
                     <div class="text-muted small">@Localizer["ShiftDash_Overview_TicketData_Hidden"]</div>
                 }
             </div>
@@ -82,7 +82,7 @@
                 }
                 else
                 {
-                    <div class="fs-3 fw-bold text-muted">@Localizer["Common_NotAvailable"]</div>
+                    <div class="fs-3 fw-bold text-muted">@SharedLocalizer["Common_NotAvailable"]</div>
                     <div class="text-muted small">@Localizer["ShiftDash_Overview_TicketData_Hidden"]</div>
                 }
             </div>

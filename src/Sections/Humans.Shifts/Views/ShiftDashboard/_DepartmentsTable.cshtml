@@ -77,9 +77,9 @@
                                             <th class="text-end">@Localizer["ShiftDash_Departments_Col_SlotsRemaining"]</th>
                                             @if (!periodSelected)
                                             {
-                                                <th class="text-end">@Localizer["Shifts_SetUp"]</th>
-                                                <th class="text-end">@Localizer["Shifts_Event"]</th>
-                                                <th class="text-end">@Localizer["Shifts_Strike"]</th>
+                                                <th class="text-end">@SharedLocalizer["Shifts_SetUp"]</th>
+                                                <th class="text-end">@SharedLocalizer["Shifts_Event"]</th>
+                                                <th class="text-end">@SharedLocalizer["Shifts_Strike"]</th>
                                             }
                                         </tr>
                                     </thead>
@@ -132,9 +132,9 @@
                                     </thead>
                                     <tbody>
                                         @foreach (var (label, p) in new[] {
-                                            (Localizer["Shifts_SetUp"].Value, row.Build),
-                                            (Localizer["Shifts_Event"].Value, row.Event),
-                                            (Localizer["Shifts_Strike"].Value, row.Strike) })
+                                            (SharedLocalizer["Shifts_SetUp"].Value, row.Build),
+                                            (SharedLocalizer["Shifts_Event"].Value, row.Event),
+                                            (SharedLocalizer["Shifts_Strike"].Value, row.Strike) })
                                         {
                                             var pPct = SlotPct(p.FilledSlots, p.TotalSlots);
                                             <tr>

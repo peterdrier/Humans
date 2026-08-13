@@ -35,7 +35,7 @@ internal sealed class ShiftsController(
     ITeamServiceRead teamService,
     IAuditLogService auditLogService,
     IUserService userService,
-    IStringLocalizer<SharedResource> localizer,
+    IStringLocalizer<ShiftsResource> localizer,
     // The name-gate message is Onboarding's copy, rendered from here: the key came home
     // with that section's G5 and a Shell caller injects the section's marker directly
     // (design §15 step 3b).

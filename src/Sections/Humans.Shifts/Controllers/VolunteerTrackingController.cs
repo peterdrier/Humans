@@ -33,7 +33,7 @@ internal sealed class VolunteerTrackingController(
     VolunteerTrackingXlsxBuilder xlsxBuilder,
     IUserServiceRead userService,
     IAuditLogService auditLogService,
-    IStringLocalizer<SharedResource> localizer) : HumansControllerBase(userService)
+    IStringLocalizer<ShiftsResource> localizer) : HumansControllerBase(userService)
 {
     private readonly IUserServiceRead _userService = userService;
 

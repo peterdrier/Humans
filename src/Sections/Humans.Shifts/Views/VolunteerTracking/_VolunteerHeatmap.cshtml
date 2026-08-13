@@ -110,7 +110,7 @@
     <div class="card-header d-flex align-items-center">
         @if (Model.ShowAvailabilityControls)
         {
-            <strong><i class="fa-solid fa-table-cells me-2"></i>@Localizer["Profile_BuildStrip_Title"]</strong>
+            <strong><i class="fa-solid fa-table-cells me-2"></i>@SharedLocalizer["Profile_BuildStrip_Title"]</strong>
         }
         else
         {
@@ -311,7 +311,7 @@
                                              && cell.State != VolunteerCellState.Pending)
                                         {
                                             <hr class="my-2" />
-                                            <div class="small text-muted mb-1">@Localizer["Profile_BuildStrip_Title"]</div>
+                                            <div class="small text-muted mb-1">@SharedLocalizer["Profile_BuildStrip_Title"]</div>
                                             @if (cell.DeclaredAvailable)
                                             {
                                                 <form method="post" asp-controller="VolunteerTracking" asp-action="ClearAvailabilityDay">

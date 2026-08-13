@@ -9,7 +9,6 @@ using Humans.Shifts.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.UI;
 using Humans.Shifts.Controllers;
 using Humans.Shifts.Models;
 using Microsoft.AspNetCore.Http;
@@ -110,7 +109,7 @@ public sealed class VolunteerTrackingControllerExportXlsxTests
         var shiftMgmt = Substitute.For<IShiftManagementService>();
         var userService = Substitute.For<IUserService>();
         var auditLog = Substitute.For<IAuditLogService>();
-        var localizer = Substitute.For<IStringLocalizer<SharedResource>>();
+        var localizer = Substitute.For<IStringLocalizer<ShiftsResource>>();
         localizer[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
 
         var xlsxBuilder = new VolunteerTrackingXlsxBuilder();

@@ -41,15 +41,27 @@ namespace Humans.Integration.Tests.Controllers;
 /// rather than throwing, so both halves are asserted.
 /// </description></item>
 /// </list>
-/// <para>
-/// The resx carve is the <em>next</em> commit, so every <c>Shifts_*</c> / <c>ShiftDash_*</c> /
-/// <c>ShiftInfo_*</c> key is still in <c>SharedResource</c> and there is no raw-key assertion
-/// to make yet; it belongs with the carve.
-/// </para>
+/// <item><description>
+/// A key the resx carve missed, or a call site left on the wrong one of the section's two
+/// localizers, renders as its own raw key name — in all six languages, on a green 200. The
+/// English pass alone would still pass if the RCL's satellite assemblies never shipped, so
+/// the Spanish round trip is a separate test.
+/// </description></item>
+/// </list>
 /// </remarks>
 public class ShiftsPageRenderTests(HumansTestDatabase database) : IntegrationTestBase(database)
 {
     private const string ShiftsScriptPath = "/_content/Humans.Shifts/js/shifts.js";
+
+    /// <summary>
+    /// The six key prefixes the carve moved into <c>ShiftsResource</c>. None of them may
+    /// appear in a rendered body: a missed key, or a call site still on <c>SharedLocalizer</c>
+    /// after its key moved, falls back to the key name rather than throwing. The section's
+    /// markup carries these strings nowhere but inside a <c>Localizer[…]</c> index and two
+    /// Razor comments, so a literal-substring assertion is exact.
+    /// </summary>
+    private static readonly string[] CarvedKeyPrefixes =
+        ["Shifts_", "ShiftDash_", "ShiftInfo_", "VolTrack_", "EmailRota_", "EmailTeamRotas_"];
 
     /// <summary>
     /// Every GET route the section owned before the move that renders without a fixture.
@@ -122,7 +134,69 @@ public class ShiftsPageRenderTests(HumansTestDatabase database) : IntegrationTes
             // ReSharper rewrites <vc:name> to <name-view-component> when it mistakes the
             // element for a type reference; that also renders as inert markup.
             html.Should().NotContain("-view-component", $"GET {url} has a rewritten vc tag");
+
+            // Same failure class, different cause: an uncarved or mis-bound key falls back to
+            // its own name instead of throwing.
+            foreach (var prefix in CarvedKeyPrefixes)
+                html.Should().NotContain(prefix, $"GET {url} rendered a raw {prefix}* key");
         }
+    }
+
+    [HumansFact(Timeout = 120000)]
+    public async Task Shifts_pages_render_spanish_from_the_sections_own_satellite_assemblies()
+    {
+        // The English pass above proves nothing about the carve's five translations: the
+        // neutral set is embedded in the section assembly and the culture fallback is silent,
+        // so a satellite that never shipped still renders English on a green 200.
+        //
+        // Razor's default HtmlEncoder escapes non-ASCII to numeric entities, so every expected
+        // run below is ASCII-only on purpose.
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        await SeedActiveBurnAsync();
+        await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
+
+        // Accept-Language does not reach a signed-in user — Program.cs's initial culture
+        // provider returns the user's PreferredLanguage and short-circuits the rest of the
+        // chain — and every Shifts page is [Authorize]. Switch the way the UI does
+        // (CityPlanning's rule).
+        var switcherPage = await (await Client.GetAsync("/Shifts", ct)).Content.ReadAsStringAsync(ct);
+        var token = ExtractAntiForgeryToken(switcherPage);
+        token.Should().NotBeNullOrEmpty();
+        await Client.PostAsync("/Language/SetLanguage", new FormUrlEncodedContent(
+            [
+                new KeyValuePair<string, string>("__RequestVerificationToken", token!),
+                new KeyValuePair<string, string>("culture", "es"),
+            ]), ct);
+
+        // One page per carve group whose renderer differs: a section view, the two actions
+        // carved off Shell's ProfileController, and the controller that moved in whole.
+        foreach (var (url, spanish) in new[]
+                 {
+                     ("/Shifts/Dashboard", "Panel de turnos"),                    // ShiftDash_Title
+                     ("/Profile/Me/ShiftInfo", "Preferencias de turnos"),         // ShiftInfo_Title
+                     ("/Shifts/Dashboard/VolunteerTracking", "Seguimiento de Voluntarios"), // VolTrack_Title
+                 })
+        {
+            var response = await Client.GetAsync(url, ct);
+            response.StatusCode.Should().Be(HttpStatusCode.OK, $"GET {url} must render");
+
+            var html = await response.Content.ReadAsStringAsync(ct);
+            html.Should().Contain(spanish, $"GET {url} must resolve its own set's es satellite");
+
+            foreach (var prefix in CarvedKeyPrefixes)
+                html.Should().NotContain(prefix, $"GET {url} rendered a raw {prefix}* key in Spanish");
+        }
+    }
+
+    private static string? ExtractAntiForgeryToken(string html)
+    {
+        var match = System.Text.RegularExpressions.Regex.Match(
+            html,
+            "name=\"__RequestVerificationToken\"[^>]{0,200}value=\"(?<token>[^\"]+)\"",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase
+                | System.Text.RegularExpressions.RegexOptions.ExplicitCapture,
+            TimeSpan.FromSeconds(2));
+        return match.Success ? match.Groups["token"].Value : null;
     }
 
     [HumansFact(Timeout = 120000)]
@@ -157,10 +231,17 @@ public class ShiftsPageRenderTests(HumansTestDatabase database) : IntegrationTes
         //
         // Read from IActionDescriptorCollectionProvider rather than by reflection, so it
         // sees what MVC really routes — the section's controllers are internal and reach
-        // the table only through SectionControllerFeatureProvider. Asserted here rather
-        // than off the rendered dashboard because the to-do item only appears for a
-        // volunteer who already holds a signup, which costs a burn + department + rota +
-        // shift + signup fixture spanning two sections to stand up.
+        // the table only through SectionControllerFeatureProvider.
+        //
+        // Asserted here rather than off a rendered page, and the fixture is not what stands
+        // in the way: /WidgetGallery renders <vc:things-to-do … has-shift-signups="true" />
+        // with the flag hard-coded, so the branch needs no signup at all — but the component
+        // returns Content(string.Empty) for a fully-onboarded admin on both /WidgetGallery
+        // and /Home/Dashboard, so there is no card to read an href off. That is Shell
+        // behaviour on Shell's own inputs (this section changed none of them, and a carved
+        // resource key returns its own name rather than throwing). Residual gap, stated:
+        // this proves the pair the component writes today resolves, not that the component
+        // still writes it.
         var actions = Factory.Services
             .GetRequiredService<IActionDescriptorCollectionProvider>()
             .ActionDescriptors.Items

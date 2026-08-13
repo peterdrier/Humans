@@ -1,5 +1,11 @@
 @using Humans.UI.Extensions
+@using Humans.Shifts
 @model Humans.Web.Models.ProfileViewModel
+@* The shift-preference card below renders two Shifts_ keys, which moved into the section's
+   own set at its G5 move (nobodies-collective/Humans#866). Shell can reference a section, so
+   the call sites rebind here rather than the pair being split off the identical card on
+   /Shifts (design §15 step 3b, Consent's direction). *@
+@inject IStringLocalizer<ShiftsResource> ShiftsLocalizer
 @{
     ViewData["Title"] = Localizer["ProfileEdit_Title"].Value;
 }
@@ -429,8 +435,8 @@
                     {
                         <hr />
                         <div class="mb-3">
-                            <h6>@Localizer["Shifts_EditPreferences"]</h6>
-                            <p class="text-muted small mb-2">@Localizer["Shifts_PreferencesHelp"] <i class="fa-solid fa-star text-warning"></i></p>
+                            <h6>@ShiftsLocalizer["Shifts_EditPreferences"]</h6>
+                            <p class="text-muted small mb-2">@ShiftsLocalizer["Shifts_PreferencesHelp"] <i class="fa-solid fa-star text-warning"></i></p>
                             <div class="d-flex flex-wrap gap-3">
                                 @foreach (var tag in Model.AllShiftTags)
                                 {

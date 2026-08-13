@@ -15,9 +15,9 @@
         var period = shift.GetShiftPeriod(es);
         return period switch
         {
-            ShiftPeriod.Build => Localizer["Shifts_SetUp"].Value,
-            ShiftPeriod.Event => Localizer["Shifts_Event"].Value,
-            ShiftPeriod.Strike => Localizer["Shifts_Strike"].Value,
+            ShiftPeriod.Build => SharedLocalizer["Shifts_SetUp"].Value,
+            ShiftPeriod.Event => SharedLocalizer["Shifts_Event"].Value,
+            ShiftPeriod.Strike => SharedLocalizer["Shifts_Strike"].Value,
             _ => ""
         };
     }
@@ -242,7 +242,7 @@
                             .Column(Localizer["Shifts_Date"].Value, r => es.GateOpeningDate.PlusDays(r.Signup.Shift.DayOffset).ToWeekdayDayMonth())
                             .Column(Localizer["Shifts_Time"].Value, r => r.AbsoluteStart.ToTime(tz!))
                             .Column(Localizer["Shifts_Duration"].Value, r => r.Signup.Shift.Duration.TotalHours + "h")
-                            .Template(Localizer["Common_Status"].Value, pastStatusCell)
+                            .Template(SharedLocalizer["Common_Status"].Value, pastStatusCell)
                             .Build();
                     }
                     <partial name="_Table" model="pastTable" />
@@ -264,9 +264,9 @@
 
         var phases = new List<(string Label, string BadgeClass, int StartOffset, int EndOffset)>
         {
-            (Localizer["Shifts_SetUp"].Value, "bg-info", es.BuildStartOffset, -1),
-            (Localizer["Shifts_Event"].Value, "bg-success", 0, es.EventEndOffset),
-            (Localizer["Shifts_Strike"].Value, "bg-secondary", es.EventEndOffset + 1, es.StrikeEndOffset)
+            (SharedLocalizer["Shifts_SetUp"].Value, "bg-info", es.BuildStartOffset, -1),
+            (SharedLocalizer["Shifts_Event"].Value, "bg-success", 0, es.EventEndOffset),
+            (SharedLocalizer["Shifts_Strike"].Value, "bg-secondary", es.EventEndOffset + 1, es.StrikeEndOffset)
         };
         <div class="card mb-4" id="availability-calendar">
             <div class="card-header"><h5 class="mb-0">@Localizer["Shifts_GeneralAvailability"]</h5></div>

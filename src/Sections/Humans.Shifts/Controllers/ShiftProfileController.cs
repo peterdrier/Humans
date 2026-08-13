@@ -25,6 +25,10 @@ namespace Humans.Shifts.Controllers;
 internal sealed class ShiftProfileController(
     IShiftManagementService shiftMgmt,
     IUserService userService,
+    // SharedResource, not ShiftsResource: the one string this controller resolves is
+    // Profile_Updated, which belongs to Shell's profile vocabulary and stayed there. The
+    // page's own 13 ShiftInfo_ keys are the view's, and the view reads ShiftsResource
+    // through _ViewImports. Governance's "a section may bind two markers" case.
     IStringLocalizer<SharedResource> localizer,
     ILogger<ShiftProfileController> logger) : HumansControllerBase(userService)
 {

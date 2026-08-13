@@ -302,6 +302,16 @@ Git Bash.)
      tag takes the opening line and leaves the orphaned `<value>`/`</data>` behind, producing five
      invalid `.resx` files. That one fails loudly (`MSB3103: Invalid Resx file`) rather than
      silently, but it costs a full build cycle; consume to the closing `</data>` (proven: Feedback).
+     **Leave the section-banner XML comments where they are and delete the orphans by hand**:
+     `SharedResource.resx` groups its entries under `<!-- ==== / Name / ==== -->` banners, and
+     attaching a banner run to the next `<data>` block moves it with a key whose neighbours may
+     have stayed. Shifts' carve emptied three banners and split none; the tidy-up is one edit
+     (proven: Shifts).
+     **Derive the prefix list from the resx, not from the handoff.** Shifts' recon named six
+     prefixes totalling 247 keys; `VolTrack_` — 94 more, every one rendered by a controller and
+     four views that moved in with the section — was in none of them, so a third of the carve
+     was invisible until `grep -o 'name="[^"]*"' … | sed -E 's/^(prefix1|…).*/\1/' | uniq -c`
+     was run against the file itself (proven: Shifts).
    - **A key whose *renderer* lives in Base stays in Base — carve by renderer, not by prefix.**
      The third direction, after "carve by owner" and "the key goes home". Feedback's
      `Email_FeedbackResponse_{Subject,Body}` look like the section's, and are read by
@@ -460,6 +470,20 @@ Git Bash.)
        inject `IStringLocalizer<<Section>Resource>`; `Humans.UI` cannot reference a section, so a
        key it renders stays in `SharedResource` and the section binds `SharedLocalizer` for it.
        Run the renderer test per key and treat a `Humans.UI` hit as a stop (proven: Teams).
+     - **…and the second stop is a renderer this section already references.** Budget's "the
+       key goes home and the consumer rebinds" needs `Humans.<Consumer>` → `Humans.<Section>`
+       to be acyclic, and by the time a late section moves, several of its *own* project
+       references point at other sections — Shifts references `Humans.Teams` (its admin
+       controller derives from `HumansTeamControllerBase`) and `Humans.Onboarding` (its browse
+       page renders the name-gate copy through `OnboardingResource`). Both of those sections
+       render `Shifts_*` keys, and neither can bind `ShiftsResource` without a cycle, so five
+       keys were pinned to `SharedResource` exactly as a `Humans.UI` hit pins one. **Check the
+       section's own outbound reference list before applying Budget's rule, not just the
+       consumer's** — the direction that works for an early mover is a cycle for a late one,
+       and the compiler only tells you after you have moved the keys (proven: Shifts).
+       A sixth key followed those five for set integrity: `Shifts_AllPhases` names the fourth
+       `RotaPeriod` member in the same `switch` as the three pinned ones, and one enum's
+       display names must not span two resource sets.
      - **`Localizer.EnumDisplay(value)` is a call site the extract-and-diff pass cannot see.**
        Governance's mechanical check extracts `Localizer["…"]`; an `EnumDisplay` /
        `EnumSelectItems` call resolves `Enum_{Type}_{Value}` at runtime and shows up in neither

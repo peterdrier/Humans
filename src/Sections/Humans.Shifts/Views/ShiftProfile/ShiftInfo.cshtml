@@ -7,7 +7,7 @@
     <div class="col-12" style="max-width: 560px; margin: 0 auto;">
         <nav aria-label="breadcrumb">
             <ol class="breadcrumb">
-                <li class="breadcrumb-item"><a asp-controller="Profile" asp-action="Index">@Localizer["Nav_MyProfile"]</a></li>
+                <li class="breadcrumb-item"><a asp-controller="Profile" asp-action="Index">@SharedLocalizer["Nav_MyProfile"]</a></li>
                 <li class="breadcrumb-item active" aria-current="page">@Localizer["ShiftInfo_Title"]</li>
             </ol>
         </nav>
@@ -101,14 +101,14 @@
             @* Navigation *@
             <div class="d-flex justify-content-between align-items-center mt-4">
                 <button type="button" class="btn btn-outline-secondary" id="backBtn" style="display:none">
-                    &larr; @Localizer["Common_Back"]
+                    &larr; @SharedLocalizer["Common_Back"]
                 </button>
                 <div></div>
                 <button type="button" class="btn btn-primary" id="nextBtn">
                     @Localizer["ShiftInfo_Continue"] &rarr;
                 </button>
                 <button type="submit" class="btn btn-primary" id="saveBtn" style="display:none">
-                    @Localizer["Common_Save"]
+                    @SharedLocalizer["Common_Save"]
                 </button>
             </div>
         </form>

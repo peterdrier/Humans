@@ -108,7 +108,7 @@
                 <div class="form-check mb-0">
                     <input class="form-check-input phase-check" type="checkbox" id="phase-build" value="Build" @(isBuildActive ? "checked" : "") />
                     <label class="form-check-label" for="phase-build">
-                        <span class="fw-semibold">@Localizer["Shifts_SetUp"]</span>
+                        <span class="fw-semibold">@SharedLocalizer["Shifts_SetUp"]</span>
                         <br /><small class="text-muted">@buildFrom.ToWeekdayDayMonth() — @buildTo.ToWeekdayDayMonth()</small>
                     </label>
                 </div>
@@ -119,7 +119,7 @@
                 <div class="form-check mb-0">
                     <input class="form-check-input phase-check" type="checkbox" id="phase-event" value="Event" @(isEventActive ? "checked" : "") />
                     <label class="form-check-label" for="phase-event">
-                        <span class="fw-semibold">@Localizer["Shifts_Event"]</span>
+                        <span class="fw-semibold">@SharedLocalizer["Shifts_Event"]</span>
                         <br /><small class="text-muted">@eventFrom.ToWeekdayDayMonth() — @eventTo.ToWeekdayDayMonth()</small>
                     </label>
                 </div>
@@ -130,7 +130,7 @@
                 <div class="form-check mb-0">
                     <input class="form-check-input phase-check" type="checkbox" id="phase-strike" value="Strike" @(isStrikeActive ? "checked" : "") />
                     <label class="form-check-label" for="phase-strike">
-                        <span class="fw-semibold">@Localizer["Shifts_Strike"]</span>
+                        <span class="fw-semibold">@SharedLocalizer["Shifts_Strike"]</span>
                         <br /><small class="text-muted">@strikeFrom.ToWeekdayDayMonth() — @strikeTo.ToWeekdayDayMonth()</small>
                     </label>
                 </div>
@@ -328,7 +328,7 @@
 
     @if (Model.Departments.Count == 0)
     {
-        <div class="alert alert-info">@Localizer["Shifts_NoShiftsAvailable"]</div>
+        <div class="alert alert-info">@SharedLocalizer["Shifts_NoShiftsAvailable"]</div>
     }
     else if (isUrgencySort)
     {
@@ -490,9 +490,9 @@
                         }
                         @foreach (var periodGroup in rotasByPeriod)
                         {
-                            var periodName = periodGroup.Key == RotaPeriod.Build ? Localizer["Shifts_SetUp"].Value
-                                : periodGroup.Key == RotaPeriod.Strike ? Localizer["Shifts_Strike"].Value
-                                : Localizer["Shifts_Event"].Value;
+                            var periodName = periodGroup.Key == RotaPeriod.Build ? SharedLocalizer["Shifts_SetUp"].Value
+                                : periodGroup.Key == RotaPeriod.Strike ? SharedLocalizer["Shifts_Strike"].Value
+                                : SharedLocalizer["Shifts_Event"].Value;
                             <h6 class="mt-3 mb-2 text-muted text-uppercase" style="font-size: 0.75rem; letter-spacing: 0.05em;">
                                 <span class="badge @(periodGroup.Key == RotaPeriod.Build ? "bg-info" : periodGroup.Key == RotaPeriod.Strike ? "bg-secondary" : "bg-success") me-1">@periodName</span>
                             </h6>

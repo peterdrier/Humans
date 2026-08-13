@@ -9,7 +9,6 @@ using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
-using Humans.UI;
 using Humans.Shifts.Controllers;
 using Humans.Shifts.Models;
 using Microsoft.AspNetCore.Http;
@@ -50,7 +49,7 @@ public class ShiftsControllerDietaryGateTests
     {
         _user = new User { Id = Guid.NewGuid(), DisplayName = "Test Human", PreferredLanguage = "en" };
 
-        var localizer = Substitute.For<IStringLocalizer<SharedResource>>();
+        var localizer = Substitute.For<IStringLocalizer<ShiftsResource>>();
         localizer[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
         localizer[Arg.Any<string>(), Arg.Any<object[]>()]
             .Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));

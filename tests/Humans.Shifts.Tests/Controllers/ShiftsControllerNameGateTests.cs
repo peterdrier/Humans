@@ -8,7 +8,6 @@ using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.UI;
 using Humans.Shifts.Controllers;
 using Humans.Shifts.Models;
 using Microsoft.AspNetCore.Http;
@@ -39,7 +38,7 @@ public class ShiftsControllerNameGateTests
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
-    private readonly IStringLocalizer<SharedResource> _localizer = Substitute.For<IStringLocalizer<SharedResource>>();
+    private readonly IStringLocalizer<ShiftsResource> _localizer = Substitute.For<IStringLocalizer<ShiftsResource>>();
     // The name-gate message came home with Onboarding's G5; the controller now resolves it
     // through the section's own resource set.
     private readonly IStringLocalizer<OnboardingResource> _onboardingLocalizer = Substitute.For<IStringLocalizer<OnboardingResource>>();

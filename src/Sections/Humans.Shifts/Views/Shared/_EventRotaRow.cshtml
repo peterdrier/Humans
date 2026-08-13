@@ -8,9 +8,9 @@
     {
         return period switch
         {
-            ShiftPeriod.Build => Localizer["Shifts_SetUp"].Value,
-            ShiftPeriod.Event => Localizer["Shifts_Event"].Value,
-            ShiftPeriod.Strike => Localizer["Shifts_Strike"].Value,
+            ShiftPeriod.Build => SharedLocalizer["Shifts_SetUp"].Value,
+            ShiftPeriod.Event => SharedLocalizer["Shifts_Event"].Value,
+            ShiftPeriod.Strike => SharedLocalizer["Shifts_Strike"].Value,
             _ => ""
         };
     }

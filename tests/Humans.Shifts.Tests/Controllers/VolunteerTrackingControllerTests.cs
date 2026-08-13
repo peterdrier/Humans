@@ -58,8 +58,8 @@ public class VolunteerTrackingControllerTests
     private readonly Humans.Shifts.Models.VolunteerTrackingXlsxBuilder _xlsxBuilder = new();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IAuditLogService _auditLog = Substitute.For<IAuditLogService>();
-    private readonly IStringLocalizer<SharedResource> _localizer =
-        Substitute.For<IStringLocalizer<SharedResource>>();
+    private readonly IStringLocalizer<ShiftsResource> _localizer =
+        Substitute.For<IStringLocalizer<ShiftsResource>>();
 
     public VolunteerTrackingControllerTests()
     {
