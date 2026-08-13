@@ -5,7 +5,7 @@ using Humans.Infrastructure.Jobs;
 namespace Humans.Web.Extensions.Infrastructure;
 
 /// <summary>
-/// The four Google Workspace lines that did <em>not</em> move into
+/// The three Google Workspace lines that did <em>not</em> move into
 /// <c>Humans.GoogleIntegration</c>'s <c>Section.Register</c> at that section's G5
 /// (nobodies-collective/Humans#866).
 /// </summary>

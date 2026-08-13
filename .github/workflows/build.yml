@@ -79,7 +79,12 @@ jobs:
       # job budget on a silent hang. See nobodies-collective/Humans#586 — PR
       # peterdrier/Humans#306 shipped a DI cycle that silently stalled the
       # test host for 8+ minutes before this guard existed.
-      run: dotnet test Humans.slnx --no-build --configuration Release --verbosity quiet --blame-hang-timeout 2m --logger "trx;LogFileName=test-results.trx" --logger "console;verbosity=minimal" --filter "FullyQualifiedName!~Integration"
+      # The filter names Humans.Integration.Tests in full, not a bare "Integration":
+      # that assembly needs Docker/Testcontainers, which is noisy on ubuntu-latest
+      # (3e91df5c7). A bare substring also matched Humans.GoogleIntegration.Tests once
+      # that section got its own test project, silently skipping 213 unit and
+      # architecture tests — including the ones guarding the section boundary.
+      run: dotnet test Humans.slnx --no-build --configuration Release --verbosity quiet --blame-hang-timeout 2m --logger "trx;LogFileName=test-results.trx" --logger "console;verbosity=minimal" --filter "FullyQualifiedName!~Humans.Integration.Tests"
 
     - name: Verify EF migration chain is linear
       # Catches migration forks (two migrations claiming the same parent) and
