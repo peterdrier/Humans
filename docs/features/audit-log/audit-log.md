@@ -140,15 +140,15 @@ Accessible to Board and Admin. Displays all audit log entries with filtering by 
 - Alert banner showing total anomaly count
 - Paginated (50 per page)
 
-### Drive Activity Check (`/AuditLog/CheckDriveActivity`)
+### Drive Activity Check (`/Monitor/CheckDriveActivity`)
 
 POST action on `AuditLogController`. Manual trigger for the Drive Activity monitor. Redirects to `/AuditLog?filter=AnomalousPermissionDetected` after completion.
 
-### Per-Resource Google Sync Audit (`/AuditLog/Resource/{id}`)
+### Per-Resource Google Sync Audit (`/Monitor/Resource/{id}`)
 
 Displays all audit entries for a specific Google resource, queried by `ResourceId`. Shows structured Google sync details: user email, role, sync source, success/failure status, and error messages. Accessible to Board and Admin. Accessed via "Audit" button on each row of the Google Sync page.
 
-### Per-User Google Sync Audit (`/AuditLog/Human/{id}`)
+### Per-User Google Sync Audit (`/Monitor/Human/{id}`)
 
 Displays all Google sync audit entries affecting a specific user, queried by `RelatedEntityId = userId` where `ResourceId IS NOT NULL`. Includes the Google resource name, resolved via `ITeamResourceService.GetResourceNamesByIdsAsync` (no navigation property — cross-section read-interface call). Accessible to HumanAdmin and Admin. Accessed via the Member Detail page sidebar.
 

@@ -102,9 +102,6 @@ The changes captured in the 2026-06-07 sweep — now all stable in the tables be
 | Method | Route | Verb | Purpose | Suggestion |
 |--------|-------|------|---------|------------|
 | Index | /AuditLog | GET | Audit log landing | OK |
-| CheckDriveActivity | /AuditLog/CheckDriveActivity | POST | Check drive activity | OK |
-| Resource | /AuditLog/Resource/{id:guid} | GET | Resource sync audit detail | OK |
-| Human | /AuditLog/Human/{id:guid} | GET | Human sync audit detail | OK |
 
 ## BudgetAdminController
 
@@ -734,6 +731,16 @@ One-off vendor check-in backfill (temp page, remove after use) — recovers gate
 | Refresh | /Mailer/Admin/Refresh | POST | Refresh audience data | OK |
 | Commit | /Mailer/Admin/Import/Commit | POST | Commit a staged import | OK |
 | Import | /Mailer/Admin/Import | GET | Import preview page | OK |
+
+## MonitorController
+
+(`src/Sections/Humans.Monitor/Controllers/MonitorController.cs`)
+
+| Method | Route | Verb | Purpose | Suggestion |
+|--------|-------|------|---------|------------|
+| CheckDriveActivity | /Monitor/CheckDriveActivity | POST | Trigger a Drive activity anomaly scan | OK |
+| Resource | /Monitor/Resource/{id:guid} | GET | Google sync audit trail for one resource | OK |
+| Human | /Monitor/Human/{id:guid} | GET | Google sync audit trail for one human | OK |
 
 ## NotificationsController
 

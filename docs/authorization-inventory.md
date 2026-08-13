@@ -593,7 +593,7 @@ Post Phase-1 retirement, controllers and views express the same authorization ru
 
 | Endpoint | Roles | Note |
 |---|---|---|
-| `GoogleController` actions with broader policies (`Sync`, `SyncPreview`, `CheckDriveActivity`, `AuditLog/Resource`, `AuditLog/Human`, `ProvisionEmail`) | TeamsAdmin/Board/Admin / Board/Admin / HumanAdmin/Board/Admin / HumanAdmin/Admin | Class-level `[Authorize]` was removed; each action has its own policy. |
+| `GoogleController` actions with broader policies (`Sync`, `SyncPreview`, `ProvisionEmail`) and `MonitorController` (`Monitor/CheckDriveActivity`, `Monitor/Resource`, `Monitor/Human`) | TeamsAdmin/Board/Admin / Board/Admin / HumanAdmin/Board/Admin / HumanAdmin/Admin | Class-level `[Authorize]` was removed; each action has its own policy. |
 | `UsersAdminController.AdminOutbox` | `HumanAdminBoardOrAdmin` | No visible button in `AdminList` view (accessed via URL pattern). |
 
 ### Runtime-Only Guards (no attribute, enforced in method body)
