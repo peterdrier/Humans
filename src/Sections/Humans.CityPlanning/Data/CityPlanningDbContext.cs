@@ -13,7 +13,7 @@ namespace Humans.CityPlanning.Data;
 /// is a code-side partition of the EF model.
 /// </summary>
 /// <remarks>
-/// Internal-sealed like Base's HumansDbContext (issue #750): repositories
+/// Internal-sealed like every section context (issue #750): repositories
 /// are the only consumers. Configurations are applied explicitly (not by
 /// assembly scanning) so this model can never accrete another section's tables.
 /// A polygon's camp season and its editing user are bare Guid references, so the

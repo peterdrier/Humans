@@ -61,7 +61,7 @@ public static class MergeFixtureExtensions
         ArgumentNullException.ThrowIfNull(fx);
 
         await using var scope = fx.Services.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var db = scope.ServiceProvider.GetRequiredService<UsersDbContext>();
         var now = SystemClock.Instance.GetCurrentInstant();
 
         // Pending (unverified) email on the target — production code creates
@@ -122,7 +122,7 @@ public static class MergeFixtureExtensions
     private static async Task<Guid> SeedUserAndProfileAsync(IServiceScope scope, string displayNameTag)
     {
         var um = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
-        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var db = scope.ServiceProvider.GetRequiredService<UsersDbContext>();
         var now = SystemClock.Instance.GetCurrentInstant();
 
         var userId = Guid.NewGuid();

@@ -42,8 +42,8 @@ public sealed class TeamsDependencyCycleTests
     {
         var services = new ServiceCollection();
 
-        services.AddScoped(_ => new HumansDbContext(
-            new DbContextOptionsBuilder<HumansDbContext>()
+        services.AddScoped(_ => new UsersDbContext(
+            new DbContextOptionsBuilder<UsersDbContext>()
                 .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options));
         services.AddSingleton<IMemoryCache>(_ => new MemoryCache(new MemoryCacheOptions()));
 

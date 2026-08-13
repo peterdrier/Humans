@@ -24,7 +24,7 @@ public sealed class ControllerDbContextInjectionAnalyzer : DiagnosticAnalyzer
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,
         description:
-            "Controllers reaching directly for an application DbContext (HumansDbContext or any per-section " +
+            "Controllers reaching directly for an application DbContext (any per-section " +
             "context) bypass the service and repository layers. Keep database access behind an application or " +
             "infrastructure service and inject that service instead.");
 

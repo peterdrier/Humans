@@ -16,7 +16,7 @@ namespace Humans.Infrastructure.Jobs;
 /// SyncSettings enforcement is handled by the gateway methods in GoogleWorkspaceSyncService.
 /// </summary>
 /// <remarks>
-/// §15 Part 2c (issue #576): the job no longer injects <c>HumansDbContext</c>.
+/// §15 Part 2c (issue #576): the job injects no DbContext.
 /// Outbox reads/writes go through <see cref="IGoogleSyncOutboxRepository"/>,
 /// the "are there any active Drive/Group resources for this team?" check
 /// goes through <see cref="IGoogleResourceRepository"/>, and the

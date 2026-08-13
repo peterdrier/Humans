@@ -13,11 +13,11 @@ namespace Humans.Infrastructure.Data;
 /// split is a code-side partition of the EF model.
 /// </summary>
 /// <remarks>
-/// Internal-sealed like <see cref="HumansDbContext"/> (issue #750): repositories
+/// Internal-sealed like every section context (issue #750): repositories
 /// are the only consumers. Configurations are applied explicitly (not by
 /// assembly scanning) so this model can never accrete another section's tables.
 /// The team a resource is provisioned for is a bare Guid, so the Teams tables
-/// stay in <see cref="HumansDbContext"/> and are deliberately absent here.
+/// stay in <see cref="UsersDbContext"/> and are deliberately absent here.
 /// <c>SyncServiceSettings</c> carries a model-level <c>HasData</c> singleton, so
 /// the generated baseline re-emits the seed the old chain inserted.
 /// </remarks>

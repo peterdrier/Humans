@@ -12,9 +12,9 @@ namespace Humans.Infrastructure.Repositories.Profiles;
 /// The only non-test file that touches <c>DbContext.CommunicationPreferences</c>
 /// after the Profile migration lands.
 /// Uses <see cref="IDbContextFactory{TContext}"/> so the repository can be
-/// registered as Singleton while <c>HumansDbContext</c> remains Scoped.
+/// registered as Singleton while <c>UsersDbContext</c> remains Scoped.
 /// </summary>
-internal sealed class CommunicationPreferenceRepository(IDbContextFactory<HumansDbContext> factory)
+internal sealed class CommunicationPreferenceRepository(IDbContextFactory<UsersDbContext> factory)
     : ICommunicationPreferenceRepository
 {
     public async Task<List<CommunicationPreference>> GetByUserIdAsync(

@@ -19,7 +19,7 @@ namespace Humans.Infrastructure.Jobs;
 /// Reads Applications and marks <c>RenewalReminderSentAt</c> through
 /// <see cref="IApplicationDecisionService"/>, and stitches applicant display
 /// info via <see cref="IUserService"/>, so the job never touches
-/// <see cref="Humans.Infrastructure.Data.HumansDbContext"/> directly
+/// a section DbContext directly
 /// (design-rules §2c).
 /// </remarks>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]

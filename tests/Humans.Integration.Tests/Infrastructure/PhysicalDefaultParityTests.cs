@@ -34,11 +34,12 @@ namespace Humans.Integration.Tests.Infrastructure;
 /// Coverage spans <b>every</b> DbContext DI registers — not every one in
 /// Humans.Infrastructure, which stopped being the same set once sections began
 /// moving into their own projects (nobodies-collective/Humans#866, G5) and would
-/// have dropped a moved section silently: the main pile migrates its historical chain, then each
-/// section context runs through <see cref="SectionMigrationRunner"/> exactly
-/// as production boot does — so a scaffolded default introduced by a
-/// <em>section's own</em> migration chain fails here too, and future peels are
-/// covered without touching this file. When this test fails on a new column:
+/// have dropped a moved section silently: each section context runs through
+/// <see cref="SectionMigrationRunner"/> exactly as production boot does (on a
+/// fresh database every baseline executes for real — the root chain is gone,
+/// #858 peel 15) — so a scaffolded default introduced by a <em>section's
+/// own</em> migration chain fails here too, and new sections are covered
+/// without touching this file. When this test fails on a new column:
 /// required columns need Peter's approval in the first place
 /// (<c>memory/architecture/required-columns-need-approval.md</c>); declare the
 /// approved default in the model (see the bool-sentinel rules in
@@ -60,10 +61,9 @@ public sealed class PhysicalDefaultParityTests(HumansTestDatabase database)
         var connectionString = await CreateDatabaseAsync("default_parity");
 
         var contextTypes = RegisteredContextTypes()
-            .OrderBy(t => t == typeof(HumansDbContext) ? 0 : 1) // historical chain provisions everything first
-            .ThenBy(t => t.Name, StringComparer.Ordinal)
+            .OrderBy(t => t.Name, StringComparer.Ordinal)
             .ToList();
-        contextTypes.Should().Contain(typeof(HumansDbContext));
+        contextTypes.Should().Contain(typeof(UsersDbContext));
         contextTypes.Count.Should().BeGreaterThan(1, "the section contexts must be discovered too");
 
         // (table, column) -> any mapping context declares a default. Multiple
@@ -72,24 +72,16 @@ public sealed class PhysicalDefaultParityTests(HumansTestDatabase database)
         foreach (var contextType in contextTypes)
         {
             await using var db = CreateContext(contextType, connectionString);
-            if (contextType == typeof(HumansDbContext))
-            {
-                await db.Database.MigrateAsync(TestContext.Current.CancellationToken);
-            }
-            else
-            {
-                // Any owned table works as the existence sentinel: the chain
-                // just created them all, so the runner takes the same
-                // mark-applied path it takes on production, then applies any
-                // post-baseline section migrations for real.
-                var sentinel = db.Model.GetEntityTypes()
-                    .Select(e => e.GetTableName())
-                    .OfType<string>()
-                    .Order(StringComparer.Ordinal)
-                    .First();
-                await SectionMigrationRunner.MigrateAsync(
-                    db, sentinel, NullLogger.Instance, NoSnapshot, TestContext.Current.CancellationToken);
-            }
+            // Any owned table works as the existence sentinel: the database is
+            // fresh, so every sentinel is absent and each baseline executes for
+            // real, then post-baseline section migrations apply on top.
+            var sentinel = db.Model.GetEntityTypes()
+                .Select(e => e.GetTableName())
+                .OfType<string>()
+                .Order(StringComparer.Ordinal)
+                .First();
+            await SectionMigrationRunner.MigrateAsync(
+                db, sentinel, NullLogger.Instance, NoSnapshot, TestContext.Current.CancellationToken);
 
             foreach (var entity in db.Model.GetEntityTypes())
             {
@@ -139,14 +131,14 @@ public sealed class PhysicalDefaultParityTests(HumansTestDatabase database)
                 mismatches.Add(dbHas
                     ? $"{key.Item1}.{key.Item2}: physical DEFAULT exists but the model declares none " +
                       "(scaffolded AddColumn default was never realigned)"
-                    : $"{key.Item1}.{key.Item2}: model declares a default but the chain-built database has none " +
+                    : $"{key.Item1}.{key.Item2}: model declares a default but the baseline-built database has none " +
                       "(missing migration for the configured default)");
             }
         }
 
         mismatches.Sort(StringComparer.Ordinal);
         string.Join(Environment.NewLine, mismatches).Should().BeEmpty(
-            "every column's default must agree between the model and the chain-built schema " +
+            "every column's default must agree between the model and the baseline-built schema " +
             "— see PhysicalDefaultParityTests remarks for how to fix a divergence");
     }
 
@@ -158,8 +150,7 @@ public sealed class PhysicalDefaultParityTests(HumansTestDatabase database)
         {
             npgsql.UseNodaTime();
             npgsql.MigrationsAssembly(contextType.Assembly.GetName().Name!);
-            if (contextType != typeof(HumansDbContext))
-                npgsql.MigrationsHistoryTable(SectionMigrationsHistory.TableFor(contextType));
+            npgsql.MigrationsHistoryTable(SectionMigrationsHistory.TableFor(contextType));
         });
         return (DbContext)Activator.CreateInstance(contextType, optionsBuilder.Options)!;
     }
@@ -173,12 +164,11 @@ public sealed class PhysicalDefaultParityTests(HumansTestDatabase database)
     private static IReadOnlyList<Type> RegisteredContextTypes()
     {
         var services = new ServiceCollection()
-            .AddHumansPersistence(enableDeveloperDiagnostics: false)
+            .AddHumansPersistence()
             .AddDiscoveredSections(new ConfigurationBuilder().Build());
 
         return
         [
-            typeof(HumansDbContext),
             .. services.Select(d => d.ImplementationInstance)
                 .OfType<SectionDbContextRegistration>()
                 .Select(r => r.ContextType),

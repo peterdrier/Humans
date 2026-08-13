@@ -11,9 +11,9 @@ namespace Humans.Infrastructure.Repositories.Users;
 /// non-test file that touches <c>DbContext.AccountMergeRequests</c> after the
 /// Profile-section §15 cleanup (issue #557).
 /// Uses <see cref="IDbContextFactory{TContext}"/> so the repository can be
-/// registered as Singleton while <c>HumansDbContext</c> remains Scoped.
+/// registered as Singleton while <c>UsersDbContext</c> remains Scoped.
 /// </summary>
-internal sealed class AccountMergeRepository(IDbContextFactory<HumansDbContext> factory) : IAccountMergeRepository
+internal sealed class AccountMergeRepository(IDbContextFactory<UsersDbContext> factory) : IAccountMergeRepository
 {
     public async Task<IReadOnlyList<AccountMergeRequest>> GetPendingAsync(CancellationToken ct = default)
     {

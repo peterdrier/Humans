@@ -1,11 +1,11 @@
 ---
 name: Diff the snapshot after running an EF tool
-description: After running any EF tool (`migrations add`, `migrations remove`, `database update`, `dbcontext optimize`), always `git diff HumansDbContextModelSnapshot.cs` before committing — empty migration body does NOT mean clean snapshot.
+description: After running any EF tool (`migrations add`, `migrations remove`, `database update`, `dbcontext optimize`), always `git diff` the context's `*DbContextModelSnapshot.cs` before committing — empty migration body does NOT mean clean snapshot.
 ---
 
 # Always `git diff` the snapshot after running an EF tool
 
-`dotnet ef migrations add` rewrites `src/Humans.Infrastructure/Migrations/HumansDbContextModelSnapshot.cs` to reflect EF's view of the current model. The migration **body** (`Up`/`Down` methods) shows the schema diff between the prior snapshot and the new one. The **snapshot file** is a full rewrite of the model state.
+`dotnet ef migrations add` rewrites the target context's `<Context>DbContextModelSnapshot.cs` (e.g. `Migrations/Users/UsersDbContextModelSnapshot.cs`) to reflect EF's view of the current model. The migration **body** (`Up`/`Down` methods) shows the schema diff between the prior snapshot and the new one. The **snapshot file** is a full rewrite of the model state.
 
 These can diverge. EF can produce an empty migration body (no `Up`/`Down` content) while still rewriting the snapshot file substantially. Causes include:
 - Transient model-building soft failures (e.g., a custom `ValueConverter` / `ValueComparer` throws or warns during one specific invocation and the affected entity gets silently skipped from the produced model).
@@ -19,7 +19,7 @@ These can diverge. EF can produce an empty migration body (no `Up`/`Down` conten
 After every EF tool run, before staging anything:
 
 ```
-git diff src/Humans.Infrastructure/Migrations/HumansDbContextModelSnapshot.cs
+git diff src/Humans.Infrastructure/Migrations/<Section>/<Section>DbContextModelSnapshot.cs
 ```
 
 If the diff touches entities you did NOT change in your code, **STOP** — your snapshot is corrupt. Restore from `origin/main` (or branch base) and figure out why EF's view of the model differs. Never commit unexplained snapshot diff.

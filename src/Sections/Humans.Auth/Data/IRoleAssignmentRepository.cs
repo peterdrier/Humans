@@ -18,7 +18,7 @@ namespace Humans.Auth.Data;
 ///
 /// Auth is low-traffic (handful of admin writes per month, a few reads per
 /// day). The repository uses the Singleton + <c>IDbContextFactory</c> pattern
-/// so each method owns its own <c>HumansDbContext</c> lifetime.
+/// so each method owns its own <c>AuthDbContext</c> lifetime.
 /// </remarks>
 [Section("Auth")]
 internal interface IRoleAssignmentRepository : IRepository

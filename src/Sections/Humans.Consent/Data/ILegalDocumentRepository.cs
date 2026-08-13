@@ -18,7 +18,7 @@ namespace Humans.Consent.Data;
 /// surface (nobodies-collective/Humans#751) — in
 /// <c>Humans.Consent.Services</c>. Read methods use
 /// <c>AsNoTracking</c>; writes create and dispose short-lived contexts via
-/// <see cref="Microsoft.EntityFrameworkCore.IDbContextFactory{HumansDbContext}"/>
+/// <see cref="Microsoft.EntityFrameworkCore.IDbContextFactory{LegalDbContext}"/>
 /// so the repository can be registered Singleton alongside
 /// <see cref="IUserRepository"/>, etc.
 ///

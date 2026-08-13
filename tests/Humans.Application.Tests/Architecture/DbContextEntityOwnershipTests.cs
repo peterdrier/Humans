@@ -16,9 +16,9 @@ namespace Humans.Application.Tests.Architecture;
 /// </summary>
 /// <remarks>
 /// <para>
-/// The failure this catches: a configuration added under a peeled namespace
-/// (excluded from <c>HumansDbContext</c> by its <c>PeeledConfigurationNamespaces</c>
-/// filter) but never added to that section's context. The entity is then mapped
+/// The failure this catches: a configuration added under a section namespace
+/// but never applied by that section's context (every context applies its
+/// configurations explicitly). The entity is then mapped
 /// by <b>no</b> context — no migration is ever generated for it and
 /// <c>has-pending-model-changes</c> stays green, because no model describes the
 /// table. The mirror failure, an entity mapped by two contexts, means two
@@ -31,7 +31,7 @@ namespace Humans.Application.Tests.Architecture;
 /// </para>
 /// <para>
 /// Contexts and configurations are discovered from what DI actually registers, not
-/// by reflecting over <c>typeof(HumansDbContext).Assembly</c>: a section that moves
+/// by reflecting over <c>typeof(UsersDbContext).Assembly</c>: a section that moves
 /// into its own project (nobodies-collective/Humans#866, G5) takes its context and
 /// its configurations with it, and an assembly-anchored scan would drop that section
 /// from the guard without failing.
@@ -75,7 +75,7 @@ public class DbContextEntityOwnershipTests
 
             var configured = string.Join(", ", configurations.Order(StringComparer.Ordinal));
             offenders.Add(owners.Count == 0
-                ? $"{entity.Name} ({configured}) is mapped by NO DbContext — its configuration is excluded from HumansDbContext but no section context applies it"
+                ? $"{entity.Name} ({configured}) is mapped by NO DbContext — no section context applies its configuration"
                 : $"{entity.Name} ({configured}) is mapped by {owners.Count} DbContexts ({string.Join(", ", owners.Order(StringComparer.Ordinal))}) — a table must have exactly one owning context");
         }
 
@@ -112,12 +112,11 @@ public class DbContextEntityOwnershipTests
     private static IReadOnlyList<Type> RegisteredContextTypes()
     {
         var services = new ServiceCollection()
-            .AddHumansPersistence(enableDeveloperDiagnostics: false)
+            .AddHumansPersistence()
             .AddDiscoveredSections(new ConfigurationBuilder().Build());
 
         return
         [
-            typeof(HumansDbContext),
             .. services.Select(d => d.ImplementationInstance)
                 .OfType<SectionDbContextRegistration>()
                 .Select(r => r.ContextType)

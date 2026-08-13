@@ -28,7 +28,7 @@ namespace Humans.Email.Tests.Services;
 public sealed class OutboxEmailServiceTests : IDisposable
 {
     // Two members of Humans.Application.Tests' ServiceTestHarness, owned here rather than
-    // inherited: the harness is built around an in-memory HumansDbContext and sharing it
+    // inherited: the harness is built around an in-memory UsersDbContext and sharing it
     // would grant a section test project InternalsVisibleTo on it (design §15 step 8).
     private readonly FakeClock Clock = new(Instant.FromUtc(2026, 3, 1, 12, 0));
 

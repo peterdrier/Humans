@@ -13,8 +13,8 @@ namespace Humans.Mailer.Tests.Infrastructure;
 /// <remarks>
 /// Copied rather than shared through <c>tests/Directory.Build.props</c>: the original file
 /// also carries <c>StubGetUserInfosFromDb</c> overloads built on an in-memory
-/// <c>HumansDbContext</c>, so linking it in would push an EF dependency — and
-/// <c>InternalsVisibleTo</c> on <c>HumansDbContext</c> — into a section test project that
+/// <c>UsersDbContext</c>, so linking it in would push an EF dependency — and
+/// <c>InternalsVisibleTo</c> on <c>UsersDbContext</c> — into a section test project that
 /// has neither (Governance's rule: split the helper before deciding).
 /// </remarks>
 internal static class UserInfoStubHelpers

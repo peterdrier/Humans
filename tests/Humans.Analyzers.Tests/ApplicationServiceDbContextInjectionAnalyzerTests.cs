@@ -5,7 +5,7 @@ namespace Humans.Analyzers.Tests;
 
 public class ApplicationServiceDbContextInjectionAnalyzerTests
 {
-    // HumansDbContext lives in Humans.Infrastructure; the IRepository marker
+    // UsersDbContext lives in Humans.Infrastructure; the IRepository marker
     // lives in Humans.Application. The analyzer keys off these full names and
     // off the GrandfatheredAttribute. All four are stubbed in the synthetic
     // compilation so the analyzer can resolve them — the real build
@@ -18,7 +18,7 @@ public class ApplicationServiceDbContextInjectionAnalyzerTests
 
         namespace Humans.Infrastructure.Data
         {
-            public class HumansDbContext : Microsoft.EntityFrameworkCore.DbContext { }
+            public class UsersDbContext : Microsoft.EntityFrameworkCore.DbContext { }
             public class SystemSettingsDbContext : Microsoft.EntityFrameworkCore.DbContext { }
         }
 
@@ -55,7 +55,7 @@ public class ApplicationServiceDbContextInjectionAnalyzerTests
         string.Equals(d.Id, ApplicationServiceDbContextInjectionAnalyzer.DiagnosticId, StringComparison.Ordinal);
 
     [HumansFact]
-    public async Task Fires_error_on_non_repository_class_using_HumansDbContext()
+    public async Task Fires_error_on_non_repository_class_using_UsersDbContext()
     {
         var source = Stubs + """
 
@@ -63,7 +63,7 @@ public class ApplicationServiceDbContextInjectionAnalyzerTests
             {
                 public sealed class SomeJob
                 {
-                    public SomeJob(Humans.Infrastructure.Data.HumansDbContext dbContext)
+                    public SomeJob(Humans.Infrastructure.Data.UsersDbContext dbContext)
                     {
                     }
                 }
@@ -115,7 +115,7 @@ public class ApplicationServiceDbContextInjectionAnalyzerTests
             {
                 public sealed class UserRepository : Humans.Application.Interfaces.Repositories.IUserRepository
                 {
-                    public UserRepository(Humans.Infrastructure.Data.HumansDbContext dbContext)
+                    public UserRepository(Humans.Infrastructure.Data.UsersDbContext dbContext)
                     {
                     }
                 }
@@ -137,10 +137,10 @@ public class ApplicationServiceDbContextInjectionAnalyzerTests
 
             namespace Humans.Infrastructure.Data
             {
-                public sealed class HumansDbContextFactory :
-                    Microsoft.EntityFrameworkCore.Design.IDesignTimeDbContextFactory<Humans.Infrastructure.Data.HumansDbContext>
+                public sealed class UsersDbContextFactory :
+                    Microsoft.EntityFrameworkCore.Design.IDesignTimeDbContextFactory<Humans.Infrastructure.Data.UsersDbContext>
                 {
-                    public Humans.Infrastructure.Data.HumansDbContext CreateDbContext(string[] args) => new();
+                    public Humans.Infrastructure.Data.UsersDbContext CreateDbContext(string[] args) => new();
                 }
             }
             """;
@@ -163,7 +163,7 @@ public class ApplicationServiceDbContextInjectionAnalyzerTests
                 public sealed class DatabaseMigrationHostedService :
                     Microsoft.Extensions.Hosting.IHostedLifecycleService
                 {
-                    public void Run(Humans.Infrastructure.Data.HumansDbContext dbContext) { }
+                    public void Run(Humans.Infrastructure.Data.UsersDbContext dbContext) { }
                 }
             }
             """;
@@ -186,7 +186,7 @@ public class ApplicationServiceDbContextInjectionAnalyzerTests
                 public sealed class SomeHostedJob :
                     Microsoft.Extensions.Hosting.IHostedLifecycleService
                 {
-                    public void Run(Humans.Infrastructure.Data.HumansDbContext dbContext) { }
+                    public void Run(Humans.Infrastructure.Data.UsersDbContext dbContext) { }
                 }
             }
             """;
@@ -208,7 +208,7 @@ public class ApplicationServiceDbContextInjectionAnalyzerTests
             {
                 public sealed class SomeJob
                 {
-                    private readonly Humans.Infrastructure.Data.HumansDbContext _db = null!;
+                    private readonly Humans.Infrastructure.Data.UsersDbContext _db = null!;
                 }
             }
             """;
@@ -230,7 +230,7 @@ public class ApplicationServiceDbContextInjectionAnalyzerTests
             {
                 public sealed class SomeJob
                 {
-                    public void Run(Humans.Infrastructure.Data.HumansDbContext db) { }
+                    public void Run(Humans.Infrastructure.Data.UsersDbContext db) { }
                 }
             }
             """;
@@ -257,7 +257,7 @@ public class ApplicationServiceDbContextInjectionAnalyzerTests
                     issueRef: "nobodies-collective/Humans#701")]
                 public sealed class SomeJob
                 {
-                    public SomeJob(Humans.Infrastructure.Data.HumansDbContext dbContext)
+                    public SomeJob(Humans.Infrastructure.Data.UsersDbContext dbContext)
                     {
                     }
                 }
@@ -288,7 +288,7 @@ public class ApplicationServiceDbContextInjectionAnalyzerTests
                     issueRef: "nobodies-collective/Humans#0")]
                 public sealed class SomeJob
                 {
-                    public SomeJob(Humans.Infrastructure.Data.HumansDbContext dbContext)
+                    public SomeJob(Humans.Infrastructure.Data.UsersDbContext dbContext)
                     {
                     }
                 }
@@ -306,10 +306,10 @@ public class ApplicationServiceDbContextInjectionAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Fires_on_HumansDbContext_as_generic_type_argument_of_base_class()
+    public async Task Fires_on_UsersDbContext_as_generic_type_argument_of_base_class()
     {
         // Pins the recursive type-argument walk in TypeReferences. Without it
-        // the analyzer would silently miss UserStore<…, HumansDbContext, …>
+        // the analyzer would silently miss UserStore<…, UsersDbContext, …>
         // — the LoggingUserStoreDecorator case that motivated the walk.
         var source = Stubs + """
 
@@ -321,7 +321,7 @@ public class ApplicationServiceDbContextInjectionAnalyzerTests
             namespace Humans.Infrastructure.Identity
             {
                 public sealed class LoggingUserStoreDecorator
-                    : System.Identity.UserStore<object, Humans.Infrastructure.Data.HumansDbContext>
+                    : System.Identity.UserStore<object, Humans.Infrastructure.Data.UsersDbContext>
                 {
                 }
             }
@@ -342,7 +342,7 @@ public class ApplicationServiceDbContextInjectionAnalyzerTests
     {
         // Detection is structural (any DbContext-derived type), so the message
         // must name the actual context used rather than a hardcoded
-        // "HumansDbContext" (nobodies-collective/Humans#960).
+        // "UsersDbContext" (nobodies-collective/Humans#960).
         var source = Stubs + """
 
             namespace Humans.Infrastructure.Jobs
@@ -374,7 +374,7 @@ public class ApplicationServiceDbContextInjectionAnalyzerTests
             {
                 public sealed class SomeJob
                 {
-                    public SomeJob(Humans.Infrastructure.Data.HumansDbContext dbContext)
+                    public SomeJob(Humans.Infrastructure.Data.UsersDbContext dbContext)
                     {
                     }
                 }

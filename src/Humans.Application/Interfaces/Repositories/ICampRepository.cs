@@ -14,7 +14,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// <remarks>
 /// Reads are <c>AsNoTracking</c>. Mutating methods load tracked entities and
 /// save changes atomically inside a single
-/// <see cref="Microsoft.EntityFrameworkCore.IDbContextFactory{HumansDbContext}"/>-owned
+/// <see cref="Microsoft.EntityFrameworkCore.IDbContextFactory{CampsDbContext}"/>-owned
 /// context so callers never have to reason about the EF context lifetime.
 /// Cross-domain user navigation is not resolved by this repository; the
 /// application service stitches display names from

@@ -12,11 +12,11 @@ namespace Humans.Infrastructure.Hosting;
 /// <remarks>
 /// <para>
 /// Each section context carries a baseline migration containing the full
-/// <c>CreateTable</c>/index/FK operations for its tables. While the historical
-/// <c>HumansDbContext</c> chain remains intact, that chain still creates every
-/// section's tables, so on all real databases (fresh and existing alike) the
-/// section's tables already exist by the time the section context migrates —
-/// executing the baseline would fail. This runner decides per context:
+/// <c>CreateTable</c>/index/FK operations for its tables. On databases
+/// provisioned by the historical root (<c>HumansDbContext</c>) chain — deleted
+/// at #858 peel 15 — the section's tables already exist by the time the section
+/// context migrates, so executing the baseline would fail. This runner decides
+/// per context:
 /// </para>
 /// <list type="bullet">
 /// <item>Section history table has rows → plain <c>MigrateAsync</c> (no-op or
@@ -25,9 +25,8 @@ namespace Humans.Infrastructure.Hosting;
 /// applied WITHOUT executing it (using EF's own <see cref="IHistoryRepository"/>
 /// script generation — the same mechanism <c>MigrateAsync</c> uses to record
 /// migrations), then <c>MigrateAsync</c> for anything after the baseline.</item>
-/// <item>History empty and the sentinel table absent (genuinely fresh database
-/// that the historical chain does not provision, e.g. a section context running
-/// in isolation, or any fresh database after the future history shrink) →
+/// <item>History empty and the sentinel table absent (genuinely fresh database —
+/// with the root chain deleted, every fresh database is provisioned this way) →
 /// plain <c>MigrateAsync</c>, which executes the baseline for real.</item>
 /// </list>
 /// <para>
@@ -73,8 +72,7 @@ internal static class SectionMigrationRunner
             var pending = (await db.Database.GetPendingMigrationsAsync(ct)).ToList();
 
             // Warning level so the per-boot migration breadcrumb survives production's
-            // default log filtering, matching HumansDbContext's breadcrumb in
-            // DatabaseMigrationHostedService.MigrateAsync (nobodies-collective/Humans#960).
+            // default log filtering (nobodies-collective/Humans#960).
             logger.LogWarning(
                 "{Context}: {AppliedCount} applied migrations, {PendingCount} pending",
                 contextName, applied.Count, pending.Count);

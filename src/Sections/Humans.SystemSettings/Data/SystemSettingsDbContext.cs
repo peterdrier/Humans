@@ -12,7 +12,7 @@ namespace Humans.SystemSettings.Data;
 /// code-side partition of the EF model.
 /// </summary>
 /// <remarks>
-/// Internal-sealed like <c>HumansDbContext</c> (issue #750): repositories are the
+/// Internal-sealed like every section context (issue #750): repositories are the
 /// only consumers. Configurations are applied explicitly (not by assembly scanning)
 /// so this model can never accrete another section's tables.
 /// </remarks>

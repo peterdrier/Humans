@@ -11,7 +11,7 @@ namespace Humans.Agent.Data;
 
 /// <summary>
 /// Single repository for the Agent section. Covers settings, conversations,
-/// and messages. The Agent section never injects <c>HumansDbContext</c> directly
+/// and messages. The Agent section never injects another section's DbContext
 /// and its EF model has no cross-section FK or nav wiring — owned-table joins
 /// only.
 /// </summary>

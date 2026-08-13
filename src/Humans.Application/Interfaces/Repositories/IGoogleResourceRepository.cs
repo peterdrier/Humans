@@ -13,7 +13,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// <remarks>
 /// Reads are <c>AsNoTracking</c>. Mutating methods load tracked entities and
 /// save changes atomically inside a single
-/// <see cref="Microsoft.EntityFrameworkCore.IDbContextFactory{HumansDbContext}"/>-owned
+/// <see cref="Microsoft.EntityFrameworkCore.IDbContextFactory{GoogleIntegrationDbContext}"/>-owned
 /// context so callers never reason about EF context lifetime. No cross-domain
 /// <c>Include</c>s: <c>TeamMembers</c>/<c>Teams</c> joins that the pre-migration
 /// <c>TeamResourceService.GetUserTeamResourcesAsync</c> used are resolved at

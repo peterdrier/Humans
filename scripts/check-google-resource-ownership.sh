@@ -26,7 +26,7 @@ ALLOWED=(
   "src/Humans.Infrastructure/Repositories/GoogleResourceRepository.cs"
   "src/Humans.Infrastructure/Data/Configurations/TeamConfiguration.cs"
   # The owning DbContext declares the DbSet. google_resources moved out of
-  # HumansDbContext with the GoogleIntegration peel (nobodies-collective/Humans#858).
+  # the main pile with the GoogleIntegration peel (nobodies-collective/Humans#858).
   "src/Humans.Infrastructure/Data/GoogleIntegrationDbContext.cs"
 )
 

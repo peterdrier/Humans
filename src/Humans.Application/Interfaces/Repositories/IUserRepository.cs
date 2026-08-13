@@ -12,7 +12,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// </summary>
 /// <remarks>
 /// Read methods are <c>AsNoTracking</c>. Narrow-field updates commit atomically
-/// in a single <see cref="Microsoft.EntityFrameworkCore.IDbContextFactory{HumansDbContext}"/>-owned
+/// in a single <see cref="Microsoft.EntityFrameworkCore.IDbContextFactory{UsersDbContext}"/>-owned
 /// context. Event-participation mutations expose load-then-save primitives so
 /// <see cref="Humans.Application.Services.Users.UserService"/> can apply the
 /// status/source business rules before persisting.

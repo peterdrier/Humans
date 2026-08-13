@@ -5,7 +5,6 @@
   src/Humans.Domain/Entities/UserEmail.cs
   src/Humans.Domain/Entities/CommunicationPreference.cs
   src/Humans.Domain/Entities/VolunteerHistoryEntry.cs
-  src/Humans.Domain/Entities/AccountMergeRequest.cs
   src/Humans.Infrastructure/Data/Configurations/Profiles/**
   src/Humans.Web/Controllers/ProfileController.cs
   src/Humans.Web/Controllers/ProfileApiController.cs
@@ -234,29 +233,6 @@ Sub-aggregate of Profile — no separate service. Records languages spoken with 
 
 **Indexes:** `ProfileId`.
 
-### AccountMergeRequest
-
-Tracks pending and resolved merges between duplicate accounts. `AccountMergeService` orchestrates the merge; `DuplicateAccountService` is the stateless detector that flags candidates.
-
-**Table:** `account_merge_requests`
-
-| Field | Type | Notes |
-|-------|------|-------|
-| Id | Guid | PK |
-| TargetUserId | Guid | FK → User (Cascade) — receives the merged data |
-| SourceUserId | Guid | FK → User (Cascade) — gets archived |
-| Email | string (256) | The address that triggered the request |
-| PendingEmailId | Guid | The unverified `UserEmail` row on the target account |
-| Status | AccountMergeRequestStatus | Stored as string (max 50) |
-| CreatedAt | Instant | When created |
-| ResolvedAt | Instant? | When accepted or rejected |
-| ResolvedByUserId | Guid? | FK → User (SetNull) — admin who resolved |
-| AdminNotes | string? (4000) | Admin notes |
-
-**Indexes:** `Status`, `TargetUserId`, `SourceUserId`.
-
-The entity still carries `TargetUser`, `SourceUser`, and `ResolvedByUser` navigation properties (configured with `HasOne(...).WithMany().HasForeignKey(...)`). They predate the §15i nav-strip work; the merge admin views read them directly today. Strip and route through `IUserServiceRead.GetUserInfosAsync` when this pattern is generalised across the section.
-
 ### MembershipTier
 
 | Value | Int | Description |
@@ -407,7 +383,7 @@ Admin-only flows for the section's cross-account hygiene (routes pre-date `memor
 **Status:** (A) Migrated — canonical §15 reference implementation (peterdrier/Humans PR #235, 2026-04-20). `AccountMergeService` / `DuplicateAccountService` now live in the **Users** section (`Humans.Application/Services/Users/`) following the account-merge consolidation — see [Users.md](Users.md).
 
 - Services live in `Humans.Application.Services.Profiles/` and never import `Microsoft.EntityFrameworkCore`.
-- `IUserRepository` (profile/contact methods), `IUserEmailRepository`, and `ICommunicationPreferenceRepository` are the only code paths that touch this section's tables via `DbContext`. Repositories are Singleton, using `IDbContextFactory<HumansDbContext>` and short-lived contexts per method.
+- `IUserRepository` (profile/contact methods), `IUserEmailRepository`, and `ICommunicationPreferenceRepository` are the only code paths that touch this section's tables via `DbContext`. Repositories are Singleton, using `IDbContextFactory<UsersDbContext>` and short-lived contexts per method.
 - **Decorator decision — caching decorator.** `CachingProfileService` is a Singleton owning `ConcurrentDictionary<Guid, FullProfile> _byUserId`. Warmup via `FullProfileWarmupHostedService`. See design-rules §15d.
 - **`FullProfile` is canonical (issue #635 §15i, 2026-05-04).** Three derived properties — `PrimaryEmail`, `AllVerifiedEmails`, `GoogleEmail` — replace the old `User.UserEmails` / `User.GetEffectiveEmail()` / `User.GoogleEmail` reader sites. `CachingProfileService` populates them from already-loaded `UserEmail` rows (no new repo lookups). `FullProfile.NotificationEmail` is kept as a get-only alias for `PrimaryEmail` for backward compat. The lifecycle marker `Profile.State` (Stub/Active/Suspended) flows through `FullProfile.State` and is lazily computed-and-written-back when the persisted value is `null` (see `CachingProfileService.ComputeProfileState`).
 - **Stub Profile invariant (issue #635 §15i).** Every newly created User materializes a `ProfileState.Stub` Profile inline at the User-creation call site (`ExternalLoginService.CompleteExternalLoginAsync`, `AccountProvisioningService.FindOrCreateUserByEmailAsync`/`CompleteMagicLinkSignupAsync`). `ProfileService.SaveProfileAsync` promotes the row to `Active` once `BurnerName`/`FirstName`/`LastName` are all populated. Legacy profile-less users (contact imports pre-§15i) are reconciled through the `/Profile/Admin/Backfill` admin tool — idempotent count-and-bulk-create page; no-op when N=0. Until the backfill is run, `GET /Profile/{id}/Popover` (issue #690) renders a sparse fallback card for these users so `<human-link>` hovers don't 404 — see the Invariants section bullet.

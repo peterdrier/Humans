@@ -24,7 +24,7 @@ namespace Humans.Infrastructure.Jobs;
 /// All reads/writes fan out through section services
 /// (<see cref="IUserService"/>,
 /// <see cref="ITeamService"/>, <see cref="IGoogleSyncService"/>) so the job
-/// never touches <see cref="Humans.Infrastructure.Data.HumansDbContext"/>
+/// never touches a section DbContext
 /// directly (design-rules §2c). Cross-cutting cache invalidation routes
 /// through invalidator interfaces
 /// (<see cref="IRoleAssignmentClaimsCacheInvalidator"/>,

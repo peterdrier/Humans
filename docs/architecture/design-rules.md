@@ -59,13 +59,13 @@ Business services (`ProfileService`, `TeamService`, `BudgetService`, etc.) live 
 
 Repository **implementations** (the classes that talk to `DbContext`) live in `Humans.Infrastructure`. That is the only project that may touch EF Core.
 
-`HumansDbContext` is `internal sealed` (issue #750). External access is via repository interfaces in `Humans.Application.Interfaces.Repositories`; wiring is via the extension methods in `Humans.Infrastructure.Hosting.InfrastructureServiceCollectionExtensions` (`AddHumansPersistence`, `AddHumansEntityFrameworkStores`, `PersistKeysToHumansDbContext`). The migration runner is a hosted service (`DatabaseMigrationHostedService`) registered by `AddHumansPersistence`. Test projects access `HumansDbContext` directly via `InternalsVisibleTo`.
+Every application context is `internal sealed` (issue #750). External access is via repository interfaces in `Humans.Application.Interfaces.Repositories`; wiring is via the extension methods in `Humans.Infrastructure.Hosting.InfrastructureServiceCollectionExtensions` (`AddHumansPersistence`, `AddHumansEntityFrameworkStores`, `PersistKeysToSystemDbContext`). The migration runner is a hosted service (`DatabaseMigrationHostedService`) registered by `AddHumansPersistence`. Test projects access the contexts directly via `InternalsVisibleTo`.
 
-**There is no single context any more.** Since the per-section split (nobodies-collective/Humans#858) each peeled section has its own `internal sealed <Section>DbContext` mapping only that section's tables, with its own `__EFMigrationsHistory_<Section>` table and its own migrations folder — `src/Humans.Infrastructure/Migrations/<Section>/` for a section still in Infrastructure, `src/Sections/Humans.<Section>/Data/Migrations/` once it has gone G5. `HumansDbContext` keeps every section not yet peeled — today Users/Identity and Profiles (Teams peeled into `TeamsDbContext` in nobodies-collective/Humans#1264). Consequences:
+**There is no single context any more.** Since the per-section split (nobodies-collective/Humans#858) each section has its own `internal sealed <Section>DbContext` mapping only that section's tables, with its own `__EFMigrationsHistory_<Section>` table and its own migrations folder — `src/Humans.Infrastructure/Migrations/<Section>/` for a section still in Infrastructure, `src/Sections/Humans.<Section>/Data/Migrations/` once it has gone G5. `HumansDbContext` and its root migration chain were deleted at peel 15 (nobodies-collective/Humans#858); the merged Users+Profiles section (`UsersDbContext`) carries the Identity base. Consequences:
 
-- **One design-time factory per context**, each next to its context: the not-yet-G5 peels in `Humans.Infrastructure.Data` (`HumansDbContextFactory`, `AuthDbContextFactory`, `CampsDbContextFactory`, `LegalDbContextFactory`, `AuditLogDbContextFactory`, `ShiftsDbContextFactory`, `SystemDbContextFactory`, …), and each G5 section's in its own project under `Humans.<Section>.Data` (`AgentDbContextFactory`, `HoldedDbContextFactory`, …). Every `dotnet ef` command therefore needs `--context` — see [`ef-multi-context-commands`](../../memory/process/ef-multi-context-commands.md).
+- **One design-time factory per context**, each next to its context: the not-yet-G5 sections in `Humans.Infrastructure.Data` (`UsersDbContextFactory`, `AuthDbContextFactory`, `CampsDbContextFactory`, `LegalDbContextFactory`, `AuditLogDbContextFactory`, `ShiftsDbContextFactory`, `SystemDbContextFactory`, …), and each G5 section's in its own project under `Humans.<Section>.Data` (`AgentDbContextFactory`, `HoldedDbContextFactory`, …). Every `dotnet ef` command therefore needs `--context` — see [`ef-multi-context-commands`](../../memory/process/ef-multi-context-commands.md).
 - **History-table names are derived, never typed.** `SectionMigrationsHistory.TableFor<TContext>()` is the single source for both the runtime registration (`AddSectionDbContext`) and the design-time factories.
-- **Section contexts apply their configurations explicitly** (no assembly scanning, which would drag in other sections); `HumansDbContext` scans the assembly minus the peeled namespaces. `DbContextEntityOwnershipTests` fails the build if an `IEntityTypeConfiguration` ends up applied by zero contexts (invisible to `has-pending-model-changes`) or by two.
+- **Section contexts apply their configurations explicitly** (no assembly scanning, which would drag in other sections). `DbContextEntityOwnershipTests` fails the build if an `IEntityTypeConfiguration` ends up applied by zero contexts (invisible to `has-pending-model-changes`) or by two.
 - **Unit tests for a section context** build their in-memory options with the shared `NewSectionDbOptions<TContext>()` helper in `tests/Humans.Application.Tests/Infrastructure/ServiceTestHarness.cs` rather than hand-rolling a `DbContextOptionsBuilder`.
 
 ### 2c. Table Ownership Is Strict and Sectional
@@ -151,7 +151,7 @@ ApplicationDecisionService (business logic)     [Application]
           ↓ IApplicationRepository, IApplicationStore
 ApplicationRepository, ApplicationStore         [Infrastructure]
           ↓ DbContext
-HumansDbContext                                 [Infrastructure]
+GovernanceDbContext                             [Infrastructure]
 ```
 
 Three roles, cleanly separated:
@@ -402,7 +402,7 @@ Wrong patterns — each violates an invariant somewhere:
 public class CampService(ICampRepository repo, IUserRepository userRepo) : ICampService { ... }
 
 // WRONG — uses IDbContextFactory to query another domain's tables directly
-public class CampService(ICampRepository repo, IDbContextFactory<HumansDbContext> factory) : ICampService
+public class CampService(ICampRepository repo, IDbContextFactory<UsersDbContext> factory) : ICampService
 {
     public async Task<CampDetailDto> GetCampDetailAsync(Guid campId, CancellationToken ct)
     {
@@ -413,7 +413,7 @@ public class CampService(ICampRepository repo, IDbContextFactory<HumansDbContext
 }
 
 // WRONG — direct DbContext access (impossible by project graph once migrated)
-public class CampService(HumansDbContext db) : ICampService { ... }
+public class CampService(CampsDbContext db) : ICampService { ... }
 
 // WRONG — cross-domain .Include
 var camp = await db.Camps.Include(c => c.Leads).ThenInclude(l => l.Profile).FirstAsync(...);
@@ -542,14 +542,14 @@ Caching<Section>Service   (optional decorator)      [Infrastructure — Singleto
 <Section>Service          (inner, keyed)            [Application — Scoped]
   ↓ repositories + cross-section service interfaces
 <Section>Repository                                 [Infrastructure — Singleton via IDbContextFactory]
-  ↓ IDbContextFactory<TContext>                     [Singleton — the section's own context if peeled, else HumansDbContext]
+  ↓ IDbContextFactory<TContext>                     [Singleton — the section's own context]
 ```
 
 The decorator is "optional" in the sense that removing it leaves the system fully functional — the inner service implements every method against the DB, except declared cache-only reads (§15c). The decorator is a pure performance optimization layered on top.
 
 ### 15b. Repository Rules
 
-Repositories are registered as **Singleton** because they inject `IDbContextFactory<TContext>` — the section's own `<Section>DbContext` where the section has been peeled, `HumansDbContext` otherwise — rather than a context directly. Every method creates and disposes its own short-lived context:
+Repositories are registered as **Singleton** because they inject `IDbContextFactory<TContext>` — the section's own `<Section>DbContext` — rather than a context directly. Every method creates and disposes its own short-lived context:
 
 ```csharp
 public async Task<Profile?> GetByUserIdReadOnlyAsync(Guid userId, CancellationToken ct = default)

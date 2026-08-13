@@ -25,8 +25,8 @@ namespace Humans.Campaigns.Tests.Services;
 /// <summary>
 /// Owns its fixture rather than deriving from <c>Humans.Application.Tests</c>'
 /// <c>ServiceTestHarness</c>: that harness is built around an in-memory
-/// <c>HumansDbContext</c>, and inheriting it would grant a section test project
-/// <c>InternalsVisibleTo</c> on <c>HumansDbContext</c> — the boundary the G5 split exists
+/// <c>UsersDbContext</c>, and inheriting it would grant a section test project
+/// <c>InternalsVisibleTo</c> on <c>UsersDbContext</c> — the boundary the G5 split exists
 /// to draw (nobodies-collective/Humans#866). Campaigns needed more of the harness than
 /// Budget did (users, teams and team members, all read back through DB-backed stubs), so
 /// the replacement is an in-memory people/team registry rather than three inlined members:
@@ -680,7 +680,7 @@ public sealed class CampaignServiceTests
 
     // ----- People and teams -----------------------------------------------------
     // The pre-G5 versions of these wrote User/Team/TeamMember rows into the harness's
-    // HumansDbContext and read them back through DB-backed ITeamService/IUserService
+    // UsersDbContext and read them back through DB-backed ITeamService/IUserService
     // stubs. A section test project cannot see those tables, so the registry holds the
     // projections the service actually consumes: UserInfo and TeamInfo.
 

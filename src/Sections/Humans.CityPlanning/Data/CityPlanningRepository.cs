@@ -10,7 +10,7 @@ namespace Humans.CityPlanning.Data;
 /// <c>DbContext.CampPolygonHistories</c>, or <c>DbContext.CityPlanningSettings</c>
 /// after the City Planning migration lands. Uses
 /// <see cref="IDbContextFactory{TContext}"/> so the repository can be
-/// registered as Singleton while <c>HumansDbContext</c> remains Scoped.
+/// registered as Singleton while <c>CityPlanningDbContext</c> remains Scoped.
 /// </summary>
 internal sealed class CityPlanningRepository(IDbContextFactory<CityPlanningDbContext> factory) : ICityPlanningRepository
 {

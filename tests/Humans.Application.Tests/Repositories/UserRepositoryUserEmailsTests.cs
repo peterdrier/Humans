@@ -15,16 +15,16 @@ namespace Humans.Application.Tests.Repositories;
 /// </summary>
 public sealed class UserRepositoryUserEmailTests : IDisposable
 {
-    private readonly HumansDbContext _dbContext;
+    private readonly UsersDbContext _dbContext;
     private readonly UserRepository _repo;
 
     public UserRepositoryUserEmailTests()
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
+        var options = new DbContextOptionsBuilder<UsersDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
             .Options;
-        _dbContext = new HumansDbContext(options);
+        _dbContext = new UsersDbContext(options);
         _repo = new UserRepository(new TestDbContextFactory(options));
     }
 

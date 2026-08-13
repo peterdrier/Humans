@@ -10,7 +10,7 @@ namespace Humans.Application.Services.ICalFeed;
 /// <summary>
 /// Orchestrator: fans the personal iCal feed out across <see cref="ICalendarFeedContributor"/>s
 /// into one VCALENDAR. Sequential, not Task.WhenAll: contributors share the
-/// scoped HumansDbContext which is not thread-safe (same as GdprExportService).
+/// scoped section DbContexts which are not thread-safe (same as GdprExportService).
 /// </summary>
 public sealed class ICalFeedService(
     IUserServiceRead users,

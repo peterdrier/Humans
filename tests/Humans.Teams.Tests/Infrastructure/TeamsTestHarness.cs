@@ -23,7 +23,7 @@ using NSubstitute;
 namespace Humans.Teams.Tests.Infrastructure;
 
 /// <summary>
-/// Base class for the Teams section's service tests. Owns the per-test in-memory <see cref="HumansDbContext"/>,
+/// Base class for the Teams section's service tests. Owns the per-test in-memory <see cref="UsersDbContext"/>,
 /// an <see cref="IDbContextFactory{TContext}"/>, a deterministic <see cref="FakeClock"/>,
 /// and an <see cref="IMemoryCache"/>, plus the most common entity seeders. Tests construct
 /// their service-under-test in their own ctor using these resources; the harness does not
@@ -31,7 +31,7 @@ namespace Humans.Teams.Tests.Infrastructure;
 /// </summary>
 /// <remarks>
 /// A trimmed copy of <c>Humans.Application.Tests</c>' <c>ServiceTestHarness</c>, which cannot
-/// be shared: it is built around the internal <c>HumansDbContext</c> and the moved tests use
+/// be shared: it is built around the internal <c>UsersDbContext</c> and the moved tests use
 /// most of it — the clock, the cache, four substitutes, the users pile and five seeders across
 /// three section contexts. Governance finding 95's "split the helper before deciding" comes out
 /// the other way here (design §15 step 8).
@@ -42,8 +42,8 @@ public abstract class TeamsTestHarness : IDisposable
         typeof(User).GetProperty("DisplayName")
         ?? throw new InvalidOperationException("User.DisplayName property missing.");
 
-    private protected DbContextOptions<HumansDbContext> DbOptions { get; }
-    private protected HumansDbContext Db { get; }
+    private protected DbContextOptions<UsersDbContext> DbOptions { get; }
+    private protected UsersDbContext Db { get; }
     private protected TestDbContextFactory DbFactory { get; }
 
     // ----- Peeled-section contexts (nobodies-collective/Humans#858) ----------
@@ -110,11 +110,11 @@ public abstract class TeamsTestHarness : IDisposable
 
     protected TeamsTestHarness(Instant? now = null)
     {
-        DbOptions = new DbContextOptionsBuilder<HumansDbContext>()
+        DbOptions = new DbContextOptionsBuilder<UsersDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
             .Options;
-        Db = new HumansDbContext(DbOptions);
+        Db = new UsersDbContext(DbOptions);
         DbFactory = new TestDbContextFactory(DbOptions);
 
         _authDb = RegisterSection<AuthDbContext>(o => new(o));

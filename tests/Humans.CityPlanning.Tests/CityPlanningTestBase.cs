@@ -10,7 +10,7 @@ namespace Humans.CityPlanning.Tests;
 /// The three <c>ServiceTestHarness</c> members this project's suites used — an in-memory
 /// <see cref="CityPlanningDbContext"/>, a factory over the same store, and a fixed clock.
 /// Owned here rather than linked into <c>tests/Directory.Build.props</c>: the harness is
-/// built around <c>HumansDbContext</c>, and sharing it would grant a section test project
+/// built around <c>UsersDbContext</c>, and sharing it would grant a section test project
 /// <c>InternalsVisibleTo</c> on Base's context and push Humans.Infrastructure into every
 /// test project compiling the shared set (design §15 step 8).
 /// Each test gets a fresh instance, so every case gets its own store.

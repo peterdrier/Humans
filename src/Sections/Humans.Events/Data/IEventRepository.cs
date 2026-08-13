@@ -8,8 +8,8 @@ namespace Humans.Events.Data;
 
 /// <summary>
 /// Data-access interface for the Events section. Owns the event_* tables.
-/// Implementation uses <c>IDbContextFactory&lt;HumansDbContext&gt;</c> so the
-/// repository can be registered Singleton while <c>HumansDbContext</c> stays
+/// Implementation uses <c>IDbContextFactory&lt;EventGuideDbContext&gt;</c> so the
+/// repository can be registered Singleton while <c>EventGuideDbContext</c> stays
 /// Scoped — every method opens its own short-lived context.
 /// <para>
 /// EventSettings is owned by the Shifts section; <see cref="EventService"/>
