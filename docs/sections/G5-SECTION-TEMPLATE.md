@@ -1510,6 +1510,21 @@ Git Bash.)
       — it is not the same grep as `typeof(<Section>` for the row-in-a-table case, and it
       fails silently in the opposite direction (proven: AuditLog).
 
+      **Sixth sighting, and it is the fifth one's other half: the interface that moves onto a
+      leaf *entirely*.** The `GetInterfaces()` fix below rescues the read-split shape, where
+      `I<Section>Service` stays behind and inherits the leaf half — walk its bases and the
+      members come back. It does nothing for an interface with no Base-side deriving type:
+      `ApplicationInterfaceTypes()` enumerated `Humans.Application.Interfaces.*` plus
+      `SectionAssemblies()`, and a contracts leaf is in neither — it carries no
+      `[assembly: Section("…")]`, by design, because it is not an application part. So
+      `IAccountProvisioningService`, whose `FindOrCreateUserByEmailAsync` returns a record
+      wrapping the `User` entity, simply stopped being scanned the moment Users' leaf was
+      carved, and its baseline row read as *fixed*. **Add a third clause enumerating
+      `Humans.*.Contracts` from `DependencyContext` — a leaf cannot be found by `[Section]`,
+      so it needs its own discovery.** Widening it surfaced exactly one row across all
+      twenty-one existing leaves, which is the usual answer and is why nobody had noticed
+      (proven: Users, lane 2 PR A).
+
       **Fifth sighting, and the keying is neither a path nor an assembly — it is
       `Type.GetMethods()` not following interface inheritance.** A read split that leaves
       `I<Section>Service : I<Section>ServiceRead` moves members onto a leaf that carries no
