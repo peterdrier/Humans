@@ -120,8 +120,15 @@ public class AuditLogArchitectureTests
             .OrderBy(n => n, StringComparer.Ordinal)
             .ToList();
 
+        // Humans.Users.Contracts is the second entry, and it is not new coupling: AuditLogService
+        // has injected IUserServiceRead all along, under the [CrossSectionException] on that class
+        // ("Audit (crosscut) reads merged-account source IDs via IUserServiceRead"). The reference
+        // only became visible here when the interface left Humans.Application for Users' contracts
+        // leaf (nobodies-collective/Humans#866, lane 2 PR A). #866 names User/UserInfo as sanctioned
+        // shared contracts; where they finally live — this leaf or the Base floor — is the lane 4
+        // "what is Base" question. Deleting the injection is the only thing that removes this row.
         sectionRefs.Should().BeEquivalentTo(
-            ["Humans.Gdpr.Contracts"],
-            because: "a horizontal section may reference only Base and other horizontals");
+            ["Humans.Gdpr.Contracts", "Humans.Users.Contracts"],
+            because: "a horizontal section may reference only Base, other horizontals, and the sanctioned User/UserInfo contracts");
     }
 }

@@ -5,7 +5,7 @@ namespace Humans.Analyzers.Tests;
 public class EmailMutationPathsAnalyzerTests
 {
     private const string InterfaceStubs = """
-        namespace Humans.Application.Interfaces.Profiles
+        namespace Humans.Users.Contracts
         {
             public interface IUserEmailService
             {

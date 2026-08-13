@@ -18,7 +18,7 @@ Humans.Teams.Services.ITeamManagementService.GetByIdsWithParentsAsync:Humans.Tea
 Humans.Teams.Services.ITeamManagementService.GetTeamByIdAsync:Humans.Teams.Domain.Team
 Humans.Teams.Services.ITeamManagementService.GetTeamEntityBySlugAsync:Humans.Teams.Domain.Team
 Humans.Teams.Services.ITeamManagementService.GetUserTeamsAsync:Humans.Teams.Domain.TeamMember
-Humans.Application.Interfaces.Users.IAccountProvisioningService.FindOrCreateUserByEmailAsync:Humans.Domain.Entities.User
+Humans.Users.Contracts.IAccountProvisioningService.FindOrCreateUserByEmailAsync:Humans.Domain.Entities.User
 Humans.Events.Services.IEventService.GetCampEventAsync:Humans.Events.Domain.Event
 Humans.Events.Services.IEventService.GetEventForModerationAsync:Humans.Events.Domain.Event
 Humans.Events.Services.IEventService.GetUserEventAsync:Humans.Events.Domain.Event

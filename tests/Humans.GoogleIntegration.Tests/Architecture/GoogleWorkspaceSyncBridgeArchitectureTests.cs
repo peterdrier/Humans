@@ -95,16 +95,16 @@ public class GoogleWorkspaceSyncBridgeArchitectureTests
         // (transitively) reference any Google.Apis.* assembly. Without this,
         // the whole point of the bridge collapses — a service could grab
         // an SDK type anyway.
-        // Anchored on UserInfo, not on a connector interface: the connectors moved into the
-        // section at G5, so this sweep would otherwise have relocated wholesale onto
-        // Humans.GoogleIntegration - which does reference the SDK - and either failed or,
+        // Loaded by name rather than anchored on a typeof: the connectors moved into the
+        // section at G5, so a type anchor would otherwise have relocated this sweep wholesale
+        // onto Humans.GoogleIntegration - which does reference the SDK - and either failed or,
         // written as a "does not contain", passed while covering nothing
-        // (G5-SECTION-TEMPLATE.md step 11). UserInfo is the cross-section read model every
-        // section binds, so it cannot leave Base; the guard below says so if it ever does.
-        var applicationAssembly = typeof(UserInfo).Assembly;
-        applicationAssembly.GetName().Name
-            .Should().Be("Humans.Application",
-                because: "this sweep is only meaningful while its anchor type still lives in Humans.Application");
+        // (G5-SECTION-TEMPLATE.md step 11). The previous anchor was UserInfo, on the reasoning
+        // that the cross-section read model could not leave Base; it left for
+        // Humans.Users.Contracts at lane 2 (nobodies-collective/Humans#866) and the guard below
+        // caught it. Naming the assembly directly retires the whole anchor-drift failure mode:
+        // there is no type left to follow somewhere else.
+        var applicationAssembly = Assembly.Load(new AssemblyName("Humans.Application"));
 
         var referenced = applicationAssembly.GetReferencedAssemblies();
 

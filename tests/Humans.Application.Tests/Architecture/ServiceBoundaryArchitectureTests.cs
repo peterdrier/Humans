@@ -1,4 +1,5 @@
 using Humans.Teams.Data;
+using Microsoft.Extensions.DependencyModel;
 using System.Reflection;
 using AwesomeAssertions;
 using Humans.Application.Interfaces;
@@ -171,11 +172,22 @@ public class ServiceBoundaryArchitectureTests
     // interfaces are internal and live under Humans.<Section>.*, so a namespace filter
     // anchored on Humans.Application.Interfaces alone would stop seeing a section the
     // moment it moves, quietly shrinking every ratchet built on this.
+    // …and the contracts leaves, which carry neither the namespace nor the [Section]
+    // attribute the two clauses above key on. A service interface that lives *entirely* on
+    // a leaf — with no Base-side interface deriving from it — leaves this sweep the moment
+    // it is carved, and its baseline rows read as fixed on byte-identical code. The
+    // GetInterfaces() walk in EntityReturnReadMembers only rescues the read-split shape
+    // (I<Section>Service : I<Section>ServiceRead, where the deriving half stays behind);
+    // Users' IAccountProvisioningService is the whole-interface case and is what surfaced
+    // this (nobodies-collective/Humans#866, lane 2 PR A).
     private static IEnumerable<Type> ApplicationInterfaceTypes() =>
         typeof(IUserRepository).Assembly.GetTypes()
             .Where(t => t.IsInterface)
             .Where(t => t.Namespace?.StartsWith("Humans.Application.Interfaces", StringComparison.Ordinal) == true)
             .Concat(SectionAssemblies()
+                .SelectMany(a => a.GetTypes())
+                .Where(t => t.IsInterface))
+            .Concat(SectionContractsAssemblies()
                 .SelectMany(a => a.GetTypes())
                 .Where(t => t.IsInterface));
 
@@ -185,6 +197,29 @@ public class ServiceBoundaryArchitectureTests
     /// </summary>
     private static IEnumerable<Assembly> SectionAssemblies() =>
         Web.Extensions.SectionDiscoveryExtensions.SectionAssemblies();
+
+    /// <summary>
+    /// Every G5 contracts leaf. Discovered from the dependency graph by name rather than by
+    /// <c>[Section]</c> — a leaf deliberately carries no section marker, because it is not
+    /// an MVC application part and registers no services.
+    /// </summary>
+    private static IEnumerable<Assembly> SectionContractsAssemblies() =>
+        DependencyContext.Default?.RuntimeLibraries
+            .Where(l => l.Name.StartsWith("Humans.", StringComparison.Ordinal)
+                        && l.Name.EndsWith(".Contracts", StringComparison.Ordinal))
+            .Select(l =>
+            {
+                try
+                {
+                    return Assembly.Load(new AssemblyName(l.Name));
+                }
+                catch (Exception ex) when (ex is FileNotFoundException or BadImageFormatException)
+                {
+                    return null;
+                }
+            })
+            .OfType<Assembly>()
+        ?? [];
 
     private static IEnumerable<Type> RepositoryInterfaceTypes() =>
         ApplicationInterfaceTypes()

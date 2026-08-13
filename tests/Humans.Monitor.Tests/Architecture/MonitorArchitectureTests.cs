@@ -45,9 +45,15 @@ public class MonitorArchitectureTests
                 "Humans.AuditLog.Contracts",
                 "Humans.GoogleIntegration.Contracts",
                 "Humans.SystemSettings.Contracts",
+                // Not a fourth coupling — MonitorController and DriveActivityMonitorService have
+                // always read IUserServiceRead/UserInfo; the types simply left Humans.Application
+                // for Users' contracts leaf (nobodies-collective/Humans#866, lane 2 PR A), which is
+                // the first time the dependency shows up as an assembly reference. #866 names
+                // User/UserInfo as sanctioned shared contracts and lane 4 settles where they live.
+                "Humans.Users.Contracts",
             ],
             because: "Monitor consumes AuditLog, GoogleIntegration and SystemSettings through "
-                     + "their leaves, and nothing else");
+                     + "their leaves, plus the sanctioned User/UserInfo contracts, and nothing else");
     }
 
     [HumansFact]

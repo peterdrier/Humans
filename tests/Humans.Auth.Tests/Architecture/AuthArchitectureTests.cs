@@ -98,9 +98,16 @@ public class AuthArchitectureTests
             .OrderBy(n => n, StringComparer.Ordinal)
             .ToList();
 
+        // The fourth name, Humans.Users.Contracts, is the exception RoleAssignmentService already
+        // carries in source: "Auth (crosscut) references vertical sections — IUserServiceRead for
+        // assignee/creator display stitching". Nothing about that coupling changed here; the
+        // interface simply left Humans.Application for Users' contracts leaf
+        // (nobodies-collective/Humans#866, lane 2 PR A), which is the first time it shows up as an
+        // assembly reference. #866 names User/UserInfo as sanctioned shared contracts; lane 4
+        // decides whether they end up on the Base floor instead, which would drop this row.
         sectionRefs.Should().BeEquivalentTo(
-            ["Humans.AuditLog.Contracts", "Humans.Gdpr.Contracts", "Humans.Notifications.Contracts"],
-            because: "a horizontal section may reference only Base and other horizontals");
+            ["Humans.AuditLog.Contracts", "Humans.Gdpr.Contracts", "Humans.Notifications.Contracts", "Humans.Users.Contracts"],
+            because: "a horizontal section may reference only Base, other horizontals, and the sanctioned User/UserInfo contracts");
     }
 
     [HumansFact]
