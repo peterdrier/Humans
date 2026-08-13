@@ -11,7 +11,7 @@ namespace Humans.Monitor.Tests.Architecture;
 /// the reference only became visible at the assembly level when GoogleIntegration went to G5.
 ///
 /// Monitor is allowed to reference both because it is the *consumer* end of every edge it has.
-/// The load-bearing test is <see cref="NothingReferencesMonitor"/>: the moment something
+/// The load-bearing test is <see cref="SectionReferencesOnlyBaseAndTheLeavesItConsumes"/>: the moment something
 /// depends on Monitor, it stops being a leaf and becomes the junk drawer the carve was meant
 /// to avoid.
 /// </summary>
