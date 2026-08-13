@@ -80,6 +80,74 @@ public sealed class CachingCampServiceTests : CampsTestHarness
     }
 
     // ==========================================================================
+    // ICampSeeding.CreateCampForSeedAsync must invalidate, like every other write
+    // ==========================================================================
+
+    /// <summary>
+    /// The leaf's seeding verb has to go through the decorator's own write path, not straight
+    /// to the inner service. Routing it to the inner leaves the all-camps snapshot unchanged,
+    /// so every list-based read — the camps index, search, the profile card — is blind to the
+    /// new camp until some unrelated later mutation happens to invalidate it. The dev-persona
+    /// flow usually approves the season next and hides it; a cancellation between the two
+    /// leaves the stale result indefinitely. Caught by Codex on peterdrier/Humans#1288.
+    /// </summary>
+    [HumansFact]
+    public async Task CreateCampForSeedAsync_MakesTheNewCampVisibleToListReads()
+    {
+        await SeedSettingsAsync(publicYear: 2026, openSeasons: [2026]);
+        var ct = Xunit.TestContext.Current.CancellationToken;
+
+        // Warm the snapshot first — this is the state the bug needs to show up in.
+        var before = await _service.GetCampsForYearAsync(2026, ct);
+        before.Should().BeEmpty();
+
+        // The inner service is a substitute here, so stand in for the real create: write the
+        // rows the repository would have written, and return the new camp the way it does.
+        var seeded = await SeedCampWithSeasonAsync(year: 2026);
+        _innerSubstitute.CreateCampAsync(
+                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<string?>(), Arg.Any<List<CampLink>?>(), Arg.Any<bool>(), Arg.Any<int>(),
+                Arg.Any<CampSeasonData>(), Arg.Any<List<string>?>(), Arg.Any<int>(),
+                Arg.Any<CancellationToken>())
+            .Returns(seeded.camp);
+
+        var newCampId = await ((ICampSeeding)_service).CreateCampForSeedAsync(
+            createdByUserId: Guid.NewGuid(),
+            name: "Dev Barrio",
+            contactEmail: "dev@localhost",
+            contactPhone: "+34 600 000 000",
+            isSwissCamp: false,
+            timesAtNowhere: 0,
+            seasonData: SeedSeasonData(),
+            year: 2026,
+            cancellationToken: ct);
+
+        newCampId.Should().Be(seeded.camp.Id);
+
+        var after = await _service.GetCampsForYearAsync(2026, ct);
+        after.Should().ContainSingle(c => c.Id == seeded.camp.Id,
+            because: "the seeding verb must invalidate the snapshot the way CreateCampAsync does");
+    }
+
+    private static CampSeasonData SeedSeasonData() =>
+        new(
+            BlurbLong: "long",
+            BlurbShort: "short",
+            Languages: "English",
+            AcceptingMembers: YesNoMaybe.Yes,
+            KidsWelcome: YesNoMaybe.No,
+            KidsVisiting: KidsVisitingPolicy.DaytimeOnly,
+            KidsAreaDescription: null,
+            HasPerformanceSpace: PerformanceSpaceStatus.No,
+            PerformanceTypes: string.Empty,
+            Vibes: [],
+            AdultPlayspace: AdultPlayspacePolicy.No,
+            MemberCount: 1,
+            SpaceRequirement: SpaceSize.Sqm600,
+            SoundZone: null,
+            ElectricalGrid: null);
+
+    // ==========================================================================
     // P1 — RefreshEntryAsync rebuilds EeGrantedCount from loaded members
     // ==========================================================================
 

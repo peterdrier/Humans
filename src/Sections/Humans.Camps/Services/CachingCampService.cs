@@ -638,13 +638,25 @@ internal sealed class CachingCampService(
         WithInnerLeadDirectory(inner => inner.IsLeadAnywhereAsync(userId, cancellationToken));
 
     /// <inheritdoc />
-    Task<Guid> ICampSeeding.CreateCampForSeedAsync(
+    /// <remarks>
+    /// Goes through this decorator's own <see cref="CreateCampAsync"/> rather than the inner
+    /// service, so the new camp lands in the snapshot before the call returns. Routing it
+    /// straight to the inner service would leave every list-based read —
+    /// <see cref="GetCampsForYearAsync"/>, <see cref="SearchAsync"/>,
+    /// <see cref="GetCampUserInfoAsync"/> — blind to the seeded camp until some later mutation
+    /// happened to invalidate it.
+    /// </remarks>
+    async Task<Guid> ICampSeeding.CreateCampForSeedAsync(
         Guid createdByUserId, string name, string contactEmail, string contactPhone,
         bool isSwissCamp, int timesAtNowhere, CampSeasonData seasonData, int year,
-        CancellationToken cancellationToken) =>
-        WithInnerSeeding(inner => inner.CreateCampForSeedAsync(
-            createdByUserId, name, contactEmail, contactPhone, isSwissCamp, timesAtNowhere,
-            seasonData, year, cancellationToken));
+        CancellationToken cancellationToken)
+    {
+        var camp = await CreateCampAsync(
+            createdByUserId, name, contactEmail, contactPhone,
+            webOrSocialUrl: null, links: [], isSwissCamp, timesAtNowhere,
+            seasonData, historicalNames: [], year, cancellationToken);
+        return camp.Id;
+    }
 
     /// <inheritdoc />
     Task ICampSeeding.OptInToSeasonAsync(Guid campId, int year, CancellationToken cancellationToken) =>
@@ -668,11 +680,5 @@ internal sealed class CachingCampService(
         return await work((ICampLeadDirectory)inner);
     }
 
-    private async Task<T> WithInnerSeeding<T>(Func<ICampSeeding, Task<T>> work)
-    {
-        using var scope = scopeFactory.CreateScope();
-        var inner = scope.ServiceProvider.GetRequiredKeyedService<ICampService>(InnerServiceKey);
-        return await work((ICampSeeding)inner);
-    }
 
 }
