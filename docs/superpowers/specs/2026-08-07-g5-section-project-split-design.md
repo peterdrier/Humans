@@ -24,6 +24,13 @@ first real test. Where this doc and `src/Sections/Humans.Store/` disagree, the c
 sections had executed it. The template is the living recipe and the authority on mechanics; this
 doc is the record and the rationale.
 
+**End-state design amended 2026-08-14** by
+[`2026-08-14-g5-endstate-design.md`](2026-08-14-g5-endstate-design.md): the `Platform/`
+tier is dropped, `Humans.UI` is retired, Base = `Humans.Interfaces` renamed (an RCL, may
+reference `Users.Contracts` only), every `.Contracts` leaf references nothing, "G5
+complete" is defined by graph predicates, and contracts fold-back happens at G6. Where
+that doc and this one disagree on the end state, the newer doc is right.
+
 ---
 
 ## 0. The shape
