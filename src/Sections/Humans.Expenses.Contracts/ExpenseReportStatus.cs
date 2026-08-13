@@ -1,6 +1,6 @@
-namespace Humans.Expenses.Domain;
+namespace Humans.Expenses.Contracts;
 
-internal enum ExpenseReportStatus
+public enum ExpenseReportStatus
 {
     Draft,
     Submitted,

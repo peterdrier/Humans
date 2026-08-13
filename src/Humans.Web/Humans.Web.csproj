@@ -45,6 +45,7 @@
     <ProjectReference Include="..\Sections\Humans.TicketTailor\Humans.TicketTailor.csproj" />
     <ProjectReference Include="..\Sections\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
     <ProjectReference Include="..\Sections\Humans.Auth.Contracts\Humans.Auth.Contracts.csproj" />
+    <ProjectReference Include="..\Sections\Humans.Tour\Humans.Tour.csproj" />
   </ItemGroup>
 
   <ItemGroup>

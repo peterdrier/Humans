@@ -1,3 +1,4 @@
+using Humans.Store.Contracts;
 using Humans.Store.Domain;
 using System.Security.Claims;
 using Humans.Application.Interfaces.Camps;

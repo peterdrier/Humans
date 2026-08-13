@@ -1,4 +1,5 @@
 using Humans.Application.Interfaces.Repositories;
+using Humans.Expenses.Contracts;
 using Humans.Expenses.Services.Dtos;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -60,6 +61,17 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
                      && r.Status != ExpenseReportStatus.Withdrawn)
             // arch:db-sort-ok finance review queue — newest submissions on top so reviewers see fresh work first
             .OrderByDescending(r => r.SubmittedAt ?? r.CreatedAt)
+            .ToListAsync(ct);
+        return entities.Select(ExpenseReportMapper.ToDto).ToList();
+    }
+
+    public async Task<IReadOnlyList<ExpenseReportDto>> GetAllAsync(CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var entities = await ctx.ExpenseReports.AsNoTracking()
+            .Include(r => r.Lines).ThenInclude(l => l.Attachment)
+            // arch:db-sort-ok dashboard aggregate read — newest-first is the only reasonable default
+            .OrderByDescending(r => r.CreatedAt)
             .ToListAsync(ct);
         return entities.Select(ExpenseReportMapper.ToDto).ToList();
     }

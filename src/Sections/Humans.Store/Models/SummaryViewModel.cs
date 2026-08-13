@@ -1,4 +1,4 @@
-using Humans.Store.Services.Dtos;
+using Humans.Store.Contracts;
 
 namespace Humans.Store.Models;
 

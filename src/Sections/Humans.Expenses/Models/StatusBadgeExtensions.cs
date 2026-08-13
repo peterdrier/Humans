@@ -1,4 +1,4 @@
-using Humans.Expenses.Domain;
+using Humans.Expenses.Contracts;
 
 namespace Humans.Expenses.Models;
 

@@ -1,3 +1,4 @@
+using Humans.Store.Contracts;
 using Humans.Store.Domain;
 using NodaTime;
 

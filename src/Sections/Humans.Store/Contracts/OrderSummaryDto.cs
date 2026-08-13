@@ -1,8 +1,6 @@
-using Humans.Store.Domain;
+namespace Humans.Store.Contracts;
 
-namespace Humans.Store.Services.Dtos;
-
-internal sealed record OrderSummaryDto(
+public sealed record OrderSummaryDto(
     Guid OrderId,
     OrderCounterpartyType CounterpartyType,
     Guid CounterpartyId,

@@ -1,3 +1,4 @@
+using Humans.Expenses.Contracts;
 using Humans.Expenses.Services.Dtos;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -21,6 +22,11 @@ internal interface IExpenseRepository : IRepository
         ExpenseReportStatus status,
         CancellationToken ct = default);
     Task<IReadOnlyList<ExpenseReportDto>> GetForReviewQueueAsync(CancellationToken ct = default);
+    /// <summary>
+    /// Returns every expense report regardless of status. Dashboard/aggregate reads only
+    /// (~500-user scale — no pagination, sum client-side).
+    /// </summary>
+    Task<IReadOnlyList<ExpenseReportDto>> GetAllAsync(CancellationToken ct = default);
     /// <summary>
     /// Resolves the report id that owns the given attachment via the line that
     /// references it. Returns null if no line currently points at the attachment

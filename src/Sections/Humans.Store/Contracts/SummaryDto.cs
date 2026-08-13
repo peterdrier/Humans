@@ -1,29 +1,27 @@
-using Humans.Store.Domain;
+namespace Humans.Store.Contracts;
 
-namespace Humans.Store.Services.Dtos;
-
-internal sealed record SummaryDto(
+public sealed record SummaryDto(
     int Year,
     IReadOnlyList<OrderSummaryDto> ByCounterparty,
     IReadOnlyList<ProductAggregateDto> ByItem,
     CrossTabDto CrossTab);
 
-internal sealed record ProductAggregateDto(
+public sealed record ProductAggregateDto(
     Guid ProductId,
     string ProductName,
     int TotalQty,
     decimal TotalRevenueEur);
 
-internal sealed record CrossTabDto(
+public sealed record CrossTabDto(
     IReadOnlyList<CrossTabColumn> Products,
     IReadOnlyList<CrossTabRow> Counterparties);
 
-internal sealed record CrossTabColumn(
+public sealed record CrossTabColumn(
     Guid ProductId,
     string ProductName,
     int TotalQty);
 
-internal sealed record CrossTabRow(
+public sealed record CrossTabRow(
     OrderCounterpartyType CounterpartyType,
     Guid CounterpartyId,
     string CounterpartyName,

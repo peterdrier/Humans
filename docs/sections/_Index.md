@@ -53,6 +53,7 @@ move recipe is [`G5-SECTION-TEMPLATE.md`](G5-SECTION-TEMPLATE.md).
 | Ticket Tailor | `src/Sections/Humans.TicketTailor` | — (adapter section: one implementation of Base's `ITicketVendorService` port; publishes nothing, owns no tables) |
 | Teams | `src/Sections/Humans.Teams` | [Teams.md](../../src/Sections/Humans.Teams/Docs/Teams.md) |
 | Tickets | `src/Sections/Humans.Tickets` | [Tickets.md](../../src/Sections/Humans.Tickets/Docs/Tickets.md) |
+| Tour | `src/Sections/Humans.Tour` | [Tour.md](../../src/Sections/Humans.Tour/Docs/Tour.md) |
 
 **This table is derived from code, not from the section docs — code is authoritative.** Regenerate it when sections move:
 
@@ -109,6 +110,7 @@ Cross-check against [`design-rules.md` §8 (Table Ownership Map)](../architectur
 | **Search** | `SearchController` (`Humans.Search.Controllers`, internal) | `SearchService` (`Humans.Search.Services`, internal) | — | — | — (owns no tables; fans out to Users, Teams, Camps, Shifts and Events through their service interfaces) |
 | **Mailer** | `MailerAdminController` (`Humans.Mailer.Controllers`) | `MailerImportService`, `MailerAudienceSyncService` | `MailerLiteClient` (`Humans.Mailer.Services.MailerLite`) | — | — (MailerLite is the system of record; in-Humans writes route through other sections' services) |
 | **Scanner** | `ScannerController` (`src/Sections/Humans.Scanner`) | — | — | — | — (presentational; owns no tables) |
+| **Tour** | `TourController` (`src/Sections/Humans.Tour`) | — | — | — | — (presentational; owns no tables) |
 | **Debug** | `DebugController` (`Humans.Debug.Controllers`), `LogApiController`, `ColorPaletteController`, `WidgetGalleryController`, `TimezoneApiController` | — | — | `AdminDatabaseDiagnosticsRepository` | — (Debug owns no tables; it reads in-memory trackers and `IAdminDatabaseDiagnosticsService`) |
 | **Development** | `DevLoginController`, `DevSeedController` (`Humans.Development.Controllers`) | — | `DevPersonaSeeder`, `DevelopmentCampRoleSeeder`, `DevelopmentDashboardSeeder` (`Humans.Development.Services`) — dev fixture seeders, not application services; registered outside Production only | — | — (dev-only tooling; owns no tables and writes only through other sections' services) |
 

@@ -192,10 +192,17 @@ public sealed record AdminDashboardViewModel(
     IReadOnlyList<DashboardActivityRow> RecentActivity,
     DashboardApplicationStats AppStats,
     IReadOnlyList<DashboardLanguageCount> LanguageDistribution,
-    UserSetMembership SetMembership);
+    UserSetMembership SetMembership,
+    int TotalTeams,
+    int TotalAuditEvents,
+    int TotalEmails,
+    int StoreOrders,
+    decimal StoreTotalEur,
+    int ExpenseReports,
+    decimal ExpenseTotalEur);
 ```
 
-`AdminController.Index` builds these from a single `IUserServiceRead.GetAllUserInfosAsync` snapshot (counts derived from `UserInfo.IsActive` / `HasTicketForYear`), shift coverage from `IShiftManagementService`, actionable feedback from `IFeedbackServiceRead`, recent audit rows from `IAuditViewerService`, and application/language/set-membership stats from `IAdminDashboardService` — not from direct table queries. `OpenFeedback` is computed for every viewer but the view wraps it in `authorize-policy="AdminOnly"` — Board members and domain admins don't see it in the summary line, matching Feedback triage itself being Admin only.
+`AdminController.Index` builds these from a single `IUserServiceRead.GetAllUserInfosAsync` snapshot (counts derived from `UserInfo.IsActive` / `HasTicketForYear`), shift coverage from `IShiftManagementService`, actionable feedback from `IFeedbackServiceRead`, recent audit rows from `IAuditViewerService`, application/language/set-membership stats from `IAdminDashboardService`, team count from `ITeamServiceRead`, audit event total from `IAuditViewerService.GetPageAsync`'s `TotalCount`, email outbox total from `IEmailOutboxServiceRead.GetOutboxStatsAsync`, the active event year's store order count/total from `IStoreServiceRead.GetStoreSummaryAsync` (zero when there's no active event), and the all-status expense report count/total from `IExpenseReportServiceRead.GetAllAsync` — not from direct table queries. `OpenFeedback` is computed for every viewer but the view wraps it in `authorize-policy="AdminOnly"` — Board members and domain admins don't see it in the summary line, matching Feedback triage itself being Admin only.
 
 ## Member Management
 

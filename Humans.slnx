@@ -67,6 +67,7 @@
     <Project Path="src/Sections/Humans.Tickets.Contracts/Humans.Tickets.Contracts.csproj" />
     <Project Path="src/Sections/Humans.Teams/Humans.Teams.csproj" />
     <Project Path="src/Sections/Humans.Teams.Contracts/Humans.Teams.Contracts.csproj" />
+    <Project Path="src/Sections/Humans.Tour/Humans.Tour.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <File Path="tests/Directory.Build.props" />

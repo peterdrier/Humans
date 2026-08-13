@@ -46,4 +46,48 @@
         <div class="label">Active (24h)</div>
         <div class="value">@Model.OnlineLast24h</div>
     </div>
+    <div class="stat">
+        <div class="label">Teams</div>
+        <div class="value">@Model.TotalTeams</div>
+    </div>
+    <div class="stat">
+        <div class="label">Audit events</div>
+        <div class="value">@Model.TotalAuditEvents.ToString("N0")</div>
+        <div class="delta">every automated action, logged</div>
+    </div>
+    <div class="stat">
+        <div class="label">Emails</div>
+        <div class="value">@Model.TotalEmails.ToString("N0")</div>
+        <div class="delta">outbox total</div>
+    </div>
+    @* Same idiom as Open feedback above: /Admin is AnyAdminRole, but these tiles surface
+       money the source pages gate much tighter. *@
+    <div class="stat" authorize-policy="StoreCatalogAdmin">
+        <div class="label">Store orders</div>
+        <div class="value">
+            @if (Model.StoreOrders.HasValue)
+            {
+                @Model.StoreOrders.Value.ToString("N0")
+            }
+            else
+            {
+                <em>—</em>
+            }
+        </div>
+        <div class="delta">
+            @if (Model.StoreOrders.HasValue)
+            {
+                @:€@Model.StoreTotalEur.GetValueOrDefault().ToString("N0") total, active year
+            }
+            else
+            {
+                @:no active event
+            }
+        </div>
+    </div>
+    <div class="stat" authorize-policy="FinanceAdminOrAdmin">
+        <div class="label">Expense reports</div>
+        <div class="value">@Model.ExpenseReports.ToString("N0")</div>
+        <div class="delta">€@Model.ExpenseTotalEur.ToString("N0") total, all statuses</div>
+    </div>
 </div>

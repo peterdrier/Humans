@@ -1,4 +1,5 @@
 using Humans.Finance.Contracts;
+using Humans.Expenses.Contracts;
 using Humans.Expenses.Domain;
 using Humans.Application.Interfaces;
 
@@ -79,11 +80,6 @@ internal interface IExpenseReportService : IExpenseReportServiceRead, IApplicati
 
 }
 
-internal sealed record ExpenseAttachmentDownload(
-    byte[] Bytes,
-    string ContentType,
-    string OriginalFileName);
-
 internal sealed record ExpenseMutationResult(bool Succeeded, string? ErrorMessage)
 {
     public static ExpenseMutationResult Success { get; } = new(true, null);
@@ -95,13 +91,3 @@ internal sealed record ExpenseIbanSaveResult(
     bool Succeeded,
     bool IsValidationError,
     string Message);
-
-/// <summary>Round-trip timeline for the submitter, derived from the cached Holded creditor ledger.</summary>
-internal sealed record ExpenseHoldedTimeline(
-    bool RegisteredInHolded,
-    decimal OwedToMember,
-    decimal MemberRegisteredTotal,   // sum of this member's registered-but-unpaid ER totals
-    decimal OtherAmount,             // max(0, OwedToMember - MemberRegisteredTotal): fronted / adjustments
-    bool Paid,
-    NodaTime.LocalDate? PaidOn,
-    decimal TotalPaid);
