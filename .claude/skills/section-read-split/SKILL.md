@@ -18,39 +18,72 @@ Every cross-section-consumed service has a narrow read interface that returns on
 
 ## Input
 
-- `<SectionName>` — section to split (e.g., `Users`, `Camps`, `Calendar`). Resolves to the section's invariant doc + its `I<SectionName>Service` interface. On G5 (nobodies-collective/Humans#866) that interface is under either `src/Sections/Humans.<SectionName>/Services/` or the section's contracts (`src/Sections/Humans.<SectionName>.Contracts/`); for a not-yet-moved section it is `src/Humans.Application/Interfaces/<SectionName>/I<SectionName>Service.cs`. Phase 0.1 resolves the real path — don't assume one.
+- `<SectionName>` — section to split (e.g., `Users`, `Camps`, `Calendar`). Names the section only. Its service interface, that interface's project, and its projection types are all **discovered** in Phase 0, never derived from the section name — see 0.0.
 - `<empty>` — ask which section.
 
 ## Phase 0 — Pre-flight (in-session, before worktree)
 
 Run sequentially. If any check fails or surfaces ambiguity, stop and ask the user. Don't proceed to worktree creation until Phase 0 is clean.
 
+**Notation:** `I<Section>Service`, `<Section>Info` and `I<Section>ServiceRead` below are placeholders for the types Phase 0 resolves — not literal names to construct from `<SectionName>`. For Expenses they read `IExpenseReportService`, `ExpenseReportDto` and `IExpenseReportServiceRead`: the service name drops the plural, and the projection carries neither the section name nor the `Info` suffix. Substitute the resolved names throughout.
+
+### 0.0 — Resolve the section's roots
+
+**Nothing in this skill may assert a path or a type name. Discover both, once, here.** A section's layout varies along three axes that no naming convention predicts: whether it has moved to G5, whether its contracts sit in a sibling `.Contracts` project or an in-project `Contracts/` folder, and what its service and projection types are actually called. Establish `$ROOTS` first; every step below searches it.
+
+```bash
+SECTION=<SectionName>
+ROOTS=$(ls -d src/Sections/Humans.$SECTION \
+              src/Sections/Humans.$SECTION.Contracts \
+              src/Humans.Application/Interfaces/$SECTION \
+              src/Humans.Application/Services/$SECTION \
+              src/Humans.Application/Models/$SECTION 2>/dev/null)
+[ -n "$ROOTS" ] || { echo "no such section"; exit 1; }
+```
+
+Whatever exists is the section's home — a moved section yields the first two, a not-yet-moved one the rest, and a section mid-move can yield both. Also locate the invariant doc, which moves into the project on G5: `docs/sections/$SECTION.md` **or** `src/Sections/Humans.$SECTION/Docs/$SECTION.md`.
+
 ### 0.1 — Section is real and cross-section-consumed
 
-A G5 section's service interface is not always under `Services/` — a cross-section-consumed one commonly sits in the section's contracts instead (`IHoldedService` is at `src/Sections/Humans.Holded.Contracts/IHoldedService.cs`, with only `IHoldedAdminService` under `Services/`). Search all four locations rather than testing one path, or the skill aborts on exactly the sections it most applies to:
+**The service type name is not the section name.** `Expenses` exposes `IExpenseReportService`, `Events` exposes `IEventService`, `Tickets` exposes `ITicketService` — a synthesized `I<Section>Service` misses all three. Find the declaration rather than a filename; the type is often declared inside another file, so a `find -name` cannot see it either:
 
-```
-test -f docs/sections/<Section>.md                 # invariant doc must exist
-
-find src/Sections/Humans.<Section> src/Sections/Humans.<Section>.Contracts \
-     src/Humans.Application/Interfaces/<Section> \
-     -name 'I<Section>Service.cs' 2>/dev/null
+```bash
+grep -rnE '^[[:space:]]*(public|internal) interface I[A-Za-z]+Service[[:space:]]*[:{]' \
+     $ROOTS --include='*.cs' | grep -v '/obj/'
 ```
 
-That must return exactly one path; note it, since Phase B.3 edits that file. If it returns nothing, the section has no such interface — tell the user and stop. If the invariant doc is missing, check inside the section project too (a G5 section carries its own doc, e.g. `src/Sections/Humans.Store/Docs/Store.md`).
+Both modifiers matter: on G5 a section-internal interface is `internal`, while one promoted to a cross-section contract is `public` and lives in the section's contracts (`IHoldedService` is `public` in `Humans.Holded.Contracts`; only `IHoldedAdminService` is `internal` under `Services/`).
 
-Use the `reforge` skill to count external (non-section) callers of `I<Section>Service`:
-```
-reforge callers I<Section>Service --format json
+- **One match** — that's the section's service. Note the file; Phase B.3 edits it.
+- **Several** — normal for larger sections (Tickets has five, Teams three). List them for the user with their modifiers and ask which to split. Do not guess.
+- **None** — the section has no service interface; tell the user and stop.
+
+Then count external callers of the resolved name:
+
+```bash
+reforge callers <IResolvedService> --format json
 ```
 
-Filter out callers inside the section's own folder tree (Application/Services/<Section>, Application/Interfaces/<Section>, Infrastructure/{Services,Repositories}/<Section>, Web/Controllers/<Section>*Controller.cs, Web/ViewComponents related to the section). If **zero non-section callers remain**, the section isn't cross-section-consumed — the read interface buys nothing. Tell the user and stop.
+Filter out callers **inside `$ROOTS`** — that is what "own section" means, and it is the whole point of resolving the roots first. A G5 section keeps its own `Controllers/`, `Views/`, `Models/` and `Services/` inside the section project, so filtering only the legacy `Application/`, `Infrastructure/` and `Web/` locations counts a moved section's own callers as external and reports every section as cross-section-consumed. For a not-yet-moved section also exclude `src/Humans.Web/Controllers/<Section>*Controller.cs` and its view components, which stay in `Humans.Web`. If **zero external callers remain**, the read interface buys nothing — tell the user and stop.
 
 ### 0.2 — Section has an `*Info` projection
 
-Look for `<Section>Info` (or analogous DTO name) in `src/Sections/Humans.<Section>/Services/Models/` (G5) or, for a not-yet-moved section, `src/Humans.Application/Services/<Section>/Models/` / `src/Humans.Application/Models/<Section>/`. The architectural rule requires the read interface to return projections, never entities. If the section has no `*Info` type:
+The architectural rule requires the read interface to return projections, never entities.
 
-- **Stop.** Tell the user the section needs a projection PR first (extract `<Section>Info` from the entity, populate via service, cache if applicable). Reference Teams' `TeamInfo` as the shape template. Do not attempt to invent the projection inside this PR — it's a separate concern with its own callsite migration.
+Neither the location nor the name of a projection is predictable. There is no `Services/Models/` convention in this repo — `EventInfo` is under `Humans.Events/Services/Dtos/`, `LegalDocumentInfo` sits directly in `Humans.Consent/Services/`, `TicketStubInfo` in `Humans.Tickets.Contracts/`, and `TeamInfo` is not a file at all: it is declared inside `Humans.Teams.Contracts/ITeamService.cs`. **The `*Info` suffix is not the convention either** — across `src/Sections` the projection records run `Dto` (52), `Result` (51), `Row` (41), `Snapshot` (35), `Model` (33), `Info` (26), `Summary` (18). Expenses has no `*Info` type at all; its read surface returns `ExpenseReportDto`. Filtering on a suffix is what produces the false "section has no projection" stop.
+
+So search for the *shape* — a record declared outside the entity folder — and read the results:
+
+```bash
+grep -rnE '^[[:space:]]*(public|internal)([[:space:]]+sealed)? record([[:space:]]+struct)?[[:space:]]+[A-Za-z]+' \
+     $ROOTS --include='*.cs' | grep -v '/obj/' | grep -v '/Domain/'
+```
+
+Records are the projection idiom here; entities are classes under `Domain/`, which the last filter drops. Searching declarations rather than filenames is also what finds `TeamInfo`, and it avoids matching every section's `Properties/AssemblyInfo.cs`.
+
+Confirm at least one result is actually returned by the service's read methods — a record that exists but is only used as a request/command payload (`AdminLegalDocumentUpsertRequest`) is not a projection. If the section genuinely has no projection type:
+
+- **Stop.** Tell the user the section needs a projection PR first (extract the projection from the entity, populate via service, cache if applicable). Reference Teams' `TeamInfo` as the shape template. Do not attempt to invent the projection inside this PR — it's a separate concern with its own callsite migration.
 
 ### 0.3 — Architectural rule artifacts exist
 
@@ -229,7 +262,7 @@ Commit: `feat(<section>): introduce I<Section>ServiceRead boundary`
 grep -rnE 'I<Section>Service\b' --include='*.cs' src/ tests/ | grep -v 'I<Section>ServiceRead'
 ```
 
-For each file outside the section's own folder tree (exclude `src/Sections/Humans.<Section>/**` (G5) or `src/Humans.Application/{Services,Interfaces}/<Section>/**` + `src/Humans.Infrastructure/{Services,Repositories}/<Section>/**` (not yet moved), `src/Humans.Web/Controllers/<Section>*Controller.cs`, the section's auth handlers, the section's ViewModels):
+For each file outside the section's own tree — exclude everything under `$ROOTS` as resolved in 0.0, which is the same scope 0.1 used for the caller count, plus (not-yet-moved sections only) `src/Humans.Infrastructure/{Services,Repositories}/<Section>/**`, `src/Humans.Web/Controllers/<Section>*Controller.cs`, the section's auth handlers and its ViewModels:
 
 1. Read the file's actual `I<Section>Service` usages.
 2. If **every call** is to a method on `I<Section>ServiceRead`, swap the field/ctor parameter type from `I<Section>Service` → `I<Section>ServiceRead`. Update field name if it follows a `_section`/`section` convention.

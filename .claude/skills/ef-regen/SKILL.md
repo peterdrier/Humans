@@ -119,7 +119,22 @@ git show origin/main:src/Humans.Infrastructure/Migrations/<Area>/<Context>ModelS
   > <migrations-folder>/<Context>ModelSnapshot.cs
 ```
 
-The file carries its pre-move `namespace`. EF locates a snapshot by the `[DbContext(typeof(<Context>))]` attribute rather than by namespace, so this compiles and diffs correctly, and `migrations add` rewrites the file in step 6 — but read the regenerated `namespace` before committing and confirm it matches the new project rather than the old one.
+**A verbatim copy does not compile — you must rewrite two lines before step 5.** The pre-move snapshot is written for its old project and carries a `using` for the context's old namespace plus an unqualified `typeof`:
+
+```csharp
+using Humans.Infrastructure.Data;                    // old context namespace
+namespace Humans.Infrastructure.Migrations.<Area>    // old migrations namespace
+    [DbContext(typeof(<Context>))]                   // resolved via that using
+```
+
+In the relocated project the context class has moved with it, so that `using` no longer names anything and `typeof(<Context>)` fails to resolve — and because section contexts are declared `internal sealed`, the type is not visible from outside its assembly anyway. Rewrite both to the new project, matching what EF itself emits for an already-moved section:
+
+```csharp
+using Humans.<Section>.Data;                         // new context namespace
+namespace Humans.<Section>.Data.Migrations           // new migrations namespace
+```
+
+Cross-check against any section already moved — e.g. `src/Sections/Humans.Events/Data/Migrations/EventGuideDbContextModelSnapshot.cs` pairs `using Humans.Events.Data;` with `namespace Humans.Events.Data.Migrations`. `migrations add` rewrites the file's body in step 6, but it will not fix these two lines for you, and step 5 fails first if they are wrong.
 
 **New context on this branch** — there is no `origin/main` state to restore. Delete the snapshot so EF starts from empty:
 
