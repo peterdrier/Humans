@@ -43,15 +43,34 @@ if [ ! -f "$CATALOG" ]; then
   exit 1
 fi
 
-# Every editorial doc the sweep is responsible for, across both homes:
-# docs/{sections,features,guide} and each G5 section's in-project Docs/.
-# Mirrors the catalog's editorial_trees + ignore lists.
+# Every editorial doc the sweep is responsible for, derived FROM the catalog's
+# editorial_trees rather than hardcoded here. Entries are either a directory to
+# walk (docs/sections/, src/Sections/, …) or a single file listed on its own
+# (docs/architecture/design-rules.md, docs/seed-data.md, …).
+#
+# Read the list from the catalog so this check cannot drift away from it. An
+# earlier hardcoded version walked only the four directories and silently skipped
+# all six individually-listed files — so a dead glob in design-rules.md or
+# seed-data.md still produced a green "all trigger globs resolve", which is the
+# exact failure test 7 exists to catch.
 editorial_docs() {
-  find docs/sections docs/features docs/guide src/Sections -name '*.md' \
-       -not -name 'SECTION-TEMPLATE.md' -not -name 'G5-SECTION-TEMPLATE.md' \
-       -not -name 'README.md' -not -name 'GettingStarted.md' -not -name 'Glossary.md' \
-       -not -path '*/obj/*' -not -path '*/bin/*' \
-       -not -path '*/Docs/20*.md' 2>/dev/null
+  awk '/^editorial_trees:/{f=1;next} f&&/^[a-z_]+:/{f=0} f' "$CATALOG" \
+    | grep -E '^[[:space:]]+- ' \
+    | sed 's/^[[:space:]]*-[[:space:]]*//; s/[[:space:]]*$//' \
+    | while IFS= read -r entry; do
+        [ -z "$entry" ] && continue
+        if [ -f "$entry" ]; then
+          echo "$entry"
+        elif [ -d "${entry%/}" ]; then
+          find "${entry%/}" -name '*.md' \
+               -not -name 'SECTION-TEMPLATE.md' -not -name 'G5-SECTION-TEMPLATE.md' \
+               -not -name 'README.md' -not -name 'GettingStarted.md' -not -name 'Glossary.md' \
+               -not -path '*/obj/*' -not -path '*/bin/*' \
+               -not -path '*/Docs/20*.md' 2>/dev/null
+        else
+          echo "  [editorial_docs]: catalog lists '$entry' but it is neither a file nor a directory" >&2
+        fi
+      done
 }
 
 # ─── Test 1: Catalog parses (structural smoke) ────────────────────────
@@ -105,13 +124,17 @@ SEC=$(find docs/sections -name '*.md' -not -name 'SECTION-TEMPLATE.md' -not -nam
 FEAT=$(find docs/features -name '*.md' | wc -l)
 GUIDE=$(find docs/guide -name '*.md' -not -name 'README.md' -not -name 'GettingStarted.md' -not -name 'Glossary.md' | wc -l)
 INPROJ=$(find src/Sections -path '*/Docs/*.md' -not -path '*/Docs/20*.md' -not -path '*/obj/*' -not -path '*/bin/*' | wc -l)
-TOTAL=$((SEC + FEAT + GUIDE + INPROJ))
+# Catalog entries listed as single files rather than directories to walk.
+SINGLES=$(awk '/^editorial_trees:/{f=1;next} f&&/^[a-z_]+:/{f=0} f' "$CATALOG" \
+          | grep -E '^[[:space:]]+- ' | sed 's/^[[:space:]]*-[[:space:]]*//; s/[[:space:]]*$//' \
+          | while IFS= read -r e; do [ -f "$e" ] && echo "$e"; done | wc -l)
+TOTAL=$(editorial_docs | wc -l)
 
-if [ "$TOTAL" -lt 50 ] || [ "$INPROJ" -lt 1 ]; then
-  echo "FAIL [test 3]: editorial walk found $TOTAL docs ($INPROJ in-project) — expected >= 50 with >= 1 in-project"
+if [ "$TOTAL" -lt 50 ] || [ "$INPROJ" -lt 1 ] || [ "$SINGLES" -lt 1 ]; then
+  echo "FAIL [test 3]: editorial walk found $TOTAL docs ($INPROJ in-project, $SINGLES single-file) — expected >= 50 with >= 1 of each"
   FAIL=$((FAIL+1))
 else
-  echo "PASS [test 3]: editorial walk: sections=$SEC features=$FEAT guide=$GUIDE in-project=$INPROJ = $TOTAL"
+  echo "PASS [test 3]: editorial walk: sections=$SEC features=$FEAT guide=$GUIDE in-project=$INPROJ single-file=$SINGLES = $TOTAL total"
   PASS=$((PASS+1))
 fi
 

@@ -107,7 +107,11 @@ mechanical:
     prompt: |
       Regenerate the action-name audit in docs/controller-architecture-audit.md.
 
-      For every controller in src/Humans.Web/Controllers/:
+      For every controller in src/Humans.Web/Controllers/ AND every controller
+      under src/Sections/*/Controllers/ (both are triggers for this entry, and
+      the target already documents both — the majority of controllers now live
+      in section projects, so auditing only Humans.Web leaves their action rows
+      stale even though the trigger fired):
       1. List every public action method with its [HttpGet]/[HttpPost]/etc.
          verb and route.
       2. For each action, derive a Purpose line from the action name and

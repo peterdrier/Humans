@@ -248,9 +248,13 @@ the `GuideModerator` role, the `StoreAdmin`/`EETeamAdmin` role rows, and the `co
    - **New test 7** — expands every `freshness:triggers` glob in every editorial doc and fails on any
      that resolves to nothing, calling out fully-dead docs by name. This is the only check that can see
      the failure mode; tests 1-6 passed throughout the five sweeps it kept recurring.
-   - **Editorial walk now spans `src/Sections/*/Docs/`** via a shared `editorial_docs()` helper used by
-     tests 3, 4 and 7. Previously only `docs/{sections,features,guide}` — which now misses the
-     **36 in-project section docs**, the majority (135 docs total, of which 36 were invisible).
+   - **Editorial walk is now derived from the catalog** by a shared `editorial_docs()` helper used by
+     tests 3, 4 and 7, so the check cannot drift away from `editorial_trees`. It previously covered only
+     `docs/{sections,features,guide}`, missing the **36 in-project section docs**; a first pass at the
+     fix hardcoded four directories and still skipped the **6 individually-listed catalog files**
+     (`design-rules.md`, `conventions.md`, `code-review-rules.md`, `coding-rules.md`,
+     `roslyn-analysis.md`, `seed-data.md`) — caught in review by Codex on PR #1283. Reading the list from
+     the catalog fixes both at once: **141 docs checked**, up from 135, up from 99 before the sweep.
    - **Test 5's synthetic probe repointed** to `src/Sections/Humans.Teams/Controllers/TeamController.cs`,
      plus a guard that fails loudly if the probe path itself ever stops existing. Both its old paths
      were dead: the probe *and* `docs/sections/Teams.md`.
