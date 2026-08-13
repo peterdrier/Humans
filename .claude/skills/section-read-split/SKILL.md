@@ -12,7 +12,7 @@ Apply the read/write interface split — defined in [`memory/architecture/sectio
 
 ## Vision
 
-Every cross-section-consumed service has a narrow read interface that returns only its own projections (`*Info` DTOs). External sections never see EF entities of another section, never see write methods that aren't theirs, never accidentally invalidate caches they don't own. Today the boundary is advisory; a future Roslyn analyzer enforces. Each invocation of this skill closes the gap for one more section.
+Every cross-section-consumed service has a narrow read interface that returns only its own projections — `*Info`, `*Dto` or whatever that section already uses. External sections never see EF entities of another section, never see write methods that aren't theirs, never accidentally invalidate caches they don't own. Today the boundary is advisory; a future Roslyn analyzer enforces. Each invocation of this skill closes the gap for one more section.
 
 **Teams is the reference.** PR [#678](https://github.com/peterdrier/Humans/pull/678) introduced `ITeamServiceRead` with 4 methods, migrated 23 production files, and folded in 3 audit-driven surface reductions. The skill operationalizes that pattern.
 
@@ -41,7 +41,21 @@ ROOTS=$(ls -d src/Sections/Humans.$SECTION \
 [ -n "$ROOTS" ] || { echo "no such section"; exit 1; }
 ```
 
-Whatever exists is the section's home — a moved section yields the first two, a not-yet-moved one the rest, and a section mid-move can yield both. Also locate the invariant doc, which moves into the project on G5: `docs/sections/$SECTION.md` **or** `src/Sections/Humans.$SECTION/Docs/$SECTION.md`.
+Whatever exists is the section's home — a moved section yields the first two, a not-yet-moved one the rest, and a section mid-move can yield both.
+
+Resolve the doc and test homes here too, and **carry these variables into the later phases** — Phase B.6 and Phase D consume them. Resolving a path in pre-flight and then hardcoding the legacy one downstream is the same bug as never resolving it:
+
+```bash
+if [ -d "src/Sections/Humans.$SECTION" ]; then
+  DOC=src/Sections/Humans.$SECTION/Docs/$SECTION.md   # G5: doc moved into the project
+  TESTS=tests/Humans.$SECTION.Tests                   # G5: section owns its test project
+else
+  DOC=docs/sections/$SECTION.md
+  TESTS=tests/Humans.Application.Tests
+fi
+```
+
+For Events that is `src/Sections/Humans.Events/Docs/Events.md` and `tests/Humans.Events.Tests` — neither `docs/sections/Events.md` nor an Events folder under `Humans.Application.Tests` exists. The same is true of Teams and every other moved section.
 
 ### 0.1 — Section is real and cross-section-consumed
 
@@ -66,7 +80,7 @@ reforge callers <IResolvedService> --format json
 
 Filter out callers **inside `$ROOTS`** — that is what "own section" means, and it is the whole point of resolving the roots first. A G5 section keeps its own `Controllers/`, `Views/`, `Models/` and `Services/` inside the section project, so filtering only the legacy `Application/`, `Infrastructure/` and `Web/` locations counts a moved section's own callers as external and reports every section as cross-section-consumed. For a not-yet-moved section also exclude `src/Humans.Web/Controllers/<Section>*Controller.cs` and its view components, which stay in `Humans.Web`. If **zero external callers remain**, the read interface buys nothing — tell the user and stop.
 
-### 0.2 — Section has an `*Info` projection
+### 0.2 — Section has a projection type
 
 The architectural rule requires the read interface to return projections, never entities.
 
@@ -245,7 +259,10 @@ Both interfaces resolve to the same singleton.
 
 #### B.6 — Architecture tests
 
-In `tests/Humans.Application.Tests/Architecture/<Section>ArchitectureTests.cs` (or new file if missing), assert:
+In the section's architecture test file under `$TESTS` — for a moved section that is `$TESTS/<Section>ArchitectureTests.cs` at the project root (e.g. `tests/Humans.Events.Tests/EventsArchitectureTests.cs`), otherwise `$TESTS/Architecture/<Section>ArchitectureTests.cs` — or a new file there if missing, assert:
+
+**Do not put a moved section's test in `Humans.Application.Tests`.** That project does not reference the section assembly, and a G5 section grants `InternalsVisibleTo` only to `Humans.<Section>.Tests` and `Humans.Integration.Tests`. Since G5 service interfaces are `internal`, a test placed there cannot see the type under test and will not compile — and even if it did, it could not build the section's production DI registration to check the resolution below.
+
 - `I<Section>Service` inherits from `I<Section>ServiceRead`.
 - Both interfaces DI-resolve to the same concrete instance from a service-provider built from the production DI registration.
 - Add a positive smoke test for the new projection-returning method (e.g. by-slug returns same data as the entity-returning version for a known row).
@@ -270,16 +287,16 @@ For each file outside the section's own tree — exclude everything under `$ROOT
 
 #### C.2 — Sweep architecture tests across the repo
 
-Many sections have architecture tests that reference `I<Section>Service` for dependency checks. Grep:
+Many sections have architecture tests that reference `I<Section>Service` for dependency checks. These are spread across per-section test projects now, not just `Humans.Application.Tests`, so grep all of `tests/`:
 ```
-grep -rnE 'I<Section>Service\b' --include='*.cs' tests/Humans.Application.Tests/Architecture/
+grep -rnE 'I<Section>Service\b' --include='*.cs' tests/
 ```
 
 For each match, evaluate: is the test asserting "this section depends on `I<Section>Service`" (write-bearing dependency, keep) or "this section reads from `I<Section>Service`" (read-only, swap to `I<Section>ServiceRead`)?
 
 #### C.3 — Baseline files
 
-If the repo has `tests/Humans.Application.Tests/Architecture/Baselines/*.txt` files that enumerate methods or interface names that changed (renames, deletions, additions), update them. Common pattern: a baseline lists "entity-returning reads in Application services" — the rename in B.1 may update it.
+If the repo has `tests/Humans.Application.Tests/Architecture/Baselines/*.txt` files (the baselines stayed in `Humans.Application.Tests` — they are repo-wide, not per-section) that enumerate methods or interface names that changed (renames, deletions, additions), update them. Common pattern: a baseline lists "entity-returning reads in Application services" — the rename in B.1 may update it.
 
 #### C.4 — Commits
 
@@ -296,7 +313,7 @@ Commit pattern: `refactor(<consumer-section>): consume I<Section>ServiceRead`
 
 If this is the first section being split (artifacts didn't exist in Phase 0.3), create them. Otherwise just add the section reference.
 
-1. `docs/sections/<Section>.md` — add under "Architecture":
+1. `$DOC` — the invariant doc resolved in 0.0, which for a moved section is `src/Sections/Humans.<Section>/Docs/<Section>.md`, NOT `docs/sections/`. Add under "Architecture":
    ```markdown
    - **Read/write interface split.** `I<Section>ServiceRead` (N methods: ...) is the cross-section read surface — only `<Section>Info` projections, no EF entities. `I<Section>Service : I<Section>ServiceRead` adds writes, cache invalidation, and <Section>-internal reads. External sections inject `I<Section>ServiceRead`. See `memory/architecture/section-read-write-split.md`.
    ```
@@ -390,7 +407,7 @@ These have shaped the skill above; called out here so the subagent doesn't relea
 
 - [`memory/architecture/section-read-write-split.md`](../../../memory/architecture/section-read-write-split.md) — the durable rule.
 - [`docs/sections/SECTION-TEMPLATE.md`](../../../docs/sections/SECTION-TEMPLATE.md) — "Cross-section read interface" block.
-- [`docs/sections/Teams.md`](../../../docs/sections/Teams.md) — reference implementation.
+- [`src/Sections/Humans.Teams/Docs/Teams.md`](../../../src/Sections/Humans.Teams/Docs/Teams.md) — reference implementation. Teams is G5, so its doc moved into the project; there is no `docs/sections/Teams.md`.
 - Teams PR [#678](https://github.com/peterdrier/Humans/pull/678) — first application, 23 files migrated, 3 audit cleanups, 1 audit deviation.
 - [`.claude/skills/audit-surface/`](../audit-surface/) — invoked in Phase 0.4 (lives in `~/.claude/skills/audit-surface/`, not this repo).
 - [`.claude/skills/reforge/SKILL.md`](../reforge/SKILL.md) — invoked in Phase 0.1 for caller enumeration.
