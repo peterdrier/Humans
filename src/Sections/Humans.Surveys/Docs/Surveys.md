@@ -134,7 +134,7 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 | BranchCombine | All, Any |
 | BranchOperator | Is, IsNot, Answered, NotAnswered |
 
-`LocalizedText` (culture → text) and `BranchCondition`/`BranchClause` are Survey-/Domain-owned value objects in `Humans.Domain/ValueObjects/`, all persisted as jsonb.
+`LocalizedText` (culture → text) and `BranchCondition`/`BranchClause` are section-owned value objects in `src/Sections/Humans.Surveys/Domain/`, all persisted as jsonb.
 
 ## Routing
 
@@ -212,18 +212,16 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 
 **Owning services:** `SurveyService`
 **Owned tables:** `surveys`, `survey_questions`, `survey_question_options`, `survey_invitations`, `survey_responses`, `survey_answers`
-**Status:** (A) Migrated — born §15-compliant (peterdrier/Humans issue nobodies-collective/Humans Survey section, 2026-06-04).
+**Status:** (A) Migrated — born §15-compliant (peterdrier/Humans issue nobodies-collective/Humans Survey section, 2026-06-04). Moved into its own project `src/Sections/Humans.Surveys` at G5 (nobodies-collective/Humans#866); everything but `Section` and `SurveysResource` is `internal` (HUM0034), and the only cross-section surface is the leaf project `Humans.Surveys.Contracts` with a single member — `ISurveyReminderSender.SendDueRemindersAsync`, which Base's `SendSurveyReminderJob` drives.
 
-- `SurveyService` lives in `Humans.Application.Services.Surveys` and never imports `Microsoft.EntityFrameworkCore`. Implements `ISurveyService`, `ISurveyServiceRead`, and `IUserDataContributor`.
-- `ISurveyRepository` (impl `Humans.Infrastructure/Repositories/Surveys/SurveyRepository.cs`, `internal sealed`) is the only code path that touches the six `survey_*` tables via `DbContext`. Registered as Singleton; uses `IDbContextFactory<SurveysDbContext>` (per-section DbContext, nobodies-collective/Humans#858) for per-call scoped contexts.
+- `SurveyService` lives in `Humans.Surveys.Services` and never imports `Microsoft.EntityFrameworkCore`. Implements `ISurveyService` and `IUserDataContributor`.
+- `ISurveyRepository` (impl `src/Sections/Humans.Surveys/Data/SurveyRepository.cs`, `internal sealed`) is the only code path that touches the six `survey_*` tables via `DbContext`. Registered as Singleton; uses `IDbContextFactory<SurveysDbContext>` (per-section DbContext, nobodies-collective/Humans#858; baseline migration `20260715105933_BaselineSurveys` under `Data/Migrations/`) for per-call scoped contexts.
 - **Aggregate-local navs kept:** `Survey.Questions ↔ SurveyQuestion.Survey`, `SurveyQuestion.Options ↔ SurveyQuestionOption.Question`, `SurveyResponse.Answers ↔ SurveyAnswer.Response`. All within Survey-owned tables, so these `.Include`s are legal inside the repository.
 - **Decorator decision — no caching decorator.** Admin-authored, low-traffic, per-invitee writes — not a hot bulk-read path (Feedback/Issues rationale). Registered as a plain Scoped service.
 - **Cross-domain navs — none.** Survey references Users/Teams by **bare `Guid` FK columns only** (the clean `FeedbackReport.AgentConversationId` precedent / `memory/architecture/no-cross-section-ef-joins.md`), with **no `[Obsolete]` navs and no cross-section EF FK constraints** — the older `Issue`/`Feedback`/`Camp` nav-stitching debt is not propagated. The service resolves display data via the cross-section read interfaces and returns DTOs.
 - **Cross-section calls — the public interfaces this section consumes:** `IUserServiceRead`, `ITeamServiceRead`, `ITicketServiceRead`, `IShiftView`, `IUserEmailService`, `IEmailService`, `IEmailMessageFactory`, `IAuditLogService`, `IDataProtectionProvider` (via `ISurveyInviteTokenProvider`).
-- **Architecture test** — `tests/Humans.Application.Tests/Architecture/SurveyArchitectureTests.cs` pins the section shape and the `ISurveyRepository` consumer allow-list; `ServiceBoundaryArchitectureTests.RepositoryOwners` maps `ISurveyRepository → Survey`. Build-time analyzers HUM0017/HUM0025 enforce single-owner table access and no cross-section repository injection.
+- **Architecture test** — `tests/Humans.Surveys.Tests/SurveysArchitectureTests.cs` pins the section shape and the `ISurveyRepository` consumer allow-list. Build-time analyzers HUM0017/HUM0025 enforce single-owner table access and no cross-section repository injection.
 
 ### Cross-section read interface
 
-| Read interface | Methods | Notes |
-|---|---:|---|
-| `ISurveyServiceRead` | 0 | Boundary established; empty in v1 — nothing cross-section consumes Survey yet. Methods returning DTOs are added when a consumer appears. |
+There is none. `ISurveyServiceRead` shipped empty in v1 and no other section ever consumed Surveys, so it was deleted at G5 — the assembly boundary is now the whole story, and the one consumer outside the section (Base's reminder job) sees `ISurveyReminderSender` and nothing else.

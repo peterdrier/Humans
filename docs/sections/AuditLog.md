@@ -21,16 +21,16 @@ Append-only system audit trail: who did what, when, to which entity. Used by eve
 
 - An **Audit Log Entry** is an append-only record of a single user-initiated or job-initiated action. Captures actor, action, entity type + id, free-text description, and timestamp; Google sync entries also carry resource id, role, sync source, success/error, and the user email at the time of the call.
 - **AuditAction** is the cross-section enum (`Humans.Domain.Enums.AuditAction`) of action names, stored as string in the DB via `HasConversion<string>()`. Every action name is a contract — sections use the shared enum so reviewers can grep "who writes TierApplicationApproved" across the whole codebase.
-- **Self-persisting audit** (design-rules §7a): `IAuditLogService.LogAsync` saves each entry immediately via `IAuditLogRepository.AddAsync`, which uses `IDbContextFactory<HumansDbContext>` to open a fresh per-call context and `SaveChangesAsync`. Callers do not need to `SaveChanges` to flush audit, and must not expect audit to roll back if a later business step fails.
+- **Self-persisting audit** (design-rules §7a): `IAuditLogService.LogAsync` saves each entry immediately via `IAuditLogRepository.AddAsync`, which uses `IDbContextFactory<AuditLogDbContext>` to open a fresh per-call context and `SaveChangesAsync`. Callers do not need to `SaveChanges` to flush audit, and must not expect audit to roll back if a later business step fails.
 - **Best-effort** — audit save failures are logged at Error and swallowed inside `AuditLogService.PersistAsync`. An audit hiccup never fails the business operation that called it.
 
 ## Data Model
 
 ### AuditLogEntry
 
-Append-only per design-rules §12. Enforced at two layers: the architecture test `AuditLogArchitectureTests.IAuditLogRepository_HasNoUpdateOrDeleteMethods` (no Update/Delete/Remove methods on `IAuditLogRepository`), and the Postgres triggers `prevent_audit_log_update` / `prevent_audit_log_delete` defined in migration `20260212152552_Initial` (which raise an exception on any UPDATE or DELETE against `audit_log`).
+Append-only per design-rules §12. Enforced at two layers: the architecture test `AuditLogArchitectureTests.IAuditLogRepository_HasNoUpdateOrDeleteMethods` (no Update/Delete/Remove methods on `IAuditLogRepository`), and the Postgres triggers `prevent_audit_log_update` / `prevent_audit_log_delete` (both calling `prevent_audit_log_modification()`, which raises an exception on any UPDATE or DELETE against `audit_log`). They were introduced in `20260212152552_Initial` and are re-created by the section's own baseline `Migrations/AuditLog/20260810193154_BaselineAuditLog` when `AuditLogDbContext` was peeled out (nobodies-collective/Humans#858).
 
-**Table:** `audit_log` (DbSet `AuditLogEntries`)
+**Table:** `audit_log` (DbSet `AuditLogEntries`, `AuditLogDbContext`, history `__EFMigrationsHistory_AuditLog`)
 
 | Property | Type | Purpose |
 |----------|------|---------|
@@ -95,7 +95,7 @@ All Audit Log routes are owned by `AuditLogController` (`[Route("AuditLog")]`).
 
 `AuditLogController` injects `IAuditViewerService` — no controller touches `IAuditLogService` or any repository directly.
 
-Note: `BoardController.Index` still consumes `IAuditViewerService.GetRecentAsync(15)` for the dashboard activity widget. That is widget consumption from another section's service, not route ownership. AuditLog does not own any Board routes.
+Note: `AdminController.Index` consumes `IAuditViewerService.GetRecentAsync(8)` for the `/Admin` dashboard activity widget. That is widget consumption from another section's service, not route ownership. AuditLog owns no Admin routes.
 
 ## Actors & Roles
 
@@ -110,8 +110,8 @@ No one reads audit entries anonymously. The `/AuditLog` dashboard is gated to Bo
 ## Invariants
 
 - Audit entries are append-only. `IAuditLogRepository` exposes `AddAsync` and `GetXxxAsync` — **no** `UpdateAsync`, **no** `DeleteAsync`, **no** `RemoveAsync`. Enforced by `AuditLogArchitectureTests.IAuditLogRepository_HasNoUpdateOrDeleteMethods`.
-- The `audit_log` table itself rejects UPDATE and DELETE at the database layer via the `prevent_audit_log_update` and `prevent_audit_log_delete` Postgres triggers (defined in migration `20260212152552_Initial`). No application path can mutate or delete an existing row.
-- `LogAsync` / `LogGoogleSyncAsync` are self-persisting — each call routes through `AuditLogRepository.AddAsync`, which opens a fresh `DbContext` via `IDbContextFactory<HumansDbContext>`, adds the entry, and calls `SaveChangesAsync`. Callers do not flush audit.
+- The `audit_log` table itself rejects UPDATE and DELETE at the database layer via the `prevent_audit_log_update` and `prevent_audit_log_delete` Postgres triggers (created by `Migrations/AuditLog/20260810193154_BaselineAuditLog`). No application path can mutate or delete an existing row.
+- `LogAsync` / `LogGoogleSyncAsync` are self-persisting — each call routes through `AuditLogRepository.AddAsync`, which opens a fresh `DbContext` via `IDbContextFactory<AuditLogDbContext>`, adds the entry, and calls `SaveChangesAsync`. Callers do not flush audit.
 - Audit is called **after** the business save, never before (design-rules §7a). A business rollback never leaves a ghost audit row because audit hasn't written yet.
 - Audit commits separately from the business change. The rare failure mode is "business saved, audit did not" — logged loudly, detectable by reconciling row counts, and strictly better than "audit silently vanishes".
 - Audit save failures are swallowed after a log at Error inside `AuditLogService.PersistAsync`. The audit `LogAsync` overloads do not throw back to the caller.
@@ -153,10 +153,11 @@ No other cross-section writes from this section outward. Audit is a sink.
 **Status:** Fully aligned (2026-05 /section-align run). Original migration: nobodies-collective/Humans#552.
 
 - `AuditLogService` lives in `Humans.Application.Services.AuditLog/` and depends only on Application-layer abstractions (no `DbContext`, no `IMemoryCache`).
-- `IAuditLogRepository` (impl `Humans.Infrastructure/Repositories/AuditLog/AuditLogRepository.cs`, sealed) is the only file that touches `DbContext.AuditLogEntries` — confirmed by source: no other repository references the `AuditLogEntries` DbSet. Uses `IDbContextFactory<HumansDbContext>` with short-lived contexts per call.
+- `IAuditLogRepository` (impl `Humans.Infrastructure/Repositories/AuditLog/AuditLogRepository.cs`, sealed) is the only file that touches `DbContext.AuditLogEntries` — confirmed by source: no other repository references the `AuditLogEntries` DbSet. Uses `IDbContextFactory<AuditLogDbContext>` with short-lived contexts per call.
 - **Decorator decision — no caching decorator (§15 Option A).** Writes are scattered across every section (~96 call sites at migration time); reads are admin-only and already filtered server-side by index. No benefit from a section-owned cache.
 - **Predicate-pushed reads (sanctioned exception to `no-linq-at-db-layer`).** Unlike most sections where in-memory filtering is preferred, `IAuditLogRepository` keeps predicate-pushed query methods (`GetByUserAsync`, `GetGoogleSyncByUserAsync`, `GetFilteredAsync`, `GetByResourceAsync`, etc.) rather than exposing a `GetAll().Where(...)` surface. Reason: `audit_log` is a large append-only table with ~96 writers, indefinite retention, and no ceiling on row count — loading all rows into RAM for in-memory filtering does not scale here. The section doc explicitly justifies this exception.
 - **Append-only enforcement:** two-layer — the architecture test `AuditLogArchitectureTests.IAuditLogRepository_HasNoUpdateOrDeleteMethods` reflects over `IAuditLogRepository` and fails the build if any `Update*` / `Delete*` / `Remove*` method is added; the Postgres triggers `prevent_audit_log_update` and `prevent_audit_log_delete` enforce the same constraint at the database.
+- **Own DbContext (#858):** `AuditLogDbContext` (`src/Humans.Infrastructure/Data/AuditLogDbContext.cs`) maps only `audit_log`, migrates under `Migrations/AuditLog/` against `__EFMigrationsHistory_AuditLog`, and carries the immutability triggers in its baseline. The section stayed in Base — the peel was the DbContext, not a G5 project move.
 - **Cross-domain navs on the entity:** `ActorUserId` and `ResourceId` are bare cross-section Guid columns — no FK constraint, no nav property (all 54 cross-section FK constraints were cut in nobodies-collective/Humans#992; the last cross-section EF navs were stripped in #996). Display-name lookups for actors and subjects are resolved in-memory inside `AuditViewerService` via `IUserServiceRead.GetUserInfosAsync` (returns `Profile.BurnerName` per `memory/architecture/burnername-is-the-display-name.md`); team names are resolved via `ITeamServiceRead.GetTeamsAsync` (filtered in memory to the requested ids); resource names are resolved via `ITeamResourceService.GetResourceNamesByIdsAsync`.
 
 ### Touch-and-clean guidance

@@ -1,14 +1,12 @@
 <!-- freshness:triggers
-  src/Humans.Web/Views/Campaign/**
+  src/Sections/Humans.Campaigns/Controllers/**
+  src/Sections/Humans.Campaigns/Services/**
+  src/Sections/Humans.Campaigns/Domain/**
+  src/Sections/Humans.Campaigns/Data/Configurations/**
+  src/Sections/Humans.Campaigns/Views/**
   src/Humans.Web/Views/Unsubscribe/**
-  src/Humans.Web/Controllers/CampaignController.cs
   src/Humans.Web/Controllers/UnsubscribeController.cs
-  src/Humans.Application/Services/Campaigns/**
   src/Humans.Application/Services/Users/UnsubscribeService.cs
-  src/Humans.Domain/Entities/Campaign.cs
-  src/Humans.Domain/Entities/CampaignCode.cs
-  src/Humans.Domain/Entities/CampaignGrant.cs
-  src/Humans.Infrastructure/Data/Configurations/Campaigns/**
 -->
 <!-- freshness:flag-on-change
   Campaign lifecycle (Draft/Active/Completed), code import, wave send, grant assignment, unsubscribe flow, and My Codes profile section. Review when campaign views, services, or entities change.
@@ -20,15 +18,16 @@
 
 Campaigns distribute individualised codes to humans — for example, presale ticket codes for a partner event. Each code is unique, belongs to exactly one campaign, and is assigned to at most one human.
 
-A campaign bundles three things: the **codes** (imported in bulk or generated through the ticket vendor), the **grants** that link a code to a human, and the **email waves** that deliver those codes. You can always look up your codes on your own profile, and anyone can opt out of campaign emails via the unsubscribe link in every send.
+A campaign bundles three things: the **codes** (imported in bulk or generated through the ticket vendor), the **grants** that link a code to a human, and the **email waves** that deliver those codes. You can always look up your codes on your own profile. Campaign emails carry an unsubscribe link like every other send, but `Campaign Codes` is an always-on category — a code you have been granted always reaches you.
 
 ## Key pages at a glance
 
 - **My codes** — a section on your profile (`/Profile/Me`) listing every campaign grant assigned to you
-- **Unsubscribe** (`/Unsubscribe/{token}`) — public, no-login page to opt out of all future campaign emails
+- **Unsubscribe** (`/Unsubscribe/{token}`) — public, no-login page reached from the unsubscribe link in any email; hands you your communication preferences
 - **Campaigns list** (`/Campaigns/Admin`) — every campaign with its status and code and grant counts
 - **Campaign detail** (`/Campaigns/Admin/{id}`) — stats (total codes, available, sent, failed, redeemed) and the grant table; entry point for Import Codes, Generate Codes (vendor), Activate, Send Wave, Complete, Resend, and Retry All Failed
 - **Create campaign** (`/Campaigns/Admin/Create`) — form for title, description, email subject, email body template (markdown, supports `{{Code}}` and `{{Name}}`), and optional Reply-To address
+- **Edit campaign** (`/Campaigns/Admin/Edit/{id}`) — the same fields as Create, editable at any status
 - **Import codes** — CSV upload for code values, available on Draft and Active campaigns
 - **Generate codes** — vendor-issued discount codes (count, type, value), Draft campaigns only; available to TicketAdmin and Admin
 - **Send wave** (`/Campaigns/Admin/{id}/SendWave`) — targets a single team, assigns free codes to eligible humans, and queues the emails
@@ -47,7 +46,9 @@ When an Admin sends a wave that includes you, the code arrives by email to your 
 
 ### Unsubscribe from campaign emails
 
-Click the unsubscribe link in any campaign email. It takes you to `/Unsubscribe/{token}` — public, no login needed. New category-aware tokens redirect you to the public communication-preferences page where you can toggle which categories you receive; legacy campaign-only tokens show a confirmation page where you POST to confirm. Either path flips your `Campaign Codes` (or, for legacy tokens, `Marketing`) preference to opted-out and excludes you from future wave sends. RFC 8058 one-click unsubscribe is also supported via the `List-Unsubscribe` header. Unsubscribing does not remove codes already granted to you, and it only affects future campaign emails.
+You cannot. `Campaign Codes` is an always-on category, like `System` — a code granted to you is always delivered.
+
+The unsubscribe link is still in the footer of every campaign email, and it works: `/Unsubscribe/{token}` is public, no login needed. New category-aware tokens hand you the public communication-preferences page, where `Campaign Codes` shows as locked on and everything else — Marketing, Governance, Ticketing, and so on — is yours to toggle. Legacy campaign-only tokens show a confirmation page; confirming flips your `Marketing` preference to opted-out. RFC 8058 one-click unsubscribe works the same way via the `List-Unsubscribe` header.
 
 ## As a Board member / Admin
 
@@ -67,7 +68,9 @@ Once at least one code is loaded, activate the campaign. It moves from **Draft**
 
 ### Send a wave
 
-On an Active campaign, choose Send Wave and pick a target [team](Glossary.md#team). The system collects active members of that team, excludes anyone already granted a code on this campaign or opted out of the `Campaign Codes` category, and matches the rest one-to-one with free codes ordered by `ImportOrder` so the batch is reproducible. Each match creates a grant and queues a delivery through the email outbox; recipients also receive an in-app `Campaign received` notification. Run multiple waves as more humans become eligible.
+On an Active campaign, choose Send Wave and pick a target [team](Glossary.md#team). Picking a team shows a **Preview** first — eligible humans, how many were excluded as already granted, codes available, and codes left after the send — and the confirm button only appears when there is at least one eligible human and enough codes to cover them all. Confirming collects everyone currently on that team, excludes anyone already granted a code on this campaign, and matches the rest one-to-one with free codes ordered by import order so the batch is reproducible. Each match creates a grant and queues a delivery through the email outbox; recipients also receive an in-app `Campaign received` notification. Run multiple waves as more humans become eligible.
+
+(The preview's "Unsubscribed (excluded)" row is always zero — `Campaign Codes` cannot be opted out of.)
 
 ### Watch delivery and redemption
 
@@ -79,5 +82,5 @@ When a campaign is done, mark it Completed. No further waves can be sent.
 
 ## Related sections
 
-- [Profiles](Profiles.md) — the My Codes list lives on your profile; opt-out is managed from Communication Preferences (the legacy `UnsubscribedFromCampaigns` flag is retained for GDPR export but no longer the active gate)
-- [Onboarding](Onboarding.md) — only active, non-suspended humans on targeted teams are eligible for waves
+- [Profiles](Profiles.md) — the My Codes list lives on your profile; the unsubscribe link in a campaign email lands on Communication Preferences, where `Campaign Codes` is locked on (the legacy `UnsubscribedFromCampaigns` flag is retained for GDPR export but no longer the active gate)
+- [Teams](Teams.md) — a wave targets one team; everyone who has not left it is eligible

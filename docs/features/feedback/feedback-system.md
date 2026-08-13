@@ -41,6 +41,7 @@ Every creation path below was deleted: the floating widget item and its modal, `
 - Status/category filtering
 - Detail view with full description, screenshot, reporter link, timestamps
 - Update status (Open/Acknowledged/Resolved/Won't Fix)
+- Assign a report to a user and/or a team
 - Link GitHub issue number
 - Conversation thread with bidirectional messaging (see US-27.5)
 - Nav badge on "Feedback" link showing count of actionable items (reports needing admin reply)
@@ -56,6 +57,7 @@ Every creation path below was deleted: the floating widget item and its modal, `
 - `GET /api/feedback/{id}/messages` — list conversation messages
 - `POST /api/feedback/{id}/messages` — post a message to the conversation thread
 - `PATCH /api/feedback/{id}/status` — update status (accepts string enum names)
+- `PATCH /api/feedback/{id}/assignment` — set assignee user and/or team (either may be null to clear)
 - `PATCH /api/feedback/{id}/github-issue` — link GitHub issue
 - All endpoints require `X-Api-Key` header (configured via `FEEDBACK_API_KEY` env var)
 - 503 if API key not configured, 401 if key invalid
@@ -93,7 +95,9 @@ See `docs/architecture/data-model.md` — `FeedbackReport` and `FeedbackMessage`
 
 **Table:** `feedback_reports`
 
-Key fields: Id, UserId, Category (enum→string), Description, PageUrl, UserAgent, AdditionalContext (auto-populated with user roles at submission), Screenshot* (FileName/StoragePath/ContentType), Status (enum→string), GitHubIssueNumber, LastReporterMessageAt, LastAdminMessageAt, CreatedAt, UpdatedAt, ResolvedAt, ResolvedByUserId.
+Key fields: Id, UserId, Category (enum→string), Description, PageUrl, UserAgent, AdditionalContext (auto-populated with user roles at submission), Screenshot* (FileName/StoragePath/ContentType), Status (enum→string), Source (`FeedbackSource`: UserReport / AgentUnresolved, enum→string with an out-of-range EF sentinel), GitHubIssueNumber, AgentConversationId (bare Guid, no EF FK), AssignedToUserId, AssignedToTeamId (both bare Guids, no nav), LastReporterMessageAt, LastAdminMessageAt, CreatedAt, UpdatedAt, ResolvedAt, ResolvedByUserId.
+
+`Source` and `AgentConversationId` are vestigial **for new rows**: the agent's `route_to_feedback` auto-create flow is gone and no creation path remains, so nothing writes `AgentUnresolved` any more. Existing databases still hold historical rows with `Source = AgentUnresolved` and a populated `AgentConversationId`, and those stay queryable through the Feedback admin filter — do not assume `Source == UserReport` when reading.
 
 Removed fields (from previous version): `AdminNotes`, `AdminResponseSentAt`.
 
@@ -115,6 +119,7 @@ As shipped since #977 — the policy sits on `FeedbackController` itself, so eve
 | `GET /Feedback/{id}` | `[Authorize(Policy = AdminOnly)]` |
 | `POST /Feedback/{id}/Message` | `[Authorize(Policy = AdminOnly)]` |
 | `POST /Feedback/{id}/Status` | `[Authorize(Policy = AdminOnly)]` |
+| `POST /Feedback/{id}/Assignment` | `[Authorize(Policy = AdminOnly)]` |
 | `POST /Feedback/{id}/GitHubIssue` | `[Authorize(Policy = AdminOnly)]` |
 | `GET /api/feedback` | API key (`X-Api-Key` header) |
 | `* /api/feedback/*` | API key (`X-Api-Key` header) |
@@ -131,12 +136,14 @@ As shipped since #977 — the policy sits on `FeedbackController` itself, so eve
 | `GET /Feedback/{id}` | FeedbackController | Detail |
 | `POST /Feedback/{id}/Message` | FeedbackController | PostMessage |
 | `POST /Feedback/{id}/Status` | FeedbackController | UpdateStatus |
+| `POST /Feedback/{id}/Assignment` | FeedbackController | UpdateAssignment |
 | `POST /Feedback/{id}/GitHubIssue` | FeedbackController | SetGitHubIssue |
 | `GET /api/feedback` | FeedbackApiController | List |
 | `GET /api/feedback/{id}` | FeedbackApiController | Get |
 | `GET /api/feedback/{id}/messages` | FeedbackApiController | GetMessages |
 | `POST /api/feedback/{id}/messages` | FeedbackApiController | PostMessage |
 | `PATCH /api/feedback/{id}/status` | FeedbackApiController | UpdateStatus |
+| `PATCH /api/feedback/{id}/assignment` | FeedbackApiController | UpdateAssignment |
 | `PATCH /api/feedback/{id}/github-issue` | FeedbackApiController | SetGitHubIssue |
 
 Removed routes: `POST /Feedback` (Submit, removed by #977); and from an earlier version, `PATCH /api/feedback/{id}/notes`, `POST /api/feedback/{id}/respond`, and all `/Admin/Feedback/*` routes.

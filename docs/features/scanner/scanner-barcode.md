@@ -74,7 +74,7 @@ Phase 1 stands up the section (`Scanner`) as its own top-level nav area because 
 
 ## Follow-ups (Separate Issues)
 
-- TicketTailor API verification — given a decoded value, ask TicketTailor whether the ticket is valid, refunded, already checked in, etc.
-- Match decoded value to the local `TicketAttendee` row and show the human's details inline.
+- **Shipped as `/Scanner/Tickets`:** matching a decoded (or manually typed) value against the locally-synced attendee rows and rendering the human's details inline, including door context — early-entry eligibility and sources, event check-in timestamp, pending consent documents, and a time-sorted "provides" list. Still read-only: it renders a card and writes nothing. See [`src/Sections/Humans.Scanner/Docs/Scanner.md`](../../../src/Sections/Humans.Scanner/Docs/Scanner.md).
+- TicketTailor API verification — given a decoded value, ask TicketTailor whether the ticket is valid, refunded, already checked in, etc. (`/Scanner/Tickets` reads the local sync, not the vendor API.)
 - Offline mode / scan queue for poor-connectivity environments.
 - If a check-in flow is ever needed, it's a different tool from this one.

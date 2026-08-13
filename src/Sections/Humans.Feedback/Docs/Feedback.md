@@ -10,7 +10,7 @@
 > **Retired and closed to new input (nobodies-collective/Humans#977).** Feedback was
 > superseded by [Issues](../../Humans.Issues/Docs/Issues.md) — same shape (bug/feature/question, screenshots,
 > reporter↔handler thread) but with role-routed triage. There is **no creation path
-> left**: no widget, no `POST /Feedback`, no `IFeedbackService` create method, no
+> left**: no widget, no `POST /Feedback`, no create method on `FeedbackService`, no
 > `IFeedbackRepository.AddReportAsync`. What survives is a **read-and-triage surface
 > over the historical rows, gated on `PolicyNames.AdminOnly`**. Existing
 > `feedback_reports` / `feedback_messages` rows are untouched and still exportable
@@ -105,7 +105,7 @@ There is no per-message admin/reporter flag — admin-vs-reporter is derived by 
 | Actor | Capabilities |
 |-------|--------------|
 | Admin | The **only** human actor. View all historical reports at `/Feedback` and `/Feedback/{id}`, update status, assign to humans and/or teams, link GitHub issues, and reply on any report (replies queue an email and dispatch an in-app notification to the reporter). Every action is gated by the controller-level `PolicyNames.AdminOnly`. |
-| API (key auth) | List, get, post messages, update status, update assignment, set GitHub issue via `/api/feedback` (no user session required; `ApiKeyAuthFilter` enforces the key). No report-creation endpoint. |
+| API (key auth) | List, get, post messages, update status, update assignment, set GitHub issue via `/api/feedback` (no user session required; the section's own `FeedbackApiKeyAuthFilter`, over the `FeedbackApi` config section, enforces the key). No report-creation endpoint. |
 
 `RoleNames.FeedbackAdmin` still exists as an assignable role (it appears on the Staff page and in the Guide, and still admits the holder to the `/Admin` shell via `AnyAdminRole`), but it **no longer grants any Feedback access**. Its former policy `PolicyNames.FeedbackAdminOrAdmin` and role group `RoleGroups.FeedbackAdminOrAdmin` were deleted with the lockdown.
 
@@ -115,7 +115,7 @@ There is no per-message admin/reporter flag — admin-vs-reporter is derived by 
 - **No code path creates a feedback report.** There is no service, repository, controller, or view component that writes a new `FeedbackReport` row.
 - Feedback status flows Open → Acknowledged → Resolved or WontFix; transitioning out of a terminal status (Resolved/WontFix) clears `ResolvedAt` and `ResolvedByUserId`.
 - Only Admin can see feedback reports — including a report's own reporter, who has no route into the section any more.
-- Every message posted through `IFeedbackService.PostMessageAsync` is an admin reply: it stamps `LastAdminMessageAt`, emails the reporter, and dispatches an in-app notification. Reporter messages exist only on historical rows.
+- Every message posted through `FeedbackService.PostMessageAsync` is an admin reply: it stamps `LastAdminMessageAt`, emails the reporter, and dispatches an in-app notification. Reporter messages exist only on historical rows.
 - "Needs reply" is derived: true when the reporter has posted a message more recent than any admin reply (`LastReporterMessageAt > LastAdminMessageAt`) or when the report is still Open and no admin has ever replied. The nav-badge count uses the same rule and excludes Resolved/WontFix.
 - A report can optionally be assigned to a human and/or a team. Both assignments are independent and nullable.
 - Status changes and assignment changes are audit-logged via `AuditAction.FeedbackStatusChanged` and `AuditAction.FeedbackAssignmentChanged`. API-initiated changes are logged with actor `"API"`.
@@ -144,7 +144,7 @@ There is no per-message admin/reporter flag — admin-vs-reporter is derived by 
 - **Audit Log:** `IAuditLogService.LogAsync` — status and assignment changes (`AuditAction.FeedbackStatusChanged`, `AuditAction.FeedbackAssignmentChanged`).
 - **Caching:** the actionable badge count is cached inline in `FeedbackService.GetActionableCountAsync` (`CacheKeys.FeedbackBadgeCount`, 2-min TTL, Static) and invalidated via `INavBadgeCacheInvalidator` whenever the count could have changed.
 - **GDPR:** implements `IUserDataContributor` to export the reporter's feedback reports and message contents under `GdprExportSections.FeedbackReports`.
-- **Agent:** `AgentConversationId` is a plain FK column on `feedback_reports` (no EF FK constraint). Reports with `Source = AgentUnresolved` originate from the agent's retired `route_to_feedback` tool. Transcript resolution goes through the Agent section's services when needed. `IFeedbackService.GetOpenFeedbackIdsForUserAsync` still feeds `AgentUserSnapshotProvider`.
+- **Agent:** `AgentConversationId` is a plain FK column on `feedback_reports` (no EF FK constraint). Reports with `Source = AgentUnresolved` originate from the agent's retired `route_to_feedback` tool. Transcript resolution goes through the Agent section's services when needed. `IFeedbackServiceRead.GetOpenFeedbackIdsForUserAsync` still feeds `AgentUserSnapshotProvider`.
 
 ## Architecture
 
@@ -152,7 +152,7 @@ There is no per-message admin/reporter flag — admin-vs-reporter is derived by 
 **Owned tables:** `feedback_reports`, `feedback_messages`
 **Status:** (A) Migrated (peterdrier/Humans PR for issue nobodies-collective/Humans#549, 2026-04-22). Write-locked and admin-gated by nobodies-collective/Humans#977. Own project since G5 (nobodies-collective/Humans#866).
 
-- `FeedbackService` lives in `Humans.Feedback.Services` and depends only on Application-layer abstractions. It never imports `Microsoft.EntityFrameworkCore`. Implements `IFeedbackService`, `IUserDataContributor`, and `IUserMerge`.
+- `FeedbackService` lives in `Humans.Feedback.Services` and depends only on Application-layer abstractions. It never imports `Microsoft.EntityFrameworkCore`. Implements `IFeedbackServiceRead`, `IUserDataContributor`, and `IUserMerge` — there is no longer an `IFeedbackService`: the triage surface is the concrete `internal sealed FeedbackService` the section's own controllers inject, and only the two-method `Contracts/IFeedbackServiceRead.cs` leaves the section (Shell's nav badge and dashboard tile, and the Agent user snapshot).
 - `IFeedbackRepository` (impl `src/Sections/Humans.Feedback/Data/FeedbackRepository.cs`) owns the SQL surface. Registered as Singleton and uses `IDbContextFactory<FeedbackDbContext>` to create per-call scoped contexts, so the repository can be a long-lived singleton while EF state stays per-request.
 - **Aggregate-local navs kept:** `FeedbackReport.Messages ↔ FeedbackMessage.FeedbackReport`. Both sides live in Feedback-owned tables, so `.Include(f => f.Messages)` is legal inside the repository.
 - **Decorator decision — no caching decorator.** Feedback reports are per-user and admin-triaged, not a hot bulk-read path (same rationale as Governance / User).

@@ -3,6 +3,7 @@
   src/Humans.Web/Controllers/**
   src/Humans.Web/ViewComponents/**
   src/Humans.Web/Views/**
+  src/Humans.UI/**
   src/Sections/**
   Directory.Build.props
 -->
@@ -48,7 +49,6 @@ Do not make the controller the coordinator of:
 
 That is service work.
 
-<!-- wheat: docs/superpowers/specs/2026-04-30-account-merge-fold-redesign.md §Transaction model -->
 Cross-repository orchestrations that must commit atomically (e.g. `AccountMergeService`'s fold fan-out) wrap the calls in an ambient `TransactionScope` (`TransactionScopeAsyncFlowOption.Enabled`, `ReadCommitted`). Each repository still creates its own short-lived `DbContext` via `IDbContextFactory`; Npgsql auto-enlists those connections in the ambient scope, so the writes commit or roll back together without sharing a `DbContext` across repositories.
 
 ## Cross-Section FK Columns
@@ -102,7 +102,6 @@ Non-production stub implementations are preferred over scattered environment che
 
 ## Versioning
 
-<!-- wheat: docs/plans/2026-03-08-semantic-versioning-design.md -->
 
 Version strings are derived from git tags via [MinVer](https://github.com/adamralph/minver) at build time — there is no hardcoded `Version` / `FileVersion` / `AssemblyVersion` in `Directory.Build.props`. Tag prefix is `v` (e.g., `v0.8.0`). Between tags MinVer emits `0.8.1-alpha.0.N` where N is commits-since-tag. The `+<hash>` suffix on `InformationalVersion` comes from the existing `SourceRevisionId` MSBuild target.
 
@@ -133,7 +132,7 @@ Never inline a custom format string at the call site (`ToString("d MMM yyyy")`, 
 Server-rendered Razor is the default rendering approach for all pages.
 
 <!-- wheat: docs/plans/2026-06-11-q3-ui-refactoring-plan.md §Strategic call -->
-A full SPA/Blazor rewrite was considered and rejected. The product is content- and form-centric on a single server, which is what server-rendered MVC is for; an SPA adds a build pipeline, a second state model, and an API layer the layering rules do not want. The consolidation surface is the existing ViewComponent layer (`src/Humans.UI/ViewComponents`, stable `<vc:>` call sites) — a component's template can be redesigned without touching its call sites, so a visual overhaul does not require re-opening the view corpus.
+A full SPA/Blazor rewrite was considered and rejected. The product is content- and form-centric on a single server, which is what server-rendered MVC is for; an SPA adds a build pipeline, a second state model, and an API layer the layering rules do not want. The consolidation surface is the existing ViewComponent layer (the section-agnostic ones in `src/Humans.UI/ViewComponents`, the rest in `src/Humans.Web/ViewComponents` or the owning section project; stable `<vc:>` call sites either way) — a component's template can be redesigned without touching its call sites, so a visual overhaul does not require re-opening the view corpus.
 
 Default rule:
 
@@ -150,7 +149,6 @@ Razor provides:
 
 ### View Components vs Partials
 
-<!-- wheat: docs/specs/view-components.md §1, §4 -->
 
 A **view component fetches its own data**. A **partial is pure presentation** and takes a typed model. Choose by data-source ownership, not by reuse count.
 
@@ -167,7 +165,7 @@ Keep as a partial when the rendering is genuinely pure (badges, alerts, validati
 
 **Conventions:**
 
-- Class: `{Name}ViewComponent.cs` under `ViewComponents/`
+- Class: `{Name}ViewComponent.cs` under `ViewComponents/` — of `Humans.UI` if the component is section-agnostic, of the owning section project if it is not, `Humans.Web` otherwise. Section-project view components are discovered by `SectionViewComponentFeatureProvider` off the `[assembly: Section("…")]` marker.
 - View: `Views/Shared/Components/{Name}/Default.cshtml`
 - ViewModel: `{Name}ViewModel.cs` under `Models/`
 - Invocation: `<vc:{kebab-name} param="…">` tag helper or `@await Component.InvokeAsync("{Name}", new { param = value })`
@@ -193,17 +191,19 @@ All pages are server-rendered with Razor. The following use `fetch()` for the sp
 
 | File | Purpose | Exception type |
 |------|---------|----------------|
-| `Views/Shared/Components/HumanSearch/Default.cshtml` (`<vc:human-search>`) | Person picker (inline autocomplete) — canonical inline pattern, see `memory/architecture/person-search.md` | Search input |
-| `_HumanSearchResults.cshtml` | Person search results (page-style cards) — canonical page pattern, see `memory/architecture/person-search.md` | Search results |
-| `_VolunteerSearchScript.cshtml` | Volunteer search autocomplete (shift-volunteer, exempt from person-search consolidation) | Search input |
-| `_TeamGoogleAndParentFields.cshtml` | Google resource dropdown on team change | Dynamic form field |
-| `ShiftAdmin/Index.cshtml` | Shift volunteer search + tag creation | Search input + inline action |
-| `Notifications/Index.cshtml` | Dismiss/mark-read without reload | Progressive enhancement |
-| `Feedback/Index.cshtml` | Master-detail panel loading | Progressive enhancement |
-| `Google/Sync.cshtml` | Tab content loaded via Razor partial (slow Google API) | Partial-via-AJAX |
-| `Scanner/Tickets.cshtml` (`js/scanner/tickets.js`) | Ticket card loaded via Razor partial (`_TicketCard`) on barcode hit | Partial-via-AJAX |
-| `Gate/Index.cshtml` (`js/gate/gate.js`) | Verdict card loaded via Razor partial (`_VerdictCard`) on barcode scan; decision POST returns the final card | Partial-via-AJAX |
-| `site.js` | Timezone, notification popup, profile popover | Utility |
+| `Humans.UI/Views/Shared/Components/HumanSearch/Default.cshtml` (`<vc:human-search>`) | Person picker (inline autocomplete) — canonical inline pattern, see `memory/architecture/person-search.md` | Search input |
+| `Humans.UI/Views/Shared/_HumanSearchResults.cshtml` | Person search results (page-style cards) — canonical page pattern, see `memory/architecture/person-search.md` | Search results |
+| `Humans.UI/Views/Shared/_VolunteerSearchScript.cshtml` | Volunteer search autocomplete (shift-volunteer, exempt from person-search consolidation) | Search input |
+| `Humans.Web/Views/Shared/_TeamGoogleAndParentFields.cshtml` | Google resource dropdown on team change | Dynamic form field |
+| `Humans.Web/Views/ShiftAdmin/Index.cshtml` | Shift volunteer search + tag creation | Search input + inline action |
+| `Humans.Notifications/Views/Notifications/Index.cshtml` | Dismiss/mark-read without reload | Progressive enhancement |
+| `Humans.Feedback/Views/Feedback/Index.cshtml` | Master-detail panel loading | Progressive enhancement |
+| `Humans.Web/Views/Google/Sync.cshtml` | Tab content loaded via Razor partial (slow Google API) | Partial-via-AJAX |
+| `Humans.Scanner/Views/Scanner/Tickets.cshtml` (`js/scanner/tickets.js`) | Ticket card loaded via Razor partial (`_TicketCard`) on barcode hit | Partial-via-AJAX |
+| `Humans.Gate/Views/Gate/Index.cshtml` (`js/gate/gate.js`) | Verdict card loaded via Razor partial (`_VerdictCard`) on barcode scan; decision POST returns the final card | Partial-via-AJAX |
+| `Humans.Web/wwwroot/js/site.js` | Timezone, notification popup, profile popover | Utility |
+
+Paths are relative to `src/` (`src/Sections/` for the section projects).
 
 When adding a new page that needs client-side data loading, add it to this list with justification. If a page has no entry here, it must be server-rendered.
 
@@ -267,11 +267,11 @@ Stop and reconsider when a change introduces any of these:
 **Service / persistence smells:**
 - a new service placed in `Humans.Infrastructure/Services/` instead of `Humans.Application/Services/`
 - a service that injects an application `DbContext` (`HumansDbContext` or any per-section context) directly instead of going through its owning repository
-- a service that injects another domain's repository or store (should call the other domain's `I{Section}Service` interface instead)
+- a service that injects another domain's repository (should call the other domain's `I{Section}ServiceRead` interface instead)
 - a `.Include()` that navigates across a domain boundary (Profile → User, Team → Profile, Camp → Profile, etc.)
 - a repository method that takes or returns another domain's type
 - a repository method that returns `IQueryable<T>`
-- inline `IMemoryCache.GetOrCreateAsync` inside a service method instead of a store + decorator
+- inline `IMemoryCache.GetOrCreateAsync` caching canonical domain data inside a service method instead of the §15 caching decorator (short-TTL request-acceleration counts are the sanctioned exception)
 - a cache is added without a clear invalidation owner
 - a cross-domain nav property being added to an entity (e.g., `TeamMember.User`)
 

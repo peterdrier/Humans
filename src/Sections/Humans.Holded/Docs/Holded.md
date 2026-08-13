@@ -1,3 +1,12 @@
+<!-- freshness:triggers
+  src/Sections/Humans.Holded/**
+  src/Sections/Humans.Holded.Contracts/**
+  src/Humans.Application/Interfaces/Holded/**
+  src/Humans.Infrastructure/Services/Holded/**
+  src/Humans.Infrastructure/Jobs/HoldedSyncJob.cs
+  src/Humans.Infrastructure/Jobs/HoldedExpenseOutboxJob.cs
+-->
+
 # Holded (section) — Section Invariants
 
 The **ledger mirror**: a local, re-derivable copy of Holded's daybook and chart of accounts,

@@ -19,7 +19,7 @@ return RedirectToAction(nameof(HumanDetail));
 await _auditLog.LogAsync("Teem", ...);
 
 // CORRECT — constants catch typos at compile time
-await _auditLog.LogAsync(AuditLogEntityTypes.Team, ...);
+await _auditLog.LogAsync(AuditEntityTypes.Team, ...);
 ```
 
 **Applies to:** `RedirectToAction`/`RedirectToPage` targets, `TempData`/`ViewData` keys, `IsInRole()` role names, audit log entity types, claim types, and any other string that mirrors a code identifier.

@@ -106,7 +106,7 @@ As a nonprofit operating in Spain and the EU, Nobodies Collective must comply wi
 LegalDocument
 +-- Id: Guid
 +-- Name: string (256)
-+-- TeamId: Guid (FK -> Team) [required, FK only — no navigation property]
++-- TeamId: Guid [required; bare cross-section column — no FK constraint, no navigation property]
 +-- GracePeriodDays: int (default 7)
 +-- GitHubFolderPath: string? (512)
 +-- CurrentCommitSha: string (40)
@@ -135,7 +135,7 @@ DocumentVersion
 ```
 ConsentRecord
 +-- Id: Guid
-+-- UserId: Guid (FK -> User)
++-- UserId: Guid [bare cross-section column — no FK constraint, no nav]
 +-- DocumentVersionId: Guid (FK -> DocumentVersion)
 +-- ConsentedAt: Instant
 +-- IpAddress: string (45)
@@ -221,9 +221,9 @@ For each document with GitHubFolderPath:
 ## GDPR Compliance
 
 ### Immutability Guarantee
-The `consent_records` table has PostgreSQL triggers that:
-- **Prevent DELETE**: `RAISE EXCEPTION 'Consent records cannot be deleted'`
-- **Prevent UPDATE**: `RAISE EXCEPTION 'Consent records cannot be modified'`
+The `consent_records` table has PostgreSQL triggers (`prevent_consent_record_delete`, `prevent_consent_record_update`) that:
+- **Prevent DELETE**: `RAISE EXCEPTION 'DELETE operations are not allowed on consent_records table. Consent records are immutable for audit trail purposes.'`
+- **Prevent UPDATE**: `RAISE EXCEPTION 'UPDATE operations are not allowed on consent_records table. Consent records are immutable for audit trail purposes.'`
 
 Only INSERT is allowed, ensuring complete audit trail integrity.
 

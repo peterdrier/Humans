@@ -107,7 +107,7 @@ Status is computed on the dashboard based on Volunteers team presence and profil
 | Status | Badge | Color | Meaning |
 |--------|-------|-------|---------|
 | Active | `bg-success` | Green | In Volunteers team, all consents current |
-| Pending | `bg-info` | Blue | Not yet in Volunteers team (awaiting consent check) |
+| Pending | `bg-info` | Blue | Not yet in Volunteers team (name + consents not yet reconciled by `SystemTeamSyncJob`) |
 | Inactive | `bg-warning` | Yellow | In Volunteers team but missing re-consent on updated docs |
 | Suspended | `bg-danger` | Red | Admin-suspended |
 | Rejected | `bg-danger` | Red | Consent check rejected by Admin |

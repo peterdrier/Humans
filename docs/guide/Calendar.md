@@ -1,9 +1,9 @@
 <!-- freshness:triggers
-  src/Humans.Application/Services/Calendar/**
-  src/Humans.Domain/Entities/CalendarEvent.cs
-  src/Humans.Domain/Entities/CalendarEventException.cs
-  src/Humans.Infrastructure/Data/Configurations/Calendar/**
-  src/Humans.Web/Controllers/CalendarController.cs
+  src/Sections/Humans.Calendar/Controllers/**
+  src/Sections/Humans.Calendar/Services/**
+  src/Sections/Humans.Calendar/Domain/**
+  src/Sections/Humans.Calendar/Data/Configurations/**
+  src/Sections/Humans.Calendar/Views/**
 -->
 <!-- freshness:flag-on-change
   Calendar event/recurrence rules, soft-delete, audit-log triggers, and the open-edit model — review when Calendar service/entities/controller change.
@@ -39,11 +39,13 @@ Use the month grid at `/Calendar`, the list at `/Calendar/List`, or the upcoming
 
 ### Add an event
 
-Go to `/Calendar/Event/Create`. Every event needs a title, a start time, and a team it belongs to. For timed events you also set an end time, and you can add a description, a location, and a link. For repeating events, set how often it repeats and the timezone (the default is Madrid time).
+Go to `/Calendar/Event/Create`. Every event needs a title and a team it belongs to — the team list covers every active, non-hidden team. Tick **All-day event** and you pick a start date and an end date (the end date is included, so a one-day event uses the same date twice); leave it unticked and you pick a start time and an optional end time instead. You can also add a description, a location, and a link. For repeating events, set how often it repeats and the timezone (the default is Madrid time).
 
 ### Edit or cancel
 
-Open an event and use edit or delete. Editing a repeating event changes every future occurrence. If you only want to change **one** occurrence of a repeating event — a different time or place that week — edit just that occurrence. To drop a single occurrence without affecting the rest, cancel that one. Deleted events disappear from the calendar but stay in the audit record.
+Open an event and use edit or delete. Editing a repeating event changes every future occurrence. If you only want to change **one** occurrence of a repeating event — a different time or place that week — use **Edit this occurrence** next to it in the upcoming list. To drop a single occurrence without affecting the rest, use **Cancel this occurrence**. Deleted events disappear from the calendar but stay in the audit record.
+
+Every event page ends with a change-history panel listing who created, edited, or cancelled what, so you can see the record without leaving the event.
 
 ## Related sections
 

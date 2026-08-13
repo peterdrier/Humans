@@ -9,14 +9,14 @@ When migrating a caller to a new service / read-model / interface, do NOT carry 
 
 **How to apply:**
 
-- `Profile.IsSuspended` (bool, `[Obsolete]`-flagged with `HUM_PROFILE_ISSUSPENDED`) → `Profile.State == ProfileState.Suspended`.
-- "Has this user filled in their name?" → `UserInfo.HasRequiredNameFields` on the read side. Write paths inline the three null/whitespace checks at the callsite (`ProfileService.SaveProfileAsync`, `SetSuspendedAsync`). The former `Profile.HasRequiredIdentityFields()` entity method has been removed — see [`derived-predicates-on-userinfo`](../architecture/derived-predicates-on-userinfo.md).
+- `Profile.IsSuspended` (bool; was `[Obsolete]`-flagged with `HUM_PROFILE_ISSUSPENDED`, since fully dropped via migration `DropProfileIsSuspended`) → `Profile.State == ProfileState.Suspended`. Worked example of the pattern this rule teaches: the column existed alongside the replacement for a dual-write window, then was removed once callers migrated.
+- "Has this user filled in their name?" → `UserInfo.HasRequiredNameFields` on the read side. Write paths inline the three null/whitespace checks at the callsite (`UserService.SaveProfileAsync`, `UserService.SuspendProfilesForMissingConsentAsync`) — both now live on `IUserService` after the `ProfileService` → `UserService` consolidation. The former `Profile.HasRequiredIdentityFields()` entity method has been removed — see [`derived-predicates-on-userinfo`](../architecture/derived-predicates-on-userinfo.md).
 - `User.DisplayName` for public rendering → `UserInfo.BurnerName` / `<vc:human>` (see [`burnername-is-the-display-name`](../architecture/burnername-is-the-display-name.md)).
 - Any `[Obsolete]` attribute or `#pragma warning disable HUM_*_OBSOLETE` you see while editing is a stop-sign for the line under it: replace it with the canonical successor, don't propagate it.
 - If you genuinely can't find a canonical replacement — STOP and ask. Don't invent one and don't suppress the obsolete warning.
 - Applies to tests too: when porting a test off the obsolete field, the test setup uses the new field. Don't seed Profile entities with the obsolete bool just because that's what the old test did.
 
-**Exceptions:** Identity / framework interop sites that must use the legacy `User.DisplayName` for the underlying Identity column (e.g. claims transformation, `UserManager.UpdateAsync`), and the State-derivation code itself in `ProfileService` that *writes* both the legacy bool and the new enum during the dual-write window.
+**Exceptions:** Identity / framework interop sites that must use the legacy `User.DisplayName` for the underlying Identity column (e.g. claims transformation, `UserManager.UpdateAsync`).
 
 **Related:**
 

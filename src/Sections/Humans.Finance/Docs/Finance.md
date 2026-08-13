@@ -49,7 +49,7 @@ Finance is the **treasurer's reality side** of the money story. Budget owns plan
 | Tax | decimal | EUR, raw (net of IVA − IRPF) |
 | Total | decimal | EUR, raw |
 | Currency | string(3) | Lowercase ISO; v1 only handles `eur` |
-| ApprovedAt | Instant? | Null = not approved → excluded from actuals |
+| IsApproved | bool? | `false` = still a Holded draft → excluded from actuals. Null = row predates the column and has not been re-synced; treated as not approved. |
 | TagsJson | string (jsonb) | Raw tag list from Holded |
 | BookedAccountId | string? | First product line's Holded account id |
 | BudgetCategoryId | Guid? | Attributed category (null = unmatched) |
@@ -101,13 +101,7 @@ Stored as string via `HasConversion<string>()`.
 | Account | Attributed via the line's booked Holded account |
 | Tag | Attributed via a normalized tag fallback |
 
-### HoldedSyncStatus
-
-| Value | Description |
-|-------|-------------|
-| Idle | Not currently running |
-| Running | Sync in progress |
-| Error | Last run threw; `LastError` populated |
+`HoldedDocSyncState.Status` is a plain string (`Idle` / `Running` / `Error`), not an enum — the `HoldedSyncStatus` enum moved to the Holded section with the ledger mirror.
 
 ## Routing
 
@@ -165,21 +159,18 @@ All routes are gated by `[Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]` 
 
 ## Invariants
 
-<!-- wheat: docs/superpowers/plans/2026-05-25-holded-finance-feature1-actuals.md §Task 7 / self-review -->
 - A purchase doc is attributed **as a whole, by its first product line's** booked account (plus the union of doc-level and line-level tags), and its full `Total` lands on that one category. A multi-line doc booked across several Holded accounts is not split; line-level attribution is a deliberate later refinement (`HoldedFinanceService.MapDoc`).
 - Actuals are keyed on the **calendar year** of the doc's Europe/Madrid date, matched against `BudgetYear.Year` parsed as an integer (`FinanceController` → `GetActualsForYearAsync` → `HoldedRepository.GetMatchedForYearAsync`). A budget year whose `Year` string is not a plain number, or that does not run January–December, shows no actuals.
 - Only `FinanceAdmin` or `Admin` may access any `/Finance/*` route (`[Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]` on `FinanceController`).
 - All budget mutations in `FinanceController` route through `IBudgetService` — the controller owns no Finance-domain tables beyond the Holded integration.
 - The sync job pulls all purchase docs from Holded each cycle (full-pull). Upsert is keyed on `HoldedDocId`; `CreatedAt` is preserved across re-syncs.
-<!-- wheat: docs/superpowers/specs/2026-04-26-holded-read-integration-design.md §Holded API findings -->
-- Full-pull is forced by a Holded API limitation (live probe, 2026-04-26): the purchase-documents endpoint's only date filters (`?starttmp`/`?endtmp`) filter on `accountingDate`, which is null on most real purchase docs, so there is no reliable incremental-sync key for purchase documents. `ListPurchaseDocumentsPageAsync` therefore takes only `page`/`limit`. (The dailyledger endpoint is different — its `starttmp`/`endtmp` window sweep works and is used by the creditor-ledger sync.)
+- Full-pull is forced by a Holded API limitation (live probe, 2026-04-26): the purchase-documents endpoint's only date filters filter on `accountingDate`, which is null on most real purchase docs, so there is no reliable incremental-sync key for purchase documents. `ListPurchaseDocumentsAsync` therefore takes no date window at all — it walks `/api/v2/purchases` page by page internally under a 200-page safety cap. Approval state comes from a second full sweep, `ListDraftPurchaseIdsAsync` (`?approval_status=draft`): a doc absent from that set is marked `IsApproved`, so the set must be complete or a draft leaks into the actuals — the client throws rather than dropping an id-less row.
 - Attribution runs every sync. Fixing an account mapping or tag in Holded takes effect on next sync or via the manual "Sync Now" button.
 - Attribution order: **Account** (booked line account id) → **Tag** (normalized, dash-free) → **Unmatched**. First match wins.
 - Tags are normalized: lowercase, all non-alphanumeric characters stripped (Holded strips separators like dashes from tag values).
 - Provisioning is additive only. Retiring a map entry sets `IsActive = false`; it does not delete the Holded account.
-- `HoldedExpenseDoc.Total` is included in category-level actuals only when `ApprovedAt IS NOT NULL`.
-- Holded API key read from env var `HOLDED_API_KEY` only — never `appsettings.json`.
-<!-- wheat: docs/superpowers/specs/2026-05-25-holded-finance-integration-design.md §3 Link & data -->
+- `HoldedExpenseDoc.Total` is included in category-level actuals only when `IsApproved = true` — set on sync as "not in Holded's draft list" (`Service.MapDoc`). Actuals are doc-derived rather than ledger-derived because the budget pages are gross/IVA-inclusive while a 629 balance is net, and ledger lines exist for drafts Holded has not approved.
+- Holded API key read from env var `HOLDED_API_KEY_V2` only — never `appsettings.json`.
 - The member ↔ creditor-account link resolves through the Holded contact's `supplierRecord.num` field, never by name matching. It is attempted **exactly once**, best-effort, during outbox processing after the payable exists (`ExpenseReportService` → `IHoldedClient.GetContactAsync`); a failure or a null `num` is logged, the null link is stored, and the outbox event is still marked processed so a created doc is never stranded as permanently-failed. **There is no automatic retry** — `SyncCreditorLedgerAsync` imports daybook lines but never re-resolves the contact — so after an initial miss the member stays unlinked until someone runs `POST /Finance/Creditors/Bind`, or a later report from the same member resolves it and backfills the member-level binding (nobodies-collective/Humans#972). `ListCreditorAccountsAsync` returns exactly these unresolved bindings as the `Unresolved` half of its result — they have no account row to sit on, so the account list alone cannot show them — and they render in their own card on `/Finance/Creditors`, making the manual step discoverable rather than silent.
 - A 400000xx account — and the Holded contact behind it — binds to **at most one member**. All three write paths test for a conflicting binding (`FindConflictingBinding`, on both the account number and the contact id: after the one-shot number resolution misses, a binding carries a contact id with a null `SupplierAccountNum`, which an account-number-only check cannot see). They differ in the remedy, because only one of them is a guess:
   - **`SetCreditorContactAsync`** (manual bind) — an admin picked the account, so the pick can be wrong: **refuse and write nothing** (nobodies-collective/Humans#974).
@@ -188,7 +179,7 @@ All routes are gated by `[Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]` 
 - The DB index on `SupplierAccountNum` is deliberately **non-unique**. A unique index would turn a data anomaly into a `DbUpdateException` inside unattended outbox drain — stranding a created Holded doc as permanently-failed — and would have to be created against production rows that may already collide. Enforcement lives in the service (`memory/architecture/db-enforcement-minimal.md`).
 - `ListCreditorAccountsAsync` returns **every** binding on an account (`HoldedCreditorAccountRow.Bindings`), not the first, and decides a binding's row **through the Holded contact id**, falling back to the stored `SupplierAccountNum` only for a contact Holded's list does not carry. Which 400000xx a contact holds is Holded's fact, and resolving through it does two jobs. A binding whose number never resolved reaches its row at all — keyed on the number alone the account renders "unbound" while a member in fact holds the contact behind it (the invisibility the #974 second guard's error message ran into), and such a binding could not be unbound from the page. And because the two columns are independent, bindings sharing a contact can carry numbers that disagree; the contact resolution lands them on one row, so the **contact-id half** of the invariant surfaces as a collision instead of two innocent-looking single-member rows. It depends on the live Holded contact list, so it degrades with the names when Holded is unreachable. `/Finance/Creditors` renders each bound member with an **Unbind** button (`POST /Finance/Creditors/Unbind` → `ClearCreditorContactAsync`) and sorts collisions to the top. Unbind removes the whole binding row rather than nulling `SupplierAccountNum`: a binding stripped of its number still carries the other member's Holded contact id, which merges their payables just as thoroughly. The member's next push re-resolves the contact from scratch.
 - **Unbind is durable against restoring another member's binding, not against re-deriving the member's own.** Deleting the row is not by itself enough: `ProcessHoldedCreateAsync` seeds the next push from the cleared member's prior report, which still carries whatever contact id and 400000xx were cached on it. The seed-refusal above is what closes that loop — after unbinding a wrong binding, the seed points at the other member's contact, is refused, and the member gets their own new Holded contact. A member's *own* contact still re-derives from their linked history on the next push; that is the documented lazy-seed self-heal and it restores the correct value, not a wrong one.
-- **Unbind holds against a push already in flight, in the steady state only.** `ProcessHoldedCreateAsync` spans several Holded calls, so the drain can be mid-push for tens of seconds while an admin clicks Unbind. `EnsureCreditorContactAsync` therefore writes nothing when the member already holds the contact it just PUT and the binding already carries its 400000xx: `UpsertContactAsync` returns the id it was given and `Source`/number come off the binding just read, so the only column that would change is `UpdatedAt`, which nothing reads — and writing it would resurrect a binding the admin cleared, from the copy read before they clicked. Not yet safe in general: a binding still missing its number, and `SetCreditorAccountNumAsync`, write real content and can still lose a concurrent delete (nobodies-collective/Humans#995 — the fix is an update-only repository write, not a version column; see [`no-concurrency-tokens`](../../memory/architecture/no-concurrency-tokens.md)).
+- **Unbind holds against a push already in flight, in the steady state only.** `ProcessHoldedCreateAsync` spans several Holded calls, so the drain can be mid-push for tens of seconds while an admin clicks Unbind. `EnsureCreditorContactAsync` therefore writes nothing when the member already holds the contact it just PUT and the binding already carries its 400000xx: `UpsertContactAsync` returns the id it was given and `Source`/number come off the binding just read, so the only column that would change is `UpdatedAt`, which nothing reads — and writing it would resurrect a binding the admin cleared, from the copy read before they clicked. Not yet safe in general: a binding still missing its number, and `SetCreditorAccountNumAsync`, write real content and can still lose a concurrent delete (nobodies-collective/Humans#995 — the fix is an update-only repository write, not a version column; see [`no-concurrency-tokens`](../../../../memory/architecture/no-concurrency-tokens.md)).
 - Creditor accounts are the `40000000`–`40000999` block (`CreditorAccountMin`/`Max`). Every read that draws on Holded's contact list must filter to it — Holded assigns a supplier number to *every* supplier contact, so an unfiltered list turns ordinary org vendors into bindable member creditor accounts. `SetCreditorContactAsync` validates the posted number against the block server-side — the filtered dropdown is not a gate.
 - **Unbound is a valid state, not an error.** A first-time submitter has no creditor contact until their first push; `EnsureCreditorContactAsync` creates it and `SetCreditorAccountNumAsync` records the assigned 400000xx. The bind control exists only for a *pre-existing* Holded contact the auto-create would duplicate. Unbound does **not** imply no contact: `holded_creditor_contacts` was created empty (no backfill), so a member linked before it existed carries a contact id on their older reports only. `ProcessHoldedCreateAsync` therefore seeds `EnsureCreditorContactAsync` from the member's most recent linked report when the report being pushed has no contact id of its own — a null seed makes the client POST a second contact and splits their payables. That push writes the missing binding, so the gap self-heals on first interaction rather than by data migration.
 - `ListCreditorAccountsAsync` reads the Holded contact list (`ListContactsAsync`) through a 2-minute `IMemoryCache` entry (design-rules §15 Option A, `CacheKeys.HoldedContacts`) rather than calling Holded live on every load — the 400000xx account **name** lives only in Holded, and the short TTL keeps a contact created today visible without a nightly-cache lag or a per-request call. `ListContactsAsync` itself paginates internally (walks `page` until an empty page returns), so the cached list is never silently truncated. It degrades to blank names when the Holded call fails — transport failure, a rejected key, or an unreadable body — rather than failing the page; unexpected exception types propagate.
@@ -204,7 +195,7 @@ All routes are gated by `[Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]` 
 ## Triggers
 
 - None in the Finance domain layer for the budget side. Budget mutations via `FinanceController` trigger Budget-section side effects (audit log entries written by `IBudgetService`).
-- When the sync job starts, `HoldedSyncState.SyncStatus` flips to `Running`. On success returns to `Idle` with `LastSyncAt` and `LastSyncedDocCount` updated. On exception goes to `Error` with `LastError` populated; next scheduled run retries.
+- When the sync job starts, `HoldedDocSyncState.Status` flips to `Running`. On success returns to `Idle` with `LastSyncAt` and `LastSyncedDocCount` updated. On exception goes to `Error` with `LastError` populated; next scheduled run retries.
 
 ## Cross-Section Dependencies
 
@@ -223,7 +214,7 @@ Budget never calls into Finance.
 **Owned repository:** `IHoldedRepository` / `Repository` (`Humans.Finance.Data`)  
 **Owned tables:** `holded_expense_docs`, `holded_category_map`, `holded_doc_sync_state`, `holded_creditor_contacts`  
 **Job:** `HoldedSyncJob` (cron `0 3 * * *`) — **stays in `Humans.Infrastructure/Jobs`.** Recurring jobs are named by concrete type in Shell's `UseHumansRecurringJobs` roll-call and there is no `ISection`-style discovery seam for them, so a job inside the section would have to be public to be scheduled. It reaches Finance through the contracts leaf like any other Base consumer.  
-**Migrations:** `20260715103643_BaselineFinance` — consolidated onto `FinanceDbContext` (its own history table, `__EFMigrationsHistory_Finance`) when Finance moved off the shared `HumansDbContext` (nobodies-collective/Humans#858); the earlier per-feature migration chain (`HoldedActuals`, `HoldedCreditorData`, `HoldedCreditorContact`, `HoldedLedgerSingleSource`) was squashed into this baseline  
+**Migrations:** `20260715103643_BaselineFinance` — consolidated onto `FinanceDbContext` (its own history table, `__EFMigrationsHistory_Finance`) when Finance moved off the shared `HumansDbContext` (nobodies-collective/Humans#858); the earlier per-feature migration chain (`HoldedActuals`, `HoldedCreditorData`, `HoldedCreditorContact`, `HoldedLedgerSingleSource`) was squashed into this baseline. Since then: `20260810195350_HoldedExpenseDocIsApproved` (swaps `ApprovedAt` for the nullable `IsApproved` flag) and `20260810204942_HoldedMirrorMovesToHoldedSection` (drops the ledger-mirror tables, which the Holded section now owns)  
 **Architecture tests:** `tests/Humans.Finance.Tests/FinanceArchitectureTests.cs`
 
 **Controllers.** `/Finance` is served by two controllers under one route prefix. `Humans.Finance.Controllers.FinanceController` owns the section's own eight actions — `HoldedAccounts`, `HoldedUnmatched`, `Creditors`, `CreditorStatement`, `Bind`, `Unbind`, `Provision`, `HoldedSync/Run`. The other 23 actions on the pre-G5 `FinanceController` were Budget CRUD (years, groups, categories, line items, ticketing projection, cash flow, audit log) and stayed in Shell as `BudgetAdminController`, keeping `[Route("Finance")]` so no URL moved. Moving them here would have put Budget's whole admin surface inside the Finance section and forced two Budget view models (`BudgetSlice`, `VatProjection`) down into Base to reach it. They reunite — or don't — at Budget's own G5.
@@ -239,8 +230,8 @@ Budget never calls into Finance.
 > - `PolicyNames.FinanceAdminOrAdmin` and `RoleNames.FinanceAdmin` — role + policy wired in `AuthorizationPolicyExtensions.cs`.
 > - `Domain/HoldedExpenseDoc.cs`
 > - `Domain/HoldedCategoryMap.cs`
-> - `Domain/HoldedSyncState.cs`
-> - `Domain/HoldedMatchStatus.cs`, `HoldedMatchSource.cs`, `HoldedSyncStatus.cs`
+> - `Domain/HoldedDocSyncState.cs`
+> - `Domain/HoldedMatchStatus.cs`, `HoldedMatchSource.cs`
 > - `Services/Service.cs`
 > - `Services/HoldedMatcher.cs`
 > - `../Humans.Finance.Contracts/IHoldedFinanceService.cs`
@@ -252,13 +243,12 @@ Budget never calls into Finance.
 > - EF migration `20260525163748_HoldedActuals` for all three Feature 1 Finance-owned tables
 >
 > **What exists (Feature 2 — ledger single-source):**
-> - `Domain/HoldedLedgerLine.cs` — the cached daybook line (everything derives from these)
 > - `Domain/HoldedCreditorContact.cs` — member → 400000xx binding (from #1021)
 > - `../Humans.Finance.Contracts/HoldedPaymentInfo.cs` — internal row shape (date / amount / document type) derived from debit lines; feeds `TotalPaid` / `LastPaymentDate`
 > - Ledger reads via `IHoldedService` (the mirror moved to the Holded section; sync is `SyncLedgerAsync` there)
 > - `IHoldedFinanceService.GetCreditorStatusAsync(int? supplierAccountNum)` / `GetCreditorLedgerAsync(int supplierAccountNum)` — Expenses→Finance read surface, derived from cached lines
 > - `IHoldedFinanceService.ListCreditorAccountsAsync` — returns `(Accounts, Unresolved)`; the `Unresolved` half is the bindings with no resolved 400000xx, surfaced on `/Finance/Creditors` for manual bind (nobodies-collective/Humans#972)
-> - `IHoldedClient.GetContactAsync`, `ListContactsAsync`, `ListDailyLedgerAsync`, `UpsertContactAsync` — Holded API surface (the chartofaccounts/payments calls were removed)
+> - `IHoldedClient.GetContactAsync`, `ListContactsAsync`, `ListLedgerEntriesAsync`, `UpsertContactAsync` — Holded API surface
 
 ### Feature 2 — creditor reads over the Holded section's mirror
 

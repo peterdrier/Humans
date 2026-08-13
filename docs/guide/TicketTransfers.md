@@ -3,7 +3,7 @@
   src/Humans.Web/Views/TicketTransferAdmin/**
   src/Humans.Web/Controllers/TicketTransferController.cs
   src/Humans.Web/Controllers/TicketTransferAdminController.cs
-  src/Humans.Web/ViewComponents/TicketStubViewComponent.cs
+  src/Humans.UI/ViewComponents/TicketStubViewComponent.cs
   src/Humans.Application/Services/Tickets/TicketTransferService.cs
   src/Humans.Application/Interfaces/Tickets/ITicketTransferService.cs
   src/Humans.Domain/Entities/TicketTransferRequest.cs

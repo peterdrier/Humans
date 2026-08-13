@@ -55,7 +55,7 @@ As an **Admin** I want to **see usage, spend, refusals, and Anthropic balance on
 
 ## Data Model
 
-Reference: `src/Humans.Domain/Entities/Agent*.cs`. Key entities: `AgentConversation`, `AgentMessage`, `AgentSettings`. Per-user rate-limit counters are in-memory (Singleton `IAgentRateLimitStore`), no DB table.
+Reference: `src/Sections/Humans.Agent/Domain/Agent*.cs`. Key entities: `AgentConversation`, `AgentMessage`, `AgentSettings`. Per-user rate-limit counters are in-memory (Singleton `IAgentRateLimitStore`), no DB table.
 
 Legacy: `FeedbackReport.Source` (`AgentUnresolved`) and `FeedbackReport.AgentConversationId` exist for historical rows from the previous server-side handoff. The Agent no longer writes them.
 
@@ -73,5 +73,5 @@ Tool call `route_to_issue` with `{title, category, description}` → dispatcher 
 ## Related Features
 
 - Issues system (`docs/features/issues/issues-system.md`) — handoff target via client-side modal pre-fill.
-- Legal documents (`docs/features/legal-documents.md`) — `agent-chat` slug renders the AI Terms at `/Legal/agent-chat`; linked from the Assistant panel composer footer.
+- Legal documents (`docs/features/legal-and-consent/legal-documents-consent.md`) — `agent-chat` slug renders the AI Terms at `/Legal/agent-chat`; linked from the Assistant panel composer footer.
 - GDPR export (`docs/features/global/gdpr-export.md`) — conversation/message data included.

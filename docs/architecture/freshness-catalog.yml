@@ -229,10 +229,15 @@ editorial_trees:
   - docs/architecture/code-review-rules.md
   - docs/architecture/conventions.md
   - docs/seed-data.md
+  # NOT memory/. Tried and reverted 2026-08-12: marking the atoms cost 865 lines
+  # (16% of that corpus) of trigger blocks sitting above each rule body, on files
+  # whose whole value is being terse. Stale symbol references in atoms get noticed
+  # and fixed when an agent goes to apply the rule — not worth a daily proactive check.
 
 # Files to exclude from both mechanical and editorial walks.
 ignore:
   - docs/sections/SECTION-TEMPLATE.md
+  - docs/sections/G5-SECTION-TEMPLATE.md
   - docs/architecture/maintenance-log.md
   - docs/architecture/tech-debt-*.md
   - docs/architecture/screenshot-maintenance.md

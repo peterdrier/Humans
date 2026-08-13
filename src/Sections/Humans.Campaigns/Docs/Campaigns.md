@@ -101,7 +101,6 @@ Stored as string (`HasConversion<string>()`, max length 20).
 - Wave allocation pulls available codes ordered by `CampaignCode.ImportOrder` so batch order is stable and reproducible.
 - Campaign emails are queued through the email outbox system. Each grant tracks the status and timestamp of the most recent delivery attempt; failed enqueues flip the single grant to `Failed` (the loop persists/enqueues one grant at a time so a mid-loop throw cannot orphan grants).
 - Humans opt out of campaign emails by setting `MessageCategory.CampaignCodes = opted-out` via the unsubscribe / communication-preferences flow. Opted-out humans are excluded from future wave sends. (Today `CampaignCodes` is an always-on category, so the gate is a no-op guard for a future opt-outable state.)
-<!-- wheat: docs/superpowers/specs/2026-03-14-email-outbox-campaigns-design.md §Template Substitution Security -->
 - Campaign template substitution (`{{Code}}`, `{{Name}}`) HTML-encodes every value via `System.Net.WebUtility.HtmlEncode` before insertion into `Campaign.EmailBodyTemplate` / `EmailSubject` — recipient display names are user-controlled and would otherwise be an HTML-injection vector. Placeholder matching uses `StringComparison.Ordinal`. The full substitution vocabulary is `{{Code}}` and `{{Name}}`; new placeholders must be added at the renderer with the same encoding guard.
 
 ## Negative Access Rules
@@ -131,14 +130,14 @@ Stored as string (`HasConversion<string>()`, max length 20).
 
 **Owning services:** `CampaignService`
 **Owned tables:** `campaigns`, `campaign_codes`, `campaign_grants`
-**Status:** (A) Migrated (peterdrier/Humans PR for issue nobodies-collective/Humans#546, 2026-04-22); own project since G5 (nobodies-collective/Humans#866).
+**Status:** (A) Migrated (peterdrier/Humans PR for issue nobodies-collective/Humans#546, 2026-04-22); own project since G5 (nobodies-collective/Humans#866). Everything but `Section` is `internal` (HUM0034); the cross-section surface is the leaf project `Humans.Campaigns.Contracts` — `ICampaignService`, `ICampaignServiceRead` and the code-tracking DTOs `TicketQueryService` reads.
 
 - `CampaignService` lives in `Humans.Campaigns.Services` and depends only on Application-layer abstractions.
 - `ICampaignRepository` (interface `src/Sections/Humans.Campaigns/Data/ICampaignRepository.cs`, impl `src/Sections/Humans.Campaigns/Data/CampaignRepository.cs`) is the only file that touches this section's tables via `DbContext`.
 - **Decorator decision — no caching decorator.** Admin-only, low write/read volume.
 - **Cross-section reads** route through `ITeamService.GetActiveTeamOptionsAsync` / `GetTeamMembersAsync`, `IUserEmailService.GetNotificationTargetEmailsAsync`, `IUserServiceRead.GetUserInfoAsync` / `GetUserInfosAsync` for display data, and `ICommunicationPreferenceService.IsOptedOutAsync` for opt-out filtering. Outbound email queueing goes through `IEmailService.SendAsync` with `IEmailMessageFactory.CampaignCode` (the outbox service owns the email_outbox_messages table).
-- **Cross-domain navs removed:** `Campaign.CreatedByUserId` and `CampaignGrant.UserId` are FK-only — no `CreatedByUser` / `User` nav property exists on either entity. `CampaignConfiguration` / `CampaignGrantConfiguration` wire the FK constraint via `HasOne<User>()` (shadow relationship) instead. All callers — including `TicketQueryService.GetCodeTrackingDataAsync` via `ICampaignService.GetCodeTrackingAsync` — resolve display names through `IUserService`. `CampaignGrant.OutboxMessages` (Email) is also gone — Email outbox rows reference the grant by bare FK only.
-- **Architecture test** — no dedicated `CampaignArchitectureTests.cs` exists. Cross-cutting architecture coverage (`HUM0024`, `HUM0021`, `HUM0009`) covers this section generically.
+- **Cross-domain navs removed:** `Campaign.CreatedByUserId` and `CampaignGrant.UserId` are bare Guid columns — no `CreatedByUser` / `User` nav property, and since G5 no DB-level FK constraint either: the section assembly cannot name `User`, so `CampaignConfiguration` / `CampaignGrantConfiguration` declare no relationship at all. All callers — including `TicketQueryService.GetCodeTrackingDataAsync` via `ICampaignService.GetCodeTrackingAsync` — resolve display names through `IUserService`. `CampaignGrant.OutboxMessages` (Email) is also gone — Email outbox rows reference the grant by bare FK only.
+- **Architecture test** — `tests/Humans.Campaigns.Tests/Architecture/CampaignsArchitectureTests.cs`, alongside the cross-cutting analyzer coverage (`HUM0024`, `HUM0021`, `HUM0009`, `HUM0034`).
 
 ### Touch-and-clean guidance
 

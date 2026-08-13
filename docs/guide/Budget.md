@@ -89,6 +89,10 @@ A year moves **Draft -> Active -> Closed**. Only one is Active at a time. Closin
 
 On the Ticketing group's panel, open **Projection Parameters** to set event start, event date, initial sales count, daily sales rate, average ticket price, VAT rate, and Stripe / TicketTailor fees. Saving rebuilds projected weekly revenue and per-week Stripe / TicketTailor fee lines through to the event date (VAT settles automatically in the cash-flow view from each line's VAT rate — it is not stored as its own line item). The ticketing sync job (`TicketingBudgetSyncJob`, daily at 04:30 cron `30 4 * * *`) materialises completed ISO weeks of actual sales into auto-generated line items and refreshes the remaining-week projections in the same pass; **Sync Actuals** on the year detail triggers it manually.
 
+### See real spend from the accounting system
+
+Each category on the year detail shows a **Holded** figure next to budget, actual, and remaining whenever real spend has been booked against it in the accounting system — so you can compare what was planned with what was actually invoiced. The figure is refreshed by a nightly pull; the year-detail toolbar has **Holded Accounts** (provision the accounting-side accounts), **Unmatched** (documents that could not be tied to a budget category), and **Creditor Accounts** (per-person creditor statements) for working through the gaps.
+
 ### Watch cash flow
 
 `/Finance/CashFlow` aggregates line items by week or month and shows income, expenses, net, and cumulative net, with per-period category breakdown. Items without an expected date appear under **Unscheduled**. Restricted groups and cash-flow-only items (such as ticket-buyer donations) are included — this is the solvency view, not the P&L view.

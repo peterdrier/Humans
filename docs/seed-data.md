@@ -22,17 +22,31 @@
 
 ## Existing Patterns
 
-**`HasData`** — system teams, shift tags, sync settings, camp settings, ticket sync state. Stable bootstrap rows with deterministic IDs, part of migrations.
+**`HasData`** — stable bootstrap rows with deterministic IDs, part of migrations. Since the DbContext split and the G5 section moves these configurations sit in two places:
+
+- `src/Humans.Infrastructure/Data/Configurations/` — system teams (`TeamConfiguration`), shift tags (`ShiftTagConfiguration`), sync settings (`SyncServiceSettingsConfiguration`), camp settings (`CampSettingsConfiguration`), ticket sync state (`TicketSyncStateConfiguration`).
+- `src/Sections/Humans.<Section>/Data/Configurations/` — system settings (`SystemSettingConfiguration`, the `IsEmailSendingPaused` row), agent settings (`AgentSettingsConfiguration`), event-guide categories (`EventCategoryConfiguration`).
+
+A `HasData` row seeded from a section project lands in that section's own migration chain, not in `HumansDbContext`'s.
+
+**Lazy singleton instead of `HasData`** — some single-row settings tables are deliberately *not* seeded and are created on first save instead (`GateSettingsConfiguration`, `HoldedSyncStateConfiguration` both carry a comment saying so). Prefer this when the row's shape is likely to change: it avoids a `HasData` value baked into an old migration drifting from the entity.
 
 **Migration SQL** — e.g., `20260311161510_SeedLeadRoleDefinitions.cs`. One-off backfills tied to schema changes.
 
 **Well-known system accounts** — non-human accounts with a deterministic ID reserved in `Humans.Domain.Constants.SystemUserIds` (GUID block `0004`). The shared gate-terminal account (`SystemUserIds.GateTerminal`) is provisioned lazily — `GateTerminalAccountSeeder` creates the User + Stub→Active Profile through the canonical application-service path the first time a ticket admin sets its password from `/Tickets/Admin/Gate` — not via `HasData` or migration SQL. Idempotent; holds no roles and no email.
 
-**Dev-only runtime seeders** — on-demand endpoints behind `DevAuth:Enabled` + non-production environment check:
-- `/dev/seed/budget` — creates demo budget year with teams, categories, and line items via `IBudgetService`
-- `/dev/seed/tickets` — triggers a sync cycle against `StubTicketVendorService`, which returns canned sample data processed through the real `TicketSyncService` pipeline
+**Dev-only runtime seeders** — on-demand POST endpoints on `DevSeedController`, each behind `DevAuth:Enabled` + a non-production environment check + its own policy:
 
-Buttons for both are on the Dev Login page.
+| Endpoint | Policy | Seeder | What it does |
+|---|---|---|---|
+| `/dev/seed/budget` | `FinanceAdminOrAdmin` | `IBudgetDemoSeeder` | Demo budget year with teams, categories, and line items |
+| `/dev/seed/camp-roles` | `CampAdminOrAdmin` | `DevelopmentCampRoleSeeder` | Camp role definitions and assignments |
+| `/dev/seed/dashboard` | `ShiftDashboardAccess` | `DevelopmentDashboardSeeder` | Teams, humans, shifts, and signups behind the shift dashboard |
+| `/dev/seed/dashboard/reset` | `AdminOnly` | `DevelopmentDashboardSeeder` | Deletes the dashboard demo rows, then reseeds |
+
+The two dashboard endpoints are stricter than the rest: they additionally require `ASPNETCORE_ENVIRONMENT=Development`, so they never run on QA or preview. Their buttons are on `Views/ShiftDashboard/Index.cshtml`.
+
+The budget and camp-role endpoints are reached from the admin sidebar's **Dev** group (`AdminNavTree.cs`), whose two items carry `EnvironmentGate: env => !env.IsProduction()` — so they render on local and QA but never in production.
 
 ## Guardrails for Dev Seeders
 

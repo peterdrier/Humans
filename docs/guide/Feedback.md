@@ -1,11 +1,9 @@
 <!-- freshness:triggers
-  src/Humans.Web/Views/Feedback/**
-  src/Humans.Web/Controllers/FeedbackController.cs
-  src/Humans.Web/Controllers/FeedbackApiController.cs
-  src/Humans.Application/Services/Feedback/**
-  src/Humans.Domain/Entities/FeedbackReport.cs
-  src/Humans.Domain/Entities/FeedbackMessage.cs
-  src/Humans.Infrastructure/Data/Configurations/Feedback/**
+  src/Sections/Humans.Feedback/Controllers/**
+  src/Sections/Humans.Feedback/Services/**
+  src/Sections/Humans.Feedback/Domain/**
+  src/Sections/Humans.Feedback/Data/Configurations/**
+  src/Sections/Humans.Feedback/Views/**
 -->
 <!-- freshness:flag-on-change
   Retired section: admin-only triage of historical reports, status transitions, GitHub linkage, and the API triage path. There is no submission flow — if any change reintroduces a creation path, this page is wrong. Review when feedback views, controllers, services, or entities change.
@@ -25,8 +23,8 @@ Status still moves from Open to Acknowledged, then to Resolved or Won't Fix, and
 
 Both require the **Admin** role. There is no reporter-facing view — a report's own author cannot open it.
 
-- **Feedback queue** (`/Feedback`) — every historical report
-- **Feedback detail** (`/Feedback/{id}`) — the full report: description, screenshot, page URL, status, and the conversation thread
+- **Feedback queue** (`/Feedback`) — every historical report, with the selected report's detail panel beside it
+- **Feedback detail** (`/Feedback/{id}`) — the full report: description, screenshot, page URL, status, assignment, and the conversation thread. It is a panel inside the queue, not a page of its own; opening the URL directly sends you to `/Feedback?selected={id}`
 
 ## As a Volunteer
 
@@ -46,6 +44,10 @@ Go to `/Feedback`. You see every report ever filed. The admin nav shows a badge 
 
 In the detail view, post a message in the conversation thread. Every message posted now is an admin reply: it stamps the report's last-admin-reply time, queues an email to the reporter, and sends them a notification. Reporters can no longer post follow-ups, so the thread is one-directional from here on — historical reporter messages are still shown.
 
+### Assign a report
+
+The detail panel carries two dropdowns: one to put a report on a human, one to put it on a team. Either can be cleared back to unassigned, and both save as soon as you pick. A human or team that has since gone inactive still shows in the list while it holds the assignment, so opening the panel never silently drops it.
+
 ### Update status and link a GitHub issue
 
 Move status from Open to Acknowledged when you have seen the report, then to Resolved or Won't Fix when it is closed out. Status changes are audit-logged. If the report needs tracked work, open an issue on `nobodies-collective/Humans` and paste the issue number into the GitHub Issue field.
@@ -56,7 +58,7 @@ Once work is shipped (or the report is declined), set status to Resolved or Won'
 
 ## Automation
 
-`/api/feedback` is unchanged and still key-authenticated (`X-Api-Key`): it lists reports and posts a message to one. It has no report-creation endpoint. A message posted through it is an admin reply, exactly as one posted in the UI.
+`/api/feedback` is unchanged and still key-authenticated (`X-Api-Key`). It covers the same triage the UI does — list reports, read one and its messages, post a message, and change status, assignment, or the linked GitHub issue — but it has no report-creation endpoint. A message posted through it is an admin reply, exactly as one posted in the UI.
 
 ## Related sections
 

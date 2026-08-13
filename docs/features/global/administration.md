@@ -8,7 +8,7 @@
   src/Humans.Web/Authorization/AuthorizationPolicyExtensions.cs
   src/Humans.Web/Authorization/RoleAssignmentClaimsTransformation.cs
   src/Humans.Web/Views/Admin/**
-  src/Humans.Web/Views/Governance/**
+  src/Sections/Humans.Governance/Views/Governance/**
   src/Humans.Domain/Constants/RoleNames.cs
   src/Humans.Domain/Constants/RoleGroups.cs
 -->
@@ -202,7 +202,7 @@ public sealed record AdminDashboardViewModel(
     decimal ExpenseTotalEur);
 ```
 
-`AdminController.Index` builds these from a single `IUserServiceRead.GetAllUserInfosAsync` snapshot (counts derived from `UserInfo.IsActive` / `HasTicketForYear`), shift coverage from `IShiftManagementService`, actionable feedback from `IFeedbackService`, recent audit rows from `IAuditViewerService`, application/language/set-membership stats from `IAdminDashboardService`, team count from `ITeamServiceRead`, audit event total from `IAuditViewerService.GetPageAsync`'s `TotalCount`, email outbox total from `IEmailOutboxServiceRead.GetOutboxStatsAsync`, the active event year's store order count/total from `IStoreServiceRead.GetStoreSummaryAsync` (zero when there's no active event), and the all-status expense report count/total from `IExpenseReportServiceRead.GetAllAsync` — not from direct table queries. `OpenFeedback` is computed for every viewer but the view wraps it in `authorize-policy="AdminOnly"` — Board members and domain admins don't see it in the summary line, matching Feedback triage itself being Admin only.
+`AdminController.Index` builds these from a single `IUserServiceRead.GetAllUserInfosAsync` snapshot (counts derived from `UserInfo.IsActive` / `HasTicketForYear`), shift coverage from `IShiftManagementService`, actionable feedback from `IFeedbackServiceRead`, recent audit rows from `IAuditViewerService`, application/language/set-membership stats from `IAdminDashboardService`, team count from `ITeamServiceRead`, audit event total from `IAuditViewerService.GetPageAsync`'s `TotalCount`, email outbox total from `IEmailOutboxServiceRead.GetOutboxStatsAsync`, the active event year's store order count/total from `IStoreServiceRead.GetStoreSummaryAsync` (zero when there's no active event), and the all-status expense report count/total from `IExpenseReportServiceRead.GetAllAsync` — not from direct table queries. `OpenFeedback` is computed for every viewer but the view wraps it in `authorize-policy="AdminOnly"` — Board members and domain admins don't see it in the summary line, matching Feedback triage itself being Admin only.
 
 ## Member Management
 

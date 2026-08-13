@@ -1,20 +1,22 @@
 <!-- freshness:triggers
   src/Sections/Humans.Onboarding/**
   src/Humans.Application/Services/Profiles/ProfileService.cs
-  src/Humans.Application/Services/Consent/**
+  src/Sections/Humans.Consent/Services/**
   src/Humans.Application/Services/Teams/TeamService.cs
-  src/Humans.Application/Services/Governance/**
+  src/Sections/Humans.Governance/Services/**
   src/Humans.Web/Controllers/HomeController.cs
   src/Humans.Web/Controllers/ProfileController.cs
-  src/Humans.Web/Controllers/ConsentController.cs
-  src/Humans.Web/Controllers/GovernanceApplicationsController.cs
+  src/Sections/Humans.Consent/Controllers/ConsentController.cs
+  src/Sections/Humans.Onboarding/Controllers/OnboardingReviewController.cs
+  src/Sections/Humans.Onboarding/Controllers/OnboardingWidgetController.cs
+  src/Sections/Humans.Governance/Controllers/GovernanceApplicationsController.cs
   src/Humans.Web/Views/Home/**
-  src/Humans.Web/Views/OnboardingReview/**
-  src/Humans.Web/Views/OnboardingWidget/**
-  src/Humans.Web/Views/Shared/Components/OnboardingProgressBanner/**
-  src/Humans.Web/ViewComponents/OnboardingProgressBannerViewComponent.cs
+  src/Sections/Humans.Onboarding/Views/OnboardingReview/**
+  src/Sections/Humans.Onboarding/Views/OnboardingWidget/**
+  src/Sections/Humans.Onboarding/Views/Shared/Components/OnboardingProgressBanner/**
+  src/Sections/Humans.Onboarding/ViewComponents/OnboardingProgressBannerViewComponent.cs
   src/Humans.Domain/Entities/Profile.cs
-  src/Humans.Domain/Entities/Application.cs
+  src/Sections/Humans.Governance/Domain/Application.cs
 -->
 <!-- freshness:flag-on-change
   End-to-end onboarding pipeline, parallel consent + profile-review tracks, IsApproved semantics, and inline tier-application one-shot — review when onboarding orchestrator, consent flow, profile-review actions, or home dashboard change.

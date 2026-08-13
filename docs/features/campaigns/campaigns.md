@@ -34,8 +34,8 @@ Transitions:
 
 A "send wave" assigns ungranted codes to eligible humans and queues the email delivery:
 
-1. Admin selects one or more teams to target.
-2. Service collects all active members of those teams.
+1. Admin selects one team to target (one wave per team; repeat for more).
+2. Service collects all active members of that team.
 3. Exclusions applied automatically:
    - Humans already granted a code for this campaign
    - Humans who are opted out of the `CampaignCodes` message category (checked via `ICommunicationPreferenceService.IsOptedOutAsync`)
@@ -43,16 +43,19 @@ A "send wave" assigns ungranted codes to eligible humans and queues the email de
 5. A `CampaignGrant` record is created per assignment.
 6. An `EmailOutboxMessage` is queued per grant, referencing `CampaignGrantId`.
 
+Commits are per-grant: if the enqueue throws for one human, only that grant flips to Failed and the wave keeps going, so Resend / Retry All Failed can pick it up later. The wave aborts up front if there are fewer available codes than eligible humans.
+
 ## Admin UI
 
-Route: `/Campaigns/Admin` — requires Admin role.
+Route: `/Campaigns/Admin` — Admin role, except the detail page and API code generation, which also accept TicketAdmin.
 
 Pages:
 - Campaign list with status and code/grant counts
 - Campaign detail: stats (total codes, assigned, sent, failed), grant table
-- Create campaign form (title, description, email subject, email body template)
-- Import codes (CSV upload)
+- Create / Edit campaign form (title, description, email subject, email body template, optional reply-to address)
+- Import codes (CSV upload) or generate codes via the ticket vendor API
 - Activate / Send Wave / Complete actions
+- Per-grant Resend and campaign-wide Retry All Failed for failed email deliveries
 
 ## Unsubscribe
 
@@ -68,7 +71,7 @@ Humans can view their campaign codes on their profile page. The profile page sho
 
 ## Authorization
 
-- All `/Campaigns/Admin` routes: `Admin` role required
+- `/Campaigns/Admin` routes: `Admin` role required (`PolicyNames.AdminOnly`), except `GET /Campaigns/Admin/{id}` (detail) and `POST /Campaigns/Admin/{id}/GenerateCodes`, which use `PolicyNames.TicketAdminOrAdmin`
 - `/Unsubscribe/{token}`: public (no authentication required)
 - Profile code lookup: authenticated user, own profile only
 
@@ -91,3 +94,7 @@ CampaignGrant has a `RedeemedAt` (Instant?) field set by the ticket sync job whe
 Additionally, Draft campaigns support API-based code generation via `ITicketVendorService.GenerateDiscountCodesAsync()` as an alternative to CSV import.
 
 See [24. Ticket Vendor Integration](../tickets/ticket-vendor-integration.md) for details.
+
+## Related
+
+- [Campaigns section invariants](../../../src/Sections/Humans.Campaigns/Docs/Campaigns.md) — current data model, routing, and architecture status (own project since G5, nobodies-collective/Humans#866; `CampaignsDbContext` owns the `campaign*` tables)

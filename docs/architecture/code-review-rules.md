@@ -40,6 +40,7 @@ Rules are ordered by historical frequency — the patterns that have caused the 
 - **Every LINQ query that accesses a navigation property must `.Include()` it.** EF Core does not lazy-load. Accessing `entity.RelatedEntity.Property` without a prior `.Include(e => e.RelatedEntity)` returns null — no exception, just silent null data that causes downstream bugs.
 - **Check `.ThenInclude()` for nested navigation.** If you access `entity.Parent.Children`, you need `.Include(e => e.Parent).ThenInclude(p => p.Children)`.
 - **Projection (`Select`) does not need `.Include()`** — only materialize queries that access navigation properties on tracked entities.
+- **This rule covers *aggregate-local* navigations only.** Cross-section navigation properties and their FK constraints were all deleted (nobodies-collective/Humans#996, #992), each peeled section maps only its own tables in its own `<Section>DbContext`, and analyzer `HUM0024` fails the build on a new cross-section relationship. So the correct fix for "this code needs data from another section" is never a `.Include()` — it is the in-memory join through the owning section's `I{Section}ServiceRead` (`design-rules.md` §6b). A review that asks for a cross-section `.Include()` is asking for a build break.
 
 ## Silent Exception Swallowing *(5+ historical fixes)*
 
@@ -57,6 +58,7 @@ Rules are ordered by historical frequency — the patterns that have caused the 
 - **Every mutation (create/update/delete) must evict affected cache entries.** If a service caches a list or entity and another method modifies the underlying data, the cache key must be evicted in the same method. Stale cache = users see old data.
 - **Cache eviction goes in the same service method as the mutation**, not in the controller or a separate call. The service owns the cache, so it owns the invalidation.
 - **When adding a new cache key, grep for all mutations of the cached data** and add eviction to each one.
+- **For a section with a `Caching<Section>Service` decorator**, the invalidation belongs on the decorator's write path — `Replace(key, value)` or `ReplaceAsync(key, ct)` after delegating to the inner service, not a bare `Invalidate(key)` on a warmed cache. Two carve-outs, both per `design-rules.md` §15d — do **not** reject either: bare `Invalidate(key)` is correct on a **lazy-per-key cache** (`warmOnStartup: false`, e.g. `CachingConsentService.InvalidateUser` — dropping the key is safe because the next read lazy-loads it), and it is correct for **tombstoning a row whose source has been confirmed deleted**, where `Replace` has no value to write. The rule bites only on a *warmed* cache, where removing without replacing breaks the all-rows invariant. Cross-section writes that stale another section's projection signal it through that section's `I<Section>InfoInvalidator`, never by touching the dict. See `design-rules.md` §15d–§15e.
 
 ## Form Field Preservation *(4+ historical fixes)*
 

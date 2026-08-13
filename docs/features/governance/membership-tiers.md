@@ -121,7 +121,7 @@ Tier is stored on Profile, **not** as a RoleAssignment. Roles (Admin, Board, Con
 ```
 Application (existing entity — new fields)
 ├── MembershipTier: MembershipTier (Colaborador or Asociado — never Volunteer)
-├── TermExpiresAt: LocalDate? (set on approval: Dec 31 of current/next odd year)
+├── TermExpiresAt: LocalDate? (set on approval: Dec 31 of the next odd year at least 2 years out)
 ├── BoardMeetingDate: LocalDate? (when Board finalized decision)
 ├── DecisionNote: string? (4000) (Board's collective note)
 ```
@@ -135,7 +135,7 @@ Terms are synchronized to fixed 2-year cycles ending Dec 31 of **odd years**:
 - Cycle 2: Jan 1, 2028 → Dec 31, 2029
 - Cycle 3: Jan 1, 2030 → Dec 31, 2031
 
-All Colaborador and Asociado terms within a cycle expire on the same date. If approved mid-cycle, the first term is shorter (expires at the current cycle end). Renewals grant the next full 2-year cycle.
+All Colaborador and Asociado terms within a cycle expire on the same date. A mid-cycle approval is **not** shortened to the current cycle end — `TermExpiryCalculator` always lands on the next odd-year Dec 31 that is at least 2 years out, so the first term runs long rather than short. Renewals grant the next full 2-year cycle.
 
 ### Term Expiry Calculation
 

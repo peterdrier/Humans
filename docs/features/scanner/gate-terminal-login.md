@@ -6,6 +6,8 @@
   src/Humans.Web/Infrastructure/GateTerminalAccountSeeder.cs
   src/Humans.Web/Infrastructure/GateLoginThrottle.cs
   src/Humans.Domain/Constants/SystemUserIds.cs
+  src/Humans.UI/Authorization/PolicyNames.cs
+  src/Humans.Web/Authorization/AuthorizationPolicyExtensions.cs
 -->
 <!-- freshness:flag-on-change
   Gate-terminal shared account (GateTerminal GUID, ScannerAccess policy, /Account/GateLogin, /Tickets/Admin/Gate password set/rotate, GateTerminalAccountSeeder, GateLoginThrottle, onsite-roster access) — review when any of these change.
@@ -85,7 +87,10 @@ in depth on top of the zero roles.
   for both — human TicketAdmin/Board/Admin sessions still reach those routes via the
   same policy. Deliberately NOT a `RoleNames` constant: role
   constants flow into the role-assignment UI and dev personas via the test-enforced
-  `RoleNames.All`.
+  `RoleNames.All`. The Gate section's *write* actions sit behind a second policy,
+  `GateAdmit` — same principals today (TicketAdmin/Board/Admin or the gate account by
+  id), kept separate so the gate's admission writes never ride on the read-only
+  `ScannerAccess` gate.
 - **Audit:** every password set/rotate writes `AuditAction.GateTerminalPasswordSet`
   with the acting admin as actor. Gate sign-ins stamp `LastLoginAt` (surfaced on the
   admin card).

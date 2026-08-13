@@ -1,16 +1,16 @@
 # Controller Architecture Audit
 
-Living document. Last updated: 2026-08-10 (freshness-sweep regeneration).
+Living document. Last updated: 2026-08-12 (freshness-sweep regeneration).
 
 ## Part 1: Action Name Audit
 
 ### Summary
-- Controllers audited: 90 (excludes 4 base classes: `ApiControllerBase`, `HumansControllerBase`, `HumansCampControllerBase` — all now in `Humans.UI` — and `HumansTeamControllerBase`, still in `Humans.Web`)
+- Controllers audited: 91 (excludes 4 base classes: `ApiControllerBase`, `HumansControllerBase`, `HumansCampControllerBase` — all now in `Humans.UI` — and `HumansTeamControllerBase`, still in `Humans.Web`)
 - Purposes and suggestions preserved from prior audit where the (method, verb) pair still exists; new actions default to a name-derived purpose and `OK`.
 
 `docs/architecture/conventions.md` §"Action Naming" codifies the heuristics: `Index` is for listings, no redundant controller-name prefixes, no bare plural-noun collisions, no generic verbs (`View`/`Show`/`Process`/`Handle`), and conventional form-handler verbs (`Create`/`Edit`/`Delete`/`Confirm`/`Cancel`).
 
-This regeneration (2026-08-10) re-verified the controller/action inventory against current source (`upstream/main`-tracking `origin/main` at commit 2ca3d5241, vs. the prior sweep's 4207f4a42): the G5 section-extraction work (nobodies-collective/Humans#866) split the old combined `FinanceController` in two — the 23 Budget-CRUD actions (years, groups, categories, line items, cash flow, audit log) stayed in `Humans.Web` under the **new** `BudgetAdminController`, keeping the same `[Route("Finance")]` prefix so no URL moved, while the Holded-specific actions (`HoldedAccounts`, `Creditors`, etc.) moved into `src/Sections/Humans.Finance` as the section's own `FinanceController`, which also picked up two new actions along the way: `UnbindCreditor` (`POST /Finance/Creditors/Unbind`) and `ResyncCreditorLedger` (`POST /Finance/Creditors/Resync`, a full-history resweep — the nightly job only covers a trailing year). `ContainerController`, `EventsAdminController`/`EventsApiController`/`EventsController`/`EventsDashboardController`/`EventsExportController`/`EventsModerationController`, `ExpensesController`, `StoreAdminController`/`StoreController`/`StoreStripeWebhookController` also relocated into their own `src/Sections/**` projects as part of the same G5 effort, but carried no action-level changes — every row for those controllers is unchanged. No other controller in the 90-controller/4-base-class inventory was added, removed, or renamed.
+This regeneration (2026-08-12) re-verified the controller/action inventory against current source (`04d2490f0..fa8b36737`): the G5 overnight batch (`af9242150`, #1263) relocated `GateController`, `GateVendorBackfillAdminController`, `BudgetController`, `BudgetAdminController`, `CalendarController`, `CampaignController`, `CityPlanningController`, `CityPlanningApiController`, `FeedbackController`, `FeedbackApiController`, `GovernanceController`, `GovernanceApplicationsController`, `GovernanceBoardVotingController`, `IssuesController`, `IssuesApiController`, `NotificationsController`, and `ScannerController` into their own `src/Sections/**` projects; `8018be9d3` (#1259) moved `AgentController`/`AgentApiController`/`AdminAgentController` into `Humans.Agent`; `cde511e4b` (#1251) moved `SurveyController`/`SurveyAdminController`/`SurveysApiController` into `Humans.Surveys` — all pure relocations, no action/route/verb changes in any of them. `4f65c7617` (#1261, "Holded API v2") added a **new** controller, `HoldedController` at `/Holded` (`src/Sections/Humans.Holded`), bringing the audited count from 90 to 91. `f5e4b8bdc` (#1267) added `sort`/`dir` query parameters to `FinanceController.Creditors` (same route/verb) and, together with `4f65c7617`, removed `FinanceController.ResyncCreditorLedger` (`POST /Finance/Creditors/Resync`) — superseded by `HoldedController.FullSync`. `250fda95e` (#1265, "retire mileage and per-diem line creation") removed `ExpensesController.AddMileage`/`AddPerDiem` and updated this doc directly in the same commit — already reflected below. No other controller in the inventory was added, removed, or renamed.
 
 The 2026-08-08 regeneration re-verified the controller/action inventory against current source: the 89-controller/4-base-class set is unchanged (no controllers added, removed, or renamed since the 2026-08-05 sweep), and a diff of `src/Humans.Web/Controllers/**` against the last audit-affecting commit turned up no changed `[Http*]` attributes, routes, action names, or `[ActionName]` overrides — the only churn was the mechanical `Humans.Web.Authorization` → `Humans.UI.Authorization` namespace move from PR #1222 ("peel StoreDbContext out of HumansDbContext") and its neighboring Humans.UI-extraction PRs, plus a same-purpose internal body change in `CampAdminController.SeedSystemRoles` (dropped a since-removed lead-migration step; the table's existing "Seed system role definitions" purpose text already matched). Every row below carries forward unchanged.
 
@@ -533,7 +533,6 @@ The changes captured in the 2026-06-07 sweep — now all stable in the tables be
 | CreditorStatement | /Finance/Creditors/{accountNum:int} | GET | Per-creditor ledger statement | OK |
 | BindCreditor | /Finance/Creditors/Bind | POST | Bind a member to a Holded creditor account | OK |
 | UnbindCreditor | /Finance/Creditors/Unbind | POST | Clear a member's Holded creditor account binding | OK |
-| ResyncCreditorLedger | /Finance/Creditors/Resync | POST | Full-history resweep of the Holded creditor ledger (the nightly job only covers a trailing year) | OK |
 | RunHoldedSync | /Finance/HoldedSync/Run | POST | Trigger Holded sync (expense actuals) | OK |
 
 ## GateController
@@ -646,6 +645,17 @@ One-off vendor check-in backfill (temp page, remove after use) — recovers gate
 | Index | /Guide | GET | Guide landing (README) | OK |
 | Document | /Guide/{name} | GET | Render a specific guide page | OK |
 | Refresh | /Guide/Refresh | POST | Refresh guide content from GitHub (Admin) | OK |
+
+## HoldedController
+
+(`src/Sections/Humans.Holded/Controllers/HoldedController.cs`) — the ledger mirror's own admin screen: API budget, per-sync status, per-account reconciliation, and the two sync triggers. New — #1261, #1267.
+
+| Method | Route | Verb | Purpose | Suggestion |
+|--------|-------|------|---------|------------|
+| Index | /Holded | GET | Mirror overview (API budget, last-sync status, doc-sync/creditor-binding counts) | OK |
+| Account | /Holded/Accounts/{number:int} | GET | General-ledger statement for one chart-of-accounts number | OK |
+| SyncNow | /Holded/SyncNow | POST | Sync purchase docs and sweep the trailing ledger window | OK |
+| FullSync | /Holded/FullSync | POST | Full-history ledger resync (rebuilds the mirror from inception) | OK |
 
 ## HomeController
 

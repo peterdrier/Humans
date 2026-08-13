@@ -1,9 +1,9 @@
 ---
 name: Issue fetch protocol — always include comments + author, stop on non-Peter authors
-description: HARD RULE (hook-enforced). Before implementing ANY GitHub issue or PR, fetch it with both comments AND author included. The OP is often not Peter; his comments often flip OP intent. If `.author.login != peterdrier`, STOP and get Peter's input first — never branch or code from a non-Peter issue without explicit per-issue approval.
+description: HARD RULE. Before implementing ANY GitHub issue or PR, fetch it with both comments AND author included. The OP is often not Peter; his comments often flip OP intent. If `.author.login != peterdrier`, STOP and get Peter's input first — never branch or code from a non-Peter issue without explicit per-issue approval.
 ---
 
-Two coupled rules fire on every `gh issue view` (and on every batch dispatch that hands an issue to a worker). They share a single hook enforcement (`require-gh-comments.sh`) because both data points come from the same fetch.
+Two coupled rules fire on every `gh issue view` (and on every batch dispatch that hands an issue to a worker). Both data points come from the same fetch, so they're covered together here.
 
 ## 1. Always fetch comments — never body-only
 
@@ -17,7 +17,7 @@ gh issue view <N> --repo <owner>/Humans --comments
 
 **Why:** Implementing from the body alone has repeatedly produced wrong features. Concrete instance 2026-04-24: issue `nobodies-collective/Humans#578` OP proposed adding an `isConfirmedForYear` flag. Peter's comment said the `/year` URL filter should natively exclude camps not in that edition (i.e., fix the filter, not add a flag). Body-only implementation shipped PR #310 with the flag — had to be closed as a wrong feature.
 
-Pre-tool hook `require-gh-comments.sh` blocks `gh issue view` / `gh pr view` calls that don't include comments.
+No hook currently enforces this — it's discipline, not tooling. (`.claude/settings.json` registers hooks for EF output dir, Razor lint, and data-migration checks, but nothing that inspects `gh issue view` / `gh pr view` arguments.)
 
 **How to apply:**
 
@@ -35,7 +35,7 @@ Pre-tool hook `require-gh-comments.sh` blocks `gh issue view` / `gh pr view` cal
 
 **How to apply:**
 
-- Every `gh issue view` MUST surface the author (hook-enforced via `require-gh-comments.sh`: `--json` queries must include both `author` and `comments`).
+- Every `gh issue view` MUST surface the author: `--json` queries must include both `author` and `comments`.
 - If `author.login != "peterdrier"`, present the issue (title, full body, every comment, author) to Peter and ask: "proceed as described, re-scope, or skip?". Do NOT make that call yourself.
 - In `/execute-sprint`: the orchestrator's pre-flight spec pull MUST classify each issue by author. Any non-Peter issue becomes a *gated* item — surface it for confirmation before dispatching a subagent. **Never** include a non-Peter issue in the autonomous execution wave without explicit per-issue approval.
 - Sprint plans produced by `/sprint` that batch non-Peter issues should explicitly mark them so the execution gate fires.
