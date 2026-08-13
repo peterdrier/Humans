@@ -49,7 +49,10 @@ Do not make the controller the coordinator of:
 
 That is service work.
 
-Cross-repository orchestrations that must commit atomically (e.g. `AccountMergeService`'s fold fan-out) wrap the calls in an ambient `TransactionScope` (`TransactionScopeAsyncFlowOption.Enabled`, `ReadCommitted`). Each repository still creates its own short-lived `DbContext` via `IDbContextFactory`; Npgsql auto-enlists those connections in the ambient scope, so the writes commit or roll back together without sharing a `DbContext` across repositories.
+Cross-repository orchestrations that must commit atomically wrap the calls in an ambient `TransactionScope` (`TransactionScopeAsyncFlowOption.Enabled`, `ReadCommitted`) — e.g. `AccountMergeService.RejectAsync`'s paired pending-email delete + request-status update. Each repository still creates its own short-lived `DbContext` via `IDbContextFactory`; Npgsql auto-enlists those connections in the ambient scope, so the writes commit or roll back together without sharing a `DbContext` across repositories.
+
+<!-- wheat: docs/superpowers/plans/2026-06-06-account-merge-consolidation.md §Deviations from spec -->
+Not every multi-step cross-repository orchestration needs one, though. `AccountMergeService.MergeAsync` (the account-merge fold) deliberately runs its steps — the `IUserMerge` fan-out, then the pending-email settle, then the tombstone write — with no wrapping scope: each step commits independently and is safely retryable (re-applying a done step is a no-op), and the tombstone write is the single observable commit point. Reach for this ordered-no-transaction shape when every step is idempotent and a clear final commit point exists; reach for `TransactionScope` when the steps are not independently safe to retry.
 
 ## Cross-Section FK Columns
 
@@ -194,7 +197,7 @@ All pages are server-rendered with Razor. The following use `fetch()` for the sp
 | `Humans.UI/Views/Shared/Components/HumanSearch/Default.cshtml` (`<vc:human-search>`) | Person picker (inline autocomplete) — canonical inline pattern, see `memory/architecture/person-search.md` | Search input |
 | `Humans.UI/Views/Shared/_HumanSearchResults.cshtml` | Person search results (page-style cards) — canonical page pattern, see `memory/architecture/person-search.md` | Search results |
 | `Humans.UI/Views/Shared/_VolunteerSearchScript.cshtml` | Volunteer search autocomplete (shift-volunteer, exempt from person-search consolidation) | Search input |
-| `Humans.Web/Views/Shared/_TeamGoogleAndParentFields.cshtml` | Google resource dropdown on team change | Dynamic form field |
+| `Humans.Teams/Views/Shared/_TeamGoogleAndParentFields.cshtml` | Google resource dropdown on team change | Dynamic form field |
 | `Humans.Web/Views/ShiftAdmin/Index.cshtml` | Shift volunteer search + tag creation | Search input + inline action |
 | `Humans.Notifications/Views/Notifications/Index.cshtml` | Dismiss/mark-read without reload | Progressive enhancement |
 | `Humans.Feedback/Views/Feedback/Index.cshtml` | Master-detail panel loading | Progressive enhancement |

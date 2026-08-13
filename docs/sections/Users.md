@@ -124,7 +124,7 @@ The entity still carries `TargetUser`, `SourceUser`, and `ResolvedByUser` naviga
 - `user_claims` (was `AspNetUserClaims`)
 - `user_logins` (was `AspNetUserLogins`)
 - `user_tokens` (was `AspNetUserTokens`)
-- `roles` (was `AspNetRoles`) — ASP.NET Identity creates the table because `IdentityDbContext<User, IdentityRole<Guid>, Guid>` is used. Authorization itself does **not** read this table — role membership is computed from `role_assignments` by `RoleAssignmentClaimsTransformation` (see [Auth.md](Auth.md)).
+- `roles` (was `AspNetRoles`) — ASP.NET Identity creates the table because `IdentityDbContext<User, IdentityRole<Guid>, Guid>` is used. Authorization itself does **not** read this table — role membership is computed from `role_assignments` by `RoleAssignmentClaimsTransformation` (see [Auth.md](../../src/Sections/Humans.Auth/Docs/Auth.md)).
 - `user_roles` (was `AspNetUserRoles`) — same rationale; not used by the runtime authorization path.
 - `role_claims` (was `AspNetRoleClaims`) — same rationale.
 
@@ -187,7 +187,7 @@ Two controllers serve this section:
 
 - **On first OAuth login (no matching account):** `ExternalLoginService.CompleteExternalLoginAsync` (dispatched from `AccountController.ExternalLoginCallback`) creates the `User` via `UserManager.CreateAsync`, attaches the external login, and persists a provider-tagged `UserEmail` row via `IUserEmailService.ReconcileOAuthIdentityAsync` (HUM0005 pins `ExternalLoginService` as its sole caller); `AccountController` then signs the user in via `SignInManager.SignInAsync`. Profile creation happens lazily in the Profile section (see [Profiles.md](Profiles.md)).
 - **On import (Tickets / MailerLite contact upsert):** `AccountProvisioningService.FindOrCreateUserByEmailAsync` looks up an existing user by `UserEmail` and `User.Email` (with gmail/googlemail equivalence), creates a contact-only `User` + `UserEmail` if no match, layers `User.ContactSource` onto an existing self-registered user when null, and writes an `AuditAction.ContactCreated` audit entry on creation.
-- **On magic-link send:** `MagicLinkService` (Auth) stamps `User.MagicLinkSentAt` for rate-limiting (see [Auth.md](Auth.md)).
+- **On magic-link send:** `MagicLinkService` (Auth) stamps `User.MagicLinkSentAt` for rate-limiting (see [Auth.md](../../src/Sections/Humans.Auth/Docs/Auth.md)).
 - **On unsubscribe click / RFC 8058 one-click:** `UnsubscribeService.ConfirmUnsubscribeAsync` calls Profile's `ICommunicationPreferenceService.UpdatePreferenceAsync` to opt the user out of the message category (`Marketing` for legacy tokens, the token's category otherwise). The `User.UnsubscribedFromCampaigns` flag exists but is **not** flipped here — the per-category `CommunicationPreference` table is the source of truth for opt-out.
 - **On ticket sync:** `TicketSyncService` calls `IUserService.SetParticipationFromTicketSyncAsync` (or `RemoveTicketSyncParticipationAsync`) for each user with a status delta — never writes `event_participations` directly.
 - **On admin participation backfill:** `IUserService.BackfillParticipationsAsync` writes records with `Source = AdminBackfill`.

@@ -95,6 +95,7 @@ Terse, authoritative invariant docs for each major section: concepts, data model
 | [City Planning](../src/Sections/Humans.CityPlanning/Docs/CityPlanning.md) | Interactive map surface with three screens: read-only overview, barrio polygon editing, and container placement |
 | [Containers](../src/Sections/Humans.Containers/Docs/Containers.md) | Physical shipping containers managed per-barrio or at org level, placed on the City Planning map |
 | [Debug](../src/Sections/Humans.Debug/Docs/Debug.md) | Developer/diagnostics section: admin-only pages exposing operational insight (client demographics, request health) that no domain section owns — owns no tables |
+| [Development](../src/Sections/Humans.Development/Docs/Development.md) | Dev-only tooling: persona sign-in and fixture seeding, never reachable in Production — owns no tables |
 | [Email](../src/Sections/Humans.Email/Docs/Email.md) | Transactional email outbox: queue, render, deliver, retry, and pause/resume — backs campaign sends, onboarding, shift, and feedback emails |
 | [Events](../src/Sections/Humans.Events/Docs/Events.md) | Event programming: submission, moderation, browsing, export, and preference management for festival events |
 | [Expenses](../src/Sections/Humans.Expenses/Docs/Expenses.md) | Expense reports submitted by members and approved by Finance Admin; approval books into Holded async, and paid/unpaid status is read back from the member's Holded creditor ledger rather than stamped on the report — payment itself happens externally, with no SEPA-file generation in the app |
@@ -111,7 +112,7 @@ Terse, authoritative invariant docs for each major section: concepts, data model
 | [Consent](../src/Sections/Humans.Consent/Docs/Consent.md) | GitHub-synced legal documents, per-version append-only consent records, and the Consent Coordinator audit/review queue |
 | [Mailer](../src/Sections/Humans.Mailer/Docs/Mailer.md) | Humans ↔ MailerLite synchronisation: inbound import and outbound audience management |
 | [Notifications](../src/Sections/Humans.Notifications/Docs/Notifications.md) | In-app notification fan-out (stored events plus per-user inbox) and live meter counts (computed) |
-| [Onboarding](sections/Onboarding.md) | Pure orchestrator over Profiles, Consent, Teams, and Governance — owns no tables |
+| [Onboarding](../src/Sections/Humans.Onboarding/Docs/Onboarding.md) | Pure orchestrator over Profiles, Consent, Teams, and Governance — owns no tables |
 | [Profiles](sections/Profiles.md) | Per-human personal data: profile, contact fields, emails, communication preferences — reference implementation for §15 caching |
 | [Scanner](../src/Sections/Humans.Scanner/Docs/Scanner.md) | In-browser camera tools for barcode decode (`/Scanner/Barcode`) and read-only ticket lookup (`/Scanner/Tickets`); no owned tables |
 | [Search](../src/Sections/Humans.Search/Docs/Search.md) | Orchestrator behind the global `/Search` page — fans out to five sections' read surfaces, scores each independently, owns no tables |
@@ -120,6 +121,7 @@ Terse, authoritative invariant docs for each major section: concepts, data model
 | [Survey](../src/Sections/Humans.Surveys/Docs/Surveys.md) | First-party, GDPR-compliant surveys: author typed/branching multi-language surveys, send tokenised email invitations to a resolved audience, collect responses across three anonymity tiers (invite link or public slug), and read results in-app, via CSV/JSON export, or a key-authed analysis API |
 | [Teams](../src/Sections/Humans.Teams/Docs/Teams.md) | Departments and sub-teams, join requests, role definitions, team pages, and linked Google resources |
 | [Tickets](../src/Sections/Humans.Tickets/Docs/Tickets.md) | External ticket vendor sync (orders + attendees), Stripe-fee enrichment, auto-matching by email, event-participation derivation |
+| [Tour](../src/Sections/Humans.Tour/Docs/Tour.md) | Public marketing page — what Humans is, in plain language, for visitors evaluating the platform |
 | [Users/Identity](sections/Users.md) | The User aggregate, identity-framework extensions, account provisioning, unsubscribe surface, and event participation |
 
 ## User Guide

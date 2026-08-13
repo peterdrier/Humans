@@ -19,25 +19,26 @@ Several system operations need to run automatically without user interaction: sy
 | SendReConsentReminderJob | Daily | Remind about missing consents |
 | SuspendNonCompliantMembersJob | Daily 4:30 AM | Enforce compliance deadlines |
 | ProcessAccountDeletionsJob | Daily | Process account deletion requests |
-| TermRenewalReminderJob | Daily | Notify humans with approaching Colaborador/Asociado term expiry |
+| TermRenewalReminderJob | Weekly (Mon 5:00 AM) | Notify humans with approaching Colaborador/Asociado term expiry |
 | ProcessEmailOutboxJob | Frequent | Send emails queued in the outbox table |
-| CleanupEmailOutboxJob | Daily | Delete old processed outbox entries |
+| CleanupEmailOutboxJob | Weekly (Sun 3:00 AM) | Delete old processed outbox entries |
 | ProcessGoogleSyncOutboxJob | Frequent | Process Google sync outbox (add/remove from Groups and Drive) |
 | TicketSyncJob | Every 15 min (configurable) | Sync ticket orders from TicketTailor |
 | TicketingBudgetSyncJob | Daily 4:30 AM | Materialize weekly ticket actuals into budget line items |
 | SendSurveyReminderJob | Daily 9:00 AM | Send 7-day reminder to survey invitees who haven't responded |
-| SendAdminDailyDigestJob | Daily | Email digest to Admin: sync health, anomalies |
-| SendBoardDailyDigestJob | Every other day 2:00 AM | Email digest to Board: pending signups, applications |
 | CleanupNotificationsJob | Daily | Delete resolved (>7 days), stale informational (>30 days), and retired-source unresolved notifications |
-| SystemTeamSyncJob | **DISABLED** | Sync system team membership + Google permissions |
-| GoogleResourceReconciliationJob | **DISABLED** | Full Google resource reconciliation |
+| CleanupIssuesJob | Daily 5:00 AM | Purge issues that entered a terminal state (Resolved/WontFix/Duplicate) at least 6 months ago, plus their screenshot directories |
+| SystemTeamSyncJob | Hourly | Sync system team membership + Google permissions |
+| GoogleResourceReconciliationJob | Daily 3:00 AM | Full Google resource reconciliation |
 | DriveActivityMonitorJob | Hourly | Check Drive Activity API for anomalous permission changes |
 | HoldedExpenseOutboxJob | Every minute | Drain the Holded expense outbox: push approved expense reports to Holded as purchase documents |
 | HoldedSyncJob | Daily 3:00 AM | Nightly pull of Holded purchase docs into budget-category actuals, plus a trailing 364-day sweep of the creditor daybook ledger (full-history backfill only on a cold cache or via the on-demand `POST /Finance/Creditors/Resync`) |
 | GateRetentionJob | Daily 3:45 AM | Purge `gate_scan_events` older than `Gate:RetentionDays` (default 365; ≤ 0 disables the purge) |
 | GateVendorCheckInJob | On demand (enqueued) | Best-effort mirror of a gate admit to the ticket vendor (TicketTailor check-in); fire-and-forget from the gate controller, no retries (vendor check-ins aren't idempotent), gated by `Gate:VendorMirrorEnabled` (default off) |
+| AgentConversationRetentionJob | Daily 3:15 AM | Purge agent conversations past the retention window |
+| MailerAudienceSyncJob | Opt-in; no default schedule | Sync all MailerLite audiences. Registered only when `MailerLite:AudienceSyncCron` is set to a cron expression — the setting ships empty, so by default this job does not run at all and syncing is on-demand via the `/Mailer/Admin` "Push Now" button |
 
-> **Note:** `SystemTeamSyncJob` and `GoogleResourceReconciliationJob` are currently disabled because they modify Google Shared Drive and Group permissions. Use the manual "Sync Now" button at `/Google/Sync` until automated sync is validated. Per-service sync modes are configured at `/Google/SyncSettings`.
+> **Note:** `SystemTeamSyncJob` and `GoogleResourceReconciliationJob` were historically disabled by default because they modify Google Shared Drive and Group permissions; both are now registered as normal scheduled jobs (`system-team-sync` hourly, `google-resource-reconciliation` daily at 03:00) in `RecurringJobExtensions.UseHumansRecurringJobs`. `GoogleResourceReconciliationJob` still no-ops per service when that service's sync mode is `None` (configured at `/Google/SyncSettings`). The manual "Sync Now" button at `/Google/Sync` remains available for on-demand runs. `SendAdminDailyDigestJob` / `SendBoardDailyDigestJob` have been retired — their Hangfire entries are explicitly removed on startup (`send-admin-daily-digest` / `send-board-daily-digest`) and the job types no longer exist.
 
 ## Job Details
 
@@ -80,7 +81,7 @@ Several system operations need to run automatically without user interaction: sy
 
 **Purpose**: Notify members who have missing required consents before enforcement deadlines.
 
-**Schedule**: Daily at 6:00 AM
+**Schedule**: Daily at 4:00 AM (30 minutes before `SuspendNonCompliantMembersJob`)
 
 **Process**:
 ```
@@ -172,7 +173,7 @@ See [Profiles — Account Deletion](../profiles/profiles.md#account-deletion-rig
 
 **Purpose**: Maintain automatic membership for the three system teams based on eligibility criteria. Also syncs Google Shared Drive and Group permissions for each membership change.
 
-**Schedule**: Hourly (**CURRENTLY DISABLED** for scheduled runs — modifies Google permissions). Can be triggered manually from Admin dashboard via "Sync System Teams" button.
+**Schedule**: Hourly (Hangfire recurring job `system-team-sync`). Can also be triggered manually from the Admin dashboard via "Sync System Teams" button.
 
 **Inline Triggers**: After the name-only access switch, the consent-write and CC-clear paths no longer fire a per-user Volunteers sync — admission is reconciled by the scheduled `SyncVolunteersTeamAsync` pass (eventually consistent), and access never depended on Volunteers membership. `SyncVolunteersMembershipForUserAsync(userId)` (single-user, no effect on other members) remains available and is still triggered by per-user lifecycle events (e.g. role/lead changes via the other system-team paths).
 
@@ -214,7 +215,7 @@ See [Profiles — Account Deletion](../profiles/profiles.md#account-deletion-rig
 
 **Purpose**: Full reconciliation of all Google resources (Shared Drive folders + Groups) with the expected state from the database. Reads per-service sync mode from the `sync_service_settings` table to determine what actions to take.
 
-**Schedule**: Daily at 3:00 AM (**CURRENTLY DISABLED**)
+**Schedule**: Daily at 3:00 AM (Hangfire recurring job `google-resource-reconciliation`)
 
 **Process**:
 ```
@@ -240,7 +241,7 @@ See [Profiles — Account Deletion](../profiles/profiles.md#account-deletion-rig
 
 **Group settings drift check + auto-remediation**: After membership reconciliation, the job checks all active Google Groups for settings drift (e.g., someone changed WhoCanPost in Google Admin). When drift is found, settings are automatically reapplied via `RemediateGroupSettingsAsync` and each remediation is audit-logged. Per-group remediation failures are logged but do not abort the check phase. Respects the GoogleGroups sync mode: skipped entirely if set to None.
 
-> **Currently disabled** in Program.cs. Use manual "Sync Now" at `/Google/Sync` or configure sync modes at `/Google/SyncSettings` instead.
+> Runs on its normal daily schedule; use manual "Sync Now" at `/Google/Sync` for an immediate run, or configure per-service sync modes at `/Google/SyncSettings`.
 
 ## Hangfire Configuration
 

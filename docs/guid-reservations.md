@@ -9,7 +9,7 @@ This project uses a small number of hand-chosen GUID ranges for seed data. The r
 | Block | Purpose | Source |
 |------:|---------|--------|
 | `0000` | Nil/default sentinel GUIDs in migrations | Migration-generated usage only |
-| `0001` | System-managed teams | [SystemTeamIds.cs](../src/Humans.Domain/Constants/SystemTeamIds.cs), [TeamConfiguration.cs](../src/Humans.Infrastructure/Data/Configurations/Teams/TeamConfiguration.cs) |
+| `0001` | System-managed teams | [SystemTeamIds.cs](../src/Humans.Domain/Constants/SystemTeamIds.cs), [TeamConfiguration.cs](../src/Sections/Humans.Teams/Data/Configurations/TeamConfiguration.cs) |
 | `0002` | Sync service settings seeds | [SyncServiceSettingsConfiguration.cs](../src/Humans.Infrastructure/Data/Configurations/GoogleIntegration/SyncServiceSettingsConfiguration.cs) |
 | `0003` | Shift tag seeds | [ShiftTagConfiguration.cs](../src/Humans.Infrastructure/Data/Configurations/Shifts/ShiftTagConfiguration.cs) |
 | `0004` | System user accounts (gate terminal) | [SystemUserIds.cs](../src/Humans.Domain/Constants/SystemUserIds.cs) |

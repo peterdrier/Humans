@@ -43,6 +43,7 @@ move recipe is [`G5-SECTION-TEMPLATE.md`](G5-SECTION-TEMPLATE.md).
 | Holded | `src/Sections/Humans.Holded` | [Holded.md](../../src/Sections/Humans.Holded/Docs/Holded.md) — the ledger mirror; the HTTP connector stays in Base and keeps [its own doc here](Holded.md) |
 | Guide | `src/Sections/Humans.Guide` | [Guide.md](../../src/Sections/Humans.Guide/Docs/Guide.md) |
 | Issues | `src/Sections/Humans.Issues` | [Issues.md](../../src/Sections/Humans.Issues/Docs/Issues.md) |
+| Mailer | `src/Sections/Humans.Mailer` | [Mailer.md](../../src/Sections/Humans.Mailer/Docs/Mailer.md) |
 | Notifications | `src/Sections/Humans.Notifications` | [Notifications.md](../../src/Sections/Humans.Notifications/Docs/Notifications.md) |
 | Onboarding | `src/Sections/Humans.Onboarding` | [Onboarding.md](../../src/Sections/Humans.Onboarding/Docs/Onboarding.md) |
 | Scanner | `src/Sections/Humans.Scanner` | [Scanner.md](../../src/Sections/Humans.Scanner/Docs/Scanner.md) |

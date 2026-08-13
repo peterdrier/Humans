@@ -5,7 +5,7 @@
   src/Humans.Web/ViewComponents/ProfileCardViewComponent.cs
   src/Humans.Application/Services/Profiles/**
   src/Humans.Application/Services/Users/UserService.cs
-  src/Humans.Application/Services/Gdpr/**
+  src/Sections/Humans.Gdpr/Services/**
   src/Humans.Domain/Entities/Profile.cs
   src/Humans.Domain/Entities/ProfileLanguage.cs
   src/Humans.Domain/Entities/ContactField.cs

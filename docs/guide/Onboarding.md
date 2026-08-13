@@ -4,16 +4,16 @@
   src/Humans.Web/Views/Home/**
   src/Humans.Web/Views/Profile/Edit.cshtml
   src/Humans.Web/Views/Profile/ShiftInfo.cshtml
-  src/Humans.Web/Views/Consent/**
-  src/Humans.Web/Views/OnboardingReview/Index.cshtml
-  src/Humans.Web/Views/OnboardingReview/Detail.cshtml
+  src/Sections/Humans.Consent/Views/Consent/**
+  src/Sections/Humans.Onboarding/Views/OnboardingReview/Index.cshtml
+  src/Sections/Humans.Onboarding/Views/OnboardingReview/Detail.cshtml
   src/Humans.Web/Controllers/AccountController.cs
   src/Humans.Web/Controllers/GuestController.cs
   src/Humans.Web/Controllers/HomeController.cs
-  src/Humans.Web/Controllers/OnboardingReviewController.cs
-  src/Humans.Application/Services/Onboarding/**
+  src/Sections/Humans.Onboarding/Controllers/OnboardingReviewController.cs
+  src/Sections/Humans.Onboarding/Services/**
   src/Humans.Application/Services/Auth/MagicLinkService.cs
-  src/Humans.Application/Services/Consent/**
+  src/Sections/Humans.Consent/Services/**
   src/Humans.Web/Authorization/MembershipRequiredFilter.cs
 -->
 <!-- freshness:flag-on-change

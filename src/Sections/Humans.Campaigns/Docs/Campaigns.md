@@ -119,7 +119,7 @@ Stored as string (`HasConversion<string>()`, max length 20).
 
 ## Cross-Section Dependencies
 
-- **Tickets:** `ITicketVendorService` — TicketAdmin can generate discount codes via the ticket vendor integration. Generation is invoked from the Campaign Detail page, not from the Tickets section.
+- **Tickets:** `ITicketDiscountCodes` (`Humans.Tickets.Contracts`) — TicketAdmin can generate discount codes via the ticket vendor integration; Campaigns asks Tickets for codes through this leaf rather than reaching past it into the Base vendor port. Generation is invoked from the Campaign Detail page, not from the Tickets section.
 - **Email:** `IEmailService.SendAsync` with `IEmailMessageFactory.CampaignCode` — composes and queues the campaign-code email through the outbox.
 - **Profiles / Users:** `IUserEmailService.GetNotificationTargetEmailsAsync(IReadOnlyCollection<Guid>)` — resolves notification targets for grant emails; `IUserServiceRead.GetUserInfoAsync` / `GetUserInfosAsync` — recipient `DisplayName` for the email payload and code-tracking display; `ICommunicationPreferenceService.IsOptedOutAsync(MessageCategory.CampaignCodes)` — opt-out gate; `IUnsubscribeService` (in `Humans.Application.Services.Users`) processes the public `/Unsubscribe/{token}` endpoint, validating both new category-aware tokens and legacy campaign-only tokens before delegating opt-out to `ICommunicationPreferenceService.UpdatePreferenceAsync`.
 - **Notifications:** `INotificationService.SendAsync` — `CampaignReceived` in-app notifications for wave recipients.

@@ -149,10 +149,10 @@ Unique constraint on (UserId, GuideEventId, DayOffset) with `NULLS NOT DISTINCT`
 | `EventsController` | `/Events/` | All active members |
 | `EventsController` (barrio actions) | `/Events/Barrio/{slug}/` | Camp Lead or Workshop Lead (per camp); CampAdmin / Admin globally |
 | `EventsController` (barrio bulk upload) | `/Events/Barrio/{slug}/BulkUpload` | Camp Lead or Workshop Lead (per camp); CampAdmin / Admin globally |
-| `EventsModerationController` | `/Events/Moderate/` | GuideModerator, Admin |
-| `EventsDashboardController` | `/Events/Dashboard/` | GuideModerator, Admin |
-| `EventsExportController` | `/Events/Export/` | GuideModerator, Admin |
-| `EventsAdminController` | `/Events/Admin/` | GuideModerator, Admin |
+| `EventsModerationController` | `/Events/Moderate/` | EventsAdmin, Admin |
+| `EventsDashboardController` | `/Events/Dashboard/` | EventsAdmin, Admin |
+| `EventsExportController` | `/Events/Export/` | EventsAdmin, Admin |
+| `EventsAdminController` | `/Events/Admin/` | EventsAdmin, Admin |
 | `EventsApiController` | `/api/events/` | Public (CORS) + authenticated same-origin |
 
 ## Actors & Roles
@@ -161,7 +161,7 @@ Unique constraint on (UserId, GuideEventId, DayOffset) with `NULLS NOT DISTINCT`
 |-------|--------------|
 | Any active member | Browse approved events; submit individual events during open window; manage own favourites and category preferences; view own submissions |
 | Camp Lead or Workshop Lead | Submit and manage barrio events via `EventsController` (`/Events/Barrio/{slug}/*`), shown in their **My Submissions** page alongside personal submissions; authority resolved via `ICampService.GetEventManagedCampsAsync` (unions `CampRoleAssignment` Lead/Workshop rows + legacy `CampLead` table). Workshop Leads do NOT gain general camp-management authority. Can bulk-upload events via CSV at `/Events/Barrio/{slug}/BulkUpload` (US-26.10). |
-| GuideModerator, Admin | All active member capabilities. Additionally: view moderation queue, approve/reject/request-resubmit events, **edit any event's fields in place from the moderation queue (any status; status preserved, no re-queue)**, view dashboard, download CSV export, print guide; manage guide settings, event categories, shared venues |
+| EventsAdmin, Admin | All active member capabilities. Additionally: view moderation queue, approve/reject/request-resubmit events, **edit any event's fields in place from the moderation queue (any status; status preserved, no re-queue)**, view dashboard, download CSV export, print guide; manage guide settings, event categories, shared venues |
 
 ## Invariants
 
@@ -192,7 +192,7 @@ Unique constraint on (UserId, GuideEventId, DayOffset) with `NULLS NOT DISTINCT`
 ## Cross-Section Dependencies
 
 - **Users**: controllers call `IUserService.GetUserInfoAsync(userId)` for submitter display name and email (replaces the dropped `Event.SubmitterUser` navigation). `UserManager<User>` (Identity) still resolves the current user.
-- **Camps**: controllers call `ICampService.GetCampsForYearAsync(year)` to resolve camp display data per event (replaces the dropped `Event.Camp` navigation). `Event.CampId` remains a bare FK column. Camp-event submission authority on `EventsController` barrio actions is sourced from `CampOperationRequirement.SubmitEvent` resource authorization (backed by `CampInfo.IsEventManager`) — the Lead OR Workshop OR-check that consumes `CampRoleAssignment` rows whose `CampRoleDefinition.SpecialRole` is `Lead` or `Workshop` (issue nobodies-collective/Humans#753). Moderation authority remains global (GuideModerator / Admin) — no camp-scoped moderation.
+- **Camps**: controllers call `ICampService.GetCampsForYearAsync(year)` to resolve camp display data per event (replaces the dropped `Event.Camp` navigation). `Event.CampId` remains a bare FK column. Camp-event submission authority on `EventsController` barrio actions is sourced from `CampOperationRequirement.SubmitEvent` resource authorization (backed by `CampInfo.IsEventManager`) — the Lead OR Workshop OR-check that consumes `CampRoleAssignment` rows whose `CampRoleDefinition.SpecialRole` is `Lead` or `Workshop` (issue nobodies-collective/Humans#753). Moderation authority remains global (EventsAdmin / Admin) — no camp-scoped moderation.
 - **Camps (downstream consumer, PR peterdrier#915):** the Camp detail page (`/Camps/{slug}`) embeds the Events-owned `EventsCardViewComponent` (`src/Humans.Web/ViewComponents/EventsCardViewComponent.cs`), which reads `IEventServiceRead` to list the camp's approved events — title, category, description (PR peterdrier#919), schedule, venue, host — with per-row favourite hearts that toggle in place via the JSON favourites API (`POST /api/events/favourites/{eventId}`, no page reload). Web-layer view composition only — Camps services do not depend on Events, and no Event types cross into the Camps views (the component is invoked with the camp's id only). Auth-gated at the call site; auto-hides when the camp has no approved events or the Events feature is off. Profile pages also embed the card scoped to `userId` (PR peterdrier#925), showing only the user's personal (non-camp) submitted events — events they submitted under a camp appear on the camp's page, not the profile card.
 - **Shifts (burn settings)** — `EventGuideSettings.EventSettings` navigation was dropped along with the cross-section FK. The Events section reads the linked burn (`event_settings` row owned by Shifts) via `IBurnSettingsService.GetByIdAsync(EventGuideSettings.EventSettingsId)`, which returns a `BurnSettingsInfo` DTO (identity, timezone, gate-opening date, build-calendar offsets, EE capacity) — the Shifts-internal entity never crosses the section boundary. Issue [#719](https://github.com/nobodies-collective/Humans/issues/719).
 - **Email**: `IEmailService` (injected into `EventService`) for submission confirmation and moderation outcome notifications.

@@ -91,7 +91,7 @@ CampaignGrant has a `RedeemedAt` (Instant?) field set by the ticket sync job whe
 - Redemption tracking on the Campaign Detail page ("X of Y codes redeemed")
 - Code tracking on the `/Tickets/Codes` page
 
-Additionally, Draft campaigns support API-based code generation via `ITicketVendorService.GenerateDiscountCodesAsync()` as an alternative to CSV import.
+Additionally, Draft campaigns support API-based code generation via `ITicketDiscountCodes.GenerateAsync()` (`Humans.Tickets.Contracts`) as an alternative to CSV import.
 
 See [24. Ticket Vendor Integration](../tickets/ticket-vendor-integration.md) for details.
 

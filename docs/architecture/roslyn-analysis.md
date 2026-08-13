@@ -13,7 +13,7 @@
 
 # Roslyn Analyzer Candidates
 
-Forward-looking inventory of *additional* in-repo analyzer rules beyond the currently-shipped set (`HUM0001`–`HUM0020`, `HUM0025`–`HUM0034`; `HUM0021` and `HUM0024` were retired in nobodies-collective/Humans#1278 and their ids are not reassigned; catalogued in [`code-analysis.md`](code-analysis.md)). **IDs are assigned at ship time from the next free slot in `AnalyzerReleases.Unshipped.md` — currently `HUM0035`.** The candidate headings below are deliberately *un-numbered*: several once carried provisional `HUM00xx` numbers that later shipped for unrelated rules, so do not pre-claim an id here. This file is the queue we draw from when adding the next analyzer; do not start writing one without checking here first.
+Forward-looking inventory of *additional* in-repo analyzer rules beyond the currently-shipped set — 29 live rules: `HUM0001`–`HUM0003`, `HUM0005`–`HUM0020`, `HUM0025`–`HUM0034`, catalogued in [`code-analysis.md`](code-analysis.md). **Retired ids are never reassigned:** `HUM0004` (Profile.IsSuspended write guard, dropped with the column in nobodies-collective/Humans#1217), `HUM0022`/`HUM0023` (the per-section Notification and Event DbSet-write analyzers, subsumed by the universal `HUM0025`), and `HUM0021`/`HUM0024` (retired in nobodies-collective/Humans#1278). **IDs are assigned at ship time from the next free slot in `AnalyzerReleases.Unshipped.md` — currently `HUM0035`.** The candidate headings below are deliberately *un-numbered*: several once carried provisional `HUM00xx` numbers that later shipped for unrelated rules, so do not pre-claim an id here. This file is the queue we draw from when adding the next analyzer; do not start writing one without checking here first.
 
 ## Framing
 
@@ -119,8 +119,8 @@ assertion families that are plausible analyzer candidates:
   join across. The debt was already drained before retirement —
   nobodies-collective/Humans#992 cut all 54 cross-section relationships, leaving no
   `[Grandfathered("HUM0024", ...)]` markers. **Accepted residual:** an EF configuration
-  inside the still-unpeeled `Humans.Infrastructure` could map another section's entity;
-  that is a review-time check now, not a build error. Do not re-propose this analyzer —
+  inside `Humans.Infrastructure`, which still hosts the five not-yet-G5 section contexts,
+  could map another section's entity; that is a review-time check now, not a build error. Do not re-propose this analyzer —
   reviving it would mean carrying it until the last section peels, which is exactly the
   trade #1278 declined.
 

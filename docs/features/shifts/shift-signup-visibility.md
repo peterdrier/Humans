@@ -3,7 +3,7 @@
   src/Humans.Application/Services/Shifts/ShiftSignupService.cs
   src/Humans.Web/Controllers/ShiftsController.cs
   src/Humans.Web/Controllers/ShiftAdminController.cs
-  src/Humans.Web/Authorization/ShiftRoleChecks.cs
+  src/Humans.UI/Authorization/ShiftRoleChecks.cs
   src/Humans.Web/Views/Shifts/**
   src/Humans.Web/Views/ShiftAdmin/**
 -->

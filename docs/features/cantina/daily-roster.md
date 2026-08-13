@@ -23,7 +23,7 @@ A previous iteration produced a per-day roster; coordinators rejected it as too 
 View access to `/Cantina/Roster*`:
 
 - **Access:** `Admin` or the grantable `CantinaAdmin` role, via the `CantinaAdminOrAdmin` authorization policy — aligned with every other per-area `<Area>AdminOrAdmin` policy. `CantinaAdmin` is granted on the permissions page like any other admin role (no team-name heuristic).
-- **Other authenticated users:** 403 Forbidden.
+- **Other authenticated users:** redirected to `/Account/AccessDenied` (cookie authentication's `AccessDeniedPath`) — not a bare 403.
 - **Unauthenticated:** redirected to login per the global `[Authorize]` policy.
 
 Access is role-based only. There is no team-membership-based path.
@@ -111,7 +111,7 @@ If there is no active event, the service returns an empty DTO with `WeekStartDat
 - `Allergies` / `Intolerances` cells contain the chip values comma-and-space-separated.
 - Filename: `cantina-roster-week-of-<yyyy-MM-dd>.csv` (the Monday of the week, ISO date).
 - No `MedicalConditions` column.
-- Same authorization gate as the HTML route — unauthorized requests get 403.
+- Same authorization gate as the HTML route — unauthorized requests are redirected to `/Account/AccessDenied`.
 
 ### US-36.4: Unauthorized user attempts access
 **As a** regular volunteer (no `CantinaAdmin` or `Admin` role)
@@ -119,9 +119,9 @@ If there is no active event, the service returns an empty DTO with `WeekStartDat
 **So that** other volunteers' dietary data isn't broadcast to anyone who guesses the URL
 
 **Acceptance Criteria:**
-- Authenticated user without `Admin` or `CantinaAdmin` gets a 403 Forbidden response on the `/Cantina/Roster*` routes (the `CantinaAdminOrAdmin` policy fails).
+- Authenticated user without `Admin` or `CantinaAdmin` is redirected to `/Account/AccessDenied` on the `/Cantina/Roster*` routes (the `CantinaAdminOrAdmin` policy fails; cookie authentication's `AccessDeniedPath`, not a bare 403).
 - Unauthenticated user is redirected to the login page (global `[Authorize]` policy).
-- A 403 must **not** leak any data (no headcount, no week label) — only the standard forbidden response.
+- The access-denied redirect must **not** leak any data (no headcount, no week label) — only the standard redirect.
 
 ## "On-site" Definition
 
@@ -236,7 +236,7 @@ New / updated components:
 
 - A user **cannot** see the roster page or CSV unless they hold `Admin` or `CantinaAdmin`. No other path grants access.
 - The roster page and CSV **never** include `MedicalConditions` — `CantinaRosterService` never reads it and the cantina DTOs have no such field. To see medical conditions, viewers use the per-profile badges path with `ShowMedical = true`.
-- The 403 response **must not** leak any roster data, including the week's headcount or label.
+- The access-denied redirect **must not** leak any roster data, including the week's headcount or label.
 - `Refused` / `Bailed` / `NoShow` / `Cancelled` signups **must not** contribute to any count or row, even if the volunteer also has a qualifying signup on a different day.
 - The roster reads only the currently active event's signups — no cross-event aggregation.
 - Aggregates are computed over **unique humans** for the week, not by summing daily counts: a person on-site Mon + Wed is counted **once** for `TotalUniqueOnSite` and once for each aggregate row they qualify for.

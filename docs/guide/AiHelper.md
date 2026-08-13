@@ -8,7 +8,7 @@
   src/Sections/Humans.Agent/Views/Agent/**
 -->
 <!-- freshness:flag-on-change
-  End-user behaviour of the in-app AI helper: how to open it (the help-button menu), what it can answer, the talk-with-AI / create-issue / send-feedback menu options, and that it explains-but-never-acts — review only when user-visible agent behaviour changes, not internal preload/store refactors.
+  End-user behaviour of the in-app AI helper: how to open it (the help-button menu), what it can answer, the talk-with-AI / create-issue menu options, and that it explains-but-never-acts — review only when user-visible agent behaviour changes, not internal preload/store refactors.
 -->
 
 # The in-app AI helper

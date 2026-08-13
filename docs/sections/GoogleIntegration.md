@@ -49,7 +49,7 @@ Flat record — already clean. Holds `TeamId`/`UserId` scalars with no navs. Two
 
 ## Routing
 
-All Google integration management is consolidated in `GoogleController` (`[Route("Google")]`). Team-level resource linking stays in `TeamAdminController` at `/Teams/{slug}/Admin/Resources`.
+All Google integration management is consolidated in `GoogleController` (`[Route("Google")]`). Team-level resource linking stays in `TeamAdminController` (now in `src/Sections/Humans.Teams/Controllers/`) at `/Teams/{slug}/Resources`.
 
 | Route | Method | Auth | Purpose |
 |-------|--------|------|---------|
@@ -157,7 +157,7 @@ Both previously-flagged cross-domain gaps are resolved:
 - `ISyncSettingsRepository`, `IGoogleSyncOutboxRepository`, `IGoogleResourceRepository` (all in `Humans.Application/Interfaces/Repositories/`) are the only code paths that touch this section's tables via `DbContext`.
 - **Decorator decision** — no caching decorator. All Google Integration services are either request-scoped admin operations or background-job processors; no hot bulk-read path warrants a `ConcurrentDictionary` projection.
 - **Cross-domain navs** — none remain. `SyncServiceSettings.UpdatedByUserId`, `GoogleResource.TeamId`, and `GoogleSyncOutboxEvent.TeamId`/`UserId` are all bare Guid columns with no nav and no FK constraint — #992 cut every cross-section FK, including the typed-FK forms these configs used to carry.
-- **Cross-section calls** — `ITeamService`, `ITeamResourceService`, `IUserService`, `IUserEmailService`, `IProfileService`, `IEmailService`, `ISystemSettingsService` (Drive monitor `DriveActivityMonitor:LastRunAt` marker in `system_settings`), `IAuditLogRepository` (read path via `IAuditViewerService`).
+- **Cross-section calls** — `ITeamService`, `ITeamResourceService`, `IUserService`, `IUserEmailService`, `IEmailService`, `ISystemSettingsService` (Drive monitor `DriveActivityMonitor:LastRunAt` marker in `system_settings`), `IAuditLogService` (write path — `GoogleController` logs requeue/link/remediate actions; `IAuditLogRepository` itself is `internal` to the AuditLog section and not reachable cross-section). `IProfileService` no longer exists — its surface was folded into `IUserService`.
 - **Architecture tests** — `tests/Humans.Application.Tests/Architecture/GoogleIntegrationArchitectureTests.cs` (pins `EmailProvisioningService` + `GoogleWorkspaceSyncService`: namespace, no-DbContext, no-Google.Apis, sealed); `GoogleAdminArchitectureTests.cs` (pins `GoogleAdminService`); `GoogleWorkspaceUserArchitectureTests.cs` (pins `GoogleWorkspaceUserService` + `IWorkspaceUserDirectoryClient` shape-neutrality + `Humans.Application` assembly-level no-Google.Apis assertion); `GoogleWorkspaceSyncBridgeArchitectureTests.cs` (pins all four Part 2a bridge interfaces for namespace, shape-neutrality, and no-Google.Apis at the assembly level).
 
 ### Repository surface

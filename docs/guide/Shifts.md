@@ -7,7 +7,7 @@
   src/Humans.Web/Controllers/ShiftAdminController.cs
   src/Humans.Web/Controllers/ShiftDashboardController.cs
   src/Humans.Web/ViewComponents/ShiftSignupsViewComponent.cs
-  src/Humans.Web/Authorization/ShiftRoleChecks.cs
+  src/Humans.UI/Authorization/ShiftRoleChecks.cs
   src/Humans.Application/Services/Shifts/**
   src/Humans.Domain/Entities/Rota.cs
   src/Humans.Domain/Entities/Shift.cs

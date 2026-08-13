@@ -1,6 +1,6 @@
 <!-- freshness:triggers
   src/Humans.Web/Views/Google/**
-  src/Humans.Web/Views/TeamAdmin/Resources.cshtml
+  src/Sections/Humans.Teams/Views/TeamAdmin/Resources.cshtml
   src/Humans.Web/Controllers/GoogleController.cs
   src/Humans.Application/Services/GoogleIntegration/**
   src/Humans.Domain/Entities/GoogleResource.cs
@@ -60,10 +60,9 @@ Joining a team grants you its Group membership and writer access to its linked S
 
 ### Link a Google resource to your department
 
-Open `/Teams/{slug}/Resources`. Three link forms:
+Open `/Teams/{slug}/Resources`. Two link forms:
 
-- **Link Drive folder** — paste a Shared Drive folder URL; the folder must already be shared with the app's service account as Editor (the page shows that email if validation fails).
-- **Link Drive file** — paste a Sheet, Doc, Slides, or Forms URL. Same sharing requirement.
+- **Link Google Drive Resource** — paste a Shared Drive folder URL, or a Sheet/Doc/Slides/Forms file URL; the app detects which kind it is from the URL. The resource must already be shared with the app's service account as Editor (the page shows that email if validation fails).
 - **Link Google Group** — paste the group email; the service account must be a Group Manager.
 
 Duplicate links on the same team are rejected. Unlinking is soft — the record flips to inactive and nothing is deleted in Google. Each linked resource has a **Sync** button that runs just that resource, respecting the current sync mode — use it to propagate a membership change immediately instead of waiting for the next job.

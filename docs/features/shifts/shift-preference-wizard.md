@@ -13,7 +13,7 @@
 
 ## Business Context
 
-Volunteers need to tell coordinators about their skills, work style preferences, and languages so they can be matched with appropriate shifts. The current `/Profile/ShiftInfo` page is a flat form with bare checkboxes — functional but uninviting, especially on mobile. This feature replaces it with a guided 3-step wizard that collects the same data in a more engaging, mobile-friendly flow.
+Volunteers need to tell coordinators about their skills, work style preferences, and languages so they can be matched with appropriate shifts. The current `/Profile/Me/ShiftInfo` page is a flat form with bare checkboxes — functional but uninviting, especially on mobile. This feature replaces it with a guided 3-step wizard that collects the same data in a more engaging, mobile-friendly flow.
 
 This is the first of three related features:
 - **33 — Shift Preference Wizard** (this feature): Collect skills, work style, languages
@@ -22,7 +22,7 @@ This is the first of three related features:
 
 ## Authorization
 
-Same as current `/Profile/ShiftInfo` — any authenticated user can view and edit their own shift preferences. No role-based restrictions.
+Same as current `/Profile/Me/ShiftInfo` — any authenticated user can view and edit their own shift preferences. No role-based restrictions.
 
 ## User Stories
 
@@ -32,7 +32,7 @@ Same as current `/Profile/ShiftInfo` — any authenticated user can view and edi
 **So that** coordinators can match me with shifts that fit my skills and availability
 
 **Acceptance Criteria:**
-- Wizard replaces the existing flat form at `GET /Profile/ShiftInfo`
+- Wizard replaces the existing flat form at `GET /Profile/Me/ShiftInfo`
 - 3 steps: Skills, Work Style, Languages
 - Step 1 (Skills): emoji-prefixed chip multi-select — Bartending, Cooking, Sound, DJ, First Aid, Electrical, Driving, Construction, Art, Other
 - Step 2 (Work Style): radio cards for time preference (Early Bird, Night Owl, All Day, No Preference) + Bootstrap toggle switches for quirks (Sober Shift, Work In Shade, No Heights, Physical Work OK, Quiet Work)
@@ -85,7 +85,7 @@ The set of time preference values should be a `static readonly` array (like the 
 
 ### Fields Removed From This Page (Not Deleted)
 
-The following fields are no longer editable on `/Profile/ShiftInfo` but remain on `VolunteerEventProfile` and in the database. Existing data is preserved. These will move to the Dietary & Medical Nudge Modal (Feature 35):
+The following fields are no longer editable on `/Profile/Me/ShiftInfo` but remain on `VolunteerEventProfile` and in the database. Existing data is preserved. These will move to the Dietary & Medical Nudge Modal (Feature 35):
 - `DietaryPreference`
 - `Allergies[]` + `AllergyOtherText`
 - `Intolerances[]` + `IntoleranceOtherText`
@@ -129,7 +129,7 @@ The following fields are no longer editable on `/Profile/ShiftInfo` but remain o
 
 - Profile page → "Shift Info" link (existing)
 - Dashboard "Things to do" card → "Set up" action (issue #273)
-- Any future contextual links can point to `/Profile/ShiftInfo`
+- Any future contextual links can point to `/Profile/Me/ShiftInfo`
 
 ## Related Features
 

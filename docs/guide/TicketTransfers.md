@@ -1,13 +1,13 @@
 <!-- freshness:triggers
-  src/Humans.Web/Views/TicketTransfer/**
-  src/Humans.Web/Views/TicketTransferAdmin/**
-  src/Humans.Web/Controllers/TicketTransferController.cs
-  src/Humans.Web/Controllers/TicketTransferAdminController.cs
-  src/Humans.UI/ViewComponents/TicketStubViewComponent.cs
-  src/Humans.Application/Services/Tickets/TicketTransferService.cs
-  src/Humans.Application/Interfaces/Tickets/ITicketTransferService.cs
-  src/Humans.Domain/Entities/TicketTransferRequest.cs
-  src/Humans.Domain/Enums/TicketTransferStatus.cs
+  src/Sections/Humans.Tickets/Views/TicketTransfer/**
+  src/Sections/Humans.Tickets/Views/TicketTransferAdmin/**
+  src/Sections/Humans.Tickets/Controllers/TicketTransferController.cs
+  src/Sections/Humans.Tickets/Controllers/TicketTransferAdminController.cs
+  src/Sections/Humans.Tickets/Contracts/TicketStubViewComponent.cs
+  src/Sections/Humans.Tickets/Services/TicketTransferService.cs
+  src/Sections/Humans.Tickets/Services/ITicketTransferService.cs
+  src/Sections/Humans.Tickets/Domain/TicketTransferRequest.cs
+  src/Sections/Humans.Tickets/Domain/TicketTransferStatus.cs
 -->
 <!-- freshness:flag-on-change
   End-user transfer walkthrough: eligibility (valid, matched, not gate-checked-in), wizard steps, notifications, and the cancel window. Review when the transfer wizard, lifecycle, or notifications change.
