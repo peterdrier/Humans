@@ -9,12 +9,12 @@
     <InternalsVisibleTo Include="Humans.Teams.Tests" />
     <InternalsVisibleTo Include="Humans.Shifts.Tests" />
     <!--
-      Humans.Application.Tests, until Shifts and GoogleIntegration move. Five test files there
-      (ShiftDashboardMetricsTests, ShiftManagementReadMathTests, ShiftSummaryServiceTests,
-      WorkloadServiceTests, TeamResourceServiceDeactivateTests) seed team rows through
-      ServiceTestHarness because their own sections still live in Base. Rewriting their
-      fixtures inside this move commit would change five unrelated sections' tests and be
-      redone at those sections' own G5; the entry comes out with the second of them.
+      Humans.Application.Tests holds the tests of sections that have not moved to their own
+      project yet; they seed team rows through ServiceTestHarness, which needs Teams
+      internals. Each G5 move takes its own section's tests out of there into a section test
+      project (which gets its own entry above), so this one comes out when the last section
+      leaves Base — rewriting an unmoved section's fixtures early would be redone at its own
+      G5.
     -->
     <InternalsVisibleTo Include="Humans.Application.Tests" />
     <!-- The one assembly allowed to see many sections (design §5). -->

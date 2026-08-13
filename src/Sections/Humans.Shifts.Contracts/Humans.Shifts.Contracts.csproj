@@ -12,17 +12,18 @@
     memory/architecture/section-project-cycle-fix.md).
 
     The split is carved from the call sites, not from the interfaces (Notifications'
-    rule). IShiftManagementService has ~50 members and 73 consumer files; only the
-    thirteen reads on IShiftManagementServiceRead, the six on IShiftVolunteerProfiles
-    and the seven dev-fixture verbs on IShiftSeeding have a caller outside the section.
-    The other ~25 — the whole rota/shift generation, coordinator-dashboard and
-    post-event-stats surface — stay on the internal IShiftManagementService, which
-    inherits the three leaf interfaces so the section's own call sites are unchanged.
-    Same shape for IShiftSignupService: four members leave (IShiftSignups), five more
-    serve only Humans.Development's dashboard seeder (IShiftSignupSeeding, Teams'
-    rule — the seeder builds a multi-section fixture, so the verbs come to the leaf
-    rather than the seeding going into the section), and the remaining ten stay
-    internal.
+    rule). A member is on this leaf if something outside the section calls it, and
+    nowhere else. From IShiftManagementService that is the cross-section reads
+    (IShiftManagementServiceRead), the volunteer-profile surface Shell's profile page
+    and widget gallery read (IShiftVolunteerProfiles), and the dev-fixture verbs
+    Humans.Development's seeder needs (IShiftSeeding); the rota/shift generation,
+    coordinator-dashboard and post-event-stats surface has no outside caller and stays
+    on the internal IShiftManagementService, which inherits the three leaf interfaces so
+    the section's own call sites are unchanged. Same shape for IShiftSignupService: the
+    signup state machine Shell and onboarding drive leaves as IShiftSignups, the seeder's
+    verbs as IShiftSignupSeeding (Teams' rule — the seeder builds a multi-section
+    fixture, so the verbs come to the leaf rather than the seeding going into the
+    section), and the review surface stays internal.
 
     References Humans.Interfaces (IApplicationService, IInvalidator, SurfaceBudget,
     Grandfathered) and Humans.Domain — both below Humans.Application, so this cannot

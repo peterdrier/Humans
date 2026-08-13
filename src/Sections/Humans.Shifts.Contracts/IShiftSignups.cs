@@ -6,18 +6,18 @@ using NodaTime;
 namespace Humans.Shifts.Contracts;
 
 /// <summary>
-/// The four members of the shift-signup state machine something outside the
-/// section calls: Shell's profile page and the onboarding widget sign a
-/// volunteer up (single shift or a Build/Strike range) and render their
-/// no-show history, and the account-anonymisation flow cancels every active
-/// signup a departing human holds.
+/// The part of the shift-signup state machine something outside the section
+/// calls: Shell's profile page and the onboarding widget sign a volunteer up
+/// (single shift or a Build/Strike range) and render their no-show history, and
+/// the account-anonymisation flow cancels every active signup a departing human
+/// holds.
 /// </summary>
 /// <remarks>
-/// Carved from the call sites (Notifications' rule). The other ten members of
-/// the internal <c>IShiftSignupService</c> — the approve/refuse/no-show/remove
-/// review surface, the three block-range operations, the orphan scan, the
-/// team probe, the audience read and the day toggle — have no caller outside
-/// the section and stay internal.
+/// Carved from the call sites (Notifications' rule). The rest of the internal
+/// <c>IShiftSignupService</c> — the approve/refuse/no-show/remove review
+/// surface, the block-range operations, the orphan scan, the team probe, the
+/// audience read and the day toggle — has no caller outside the section and
+/// stays internal.
 /// </remarks>
 public interface IShiftSignups
 {
