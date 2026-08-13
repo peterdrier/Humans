@@ -1,3 +1,4 @@
+using Humans.Auth.Contracts;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Auth;
 using Humans.Notifications.Contracts;

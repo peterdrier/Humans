@@ -566,13 +566,15 @@ No DB access, no cache.
 
 ## Auth
 
-Folder: `src/Humans.Application/Services/Auth/`. **DbContext:**
-`AuthDbContext` — **peeled** (nobodies-collective/Humans#1234, part of
-#858). `RoleAssignmentRepository` injects `IDbContextFactory<AuthDbContext>`
+Folder: `src/Sections/Humans.Auth/Services/` (G5, nobodies-collective/Humans#866);
+`MagicLinkService` stayed in `src/Humans.Application/Services/Auth/` as a
+cross-section orchestrator. **DbContext:** `AuthDbContext` — **peeled**
+(nobodies-collective/Humans#1234, part of #858) and now internal to the
+section. `RoleAssignmentRepository` injects `IDbContextFactory<AuthDbContext>`
 directly. Owns `RoleAssignments`.
 
 The inner `IRoleAssignmentService` is wrapped by
-`Humans.Infrastructure.Services.Auth.CachingRoleAssignmentService`
+`Humans.Auth.Services.CachingRoleAssignmentService`
 (Singleton decorator inheriting `TrackedCache<Guid, RoleAssignmentRow>`,
 issue #749). The full `role_assignments` row set is held in memory so
 cross-section reads (`GetActiveCountsByRoleAsync`, `GetActiveForUserAsync`)

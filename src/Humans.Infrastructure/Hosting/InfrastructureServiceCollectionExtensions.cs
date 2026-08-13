@@ -44,7 +44,6 @@ public static class InfrastructureServiceCollectionExtensions
 
         // Per-section contexts (nobodies-collective/Humans#858), migrated after
         // HumansDbContext by DatabaseMigrationHostedService in registration order.
-        services.AddSectionDbContext<AuthDbContext>(sentinelTable: "role_assignments");
         services.AddSectionDbContext<GoogleIntegrationDbContext>(sentinelTable: "google_resources");
         services.AddSectionDbContext<CampsDbContext>(sentinelTable: "camps");
         services.AddSectionDbContext<SystemDbContext>(sentinelTable: "DataProtectionKeys");

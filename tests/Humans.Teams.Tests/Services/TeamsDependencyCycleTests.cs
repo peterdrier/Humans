@@ -1,3 +1,4 @@
+using Humans.Auth.Contracts;
 using Humans.Application.Services.Profiles;
 using AwesomeAssertions;
 using Humans.Application.Interfaces;
@@ -50,7 +51,6 @@ public sealed class TeamsDependencyCycleTests
         services.AddScoped<IUserRepository>(_ => Substitute.For<IUserRepository>());
         services.AddScoped<ICommunicationPreferenceRepository>(_ => Substitute.For<ICommunicationPreferenceRepository>());
         services.AddScoped<IUserInfoInvalidator>(_ => Substitute.For<IUserInfoInvalidator>());
-        services.AddScoped<IRoleAssignmentRepository>(_ => Substitute.For<IRoleAssignmentRepository>());
         services.AddScoped<IShiftManagementRepository>(_ => Substitute.For<IShiftManagementRepository>());
         services.AddScoped<IAuditLogService>(_ => Substitute.For<IAuditLogService>());
         services.AddScoped<IEmailService>(_ => Substitute.For<IEmailService>());
@@ -67,8 +67,10 @@ public sealed class TeamsDependencyCycleTests
         services.AddScoped<UserService>();
         services.AddScoped<IUserService>(sp => sp.GetRequiredService<UserService>());
 
-        services.AddScoped<RoleAssignmentService>();
-        services.AddScoped<IRoleAssignmentService>(sp => sp.GetRequiredService<RoleAssignmentService>());
+        // Auth is another section; RoleAssignmentService is internal to Humans.Auth and its
+        // own constructor shape is pinned by that section's AuthArchitectureTests. The
+        // subject here is the Teams chain.
+        services.AddScoped<IRoleAssignmentService>(_ => Substitute.For<IRoleAssignmentService>());
 
         services.AddScoped<ShiftManagementService>();
         services.AddScoped<IShiftManagementService>(sp => sp.GetRequiredService<ShiftManagementService>());
@@ -77,7 +79,6 @@ public sealed class TeamsDependencyCycleTests
         services.AddScoped<ITeamService>(sp => sp.GetRequiredService<TeamService>());
 
         services.AddScoped<Microsoft.Extensions.Logging.ILogger<UserService>>(_ => NullLogger<UserService>.Instance);
-        services.AddScoped<Microsoft.Extensions.Logging.ILogger<RoleAssignmentService>>(_ => NullLogger<RoleAssignmentService>.Instance);
         services.AddScoped<Microsoft.Extensions.Logging.ILogger<ShiftManagementService>>(_ => NullLogger<ShiftManagementService>.Instance);
         services.AddScoped<Microsoft.Extensions.Logging.ILogger<TeamService>>(_ => NullLogger<TeamService>.Instance);
         services.AddScoped<Microsoft.Extensions.Logging.ILogger<UserEmailService>>(_ => NullLogger<UserEmailService>.Instance);

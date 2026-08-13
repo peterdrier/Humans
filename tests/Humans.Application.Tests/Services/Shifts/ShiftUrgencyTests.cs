@@ -1,3 +1,4 @@
+using Humans.Auth.Contracts;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.Auth;

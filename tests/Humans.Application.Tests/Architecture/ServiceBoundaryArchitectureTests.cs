@@ -55,7 +55,7 @@ public class ServiceBoundaryArchitectureTests
             [SectionRepository("Humans.Issues.Data.IIssuesRepository")] = "Issues",
             [SectionRepository("Humans.Consent.Data.ILegalDocumentRepository")] = "Legal",
             [SectionRepository("Humans.Notifications.Data.INotificationRepository")] = "Notifications",
-            [typeof(IRoleAssignmentRepository)] = "Auth",
+            [SectionRepository("Humans.Auth.Data.IRoleAssignmentRepository")] = "Auth",
             [typeof(IShiftManagementRepository)] = "Shifts",
             [SectionRepository("Humans.Surveys.Data.ISurveyRepository")] = "Surveys",
             [typeof(ISyncSettingsRepository)] = "GoogleIntegration",

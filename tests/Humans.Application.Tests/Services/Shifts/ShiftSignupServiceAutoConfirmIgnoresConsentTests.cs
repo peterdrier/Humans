@@ -1,3 +1,4 @@
+using Humans.Auth.Contracts;
 using Humans.Teams.Domain;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.EarlyEntry;

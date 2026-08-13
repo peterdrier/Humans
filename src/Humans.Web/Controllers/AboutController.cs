@@ -1,3 +1,4 @@
+using Humans.Auth.Contracts;
 using Humans.UI.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

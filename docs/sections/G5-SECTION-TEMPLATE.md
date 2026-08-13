@@ -63,7 +63,11 @@ explicitly), and Tickets (the first section to carve
 a *sibling adapter section* — `Humans.TicketTailor` — out of a Base connector while leaving the
 port in Base; the first to ship both a `.Contracts` leaf and a `Contracts/` folder; the first
 to take a view component back *out* of `Humans.UI`; and the first whose lane closed a
-cross-section cow path by moving two call sites off a Base port onto its own leaf). Step
+cross-section cow path by moving two call sites off a Base port onto its own leaf), and Auth
+(the second horizontal, the first section to ship *no controller, view or resource set* because its
+own controller turned out to write only other sections' tables; the first plain
+`Microsoft.NET.Sdk` project to need a `FrameworkReference`; and the first whose leaf had to stop
+naming a *vertical* section's record). Step
 numbers match the former §15,
 so an old "§15 step 3b" citation reads as "step 3b" here.
 
@@ -102,6 +106,20 @@ visibility flip in one diff is unreviewable.
       *is*. (AuditLog: the append path and the raw queries moved; `AuditViewerService`, which
       resolves actor/subject/team names through Users, Teams and Google Integration, stayed in
       `Humans.Application` as the cross-section orchestrator it is.)
+      - **`docs/sections/_Index.md` may already have answered it.** That table's stated rule for
+        its **Orchestrators** column is "service classes that inject no `I*Repository`", which is
+        the hard rules' own definition — so the column is a pre-computed list of the services
+        that cannot move into a horizontal. Auth's row had named `MagicLinkService` there since
+        before G5 existed, and that service injects `Humans.Email.Contracts`. Read the row before
+        running the greps (proven: Auth).
+      - **…and the orchestrator can take the section's *controller* with it, leaving a section
+        with no controller, no view and no resource set.** `AccountController` is Auth's by every
+        doc; run the "read the controller" test below and every one of its actions writes Users'
+        or Profiles' tables through their services, injects nothing the move internalises, and
+        reaches Auth only through the orchestrator that stayed behind. It stayed in Shell with
+        its seven views and 35 resource keys, so step 3b stopped at its first question and step
+        12 fell back to Gdpr's DI-registration check. A section that ships only a repository, a
+        service and a leaf is not an incomplete move (proven: Auth).
 - [ ] Fan-in known: run `reforge` for inbound references before starting. A section with many
       inbound section references is a knot, goes later, and may need `<Section>.Contracts`.
 
@@ -149,6 +167,14 @@ grep -rn --include='*.resx' 'Enum_<Section>' src/
 # enclosing namespace. One such site exists in the repo and it is in a test file whose
 # usings say nothing about the section (step 5).
 grep -rn 'Interfaces\.<Section>\.\|Services\.<Section>\.' src/ tests/
+# a DI-graph test that builds the real service chain names the CONCRETE service and never
+# writes typeof, so the typeof sweep above misses it (step 8). Two exist and neither
+# filename mentions a section.
+grep -rn 'AddScoped<<Section>Service>' tests/
+# HORIZONTAL SECTIONS ONLY: vertical leaf types named in what will become your leaf's
+# signatures. Not the same search as the ProjectReference audit — this one fails at the
+# leaf, and a `(bool, string?)` record is the shape that hides in it (step 5b).
+grep -rn 'Humans\.[A-Za-z]*\.Contracts' src/Humans.Application/Interfaces/<Section>
 # whether those Enum_ keys are LIVE — grep the CALL SITES, never the helper class (step 3b).
 # Added by Expenses (A3): the methods are EnumDisplay/EnumSelectItems and nothing is named
 # "Localize", so looking for the helper by name reports a live key set as orphaned.
@@ -166,7 +192,14 @@ Git Bash.)
 1. [ ] `src/Sections/Humans.<Section>/Humans.<Section>.csproj` — `Microsoft.NET.Sdk.Razor`
    **when the section has controllers or views**, plain `Microsoft.NET.Sdk` when it has neither
    (SystemSettings): discovery keys off `[assembly: Section("…")]`, not off being an MVC
-   application part. With Razor: `<AddRazorSupportForMvc>true</AddRazorSupportForMvc>`,
+   application part. **There is a third shape: plain `Microsoft.NET.Sdk` *plus*
+   `<FrameworkReference Include="Microsoft.AspNetCore.App" />`, with no `AddRazorSupportForMvc`,
+   no `<Using>` group and no `Humans.UI` reference** — for a section that renders nothing but
+   names an ASP.NET type anyway. Auth's are `AuthorizationHandler<,>` (its resource handler,
+   step 6) and `IHostedService` (its §15 decorator). Decide the framework reference from what the
+   section *names*, never from whether it has views; Central Package Management has no
+   `PackageVersion` for the AspNetCore packages, so the framework reference is the only way to
+   get them (proven: Auth). With Razor: `<AddRazorSupportForMvc>true</AddRazorSupportForMvc>`,
    `<InternalsVisibleTo>` for **both** `Humans.<Section>.Tests` **and `Humans.Integration.Tests`**
    (spec §5), `FrameworkReference Microsoft.AspNetCore.App`, the section's own NuGet packages,
    `<None Include="**\*.md" />`, and the three `<Using>` items Sdk.Razor does not inherit from
@@ -608,6 +641,20 @@ Git Bash.)
      result with an assembly-level test — `GetReferencedAssemblies()` naming no vertical
      section — because nothing else stops the next lane from adding the reference
      (proven: AuditLog).
+   - **…and the horizontal rule bites a second time at the *type* level, which is not the same
+     search as the reference one.** The bullet above asks what a horizontal's services
+     *inject*. This asks what its leaf's signatures *name*:
+     `IRoleAssignmentService.AssignRoleAsync`/`EndRoleAsync` returned
+     `Humans.Onboarding.Contracts.OnboardingResult` — a `(bool Success, string? ErrorKey)` record
+     a *vertical* section owns — so the leaf could not compile without the forbidden reference.
+     Moving the record down to `Humans.Interfaces` edits another section's leaf to fix yours and
+     leaves a section-named type in Base; taking the reference is what the hard rules forbid. The
+     section owns its own boundary record and maps at the edge (Finance's `HoldedLedgerLineDto`
+     rule, applied to a primitive). Cheap when the callers only read the members — Auth's two
+     production call sites read `.Success`/`.ErrorKey` and needed a type name change and nothing
+     else. **Grep a horizontal's public signatures for `Humans.<AnyVertical>.Contracts` types
+     before starting**; it fails at the leaf, not in the section, and no `ProjectReference` audit
+     finds it (proven: Auth).
    - **Fan-*out* is not fan-in, and an orchestrator section can be the widest consumer in the
      repo with an empty `Contracts/`.** Search injects five sections' service interfaces and its
      recon touches ten already-moved projects, which reads as the knot the preconditions warn
@@ -1221,6 +1268,25 @@ Git Bash.)
      Rewriting those five inside a move commit changes five unrelated sections' fixtures and is
      redone at their own lanes. State both entries with the condition that removes them
      (proven: Teams).
+   - **…and the share-vs-copy-vs-stub question has a tiebreaker that outranks the call count:
+     does the harness reach a type another lane is deleting?** Auth's service test used
+     `Db.Users`, `SeedUser`, `NewDbBackedUserService()` and the section pair — by call count,
+     Teams' "copy the harness". But `NewDbBackedUserService` stubs over an in-memory
+     `HumansDbContext`, which §858 peel 15 deletes, so copying would have taken a fresh
+     dependency on it. The service reads exactly two members of `IUserServiceRead`, so the
+     harness became a `Dictionary<Guid, UserInfo>` with `SeedUser` keeping its signature and the
+     seeding call sites unchanged — Campaigns' "rewrite the stub" reached from the other
+     direction, and `UserInfo.Create` (Governance's `UserInfoFixtures`) is what makes the
+     projection eight lines (proven: Auth).
+   - **A DI-graph test names a concrete section service without ever writing `typeof`.**
+     `EmailDependencyCycleTests` and `TeamsDependencyCycleTests` each build a real service chain
+     with `services.AddScoped<<Section>Service>()` plus a repository substitute and an
+     `ILogger<<Section>Service>`; all three stop compiling at the move and none is found by the
+     `typeof(<Section>` pre-flight search. Both files already carried the fix as a comment about
+     a *different* section ("X is another section; its concrete service is internal and its own
+     cycle is pinned by its own test") — substitute the leaf interface and delete the other two
+     registrations. **Add `grep -rn 'AddScoped<<Section>Service>' tests/` to the pre-flight
+     list** (proven: Auth).
    - **When the section test needs the *whole* harness, the replacement is a registry, not
      three inlined fields.** Budget's and Expenses' service tests used a clock and a factory, so
      "own them in ten lines" worked. Campaigns' used `Db.Users`/`Db.Teams` through
@@ -1396,6 +1462,15 @@ Git Bash.)
       it is stronger. Ten unmoved sections carry the shape (`CampaignsArchitectureTests`,
       `GovernanceArchitectureTests`, `TeamsArchitectureTests`, …), so expect it every time
       (proven: Calendar).
+      **…and the question is not only about `tests/`: `docs/architecture/freshness-catalog.yml`
+      holds path-keyed sweeps with exactly the same failure mode.** Its
+      `authorization-inventory` entry triggers on `src/Humans.Web/Authorization/**` and
+      `src/Humans.Application/Authorization/**` only, so every section that took its
+      resource-based handler in-house under step 6 had silently stopped triggering a
+      regeneration of the authorization inventory — eight of them before Auth noticed, and a
+      doc that is never triggered reports success by never changing. Widened with
+      `src/Sections/**/Authorization/**/*.cs`. **Read the catalog's `triggers:` blocks for Base
+      paths your section is leaving, not just the doc links** (proven: Auth).
     - Re-run `grep -rn 'Assembly.Name' src/Humans.Analyzers/` and confirm any analyzer added
       since the pilot is section-aware (spec §10). **Do not treat this as a formality because
       earlier moves found nothing** — Expenses was the first to find something, and what it found

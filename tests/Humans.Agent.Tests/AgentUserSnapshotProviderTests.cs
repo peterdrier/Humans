@@ -1,3 +1,4 @@
+using Humans.Auth.Contracts;
 using AwesomeAssertions;
 using Humans.Application;
 using Humans.Application.DTOs.Shifts;

@@ -78,6 +78,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Auth.Contracts\Humans.Auth.Contracts.csproj" />
   </ItemGroup>
 
 </Project>

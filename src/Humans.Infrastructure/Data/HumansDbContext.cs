@@ -41,7 +41,6 @@ internal sealed class HumansDbContext(DbContextOptions<HumansDbContext> options)
     /// </summary>
     private static readonly string[] PeeledConfigurationNamespaces =
     [
-        typeof(Configurations.Auth.RoleAssignmentConfiguration).Namespace!,
         typeof(Configurations.GoogleIntegration.GoogleResourceConfiguration).Namespace!,
         typeof(Configurations.Camps.CampConfiguration).Namespace!,
         typeof(Configurations.Shifts.RotaConfiguration).Namespace!,

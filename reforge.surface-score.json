@@ -48,11 +48,10 @@
     },
     "Auth": {
       "paths": [
+        "src/Sections/Humans.Auth/**",
+        "src/Sections/Humans.Auth.Contracts/**",
         "src/Humans.Application/Interfaces/Auth/**",
         "src/Humans.Application/Services/Auth/**",
-        "src/Humans.Domain/Entities/RoleAssignment*",
-        "src/Humans.Infrastructure/Repositories/Auth/**",
-        "src/Humans.Infrastructure/Services/Auth/**",
         "src/Humans.Web/Authorization/**",
         "src/Humans.UI/Authorization/**"
       ],

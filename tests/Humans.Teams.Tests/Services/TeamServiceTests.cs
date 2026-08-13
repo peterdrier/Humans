@@ -1,3 +1,7 @@
+using Humans.Auth.Contracts;
+using Humans.Auth.Services;
+using Humans.Auth.Domain;
+using Humans.Auth.Data;
 using Humans.Application;
 using Humans.Application.Interfaces.Caching;
 using Humans.Teams.Services;
@@ -23,7 +27,7 @@ using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Services.Shifts;
 using Humans.Teams.Tests.Infrastructure;
 using Humans.Teams.Data;
-using RoleAssignmentService = Humans.Application.Services.Auth.RoleAssignmentService;
+using RoleAssignmentService = Humans.Auth.Services.RoleAssignmentService;
 using TeamService = Humans.Teams.Services.TeamService;
 using Humans.Email.Contracts;
 using Humans.Teams.Contracts;
@@ -32,7 +36,7 @@ using Humans.Application.DTOs;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Services.GoogleIntegration;
 using Humans.Application.Interfaces.Auth;
-using Humans.Infrastructure.Repositories.Auth;
+
 using Humans.Infrastructure.Repositories.GoogleIntegration;
 using Humans.Infrastructure.Repositories.Shifts;
 

@@ -1,3 +1,4 @@
+using Humans.Auth.Contracts;
 using Humans.Application.DTOs;
 using Humans.Application.DTOs.Shifts;
 using Humans.Application.Enums;

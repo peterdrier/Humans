@@ -1,0 +1,37 @@
+using Humans.Application.Architecture;
+using Humans.Application.Interfaces;
+
+namespace Humans.Auth.Services;
+
+/// <summary>
+/// Cross-section signal for the global role-assignment cache. Implemented
+/// by the Singleton <c>CachingRoleAssignmentService</c> decorator and
+/// called by <c>RoleAssignmentService</c>'s mutating methods (and, via
+/// <c>IRoleAssignmentService.InvalidateRoleAssignmentCache()</c>, by
+/// <c>AccountMergeService</c> after a merge fold). No EF interceptor —
+/// all <c>role_assignments</c> writes go through <c>RoleAssignmentService</c>.
+/// </summary>
+/// <remarks>
+/// Bag-shaped cache (whole-set replacement on rebuild) — same pattern as
+/// <c>ILegalDocumentCacheInvalidator</c>. The cached unit is the
+/// full set of role-assignment rows; per-row invalidation is not used
+/// because writes are rare and a wholesale reload is cheap.
+///
+/// Distinct from <c>IRoleAssignmentClaimsCacheInvalidator</c>:
+/// the claims invalidator targets per-user authentication claims (cookie /
+/// per-request roles), while this invalidator targets the singleton list
+/// cache that backs cross-section reads such as
+/// <c>IRoleAssignmentService.GetActiveCountsByRoleAsync</c>.
+/// </remarks>
+[Grandfathered(
+    ruleId: "HUM0028",
+    justification: "Pre-existing role-assignment cache flushed by cross-section role writes; remains until RoleAssignmentService's caching decorator owns invalidation end-to-end.",
+    since: "2026-05-27",
+    issueRef: "nobodies-collective/Humans#805")]
+internal interface IRoleAssignmentCacheInvalidator : IInvalidator
+{
+    /// <summary>
+    /// Evict the entire role-assignment cache. Next read repopulates lazily.
+    /// </summary>
+    void InvalidateAll();
+}

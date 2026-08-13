@@ -1,3 +1,4 @@
+using Humans.Auth.Contracts;
 using Humans.Teams.Domain;
 using AwesomeAssertions;
 using Microsoft.EntityFrameworkCore;

@@ -1,3 +1,4 @@
+using Humans.Auth.Contracts;
 using Humans.Application;
 using Humans.Notifications.Data;
 using Humans.Notifications.Domain;

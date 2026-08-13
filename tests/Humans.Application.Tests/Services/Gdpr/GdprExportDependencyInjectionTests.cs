@@ -7,7 +7,6 @@ using Microsoft.Extensions.DependencyInjection;
 using ProfilesAccountMergeService = Humans.Application.Services.Users.AccountMergeService;
 using UsersUserService = Humans.Application.Services.Users.UserService;
 using CampService = Humans.Application.Services.Camps.CampService;
-using RoleAssignmentService = Humans.Application.Services.Auth.RoleAssignmentService;
 using ShiftSignupService = Humans.Application.Services.Shifts.ShiftSignupService;
 using TeamService = Humans.Teams.Services.TeamService;
 
@@ -64,7 +63,7 @@ public class GdprExportDependencyInjectionTests
         SectionType("Humans.Governance.Services.ApplicationDecisionService"),
         SectionType("Humans.Consent.Services.ConsentService"),
         typeof(TeamService),
-        typeof(RoleAssignmentService),
+        SectionType("Humans.Auth.Services.RoleAssignmentService"),
         typeof(ShiftSignupService),
         SectionType("Humans.Feedback.Services.FeedbackService"),
         SectionType("Humans.Issues.Services.IssuesService"),

@@ -25,6 +25,7 @@
   -->
 
   <ItemGroup>
+    <ProjectReference Include="..\Humans.Auth.Contracts\Humans.Auth.Contracts.csproj" />
     <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
     <ProjectReference Include="..\..\Humans.Domain\Humans.Domain.csproj" />
   </ItemGroup>

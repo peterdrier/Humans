@@ -1,3 +1,7 @@
+using Humans.Auth.Services;
+using Humans.Auth.Domain;
+using Humans.Auth.Data;
+using Humans.Auth.Contracts;
 using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.EarlyEntry;
@@ -307,7 +311,7 @@ public abstract class TeamsTestHarness : IDisposable
         return member;
     }
 
-    protected RoleAssignment SeedRoleAssignment(
+    private protected RoleAssignment SeedRoleAssignment(
         Guid userId,
         string roleName,
         Instant validFrom,

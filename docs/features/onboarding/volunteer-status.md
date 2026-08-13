@@ -2,6 +2,7 @@
   src/Sections/Humans.Teams/**
   src/Sections/Humans.Onboarding/**
   src/Humans.Application/Services/Consent/**
+  src/Sections/Humans.Auth/**
   src/Humans.Application/Services/Auth/**
   src/Humans.Web/Authorization/MembershipRequiredFilter.cs
   src/Humans.Web/Authorization/RoleAssignmentClaimsTransformation.cs

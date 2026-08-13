@@ -23,6 +23,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Sections\Humans.Auth.Contracts\Humans.Auth.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Application\Humans.Application.csproj" />
     <ProjectReference Include="..\Sections\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
     <!--

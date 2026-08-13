@@ -1,3 +1,4 @@
+using Humans.Auth.Contracts;
 using System.Collections.Concurrent;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Auth;

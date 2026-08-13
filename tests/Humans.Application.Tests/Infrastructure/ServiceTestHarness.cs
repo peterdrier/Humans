@@ -1,5 +1,5 @@
 using Humans.AuditLog.Contracts;
-using Humans.Application.Interfaces.Auth;
+using Humans.Auth.Contracts;
 using Humans.Application.Interfaces.EarlyEntry;
 using Humans.Notifications.Contracts;
 using Humans.Application.Interfaces.Shifts;
@@ -50,11 +50,6 @@ public abstract class ServiceTestHarness : IDisposable
     // test actually created.
 
     private readonly List<Func<DbContext?>> _sectionContextProbes = [];
-
-    /// <summary>Auth: <c>role_assignments</c> (see <see cref="SeedRoleAssignment"/>).</summary>
-    private readonly Lazy<SectionDb<AuthDbContext>> _authDb;
-    private protected AuthDbContext AuthDb => _authDb.Value.Context;
-    private protected TestDbContextFactory<AuthDbContext> AuthDbFactory => _authDb.Value.Factory;
 
     /// <summary>GoogleIntegration: <c>google_resources</c>, <c>google_sync_outbox</c>, <c>sync_service_settings</c>.</summary>
     private readonly Lazy<SectionDb<GoogleIntegrationDbContext>> _googleIntegrationDb;
@@ -107,7 +102,6 @@ public abstract class ServiceTestHarness : IDisposable
         Db = new HumansDbContext(DbOptions);
         DbFactory = new TestDbContextFactory(DbOptions);
 
-        _authDb = RegisterSection<AuthDbContext>(o => new(o));
         _googleIntegrationDb = RegisterSection<GoogleIntegrationDbContext>(o => new(o));
         _campsDb = RegisterSection<CampsDbContext>(o => new(o));
         _shiftsDb = RegisterSection<ShiftsDbContext>(o => new(o));
@@ -301,30 +295,6 @@ public abstract class ServiceTestHarness : IDisposable
         return member;
     }
 
-    protected RoleAssignment SeedRoleAssignment(
-        Guid userId,
-        string roleName,
-        Instant validFrom,
-        Instant? validTo = null)
-    {
-        var ra = new RoleAssignment
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            RoleName = roleName,
-            ValidFrom = validFrom,
-            ValidTo = validTo,
-            CreatedAt = Clock.GetCurrentInstant(),
-            CreatedByUserId = Guid.NewGuid()
-        };
-        // Unlike the Db seeders above, this one saves: role_assignments sits in
-        // its own context since the Auth peel, so callers' `Db.SaveChangesAsync()`
-        // would never reach it, and the row has no ordering dependency on
-        // anything staged in Db.
-        AuthDb.RoleAssignments.Add(ra);
-        AuthDb.SaveChanges();
-        return ra;
-    }
 
     private protected TeamJoinRequest SeedJoinRequest(
         Guid teamId,

@@ -1,3 +1,4 @@
+using Humans.Auth.Contracts;
 using Humans.Teams.Data;
 using Humans.Teams.Domain;
 using AwesomeAssertions;

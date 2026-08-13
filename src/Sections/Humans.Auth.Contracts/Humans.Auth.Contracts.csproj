@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Auth's cross-section surface, carved into its own leaf project because almost every
+    consumer is in Base: IRoleAssignmentService alone is injected by ~30 production files —
+    Humans.Application services (Users, Profiles, Shifts, GoogleIntegration), Humans.Infrastructure
+    jobs and the metrics service, Shell's claims transformation and admin controllers, and twelve
+    already-moved sections. A Contracts/ *folder* inside Humans.Auth would therefore make Base
+    reference a section and cycle (design §15.5b,
+    memory/architecture/section-project-cycle-fix.md).
+
+    Framework-free by construction (Microsoft.NET.Sdk, Humans.Interfaces + NodaTime): the one
+    piece of Auth's public surface that needs ASP.NET — RoleAssignmentOperationRequirement,
+    an IAuthorizationRequirement Shell's UsersAdminController passes to
+    IAuthorizationService.AuthorizeAsync — sits in Humans.Auth's own Contracts/ *folder*
+    instead. Tickets was the first section to ship both halves; the split is what each may
+    name (template step 5b).
+
+    Auth is a *horizontal* section, so this leaf references no vertical section's leaf. That
+    is why AssignRoleAsync/EndRoleAsync return the section's own RoleAssignmentResult rather
+    than Humans.Onboarding.Contracts.OnboardingResult, which they returned in Base.
+  -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NodaTime" />
+  </ItemGroup>
+
+</Project>

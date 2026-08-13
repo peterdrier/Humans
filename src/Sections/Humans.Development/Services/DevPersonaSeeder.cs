@@ -1,3 +1,4 @@
+using Humans.Auth.Contracts;
 using System.Security.Cryptography;
 using System.Text;
 using Humans.Application.DTOs;

@@ -1,3 +1,4 @@
+using Humans.Auth.Contracts;
 using Hangfire;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;

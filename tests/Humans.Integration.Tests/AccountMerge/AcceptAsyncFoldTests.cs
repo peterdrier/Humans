@@ -1,3 +1,5 @@
+using Humans.Auth.Data;
+using Humans.Auth.Domain;
 using Humans.AuditLog.Data;
 using Humans.AuditLog.Domain;
 using Humans.Teams.Data;

@@ -1,0 +1,69 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Plain Microsoft.NET.Sdk, not Sdk.Razor: the section has no controllers and no views.
+    AccountController and its Views/Account/* stayed in Shell — see Section.cs.
+
+    The framework reference is here for Microsoft.AspNetCore.Authorization only:
+    RoleAssignmentAuthorizationHandler is a resource-based handler (template step 6) and
+    CachingRoleAssignmentService is registered as an IHostedService. Central Package
+    Management has no PackageVersion for the AspNetCore packages by design, so the
+    framework reference is the only way to get them (template step 1).
+  -->
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Humans.Auth.Tests" />
+    <!-- The one assembly allowed to see many sections (design §5). -->
+    <InternalsVisibleTo Include="Humans.Integration.Tests" />
+    <!--
+      Temporary, both directions of Teams finding 36's trade. ServiceTestHarness and its
+      copy TeamsTestHarness seed role_assignments rows for tests belonging to sections that
+      have not moved (Shifts, GoogleIntegration, Users) and for Teams' own role tests.
+      Both entries come out when those sections' own G5 lanes rewrite their fixtures.
+    -->
+    <InternalsVisibleTo Include="Humans.Application.Tests" />
+    <InternalsVisibleTo Include="Humans.Teams.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
+    <ProjectReference Include="..\..\Humans.Domain\Humans.Domain.csproj" />
+    <ProjectReference Include="..\..\Humans.Application\Humans.Application.csproj" />
+    <ProjectReference Include="..\..\Humans.Infrastructure\Humans.Infrastructure.csproj" />
+    <ProjectReference Include="..\Humans.Auth.Contracts\Humans.Auth.Contracts.csproj" />
+    <!--
+      Every outbound section reference here is to a *horizontal* section's leaf, which is
+      what peters-hard-rules.md permits: Auth may not reference a vertical section.
+      AuditLog  — RoleAssignmentService writes an audit row per assign/end.
+      Gdpr      — role assignments are an Article 15 export slice.
+      Notifications — best-effort in-app notice to the human whose role changed.
+
+      There is deliberately no Humans.Teams.Contracts, Humans.Email.Contracts or
+      Humans.Onboarding.Contracts reference. The sign-in orchestrator (MagicLinkService)
+      injects Humans.Email.Contracts and stayed in Humans.Application; ISystemTeamSync and
+      IUserServiceRead are still Humans.Application interfaces, so Teams and Users cost no
+      reference today. AuthArchitectureTests.SectionReferencesNoVerticalSection is what
+      keeps it that way.
+    -->
+    <ProjectReference Include="..\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Gdpr.Contracts\Humans.Gdpr.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Notifications.Contracts\Humans.Notifications.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="NodaTime" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL.NodaTime" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The section owns its documentation (design §7a); keep it visible in Solution Explorer. -->
+    <None Include="**\*.md" />
+  </ItemGroup>
+
+</Project>

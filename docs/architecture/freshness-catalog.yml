@@ -64,6 +64,9 @@ mechanical:
       - "src/Humans.Application/**/*.cs"
       - "src/Humans.Web/Authorization/**/*.cs"
       - "src/Humans.Application/Authorization/**/*.cs"
+      # Section-owned resource handlers (G5, #866) — eight sections keep theirs under
+      # src/Sections/<Section>/Authorization/, and had silently left this sweep.
+      - "src/Sections/**/Authorization/**/*.cs"
     update: prompt
     prompt: |
       Regenerate docs/authorization-inventory.md from scratch.

@@ -1,3 +1,4 @@
+using Humans.Auth.Contracts;
 using Humans.Teams.Data;
 using AwesomeAssertions;
 using Microsoft.Extensions.Logging.Abstractions;

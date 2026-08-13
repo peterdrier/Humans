@@ -1,3 +1,4 @@
+using Humans.Auth.Contracts;
 using System.Transactions;
 using Microsoft.Extensions.Logging;
 using NodaTime;

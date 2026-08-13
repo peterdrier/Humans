@@ -25,7 +25,6 @@ public static class AuthorizationPolicyExtensions
         // moved into the section at its G5 and is internal there, while the policies it backs
         // stay here (design §15 step 6's asymmetry).
 
-        services.AddSingleton<IAuthorizationHandler, RoleAssignmentAuthorizationHandler>();
         services.AddSingleton<IAuthorizationHandler, UserEmailAuthorizationHandler>();
 
         services.AddAuthorization(options =>

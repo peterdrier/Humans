@@ -1,3 +1,4 @@
+using Humans.Auth.Contracts;
 using System.Reflection;
 using AwesomeAssertions;
 using Humans.Notifications.Data;

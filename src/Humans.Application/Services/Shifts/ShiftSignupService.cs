@@ -1,3 +1,4 @@
+using Humans.Auth.Contracts;
 using Humans.Application.Extensions;
 using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.Auth;

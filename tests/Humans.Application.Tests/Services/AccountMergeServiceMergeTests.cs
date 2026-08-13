@@ -1,3 +1,4 @@
+using Humans.Auth.Contracts;
 using AwesomeAssertions;
 using Humans.Consent.Contracts;
 using Humans.Application.Tests.Infrastructure;

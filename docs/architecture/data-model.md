@@ -22,7 +22,7 @@ This file is the **index and cross-cutting rule sheet** for the data model. Per-
 | Application | [Governance](../../src/Sections/Humans.Governance/Docs/Governance.md) | |
 | ApplicationStateHistory | [Governance](../../src/Sections/Humans.Governance/Docs/Governance.md) | Append-only (§12). |
 | BoardVote | [Governance](../../src/Sections/Humans.Governance/Docs/Governance.md) | Transient — deleted on finalization. |
-| RoleAssignment | [Auth](../sections/Auth.md) | |
+| RoleAssignment | [Auth](../../src/Sections/Humans.Auth/Docs/Auth.md) | |
 | LegalDocument / DocumentVersion | [Consent](../../src/Sections/Humans.Consent/Docs/Consent.md) | |
 | ConsentRecord | [Consent](../../src/Sections/Humans.Consent/Docs/Consent.md) | Append-only via DB triggers (§12). |
 | Team | [Teams](../../src/Sections/Humans.Teams/Docs/Teams.md) | |
@@ -227,7 +227,7 @@ See [`Teams.md`](../../src/Sections/Humans.Teams/Docs/Teams.md#systemteamids-con
 
 ### RoleNames
 
-See [`../sections/Auth.md`](../sections/Auth.md#rolenames-constants) for the authoritative list.
+See [`Auth.md`](../../src/Sections/Humans.Auth/Docs/Auth.md#rolenames-constants) for the authoritative list.
 
 ## Where to add a new entity
 
