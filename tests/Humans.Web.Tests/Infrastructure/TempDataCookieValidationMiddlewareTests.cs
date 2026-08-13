@@ -216,4 +216,52 @@ public class TempDataCookieValidationMiddlewareTests
         var loaded = provider.LoadTempData(loadContext);
         loaded.Should().NotContainKey("Big");
     }
+
+    [HumansFact]
+    public async Task ChunkedCookie_MissingMiddleChunk_StillDeletesSiblingsAfterTheGap()
+    {
+        var context = new DefaultHttpContext();
+        // C2 lost out of order, C3 still present — a client dropping one cookie rather than
+        // truncating from the end. C3 must still be stripped and deleted, or it is re-sent
+        // on every request for the rest of the session.
+        context.Request.Headers.Cookie =
+            $"{CookieName}=chunks-3; {CookieName}C1=AAAA; {CookieName}C3=CCCC";
+
+        HttpContext? seenByNext = null;
+        var logger = new CapturingLogger<TempDataCookieValidationMiddleware>();
+        var middleware = new TempDataCookieValidationMiddleware(
+            ctx =>
+            {
+                seenByNext = ctx;
+                return Task.CompletedTask;
+            },
+            Options.Create(new CookieTempDataProviderOptions()),
+            logger);
+
+        await middleware.InvokeAsync(context);
+
+        seenByNext.Should().NotBeNull();
+        seenByNext!.Request.Cookies.ContainsKey($"{CookieName}C3").Should()
+            .BeFalse("a sibling after the gap must not survive into the request");
+
+        var deleted = ParseSetCookies(context.Response).Select(c => c.Name.Value).ToArray();
+        deleted.Should().Contain([CookieName, $"{CookieName}C1", $"{CookieName}C3"],
+            "every present piece is deleted, including the one after the gap");
+    }
+
+    [HumansFact]
+    public async Task ChunkedCookie_MissingFirstChunk_StillReportsHasChunkSiblingsTrue()
+    {
+        var context = new DefaultHttpContext();
+        // C1 is the lost chunk. Deriving HasChunkSiblings from C1's presence alone reported
+        // False here, misclassifying a chunk-loss as a stale-format or bot cookie — the one
+        // distinction the diagnostic exists to make.
+        context.Request.Headers.Cookie = $"{CookieName}=chunks-2; {CookieName}C2=BBBB";
+
+        var (_, logger) = await RunAsync(context);
+
+        var entry = logger.Entries.Should().ContainSingle().Subject;
+        entry.Message.Should().Contain("HasChunkSiblings=True");
+        entry.Exception.Should().BeNull();
+    }
 }

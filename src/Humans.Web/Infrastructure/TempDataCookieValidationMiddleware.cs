@@ -49,7 +49,14 @@ public sealed class TempDataCookieValidationMiddleware(
             return;
         }
 
-        var hasChunkSiblings = requestCookies.ContainsKey(cookieName + ChunkKeySuffix + "1");
+        // A chunked request is one whose main value carries the "chunks-N" marker — regardless of
+        // which siblings survived, so losing C1 specifically still reports True. The C1 fallback
+        // catches the inverse: a main value corrupted past recognition that still has siblings
+        // attached. Deriving this from C1 alone misclassified the lost-C1 case as unchunked,
+        // which is exactly the case the diagnostic exists to tell apart from a stale-format or
+        // bot cookie.
+        var hasChunkSiblings = TryParseChunkCount(rawValue, out _)
+            || requestCookies.ContainsKey(cookieName + ChunkKeySuffix + "1");
         var reassembled = Reassemble(requestCookies, cookieName, rawValue, out var relatedNames);
 
         if (reassembled is not null && Base64Url.IsValid(reassembled))
@@ -80,12 +87,36 @@ public sealed class TempDataCookieValidationMiddleware(
     }
 
     /// <summary>
+    /// Parses the chunk marker the framework's chunk manager writes as the main cookie's raw
+    /// value — <c>"chunks-" + count</c> — returning false for an unchunked or malformed value.
+    /// </summary>
+    private static bool TryParseChunkCount(string rawValue, out int chunkCount)
+    {
+        chunkCount = 0;
+        return rawValue.StartsWith(ChunkCountPrefix, StringComparison.Ordinal)
+            && int.TryParse(
+                rawValue.AsSpan(ChunkCountPrefix.Length),
+                NumberStyles.None,
+                CultureInfo.InvariantCulture,
+                out chunkCount)
+            && chunkCount > 0;
+    }
+
+    /// <summary>
     /// Reassembles the value <see cref="CookieTempDataProvider"/> would attempt to decode:
     /// the raw cookie value when it isn't chunked, or the concatenation of its <c>C1..CN</c>
     /// siblings when it is. Returns null when a chunked value is missing a sibling — the
     /// same incomplete state the framework's chunk manager falls back to (the raw
     /// "chunks-N" marker), which never decodes either way.
     /// </summary>
+    /// <remarks>
+    /// The scan always runs the full declared <c>1..N</c> range rather than stopping at the
+    /// first gap, because <paramref name="relatedNames"/> drives both the request filter and
+    /// the response deletes. Bailing early left any sibling *after* the gap uncollected, so a
+    /// client that lost one cookie out of order kept re-sending several KB of orphans on every
+    /// request for the rest of the session — the opposite of this middleware's contract that a
+    /// malformed cookie is fully deleted.
+    /// </remarks>
     private static string? Reassemble(
         IRequestCookieCollection requestCookies,
         string cookieName,
@@ -94,31 +125,30 @@ public sealed class TempDataCookieValidationMiddleware(
     {
         relatedNames = [cookieName];
 
-        if (!rawValue.StartsWith(ChunkCountPrefix, StringComparison.Ordinal)
-            || !int.TryParse(
-                rawValue.AsSpan(ChunkCountPrefix.Length),
-                NumberStyles.None,
-                CultureInfo.InvariantCulture,
-                out var chunkCount)
-            || chunkCount <= 0)
+        if (!TryParseChunkCount(rawValue, out var chunkCount))
         {
             return rawValue;
         }
 
         var builder = new StringBuilder();
+        var incomplete = false;
         for (var i = 1; i <= chunkCount; i++)
         {
             var chunkName = cookieName + ChunkKeySuffix + i.ToString(CultureInfo.InvariantCulture);
             if (!requestCookies.TryGetValue(chunkName, out var chunk) || string.IsNullOrEmpty(chunk))
             {
-                return null;
+                incomplete = true;
+                continue;
             }
 
             relatedNames.Add(chunkName);
-            builder.Append(chunk);
+            if (!incomplete)
+            {
+                builder.Append(chunk);
+            }
         }
 
-        return builder.ToString();
+        return incomplete ? null : builder.ToString();
     }
 
     /// <summary>
