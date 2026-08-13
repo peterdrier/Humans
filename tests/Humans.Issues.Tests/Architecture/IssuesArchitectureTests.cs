@@ -116,7 +116,4 @@ public class IssuesArchitectureTests
         AuditEntityTypes.Issue.Should().Be("Issue");
     }
 
-    // ── IIssuesRepository ────────────────────────────────────────────────────
-
-    // Sealed-repository check covered by IRepositoryImplementationsAreSealedRule.
 }

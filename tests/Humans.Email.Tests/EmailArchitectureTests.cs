@@ -30,7 +30,6 @@ public class EmailArchitectureTests
 
     // IMemoryCache check covered by ApplicationServicesTakeNoMemoryCacheRule.
     // TakesRepository check covered by pattern G (positive wiring noise).
-    // Sealed-repository check covered by IRepositoryImplementationsAreSealedRule.
 
     // ── OutboxEmailService ───────────────────────────────────────────────────
 

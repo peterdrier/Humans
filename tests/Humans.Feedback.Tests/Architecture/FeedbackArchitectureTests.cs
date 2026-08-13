@@ -72,7 +72,6 @@ public class FeedbackArchitectureTests
 
     // IMemoryCache check covered by ApplicationServicesTakeNoMemoryCacheRule.
     // TakesRepository check covered by pattern G (positive wiring noise).
-    // Sealed-repository check covered by IRepositoryImplementationsAreSealedRule.
 
     [HumansFact]
     public void FeedbackService_TakesNavBadgeInvalidator()
@@ -146,7 +145,4 @@ public class FeedbackArchitectureTests
         Humans.Feedback.Services.AuditEntityTypes.FeedbackReport.Should().Be("FeedbackReport");
     }
 
-    // ── IFeedbackRepository ──────────────────────────────────────────────────
-
-    // Sealed-repository check covered by IRepositoryImplementationsAreSealedRule.
 }
