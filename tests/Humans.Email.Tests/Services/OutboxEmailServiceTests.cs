@@ -216,14 +216,14 @@ public sealed class OutboxEmailServiceTests : IDisposable
     {
         var userId = Guid.NewGuid();
         var grantId = Guid.NewGuid();
-        _commPrefService.GenerateUnsubscribeHeaders(userId, MessageCategory.CampaignCodes)
+        _commPrefService.GenerateUnsubscribeHeaders(userId, MessageCategory.Governance)
             .Returns(new Dictionary<string, string>(StringComparer.Ordinal) { ["List-Unsubscribe"] = "<mailto:x>" });
-        _commPrefService.GenerateBrowserUnsubscribeUrl(userId, MessageCategory.CampaignCodes)
+        _commPrefService.GenerateBrowserUnsubscribeUrl(userId, MessageCategory.Governance)
             .Returns("https://example.com/unsub");
 
         await _service.SendAsync(Message(
             recipient: "zoe@example.com", name: "Zoe",
-            template: "campaign_code", category: MessageCategory.CampaignCodes,
+            template: "application_approved", category: MessageCategory.Governance,
             replyTo: "reply@example.com", userId: userId, campaignGrantId: grantId), Xunit.TestContext.Current.CancellationToken);
 
         var msg = await _emailDb.EmailOutboxMessages.SingleAsync(Xunit.TestContext.Current.CancellationToken);
@@ -236,18 +236,22 @@ public sealed class OutboxEmailServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task SendAsync_CampaignCode_AlwaysOn_IsNeverSuppressed()
+    public async Task SendAsync_CampaignCodesCategory_NeverSuppressesAndStampsNoUnsubscribe()
     {
-        // CampaignCodes is always-on, so CommunicationPreferenceService reports
-        // not-opted-out; the campaign mail enqueues regardless (preserves the old
-        // inline-enqueue bypass behaviour now that it routes through SendAsync).
+        // CampaignCodes is always-on (confirmed intended, nobodies-collective/Humans#1032):
+        // the opt-out it would advertise can never take effect, so the transport must not
+        // advertise one — no List-Unsubscribe headers, no footer link, and it never even
+        // asks CommunicationPreferenceService about opt-out status.
         var userId = Guid.NewGuid();
-        _commPrefService.IsOptedOutAsync(userId, MessageCategory.CampaignCodes, Arg.Any<CancellationToken>())
-            .Returns(false);
 
         await _service.SendAsync(Message(
             template: "campaign_code", category: MessageCategory.CampaignCodes, userId: userId), Xunit.TestContext.Current.CancellationToken);
 
-        (await _emailDb.EmailOutboxMessages.ToListAsync(Xunit.TestContext.Current.CancellationToken)).Should().HaveCount(1);
+        var msg = await _emailDb.EmailOutboxMessages.SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        msg.ExtraHeaders.Should().BeNull("campaign codes are always-on; there is no opt-out to advertise");
+        await _commPrefService.DidNotReceive()
+            .IsOptedOutAsync(Arg.Any<Guid>(), Arg.Any<MessageCategory>(), Arg.Any<CancellationToken>());
+        _commPrefService.DidNotReceive().GenerateUnsubscribeHeaders(Arg.Any<Guid>(), Arg.Any<MessageCategory>());
+        _bodyComposer.Received().Compose(Arg.Any<string>(), null);
     }
 }

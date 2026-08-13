@@ -38,8 +38,7 @@ A "send wave" assigns ungranted codes to eligible humans and queues the email de
 2. Service collects all active members of that team.
 3. Exclusions applied automatically:
    - Humans already granted a code for this campaign
-   - Humans who are opted out of the `CampaignCodes` message category (checked via `ICommunicationPreferenceService.IsOptedOutAsync`)
-4. Remaining eligible humans are matched to available codes (one each).
+4. Remaining eligible humans are matched to available codes (one each). (`CampaignCodes` is an always-on message category — there is no opt-out to exclude on; `CampaignService` does not call `ICommunicationPreferenceService`.)
 5. A `CampaignGrant` record is created per assignment.
 6. An `EmailOutboxMessage` is queued per grant, referencing `CampaignGrantId`.
 
@@ -63,7 +62,7 @@ Pages:
 - **New-format tokens** (signed via `CommunicationPreferences` Data Protection purpose, category-aware): redirect to the public communication-preferences page (`/Guest/CommunicationPreferences?utoken=…`) where the user toggles per-category opt-outs.
 - **Legacy tokens** (signed via `CampaignUnsubscribe` time-limited Data Protection purpose, campaign-only): show a confirmation page and POST to confirm. Sets the `Marketing` category preference to opted-out via `ICommunicationPreferenceService.UpdatePreferenceAsync`. `User.UnsubscribedFromCampaigns` is **not** flipped — the per-category `CommunicationPreference` table is the source of truth.
 - RFC 8058 one-click POST (`/Unsubscribe/OneClick`) also routes through `UnsubscribeService.ConfirmUnsubscribeAsync`.
-- All campaign emails include `List-Unsubscribe` headers pointing to this endpoint.
+- Campaign emails carry no unsubscribe footer link and no `List-Unsubscribe` header: `CampaignCodes` is always-on, so `OutboxEmailService` skips unsubscribe stamping for it (nobodies-collective/Humans#1032). Only opt-outable categories reach this endpoint.
 
 ## Self-Service Code Lookup
 
