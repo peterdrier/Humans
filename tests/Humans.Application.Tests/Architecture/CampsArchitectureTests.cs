@@ -200,7 +200,11 @@ public class CampsArchitectureTests
 
         paramTypes.Should().NotContain(typeof(IGoogleGroupSync),
             because: "sections must not call IGoogleGroupSync.RequestSyncAsync; the orchestrator pulls from IGoogleGroupMembershipSource (issue nobodies-collective/Humans#740)");
-        paramTypes.Should().NotContain(typeof(IGoogleGroupProvisioningClient),
+
+        // IGoogleGroupProvisioningClient is internal to Humans.GoogleIntegration since that
+        // section's G5 move, so this half is asserted by name. Stronger than the typeof it
+        // replaces, in fact: it also fails if a differently-namespaced clone appears.
+        paramTypes.Select(t => t.Name).Should().NotContain("IGoogleGroupProvisioningClient",
             because: "group provisioning moved into GoogleGroupSyncService.ReconcileClaimAsync; sections do not provision groups (issue nobodies-collective/Humans#740)");
     }
 

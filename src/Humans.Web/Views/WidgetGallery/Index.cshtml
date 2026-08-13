@@ -539,13 +539,17 @@
                             <span class="wg-card-name">&lt;vc:my-google-resources&gt;</span>
                             <span class="wg-card-kind kind-vc">ViewComponent</span>
                         </div>
-                        <span class="wg-card-path">src/Humans.Web/ViewComponents/MyGoogleResourcesViewComponent.cs</span>
+                        <span class="wg-card-path">src/Sections/Humans.GoogleIntegration/ViewComponents/MyGoogleResourcesViewComponent.cs</span>
                     </div>
                     <div class="wg-card-note">Google Drive / Calendar / Group resources the current human can access via team membership.</div>
                     @ParamsBlock()
                     @AuthLine("Authenticated only.")
                     <div class="wg-card-example">
-                        <vc:my-google-resources />
+                        @* Invoked by name: the component is internal to Humans.GoogleIntegration and
+                           routed by SectionViewComponentFeatureProvider, so the compile-time <vc:>
+                           tag helper cannot see it and would ship as inert literal markup. The
+                           dashboard's call site already used this form (step 6). *@
+                        @await Component.InvokeAsync("MyGoogleResources")
                     </div>
                 </div>
 

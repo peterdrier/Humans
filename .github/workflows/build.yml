@@ -41,7 +41,7 @@ env:
     IssuesDbContext:src/Sections/Humans.Issues
     GovernanceDbContext:src/Sections/Humans.Governance
     CampaignsDbContext:src/Sections/Humans.Campaigns
-    GoogleIntegrationDbContext:src/Humans.Infrastructure
+    GoogleIntegrationDbContext:src/Sections/Humans.GoogleIntegration
     TicketsDbContext:src/Sections/Humans.Tickets
     FeedbackDbContext:src/Sections/Humans.Feedback
     CityPlanningDbContext:src/Sections/Humans.CityPlanning

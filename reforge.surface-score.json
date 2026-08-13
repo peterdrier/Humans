@@ -381,25 +381,14 @@
     },
     "GoogleIntegration": {
       "paths": [
+        "src/Sections/Humans.GoogleIntegration/**",
+        "src/Sections/Humans.GoogleIntegration.Contracts/**",
         "src/Humans.Application/Interfaces/GoogleIntegration/**",
-        "src/Humans.Application/DTOs/DomainGroupInfo.cs",
-        "src/Humans.Application/DTOs/GroupSettingsDriftResult.cs",
-        "src/Humans.Application/DTOs/LinkResourceResult.cs",
-        "src/Humans.Application/DTOs/ResourceSyncDiff.cs",
         "src/Humans.Application/DTOs/SyncReport.cs",
         "src/Humans.Application/Configuration/GoogleWorkspaceOptions.cs",
-        "src/Humans.Application/Services/GoogleIntegration/**",
         "src/Humans.Domain/Entities/Google*",
         "src/Humans.Domain/Entities/SyncServiceSettings.cs",
-        "src/Humans.Infrastructure/GoogleIntegration/**",
-        "src/Humans.Infrastructure/Repositories/GoogleIntegration/**",
-        "src/Humans.Infrastructure/Services/GoogleWorkspace/**",
-        "src/Humans.Infrastructure/Services/StubGoogleSyncService.cs",
-        "src/Humans.Web/Controllers/GoogleController.cs",
-        "src/Humans.Web/Health/GoogleWorkspaceHealthCheck.cs",
-        "src/Humans.Web/Models/Google/**",
-        "src/Humans.Web/Models/WorkspaceEmailViewModels.cs",
-        "src/Humans.Web/ViewComponents/MyGoogleResourcesViewComponent.cs"
+        "src/Humans.Web/Health/GoogleWorkspaceHealthCheck.cs"
       ],
       "symbols": [
         "Google*",

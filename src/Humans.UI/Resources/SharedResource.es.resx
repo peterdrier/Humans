@@ -1401,16 +1401,6 @@
   <data name="AdminAddRole_NotesPlaceholder" xml:space="preserve">
     <value>Motivo de la asignación</value>
   </data>
-  <data name="GoogleAccounts_Actions" xml:space="preserve">
-    <value>Acciones</value>
-  </data>
-  <data name="GoogleAccounts_ResetPassword" xml:space="preserve">
-    <value>Restablecer contraseña</value>
-  </data>
-  <data name="GoogleAccounts_ResetPasswordConfirm" xml:space="preserve">
-    <value>¿Restablecer la contraseña de {0}? Se generará una nueva contraseña temporal y se mostrará en pantalla. El human deberá cambiarla en el próximo inicio de sesión.</value>
-    <comment>{0} = email</comment>
-  </data>
   <data name="GoogleSync_SyncNow" xml:space="preserve">
     <value>Sincronizar ahora</value>
   </data>

@@ -51,10 +51,6 @@ public abstract class ServiceTestHarness : IDisposable
 
     private readonly List<Func<DbContext?>> _sectionContextProbes = [];
 
-    /// <summary>GoogleIntegration: <c>google_resources</c>, <c>google_sync_outbox</c>, <c>sync_service_settings</c>.</summary>
-    private readonly Lazy<SectionDb<GoogleIntegrationDbContext>> _googleIntegrationDb;
-    private protected GoogleIntegrationDbContext GoogleIntegrationDb => _googleIntegrationDb.Value.Context;
-    private protected TestDbContextFactory<GoogleIntegrationDbContext> GoogleIntegrationDbFactory => _googleIntegrationDb.Value.Factory;
 
     /// <summary>Camps: <c>camps</c>, <c>camp_seasons</c>, <c>camp_historical_names</c>, <c>camp_images</c>, <c>camp_settings</c>, <c>camp_members</c>, <c>camp_role_definitions</c>, <c>camp_role_assignments</c>.</summary>
     private readonly Lazy<SectionDb<CampsDbContext>> _campsDb;
@@ -102,7 +98,6 @@ public abstract class ServiceTestHarness : IDisposable
         Db = new UsersDbContext(DbOptions);
         DbFactory = new TestDbContextFactory(DbOptions);
 
-        _googleIntegrationDb = RegisterSection<GoogleIntegrationDbContext>(o => new(o));
         _campsDb = RegisterSection<CampsDbContext>(o => new(o));
         _shiftsDb = RegisterSection<ShiftsDbContext>(o => new(o));
         _teamsDb = RegisterSection<TeamsDbContext>(o => new(o));

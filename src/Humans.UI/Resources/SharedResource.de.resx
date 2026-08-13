@@ -1401,16 +1401,6 @@
   <data name="AdminAddRole_NotesPlaceholder" xml:space="preserve">
     <value>Grund der Zuweisung</value>
   </data>
-  <data name="GoogleAccounts_Actions" xml:space="preserve">
-    <value>Aktionen</value>
-  </data>
-  <data name="GoogleAccounts_ResetPassword" xml:space="preserve">
-    <value>Passwort zurücksetzen</value>
-  </data>
-  <data name="GoogleAccounts_ResetPasswordConfirm" xml:space="preserve">
-    <value>Passwort für {0} zurücksetzen? Ein neues temporäres Passwort wird erzeugt und auf dem Bildschirm angezeigt. Der Human muss es bei der nächsten Anmeldung ändern.</value>
-    <comment>{0} = email</comment>
-  </data>
   <data name="GoogleSync_SyncNow" xml:space="preserve">
     <value>Jetzt synchronisieren</value>
   </data>

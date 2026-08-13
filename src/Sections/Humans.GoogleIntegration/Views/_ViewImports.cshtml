@@ -1,0 +1,30 @@
+@* A section RCL does NOT inherit the host's Views/_ViewImports.cshtml. Omitting a line here
+   ships broken markup with a green build and no runtime error — see design §1/§2. The
+   @addTagHelper lines matter as much as the @using ones: an unbound tag helper survives into
+   the response as its own start tag rather than throwing (G5-SECTION-TEMPLATE.md step 12),
+   and Humans.Web cannot be named from a section, so every <vc:> the section's views render
+   must resolve from Humans.UI or be invoked by name. Guarded by
+   GoogleIntegrationPageRenderTests.
+
+   Localizer binds the section's own three GoogleAccounts_* keys (Accounts.cshtml is their
+   sole renderer); GoogleIntegrationArchitectureTests.SectionTypesLocalizeThroughTheSectionsOwnResourceSet
+   pins that no type here binds a different set. *@
+@using Humans.Application.DTOs
+@using Humans.Application.Extensions
+@using Humans.Application.Interfaces.Profiles
+@using Humans.Domain.Entities
+@using Humans.Domain.Enums
+@using Humans.GoogleIntegration
+@using Humans.GoogleIntegration.Contracts
+@using Humans.GoogleIntegration.Models
+@using Humans.GoogleIntegration.Services
+@using Humans.GoogleIntegration.ViewComponents
+@using Humans.UI
+@using Humans.UI.Extensions
+@using Humans.UI.Models
+@using Humans.UI.Models.Tables
+@using Humans.UI.ViewComponents
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<GoogleIntegrationResource> Localizer
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+@addTagHelper *, Humans.UI

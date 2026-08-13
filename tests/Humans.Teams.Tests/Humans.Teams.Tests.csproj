@@ -7,6 +7,7 @@
       mirror of Humans.Auth's InternalsVisibleTo("Humans.Teams.Tests") — see Teams finding 36.
     -->
     <ProjectReference Include="..\..\src\Sections\Humans.Auth\Humans.Auth.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.GoogleIntegration\Humans.GoogleIntegration.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Teams\Humans.Teams.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
   </ItemGroup>

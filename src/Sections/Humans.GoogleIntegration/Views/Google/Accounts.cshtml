@@ -1,0 +1,407 @@
+@model Humans.GoogleIntegration.Models.WorkspaceEmailListViewModel
+@{
+    ViewData["Title"] = "@nobodies.team Accounts";
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-action="Index">Google</a></li>
+        <li class="breadcrumb-item active" aria-current="page">@@nobodies.team Accounts</li>
+    </ol>
+</nav>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="fa-solid fa-at me-2"></i>@@nobodies.team Accounts</h1>
+    <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#provisionForm">
+        <i class="fa-solid fa-plus me-1"></i>Provision Account
+    </button>
+</div>
+
+
+<div class="collapse mb-4" id="provisionForm">
+    <div class="card">
+        <div class="card-header">Provision New Account</div>
+        <div class="card-body">
+            <form asp-action="ProvisionAccount" method="post" class="row g-3 align-items-end">
+                @Html.AntiForgeryToken()
+                <div class="col-md-3">
+                    <label class="form-label">Email Prefix</label>
+                    <div class="input-group">
+                        <input type="text" name="emailPrefix" class="form-control" placeholder="username" required />
+                        <span class="input-group-text">@@nobodies.team</span>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">First Name</label>
+                    <input type="text" name="firstName" class="form-control" required />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Last Name</label>
+                    <input type="text" name="lastName" class="form-control" required />
+                </div>
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fa-solid fa-plus me-1"></i>Provision
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@* Stats cards *@
+<div class="row mb-4">
+    <div class="col">
+        <div class="card text-center">
+            <div class="card-body py-2">
+                <h4 class="mb-0">@Model.TotalAccounts</h4>
+                <small class="text-muted">Total</small>
+            </div>
+        </div>
+    </div>
+    <div class="col">
+        <div class="card text-center">
+            <div class="card-body py-2">
+                <h4 class="mb-0 text-success">@Model.ActiveAccounts</h4>
+                <small class="text-muted">Active</small>
+            </div>
+        </div>
+    </div>
+    <div class="col">
+        <div class="card text-center">
+            <div class="card-body py-2">
+                <h4 class="mb-0 text-danger">@Model.SuspendedAccounts</h4>
+                <small class="text-muted">Suspended</small>
+            </div>
+        </div>
+    </div>
+    <div class="col">
+        <div class="card text-center">
+            <div class="card-body py-2">
+                <h4 class="mb-0 text-primary">@Model.LinkedAccounts</h4>
+                <small class="text-muted">Linked</small>
+            </div>
+        </div>
+    </div>
+    <div class="col">
+        <div class="card text-center">
+            <div class="card-body py-2">
+                <h4 class="mb-0 text-secondary">@Model.UnlinkedAccounts</h4>
+                <small class="text-muted">Unlinked</small>
+            </div>
+        </div>
+    </div>
+    <div class="col">
+        <div class="card text-center">
+            <div class="card-body py-2">
+                <h4 class="mb-0 text-warning">@Model.NotPrimaryCount</h4>
+                <small class="text-muted">Not Primary</small>
+            </div>
+        </div>
+    </div>
+    <div class="col">
+        <div class="card text-center">
+            <div class="card-body py-2">
+                <h4 class="mb-0 @(Model.MissingTwoFactorCount > 0 ? "text-danger" : "text-success")">@Model.MissingTwoFactorCount</h4>
+                <small class="text-muted">Missing 2FA</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (Model.MissingTwoFactorCount > 0)
+{
+    <div class="alert alert-warning d-flex align-items-center justify-content-between mb-3" role="alert">
+        <div>
+            <i class="fa-solid fa-triangle-exclamation me-2"></i>
+            <strong>@Model.MissingTwoFactorCount</strong> account@(Model.MissingTwoFactorCount == 1 ? "" : "s") missing 2FA setup
+            — these accounts cannot sign in until enrollment is completed.
+        </div>
+        <div class="form-check form-switch mb-0">
+            <input class="form-check-input" type="checkbox" role="switch" id="filter-missing-2fa" />
+            <label class="form-check-label" for="filter-missing-2fa">Show only unenrolled</label>
+        </div>
+    </div>
+}
+
+@* Accounts list *@
+<div class="card">
+    <div class="card-header">
+        <i class="fa-solid fa-users me-1"></i>All Accounts
+    </div>
+    <div class="card-body p-0">
+        @if (Model.Accounts.Count == 0)
+        {
+            <p class="text-muted text-center py-4 mb-0">No @@nobodies.team accounts found.</p>
+        }
+        else
+        {
+            <table class="table table-hover mb-0" id="accounts-table">
+                <thead>
+                    <tr>
+                        <th>Email</th>
+                        <th>Name</th>
+                        <th>Linked Human</th>
+                        <th>Status</th>
+                        <th>2FA</th>
+                        <th>Recovery Email</th>
+                        <th>Created</th>
+                        <th>Last Login</th>
+                        <th class="text-end">@Localizer["GoogleAccounts_Actions"]</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @for (var i = 0; i < Model.Accounts.Count; i++)
+                    {
+                        var account = Model.Accounts[i];
+                        <tr class="@(account.IsSuspended ? "table-secondary" : "")"
+                            data-is-enrolled-2sv="@(account.IsEnrolledIn2Sv ? "true" : "false")"
+                            data-is-suspended="@(account.IsSuspended ? "true" : "false")">
+                            <td>
+                                <code>@account.PrimaryEmail</code>
+                                @if (account.MatchedUserId.HasValue && !account.IsUsedAsPrimary)
+                                {
+                                    <span class="badge bg-warning ms-1" title="Account linked but not used as primary notification email"
+                                          data-bs-toggle="tooltip">
+                                        <i class="fa-solid fa-triangle-exclamation"></i> Not primary
+                                    </span>
+                                }
+                            </td>
+                            <td>@account.FirstName @account.LastName</td>
+                            <td>
+                                @if (account.MatchedUserId.HasValue)
+                                {
+                                    <vc:human user-id="@account.MatchedUserId.Value" />
+                                }
+                                else
+                                {
+                                    <form asp-action="LinkAccount" method="post" class="d-flex align-items-center gap-2 link-form">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="email" value="@account.PrimaryEmail" />
+                                        <input type="hidden" name="userId" class="link-userId" />
+                                        <vc:human-search field-name="@($"link-{i}")" />
+                                        <button type="submit" class="btn btn-outline-primary btn-sm flex-shrink-0">
+                                            <i class="fa-solid fa-link"></i>
+                                        </button>
+                                    </form>
+                                }
+                            </td>
+                            <td>
+                                @if (account.IsSuspended)
+                                {
+                                    <span class="badge bg-danger">Suspended</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-success">Active</span>
+                                }
+                            </td>
+                            <td>
+                                @if (account.IsEnrolledIn2Sv)
+                                {
+                                    <span class="badge bg-success" title="2-Step Verification is enrolled on this account" data-bs-toggle="tooltip">
+                                        <i class="fa-solid fa-shield-halved me-1"></i>2FA ready
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-danger" title="Account has not completed 2FA enrollment — cannot sign in" data-bs-toggle="tooltip">
+                                        <i class="fa-solid fa-triangle-exclamation me-1"></i>2FA not set up
+                                    </span>
+                                }
+                            </td>
+                            <td>
+                                @if (!string.IsNullOrWhiteSpace(account.RecoveryEmail))
+                                {
+                                    <code class="small">@account.RecoveryEmail</code>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-warning text-dark" title="No personal recovery email on file — recovery requires admin intervention" data-bs-toggle="tooltip">
+                                        <i class="fa-solid fa-triangle-exclamation me-1"></i>None
+                                    </span>
+                                }
+                            </td>
+                            <td>@account.CreationTime.ToDate()</td>
+                            <td>
+                                @if (account.LastLoginTime.HasValue)
+                                {
+                                    @account.LastLoginTime.Value.ToDate()
+                                }
+                                else
+                                {
+                                    <span class="text-muted">Never</span>
+                                }
+                            </td>
+                            <td class="text-end">
+                                @if (!account.IsSuspended)
+                                {
+                                    <div class="d-inline-flex gap-1">
+                                        <form asp-action="ResetPassword" method="post" class="d-inline"
+                                              data-confirm="Reset the password for @account.PrimaryEmail? The new temporary password will be shown once.">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="email" value="@account.PrimaryEmail" />
+                                            <button type="submit" class="btn btn-outline-warning btn-sm"
+                                                    title="Issue a fresh temporary password — shown once after submit"
+                                                    data-bs-toggle="tooltip">
+                                                <i class="fa-solid fa-key me-1"></i>@Localizer["GoogleAccounts_ResetPassword"]
+                                            </button>
+                                        </form>
+                                        @if (!account.IsEnrolledIn2Sv)
+                                        {
+                                            <form asp-action="ResetPasswordAndGenerate2Fa" method="post" class="d-inline"
+                                                  data-confirm="Reset password and issue a backup verification code for @account.PrimaryEmail? Both will be shown once. Any previously-issued backup codes will be invalidated.">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="email" value="@account.PrimaryEmail" />
+                                                <button type="submit" class="btn btn-outline-danger btn-sm"
+                                                        title="Reset the password AND issue one backup code — for locked-out humans not yet enrolled in 2FA"
+                                                        data-bs-toggle="tooltip">
+                                                    <i class="fa-solid fa-key me-1"></i>Reset + 2FA
+                                                </button>
+                                            </form>
+                                        }
+                                    </div>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</div>
+
+@{
+    var recoveryCreds = ViewBag.RecoveryCredentials as WorkspaceRecoveryCredentialsViewModel;
+}
+
+@if (recoveryCreds is not null && !string.IsNullOrEmpty(recoveryCreds.TempPassword))
+{
+    var hasBackupCode = !string.IsNullOrEmpty(recoveryCreds.BackupCode);
+    var clipboardText = hasBackupCode
+        ? $"pw: {recoveryCreds.TempPassword}\n2fa: {recoveryCreds.BackupCode}"
+        : $"pw: {recoveryCreds.TempPassword}";
+    <div class="modal fade" id="recovery-credentials-modal" tabindex="-1" aria-labelledby="recovery-credentials-modal-label" aria-hidden="true"
+         data-bs-backdrop="static" data-bs-keyboard="false">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="recovery-credentials-modal-label">
+                        <i class="fa-solid fa-key me-2"></i>
+                        @(hasBackupCode ? "Recovery credentials" : "New password") for @recoveryCreds.Email
+                    </h5>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-warning mb-3">
+                        <i class="fa-solid fa-triangle-exclamation me-1"></i>
+                        <strong>One-shot delivery.</strong>
+                        Hand these to <code>@recoveryCreds.Email</code> securely — they cannot be retrieved again after you close this dialog.
+                    </div>
+
+                    <pre id="recovery-credentials-text" class="bg-light p-3 border rounded mb-3 small">@clipboardText</pre>
+
+                    <button type="button" class="btn btn-outline-primary btn-sm" id="copy-recovery-credentials">
+                        <i class="fa-solid fa-copy me-1"></i>Copy to clipboard
+                    </button>
+                    <span id="copy-recovery-credentials-feedback" class="text-success ms-2" style="display:none;">
+                        <i class="fa-solid fa-check me-1"></i>Copied
+                    </span>
+
+                    <hr />
+
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="ack-delivered" />
+                        <label class="form-check-label" for="ack-delivered">
+                            I've delivered these credentials securely to the human
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" id="close-recovery-credentials" data-bs-dismiss="modal" disabled>
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@section Scripts {
+    <script>
+        // Sync the human-search view component's hidden value to the form's userId field on
+        // submit. Spelled without the tag-helper syntax on purpose: GoogleIntegrationPageRenderTests
+        // asserts no unrendered vc tag survives into the response, and it cannot tell a literal
+        // in a script block from an unbound element.
+        document.querySelectorAll('.link-form').forEach(function (form) {
+            form.addEventListener('submit', function (e) {
+                var searchHidden = form.querySelector('input[type="hidden"][id^="human-search-hidden-"]');
+                var userIdField = form.querySelector('.link-userId');
+                if (searchHidden && userIdField) {
+                    userIdField.value = searchHidden.value;
+                }
+                if (!userIdField || !userIdField.value) {
+                    e.preventDefault();
+                    alert('Please search and select a human first.');
+                }
+            });
+        });
+
+        // Filter toggle: show only accounts missing 2FA setup (active + unenrolled).
+        (function () {
+            var toggle = document.getElementById('filter-missing-2fa');
+            if (!toggle) return;
+            toggle.addEventListener('change', function () {
+                var onlyUnenrolled = toggle.checked;
+                document.querySelectorAll('#accounts-table tbody tr').forEach(function (row) {
+                    if (!onlyUnenrolled) {
+                        row.style.display = '';
+                        return;
+                    }
+                    var enrolled = row.getAttribute('data-is-enrolled-2sv') === 'true';
+                    var suspended = row.getAttribute('data-is-suspended') === 'true';
+                    // Hide enrolled rows and suspended rows (suspended accounts can't sign in either way)
+                    row.style.display = (!enrolled && !suspended) ? '' : 'none';
+                });
+            });
+        })();
+
+        // Recovery-credentials modal: copy-to-clipboard, acknowledgement gate, and auto-show once.
+        (function () {
+            var modalEl = document.getElementById('recovery-credentials-modal');
+            if (!modalEl) return;
+
+            var modal = new bootstrap.Modal(modalEl);
+            modal.show();
+
+            var ackCheckbox = document.getElementById('ack-delivered');
+            var closeBtn = document.getElementById('close-recovery-credentials');
+            if (ackCheckbox && closeBtn) {
+                ackCheckbox.addEventListener('change', function () {
+                    closeBtn.disabled = !ackCheckbox.checked;
+                });
+            }
+
+            var copyBtn = document.getElementById('copy-recovery-credentials');
+            var credsEl = document.getElementById('recovery-credentials-text');
+            var feedback = document.getElementById('copy-recovery-credentials-feedback');
+            if (copyBtn && credsEl) {
+                copyBtn.addEventListener('click', function () {
+                    var text = credsEl.textContent || '';
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        navigator.clipboard.writeText(text).then(function () {
+                            if (feedback) {
+                                feedback.style.display = 'inline';
+                                setTimeout(function () { feedback.style.display = 'none'; }, 2000);
+                            }
+                        });
+                    }
+                });
+            }
+
+            // On close, clear the credentials from the DOM so browser back/refresh can't re-expose them.
+            modalEl.addEventListener('hidden.bs.modal', function () {
+                if (credsEl) credsEl.textContent = '';
+            });
+        })();
+    </script>
+}

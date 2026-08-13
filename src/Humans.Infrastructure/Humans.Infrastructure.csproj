@@ -4,9 +4,10 @@
     <InternalsVisibleTo Include="Humans.Application.Tests" />
     <!--
       Teams' section test project: TeamServiceTests and TeamRoleServiceTests build the real
-      TeamService over real Auth / Shifts / GoogleIntegration repositories, and those three
-      contexts are internal here. Granted rather than rewriting ~3,000 lines of real-object
-      tests into substitutes inside a move commit (design §15 step 8).
+      TeamService over real Auth and Shifts repositories, and those contexts are internal
+      here. Granted rather than rewriting ~3,000 lines of real-object tests into substitutes
+      inside a move commit (design §15 step 8). GoogleIntegration was the third and left at
+      its own G5 — Humans.GoogleIntegration.csproj now carries the mirror of this entry.
     -->
     <InternalsVisibleTo Include="Humans.Teams.Tests" />
     <InternalsVisibleTo Include="Humans.Web.Tests" />

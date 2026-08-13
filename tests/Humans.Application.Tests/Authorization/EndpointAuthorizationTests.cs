@@ -81,12 +81,12 @@ public class EndpointAuthorizationTests
         { SectionType("Humans.Monitor.Controllers.MonitorController"), "CheckDriveActivity", "BoardOrAdmin" },
         { SectionType("Humans.Monitor.Controllers.MonitorController"), "Resource", "BoardOrAdmin" },
         { SectionType("Humans.Monitor.Controllers.MonitorController"), "Human", "HumanAdminBoardOrAdmin" },
-        { typeof(GoogleController), "SyncSettings", "AdminOnly" },
-        { typeof(GoogleController), "UpdateSyncSetting", "AdminOnly" },
-        { typeof(GoogleController), "SyncSystemTeams", "AdminOnly" },
-        { typeof(GoogleController), "SyncResults", "AdminOnly" },
-        { typeof(GoogleController), "CheckGroupSettings", "AdminOnly" },
-        { typeof(GoogleController), "GroupSettingsResults", "AdminOnly" },
+        { SectionType("Humans.GoogleIntegration.Controllers.GoogleController"), "SyncSettings", "AdminOnly" },
+        { SectionType("Humans.GoogleIntegration.Controllers.GoogleController"), "UpdateSyncSetting", "AdminOnly" },
+        { SectionType("Humans.GoogleIntegration.Controllers.GoogleController"), "SyncSystemTeams", "AdminOnly" },
+        { SectionType("Humans.GoogleIntegration.Controllers.GoogleController"), "SyncResults", "AdminOnly" },
+        { SectionType("Humans.GoogleIntegration.Controllers.GoogleController"), "CheckGroupSettings", "AdminOnly" },
+        { SectionType("Humans.GoogleIntegration.Controllers.GoogleController"), "GroupSettingsResults", "AdminOnly" },
         { SectionType("Humans.Onboarding.Controllers.OnboardingReviewController"), null, "ReviewQueueAccess" },
         { SectionType("Humans.Onboarding.Controllers.OnboardingReviewController"), "Clear", "ConsentCoordinatorBoardOrAdmin" },
         { SectionType("Humans.Onboarding.Controllers.OnboardingReviewController"), "Flag", "ConsentCoordinatorBoardOrAdmin" },
@@ -134,7 +134,7 @@ public class EndpointAuthorizationTests
     [InlineData("GroupSettingsResults")]
     public void GoogleAdminEndpoint_RequiresAdminPolicy(string actionName)
     {
-        AssertHasPolicy(typeof(GoogleController), actionName, "AdminOnly");
+        AssertHasPolicy(SectionType("Humans.GoogleIntegration.Controllers.GoogleController"), actionName, "AdminOnly");
     }
 
     // --- Onboarding review endpoints ---

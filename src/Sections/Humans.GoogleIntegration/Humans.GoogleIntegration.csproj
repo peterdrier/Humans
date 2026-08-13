@@ -1,0 +1,88 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <!-- MVC views/controllers, not Blazor components. -->
+    <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Humans.GoogleIntegration.Tests" />
+    <!--
+      Teams' section test project: TeamServiceTests and TeamRoleServiceTests build the real
+      TeamService over a real GoogleSyncOutboxService/GoogleSyncOutboxRepository pair and seed
+      google_sync_outbox rows through GoogleIntegrationDbContext, all three of which turned
+      internal here. The entry mirrors the one Humans.Infrastructure already grants for the
+      same tests and comes out when those fixtures stop needing a real outbox
+      (G5-SECTION-TEMPLATE.md step 8).
+    -->
+    <InternalsVisibleTo Include="Humans.Teams.Tests" />
+    <!-- The one assembly allowed to see many sections (design §5). -->
+    <InternalsVisibleTo Include="Humans.Integration.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      Microsoft.NET.Sdk.Web adds these to ImplicitUsings; Microsoft.NET.Sdk.Razor does not.
+      Declaring them keeps the files moved out of Humans.Web byte-identical to their originals.
+    -->
+    <Using Include="Microsoft.AspNetCore.Http" />
+    <Using Include="Microsoft.AspNetCore.Routing" />
+    <Using Include="Microsoft.Extensions.Logging" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      The section consumes six other sections' leaves and publishes its own. The outward
+      direction always goes through Humans.GoogleIntegration.Contracts, never this project,
+      which is what keeps the mutual Teams <-> GoogleIntegration and Auth <-> GoogleIntegration
+      edges acyclic at the assembly level (that leaf's csproj comment has the full argument).
+
+      Humans.Infrastructure is here for AddSectionDbContext, RepositoryBase and
+      GoogleWorkspaceSettings — the credential-bearing settings type Shell's
+      GoogleWorkspaceHealthCheck also binds, so it stays in Base (Email's EmailSettings case,
+      G5-SECTION-TEMPLATE.md step 4).
+    -->
+    <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
+    <ProjectReference Include="..\..\Humans.Domain\Humans.Domain.csproj" />
+    <ProjectReference Include="..\..\Humans.Application\Humans.Application.csproj" />
+    <ProjectReference Include="..\..\Humans.Infrastructure\Humans.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Humans.UI\Humans.UI.csproj" />
+    <ProjectReference Include="..\Humans.GoogleIntegration.Contracts\Humans.GoogleIntegration.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Auth.Contracts\Humans.Auth.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Notifications.Contracts\Humans.Notifications.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.SystemSettings.Contracts\Humans.SystemSettings.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      The Google Workspace SDKs come with the section: every caller of them is now here
+      (the connectors under Services/Google/), which is what "a connector shaped by one
+      section's model belongs to it" means in practice (G5-SECTION-TEMPLATE.md step 5b).
+      They were on Humans.Infrastructure.csproj until this move.
+
+      No AspNetCore package: those ship with no PackageVersion on purpose and would fail the
+      build with NU1010 under Central Package Management. The controller and view component
+      get theirs from the framework reference Sdk.Razor already adds.
+    -->
+    <PackageReference Include="Google.Apis.Admin.Directory.directory_v1" />
+    <PackageReference Include="Google.Apis.Auth" />
+    <PackageReference Include="Google.Apis.CloudIdentity.v1" />
+    <PackageReference Include="Google.Apis.Drive.v3" />
+    <PackageReference Include="Google.Apis.DriveActivity.v2" />
+    <PackageReference Include="Google.Apis.Groupssettings.v1" />
+    <PackageReference Include="Hangfire.Core" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="NodaTime" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL.NodaTime" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The section owns its documentation (design §7a); keep it visible in Solution Explorer. -->
+    <None Include="**\*.md" />
+  </ItemGroup>
+
+</Project>

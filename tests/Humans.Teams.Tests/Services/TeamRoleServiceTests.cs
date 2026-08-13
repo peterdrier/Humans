@@ -23,10 +23,10 @@ using Humans.Email.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Interfaces.GoogleIntegration;
-using Humans.Application.Services.GoogleIntegration;
+using Humans.GoogleIntegration.Services;
 using Humans.Application.Interfaces.Auth;
 
-using Humans.Infrastructure.Repositories.GoogleIntegration;
+using Humans.GoogleIntegration.Data;
 using Humans.Infrastructure.Repositories.Shifts;
 
 namespace Humans.Teams.Tests;

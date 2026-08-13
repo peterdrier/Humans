@@ -9,6 +9,6 @@ description: ITeamResourceService and TeamResourceService live under Humans.Appl
 
 **Why:** Splitting "ownership section" (Teams) from "code-locality section" (GoogleIntegration) was creating false HUM0017 reports that the previous PR papered over with `#pragma warning disable HUM0017`. Suppressing an architecture analyzer to dodge a structural mismatch is forbidden (`memory/process/no-analyzer-suppressions.md`). The clean fix is one section label per service surface, applied consistently to both the analyzer view and the arch-test ownership map.
 
-**How to apply:** When adding code that reads or writes `google_resources`, put it in `Humans.Application.{Interfaces,Services}.GoogleIntegration` (alongside `GoogleWorkspaceSyncService`, `DriveActivityMonitorService`, etc.). Do not relocate `TeamResourceService` into `Humans.Teams.Services` — the section is now GoogleIntegration and the docs in `src/Sections/Humans.Teams/Docs/Teams.md` and `docs/sections/GoogleIntegration.md` reflect that.
+**How to apply:** When adding code that reads or writes `google_resources`, put it in `Humans.Application.{Interfaces,Services}.GoogleIntegration` (alongside `GoogleWorkspaceSyncService`, `DriveActivityMonitorService`, etc.). Do not relocate `TeamResourceService` into `Humans.Teams.Services` — the section is now GoogleIntegration and the docs in `src/Sections/Humans.Teams/Docs/Teams.md` and `src/Sections/Humans.GoogleIntegration/Docs/GoogleIntegration.md` reflect that.
 
 **Related:** `memory/architecture/users-profiles-one-section.md` (sibling section-fold rule).

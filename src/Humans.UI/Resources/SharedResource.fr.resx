@@ -1401,16 +1401,6 @@
   <data name="AdminAddRole_NotesPlaceholder" xml:space="preserve">
     <value>Motif de l'attribution</value>
   </data>
-  <data name="GoogleAccounts_Actions" xml:space="preserve">
-    <value>Actions</value>
-  </data>
-  <data name="GoogleAccounts_ResetPassword" xml:space="preserve">
-    <value>Réinitialiser le mot de passe</value>
-  </data>
-  <data name="GoogleAccounts_ResetPasswordConfirm" xml:space="preserve">
-    <value>Réinitialiser le mot de passe pour {0} ? Un nouveau mot de passe temporaire sera généré et affiché à l'écran. Le human devra le changer à sa prochaine connexion.</value>
-    <comment>{0} = email</comment>
-  </data>
   <data name="GoogleSync_SyncNow" xml:space="preserve">
     <value>Synchroniser maintenant</value>
   </data>

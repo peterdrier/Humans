@@ -97,7 +97,7 @@ New audit actions: `AuditAction.UserEmailGoogleCleared`, `UserEmailPrimaryCleare
 ## Cross-Section Dependencies
 
 - **[Profiles section](../../sections/Profiles.md)** — owns `UserEmail` and the `EnsurePrimaryInvariantAsync` invariant. `ClearPrimaryAsync` is the deliberate-bypass admin recovery path; document there.
-- **[GoogleIntegration section](../../sections/GoogleIntegration.md)** — owns the `/Google/*` admin surface; the violations page lives there because Google identity (`IsGoogle`) is the primary invariant under remediation, even though the data is `UserEmail`-shaped.
+- **[GoogleIntegration section](../../../src/Sections/Humans.GoogleIntegration/Docs/GoogleIntegration.md)** — owns the `/Google/*` admin surface; the violations page lives there because Google identity (`IsGoogle`) is the primary invariant under remediation, even though the data is `UserEmail`-shaped.
 
 ## Related
 

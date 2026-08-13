@@ -1,0 +1,27 @@
+using Humans.Application.Interfaces;
+using Humans.GoogleIntegration.Data;
+using Humans.GoogleIntegration.Services.Workspace;
+namespace Humans.GoogleIntegration.Services;
+
+/// <summary>
+/// A detected email rename: the user's stored GoogleEmail differs from
+/// the current primaryEmail returned by Google Directory API.
+/// </summary>
+internal sealed class EmailRenameInfo
+{
+    public Guid UserId { get; init; }
+    public string DisplayName { get; init; } = string.Empty;
+    public string OldEmail { get; init; } = string.Empty;
+    public string NewEmail { get; init; } = string.Empty;
+    public int AffectedResourceCount { get; init; }
+}
+
+/// <summary>
+/// Result of scanning for renamed @nobodies.team emails.
+/// </summary>
+internal sealed class EmailRenameDetectionResult
+{
+    public List<EmailRenameInfo> Renames { get; init; } = [];
+    public int TotalUsersChecked { get; init; }
+    public string? ErrorMessage { get; init; }
+}

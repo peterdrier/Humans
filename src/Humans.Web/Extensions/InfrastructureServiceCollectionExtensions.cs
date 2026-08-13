@@ -58,7 +58,6 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IAuditViewerService, AuditViewerService>();
         services.AddICalFeedSection();
         services.AddAdminSection();
-        services.AddGoogleIntegrationSection();
         services.AddHoldedConnector(configuration);
 
         // Recurring jobs for sections that have already moved out. The job types stay in

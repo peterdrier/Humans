@@ -8,12 +8,12 @@
   <ItemGroup>
     <InternalsVisibleTo Include="Humans.Teams.Tests" />
     <!--
-      Humans.Application.Tests, until Shifts and GoogleIntegration move. Five test files there
+      Humans.Application.Tests, until Shifts moves. Four test files there
       (ShiftDashboardMetricsTests, ShiftManagementReadMathTests, ShiftSummaryServiceTests,
-      WorkloadServiceTests, TeamResourceServiceDeactivateTests) seed team rows through
-      ServiceTestHarness because their own sections still live in Base. Rewriting their
-      fixtures inside this move commit would change five unrelated sections' tests and be
-      redone at those sections' own G5; the entry comes out with the second of them.
+      WorkloadServiceTests) seed team rows through ServiceTestHarness because Shifts still
+      lives in Base. Rewriting their fixtures inside a move commit would change an unrelated
+      section's tests and be redone at its own G5; the entry comes out with Shifts.
+      TeamResourceServiceDeactivateTests was the fifth and left with GoogleIntegration's G5.
     -->
     <InternalsVisibleTo Include="Humans.Application.Tests" />
     <!-- The one assembly allowed to see many sections (design §5). -->

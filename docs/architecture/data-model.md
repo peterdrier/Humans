@@ -54,7 +54,7 @@ This file is the **index and cross-cutting rule sheet** for the data model. Per-
 | Product / Order / OrderLine / Payment / Invoice / TreasurySyncState | [Store](../../src/Sections/Humans.Store/Docs/Store.md) | |
 | Issue / IssueComment | [Issues](../../src/Sections/Humans.Issues/Docs/Issues.md) | |
 | AgentConversation / AgentMessage / AgentSettings | [Agent](../../src/Sections/Humans.Agent/Docs/Agent.md) | |
-| SyncServiceSettings / GoogleSyncOutboxEvent | [Google Integration](../sections/GoogleIntegration.md) | |
+| SyncServiceSettings / GoogleSyncOutboxEvent | [Google Integration](../../src/Sections/Humans.GoogleIntegration/Docs/GoogleIntegration.md) | |
 | Survey / SurveyQuestion / SurveyQuestionOption / SurveyResponse / SurveyAnswer / SurveyInvitation | [Survey](../../src/Sections/Humans.Surveys/Docs/Surveys.md) | Cross-domain refs are bare `Guid` FK columns only — no nav properties, no cross-section EF FK constraints. |
 | SystemSetting | System Settings section | Owned by `SystemSettingsRepository` (exposed via `ISystemSettingsService`); consuming sections read/write keys through it. See [SystemSetting below](#systemsetting-system-settings-section). |
 | AuditLogEntry | [Audit Log](../../src/Sections/Humans.AuditLog/Docs/AuditLog.md) | Append-only (§12). |
@@ -178,7 +178,7 @@ CampaignGrant (Campaigns)
 | Key | Consuming section | Purpose |
 |-----|-------------------|---------|
 | `IsEmailSendingPaused` | [Email](../../src/Sections/Humans.Email/Docs/Email.md) | When `"true"`, `ProcessEmailOutboxJob` skips processing |
-| `DriveActivityMonitor:LastRunAt` | [Google Integration](../sections/GoogleIntegration.md) | Last-run timestamp for drive-activity monitor |
+| `DriveActivityMonitor:LastRunAt` | [Google Integration](../../src/Sections/Humans.GoogleIntegration/Docs/GoogleIntegration.md) | Last-run timestamp for drive-activity monitor |
 
 | Property | Type | Purpose |
 |----------|------|---------|

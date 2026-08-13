@@ -1,0 +1,75 @@
+@{
+    ViewData["Title"] = "Google Integration";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="mb-0">Google Integration</h1>
+    @* Invoked by name: AccessMatrixViewComponent reads Shell's AccessMatrixDefinitions and
+       SectionHelpContent — a cross-section registry that cannot move to Humans.UI — so the
+       compile-time <vc:> tag helper cannot see it from a section and would ship as inert
+       literal markup (G5-SECTION-TEMPLATE.md step 6, CityPlanning's case). An unresolvable
+       InvokeAsync throws, so the render test catches a rename. *@
+    @await Component.InvokeAsync("AccessMatrix", new { section = "Google" })
+</div>
+
+
+<p class="text-muted">
+    Sync settings, accounts, domain groups, outbox, and detection results now live in the
+    <strong>Google</strong> section of the admin sidebar. The cards below trigger on-demand checks.
+</p>
+
+<div class="row">
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header">System Team Sync</div>
+            <div class="card-body">
+                <form asp-action="SyncSystemTeams" method="post">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-outline-primary">
+                        <i class="fa-solid fa-arrows-rotate me-1"></i>Sync System Teams
+                    </button>
+                    <small class="text-muted d-block mt-1">Recalculates Volunteers, Leads, and Board team membership.</small>
+                </form>
+                <a asp-action="SyncResults" class="btn btn-outline-secondary btn-sm mt-3">
+                    <i class="fa-solid fa-list-check me-1"></i>View Sync Results
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header">Google Group Settings</div>
+            <div class="card-body">
+                <form asp-action="CheckGroupSettings" method="post">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-outline-primary">
+                        <i class="fa-solid fa-magnifying-glass me-1"></i>Check Group Settings
+                    </button>
+                    <small class="text-muted d-block mt-1">Checks all Google Groups for settings drift. Does not modify anything.</small>
+                </form>
+                <a asp-action="GroupSettingsResults" class="btn btn-outline-secondary btn-sm mt-3">
+                    <i class="fa-solid fa-list-check me-1"></i>View Last Group Settings Results
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header">Email Rename Detection</div>
+            <div class="card-body">
+                <form asp-action="CheckEmailRenames" method="post">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-outline-primary">
+                        <i class="fa-solid fa-right-left me-1"></i>Check Email Renames
+                    </button>
+                    <small class="text-muted d-block mt-1">Detects @@nobodies.team emails that were renamed in Google Workspace. Shows old vs new email and affected resource count.</small>
+                </form>
+                <a asp-action="EmailRenames" class="btn btn-outline-secondary btn-sm mt-3">
+                    <i class="fa-solid fa-list-check me-1"></i>View Last Results
+                </a>
+            </div>
+        </div>
+    </div>
+</div>

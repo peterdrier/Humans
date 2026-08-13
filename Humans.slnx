@@ -33,6 +33,7 @@
     <Project Path="src/Sections/Humans.Development/Humans.Development.csproj" />
     <Project Path="src/Sections/Humans.Email/Humans.Email.csproj" />
     <Project Path="src/Sections/Humans.Email.Contracts/Humans.Email.Contracts.csproj" />
+    <Project Path="src/Sections/Humans.GoogleIntegration/Humans.GoogleIntegration.csproj" />
     <Project Path="src/Sections/Humans.GoogleIntegration.Contracts/Humans.GoogleIntegration.Contracts.csproj" />
     <Project Path="src/Sections/Humans.Events/Humans.Events.csproj" />
     <Project Path="src/Sections/Humans.Events.Contracts/Humans.Events.Contracts.csproj" />
@@ -103,6 +104,7 @@
     <Project Path="tests/Humans.Holded.Tests/Humans.Holded.Tests.csproj" />
     <Project Path="tests/Humans.Issues.Tests/Humans.Issues.Tests.csproj" />
     <Project Path="tests/Humans.Mailer.Tests/Humans.Mailer.Tests.csproj" />
+    <Project Path="tests/Humans.GoogleIntegration.Tests/Humans.GoogleIntegration.Tests.csproj" />
     <Project Path="tests/Humans.Monitor.Tests/Humans.Monitor.Tests.csproj" />
     <Project Path="tests/Humans.Notifications.Tests/Humans.Notifications.Tests.csproj" />
     <Project Path="tests/Humans.Scanner.Tests/Humans.Scanner.Tests.csproj" />

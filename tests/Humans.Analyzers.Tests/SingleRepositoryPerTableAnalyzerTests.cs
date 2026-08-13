@@ -343,7 +343,7 @@ public sealed class SingleRepositoryPerTableAnalyzerTests
                 }
             }
 
-            namespace Humans.Infrastructure.Repositories.GoogleIntegration
+            namespace Humans.GoogleIntegration.Data
             {
                 public sealed class DriveActivityMonitorRepository : Humans.Application.Interfaces.Repositories.IRepository
                 {

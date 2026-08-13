@@ -37,6 +37,7 @@ using Npgsql;
 using Xunit;
 using Humans.Events.Data;
 using Humans.Surveys.Data;
+using Humans.GoogleIntegration.Data;
 
 namespace Humans.Integration.Tests.Infrastructure;
 

@@ -1,0 +1,243 @@
+using AwesomeAssertions;
+using Humans.Application.Interfaces.Repositories;
+using Humans.Domain.Entities;
+using Humans.Domain.Enums;
+using Humans.Infrastructure.Data;
+using Humans.GoogleIntegration.Data;
+using Microsoft.EntityFrameworkCore;
+using NodaTime;
+using NodaTime.Testing;
+using Humans.GoogleIntegration.Services;
+using Humans.GoogleIntegration.Services.Workspace;
+using Humans.Application;
+using Humans.GoogleIntegration.Tests.Infrastructure;
+
+namespace Humans.GoogleIntegration.Tests;
+
+/// <summary>
+/// Behavior tests for <see cref="GoogleResourceRepository"/> — the only
+/// non-test file that touches <c>DbSet&lt;GoogleResource&gt;</c> after the
+/// §15 <c>#540c</c> migration.
+///
+/// <para>
+/// The tests drive the real repository against an EF in-memory database
+/// wrapped in a minimal <see cref="IDbContextFactory{T}"/> so each method
+/// creates and disposes its own short-lived context (matching the
+/// production singleton-plus-factory shape documented in design-rules §15b).
+/// Every scenario below exists because an earlier version of the code — or
+/// a prospective refactor — got it wrong and cost real debugging time:
+/// grouping preserves the contract the service depends on, reactivation
+/// clears error state, bulk deactivation is single-transaction, etc.
+/// </para>
+/// </summary>
+public sealed class GoogleResourceRepositoryTests : IDisposable
+{
+    private readonly DbContextOptions<GoogleIntegrationDbContext> _options;
+    private readonly FakeClock _clock;
+    private readonly IGoogleResourceRepository _repository;
+    private readonly GoogleIntegrationDbContext _seedContext;
+
+    public GoogleResourceRepositoryTests()
+    {
+        _options = new DbContextOptionsBuilder<GoogleIntegrationDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+        _clock = new FakeClock(Instant.FromUtc(2026, 4, 22, 10, 0));
+        _repository = new GoogleResourceRepository(new SingleContextFactory(_options));
+        _seedContext = new GoogleIntegrationDbContext(_options);
+    }
+
+    public void Dispose()
+    {
+        _seedContext.Dispose();
+    }
+
+    [HumansFact]
+    public async Task GetActiveByTeamIdAsync_OrdersByProvisionedAt_ExcludesInactive()
+    {
+        var teamId = Guid.NewGuid();
+        var older = Seed(teamId, "older", GoogleResourceType.DriveFolder, Instant.FromUtc(2026, 4, 20, 0, 0));
+        var newer = Seed(teamId, "newer", GoogleResourceType.DriveFolder, Instant.FromUtc(2026, 4, 21, 0, 0));
+        Seed(teamId, "dead", GoogleResourceType.DriveFolder, Instant.FromUtc(2026, 4, 19, 0, 0), isActive: false);
+        await _seedContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var rows = await _repository.GetActiveByTeamIdAsync(teamId, Xunit.TestContext.Current.CancellationToken);
+
+        rows.Should().HaveCount(2);
+        rows.Select(r => r.Id).Should().ContainInOrder(older.Id, newer.Id);
+    }
+
+    [HumansFact]
+    public async Task GetActiveByTeamIdsAsync_EmptyCollection_ReturnsEmptyDictionary()
+    {
+        var dict = await _repository.GetActiveByTeamIdsAsync([], Xunit.TestContext.Current.CancellationToken);
+        dict.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task GetActiveByTeamIdsAsync_MissingTeamsMapToEmptyList()
+    {
+        var presentTeam = Guid.NewGuid();
+        var absentTeam = Guid.NewGuid();
+        Seed(presentTeam, "resource", GoogleResourceType.Group);
+        await _seedContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var dict = await _repository.GetActiveByTeamIdsAsync([presentTeam, absentTeam], Xunit.TestContext.Current.CancellationToken);
+
+        dict.Should().ContainKey(presentTeam).WhoseValue.Should().HaveCount(1);
+        dict.Should().ContainKey(absentTeam).WhoseValue.Should().BeEmpty(
+            because: "callers depend on missing teams mapping to empty rather than missing so Count-based code paths work without null checks");
+    }
+
+    [HumansFact]
+    public async Task FindActiveByGoogleIdAsync_MatchesOnType()
+    {
+        var teamId = Guid.NewGuid();
+        var folder = Seed(teamId, "match", GoogleResourceType.DriveFolder, googleId: "abc123");
+        Seed(teamId, "file-with-same-id", GoogleResourceType.DriveFile, googleId: "abc123");
+        await _seedContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var row = await _repository.FindActiveByGoogleIdAsync(teamId, "abc123", GoogleResourceType.DriveFolder, Xunit.TestContext.Current.CancellationToken);
+        row!.Id.Should().Be(folder.Id);
+
+        var missing = await _repository.FindActiveByGoogleIdAsync(teamId, "abc123", GoogleResourceType.Group, Xunit.TestContext.Current.CancellationToken);
+        missing.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task ReactivateAsync_UpdatesNameUrlAndClearsErrorMessage()
+    {
+        var teamId = Guid.NewGuid();
+        var row = Seed(teamId, "stale", GoogleResourceType.DriveFolder, isActive: false);
+        row.ErrorMessage = "last sync failed";
+        await _seedContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var updated = await _repository.ReactivateAsync(
+            row.Id,
+            name: "fresh",
+            url: "https://example.com/fresh",
+            lastSyncedAt: Instant.FromUtc(2026, 4, 22, 12, 0),
+            newGoogleId: null,
+            newPermissionLevel: DrivePermissionLevel.Manager, ct: Xunit.TestContext.Current.CancellationToken);
+
+        updated.Should().NotBeNull();
+        updated.IsActive.Should().BeTrue();
+        updated.ErrorMessage.Should().BeNull();
+        updated.Name.Should().Be("fresh");
+        updated.Url.Should().Be("https://example.com/fresh");
+        updated.DrivePermissionLevel.Should().Be(DrivePermissionLevel.Manager);
+    }
+
+    [HumansFact]
+    public async Task ReactivateAsync_AppliesNewGoogleIdWhenProvided()
+    {
+        // Group reactivation overwrites GoogleId because legacy rows may have
+        // stored the email where we now store the numeric id.
+        var teamId = Guid.NewGuid();
+        var row = Seed(teamId, "old-group", GoogleResourceType.Group, isActive: false, googleId: "old@example.com");
+        await _seedContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var updated = await _repository.ReactivateAsync(
+            row.Id,
+            name: "old@example.com",
+            url: null,
+            lastSyncedAt: _clock.GetCurrentInstant(),
+            newGoogleId: "01234567",
+            newPermissionLevel: null, ct: Xunit.TestContext.Current.CancellationToken);
+
+        updated!.GoogleId.Should().Be("01234567");
+    }
+
+    [HumansFact]
+    public async Task UnlinkAsync_FlipsIsActive_IsIdempotent()
+    {
+        var row = Seed(Guid.NewGuid(), "r", GoogleResourceType.DriveFile);
+        await _seedContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        await _repository.UnlinkAsync(row.Id, Xunit.TestContext.Current.CancellationToken);
+        (await _repository.GetByIdAsync(row.Id, Xunit.TestContext.Current.CancellationToken))!.IsActive.Should().BeFalse();
+
+        // Second call must not throw.
+        await _repository.UnlinkAsync(row.Id, Xunit.TestContext.Current.CancellationToken);
+
+        // Unknown id must not throw either.
+        await _repository.UnlinkAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+    }
+
+    [HumansFact]
+    public async Task UpdatePermissionLevelAsync_ReportsTrueOnlyWhenRowExists()
+    {
+        var row = Seed(Guid.NewGuid(), "r", GoogleResourceType.DriveFolder);
+        await _seedContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var updated = await _repository.UpdatePermissionLevelAsync(row.Id, DrivePermissionLevel.Viewer, Xunit.TestContext.Current.CancellationToken);
+        updated.Should().BeTrue();
+
+        var missing = await _repository.UpdatePermissionLevelAsync(Guid.NewGuid(), DrivePermissionLevel.Viewer, Xunit.TestContext.Current.CancellationToken);
+        missing.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task DeactivateByTeamAsync_WithType_LeavesOtherTypesUntouched()
+    {
+        // Guards the same reconciliation-ordering bug as
+        // TeamResourceServiceDeactivateTests but at the repository level.
+        var teamId = Guid.NewGuid();
+        var drive = Seed(teamId, "drive", GoogleResourceType.DriveFolder);
+        var group = Seed(teamId, "group", GoogleResourceType.Group);
+        await _seedContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var deactivated = await _repository.DeactivateByTeamAsync(teamId, GoogleResourceType.DriveFolder, Xunit.TestContext.Current.CancellationToken);
+
+        deactivated.Select(r => r.Id).Should().BeEquivalentTo([drive.Id]);
+
+        await using var check = new GoogleIntegrationDbContext(_options);
+        (await check.GoogleResources.FindAsync(drive.Id, Xunit.TestContext.Current.CancellationToken))!.IsActive.Should().BeFalse();
+        (await check.GoogleResources.FindAsync(group.Id, Xunit.TestContext.Current.CancellationToken))!.IsActive.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task DeactivateByTeamAsync_NoRows_ReturnsEmpty()
+    {
+        var deactivated = await _repository.DeactivateByTeamAsync(Guid.NewGuid(), resourceType: null, ct: Xunit.TestContext.Current.CancellationToken);
+        deactivated.Should().BeEmpty();
+    }
+
+    private GoogleResource Seed(
+        Guid teamId,
+        string name,
+        GoogleResourceType type,
+        Instant? provisionedAt = null,
+        bool isActive = true,
+        string? googleId = null)
+    {
+        var resource = new GoogleResource
+        {
+            Id = Guid.NewGuid(),
+            TeamId = teamId,
+            Name = name,
+            GoogleId = googleId ?? Guid.NewGuid().ToString(),
+            Url = $"https://example.com/{name}",
+            ResourceType = type,
+            IsActive = isActive,
+            ProvisionedAt = provisionedAt ?? _clock.GetCurrentInstant(),
+        };
+        _seedContext.GoogleResources.Add(resource);
+        return resource;
+    }
+
+    /// <summary>
+    /// Minimal context factory that backs every <c>CreateDbContextAsync</c>
+    /// with the same <see cref="DbContextOptions"/>. This mirrors the
+    /// production Singleton-plus-factory shape (§15b) without requiring a
+    /// real provider.
+    /// </summary>
+    private sealed class SingleContextFactory(DbContextOptions<GoogleIntegrationDbContext> options)
+        : IDbContextFactory<GoogleIntegrationDbContext>
+    {
+        public GoogleIntegrationDbContext CreateDbContext() => new(options);
+
+        public Task<GoogleIntegrationDbContext> CreateDbContextAsync(CancellationToken ct = default) =>
+            Task.FromResult(new GoogleIntegrationDbContext(options));
+    }
+}
