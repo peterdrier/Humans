@@ -49,15 +49,14 @@ public sealed class TempDataCookieValidationMiddleware(
             return;
         }
 
-        // A chunked request is one whose main value carries the "chunks-N" marker — regardless of
-        // which siblings survived, so losing C1 specifically still reports True. The C1 fallback
-        // catches the inverse: a main value corrupted past recognition that still has siblings
-        // attached. Deriving this from C1 alone misclassified the lost-C1 case as unchunked,
-        // which is exactly the case the diagnostic exists to tell apart from a stale-format or
-        // bot cookie.
-        var hasChunkSiblings = TryParseChunkCount(rawValue, out _)
-            || requestCookies.ContainsKey(cookieName + ChunkKeySuffix + "1");
         var reassembled = Reassemble(requestCookies, cookieName, rawValue, out var relatedNames);
+
+        // A chunked request is one whose main value carries the "chunks-N" marker — regardless of
+        // which siblings survived, so losing C1 specifically still reports True. The second arm
+        // catches the inverse: a main value corrupted past recognition, where no marker is left
+        // to parse but siblings are still attached. relatedNames holds every sibling actually
+        // present, so this covers a sibling at any index rather than only C1.
+        var hasChunkSiblings = TryParseChunkCount(rawValue, out _) || relatedNames.Count > 1;
 
         if (reassembled is not null && Base64Url.IsValid(reassembled))
         {
@@ -103,6 +102,47 @@ public sealed class TempDataCookieValidationMiddleware(
     }
 
     /// <summary>
+    /// Every <c>{cookieName}C{n}</c> sibling actually present on the request, keyed by index.
+    /// </summary>
+    /// <remarks>
+    /// Found by scanning the request's own cookies rather than by generating <c>C1..CN</c> names
+    /// from the main value's chunk marker. The marker is client-supplied: an anonymous request
+    /// can send <c>chunks-2147483647</c>, and this middleware runs on every dynamic request, so
+    /// letting that count drive a loop is a cheap CPU-denial-of-service vector. Scanning bounds
+    /// the work by the number of cookies the client actually sent, and as a side benefit finds
+    /// siblings even when the main value is corrupted past having a parseable marker at all.
+    /// </remarks>
+    private static Dictionary<int, string> CollectChunkSiblings(
+        IRequestCookieCollection requestCookies,
+        string cookieName)
+    {
+        var prefix = cookieName + ChunkKeySuffix;
+        var siblings = new Dictionary<int, string>();
+
+        foreach (var (name, value) in requestCookies)
+        {
+            if (name.Length <= prefix.Length
+                || !name.StartsWith(prefix, StringComparison.Ordinal)
+                || string.IsNullOrEmpty(value))
+            {
+                continue;
+            }
+
+            if (int.TryParse(
+                    name.AsSpan(prefix.Length),
+                    NumberStyles.None,
+                    CultureInfo.InvariantCulture,
+                    out var index)
+                && index > 0)
+            {
+                siblings[index] = value;
+            }
+        }
+
+        return siblings;
+    }
+
+    /// <summary>
     /// Reassembles the value <see cref="CookieTempDataProvider"/> would attempt to decode:
     /// the raw cookie value when it isn't chunked, or the concatenation of its <c>C1..CN</c>
     /// siblings when it is. Returns null when a chunked value is missing a sibling — the
@@ -110,12 +150,12 @@ public sealed class TempDataCookieValidationMiddleware(
     /// "chunks-N" marker), which never decodes either way.
     /// </summary>
     /// <remarks>
-    /// The scan always runs the full declared <c>1..N</c> range rather than stopping at the
-    /// first gap, because <paramref name="relatedNames"/> drives both the request filter and
-    /// the response deletes. Bailing early left any sibling *after* the gap uncollected, so a
-    /// client that lost one cookie out of order kept re-sending several KB of orphans on every
-    /// request for the rest of the session — the opposite of this middleware's contract that a
-    /// malformed cookie is fully deleted.
+    /// <paramref name="relatedNames"/> collects every sibling present, unconditionally — before
+    /// the marker is even parsed — because it drives both the request filter and the response
+    /// deletes. Collecting only what reassembly happened to consume left orphans behind in two
+    /// ways: a sibling after a gap in the range, and every sibling of a main value too corrupted
+    /// to carry a marker. Either left the client re-sending kilobytes of dead cookies on every
+    /// request for the rest of the session, which is the opposite of this middleware's contract.
     /// </remarks>
     private static string? Reassemble(
         IRequestCookieCollection requestCookies,
@@ -123,32 +163,39 @@ public sealed class TempDataCookieValidationMiddleware(
         string rawValue,
         out HashSet<string> relatedNames)
     {
+        var siblings = CollectChunkSiblings(requestCookies, cookieName);
+
         relatedNames = [cookieName];
+        foreach (var index in siblings.Keys)
+        {
+            relatedNames.Add(cookieName + ChunkKeySuffix + index.ToString(CultureInfo.InvariantCulture));
+        }
 
         if (!TryParseChunkCount(rawValue, out var chunkCount))
         {
             return rawValue;
         }
 
-        var builder = new StringBuilder();
-        var incomplete = false;
-        for (var i = 1; i <= chunkCount; i++)
+        // The declared count can exceed what was sent — whether by cookie loss or by a hostile
+        // marker. Either way it cannot reassemble, and bailing here keeps the loop below bounded
+        // by the sibling count rather than by the client's number.
+        if (chunkCount > siblings.Count)
         {
-            var chunkName = cookieName + ChunkKeySuffix + i.ToString(CultureInfo.InvariantCulture);
-            if (!requestCookies.TryGetValue(chunkName, out var chunk) || string.IsNullOrEmpty(chunk))
-            {
-                incomplete = true;
-                continue;
-            }
-
-            relatedNames.Add(chunkName);
-            if (!incomplete)
-            {
-                builder.Append(chunk);
-            }
+            return null;
         }
 
-        return incomplete ? null : builder.ToString();
+        var builder = new StringBuilder();
+        for (var i = 1; i <= chunkCount; i++)
+        {
+            if (!siblings.TryGetValue(i, out var chunk))
+            {
+                return null;
+            }
+
+            builder.Append(chunk);
+        }
+
+        return builder.ToString();
     }
 
     /// <summary>

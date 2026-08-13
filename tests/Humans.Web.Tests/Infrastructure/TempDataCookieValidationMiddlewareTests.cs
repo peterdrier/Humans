@@ -264,4 +264,57 @@ public class TempDataCookieValidationMiddlewareTests
         entry.Message.Should().Contain("HasChunkSiblings=True");
         entry.Exception.Should().BeNull();
     }
+
+    [HumansFact(Timeout = 10_000)]
+    public async Task HostileChunkCount_IsBoundedByCookiesActuallySent()
+    {
+        var context = new DefaultHttpContext();
+        // The chunk marker is client-supplied and this middleware runs on every dynamic request.
+        // Generating C1..C2147483647 names from it would burn billions of iterations (and wrap
+        // the counter), so the declared count must never drive the loop bound. The xUnit timeout
+        // is the assertion that matters here — the old shape would not return.
+        context.Request.Headers.Cookie = $"{CookieName}=chunks-2147483647";
+
+        var (nextCalled, logger) = await RunAsync(context);
+
+        nextCalled.Should().BeTrue();
+        var entry = logger.Entries.Should().ContainSingle().Subject;
+        entry.Message.Should().Contain("HasChunkSiblings=True", "the marker parsed, even though no sibling arrived");
+        entry.Exception.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task UnparseableMarker_WithSiblingsPresent_DeletesTheSiblingsToo()
+    {
+        var context = new DefaultHttpContext();
+        // Main value corrupted past carrying a "chunks-N" marker at all, siblings still attached.
+        // Deleting only the main cookie would leave multi-KB orphans on the client indefinitely.
+        context.Request.Headers.Cookie =
+            $"{CookieName}=garbage-not-base64!!!; {CookieName}C1=AAAA; {CookieName}C2=BBBB";
+
+        HttpContext? seenByNext = null;
+        var logger = new CapturingLogger<TempDataCookieValidationMiddleware>();
+        var middleware = new TempDataCookieValidationMiddleware(
+            ctx =>
+            {
+                seenByNext = ctx;
+                return Task.CompletedTask;
+            },
+            Options.Create(new CookieTempDataProviderOptions()),
+            logger);
+
+        await middleware.InvokeAsync(context);
+
+        seenByNext.Should().NotBeNull();
+        seenByNext!.Request.Cookies.ContainsKey($"{CookieName}C1").Should().BeFalse();
+        seenByNext.Request.Cookies.ContainsKey($"{CookieName}C2").Should().BeFalse();
+
+        var deleted = ParseSetCookies(context.Response).Select(c => c.Name.Value).ToArray();
+        deleted.Should().Contain([CookieName, $"{CookieName}C1", $"{CookieName}C2"],
+            "siblings are orphans once the main value is unrecoverable");
+
+        logger.Entries.Should().ContainSingle()
+            .Which.Message.Should().Contain("HasChunkSiblings=True",
+                "no marker survived to parse, so this must come from the siblings actually present");
+    }
 }
