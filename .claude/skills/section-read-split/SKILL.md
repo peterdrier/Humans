@@ -39,6 +39,10 @@ ROOTS=$(ls -d src/Sections/Humans.$SECTION \
               src/Humans.Application/Services/$SECTION \
               src/Humans.Application/Models/$SECTION 2>/dev/null)
 [ -n "$ROOTS" ] || { echo "no such section"; exit 1; }
+
+# Sections don't all have the same folders, and `git grep pat a/ b/` (no `--`)
+# aborts entirely if any path is missing. Filter every multi-path list.
+exist() { for p in "$@"; do [ -e "$p" ] && printf '%s ' "$p"; done; }
 ```
 
 Whatever exists is the section's home — a moved section yields the first two, a not-yet-moved one the rest, and a section mid-move can yield both.
@@ -78,7 +82,34 @@ Then count external callers of the resolved name:
 reforge callers <IResolvedService> --format json
 ```
 
-Filter out callers **inside `$ROOTS`** — that is what "own section" means, and it is the whole point of resolving the roots first. A G5 section keeps its own `Controllers/`, `Views/`, `Models/` and `Services/` inside the section project, so filtering only the legacy `Application/`, `Infrastructure/` and `Web/` locations counts a moved section's own callers as external and reports every section as cross-section-consumed. For a not-yet-moved section also exclude `src/Humans.Web/Controllers/<Section>*Controller.cs` and its view components, which stay in `Humans.Web`. If **zero external callers remain**, the read interface buys nothing — tell the user and stop.
+Filter out callers **inside `$OWNED`**, resolved below. `$ROOTS` alone is not the section's full footprint: for a not-yet-moved section it covers only the `Humans.Application` paths, leaving the section's own repository, Infrastructure service, DI registration, auth handlers and view models counted as *external*. The DI registration alone is enough to make a service with zero real cross-section consumers pass this gate and trigger an unnecessary public read-interface split.
+
+```bash
+OWNED="$ROOTS $(exist \
+  src/Humans.Infrastructure/Services/$SECTION \
+  src/Humans.Infrastructure/Repositories/$SECTION \
+  src/Humans.Web/Extensions/Sections/${SECTION}SectionExtensions.cs \
+  src/Humans.Web/Controllers/${SECTION}Controller.cs \
+  src/Humans.Web/Controllers/${SECTION}AdminController.cs \
+  src/Humans.Web/Controllers/${SECTION}ApiController.cs \
+  src/Humans.Web/ViewComponents/${SECTION}ViewComponent.cs \
+  src/Humans.Web/Models/${SECTION}ViewModels.cs)"
+```
+
+A moved section contributes nothing extra here — its controllers, views and models are already inside `$ROOTS`. Add the section's authorization handler if it has one under a different name. If **zero external callers remain after excluding `$OWNED`**, the read interface buys nothing — tell the user and stop.
+
+### 0.1b — Does a read interface already exist?
+
+**Check before creating one.** A section may already have an `I<Service>ServiceRead`, and it is not always in contracts: `ICalendarServiceRead` is declared `internal` inside `src/Sections/Humans.Calendar/Services/ICalendarService.cs`, with `ICalendarService : ICalendarServiceRead` already in place. Because it is declared in the same file as the full interface, a filename search never finds it — search declarations, the same way 0.1 and 0.2 do:
+
+```bash
+grep -rnE '^[[:space:]]*(public|internal) interface I[A-Za-z]+ServiceRead\b' \
+     $ROOTS --include='*.cs' | grep -v '/obj/'
+```
+
+- **Found, and the full interface already inherits it** — the split exists. Report what it covers and ask the user whether the goal is to *promote* it (make it `public`, move it to the section's contracts, re-point external callers) or to widen its method set. **Do not run B.2** — creating a second `I<Section>ServiceRead` in the contracts namespace leaves the existing same-namespace internal type winning name resolution inside the section, so the full interface keeps inheriting the old one, DI keeps registering the old one, and the new public contract is inert.
+- **Found but not inherited** — that is the real defect; fix the inheritance rather than adding a type.
+- **Not found** — proceed to 0.2.
 
 ### 0.2 — Section has a projection type
 
@@ -206,7 +237,9 @@ Commit (or fold into B.2): `refactor(<section>): rename entity-returning <method
 
 #### B.2 — Create the read interface
 
-A read interface is a cross-section contract, so on G5 it goes with the section's other contracts, **not** under `Services/`. Every existing `*ServiceRead` follows this — `ITeamServiceRead`, `IEventServiceRead`, `ITicketServiceRead` and the rest sit in `Contracts`, none under `Services/`. Match whichever contracts shape the section already uses:
+Confirm 0.1b found no existing read interface before creating one.
+
+A read interface that external sections consume is a cross-section contract, so on G5 it goes with the section's other contracts. That is where the ones serving external callers live — `ITeamServiceRead`, `IEventServiceRead`, `ITicketServiceRead` and the rest. It is **not** a universal rule, though: `ICalendarServiceRead` is `internal`, declared inside `Humans.Calendar/Services/ICalendarService.cs`, because it draws the read boundary *within* the section rather than for outside consumers. Placement follows who consumes it. Match whichever contracts shape the section already uses:
 
 | Section shape | New file | Namespace |
 |---|---|---|

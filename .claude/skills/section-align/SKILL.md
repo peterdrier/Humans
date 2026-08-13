@@ -62,7 +62,15 @@ fi
 # which is this section's own and would invert the check into a self-scan.
 OTHER_ENTITIES=$(ls -d src/Sections/Humans.*/Domain src/Humans.Domain/Entities 2>/dev/null \
                  | grep -v "^$SEC/Domain$")
+
+# Not every section has every folder: Humans.Auth and Humans.Gdpr have no
+# Controllers/ and no Views/. `git grep pat a/ b/` (no `--`) aborts the whole
+# command with "fatal: no such path in the working tree" if ANY path is
+# missing, so filter the list before passing it.
+exist() { for p in "$@"; do [ -e "$p" ] && printf '%s ' "$p"; done; }
 ```
+
+**Every multi-path `git grep` below must wrap its paths in `$(exist ...)`.** A section legitimately missing a folder should scan the folders it does have, not abort the inventory. That is separate from the existence *checks* in A1.2 and A1.4, which report a missing controller or views folder as a finding — keep both: `exist` decides what to scan, A1.2/A1.4 decide what to report.
 
 A moved section owns far more than `Services/` and `Data/`: `Humans.Events` also carries its own `Controllers/`, `Views/`, `Models/`, `Domain/`, `Resources/` and `Docs/`, and there is no `EventsController.cs` under `src/Humans.Web/Controllers/` at all. Any check that greps a fixed `src/Humans.Web/...` or `src/Humans.Domain/Entities/` path reports a moved section as missing or clean when it is neither.
 
@@ -190,8 +198,8 @@ A nav from another section's entity to ours = a cross-domain coupling that break
 **A1.11 OUTBOUND cross-section access (this section reaches OUT).** Grep this section's repository for reads of other sections' DbSets or `.Include` across into other-section navs:
 
 ```bash
-git grep -nE '_(db|context|ctx)\.(<OtherSectionTableA>|<OtherSectionTableB>)' $REPOS/
-git grep -nE '\.Include\([^)]+\)' $REPOS/
+git grep -nE '_(db|context|ctx)\.(<OtherSectionTableA>|<OtherSectionTableB>)' $(exist $REPOS)
+git grep -nE '\.Include\([^)]+\)' $(exist $REPOS)
 ```
 
 For each hit: apply the **boundary-fix protocol (consumer side)**. Does the other section expose a public service method that gives us what we need? If yes, switch (Phase 2). If no, document the API gap on their side, leave the current code in place, and flag their section as a follow-up /section-align target. **Do not add a method to their repo or service in this PR.**
@@ -214,7 +222,7 @@ Also check `nobodies-collective/Humans` (`feedback_pr_review_both_repos`). List 
 **A2.1 EF leakage from service layer.** Grep this section's services for EF types and query operators:
 
 ```bash
-git grep -nE '(Microsoft\.EntityFrameworkCore|IQueryable|DbContext|DbSet|\.Include\(|\.AsNoTracking|\.ToListAsync|\.FirstOrDefaultAsync|\.SaveChangesAsync)' $SERVICES/
+git grep -nE '(Microsoft\.EntityFrameworkCore|IQueryable|DbContext|DbSet|\.Include\(|\.AsNoTracking|\.ToListAsync|\.FirstOrDefaultAsync|\.SaveChangesAsync)' $(exist $SERVICES)
 ```
 
 Hits in `using` statements, ctor params, or method bodies = violation. Doc comments (`<see cref>`) are OK. Add `<Section>Service_HasNoDbContextConstructorParameter` arch test if missing.
@@ -222,7 +230,7 @@ Hits in `using` statements, ctor params, or method bodies = violation. Doc comme
 **A2.2 Caching placement.** Grep section's services + repos + controllers + view components:
 
 ```bash
-git grep -nE '(IMemoryCache|MemoryCache|IDistributedCache|_cache\b)' $SERVICES/ $REPOS/ $CONTROLLERS/ src/Humans.Web/ViewComponents/<Section>*.cs
+git grep -nE '(IMemoryCache|MemoryCache|IDistributedCache|_cache\b)' $(exist $SERVICES $REPOS $CONTROLLERS src/Humans.Web/ViewComponents/<Section>*.cs)
 ```
 
 Caching belongs in the service layer **only** per §15 — either via a `Caching<Section>Service` decorator (Singleton, dict-backed) or service-internal `IMemoryCache` for short-TTL request acceleration. Never in repositories. Never in controllers. ViewComponents per `feedback_viewcomponent_no_cache`.
@@ -291,13 +299,13 @@ Then scan **the whole section's view + component surface** (not just shared-fold
 
 ```bash
 # Inline user displays — avatar + name combos, name links to /Humans/<id>, etc.
-git grep -nE '(avatar|profile-pic|@user\.DisplayName|@Model\.DisplayName.*<img|asp-action="Detail".*Humans|/Humans/Detail/)' $VIEWS/ src/Humans.Web/ViewComponents/<Section>*.cs
+git grep -nE '(avatar|profile-pic|@user\.DisplayName|@Model\.DisplayName.*<img|asp-action="Detail".*Humans|/Humans/Detail/)' $(exist $VIEWS src/Humans.Web/ViewComponents/<Section>*.cs)
 
 # Hand-rolled role/auth pills
-git grep -nE '(badge|pill).*role|role.*badge|class="[^"]*role[^"]*"' $VIEWS/
+git grep -nE '(badge|pill).*role|role.*badge|class="[^"]*role[^"]*"' $(exist $VIEWS)
 
 # Hand-rolled user lookups / searches
-git grep -nE 'autocomplete.*user|user.*autocomplete|search.*human|human.*search' $VIEWS/
+git grep -nE 'autocomplete.*user|user.*autocomplete|search.*human|human.*search' $(exist $VIEWS)
 ```
 
 For each hit, decide:
@@ -403,7 +411,7 @@ Each flag is a Phase 3 prune candidate. The goal is to reduce test maintenance o
 
 **A3.4 Test-to-section ratio (sanity check).** Eyeball: section LOC vs test file count and test LOC.
 ```bash
-find $ALL $ENTITIES/<SectionEntity>*.cs -name '*.cs' | xargs wc -l | tail -1
+find $(exist $ALL $ENTITIES/<SectionEntity>*.cs) -name '*.cs' | xargs wc -l | tail -1
 find tests -path '*<Section>*' -name '*.cs' | xargs wc -l | tail -1
 ```
 Order-of-magnitude check only. Outliers worth investigating:
