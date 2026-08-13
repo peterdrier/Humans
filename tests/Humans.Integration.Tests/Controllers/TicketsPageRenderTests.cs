@@ -57,6 +57,7 @@ public class TicketsPageRenderTests(HumansTestDatabase database) : IntegrationTe
         ("/Tickets/Codes", "Code Tracking"),
         ("/Tickets/SalesAggregates", "Aggregates"),
         ("/Tickets/WhoHasntBought", "Humans &amp; Tickets"),
+        ("/Tickets/GateList", "Gate List"),
         ("/Tickets/Participation/Backfill", "Backfill Participation Data"),
         ("/Tickets/Admin/Transfers", "Ticket transfer requests"),
         ("/Tickets/Admin/Onsite", "Who's Onsite"),

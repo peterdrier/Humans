@@ -17,7 +17,6 @@ using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Profiles;
-using Humans.UI;
 using Humans.UI.Authorization;
 using NodaTime.Text;
 
@@ -33,7 +32,7 @@ internal sealed class TeamAdminController(
     IEmailProvisioningService emailProvisioningService,
     IAuthorizationService authorizationService,
     ILogger<TeamAdminController> logger,
-    IStringLocalizer<SharedResource> localizer,
+    IStringLocalizer<TeamsResource> localizer,
     ITicketServiceRead tickets)
     : HumansTeamControllerBase(userService, teamService, authorizationService)
 {
