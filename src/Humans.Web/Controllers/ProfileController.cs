@@ -29,7 +29,7 @@ using Humans.AuditLog.Contracts;
 using Humans.Campaigns.Contracts;
 using Humans.Camps.Contracts;
 using Humans.Email.Contracts;
-using Humans.Application.Interfaces.Shifts;
+using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Application.Interfaces.Users;
@@ -60,8 +60,10 @@ public class ProfileController(
     ICommunicationPreferenceService commPrefService,
     IAuditLogService auditLogService,
     IOnboardingIntake onboardingService,
-    IShiftSignupService shiftSignupService,
-    IShiftManagementService shiftMgmt,
+    IShiftSignups shiftSignupService,
+    IBurnSettingsService burnSettings,
+    IShiftManagementServiceRead shiftMgmt,
+    IShiftVolunteerProfiles shiftProfiles,
     IShiftView shiftView,
     IGdprExportService gdprExportService,
     IConfiguration configuration,
@@ -166,7 +168,7 @@ public class ProfileController(
     /// </summary>
     private async Task<Instant?> ResolveOnsiteSinceAsync(UserInfo info)
     {
-        var active = await shiftMgmt.GetActiveAsync();
+        var active = await burnSettings.GetActiveAsync();
         if (active is null || active.Year == 0) return null;
         return info.OnsiteSinceForYear(active.Year);
     }
@@ -182,12 +184,10 @@ public class ProfileController(
         if (info is null) return NotFound();
 
         var applications = await applicationDecisionService.GetUserApplicationsAsync(user.Id, ct);
-        var allShiftTags = await shiftMgmt.GetTagsAsync();
+        var allShiftTags = await shiftProfiles.GetTagsAsync();
         // see #720 (T-09) — tag prefs from cached ShiftUserView, not repo.
         var userShiftView = await shiftView.GetUserAsync(user.Id, ct);
-        var preferredShiftTags = userShiftView.TagPreferences
-            .Select(p => new ShiftTagPreferenceSummary(p.ShiftTagId, p.ShiftTag?.Name ?? string.Empty))
-            .ToList();
+        var preferredShiftTags = userShiftView.TagPreferences;
         var viewModel = ProfileEditViewModelBuilder.Build(
             info,
             applications,
@@ -212,7 +212,7 @@ public class ProfileController(
     public async Task<IActionResult> Edit(ProfileViewModel model)
     {
         // Tag catalog not posted back — repopulate up front so validation-failure rerenders the picker.
-        model.AllShiftTags = (await shiftMgmt.GetTagsAsync())
+        model.AllShiftTags = (await shiftProfiles.GetTagsAsync())
             .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
@@ -281,7 +281,7 @@ public class ProfileController(
 
         await _userService.SaveProfileLanguagesAsync(profileId, newLanguages);
 
-        await shiftMgmt.SetVolunteerTagPreferencesAsync(user.Id, model.EditableShiftTagIds);
+        await shiftProfiles.SetVolunteerTagPreferencesAsync(user.Id, model.EditableShiftTagIds);
 
         // Meal pref + allergies were persisted as part of the ProfileSaveRequest
         // above (Profile now owns dietary). Intolerances + medical are untouched —
@@ -1554,56 +1554,10 @@ public class ProfileController(
     // CancelDeletion moved to UserController (Profile* retirement) — the cancel-deletion lever now
     // lives with the User section; Views/Profile/Privacy.cshtml posts to User/Deletion/Cancel.
 
-    [HttpGet("Me/ShiftInfo")]
-    public async Task<IActionResult> ShiftInfo()
-    {
-        try
-        {
-            var user = await GetCurrentUserInfoAsync();
-            if (user is null)
-                return NotFound();
-            var profile = await shiftMgmt.GetShiftProfileAsync(user.Id);
-            return View(ShiftInfoViewModel.FromProfile(profile));
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to load shift info for user");
-            SetError("Failed to load shift info.");
-            return RedirectToAction(nameof(Me));
-        }
-    }
-
-    [HttpPost("Me/ShiftInfo")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> ShiftInfo(ShiftInfoViewModel model)
-    {
-        try
-        {
-            var user = await GetCurrentUserInfoAsync();
-            if (user is null)
-                return NotFound();
-
-            var shiftProfile = await shiftMgmt.GetOrCreateShiftProfileAsync(user.Id);
-
-            shiftProfile.Skills = ShiftInfoViewModel.MergeSkills(
-                model.SelectedSkills, model.SkillOtherText, shiftProfile.Skills);
-            shiftProfile.Quirks = ShiftInfoViewModel.MergePersistedQuirks(
-                model.TimePreference, model.SelectedQuirks, shiftProfile.Quirks);
-            shiftProfile.Languages = ShiftInfoViewModel.MergeLanguages(
-                model.SelectedLanguages, model.LanguageOtherText, shiftProfile.Languages);
-
-            await shiftMgmt.UpdateShiftProfileAsync(shiftProfile);
-
-            SetSuccess(localizer["Profile_Updated"].Value);
-            return RedirectToAction(nameof(ShiftInfo));
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to save shift info for user");
-            SetError("Failed to save shift info.");
-            return View(model);
-        }
-    }
+    // Me/ShiftInfo (GET + POST) moved to Humans.Shifts' ShiftProfileController at that
+    // section's G5 (nobodies-collective/Humans#866): both actions read and write
+    // volunteer_event_profiles, a Shifts table. [Route("Profile")] stayed on both halves,
+    // so /Profile/Me/ShiftInfo is unchanged.
 
     [HttpGet("Me/DietaryMedical")]
     public async Task<IActionResult> DietaryMedical(

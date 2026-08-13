@@ -4,7 +4,7 @@ using Humans.Consent.Contracts;
 using Humans.Application;
 using Humans.Onboarding.Contracts;
 using Humans.Application.Interfaces.Profiles;
-using Humans.Application.Interfaces.Shifts;
+using Humans.Shifts.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.UI;
@@ -26,7 +26,7 @@ namespace Humans.Onboarding.Tests.Controllers;
 /// <summary>
 /// Step 2 of the onboarding widget — covers the SignUp POST and Skip POST
 /// endpoints. The Shifts GET is exercised separately at the integration layer
-/// because its response model is built from <see cref="IShiftManagementService"/>
+/// because its response model is built from <see cref="IShiftManagementServiceRead"/>
 /// and does not affect step routing.
 /// </summary>
 public class OnboardingWidgetControllerShiftsTests
@@ -34,8 +34,8 @@ public class OnboardingWidgetControllerShiftsTests
     private readonly UserManager<User> _userManager;
     private readonly IOnboardingWidgetState _state = Substitute.For<IOnboardingWidgetState>();
     private readonly IProfileEditorService _profileEditor = Substitute.For<IProfileEditorService>();
-    private readonly IShiftSignupService _signups = Substitute.For<IShiftSignupService>();
-    private readonly IShiftManagementService _shiftMgmt = Substitute.For<IShiftManagementService>();
+    private readonly IShiftSignups _signups = Substitute.For<IShiftSignups>();
+    private readonly IShiftManagementServiceRead _shiftMgmt = Substitute.For<IShiftManagementServiceRead>();
     private readonly IBurnSettingsService _burnSettings = Substitute.For<IBurnSettingsService>();
     private readonly IShiftView _shiftView = Substitute.For<IShiftView>();
     private readonly IConsentSubmission _consents = Substitute.For<IConsentSubmission>();
@@ -87,7 +87,7 @@ public class OnboardingWidgetControllerShiftsTests
         var userId = Guid.NewGuid();
         var shiftId = Guid.NewGuid();
         _signups.SignUpAsync(userId, shiftId, actorUserId: userId)
-            .Returns(SignupResult.Ok(new ShiftSignup()));
+            .Returns(SignupResult.Ok(Guid.NewGuid()));
         var ctrl = BuildSut(userId);
 
         var result = await ctrl.SignUp(shiftId, TestContext.Current.CancellationToken);

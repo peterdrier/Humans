@@ -116,7 +116,7 @@ Terse, authoritative invariant docs for each major section: concepts, data model
 | [Profiles](sections/Profiles.md) | Per-human personal data: profile, contact fields, emails, communication preferences — reference implementation for §15 caching |
 | [Scanner](../src/Sections/Humans.Scanner/Docs/Scanner.md) | In-browser camera tools for barcode decode (`/Scanner/Barcode`) and read-only ticket lookup (`/Scanner/Tickets`); no owned tables |
 | [Search](../src/Sections/Humans.Search/Docs/Search.md) | Orchestrator behind the global `/Search` page — fans out to five sections' read surfaces, scores each independently, owns no tables |
-| [Shifts](sections/Shifts.md) | Event shifts, rotas, signups, range blocks, event settings, general availability, and per-event volunteer profiles |
+| [Shifts](../src/Sections/Humans.Shifts/Docs/Shifts.md) | Event shifts, rotas, signups, range blocks, event settings, general availability, and per-event volunteer profiles |
 | [Store](../src/Sections/Humans.Store/Docs/Store.md) | Per-camp catalog ordering, multi-method payments, and consolidated Holded factura issuance for Camp Lead purchases |
 | [Survey](../src/Sections/Humans.Surveys/Docs/Surveys.md) | First-party, GDPR-compliant surveys: author typed/branching multi-language surveys, send tokenised email invitations to a resolved audience, collect responses across three anonymity tiers (invite link or public slug), and read results in-app, via CSV/JSON export, or a key-authed analysis API |
 | [Teams](../src/Sections/Humans.Teams/Docs/Teams.md) | Departments and sub-teams, join requests, role definitions, team pages, and linked Google resources |

@@ -11,7 +11,7 @@ using Humans.Gdpr.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Onboarding.Contracts;
 using Humans.Application.Interfaces.Profiles;
-using Humans.Application.Interfaces.Shifts;
+using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 
 using Humans.Application.Interfaces.Users;
@@ -57,8 +57,8 @@ public class ProfileControllerDietaryMedicalReplayTests
     private readonly UserManager<User> _userManager;
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IProfileEditorService _profileEditor = Substitute.For<IProfileEditorService>();
-    private readonly IShiftManagementService _shiftMgmt = Substitute.For<IShiftManagementService>();
-    private readonly IShiftSignupService _signupService = Substitute.For<IShiftSignupService>();
+    private readonly IShiftVolunteerProfiles _shiftMgmt = Substitute.For<IShiftVolunteerProfiles>();
+    private readonly IShiftSignups _signupService = Substitute.For<IShiftSignups>();
     private readonly ProfileController _controller;
     private readonly Guid _userId = Guid.NewGuid();
 
@@ -94,6 +94,8 @@ public class ProfileControllerDietaryMedicalReplayTests
             Substitute.For<IAuditLogService>(),
             Substitute.For<IOnboardingIntake>(),
             _signupService,
+            Substitute.For<IBurnSettingsService>(),
+            Substitute.For<IShiftManagementServiceRead>(),
             _shiftMgmt,
             Substitute.For<IShiftView>(),
             Substitute.For<IGdprExportService>(),
@@ -163,8 +165,6 @@ public class ProfileControllerDietaryMedicalReplayTests
         // Happy-path scaffolding for the dietary save itself — every test
         // except the validation-failure case needs these to reach the
         // replay-switch.
-        _shiftMgmt.GetOrCreateShiftProfileAsync(_userId)
-            .Returns(new VolunteerEventProfile { UserId = _userId });
     }
 
     [HumansFact]
@@ -172,7 +172,7 @@ public class ProfileControllerDietaryMedicalReplayTests
     {
         var shiftId = Guid.NewGuid();
         _signupService.SignUpAsync(_userId, shiftId, Arg.Any<Guid?>(), Arg.Any<ShiftSignupRequestFlags>())
-                      .Returns(SignupResult.Ok(new ShiftSignup { Id = Guid.NewGuid() }));
+                      .Returns(SignupResult.Ok(Guid.NewGuid()));
 
         var model = MakeValidModel();
         model.ReturnAction = "signup";
@@ -199,7 +199,7 @@ public class ProfileControllerDietaryMedicalReplayTests
                 2,
                 Arg.Any<Guid?>(),
                 Arg.Any<ShiftSignupRequestFlags>())
-                      .Returns(SignupResult.Ok(new ShiftSignup { Id = Guid.NewGuid() }));
+                      .Returns(SignupResult.Ok(Guid.NewGuid()));
 
         var model = MakeValidModel();
         model.ReturnAction = "signuprange";

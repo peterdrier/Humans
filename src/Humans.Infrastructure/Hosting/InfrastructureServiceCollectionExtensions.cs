@@ -23,7 +23,6 @@ public static class InfrastructureServiceCollectionExtensions
         // Identity tables; its sentinel is the chain-created users table.
         services.AddSectionDbContext<UsersDbContext>(sentinelTable: "users");
         services.AddSectionDbContext<SystemDbContext>(sentinelTable: "DataProtectionKeys");
-        services.AddSectionDbContext<ShiftsDbContext>(sentinelTable: "shifts");
 
         services.AddHostedService<DatabaseMigrationHostedService>();
 

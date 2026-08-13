@@ -102,9 +102,9 @@ public class EndpointAuthorizationTests
         { SectionType("Humans.Scanner.Controllers.ScannerController"), null, "ScannerAccess" },
         { SectionType("Humans.Tickets.Controllers.TicketsOnsiteAdminController"), null, "ScannerAccess" },
         { typeof(TicketsGateAdminController), null, "TicketAdminOrAdmin" },
-        { typeof(ShiftDashboardController), null, "ShiftDepartmentManager" },
-        { typeof(ShiftDashboardController), "SearchVolunteers", "ShiftDashboardAccess" },
-        { typeof(ShiftDashboardController), "Voluntell", "ShiftDashboardAccess" },
+        { SectionType("Humans.Shifts.Controllers.ShiftDashboardController"), null, "ShiftDepartmentManager" },
+        { SectionType("Humans.Shifts.Controllers.ShiftDashboardController"), "SearchVolunteers", "ShiftDashboardAccess" },
+        { SectionType("Humans.Shifts.Controllers.ShiftDashboardController"), "Voluntell", "ShiftDashboardAccess" },
     };
 
     [HumansTheory]
@@ -204,19 +204,19 @@ public class EndpointAuthorizationTests
     [HumansFact]
     public void ShiftDashboardController_RequiresShiftDepartmentManager()
     {
-        AssertHasPolicy(typeof(ShiftDashboardController), null, "ShiftDepartmentManager");
+        AssertHasPolicy(SectionType("Humans.Shifts.Controllers.ShiftDashboardController"), null, "ShiftDepartmentManager");
     }
 
     [HumansFact]
     public void ShiftDashboardController_SearchVolunteers_RequiresShiftDashboardAccess()
     {
-        AssertHasPolicy(typeof(ShiftDashboardController), "SearchVolunteers", "ShiftDashboardAccess");
+        AssertHasPolicy(SectionType("Humans.Shifts.Controllers.ShiftDashboardController"), "SearchVolunteers", "ShiftDashboardAccess");
     }
 
     [HumansFact]
     public void ShiftDashboardController_Voluntell_RequiresShiftDashboardAccess()
     {
-        AssertHasPolicy(typeof(ShiftDashboardController), "Voluntell", "ShiftDashboardAccess");
+        AssertHasPolicy(SectionType("Humans.Shifts.Controllers.ShiftDashboardController"), "Voluntell", "ShiftDashboardAccess");
     }
 
     // --- POST actions must have ValidateAntiForgeryToken ---

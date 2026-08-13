@@ -3,7 +3,6 @@ using AwesomeAssertions;
 using Humans.Application.Configuration;
 using Humans.Tickets.Contracts;
 using Humans.Application.DTOs;
-using Humans.Application.DTOs.Shifts;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.AuditLog.Contracts;
 using Humans.Campaigns.Contracts;
@@ -13,7 +12,7 @@ using Humans.Gdpr.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Onboarding.Contracts;
 using Humans.Application.Interfaces.Profiles;
-using Humans.Application.Interfaces.Shifts;
+using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 
 using Humans.Application.Interfaces.Users;
@@ -62,7 +61,7 @@ public class ProfileControllerEditTests
     private readonly IOnboardingIntake _onboardingService = Substitute.For<IOnboardingIntake>();
     private readonly IAccountDeletionService _accountDeletionService = Substitute.For<IAccountDeletionService>();
     private readonly IConfiguration _configuration = Substitute.For<IConfiguration>();
-    private readonly IShiftManagementService _shiftMgmt = Substitute.For<IShiftManagementService>();
+    private readonly IShiftVolunteerProfiles _shiftMgmt = Substitute.For<IShiftVolunteerProfiles>();
     private readonly IShiftView _shiftView = Substitute.For<IShiftView>();
     private readonly ProfileController _controller;
     private readonly Guid _userId = Guid.NewGuid();
@@ -102,7 +101,9 @@ public class ProfileControllerEditTests
             Substitute.For<ICommunicationPreferenceService>(),
             Substitute.For<IAuditLogService>(),
             _onboardingService,
-            Substitute.For<IShiftSignupService>(),
+            Substitute.For<IShiftSignups>(),
+            Substitute.For<IBurnSettingsService>(),
+            Substitute.For<IShiftManagementServiceRead>(),
             _shiftMgmt,
             _shiftView,
             Substitute.For<IGdprExportService>(),
@@ -155,7 +156,7 @@ public class ProfileControllerEditTests
         // Edit GET reads shiftView.GetUserAsync(...).TagPreferences (#720); return
         // an empty view so the GET path doesn't NRE before the dietary population.
         _shiftView.GetUserAsync(_userId, Arg.Any<CancellationToken>())
-            .Returns(new ShiftUserView(_userId, null, null, null, [], []));
+            .Returns(ShiftUserSummary.Empty(_userId));
 
         // Edit POST resolves the current user through GetCurrentUserInfoAsync
         // (cache-resident); subsequent setup-detection lookups in the action body
@@ -182,8 +183,6 @@ public class ProfileControllerEditTests
         // The happy path now also writes meal-pref + allergies onto the shift
         // profile. Return a fresh profile by default so existing tests don't NRE
         // when the controller sets fields on it.
-        _shiftMgmt.GetOrCreateShiftProfileAsync(Arg.Any<Guid>())
-            .Returns(_ => new VolunteerEventProfile { UserId = _userId });
     }
 
     [HumansFact]

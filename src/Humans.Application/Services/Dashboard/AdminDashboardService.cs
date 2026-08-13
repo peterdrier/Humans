@@ -1,7 +1,7 @@
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Dashboard;
 using Humans.Governance.Contracts;
-using Humans.Application.Interfaces.Shifts;
+using Humans.Shifts.Contracts;
 using Humans.Application.Interfaces.Users;
 
 namespace Humans.Application.Services.Dashboard;
@@ -11,7 +11,7 @@ public sealed class AdminDashboardService(
     IUserServiceRead userService,
     IMembershipCalculatorRead membershipCalculator,
     IApplicationServiceRead applicationDecisionService,
-    IShiftManagementService shiftManagement,
+    IBurnSettingsService burnSettings,
     IShiftView shiftView) : IAdminDashboardService
 {
     public async Task<AdminDashboardData> GetAdminDashboardAsync(CancellationToken ct = default)
@@ -67,7 +67,7 @@ public sealed class AdminDashboardService(
         IReadOnlyCollection<UserInfo> snapshot,
         CancellationToken ct)
     {
-        var activeEvent = await shiftManagement.GetActiveAsync();
+        var activeEvent = await burnSettings.GetActiveAsync();
         var activeYear = activeEvent?.Year ?? 0;
         var shiftViews = await shiftView.GetUsersAsync(snapshot.Select(u => u.Id), ct);
 

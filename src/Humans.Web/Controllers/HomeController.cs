@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Humans.Application.Configuration;
 using Humans.Web.Models;
 using Humans.Application.Interfaces.Dashboard;
-using Humans.Application.Interfaces.Shifts;
+using Humans.Shifts.Contracts;
 using Humans.Application.Interfaces.Users;
 
 namespace Humans.Web.Controllers;
@@ -13,7 +13,7 @@ namespace Humans.Web.Controllers;
 public class HomeController(
     IUserService userService,
     IDashboardService dashboardService,
-    IShiftManagementService shiftMgmt,
+    IBurnSettingsService burnSettings,
     IConfiguration configuration,
     ConfigurationRegistry configRegistry,
     ILogger<HomeController> logger) : HumansControllerBase(userService)
@@ -75,25 +75,8 @@ public class HomeController(
 
         ViewData["ShiftCards"] = new ShiftCardsViewModel
         {
-            UrgentShifts = data.UrgentShifts
-                .Select(u => new UrgentShiftItem
-                {
-                    RotaName = u.RotaName,
-                    DepartmentName = u.DepartmentName,
-                    AbsoluteStart = u.AbsoluteStart,
-                    RemainingSlots = u.RemainingSlots,
-                    UrgencyScore = u.UrgencyScore,
-                })
-                .ToList(),
-            NextShifts = data.NextShifts
-                .Select(s => new MySignupItem
-                {
-                    RotaName = s.RotaName,
-                    DepartmentName = s.DepartmentName,
-                    AbsoluteStart = s.AbsoluteStart,
-                    AbsoluteEnd = s.AbsoluteEnd,
-                })
-                .ToList(),
+            UrgentShifts = data.UrgentShifts,
+            NextShifts = data.NextShifts,
             PendingCount = data.PendingSignupCount,
         };
 
@@ -158,7 +141,7 @@ public class HomeController(
 
     private async Task<int?> GetActiveEventYearOrSetErrorAsync()
     {
-        var activeEvent = await shiftMgmt.GetActiveAsync();
+        var activeEvent = await burnSettings.GetActiveAsync();
         if (activeEvent is not null && activeEvent.Year > 0)
         {
             return activeEvent.Year;

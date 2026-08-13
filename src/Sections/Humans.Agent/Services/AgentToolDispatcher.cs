@@ -5,7 +5,7 @@ using Humans.Application.Constants;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.AuditLog;
-using Humans.Application.Interfaces.Shifts;
+using Humans.Shifts.Contracts;
 using Humans.Application.Models;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -165,8 +165,7 @@ internal sealed class AgentToolDispatcher(
         // was individually bailed but days 2–7 stayed Confirmed would render
         // "Status: Bailed" here while the snapshot showed "Confirmed".
         var blockMatches = signups
-            .Where(s => s.SignupBlockId == shiftKey
-                && s.Status is SignupStatus.Pending or SignupStatus.Confirmed)
+            .Where(s => s.SignupBlockId == shiftKey && s.IsActive)
             .ToList();
         if (blockMatches.Count > 0)
             return new AnthropicToolResult(callId,
@@ -182,19 +181,18 @@ internal sealed class AgentToolDispatcher(
     }
 
     /// <summary>Renders the get_shift_details blob. All signups passed in must belong to the caller.</summary>
-    private static string RenderShiftDetails(IReadOnlyList<ShiftSignup> signups, BurnSettingsInfo ev)
+    private static string RenderShiftDetails(IReadOnlyList<ShiftSignupSummary> signups, BurnSettingsInfo ev)
     {
         // Order chronologically so first/last reflect actual span.
-        var ordered = signups.OrderBy(s => s.Shift.DayOffset).ToList();
+        var ordered = signups.OrderBy(s => s.Date).ToList();
         var first = ordered[0];
         var last = ordered[^1];
-        var rota = first.Shift.Rota;
 
-        var startDate = ev.GateOpeningDate.PlusDays(first.Shift.DayOffset);
-        var endDate = ev.GateOpeningDate.PlusDays(last.Shift.DayOffset);
-        var dayCount = ordered.Select(s => s.Shift.DayOffset).Distinct().Count();
+        var startDate = first.Date;
+        var endDate = last.Date;
+        var dayCount = ordered.Select(s => s.Date).Distinct().Count();
         var status = first.Status;
-        var label = rota?.Name ?? "(unnamed rota)";
+        var label = string.IsNullOrWhiteSpace(first.RotaName) ? "(unnamed rota)" : first.RotaName;
 
         var sb = new StringBuilder();
         if (dayCount > 1)
@@ -212,28 +210,27 @@ internal sealed class AgentToolDispatcher(
             : string.Create(CultureInfo.InvariantCulture, $"Status: {status}"));
 
         // Hours window.
-        if (first.Shift.IsAllDay)
+        if (first.IsAllDay)
         {
             sb.AppendLine(string.Create(CultureInfo.InvariantCulture,
-                $"Hours: {DateFormattingExtensions.TimeOfDayPattern.Format(Shift.AllDayWindowStart)}–{DateFormattingExtensions.TimeOfDayPattern.Format(Shift.AllDayWindowEnd)} each day (all-day shift)"));
+                $"Hours: {DateFormattingExtensions.TimeOfDayPattern.Format(first.WindowStart)}–{DateFormattingExtensions.TimeOfDayPattern.Format(first.WindowEnd)} each day (all-day shift)"));
         }
         else
         {
-            var totalHours = first.Shift.Duration.TotalHours;
             sb.AppendLine(string.Create(CultureInfo.InvariantCulture,
-                $"Hours: starts {DateFormattingExtensions.TimeOfDayPattern.Format(first.Shift.StartTime)}, lasts {totalHours:0.##} hours"));
+                $"Hours: starts {DateFormattingExtensions.TimeOfDayPattern.Format(first.WindowStart)}, lasts {first.DurationHours:0.##} hours"));
         }
 
         // Shift description (per-shift duties).
-        if (!string.IsNullOrWhiteSpace(first.Shift.Description))
-            sb.AppendLine(string.Create(CultureInfo.InvariantCulture, $"Description: {first.Shift.Description.Trim()}"));
+        if (!string.IsNullOrWhiteSpace(first.ShiftDescription))
+            sb.AppendLine(string.Create(CultureInfo.InvariantCulture, $"Description: {first.ShiftDescription.Trim()}"));
 
         // Rota PracticalInfo — the canonical "where to show up / what to bring" field.
-        if (!string.IsNullOrWhiteSpace(rota?.PracticalInfo))
-            sb.AppendLine(string.Create(CultureInfo.InvariantCulture, $"Where to show up: {rota.PracticalInfo!.Trim()}"));
+        if (!string.IsNullOrWhiteSpace(first.RotaPracticalInfo))
+            sb.AppendLine(string.Create(CultureInfo.InvariantCulture, $"Where to show up: {first.RotaPracticalInfo.Trim()}"));
 
-        if (!string.IsNullOrWhiteSpace(rota?.Description))
-            sb.AppendLine(string.Create(CultureInfo.InvariantCulture, $"Rota description: {rota.Description!.Trim()}"));
+        if (!string.IsNullOrWhiteSpace(first.RotaDescription))
+            sb.AppendLine(string.Create(CultureInfo.InvariantCulture, $"Rota description: {first.RotaDescription.Trim()}"));
 
         return sb.ToString().TrimEnd();
     }

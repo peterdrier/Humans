@@ -1,4 +1,4 @@
-using Humans.Application.Interfaces.Shifts;
+using Humans.Shifts.Contracts;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 
@@ -6,7 +6,7 @@ namespace Humans.Onboarding.Models;
 
 /// <summary>
 /// Builds the <see cref="ShiftsStepViewModel"/> for the onboarding widget's step-2 view
-/// from the full set of <see cref="UrgentShift"/> entries for the active event. Computes
+/// from the full set of <see cref="UrgentShiftInfo"/> entries for the active event. Computes
 /// event-wide stats (critical fill %, important open count) from the unfiltered list,
 /// then filters to the rotas matching the user's pill selection for display.
 ///
@@ -28,7 +28,7 @@ internal static class OnboardingShiftsStepBuilder
 
     internal static ShiftsStepViewModel Build(
         BurnSettingsInfo eventSettings,
-        IReadOnlyList<UrgentShift> allShifts,
+        IReadOnlyList<UrgentShiftInfo> allShifts,
         HashSet<Guid> userSignupShiftIds,
         Dictionary<Guid, SignupStatus> userSignupStatuses,
         string selectedPriority,
@@ -67,12 +67,12 @@ internal static class OnboardingShiftsStepBuilder
             _ => PriorityCritical,
         };
 
-    private static IEnumerable<UrgentShift> FilterByPriority(
-        IReadOnlyList<UrgentShift> all, string normalizedPriority) =>
+    private static IEnumerable<UrgentShiftInfo> FilterByPriority(
+        IReadOnlyList<UrgentShiftInfo> all, string normalizedPriority) =>
         normalizedPriority switch
         {
-            PriorityCritical => all.Where(u => u.Shift.Rota.Priority == ShiftPriority.Essential),
-            PriorityImportant => all.Where(u => u.Shift.Rota.Priority == ShiftPriority.Important),
+            PriorityCritical => all.Where(u => u.Rota.Priority == ShiftPriority.Essential),
+            PriorityImportant => all.Where(u => u.Rota.Priority == ShiftPriority.Important),
             _ => all,
         };
 
@@ -82,9 +82,9 @@ internal static class OnboardingShiftsStepBuilder
         int ImportantOpenCount,
         bool HasAnyImportant);
 
-    private static StatsSnapshot ComputeStats(IReadOnlyList<UrgentShift> all)
+    private static StatsSnapshot ComputeStats(IReadOnlyList<UrgentShiftInfo> all)
     {
-        var critical = all.Where(u => u.Shift.Rota.Priority == ShiftPriority.Essential).ToList();
+        var critical = all.Where(u => u.Rota.Priority == ShiftPriority.Essential).ToList();
         var hasAnyCritical = critical.Count > 0;
         int? criticalFilledPercent = null;
         if (hasAnyCritical)
@@ -96,7 +96,7 @@ internal static class OnboardingShiftsStepBuilder
                 : 0;
         }
 
-        var important = all.Where(u => u.Shift.Rota.Priority == ShiftPriority.Important).ToList();
+        var important = all.Where(u => u.Rota.Priority == ShiftPriority.Important).ToList();
         var importantOpenCount = important.Count(u => u.RemainingSlots > 0);
 
         return new StatsSnapshot(

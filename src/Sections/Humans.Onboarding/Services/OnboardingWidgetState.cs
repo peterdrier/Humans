@@ -1,7 +1,7 @@
 using Humans.Consent.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Onboarding.Contracts;
-using Humans.Application.Interfaces.Shifts;
+using Humans.Shifts.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Constants;
 
@@ -11,7 +11,7 @@ internal sealed class OnboardingWidgetState(
     IUserServiceRead users,
     IShiftView shiftView,
     IMembershipCalculatorRead membership,
-    IShiftManagementService shiftMgmt,
+    IBurnSettingsService burnSettings,
     IConsentServiceRead consents,
     IOnboardingWidgetSessionState session) : IOnboardingWidgetState
 {
@@ -33,7 +33,7 @@ internal sealed class OnboardingWidgetState(
 
         var hasSkip = session.ShiftSkipActive;
 
-        var activeEvent = await shiftMgmt.GetActiveAsync();
+        var activeEvent = await burnSettings.GetActiveAsync();
         var hasCurrentEventSignup = false;
         if (activeEvent is not null)
         {

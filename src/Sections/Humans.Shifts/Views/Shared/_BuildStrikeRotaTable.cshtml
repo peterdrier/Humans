@@ -1,0 +1,488 @@
+@using Humans.UI.Extensions
+@model Humans.Shifts.Models.BuildStrikeRotaTableViewModel
+@if (Model.Interaction == ShiftSignupInteraction.InstantToggle)
+{
+    var allDayShifts = Model.RotaGroup.Shifts
+        .Where(s => s.Shift.IsAllDay)
+        .OrderBy(s => s.Shift.DayOffset)
+        .ToList();
+    <div class="table-responsive">
+        <table class="table table-sm">
+            <thead>
+                <tr>
+                    <th>@Localizer["Shifts_Date"]</th>
+                    <th>@Localizer["Shifts_Filled"]</th>
+                    <th>@SharedLocalizer["Common_Status"]</th>
+                    <th>@Localizer["Shifts_SignedUp"]</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in allDayShifts)
+                {
+                    @await Html.PartialAsync("_BuildStrikeRotaRow", new BuildStrikeRotaRowViewModel
+                    {
+                        Item = item,
+                        Es = Model.EventSettings,
+                        IsSignedUp = Model.UserSignupShiftIds.Contains(item.Shift.Id),
+                        SignupStatus = Model.UserSignupStatuses.GetValueOrDefault(item.Shift.Id),
+                        SignupsBlockedByMissingDietary = Model.SignupsBlockedByMissingDietary,
+                        EarlyEntrySignupsClosed = Model.EarlyEntrySignupsClosed,
+                        Interaction = Model.Interaction
+                    })
+                }
+            </tbody>
+        </table>
+    </div>
+}
+else
+{
+    var rotaGroup = Model.RotaGroup;
+    var es = Model.EventSettings;
+    var allDayShifts = rotaGroup.Shifts.Where(s => s.Shift.IsAllDay).OrderBy(s => s.Shift.DayOffset).ToList();
+    var availableShifts = allDayShifts.Where(s => s.RemainingSlots > 0 && !Model.UserSignupShiftIds.Contains(s.Shift.Id)).ToList();
+    // Build (early-entry) date-range form locks once early-entry close has passed; strike shifts are never early-entry.
+    var earlyEntryLocked = Model.EarlyEntrySignupsClosed && availableShifts.Any(s => s.Shift.IsEarlyEntry);
+@if (availableShifts.Count > 0)
+{
+    <form asp-controller="@Model.SignUpRangeController" asp-action="@Model.SignUpRangeAction" method="post" class="row g-2 align-items-end mb-3">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="rotaId" value="@rotaGroup.Rota.Id" />
+        @if (Model.FilterDepartmentId.HasValue) { <input type="hidden" name="departmentId" value="@Model.FilterDepartmentId" /> }
+        @if (!string.IsNullOrEmpty(Model.FilterFromDate)) { <input type="hidden" name="fromDate" value="@Model.FilterFromDate" /> }
+        @if (!string.IsNullOrEmpty(Model.FilterToDate)) { <input type="hidden" name="toDate" value="@Model.FilterToDate" /> }
+        @if (!string.IsNullOrEmpty(Model.FilterPeriod)) { <input type="hidden" name="period" value="@Model.FilterPeriod" /> }
+        @foreach (var p in Model.FilterPeriods) { <input type="hidden" name="periods" value="@p" /> }
+        @foreach (var tagId in Model.FilterTagIds) { <input type="hidden" name="tags" value="@tagId" /> }
+        @if (!string.IsNullOrEmpty(Model.Sort)) { <input type="hidden" name="sort" value="@Model.Sort" /> }
+        <div class="col-auto">
+            <label class="form-label form-label-sm">@Localizer["Shifts_Start"]</label>
+            <select name="startDayOffset" class="form-select form-select-sm">
+                @foreach (var s in availableShifts)
+                {
+                    <option value="@s.Shift.DayOffset"
+                            data-date="@es.GateOpeningDate.PlusDays(s.Shift.DayOffset).ToWeekdayDayMonth()"
+                            data-arrive-by="@es.GateOpeningDate.PlusDays(s.Shift.DayOffset - 1).ToWeekdayDayMonth()">
+                        @es.GateOpeningDate.PlusDays(s.Shift.DayOffset).ToWeekdayDayMonth()
+                    </option>
+                }
+            </select>
+        </div>
+        <div class="col-auto">
+            <label class="form-label form-label-sm">@Localizer["Shifts_End"]</label>
+            <select name="endDayOffset" class="form-select form-select-sm">
+                @foreach (var s in availableShifts)
+                {
+                    <option value="@s.Shift.DayOffset"
+                            data-date="@es.GateOpeningDate.PlusDays(s.Shift.DayOffset).ToWeekdayDayMonth()"
+                            selected="@(s == availableShifts.Last() ? "selected" : null)">
+                        @es.GateOpeningDate.PlusDays(s.Shift.DayOffset).ToWeekdayDayMonth()
+                    </option>
+                }
+            </select>
+        </div>
+        <div class="col-auto">
+            @if (earlyEntryLocked)
+            {
+                <button type="button" class="btn btn-sm btn-success"
+                        disabled
+                        aria-disabled="true"
+                        title="@Localizer["Shifts_SignupDisabledTooltip_EarlyEntryClosed"]">
+                    <span class="badge bg-secondary"><i class="fa-solid fa-lock me-1" aria-hidden="true"></i>@Localizer["Shifts_SetupClosedBadge"]</span>
+                </button>
+            }
+            else if (Model.SignupsBlockedByMissingDietary)
+            {
+                <button type="button" class="btn btn-sm btn-success js-open-confirm-signup"
+                        disabled
+                        aria-disabled="true"
+                        title="@Localizer["Shifts_SignupDisabledTooltip_MissingDietary"]">
+                    @string.Format(Localizer["Shifts_SignUpForDates"].Value, rotaGroup.Rota.Period == RotaPeriod.Build ? SharedLocalizer["Shifts_SetUp"].Value.ToLowerInvariant() : SharedLocalizer["Shifts_Strike"].Value.ToLowerInvariant())
+                </button>
+            }
+            else
+            {
+                <button type="button" class="btn btn-sm btn-success js-open-confirm-signup"
+                        data-bs-toggle="modal" data-bs-target="#confirmSignup-@rotaGroup.Rota.Id">
+                    @string.Format(Localizer["Shifts_SignUpForDates"].Value, rotaGroup.Rota.Period == RotaPeriod.Build ? SharedLocalizer["Shifts_SetUp"].Value.ToLowerInvariant() : SharedLocalizer["Shifts_Strike"].Value.ToLowerInvariant())
+                </button>
+            }
+        </div>
+        <script type="application/json" class="js-user-signups-data">
+            @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+                Model.UserActiveSignups.Select(u => new {
+                    date = u.Date.ToInvariantDate(),
+                    rota = u.RotaName,
+                    absStart = DateFormattingExtensions.ToIso8601(u.AbsoluteStart),
+                    absEnd = DateFormattingExtensions.ToIso8601(u.AbsoluteEnd),
+                    displayStart = u.DisplayStart,
+                    displayEnd = u.DisplayEnd
+                })))
+        </script>
+        <script type="application/json" class="js-rota-windows-data">
+            @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+                Model.RotaWindowsByDayOffset.ToDictionary(
+                    kv => kv.Key.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    kv => new {
+                        absStart = DateFormattingExtensions.ToIso8601(kv.Value.AbsoluteStart),
+                        absEnd = DateFormattingExtensions.ToIso8601(kv.Value.AbsoluteEnd),
+                        displayDate = es.GateOpeningDate.PlusDays(kv.Key).ToWeekdayDayMonth()
+                    })))
+        </script>
+        <div class="modal fade" id="confirmSignup-@rotaGroup.Rota.Id" tabindex="-1"
+             aria-hidden="true" aria-labelledby="confirmSignupTitle-@rotaGroup.Rota.Id"
+             data-range-tpl-multi="@Localizer["Shifts_ConfirmSignup_Range"]"
+             data-range-tpl-single="@Localizer["Shifts_ConfirmSignup_Range_Single"]"
+             data-arrive-tpl="@Localizer["Shifts_ConfirmSignup_ArriveBy"]"
+             data-conflict-row-tpl="@Localizer["Shifts_ConfirmSignup_Conflicts_Row"]">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="confirmSignupTitle-@rotaGroup.Rota.Id">
+                            @string.Format(Localizer["Shifts_ConfirmSignup_Title"].Value,
+                                rotaGroup.Rota.Period == RotaPeriod.Build ? SharedLocalizer["Shifts_SetUp"].Value.ToLowerInvariant() : SharedLocalizer["Shifts_Strike"].Value.ToLowerInvariant())
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="js-phase-line">
+                            @string.Format(Localizer["Shifts_ConfirmSignup_Phase"].Value,
+                                rotaGroup.Rota.Name,
+                                rotaGroup.Rota.Period == RotaPeriod.Build ? SharedLocalizer["Shifts_SetUp"].Value.ToLowerInvariant() : SharedLocalizer["Shifts_Strike"].Value.ToLowerInvariant())
+                        </p>
+                        <p class="js-range-line"></p>
+
+                        <div class="alert alert-info d-none js-conflicts-partial">
+                            <strong>@Localizer["Shifts_ConfirmSignup_Conflicts_Heading"]</strong>
+                            <ul class="mb-2 js-conflicts-list"></ul>
+                            <small class="text-muted">@Localizer["Shifts_ConfirmSignup_Conflicts_PartialNote"]</small>
+                        </div>
+
+                        <div class="alert alert-warning d-none js-conflicts-all">
+                            @Localizer["Shifts_ConfirmSignup_Conflicts_AllBlocked"]
+                        </div>
+
+                        <div class="alert alert-warning js-arrival-callout">
+                            <i class="fa-solid fa-circle-info me-1"></i>
+                            <span class="js-arrive-by-line"></span>
+                        </div>
+
+                        <p class="text-muted small mb-0">@Localizer["Shifts_ConfirmSignup_Prompt"]</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">@SharedLocalizer["Common_Cancel"]</button>
+                        <button type="submit" class="btn btn-success js-confirm-submit">@Localizer["Shifts_ConfirmSignup_Confirm"]</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+    <script>
+    (function () {
+        var modalEl = document.getElementById('confirmSignup-@rotaGroup.Rota.Id');
+        if (!modalEl) return;
+        var form = modalEl.closest('form');
+        if (!form) return;
+
+        var userSignups = JSON.parse(form.querySelector('.js-user-signups-data').textContent || '[]');
+        var rotaWindows = JSON.parse(form.querySelector('.js-rota-windows-data').textContent || '{}');
+        var startSel = form.querySelector('select[name="startDayOffset"]');
+        var endSel = form.querySelector('select[name="endDayOffset"]');
+
+        function fmt(tpl, args) {
+            // Replace ALL occurrences of {0}, {1}, ... — guards future translations
+            // that might repeat a placeholder. JS String.replace replaces first only.
+            return Object.keys(args).reduce(function (s, k) {
+                return s.split('{' + k + '}').join(String(args[k]));
+            }, tpl);
+        }
+
+        function findConflictsForOffset(offset) {
+            var win = rotaWindows[offset];
+            if (!win) return [];
+            // overlap rule: existing.absStart < win.absEnd && existing.absEnd > win.absStart
+            // String comparison works on fixed-length ISO-8601 UTC strings (always whole seconds + 'Z').
+            return userSignups.filter(function (s) {
+                return s.absStart < win.absEnd && s.absEnd > win.absStart;
+            });
+        }
+
+        modalEl.addEventListener('show.bs.modal', function () {
+            var startOpt = startSel.options[startSel.selectedIndex];
+            var endOpt = endSel.options[endSel.selectedIndex];
+            var startOffset = parseInt(startSel.value, 10);
+            var endOffset = parseInt(endSel.value, 10);
+
+            var lo = Math.min(startOffset, endOffset), hi = Math.max(startOffset, endOffset);
+            var days = hi - lo + 1;
+            var realRangeOffsets = Object.keys(rotaWindows).map(Number).filter(function(o) { return o >= lo && o <= hi; });
+
+            var startDate = startOpt.getAttribute('data-date');
+            var endDate = endOpt.getAttribute('data-date');
+            var loOpt = startSel.querySelector('option[value="' + lo + '"]') || endSel.querySelector('option[value="' + lo + '"]');
+            var arriveBy = loOpt ? loOpt.getAttribute('data-arrive-by') : '';
+
+            var rangeTpl = modalEl.getAttribute('data-range-tpl-multi') || '{0} – {1} ({2} days)';
+            var singleTpl = modalEl.getAttribute('data-range-tpl-single') || '{0} (1 day)';
+            var rangeLine = days === 1
+                ? fmt(singleTpl, { 0: startDate })
+                : fmt(rangeTpl, { 0: startDate, 1: endDate, 2: days });
+            modalEl.querySelector('.js-range-line').textContent = rangeLine;
+
+            var arriveTpl = modalEl.getAttribute('data-arrive-tpl') || "You'll be expected on site by {0}.";
+            modalEl.querySelector('.js-arrive-by-line').textContent = fmt(arriveTpl, { 0: arriveBy });
+
+            var allConflicts = [];
+            for (var off = lo; off <= hi; off++) {
+                var conflicts = findConflictsForOffset(off);
+                if (conflicts.length > 0) {
+                    var opt = startSel.querySelector('option[value="' + off + '"]')
+                            || endSel.querySelector('option[value="' + off + '"]');
+                    var dateLabel = opt
+                        ? opt.getAttribute('data-date')
+                        : (rotaWindows[off] && rotaWindows[off].displayDate) || String(off);
+                    conflicts.forEach(function (c) {
+                        allConflicts.push({ date: dateLabel, conflict: c });
+                    });
+                }
+            }
+
+            var partialAlert = modalEl.querySelector('.js-conflicts-partial');
+            var allBlockedAlert = modalEl.querySelector('.js-conflicts-all');
+            var list = modalEl.querySelector('.js-conflicts-list');
+            var submitBtn = modalEl.querySelector('.js-confirm-submit');
+
+            partialAlert.classList.add('d-none');
+            allBlockedAlert.classList.add('d-none');
+            list.innerHTML = '';
+            submitBtn.removeAttribute('disabled');
+
+            if (allConflicts.length > 0) {
+                var conflictedOffsets = new Set();
+                for (var off2 = lo; off2 <= hi; off2++) {
+                    if (findConflictsForOffset(off2).length > 0) conflictedOffsets.add(off2);
+                }
+                var rowTpl = modalEl.getAttribute('data-conflict-row-tpl')
+                    || '{0} — already signed up for {1} ({2}–{3})';
+
+                if (realRangeOffsets.length > 0 && conflictedOffsets.size === realRangeOffsets.length) {
+                    allBlockedAlert.classList.remove('d-none');
+                    submitBtn.setAttribute('disabled', 'disabled');
+                } else {
+                    allConflicts.forEach(function (c) {
+                        var li = document.createElement('li');
+                        li.textContent = fmt(rowTpl, {
+                            0: c.date,
+                            1: c.conflict.rota,
+                            2: c.conflict.displayStart,
+                            3: c.conflict.displayEnd
+                        });
+                        list.appendChild(li);
+                    });
+                    partialAlert.classList.remove('d-none');
+                }
+            }
+        });
+    })();
+    </script>
+}
+else if (allDayShifts.All(s => s.RemainingSlots <= 0) && allDayShifts.Any(s => s.ConfirmedCount < s.Shift.MinVolunteers))
+{
+    <div class="alert alert-info py-2 mb-3">
+        <i class="fa-solid fa-circle-info me-1"></i>
+        @Localizer["Shifts_SlotsFull"]
+    </div>
+}
+    var dateRanges = new List<List<ShiftDisplayItem>>();
+    List<ShiftDisplayItem>? currentRange = null;
+    foreach (var s in allDayShifts)
+    {
+        if (currentRange == null || s.Shift.DayOffset != currentRange.Last().Shift.DayOffset + 1)
+        {
+            currentRange = [s];
+            dateRanges.Add(currentRange);
+        }
+        else
+        {
+            currentRange.Add(s);
+        }
+    }
+<div class="table-responsive">
+    <table class="table table-sm">
+        <thead>
+            <tr><th>@Localizer["Shifts_Date"]</th><th>@Localizer["Shifts_Filled"]</th><th>@SharedLocalizer["Common_Status"]</th><th>@Localizer["Shifts_SignedUp"]</th></tr>
+        </thead>
+        <tbody>
+            @foreach (var range in dateRanges)
+            {
+                if (range.Count > 1)
+                {
+                    var rangeKey = $"r{range.First().Shift.Id:N}";
+                    var totalConfirmed = range.Sum(x => x.ConfirmedCount);
+                    var totalMax = range.Sum(x => x.Shift.MaxVolunteers);
+                    var anyUnderstaffed = range.Any(x => x.ConfirmedCount < x.Shift.MinVolunteers);
+                    var daysNeedingHelp = range.Count(x => x.ConfirmedCount < x.Shift.MinVolunteers);
+                    var allRangeFull = range.All(x => x.RemainingSlots <= 0);
+                    var userSignedUpDays = range.Count(x => Model.UserSignupShiftIds.Contains(x.Shift.Id));
+                    var rangeStart = es.GateOpeningDate.PlusDays(range.First().Shift.DayOffset);
+                    var rangeEnd = es.GateOpeningDate.PlusDays(range.Last().Shift.DayOffset);
+                    <tr class="@(allRangeFull ? "table-secondary" : "") shift-range-header" role="button" data-range="@rangeKey" style="cursor: pointer;">
+                        <td>
+                            <i class="fa-solid fa-chevron-right fa-xs me-1 range-icon"></i>
+                            @rangeStart.ToWeekdayDayMonth()–@rangeEnd.ToWeekdayDayMonth()
+                            <small class="text-muted">(@range.Count @Localizer["Shifts_Days"])</small>
+                        </td>
+                        <td style="min-width: 120px;">
+                            @{
+                                var rangeFillPercent = totalMax > 0 ? (int)Math.Round(100.0 * totalConfirmed / totalMax) : 0;
+                                var rangeFillColor = rangeFillPercent >= 80 ? "bg-success" : rangeFillPercent >= 40 ? "bg-warning" : "bg-danger";
+                            }
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="progress flex-grow-1" style="height: 6px;">
+                                    <div class="progress-bar @rangeFillColor" role="progressbar" style="width: @rangeFillPercent%;" aria-valuenow="@totalConfirmed" aria-valuemin="0" aria-valuemax="@totalMax"></div>
+                                </div>
+                                <span class="shift-fill-count text-nowrap @(anyUnderstaffed ? "text-danger" : "")">@totalConfirmed/@totalMax</span>
+                            </div>
+                        </td>
+                        <td>
+                            @if (userSignedUpDays == range.Count)
+                            {
+                                <span class="badge bg-info">@string.Format(Localizer["Shifts_SignedUpAllDays"].Value, range.Count)</span>
+                            }
+                            else if (userSignedUpDays > 0)
+                            {
+                                <span class="badge bg-info">@string.Format(Localizer["Shifts_SignedUpPartial"].Value, userSignedUpDays, range.Count)</span>
+                            }
+                            else if (allRangeFull)
+                            {
+                                <span class="badge bg-secondary">@Localizer["Shifts_Full"]</span>
+                            }
+                            else if (daysNeedingHelp > 0)
+                            {
+                                <span class="badge bg-warning text-dark">@string.Format((daysNeedingHelp == 1 ? Localizer["Shifts_DayNeedsHelp"] : Localizer["Shifts_DaysNeedHelp"]).Value, daysNeedingHelp)</span>
+                            }
+                        </td>
+                        <td><small class="text-muted fst-italic">@Localizer["Shifts_ClickToExpand"]</small></td>
+                    </tr>
+                    @foreach (var item in range)
+                    {
+                        var isFull = item.RemainingSlots <= 0;
+                        var understaffed = item.ConfirmedCount < item.Shift.MinVolunteers;
+                        <tr class="d-none range-detail-@rangeKey @(isFull ? "table-secondary" : "")">
+                            <td class="ps-4">@es.GateOpeningDate.PlusDays(item.Shift.DayOffset).ToWeekdayDayMonth()</td>
+                            <td style="min-width: 120px;">
+                                @{
+                                    var dayFillPercent = item.Shift.MaxVolunteers > 0 ? (int)Math.Round(100.0 * item.ConfirmedCount / item.Shift.MaxVolunteers) : 0;
+                                    var dayFillColor = dayFillPercent >= 80 ? "bg-success" : dayFillPercent >= 40 ? "bg-warning" : "bg-danger";
+                                }
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="progress flex-grow-1" style="height: 6px;">
+                                        <div class="progress-bar @dayFillColor" role="progressbar" style="width: @dayFillPercent%;" aria-valuenow="@item.ConfirmedCount" aria-valuemin="0" aria-valuemax="@item.Shift.MaxVolunteers"></div>
+                                    </div>
+                                    <span class="shift-fill-count text-nowrap @(understaffed ? "text-danger" : "")">@item.ConfirmedCount/@item.Shift.MaxVolunteers</span>
+                                </div>
+                            </td>
+                            <td>
+                                @if (Model.UserSignupShiftIds.Contains(item.Shift.Id))
+                                {
+                                    <span class="badge bg-info">@Localizer["Shifts_SignedUp"]</span>
+                                }
+                                else if (isFull)
+                                {
+                                    <span class="badge bg-secondary">@Localizer["Shifts_Full"]</span>
+                                }
+                                else if (understaffed)
+                                {
+                                    <span class="badge bg-warning text-dark">@Localizer["Shifts_NeedsHelp"]</span>
+                                }
+                            </td>
+                            @if (item.Signups.Count > 0)
+                            {
+                                <td>
+                                    <div class="d-flex flex-wrap gap-1">
+                                        @foreach (var signup in item.Signups)
+                                        {
+                                            <span title="@signup.DisplayName@(signup.Status == SignupStatus.Pending ? $" {Localizer["Shifts_Pending"]}" : "")"
+                                                  style="@(signup.Status == SignupStatus.Pending ? "border: 1px dashed var(--h-muted-text); border-radius: 50%;" : "")"><vc:human user-id="@signup.UserId" layout="Avatar" size="26" css-class="@(signup.Status == SignupStatus.Pending ? "opacity-50" : "")" /></span>
+                                        }
+                                    </div>
+                                </td>
+                            }
+                            else
+                            {
+                                <td></td>
+                            }
+                        </tr>
+                        @if (!string.IsNullOrEmpty(item.Shift.Description))
+                        {
+                            <tr class="d-none range-detail-@rangeKey @(isFull ? "table-secondary" : "")">
+                                <td colspan="4" class="shift-description pt-0 pb-1 border-0">
+                                    @Html.SanitizedMarkdown(item.Shift.Description)
+                                </td>
+                            </tr>
+                        }
+                    }
+                }
+                else
+                {
+                    var item = range[0];
+                    var isFull = item.RemainingSlots <= 0;
+                    var understaffed = item.ConfirmedCount < item.Shift.MinVolunteers;
+                    <tr class="@(isFull ? "table-secondary" : "")">
+                        <td>@es.GateOpeningDate.PlusDays(item.Shift.DayOffset).ToWeekdayDayMonth()</td>
+                        <td style="min-width: 120px;">
+                            @{
+                                var singleFillPercent = item.Shift.MaxVolunteers > 0 ? (int)Math.Round(100.0 * item.ConfirmedCount / item.Shift.MaxVolunteers) : 0;
+                                var singleFillColor = singleFillPercent >= 80 ? "bg-success" : singleFillPercent >= 40 ? "bg-warning" : "bg-danger";
+                            }
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="progress flex-grow-1" style="height: 6px;">
+                                    <div class="progress-bar @singleFillColor" role="progressbar" style="width: @singleFillPercent%;" aria-valuenow="@item.ConfirmedCount" aria-valuemin="0" aria-valuemax="@item.Shift.MaxVolunteers"></div>
+                                </div>
+                                <span class="shift-fill-count text-nowrap @(understaffed ? "text-danger" : "")">@item.ConfirmedCount/@item.Shift.MaxVolunteers</span>
+                            </div>
+                        </td>
+                        <td>
+                            @if (Model.UserSignupShiftIds.Contains(item.Shift.Id))
+                            {
+                                <span class="badge bg-info">@Localizer["Shifts_SignedUp"]</span>
+                            }
+                            else if (isFull)
+                            {
+                                <span class="badge bg-secondary">@Localizer["Shifts_Full"]</span>
+                            }
+                            else if (understaffed)
+                            {
+                                <span class="badge bg-warning text-dark">@Localizer["Shifts_NeedsHelp"]</span>
+                            }
+                        </td>
+                        @if (item.Signups.Count > 0)
+                        {
+                            <td>
+                                <div class="d-flex flex-wrap gap-1">
+                                    @foreach (var signup in item.Signups)
+                                    {
+                                        <span title="@signup.DisplayName@(signup.Status == SignupStatus.Pending ? $" {Localizer["Shifts_Pending"]}" : "")"
+                                              style="@(signup.Status == SignupStatus.Pending ? "border: 1px dashed var(--h-muted-text); border-radius: 50%;" : "")"><vc:human user-id="@signup.UserId" layout="Avatar" size="26" css-class="@(signup.Status == SignupStatus.Pending ? "opacity-50" : "")" /></span>
+                                    }
+                                </div>
+                            </td>
+                        }
+                        else
+                        {
+                            <td></td>
+                        }
+                    </tr>
+                    @if (!string.IsNullOrEmpty(item.Shift.Description))
+                    {
+                        <tr class="@(isFull ? "table-secondary" : "")">
+                            <td colspan="4" class="shift-description pt-0 pb-1 border-0">
+                                @Html.SanitizedMarkdown(item.Shift.Description)
+                            </td>
+                        </tr>
+                    }
+                }
+            }
+        </tbody>
+    </table>
+</div>
+}

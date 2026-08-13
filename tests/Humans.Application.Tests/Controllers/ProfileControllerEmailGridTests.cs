@@ -12,7 +12,7 @@ using Humans.Gdpr.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Onboarding.Contracts;
 using Humans.Application.Interfaces.Profiles;
-using Humans.Application.Interfaces.Shifts;
+using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 
 using Humans.Application.Interfaces.Users;
@@ -87,8 +87,10 @@ public class ProfileControllerEmailGridTests
             Substitute.For<ICommunicationPreferenceService>(),
             _auditLogService,
             Substitute.For<IOnboardingIntake>(),
-            Substitute.For<IShiftSignupService>(),
-            Substitute.For<IShiftManagementService>(),
+            Substitute.For<IShiftSignups>(),
+            Substitute.For<IBurnSettingsService>(),
+            Substitute.For<IShiftManagementServiceRead>(),
+            Substitute.For<IShiftVolunteerProfiles>(),
             Substitute.For<IShiftView>(),
             Substitute.For<IGdprExportService>(),
             Substitute.For<IConfiguration>(),

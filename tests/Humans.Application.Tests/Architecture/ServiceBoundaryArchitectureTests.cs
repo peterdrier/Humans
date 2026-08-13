@@ -56,14 +56,14 @@ public class ServiceBoundaryArchitectureTests
             [SectionRepository("Humans.Consent.Data.ILegalDocumentRepository")] = "Legal",
             [SectionRepository("Humans.Notifications.Data.INotificationRepository")] = "Notifications",
             [SectionRepository("Humans.Auth.Data.IRoleAssignmentRepository")] = "Auth",
-            [typeof(IShiftManagementRepository)] = "Shifts",
+            [SectionRepository("Humans.Shifts.Data.IShiftManagementRepository")] = "Shifts",
             [SectionRepository("Humans.Surveys.Data.ISurveyRepository")] = "Surveys",
             [SectionRepository("Humans.GoogleIntegration.Data.ISyncSettingsRepository")] = "GoogleIntegration",
             [SectionRepository("Humans.Teams.Data.ITeamRepository")] = "Teams",
             [SectionRepository("Humans.Tickets.Data.ITicketRepository")] = "Tickets",
             [SectionRepository("Humans.Tickets.Data.ITicketTransferRepository")] = "Tickets",
             [typeof(IUserRepository)] = "Humans",
-            [typeof(IVolunteerTrackingRepository)] = "Shifts",
+            [SectionRepository("Humans.Shifts.Data.IVolunteerTrackingRepository")] = "Shifts",
         };
 
     [HumansFact]
@@ -198,11 +198,24 @@ public class ServiceBoundaryArchitectureTests
 
     private static IEnumerable<(string MemberName, Type ReturnType)> EntityReturnReadMembers(Type serviceType)
     {
-        foreach (var method in serviceType.GetMethods().Where(IsReadMethod))
-            yield return (method.Name, method.ReturnType);
+        // Base interfaces included: Type.GetMethods() on an interface returns only
+        // *declared* members, so a service whose entity-returning reads were split onto a
+        // section contracts leaf it inherits (Shifts, nobodies-collective/Humans#866) would
+        // drop out of this ratchet while the code stands still — the silent shrink §10
+        // warns about, and the leaf itself is not scanned because it carries no
+        // IApplicationService marker. Distinct by (name, return type): a member
+        // re-declared on the deriving interface would otherwise be yielded twice.
+        var declaringTypes = new[] { serviceType }.Concat(serviceType.GetInterfaces());
 
-        foreach (var property in serviceType.GetProperties().Where(p => p.GetMethod is not null))
-            yield return (property.Name, property.PropertyType);
+        foreach (var member in declaringTypes
+                     .SelectMany(t => t.GetMethods().Where(IsReadMethod)
+                         .Select(m => (MemberName: m.Name, ReturnType: m.ReturnType))
+                         .Concat(t.GetProperties().Where(p => p.GetMethod is not null)
+                             .Select(p => (MemberName: p.Name, ReturnType: p.PropertyType))))
+                     .Distinct())
+        {
+            yield return member;
+        }
     }
 
     // Note: Get*/Find* also match GetOrCreate*/FindOrCreate* upsert mutations.
@@ -282,10 +295,27 @@ public class ServiceBoundaryArchitectureTests
         }
     }
 
+    /// <summary>
+    /// Types this scan recurses *into* looking for an exposed entity: Base DTOs, plus
+    /// anything on a G5 section's contracts leaf (nobodies-collective/Humans#866).
+    /// </summary>
+    /// <remarks>
+    /// The leaf half is what this rule is about — a result record that moves onto a leaf
+    /// keeps wrapping whatever entity it wrapped, and keying the recursion on the
+    /// <c>Humans.Application.</c> namespace alone stops it at the assembly boundary and
+    /// reports the violation as fixed while the code stands still. Shifts'
+    /// <c>UrgentShift(Shift, …)</c> is the case that surfaced it.
+    /// <para>
+    /// Deliberately *not* widened to whole section assemblies: a section-internal DTO
+    /// wrapping that section's own internal entity crosses no boundary, and recursing into
+    /// them adds 96 rows across twenty sections that this rule was never asserting about.
+    /// </para>
+    /// </remarks>
     private static bool IsApplicationReturnShape(Type type) =>
         type is { IsPrimitive: false, IsEnum: false } &&
         type != typeof(string) &&
-        type.Namespace?.StartsWith("Humans.Application.", StringComparison.Ordinal) == true;
+        (type.Namespace?.StartsWith("Humans.Application.", StringComparison.Ordinal) == true ||
+         type.Assembly.GetName().Name?.EndsWith(".Contracts", StringComparison.Ordinal) == true);
 
     private static string Display(Type type) =>
         type.FullName?.Replace('+', '.') ?? type.Name;

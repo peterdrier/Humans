@@ -7,12 +7,11 @@ using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Application.Interfaces.Shifts;
+using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Auth;
 using Humans.Application.Services.Profiles;
-using Humans.Application.Services.Shifts;
 using Humans.Application.Services.Users;
 using Humans.Domain.Entities;
 using Humans.Email.Contracts;
@@ -52,7 +51,6 @@ public sealed class EmailDependencyCycleTests
         services.AddScoped<IUserRepository>(_ => Substitute.For<IUserRepository>());
         services.AddScoped<ICommunicationPreferenceRepository>(_ => Substitute.For<ICommunicationPreferenceRepository>());
         services.AddScoped<IUserInfoInvalidator>(_ => Substitute.For<IUserInfoInvalidator>());
-        services.AddScoped<IShiftManagementRepository>(_ => Substitute.For<IShiftManagementRepository>());
         services.AddScoped<IAuditLogService>(_ => Substitute.For<IAuditLogService>());
         services.AddScoped<INotificationEmitter>(_ => Substitute.For<INotificationEmitter>());
         services.AddScoped<ISystemTeamSync>(_ => Substitute.For<ISystemTeamSync>());
@@ -78,8 +76,10 @@ public sealed class EmailDependencyCycleTests
         // below — the subject here is the email chain.
         services.AddScoped<IRoleAssignmentService>(_ => Substitute.For<IRoleAssignmentService>());
 
-        services.AddScoped<ShiftManagementService>();
-        services.AddScoped<IShiftManagementService>(sp => sp.GetRequiredService<ShiftManagementService>());
+        // Shifts is another section; its concrete service is internal to Humans.Shifts and
+        // its own graph is pinned by the section's own tests. Same call as ITeamService and
+        // IRoleAssignmentService below — the subject here is the email chain.
+        services.AddScoped<IShiftManagementServiceRead>(_ => Substitute.For<IShiftManagementServiceRead>());
 
         services.AddScoped<UserEmailService>();
         services.AddScoped<IUserEmailService>(sp => sp.GetRequiredService<UserEmailService>());
@@ -92,7 +92,6 @@ public sealed class EmailDependencyCycleTests
         services.AddScoped<ITeamService>(_ => Substitute.For<ITeamService>());
 
         services.AddScoped<Microsoft.Extensions.Logging.ILogger<UserService>>(_ => NullLogger<UserService>.Instance);
-        services.AddScoped<Microsoft.Extensions.Logging.ILogger<ShiftManagementService>>(_ => NullLogger<ShiftManagementService>.Instance);
         services.AddScoped<Microsoft.Extensions.Logging.ILogger<OutboxEmailService>>(_ => NullLogger<OutboxEmailService>.Instance);
         services.AddScoped<Microsoft.Extensions.Logging.ILogger<UserEmailService>>(_ => NullLogger<UserEmailService>.Instance);
 

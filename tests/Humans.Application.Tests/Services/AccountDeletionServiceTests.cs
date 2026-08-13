@@ -7,7 +7,7 @@ using Humans.Application.Interfaces.Caching;
 using Humans.Email.Contracts;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Application.Interfaces.Shifts;
+using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Application.Interfaces.Users;
@@ -34,8 +34,8 @@ public class AccountDeletionServiceTests
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly IRoleAssignmentService _roleAssignmentService = Substitute.For<IRoleAssignmentService>();
-    private readonly IShiftSignupService _shiftSignupService = Substitute.For<IShiftSignupService>();
-    private readonly IShiftManagementService _shiftManagementService = Substitute.For<IShiftManagementService>();
+    private readonly IShiftSignups _shiftSignupService = Substitute.For<IShiftSignups>();
+    private readonly IShiftVolunteerProfiles _shiftManagementService = Substitute.For<IShiftVolunteerProfiles>();
     private readonly IFileStorage _fileStorage = Substitute.For<IFileStorage>();
     private readonly ITicketServiceRead _ticketQueryService = Substitute.For<ITicketServiceRead>();
     private readonly IRoleAssignmentClaimsCacheInvalidator _roleAssignmentClaimsInvalidator =

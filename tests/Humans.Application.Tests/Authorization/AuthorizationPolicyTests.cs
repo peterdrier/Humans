@@ -5,7 +5,7 @@ using Humans.Application.Interfaces;
 using Humans.Budget.Contracts;
 using Humans.Camps.Contracts;
 using Humans.CityPlanning.Contracts;
-using Humans.Application.Interfaces.Shifts;
+using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Domain.Constants;
 using Humans.Domain.Enums;
@@ -27,7 +27,7 @@ public class AuthorizationPolicyTests : IDisposable
 {
     private readonly ServiceProvider _serviceProvider;
     private readonly IAuthorizationService _authorizationService;
-    private readonly IShiftManagementService _shiftManagement;
+    private readonly IShiftManagementServiceRead _shiftManagement;
 
     public AuthorizationPolicyTests()
     {
@@ -47,7 +47,7 @@ public class AuthorizationPolicyTests : IDisposable
         // (design §15 step 6). Their coverage lives in Humans.Expenses.Tests.
         // IsAnyTeamManagerOrCoordinatorHandler reads team-coord ids through this service
         // (cached path); register a single shared substitute so per-test setups stick.
-        _shiftManagement = Substitute.For<IShiftManagementService>();
+        _shiftManagement = Substitute.For<IShiftManagementServiceRead>();
         _shiftManagement.GetCoordinatorTeamIdsAsync(Arg.Any<Guid>()).Returns([]);
         services.AddSingleton(_shiftManagement);
         services.AddSingleton<IClock>(SystemClock.Instance);

@@ -2,7 +2,6 @@ using Humans.Application.Architecture;
 using AwesomeAssertions;
 using Humans.Application.Services.AuditLog;
 using Humans.Camps.Services;
-using Humans.Application.Services.Shifts;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace Humans.Application.Tests.Architecture.Rules;
@@ -58,7 +57,7 @@ public class ApplicationServicesTakeNoMemoryCacheRule
         SectionType("Humans.Notifications.Services.NotificationInboxService"),
         SectionType("Humans.Notifications.Services.NotificationMeterProvider"),
         SectionType("Humans.Notifications.Services.NotificationService"),
-        typeof(ShiftManagementService),
+        SectionType("Humans.Shifts.Services.ShiftManagementService"),
         // Nav-badge count caches moved out of NavBadgesViewComponent into their
         // owning services (memory/code/viewcomponent-no-cache.md) — same inline
         // badge-count caching IssuesService/NotificationMeterProvider already do.

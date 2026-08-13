@@ -2,7 +2,7 @@ using Humans.AuditLog.Contracts;
 using Humans.Auth.Contracts;
 using Humans.Application.Interfaces.EarlyEntry;
 using Humans.Notifications.Contracts;
-using Humans.Application.Interfaces.Shifts;
+using Humans.Shifts.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -54,13 +54,6 @@ public abstract class ServiceTestHarness : IDisposable
 
 
 
-    /// <summary>Shifts: <c>event_settings</c>, <c>rotas</c>, <c>shifts</c>, <c>shift_signups</c>,
-    /// <c>shift_tags</c>, <c>rota_shift_tags</c>, <c>volunteer_event_profiles</c>,
-    /// <c>general_availability</c>, <c>volunteer_build_statuses</c>, <c>volunteer_tag_preferences</c>.</summary>
-    private readonly Lazy<SectionDb<ShiftsDbContext>> _shiftsDb;
-    private protected ShiftsDbContext ShiftsDb => _shiftsDb.Value.Context;
-    private protected TestDbContextFactory<ShiftsDbContext> ShiftsDbFactory => _shiftsDb.Value.Factory;
-
     /// <summary>Teams: <c>teams</c>, <c>team_members</c>, <c>team_join_requests</c>,
     /// <c>team_join_request_state_history</c>, <c>team_role_definitions</c>,
     /// <c>team_role_assignments</c>, <c>team_early_entry_grants</c>
@@ -94,7 +87,6 @@ public abstract class ServiceTestHarness : IDisposable
         Db = new UsersDbContext(DbOptions);
         DbFactory = new TestDbContextFactory(DbOptions);
 
-        _shiftsDb = RegisterSection<ShiftsDbContext>(o => new(o));
         _teamsDb = RegisterSection<TeamsDbContext>(o => new(o));
 
         Clock = new FakeClock(now ?? Instant.FromUtc(2026, 3, 1, 12, 0));

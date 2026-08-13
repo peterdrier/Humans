@@ -89,7 +89,10 @@ public class ProcessAccountDeletionsJob(
                     foreach (var (signupId, shiftId) in summary.CancelledSignupIds)
                     {
                         await auditLogService.LogAsync(
-                            AuditAction.ShiftSignupCancelled, nameof(ShiftSignup), signupId,
+                            // Literal, not nameof: ShiftSignup is internal to Humans.Shifts
+                            // since its G5 move, and the discriminator is a persisted string
+                            // (memory/code/type-name-as-persisted-string.md).
+                            AuditAction.ShiftSignupCancelled, "ShiftSignup", signupId,
                             $"Cancelled signup (account deletion) for shift {shiftId}",
                             nameof(ProcessAccountDeletionsJob));
                     }

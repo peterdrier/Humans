@@ -4,7 +4,7 @@ using AwesomeAssertions;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Application.Interfaces.Shifts;
+using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Services.Users;
@@ -51,8 +51,13 @@ public class UserArchitectureTests
             because: "lazy IServiceProvider escape hatches hide DI cycles");
         paramTypes.Should().NotContain(typeof(ITeamService));
         paramTypes.Should().NotContain(typeof(IRoleAssignmentService));
-        paramTypes.Should().NotContain(typeof(IShiftSignupService));
-        paramTypes.Should().NotContain(typeof(IShiftManagementService));
+        // IShiftSignupService / IShiftManagementService are internal to Humans.Shifts
+        // since its G5 move, so a typeof row would not compile. Assert the assembly
+        // instead — strictly stronger: UserService may name Humans.Shifts.Contracts, but
+        // nothing inside the section itself (nobodies-collective/Humans#866).
+        parameters.Should().NotContain(
+            p => p.ParameterType.Assembly.GetName().Name == "Humans.Shifts",
+            because: "Base must reach the Shifts section only through its contracts leaf");
         paramTypes.Should().NotContain(typeof(IProfilePictureService));
     }
 

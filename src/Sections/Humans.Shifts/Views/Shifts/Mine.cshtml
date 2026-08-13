@@ -1,0 +1,404 @@
+@model Humans.Shifts.Models.MyShiftsViewModel
+@using Humans.Shifts.Contracts
+@using Humans.UI.Models.Tables
+@using NodaTime
+@using Microsoft.AspNetCore.Html
+
+@{
+    ViewData["Title"] = Localizer["Shifts_MyShiftsTitle"].Value;
+    var tz = Model.EventSettings != null ? DateTimeZoneProviders.Tzdb[Model.EventSettings.TimeZoneId] : null;
+}
+
+@functions {
+    string GetPhase(Shift shift, BurnSettingsInfo es)
+    {
+        var period = shift.GetShiftPeriod(es);
+        return period switch
+        {
+            ShiftPeriod.Build => SharedLocalizer["Shifts_SetUp"].Value,
+            ShiftPeriod.Event => SharedLocalizer["Shifts_Event"].Value,
+            ShiftPeriod.Strike => SharedLocalizer["Shifts_Strike"].Value,
+            _ => ""
+        };
+    }
+
+    string GetPhaseBadge(Shift shift, BurnSettingsInfo es)
+    {
+        var period = shift.GetShiftPeriod(es);
+        return period switch
+        {
+            ShiftPeriod.Build => "bg-info",
+            ShiftPeriod.Event => "bg-success",
+            _ => "bg-secondary"
+        };
+    }
+}
+
+<div class="container py-4">
+    @* === Tabs: Browse / My Shifts === *@
+    <div class="mb-3">
+        <ul class="nav nav-tabs shifts-nav-tabs border-0" role="tablist">
+            <li class="nav-item" role="presentation">
+                <a class="nav-link" asp-action="Index" role="tab" aria-selected="false">@Localizer["Shifts_BrowseTitle"]</a>
+            </li>
+            <li class="nav-item" role="presentation">
+                <a class="nav-link active" asp-action="Mine" role="tab" aria-selected="true" aria-current="page">@Localizer["Shifts_MyShiftsTitle"]</a>
+            </li>
+        </ul>
+    </div>
+
+
+    @await Component.InvokeAsync("DietaryMissingBanner", new { userId = Model.UserId })
+
+    @if (Model.EventSettings == null)
+    {
+        <div class="alert alert-info">@Localizer["Shifts_NoActiveEventConfigured"]</div>
+    }
+    else
+    {
+        var es = Model.EventSettings;
+
+        @* Prominent availability prompt — jumps to the calendar grid lower on the page so members find it before manually browsing shifts. *@
+        <div class="card border-primary mb-4">
+            <div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="fa-solid fa-calendar-check fs-4 text-primary"></i>
+                    <span>@Localizer["Shifts_AvailabilityPromptText"]</span>
+                </div>
+                <a href="#availability-calendar" class="btn btn-primary">@Localizer["Shifts_SetAvailabilityCta"]</a>
+            </div>
+        </div>
+
+        @if (Model.Upcoming.Count > 0)
+        {
+            <div class="card mb-4">
+                <button class="card-header shifts-collapse-toggle d-flex justify-content-between align-items-center w-100 text-start"
+                        type="button" data-bs-toggle="collapse" data-bs-target="#mine-upcoming" aria-expanded="true" aria-controls="mine-upcoming">
+                    <span class="h5 mb-0">@Localizer["Shifts_UpcomingShifts"]</span>
+                    <i class="fa-solid fa-chevron-down collapse-icon"></i>
+                </button>
+                <div id="mine-upcoming" class="collapse show">
+                <div class="card-body">
+                    @{
+                        // Group build/strike range signups by SignupBlockId, show individual signups separately
+                        var rangeBlocks = Model.Upcoming
+                            .Where(i => i.Signup.SignupBlockId != null)
+                            .GroupBy(i => i.Signup.SignupBlockId!.Value)
+                            .ToList();
+                        var individualItems = Model.Upcoming
+                            .Where(i => i.Signup.SignupBlockId == null)
+                            .ToList();
+                    }
+
+                    @if (rangeBlocks.Count > 0)
+                    {
+                        @foreach (var block in rangeBlocks)
+                        {
+                            var first = block.OrderBy(b => b.Signup.Shift.DayOffset).First();
+                            var last = block.OrderBy(b => b.Signup.Shift.DayOffset).Last();
+                            var shift = first.Signup.Shift;
+                            // Early-entry close locks bails on build shifts unless the viewer can
+                            // approve signups for the block's own department (per-team, set by the controller).
+                            var bailLocked = block.Any(b => b.BailLocked);
+                            <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+                                <div>
+                                    <span class="badge @GetPhaseBadge(shift, es) me-1">@GetPhase(shift, es)</span>
+                                    <strong>@shift.Rota.Name</strong> —
+                                    @es.GateOpeningDate.PlusDays(first.Signup.Shift.DayOffset).ToWeekdayDayMonth() to @es.GateOpeningDate.PlusDays(last.Signup.Shift.DayOffset).ToWeekdayDayMonth()
+                                    <small class="text-muted">(@block.Count() days)</small>
+                                    <span class="ms-1">@first.DepartmentName</span>
+                                </div>
+                                @if (bailLocked)
+                                {
+                                    <button type="button" class="btn btn-sm btn-outline-danger"
+                                            disabled
+                                            aria-disabled="true"
+                                            title="@Localizer["Shifts_BailDisabledTooltip_EarlyEntryClosed"]">
+                                        <i class="fa-solid fa-lock me-1" aria-hidden="true"></i>@Localizer["Shifts_Bail"]
+                                    </button>
+                                }
+                                else
+                                {
+                                    <form asp-action="BailRange" method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="signupBlockId" value="@block.Key" />
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">@Localizer["Shifts_Bail"]</button>
+                                    </form>
+                                }
+                            </div>
+                        }
+                    }
+
+                    @if (individualItems.Count > 0)
+                    {
+                        Func<MySignupItem, IHtmlContent> upcomingPhaseCell = @<text>
+                            <span class="badge @GetPhaseBadge(item.Signup.Shift, es)">@GetPhase(item.Signup.Shift, es)</span>
+                        </text>;
+                        Func<MySignupItem, IHtmlContent> upcomingActionCell = @<text>
+                            @if (item.BailLocked)
+                            {
+                                <button type="button" class="btn btn-sm btn-outline-danger"
+                                        disabled
+                                        aria-disabled="true"
+                                        title="@Localizer["Shifts_BailDisabledTooltip_EarlyEntryClosed"]">
+                                    <i class="fa-solid fa-lock me-1" aria-hidden="true"></i>@Localizer["Shifts_Bail"]
+                                </button>
+                            }
+                            else
+                            {
+                                <form asp-action="Bail" method="post" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="signupId" value="@item.Signup.Id" />
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">@Localizer["Shifts_Bail"]</button>
+                                </form>
+                            }
+                        </text>;
+                        var upcomingTable = TableModel.For(individualItems)
+                            .Column(Localizer["Shifts_Department"].Value, r => r.DepartmentName)
+                            .Column(Localizer["Shifts_Shift"].Value, r => r.Signup.Shift.Rota.Name)
+                            .Template(Localizer["Shifts_Phase"].Value, upcomingPhaseCell)
+                            .Column(Localizer["Shifts_Date"].Value, r => es.GateOpeningDate.PlusDays(r.Signup.Shift.DayOffset).ToWeekdayDayMonth())
+                            .Column(Localizer["Shifts_Time"].Value, r => r.AbsoluteStart.ToTime(tz!))
+                            .Column(Localizer["Shifts_Duration"].Value, r => r.Signup.Shift.Duration.TotalHours + "h")
+                            .Template("", upcomingActionCell, c => c.NoSort())
+                            .Build();
+                        <partial name="_Table" model="upcomingTable" />
+                    }
+                </div>
+                </div>
+            </div>
+        }
+
+        @if (Model.Pending.Count > 0)
+        {
+            <div class="card mb-4">
+                <button class="card-header shifts-collapse-toggle d-flex justify-content-between align-items-center w-100 text-start"
+                        type="button" data-bs-toggle="collapse" data-bs-target="#mine-pending" aria-expanded="true" aria-controls="mine-pending">
+                    <span class="h5 mb-0">@Localizer["Shifts_PendingApproval"]</span>
+                    <i class="fa-solid fa-chevron-down collapse-icon"></i>
+                </button>
+                <div id="mine-pending" class="collapse show">
+                <div class="card-body">
+                    @{
+                        Func<MySignupItem, IHtmlContent> pendingPhaseCell = @<text>
+                            <span class="badge @GetPhaseBadge(item.Signup.Shift, es)">@GetPhase(item.Signup.Shift, es)</span>
+                        </text>;
+                        Func<MySignupItem, IHtmlContent> pendingActionCell = @<text>
+                            @if (item.BailLocked)
+                            {
+                                <button type="button" class="btn btn-sm btn-outline-secondary"
+                                        disabled
+                                        aria-disabled="true"
+                                        title="@Localizer["Shifts_BailDisabledTooltip_EarlyEntryClosed"]">
+                                    <i class="fa-solid fa-lock me-1" aria-hidden="true"></i>@Localizer["Shifts_WithdrawButton"]
+                                </button>
+                            }
+                            else
+                            {
+                                <form asp-action="Bail" method="post" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="signupId" value="@item.Signup.Id" />
+                                    <button type="submit" class="btn btn-sm btn-outline-secondary">@Localizer["Shifts_WithdrawButton"]</button>
+                                </form>
+                            }
+                        </text>;
+                        var pendingTable = TableModel.For(Model.Pending)
+                            .Column(Localizer["Shifts_Department"].Value, r => r.DepartmentName)
+                            .Column(Localizer["Shifts_Shift"].Value, r => r.Signup.Shift.Rota.Name)
+                            .Template(Localizer["Shifts_Phase"].Value, pendingPhaseCell)
+                            .Column(Localizer["Shifts_Date"].Value, r => es.GateOpeningDate.PlusDays(r.Signup.Shift.DayOffset).ToWeekdayDayMonth())
+                            .Column(Localizer["Shifts_Time"].Value, r => r.AbsoluteStart.ToTime(tz!))
+                            .Column(Localizer["Shifts_Duration"].Value, r => r.Signup.Shift.Duration.TotalHours + "h")
+                            .Template("", pendingActionCell, c => c.NoSort())
+                            .Build();
+                    }
+                    <partial name="_Table" model="pendingTable" />
+                </div>
+                </div>
+            </div>
+        }
+
+        @if (Model.Past.Count > 0)
+        {
+            <div class="card mb-4">
+                <button class="card-header shifts-collapse-toggle collapsed d-flex justify-content-between align-items-center w-100 text-start"
+                        type="button" data-bs-toggle="collapse" data-bs-target="#mine-past" aria-expanded="false" aria-controls="mine-past">
+                    <span class="h5 mb-0">@Localizer["Shifts_Past"]</span>
+                    <i class="fa-solid fa-chevron-down collapse-icon"></i>
+                </button>
+                <div id="mine-past" class="collapse">
+                <div class="card-body">
+                    @{
+                        Func<MySignupItem, IHtmlContent> pastPhaseCell = @<text>
+                            <span class="badge @GetPhaseBadge(item.Signup.Shift, es)">@GetPhase(item.Signup.Shift, es)</span>
+                        </text>;
+                        Func<MySignupItem, IHtmlContent> pastStatusCell = @<text>
+                            <span class="badge bg-secondary">@item.Signup.Status</span>
+                        </text>;
+                        var pastTable = TableModel.For(Model.Past)
+                            .Column(Localizer["Shifts_Department"].Value, r => r.DepartmentName)
+                            .Column(Localizer["Shifts_Shift"].Value, r => r.Signup.Shift.Rota.Name)
+                            .Template(Localizer["Shifts_Phase"].Value, pastPhaseCell)
+                            .Column(Localizer["Shifts_Date"].Value, r => es.GateOpeningDate.PlusDays(r.Signup.Shift.DayOffset).ToWeekdayDayMonth())
+                            .Column(Localizer["Shifts_Time"].Value, r => r.AbsoluteStart.ToTime(tz!))
+                            .Column(Localizer["Shifts_Duration"].Value, r => r.Signup.Shift.Duration.TotalHours + "h")
+                            .Template(SharedLocalizer["Common_Status"].Value, pastStatusCell)
+                            .Build();
+                    }
+                    <partial name="_Table" model="pastTable" />
+                </div>
+                </div>
+            </div>
+        }
+
+        @if (Model.Upcoming.Count == 0 && Model.Pending.Count == 0 && Model.Past.Count == 0)
+        {
+            <div class="alert alert-info">@Localizer["Shifts_NoSignups"] <a asp-action="Index">@Localizer["Shifts_BrowseAvailable"]</a>.</div>
+        }
+
+        @* General Availability — Calendar Grid *@
+        var culture = System.Globalization.CultureInfo.CurrentUICulture;
+        var shortDays = culture.DateTimeFormat.AbbreviatedDayNames;
+        var monFirstDays = new[] { shortDays[1], shortDays[2], shortDays[3], shortDays[4], shortDays[5], shortDays[6], shortDays[0] };
+        int AvailLeadOffset(LocalDate d) => ((int)d.DayOfWeek + 6) % 7;
+
+        var phases = new List<(string Label, string BadgeClass, int StartOffset, int EndOffset)>
+        {
+            (SharedLocalizer["Shifts_SetUp"].Value, "bg-info", es.BuildStartOffset, -1),
+            (SharedLocalizer["Shifts_Event"].Value, "bg-success", 0, es.EventEndOffset),
+            (SharedLocalizer["Shifts_Strike"].Value, "bg-secondary", es.EventEndOffset + 1, es.StrikeEndOffset)
+        };
+        <div class="card mb-4" id="availability-calendar">
+            <div class="card-header"><h5 class="mb-0">@Localizer["Shifts_GeneralAvailability"]</h5></div>
+            <div class="card-body">
+                <p class="text-muted small">@Localizer["Shifts_AvailabilityHelp"]</p>
+                <form asp-action="SaveAvailability" method="post" id="availabilityForm">
+                    @Html.AntiForgeryToken()
+                    @foreach (var phase in phases)
+                    {
+                        if (phase.StartOffset > es.StrikeEndOffset || phase.EndOffset < es.BuildStartOffset) { continue; }
+                        var phaseStart = es.GateOpeningDate.PlusDays(phase.StartOffset);
+                        var phaseEnd = es.GateOpeningDate.PlusDays(phase.EndOffset);
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="badge @phase.BadgeClass">@phase.Label</span>
+                                <small class="text-muted">@phaseStart.ToWeekdayDayMonth() – @phaseEnd.ToWeekdayDayMonth()</small>
+                            </div>
+                            <div class="avail-cal-grid">
+                                @foreach (var dayName in monFirstDays)
+                                {
+                                    <div class="avail-cal-head">@dayName</div>
+                                }
+                                @for (var i = 0; i < AvailLeadOffset(phaseStart); i++)
+                                {
+                                    <div class="avail-cal-day avail-cal-empty"></div>
+                                }
+                                @for (var d = phase.StartOffset; d <= phase.EndOffset; d++)
+                                {
+                                    var date = es.GateOpeningDate.PlusDays(d);
+                                    var isChecked = Model.AvailableDayOffsets.Contains(d);
+                                    var isWeekend = date.DayOfWeek == IsoDayOfWeek.Saturday || date.DayOfWeek == IsoDayOfWeek.Sunday;
+                                    var showMonth = d == phase.StartOffset || date.Day == 1;
+                                    <div class="avail-cal-day @(isWeekend ? "avail-cal-weekend" : "") @(isChecked ? "avail-cal-selected" : "")"
+                                         data-offset="@d" role="button" tabindex="0">
+                                        <input type="checkbox" name="dayOffsets" value="@d" class="d-none"
+                                               checked="@(isChecked ? "checked" : null)" />
+                                        <span class="avail-day-num">@date.Day</span>
+                                        @if (showMonth)
+                                        {
+                                            <span class="avail-day-month">@culture.DateTimeFormat.GetAbbreviatedMonthName(date.Month)</span>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                    <div class="d-flex align-items-center gap-3 mt-2">
+                        <button type="submit" class="btn btn-sm btn-primary">@Localizer["Shifts_SaveAvailability"]</button>
+                        <small class="text-muted" id="availCount"></small>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        @if (Model.ICalUrl != null)
+        {
+            <div class="card mb-4">
+                <div class="card-header"><h5 class="mb-0">iCal Feed</h5></div>
+                <div class="card-body">
+                    <p class="text-muted">Subscribe to your shifts and saved events in your calendar app:</p>
+                    <div class="input-group mb-2">
+                        <input type="text" class="form-control" id="icalUrl" value="@Model.ICalUrl" readonly />
+                        <button class="btn btn-outline-secondary" type="button" id="copyIcalBtn">Copy</button>
+                    </div>
+                    <form asp-action="RegenerateIcal" method="post" class="d-inline">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-sm btn-outline-warning"
+                                data-confirm="This will invalidate the current URL. Continue?">Regenerate URL</button>
+                    </form>
+                </div>
+            </div>
+        }
+    }
+</div>
+
+<style>
+    .shifts-collapse-toggle {
+        background: var(--bs-card-cap-bg);
+        border: 0;
+        cursor: pointer;
+    }
+
+    .shifts-collapse-toggle .collapse-icon {
+        transition: transform 0.2s;
+        font-size: 0.85rem;
+    }
+
+    .shifts-collapse-toggle[aria-expanded="false"] .collapse-icon {
+        transform: rotate(-90deg);
+    }
+</style>
+
+<script>
+(function() {
+    var copyBtn = document.getElementById('copyIcalBtn');
+    if (copyBtn) {
+        copyBtn.addEventListener('click', function() {
+            navigator.clipboard.writeText(document.getElementById('icalUrl').value);
+        });
+    }
+
+    // Availability calendar grid — click to toggle
+    var form = document.getElementById('availabilityForm');
+    if (form) {
+        var days = form.querySelectorAll('.avail-cal-day:not(.avail-cal-empty)');
+        var countEl = document.getElementById('availCount');
+        var totalDays = days.length;
+
+        function updateCount() {
+            var selected = form.querySelectorAll('.avail-cal-selected').length;
+            if (countEl) {
+                countEl.textContent = selected + ' / ' + totalDays + ' @Localizer["Shifts_DaysSelected"].Value';
+            }
+        }
+
+        days.forEach(function(day) {
+            day.addEventListener('click', function() {
+                var cb = day.querySelector('input[type="checkbox"]');
+                if (!cb) return;
+                cb.checked = !cb.checked;
+                day.classList.toggle('avail-cal-selected', cb.checked);
+                updateCount();
+            });
+            day.addEventListener('keydown', function(e) {
+                if (e.key === ' ' || e.key === 'Enter') {
+                    e.preventDefault();
+                    day.click();
+                }
+            });
+        });
+
+        updateCount();
+    }
+})();
+</script>

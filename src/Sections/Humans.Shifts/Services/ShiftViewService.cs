@@ -1,0 +1,145 @@
+using Humans.Shifts.Services.Dtos;
+using Humans.Application.Interfaces.Repositories;
+using Humans.Shifts.Services;
+using Humans.Domain.Entities;
+using Humans.Shifts.Domain;
+using Humans.Shifts.Data;
+
+namespace Humans.Shifts.Services;
+
+/// <summary>Inner <see cref="IShiftRowView"/> — direct repo reads, no caching. CachingShiftViewService wraps it (#720).</summary>
+internal sealed class ShiftViewService : IShiftRowView
+{
+    private readonly IShiftManagementRepository _management;
+    private readonly IVolunteerTrackingRepository _tracking;
+
+    public ShiftViewService(
+        IShiftManagementRepository management,
+        IVolunteerTrackingRepository tracking)
+    {
+        _management = management;
+        _tracking = tracking;
+    }
+
+    public async ValueTask<ShiftUserView> GetUserAsync(Guid userId, CancellationToken ct = default)
+    {
+        var activeEvent = await _management.GetActiveEventSettingsAsync(ct).ConfigureAwait(false);
+
+        var profile = await _management.GetVolunteerEventProfileAsync(userId, ct).ConfigureAwait(false);
+        var tagPrefs = await _management.GetVolunteerTagPreferencesForUsersAsync([userId], ct).ConfigureAwait(false);
+
+        GeneralAvailability? availability = null;
+        VolunteerBuildStatus? buildStatus = null;
+        IReadOnlyList<ShiftSignup> signups = [];
+        if (activeEvent is not null)
+        {
+            var availabilityRows = await _tracking
+                .GetAvailabilityForUserAsync(userId, activeEvent.Id, ct).ConfigureAwait(false);
+            availability = availabilityRows.Count > 0 ? availabilityRows[0] : null;
+
+            var buildStatusRows = await _tracking
+                .GetBuildStatusesForEventAsync(activeEvent.Id, [userId], ct).ConfigureAwait(false);
+            buildStatus = buildStatusRows.Count > 0 ? buildStatusRows[0] : null;
+
+            signups = await _management
+                .GetForUsersAsync([userId], activeEvent.Id, ct).ConfigureAwait(false);
+        }
+
+        return new ShiftUserView(
+            userId,
+            profile,
+            availability,
+            buildStatus,
+            tagPrefs,
+            signups);
+    }
+
+    /// <summary>
+    /// True bulk: one query per contributing table filtered by the supplied
+    /// user ids (plus active event scope where relevant). Materializes a
+    /// <see cref="ShiftUserView"/> for every requested id — users with no
+    /// shift-section rows get a view whose fields are null/empty rather than
+    /// being absent from the result. Collapses the per-user 6× fan-out that
+    /// dominated /Admin first-hit before issue #720.
+    /// </summary>
+    public async ValueTask<IReadOnlyDictionary<Guid, ShiftUserView>> GetUsersAsync(
+        IEnumerable<Guid> userIds, CancellationToken ct = default)
+    {
+        var ids = (userIds as IReadOnlyCollection<Guid>) ?? userIds.Distinct().ToList();
+        if (ids.Count == 0)
+            return new Dictionary<Guid, ShiftUserView>();
+
+        var activeEvent = await _management.GetActiveEventSettingsAsync(ct).ConfigureAwait(false);
+
+        var profiles = await _management.GetVolunteerEventProfilesByUserIdsAsync(ids, ct).ConfigureAwait(false);
+        var profileByUser = profiles.ToDictionary(p => p.UserId);
+
+        var tagPrefs = await _management.GetVolunteerTagPreferencesForUsersAsync(ids, ct).ConfigureAwait(false);
+        var tagPrefsByUser = tagPrefs
+            .GroupBy(t => t.UserId)
+            .ToDictionary(g => g.Key, g => (IReadOnlyList<VolunteerTagPreference>)g.ToList());
+
+        Dictionary<Guid, GeneralAvailability> availabilityByUser = [];
+        Dictionary<Guid, VolunteerBuildStatus> buildStatusByUser = [];
+        Dictionary<Guid, IReadOnlyList<ShiftSignup>> signupsByUser = [];
+
+        if (activeEvent is not null)
+        {
+            var avail = await _tracking
+                .GetAvailabilityForEventAsync(activeEvent.Id, ids, ct).ConfigureAwait(false);
+            availabilityByUser = avail.ToDictionary(a => a.UserId);
+
+            var builds = await _tracking
+                .GetBuildStatusesForEventAsync(activeEvent.Id, ids, ct).ConfigureAwait(false);
+            buildStatusByUser = builds.ToDictionary(b => b.UserId);
+
+            var batchSignups = await _management
+                .GetForUsersAsync(ids, activeEvent.Id, ct).ConfigureAwait(false);
+            signupsByUser = batchSignups
+                .GroupBy(s => s.UserId)
+                .ToDictionary(
+                    g => g.Key,
+                    g => (IReadOnlyList<ShiftSignup>)g.ToList());
+        }
+
+        var result = new Dictionary<Guid, ShiftUserView>(ids.Count);
+        foreach (var id in ids)
+        {
+            if (result.ContainsKey(id)) continue;
+            result[id] = new ShiftUserView(
+                id,
+                Profile: profileByUser.GetValueOrDefault(id),
+                Availability: availabilityByUser.GetValueOrDefault(id),
+                BuildStatus: buildStatusByUser.GetValueOrDefault(id),
+                TagPreferences: tagPrefsByUser.GetValueOrDefault(id) ?? [],
+                Signups: signupsByUser.GetValueOrDefault(id) ?? []);
+        }
+        return result;
+    }
+
+    public async ValueTask<ShiftRotaView> GetRotaAsync(Guid rotaId, CancellationToken ct = default)
+    {
+        var rota = await _management.GetRotaAsync(rotaId, RotaReadShape.View, ct).ConfigureAwait(false);
+        if (rota is null)
+            return ShiftRotaView.Empty(rotaId);
+
+        var shifts = rota.Shifts.ToList();
+        var tags = rota.Tags.ToList();
+        var signups = shifts.SelectMany(s => s.ShiftSignups).ToList();
+
+        return new ShiftRotaView(rotaId, rota, shifts, tags, signups);
+    }
+
+    public async ValueTask<IReadOnlyDictionary<Guid, ShiftRotaView>> GetRotasAsync(
+        IEnumerable<Guid> rotaIds, CancellationToken ct = default)
+    {
+        var ids = rotaIds as IList<Guid> ?? rotaIds.Distinct().ToList();
+        var result = new Dictionary<Guid, ShiftRotaView>(ids.Count);
+        foreach (var id in ids)
+        {
+            if (!result.ContainsKey(id))
+                result[id] = await GetRotaAsync(id, ct).ConfigureAwait(false);
+        }
+        return result;
+    }
+}

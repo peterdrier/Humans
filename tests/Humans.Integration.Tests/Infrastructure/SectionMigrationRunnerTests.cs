@@ -1,3 +1,4 @@
+using Humans.Shifts.Data;
 using Humans.Camps.Data;
 using Humans.Camps.Domain;
 using Humans.Camps.Contracts;

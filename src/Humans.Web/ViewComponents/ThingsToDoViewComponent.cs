@@ -4,7 +4,7 @@ using Microsoft.Extensions.Localization;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Models;
-using Humans.Application.Interfaces.Shifts;
+using Humans.Shifts.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.UI;
@@ -13,7 +13,8 @@ namespace Humans.Web.ViewComponents;
 
 public class ThingsToDoViewComponent(
     IUserServiceRead userService,
-    IShiftManagementService shiftMgmt,
+    IShiftManagementServiceRead shiftMgmt,
+    IShiftVolunteerProfiles shiftProfiles,
     IMembershipCalculatorRead membershipCalculator,
     IStringLocalizer<SharedResource> localizer,
     ILogger<ThingsToDoViewComponent> logger) : ViewComponent
@@ -99,8 +100,8 @@ public class ThingsToDoViewComponent(
                 var needsShiftInfo = false;
                 try
                 {
-                    var shiftProfile = await shiftMgmt.GetShiftProfileAsync(userId);
-                    needsShiftInfo = shiftProfile is null || IsShiftProfileEmpty(shiftProfile);
+                    var shiftProfile = await shiftProfiles.GetShiftProfileAsync(userId);
+                    needsShiftInfo = shiftProfile is null || shiftProfile.IsEmpty;
                 }
                 catch (Exception ex)
                 {
@@ -115,7 +116,7 @@ public class ThingsToDoViewComponent(
                         ? localizer["Todo_ShiftInfo_Pending"].Value
                         : localizer["Todo_ShiftInfo_Done"].Value,
                     IsDone = !needsShiftInfo,
-                    ActionUrl = needsShiftInfo ? Url.Action("ShiftInfo", "Profile") : null,
+                    ActionUrl = needsShiftInfo ? Url.Action("ShiftInfo", "ShiftProfile") : null,
                     ActionText = needsShiftInfo ? localizer["Todo_ShiftInfo_Action"].Value : null,
                     IconClass = "fa-solid fa-calendar-check"
                 });
@@ -168,10 +169,4 @@ public class ThingsToDoViewComponent(
         return View(model);
     }
 
-    private static bool IsShiftProfileEmpty(VolunteerEventProfile profile)
-    {
-        return profile.Skills.Count == 0
-            && profile.Quirks.Count == 0
-            && profile.Languages.Count == 0;
-    }
 }

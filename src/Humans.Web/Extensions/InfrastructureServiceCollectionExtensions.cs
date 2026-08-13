@@ -46,7 +46,6 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddProfileSection(configuration);
         services.AddUsersSection();
         services.AddAuthSection();
-        services.AddShiftsSection();
         services.AddEarlyEntrySection();
         // AuditLog's read+render owner. It resolves actor/subject/team display names
         // through IUserServiceRead, ITeamServiceRead and ITeamResourceService, which makes

@@ -149,20 +149,14 @@ public class AgentToolDispatcherTests
         var viewer = Guid.NewGuid();
         var blockId = Guid.NewGuid();
         var ev = MakeEventSettings();
-        var rota = new Humans.Domain.Entities.Rota
-        {
-            Id = Guid.NewGuid(),
-            Name = "Cantina build",
-            PracticalInfo = "Meet at gate",
-            Description = "Daily setup support"
-        };
+        var rota = new RotaStub("Cantina build", "Meet at gate", "Daily setup support");
         var signups = Enumerable.Range(0, 7)
-            .Select(i => MakeSignup(viewer, blockId, MakeShift(rota, dayOffset: -10 + i, isAllDay: true), Humans.Domain.Enums.SignupStatus.Confirmed))
+            .Select(i => MakeSignup(blockId, MakeShift(rota, dayOffset: -10 + i, isAllDay: true), Humans.Domain.Enums.SignupStatus.Confirmed))
             .ToList();
 
         var shiftView = MakeViewFor(viewer, signups);
 
-        var burnSettings = Substitute.For<Humans.Application.Interfaces.Shifts.IBurnSettingsService>();
+        var burnSettings = Substitute.For<Humans.Shifts.Contracts.IBurnSettingsService>();
         burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(ev);
 
         var dispatcher = MakeDispatcher(shiftView: shiftView, burnSettings: burnSettings);
@@ -186,14 +180,14 @@ public class AgentToolDispatcherTests
     {
         var viewer = Guid.NewGuid();
         var ev = MakeEventSettings();
-        var rota = new Humans.Domain.Entities.Rota { Id = Guid.NewGuid(), Name = "Setup crew" };
-        var signup = MakeSignup(viewer, signupBlockId: null,
+        var rota = new RotaStub("Setup crew");
+        var signup = MakeSignup(signupBlockId: null,
             MakeShift(rota, dayOffset: 0, isAllDay: false, startTime: new NodaTime.LocalTime(9, 0), durationHours: 4),
             Humans.Domain.Enums.SignupStatus.Pending);
 
         var shiftView = MakeViewFor(viewer, [signup]);
 
-        var burnSettings = Substitute.For<Humans.Application.Interfaces.Shifts.IBurnSettingsService>();
+        var burnSettings = Substitute.For<Humans.Shifts.Contracts.IBurnSettingsService>();
         burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(ev);
 
         var dispatcher = MakeDispatcher(shiftView: shiftView, burnSettings: burnSettings);
@@ -218,7 +212,7 @@ public class AgentToolDispatcherTests
 
         var shiftView = MakeViewFor(viewer, []);
 
-        var burnSettings = Substitute.For<Humans.Application.Interfaces.Shifts.IBurnSettingsService>();
+        var burnSettings = Substitute.For<Humans.Shifts.Contracts.IBurnSettingsService>();
         burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(ev);
 
         var dispatcher = MakeDispatcher(shiftView: shiftView, burnSettings: burnSettings);
@@ -246,7 +240,7 @@ public class AgentToolDispatcherTests
         // Viewer has zero signups in their cached view.
         var shiftView = MakeViewFor(viewer, []);
 
-        var burnSettings = Substitute.For<Humans.Application.Interfaces.Shifts.IBurnSettingsService>();
+        var burnSettings = Substitute.For<Humans.Shifts.Contracts.IBurnSettingsService>();
         burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(ev);
 
         var dispatcher = MakeDispatcher(shiftView: shiftView, burnSettings: burnSettings);
@@ -273,7 +267,7 @@ public class AgentToolDispatcherTests
         result.Content.Should().Contain("must be a valid GUID");
     }
 
-    private static Humans.Application.Interfaces.Shifts.BurnSettingsInfo MakeEventSettings() => new(
+    private static Humans.Shifts.Contracts.BurnSettingsInfo MakeEventSettings() => new(
         Id: Guid.NewGuid(),
         EventName: "Test",
         Year: 2026,
@@ -291,33 +285,41 @@ public class AgentToolDispatcherTests
         EarlyEntryClose: null,
         IsShiftBrowsingOpen: false);
 
-    private static Humans.Domain.Entities.Shift MakeShift(
-        Humans.Domain.Entities.Rota rota, int dayOffset, bool isAllDay,
-        NodaTime.LocalTime? startTime = null, double durationHours = 0) => new()
-        {
-            Id = Guid.NewGuid(),
-            RotaId = rota.Id,
-            Rota = rota,
-            DayOffset = dayOffset,
-            IsAllDay = isAllDay,
-            StartTime = startTime ?? new NodaTime.LocalTime(8, 0),
-            Duration = NodaTime.Duration.FromHours(durationHours),
-            MinVolunteers = 1,
-            MaxVolunteers = 5
-        };
+    /// <summary>The rota fields get_shift_details renders, without the entity.</summary>
+    private sealed record RotaStub(string Name, string? PracticalInfo = null, string? Description = null);
 
-    private static Humans.Domain.Entities.ShiftSignup MakeSignup(
-        Guid userId, Guid? signupBlockId,
-        Humans.Domain.Entities.Shift shift,
-        Humans.Domain.Enums.SignupStatus status) => new()
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            ShiftId = shift.Id,
-            Shift = shift,
-            SignupBlockId = signupBlockId,
-            Status = status
-        };
+    /// <summary>
+    /// One signup on the section's boundary shape, with the fields
+    /// <c>RenderShiftDetails</c> reads resolved against
+    /// <see cref="MakeEventSettings"/> exactly as the section's projection does.
+    /// </summary>
+    private static Humans.Shifts.Contracts.ShiftSignupSummary MakeShift(
+        RotaStub rota, int dayOffset, bool isAllDay,
+        NodaTime.LocalTime? startTime = null, double durationHours = 0)
+    {
+        var ev = MakeEventSettings();
+        var date = ev.GateOpeningDate.PlusDays(dayOffset);
+        var tz = NodaTime.DateTimeZoneProviders.Tzdb[ev.TimeZoneId];
+        var start = isAllDay ? new NodaTime.LocalTime(8, 0) : startTime ?? new NodaTime.LocalTime(8, 0);
+        var end = isAllDay ? new NodaTime.LocalTime(18, 0) : start.PlusHours((int)durationHours);
+        return ShiftFixtures.Signup(
+            rotaName: rota.Name,
+            rotaPracticalInfo: rota.PracticalInfo,
+            rotaDescription: rota.Description,
+            eventSettingsId: ev.Id,
+            date: date,
+            isAllDay: isAllDay,
+            windowStart: start,
+            durationHours: isAllDay ? 10 : durationHours,
+            absoluteStart: date.At(start).InZoneLeniently(tz).ToInstant(),
+            absoluteEnd: date.At(end).InZoneLeniently(tz).ToInstant());
+    }
+
+    private static Humans.Shifts.Contracts.ShiftSignupSummary MakeSignup(
+        Guid? signupBlockId,
+        Humans.Shifts.Contracts.ShiftSignupSummary shift,
+        Humans.Domain.Enums.SignupStatus status) =>
+        shift with { Id = Guid.NewGuid(), SignupBlockId = signupBlockId, Status = status };
 
     [HumansFact]
     public async Task RouteToIssue_returns_proposal_marker_without_creating_anything()
@@ -468,8 +470,8 @@ public class AgentToolDispatcherTests
 
     private static AgentToolDispatcher MakeDispatcher(
         Humans.Application.Interfaces.AuditLog.IAuditViewerService? auditViewer = null,
-        Humans.Application.Interfaces.Shifts.IShiftView? shiftView = null,
-        Humans.Application.Interfaces.Shifts.IBurnSettingsService? burnSettings = null,
+        Humans.Shifts.Contracts.IShiftView? shiftView = null,
+        Humans.Shifts.Contracts.IBurnSettingsService? burnSettings = null,
         Humans.Application.Interfaces.IGuideContentSource? source = null)
     {
         var cache = new Microsoft.Extensions.Caching.Memory.MemoryCache(
@@ -493,8 +495,8 @@ public class AgentToolDispatcherTests
             features,
             community,
             auditViewer ?? new StubAuditViewer(),
-            shiftView ?? Substitute.For<Humans.Application.Interfaces.Shifts.IShiftView>(),
-            burnSettings ?? Substitute.For<Humans.Application.Interfaces.Shifts.IBurnSettingsService>(),
+            shiftView ?? Substitute.For<Humans.Shifts.Contracts.IShiftView>(),
+            burnSettings ?? Substitute.For<Humans.Shifts.Contracts.IBurnSettingsService>(),
             logger);
     }
 
@@ -525,19 +527,13 @@ public class AgentToolDispatcherTests
                         : []);
     }
 
-    private static Humans.Application.Interfaces.Shifts.IShiftView MakeViewFor(
-        Guid userId, IReadOnlyList<Humans.Domain.Entities.ShiftSignup> signups)
+    private static Humans.Shifts.Contracts.IShiftView MakeViewFor(
+        Guid userId, IReadOnlyList<Humans.Shifts.Contracts.ShiftSignupSummary> signups)
     {
-        var view = Substitute.For<Humans.Application.Interfaces.Shifts.IShiftView>();
-        var record = new Humans.Application.DTOs.Shifts.ShiftUserView(
-            UserId: userId,
-            Profile: null,
-            Availability: null,
-            BuildStatus: null,
-            TagPreferences: [],
-            Signups: signups);
+        var view = Substitute.For<Humans.Shifts.Contracts.IShiftView>();
+        var record = ShiftFixtures.UserSummary(userId, signups);
         view.GetUserAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<Humans.Application.DTOs.Shifts.ShiftUserView>(record));
+            .Returns(new ValueTask<Humans.Shifts.Contracts.ShiftUserSummary>(record));
         return view;
     }
 

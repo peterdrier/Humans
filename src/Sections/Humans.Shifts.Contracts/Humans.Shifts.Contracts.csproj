@@ -1,0 +1,51 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Shifts' cross-section surface, carved into its own leaf project because most of its
+    consumers are still in Base: DashboardService and AdminDashboardService build the
+    home and admin dashboards off IShiftView and IShiftManagementServiceRead,
+    AccountDeletionService cancels signups and drops volunteer profiles,
+    UserParticipationBackfillService and SuspendNonCompliantMembersJob read the active
+    burn, and ShiftVolunteerSearchBuilder / the Shell authorization handlers read the
+    coordinator surface. A Contracts/ *folder* inside Humans.Shifts would therefore make
+    Base reference a section and cycle (design §15.5b,
+    memory/architecture/section-project-cycle-fix.md).
+
+    The split is carved from the call sites, not from the interfaces (Notifications'
+    rule). A member is on this leaf if something outside the section calls it, and
+    nowhere else. From IShiftManagementService that is the cross-section reads
+    (IShiftManagementServiceRead), the volunteer-profile surface Shell's profile page
+    and widget gallery read (IShiftVolunteerProfiles), and the dev-fixture verbs
+    Humans.Development's seeder needs (IShiftSeeding); the rota/shift generation,
+    coordinator-dashboard and post-event-stats surface has no outside caller and stays
+    on the internal IShiftManagementService, which inherits the three leaf interfaces so
+    the section's own call sites are unchanged. Same shape for IShiftSignupService: the
+    signup state machine Shell and onboarding drive leaves as IShiftSignups, the seeder's
+    verbs as IShiftSignupSeeding (Teams' rule — the seeder builds a multi-section
+    fixture, so the verbs come to the leaf rather than the seeding going into the
+    section), and the review surface stays internal.
+
+    References Humans.Interfaces (IApplicationService, IInvalidator, SurfaceBudget,
+    Grandfathered) and Humans.Domain — both below Humans.Application, so this cannot
+    cycle. Humans.Domain is here for one reason: the section's persisted-string enums
+    (SignupStatus, ShiftPeriod, ShiftPriority, RotaPeriod, BuildSubPeriod) are named by
+    Base and by other sections and carry EnumStringStabilityTests rows, so they stay in
+    Humans.Domain.Enums (Teams' rule).
+
+    No entity crosses this boundary. Shift / ShiftSignup / Rota / EventSettings /
+    VolunteerEventProfile are internal sealed types in Humans.Shifts.Domain, and every
+    leaf member that used to return one returns a flat projection instead
+    (ShiftUserSummary, UrgentShiftInfo / ShiftInfo / RotaInfo, ShiftVolunteerProfileInfo,
+    BurnSettingsInfo, and Guid ids on the seeding verbs).
+  -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
+    <ProjectReference Include="..\..\Humans.Domain\Humans.Domain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NodaTime" />
+  </ItemGroup>
+
+</Project>

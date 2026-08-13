@@ -5,7 +5,7 @@ using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.EarlyEntry;
 using Humans.Gdpr.Contracts;
-using Humans.Application.Interfaces.Shifts;
+using Humans.Shifts.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Constants;
@@ -33,7 +33,7 @@ internal sealed class GateService(
     ITicketServiceRead tickets,
     IEarlyEntryService earlyEntry,
     IBurnSettingsService burnSettings,
-    IShiftManagementService shifts,
+    IShiftManagementServiceRead shifts,
     IRoleAssignmentService roles,
     IUserService users,
     IPasswordHasher<GateStaffPin> pinHasher,
@@ -156,7 +156,7 @@ internal sealed class GateService(
         // same fact). Log and move on; the next sync converges the row.
         try
         {
-            var activeEvent = await shifts.GetActiveAsync();
+            var activeEvent = await burnSettings.GetActiveAsync();
             if (activeEvent is null || activeEvent.Year == 0)
                 return;
 
@@ -245,7 +245,7 @@ internal sealed class GateService(
     public async Task<IReadOnlyList<GateRosterEntry>> GetShiftRosterAsync(
         Guid rosterTeamId, CancellationToken ct = default)
     {
-        var activeEvent = await shifts.GetActiveAsync();
+        var activeEvent = await burnSettings.GetActiveAsync(ct);
         if (activeEvent is null)
             return [];
 
@@ -271,7 +271,7 @@ internal sealed class GateService(
             .ToList();
     }
 
-    private static bool StartsWithinWindow(LocalDate openingDate, Shift shift, DateTimeZone zone, Instant now)
+    private static bool StartsWithinWindow(LocalDate openingDate, ShiftInfo shift, DateTimeZone zone, Instant now)
     {
         var start = openingDate.PlusDays(shift.DayOffset).At(shift.StartTime)
             .InZoneLeniently(zone).ToInstant();

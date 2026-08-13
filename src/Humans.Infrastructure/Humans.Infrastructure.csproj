@@ -10,6 +10,7 @@
       its own G5 — Humans.GoogleIntegration.csproj now carries the mirror of this entry.
     -->
     <InternalsVisibleTo Include="Humans.Teams.Tests" />
+    <InternalsVisibleTo Include="Humans.Shifts.Tests" />
     <!--
       Camps' service tests build the real CampService over an in-memory UsersDbContext to seed
       camp owners. Temporary: the entry comes out at Users' own G5 (Teams finding 36's mirror).

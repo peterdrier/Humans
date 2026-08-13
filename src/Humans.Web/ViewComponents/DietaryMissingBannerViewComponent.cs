@@ -1,4 +1,4 @@
-using Humans.Application.Interfaces.Shifts;
+using Humans.Shifts.Contracts;
 using Humans.Application.Interfaces.Users;
 using Microsoft.AspNetCore.Mvc;
 
@@ -12,12 +12,12 @@ namespace Humans.Web.ViewComponents;
 /// </summary>
 public sealed class DietaryMissingBannerViewComponent : ViewComponent
 {
-    private readonly IShiftManagementService _shiftMgmt;
+    private readonly IShiftManagementServiceRead _shiftMgmt;
     private readonly IUserServiceRead _userRead;
     private readonly ILogger<DietaryMissingBannerViewComponent> _logger;
 
     public DietaryMissingBannerViewComponent(
-        IShiftManagementService shiftMgmt,
+        IShiftManagementServiceRead shiftMgmt,
         IUserServiceRead userRead,
         ILogger<DietaryMissingBannerViewComponent> logger)
     {

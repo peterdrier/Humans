@@ -59,6 +59,15 @@
       or ITeamService, and AccountDeletionService / DuplicateAccountService write through it.
     -->
     <ProjectReference Include="..\Sections\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
+    <!--
+      Shifts' leaf. DashboardService and AdminDashboardService build the home and
+      admin dashboards off IShiftView + IShiftManagementServiceRead,
+      AccountDeletionService cancels signups and drops volunteer profiles, and
+      UserParticipationBackfillService reads the active burn through
+      IBurnSettingsService. The section's implementations are still in
+      Humans.Application/Services/Shifts and move at the section's own G5 lane.
+    -->
+    <ProjectReference Include="..\Sections\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
     <ProjectReference Include="..\Sections\Humans.GoogleIntegration.Contracts\Humans.GoogleIntegration.Contracts.csproj" />
   </ItemGroup>
 

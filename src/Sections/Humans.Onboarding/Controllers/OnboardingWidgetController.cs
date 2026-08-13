@@ -5,7 +5,7 @@ using Humans.Application.DTOs;
 using Humans.Consent;
 using Humans.Consent.Contracts;
 using Humans.Application.Interfaces.Profiles;
-using Humans.Application.Interfaces.Shifts;
+using Humans.Shifts.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.UI;
 using Humans.Onboarding.Contracts;
@@ -28,8 +28,8 @@ internal sealed class OnboardingWidgetController(
     IUserServiceRead userService,
     IOnboardingWidgetState state,
     IProfileEditorService profileEditorService,
-    IShiftSignupService signupService,
-    IShiftManagementService shiftMgmt,
+    IShiftSignups signupService,
+    IShiftManagementServiceRead shiftMgmt,
     IBurnSettingsService burnSettings,
     IShiftView shiftView,
     IConsentSubmission consents,

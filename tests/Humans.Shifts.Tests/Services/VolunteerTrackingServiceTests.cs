@@ -1,0 +1,933 @@
+using Humans.Application;
+using Humans.Shifts.Data;
+using Humans.Shifts.Domain;
+using AwesomeAssertions;
+using Humans.Application.DTOs;
+using Humans.Application.Interfaces.Repositories;
+using Humans.Shifts.Contracts;
+using Humans.Application.Interfaces.Users;
+using Humans.Shifts.Services;
+using Humans.Domain.Entities;
+using Humans.Domain.Enums;
+using NodaTime;
+using NodaTime.Testing;
+using NSubstitute;
+
+namespace Humans.Shifts.Tests.Services;
+
+public class VolunteerTrackingServiceTests
+{
+    // Fixed test "now": 2026-06-15 10:00 UTC. GateOpeningDate defaults to
+    // 2026-06-16 (Madrid), so by default todayOffset = -1.
+    private static readonly Instant TestNow = Instant.FromUtc(2026, 6, 15, 10, 0);
+    private static readonly LocalDate DefaultGateOpening = new(2026, 6, 16);
+
+    [HumansFact]
+    public async Task GetTrackingDataAsync_returns_empty_when_no_active_event()
+    {
+        var sut = BuildSut(activeEvent: null);
+
+        var result = await sut.GetTrackingDataAsync(Xunit.TestContext.Current.CancellationToken);
+
+        result.HasActiveEvent.Should().BeFalse();
+        result.MainCohort.Should().BeEmpty();
+        result.UnbookedCohort.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task MainCohort_single_volunteer_fully_covered_has_zero_gaps()
+    {
+        var es = MakeEvent(buildStartOffset: -5);
+        var userId = Guid.NewGuid();
+        var signups = new List<EligibleBuildSignup>
+        {
+            new(userId, -5, SignupStatus.Confirmed, "Cleanup"),
+            new(userId, -4, SignupStatus.Confirmed, "Cleanup"),
+            new(userId, -3, SignupStatus.Confirmed, "Cleanup"),
+            new(userId, -2, SignupStatus.Confirmed, "Cleanup"),
+            new(userId, -1, SignupStatus.Confirmed, "Cleanup"),
+        };
+        var participations = new[] { Participation(userId, ParticipationStatus.Ticketed, es.Year) };
+
+        var sut = BuildSut(es, signups: signups, participations: participations);
+
+        var result = await sut.GetTrackingDataAsync(Xunit.TestContext.Current.CancellationToken);
+
+        result.HasActiveEvent.Should().BeTrue();
+        result.MainCohort.Should().HaveCount(1);
+        var row = result.MainCohort[0];
+        row.UserId.Should().Be(userId);
+        row.GapCount.Should().Be(0);
+        row.FirstSignupDay.Should().Be(-5);
+        row.LastEligibleSignupOffset.Should().Be(-1);
+        row.Cells.Should().HaveCount(5);
+        row.Cells.Single(c => c.DayOffset == -5).State.Should().Be(VolunteerCellState.Confirmed);
+        row.Cells.Single(c => c.DayOffset == -4).State.Should().Be(VolunteerCellState.Confirmed);
+        row.Cells.Single(c => c.DayOffset == -3).State.Should().Be(VolunteerCellState.Confirmed);
+        row.Cells.Single(c => c.DayOffset == -2).State.Should().Be(VolunteerCellState.Confirmed);
+        row.Cells.Single(c => c.DayOffset == -1).State.Should().Be(VolunteerCellState.Confirmed);
+    }
+
+    [HumansFact]
+    public async Task MainCohort_mid_window_gap_renders_red_cell()
+    {
+        var es = MakeEvent(buildStartOffset: -5);
+        var userId = Guid.NewGuid();
+        // Signups at -5, -4, -2, -1: missing -3.
+        var signups = new List<EligibleBuildSignup>
+        {
+            new(userId, -5, SignupStatus.Confirmed, "Cleanup"),
+            new(userId, -4, SignupStatus.Confirmed, "Cleanup"),
+            new(userId, -2, SignupStatus.Confirmed, "Cleanup"),
+            new(userId, -1, SignupStatus.Confirmed, "Cleanup"),
+        };
+        var participations = new[] { Participation(userId, ParticipationStatus.Ticketed, es.Year) };
+
+        var sut = BuildSut(es, signups: signups, participations: participations);
+
+        var result = await sut.GetTrackingDataAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var row = result.MainCohort.Single();
+        row.GapCount.Should().Be(1);
+        row.Cells.Single(c => c.DayOffset == -3).State.Should().Be(VolunteerCellState.Gap);
+        row.Cells.Single(c => c.DayOffset == -5).State.Should().Be(VolunteerCellState.Confirmed);
+        row.Cells.Single(c => c.DayOffset == -4).State.Should().Be(VolunteerCellState.Confirmed);
+        row.Cells.Single(c => c.DayOffset == -2).State.Should().Be(VolunteerCellState.Confirmed);
+        row.Cells.Single(c => c.DayOffset == -1).State.Should().Be(VolunteerCellState.Confirmed);
+    }
+
+    [HumansFact]
+    public async Task MainCohort_NotAttending_volunteer_excluded()
+    {
+        var es = MakeEvent(buildStartOffset: -5);
+        var userId = Guid.NewGuid();
+        var signups = new List<EligibleBuildSignup>
+        {
+            new(userId, -5, SignupStatus.Confirmed, "Cleanup"),
+        };
+        var participations = new[] { Participation(userId, ParticipationStatus.NotAttending, es.Year) };
+
+        var sut = BuildSut(es, signups: signups, participations: participations);
+
+        var result = await sut.GetTrackingDataAsync(Xunit.TestContext.Current.CancellationToken);
+
+        result.MainCohort.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task MainCohort_pending_signup_renders_pending_not_gap()
+    {
+        var es = MakeEvent(buildStartOffset: -5);
+        var userId = Guid.NewGuid();
+        var signups = new List<EligibleBuildSignup>
+        {
+            new(userId, -5, SignupStatus.Confirmed, "Cleanup"),
+            new(userId, -4, SignupStatus.Confirmed, "Cleanup"),
+            new(userId, -3, SignupStatus.Pending, "Cleanup"),
+            new(userId, -2, SignupStatus.Confirmed, "Cleanup"),
+            new(userId, -1, SignupStatus.Confirmed, "Cleanup"),
+        };
+        var participations = new[] { Participation(userId, ParticipationStatus.Ticketed, es.Year) };
+
+        var sut = BuildSut(es, signups: signups, participations: participations);
+
+        var result = await sut.GetTrackingDataAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var row = result.MainCohort.Single();
+        row.GapCount.Should().Be(0);
+        row.Cells.Single(c => c.DayOffset == -3).State.Should().Be(VolunteerCellState.Pending);
+    }
+
+    [HumansFact]
+    public async Task MainCohort_camp_setup_cuts_active_window()
+    {
+        var es = MakeEvent(buildStartOffset: -5);
+        var userId = Guid.NewGuid();
+        var signups = new List<EligibleBuildSignup>
+        {
+            new(userId, -5, SignupStatus.Confirmed, "Cleanup"),
+            new(userId, -4, SignupStatus.Confirmed, "Cleanup"),
+        };
+        var participations = new[] { Participation(userId, ParticipationStatus.Ticketed, es.Year) };
+        var bs = new VolunteerBuildStatus
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            EventSettingsId = es.Id,
+            BarrioSetupStartDate = es.GateOpeningDate.PlusDays(-3), // setupOffset = -3
+        };
+
+        var sut = BuildSut(es, signups: signups, participations: participations, buildStatuses: [bs]);
+
+        var result = await sut.GetTrackingDataAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var row = result.MainCohort.Single();
+        row.GapCount.Should().Be(0);
+        row.Cells.Single(c => c.DayOffset == -5).State.Should().Be(VolunteerCellState.Confirmed);
+        row.Cells.Single(c => c.DayOffset == -4).State.Should().Be(VolunteerCellState.Confirmed);
+        row.Cells.Single(c => c.DayOffset == -3).State.Should().Be(VolunteerCellState.CampSetup);
+        row.Cells.Single(c => c.DayOffset == -2).State.Should().Be(VolunteerCellState.CampSetup);
+        row.Cells.Single(c => c.DayOffset == -1).State.Should().Be(VolunteerCellState.CampSetup);
+    }
+
+    [HumansFact]
+    public async Task MainCohort_future_unfilled_day_renders_as_gap_for_planning()
+    {
+        // Today (offset -1 in this fixture) is one day before gate-open. Volunteer
+        // has confirmed -5 only; -4..-1 are all unfilled. The cap on lastExpectedDay
+        // used to render -1 as "Expected" (today is not in the past), but coordinators
+        // need to see future unfilled commitments as gaps so they can voluntell
+        // ahead of time. Locks in spec docs/features/47-volunteer-tracking.md step 3.
+        var es = MakeEvent(buildStartOffset: -5);
+        var userId = Guid.NewGuid();
+        var signups = new List<EligibleBuildSignup>
+        {
+            new(userId, -5, SignupStatus.Confirmed, "Cleanup"),
+        };
+        var participations = new[] { Participation(userId, ParticipationStatus.Ticketed, es.Year) };
+
+        var sut = BuildSut(es, signups: signups, participations: participations);
+
+        var result = await sut.GetTrackingDataAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var row = result.MainCohort.Single();
+        row.GapCount.Should().Be(4); // -4, -3, -2, -1 are all gaps now.
+        row.Cells.Single(c => c.DayOffset == -1).State.Should().Be(VolunteerCellState.Gap);
+        row.Cells.Single(c => c.DayOffset == -4).State.Should().Be(VolunteerCellState.Gap);
+    }
+
+    [HumansFact]
+    public async Task UnbookedCohort_volunteer_with_availability_no_signups_appears()
+    {
+        var es = MakeEvent(buildStartOffset: -5);
+        var userId = Guid.NewGuid();
+        var participations = new[] { Participation(userId, ParticipationStatus.Ticketed, es.Year) };
+        var availability = new[] { Availability(userId, es.Id, [-5, -4, -3]) };
+
+        var sut = BuildSut(es, participations: participations, availabilities: availability);
+
+        var result = await sut.GetTrackingDataAsync(Xunit.TestContext.Current.CancellationToken);
+
+        result.MainCohort.Should().BeEmpty();
+        result.UnbookedCohort.Should().HaveCount(1);
+        var row = result.UnbookedCohort[0];
+        row.UserId.Should().Be(userId);
+        row.UnbookedCount.Should().Be(3);
+        row.FirstAvailableDay.Should().Be(-5);
+        row.Cells.Single(c => c.DayOffset == -5).State.Should().Be(VolunteerCellState.AvailableUnbooked);
+        row.Cells.Single(c => c.DayOffset == -4).State.Should().Be(VolunteerCellState.AvailableUnbooked);
+        row.Cells.Single(c => c.DayOffset == -3).State.Should().Be(VolunteerCellState.AvailableUnbooked);
+        // -2, -1: not in availability so NotAvailable.
+        row.Cells.Single(c => c.DayOffset == -2).State.Should().Be(VolunteerCellState.NotAvailable);
+        row.Cells.Single(c => c.DayOffset == -1).State.Should().Be(VolunteerCellState.NotAvailable);
+    }
+
+    [HumansFact]
+    public async Task UnbookedCohort_volunteer_with_first_signup_moves_to_main_cohort()
+    {
+        var es = MakeEvent(buildStartOffset: -5);
+        var userId = Guid.NewGuid();
+        var participations = new[] { Participation(userId, ParticipationStatus.Ticketed, es.Year) };
+        var availability = new[] { Availability(userId, es.Id, [-5, -4, -3]) };
+        var signups = new List<EligibleBuildSignup>
+        {
+            new(userId, -3, SignupStatus.Confirmed, "Cleanup"),
+        };
+
+        var sut = BuildSut(es, signups: signups, participations: participations, availabilities: availability);
+
+        var result = await sut.GetTrackingDataAsync(Xunit.TestContext.Current.CancellationToken);
+
+        result.MainCohort.Should().HaveCount(1);
+        result.MainCohort[0].UserId.Should().Be(userId);
+        result.UnbookedCohort.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task UnbookedCohort_NotAttending_excluded()
+    {
+        var es = MakeEvent(buildStartOffset: -5);
+        var userId = Guid.NewGuid();
+        var participations = new[] { Participation(userId, ParticipationStatus.NotAttending, es.Year) };
+        var availability = new[] { Availability(userId, es.Id, [-5, -4, -3]) };
+
+        var sut = BuildSut(es, participations: participations, availabilities: availability);
+
+        var result = await sut.GetTrackingDataAsync(Xunit.TestContext.Current.CancellationToken);
+
+        result.MainCohort.Should().BeEmpty();
+        result.UnbookedCohort.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task SetCampSetupAsync_rejects_offset_at_or_after_zero()
+    {
+        var es = MakeEvent(buildStartOffset: -5);
+        var userId = Guid.NewGuid();
+        var sut = BuildSut(es);
+
+        var result = await sut.SetCampSetupAsync(
+            userId, es.GateOpeningDate, notes: null, coordinatorUserId: Guid.NewGuid(), ct: Xunit.TestContext.Current.CancellationToken);
+
+        result.Ok.Should().BeFalse();
+        result.ErrorMessageKey.Should().Be("VolTrack_Err_SetupAtOrAfterGateOpen");
+    }
+
+    [HumansFact]
+    public async Task SetCampSetupAsync_rejects_date_before_first_signup()
+    {
+        var es = MakeEvent(buildStartOffset: -10);
+        var userId = Guid.NewGuid();
+        var signups = new List<EligibleBuildSignup>
+        {
+            new(userId, -5, SignupStatus.Confirmed, "Cleanup"),
+            new(userId, -4, SignupStatus.Confirmed, "Cleanup"),
+        };
+        var sut = BuildSut(es, signups: signups);
+
+        // Setup date at offset -8 (before first signup at -5).
+        var result = await sut.SetCampSetupAsync(
+            userId, es.GateOpeningDate.PlusDays(-8), notes: null, coordinatorUserId: Guid.NewGuid(), ct: Xunit.TestContext.Current.CancellationToken);
+
+        result.Ok.Should().BeFalse();
+        result.ErrorMessageKey.Should().Be("VolTrack_Err_SetupBeforeFirstSignup");
+    }
+
+    [HumansFact]
+    public async Task SetCampSetupAsync_succeeds_inside_build_window()
+    {
+        var es = MakeEvent(buildStartOffset: -10);
+        var userId = Guid.NewGuid();
+        var coordinatorId = Guid.NewGuid();
+        var signups = new List<EligibleBuildSignup>
+        {
+            new(userId, -5, SignupStatus.Confirmed, "Cleanup"),
+        };
+        var trackingRepo = new FakeVolunteerTrackingRepository([], []);
+        var sut = BuildSut(es, signups: signups, trackingRepo: trackingRepo);
+        var setupDate = es.GateOpeningDate.PlusDays(-3);
+
+        var result = await sut.SetCampSetupAsync(userId, setupDate, "left for setup", coordinatorId, Xunit.TestContext.Current.CancellationToken);
+
+        result.Ok.Should().BeTrue();
+        result.ErrorMessageKey.Should().BeNull();
+        trackingRepo.UpsertCalls.Should().HaveCount(1);
+        var call = trackingRepo.UpsertCalls[0];
+        call.UserId.Should().Be(userId);
+        call.EventSettingsId.Should().Be(es.Id);
+        call.Date.Should().Be(setupDate);
+        call.Notes.Should().Be("left for setup");
+        call.SetByUserId.Should().Be(coordinatorId);
+        call.SetAt.Should().Be(TestNow);
+    }
+
+    [HumansFact]
+    public async Task ClearCampSetupAsync_nulls_camp_setup_fields()
+    {
+        var es = MakeEvent(buildStartOffset: -10);
+        var userId = Guid.NewGuid();
+        var coordinatorId = Guid.NewGuid();
+        var bs = new VolunteerBuildStatus
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            EventSettingsId = es.Id,
+            BarrioSetupStartDate = es.GateOpeningDate.PlusDays(-3),
+            Notes = "left",
+            SetByUserId = Guid.NewGuid(),
+            SetAt = TestNow,
+        };
+        var trackingRepo = new FakeVolunteerTrackingRepository(
+            [bs], []);
+        var sut = BuildSut(es, buildStatuses: [bs], trackingRepo: trackingRepo);
+
+        await sut.ClearCampSetupAsync(userId, coordinatorId, Xunit.TestContext.Current.CancellationToken);
+
+        trackingRepo.UpsertCalls.Should().HaveCount(1);
+        var call = trackingRepo.UpsertCalls[0];
+        call.Date.Should().BeNull();
+        call.Notes.Should().BeNull();
+        call.SetByUserId.Should().BeNull();
+        call.SetAt.Should().BeNull();
+        var stored = trackingRepo.BuildStatuses.Single();
+        stored.BarrioSetupStartDate.Should().BeNull();
+        stored.Notes.Should().BeNull();
+        stored.SetByUserId.Should().BeNull();
+        stored.SetAt.Should().BeNull();
+    }
+
+    // ----------------------------------------------------------------------
+    // SetDayOff / ClearDayOff
+    // ----------------------------------------------------------------------
+
+    [HumansFact]
+    public async Task SetDayOffAsync_rejects_offset_outside_build_window()
+    {
+        var es = MakeEvent(buildStartOffset: -5);
+        var sut = BuildSut(es);
+
+        var below = await sut.SetDayOffAsync(
+            Guid.NewGuid(), -6, reason: null, coordinatorUserId: Guid.NewGuid(), ct: Xunit.TestContext.Current.CancellationToken);
+        var above = await sut.SetDayOffAsync(
+            Guid.NewGuid(), 0, reason: null, coordinatorUserId: Guid.NewGuid(), ct: Xunit.TestContext.Current.CancellationToken);
+
+        below.Ok.Should().BeFalse();
+        below.ErrorMessageKey.Should().Be("VolTrack_Err_DayOffOutsideBuild");
+        above.Ok.Should().BeFalse();
+        above.ErrorMessageKey.Should().Be("VolTrack_Err_DayOffOutsideBuild");
+    }
+
+    [HumansFact]
+    public async Task SetDayOffAsync_rejects_when_user_has_confirmed_signup_that_day()
+    {
+        var es = MakeEvent(buildStartOffset: -5);
+        var userId = Guid.NewGuid();
+        var signups = new List<EligibleBuildSignup>
+        {
+            new(userId, -3, SignupStatus.Confirmed, "Cleanup"),
+        };
+        var sut = BuildSut(es, signups: signups);
+
+        var result = await sut.SetDayOffAsync(
+            userId, -3, reason: null, coordinatorUserId: Guid.NewGuid(), ct: Xunit.TestContext.Current.CancellationToken);
+
+        result.Ok.Should().BeFalse();
+        result.ErrorMessageKey.Should().Be("VolTrack_Err_DayOffWithSignups");
+    }
+
+    [HumansFact]
+    public async Task SetDayOffAsync_rejects_when_user_has_pending_signup_that_day()
+    {
+        var es = MakeEvent(buildStartOffset: -5);
+        var userId = Guid.NewGuid();
+        var signups = new List<EligibleBuildSignup>
+        {
+            new(userId, -3, SignupStatus.Pending, "Cleanup"),
+        };
+        var sut = BuildSut(es, signups: signups);
+
+        var result = await sut.SetDayOffAsync(
+            userId, -3, reason: null, coordinatorUserId: Guid.NewGuid(), ct: Xunit.TestContext.Current.CancellationToken);
+
+        result.Ok.Should().BeFalse();
+        result.ErrorMessageKey.Should().Be("VolTrack_Err_DayOffWithSignups");
+    }
+
+    [HumansFact]
+    public async Task SetDayOffAsync_succeeds_when_day_is_a_gap()
+    {
+        var es = MakeEvent(buildStartOffset: -5);
+        var userId = Guid.NewGuid();
+        var coordId = Guid.NewGuid();
+        var trackingRepo = new FakeVolunteerTrackingRepository(
+            [], []);
+        var sut = BuildSut(es, trackingRepo: trackingRepo);
+
+        var result = await sut.SetDayOffAsync(userId, -3, "doctor", coordId, Xunit.TestContext.Current.CancellationToken);
+
+        result.Ok.Should().BeTrue();
+        result.ErrorMessageKey.Should().BeNull();
+        trackingRepo.UpsertDayOffCalls.Should().HaveCount(1);
+        var entry = trackingRepo.UpsertDayOffCalls[0].Entry;
+        entry.DayOffset.Should().Be(-3);
+        entry.Reason.Should().Be("doctor");
+        entry.MarkedByUserId.Should().Be(coordId);
+        entry.MarkedAt.Should().Be(TestNow);
+    }
+
+    [HumansFact]
+    public async Task SetDayOffAsync_replaces_reason_when_called_twice_on_same_day()
+    {
+        var es = MakeEvent(buildStartOffset: -5);
+        var userId = Guid.NewGuid();
+        var trackingRepo = new FakeVolunteerTrackingRepository(
+            [], []);
+        var sut = BuildSut(es, trackingRepo: trackingRepo);
+
+        await sut.SetDayOffAsync(userId, -3, "doctor", Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        await sut.SetDayOffAsync(userId, -3, "city visit", Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        var stored = trackingRepo.BuildStatuses.Single();
+        stored.DayOffs.Should().HaveCount(1);
+        stored.DayOffs[0].Reason.Should().Be("city visit");
+    }
+
+    [HumansFact]
+    public async Task SetDayOffAsync_trims_reason_and_truncates_at_200_chars()
+    {
+        var es = MakeEvent(buildStartOffset: -5);
+        var trackingRepo = new FakeVolunteerTrackingRepository(
+            [], []);
+        var sut = BuildSut(es, trackingRepo: trackingRepo);
+
+        await sut.SetDayOffAsync(Guid.NewGuid(), -3, "   ", Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        var blank = trackingRepo.UpsertDayOffCalls.Last().Entry.Reason;
+
+        var oversized = new string('x', 250);
+        await sut.SetDayOffAsync(Guid.NewGuid(), -2, oversized, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        var capped = trackingRepo.UpsertDayOffCalls.Last().Entry.Reason;
+
+        blank.Should().BeNull();
+        capped.Should().NotBeNull();
+        capped.Length.Should().Be(200);
+    }
+
+    [HumansFact]
+    public async Task SetDayOffAsync_does_not_validate_camp_setup_overlap()
+    {
+        // Regression guard: earlier drafts of the spec validated camp-setup
+        // overlap server-side. The redesign removed it — the UI prevents it
+        // by hiding the action on CampSetup cells; defense-in-depth is the
+        // auto-cleanup that runs when camp-setup is moved.
+        var es = MakeEvent(buildStartOffset: -10);
+        var userId = Guid.NewGuid();
+        var bs = new VolunteerBuildStatus
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            EventSettingsId = es.Id,
+            BarrioSetupStartDate = es.GateOpeningDate.PlusDays(-3),  // span = -3..-1
+        };
+        var trackingRepo = new FakeVolunteerTrackingRepository(
+            [bs], []);
+        var sut = BuildSut(es, buildStatuses: [bs], trackingRepo: trackingRepo);
+
+        // -2 is INSIDE the camp-setup span. The service does NOT reject.
+        var result = await sut.SetDayOffAsync(userId, -2, "doctor", Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        result.Ok.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task ClearDayOffAsync_removes_entry_when_present()
+    {
+        var es = MakeEvent(buildStartOffset: -5);
+        var userId = Guid.NewGuid();
+        var bs = new VolunteerBuildStatus
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            EventSettingsId = es.Id,
+            DayOffs =
+            [
+                new(-3, "doctor", Guid.NewGuid(), TestNow)
+            ],
+        };
+        var trackingRepo = new FakeVolunteerTrackingRepository(
+            [bs], []);
+        var sut = BuildSut(es, buildStatuses: [bs], trackingRepo: trackingRepo);
+
+        var result = await sut.ClearDayOffAsync(
+            userId, -3, coordinatorUserId: Guid.NewGuid(), ct: Xunit.TestContext.Current.CancellationToken);
+
+        result.Removed.Should().BeTrue();
+        bs.DayOffs.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task ClearDayOffAsync_is_idempotent_when_entry_absent()
+    {
+        var es = MakeEvent(buildStartOffset: -5);
+        var trackingRepo = new FakeVolunteerTrackingRepository(
+            [], []);
+        var sut = BuildSut(es, trackingRepo: trackingRepo);
+
+        var result = await sut.ClearDayOffAsync(
+            Guid.NewGuid(), -3, coordinatorUserId: Guid.NewGuid(), ct: Xunit.TestContext.Current.CancellationToken);
+
+        result.Removed.Should().BeFalse();
+    }
+
+    // ----------------------------------------------------------------------
+    // GetUserBuildStripAsync
+    // ----------------------------------------------------------------------
+
+    [HumansFact]
+    public async Task GetUserBuildStrip_returns_null_when_no_active_event()
+    {
+        var sut = BuildSut(activeEvent: null);
+        (await sut.GetUserBuildStripAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken)).Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task GetUserBuildStrip_marks_declared_days_available()
+    {
+        var es = MakeEvent(buildStartOffset: -3);          // offsets -3,-2,-1
+        var userId = Guid.NewGuid();
+        // Harness default: GateOpening 2026-06-16, clock 2026-06-15 → todayOffset = -1.
+        var sut = BuildSut(es,
+            participations: new[] { Participation(userId, ParticipationStatus.Ticketed, es.Year) },
+            availabilities: new[] { Availability(userId, es.Id, [-2, -1]) });
+
+        var strip = await sut.GetUserBuildStripAsync(userId, Xunit.TestContext.Current.CancellationToken);
+
+        strip.Should().NotBeNull();
+        // Declared flag set on exactly the declared days:
+        strip.Row.Cells.Where(c => c.DeclaredAvailable).Select(c => c.DayOffset)
+            .Should().BeEquivalentTo(new[] { -2, -1 });
+        // Precedence: -2 is before today → AvailableUnbooked; -1 is today/future → AvailableExpected.
+        strip.Row.Cells.Single(c => c.DayOffset == -2).State.Should().Be(VolunteerCellState.AvailableUnbooked);
+        strip.Row.Cells.Single(c => c.DayOffset == -1).State.Should().Be(VolunteerCellState.AvailableExpected);
+    }
+
+    [HumansFact]
+    public async Task GetUserBuildStrip_reflects_signups_and_dayoffs()
+    {
+        var es = MakeEvent(buildStartOffset: -3);
+        var userId = Guid.NewGuid();
+        var sut = BuildSut(es,
+            signups: new[] { new EligibleBuildSignup(userId, -3, SignupStatus.Confirmed, "Cleanup") },
+            participations: new[] { Participation(userId, ParticipationStatus.Ticketed, es.Year) });
+
+        var strip = await sut.GetUserBuildStripAsync(userId, Xunit.TestContext.Current.CancellationToken);
+
+        strip!.Row.Cells.Single(c => c.DayOffset == -3).State.Should().Be(VolunteerCellState.Confirmed);
+    }
+
+    [HumansFact]
+    public async Task GetUserBuildStrip_returns_row_for_user_with_no_availability_row()
+    {
+        var es = MakeEvent(buildStartOffset: -2);
+        var userId = Guid.NewGuid();
+        var sut = BuildSut(es, participations: new[] { Participation(userId, ParticipationStatus.Ticketed, es.Year) });
+
+        var strip = await sut.GetUserBuildStripAsync(userId, Xunit.TestContext.Current.CancellationToken);
+
+        strip.Should().NotBeNull();
+        strip.Row.Cells.Should().OnlyContain(c => c.DeclaredAvailable == false);
+    }
+
+    [HumansFact]
+    public async Task MainCohort_dayoff_renders_DayOff_state_and_does_not_count_as_gap()
+    {
+        var es = MakeEvent(buildStartOffset: -5);
+        var userId = Guid.NewGuid();
+        var signups = new List<EligibleBuildSignup>
+        {
+            new(userId, -5, SignupStatus.Confirmed, "Cleanup"),
+            new(userId, -1, SignupStatus.Confirmed, "Cleanup"),
+        };
+        var participations = new[] { Participation(userId, ParticipationStatus.Ticketed, es.Year) };
+        var bs = new VolunteerBuildStatus
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            EventSettingsId = es.Id,
+            DayOffs =
+            [
+                new(-3, "doctor", Guid.NewGuid(), TestNow)
+            ],
+        };
+        var sut = BuildSut(es, signups: signups, participations: participations, buildStatuses: [bs]);
+
+        var result = await sut.GetTrackingDataAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var row = result.MainCohort.Single();
+        // -5 Confirmed, -4 Gap, -3 DayOff (suppresses gap), -2 Gap, -1 Confirmed.
+        row.GapCount.Should().Be(2);
+        row.Cells.Single(c => c.DayOffset == -3).State.Should().Be(VolunteerCellState.DayOff);
+        row.DayOffs.Should().HaveCount(1);
+        row.DayOffs[0].Reason.Should().Be("doctor");
+    }
+
+    [HumansFact]
+    public async Task SetCampSetupAsync_auto_clears_dayoffs_now_inside_span()
+    {
+        var es = MakeEvent(buildStartOffset: -10);
+        var userId = Guid.NewGuid();
+        var coordId = Guid.NewGuid();
+        var signups = new List<EligibleBuildSignup>
+        {
+            new(userId, -8, SignupStatus.Confirmed, "Cleanup"),
+        };
+        var bs = new VolunteerBuildStatus
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            EventSettingsId = es.Id,
+            DayOffs =
+            [
+                new(-9, "early", Guid.NewGuid(), TestNow), // before new span
+                new(-6, "soon", Guid.NewGuid(), TestNow) // inside new span
+            ],
+        };
+        var trackingRepo = new FakeVolunteerTrackingRepository([bs], []);
+        var sut = BuildSut(es, signups: signups, buildStatuses: [bs], trackingRepo: trackingRepo);
+
+        // New camp-setup at -7 → span covers -7, -6, -5, ..., -1.
+        var result = await sut.SetCampSetupAsync(
+            userId, es.GateOpeningDate.PlusDays(-7), notes: null, coordId, ct: Xunit.TestContext.Current.CancellationToken);
+
+        result.Ok.Should().BeTrue();
+        result.AutoClearedDayOffs.Should().Equal(-6);
+        bs.DayOffs.Select(d => d.DayOffset).Should().Equal(-9);
+    }
+
+    [HumansFact]
+    public async Task SetCampSetupAsync_returns_empty_AutoClearedDayOffs_when_no_overlap()
+    {
+        var es = MakeEvent(buildStartOffset: -10);
+        var userId = Guid.NewGuid();
+        var bs = new VolunteerBuildStatus
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            EventSettingsId = es.Id,
+            DayOffs =
+            [
+                new(-9, "early", Guid.NewGuid(), TestNow)
+            ],
+        };
+        var trackingRepo = new FakeVolunteerTrackingRepository(
+            [bs], []);
+        var sut = BuildSut(es, buildStatuses: [bs], trackingRepo: trackingRepo);
+
+        var result = await sut.SetCampSetupAsync(
+            userId, es.GateOpeningDate.PlusDays(-3), notes: null, Guid.NewGuid(), ct: Xunit.TestContext.Current.CancellationToken);
+
+        result.Ok.Should().BeTrue();
+        result.AutoClearedDayOffs.Should().BeEmpty();
+        bs.DayOffs.Should().HaveCount(1);
+    }
+
+    private static GeneralAvailability Availability(Guid userId, Guid eventSettingsId, IReadOnlyList<int> days)
+        => new()
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            EventSettingsId = eventSettingsId,
+            AvailableDayOffsets = days.ToList(),
+            CreatedAt = TestNow,
+            UpdatedAt = TestNow,
+        };
+
+    private static EventParticipation Participation(Guid userId, ParticipationStatus status, int year)
+        => new()
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Year = year,
+            Status = status,
+            Source = ParticipationSource.UserDeclared,
+        };
+
+    // ----------------------------------------------------------------------
+    // Test SUT builder with fakes
+    // ----------------------------------------------------------------------
+
+    private static VolunteerTrackingService BuildSut(
+        EventSettings? activeEvent,
+        IReadOnlyList<EligibleBuildSignup>? signups = null,
+        IReadOnlyList<VolunteerBuildStatus>? buildStatuses = null,
+        IReadOnlyList<EventParticipation>? participations = null,
+        IReadOnlyList<GeneralAvailability>? availabilities = null,
+        Instant? now = null,
+        FakeVolunteerTrackingRepository? trackingRepo = null)
+    {
+        var clock = new FakeClock(now ?? TestNow);
+
+        var shiftMgmt = Substitute.For<IShiftManagementRepository>();
+        shiftMgmt.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(activeEvent);
+        shiftMgmt.GetEligibleBuildSignupsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(signups ?? []);
+
+        var userService = Substitute.For<IUserServiceRead>();
+        userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                var users = (participations ?? [])
+                    .GroupBy(p => p.UserId)
+                    .Select(g => UserInfo.Create(
+                        new User
+                        {
+                            Id = g.Key,
+                            DisplayName = string.Empty,
+                            PreferredLanguage = "en",
+                            CreatedAt = TestNow
+                        },
+                        userEmails: [],
+                        eventParticipations: g.ToList(),
+                        externalLogins: [],
+                        profile: null,
+                        contactFields: [],
+                        profileLanguages: [],
+                        volunteerHistory: [],
+                        communicationPreferences: []))
+                    .ToList();
+                return Task.FromResult<IReadOnlyCollection<UserInfo>>(users);
+            });
+
+        trackingRepo ??= new FakeVolunteerTrackingRepository(
+            buildStatuses ?? [],
+            availabilities ?? []);
+
+        return new VolunteerTrackingService(
+            trackingRepo, shiftMgmt, userService, Substitute.For<IShiftViewInvalidator>(), clock);
+    }
+
+    private static EventSettings MakeEvent(int buildStartOffset = -5, LocalDate? gateOpening = null)
+        => new()
+        {
+            Id = Guid.NewGuid(),
+            EventName = "Test Event",
+            Year = 2026,
+            TimeZoneId = "Europe/Madrid",
+            GateOpeningDate = gateOpening ?? DefaultGateOpening,
+            BuildStartOffset = buildStartOffset,
+            EventEndOffset = 6,
+            StrikeEndOffset = 9,
+            IsActive = true,
+            CreatedAt = TestNow,
+            UpdatedAt = TestNow,
+        };
+
+    // ----------------------------------------------------------------------
+    // Fake repository that captures mutations
+    // ----------------------------------------------------------------------
+
+    private sealed class FakeVolunteerTrackingRepository(
+        IReadOnlyList<VolunteerBuildStatus> buildStatuses,
+        IReadOnlyList<GeneralAvailability> availabilities) : IVolunteerTrackingRepository
+    {
+        public List<VolunteerBuildStatus> BuildStatuses { get; } = buildStatuses.ToList();
+        public List<GeneralAvailability> Availabilities { get; } = availabilities.ToList();
+
+        public List<(Guid UserId, Guid EventSettingsId, LocalDate? Date, string? Notes, Guid? SetByUserId, Instant? SetAt)> UpsertCalls { get; } =
+            [];
+        public List<(Guid UserId, Guid EventSettingsId, DayOffEntry Entry)> UpsertDayOffCalls { get; } = [];
+        public List<(Guid UserId, Guid EventSettingsId, int DayOffset)> RemoveDayOffCalls { get; } = [];
+
+        public Task<IReadOnlyList<VolunteerBuildStatus>> GetBuildStatusesForEventAsync(
+            Guid eventSettingsId,
+            IReadOnlyCollection<Guid>? userIds = null,
+            CancellationToken ct = default)
+            => Task.FromResult<IReadOnlyList<VolunteerBuildStatus>>(
+                BuildStatuses
+                    .Where(b => b.EventSettingsId == eventSettingsId
+                        && (userIds is null || userIds.Contains(b.UserId)))
+                    .ToList());
+
+        public Task<IReadOnlyList<GeneralAvailability>> GetAvailabilityForEventAsync(
+            Guid eventSettingsId,
+            IReadOnlyCollection<Guid>? userIds = null,
+            CancellationToken ct = default)
+            => Task.FromResult<IReadOnlyList<GeneralAvailability>>(
+                Availabilities
+                    .Where(a => a.EventSettingsId == eventSettingsId
+                        && (userIds is null || userIds.Contains(a.UserId)))
+                    .ToList());
+
+        public Task<IReadOnlyList<GeneralAvailability>> GetAvailabilityForUserAsync(
+            Guid userId,
+            Guid? eventSettingsId = null,
+            CancellationToken ct = default)
+            => Task.FromResult<IReadOnlyList<GeneralAvailability>>(
+                Availabilities
+                    .Where(a => a.UserId == userId
+                        && (!eventSettingsId.HasValue || a.EventSettingsId == eventSettingsId.Value))
+                    .ToList());
+
+        public Task UpsertAvailabilityAsync(
+            Guid userId,
+            Guid eventSettingsId,
+            IReadOnlyList<int> dayOffsets,
+            Instant now,
+            CancellationToken ct = default)
+        {
+            var existing = Availabilities.FirstOrDefault(a => a.UserId == userId && a.EventSettingsId == eventSettingsId);
+            if (existing is null)
+            {
+                Availabilities.Add(new GeneralAvailability
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = userId,
+                    EventSettingsId = eventSettingsId,
+                    AvailableDayOffsets = dayOffsets.ToList(),
+                    CreatedAt = now,
+                    UpdatedAt = now,
+                });
+            }
+            else
+            {
+                existing.AvailableDayOffsets = dayOffsets.ToList();
+                existing.UpdatedAt = now;
+            }
+
+            return Task.CompletedTask;
+        }
+
+        public Task<int> ReassignAvailabilityToUserAsync(
+            Guid sourceUserId, Guid targetUserId, Instant updatedAt, CancellationToken ct = default)
+            => Task.FromResult(0);
+
+        public Task<IReadOnlyList<int>> UpsertCampSetupAsync(
+            Guid userId, Guid eventSettingsId, LocalDate? barrioSetupStartDate,
+            string? notes, Guid? setByUserId, Instant? setAt,
+            int? setupOffsetThreshold, CancellationToken ct = default)
+        {
+            UpsertCalls.Add((userId, eventSettingsId, barrioSetupStartDate, notes, setByUserId, setAt));
+            var existing = BuildStatuses.FirstOrDefault(b => b.UserId == userId && b.EventSettingsId == eventSettingsId);
+            if (existing is null)
+            {
+                existing = new VolunteerBuildStatus
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = userId,
+                    EventSettingsId = eventSettingsId,
+                };
+                BuildStatuses.Add(existing);
+            }
+            existing.BarrioSetupStartDate = barrioSetupStartDate;
+            existing.Notes = notes;
+            existing.SetByUserId = setByUserId;
+            existing.SetAt = setAt;
+
+            IReadOnlyList<int> trimmed = [];
+            if (setupOffsetThreshold is { } threshold)
+            {
+                var toTrim = existing.DayOffs
+                    .Where(d => d.DayOffset >= threshold)
+                    .Select(d => d.DayOffset)
+                    .ToArray();
+                if (toTrim.Length > 0)
+                {
+                    existing.DayOffs.RemoveAll(d => d.DayOffset >= threshold);
+                    trimmed = toTrim;
+                }
+            }
+            return Task.FromResult(trimmed);
+        }
+
+        public Task UpsertDayOffAsync(
+            Guid userId, Guid eventSettingsId, DayOffEntry entry, CancellationToken ct = default)
+        {
+            UpsertDayOffCalls.Add((userId, eventSettingsId, entry));
+            var existing = BuildStatuses.FirstOrDefault(b => b.UserId == userId && b.EventSettingsId == eventSettingsId);
+            if (existing is null)
+            {
+                existing = new VolunteerBuildStatus
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = userId,
+                    EventSettingsId = eventSettingsId,
+                };
+                BuildStatuses.Add(existing);
+            }
+            existing.DayOffs.RemoveAll(d => d.DayOffset == entry.DayOffset);
+            existing.DayOffs.Add(entry);
+            existing.DayOffs.Sort((a, b) => a.DayOffset.CompareTo(b.DayOffset));
+            return Task.CompletedTask;
+        }
+
+        public Task<bool> RemoveDayOffAsync(
+            Guid userId, Guid eventSettingsId, int dayOffset, CancellationToken ct = default)
+        {
+            RemoveDayOffCalls.Add((userId, eventSettingsId, dayOffset));
+            var existing = BuildStatuses.FirstOrDefault(b => b.UserId == userId && b.EventSettingsId == eventSettingsId);
+            if (existing is null) return Task.FromResult(false);
+            var removed = existing.DayOffs.RemoveAll(d => d.DayOffset == dayOffset) > 0;
+            return Task.FromResult(removed);
+        }
+    }
+}

@@ -1,7 +1,6 @@
 using Humans.Application;
 using AwesomeAssertions;
-using Humans.Application.DTOs.Shifts;
-using Humans.Application.Interfaces.Shifts;
+using Humans.Shifts.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Mailer.Services.Audiences;
@@ -57,7 +56,7 @@ public class TicketNoShiftsAudienceTests
     public async Task ComputeMemberUserIdsAsync_TicketWithoutCommittedShift_IncludesUser()
     {
         // Users with only Refused/Bailed/Cancelled/NoShow signups are NOT in
-        // shiftCommitted (per ShiftUserView.HasShift — only Pending+Confirmed count).
+        // shiftCommitted (per ShiftUserSummary.HasShift — only Pending+Confirmed count).
         // They should remain in the audience.
         var userA = Guid.NewGuid();
         var audience = NewAudience(
@@ -73,13 +72,13 @@ public class TicketNoShiftsAudienceTests
     public async Task ComputeMemberUserIdsAsync_DoesNotInjectShiftSignupOrManagementService()
     {
         // Constructor surface check: the audience must no longer depend on
-        // IShiftSignupService or IShiftManagementService. If a future change
+        // IShiftSignups or IShiftManagementServiceRead. If a future change
         // reintroduces either, the DI registration in MailerSectionExtensions
         // would need to wire them — and this test will fail at the type level.
         var ctor = typeof(TicketNoShiftsAudience).GetConstructors().Single();
         var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
-        paramTypes.Should().NotContain(typeof(IShiftSignupService));
-        paramTypes.Should().NotContain(typeof(IShiftManagementService));
+        paramTypes.Should().NotContain(typeof(IShiftSignups));
+        paramTypes.Should().NotContain(typeof(IShiftManagementServiceRead));
         paramTypes.Should().Contain(typeof(IShiftView));
     }
 
@@ -96,14 +95,14 @@ public class TicketNoShiftsAudienceTests
             .Returns(callInfo =>
             {
                 var ids = ((IEnumerable<Guid>)callInfo[0]).ToList();
-                var map = new Dictionary<Guid, ShiftUserView>();
+                var map = new Dictionary<Guid, ShiftUserSummary>();
                 foreach (var id in ids)
                 {
                     map[id] = shiftCommitted.Contains(id)
                         ? ViewWithShift(id)
-                        : ShiftUserView.Empty(id);
+                        : ShiftUserSummary.Empty(id);
                 }
-                return new ValueTask<IReadOnlyDictionary<Guid, ShiftUserView>>(map);
+                return new ValueTask<IReadOnlyDictionary<Guid, ShiftUserSummary>>(map);
             });
 
         var users = Substitute.For<IUserService>();
@@ -136,19 +135,8 @@ public class TicketNoShiftsAudienceTests
                 Status: TicketAttendeeStatus.Valid,
                 MatchedUserId: userId)])).ToList();
 
-    private static ShiftUserView ViewWithShift(Guid userId) => new(
-        userId,
-        Profile: null,
-        Availability: null,
-        BuildStatus: null,
-        TagPreferences: [],
-        Signups: [new ShiftSignup
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            ShiftId = Guid.NewGuid(),
-            Status = SignupStatus.Confirmed,
-            CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-            UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-        }]);
+    private static ShiftUserSummary ViewWithShift(Guid userId) =>
+        ShiftFixtures.UserSummary(
+            userId,
+            [ShiftFixtures.Signup(status: SignupStatus.Confirmed)]);
 }

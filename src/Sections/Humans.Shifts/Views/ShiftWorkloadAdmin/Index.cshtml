@@ -1,0 +1,73 @@
+@using Humans.Shifts.Services.Dtos
+@model WorkloadReport?
+
+@{
+    ViewData["Title"] = "Workload";
+}
+
+<div class="container py-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-controller="Shifts" asp-action="Index">Shifts</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Workload</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>Site-wide workload</h2>
+        @if (Model is not null)
+        {
+            <span class="badge bg-secondary fs-6">Event @Model.EventYear</span>
+        }
+    </div>
+
+    @if (Model is null)
+    {
+        <div class="alert alert-warning">No active event is configured — no workload data to show.</div>
+        return;
+    }
+
+    <p class="text-muted">
+        Workload aggregations across the whole event, sliced by person, rota, and
+        department. Per-person hours are split by <strong>Year-round / Build / Event / Strike</strong>:
+        Confirmed shift hours land in their shift period, and team role estimates
+        (<strong>hours/year</strong>) land in the column matching the role's period. Pending signups
+        are reported separately so queued work doesn't inflate the burnout signal.
+    </p>
+
+    <ul class="nav nav-tabs mb-3" id="workloadTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="people-tab" data-bs-toggle="tab"
+                    data-bs-target="#people" type="button" role="tab"
+                    aria-controls="people" aria-selected="true">
+                By person <span class="badge text-bg-light ms-1">@Model.ByPerson.Count</span>
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="departments-tab" data-bs-toggle="tab"
+                    data-bs-target="#departments" type="button" role="tab"
+                    aria-controls="departments" aria-selected="false">
+                By department <span class="badge text-bg-light ms-1">@Model.ByDepartment.Count</span>
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="rotas-tab" data-bs-toggle="tab"
+                    data-bs-target="#rotas" type="button" role="tab"
+                    aria-controls="rotas" aria-selected="false">
+                By rota <span class="badge text-bg-light ms-1">@Model.ByRota.Count</span>
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="workloadTabContent">
+        <div class="tab-pane fade show active" id="people" role="tabpanel" aria-labelledby="people-tab">
+            <partial name="_WorkloadByPerson" model="Model.ByPerson" />
+        </div>
+        <div class="tab-pane fade" id="departments" role="tabpanel" aria-labelledby="departments-tab">
+            <partial name="_WorkloadByDepartment" model="Model.ByDepartment" />
+        </div>
+        <div class="tab-pane fade" id="rotas" role="tabpanel" aria-labelledby="rotas-tab">
+            <partial name="_WorkloadByRota" model="Model.ByRota" />
+        </div>
+    </div>
+</div>

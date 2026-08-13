@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations;
 using NodaTime;
 using Humans.Application.Extensions;
 using Humans.Campaigns.Contracts;
-using Humans.Application.Interfaces.Shifts;
+using Humans.Shifts.Contracts;
 using Humans.Domain.Enums;
 
 namespace Humans.Web.Models;
@@ -641,4 +641,18 @@ public class PrivacyViewModel
     public bool IsDeletionPending { get; set; }
     public DateTime? DeletionRequestedAt { get; set; }
     public DateTime? DeletionScheduledFor { get; set; }
+}
+
+/// <summary>
+/// One no-show row on another user's profile. Shell's: <c>ProfileController</c> builds
+/// the five strings from <c>IShiftSignups.GetNoShowHistoryAsync</c> and this page is its
+/// only consumer, so it never crosses into Humans.Shifts (nobodies-collective/Humans#866).
+/// </summary>
+public sealed class NoShowHistoryItem
+{
+    public string ShiftLabel { get; set; } = string.Empty;
+    public string DepartmentName { get; set; } = string.Empty;
+    public string ShiftDateLabel { get; set; } = string.Empty;
+    public string? MarkedByName { get; set; }
+    public string? MarkedAtLabel { get; set; }
 }

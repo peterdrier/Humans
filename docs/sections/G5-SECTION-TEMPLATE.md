@@ -122,6 +122,24 @@ visibility flip in one diff is unreviewable.
         service and a leaf is not an incomplete move (proven: Auth).
 - [ ] Fan-in known: run `reforge` for inbound references before starting. A section with many
       inbound section references is a knot, goes later, and may need `<Section>.Contracts`.
+      - **A section whose fan-in is measured in three digits gets split into a read-boundary
+        lane, a file-move lane and a presentation lane before anyone starts.** The cost is
+        the build/test loop over ~250 changed files, not the thinking. Do the read-boundary
+        lane first regardless: a move commit that also splits a 50-member interface across
+        73 files is unreviewable, and it is the lane where **HUM0032 still works** — the
+        analyzer derives both sections from `Humans.Application.Services.{A}` /
+        `Humans.Application.Interfaces.{B}` namespaces, neither of which survives the move,
+        so a split done *after* the move gets no over-injection check at all (proven:
+        Shifts, ~130 consumer files; HUM0032 caught a real one on the first build).
+      - **…and the read-boundary lane's first pass is "who is bypassing the boundary DTO the
+        section already ships?", not "what should the leaf carry?"** Shifts had shipped
+        `IBurnSettingsService` → `BurnSettingsInfo` a year earlier precisely so nothing
+        outside the section would see `EventSettings`, and eleven external files were still
+        reading the entity off the full service. Draining that cow path removed more entity
+        leak than the whole recon found. Resolve each member's callers **per file**, from
+        the constructor parameter's own name — a bare grep for `.GetActiveAsync(` collides
+        with every service in the repo and answers wrongly in both directions
+        (proven: Shifts lane A).
 
 ## Read the controller — do not assume it
 
@@ -180,6 +198,14 @@ grep -rn 'Humans\.[A-Za-z]*\.Contracts' src/Humans.Application/Interfaces/<Secti
 # "Localize", so looking for the helper by name reports a live key set as orphaned.
 grep -rn 'EnumDisplay\|EnumSelectItems' src/
 ```
+
+One more, for the bulk `sed` that follows the searches: a namespace rewrite whose
+last segment is also the prefix of a type name will merge the two.
+`Humans.Web.Models.VolunteerTracking` → `Humans.Shifts.Models` turns
+`Humans.Web.Models.VolunteerTrackingPageViewModel` into `Humans.Shifts.ModelsPageViewModel`,
+which fails inside *generated* Razor naming a namespace that never existed. Anchor the
+pattern on a following `;`, `(` or newline, or sweep afterwards for
+`Humans\.<Section>\.(Models|Services|Data)[A-Za-z]` (proven: Shifts, one hit).
 
 Two shell notes, because the obvious spellings both fail *silently*: `grep`'s default is a basic
 regular expression, so `nameof(<Section>*)` parses `*` as "repeat the previous character" and
@@ -276,6 +302,16 @@ Git Bash.)
      tag takes the opening line and leaves the orphaned `<value>`/`</data>` behind, producing five
      invalid `.resx` files. That one fails loudly (`MSB3103: Invalid Resx file`) rather than
      silently, but it costs a full build cycle; consume to the closing `</data>` (proven: Feedback).
+     **Leave the section-banner XML comments where they are and delete the orphans by hand**:
+     `SharedResource.resx` groups its entries under `<!-- ==== / Name / ==== -->` banners, and
+     attaching a banner run to the next `<data>` block moves it with a key whose neighbours may
+     have stayed. Shifts' carve emptied three banners and split none; the tidy-up is one edit
+     (proven: Shifts).
+     **Derive the prefix list from the resx, not from the handoff.** Shifts' recon named six
+     prefixes totalling 247 keys; `VolTrack_` — 94 more, every one rendered by a controller and
+     four views that moved in with the section — was in none of them, so a third of the carve
+     was invisible until `grep -o 'name="[^"]*"' … | sed -E 's/^(prefix1|…).*/\1/' | uniq -c`
+     was run against the file itself (proven: Shifts).
    - **A key whose *renderer* lives in Base stays in Base — carve by renderer, not by prefix.**
      The third direction, after "carve by owner" and "the key goes home". Feedback's
      `Email_FeedbackResponse_{Subject,Body}` look like the section's, and are read by
@@ -434,6 +470,20 @@ Git Bash.)
        inject `IStringLocalizer<<Section>Resource>`; `Humans.UI` cannot reference a section, so a
        key it renders stays in `SharedResource` and the section binds `SharedLocalizer` for it.
        Run the renderer test per key and treat a `Humans.UI` hit as a stop (proven: Teams).
+     - **…and the second stop is a renderer this section already references.** Budget's "the
+       key goes home and the consumer rebinds" needs `Humans.<Consumer>` → `Humans.<Section>`
+       to be acyclic, and by the time a late section moves, several of its *own* project
+       references point at other sections — Shifts references `Humans.Teams` (its admin
+       controller derives from `HumansTeamControllerBase`) and `Humans.Onboarding` (its browse
+       page renders the name-gate copy through `OnboardingResource`). Both of those sections
+       render `Shifts_*` keys, and neither can bind `ShiftsResource` without a cycle, so five
+       keys were pinned to `SharedResource` exactly as a `Humans.UI` hit pins one. **Check the
+       section's own outbound reference list before applying Budget's rule, not just the
+       consumer's** — the direction that works for an early mover is a cycle for a late one,
+       and the compiler only tells you after you have moved the keys (proven: Shifts).
+       A sixth key followed those five for set integrity: `Shifts_AllPhases` names the fourth
+       `RotaPeriod` member in the same `switch` as the three pinned ones, and one enum's
+       display names must not span two resource sets.
      - **`Localizer.EnumDisplay(value)` is a call site the extract-and-diff pass cannot see.**
        Governance's mechanical check extracts `Localizer["…"]`; an `EnumDisplay` /
        `EnumSelectItems` call resolves `Enum_{Type}_{Value}` at runtime and shows up in neither
@@ -1213,6 +1263,17 @@ Git Bash.)
    `Humans.Holded` and `Humans.Tour` both shipped unmarked, one sweep apart, and each sat invisible
    until a manual scan found it. An unmarked doc reads as *clean*, never as *unchecked*.
    **A docs path is an API until you have proved otherwise** (spec §7a).
+   - **…and the probe you have to find is not always in `Humans.Agent`.** The
+     invariants doc may move because `AgentSectionDocReader` falls back to
+     `src/Sections/Humans.{key}/Docs/{key}.md`. `Humans.Web/Health/AgentDocsHealthCheck`
+     does not: it fetches `docs/sections/{ProbeSection}.md` through `IGuideContentSource`
+     directly — deliberately, so a cached reader cannot keep reporting Healthy through an
+     outage — with the section key as a literal, and the section it happened to name was
+     Shifts. Moving the doc turns the health check Degraded on every deployed instance,
+     with a green build and a green suite. Run
+     `git ls-files | xargs grep -ln 'docs/sections/<Section>.md'` and read every hit whose
+     filename says nothing about docs; repoint the probe to a whitelisted section whose doc
+     is still in `docs/sections/` (proven: Shifts, repointed to Camps).
    - **`docs/guide/**` stays put, at Guide's own G5 and after.** The template used to say
      "until Guide's own G5", which read as a scheduled move; it is not one.
      `GitHubGuideContentSource` fetches `{GuideSettings.FolderPath}/{stem}.md` from
@@ -1449,6 +1510,25 @@ Git Bash.)
       — it is not the same grep as `typeof(<Section>` for the row-in-a-table case, and it
       fails silently in the opposite direction (proven: AuditLog).
 
+      **Fifth sighting, and the keying is neither a path nor an assembly — it is
+      `Type.GetMethods()` not following interface inheritance.** A read split that leaves
+      `I<Section>Service : I<Section>ServiceRead` moves members onto a leaf that carries no
+      `IApplicationService` marker (a framework-free leaf cannot reference the marker's
+      home in a way the scan's filter recognises), and `GetMethods()` on an interface
+      returns only *declared* members — so a reflection ratchet that iterates
+      `IApplicationService` implementors sees a shorter member list and reports the moved
+      violations as **fixed**, on byte-identical code. `ScanApplicationServiceEntityReadReturns`
+      lost seven rows that way; the fix is to walk `serviceType.GetInterfaces()` too and
+      de-duplicate. **The recursion inside such a rule needs the same question asked of it
+      separately**: the same file's `IsApplicationReturnShape` only recursed into
+      `Humans.Application.*` types, so a result record that moved onto the leaf still
+      wrapping an entity (`UrgentShift(Shift, …)`) stopped the walk one hop short and lost
+      two more rows. Widen that to `*.Contracts` assemblies, **not** to whole section
+      assemblies — a section-internal DTO wrapping its own section's internal entity
+      crosses no boundary, and recursing into them adds ~96 rows across twenty sections
+      that the rule was never asserting about (proven: Shifts lane A). This shape fires for
+      every read split, not only a G5 move.
+
       **Fourth sighting, and the keying was an *assembly*, not a path.**
       `ApplicationServicesTakeNoDbContextRule` anchored on `typeof(AuditLogService).Assembly`
       and filtered to the `Humans.Application.Services.` namespace, so every G5 section's
@@ -1569,6 +1649,20 @@ Git Bash.)
       notices. `AdminNavTreeRoutingTests` walks the table against the running app's
       `IActionDescriptorCollectionProvider` (proven: A2's `FinanceController` split shipped the
       Finance entry broken; caught and fixed in A3).
+      - **…and `AdminNavTree` is only the *guarded* instance of that hazard — grep
+        `Url.Action("<Action>", "<Controller>")` too.** The nav tree has a test walking it;
+        a bare `Url.Action` string pair anywhere in Shell has nothing. It returns **null**
+        for an unresolvable pair rather than throwing, so a caller doing
+        `ActionUrl = cond ? Url.Action("X", "Y") : null` keeps compiling, keeps returning
+        200, and silently renders the affordance without a link — indistinguishable in the
+        HTML from the "not applicable" branch it was already able to take. Shifts' case is
+        `ThingsToDoViewComponent`'s link to `("ShiftInfo", "Profile")`, which the lane's
+        controller split rehomes to `ShiftProfileController`. The two searches are
+        different (`AdminNavTree` keys on the controller name alone) and so are their
+        failure surfaces, so run both: `grep -rn 'Url.Action(' src/` filtered to the
+        section's action names, and assert the resulting `href` in the step 12 render test
+        (proven: Shifts lane C, found while splitting a controller under another section's
+        route prefix).
     - **Watch for reflection sweeps keyed on a hard-coded assembly list or a namespace prefix** —
       both fail by finding nothing and reporting success (proven: `EndpointAuthorizationTests`,
       `GdprExportDependencyInjectionTests`, `ApplicationServicesTakeNoMemoryCacheRule`). **Widen

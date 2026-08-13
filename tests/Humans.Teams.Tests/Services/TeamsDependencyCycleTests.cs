@@ -1,3 +1,4 @@
+using Humans.Shifts.Services;
 using Humans.Auth.Contracts;
 using Humans.Application.Services.Profiles;
 using AwesomeAssertions;
@@ -8,10 +9,9 @@ using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Application.Interfaces.Shifts;
+using Humans.Shifts.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Auth;
-using Humans.Application.Services.Shifts;
 using Humans.Application.Services.Users;
 using Humans.Email.Contracts;
 using Humans.Infrastructure.Data;
@@ -51,7 +51,6 @@ public sealed class TeamsDependencyCycleTests
         services.AddScoped<IUserRepository>(_ => Substitute.For<IUserRepository>());
         services.AddScoped<ICommunicationPreferenceRepository>(_ => Substitute.For<ICommunicationPreferenceRepository>());
         services.AddScoped<IUserInfoInvalidator>(_ => Substitute.For<IUserInfoInvalidator>());
-        services.AddScoped<IShiftManagementRepository>(_ => Substitute.For<IShiftManagementRepository>());
         services.AddScoped<IAuditLogService>(_ => Substitute.For<IAuditLogService>());
         services.AddScoped<IEmailService>(_ => Substitute.For<IEmailService>());
         services.AddScoped<INotificationEmitter>(_ => Substitute.For<INotificationEmitter>());

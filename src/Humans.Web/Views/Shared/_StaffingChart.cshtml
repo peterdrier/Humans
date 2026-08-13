@@ -1,0 +1,144 @@
+@using Humans.Shifts.Contracts
+@model (List<DailyStaffingData> Data, string ChartId)
+
+@{
+    var periods = Model.Data.GroupBy(d => d.Period).OrderBy(g => g.Key switch { "Set-up" => 0, "Event" => 1, "Strike" => 2, _ => 3 }).ToList();
+}
+
+@if (periods.Count > 0)
+{
+    <script>
+    if (typeof Chart === 'undefined') {
+        var s = document.createElement('script');
+        s.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js';
+        s.integrity = 'sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ';
+        s.crossOrigin = 'anonymous';
+        s.onload = function() {
+            @foreach (var group in periods)
+            {
+                <text>window['render_@(Model.ChartId)_@(group.Key.Replace("-", ""))']();</text>
+            }
+        };
+        document.head.appendChild(s);
+    } else {
+        document.addEventListener('DOMContentLoaded', function() {
+            @foreach (var group in periods)
+            {
+                <text>window['render_@(Model.ChartId)_@(group.Key.Replace("-", ""))']();</text>
+            }
+        });
+    }
+
+    @foreach (var group in periods)
+    {
+        var chartKey = Model.ChartId + "_" + group.Key.Replace("-", "");
+        var jsonOpts = new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase };
+        <text>
+    window['render_@(chartKey)'] = function() {
+        var data = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(group.ToList(), jsonOpts));
+        var labels = data.map(function(d) { return d.dateLabel; });
+        var confirmed = data.map(function(d) { return d.confirmedCount; });
+        var remaining = data.map(function(d) { return Math.max(0, d.totalSlots - d.confirmedCount); });
+        var minLine = data.map(function(d) { return d.minSlots; });
+
+        var cs = getComputedStyle(document.documentElement);
+        var cv = function(n) { return cs.getPropertyValue(n).trim(); };
+        var chartSuccess = cv('--h-chart-success');
+        var chartWarning = cv('--h-chart-warning');
+        var chartDanger = cv('--h-chart-danger');
+        var chartMuted = cv('--h-chart-muted');
+
+        var confirmedColors = data.map(function(d) {
+            if (d.totalSlots === 0) return chartSuccess;
+            if (d.confirmedCount >= d.minSlots) return chartSuccess;
+            if (d.minSlots > 0 && d.confirmedCount >= d.minSlots * 0.5) return chartWarning;
+            return chartDanger;
+        });
+
+        var pctLabelsPlugin = {
+            id: 'pctLabels',
+            afterDatasetsDraw: function(chart) {
+                var ctx = chart.ctx;
+                var confMeta = chart.getDatasetMeta(0);
+                var remMeta = chart.getDatasetMeta(1);
+                var confData = chart.data.datasets[0].data;
+                var remData = chart.data.datasets[1].data;
+                ctx.save();
+                ctx.font = '600 11px system-ui, -apple-system, sans-serif';
+                ctx.fillStyle = cv('--bs-body-color') || '#333';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'bottom';
+                confMeta.data.forEach(function(_, i) {
+                    var conf = confData[i];
+                    var rem = remData[i];
+                    var total = conf + rem;
+                    if (total === 0) return;
+                    var pct = Math.round(100 * conf / total);
+                    var topBar = remMeta.data[i];
+                    ctx.fillText(pct + '%', topBar.x, topBar.y - 4);
+                });
+                ctx.restore();
+            }
+        };
+
+        new Chart(document.getElementById('@chartKey'), {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    { label: 'Confirmed', data: confirmed, backgroundColor: confirmedColors },
+                    { label: 'Remaining', data: remaining, backgroundColor: chartMuted },
+                    { label: 'Min needed', data: minLine, type: 'line', borderColor: chartDanger, borderDash: [5, 5], pointRadius: 0, fill: false, order: 0 }
+                ]
+            },
+            options: {
+                responsive: true,
+                layout: { padding: { top: 20 } },
+                scales: {
+                    x: { stacked: true },
+                    // Volunteer counts are integers — pin ticks to whole numbers so
+                    // small ranges (e.g. 0–3 vols) don't show 0.5/1.5/2.5.
+                    y: { stacked: true, beginAtZero: true, ticks: { precision: 0, stepSize: 1 } }
+                },
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            afterTitle: function(items) { return data[items[0].dataIndex].period; },
+                            footer: function(items) {
+                                var conf = 0, rem = 0;
+                                items.forEach(function(item) {
+                                    if (item.dataset.label === 'Confirmed') conf = item.parsed.y;
+                                    else if (item.dataset.label === 'Remaining') rem = item.parsed.y;
+                                });
+                                var total = conf + rem;
+                                if (total === 0) return '';
+                                var pct = Math.round(100 * conf / total);
+                                return 'Total: ' + total + ' (' + pct + '% confirmed)';
+                            }
+                        }
+                    }
+                }
+            },
+            plugins: [pctLabelsPlugin]
+        });
+    };
+        </text>
+    }
+    </script>
+
+    @foreach (var group in periods)
+    {
+        var chartKey = Model.ChartId + "_" + group.Key.Replace("-", "");
+        var totalSlots = group.Sum(d => d.TotalSlots);
+        if (totalSlots > 0)
+        {
+            <div class="card mb-4">
+                <div class="card-header"><h6 class="mb-0">@group.Key Staffing</h6></div>
+                <div class="card-body">
+                    <canvas id="@chartKey" height="100" role="img" aria-label="@(group.Key) Staffing"></canvas>
+                </div>
+            </div>
+        }
+    }
+}

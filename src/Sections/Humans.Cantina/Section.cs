@@ -12,7 +12,7 @@ namespace Humans.Cantina;
 /// <remarks>
 /// One registration: the roster service. Cantina owns no tables, so there is no
 /// <c>AddSectionDbContext</c> call and no repository — the service composes over
-/// <c>IShiftManagementService</c>, <c>IBurnSettingsService</c> and <c>IUserServiceRead</c>,
+/// <c>IShiftManagementServiceRead</c>, <c>IBurnSettingsService</c> and <c>IUserServiceRead</c>,
 /// each registered by its own owner. Access is the <c>CantinaAdminOrAdmin</c> policy, which
 /// stays in Shell's <c>AuthorizationPolicyExtensions</c> (design §8).
 /// <para>

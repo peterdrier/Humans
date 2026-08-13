@@ -2,7 +2,7 @@ using Humans.Events.Services.Dtos;
 using Humans.Events.Services;
 using Humans.Application.Extensions;
 using Humans.Camps.Contracts;
-using Humans.Application.Interfaces.Shifts;
+using Humans.Shifts.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Events.Domain;
 using Humans.UI.Authorization;

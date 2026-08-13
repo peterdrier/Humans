@@ -108,4 +108,4 @@ No new gates. Pies inherit `/Shifts`'s existing `[Authorize]` + `CanBrowseShifts
 
 - [Shift Management](shift-management.md) — pies derive from rotas/shifts/signups owned by Shift Management.
 - [Teams](../teams/teams.md) — `IsPromotedToDirectory` is set in Team admin.
-- Section invariants: [`docs/sections/Shifts.md`](../../sections/Shifts.md#department-coverage-pies).
+- Section invariants: [`src/Sections/Humans.Shifts/Docs/Shifts.md`](../../../src/Sections/Humans.Shifts/Docs/Shifts.md#department-coverage-pies).

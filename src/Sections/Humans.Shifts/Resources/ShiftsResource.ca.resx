@@ -1,0 +1,1117 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- ReSharper disable MarkupTextTypo -->
+<root xmlns:ns1="urn:schemas-microsoft-com:xml-msdata" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:schema id="root">
+    <xs:element name="root" ns1:IsDataSet="true">
+      <xs:complexType>
+        <xs:choice maxOccurs="unbounded">
+          <xs:element name="data">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element name="value" type="xsd:string" minOccurs="0" ns1:Ordinal="1" />
+                <xs:element name="comment" type="xsd:string" minOccurs="0" ns1:Ordinal="2" />
+              </xs:sequence>
+              <xs:attribute name="name" type="xsd:string" ns1:Ordinal="0" />
+              <xs:attribute name="type" type="xsd:string" />
+              <xs:attribute name="mimetype" type="xsd:string" />
+            </xs:complexType>
+          </xs:element>
+          <xs:element name="resheader">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element name="value" type="xsd:string" minOccurs="0" ns1:Ordinal="1" />
+              </xs:sequence>
+              <xs:attribute name="name" type="xsd:string" use="required" />
+            </xs:complexType>
+          </xs:element>
+        </xs:choice>
+      </xs:complexType>
+    </xs:element>
+  </xs:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>1.3</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="Shifts_SignedUp" xml:space="preserve">
+    <value>Apuntats</value>
+  </data>
+  <data name="Shifts_Pending" xml:space="preserve">
+    <value>(pendent)</value>
+  </data>
+  <data name="ShiftInfo_Title" xml:space="preserve">
+    <value>Preferències de torns</value>
+  </data>
+  <data name="ShiftInfo_StepOf" xml:space="preserve">
+    <value>Pas {0} de {1}</value>
+    <comment>{0} = current step, {1} = total steps</comment>
+  </data>
+  <data name="ShiftInfo_SkillsTitle" xml:space="preserve">
+    <value>En què ets bo/bona?</value>
+  </data>
+  <data name="ShiftInfo_SkillsSubtitle" xml:space="preserve">
+    <value>Selecciona les habilitats que t'agradaria fer servir. Les pots canviar en qualsevol moment.</value>
+  </data>
+  <data name="ShiftInfo_WorkStyleTitle" xml:space="preserve">
+    <value>Com t'agrada treballar?</value>
+  </data>
+  <data name="ShiftInfo_WorkStyleSubtitle" xml:space="preserve">
+    <value>Ajuda als coordinadors a assignar-te torns que s'adaptin al teu estil i disponibilitat.</value>
+  </data>
+  <data name="ShiftInfo_LanguagesTitle" xml:space="preserve">
+    <value>Quins idiomes parles?</value>
+  </data>
+  <data name="ShiftInfo_LanguagesSubtitle" xml:space="preserve">
+    <value>Això ens ajuda a ubicar-te en equips on puguis comunicar-te bé.</value>
+  </data>
+  <data name="ShiftInfo_OtherSkills" xml:space="preserve">
+    <value>Quines altres habilitats tens?</value>
+  </data>
+  <data name="ShiftInfo_WorkTime" xml:space="preserve">
+    <value>Quan prefereixes treballar?</value>
+  </data>
+  <data name="ShiftInfo_OtherPrefs" xml:space="preserve">
+    <value>Altres preferències</value>
+  </data>
+  <data name="ShiftInfo_OtherLanguages" xml:space="preserve">
+    <value>Quins altres idiomes parles?</value>
+  </data>
+  <data name="ShiftInfo_Continue" xml:space="preserve">
+    <value>Continuar</value>
+  </data>
+  <data name="Shifts_Title" xml:space="preserve">
+    <value>Torns</value>
+  </data>
+  <data name="Shifts_BrowseTitle" xml:space="preserve">
+    <value>Explorar opcions de voluntariat</value>
+  </data>
+  <data name="Shifts_Department" xml:space="preserve">
+    <value>Departament</value>
+  </data>
+  <data name="Shifts_AllDepartments" xml:space="preserve">
+    <value>Tots els departaments</value>
+  </data>
+  <data name="Shifts_PieCoverage_RowAria" xml:space="preserve">
+    <value>Cobertura per departament — fes clic en un cercle per filtrar</value>
+  </data>
+  <data name="Shifts_PieCoverage_Aria" xml:space="preserve">
+    <value>{0}: {1}% cobert, {2} de {3} hores</value>
+  </data>
+  <data name="Shifts_PieCoverage_Title" xml:space="preserve">
+    <value>{0} — {1} h / {2} h ({3}%)</value>
+  </data>
+  <data name="Shifts_PieCoverage_TipFilter" xml:space="preserve">
+    <value>Consell — fes clic en un gràfic per filtrar per aquest departament; torna a fer-hi clic per esborrar.</value>
+  </data>
+  <data name="Shifts_PieCoverage_TipDismiss" xml:space="preserve">
+    <value>Descarta el consell</value>
+  </data>
+  <data name="Shifts_FilterChip_Prefix" xml:space="preserve">
+    <value>Filtre:</value>
+  </data>
+  <data name="Shifts_FilterChip_Clear" xml:space="preserve">
+    <value>Treu el filtre de departament</value>
+  </data>
+  <data name="Shifts_From" xml:space="preserve">
+    <value>Des de</value>
+  </data>
+  <data name="Shifts_To" xml:space="preserve">
+    <value>Fins a</value>
+  </data>
+  <data name="Shifts_ClearFilters" xml:space="preserve">
+    <value>Netejar filtres</value>
+  </data>
+  <data name="Shifts_FilterByTag" xml:space="preserve">
+    <value>Filtrar per etiqueta:</value>
+  </data>
+  <data name="Shifts_SetPreferences" xml:space="preserve">
+    <value>Configura les teves preferències</value>
+  </data>
+  <data name="Shifts_PreferencesHelp" xml:space="preserve">
+    <value>Selecciona etiquetes que coincideixin amb el treball que t'agrada. Els torns coincidents es ressaltaran amb una estrella.</value>
+  </data>
+  <data name="Shifts_SavePreferences" xml:space="preserve">
+    <value>Desar preferències</value>
+  </data>
+  <data name="Shifts_HeroTitle" xml:space="preserve">
+    <value>Troba el teu torn perfecte</value>
+  </data>
+  <data name="Shifts_HeroSubtitle" xml:space="preserve">
+    <value>Explora les opcions de voluntariat, filtra per fase o departament, i apunta't als torns que millor s'adaptin a tu.</value>
+  </data>
+  <data name="Shifts_LearnMore" xml:space="preserve">
+    <value>Saber-ne més</value>
+  </data>
+  <data name="Shifts_EditPreferences" xml:space="preserve">
+    <value>Editar preferències</value>
+  </data>
+  <data name="Shifts_NotOpenYet" xml:space="preserve">
+    <value>Els torns encara no estan oberts. Només coordinadors i administradors poden veure aquesta pàgina.</value>
+  </data>
+  <data name="Shifts_AllShiftsFull" xml:space="preserve">
+    <value>Tots els torns de {0} estan complets.</value>
+    <comment>{0} = period name</comment>
+  </data>
+  <data name="Shifts_Start" xml:space="preserve">
+    <value>Inici</value>
+  </data>
+  <data name="Shifts_End" xml:space="preserve">
+    <value>Fi</value>
+  </data>
+  <data name="Shifts_SignUpForDates" xml:space="preserve">
+    <value>Inscriure's en dates de {0}</value>
+    <comment>{0} = period name (e.g. set-up, strike)</comment>
+  </data>
+  <data name="Shifts_Date" xml:space="preserve">
+    <value>Data</value>
+  </data>
+  <data name="Shifts_Filled" xml:space="preserve">
+    <value>Ocupats</value>
+  </data>
+  <data name="Shifts_Days" xml:space="preserve">
+    <value>dies</value>
+  </data>
+  <data name="Shifts_Total" xml:space="preserve">
+    <value>Total</value>
+  </data>
+  <data name="Shifts_SignedUpAllDays" xml:space="preserve">
+    <value>Inscrit (tots els {0} dies)</value>
+    <comment>{0} = count</comment>
+  </data>
+  <data name="Shifts_SignedUpPartial" xml:space="preserve">
+    <value>Inscrit ({0} de {1})</value>
+    <comment>{0} = count</comment>
+  </data>
+  <data name="Shifts_Full" xml:space="preserve">
+    <value>Complet</value>
+  </data>
+  <data name="Shifts_NeedsHelp" xml:space="preserve">
+    <value>Necessita ajuda</value>
+  </data>
+  <data name="Shifts_DayNeedsHelp" xml:space="preserve">
+    <value>{0} dia necessita ajuda</value>
+    <comment>{0} = number of days</comment>
+  </data>
+  <data name="Shifts_DaysNeedHelp" xml:space="preserve">
+    <value>{0} dies necessiten ajuda</value>
+    <comment>{0} = number of days</comment>
+  </data>
+  <data name="Shifts_ClickToExpand" xml:space="preserve">
+    <value>clic per expandir</value>
+  </data>
+  <data name="Shifts_Shift" xml:space="preserve">
+    <value>Torn</value>
+  </data>
+  <data name="Shifts_Phase" xml:space="preserve">
+    <value>Fase</value>
+  </data>
+  <data name="Shifts_Time" xml:space="preserve">
+    <value>Hora</value>
+  </data>
+  <data name="Shifts_Duration" xml:space="preserve">
+    <value>Durada</value>
+  </data>
+  <data name="Shifts_AllDay" xml:space="preserve">
+    <value>Tot el dia</value>
+  </data>
+  <data name="Shifts_FullDay" xml:space="preserve">
+    <value>Dia complet</value>
+  </data>
+  <data name="Shifts_Essential" xml:space="preserve">
+    <value>Essencial</value>
+  </data>
+  <data name="Shifts_Important" xml:space="preserve">
+    <value>Important</value>
+  </data>
+  <data name="Shifts_HiddenBadge" xml:space="preserve">
+    <value>Ocult</value>
+  </data>
+  <data name="Shifts_MatchesPrefs" xml:space="preserve">
+    <value>Coincideix amb les teves preferències</value>
+  </data>
+  <data name="Shifts_SortUrgency" xml:space="preserve">
+    <value>On més calen</value>
+  </data>
+  <data name="Shifts_SortDept" xml:space="preserve">
+    <value>Per departament</value>
+  </data>
+  <data name="Shifts_SortUrgencyHint" xml:space="preserve">
+    <value>Els torns que necessiten gent primer</value>
+  </data>
+  <data name="Shifts_SortDeptHint" xml:space="preserve">
+    <value>Agrupar torns per departament</value>
+  </data>
+  <data name="Shifts_SlotsFilled" xml:space="preserve">
+    <value>places cobertes</value>
+  </data>
+  <data name="Shifts_RotaSingular" xml:space="preserve">
+    <value>torn</value>
+  </data>
+  <data name="Shifts_RotaPlural" xml:space="preserve">
+    <value>torns</value>
+  </data>
+  <data name="Shifts_ShiftSingular" xml:space="preserve">
+    <value>franja</value>
+  </data>
+  <data name="Shifts_ShiftPlural" xml:space="preserve">
+    <value>franges</value>
+  </data>
+  <data name="Shifts_SignUpButton" xml:space="preserve">
+    <value>Inscriure's</value>
+  </data>
+  <data name="Shifts_Toggle_SignUp" xml:space="preserve">
+    <value>Apuntar-m'hi</value>
+  </data>
+  <data name="Shifts_Toggle_Pending" xml:space="preserve">
+    <value>Sol·licitat — pendent</value>
+  </data>
+  <data name="Shifts_Toast_SignedUp" xml:space="preserve">
+    <value>T'has apuntat.</value>
+  </data>
+  <data name="Shifts_Toast_Applied" xml:space="preserve">
+    <value>Sol·licitat — t'avisarem.</value>
+  </data>
+  <data name="Shifts_Toast_Removed" xml:space="preserve">
+    <value>Tret.</value>
+  </data>
+  <data name="Shifts_Toggle_Error" xml:space="preserve">
+    <value>Alguna cosa ha fallat. Torna-ho a provar.</value>
+  </data>
+  <data name="Shifts_Toggle_Remove" xml:space="preserve">
+    <value>Estàs apuntat — toca per treure't</value>
+  </data>
+  <data name="Shifts_BrowsingClosed" xml:space="preserve">
+    <value>L'exploració de torns encara no està oberta. Torna més tard!</value>
+  </data>
+  <data name="Shifts_NoActiveEvent" xml:space="preserve">
+    <value>No hi ha cap esdeveniment actiu configurat. Un administrador ha de configurar els ajustos de l'esdeveniment primer.</value>
+  </data>
+  <data name="Shifts_ConfigureEvent" xml:space="preserve">
+    <value>Configurar ajustos de l'esdeveniment</value>
+  </data>
+  <data name="Shifts_MyShiftsTitle" xml:space="preserve">
+    <value>Els meus torns</value>
+  </data>
+  <data name="Shifts_UpcomingShifts" xml:space="preserve">
+    <value>Propers torns</value>
+  </data>
+  <data name="Shifts_PendingApproval" xml:space="preserve">
+    <value>Pendent d'aprovació</value>
+  </data>
+  <data name="Shifts_Past" xml:space="preserve">
+    <value>Passats</value>
+  </data>
+  <data name="Shifts_Bail" xml:space="preserve">
+    <value>Cancel·lar</value>
+  </data>
+  <data name="Shifts_WithdrawButton" xml:space="preserve">
+    <value>Retirar</value>
+  </data>
+  <data name="Shifts_NoSignups" xml:space="preserve">
+    <value>Encara no t'has inscrit en cap torn.</value>
+  </data>
+  <data name="Shifts_BrowseAvailable" xml:space="preserve">
+    <value>Explorar torns disponibles</value>
+  </data>
+  <data name="Shifts_NoActiveEventConfigured" xml:space="preserve">
+    <value>No hi ha cap esdeveniment actiu configurat.</value>
+  </data>
+  <data name="Shifts_GeneralAvailability" xml:space="preserve">
+    <value>Disponibilitat general</value>
+  </data>
+  <data name="Shifts_AvailabilityHelp" xml:space="preserve">
+    <value>Marca els dies que estàs disponible per ajudar. Els coordinadors poden veure qui està disponible en assignar torns.</value>
+  </data>
+  <data name="Shifts_SaveAvailability" xml:space="preserve">
+    <value>Desar disponibilitat</value>
+  </data>
+  <data name="Shifts_AvailabilityPromptText" xml:space="preserve">
+    <value>Abans de buscar torns, marca els dies que estàs disponible: els coordinadors ho fan servir per assignar-te torns.</value>
+  </data>
+  <data name="Shifts_SetAvailabilityCta" xml:space="preserve">
+    <value>Indica la teva disponibilitat</value>
+  </data>
+  <data name="Shifts_DaysSelected" xml:space="preserve">
+    <value>dies seleccionats</value>
+  </data>
+  <data name="Shifts_SlotsFull" xml:space="preserve">
+    <value>Alguns dies encara necessiten ajuda, però totes les places disponibles estan completes. Torna més tard per si s'obren places.</value>
+  </data>
+  <data name="Shifts_ConfirmSignup_Title" xml:space="preserve">
+    <value>Confirma la teva inscripció al {0}</value>
+  </data>
+  <data name="Shifts_ConfirmSignup_Phase" xml:space="preserve">
+    <value>T'estàs inscrivint a {0} (fase de {1}).</value>
+  </data>
+  <data name="Shifts_ConfirmSignup_Range" xml:space="preserve">
+    <value>Del {0} al {1} ({2} dies).</value>
+  </data>
+  <data name="Shifts_ConfirmSignup_Range_Single" xml:space="preserve">
+    <value>Per al {0} (1 dia).</value>
+  </data>
+  <data name="Shifts_ConfirmSignup_ArriveBy" xml:space="preserve">
+    <value>S'espera que siguis al lloc abans del {0}.</value>
+  </data>
+  <data name="Shifts_ConfirmSignup_Prompt" xml:space="preserve">
+    <value>És aquest el període en què volies inscriure't?</value>
+  </data>
+  <data name="Shifts_ConfirmSignup_Confirm" xml:space="preserve">
+    <value>Confirmar inscripció</value>
+  </data>
+  <data name="Shifts_ConfirmSignup_Conflicts_Heading" xml:space="preserve">
+    <value>Alguns dies d'aquest rang entren en conflicte amb torns en què ja estàs inscrit/a:</value>
+  </data>
+  <data name="Shifts_ConfirmSignup_Conflicts_Row" xml:space="preserve">
+    <value>{0} — ja inscrit/a a {1} ({2}–{3})</value>
+  </data>
+  <data name="Shifts_ConfirmSignup_Conflicts_PartialNote" xml:space="preserve">
+    <value>Ja estàs inscrit/a en alguns d'aquests dies, així que només afegirem els que estiguin lliures.</value>
+  </data>
+  <data name="Shifts_ConfirmSignup_Conflicts_AllBlocked" xml:space="preserve">
+    <value>Sembla que ja tens un torn reservat cada dia d'aquest rang, així que no en podem afegir cap.</value>
+  </data>
+  <data name="ShiftDash_Title" xml:space="preserve">
+    <value>Tauler de torns</value>
+  </data>
+  <data name="ShiftDash_ShiftsCount" xml:space="preserve">
+    <value>{0} torns</value>
+    <comment>{0} = count</comment>
+  </data>
+  <data name="ShiftDash_Date" xml:space="preserve">
+    <value>Data</value>
+  </data>
+  <data name="ShiftDash_Department" xml:space="preserve">
+    <value>Departament</value>
+  </data>
+  <data name="ShiftDash_AllDepartments" xml:space="preserve">
+    <value>Tots els departaments</value>
+  </data>
+  <data name="ShiftDash_Filter" xml:space="preserve">
+    <value>Filtrar</value>
+  </data>
+  <data name="ShiftDash_Clear" xml:space="preserve">
+    <value>Netejar</value>
+  </data>
+  <data name="ShiftDash_NoShiftsMatch" xml:space="preserve">
+    <value>Cap torn coincideix amb els filtres actuals.</value>
+  </data>
+  <data name="ShiftDash_Shift" xml:space="preserve">
+    <value>Torn</value>
+  </data>
+  <data name="ShiftDash_DateTime" xml:space="preserve">
+    <value>Data / Hora</value>
+  </data>
+  <data name="ShiftDash_Slots" xml:space="preserve">
+    <value>Places</value>
+  </data>
+  <data name="ShiftDash_Priority" xml:space="preserve">
+    <value>Prioritat</value>
+  </data>
+  <data name="ShiftDash_Voluntell" xml:space="preserve">
+    <value>Voluntell</value>
+  </data>
+  <data name="ShiftDash_SearchHumans" xml:space="preserve">
+    <value>Cercar humans per a: {0}</value>
+    <comment>{0} = shift/rota name</comment>
+  </data>
+  <data name="ShiftDash_SearchPlaceholder" xml:space="preserve">
+    <value>Escriu un nom (mín. 2 caràcters)...</value>
+  </data>
+  <data name="ShiftDash_NoHumansFound" xml:space="preserve">
+    <value>No s'han trobat humans.</value>
+  </data>
+  <data name="ShiftDash_SearchFailed" xml:space="preserve">
+    <value>La cerca ha fallat.</value>
+  </data>
+  <data name="ShiftDash_ScheduleConflict" xml:space="preserve">
+    <value>Conflicte d'horari</value>
+  </data>
+  <data name="ShiftDash_Overview_ShiftsFilled" xml:space="preserve">
+    <value>Places cobertes</value>
+  </data>
+  <data name="ShiftDash_Overview_TicketHolders" xml:space="preserve">
+    <value>Amb entrada</value>
+  </data>
+  <data name="ShiftDash_Overview_TicketHoldersSubline" xml:space="preserve">
+    <value>humans que han pagat</value>
+  </data>
+  <data name="ShiftDash_Overview_TicketHoldersEngaged" xml:space="preserve">
+    <value>Ticket holding humans</value>
+  </data>
+  <data name="ShiftDash_Overview_EngagedSubline" xml:space="preserve">
+    <value>{0} humans no s'han apuntat</value>
+    <comment>{0} = count</comment>
+  </data>
+  <data name="ShiftDash_Overview_NonTicketSignups" xml:space="preserve">
+    <value>Apuntats sense entrada</value>
+  </data>
+  <data name="ShiftDash_Overview_NonTicketSubline" xml:space="preserve">
+    <value>apuntats sense entrada (encara)</value>
+  </data>
+  <data name="ShiftDash_Overview_StalePending" xml:space="preserve">
+    <value>Pendents antics</value>
+  </data>
+  <data name="ShiftDash_Overview_StaleSubline" xml:space="preserve">
+    <value>pendents &gt; 3 dies</value>
+  </data>
+  <data name="ShiftDash_Overview_TicketData_Hidden" xml:space="preserve">
+    <value>dades d'entrades encara no compartides</value>
+  </data>
+  <data name="ShiftDash_PeriodFilter_Label" xml:space="preserve">
+    <value>Mostrant:</value>
+  </data>
+  <data name="ShiftDash_PeriodFilter_All" xml:space="preserve">
+    <value>Tot</value>
+  </data>
+  <data name="ShiftDash_PeriodFilter_BuildDays" xml:space="preserve">
+    <value>Muntatge</value>
+  </data>
+  <data name="ShiftDash_PeriodFilter_EventShifts" xml:space="preserve">
+    <value>Esdeveniment</value>
+  </data>
+  <data name="ShiftDash_PeriodFilter_Strike" xml:space="preserve">
+    <value>Desmuntatge</value>
+  </data>
+  <data name="ShiftDash_SubPeriodFilter_Label" xml:space="preserve">
+    <value>Període</value>
+  </data>
+  <data name="ShiftDash_SubPeriodFilter_All" xml:space="preserve">
+    <value>Tots</value>
+  </data>
+  <data name="ShiftDash_SubPeriodFilter_FirstCrew" xml:space="preserve">
+    <value>Primera tripulació</value>
+  </data>
+  <data name="ShiftDash_SubPeriodFilter_SetupWeek" xml:space="preserve">
+    <value>Setmana de muntatge</value>
+  </data>
+  <data name="ShiftDash_SubPeriodFilter_PreEventWeek" xml:space="preserve">
+    <value>Setmana pre-esdeveniment</value>
+  </data>
+  <data name="ShiftDash_SubPeriodFilter_FinishingWeekend" xml:space="preserve">
+    <value>Cap de setmana de finalització</value>
+  </data>
+  <data name="ShiftDash_Departments_Title" xml:space="preserve">
+    <value>Departaments</value>
+  </data>
+  <data name="ShiftDash_Departments_SortNote" xml:space="preserve">
+    <value>ordenats pel % més baix de places cobertes primer</value>
+  </data>
+  <data name="ShiftDash_Countdown_Label" xml:space="preserve">
+    <value>Compte enrere</value>
+  </data>
+  <data name="ShiftDash_Countdown_Days" xml:space="preserve">
+    <value>{0} dies</value>
+    <comment>{0} = whole days</comment>
+  </data>
+  <data name="ShiftDash_Countdown_Weeks" xml:space="preserve">
+    <value>{0} setmanes</value>
+  </data>
+  <data name="ShiftDash_Countdown_WeeksAndDays" xml:space="preserve">
+    <value>{0} setmanes i {1} dies</value>
+  </data>
+  <data name="ShiftDash_Countdown_FirstDay" xml:space="preserve">
+    <value>primer dia de muntatge: {0}</value>
+  </data>
+  <data name="ShiftDash_Countdown_Today" xml:space="preserve">
+    <value>Avui</value>
+  </data>
+  <data name="ShiftDash_Countdown_InProgress" xml:space="preserve">
+    <value>Esdeveniment en curs — dia {0} des de l’inici del muntatge</value>
+  </data>
+  <data name="ShiftDash_DeptStaffingByDay_Title" xml:space="preserve">
+    <value>Dotació de personal</value>
+  </data>
+  <data name="ShiftDash_DeptStaffingByDay_Subtitle" xml:space="preserve">
+    <value>Personal per departament i dia</value>
+  </data>
+  <data name="ShiftDash_DurationMix_Title" xml:space="preserve">
+    <value>Barreja de durada</value>
+  </data>
+  <data name="ShiftDash_DurationMix_Subtitle" xml:space="preserve">
+    <value>Distribució de la durada dels torns</value>
+  </data>
+  <data name="ShiftDash_DurationMix_Col_Duration" xml:space="preserve">
+    <value>Durada</value>
+  </data>
+  <data name="ShiftDash_DurationMix_Col_Slots" xml:space="preserve">
+    <value>Places</value>
+  </data>
+  <data name="ShiftDash_DurationMix_Col_Filled" xml:space="preserve">
+    <value>Coberts</value>
+  </data>
+  <data name="ShiftDash_DurationMix_Col_Pct" xml:space="preserve">
+    <value>%</value>
+  </data>
+  <data name="ShiftDash_DurationMix_FullDay" xml:space="preserve">
+    <value>Dia complet</value>
+  </data>
+  <data name="ShiftDash_DurationMix_HourLabel" xml:space="preserve">
+    <value>{0} h</value>
+    <comment>{0} = whole hours</comment>
+  </data>
+  <data name="ShiftDash_DurationMix_Total" xml:space="preserve">
+    <value>Total</value>
+  </data>
+  <data name="ShiftDash_Heatmap_Title" xml:space="preserve">
+    <value>Mapa de calor</value>
+  </data>
+  <data name="ShiftDash_Heatmap_Subtitle" xml:space="preserve">
+    <value>Cobertura de torns per equip i dia</value>
+  </data>
+  <data name="ShiftDash_Heatmap_Col_Team" xml:space="preserve">
+    <value>Equip</value>
+  </data>
+  <data name="ShiftDash_Heatmap_Tooltip_Filled" xml:space="preserve">
+    <value>{0} — {1} / {2} places cobertes</value>
+  </data>
+  <data name="ShiftDash_Heatmap_Tooltip_None" xml:space="preserve">
+    <value>{0} — cap torn aquest dia</value>
+  </data>
+  <data name="ShiftDash_Heatmap_Legend" xml:space="preserve">
+    <value>Llegenda</value>
+  </data>
+  <data name="ShiftDash_Departments_Col_Department" xml:space="preserve">
+    <value>Departament</value>
+  </data>
+  <data name="ShiftDash_Departments_Col_Total" xml:space="preserve">
+    <value>Total</value>
+  </data>
+  <data name="ShiftDash_Departments_Col_Filled" xml:space="preserve">
+    <value>Coberts</value>
+  </data>
+  <data name="ShiftDash_Departments_Col_Pct" xml:space="preserve">
+    <value>%</value>
+  </data>
+  <data name="ShiftDash_Departments_Col_SlotsRemaining" xml:space="preserve">
+    <value>Places lliures</value>
+  </data>
+  <data name="ShiftDash_Departments_Col_Period" xml:space="preserve">
+    <value>Període</value>
+  </data>
+  <data name="ShiftDash_Departments_Direct" xml:space="preserve">
+    <value>Directe</value>
+  </data>
+  <data name="ShiftDash_Coordinators_Title" xml:space="preserve">
+    <value>Activitat dels coordinadors</value>
+  </data>
+  <data name="ShiftDash_Coordinators_Subtitle" xml:space="preserve">
+    <value>equips amb pendents, inici de sessió més antic primer</value>
+  </data>
+  <data name="ShiftDash_Coordinators_Col_Team" xml:space="preserve">
+    <value>Equip</value>
+  </data>
+  <data name="ShiftDash_Coordinators_Col_Coordinators" xml:space="preserve">
+    <value>Coordinadors</value>
+  </data>
+  <data name="ShiftDash_Coordinators_Col_Pending" xml:space="preserve">
+    <value>Pendents</value>
+  </data>
+  <data name="ShiftDash_Coordinators_NoCoordinators" xml:space="preserve">
+    <value>sense coordinadors</value>
+  </data>
+  <data name="ShiftDash_Coordinators_Never" xml:space="preserve">
+    <value>mai</value>
+  </data>
+  <data name="ShiftDash_Coordinators_MinutesAgo" xml:space="preserve">
+    <value>fa {0} min</value>
+    <comment>{0} = minutes</comment>
+  </data>
+  <data name="ShiftDash_Coordinators_HoursAgo" xml:space="preserve">
+    <value>fa {0} h</value>
+    <comment>{0} = hours</comment>
+  </data>
+  <data name="ShiftDash_Coordinators_DaysAgo" xml:space="preserve">
+    <value>fa {0} d</value>
+    <comment>{0} = days</comment>
+  </data>
+  <data name="ShiftDash_Coordinators_DirectPending" xml:space="preserve">
+    <value>{0} directes</value>
+    <comment>{0} = pending count at this team level only</comment>
+  </data>
+  <data name="ShiftDash_Trends_Title" xml:space="preserve">
+    <value>Tendències</value>
+  </data>
+  <data name="ShiftDash_Trends_Window_7d" xml:space="preserve">
+    <value>7d</value>
+  </data>
+  <data name="ShiftDash_Trends_Window_30d" xml:space="preserve">
+    <value>30d</value>
+  </data>
+  <data name="ShiftDash_Trends_Window_90d" xml:space="preserve">
+    <value>90d</value>
+  </data>
+  <data name="ShiftDash_Trends_Window_All" xml:space="preserve">
+    <value>Tot</value>
+  </data>
+  <data name="ShiftDash_Trends_NewSignups" xml:space="preserve">
+    <value>Noves inscripcions</value>
+  </data>
+  <data name="ShiftDash_Trends_NewTicketSales" xml:space="preserve">
+    <value>Noves entrades venudes</value>
+  </data>
+  <data name="ShiftDash_Trends_DAU" xml:space="preserve">
+    <value>Inicis de sessió únics (DAU)</value>
+  </data>
+  <data name="ShiftDash_Trends_DAUNote" xml:space="preserve">
+    <value>Només es desa l'últim inici per human — els períodes antics estan infrarrepresentats.</value>
+  </data>
+  <data name="ShiftDash_Status_OnTrack" xml:space="preserve">
+    <value>En curs</value>
+  </data>
+  <data name="ShiftDash_Status_AtRisk" xml:space="preserve">
+    <value>En risc</value>
+  </data>
+  <data name="ShiftDash_Status_BelowTarget" xml:space="preserve">
+    <value>Per sota de l'objectiu</value>
+  </data>
+  <data name="ShiftDash_Coordinators_StaleLabel" xml:space="preserve">
+    <value>Inactiu més de 7 dies</value>
+  </data>
+  <data name="VolTrack_Title" xml:space="preserve">
+    <value>Seguiment de voluntaris</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Breadcrumb_Shifts" xml:space="preserve">
+    <value>Torns</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Breadcrumb_ShiftDashboard" xml:space="preserve">
+    <value>Tauler de torns</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Breadcrumb_VolunteerTracking" xml:space="preserve">
+    <value>Seguiment de voluntaris</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_NoActiveEvent" xml:space="preserve">
+    <value>Cap esdeveniment actiu.</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_AllClear" xml:space="preserve">
+    <value>Tothom està al dia.</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_UnknownUser" xml:space="preserve">
+    <value>(desconegut)</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_AsOfToday" xml:space="preserve">
+    <value>A dia de {0}</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Counts_MainTotal" xml:space="preserve">
+    <value>Voluntaris seguits</value>
+  </data>
+  <data name="VolTrack_Counts_WithGaps" xml:space="preserve">
+    <value>Amb forats</value>
+  </data>
+  <data name="VolTrack_Counts_OnCampSetup" xml:space="preserve">
+    <value>Al muntatge del campament avui</value>
+  </data>
+  <data name="VolTrack_Counts_Unbooked" xml:space="preserve">
+    <value>Declarats però sense reserva</value>
+  </data>
+  <data name="VolTrack_Export_Title" xml:space="preserve">
+    <value>Exportar graella de voluntariat</value>
+  </data>
+  <data name="VolTrack_Export_Department" xml:space="preserve">
+    <value>Departament</value>
+  </data>
+  <data name="VolTrack_Export_AllDepartments" xml:space="preserve">
+    <value>Tots els departaments</value>
+  </data>
+  <data name="VolTrack_Export_Period" xml:space="preserve">
+    <value>Per&#xED;ode</value>
+  </data>
+  <data name="VolTrack_Export_PeriodCustom" xml:space="preserve">
+    <value>Interval personalitzat</value>
+  </data>
+  <data name="VolTrack_Export_From" xml:space="preserve">
+    <value>Des de</value>
+  </data>
+  <data name="VolTrack_Export_To" xml:space="preserve">
+    <value>Fins a</value>
+  </data>
+  <data name="VolTrack_Export_Download" xml:space="preserve">
+    <value>Descarregar XLSX</value>
+  </data>
+  <data name="VolTrack_Export_Methodology" xml:space="preserve">
+    <value>Files = humans amb &#x2265;1 franja confirmada en l'interval. El color de la cel&#xB7;la = l'equip amb qui van treballar m&#xE9;s hores aquell dia. Cel&#xB7;la blanca = dia abans de la seva primera franja confirmada (dia d'arribada). Fila de totals = humans presents aquell dia (utilitzat per als recomptes d'&#xE0;pats). Els noms mostrats s&#xF3;n noms de platja.</value>
+  </data>
+  <data name="VolTrack_Filter_HideNoGaps" xml:space="preserve">
+    <value>Oculta els voluntaris sense forats</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Filter_HideCampSetup" xml:space="preserve">
+    <value>Oculta els voluntaris amb data de muntatge de campament</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Filter_HideUnbookedSection" xml:space="preserve">
+    <value>Oculta la secció de declarats però sense reserva</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Filter_Apply" xml:space="preserve">
+    <value>Aplicar</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Filter_Active" xml:space="preserve">
+    <value>Filtres actius</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Filter_Clear" xml:space="preserve">
+    <value>Netejar filtres</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Main_Title" xml:space="preserve">
+    <value>Forats a l'horari</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Main_Subtitle" xml:space="preserve">
+    <value>{0} voluntaris mostrats</value>
+    <comment>{0} = count</comment>
+  </data>
+  <data name="VolTrack_Main_Empty" xml:space="preserve">
+    <value>Cap voluntari amb inscripcions al període de muntatge.</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Search_Placeholder" xml:space="preserve">
+    <value>Cerca per nom o nom de platja…</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Search_NoMatch" xml:space="preserve">
+    <value>Cap voluntari coincideix amb "{0}".</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Col_Volunteer" xml:space="preserve">
+    <value>Voluntari</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_GapBadge" xml:space="preserve">
+    <value>{0} forats</value>
+    <comment>{0} = count</comment>
+  </data>
+  <data name="VolTrack_CampSetupTooltip" xml:space="preserve">
+    <value>Al muntatge del campament des del {0}</value>
+    <comment>{0} = date</comment>
+  </data>
+  <data name="VolTrack_Unbooked_Heading" xml:space="preserve">
+    <value>Participació declarada, encara sense reserva</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Unbooked_Subtitle" xml:space="preserve">
+    <value>Voluntaris que han indicat la seva presència i disponibilitat, però no s'han inscrit a cap torn.</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Unbooked_Title" xml:space="preserve">
+    <value>Disponibles però sense reserva</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Unbooked_Subtitle_Count" xml:space="preserve">
+    <value>{0} voluntaris mostrats</value>
+    <comment>{0} = count</comment>
+  </data>
+  <data name="VolTrack_Unbooked_Empty" xml:space="preserve">
+    <value>Cap voluntari declarat però sense reserva.</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_AvailableDaysBadge" xml:space="preserve">
+    <value>{0} disp.</value>
+    <comment>{0} = count</comment>
+  </data>
+  <data name="VolTrack_AvailableDaysTooltip" xml:space="preserve">
+    <value>Dies disponibles dins del període de muntatge</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_UnbookedBadge" xml:space="preserve">
+    <value>{0} sense reservar</value>
+    <comment>{0} = count</comment>
+  </data>
+  <data name="VolTrack_UnbookedTooltip" xml:space="preserve">
+    <value>Dies disponibles no reservats</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_State_DayOff" xml:space="preserve">
+    <value>Dia lliure</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Legend_DayOff" xml:space="preserve">
+    <value>Dia lliure (confirmat)</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Popover_MarkDayOff" xml:space="preserve">
+    <value>Marcar dia lliure</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Popover_CancelDayOff" xml:space="preserve">
+    <value>Cancel·lar dia lliure</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Popover_ReasonLabel" xml:space="preserve">
+    <value>Motiu (opcional)</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Popover_DayOffBlockedBySignups" xml:space="preserve">
+    <value>Cancel·la aquesta inscripció abans de marcar un dia lliure</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Msg_DayOffMarked" xml:space="preserve">
+    <value>Dia lliure marcat.</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Msg_DayOffCleared" xml:space="preserve">
+    <value>Dia lliure cancel·lat.</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_DayOffBadge" xml:space="preserve">
+    <value>{0} dia/es lliure/s</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Err_DayOffWithSignups" xml:space="preserve">
+    <value>El voluntari té inscripcions aquell dia — cancel·la-les primer.</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Err_DayOffOutsideBuild" xml:space="preserve">
+    <value>El dia lliure ha de ser dins del període de muntatge.</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_AuditAction_DayOffMarked" xml:space="preserve">
+    <value>Dia lliure marcat</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_AuditAction_DayOffCleared" xml:space="preserve">
+    <value>Dia lliure cancel·lat</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_State_Confirmed" xml:space="preserve">
+    <value>Confirmat</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_State_Pending" xml:space="preserve">
+    <value>Pendent</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_State_Gap" xml:space="preserve">
+    <value>Forat</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_State_CampSetup" xml:space="preserve">
+    <value>Muntatge de campament</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_State_Outside" xml:space="preserve">
+    <value>Fora de període</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_State_Expected" xml:space="preserve">
+    <value>Esperat</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_State_AvailableUnbooked" xml:space="preserve">
+    <value>Disponible, sense reservar</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_State_AvailableExpected" xml:space="preserve">
+    <value>Disponible (futur)</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_State_NotAvailable" xml:space="preserve">
+    <value>No disponible</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Popover_Rotas" xml:space="preserve">
+    <value>Torns (rotas):</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Popover_Available" xml:space="preserve">
+    <value>Voluntari marcat com a disponible</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Popover_MarkCampSetup" xml:space="preserve">
+    <value>Marcar com a anat al muntatge del campament des d'aquest dia</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Popover_MoveCampSetup" xml:space="preserve">
+    <value>Moure el muntatge del campament a aquest dia</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Popover_ClearCampSetup" xml:space="preserve">
+    <value>Esborrar el muntatge del campament</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Popover_OpenDashboard" xml:space="preserve">
+    <value>Trobar torns per voluntell</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Scroll_Left" xml:space="preserve">
+    <value>Desplaçar a l'esquerra</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Scroll_Right" xml:space="preserve">
+    <value>Desplaçar a la dreta</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Legend_Title" xml:space="preserve">
+    <value>Llegenda</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Legend_Confirmed" xml:space="preserve">
+    <value>Inscripció confirmada</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Legend_Pending" xml:space="preserve">
+    <value>Inscripció pendent</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Legend_Gap" xml:space="preserve">
+    <value>Sense cobertura un dia en què haurien de ser-hi</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Legend_AvailableUnbooked" xml:space="preserve">
+    <value>Disponible, cap inscripció encara</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Legend_CampSetup" xml:space="preserve">
+    <value>Al muntatge del campament</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Legend_OutsideOrExpected" xml:space="preserve">
+    <value>Fora o Previst</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Msg_CampSetupSaved" xml:space="preserve">
+    <value>Configuració del Barrio desada</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Msg_CampSetupCleared" xml:space="preserve">
+    <value>Configuració del Barrio esborrada</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Msg_AvailabilitySet" xml:space="preserve">
+    <value>Availability updated.</value>
+    <comment>TODO: translate — copied from English</comment>
+  </data>
+  <data name="VolTrack_Msg_AvailabilityCleared" xml:space="preserve">
+    <value>Availability updated.</value>
+    <comment>TODO: translate — copied from English</comment>
+  </data>
+  <data name="VolTrack_Popover_MarkAvailable" xml:space="preserve">
+    <value>Mark available</value>
+    <comment>TODO: translate — copied from English</comment>
+  </data>
+  <data name="VolTrack_Popover_UnmarkAvailable" xml:space="preserve">
+    <value>Unmark available</value>
+    <comment>TODO: translate — copied from English</comment>
+  </data>
+  <data name="VolTrack_Err_BadRequest" xml:space="preserve">
+    <value>Petició incorrecta</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Err_BadDate" xml:space="preserve">
+    <value>Data incorrecta</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Err_Unknown" xml:space="preserve">
+    <value>Error desconegut</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Err_SetupAtOrAfterGateOpen" xml:space="preserve">
+    <value>La configuració ha de ser abans de l'obertura de portes</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_Err_SetupBeforeFirstSignup" xml:space="preserve">
+    <value>La configuració no pot ser abans del primer registre</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="ShiftDash_VolTrackEntry_Title" xml:space="preserve">
+    <value>Seguiment de Voluntaris</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="ShiftDash_VolTrackEntry_Subtitle" xml:space="preserve">
+    <value>Estat de configuració dels Barrios</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="ShiftDash_VolTrackEntry_Open" xml:space="preserve">
+    <value>Obre</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_AuditAction_CampSetupSet" xml:space="preserve">
+    <value>Configuració de muntatge del campament establerta</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="VolTrack_AuditAction_CampSetupCleared" xml:space="preserve">
+    <value>Configuració de muntatge del campament esborrada</value>
+    <comment>TODO: translate</comment>
+  </data>
+  <data name="EmailRota_Title" xml:space="preserve">
+    <value>Enviar correu al torn: {0}</value>
+  </data>
+  <data name="EmailRota_Breadcrumb" xml:space="preserve">
+    <value>Correu al torn</value>
+  </data>
+  <data name="EmailRota_Heading" xml:space="preserve">
+    <value>Enviar correu a tothom del torn: {0}</value>
+  </data>
+  <data name="EmailRota_RecipientsHeading" xml:space="preserve">
+    <value>Destinataris ({0})</value>
+  </data>
+  <data name="EmailRota_NoRecipients" xml:space="preserve">
+    <value>Encara ning&#xFA; s'ha inscrit en aquest torn.</value>
+  </data>
+  <data name="EmailRota_MessageLabel" xml:space="preserve">
+    <value>El teu missatge</value>
+  </data>
+  <data name="EmailRota_MessageHelp" xml:space="preserve">
+    <value>Nom&#xE9;s text sense format. Cada destinatari veur&#xE0; aquest missatge juntament amb la seva pr&#xF2;pia llista de franges d'aquest torn.</value>
+  </data>
+  <data name="EmailRota_Button" xml:space="preserve">
+    <value>Enviar correu a un torn</value>
+  </data>
+  <data name="EmailRota_Send" xml:space="preserve">
+    <value>Enviar a {0} destinatari(s)</value>
+  </data>
+  <data name="EmailRota_Success" xml:space="preserve">
+    <value>S'han encuat {0} correu(s) per als destinataris del torn '{1}'.</value>
+  </data>
+  <data name="EmailRota_NoActiveSignups" xml:space="preserve">
+    <value>Aquest torn no t&#xE9; inscripcions actives a les quals enviar correu.</value>
+  </data>
+  <data name="EmailTeamRotas_Title" xml:space="preserve">
+    <value>Enviar correu a l'equip: {0}</value>
+  </data>
+  <data name="EmailTeamRotas_Breadcrumb" xml:space="preserve">
+    <value>Correu a l'equip</value>
+  </data>
+  <data name="EmailTeamRotas_Heading" xml:space="preserve">
+    <value>Enviar correu a tothom dels propers torns: {0}</value>
+  </data>
+  <data name="EmailTeamRotas_RecipientsHeading" xml:space="preserve">
+    <value>Destinataris ({0})</value>
+  </data>
+  <data name="EmailTeamRotas_RotaCount" xml:space="preserve">
+    <value>en {0} torn(s)</value>
+  </data>
+  <data name="EmailTeamRotas_NoRecipients" xml:space="preserve">
+    <value>Encara ning&#xFA; s'ha inscrit en els propers torns d'aquest equip.</value>
+  </data>
+  <data name="EmailTeamRotas_MessageLabel" xml:space="preserve">
+    <value>El teu missatge</value>
+  </data>
+  <data name="EmailTeamRotas_MessageHelp" xml:space="preserve">
+    <value>Nom&#xE9;s text sense format. Cada destinatari veur&#xE0; aquest missatge juntament amb la seva pr&#xF2;pia llista de franges en els propers torns de l'equip.</value>
+  </data>
+  <data name="EmailTeamRotas_Send" xml:space="preserve">
+    <value>Enviar a {0} destinatari(s)</value>
+  </data>
+  <data name="Shifts_SignupDisabledTooltip_MissingDietary" xml:space="preserve"><value>Tell us your food needs first.</value></data>
+  <data name="Shifts_SetupClosedBadge" xml:space="preserve"><value>Muntatge tancat</value></data>
+  <data name="Shifts_SignupDisabledTooltip_EarlyEntryClosed" xml:space="preserve"><value>Les inscripcions de muntatge estan tancades — ja som al lloc.</value></data>
+  <data name="Shifts_BailDisabledTooltip_EarlyEntryClosed" xml:space="preserve"><value>Els torns de muntatge ja estan tancats — contacta amb la teva coordinació si no pots venir.</value></data>
+  <data name="Shifts_DietaryRequiredBeforeSignup" xml:space="preserve"><value>Quick stop — we need your dietary info before signing up for this shift.</value></data>
+</root>

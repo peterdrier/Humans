@@ -6,16 +6,13 @@
 # When violations are FIXED, remove the corresponding line from this file.
 # When the test reports new violations, fix the code — do not add lines to silence it.
 Humans.Application.Interfaces.Auth.IMagicLinkService.FindUserByVerifiedEmailAsync:Humans.Domain.Entities.User
-Humans.Application.Interfaces.Shifts.IShiftManagementService.GetActiveAsync:Humans.Domain.Entities.EventSettings
-Humans.Application.Interfaces.Shifts.IShiftManagementService.GetBrowseShiftsAsync:Humans.Domain.Entities.Shift
-Humans.Application.Interfaces.Shifts.IShiftManagementService.GetByIdAsync:Humans.Domain.Entities.EventSettings
-Humans.Application.Interfaces.Shifts.IShiftManagementService.GetOrCreateShiftProfileAsync:Humans.Domain.Entities.VolunteerEventProfile
-Humans.Application.Interfaces.Shifts.IShiftManagementService.GetRotaByIdAsync:Humans.Domain.Entities.Rota
-Humans.Application.Interfaces.Shifts.IShiftManagementService.GetRotasByDepartmentAsync:Humans.Domain.Entities.Rota
-Humans.Application.Interfaces.Shifts.IShiftManagementService.GetShiftByIdAsync:Humans.Domain.Entities.Shift
-Humans.Application.Interfaces.Shifts.IShiftManagementService.GetShiftProfileAsync:Humans.Domain.Entities.VolunteerEventProfile
-Humans.Application.Interfaces.Shifts.IShiftManagementService.GetUrgentShiftsAsync:Humans.Domain.Entities.Shift
-Humans.Application.Interfaces.Shifts.IShiftSignupService.GetByUserAsync:Humans.Domain.Entities.ShiftSignup
+Humans.Shifts.Services.IShiftManagementService.GetActiveAsync:Humans.Shifts.Domain.EventSettings
+Humans.Shifts.Services.IShiftManagementService.GetByIdAsync:Humans.Shifts.Domain.EventSettings
+Humans.Shifts.Services.IShiftManagementService.GetOrCreateShiftProfileAsync:Humans.Shifts.Domain.VolunteerEventProfile
+Humans.Shifts.Services.IShiftManagementService.GetRotaByIdAsync:Humans.Shifts.Domain.Rota
+Humans.Shifts.Services.IShiftManagementService.GetRotasByDepartmentAsync:Humans.Shifts.Domain.Rota
+Humans.Shifts.Services.IShiftManagementService.GetShiftByIdAsync:Humans.Shifts.Domain.Shift
+Humans.Shifts.Services.IShiftSignupService.GetByUserAsync:Humans.Shifts.Domain.ShiftSignup
 Humans.Teams.Services.ITeamManagementService.GetAllTeamsAsync:Humans.Teams.Domain.Team
 Humans.Teams.Services.ITeamManagementService.GetByIdsWithParentsAsync:Humans.Teams.Domain.Team
 Humans.Teams.Services.ITeamManagementService.GetTeamByIdAsync:Humans.Teams.Domain.Team

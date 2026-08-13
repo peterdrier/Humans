@@ -1,9 +1,8 @@
 using AwesomeAssertions;
 using Humans.Application.DTOs;
-using Humans.Application.DTOs.Shifts;
 using Humans.Governance.Contracts;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Application.Interfaces.Shifts;
+using Humans.Shifts.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Dashboard;
 using Humans.Domain.Entities;
@@ -24,20 +23,20 @@ public class AdminDashboardServiceTests
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IMembershipCalculatorRead _membershipCalculator = Substitute.For<IMembershipCalculatorRead>();
     private readonly IApplicationServiceRead _applicationDecisionService = Substitute.For<IApplicationServiceRead>();
-    private readonly IShiftManagementService _shiftManagement = Substitute.For<IShiftManagementService>();
+    private readonly IBurnSettingsService _shiftManagement = Substitute.For<IBurnSettingsService>();
     private readonly IShiftView _shiftView = Substitute.For<IShiftView>();
 
     public AdminDashboardServiceTests()
     {
         // Default stubs: no active event, empty shift view. Per-test overrides allowed.
-        _shiftManagement.GetActiveAsync().Returns((EventSettings?)null);
+        _shiftManagement.GetActiveAsync().Returns((BurnSettingsInfo?)null);
         _shiftView.GetUsersAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(ci =>
             {
                 var ids = (IEnumerable<Guid>)ci[0];
-                IReadOnlyDictionary<Guid, ShiftUserView> dict =
-                    ids.ToDictionary(id => id, id => ShiftUserView.Empty(id));
-                return new ValueTask<IReadOnlyDictionary<Guid, ShiftUserView>>(dict);
+                IReadOnlyDictionary<Guid, ShiftUserSummary> dict =
+                    ids.ToDictionary(id => id, id => ShiftUserSummary.Empty(id));
+                return new ValueTask<IReadOnlyDictionary<Guid, ShiftUserSummary>>(dict);
             });
     }
 

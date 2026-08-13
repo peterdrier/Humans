@@ -4,7 +4,7 @@ using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Auth;
 using Humans.Consent.Contracts;
 using Humans.Feedback.Contracts;
-using Humans.Application.Interfaces.Shifts;
+using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Application.Interfaces.Users;
@@ -78,7 +78,7 @@ internal sealed class AgentUserSnapshotProvider(
 
         var now = clock.GetCurrentInstant();
         var upcoming = signups
-            .Where(s => s.Shift.GetAbsoluteEnd(activeEvent) > now
+            .Where(s => s.AbsoluteEnd > now
                 && s.Status is SignupStatus.Pending or SignupStatus.Confirmed)
             .ToList();
         if (upcoming.Count == 0)
@@ -89,10 +89,10 @@ internal sealed class AgentUserSnapshotProvider(
         // Singletons (SignupBlockId == null) → one entry per signup.
         foreach (var signup in upcoming.Where(s => s.SignupBlockId is null))
         {
-            var date = activeEvent.GateOpeningDate.PlusDays(signup.Shift.DayOffset);
+            var date = signup.Date;
             entries.Add(new UpcomingShiftEntry(
                 Key: signup.Id,
-                Label: signup.Shift.Rota?.Name ?? "(unnamed rota)",
+                Label: RotaLabel(signup),
                 StartDate: date,
                 EndDate: date,
                 DayCount: 1,
@@ -105,15 +105,15 @@ internal sealed class AgentUserSnapshotProvider(
             .GroupBy(s => s.SignupBlockId!.Value))
         {
             var dates = group
-                .Select(s => activeEvent.GateOpeningDate.PlusDays(s.Shift.DayOffset))
+                .Select(s => s.Date)
                 .OrderBy(d => d)
                 .ToList();
-            var label = group.First().Shift.Rota?.Name ?? "(unnamed rota)";
+            var label = RotaLabel(group.First());
             // Use the earliest signup's status as the block status — block
             // signups are created in one transaction so they share a status,
             // but defensively pick the earliest so a partially-bailed range
             // still surfaces something meaningful.
-            var status = group.OrderBy(s => s.Shift.DayOffset).First().Status;
+            var status = group.OrderBy(s => s.Date).First().Status;
             entries.Add(new UpcomingShiftEntry(
                 Key: group.Key,
                 Label: label,
@@ -127,4 +127,8 @@ internal sealed class AgentUserSnapshotProvider(
         // sorts by StartDate at the rendering layer (memory/architecture/display-sort-in-controllers.md).
         return entries;
     }
+
+    /// <summary>Rota display name, with the unnamed-rota fallback the entity walk used to carry.</summary>
+    private static string RotaLabel(ShiftSignupSummary signup) =>
+        string.IsNullOrWhiteSpace(signup.RotaName) ? "(unnamed rota)" : signup.RotaName;
 }

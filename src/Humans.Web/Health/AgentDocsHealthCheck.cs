@@ -18,7 +18,7 @@ namespace Humans.Web.Health;
 /// A cached reader would refresh the sliding expiration off one warm fetch and keep
 /// reporting Healthy through a revoked token / outage / moved canary. That is also why
 /// the two folder paths below are spelled out here rather than read off the section:
-/// both canaries are Base docs (docs/sections/Shifts.md, docs/features/26-events.md),
+/// both canaries are Base docs (docs/sections/_Index.md, docs/features/26-events.md),
 /// so this check depends on nothing Agent owns except whether the feature is on.
 /// </summary>
 public sealed class AgentDocsHealthCheck(
@@ -29,9 +29,14 @@ public sealed class AgentDocsHealthCheck(
     private const string SectionsFolder = "docs/sections";
     private const string FeaturesFolder = "docs/features";
 
-    // A section that is always whitelisted and always preloaded (Tier1) — if its
-    // doc cannot be fetched, GitHub connectivity for docs/sections is broken.
-    private const string ProbeSection = "Shifts";
+    // The canary for docs/sections. This probe fetches the folder path literally and
+    // has no src/Sections/Humans.{key}/Docs fallback, unlike AgentSectionDocReader, so
+    // it must name a doc that does not move. Any section's invariants doc eventually
+    // does: it was "Shifts" until #866 took that one into the section project, then
+    // "Camps" until #1288 took that one, both inside a single PR. _Index.md is the map
+    // between docs/sections and the moved sections' own Docs folders, so it stays in
+    // docs/sections for as long as the folder itself is worth probing.
+    private const string ProbeSectionDoc = "_Index";
 
     // A stable feature-spec canary — fetched from a different folder (docs/features)
     // than sections, so a folder-level fetch regression on one folder doesn't mask
@@ -45,9 +50,9 @@ public sealed class AgentDocsHealthCheck(
         if (!agent.IsEnabled)
             return HealthCheckResult.Healthy("agent disabled");
 
-        if (!await TryFetchAsync(SectionsFolder, ProbeSection, cancellationToken))
+        if (!await TryFetchAsync(SectionsFolder, ProbeSectionDoc, cancellationToken))
             return HealthCheckResult.Degraded(
-                $"agent grounding docs unreachable — docs/sections/{ProbeSection}.md could not be fetched from GitHub; " +
+                $"agent grounding docs unreachable — docs/sections/{ProbeSectionDoc}.md could not be fetched from GitHub; " +
                 "fetch_section_guide will return errors and the preload index will be empty");
 
         if (!await TryFetchAsync(FeaturesFolder, ProbeFeature, cancellationToken))

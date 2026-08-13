@@ -1,4 +1,5 @@
 using Humans.GoogleIntegration.Contracts;
+using Humans.Shifts.Services;
 using Humans.Auth.Contracts;
 using Humans.Teams.Data;
 using AwesomeAssertions;
@@ -12,7 +13,7 @@ using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.EarlyEntry;
 using Humans.Notifications.Contracts;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Application.Interfaces.Shifts;
+using Humans.Shifts.Contracts;
 using Humans.Teams.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Teams.Domain;

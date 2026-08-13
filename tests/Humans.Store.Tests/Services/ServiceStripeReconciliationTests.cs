@@ -3,7 +3,7 @@ using Humans.Application.Interfaces;
 using Humans.AuditLog.Contracts;
 using Humans.Camps.Contracts;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Application.Interfaces.Shifts;
+using Humans.Shifts.Contracts;
 using Humans.Store.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Store.Data;
@@ -25,14 +25,14 @@ public class ServiceStripeReconciliationTests
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly ICampServiceRead _campService = Substitute.For<ICampServiceRead>();
     private readonly ITeamServiceRead _teams = Substitute.For<ITeamServiceRead>();
-    private readonly IShiftManagementService _shifts = Substitute.For<IShiftManagementService>();
+    private readonly IBurnSettingsService _shifts = Substitute.For<IBurnSettingsService>();
     private readonly IStripeService _stripe = Substitute.For<IStripeService>();
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 6, 4, 12, 0));
     private readonly Service _service;
 
     public ServiceStripeReconciliationTests()
     {
-        _shifts.GetActiveAsync().Returns(new EventSettings { Year = 2026, TimeZoneId = "Europe/Madrid" });
+        _shifts.GetActiveAsync().Returns(BurnFixtures.Burn(year: 2026, timeZoneId: "Europe/Madrid"));
         // Mapping-chain stubs so GetOrderAsync resolves without throwing.
         _repo.GetAllProductsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(new List<Product>());

@@ -1,0 +1,112 @@
+@model Humans.Shifts.Controllers.OrphanSignupsViewModel
+@using Humans.UI.Models.Tables
+@using Microsoft.AspNetCore.Html
+
+@{
+    ViewData["Title"] = "Orphan shift signups";
+    Layout = "_AdminLayout";
+}
+
+<div class="container-fluid py-3">
+    <h1 class="h3 mb-3">Orphan shift signups</h1>
+
+    <p class="text-muted mb-3">
+        ShiftSignups whose <code>Id</code> has no audit row tying the signup
+        to a creation-or-confirmation moment (<code>ShiftSignupCreated</code>,
+        <code>ShiftSignupVoluntold</code>, or <code>ShiftSignupConfirmed</code>).
+        <code>ShiftSignupConfirmed</code> is included so legacy auto-confirmed
+        self-signups (which pre-fix wrote only <code>ShiftSignupConfirmed</code>
+        at creation time) and Pending → Confirmed transitions both count as
+        sufficient trail. A true orphan is a signup that went Pending →
+        Bailed / Refused / Cancelled without ever passing through Confirm —
+        the case behind the "I never signed up for this" support thread.
+    </p>
+
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <div class="text-muted small">Total signups</div>
+                    <div class="h4 mb-0">@Model.TotalSignups.ToString("N0")</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card @(Model.OrphanCount == 0 ? "border-success" : "border-warning")">
+                <div class="card-body">
+                    <div class="text-muted small">Orphans</div>
+                    <div class="h4 mb-0">@Model.OrphanCount.ToString("N0")</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <div class="text-muted small">Unique humans affected</div>
+                    <div class="h4 mb-0">@Model.UniqueUsers.ToString("N0")</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (Model.Rows.Count == 0)
+    {
+        <div class="alert alert-success">
+            No orphan signups — every ShiftSignup has a creation-event audit row.
+        </div>
+    }
+    else
+    {
+        Func<OrphanSignupRow, IHtmlContent> humanCell =
+            @<text><vc:human user-id="@item.UserId" /></text>;
+        Func<OrphanSignupRow, IHtmlContent> createdAtCell = @<text>
+            <time datetime="@item.CreatedAt.ToString()">
+                @item.CreatedAt.ToString()
+            </time>
+        </text>;
+        Func<OrphanSignupRow, IHtmlContent> reviewedByCell = @<text>
+            @if (item.ReviewedByUserId.HasValue)
+            {
+                <vc:human user-id="@item.ReviewedByUserId.Value" />
+            }
+            else
+            {
+                <span class="text-muted">—</span>
+            }
+        </text>;
+        Func<OrphanSignupRow, IHtmlContent> enrolledByCell = @<text>
+            @if (item.EnrolledByUserId.HasValue)
+            {
+                <vc:human user-id="@item.EnrolledByUserId.Value" />
+            }
+            else
+            {
+                <span class="text-muted">—</span>
+            }
+        </text>;
+        Func<OrphanSignupRow, IHtmlContent> blockCell = @<text>
+            @if (item.SignupBlockId.HasValue)
+            {
+                <code class="small">@item.SignupBlockId.Value.ToString()[..8]</code>
+            }
+            else
+            {
+                <span class="text-muted">—</span>
+            }
+        </text>;
+        Func<OrphanSignupRow, IHtmlContent> signupIdCell =
+            @<text><code class="small">@item.SignupId.ToString()[..8]</code></text>;
+        var table = TableModel.For(Model.Rows)
+            .Template("Human", humanCell)
+            .Column("Rota", r => r.RotaName)
+            .Column("Shift date", r => r.ShiftDate.ToWeekdayDayMonth())
+            .Column("Status", r => r.Status, c => c.EnumBadge())
+            .Template("Created", createdAtCell)
+            .Template("Reviewed by", reviewedByCell)
+            .Template("Enrolled by", enrolledByCell)
+            .Template("Block", blockCell)
+            .Template("Signup id", signupIdCell)
+            .Build();
+        <partial name="_Table" model="table" />
+    }
+</div>

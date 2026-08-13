@@ -2,10 +2,9 @@ using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Application;
 using Humans.Camps.Services;
-using Humans.Application.DTOs.Shifts;
 using Humans.Camps.Contracts;
 using Humans.CityPlanning.Contracts;
-using Humans.Application.Interfaces.Shifts;
+using Humans.Shifts.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -148,12 +147,12 @@ public class CampControllerTests
         _roles.BuildPanelAsync(season.Id, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new CampRolesPanelData(season.Id, [])));
         _shiftView.GetUsersAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<IReadOnlyDictionary<Guid, ShiftUserView>>(
-                new Dictionary<Guid, ShiftUserView>
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, ShiftUserSummary>>(
+                new Dictionary<Guid, ShiftUserSummary>
                 {
-                    [zeroShiftMemberId] = MakeShiftUserView(zeroShiftMemberId),
-                    [oneShiftMemberId] = MakeShiftUserView(oneShiftMemberId, SignupStatus.Confirmed),
-                    [fivePlusShiftMemberId] = MakeShiftUserView(
+                    [zeroShiftMemberId] = MakeShiftUserSummary(zeroShiftMemberId),
+                    [oneShiftMemberId] = MakeShiftUserSummary(oneShiftMemberId, SignupStatus.Confirmed),
+                    [fivePlusShiftMemberId] = MakeShiftUserSummary(
                         fivePlusShiftMemberId,
                         SignupStatus.Confirmed,
                         SignupStatus.Pending,
@@ -324,22 +323,10 @@ public class CampControllerTests
             Images: [],
             HistoricalNames: []);
 
-    private static ShiftUserView MakeShiftUserView(Guid userId, params SignupStatus[] statuses) =>
-        new(
+    private static ShiftUserSummary MakeShiftUserSummary(Guid userId, params SignupStatus[] statuses) =>
+        ShiftFixtures.UserSummary(
             userId,
-            Profile: null,
-            Availability: null,
-            BuildStatus: null,
-            TagPreferences: [],
-            Signups: statuses.Select(status => new ShiftSignup
-            {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                ShiftId = Guid.NewGuid(),
-                Status = status,
-                CreatedAt = SystemClock.Instance.GetCurrentInstant(),
-                UpdatedAt = SystemClock.Instance.GetCurrentInstant(),
-            }).ToList());
+            [.. statuses.Select(status => ShiftFixtures.Signup(status: status))]);
 
     private static UserInfo MakeUserInfo(Guid userId) =>
         UserInfo.Create(

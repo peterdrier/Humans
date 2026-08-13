@@ -1,3 +1,4 @@
+using Humans.Shifts.Domain;
 using Humans.Teams.Data;
 using Humans.Teams.Domain;
 using AwesomeAssertions;
@@ -5,7 +6,7 @@ using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Repositories.Shifts;
+using Humans.Shifts.Data;
 using Humans.Integration.Tests.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;

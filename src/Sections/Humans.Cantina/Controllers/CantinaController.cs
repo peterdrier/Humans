@@ -1,6 +1,6 @@
 using Humans.Application.Extensions;
 using Humans.Cantina.Services;
-using Humans.Application.Interfaces.Shifts;
+using Humans.Shifts.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.UI.Authorization;
 using Humans.UI.Controllers;

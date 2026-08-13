@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces.Shifts;
+using Humans.Shifts.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Web.ViewComponents;
@@ -16,7 +16,7 @@ namespace Humans.Application.Tests.ViewComponents;
 /// </summary>
 public class DietaryMissingBannerViewComponentTests
 {
-    private readonly IShiftManagementService _shiftMgmt = Substitute.For<IShiftManagementService>();
+    private readonly IShiftManagementServiceRead _shiftMgmt = Substitute.For<IShiftManagementServiceRead>();
     private readonly IUserServiceRead _userRead = Substitute.For<IUserServiceRead>();
     private readonly DietaryMissingBannerViewComponent _sut;
 

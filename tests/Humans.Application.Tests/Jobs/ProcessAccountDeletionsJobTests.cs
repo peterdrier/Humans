@@ -99,7 +99,7 @@ public class ProcessAccountDeletionsJobTests : IDisposable
             Arg.Any<Guid?>(), Arg.Any<string?>());
 
         await _auditLogService.Received(1).LogAsync(
-            AuditAction.ShiftSignupCancelled, nameof(ShiftSignup), signupId,
+            AuditAction.ShiftSignupCancelled, "ShiftSignup", signupId,
             Arg.Is<string>(s => s.Contains(shiftId.ToString())),
             nameof(ProcessAccountDeletionsJob),
             Arg.Any<Guid?>(), Arg.Any<string?>());

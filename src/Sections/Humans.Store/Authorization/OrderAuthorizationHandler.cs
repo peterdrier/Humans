@@ -2,7 +2,7 @@ using Humans.Store.Contracts;
 using Humans.UI.Authorization;
 using System.Security.Claims;
 using Humans.Camps.Contracts;
-using Humans.Application.Interfaces.Shifts;
+using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Store.Services.Dtos;
 using Microsoft.AspNetCore.Authorization;
@@ -35,7 +35,7 @@ namespace Humans.Store.Authorization;
 internal sealed class OrderAuthorizationHandler(
     ICampServiceRead campService,
     ITeamServiceRead teamService,
-    IShiftManagementService shiftService,
+    IBurnSettingsService burnSettings,
     IClock clock) : IAuthorizationHandler
 {
     public async Task HandleAsync(AuthorizationHandlerContext context)
@@ -142,7 +142,7 @@ internal sealed class OrderAuthorizationHandler(
 
     private async Task<LocalDate> TodayInEventZoneAsync()
     {
-        var activeEvent = await shiftService.GetActiveAsync();
+        var activeEvent = await burnSettings.GetActiveAsync();
         var tz = activeEvent is null
             ? DateTimeZone.Utc
             : DateTimeZoneProviders.Tzdb.GetZoneOrNull(activeEvent.TimeZoneId) ?? DateTimeZone.Utc;

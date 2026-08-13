@@ -4,7 +4,7 @@ using Humans.Application.Interfaces.Dashboard;
 using Humans.Email.Contracts;
 using Humans.Expenses.Contracts;
 using Humans.Feedback.Contracts;
-using Humans.Application.Interfaces.Shifts;
+using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Store.Contracts;
@@ -24,7 +24,8 @@ public class AdminController(IUserServiceRead userService) : HumansControllerBas
     [HttpGet("")]
     [Authorize(Policy = PolicyNames.AnyAdminRole)]
     public async Task<IActionResult> Index(
-        [FromServices] IShiftManagementService shifts,
+        [FromServices] IBurnSettingsService burnSettings,
+        [FromServices] IShiftManagementServiceRead shifts,
         [FromServices] IFeedbackServiceRead feedback,
         [FromServices] IAuditViewerService auditViewer,
         [FromServices] IAdminDashboardService adminDashboardService,
@@ -41,7 +42,7 @@ public class AdminController(IUserServiceRead userService) : HumansControllerBas
         var snapshot = await userService.GetAllUserInfosAsync(ct);
         var totalUsers = snapshot.Count;
         var activeProfileUsers = snapshot.Count(u => u.IsActive);
-        var activeEvent = await shifts.GetActiveAsync();
+        var activeEvent = await burnSettings.GetActiveAsync(ct);
         var ticketHolders = activeEvent is { Year: > 0 }
             ? snapshot.Count(u => u.HasTicketForYear(activeEvent.Year))
             : 0;

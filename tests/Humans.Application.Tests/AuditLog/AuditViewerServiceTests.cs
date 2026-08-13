@@ -24,7 +24,7 @@ public class AuditViewerServiceTests
         var entry = MakeEntry(
             action: AuditAction.ShiftSignupVoluntold,
             actorId: actor,
-            entityType: nameof(ShiftSignup),
+            entityType: "ShiftSignup",
             entityId: Guid.NewGuid(),
             relatedEntityId: viewer,
             relatedEntityType: "User",
@@ -85,7 +85,7 @@ public class AuditViewerServiceTests
         var entry = MakeEntry(
             action: AuditAction.ShiftSignupVoluntold,
             actorId: actor,
-            entityType: nameof(ShiftSignup),
+            entityType: "ShiftSignup",
             entityId: Guid.NewGuid(),
             relatedEntityId: viewer,
             relatedEntityType: "User",

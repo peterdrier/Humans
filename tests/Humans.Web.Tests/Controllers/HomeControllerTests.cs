@@ -4,7 +4,7 @@ using Humans.Application;
 using Humans.Application.Configuration;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Dashboard;
-using Humans.Application.Interfaces.Shifts;
+using Humans.Shifts.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -28,7 +28,7 @@ namespace Humans.Web.Tests.Controllers;
 public class HomeControllerTests
 {
     private readonly IDashboardService _dashboardService = Substitute.For<IDashboardService>();
-    private readonly IShiftManagementService _shiftMgmt = Substitute.For<IShiftManagementService>();
+    private readonly IBurnSettingsService _shiftMgmt = Substitute.For<IBurnSettingsService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IConfiguration _configuration = Substitute.For<IConfiguration>();
     private readonly ConfigurationRegistry _configRegistry = new();

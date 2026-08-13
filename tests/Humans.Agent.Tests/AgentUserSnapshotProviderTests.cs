@@ -1,11 +1,10 @@
 using Humans.Auth.Contracts;
 using AwesomeAssertions;
 using Humans.Application;
-using Humans.Application.DTOs.Shifts;
 using Humans.Application.Interfaces.Auth;
 using Humans.Consent.Contracts;
 using Humans.Feedback.Contracts;
-using Humans.Application.Interfaces.Shifts;
+using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Application.Interfaces.Users;
@@ -27,9 +26,9 @@ public class AgentUserSnapshotProviderTests
         var userId = Guid.NewGuid();
         var blockId = Guid.NewGuid();
         var ev = MakeEventSettings();
-        var rota = new Rota { Id = Guid.NewGuid(), Name = "Cantina build" };
+        var rota = "Cantina build";
         var signups = Enumerable.Range(0, 7)
-            .Select(i => MakeSignup(userId, blockId, MakeShift(rota, dayOffset: -10 + i, isAllDay: true), SignupStatus.Confirmed))
+            .Select(i => MakeSignup(blockId, MakeShift(rota, dayOffset: -10 + i, isAllDay: true), SignupStatus.Confirmed))
             .ToList();
 
         var provider = MakeProvider(userId, ev, signups);
@@ -51,8 +50,8 @@ public class AgentUserSnapshotProviderTests
     {
         var userId = Guid.NewGuid();
         var ev = MakeEventSettings();
-        var rota = new Rota { Id = Guid.NewGuid(), Name = "Setup crew" };
-        var signup = MakeSignup(userId, signupBlockId: null,
+        var rota = "Setup crew";
+        var signup = MakeSignup(signupBlockId: null,
             MakeShift(rota, dayOffset: 0, isAllDay: false, startTime: new LocalTime(9, 0), durationHours: 4),
             SignupStatus.Pending);
 
@@ -72,8 +71,8 @@ public class AgentUserSnapshotProviderTests
     {
         var userId = Guid.NewGuid();
         var ev = MakeEventSettings();
-        var rota = new Rota { Id = Guid.NewGuid(), Name = "Old" };
-        var pastSignup = MakeSignup(userId, signupBlockId: null,
+        var rota = "Old";
+        var pastSignup = MakeSignup(signupBlockId: null,
             MakeShift(rota, dayOffset: -100, isAllDay: true), SignupStatus.Confirmed);
 
         var provider = MakeProvider(userId, ev, [pastSignup]);
@@ -89,12 +88,12 @@ public class AgentUserSnapshotProviderTests
         // Pending and Confirmed are surfaced; Refused, Bailed, Cancelled are not.
         var userId = Guid.NewGuid();
         var ev = MakeEventSettings();
-        var rota = new Rota { Id = Guid.NewGuid(), Name = "R" };
-        var pending = MakeSignup(userId, null, MakeShift(rota, dayOffset: 1, isAllDay: true), SignupStatus.Pending);
-        var confirmed = MakeSignup(userId, null, MakeShift(rota, dayOffset: 2, isAllDay: true), SignupStatus.Confirmed);
-        var refused = MakeSignup(userId, null, MakeShift(rota, dayOffset: 3, isAllDay: true), SignupStatus.Refused);
-        var bailed = MakeSignup(userId, null, MakeShift(rota, dayOffset: 4, isAllDay: true), SignupStatus.Bailed);
-        var cancelled = MakeSignup(userId, null, MakeShift(rota, dayOffset: 5, isAllDay: true), SignupStatus.Cancelled);
+        var rota = "R";
+        var pending = MakeSignup(null, MakeShift(rota, dayOffset: 1, isAllDay: true), SignupStatus.Pending);
+        var confirmed = MakeSignup(null, MakeShift(rota, dayOffset: 2, isAllDay: true), SignupStatus.Confirmed);
+        var refused = MakeSignup(null, MakeShift(rota, dayOffset: 3, isAllDay: true), SignupStatus.Refused);
+        var bailed = MakeSignup(null, MakeShift(rota, dayOffset: 4, isAllDay: true), SignupStatus.Bailed);
+        var cancelled = MakeSignup(null, MakeShift(rota, dayOffset: 5, isAllDay: true), SignupStatus.Cancelled);
 
         var provider = MakeProvider(userId, ev, [pending, confirmed, refused, bailed, cancelled]);
         var snapshot = await provider.LoadAsync(userId, Xunit.TestContext.Current.CancellationToken);
@@ -146,7 +145,7 @@ public class AgentUserSnapshotProviderTests
     private static AgentUserSnapshotProvider MakeProvider(
         Guid userId,
         BurnSettingsInfo? activeEvent,
-        IReadOnlyList<ShiftSignup> signups,
+        IReadOnlyList<ShiftSignupSummary> signups,
         IReadOnlyList<Guid>? openTicketIds = null,
         IReadOnlyList<TeamMembership>? teamMemberships = null)
     {
@@ -202,15 +201,11 @@ public class AgentUserSnapshotProviderTests
         var shiftView = Substitute.For<IShiftView>();
         // Pre-built view: the inner ShiftViewService filters Signups to the
         // active event, so tests with no active event still pass an empty view.
-        var view = new ShiftUserView(
-            UserId: userId,
-            Profile: null,
-            Availability: null,
-            BuildStatus: null,
-            TagPreferences: [],
-            Signups: activeEvent is null ? [] : signups);
+        var view = ShiftFixtures.UserSummary(
+            userId,
+            signups: activeEvent is null ? [] : signups);
         shiftView.GetUserAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<ShiftUserView>(view));
+            .Returns(new ValueTask<ShiftUserSummary>(view));
 
         var burnSettings = Substitute.For<IBurnSettingsService>();
         burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(activeEvent);
@@ -240,29 +235,32 @@ public class AgentUserSnapshotProviderTests
         EarlyEntryClose: null,
         IsShiftBrowsingOpen: true);
 
-    private static Shift MakeShift(
-        Rota rota, int dayOffset, bool isAllDay,
-        LocalTime? startTime = null, double durationHours = 0) => new()
-        {
-            Id = Guid.NewGuid(),
-            RotaId = rota.Id,
-            Rota = rota,
-            DayOffset = dayOffset,
-            IsAllDay = isAllDay,
-            StartTime = startTime ?? new LocalTime(8, 0),
-            Duration = Duration.FromHours(durationHours),
-            MinVolunteers = 1,
-            MaxVolunteers = 5
-        };
+    /// <summary>
+    /// One signup on the section's boundary shape, with the fields the
+    /// snapshot provider reads resolved against <see cref="MakeEventSettings"/>
+    /// exactly as the section's projection does.
+    /// </summary>
+    private static ShiftSignupSummary MakeShift(
+        string rotaName, int dayOffset, bool isAllDay,
+        LocalTime? startTime = null, double durationHours = 0)
+    {
+        var ev = MakeEventSettings();
+        var date = ev.GateOpeningDate.PlusDays(dayOffset);
+        var tz = DateTimeZoneProviders.Tzdb[ev.TimeZoneId];
+        var start = isAllDay ? new LocalTime(8, 0) : startTime ?? new LocalTime(8, 0);
+        var end = isAllDay ? new LocalTime(18, 0) : start.PlusHours((int)durationHours);
+        return ShiftFixtures.Signup(
+            rotaName: rotaName,
+            eventSettingsId: ev.Id,
+            date: date,
+            isAllDay: isAllDay,
+            windowStart: start,
+            durationHours: isAllDay ? 10 : durationHours,
+            absoluteStart: date.At(start).InZoneLeniently(tz).ToInstant(),
+            absoluteEnd: date.At(end).InZoneLeniently(tz).ToInstant());
+    }
 
-    private static ShiftSignup MakeSignup(
-        Guid userId, Guid? signupBlockId, Shift shift, SignupStatus status) => new()
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            ShiftId = shift.Id,
-            Shift = shift,
-            SignupBlockId = signupBlockId,
-            Status = status
-        };
+    private static ShiftSignupSummary MakeSignup(
+        Guid? signupBlockId, ShiftSignupSummary shift, SignupStatus status) =>
+        shift with { Id = Guid.NewGuid(), SignupBlockId = signupBlockId, Status = status };
 }

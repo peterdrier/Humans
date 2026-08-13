@@ -546,32 +546,15 @@
     },
     "Shifts": {
       "paths": [
-        "src/Humans.Application/Interfaces/Shifts/**",
+        "src/Sections/Humans.Shifts/**",
+        "src/Sections/Humans.Shifts.Contracts/**",
         "src/Humans.Application/Interfaces/EarlyEntry/**",
-        "src/Humans.Application/DTOs/Shifts/**",
-        "src/Humans.Application/DTOs/VolunteerTrackingExport/**",
         "src/Humans.Application/Models/UpcomingShiftEntry.cs",
-        "src/Humans.Application/DTOs/VolunteerTrackingViewModel.cs",
-        "src/Humans.Application/Services/Shifts/**",
         "src/Humans.Application/Services/EarlyEntry/**",
-        "src/Humans.Domain/Entities/EventSettings.cs",
-        "src/Humans.Domain/Entities/GeneralAvailability.cs",
-        "src/Humans.Domain/Entities/Rota*",
-        "src/Humans.Domain/Entities/Shift*",
-        "src/Humans.Domain/Entities/Volunteer*",
-        "src/Humans.Infrastructure/Repositories/Shifts/**",
-        "src/Humans.Infrastructure/Services/Shifts/**",
         "src/Humans.Infrastructure/Services/EarlyEntry/**",
         "src/Humans.Infrastructure/Stores/EarlyEntry/**",
-        "src/Humans.Web/Controllers/Shift*",
-        "src/Humans.Web/Controllers/VolunteerTrackingController.cs",
         "src/Humans.Web/Controllers/EarlyEntryRosterController.cs",
-        "src/Humans.Web/Models/Shifts/**",
         "src/Humans.Web/Models/EarlyEntry/**",
-        "src/Humans.Web/Models/SetCampSetupForm.cs",
-        "src/Humans.Web/Models/SetDayOffForm.cs",
-        "src/Humans.Web/Models/ShiftViewModels.cs",
-        "src/Humans.Web/Models/VolunteerHeatmapPartialModels.cs",
         "src/Humans.Web/ViewComponents/DietaryMissingBannerViewComponent.cs"
       ],
       "symbols": [
@@ -595,6 +578,8 @@
         "IVolunteerTrackingService"
       ],
       "readServiceInterfaces": [
+        "IShiftManagementServiceRead",
+        "IShiftSignups",
         "IVolunteerTrackingServiceRead"
       ],
       "canonicalReadDtos": [

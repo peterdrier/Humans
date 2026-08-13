@@ -9,6 +9,7 @@
 @using Humans.UI.ViewComponents
 @using Humans.Domain.Entities
 @using Humans.Domain.Enums
+@using Humans.Shifts.Contracts
 @using Humans.Tickets.Contracts
 @using Humans.UI
 @using Humans.UI.Models
@@ -24,3 +25,9 @@
    helper, and without this line the element ships as inert literal markup (step 6). *@
 @addTagHelper *, Humans.Camps
 @addTagHelper *, Humans.Tickets
+@* <vc:shift-signups> is the Shifts section's own component, public under
+   Humans.Shifts/Contracts/ so MVC's default provider discovers it and the tag helper is
+   generated. Shell renders it from Home/Dashboard, Profile/Index, UsersAdmin/AdminDetail
+   and WidgetGallery; without this line the element ships as inert literal markup
+   (design §15 step 6). *@
+@addTagHelper *, Humans.Shifts

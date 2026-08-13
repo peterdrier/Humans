@@ -119,4 +119,4 @@ Role-based hours (the original #734 follow-up) are now implemented — see the p
 
 - [Shift Management](shift-management.md) — workload reads source data through the same `IShiftView` cache.
 - [Department Coverage Pies](department-coverage-pies.md) — same shape (planned/filled hours) but volunteer-facing and on `/Shifts`.
-- Section invariants: [`docs/sections/Shifts.md`](../../sections/Shifts.md).
+- Section invariants: [`src/Sections/Humans.Shifts/Docs/Shifts.md`](../../../src/Sections/Humans.Shifts/Docs/Shifts.md).
