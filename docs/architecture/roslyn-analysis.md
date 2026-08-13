@@ -79,12 +79,12 @@ assertion families that are plausible analyzer candidates:
   `UserManager`, or direct SDK clients. `IMemoryCache` is already covered by a
   generalized arch test; promote it to an analyzer once the remaining
   grandfather story is clear.
-- Repository implementations should be sealed, live under
-  `Humans.Infrastructure.Repositories.*`, and use `IDbContextFactory<TContext>`
-  rather than constructing an application context directly (`HumansDbContext`
-  or any per-section context). The first two are already generalized arch tests
-  (`IRepositoryImplementationsAreSealedRule`,
-  `RepositoryImplementationsLiveInExpectedNamespaceRule`).
+- Repository implementations should use `IDbContextFactory<TContext>` rather
+  than constructing an application context directly (`HumansDbContext` or any
+  per-section context). (Sealing and namespace location are no longer
+  test-enforced: in the per-section G5 layout, assembly boundaries and
+  internal-by-default visibility already make both facts of the project
+  structure rather than conventions a repository could drift from.)
 - Interface marker obligations should be compile-time enforced:
   `I*Service`/`I*Query`/`I*Calculator` extend `IApplicationService`, and
   `I*Repository` extends `IRepository`.
