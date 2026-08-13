@@ -239,21 +239,44 @@ the `GuideModerator` role, the `StoreAdmin`/`EETeamAdmin` role rows, and the `co
 
 **None — all prune candidates resolved this sweep.**
 
-## Questions
+## Questions — all four asked inline and answered in-session
 
-Delivered inline to Peter; see the session transcript. Recorded here for the next sweep:
+1. **`P4` of `test-system-reliability.md` contradicts the EF-InMemory rule.** → **Leave it.** No edit
+   made; P4 stands as written.
+2. **Repair `docs/scripts/freshness-checks/diff-mode.sh`?** → **Yes, and point it at the section docs
+   going forward.** Done:
+   - **New test 7** — expands every `freshness:triggers` glob in every editorial doc and fails on any
+     that resolves to nothing, calling out fully-dead docs by name. This is the only check that can see
+     the failure mode; tests 1-6 passed throughout the five sweeps it kept recurring.
+   - **Editorial walk now spans `src/Sections/*/Docs/`** via a shared `editorial_docs()` helper used by
+     tests 3, 4 and 7. Previously only `docs/{sections,features,guide}` — which now misses the
+     **36 in-project section docs**, the majority (135 docs total, of which 36 were invisible).
+   - **Test 5's synthetic probe repointed** to `src/Sections/Humans.Teams/Controllers/TeamController.cs`,
+     plus a guard that fails loudly if the probe path itself ever stops existing. Both its old paths
+     were dead: the probe *and* `docs/sections/Teams.md`.
+   - **Test 1's `N_TREES` was always 0** — its awk range closed on the `editorial_trees:` line itself,
+     so it reported "0 editorial trees" against a catalog listing ten. Fixed; now reports 10.
+   - **Result: 7/7 pass.** This morning's tree would have failed tests 5 and 7.
+3. **Add the marker requirement to the section templates?** → **Yes.** Done: `SECTION-TEMPLATE.md`'s
+   canonical shape now opens with both markers, with a note on why. `G5-SECTION-TEMPLATE.md` step 7b
+   only ever described *moving* an existing doc's triggers, so a section born directly in
+   `src/Sections/` fell straight through it — that is precisely how Holded and Tour shipped unmarked
+   one sweep apart; it now covers authoring a new in-project doc.
+4. **`/Holded` missing from `AdminNavTree`.** → **Add it to the Money section.** Done: one row in the
+   `Money` group, `HoldedController.Index` behind `PolicyNames.FinanceAdminOrAdmin` (matching the
+   controller's own `[Authorize]`). `Humans.Web` builds clean. Note this is the sweep's **only source
+   change** — everything else in this PR is docs.
 
-1. **`P4` of `docs/features/test-system-reliability.md` proposes migrating Application tests off EF
-   In-Memory onto Postgres fixtures**, which contradicts the standing rule that EF-InMemory is fine and
-   Postgres fixtures are not to be pushed. Strike P4, or keep as aspiration?
-2. **Repair `docs/scripts/freshness-checks/diff-mode.sh`** (add a glob-resolution test, fix the dead
-   synthetic path in test 5, extend test 4 to `src/Sections/*/Docs/`)? It is the root cause of the
-   dead-glob finding recurring for five sweeps, but the file sits outside the catalog, editorial trees,
-   and prune allowlist.
-3. **Add a freshness-marker line to `SECTION-TEMPLATE.md` / `G5-SECTION-TEMPLATE.md`**, so new section
-   docs ship marked? Two consecutive new sections (Holded, Tour) shipped unmarked and invisible.
-4. **`/Holded` still has no entry anywhere in `AdminNavTree.cs`** (grep-confirmed) — the same gap
-   flagged last sweep, still unresolved. File an issue?
+### A catalog gap the repaired verifier found immediately
+
+Repointing test 5 at a section controller made it fail: **a change to any of the 58 controllers under
+`src/Sections/` marked zero mechanical entries dirty.** `controller-architecture-audit` documents all
+92 actions including those, and `authorization-inventory` lists their `[Authorize]` attributes, but
+both only triggered on `src/Humans.Web/Controllers/**`. Both entries now also trigger on
+`src/Sections/*/Controllers/**/*.cs`. Test 5 passes with 2 mechanical + 3 editorial dirty.
+
+That is the repair paying for itself within a minute of being written — the gap was invisible to every
+check that existed before it.
 
 ## Skipped (errors)
 

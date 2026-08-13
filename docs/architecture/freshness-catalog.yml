@@ -67,6 +67,9 @@ mechanical:
       # Section-owned resource handlers (G5, #866) — eight sections keep theirs under
       # src/Sections/<Section>/Authorization/, and had silently left this sweep.
       - "src/Sections/**/Authorization/**/*.cs"
+      # Section-owned controllers carry [Authorize] attributes the inventory lists,
+      # but were not a trigger for it. Same gap as controller-architecture-audit.
+      - "src/Sections/*/Controllers/**/*.cs"
     update: prompt
     prompt: |
       Regenerate docs/authorization-inventory.md from scratch.
@@ -94,6 +97,12 @@ mechanical:
     target: docs/controller-architecture-audit.md
     triggers:
       - "src/Humans.Web/Controllers/**/*.cs"
+      # Section-owned controllers (G5, #866). The audit documents all 92 actions
+      # including the 58 controllers under src/Sections/, but only fired on the
+      # Humans.Web ones — so a section controller change left it stale silently.
+      # Caught 2026-08-13 by diff-mode.sh test 5 after its synthetic probe was
+      # repointed at a section controller.
+      - "src/Sections/*/Controllers/**/*.cs"
     update: prompt
     prompt: |
       Regenerate the action-name audit in docs/controller-architecture-audit.md.
