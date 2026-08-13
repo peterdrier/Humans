@@ -26,21 +26,16 @@
 
     References Humans.Interfaces (IApplicationService, IInvalidator, SurfaceBudget,
     Grandfathered) and Humans.Domain — both below Humans.Application, so this cannot
-    cycle. Humans.Domain is here for two reasons: the section's persisted-string enums
+    cycle. Humans.Domain is here for one reason: the section's persisted-string enums
     (SignupStatus, ShiftPeriod, ShiftPriority, RotaPeriod, BuildSubPeriod) are named by
     Base and by other sections and carry EnumStringStabilityTests rows, so they stay in
-    Humans.Domain.Enums (Teams' rule); and the entity types Shift / ShiftSignup / Rota /
-    EventSettings / VolunteerEventProfile are still public Humans.Domain.Entities types
-    that several leaf members return.
+    Humans.Domain.Enums (Teams' rule).
 
-    THAT SECOND REASON IS TEMPORARY AND IS LANE B's WORK. See the entity-leak inventory
-    in local/shifts-g5/findings.md: ShiftUserView / ShiftRotaView bundle raw EF rows,
-    UrgentShift carries a Shift, the volunteer-profile trio returns VolunteerEventProfile,
-    GetRotasByDepartmentAsync returns Rota, and the seeding verbs take EventSettings and
-    Rota. Those entities turn internal when the section moves, so each of those members
-    needs a flat projection before Lane B can internalise. This lane carved the one the
-    dashboards forced (IShiftView's per-user upcoming/urgent reads); the rest are
-    measured and listed.
+    No entity crosses this boundary. Shift / ShiftSignup / Rota / EventSettings /
+    VolunteerEventProfile are internal sealed types in Humans.Shifts.Domain, and every
+    leaf member that used to return one returns a flat projection instead
+    (ShiftUserSummary, UrgentShiftInfo / ShiftInfo / RotaInfo, ShiftVolunteerProfileInfo,
+    BurnSettingsInfo, and Guid ids on the seeding verbs).
   -->
 
   <ItemGroup>

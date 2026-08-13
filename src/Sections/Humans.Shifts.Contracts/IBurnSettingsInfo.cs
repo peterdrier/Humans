@@ -6,7 +6,7 @@ namespace Humans.Shifts.Contracts;
 /// The burn's calendar shape — the read-only fields needed to resolve a
 /// <c>DayOffset</c> into absolute instants and to classify it into a period or
 /// build sub-period. Implemented by both the Shifts-owned EF entity
-/// (<c>Humans.Domain.Entities.EventSettings</c>) and its cross-section read DTO
+/// (<c>Humans.Shifts.Domain.EventSettings</c>) and its cross-section read DTO
 /// (<see cref="BurnSettingsInfo"/>), so domain helpers that only need the
 /// calendar can accept either without the entity leaking across the section
 /// boundary.

@@ -259,6 +259,36 @@ public class ShiftsPageRenderTests(HumansTestDatabase database) : IntegrationTes
                 "the [Route(\"Profile\")] prefix stayed on both halves of the split, so the URL is unchanged");
     }
 
+    [HumansFact(Timeout = 60000)]
+    public void No_call_site_still_addresses_shift_info_on_the_profile_controller()
+    {
+        // The test above proves the pair resolves; it cannot see a caller that writes the
+        // *old* pair. Codex found exactly that on this PR — Profile/Index.cshtml still had
+        // asp-controller="Profile" asp-action="ShiftInfo", which the anchor tag helper
+        // resolves to no href at all, on a green 200. Same failure as the Url.Action form,
+        // reached through Razor instead of C#, so the grep covers both spellings.
+        var root = new DirectoryInfo(AppContext.BaseDirectory);
+        while (root is not null && !File.Exists(Path.Combine(root.FullName, "Humans.slnx")))
+            root = root.Parent;
+        root.Should().NotBeNull("the test must be able to find the repo root to scan sources");
+
+        var stale = Directory
+            .EnumerateFiles(Path.Combine(root!.FullName, "src"), "*.*", SearchOption.AllDirectories)
+            .Where(f => f.EndsWith(".cshtml", StringComparison.OrdinalIgnoreCase)
+                        || f.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
+            .Where(f => !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
+                        && !f.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
+            .Where(f => File.ReadLines(f).Any(line =>
+                (line.Contains("asp-action=\"ShiftInfo\"", StringComparison.Ordinal)
+                 && line.Contains("asp-controller=\"Profile\"", StringComparison.Ordinal))
+                || line.Contains("Url.Action(\"ShiftInfo\", \"Profile\")", StringComparison.Ordinal)))
+            .Select(f => Path.GetRelativePath(root.FullName, f))
+            .ToList();
+
+        stale.Should().BeEmpty(
+            "ShiftInfo lives on ShiftProfileController now; addressing it as (\"ShiftInfo\", \"Profile\") renders a link with no href instead of failing");
+    }
+
     [HumansFact(Timeout = 120000)]
     public async Task A_volunteer_cannot_reach_the_shift_dashboard()
     {
