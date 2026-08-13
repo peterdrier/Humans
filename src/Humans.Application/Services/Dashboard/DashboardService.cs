@@ -89,9 +89,9 @@ public class DashboardService(
                     try
                     {
                         urgentItems.Add(new DashboardUrgentShift(
-                            RotaName: u.Shift.Rota?.Name ?? "Unknown",
+                            RotaName: u.Rota.Name,
                             DepartmentName: u.DepartmentName,
-                            AbsoluteStart: u.Shift.GetAbsoluteStart(activeEvent),
+                            AbsoluteStart: u.AbsoluteStart,
                             RemainingSlots: u.RemainingSlots,
                             UrgencyScore: u.UrgencyScore));
                     }

@@ -55,7 +55,7 @@ public interface IShiftManagementServiceRead
     /// <summary>
     /// Gets shifts ranked by urgency score, with optional filtering.
     /// </summary>
-    Task<IReadOnlyList<UrgentShift>> GetUrgentShiftsAsync(
+    Task<IReadOnlyList<UrgentShiftInfo>> GetUrgentShiftsAsync(
         Guid eventSettingsId, int? limit = null,
         Guid? departmentId = null,
         LocalDate? startDate = null, LocalDate? endDate = null,
@@ -68,9 +68,9 @@ public interface IShiftManagementServiceRead
     /// restricted to shifts whose
     /// rota is <see cref="ShiftPriority.Important"/> or <see cref="ShiftPriority.Essential"/>,
     /// or whose rota has any shift where confirmed-signup count is below
-    /// <see cref="Shift.MinVolunteers"/> (i.e. understaffed).
+    /// <see cref="ShiftInfo.MinVolunteers"/> (i.e. understaffed).
     /// </summary>
-    Task<IReadOnlyList<UrgentShift>> GetBrowseShiftsAsync(ShiftBrowseQuery query);
+    Task<IReadOnlyList<UrgentShiftInfo>> GetBrowseShiftsAsync(ShiftBrowseQuery query);
 
     /// <summary>
     /// Gets the per-day staffing chart snapshot for all periods.
@@ -107,7 +107,7 @@ public interface IShiftManagementServiceRead
 
     /// <summary>
     /// True when the user has at least one Pending or Confirmed signup on a
-    /// future-or-current qualifying shift (see <see cref="Shift.QualifiesForCantinaMeal"/>).
+    /// future-or-current qualifying shift (see the shift qualifying-duration rule).
     /// Used by the dashboard Things-to-do nudge for dietary/medical info.
     /// Returns false when no active event settings exist (fail closed).
     /// </summary>
@@ -117,8 +117,8 @@ public interface IShiftManagementServiceRead
 
     /// <summary>
     /// Returns the distinct user ids of volunteers on-site for the given event
-    /// day — those with a Confirmed signup on a <see cref="Shift"/> whose
-    /// <see cref="Shift.DayOffset"/> matches. Service-layer read for the Cantina
+    /// day — those with a Confirmed signup on a shift whose
+    /// day offset matches. Service-layer read for the Cantina
     /// roster (feature #36) so it never reaches into the Shifts repository.
     /// </summary>
     Task<IReadOnlyList<Guid>> GetOnSiteUserIdsForDayAsync(
@@ -141,17 +141,6 @@ public record RotaSearchHit(
     string Name,
     Guid TeamId,
     string TeamName);
-
-/// <summary>
-/// A shift with its computed urgency score and fill status.
-/// </summary>
-public record UrgentShift(
-    Shift Shift,
-    double UrgencyScore,
-    int ConfirmedCount,
-    int RemainingSlots,
-    string DepartmentName,
-    IReadOnlyList<(Guid UserId, string DisplayName, SignupStatus Status)> Signups);
 
 [Flags]
 public enum ShiftBrowseQueryFlags

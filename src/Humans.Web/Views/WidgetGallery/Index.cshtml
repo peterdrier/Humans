@@ -1,6 +1,7 @@
 @model Humans.Web.Controllers.WidgetGalleryViewModel
 @using Humans.UI.Authorization
 @using Humans.UI.Models.Tables
+@using Humans.Shifts.Contracts
 @using Microsoft.AspNetCore.Html
 @{
     ViewData["Title"] = "Widget Gallery";
@@ -701,15 +702,18 @@
                     )
                     <div class="wg-card-example">
                         @{
-                            var widgetGalleryBadgeRota = new Rota
-                            {
-                                Name = "Gate Support",
-                                Priority = ShiftPriority.Essential,
-                                Period = RotaPeriod.Build,
-                                IsVisibleToVolunteers = false,
-                            };
-                            widgetGalleryBadgeRota.Tags.Add(new ShiftTag { Name = "Outdoor" });
-                            widgetGalleryBadgeRota.Tags.Add(new ShiftTag { Name = "Radio" });
+                            var widgetGalleryBadgeRota = new RotaInfo(
+                                Id: Guid.Empty,
+                                EventSettingsId: Guid.Empty,
+                                TeamId: Guid.Empty,
+                                Name: "Gate Support",
+                                Description: null,
+                                PracticalInfo: null,
+                                Priority: ShiftPriority.Essential,
+                                Policy: SignupPolicy.Public,
+                                Period: RotaPeriod.Build,
+                                IsVisibleToVolunteers: false,
+                                Tags: [new ShiftTagSummary(Guid.NewGuid(), "Outdoor"), new ShiftTagSummary(Guid.NewGuid(), "Radio")]);
                         }
                         @await Html.PartialAsync("_RotaBadges", new RotaHeaderViewModel
                         {
@@ -735,12 +739,18 @@
                     <div class="wg-card-example">
                         @await Html.PartialAsync("_RotaDetails", new RotaHeaderViewModel
                         {
-                            Rota = new Rota
-                            {
-                                Name = "Gate Support",
-                                Description = "Welcome volunteers, check wristbands, and keep arrivals moving.",
-                                PracticalInfo = "Meet at the gate desk. Bring water and a charged phone.",
-                            },
+                            Rota = new RotaInfo(
+                                Id: Guid.Empty,
+                                EventSettingsId: Guid.Empty,
+                                TeamId: Guid.Empty,
+                                Name: "Gate Support",
+                                Description: "Welcome volunteers, check wristbands, and keep arrivals moving.",
+                                PracticalInfo: "Meet at the gate desk. Bring water and a charged phone.",
+                                Priority: ShiftPriority.Normal,
+                                Policy: SignupPolicy.Public,
+                                Period: RotaPeriod.Event,
+                                IsVisibleToVolunteers: true,
+                                Tags: []),
                             DescriptionCssClass = "text-muted small mb-2",
                             PracticalInfoCssClass = "text-muted small mb-0",
                         })

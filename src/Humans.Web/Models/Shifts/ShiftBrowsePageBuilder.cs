@@ -92,15 +92,15 @@ public sealed class ShiftBrowsePageBuilder(
             browseFlags));
 
         var periodFilteredShifts = postFilterByPeriod
-            ? urgentShifts.Where(u => activePeriods.Contains(u.Shift.GetShiftPeriod(es))).ToList()
+            ? urgentShifts.Where(u => activePeriods.Contains(u.Period)).ToList()
             : urgentShifts;
 
         var activeTagFilter = request.TagIds?.Where(id => id != Guid.Empty).ToList() ?? [];
         var filteredShifts = activeTagFilter.Count > 0
-            ? periodFilteredShifts.Where(u => u.Shift.Rota.Tags.Any(t => activeTagFilter.Contains(t.Id))).ToList()
+            ? periodFilteredShifts.Where(u => u.Rota.Tags.Any(t => activeTagFilter.Contains(t.Id))).ToList()
             : periodFilteredShifts;
 
-        var departments = await BuildDepartmentGroupsAsync(filteredShifts, es);
+        var departments = await BuildDepartmentGroupsAsync(filteredShifts);
         var isUrgencySort = !string.Equals(request.Sort, "department", StringComparison.OrdinalIgnoreCase);
 
         var allDepartments = await GetDepartmentOptionsAsync(request.DepartmentId, departments, es.Id);
@@ -173,35 +173,34 @@ public sealed class ShiftBrowsePageBuilder(
         // reload rather than a 500 — never call .First() here.
         var urgent = shifts.FirstOrDefault(u => u.Shift.Id == shiftId);
         if (urgent is null) return null;
-        var item = ShiftBrowseMapper.MapToDisplayItem(urgent, es);
+        var item = ShiftBrowseMapper.MapToDisplayItem(urgent);
 
         var (signedShiftIds, statuses) = ResolveActiveStatuses(userSignups);
         return (item, signedShiftIds.Contains(shiftId), statuses.GetValueOrDefault(shiftId));
     }
 
     private async Task<List<DepartmentShiftGroup>> BuildDepartmentGroupsAsync(
-        IReadOnlyList<UrgentShift> shifts,
-        BurnSettingsInfo eventSettings)
+        IReadOnlyList<UrgentShiftInfo> shifts)
     {
         var teamsById = await teamService.GetTeamsAsync();
 
         return shifts
-            .GroupBy(u => u.Shift.Rota.TeamId)
+            .GroupBy(u => u.Rota.TeamId)
             .Select(deptGroup =>
             {
-                var firstShift = deptGroup.OrderBy(x => x.Shift.Id).First().Shift;
-                var team = teamsById.TryGetValue(firstShift.Rota.TeamId, out var t) ? t : null;
+                var firstRota = deptGroup.OrderBy(x => x.Shift.Id).First().Rota;
+                var team = teamsById.TryGetValue(firstRota.TeamId, out var t) ? t : null;
                 var deptName = team?.Name ?? string.Empty;
                 var deptSlug = team?.Slug ?? string.Empty;
                 return new DepartmentShiftGroup
                 {
-                    TeamId = firstShift.Rota.TeamId,
+                    TeamId = firstRota.TeamId,
                     TeamName = deptName,
                     TeamDescription = team?.Description,
                     TeamSlug = deptSlug,
                     Rotas = deptGroup
                         .GroupBy(u => u.Shift.RotaId)
-                        .Select(rg => ShiftBrowseMapper.BuildRotaGroup(rg, eventSettings, deptName, deptSlug))
+                        .Select(rg => ShiftBrowseMapper.BuildRotaGroup(rg, deptName, deptSlug))
                         .OrderBy(r => r.Rota.Name, StringComparer.Ordinal)
                         .ToList()
                 };

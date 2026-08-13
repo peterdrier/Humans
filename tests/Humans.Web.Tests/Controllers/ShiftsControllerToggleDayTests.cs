@@ -139,36 +139,29 @@ public class ShiftsControllerToggleDayTests
     }
 
     // Stub the builder dependencies so BuildRowAsync returns a row for shiftId.
-    // Mirrors ShiftBrowsePageBuilderRowTests: an all-day UrgentShift with Shift.Id == shiftId.
+    // Mirrors ShiftBrowsePageBuilderRowTests: an all-day row with Shift.Id == shiftId.
     private void StubBrowseRow(Guid shiftId, Guid userId, SignupStatus? rowStatus)
     {
-        var shift = new Shift
-        {
-            Id = shiftId,
-            RotaId = Guid.NewGuid(),
-            DayOffset = 1,
-            IsAllDay = true,
-            StartTime = new LocalTime(8, 0),
-            Duration = Duration.FromHours(4),
-            MinVolunteers = 2,
-            MaxVolunteers = 5,
-            CreatedAt = TestNow,
-            UpdatedAt = TestNow
-        };
-        var signups = rowStatus is { } st
-            ? new List<(Guid, string, SignupStatus)> { (userId, "Tester", st) }
+        var shift = UrgentShiftFixtures.Shift(
+            id: shiftId,
+            dayOffset: 1,
+            isAllDay: true,
+            minVolunteers: 2,
+            maxVolunteers: 5);
+        List<ShiftSignupInfo> signups = rowStatus is { } st
+            ? [new ShiftSignupInfo(userId, "Tester", st)]
             : [];
-        var urgent = new UrgentShift(
-            shift,
-            UrgencyScore: 1.5,
-            ConfirmedCount: 3,
-            RemainingSlots: 2,
-            DepartmentName: "Test Department",
-            Signups: signups);
+        var urgent = UrgentShiftFixtures.Urgent(
+            shift: shift,
+            burn: Event,
+            urgencyScore: 1.5,
+            confirmedCount: 3,
+            remainingSlots: 2,
+            signups: signups);
 
         _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(Event);
         _shiftMgmt.GetBrowseShiftsAsync(Arg.Any<ShiftBrowseQuery>())
-            .Returns(new List<UrgentShift> { urgent });
+            .Returns([urgent]);
     }
 
     private static ShiftSignup ActiveSignup(Guid id, Guid userId, Guid shiftId, SignupStatus status) =>
@@ -276,7 +269,7 @@ public class ShiftsControllerToggleDayTests
         // Active event present, but the toggled shift isn't in the browse set → BuildRowAsync
         // returns null; the controller must resync (204) instead of throwing.
         _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(Event);
-        _shiftMgmt.GetBrowseShiftsAsync(Arg.Any<ShiftBrowseQuery>()).Returns(new List<UrgentShift>());
+        _shiftMgmt.GetBrowseShiftsAsync(Arg.Any<ShiftBrowseQuery>()).Returns(new List<UrgentShiftInfo>());
 
         var result = await ctrl.ToggleDay(shiftId, Xunit.TestContext.Current.CancellationToken);
 

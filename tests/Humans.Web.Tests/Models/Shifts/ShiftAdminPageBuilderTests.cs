@@ -68,7 +68,7 @@ public sealed class ShiftAdminPageBuilderTests
         _shiftManagement.GetStaffingSnapshotAsync(Event.Id, Department.Id)
             .Returns(ShiftStaffingSnapshot.Empty);
         _shiftManagement.GetShiftProfileAsync(Arg.Any<Guid>())
-            .Returns((VolunteerEventProfile?)null);
+            .Returns((ShiftVolunteerProfileInfo?)null);
 
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo>());

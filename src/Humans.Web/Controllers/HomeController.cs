@@ -75,25 +75,8 @@ public class HomeController(
 
         ViewData["ShiftCards"] = new ShiftCardsViewModel
         {
-            UrgentShifts = data.UrgentShifts
-                .Select(u => new UrgentShiftItem
-                {
-                    RotaName = u.RotaName,
-                    DepartmentName = u.DepartmentName,
-                    AbsoluteStart = u.AbsoluteStart,
-                    RemainingSlots = u.RemainingSlots,
-                    UrgencyScore = u.UrgencyScore,
-                })
-                .ToList(),
-            NextShifts = data.NextShifts
-                .Select(s => new MySignupItem
-                {
-                    RotaName = s.RotaName,
-                    DepartmentName = s.DepartmentName,
-                    AbsoluteStart = s.AbsoluteStart,
-                    AbsoluteEnd = s.AbsoluteEnd,
-                })
-                .ToList(),
+            UrgentShifts = data.UrgentShifts,
+            NextShifts = data.NextShifts,
             PendingCount = data.PendingSignupCount,
         };
 

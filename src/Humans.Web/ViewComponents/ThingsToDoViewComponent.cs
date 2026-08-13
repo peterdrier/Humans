@@ -101,7 +101,7 @@ public class ThingsToDoViewComponent(
                 try
                 {
                     var shiftProfile = await shiftProfiles.GetShiftProfileAsync(userId);
-                    needsShiftInfo = shiftProfile is null || IsShiftProfileEmpty(shiftProfile);
+                    needsShiftInfo = shiftProfile is null || shiftProfile.IsEmpty;
                 }
                 catch (Exception ex)
                 {
@@ -169,10 +169,4 @@ public class ThingsToDoViewComponent(
         return View(model);
     }
 
-    private static bool IsShiftProfileEmpty(VolunteerEventProfile profile)
-    {
-        return profile.Skills.Count == 0
-            && profile.Quirks.Count == 0
-            && profile.Languages.Count == 0;
-    }
 }

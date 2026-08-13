@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using Humans.Application;
 using Humans.Application.DTOs;
+using Humans.Application.Interfaces.Dashboard;
 using Humans.Application.Enums;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Shifts.Contracts;
@@ -202,7 +203,7 @@ public class ShiftBrowseViewModel
     /// <summary>
     /// True when early-entry (build) signups have closed
     /// (<see cref="IBurnSettingsInfo.EarlyEntryClose"/> passed) and the viewer is not
-    /// privileged. Row partials combine this with <see cref="Shift.IsEarlyEntry"/>
+    /// privileged. Row partials combine this with <see cref="ShiftInfo.IsEarlyEntry"/>
     /// so only build shifts lock; mirrors the server gate in ShiftSignupService.
     /// </summary>
     public bool EarlyEntrySignupsClosed { get; set; }
@@ -268,7 +269,7 @@ public class DepartmentShiftGroup
 
 public class RotaShiftGroup
 {
-    public Rota Rota { get; set; } = null!;
+    public RotaInfo Rota { get; set; } = null!;
     public List<ShiftDisplayItem> Shifts { get; set; } = [];
 
     /// <summary>Department name, populated for urgency-sorted view where rotas are shown flat.</summary>
@@ -287,11 +288,9 @@ public class RotaShiftGroup
     public int TotalSlots { get; set; }
 }
 
-public record ShiftSignupInfo(Guid UserId, string DisplayName, SignupStatus Status);
-
 public class ShiftDisplayItem
 {
-    public Shift Shift { get; set; } = null!;
+    public ShiftInfo Shift { get; set; } = null!;
     public Instant AbsoluteStart { get; set; }
     public Instant AbsoluteEnd { get; set; }
     public ShiftPeriod Period { get; set; }
@@ -381,21 +380,17 @@ public class ShiftAdminViewModel
 
 // === Homepage ===
 
+/// <summary>
+/// The home dashboard's shift cards. Binds <see cref="IDashboardService"/>'s own
+/// records rather than the section's presentation types: the dashboard resolves
+/// rota name, department name and the absolute window itself, so this page never
+/// names a Shifts type (nobodies-collective/Humans#866, G5).
+/// </summary>
 public class ShiftCardsViewModel
 {
-    public List<MySignupItem> NextShifts { get; set; } = [];
+    public IReadOnlyList<DashboardSignup> NextShifts { get; set; } = [];
     public int PendingCount { get; set; }
-    public List<UrgentShiftItem> UrgentShifts { get; set; } = [];
-}
-
-public class UrgentShiftItem
-{
-    public Shift Shift { get; set; } = null!;
-    public string? RotaName { get; set; }
-    public string DepartmentName { get; set; } = string.Empty;
-    public Instant AbsoluteStart { get; set; }
-    public int RemainingSlots { get; set; }
-    public double UrgencyScore { get; set; }
+    public IReadOnlyList<DashboardUrgentShift> UrgentShifts { get; set; } = [];
 }
 
 // === Shift Info (user-scoped profile) ===
@@ -465,11 +460,11 @@ public class ShiftInfoViewModel
         ["No Preference"] = "I'll take whatever's needed"
     };
 
-    public static ShiftInfoViewModel FromProfile(VolunteerEventProfile? profile)
+    public static ShiftInfoViewModel FromProfile(ShiftVolunteerProfileInfo? profile)
     {
-        var quirks = profile?.Quirks ?? [];
-        var skills = profile?.Skills ?? [];
-        var languages = profile?.Languages ?? [];
+        IReadOnlyList<string> quirks = profile?.Quirks ?? [];
+        IReadOnlyList<string> skills = profile?.Skills ?? [];
+        IReadOnlyList<string> languages = profile?.Languages ?? [];
 
         var viewModel = new ShiftInfoViewModel
         {
@@ -490,11 +485,11 @@ public class ShiftInfoViewModel
     }
 
     /// <summary>Extract the time preference value from a flat quirks array.</summary>
-    public static string? ExtractTimePreference(List<string> quirks)
+    public static string? ExtractTimePreference(IReadOnlyList<string> quirks)
         => quirks.FirstOrDefault(q => TimePreferenceOptions.Contains(q, StringComparer.Ordinal));
 
     /// <summary>Extract toggle quirks (excluding time preferences) from a flat quirks array.</summary>
-    public static List<string> ExtractToggleQuirks(List<string> quirks)
+    public static List<string> ExtractToggleQuirks(IReadOnlyList<string> quirks)
         => quirks.Where(q => !TimePreferenceOptions.Contains(q, StringComparer.Ordinal)).ToList();
 
     /// <summary>Merge a time preference and toggle quirks back into a flat quirks array.</summary>
@@ -506,25 +501,25 @@ public class ShiftInfoViewModel
         return result;
     }
 
-    public static List<string> ExtractUnknownSkills(List<string> skills)
+    public static List<string> ExtractUnknownSkills(IReadOnlyList<string> skills)
         => skills
             .Where(s => !s.StartsWith("Other:", StringComparison.Ordinal) &&
                 !StoredSkillOptions.Contains(s, StringComparer.Ordinal))
             .ToList();
 
-    public static List<string> ExtractUnknownLanguages(List<string> languages)
+    public static List<string> ExtractUnknownLanguages(IReadOnlyList<string> languages)
         => languages
             .Where(l => !l.StartsWith("Other:", StringComparison.Ordinal) &&
                 !StoredLanguageOptions.Contains(l, StringComparer.Ordinal))
             .ToList();
 
-    public static List<string> ExtractUnknownQuirks(List<string> quirks)
+    public static List<string> ExtractUnknownQuirks(IReadOnlyList<string> quirks)
         => quirks
             .Where(q => !TimePreferenceOptions.Contains(q, StringComparer.Ordinal) &&
                 !ToggleQuirkOptions.Contains(q, StringComparer.Ordinal))
             .ToList();
 
-    public static List<string> MergeSkills(List<string>? selectedSkills, string? skillOtherText, List<string>? existingSkills)
+    public static List<string> MergeSkills(List<string>? selectedSkills, string? skillOtherText, IReadOnlyList<string>? existingSkills)
     {
         var result = new List<string>(selectedSkills ?? []);
         if (result.Contains("Other", StringComparer.Ordinal))
@@ -538,7 +533,7 @@ public class ShiftInfoViewModel
         return result.Distinct(StringComparer.Ordinal).ToList();
     }
 
-    public static List<string> MergeLanguages(List<string>? selectedLanguages, string? languageOtherText, List<string>? existingLanguages)
+    public static List<string> MergeLanguages(List<string>? selectedLanguages, string? languageOtherText, IReadOnlyList<string>? existingLanguages)
     {
         var result = new List<string>(selectedLanguages ?? []);
         if (result.Contains("Other", StringComparer.Ordinal))
@@ -555,7 +550,7 @@ public class ShiftInfoViewModel
     public static List<string> MergePersistedQuirks(
         string? timePreference,
         List<string>? selectedQuirks,
-        List<string>? existingQuirks)
+        IReadOnlyList<string>? existingQuirks)
     {
         var result = MergeQuirks(timePreference, selectedQuirks ?? []);
         result.AddRange(ExtractUnknownQuirks(existingQuirks ?? []));
@@ -567,7 +562,7 @@ public class ShiftInfoViewModel
 
 public class ShiftDashboardViewModel
 {
-    public List<UrgentShift> Shifts { get; set; } = [];
+    public List<UrgentShiftInfo> Shifts { get; set; } = [];
     public List<DepartmentOption> Departments { get; set; } = [];
     public Guid? SelectedDepartmentId { get; set; }
     public Guid? SelectedRotaId { get; set; }
@@ -649,7 +644,7 @@ public class ShiftSignupsViewModel
 
 public class RotaHeaderViewModel
 {
-    public Rota Rota { get; set; } = null!;
+    public RotaInfo Rota { get; set; } = null!;
     public bool ShowPreferenceStar { get; set; }
     public bool ShowPeriodBadge { get; set; } = true;
     public bool ShowTags { get; set; } = true;
@@ -778,7 +773,7 @@ public class BuildStrikeRotaRowViewModel
     public bool SignupsBlockedByMissingDietary { get; set; }
 
     /// <summary>Page-level early-entry-closed flag; the row combines it with
-    /// <see cref="Shift.IsEarlyEntry"/> to lock only build shifts.</summary>
+    /// <see cref="ShiftInfo.IsEarlyEntry"/> to lock only build shifts.</summary>
     public bool EarlyEntrySignupsClosed { get; set; }
     public ShiftSignupInteraction Interaction { get; set; } = ShiftSignupInteraction.FormPost;
 }
@@ -817,7 +812,7 @@ public class EventRotaRowViewModel
     public bool SignupsBlockedByMissingDietary { get; set; }
 
     /// <summary>Page-level early-entry-closed flag; the row combines it with
-    /// <see cref="Shift.IsEarlyEntry"/> to lock only build shifts.</summary>
+    /// <see cref="ShiftInfo.IsEarlyEntry"/> to lock only build shifts.</summary>
     public bool EarlyEntrySignupsClosed { get; set; }
     public ShiftSignupInteraction Interaction { get; set; } = ShiftSignupInteraction.FormPost;
 

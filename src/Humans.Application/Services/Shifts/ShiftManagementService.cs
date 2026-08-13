@@ -825,7 +825,7 @@ public sealed class ShiftManagementService(
         return offsets;
     }
 
-    public async Task<IReadOnlyList<UrgentShift>> GetUrgentShiftsAsync(
+    public async Task<IReadOnlyList<UrgentShiftInfo>> GetUrgentShiftsAsync(
         Guid eventSettingsId, int? limit = null,
         Guid? departmentId = null,
         LocalDate? startDate = null, LocalDate? endDate = null,
@@ -876,19 +876,19 @@ public sealed class ShiftManagementService(
                 var score = CalculateScore(s, confirmedCount, es);
                 var remaining = Math.Max(0, s.MaxVolunteers - confirmedCount);
                 var teamName = teamLookup.TryGetValue(s.Rota.TeamId, out var t) ? t.Name : string.Empty;
-                return new UrgentShift(s, score, confirmedCount, remaining, teamName, []);
+                return ToUrgentShiftInfo(s, es, score, confirmedCount, remaining, teamName, []);
             })
             .Where(u => u.UrgencyScore > 0)
             .OrderByDescending(u => u.UrgencyScore)
             .ToList();
 
         if (limit.HasValue)
-            return ApplyPeriodDiverseLimit(urgentShifts, limit.Value, es);
+            return ApplyPeriodDiverseLimit(urgentShifts, limit.Value);
 
         return urgentShifts;
     }
 
-    public async Task<IReadOnlyList<UrgentShift>> GetBrowseShiftsAsync(ShiftBrowseQuery query)
+    public async Task<IReadOnlyList<UrgentShiftInfo>> GetBrowseShiftsAsync(ShiftBrowseQuery query)
     {
         var es = await repo.GetEventSettingsByIdAsync(query.EventSettingsId);
         if (es is null) return [];
@@ -971,9 +971,10 @@ public sealed class ShiftManagementService(
                         })
                         .OrderBy(ss => ss.Status == SignupStatus.Confirmed ? 0 : 1)
                         .ThenBy(ss => ss.DisplayName, StringComparer.OrdinalIgnoreCase)
+                        .Select(ss => new ShiftSignupInfo(ss.UserId, ss.DisplayName, ss.Status))
                         .ToList()
                     : [];
-                return new UrgentShift(s, score, confirmedCount, remaining, teamName, signups);
+                return ToUrgentShiftInfo(s, es, score, confirmedCount, remaining, teamName, signups);
             })
             .OrderByDescending(u => u.UrgencyScore)
             .ToList();
@@ -996,6 +997,58 @@ public sealed class ShiftManagementService(
         return ids;
     }
 
+    /// <summary>
+    /// Flattens a shift, its rota and the urgency arithmetic into the boundary
+    /// shape. The event-relative scalars are resolved here — where the event is
+    /// in scope — so no consumer has to fetch the burn to render a row.
+    /// </summary>
+    private static UrgentShiftInfo ToUrgentShiftInfo(
+        Shift shift,
+        EventSettings es,
+        double score,
+        int confirmedCount,
+        int remainingSlots,
+        string departmentName,
+        IReadOnlyList<ShiftSignupInfo> signups) =>
+        new(
+            new ShiftInfo(
+                shift.Id,
+                shift.RotaId,
+                shift.Description,
+                shift.DayOffset,
+                shift.StartTime,
+                shift.Duration.TotalHours,
+                shift.MinVolunteers,
+                shift.MaxVolunteers,
+                shift.AdminOnly,
+                shift.IsAllDay,
+                shift.IsEarlyEntry),
+            ToRotaInfo(shift.Rota),
+            departmentName,
+            es.GateOpeningDate.PlusDays(shift.DayOffset),
+            shift.GetShiftPeriod(es),
+            shift.GetAbsoluteStart(es),
+            shift.GetAbsoluteEnd(es),
+            score,
+            confirmedCount,
+            remainingSlots,
+            signups);
+
+    /// <summary>Flattens a rota's header fields into the boundary shape.</summary>
+    private static RotaInfo ToRotaInfo(Rota rota) =>
+        new(
+            rota.Id,
+            rota.EventSettingsId,
+            rota.TeamId,
+            rota.Name,
+            rota.Description,
+            rota.PracticalInfo,
+            rota.Priority,
+            rota.Policy,
+            rota.Period,
+            rota.IsVisibleToVolunteers,
+            rota.Tags.Select(t => new ShiftTagSummary(t.Id, t.Name)).ToList());
+
     internal double CalculateScore(Shift shift, int confirmedCount, EventSettings eventSettings)
     {
         var remainingSlots = Math.Max(0, shift.MaxVolunteers - confirmedCount);
@@ -1015,17 +1068,22 @@ public sealed class ShiftManagementService(
     }
 
     /// <summary>Top-N with period diversity: one slot per non-Build period if eligible, rest from top scorers.</summary>
-    public static List<UrgentShift> ApplyPeriodDiverseLimit(
-        List<UrgentShift> rankedShifts, int limit, EventSettings es)
+    /// <remarks>
+    /// Takes the projection rather than the entity: <see cref="UrgentShiftInfo.Period"/>
+    /// is already resolved against the event, so this no longer needs
+    /// <c>EventSettings</c> to classify a row.
+    /// </remarks>
+    public static List<UrgentShiftInfo> ApplyPeriodDiverseLimit(
+        List<UrgentShiftInfo> rankedShifts, int limit)
     {
         if (rankedShifts.Count <= limit)
             return rankedShifts;
 
         var byPeriod = rankedShifts
-            .GroupBy(u => u.Shift.GetShiftPeriod(es))
+            .GroupBy(u => u.Period)
             .ToDictionary(g => g.Key, g => g.ToList());
 
-        var reserved = new List<UrgentShift>();
+        var reserved = new List<UrgentShiftInfo>();
         var reservedIds = new HashSet<Guid>();
         foreach (var period in new[] { ShiftPeriod.Event, ShiftPeriod.Strike })
         {
@@ -1040,7 +1098,7 @@ public sealed class ShiftManagementService(
         if (reserved.Count >= limit)
             return reserved.OrderByDescending(u => u.UrgencyScore).Take(limit).ToList();
 
-        var result = new List<UrgentShift>(reserved);
+        var result = new List<UrgentShiftInfo>(reserved);
         foreach (var shift in rankedShifts)
         {
             if (result.Count >= limit) break;
@@ -1992,8 +2050,13 @@ public sealed class ShiftManagementService(
         viewInvalidator.InvalidateUser(profile.UserId);
     }
 
-    public Task<VolunteerEventProfile?> GetShiftProfileAsync(Guid userId) =>
-        repo.GetVolunteerEventProfileAsync(userId);
+    public async Task<ShiftVolunteerProfileInfo?> GetShiftProfileAsync(Guid userId)
+    {
+        var profile = await repo.GetVolunteerEventProfileAsync(userId);
+        return profile is null
+            ? null
+            : new ShiftVolunteerProfileInfo(profile.UserId, profile.Skills, profile.Quirks, profile.Languages);
+    }
 
     public async Task<bool> HasQualifyingCantinaSignupAsync(
         Guid userId,

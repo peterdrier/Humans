@@ -271,7 +271,7 @@ internal sealed class GateService(
             .ToList();
     }
 
-    private static bool StartsWithinWindow(LocalDate openingDate, Shift shift, DateTimeZone zone, Instant now)
+    private static bool StartsWithinWindow(LocalDate openingDate, ShiftInfo shift, DateTimeZone zone, Instant now)
     {
         var start = openingDate.PlusDays(shift.DayOffset).At(shift.StartTime)
             .InZoneLeniently(zone).ToInstant();

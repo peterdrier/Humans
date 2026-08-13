@@ -133,7 +133,7 @@ public sealed class WidgetGalleryController(
             ?? allTeams.FirstOrDefault();
     }
 
-    private async Task<VolunteerEventProfile?> TryGetVolunteerProfileAsync(Guid userId)
+    private async Task<ShiftVolunteerProfileInfo?> TryGetVolunteerProfileAsync(Guid userId)
     {
         try
         {
@@ -154,14 +154,14 @@ public sealed class WidgetGalleryController(
             if (es is null)
                 return ShiftsSamples.Empty;
 
-            Rota? rota = null;
+            RotaInfo? rota = null;
             Guid? sampleDeptId = null;
             var depts = await shiftMgmt.GetDepartmentsWithRotasAsync(es.Id);
             if (depts.Count > 0)
             {
                 sampleDeptId = depts[0].TeamId;
                 var rotas = await shiftMgmt.GetRotasByDepartmentAsync(sampleDeptId.Value, es.Id);
-                rota = rotas.FirstOrDefault();
+                rota = rotas.Select(ToSampleRotaInfo).FirstOrDefault();
             }
 
             var staffing = await shiftMgmt.GetStaffingSnapshotAsync(es.Id);
@@ -196,26 +196,41 @@ public sealed class WidgetGalleryController(
         }
     }
 
-    private ShiftDisplayItem MapToDisplayItem(UrgentShift u, BurnSettingsInfo es)
+    // Gallery-local projection of the rota header. Temporary: this whole block moves
+    // into the section as a view component at Shifts' G5, which is what takes
+    // GetRotasByDepartmentAsync off the contracts leaf (local/shifts-g5/decisions-lane-C.md).
+    private static RotaInfo ToSampleRotaInfo(Rota rota) =>
+        new(
+            rota.Id,
+            rota.EventSettingsId,
+            rota.TeamId,
+            rota.Name,
+            rota.Description,
+            rota.PracticalInfo,
+            rota.Priority,
+            rota.Policy,
+            rota.Period,
+            rota.IsVisibleToVolunteers,
+            rota.Tags.Select(t => new ShiftTagSummary(t.Id, t.Name)).ToList());
+
+    private ShiftDisplayItem MapToDisplayItem(UrgentShiftInfo u, BurnSettingsInfo es)
     {
         return new ShiftDisplayItem
         {
             Shift = u.Shift,
-            AbsoluteStart = u.Shift.GetAbsoluteStart(es),
-            AbsoluteEnd = u.Shift.GetAbsoluteEnd(es),
-            Period = u.Shift.GetShiftPeriod(es),
+            AbsoluteStart = u.AbsoluteStart,
+            AbsoluteEnd = u.AbsoluteEnd,
+            Period = u.Period,
             ConfirmedCount = u.ConfirmedCount,
             RemainingSlots = u.RemainingSlots,
             UrgencyScore = u.UrgencyScore,
-            Signups = u.Signups
-                .Select(s => new ShiftSignupInfo(s.UserId, s.DisplayName, s.Status))
-                .ToList(),
+            Signups = u.Signups,
         };
     }
 
     private sealed record ShiftsSamples(
         BurnSettingsInfo? EventSettings,
-        Rota? Rota,
+        RotaInfo? Rota,
         IReadOnlyList<DailyStaffingData> StaffingData,
         IReadOnlyList<DailyStaffingHours> StaffingHours,
         IReadOnlyList<ShiftDisplayItem> RotaShifts,
@@ -237,9 +252,9 @@ public sealed class WidgetGalleryViewModel
     public Guid? SampleTeamId { get; init; }
     public string? SampleTeamSlug { get; init; }
     public string? SampleTeamName { get; init; }
-    public VolunteerEventProfile? SampleVolunteerProfile { get; init; }
+    public ShiftVolunteerProfileInfo? SampleVolunteerProfile { get; init; }
     public BurnSettingsInfo? SampleEventSettings { get; init; }
-    public Rota? SampleRota { get; init; }
+    public RotaInfo? SampleRota { get; init; }
     public required IReadOnlyList<DailyStaffingData> SampleStaffingData { get; init; }
     public required IReadOnlyList<DailyStaffingHours> SampleStaffingHours { get; init; }
     public required IReadOnlyList<ShiftDisplayItem> SampleRotaShifts { get; init; }

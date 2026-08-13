@@ -47,30 +47,23 @@ public class ShiftBrowsePageBuilderRowTests
         var shiftId = Guid.NewGuid();
         var userId = Guid.NewGuid();
 
-        var shift = new Shift
-        {
-            Id = shiftId,
-            RotaId = Guid.NewGuid(),
-            DayOffset = 1,
-            IsAllDay = true,
-            StartTime = new LocalTime(8, 0),
-            Duration = Duration.FromHours(4),
-            MinVolunteers = 2,
-            MaxVolunteers = 5,
-            CreatedAt = TestNow,
-            UpdatedAt = TestNow
-        };
-        var urgent = new UrgentShift(
-            shift,
-            UrgencyScore: 1.5,
-            ConfirmedCount: 3,
-            RemainingSlots: 2,
-            DepartmentName: "Test Department",
-            Signups: [(userId, "Tester", SignupStatus.Confirmed)]);
+        var shift = UrgentShiftFixtures.Shift(
+            id: shiftId,
+            dayOffset: 1,
+            isAllDay: true,
+            minVolunteers: 2,
+            maxVolunteers: 5);
+        var urgent = UrgentShiftFixtures.Urgent(
+            shift: shift,
+            burn: Event,
+            urgencyScore: 1.5,
+            confirmedCount: 3,
+            remainingSlots: 2,
+            signups: [new ShiftSignupInfo(userId, "Tester", SignupStatus.Confirmed)]);
 
         _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(Event);
         _shiftManagement.GetBrowseShiftsAsync(Arg.Any<ShiftBrowseQuery>())
-            .Returns(new List<UrgentShift> { urgent });
+            .Returns([urgent]);
 
         var userSignups = new List<ShiftSignup>
         {

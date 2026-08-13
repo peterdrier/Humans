@@ -16,10 +16,12 @@ namespace Humans.Shifts.Contracts;
 /// caller and stays on the internal <c>IShiftManagementService</c>.
 ///
 /// <para>
-/// <c>VolunteerEventProfile</c> is still a public <c>Humans.Domain.Entities</c>
-/// type; the three members returning it need a flat projection before the
-/// entity can turn internal at the section move. Recorded in
-/// <c>local/shifts-g5/findings.md</c>.
+/// The read crosses the boundary as <see cref="ShiftVolunteerProfileInfo"/>,
+/// never as the <c>VolunteerEventProfile</c> entity. The get-or-create and
+/// update pair still take it, and both leave this interface when the section
+/// moves: their only outside caller is Shell's <c>/Profile/Me/ShiftInfo</c>
+/// pair of actions, which write a Shifts table and therefore go with the
+/// section (nobodies-collective/Humans#866, G5).
 /// </para>
 /// </remarks>
 public interface IShiftVolunteerProfiles
@@ -35,10 +37,11 @@ public interface IShiftVolunteerProfiles
     Task UpdateShiftProfileAsync(VolunteerEventProfile profile);
 
     /// <summary>
-    /// Gets a user's shift profile (Skills / Quirks / Languages). Dietary and
-    /// medical data moved to Profile — read those via <c>IUserServiceRead</c>.
+    /// Gets a user's shift profile (Skills / Quirks / Languages), or
+    /// <c>null</c> when the user has none. Dietary and medical data moved to
+    /// Profile — read those via <c>IUserServiceRead</c>.
     /// </summary>
-    Task<VolunteerEventProfile?> GetShiftProfileAsync(Guid userId);
+    Task<ShiftVolunteerProfileInfo?> GetShiftProfileAsync(Guid userId);
 
     /// <summary>
     /// Deletes every <c>VolunteerEventProfile</c> row owned by
@@ -61,3 +64,19 @@ public interface IShiftVolunteerProfiles
 }
 
 public record ShiftTagSummary(Guid Id, string Name);
+
+/// <summary>
+/// A volunteer's shift-matching lists, flattened off
+/// <c>VolunteerEventProfile</c>. The entity's dietary and medical fields moved
+/// to Profile before G5, so what is left of it that crosses the section
+/// boundary is three string lists.
+/// </summary>
+public sealed record ShiftVolunteerProfileInfo(
+    Guid UserId,
+    IReadOnlyList<string> Skills,
+    IReadOnlyList<string> Quirks,
+    IReadOnlyList<string> Languages)
+{
+    /// <summary>True when the volunteer has recorded nothing at all.</summary>
+    public bool IsEmpty => Skills.Count == 0 && Quirks.Count == 0 && Languages.Count == 0;
+}

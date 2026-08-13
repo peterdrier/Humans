@@ -50,7 +50,7 @@ internal sealed class ShiftsStepViewModel
     public BurnSettingsInfo? EventSettings { get; init; }
 
     /// <summary>The event's shifts already filtered to <see cref="SelectedPriority"/>.</summary>
-    public IReadOnlyList<UrgentShift> Shifts { get; init; } = [];
+    public IReadOnlyList<UrgentShiftInfo> Shifts { get; init; } = [];
 
     public HashSet<Guid> UserSignupShiftIds { get; init; } = [];
 

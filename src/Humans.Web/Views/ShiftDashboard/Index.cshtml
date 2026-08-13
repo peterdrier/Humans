@@ -239,7 +239,7 @@
     else
     {
         var grouped = Model.Shifts
-            .GroupBy(item => (item.Shift.RotaId, RotaName: item.Shift.Rota.Name, item.DepartmentName, item.Shift.Rota.Priority))
+            .GroupBy(item => (item.Shift.RotaId, RotaName: item.Rota.Name, item.DepartmentName, item.Rota.Priority))
             .OrderBy(g => g.Key.RotaName, StringComparer.OrdinalIgnoreCase)
             .ThenBy(g => g.Key.DepartmentName, StringComparer.OrdinalIgnoreCase)
             .ToList();
@@ -314,7 +314,7 @@
                                 <tr class="collapse" id="@collapseId" authorize-policy="ShiftDashboardAccess">
                                     <td colspan="3">
                                         <div class="p-3 bg-light rounded border">
-                                            <label class="form-label fw-semibold">@string.Format(Localizer["ShiftDash_SearchHumans"].Value, shift.Rota.Name)</label>
+                                            <label class="form-label fw-semibold">@string.Format(Localizer["ShiftDash_SearchHumans"].Value, item.Rota.Name)</label>
                                             <input type="text"
                                                    class="form-control mb-2 volunteer-search-input"
                                                    placeholder="@Localizer["ShiftDash_SearchPlaceholder"].Value"

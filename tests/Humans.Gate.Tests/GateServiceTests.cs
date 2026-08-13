@@ -459,20 +459,12 @@ public class GateServiceTests
     // ── Shift roster (claim-screen pre-fill) ─────────────────────────────────
     // Clock is fixed at 2026-03-01T12:00Z; in Europe/Madrid (CET, UTC+1 on that
     // date) that's 13:00 local, so a shift starting 13:00 local == now.
-    private static UrgentShift ShiftAt(
+    private static UrgentShiftInfo ShiftAt(
         int dayOffset, LocalTime start, params (Guid Id, string Name, SignupStatus Status)[] signups) =>
-        new(new Shift
-        {
-            Id = Guid.NewGuid(),
-            RotaId = Guid.NewGuid(),
-            DayOffset = dayOffset,
-            StartTime = start,
-            Duration = Duration.FromHours(4),
-            MinVolunteers = 1,
-            MaxVolunteers = 5,
-        },
-            UrgencyScore: 0, ConfirmedCount: 0, RemainingSlots: 0, DepartmentName: "Gate",
-            Signups: signups.Select(s => (s.Id, s.Name, s.Status)).ToList());
+        UrgentShiftFixtures.Urgent(
+            shift: UrgentShiftFixtures.Shift(dayOffset: dayOffset, startTime: start, maxVolunteers: 5),
+            departmentName: "Gate",
+            signups: signups.Select(s => new ShiftSignupInfo(s.Id, s.Name, s.Status)).ToList());
 
     [HumansFact]
     public async Task GetShiftRoster_ReturnsDistinctSignedUpVolunteers_OnShiftsNearNow()
@@ -484,7 +476,7 @@ public class GateServiceTests
         _burn.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(BurnFixtures.Burn(
             eventName: "Test",
             gateOpeningDate: new LocalDate(2026, 3, 1)));
-        _shifts.GetBrowseShiftsAsync(Arg.Any<ShiftBrowseQuery>()).Returns(new List<UrgentShift>
+        _shifts.GetBrowseShiftsAsync(Arg.Any<ShiftBrowseQuery>()).Returns(new List<UrgentShiftInfo>
         {
             // Starts at now: Eve is Refused (excluded), Alice + Bob signed up.
             ShiftAt(0, new LocalTime(13, 0),

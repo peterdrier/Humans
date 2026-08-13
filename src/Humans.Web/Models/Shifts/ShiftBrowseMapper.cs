@@ -1,5 +1,4 @@
 using Humans.Shifts.Contracts;
-using Humans.Domain.Entities;
 
 namespace Humans.Web.Models.Shifts;
 
@@ -8,47 +7,43 @@ namespace Humans.Web.Models.Shifts;
 /// (<c>ShiftsController.Index</c>) and the onboarding widget step-2 view
 /// (<see cref="OnboardingWidget.OnboardingShiftsBrowseModelBuilder"/>).
 ///
-/// Pure mapping over <see cref="UrgentShift"/> + <see cref="BurnSettingsInfo"/> —
-/// no service dependencies. Time/period resolution delegates to the
-/// <see cref="Shift"/> entity helpers (<see cref="Shift.GetAbsoluteStart"/>,
-/// <see cref="Shift.GetAbsoluteEnd"/>, <see cref="Shift.GetShiftPeriod"/>).
+/// Pure mapping over <see cref="UrgentShiftInfo"/> — no service dependencies and
+/// no arithmetic: the section resolves the absolute window and the period inside
+/// the projection, where the event is in scope.
 /// </summary>
 internal static class ShiftBrowseMapper
 {
     /// <summary>
     /// Maps a single <see cref="UrgentShift"/> to a <see cref="ShiftDisplayItem"/>.
     /// </summary>
-    internal static ShiftDisplayItem MapToDisplayItem(UrgentShift u, BurnSettingsInfo eventSettings)
+    internal static ShiftDisplayItem MapToDisplayItem(UrgentShiftInfo u)
     {
         return new ShiftDisplayItem
         {
             Shift = u.Shift,
-            AbsoluteStart = u.Shift.GetAbsoluteStart(eventSettings),
-            AbsoluteEnd = u.Shift.GetAbsoluteEnd(eventSettings),
-            Period = u.Shift.GetShiftPeriod(eventSettings),
+            AbsoluteStart = u.AbsoluteStart,
+            AbsoluteEnd = u.AbsoluteEnd,
+            Period = u.Period,
             ConfirmedCount = u.ConfirmedCount,
             RemainingSlots = u.RemainingSlots,
             UrgencyScore = u.UrgencyScore,
-            Signups = u.Signups
-                .Select(s => new ShiftSignupInfo(s.UserId, s.DisplayName, s.Status))
-                .ToList(),
+            Signups = u.Signups,
         };
     }
 
     /// <summary>
-    /// Builds a <see cref="RotaShiftGroup"/> from a group of <see cref="UrgentShift"/>s
+    /// Builds a <see cref="RotaShiftGroup"/> from a group of <see cref="UrgentShiftInfo"/>s
     /// sharing a rota. Caller may supply department name/slug (full browse) or omit
     /// them (onboarding widget — no department grouping).
     /// </summary>
     internal static RotaShiftGroup BuildRotaGroup(
-        IGrouping<Guid, UrgentShift> rotaGroup,
-        BurnSettingsInfo eventSettings,
+        IGrouping<Guid, UrgentShiftInfo> rotaGroup,
         string? departmentName = null,
         string? departmentSlug = null)
     {
-        var rota = rotaGroup.OrderBy(x => x.Shift.Id).First().Shift.Rota;
+        var rota = rotaGroup.OrderBy(x => x.Shift.Id).First().Rota;
         var shifts = rotaGroup
-            .Select(u => MapToDisplayItem(u, eventSettings))
+            .Select(MapToDisplayItem)
             .OrderBy(s => s.AbsoluteStart)
             .ToList();
         return new RotaShiftGroup

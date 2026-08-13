@@ -4,9 +4,9 @@
 @using NodaTime
 
 @functions {
-    string GetPhase(Shift shift, BurnSettingsInfo es)
+    string GetPhase(ShiftPeriod period)
     {
-        return shift.GetShiftPeriod(es) switch
+        return period switch
         {
             ShiftPeriod.Build => Localizer["Shifts_SetUp"].Value,
             ShiftPeriod.Event => Localizer["Shifts_Event"].Value,
@@ -15,9 +15,9 @@
         };
     }
 
-    string GetPhaseBadge(Shift shift, BurnSettingsInfo es)
+    string GetPhaseBadge(ShiftPeriod period)
     {
-        return shift.GetShiftPeriod(es) switch
+        return period switch
         {
             ShiftPeriod.Build => "bg-info",
             ShiftPeriod.Event => "bg-success",
@@ -35,11 +35,11 @@
     var understaffed = item.ConfirmedCount < shift.MinVolunteers;
 }
 <tr class="@(isFull ? "table-secondary" : "")">
-    <td>@(shift.IsAllDay ? Localizer["Shifts_AllDay"].Value : $"{shift.StartTime.ToTime()}–{shift.StartTime.PlusMinutes((int)shift.Duration.TotalMinutes).ToTime()}")</td>
-    <td><span class="badge @GetPhaseBadge(shift, es)">@GetPhase(shift, es)</span></td>
+    <td>@(shift.IsAllDay ? Localizer["Shifts_AllDay"].Value : $"{shift.StartTime.ToTime()}–{shift.StartTime.PlusMinutes((int)(shift.DurationHours * 60)).ToTime()}")</td>
+    <td><span class="badge @GetPhaseBadge(item.Period)">@GetPhase(item.Period)</span></td>
     <td>@es.GateOpeningDate.PlusDays(shift.DayOffset).ToWeekdayDayMonth()</td>
     <td>@item.AbsoluteStart.ToTime(tz)</td>
-    <td>@(shift.IsAllDay ? Localizer["Shifts_FullDay"].Value : $"{shift.Duration.TotalHours}h")</td>
+    <td>@(shift.IsAllDay ? Localizer["Shifts_FullDay"].Value : $"{shift.DurationHours}h")</td>
     <td style="min-width: 130px;">
         @{
             var fillPercent = shift.MaxVolunteers > 0 ? (int)Math.Round(100.0 * item.ConfirmedCount / shift.MaxVolunteers) : 0;

@@ -31,7 +31,7 @@ public sealed class OnboardingShiftsListViewComponent : ViewComponent
 {
     public IViewComponentResult Invoke(
         BurnSettingsInfo eventSettings,
-        IReadOnlyList<UrgentShift> shifts,
+        IReadOnlyList<UrgentShiftInfo> shifts,
         HashSet<Guid> userSignupShiftIds,
         Dictionary<Guid, SignupStatus> userSignupStatuses,
         bool earlyEntrySignupsClosed)
@@ -40,7 +40,6 @@ public sealed class OnboardingShiftsListViewComponent : ViewComponent
             .GroupBy(u => u.Shift.RotaId)
             .Select(rg => ShiftBrowseMapper.BuildRotaGroup(
                 rg,
-                eventSettings,
                 departmentName: rg.First().DepartmentName))
             .OrderByDescending(r => r.MaxUrgencyScore)
             .ToList();

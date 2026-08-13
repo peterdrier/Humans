@@ -314,13 +314,13 @@ public sealed class ShiftManagementReadMathTests : ServiceTestHarness
     public void ApplyPeriodDiverseLimit_ReturnsTheListUntouched_WhenCountEqualsLimit()
     {
         var es = NewEventSettings();
-        var ranked = new List<UrgentShift>
+        var ranked = new List<UrgentShiftInfo>
         {
             NewUrgentShift(es, dayOffset: 1, score: 5),
             NewUrgentShift(es, dayOffset: 8, score: 9)
         };
 
-        var result = ShiftManagementService.ApplyPeriodDiverseLimit(ranked, 2, es);
+        var result = ShiftManagementService.ApplyPeriodDiverseLimit(ranked, 2);
 
         result.Should().BeSameAs(ranked);
     }
@@ -355,21 +355,12 @@ public sealed class ShiftManagementReadMathTests : ServiceTestHarness
             UpdatedAt = TestNow
         };
 
-    private static UrgentShift NewUrgentShift(EventSettings es, int dayOffset, double score) =>
-        new(
-            new Shift
-            {
-                Id = Guid.NewGuid(),
-                RotaId = Guid.NewGuid(),
-                DayOffset = dayOffset,
-                StartTime = new LocalTime(8, 0),
-                Duration = Duration.FromHours(4),
-                MinVolunteers = 1,
-                MaxVolunteers = 3,
-                CreatedAt = TestNow,
-                UpdatedAt = TestNow
-            },
-            score, ConfirmedCount: 0, RemainingSlots: 3, DepartmentName: "Test Department", Signups: []);
+    private static UrgentShiftInfo NewUrgentShift(EventSettings es, int dayOffset, double score) =>
+        UrgentShiftFixtures.Urgent(
+            shift: UrgentShiftFixtures.Shift(dayOffset: dayOffset),
+            burn: es,
+            urgencyScore: score,
+            remainingSlots: 3);
 
     private (EventSettings Es, Rota Rota) SeedScenario(ShiftPriority priority = ShiftPriority.Normal)
     {
