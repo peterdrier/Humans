@@ -13,6 +13,8 @@
   src/Humans.Infrastructure/Jobs/GoogleResourceProvisionJob.cs
   src/Humans.Infrastructure/Jobs/ProcessGoogleSyncOutboxJob.cs
   src/Humans.Infrastructure/Jobs/SystemTeamSyncJob.cs
+  src/Sections/Humans.Teams/Controllers/TeamAdminController.cs
+  src/Sections/Humans.Teams/Views/TeamAdmin/Resources.cshtml
 -->
 <!-- freshness:flag-on-change
   IGoogleSyncService surface, ITeamResourceService, sync mode/action enums, drift detection, error classification, and /Google routes — review when Google integration services, jobs, or controllers change.

@@ -68,7 +68,27 @@ editorial_docs() {
                -not -path '*/obj/*' -not -path '*/bin/*' \
                -not -path '*/Docs/20*.md' 2>/dev/null
         else
-          echo "  [editorial_docs]: catalog lists '$entry' but it is neither a file nor a directory" >&2
+          # Unresolved entry: emit nothing here — test 3 reports it via
+          # editorial_entries_unresolved. The explicit `:` matters: without an
+          # else branch the `if` returns the failed `[ -d ]` status, which under
+          # `set -e` aborts the whole script mid-run instead of failing a test.
+          :
+        fi
+      done
+}
+
+# Catalog editorial_trees entries that resolve to nothing. A warning here is not
+# enough: if an individually listed file such as docs/seed-data.md is renamed,
+# editorial_docs simply omits it, the remaining ~140 docs still clear test 3's
+# thresholds, and tests 4 and 7 never inspect the missing file — so the script
+# exits green while the catalog points at nothing. Test 3 fails on any output.
+editorial_entries_unresolved() {
+  awk '/^editorial_trees:/{f=1;next} f&&/^[a-z_]+:/{f=0} f' "$CATALOG" \
+    | grep -E '^[[:space:]]+- ' \
+    | sed 's/^[[:space:]]*-[[:space:]]*//; s/[[:space:]]*$//' \
+    | while IFS= read -r entry; do
+        if [ -n "$entry" ] && [ ! -f "$entry" ] && [ ! -d "${entry%/}" ]; then
+          echo "$entry"
         fi
       done
 }
@@ -127,14 +147,20 @@ INPROJ=$(find src/Sections -path '*/Docs/*.md' -not -path '*/Docs/20*.md' -not -
 # Catalog entries listed as single files rather than directories to walk.
 SINGLES=$(awk '/^editorial_trees:/{f=1;next} f&&/^[a-z_]+:/{f=0} f' "$CATALOG" \
           | grep -E '^[[:space:]]+- ' | sed 's/^[[:space:]]*-[[:space:]]*//; s/[[:space:]]*$//' \
-          | while IFS= read -r e; do [ -f "$e" ] && echo "$e"; done | wc -l)
+          | while IFS= read -r e; do if [ -f "$e" ]; then echo "$e"; fi; done | wc -l)
 TOTAL=$(editorial_docs | wc -l)
+UNRESOLVED=$(editorial_entries_unresolved || true)
+N_UNRESOLVED=0
+if [ -n "$UNRESOLVED" ]; then
+  N_UNRESOLVED=$(printf '%s\n' "$UNRESOLVED" | sed '/^$/d' | wc -l)
+  printf '%s\n' "$UNRESOLVED" | sed '/^$/d; s|^|  [test 3]: catalog editorial_trees entry resolves to nothing: |'
+fi
 
-if [ "$TOTAL" -lt 50 ] || [ "$INPROJ" -lt 1 ] || [ "$SINGLES" -lt 1 ]; then
-  echo "FAIL [test 3]: editorial walk found $TOTAL docs ($INPROJ in-project, $SINGLES single-file) — expected >= 50 with >= 1 of each"
+if [ "$TOTAL" -lt 50 ] || [ "$INPROJ" -lt 1 ] || [ "$SINGLES" -lt 1 ] || [ "$N_UNRESOLVED" -gt 0 ]; then
+  echo "FAIL [test 3]: editorial walk found $TOTAL docs ($INPROJ in-project, $SINGLES single-file, $N_UNRESOLVED dead catalog entries)"
   FAIL=$((FAIL+1))
 else
-  echo "PASS [test 3]: editorial walk: sections=$SEC features=$FEAT guide=$GUIDE in-project=$INPROJ single-file=$SINGLES = $TOTAL total"
+  echo "PASS [test 3]: editorial walk: sections=$SEC features=$FEAT guide=$GUIDE in-project=$INPROJ single-file=$SINGLES = $TOTAL total, 0 dead catalog entries"
   PASS=$((PASS+1))
 fi
 

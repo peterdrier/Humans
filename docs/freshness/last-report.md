@@ -102,6 +102,31 @@ same defect, and a systematic re-audit found a fourth: `docs-readme-index`, `gui
 are now aligned, verified by a script that compares each entry's trigger scope against its prompt scope
 rather than by reading them.
 
+A fifth review round found five more, three of them consequences of the fixes above:
+
+- **The verifier could not report a dead catalog entry — it died before trying.** If an
+  individually-listed entry like `docs/seed-data.md` were renamed, `editorial_docs()` returned a
+  non-zero status from its final `if`, and under `set -euo pipefail` that aborted the whole script
+  **after test 2**, so tests 3-7 never ran. The exit code was non-zero either way, but the diagnostic
+  was silent. Both helper loops are now `set -e`-safe, and test 3 fails with the offending entry named.
+  Proven by deliberately renaming a catalog entry and watching it fail, then restoring.
+- **`dependency-graph`'s step 2** still derived a dependency's owning section from its folder under
+  `src/Humans.Application/Services/` — where a moved implementation has no folder at all. Widening the
+  walk without widening the classification rule would have misclassified or dropped the very G5
+  dependencies the walk was added for.
+- **Four EF configurations live directly under `Data/`, not `Data/Configurations/`** (Consent's three,
+  Email's `EmailOutboxMessage`). The `Data/Configurations/**` globs added a round earlier still left
+  `data-model-index` and `guid-reservations` falsely clean for those four files, all of which changed
+  in this window. Both now watch the whole `Data/` tree.
+- **`google-integration.md`** documents the `/Teams/{slug}/Resources` route table — added by this very
+  sweep — but its marker never watched the Teams controller or views that serve it.
+- **`docs/guide/Tickets.md`** describes vendor-adapter behaviour (incremental sync, void-to-hold
+  reissue) while watching none of `Humans.TicketTailor` or the `ITicketVendorService` port.
+
+While adding the Teams triggers I nearly shipped a dead glob of my own — `TeamResourceService.cs` is in
+`src/Humans.Application/Services/GoogleIntegration/`, not the Teams project — caught by checking each
+path before committing rather than after.
+
 The `data-model-index` case is the one worth remembering. Its authority chain is **catalog → prompt-file
 → inline `freshness:auto` marker**, and the prompt-file explicitly defers to the marker. The earlier fix
 edited the prompt-file, which is *dead code* during normal regeneration — the inline marker in

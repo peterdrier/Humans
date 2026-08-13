@@ -161,9 +161,15 @@ mechanical:
       them from the graph even though the current diagram includes them. For
       each:
       1. Read the constructor; identify every injected interface.
-      2. For each injected interface, follow it to its implementing service
-         to identify the section it belongs to (use the folder name under
-         src/Humans.Application/Services/ as the section).
+      2. For each injected interface, follow it to its implementing service to
+         identify the owning section. The section is the folder name under
+         src/Humans.Application/Services/ for services still in Application, and
+         the project name for one that has moved — an implementation under
+         src/Sections/Humans.Teams/Services/ belongs to Teams, and has no folder
+         under src/Humans.Application/Services/ at all. Deriving the section only
+         from the Application path misclassifies or drops every G5 dependency.
+         Note the interface may be declared in a separate Humans.<X>.Contracts
+         project; the section is where the IMPLEMENTATION lives, not the contract.
       3. Distinguish ctor-injected (solid arrow) from
          IServiceProvider.GetRequiredService<T>() (dashed arrow with "lazy"
          label).
@@ -228,7 +234,10 @@ mechanical:
       # section-owned entity/configuration files had changed — a false clean, not
       # a real one. A trigger that cannot see the code makes a doc look fresh.
       - "src/Sections/*/Domain/**/*.cs"
-      - "src/Sections/*/Data/Configurations/**/*.cs"
+      # Whole Data/ tree, not just Data/Configurations/: four configurations sit
+      # directly under Data/ (Consent's three, Email's EmailOutboxMessage), so a
+      # Configurations-only glob still left this entry falsely clean for them.
+      - "src/Sections/*/Data/**/*.cs"
     update: prompt
     # NOTE — the authoritative instruction for this entry is NOT this file. The
     # prompt-file below explicitly defers to the inline `freshness:auto
@@ -245,18 +254,21 @@ mechanical:
     triggers:
       - "src/Humans.Infrastructure/Data/Configurations/**/*.cs"
       - "src/Humans.Domain/Constants/**/*.cs"
-      # Section-owned configurations carry their own HasData seed GUIDs.
-      # Same false-clean as data-model-index above.
-      - "src/Sections/*/Data/Configurations/**/*.cs"
+      # Section-owned configurations carry their own HasData seed GUIDs. Whole
+      # Data/ tree — some configurations sit directly under Data/ rather than
+      # Data/Configurations/. Same false-clean as data-model-index above.
+      - "src/Sections/*/Data/**/*.cs"
     update: prompt
     prompt: |
       Regenerate the "Current Reservations" table in docs/guid-reservations.md.
 
       Walk src/Humans.Domain/Constants/, src/Humans.Infrastructure/Data/Configurations/,
-      AND src/Sections/*/Data/Configurations/ — G5 sections carry their own EF
+      AND the whole src/Sections/*/Data/ tree — G5 sections carry their own EF
       configurations and therefore their own HasData seed GUIDs, so scanning only
       the two root directories can omit the very section-owned GUID that fired
       this entry (blocks 0001/Teams and 0026/Events already live in sections).
+      Search Data/ recursively, not just Data/Configurations/: several sections
+      keep configuration classes directly under Data/ (Consent, Email).
       Find every deterministic GUID literal (`new Guid("0000...")`, `Guid.Parse(...)`,
       or string literals in HasData/HasData<T>). Group GUIDs by their leading
       4-hex block (e.g., `0001`, `0002`).
