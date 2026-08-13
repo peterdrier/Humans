@@ -42,5 +42,19 @@ public class TourPageRenderTests(HumansTestDatabase database) : IntegrationTestB
 
         var tourHtml = await (await Client.GetAsync("/Tour", ct)).Content.ReadAsStringAsync(ct);
         tourHtml.Should().Contain("nav-link", because: "the shared layout's navbar must render on the page itself");
+        tourHtml.Should().Contain("href=\"/Tour\"",
+            because: "anonymous visitors get the top-nav Tour slot");
+    }
+
+    [HumansFact(Timeout = 60000)]
+    public async Task Signed_in_members_reach_Tour_from_a_dashboard_tile_not_the_nav()
+    {
+        // The signed-in top nav is too busy for a Tour slot (Peter, 2026-08-13); members get
+        // a dashboard action card instead.
+        var ct = TestContext.Current.CancellationToken;
+        await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
+
+        var homeHtml = await (await Client.GetAsync("/", ct)).Content.ReadAsStringAsync(ct);
+        homeHtml.Should().Contain("href=\"/Tour\"", because: "the dashboard Tour tile is the member-facing entry");
     }
 }
