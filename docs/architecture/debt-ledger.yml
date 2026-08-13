@@ -257,6 +257,9 @@ themes:
 inbox:
   # Seeded from the open items in docs/architecture/tech-debt-2026-04-23.md.
   - added: 2026-08-13
+    what: "_ShiftsSummaryCard.cshtml + ShiftsSummaryCardViewModel (src/Humans.UI/Views/Shared/, src/Humans.UI/Models/) are Shifts vocabulary parked in Humans.UI. Peter 2026-08-13: they belong in Humans.Shifts eventually; deliberately NOT moved by the Shifts G5 lane (nobodies-collective/Humans#866) — verified the model carries no entity (seven int/string/bool properties), so nothing forces it. Two blockers, and the second is bigger than 'Teams renders it': (1) Humans.UI cannot reference a section leaf (Teams finding 40's hard floor), so the type cannot stay where it is once it is the section's; (2) Humans.Teams does not merely render the partial by name — TeamController.MapShiftsSummary CONSTRUCTS the model and TeamPageViewModel.ShiftsSummary carries it (src/Sections/Humans.Teams/{Controllers/TeamController.cs:206,213, Models/TeamViewModels.cs:94, Views/Team/Details.cshtml:356}), so the move costs Humans.Teams a ProjectReference to Humans.Shifts plus an edit to an already-moved section's view model. Acyclic and therefore doable (Humans.Shifts names only Humans.Teams.Contracts — CityPlanning's precedent), but it is its own change, not a rider on a file move. The widget gallery's third construction site is Shell's and is free either way."
+    review: panel
+  - added: 2026-08-13
     what: "StorePayActionTests.Pay_with_amount_over_balance_redirects_back_to_order_without_calling_Stripe fails under full parallel-suite runs but passes in isolation — races something shared; surfaced twice during PR peterdrier/Humans#1272's full-suite runs"
     review: light
   - added: 2026-08-11
