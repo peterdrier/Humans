@@ -2,7 +2,7 @@ using Humans.Teams.Data;
 using Humans.Teams.Domain;
 using AwesomeAssertions;
 using Humans.Application.DTOs.Shifts;
-using Humans.Application.Interfaces.Camps;
+using Humans.Camps.Contracts;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;

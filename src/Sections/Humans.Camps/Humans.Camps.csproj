@@ -1,0 +1,80 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <!-- MVC views/controllers, not Blazor components. -->
+    <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Humans.Camps.Tests" />
+    <!-- The one assembly allowed to see many sections (design §5). -->
+    <InternalsVisibleTo Include="Humans.Integration.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      Microsoft.NET.Sdk.Web adds these to ImplicitUsings; Microsoft.NET.Sdk.Razor does not.
+      Declaring them keeps the files moved out of Humans.Web byte-identical to their originals.
+    -->
+    <Using Include="Microsoft.AspNetCore.Http" />
+    <Using Include="Microsoft.AspNetCore.Routing" />
+    <Using Include="Microsoft.Extensions.Logging" />
+    <!--
+      The section's own layers, global because the move renamed every one of them at once:
+      the entities left Humans.Domain.Entities, the enums and read models left
+      Humans.Domain.Enums / Humans.Application.Interfaces.Camps, and the view models left
+      Humans.Web.Models. Declaring them here is what keeps the ~40 moved files' using blocks
+      byte-identical to their originals.
+    -->
+    <Using Include="Humans.Camps.Contracts" />
+    <Using Include="Humans.Camps.Domain" />
+    <Using Include="Humans.Camps.Services" />
+    <Using Include="Humans.Camps.Models" />
+    <Using Include="Humans.Camps.Data" />
+    <Using Include="Humans.Application.Interfaces" />
+    <Using Include="Humans.Application.Interfaces.Repositories" />
+    <Using Include="Humans.Application" />
+    <Using Include="Humans.Application.Extensions" />
+    <Using Include="Humans.Application.Helpers" />
+    <Using Include="Humans.Infrastructure.Data" />
+    <Using Include="Humans.Domain.ValueObjects" />
+    <Using Include="Humans.UI.Controllers" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
+    <ProjectReference Include="..\..\Humans.Domain\Humans.Domain.csproj" />
+    <ProjectReference Include="..\..\Humans.Application\Humans.Application.csproj" />
+    <ProjectReference Include="..\..\Humans.Infrastructure\Humans.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Humans.UI\Humans.UI.csproj" />
+    <ProjectReference Include="..\Humans.Camps.Contracts\Humans.Camps.Contracts.csproj" />
+    <!--
+      CampService clears a deleted camp's polygons through Lazy<ICityPlanningService>. The
+      other direction goes through Humans.Camps.Contracts, never this project, which is what
+      keeps the pair acyclic.
+    -->
+    <ProjectReference Include="..\Humans.CityPlanning.Contracts\Humans.CityPlanning.Contracts.csproj" />
+    <!--
+      Camp/Details.cshtml renders the placement-phase block with CityPlanning's own copy, so
+      it binds IStringLocalizer<CityPlanningResource> — a section *resource marker*, which is a
+      section type rather than a leaf one (Budget's rule: the consumer takes the section
+      project). Acyclic for the same reason as the leaf reference above: CityPlanning reaches
+      Camps only through Humans.Camps.Contracts.
+    -->
+    <ProjectReference Include="..\Humans.CityPlanning\Humans.CityPlanning.csproj" />
+    <ProjectReference Include="..\Humans.Gdpr.Contracts\Humans.Gdpr.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="NodaTime" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL.NodaTime" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The section owns its documentation (design §7a); keep it visible in Solution Explorer. -->
+    <None Include="**\*.md" />
+  </ItemGroup>
+
+</Project>

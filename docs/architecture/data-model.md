@@ -33,9 +33,9 @@ This file is the **index and cross-cutting rule sheet** for the data model. Per-
 | TeamRoleAssignment | [Teams](../../src/Sections/Humans.Teams/Docs/Teams.md) | |
 | TeamEarlyEntryGrant | [Teams](../../src/Sections/Humans.Teams/Docs/Teams.md) | Per-team Early Entry grant (gated by `Team.EarlyEntryEnabled`). Cross-section `UserId` FK — nav stripped, resolved via `IUserServiceRead`. |
 | GoogleResource | [Teams](../../src/Sections/Humans.Teams/Docs/Teams.md) | Team Resources sub-aggregate. |
-| Camp / CampSeason / CampImage / CampHistoricalName / CampSettings | [Camps](../sections/Camps.md) | |
-| CampMember | [Camps](../sections/Camps.md) | Per-season, post-hoc human/camp affiliation (Pending/Active/Removed). Partial unique on `(CampSeasonId, UserId) WHERE Status <> 'Removed'`. |
-| CampRoleDefinition / CampRoleAssignment | [Camps](../sections/Camps.md) | Per-camp role catalogue + per-season assignments. Owned by `CampRoleService`. Unique on `(CampSeasonId, CampRoleDefinitionId, CampMemberId)`. |
+| Camp / CampSeason / CampImage / CampHistoricalName / CampSettings | [Camps](../../src/Sections/Humans.Camps/Docs/Camps.md) | |
+| CampMember | [Camps](../../src/Sections/Humans.Camps/Docs/Camps.md) | Per-season, post-hoc human/camp affiliation (Pending/Active/Removed). Partial unique on `(CampSeasonId, UserId) WHERE Status <> 'Removed'`. |
+| CampRoleDefinition / CampRoleAssignment | [Camps](../../src/Sections/Humans.Camps/Docs/Camps.md) | Per-camp role catalogue + per-season assignments. Owned by `CampRoleService`. Unique on `(CampSeasonId, CampRoleDefinitionId, CampMemberId)`. |
 | Container / ContainerPlacement | [Containers](../../src/Sections/Humans.Containers/Docs/Containers.md) | Camp-owned (`CampId` → `camps.Id`, non-nullable). |
 | CityPlanningSettings | [City Planning](../../src/Sections/Humans.CityPlanning/Docs/CityPlanning.md) | |
 | CampPolygon | [City Planning](../../src/Sections/Humans.CityPlanning/Docs/CityPlanning.md) | |

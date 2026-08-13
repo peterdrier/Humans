@@ -6,7 +6,7 @@ using Humans.CityPlanning.Contracts;
 using Humans.Application.DTOs;
 using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.Auth;
-using Humans.Application.Interfaces.Camps;
+using Humans.Camps.Contracts;
 using Humans.Consent.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Application.Interfaces.GoogleIntegration;
@@ -49,8 +49,9 @@ public class DevPersonaSeederTests
     private readonly ISystemTeamSync _systemTeamSync = Substitute.For<ISystemTeamSync>();
     private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
-    private readonly ICampService _camps = Substitute.For<ICampService>();
-    private readonly ICampRoleService _campRoles = Substitute.For<ICampRoleService>();
+    private readonly ICampServiceRead _camps = Substitute.For<ICampServiceRead>();
+    private readonly ICampSeeding _campSeeding = Substitute.For<ICampSeeding>();
+    private readonly ICampRoleSeeding _campRoles = Substitute.For<ICampRoleSeeding>();
     private readonly IConsentSubmission _consents = Substitute.For<IConsentSubmission>();
     private readonly IMembershipCalculatorRead _membershipCalculator = Substitute.For<IMembershipCalculatorRead>();
     private readonly IHumanLifecycleService _humanLifecycle = Substitute.For<IHumanLifecycleService>();
@@ -70,6 +71,7 @@ public class DevPersonaSeederTests
         _users,
         _audit,
         _camps,
+        _campSeeding,
         _campRoles,
         _consents,
         _membershipCalculator,

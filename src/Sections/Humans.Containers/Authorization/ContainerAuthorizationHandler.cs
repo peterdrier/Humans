@@ -1,7 +1,7 @@
 using Humans.Containers.Contracts;
 using Humans.UI.Authorization;
 using System.Security.Claims;
-using Humans.Application.Interfaces.Camps;
+using Humans.Camps.Contracts;
 using Humans.CityPlanning.Contracts;
 using Microsoft.AspNetCore.Authorization;
 

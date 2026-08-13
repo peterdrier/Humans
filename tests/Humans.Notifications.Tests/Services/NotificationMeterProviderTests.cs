@@ -6,7 +6,7 @@ using Humans.Notifications.Data;
 using Humans.Notifications.Services;
 using System.Security.Claims;
 using AwesomeAssertions;
-using Humans.Application.Interfaces.Camps;
+using Humans.Camps.Contracts;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Governance.Contracts;
 using Humans.Teams.Contracts;

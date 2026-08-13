@@ -1,6 +1,6 @@
 using Humans.Application.Csv;
 using Humans.Application.Extensions;
-using Humans.Application.Interfaces.Camps;
+using Humans.Camps.Contracts;
 using Humans.Events.Services;
 using Humans.Application.Interfaces.Users;
 using Humans.UI.Authorization;

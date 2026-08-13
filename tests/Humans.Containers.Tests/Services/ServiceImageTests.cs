@@ -1,7 +1,7 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces;
 using Humans.AuditLog.Contracts;
-using Humans.Application.Interfaces.Camps;
+using Humans.Camps.Contracts;
 using Humans.Containers.Contracts;
 using Humans.Containers.Data;
 using Humans.Containers.Domain;
@@ -32,7 +32,7 @@ public sealed class ContainerImageServiceTests
         _sut = new Service(
             repo,
             _fileStorage,
-            Substitute.For<ICampService>(),
+            Substitute.For<ICampServiceRead>(),
             Substitute.For<IAuditLogService>(),
             new FakeClock(StartTime));
     }

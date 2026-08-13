@@ -1,0 +1,35 @@
+using System.ComponentModel.DataAnnotations;
+
+namespace Humans.Camps.Models;
+
+internal sealed class CampRoleDefinitionFormViewModel : IValidatableObject
+{
+    public Guid? Id { get; set; }
+
+    [Required, StringLength(100)]
+    public string Name { get; set; } = string.Empty;
+
+    [Required, StringLength(60, MinimumLength = 1)]
+    [RegularExpression(
+        @"^[a-z0-9]+(-[a-z0-9]+)*$",
+        ErrorMessage = "Slug must be kebab-case: lowercase letters, digits, and hyphens; no leading, trailing, or consecutive hyphens.")]
+    public string Slug { get; set; } = string.Empty;
+
+    [StringLength(2000)]
+    public string? Description { get; set; }
+
+    [Range(1, 100)]
+    public int SlotCount { get; set; } = 1;
+
+    [Range(0, 100)]
+    public int MinimumRequired { get; set; } = 1;
+
+    public int SortOrder { get; set; }
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext _)
+    {
+        if (MinimumRequired > SlotCount)
+            yield return new ValidationResult(
+                "Minimum required must be less than or equal to slot count.", [nameof(MinimumRequired)]);
+    }
+}

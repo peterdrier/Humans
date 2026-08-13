@@ -4,6 +4,7 @@ using Humans.Application;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Enums;
+using Humans.UI.Authorization;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Caching.Memory;
 
@@ -20,7 +21,8 @@ public class RoleAssignmentClaimsTransformation(
     IMemoryCache cache) : IClaimsTransformation
 {
     /// <summary>Carries the user's stored <see cref="UserState"/> enum name.</summary>
-    public const string UserStateClaimType = "UserState";
+    /// <remarks>Defined on <see cref="RoleChecks"/> so section views can read it.</remarks>
+    public const string UserStateClaimType = RoleChecks.UserStateClaimType;
 
     public const string ActiveClaimValue = "true";
     public const string ClaimsAddedMarkerType = "RoleAssignmentClaimsAdded";
@@ -28,14 +30,10 @@ public class RoleAssignmentClaimsTransformation(
     private static readonly TimeSpan CacheDuration = TimeSpan.FromSeconds(60);
 
     /// <summary>The stored <see cref="UserState"/> stamped on the principal, or null if absent.</summary>
-    public static UserState? GetUserState(ClaimsPrincipal principal) =>
-        Enum.TryParse<UserState>(principal.FindFirstValue(UserStateClaimType), out var state)
-            ? state
-            : null;
+    public static UserState? GetUserState(ClaimsPrincipal principal) => RoleChecks.GetUserState(principal);
 
     /// <summary>True when the principal's stored state grants full app access.</summary>
-    public static bool IsActive(ClaimsPrincipal principal) =>
-        GetUserState(principal) == UserState.Active;
+    public static bool IsActive(ClaimsPrincipal principal) => RoleChecks.IsActiveMember(principal);
 
     public async Task<ClaimsPrincipal> TransformAsync(ClaimsPrincipal principal)
     {

@@ -1,7 +1,7 @@
 using Humans.Auth.Contracts;
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Auth;
-using Humans.Application.Interfaces.Camps;
+using Humans.Camps.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Tickets.Services;

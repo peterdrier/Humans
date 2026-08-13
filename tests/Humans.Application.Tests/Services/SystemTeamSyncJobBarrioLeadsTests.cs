@@ -1,3 +1,4 @@
+using Humans.Camps.Contracts;
 using Humans.Teams.Data;
 using Humans.Teams.Domain;
 using AwesomeAssertions;
@@ -29,7 +30,7 @@ namespace Humans.Application.Tests.Services;
 /// <remarks>
 /// Rewritten for the §15 Google-writing jobs migration (issue #570): the job no
 /// longer owns a <c>UsersDbContext</c>, so the test coordinates through the
-/// <see cref="ITeamService"/> / <see cref="ICampRepository"/> seams. The
+/// <see cref="ITeamService"/> / <see cref="ICampLeadDirectory"/> seams. The
 /// Barrio Leads system team's <see cref="Team.Members"/> collection is stubbed
 /// so the job's idempotency guard can see the existing active membership
 /// without reading the DB directly.
@@ -39,7 +40,7 @@ public class SystemTeamSyncJobBarrioLeadsTests
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 4, 15, 12, 0));
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
-    private readonly ICampRepository _campRepository = Substitute.For<ICampRepository>();
+    private readonly ICampLeadDirectory _campRepository = Substitute.For<ICampLeadDirectory>();
     private readonly IGoogleSyncService _googleSyncService = Substitute.For<IGoogleSyncService>();
     private readonly IGoogleGroupSync _googleGroupSync = Substitute.For<IGoogleGroupSync>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();

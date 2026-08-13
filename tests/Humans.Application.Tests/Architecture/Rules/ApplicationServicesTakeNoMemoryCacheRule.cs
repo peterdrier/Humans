@@ -1,7 +1,7 @@
 using Humans.Application.Architecture;
 using AwesomeAssertions;
 using Humans.Application.Services.AuditLog;
-using Humans.Application.Services.Camps;
+using Humans.Camps.Services;
 using Humans.Application.Services.Shifts;
 using Microsoft.Extensions.Caching.Memory;
 
@@ -21,7 +21,7 @@ namespace Humans.Application.Tests.Architecture.Rules;
 /// <para>
 /// Allowlisted services (audited 2026-05-25, Wave B drift reconciliation):
 /// <list type="bullet">
-///   <item><see cref="CampContactService"/> — contact name cache</item>
+///   <item><c>Humans.Camps.Services.CampContactService</c> — contact name cache</item>
 ///   <item><c>IssuesService</c> — issues cache</item>
 ///   <item><see cref="LegalDocumentService"/> — document version cache</item>
 ///   <item><see cref="NotificationEmitter"/> — throttle-key cache</item>
@@ -51,7 +51,7 @@ public class ApplicationServicesTakeNoMemoryCacheRule
     /// </summary>
     private static readonly HashSet<Type> Allowlist =
     [
-        typeof(CampContactService),
+        SectionType("Humans.Camps.Services.CampContactService"),
         SectionType("Humans.Issues.Services.IssuesService"),  // CacheKeys.IssuesBadge(userId)
         SectionType("Humans.Consent.Services.LegalDocumentService"),
         SectionType("Humans.Notifications.Services.NotificationEmitter"),
