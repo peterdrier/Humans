@@ -1,6 +1,6 @@
 using Humans.Application.DTOs.Shifts;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Application.Interfaces.Shifts;
+using Humans.Shifts.Contracts;
 using Humans.Domain.Entities;
 
 namespace Humans.Application.Services.Shifts;

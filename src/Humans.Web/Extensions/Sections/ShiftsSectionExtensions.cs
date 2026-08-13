@@ -10,6 +10,7 @@ using ShiftsShiftViewService = Humans.Application.Services.Shifts.ShiftViewServi
 using ShiftsWorkloadService = Humans.Application.Services.Shifts.Workload.WorkloadService;
 using ShiftsBurnSettingsService = Humans.Application.Services.Shifts.BurnSettingsService;
 using Humans.Application.Interfaces.Shifts;
+using Humans.Shifts.Contracts;
 using Humans.Application.Interfaces.Shifts.Workload;
 using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Repositories.Shifts;
@@ -28,6 +29,13 @@ internal static class ShiftsSectionExtensions
         services.AddScoped<IShiftManagementRepository>(sp => sp.GetRequiredService<ShiftRepository>());
         services.AddScoped<ShiftsShiftManagementService>();
         services.AddScoped<IShiftManagementService>(sp => sp.GetRequiredService<ShiftsShiftManagementService>());
+
+        // The three cross-section halves of IShiftManagementService, registered onto the
+        // same Scoped instance (memory/architecture/section-read-write-split.md).
+        services.AddScoped<IShiftManagementServiceRead>(sp => sp.GetRequiredService<ShiftsShiftManagementService>());
+        services.AddScoped<IShiftVolunteerProfiles>(sp => sp.GetRequiredService<ShiftsShiftManagementService>());
+        services.AddScoped<IShiftSeeding>(sp => sp.GetRequiredService<ShiftsShiftManagementService>());
+
         services.AddScoped<IShiftAuthorizationInvalidator>(sp => sp.GetRequiredService<ShiftsShiftManagementService>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<ShiftsShiftManagementService>());
 
@@ -36,6 +44,8 @@ internal static class ShiftsSectionExtensions
 
         services.AddScoped<ShiftsShiftSignupService>();
         services.AddScoped<IShiftSignupService>(sp => sp.GetRequiredService<ShiftsShiftSignupService>());
+        services.AddScoped<IShiftSignups>(sp => sp.GetRequiredService<ShiftsShiftSignupService>());
+        services.AddScoped<IShiftSignupSeeding>(sp => sp.GetRequiredService<ShiftsShiftSignupService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<ShiftsShiftSignupService>());
         services.AddScoped<ICalendarFeedContributor>(sp => sp.GetRequiredService<ShiftsShiftSignupService>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<ShiftsShiftSignupService>());

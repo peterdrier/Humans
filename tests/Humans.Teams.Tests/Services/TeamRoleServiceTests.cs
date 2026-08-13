@@ -12,7 +12,7 @@ using Humans.Domain.Entities;
 using Humans.Teams.Domain;
 using Humans.Domain.Enums;
 using Humans.Application.Interfaces.Caching;
-using Humans.Application.Interfaces.Shifts;
+using Humans.Shifts.Contracts;
 using Humans.Application.Services.Shifts;
 using Humans.Teams.Tests.Infrastructure;
 using Humans.Teams.Data;

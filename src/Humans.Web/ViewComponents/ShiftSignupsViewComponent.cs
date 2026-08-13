@@ -1,4 +1,4 @@
-using Humans.Application.Interfaces.Shifts;
+using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Web.Models;
 using Humans.Web.Models.Shifts;

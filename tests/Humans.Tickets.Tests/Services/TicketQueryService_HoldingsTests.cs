@@ -3,7 +3,7 @@ using Humans.Budget.Contracts;
 using Humans.Campaigns.Contracts;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Tickets.Data;
-using Humans.Application.Interfaces.Shifts;
+using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Tickets.Services;
@@ -44,7 +44,7 @@ public sealed class TicketQueryService_HoldingsTests
             Substitute.For<IUserService>(),
             Substitute.For<IUserEmailService>(),
             Substitute.For<ITeamService>(),
-            Substitute.For<IShiftManagementService>(),
+            Substitute.For<IBurnSettingsService>(),
             SystemClock.Instance);
 
         // Default: no orders, no visible attendees

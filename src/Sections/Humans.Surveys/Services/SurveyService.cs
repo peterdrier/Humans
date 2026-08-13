@@ -6,7 +6,7 @@ using Humans.Gdpr.Contracts;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Surveys.Data;
-using Humans.Application.Interfaces.Shifts;
+using Humans.Shifts.Contracts;
 using Humans.Surveys.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;

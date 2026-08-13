@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations;
 using NodaTime;
 using Humans.Application.Extensions;
 using Humans.Campaigns.Contracts;
-using Humans.Application.Interfaces.Shifts;
+using Humans.Shifts.Contracts;
 using Humans.Domain.Enums;
 
 namespace Humans.Web.Models;

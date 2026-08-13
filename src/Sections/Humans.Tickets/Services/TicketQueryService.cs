@@ -9,7 +9,7 @@ using Humans.Domain.Enums;
 using Humans.Budget.Contracts;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Campaigns.Contracts;
-using Humans.Application.Interfaces.Shifts;
+using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Application.Interfaces.Users;
@@ -33,7 +33,7 @@ internal sealed class TicketQueryService(
     IUserService userService,
     IUserEmailService userEmailService,
     ITeamServiceRead teamService,
-    IShiftManagementService shiftManagementService,
+    IBurnSettingsService burnSettings,
     IClock clock) : ITicketService, IUserDataContributor
 {
     private async Task<int> ComputeUserTicketCountAsync(Guid userId)
@@ -498,7 +498,7 @@ internal sealed class TicketQueryService(
             .Select(u => u.Id)
             .ToList();
 
-        var activeEvent = await shiftManagementService.GetActiveAsync();
+        var activeEvent = await burnSettings.GetActiveAsync();
         HashSet<Guid> notAttendingSet = [];
         if (activeEvent is not null && activeEvent.Year > 0)
         {
@@ -725,7 +725,7 @@ internal sealed class TicketQueryService(
 
     private async Task<Instant?> GetPostEventHoldDateAsync()
     {
-        var activeEvent = await shiftManagementService.GetActiveAsync();
+        var activeEvent = await burnSettings.GetActiveAsync();
         if (activeEvent is null)
             return null;
 

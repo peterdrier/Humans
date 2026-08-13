@@ -122,6 +122,24 @@ visibility flip in one diff is unreviewable.
         service and a leaf is not an incomplete move (proven: Auth).
 - [ ] Fan-in known: run `reforge` for inbound references before starting. A section with many
       inbound section references is a knot, goes later, and may need `<Section>.Contracts`.
+      - **A section whose fan-in is measured in three digits gets split into a read-boundary
+        lane, a file-move lane and a presentation lane before anyone starts.** The cost is
+        the build/test loop over ~250 changed files, not the thinking. Do the read-boundary
+        lane first regardless: a move commit that also splits a 50-member interface across
+        73 files is unreviewable, and it is the lane where **HUM0032 still works** — the
+        analyzer derives both sections from `Humans.Application.Services.{A}` /
+        `Humans.Application.Interfaces.{B}` namespaces, neither of which survives the move,
+        so a split done *after* the move gets no over-injection check at all (proven:
+        Shifts, ~130 consumer files; HUM0032 caught a real one on the first build).
+      - **…and the read-boundary lane's first pass is "who is bypassing the boundary DTO the
+        section already ships?", not "what should the leaf carry?"** Shifts had shipped
+        `IBurnSettingsService` → `BurnSettingsInfo` a year earlier precisely so nothing
+        outside the section would see `EventSettings`, and eleven external files were still
+        reading the entity off the full service. Draining that cow path removed more entity
+        leak than the whole recon found. Resolve each member's callers **per file**, from
+        the constructor parameter's own name — a bare grep for `.GetActiveAsync(` collides
+        with every service in the repo and answers wrongly in both directions
+        (proven: Shifts lane A).
 
 ## Read the controller — do not assume it
 
@@ -1441,6 +1459,25 @@ Git Bash.)
       `typeof(<AnyTypeYouAreMoving>).Assembly` across `tests/` as its own pre-flight search**
       — it is not the same grep as `typeof(<Section>` for the row-in-a-table case, and it
       fails silently in the opposite direction (proven: AuditLog).
+
+      **Fifth sighting, and the keying is neither a path nor an assembly — it is
+      `Type.GetMethods()` not following interface inheritance.** A read split that leaves
+      `I<Section>Service : I<Section>ServiceRead` moves members onto a leaf that carries no
+      `IApplicationService` marker (a framework-free leaf cannot reference the marker's
+      home in a way the scan's filter recognises), and `GetMethods()` on an interface
+      returns only *declared* members — so a reflection ratchet that iterates
+      `IApplicationService` implementors sees a shorter member list and reports the moved
+      violations as **fixed**, on byte-identical code. `ScanApplicationServiceEntityReadReturns`
+      lost seven rows that way; the fix is to walk `serviceType.GetInterfaces()` too and
+      de-duplicate. **The recursion inside such a rule needs the same question asked of it
+      separately**: the same file's `IsApplicationReturnShape` only recursed into
+      `Humans.Application.*` types, so a result record that moved onto the leaf still
+      wrapping an entity (`UrgentShift(Shift, …)`) stopped the walk one hop short and lost
+      two more rows. Widen that to `*.Contracts` assemblies, **not** to whole section
+      assemblies — a section-internal DTO wrapping its own section's internal entity
+      crosses no boundary, and recursing into them adds ~96 rows across twenty sections
+      that the rule was never asserting about (proven: Shifts lane A). This shape fires for
+      every read split, not only a G5 move.
 
       **Fourth sighting, and the keying was an *assembly*, not a path.**
       `ApplicationServicesTakeNoDbContextRule` anchored on `typeof(AuditLogService).Assembly`

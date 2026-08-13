@@ -2,6 +2,7 @@ using Humans.Application.DTOs.VolunteerTrackingExport;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Application.Interfaces.Shifts;
+using Humans.Shifts.Contracts;
 using NodaTime;
 namespace Humans.Application.Interfaces.Repositories;
 

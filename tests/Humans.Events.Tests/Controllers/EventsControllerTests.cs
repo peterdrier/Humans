@@ -3,7 +3,7 @@ using AwesomeAssertions;
 using Humans.Application;
 using Humans.Application.Interfaces.Camps;
 using Humans.Events.Services;
-using Humans.Application.Interfaces.Shifts;
+using Humans.Shifts.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Constants;
 using Humans.Events.Domain;

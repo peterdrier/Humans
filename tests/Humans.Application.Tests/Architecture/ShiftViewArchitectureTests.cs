@@ -1,6 +1,7 @@
 using AwesomeAssertions;
 using Humans.Application.DTOs.Shifts;
 using Humans.Application.Interfaces.Shifts;
+using Humans.Shifts.Contracts;
 using Humans.Infrastructure.Services.Shifts;
 using Xunit;
 using ShiftManagementService = Humans.Application.Services.Shifts.ShiftManagementService;

@@ -1,4 +1,4 @@
-using Humans.Application.Interfaces.Shifts;
+using Humans.Shifts.Contracts;
 using NodaTime;
 
 namespace Humans.Events.Helpers;

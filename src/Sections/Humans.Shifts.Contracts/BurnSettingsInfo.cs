@@ -1,6 +1,8 @@
+using Humans.Application.Interfaces.Shifts;
+
 using NodaTime;
 
-namespace Humans.Application.Interfaces.Shifts;
+namespace Humans.Shifts.Contracts;
 
 /// <summary>
 /// Cross-section read DTO over the Shifts-owned <c>event_settings</c> row
@@ -8,7 +10,7 @@ namespace Humans.Application.Interfaces.Shifts;
 /// other sections legitimately need (identity, calendar anchor, build
 /// calendar, early-entry capacity, and the global shift-browsing switch) —
 /// Shifts-internal tuning knobs (<c>GlobalVolunteerCap</c>,
-/// <c>ReminderLeadTimeHours</c>) stay on <see cref="IShiftManagementService"/>.
+/// <c>ReminderLeadTimeHours</c>) stay on <c>IShiftManagementService</c>.
 /// </summary>
 /// <remarks>
 /// <para>

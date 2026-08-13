@@ -3,26 +3,32 @@ using Humans.Application.DTOs.Shifts;
 using Humans.Application.Enums;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+
+using Humans.Shifts.Contracts;
+
 using NodaTime;
 
 namespace Humans.Application.Interfaces.Shifts;
 
-public record ShiftTagSummary(Guid Id, string Name);
 public record ShiftTagPreferenceSummary(Guid Id, string Name);
 
 /// <summary>
 /// Consolidated service for shift management: authorization, event settings,
 /// rotas, shifts, and urgency scoring.
 /// </summary>
-public interface IShiftManagementService : IApplicationService
+/// <remarks>
+/// The section's own interface. The members something outside the section
+/// calls live on <see cref="IShiftManagementServiceRead"/>,
+/// <see cref="IShiftVolunteerProfiles"/> and <see cref="IShiftSeeding"/> in
+/// <c>Humans.Shifts.Contracts</c>; this inherits all three, so the section's
+/// ~73 own call sites are unchanged. Everything declared here — rota and
+/// shift CRUD, bulk generation, the coordinator dashboard's aggregate reads,
+/// the coverage heatmap and the post-event stats — has no external caller.
+/// </remarks>
+public interface IShiftManagementService
+    : IShiftManagementServiceRead, IShiftVolunteerProfiles, IShiftSeeding, IApplicationService
 {
     // === Authorization ===
-
-    /// <summary>
-    /// Whether the user is a department coordinator for the given team
-    /// (has a management role on a parent team).
-    /// </summary>
-    Task<bool> IsDeptCoordinatorAsync(Guid userId, Guid departmentTeamId);
 
     /// <summary>
     /// Whether the user can approve/refuse signups and voluntell for the department.
@@ -30,46 +36,7 @@ public interface IShiftManagementService : IApplicationService
     /// </summary>
     Task<bool> CanApproveSignupsAsync(Guid userId, Guid departmentTeamId);
 
-    /// <summary>
-    /// Gets all team IDs (departments and sub-teams) where the user is a coordinator or manager.
-    /// </summary>
-    Task<IReadOnlyList<Guid>> GetCoordinatorTeamIdsAsync(Guid userId);
-
-    // === EventSettings ===
-
-    /// <summary>
-    /// Gets the single active EventSettings, or null if none.
-    /// </summary>
-    Task<EventSettings?> GetActiveAsync();
-
-    /// <summary>
-    /// Gets an EventSettings by primary key.
-    /// </summary>
-    Task<EventSettings?> GetByIdAsync(Guid id);
-
-    /// <summary>
-    /// Creates a new EventSettings. Validates only one IsActive=true.
-    /// </summary>
-    Task CreateAsync(EventSettings entity);
-
-    /// <summary>
-    /// Updates an existing EventSettings.
-    /// </summary>
-    Task UpdateAsync(EventSettings entity);
-
-    /// <summary>
-    /// Deletes an event and all Shifts-owned rows beneath it: rotas, shifts,
-    /// and shift signups. Requires the current authenticated user to hold the
-    /// full Admin role.
-    /// </summary>
-    Task<int> DeleteEventAsync(Guid eventSettingsId, CancellationToken cancellationToken = default);
-
     // === Rota ===
-
-    /// <summary>
-    /// Creates a new rota. Validates team is a department and event is active.
-    /// </summary>
-    Task CreateRotaAsync(Rota rota, IReadOnlyList<Guid>? tagIds = null);
 
     /// <summary>
     /// Updates an existing rota.
@@ -91,11 +58,6 @@ public interface IShiftManagementService : IApplicationService
     /// Gets a rota by primary key with shifts included.
     /// </summary>
     Task<Rota?> GetRotaByIdAsync(Guid rotaId);
-
-    /// <summary>
-    /// Gets all rotas for a department in an event.
-    /// </summary>
-    Task<IReadOnlyList<Rota>> GetRotasByDepartmentAsync(Guid teamId, Guid eventSettingsId);
 
     // === Shift Summary by Camp ===
 
@@ -125,21 +87,6 @@ public interface IShiftManagementService : IApplicationService
         Guid? rotaId = null,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Volunteer-visible rotas in the active event whose <c>Name</c>
-    /// contains <paramref name="query"/> (case-insensitive). The owning
-    /// team's display name is stitched in via <c>ITeamService</c>
-    /// (cross-domain — this service does not navigate the rota's team
-    /// navigation property). Capped at <paramref name="max"/>; returned
-    /// in unspecified order — the global search orchestrator scores and
-    /// ranks. Returns an empty list when no event is active. Used by the
-    /// global /Search page (<c>SearchService</c>); every caller sees the
-    /// public surface regardless of role.
-    /// </summary>
-    Task<IReadOnlyList<RotaSearchHit>> SearchAsync(
-        string query, int max,
-        CancellationToken cancellationToken = default);
-
     // === Bulk Shift Creation ===
 
     /// <summary>
@@ -157,12 +104,6 @@ public interface IShiftManagementService : IApplicationService
     // === Shift ===
 
     /// <summary>
-    /// Creates a new shift for a department rota. Validates rota ownership,
-    /// period DayOffset range, and volunteer counts.
-    /// </summary>
-    Task<ShiftMutationResult> CreateShiftAsync(CreateShiftInput input);
-
-    /// <summary>
     /// Updates an existing shift for a department rota. Validates shift
     /// ownership, period DayOffset range, and volunteer counts.
     /// </summary>
@@ -178,48 +119,7 @@ public interface IShiftManagementService : IApplicationService
     /// </summary>
     Task<Shift?> GetShiftByIdAsync(Guid shiftId);
 
-    // === Urgency ===
-
-    /// <summary>
-    /// Gets shifts ranked by urgency score, with optional filtering.
-    /// </summary>
-    Task<IReadOnlyList<UrgentShift>> GetUrgentShiftsAsync(
-        Guid eventSettingsId, int? limit = null,
-        Guid? departmentId = null,
-        LocalDate? startDate = null, LocalDate? endDate = null,
-        ShiftPeriod? period = null,
-        BuildSubPeriod? subPeriod = null);
-
-    /// <summary>
-    /// Gets all active shifts for browse page, with optional filtering. Includes full shifts.
-    /// When the query's <see cref="ShiftBrowseQueryFlags.PriorityOnly"/> flag is set, results are
-    /// restricted to shifts whose
-    /// rota is <see cref="ShiftPriority.Important"/> or <see cref="ShiftPriority.Essential"/>,
-    /// or whose rota has any shift where confirmed-signup count is below
-    /// <see cref="Shift.MinVolunteers"/> (i.e. understaffed).
-    /// </summary>
-    Task<IReadOnlyList<UrgentShift>> GetBrowseShiftsAsync(ShiftBrowseQuery query);
-
     // === Staffing & Summary ===
-
-    /// <summary>
-    /// Gets the per-day staffing chart snapshot for all periods.
-    /// </summary>
-    Task<ShiftStaffingSnapshot> GetStaffingSnapshotAsync(
-        Guid eventSettingsId, Guid? departmentId = null, ShiftPeriod? period = null,
-        BuildSubPeriod? subPeriod = null);
-
-    /// <summary>
-    /// Gets shifts summary aggregated across one or more teams. Returns null if no rotas.
-    /// </summary>
-    Task<ShiftsSummaryData?> GetShiftsSummaryAsync(
-        Guid eventSettingsId, IReadOnlyCollection<Guid> teamIds);
-
-    /// <summary>
-    /// Gets all parent teams that have active rotas in the given event.
-    /// </summary>
-    Task<IReadOnlyList<(Guid TeamId, string TeamName)>> GetDepartmentsWithRotasAsync(
-        Guid eventSettingsId);
 
     /// <summary>
     /// Returns one row per department pie shown above the /Shifts page.
@@ -289,85 +189,12 @@ public interface IShiftManagementService : IApplicationService
     Task<CoverageHeatmap> GetCoverageHeatmapAsync(
         Guid eventSettingsId, ShiftPeriod? period, BuildSubPeriod? subPeriod = null);
 
-    /// <summary>
-    /// Returns overall shift coverage for the active event:
-    /// (filled signups / total slots, plus the ratio).
-    /// Returns (0, 0, 0d) if no event is active.
-    /// Used by the admin dashboard's shift-coverage stat tile.
-    /// </summary>
-    Task<(int Filled, int Total, double Ratio)> GetOverallCoverageAsync(CancellationToken ct = default);
-
     // === Shift Tags ===
-
-    /// <summary>
-    /// Gets shift tags, optionally filtered by name (case-insensitive contains).
-    /// </summary>
-    Task<IReadOnlyList<ShiftTagSummary>> GetTagsAsync(string? query = null);
 
     /// <summary>
     /// Gets or creates a tag by name. Returns existing if name already exists (case-insensitive).
     /// </summary>
     Task<ShiftTagSummary> GetOrCreateTagAsync(string name);
-
-    /// <summary>
-    /// Sets a volunteer's tag preferences, replacing any existing ones.
-    /// </summary>
-    Task SetVolunteerTagPreferencesAsync(Guid userId, IReadOnlyList<Guid> tagIds);
-
-    /// <summary>
-    /// Gets the number of distinct pending shift signups per team for the active event.
-    /// </summary>
-    Task<IReadOnlyDictionary<Guid, int>> GetActivePendingShiftSignupCountsByTeamAsync(
-        CancellationToken cancellationToken = default);
-
-    // ---- Methods moved from IProfileService (Profile-section migration §15 Step 0) ----
-    // VolunteerEventProfile is owned by the Shifts section, not the Profile section.
-
-    /// <summary>
-    /// Gets or creates the user's shift profile (1:1 with User).
-    /// </summary>
-    Task<VolunteerEventProfile> GetOrCreateShiftProfileAsync(Guid userId);
-
-    /// <summary>
-    /// Updates a volunteer shift profile.
-    /// </summary>
-    Task UpdateShiftProfileAsync(VolunteerEventProfile profile);
-
-    /// <summary>
-    /// Gets a user's shift profile (Skills / Quirks / Languages). Dietary and
-    /// medical data moved to Profile — read those via <c>IUserServiceRead</c>.
-    /// </summary>
-    Task<VolunteerEventProfile?> GetShiftProfileAsync(Guid userId);
-
-    /// <summary>
-    /// True when the user has at least one Pending or Confirmed signup on a
-    /// future-or-current qualifying shift (see <see cref="Shift.QualifiesForCantinaMeal"/>).
-    /// Used by the dashboard Things-to-do nudge for dietary/medical info.
-    /// Returns false when no active event settings exist (fail closed).
-    /// </summary>
-    Task<bool> HasQualifyingCantinaSignupAsync(
-        Guid userId,
-        CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns the distinct user ids of volunteers on-site for the given event
-    /// day — those with a Confirmed signup on a <see cref="Shift"/> whose
-    /// <see cref="Shift.DayOffset"/> matches. Service-layer read for the Cantina
-    /// roster (feature #36) so it never reaches into the Shifts repository.
-    /// </summary>
-    Task<IReadOnlyList<Guid>> GetOnSiteUserIdsForDayAsync(
-        Guid eventSettingsId,
-        int dayOffset,
-        CancellationToken ct = default);
-
-    /// <summary>
-    /// Deletes every <c>VolunteerEventProfile</c> row owned by
-    /// <paramref name="userId"/>. Returns the number of rows removed. Used by
-    /// the account anonymization flow so the job does not write to
-    /// <c>volunteer_event_profiles</c> directly (design-rules §2c).
-    /// </summary>
-    Task<int> DeleteShiftProfilesForUserAsync(
-        Guid userId, CancellationToken ct = default);
 
     // === Post-Event Stats ===
 
@@ -380,62 +207,6 @@ public interface IShiftManagementService : IApplicationService
         Guid eventSettingsId,
         CancellationToken ct = default);
 }
-
-/// <summary>
-/// A shift with its computed urgency score and fill status.
-/// </summary>
-public record UrgentShift(
-    Shift Shift,
-    double UrgencyScore,
-    int ConfirmedCount,
-    int RemainingSlots,
-    string DepartmentName,
-    IReadOnlyList<(Guid UserId, string DisplayName, SignupStatus Status)> Signups);
-
-[Flags]
-public enum ShiftBrowseQueryFlags
-{
-    None = 0,
-    IncludeAdminOnly = 1,
-    IncludeSignups = 2,
-    IncludeHidden = 4,
-    PriorityOnly = 8
-}
-
-public sealed record ShiftBrowseQuery(
-    Guid EventSettingsId,
-    Guid? DepartmentId = null,
-    LocalDate? FromDate = null,
-    LocalDate? ToDate = null,
-    ShiftBrowseQueryFlags Flags = ShiftBrowseQueryFlags.None);
-
-/// <summary>
-/// Per-day staffing data for set-up/event/strike visualization.
-/// </summary>
-public record DailyStaffingData(
-    int DayOffset,
-    string DateLabel,
-    int ConfirmedCount,
-    int TotalSlots,
-    int MinSlots,
-    string Period);
-
-public sealed record ShiftStaffingSnapshot(
-    IReadOnlyList<DailyStaffingData> StaffingData,
-    IReadOnlyList<DailyStaffingHours> StaffingHours)
-{
-    public static ShiftStaffingSnapshot Empty { get; } = new([], []);
-}
-
-/// <summary>
-/// Aggregated shift summary for a department.
-/// </summary>
-public record ShiftsSummaryData(
-    int TotalSlots,
-    int ConfirmedCount,
-    int PendingCount,
-    int UniqueVolunteerCount,
-    IReadOnlySet<Guid> TeamIdsWithShifts);
 
 /// <summary>
 /// One pie shown above the /Shifts page. Hours are decimal so callers can
@@ -467,29 +238,6 @@ public record DepartmentCoveragePie(
             0, 100)
         : 0;
 }
-
-/// <summary>
-/// Per-day staffing hours grouped by shift priority for volume visualization.
-/// Hours = shift duration × MaxVolunteers. All-day shifts count as 8h per slot.
-/// </summary>
-public record DailyStaffingHours(
-    int DayOffset,
-    string DateLabel,
-    double EssentialHours,
-    double ImportantHours,
-    double NormalHours);
-
-public sealed record CreateShiftInput(
-    Guid RotaId,
-    Guid TeamId,
-    string? Description,
-    int DayOffset,
-    LocalTime StartTime,
-    double DurationHours,
-    int MinVolunteers,
-    int MaxVolunteers,
-    bool AdminOnly,
-    bool IsAllDay);
 
 public sealed record UpdateShiftInput(
     Guid ShiftId,
@@ -525,12 +273,6 @@ public sealed record MoveRotaInput(
     Guid SourceTeamId,
     Guid TargetTeamId,
     Guid ActorUserId);
-
-public sealed record ShiftMutationResult(bool Succeeded, string Message, Guid? ShiftId = null)
-{
-    public static ShiftMutationResult Success(string message, Guid shiftId) => new(true, message, shiftId);
-    public static ShiftMutationResult Failure(string message) => new(false, message);
-}
 
 public sealed record ShiftGenerationResult(bool Succeeded, string Message, int CreatedCount = 0)
 {

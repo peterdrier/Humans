@@ -162,7 +162,7 @@ public class AgentToolDispatcherTests
 
         var shiftView = MakeViewFor(viewer, signups);
 
-        var burnSettings = Substitute.For<Humans.Application.Interfaces.Shifts.IBurnSettingsService>();
+        var burnSettings = Substitute.For<Humans.Shifts.Contracts.IBurnSettingsService>();
         burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(ev);
 
         var dispatcher = MakeDispatcher(shiftView: shiftView, burnSettings: burnSettings);
@@ -193,7 +193,7 @@ public class AgentToolDispatcherTests
 
         var shiftView = MakeViewFor(viewer, [signup]);
 
-        var burnSettings = Substitute.For<Humans.Application.Interfaces.Shifts.IBurnSettingsService>();
+        var burnSettings = Substitute.For<Humans.Shifts.Contracts.IBurnSettingsService>();
         burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(ev);
 
         var dispatcher = MakeDispatcher(shiftView: shiftView, burnSettings: burnSettings);
@@ -218,7 +218,7 @@ public class AgentToolDispatcherTests
 
         var shiftView = MakeViewFor(viewer, []);
 
-        var burnSettings = Substitute.For<Humans.Application.Interfaces.Shifts.IBurnSettingsService>();
+        var burnSettings = Substitute.For<Humans.Shifts.Contracts.IBurnSettingsService>();
         burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(ev);
 
         var dispatcher = MakeDispatcher(shiftView: shiftView, burnSettings: burnSettings);
@@ -246,7 +246,7 @@ public class AgentToolDispatcherTests
         // Viewer has zero signups in their cached view.
         var shiftView = MakeViewFor(viewer, []);
 
-        var burnSettings = Substitute.For<Humans.Application.Interfaces.Shifts.IBurnSettingsService>();
+        var burnSettings = Substitute.For<Humans.Shifts.Contracts.IBurnSettingsService>();
         burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(ev);
 
         var dispatcher = MakeDispatcher(shiftView: shiftView, burnSettings: burnSettings);
@@ -273,7 +273,7 @@ public class AgentToolDispatcherTests
         result.Content.Should().Contain("must be a valid GUID");
     }
 
-    private static Humans.Application.Interfaces.Shifts.BurnSettingsInfo MakeEventSettings() => new(
+    private static Humans.Shifts.Contracts.BurnSettingsInfo MakeEventSettings() => new(
         Id: Guid.NewGuid(),
         EventName: "Test",
         Year: 2026,
@@ -468,8 +468,8 @@ public class AgentToolDispatcherTests
 
     private static AgentToolDispatcher MakeDispatcher(
         Humans.Application.Interfaces.AuditLog.IAuditViewerService? auditViewer = null,
-        Humans.Application.Interfaces.Shifts.IShiftView? shiftView = null,
-        Humans.Application.Interfaces.Shifts.IBurnSettingsService? burnSettings = null,
+        Humans.Shifts.Contracts.IShiftView? shiftView = null,
+        Humans.Shifts.Contracts.IBurnSettingsService? burnSettings = null,
         Humans.Application.Interfaces.IGuideContentSource? source = null)
     {
         var cache = new Microsoft.Extensions.Caching.Memory.MemoryCache(
@@ -493,8 +493,8 @@ public class AgentToolDispatcherTests
             features,
             community,
             auditViewer ?? new StubAuditViewer(),
-            shiftView ?? Substitute.For<Humans.Application.Interfaces.Shifts.IShiftView>(),
-            burnSettings ?? Substitute.For<Humans.Application.Interfaces.Shifts.IBurnSettingsService>(),
+            shiftView ?? Substitute.For<Humans.Shifts.Contracts.IShiftView>(),
+            burnSettings ?? Substitute.For<Humans.Shifts.Contracts.IBurnSettingsService>(),
             logger);
     }
 
@@ -525,11 +525,11 @@ public class AgentToolDispatcherTests
                         : []);
     }
 
-    private static Humans.Application.Interfaces.Shifts.IShiftView MakeViewFor(
+    private static Humans.Shifts.Contracts.IShiftView MakeViewFor(
         Guid userId, IReadOnlyList<Humans.Domain.Entities.ShiftSignup> signups)
     {
-        var view = Substitute.For<Humans.Application.Interfaces.Shifts.IShiftView>();
-        var record = new Humans.Application.DTOs.Shifts.ShiftUserView(
+        var view = Substitute.For<Humans.Shifts.Contracts.IShiftView>();
+        var record = new Humans.Shifts.Contracts.ShiftUserView(
             UserId: userId,
             Profile: null,
             Availability: null,
@@ -537,7 +537,7 @@ public class AgentToolDispatcherTests
             TagPreferences: [],
             Signups: signups);
         view.GetUserAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<Humans.Application.DTOs.Shifts.ShiftUserView>(record));
+            .Returns(new ValueTask<Humans.Shifts.Contracts.ShiftUserView>(record));
         return view;
     }
 

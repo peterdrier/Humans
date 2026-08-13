@@ -1,5 +1,6 @@
 using Humans.Application;
 using Humans.Application.Interfaces.Shifts;
+using Humans.Shifts.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Cantina.Services.Dtos;
 using Humans.Domain.Constants;
@@ -21,7 +22,7 @@ internal sealed class CantinaRosterService : ICantinaRosterService
 {
     private const int DaysPerWeek = 7;
 
-    private readonly IShiftManagementService _shiftMgmt;
+    private readonly IShiftManagementServiceRead _shiftMgmt;
     private readonly IBurnSettingsService _burnSettings;
     private readonly IUserServiceRead _userRead;
     private readonly IClock _clock;
@@ -30,7 +31,7 @@ internal sealed class CantinaRosterService : ICantinaRosterService
     private static readonly string UnansweredKey = "Unanswered";
 
     public CantinaRosterService(
-        IShiftManagementService shiftMgmt,
+        IShiftManagementServiceRead shiftMgmt,
         IBurnSettingsService burnSettings,
         IUserServiceRead userRead,
         IClock clock)

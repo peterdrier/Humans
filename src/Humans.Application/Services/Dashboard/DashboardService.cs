@@ -2,7 +2,7 @@ using Humans.Application.Configuration;
 using Humans.Application.Helpers;
 using Humans.Application.Interfaces.Dashboard;
 using Humans.Governance.Contracts;
-using Humans.Application.Interfaces.Shifts;
+using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Application.Interfaces.Users;
@@ -17,7 +17,7 @@ namespace Humans.Application.Services.Dashboard;
 public class DashboardService(
     IMembershipCalculatorRead membershipCalculator,
     IApplicationServiceRead applicationDecisionService,
-    IShiftManagementService shiftMgmt,
+    IShiftManagementServiceRead shiftMgmt,
     IBurnSettingsService burnSettings,
     IShiftView shiftView,
     ITicketServiceRead ticketQueryService,

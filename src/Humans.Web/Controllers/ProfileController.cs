@@ -30,6 +30,7 @@ using Humans.Campaigns.Contracts;
 using Humans.Application.Interfaces.Camps;
 using Humans.Email.Contracts;
 using Humans.Application.Interfaces.Shifts;
+using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Application.Interfaces.Users;
@@ -60,8 +61,10 @@ public class ProfileController(
     ICommunicationPreferenceService commPrefService,
     IAuditLogService auditLogService,
     IOnboardingIntake onboardingService,
-    IShiftSignupService shiftSignupService,
-    IShiftManagementService shiftMgmt,
+    IShiftSignups shiftSignupService,
+    IBurnSettingsService burnSettings,
+    IShiftManagementServiceRead shiftMgmt,
+    IShiftVolunteerProfiles shiftProfiles,
     IShiftView shiftView,
     IGdprExportService gdprExportService,
     IConfiguration configuration,
@@ -166,7 +169,7 @@ public class ProfileController(
     /// </summary>
     private async Task<Instant?> ResolveOnsiteSinceAsync(UserInfo info)
     {
-        var active = await shiftMgmt.GetActiveAsync();
+        var active = await burnSettings.GetActiveAsync();
         if (active is null || active.Year == 0) return null;
         return info.OnsiteSinceForYear(active.Year);
     }
@@ -182,7 +185,7 @@ public class ProfileController(
         if (info is null) return NotFound();
 
         var applications = await applicationDecisionService.GetUserApplicationsAsync(user.Id, ct);
-        var allShiftTags = await shiftMgmt.GetTagsAsync();
+        var allShiftTags = await shiftProfiles.GetTagsAsync();
         // see #720 (T-09) — tag prefs from cached ShiftUserView, not repo.
         var userShiftView = await shiftView.GetUserAsync(user.Id, ct);
         var preferredShiftTags = userShiftView.TagPreferences
@@ -212,7 +215,7 @@ public class ProfileController(
     public async Task<IActionResult> Edit(ProfileViewModel model)
     {
         // Tag catalog not posted back — repopulate up front so validation-failure rerenders the picker.
-        model.AllShiftTags = (await shiftMgmt.GetTagsAsync())
+        model.AllShiftTags = (await shiftProfiles.GetTagsAsync())
             .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
@@ -281,7 +284,7 @@ public class ProfileController(
 
         await _userService.SaveProfileLanguagesAsync(profileId, newLanguages);
 
-        await shiftMgmt.SetVolunteerTagPreferencesAsync(user.Id, model.EditableShiftTagIds);
+        await shiftProfiles.SetVolunteerTagPreferencesAsync(user.Id, model.EditableShiftTagIds);
 
         // Meal pref + allergies were persisted as part of the ProfileSaveRequest
         // above (Profile now owns dietary). Intolerances + medical are untouched —
@@ -1562,7 +1565,7 @@ public class ProfileController(
             var user = await GetCurrentUserInfoAsync();
             if (user is null)
                 return NotFound();
-            var profile = await shiftMgmt.GetShiftProfileAsync(user.Id);
+            var profile = await shiftProfiles.GetShiftProfileAsync(user.Id);
             return View(ShiftInfoViewModel.FromProfile(profile));
         }
         catch (Exception ex)
@@ -1583,7 +1586,7 @@ public class ProfileController(
             if (user is null)
                 return NotFound();
 
-            var shiftProfile = await shiftMgmt.GetOrCreateShiftProfileAsync(user.Id);
+            var shiftProfile = await shiftProfiles.GetOrCreateShiftProfileAsync(user.Id);
 
             shiftProfile.Skills = ShiftInfoViewModel.MergeSkills(
                 model.SelectedSkills, model.SkillOtherText, shiftProfile.Skills);
@@ -1592,7 +1595,7 @@ public class ProfileController(
             shiftProfile.Languages = ShiftInfoViewModel.MergeLanguages(
                 model.SelectedLanguages, model.LanguageOtherText, shiftProfile.Languages);
 
-            await shiftMgmt.UpdateShiftProfileAsync(shiftProfile);
+            await shiftProfiles.UpdateShiftProfileAsync(shiftProfile);
 
             SetSuccess(localizer["Profile_Updated"].Value);
             return RedirectToAction(nameof(ShiftInfo));

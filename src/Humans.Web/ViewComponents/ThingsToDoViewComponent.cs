@@ -4,7 +4,7 @@ using Microsoft.Extensions.Localization;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Models;
-using Humans.Application.Interfaces.Shifts;
+using Humans.Shifts.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.UI;
@@ -13,7 +13,8 @@ namespace Humans.Web.ViewComponents;
 
 public class ThingsToDoViewComponent(
     IUserServiceRead userService,
-    IShiftManagementService shiftMgmt,
+    IShiftManagementServiceRead shiftMgmt,
+    IShiftVolunteerProfiles shiftProfiles,
     IMembershipCalculatorRead membershipCalculator,
     IStringLocalizer<SharedResource> localizer,
     ILogger<ThingsToDoViewComponent> logger) : ViewComponent
@@ -99,7 +100,7 @@ public class ThingsToDoViewComponent(
                 var needsShiftInfo = false;
                 try
                 {
-                    var shiftProfile = await shiftMgmt.GetShiftProfileAsync(userId);
+                    var shiftProfile = await shiftProfiles.GetShiftProfileAsync(userId);
                     needsShiftInfo = shiftProfile is null || IsShiftProfileEmpty(shiftProfile);
                 }
                 catch (Exception ex)

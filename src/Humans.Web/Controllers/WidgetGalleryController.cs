@@ -1,4 +1,4 @@
-using Humans.Application.Interfaces.Shifts;
+using Humans.Shifts.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Domain.Entities;
@@ -26,7 +26,8 @@ namespace Humans.Web.Controllers;
 public sealed class WidgetGalleryController(
     IUserServiceRead userService,
     ITeamServiceRead teamService,
-    IShiftManagementService shiftMgmt,
+    IShiftManagementServiceRead shiftMgmt,
+    IShiftVolunteerProfiles shiftProfiles,
     IBurnSettingsService burnSettings,
     ILogger<WidgetGalleryController> logger) : HumansControllerBase(userService)
 {
@@ -136,7 +137,7 @@ public sealed class WidgetGalleryController(
     {
         try
         {
-            return await shiftMgmt.GetShiftProfileAsync(userId);
+            return await shiftProfiles.GetShiftProfileAsync(userId);
         }
         catch (Exception ex)
         {

@@ -1,3 +1,5 @@
+using Humans.Shifts.Contracts;
+
 using Humans.Application.DTOs;
 using Humans.Web.Models.VolunteerTracking;
 using NodaTime;

@@ -1,6 +1,8 @@
+using Humans.Application.Interfaces;
+
 using Humans.Application.Architecture;
 
-namespace Humans.Application.Interfaces.Shifts;
+namespace Humans.Shifts.Contracts;
 
 /// <summary>
 /// One-way cache-staleness signal for <see cref="IShiftView"/>. Implemented by
@@ -26,15 +28,15 @@ namespace Humans.Application.Interfaces.Shifts;
 public interface IShiftViewInvalidator : IInvalidator
 {
     /// <summary>
-    /// Drops the cached <see cref="DTOs.Shifts.ShiftUserView"/> for a single
-    /// user. The next <see cref="IShiftView.GetUser"/> call re-loads from the
+    /// Drops the cached <see cref="ShiftUserView"/> for a single
+    /// user. The next <see cref="IShiftView.GetUserAsync"/> call re-loads from the
     /// inner service.
     /// </summary>
     void InvalidateUser(Guid userId);
 
     /// <summary>
-    /// Drops the cached <see cref="DTOs.Shifts.ShiftRotaView"/> for a single
-    /// rota. The next <see cref="IShiftView.GetRota"/> call re-loads from the
+    /// Drops the cached <see cref="ShiftRotaView"/> for a single
+    /// rota. The next <see cref="IShiftView.GetRotaAsync"/> call re-loads from the
     /// inner service.
     /// </summary>
     void InvalidateRota(Guid rotaId);

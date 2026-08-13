@@ -5,7 +5,7 @@ using Humans.Application.Interfaces.Caching;
 using Humans.Email.Contracts;
 using Humans.Onboarding.Contracts;
 using Humans.Application.Interfaces.Profiles;
-using Humans.Application.Interfaces.Shifts;
+using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Application.Interfaces.Users;
@@ -24,8 +24,8 @@ public sealed class AccountDeletionService(
     IUserEmailService userEmailService,
     ITeamService teamService,
     IRoleAssignmentService roleAssignmentService,
-    IShiftSignupService shiftSignupService,
-    IShiftManagementService shiftManagementService,
+    IShiftSignups shiftSignupService,
+    IShiftVolunteerProfiles shiftVolunteerProfiles,
     IFileStorage fileStorage,
     ITicketServiceRead ticketQueryService,
     IRoleAssignmentClaimsCacheInvalidator roleAssignmentClaimsInvalidator,
@@ -204,7 +204,7 @@ public sealed class AccountDeletionService(
             userId, "Account deletion", ct);
 
         // 5. Delete VolunteerEventProfile rows.
-        await shiftManagementService.DeleteShiftProfilesForUserAsync(userId, ct);
+        await shiftVolunteerProfiles.DeleteShiftProfilesForUserAsync(userId, ct);
 
         // 6. Anonymize identity + drop UserEmails — clears deletion markers; user falls off the candidate list.
         var identity = await userService.ApplyExpiredDeletionAnonymizationAsync(userId, ct);

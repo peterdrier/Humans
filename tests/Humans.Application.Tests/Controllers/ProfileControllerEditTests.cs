@@ -13,7 +13,7 @@ using Humans.Gdpr.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Onboarding.Contracts;
 using Humans.Application.Interfaces.Profiles;
-using Humans.Application.Interfaces.Shifts;
+using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 
 using Humans.Application.Interfaces.Users;
@@ -62,7 +62,7 @@ public class ProfileControllerEditTests
     private readonly IOnboardingIntake _onboardingService = Substitute.For<IOnboardingIntake>();
     private readonly IAccountDeletionService _accountDeletionService = Substitute.For<IAccountDeletionService>();
     private readonly IConfiguration _configuration = Substitute.For<IConfiguration>();
-    private readonly IShiftManagementService _shiftMgmt = Substitute.For<IShiftManagementService>();
+    private readonly IShiftVolunteerProfiles _shiftMgmt = Substitute.For<IShiftVolunteerProfiles>();
     private readonly IShiftView _shiftView = Substitute.For<IShiftView>();
     private readonly ProfileController _controller;
     private readonly Guid _userId = Guid.NewGuid();
@@ -102,7 +102,9 @@ public class ProfileControllerEditTests
             Substitute.For<ICommunicationPreferenceService>(),
             Substitute.For<IAuditLogService>(),
             _onboardingService,
-            Substitute.For<IShiftSignupService>(),
+            Substitute.For<IShiftSignups>(),
+            Substitute.For<IBurnSettingsService>(),
+            Substitute.For<IShiftManagementServiceRead>(),
             _shiftMgmt,
             _shiftView,
             Substitute.For<IGdprExportService>(),

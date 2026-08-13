@@ -4,7 +4,7 @@ using Humans.Events.Services.Dtos;
 using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Events.Data;
-using Humans.Application.Interfaces.Shifts;
+using Humans.Shifts.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Events.Services;
 

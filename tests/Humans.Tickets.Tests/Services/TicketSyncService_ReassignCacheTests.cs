@@ -2,7 +2,7 @@ using Humans.Application.Configuration;
 using Humans.Application.Interfaces;
 using Humans.Campaigns.Contracts;
 using Humans.Tickets.Data;
-using Humans.Application.Interfaces.Shifts;
+using Humans.Shifts.Contracts;
 using Humans.Application.Interfaces.TicketVendor;
 using Humans.Application.Interfaces.Users;
 using Humans.Tickets.Services;
@@ -60,7 +60,7 @@ public sealed class TicketSyncService_ReassignCacheTests
             Substitute.For<IUserServiceRead>(),
             Substitute.For<IUserService>(),
             Substitute.For<ICampaignService>(),
-            Substitute.For<IShiftManagementService>());
+            Substitute.For<IBurnSettingsService>());
 
         await service.ReassignAsync(
             sourceUserId,

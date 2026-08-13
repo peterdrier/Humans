@@ -1,5 +1,10 @@
 namespace Humans.Application.DTOs;
 
+// RotaSearchHit moved to Humans.Shifts.Contracts with
+// IShiftManagementServiceRead.SearchAsync — the leaf cannot name a
+// Humans.Application type, and Humans.Search binds both hit types anyway.
+// CampSearchHit stays until Camps' own G5 lane.
+
 /// <summary>
 /// One camp that matched a global-search query. Returned by
 /// <c>ICampService.SearchAsync</c> with the public-year season's display
@@ -13,18 +18,3 @@ namespace Humans.Application.DTOs;
 public record CampSearchHit(
     string Slug,
     string Name);
-
-/// <summary>
-/// One rota that matched a global-search query. Returned by
-/// <c>IShiftManagementService.SearchAsync</c> with the owning team's name
-/// already stitched so the orchestrator never has to call
-/// <c>ITeamService</c> just to render the subtitle. Names-only matching:
-/// only <see cref="Name"/> is matched.
-/// </summary>
-/// <param name="Name">Rota display name (the only matched field).</param>
-/// <param name="TeamId">Owning team id; drives the rota detail URL.</param>
-/// <param name="TeamName">Owning team display name; surfaced as subtitle.</param>
-public record RotaSearchHit(
-    string Name,
-    Guid TeamId,
-    string TeamName);

@@ -1,5 +1,5 @@
 using Humans.Events.Services.Dtos;
-using Humans.Application.Interfaces.Shifts;
+using Humans.Shifts.Contracts;
 using Humans.Events.Domain;
 using NodaTime;
 using Humans.Events.Contracts;

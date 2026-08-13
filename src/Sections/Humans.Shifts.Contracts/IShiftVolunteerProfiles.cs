@@ -1,0 +1,63 @@
+using Humans.Domain.Entities;
+
+namespace Humans.Shifts.Contracts;
+
+/// <summary>
+/// The volunteer's own shift profile — skills/quirks/languages and shift-tag
+/// preferences — as consumed from outside the section: Shell's profile edit
+/// page and its two dashboard view components read and write it, and the
+/// account-anonymisation flow deletes it.
+/// </summary>
+/// <remarks>
+/// Carries writes, so it is deliberately not called <c>…Read</c>
+/// (Governance's rule: a leaf keeps an honest name rather than a
+/// <c>Read</c> suffix over write members). The rest of the section's write
+/// surface — rotas, shifts, generation, event settings — has no external
+/// caller and stays on the internal <c>IShiftManagementService</c>.
+///
+/// <para>
+/// <c>VolunteerEventProfile</c> is still a public <c>Humans.Domain.Entities</c>
+/// type; the three members returning it need a flat projection before the
+/// entity can turn internal at the section move. Recorded in
+/// <c>local/shifts-g5/findings.md</c>.
+/// </para>
+/// </remarks>
+public interface IShiftVolunteerProfiles
+{
+    /// <summary>
+    /// Gets or creates the user's shift profile (1:1 with User).
+    /// </summary>
+    Task<VolunteerEventProfile> GetOrCreateShiftProfileAsync(Guid userId);
+
+    /// <summary>
+    /// Updates a volunteer shift profile.
+    /// </summary>
+    Task UpdateShiftProfileAsync(VolunteerEventProfile profile);
+
+    /// <summary>
+    /// Gets a user's shift profile (Skills / Quirks / Languages). Dietary and
+    /// medical data moved to Profile — read those via <c>IUserServiceRead</c>.
+    /// </summary>
+    Task<VolunteerEventProfile?> GetShiftProfileAsync(Guid userId);
+
+    /// <summary>
+    /// Deletes every <c>VolunteerEventProfile</c> row owned by
+    /// <paramref name="userId"/>. Returns the number of rows removed. Used by
+    /// the account anonymization flow so the job does not write to
+    /// <c>volunteer_event_profiles</c> directly (design-rules §2c).
+    /// </summary>
+    Task<int> DeleteShiftProfilesForUserAsync(
+        Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Gets shift tags, optionally filtered by name (case-insensitive contains).
+    /// </summary>
+    Task<IReadOnlyList<ShiftTagSummary>> GetTagsAsync(string? query = null);
+
+    /// <summary>
+    /// Sets a volunteer's tag preferences, replacing any existing ones.
+    /// </summary>
+    Task SetVolunteerTagPreferencesAsync(Guid userId, IReadOnlyList<Guid> tagIds);
+}
+
+public record ShiftTagSummary(Guid Id, string Name);

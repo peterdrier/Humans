@@ -1,6 +1,6 @@
 using Humans.Application.DTOs.Shifts;
 using Humans.Application.Interfaces.Caching;
-using Humans.Application.Interfaces.Shifts;
+using Humans.Shifts.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;

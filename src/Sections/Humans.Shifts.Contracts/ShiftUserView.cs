@@ -1,7 +1,7 @@
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 
-namespace Humans.Application.DTOs.Shifts;
+namespace Humans.Shifts.Contracts;
 
 /// <summary>
 /// Cached per-user projection of every Shifts-section row keyed off
@@ -10,8 +10,8 @@ namespace Humans.Application.DTOs.Shifts;
 /// from the raw rows.
 /// </summary>
 /// <remarks>
-/// Returned by <see cref="Interfaces.Shifts.IShiftView.GetUser"/> /
-/// <see cref="Interfaces.Shifts.IShiftView.GetUsers"/>. Missing users (or
+/// Returned by <see cref="IShiftView.GetUserAsync"/> /
+/// <see cref="IShiftView.GetUsersAsync"/>. Missing users (or
 /// "no active event") yield an empty view — never <c>null</c>, never an
 /// exception. Issue #720.
 /// </remarks>

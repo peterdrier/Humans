@@ -5,6 +5,7 @@ using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.EarlyEntry;
 using Humans.Gdpr.Contracts;
 using Humans.Application.Interfaces.Shifts;
+using Humans.Shifts.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Users;
@@ -57,7 +58,7 @@ public class GateServiceTests
     private readonly ITicketServiceRead _tickets = Substitute.For<ITicketServiceRead>();
     private readonly IEarlyEntryService _earlyEntry = Substitute.For<IEarlyEntryService>();
     private readonly IBurnSettingsService _burn = Substitute.For<IBurnSettingsService>();
-    private readonly IShiftManagementService _shifts = Substitute.For<IShiftManagementService>();
+    private readonly IShiftManagementServiceRead _shifts = Substitute.For<IShiftManagementServiceRead>();
     private readonly IRoleAssignmentService _roles = Substitute.For<IRoleAssignmentService>();
     private readonly IPasswordHasher<GateStaffPin> _pinHasher = new PasswordHasher<GateStaffPin>();
     private readonly IAuditLogService _auditLog = Substitute.For<IAuditLogService>();
@@ -211,14 +212,10 @@ public class GateServiceTests
     // ── Attendance projection (admit → participation Attended) ──────────────
 
     private void StubActiveEvent(int year = 2026) =>
-        _shifts.GetActiveAsync().Returns(new EventSettings
-        {
-            Id = Guid.NewGuid(),
-            EventName = "Test",
-            Year = year,
-            TimeZoneId = "Europe/Madrid",
-            GateOpeningDate = new LocalDate(year, 3, 1),
-        });
+        _burn.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(BurnFixtures.Burn(
+            eventName: "Test",
+            year: year,
+            gateOpeningDate: new LocalDate(year, 3, 1)));
 
     [HumansFact]
     public async Task RecordDecision_Admit_MarksParticipationAttended()
@@ -484,13 +481,9 @@ public class GateServiceTests
         Guid alice = Guid.NewGuid(), bob = Guid.NewGuid(), carol = Guid.NewGuid(),
              dave = Guid.NewGuid(), eve = Guid.NewGuid();
 
-        _shifts.GetActiveAsync().Returns(new EventSettings
-        {
-            Id = Guid.NewGuid(),
-            EventName = "Test",
-            TimeZoneId = "Europe/Madrid",
-            GateOpeningDate = new LocalDate(2026, 3, 1),
-        });
+        _burn.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(BurnFixtures.Burn(
+            eventName: "Test",
+            gateOpeningDate: new LocalDate(2026, 3, 1)));
         _shifts.GetBrowseShiftsAsync(Arg.Any<ShiftBrowseQuery>()).Returns(new List<UrgentShift>
         {
             // Starts at now: Eve is Refused (excluded), Alice + Bob signed up.
@@ -515,7 +508,7 @@ public class GateServiceTests
     [HumansFact]
     public async Task GetShiftRoster_NoActiveEvent_ReturnsEmpty()
     {
-        _shifts.GetActiveAsync().Returns((EventSettings?)null);
+        _burn.GetActiveAsync(Arg.Any<CancellationToken>()).Returns((BurnSettingsInfo?)null);
 
         (await _svc.GetShiftRosterAsync(Guid.NewGuid())).Should().BeEmpty();
     }

@@ -1,4 +1,6 @@
-namespace Humans.Application.Interfaces.Shifts;
+using Humans.Application.Interfaces;
+
+namespace Humans.Shifts.Contracts;
 
 /// <summary>
 /// Read-only cross-section supplier for the event-cycle ("burn") settings
@@ -10,7 +12,7 @@ namespace Humans.Application.Interfaces.Shifts;
 ///
 /// <para>
 /// Mutations + Shifts-internal reads (flags, caps, rotas) stay on
-/// <see cref="IShiftManagementService"/> — the Shifts section is the single
+/// <c>IShiftManagementService</c> — the Shifts section is the single
 /// writer of <c>event_settings</c>.
 /// </para>
 /// </summary>

@@ -601,7 +601,8 @@
         "src/Humans.Web/Models/SetDayOffForm.cs",
         "src/Humans.Web/Models/ShiftViewModels.cs",
         "src/Humans.Web/Models/VolunteerHeatmapPartialModels.cs",
-        "src/Humans.Web/ViewComponents/DietaryMissingBannerViewComponent.cs"
+        "src/Humans.Web/ViewComponents/DietaryMissingBannerViewComponent.cs",
+        "src/Sections/Humans.Shifts.Contracts/**"
       ],
       "symbols": [
         "EventSettings*",
@@ -624,6 +625,8 @@
         "IVolunteerTrackingService"
       ],
       "readServiceInterfaces": [
+        "IShiftManagementServiceRead",
+        "IShiftSignups",
         "IVolunteerTrackingServiceRead"
       ],
       "canonicalReadDtos": [

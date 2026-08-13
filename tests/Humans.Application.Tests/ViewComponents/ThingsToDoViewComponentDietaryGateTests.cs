@@ -1,7 +1,7 @@
 using AwesomeAssertions;
 using Humans.Application.DTOs;
 using Humans.Governance.Contracts;
-using Humans.Application.Interfaces.Shifts;
+using Humans.Shifts.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -24,7 +24,8 @@ namespace Humans.Application.Tests.ViewComponents;
 public class ThingsToDoViewComponentDietaryGateTests
 {
     private readonly IUserServiceRead _userService = Substitute.For<IUserServiceRead>();
-    private readonly IShiftManagementService _shiftMgmt = Substitute.For<IShiftManagementService>();
+    private readonly IShiftManagementServiceRead _shiftMgmt = Substitute.For<IShiftManagementServiceRead>();
+    private readonly IShiftVolunteerProfiles _shiftProfiles = Substitute.For<IShiftVolunteerProfiles>();
     private readonly IMembershipCalculatorRead _membershipCalculator = Substitute.For<IMembershipCalculatorRead>();
     private readonly IStringLocalizer<SharedResource> _localizer = Substitute.For<IStringLocalizer<SharedResource>>();
     private readonly ThingsToDoViewComponent _sut;
@@ -49,6 +50,7 @@ public class ThingsToDoViewComponentDietaryGateTests
         _sut = new ThingsToDoViewComponent(
             _userService,
             _shiftMgmt,
+            _shiftProfiles,
             _membershipCalculator,
             _localizer,
             NullLogger<ThingsToDoViewComponent>.Instance);

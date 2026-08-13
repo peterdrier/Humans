@@ -1,5 +1,8 @@
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+
+using Humans.Shifts.Contracts;
+
 using NodaTime;
 
 namespace Humans.Application.Interfaces.Shifts;
@@ -7,38 +10,20 @@ namespace Humans.Application.Interfaces.Shifts;
 /// <summary>
 /// Manages the shift signup state machine with invariant enforcement.
 /// </summary>
-public interface IShiftSignupService : IApplicationService
+/// <remarks>
+/// The section's own interface. The members something outside the section
+/// calls live on <see cref="IShiftSignups"/> and <see cref="IShiftSignupSeeding"/>
+/// in <c>Humans.Shifts.Contracts</c>; this inherits them, so the section's own
+/// injection sites are unchanged. Everything declared here — the review
+/// surface, the block-range operations, the orphan scan, the team probe, the
+/// audience read and the day toggle — has no external caller.
+/// </remarks>
+public interface IShiftSignupService : IShiftSignupSeeding, IApplicationService
 {
-    /// <summary>
-    /// Creates a signup for a user on a shift. Auto-confirms for Public policy.
-    /// Use <see cref="ShiftSignupRequestFlags.Privileged"/> when the caller has
-    /// already verified the user is an admin or coordinator.
-    /// </summary>
-    Task<SignupResult> SignUpAsync(
-        Guid userId,
-        Guid shiftId,
-        Guid? actorUserId = null,
-        ShiftSignupRequestFlags flags = ShiftSignupRequestFlags.None);
-
     /// <summary>
     /// Approves a pending signup. Re-validates invariants.
     /// </summary>
     Task<SignupResult> ApproveAsync(Guid signupId, Guid reviewerUserId);
-
-    /// <summary>
-    /// Refuses a pending signup.
-    /// </summary>
-    Task<SignupResult> RefuseAsync(Guid signupId, Guid reviewerUserId, string? reason);
-
-    /// <summary>
-    /// Bails from a confirmed or pending signup.
-    /// </summary>
-    Task<SignupResult> BailAsync(Guid signupId, Guid actorUserId, string? reason);
-
-    /// <summary>
-    /// Creates a confirmed signup on behalf of a volunteer (voluntell).
-    /// </summary>
-    Task<SignupResult> VoluntellAsync(Guid userId, Guid shiftId, Guid enrollerUserId);
 
     /// <summary>
     /// Creates confirmed signups across a date range on behalf of a volunteer (batch voluntell).
@@ -56,18 +41,6 @@ public interface IShiftSignupService : IApplicationService
     /// Removes a confirmed signup (coordinator/admin unassignment).
     /// </summary>
     Task<SignupResult> RemoveSignupAsync(Guid signupId, Guid removedByUserId, string? reason);
-
-    /// <summary>
-    /// Creates signups for a date range of all-day shifts (build/strike).
-    /// All signups share a SignupBlockId for grouped bail.
-    /// </summary>
-    Task<SignupResult> SignUpRangeAsync(
-        Guid userId,
-        Guid rotaId,
-        int startDayOffset,
-        int endDayOffset,
-        Guid? actorUserId = null,
-        ShiftSignupRequestFlags flags = ShiftSignupRequestFlags.None);
 
     /// <summary>
     /// Approves all pending signups sharing a SignupBlockId.
@@ -95,30 +68,6 @@ public interface IShiftSignupService : IApplicationService
     Task<ShiftSignupTeamProbe?> GetTeamProbeAsync(Guid id, ShiftSignupTeamProbeScope scope);
 
     /// <summary>
-    /// Gets all no-show signups for a user, with shift/team context and reviewer info.
-    /// </summary>
-    Task<IReadOnlyList<NoShowHistoryEntry>> GetNoShowHistoryAsync(Guid userId);
-
-    /// <summary>
-    /// Cancels every Confirmed or Pending signup owned by
-    /// <paramref name="userId"/> with the supplied <paramref name="reason"/>,
-    /// in one atomic save. Returns the id + shift id of each signup that was
-    /// cancelled so callers (account deletion job) can emit per-signup audit
-    /// entries. Used by the account anonymization flow so the job does not
-    /// write to <c>shift_signups</c> directly (design-rules §2c).
-    /// </summary>
-    Task<IReadOnlyList<(Guid SignupId, Guid ShiftId)>> CancelActiveSignupsForUserAsync(
-        Guid userId, string reason, CancellationToken ct = default);
-
-    /// <summary>
-    /// Deletes every shift signup owned by the supplied users. Requires the
-    /// current authenticated user to hold the full Admin role.
-    /// </summary>
-    Task<int> DeleteAllForUsersAsync(
-        IReadOnlyCollection<Guid> userIds,
-        CancellationToken ct = default);
-
-    /// <summary>
     /// Returns every <see cref="ShiftSignup"/> in the system, with
     /// <c>Shift.Rota.EventSettings</c> included, for use by the
     /// orphan-signup reconciliation screen. Admin-only diagnostic.
@@ -136,8 +85,8 @@ public interface IShiftSignupService : IApplicationService
     /// <summary>
     /// Self-service day-row toggle for the current user: bails an existing active
     /// signup for <paramref name="shiftId"/>, or signs up if none exists (auto-confirm
-    /// per <paramref name="privileged"/>, mirroring <see cref="SignUpAsync"/>'s Privileged
-    /// flag). Short-circuits with <see cref="ToggleDaySignupOutcome.NeedsDietaryFirst"/>
+    /// per <paramref name="privileged"/>, mirroring <see cref="IShiftSignups.SignUpAsync"/>'s
+    /// Privileged flag). Short-circuits with <see cref="ToggleDaySignupOutcome.NeedsDietaryFirst"/>
     /// instead of signing up when the shift qualifies for a cantina meal and
     /// <paramref name="hasDietaryPreference"/> is false — the caller owns the redirect.
     /// <see cref="ToggleDaySignupOutcome.CanViewRestricted"/> folds
@@ -177,14 +126,6 @@ public enum ShiftSignupTeamProbeScope
     SignupBlock
 }
 
-[Flags]
-public enum ShiftSignupRequestFlags
-{
-    None = 0,
-    Privileged = 1,
-    SkipConflicts = 2
-}
-
 public sealed record OrphanSignupSnapshot(
     Guid Id,
     Guid UserId,
@@ -195,53 +136,3 @@ public sealed record OrphanSignupSnapshot(
     Guid? ReviewedByUserId,
     Guid? EnrolledByUserId,
     Guid? SignupBlockId);
-
-public record NoShowHistoryEntry(
-    string ShiftLabel,
-    Guid TeamId,
-    Instant ShiftStart,
-    string TimeZoneId,
-    Guid? ReviewedByUserId,
-    Instant? ReviewedAt);
-
-/// <summary>
-/// Helper for resolving active signup statuses from an already-loaded list of signups.
-/// Use this when the caller already has signups from GetByUserAsync and needs the filtered result
-/// without an additional DB round-trip.
-/// </summary>
-public static class ShiftSignupHelper
-{
-    /// <summary>
-    /// Filters signups to active statuses (Confirmed or Pending) and returns shift IDs and status dictionary.
-    /// Single source of truth for "active signup statuses" filtering logic.
-    /// </summary>
-    public static (HashSet<Guid> ShiftIds, Dictionary<Guid, SignupStatus> Statuses) ResolveActiveStatuses(
-        IReadOnlyList<ShiftSignup> signups)
-    {
-        var active = signups
-            .Where(s => s.Status is SignupStatus.Confirmed or SignupStatus.Pending)
-            .ToList();
-
-        var shiftIds = active.Select(s => s.ShiftId).ToHashSet();
-        var statuses = active.ToDictionary(s => s.ShiftId, s => s.Status);
-
-        return (shiftIds, statuses);
-    }
-}
-
-/// <summary>
-/// Result of a signup operation.
-/// </summary>
-public record SignupResult
-{
-    public bool Success { get; init; }
-    public string? Warning { get; init; }
-    public string? Error { get; init; }
-    public ShiftSignup? Signup { get; init; }
-
-    public static SignupResult Ok(ShiftSignup signup, string? warning = null) =>
-        new() { Success = true, Signup = signup, Warning = warning };
-
-    public static SignupResult Fail(string error) =>
-        new() { Success = false, Error = error };
-}

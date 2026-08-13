@@ -1,6 +1,5 @@
-using Humans.Application.DTOs.Shifts;
 
-namespace Humans.Application.Interfaces.Shifts;
+namespace Humans.Shifts.Contracts;
 
 /// <summary>
 /// Read-only Shifts-section view surface. Returns bundled, immutable
@@ -17,7 +16,7 @@ namespace Humans.Application.Interfaces.Shifts;
 ///
 /// <para>
 /// Issue #720. Foundation for shifts caching: existing read methods on
-/// <see cref="IShiftSignupService"/> and <see cref="IShiftManagementService"/>
+/// <c>IShiftSignupService</c> and <c>IShiftManagementService</c>
 /// migrate to this surface in follow-up PRs.
 /// </para>
 /// </remarks>

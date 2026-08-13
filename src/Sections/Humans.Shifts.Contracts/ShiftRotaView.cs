@@ -1,6 +1,6 @@
 using Humans.Domain.Entities;
 
-namespace Humans.Application.DTOs.Shifts;
+namespace Humans.Shifts.Contracts;
 
 /// <summary>
 /// Cached per-rota projection: the rota row, its shifts, its tags, and every
@@ -9,8 +9,8 @@ namespace Humans.Application.DTOs.Shifts;
 /// from the raw rows.
 /// </summary>
 /// <remarks>
-/// Returned by <see cref="Interfaces.Shifts.IShiftView.GetRota"/> /
-/// <see cref="Interfaces.Shifts.IShiftView.GetRotas"/>. Missing rotas yield an
+/// Returned by <see cref="IShiftView.GetRotaAsync"/> /
+/// <see cref="IShiftView.GetRotasAsync"/>. Missing rotas yield an
 /// empty view with <c>Rota = null</c> — never <c>null</c>, never an exception.
 /// Issue #720.
 /// </remarks>

@@ -1,11 +1,10 @@
 using Humans.Application.Architecture;
-using Humans.Application.DTOs;
 
-namespace Humans.Application.Interfaces.Shifts;
+namespace Humans.Shifts.Contracts;
 
 /// <summary>
 /// Cross-section read surface for Volunteer Tracking. External sections inject
-/// this (not the full <see cref="IVolunteerTrackingService"/>); returns only
+/// this (not the full <c>IVolunteerTrackingService</c>); returns only
 /// the <see cref="VolunteerBuildStripDto"/> projection. See
 /// <c>memory/architecture/section-read-write-split.md</c>.
 /// </summary>
