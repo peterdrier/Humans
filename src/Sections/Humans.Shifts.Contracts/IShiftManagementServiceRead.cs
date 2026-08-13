@@ -33,11 +33,6 @@ public interface IShiftManagementServiceRead
     Task<IReadOnlyList<Guid>> GetCoordinatorTeamIdsAsync(Guid userId);
 
     /// <summary>
-    /// Gets all rotas for a department in an event.
-    /// </summary>
-    Task<IReadOnlyList<Rota>> GetRotasByDepartmentAsync(Guid teamId, Guid eventSettingsId);
-
-    /// <summary>
     /// Volunteer-visible rotas in the active event whose <c>Name</c>
     /// contains <paramref name="query"/> (case-insensitive). The owning
     /// team's display name is stitched in via <c>ITeamService</c>

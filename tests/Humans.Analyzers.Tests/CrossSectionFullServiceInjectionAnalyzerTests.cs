@@ -258,7 +258,7 @@ public class CrossSectionFullServiceInjectionAnalyzerTests
     {
         var source = Stubs + """
 
-            namespace Humans.Application.Interfaces.Shifts
+            namespace Humans.Shifts.Services
             {
                 public interface IShiftService : Humans.Application.Interfaces.IApplicationService
                 {
@@ -268,7 +268,7 @@ public class CrossSectionFullServiceInjectionAnalyzerTests
 
             namespace Humans.Application.Services.Expenses
             {
-                public sealed class ExpenseShiftService(Humans.Application.Interfaces.Shifts.IShiftService shifts)
+                public sealed class ExpenseShiftService(Humans.Shifts.Services.IShiftService shifts)
                 {
                     public System.Threading.Tasks.Task<int> CountAsync() => shifts.GetShiftCountAsync();
                 }

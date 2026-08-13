@@ -1,0 +1,168 @@
+using Humans.Shifts.Contracts;
+using Humans.Shifts.Services;
+using Humans.Domain.Attributes;
+using Humans.Domain.Enums;
+using NodaTime;
+
+namespace Humans.Shifts.Domain;
+
+/// <summary>
+/// A single work slot within a rota — defined by DayOffset from gate opening,
+/// start time, and duration. Absolute times are resolved via EventSettings.
+/// </summary>
+internal sealed class Shift
+{
+    /// <summary>
+    /// Unique identifier.
+    /// </summary>
+    public Guid Id { get; init; }
+
+    /// <summary>
+    /// FK to the parent rota.
+    /// </summary>
+    public Guid RotaId { get; set; }
+
+    /// <summary>
+    /// Optional description of shift duties.
+    /// </summary>
+    [MarkdownContent]
+    public string? Description { get; set; }
+
+    /// <summary>
+    /// Day offset from gate opening date. Negative = build, 0+ = event/strike.
+    /// </summary>
+    public int DayOffset { get; set; }
+
+    /// <summary>
+    /// Start time of the shift (wall clock in event timezone).
+    /// </summary>
+    public LocalTime StartTime { get; set; }
+
+    /// <summary>
+    /// Duration of the shift.
+    /// </summary>
+    public Duration Duration { get; set; }
+
+    /// <summary>
+    /// Minimum volunteers needed (understaffed threshold for urgency scoring).
+    /// </summary>
+    public int MinVolunteers { get; set; }
+
+    /// <summary>
+    /// Maximum volunteers allowed (hard capacity ceiling — signups and approvals are blocked at this limit).
+    /// </summary>
+    public int MaxVolunteers { get; set; }
+
+    /// <summary>
+    /// Whether this shift is restricted to coordinators/admins only.
+    /// </summary>
+    public bool AdminOnly { get; set; }
+
+    /// <summary>
+    /// The standard work-block start for all-day shifts (08:00 local). When
+    /// <see cref="IsAllDay"/> is <c>true</c>, <see cref="GetAbsoluteStart"/> uses this
+    /// value regardless of the stored <see cref="StartTime"/>.
+    /// </summary>
+    internal static readonly LocalTime AllDayWindowStart = new(8, 0);
+
+    /// <summary>
+    /// The standard work-block end for all-day shifts (18:00 local). When
+    /// <see cref="IsAllDay"/> is <c>true</c>, <see cref="GetAbsoluteEnd"/> uses this
+    /// value to compute the absolute end instant.
+    /// </summary>
+    internal static readonly LocalTime AllDayWindowEnd = new(18, 0);
+
+    /// <summary>
+    /// Width of the all-day work block in hours (<see cref="AllDayWindowEnd"/> −
+    /// <see cref="AllDayWindowStart"/>, i.e. 10h). The effective worked hours for an
+    /// all-day shift, used in place of the don't-care stored <see cref="Duration"/>
+    /// (which holds a 24h sentinel for build/strike rows). See the note on
+    /// <see cref="IsAllDay"/>.
+    /// </summary>
+    internal static double AllDayWindowHours =>
+        Duration.FromTicks(AllDayWindowEnd.TickOfDay - AllDayWindowStart.TickOfDay).TotalHours;
+
+    /// <summary>
+    /// Whether this is an all-day shift (build/strike). When <c>true</c>,
+    /// <see cref="StartTime"/> and <see cref="Duration"/> on this row are don't-care —
+    /// the absolute start/end are computed from <see cref="AllDayWindowStart"/> /
+    /// <see cref="AllDayWindowEnd"/>. Existing all-day rows created before this policy
+    /// was enforced may store any StartTime/Duration; readers must use
+    /// <see cref="GetAbsoluteStart"/> / <see cref="GetAbsoluteEnd"/> rather than the
+    /// raw fields whenever <c>IsAllDay = true</c>.
+    /// </summary>
+    public bool IsAllDay { get; set; }
+
+    /// <summary>
+    /// When this shift was created.
+    /// </summary>
+    public Instant CreatedAt { get; init; }
+
+    /// <summary>
+    /// When this shift was last updated.
+    /// </summary>
+    public Instant UpdatedAt { get; set; }
+
+    /// <summary>
+    /// Navigation property to the parent rota.
+    /// </summary>
+    public Rota Rota { get; set; } = null!;
+
+    /// <summary>
+    /// Navigation property to signups for this shift.
+    /// </summary>
+    public ICollection<ShiftSignup> ShiftSignups { get; } = new List<ShiftSignup>();
+
+    /// <summary>
+    /// Resolves the absolute start instant using event settings timezone and gate opening date.
+    /// Uses InZoneLeniently for DST safety. When <see cref="IsAllDay"/> is <c>true</c>,
+    /// always returns the date at <see cref="AllDayWindowStart"/> (08:00), ignoring the
+    /// stored <see cref="StartTime"/>.
+    /// </summary>
+    public Instant GetAbsoluteStart(IBurnSettingsInfo eventSettings)
+    {
+        var tz = DateTimeZoneProviders.Tzdb[eventSettings.TimeZoneId];
+        var date = eventSettings.GateOpeningDate.PlusDays(DayOffset);
+        var wallTime = IsAllDay ? AllDayWindowStart : StartTime;
+        return date.At(wallTime).InZoneLeniently(tz).ToInstant();
+    }
+
+    /// <summary>
+    /// Resolves the absolute end instant. When <see cref="IsAllDay"/> is <c>true</c>,
+    /// returns the date at <see cref="AllDayWindowEnd"/> (18:00), ignoring the stored
+    /// <see cref="Duration"/>. When <c>false</c>, returns start + duration.
+    /// </summary>
+    public Instant GetAbsoluteEnd(IBurnSettingsInfo eventSettings)
+    {
+        if (IsAllDay)
+        {
+            var tz = DateTimeZoneProviders.Tzdb[eventSettings.TimeZoneId];
+            var date = eventSettings.GateOpeningDate.PlusDays(DayOffset);
+            return date.At(AllDayWindowEnd).InZoneLeniently(tz).ToInstant();
+        }
+        return GetAbsoluteStart(eventSettings).Plus(Duration);
+    }
+
+    /// <summary>
+    /// True when this shift qualifies a volunteer for cantina meal planning.
+    /// All-day shifts always qualify (08:00–18:00 = 10h);
+    /// timed shifts qualify when <see cref="Duration"/> is at least 6 hours.
+    /// Pure helper — no DB hit, no clock, no <see cref="EventSettings"/> needed.
+    /// See: docs/features/profiles/dietary-medical-nudge.md
+    /// </summary>
+    public bool QualifiesForCantinaMeal() =>
+        IsAllDay || Duration >= Duration.FromHours(6);
+
+    /// <summary>
+    /// Whether this shift falls in the build period (before gate opening).
+    /// </summary>
+    public bool IsEarlyEntry => DayOffset < 0;
+
+    /// <summary>
+    /// Classifies the shift into Build, Event, or Strike period based on its day offset.
+    /// </summary>
+    public ShiftPeriod GetShiftPeriod(IBurnSettingsInfo eventSettings) =>
+        DayOffset < 0 ? ShiftPeriod.Build :
+        DayOffset <= eventSettings.EventEndOffset ? ShiftPeriod.Event :
+        ShiftPeriod.Strike;
+}

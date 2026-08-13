@@ -3,7 +3,6 @@ using AwesomeAssertions;
 using Humans.Application.Configuration;
 using Humans.Tickets.Contracts;
 using Humans.Application.DTOs;
-using Humans.Application.DTOs.Shifts;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.AuditLog.Contracts;
 using Humans.Campaigns.Contracts;
@@ -184,8 +183,6 @@ public class ProfileControllerEditTests
         // The happy path now also writes meal-pref + allergies onto the shift
         // profile. Return a fresh profile by default so existing tests don't NRE
         // when the controller sets fields on it.
-        _shiftMgmt.GetOrCreateShiftProfileAsync(Arg.Any<Guid>())
-            .Returns(_ => new VolunteerEventProfile { UserId = _userId });
     }
 
     [HumansFact]

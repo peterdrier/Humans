@@ -1,3 +1,4 @@
+using Humans.Shifts.Domain;
 using System.Net;
 using AwesomeAssertions;
 using Humans.Feedback.Data;

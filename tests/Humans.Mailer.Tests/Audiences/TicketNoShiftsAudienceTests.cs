@@ -1,7 +1,5 @@
 using Humans.Application;
 using AwesomeAssertions;
-using Humans.Application.DTOs.Shifts;
-using Humans.Application.Interfaces.Shifts;
 using Humans.Shifts.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Application.Interfaces.Users;
@@ -74,13 +72,13 @@ public class TicketNoShiftsAudienceTests
     public async Task ComputeMemberUserIdsAsync_DoesNotInjectShiftSignupOrManagementService()
     {
         // Constructor surface check: the audience must no longer depend on
-        // IShiftSignupService or IShiftManagementService. If a future change
+        // IShiftSignups or IShiftManagementServiceRead. If a future change
         // reintroduces either, the DI registration in MailerSectionExtensions
         // would need to wire them — and this test will fail at the type level.
         var ctor = typeof(TicketNoShiftsAudience).GetConstructors().Single();
         var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
-        paramTypes.Should().NotContain(typeof(IShiftSignupService));
-        paramTypes.Should().NotContain(typeof(IShiftManagementService));
+        paramTypes.Should().NotContain(typeof(IShiftSignups));
+        paramTypes.Should().NotContain(typeof(IShiftManagementServiceRead));
         paramTypes.Should().Contain(typeof(IShiftView));
     }
 

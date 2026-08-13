@@ -5,7 +5,6 @@ using Humans.Application.Interfaces;
 using Humans.Budget.Contracts;
 using Humans.Application.Interfaces.Camps;
 using Humans.CityPlanning.Contracts;
-using Humans.Application.Interfaces.Shifts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Domain.Constants;

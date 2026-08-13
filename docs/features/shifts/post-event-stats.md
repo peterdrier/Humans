@@ -101,5 +101,5 @@ All three share the same rate formula: `NoShowPct = round(100 × NoShow / (Confi
 
 - [Shift Management](shift-management.md) — repository and service methods used by this feature.
 - [Department Coverage Pies](department-coverage-pies.md) — similar read-only aggregation over the same signup data.
-- Section invariants: [`docs/sections/Shifts.md`](../../sections/Shifts.md).
+- Section invariants: [`src/Sections/Humans.Shifts/Docs/Shifts.md`](../../../src/Sections/Humans.Shifts/Docs/Shifts.md).
 - Upstream issue: nobodies-collective/Humans#161.

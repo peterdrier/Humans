@@ -1,0 +1,188 @@
+@model Humans.Shifts.Models.VolunteerTrackingPageViewModel
+
+@{
+    ViewData["Title"] = Localizer["VolTrack_Title"].Value;
+
+    var mainTotal = Model.MainCohort.Count;
+    var mainWithGaps = Model.MainCohort.Count(r => r.GapCount > 0);
+    // "On camp set-up" reflects today's state: a volunteer is counted only
+    // if their BarrioSetupStartDate is on or before today (i.e., they've
+    // actually moved to camp set-up by now). Future-dated camp-setup plans
+    // don't count toward today's number.
+    var onCampSetup = Model.MainCohort.Count(r => r.BarrioSetupStartDate is { } d && d <= Model.Today);
+    var unbookedTotal = Model.UnbookedCohort.Count;
+    var anyFilterActive = Model.HideNoGaps || Model.HideCampSetup || Model.HideUnbookedSection;
+}
+
+<div class="container py-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-controller="Shifts" asp-action="Index">@Localizer["VolTrack_Breadcrumb_Shifts"]</a></li>
+            <li class="breadcrumb-item"><a asp-controller="ShiftDashboard" asp-action="Index">@Localizer["VolTrack_Breadcrumb_ShiftDashboard"]</a></li>
+            <li class="breadcrumb-item active" aria-current="page">@Localizer["VolTrack_Breadcrumb_VolunteerTracking"]</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2><i class="fa-solid fa-people-group me-2"></i>@Localizer["VolTrack_Title"]</h2>
+    </div>
+
+
+    @if (!Model.HasActiveEvent)
+    {
+        <div class="alert alert-info">
+            <i class="fa-solid fa-circle-info me-2"></i>@Localizer["VolTrack_NoActiveEvent"]
+        </div>
+        return;
+    }
+
+    <partial name="_ExportCard" model="Model.ExportForm" />
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="text-muted small mb-2">
+                <i class="fa-regular fa-calendar-day me-1"></i>
+                @string.Format(Localizer["VolTrack_AsOfToday"].Value, Model.Today.ToDate())
+            </div>
+            <div class="row g-3 align-items-center mb-3">
+                <div class="col-md-3">
+                    <div class="text-muted small text-uppercase">@Localizer["VolTrack_Counts_MainTotal"]</div>
+                    <div class="fs-4 fw-bold">@mainTotal</div>
+                </div>
+                <div class="col-md-3">
+                    <div class="text-muted small text-uppercase">@Localizer["VolTrack_Counts_WithGaps"]</div>
+                    <div class="fs-4 fw-bold @(mainWithGaps > 0 ? "text-danger" : "")">@mainWithGaps</div>
+                </div>
+                <div class="col-md-3">
+                    <div class="text-muted small text-uppercase">@Localizer["VolTrack_Counts_OnCampSetup"]</div>
+                    <div class="fs-4 fw-bold text-primary">@onCampSetup</div>
+                </div>
+                <div class="col-md-3">
+                    <div class="text-muted small text-uppercase">@Localizer["VolTrack_Counts_Unbooked"]</div>
+                    <div class="fs-4 fw-bold text-warning">@unbookedTotal</div>
+                </div>
+            </div>
+            <div class="mb-3">
+                <div class="input-group input-group-sm" style="max-width: 380px;">
+                    <span class="input-group-text" id="vt-search-icon"><i class="fa-solid fa-magnifying-glass"></i></span>
+                    <input type="search"
+                           id="vt-search"
+                           class="form-control"
+                           placeholder="@Localizer["VolTrack_Search_Placeholder"]"
+                           aria-label="@Localizer["VolTrack_Search_Placeholder"]"
+                           aria-describedby="vt-search-icon"
+                           autocomplete="off" />
+                </div>
+            </div>
+            @* CSP blocks inline handlers; js-auto-submit (site.js) submits parent form on change. *@
+            <form method="get" asp-action="Index" class="d-flex flex-wrap gap-3 align-items-center">
+                <div class="form-check">
+                    <input class="form-check-input js-auto-submit" type="checkbox" name="hideNoGaps" value="true" id="vt-hide-no-gaps"
+                           @(Model.HideNoGaps ? "checked" : "") />
+                    <label class="form-check-label" for="vt-hide-no-gaps">@Localizer["VolTrack_Filter_HideNoGaps"]</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input js-auto-submit" type="checkbox" name="hideCampSetup" value="true" id="vt-hide-camp-setup"
+                           @(Model.HideCampSetup ? "checked" : "") />
+                    <label class="form-check-label" for="vt-hide-camp-setup">@Localizer["VolTrack_Filter_HideCampSetup"]</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input js-auto-submit" type="checkbox" name="hideUnbookedSection" value="true" id="vt-hide-unbooked"
+                           @(Model.HideUnbookedSection ? "checked" : "") />
+                    <label class="form-check-label" for="vt-hide-unbooked">@Localizer["VolTrack_Filter_HideUnbookedSection"]</label>
+                </div>
+                <noscript>
+                    <button type="submit" class="btn btn-sm btn-primary">@Localizer["VolTrack_Filter_Apply"]</button>
+                </noscript>
+            </form>
+            @if (anyFilterActive)
+            {
+                <div class="mt-3 small">
+                    <span class="badge bg-info-subtle text-dark border me-2">
+                        <i class="fa-solid fa-filter me-1"></i>@Localizer["VolTrack_Filter_Active"]
+                    </span>
+                    <a asp-action="Index" class="text-decoration-none">@Localizer["VolTrack_Filter_Clear"]</a>
+                </div>
+            }
+        </div>
+    </div>
+
+    @if (Model.MainCohort.Count == 0 && Model.UnbookedCohort.Count == 0)
+    {
+        <div class="alert alert-success">
+            <i class="fa-solid fa-circle-check me-2"></i>@Localizer["VolTrack_AllClear"]
+        </div>
+    }
+    else
+    {
+        @await Html.PartialAsync("_VolunteerHeatmap",
+            new HeatmapPartialModel(Model.MainCohort, Model.BuildStartOffset, Model.GateOpeningDate, Model.DisplayNameByUserId))
+
+        @if (!Model.HideUnbookedSection)
+        {
+            <hr class="my-4" />
+            <h3 class="mb-3"><i class="fa-solid fa-user-clock me-2"></i>@Localizer["VolTrack_Unbooked_Heading"]</h3>
+            <p class="text-muted small">@Localizer["VolTrack_Unbooked_Subtitle"]</p>
+
+            @await Html.PartialAsync("_VolunteerUnbookedHeatmap",
+                new UnbookedHeatmapPartialModel(Model.UnbookedCohort, Model.BuildStartOffset, Model.GateOpeningDate, Model.DisplayNameByUserId))
+        }
+    }
+
+    <div class="card mt-4">
+        <div class="card-body">
+            <div class="text-muted small text-uppercase mb-2">@Localizer["VolTrack_Legend_Title"]</div>
+            <div class="d-flex flex-wrap gap-3 small">
+                <span><span class="legend-swatch bg-success"></span> @Localizer["VolTrack_Legend_Confirmed"]</span>
+                <span><span class="legend-swatch bg-success-subtle border"></span> @Localizer["VolTrack_Legend_Pending"]</span>
+                <span><span class="legend-swatch bg-danger"></span> @Localizer["VolTrack_Legend_Gap"]</span>
+                <span><span class="legend-swatch vt-dayoff border"></span> @Localizer["VolTrack_Legend_DayOff"]</span>
+                <span><span class="legend-swatch bg-warning"></span> @Localizer["VolTrack_Legend_AvailableUnbooked"]</span>
+                <span><span class="legend-swatch bg-primary"></span> @Localizer["VolTrack_Legend_CampSetup"]</span>
+                <span><span class="legend-swatch bg-secondary-subtle border"></span> @Localizer["VolTrack_Legend_OutsideOrExpected"]</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* Heatmap CSS (.vt-*) lives in _VolunteerHeatmap.cshtml so the partial renders
+   correctly wherever it's hosted (here AND the profile build strip). Only the
+   page-scoped legend swatch styling stays here. *@
+@section Styles {
+<style>
+    .legend-swatch {
+        display: inline-block;
+        width: 1rem;
+        height: 1rem;
+        vertical-align: middle;
+        margin-right: 0.25rem;
+        border-radius: 0.2rem;
+    }
+</style>
+}
+
+@* Heatmap scroll-arrow + popover-init JS now lives in _VolunteerHeatmap.cshtml
+   so it travels with the partial wherever it renders. Only the page-scoped
+   row search-filter (which targets #vt-search, an input only this page has)
+   stays here. *@
+@section Scripts {
+<script>
+// Live row filter for the volunteer-tracking heatmaps. Matches case-insensitively
+// against the row's data-vt-search-name (display/playa name lowercased server-side).
+// Pure client-side: rows are already in the DOM, no round-trip needed.
+(function () {
+    var input = document.getElementById('vt-search');
+    if (!input) return;
+
+    function applyFilter() {
+        var q = (input.value || '').trim().toLowerCase();
+        document.querySelectorAll('tr[data-vt-search-name]').forEach(function (tr) {
+            var name = tr.getAttribute('data-vt-search-name') || '';
+            tr.style.display = (q === '' || name.indexOf(q) !== -1) ? '' : 'none';
+        });
+    }
+
+    input.addEventListener('input', applyFilter);
+})();
+</script>
+}

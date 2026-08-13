@@ -1,0 +1,103 @@
+@model Humans.Shifts.Models.ShiftSummaryViewModel
+@using Humans.Shifts.Services.Dtos
+@using Humans.UI.Models.Tables
+@using Microsoft.AspNetCore.Html
+
+@{
+    ViewData["Title"] = "Shift summary by camp";
+    Layout = "_AdminLayout";
+
+    string Hours(double h) => h.ToString("0.#");
+    const string NoCamp = "(no camp)";
+}
+
+<div class="container-fluid py-3">
+    <h1 class="h3 mb-1">Shift summary by camp</h1>
+    <p class="text-muted mb-3">
+        @if (Model.Scope == ShiftSummaryScope.Team)
+        {
+            <a asp-action="Summary">All teams</a><text> › </text><span>@Model.TeamName</span>
+        }
+        else if (Model.Scope == ShiftSummaryScope.Rota)
+        {
+            <a asp-action="Summary">All teams</a><text> › </text>
+            <a asp-action="SummaryTeam" asp-route-teamSlug="@Model.TeamSlug">@Model.TeamName</a><text> › </text><span>@Model.RotaName</span>
+        }
+        else
+        {
+            <text>All teams</text>
+        }
+        <span class="mx-1">·</span> @Model.EventName
+        <span class="mx-1">·</span> confirmed signups only
+    </p>
+
+    <div class="row g-4">
+        <div class="col-xl-6">
+            <h2 class="h5">By human</h2>
+            @if (Model.Humans.Count == 0)
+            {
+                <div class="alert alert-light border">No confirmed signups yet.</div>
+            }
+            else
+            {
+                Func<ShiftSummaryHumanRow, IHtmlContent> humanCell =
+                    @<text><vc:human user-id="@item.UserId" /></text>;
+                Func<ShiftSummaryHumanRow, IHtmlContent> campCell = @<text>
+                    @if (item.CampId is null)
+                    {
+                        <span class="text-muted">@NoCamp</span>
+                    }
+                    else
+                    {
+                        @item.CampName
+                    }
+                </text>;
+                var humanTable = TableModel.For(Model.Humans)
+                    .Template("Human", humanCell)
+                    .Template("Camp", campCell)
+                    .Column("Hours", r => Hours(r.Hours), c => c.End())
+                    .Column("Count", r => r.Count, c => c.Number().End())
+                    .Build();
+                <partial name="_Table" model="humanTable" />
+            }
+        </div>
+
+        <div class="col-xl-6">
+            <h2 class="h5">By camp</h2>
+            @{
+                var campTable = TableModel.For(Model.Camps)
+                    .Column("Camp", r => r.CampName ?? NoCamp)
+                    .Column("People", r => r.People, c => c.Number().End())
+                    .Column("Hours", r => Hours(r.Hours), c => c.End())
+                    .Column("Count", r => r.Count, c => c.Number().End())
+                    .RowCss(r => r.CampId is null ? "text-muted" : null)
+                    .Build();
+            }
+            <partial name="_Table" model="campTable" />
+        </div>
+    </div>
+
+    @if (Model.TeamLinks.Count > 0)
+    {
+        <h2 class="h5 mt-4">Teams</h2>
+        <div class="d-flex flex-wrap gap-2">
+            @foreach (var t in Model.TeamLinks)
+            {
+                <a class="btn btn-sm btn-outline-secondary"
+                   asp-action="SummaryTeam" asp-route-teamSlug="@t.Slug">@t.Name</a>
+            }
+        </div>
+    }
+
+    @if (Model.RotaLinks.Count > 0)
+    {
+        <h2 class="h5 mt-4">Rotas</h2>
+        <div class="d-flex flex-wrap gap-2">
+            @foreach (var r in Model.RotaLinks)
+            {
+                <a class="btn btn-sm btn-outline-secondary"
+                   asp-action="SummaryRota" asp-route-teamSlug="@Model.TeamSlug" asp-route-rotaGuid="@r.RotaId">@r.Name</a>
+            }
+        </div>
+    }
+</div>

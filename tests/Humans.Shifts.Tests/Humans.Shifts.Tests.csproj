@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Sections\Humans.Shifts\Humans.Shifts.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.Notifications.Contracts\Humans.Notifications.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.Gdpr.Contracts\Humans.Gdpr.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.Governance.Contracts\Humans.Governance.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.Auth.Contracts\Humans.Auth.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      The section's six controllers are ASP.NET types, and a plain Microsoft.NET.Sdk test
+      project does not get the shared framework — a PackageReference cannot supply it
+      either (NU1010 under Central Package Management, design §15 step 8).
+    -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ClosedXML" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />
+    <PackageReference Include="NodaTime.Testing" />
+  </ItemGroup>
+
+</Project>

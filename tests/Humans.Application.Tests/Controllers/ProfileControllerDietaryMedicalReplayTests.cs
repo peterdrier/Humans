@@ -165,8 +165,6 @@ public class ProfileControllerDietaryMedicalReplayTests
         // Happy-path scaffolding for the dietary save itself — every test
         // except the validation-failure case needs these to reach the
         // replay-switch.
-        _shiftMgmt.GetOrCreateShiftProfileAsync(_userId)
-            .Returns(new VolunteerEventProfile { UserId = _userId });
     }
 
     [HumansFact]

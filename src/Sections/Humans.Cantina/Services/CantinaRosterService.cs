@@ -1,5 +1,4 @@
 using Humans.Application;
-using Humans.Application.Interfaces.Shifts;
 using Humans.Shifts.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Cantina.Services.Dtos;
@@ -11,7 +10,7 @@ namespace Humans.Cantina.Services;
 /// <summary>
 /// Application-layer implementation of <see cref="ICantinaRosterService"/>.
 /// The on-site cohort (who is around each day) comes from
-/// <see cref="IShiftManagementService.GetOnSiteUserIdsForDayAsync"/>; dietary
+/// <see cref="IShiftManagementServiceRead.GetOnSiteUserIdsForDayAsync"/>; dietary
 /// data (preference, allergies, intolerances) is read from the cross-section
 /// <see cref="IUserServiceRead"/> (cached <see cref="UserInfo"/>/<see cref="ProfileInfo"/>),
 /// since dietary moved to <c>Profile</c>. The service unions the days into a

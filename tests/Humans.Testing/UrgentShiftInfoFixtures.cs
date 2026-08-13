@@ -1,5 +1,4 @@
 using Humans.Domain.Enums;
-using Humans.Application.Interfaces.Shifts;
 using Humans.Shifts.Contracts;
 
 using NodaTime;

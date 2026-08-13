@@ -9,6 +9,7 @@
       tests into substitutes inside a move commit (design §15 step 8).
     -->
     <InternalsVisibleTo Include="Humans.Teams.Tests" />
+    <InternalsVisibleTo Include="Humans.Shifts.Tests" />
     <InternalsVisibleTo Include="Humans.Web.Tests" />
     <InternalsVisibleTo Include="Humans.Integration.Tests" />
     <!--

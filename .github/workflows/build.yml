@@ -51,7 +51,7 @@ env:
     SystemDbContext:src/Humans.Infrastructure
     LegalDbContext:src/Sections/Humans.Consent
     AuditLogDbContext:src/Sections/Humans.AuditLog
-    ShiftsDbContext:src/Humans.Infrastructure
+    ShiftsDbContext:src/Sections/Humans.Shifts
     TeamsDbContext:src/Sections/Humans.Teams
     StoreDbContext:src/Sections/Humans.Store
 

@@ -199,6 +199,14 @@ grep -rn 'Humans\.[A-Za-z]*\.Contracts' src/Humans.Application/Interfaces/<Secti
 grep -rn 'EnumDisplay\|EnumSelectItems' src/
 ```
 
+One more, for the bulk `sed` that follows the searches: a namespace rewrite whose
+last segment is also the prefix of a type name will merge the two.
+`Humans.Web.Models.VolunteerTracking` → `Humans.Shifts.Models` turns
+`Humans.Web.Models.VolunteerTrackingPageViewModel` into `Humans.Shifts.ModelsPageViewModel`,
+which fails inside *generated* Razor naming a namespace that never existed. Anchor the
+pattern on a following `;`, `(` or newline, or sweep afterwards for
+`Humans\.<Section>\.(Models|Services|Data)[A-Za-z]` (proven: Shifts, one hit).
+
 Two shell notes, because the obvious spellings both fail *silently*: `grep`'s default is a basic
 regular expression, so `nameof(<Section>*)` parses `*` as "repeat the previous character" and
 misses `nameof(StoreProduct)` — use the plain prefix. And `src/**/*.resx` is not recursive without
@@ -1224,6 +1232,17 @@ Git Bash.)
    audits stay in `docs/`. Anything the app *serves or fetches* from `docs/` at runtime stays,
    and re-check `AgentSectionDocReader`'s fallback covers the section.
    **A docs path is an API until you have proved otherwise** (spec §7a).
+   - **…and the probe you have to find is not always in `Humans.Agent`.** The
+     invariants doc may move because `AgentSectionDocReader` falls back to
+     `src/Sections/Humans.{key}/Docs/{key}.md`. `Humans.Web/Health/AgentDocsHealthCheck`
+     does not: it fetches `docs/sections/{ProbeSection}.md` through `IGuideContentSource`
+     directly — deliberately, so a cached reader cannot keep reporting Healthy through an
+     outage — with the section key as a literal, and the section it happened to name was
+     Shifts. Moving the doc turns the health check Degraded on every deployed instance,
+     with a green build and a green suite. Run
+     `git ls-files | xargs grep -ln 'docs/sections/<Section>.md'` and read every hit whose
+     filename says nothing about docs; repoint the probe to a whitelisted section whose doc
+     is still in `docs/sections/` (proven: Shifts, repointed to Camps).
    - **`docs/guide/**` stays put, at Guide's own G5 and after.** The template used to say
      "until Guide's own G5", which read as a scheduled move; it is not one.
      `GitHubGuideContentSource` fetches `{GuideSettings.FolderPath}/{stem}.md` from

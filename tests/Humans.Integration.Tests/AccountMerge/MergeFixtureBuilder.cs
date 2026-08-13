@@ -1,3 +1,5 @@
+using Humans.Shifts.Data;
+using Humans.Shifts.Domain;
 using Humans.Auth.Data;
 using Humans.Auth.Domain;
 using Humans.Auth.Contracts;

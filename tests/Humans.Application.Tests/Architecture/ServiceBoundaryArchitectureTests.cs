@@ -56,14 +56,14 @@ public class ServiceBoundaryArchitectureTests
             [SectionRepository("Humans.Consent.Data.ILegalDocumentRepository")] = "Legal",
             [SectionRepository("Humans.Notifications.Data.INotificationRepository")] = "Notifications",
             [SectionRepository("Humans.Auth.Data.IRoleAssignmentRepository")] = "Auth",
-            [typeof(IShiftManagementRepository)] = "Shifts",
+            [SectionRepository("Humans.Shifts.Data.IShiftManagementRepository")] = "Shifts",
             [SectionRepository("Humans.Surveys.Data.ISurveyRepository")] = "Surveys",
             [typeof(ISyncSettingsRepository)] = "GoogleIntegration",
             [SectionRepository("Humans.Teams.Data.ITeamRepository")] = "Teams",
             [SectionRepository("Humans.Tickets.Data.ITicketRepository")] = "Tickets",
             [SectionRepository("Humans.Tickets.Data.ITicketTransferRepository")] = "Tickets",
             [typeof(IUserRepository)] = "Humans",
-            [typeof(IVolunteerTrackingRepository)] = "Shifts",
+            [SectionRepository("Humans.Shifts.Data.IVolunteerTrackingRepository")] = "Shifts",
         };
 
     [HumansFact]

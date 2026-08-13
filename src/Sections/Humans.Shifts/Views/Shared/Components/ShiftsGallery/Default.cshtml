@@ -1,0 +1,148 @@
+@model Humans.Shifts.ViewComponents.ShiftsGalleryViewModel
+@using Humans.Shifts.ViewComponents
+
+@* The four widget-gallery cards that construct section-internal types. Moved out of
+   Shell's WidgetGallery/Index.cshtml at the section's G5 — everything else in the
+   gallery's #shifts block stayed there (nobodies-collective/Humans#866). The wg-* CSS
+   classes are the gallery page's; this renders inside it. *@
+
+@functions {
+    private static IHtmlContent ParamsBlock(params (string Name, string Description)[] entries)
+    {
+        var html = new System.Text.StringBuilder();
+        html.Append("<dl class=\"wg-params\">");
+        foreach (var (name, desc) in entries)
+        {
+            html.Append($"<dt>{System.Net.WebUtility.HtmlEncode(name)}</dt><dd>{desc}</dd>");
+        }
+        html.Append("</dl>");
+        return new HtmlString(html.ToString());
+    }
+}
+
+<div class="wg-card">
+    <div class="wg-card-header">
+        <div>
+            <span class="wg-card-name">_RotaHeader.cshtml</span>
+            <span class="wg-card-kind kind-pa">Partial</span>
+        </div>
+        <span class="wg-card-path">src/Sections/Humans.Shifts/Views/Shared/_RotaHeader.cshtml</span>
+    </div>
+    <div class="wg-card-note">Rota title block — name, description, priority, signup-policy line. Used at the top of rota detail pages.</div>
+    @ParamsBlock(
+        ("@@model", "<code>RotaHeaderViewModel</code> — Rota (RotaInfo), ShowPreferenceStar (bool)")
+    )
+    <div class="wg-card-example @(Model.Rota is null ? "is-empty" : "")">
+        @if (Model.Rota is not null)
+        {
+            @await Html.PartialAsync("_RotaHeader", new RotaHeaderViewModel
+            {
+                Rota = Model.Rota,
+                ShowPreferenceStar = true,
+            })
+        }
+        else
+        {
+            <text>(No rota in the active event — visit <a href="/Admin/Events">/Admin/Events</a> and create a rota under any department to see this populated.)</text>
+        }
+    </div>
+</div>
+
+<div class="wg-card">
+    <div class="wg-card-header">
+        <div>
+            <span class="wg-card-name">_RotaBadges.cshtml</span>
+            <span class="wg-card-kind kind-pa">Partial</span>
+        </div>
+        <span class="wg-card-path">src/Sections/Humans.Shifts/Views/Shared/_RotaBadges.cshtml</span>
+    </div>
+    <div class="wg-card-note">Priority, period, visibility, preference, and tag badges shared by rota headers and the public shifts browser.</div>
+    @ParamsBlock(
+        ("@@model", "<code>RotaHeaderViewModel</code> -- Rota plus ShowPreferenceStar, ShowPeriodBadge, ShowTags, BadgeSpacingClass")
+    )
+    <div class="wg-card-example">
+        @{
+            var widgetGalleryBadgeRota = new RotaInfo(
+                Id: Guid.Empty,
+                EventSettingsId: Guid.Empty,
+                TeamId: Guid.Empty,
+                Name: "Gate Support",
+                Description: null,
+                PracticalInfo: null,
+                Priority: ShiftPriority.Essential,
+                Policy: SignupPolicy.Public,
+                Period: RotaPeriod.Build,
+                IsVisibleToVolunteers: false,
+                Tags: [new ShiftTagSummary(Guid.NewGuid(), "Outdoor"), new ShiftTagSummary(Guid.NewGuid(), "Radio")]);
+        }
+        @await Html.PartialAsync("_RotaBadges", new RotaHeaderViewModel
+        {
+            Rota = widgetGalleryBadgeRota,
+            ShowPreferenceStar = true,
+            BadgeSpacingClass = "me-1",
+        })
+    </div>
+</div>
+
+<div class="wg-card">
+    <div class="wg-card-header">
+        <div>
+            <span class="wg-card-name">_RotaDetails.cshtml</span>
+            <span class="wg-card-kind kind-pa">Partial</span>
+        </div>
+        <span class="wg-card-path">src/Sections/Humans.Shifts/Views/Shared/_RotaDetails.cshtml</span>
+    </div>
+    <div class="wg-card-note">Optional rota description and practical-info markdown block shared by rota headers and the public shifts browser.</div>
+    @ParamsBlock(
+        ("@@model", "<code>RotaHeaderViewModel</code> -- Rota plus ShowDescription, ShowPracticalInfo, DescriptionCssClass, PracticalInfoCssClass")
+    )
+    <div class="wg-card-example">
+        @await Html.PartialAsync("_RotaDetails", new RotaHeaderViewModel
+        {
+            Rota = new RotaInfo(
+                Id: Guid.Empty,
+                EventSettingsId: Guid.Empty,
+                TeamId: Guid.Empty,
+                Name: "Gate Support",
+                Description: "Welcome volunteers, check wristbands, and keep arrivals moving.",
+                PracticalInfo: "Meet at the gate desk. Bring water and a charged phone.",
+                Priority: ShiftPriority.Normal,
+                Policy: SignupPolicy.Public,
+                Period: RotaPeriod.Event,
+                IsVisibleToVolunteers: true,
+                Tags: []),
+            DescriptionCssClass = "text-muted small mb-2",
+            PracticalInfoCssClass = "text-muted small mb-0",
+        })
+    </div>
+</div>
+
+<div class="wg-card">
+    <div class="wg-card-header">
+        <div>
+            <span class="wg-card-name">_EventRotaTable.cshtml</span>
+            <span class="wg-card-kind kind-pa">Partial</span>
+        </div>
+        <span class="wg-card-path">src/Sections/Humans.Shifts/Views/Shared/_EventRotaTable.cshtml</span>
+    </div>
+    <div class="wg-card-note">The shifts table — one row per shift with phase badge, slot count, and signup chips. Rendered here for the first rota of the first department in the active event (up to 8 shifts).</div>
+    @ParamsBlock(
+        ("@@model", "<code>EventRotaTableViewModel</code> — Shifts (List&lt;ShiftDisplayItem&gt;), EventSettings, UserSignupShiftIds, UserSignupStatuses, ShowSignups, plus filter state (FilterDepartmentId, FilterFromDate/ToDate, FilterPeriod, FilterPeriods, FilterTagIds, Sort)")
+    )
+    <div class="wg-card-example @(Model.RotaShifts.Count == 0 ? "is-empty" : "")">
+        @if (Model.RotaShifts.Count > 0 && Model.EventSettings is not null)
+        {
+            @await Html.PartialAsync("_EventRotaTable", new EventRotaTableViewModel
+            {
+                Shifts = Model.RotaShifts.ToList(),
+                EventSettings = Model.EventSettings,
+                UserSignupShiftIds = Model.UserSignupShiftIds.ToHashSet(),
+                ShowSignups = true,
+            })
+        }
+        else
+        {
+            <text>(No rota with shifts found in the active event — create a rota under any department in <a href="/Admin/Events">/Admin/Events</a> with at least one shift.)</text>
+        }
+    </div>
+</div>

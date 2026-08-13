@@ -185,7 +185,9 @@ internal sealed class DevelopmentDashboardSeeder(
         // All-day rotas (Build/Strike) get distinct offsets - duplicate same-date all-day
         // shifts surface as duplicate dropdown options in the range-signup form and
         // confuse the confirmation modal's overlap math.
-        var shifts = new List<(Shift Shift, double ConfirmedRate)>();
+        // A local row, not the Shift entity: Shift is internal to Humans.Shifts since its
+        // G5 move, and the seeder only needs what it reads back off CreateShiftAsync.
+        var shifts = new List<(SeededShift Shift, double ConfirmedRate)>();
         foreach (var (rota, rate) in allRotas)
         {
             var requested = _rng.Next(8, 13);
@@ -225,19 +227,11 @@ internal sealed class DevelopmentDashboardSeeder(
                 if (!result.Succeeded || result.ShiftId is null)
                     throw new InvalidOperationException(result.Message);
 
-                shifts.Add((new Shift
-                {
-                    Id = result.ShiftId.Value,
-                    RotaId = rota.Id,
-                    DayOffset = dayOffset,
-                    StartTime = startTime,
-                    Duration = duration,
-                    MinVolunteers = min,
-                    MaxVolunteers = max,
-                    IsAllDay = isAllDay,
-                    CreatedAt = now,
-                    UpdatedAt = now,
-                }, rate));
+                shifts.Add((new SeededShift(
+                    result.ShiftId.Value,
+                    rota.Id,
+                    dayOffset,
+                    max), rate));
             }
         }
 
@@ -494,4 +488,11 @@ internal sealed class DevelopmentDashboardSeeder(
             yield return SlugHelper.GenerateSlug($"{parentTeam}{DevTeamNameSuffix}");
         }
     }
+
+    /// <summary>
+    /// The four fields the seeder reads back off a created shift when it fans signups
+    /// out over it. Replaces the <c>Shift</c> entity, which turned internal to
+    /// <c>Humans.Shifts</c> at that section's G5 (nobodies-collective/Humans#866).
+    /// </summary>
+    private sealed record SeededShift(Guid Id, Guid RotaId, int DayOffset, int MaxVolunteers);
 }

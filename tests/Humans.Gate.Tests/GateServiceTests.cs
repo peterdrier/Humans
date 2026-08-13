@@ -4,7 +4,6 @@ using Humans.Application;
 using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.EarlyEntry;
 using Humans.Gdpr.Contracts;
-using Humans.Application.Interfaces.Shifts;
 using Humans.Shifts.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Application.Interfaces.Auth;

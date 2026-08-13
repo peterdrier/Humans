@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Humans.Application.DTOs;
-using Humans.Application.DTOs.Shifts;
 using Humans.Governance.Contracts;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Shifts.Contracts;

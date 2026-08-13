@@ -1,3 +1,4 @@
+using Humans.Shifts.Services;
 using Humans.Auth.Contracts;
 using Humans.Auth.Services;
 using Humans.Auth.Domain;
@@ -13,7 +14,6 @@ using Humans.Teams.Domain;
 using Humans.Domain.Enums;
 using Humans.Application.Interfaces.Caching;
 using Humans.Shifts.Contracts;
-using Humans.Application.Services.Shifts;
 using Humans.Teams.Tests.Infrastructure;
 using Humans.Teams.Data;
 using RoleAssignmentService = Humans.Auth.Services.RoleAssignmentService;
@@ -26,7 +26,7 @@ using Humans.Application.Services.GoogleIntegration;
 using Humans.Application.Interfaces.Auth;
 
 using Humans.Infrastructure.Repositories.GoogleIntegration;
-using Humans.Infrastructure.Repositories.Shifts;
+using Humans.Shifts.Data;
 
 namespace Humans.Teams.Tests;
 

@@ -18,7 +18,7 @@ namespace Humans.Web.Health;
 /// A cached reader would refresh the sliding expiration off one warm fetch and keep
 /// reporting Healthy through a revoked token / outage / moved canary. That is also why
 /// the two folder paths below are spelled out here rather than read off the section:
-/// both canaries are Base docs (docs/sections/Shifts.md, docs/features/26-events.md),
+/// both canaries are Base docs (docs/sections/Camps.md, docs/features/26-events.md),
 /// so this check depends on nothing Agent owns except whether the feature is on.
 /// </summary>
 public sealed class AgentDocsHealthCheck(
@@ -31,7 +31,12 @@ public sealed class AgentDocsHealthCheck(
 
     // A section that is always whitelisted and always preloaded (Tier1) — if its
     // doc cannot be fetched, GitHub connectivity for docs/sections is broken.
-    private const string ProbeSection = "Shifts";
+    // Must be a section whose doc is still IN docs/sections: this probe fetches the
+    // folder path literally and has no src/Sections/Humans.{key}/Docs fallback, unlike
+    // AgentSectionDocReader. It was "Shifts" until that section's G5 move took its
+    // invariants doc into the project (nobodies-collective/Humans#866); re-pick when
+    // Camps moves.
+    private const string ProbeSection = "Camps";
 
     // A stable feature-spec canary — fetched from a different folder (docs/features)
     // than sections, so a folder-level fetch regression on one folder doesn't mask

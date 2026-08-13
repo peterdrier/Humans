@@ -7,6 +7,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Humans.Teams.Tests" />
+    <InternalsVisibleTo Include="Humans.Shifts.Tests" />
     <!--
       Humans.Application.Tests, until Shifts and GoogleIntegration move. Five test files there
       (ShiftDashboardMetricsTests, ShiftManagementReadMathTests, ShiftSummaryServiceTests,

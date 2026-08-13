@@ -7,7 +7,7 @@ namespace Humans.Search.Services;
 /// Top-level search orchestrator for the global <c>/Search</c> page. Fans
 /// out to per-section read interfaces (<c>IUserServiceRead</c>,
 /// <c>ITeamServiceRead</c>, <c>ICampServiceRead</c>,
-/// <c>IShiftManagementService</c>, <c>IEventServiceRead</c>), each of which
+/// <c>IShiftManagementServiceRead</c>, <c>IEventServiceRead</c>), each of which
 /// resolves its own case-insensitive match — from a cached snapshot for
 /// teams/camps/humans/events, via Postgres ILike at the DB layer for rotas
 /// only. The orchestrator scores and ranks within each type and returns

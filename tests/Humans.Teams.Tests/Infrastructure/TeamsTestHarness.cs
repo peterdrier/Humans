@@ -7,6 +7,7 @@ using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.EarlyEntry;
 using Humans.Notifications.Contracts;
 using Humans.Shifts.Contracts;
+using Humans.Shifts.Data;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Teams.Data;

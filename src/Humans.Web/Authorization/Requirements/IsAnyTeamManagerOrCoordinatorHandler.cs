@@ -1,5 +1,4 @@
 using System.Security.Claims;
-using Humans.Application.Interfaces.Shifts;
 using Humans.Shifts.Contracts;
 using Humans.Domain.Constants;
 using Humans.UI.Authorization;

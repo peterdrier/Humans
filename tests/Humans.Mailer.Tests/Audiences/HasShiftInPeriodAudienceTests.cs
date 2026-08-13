@@ -1,6 +1,5 @@
 using Humans.Application;
 using AwesomeAssertions;
-using Humans.Application.DTOs.Shifts;
 using Humans.Shifts.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Mailer.Services.Audiences;

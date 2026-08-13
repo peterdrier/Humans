@@ -1,3 +1,4 @@
+using Humans.Shifts.Domain;
 using Humans.Auth.Data;
 using Humans.Auth.Domain;
 using Humans.AuditLog.Data;

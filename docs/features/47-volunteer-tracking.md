@@ -73,7 +73,7 @@ Audit actions: `VolunteerDayOffMarked`, `VolunteerDayOffCleared`. Full design sp
 
 ## Data Model
 
-One new entity, owned by the Shifts section: `VolunteerBuildStatus`. Full field-level invariants in [`docs/sections/Shifts.md` § VolunteerBuildStatus](../sections/Shifts.md#volunteerbuildstatus).
+One new entity, owned by the Shifts section: `VolunteerBuildStatus`. Full field-level invariants in [`src/Sections/Humans.Shifts/Docs/Shifts.md` § VolunteerBuildStatus](../../src/Sections/Humans.Shifts/Docs/Shifts.md#volunteerbuildstatus).
 
 Summary:
 
@@ -133,7 +133,7 @@ All write paths route through `IVolunteerTrackingService` → `IVolunteerTrackin
 
 ## Related
 
-- [`docs/sections/Shifts.md`](../sections/Shifts.md) — section invariant doc; the `VolunteerBuildStatus` sub-section under § Data Model is the canonical entity reference.
+- [`src/Sections/Humans.Shifts/Docs/Shifts.md`](../../src/Sections/Humans.Shifts/Docs/Shifts.md) — section invariant doc; the `VolunteerBuildStatus` sub-section under § Data Model is the canonical entity reference.
 - [`docs/features/shifts/shift-management.md`](shifts/shift-management.md) — base rotas / shifts / signups model; the gap algorithm reads `ShiftSignup` rows it produces.
 - [`docs/features/shifts/shift-signup-visibility.md`](shifts/shift-signup-visibility.md) — site-wide signup-visibility policy; the tracking page does not reuse that policy (its access is the new `VolunteerTrackingWrite` gate, not the public-signup-list gate).
 - [`docs/features/tickets/event-participation.md`](tickets/event-participation.md) — `EventParticipation.Status = Attending` is the pre-filter for the declared-but-unbooked cohort.

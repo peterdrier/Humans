@@ -116,7 +116,7 @@ public class ThingsToDoViewComponent(
                         ? localizer["Todo_ShiftInfo_Pending"].Value
                         : localizer["Todo_ShiftInfo_Done"].Value,
                     IsDone = !needsShiftInfo,
-                    ActionUrl = needsShiftInfo ? Url.Action("ShiftInfo", "Profile") : null,
+                    ActionUrl = needsShiftInfo ? Url.Action("ShiftInfo", "ShiftProfile") : null,
                     ActionText = needsShiftInfo ? localizer["Todo_ShiftInfo_Action"].Value : null,
                     IconClass = "fa-solid fa-calendar-check"
                 });

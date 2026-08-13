@@ -1,3 +1,5 @@
+using Humans.Shifts.Data;
+using Humans.Shifts.Domain;
 using Humans.Teams.Data;
 using Humans.Teams.Domain;
 using AwesomeAssertions;

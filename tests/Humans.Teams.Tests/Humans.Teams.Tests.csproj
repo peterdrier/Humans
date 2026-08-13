@@ -8,6 +8,13 @@
     -->
     <ProjectReference Include="..\..\src\Sections\Humans.Auth\Humans.Auth.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Teams\Humans.Teams.csproj" />
+    <!--
+      TeamsTestHarness declares a lazy ShiftsDbContext pair and TeamServiceTests seeds
+      rotas/shifts/signups through it. Temporary, and the mirror of Humans.Shifts'
+      InternalsVisibleTo("Humans.Teams.Tests") — it goes when those fixtures stop
+      reaching into another section's tables.
+    -->
+    <ProjectReference Include="..\..\src\Sections\Humans.Shifts\Humans.Shifts.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
   </ItemGroup>
 

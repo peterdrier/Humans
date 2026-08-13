@@ -642,3 +642,17 @@ public class PrivacyViewModel
     public DateTime? DeletionRequestedAt { get; set; }
     public DateTime? DeletionScheduledFor { get; set; }
 }
+
+/// <summary>
+/// One no-show row on another user's profile. Shell's: <c>ProfileController</c> builds
+/// the five strings from <c>IShiftSignups.GetNoShowHistoryAsync</c> and this page is its
+/// only consumer, so it never crosses into Humans.Shifts (nobodies-collective/Humans#866).
+/// </summary>
+public sealed class NoShowHistoryItem
+{
+    public string ShiftLabel { get; set; } = string.Empty;
+    public string DepartmentName { get; set; } = string.Empty;
+    public string ShiftDateLabel { get; set; } = string.Empty;
+    public string? MarkedByName { get; set; }
+    public string? MarkedAtLabel { get; set; }
+}

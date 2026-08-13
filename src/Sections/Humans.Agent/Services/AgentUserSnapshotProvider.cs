@@ -4,7 +4,6 @@ using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Auth;
 using Humans.Consent.Contracts;
 using Humans.Feedback.Contracts;
-using Humans.Application.Interfaces.Shifts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;

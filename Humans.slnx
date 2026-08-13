@@ -66,6 +66,7 @@
     <Project Path="src/Sections/Humans.TicketTailor/Humans.TicketTailor.csproj" />
     <Project Path="src/Sections/Humans.Tickets/Humans.Tickets.csproj" />
     <Project Path="src/Sections/Humans.Tickets.Contracts/Humans.Tickets.Contracts.csproj" />
+    <Project Path="src/Sections/Humans.Shifts/Humans.Shifts.csproj" />
     <Project Path="src/Sections/Humans.Teams/Humans.Teams.csproj" />
     <Project Path="src/Sections/Humans.Teams.Contracts/Humans.Teams.Contracts.csproj" />
     <Project Path="src/Sections/Humans.Tour/Humans.Tour.csproj" />
@@ -106,6 +107,7 @@
     <Project Path="tests/Humans.Search.Tests/Humans.Search.Tests.csproj" />
     <Project Path="tests/Humans.Store.Tests/Humans.Store.Tests.csproj" />
     <Project Path="tests/Humans.Surveys.Tests/Humans.Surveys.Tests.csproj" />
+    <Project Path="tests/Humans.Shifts.Tests/Humans.Shifts.Tests.csproj" />
     <Project Path="tests/Humans.Teams.Tests/Humans.Teams.Tests.csproj" />
     <Project Path="tests/Humans.TicketTailor.Tests/Humans.TicketTailor.Tests.csproj" />
     <Project Path="tests/Humans.Tickets.Tests/Humans.Tickets.Tests.csproj" />

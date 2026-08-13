@@ -1,0 +1,824 @@
+using System.ComponentModel.DataAnnotations;
+using Humans.Application;
+using Humans.Application.DTOs;
+using Humans.Application.Interfaces.Dashboard;
+using Humans.Application.Enums;
+using Humans.Shifts.Services;
+using Humans.Shifts.Contracts;
+using Humans.Teams.Contracts;
+using Humans.Domain.Entities;
+using Humans.Shifts.Domain;
+using Humans.Domain.Enums;
+using NodaTime;
+using Humans.UI.Models;
+
+namespace Humans.Shifts.Models;
+
+// === EventSettings ===
+
+internal sealed class EventSettingsViewModel : IValidatableObject
+{
+    public Guid? Id { get; set; }
+
+    [Required, MaxLength(256)]
+    public string EventName { get; set; } = string.Empty;
+
+    [Required, MaxLength(100)]
+    public string TimeZoneId { get; set; } = "Europe/Madrid";
+
+    [Required]
+    public string GateOpeningDate { get; set; } = string.Empty;
+
+    public int BuildStartOffset { get; set; } = -14;
+    public int EventEndOffset { get; set; } = 6;
+    public int StrikeEndOffset { get; set; } = 9;
+
+    // Build sub-period boundaries — defaults match the entity defaults set by EF config.
+    [Range(int.MinValue, -1, ErrorMessage = "First crew start must be a negative offset relative to gate-opening day.")]
+    public int FirstCrewStartOffset { get; set; } = -25;
+
+    [Range(int.MinValue, -1, ErrorMessage = "Set-up week start must be a negative offset relative to gate-opening day.")]
+    public int SetupWeekStartOffset { get; set; } = -16;
+
+    [Range(int.MinValue, -1, ErrorMessage = "Pre-event week start must be a negative offset relative to gate-opening day.")]
+    public int PreEventWeekStartOffset { get; set; } = -9;
+
+    [Range(int.MinValue, -1, ErrorMessage = "Finishing weekend start must be a negative offset relative to gate-opening day.")]
+    public int FinishingWeekendStartOffset { get; set; } = -4;
+
+    public string EarlyEntryCapacityJson { get; set; } = "{}";
+    public string? BarriosEarlyEntryAllocationJson { get; set; }
+
+    public string? EarlyEntryClose { get; set; }
+
+    public bool IsShiftBrowsingOpen { get; set; }
+    public int? GlobalVolunteerCap { get; set; }
+    public int ReminderLeadTimeHours { get; set; } = 24;
+    public bool IsActive { get; set; }
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        if (FirstCrewStartOffset < BuildStartOffset)
+        {
+            yield return new ValidationResult(
+                $"First crew offset cannot be earlier than build start offset ({nameof(BuildStartOffset)}).",
+                [nameof(FirstCrewStartOffset)]);
+        }
+
+        if (FirstCrewStartOffset >= SetupWeekStartOffset
+            || SetupWeekStartOffset >= PreEventWeekStartOffset
+            || PreEventWeekStartOffset >= FinishingWeekendStartOffset)
+        {
+            yield return new ValidationResult(
+                "Build sub-period offsets must be strictly ascending: First crew < Set-up week < Pre-event week < Finishing weekend.",
+                [
+                    nameof(FirstCrewStartOffset),
+                    nameof(SetupWeekStartOffset),
+                    nameof(PreEventWeekStartOffset),
+                    nameof(FinishingWeekendStartOffset)
+                ]);
+        }
+    }
+}
+
+// === Rota ===
+
+internal class CreateRotaModel
+{
+    [Required, MaxLength(256)]
+    public string Name { get; set; } = string.Empty;
+
+    [MaxLength(2000)]
+    public string? Description { get; set; }
+
+    public ShiftPriority Priority { get; set; }
+    public SignupPolicy Policy { get; set; }
+    public RotaPeriod Period { get; set; } = RotaPeriod.Event;
+
+    [MaxLength(2000)]
+    public string? PracticalInfo { get; set; }
+
+    /// <summary>
+    /// Comma-separated tag IDs to assign to the rota.
+    /// </summary>
+    public string? TagIds { get; set; }
+}
+
+internal sealed class EditRotaModel : CreateRotaModel
+{
+    public Guid RotaId { get; set; }
+}
+
+internal sealed class MoveRotaModel
+{
+    public Guid TargetTeamId { get; set; }
+}
+
+// === Shift ===
+
+internal class CreateShiftModel
+{
+    public Guid RotaId { get; set; }
+
+    [MaxLength(2000)]
+    public string? Description { get; set; }
+
+    public int DayOffset { get; set; }
+
+    [Required]
+    public string StartTime { get; set; } = "08:00";
+
+    public double DurationHours { get; set; } = 4;
+
+    public int MinVolunteers { get; set; } = 1;
+    public int MaxVolunteers { get; set; } = 5;
+    public bool AdminOnly { get; set; }
+}
+
+internal sealed class EditShiftModel : CreateShiftModel
+{
+    public Guid ShiftId { get; set; }
+}
+
+// === Staffing Grid (Build/Strike) ===
+
+internal sealed class StaffingGridModel
+{
+    public Guid RotaId { get; set; }
+    public List<DayStaffingEntry> Days { get; set; } = [];
+}
+
+internal sealed class DayStaffingEntry
+{
+    public int DayOffset { get; set; }
+    public int MinVolunteers { get; set; } = 2;
+    public int MaxVolunteers { get; set; } = 5;
+}
+
+// === Generate Event Shifts ===
+
+internal sealed class GenerateEventShiftsModel
+{
+    public int StartDayOffset { get; set; }
+    public int EndDayOffset { get; set; }
+    public List<TimeSlotEntry> TimeSlots { get; set; } = [];
+    public int MinVolunteers { get; set; } = 2;
+    public int MaxVolunteers { get; set; } = 5;
+}
+
+internal sealed class TimeSlotEntry
+{
+    public string StartTime { get; set; } = "08:00";
+    public double DurationHours { get; set; } = 4;
+}
+
+// === Browse ===
+
+internal sealed class ShiftBrowseViewModel
+{
+    public BurnSettingsInfo? EventSettings { get; set; }
+    public List<DepartmentShiftGroup> Departments { get; set; } = [];
+    public List<DepartmentOption> AllDepartments { get; set; } = [];
+    public Guid? FilterDepartmentId { get; set; }
+    public string? FilterFromDate { get; set; }
+    public string? FilterToDate { get; set; }
+    public string? FilterPeriod { get; set; }
+
+    /// <summary>
+    /// Active period filters for multiselect phase cards (Build, Event, Strike).
+    /// When all three are selected (or none explicitly set), no period filtering is applied.
+    /// </summary>
+    public List<string> FilterPeriods { get; set; } = [];
+
+    public bool ShowFullShifts { get; set; }
+    public Guid UserId { get; set; }
+    public HashSet<Guid> UserSignupShiftIds { get; set; } = [];
+    public Dictionary<Guid, SignupStatus> UserSignupStatuses { get; set; } = new();
+    public bool ShowSignups { get; set; }
+
+    /// <summary>
+    /// True when the viewer has no dietary preferences recorded; partials lock out
+    /// Sign-Up buttons and the banner view component renders the inline prompt.
+    /// </summary>
+    public bool SignupsBlockedByMissingDietary { get; set; }
+
+    /// <summary>
+    /// True when early-entry (build) signups have closed
+    /// (<see cref="IBurnSettingsInfo.EarlyEntryClose"/> passed) and the viewer is not
+    /// privileged. Row partials combine this with <see cref="ShiftInfo.IsEarlyEntry"/>
+    /// so only build shifts lock; mirrors the server gate in ShiftSignupService.
+    /// </summary>
+    public bool EarlyEntrySignupsClosed { get; set; }
+
+    /// <summary>
+    /// Department coverage pies rendered above the page. One row per
+    /// top-level department + each promoted sub-team. Empty when the event
+    /// has no rotas that contribute pie hours.
+    /// </summary>
+    public IReadOnlyList<DepartmentCoveragePie> CoveragePies { get; set; } = [];
+
+    /// <summary>
+    /// Current sort mode: "urgency" for most-needed-first, null/empty for default by-department grouping.
+    /// </summary>
+    public string? Sort { get; set; }
+
+    /// <summary>
+    /// Flat list of rotas sorted by urgency score (populated only when Sort == "urgency").
+    /// </summary>
+    public List<RotaShiftGroup> UrgencyRankedRotas { get; set; } = [];
+
+    /// <summary>
+    /// All available tags for the filter UI.
+    /// </summary>
+    public List<ShiftTagSummary> AllTags { get; set; } = [];
+
+    /// <summary>
+    /// Currently selected tag IDs for filtering.
+    /// </summary>
+    public List<Guid> FilterTagIds { get; set; } = [];
+
+    /// <summary>
+    /// Tag IDs the current volunteer has selected as preferences (for highlighting).
+    /// </summary>
+    public HashSet<Guid> UserPreferredTagIds { get; set; } = [];
+
+    /// <summary>
+    /// Count of the current user's active signups (confirmed + pending), shown as badge on "My Shifts" tab.
+    /// </summary>
+    public int MySignupCount { get; set; }
+
+    /// <summary>
+    /// All active signups across all events for the current user, projected for the
+    /// build/strike conflict-confirmation modal in the dashboard view.
+    /// </summary>
+    public IReadOnlyList<UserSignupConflictItem> UserActiveSignups { get; set; } = [];
+}
+
+internal sealed class DepartmentOption
+{
+    public Guid TeamId { get; set; }
+    public string Name { get; set; } = string.Empty;
+}
+
+internal sealed class DepartmentShiftGroup
+{
+    public Guid TeamId { get; set; }
+    public string TeamName { get; set; } = string.Empty;
+    public string? TeamDescription { get; set; }
+    public string TeamSlug { get; set; } = string.Empty;
+    public List<RotaShiftGroup> Rotas { get; set; } = [];
+}
+
+internal sealed class RotaShiftGroup
+{
+    public RotaInfo Rota { get; set; } = null!;
+    public List<ShiftDisplayItem> Shifts { get; set; } = [];
+
+    /// <summary>Department name, populated for urgency-sorted view where rotas are shown flat.</summary>
+    public string? DepartmentName { get; set; }
+
+    /// <summary>Department slug for linking, populated for urgency-sorted view.</summary>
+    public string? DepartmentSlug { get; set; }
+
+    /// <summary>Highest urgency score among shifts in this rota (for sorting).</summary>
+    public double MaxUrgencyScore { get; set; }
+
+    /// <summary>Total confirmed signups across all shifts in this rota.</summary>
+    public int TotalConfirmed { get; set; }
+
+    /// <summary>Total max volunteer slots across all shifts in this rota.</summary>
+    public int TotalSlots { get; set; }
+}
+
+internal sealed class ShiftDisplayItem
+{
+    public ShiftInfo Shift { get; set; } = null!;
+    public Instant AbsoluteStart { get; set; }
+    public Instant AbsoluteEnd { get; set; }
+    public ShiftPeriod Period { get; set; }
+    public int ConfirmedCount { get; set; }
+    public int RemainingSlots { get; set; }
+    public double UrgencyScore { get; set; }
+    public IReadOnlyList<ShiftSignupInfo> Signups { get; set; } = [];
+}
+
+// === Mine ===
+
+internal sealed class MyShiftsViewModel
+{
+    public BurnSettingsInfo? EventSettings { get; set; }
+    public Guid UserId { get; set; }
+    public List<MySignupItem> Upcoming { get; set; } = [];
+    public List<MySignupItem> Pending { get; set; } = [];
+    public List<MySignupItem> Past { get; set; } = [];
+    public string? ICalUrl { get; set; }
+    public List<int> AvailableDayOffsets { get; set; } = [];
+
+    /// <summary>
+    /// True when the viewer has no dietary preferences recorded; the banner view
+    /// component renders the inline prompt and downstream signup CTAs are locked.
+    /// </summary>
+    public bool SignupsBlockedByMissingDietary { get; set; }
+}
+
+internal sealed class MySignupItem
+{
+    public ShiftSignup Signup { get; set; } = null!;
+    public string? RotaName { get; set; }
+    public string DepartmentName { get; set; } = string.Empty;
+    public Instant AbsoluteStart { get; set; }
+    public Instant AbsoluteEnd { get; set; }
+
+    /// <summary>
+    /// True when the Mine view must lock the bail/withdraw control for this signup:
+    /// it's an early-entry (build) shift, early-entry close has passed, and the viewer
+    /// cannot approve signups for the signup's own department — the per-team gate
+    /// ShiftSignupService.BailAsync/BailRangeAsync enforces server-side.
+    /// Only the Mine action sets this; other MySignupItem surfaces leave it false.
+    /// </summary>
+    public bool BailLocked { get; set; }
+}
+
+// === ShiftAdmin ===
+
+internal sealed class ShiftAdminViewModel
+{
+    public TeamInfo Department { get; set; } = null!;
+    public BurnSettingsInfo EventSettings { get; set; } = null!;
+    public List<Rota> Rotas { get; set; } = [];
+    public List<ShiftSignup> PendingSignups { get; set; } = [];
+    public int TotalSlots { get; set; }
+    public int ConfirmedCount { get; set; }
+    public bool CanManageShifts { get; set; }
+    public bool CanApproveSignups { get; set; }
+    public Dictionary<Guid, VolunteerBadgesViewModel> VolunteerProfiles { get; set; } = new();
+
+    /// <summary>
+    /// User display data (BurnerName, ProfilePictureUrl) keyed by UserId for every signup
+    /// in <see cref="Rotas"/> and <see cref="PendingSignups"/>. Resolved by the controller via
+    /// <c>IUserService.GetUserInfosAsync</c>; the view reads from this dictionary instead of
+    /// navigating <c>ShiftSignup.User</c> (cross-domain nav, removed per design-rules §6c).
+    /// </summary>
+    public IReadOnlyDictionary<Guid, UserInfo> Users { get; set; } = new Dictionary<Guid, UserInfo>();
+
+    public bool CanViewMedical { get; set; }
+    public List<DailyStaffingData> StaffingData { get; set; } = [];
+    public List<DailyStaffingHours> StaffingHours { get; set; } = [];
+    public Instant Now { get; set; }
+    public List<DepartmentOption> AllDepartments { get; set; } = [];
+
+    /// <summary>
+    /// All available tags for the tag picker UI.
+    /// </summary>
+    public List<ShiftTagSummary> AllTags { get; set; } = [];
+
+    /// <summary>
+    /// True when the coordinator has activated the "Incomplete onboarding" filter
+    /// chip on the Pending Approvals list (only show signups whose users are
+    /// missing required Volunteer consents).
+    /// </summary>
+    public bool IncompleteOnboardingFilter { get; set; }
+}
+
+// === Homepage ===
+
+/// <summary>
+/// The home dashboard's shift cards. Binds <see cref="IDashboardService"/>'s own
+/// records rather than the section's presentation types: the dashboard resolves
+/// rota name, department name and the absolute window itself, so this page never
+/// names a Shifts type (nobodies-collective/Humans#866, G5).
+/// </summary>
+
+// === Shift Info (user-scoped profile) ===
+
+internal sealed class ShiftInfoViewModel
+{
+    public List<string> SelectedSkills { get; set; } = [];
+    public string? SkillOtherText { get; set; }
+    public List<string> SelectedQuirks { get; set; } = []; // Toggle quirks only (no time prefs)
+    public string? TimePreference { get; set; } // Mutually exclusive: Early Bird, Night Owl, All Day, No Preference
+    public List<string> SelectedLanguages { get; set; } = [];
+    public string? LanguageOtherText { get; set; }
+
+    // Skill options with emoji prefixes for display
+    internal static readonly string[] SkillOptions = ["Bartending", "First Aid", "Driving", "Sound", "Electrical", "Construction", "Cooking", "Art", "DJ", "Other"];
+    internal static readonly string[] LanguageOptions = ["English", "Spanish", "German", "French", "Italian", "Portuguese", "Catalan", "Other"];
+
+    // Time preferences — mutually exclusive, stored as quirk value
+    internal static readonly string[] TimePreferenceOptions = ["Early Bird", "Night Owl", "All Day", "No Preference"];
+
+    // Toggle quirks — multi-select, separate from time preference
+    internal static readonly string[] ToggleQuirkOptions = ["Sober Shift", "Work In Shade", "Quiet Work", "Physical Work OK", "No Heights"];
+
+    private static readonly string[] StoredSkillOptions = SkillOptions.Where(s => !string.Equals(s, "Other", StringComparison.Ordinal)).ToArray();
+    private static readonly string[] StoredLanguageOptions = LanguageOptions.Where(l => !string.Equals(l, "Other", StringComparison.Ordinal)).ToArray();
+
+    // Emoji maps for view rendering
+    internal static readonly Dictionary<string, string> SkillEmoji = new(StringComparer.Ordinal)
+    {
+        ["Bartending"] = "\U0001f378",
+        ["Cooking"] = "\U0001f373",
+        ["Sound"] = "\U0001f39a\ufe0f",
+        ["DJ"] = "\U0001f3a7",
+        ["First Aid"] = "\U0001fa7a",
+        ["Electrical"] = "\u26a1",
+        ["Driving"] = "\U0001f697",
+        ["Construction"] = "\U0001f528",
+        ["Art"] = "\U0001f3a8",
+        ["Other"] = "\u2728"
+    };
+
+    internal static readonly Dictionary<string, string> LanguageEmoji = new(StringComparer.Ordinal)
+    {
+        ["English"] = "EN",
+        ["Spanish"] = "ES",
+        ["French"] = "FR",
+        ["German"] = "DE",
+        ["Italian"] = "IT",
+        ["Portuguese"] = "PT",
+        ["Catalan"] = "CA",
+        ["Other"] = "\U0001f30d"
+    };
+
+    internal static readonly Dictionary<string, string> TimePreferenceEmoji = new(StringComparer.Ordinal)
+    {
+        ["Early Bird"] = "\U0001f305",
+        ["Night Owl"] = "\U0001f319",
+        ["All Day"] = "\u2600\ufe0f",
+        ["No Preference"] = "\U0001f937"
+    };
+
+    internal static readonly Dictionary<string, string> TimePreferenceDesc = new(StringComparer.Ordinal)
+    {
+        ["Early Bird"] = "Morning shifts, set up and prep",
+        ["Night Owl"] = "Evening and late-night shifts",
+        ["All Day"] = "Flexible, morning through evening",
+        ["No Preference"] = "I'll take whatever's needed"
+    };
+
+    internal static ShiftInfoViewModel FromProfile(ShiftVolunteerProfileInfo? profile)
+    {
+        IReadOnlyList<string> quirks = profile?.Quirks ?? [];
+        IReadOnlyList<string> skills = profile?.Skills ?? [];
+        IReadOnlyList<string> languages = profile?.Languages ?? [];
+
+        var viewModel = new ShiftInfoViewModel
+        {
+            SelectedSkills = skills.Where(s => !s.StartsWith("Other:", StringComparison.Ordinal)).ToList(),
+            SkillOtherText = skills.FirstOrDefault(s => s.StartsWith("Other:", StringComparison.Ordinal))?.Substring(6).Trim(),
+            SelectedQuirks = ExtractToggleQuirks(quirks),
+            TimePreference = ExtractTimePreference(quirks),
+            SelectedLanguages = languages.Where(l => !l.StartsWith("Other:", StringComparison.Ordinal)).ToList(),
+            LanguageOtherText = languages.FirstOrDefault(l => l.StartsWith("Other:", StringComparison.Ordinal))?.Substring(6).Trim(),
+        };
+
+        if (viewModel.SkillOtherText is not null && !viewModel.SelectedSkills.Contains("Other", StringComparer.Ordinal))
+            viewModel.SelectedSkills.Add("Other");
+        if (viewModel.LanguageOtherText is not null && !viewModel.SelectedLanguages.Contains("Other", StringComparer.Ordinal))
+            viewModel.SelectedLanguages.Add("Other");
+
+        return viewModel;
+    }
+
+    /// <summary>Extract the time preference value from a flat quirks array.</summary>
+    internal static string? ExtractTimePreference(IReadOnlyList<string> quirks)
+        => quirks.FirstOrDefault(q => TimePreferenceOptions.Contains(q, StringComparer.Ordinal));
+
+    /// <summary>Extract toggle quirks (excluding time preferences) from a flat quirks array.</summary>
+    internal static List<string> ExtractToggleQuirks(IReadOnlyList<string> quirks)
+        => quirks.Where(q => !TimePreferenceOptions.Contains(q, StringComparer.Ordinal)).ToList();
+
+    /// <summary>Merge a time preference and toggle quirks back into a flat quirks array.</summary>
+    internal static List<string> MergeQuirks(string? timePreference, List<string> toggleQuirks)
+    {
+        var result = new List<string>(toggleQuirks);
+        if (!string.IsNullOrEmpty(timePreference))
+            result.Add(timePreference);
+        return result;
+    }
+
+    internal static List<string> ExtractUnknownSkills(IReadOnlyList<string> skills)
+        => skills
+            .Where(s => !s.StartsWith("Other:", StringComparison.Ordinal) &&
+                !StoredSkillOptions.Contains(s, StringComparer.Ordinal))
+            .ToList();
+
+    internal static List<string> ExtractUnknownLanguages(IReadOnlyList<string> languages)
+        => languages
+            .Where(l => !l.StartsWith("Other:", StringComparison.Ordinal) &&
+                !StoredLanguageOptions.Contains(l, StringComparer.Ordinal))
+            .ToList();
+
+    internal static List<string> ExtractUnknownQuirks(IReadOnlyList<string> quirks)
+        => quirks
+            .Where(q => !TimePreferenceOptions.Contains(q, StringComparer.Ordinal) &&
+                !ToggleQuirkOptions.Contains(q, StringComparer.Ordinal))
+            .ToList();
+
+    internal static List<string> MergeSkills(List<string>? selectedSkills, string? skillOtherText, IReadOnlyList<string>? existingSkills)
+    {
+        var result = new List<string>(selectedSkills ?? []);
+        if (result.Contains("Other", StringComparer.Ordinal))
+        {
+            result.Remove("Other");
+            if (!string.IsNullOrWhiteSpace(skillOtherText))
+                result.Add($"Other: {skillOtherText.Trim()}");
+        }
+
+        result.AddRange(ExtractUnknownSkills(existingSkills ?? []));
+        return result.Distinct(StringComparer.Ordinal).ToList();
+    }
+
+    internal static List<string> MergeLanguages(List<string>? selectedLanguages, string? languageOtherText, IReadOnlyList<string>? existingLanguages)
+    {
+        var result = new List<string>(selectedLanguages ?? []);
+        if (result.Contains("Other", StringComparer.Ordinal))
+        {
+            result.Remove("Other");
+            if (!string.IsNullOrWhiteSpace(languageOtherText))
+                result.Add($"Other: {languageOtherText.Trim()}");
+        }
+
+        result.AddRange(ExtractUnknownLanguages(existingLanguages ?? []));
+        return result.Distinct(StringComparer.Ordinal).ToList();
+    }
+
+    internal static List<string> MergePersistedQuirks(
+        string? timePreference,
+        List<string>? selectedQuirks,
+        IReadOnlyList<string>? existingQuirks)
+    {
+        var result = MergeQuirks(timePreference, selectedQuirks ?? []);
+        result.AddRange(ExtractUnknownQuirks(existingQuirks ?? []));
+        return result.Distinct(StringComparer.Ordinal).ToList();
+    }
+}
+
+// === Dashboard ===
+
+internal sealed class ShiftDashboardViewModel
+{
+    public List<UrgentShiftInfo> Shifts { get; set; } = [];
+    public List<DepartmentOption> Departments { get; set; } = [];
+    public Guid? SelectedDepartmentId { get; set; }
+    public Guid? SelectedRotaId { get; set; }
+    /// <summary>ISO date string passed via query — round-trips through the form input.</summary>
+    public string? SelectedStartDate { get; set; }
+    /// <summary>ISO date string passed via query — round-trips through the form input.</summary>
+    public string? SelectedEndDate { get; set; }
+    /// <summary>Parsed start date if <see cref="SelectedStartDate"/> was a valid ISO date.</summary>
+    public LocalDate? FilterStartDate { get; set; }
+    /// <summary>Parsed end date if <see cref="SelectedEndDate"/> was a valid ISO date.</summary>
+    public LocalDate? FilterEndDate { get; set; }
+    public ShiftPeriod? SelectedPeriod { get; set; }
+    public BuildSubPeriod? SelectedSubPeriod { get; set; }
+    public BurnSettingsInfo EventSettings { get; set; } = null!;
+    public List<DailyStaffingData> StaffingData { get; set; } = [];
+    public List<DailyStaffingHours> StaffingHours { get; set; } = [];
+
+    public DashboardOverview? Overview { get; set; }
+    public IReadOnlyList<CoordinatorActivityRow> CoordinatorActivity { get; set; } = [];
+    public IReadOnlyList<DashboardTrendPoint> Trends { get; set; } = [];
+    public IReadOnlyList<DailyDepartmentStaffing> DailyDepartmentStaffing { get; set; } = [];
+    public IReadOnlyList<ShiftDurationBreakdownRow> ShiftDurationBreakdown { get; set; } = [];
+    public CoverageHeatmap CoverageHeatmap { get; set; } = new([], []);
+    public TrendWindow TrendWindow { get; set; } = TrendWindow.Last30Days;
+    public bool IsDevelopment { get; set; }
+    public BuildDayCountdown Countdown { get; set; } = new(0, LocalDate.MinIsoValue, 0, 0);
+}
+
+internal sealed record BuildDayCountdown(int DaysToBuild, LocalDate FirstBuildDay, int Weeks, int RemainderDays);
+
+internal sealed class VolunteerSearchResult
+{
+    public Guid UserId { get; set; }
+    public string DisplayName { get; set; } = string.Empty;
+    public List<string> Skills { get; set; } = [];
+    public List<string> Quirks { get; set; } = [];
+    public List<string> Languages { get; set; } = [];
+    public string? DietaryPreference { get; set; }
+    public int BookedShiftCount { get; set; }
+    public bool HasOverlap { get; set; }
+    public bool IsInPool { get; set; }
+    public string? MedicalConditions { get; set; }
+}
+
+// === Shifts Summary Card ===
+
+
+// === Shift Signups ViewComponent ===
+//
+// ShiftSignupsViewMode is public beside the component under Contracts/ — it is a
+// parameter of the public InvokeAsync (design §15 step 6).
+
+/// <summary>
+/// How a shift table renders its signup affordance.
+/// FormPost = legacy range form + per-shift POST (OnboardingWidget wizard).
+/// InstantToggle = per-day AJAX toggle button (the /Shifts browse page).
+/// </summary>
+internal enum ShiftSignupInteraction
+{
+    FormPost,
+    InstantToggle
+}
+
+/// <summary>
+/// Bound by the <c>&lt;vc:shift-signups&gt;</c> card. Its rows are the leaf
+/// <see cref="ShiftSignupSummary"/> rather than entity-bearing MySignupItems, because
+/// the component is public and cannot inject the section-internal row view (CS0051) —
+/// see <c>Contracts/ShiftSignupsViewComponent.cs</c>.
+/// </summary>
+internal sealed class ShiftSignupsViewModel
+{
+    public List<ShiftSignupsRow> Upcoming { get; set; } = [];
+    public List<ShiftSignupsRow> Pending { get; set; } = [];
+    public List<ShiftSignupsRow> Past { get; set; } = [];
+    public BurnSettingsInfo? EventSettings { get; set; }
+    public ShiftSignupsViewMode ViewMode { get; set; }
+    public Guid UserId { get; set; }
+    public string? DisplayName { get; set; }
+}
+
+/// <summary>One row of the signups card: the flat signup plus its department name.</summary>
+internal sealed record ShiftSignupsRow(ShiftSignupSummary Signup, string DepartmentName);
+
+// === Rota Partial View Models ===
+
+internal sealed class RotaHeaderViewModel
+{
+    public RotaInfo Rota { get; set; } = null!;
+    public bool ShowPreferenceStar { get; set; }
+    public bool ShowPeriodBadge { get; set; } = true;
+    public bool ShowTags { get; set; } = true;
+    public bool ShowDescription { get; set; } = true;
+    public bool ShowPracticalInfo { get; set; } = true;
+    public string BadgeSpacingClass { get; set; } = "ms-1";
+    public string DescriptionCssClass { get; set; } = "text-muted small";
+    public string PracticalInfoCssClass { get; set; } = "text-muted small";
+}
+
+internal sealed record UserSignupConflictItem(
+    LocalDate Date,
+    string RotaName,
+    Instant AbsoluteStart,
+    Instant AbsoluteEnd,
+    string DisplayStart,
+    string DisplayEnd);
+
+internal sealed record ShiftWindow(Instant AbsoluteStart, Instant AbsoluteEnd);
+
+internal sealed class BuildStrikeRotaTableViewModel
+{
+    public RotaShiftGroup RotaGroup { get; set; } = null!;
+
+    /// <summary>
+    /// The burn this rota belongs to, as the cross-section read DTO. Every consumer
+    /// of this partial — browse, onboarding, and the widget gallery — resolves the
+    /// active burn through <see cref="IBurnSettingsService"/>, so the EF entity never
+    /// reaches a view model (#809).
+    /// </summary>
+    public BurnSettingsInfo EventSettings { get; set; } = null!;
+    public HashSet<Guid> UserSignupShiftIds { get; set; } = [];
+    public Dictionary<Guid, SignupStatus> UserSignupStatuses { get; set; } = new();
+    public bool ShowSignups { get; set; }
+
+    /// <summary>
+    /// True when the viewer has no dietary preferences recorded; the date-range
+    /// Sign-Up form is rendered disabled with the locked-out copy.
+    /// </summary>
+    public bool SignupsBlockedByMissingDietary { get; set; }
+
+    /// <summary>True when early-entry signups have closed for a non-privileged
+    /// viewer; propagated to each build/strike row (see ShiftBrowseViewModel).</summary>
+    public bool EarlyEntrySignupsClosed { get; set; }
+
+    public Guid? FilterDepartmentId { get; set; }
+    public string? FilterFromDate { get; set; }
+    public string? FilterToDate { get; set; }
+    public string? FilterPeriod { get; set; }
+    public List<string> FilterPeriods { get; set; } = [];
+    public List<Guid> FilterTagIds { get; set; } = [];
+    public string? Sort { get; set; }
+    public IReadOnlyList<UserSignupConflictItem> UserActiveSignups { get; set; } = [];
+    public IReadOnlyDictionary<int, ShiftWindow> RotaWindowsByDayOffset { get; set; } = new Dictionary<int, ShiftWindow>();
+
+    /// <summary>Controller the date-range Sign Up form posts to. Default = the
+    /// public Shifts controller; the onboarding widget overrides this so the
+    /// inline rota table posts back into the widget flow.</summary>
+    public string SignUpRangeController { get; set; } = "OnboardingWidget";
+    public string SignUpRangeAction { get; set; } = "SignUpRange";
+
+    /// <summary>Signup affordance mode. Defaults to FormPost so OnboardingWidget renders unchanged.</summary>
+    public ShiftSignupInteraction Interaction { get; set; } = ShiftSignupInteraction.FormPost;
+}
+
+internal sealed class EventRotaTableViewModel
+{
+    public List<ShiftDisplayItem> Shifts { get; set; } = [];
+
+    /// <inheritdoc cref="BuildStrikeRotaTableViewModel.EventSettings" />
+    public BurnSettingsInfo EventSettings { get; set; } = null!;
+    public HashSet<Guid> UserSignupShiftIds { get; set; } = [];
+    public Dictionary<Guid, SignupStatus> UserSignupStatuses { get; set; } = new();
+    public bool ShowSignups { get; set; }
+
+    /// <summary>
+    /// True when the viewer has no dietary preferences recorded; per-shift Sign-Up
+    /// buttons are rendered disabled with the locked-out copy.
+    /// </summary>
+    public bool SignupsBlockedByMissingDietary { get; set; }
+
+    /// <summary>True when early-entry signups have closed for a non-privileged
+    /// viewer; propagated to each event row (see ShiftBrowseViewModel).</summary>
+    public bool EarlyEntrySignupsClosed { get; set; }
+
+    public Guid? FilterDepartmentId { get; set; }
+    public string? FilterFromDate { get; set; }
+    public string? FilterToDate { get; set; }
+    public string? FilterPeriod { get; set; }
+    public List<string> FilterPeriods { get; set; } = [];
+    public List<Guid> FilterTagIds { get; set; } = [];
+    public string? Sort { get; set; }
+
+    /// <summary>Controller the per-shift Sign Up form posts to. The FormPost
+    /// branch is only used by the onboarding widget, so the default targets it;
+    /// the browse page uses InstantToggle and never renders this form.</summary>
+    public string SignUpController { get; set; } = "OnboardingWidget";
+    public string SignUpAction { get; set; } = "SignUp";
+
+    /// <summary>Signup affordance mode. Defaults to FormPost so OnboardingWidget renders unchanged.</summary>
+    public ShiftSignupInteraction Interaction { get; set; } = ShiftSignupInteraction.FormPost;
+}
+
+// === No-Show History ===
+
+
+// === Rota Row View Models ===
+
+/// <summary>One Build/Strike all-day day-row. Action cell varies by Interaction.</summary>
+internal sealed class BuildStrikeRotaRowViewModel
+{
+    public ShiftDisplayItem Item { get; set; } = null!;
+
+    /// <inheritdoc cref="BuildStrikeRotaTableViewModel.EventSettings" />
+    public BurnSettingsInfo Es { get; set; } = null!;
+    public bool IsSignedUp { get; set; }
+    public SignupStatus? SignupStatus { get; set; }
+    public bool SignupsBlockedByMissingDietary { get; set; }
+
+    /// <summary>Page-level early-entry-closed flag; the row combines it with
+    /// <see cref="ShiftInfo.IsEarlyEntry"/> to lock only build shifts.</summary>
+    public bool EarlyEntrySignupsClosed { get; set; }
+    public ShiftSignupInteraction Interaction { get; set; } = ShiftSignupInteraction.FormPost;
+}
+
+/// <summary>
+/// The instant per-day toggle button, shared by the Event and Build/Strike row
+/// partials so the JS contract (class, data-* and ARIA attributes) stays in one
+/// place. A Pending signup renders the "applied, awaiting approval" state.
+/// </summary>
+internal sealed class ShiftToggleButtonModel
+{
+    public Guid ShiftId { get; set; }
+    public bool IsSignedUp { get; set; }
+    public SignupStatus? Status { get; set; }
+    public bool IsFull { get; set; }
+    public bool DietaryBlocked { get; set; }
+
+    /// <summary>
+    /// True when this is an early-entry (build) shift, early-entry signups have
+    /// closed (<see cref="IBurnSettingsInfo.EarlyEntryClose"/> passed) and the viewer
+    /// is not privileged. The button is rendered as a disabled "set-up closed"
+    /// state; the server-side gate in ShiftSignupService still enforces it.
+    /// </summary>
+    public bool EarlyEntryClosed { get; set; }
+}
+
+/// <summary>One timed Event-shift row. Action cell varies by Interaction; FormPost reuses the per-row signup form.</summary>
+internal sealed class EventRotaRowViewModel
+{
+    public ShiftDisplayItem Item { get; set; } = null!;
+
+    /// <inheritdoc cref="BuildStrikeRotaTableViewModel.EventSettings" />
+    public BurnSettingsInfo Es { get; set; } = null!;
+    public bool IsSignedUp { get; set; }
+    public SignupStatus? SignupStatus { get; set; }
+    public bool SignupsBlockedByMissingDietary { get; set; }
+
+    /// <summary>Page-level early-entry-closed flag; the row combines it with
+    /// <see cref="ShiftInfo.IsEarlyEntry"/> to lock only build shifts.</summary>
+    public bool EarlyEntrySignupsClosed { get; set; }
+    public ShiftSignupInteraction Interaction { get; set; } = ShiftSignupInteraction.FormPost;
+
+    // FormPost-only: where the per-row signup form posts, plus filter context for the PRG redirect.
+    // Default targets the onboarding widget (the only FormPost consumer); the browse page uses InstantToggle.
+    public string SignUpController { get; set; } = "OnboardingWidget";
+    public string SignUpAction { get; set; } = "SignUp";
+    public Guid? FilterDepartmentId { get; set; }
+    public string? FilterFromDate { get; set; }
+    public string? FilterToDate { get; set; }
+    public string? FilterPeriod { get; set; }
+    public IReadOnlyList<string> FilterPeriods { get; set; } = [];
+    public IReadOnlyList<Guid> FilterTagIds { get; set; } = [];
+    public string? Sort { get; set; }
+}

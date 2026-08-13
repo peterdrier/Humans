@@ -14,7 +14,6 @@ using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Auth;
 using Humans.Application.Services.Profiles;
-using Humans.Application.Services.Shifts;
 using Humans.Application.Services.Users;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;

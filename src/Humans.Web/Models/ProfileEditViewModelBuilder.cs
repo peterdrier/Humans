@@ -1,6 +1,5 @@
 using Humans.Application;
 using Humans.Governance.Contracts;
-using Humans.Application.Interfaces.Shifts;
 using Humans.Shifts.Contracts;
 using Humans.Application.Extensions;
 using Humans.Domain.Enums;
@@ -13,7 +12,7 @@ public static class ProfileEditViewModelBuilder
         UserInfo info,
         IReadOnlyList<UserApplicationSnapshot> applications,
         IReadOnlyList<ShiftTagSummary> allShiftTags,
-        IReadOnlyList<ShiftTagPreferenceSummary> preferredShiftTags,
+        IReadOnlyList<ShiftTagPreferenceInfo> preferredShiftTags,
         bool preview,
         Func<ProfileInfo, string?> customPictureUrl)
     {
@@ -98,7 +97,7 @@ public static class ProfileEditViewModelBuilder
             AllShiftTags = allShiftTags
                 .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
                 .ToList(),
-            EditableShiftTagIds = preferredShiftTags.Select(t => t.Id).ToList()
+            EditableShiftTagIds = preferredShiftTags.Select(t => t.ShiftTagId).ToList()
         };
     }
 }

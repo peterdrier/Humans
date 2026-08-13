@@ -1,0 +1,45 @@
+@model Humans.Shifts.Models.EventRotaTableViewModel
+
+@{
+    var es = Model.EventSettings;
+}
+<div class="table-responsive">
+    <table class="table table-sm">
+        <thead>
+            <tr>
+                <th>@Localizer["Shifts_Shift"]</th>
+                <th>@Localizer["Shifts_Phase"]</th>
+                <th>@Localizer["Shifts_Date"]</th>
+                <th>@Localizer["Shifts_Time"]</th>
+                <th>@Localizer["Shifts_Duration"]</th>
+                <th>@Localizer["Shifts_Filled"]</th>
+                <th>@Localizer["Shifts_SignedUp"]</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model.Shifts)
+            {
+                @await Html.PartialAsync("_EventRotaRow", new EventRotaRowViewModel
+                {
+                    Item = item,
+                    Es = es,
+                    IsSignedUp = Model.UserSignupShiftIds.Contains(item.Shift.Id),
+                    SignupStatus = Model.UserSignupStatuses.GetValueOrDefault(item.Shift.Id),
+                    SignupsBlockedByMissingDietary = Model.SignupsBlockedByMissingDietary,
+                    EarlyEntrySignupsClosed = Model.EarlyEntrySignupsClosed,
+                    Interaction = Model.Interaction,
+                    SignUpController = Model.SignUpController,
+                    SignUpAction = Model.SignUpAction,
+                    FilterDepartmentId = Model.FilterDepartmentId,
+                    FilterFromDate = Model.FilterFromDate,
+                    FilterToDate = Model.FilterToDate,
+                    FilterPeriod = Model.FilterPeriod,
+                    FilterPeriods = Model.FilterPeriods,
+                    FilterTagIds = Model.FilterTagIds,
+                    Sort = Model.Sort
+                })
+            }
+        </tbody>
+    </table>
+</div>

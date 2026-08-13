@@ -2,7 +2,7 @@ using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Application;
 using Humans.Application.Services.Camps;
-using Humans.Application.DTOs.Shifts;
+using Humans.Shifts.Services.Dtos;
 using Humans.Application.Interfaces.Camps;
 using Humans.CityPlanning.Contracts;
 using Humans.Shifts.Contracts;

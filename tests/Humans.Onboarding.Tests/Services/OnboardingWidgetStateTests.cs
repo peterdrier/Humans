@@ -5,7 +5,6 @@ using Humans.Onboarding.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Onboarding.Services;
-using Humans.Application.DTOs.Shifts;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;

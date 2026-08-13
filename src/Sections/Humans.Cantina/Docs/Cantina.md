@@ -22,7 +22,7 @@ Read-only weekly roster surface for the food-service team — who is on site eac
 
 None — Cantina owns no tables. The section is a pure read/aggregate composition over:
 
-- `shift_signups` — owned by **Shifts** ([`Shifts.md`](../../../../docs/sections/Shifts.md)). Filtered to `Status = Confirmed` joined to `shifts` by `DayOffset`. Read **through `IShiftManagementService`** (`GetOnSiteUserIdsForDayAsync`), never the Shifts repository directly.
+- `shift_signups` — owned by **Shifts** ([`Shifts.md`](../../Humans.Shifts/Docs/Shifts.md)). Filtered to `Status = Confirmed` joined to `shifts` by `DayOffset`. Read **through `IShiftManagementService`** (`GetOnSiteUserIdsForDayAsync`), never the Shifts repository directly.
 - Dietary (`DietaryPreference`, `Allergies`, `AllergyOtherText`, `Intolerances`, `IntoleranceOtherText`) — `Profile` fields owned by **Users/Identity**, read through the cached **`IUserServiceRead.GetUserInfosAsync`** (`UserInfo.Profile`). **`MedicalConditions` is never read by the cantina** — the cantina DTOs have no such field.
 - `profiles` / `users` — owned by **Users/Identity**. Burner names are read via the cross-section **`IUserServiceRead.GetUserInfosAsync`** (cached `UserInfo`); no entity reads, no new surface.
 
