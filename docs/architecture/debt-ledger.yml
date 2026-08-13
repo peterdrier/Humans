@@ -20,8 +20,15 @@ themes:
     detect: "build:HUM0024"
     review: panel
     last_swept: 2026-06-12
-    remaining: 55
+    remaining: 0
     notes: >-
+      INERT since nobodies-collective/Humans#1278 retired the HUM0024 analyzer —
+      `detect: build:HUM0024` can never report a site again, so `remaining` is 0
+      by construction, not by burndown. The theme row is kept, not deleted, so a
+      future sweep reads why the detector is silent instead of re-seeding it.
+      Do not revive the analyzer to re-open this: #1278 accepted the residual
+      (an EF config inside the unpeeled `Humans.Infrastructure` mapping another
+      section's entity) as a review-time check. Historical detail below.
       Count re-measured 2026-08-05 (nobodies-collective/Humans#978): 47 -> 55,
       all carrying markers. These are not new joins; they are joins HUM0024
       could not see. +1 net from #1178's relocations (GoogleResource gained a

@@ -12,6 +12,8 @@ HUM0008 | Humans.Architecture   | Error    | Controller constructor injects an a
 HUM0009 | Humans.Architecture   | Error    | Class uses an application DbContext but does not implement IRepository (downgrades to Warning for classes carrying [Grandfathered("HUM0009", ...)])
 HUM0010 | Humans.Architecture   | Warning  | Reference to symbol decorated with [ExpiresOn(date)] (escalates to Error on/after the date)
 HUM0011 | Humans.Architecture   | Warning  | Declaration decorated with [ExpiresOn(date)] is past its date (escalates to Error after the graceDays window)
+HUM0012 | Humans.Architecture   | Error    | Application service (IApplicationService implementer) declared outside Humans.Application.Services.* namespace — Humans.Application only, sections carry their own assembly boundary
+HUM0013 | Humans.Architecture   | Error    | Repository interface (IRepository extender) declared outside Humans.Application.Interfaces.Repositories namespace — Humans.Application only, sections carry their own assembly boundary
 HUM0014 | Humans.Architecture   | Error    | Class in Humans.Web injects a repository directly (must go through an application service)
 HUM0015 | Humans.Architecture   | Error    | Type decorated with [SurfaceBudget(N)] declares more than N public-instance methods
 HUM0016 | Humans.Architecture   | Error    | Type decorated with [SurfaceBudget(N)] declares fewer than N public-instance methods (slack — decrement budget)
@@ -23,6 +25,7 @@ HUM0025 | Humans.Architecture   | Error    | A DbSet table is referenced (read o
 HUM0026 | Humans.Architecture   | Error    | IOrchestrator implementer injects an I*Repository, an application DbContext, or IDbContextFactory<TContext> parameterized on one
 HUM0027 | Humans.Architecture   | Error    | Type implements both IApplicationService and IOrchestrator — the role axis is exclusive
 HUM0028 | Humans.Architecture   | Error    | Interface extends IInvalidator (downgrades to Warning for interfaces carrying [Grandfathered("HUM0028", ...)])
+HUM0029 | Humans.Architecture   | Error    | Cross-section read interface (I*Read) exposes EF entity, Microsoft.EntityFrameworkCore type, or System.Linq.IQueryable in a method signature — Humans.Application only, sections publish reads from a .Contracts leaf that cannot name those types (downgrades to Warning for interfaces carrying [Grandfathered("HUM0029", ...)])
 HUM0030 | Humans.Architecture   | Error    | Date/time format-string literal used outside the single sanctioned home (Humans.Application.Extensions.DateFormattingExtensions) — custom .ToString format, interpolation format clause, or NodaTime *Pattern.Create literal
 HUM0031 | Humans.Architecture   | Error    | Controller method exceeds the business-logic thresholds (statements > 40 or cyclomatic complexity > 15) — move the logic into the section's application service (downgrades to Warning for methods carrying [Grandfathered("HUM0031", ...)])
 HUM0032 | Humans.Architecture   | Error    | Cross-section caller injects a full I*Service but only uses members of its I*ServiceRead base — inject the read interface instead (downgrades to Warning for classes carrying [Grandfathered("HUM0032", ...)])

@@ -137,7 +137,7 @@ Stored as string (`HasConversion<string>()`, max length 20).
 - **Decorator decision — no caching decorator.** Admin-only, low write/read volume.
 - **Cross-section reads** route through `ITeamService.GetActiveTeamOptionsAsync` / `GetTeamMembersAsync`, `IUserEmailService.GetNotificationTargetEmailsAsync`, `IUserServiceRead.GetUserInfoAsync` / `GetUserInfosAsync` for display data, and `ICommunicationPreferenceService.IsOptedOutAsync` for opt-out filtering. Outbound email queueing goes through `IEmailService.SendAsync` with `IEmailMessageFactory.CampaignCode` (the outbox service owns the email_outbox_messages table).
 - **Cross-domain navs removed:** `Campaign.CreatedByUserId` and `CampaignGrant.UserId` are bare Guid columns — no `CreatedByUser` / `User` nav property, and since G5 no DB-level FK constraint either: the section assembly cannot name `User`, so `CampaignConfiguration` / `CampaignGrantConfiguration` declare no relationship at all. All callers — including `TicketQueryService.GetCodeTrackingDataAsync` via `ICampaignService.GetCodeTrackingAsync` — resolve display names through `IUserService`. `CampaignGrant.OutboxMessages` (Email) is also gone — Email outbox rows reference the grant by bare FK only.
-- **Architecture test** — `tests/Humans.Campaigns.Tests/Architecture/CampaignsArchitectureTests.cs`, alongside the cross-cutting analyzer coverage (`HUM0024`, `HUM0021`, `HUM0009`, `HUM0034`).
+- **Architecture test** — `tests/Humans.Campaigns.Tests/Architecture/CampaignsArchitectureTests.cs`, alongside the cross-cutting analyzer coverage (`HUM0009`, `HUM0034`; `HUM0024` and `HUM0021` were retired in nobodies-collective/Humans#1278).
 
 ### Touch-and-clean guidance
 
