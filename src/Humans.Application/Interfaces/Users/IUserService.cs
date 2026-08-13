@@ -19,14 +19,6 @@ namespace Humans.Application.Interfaces.Users;
 public interface IUserService : IUserServiceRead, IApplicationService, IUserMerge
 {
     /// <summary>
-    /// Get all participation records for a given year, projected to the slim
-    /// <see cref="UserParticipationRow"/> shape (no EF entity leaves the
-    /// section). Served from the caching decorator's <see cref="UserInfo"/>
-    /// snapshot.
-    /// </summary>
-    Task<IReadOnlyList<UserParticipationRow>> GetAllParticipationsForYearAsync(int year, CancellationToken ct = default);
-
-    /// <summary>
     /// Declare that the user is not attending this year's event. Upserts a
     /// UserDeclared NotAttending row unless the user is already Attended (in
     /// which case the declaration is logged and ignored).
@@ -318,32 +310,12 @@ public interface IUserService : IUserServiceRead, IApplicationService, IUserMerg
     // ---- Methods added for ContactService migration ----
 
     /// <summary>
-    /// Finds the user whose <c>Email</c> or <c>GoogleEmail</c> matches the given
-    /// address (case-insensitive) and returns the cached <see cref="UserInfo"/>
-    /// read-model for them. Also checks the gmail/googlemail alternate when
-    /// applicable, and falls back to the legacy <c>User.GoogleEmail</c> shadow
-    /// column for pre-issue-687 users whose <c>UserEmail.IsGoogle</c> rows are
-    /// unset. Returns null if no match.
-    /// </summary>
-    Task<UserInfo?> GetByEmailOrAlternateAsync(string email, CancellationToken ct = default);
-
-    /// <summary>
     /// Sets <c>User.LastConsentReminderSentAt</c> to <paramref name="sentAt"/>.
     /// No-op if the user does not exist. Used by the re-consent reminder job
     /// so it does not write to the Users table directly (design-rules §2c).
     /// </summary>
     Task SetLastConsentReminderSentAsync(
         Guid userId, Instant sentAt, CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns the user ids of every account with <c>DeletionScheduledFor</c>
-    /// in the past (or equal to <paramref name="now"/>) and with
-    /// <c>DeletionEligibleAfter</c> either null or already elapsed. Used by
-    /// the account deletion job to enumerate candidates without reading the
-    /// Users table directly (design-rules §2c).
-    /// </summary>
-    Task<IReadOnlyList<Guid>> GetAccountsDueForAnonymizationAsync(
-        Instant now, CancellationToken ct = default);
 
     // ---- Methods added for AccountMergeService fold-into-target redesign ----
 
@@ -422,14 +394,3 @@ public record AnonymizedAccountSummary(
     string PreferredLanguage,
     IReadOnlyList<(Guid SignupId, Guid ShiftId)> CancelledSignupIds);
 
-/// <summary>
-/// Slim cross-section projection of an <see cref="EventParticipation"/> row for
-/// a given year, returned by <see cref="IUserService.GetAllParticipationsForYearAsync"/>.
-/// Carries only the facts consumers diff against (status, source, check-in
-/// instant) keyed by user — no EF entity crosses the section boundary.
-/// </summary>
-public sealed record UserParticipationRow(
-    Guid UserId,
-    ParticipationStatus Status,
-    ParticipationSource Source,
-    Instant? CheckedInAt);

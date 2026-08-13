@@ -31,7 +31,7 @@ internal sealed class TicketQueryService(
     ITicketTransferRepository ticketTransferRepository,
     IBudgetServiceRead budgetService,
     ICampaignServiceRead campaignService,
-    IUserService userService,
+    IUserServiceRead userService,
     IUserEmailService userEmailService,
     ITeamServiceRead teamService,
     IBurnSettingsService burnSettings,

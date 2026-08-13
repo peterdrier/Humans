@@ -41,6 +41,7 @@ using Humans.Application.Interfaces.Auth;
 
 using Humans.GoogleIntegration.Data;
 using Humans.Shifts.Data;
+using Humans.Users.Contracts;
 
 namespace Humans.Teams.Tests;
 
@@ -85,6 +86,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
             .With<IGoogleSyncOutboxService>(googleOutboxService)
             .With(_teamResourceService)
             .With(userService)
+            .With<IUserServiceRead>(userService)
             .Build();
         var shiftManagementService = new ShiftManagementService(
             new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock),

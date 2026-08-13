@@ -1,4 +1,5 @@
 using NodaTime;
+using Humans.Domain.Enums;
 using Humans.Application.Architecture;
 
 namespace Humans.Users.Contracts;
@@ -9,7 +10,7 @@ namespace Humans.Users.Contracts;
 /// projections and the merge-chain-follow primitive — no EF entities, no writes,
 /// no cache hooks. See memory/architecture/section-read-write-split.md.
 /// </summary>
-[SurfaceBudget(6)]
+[SurfaceBudget(9)]
 public interface IUserServiceRead
 {
     /// <summary>
@@ -96,7 +97,48 @@ public interface IUserServiceRead
     /// </summary>
     Task<IReadOnlySet<Guid>> GetMergedSourceIdsAsync(
         Guid targetUserId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Finds the user whose <c>Email</c> or <c>GoogleEmail</c> matches the given
+    /// address (case-insensitive) and returns the cached <see cref="UserInfo"/>
+    /// read-model for them. Also checks the gmail/googlemail alternate when
+    /// applicable, and falls back to the legacy <c>User.GoogleEmail</c> shadow
+    /// column for pre-issue-687 users whose <c>UserEmail.IsGoogle</c> rows are
+    /// unset. Returns null if no match.
+    /// </summary>
+    Task<UserInfo?> GetByEmailOrAlternateAsync(string email, CancellationToken ct = default);
+
+    /// <summary>
+    /// Get all participation records for a given year, projected to the slim
+    /// <see cref="UserParticipationRow"/> shape (no EF entity leaves the
+    /// section). Served from the caching decorator's <see cref="UserInfo"/>
+    /// snapshot.
+    /// </summary>
+    Task<IReadOnlyList<UserParticipationRow>> GetAllParticipationsForYearAsync(
+        int year, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the user ids of every account with <c>DeletionScheduledFor</c>
+    /// in the past (or equal to <paramref name="now"/>) and with
+    /// <c>DeletionEligibleAfter</c> either null or already elapsed. Used by
+    /// the account deletion job to enumerate candidates without reading the
+    /// Users table directly (design-rules §2c).
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetAccountsDueForAnonymizationAsync(
+        Instant now, CancellationToken ct = default);
 }
+
+/// <summary>
+/// Slim cross-section projection of an <c>EventParticipation</c> row for a given
+/// year, returned by <see cref="IUserServiceRead.GetAllParticipationsForYearAsync"/>.
+/// Carries only the facts consumers diff against (status, source, check-in
+/// instant) keyed by user — no EF entity crosses the section boundary.
+/// </summary>
+public sealed record UserParticipationRow(
+    Guid UserId,
+    ParticipationStatus Status,
+    ParticipationSource Source,
+    Instant? CheckedInAt);
 
 /// <summary>
 /// Per-user row returned from <see cref="IUserServiceRead.GetOnsiteUsersAsync"/>.

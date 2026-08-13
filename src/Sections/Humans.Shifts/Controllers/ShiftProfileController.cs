@@ -6,6 +6,7 @@ using Humans.UI.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
+using Humans.Users.Contracts;
 
 namespace Humans.Shifts.Controllers;
 
@@ -24,7 +25,7 @@ namespace Humans.Shifts.Controllers;
 [Route("Profile")]
 internal sealed class ShiftProfileController(
     IShiftManagementService shiftMgmt,
-    IUserService userService,
+    IUserServiceRead userService,
     // SharedResource, not ShiftsResource: the one string this controller resolves is
     // Profile_Updated, which belongs to Shell's profile vocabulary and stayed there. The
     // page's own 13 ShiftInfo_ keys are the view's, and the view reads ShiftsResource

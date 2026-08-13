@@ -58,8 +58,8 @@ internal sealed class TeamService(
     private ISystemTeamSync SystemTeamSync
         => serviceProvider.GetRequiredService<ISystemTeamSync>();
 
-    private IUserService UserService
-        => serviceProvider.GetRequiredService<IUserService>();
+    private IUserServiceRead UserService
+        => serviceProvider.GetRequiredService<IUserServiceRead>();
 
     private IGoogleSyncOutboxService GoogleSyncOutboxService
         => serviceProvider.GetRequiredService<IGoogleSyncOutboxService>();
