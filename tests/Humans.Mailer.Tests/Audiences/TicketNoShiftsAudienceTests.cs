@@ -58,7 +58,7 @@ public class TicketNoShiftsAudienceTests
     public async Task ComputeMemberUserIdsAsync_TicketWithoutCommittedShift_IncludesUser()
     {
         // Users with only Refused/Bailed/Cancelled/NoShow signups are NOT in
-        // shiftCommitted (per ShiftUserView.HasShift — only Pending+Confirmed count).
+        // shiftCommitted (per ShiftUserSummary.HasShift — only Pending+Confirmed count).
         // They should remain in the audience.
         var userA = Guid.NewGuid();
         var audience = NewAudience(
@@ -97,14 +97,14 @@ public class TicketNoShiftsAudienceTests
             .Returns(callInfo =>
             {
                 var ids = ((IEnumerable<Guid>)callInfo[0]).ToList();
-                var map = new Dictionary<Guid, ShiftUserView>();
+                var map = new Dictionary<Guid, ShiftUserSummary>();
                 foreach (var id in ids)
                 {
                     map[id] = shiftCommitted.Contains(id)
                         ? ViewWithShift(id)
-                        : ShiftUserView.Empty(id);
+                        : ShiftUserSummary.Empty(id);
                 }
-                return new ValueTask<IReadOnlyDictionary<Guid, ShiftUserView>>(map);
+                return new ValueTask<IReadOnlyDictionary<Guid, ShiftUserSummary>>(map);
             });
 
         var users = Substitute.For<IUserService>();
@@ -137,19 +137,8 @@ public class TicketNoShiftsAudienceTests
                 Status: TicketAttendeeStatus.Valid,
                 MatchedUserId: userId)])).ToList();
 
-    private static ShiftUserView ViewWithShift(Guid userId) => new(
-        userId,
-        Profile: null,
-        Availability: null,
-        BuildStatus: null,
-        TagPreferences: [],
-        Signups: [new ShiftSignup
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            ShiftId = Guid.NewGuid(),
-            Status = SignupStatus.Confirmed,
-            CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-            UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-        }]);
+    private static ShiftUserSummary ViewWithShift(Guid userId) =>
+        ShiftFixtures.UserSummary(
+            userId,
+            [ShiftFixtures.Signup(status: SignupStatus.Confirmed)]);
 }

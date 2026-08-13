@@ -1,50 +1,39 @@
-
 namespace Humans.Shifts.Contracts;
 
 /// <summary>
-/// Read-only Shifts-section view surface. Returns bundled, immutable
-/// projections (<see cref="ShiftUserView"/>, <see cref="ShiftRotaView"/>)
-/// keyed by user / rota id.
+/// Read-only Shifts-section view surface for consumers outside the section.
+/// Returns a flat, immutable per-user projection
+/// (<see cref="ShiftUserSummary"/>) keyed by user id.
 /// </summary>
 /// <remarks>
 /// Methods return <see cref="ValueTask{TResult}"/>: the public registration is
 /// a Singleton decorator (<c>CachingShiftViewService</c>) that completes
 /// synchronously on dict hits (no <see cref="System.Threading.Tasks.Task"/>
 /// allocation, no thread hop) and falls through to an awaiting load on miss.
-/// Missing ids — or no active event — return an empty view record, never
+/// Missing ids — or no active event — return an empty summary, never
 /// <c>null</c>, never an exception.
 ///
 /// <para>
-/// Issue #720. Foundation for shifts caching: existing read methods on
-/// <c>IShiftSignupService</c> and <c>IShiftManagementService</c>
-/// migrate to this surface in follow-up PRs.
+/// Issue #720 introduced this surface over bundled EF rows. The rows
+/// themselves are the section's own vocabulary and do not cross the boundary:
+/// the entity-bearing bundle lives on the section's internal
+/// <c>IShiftRowView</c>, and this interface carries the flattened projection
+/// of it. The per-rota bundle has no consumer outside the section at all and
+/// is only on the internal interface (nobodies-collective/Humans#866, G5).
 /// </para>
 /// </remarks>
 public interface IShiftView
 {
     /// <summary>
-    /// Returns the cached view for a single user. Never <c>null</c> — empty
-    /// view for unknown users / no active event.
+    /// Returns the summary for a single user. Never <c>null</c> — an empty
+    /// summary for unknown users / no active event.
     /// </summary>
-    ValueTask<ShiftUserView> GetUserAsync(Guid userId, CancellationToken ct = default);
+    ValueTask<ShiftUserSummary> GetUserAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
-    /// Returns cached views for many users in one call, keyed by user id.
-    /// Unknown users yield an empty view entry.
+    /// Returns summaries for many users in one call, keyed by user id.
+    /// Unknown users yield an empty summary entry.
     /// </summary>
-    ValueTask<IReadOnlyDictionary<Guid, ShiftUserView>> GetUsersAsync(
+    ValueTask<IReadOnlyDictionary<Guid, ShiftUserSummary>> GetUsersAsync(
         IEnumerable<Guid> userIds, CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns the cached view for a single rota. Never <c>null</c> — empty
-    /// view (with <c>Rota = null</c>) for unknown rota ids.
-    /// </summary>
-    ValueTask<ShiftRotaView> GetRotaAsync(Guid rotaId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns cached views for many rotas in one call, keyed by rota id.
-    /// Unknown rotas yield an empty view entry.
-    /// </summary>
-    ValueTask<IReadOnlyDictionary<Guid, ShiftRotaView>> GetRotasAsync(
-        IEnumerable<Guid> rotaIds, CancellationToken ct = default);
 }

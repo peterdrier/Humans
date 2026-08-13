@@ -157,7 +157,7 @@ public class ProfileControllerEditTests
         // Edit GET reads shiftView.GetUserAsync(...).TagPreferences (#720); return
         // an empty view so the GET path doesn't NRE before the dietary population.
         _shiftView.GetUserAsync(_userId, Arg.Any<CancellationToken>())
-            .Returns(new ShiftUserView(_userId, null, null, null, [], []));
+            .Returns(ShiftUserSummary.Empty(_userId));
 
         // Edit POST resolves the current user through GetCurrentUserInfoAsync
         // (cache-resident); subsequent setup-detection lookups in the action body

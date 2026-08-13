@@ -36,6 +36,22 @@ public sealed class ShiftBrowsePageBuilder(
     IBurnSettingsService burnSettings,
     ITeamServiceRead teamService)
 {
+    /// <summary>
+    /// Active (Confirmed / Pending) signups as shift-id set + status map.
+    /// <c>ShiftSignupHelper.ResolveActiveStatuses</c> is the same rule over the
+    /// section's boundary shape; this one reads the section's own rows.
+    /// </summary>
+    private static (HashSet<Guid> ShiftIds, Dictionary<Guid, SignupStatus> Statuses) ResolveActiveStatuses(
+        IReadOnlyList<ShiftSignup> signups)
+    {
+        var active = signups
+            .Where(s => s.Status is SignupStatus.Confirmed or SignupStatus.Pending)
+            .ToList();
+        return (
+            active.Select(s => s.ShiftId).ToHashSet(),
+            active.ToDictionary(s => s.ShiftId, s => s.Status));
+    }
+
     public async Task<ShiftBrowseViewModel> BuildAsync(ShiftBrowsePageRequest request, CancellationToken ct = default)
     {
         var es = request.EventSettings;
@@ -94,7 +110,7 @@ public sealed class ShiftBrowsePageBuilder(
         // view for the signup read, so we reuse those rows here. The shape
         // shift is harmless: ShiftTagPreferenceSummary.Id == ShiftTag.Id ==
         // VolunteerTagPreference.ShiftTagId.
-        var (userSignupShiftIds, userSignupStatuses) = ShiftSignupHelper.ResolveActiveStatuses(request.UserSignups);
+        var (userSignupShiftIds, userSignupStatuses) = ResolveActiveStatuses(request.UserSignups);
 
         // Pies use the same date window as the shift list so the percentages
         // line up with what the user is filtering to.
@@ -159,7 +175,7 @@ public sealed class ShiftBrowsePageBuilder(
         if (urgent is null) return null;
         var item = ShiftBrowseMapper.MapToDisplayItem(urgent, es);
 
-        var (signedShiftIds, statuses) = ShiftSignupHelper.ResolveActiveStatuses(userSignups);
+        var (signedShiftIds, statuses) = ResolveActiveStatuses(userSignups);
         return (item, signedShiftIds.Contains(shiftId), statuses.GetValueOrDefault(shiftId));
     }
 

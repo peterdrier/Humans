@@ -25,7 +25,7 @@ public class ShiftAdminController(
     IShiftManagementService shiftMgmt,
     IBurnSettingsService burnSettings,
     IShiftSignupService signupService,
-    IShiftView shiftView,
+    IShiftRowView shiftView,
     IUserServiceRead userService,
     IAuthorizationService authorizationService,
     IClock clock,

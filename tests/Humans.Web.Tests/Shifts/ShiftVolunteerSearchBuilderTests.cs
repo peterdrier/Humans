@@ -35,7 +35,7 @@ public class ShiftVolunteerSearchBuilderTests
 
     private readonly IBurnSettingsService _burnSettings = Substitute.For<IBurnSettingsService>();
     private readonly IUserServiceRead _userService = Substitute.For<IUserServiceRead>();
-    private readonly IShiftView _shiftView = Substitute.For<IShiftView>();
+    private readonly IShiftRowView _shiftView = Substitute.For<IShiftRowView>();
     private readonly IShiftSignupService _signupService = Substitute.For<IShiftSignupService>();
     private readonly IVolunteerTrackingService _tracking = Substitute.For<IVolunteerTrackingService>();
     private readonly Guid _candidateId = Guid.NewGuid();

@@ -1,4 +1,5 @@
 using Humans.Shifts.Contracts;
+using Humans.Application.Interfaces.Shifts;
 using Humans.Teams.Contracts;
 using Humans.Web.Models;
 using Humans.Web.Models.Shifts;
@@ -8,7 +9,7 @@ using NodaTime;
 namespace Humans.Web.ViewComponents;
 
 public class ShiftSignupsViewComponent(
-    IShiftView shiftView,
+    IShiftRowView shiftView,
     IBurnSettingsService burnSettings,
     ITeamServiceRead teamService,
     IClock clock,

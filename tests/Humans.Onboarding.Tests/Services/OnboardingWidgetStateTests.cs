@@ -35,7 +35,7 @@ public class OnboardingWidgetStateTests
                 Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns([]);
         _shiftView.GetUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(call => new ValueTask<ShiftUserView>(ShiftUserView.Empty(call.ArgAt<Guid>(0))));
+            .Returns(call => new ValueTask<ShiftUserSummary>(ShiftUserSummary.Empty(call.ArgAt<Guid>(0))));
     }
 
     private OnboardingWidgetState BuildSut() =>
@@ -165,13 +165,9 @@ public class OnboardingWidgetStateTests
         _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(NonStubUserInfo(userId));
         _shiftMgmt.GetActiveAsync().Returns(BurnFixtures.Burn(id: eventId));
         _shiftView.GetUserAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<ShiftUserView>(new ShiftUserView(
+            .Returns(new ValueTask<ShiftUserSummary>(ShiftFixtures.UserSummary(
                 userId,
-                Profile: null,
-                Availability: null,
-                BuildStatus: null,
-                TagPreferences: [],
-                Signups: [new ShiftSignup { ShiftId = shiftId, Status = SignupStatus.Pending }])));
+                [ShiftFixtures.Signup(shiftId: shiftId, status: SignupStatus.Pending)])));
 
         var step = await BuildSut().GetCurrentStepAsync(userId, TestContext.Current.CancellationToken);
 

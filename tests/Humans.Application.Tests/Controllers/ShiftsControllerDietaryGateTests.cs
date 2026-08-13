@@ -37,7 +37,7 @@ public class ShiftsControllerDietaryGateTests
     private readonly IShiftManagementService _shiftMgmt = Substitute.For<IShiftManagementService>();
     private readonly IVolunteerTrackingService _volunteerTrackingService =
         Substitute.For<IVolunteerTrackingService>();
-    private readonly IShiftView _shiftView = Substitute.For<IShiftView>();
+    private readonly IShiftRowView _shiftView = Substitute.For<IShiftRowView>();
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();

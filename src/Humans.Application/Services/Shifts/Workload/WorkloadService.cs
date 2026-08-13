@@ -12,12 +12,12 @@ using NodaTime;
 namespace Humans.Application.Services.Shifts.Workload;
 
 /// <summary>
-/// Workload aggregations for the coordinator dashboard. Reads via cached <see cref="IShiftView"/>;
+/// Workload aggregations for the coordinator dashboard. Reads via cached <see cref="IShiftRowView"/>;
 /// no own cache (per-rota cache eviction already covers mutations).
 /// </summary>
 public sealed class WorkloadService(
     IShiftManagementRepository repo,
-    IShiftView view,
+    IShiftRowView view,
     ITeamServiceRead teamService,
     IUserServiceRead userService) : IWorkloadService
 {

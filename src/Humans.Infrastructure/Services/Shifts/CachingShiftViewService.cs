@@ -1,5 +1,7 @@
 using Humans.Application.DTOs.Shifts;
 using Humans.Application.Interfaces.Caching;
+using Humans.Application.Interfaces.Shifts;
+using Humans.Application.Services.Shifts;
 using Humans.Shifts.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -8,7 +10,7 @@ using Microsoft.Extensions.Logging;
 namespace Humans.Infrastructure.Services.Shifts;
 
 /// <summary>
-/// Singleton caching decorator for <see cref="IShiftView"/> and the
+/// Singleton caching decorator for <see cref="IShiftRowView"/> / <see cref="IShiftView"/> and the
 /// implementation of <see cref="IShiftViewInvalidator"/>. Composes two
 /// <see cref="TrackedCache{TKey,TValue}"/> instances — one keyed by user id
 /// (<see cref="ShiftUserView"/>) and one keyed by rota id
@@ -19,8 +21,8 @@ namespace Humans.Infrastructure.Services.Shifts;
 /// <remarks>
 /// This decorator only ever talks to its inner <see cref="IShiftView"/>; it
 /// never reaches sideways into repositories or sibling services. Single-id
-/// misses delegate to <see cref="IShiftView.GetUserAsync"/>; batch reads
-/// gather all cache-misses into one <see cref="IShiftView.GetUsersAsync"/>
+/// misses delegate to <see cref="IShiftRowView.GetUserAsync"/>; batch reads
+/// gather all cache-misses into one <see cref="IShiftRowView.GetUsersAsync"/>
 /// call so a cold /Admin first-hit collapses to one inner round-trip per
 /// surface, not N (issue #720).
 /// <para>
@@ -30,13 +32,13 @@ namespace Humans.Infrastructure.Services.Shifts;
 /// </para>
 /// </remarks>
 public sealed class CachingShiftViewService(IServiceScopeFactory scopeFactory, ILogger<CachingShiftViewService> logger)
-    : IShiftView, IShiftViewInvalidator, IHostedService
+    : IShiftRowView, IShiftView, IShiftViewInvalidator, IHostedService
 {
     /// <summary>
-    /// DI service key under which the undecorated (inner) <see cref="IShiftView"/>
+    /// DI service key under which the undecorated (inner) <see cref="IShiftRowView"/>
     /// is registered. Used by the Singleton decorator to resolve the Scoped
     /// inner per-call without triggering self-resolution on the unkeyed
-    /// <see cref="IShiftView"/> registration (which maps to this Singleton).
+    /// <see cref="IShiftRowView"/> registration (which maps to this Singleton).
     /// </summary>
     public const string InnerServiceKey = "shift-view-inner";
 
@@ -58,7 +60,7 @@ public sealed class CachingShiftViewService(IServiceScopeFactory scopeFactory, I
     }
 
     /// <summary>
-    /// Batches all cache-misses into a single <see cref="IShiftView.GetUsersAsync"/>
+    /// Batches all cache-misses into a single <see cref="IShiftRowView.GetUsersAsync"/>
     /// call on the inner — the inner is responsible for bulk-loading every
     /// contributing table in one round-trip per table. This is the hot path
     /// for /Admin first-hit (set-membership across ~500 users); a per-id
@@ -84,7 +86,7 @@ public sealed class CachingShiftViewService(IServiceScopeFactory scopeFactory, I
         if (misses is not null)
         {
             await using var scope = scopeFactory.CreateAsyncScope();
-            var inner = scope.ServiceProvider.GetRequiredKeyedService<IShiftView>(InnerServiceKey);
+            var inner = scope.ServiceProvider.GetRequiredKeyedService<IShiftRowView>(InnerServiceKey);
             var loaded = await inner.GetUsersAsync(misses, ct).ConfigureAwait(false);
             foreach (var (id, view) in loaded)
             {
@@ -119,7 +121,7 @@ public sealed class CachingShiftViewService(IServiceScopeFactory scopeFactory, I
     private async Task<ShiftUserView> LoadAndCacheUserAsync(Guid userId, CancellationToken ct)
     {
         await using var scope = scopeFactory.CreateAsyncScope();
-        var inner = scope.ServiceProvider.GetRequiredKeyedService<IShiftView>(InnerServiceKey);
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<IShiftRowView>(InnerServiceKey);
         var view = await inner.GetUserAsync(userId, ct).ConfigureAwait(false);
         _userCache.Set(userId, view);
         return view;
@@ -128,11 +130,24 @@ public sealed class CachingShiftViewService(IServiceScopeFactory scopeFactory, I
     private async Task<ShiftRotaView> LoadAndCacheRotaAsync(Guid rotaId, CancellationToken ct)
     {
         await using var scope = scopeFactory.CreateAsyncScope();
-        var inner = scope.ServiceProvider.GetRequiredKeyedService<IShiftView>(InnerServiceKey);
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<IShiftRowView>(InnerServiceKey);
         var view = await inner.GetRotaAsync(rotaId, ct).ConfigureAwait(false);
         _rotaCache.Set(rotaId, view);
         return view;
     }
+
+    // ==========================================================================
+    // IShiftView — the cross-section surface, projected off the cached rows.
+    // Explicit implementation: these differ from the IShiftRowView members
+    // above only in return type, which C# permits no other way.
+    // ==========================================================================
+
+    async ValueTask<ShiftUserSummary> IShiftView.GetUserAsync(Guid userId, CancellationToken ct) =>
+        (await GetUserAsync(userId, ct).ConfigureAwait(false)).ToSummary();
+
+    async ValueTask<IReadOnlyDictionary<Guid, ShiftUserSummary>> IShiftView.GetUsersAsync(
+        IEnumerable<Guid> userIds, CancellationToken ct) =>
+        (await GetUsersAsync(userIds, ct).ConfigureAwait(false)).ToSummaries();
 
     // ==========================================================================
     // IShiftViewInvalidator implementation

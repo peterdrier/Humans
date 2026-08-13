@@ -189,7 +189,7 @@ public class ProfileController(
         // see #720 (T-09) — tag prefs from cached ShiftUserView, not repo.
         var userShiftView = await shiftView.GetUserAsync(user.Id, ct);
         var preferredShiftTags = userShiftView.TagPreferences
-            .Select(p => new ShiftTagPreferenceSummary(p.ShiftTagId, p.ShiftTag?.Name ?? string.Empty))
+            .Select(p => new ShiftTagPreferenceSummary(p.ShiftTagId, p.Name))
             .ToList();
         var viewModel = ProfileEditViewModelBuilder.Build(
             info,

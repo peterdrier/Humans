@@ -1,12 +1,12 @@
 using Humans.Application.DTOs.Shifts;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Shifts.Contracts;
+using Humans.Application.Interfaces.Shifts;
 using Humans.Domain.Entities;
 
 namespace Humans.Application.Services.Shifts;
 
-/// <summary>Inner <see cref="IShiftView"/> — direct repo reads, no caching. CachingShiftViewService wraps it (#720).</summary>
-public sealed class ShiftViewService : IShiftView
+/// <summary>Inner <see cref="IShiftRowView"/> — direct repo reads, no caching. CachingShiftViewService wraps it (#720).</summary>
+public sealed class ShiftViewService : IShiftRowView
 {
     private readonly IShiftManagementRepository _management;
     private readonly IVolunteerTrackingRepository _tracking;

@@ -63,8 +63,9 @@ internal static class ShiftsSectionExtensions
         services.AddScoped<VolunteerTrackingXlsxBuilder>();
 
         // ShiftView — see #720. Singleton decorator over keyed-Scoped inner, mirrors CachingUserService/CachingTeamService.
-        services.AddKeyedScoped<IShiftView, ShiftsShiftViewService>(CachingShiftViewService.InnerServiceKey);
+        services.AddKeyedScoped<IShiftRowView, ShiftsShiftViewService>(CachingShiftViewService.InnerServiceKey);
         services.AddSingleton<CachingShiftViewService>();
+        services.AddSingleton<IShiftRowView>(sp => sp.GetRequiredService<CachingShiftViewService>());
         services.AddSingleton<IShiftView>(sp => sp.GetRequiredService<CachingShiftViewService>());
         services.AddSingleton<IShiftViewInvalidator>(sp => sp.GetRequiredService<CachingShiftViewService>());
 

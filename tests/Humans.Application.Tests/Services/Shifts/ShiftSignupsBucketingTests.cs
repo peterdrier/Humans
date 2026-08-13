@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces.Shifts;
 using AwesomeAssertions;
 using Humans.Application.DTOs.Shifts;
 using Humans.Shifts.Contracts;
@@ -108,7 +109,7 @@ public class ShiftSignupsBucketingTests
     [HumansFact]
     public async Task ServiceError_ReturnsEmptyModel()
     {
-        var shiftView = Substitute.For<IShiftView>();
+        var shiftView = Substitute.For<IShiftRowView>();
         var burnSettings = Substitute.For<IBurnSettingsService>();
         burnSettings.GetActiveAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromException<BurnSettingsInfo?>(new InvalidOperationException("DB down")));
@@ -123,10 +124,10 @@ public class ShiftSignupsBucketingTests
     private async Task<ShiftSignupsViewModel> RunComponent(
         List<ShiftSignup> signups,
         IBurnSettingsService? burnSettings = null,
-        IShiftView? shiftView = null)
+        IShiftRowView? shiftView = null)
     {
         var callerProvidedMocks = burnSettings is not null;
-        shiftView ??= Substitute.For<IShiftView>();
+        shiftView ??= Substitute.For<IShiftRowView>();
         burnSettings ??= Substitute.For<IBurnSettingsService>();
 
         if (!callerProvidedMocks)

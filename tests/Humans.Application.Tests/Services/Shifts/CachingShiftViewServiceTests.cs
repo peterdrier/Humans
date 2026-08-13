@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces.Shifts;
 using AwesomeAssertions;
 using Humans.Application.DTOs.Shifts;
 using Humans.Shifts.Contracts;
@@ -16,12 +17,12 @@ namespace Humans.Application.Tests.Services.Shifts;
 /// </summary>
 public class CachingShiftViewServiceTests
 {
-    private readonly IShiftView _inner = Substitute.For<IShiftView>();
+    private readonly IShiftRowView _inner = Substitute.For<IShiftRowView>();
 
     private CachingShiftViewService CreateSut()
     {
         var services = new ServiceCollection();
-        services.AddKeyedScoped<IShiftView>(
+        services.AddKeyedScoped<IShiftRowView>(
             CachingShiftViewService.InnerServiceKey, (_, _) => _inner);
         var provider = services.BuildServiceProvider();
         var scopeFactory = provider.GetRequiredService<IServiceScopeFactory>();

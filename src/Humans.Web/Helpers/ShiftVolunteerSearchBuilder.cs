@@ -11,7 +11,7 @@ namespace Humans.Web.Helpers;
 
 // T-09 (issue #720): the per-user voluntell search loop used to issue two
 // DB calls per candidate (GetShiftProfileAsync + IShiftSignupService.GetByUserAsync).
-// It now reads from the cached IShiftView via a single bulk GetUsersAsync —
+// It now reads from the cached IShiftRowView via a single bulk GetUsersAsync —
 // cache hits complete synchronously via ValueTask. MedicalConditions are
 // redacted at the projection layer here so the shared cached view is never
 // mutated.
@@ -40,7 +40,7 @@ public sealed record VolunteerSearchBuildResult(
 public sealed class ShiftVolunteerSearchBuilder(
     IBurnSettingsService burnSettings,
     IUserServiceRead userService,
-    IShiftView shiftView,
+    IShiftRowView shiftView,
     IShiftSignupService signupService,
     IVolunteerTrackingService volunteerTrackingService)
 {

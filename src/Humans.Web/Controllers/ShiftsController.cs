@@ -31,7 +31,7 @@ public class ShiftsController(
     IBurnSettingsService burnSettings,
     IShiftSignupService signupService,
     IVolunteerTrackingService volunteerTrackingService,
-    IShiftView shiftView,
+    IShiftRowView shiftView,
     ITeamServiceRead teamService,
     IAuditLogService auditLogService,
     IUserService userService,

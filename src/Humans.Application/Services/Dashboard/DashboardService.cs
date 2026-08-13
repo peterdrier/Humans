@@ -111,7 +111,7 @@ public class DashboardService(
                 var now = clock.GetCurrentInstant();
                 // Filter signups to active event in memory.
                 var userSignups = userView.Signups
-                    .Where(s => s.Shift?.Rota?.EventSettingsId == activeEvent.Id)
+                    .Where(s => s.EventSettingsId == activeEvent.Id)
                     .ToList();
                 pendingCount = userSignups
                     .Where(s => s.Status == SignupStatus.Pending)
@@ -121,8 +121,7 @@ public class DashboardService(
 
                 var confirmedSignups = userSignups.Where(s => s.Status == SignupStatus.Confirmed).ToList();
                 var dashboardTeamIds = confirmedSignups
-                    .Where(s => s.Shift?.Rota is not null)
-                    .Select(s => s.Shift.Rota.TeamId)
+                    .Select(s => s.TeamId)
                     .Distinct()
                     .ToList();
                 var teamsById = await teamService.GetTeamsAsync();
@@ -134,12 +133,11 @@ public class DashboardService(
                 {
                     try
                     {
-                        // Shift/Rota navs populated by ShiftRepository.GetByUserAsync; upstream filtered non-null Rota.
                         var item = new DashboardSignup(
-                            RotaName: s.Shift.Rota.Name,
-                            DepartmentName: teamNames.GetValueOrDefault(s.Shift.Rota.TeamId, "Unknown"),
-                            AbsoluteStart: s.Shift.GetAbsoluteStart(activeEvent),
-                            AbsoluteEnd: s.Shift.GetAbsoluteEnd(activeEvent));
+                            RotaName: s.RotaName,
+                            DepartmentName: teamNames.GetValueOrDefault(s.TeamId, "Unknown"),
+                            AbsoluteStart: s.AbsoluteStart,
+                            AbsoluteEnd: s.AbsoluteEnd);
                         if (item.AbsoluteEnd > now)
                             nextShifts.Add(item);
                     }

@@ -50,7 +50,7 @@ public class ShiftsControllerUserActiveSignupsTests
     private readonly IBurnSettingsService _burnSettings = Substitute.For<IBurnSettingsService>();
     private readonly IShiftSignupService _signupService = Substitute.For<IShiftSignupService>();
     private readonly IVolunteerTrackingService _volunteerTracking = Substitute.For<IVolunteerTrackingService>();
-    private readonly IShiftView _shiftView = Substitute.For<IShiftView>();
+    private readonly IShiftRowView _shiftView = Substitute.For<IShiftRowView>();
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly IAuditLogService _auditLog = Substitute.For<IAuditLogService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();

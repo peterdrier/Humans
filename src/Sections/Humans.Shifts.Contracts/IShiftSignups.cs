@@ -139,8 +139,9 @@ public record SignupResult
 
 /// <summary>
 /// Helper for resolving active signup statuses from an already-loaded list of signups.
-/// Use this when the caller already has signups from <see cref="ShiftUserView.Signups"/>
-/// and needs the filtered result without an additional DB round-trip.
+/// Use this when the caller already has signups from
+/// <see cref="ShiftUserSummary.Signups"/> and needs the filtered result without
+/// an additional DB round-trip.
 /// </summary>
 public static class ShiftSignupHelper
 {
@@ -149,11 +150,9 @@ public static class ShiftSignupHelper
     /// Single source of truth for "active signup statuses" filtering logic.
     /// </summary>
     public static (HashSet<Guid> ShiftIds, Dictionary<Guid, SignupStatus> Statuses) ResolveActiveStatuses(
-        IReadOnlyList<ShiftSignup> signups)
+        IReadOnlyList<ShiftSignupSummary> signups)
     {
-        var active = signups
-            .Where(s => s.Status is SignupStatus.Confirmed or SignupStatus.Pending)
-            .ToList();
+        var active = signups.Where(s => s.IsActive).ToList();
 
         var shiftIds = active.Select(s => s.ShiftId).ToHashSet();
         var statuses = active.ToDictionary(s => s.ShiftId, s => s.Status);

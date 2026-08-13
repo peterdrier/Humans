@@ -35,9 +35,9 @@ public class AdminDashboardServiceTests
             .Returns(ci =>
             {
                 var ids = (IEnumerable<Guid>)ci[0];
-                IReadOnlyDictionary<Guid, ShiftUserView> dict =
-                    ids.ToDictionary(id => id, id => ShiftUserView.Empty(id));
-                return new ValueTask<IReadOnlyDictionary<Guid, ShiftUserView>>(dict);
+                IReadOnlyDictionary<Guid, ShiftUserSummary> dict =
+                    ids.ToDictionary(id => id, id => ShiftUserSummary.Empty(id));
+                return new ValueTask<IReadOnlyDictionary<Guid, ShiftUserSummary>>(dict);
             });
     }
 
