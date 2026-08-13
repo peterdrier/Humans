@@ -9,6 +9,11 @@
       tests into substitutes inside a move commit (design §15 step 8).
     -->
     <InternalsVisibleTo Include="Humans.Teams.Tests" />
+    <!--
+      Camps' service tests build the real CampService over an in-memory UsersDbContext to seed
+      camp owners. Temporary: the entry comes out at Users' own G5 (Teams finding 36's mirror).
+    -->
+    <InternalsVisibleTo Include="Humans.Camps.Tests" />
     <InternalsVisibleTo Include="Humans.Web.Tests" />
     <InternalsVisibleTo Include="Humans.Integration.Tests" />
     <!--

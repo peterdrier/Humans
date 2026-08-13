@@ -24,7 +24,8 @@ public class IssueSectionInferenceTests
     [InlineData("/Voting", IssueSectionRouting.Governance)]
     [InlineData("/Legal", IssueSectionRouting.Legal)]
     [InlineData("/Consent", IssueSectionRouting.Legal)]
-    [InlineData("/City/zone", IssueSectionRouting.CityPlanning)]
+    [InlineData("/CityPlanning/BarrioMap", IssueSectionRouting.CityPlanning)]
+    [InlineData("/cityplanning", IssueSectionRouting.CityPlanning)]
     [InlineData("/Scanner", IssueSectionRouting.Scanner)]
     [InlineData("/Scanner/Barcode", IssueSectionRouting.Scanner)]
     [InlineData("https://example.com/Camps/abc", IssueSectionRouting.Camps)]
@@ -47,6 +48,9 @@ public class IssueSectionInferenceTests
     [InlineData("   ")]
     [InlineData("/SomeUnknownPage")]
     [InlineData("/Foo/Bar")]
+    // "/City" was the old mapping and matches no route in the app — CityPlanningController
+    // is [Route("CityPlanning")]. It must not resolve, or the outlier comes back.
+    [InlineData("/City/zone")]
     public void FromPath_returns_null_for_unknown_or_empty(string? input)
     {
         IssueSectionInference.FromPath(input).Should().BeNull();

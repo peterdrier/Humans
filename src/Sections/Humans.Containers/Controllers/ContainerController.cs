@@ -1,4 +1,4 @@
-using Humans.Application.Interfaces.Camps;
+using Humans.Camps.Contracts;
 using Humans.CityPlanning.Contracts;
 using Humans.Containers.Contracts;
 using Humans.UI.Controllers;

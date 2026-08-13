@@ -194,11 +194,11 @@ internal sealed class ExpenseReportService(
         CancellationToken ct = default)
     {
         var existing = await repo.GetByIdAsync(reportId, ct)
-            ?? throw new InvalidOperationException("Report not found.");
+            ?? throw new ExpenseValidationException("Report not found.");
         if (existing.SubmitterUserId != submitterUserId)
             throw new UnauthorizedAccessException("Only the submitter can update a draft.");
         if (existing.Status != ExpenseReportStatus.Draft)
-            throw new InvalidOperationException("Only Draft reports can be updated.");
+            throw new ExpenseValidationException("Only Draft reports can be updated.");
 
         var year = await budgetService.GetActiveYearAsync()
             ?? throw new InvalidOperationException("No active budget year.");
@@ -309,7 +309,7 @@ internal sealed class ExpenseReportService(
         // submitter claim an arbitrary unreceipted amount on a Mileage/PerDiem line. To change one,
         // remove it and re-add so the amount is always recomputed from its inputs.
         if (existing.LineType != ExpenseLineType.Receipt)
-            throw new InvalidOperationException(
+            throw new ExpenseValidationException(
                 "Travel lines are computed from their inputs and cannot be edited. Remove the line and add it again to change it.");
 
         var line = new ExpenseLine
@@ -384,13 +384,13 @@ internal sealed class ExpenseReportService(
         Stream content, CancellationToken ct = default)
     {
         if (content is null || content.Length == 0)
-            throw new InvalidOperationException("Please select a file.");
+            throw new ExpenseValidationException("Please select a file.");
         if (content.Length > AttachmentMaxBytes)
-            throw new InvalidOperationException($"File too large. Maximum size is {AttachmentMaxBytes / (1024 * 1024)} MB.");
+            throw new ExpenseValidationException($"File too large. Maximum size is {AttachmentMaxBytes / (1024 * 1024)} MB.");
 
         var extension = Path.GetExtension(originalFileName).ToLowerInvariant();
         if (!AllowedContentTypes.Contains(contentType) || !AllowedExtensions.Contains(extension))
-            throw new InvalidOperationException("Unsupported file type. Upload PDF, JPEG, PNG, or HEIC.");
+            throw new ExpenseValidationException("Unsupported file type. Upload PDF, JPEG, PNG, or HEIC.");
 
         var report = await RequireEditableReportAsync(reportId, submitterUserId, ct);
 
@@ -1004,12 +1004,12 @@ internal sealed class ExpenseReportService(
         Guid reportId, Guid submitterUserId, CancellationToken ct)
     {
         var report = await repo.GetByIdAsync(reportId, ct)
-            ?? throw new InvalidOperationException("Report not found.");
+            ?? throw new ExpenseValidationException("Report not found.");
         if (report.SubmitterUserId != submitterUserId)
             throw new UnauthorizedAccessException("Only the submitter can edit lines.");
         // Line mutations are Draft-only — submitted reports are frozen for review.
         if (report.Status is not ExpenseReportStatus.Draft)
-            throw new InvalidOperationException(
+            throw new ExpenseValidationException(
                 $"Lines cannot be edited when the report is in status {report.Status}.");
         return report;
     }

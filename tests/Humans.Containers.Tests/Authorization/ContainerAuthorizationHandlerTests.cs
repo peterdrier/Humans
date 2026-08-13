@@ -2,7 +2,7 @@ using Humans.Containers.Authorization;
 using Humans.Containers.Contracts;
 using System.Security.Claims;
 using AwesomeAssertions;
-using Humans.Application.Interfaces.Camps;
+using Humans.Camps.Contracts;
 using Humans.CityPlanning.Contracts;
 using Humans.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;

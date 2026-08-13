@@ -90,7 +90,7 @@ Terse, authoritative invariant docs for each major section: concepts, data model
 | [Budget](../src/Sections/Humans.Budget/Docs/Budget.md) | Fiscal-year budgets (Draft/Active/Closed) with groups, categories, line items, and an append-only audit log |
 | [Calendar](../src/Sections/Humans.Calendar/Docs/Calendar.md) | Per-team community calendar with one-off and recurring events plus per-occurrence overrides and cancellations |
 | [Campaigns](../src/Sections/Humans.Campaigns/Docs/Campaigns.md) | Bulk code-distribution campaigns: codes imported or generated, assigned to humans, delivered via email waves |
-| [Camps](sections/Camps.md) | Themed community camps (Barrios) with per-year season registrations, leads, images, and renaming history |
+| [Camps](../src/Sections/Humans.Camps/Docs/Camps.md) | Themed community camps (Barrios) with per-year season registrations, leads, images, and renaming history |
 | [Cantina](../src/Sections/Humans.Cantina/Docs/Cantina.md) | Read-only weekly roster surface for the food-service team — who is on site each day and what they can/cannot eat; composes over Shifts, owns no tables |
 | [City Planning](../src/Sections/Humans.CityPlanning/Docs/CityPlanning.md) | Interactive map surface with three screens: read-only overview, barrio polygon editing, and container placement |
 | [Containers](../src/Sections/Humans.Containers/Docs/Containers.md) | Physical shipping containers managed per-barrio or at org level, placed on the City Planning map |

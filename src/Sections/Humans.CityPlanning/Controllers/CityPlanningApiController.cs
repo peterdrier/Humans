@@ -1,6 +1,6 @@
 using Humans.UI.Authorization;
 using System.Text.Json;
-using Humans.Application.Interfaces.Camps;
+using Humans.Camps.Contracts;
 using Humans.CityPlanning.Contracts;
 using Humans.CityPlanning.Services;
 using Humans.Containers.Contracts;

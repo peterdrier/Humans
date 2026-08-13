@@ -1608,82 +1608,8 @@
   <data name="Search_MinChars" xml:space="preserve">
     <value>Escriu almenys 2 caràcters per cercar.</value>
   </data>
-  <data name="Camp_Singular" xml:space="preserve">
-    <value>Barri</value>
-  </data>
   <data name="Camp_Plural" xml:space="preserve">
     <value>Barris</value>
-  </data>
-  <data name="Camp_AdminTitle" xml:space="preserve">
-    <value>Admin de barris</value>
-  </data>
-  <data name="Camp_ShiftSignupBadgeTitle" xml:space="preserve"><value>Inscripcions a torns actives per a l'esdeveniment actual (pendents o confirmades)</value></data>
-  <data name="Camp_ShiftSignupBadgeAriaLabel" xml:space="preserve"><value>{0} inscripcions a torns actives</value></data>
-  <data name="Camp_SwissCampLabel" xml:space="preserve">
-    <value>Aquest camp s’ha anomenat mai "Swiss Camp"?</value>
-  </data>
-  <data name="Camp_InfoTitle" xml:space="preserve">
-    <value>Informació del barri</value>
-  </data>
-  <data name="Camp_NameLabel" xml:space="preserve">
-    <value>Nom del barri</value>
-  </data>
-  <data name="Camp_ContactButton" xml:space="preserve">
-    <value>Contacta aquest barri</value>
-  </data>
-  <data name="Camp_ContactLoginHint" xml:space="preserve">
-    <value>Inicia la sessió per contactar amb aquest camp</value>
-  </data>
-  <data name="Camp_ContactLoginDetail" xml:space="preserve">
-    <value>El teu correu es manté privat.</value>
-  </data>
-  <data name="Camp_ContactLoginDetailOpenSeason" xml:space="preserve">
-    <value>En iniciar la sessió podràs indicar que formes part d'aquest camp i veuràs els esdeveniments que organitzi, si n'hi ha. El teu correu es manté privat.</value>
-  </data>
-  <data name="Camp_Contact_Title" xml:space="preserve">
-    <value>Contacta {0}</value>
-  </data>
-  <data name="Camp_Contact_Heading" xml:space="preserve">
-    <value>Contacta {0}</value>
-  </data>
-  <data name="Camp_Contact_Breadcrumb" xml:space="preserve">
-    <value>Contacte</value>
-  </data>
-  <data name="Camp_Contact_MessageLabel" xml:space="preserve">
-    <value>El teu missatge</value>
-  </data>
-  <data name="Camp_Contact_PlainTextOnly" xml:space="preserve">
-    <value>Només text pla. Màxim 2000 caràcters.</value>
-  </data>
-  <data name="Camp_Contact_IncludeContactInfo" xml:space="preserve">
-    <value>Inclou la meva informació de contacte</value>
-  </data>
-  <data name="Camp_Contact_IncludeContactInfoHelp" xml:space="preserve">
-    <value>El teu correu s’afegirà com a resposta perquè et puguin respondre directament</value>
-  </data>
-  <data name="Camp_Contact_Send" xml:space="preserve">
-    <value>Envia</value>
-  </data>
-  <data name="Camp_Contact_Success" xml:space="preserve">
-    <value>El teu missatge s’ha enviat a {0}.</value>
-  </data>
-  <data name="Camp_Contact_RateLimited" xml:space="preserve">
-    <value>Ja has contactat aquest barri fa poc. Espera uns minuts abans d’enviar un altre missatge.</value>
-  </data>
-  <data name="Camp_Links_Header" xml:space="preserve">
-    <value>Enllaços i contacte</value>
-  </data>
-  <data name="Camp_Edit_Links" xml:space="preserve">
-    <value>Enllaços</value>
-  </data>
-  <data name="Camp_Edit_AddLink" xml:space="preserve">
-    <value>Afegeix enllaç</value>
-  </data>
-  <data name="Camp_Edit_RemoveLink" xml:space="preserve">
-    <value>Elimina</value>
-  </data>
-  <data name="Camp_Edit_WebsiteNudge" xml:space="preserve">
-    <value>Recomanem molt afegir un web per al teu barri perquè els visitants et puguin conèixer millor.</value>
   </data>
   <data name="Shifts_SignedUp" xml:space="preserve">
     <value>Apuntats</value>
@@ -1811,9 +1737,6 @@
   </data>
   <data name="MagicLinkConfirm_SignIn" xml:space="preserve">
     <value>Inicia la sessió</value>
-  </data>
-  <data name="CampCard_NeedsPhoto" xml:space="preserve">
-    <value>Aquest barri necessita una foto!</value>
   </data>
   <data name="Todo_Title" xml:space="preserve">
     <value>Tasques pendents</value>
@@ -3695,81 +3618,6 @@
   <data name="AccountStatus_ConsentSuspendedBody" xml:space="preserve"><value>El teu accés està suspès fins que completis els consentiments legals requerits.</value></data>
   <data name="AccountStatus_HeadingAdminSuspended" xml:space="preserve"><value>Un administrador ha suspès el teu compte</value></data>
   <data name="AccountStatus_ReviewConsents" xml:space="preserve"><value>Revisa els consentiments requerits</value></data>
-  <data name="Camp_AboutHeading" xml:space="preserve"><value>Sobre el teu {0}</value></data>
-  <data name="Camp_AcceptingMembersLabel" xml:space="preserve"><value>Acceptes nous humans?</value></data>
-  <data name="Camp_AdultPlayspaceLabel" xml:space="preserve"><value>Espai de joc per a adults</value></data>
-  <data name="Camp_BlurbLongLabel" xml:space="preserve"><value>Descripció completa</value></data>
-  <data name="Camp_BlurbLongPlaceholder" xml:space="preserve"><value>Explica al món com és el teu barri.</value></data>
-  <data name="Camp_BlurbShortLabel" xml:space="preserve"><value>Descripció curta</value></data>
-  <data name="Camp_BlurbShortPlaceholder" xml:space="preserve"><value>Una o dues frases sobre el teu barri (màx. 300 caràcters)</value></data>
-  <data name="Camp_CommunityHeading" xml:space="preserve"><value>Comunitat</value></data>
-  <data name="Camp_ContactEmailLabel" xml:space="preserve"><value>Correu de contacte</value></data>
-  <data name="Camp_ContactPhoneLabel" xml:space="preserve"><value>Telèfon de contacte</value></data>
-  <data name="Camp_ContactPhonePlaceholder" xml:space="preserve"><value>+34 612 345 678</value></data>
-  <data name="Camp_CultureHeading" xml:space="preserve"><value>Cultura i esdeveniments</value></data>
-  <data name="Camp_Edit_AutoCreatedFromNameChange" xml:space="preserve"><value>Creat automàticament per un canvi de nom</value></data>
-  <data name="Camp_Edit_ContainersSeparate" xml:space="preserve"><value>Els contenidors ara es gestionen per separat.</value></data>
-  <data name="Camp_Edit_HideHistoricalNames" xml:space="preserve"><value>Amaga els noms històrics</value></data>
-  <data name="Camp_Edit_HistoricalNamesHeading" xml:space="preserve"><value>Noms històrics</value></data>
-  <data name="Camp_Edit_HistoricalNamesHelp" xml:space="preserve"><value>Noms amb què es coneixia aquest barri anteriorment.</value></data>
-  <data name="Camp_Edit_ImageAlt" xml:space="preserve"><value>Imatge del barri</value></data>
-  <data name="Camp_Edit_ImagesHeading" xml:space="preserve"><value>Imatges ({0}/{1})</value></data>
-  <data name="Camp_Edit_ImageUploadHelp" xml:space="preserve"><value>JPEG, PNG o WebP. Màx. 10 MB.</value></data>
-  <data name="Camp_Edit_ManageContainers" xml:space="preserve"><value>Gestiona els contenidors →</value></data>
-  <data name="Camp_Edit_MembersRolesDescription" xml:space="preserve"><value>Gestiona els membres actius, els rols, els líders i les sol·licituds d'incorporació pendents.</value></data>
-  <data name="Camp_Edit_MembersRolesHeading" xml:space="preserve"><value>Membres i rols</value></data>
-  <data name="Camp_Edit_NameLocked" xml:space="preserve"><value>El nom està bloquejat per a aquesta temporada.</value></data>
-  <data name="Camp_Edit_OpenMembersRoles" xml:space="preserve"><value>Obre membres i rols</value></data>
-  <data name="Camp_Edit_OpenStore" xml:space="preserve"><value>Obre la botiga</value></data>
-  <data name="Camp_Edit_PreviousNamePlaceholder" xml:space="preserve"><value>Nom anterior del barri</value></data>
-  <data name="Camp_Edit_StoreDescription" xml:space="preserve"><value>Fes una comanda per a aquest barri.</value></data>
-  <data name="Camp_Edit_StoreHeading" xml:space="preserve"><value>Botiga</value></data>
-  <data name="Camp_Edit_UploadImage" xml:space="preserve"><value>Puja una imatge</value></data>
-  <data name="Camp_ElectricalGridLabel" xml:space="preserve"><value>Xarxa elèctrica</value></data>
-  <data name="Camp_HistoryHeading" xml:space="preserve"><value>Història</value></data>
-  <data name="Camp_Index_AcceptingMembersFilter" xml:space="preserve"><value>Accepta membres</value></data>
-  <data name="Camp_Index_AllOption" xml:space="preserve"><value>Tots</value></data>
-  <data name="Camp_Index_BarrioGuide" xml:space="preserve"><value>Guia de Barrio 2026</value></data>
-  <data name="Camp_Index_FilterButton" xml:space="preserve"><value>Filtra</value></data>
-  <data name="Camp_Index_KidsWelcomeFilter" xml:space="preserve"><value>Nens benvinguts</value></data>
-  <data name="Camp_Index_NoFilterResults" xml:space="preserve"><value>No s'ha trobat cap {0} per als filtres seleccionats.</value></data>
-  <data name="Camp_Index_NoSearchResults" xml:space="preserve"><value>Cap {0} coincideix amb la teva cerca.</value></data>
-  <data name="Camp_Index_PendingApproval" xml:space="preserve"><value>pendent d'aprovació</value></data>
-  <data name="Camp_Index_SearchLabel" xml:space="preserve"><value>Cerca</value></data>
-  <data name="Camp_Index_SearchPlaceholder" xml:space="preserve"><value>Escriu el nom d'un {0}…</value></data>
-  <data name="Camp_Index_ShowLeadPositions" xml:space="preserve"><value>Mostra les posicions de lideratge</value></data>
-  <data name="Camp_Index_SoundZoneLabel" xml:space="preserve"><value>Zona de so</value></data>
-  <data name="Camp_Index_VibeLabel" xml:space="preserve"><value>Ambient</value></data>
-  <data name="Camp_KidsAreaDescriptionLabel" xml:space="preserve"><value>Descripció de la zona infantil</value></data>
-  <data name="Camp_KidsAreaDescriptionPlaceholder" xml:space="preserve"><value>Descriu la teva zona infantil si escau</value></data>
-  <data name="Camp_KidsVisitingLabel" xml:space="preserve"><value>Política de visites de nens</value></data>
-  <data name="Camp_KidsWelcomeLabel" xml:space="preserve"><value>Nens benvinguts?</value></data>
-  <data name="Camp_LanguagesLabel" xml:space="preserve"><value>Idiomes parlats</value></data>
-  <data name="Camp_LanguagesPlaceholder" xml:space="preserve"><value>p. ex. anglès, espanyol, alemany</value></data>
-  <data name="Camp_MarkdownSupported" xml:space="preserve"><value>S'admet el format Markdown</value></data>
-  <data name="Camp_MemberCountLabel" xml:space="preserve"><value>Humans previstos</value></data>
-  <data name="Camp_NoPreference" xml:space="preserve"><value>Sense preferència</value></data>
-  <data name="Camp_NotSure" xml:space="preserve"><value>No n'estic segur</value></data>
-  <data name="Camp_PerformanceSpaceLabel" xml:space="preserve"><value>Espai d'actuacions</value></data>
-  <data name="Camp_PerformanceTypesLabel" xml:space="preserve"><value>Tipus d'actuacions</value></data>
-  <data name="Camp_PerformanceTypesPlaceholder" xml:space="preserve"><value>p. ex. música, teatre, tallers</value></data>
-  <data name="Camp_PlacementHeading" xml:space="preserve"><value>Ubicació</value></data>
-  <data name="Camp_PreviousNamesHelp" xml:space="preserve"><value>Si el teu barri ha tingut noms diferents en anys anteriors, llista'ls aquí.</value></data>
-  <data name="Camp_PreviousNamesLabel" xml:space="preserve"><value>Noms anteriors</value></data>
-  <data name="Camp_PreviousNamesPlaceholder" xml:space="preserve"><value>Llista de noms anteriors del barri separats per comes</value></data>
-  <data name="Camp_Register_Breadcrumb" xml:space="preserve"><value>Registre</value></data>
-  <data name="Camp_Register_Heading" xml:space="preserve"><value>Registra el teu {0}</value></data>
-  <data name="Camp_Register_ImportantInfo" xml:space="preserve"><value>Informació important</value></data>
-  <data name="Camp_Register_Season" xml:space="preserve"><value>temporada</value></data>
-  <data name="Camp_Register_Submit" xml:space="preserve"><value>Registra {0}</value></data>
-  <data name="Camp_SoundZoneLabel" xml:space="preserve"><value>Preferència de zona de so</value></data>
-  <data name="Camp_SpaceRequirementLabel" xml:space="preserve"><value>Requisit d'espai</value></data>
-  <data name="Camp_TimesParticipatingLabel" xml:space="preserve"><value>Vegades participant</value></data>
-  <data name="Camp_VibesLabel" xml:space="preserve"><value>Ambient</value></data>
-  <data name="CampCard_AcceptingMembers" xml:space="preserve"><value>Accepta membres</value></data>
-  <data name="CampCard_Full" xml:space="preserve"><value>Complet</value></data>
-  <data name="CampCard_KidsWelcome" xml:space="preserve"><value>Nens benvinguts</value></data>
-  <data name="CampCard_TimesAtNowhere" xml:space="preserve"><value>{0} any(s)</value></data>
   <data name="Common_Actions" xml:space="preserve"><value>Accions</value></data>
   <data name="Common_Admin" xml:space="preserve"><value>Administrador</value></data>
   <data name="Common_Amount" xml:space="preserve"><value>Import</value></data>
@@ -3794,16 +3642,6 @@
   <data name="Enum_AdultPlayspacePolicy_NightOnly" xml:space="preserve"><value>Només de nit</value></data>
   <data name="Enum_AdultPlayspacePolicy_No" xml:space="preserve"><value>No</value></data>
   <data name="Enum_AdultPlayspacePolicy_Yes" xml:space="preserve"><value>Sí</value></data>
-  <data name="Enum_CampVibe_Adult" xml:space="preserve"><value>Adults</value></data>
-  <data name="Enum_CampVibe_ChillOut" xml:space="preserve"><value>Relax</value></data>
-  <data name="Enum_CampVibe_ElectronicMusic" xml:space="preserve"><value>Música electrònica</value></data>
-  <data name="Enum_CampVibe_Games" xml:space="preserve"><value>Jocs</value></data>
-  <data name="Enum_CampVibe_Lecture" xml:space="preserve"><value>Xerrada</value></data>
-  <data name="Enum_CampVibe_LiveMusic" xml:space="preserve"><value>Música en directe</value></data>
-  <data name="Enum_CampVibe_Queer" xml:space="preserve"><value>Queer</value></data>
-  <data name="Enum_CampVibe_Sober" xml:space="preserve"><value>Sobri</value></data>
-  <data name="Enum_CampVibe_Wellness" xml:space="preserve"><value>Benestar</value></data>
-  <data name="Enum_CampVibe_Workshop" xml:space="preserve"><value>Taller</value></data>
   <data name="Enum_ContactFieldType_Discord" xml:space="preserve"><value>Discord</value></data>
   <data name="Enum_ContactFieldType_Other" xml:space="preserve"><value>Altres</value></data>
   <data name="Enum_ContactFieldType_Phone" xml:space="preserve"><value>Telèfon</value></data>

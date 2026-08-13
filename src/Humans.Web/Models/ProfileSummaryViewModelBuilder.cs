@@ -1,6 +1,6 @@
 using Humans.Teams.Contracts;
 using Humans.Application;
-using Humans.Application.Interfaces.Camps;
+using Humans.Camps.Contracts;
 using Humans.Application.Models;
 
 namespace Humans.Web.Models;
