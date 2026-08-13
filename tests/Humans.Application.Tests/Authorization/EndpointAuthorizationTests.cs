@@ -75,9 +75,12 @@ public class EndpointAuthorizationTests
         { SectionType("Humans.Email.Controllers.EmailController"), null, "AdminOnly" },
         { typeof(AdminController), "Index", "AnyAdminRole" },
         { SectionType("Humans.AuditLog.Controllers.AuditLogController"), "Index", "BoardOrAdmin" },
-        { SectionType("Humans.AuditLog.Controllers.AuditLogController"), "CheckDriveActivity", "BoardOrAdmin" },
-        { SectionType("Humans.AuditLog.Controllers.AuditLogController"), "Resource", "BoardOrAdmin" },
-        { SectionType("Humans.AuditLog.Controllers.AuditLogController"), "Human", "HumanAdminBoardOrAdmin" },
+        // These three moved to Humans.Monitor: two injected GoogleIntegration services and
+        // AuditLog is a horizontal, which peters-hard-rules.md forbids. Retargeted rather than
+        // dropped — the policies are unchanged and a deleted row reads as "no longer critical".
+        { SectionType("Humans.Monitor.Controllers.MonitorController"), "CheckDriveActivity", "BoardOrAdmin" },
+        { SectionType("Humans.Monitor.Controllers.MonitorController"), "Resource", "BoardOrAdmin" },
+        { SectionType("Humans.Monitor.Controllers.MonitorController"), "Human", "HumanAdminBoardOrAdmin" },
         { typeof(GoogleController), "SyncSettings", "AdminOnly" },
         { typeof(GoogleController), "UpdateSyncSetting", "AdminOnly" },
         { typeof(GoogleController), "SyncSystemTeams", "AdminOnly" },

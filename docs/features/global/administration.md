@@ -125,9 +125,9 @@ Google sync, settings, account provisioning, and audit routes have been extracte
 | `/Google/Sync/Preview/{resourceType}` | TeamsAdmin, Board, Admin | GET: AJAX preview drift |
 | `/Google/Sync/Execute/{resourceId}` | Admin | POST: Sync one resource |
 | `/Google/Sync/ExecuteAll/{resourceType}` | Admin | POST: Sync all of a type |
-| `/AuditLog/CheckDriveActivity` | Board, Admin | POST: Manual Drive Activity check |
-| `/AuditLog/Resource/{id}` | Board, Admin | GET: Per-resource sync audit log |
-| `/AuditLog/Human/{id}` | HumanAdmin, Board, Admin | GET: Per-user sync audit log |
+| `/Monitor/CheckDriveActivity` | Board, Admin | POST: Manual Drive Activity check |
+| `/Monitor/Resource/{id}` | Board, Admin | GET: Per-resource sync audit log |
+| `/Monitor/Human/{id}` | HumanAdmin, Board, Admin | GET: Per-user sync audit log |
 | `/Google/Human/{id}/ProvisionEmail` | Admin | POST: Provision @nobodies.team email |
 | `/Google/Accounts` | Admin | GET: All @nobodies.team accounts |
 | `/Google/Accounts/Provision` | Admin | POST: Provision account |

@@ -1,6 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application.DTOs;
-using Humans.Application.Interfaces.Camps;
+using Humans.Camps.Contracts;
 using Humans.Events.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;

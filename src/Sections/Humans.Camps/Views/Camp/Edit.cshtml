@@ -1,0 +1,399 @@
+@using Humans.UI.Extensions
+@model Humans.Camps.Models.CampEditViewModel
+@{
+    ViewData["Title"] = $"{SharedLocalizer["Common_Edit"]} {Model.Name}";
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-action="Index">@SharedLocalizer["Camp_Plural"]</a></li>
+        <li class="breadcrumb-item"><a asp-action="Details" asp-route-slug="@Model.Slug">@Model.Name</a></li>
+        <li class="breadcrumb-item active" aria-current="page">@SharedLocalizer["Common_Edit"]</li>
+    </ol>
+</nav>
+
+<h1 class="mb-4">@SharedLocalizer["Common_Edit"] @Model.Name <small class="text-muted">(@Model.Year)</small></h1>
+
+
+<div asp-validation-summary="All" class="text-danger mb-3"></div>
+
+<div class="row">
+    <div class="col-md-8">
+        <form asp-action="Edit" asp-route-slug="@Model.Slug" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" asp-for="CampId" />
+            <input type="hidden" asp-for="SeasonId" />
+            <input type="hidden" asp-for="Slug" />
+            <input type="hidden" asp-for="Year" />
+
+            <div class="card mb-4">
+                <div class="card-header"><i class="fa-solid fa-campground me-1"></i> @Localizer["Camp_InfoTitle"]</div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label asp-for="Name" class="form-label">@Localizer["Camp_NameLabel"]</label>
+                            @if (Model.IsNameLocked)
+                            {
+                                <input asp-for="Name" class="form-control" readonly />
+                                <div class="form-text text-warning">
+                                    <i class="fa-solid fa-lock me-1"></i> @Localizer["Camp_Edit_NameLocked"]
+                                </div>
+                            }
+                            else
+                            {
+                                <input asp-for="Name" class="form-control" required />
+                            }
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="ContactEmail" class="form-label">@Localizer["Camp_ContactEmailLabel"]</label>
+                            <input asp-for="ContactEmail" class="form-control" type="email" required />
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="ContactPhone" class="form-label">@Localizer["Camp_ContactPhoneLabel"]</label>
+                            <input asp-for="ContactPhone" class="form-control" type="tel" pattern="\+[\d\s\-()]{6,20}" placeholder="@Localizer["Camp_ContactPhonePlaceholder"]" />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">@Localizer["Camp_Edit_Links"]</label>
+                            <div id="links-container">
+                                @for (var i = 0; i < Model.Links.Count; i++)
+                                {
+                                    <div class="input-group mb-2 link-entry">
+                                        <input type="url" name="Links" class="form-control" value="@Model.Links[i]" placeholder="https://" />
+                                        <button type="button" class="btn btn-outline-danger remove-link">
+                                            <i class="fa-solid fa-times"></i>
+                                        </button>
+                                    </div>
+                                }
+                            </div>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" id="add-link">
+                                <i class="fa-solid fa-plus me-1"></i> @Localizer["Camp_Edit_AddLink"]
+                            </button>
+                            @{
+                                var hasWebsite = Model.Links?.Any(u => !string.IsNullOrEmpty(u) && !Humans.Domain.Helpers.PlatformDetector.IsSocialMedia(u)) ?? false;
+                            }
+                            @if (!hasWebsite)
+                            {
+                                <div class="alert alert-warning mt-2 mb-0">
+                                    <i class="fa-solid fa-triangle-exclamation me-1"></i> @Localizer["Camp_Edit_WebsiteNudge"]
+                                </div>
+                            }
+                        </div>
+                        <div class="col-md-3">
+                            <label asp-for="TimesAtNowhere" class="form-label">@Localizer["Camp_TimesParticipatingLabel"]</label>
+                            <input asp-for="TimesAtNowhere" class="form-control" type="number" min="0" />
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-check mt-4">
+                                <input asp-for="IsSwissCamp" class="form-check-input" />
+                                <label asp-for="IsSwissCamp" class="form-check-label">@Localizer["Camp_SwissCampLabel"]</label>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-check mt-4">
+                                <input asp-for="HideHistoricalNames" class="form-check-input" />
+                                <label asp-for="HideHistoricalNames" class="form-check-label">@Localizer["Camp_Edit_HideHistoricalNames"]</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header"><i class="fa-solid fa-pen-fancy me-1"></i> @Localizer["Camp_AboutHeading", Localizer["Camp_Singular"]]</div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label asp-for="BlurbShort" class="form-label">@Localizer["Camp_BlurbShortLabel"]</label>
+                            <textarea asp-for="BlurbShort" class="form-control" rows="2" maxlength="300" required></textarea>
+                        </div>
+                        <div class="col-12">
+                            <label asp-for="BlurbLong" class="form-label">@Localizer["Camp_BlurbLongLabel"]</label>
+                            <markdown-editor asp-for="BlurbLong" rows="6" required="true" />
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="Languages" class="form-label">@Localizer["Camp_LanguagesLabel"]</label>
+                            <input asp-for="Languages" class="form-control" required />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header"><i class="fa-solid fa-users me-1"></i> @Localizer["Camp_CommunityHeading"]</div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label asp-for="AcceptingMembers" class="form-label">@Localizer["Camp_AcceptingMembersLabel"]</label>
+                            <select asp-for="AcceptingMembers" class="form-select"
+                                    asp-items="@SharedLocalizer.EnumSelectItems<YesNoMaybe>()"></select>
+                        </div>
+                        <div class="col-md-4">
+                            <label asp-for="KidsWelcome" class="form-label">@Localizer["Camp_KidsWelcomeLabel"]</label>
+                            <select asp-for="KidsWelcome" class="form-select"
+                                    asp-items="@SharedLocalizer.EnumSelectItems<YesNoMaybe>()"></select>
+                        </div>
+                        <div class="col-md-4">
+                            <label asp-for="KidsVisiting" class="form-label">@Localizer["Camp_KidsVisitingLabel"]</label>
+                            <select asp-for="KidsVisiting" class="form-select"
+                                    asp-items="@SharedLocalizer.EnumSelectItems<KidsVisitingPolicy>()"></select>
+                        </div>
+                        <div class="col-12">
+                            <label asp-for="KidsAreaDescription" class="form-label">@Localizer["Camp_KidsAreaDescriptionLabel"]</label>
+                            <textarea asp-for="KidsAreaDescription" class="form-control" rows="2"></textarea>
+                            <div class="form-text">
+                                <a href="#" data-bs-toggle="modal" data-bs-target="#markdownHelpModal">
+                                    <i class="fa-solid fa-circle-info me-1"></i>@Localizer["Camp_MarkdownSupported"]
+                                </a>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <label asp-for="AdultPlayspace" class="form-label">@Localizer["Camp_AdultPlayspaceLabel"]</label>
+                            <select asp-for="AdultPlayspace" class="form-select"
+                                    asp-items="@SharedLocalizer.EnumSelectItems<AdultPlayspacePolicy>()"></select>
+                        </div>
+                        <div class="col-md-4">
+                            <label asp-for="MemberCount" class="form-label">@Localizer["Camp_MemberCountLabel"]</label>
+                            <input asp-for="MemberCount" class="form-control" type="number" min="1" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header"><i class="fa-solid fa-masks-theater me-1"></i> @Localizer["Camp_CultureHeading"]</div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label asp-for="HasPerformanceSpace" class="form-label">@Localizer["Camp_PerformanceSpaceLabel"]</label>
+                            <select asp-for="HasPerformanceSpace" class="form-select"
+                                    asp-items="@SharedLocalizer.EnumSelectItems<PerformanceSpaceStatus>()"></select>
+                        </div>
+                        <div class="col-md-8">
+                            <label asp-for="PerformanceTypes" class="form-label">@Localizer["Camp_PerformanceTypesLabel"]</label>
+                            <input asp-for="PerformanceTypes" class="form-control" />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">@Localizer["Camp_VibesLabel"]</label>
+                            <div class="d-flex flex-wrap gap-3">
+                                @foreach (var vibe in Enum.GetValues<CampVibe>())
+                                {
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox"
+                                               name="Vibes" value="@vibe"
+                                               id="vibe-@vibe"
+                                               checked="@(Model.Vibes.Contains(vibe) ? "checked" : null)" />
+                                        <label class="form-check-label" for="vibe-@vibe">@Localizer.EnumDisplay(vibe)</label>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header"><i class="fa-solid fa-map-location-dot me-1"></i> @Localizer["Camp_PlacementHeading"]</div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label asp-for="SoundZone" class="form-label">@Localizer["Camp_SoundZoneLabel"]</label>
+                            <select asp-for="SoundZone" class="form-select"
+                                    asp-items="@SharedLocalizer.EnumSelectItems<SoundZone>()">
+                                <option value="">@Localizer["Camp_NoPreference"]</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label asp-for="SpaceRequirement" class="form-label">@Localizer["Camp_SpaceRequirementLabel"]</label>
+                            <select asp-for="SpaceRequirement" class="form-select"
+                                    asp-items="@SharedLocalizer.EnumSelectItems<SpaceSize>()">
+                                <option value="">@Localizer["Camp_NotSure"]</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label asp-for="ElectricalGrid" class="form-label">@Localizer["Camp_ElectricalGridLabel"]</label>
+                            <select asp-for="ElectricalGrid" class="form-select"
+                                    asp-items="@SharedLocalizer.EnumSelectItems<ElectricalGrid>()">
+                                <option value="">@SharedLocalizer["Common_Unknown"]</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <div class="alert alert-info mb-0">
+                                <i class="fa-solid fa-box me-1"></i>
+                                @Localizer["Camp_Edit_ContainersSeparate"]
+                                <a asp-controller="Container" asp-action="Index"
+                                   asp-route-slug="@Model.Slug" asp-route-year="@Model.Year"
+                                   class="alert-link">@Localizer["Camp_Edit_ManageContainers"]</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-between mb-4">
+                <a asp-action="Details" asp-route-slug="@Model.Slug" class="btn btn-outline-secondary">@SharedLocalizer["Common_Cancel"]</a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fa-solid fa-floppy-disk me-1"></i> @SharedLocalizer["Common_Save"]
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <div class="col-md-4">
+        @* Members & Roles — moved to dedicated page (issue nobodies-collective#641) *@
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="fa-solid fa-users-gear me-1"></i> @Localizer["Camp_Edit_MembersRolesHeading"]
+            </div>
+            <div class="card-body">
+                <p class="card-text small text-muted mb-3">
+                    @Localizer["Camp_Edit_MembersRolesDescription"]
+                </p>
+                <a asp-action="Members" asp-route-slug="@Model.Slug" class="btn btn-primary">
+                    <i class="fa-solid fa-users-gear me-1"></i> @Localizer["Camp_Edit_OpenMembersRoles"]
+                </a>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="fa-solid fa-cart-shopping me-1"></i> @Localizer["Camp_Edit_StoreHeading"]
+            </div>
+            <div class="card-body">
+                <p class="card-text small text-muted mb-3">
+                    @Localizer["Camp_Edit_StoreDescription"]
+                </p>
+                <a asp-controller="Store" asp-action="Index" class="btn btn-primary">
+                    <i class="fa-solid fa-cart-shopping me-1"></i> @Localizer["Camp_Edit_OpenStore"]
+                </a>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="fa-solid fa-images me-1"></i> @Localizer["Camp_Edit_ImagesHeading", Model.Images.Count, 5]
+            </div>
+            @if (Model.Images.Count > 0)
+            {
+                <ul class="list-group list-group-flush">
+                    @foreach (var image in Model.Images.OrderBy(i => i.SortOrder))
+                    {
+                        <li class="list-group-item">
+                            <div class="d-flex align-items-center gap-2">
+                                <img src="@image.Url" alt="@Localizer["Camp_Edit_ImageAlt"]" class="rounded"
+                                     style="width: 60px; height: 60px; object-fit: cover;" />
+                                <span class="text-muted small">#@(image.SortOrder + 1)</span>
+                                <div class="ms-auto d-flex gap-1">
+                                    <form asp-action="ReorderImages" asp-route-slug="@Model.Slug" method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        @{
+                                            var moveUpIds = Model.Images.OrderBy(i => i.SortOrder).Select(i => i.Id).ToList();
+                                            var currentIdx = moveUpIds.IndexOf(image.Id);
+                                            if (currentIdx > 0)
+                                            {
+                                                // Swap with previous
+                                                (moveUpIds[currentIdx], moveUpIds[currentIdx - 1]) = (moveUpIds[currentIdx - 1], moveUpIds[currentIdx]);
+                                            }
+                                        }
+                                        @foreach (var id in moveUpIds)
+                                        {
+                                            <input type="hidden" name="imageIds" value="@id" />
+                                        }
+                                        <button type="submit" class="btn btn-sm btn-outline-secondary" title="@SharedLocalizer["Common_MoveUp"]" @(currentIdx == 0 ? "disabled" : null)>
+                                            <i class="fa-solid fa-arrow-up"></i>
+                                        </button>
+                                    </form>
+                                    <form asp-action="ReorderImages" asp-route-slug="@Model.Slug" method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        @{
+                                            var moveDownIds = Model.Images.OrderBy(i => i.SortOrder).Select(i => i.Id).ToList();
+                                            var downIdx = moveDownIds.IndexOf(image.Id);
+                                            if (downIdx < moveDownIds.Count - 1)
+                                            {
+                                                (moveDownIds[downIdx], moveDownIds[downIdx + 1]) = (moveDownIds[downIdx + 1], moveDownIds[downIdx]);
+                                            }
+                                        }
+                                        @foreach (var id in moveDownIds)
+                                        {
+                                            <input type="hidden" name="imageIds" value="@id" />
+                                        }
+                                        <button type="submit" class="btn btn-sm btn-outline-secondary" title="@SharedLocalizer["Common_MoveDown"]" @(downIdx == Model.Images.Count - 1 ? "disabled" : null)>
+                                            <i class="fa-solid fa-arrow-down"></i>
+                                        </button>
+                                    </form>
+                                    <form asp-action="DeleteImage" asp-route-slug="@Model.Slug" asp-route-imageId="@image.Id"
+                                          method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="@SharedLocalizer["Common_DeleteImage"]">
+                                            <i class="fa-solid fa-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </li>
+                    }
+                </ul>
+            }
+            @if (Model.Images.Count < 5)
+            {
+                <div class="card-body">
+                    <form asp-action="UploadImage" asp-route-slug="@Model.Slug" method="post" enctype="multipart/form-data">
+                        @Html.AntiForgeryToken()
+                        <input type="file" name="file" class="form-control mb-2" accept="image/jpeg,image/png,image/webp" required />
+                        <div class="form-text mb-2">@Localizer["Camp_Edit_ImageUploadHelp"]</div>
+                        <button type="submit" class="btn btn-outline-primary w-100">
+                            <i class="fa-solid fa-upload me-1"></i> @Localizer["Camp_Edit_UploadImage"]
+                        </button>
+                    </form>
+                </div>
+            }
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="fa-solid fa-clock-rotate-left me-1"></i> @Localizer["Camp_Edit_HistoricalNamesHeading"]
+            </div>
+            @if (Model.ExistingHistoricalNames.Count > 0)
+            {
+                <ul class="list-group list-group-flush">
+                    @foreach (var name in Model.ExistingHistoricalNames)
+                    {
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                @name.Name
+                                @if (name.Year.HasValue)
+                                {
+                                    <small class="text-muted">(@name.Year)</small>
+                                }
+                                @if (string.Equals(name.Source, "NameChange", StringComparison.Ordinal))
+                                {
+                                    <small class="text-muted ms-1" title="@Localizer["Camp_Edit_AutoCreatedFromNameChange"]"><i class="fa-solid fa-rotate"></i></small>
+                                }
+                            </div>
+                            <form asp-action="RemoveHistoricalName" asp-route-slug="@Model.Slug" asp-route-nameId="@name.Id" method="post" class="d-inline">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn btn-sm btn-outline-danger" title="@SharedLocalizer["Common_Remove"]">
+                                    <i class="fa-solid fa-xmark"></i>
+                                </button>
+                            </form>
+                        </li>
+                    }
+                </ul>
+            }
+            <div class="card-body">
+                <form asp-action="AddHistoricalName" asp-route-slug="@Model.Slug" method="post" class="input-group">
+                    @Html.AntiForgeryToken()
+                    <input type="text" name="name" class="form-control form-control-sm" placeholder="@Localizer["Camp_Edit_PreviousNamePlaceholder"]" maxlength="256" />
+                    <button type="submit" class="btn btn-outline-success btn-sm" title="@SharedLocalizer["Common_Add"]">
+                        <i class="fa-solid fa-plus"></i>
+                    </button>
+                </form>
+                <div class="form-text">@Localizer["Camp_Edit_HistoricalNamesHelp"]</div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_LinksEditorScripts" />
+}

@@ -1,3 +1,4 @@
+using Humans.GoogleIntegration.Contracts;
 using Humans.Application.Configuration;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Services.GoogleIntegration;

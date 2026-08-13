@@ -128,26 +128,8 @@
     },
     "Camps": {
       "paths": [
-        "src/Humans.Application/Interfaces/Camps/**",
-        "src/Humans.Application/Interfaces/Repositories/ICampRepository.cs",
-        "src/Humans.Application/Services/Camps/**",
-        "src/Humans.Application/DTOs/Camp*",
-        "src/Humans.Domain/Entities/Camp.cs",
-        "src/Humans.Domain/Entities/CampHistoricalName.cs",
-        "src/Humans.Domain/Entities/CampImage.cs",
-        "src/Humans.Domain/Entities/CampLead.cs",
-        "src/Humans.Domain/Entities/CampMember.cs",
-        "src/Humans.Domain/Entities/CampRoleAssignment.cs",
-        "src/Humans.Domain/Entities/CampRoleDefinition.cs",
-        "src/Humans.Domain/Entities/CampSeason.cs",
-        "src/Humans.Domain/Entities/CampSettings.cs",
-        "src/Humans.Infrastructure/Repositories/Camps/**",
-        "src/Humans.Infrastructure/Services/Camps/**",
-        "src/Humans.Web/Controllers/Camp*",
-        "src/Humans.Web/Models/Camp/**",
-        "src/Humans.Web/Models/CampAdmin/**",
-        "src/Humans.Web/Models/CampViewModels.cs",
-        "src/Humans.Web/ViewComponents/MyCampsViewComponent.cs"
+        "src/Sections/Humans.Camps/**",
+        "src/Sections/Humans.Camps.Contracts/**"
       ],
       "symbols": [
         "ICamp*"

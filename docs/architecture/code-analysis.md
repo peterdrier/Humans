@@ -92,7 +92,7 @@ HUM0032 | Cross-section caller in `Humans.Application.Services.*` injects a full
 HUM0033 | State-changing controller action (`[HttpPost]`/`[HttpPut]`/`[HttpDelete]`/`[HttpPatch]`) passes a request-scoped cancellation token (`HttpContext.RequestAborted` or the action's own `CancellationToken` parameter) to a method marked `[ExternalWrite]` — pass `CancellationToken.None` or enqueue through Hangfire (`[Grandfathered("HUM0033")]` on the action downgrades to Warning) | Error
 HUM0034 | Public type in a `[assembly: Section("…")]` assembly (nobodies-collective/Humans#866, G5) that is not the section's `ISection` entry point, its `<Section>Resource` localization marker, an EF Core migration, or declared under `Contracts/` — the #866 keystone, making "internal by default" load-bearing instead of convention-only (`[Grandfathered("HUM0034")]` downgrades to Warning) | Error
 
-> The next free id is **HUM0035** (0021, 0022-0023, 0024 unused — 0021/0024 retired, not reassigned). Always confirm against `AnalyzerReleases.Unshipped.md` before assigning a new id.
+> The next free id is **HUM0035** (0004, 0021, 0022-0023, 0024 unused — all retired, not reassigned: 0004 with the `Profile.IsSuspended` column drop in #1217, 0022-0023 subsumed by the universal HUM0025, 0021/0024 in #1278). Always confirm against `AnalyzerReleases.Unshipped.md` before assigning a new id.
 
 Authoritative declaration: `src/Humans.Analyzers/AnalyzerReleases.Unshipped.md`
 (plus `AnalyzerReleases.Shipped.md` once we cut a 1.0).

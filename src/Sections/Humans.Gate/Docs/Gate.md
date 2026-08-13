@@ -66,8 +66,9 @@ admission record. Distinct from the read-only `Scanner` section, which must neve
   provider can't enforce unique indexes) — a Postgres-backed race test is tracked in the debt-ledger
   inbox (2026-06-29).
 - **Vendor check-in mirror** — on an admit the controller enqueues `GateVendorCheckInJob`
-  (fire-and-forget) which calls `ITicketVendorService.CreateCheckInAsync` (TicketTailor
-  `POST /v1/check_ins`). Best-effort only; `gate_scan_events` remains the dedupe authority.
+  (fire-and-forget) which calls Tickets' `ITicketVendorMirror.CreateCheckInAsync` (TicketTailor
+  `POST /v1/check_ins`, reached through Tickets rather than the vendor port directly — Tickets is
+  the application's only door to ticketing). Best-effort only; `gate_scan_events` remains the dedupe authority.
   **Gated behind `Gate:VendorMirrorEnabled` (default off).** Payload **verified live (2026-06-30)**
   with a real POST → 201: the endpoint is **form-encoded** (not JSON), **requires `issued_ticket_id`
   AND `quantity`**, accepts `check_in_at` (unix s), and `event_id` is optional (derived from the
@@ -185,7 +186,7 @@ nobodies-collective/Humans#933.)
 ## Cross-Section Dependencies
 
 - **Tickets** — `ITicketServiceRead.GetTicketOrdersAsync` (barcode lookup) and
-  `ITicketVendorService.CreateCheckInAsync` (vendor mirror, via the Gate job).
+  `ITicketVendorMirror.CreateCheckInAsync` (vendor mirror, via the Gate job).
   **Cache freshness:** the barcode lookup reads the cached Tickets projection, so a ticket bought,
   transferred, or refunded at the door won't scan correctly until the next Tickets sync. The window
   is the Tickets cache/sync interval, not real-time.

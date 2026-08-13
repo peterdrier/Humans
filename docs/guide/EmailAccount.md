@@ -3,7 +3,7 @@
   src/Humans.Application/Services/GoogleIntegration/GoogleWorkspaceUserService.cs
   src/Humans.Application/Services/GoogleIntegration/GoogleGroupSyncService.cs
   src/Humans.Application/Services/GoogleIntegration/TeamResourceService.cs
-  src/Humans.Web/Controllers/TeamAdminController.cs
+  src/Sections/Humans.Teams/Controllers/TeamAdminController.cs
   src/Humans.Web/Controllers/GoogleController.cs
   src/Humans.Domain/Entities/UserEmail.cs
 -->

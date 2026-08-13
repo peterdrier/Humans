@@ -1,0 +1,16 @@
+namespace Humans.Camps.Models;
+
+internal sealed class CampRoleRowViewModel
+{
+    public required Guid DefinitionId { get; init; }
+    public required string Name { get; init; }
+    public required string? Description { get; init; }
+    public required int SlotCount { get; init; }
+    public required int MinimumRequired { get; init; }
+    public required IReadOnlyList<CampRoleSlotViewModel> FilledSlots { get; init; }
+    public required int EmptySlotCount { get; init; }
+    public required bool OverCapacity { get; init; }
+    public required int CurrentCount { get; init; }
+    /// <summary>True when the backing definition's SpecialRole is Lead — the only row shown to non-member viewers on the public detail page.</summary>
+    public required bool IsLeadRole { get; init; }
+}

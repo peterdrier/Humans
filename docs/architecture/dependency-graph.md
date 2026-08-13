@@ -105,6 +105,7 @@ graph LR
     TicketTransfer[TicketTransferService]:::tickets
     AttendeeImport[AttendeeContactImportService]:::tickets
     OnsiteRoster[OnsiteRosterService]:::tickets
+    TicketVendor[TicketVendorGateway]:::tickets
 
     Campaign[CampaignService]:::campaigns
 
@@ -314,6 +315,10 @@ graph LR
     Campaign --> CommPref
     Campaign --> NotifEmitter
     Campaign --> Email
+    %% CampaignService injects ITicketDiscountCodes (Tickets.Contracts) to generate discount
+    %% codes via the ticket vendor integration — resolved to TicketVendorGateway. Missing from
+    %% the prior diagram; found by coverage-verify audit (2026-08-13).
+    Campaign --> TicketVendor
 
     %% Google section
     GSyncSvc --> Team
@@ -598,14 +603,13 @@ graph LR
     %% dashed arrows pop visually against eager solid arrows. The first lazy
     %% edge in this diagram is the (N+1)-th link after the eager arrows
     %% above; recompute the index range whenever edges are added or removed.
-    %% Eager count: 289 eager links, indices 0..288. (Net +1 vs prior sweep's 288:
-    %% +1 Finance --> Holded edge, found this sweep — the Holded ledger mirror split out of
-    %% Finance into its own section (migration 20260810204942_HoldedMirrorMovesToHoldedSection);
-    %% HoldedFinanceService now reads ledger data cross-section via IHoldedService instead of
-    %% computing it itself.)
-    %% The 20 lazy edges are indices 289..308. (unchanged count vs prior sweep — only the eager
-    %% indices shifted by the +1 above.)
-    linkStyle 289,290,291,292,293,294,295,296,297,298,299,300,301,302,303,304,305,306,307,308 stroke:#f97316,stroke-width:2.5px
+    %% Eager count: 290 eager links, indices 0..289. (+1 vs prior sweep — coverage-verify audit
+    %% (2026-08-13) found CampaignService's missing ITicketDiscountCodes/TicketVendorGateway edge;
+    %% the 2026-08-13 freshness sweep itself had verified the Teams/Tickets G5 batch #3 move
+    %% (PR #1280) against every moved service's ctor and found no edge changes there;
+    %% see the "G5 batch #3" note below.)
+    %% The 20 lazy edges are indices 290..309. (unchanged count vs prior sweep.)
+    linkStyle 290,291,292,293,294,295,296,297,298,299,300,301,302,303,304,305,306,307,308,309 stroke:#f97316,stroke-width:2.5px
 ```
 
 ## Cycles broken by lazy-resolution
@@ -680,6 +684,8 @@ Below the >= 3 threshold but tracked for narrative continuity:
 - **#791** — Holded Finance section landed: `HoldedFinanceService` (`src/Sections/Humans.Finance`, G5) now owns Holded-account provisioning, purchase-doc sync, and the creditor-contact binding surface. `ExpenseReportService` eagerly injects it (node `Finance`).
 - **Holded mirror split (2026-08-10, migration `20260810204942_HoldedMirrorMovesToHoldedSection`)** — the ledger mirror (daybook journal sync, chart-of-accounts cache, API call-log/metering) moved out of Finance into a brand-new **Holded** section (`src/Sections/Humans.Holded`, G5; `HoldedService` implementing `IHoldedService` + `IHoldedAdminService`). `HoldedFinanceService` no longer computes ledger balances itself — it eagerly injects `IHoldedService` (new `Finance --> Holded` edge) for `GetLedgerLinesAsync` / `GetAccountBalancesAsync`, alongside its existing `Finance --> Budget` edge. The renamed node `Finance` (was `Holded` in the prior diagram) now represents `HoldedFinanceService`; the new node `Holded` represents the ledger-mirror `HoldedService`.
 - **G5 overnight batch (PR #1263, 2026-08-11)** — Budget, Calendar, Campaigns, CityPlanning, Feedback, Issues, and Notifications all moved from `src/Humans.Application/Services/<Section>/` into their own `src/Sections/Humans.<Section>/` projects (alongside Surveys, PR #1251, and Agent, PR #1259, both 2026-08-10/11). None of these moves changed any service→service edge — same ctor dependencies, new project location — so no diagram changes resulted from them beyond this note.
+- **G5 batch #3 (PR #1280, 2026-08-13)** — Teams and Tickets moved from `src/Humans.Application/Services/Teams` / `.../Tickets` into their own projects: `src/Sections/Humans.Teams` (+ `Humans.Teams.Contracts`) and `src/Sections/Humans.Tickets` (+ `Humans.Tickets.Contracts`), plus a new `src/Sections/Humans.TicketTailor` vendor-adapter project implementing `ITicketVendorService`. Verified this sweep: every moved service's ctor is unchanged (`TeamService`, `TeamPageService`, `TicketQueryService`, `TicketSyncService`, `TicketTransferService`, `AttendeeContactImportService`, `OnsiteRosterService`) — same dependencies, new project location, matching the G5-overnight-batch pattern above. `TicketTailorService`/`StubTicketVendorService` (the vendor adapter and its dev stub) have zero cross-section service dependencies — `HttpClient`/`IMemoryCache`/logger only, same thin-connector shape as `GoogleTranslationService` — so no new node was added for them.
+- **`TicketVendorGateway` node added (coverage-verify audit, 2026-08-13)** — `Humans.Tickets/Services/TicketVendorGateway.cs` implements `ITicketDiscountCodes` + `ITicketVendorMirror` (`Humans.Tickets.Contracts`), forwarding onto the vendor port (`ITicketVendorService`, infra — no node). `CampaignService` injects `ITicketDiscountCodes` to generate discount codes via the ticket vendor integration (documented in `Humans.Campaigns/Docs/Campaigns.md`); this `Campaign → TicketVendor` edge was missing from every prior sweep of this diagram. No other consumer of `ITicketDiscountCodes`/`ITicketVendorMirror` is a service (`GateVendorCheckInJob` is a Job, out of this graph's scope).
 - **#815** — Ticketing budget repository removed: `TicketingBudgetService` no longer owns tables. The old `ITicketingBudgetRepository` was dropped; the service now reads paid orders through `ITicketServiceRead.GetTicketOrdersAsync` (eager `TicketBudget → TicketQ` edge) and delegates all writes to `IBudgetService`. It is now marked `IOrchestrator` (Tickets read + Budget writes), so HUM0026 catches any future repo-injection regression.
 - **#889** — drive-monitor adapter deleted + SystemSettings centralization + Google sync outbox:
   - `IDriveActivityMonitorRepository` / `DriveActivityMonitorRepository` were deleted. `DriveActivityMonitorService` no longer owns a repo: it logs anomalies through `IAuditLogService.LogAsync` (eager `DriveMon → Audit`) and reads/writes its last-run marker via `ISystemSettingsService` (new eager `DriveMon → SysSettings`). The prior "pending direct-write to `ctx.AuditLogEntries`" dashed annotation is gone — the violation is resolved.

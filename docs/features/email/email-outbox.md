@@ -44,6 +44,7 @@ Features:
 - Global pause/resume toggle (stored in `system_settings` as `IsEmailSendingPaused`)
 - Message table: recent messages with status, recipient, subject, retry count, last error
 - Per-message retry button (resets a Failed message back to Queued)
+- Per-message discard button (deletes the row)
 
 When paused, `ProcessEmailOutboxJob` skips processing without dequeuing messages.
 

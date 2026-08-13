@@ -10,6 +10,11 @@
     -->
     <InternalsVisibleTo Include="Humans.Teams.Tests" />
     <InternalsVisibleTo Include="Humans.Shifts.Tests" />
+    <!--
+      Camps' service tests build the real CampService over an in-memory UsersDbContext to seed
+      camp owners. Temporary: the entry comes out at Users' own G5 (Teams finding 36's mirror).
+    -->
+    <InternalsVisibleTo Include="Humans.Camps.Tests" />
     <InternalsVisibleTo Include="Humans.Web.Tests" />
     <InternalsVisibleTo Include="Humans.Integration.Tests" />
     <!--
@@ -47,6 +52,8 @@
     <ProjectReference Include="..\Sections\Humans.Onboarding.Contracts\Humans.Onboarding.Contracts.csproj" />
     <ProjectReference Include="..\Sections\Humans.Surveys.Contracts\Humans.Surveys.Contracts.csproj" />
     <ProjectReference Include="..\Sections\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
+    <ProjectReference Include="..\Sections\Humans.GoogleIntegration.Contracts\Humans.GoogleIntegration.Contracts.csproj" />
+    <ProjectReference Include="..\Sections\Humans.Monitor.Contracts\Humans.Monitor.Contracts.csproj" />
     <!--
       Tickets' contracts leaf: AdminDatabaseDiagnosticsService reads the order projection,
       TicketSyncJob drives ITicketSync, and GateVendorCheckInJob mirrors a gate admission

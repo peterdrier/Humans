@@ -2,7 +2,7 @@ using Hangfire;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.GoogleIntegration;
+using Humans.Monitor.Contracts;
 
 namespace Humans.Infrastructure.Jobs;
 

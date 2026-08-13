@@ -7,7 +7,7 @@
   src/Humans.Web/Controllers/AccountController.cs
   src/Sections/Humans.Development/Controllers/DevLoginController.cs
   src/Humans.Domain/Entities/User.cs
-  src/Humans.Domain/Entities/RoleAssignment.cs
+  src/Sections/Humans.Auth/Domain/RoleAssignment.cs
   src/Humans.Domain/Constants/RoleNames.cs
   src/Humans.Domain/Constants/RoleGroups.cs
 -->
@@ -145,6 +145,8 @@ All roles are stored as temporal `RoleAssignment` records. Role claims are added
 | **TicketAdmin** | Ticket vendor integration, discount codes, ticket data export |
 | **FeedbackAdmin** | None since #977 — Feedback is retired and Admin-only. Assignable and still shown on the Staff page, but grants no access |
 | **FinanceAdmin** | Budget management (years, groups, categories, line items) |
+| **StoreAdmin** | Store-domain superset: catalog, orders, payments, invoices, treasury sync (FinanceAdmin retains parallel access for accounting workflows) |
+| **EETeamAdmin** | Cross-team Early-Entry administrator — grant/edit/revoke early-entry on any team with `EarlyEntryEnabled`; confers nothing else |
 | **NoInfoAdmin** | Approve/voluntell shift signups; access volunteer medical data |
 
 ### UserState Access Claim

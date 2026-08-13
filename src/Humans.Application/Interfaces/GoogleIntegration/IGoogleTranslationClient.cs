@@ -1,3 +1,4 @@
+using Humans.GoogleIntegration.Contracts;
 namespace Humans.Application.Interfaces.GoogleIntegration;
 
 /// <summary>

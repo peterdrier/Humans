@@ -1,6 +1,6 @@
 <!-- freshness:triggers
   src/Sections/Humans.Governance/**
-  src/Humans.Application/Services/Consent/ConsentService.cs
+  src/Sections/Humans.Consent/Services/ConsentService.cs
   src/Humans.Domain/Constants/MembershipStatusLabels.cs
   src/Humans.Domain/Constants/SystemTeamIds.cs
   src/Humans.Infrastructure/Jobs/SystemTeamSyncJob.cs

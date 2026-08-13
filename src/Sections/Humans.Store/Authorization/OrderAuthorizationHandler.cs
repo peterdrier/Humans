@@ -1,7 +1,7 @@
 using Humans.Store.Contracts;
 using Humans.UI.Authorization;
 using System.Security.Claims;
-using Humans.Application.Interfaces.Camps;
+using Humans.Camps.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Store.Services.Dtos;

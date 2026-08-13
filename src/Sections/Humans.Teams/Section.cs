@@ -1,9 +1,9 @@
+using Humans.GoogleIntegration.Contracts;
 using Humans.Application.Interfaces;
 using Humans.Teams.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.EarlyEntry;
-using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Users;
 using Humans.Gdpr.Contracts;
 using Humans.Infrastructure.Hosting;

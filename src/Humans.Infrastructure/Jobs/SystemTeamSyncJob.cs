@@ -1,3 +1,4 @@
+using Humans.GoogleIntegration.Contracts;
 using Humans.Auth.Contracts;
 using Hangfire;
 using Microsoft.Extensions.DependencyInjection;
@@ -14,6 +15,7 @@ using Humans.Governance.Contracts;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
+using Humans.Camps.Contracts;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -25,7 +27,7 @@ namespace Humans.Infrastructure.Jobs;
 public class SystemTeamSyncJob(
     ITeamService teamService,
     IUserService userService,
-    ICampRepository campRepository,
+    ICampLeadDirectory campLeadDirectory,
     IServiceProvider serviceProvider,
     IGoogleSyncService googleSyncService,
     IGoogleGroupSync googleGroupSync,
@@ -480,7 +482,7 @@ public class SystemTeamSyncJob(
             return;
         }
 
-        var activeLeadUserIds = await campRepository.GetActiveLeadUserIdsAsync(cancellationToken);
+        var activeLeadUserIds = await campLeadDirectory.GetActiveLeadUserIdsAsync(cancellationToken);
         var eligibleUserIds = activeLeadUserIds.ToList();
 
         await SyncTeamMembershipAsync(team, eligibleUserIds, cancellationToken, step: step);
@@ -505,7 +507,7 @@ public class SystemTeamSyncJob(
             return;
         }
 
-        var isLeadAnywhere = await campRepository.IsLeadAnywhereAsync(userId, cancellationToken);
+        var isLeadAnywhere = await campLeadDirectory.IsLeadAnywhereAsync(userId, cancellationToken);
 
         // Idempotency guard — avoids IX_team_members_active_unique violation when re-registering.
         if (isLeadAnywhere)

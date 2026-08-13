@@ -19,7 +19,7 @@ Both kinds of submission are managed from a single page — **My Event Submissio
 ## User Stories
 
 ### US-26.1: Moderator Configures the Guide
-**As a** GuideModerator
+**As a** EventsAdmin
 **I want to** configure guide settings and manage shared venues and event categories
 **So that** the guide is ready for the current event edition
 
@@ -78,7 +78,7 @@ Both kinds of submission are managed from a single page — **My Event Submissio
 
 **Acceptance Criteria:**
 
-- Withdraw action available to GuideModerator/Admin on any Approved event (moderation queue)
+- Withdraw action available to EventsAdmin/Admin on any Approved event (moderation queue)
 - Withdraw action available to the original submitter on their own Approved event (the relevant block on My Event Submissions)
 - Transitions status to `Withdrawn`; event no longer returned by the public API
 - No email sent on withdrawal
@@ -242,7 +242,7 @@ No changes needed to domain or repository; no EF migration. (`IEventService` lat
 
 ### US-26.9: Moderator Exports the Print Guide
 
-**As a** GuideModerator
+**As a** EventsAdmin
 **I want to** generate a print-ready PDF of all approved events
 **So that** the layout team has no manual data extraction step
 
@@ -285,7 +285,7 @@ Hard deletion is not supported; `Withdrawn` is the terminal state for events rem
 | Role | Permissions |
 |------|------------|
 | Admin | Full access: GuideSettings, categories, venues, moderation, exports |
-| GuideModerator | Full event guide management: GuideSettings, categories, venues, moderation, exports |
+| EventsAdmin | Full event guide management: GuideSettings, categories, venues, moderation, exports |
 | Team Lead | Submit and edit camp events for own team; view submission status |
 | Any registered human | Submit and edit individual events at shared venues |
 | Attendee (anonymous) | Read-only access to published guide via PWA API |
@@ -307,9 +307,9 @@ All emails use the existing `EmailOutboxMessage` / `ProcessEmailOutboxJob` infra
 |-------|---------|
 | `/Events/MySubmissions` | Any human: unified view — own individual events plus a block per led barrio |
 | `/Events/Submit` | Any human: individual event submission form |
-| `/Events/Moderate` | GuideModerator: pending submissions queue |
-| `/Admin/Guide*` | GuideModerator/Admin: GuideSettings, categories, venues |
-| `/Events/Export` | GuideModerator/Admin: CSV and print-guide exports |
+| `/Events/Moderate` | EventsAdmin: pending submissions queue |
+| `/Admin/Guide*` | EventsAdmin/Admin: GuideSettings, categories, venues |
+| `/Events/Export` | EventsAdmin/Admin: CSV and print-guide exports |
 | `/Events/Barrio/{slug}/Submit` | Lead: submit/edit a barrio event (barrio block on My Event Submissions) |
 | `/Events/Barrio/{slug}/BulkUpload` | Lead: download CSV template of existing events; upload updated CSV |
 | `/api/events/events` | Public API: approved events (PWA data source) |

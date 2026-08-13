@@ -90,18 +90,12 @@ public sealed class CampaignServiceTests
                 .Where(id => _people.TryGetValue(id, out var p) && !string.IsNullOrEmpty(p.Email))
                 .ToDictionary(id => id, id => _people[id].Email!));
 
-        var commPrefService = Substitute.For<ICommunicationPreferenceService>();
-        commPrefService
-            .IsOptedOutAsync(Arg.Any<Guid>(), Arg.Any<MessageCategory>(), Arg.Any<CancellationToken>())
-            .Returns(false);
-
         _service = new CampaignServiceImpl(
             repository,
             teamService,
             userEmailService,
             userService,
             Substitute.For<INotificationEmitter>(),
-            commPrefService,
             _emailService,
             _emailMessages,
             _ticketDiscountCodes,
@@ -619,7 +613,6 @@ public sealed class CampaignServiceTests
 
         preview.EligibleCount.Should().Be(2); // "Eligible" + "Other"
         preview.AlreadyGrantedExcluded.Should().Be(1);
-        preview.UnsubscribedExcluded.Should().Be(0);
         preview.CodesAvailable.Should().Be(4); // 5 total - 1 granted
         preview.CodesRemainingAfterSend.Should().Be(2); // 4 available - 2 eligible
     }

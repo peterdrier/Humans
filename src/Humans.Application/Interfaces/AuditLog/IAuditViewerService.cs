@@ -1,3 +1,4 @@
+using Humans.GoogleIntegration.Contracts;
 using Humans.Application.Services.AuditLog;
 
 namespace Humans.Application.Interfaces.AuditLog;

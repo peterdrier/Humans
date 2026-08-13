@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Monitor's whole outward surface: one interface, one method, returning an int.
+
+    It is a leaf project rather than a Contracts/ folder for the usual reason (design §15.5b) —
+    the consumer is in Base. DriveActivityMonitorJob lives in Humans.Infrastructure/Jobs and
+    stays there, because there is no ISection-style discovery seam for recurring jobs
+    (G5-SECTION-TEMPLATE.md step 6b), so it consumes the section the way every other Base
+    consumer does.
+
+    References Humans.Interfaces alone, for IApplicationService. Nothing else: the method takes
+    a CancellationToken and returns Task<int>, which is the point — Monitor's fan-in is one
+    primitive, so none of its vocabulary leaves the section.
+  -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
+  </ItemGroup>
+
+</Project>

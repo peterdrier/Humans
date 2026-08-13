@@ -308,11 +308,13 @@ but are hidden from new-assignment UI.
 CampRoleDefinition
 ├── Id: Guid
 ├── Name: string [unique]
+├── Slug: string [unique, kebab-case; used in /Camps/Admin/Roles/{slug} and as the per-role component of the derived Google Group key]
 ├── Description: string? [Markdown]
 ├── SlotCount: int (default 1) — how many slot rows render per camp-season; soft cap enforced in service
 ├── MinimumRequired: int (default 1) — slots required for compliance; 0 ≤ MinimumRequired ≤ SlotCount; 0 = role not tracked in the compliance report
 ├── SortOrder: int — display order on the Camp Edit roles panel
 ├── DeactivatedAt: Instant? (null = active)
+├── SpecialRole: CampSpecialRole (default None) — marks system-managed rows (Lead, Workshop); non-None rows are immutable except SlotCount/Description
 ├── CreatedAt: Instant
 └── UpdatedAt: Instant
 ```
@@ -469,6 +471,7 @@ Transitions:
 | `POST /Camps/Admin/SetNameLockDate` | Set name lock date |
 | `POST /Camps/Admin/Delete/{campId}` | Delete camp |
 | `GET /Camps/Admin/Roles` | List role definitions |
+| `GET /Camps/Admin/Roles/{slug}` | Cross-camp roster for one role definition (assignees + mailto to the derived group email) |
 | `POST /Camps/Admin/Roles/Create` | Create role definition |
 | `POST /Camps/Admin/Roles/{id}/Edit` | Edit role definition |
 | `POST /Camps/Admin/Roles/{id}/Deactivate` | Soft-delete role definition |

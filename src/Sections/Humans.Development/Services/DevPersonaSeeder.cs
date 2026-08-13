@@ -5,7 +5,7 @@ using Humans.Application.DTOs;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Auth;
 using Humans.AuditLog.Contracts;
-using Humans.Application.Interfaces.Camps;
+using Humans.Camps.Contracts;
 using Humans.Consent.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Application.Interfaces.GoogleIntegration;
@@ -13,7 +13,7 @@ using Humans.Application.Interfaces.HumanLifecycle;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
-using Humans.Application.Services.Camps;
+
 using Humans.Application.Configuration;
 using Humans.CityPlanning.Contracts;
 using Humans.Domain.Constants;
@@ -50,8 +50,9 @@ internal sealed class DevPersonaSeeder(
     ISystemTeamSync systemTeamSync,
     IUserService userService,
     IAuditLogService auditLogService,
-    ICampService campService,
-    ICampRoleService campRoleService,
+    ICampServiceRead campService,
+    ICampSeeding campSeeding,
+    ICampRoleSeeding campRoleSeeding,
     IConsentSubmission consentService,
     IMembershipCalculatorRead membershipCalculator,
     IHumanLifecycleService humanLifecycleService,
@@ -444,17 +445,14 @@ internal sealed class DevPersonaSeeder(
                 SoundZone: null,
                 ElectricalGrid: null);
 
-            await campService.CreateCampAsync(
+            await campSeeding.CreateCampForSeedAsync(
                 leadUserId,
                 campName,
                 $"dev-{campSlug}@localhost",
                 "+34 600 000 000",
-                webOrSocialUrl: null,
-                links: [],
                 isSwissCamp: false,
                 timesAtNowhere: 0,
                 seasonData,
-                historicalNames: [],
                 year);
 
             logger.LogInformation("DEV: seeded camp {Slug}", campSlug);
@@ -473,7 +471,7 @@ internal sealed class DevPersonaSeeder(
         {
             try
             {
-                await campService.OptInToSeasonAsync(camp.Id, year);
+                await campSeeding.OptInToSeasonAsync(camp.Id, year);
             }
             catch (InvalidOperationException ex) when (ex.Message.Contains("has a season", StringComparison.Ordinal))
             {
@@ -496,7 +494,7 @@ internal sealed class DevPersonaSeeder(
         {
             try
             {
-                await campService.ApproveSeasonAsync(currentYearSeason.Id, leadUserId, "Dev persona seed");
+                await campSeeding.ApproveSeasonAsync(currentYearSeason.Id, leadUserId, "Dev persona seed");
             }
             catch (InvalidOperationException ex) when (ex.Message.Contains("Cannot approve a season", StringComparison.Ordinal))
             {
@@ -530,32 +528,28 @@ internal sealed class DevPersonaSeeder(
         if (camp.IsLead(leadUserId))
             return false;
 
-        var leadDef = await campRoleService.GetDefinitionBySlugAsync(CampSystemRoles.CampLeadSlug);
-        if (leadDef is null)
+        var leadDefId = await campRoleSeeding.GetDefinitionIdBySlugAsync(CampSeedRoles.CampLeadSlug);
+        if (leadDefId is null)
         {
             // Fresh database: the system camp role definitions only exist after an
             // admin runs "Seed system roles". Seed them here (idempotent) so dev
             // personas can hold the Camp Lead role in new dev/test environments.
-            await campRoleService.SeedSystemRolesAsync(leadUserId);
-            leadDef = await campRoleService.GetDefinitionBySlugAsync(CampSystemRoles.CampLeadSlug);
+            await campRoleSeeding.SeedSystemRolesAsync(leadUserId);
+            leadDefId = await campRoleSeeding.GetDefinitionIdBySlugAsync(CampSeedRoles.CampLeadSlug);
             logger.LogInformation("DEV: seeded system camp role definitions for {CampId}", camp.Id);
         }
-        if (leadDef is null)
+        if (leadDefId is null)
         {
             logger.LogError("DEV: Camp Lead role definition still missing after seed — skipping lead seed for {CampId}.", camp.Id);
             return false;
         }
 
         // Adds an Active CampMember (idempotent) + the Camp Lead role assignment.
-        var outcome = await campService.AddMemberAndAssignRoleInActiveSeasonAsync(
-            camp.Id, leadDef.Id, leadUserId, leadUserId);
-        if (outcome == AssignCampRoleOutcome.Assigned)
-            return true;
-
-        logger.LogInformation(
-            "DEV: camp lead {UserId} for {CampId} not newly assigned ({Outcome}) — skipping",
-            leadUserId, camp.Id, outcome);
-        return false;
+        // AssignCampRoleOutcome is internal to Humans.Camps now; the leaf verb is idempotent
+        // and the seeder only ever logged the non-Assigned case.
+        await campSeeding.AddMemberAndAssignRoleInActiveSeasonAsync(
+            camp.Id, leadDefId.Value, leadUserId, leadUserId);
+        return true;
     }
 
     /// <summary>

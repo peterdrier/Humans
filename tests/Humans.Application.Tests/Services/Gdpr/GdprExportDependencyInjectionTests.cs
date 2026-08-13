@@ -6,7 +6,6 @@ using Microsoft.Extensions.Configuration.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using ProfilesAccountMergeService = Humans.Application.Services.Users.AccountMergeService;
 using UsersUserService = Humans.Application.Services.Users.UserService;
-using CampService = Humans.Application.Services.Camps.CampService;
 using TeamService = Humans.Teams.Services.TeamService;
 
 namespace Humans.Application.Tests.Services.Gdpr;
@@ -69,7 +68,7 @@ public class GdprExportDependencyInjectionTests
         SectionType("Humans.Notifications.Services.NotificationInboxService"),
         SectionType("Humans.Tickets.Services.TicketQueryService"),
         SectionType("Humans.Campaigns.Services.CampaignService"),
-        typeof(CampService),
+        SectionType("Humans.Camps.Services.CampService"),
         SectionType("Humans.Events.Services.EventService"),
         SectionType("Humans.AuditLog.Services.AuditLogService"),
         SectionType("Humans.Budget.Services.BudgetService"),

@@ -122,6 +122,14 @@ public class EnumStringStabilityTests
                 "System", "EventOperations", "CommunityUpdates", "Marketing", "Governance",
                 "CampaignCodes", "FacilitatedMessages", "Ticketing", "VolunteerUpdates", "TeamUpdates"
             ]
+        },
+        {
+            // Guarded centrally rather than per section: three sections persist this one
+            // public Humans.Domain enum as a string — campaign_grants.LatestEmailStatus
+            // (CampaignGrantConfiguration), survey_invitations.LatestEmailStatus
+            // (SurveyInvitationConfiguration), and the Email outbox's own Status
+            // (EmailOutboxMessageConfiguration). A rename strands the old string in all three.
+            typeof(EmailOutboxStatus), ["Queued", "Sent", "Failed"]
         }
     };
 }

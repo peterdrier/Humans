@@ -6,7 +6,7 @@
   src/Humans.Application/Services/GoogleIntegration/GoogleWorkspaceSyncService.cs
   src/Humans.Web/Controllers/ProfileController.cs
   src/Humans.Web/Controllers/GoogleController.cs
-  src/Humans.Web/Controllers/EmailController.cs
+  src/Sections/Humans.Email/Controllers/EmailController.cs
   src/Humans.Web/Views/Profile/Emails.cshtml
   src/Humans.Domain/Entities/UserEmail.cs
   src/Humans.Domain/Entities/User.cs

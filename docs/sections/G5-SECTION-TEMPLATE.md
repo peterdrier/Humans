@@ -1255,6 +1255,13 @@ Git Bash.)
    stop existing at the move and the doc silently stops being swept. Point-in-time plans and
    audits stay in `docs/`. Anything the app *serves or fetches* from `docs/` at runtime stays,
    and re-check `AgentSectionDocReader`'s fallback covers the section.
+
+   **A section born directly in `src/Sections/` has no doc to move — author its `Docs/<Section>.md`
+   with both freshness markers from the start**, `freshness:triggers` set to
+   `src/Sections/Humans.<Section>/**` plus a one-line `freshness:flag-on-change`. This step only ever
+   described *moving* an existing doc's triggers, so brand-new sections fell straight through it:
+   `Humans.Holded` and `Humans.Tour` both shipped unmarked, one sweep apart, and each sat invisible
+   until a manual scan found it. An unmarked doc reads as *clean*, never as *unchecked*.
    **A docs path is an API until you have proved otherwise** (spec §7a).
    - **…and the probe you have to find is not always in `Humans.Agent`.** The
      invariants doc may move because `AgentSectionDocReader` falls back to

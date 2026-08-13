@@ -232,15 +232,18 @@ UserEmail
 ├── UserId: Guid (FK → User)
 ├── Email: string (256)
 ├── IsVerified: bool
-├── IsOAuth: bool               ← true for login email, not deletable
-├── IsGoogle: bool              ← user-controlled; Google sync target
-├── GoogleEmailStatus           ← per-address sync status (Unknown/Valid/Rejected)
-├── IsNotificationTarget: bool  ← exactly one per user
+├── Provider: string?            ← OAuth provider ("Google" today) that owns this row; null = no OAuth identity linked
+├── ProviderKey: string?         ← OAuth subject/key for the linked identity
+├── IsGoogle: bool               ← user-controlled; Google sync target
+├── GoogleEmailStatus            ← per-address sync status (Unknown/Valid/Rejected)
+├── IsPrimary: bool              ← exactly one verified email per user (DB column still named IsNotificationTarget)
 ├── Visibility: ContactFieldVisibility? ← null = hidden from profile
 ├── VerificationSentAt: Instant?
 ├── CreatedAt: Instant
 └── UpdatedAt: Instant
 ```
+
+Note: `IsOAuth` is no longer a live C# property — it's a shadow-only column kept on disk for a one-shot backfill service. Provider-linked (OAuth) rows are identified by `Provider`/`ProviderKey` instead.
 
 ### Constraints
 - Unique index on `Email` where `IsVerified = true` (prevents email squatting)

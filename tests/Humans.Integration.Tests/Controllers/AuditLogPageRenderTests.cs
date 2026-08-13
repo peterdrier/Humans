@@ -28,6 +28,14 @@ namespace Humans.Integration.Tests.Controllers;
 /// asymmetry). One authorized GET and one unauthorized GET is what proves those three halves
 /// still meet.
 /// </para>
+/// <para>
+/// The three Google-sync pages this file used to cover — <c>CheckDriveActivity</c>,
+/// <c>Resource/{id}</c> and <c>Human/{id}</c> — now live in <c>Humans.Monitor</c> and are
+/// covered by <c>MonitorPageRenderTests</c>. Two of them injected GoogleIntegration services
+/// directly, which is the same horizontal-to-vertical reach described above, one level up:
+/// <c>AuditLogArchitectureTests.SectionReferencesNoVerticalSection</c> is what forced the
+/// split once GoogleIntegration became its own assembly.
+/// </para>
 /// </remarks>
 public class AuditLogPageRenderTests(HumansTestDatabase database) : IntegrationTestBase(database)
 {

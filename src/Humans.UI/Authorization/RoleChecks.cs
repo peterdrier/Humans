@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Humans.Domain.Constants;
+using Humans.Domain.Enums;
 
 namespace Humans.UI.Authorization;
 
@@ -10,6 +11,26 @@ public static class RoleChecks
 
     private static readonly IReadOnlyList<string> BoardAssignableRoles =
         [.. RoleNames.BoardManageableRoles];
+
+    /// <summary>Carries the user's stored <see cref="UserState"/> enum name.</summary>
+    /// <remarks>
+    /// Owned here rather than on Shell's <c>RoleAssignmentClaimsTransformation</c> (which
+    /// stamps it) because a section view reads it: Camps' index page renders the
+    /// "register a camp" call to action only for an Active member. A section cannot name a
+    /// <c>Humans.Web</c> type, and the predicate carries no section vocabulary — the same
+    /// test as the rest of this class (design §15 step 6, the Shell-resident-helper rule).
+    /// </remarks>
+    public const string UserStateClaimType = "UserState";
+
+    /// <summary>The stored <see cref="UserState"/> stamped on the principal, or null if absent.</summary>
+    public static UserState? GetUserState(ClaimsPrincipal user) =>
+        Enum.TryParse<UserState>(user.FindFirstValue(UserStateClaimType), out var state)
+            ? state
+            : null;
+
+    /// <summary>True when the principal's stored state grants full app access.</summary>
+    public static bool IsActiveMember(ClaimsPrincipal user) =>
+        GetUserState(user) == UserState.Active;
 
     public static bool IsAdmin(ClaimsPrincipal user)
     {

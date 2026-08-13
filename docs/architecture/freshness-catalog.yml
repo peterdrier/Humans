@@ -45,12 +45,23 @@ mechanical:
       - "docs/features/**/*.md"
       - "docs/sections/**/*.md"
       - "docs/guide/**/*.md"
+      # README indexes the in-project invariants docs of G5 sections too, so a
+      # new or renamed section doc must mark it dirty. Adding Tour's row this
+      # sweep required a manual nudge for exactly this reason.
+      - "src/Sections/*/Docs/*.md"
     update: prompt
     prompt: |
-      Walk docs/features/, docs/sections/, and docs/guide/. For each .md file
-      (excluding SECTION-TEMPLATE.md, README.md, GettingStarted.md, Glossary.md),
-      derive a one-line description from the first paragraph of the file (or
-      the H1 + first sentence if the first paragraph is too long).
+      Walk docs/features/, docs/sections/, docs/guide/, AND src/Sections/*/Docs/
+      — a section that has moved into its own project keeps its invariants doc
+      in-project, and README indexes those rows too, so a walk restricted to
+      docs/ would drop or omit exactly the in-project doc whose change fired
+      this entry. Exclude SECTION-TEMPLATE.md, G5-SECTION-TEMPLATE.md, README.md,
+      GettingStarted.md, Glossary.md, and the dated design records matching
+      src/Sections/*/Docs/20*.md. docs/sections/_Index.md is the authoritative
+      map of which section's doc lives where — read it first and agree with it.
+
+      For each .md file, derive a one-line description from the first paragraph
+      of the file (or the H1 + first sentence if the first paragraph is too long).
 
       Update docs/README.md to list every doc found, grouped by directory,
       using the existing table layout (file name → relative link → description).
@@ -67,11 +78,17 @@ mechanical:
       # Section-owned resource handlers (G5, #866) — eight sections keep theirs under
       # src/Sections/<Section>/Authorization/, and had silently left this sweep.
       - "src/Sections/**/Authorization/**/*.cs"
+      # Section-owned controllers carry [Authorize] attributes the inventory lists,
+      # but were not a trigger for it. Same gap as controller-architecture-audit.
+      - "src/Sections/*/Controllers/**/*.cs"
     update: prompt
     prompt: |
       Regenerate docs/authorization-inventory.md from scratch.
 
-      Find every:
+      Search BOTH src/Humans.Web/ (Controllers/, Authorization/), src/Humans.Application/,
+      AND every src/Sections/*/ project (its Controllers/ and Authorization/ folders).
+      Most controllers and eight sections' resource handlers now live in section
+      projects; an earlier revision of this doc silently omitted them. Find every:
       - [Authorize(Roles = ...)] / [Authorize(Policy = ...)] attribute on
         controllers and actions
       - RoleChecks.* / ShiftRoleChecks.* invocation
@@ -94,11 +111,21 @@ mechanical:
     target: docs/controller-architecture-audit.md
     triggers:
       - "src/Humans.Web/Controllers/**/*.cs"
+      # Section-owned controllers (G5, #866). The audit documents all 92 actions
+      # including the 58 controllers under src/Sections/, but only fired on the
+      # Humans.Web ones — so a section controller change left it stale silently.
+      # Caught 2026-08-13 by diff-mode.sh test 5 after its synthetic probe was
+      # repointed at a section controller.
+      - "src/Sections/*/Controllers/**/*.cs"
     update: prompt
     prompt: |
       Regenerate the action-name audit in docs/controller-architecture-audit.md.
 
-      For every controller in src/Humans.Web/Controllers/:
+      For every controller in src/Humans.Web/Controllers/ AND every controller
+      under src/Sections/*/Controllers/ (both are triggers for this entry, and
+      the target already documents both — the majority of controllers now live
+      in section projects, so auditing only Humans.Web leaves their action rows
+      stale even though the trigger fired):
       1. List every public action method with its [HttpGet]/[HttpPost]/etc.
          verb and route.
       2. For each action, derive a Purpose line from the action name and
@@ -118,16 +145,31 @@ mechanical:
       - "src/Humans.Application/**/*.cs"
       - "src/Humans.Web/Program.cs"
       - "src/Humans.Web/Extensions/Sections/**/*.cs"
+      # Most services now live in section projects and register themselves from
+      # their own Section.cs, not from Humans.Web/Extensions/Sections/. Without
+      # these, a ctor change to any moved service (Teams, Tickets, Holded, …)
+      # left this graph stale without ever marking it dirty.
+      - "src/Sections/*/Services/**/*.cs"
+      - "src/Sections/*/Section.cs"
     update: prompt
     prompt: |
       Regenerate the Mermaid dependency graph in docs/architecture/dependency-graph.md.
 
-      Walk every service class under src/Humans.Application/Services/. For
+      Walk every service class under src/Humans.Application/Services/ AND under
+      src/Sections/*/Services/ — the majority of services have moved into section
+      projects, and a walk restricted to Humans.Application would silently drop
+      them from the graph even though the current diagram includes them. For
       each:
       1. Read the constructor; identify every injected interface.
-      2. For each injected interface, follow it to its implementing service
-         to identify the section it belongs to (use the folder name under
-         src/Humans.Application/Services/ as the section).
+      2. For each injected interface, follow it to its implementing service to
+         identify the owning section. The section is the folder name under
+         src/Humans.Application/Services/ for services still in Application, and
+         the project name for one that has moved — an implementation under
+         src/Sections/Humans.Teams/Services/ belongs to Teams, and has no folder
+         under src/Humans.Application/Services/ at all. Deriving the section only
+         from the Application path misclassifies or drops every G5 dependency.
+         Note the interface may be declared in a separate Humans.<X>.Contracts
+         project; the section is where the IMPLEMENTATION lives, not the contract.
       3. Distinguish ctor-injected (solid arrow) from
          IServiceProvider.GetRequiredService<T>() (dashed arrow with "lazy"
          label).
@@ -145,12 +187,23 @@ mechanical:
       - "src/Humans.Infrastructure/Repositories/**/*.cs"
       - "src/Humans.Infrastructure/Data/*DbContext.cs"
       - "src/Sections/**/Data/*DbContext.cs"
+      # The section DbContexts were already triggers, but the services and
+      # repositories that read through them were not — so a repository or ctor
+      # change inside a section never marked this map dirty.
+      - "src/Sections/*/Services/**/*.cs"
+      - "src/Sections/*/Data/Repository.cs"
+      - "src/Sections/*/Data/*Repository.cs"
     update: prompt
     prompt: |
       Regenerate docs/architecture/service-data-access-map.md.
 
-      For every service under src/Humans.Application/Services/, identify:
-      1. Which repository interfaces it depends on.
+      For every service under src/Humans.Application/Services/ AND under
+      src/Sections/*/Services/ — most services have moved into section projects,
+      and enumerating only Humans.Application would drop them from the map even
+      though the current version documents them — identify:
+      1. Which repository interfaces it depends on. Note that a G5 section's
+         repository is often a class literally named `Repository` implementing
+         `I<Section>Repository`, not `<Section>Repository`; use the real class name.
       2. Which database tables those repositories ultimately access, and which
          DbContext maps each one. Since the per-section split
          (nobodies-collective/Humans#858) there is no single context: resolve
@@ -175,7 +228,25 @@ mechanical:
     triggers:
       - "src/Humans.Domain/Entities/**/*.cs"
       - "src/Humans.Infrastructure/Data/Configurations/**/*.cs"
+      # G5 sections own their entities and EF configurations outright (24 Domain/
+      # and 22 Data/Configurations/ folders under src/Sections/ as of 2026-08-13).
+      # Without these, this entry reported "not dirty" on 2026-08-13 while 39
+      # section-owned entity/configuration files had changed — a false clean, not
+      # a real one. A trigger that cannot see the code makes a doc look fresh.
+      - "src/Sections/*/Domain/**/*.cs"
+      # Whole Data/ tree, not just Data/Configurations/: four configurations sit
+      # directly under Data/ (Consent's three, Email's EmailOutboxMessage), so a
+      # Configurations-only glob still left this entry falsely clean for them.
+      - "src/Sections/*/Data/**/*.cs"
     update: prompt
+    # NOTE — the authoritative instruction for this entry is NOT this file. The
+    # prompt-file below explicitly defers to the inline `freshness:auto
+    # id="entity-index"` marker in docs/architecture/data-model.md, so that
+    # marker is what actually runs. Three places must agree (triggers here,
+    # prompt-file, inline marker); editing only the prompt-file is dead code —
+    # exactly the trap hit on 2026-08-13. If you widen these triggers, widen the
+    # INLINE MARKER first. Both currently cover src/Sections/*/Domain/ and
+    # src/Sections/*/Data/Configurations/ alongside the src/Humans.* roots.
     prompt-file: ".claude/skills/freshness-sweep/prompts/data-model-index.md"
 
   - id: guid-reservations
@@ -183,14 +254,24 @@ mechanical:
     triggers:
       - "src/Humans.Infrastructure/Data/Configurations/**/*.cs"
       - "src/Humans.Domain/Constants/**/*.cs"
+      # Section-owned configurations carry their own HasData seed GUIDs. Whole
+      # Data/ tree — some configurations sit directly under Data/ rather than
+      # Data/Configurations/. Same false-clean as data-model-index above.
+      - "src/Sections/*/Data/**/*.cs"
     update: prompt
     prompt: |
       Regenerate the "Current Reservations" table in docs/guid-reservations.md.
 
-      Walk src/Humans.Domain/Constants/ and src/Humans.Infrastructure/Data/Configurations/.
-      Find every deterministic GUID literal (`new Guid("0000...")` or string
-      literals in HasData/HasData<T>). Group GUIDs by their leading 4-hex
-      block (e.g., `0001`, `0002`).
+      Walk src/Humans.Domain/Constants/, src/Humans.Infrastructure/Data/Configurations/,
+      AND the whole src/Sections/*/Data/ tree — G5 sections carry their own EF
+      configurations and therefore their own HasData seed GUIDs, so scanning only
+      the two root directories can omit the very section-owned GUID that fired
+      this entry (blocks 0001/Teams and 0026/Events already live in sections).
+      Search Data/ recursively, not just Data/Configurations/: several sections
+      keep configuration classes directly under Data/ (Consent, Email).
+      Find every deterministic GUID literal (`new Guid("0000...")`, `Guid.Parse(...)`,
+      or string literals in HasData/HasData<T>). Group GUIDs by their leading
+      4-hex block (e.g., `0001`, `0002`).
 
       For each block, derive Purpose from the file path / class name and
       Source as a relative link to that file.

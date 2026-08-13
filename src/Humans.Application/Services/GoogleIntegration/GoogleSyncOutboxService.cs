@@ -1,4 +1,4 @@
-using Humans.Application.Interfaces.GoogleIntegration;
+using Humans.GoogleIntegration.Contracts;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 

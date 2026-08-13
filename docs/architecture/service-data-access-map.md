@@ -3,7 +3,7 @@
 Audit of which services access which database tables and cache keys, organized by section.
 The goal is to identify cross-section table overlap, duplicated caching, and cache configuration issues.
 
-**Generated:** 2026-08-12
+**Generated:** 2026-08-13
 
 > **Methodology.** Tables are resolved by following each service's injected
 > repository interface to its EF-backed implementation in
@@ -12,29 +12,32 @@ The goal is to identify cross-section table overlap, duplicated caching, and cac
 > (or bare `Set<T>()`) usage to the declaring context under
 > `src/Humans.Infrastructure/Data/` (or the section's own `Data/` under
 > `src/Sections/`). **Since the per-section DbContext split
-> (nobodies-collective/Humans#858) there is no longer a single `HumansDbContext`.**
-> The split has continued past "nearly complete" — every context below is
-> internal-sealed with
-> its own `IDbContextFactory<T>`/direct-injection pattern, against the same
-> database/connection. Each **peeled** context also gets its own
+> (nobodies-collective/Humans#858) `HumansDbContext` no longer exists at
+> all.** Peel 15 (nobodies-collective/Humans#1273, 2026-08-13) merged Users
+> and Profiles into a new `UsersDbContext` and **deleted `HumansDbContext`
+> outright** — the type, its factory, the model snapshot, and all 288 root
+> migration files. Every context below is internal-sealed with its own
+> `IDbContextFactory<T>`/direct-injection pattern, against the same
+> database/connection. Each peeled context gets its own
 > `__EFMigrationsHistory_<Section>` table (see
-> `src/Humans.Infrastructure/Data/SectionMigrationsHistory.cs`);
-> `HumansDbContext` is the exception — its factory sets no
-> `MigrationsHistoryTable`, so its tables keep EF's original
-> unsuffixed `__EFMigrationsHistory`:
+> `src/Humans.Infrastructure/Data/SectionMigrationsHistory.cs`) —
+> `UsersDbContext` is the sole exception, carrying forward the original
+> unsuffixed `__EFMigrationsHistory` from the deleted root chain (no
+> removal migration; the table itself is left in place pending its own
+> cleanup PR):
 >
 > | DbContext | Owns |
 > |-----------|------|
-> | `HumansDbContext` | What's left after every peel below: `Profiles`, Identity (`users`/`roles`/`user_roles`/`user_claims`/`user_logins`/`role_claims`/`user_tokens`), `ContactFields`, `UserEmails`, `VolunteerHistoryEntries`, `AccountMergeRequests`, `CommunicationPreferences`, `ProfileLanguages`, `EventParticipations` — i.e. Profiles and Users only. **Legal, Consent, Shifts, AuditLog and now Teams are gone from this list** — see the rows below. Peel 15 (nobodies-collective/Humans#1271) takes Users+Profiles too, at which point this context is deleted outright. |
-> | `TeamsDbContext` | `Teams`, `TeamMembers`, `TeamJoinRequests`, `TeamJoinRequestStateHistories`, `TeamRoleDefinitions`, `TeamRoleAssignments`, `TeamEarlyEntryGrants` — peeled in nobodies-collective/Humans#1264; `TeamRepository` injects `IDbContextFactory<TeamsDbContext>` |
-> | `AuditLogDbContext` | `AuditLogEntries` — **new peel this sweep**, still `src/Humans.Infrastructure/Data/` (not G5) |
-> | `LegalDbContext` | `LegalDocuments`, `DocumentVersions`, `ConsentRecords` — peeled this sweep, then moved into the Consent section project at G5 (`src/Sections/Humans.Consent/Data/`). `ConsentRecords` living here (not a separate Consent context) is unchanged from before the peel — Consent has never owned its own DbContext. |
-> | `ShiftsDbContext` | `EventSettings`, `Rotas`, `Shifts`, `ShiftSignups`, `ShiftTags`, `RotaShiftTags` (`rota_shift_tags` — the implicit many-to-many mapped by `ShiftTagConfiguration` via `UsingEntity`), `VolunteerEventProfiles`, `GeneralAvailability`, `VolunteerBuildStatuses`, `VolunteerTagPreferences` — **new peel this sweep**, still `src/Humans.Infrastructure/Data/` (not G5) |
+> | `UsersDbContext` | `Profiles`, `ContactFields`, `UserEmails`, `VolunteerHistoryEntries`, `AccountMergeRequests`, `CommunicationPreferences`, `ProfileLanguages`, `EventParticipations`, plus the Identity base (`IdentityDbContext<User, IdentityRole<Guid>, Guid>`: `users`/`roles`/`user_roles`/`user_claims`/`user_logins`/`role_claims`/`user_tokens`) — **the successor to `HumansDbContext`** (peel 15, nobodies-collective/Humans#1273, 2026-08-13). Still `src/Humans.Infrastructure/Data/`, not G5 — Users and Profiles services remain in `src/Humans.Application/Services/`. |
+> | `TeamsDbContext` | `Teams`, `TeamMembers`, `TeamJoinRequests`, `TeamJoinRequestStateHistories`, `TeamRoleDefinitions`, `TeamRoleAssignments`, `TeamEarlyEntryGrants` — peeled in nobodies-collective/Humans#1264; owned by the now fully-G5 `src/Sections/Humans.Teams` project (moved off `src/Humans.Application`/`src/Humans.Infrastructure` in G5 batch #3, PR #1280, 2026-08-13); `TeamRepository` injects `IDbContextFactory<TeamsDbContext>` |
+> | `AuditLogDbContext` | `AuditLogEntries` — owned by the now fully-G5 `src/Sections/Humans.AuditLog` project (moved in G5 batch #3, PR #1280, 2026-08-13; the first *horizontal* section to go to G5 — see [AuditLog](#auditlog)) |
+> | `LegalDbContext` | `LegalDocuments`, `DocumentVersions`, `ConsentRecords` — own project, `src/Sections/Humans.Consent/Data/` (G5). `ConsentRecords` living here (not a separate Consent context) is unchanged from before the peel — Consent has never owned its own DbContext. |
+> | `ShiftsDbContext` | `EventSettings`, `Rotas`, `Shifts`, `ShiftSignups`, `ShiftTags`, `RotaShiftTags` (`rota_shift_tags` — the implicit many-to-many mapped by `ShiftTagConfiguration` via `UsingEntity`), `VolunteerEventProfiles`, `GeneralAvailability`, `VolunteerBuildStatuses`, `VolunteerTagPreferences` — still `src/Humans.Infrastructure/Data/` (not G5) |
+> | `TicketsDbContext` | `TicketOrders`, `TicketAttendees`, `TicketSyncStates`, `TicketTransferRequests` — owned by the now fully-G5 `src/Sections/Humans.Tickets` project, alongside a `src/Sections/Humans.Tickets.Contracts` leaf and the `src/Sections/Humans.TicketTailor` vendor adapter (G5 batch #3, PR #1280, 2026-08-13; see [Tickets](#tickets)) |
 > | `AuthDbContext` | `RoleAssignments` (peeled #1234) |
 > | `GovernanceDbContext` | `Applications`, `ApplicationStateHistories`, `BoardVotes` (own project, `src/Sections/Humans.Governance/`, G5) |
 > | `CampaignsDbContext` | `Campaigns`, `CampaignCodes`, `CampaignGrants` (own project, `src/Sections/Humans.Campaigns/`, G5 since PR #1263, 2026-08-11) |
 > | `GoogleIntegrationDbContext` | `GoogleResources`, `GoogleSyncOutboxEvents`, `SyncServiceSettings` (peeled #1236) |
-> | `TicketsDbContext` | `TicketOrders`, `TicketAttendees`, `TicketSyncStates`, `TicketTransferRequests` (peeled #1236) |
 > | `FeedbackDbContext` | `FeedbackReports`, `FeedbackMessages` (own project, `src/Sections/Humans.Feedback/`, G5 since PR #1263, 2026-08-11) |
 > | `CityPlanningDbContext` | `CityPlanningSettings`, `CampPolygons`, `CampPolygonHistories` (own project, `src/Sections/Humans.CityPlanning/`, G5 since PR #1263, 2026-08-11) |
 > | `BudgetDbContext` | `BudgetYears`, `BudgetGroups`, `BudgetCategories`, `BudgetLineItems`, `BudgetAuditLogs`, `TicketingProjections` (own project, `src/Sections/Humans.Budget/`, G5 since PR #1263, 2026-08-11) |
@@ -55,43 +58,45 @@ The goal is to identify cross-section table overlap, duplicated caching, and cac
 > | `EventGuideDbContext` | `EventGuideSettings`, `EventCategories`, `EventVenues`, `Events`, `EventModerationActions`, `EventPreferences`, `EventFavourites` (own project, `src/Sections/Humans.Events/`, G5; the Shifts-owned `EventSettings` / `EventParticipations` tables deliberately stay off this context, despite the name collision) |
 > | `StoreDbContext` | `StoreProducts`, `StoreOrders`, `StoreOrderLines`, `StorePayments`, `StoreInvoices`, `StoreTreasurySyncStates` (own project, `src/Sections/Humans.Store/`, G5) |
 >
-> **Change since prior sweep:** two structural moves landed in the two days
-> before this sweep. (1) **G5 overnight batch** (PR #1263, 2026-08-11) moved
-> Budget, Calendar, Campaigns, CityPlanning, Feedback, Issues, and
-> Notifications from `src/Humans.Application/Services/<Section>/` into
-> their own `src/Sections/Humans.<Section>/` projects, alongside Surveys
-> (PR #1251, 2026-08-10) and Agent (PR #1259, 2026-08-11, which also
-> collapsed Agent's former Application/Infrastructure split into one
-> project). None of these moves changed table ownership — same DbSets,
-> new project. (2) **Holded mirror split** (migration
-> `20260810204942_HoldedMirrorMovesToHoldedSection`, 2026-08-10): the
-> Finance section's ledger-mirror tables moved to a brand-new **Holded**
-> section (`HoldedDbContext` / `IHoldedMirrorRepository` /
-> `HoldedService`, implementing `IHoldedService` + `IHoldedAdminService`)
-> — see the new [Holded](#holded) section below. Separately, **AuditLog,
-> Legal, and Shifts each gained their own `DbContext`** (still
-> `src/Humans.Infrastructure/Data/`, not G5), narrowing what's left on
-> `HumansDbContext` to Profiles and Users/Identity (Teams peeled in #1264).
-> `HumansDbContext.PeeledConfigurationNamespaces` lists
-> Auth, Email, GoogleIntegration, Tickets, Camps, Legal, AuditLog and
-> Shifts — the sections that peeled into their own Infrastructure-internal
-> `DbContext` but have not (yet, or ever, for Camps) moved to a G5 project;
-> a section that goes on to G5 drops back out of this list since its
-> configurations leave the `Humans.Infrastructure` assembly entirely.
-> Separately, **#992 dropped all 54 cross-section EF foreign-key
-> constraints** and **#996 stripped the last 11 cross-section EF navigation
-> properties** — cross-section relationships are no longer expressible in
-> the EF model at all, so any remaining cross-section table read (flagged
-> below) can only be a hand-written query against a foreign `DbContext`,
-> never a `.Include()`.
+> **Change since prior sweep:** two structural moves landed on 2026-08-13.
+> (1) **Peel 15 / #858 finale** (PR #1273): Users and Profiles — the last
+> two sections still sharing `HumansDbContext` — merged into one new
+> `UsersDbContext`, and `HumansDbContext` itself is **deleted**: the type,
+> its factory, the model snapshot, and all 288 root migration files. There
+> is no removal migration (no snapshot left to shrink); `__EFMigrationsHistory`
+> is left in place pending its own cleanup PR. The per-section DbContext
+> split from nobodies-collective/Humans#858 is now **complete** — every
+> table-owning section has its own context. (2) **G5 batch #3** (PR #1280):
+> Tickets, Teams, and AuditLog moved from `src/Humans.Application`/
+> `src/Humans.Infrastructure` into their own `src/Sections/Humans.<Section>/`
+> projects. Tickets additionally split into three projects — the section
+> (`src/Sections/Humans.Tickets`), a framework-free contracts leaf
+> (`src/Sections/Humans.Tickets.Contracts`), and the TicketTailor vendor
+> adapter (`src/Sections/Humans.TicketTailor`, the sole implementation of
+> the vendor port) — see [Tickets](#tickets). AuditLog is the first
+> *horizontal* section to go to G5, and only the table-owning half moved:
+> `AuditLogService`/`AuditLogRepository`/`AuditLogDbContext` are now in
+> `src/Sections/Humans.AuditLog` (+ a `Humans.AuditLog.Contracts` leaf for
+> `IAuditLogService`), but `AuditViewerService` — which reads
+> `ITeamServiceRead` and `ITeamResourceService` — stayed in
+> `src/Humans.Application/Services/AuditLog/` because peters-hard-rules.md
+> forbids a horizontal section from referencing a vertical one; see
+> [AuditLog](#auditlog). None of these three moves changed table ownership —
+> same DbSets, new project. Separately, **#992 dropped all 54 cross-section
+> EF foreign-key constraints** and **#996 stripped the last 11 cross-section
+> EF navigation properties** — cross-section relationships are no longer
+> expressible in the EF model at all, so any remaining cross-section table
+> read (flagged below) can only be a hand-written query against a foreign
+> `DbContext`, never a `.Include()`.
 >
 > Each peeled context applies its `IEntityTypeConfiguration` classes
 > explicitly (no assembly scanning), so a section's model can never
-> accrete another section's tables by accident; `HumansDbContext` scans
-> the assembly minus the peeled sections' configuration namespaces
-> (`HumansDbContext.PeeledConfigurationNamespaces`). Below, each section
-> header states which DbContext backs its tables; per-table `DbContext`
-> notes appear only where a section's tables span more than one context.
+> accrete another section's tables by accident — there is no longer a
+> catch-all context that scans the assembly minus peeled namespaces (the
+> old `HumansDbContext.PeeledConfigurationNamespaces` property is gone with
+> the type). Below, each section header states which DbContext backs its
+> tables; per-table `DbContext` notes appear only where a section's tables
+> span more than one context.
 > The new marker-only project `src/Humans.Interfaces/` (referenced by
 > both Application and Infrastructure) now holds the shared
 > `IApplicationService`, `IRepository`, `IOrchestrator`, `IFanout`, and
@@ -170,8 +175,10 @@ The goal is to identify cross-section table overlap, duplicated caching, and cac
 
 Folder: `src/Humans.Application/Services/Profiles/`. Owns `Profiles`,
 `ContactFields`, `ProfileLanguages`, `VolunteerHistoryEntries`,
-`UserEmails`, `CommunicationPreferences`. **DbContext:** `HumansDbContext`
-(not peeled — all Profiles tables remain in the shared context).
+`UserEmails`, `CommunicationPreferences`. **DbContext:** `UsersDbContext`
+— **the merged Users+Profiles context** (peel 15, nobodies-collective/Humans#1273,
+2026-08-13, replacing `HumansDbContext`, which is deleted). Still
+`src/Humans.Infrastructure/Data/`, not G5.
 
 > **Change since prior sweep (#899):** the **account-merge surface moved
 > from Profiles to the Users section.** `AccountMergeService` and
@@ -284,8 +291,11 @@ that doubles as the field-level authorization model.
 ## Users
 
 Folder: `src/Humans.Application/Services/Users/`. **DbContext:**
-`HumansDbContext` (not peeled — `Users` is the Identity-backed `users`
-table via `IdentityDbContext<User, …>`). Owns `Users`,
+`UsersDbContext` — the merged Users+Profiles context (peel 15,
+nobodies-collective/Humans#1273, 2026-08-13; `Users` is the Identity-backed
+`users` table via `IdentityDbContext<User, …>`, which the context now
+carries directly since `HumansDbContext` — the type it used to live on —
+is deleted). Owns `Users`,
 `UserEmails` cross-bridge (read-through), `EventParticipations`, ASP.NET
 `IdentityUserLogins`, and (since #899) `AccountMergeRequests` — the
 account-merge surface (`AccountMergeService`, `DuplicateAccountService`,
@@ -636,7 +646,17 @@ hot reads can migrate to the cached row set incrementally).
 
 ## Teams
 
-Folder: `src/Sections/Humans.Teams/Services/`. **DbContext:**
+Project: `src/Sections/Humans.Teams` — moved from
+`src/Humans.Application/Services/Teams/` (application surface) +
+`src/Humans.Infrastructure/Data/`/`Services/Teams/` (repository +
+Infrastructure decorator) into one project (G5, nobodies-collective/Humans#866,
+PR #1280 "G5 batch #3", 2026-08-13), with a `src/Sections/Humans.Teams.Contracts`
+leaf for the cross-section surface. Structure: `Domain/` (7 entities,
+internal sealed), `Data/` (`ITeamRepository`/`TeamRepository`, `TeamsDbContext`
++ factory, EF configurations, migrations), `Services/`, `Controllers/`,
+`Models/`, `Views/`, `Resources/`, `Authorization/`, `Contracts/` (public
+`HumansTeamControllerBase`, needs ASP.NET so it can't live on the
+framework-free leaf). **DbContext:**
 `TeamsDbContext` (peeled in nobodies-collective/Humans#1264; `TeamRepository`
 injects `IDbContextFactory<TeamsDbContext>`). Owns `Teams`,
 `TeamMembers`, `TeamJoinRequests`, `TeamJoinRequestStateHistories`,
@@ -646,7 +666,30 @@ through `IGoogleSyncOutboxService` (the Google Integration section's write
 surface) inside a `TransactionScope`, no longer through `TeamRepository`. The
 table is therefore owned wholly by Google Integration.
 
-> **Change since prior sweep:** Teams is now an `IEarlyEntryProvider`
+The `Humans.Teams.Contracts` leaf carries three interface levels:
+`ITeamServiceRead` (5 members, `[SurfaceBudget(5)]`, unchanged by the move)
+and `ITeamService` (~20 members, flat projections — extends
+`ITeamServiceRead` + `IApplicationService`) on the leaf; the internal
+`ITeamManagementService : ITeamService` in `Services/` carries the rest
+(create/update/role-assignment/EE-grant mutation surface). The leaf also
+carries `ITeamSeeding` (implemented explicitly by `TeamService` /
+`CachingTeamService`) for the dev fixture seeders in `Humans.Development`
+and `Humans.Budget`.
+
+> **Change this sweep (#1280 — G5 batch #3):** the entity-returning reads
+> the section previously exposed (`GetTeamByIdAsync` / `GetTeamEntityBySlugAsync`
+> returning `Team`) are retired — external consumers now call
+> `GetTeamAsync` / `GetTeamBySlugAsync` (already returned `TeamInfo`).
+> `GetUserTeamsAsync` is replaced by `GetUserTeamMembershipsAsync`
+> (`UserTeamMembershipInfo`); `GetByIdsWithParentsAsync` is replaced by
+> `GetTeamsWithParentsAsync` (`TeamInfo`) — no entity type crosses the
+> section boundary anymore. `IActiveTeamsCacheInvalidator` and
+> `ISystemTeamSync` moved to Shell's
+> `InfrastructureServiceCollectionExtensions` (neither is Teams-owned); the
+> `TeamAuthorizationHandler` registration followed the handler into the
+> section while its policies stay in Shell.
+>
+> **Prior sweep:** Teams is now an `IEarlyEntryProvider`
 > (PR #860 — role-gated team early entry, cantina-style). `ITeamRepository`
 > gained an EE-grant surface (`GetEarlyEntryGrantsForEnabledTeamsAsync`,
 > `GetEarlyEntryGrantsForTeamAsync`, `GetEarlyEntryGrantsForUserAsync`,
@@ -666,7 +709,8 @@ table is therefore owned wholly by Google Integration.
 The inner `ITeamService`
 registration is wrapped by
 `Humans.Teams.Services.CachingTeamService` (Singleton
-decorator inheriting `TrackedCache<Guid, TeamInfo>`); it exposes the
+decorator inheriting `TrackedCache<Guid, TeamInfo>`, still in the section's
+own `Services/` folder post-move); it exposes the
 budgeted cross-section read surface as `ITeamServiceRead`.
 
 ### TeamService (Scoped — wrapped by CachingTeamService Singleton decorator)
@@ -694,7 +738,8 @@ Cross-section calls via `IAuditLogService`, `INotificationEmitter`,
 `IShiftManagementService`, `IAdminAuthorizationService`,
 `IEarlyEntryInvalidator`, `IGoogleSyncOutboxService` (lazy-resolved via
 `IServiceProvider`, for transactional outbox appends), plus
-`IServiceProvider` for cycle-breaking. Implements
+`IServiceProvider` for cycle-breaking. Implements `ITeamManagementService`
+(internal, `: ITeamService`), `ITeamSeeding`,
 `IGoogleGroupMembershipSource`, `IUserDataContributor`, `IUserMerge`,
 `IEarlyEntryProvider` (role-gated team early entry, PR #860).
 
@@ -712,7 +757,7 @@ so the prior design-rule violation here is **closed**.
 |-------|------|------|-------|------------|
 | `TrackedCache<Guid, TeamInfo>` (`Team.TeamInfo`, in-process, no `IMemoryCache`) | Per-Entity (warmed on startup) | yes | yes | yes (via `IActiveTeamsCacheInvalidator`, called from `IUserMerge` flows and direct mutation paths) |
 
-Implements `ITeamService`, `ITeamServiceRead`, `IUserMerge`. Replaces the
+Implements `ITeamManagementService`, `ITeamSeeding`, `IUserMerge`. Replaces the
 previous `ActiveTeams` `IMemoryCache` entry — the `TeamInfo` dictionary is
 the canonical source. `SearchAsync` is served from the cached `TeamInfo`
 snapshot (never the DB — #906). Surfaced on `/Debug/CacheStats`.
@@ -1009,8 +1054,9 @@ Folder: `src/Sections/Humans.Containers/Services/` — moved from
 `src/Humans.Application/Services/Containers/` into its own project
 (nobodies-collective/Humans#866, G5, PR #1239). **DbContext:**
 `ContainersDbContext` — **peeled** (nobodies-collective/Humans#858).
-`ContainerRepository` (`src/Sections/Humans.Containers/Data/Repository.cs`)
-injects `IDbContextFactory<ContainersDbContext>` directly, not
+`Repository` (`src/Sections/Humans.Containers/Data/Repository.cs`,
+implements `IContainerRepository`) injects
+`IDbContextFactory<ContainersDbContext>` directly, not
 `HumansDbContext`. Owns `Containers`, `ContainerPlacements`.
 
 ### ContainerService (Scoped)
@@ -1115,7 +1161,7 @@ directly. Owns `Rotas`,
 `Shifts`, `ShiftSignups`, `EventSettings`, `GeneralAvailability`,
 `VolunteerEventProfiles`, `VolunteerBuildStatuses`, `ShiftTags`,
 `VolunteerTagPreferences`. `EventParticipations` did **not** move with
-this peel — it stays on `HumansDbContext` under the Users section (see
+this peel — it lives on `UsersDbContext` under the Users section (see
 [Users](#users)).
 
 > **Change since prior sweep:** `IShiftManagementRepository` and
@@ -1637,16 +1683,51 @@ No DB access, no cache.
 
 ## Tickets
 
-Folder: `src/Humans.Application/Services/Tickets/`. **DbContext:**
+Project: `src/Sections/Humans.Tickets` — moved from
+`src/Humans.Application/Services/Tickets/` into its own project (G5,
+nobodies-collective/Humans#866, PR #1280 "G5 batch #3", 2026-08-13). The
+move carved **two projects plus a contracts leaf**:
+`src/Sections/Humans.Tickets` (orders, attendees, transfers, sync
+orchestration, the admin surface — everything `internal sealed`),
+`src/Sections/Humans.Tickets.Contracts` (framework-free leaf:
+`ITicketServiceRead`, `ITicketSync`, `ITicketTransferQueue`,
+`ITicketDiscountCodes`, `ITicketVendorMirror`), and
+`src/Sections/Humans.TicketTailor` (the vendor adapter — the sole
+implementation of the vendor port; owns no tables, references no
+Infrastructure, publishes nothing). `ITicketVendorService` (the vendor
+port itself) stays in `src/Humans.Application/Interfaces/TicketVendor/`.
+No schema change — only `Migrations/Tickets/`'s namespace line moved.
+**DbContext:**
 `TicketsDbContext` — **peeled** (nobodies-collective/Humans#1236, part
 of #858). `TicketRepository` and `TicketTransferRepository` both inject
 `IDbContextFactory<TicketsDbContext>` directly. Owns `TicketOrders`,
 `TicketAttendees`, `TicketSyncStates`, `TicketTransferRequests`.
 
+> **Change this sweep (#1280 — G5 batch #3):** surface shrank from ~30
+> public members across six interfaces to 7 across five —
+> `ITicketServiceRead` (2, `[SurfaceBudget(2)]`, unchanged), `ITicketSync`
+> (2), `ITicketTransferQueue` (1), `ITicketDiscountCodes` (1),
+> `ITicketVendorMirror` (1). `TicketDashboardDtos` (24 public types), the
+> transfer wizard, and the admin decision DTOs are now internal.
+> `ITicketSyncService.GetErrorStatusAsync` (zero consumers) is deleted with
+> `TicketSyncErrorStatus`. Two call sites moved off the vendor port onto
+> the section's own leaf: Campaigns' grant waves now call
+> `ITicketDiscountCodes.GenerateAsync` (in the application's own
+> `TicketDiscountCodeRequest`/`TicketDiscountKind` vocabulary — the new
+> `TicketVendorGateway` in `Humans.Tickets` maps that to the port's
+> `DiscountCodeSpec`/`DiscountType` at the edge), and `GateVendorCheckInJob`
+> mirrors a gate admission through `ITicketVendorMirror` instead of the
+> port. `TicketVendorPortArchitectureTests` pins that only `Humans.Tickets`
+> and Shell's `TicketVendorHealthCheck` may inject `ITicketVendorService`.
+> `TicketStubViewComponent` moved back into the section's own `Contracts/`
+> folder (needs ASP.NET, so it can't live on the framework-free leaf) —
+> its model names Tickets DTOs, so it couldn't stay in `Humans.UI` either.
+
 The read path is split: `TicketQueryService` is the **inner** read service,
 registered keyed under `CachingTicketQueryService.InnerServiceKey`
 (`"ticket-query-inner"`), and is wrapped by the Singleton
-`CachingTicketQueryService` decorator. The decorator is the registered
+`CachingTicketQueryService` decorator (now `src/Sections/Humans.Tickets/Services/Stores/`).
+The decorator is the registered
 `ITicketService`, the budgeted cross-section `ITicketServiceRead`, and the
 `ITicketCacheInvalidator`. External sections inject `ITicketServiceRead`
 (two-method surface: `GetTicketOrdersAsync` + `GetUserTicketHoldingsAsync`)
@@ -1820,6 +1901,18 @@ orchestration over `IUserServiceRead`, `IShiftManagementService`,
 `TicketAttendeeOwnership` is a stateless helper (current-owner predicate),
 no DI dependencies.
 
+### TicketVendorGateway (Scoped)
+
+No repository. Thin §15-compliant facade over `ITicketVendorService` (the
+vendor port, `src/Humans.Application/Interfaces/TicketVendor/`) — same
+shape as `GoogleTranslationService`. Implements `ITicketDiscountCodes` +
+`ITicketVendorMirror` (`Humans.Tickets.Contracts`) so cross-section callers
+(`CampaignService`'s discount-code grant waves) depend on the section's own
+leaf rather than the raw vendor port. `GateVendorCheckInJob` (Infrastructure)
+is the other consumer, via `ITicketVendorMirror`. No DB access, no cache.
+Missing from every prior sweep of this doc; found by coverage-verify audit
+(2026-08-13).
+
 ---
 
 ## Gate
@@ -1899,7 +1992,8 @@ active-teams eviction).
 `GateRetentionJob` (daily purge of scan rows past retention, via
 `IGateService.PurgeScansBeforeAsync` — `Gate:RetentionDays`, default 365)
 and `GateVendorCheckInJob` (best-effort mirror of an admit to TicketTailor
-via `ITicketVendorService`; off by default behind
+via `ITicketVendorMirror` — the Tickets Contracts leaf's narrow mirror
+surface, not the full `ITicketVendorService` port, since #1280; off by default behind
 `Gate:VendorMirrorEnabled`, enqueued by `GateController` on admit; a
 one-off backfill page covers a 30-day window, #1080/#1083).
 
@@ -1965,7 +2059,10 @@ Repository: `ICampaignRepository`.
 Cross-section calls via `ITeamServiceRead`, `IUserEmailService`,
 `IUserServiceRead` (both migrated to the read-split surfaces),
 `INotificationEmitter`, `ICommunicationPreferenceService`, `IEmailService`,
-`IEmailMessageFactory`, `ITicketVendorService`, plus `IClock`. Implements
+`IEmailMessageFactory`, `ITicketDiscountCodes` (Tickets Contracts leaf —
+grant-wave discount code generation, since #1280; was the full
+`ITicketVendorService` port before the Tickets G5 split), plus `IClock`.
+Implements
 `ICampaignService` (which extends `ICampaignServiceRead`),
 `IUserDataContributor`, `IUserMerge`. No `IMemoryCache`.
 
@@ -2022,8 +2119,8 @@ Folder: `src/Sections/Humans.SystemSettings/Services/` — moved from
 `src/Humans.Application/Services/SystemSettings/` into its own project
 (nobodies-collective/Humans#866, G5, PR #1235). **DbContext:**
 `SystemSettingsDbContext` — **peeled** (nobodies-collective/Humans#858).
-`SystemSettingsRepository`
-(`src/Sections/Humans.SystemSettings/Data/Repository.cs`) injects
+`Repository` (`src/Sections/Humans.SystemSettings/Data/Repository.cs`,
+implements `ISystemSettingsRepository`) injects
 `IDbContextFactory<SystemSettingsDbContext>` directly. Owns the
 `SystemSetting` key/value table. **New section (#889)** — centralizes
 `SystemSettings` persistence behind one owning repository so consuming
@@ -2165,7 +2262,7 @@ directly. Owns `Events`,
 `EventModerationActions`, `EventPreferences`, `EventFavourites`. The
 name-colliding `EventSettings` table is **Shifts-owned** (lives on
 `ShiftsDbContext` — see the [Shifts](#shifts) section) and
-`EventParticipations` is **Users-owned** (stays on `HumansDbContext` —
+`EventParticipations` is **Users-owned** (lives on `UsersDbContext` —
 see [Users](#users)); `EventGuideDbContext` deliberately excludes both
 (see its doc comment).
 
@@ -2275,8 +2372,8 @@ Folder: `src/Sections/Humans.Finance/Services/` — moved from
 (nobodies-collective/Humans#866, G5, PR #1239; namespace
 `Humans.Finance.Services`). **DbContext:**
 `FinanceDbContext` — **peeled** (nobodies-collective/Humans#858).
-`HoldedRepository` (`src/Sections/Humans.Finance/Data/Repository.cs`)
-injects `IDbContextFactory<FinanceDbContext>` directly
+`Repository` (`src/Sections/Humans.Finance/Data/Repository.cs`, implements
+`IHoldedRepository`) injects `IDbContextFactory<FinanceDbContext>` directly
 — a distinct context from `ExpensesDbContext` and from the new
 `HoldedDbContext` below (the peeled sections that touch Holded data are
 each structurally isolated from one another, not just from
@@ -2339,9 +2436,10 @@ the other G5 sections' single-service convention). Split out of Finance
 (migration `20260810204942_HoldedMirrorMovesToHoldedSection`) so the two
 peeled sections that both touch Holded data are structurally isolated
 from each other. **DbContext:** `HoldedDbContext` — **peeled**
-(part of the same #858 split). `HoldedMirrorRepository`
-(`src/Sections/Humans.Holded/Data/Repository.cs`) injects
-`IDbContextFactory<HoldedDbContext>` directly. Owns `HoldedLedgerLines`,
+(part of the same #858 split). `Repository`
+(`src/Sections/Humans.Holded/Data/Repository.cs`, implements
+`IHoldedMirrorRepository`) injects `IDbContextFactory<HoldedDbContext>`
+directly. Owns `HoldedLedgerLines`,
 `HoldedSyncStates`, `HoldedAccounts`, `HoldedApiCalls`.
 
 This is the **ledger mirror**: it sweeps Holded's daybook journal into
@@ -2578,10 +2676,18 @@ gate-scan slice, #1066). No direct DB access, no cache.
 
 ## AuditLog
 
-Folder: `src/Humans.Application/Services/AuditLog/`. **DbContext:**
-`AuditLogDbContext` — **newly peeled this sweep** (still
-`src/Humans.Infrastructure/Data/`, not G5; was `HumansDbContext` as of
-the prior sweep). `AuditLogRepository` injects
+Project: `src/Sections/Humans.AuditLog` — moved from
+`src/Humans.Application/Services/AuditLog/` into its own project (G5,
+nobodies-collective/Humans#866, PR #1280 "G5 batch #3", 2026-08-13);
+services under `Services/`, repository under `Data/`. `AuditLog` is the
+**first horizontal section** to go to G5, and the hard rules split it
+rather than moving it whole: everything table-owning moved (repository,
+service, controller, views) plus a `src/Sections/Humans.AuditLog.Contracts`
+leaf carrying `IAuditLogService` and `AuditLogEntrySnapshot` (~130
+consumer files, mostly in Base, hence a leaf project rather than a
+`Contracts/` folder). `AuditViewerService` did **not** move — see below.
+**DbContext:** `AuditLogDbContext` — **peeled** (nobodies-collective/Humans#858).
+`AuditLogRepository` injects
 `IDbContextFactory<AuditLogDbContext>` directly. Owns
 `AuditLogEntries`.
 
@@ -2597,13 +2703,25 @@ Cross-section calls via `IUserServiceRead` (migrated to the read-split
 surface). Implements `IUserDataContributor`.
 No `IMemoryCache`.
 
-### AuditViewerService (Scoped)
+### AuditViewerService (Scoped) — stayed in `src/Humans.Application/Services/AuditLog/`
 
 No repository. Read-only view assembler over `IAuditLogService`,
 `IUserServiceRead`, `ITeamServiceRead`, `ITeamResourceService`. No DB
 access, no cache.
 
-> **Change since prior sweep (#1157):** migrated off `ITeamService` /
+> **Change this sweep (#1280 — G5 batch #3):** `AuditLogService` and
+> `AuditLogRepository` moved to `src/Sections/Humans.AuditLog`;
+> `AuditViewerService` did not follow. It injects `ITeamServiceRead`
+> (Teams) and `ITeamResourceService` (Google Integration) alongside
+> `IAuditLogService`, making it a cross-section orchestrator — and
+> peters-hard-rules.md forbids a horizontal section (AuditLog) from
+> referencing a vertical one. It stays in `Humans.Application`, registered
+> from Shell. `AuditLogArchitectureTests.SectionReferencesNoVerticalSection`
+> pins this at the assembly level. Consequence: `Humans.UI`'s
+> `AuditLogViewComponent` and every `<vc:audit-log>` call site are
+> untouched by the move.
+>
+> **Prior sweep (#1157):** migrated off `ITeamService` /
 > `Team` entities onto `ITeamServiceRead` — team names are stitched by
 > filtering the cached `GetTeamsAsync()` `TeamInfo` dictionary client-side
 > (only `Name`/`Slug` were ever consumed; parent data was never used). No
@@ -2883,9 +3001,12 @@ former HUM0025 `[Grandfathered]` markers have been retired:
    through `INotificationMeterCacheInvalidator`.
 
 10. **HUM analyzers enforce the boundaries at compile time.** Roslyn
-    analyzers ratchet the layering rules: `HUM0008` blocks
-    `HumansDbContext` in controllers, `HUM0009` blocks `HumansDbContext`
-    in Application-layer services. See
+    analyzers ratchet the layering rules: `HUM0008` blocks any per-section
+    application `DbContext` in controllers, `HUM0009` blocks one
+    in Application-layer services that don't implement `IRepository`
+    (`HumansDbContext` was retired from these rules' vocabulary when the
+    type itself was deleted in peel 15 — they now match "any application
+    DbContext" generically, not one named type). See
     [`code-analysis.md`](code-analysis.md) for the full analyzer list.
 
 11. **Provider-based fan-out for derived data.** `IEarlyEntryService`
@@ -2935,32 +3056,31 @@ former HUM0025 `[Grandfathered]` markers have been retired:
     Gate-owned tables. The section deliberately has **no caching
     decorator**: admission verdicts must be live.
 
-15. **The per-section DbContext split (#858) turns the "one table, one
-    repository" design rule into a compile/runtime-enforced boundary for
-    almost every section.** Before the split, every table lived in one
-    shared `HumansDbContext`, so a cross-section table read was only a
-    code-review catch. As of this sweep 27 contexts are peeled off
-    `HumansDbContext` — see the full DbContext table in the intro
-    Methodology block above (`AuditLogDbContext`, `LegalDbContext`, and
-    `ShiftsDbContext` are new this sweep; `HoldedDbContext` is a brand-new
-    section split out of `FinanceDbContext`) — each mapping **only** its
-    own section's tables via explicit `ApplyConfiguration` calls (no
-    assembly scanning), so another section's repository cannot
-    accidentally `Set<T>()` a peeled table without first injecting that
-    section's `IDbContextFactory<T>` — a conspicuous, reviewable change.
-    Combined with #992's cross-section FK removal and #996's nav-property
-    removal (point 1 above), the boundary is now enforced at the schema
-    level too, not just at the DI-injection level.
-    The remaining table-owning sections still on `HumansDbContext` are
-    Profiles, Users, and Teams, plus ASP.NET Identity's own tables — for
-    these the "one table, one repository" rule remains a review-time
-    convention, same as before the split. Plus `SystemDbContext`
-    (`DataProtectionKeys`, framework-only, no owning section). Every
+15. **The per-section DbContext split (#858) is now complete — "one
+    table, one repository" is a compile/schema-enforced boundary for
+    every table-owning section, with no shared context left.** Before the
+    split, every table lived in one shared `HumansDbContext`, so a
+    cross-section table read was only a code-review catch. Peel 15 (PR
+    #1273, 2026-08-13) — Users+Profiles merging into `UsersDbContext` —
+    was the **last** peel: `HumansDbContext` is deleted outright, not just
+    narrowed. 29 contexts now exist — see the full DbContext table in the
+    intro Methodology block above — each mapping **only** its own
+    section's tables via explicit `ApplyConfiguration` calls (no assembly
+    scanning), so a section's repository cannot accidentally `Set<T>()` a
+    foreign table without first injecting that section's
+    `IDbContextFactory<T>` — a conspicuous, reviewable change. Combined
+    with #992's cross-section FK removal and #996's nav-property removal
+    (point 1 above), the boundary is enforced at the schema level too, not
+    just at the DI-injection level. The only table-owning context without
+    a per-section owner is `SystemDbContext` (`DataProtectionKeys`,
+    framework-only, no owning Application section). Every
     context points at the same physical database/connection — this is a
     code-side EF model partition, not a database migration — and each
     peeled context has its own `__EFMigrationsHistory_<Section>` table
-    (`HumansDbContext`'s tables keep using the original
-    `__EFMigrationsHistory`).
+    except `UsersDbContext`, which carries forward the original
+    unsuffixed `__EFMigrationsHistory` from the deleted root migration
+    chain (no removal migration was needed — there was no snapshot left to
+    shrink; dropping the old table name is its own follow-up cleanup PR).
 
 ---
 

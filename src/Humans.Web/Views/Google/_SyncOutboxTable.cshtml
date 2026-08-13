@@ -1,6 +1,6 @@
 @using Humans.UI.Models.Tables
 @using Microsoft.AspNetCore.Html
-@model IList<Humans.Application.Interfaces.GoogleIntegration.GoogleSyncOutboxEventSnapshot>
+@model IList<Humans.GoogleIntegration.Contracts.GoogleSyncOutboxEventSnapshot>
 @{
     var googleEmailLookup = (Dictionary<Guid, string>)ViewData["GoogleEmailLookup"]!;
     var teamLookup = (Dictionary<Guid, string>)ViewData["TeamLookup"]!;
@@ -15,13 +15,13 @@
 }
 else
 {
-    Func<Humans.Application.Interfaces.GoogleIntegration.GoogleSyncOutboxEventSnapshot, IHtmlContent> eventTypeCell =
+    Func<Humans.GoogleIntegration.Contracts.GoogleSyncOutboxEventSnapshot, IHtmlContent> eventTypeCell =
         @<text><code>@item.EventType</code></text>;
-    Func<Humans.Application.Interfaces.GoogleIntegration.GoogleSyncOutboxEventSnapshot, IHtmlContent> humanCell =
+    Func<Humans.GoogleIntegration.Contracts.GoogleSyncOutboxEventSnapshot, IHtmlContent> humanCell =
         @<text><vc:human user-id="@item.UserId" link="Admin" /></text>;
-    Func<Humans.Application.Interfaces.GoogleIntegration.GoogleSyncOutboxEventSnapshot, IHtmlContent> googleEmailCell =
+    Func<Humans.GoogleIntegration.Contracts.GoogleSyncOutboxEventSnapshot, IHtmlContent> googleEmailCell =
         @<text><small class="text-muted">@googleEmailLookup.GetValueOrDefault(item.UserId, "unknown")</small></text>;
-    Func<Humans.Application.Interfaces.GoogleIntegration.GoogleSyncOutboxEventSnapshot, IHtmlContent> resourceCell = evt =>
+    Func<Humans.GoogleIntegration.Contracts.GoogleSyncOutboxEventSnapshot, IHtmlContent> resourceCell = evt =>
     {
         var resources = resourceLookup.GetValueOrDefault(evt.TeamId);
         if (resources is { Count: > 0 })
@@ -33,7 +33,7 @@ else
         }
         return new HtmlString("<small class=\"text-muted\">-</small>");
     };
-    Func<Humans.Application.Interfaces.GoogleIntegration.GoogleSyncOutboxEventSnapshot, IHtmlContent> retriesCell = @<text>
+    Func<Humans.GoogleIntegration.Contracts.GoogleSyncOutboxEventSnapshot, IHtmlContent> retriesCell = @<text>
         @if (item.RetryCount > 0)
         {
             <span class="badge bg-secondary">@item.RetryCount</span>
@@ -49,7 +49,7 @@ else
         .Template("Retries", retriesCell);
     if (showError)
     {
-        Func<Humans.Application.Interfaces.GoogleIntegration.GoogleSyncOutboxEventSnapshot, IHtmlContent> errorCell = @<text>
+        Func<Humans.GoogleIntegration.Contracts.GoogleSyncOutboxEventSnapshot, IHtmlContent> errorCell = @<text>
             @if (!string.IsNullOrEmpty(item.LastError))
             {
                 <small class="text-danger" title="@item.LastError">
@@ -61,7 +61,7 @@ else
     }
     if (showRequeue)
     {
-        Func<Humans.Application.Interfaces.GoogleIntegration.GoogleSyncOutboxEventSnapshot, IHtmlContent> requeueCell = @<text>
+        Func<Humans.GoogleIntegration.Contracts.GoogleSyncOutboxEventSnapshot, IHtmlContent> requeueCell = @<text>
             <form asp-action="RequeueOutboxEvent" asp-route-id="@item.Id" method="post">
                 @Html.AntiForgeryToken()
                 <button type="submit" class="btn btn-outline-warning btn-sm"

@@ -19,6 +19,8 @@
     <Project Path="src/Sections/Humans.Budget/Humans.Budget.csproj" />
     <Project Path="src/Sections/Humans.Budget.Contracts/Humans.Budget.Contracts.csproj" />
     <Project Path="src/Sections/Humans.Calendar/Humans.Calendar.csproj" />
+    <Project Path="src/Sections/Humans.Camps/Humans.Camps.csproj" />
+    <Project Path="src/Sections/Humans.Camps.Contracts/Humans.Camps.Contracts.csproj" />
     <Project Path="src/Sections/Humans.Campaigns/Humans.Campaigns.csproj" />
     <Project Path="src/Sections/Humans.Campaigns.Contracts/Humans.Campaigns.Contracts.csproj" />
     <Project Path="src/Sections/Humans.Cantina/Humans.Cantina.csproj" />
@@ -33,6 +35,7 @@
     <Project Path="src/Sections/Humans.Development/Humans.Development.csproj" />
     <Project Path="src/Sections/Humans.Email/Humans.Email.csproj" />
     <Project Path="src/Sections/Humans.Email.Contracts/Humans.Email.Contracts.csproj" />
+    <Project Path="src/Sections/Humans.GoogleIntegration.Contracts/Humans.GoogleIntegration.Contracts.csproj" />
     <Project Path="src/Sections/Humans.Events/Humans.Events.csproj" />
     <Project Path="src/Sections/Humans.Events.Contracts/Humans.Events.Contracts.csproj" />
     <Project Path="src/Sections/Humans.Expenses/Humans.Expenses.csproj" />
@@ -53,6 +56,8 @@
     <Project Path="src/Sections/Humans.Issues.Contracts/Humans.Issues.Contracts.csproj" />
     <Project Path="src/Sections/Humans.Mailer/Humans.Mailer.csproj" />
     <Project Path="src/Sections/Humans.Mailer.Contracts/Humans.Mailer.Contracts.csproj" />
+    <Project Path="src/Sections/Humans.Monitor/Humans.Monitor.csproj" />
+    <Project Path="src/Sections/Humans.Monitor.Contracts/Humans.Monitor.Contracts.csproj" />
     <Project Path="src/Sections/Humans.Notifications/Humans.Notifications.csproj" />
     <Project Path="src/Sections/Humans.Notifications.Contracts/Humans.Notifications.Contracts.csproj" />
     <Project Path="src/Sections/Humans.Scanner/Humans.Scanner.csproj" />
@@ -84,6 +89,7 @@
     <Project Path="tests/Humans.Calendar.Tests/Humans.Calendar.Tests.csproj" />
     <Project Path="tests/Humans.Campaigns.Tests/Humans.Campaigns.Tests.csproj" />
     <Project Path="tests/Humans.Cantina.Tests/Humans.Cantina.Tests.csproj" />
+    <Project Path="tests/Humans.Camps.Tests/Humans.Camps.Tests.csproj" />
     <Project Path="tests/Humans.CityPlanning.Tests/Humans.CityPlanning.Tests.csproj" />
     <Project Path="tests/Humans.Containers.Tests/Humans.Containers.Tests.csproj" />
     <Project Path="tests/Humans.Consent.Tests/Humans.Consent.Tests.csproj" />
@@ -102,6 +108,7 @@
     <Project Path="tests/Humans.Holded.Tests/Humans.Holded.Tests.csproj" />
     <Project Path="tests/Humans.Issues.Tests/Humans.Issues.Tests.csproj" />
     <Project Path="tests/Humans.Mailer.Tests/Humans.Mailer.Tests.csproj" />
+    <Project Path="tests/Humans.Monitor.Tests/Humans.Monitor.Tests.csproj" />
     <Project Path="tests/Humans.Notifications.Tests/Humans.Notifications.Tests.csproj" />
     <Project Path="tests/Humans.Scanner.Tests/Humans.Scanner.Tests.csproj" />
     <Project Path="tests/Humans.Search.Tests/Humans.Search.Tests.csproj" />

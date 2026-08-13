@@ -1,3 +1,4 @@
+using Humans.GoogleIntegration.Contracts;
 using Hangfire;
 using Microsoft.Extensions.Logging;
 using NodaTime;
@@ -5,7 +6,6 @@ using Humans.Application.Interfaces;
 using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.Caching;
 using Humans.Email.Contracts;
-using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Governance.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Shifts.Contracts;

@@ -1,3 +1,4 @@
+using Humans.GoogleIntegration.Contracts;
 using Humans.Auth.Contracts;
 using System.Text.RegularExpressions;
 using Humans.Application.DTOs;

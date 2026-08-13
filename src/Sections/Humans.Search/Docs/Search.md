@@ -3,13 +3,13 @@
   src/Sections/Humans.Events/Services/CachingEventService.cs
   src/Sections/Humans.Events/Section.cs
   src/Humans.Infrastructure/Services/Users/CachingUserService.cs
-  src/Humans.Infrastructure/Services/Teams/CachingTeamService.cs
+  src/Sections/Humans.Teams/Services/CachingTeamService.cs
   src/Humans.Infrastructure/Services/Camps/CachingCampService.cs
   src/Humans.Application/Services/Shifts/ShiftManagementService.cs
   src/Humans.Infrastructure/Repositories/Shifts/ShiftRepository.Management.cs
   src/Humans.Application/Services/Profiles/PersonSearchMatcher.cs
   src/Humans.Web/Controllers/CampController.cs
-  src/Humans.Web/Controllers/TeamController.cs
+  src/Sections/Humans.Teams/Controllers/TeamController.cs
   src/Humans.Web/Controllers/ShiftsController.cs
   src/Humans.Web/Models/Shifts/ShiftBrowsePageBuilder.cs
 -->

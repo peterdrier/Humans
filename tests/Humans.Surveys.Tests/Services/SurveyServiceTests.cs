@@ -1,9 +1,9 @@
+using Humans.GoogleIntegration.Contracts;
 using AwesomeAssertions;
 using Humans.Application;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
-using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Surveys.Data;
 using Humans.Shifts.Contracts;

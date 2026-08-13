@@ -18,8 +18,8 @@ Rebuild the test setup so the suite is a reliable signal again — CI catches wh
 
 PRs keep landing with the sentence *"the agent reported N pre-existing failures on `origin/main` unrelated to this PR — doesn't block the merge."* That happens because:
 
-1. **CI does not run integration tests.** `.github/workflows/build.yml:50` filters them out (`--filter "FullyQualifiedName!~Integration"`). Integration failures only surface when someone runs locally, then get attributed to "pre-existing" and merged around.
-2. **EF In-Memory** is used in 85 Application test files. It doesn't enforce FKs, NOT NULL, unique constraints, doesn't translate Npgsql LINQ, doesn't fire triggers — so unit tests pass while real-Postgres behavior diverges.
+1. **CI does not run integration tests.** `.github/workflows/build.yml:82` filters them out (`--filter "FullyQualifiedName!~Integration"`). Integration failures only surface when someone runs locally, then get attributed to "pre-existing" and merged around.
+2. **EF In-Memory** is used in 64 test files repo-wide (15 of them in `Humans.Application.Tests`; the rest sit in the per-section test projects), counting both direct `UseInMemoryDatabase` calls and use of the shared `TestDbContextFactory`. It doesn't enforce FKs, NOT NULL, unique constraints, doesn't translate Npgsql LINQ, doesn't fire triggers — so unit tests pass while real-Postgres behavior diverges.
 3. **Per-class Testcontainers Postgres.** ~18 integration test classes × `IClassFixture<HumansWebApplicationFactory>` × no parallelization control = up to 18 concurrent Postgres containers booting, each running all 96 migrations. Resource contention causes intermittent failures.
 4. **Hangfire static state leakage.** `JobStorage.Current` is per-AppDomain. The codebase has four `if (!IsEnvironment("Testing"))` guards, all in `Program.cs`. Every new Hangfire-touching feature is one missed guard from breaking tests — this is the "Hangfire-init" failure cluster pattern.
 5. **Failures are tolerated.** A test that starts failing can sit on `main` indefinitely because "pre-existing, not my PR" is accepted.
@@ -131,10 +131,10 @@ For features that assert "the job was enqueued," verify via the abstraction subs
 ### P4 — Migrate Application repository tests off EF In-Memory
 **Value: high · Effort: large · Risk: low. Depends on P2 (so the shared-fixture infra exists).**
 
-85 files split into two camps:
+64 files split into two camps:
 
 - **Repository tests** (~30–40): they test LINQ translation. Must run against Postgres. Move onto the same shared-container fixture used by integration tests, or a slimmer per-assembly Postgres fixture inside `Humans.Application.Tests`.
-- **Service tests using EF In-Memory as a stand-in for "any persistence"**: should not be touching `HumansDbContext` at all. Convert in place to mock the repository interface.
+- **Service tests using EF In-Memory as a stand-in for "any persistence"**: should not be touching a `DbContext` at all. Convert in place to mock the repository interface. (There is no longer a shared root context — `HumansDbContext` was deleted outright; each section owns its own.)
 
 Ship **in batches by section** — one PR per section (Camps, Shifts, Events, Notifications, Profiles, Teams, Audit Log, Legal, Store, Tickets, Agent, …). Each batch is a `section:<name>` child issue with the appropriate section label. Side benefit: surfaces repositories that shouldn't have been reached through a DbContext in unit tests.
 

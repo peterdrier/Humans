@@ -1,6 +1,6 @@
 using Humans.Application.Interfaces;
 using Humans.AuditLog.Contracts;
-using Humans.Application.Interfaces.Camps;
+using Humans.Camps.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Domain.Enums;
 using Humans.Store.Contracts;

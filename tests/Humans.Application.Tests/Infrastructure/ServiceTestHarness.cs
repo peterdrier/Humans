@@ -56,10 +56,6 @@ public abstract class ServiceTestHarness : IDisposable
     private protected GoogleIntegrationDbContext GoogleIntegrationDb => _googleIntegrationDb.Value.Context;
     private protected TestDbContextFactory<GoogleIntegrationDbContext> GoogleIntegrationDbFactory => _googleIntegrationDb.Value.Factory;
 
-    /// <summary>Camps: <c>camps</c>, <c>camp_seasons</c>, <c>camp_historical_names</c>, <c>camp_images</c>, <c>camp_settings</c>, <c>camp_members</c>, <c>camp_role_definitions</c>, <c>camp_role_assignments</c>.</summary>
-    private readonly Lazy<SectionDb<CampsDbContext>> _campsDb;
-    private protected CampsDbContext CampsDb => _campsDb.Value.Context;
-    private protected TestDbContextFactory<CampsDbContext> CampsDbFactory => _campsDb.Value.Factory;
 
 
     /// <summary>Teams: <c>teams</c>, <c>team_members</c>, <c>team_join_requests</c>,
@@ -96,7 +92,6 @@ public abstract class ServiceTestHarness : IDisposable
         DbFactory = new TestDbContextFactory(DbOptions);
 
         _googleIntegrationDb = RegisterSection<GoogleIntegrationDbContext>(o => new(o));
-        _campsDb = RegisterSection<CampsDbContext>(o => new(o));
         _teamsDb = RegisterSection<TeamsDbContext>(o => new(o));
 
         Clock = new FakeClock(now ?? Instant.FromUtc(2026, 3, 1, 12, 0));

@@ -19,7 +19,7 @@ This section owns no entities. Displayed telemetry comes from in-memory, process
 
 ## Routing
 
-All pages live under `/Debug` on `DebugController`. Pages sit at `/Debug/<Page>` directly, not `/Debug/Admin/*`: the whole section is admin-gated with no user-facing pages, so there is no public-vs-admin split to disambiguate. The `/<Section>/Admin/*` shape in [`../../memory/architecture/no-admin-url-section.md`](../../memory/architecture/no-admin-url-section.md) exists to separate admin actions from public ones inside a mixed section; Debug is admin-only end to end.
+All pages live under `/Debug` on `DebugController`. Pages sit at `/Debug/<Page>` directly, not `/Debug/Admin/*`: the whole section is admin-gated with no user-facing pages, so there is no public-vs-admin split to disambiguate. The `/<Section>/Admin/*` shape in [`../../../../memory/architecture/no-admin-url-section.md`](../../../../memory/architecture/no-admin-url-section.md) exists to separate admin actions from public ones inside a mixed section; Debug is admin-only end to end.
 
 | Route | Method | Auth | Purpose |
 |-------|--------|------|---------|

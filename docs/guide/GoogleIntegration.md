@@ -1,6 +1,6 @@
 <!-- freshness:triggers
   src/Humans.Web/Views/Google/**
-  src/Humans.Web/Views/TeamAdmin/Resources.cshtml
+  src/Sections/Humans.Teams/Views/TeamAdmin/Resources.cshtml
   src/Humans.Web/Controllers/GoogleController.cs
   src/Humans.Application/Services/GoogleIntegration/**
   src/Humans.Domain/Entities/GoogleResource.cs
@@ -32,7 +32,7 @@ All Drive resources are on **Shared Drives only** (no personal My Drive), and th
 - **Sync settings** (`/Google/SyncSettings`) — per-service sync mode (None / AddOnly / AddAndRemove).
 - **All Groups** (`/Google/AllGroups`) — every Google Group in the domain, linked or not.
 - **Workspace accounts** (`/Google/Accounts`) — every `@nobodies.team` account, with link-to-human search.
-- **Sync audit** — per-human (`/AuditLog/Human/{id}`) and per-resource (`/AuditLog/Resource/{id}`).
+- **Sync audit** — per-human (`/Monitor/Human/{id}`) and per-resource (`/Monitor/Resource/{id}`).
 - **Team resources** (`/Teams/{slug}/Resources`) — where coordinators link, unlink, and sync a team's Drive folders, files, and Groups.
 - **Drive activity** — anomalous changes land in `/AuditLog` under the "Anomalous Permissions" filter.
 
@@ -60,10 +60,9 @@ Joining a team grants you its Group membership and writer access to its linked S
 
 ### Link a Google resource to your department
 
-Open `/Teams/{slug}/Resources`. Three link forms:
+Open `/Teams/{slug}/Resources`. Two link forms:
 
-- **Link Drive folder** — paste a Shared Drive folder URL; the folder must already be shared with the app's service account as Editor (the page shows that email if validation fails).
-- **Link Drive file** — paste a Sheet, Doc, Slides, or Forms URL. Same sharing requirement.
+- **Link Google Drive Resource** — paste a Shared Drive folder URL, or a Sheet/Doc/Slides/Forms file URL; the app detects which kind it is from the URL. The resource must already be shared with the app's service account as Editor (the page shows that email if validation fails).
 - **Link Google Group** — paste the group email; the service account must be a Group Manager.
 
 Duplicate links on the same team are rejected. Unlinking is soft — the record flips to inactive and nothing is deleted in Google. Each linked resource has a **Sync** button that runs just that resource, respecting the current sync mode — use it to propagate a membership change immediately instead of waiting for the next job.
@@ -104,7 +103,7 @@ To re-enqueue all sync events for a specific user across their current teams (fo
 
 ### Sync audit
 
-`/AuditLog/Human/{id}` shows every sync event for a given human — useful when access is missing. `/AuditLog/Resource/{id}` does the same for one resource.
+`/Monitor/Human/{id}` shows every sync event for a given human — useful when access is missing. `/Monitor/Resource/{id}` does the same for one resource.
 
 ## Related sections
 

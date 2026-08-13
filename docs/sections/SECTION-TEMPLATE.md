@@ -24,9 +24,18 @@ If a change conflicts with the section doc, **either the change is wrong or the 
 
 Copy everything between the two horizontal rules below into the new section file. Delete any **optional** heading you do not need; keep every **required** heading even if its bullet list is short.
 
+**The two freshness markers at the top are required, and must come before the `# H1`.** Without them `/freshness-sweep` never sees the doc — and a doc it cannot see reads as *clean*, not as *unchecked*, so nobody finds out. Both `Humans.Holded` and `Humans.Tour` shipped unmarked and sat invisible until a manual scan caught them.
+
 ---
 
 ```markdown
+<!-- freshness:triggers
+  src/Sections/Humans.<Section>/**
+-->
+<!-- freshness:flag-on-change
+  <One line: which invariants of this section are worth re-reading when its code changes.>
+-->
+
 # <Section Name> — Section Invariants
 
 <!-- One-sentence purpose of the section. Optional but helpful. -->

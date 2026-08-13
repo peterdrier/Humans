@@ -1,13 +1,13 @@
 <!-- freshness:triggers
   src/Sections/Humans.Auth/Services/RoleAssignmentService.cs
-  src/Humans.Application/Services/Onboarding/**
-  src/Humans.Application/Services/Consent/**
-  src/Humans.Web/Controllers/OnboardingReviewController.cs
-  src/Humans.Web/Controllers/AdminController.cs
+  src/Sections/Humans.Onboarding/Services/**
+  src/Sections/Humans.Consent/Services/**
+  src/Sections/Humans.Onboarding/Controllers/OnboardingReviewController.cs
+  src/Humans.Web/Controllers/UsersAdminController.cs
   src/Humans.Web/Controllers/ProfileController.cs
   src/Humans.Web/Authorization/MembershipRequiredFilter.cs
   src/Humans.Web/Authorization/RoleAssignmentClaimsTransformation.cs
-  src/Humans.Web/Views/OnboardingReview/**
+  src/Sections/Humans.Onboarding/Views/OnboardingReview/**
   src/Humans.Domain/Constants/RoleNames.cs
   src/Humans.Domain/Constants/RoleGroups.cs
 -->
@@ -116,18 +116,18 @@ Coordinator roles do not bypass the global access filter. A coordinator must hav
 
 ### OnboardingReview Controller Authorization
 ```
-[Authorize(Roles = "Board,Admin,ConsentCoordinator,VolunteerCoordinator")]
+[Authorize(Policy = PolicyNames.ReviewQueueAccess)]
 ```
 
 With action-level restrictions:
-- **View queue/details**: All four roles
-- **Clear/Flag consent check**: Board, Admin, ConsentCoordinator only
+- **View queue/details**: All four roles (`ReviewQueueAccess` = ConsentCoordinator, VolunteerCoordinator, Board, Admin)
+- **Clear/Flag consent check**: Board, Admin, ConsentCoordinator only (`PolicyNames.ConsentCoordinatorBoardOrAdmin`)
 - **Vote on tier applications**: Board only (separate Board Voting dashboard)
 
-### AdminController Role Management
-Updated `CanManageRole()` to include coordinators:
-- **Admin** can assign: Admin, Board, ConsentCoordinator, VolunteerCoordinator
-- **Board** can assign: Board, ConsentCoordinator, VolunteerCoordinator (not Admin)
+### Role Assignment Authorization
+Role management lives on `UsersAdminController.AddRole`/`EndRole` (moved off `AdminController` in nobodies-collective/Humans#901) and is enforced by the resource-based `RoleAssignmentAuthorizationHandler` (`RoleAssignmentOperationRequirement.Manage`), not a `CanManageRole()` method:
+- **Admin** can assign any role
+- **Board** (or HumanAdmin) can assign any role in `RoleNames.BoardManageableRoles`, which includes ConsentCoordinator and VolunteerCoordinator (Admin is not in that set)
 
 ## Onboarding Review Queue
 

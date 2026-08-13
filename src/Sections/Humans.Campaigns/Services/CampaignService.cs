@@ -30,7 +30,6 @@ internal sealed class CampaignService(
     IUserEmailService userEmailService,
     IUserServiceRead userService,
     INotificationEmitter notificationService,
-    ICommunicationPreferenceService commPrefService,
     IEmailService emailService,
     IEmailMessageFactory emailMessages,
     ITicketDiscountCodes ticketDiscountCodes,
@@ -386,21 +385,12 @@ internal sealed class CampaignService(
             .Where(id => !alreadyGrantedSet.Contains(id))
             .ToList();
 
-        // CampaignCodes is always-on today; guard kept for future opt-outability.
-        var optedOutCount = 0;
-        foreach (var userId in notGranted)
-        {
-            if (await commPrefService.IsOptedOutAsync(userId, MessageCategory.CampaignCodes, ct))
-                optedOutCount++;
-        }
-
-        var eligibleCount = notGranted.Count - optedOutCount;
+        var eligibleCount = notGranted.Count;
         var availableCodes = await repository.CountAvailableCodesAsync(campaignId, ct);
 
         return new WaveSendPreview(
             EligibleCount: eligibleCount,
             AlreadyGrantedExcluded: activeTeamUserIds.Count(alreadyGrantedSet.Contains),
-            UnsubscribedExcluded: optedOutCount,
             CodesAvailable: availableCodes,
             CodesRemainingAfterSend: availableCodes - eligibleCount);
     }
@@ -417,16 +407,9 @@ internal sealed class CampaignService(
         var activeTeamUserIds = await GetActiveTeamUserIdsAsync(teamId, ct);
         var alreadyGrantedSet = await repository.GetAlreadyGrantedUserIdsAsync(campaignId, ct);
 
-        var candidateUserIds = activeTeamUserIds
+        var eligibleUserIds = activeTeamUserIds
             .Where(id => !alreadyGrantedSet.Contains(id))
             .ToList();
-
-        var eligibleUserIds = new List<Guid>(candidateUserIds.Count);
-        foreach (var userId in candidateUserIds)
-        {
-            if (!await commPrefService.IsOptedOutAsync(userId, MessageCategory.CampaignCodes, ct))
-                eligibleUserIds.Add(userId);
-        }
 
         if (eligibleUserIds.Count == 0)
             return 0;
