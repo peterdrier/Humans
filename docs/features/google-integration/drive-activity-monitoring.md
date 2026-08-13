@@ -1,9 +1,9 @@
 <!-- freshness:triggers
   src/Humans.Application/Services/GoogleIntegration/DriveActivityMonitorService.cs
   src/Humans.Infrastructure/Jobs/DriveActivityMonitorJob.cs
-  src/Humans.Web/Controllers/AuditLogController.cs
-  src/Humans.Web/Views/AuditLog/Index.cshtml
-  src/Humans.Domain/Entities/AuditLogEntry.cs
+  src/Sections/Humans.AuditLog/Controllers/AuditLogController.cs
+  src/Sections/Humans.AuditLog/Views/AuditLog/Index.cshtml
+  src/Sections/Humans.AuditLog/Domain/AuditLogEntry.cs
 -->
 <!-- freshness:flag-on-change
   Drive Activity API integration, anomalous-permission detection, and audit-log filter UI — review when DriveActivityMonitorService, its job, or the audit-log views change.
@@ -164,7 +164,7 @@ Job ID: drive-activity-monitor
 
 ## Authorization
 
-Inherits from `AdminController`'s `[Authorize(Roles = "Board,Admin")]`.
+`[Authorize(Policy = PolicyNames.BoardOrAdmin)]` on the controller's actions (`AuditLogController` inherits `HumansControllerBase`, not `AdminController`).
 
 ## Limitations
 

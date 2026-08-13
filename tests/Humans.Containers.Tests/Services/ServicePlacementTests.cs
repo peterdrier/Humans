@@ -1,7 +1,7 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces;
 using Humans.AuditLog.Contracts;
-using Humans.Application.Interfaces.Camps;
+using Humans.Camps.Contracts;
 using Humans.Containers.Data;
 using Humans.Containers.Domain;
 using Humans.Containers.Services;
@@ -32,7 +32,7 @@ public sealed class ContainerPlacementServiceTests
         _sut = new Service(
             repo,
             Substitute.For<IFileStorage>(),
-            Substitute.For<ICampService>(),
+            Substitute.For<ICampServiceRead>(),
             Substitute.For<IAuditLogService>(),
             Clock);
     }

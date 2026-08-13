@@ -1,5 +1,3 @@
-using Humans.GoogleIntegration.Contracts;
-using Humans.Application.Interfaces.GoogleIntegration;
 using Microsoft.Extensions.Logging;
 using Humans.Application.Interfaces;
 using Humans.GoogleIntegration.Services;

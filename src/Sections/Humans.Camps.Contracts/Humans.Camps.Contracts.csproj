@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Camps' cross-section surface, carved into its own leaf project rather than a Contracts/
+    folder for two independent reasons. Base consumes it: ShiftManagementService reads
+    CampSeasonInfo, SystemTeamSyncJob takes the two camp-lead reads, and Shell's
+    ProfileSummaryViewModelBuilder binds CampUserInfo. And Camps and CityPlanning reference
+    each other — CampService clears a deleted camp's polygons through
+    Lazy<ICityPlanningService> while CityPlanningService injects ICampServiceRead — so a
+    folder would be a project cycle (design §15.5b,
+    memory/architecture/section-project-cycle-fix.md).
+
+    It holds exactly what lives outside the section: the read surface eight moved sections and
+    Base inject, the two camp-lead reads SystemTeamSyncJob used to take off ICampRepository,
+    the verbs Humans.Development's two dev seeders drive, and the flat projections those
+    signatures name. The directory, detail, admin, roster, join-request, role-management,
+    compliance, image and early-entry DTOs are internal to the section.
+
+    The five camp enums live here rather than in the section's internal Domain/ because the
+    leaf's own records name them (Budget's rule). Teams' hard floor does not apply: no
+    Humans.UI partial renders any of them — _CampCard.cshtml is the section's own view.
+
+    References Humans.Interfaces (IApplicationService) and Humans.Domain (the shared camp
+    facility enums — SoundZone, SpaceSize, ElectricalGrid, YesNoMaybe and friends — which stay
+    Base vocabulary because Shell and other sections spell them). Acyclic: Humans.Domain names
+    only Humans.Interfaces.
+  -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
+    <ProjectReference Include="..\..\Humans.Domain\Humans.Domain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NodaTime" />
+  </ItemGroup>
+
+</Project>

@@ -1,16 +1,18 @@
 # Controller Architecture Audit
 
-Living document. Last updated: 2026-08-12 (freshness-sweep regeneration).
+Living document. Last updated: 2026-08-13 (freshness-sweep regeneration).
 
 ## Part 1: Action Name Audit
 
 ### Summary
-- Controllers audited: 91 (excludes 4 base classes: `ApiControllerBase`, `HumansControllerBase`, `HumansCampControllerBase` — all now in `Humans.UI` — and `HumansTeamControllerBase`, still in `Humans.Web`)
+- Controllers audited: 92 (excludes 4 base classes: `ApiControllerBase`, `HumansControllerBase`, `HumansCampControllerBase` — all in `Humans.UI` — and `HumansTeamControllerBase`, now in `Humans.Teams/Contracts` (moved off `Humans.Web` by the G5 batch below))
 - Purposes and suggestions preserved from prior audit where the (method, verb) pair still exists; new actions default to a name-derived purpose and `OK`.
 
 `docs/architecture/conventions.md` §"Action Naming" codifies the heuristics: `Index` is for listings, no redundant controller-name prefixes, no bare plural-noun collisions, no generic verbs (`View`/`Show`/`Process`/`Handle`), and conventional form-handler verbs (`Create`/`Edit`/`Delete`/`Confirm`/`Cancel`).
 
-This regeneration (2026-08-12) re-verified the controller/action inventory against current source (`04d2490f0..fa8b36737`): the G5 overnight batch (`af9242150`, #1263) relocated `GateController`, `GateVendorBackfillAdminController`, `BudgetController`, `BudgetAdminController`, `CalendarController`, `CampaignController`, `CityPlanningController`, `CityPlanningApiController`, `FeedbackController`, `FeedbackApiController`, `GovernanceController`, `GovernanceApplicationsController`, `GovernanceBoardVotingController`, `IssuesController`, `IssuesApiController`, `NotificationsController`, and `ScannerController` into their own `src/Sections/**` projects; `8018be9d3` (#1259) moved `AgentController`/`AgentApiController`/`AdminAgentController` into `Humans.Agent`; `cde511e4b` (#1251) moved `SurveyController`/`SurveyAdminController`/`SurveysApiController` into `Humans.Surveys` — all pure relocations, no action/route/verb changes in any of them. `4f65c7617` (#1261, "Holded API v2") added a **new** controller, `HoldedController` at `/Holded` (`src/Sections/Humans.Holded`), bringing the audited count from 90 to 91. `f5e4b8bdc` (#1267) added `sort`/`dir` query parameters to `FinanceController.Creditors` (same route/verb) and, together with `4f65c7617`, removed `FinanceController.ResyncCreditorLedger` (`POST /Finance/Creditors/Resync`) — superseded by `HoldedController.FullSync`. `250fda95e` (#1265, "retire mileage and per-diem line creation") removed `ExpensesController.AddMileage`/`AddPerDiem` and updated this doc directly in the same commit — already reflected below. No other controller in the inventory was added, removed, or renamed.
+This regeneration (2026-08-13) re-verified the controller/action inventory against current source (`fa8b36737..c1a1076fb`, covering #1269, #1272, #1280): one **new** controller, **`TourController`** (`/Tour`, `src/Sections/Humans.Tour`) — a static, anonymous "what is Humans" demo page, single `Index` action, no services — bringing the audited count from 91 to 92 (#1272). The rest of that range was the continuing G5 section-extraction work (`Humans.AuditLog`, `Humans.Cantina`, `Humans.Consent`, `Humans.Debug`, `Humans.Email`, `Humans.Guide`, `Humans.Mailer`, `Humans.Search`, `Humans.Store`, `Humans.Teams`) relocating controller files and their `HumansTeamControllerBase` dependency out of `Humans.Web` — pure moves, no action/route/verb changes — plus two same-purpose behavior additions with unchanged signatures: `AboutController.Index` now renders a committed dev-stats snapshot (`purpose unchanged: "Public About page (license, packages, credits)"`) and `AdminController.Index` gained team/audit/email/store/expense dashboard tiles (#1272). No other controller in the inventory was added, removed, or renamed.
+
+The 2026-08-12 re-verified the controller/action inventory against current source (`04d2490f0..fa8b36737`): the G5 overnight batch (`af9242150`, #1263) relocated `GateController`, `GateVendorBackfillAdminController`, `BudgetController`, `BudgetAdminController`, `CalendarController`, `CampaignController`, `CityPlanningController`, `CityPlanningApiController`, `FeedbackController`, `FeedbackApiController`, `GovernanceController`, `GovernanceApplicationsController`, `GovernanceBoardVotingController`, `IssuesController`, `IssuesApiController`, `NotificationsController`, and `ScannerController` into their own `src/Sections/**` projects; `8018be9d3` (#1259) moved `AgentController`/`AgentApiController`/`AdminAgentController` into `Humans.Agent`; `cde511e4b` (#1251) moved `SurveyController`/`SurveyAdminController`/`SurveysApiController` into `Humans.Surveys` — all pure relocations, no action/route/verb changes in any of them. `4f65c7617` (#1261, "Holded API v2") added a **new** controller, `HoldedController` at `/Holded` (`src/Sections/Humans.Holded`), bringing the audited count from 90 to 91. `f5e4b8bdc` (#1267) added `sort`/`dir` query parameters to `FinanceController.Creditors` (same route/verb) and, together with `4f65c7617`, removed `FinanceController.ResyncCreditorLedger` (`POST /Finance/Creditors/Resync`) — superseded by `HoldedController.FullSync`. `250fda95e` (#1265, "retire mileage and per-diem line creation") removed `ExpensesController.AddMileage`/`AddPerDiem` and updated this doc directly in the same commit — already reflected below. No other controller in the inventory was added, removed, or renamed.
 
 The 2026-08-08 regeneration re-verified the controller/action inventory against current source: the 89-controller/4-base-class set is unchanged (no controllers added, removed, or renamed since the 2026-08-05 sweep), and a diff of `src/Humans.Web/Controllers/**` against the last audit-affecting commit turned up no changed `[Http*]` attributes, routes, action names, or `[ActionName]` overrides — the only churn was the mechanical `Humans.Web.Authorization` → `Humans.UI.Authorization` namespace move from PR #1222 ("peel StoreDbContext out of HumansDbContext") and its neighboring Humans.UI-extraction PRs, plus a same-purpose internal body change in `CampAdminController.SeedSystemRoles` (dropped a since-removed lead-migration step; the table's existing "Seed system role definitions" purpose text already matched). Every row below carries forward unchanged.
 
@@ -1132,6 +1134,14 @@ One-off vendor check-in backfill (temp page, remove after use) — recovers gate
 | Method | Route | Verb | Purpose | Suggestion |
 |--------|-------|------|---------|------------|
 | SetTimezone | /api/timezone | POST | Set user timezone in session | OK |
+
+## TourController
+
+(`src/Sections/Humans.Tour/Controllers/TourController.cs`) — static, anonymous "what is Humans" demo page. No services.
+
+| Method | Route | Verb | Purpose | Suggestion |
+|--------|-------|------|---------|------------|
+| Index | /Tour | GET | Public "what is Humans" demo page | OK |
 
 ## UnsubscribeController
 

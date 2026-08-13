@@ -1,292 +1,363 @@
-# Freshness Sweep — 2026-08-12
+# Freshness Sweep — 2026-08-13
 
 | | |
 |---|---|
 | Mode | diff |
-| Previous anchor | `04d2490f0` |
-| New anchor | `044b9e77a` |
-| Commits in window | 16 (13 non-merge) |
-| Changed files in window | 1,244 |
-| Worktree base | `origin/main` @ `fa8b36737` (frozen) |
-| Mechanical entries dirty | 9 of 11 |
-| Editorial docs dirty | 118 of 137 (+4 recovered, see *Systematic findings*) |
+| Previous anchor | `044b9e77a` |
+| New anchor | `caec503c8` |
+| Commits in window | 15 (13 non-merge) |
+| Changed files in window | 1,689 |
+| Worktree base | `origin/main` @ `c1a1076fb` (frozen) |
+| Mechanical entries dirty | 10 of 11 |
+| Editorial docs dirty | 135 of 141 (+3 recovered, see *Systematic findings*) |
 
-The window is dominated by the **G5 section split** — 737 of the 1,244 changed files are under
-`src/Sections/`. Agent and Surveys moved into their own projects, bringing the total to 19 section
-projects; a brand-new **Humans.Holded** section landed (Holded API v2, full ledger mirror,
-reconciliation, `/Holded` admin screen); the **per-section DbContext split** continued (Shifts →
-`ShiftsDbContext`, Legal + AuditLog peeled with immutability triggers, Gate peeled, `SystemDbContext`
-created for `DataProtectionKeys`); and a **G5 keystone analyzer (HUM0034)** now enforces
-internal-by-default inside section assemblies. Nearly all drift this sweep is downstream of one of
-those four.
+The window is again dominated by **G5 section extraction** — 737 of the 1,689 changed files are under
+`src/Sections/`. Section projects went from **19 to 35** (excluding `.Contracts`): Teams and Tickets
+moved in #1280 along with a new `Humans.TicketTailor` adapter project, a nine-section batch landed in
+#1269, and a brand-new **Tour** section shipped. Separately, **Peel 15 (#1273) deleted
+`HumansDbContext` outright** — the type, its factory, its model snapshot, and 288 root migration
+files — after merging Users and Profiles into a new `UsersDbContext`. Every table now belongs to
+exactly one section context. Nearly all drift this sweep is downstream of one of those two changes.
+
+---
 
 ## Systematic findings
 
-**27+ dead `freshness:triggers` globs across 16 docs — and four docs that had stopped firing
-entirely.** `docs/guide/Calendar.md`, `Campaigns.md`, `CityPlanning.md`, and `Feedback.md` had
-*every* trigger pointing at a path the G5 moves had killed, so they never appeared in a dirty list
-and had not been drift-checked for several sweeps. All four were given repaired triggers plus a full
-content pass, which turned up 15 substantive content corrections — including a documented feature
-that cannot happen (see *Campaign unsubscribe* below). Twelve more docs had partial dead globs.
+### 1. 55 dead trigger globs across 17 docs — three guide docs had silently stopped firing
 
-A glob-aware verifier now reports **0 dead paths across all 138 trigger-bearing docs.**
+A repo-wide scan found **55 trigger globs pointing at paths that no longer exist**. A dead glob is
+silent by construction: it makes a doc look *clean* rather than *unchecked*, so the doc never enters
+the sweep's dirty list at all.
 
-This is the **third consecutive sweep** to find a large dead-trigger batch: 64 across 44 docs two
-sweeps ago, 37 across 8 docs last sweep, 27+ across 16 docs now. The failure is silent by
-construction — a doc with a dead glob looks *clean*, not *unchecked* — and it recurs every time a
-refactor moves files — which is exactly what the in-flight G5 migration is doing. Repair it per
-sweep and expect it to keep recurring until G5 finishes; it stops on its own when the moves stop.
-**Do not propose a CI check for this** (see `memory/process/no-new-ci-checks.md`).
+Three docs were effectively invisible and did **not** appear in this sweep's initial 135-doc dirty
+list:
 
-**A brand-new section was invisible to the sweep.** `src/Sections/Humans.Holded/Docs/Holded.md`
-shipped with no `freshness:triggers` marker at all, so the newest section in the codebase would
-never have been drift-checked. Marker added. `docs/sections/G5-SECTION-TEMPLATE.md` was also
-unmarked; it is a template, so it went into the catalog's `ignore` list beside `SECTION-TEMPLATE.md`.
+| Doc | Dead globs | Status |
+|---|---|---|
+| `docs/guide/TicketTransfers.md` | 9 of 9 | **fully dead** — had not been swept in months |
+| `docs/guide/LegalAndConsent.md` | 15 of 16 | effectively dead |
+| `docs/guide/Tickets.md` | 7 of 9 | effectively dead |
 
-**A marking pass that was reverted outright.** Bringing `memory/` into the catalog needed its 153
-atoms marked, and the first pass at that was script-assisted: it scraped backticked identifiers out
-of each atom and resolved them to real files. Every glob it produced existed — the verifier was
-green — but a green verifier is not a correct trigger, and roughly a sixth were wrong in ways no
-path check catches: process rules got code triggers scraped from paths they merely cite as examples
-(`no-direct-to-main.md` got `docs/architecture/**`); several rules were set to fire on the artifact
-whose update *is* the rule being obeyed (`about-page-license-attribution.md` on `About/Index.cshtml`,
-`maintenance-log-update.md` on this log); `rules-maintenance.md` fired on `memory/**`, so every atom
-edit would flag it forever.
+All 55 repaired and repointed at the durable `src/Sections/Humans.<X>/**` form. Independently
+re-verified after the fact: **0 dead globs across all 143 trigger-bearing docs.**
 
-That got culled — 14 markers removed, 60 reasons rewritten, 2 glob sets narrowed. Then Peter asked
-the question that should have been asked before any of it: **is marking the atoms worth it at all?**
+The three recovered docs were then given a real content pass, which is where the sweep's single
+most consequential fix came from (see *LegalAndConsent* below).
 
-It is not, and the measurement is decisive: **865 lines of marker across 89 atoms — 16% of the
-memory corpus.** Average atom is 33 lines, average marker 9, and the block sits *between* the
-`description:` frontmatter and the rule body, so every agent reading an atom to apply a rule wades
-through sweep plumbing first. On files whose entire value is being terse and fast to consume, that
-is backwards.
+### 2. Root cause of the recurring dead-glob finding — the sweep's own verifier cannot detect it
 
-**All markers were removed and `memory/` dropped from `editorial_trees`** (the two are coupled —
-markerless atoms in the tree just become 155 "unmarked editorial" flags). The catalog carries a
-comment recording the attempt so a future sweep does not re-propose it. Stale symbol references in
-atoms get noticed and fixed when an agent goes to apply the rule; that is cheap and reactive, and
-does not tax every read.
+This is the fifth consecutive sweep to report a large dead-glob batch. The cause is now located, in
+`docs/scripts/freshness-checks/diff-mode.sh` (not CI-wired):
 
-Kept from the attempt, because they were real: two atoms naming
-`Humans.Web.Extensions.DateTimeDisplayExtensions` corrected to `Humans.UI.Extensions`;
-`issue-fetch-protocol.md`'s claim to be hook-enforced by `require-gh-comments.sh`, which exists
-nowhere in the repo; three path/symbol fixes found while marking (`Humans.Expenses` G5 paths,
-`AuditLogEntityTypes` → `AuditEntityTypes`, and a dual-write exception for a column since dropped by
-`DropProfileIsSuspended`); and the new `hum0031-frozen-until-2027` atom.
+1. **No glob-resolution test exists.** Test 4 only checks that `<!--` / `-->` markers balance. A glob
+   pointing at a deleted path passes every existing test.
+2. **Test 5 is itself dead.** Its synthetic probe path is `src/Humans.Web/Controllers/TeamController.cs`,
+   which no longer exists — the file moved to `src/Sections/Humans.Teams/`. The test now proves nothing.
+3. **Test 4 does not walk `src/Sections/`.** It covers only `docs/sections`, `docs/features`,
+   `docs/guide` — so all 35 sections' in-project docs are outside the check entirely.
 
-The generalizable lesson is two-part: *"every glob resolves"* is necessary but not sufficient, and
-a mechanism that needs 14 removals plus 60 rewrites to become coherent is the wrong mechanism for
-the material.
+Not fixed: that script is outside the catalog, editorial trees, and prune allowlist. **See Questions.**
 
-**A trigger gap in `conventions.md` itself.** Its trigger block covered
-`src/Humans.Web/ViewComponents/**` and `src/Humans.Web/Views/**` but not `src/Humans.UI/**`, where
-the shared view layer, the section-agnostic view components, and `DateTimeDisplayExtensions` now
-live. Added.
+### 2b. A false clean: two mechanical entries were skipped by triggers that could not see the code
 
-**Two lanes contradicted each other, and cross-checking caught it.** The regenerated
-`service-data-access-map.md` claimed `ISurveyServiceRead` "is registered but empty pending a
-consumer"; the G5 lane reported it deleted. The code settles it — `Humans.Surveys/Services/ISurveyService.cs:14`
-carries the comment *"There is no `ISurveyServiceRead`: it shipped empty in v1 and no other section
-ever…"*, and `SurveysArchitectureTests.cs:19` confirms the paired test went with it. Corrected.
-The same lane left `TicketingBudgetService` filed under `## Tickets` with no note that it now lives
-in `Humans.Budget`; an ownership note was added.
+Codex raised a P1 on this PR (`dependency-graph` and `service-data-access-map` still scoping to
+`src/Humans.Application` after their services moved). Auditing **all eleven** mechanical entries for the
+same defect found it was broader, and that this report had already been wrong about it.
+
+`data-model-index` and `guid-reservations` were reported above as *"not dirty — no `Domain/Entities` or
+`Data/Configurations` churn."* That was a **false clean**. G5 sections own their entities and EF
+configurations outright — 24 `src/Sections/*/Domain/` and 22 `src/Sections/*/Data/Configurations/`
+folders — and **39 section-owned entity/configuration files changed in the window**. The triggers only
+pointed at `src/Humans.Domain/` and `src/Humans.Infrastructure/`, so both docs went unexamined while
+looking clean. This is the same failure as a dead editorial glob, one layer up: *a trigger that cannot
+see the code makes the doc look fresh.*
+
+| Entry | Files matched, before → after |
+|---|---|
+| `data-model-index` | **0 → 39** |
+| `guid-reservations` | **0 → 14** |
+| `dependency-graph` | 61 → 258 (the P1) |
+| `service-data-access-map` | 64 → 256 (the P1) |
+| `docs-readme-index` | 62 → 95 (found by the audit; README indexes in-project section docs) |
+| `controller-architecture-audit` | 13 → 42 (fixed earlier in this PR) |
+
+All eleven entries now fire on this window. Both falsely-clean docs were re-run in this PR rather than
+left for the next sweep, and **the false clean turned out to be hiding a real bug**:
+
+- **`data-model-index`** — the Finance row conflated Finance's own entities with the separate Holded
+  section's. It named `HoldedSyncState` for what is actually Finance's `HoldedDocSyncState`, and filed
+  `HoldedLedgerLine` under `FinanceDbContext` when it belongs to `HoldedDbContext`. Split into correct
+  Finance and Holded rows; `HoldedAccount` and `HoldedApiCall` were missing from the index entirely
+  (net +3 entities). Everything else matched code — including `GoogleResource` staying under Teams
+  despite living in `GoogleIntegrationDbContext`, which is intentional and cross-referenced.
+- **`guid-reservations`** — genuinely clean on inspection: all 6 GUID blocks accounted for, and the two
+  whose owners moved (Teams `0001`, Events `0026`) already point at their section paths.
+
+Prompts must be fixed alongside triggers: a trigger that fires into a prompt still walking the old tree
+produces a doc that looks *freshly audited* while its new rows go stale — worse than not firing at all.
+
+**That lesson was written down here and then not applied.** Codex came back with three more P2s on the
+same defect, and a systematic re-audit found a fourth: `docs-readme-index`, `guid-reservations`,
+`authorization-inventory`, and `data-model-index` had widened triggers but untouched prompts. All four
+are now aligned, verified by a script that compares each entry's trigger scope against its prompt scope
+rather than by reading them.
+
+A fifth review round found five more, three of them consequences of the fixes above:
+
+- **The verifier could not report a dead catalog entry — it died before trying.** If an
+  individually-listed entry like `docs/seed-data.md` were renamed, `editorial_docs()` returned a
+  non-zero status from its final `if`, and under `set -euo pipefail` that aborted the whole script
+  **after test 2**, so tests 3-7 never ran. The exit code was non-zero either way, but the diagnostic
+  was silent. Both helper loops are now `set -e`-safe, and test 3 fails with the offending entry named.
+  Proven by deliberately renaming a catalog entry and watching it fail, then restoring.
+- **`dependency-graph`'s step 2** still derived a dependency's owning section from its folder under
+  `src/Humans.Application/Services/` — where a moved implementation has no folder at all. Widening the
+  walk without widening the classification rule would have misclassified or dropped the very G5
+  dependencies the walk was added for.
+- **Four EF configurations live directly under `Data/`, not `Data/Configurations/`** (Consent's three,
+  Email's `EmailOutboxMessage`). The `Data/Configurations/**` globs added a round earlier still left
+  `data-model-index` and `guid-reservations` falsely clean for those four files, all of which changed
+  in this window. Both now watch the whole `Data/` tree.
+- **`google-integration.md`** documents the `/Teams/{slug}/Resources` route table — added by this very
+  sweep — but its marker never watched the Teams controller or views that serve it.
+- **`docs/guide/Tickets.md`** describes vendor-adapter behaviour (incremental sync, void-to-hold
+  reissue) while watching none of `Humans.TicketTailor` or the `ITicketVendorService` port.
+
+While adding the Teams triggers I nearly shipped a dead glob of my own — `TeamResourceService.cs` is in
+`src/Humans.Application/Services/GoogleIntegration/`, not the Teams project — caught by checking each
+path before committing rather than after.
+
+The `data-model-index` case is the one worth remembering. Its authority chain is **catalog → prompt-file
+→ inline `freshness:auto` marker**, and the prompt-file explicitly defers to the marker. The earlier fix
+edited the prompt-file, which is *dead code* during normal regeneration — the inline marker in
+`data-model.md` is what actually runs, and it still walked only `src/Humans.Domain/Entities/`. Three
+places had to agree and only one was changed. The marker is now correct, and the catalog entry carries
+a note saying which of the three is authoritative, so the next person doesn't have to discover it.
+
+### 3. New sections keep shipping with no freshness marker — second consecutive occurrence
+
+`src/Sections/Humans.Tour/Docs/Tour.md` shipped with **no freshness marker at all**, so the newest
+section was invisible to the sweep. `Humans.Holded` did exactly the same thing last sweep. Two in a
+row makes this a template gap rather than an author oversight: neither `SECTION-TEMPLATE.md` nor
+`G5-SECTION-TEMPLATE.md` instructs a *new* section doc to carry a marker (the G5 template only covers
+rewriting triggers for a *moved* doc). Marker added to `Tour.md` by hand. **See Questions.**
+
+---
 
 ## Updated automatically
 
-- `dev-stats` — script-driven; 1 row appended (142 data rows).
-- `reforge-history` — script-driven; CSV at 131 rows / 131 distinct days.
-- `authorization-inventory` + `controller-architecture-audit` — G5 relocations verified line-by-line
-  as namespace-only (no role/policy/attribute changes). Added the new Holded section
-  (`HoldedController`, class-level `FinanceAdminOrAdmin`, 4 actions). Removed
-  `FinanceController.ResyncCreditorLedger` (deleted, superseded by `HoldedController.FullSync`).
-  `PolicyNames.AgentRateLimit` was deleted — `AgentController.Ask` now instantiates
-  `AgentRateLimitRequirement` directly; propagated across five tables. Controllers audited 90 → 91.
-- `dependency-graph` + `service-data-access-map` — regenerated across `HumansDbContext` plus all
-  per-section contexts. Cycle #6 (**Camp ↔ CityPlanning**) documented and refined; the
-  GoogleWorkspaceSync ↔ TeamResource cycle's eager half is now gone.
-- `docs-readme-index` — all 69 feature links, all section-invariant links and all 25 guide links
-  verified to resolve on disk; added the missing row for the Holded section doc.
-- `about-page-packages` — **verified clean.** All 47 production packages and versions already matched
-  `Directory.Packages.props`.
-- `code-analysis-suppressions` — **verified clean.** The auto-block already matched both
-  `Directory.Build.props` files exactly.
-- `data-model-index`, `guid-reservations` — not dirty this window.
+### Mechanical
 
-## Editorial drift fixed
+| Entry | Result |
+|---|---|
+| `dev-stats` | script — appended 2 rows, table now 144 data rows |
+| `reforge-history` | script — ok=2 fail=0, CSV at 133 distinct days |
+| `authorization-inventory` | regenerated — new Tour section (AllowAnonymous); paths updated for the #1280 and #1269 moves; no role/policy drift anywhere in `src/Sections/**` |
+| `controller-architecture-audit` | regenerated — added `TourController`, count 91 → 92; `HumansTeamControllerBase` relocation noted |
+| `service-data-access-map` | regenerated (+203/−97) — `HumansDbContext` removal propagated; per-table context ownership re-resolved from source |
+| `dependency-graph` | verified — every service ctor re-audited; zero edge changes, G5-batch-3 note added |
+| `docs-readme-index` | regenerated — 2 rows added (Development, Tour), 1 retargeted (Onboarding → in-project path); all 154 links resolve |
+| `about-page-packages` | **verified clean** — every production `PackageReference` already matches `Directory.Packages.props` |
+| `code-analysis-suppressions` | **verified clean** — the `tests/Directory.Build.props` churn was compile-item conditions, not `NoWarn` |
+| `data-model-index` | **regenerated after a false clean — found a real bug**, see below |
+| `guid-reservations` | re-checked after the same false clean — genuinely clean this time by inspection |
 
-118 dirty docs across 10 lanes; ~66 files edited, the rest verified accurate and deliberately left
-untouched. Highlights, all verified against current source:
+### Editorial — highest-value content fixes
 
-**Recovered guide docs (had stopped firing).** Calendar: all-day events were entirely undocumented
-(inclusive end date, half-open normalization); team dropdown is active-and-not-hidden only.
-CityPlanning: container placement is a **separate phase** (`IsContainerPlacementOpen`), which the doc
-folded into barrio placement. Feedback: the API surface was understated by five endpoints and
-assignment was undocumented; the detail view is a panel, not a page.
+Ten lanes, 135 docs. The fixes that change what a reader would do:
 
-**Wrong entity fields.** `CalendarEventException`'s field names were *all* wrong —
-`Title`/`StartUtc`/`EndUtc` are actually `OverrideTitle`/`OverrideStartUtc`/`OverrideEndUtc`, plus
-four more `Override*` fields and `CreatedByUserId` were missing.
+- **`docs/guide/LegalAndConsent.md`** — told Consent Coordinators that **Flag removes the human from
+  Volunteers/Colaborador/Asociado teams**. `OnboardingService` carries an explicit comment that Flag is
+  now annotation-only and "no longer deprovisions any team"; `RejectSignupAsync` is the real kick-out
+  lever, and Reject is a third button on the same page. Also corrected the queue's entry gate (it is
+  "legal name entered and not yet cleared", not "signed all required global documents"). Rewritten as
+  three actions: Clear / Flag / Reject. This doc had been unswept for months.
+- **`docs/features/global/background-jobs.md`** — largest single-doc drift. Two jobs documented as
+  DISABLED are registered unconditionally by `RecurringJobExtensions.cs` (hourly / daily 3 AM); two
+  retired jobs still listed; three real jobs undocumented; two wrong cron schedules
+  (`SendReConsentReminderJob` is 4:00 not 6:00 AM; `TermRenewalReminderJob` and `CleanupEmailOutboxJob`
+  are weekly, not daily).
+- **`docs/features/cantina/daily-roster.md`** — claimed 403 Forbidden in five places; the app 302s to
+  `/Account/AccessDenied` (`Program.cs:153`, no `OnRedirectToAccessDenied` override).
+- **`src/Sections/Humans.Events/Docs/{Events,Events-feature}.md`** — 13 occurrences of role
+  `GuideModerator`, which exists **nowhere in code**; the real role is `EventsAdmin` /
+  `PolicyNames.EventsAdminOrAdmin`.
+- **`src/Sections/Humans.Store/Docs/Store.md`** — stated "Contracts/ is empty because nothing consumes
+  Store" and "Service has no interface". Both false: `IStoreServiceRead` landed in #1264.
+- **`docs/features/profiles/contact-fields.md`** — documented `IsOAuth` and `IsNotificationTarget` as
+  live C# properties; `IsOAuth` is shadow-only, the field is `IsPrimary`, and `Provider`/`ProviderKey`
+  replaced the OAuth bool.
+- **`docs/features/google-integration/google-integration.md`** — wrong config key
+  (`AllowLeadsToManageResources` → `AllowCoordinatorsToManageResources`), wrong route base, a phantom
+  `Resources/LinkFile` route that does not exist, two undocumented real routes added.
+- **`docs/features/shifts/coordinator-roles.md`** — stale `[Authorize(Roles=…)]` block, wrong policy
+  name, and a whole section describing `AdminController.CanManageRole()` — both gone; replaced with the
+  real `RoleAssignmentAuthorizationHandler` mechanism.
+- **`src/Sections/Humans.Gdpr/Docs/Gdpr.md`** — `IUserDataContributor` split was 8/13, actually 4/17
+  (total 21 unchanged).
+- **`src/Sections/Humans.Containers/Docs/Containers.md`** — invented `main-{guid}`/`placement-{guid}`
+  filename prefixes; code uses one `{guid}.{ext}` key.
+- **`docs/sections/_Index.md`** — missing its Mailer row entirely.
+- **`docs/features/shifts/shift-preference-wizard.md`** — route `/Profile/ShiftInfo`, actually
+  `/Profile/Me/ShiftInfo` (5 occurrences).
+- **`src/Sections/Humans.Issues/Docs/Issues.md`** — `AllKnownSections` missing Scanner.
+- **`docs/features/auth/authentication.md`** — Section Admin Roles table missing `StoreAdmin` and
+  `EETeamAdmin`.
+- **`docs/features/test-system-reliability.md`** — "85 Application test files" reproduced by no
+  counting method (real figure 64 repo-wide, 15 in `Humans.Application.Tests`); passage also still
+  named the deleted `HumansDbContext`.
+- **`docs/seed-data.md`** — cited a migration file absorbed into a section baseline and no longer
+  present; two configurations moved into their section projects.
+- **`docs/architecture/design-rules.md`** — 12 fixes, the largest being the G5 section list (29 → the
+  actual 35), the design-time-factory list (now the five that really remain in
+  `Humans.Infrastructure.Data`), and §8's preamble rewritten around the deleted root context. §15i's
+  `HumansMetricsService` entry was wrong in a load-bearing way: it no longer injects a `DbContext` at
+  all. §5's decorator example named `CachingProfileService` / `ProfilesProfileService` /
+  `ProfileSectionExtensions.cs` — neither type exists and that file contains no decorator wiring;
+  retargeted at the live `CachingUserService` / `UsersUserService` / `UsersSectionExtensions.cs:35-37`,
+  which still uses exactly the keyed-inner + factory-forward shape §5 describes.
+- **`docs/architecture/roslyn-analysis.md`** — the intro's shipped range `HUM0001-HUM0020` silently
+  included `HUM0004`, which does not exist; replaced with the exact live set (29 rules) plus the full
+  retired-id list.
+- **`src/Sections/Humans.Notifications/Docs/Notifications.md`** — cited retired `HUM0022`; the rule is
+  now enforced by the universal `HUM0025`.
+- **`docs/architecture/code-analysis.md`** — next-free-id note omitted `HUM0004` from the retired set.
 
-**Deleted symbols still documented as live.** `IFeedbackService` (→ `IFeedbackServiceRead`, 6 sites),
-`ISurveyServiceRead`, `ITicketingBudgetService`'s old home, `IssuesWidgetViewComponent`,
-`BoardController`, `AdminDuplicateAccountsController` + `AdminMergeController` (deleted in #899),
-`DriveActivityMonitorRepository`, `GeneralAvailabilityService`, and `GoogleSyncService` (no such
-concrete class — it is `GoogleWorkspaceSyncService`).
+### Verification passes
 
-**Architecture-doc corrections (~30).** The G5 list said "six so far"; it is 19. Identity tables are
-renamed to snake_case in `OnModelCreating`, not `AspNetUsers`. Eight wrong table names
-(`audit_log_entries` → `audit_log` at four sites, `holded_sync_states` → `holded_doc_sync_state`,
-…). `team_pages` removed — no such table exists; `TeamPageService` is a composer. Five authorization
-handlers were missing from the §11 inventory. Repository count 35 → 36. `code-review-rules.md`'s
-"Missing `.Include()`" rule told reviewers to demand a cross-section `.Include()` that **HUM0024 now
-fails at build time** and that #996/#992 made impossible — carve-out added.
+Two adversarial passes ran after the lanes finished:
 
-**Governance/onboarding.** `TermExpiresAt` runs to the next odd year at least two years out, and the
-first term runs **long** — the doc said short, contradicting both `TermExpiryCalculator` and the
-doc's own worked examples. `MembershipCalculator` computes `IncompleteSignup` before `Suspended`.
-Cross-section FK notations corrected to bare `Guid` columns throughout (no FK constraint, no nav).
+- **Cross-check of the four mechanical regens** — found **4 confirmed errors**, all in
+  `service-data-access-map.md`: repository classes named `HoldedRepository`, `HoldedMirrorRepository`,
+  `ContainerRepository`, `SystemSettingsRepository`. The G5 convention is a bare `Repository` class
+  implementing the named interface. Neither the producing lane nor the doc self-flagged these. (This is
+  the second sweep running where this cross-check caught errors no lane reported — it should stay a
+  standing step.)
+- **Verification of this sweep's own edits** — 47 added factual claims checked against source across
+  ~35 docs. **Zero errors.** One claim was flagged unverifiable rather than guessed at and has since
+  been corrected: `MailerAudienceSyncJob`'s "Daily 6:00 AM" was sourced from an `e.g.` inside a code
+  comment (`RecurringJobExtensions.cs:20`), not from any default — the setting ships empty and the job
+  does not run at all by default.
+- **Link integrity across 414 `.md` files** — 5 real broken links fixed (two `../../` relative depths
+  that should be `../../../../` from `src/Sections/*/Docs/`, a `TeamConfiguration.cs` path that moved at
+  G5, and two `docs/sections/Auth.md` links pointing at a doc that moved in-project). 9 further hits
+  were regex false positives, not links. Every remaining reference to the 7 deleted husks is a
+  `<!-- wheat: -->` provenance comment, which is the intended end state.
 
-**`docs/sections/_Index.md`** — all 23 relative links verified to resolve, 0 broken. Holded added to
-the G5 map; the duplicate second `**Holded**` row renamed `**Holded Connector**` and cross-linked, so
-the ledger-mirror section and the Base HTTP connector are distinguishable.
+### A caution for the next sweep: the orchestrator's own briefing was wrong
+
+I briefed the architecture lane that **HUM0012, HUM0013, HUM0021, HUM0024 and HUM0029 were retired**,
+taking it from commit `c1a1076fb`'s title (*"retire HUM0012/13/21/24/29 instead of widening them"*) —
+whose body also says it "deletes five analyzers". The lane refused the claim and checked the diff:
+`c1a1076fb` deletes exactly **two** analyzer source files, `CrossSectionEfJoinAnalyzer` (HUM0024) and
+`ObsoleteCrossDomainNavReadAnalyzer` (HUM0021). HUM0012, HUM0013 and HUM0029 are still live source
+files, still in `AnalyzerReleases.Unshipped.md`; the commit only *added doc comments* to them. Verified
+independently, and confirmed no doc in this sweep asserts the wrong claim.
+
+Two lessons: **a commit message is not a source of truth — diff it**; and a worker pushing back on the
+orchestrator's premise is the check working, not noise.
+
+---
 
 ## Pruned
 
-**3,317 lines removed (6.2% of 53,856 doc lines)** — above the 5% target, under the 7% cap.
+7 husks deleted, **−4,387 lines** (8.6% of 50,747 total doc lines; over the 7% / 3,552-line soft cap —
+justification below).
 
-| Husk | Lines | Reason |
+### Wheat migrated
+
+| Source § | Destination | What survived, and what verified it |
 |---|---|---|
-| `docs/superpowers/plans/2026-06-10-table-component.md` | 1,482 | all chaff |
-| `docs/superpowers/plans/2026-06-04-datetime-format-analyzer.md` | 705 | all chaff |
-| `docs/superpowers/plans/2026-06-04-per-day-shift-signup.md` | 639 | all chaff |
-| `docs/superpowers/plans/2026-06-08-scanner-ticket-lookup.md` | 491 | all chaff |
+| `2026-05-25-early-entry-roster.md` §Task 5 | `design-rules.md` §15 | `TrackedCache.GetAsync` only calls `Set` on a non-null load, so it never caches a not-found result; caching a legitimate negative needs manual `TryGet`/`Set`. Verified against `TrackedCache.cs` and the shipped `CachingEarlyEntryService.GetForUserAsync`. |
+| `2026-05-27-coordinator-availability-on-profile.md` §Deviations | `docs/sections/Shifts.md` | `SetDayAvailabilityAsync` guards only `dayOffset >= 0` while `SetDayOffAsync` validates the full window; inert because every render loop is bounded to `[BuildStartOffset, 0)`. Verified against current `VolunteerTrackingService.cs`. |
+| `2026-06-06-account-merge-consolidation.md` §Deviations | `conventions.md` §Transaction Boundary | **A correction, not an addition.** The doc's cited example was factually wrong: `AccountMergeService.MergeAsync` has no `TransactionScope` (`AccountMergeService.cs:92-212`); only `RejectAsync` does (`:228`). Replaced, and the ordered-no-transaction rule (idempotent steps + a single observable commit point) documented alongside it. |
 
-**Wheat migrated: none — and that is the finding.** Every candidate was verified against code and
-failed. In all four cases the durable rationale already lives in the husk's **retained design spec**,
-and the plan-only residue proved *stale*:
+### Husks deleted
 
-- The datetime husk's format-literal→method mapping table names methods that do not exist — shipped
-  names on `DateFormattingExtensions` are `ToDate`/`ToDateTime`/`ToWeekdayDayMonth`/`ToInvariantDate`/
-  `ToIso8601`/`ToSepaDateTime`/`ToFileTimestamp`.
-- The table-component husk places the component at `src/Humans.Web/Models/Tables/`; it shipped in #929
-  and moved to `src/Humans.UI/Models/Tables/` at G5. `EnumBadgeMap.cs:12-27` now carries richer
-  rationale than the plan ever did.
-- The per-day-shift-signup husk's headline claim — *"adds no new service/interface methods"* — is
-  false: `ShiftsController.ToggleDay` delegates to a new `IShiftSignupService.ToggleDayAsync`.
-- The scanner husk's cache-invalidation note reaches the **opposite** conclusion from shipped code;
-  `Tickets.md` already documents the real behavior.
+| File | Lines | Reason |
+|---|---|---|
+| `docs/plans/2026-06-11-q3-ui-refactoring-plan.md` | 243 | Wheat already in `conventions.md`; rest is a file:line audit inventory + 5-phase task list |
+| `docs/plans/2026-06-27-post-event-app-feedback-survey.md` | 171 | Wheat already in `Surveys.md`; its remaining §1.1 claim is **no longer true** — `SurveyAudienceType.LoggedInSince=4` now exists and tracking issue #894 is closed |
+| `docs/superpowers/plans/2026-05-25-early-entry-roster.md` | 1,367 | Shipped TDD plan; its sequential-fan-out rationale is explicitly superseded by design-rules §8a post-#858 |
+| `docs/superpowers/plans/2026-05-27-coordinator-availability-on-profile.md` | 757 | Mined (above); remainder is task list + two pure implementation-mechanics deviations |
+| `docs/superpowers/plans/2026-06-04-survey-section.md` | 694 | All 10 rationale items already in `Surveys.md` at equal or greater depth |
+| `docs/superpowers/plans/2026-06-06-account-merge-consolidation.md` | 538 | Mined (above); rationale already in `docs/sections/Users.md` |
+| `docs/superpowers/plans/2026-06-09-team-early-entry-ticket-lookup.md` | 617 | Small shipped feature; notes are single-endpoint implementation detail, below the genre bar for all three allowed destinations |
 
-Inbound refs: **zero**, independently re-verified across `*.md`/`*.yml`/`*.cs`/`*.json`. The single
-grep hit — `src/Humans.UI/Models/Tables/ITableModel.cs:8` — points at the *retained spec*, not a
-deleted plan. Nothing to retarget.
+**Cap overage (8.6% vs 7%), deliberate.** Two husks were mined this sweep and cannot be stranded per
+the skill's own exception. The other two were fully analyzed and verified all-chaff; deferring them
+would discard completed verification for zero reviewability gain, since all seven are whole-file
+deletes a reviewer skims as seven lines of diff.
+
+### Refs retargeted
+
+- `docs/plans/2026-06-13-q3-transition-plan.md:5` → the deleted Q3 UI plan rewritten as historical,
+  pointing forward to `conventions.md`.
+
+### Deliberately kept
+
+- `docs/plans/2026-06-13-q3-transition-plan.md` — past its age-out date but still actively cited by
+  `2026-08-03-*` and `2026-08-07-*` plans and by the G5 split design as the gate-ladder definition.
+  Load-bearing, not a husk.
+- `docs/architecture/tech-debt-2026-04-23.md` — `debt-ledger.yml:321` conditions its retirement on all
+  open items being ledgered or done; it still lists genuinely open items.
+
+---
 
 ## Flagged for human review
 
-None. Every concrete, code-checkable contradiction was fixed inline. The items below are genuine
-judgment calls or out-of-scope app gaps, and were delivered to Peter inline (see *Questions*).
+**None.** Every concrete contradiction found this sweep was verified against source and fixed inline.
+Three items that lanes initially escalated as out-of-scope were verified and fixed rather than queued:
+the `GuideModerator` role, the `StoreAdmin`/`EETeamAdmin` role rows, and the `contact-fields.md`
+`IsOAuth` block.
 
 ## Proposed for review
 
-None — all prune candidates resolved this sweep.
+**None — all prune candidates resolved this sweep.**
 
-## Questions — all answered inline, all resolved this sweep
+## Questions — all four asked inline and answered in-session
 
-Peter answered every item. Resolutions applied in this PR:
+1. **`P4` of `test-system-reliability.md` contradicts the EF-InMemory rule.** → **Leave it.** No edit
+   made; P4 stands as written.
+2. **Repair `docs/scripts/freshness-checks/diff-mode.sh`?** → **Yes, and point it at the section docs
+   going forward.** Done:
+   - **New test 7** — expands every `freshness:triggers` glob in every editorial doc and fails on any
+     that resolves to nothing, calling out fully-dead docs by name. This is the only check that can see
+     the failure mode; tests 1-6 passed throughout the five sweeps it kept recurring.
+   - **Editorial walk is now derived from the catalog** by a shared `editorial_docs()` helper used by
+     tests 3, 4 and 7, so the check cannot drift away from `editorial_trees`. It previously covered only
+     `docs/{sections,features,guide}`, missing the **36 in-project section docs**; a first pass at the
+     fix hardcoded four directories and still skipped the **6 individually-listed catalog files**
+     (`design-rules.md`, `conventions.md`, `code-review-rules.md`, `coding-rules.md`,
+     `roslyn-analysis.md`, `seed-data.md`) — caught in review by Codex on PR #1283. Reading the list from
+     the catalog fixes both at once: **141 docs checked**, up from 135, up from 99 before the sweep.
+   - **Test 5's synthetic probe repointed** to `src/Sections/Humans.Teams/Controllers/TeamController.cs`,
+     plus a guard that fails loudly if the probe path itself ever stops existing. Both its old paths
+     were dead: the probe *and* `docs/sections/Teams.md`.
+   - **Test 1's `N_TREES` was always 0** — its awk range closed on the `editorial_trees:` line itself,
+     so it reported "0 editorial trees" against a catalog listing ten. Fixed; now reports 10.
+   - **Result: 7/7 pass.** This morning's tree would have failed tests 5 and 7.
+3. **Add the marker requirement to the section templates?** → **Yes.** Done: `SECTION-TEMPLATE.md`'s
+   canonical shape now opens with both markers, with a note on why. `G5-SECTION-TEMPLATE.md` step 7b
+   only ever described *moving* an existing doc's triggers, so a section born directly in
+   `src/Sections/` fell straight through it — that is precisely how Holded and Tour shipped unmarked
+   one sweep apart; it now covers authoring a new in-project doc.
+4. **`/Holded` missing from `AdminNavTree`.** → **Add it to the Money section.** Done: one row in the
+   `Money` group, `HoldedController.Index` behind `PolicyNames.FinanceAdminOrAdmin` (matching the
+   controller's own `[Authorize]`). `Humans.Web` builds clean. Note this is the sweep's **only source
+   change** — everything else in this PR is docs.
 
-| # | Answer | What was done |
-|---|---|---|
-| 1 | Campaign codes stay **not** opt-out-able | Code fix filed as nobodies-collective/Humans#1032 — suppress the footer link + `List-Unsubscribe` headers for always-on categories. Docs already corrected to match the code. |
-| 2 | City Planning issues go to **City Planning**, not Admin | Filed nobodies-collective/Humans#1033. |
-| 3 | Add `/Holded` to the **Money** group | Filed nobodies-collective/Humans#1034. |
-| 4 | Add the Camp Coordinator role mapping | Filed nobodies-collective/Humans#1035. |
-| 5 | Not orphaned — they have **dev-only** links | Doc was wrong. The buttons are `AdminNavTree`'s **Dev** group, gated `EnvironmentGate: env => !env.IsProduction()`. The worker only searched `.cshtml` form markup and missed the nav tree. `seed-data.md` corrected. |
-| 6 | Google Integration owns it | §8 change stands — and it matches the pre-existing rule atom [`team-resources-google-integration-section`](../../memory/architecture/team-resources-google-integration-section.md), which says section labels follow *code locality*, not table aggregate ownership. |
-| 7 | Leave for now | No action. `CampaignService.ImportCodesAsync` keeps its UI-only status gate. |
-| 8 | **Frozen until 2027** | `roslyn-analysis.md` retied the freeze to a **date** instead of #866 — tying it to an issue is why agents kept re-raising it every time #866 advanced. Captured as a rule atom: [`hum0031-frozen-until-2027`](../../memory/architecture/hum0031-frozen-until-2027.md). Do not raise this again in any form. |
-| 9 | Add `memory/` to the catalog — then **reverted** | Added, marked, and taken back out. Marking cost 865 lines (16% of the memory corpus) sitting above each rule body; Peter's call was that stale atoms get fixed reactively when an agent applies the rule rather than by a daily proactive check. `memory/` is out of `editorial_trees` and the catalog records why. The real fixes found while marking were kept — see *A marking pass that was reverted outright*. |
-| 10 | Remove if gone, rewrite if moved | **54 of 57** wheat markers pointed at sources deleted by earlier prunes; none of those files exist anywhere in the repo, so none could be rewritten — all 54 removed, prose preserved. The 3 survivors point at the three live docs kept last sweep (both Q3 plans and the post-event survey). |
+### A catalog gap the repaired verifier found immediately
 
-### Original question text, for the record
+Repointing test 5 at a section controller made it fail: **a change to any of the 58 controllers under
+`src/Sections/` marked zero mechanical entries dirty.** `controller-architecture-audit` documents all
+92 actions including those, and `authorization-inventory` lists their `[Authorize]` attributes, but
+both only triggered on `src/Humans.Web/Controllers/**`. Both entries now also trigger on
+`src/Sections/*/Controllers/**/*.cs`. Test 5 passes with 2 mechanical + 3 editorial dirty.
 
-**Product / code decisions**
-1. **Campaign unsubscribe is a no-op.** Campaign emails render the footer link *and* RFC 8058
-   `List-Unsubscribe` headers, but `CampaignCodes` is in `MessageCategoryExtensions.IsAlwaysOn`, so
-   `UpdatePreferenceAsync` ignores the write and `IsOptedOutAsync` always returns false. Dead code
-   either way: the opt-out loop in `SendWaveAsync`/`PreviewWaveSendAsync` and the always-zero
-   "Unsubscribed (excluded)" preview row.
-2. **Wave eligibility has no active/suspended check** — `SendWaveAsync` takes `TeamInfo.Members`
-   (`LeftAt == null`). Doc corrected to match code; the code may be what is wrong.
-3. **`IssueSectionInference.Map` matches path segment `"city"`** but the route prefix is
-   `/CityPlanning` — an issue filed from any City Planning page infers a null Section and lands in
-   the Admin queue instead of CampAdmin. Every other mapping matches a real first segment.
-4. **`/Holded` has no sidebar entry** in `AdminNavTree.cs` — reachable only by direct URL or the link
-   on Finance's `CreditorStatement.cshtml`.
-5. **Guide role blocks headed `(Camp Coordinator)`** — not a key in `GuideRolePrivilegeMap.cs`, so
-   those blocks are invisible to camp coordinators and reach only Board/Admin.
-6. **`/dev/seed/budget` and `/dev/seed/camp-roles` have no button** in any `.cshtml` — unreachable
-   actions, which `code-review-rules.md`'s "Orphaned Pages" makes a reject.
-7. **`CampaignService.ImportCodesAsync` has no service-level status gate**; only the Detail view
-   hides the button outside Draft/Active.
-
-**Architecture boundary calls**
-8. **`google_resources` / `TeamResourceService` ownership.** `GoogleResourceRepository` maps the
-   table on `GoogleIntegrationDbContext` and the service sits in `Services/GoogleIntegration/`, so
-   §8 was corrected to Google Integration to obey *"a table must only exist in one repository"*. If
-   Teams should own the Teams-to-Drive link, the **repository and DbContext mapping** move, not the
-   doc line.
-9. **Hard-rules conflict — Notifications.** §10 lists it as a horizontal crosscut, but
-   `NotificationMeterProvider` injects `IProfileService`, `IUserService`, `IGoogleSyncServiceRead`,
-   `ITeamService`, `ITicketSyncService`, and `IApplicationDecisionService`.
-   `peters-hard-rules.md` says horizontals *"are strictly forbidden from referencing vertical
-   sections … as that will cause loops in the call graph."* Pre-existing; not resolved here.
-10. **HUM0031's controller thresholds.** *Answered: frozen until 2027, permanently settled — see
-    `memory/architecture/hum0031-frozen-until-2027.md`. Never raise this again.*
-
-**Sweep mechanics**
-11. **Dangling wheat provenance.** Several G5 docs carry `<!-- wheat: docs/superpowers/specs/… -->`
-    markers pointing at spec files deleted before this anchor (Campaigns, CityPlanning, Containers,
-    Finance, Issues, Notifications, Store).
-12. **Archived specs drift too.** The retained `2026-06-10-table-component-design.md` still gives
-    pre-G5 paths, and a live source file cites it. `docs/superpowers/**` is catalog-ignored.
-13. **`memory/` is not in `editorial_trees` at all.** Two atoms
-    (`datetime-format-single-home.md`, `datetime-display-formatting.md`) name
-    `Humans.Web.Extensions.DateTimeDisplayExtensions`; the real namespace is `Humans.UI.Extensions`.
-
-## Out-of-scope drift recorded (not fixed)
-
-- `FeedbackSource.AgentUnresolved` + `AgentConversationId` are unreachable (no creation path since
-  #977) and their XML comment cites an agent tool that no longer exists. Dropping needs a migration —
-  debt-ledger candidate.
-- `CalendarDbContext`'s docstring says migrations live under `Migrations/Calendar/`; they are at
-  `src/Sections/Humans.Calendar/Data/Migrations/`.
-- `admin-shell.md`'s per-role sidebar matrix omits items present in `AdminNavTree.cs` today
-  (Barrios/Compliance, Members/{Account merges, Email problems, Audience segmentation},
-  Shifts/Orphan signups, Tickets/Campaigns). The doc says the matrix is pinned by
-  `tests/e2e/tests/admin-shell.spec.ts` `sidebarMatrix`, so that test may be stale too.
-- `Profiles.md` still carries an `account_merge_requests` data-model block at L239-241 while L411/L427
-  correctly state the table moved to Users.
-- `_Index.md`'s Mailer row says "— (background sync)" though `MailerAdminController` exists; the
-  Calendar row omits `ICalFeedApiController`. Both landed in #931, pre-anchor.
+That is the repair paying for itself within a minute of being written — the gap was invisible to every
+check that existed before it.
 
 ## Skipped (errors)
 
-None.
-
-## Process note
-
-Subagents again went idle without delivering payloads — **fifth consecutive sweep** with this
-failure. Worked around with the established file-payload pattern (agents write JSON to a scratchpad
-path outside the worktree).
-
-The sharper version of this finding: the payloads are not *lost*, they are **very late**. Every lane
-that looked dead eventually reported, but several arrived *after* the sweep had verified their work
-from the worktree diff, written the report, committed, and opened the PR. Waiting for them would
-have stalled the sweep indefinitely; the diff-verification fallback is what kept it moving, and it
-should stay in the procedure alongside the file-payload pattern rather than being treated as an
-emergency measure.
-
-Two inter-lane contradictions were caught only because the orchestrator cross-checked lanes against
-each other and against source (`ISurveyServiceRead`, `TicketingBudgetService` ownership). Neither
-lane flagged its own error. That cross-check is the most valuable step added this sweep and is worth
-making explicit in the skill.
+None. All 11 mechanical entries and all 135 dirty editorial docs were processed.

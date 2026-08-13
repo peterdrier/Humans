@@ -1,5 +1,5 @@
 using Humans.Application;
-using Humans.Application.Interfaces.Camps;
+using Humans.Camps.Contracts;
 using Humans.Events.Services;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;

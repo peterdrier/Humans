@@ -1,6 +1,4 @@
-using Humans.GoogleIntegration.Contracts;
 using AwesomeAssertions;
-using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Infrastructure.Configuration;
 using Humans.GoogleIntegration.Services.Workspace;
 using Microsoft.Extensions.DependencyInjection;

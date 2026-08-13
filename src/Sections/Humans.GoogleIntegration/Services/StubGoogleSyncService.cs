@@ -3,7 +3,6 @@ using Microsoft.Extensions.Logging;
 using Humans.Application.DTOs;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces;
 using Humans.GoogleIntegration.Data;
 using Humans.GoogleIntegration.Services.Workspace;
@@ -14,7 +13,9 @@ namespace Humans.GoogleIntegration.Services;
 /// Stub implementation of IGoogleSyncService that logs actions without calling Google APIs.
 /// Replace with real implementation when Google Workspace API integration is ready.
 /// </summary>
-internal sealed class StubGoogleSyncService(ILogger<StubGoogleSyncService> logger) : IGoogleSyncService
+internal sealed class StubGoogleSyncService(
+    ILogger<StubGoogleSyncService> logger,
+    IGoogleSyncOutboxRepository outboxRepository) : IGoogleSyncService
 {
     public Task<GoogleResource> ProvisionTeamFolderAsync(
         Guid teamId,
@@ -118,8 +119,13 @@ internal sealed class StubGoogleSyncService(ILogger<StubGoogleSyncService> logge
 
     public Task<int> GetPendingSyncEventCountAsync(CancellationToken cancellationToken = default)
     {
-        // Stub: no outbox in non-production environments.
-        return Task.FromResult(0);
+        // NOT stubbed. The outbox is real in this configuration — GoogleSyncOutboxService is
+        // registered unconditionally and team changes enqueue events — only the Google writes
+        // are stubbed. Reading the pending count needs no credentials, and before the metrics
+        // gauge moved onto IGoogleSyncServiceRead it read this repository directly, so
+        // returning 0 here would silently make humans.google_sync_outbox_pending wrong in
+        // every environment without Google credentials.
+        return outboxRepository.CountPendingAsync(cancellationToken);
     }
 
     public Task<IReadOnlyList<GoogleSyncOutboxEventSnapshot>> GetRecentOutboxEventsAsync(

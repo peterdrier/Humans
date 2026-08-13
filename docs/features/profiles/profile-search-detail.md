@@ -1,6 +1,6 @@
 <!-- freshness:triggers
   src/Humans.Web/Controllers/ProfileApiController.cs
-  src/Humans.Web/Models/SearchResponseModels.cs
+  src/Humans.UI/Models/SearchResponseModels.cs
   src/Humans.UI/Views/Shared/Components/HumanSearch/Default.cshtml
   src/Humans.Application/Services/Profiles/PersonSearchMatcher.cs
   src/Humans.Application/DTOs/ProfileSearchResults.cs

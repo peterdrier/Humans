@@ -26,6 +26,7 @@
       Campaigns' contracts leaf: TicketSyncService marks redeemed discount codes and
       TicketQueryService builds the code-tracking dashboard.
     -->
+    <ProjectReference Include="..\Sections\Humans.Camps.Contracts\Humans.Camps.Contracts.csproj" />
     <ProjectReference Include="..\Sections\Humans.Campaigns.Contracts\Humans.Campaigns.Contracts.csproj" />
     <ProjectReference Include="..\Sections\Humans.Consent.Contracts\Humans.Consent.Contracts.csproj" />
     <!--

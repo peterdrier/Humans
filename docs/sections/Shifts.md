@@ -86,6 +86,9 @@ Per-user per-event day availability. `AvailableDayOffsets` stored as jsonb. Uniq
 
 Cross-domain nav `GeneralAvailability.User` was **stripped** in peterdrier/Humans PR for sub-task nobodies-collective/Humans#541c; `UserId` is now a bare Guid column with no FK constraint (nobodies-collective/Humans#992).
 
+<!-- wheat: docs/superpowers/plans/2026-05-27-coordinator-availability-on-profile.md §Deviations from spec -->
+**Write-path asymmetry:** `VolunteerTrackingService.SetDayAvailabilityAsync` (the coordinator per-day availability toggle on a volunteer's profile) only guards `dayOffset >= 0` — unlike `SetDayOffAsync`, which validates the full window (`dayOffset < es.BuildStartOffset || dayOffset >= 0`). An offset earlier than `BuildStartOffset` can therefore be stored, but is inert: every heatmap/build-strip render loop is bounded to `[BuildStartOffset, 0)`, so an out-of-window offset never surfaces.
+
 ### VolunteerBuildStatus
 
 Per-user per-event build-period coordination state. Drives the Volunteer Tracking sub-page (gap detection, "went to camp set-up" marker, day-off list). Tracks two orthogonal facts that the schedule itself cannot infer:

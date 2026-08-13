@@ -6,7 +6,7 @@ This file is the **index and cross-cutting rule sheet** for the data model. Per-
 
 ## Entity index
 
-<!-- freshness:auto id="entity-index" prompt="Walk every class under src/Humans.Domain/Entities/ that has a corresponding configuration under src/Humans.Infrastructure/Data/Configurations/. For each, identify the owning section (find the section doc in docs/sections/ whose Data Model section names the entity). Build the entity index table with columns: Entity | Owning section | Notes. Preserve any per-row Notes column content the existing table already has — only update entity names and section links if they changed." -->
+<!-- freshness:auto id="entity-index" prompt="Walk every entity class in BOTH homes: src/Humans.Domain/Entities/ (configured under src/Humans.Infrastructure/Data/Configurations/) AND src/Sections/*/Domain/ (configured under that section's own Data/ tree — search Data/ recursively, since some sections keep configuration classes directly under Data/ rather than Data/Configurations/, e.g. Consent and Email). G5 sections own their entities outright, so a walk restricted to src/Humans.Domain misses most of them. For each, identify the owning section by finding the section doc whose Data Model section names the entity — that doc is either docs/sections/<X>.md or, for a section that has moved into its own project, src/Sections/Humans.<X>/Docs/<X>.md; docs/sections/_Index.md maps which is which. Do not assume a Holded*-prefixed entity belongs to Finance: Finance and Holded are separate sections owning separate tables in separate DbContexts. Build the entity index table with columns: Entity | Owning section | Notes. Preserve any per-row Notes column content the existing table already has — only update entity names and section links if they changed." -->
 
 | Entity | Owning section | Notes |
 |--------|---------------|-------|
@@ -33,9 +33,9 @@ This file is the **index and cross-cutting rule sheet** for the data model. Per-
 | TeamRoleAssignment | [Teams](../../src/Sections/Humans.Teams/Docs/Teams.md) | |
 | TeamEarlyEntryGrant | [Teams](../../src/Sections/Humans.Teams/Docs/Teams.md) | Per-team Early Entry grant (gated by `Team.EarlyEntryEnabled`). Cross-section `UserId` FK — nav stripped, resolved via `IUserServiceRead`. |
 | GoogleResource | [Teams](../../src/Sections/Humans.Teams/Docs/Teams.md) | Team Resources sub-aggregate. |
-| Camp / CampSeason / CampImage / CampHistoricalName / CampSettings | [Camps](../sections/Camps.md) | |
-| CampMember | [Camps](../sections/Camps.md) | Per-season, post-hoc human/camp affiliation (Pending/Active/Removed). Partial unique on `(CampSeasonId, UserId) WHERE Status <> 'Removed'`. |
-| CampRoleDefinition / CampRoleAssignment | [Camps](../sections/Camps.md) | Per-camp role catalogue + per-season assignments. Owned by `CampRoleService`. Unique on `(CampSeasonId, CampRoleDefinitionId, CampMemberId)`. |
+| Camp / CampSeason / CampImage / CampHistoricalName / CampSettings | [Camps](../../src/Sections/Humans.Camps/Docs/Camps.md) | |
+| CampMember | [Camps](../../src/Sections/Humans.Camps/Docs/Camps.md) | Per-season, post-hoc human/camp affiliation (Pending/Active/Removed). Partial unique on `(CampSeasonId, UserId) WHERE Status <> 'Removed'`. |
+| CampRoleDefinition / CampRoleAssignment | [Camps](../../src/Sections/Humans.Camps/Docs/Camps.md) | Per-camp role catalogue + per-season assignments. Owned by `CampRoleService`. Unique on `(CampSeasonId, CampRoleDefinitionId, CampMemberId)`. |
 | Container / ContainerPlacement | [Containers](../../src/Sections/Humans.Containers/Docs/Containers.md) | Camp-owned (`CampId` → `camps.Id`, non-nullable). |
 | CityPlanningSettings | [City Planning](../../src/Sections/Humans.CityPlanning/Docs/CityPlanning.md) | |
 | CampPolygon | [City Planning](../../src/Sections/Humans.CityPlanning/Docs/CityPlanning.md) | |
@@ -50,7 +50,8 @@ This file is the **index and cross-cutting rule sheet** for the data model. Per-
 | FeedbackReport / FeedbackMessage | [Feedback](../../src/Sections/Humans.Feedback/Docs/Feedback.md) | |
 | BudgetYear / BudgetGroup / BudgetCategory / BudgetLineItem / BudgetAuditLog / TicketingProjection | [Budget](../../src/Sections/Humans.Budget/Docs/Budget.md) | `BudgetAuditLog` append-only (§12). `BudgetGroup.Slug` and `BudgetCategory.Slug` are the Holded-tag-safe identifiers consumed by Finance. |
 | ExpenseReport / ExpenseLine / ExpenseAttachment / HoldedExpenseOutboxEvent | [Expenses](../../src/Sections/Humans.Expenses/Docs/Expenses.md) | Expense reports and Holded sync outbox. |
-| HoldedExpenseDoc / HoldedCategoryMap / HoldedSyncState / HoldedLedgerLine / HoldedCreditorContact | [Finance](../../src/Sections/Humans.Finance/Docs/Finance.md) | Holded actuals cache (Feature 1) + creditor daybook ledger cache + member→account binding (Feature 2). |
+| HoldedExpenseDoc / HoldedCategoryMap / HoldedDocSyncState / HoldedCreditorContact | [Finance](../../src/Sections/Humans.Finance/Docs/Finance.md) | Holded actuals cache (Feature 1) + member→account binding (Feature 2). |
+| HoldedLedgerLine / HoldedAccount / HoldedApiCall / HoldedSyncState | [Holded](../../src/Sections/Humans.Holded/Docs/Holded.md) | Ledger mirror — daybook lines, chart of accounts, API call log, sync state. Finance's creditor reads (Feature 2) query this mirror rather than owning it. |
 | Product / Order / OrderLine / Payment / Invoice / TreasurySyncState | [Store](../../src/Sections/Humans.Store/Docs/Store.md) | |
 | Issue / IssueComment | [Issues](../../src/Sections/Humans.Issues/Docs/Issues.md) | |
 | AgentConversation / AgentMessage / AgentSettings | [Agent](../../src/Sections/Humans.Agent/Docs/Agent.md) | |

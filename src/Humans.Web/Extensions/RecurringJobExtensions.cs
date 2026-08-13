@@ -1,4 +1,3 @@
-using Humans.GoogleIntegration.Contracts;
 using Hangfire;
 using Humans.Application.Configuration;
 using Humans.Application.Interfaces.GoogleIntegration;

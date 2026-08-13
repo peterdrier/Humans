@@ -2,7 +2,6 @@ using Humans.GoogleIntegration.Contracts;
 using AwesomeAssertions;
 using Humans.Application.DTOs;
 using Humans.AuditLog.Contracts;
-using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;

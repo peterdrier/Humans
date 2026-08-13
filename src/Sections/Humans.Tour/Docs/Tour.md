@@ -1,3 +1,10 @@
+<!-- freshness:triggers
+  src/Sections/Humans.Tour/**
+-->
+<!-- freshness:flag-on-change
+  Anonymous reachability of /Tour and the capability claims made in its copy — review when the Tour controller, view, or section registration changes, or when a capability the page advertises is added or removed elsewhere in the app.
+-->
+
 # Tour — Section Invariants
 
 Public marketing page: what Humans is, in plain language, for visitors evaluating the platform.

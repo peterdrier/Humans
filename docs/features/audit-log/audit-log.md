@@ -1,9 +1,9 @@
 <!-- freshness:triggers
   src/Humans.Application/Services/AuditLog/**
-  src/Humans.Web/Controllers/AuditLogController.cs
-  src/Humans.Web/Views/AuditLog/Index.cshtml
-  src/Humans.Domain/Entities/AuditLogEntry.cs
-  src/Humans.Infrastructure/Data/Configurations/AuditLog/**
+  src/Sections/Humans.AuditLog/Controllers/AuditLogController.cs
+  src/Sections/Humans.AuditLog/Views/AuditLog/Index.cshtml
+  src/Sections/Humans.AuditLog/Domain/AuditLogEntry.cs
+  src/Sections/Humans.AuditLog/Data/Configurations/**
 -->
 <!-- freshness:flag-on-change
   AuditLogEntry schema, AuditAction/GoogleSyncSource enum values, immutability triggers, and audit-log views/routes — review when AuditAction enum, AuditLogService, or audit-log UI change.

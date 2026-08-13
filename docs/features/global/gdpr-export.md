@@ -6,13 +6,13 @@
   src/Humans.Web/Controllers/GuestController.cs
   src/Humans.Application/Services/Profiles/ProfileService.cs
   src/Humans.Application/Services/Users/UserService.cs
-  src/Humans.Application/Services/Consent/ConsentService.cs
+  src/Sections/Humans.Consent/Services/ConsentService.cs
   src/Sections/Humans.Teams/**
   src/Sections/Humans.Auth/Services/RoleAssignmentService.cs
   src/Humans.Application/Services/Shifts/ShiftSignupService.cs
   src/Sections/Humans.Feedback/Services/FeedbackService.cs
   src/Sections/Humans.Notifications/Services/NotificationInboxService.cs
-  src/Humans.Application/Services/Tickets/TicketQueryService.cs
+  src/Sections/Humans.Tickets/Services/TicketQueryService.cs
   src/Sections/Humans.Campaigns/Services/CampaignService.cs
   src/Humans.Application/Services/Camps/**
   src/Humans.Application/Services/AuditLog/**

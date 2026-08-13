@@ -52,10 +52,6 @@ public abstract class ServiceTestHarness : IDisposable
     private readonly List<Func<DbContext?>> _sectionContextProbes = [];
 
 
-    /// <summary>Camps: <c>camps</c>, <c>camp_seasons</c>, <c>camp_historical_names</c>, <c>camp_images</c>, <c>camp_settings</c>, <c>camp_members</c>, <c>camp_role_definitions</c>, <c>camp_role_assignments</c>.</summary>
-    private readonly Lazy<SectionDb<CampsDbContext>> _campsDb;
-    private protected CampsDbContext CampsDb => _campsDb.Value.Context;
-    private protected TestDbContextFactory<CampsDbContext> CampsDbFactory => _campsDb.Value.Factory;
 
 
     /// <summary>Shifts: <c>event_settings</c>, <c>rotas</c>, <c>shifts</c>, <c>shift_signups</c>,
@@ -98,7 +94,6 @@ public abstract class ServiceTestHarness : IDisposable
         Db = new UsersDbContext(DbOptions);
         DbFactory = new TestDbContextFactory(DbOptions);
 
-        _campsDb = RegisterSection<CampsDbContext>(o => new(o));
         _shiftsDb = RegisterSection<ShiftsDbContext>(o => new(o));
         _teamsDb = RegisterSection<TeamsDbContext>(o => new(o));
 

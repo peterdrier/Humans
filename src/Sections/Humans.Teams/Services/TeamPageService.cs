@@ -1,5 +1,4 @@
 using Humans.GoogleIntegration.Contracts;
-using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;

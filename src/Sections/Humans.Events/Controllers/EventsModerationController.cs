@@ -1,6 +1,6 @@
 using Humans.Application;
 using Humans.Events.Services;
-using Humans.Application.Interfaces.Camps;
+using Humans.Camps.Contracts;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;
 using Humans.Events.Domain;

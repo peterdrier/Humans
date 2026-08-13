@@ -1,6 +1,6 @@
 using Humans.CityPlanning.Contracts;
 using Humans.Application.Extensions;
-using Humans.Application.Interfaces.Camps;
+using Humans.Camps.Contracts;
 
 using Humans.CityPlanning.Data;
 using Humans.Teams.Contracts;

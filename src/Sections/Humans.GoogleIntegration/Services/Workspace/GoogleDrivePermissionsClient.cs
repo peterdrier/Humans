@@ -1,8 +1,6 @@
-using Humans.GoogleIntegration.Contracts;
 using Google.Apis.Drive.v3;
 using Google.Apis.Services;
 using Humans.Application.Extensions;
-using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Infrastructure.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;

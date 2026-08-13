@@ -1,4 +1,3 @@
-using Humans.GoogleIntegration.Contracts;
 using Humans.Application.Interfaces;
 using Humans.Monitor.Contracts;
 using Humans.Monitor.Services;

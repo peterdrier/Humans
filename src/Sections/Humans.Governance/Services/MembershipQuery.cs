@@ -1,4 +1,3 @@
-using Humans.GoogleIntegration.Contracts;
 using Humans.Auth.Contracts;
 using Humans.Application.Interfaces.Auth;
 using Humans.Governance.Contracts;

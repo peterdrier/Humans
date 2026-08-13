@@ -1,4 +1,4 @@
-using Humans.Application.Interfaces.Camps;
+using Humans.Camps.Contracts;
 using Humans.Store.Contracts;
 using Humans.Store.Services;
 using Humans.Store.Services.Dtos;

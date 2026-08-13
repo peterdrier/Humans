@@ -14,7 +14,6 @@ using Humans.Domain.Enums;
 using Humans.UI.Extensions;
 using Humans.UI.Models;
 using Humans.Teams.Models;
-using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Profiles;

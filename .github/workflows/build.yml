@@ -46,7 +46,7 @@ env:
     FeedbackDbContext:src/Sections/Humans.Feedback
     CityPlanningDbContext:src/Sections/Humans.CityPlanning
     BudgetDbContext:src/Sections/Humans.Budget
-    CampsDbContext:src/Humans.Infrastructure
+    CampsDbContext:src/Sections/Humans.Camps
     GateDbContext:src/Sections/Humans.Gate
     SystemDbContext:src/Humans.Infrastructure
     LegalDbContext:src/Sections/Humans.Consent

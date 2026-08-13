@@ -1,7 +1,5 @@
-using Humans.GoogleIntegration.Contracts;
 using System.Reflection;
 using AwesomeAssertions;
-using Humans.Application.Interfaces.GoogleIntegration;
 using GoogleWorkspaceUserService = Humans.GoogleIntegration.Services.GoogleWorkspaceUserService;
 using Humans.GoogleIntegration.Services;
 using Humans.GoogleIntegration.Services.Workspace;

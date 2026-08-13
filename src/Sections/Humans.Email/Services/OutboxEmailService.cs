@@ -43,8 +43,9 @@ internal sealed class OutboxEmailService(
 
         var category = message.Category;
 
-        // null / System ⇒ always send: no opt-out suppression and no unsubscribe.
-        var optOutEligible = category is not null && category != MessageCategory.System;
+        // null / always-on (System, CampaignCodes) ⇒ always send: no opt-out
+        // suppression and no unsubscribe (there is nothing for it to do).
+        var optOutEligible = category is not null && !category.Value.IsAlwaysOn();
 
         if (optOutEligible && userId.HasValue
             && await commPrefService.IsOptedOutAsync(userId.Value, category!.Value, cancellationToken))

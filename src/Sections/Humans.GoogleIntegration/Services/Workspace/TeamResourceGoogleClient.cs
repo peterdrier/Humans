@@ -1,11 +1,9 @@
-using Humans.GoogleIntegration.Contracts;
 using System.Text.Json;
 using Google.Apis.Auth.OAuth2;
 using Google.Apis.CloudIdentity.v1;
 using Google.Apis.Drive.v3;
 using Google.Apis.Services;
 using Humans.Application.Extensions;
-using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Infrastructure.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;

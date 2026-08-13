@@ -73,6 +73,7 @@ public static class AdminNavTree
             // unchanged; the controller *name* the tag helper resolves against is not, and a
             // name that resolves to no action renders the anchor with no href at all.
             new("Finance",        "BudgetAdmin", "Index",    null, null, "fa-solid fa-coins",        PolicyNames.FinanceAdminOrAdmin),
+            new("Holded",         "Holded",     "Index",     null, null, "fa-solid fa-book",         PolicyNames.FinanceAdminOrAdmin),
             new("Store catalog",  "StoreAdmin", "Catalog",   null, null, "fa-solid fa-tags",         PolicyNames.StoreCatalogAdmin),
             new("Store summary",  "StoreAdmin", "Summary",   null, null, "fa-solid fa-chart-column", PolicyNames.StoreCatalogAdmin),
             new("Store payments", "StoreAdmin", "Payments",  null, null, "fa-solid fa-credit-card",  PolicyNames.StoreCatalogAdmin)

@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Sections\Humans.Camps\Humans.Camps.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      The section's four controllers and its authorization handler are ASP.NET types, and a
+      plain Microsoft.NET.Sdk test project does not get the shared framework — a
+      PackageReference cannot supply it either (NU1010 under Central Package Management,
+      design §15 step 8).
+    -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The section's own layers; the move renamed all of them at once. -->
+    <Using Include="Humans.Application" />
+    <Using Include="Humans.Domain.ValueObjects" />
+    <Using Include="Humans.Camps" />
+    <Using Include="Humans.Camps.Contracts" />
+    <Using Include="Humans.Camps.Controllers" />
+    <Using Include="Humans.Camps.Data" />
+    <Using Include="Humans.Camps.Domain" />
+    <Using Include="Humans.Camps.Models" />
+    <Using Include="Humans.Camps.Services" />
+    <Using Include="Humans.Camps.Authorization" />
+    <Using Include="Humans.Camps.Tests.Infrastructure" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />
+    <PackageReference Include="NodaTime.Testing" />
+  </ItemGroup>
+
+</Project>

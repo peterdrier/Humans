@@ -9,7 +9,7 @@
   src/Humans.Web/Controllers/AdminController.cs
   src/Humans.Web/Controllers/UsersAdminAccountMergesController.cs
   src/Humans.Web/Controllers/UsersAdminController.cs
-  src/Humans.Web/Controllers/AdminLegalDocumentsController.cs
+  src/Sections/Humans.Consent/Controllers/AdminLegalDocumentsController.cs
   src/Sections/Humans.Notifications/Controllers/NotificationsController.cs
   src/Humans.Application/Services/AuditLog/**
   src/Sections/Humans.Notifications/Services/**

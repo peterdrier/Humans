@@ -8,7 +8,7 @@
   src/Sections/Humans.Governance/Domain/Application.cs
   src/Sections/Humans.Governance/Domain/ApplicationStateHistory.cs
   src/Sections/Humans.Governance/Domain/BoardVote.cs
-  src/Humans.Domain/Entities/RoleAssignment.cs
+  src/Sections/Humans.Auth/Domain/RoleAssignment.cs
   src/Humans.Domain/Constants/RoleNames.cs
   src/Humans.Domain/Constants/RoleGroups.cs
   src/Humans.Domain/Constants/SystemTeamIds.cs

@@ -7,7 +7,6 @@ using Google.Apis.DriveActivity.v2;
 using Google.Apis.DriveActivity.v2.Data;
 using Google.Apis.Services;
 using Humans.Application.Extensions;
-using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Infrastructure.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;

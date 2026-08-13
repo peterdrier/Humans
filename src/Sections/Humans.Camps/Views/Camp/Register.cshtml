@@ -1,0 +1,245 @@
+@using Humans.UI.Extensions
+@model Humans.Camps.Models.CampRegisterViewModel
+@{
+    ViewData["Title"] = $"{Localizer["Camp_Register_Heading", Localizer["Camp_Singular"]]} — {ViewData["SeasonYear"]}";
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-action="Index">@SharedLocalizer["Camp_Plural"]</a></li>
+        <li class="breadcrumb-item active" aria-current="page">@Localizer["Camp_Register_Breadcrumb"]</li>
+    </ol>
+</nav>
+
+<h1 class="mb-4">@Localizer["Camp_Register_Heading", Localizer["Camp_Singular"]] <small class="text-muted">(@ViewData["SeasonYear"] @Localizer["Camp_Register_Season"])</small></h1>
+
+
+@{
+    var registrationInfo = ViewData["RegistrationInfo"] as string;
+}
+@if (!string.IsNullOrWhiteSpace(registrationInfo))
+{
+    <div class="card mb-4 border-primary">
+        <div class="card-header bg-primary bg-opacity-10">
+            <i class="fa-solid fa-circle-info me-1"></i> @Localizer["Camp_Register_ImportantInfo"]
+        </div>
+        <div class="card-body">
+            @Html.SanitizedMarkdown(registrationInfo)
+        </div>
+    </div>
+}
+
+<div asp-validation-summary="All" class="text-danger mb-3"></div>
+
+<form asp-action="Register" method="post">
+    @Html.AntiForgeryToken()
+
+    <div class="card mb-4">
+        <div class="card-header"><i class="fa-solid fa-campground me-1"></i> @Localizer["Camp_InfoTitle"]</div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label asp-for="Name" class="form-label">@Localizer["Camp_NameLabel"]</label>
+                    <input asp-for="Name" class="form-control" required />
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="ContactEmail" class="form-label">@Localizer["Camp_ContactEmailLabel"]</label>
+                    <input asp-for="ContactEmail" class="form-control" type="email" required />
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="ContactPhone" class="form-label">@Localizer["Camp_ContactPhoneLabel"]</label>
+                    <input asp-for="ContactPhone" class="form-control" type="tel" pattern="\+[\d\s\-()]{6,20}" placeholder="@Localizer["Camp_ContactPhonePlaceholder"]" />
+                </div>
+                <div class="col-12">
+                    <label class="form-label">@Localizer["Camp_Edit_Links"]</label>
+                    <div id="links-container">
+                        @if (Model.Links.Count > 0)
+                        {
+                            for (var i = 0; i < Model.Links.Count; i++)
+                            {
+                                <div class="input-group mb-2 link-entry">
+                                    <input type="url" name="Links" class="form-control" value="@Model.Links[i]" placeholder="https://" />
+                                    <button type="button" class="btn btn-outline-danger remove-link">
+                                        <i class="fa-solid fa-times"></i>
+                                    </button>
+                                </div>
+                            }
+                        }
+                        else
+                        {
+                            <div class="input-group mb-2 link-entry">
+                                <input type="url" name="Links" class="form-control" placeholder="https://" />
+                                <button type="button" class="btn btn-outline-danger remove-link">
+                                    <i class="fa-solid fa-times"></i>
+                                </button>
+                            </div>
+                        }
+                    </div>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="add-link">
+                        <i class="fa-solid fa-plus me-1"></i> @Localizer["Camp_Edit_AddLink"]
+                    </button>
+                </div>
+                <div class="col-md-3">
+                    <label asp-for="TimesAtNowhere" class="form-label">@Localizer["Camp_TimesParticipatingLabel"]</label>
+                    <input asp-for="TimesAtNowhere" class="form-control" type="number" min="0" />
+                </div>
+                <div class="col-md-3">
+                    <div class="form-check mt-4">
+                        <input asp-for="IsSwissCamp" class="form-check-input" />
+                        <label asp-for="IsSwissCamp" class="form-check-label">@Localizer["Camp_SwissCampLabel"]</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header"><i class="fa-solid fa-pen-fancy me-1"></i> @Localizer["Camp_AboutHeading", Localizer["Camp_Singular"]]</div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-12">
+                    <label asp-for="BlurbShort" class="form-label">@Localizer["Camp_BlurbShortLabel"]</label>
+                    <textarea asp-for="BlurbShort" class="form-control" rows="2" maxlength="300"
+                              placeholder="@Localizer["Camp_BlurbShortPlaceholder"]" required></textarea>
+                </div>
+                <div class="col-12">
+                    <label asp-for="BlurbLong" class="form-label">@Localizer["Camp_BlurbLongLabel"]</label>
+                    <markdown-editor asp-for="BlurbLong" rows="6" required="true"
+                                     placeholder="@Localizer["Camp_BlurbLongPlaceholder"]" />
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="Languages" class="form-label">@Localizer["Camp_LanguagesLabel"]</label>
+                    <input asp-for="Languages" class="form-control" placeholder="@Localizer["Camp_LanguagesPlaceholder"]" required />
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header"><i class="fa-solid fa-users me-1"></i> @Localizer["Camp_CommunityHeading"]</div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label asp-for="AcceptingMembers" class="form-label">@Localizer["Camp_AcceptingMembersLabel"]</label>
+                    <select asp-for="AcceptingMembers" class="form-select"
+                            asp-items="@SharedLocalizer.EnumSelectItems<YesNoMaybe>()"></select>
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="KidsWelcome" class="form-label">@Localizer["Camp_KidsWelcomeLabel"]</label>
+                    <select asp-for="KidsWelcome" class="form-select"
+                            asp-items="@SharedLocalizer.EnumSelectItems<YesNoMaybe>()"></select>
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="KidsVisiting" class="form-label">@Localizer["Camp_KidsVisitingLabel"]</label>
+                    <select asp-for="KidsVisiting" class="form-select"
+                            asp-items="@SharedLocalizer.EnumSelectItems<KidsVisitingPolicy>()"></select>
+                </div>
+                <div class="col-12">
+                    <label asp-for="KidsAreaDescription" class="form-label">@Localizer["Camp_KidsAreaDescriptionLabel"]</label>
+                    <textarea asp-for="KidsAreaDescription" class="form-control" rows="2"
+                              placeholder="@Localizer["Camp_KidsAreaDescriptionPlaceholder"]"></textarea>
+                    <div class="form-text">
+                        <a href="#" data-bs-toggle="modal" data-bs-target="#markdownHelpModal">
+                            <i class="fa-solid fa-circle-info me-1"></i>@Localizer["Camp_MarkdownSupported"]
+                        </a>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="AdultPlayspace" class="form-label">@Localizer["Camp_AdultPlayspaceLabel"]</label>
+                    <select asp-for="AdultPlayspace" class="form-select"
+                            asp-items="@SharedLocalizer.EnumSelectItems<AdultPlayspacePolicy>()"></select>
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="MemberCount" class="form-label">@Localizer["Camp_MemberCountLabel"]</label>
+                    <input asp-for="MemberCount" class="form-control" type="number" min="1" />
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header"><i class="fa-solid fa-masks-theater me-1"></i> @Localizer["Camp_CultureHeading"]</div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label asp-for="HasPerformanceSpace" class="form-label">@Localizer["Camp_PerformanceSpaceLabel"]</label>
+                    <select asp-for="HasPerformanceSpace" class="form-select"
+                            asp-items="@SharedLocalizer.EnumSelectItems<PerformanceSpaceStatus>()"></select>
+                </div>
+                <div class="col-md-8">
+                    <label asp-for="PerformanceTypes" class="form-label">@Localizer["Camp_PerformanceTypesLabel"]</label>
+                    <input asp-for="PerformanceTypes" class="form-control" placeholder="@Localizer["Camp_PerformanceTypesPlaceholder"]" />
+                </div>
+                <div class="col-12">
+                    <label class="form-label">@Localizer["Camp_VibesLabel"]</label>
+                    <div class="d-flex flex-wrap gap-3">
+                        @foreach (var vibe in Enum.GetValues<CampVibe>())
+                        {
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox"
+                                       name="Vibes" value="@vibe"
+                                       id="vibe-@vibe"
+                                       checked="@(Model.Vibes.Contains(vibe) ? "checked" : null)" />
+                                <label class="form-check-label" for="vibe-@vibe">@Localizer.EnumDisplay(vibe)</label>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header"><i class="fa-solid fa-map-location-dot me-1"></i> @Localizer["Camp_PlacementHeading"]</div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label asp-for="SoundZone" class="form-label">@Localizer["Camp_SoundZoneLabel"]</label>
+                    <select asp-for="SoundZone" class="form-select"
+                            asp-items="@SharedLocalizer.EnumSelectItems<SoundZone>()">
+                        <option value="">@Localizer["Camp_NoPreference"]</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="SpaceRequirement" class="form-label">@Localizer["Camp_SpaceRequirementLabel"]</label>
+                    <select asp-for="SpaceRequirement" class="form-select"
+                            asp-items="@SharedLocalizer.EnumSelectItems<SpaceSize>()">
+                        <option value="">@Localizer["Camp_NotSure"]</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="ElectricalGrid" class="form-label">@Localizer["Camp_ElectricalGridLabel"]</label>
+                    <select asp-for="ElectricalGrid" class="form-select"
+                            asp-items="@SharedLocalizer.EnumSelectItems<ElectricalGrid>()">
+                        <option value="">@SharedLocalizer["Common_Unknown"]</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header"><i class="fa-solid fa-clock-rotate-left me-1"></i> @Localizer["Camp_HistoryHeading"]</div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-12">
+                    <label asp-for="HistoricalNames" class="form-label">@Localizer["Camp_PreviousNamesLabel"]</label>
+                    <input asp-for="HistoricalNames" class="form-control"
+                           placeholder="@Localizer["Camp_PreviousNamesPlaceholder"]" />
+                    <div class="form-text">@Localizer["Camp_PreviousNamesHelp"]</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-between">
+        <a asp-action="Index" class="btn btn-outline-secondary">@SharedLocalizer["Common_Cancel"]</a>
+        <button type="submit" class="btn btn-primary">
+            <i class="fa-solid fa-paper-plane me-1"></i> @Localizer["Camp_Register_Submit", Localizer["Camp_Singular"]]
+        </button>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_LinksEditorScripts" />
+}

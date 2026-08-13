@@ -2,7 +2,6 @@ using Humans.GoogleIntegration.Contracts;
 using Humans.Monitor.Contracts;
 using System.Reflection;
 using AwesomeAssertions;
-using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Monitor.Services;
 
 namespace Humans.Monitor.Tests.Architecture;

@@ -6,7 +6,6 @@ using Humans.Application.Helpers;
 using Humans.Domain.Enums;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
-using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Notifications.Contracts;

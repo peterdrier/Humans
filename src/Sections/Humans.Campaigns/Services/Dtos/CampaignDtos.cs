@@ -55,7 +55,6 @@ internal sealed record CampaignSendWavePageDto(
 internal sealed record WaveSendPreview(
     int EligibleCount,
     int AlreadyGrantedExcluded,
-    int UnsubscribedExcluded,
     int CodesAvailable,
     int CodesRemainingAfterSend);
 

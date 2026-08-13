@@ -1,8 +1,6 @@
-using Humans.GoogleIntegration.Contracts;
 using NodaTime;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Enums;
-using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces;
 using Humans.GoogleIntegration.Data;
 using Humans.GoogleIntegration.Services.Workspace;

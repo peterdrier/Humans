@@ -3,7 +3,6 @@ using Humans.Application;
 using Humans.Monitor.Contracts;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
-using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.SystemSettings.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;

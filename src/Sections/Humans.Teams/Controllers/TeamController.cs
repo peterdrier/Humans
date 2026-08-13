@@ -13,7 +13,6 @@ using Humans.Teams.Authorization;
 using Humans.Teams.Models;
 using NodaTime;
 using Humans.Application.DTOs;
-using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.UI;

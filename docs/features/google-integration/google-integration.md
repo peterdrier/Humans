@@ -13,6 +13,8 @@
   src/Humans.Infrastructure/Jobs/GoogleResourceProvisionJob.cs
   src/Humans.Infrastructure/Jobs/ProcessGoogleSyncOutboxJob.cs
   src/Humans.Infrastructure/Jobs/SystemTeamSyncJob.cs
+  src/Sections/Humans.Teams/Controllers/TeamAdminController.cs
+  src/Sections/Humans.Teams/Views/TeamAdmin/Resources.cshtml
 -->
 <!-- freshness:flag-on-change
   IGoogleSyncService surface, ITeamResourceService, sync mode/action enums, drift detection, error classification, and /Google routes — review when Google integration services, jobs, or controllers change.
@@ -104,7 +106,7 @@ Nobodies Collective uses Google Workspace for collaboration. The system integrat
 - If access denied, shows clear instructions with service account email to share with
 - File metadata (name, URL) fetched and saved as GoogleResource with type DriveFile
 - Duplicate links prevented (same file + team)
-- Rejects folder URLs with a helpful redirect message
+- Folder and file URLs are accepted through the same link form/route (`LinkDriveResourceAsync` dispatches on URL shape); only a URL matching neither pattern is rejected, with a message listing both accepted formats
 - All API calls use `SupportsAllDrives = true`
 - Permission sync works the same as for folders (writer access for team members)
 
@@ -136,7 +138,7 @@ Nobodies Collective uses Google Workspace for collaboration. The system integrat
 **So that** I can delegate resource management when appropriate
 
 **Acceptance Criteria:**
-- Controlled by `TeamResourceManagement:AllowLeadsToManageResources` config setting
+- Controlled by `TeamResourceManagement:AllowCoordinatorsToManageResources` config setting
 - Default: false (only Board members can manage)
 - When enabled, Coordinators can link/unlink/sync resources for their teams
 
@@ -465,18 +467,19 @@ Supports multiple Google Drive/Docs URL formats:
 
 ### Authorization
 - Board members: can manage resources for any team
-- Coordinators: controlled by `TeamResourceManagement:AllowLeadsToManageResources` (default: false)
+- Coordinators: controlled by `TeamResourceManagement:AllowCoordinatorsToManageResources` (default: false)
 
-### Route: `/Teams/{slug}/Admin/Resources`
-Actions:
+### Route: `/Teams/{slug}/Resources`
+Actions (on `TeamAdminController`, `src/Sections/Humans.Teams/Controllers/`):
 | Route | Method | Action |
 |-------|--------|--------|
 | `Resources` | GET | View linked resources + link forms |
-| `Resources/LinkDrive` | POST | Link a Shared Drive folder by URL |
-| `Resources/LinkFile` | POST | Link a Drive file (Sheet, Doc, etc.) by URL |
+| `Resources/LinkDrive` | POST | Link a Shared Drive folder **or** file by URL — one form, one route; `LinkDriveResourceAsync` dispatches to the folder or file path by inspecting the URL (there is no separate "link file" route) |
 | `Resources/LinkGroup` | POST | Link a Google Group by email |
-| `Resources/{id}/Unlink` | POST | Soft-unlink (IsActive = false) |
-| `Resources/{id}/Sync` | POST | Trigger permission sync |
+| `Resources/{resourceId}/PermissionLevel` | POST | Change the permission level granted for a linked resource |
+| `Resources/{resourceId}/RestrictInheritedAccess` | POST | Toggle `RestrictInheritedAccess` on a linked Drive folder |
+| `Resources/{resourceId}/Unlink` | POST | Soft-unlink (IsActive = false) |
+| `Resources/{resourceId}/Sync` | POST | Trigger permission sync |
 
 ## Sync Status Page
 
@@ -620,7 +623,7 @@ Failed Google sync health surfaces to Admins as a notification meter (`Notificat
 ```json
 {
   "TeamResourceManagement": {
-    "AllowLeadsToManageResources": false
+    "AllowCoordinatorsToManageResources": false
   }
 }
 ```

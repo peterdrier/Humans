@@ -13,11 +13,24 @@
 #   2. Every mechanical entry's trigger globs match at least one file.
 #   3. Editorial walks find the expected docs (sections / features / guide).
 #   4. Every marked editorial doc has well-formed marker syntax.
-#   5. A synthetic diff containing src/Humans.Web/Controllers/TeamController.cs
+#   5. A synthetic diff containing src/Sections/Humans.Teams/Controllers/TeamController.cs
 #      marks at least one mechanical entry dirty AND at least one
 #      editorial doc dirty (the Team-related docs).
 #   6. A synthetic diff containing only docs/* changes marks ZERO
 #      entries dirty (docs aren't src/, so no triggers should fire).
+#   7. Every freshness:triggers glob in every editorial doc resolves to at
+#      least one real file.
+#
+# Test 7 exists because a dead trigger glob is SILENT: it makes a doc look
+# *clean* rather than *unchecked*, so the doc drops out of the sweep's dirty
+# list entirely and nobody notices. Five consecutive sweeps found large dead-glob
+# batches; the 2026-08-13 sweep found three guide docs that had stopped firing
+# months earlier, one with all 9 of its globs dead. Tests 1-6 all passed
+# throughout — none of them could see it.
+#
+# The editorial doc set spans BOTH docs/ and src/Sections/*/Docs/. Sections that
+# have gone G5 carry their invariants doc inside their own project, and that is
+# now where most section docs live — a walk that only covers docs/ misses them.
 
 set -euo pipefail
 
@@ -30,10 +43,63 @@ if [ ! -f "$CATALOG" ]; then
   exit 1
 fi
 
+# Every editorial doc the sweep is responsible for, derived FROM the catalog's
+# editorial_trees rather than hardcoded here. Entries are either a directory to
+# walk (docs/sections/, src/Sections/, …) or a single file listed on its own
+# (docs/architecture/design-rules.md, docs/seed-data.md, …).
+#
+# Read the list from the catalog so this check cannot drift away from it. An
+# earlier hardcoded version walked only the four directories and silently skipped
+# all six individually-listed files — so a dead glob in design-rules.md or
+# seed-data.md still produced a green "all trigger globs resolve", which is the
+# exact failure test 7 exists to catch.
+editorial_docs() {
+  awk '/^editorial_trees:/{f=1;next} f&&/^[a-z_]+:/{f=0} f' "$CATALOG" \
+    | grep -E '^[[:space:]]+- ' \
+    | sed 's/^[[:space:]]*-[[:space:]]*//; s/[[:space:]]*$//' \
+    | while IFS= read -r entry; do
+        [ -z "$entry" ] && continue
+        if [ -f "$entry" ]; then
+          echo "$entry"
+        elif [ -d "${entry%/}" ]; then
+          find "${entry%/}" -name '*.md' \
+               -not -name 'SECTION-TEMPLATE.md' -not -name 'G5-SECTION-TEMPLATE.md' \
+               -not -name 'README.md' -not -name 'GettingStarted.md' -not -name 'Glossary.md' \
+               -not -path '*/obj/*' -not -path '*/bin/*' \
+               -not -path '*/Docs/20*.md' 2>/dev/null
+        else
+          # Unresolved entry: emit nothing here — test 3 reports it via
+          # editorial_entries_unresolved. The explicit `:` matters: without an
+          # else branch the `if` returns the failed `[ -d ]` status, which under
+          # `set -e` aborts the whole script mid-run instead of failing a test.
+          :
+        fi
+      done
+}
+
+# Catalog editorial_trees entries that resolve to nothing. A warning here is not
+# enough: if an individually listed file such as docs/seed-data.md is renamed,
+# editorial_docs simply omits it, the remaining ~140 docs still clear test 3's
+# thresholds, and tests 4 and 7 never inspect the missing file — so the script
+# exits green while the catalog points at nothing. Test 3 fails on any output.
+editorial_entries_unresolved() {
+  awk '/^editorial_trees:/{f=1;next} f&&/^[a-z_]+:/{f=0} f' "$CATALOG" \
+    | grep -E '^[[:space:]]+- ' \
+    | sed 's/^[[:space:]]*-[[:space:]]*//; s/[[:space:]]*$//' \
+    | while IFS= read -r entry; do
+        if [ -n "$entry" ] && [ ! -f "$entry" ] && [ ! -d "${entry%/}" ]; then
+          echo "$entry"
+        fi
+      done
+}
+
 # ─── Test 1: Catalog parses (structural smoke) ────────────────────────
 N_MECHANICAL=$(grep -cE '^\s+- id:\s+' "$CATALOG" || echo 0)
-N_TREES=$(awk '/^editorial_trees:/,/^[a-z]/' "$CATALOG" | grep -cE '^\s+- ' || echo 0)
-N_IGNORE=$(awk '/^ignore:/,0' "$CATALOG" | grep -cE '^\s+- ' || echo 0)
+# NB: the range must start AFTER the editorial_trees: line, because that line
+# itself matches /^[a-z]/ and would close the range immediately — which is why
+# this reported "0 editorial trees" while the catalog listed ten.
+N_TREES=$(awk '/^editorial_trees:/{f=1;next} f&&/^[a-z_]+:/{f=0} f' "$CATALOG" | { grep -cE '^\s+- ' || true; })
+N_IGNORE=$(awk '/^ignore:/{f=1;next} f' "$CATALOG" | { grep -cE '^\s+- ' || true; })
 
 if [ "$N_MECHANICAL" -lt 5 ]; then
   echo "FAIL [test 1]: only $N_MECHANICAL mechanical entries (expected >= 5)"
@@ -74,24 +140,33 @@ else
 fi
 
 # ─── Test 3: Editorial walks find expected counts ─────────────────────
-SEC=$(find docs/sections -name '*.md' -not -name 'SECTION-TEMPLATE.md' | wc -l)
+SEC=$(find docs/sections -name '*.md' -not -name 'SECTION-TEMPLATE.md' -not -name 'G5-SECTION-TEMPLATE.md' | wc -l)
 FEAT=$(find docs/features -name '*.md' | wc -l)
 GUIDE=$(find docs/guide -name '*.md' -not -name 'README.md' -not -name 'GettingStarted.md' -not -name 'Glossary.md' | wc -l)
-TOTAL=$((SEC + FEAT + GUIDE))
+INPROJ=$(find src/Sections -path '*/Docs/*.md' -not -path '*/Docs/20*.md' -not -path '*/obj/*' -not -path '*/bin/*' | wc -l)
+# Catalog entries listed as single files rather than directories to walk.
+SINGLES=$(awk '/^editorial_trees:/{f=1;next} f&&/^[a-z_]+:/{f=0} f' "$CATALOG" \
+          | grep -E '^[[:space:]]+- ' | sed 's/^[[:space:]]*-[[:space:]]*//; s/[[:space:]]*$//' \
+          | while IFS= read -r e; do if [ -f "$e" ]; then echo "$e"; fi; done | wc -l)
+TOTAL=$(editorial_docs | wc -l)
+UNRESOLVED=$(editorial_entries_unresolved || true)
+N_UNRESOLVED=0
+if [ -n "$UNRESOLVED" ]; then
+  N_UNRESOLVED=$(printf '%s\n' "$UNRESOLVED" | sed '/^$/d' | wc -l)
+  printf '%s\n' "$UNRESOLVED" | sed '/^$/d; s|^|  [test 3]: catalog editorial_trees entry resolves to nothing: |'
+fi
 
-if [ "$TOTAL" -lt 50 ]; then
-  echo "FAIL [test 3]: editorial walk found only $TOTAL docs (expected >= 50)"
+if [ "$TOTAL" -lt 50 ] || [ "$INPROJ" -lt 1 ] || [ "$SINGLES" -lt 1 ] || [ "$N_UNRESOLVED" -gt 0 ]; then
+  echo "FAIL [test 3]: editorial walk found $TOTAL docs ($INPROJ in-project, $SINGLES single-file, $N_UNRESOLVED dead catalog entries)"
   FAIL=$((FAIL+1))
 else
-  echo "PASS [test 3]: editorial walk: sections=$SEC features=$FEAT guide=$GUIDE = $TOTAL"
+  echo "PASS [test 3]: editorial walk: sections=$SEC features=$FEAT guide=$GUIDE in-project=$INPROJ single-file=$SINGLES = $TOTAL total, 0 dead catalog entries"
   PASS=$((PASS+1))
 fi
 
 # ─── Test 4: Marker syntax well-formedness on every editorial doc ─────
 malformed=0
-for f in $(find docs/sections docs/features docs/guide -name '*.md' \
-           -not -name 'SECTION-TEMPLATE.md' -not -name 'README.md' \
-           -not -name 'GettingStarted.md' -not -name 'Glossary.md' 2>/dev/null); do
+for f in $(editorial_docs); do
   has_triggers=$(grep -c '<!-- freshness:triggers' "$f" || true)
   close_count=$(grep -cE '^-->' "$f" || true)
   if [ "$has_triggers" -gt 0 ] && [ "$close_count" -lt "$has_triggers" ]; then
@@ -109,7 +184,15 @@ else
 fi
 
 # ─── Test 5: Synthetic diff (TeamController.cs) marks expected dirty ──
-SYNTHETIC="src/Humans.Web/Controllers/TeamController.cs"
+SYNTHETIC="src/Sections/Humans.Teams/Controllers/TeamController.cs"
+# A synthetic probe that does not exist is a test that silently proves nothing:
+# it reports 0 dirty and reads as a real failure, or worse, gets ignored. Assert
+# the probe itself first — this test pointed at the pre-G5 Humans.Web path for
+# several sweeps after the file moved.
+if [ ! -f "$SYNTHETIC" ]; then
+  echo "FAIL [test 5]: synthetic probe path $SYNTHETIC does not exist — update it to a real file"
+  FAIL=$((FAIL+1))
+fi
 mech_dirty=0
 for entry in authorization-inventory controller-architecture-audit dependency-graph; do
   in_block=false
@@ -133,7 +216,7 @@ for entry in authorization-inventory controller-architecture-audit dependency-gr
 done
 
 ed_dirty=0
-for f in docs/sections/Teams.md docs/features/teams/teams.md docs/guide/Teams.md; do
+for f in src/Sections/Humans.Teams/Docs/Teams.md docs/features/teams/teams.md docs/guide/Teams.md; do
   triggers=$(awk '/<!-- freshness:triggers/,/^-->/' "$f" 2>/dev/null | grep -E '^\s+src/' | sed 's/^\s*//;s/\s*$//')
   while IFS= read -r glob; do
     [ -z "$glob" ] && continue
@@ -180,6 +263,44 @@ if [ "$mech_dirty" -eq 0 ]; then
   PASS=$((PASS+1))
 else
   echo "FAIL [test 6]: docs-only diff should mark 0 dirty (got $mech_dirty)"
+  FAIL=$((FAIL+1))
+fi
+
+# ─── Test 7: Every editorial trigger glob resolves to a real file ─────
+# The one check that can see a dead trigger. See the header note.
+dead_globs=0
+dead_docs=0
+checked_docs=0
+for f in $(editorial_docs); do
+  triggers=$(awk '/<!-- freshness:triggers/,/^-->/' "$f" 2>/dev/null \
+             | grep -vE '^\s*<!--|^-->' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+  [ -z "$triggers" ] && continue
+  checked_docs=$((checked_docs+1))
+  doc_dead=0
+  doc_total=0
+  while IFS= read -r glob; do
+    [ -z "$glob" ] && continue
+    doc_total=$((doc_total+1))
+    matches=( $glob )
+    if [ ${#matches[@]} -eq 0 ]; then
+      echo "  [test 7]: DEAD glob in $f -> $glob"
+      dead_globs=$((dead_globs+1))
+      doc_dead=$((doc_dead+1))
+    fi
+  done <<< "$triggers"
+  if [ "$doc_dead" -gt 0 ]; then
+    dead_docs=$((dead_docs+1))
+    if [ "$doc_dead" -eq "$doc_total" ]; then
+      echo "  [test 7]: ** $f is FULLY DEAD ($doc_dead/$doc_total) — it has stopped firing entirely **"
+    fi
+  fi
+done
+
+if [ "$dead_globs" -eq 0 ]; then
+  echo "PASS [test 7]: all trigger globs across $checked_docs editorial docs resolve"
+  PASS=$((PASS+1))
+else
+  echo "FAIL [test 7]: $dead_globs dead trigger globs across $dead_docs of $checked_docs docs"
   FAIL=$((FAIL+1))
 fi
 

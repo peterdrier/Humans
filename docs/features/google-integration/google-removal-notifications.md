@@ -4,7 +4,7 @@
   src/Humans.Application/Services/GoogleIntegration/GoogleWorkspaceSyncService.cs
   src/Sections/Humans.Email/**
   src/Sections/Humans.Email.Contracts/**
-  src/Humans.UI/Resources/SharedResource*.resx
+  src/Sections/Humans.Email/Resources/EmailResource*.resx
 -->
 <!-- freshness:flag-on-change
   Variant selection logic, suppression cases, MessageCategory routing, and resource-name fallback — review when sync removal pathways or email-template wiring changes.
@@ -97,7 +97,7 @@ The send target in both variants is the address that was removed — the mailbox
 
 - All three templates render through `BrandedEmailBodyComposer` for the standard header / footer
 - All three are enqueued with `MessageCategory.System` — the existing outbox path suppresses the unsubscribe footer for system-category messages, which matches the spec's intent (action-confirmation notifications are not unsubscribable)
-- Templates live in `SharedResource{,.es,.de,.it,.fr,.ca}.resx` keyed `Email_GoogleGroupRemoval_LossOfAccess_*`, `Email_GoogleDriveRemoval_LossOfAccess_*`, `Email_GoogleAccessRemoval_SecondaryCleanup_*`
+- Templates live in `EmailResource{,.es,.de,.it,.fr,.ca}.resx` (`src/Sections/Humans.Email/Resources/` — carved out of `SharedResource*.resx` when Email moved to its own G5 project) keyed `Email_GoogleGroupRemoval_LossOfAccess_*`, `Email_GoogleDriveRemoval_LossOfAccess_*`, `Email_GoogleAccessRemoval_SecondaryCleanup_*`
 - Resource-name fallback: if `resourceName` is missing, use `resourceIdentifier` (group email or URL); if both are missing, fall back to `(unknown)` rather than crashing
 
 ## Group-Email Derivation

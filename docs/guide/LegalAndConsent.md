@@ -1,20 +1,19 @@
 <!-- freshness:triggers
-  src/Humans.Web/Views/Consent/**
-  src/Humans.Web/Views/Legal/**
+  src/Sections/Humans.Consent/Views/Consent/**
+  src/Sections/Humans.Consent/Views/Legal/**
   src/Humans.Web/Views/Profile/Privacy.cshtml
-  src/Humans.Web/Views/AdminLegalDocuments/LegalDocuments.cshtml
-  src/Humans.Web/Views/AdminLegalDocuments/CreateLegalDocument.cshtml
-  src/Humans.Web/Views/AdminLegalDocuments/EditLegalDocument.cshtml
-  src/Humans.Web/Controllers/ConsentController.cs
-  src/Humans.Web/Controllers/LegalController.cs
-  src/Humans.Web/Controllers/AdminLegalDocumentsController.cs
-  src/Humans.Application/Services/Consent/**
-  src/Humans.Application/Services/Legal/**
-  src/Humans.Application/Services/Gdpr/**
-  src/Humans.Domain/Entities/LegalDocument.cs
-  src/Humans.Domain/Entities/DocumentVersion.cs
-  src/Humans.Domain/Entities/ConsentRecord.cs
-  src/Humans.Infrastructure/Data/Configurations/Legal/**
+  src/Sections/Humans.Consent/Views/AdminLegalDocuments/LegalDocuments.cshtml
+  src/Sections/Humans.Consent/Views/AdminLegalDocuments/CreateLegalDocument.cshtml
+  src/Sections/Humans.Consent/Views/AdminLegalDocuments/EditLegalDocument.cshtml
+  src/Sections/Humans.Consent/Controllers/ConsentController.cs
+  src/Sections/Humans.Consent/Controllers/LegalController.cs
+  src/Sections/Humans.Consent/Controllers/AdminLegalDocumentsController.cs
+  src/Sections/Humans.Consent/Services/**
+  src/Sections/Humans.Gdpr/Services/**
+  src/Sections/Humans.Consent/Domain/LegalDocument.cs
+  src/Sections/Humans.Consent/Domain/DocumentVersion.cs
+  src/Sections/Humans.Consent/Domain/ConsentRecord.cs
+  src/Sections/Humans.Consent/Data/LegalDocumentConfiguration.cs
 -->
 <!-- freshness:flag-on-change
   Consent signing flow, document versioning, Consent Coordinator queue, immutability of consent records, and GDPR data export/deletion. Review when consent/legal views, services, or entities change.
@@ -54,12 +53,13 @@ This section also surfaces your two core GDPR rights: a copy of everything the o
 
 Consent Coordinators review signed paperwork and keep an audit record of whether each human's consents look right. App access and Volunteers membership do not wait on this review — a human gets into the app once they've entered their legal name, and is admitted to the Volunteers team automatically once they've entered their name and signed all required documents.
 
-**Reviewing the queue.** Open `/OnboardingReview`. Every human who has signed all required global documents lands here in Pending state. Open a record to see their signed documents, versions, and timestamps.
+**Reviewing the queue.** Open `/OnboardingReview`. Every human who has entered their legal name and hasn't yet been cleared lands here in Pending state — including people who haven't finished signing their documents yet; a badge on each row shows how many of the required documents they've signed. Open a record to see their signed documents, versions, and timestamps.
 
-**Clearing or flagging.** Two actions:
+**Clearing, flagging, or rejecting.** From a record's detail page, three actions:
 
 - **Clear** — records that the consents look good (an audit annotation). The human is already a Volunteer with full app access; clearing does not grant access or add them to any team.
-- **Flag** — records a concern for Board or Admin to follow up, and removes the human from the Volunteers / Colaborador / Asociado teams. To keep someone out for good, suspend or reject them — a flag alone is annotation and the scheduled sync re-admits a flagged human who still has their name and required consents.
+- **Flag** — records a concern for Board or Admin to follow up. It's annotation only — it does not remove the human from any team or affect their access.
+- **Reject** — the actual way to keep someone out. It blocks their signup and removes their access; flagging alone does not.
 
 Coordinators cannot edit legal documents or publish new versions — that's a Board or Admin function.
 

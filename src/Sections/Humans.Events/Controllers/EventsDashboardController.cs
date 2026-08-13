@@ -1,5 +1,5 @@
 using Humans.Application.Extensions;
-using Humans.Application.Interfaces.Camps;
+using Humans.Camps.Contracts;
 using Humans.Events.Services;
 using Humans.Events.Domain;
 using Humans.UI.Controllers;
