@@ -190,6 +190,31 @@ public class TicketsPageRenderTests(HumansTestDatabase database) : IntegrationTe
         html.Should().NotContain("Transfer a ticket");
     }
 
+    [HumansFact(Timeout = 120000)]
+    public async Task Shell_renders_the_sections_ticket_stub_component()
+    {
+        // The section-view call site is covered above; this is the *Shell* half, and it is a
+        // separate assertion because it fails separately. TicketStubViewComponent moved out of
+        // Humans.UI into Humans.Tickets/Contracts/, and an @using of the namespace does not
+        // import the tag helper — Shell needs its own `@addTagHelper *, Humans.Tickets` in
+        // Views/_ViewImports.cshtml. Without it the element ships as inert literal markup:
+        // 200, correct-looking source, and the ticket cards simply absent from the homepage
+        // dashboard, the holdings list and this page.
+        //
+        // /WidgetGallery is the probe because it renders three stub variants from inline
+        // sample data — no seeded orders, and it is the only page that exercises the void and
+        // early-entry branches together.
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
+
+        var response = await Client.GetAsync("/WidgetGallery", ct);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var html = await response.Content.ReadAsStringAsync(ct);
+        html.Should().NotContain("<vc:ticket-stub", "Shell must import the Tickets tag helper, not just the namespace");
+        html.Should().Contain("Sample Human", "the stub card renders its attendee name");
+    }
+
     private static string? ExtractAntiForgeryToken(string html)
     {
         var match = System.Text.RegularExpressions.Regex.Match(
