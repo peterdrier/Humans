@@ -45,6 +45,10 @@ mechanical:
       - "docs/features/**/*.md"
       - "docs/sections/**/*.md"
       - "docs/guide/**/*.md"
+      # README indexes the in-project invariants docs of G5 sections too, so a
+      # new or renamed section doc must mark it dirty. Adding Tour's row this
+      # sweep required a manual nudge for exactly this reason.
+      - "src/Sections/*/Docs/*.md"
     update: prompt
     prompt: |
       Walk docs/features/, docs/sections/, and docs/guide/. For each .md file
@@ -131,11 +135,20 @@ mechanical:
       - "src/Humans.Application/**/*.cs"
       - "src/Humans.Web/Program.cs"
       - "src/Humans.Web/Extensions/Sections/**/*.cs"
+      # Most services now live in section projects and register themselves from
+      # their own Section.cs, not from Humans.Web/Extensions/Sections/. Without
+      # these, a ctor change to any moved service (Teams, Tickets, Holded, …)
+      # left this graph stale without ever marking it dirty.
+      - "src/Sections/*/Services/**/*.cs"
+      - "src/Sections/*/Section.cs"
     update: prompt
     prompt: |
       Regenerate the Mermaid dependency graph in docs/architecture/dependency-graph.md.
 
-      Walk every service class under src/Humans.Application/Services/. For
+      Walk every service class under src/Humans.Application/Services/ AND under
+      src/Sections/*/Services/ — the majority of services have moved into section
+      projects, and a walk restricted to Humans.Application would silently drop
+      them from the graph even though the current diagram includes them. For
       each:
       1. Read the constructor; identify every injected interface.
       2. For each injected interface, follow it to its implementing service
@@ -158,12 +171,23 @@ mechanical:
       - "src/Humans.Infrastructure/Repositories/**/*.cs"
       - "src/Humans.Infrastructure/Data/*DbContext.cs"
       - "src/Sections/**/Data/*DbContext.cs"
+      # The section DbContexts were already triggers, but the services and
+      # repositories that read through them were not — so a repository or ctor
+      # change inside a section never marked this map dirty.
+      - "src/Sections/*/Services/**/*.cs"
+      - "src/Sections/*/Data/Repository.cs"
+      - "src/Sections/*/Data/*Repository.cs"
     update: prompt
     prompt: |
       Regenerate docs/architecture/service-data-access-map.md.
 
-      For every service under src/Humans.Application/Services/, identify:
-      1. Which repository interfaces it depends on.
+      For every service under src/Humans.Application/Services/ AND under
+      src/Sections/*/Services/ — most services have moved into section projects,
+      and enumerating only Humans.Application would drop them from the map even
+      though the current version documents them — identify:
+      1. Which repository interfaces it depends on. Note that a G5 section's
+         repository is often a class literally named `Repository` implementing
+         `I<Section>Repository`, not `<Section>Repository`; use the real class name.
       2. Which database tables those repositories ultimately access, and which
          DbContext maps each one. Since the per-section split
          (nobodies-collective/Humans#858) there is no single context: resolve
@@ -188,6 +212,13 @@ mechanical:
     triggers:
       - "src/Humans.Domain/Entities/**/*.cs"
       - "src/Humans.Infrastructure/Data/Configurations/**/*.cs"
+      # G5 sections own their entities and EF configurations outright (24 Domain/
+      # and 22 Data/Configurations/ folders under src/Sections/ as of 2026-08-13).
+      # Without these, this entry reported "not dirty" on 2026-08-13 while 39
+      # section-owned entity/configuration files had changed — a false clean, not
+      # a real one. A trigger that cannot see the code makes a doc look fresh.
+      - "src/Sections/*/Domain/**/*.cs"
+      - "src/Sections/*/Data/Configurations/**/*.cs"
     update: prompt
     prompt-file: ".claude/skills/freshness-sweep/prompts/data-model-index.md"
 
@@ -196,6 +227,9 @@ mechanical:
     triggers:
       - "src/Humans.Infrastructure/Data/Configurations/**/*.cs"
       - "src/Humans.Domain/Constants/**/*.cs"
+      # Section-owned configurations carry their own HasData seed GUIDs.
+      # Same false-clean as data-model-index above.
+      - "src/Sections/*/Data/Configurations/**/*.cs"
     update: prompt
     prompt: |
       Regenerate the "Current Reservations" table in docs/guid-reservations.md.

@@ -58,6 +58,45 @@ This is the fifth consecutive sweep to report a large dead-glob batch. The cause
 
 Not fixed: that script is outside the catalog, editorial trees, and prune allowlist. **See Questions.**
 
+### 2b. A false clean: two mechanical entries were skipped by triggers that could not see the code
+
+Codex raised a P1 on this PR (`dependency-graph` and `service-data-access-map` still scoping to
+`src/Humans.Application` after their services moved). Auditing **all eleven** mechanical entries for the
+same defect found it was broader, and that this report had already been wrong about it.
+
+`data-model-index` and `guid-reservations` were reported above as *"not dirty — no `Domain/Entities` or
+`Data/Configurations` churn."* That was a **false clean**. G5 sections own their entities and EF
+configurations outright — 24 `src/Sections/*/Domain/` and 22 `src/Sections/*/Data/Configurations/`
+folders — and **39 section-owned entity/configuration files changed in the window**. The triggers only
+pointed at `src/Humans.Domain/` and `src/Humans.Infrastructure/`, so both docs went unexamined while
+looking clean. This is the same failure as a dead editorial glob, one layer up: *a trigger that cannot
+see the code makes the doc look fresh.*
+
+| Entry | Files matched, before → after |
+|---|---|
+| `data-model-index` | **0 → 39** |
+| `guid-reservations` | **0 → 14** |
+| `dependency-graph` | 61 → 258 (the P1) |
+| `service-data-access-map` | 64 → 256 (the P1) |
+| `docs-readme-index` | 62 → 95 (found by the audit; README indexes in-project section docs) |
+| `controller-architecture-audit` | 13 → 42 (fixed earlier in this PR) |
+
+All eleven entries now fire on this window. Both falsely-clean docs were re-run in this PR rather than
+left for the next sweep, and **the false clean turned out to be hiding a real bug**:
+
+- **`data-model-index`** — the Finance row conflated Finance's own entities with the separate Holded
+  section's. It named `HoldedSyncState` for what is actually Finance's `HoldedDocSyncState`, and filed
+  `HoldedLedgerLine` under `FinanceDbContext` when it belongs to `HoldedDbContext`. Split into correct
+  Finance and Holded rows; `HoldedAccount` and `HoldedApiCall` were missing from the index entirely
+  (net +3 entities). Everything else matched code — including `GoogleResource` staying under Teams
+  despite living in `GoogleIntegrationDbContext`, which is intentional and cross-referenced.
+- **`guid-reservations`** — genuinely clean on inspection: all 6 GUID blocks accounted for, and the two
+  whose owners moved (Teams `0001`, Events `0026`) already point at their section paths.
+
+Prompts were fixed alongside triggers wherever they named a directory: a trigger that fires into a
+prompt still walking the old tree produces a doc that looks *freshly audited* while its new rows go
+stale — worse than not firing at all.
+
 ### 3. New sections keep shipping with no freshness marker — second consecutive occurrence
 
 `src/Sections/Humans.Tour/Docs/Tour.md` shipped with **no freshness marker at all**, so the newest
@@ -83,8 +122,8 @@ rewriting triggers for a *moved* doc). Marker added to `Tour.md` by hand. **See 
 | `docs-readme-index` | regenerated — 2 rows added (Development, Tour), 1 retargeted (Onboarding → in-project path); all 154 links resolve |
 | `about-page-packages` | **verified clean** — every production `PackageReference` already matches `Directory.Packages.props` |
 | `code-analysis-suppressions` | **verified clean** — the `tests/Directory.Build.props` churn was compile-item conditions, not `NoWarn` |
-| `data-model-index` | not dirty — no `Domain/Entities` or `Data/Configurations` churn |
-| `guid-reservations` | not dirty — same |
+| `data-model-index` | **regenerated after a false clean — found a real bug**, see below |
+| `guid-reservations` | re-checked after the same false clean — genuinely clean this time by inspection |
 
 ### Editorial — highest-value content fixes
 

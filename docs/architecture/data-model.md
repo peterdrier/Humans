@@ -50,7 +50,8 @@ This file is the **index and cross-cutting rule sheet** for the data model. Per-
 | FeedbackReport / FeedbackMessage | [Feedback](../../src/Sections/Humans.Feedback/Docs/Feedback.md) | |
 | BudgetYear / BudgetGroup / BudgetCategory / BudgetLineItem / BudgetAuditLog / TicketingProjection | [Budget](../../src/Sections/Humans.Budget/Docs/Budget.md) | `BudgetAuditLog` append-only (§12). `BudgetGroup.Slug` and `BudgetCategory.Slug` are the Holded-tag-safe identifiers consumed by Finance. |
 | ExpenseReport / ExpenseLine / ExpenseAttachment / HoldedExpenseOutboxEvent | [Expenses](../../src/Sections/Humans.Expenses/Docs/Expenses.md) | Expense reports and Holded sync outbox. |
-| HoldedExpenseDoc / HoldedCategoryMap / HoldedSyncState / HoldedLedgerLine / HoldedCreditorContact | [Finance](../../src/Sections/Humans.Finance/Docs/Finance.md) | Holded actuals cache (Feature 1) + creditor daybook ledger cache + member→account binding (Feature 2). |
+| HoldedExpenseDoc / HoldedCategoryMap / HoldedDocSyncState / HoldedCreditorContact | [Finance](../../src/Sections/Humans.Finance/Docs/Finance.md) | Holded actuals cache (Feature 1) + member→account binding (Feature 2). |
+| HoldedLedgerLine / HoldedAccount / HoldedApiCall / HoldedSyncState | [Holded](../../src/Sections/Humans.Holded/Docs/Holded.md) | Ledger mirror — daybook lines, chart of accounts, API call log, sync state. Finance's creditor reads (Feature 2) query this mirror rather than owning it. |
 | Product / Order / OrderLine / Payment / Invoice / TreasurySyncState | [Store](../../src/Sections/Humans.Store/Docs/Store.md) | |
 | Issue / IssueComment | [Issues](../../src/Sections/Humans.Issues/Docs/Issues.md) | |
 | AgentConversation / AgentMessage / AgentSettings | [Agent](../../src/Sections/Humans.Agent/Docs/Agent.md) | |

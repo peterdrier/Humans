@@ -1901,6 +1901,18 @@ orchestration over `IUserServiceRead`, `IShiftManagementService`,
 `TicketAttendeeOwnership` is a stateless helper (current-owner predicate),
 no DI dependencies.
 
+### TicketVendorGateway (Scoped)
+
+No repository. Thin §15-compliant facade over `ITicketVendorService` (the
+vendor port, `src/Humans.Application/Interfaces/TicketVendor/`) — same
+shape as `GoogleTranslationService`. Implements `ITicketDiscountCodes` +
+`ITicketVendorMirror` (`Humans.Tickets.Contracts`) so cross-section callers
+(`CampaignService`'s discount-code grant waves) depend on the section's own
+leaf rather than the raw vendor port. `GateVendorCheckInJob` (Infrastructure)
+is the other consumer, via `ITicketVendorMirror`. No DB access, no cache.
+Missing from every prior sweep of this doc; found by coverage-verify audit
+(2026-08-13).
+
 ---
 
 ## Gate
