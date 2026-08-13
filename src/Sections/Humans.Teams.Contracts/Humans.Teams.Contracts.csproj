@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Teams' cross-section surface, carved into its own leaf project because most of its
+    consumers are still in Base: DashboardService, AuditViewerService, ContactFieldService,
+    the Shifts services, GoogleIntegration's TeamResourceService / GoogleAdminService /
+    GoogleGroupSyncService / GoogleWorkspaceSyncService, AccountDeletionService and
+    DuplicateAccountService all read through ITeamServiceRead or ITeamService, and
+    HumansMetricsService, SystemTeamSyncJob, SuspendNonCompliantMembersJob and
+    ProcessGoogleSyncOutboxJob do the same from Humans.Infrastructure. A Contracts/ *folder*
+    inside Humans.Teams would therefore make Base reference a section and cycle
+    (design §15.5b, memory/architecture/section-project-cycle-fix.md).
+
+    It holds exactly what lives outside the section: the read surface every other section
+    injects, the ~20 members Base and four moved sections call on the full service, and the
+    flat projections those signatures name. Everything else — the directory, detail, admin
+    list, roster, join-request, role-management and early-entry DTOs — is internal.
+
+    References Humans.Interfaces (IApplicationService, SurfaceBudgetAttribute) and
+    Humans.Domain (TeamMemberRole, SystemTeamType, GoogleEmailStatus, RolePeriod,
+    SlotPriority, CallToAction, DomainConstants — vocabulary this section persists but which
+    twenty Base/Shell/section files already spell from Humans.Domain.Enums), the same pair
+    Humans.Campaigns.Contracts and Humans.Governance.Contracts take. Acyclic:
+    Humans.Domain names only Humans.Interfaces.
+  -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\Humans.Auth.Contracts\Humans.Auth.Contracts.csproj" />
+    <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
+    <ProjectReference Include="..\..\Humans.Domain\Humans.Domain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NodaTime" />
+  </ItemGroup>
+
+</Project>

@@ -4,7 +4,7 @@
   src/Sections/Humans.Governance/Controllers/GovernanceBoardVotingController.cs
   src/Sections/Humans.Governance/Controllers/GovernanceController.cs
   src/Sections/Humans.Governance/Services/**
-  src/Humans.Application/Services/Auth/RoleAssignmentService.cs
+  src/Sections/Humans.Auth/Services/RoleAssignmentService.cs
   src/Sections/Humans.Governance/Domain/Application.cs
   src/Sections/Humans.Governance/Domain/ApplicationStateHistory.cs
   src/Sections/Humans.Governance/Domain/BoardVote.cs

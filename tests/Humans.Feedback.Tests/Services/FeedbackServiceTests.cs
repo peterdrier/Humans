@@ -1,10 +1,10 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces.AuditLog;
+using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.Caching;
 using Humans.Email.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Application.Interfaces.Profiles;
-using Humans.Application.Interfaces.Teams;
+using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Application;
 using Humans.Domain.Entities;
@@ -25,8 +25,8 @@ namespace Humans.Feedback.Tests.Services;
 /// <summary>
 /// Owns its fixture rather than deriving from <c>Humans.Application.Tests</c>'
 /// <c>ServiceTestHarness</c>: that harness is built around an in-memory
-/// <c>HumansDbContext</c>, and inheriting it would grant a section test project
-/// <c>InternalsVisibleTo</c> on <c>HumansDbContext</c> — the boundary the G5 split exists
+/// <c>UsersDbContext</c>, and inheriting it would grant a section test project
+/// <c>InternalsVisibleTo</c> on <c>UsersDbContext</c> — the boundary the G5 split exists
 /// to draw (nobodies-collective/Humans#866). The users and teams the service reads back
 /// live in an in-memory registry the <c>Seed*</c> helpers write to, so the test bodies
 /// below are unchanged from their pre-move versions.
@@ -368,7 +368,7 @@ public sealed class FeedbackServiceTests
     }
 
     // ----- People and teams -----------------------------------------------------
-    // The pre-G5 versions of these wrote User rows into the harness's HumansDbContext and
+    // The pre-G5 versions of these wrote User rows into the harness's UsersDbContext and
     // read them back through DB-backed IUserService stubs. A section test project cannot
     // see those tables, so the registry holds the projection the service consumes: UserInfo.
 

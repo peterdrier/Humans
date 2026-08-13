@@ -1,11 +1,8 @@
 <!-- freshness:triggers
   src/Humans.Application/Services/Profiles/ProfileService.cs
-  src/Humans.Application/Services/Teams/TeamService.cs
-  src/Humans.Application/Services/Teams/TeamPageService.cs
+  src/Sections/Humans.Teams/**
   src/Humans.Web/Controllers/ProfileController.cs
-  src/Humans.Web/Controllers/TeamController.cs
   src/Humans.Web/Views/Profile/Edit.cshtml
-  src/Humans.Web/Views/Team/Birthdays.cshtml
   src/Humans.Domain/Entities/Profile.cs
   src/Humans.Infrastructure/Data/Configurations/Profiles/**
 -->

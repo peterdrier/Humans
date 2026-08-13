@@ -1,10 +1,10 @@
 using System.ComponentModel.DataAnnotations;
 using Humans.Calendar.Services.Dtos;
 using Humans.Application.Extensions;
-using Humans.Application.Interfaces.AuditLog;
+using Humans.AuditLog.Contracts;
 using Humans.Calendar.Services;
 using Humans.Calendar.Data;
-using Humans.Application.Interfaces.Teams;
+using Humans.Teams.Contracts;
 using Humans.Calendar.Domain;
 using Humans.Domain.Enums;
 using Ical.Net.DataTypes;

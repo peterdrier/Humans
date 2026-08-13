@@ -1,6 +1,6 @@
 using Humans.Application;
 using AwesomeAssertions;
-using Humans.Application.Interfaces.Tickets;
+using Humans.Tickets.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Mailer.Services.Audiences;
 using Humans.Mailer.Tests.Infrastructure;
@@ -62,7 +62,7 @@ public class MarketingNoTicketAudienceTests
         var userService = Substitute.For<IUserService>();
         userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns(users);
 
-        var ticketService = Substitute.For<ITicketService>();
+        var ticketService = Substitute.For<ITicketServiceRead>();
         ticketService.GetTicketOrdersAsync(Arg.Any<CancellationToken>())
             .Returns(OrdersForTicketHolders(ticketHolders));
 

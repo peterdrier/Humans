@@ -1,3 +1,4 @@
+using Humans.Auth.Contracts;
 using Humans.Application;
 using Humans.Domain.Enums;
 using Humans.Domain.Helpers;

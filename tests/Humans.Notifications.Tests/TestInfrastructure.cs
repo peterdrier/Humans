@@ -9,14 +9,14 @@ namespace Humans.Notifications.Tests;
 
 /// <summary>
 /// The three members of <c>Humans.Application.Tests</c>' harness these tests actually used,
-/// owned here instead of shared: a section test project cannot see <c>HumansDbContext</c>,
+/// owned here instead of shared: a section test project cannot see <c>UsersDbContext</c>,
 /// and the preference lookup the emitter calls is a substituted interface either way
 /// (design §15 step 8).
 /// </summary>
 internal static class NotificationTestFixtures
 {
     /// <summary>
-    /// A stand-in for the in-memory <c>HumansDbContext</c> the emitter tests used to hold
+    /// A stand-in for the in-memory <c>UsersDbContext</c> the emitter tests used to hold
     /// <c>communication_preferences</c> rows in. Keeps <c>.CommunicationPreferences.Add(…)</c>
     /// and <c>.SaveChangesAsync(ct)</c> so the test bodies are unchanged.
     /// </summary>

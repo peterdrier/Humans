@@ -1,3 +1,4 @@
+using Humans.Teams.Domain;
 using AwesomeAssertions;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Infrastructure.Services.GoogleWorkspace;

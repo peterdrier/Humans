@@ -4,7 +4,6 @@ using Humans.Application.Interfaces.Shifts;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Repositories.Auth;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 

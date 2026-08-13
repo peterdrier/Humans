@@ -1,5 +1,5 @@
 using Humans.Application.Configuration;
-using Humans.Application.Interfaces.Tickets;
+using Humans.Application.Interfaces.TicketVendor;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
 

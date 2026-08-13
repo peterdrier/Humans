@@ -1,5 +1,5 @@
-using Humans.Application.Interfaces.AuditLog;
-using Humans.Application.Interfaces.Auth;
+using Humans.AuditLog.Contracts;
+using Humans.Auth.Contracts;
 using Humans.Application.Interfaces.EarlyEntry;
 using Humans.Notifications.Contracts;
 using Humans.Application.Interfaces.Shifts;
@@ -7,6 +7,8 @@ using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
+using Humans.Teams.Data;
+using Humans.Teams.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Caching.Memory;
@@ -17,7 +19,7 @@ using NSubstitute;
 namespace Humans.Application.Tests.Infrastructure;
 
 /// <summary>
-/// Base class for service tests. Owns the per-test in-memory <see cref="HumansDbContext"/>,
+/// Base class for service tests. Owns the per-test in-memory <see cref="UsersDbContext"/>,
 /// an <see cref="IDbContextFactory{TContext}"/>, a deterministic <see cref="FakeClock"/>,
 /// and an <see cref="IMemoryCache"/>, plus the most common entity seeders. Tests construct
 /// their service-under-test in their own ctor using these resources; the harness does not
@@ -29,8 +31,8 @@ public abstract class ServiceTestHarness : IDisposable
         typeof(User).GetProperty("DisplayName")
         ?? throw new InvalidOperationException("User.DisplayName property missing.");
 
-    private protected DbContextOptions<HumansDbContext> DbOptions { get; }
-    private protected HumansDbContext Db { get; }
+    private protected DbContextOptions<UsersDbContext> DbOptions { get; }
+    private protected UsersDbContext Db { get; }
     private protected TestDbContextFactory DbFactory { get; }
 
     // ----- Peeled-section contexts (nobodies-collective/Humans#858) ----------
@@ -49,30 +51,16 @@ public abstract class ServiceTestHarness : IDisposable
 
     private readonly List<Func<DbContext?>> _sectionContextProbes = [];
 
-    /// <summary>Auth: <c>role_assignments</c> (see <see cref="SeedRoleAssignment"/>).</summary>
-    private readonly Lazy<SectionDb<AuthDbContext>> _authDb;
-    private protected AuthDbContext AuthDb => _authDb.Value.Context;
-    private protected TestDbContextFactory<AuthDbContext> AuthDbFactory => _authDb.Value.Factory;
-
     /// <summary>GoogleIntegration: <c>google_resources</c>, <c>google_sync_outbox</c>, <c>sync_service_settings</c>.</summary>
     private readonly Lazy<SectionDb<GoogleIntegrationDbContext>> _googleIntegrationDb;
     private protected GoogleIntegrationDbContext GoogleIntegrationDb => _googleIntegrationDb.Value.Context;
     private protected TestDbContextFactory<GoogleIntegrationDbContext> GoogleIntegrationDbFactory => _googleIntegrationDb.Value.Factory;
-
-    /// <summary>Tickets: <c>ticket_orders</c>, <c>ticket_attendees</c>, <c>ticket_sync_state</c>, <c>ticket_transfer_requests</c>.</summary>
-    private readonly Lazy<SectionDb<TicketsDbContext>> _ticketsDb;
-    private protected TicketsDbContext TicketsDb => _ticketsDb.Value.Context;
-    private protected TestDbContextFactory<TicketsDbContext> TicketsDbFactory => _ticketsDb.Value.Factory;
 
     /// <summary>Camps: <c>camps</c>, <c>camp_seasons</c>, <c>camp_historical_names</c>, <c>camp_images</c>, <c>camp_settings</c>, <c>camp_members</c>, <c>camp_role_definitions</c>, <c>camp_role_assignments</c>.</summary>
     private readonly Lazy<SectionDb<CampsDbContext>> _campsDb;
     private protected CampsDbContext CampsDb => _campsDb.Value.Context;
     private protected TestDbContextFactory<CampsDbContext> CampsDbFactory => _campsDb.Value.Factory;
 
-    /// <summary>AuditLog: <c>audit_log</c>.</summary>
-    private readonly Lazy<SectionDb<AuditLogDbContext>> _auditLogDb;
-    private protected AuditLogDbContext AuditLogDb => _auditLogDb.Value.Context;
-    private protected TestDbContextFactory<AuditLogDbContext> AuditLogDbFactory => _auditLogDb.Value.Factory;
 
     /// <summary>Shifts: <c>event_settings</c>, <c>rotas</c>, <c>shifts</c>, <c>shift_signups</c>,
     /// <c>shift_tags</c>, <c>rota_shift_tags</c>, <c>volunteer_event_profiles</c>,
@@ -107,18 +95,15 @@ public abstract class ServiceTestHarness : IDisposable
 
     protected ServiceTestHarness(Instant? now = null)
     {
-        DbOptions = new DbContextOptionsBuilder<HumansDbContext>()
+        DbOptions = new DbContextOptionsBuilder<UsersDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
             .Options;
-        Db = new HumansDbContext(DbOptions);
+        Db = new UsersDbContext(DbOptions);
         DbFactory = new TestDbContextFactory(DbOptions);
 
-        _authDb = RegisterSection<AuthDbContext>(o => new(o));
         _googleIntegrationDb = RegisterSection<GoogleIntegrationDbContext>(o => new(o));
-        _ticketsDb = RegisterSection<TicketsDbContext>(o => new(o));
         _campsDb = RegisterSection<CampsDbContext>(o => new(o));
-        _auditLogDb = RegisterSection<AuditLogDbContext>(o => new(o));
         _shiftsDb = RegisterSection<ShiftsDbContext>(o => new(o));
         _teamsDb = RegisterSection<TeamsDbContext>(o => new(o));
 
@@ -265,10 +250,10 @@ public abstract class ServiceTestHarness : IDisposable
     /// Id-first overload — absorbs <c>SeedTeam(teamId, "name")</c> call sites that
     /// pre-existing local helpers used.
     /// </summary>
-    protected Team SeedTeam(Guid teamId, string name) =>
+    private protected Team SeedTeam(Guid teamId, string name) =>
         SeedTeam(name, SystemTeamType.None, teamId);
 
-    protected Team SeedTeam(
+    private protected Team SeedTeam(
         string name,
         SystemTeamType type = SystemTeamType.None,
         Guid? id = null,
@@ -290,7 +275,7 @@ public abstract class ServiceTestHarness : IDisposable
         return team;
     }
 
-    protected TeamMember SeedTeamMember(
+    private protected TeamMember SeedTeamMember(
         Guid teamId,
         Guid userId,
         TeamMemberRole role = TeamMemberRole.Member,
@@ -310,32 +295,8 @@ public abstract class ServiceTestHarness : IDisposable
         return member;
     }
 
-    protected RoleAssignment SeedRoleAssignment(
-        Guid userId,
-        string roleName,
-        Instant validFrom,
-        Instant? validTo = null)
-    {
-        var ra = new RoleAssignment
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            RoleName = roleName,
-            ValidFrom = validFrom,
-            ValidTo = validTo,
-            CreatedAt = Clock.GetCurrentInstant(),
-            CreatedByUserId = Guid.NewGuid()
-        };
-        // Unlike the Db seeders above, this one saves: role_assignments sits in
-        // its own context since the Auth peel, so callers' `Db.SaveChangesAsync()`
-        // would never reach it, and the row has no ordering dependency on
-        // anything staged in Db.
-        AuthDb.RoleAssignments.Add(ra);
-        AuthDb.SaveChanges();
-        return ra;
-    }
 
-    protected TeamJoinRequest SeedJoinRequest(
+    private protected TeamJoinRequest SeedJoinRequest(
         Guid teamId,
         Guid userId,
         TeamJoinRequestStatus status = TeamJoinRequestStatus.Pending)

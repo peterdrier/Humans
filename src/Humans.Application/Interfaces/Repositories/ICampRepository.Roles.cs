@@ -10,7 +10,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// <remarks>
 /// Reads are <c>AsNoTracking</c>. Mutating methods load tracked entities and
 /// save changes atomically inside a single
-/// <see cref="Microsoft.EntityFrameworkCore.IDbContextFactory{HumansDbContext}"/>-owned
+/// <see cref="Microsoft.EntityFrameworkCore.IDbContextFactory{CampsDbContext}"/>-owned
 /// context. Cross-domain navigation is not resolved here; the application
 /// service stitches display names from <see cref="Users.IUserService"/>.
 /// </remarks>

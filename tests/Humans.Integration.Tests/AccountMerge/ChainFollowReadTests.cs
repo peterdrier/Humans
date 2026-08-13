@@ -1,8 +1,12 @@
+using Humans.Auth.Data;
+using Humans.Auth.Domain;
+using Humans.AuditLog.Data;
+using Humans.AuditLog.Domain;
 using AwesomeAssertions;
 using Humans.Consent.Services;
 using Humans.Consent.Domain;
 using Humans.Consent.Data;
-using Humans.Application.Interfaces.AuditLog;
+using Humans.AuditLog.Contracts;
 using Humans.Budget.Contracts;
 using Humans.Consent.Contracts;
 using Humans.Gdpr.Contracts;

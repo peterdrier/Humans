@@ -1,5 +1,5 @@
 <!-- freshness:triggers
-  src/Humans.Application/Services/Auth/RoleAssignmentService.cs
+  src/Sections/Humans.Auth/Services/RoleAssignmentService.cs
   src/Humans.Application/Services/Onboarding/**
   src/Humans.Application/Services/Consent/**
   src/Humans.Web/Controllers/OnboardingReviewController.cs

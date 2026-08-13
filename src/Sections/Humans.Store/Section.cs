@@ -1,6 +1,7 @@
 using Humans.Application.Interfaces;
 using Humans.Infrastructure.Hosting;
 using Humans.Store.Authorization;
+using Humans.Store.Contracts;
 using Humans.Store.Data;
 using Humans.Store.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -22,10 +23,10 @@ public sealed class Section : ISection
         // §15b repository pattern: Repository uses IDbContextFactory<StoreDbContext>
         // so it can be Singleton; every method opens its own short-lived DbContext.
         services.AddSingleton<IStoreRepository, Repository>();
-        // No service interface: nothing outside this assembly can name it, nothing mocks
-        // it, and Store has neither a caching decorator nor a Contracts/ entry needing
-        // the seam (§6a).
         services.AddScoped<Service>();
+        // The only cross-section seam: IStoreServiceRead.GetStoreSummaryAsync, for the
+        // admin dashboard tile (nobodies-collective/Humans#1264).
+        services.AddScoped<IStoreServiceRead>(sp => sp.GetRequiredService<Service>());
 
         // Resource-based handler; the StoreCatalogAdmin *policy* stays in Shell (design §8).
         services.AddScoped<IAuthorizationHandler, OrderAuthorizationHandler>();

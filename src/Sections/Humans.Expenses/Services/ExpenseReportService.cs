@@ -1,13 +1,13 @@
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.AuditLog;
+using Humans.AuditLog.Contracts;
 using Humans.Budget.Contracts;
 using Humans.Expenses.Services;
 using Humans.Finance.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Application.Interfaces.Holded;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Application.Interfaces.Teams;
+using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Expenses.Services.Dtos;
 using Humans.Domain.Entities;
@@ -55,6 +55,9 @@ internal sealed class ExpenseReportService(
 
     public Task<ExpenseReportDto?> GetAsync(Guid id, CancellationToken ct = default)
         => repo.GetByIdAsync(id, ct);
+
+    public Task<IReadOnlyList<ExpenseReportDto>> GetAllAsync(CancellationToken ct = default)
+        => repo.GetAllAsync(ct);
 
     /// <summary>
     /// Aggregates the submitter's owed/paid round-trip from the cached Holded creditor balance.

@@ -1,7 +1,7 @@
 using Humans.Budget.Services;
 using Humans.Application.Extensions;
 using Humans.Budget.Contracts;
-using Humans.Application.Interfaces.Tickets;
+using Humans.Tickets.Contracts;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging;
 using NodaTime;

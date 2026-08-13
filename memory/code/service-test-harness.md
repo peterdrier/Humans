@@ -3,13 +3,13 @@ name: Service tests inherit ServiceTestHarness
 description: Service tests in Humans.Application.Tests should inherit ServiceTestHarness (Db, DbFactory, Clock, Cache, NewDbBackedUserService) instead of hand-rolling per-class scaffolding.
 ---
 
-`tests/Humans.Application.Tests/Infrastructure/ServiceTestHarness.cs` is the base class for service tests that need an in-memory `HumansDbContext` + `FakeClock` + `IMemoryCache` + a DB-backed `IUserService` stub. Inherit it instead of repeating the constructor boilerplate.
+`tests/Humans.Application.Tests/Infrastructure/ServiceTestHarness.cs` is the base class for service tests that need an in-memory `UsersDbContext` + `FakeClock` + `IMemoryCache` + a DB-backed `IUserService` stub. Inherit it instead of repeating the constructor boilerplate.
 
 **What the harness provides** (members are `private protected` — accessible from derived test classes within the test assembly):
 
-- `Db` — the per-test in-memory `HumansDbContext`
-- `DbFactory` — `TestDbContextFactory` over the same options (for repositories that take `IDbContextFactory<HumansDbContext>`)
-- `DbOptions` — the underlying `DbContextOptions<HumansDbContext>`
+- `Db` — the per-test in-memory `UsersDbContext`
+- `DbFactory` — `TestDbContextFactory` over the same options (for repositories that take `IDbContextFactory<UsersDbContext>`)
+- `DbOptions` — the underlying `DbContextOptions<UsersDbContext>`
 - `Clock` — `FakeClock`, default `2026-03-01 12:00 UTC` (overrideable via the ctor)
 - `Cache` — fresh `IMemoryCache`
 - `NewDbBackedUserService()` — NSubstitute `IUserService` whose `GetByIdAsync` / `GetByIdsAsync` / `GetUserInfoAsync` / `GetUserInfosAsync` read from `Db`

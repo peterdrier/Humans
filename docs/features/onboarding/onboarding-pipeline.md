@@ -2,7 +2,7 @@
   src/Sections/Humans.Onboarding/**
   src/Humans.Application/Services/Profiles/ProfileService.cs
   src/Sections/Humans.Consent/Services/**
-  src/Humans.Application/Services/Teams/TeamService.cs
+  src/Sections/Humans.Teams/**
   src/Sections/Humans.Governance/Services/**
   src/Humans.Web/Controllers/HomeController.cs
   src/Humans.Web/Controllers/ProfileController.cs

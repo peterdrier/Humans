@@ -1,11 +1,12 @@
+using Humans.Auth.Contracts;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Auth;
 using Humans.Consent.Contracts;
 using Humans.Feedback.Contracts;
 using Humans.Application.Interfaces.Shifts;
-using Humans.Application.Interfaces.Teams;
-using Humans.Application.Interfaces.Tickets;
+using Humans.Teams.Contracts;
+using Humans.Tickets.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Models;
 using Humans.Domain.Enums;

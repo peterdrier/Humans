@@ -15,17 +15,17 @@ on:
 
 env:
   DOTNET_VERSION: '10.0.x'
-  # The peeled per-section DbContexts (nobodies-collective/Humans#858) in one
+  # The per-section DbContexts (nobodies-collective/Humans#858) in one
   # place, as `context:project` pairs — a section that moves into its own
   # project (nobodies-collective/Humans#866, G5) owns its migrations, so
-  # `--project` is no longer the same for every context. Both
-  # `has-pending-model-changes` loops below iterate
-  # `$MAIN_DB_CONTEXT $SECTION_DB_CONTEXTS`; the from-scratch baseline apply
-  # iterates the section list alone, because HumansDbContext replays its full
-  # historical chain in the step before it. A new peel adds its pair here and
-  # nowhere else in this file; a G5 move edits its pair's project here.
-  MAIN_DB_CONTEXT: 'HumansDbContext:src/Humans.Infrastructure'
+  # `--project` is no longer the same for every context. There is no main
+  # pile since peel 15 deleted HumansDbContext and its historical chain;
+  # every context is a section context. Both `has-pending-model-changes`
+  # loops and the from-scratch baseline apply iterate this list. A new
+  # section adds its pair here and nowhere else in this file; a G5 move
+  # edits its pair's project here.
   SECTION_DB_CONTEXTS: >-
+    UsersDbContext:src/Humans.Infrastructure
     SystemSettingsDbContext:src/Sections/Humans.SystemSettings
     ContainersDbContext:src/Sections/Humans.Containers
     AgentDbContext:src/Sections/Humans.Agent
@@ -34,7 +34,7 @@ env:
     HoldedDbContext:src/Sections/Humans.Holded
     SurveysDbContext:src/Sections/Humans.Surveys
     EventGuideDbContext:src/Sections/Humans.Events
-    AuthDbContext:src/Humans.Infrastructure
+    AuthDbContext:src/Sections/Humans.Auth
     EmailDbContext:src/Sections/Humans.Email
     CalendarDbContext:src/Sections/Humans.Calendar
     NotificationsDbContext:src/Sections/Humans.Notifications
@@ -42,7 +42,7 @@ env:
     GovernanceDbContext:src/Sections/Humans.Governance
     CampaignsDbContext:src/Sections/Humans.Campaigns
     GoogleIntegrationDbContext:src/Humans.Infrastructure
-    TicketsDbContext:src/Humans.Infrastructure
+    TicketsDbContext:src/Sections/Humans.Tickets
     FeedbackDbContext:src/Sections/Humans.Feedback
     CityPlanningDbContext:src/Sections/Humans.CityPlanning
     BudgetDbContext:src/Sections/Humans.Budget
@@ -50,9 +50,9 @@ env:
     GateDbContext:src/Sections/Humans.Gate
     SystemDbContext:src/Humans.Infrastructure
     LegalDbContext:src/Sections/Humans.Consent
-    AuditLogDbContext:src/Humans.Infrastructure
+    AuditLogDbContext:src/Sections/Humans.AuditLog
     ShiftsDbContext:src/Humans.Infrastructure
-    TeamsDbContext:src/Humans.Infrastructure
+    TeamsDbContext:src/Sections/Humans.Teams
     StoreDbContext:src/Sections/Humans.Store
 
 jobs:
@@ -90,7 +90,7 @@ jobs:
       # context since the per-section split (nobodies-collective/Humans#858).
       run: |
         dotnet tool install --global dotnet-ef --version 10.0.*
-        for pair in $MAIN_DB_CONTEXT $SECTION_DB_CONTEXTS; do
+        for pair in $SECTION_DB_CONTEXTS; do
           dotnet ef migrations has-pending-model-changes \
             --context "${pair%%:*}" \
             --project "${pair#*:}" \
@@ -208,23 +208,11 @@ jobs:
           # this self-hosted Linux runner does not. Persist for later steps.
           echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
 
-      - name: Apply migrations from scratch
-        env:
-          ConnectionStrings__DefaultConnection: "Host=${{ steps.pg.outputs.container }};Port=5432;Database=humans;Username=humans;Password=humans"
-        run: |
-          # Main pile: full historical-chain replay. The old chain still
-          # creates every peeled section's tables on a fresh database, so the
-          # section contexts are exercised separately below against their own
-          # empty databases (nobodies-collective/Humans#858) — that is the only
-          # place the real-up baselines execute for real via the CLI.
-          dotnet ef database update \
-            --context "${MAIN_DB_CONTEXT%%:*}" \
-            --project "${MAIN_DB_CONTEXT#*:}" \
-            --startup-project src/Humans.Web \
-            --no-build --configuration Release
-
       - name: Apply per-section baselines from scratch
         run: |
+          # Each context against its own empty database — the real-up baselines
+          # execute for real via the CLI (nobodies-collective/Humans#858). No
+          # main-pile replay: the historical chain was deleted at peel 15.
           set -euo pipefail
           for pair in $SECTION_DB_CONTEXTS; do
             ctx="${pair%%:*}"
@@ -246,7 +234,7 @@ jobs:
           # Belt-and-suspenders: Layer 1 already runs this in the build job,
           # but re-checking after a real apply guards against any state the
           # apply step might have observed differently from a static check.
-          for pair in $MAIN_DB_CONTEXT $SECTION_DB_CONTEXTS; do
+          for pair in $SECTION_DB_CONTEXTS; do
             dotnet ef migrations has-pending-model-changes \
               --context "${pair%%:*}" \
               --project "${pair#*:}" \

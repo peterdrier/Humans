@@ -1,13 +1,14 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.AuditLog;
+using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
+using Humans.Store.Contracts;
 using Humans.Store.Data;
 using Humans.Store.Domain;
 using Humans.Store.Services;
-using Humans.Application.Interfaces.Teams;
+using Humans.Teams.Contracts;
 using Humans.Store.Services.Dtos;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;

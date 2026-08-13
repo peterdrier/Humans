@@ -81,8 +81,8 @@ assertion families that are plausible analyzer candidates:
   grandfather story is clear.
 - Repository implementations should be sealed, live under
   `Humans.Infrastructure.Repositories.*`, and use `IDbContextFactory<TContext>`
-  rather than constructing an application context directly (`HumansDbContext`
-  or any per-section context). The first two are already generalized arch tests
+  rather than constructing an application context directly (any
+  per-section context). The first two are already generalized arch tests
   (`IRepositoryImplementationsAreSealedRule`,
   `RepositoryImplementationsLiveInInfrastructureRule`).
 - Interface marker obligations should be compile-time enforced:
@@ -100,7 +100,7 @@ assertion families that are plausible analyzer candidates:
   (repository, table) pair. The bespoke AuditLog / Events / Notifications
   ratchets it replaced are gone. Since the per-section split it matches DbSets
   on **every** application context via `Internal/SectionDbContexts.cs`, not just
-  `HumansDbContext`. Catalogued in `code-analysis.md`.
+  one hard-coded context. Catalogued in `code-analysis.md`.
 - Application service read methods should not expose domain/EF entities.
   `ApplicationServiceEntityReadReturns.baseline.txt` has existing debt, so this
   needs either a grandfather mechanism or a warning-first migration.

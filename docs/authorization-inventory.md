@@ -691,7 +691,7 @@ Resource-based authorization handlers are subclasses of `AuthorizationHandler<TR
 | `IbanAccessHandler` | `IbanAccessRequirement` | (intrinsic — `TargetUserId` / `ReportId` / `IsAdminPageContext` fields on requirement) | `src/Sections/Humans.Expenses/Authorization/IbanAccessHandler.cs` (moved with the Expenses section — #1240) — **registered in DI but no production call site today** (only `IbanAccessHandlerTests`); `UsersAdminController.RevealIban` uses `[Authorize(Policy = AdminOnly)]` instead. |
 | `IssuesAuthorizationHandler` | `IssuesOperationRequirement` (`Handle`) | `IssueDetail` | `src/Sections/Humans.Issues/Authorization/IssuesAuthorizationHandler.cs` (moved with the Issues section — #1263, G5 overnight batch; registered in `Section.cs`) |
 | `UserEmailAuthorizationHandler` | `UserEmailOperationRequirement` (`Edit`) | `Guid` (target user id) | `src/Humans.Web/Authorization/Requirements/UserEmailAuthorizationHandler.cs` |
-| `RoleAssignmentAuthorizationHandler` | `RoleAssignmentOperationRequirement` (`Manage`) | `string` (roleName) | `src/Humans.Application/Authorization/RoleAssignmentAuthorizationHandler.cs` |
+| `RoleAssignmentAuthorizationHandler` | `RoleAssignmentOperationRequirement` (`Manage`) | `string` (roleName) | `src/Sections/Humans.Auth/Authorization/RoleAssignmentAuthorizationHandler.cs` |
 | `AgentRateLimitHandler` | `AgentRateLimitRequirement` | `Guid` (user id) | `src/Sections/Humans.Agent/Authorization/AgentRateLimitHandler.cs` (moved with the Agent section — #1259, G5 A4b; the requirement is now instantiated directly at its one call site instead of resolved via a `PolicyNames` constant — no longer a registered named policy, so it no longer appears in §5) |
 
 Composite (non-resource) handlers registered alongside the above:

@@ -1,5 +1,5 @@
 using Humans.Application.DTOs;
-using Humans.Application.Interfaces.AuditLog;
+using Humans.AuditLog.Contracts;
 using Humans.Mailer.Services.Dtos;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;

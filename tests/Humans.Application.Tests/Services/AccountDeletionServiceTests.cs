@@ -1,14 +1,15 @@
+using Humans.Auth.Contracts;
 using AwesomeAssertions;
 using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.AuditLog;
+using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Caching;
 using Humans.Email.Contracts;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
-using Humans.Application.Interfaces.Teams;
-using Humans.Application.Interfaces.Tickets;
+using Humans.Teams.Contracts;
+using Humans.Tickets.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Users.AccountLifecycle;
 using Humans.Domain.Entities;
@@ -36,7 +37,7 @@ public class AccountDeletionServiceTests
     private readonly IShiftSignupService _shiftSignupService = Substitute.For<IShiftSignupService>();
     private readonly IShiftManagementService _shiftManagementService = Substitute.For<IShiftManagementService>();
     private readonly IFileStorage _fileStorage = Substitute.For<IFileStorage>();
-    private readonly ITicketService _ticketQueryService = Substitute.For<ITicketService>();
+    private readonly ITicketServiceRead _ticketQueryService = Substitute.For<ITicketServiceRead>();
     private readonly IRoleAssignmentClaimsCacheInvalidator _roleAssignmentClaimsInvalidator =
         Substitute.For<IRoleAssignmentClaimsCacheInvalidator>();
     private readonly IShiftAuthorizationInvalidator _shiftAuthorizationInvalidator =

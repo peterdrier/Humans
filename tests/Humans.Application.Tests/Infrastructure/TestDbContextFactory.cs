@@ -5,18 +5,18 @@ namespace Humans.Application.Tests.Infrastructure;
 
 /// <summary>
 /// Minimal <see cref="IDbContextFactory{TContext}"/> backed by a shared
-/// in-memory <see cref="HumansDbContext"/> for unit tests.
+/// in-memory <see cref="UsersDbContext"/> for unit tests.
 /// <para>
-/// Each <see cref="CreateDbContextAsync"/> returns a fresh <see cref="HumansDbContext"/>
+/// Each <see cref="CreateDbContextAsync"/> returns a fresh <see cref="UsersDbContext"/>
 /// instance connected to the same in-memory store, matching the production
 /// IDbContextFactory behavior while keeping the shared data visible across calls.
 /// </para>
 /// </summary>
-internal sealed class TestDbContextFactory(DbContextOptions<HumansDbContext> options)
-    : IDbContextFactory<HumansDbContext>
+internal sealed class TestDbContextFactory(DbContextOptions<UsersDbContext> options)
+    : IDbContextFactory<UsersDbContext>
 {
-    public HumansDbContext CreateDbContext() => new(options);
+    public UsersDbContext CreateDbContext() => new(options);
 
-    public Task<HumansDbContext> CreateDbContextAsync(CancellationToken cancellationToken = default)
+    public Task<UsersDbContext> CreateDbContextAsync(CancellationToken cancellationToken = default)
         => Task.FromResult(CreateDbContext());
 }

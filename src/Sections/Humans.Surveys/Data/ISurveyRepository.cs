@@ -13,7 +13,7 @@ namespace Humans.Surveys.Data;
 /// </summary>
 /// <remarks>
 /// Reads are <c>AsNoTracking</c>. Mutating methods load tracked entities and save changes
-/// atomically inside a single <see cref="Microsoft.EntityFrameworkCore.IDbContextFactory{HumansDbContext}"/>-owned
+/// atomically inside a single <see cref="Microsoft.EntityFrameworkCore.IDbContextFactory{SurveysDbContext}"/>-owned
 /// context. Cross-domain references (<c>Survey.CreatedByUserId</c>, <c>SurveyInvitation.UserId</c>,
 /// <c>Survey.AudienceTeamId</c>) are bare <see cref="System.Guid"/> columns with no navigation — the
 /// application service stitches display data via <c>IUserServiceRead</c>/<c>ITeamServiceRead</c>.

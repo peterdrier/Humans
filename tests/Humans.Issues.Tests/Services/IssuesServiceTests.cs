@@ -1,6 +1,7 @@
+using Humans.Auth.Contracts;
 using AwesomeAssertions;
 using Humans.Application;
-using Humans.Application.Interfaces.AuditLog;
+using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Caching;
 using Humans.Email.Contracts;
@@ -33,8 +34,8 @@ namespace Humans.Issues.Tests.Services;
 /// <summary>
 /// Owns its fixture rather than deriving from <c>Humans.Application.Tests</c>'
 /// <c>ServiceTestHarness</c>: that harness is built around an in-memory
-/// <c>HumansDbContext</c>, and inheriting it would grant a section test project
-/// <c>InternalsVisibleTo</c> on <c>HumansDbContext</c> — the boundary the G5 split exists
+/// <c>UsersDbContext</c>, and inheriting it would grant a section test project
+/// <c>InternalsVisibleTo</c> on <c>UsersDbContext</c> — the boundary the G5 split exists
 /// to draw (nobodies-collective/Humans#866). Issues reads users back through DB-backed
 /// stubs, so the replacement is Campaigns' shape: an in-memory people registry behind a
 /// <c>Db</c> shim, with <c>SeedUser</c> keeping its old signature so the test bodies below
@@ -47,7 +48,7 @@ public sealed class IssuesServiceTests
     private readonly IAuditLogService AuditLog = Substitute.For<IAuditLogService>();
 
     /// <summary>
-    /// Stand-in for the harness's <c>HumansDbContext</c>: these tests only ever staged
+    /// Stand-in for the harness's <c>UsersDbContext</c>: these tests only ever staged
     /// users on it and flushed. <c>SaveChangesAsync</c> is a no-op because the registry is
     /// already the store the stubs read.
     /// </summary>

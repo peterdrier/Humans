@@ -1,0 +1,79 @@
+@model Humans.Tickets.Models.WhoHasntBoughtViewModel
+@{
+    ViewData["Title"] = "Humans & Tickets";
+}
+
+<div class="container-fluid px-4">
+    <h1 class="mt-4">Humans & Tickets</h1>
+    <partial name="_TicketNav" />
+
+    <p class="text-muted">Active humans and their ticket purchase status.</p>
+
+    <form method="get" class="row g-2 mb-3">
+        <div class="col-md-3">
+            <input type="text" name="search" value="@Model.Search" class="form-control" placeholder="Search name or email..." />
+        </div>
+        <div class="col-md-2">
+            <select name="filterTicketStatus" class="form-select">
+                <option value="" selected="@(string.IsNullOrEmpty(Model.FilterTicketStatus) ? "selected" : null)">All</option>
+                <option value="bought" selected="@(Model.FilterTicketStatus == "bought" ? "selected" : null)">Has ticket</option>
+                <option value="not_bought" selected="@(Model.FilterTicketStatus == "not_bought" ? "selected" : null)">No ticket</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <select name="filterTeam" class="form-select">
+                <option value="">All Teams</option>
+                @foreach (var team in Model.AvailableTeams)
+                {
+                    <option value="@team" selected="@(Model.FilterTeam == team ? "selected" : null)">@team</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-2">
+            <select name="filterTier" class="form-select">
+                <option value="">All Tiers</option>
+                <option value="Volunteer" selected="@(Model.FilterTier == "Volunteer" ? "selected" : null)">Volunteer</option>
+                <option value="Colaborador" selected="@(Model.FilterTier == "Colaborador" ? "selected" : null)">Colaborador</option>
+                <option value="Asociado" selected="@(Model.FilterTier == "Asociado" ? "selected" : null)">Asociado</option>
+            </select>
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-primary"><i class="fa-solid fa-search"></i> Filter</button>
+        </div>
+        <input type="hidden" name="pageSize" value="@Model.PageSize" />
+    </form>
+
+    <p class="text-muted">@Model.TotalCount humans</p>
+
+    @{
+        Func<WhoHasntBoughtRow, IHtmlContent> humanCell =
+            @<text><vc:human user-id="@item.UserId" link="Admin" /></text>;
+        Func<WhoHasntBoughtRow, IHtmlContent> emailCell =
+            @<text><small>@item.Email</small></text>;
+        Func<WhoHasntBoughtRow, IHtmlContent> teamsCell =
+            @<text><small>@item.Teams</small></text>;
+        Func<WhoHasntBoughtRow, IHtmlContent> tierCell =
+            @<text><span class="badge bg-secondary">@item.Tier</span></text>;
+        Func<WhoHasntBoughtRow, IHtmlContent> ticketCell = @<text>
+            @if (item.HasTicket)
+            {
+                <span class="badge bg-success"><i class="fa-solid fa-check"></i></span>
+            }
+            else
+            {
+                <span class="badge bg-warning text-dark"><i class="fa-solid fa-xmark"></i></span>
+            }
+        </text>;
+        var pager = new PagerViewModel(Model.TotalPages, Model.Page, "WhoHasntBought");
+        var table = TableModel.For(Model.Humans.ToList())
+            .Template("Name", humanCell)
+            .Template("Email", emailCell)
+            .Template("Teams", teamsCell)
+            .Template("Tier", tierCell)
+            .Template("Ticket", ticketCell)
+            .ServerMode(null, false, pager)
+            .Empty("No humans match the filters")
+            .Build();
+    }
+    <partial name="_Table" model="table" />
+</div>

@@ -1,12 +1,14 @@
+using Humans.Teams.Data;
+using Humans.Teams.Domain;
 using AwesomeAssertions;
 using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.AuditLog;
+using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.Caching;
 using Humans.Email.Contracts;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Governance.Contracts;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Application.Interfaces.Teams;
+using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -26,7 +28,7 @@ namespace Humans.Application.Tests.Services;
 /// </summary>
 /// <remarks>
 /// Rewritten for the §15 Google-writing jobs migration (issue #570): the job no
-/// longer owns a <c>HumansDbContext</c>, so the test coordinates through the
+/// longer owns a <c>UsersDbContext</c>, so the test coordinates through the
 /// <see cref="ITeamService"/> / <see cref="ICampRepository"/> seams. The
 /// Barrio Leads system team's <see cref="Team.Members"/> collection is stubbed
 /// so the job's idempotency guard can see the existing active membership

@@ -1,3 +1,4 @@
+using Humans.Teams.Domain;
 using System.Reflection;
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Repositories;

@@ -16,6 +16,8 @@ New durable surface is technical debt until proven otherwise. Before adding any 
 5. If new surface is still necessary, state which existing options were rejected and why.
 6. Stop and ask Peter before adding public/interface surface, or before adding a parallel service/repository/helper where an owner already exists.
 
+**Approval-required is not default-deny.** The gate exists to make surface growth deliberate, not impossible — surface has a cost, but there is a reasonableness argument, and a read-only stats/aggregate view is the canonical reasonable case. When a task needs surface that requires approval, propose the minimal reasonable version and ask; never silently drop the feature and narrate the descope as "needed approval" afterward — that converts the gate into a veto Peter never issued (Peter, 2026-08-12, PR peterdrier/Humans#1272: a spec'd dashboard tile was dropped because the section had no public read surface; the right move was proposing the read-leaf promotion, which he approved on sight).
+
 **Examples:**
 
 - Prefer `GetAllAsync()` + `.Where(...).FirstOrDefault()` at one call site over `GetSpecialCaseAsync()` on an interface.

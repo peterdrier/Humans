@@ -3,7 +3,6 @@ using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Profiles;
 using Humans.Domain.Enums;
-using Humans.Web.Extensions;
 using Humans.UI.Extensions;
 using Humans.UI.Models;
 using Humans.Web.Models;

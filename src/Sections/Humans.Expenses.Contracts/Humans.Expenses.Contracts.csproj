@@ -9,9 +9,12 @@
     reference a section and cycle (design §15.5b,
     memory/architecture/section-project-cycle-fix.md).
 
-    It holds exactly one interface. Everything else Expenses exposes — IExpenseReportServiceRead,
-    ExpenseReportDto, ExpenseReportStatus — has no consumer outside the section once
-    IbanAccessHandler moves in with it (design §15 step 6), so it stays internal.
+    Now also carries IExpenseReportServiceRead, its DTO graph (ExpenseReportDto,
+    ExpenseLineDto, ExpenseAttachmentDto, ExpenseHoldedTimeline, ExpenseAttachmentDownload)
+    and the two enums that graph exposes (ExpenseReportStatus, ExpenseLineType) — promoted
+    for the admin dashboard tile (nobodies-collective/Humans#1264 tile wave). The section's
+    own entities/mapper/repository reference these back from here rather than duplicating
+    them internally.
 
     References Humans.Interfaces only. In particular it must not name IHoldedClient,
     HoldedPurchaseDocumentInput, HoldedAttachmentInput or HoldedTransientException: those are
@@ -21,6 +24,11 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- ExpenseReportDto/ExpenseAttachmentDto (Instant) and ExpenseHoldedTimeline (LocalDate). -->
+    <PackageReference Include="NodaTime" />
   </ItemGroup>
 
 </Project>

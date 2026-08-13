@@ -1,0 +1,115 @@
+@* Tour is deliberately hardcoded English and NOT localized (spec 2026-08-12): its audience
+   is external — other burn orgs evaluating the platform — not members. Do not wire it
+   through a localizer or add resx keys in an i18n sweep. *@
+@{
+    ViewData["Title"] = "What is Humans";
+}
+
+<div class="text-center my-5">
+    <h1 class="display-4">What is Humans?</h1>
+    <p class="lead mt-3 mx-auto" style="max-width: 720px;">
+        Humans is the membership platform that runs Nobodies Collective, the Spanish nonprofit
+        behind the Nowhere burn. It manages the full lifecycle of a burn organization —
+        from a volunteer's first signup through teams, shifts, tickets, governance, and money —
+        in one place, instead of a drawer full of spreadsheets.
+    </p>
+    <p class="text-muted">Free and open source (AGPL-3.0) · built by burners, for burns</p>
+</div>
+
+<div class="row g-4 my-4">
+    <div class="col-md-6 col-lg-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title"><i class="fa-solid fa-user-check me-2"></i>People</h5>
+                <p class="card-text small">
+                    Self-service signup, member profiles, and consent tracking. GDPR is built in,
+                    not bolted on: every member can export their data or ask to be forgotten, and
+                    the system handles both. Onboarding runs itself — a new volunteer completes a
+                    profile, signs the consents, and is provisioned automatically.
+                </p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title"><i class="fa-solid fa-people-group me-2"></i>Organize</h5>
+                <p class="card-text small">
+                    Teams with their own pages and Google Workspace resources, volunteer shift
+                    scheduling with live coverage numbers, theme camps, city planning on a real map,
+                    and a what's-on event guide. Who does what, where, and when — visible to everyone.
+                </p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title"><i class="fa-solid fa-coins me-2"></i>Money</h5>
+                <p class="card-text small">
+                    A members' store, expense reports with receipts and approval flow, per-team
+                    budgets, and a live mirror of the association's accounting ledger. The board
+                    sees where the money is without asking anyone to update a sheet.
+                </p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title"><i class="fa-solid fa-gavel me-2"></i>Govern</h5>
+                <p class="card-text small">
+                    Board roles with start and end dates, membership-tier applications with board
+                    voting, and a full audit trail of every automated action. When someone asks
+                    "who approved that, and when" — the answer is one search away.
+                </p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title"><i class="fa-solid fa-envelope-open-text me-2"></i>Communicate</h5>
+                <p class="card-text small">
+                    Transactional email with a visible outbox, campaign sends to synced audiences,
+                    in-app notifications, and the whole member-facing UI in six languages
+                    (English, Spanish, Catalan, German, French, Italian).
+                </p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title"><i class="fa-solid fa-ticket me-2"></i>At the gate</h5>
+                <p class="card-text small">
+                    Ticketing with vendor imports and transfers, a gate check-in kiosk, barcode
+                    scanning from a phone browser, and early-entry lists. The gate crew works from
+                    live data, not a printout from last Tuesday.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<hr />
+
+<section class="my-5 mx-auto" style="max-width: 720px;">
+    <h2><i class="fa-solid fa-fire me-2"></i>Humans for your burn</h2>
+    <p>
+        Humans is built as independent sections — People, Teams, Shifts, Tickets, Store,
+        Expenses, Governance, and more — each owning its own data and talking to the others
+        through narrow interfaces.
+    </p>
+    <p>
+        The sections live as separate projects in the codebase; that structure is the roadmap:
+        a deployment per burn, configured with the sections your
+        org actually uses. Run People + Shifts + Gate and skip the rest. Use Microsoft 365
+        instead of Google Workspace. Add your language. The modularity is real today; per-burn
+        configuration is where the project is headed.
+    </p>
+    <p class="mb-0">
+        Curious how it's built — and how well? <a href="/About">Read the engineering story</a>,
+        or write to <a href="mailto:humans@nobodies.team">humans@nobodies.team</a>.
+    </p>
+</section>

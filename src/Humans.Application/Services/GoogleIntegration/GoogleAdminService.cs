@@ -1,9 +1,9 @@
 using Humans.Application.DTOs;
 using Humans.Application.Helpers;
-using Humans.Application.Interfaces.AuditLog;
+using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Profiles;
-using Humans.Application.Interfaces.Teams;
+using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging;
@@ -587,7 +587,7 @@ public sealed class GoogleAdminService(
         var committed = false;
         try
         {
-            var team = await teamService.GetTeamByIdAsync(teamId, ct);
+            var team = await teamService.GetTeamAsync(teamId, ct);
             var teamName = team?.Name ?? teamId.ToString();
 
             var linkResult = await googleSyncService.EnsureTeamGroupAsync(teamId, cancellationToken: ct);
@@ -684,9 +684,8 @@ public sealed class GoogleAdminService(
             var userTeamNameLookup = new Dictionary<Guid, IReadOnlyList<Guid>>();
             foreach (var u in nobodiesUsers)
             {
-                var memberships = await teamService.GetUserTeamsAsync(u.Id, ct);
+                var memberships = await teamService.GetUserTeamMembershipsAsync(u.Id, ct);
                 userTeamNameLookup[u.Id] = memberships
-                    .Where(m => m.LeftAt == null)
                     .Select(m => m.TeamId)
                     .ToList();
             }

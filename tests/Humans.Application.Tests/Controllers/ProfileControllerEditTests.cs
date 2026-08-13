@@ -1,9 +1,11 @@
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Application.Configuration;
+using Humans.Tickets.Contracts;
 using Humans.Application.DTOs;
 using Humans.Application.DTOs.Shifts;
 using Humans.Application.Interfaces.AuditLog;
+using Humans.AuditLog.Contracts;
 using Humans.Campaigns.Contracts;
 using Humans.Application.Interfaces.Camps;
 using Humans.Email.Contracts;
@@ -12,8 +14,8 @@ using Humans.Governance.Contracts;
 using Humans.Onboarding.Contracts;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Shifts;
-using Humans.Application.Interfaces.Teams;
-using Humans.Application.Interfaces.Tickets;
+using Humans.Teams.Contracts;
+
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
@@ -108,7 +110,7 @@ public class ProfileControllerEditTests
             new ConfigurationRegistry(),
             NullLogger<ProfileController>.Instance,
             localizer,
-            Substitute.For<ITicketService>(),
+            Substitute.For<ITicketServiceRead>(),
             Substitute.For<ITeamService>(),
             Substitute.For<ICampaignService>(),
             Substitute.For<ICampServiceRead>(),

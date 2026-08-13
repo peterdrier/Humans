@@ -4,7 +4,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.DTOs;
-using Humans.Application.Interfaces.AuditLog;
+using Humans.Tickets.Contracts;
+using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -30,8 +31,8 @@ public sealed class UserEmailService(
 
     // Lazy: breaks DI cycle TicketQueryService -> IUserEmailService -> ITicketServiceRead.
     // Used only by the delete-guard (nobodies-collective/Humans#758) to detect ticket-linked addresses.
-    private Interfaces.Tickets.ITicketServiceRead TicketServiceRead =>
-        serviceProvider.GetRequiredService<Interfaces.Tickets.ITicketServiceRead>();
+    private Humans.Tickets.Contracts.ITicketServiceRead TicketServiceRead =>
+        serviceProvider.GetRequiredService<Humans.Tickets.Contracts.ITicketServiceRead>();
 
     public async Task<IReadOnlyList<UserEmailEditDto>> GetUserEmailsAsync(
         Guid userId, CancellationToken cancellationToken = default)

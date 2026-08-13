@@ -15,7 +15,7 @@ namespace Humans.Expenses.Data;
 /// is a code-side partition of the EF model.
 /// </summary>
 /// <remarks>
-/// Internal-sealed like <see cref="HumansDbContext"/> (issue #750): repositories
+/// Internal-sealed like every section context (issue #750): repositories
 /// are the only consumers. Configurations are applied explicitly (not by
 /// assembly scanning) so this model can never accrete another section's tables.
 /// </remarks>

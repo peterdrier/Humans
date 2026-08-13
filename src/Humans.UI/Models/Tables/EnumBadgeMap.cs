@@ -27,10 +27,6 @@ public static class EnumBadgeMap
     // host's requests read.
     private static readonly ConcurrentDictionary<Enum, string> Map = new()
     {
-        [TicketAttendeeStatus.Valid] = "bg-success",
-        [TicketAttendeeStatus.CheckedIn] = "bg-info",
-        [TicketAttendeeStatus.Void] = "bg-danger",
-
         [EmailOutboxStatus.Queued] = "bg-warning text-dark",
         [EmailOutboxStatus.Sent] = "bg-success",
         [EmailOutboxStatus.Failed] = "bg-danger",
@@ -45,11 +41,6 @@ public static class EnumBadgeMap
         [SignupStatus.Bailed] = "bg-secondary",
         [SignupStatus.Cancelled] = "bg-dark",
         [SignupStatus.NoShow] = "bg-danger",
-
-        [TicketPaymentStatus.Paid] = "bg-success",
-        [TicketPaymentStatus.Pending] = "bg-warning text-dark",
-        [TicketPaymentStatus.Refunded] = "bg-danger",
-        [TicketPaymentStatus.Cancelled] = "bg-secondary",
     };
 
     /// <summary>

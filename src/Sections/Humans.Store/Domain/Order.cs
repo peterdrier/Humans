@@ -1,3 +1,4 @@
+using Humans.Store.Contracts;
 using NodaTime;
 
 namespace Humans.Store.Domain;

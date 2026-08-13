@@ -1,9 +1,10 @@
+using Humans.Teams.Domain;
 using AwesomeAssertions;
 using Humans.Application.Configuration;
-using Humans.Application.Interfaces.AuditLog;
+using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Profiles;
-using Humans.Application.Interfaces.Teams;
+using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.GoogleIntegration;
 using Humans.Domain.Entities;
@@ -767,16 +768,8 @@ public sealed class GoogleGroupSyncServiceTests
                     ToSnapshot(resource)
                 ]
             });
-        _teamService.GetTeamByIdAsync(teamId, Arg.Any<CancellationToken>())
-            .Returns(new Team
-            {
-                Id = teamId,
-                Name = "Team",
-                Slug = "team",
-                GoogleGroupPrefix = parts[0],
-                CreatedAt = _clock.GetCurrentInstant(),
-                UpdatedAt = _clock.GetCurrentInstant()
-            });
+        _teamService.GetTeamAsync(teamId, Arg.Any<CancellationToken>())
+            .Returns(MakeTeamInfo(teamId, "Team", "team", googleGroupPrefix: parts[0]));
 
         return resource;
     }
@@ -811,16 +804,8 @@ public sealed class GoogleGroupSyncServiceTests
                 [first.TeamId] = [ToSnapshot(first)],
                 [secondTeamId] = [ToSnapshot(second)]
             });
-        _teamService.GetTeamByIdAsync(secondTeamId, Arg.Any<CancellationToken>())
-            .Returns(new Team
-            {
-                Id = secondTeamId,
-                Name = "Duplicate Team",
-                Slug = "duplicate-team",
-                GoogleGroupPrefix = parts[0],
-                CreatedAt = _clock.GetCurrentInstant(),
-                UpdatedAt = _clock.GetCurrentInstant()
-            });
+        _teamService.GetTeamAsync(secondTeamId, Arg.Any<CancellationToken>())
+            .Returns(MakeTeamInfo(secondTeamId, "Duplicate Team", "duplicate-team", googleGroupPrefix: parts[0]));
     }
 
     private static GoogleResourceSnapshot ToSnapshot(GoogleResource resource) =>
@@ -880,4 +865,11 @@ public sealed class GoogleGroupSyncServiceTests
             Messages.Add(formatter(state, exception));
         }
     }
+
+    private static TeamInfo MakeTeamInfo(Guid id, string name, string slug, string? googleGroupPrefix = null) =>
+        new(id, name, null, slug, IsActive: true, IsSystemTeam: false,
+            SystemTeamType.None, RequiresApproval: false, IsPublicPage: false, IsHidden: false,
+            IsPromotedToDirectory: false, NodaTime.SystemClock.Instance.GetCurrentInstant(), [],
+            GoogleGroupPrefix: googleGroupPrefix);
+
 }

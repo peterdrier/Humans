@@ -13,16 +13,16 @@ namespace Humans.Infrastructure.Repositories.Users;
 /// <summary>EF-backed <see cref="IUserRepository"/>.</summary>
 internal sealed partial class UserRepository : IUserRepository
 {
-    private readonly IDbContextFactory<HumansDbContext> _factory;
+    private readonly IDbContextFactory<UsersDbContext> _factory;
     private readonly IClock _clock;
 
-    public UserRepository(IDbContextFactory<HumansDbContext> factory, IClock clock)
+    public UserRepository(IDbContextFactory<UsersDbContext> factory, IClock clock)
     {
         _factory = factory;
         _clock = clock;
     }
 
-    public UserRepository(IDbContextFactory<HumansDbContext> factory)
+    public UserRepository(IDbContextFactory<UsersDbContext> factory)
         : this(factory, SystemClock.Instance)
     {
     }
@@ -240,7 +240,7 @@ internal sealed partial class UserRepository : IUserRepository
     // Sets user.State from the single classifier using the profile loaded in the same context.
     // Caller owns SaveChangesAsync so this composes with other field mutations in one round-trip.
     private static async Task ResyncStateInContextAsync(
-        HumansDbContext ctx, User user, CancellationToken ct)
+        UsersDbContext ctx, User user, CancellationToken ct)
     {
         var profile = await ctx.Profiles
             .AsNoTracking()

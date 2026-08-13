@@ -1,4 +1,4 @@
-using Humans.Application.Interfaces.Teams;
+using Humans.Teams.Contracts;
 using Humans.Budget.Contracts;
 using NodaTime;
 

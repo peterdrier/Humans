@@ -1,6 +1,6 @@
 using Humans.Application.Architecture;
 
-using Humans.Application.Interfaces.Teams;
+using Humans.Teams.Contracts;
 
 namespace Humans.Application.Interfaces.Shifts;
 

@@ -58,15 +58,31 @@ public class ExpensesArchitectureTests
     public void ContractsExposeOnlyTheCrossSectionSurface()
     {
         // Pins the whole Contracts assembly, so widening Expenses' cross-section surface is a
-        // visible diff rather than a silent one. It is one interface: the only consumer outside
-        // the section that is not in Shell is HoldedExpenseOutboxJob, which stays in
-        // Humans.Infrastructure because recurring jobs have no discovery seam yet (§15 step 6b).
+        // visible diff rather than a silent one. IExpenseReportBackgroundProcessor's only
+        // consumer outside the section that is not in Shell is HoldedExpenseOutboxJob, which
+        // stays in Humans.Infrastructure because recurring jobs have no discovery seam yet
+        // (§15 step 6b). IExpenseReportServiceRead — and the DTO graph it returns
+        // (ExpenseReportDto/ExpenseLineDto/ExpenseAttachmentDto/ExpenseHoldedTimeline/
+        // ExpenseAttachmentDownload) plus the two enums that graph exposes
+        // (ExpenseReportStatus/ExpenseLineType) — were promoted for the admin dashboard tile
+        // (nobodies-collective/Humans#1264 tile wave, Peter-approved).
         var contractTypes = typeof(IExpenseReportBackgroundProcessor).Assembly.GetExportedTypes()
             .Select(t => t.Name)
             .Order(StringComparer.Ordinal)
             .ToList();
 
-        contractTypes.Should().BeEquivalentTo(["IExpenseReportBackgroundProcessor"]);
+        contractTypes.Should().BeEquivalentTo(
+        [
+            "IExpenseReportBackgroundProcessor",
+            "IExpenseReportServiceRead",
+            "ExpenseReportDto",
+            "ExpenseLineDto",
+            "ExpenseAttachmentDto",
+            "ExpenseAttachmentDownload",
+            "ExpenseHoldedTimeline",
+            "ExpenseReportStatus",
+            "ExpenseLineType",
+        ]);
     }
 
     [HumansFact]

@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <!--
+      Teams' TeamRoleServiceTests/TeamServiceTests build the real RoleAssignmentService over a
+      real AuthDbContext, and TeamsTestHarness seeds role_assignments rows. Temporary, and the
+      mirror of Humans.Auth's InternalsVisibleTo("Humans.Teams.Tests") — see Teams finding 36.
+    -->
+    <ProjectReference Include="..\..\src\Sections\Humans.Auth\Humans.Auth.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.Teams\Humans.Teams.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      The section's two controllers and its authorization handler are ASP.NET types, and a
+      plain Microsoft.NET.Sdk test project does not get the shared framework — a
+      PackageReference cannot supply it either (NU1010 under Central Package Management,
+      design §15 step 8).
+    -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />
+    <PackageReference Include="NodaTime.Testing" />
+  </ItemGroup>
+
+</Project>

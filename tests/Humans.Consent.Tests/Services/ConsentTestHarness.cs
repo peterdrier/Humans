@@ -1,5 +1,6 @@
 using Humans.Consent.Data;
-using Humans.Domain.Entities;
+using Humans.Domain.Enums;
+using Humans.Teams.Contracts;
 using Humans.Notifications.Contracts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -15,11 +16,11 @@ namespace Humans.Consent.Tests.Services;
 /// in-memory store, and a team registry.
 /// </summary>
 /// <remarks>
-/// The harness itself is built around an in-memory <c>HumansDbContext</c> and cannot come
-/// here — sharing it would push <c>InternalsVisibleTo</c> on <c>HumansDbContext</c> into a
+/// The harness itself is built around an in-memory <c>UsersDbContext</c> and cannot come
+/// here — sharing it would push <c>InternalsVisibleTo</c> on <c>UsersDbContext</c> into a
 /// section test project (design §15 step 8). The teams half is Campaigns' "rewrite the
 /// stub, not the tests" call: <c>LegalDocument.TeamId</c> is a bare cross-section Guid and
-/// nothing persists a <see cref="Team"/>, so a dictionary keyed the same way leaves every
+/// nothing persists a team row, so a dictionary keyed the same way leaves every
 /// <c>SeedTeam(id, name)</c> call site byte-identical.
 /// </remarks>
 public abstract class ConsentTestHarness : IDisposable
@@ -30,7 +31,7 @@ public abstract class ConsentTestHarness : IDisposable
     private protected INotificationEmitter Notifier { get; } = Substitute.For<INotificationEmitter>();
 
     /// <summary>Teams by id — the cross-section name lookup the section stitches on.</summary>
-    private protected Dictionary<Guid, Team> Teams { get; } = [];
+    private protected Dictionary<Guid, TeamInfo> Teams { get; } = [];
 
     protected ConsentTestHarness(Instant? now = null)
     {
@@ -44,15 +45,23 @@ public abstract class ConsentTestHarness : IDisposable
         LegalDbFactory = new TestDbContextFactory<LegalDbContext>(options);
     }
 
-    private protected Team SeedTeam(Guid teamId, string name)
+    private protected TeamInfo SeedTeam(Guid teamId, string name)
     {
-        var team = new Team
+        var team = new TeamInfo(
+            teamId,
+            name,
+            Description: null,
+            Slug: name.ToLowerInvariant().Replace(" ", "-", StringComparison.Ordinal),
+            IsActive: true,
+            IsSystemTeam: false,
+            SystemTeamType: SystemTeamType.None,
+            RequiresApproval: false,
+            IsPublicPage: false,
+            IsHidden: false,
+            IsPromotedToDirectory: false,
+            CreatedAt: Clock.GetCurrentInstant(),
+            Members: [])
         {
-            Id = teamId,
-            Name = name,
-            Slug = name.ToLowerInvariant().Replace(" ", "-", StringComparison.Ordinal),
-            IsActive = true,
-            CreatedAt = Clock.GetCurrentInstant(),
             UpdatedAt = Clock.GetCurrentInstant()
         };
         Teams[teamId] = team;

@@ -1,3 +1,4 @@
+using Humans.Teams.Contracts;
 using AwesomeAssertions;
 using Humans.Application.Models;
 using Humans.Domain.Enums;

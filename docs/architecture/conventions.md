@@ -258,7 +258,7 @@ Stronger reasons:
 Stop and reconsider when a change introduces any of these:
 
 **Web layer smells:**
-- controller injects an application `DbContext` (`HumansDbContext` or any per-section context)
+- controller injects an application `DbContext` (any per-section context)
 - controller calls `SaveChangesAsync()`
 - controller owns cache logic
 - controller contains the only enforcement of a business rule
@@ -266,7 +266,7 @@ Stop and reconsider when a change introduces any of these:
 
 **Service / persistence smells:**
 - a new service placed in `Humans.Infrastructure/Services/` instead of `Humans.Application/Services/`
-- a service that injects an application `DbContext` (`HumansDbContext` or any per-section context) directly instead of going through its owning repository
+- a service that injects an application `DbContext` (any per-section context) directly instead of going through its owning repository
 - a service that injects another domain's repository (should call the other domain's `I{Section}ServiceRead` interface instead)
 - a `.Include()` that navigates across a domain boundary (Profile → User, Team → Profile, Camp → Profile, etc.)
 - a repository method that takes or returns another domain's type

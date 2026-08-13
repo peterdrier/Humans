@@ -96,6 +96,16 @@ case "$TOOL" in
     hits=""
     while IFS= read -r f; do
       [ -n "$f" ] || continue
+      # A merge commit absorbs the other parent's already-reviewed migrations. A staged
+      # blob byte-identical to MERGE_HEAD's copy was authored (and hook-gated) on the
+      # side being merged, not here — skip it. Without this, every branch that merges a
+      # main containing a DML-bearing baseline (e.g. Consent's BaselineLegal) is blocked
+      # once at the merge commit despite authoring nothing (PR #1272, 2026-08-12).
+      if [ "$staged" -eq 1 ] && git rev-parse -q --verify MERGE_HEAD >/dev/null 2>&1 \
+         && [ -n "$(git rev-parse ":$f" 2>/dev/null)" ] \
+         && [ "$(git rev-parse ":$f" 2>/dev/null)" = "$(git rev-parse "MERGE_HEAD:$f" 2>/dev/null)" ]; then
+        continue
+      fi
       if [ "$staged" -eq 1 ]; then
         body=$(git show ":$f" 2>/dev/null || true)
       else

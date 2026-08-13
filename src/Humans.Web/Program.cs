@@ -116,8 +116,8 @@ builder.Services.AddSingleton<TrackingMemoryCache>(_ =>
 builder.Services.AddSingleton<IMemoryCache>(sp => sp.GetRequiredService<TrackingMemoryCache>());
 builder.Services.AddSingleton<ICacheStatsProvider>(sp => sp.GetRequiredService<TrackingMemoryCache>());
 
-// EF/factory/migrations wired in Infrastructure so HumansDbContext stays internal — see #750.
-builder.Services.AddHumansPersistence(builder.Environment.IsDevelopment());
+// EF/factory/migrations wired in Infrastructure so the section DbContexts stay internal — see #750.
+builder.Services.AddHumansPersistence();
 
 // Persist DataProtection keys to DB so auth cookies survive container restarts.
 builder.Services.AddDataProtection()

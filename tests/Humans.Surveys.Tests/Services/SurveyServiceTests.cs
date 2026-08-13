@@ -1,6 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application;
-using Humans.Application.Interfaces.AuditLog;
+using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Application.Interfaces.GoogleIntegration;
@@ -8,8 +8,8 @@ using Humans.Application.Interfaces.Profiles;
 using Humans.Surveys.Data;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Surveys.Services;
-using Humans.Application.Interfaces.Teams;
-using Humans.Application.Interfaces.Tickets;
+using Humans.Teams.Contracts;
+using Humans.Tickets.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;

@@ -1,0 +1,78 @@
+{
+    "generatedDate":  "2026-08-12",
+    "totalCommits":  2128,
+    "mergedPrs":  1195,
+    "closedIssues":  686,
+    "testCount":  4681,
+    "analyzerRuleCount":  31,
+    "sectionCount":  30,
+    "contributors":  [
+                         {
+                             "name":  "Peter Drier",
+                             "commits":  1987,
+                             "linesAdded":  1500597,
+                             "linesDeleted":  444769
+                         },
+                         {
+                             "name":  "Frank Fanteev",
+                             "commits":  30,
+                             "linesAdded":  70186,
+                             "linesDeleted":  2174
+                         },
+                         {
+                             "name":  "Jokin",
+                             "commits":  5,
+                             "linesAdded":  32597,
+                             "linesDeleted":  711
+                         },
+                         {
+                             "name":  "David Nowinsky",
+                             "commits":  13,
+                             "linesAdded":  14901,
+                             "linesDeleted":  1136
+                         },
+                         {
+                             "name":  "Aaron Ross",
+                             "commits":  5,
+                             "linesAdded":  7977,
+                             "linesDeleted":  225
+                         },
+                         {
+                             "name":  "laugongim",
+                             "commits":  10,
+                             "linesAdded":  1785,
+                             "linesDeleted":  473
+                         },
+                         {
+                             "name":  "Daniel Tenner",
+                             "commits":  4,
+                             "linesAdded":  1154,
+                             "linesDeleted":  41
+                         },
+                         {
+                             "name":  "Jokin C",
+                             "commits":  5,
+                             "linesAdded":  506,
+                             "linesDeleted":  208
+                         },
+                         {
+                             "name":  "Cupcake",
+                             "commits":  2,
+                             "linesAdded":  165,
+                             "linesDeleted":  16
+                         },
+                         {
+                             "name":  "Imanol",
+                             "commits":  1,
+                             "linesAdded":  29,
+                             "linesDeleted":  6
+                         },
+                         {
+                             "name":  "Josh Peaker",
+                             "commits":  1,
+                             "linesAdded":  2,
+                             "linesDeleted":  1
+                         }
+                     ],
+    "claudeCoauthoredCommitPercent":  76
+}

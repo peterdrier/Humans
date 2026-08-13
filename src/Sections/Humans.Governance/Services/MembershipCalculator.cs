@@ -1,3 +1,4 @@
+using Humans.Auth.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using Humans.Application.DTOs;

@@ -1,0 +1,311 @@
+@model Humans.Tickets.Models.TicketDashboardViewModel
+@{
+    ViewData["Title"] = "Tickets";
+}
+
+<div class="container-fluid px-4">
+    <div class="d-flex justify-content-between align-items-center mt-4 mb-2">
+        <h1 class="mb-0">Tickets</h1>
+        @await Component.InvokeAsync("AccessMatrix", new { section = "Tickets" })
+    </div>
+
+    <partial name="_TicketNav" />
+
+    @if (!Model.IsConfigured)
+    {
+        <div class="alert alert-warning">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            Ticket vendor not configured. Set <code>TicketVendor:EventId</code> in appsettings and
+            <code>TICKET_VENDOR_API_KEY</code> environment variable to enable sync.
+        </div>
+        return;
+    }
+
+
+    <div class="row row-cols-1 row-cols-md-3 row-cols-xl-5 g-3 mb-4">
+        <div class="col">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h6 class="card-subtitle mb-2 text-muted">Tickets Sold</h6>
+                    <h3 class="card-title">@Model.TicketsSold.ToString("N0")</h3>
+                    @if (Model.TotalCapacity > 0)
+                    {
+                        var soldPct = (int)(Model.TicketsSold * 100.0 / Model.TotalCapacity);
+                        <div class="progress mt-2" style="height: 10px;">
+                            <div class="progress-bar @(Model.TicketsSold >= Model.BreakEvenTarget ? "bg-success" : "bg-primary")" style="width: @(soldPct)%"></div>
+                        </div>
+                        <div class="d-flex justify-content-between mt-1" style="font-size: 0.75rem;">
+                            <span class="text-muted">0</span>
+                            @if (Model.BreakEvenTarget > 0)
+                            {
+                                <span class="@(Model.TicketsSold >= Model.BreakEvenTarget ? "text-success fw-bold" : "text-warning")"
+                                      title="@Model.BreakEvenDetail"
+                                      aria-label="@Model.BreakEvenDetail">@Model.BreakEvenTarget.ToString("N0") break-even</span>
+                            }
+                            <span class="text-muted">@Model.TotalCapacity.ToString("N0") capacity</span>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h6 class="card-subtitle mb-2 text-muted">Gross Revenue</h6>
+                    <h3 class="card-title">@Model.Currency @Model.Revenue.ToString("N0")</h3>
+                    @if (Model.TotalStripeFees > 0 || Model.TotalApplicationFees > 0)
+                    {
+                        var totalFees = Model.TotalStripeFees + Model.TotalApplicationFees;
+                        var feePct = Model.Revenue > 0 ? Math.Round(totalFees / Model.Revenue * 100, 1) : 0;
+                        <small class="text-muted">@feePct% in fees</small>
+                    }
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h6 class="card-subtitle mb-2 text-muted">Net Revenue</h6>
+                    <h3 class="card-title">@Model.Currency @Model.NetRevenue.ToString("N0")</h3>
+                    @if (Model.TotalStripeFees > 0)
+                    {
+                        <small class="text-muted">
+                            Stripe: @Model.Currency @Model.TotalStripeFees.ToString("N0")
+                            @if (Model.TotalApplicationFees > 0)
+                            {
+                                <text> / TT: @Model.Currency @Model.TotalApplicationFees.ToString("N0")</text>
+                            }
+                        </small>
+                    }
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h6 class="card-subtitle mb-2 text-muted">Avg. Gross Price</h6>
+                    <h3 class="card-title">@Model.Currency @Model.AveragePrice.ToString("N2")</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h6 class="card-subtitle mb-2 text-muted">Remaining</h6>
+                    <h3 class="card-title">@Model.TicketsRemaining.ToString("N0") tickets left</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (Model.DailySales.Count > 0)
+    {
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="fa-solid fa-chart-bar"></i> Daily Ticket Sales
+            </div>
+            <div class="card-body">
+                <div style="position: relative; height: 500px; width: 100%;">
+                    <canvas id="dailySalesChart"></canvas>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (Model.FeesByPaymentMethod.Count > 0)
+    {
+        var currency = Model.Currency;
+        Func<PaymentMethodFeeBreakdown, IHtmlContent> grossAmountCell =
+            @<text>@currency @item.TotalAmount.ToString("N0", System.Globalization.CultureInfo.CurrentCulture)</text>;
+        Func<PaymentMethodFeeBreakdown, IHtmlContent> stripeFeeCell =
+            @<text>@currency @item.TotalStripeFees.ToString("N2", System.Globalization.CultureInfo.CurrentCulture)</text>;
+        Func<PaymentMethodFeeBreakdown, IHtmlContent> ttFeeCell =
+            @<text>@currency @item.TotalApplicationFees.ToString("N2", System.Globalization.CultureInfo.CurrentCulture)</text>;
+        Func<PaymentMethodFeeBreakdown, IHtmlContent> effectiveRateCell =
+            @<text>@item.EffectiveRate%</text>;
+        var feesTable = TableModel.For(Model.FeesByPaymentMethod.ToList())
+            .Column("Payment Method", pm => pm.PaymentMethod)
+            .Column("Orders", pm => pm.OrderCount, c => c.Number().End())
+            .Template("Gross Amount", grossAmountCell, c => c.End())
+            .Template("Stripe Fee", stripeFeeCell, c => c.End())
+            .Template("TT Fee", ttFeeCell, c => c.End())
+            .Template("Effective Rate", effectiveRateCell, c => c.End())
+            .Build();
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="fa-solid fa-credit-card"></i> Fees by Payment Method
+            </div>
+            <div class="card-body p-0">
+                <partial name="_Table" model="feesTable" />
+            </div>
+        </div>
+    }
+
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <i class="fa-solid fa-triangle-exclamation"></i> Attention
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled mb-0">
+                        @if (Model.UnmatchedOrderCount > 0)
+                        {
+                            <li class="mb-2">
+                                <a asp-action="Orders" asp-route-filterMatched="false" asp-route-filterPaymentStatus="Paid">
+                                    <span class="badge bg-warning text-dark">@Model.UnmatchedOrderCount</span>
+                                    orders from non-humans
+                                </a>
+                            </li>
+                        }
+                        @if (Model.SyncStatus == TicketSyncStatus.Error)
+                        {
+                            <li class="mb-2">
+                                <span class="badge bg-danger">Error</span>
+                                Last sync failed: @Model.SyncError
+                            </li>
+                        }
+                        @if (Model.TotalCapacity > 0 && Model.TicketsRemaining < Model.TotalCapacity * 0.1m)
+                        {
+                            <li class="mb-2">
+                                <span class="badge bg-info">Low</span>
+                                Less than 10% of tickets remaining
+                            </li>
+                        }
+                        <li>
+                            <a asp-action="WhoHasntBought">
+                                <i class="fa-solid fa-user-xmark"></i> Who hasn't bought?
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-8">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span><i class="fa-solid fa-receipt"></i> Recent Orders</span>
+                    <a asp-action="Orders" class="btn btn-sm btn-outline-primary">View all orders &rarr;</a>
+                </div>
+                <div class="card-body p-0">
+                    @{
+                        Func<TicketOrderSummary, IHtmlContent> recentAmountCell =
+                            @<text>@item.Currency @item.Amount.ToString("N0", System.Globalization.CultureInfo.CurrentCulture)</text>;
+                        Func<TicketOrderSummary, IHtmlContent> recentMatchedCell = @<text>
+                            @if (item.IsMatched)
+                            {
+                                <span class="badge bg-success"><i class="fa-solid fa-check"></i></span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary"><i class="fa-solid fa-xmark"></i></span>
+                            }
+                        </text>;
+                        var recentOrdersTable = TableModel.For(Model.RecentOrders.ToList())
+                            .Column("Date", o => o.PurchasedAt, c => c.Date())
+                            .Column("Purchaser", o => o.BuyerName)
+                            .Column("Tickets", o => o.TicketCount, c => c.Number())
+                            .Template("Amount", recentAmountCell)
+                            .Column("Status", o => o.PaymentStatus, c => c.EnumBadge())
+                            .Template("Matched", recentMatchedCell, c => c.NoSort())
+                            .Empty("No orders synced yet")
+                            .Build();
+                    }
+                    <partial name="_Table" model="recentOrdersTable" />
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-auto"><a asp-action="ExportAttendees" class="btn btn-outline-secondary btn-sm"><i class="fa-solid fa-download"></i> Export Attendees CSV</a></div>
+        <div class="col-auto"><a asp-action="ExportOrders" class="btn btn-outline-secondary btn-sm"><i class="fa-solid fa-download"></i> Export Orders CSV</a></div>
+    </div>
+
+    <div class="card">
+        <div class="card-body d-flex justify-content-between align-items-center py-2">
+            <span class="text-muted">
+                @if (Model.LastSyncAt.HasValue)
+                {
+                    <text>Last synced: @Model.LastSyncAt.Value.ToInvariantTimestamp() UTC</text>
+                }
+                else
+                {
+                    <text>Never synced</text>
+                }
+                @if (Model.SyncStatus == TicketSyncStatus.Running)
+                {
+                    <span class="badge bg-primary ms-2"><i class="fa-solid fa-sync fa-spin"></i> Syncing...</span>
+                }
+                else if (Model.SyncStatus == TicketSyncStatus.Error)
+                {
+                    <span class="badge bg-danger ms-2">Error</span>
+                }
+            </span>
+            <form asp-action="Sync" method="post" class="d-inline" authorize-policy="TicketAdminOrAdmin">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-sm btn-primary">
+                    <i class="fa-solid fa-sync"></i> Sync Now <i class="fa-solid fa-lock auth-lock-icon"></i>
+                </button>
+            </form>
+            <form asp-action="FullResync" method="post" class="d-inline ms-2" authorize-policy="AdminOnly"
+                  data-confirm="This will re-fetch ALL orders from the vendor. Continue?">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-sm btn-danger">
+                    <i class="fa-solid fa-arrows-rotate"></i> Full Re-sync <i class="fa-solid fa-lock auth-lock-icon"></i>
+                </button>
+            </form>
+            <a asp-controller="TicketsContactsAdmin" asp-action="Index"
+               class="btn btn-sm btn-outline-primary ms-2" authorize-policy="TicketAdminOrAdmin">
+                <i class="fa-solid fa-user-plus"></i> Import Attendee Contacts <i class="fa-solid fa-lock auth-lock-icon"></i>
+            </a>
+        </div>
+    </div>
+</div>
+
+@if (Model.DailySales.Count > 0)
+{
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"
+            integrity="sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ"
+            crossorigin="anonymous"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var salesData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.DailySales, new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase }));
+            var salesCtx = document.getElementById('dailySalesChart').getContext('2d');
+            new Chart(salesCtx, {
+                type: 'bar',
+                data: {
+                    labels: salesData.map(d => d.date),
+                    datasets: [
+                        {
+                            label: 'Tickets Sold',
+                            data: salesData.map(d => d.ticketsSold),
+                            backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                            order: 2
+                        },
+                        {
+                            label: '7-day Avg',
+                            data: salesData.map(d => d.rollingAverage),
+                            type: 'line',
+                            borderColor: 'rgba(255, 99, 132, 1)',
+                            borderWidth: 2,
+                            fill: false,
+                            pointRadius: 0,
+                            order: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { display: true },
+                        y: { beginAtZero: true, title: { display: true, text: 'Tickets' } }
+                    }
+                }
+            });
+        });
+    </script>
+}
+

@@ -1,5 +1,6 @@
+using Humans.Auth.Contracts;
 using Humans.Application.Extensions;
-using Humans.Application.Interfaces.AuditLog;
+using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.EarlyEntry;
 using Humans.Gdpr.Contracts;
@@ -7,7 +8,7 @@ using Humans.Application.Interfaces.ICalFeed;
 using Humans.Notifications.Contracts;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
-using Humans.Application.Interfaces.Teams;
+using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;

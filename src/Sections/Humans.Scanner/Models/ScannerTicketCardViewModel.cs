@@ -1,4 +1,5 @@
 using Humans.Application.DTOs;
+using Humans.Tickets.Contracts;
 using Humans.Application.Interfaces.ICalFeed;
 using NodaTime;
 

@@ -1,6 +1,7 @@
+using Humans.Teams.Domain;
 using System.Net;
 using AwesomeAssertions;
-using Humans.Application.Interfaces.Teams;
+using Humans.Teams.Contracts;
 using Humans.Calendar.Services;
 using Humans.Calendar.Services.Dtos;
 using Humans.Integration.Tests.Infrastructure;

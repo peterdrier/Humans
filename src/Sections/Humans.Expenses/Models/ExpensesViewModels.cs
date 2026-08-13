@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Humans.Expenses.Contracts;
 using Humans.Expenses.Services;
 using Humans.Expenses.Services.Dtos;
 using Humans.Finance.Contracts;

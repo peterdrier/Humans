@@ -1,26 +1,20 @@
 using AwesomeAssertions;
 using MagicLinkService = Humans.Application.Services.Auth.MagicLinkService;
-using RoleAssignmentService = Humans.Application.Services.Auth.RoleAssignmentService;
 
 namespace Humans.Application.Tests.Architecture;
 
 /// <summary>
-/// Architecture tests enforcing the repository pattern for the Auth section.
+/// Architecture tests for the half of the Auth section that stayed in Base.
 /// </summary>
+/// <remarks>
+/// <c>MagicLinkService</c> is Auth's cross-section orchestrator: it calls no repository and
+/// injects <c>Humans.Email.Contracts</c>, a vertical section's leaf, which a horizontal
+/// section may not reference (<c>peters-hard-rules.md</c>). It therefore stayed here at
+/// Auth's G5 (nobodies-collective/Humans#866) while the role-assignment half moved to
+/// <c>Humans.Auth</c>; that half's rules are in <c>AuthArchitectureTests</c> over there.
+/// </remarks>
 public class AuthArchitectureTests
 {
-    [HumansFact]
-    public void RoleAssignmentService_constructor_takes_no_store_type()
-    {
-        var ctor = typeof(RoleAssignmentService).GetConstructors().Single();
-        var storeParam = ctor.GetParameters()
-            .FirstOrDefault(p => (p.ParameterType.Namespace ?? string.Empty)
-                .StartsWith("Humans.Application.Interfaces.Stores", StringComparison.Ordinal));
-
-        storeParam.Should().BeNull(
-            because: "the Auth section has no store abstraction");
-    }
-
     [HumansFact]
     public void MagicLinkService_has_no_email_settings_or_data_protection_constructor_parameter()
     {
@@ -34,5 +28,19 @@ public class AuthArchitectureTests
 
         settingsParam.Should().BeNull(
             because: "Data-protection and URL construction live behind IMagicLinkUrlBuilder in Infrastructure");
+    }
+
+    [HumansFact]
+    public void MagicLinkService_calls_no_repository()
+    {
+        // The reason it stayed in Base: an orchestrator by the hard rules' own definition.
+        // If a repository ever appears here, the service belongs inside a section and this
+        // file is the wrong home for it.
+        var ctor = typeof(MagicLinkService).GetConstructors().Single();
+        var repositoryParam = ctor.GetParameters()
+            .FirstOrDefault(p => p.ParameterType.Name.EndsWith("Repository", StringComparison.Ordinal));
+
+        repositoryParam.Should().BeNull(
+            because: "MagicLinkService is an orchestrator; orchestrators do not call repositories (peters-hard-rules.md)");
     }
 }

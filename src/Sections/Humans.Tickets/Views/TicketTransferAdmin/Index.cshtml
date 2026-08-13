@@ -1,0 +1,77 @@
+@model Humans.Tickets.Models.TicketTransferIndexViewModel
+@{
+    ViewData["Title"] = "Ticket transfer requests";
+    string TabUrl(string t) => Url.Action("Index", new { tab = t })!;
+    string ActiveCls(string t) => Model.ActiveTab == t ? "active" : "";
+}
+
+<h1>Ticket transfer requests</h1>
+
+
+@if (Model.Drift.Count > 0)
+{
+    <div class="alert alert-warning d-flex justify-content-between align-items-start">
+        <div>
+            <strong>&#9888; Order drift detected.</strong>
+            @Model.Drift.Count paid order(s) have fewer valid tickets than originally issued.
+            <details class="mt-2">
+                <summary>Show orders</summary>
+                <ul class="mb-0 mt-1">
+                    @foreach (var d in Model.Drift)
+                    {
+                        <li>
+                            @d.BuyerName — @d.VendorOrderId
+                            <span class="text-muted">(@d.ValidCount of @d.IssuedCount valid)</span>
+                            @if (!string.IsNullOrEmpty(d.VendorDashboardUrl))
+                            {
+                                <a href="@d.VendorDashboardUrl" target="_blank" rel="noopener">View in TT</a>
+                            }
+                        </li>
+                    }
+                </ul>
+            </details>
+        </div>
+    </div>
+}
+
+<ul class="nav nav-tabs mb-3">
+    <li class="nav-item">
+        <a class="nav-link @ActiveCls("pending")" href="@TabUrl("pending")">
+            Pending <span class="badge bg-secondary">@Model.PendingCount</span>
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link @ActiveCls("all")" href="@TabUrl("all")">All</a>
+    </li>
+</ul>
+
+@if (Model.Rows.Count == 0)
+{
+    <p class="text-muted">No transfers in this view.</p>
+}
+else
+{
+    Func<TicketTransferRowDto, IHtmlContent> requesterCell =
+        @<text><vc:human user-id="@item.SenderUserId" layout="AvatarName" link="Admin" /></text>;
+    Func<TicketTransferRowDto, IHtmlContent> ticketCell = @<text>
+        @item.OriginalAttendeeName
+        <br /><small class="text-muted">@item.TicketTypeName</small>
+    </text>;
+    Func<TicketTransferRowDto, IHtmlContent> recipientCell =
+        @<text><vc:human user-id="@item.ReceiverUserId" layout="AvatarName" link="Admin" /></text>;
+    Func<TicketTransferRowDto, IHtmlContent> statusCell =
+        @<text><span class="badge bg-secondary">@item.Status</span></text>;
+    Func<TicketTransferRowDto, IHtmlContent> reviewCell =
+        @<text><a class="btn btn-sm btn-primary" asp-action="Detail" asp-route-id="@item.Id">Review</a></text>;
+    var table = TableModel.For(Model.Rows.ToList())
+        .Column("Requested", r => r.RequestedAt, c => c.DateTime())
+        .Template("Requester", requesterCell)
+        .Template("Ticket", ticketCell)
+        .Template("Recipient", recipientCell)
+        .Column("Reason", r => r.SenderReason)
+        .Template("Status", statusCell)
+        .Template("", reviewCell, c => c.NoSort())
+        .Css("align-middle")
+        .Build();
+    <partial name="_Table" model="table" />
+}

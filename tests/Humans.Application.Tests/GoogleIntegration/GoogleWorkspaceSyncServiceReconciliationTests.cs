@@ -1,9 +1,10 @@
+using Humans.Teams.Domain;
 using AwesomeAssertions;
 using Humans.Application.Configuration;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Application.Interfaces.Teams;
+using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.GoogleIntegration;
 using Humans.Application.Tests.Infrastructure;
@@ -25,7 +26,7 @@ namespace Humans.Application.Tests.GoogleIntegration;
 /// <see cref="GoogleWorkspaceSyncService.SyncResourcesByTypeAsync"/>, per
 /// nobodies-collective/Humans#508. PR #227 (sprint/20260415/batch-3) layered
 /// several fixes onto this flow and every bug was caught by review rather
-/// than by a failing test — this file seeds a real (InMemory) <c>HumansDbContext</c>
+/// than by a failing test — this file seeds a real (InMemory) <c>UsersDbContext</c>
 /// through the real <see cref="GoogleResourceRepository"/> and a real
 /// <see cref="TeamResourceService"/> (resolved via the service-locator seam
 /// exactly as production does), and drives Drive reconciliation against the

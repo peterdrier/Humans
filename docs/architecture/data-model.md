@@ -18,21 +18,21 @@ This file is the **index and cross-cutting rule sheet** for the data model. Per-
 | CommunicationPreference | [Profiles](../sections/Profiles.md) | |
 | ProfileLanguage | [Profiles](../sections/Profiles.md) | |
 | VolunteerHistoryEntry | [Profiles](../sections/Profiles.md) | Sub-aggregate of Profile. |
-| AccountMergeRequest | [Profiles](../sections/Profiles.md) | `AccountMergeService` + `DuplicateAccountService` live in `Humans.Application.Services.Profiles/`. |
+| AccountMergeRequest | [Users/Identity](../sections/Users.md) | `AccountMergeService` + `DuplicateAccountService` live in `Humans.Application.Services.Users/`. |
 | Application | [Governance](../../src/Sections/Humans.Governance/Docs/Governance.md) | |
 | ApplicationStateHistory | [Governance](../../src/Sections/Humans.Governance/Docs/Governance.md) | Append-only (§12). |
 | BoardVote | [Governance](../../src/Sections/Humans.Governance/Docs/Governance.md) | Transient — deleted on finalization. |
-| RoleAssignment | [Auth](../sections/Auth.md) | |
+| RoleAssignment | [Auth](../../src/Sections/Humans.Auth/Docs/Auth.md) | |
 | LegalDocument / DocumentVersion | [Consent](../../src/Sections/Humans.Consent/Docs/Consent.md) | |
 | ConsentRecord | [Consent](../../src/Sections/Humans.Consent/Docs/Consent.md) | Append-only via DB triggers (§12). |
-| Team | [Teams](../sections/Teams.md) | |
-| TeamMember | [Teams](../sections/Teams.md) | |
-| TeamJoinRequest | [Teams](../sections/Teams.md) | |
-| TeamJoinRequestStateHistory | [Teams](../sections/Teams.md) | Append-only (§12). |
-| TeamRoleDefinition | [Teams](../sections/Teams.md) | |
-| TeamRoleAssignment | [Teams](../sections/Teams.md) | |
-| TeamEarlyEntryGrant | [Teams](../sections/Teams.md) | Per-team Early Entry grant (gated by `Team.EarlyEntryEnabled`). Cross-section `UserId` FK — nav stripped, resolved via `IUserServiceRead`. |
-| GoogleResource | [Teams](../sections/Teams.md) | Team Resources sub-aggregate. |
+| Team | [Teams](../../src/Sections/Humans.Teams/Docs/Teams.md) | |
+| TeamMember | [Teams](../../src/Sections/Humans.Teams/Docs/Teams.md) | |
+| TeamJoinRequest | [Teams](../../src/Sections/Humans.Teams/Docs/Teams.md) | |
+| TeamJoinRequestStateHistory | [Teams](../../src/Sections/Humans.Teams/Docs/Teams.md) | Append-only (§12). |
+| TeamRoleDefinition | [Teams](../../src/Sections/Humans.Teams/Docs/Teams.md) | |
+| TeamRoleAssignment | [Teams](../../src/Sections/Humans.Teams/Docs/Teams.md) | |
+| TeamEarlyEntryGrant | [Teams](../../src/Sections/Humans.Teams/Docs/Teams.md) | Per-team Early Entry grant (gated by `Team.EarlyEntryEnabled`). Cross-section `UserId` FK — nav stripped, resolved via `IUserServiceRead`. |
+| GoogleResource | [Teams](../../src/Sections/Humans.Teams/Docs/Teams.md) | Team Resources sub-aggregate. |
 | Camp / CampSeason / CampImage / CampHistoricalName / CampSettings | [Camps](../sections/Camps.md) | |
 | CampMember | [Camps](../sections/Camps.md) | Per-season, post-hoc human/camp affiliation (Pending/Active/Removed). Partial unique on `(CampSeasonId, UserId) WHERE Status <> 'Removed'`. |
 | CampRoleDefinition / CampRoleAssignment | [Camps](../sections/Camps.md) | Per-camp role catalogue + per-season assignments. Owned by `CampRoleService`. Unique on `(CampSeasonId, CampRoleDefinitionId, CampMemberId)`. |
@@ -43,7 +43,7 @@ This file is the **index and cross-cutting rule sheet** for the data model. Per-
 | CalendarEvent / CalendarEventException | [Calendar](../../src/Sections/Humans.Calendar/Docs/Calendar.md) | |
 | EmailOutboxMessage | [Email](../../src/Sections/Humans.Email/Docs/Email.md) | |
 | Campaign / CampaignCode / CampaignGrant | [Campaigns](../../src/Sections/Humans.Campaigns/Docs/Campaigns.md) | |
-| TicketOrder / TicketAttendee / TicketSyncState / TicketTransferRequest | [Tickets](../sections/Tickets.md) | |
+| TicketOrder / TicketAttendee / TicketSyncState / TicketTransferRequest | [Tickets](../../src/Sections/Humans.Tickets/Docs/Tickets.md) | |
 | GateScanEvent / GateSettings / GateStaffPin | [Gate](../../src/Sections/Humans.Gate/Docs/Gate.md) | `GateScanEvent` is the append-only gate admission log (retention-purged by `GateRetentionJob`; user ids re-pointed on merge). Cross-section refs (`ScannedByUserId`, `GuestUserId`, `OverrideByUserId`, `TicketAttendeeId`, `GateStaffPin.UserId`) are bare Guid columns — no navs, no cross-section EF FK constraints. |
 | EventSettings / Rota / Shift / ShiftSignup / GeneralAvailability / VolunteerEventProfile / VolunteerBuildStatus / ShiftTag / VolunteerTagPreference | [Shifts](../sections/Shifts.md) | |
 | Event / EventCategory / EventVenue / EventGuideSettings / EventModerationAction / EventFavourite / EventPreference | [Events](../../src/Sections/Humans.Events/Docs/Events.md) | Event Guide submissions, moderation, categories, shared venues, per-user favourites/preferences. `EventModerationAction` append-only (§12 — Restrict on delete). |
@@ -57,7 +57,7 @@ This file is the **index and cross-cutting rule sheet** for the data model. Per-
 | SyncServiceSettings / GoogleSyncOutboxEvent | [Google Integration](../sections/GoogleIntegration.md) | |
 | Survey / SurveyQuestion / SurveyQuestionOption / SurveyResponse / SurveyAnswer / SurveyInvitation | [Survey](../../src/Sections/Humans.Surveys/Docs/Surveys.md) | Cross-domain refs are bare `Guid` FK columns only — no nav properties, no cross-section EF FK constraints. |
 | SystemSetting | System Settings section | Owned by `SystemSettingsRepository` (exposed via `ISystemSettingsService`); consuming sections read/write keys through it. See [SystemSetting below](#systemsetting-system-settings-section). |
-| AuditLogEntry | [Audit Log](../sections/AuditLog.md) | Append-only (§12). |
+| AuditLogEntry | [Audit Log](../../src/Sections/Humans.AuditLog/Docs/AuditLog.md) | Append-only (§12). |
 | Notification / NotificationRecipient | [Notifications](../../src/Sections/Humans.Notifications/Docs/Notifications.md) | |
 
 <!-- /freshness:auto -->
@@ -100,9 +100,9 @@ Since the per-section split (nobodies-collective/Humans#858) the model is partit
 | `AuditLogDbContext` | `audit_log` — its immutability trigger likewise lives as raw SQL in the baseline |
 | `ShiftsDbContext` | `event_settings`, `rotas`, `shifts`, `shift_signups`, `shift_tags`, `rota_shift_tags`, `volunteer_event_profiles`, `general_availability`, `volunteer_build_statuses`, `volunteer_tag_preferences` |
 | `TeamsDbContext` | `teams`, `team_members`, `team_join_requests`, `team_join_request_state_history`, `team_role_definitions`, `team_role_assignments`, `team_early_entry_grants` |
-| `HumansDbContext` | everything else, including the Identity tables (which come from the framework base class) |
+| `UsersDbContext` | `users`, `profiles`, `profile_languages`, `contact_fields`, `user_emails`, `volunteer_history_entries`, `communication_preferences`, `account_merge_requests`, `event_participations`, plus the Identity tables (`roles`, `user_roles`, `user_claims`, `user_logins`, `role_claims`, `user_tokens` — from the `IdentityDbContext` base class) |
 
-What is left in `HumansDbContext`: Users/Identity and Profiles. Profiles is blocked by its three surviving `→ User` model relationships (`Profile`, `UserEmail`, `CommunicationPreference`); Users peels last by design. See the design doc's §10.1.
+`UsersDbContext` is the merged Users+Profiles section (peel 15 accepted the half-finished Profiles→Users move as the end state — design doc §10.3). There is no main pile: `HumansDbContext` and its historical migration chain were deleted at peel 15.
 
 ## Cross-section FK graph
 
@@ -200,7 +200,7 @@ Append-only sections (§12) cannot rewrite their `UserId` / `ActorUserId` column
 
 | Section | Owning entity | Read paths that chain-follow |
 |---------|---------------|------------------------------|
-| [Audit Log](../sections/AuditLog.md) | `AuditLogEntry` | `GetByUserAsync`, `GetUserAuditLogPageAsync`, per-entity history when entity is User, `ContributeForUserAsync` |
+| [Audit Log](../../src/Sections/Humans.AuditLog/Docs/AuditLog.md) | `AuditLogEntry` | `GetByUserAsync`, `GetUserAuditLogPageAsync`, per-entity history when entity is User, `ContributeForUserAsync` |
 | [Consent](../../src/Sections/Humans.Consent/Docs/Consent.md) | `ConsentRecord` | `GetUserConsentsAsync`, `HasAllRequiredConsentsAsync`, consent dashboard, `ContributeForUserAsync` |
 | [Budget](../../src/Sections/Humans.Budget/Docs/Budget.md) | `BudgetAuditLog` | `ContributeForUserAsync` (GDPR) |
 
@@ -213,21 +213,21 @@ The following entities are append-only — no `UpdateAsync` / `DeleteAsync` on t
 | Entity | Owning section | Enforcement |
 |--------|---------------|-------------|
 | ConsentRecord | [Consent](../../src/Sections/Humans.Consent/Docs/Consent.md) | DB triggers block UPDATE / DELETE |
-| AuditLogEntry | [Audit Log](../sections/AuditLog.md) | Architecture test: `AuditLogArchitectureTests.IAuditLogRepository_HasNoUpdateOrDeleteMethods` |
+| AuditLogEntry | [Audit Log](../../src/Sections/Humans.AuditLog/Docs/AuditLog.md) | Architecture test: `AuditLogArchitectureTests.IAuditLogRepository_HasNoUpdateOrDeleteMethods` |
 | BudgetAuditLog | [Budget](../../src/Sections/Humans.Budget/Docs/Budget.md) | Repository shape — no update/delete methods |
 | CampPolygonHistory | [City Planning](../../src/Sections/Humans.CityPlanning/Docs/CityPlanning.md) | Architecture test: `CityPlanningArchitectureTests` pins append-only repo surface |
 | ApplicationStateHistory | [Governance](../../src/Sections/Humans.Governance/Docs/Governance.md) | Repository shape — no update/delete methods |
-| TeamJoinRequestStateHistory | [Teams](../sections/Teams.md) | Repository shape (target; pending sub-task nobodies-collective/Humans#540a) |
+| TeamJoinRequestStateHistory | [Teams](../../src/Sections/Humans.Teams/Docs/Teams.md) | Repository shape (target; pending sub-task nobodies-collective/Humans#540a) |
 
 ## Constants
 
 ### SystemTeamIds
 
-See [`../sections/Teams.md`](../sections/Teams.md#systemteamids-constants) for the authoritative list.
+See [`Teams.md`](../../src/Sections/Humans.Teams/Docs/Teams.md#systemteamids-constants) for the authoritative list.
 
 ### RoleNames
 
-See [`../sections/Auth.md`](../sections/Auth.md#rolenames-constants) for the authoritative list.
+See [`Auth.md`](../../src/Sections/Humans.Auth/Docs/Auth.md#rolenames-constants) for the authoritative list.
 
 ## Where to add a new entity
 
@@ -237,6 +237,6 @@ See [`../sections/Auth.md`](../sections/Auth.md#rolenames-constants) for the aut
 4. If the entity participates in a cross-section FK, update the [Cross-section FK graph](#cross-section-fk-graph) above.
 5. If the entity is append-only, add a row to [Append-only entities](#append-only-entities-12) above.
 6. If the entity owns user-scoped data, make the owning service implement `IUserDataContributor` per design-rules §8a and wire the GDPR export.
-7. If the owning section has its own DbContext ([DbContext ownership](#dbcontext-ownership) above), add the `DbSet<>` and an explicit `ApplyConfiguration` call to that context — `HumansDbContext`'s assembly scan deliberately skips peeled namespaces, so a configuration left unregistered is mapped by nothing at all.
+7. If the owning section has its own DbContext ([DbContext ownership](#dbcontext-ownership) above), add the `DbSet<>` and an explicit `ApplyConfiguration` call to that context — every context applies its configurations explicitly, so a configuration left unregistered is mapped by nothing at all.
 
 Do **not** add field tables to this file. This file is an index; the section doc is the source of truth.

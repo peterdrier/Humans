@@ -3,7 +3,7 @@ using Humans.Application;
 using Humans.Domain.Entities;
 using Humans.CityPlanning.Contracts;
 using Humans.Application.Interfaces.Camps;
-using Humans.Application.Interfaces.Teams;
+using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.CityPlanning.Services;
 
@@ -264,8 +264,8 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         var campSeasonId = Guid.NewGuid();
         await SeedMapSettingsAsync(placementOpen: true);
 
-        _teamService.GetTeamEntityBySlugAsync("city-planning", Arg.Any<CancellationToken>())
-            .Returns((Team?)null);
+        _teamService.GetTeamBySlugAsync("city-planning", Arg.Any<CancellationToken>())
+            .Returns((TeamInfo?)null);
 
         _campService.GetCampSeasonByIdAsync(campSeasonId, Arg.Any<CancellationToken>())
             .Returns(MakeCampSeasonInfo(campSeasonId, campId, 2026, "Camp"));
@@ -290,8 +290,8 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         var campSeasonId = Guid.NewGuid();
         await SeedMapSettingsAsync(placementOpen: false);
 
-        _teamService.GetTeamEntityBySlugAsync("city-planning", Arg.Any<CancellationToken>())
-            .Returns((Team?)null);
+        _teamService.GetTeamBySlugAsync("city-planning", Arg.Any<CancellationToken>())
+            .Returns((TeamInfo?)null);
 
         _campService.GetCampSeasonByIdAsync(campSeasonId, Arg.Any<CancellationToken>())
             .Returns(MakeCampSeasonInfo(campSeasonId, campId, 2026, "Camp"));
@@ -308,8 +308,8 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         var campSeasonId = Guid.NewGuid();
         await SeedMapSettingsAsync(placementOpen: true);
 
-        _teamService.GetTeamEntityBySlugAsync("city-planning", Arg.Any<CancellationToken>())
-            .Returns((Team?)null);
+        _teamService.GetTeamBySlugAsync("city-planning", Arg.Any<CancellationToken>())
+            .Returns((TeamInfo?)null);
 
         _campService.GetCampSeasonByIdAsync(campSeasonId, Arg.Any<CancellationToken>())
             .Returns(MakeCampSeasonInfo(campSeasonId, campId, 2026, "Camp"));
@@ -334,8 +334,8 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         var campSeasonId = Guid.NewGuid();
         await SeedMapSettingsAsync(year: 2026, placementOpen: true);
 
-        _teamService.GetTeamEntityBySlugAsync("city-planning", Arg.Any<CancellationToken>())
-            .Returns((Team?)null);
+        _teamService.GetTeamBySlugAsync("city-planning", Arg.Any<CancellationToken>())
+            .Returns((TeamInfo?)null);
 
         // Camp season is for 2027, but settings year is 2026
         _campService.GetCampSeasonByIdAsync(campSeasonId, Arg.Any<CancellationToken>())
@@ -481,7 +481,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
             Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 // UserInfo.Create inline rather than linking Base's UserInfoStubHelpers: this
-                // suite needs one of its members, and the helper is built around HumansDbContext
+                // suite needs one of its members, and the helper is built around UsersDbContext
                 // (design §15 step 8).
                 new Dictionary<Guid, UserInfo>
                 {

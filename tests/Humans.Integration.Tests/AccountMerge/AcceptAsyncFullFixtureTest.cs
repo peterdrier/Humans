@@ -1,3 +1,9 @@
+using Humans.Auth.Data;
+using Humans.Auth.Domain;
+using Humans.AuditLog.Data;
+using Humans.AuditLog.Domain;
+using Humans.Teams.Data;
+using Humans.Teams.Domain;
 using Humans.Notifications.Data;
 using Humans.Consent.Services;
 using Humans.Consent.Contracts;
@@ -183,7 +189,7 @@ public class AcceptAsyncFullFixtureTest(HumansTestDatabase database)
 
         // Assert — comprehensive post-merge state.
         await using var assertScope = Factory.Services.CreateAsyncScope();
-        var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var db = assertScope.ServiceProvider.GetRequiredService<UsersDbContext>();
         var teamsDb = assertScope.ServiceProvider.GetRequiredService<TeamsDbContext>();
         var governanceDb = assertScope.ServiceProvider.GetRequiredService<GovernanceDbContext>();
         var campaignsDb = assertScope.ServiceProvider.GetRequiredService<CampaignsDbContext>();

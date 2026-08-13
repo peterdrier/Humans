@@ -1,7 +1,7 @@
 using System.Reflection;
 using AwesomeAssertions;
 using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.AuditLog;
+using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Caching;
 using Humans.Email.Contracts;
@@ -10,12 +10,11 @@ using Humans.Notifications.Contracts;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
-using Humans.Application.Interfaces.Teams;
+using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Auth;
 using Humans.Application.Services.Profiles;
 using Humans.Application.Services.Shifts;
-using Humans.Application.Services.Teams;
 using Humans.Application.Services.Users;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
@@ -30,59 +29,6 @@ namespace Humans.Application.Tests.Services;
 
 public sealed class DependencyCycleResolutionTests : ServiceTestHarness
 {
-    [HumansFact]
-    public void IUserService_Resolves_WhenTeamServiceAndRoleAssignmentServiceAreRegistered()
-    {
-        var services = new ServiceCollection();
-
-        services.AddScoped(_ => new HumansDbContext(DbOptions));
-        services.AddSingleton<IMemoryCache>(_ => new MemoryCache(new MemoryCacheOptions()));
-
-        services.AddScoped<IUserRepository>(_ => Substitute.For<IUserRepository>());
-        services.AddScoped<IUserRepository>(_ => Substitute.For<IUserRepository>());
-        services.AddScoped<ICommunicationPreferenceRepository>(_ => Substitute.For<ICommunicationPreferenceRepository>());
-        services.AddScoped<IUserInfoInvalidator>(_ => Substitute.For<IUserInfoInvalidator>());
-        services.AddScoped<IRoleAssignmentRepository>(_ => Substitute.For<IRoleAssignmentRepository>());
-        services.AddScoped<IShiftManagementRepository>(_ => Substitute.For<IShiftManagementRepository>());
-        services.AddScoped<IAuditLogService>(_ => AuditLog);
-        services.AddScoped<IEmailService>(_ => Substitute.For<IEmailService>());
-        services.AddScoped<INotificationEmitter>(_ => Notifier);
-        services.AddScoped<ISystemTeamSync>(_ => Substitute.For<ISystemTeamSync>());
-        services.AddScoped<INavBadgeCacheInvalidator>(_ => Substitute.For<INavBadgeCacheInvalidator>());
-        services.AddScoped<IRoleAssignmentClaimsCacheInvalidator>(_ => Substitute.For<IRoleAssignmentClaimsCacheInvalidator>());
-        services.AddScoped<ITeamRepository>(_ => Substitute.For<ITeamRepository>());
-        services.AddScoped<INotificationMeterCacheInvalidator>(_ => Substitute.For<INotificationMeterCacheInvalidator>());
-        services.AddScoped<IShiftAuthorizationInvalidator>(_ => ShiftAuthInvalidator);
-        services.AddScoped<IAdminAuthorizationService>(_ => AdminAuthorization);
-        services.AddScoped<NodaTime.IClock>(_ => Substitute.For<NodaTime.IClock>());
-
-        services.AddScoped<UserService>();
-        services.AddScoped<IUserService>(sp => sp.GetRequiredService<UserService>());
-
-        services.AddScoped<RoleAssignmentService>();
-        services.AddScoped<IRoleAssignmentService>(sp => sp.GetRequiredService<RoleAssignmentService>());
-
-        services.AddScoped<ShiftManagementService>();
-        services.AddScoped<IShiftManagementService>(sp => sp.GetRequiredService<ShiftManagementService>());
-
-        services.AddScoped<TeamService>();
-        services.AddScoped<ITeamService>(sp => sp.GetRequiredService<TeamService>());
-
-        services.AddScoped<Microsoft.Extensions.Logging.ILogger<UserService>>(_ => NullLogger<UserService>.Instance);
-        services.AddScoped<Microsoft.Extensions.Logging.ILogger<RoleAssignmentService>>(_ => NullLogger<RoleAssignmentService>.Instance);
-        services.AddScoped<Microsoft.Extensions.Logging.ILogger<ShiftManagementService>>(_ => NullLogger<ShiftManagementService>.Instance);
-        services.AddScoped<Microsoft.Extensions.Logging.ILogger<TeamService>>(_ => NullLogger<TeamService>.Instance);
-        services.AddScoped<Microsoft.Extensions.Logging.ILogger<UserEmailService>>(_ => NullLogger<UserEmailService>.Instance);
-
-        using var provider = services.BuildServiceProvider(validateScopes: true);
-        using var scope = provider.CreateScope();
-
-        var resolve = () => scope.ServiceProvider.GetRequiredService<IUserService>();
-
-        resolve.Should().NotThrow();
-        resolve().Should().BeOfType<UserService>();
-    }
-
     /// <summary>
     /// Generic cycle guard. Scans every concrete class implementing
     /// <see cref="IApplicationService"/> or <see cref="IOrchestrator"/> across
@@ -108,7 +54,7 @@ public sealed class DependencyCycleResolutionTests : ServiceTestHarness
         var assemblies = new[]
         {
             typeof(UserService).Assembly,
-            typeof(HumansDbContext).Assembly,
+            typeof(UsersDbContext).Assembly,
             typeof(Humans.Web.Controllers.HomeController).Assembly,
         };
 

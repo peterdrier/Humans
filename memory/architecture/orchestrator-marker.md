@@ -17,7 +17,7 @@ An **Orchestrator** exists because an action genuinely crosses multiple sections
 
 **Enforcement (built — SP1, PR #805).** Marker `IOrchestrator` lives in `Humans.Application.Interfaces` as a sibling of `IApplicationService`. Two analyzers run in the `Humans.Application` compilation:
 
-- **HUM0026 — Error.** A type implementing `IOrchestrator` may not inject any `I*Repository`, `HumansDbContext`, or `IDbContextFactory<HumansDbContext>`. No grandfather machinery; a violation means the role marker is wrong (relocate the access into the owning section's Section service).
+- **HUM0026 — Error.** A type implementing `IOrchestrator` may not inject any `I*Repository`, section DbContext, or `IDbContextFactory<TContext>`. No grandfather machinery; a violation means the role marker is wrong (relocate the access into the owning section's Section service).
 - **HUM0027 — Error.** A type may carry `IOrchestrator` xor `IApplicationService`, never both. The role axis is exclusive — `IApplicationService` grants own-lane repository access, which an orchestrator is banned from.
 
 **Capability marker, sibling of role markers.** `IInvalidator` (the cache-invalidator family, HUM0028 ratchet) and `IFanout` (terminology only, no analyzer) co-exist alongside `IOrchestrator` / `IApplicationService` on a per-type basis. See [[crosscut-purity]] for the sibling rule on keeping crosscuts pure.

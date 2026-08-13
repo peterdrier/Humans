@@ -18,7 +18,7 @@ namespace Humans.Infrastructure.Jobs;
 /// Reads user display/email data via <see cref="IUserService"/> and persists
 /// <c>User.LastConsentReminderSentAt</c> through
 /// <see cref="IUserService.SetLastConsentReminderSentAsync"/>, so the job
-/// never touches <see cref="Humans.Infrastructure.Data.HumansDbContext"/>
+/// never touches a section DbContext
 /// directly (design-rules §2c).
 /// </remarks>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]

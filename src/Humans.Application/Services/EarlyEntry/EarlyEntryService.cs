@@ -5,7 +5,7 @@ namespace Humans.Application.Services.EarlyEntry;
 /// <summary>
 /// Fans out over every <see cref="IEarlyEntryProvider"/> and assembles per-user
 /// EE results. Sequential, not Task.WhenAll: providers share the scoped
-/// HumansDbContext, which is not thread-safe (same reason GdprExportService is
+/// section DbContexts, which are not thread-safe (same reason GdprExportService is
 /// sequential). Owns no repository.
 /// </summary>
 public sealed class EarlyEntryService(IEnumerable<IEarlyEntryProvider> providers) : IEarlyEntryService

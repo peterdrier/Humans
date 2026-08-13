@@ -12,6 +12,10 @@
   <Folder Name="/src/Sections/">
     <Project Path="src/Sections/Humans.Agent/Humans.Agent.csproj" />
     <Project Path="src/Sections/Humans.Agent.Contracts/Humans.Agent.Contracts.csproj" />
+    <Project Path="src/Sections/Humans.AuditLog/Humans.AuditLog.csproj" />
+    <Project Path="src/Sections/Humans.AuditLog.Contracts/Humans.AuditLog.Contracts.csproj" />
+    <Project Path="src/Sections/Humans.Auth/Humans.Auth.csproj" />
+    <Project Path="src/Sections/Humans.Auth.Contracts/Humans.Auth.Contracts.csproj" />
     <Project Path="src/Sections/Humans.Budget/Humans.Budget.csproj" />
     <Project Path="src/Sections/Humans.Budget.Contracts/Humans.Budget.Contracts.csproj" />
     <Project Path="src/Sections/Humans.Calendar/Humans.Calendar.csproj" />
@@ -58,14 +62,22 @@
     <Project Path="src/Sections/Humans.Surveys.Contracts/Humans.Surveys.Contracts.csproj" />
     <Project Path="src/Sections/Humans.SystemSettings/Humans.SystemSettings.csproj" />
     <Project Path="src/Sections/Humans.SystemSettings.Contracts/Humans.SystemSettings.Contracts.csproj" />
+    <Project Path="src/Sections/Humans.TicketTailor/Humans.TicketTailor.csproj" />
+    <Project Path="src/Sections/Humans.Tickets/Humans.Tickets.csproj" />
+    <Project Path="src/Sections/Humans.Tickets.Contracts/Humans.Tickets.Contracts.csproj" />
+    <Project Path="src/Sections/Humans.Teams/Humans.Teams.csproj" />
+    <Project Path="src/Sections/Humans.Teams.Contracts/Humans.Teams.Contracts.csproj" />
+    <Project Path="src/Sections/Humans.Tour/Humans.Tour.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <File Path="tests/Directory.Build.props" />
     <Project Path="tests/Humans.Domain.Tests/Humans.Domain.Tests.csproj" />
     <Project Path="tests/Humans.Analyzers.Tests/Humans.Analyzers.Tests.csproj" />
     <Project Path="tests/Humans.Application.Tests/Humans.Application.Tests.csproj" />
+    <Project Path="tests/Humans.AuditLog.Tests/Humans.AuditLog.Tests.csproj" />
     <Project Path="tests/Humans.Integration.Tests/Humans.Integration.Tests.csproj" />
     <Project Path="tests/Humans.Agent.Tests/Humans.Agent.Tests.csproj" />
+    <Project Path="tests/Humans.Auth.Tests/Humans.Auth.Tests.csproj" />
     <Project Path="tests/Humans.Budget.Tests/Humans.Budget.Tests.csproj" />
     <Project Path="tests/Humans.Calendar.Tests/Humans.Calendar.Tests.csproj" />
     <Project Path="tests/Humans.Campaigns.Tests/Humans.Campaigns.Tests.csproj" />
@@ -93,6 +105,9 @@
     <Project Path="tests/Humans.Search.Tests/Humans.Search.Tests.csproj" />
     <Project Path="tests/Humans.Store.Tests/Humans.Store.Tests.csproj" />
     <Project Path="tests/Humans.Surveys.Tests/Humans.Surveys.Tests.csproj" />
+    <Project Path="tests/Humans.Teams.Tests/Humans.Teams.Tests.csproj" />
+    <Project Path="tests/Humans.TicketTailor.Tests/Humans.TicketTailor.Tests.csproj" />
+    <Project Path="tests/Humans.Tickets.Tests/Humans.Tickets.Tests.csproj" />
     <Project Path="tests/Humans.SystemSettings.Tests/Humans.SystemSettings.Tests.csproj" />
     <Project Path="tests/Humans.Web.Tests/Humans.Web.Tests.csproj" />
   </Folder>

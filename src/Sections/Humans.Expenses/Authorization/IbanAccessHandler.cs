@@ -1,9 +1,9 @@
 using Humans.UI.Authorization;
 using System.Security.Claims;
+using Humans.Expenses.Contracts;
 using Humans.Expenses.Services;
 using Humans.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
-using Humans.Expenses.Domain;
 
 namespace Humans.Expenses.Authorization;
 

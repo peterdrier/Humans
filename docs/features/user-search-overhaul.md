@@ -4,7 +4,7 @@
   src/Humans.Infrastructure/Services/Users/CachingUserService.cs
   src/Sections/Humans.Search/Controllers/SearchController.cs
   src/Humans.Web/Controllers/ProfileApiController.cs
-  src/Humans.Web/Controllers/TeamAdminController.cs
+  src/Sections/Humans.Teams/**
   src/Humans.Web/Controllers/ShiftAdminController.cs
   src/Humans.Web/Controllers/ShiftDashboardController.cs
 -->

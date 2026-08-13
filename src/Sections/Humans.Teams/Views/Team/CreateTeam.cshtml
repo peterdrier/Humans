@@ -1,0 +1,47 @@
+@model Humans.Teams.Models.CreateTeamViewModel
+@{
+    ViewData["Title"] = Localizer["AdminCreateTeam_Title"].Value;
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-controller="Admin" asp-action="Index">@SharedLocalizer["Nav_Admin"]</a></li>
+        <li class="breadcrumb-item"><a asp-action="Summary">@Localizer["AdminTeams_Title"]</a></li>
+        <li class="breadcrumb-item active" aria-current="page">@Localizer["AdminCreateTeam_Title"]</li>
+    </ol>
+</nav>
+
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">@Localizer["AdminCreateTeam_Title"]</h4>
+            </div>
+            <div class="card-body">
+                <form asp-action="CreateTeam" method="post">
+                    @Html.AntiForgeryToken()
+
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+
+                    <div class="mb-3">
+                        <label asp-for="Name" class="form-label">@Localizer["AdminTeams_TeamName"]</label>
+                        <input asp-for="Name" class="form-control" />
+                        <span asp-validation-for="Name" class="text-danger"></span>
+                    </div>
+
+                    <partial name="~/Views/Shared/_TeamDescriptionAndApprovalFields.cshtml" model="Model" />
+                    <partial name="~/Views/Shared/_TeamGoogleAndParentFields.cshtml" model="Model" />
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">@Localizer["AdminCreateTeam_Title"]</button>
+                        <a asp-action="Summary" class="btn btn-outline-secondary">@SharedLocalizer["Common_Cancel"]</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

@@ -1,3 +1,4 @@
+using Humans.Teams.Domain;
 using AwesomeAssertions;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;

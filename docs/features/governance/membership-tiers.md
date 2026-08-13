@@ -1,7 +1,7 @@
 <!-- freshness:triggers
   src/Sections/Humans.Governance/**
   src/Humans.Application/Services/Profiles/ProfileService.cs
-  src/Humans.Application/Services/Teams/TeamService.cs
+  src/Sections/Humans.Teams/**
   src/Humans.Web/Controllers/ProfileController.cs
   src/Humans.Domain/Entities/Profile.cs
   src/Humans.Domain/Constants/SystemTeamIds.cs

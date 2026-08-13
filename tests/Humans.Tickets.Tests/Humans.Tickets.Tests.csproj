@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Sections\Humans.Tickets\Humans.Tickets.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />
+    <PackageReference Include="NodaTime.Testing" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      The controller tests construct TicketsContactsAdminController / TicketsOnsiteAdminController
+      and assert on IActionResult, so this project touches ASP.NET types and a plain
+      Microsoft.NET.Sdk project does not get the shared framework. It cannot arrive as a
+      PackageReference either — the AspNetCore packages ship with no PackageVersion and fail
+      with NU1010 under Central Package Management (G5-SECTION-TEMPLATE.md step 8).
+    -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+</Project>

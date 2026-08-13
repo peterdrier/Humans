@@ -1,3 +1,4 @@
+using Humans.Application.Architecture;
 using AwesomeAssertions;
 using Humans.Application.Services.AuditLog;
 using Humans.Application.Services.Camps;
@@ -32,6 +33,7 @@ namespace Humans.Application.Tests.Architecture.Rules;
 ///   <item><see cref="ApplicationDecisionService"/> — voting-badge count cache (nav badges)</item>
 ///   <item><c>Humans.Finance.Services.Service</c> — Holded contact-list cache (nobodies-collective/Humans#976)</item>
 ///   <item><c>Humans.Guide.Services.GuideContentService</c> — rendered guide-page cache</item>
+///   <item><c>Humans.TicketTailor.Services.TicketTailorService</c> — vendor event-summary cache</item>
 /// </list>
 /// Removed (caching moved to decorators):
 /// <list type="bullet">
@@ -85,7 +87,16 @@ public class ApplicationServicesTakeNoMemoryCacheRule
         // Guide's reason, one step further: the code is unchanged and used to sit in
         // Humans.Web/Infrastructure, which the sweep covers neither before nor after. A move
         // can put code into a sweep as easily as out of one.
-        SectionType("Humans.Development.Services.DevPersonaSeeder")
+        SectionType("Humans.Development.Services.DevPersonaSeeder"),
+        // CacheKeys.TicketEventSummary(eventId) — the vendor's capacity/sold/remaining counters,
+        // held 15 minutes so the ticket dashboard does not call TicketTailor on every render.
+        // It is the connector's own response cache, not an entity read, so §15's repository and
+        // decorator options do not apply; Services/Stores/ does not fit either, because this is
+        // the adapter itself rather than a store the section holds. Third sighting of Guide's
+        // rule after Development's: the code is unchanged and used to sit in
+        // Humans.Infrastructure/Services, which this sweep covers neither before nor after — it
+        // entered scope at the TicketTailor adapter's carve into its own section.
+        SectionType("Humans.TicketTailor.Services.TicketTailorService")
     ];
 
     /// <summary>
@@ -108,7 +119,12 @@ public class ApplicationServicesTakeNoMemoryCacheRule
         // Scan Humans.Application *and* every G5 section assembly. Scoping this to
         // Humans.Application alone would let a section quietly leave the sweep the moment it
         // moved out — the §10 silent-drop shape: the rule keeps passing while covering less.
-        var assemblies = new[] { typeof(AuditLogService).Assembly }
+        // Anchor on a type that cannot leave Humans.Application. AuditLogService was the
+        // anchor until its own G5 move, at which point typeof(...).Assembly silently became
+        // the section assembly and this rule stopped scanning Base at all — the same
+        // silent-drop the widening below exists to prevent, arriving through the anchor
+        // rather than the filter. DontFixAttribute is Base's architecture vocabulary.
+        var assemblies = new[] { typeof(DontFixAttribute).Assembly }
             .Concat(Web.Extensions.SectionDiscoveryExtensions.SectionAssemblies());
 
         var violations = assemblies

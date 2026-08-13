@@ -1,3 +1,9 @@
+using Humans.Auth.Data;
+using Humans.Auth.Domain;
+using Humans.AuditLog.Data;
+using Humans.AuditLog.Domain;
+using Humans.Teams.Data;
+using Humans.Teams.Domain;
 using Humans.Notifications.Data;
 using Humans.Notifications.Domain;
 using Humans.Notifications.Contracts;
@@ -176,7 +182,7 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         await AcceptAsync(requestId, adminId);
 
         await using var assertScope = Factory.Services.CreateAsyncScope();
-        var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var db = assertScope.ServiceProvider.GetRequiredService<UsersDbContext>();
 
         var targetLogins = await db.Set<IdentityUserLogin<Guid>>()
             .Where(l => l.UserId == targetId)
@@ -216,7 +222,7 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         await AcceptAsync(requestId, adminId);
 
         await using var assertScope = Factory.Services.CreateAsyncScope();
-        var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var db = assertScope.ServiceProvider.GetRequiredService<UsersDbContext>();
 
         // Source profile row still exists (tombstone) but with anonymized scalars.
         var sourceProfile = await db.Profiles
@@ -256,7 +262,7 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         await AcceptAsync(requestId, adminId);
 
         await using var assertScope = Factory.Services.CreateAsyncScope();
-        var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var db = assertScope.ServiceProvider.GetRequiredService<UsersDbContext>();
 
         var targetProfileId = await db.Profiles
             .AsNoTracking()
@@ -309,7 +315,7 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         await AcceptAsync(requestId, adminId);
 
         await using var assertScope = Factory.Services.CreateAsyncScope();
-        var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var db = assertScope.ServiceProvider.GetRequiredService<UsersDbContext>();
 
         var targetProfileId = await db.Profiles
             .AsNoTracking()
@@ -358,7 +364,7 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         await AcceptAsync(requestId, adminId);
 
         await using var assertScope = Factory.Services.CreateAsyncScope();
-        var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var db = assertScope.ServiceProvider.GetRequiredService<UsersDbContext>();
 
         var targetPrefs = await db.CommunicationPreferences
             .AsNoTracking()
@@ -404,7 +410,7 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         await AcceptAsync(requestId, adminId);
 
         await using var assertScope = Factory.Services.CreateAsyncScope();
-        var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var db = assertScope.ServiceProvider.GetRequiredService<UsersDbContext>();
 
         var targetEvents = await db.EventParticipations
             .AsNoTracking()
@@ -543,7 +549,7 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         await AcceptAsync(requestId, adminId);
 
         await using var assertScope = Factory.Services.CreateAsyncScope();
-        var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var db = assertScope.ServiceProvider.GetRequiredService<UsersDbContext>();
 
         var sourceUser = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == sourceId, TestContext.Current.CancellationToken);
         sourceUser.Should().NotBeNull();
@@ -565,7 +571,7 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         await AcceptAsync(requestId, adminId);
 
         await using var assertScope = Factory.Services.CreateAsyncScope();
-        var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var db = assertScope.ServiceProvider.GetRequiredService<UsersDbContext>();
 
         var sourceUser = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == sourceId, TestContext.Current.CancellationToken);
         sourceUser.Should().NotBeNull();
@@ -595,7 +601,7 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         await AcceptAsync(requestId, adminId);
 
         await using var assertScope = Factory.Services.CreateAsyncScope();
-        var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var db = assertScope.ServiceProvider.GetRequiredService<UsersDbContext>();
 
         var targetProfileId = await db.Profiles
             .AsNoTracking()
@@ -655,7 +661,7 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         await AcceptAsync(requestId, adminId);
 
         await using var assertScope = Factory.Services.CreateAsyncScope();
-        var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var db = assertScope.ServiceProvider.GetRequiredService<UsersDbContext>();
         var authDb = assertScope.ServiceProvider.GetRequiredService<AuthDbContext>();
 
         var targetRows = await authDb.RoleAssignments
@@ -703,7 +709,7 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         await AcceptAsync(requestId, adminId);
 
         await using var assertScope = Factory.Services.CreateAsyncScope();
-        var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var db = assertScope.ServiceProvider.GetRequiredService<UsersDbContext>();
         var teamsDb = assertScope.ServiceProvider.GetRequiredService<TeamsDbContext>();
 
         // Target should have ACTIVE memberships (LeftAt == null) on both teams.
@@ -752,7 +758,7 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         await AcceptAsync(requestId, adminId);
 
         await using var assertScope = Factory.Services.CreateAsyncScope();
-        var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var db = assertScope.ServiceProvider.GetRequiredService<UsersDbContext>();
         var teamsDb = assertScope.ServiceProvider.GetRequiredService<TeamsDbContext>();
 
         var targetRequests = await teamsDb.TeamJoinRequests
@@ -798,7 +804,7 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         await AcceptAsync(requestId, adminId);
 
         await using var assertScope = Factory.Services.CreateAsyncScope();
-        var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var db = assertScope.ServiceProvider.GetRequiredService<UsersDbContext>();
         var notificationsDb = assertScope.ServiceProvider.GetRequiredService<NotificationsDbContext>();
 
         var targetRecipients = await notificationsDb.NotificationRecipients
@@ -982,7 +988,7 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         }
 
         await using var assertScope = Factory.Services.CreateAsyncScope();
-        var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var db = assertScope.ServiceProvider.GetRequiredService<UsersDbContext>();
         (await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == requestSourceId, TestContext.Current.CancellationToken))!.MergedToUserId
             .Should().BeNull("the admin-chosen survivor is never tombstoned");
         (await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == requestTargetId, TestContext.Current.CancellationToken))!.MergedToUserId

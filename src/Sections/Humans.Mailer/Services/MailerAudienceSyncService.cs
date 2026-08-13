@@ -1,5 +1,5 @@
 using System.Text.Json;
-using Humans.Application.Interfaces.AuditLog;
+using Humans.AuditLog.Contracts;
 using Humans.Mailer.Contracts;
 using Humans.Mailer.Services.Dtos;
 using Humans.Application.Interfaces.Profiles;

@@ -1,0 +1,43 @@
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Humans.Domain.Entities;
+using Humans.Teams.Domain;
+
+namespace Humans.Teams.Data.Configurations;
+
+internal sealed class TeamJoinRequestConfiguration : IEntityTypeConfiguration<TeamJoinRequest>
+{
+    public void Configure(EntityTypeBuilder<TeamJoinRequest> builder)
+    {
+        builder.ToTable("team_join_requests");
+
+        builder.HasKey(r => r.Id);
+
+        builder.Property(r => r.Status)
+            .IsRequired()
+            .HasConversion<string>()
+            .HasMaxLength(50);
+
+        builder.Property(r => r.Message)
+            .HasMaxLength(2000);
+
+        builder.Property(r => r.RequestedAt)
+            .IsRequired();
+
+        builder.Property(r => r.ReviewNotes)
+            .HasMaxLength(2000);
+
+        // UserId / ReviewedByUserId are bare cross-section Guid columns — no FK
+        // constraint, no nav.
+
+        builder.HasMany(r => r.StateHistory)
+            .WithOne(sh => sh.TeamJoinRequest)
+            .HasForeignKey(sh => sh.TeamJoinRequestId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasIndex(r => r.TeamId);
+        builder.HasIndex(r => r.UserId);
+        builder.HasIndex(r => r.Status);
+        builder.HasIndex(r => new { r.TeamId, r.UserId, r.Status });
+    }
+}

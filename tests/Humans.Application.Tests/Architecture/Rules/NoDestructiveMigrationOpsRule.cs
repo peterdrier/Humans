@@ -13,7 +13,7 @@ namespace Humans.Application.Tests.Architecture.Rules;
 ///
 /// Detection: scan <c>src/Humans.Infrastructure/Migrations/*.cs</c> and each G5 section's
 /// <c>src/Sections/Humans.&lt;Section&gt;/Data/Migrations/*.cs</c>
-/// (excluding <c>.Designer.cs</c> and <c>HumansDbContextModelSnapshot.cs</c>),
+/// (excluding <c>.Designer.cs</c> and <c>*DbContextModelSnapshot.cs</c>),
 /// find every <c>migrationBuilder.Drop*</c> call inside the <c>Up</c> method
 /// body, emit one locator per call. The first <c>name: "X"</c> argument is
 /// captured so the same drop op on different objects produces distinct keys

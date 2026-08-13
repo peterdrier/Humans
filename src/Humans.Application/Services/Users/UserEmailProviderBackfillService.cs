@@ -1,5 +1,5 @@
 using Humans.Application.DTOs;
-using Humans.Application.Interfaces.AuditLog;
+using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;

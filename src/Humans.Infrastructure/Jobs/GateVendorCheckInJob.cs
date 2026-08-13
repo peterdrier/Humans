@@ -1,6 +1,6 @@
 using System.Net.Http;
 using Hangfire;
-using Humans.Application.Interfaces.Tickets;
+using Humans.Tickets.Contracts;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using NodaTime;
@@ -8,8 +8,9 @@ using NodaTime;
 namespace Humans.Infrastructure.Jobs;
 
 /// <summary>
-/// Best-effort mirror of a gate admit to the ticket vendor (TicketTailor
-/// <c>POST /v1/check_ins</c>). Enqueued fire-and-forget by the gate controller
+/// Best-effort mirror of a gate admit to the ticket vendor. Goes through Tickets'
+/// <c>ITicketVendorMirror</c>, not the vendor port: Tickets is the application's only door
+/// to ticketing (design brief §2). Enqueued fire-and-forget by the gate controller
 /// after an admit is recorded, so the gate screen never waits on the vendor.
 /// The Gate section's <c>gate_scan_events</c> row is the dedupe authority; this
 /// job only keeps the vendor dashboard / vendor check-in app consistent.
@@ -27,7 +28,7 @@ namespace Humans.Infrastructure.Jobs;
 /// </summary>
 [AutomaticRetry(Attempts = 0)]
 public sealed class GateVendorCheckInJob(
-    ITicketVendorService vendor,
+    ITicketVendorMirror vendor,
     IClock clock,
     IConfiguration configuration,
     ILogger<GateVendorCheckInJob> logger)

@@ -31,11 +31,9 @@
     },
     "AuditLog": {
       "paths": [
-        "src/Humans.Application/Interfaces/AuditLog/**",
-        "src/Humans.Application/Services/AuditLog/**",
-        "src/Humans.Domain/Entities/AuditLog*",
-        "src/Humans.Infrastructure/Repositories/AuditLog/**",
-        "src/Humans.Web/Controllers/AuditLogController.cs"
+        "src/Sections/Humans.AuditLog/**",
+        "src/Sections/Humans.AuditLog.Contracts/**",
+        "src/Humans.Application/Services/AuditLog/**"
       ],
       "symbols": [
         "AuditLog*",
@@ -50,11 +48,10 @@
     },
     "Auth": {
       "paths": [
+        "src/Sections/Humans.Auth/**",
+        "src/Sections/Humans.Auth.Contracts/**",
         "src/Humans.Application/Interfaces/Auth/**",
         "src/Humans.Application/Services/Auth/**",
-        "src/Humans.Domain/Entities/RoleAssignment*",
-        "src/Humans.Infrastructure/Repositories/Auth/**",
-        "src/Humans.Infrastructure/Services/Auth/**",
         "src/Humans.Web/Authorization/**",
         "src/Humans.UI/Authorization/**"
       ],
@@ -654,15 +651,8 @@
     },
     "Teams": {
       "paths": [
-        "src/Humans.Application/Interfaces/Teams/**",
-        "src/Humans.Application/Services/Teams/**",
-        "src/Humans.Domain/Entities/Team*",
-        "src/Humans.Infrastructure/Repositories/Teams/**",
-        "src/Humans.Infrastructure/Services/Teams/**",
-        "src/Humans.Web/Controllers/Team*",
-        "src/Humans.Web/Models/TeamResourceViewModels.cs",
-        "src/Humans.Web/Models/TeamSyncViewModels.cs",
-        "src/Humans.Web/Models/TeamViewModels.cs"
+        "src/Sections/Humans.Teams/**",
+        "src/Sections/Humans.Teams.Contracts/**"
       ],
       "symbols": [
         "Team*",
@@ -687,22 +677,10 @@
     },
     "Tickets": {
       "paths": [
-        "src/Humans.Application/TicketOrderInfo.cs",
-        "src/Humans.Application/Interfaces/Tickets/**",
+        "src/Sections/Humans.Tickets/**",
+        "src/Sections/Humans.Tickets.Contracts/**",
         "src/Humans.Application/Configuration/TicketVendorSettings.cs",
-        "src/Humans.Application/DTOs/TicketDashboardDtos.cs",
-        "src/Humans.Application/DTOs/TicketSyncDtos.cs",
-        "src/Humans.Application/DTOs/TicketTransferDtos.cs",
-        "src/Humans.Application/DTOs/TicketVendorDtos.cs",
-        "src/Humans.Application/Services/Tickets/**",
-        "src/Humans.Domain/Entities/Ticket*",
-        "src/Humans.Infrastructure/Repositories/Tickets/**",
-        "src/Humans.Infrastructure/Services/Tickets/**",
-        "src/Humans.Infrastructure/Services/StubTicketVendorService.cs",
-        "src/Humans.Web/Controllers/Ticket*",
-        "src/Humans.Web/Controllers/Tickets*",
-        "src/Humans.Web/Models/TicketViewModels.cs",
-        "src/Humans.Web/Models/Tickets/**",
+        "src/Humans.Application/Interfaces/TicketVendor/**",
         "src/Humans.Web/ViewComponents/MyTicketStubsViewComponent.cs"
       ],
       "symbols": [
@@ -727,6 +705,15 @@
         "TicketTransferRowDto",
         "TicketTransferDetailDto",
         "MyAttendeeRowDto"
+      ]
+    },
+    "TicketTailor": {
+      "paths": [
+        "src/Sections/Humans.TicketTailor/**"
+      ],
+      "symbols": [
+        "TicketTailor*",
+        "StubTicketVendorService"
       ]
     },
     "Cantina": {

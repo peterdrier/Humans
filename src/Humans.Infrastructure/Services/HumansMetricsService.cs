@@ -1,3 +1,4 @@
+using Humans.Auth.Contracts;
 using System.Diagnostics.Metrics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -9,7 +10,7 @@ using Humans.Application.Interfaces.Users;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Consent.Contracts;
-using Humans.Application.Interfaces.Teams;
+using Humans.Teams.Contracts;
 using Humans.Governance.Contracts;
 
 namespace Humans.Infrastructure.Services;

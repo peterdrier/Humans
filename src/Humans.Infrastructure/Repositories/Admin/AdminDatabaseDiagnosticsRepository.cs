@@ -8,7 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Humans.Infrastructure.Repositories.Admin;
 
 internal sealed class AdminDatabaseDiagnosticsRepository(
-    IDbContextFactory<HumansDbContext> factory,
+    IDbContextFactory<UsersDbContext> factory,
     IServiceScopeFactory scopeFactory,
     IEnumerable<SectionDbContextRegistration> sectionContexts)
     : IAdminDatabaseDiagnosticsRepository
@@ -21,9 +21,12 @@ internal sealed class AdminDatabaseDiagnosticsRepository(
 
         // Section contexts are scoped (registered via AddSectionDbContext), so
         // resolve them through a scope — same pattern as DatabaseMigrationHostedService.
+        // UsersDbContext is excluded: the top-level fields above already report it
+        // (it took over the old main-pile slot), so listing it again would
+        // double-report Users to the deployment tooling polling this endpoint.
         var sections = new List<SectionMigrationStatus>();
         using var scope = scopeFactory.CreateScope();
-        foreach (var section in sectionContexts)
+        foreach (var section in sectionContexts.Where(s => s.ContextType != typeof(UsersDbContext)))
         {
             var sectionDb = (DbContext)scope.ServiceProvider.GetRequiredService(section.ContextType);
             var sectionApplied = (await sectionDb.Database.GetAppliedMigrationsAsync(ct)).ToList();

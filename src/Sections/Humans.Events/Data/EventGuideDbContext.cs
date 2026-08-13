@@ -15,11 +15,11 @@ namespace Humans.Events.Data;
 /// a code-side partition of the EF model.
 /// </summary>
 /// <remarks>
-/// Internal-sealed like <see cref="HumansDbContext"/> (issue #750): repositories
+/// Internal-sealed like every section context (issue #750): repositories
 /// are the only consumers. Configurations are applied explicitly (not by
 /// assembly scanning) so this model can never accrete another section's tables.
 /// The Shifts-owned <c>event_settings</c> and <c>event_participations</c> tables
-/// stay in <see cref="HumansDbContext"/> and are deliberately absent here.
+/// stay in <see cref="UsersDbContext"/> and are deliberately absent here.
 /// </remarks>
 internal sealed class EventGuideDbContext(DbContextOptions<EventGuideDbContext> options)
     : DbContext(options)

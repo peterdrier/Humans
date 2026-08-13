@@ -20,7 +20,7 @@ internal interface IMailerAudience
     /// <summary>
     /// Returns the current Humans user-ids who belong in this audience.
     /// Implementations read cross-section state via service interfaces only —
-    /// never via <c>HumansDbContext</c> directly.
+    /// never via a section DbContext directly.
     /// </summary>
     Task<IReadOnlySet<Guid>> ComputeMemberUserIdsAsync(CancellationToken ct);
 }

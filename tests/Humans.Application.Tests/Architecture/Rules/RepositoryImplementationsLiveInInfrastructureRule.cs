@@ -1,6 +1,6 @@
+using Humans.Infrastructure.Hosting;
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Infrastructure.Repositories.AuditLog;
 
 namespace Humans.Application.Tests.Architecture.Rules;
 
@@ -25,7 +25,9 @@ public class RepositoryImplementationsLiveInInfrastructureRule
     [HumansFact]
     public void All_IRepository_implementations_live_in_Humans_Infrastructure_Repositories()
     {
-        var infraAssembly = typeof(AuditLogRepository).Assembly;
+        // Anchor must be a type that stays in Humans.Infrastructure — AuditLogRepository was
+        // the anchor until its own G5 move (see IRepositoryImplementationsAreSealedRule).
+        var infraAssembly = typeof(InfrastructureServiceCollectionExtensions).Assembly;
 
         var violations = infraAssembly
             .GetTypes()

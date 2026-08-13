@@ -7,7 +7,7 @@ namespace Humans.Gdpr.Services;
 
 /// <summary>
 /// Fans out GDPR Article 15 export across <see cref="IUserDataContributor"/>s into one keyed document.
-/// Sequential, not Task.WhenAll: contributors share the scoped HumansDbContext which is not thread-safe.
+/// Sequential, not Task.WhenAll: contributors share scoped section DbContexts which are not thread-safe.
 /// </summary>
 internal sealed class GdprExportService(
     IEnumerable<IUserDataContributor> contributors,

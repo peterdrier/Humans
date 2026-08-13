@@ -1,6 +1,6 @@
 using Humans.Budget.Contracts;
 using Humans.Application.Interfaces.Camps;
-using Humans.Application.Interfaces.Teams;
+using Humans.Teams.Contracts;
 using Humans.Domain.Enums;
 using NodaTime;
 
@@ -25,6 +25,7 @@ internal sealed record DevelopmentBudgetSeedResult(
 internal sealed class DevelopmentBudgetSeeder(
     IBudgetService budgetService,
     ITeamService teamService,
+    ITeamSeeding teamSeeding,
     ICampServiceRead campService,
     IClock clock,
     ILogger<DevelopmentBudgetSeeder> logger) : IBudgetDemoSeeder
@@ -242,7 +243,7 @@ internal sealed class DevelopmentBudgetSeeder(
 
         foreach (var teamSeed in TeamSeeds)
         {
-            var team = await teamService.GetTeamEntityBySlugAsync(teamSeed.Slug, cancellationToken)
+            var team = await teamService.GetTeamBySlugAsync(teamSeed.Slug, cancellationToken)
                 ?? throw new InvalidOperationException($"Team with slug '{teamSeed.Slug}' not found after seeding");
 
             var category = departmentGroup.Categories.FirstOrDefault(c => c.TeamId == team.Id);
@@ -322,14 +323,14 @@ internal sealed class DevelopmentBudgetSeeder(
         Action onCreated,
         Action onUpdated)
     {
-        var existing = await teamService.GetTeamEntityBySlugAsync(seed.Slug, cancellationToken);
+        var existing = await teamService.GetTeamBySlugAsync(seed.Slug, cancellationToken);
 
         if (existing is null)
         {
-            var team = await teamService.CreateTeamAsync(
+            var team = await teamSeeding.CreateTeamAsync(
                 seed.Name, seed.Description, requiresApproval: true, cancellationToken: cancellationToken);
 
-            await teamService.UpdateTeamAsync(
+            await teamSeeding.UpdateTeamAsync(
                 team.Id, team.Name, team.Description, team.RequiresApproval, isActive: true,
                 hasBudget: true, isHidden: false, isSensitive: false, cancellationToken: cancellationToken);
 
@@ -337,7 +338,7 @@ internal sealed class DevelopmentBudgetSeeder(
             return;
         }
 
-        await teamService.UpdateTeamAsync(
+        await teamSeeding.UpdateTeamAsync(
             existing.Id, seed.Name, seed.Description, existing.RequiresApproval, isActive: true,
             hasBudget: true, isHidden: false, isSensitive: false, cancellationToken: cancellationToken);
 

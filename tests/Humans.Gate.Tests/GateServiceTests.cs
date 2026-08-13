@@ -1,10 +1,11 @@
+using Humans.Auth.Contracts;
 using AwesomeAssertions;
 using Humans.Application;
-using Humans.Application.Interfaces.AuditLog;
+using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.EarlyEntry;
 using Humans.Gdpr.Contracts;
 using Humans.Application.Interfaces.Shifts;
-using Humans.Application.Interfaces.Tickets;
+using Humans.Tickets.Contracts;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Constants;
@@ -35,7 +36,7 @@ public class GateServiceTests
 {
     // The three ServiceTestHarness members this suite used — an in-memory GateDbContext,
     // a factory over the same store, and a fixed clock. Owned here rather than shared:
-    // the harness is built around HumansDbContext and sharing it would grant a section
+    // the harness is built around UsersDbContext and sharing it would grant a section
     // test project InternalsVisibleTo on it (design §15 step 8).
     // Field initialisers run in declaration order, and each test gets a fresh instance,
     // so every test case gets its own store.

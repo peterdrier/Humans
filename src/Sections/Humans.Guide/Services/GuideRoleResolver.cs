@@ -1,5 +1,5 @@
 using System.Security.Claims;
-using Humans.Application.Interfaces.Teams;
+using Humans.Teams.Contracts;
 using Humans.Domain.Constants;
 using Humans.Domain.Enums;
 

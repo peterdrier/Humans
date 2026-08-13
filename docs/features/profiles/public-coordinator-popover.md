@@ -4,7 +4,7 @@
   src/Humans.Web/Models/PublicPopoverViewModel.cs
   src/Humans.UI/ViewComponents/HumanViewComponent.cs
   src/Humans.UI/Views/Shared/Components/Human/Default.cshtml
-  src/Humans.Web/Views/Team/Details.cshtml
+  src/Sections/Humans.Teams/**
   src/Humans.Web/wwwroot/js/site.js
 -->
 <!-- freshness:flag-on-change
@@ -75,5 +75,5 @@ No schema changes. The public-coordinator gate filters the existing `ITeamServic
 ## Related
 
 - [`docs/sections/Profiles.md`](../../sections/Profiles.md) — Profile section invariants.
-- [`docs/sections/Teams.md`](../../sections/Teams.md) — `IsPublicPage` and `ShowCoordinatorsOnPublicPage` flags.
+- [`src/Sections/Humans.Teams/Docs/Teams.md`](../../../src/Sections/Humans.Teams/Docs/Teams.md) — `IsPublicPage` and `ShowCoordinatorsOnPublicPage` flags.
 - [`docs/features/profiles/profile-pictures-birthdays.md`](profile-pictures-birthdays.md) — `[AllowAnonymous] /Profile/{id}/Picture` pattern this endpoint mirrors.
