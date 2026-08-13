@@ -7,6 +7,8 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
     <PackageReference Include="Testcontainers.PostgreSql" />
+    <!-- Vulnerable-transitive override, see Directory.Packages.props -->
+    <PackageReference Include="SSH.NET" />
     <PackageReference Include="AngleSharp" />
   </ItemGroup>
 
