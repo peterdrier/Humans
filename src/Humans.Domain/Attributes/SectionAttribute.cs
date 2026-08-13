@@ -9,7 +9,7 @@ namespace Humans.Domain.Attributes;
 /// </summary>
 /// <remarks>
 /// Repository interfaces live flat under
-/// <c>Humans.Application.Interfaces.Repositories</c> (enforced by HUM0013),
+/// <c>Humans.Application.Interfaces.Repositories</c>,
 /// so the interface namespace carries no section information. The
 /// implementation's namespace is the source of truth; this attribute mirrors
 /// that section onto the interface so the Application-layer analyzer can read

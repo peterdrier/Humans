@@ -17,7 +17,7 @@ namespace Humans.Analyzers;
 /// Runs in <c>Humans.Application</c> and in every section project. The repository's section is
 /// declared with <see cref="Humans.Domain.Attributes.SectionAttribute"/>
 /// because repo interfaces sit in the flat
-/// <c>Humans.Application.Interfaces.Repositories</c> namespace (HUM0013) and
+/// <c>Humans.Application.Interfaces.Repositories</c> namespace and
 /// the implementations in <c>Humans.Infrastructure</c> are not visible to
 /// this compilation.
 /// </remarks>
@@ -110,10 +110,10 @@ public sealed class CrossSectionRepositoryInjectionAnalyzer : DiagnosticAnalyzer
         if (!ImplementsMarker(type, applicationServiceMarker))
             return;
 
-        // If the service's own section is undetermined, HUM0012 (services must be
-        // declared under Humans.Application.Services.<Section>) is already the
-        // right diagnostic — don't pile on with a HUM0018 here. Just exit; HUM0017
-        // cannot be applied to this class until HUM0012 is satisfied.
+        // If the service's own section is undetermined (not declared under
+        // Humans.Application.Services.<Section> or a section assembly's [Section]
+        // marker), there's nothing to compare the dependency's section against —
+        // don't pile on with a HUM0018 here. Just exit.
         var serviceSection = ExtractServiceSection(type, sectionAttr);
         if (serviceSection is null)
             return;

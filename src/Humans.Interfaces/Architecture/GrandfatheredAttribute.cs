@@ -43,7 +43,7 @@ namespace Humans.Application.Architecture;
 /// (repository, DbSet) granularity — one attribute per shared table). It is the
 /// DbSet property name, e.g. <c>scope: "Users"</c>. <see cref="AttributeUsageAttribute.AllowMultiple"/>
 /// lets a repository carry one entry per shared table. Rules that do not use a
-/// scope (HUM0009, HUM0024, …) leave it <c>null</c> and ignore it.
+/// scope (HUM0009, HUM0031, …) leave it <c>null</c> and ignore it.
 /// </para>
 /// </remarks>
 [AttributeUsage(AttributeTargets.Class | AttributeTargets.Interface | AttributeTargets.Method, AllowMultiple = true, Inherited = false)]

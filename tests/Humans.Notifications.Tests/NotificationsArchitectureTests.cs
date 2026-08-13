@@ -31,7 +31,6 @@ public class NotificationsArchitectureTests
     // The DbContext-constructor-parameter check is covered by the generic
     // ApplicationServicesTakeNoDbContextRule for every Application service.
     // Repository-takes check covered by IRepositoryImplementationsAreSealedRule.
-    // Service-namespace check covered by HUM0012.
 
     [HumansFact]
     public void NotificationService_TakesRecipientResolver_NotDbContext()

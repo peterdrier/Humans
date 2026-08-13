@@ -66,17 +66,4 @@ internal static class AssemblyScope
     public static bool IsSection(IAssemblySymbol assembly) =>
         assembly.GetAttributes().Any(a =>
             string.Equals(a.AttributeClass?.Name, SectionAttributeName, System.StringComparison.Ordinal));
-
-    /// <summary>
-    /// True for a section's paired leaf contracts project (design-rules.md: "Several
-    /// publish a cross-section read surface from a paired
-    /// <c>Humans.&lt;Section&gt;.Contracts</c> project", e.g.
-    /// <c>Humans.Email.Contracts</c>). These sit below <c>Humans.Application</c> in the
-    /// dependency graph and deliberately do not carry <c>[assembly: Section("…")]</c>
-    /// themselves — that would describe them as the section rather than its shared
-    /// contract layer — so <see cref="IsSection"/> alone misses the I*ServiceRead
-    /// interfaces that live here.
-    /// </summary>
-    public static bool IsSectionContracts(IAssemblySymbol assembly) =>
-        assembly.Name.EndsWith(".Contracts", System.StringComparison.Ordinal);
 }
