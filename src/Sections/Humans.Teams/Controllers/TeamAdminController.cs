@@ -1,0 +1,1250 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Humans.Teams.Services;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Localization;
+using Humans.Application;
+using Humans.Application.DTOs;
+using Humans.Tickets.Contracts;
+using Humans.Teams.Authorization;
+using Humans.Domain.Entities;
+using Humans.Teams.Domain;
+using Humans.Domain.Enums;
+using Humans.UI.Extensions;
+using Humans.UI.Models;
+using Humans.Teams.Models;
+using Humans.Application.Interfaces.GoogleIntegration;
+using Humans.Teams.Contracts;
+using Humans.Application.Interfaces.Users;
+using Humans.Application.Services.Profiles;
+using Humans.UI.Authorization;
+using NodaTime.Text;
+
+namespace Humans.Teams.Controllers;
+
+[Authorize]
+[Route("Teams/{slug}")]
+internal sealed class TeamAdminController(
+    ITeamManagementService teamService,
+    ITeamResourceService teamResourceService,
+    IGoogleSyncService googleSyncService,
+    IUserServiceRead userService,
+    IEmailProvisioningService emailProvisioningService,
+    IAuthorizationService authorizationService,
+    ILogger<TeamAdminController> logger,
+    IStringLocalizer<TeamsResource> localizer,
+    ITicketServiceRead tickets)
+    : HumansTeamControllerBase(userService, teamService, authorizationService)
+{
+    private readonly ITeamManagementService _teamService = teamService;
+    private readonly IUserServiceRead _userService = userService;
+    private readonly ITicketServiceRead _tickets = tickets;
+
+    [HttpPost("Requests/{requestId}/Approve")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ApproveRequest(string slug, Guid requestId, ApproveRejectRequestModel model)
+    {
+        var (teamError, user, team) = await ResolveTeamManagementAsync(slug);
+        if (teamError is not null)
+        {
+            return teamError;
+        }
+
+        try
+        {
+            await _teamService.ApproveJoinRequestAsync(requestId, user.Id, model.Notes);
+            SetSuccess(localizer["TeamAdmin_RequestApproved"].Value);
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)
+        {
+            logger.LogWarning(ex, "Failed to approve join request {RequestId} for team {TeamId} by user {UserId}", requestId, team.Id, user.Id);
+            SetError(ex.Message);
+        }
+
+        return RedirectToAction(nameof(Members), new { slug });
+    }
+
+    [HttpPost("Requests/{requestId}/Reject")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RejectRequest(string slug, Guid requestId, ApproveRejectRequestModel model)
+    {
+        var (teamError, user, team) = await ResolveTeamManagementAsync(slug);
+        if (teamError is not null)
+        {
+            return teamError;
+        }
+
+        if (string.IsNullOrWhiteSpace(model.Notes))
+        {
+            SetError(localizer["TeamAdmin_ProvideRejectionReason"].Value);
+            return RedirectToAction(nameof(Members), new { slug });
+        }
+
+        try
+        {
+            await _teamService.RejectJoinRequestAsync(requestId, user.Id, model.Notes);
+            SetSuccess(localizer["TeamAdmin_RequestRejected"].Value);
+        }
+        catch (InvalidOperationException ex)
+        {
+            logger.LogWarning(ex, "Failed to reject join request {RequestId} for team {TeamId} by user {UserId}", requestId, team.Id, user.Id);
+            SetError(ex.Message);
+        }
+
+        return RedirectToAction(nameof(Members), new { slug });
+    }
+
+    [HttpGet("Members")]
+    public async Task<IActionResult> Members(string slug, int page = 1)
+    {
+        var pageSize = 20;
+        var (teamError, user, team) = await ResolveTeamManagementAsync(slug);
+        if (teamError is not null)
+        {
+            return teamError;
+        }
+
+        var allMembers = team.Members
+            .OrderBy(m => m.Role)
+            .ThenBy(m => m.DisplayName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        var totalCount = allMembers.Count;
+
+        var pagedMembers = allMembers
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToList();
+
+        var members = pagedMembers
+            .Select(m => new TeamMemberViewModel
+            {
+                UserId = m.UserId,
+                Email = m.Email ?? "",
+                Role = m.Role,
+                JoinedAt = m.JoinedAt.ToDateTimeUtc(),
+                IsCoordinator = m.Role == TeamMemberRole.Coordinator
+            }).ToList();
+
+        var pendingRequests = await _teamService.GetPendingRequestsForTeamAsync(team.Id);
+        var pendingRequestViewModels = pendingRequests
+            .Select(r => new TeamJoinRequestViewModel
+            {
+                Id = r.Id,
+                TeamId = r.TeamId,
+                TeamName = team.Name,
+                UserId = r.UserId,
+                UserEmail = r.UserEmail ?? "",
+                Status = r.Status,
+                Message = r.Message,
+                RequestedAt = r.RequestedAt.ToDateTimeUtc()
+            }).ToList();
+
+        var allTeamResources = await teamResourceService.GetTeamResourcesAsync(team.Id);
+        var teamResources = allTeamResources.Where(r => r.IsActive).OrderBy(r => r.ResourceType).ThenBy(r => r.Name, StringComparer.Ordinal).ToList();
+
+        var parentDepartmentResources = new List<GoogleResourceSnapshot>();
+        string? parentDepartmentName = null;
+        string? parentDepartmentSlug = null;
+        if (team.ParentTeamId is { } parentTeamId &&
+            await _teamService.GetTeamAsync(parentTeamId) is { } parentTeam)
+        {
+            parentDepartmentName = parentTeam.Name;
+            parentDepartmentSlug = parentTeam.CustomSlug ?? parentTeam.Slug;
+            var allParentResources = await teamResourceService.GetTeamResourcesAsync(parentTeam.Id);
+            parentDepartmentResources = allParentResources.Where(r => r.IsActive).OrderBy(r => r.ResourceType).ThenBy(r => r.Name, StringComparer.Ordinal).ToList();
+        }
+
+        var viewModel = new TeamMembersViewModel
+        {
+            TeamId = team.Id,
+            TeamName = team.Name,
+            TeamSlug = team.Slug,
+            IsSystemTeam = team.IsSystemTeam,
+            CanManageRoles = !team.IsSystemTeam,
+            CanProvisionEmails = true,
+            Members = members,
+            AllMemberUserIds = allMembers.Select(m => m.UserId).ToList(),
+            PendingRequests = pendingRequestViewModels,
+            TotalCount = totalCount,
+            PageNumber = page,
+            PageSize = pageSize,
+            TeamResources = teamResources.Select(MapResourceAccess).ToList(),
+            ParentDepartmentResources = parentDepartmentResources.Select(MapResourceAccess).ToList(),
+            ParentDepartmentName = parentDepartmentName,
+            ParentDepartmentSlug = parentDepartmentSlug,
+            IsSensitive = team.IsSensitive,
+            ActorDisplayName = user.BurnerName
+        };
+
+        return View(viewModel);
+    }
+
+    private static ResourceAccessViewModel MapResourceAccess(GoogleResourceSnapshot r) => new()
+    {
+        Name = r.Name,
+        ResourceType = r.ResourceType switch
+        {
+            GoogleResourceType.DriveFolder => "Drive Folder",
+            GoogleResourceType.SharedDrive => "Shared Drive",
+            GoogleResourceType.DriveFile => "Drive File",
+            GoogleResourceType.Group => "Google Group",
+            _ => r.ResourceType.ToString()
+        },
+        PermissionLevel = r.ResourceType == GoogleResourceType.Group
+            ? null
+            : r.DrivePermissionLevel != DrivePermissionLevel.None
+                ? r.DrivePermissionLevel.ToString()
+                : null,
+        Url = r.Url,
+        IconClass = r.ResourceType switch
+        {
+            GoogleResourceType.DriveFolder => "fa-solid fa-folder",
+            GoogleResourceType.SharedDrive => "fa-solid fa-hard-drive",
+            GoogleResourceType.DriveFile => "fa-solid fa-file",
+            GoogleResourceType.Group => "fa-solid fa-users",
+            _ => "fa-solid fa-link"
+        }
+    };
+
+    /// <summary>
+    /// Board/Admin-only roster: every member's burner name next to their legal name.
+    /// <c>TeamAuthorizationHandler</c> already passes Board and Admin for
+    /// <c>ManageCoordinators</c>, so the policy narrows <see cref="ResolveTeamManagementAsync"/>
+    /// (which also serves coordinators) down to exactly Board-or-Admin.
+    /// </summary>
+    [HttpGet("Roster")]
+    [Authorize(Policy = PolicyNames.BoardOrAdmin)]
+    public async Task<IActionResult> Roster(string slug, CancellationToken ct)
+    {
+        var (teamError, _, team) = await ResolveTeamManagementAsync(slug);
+        if (teamError is not null)
+        {
+            return teamError;
+        }
+
+        var members = team.Members;
+        var infos = await _userService.GetUserInfosAsync(
+            members.Select(m => m.UserId).ToList(), ct);
+
+        // Display sort at controller (memory/architecture/display-sort-in-controllers.md);
+        // the table's headers re-sort client-side from here.
+        var rows = members
+            .Select(m => new TeamRosterRowViewModel(
+                m.UserId,
+                infos.GetValueOrDefault(m.UserId)?.Profile?.FullName ?? string.Empty,
+                m.JoinedAt))
+            .OrderBy(r => r.LegalName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        return View(new TeamRosterViewModel(team.Name, team.Slug, rows));
+    }
+
+    [HttpPost("Members/{userId}/Remove")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RemoveMember(string slug, Guid userId)
+    {
+        var (teamError, user, team) = await ResolveTeamManagementAsync(slug);
+        if (teamError is not null)
+        {
+            return teamError;
+        }
+
+        try
+        {
+            await _teamService.RemoveMemberAsync(team.Id, userId, user.Id);
+            SetSuccess(localizer["TeamAdmin_MemberRemoved"].Value);
+        }
+        catch (InvalidOperationException ex)
+        {
+            logger.LogWarning(ex, "Failed to remove member {MemberUserId} from team {TeamId} by user {UserId}", userId, team.Id, user.Id);
+            SetError(ex.Message);
+        }
+
+        return RedirectToAction(nameof(Members), new { slug });
+    }
+
+    [HttpPost("Members/Add")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AddMember(string slug, AddMemberModel model)
+    {
+        var (teamError, user, team) = await ResolveTeamManagementAsync(slug);
+        if (teamError is not null)
+        {
+            return teamError;
+        }
+
+        // Reject empty userId at controller — google_sync_outbox FK rejects Guid.Empty.
+        if (model.UserId == Guid.Empty)
+        {
+            SetError("Select a user to add.");
+            return RedirectToAction(nameof(Members), new { slug });
+        }
+
+        try
+        {
+            await _teamService.AddMemberToTeamAsync(team.Id, model.UserId, user.Id);
+            SetSuccess(localizer["TeamAdmin_MemberAdded"].Value);
+        }
+        catch (InvalidOperationException ex)
+        {
+            logger.LogWarning(ex, "Failed to add member {MemberUserId} to team {TeamId} by user {UserId}", model.UserId, team.Id, user.Id);
+            SetError(ex.Message);
+        }
+
+        return RedirectToAction(nameof(Members), new { slug });
+    }
+
+    [HttpPost("Members/{userId}/ProvisionEmail")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ProvisionEmail(string slug, Guid userId, string emailPrefix)
+    {
+        var (teamError, user, team) = await ResolveTeamManagementAsync(slug);
+        if (teamError is not null)
+        {
+            return teamError;
+        }
+
+        if (string.IsNullOrWhiteSpace(emailPrefix))
+        {
+            SetError("Email prefix is required.");
+            return RedirectToAction(nameof(Members), new { slug });
+        }
+
+        var teamInfo = await _teamService.GetTeamAsync(team.Id);
+        if (teamInfo is null || teamInfo.Members.All(m => m.UserId != userId))
+        {
+            SetError("That human is not a member of this team.");
+            return RedirectToAction(nameof(Members), new { slug });
+        }
+
+        var result = await emailProvisioningService.ProvisionNobodiesEmailAsync(
+            userId, emailPrefix, user.Id);
+
+        if (!result.Success)
+        {
+            SetError(result.ErrorMessage ?? "Provisioning failed.");
+        }
+        else
+        {
+
+            if (result.RecoveryEmail is not null)
+            {
+                SetSuccess($"Account {result.FullEmail} provisioned and linked. Credentials sent to {result.RecoveryEmail}.");
+            }
+            else
+            {
+                SetSuccess($"Account {result.FullEmail} provisioned and linked. No recovery email found — credentials not sent.");
+            }
+        }
+
+        return RedirectToAction(nameof(Members), new { slug });
+    }
+
+    [HttpGet("Members/Search")]
+    public async Task<IActionResult> SearchUsers(string slug, string q)
+    {
+        var (teamError, _, team) = await ResolveTeamManagementAsync(slug);
+        if (teamError is not null)
+        {
+            return teamError;
+        }
+
+        if (!q.HasSearchTerm())
+        {
+            return Json(Array.Empty<HumanLookupSearchResult>());
+        }
+
+        // Name-only — team admins are not global admins, so no contact-data search.
+        // Uncapped + relevance-ranked: a hard cap returned an arbitrary subset (the target could be
+        // missing) alphabetized; now the best name match leads the scrollable picker.
+        var results = await _userService.SearchUsersAsync(
+            q, PersonSearchFields.Name, limit: int.MaxValue);
+
+        var teamInfo = await _teamService.GetTeamAsync(team.Id);
+        var existingMemberIds = teamInfo?.Members.Select(m => m.UserId).ToHashSet() ?? [];
+
+        // Display sort at controller (memory/architecture/display-sort-in-controllers.md).
+        var filtered = results
+            .Where(r => !existingMemberIds.Contains(r.UserId))
+            .OrderByRelevance()
+            .Select(r => new HumanLookupSearchResult(r.UserId, r.BurnerName))
+            .ToList();
+
+        return Json(filtered);
+    }
+
+    [HttpGet("Resources")]
+    public async Task<IActionResult> Resources(string slug)
+    {
+        var (currentUserNotFound, user) = await RequireCurrentUserAsync();
+        if (currentUserNotFound is not null)
+        {
+            return currentUserNotFound;
+        }
+
+        var team = await _teamService.GetTeamEntityBySlugAsync(slug);
+        if (team is null)
+        {
+            return NotFound();
+        }
+
+        if (!await CanManageResourcesAsync(team, user.Id))
+        {
+            return Forbid();
+        }
+
+        var resources = await teamResourceService.GetTeamResourcesAsync(team.Id);
+        var serviceAccountEmail = await teamResourceService.GetServiceAccountEmailAsync();
+
+        var viewModel = new TeamResourcesViewModel
+        {
+            TeamId = team.Id,
+            TeamName = team.Name,
+            TeamSlug = team.Slug,
+            ServiceAccountEmail = serviceAccountEmail,
+            Resources = resources.Select(r => new GoogleResourceViewModel
+            {
+                Id = r.Id,
+                ResourceType = r.ResourceType switch
+                {
+                    GoogleResourceType.DriveFolder => "Drive Folder",
+                    GoogleResourceType.SharedDrive => "Shared Drive",
+                    GoogleResourceType.Group => "Google Group",
+                    GoogleResourceType.DriveFile => "Drive File",
+                    _ => r.ResourceType.ToString()
+                },
+                Name = r.Name,
+                Url = r.Url,
+                GoogleId = r.GoogleId,
+                ProvisionedAt = r.ProvisionedAt.ToDateTimeUtc(),
+                LastSyncedAt = r.LastSyncedAt?.ToDateTimeUtc(),
+                IsActive = r.IsActive,
+                ErrorMessage = r.ErrorMessage,
+                DrivePermissionLevel = r.DrivePermissionLevel,
+                IsDriveResource = r.ResourceType is GoogleResourceType.DriveFolder or GoogleResourceType.DriveFile or GoogleResourceType.SharedDrive,
+                RestrictInheritedAccess = r.RestrictInheritedAccess,
+                IsDriveFolder = r.ResourceType is GoogleResourceType.DriveFolder
+            }).ToList()
+        };
+
+        return View(viewModel);
+    }
+
+    [HttpPost("Resources/LinkDrive")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> LinkDriveResource(string slug, LinkDriveResourceModel model)
+    {
+        var (currentUserNotFound, user) = await RequireCurrentUserAsync();
+        if (currentUserNotFound is not null)
+        {
+            return currentUserNotFound;
+        }
+
+        var team = await _teamService.GetTeamEntityBySlugAsync(slug);
+        if (team is null)
+        {
+            return NotFound();
+        }
+
+        if (!await CanManageResourcesAsync(team, user.Id))
+        {
+            return Forbid();
+        }
+
+        if (!ModelState.IsValid)
+        {
+            SetError(localizer["TeamAdmin_InvalidDriveUrl"].Value);
+            return RedirectToAction(nameof(Resources), new { slug });
+        }
+
+        var result = await teamResourceService.LinkDriveResourceAsync(team.Id, model.ResourceUrl, model.PermissionLevel);
+        if (result.Success)
+            SetSuccess($"Drive resource '{result.Resource!.Name}' linked successfully.");
+        else
+            SetError(BuildResourceLinkError(result, "Failed to link Drive resource."));
+
+        return RedirectToAction(nameof(Resources), new { slug });
+    }
+
+    [HttpPost("Resources/LinkGroup")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> LinkGroup(string slug, LinkGroupModel model)
+    {
+        var (currentUserNotFound, user) = await RequireCurrentUserAsync();
+        if (currentUserNotFound is not null)
+        {
+            return currentUserNotFound;
+        }
+
+        var team = await _teamService.GetTeamEntityBySlugAsync(slug);
+        if (team is null)
+        {
+            return NotFound();
+        }
+
+        if (!await CanManageResourcesAsync(team, user.Id))
+        {
+            return Forbid();
+        }
+
+        if (!ModelState.IsValid)
+        {
+            SetError(localizer["TeamAdmin_InvalidGroupEmail"].Value);
+            return RedirectToAction(nameof(Resources), new { slug });
+        }
+
+        var result = await teamResourceService.LinkGroupAsync(team.Id, model.GroupEmail);
+        if (result.Success)
+            SetSuccess(string.Format(localizer["TeamAdmin_GroupLinked"].Value, result.Resource!.Name));
+        else
+            SetError(BuildResourceLinkError(result, localizer["TeamAdmin_GroupLinkFailed"].Value));
+
+        return RedirectToAction(nameof(Resources), new { slug });
+    }
+
+    [HttpPost("Resources/{resourceId}/PermissionLevel")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UpdatePermissionLevel(string slug, Guid resourceId, DrivePermissionLevel level)
+    {
+        var (currentUserNotFound, user) = await RequireCurrentUserAsync();
+        if (currentUserNotFound is not null)
+        {
+            return currentUserNotFound;
+        }
+
+        var team = await _teamService.GetTeamEntityBySlugAsync(slug);
+        if (team is null)
+        {
+            return NotFound();
+        }
+
+        if (!await CanManageResourcesAsync(team, user.Id))
+        {
+            return Forbid();
+        }
+
+        if (level == DrivePermissionLevel.None)
+        {
+            SetError("Invalid permission level.");
+            return RedirectToAction(nameof(Resources), new { slug });
+        }
+
+        await teamResourceService.UpdatePermissionLevelAsync(resourceId, level);
+        SetSuccess($"Permission level updated to {level}.");
+
+        return RedirectToAction(nameof(Resources), new { slug });
+    }
+
+    [HttpPost("Resources/{resourceId}/RestrictInheritedAccess")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ToggleRestrictInheritedAccess(string slug, Guid resourceId, bool restrict)
+    {
+        var (currentUserNotFound, user) = await RequireCurrentUserAsync();
+        if (currentUserNotFound is not null)
+        {
+            return currentUserNotFound;
+        }
+
+        var team = await _teamService.GetTeamEntityBySlugAsync(slug);
+        if (team is null)
+        {
+            return NotFound();
+        }
+
+        if (!await CanManageResourcesAsync(team, user.Id))
+        {
+            return Forbid();
+        }
+
+        var result = await teamResourceService.SetRestrictInheritedAccessWithResultAsync(
+            resourceId,
+            restrict,
+            CancellationToken.None);
+        if (result.Succeeded)
+        {
+            var label = restrict ? "enabled" : "disabled";
+            SetSuccess($"Inherited access restriction {label}.");
+        }
+        else
+        {
+            SetError(result.ErrorMessage ?? "Failed to update inherited access setting.");
+        }
+
+        return RedirectToAction(nameof(Resources), new { slug });
+    }
+
+    [HttpPost("Resources/{resourceId}/Unlink")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UnlinkResource(string slug, Guid resourceId)
+    {
+        var (currentUserNotFound, user) = await RequireCurrentUserAsync();
+        if (currentUserNotFound is not null)
+        {
+            return currentUserNotFound;
+        }
+
+        var team = await _teamService.GetTeamEntityBySlugAsync(slug);
+        if (team is null)
+        {
+            return NotFound();
+        }
+
+        if (!await CanManageResourcesAsync(team, user.Id))
+        {
+            return Forbid();
+        }
+
+        await teamResourceService.UnlinkResourceAsync(resourceId);
+        SetSuccess(localizer["TeamAdmin_ResourceUnlinked"].Value);
+
+        return RedirectToAction(nameof(Resources), new { slug });
+    }
+
+    [HttpPost("Resources/{resourceId}/Sync")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SyncResource(string slug, Guid resourceId)
+    {
+        var (currentUserNotFound, user) = await RequireCurrentUserAsync();
+        if (currentUserNotFound is not null)
+        {
+            return currentUserNotFound;
+        }
+
+        var team = await _teamService.GetTeamEntityBySlugAsync(slug);
+        if (team is null)
+        {
+            return NotFound();
+        }
+
+        if (!await CanManageResourcesAsync(team, user.Id))
+        {
+            return Forbid();
+        }
+
+        try
+        {
+            // Deliberately not passing HttpContext.RequestAborted: a team admin
+            // navigating away mid-reconcile would abort partway through applying
+            // Drive permissions, leaving the resource half-synced
+            // (nobodies-collective/Humans#950).
+            var diff = await googleSyncService.SyncSingleResourceAsync(
+                resourceId,
+                SyncAction.Execute,
+                CancellationToken.None);
+            if (diff.ErrorMessage is not null)
+                SetError(string.Format(localizer["TeamAdmin_ResourceSyncFailed"].Value, diff.ErrorMessage));
+            else
+                SetSuccess(localizer["TeamAdmin_ResourceSynced"].Value);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error syncing resource {ResourceId}", resourceId);
+            SetError(string.Format(localizer["TeamAdmin_ResourceSyncFailed"].Value, ex.Message));
+        }
+
+        return RedirectToAction(nameof(Resources), new { slug });
+    }
+
+    private string BuildResourceLinkError(LinkResourceResult result, string defaultMessage)
+    {
+        var errorMessage = result.ErrorMessage ?? defaultMessage;
+        if (result.ServiceAccountEmail is not null)
+        {
+            errorMessage += $" {string.Format(localizer["TeamAdmin_ServiceAccount"].Value, result.ServiceAccountEmail)}";
+        }
+
+        return errorMessage;
+    }
+
+    [HttpGet("Roles")]
+    public async Task<IActionResult> Roles(string slug)
+    {
+        var (teamError, _, team) = await ResolveTeamManagementAsync(slug);
+        if (teamError is not null)
+        {
+            return teamError;
+        }
+
+        var definitions = await _teamService.GetRoleDefinitionsAsync(team.Id);
+        var teamInfo = await _teamService.GetTeamAsync(team.Id);
+        var members = teamInfo?.Members
+            .OrderBy(m => m.Role)
+            .ThenBy(m => m.DisplayName, StringComparer.OrdinalIgnoreCase)
+            .ToList() ?? [];
+
+        var memberUserIds = members.Select(m => m.UserId).ToList();
+        var memberInfos = await _userService.GetUserInfosAsync(memberUserIds);
+
+        var canToggleManagement = RoleChecks.IsTeamsAdmin(User) || RoleChecks.IsAdmin(User);
+
+        var teamMembers = members.Select(m => new TeamMemberViewModel
+        {
+            UserId = m.UserId,
+            Email = m.Email ?? "",
+            Role = m.Role,
+            JoinedAt = m.JoinedAt.ToDateTimeUtc(),
+            IsCoordinator = m.Role == TeamMemberRole.Coordinator
+        }).ToList();
+
+        var memberOptions = members
+            .Select(m => new TeamMemberDropdownItem
+            {
+                UserId = m.UserId,
+                BurnerName = memberInfos.TryGetValue(m.UserId, out var info) ? info.BurnerName : string.Empty
+            })
+            .OrderBy(o => o.BurnerName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var viewModel = new RoleManagementViewModel
+        {
+            TeamId = team.Id,
+            TeamName = team.Name,
+            Slug = team.Slug,
+            IsSystemTeam = team.IsSystemTeam,
+            IsChildTeam = team.ParentTeamId.HasValue,
+            CanManage = true,
+            CanToggleManagement = canToggleManagement,
+            RoleDefinitions = definitions.Select(d => TeamRoleDefinitionViewModel.FromSnapshot(d, teamMembers)).ToList(),
+            TeamMembers = teamMembers,
+            MemberOptions = memberOptions
+        };
+
+        return View(viewModel);
+    }
+
+    [HttpPost("Roles/Create")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CreateRole(string slug, CreateRoleDefinitionModel model)
+    {
+        var (teamError, user, team) = await ResolveTeamManagementAsync(slug);
+        if (teamError is not null)
+        {
+            return teamError;
+        }
+
+        try
+        {
+            var priorities = model.Priorities
+                .Select(p => Enum.Parse<SlotPriority>(p, ignoreCase: true))
+                .ToList();
+
+            await _teamService.CreateRoleDefinitionAsync(
+                team.Id, model.Name, model.Description, model.SlotCount,
+                priorities, model.SortOrder, model.Period, user.Id, model.IsPublic,
+                model.EstimatedHours);
+
+            SetSuccess($"Role '{model.Name}' created.");
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)
+        {
+            logger.LogWarning(ex, "Failed to create role '{RoleName}' for team {TeamId} by user {UserId}", model.Name, team.Id, user.Id);
+            SetError(ex.Message);
+        }
+
+        return RedirectToAction(nameof(Roles), new { slug });
+    }
+
+    [HttpPost("Roles/{roleId}/Edit")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> EditRole(string slug, Guid roleId, EditRoleDefinitionModel model)
+    {
+        var isAjax = Request.Headers.XRequestedWith == "XMLHttpRequest";
+
+        var (teamError, user, team) = await ResolveTeamManagementAsync(slug);
+        if (teamError is not null)
+        {
+            return isAjax ? Unauthorized() : teamError;
+        }
+
+        try
+        {
+            var canToggleManagement = RoleChecks.IsTeamsAdmin(User) || RoleChecks.IsAdmin(User);
+            var priorities = model.Priorities
+                .Select(p => Enum.Parse<SlotPriority>(p, ignoreCase: true))
+                .ToList();
+
+            await _teamService.UpdateRoleDefinitionAsync(
+                roleId, model.Name, model.Description, model.SlotCount,
+                priorities, model.SortOrder, model.IsManagement, model.Period, user.Id,
+                model.IsPublic, canToggleManagement, model.EstimatedHours);
+
+            if (isAjax)
+                return Json(new { success = true, message = $"Role '{model.Name}' updated." });
+
+            SetSuccess($"Role '{model.Name}' updated.");
+            return RedirectToAction(nameof(Roles), new { slug });
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)
+        {
+            logger.LogWarning(ex, "Failed to update role {RoleId} for team {TeamId} by user {UserId}", roleId, team.Id, user.Id);
+            if (isAjax)
+                return Json(new { success = false, message = ex.Message });
+
+            SetError(ex.Message);
+            return RedirectToAction(nameof(Roles), new { slug });
+        }
+    }
+
+    [HttpPost("Roles/{roleId}/Delete")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeleteRole(string slug, Guid roleId)
+    {
+        var (teamError, user, team) = await ResolveTeamManagementAsync(slug);
+        if (teamError is not null)
+        {
+            return teamError;
+        }
+
+        try
+        {
+            await _teamService.DeleteRoleDefinitionAsync(roleId, user.Id);
+            SetSuccess("Role deleted.");
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)
+        {
+            logger.LogWarning(ex, "Failed to delete role {RoleId} for team {TeamId} by user {UserId}", roleId, team.Id, user.Id);
+            SetError(ex.Message);
+        }
+
+        return RedirectToAction(nameof(Roles), new { slug });
+    }
+
+    [HttpPost("Roles/{roleId}/ToggleManagement")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ToggleManagement(string slug, Guid roleId)
+    {
+        var (teamError, user, team) = await ResolveTeamManagementAsync(slug);
+        if (teamError is not null)
+        {
+            return teamError;
+        }
+
+        if (!RoleChecks.IsTeamsAdmin(User) && !RoleChecks.IsAdmin(User))
+        {
+            return Forbid();
+        }
+
+        try
+        {
+            var result = await _teamService.ToggleRoleIsManagementAsync(roleId, user.Id);
+            SetSuccess(result.IsManagement
+                ? $"'{result.RoleName}' is now the management role. Members assigned to it will become Coordinators."
+                : $"'{result.RoleName}' is no longer the management role.");
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)
+        {
+            logger.LogWarning(ex, "Failed to toggle management flag for role {RoleId} in team {TeamId} by user {UserId}", roleId, team.Id, user.Id);
+            SetError(ex.Message);
+        }
+
+        return RedirectToAction(nameof(Roles), new { slug });
+    }
+
+    [HttpPost("Roles/{roleId}/Assign")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AssignRole(string slug, Guid roleId, AssignRoleModel model)
+    {
+        var (teamError, user, team) = await ResolveTeamManagementAsync(slug);
+        if (teamError is not null)
+        {
+            return teamError;
+        }
+
+        try
+        {
+            await _teamService.AssignToRoleAsync(roleId, model.UserId, user.Id);
+            SetSuccess("Member assigned to role.");
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)
+        {
+            logger.LogWarning(ex, "Failed to assign member {MemberUserId} to role {RoleId} in team {TeamId} by user {UserId}", model.UserId, roleId, team.Id, user.Id);
+            SetError(ex.Message);
+        }
+
+        return RedirectToAction(nameof(Roles), new { slug });
+    }
+
+    [HttpPost("Roles/{roleId}/Unassign/{memberId}")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UnassignRole(string slug, Guid roleId, Guid memberId)
+    {
+        var (teamError, user, team) = await ResolveTeamManagementAsync(slug);
+        if (teamError is not null)
+        {
+            return teamError;
+        }
+
+        try
+        {
+            await _teamService.UnassignFromRoleAsync(roleId, memberId, user.Id);
+            SetSuccess("Member unassigned from role.");
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)
+        {
+            logger.LogWarning(ex, "Failed to unassign member {MemberId} from role {RoleId} in team {TeamId} by user {UserId}", memberId, roleId, team.Id, user.Id);
+            SetError(ex.Message);
+        }
+
+        return RedirectToAction(nameof(Roles), new { slug });
+    }
+
+    [HttpGet("EditPage")]
+    public async Task<IActionResult> EditPage(string slug)
+    {
+        var (teamError, _, team) = await ResolveTeamManagementAsync(slug);
+        if (teamError is not null)
+            return teamError;
+
+        var teamEntity = await _teamService.GetTeamByIdAsync(team.Id);
+        if (teamEntity is null)
+            return NotFound();
+
+        var canBePublic = !teamEntity.IsSystemTeam && !teamEntity.ParentTeamId.HasValue;
+
+        var ctas = (teamEntity.CallsToAction ?? [])
+            .Select(c => new CallToActionViewModel { Text = c.Text, Url = c.Url, Style = c.Style })
+            .ToList();
+        while (ctas.Count < 3)
+            ctas.Add(new CallToActionViewModel { Style = ctas.Count == 0 ? CallToActionStyle.Primary : CallToActionStyle.Secondary });
+
+        var viewModel = new EditTeamPageViewModel
+        {
+            TeamId = teamEntity.Id,
+            Slug = teamEntity.Slug,
+            TeamName = teamEntity.DisplayName,
+            IsPublicPage = teamEntity.IsPublicPage,
+            ShowCoordinatorsOnPublicPage = teamEntity.ShowCoordinatorsOnPublicPage,
+            CanBePublic = canBePublic,
+            PageContent = teamEntity.PageContent,
+            CallsToAction = ctas
+        };
+
+        return View(viewModel);
+    }
+
+    [HttpPost("EditPage")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> EditPage(string slug, EditTeamPageViewModel model)
+    {
+        var (teamError, user, team) = await ResolveTeamManagementAsync(slug);
+        if (teamError is not null)
+            return teamError;
+
+        if (!ModelState.IsValid)
+        {
+            var teamEntity = await _teamService.GetTeamByIdAsync(team.Id);
+            if (teamEntity is null)
+                return NotFound();
+            PopulateEditTeamPageModel(model, teamEntity);
+            return View(model);
+        }
+
+        var result = await _teamService.UpdateTeamPageContentAsync(
+            team.Id,
+            model.PageContent,
+            model.CallsToAction
+                .Select(c => new TeamPageCallToActionInput(c.Text, c.Url, c.Style))
+                .ToList(),
+            model.IsPublicPage,
+            model.ShowCoordinatorsOnPublicPage,
+            user.Id);
+
+        if (result.Succeeded)
+        {
+            SetSuccess(localizer["EditTeamPage_Saved"].Value);
+            return RedirectToAction(nameof(TeamController.Details), "Team", new { slug });
+        }
+
+        ModelState.AddModelError("", result.ErrorMessage ?? "Failed to update team page.");
+        var teamEntityAfterFailure = await _teamService.GetTeamByIdAsync(team.Id);
+        if (teamEntityAfterFailure is null)
+            return NotFound();
+        PopulateEditTeamPageModel(model, teamEntityAfterFailure);
+        return View(model);
+    }
+
+    [HttpGet("EarlyEntry")]
+    public async Task<IActionResult> EarlyEntry(string slug, CancellationToken ct)
+    {
+        var (teamError, _, team) = await ResolveEarlyEntryManagementAsync(slug);
+        if (teamError is not null)
+        {
+            return teamError;
+        }
+
+        if (!team.EarlyEntryEnabled)
+        {
+            return NotFound();
+        }
+
+        var vm = await BuildEarlyEntryPageAsync(team, ct);
+        return View(vm);
+    }
+
+    [HttpPost("EarlyEntry/Add")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AddEarlyEntry(string slug, AddTeamEarlyEntryInput input, CancellationToken ct)
+    {
+        var (teamError, user, team) = await ResolveEarlyEntryManagementAsync(slug);
+        if (teamError is not null)
+        {
+            return teamError;
+        }
+
+        if (!team.EarlyEntryEnabled)
+        {
+            return NotFound();
+        }
+
+        var parsed = LocalDatePattern.Iso.Parse(input.EntryDate);
+        if (!ModelState.IsValid || !parsed.Success)
+        {
+            if (!parsed.Success)
+                ModelState.AddModelError(nameof(input.EntryDate), "Enter a valid date (yyyy-MM-dd).");
+            return View(nameof(EarlyEntry), await BuildEarlyEntryPageAsync(team, ct));
+        }
+
+        try
+        {
+            await _teamService.AddEarlyEntryGrantAsync(
+                team.Id, input.UserId, parsed.Value, input.ProjectName, user.Id, ct);
+            SetSuccess("Early entry granted.");
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)
+        {
+            logger.LogWarning(ex, "Failed to grant early entry for team {TeamId} by user {UserId}", team.Id, user.Id);
+            SetError(ex.Message);
+        }
+
+        return RedirectToAction(nameof(EarlyEntry), new { slug });
+    }
+
+    [HttpPost("EarlyEntry/Edit")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> EditEarlyEntry(string slug, EditTeamEarlyEntryInput input, CancellationToken ct)
+    {
+        var (teamError, user, team) = await ResolveEarlyEntryManagementAsync(slug);
+        if (teamError is not null)
+        {
+            return teamError;
+        }
+
+        if (!team.EarlyEntryEnabled)
+        {
+            return NotFound();
+        }
+
+        var parsed = LocalDatePattern.Iso.Parse(input.EntryDate);
+        if (!ModelState.IsValid || !parsed.Success)
+        {
+            if (!parsed.Success)
+                ModelState.AddModelError(nameof(input.EntryDate), "Enter a valid date (yyyy-MM-dd).");
+            return View(nameof(EarlyEntry), await BuildEarlyEntryPageAsync(team, ct));
+        }
+
+        try
+        {
+            await _teamService.EditEarlyEntryGrantAsync(
+                team.Id, input.GrantId, parsed.Value, input.ProjectName, user.Id, ct);
+            SetSuccess("Early entry updated.");
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)
+        {
+            logger.LogWarning(ex, "Failed to update early entry grant {GrantId} for team {TeamId} by user {UserId}", input.GrantId, team.Id, user.Id);
+            SetError(ex.Message);
+        }
+
+        return RedirectToAction(nameof(EarlyEntry), new { slug });
+    }
+
+    [HttpPost("EarlyEntry/Remove")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RemoveEarlyEntry(string slug, Guid grantId, CancellationToken ct)
+    {
+        var (teamError, user, team) = await ResolveEarlyEntryManagementAsync(slug);
+        if (teamError is not null)
+        {
+            return teamError;
+        }
+
+        if (!team.EarlyEntryEnabled)
+        {
+            return NotFound();
+        }
+
+        try
+        {
+            await _teamService.RemoveEarlyEntryGrantAsync(team.Id, grantId, user.Id, ct);
+            SetSuccess("Early entry revoked.");
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)
+        {
+            logger.LogWarning(ex, "Failed to revoke early entry grant {GrantId} for team {TeamId} by user {UserId}", grantId, team.Id, user.Id);
+            SetError(ex.Message);
+        }
+
+        return RedirectToAction(nameof(EarlyEntry), new { slug });
+    }
+
+    [HttpGet("EarlyEntry/LookupTicket")]
+    public async Task<IActionResult> LookupTicket(string slug, string? q, CancellationToken ct)
+    {
+        var (teamError, _, team) = await ResolveEarlyEntryManagementAsync(slug);
+        if (teamError is not null)
+        {
+            return teamError;
+        }
+
+        if (!team.EarlyEntryEnabled)
+        {
+            return NotFound();
+        }
+
+        var orders = await _tickets.GetTicketOrdersAsync(ct);
+        var hit = FindCurrentEventAttendeeByBarcode(orders, q);
+
+        var matched = hit?.MatchedUserId is { } id
+            ? await _userService.GetUserInfoAsync(id, ct)
+            : null;
+
+        var detailLabel = localizer["TeamAdmin_TicketLabel", hit?.Barcode ?? string.Empty].Value;
+        return Json(BuildTicketLookupRows(hit, matched, detailLabel));
+    }
+
+    private async Task<TeamEarlyEntryPageViewModel> BuildEarlyEntryPageAsync(TeamInfo team, CancellationToken ct)
+    {
+        var grants = await _teamService.GetEarlyEntryGrantsForTeamAsync(team.Id, ct);
+        var humans = await _userService.GetUserInfosAsync(
+            grants.Select(g => g.UserId).Distinct().ToList(), ct);
+
+        // Display sort is a presentation concern (peters-hard-rules: controllers sort).
+        var rows = grants
+            .Select(g => new TeamEarlyEntryRowViewModel
+            {
+                GrantId = g.Id,
+                HumanName = humans.GetValueOrDefault(g.UserId)?.BurnerName ?? "",
+                EntryDate = g.EntryDate,
+                ProjectName = g.ProjectName,
+            })
+            .OrderBy(r => r.ProjectName, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(r => r.EntryDate)
+            .ToList();
+
+        return new TeamEarlyEntryPageViewModel
+        {
+            Slug = team.Slug,
+            TeamName = team.Name,
+            Grants = rows,
+        };
+    }
+
+    /// <summary>
+    /// Resolve a ticket barcode to its issued attendee within the current event only
+    /// (the gate-scanner admissibility scope, see <c>Humans.Scanner</c>'s ScannerController
+    /// / #916 — internal to its own assembly since the section's G5 move, so this cannot be
+    /// a <c>cref</c>).
+    /// Exact, case-sensitive (<see cref="StringComparison.Ordinal"/>) — barcodes are codes,
+    /// not names. Returns null for empty/whitespace input or no match.
+    /// </summary>
+    internal static TicketAttendeeInfo? FindCurrentEventAttendeeByBarcode(
+        IReadOnlyList<TicketOrderInfo> orders, string? barcode)
+    {
+        var code = barcode?.Trim() ?? string.Empty;
+        if (code.Length == 0)
+        {
+            return null;
+        }
+
+        return orders
+            .Where(o => o.IsCurrentEvent)
+            .SelectMany(o => o.Attendees)
+            .FirstOrDefault(a => string.Equals(a.Barcode, code, StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// Build the 0-or-1 picker row for a barcode hit. A row is emitted only when the
+    /// attendee is personally paired to a human (<see cref="TicketAttendeeInfo.MatchedUserId"/>)
+    /// who still resolves and is active. Otherwise empty — the picker stays silent (it just
+    /// shows name matches), matching the type-ahead "no result" convention.
+    /// </summary>
+    internal static List<HumanLookupSearchResult> BuildTicketLookupRows(
+        TicketAttendeeInfo? hit, UserInfo? matchedUser, string detailLabel)
+    {
+        if (hit?.MatchedUserId is null || matchedUser is null || !matchedUser.IsActive)
+        {
+            return [];
+        }
+
+        return
+        [
+            new HumanLookupSearchResult(
+                matchedUser.Id, matchedUser.BurnerName, detailLabel, matchedUser.ProfilePictureUrl),
+        ];
+    }
+
+    [HttpGet("Roles/SearchMembers")]
+    public async Task<IActionResult> SearchMembersForRole(string slug, string q)
+    {
+        var (teamError, _, team) = await ResolveTeamManagementAsync(slug);
+        if (teamError is not null)
+        {
+            return teamError;
+        }
+
+        if (!q.HasSearchTerm())
+        {
+            return Json(Array.Empty<RoleAssignmentSearchResult>());
+        }
+
+        var teamMembers = team.Members;
+        var teamMemberUserIds = teamMembers
+            .Select(m => m.UserId)
+            .ToHashSet();
+
+        // Name-only for role-picker (no bio/contact data); team admins are not global admins.
+        // Uncapped folded name search over everyone (accent/case-insensitive); relevance-ranked.
+        var allResults = await _userService.SearchUsersAsync(
+            q, PersonSearchFields.Name, limit: int.MaxValue);
+        var nameMatchIds = allResults.Select(r => r.UserId).ToHashSet();
+
+        // Team members first, matched by any of:
+        //  - folded name via the search above (so "joel" finds "Joël") — profiled members;
+        //  - direct DisplayName contains — keeps legacy/imported members who appear in team.Members
+        //    but have no searchable Profile findable by name (SearchUsersAsync skips profile-less users);
+        //  - email — team admins may know their own members' emails, which the global name-only
+        //    search deliberately won't surface for privacy.
+        var matchingTeamMembers = teamMembers
+            .Where(m => nameMatchIds.Contains(m.UserId) ||
+                        m.DisplayName.ContainsOrdinalIgnoreCase(q) ||
+                        (m.Email?.ContainsOrdinalIgnoreCase(q) ?? false))
+            .OrderBy(m => m.DisplayName, StringComparer.OrdinalIgnoreCase)
+            .Select(m => new RoleAssignmentSearchResult(m.UserId, m.DisplayName, m.Email ?? "", true))
+            .ToList();
+
+        var nonMembers = allResults
+            .Where(r => !teamMemberUserIds.Contains(r.UserId))
+            .OrderByRelevance()
+            .Select(r => new RoleAssignmentSearchResult(r.UserId, r.BurnerName, "", false))
+            .ToList();
+
+        var combined = matchingTeamMembers.Concat(nonMembers).ToList();
+        return Json(combined);
+    }
+
+    private async Task<bool> CanManageResourcesAsync(Team team, Guid userId)
+    {
+        if (RoleChecks.IsTeamsAdminBoardOrAdmin(User))
+            return true;
+
+        // Sub-team managers cannot manage Google resources — check at department level.
+        var checkTeamId = team.ParentTeamId ?? team.Id;
+        return await teamResourceService.CanManageTeamResourcesAsync(checkTeamId, userId);
+    }
+
+    private static void PopulateEditTeamPageModel(EditTeamPageViewModel model, Team team)
+    {
+        model.Slug = team.Slug;
+        model.TeamName = team.DisplayName;
+        model.CanBePublic = !team.IsSystemTeam && !team.ParentTeamId.HasValue;
+    }
+}

@@ -1,5 +1,5 @@
 using Humans.Application.Interfaces.Profiles;
-using Humans.Application.Interfaces.Tickets;
+using Humans.Tickets.Contracts;
 using Humans.Domain.Enums;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Mvc;

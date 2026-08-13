@@ -10,6 +10,7 @@
 @using Humans.UI.ViewComponents
 @using Humans.Domain.Entities
 @using Humans.Domain.Enums
+@using Humans.Tickets.Contracts
 @using Humans.UI
 @using Humans.UI.Models
 @using Microsoft.Extensions.Localization
@@ -17,3 +18,9 @@
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
 @addTagHelper *, Humans.Web
 @addTagHelper *, Humans.UI
+@* <vc:ticket-stub> is the Tickets section's own component, public under
+   Humans.Tickets/Contracts/ so MVC's default provider discovers it and the tag helper is
+   generated. Shell renders it from Shared/Components/MyTicketStubs, Shared/Components/
+   TicketHoldings and WidgetGallery; the @using above imports TicketStubInfo but NOT the tag
+   helper, and without this line the element ships as inert literal markup (step 6). *@
+@addTagHelper *, Humans.Tickets

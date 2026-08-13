@@ -17,7 +17,7 @@ public class TableColumnTests
         public string? Name { get; init; }
         public decimal Amount { get; init; }
         public Instant? When { get; init; }
-        public TicketAttendeeStatus Status { get; init; }
+        public SignupStatus Status { get; init; }
         public bool Flag { get; init; }
     }
 
@@ -68,8 +68,10 @@ public class TableColumnTests
     public void EnumBadge_wraps_value_in_registered_badge()
     {
         var col = Col(CellFormat.EnumBadge, r => r.Status);
-        Render(col.Cell(new Row { Status = TicketAttendeeStatus.Valid }))
-            .Should().Be("""<span class="badge bg-success">Valid</span>""");
+        // A Base enum, not a section's: a moved section's badge rows are registered from
+        // its Section.Register and are absent in a unit test (see EnumBadgeMapTests).
+        Render(col.Cell(new Row { Status = SignupStatus.Confirmed }))
+            .Should().Be("""<span class="badge bg-success">Confirmed</span>""");
     }
 
     [HumansFact]

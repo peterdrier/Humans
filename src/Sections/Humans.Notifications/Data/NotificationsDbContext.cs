@@ -13,11 +13,11 @@ namespace Humans.Notifications.Data;
 /// is a code-side partition of the EF model.
 /// </summary>
 /// <remarks>
-/// Internal-sealed like <c>HumansDbContext</c> (issue #750): repositories
+/// Internal-sealed like every section context (issue #750): repositories
 /// are the only consumers. Configurations are applied explicitly (not by
 /// assembly scanning) so this model can never accrete another section's tables.
 /// Recipients are bare Guid user references, so the Identity tables stay in
-/// <c>HumansDbContext</c> and are deliberately absent here.
+/// <c>UsersDbContext</c> and are deliberately absent here.
 /// </remarks>
 internal sealed class NotificationsDbContext(DbContextOptions<NotificationsDbContext> options)
     : DbContext(options)

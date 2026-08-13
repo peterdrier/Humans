@@ -1,3 +1,4 @@
+using Humans.Teams.Domain;
 using AwesomeAssertions;
 using Humans.Application.Services.AuditLog;
 using Humans.Domain.Enums;

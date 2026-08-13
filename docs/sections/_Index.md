@@ -20,6 +20,8 @@ move recipe is [`G5-SECTION-TEMPLATE.md`](G5-SECTION-TEMPLATE.md).
 
 | Section | Project | Invariants doc |
 |---|---|---|
+| Audit Log | `src/Sections/Humans.AuditLog` | [AuditLog.md](../../src/Sections/Humans.AuditLog/Docs/AuditLog.md) — the append path and the `/AuditLog` pages; the name-resolving read path (`AuditViewerService`, `AuditEvent`) stays in `Humans.Application`, because it injects Users', Teams' and GoogleIntegration's read interfaces and a *horizontal* section may not reference a vertical |
+| Auth | `src/Sections/Humans.Auth` | [Auth.md](../../src/Sections/Humans.Auth/Docs/Auth.md) — `role_assignments`, the role-assignment service and its §15 decorator; the magic-link sign-in path (`MagicLinkService`, `AccountController`, `Views/Account/*`) stays in Base, because that service is an orchestrator injecting `Humans.Email.Contracts` and a *horizontal* section may not reference a vertical |
 | Agent | `src/Sections/Humans.Agent` | [Agent.md](../../src/Sections/Humans.Agent/Docs/Agent.md) |
 | Calendar | `src/Sections/Humans.Calendar` | [Calendar.md](../../src/Sections/Humans.Calendar/Docs/Calendar.md) |
 | Campaigns | `src/Sections/Humans.Campaigns` | [Campaigns.md](../../src/Sections/Humans.Campaigns/Docs/Campaigns.md) |
@@ -48,6 +50,10 @@ move recipe is [`G5-SECTION-TEMPLATE.md`](G5-SECTION-TEMPLATE.md).
 | Store | `src/Sections/Humans.Store` | [Store.md](../../src/Sections/Humans.Store/Docs/Store.md) |
 | Surveys | `src/Sections/Humans.Surveys` | [Surveys.md](../../src/Sections/Humans.Surveys/Docs/Surveys.md) |
 | System Settings | `src/Sections/Humans.SystemSettings` | — (no invariants doc; one key/value table) |
+| Ticket Tailor | `src/Sections/Humans.TicketTailor` | — (adapter section: one implementation of Base's `ITicketVendorService` port; publishes nothing, owns no tables) |
+| Teams | `src/Sections/Humans.Teams` | [Teams.md](../../src/Sections/Humans.Teams/Docs/Teams.md) |
+| Tickets | `src/Sections/Humans.Tickets` | [Tickets.md](../../src/Sections/Humans.Tickets/Docs/Tickets.md) |
+| Tour | `src/Sections/Humans.Tour` | [Tour.md](../../src/Sections/Humans.Tour/Docs/Tour.md) |
 
 **This table is derived from code, not from the section docs — code is authoritative.** Regenerate it when sections move:
 
@@ -92,8 +98,9 @@ Cross-check against [`design-rules.md` §8 (Table Ownership Map)](../architectur
 | **Shifts** | `ShiftsController`, `ShiftAdminController`, `ShiftDashboardController`, `ShiftWorkloadAdminController`, `VolunteerTrackingController` | — | `ShiftManagementService`, `ShiftSignupService`, `GeneralAvailabilityService`, `VolunteerTrackingService`, `VolunteerTrackingExportService`, `ShiftViewService`, `RotaCoordinatorMessageService`, `BurnSettingsService`, `WorkloadService`, *`CachingShiftViewService`* | `VolunteerTrackingRepository` (+ shift/rota repos) | `rotas`, `shifts`, `shift_signups`, `shift_tags`, `rota_shift_tags`, `event_settings`, `general_availability`, `volunteer_event_profiles`, `volunteer_build_statuses`, `volunteer_tag_preferences`, `event_participations` |
 | **Store** | `StoreController`, `StoreAdminController`, `StoreStripeWebhookController` | — | `Service` (`Humans.Store.Services`) | `Repository` / `IStoreRepository` (`Humans.Store.Data`) | `store_products`, `store_orders`, `store_order_lines`, `store_payments`, `store_invoices`, `store_treasury_sync_state` |
 | **Surveys** | `SurveyController`, `SurveyAdminController`, `SurveysApiController` (`Humans.Surveys.Controllers`) | — | `SurveyService` (`Humans.Surveys.Services`) | `SurveyRepository` / `ISurveyRepository` (`Humans.Surveys.Data`) | `surveys`, `survey_questions`, `survey_question_options`, `survey_invitations`, `survey_responses`, `survey_answers` |
-| **Teams** | `TeamController`, `TeamAdminController` | — | `TeamService`, `TeamPageService`, *`CachingTeamService`* | `TeamRepository` | `teams`, `team_members`, `team_join_requests`, `team_join_request_state_history`, `team_role_definitions`, `team_role_assignments`, `team_early_entry_grants` |
-| **Tickets** | `TicketController`, `TicketTransferController`, `TicketTransferAdminController`, `TicketsContactsAdminController`, `TicketsOnsiteAdminController` | `OnsiteRosterService` | `TicketQueryService`, `TicketSyncService`, `TicketTransferService`, `AttendeeContactImportService`, *`CachingTicketQueryService`* | `TicketRepository`, `TicketTransferRepository` | `ticket_orders`, `ticket_attendees`, `ticket_sync_state`, `ticket_transfer_requests` |
+| **Teams** | `TeamController`, `TeamAdminController` (`Humans.Teams.Controllers`) | — | `TeamService`, `TeamPageService`, *`CachingTeamService`* (`Humans.Teams.Services`) | `TeamRepository` (`Humans.Teams.Data`) | `teams`, `team_members`, `team_join_requests`, `team_join_request_state_history`, `team_role_definitions`, `team_role_assignments`, `team_early_entry_grants` |
+| **Tickets** | `TicketController`, `TicketTransferController`, `TicketTransferAdminController`, `TicketsContactsAdminController`, `TicketsOnsiteAdminController` (`Humans.Tickets.Controllers`) | `OnsiteRosterService`, `TicketVendorGateway` (`Humans.Tickets.Services`) | `TicketQueryService`, `TicketSyncService`, `TicketTransferService`, `AttendeeContactImportService`, *`CachingTicketQueryService`* (`Humans.Tickets.Services`) | `TicketRepository`, `TicketTransferRepository` (`Humans.Tickets.Data`) | `ticket_orders`, `ticket_attendees`, `ticket_sync_state`, `ticket_transfer_requests` |
+| **Ticket Tailor** | — | — | `TicketTailorService`, `StubTicketVendorService` (`Humans.TicketTailor.Services`) | — | — (the vendor adapter; owns no tables) |
 | **Users / Identity** | `UsersAdminDebugController`, `UnsubscribeController`, `LanguageController` | `AccountDeletionService`, `UserParticipationBackfillService`, `ExternalLoginService` | `UserService`, `AccountProvisioningService`, `UnsubscribeService`, `UserEmailProviderBackfillService`, *`CachingUserService`* | `UserRepository` | `AspNetUsers`, `AspNetUserClaims`, `AspNetUserLogins`, `AspNetUserTokens`, `AspNetRoles` (legacy), `AspNetUserRoles` (legacy) |
 | **Onboarding** | `OnboardingReviewController`, `OnboardingWidgetController` (`Humans.Onboarding.Controllers`), `WelcomeController` (Shell) | `OnboardingService` (`Humans.Onboarding.Services`, internal) | `OnboardingWidgetState` (`Humans.Onboarding.Services`, internal) | — | — (owns no tables; orchestrates Profiles, Consent, Teams and Governance through their service interfaces) |
 | **Human Lifecycle** | — (admin actions via `AdminController`) | `HumanLifecycleService` | — | — | — |
@@ -103,6 +110,7 @@ Cross-check against [`design-rules.md` §8 (Table Ownership Map)](../architectur
 | **Search** | `SearchController` (`Humans.Search.Controllers`, internal) | `SearchService` (`Humans.Search.Services`, internal) | — | — | — (owns no tables; fans out to Users, Teams, Camps, Shifts and Events through their service interfaces) |
 | **Mailer** | `MailerAdminController` (`Humans.Mailer.Controllers`) | `MailerImportService`, `MailerAudienceSyncService` | `MailerLiteClient` (`Humans.Mailer.Services.MailerLite`) | — | — (MailerLite is the system of record; in-Humans writes route through other sections' services) |
 | **Scanner** | `ScannerController` (`src/Sections/Humans.Scanner`) | — | — | — | — (presentational; owns no tables) |
+| **Tour** | `TourController` (`src/Sections/Humans.Tour`) | — | — | — | — (presentational; owns no tables) |
 | **Debug** | `DebugController` (`Humans.Debug.Controllers`), `LogApiController`, `ColorPaletteController`, `WidgetGalleryController`, `TimezoneApiController` | — | — | `AdminDatabaseDiagnosticsRepository` | — (Debug owns no tables; it reads in-memory trackers and `IAdminDatabaseDiagnosticsService`) |
 | **Development** | `DevLoginController`, `DevSeedController` (`Humans.Development.Controllers`) | — | `DevPersonaSeeder`, `DevelopmentCampRoleSeeder`, `DevelopmentDashboardSeeder` (`Humans.Development.Services`) — dev fixture seeders, not application services; registered outside Production only | — | — (dev-only tooling; owns no tables and writes only through other sections' services) |
 
@@ -112,8 +120,8 @@ The technical services the business verticals use. Per the hard rules these are 
 
 | Section | Controllers | Orchestrators | Services | Repositories | Tables |
 |---------|-------------|---------------|----------|--------------|--------|
-| **Audit Log** | `AuditLogController` | `AuditViewerService` | `AuditLogService` | `AuditLogRepository` | `audit_log` |
-| **Auth** | `AccountController` | `MagicLinkService` | `RoleAssignmentService`, `AdminAuthorizationService`, *`CachingRoleAssignmentService`* | `RoleAssignmentRepository` | `role_assignments` |
+| **Audit Log** | `AuditLogController` (`Humans.AuditLog.Controllers`) | `AuditViewerService` (`Humans.Application.Services.AuditLog` — a cross-section orchestrator; see below) | `AuditLogService` (`Humans.AuditLog.Services`) | `AuditLogRepository` / `IAuditLogRepository` (`Humans.AuditLog.Data`) | `audit_log` |
+| **Auth** | `AccountController` (Shell) | `MagicLinkService` (`Humans.Application.Services.Auth` — a cross-section orchestrator; see below) | `RoleAssignmentService`, `AdminAuthorizationService`, *`CachingRoleAssignmentService`* (`Humans.Auth.Services`) | `RoleAssignmentRepository` / `IRoleAssignmentRepository` (`Humans.Auth.Data`) | `role_assignments` |
 | **Notifications** | `NotificationsController` (`Humans.Notifications.Controllers`) | — | `NotificationService`, `NotificationEmitter`, `NotificationInboxService`, `NotificationMeterProvider` (`Humans.Notifications.Services`) | `NotificationRepository` / `INotificationRepository` (`Humans.Notifications.Data`) | `notifications`, `notification_recipients` |
 | **GDPR** | — (export download via Shell's `ProfileController` / `GuestController`) | `GdprExportService` (`Humans.Gdpr.Services`, internal) | — | — | — (owns no tables; fans out to every `IUserDataContributor` on `Humans.Gdpr.Contracts`) |
 | **Admin Shell** | `AdminController` (`/Admin` dashboard tile only) | — | `AdminNavTree`, `AdminSidebarViewComponent`, `AdminBreadcrumbViewComponent` (Web layer) | — | — (frame only; owns no tables) |

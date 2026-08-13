@@ -16,6 +16,28 @@ namespace Humans.Application.Interfaces.AuditLog;
 /// with "You"), and entries whose action has no verb mapping render as
 /// <c>null</c> so callers can filter rather than dump raw descriptions.
 /// </remarks>
+/// <remarks>
+/// <para>
+/// <b>Why this stays in <c>Humans.Application</c> after the AuditLog G5 move
+/// (nobodies-collective/Humans#866).</b> Resolution needs actor and subject display names
+/// and team/resource names, so the implementation injects <c>IUserServiceRead</c>,
+/// <c>ITeamServiceRead</c> and <c>ITeamResourceService</c> — Users', Teams' and Google
+/// Integration's read surfaces. That makes it a cross-section <em>orchestrator</em>, and
+/// AuditLog is a <em>horizontal</em> section: <c>peters-hard-rules.md</c> forbids a
+/// horizontal from referencing a vertical, so moving this type into
+/// <c>Humans.AuditLog</c> would have put a <c>Humans.Teams.Contracts</c>
+/// <c>ProjectReference</c> on the horizontal. The section keeps the append path and the
+/// raw entry queries (<c>Humans.AuditLog.Contracts.IAuditLogService</c>); this wraps them.
+/// </para>
+/// <para>
+/// Second consequence, and the reason this split is the cheap one:
+/// <c>Humans.UI</c>'s <c>AuditLogViewComponent</c> injects this interface and binds
+/// <see cref="AuditEvent"/>. <c>Humans.UI</c> cannot reference a section at any price, so
+/// had the read path moved, the component and its ~10 call sites would have had to move
+/// with it (Teams' rule: a <c>Humans.UI</c> renderer is a hard floor). Leaving the
+/// orchestrator here left the component and every call site untouched.
+/// </para>
+/// </remarks>
 public interface IAuditViewerService : IApplicationService
 {
     /// <summary>Most recent audit events, resolved.</summary>

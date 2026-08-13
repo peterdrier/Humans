@@ -242,7 +242,7 @@ public class HumansWebApplicationFactory(string connectionString)
 
         // 2) Resolve the seeded user id by email convention used in DevLoginController.
         using var scope = Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var db = scope.ServiceProvider.GetRequiredService<UsersDbContext>();
 
         var email = $"dev-{slug}@localhost";
         var userEmailService = scope.ServiceProvider.GetRequiredService<IUserEmailService>();

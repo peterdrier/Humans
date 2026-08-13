@@ -123,10 +123,10 @@ public sealed class PreMigrationSnapshotTests : IDisposable
     public void A_marker_with_migrations_still_pending_is_not_stale()
     {
         var unfinished = Snapshot("humans-20260805T120000Z.dump" + PreMigrationSnapshot.UnfinishedSuffix);
-        PreMigrationSnapshot.WriteFrontier(unfinished, ["HumansDbContext:20260805100000_AddFoo"]);
+        PreMigrationSnapshot.WriteFrontier(unfinished, ["UsersDbContext:20260805100000_AddFoo"]);
 
         PreMigrationSnapshot.FrontierStillPending(
-            unfinished, ["HumansDbContext:20260805100000_AddFoo"], NullLogger.Instance).Should().BeTrue();
+            unfinished, ["UsersDbContext:20260805100000_AddFoo"], NullLogger.Instance).Should().BeTrue();
     }
 
     /// <summary>
@@ -139,10 +139,10 @@ public sealed class PreMigrationSnapshotTests : IDisposable
         var unfinished = Snapshot("humans-20260805T120000Z.dump" + PreMigrationSnapshot.UnfinishedSuffix);
         PreMigrationSnapshot.WriteFrontier(
             unfinished,
-            ["HumansDbContext:20260805100000_AddFoo", "HumansDbContext:20260805100001_AddBar"]);
+            ["UsersDbContext:20260805100000_AddFoo", "UsersDbContext:20260805100001_AddBar"]);
 
         PreMigrationSnapshot.FrontierStillPending(
-            unfinished, ["HumansDbContext:20260805100001_AddBar"], NullLogger.Instance).Should().BeTrue();
+            unfinished, ["UsersDbContext:20260805100001_AddBar"], NullLogger.Instance).Should().BeTrue();
     }
 
     /// <summary>
@@ -153,11 +153,11 @@ public sealed class PreMigrationSnapshotTests : IDisposable
     public void A_marker_whose_migrations_have_all_been_applied_is_stale()
     {
         var unfinished = Snapshot("humans-20260805T120000Z.dump" + PreMigrationSnapshot.UnfinishedSuffix);
-        PreMigrationSnapshot.WriteFrontier(unfinished, ["HumansDbContext:20260805100000_AddFoo"]);
+        PreMigrationSnapshot.WriteFrontier(unfinished, ["UsersDbContext:20260805100000_AddFoo"]);
 
         PreMigrationSnapshot.FrontierStillPending(
             unfinished,
-            ["HumansDbContext:20260805200000_AddLaterMigration"],
+            ["UsersDbContext:20260805200000_AddLaterMigration"],
             NullLogger.Instance).Should().BeFalse();
     }
 
@@ -184,7 +184,7 @@ public sealed class PreMigrationSnapshotTests : IDisposable
     public void A_frontier_write_killed_half_way_is_never_read_as_the_frontier()
     {
         var unfinished = Snapshot("humans-20260805T120000Z.dump" + PreMigrationSnapshot.UnfinishedSuffix);
-        File.WriteAllText(unfinished + ".migrations.writing", "HumansDbContext:2026080510");
+        File.WriteAllText(unfinished + ".migrations.writing", "UsersDbContext:2026080510");
 
         PreMigrationSnapshot.FrontierStillPending(unfinished, [], NullLogger.Instance).Should().BeTrue();
         File.Exists(unfinished + ".migrations").Should().BeFalse();
@@ -195,11 +195,11 @@ public sealed class PreMigrationSnapshotTests : IDisposable
     {
         var unfinished = Snapshot("humans-20260805T120000Z.dump" + PreMigrationSnapshot.UnfinishedSuffix);
 
-        PreMigrationSnapshot.WriteFrontier(unfinished, ["HumansDbContext:20260805100000_AddFoo"]);
+        PreMigrationSnapshot.WriteFrontier(unfinished, ["UsersDbContext:20260805100000_AddFoo"]);
 
         File.Exists(unfinished + ".migrations.writing").Should().BeFalse();
         File.ReadAllLines(unfinished + ".migrations")
-            .Should().Equal("HumansDbContext:20260805100000_AddFoo");
+            .Should().Equal("UsersDbContext:20260805100000_AddFoo");
     }
 
     /// <summary>
@@ -211,14 +211,14 @@ public sealed class PreMigrationSnapshotTests : IDisposable
     public void A_marker_whose_frontier_cannot_be_read_is_not_stale()
     {
         var unfinished = Snapshot("humans-20260805T120000Z.dump" + PreMigrationSnapshot.UnfinishedSuffix);
-        PreMigrationSnapshot.WriteFrontier(unfinished, ["HumansDbContext:20260805100000_AddFoo"]);
+        PreMigrationSnapshot.WriteFrontier(unfinished, ["UsersDbContext:20260805100000_AddFoo"]);
 
         using var exclusive = new FileStream(
             unfinished + ".migrations", FileMode.Open, FileAccess.Read, FileShare.None);
 
         PreMigrationSnapshot.FrontierStillPending(
             unfinished,
-            ["HumansDbContext:20260805200000_AddLaterMigration"],
+            ["UsersDbContext:20260805200000_AddLaterMigration"],
             NullLogger.Instance).Should().BeTrue();
     }
 
@@ -231,7 +231,7 @@ public sealed class PreMigrationSnapshotTests : IDisposable
     public void Promoting_a_marker_drops_its_frontier_sidecar()
     {
         var unfinished = Snapshot("humans-20260805T120000Z.dump" + PreMigrationSnapshot.UnfinishedSuffix);
-        PreMigrationSnapshot.WriteFrontier(unfinished, ["HumansDbContext:20260805100000_AddFoo"]);
+        PreMigrationSnapshot.WriteFrontier(unfinished, ["UsersDbContext:20260805100000_AddFoo"]);
 
         PreMigrationSnapshot.PromoteUnfinishedSnapshots(_directory, Database);
 
@@ -245,9 +245,9 @@ public sealed class PreMigrationSnapshotTests : IDisposable
     public void A_live_marker_is_carried_forward()
     {
         var live = Snapshot("humans-20260805T120000Z.dump" + PreMigrationSnapshot.UnfinishedSuffix);
-        PreMigrationSnapshot.WriteFrontier(live, ["HumansDbContext:20260805100000_AddFoo"]);
+        PreMigrationSnapshot.WriteFrontier(live, ["UsersDbContext:20260805100000_AddFoo"]);
 
-        Sut().CarryForwardMarker(_directory, Database, ["HumansDbContext:20260805100000_AddFoo"])
+        Sut().CarryForwardMarker(_directory, Database, ["UsersDbContext:20260805100000_AddFoo"])
             .Should().Be(live);
         File.Exists(live).Should().BeTrue();
     }
@@ -260,9 +260,9 @@ public sealed class PreMigrationSnapshotTests : IDisposable
     public void All_markers_stale_means_this_boot_takes_its_own_dump()
     {
         var stale = Snapshot("humans-20260805T120000Z.dump" + PreMigrationSnapshot.UnfinishedSuffix);
-        PreMigrationSnapshot.WriteFrontier(stale, ["HumansDbContext:20260805100000_AddFoo"]);
+        PreMigrationSnapshot.WriteFrontier(stale, ["UsersDbContext:20260805100000_AddFoo"]);
 
-        Sut().CarryForwardMarker(_directory, Database, ["HumansDbContext:20260805200000_AddLater"])
+        Sut().CarryForwardMarker(_directory, Database, ["UsersDbContext:20260805200000_AddLater"])
             .Should().BeNull();
         File.Exists(stale).Should().BeFalse();
         File.Exists(Path.Combine(_directory, "humans-20260805T120000Z.dump")).Should().BeTrue();
@@ -279,11 +279,11 @@ public sealed class PreMigrationSnapshotTests : IDisposable
     public void A_stale_marker_in_front_of_a_live_one_is_stepped_over()
     {
         var stale = Snapshot("humans-20260805T120000Z.dump" + PreMigrationSnapshot.UnfinishedSuffix);
-        PreMigrationSnapshot.WriteFrontier(stale, ["HumansDbContext:20260805100000_AddFoo"]);
+        PreMigrationSnapshot.WriteFrontier(stale, ["UsersDbContext:20260805100000_AddFoo"]);
         var live = Snapshot("humans-20260805T130000Z.dump" + PreMigrationSnapshot.UnfinishedSuffix);
-        PreMigrationSnapshot.WriteFrontier(live, ["HumansDbContext:20260805200000_AddBar"]);
+        PreMigrationSnapshot.WriteFrontier(live, ["UsersDbContext:20260805200000_AddBar"]);
 
-        Sut().CarryForwardMarker(_directory, Database, ["HumansDbContext:20260805200000_AddBar"])
+        Sut().CarryForwardMarker(_directory, Database, ["UsersDbContext:20260805200000_AddBar"])
             .Should().Be(live);
         File.Exists(stale).Should().BeFalse();
         File.Exists(live).Should().BeTrue();

@@ -1,9 +1,9 @@
-using Humans.Store.Domain;
+using Humans.Store.Contracts;
 using Humans.UI.Authorization;
 using System.Security.Claims;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Shifts;
-using Humans.Application.Interfaces.Teams;
+using Humans.Teams.Contracts;
 using Humans.Store.Services.Dtos;
 using Microsoft.AspNetCore.Authorization;
 using NodaTime;

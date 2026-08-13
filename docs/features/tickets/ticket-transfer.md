@@ -1,15 +1,6 @@
 <!-- freshness:triggers
-  src/Humans.Application/Services/Tickets/TicketTransferService.cs
-  src/Humans.Application/Interfaces/Tickets/ITicketTransferService.cs
-  src/Humans.Application/Interfaces/Repositories/ITicketTransferRepository.cs
-  src/Humans.Domain/Entities/TicketTransferRequest.cs
-  src/Humans.Domain/Enums/TicketTransferStatus.cs
-  src/Humans.Infrastructure/Repositories/Tickets/TicketTransferRepository.cs
-  src/Humans.Web/Controllers/TicketTransferController.cs
-  src/Humans.Web/Controllers/TicketTransferAdminController.cs
-  src/Humans.Web/Views/TicketTransfer/**
-  src/Humans.Web/Views/TicketTransferAdmin/**
-  src/Humans.UI/ViewComponents/TicketStubViewComponent.cs
+  src/Sections/Humans.Tickets/**
+  src/Sections/Humans.Tickets.Contracts/**
 -->
 <!-- freshness:flag-on-change
   The two processing paths (automated void+reissue vs manual mark-successful), lifecycle states, email
@@ -167,5 +158,5 @@ a follow-up PR drops that one column after prod soak.
 
 ## Related
 
-- [`docs/sections/Tickets.md`](../../sections/Tickets.md) — section invariants, sync, attendee model.
+- [`src/Sections/Humans.Tickets/Docs/Tickets.md`](../../../src/Sections/Humans.Tickets/Docs/Tickets.md) — section invariants, sync, attendee model.
 - [`docs/features/budget/budget.md`](../budget/budget.md) — `TicketingBudgetService` shares the attendee table.

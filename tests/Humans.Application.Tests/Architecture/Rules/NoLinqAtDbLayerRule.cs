@@ -5,7 +5,7 @@ namespace Humans.Application.Tests.Architecture.Rules;
 
 /// <summary>
 /// Ratcheted rule: services don't compose LINQ chains against
-/// <c>HumansDbContext</c> / <c>DbSet&lt;T&gt;</c> — repos materialize.
+/// <c>UsersDbContext</c> / <c>DbSet&lt;T&gt;</c> — repos materialize.
 ///
 /// Source rule: <c>memory/architecture/no-linq-at-db-layer.md</c>. The
 /// repository boundary is the only place LINQ-on-EF-entities should live;
@@ -13,7 +13,7 @@ namespace Humans.Application.Tests.Architecture.Rules;
 ///
 /// Detection: scan <c>src/Humans.Application/Services/**/*.cs</c> for
 /// <c>_db.</c> / <c>_dbContext.</c> / <c>_context.</c> field accesses.
-/// (Application services with a <c>HumansDbContext</c> field already breach
+/// (Application services with a <c>UsersDbContext</c> field already breach
 /// repository-required-for-db-access; this rule additionally catches the
 /// LINQ-composition shape — accesses to <c>.Where</c> / <c>.Select</c> /
 /// <c>.OrderBy</c> via a context field.)

@@ -1,9 +1,12 @@
+using Humans.Auth.Contracts;
+using Humans.Teams.Data;
+using Humans.Teams.Domain;
 using AwesomeAssertions;
 using Humans.Application.Enums;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
-using Humans.Application.Interfaces.Teams;
+using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Shifts;
 using Humans.Application.Tests.Infrastructure;

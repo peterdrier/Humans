@@ -1,7 +1,12 @@
 using Humans.Agent.Contracts;
+using Humans.Application.Interfaces.AuditLog;
+using Humans.Application.Services.AuditLog;
+using Humans.Application.Interfaces.Users;
+using Humans.Application.Services.Users;
 using Humans.Application.Configuration;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Caching;
+using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.HumanLifecycle;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Services.HumanLifecycle;
@@ -27,7 +32,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddTelemetryInfrastructure(configuration);
         services.AddEmailInfrastructure(configuration, environment);
         services.AddGoogleWorkspaceInfrastructure(configuration, environment);
-        services.AddTicketVendorInfrastructure(configuration, environment);
+        services.AddTicketVendorPort(configuration);
         services.AddStripeInfrastructure(configuration);
 
         // Single key-addressed file storage rooted at wwwroot. Camps,
@@ -40,12 +45,16 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddProfileSection(configuration);
         services.AddUsersSection();
         services.AddAuthSection();
-        services.AddTeamsSection();
         services.AddCampsSection();
         services.AddShiftsSection();
         services.AddEarlyEntrySection();
-        services.AddTicketsSection();
-        services.AddAuditLogSection();
+        // AuditLog's read+render owner. It resolves actor/subject/team display names
+        // through IUserServiceRead, ITeamServiceRead and ITeamResourceService, which makes
+        // it a cross-section orchestrator rather than part of the horizontal AuditLog
+        // section (peters-hard-rules.md: a horizontal may not reference a vertical), so it
+        // stays in Humans.Application and is registered here — Governance's rule, that the
+        // section owning the file is not always the section owning the line.
+        services.AddScoped<IAuditViewerService, AuditViewerService>();
         services.AddICalFeedSection();
         services.AddAdminSection();
         services.AddGoogleIntegrationSection();
@@ -58,11 +67,23 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<SendSurveyReminderJob>();
         services.AddScoped<GateRetentionJob>();
         services.AddScoped<GateVendorCheckInJob>();
+        services.AddScoped<TicketSyncJob>();
+        services.AddScoped<TicketingBudgetSyncJob>();
         services.AddScoped<CleanupIssuesJob>();
         services.AddScoped<TermRenewalReminderJob>();
         services.AddScoped<SyncLegalDocumentsJob>();
         services.AddScoped<SendReConsentReminderJob>();
         services.AddTransient<MailerAudienceSyncJob>();
+
+        // Base collaborators that Teams' section file used to register on the way past.
+        // ActiveTeamsCacheInvalidator is a Humans.Infrastructure implementation of a
+        // Humans.Application interface (the IInvalidator family other sections evict Teams'
+        // master cache entry through), and SystemTeamSyncJob is a Humans.Infrastructure job
+        // bound to GoogleIntegration's ISystemTeamSync — neither is Teams' to own
+        // (design §15 step 4, Governance's rule: the section that owns the file is not always
+        // the section that owns the line).
+        services.AddScoped<IActiveTeamsCacheInvalidator, ActiveTeamsCacheInvalidator>();
+        services.AddScoped<ISystemTeamSync, SystemTeamSyncJob>();
 
         // Base collaborators that Governance's section file used to register on the way past.
         // The three badge-cache invalidators are Humans.Infrastructure implementations of
@@ -87,6 +108,14 @@ public static class InfrastructureServiceCollectionExtensions
         // corpus from Shell-owned help content (AccessMatrixDefinitions, SectionHelpContent), so it
         // cannot move into Humans.Agent; the section consumes it through the contracts leaf.
         services.AddSingleton<IAgentPreloadAugmentor, Humans.Web.Services.Agent.AgentPreloadAugmentor>();
+
+        // Users' CSV participation backfill. Its registration sat in the Tickets section file
+        // because /Tickets/ParticipationBackfill is the only page that drives it, but the
+        // service is Humans.Application.Services.Users' and reads only IUserService /
+        // IShiftManagementService — the section that owns the file is not always the section
+        // that owns the line (memory/architecture/governance-scope.md's rule, Governance
+        // finding 94).
+        services.AddScoped<IUserParticipationBackfillService, UserParticipationBackfillService>();
 
         // Sections that have moved into their own project (nobodies-collective/Humans#866)
         // register themselves via ISection and are discovered, not named. The roll-call

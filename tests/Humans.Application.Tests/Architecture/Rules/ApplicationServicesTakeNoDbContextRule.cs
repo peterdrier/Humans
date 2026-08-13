@@ -1,3 +1,4 @@
+using Humans.Application.Architecture;
 using AwesomeAssertions;
 using Humans.Application.Interfaces;
 using Humans.Application.Services.AuditLog;
@@ -8,7 +9,7 @@ namespace Humans.Application.Tests.Architecture.Rules;
 
 /// <summary>
 /// Generic rule: no concrete <see cref="IApplicationService"/> implementation
-/// takes <see cref="HumansDbContext"/> or
+/// takes <see cref="UsersDbContext"/> or
 /// <see cref="IDbContextFactory{TContext}"/> as a constructor parameter.
 ///
 /// Services reach the database exclusively through <see cref="Humans.Application.Interfaces.Repositories.IRepository"/>
@@ -27,7 +28,7 @@ namespace Humans.Application.Tests.Architecture.Rules;
 public class ApplicationServicesTakeNoDbContextRule
 {
     [HumansFact]
-    public void Application_services_do_not_take_HumansDbContext()
+    public void Application_services_do_not_take_UsersDbContext()
     {
         // Scan Humans.Application *and* every G5 section assembly, the way the sibling
         // IMemoryCache rule already does. Anchored on Humans.Application alone, this rule kept
@@ -35,7 +36,12 @@ public class ApplicationServicesTakeNoDbContextRule
         // shape, and the same bug Campaigns found in DisplaySortInControllersRule and Email
         // found in NoDestructiveMigrationOpsRule (nobodies-collective/Humans#866). Widening it
         // surfaced no violation, so the cost of being right here was nothing.
-        var assemblies = new[] { typeof(AuditLogService).Assembly }
+        // Anchor on a type that cannot leave Humans.Application. AuditLogService was the
+        // anchor until its own G5 move, at which point typeof(...).Assembly silently became
+        // the section assembly and this rule stopped scanning Base at all — the same
+        // silent-drop the widening below exists to prevent, arriving through the anchor
+        // rather than the filter. DontFixAttribute is Base's architecture vocabulary.
+        var assemblies = new[] { typeof(DontFixAttribute).Assembly }
             .Concat(Web.Extensions.SectionDiscoveryExtensions.SectionAssemblies());
 
         var violations = assemblies
@@ -55,7 +61,7 @@ public class ApplicationServicesTakeNoDbContextRule
 
         violations.Should().BeEmpty(
             because: "application services must access the database through IRepository, " +
-                     "never by injecting HumansDbContext or IDbContextFactory directly " +
+                     "never by injecting UsersDbContext or IDbContextFactory directly " +
                      "(design-rules §3; §15 Option A/B for caching pattern)");
     }
 

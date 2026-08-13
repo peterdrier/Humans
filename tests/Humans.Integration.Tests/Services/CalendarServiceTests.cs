@@ -1,3 +1,5 @@
+using Humans.Teams.Data;
+using Humans.Teams.Domain;
 using System.ComponentModel.DataAnnotations;
 using AwesomeAssertions;
 using Humans.Calendar.Services.Dtos;

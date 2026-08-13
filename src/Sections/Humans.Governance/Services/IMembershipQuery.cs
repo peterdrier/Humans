@@ -1,7 +1,8 @@
+using Humans.Auth.Contracts;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Auth;
 using Humans.Notifications.Contracts;
-using Humans.Application.Interfaces.Teams;
+using Humans.Teams.Contracts;
 using Humans.Domain.Enums;
 
 namespace Humans.Governance.Services;

@@ -1,7 +1,7 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Profiles;
-using Humans.Application.Interfaces.Teams;
+using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Feedback.Data;
 using Microsoft.AspNetCore.Mvc;
@@ -145,4 +145,9 @@ public class FeedbackArchitectureTests
         Humans.Feedback.Services.AuditEntityTypes.FeedbackReport.Should().Be("FeedbackReport");
     }
 
+    // ── IFeedbackRepository ──────────────────────────────────────────────────
+
+    // Sealed-repository check covered by HUM0034 (section types are internal) plus
+    // MA0053 (an unsealed internal class is a build error) — not by
+    // IRepositoryImplementationsAreSealedRule, which sweeps Humans.Infrastructure only.
 }

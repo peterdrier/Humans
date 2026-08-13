@@ -10,7 +10,7 @@ using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Caching;
 using Humans.Consent.Contracts;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Application.Interfaces.Teams;
+using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Consent.Services;
 using Humans.Domain.Entities;
@@ -36,7 +36,7 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
     private readonly IUserServiceRead _userService = Substitute.For<IUserServiceRead>();
     private readonly ILegalDocumentCacheInvalidator _invalidator = Substitute.For<ILegalDocumentCacheInvalidator>();
     private readonly LegalDocumentSyncService _service;
-    private readonly Team _team;
+    private readonly TeamInfo _team;
 
     public LegalDocumentSyncServiceTests()
         : base(Instant.FromUtc(2026, 2, 15, 18, 0))
@@ -47,13 +47,13 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
 
         // Team-name stitch: return the seed team when queried.
         _teamService
-            .GetByIdsWithParentsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .GetTeamsWithParentsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(ci =>
             {
                 var ids = ci.ArgAt<IReadOnlyCollection<Guid>>(0);
-                IReadOnlyDictionary<Guid, Team> map = ids.Contains(_team.Id)
-                    ? new Dictionary<Guid, Team> { [_team.Id] = _team }
-                    : new Dictionary<Guid, Team>();
+                IReadOnlyDictionary<Guid, TeamInfo> map = ids.Contains(_team.Id)
+                    ? new Dictionary<Guid, TeamInfo> { [_team.Id] = _team }
+                    : new Dictionary<Guid, TeamInfo>();
                 return Task.FromResult(map);
             });
 

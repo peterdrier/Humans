@@ -1,6 +1,6 @@
 using Humans.Application.Interfaces.Caching;
 using Humans.Consent.Contracts;
-using Humans.Application.Interfaces.Teams;
+using Humans.Teams.Contracts;
 using Humans.Domain.Entities;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -222,8 +222,8 @@ internal sealed class CachingLegalDocumentSyncService(
         var teamService = scope.ServiceProvider.GetRequiredService<ITeamService>();
         var teamIds = docs.Select(d => d.TeamId).Distinct().ToList();
         var teams = teamIds.Count == 0
-            ? new Dictionary<Guid, Team>()
-            : await teamService.GetByIdsWithParentsAsync(teamIds, ct);
+            ? new Dictionary<Guid, TeamInfo>()
+            : await teamService.GetTeamsWithParentsAsync(teamIds, ct);
 
         // Resolve team display names via ITeamService — scoped, so
         // pulled through a fresh DI scope per-warm.

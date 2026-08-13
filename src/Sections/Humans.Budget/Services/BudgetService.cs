@@ -4,7 +4,7 @@ using Humans.Application.Extensions;
 using Humans.Budget.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Budget.Data;
-using Humans.Application.Interfaces.Teams;
+using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Budget.Domain;
 using Humans.Domain.Enums;

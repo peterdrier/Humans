@@ -1,14 +1,15 @@
+using Humans.Auth.Contracts;
 using Humans.Application.DTOs;
 using Humans.Application.DTOs.Shifts;
 using Humans.Application.Enums;
 using Humans.Application.Extensions;
-using Humans.Application.Interfaces.AuditLog;
+using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
-using Humans.Application.Interfaces.Teams;
-using Humans.Application.Interfaces.Tickets;
+using Humans.Teams.Contracts;
+using Humans.Tickets.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
@@ -125,7 +126,6 @@ public sealed class ShiftManagementService(
         cache.Remove(CacheKeys.ShiftAuthorization(userId));
     }
 
-
     public Task<EventSettings?> GetActiveAsync() =>
         repo.GetActiveEventSettingsAsync();
 
@@ -174,7 +174,6 @@ public sealed class ShiftManagementService(
         viewInvalidator.InvalidateAll();
         return deleted;
     }
-
 
     public async Task CreateRotaAsync(Rota rota, IReadOnlyList<Guid>? tagIds = null)
     {
@@ -234,7 +233,10 @@ public sealed class ShiftManagementService(
             AuditAction.RotaMovedToTeam, nameof(Rota), rota.Id,
             $"Moved rota '{rota.Name}' from '{oldTeamName}' to '{targetTeam.Name}'",
             input.ActorUserId,
-            relatedEntityId: input.TargetTeamId, relatedEntityType: nameof(Team));
+            // "Team" is a persisted audit discriminator, matched by exact equality when the log is
+            // read back, so it stays a literal now that the entity lives in Humans.Teams and Base
+            // cannot name it (memory/code/type-name-as-persisted-string.md).
+            relatedEntityId: input.TargetTeamId, relatedEntityType: "Team");
 
         return RotaMoveResult.Success($"Rota '{rota.Name}' moved to {targetTeam.Name}.", targetTeam.Slug);
     }
@@ -494,7 +496,6 @@ public sealed class ShiftManagementService(
             .ToList();
     }
 
-
     /// <summary>Re-export of <see cref="Shift.AllDayWindowStart"/>.</summary>
     public static LocalTime AllDayShiftStartTime => Shift.AllDayWindowStart;
 
@@ -618,7 +619,6 @@ public sealed class ShiftManagementService(
 
         return ShiftGenerationResult.Success($"Generated {toInsert.Count} shifts for '{rota.Name}'.", toInsert.Count);
     }
-
 
     public async Task<ShiftMutationResult> CreateShiftAsync(CreateShiftInput input)
     {
@@ -1004,7 +1004,6 @@ public sealed class ShiftManagementService(
         return result.OrderByDescending(u => u.UrgencyScore).ToList();
     }
 
-
     public async Task<ShiftStaffingSnapshot> GetStaffingSnapshotAsync(
         Guid eventSettingsId, Guid? departmentId = null, ShiftPeriod? period = null,
         BuildSubPeriod? subPeriod = null)
@@ -1205,7 +1204,6 @@ public sealed class ShiftManagementService(
             .OrderBy(x => x.Name, StringComparer.Ordinal)
             .ToList();
     }
-
 
     internal static string OverviewCacheKey(Guid eventId, ShiftPeriod? period) =>
         $"dashboard-overview:{eventId}:{period?.ToString() ?? "all"}";
@@ -1890,7 +1888,6 @@ public sealed class ShiftManagementService(
         return grouped;
     }
 
-
     public async Task<IReadOnlyList<ShiftTagSummary>> GetTagsAsync(string? query = null)
     {
         var tags = await repo.GetTagsAsync(query);
@@ -1921,7 +1918,6 @@ public sealed class ShiftManagementService(
 
         return await repo.GetPendingSignupCountsByTeamAsync(eventSettings.Id, null, null, cancellationToken);
     }
-
 
     public async Task<VolunteerEventProfile> GetOrCreateShiftProfileAsync(Guid userId)
     {

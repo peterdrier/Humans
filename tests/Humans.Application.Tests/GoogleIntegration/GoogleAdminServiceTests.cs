@@ -1,9 +1,10 @@
+using Humans.Teams.Domain;
 using AwesomeAssertions;
 using Humans.Application.DTOs;
-using Humans.Application.Interfaces.AuditLog;
+using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Profiles;
-using Humans.Application.Interfaces.Teams;
+using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
@@ -829,8 +830,8 @@ public class GoogleAdminServiceTests
         var teamId = Guid.NewGuid();
         _teamService.SetGoogleGroupPrefixAsync(teamId, "test-team", Arg.Any<CancellationToken>())
             .Returns((true, (string?)null));
-        _teamService.GetTeamByIdAsync(teamId, Arg.Any<CancellationToken>())
-            .Returns(new Team { Id = teamId, Name = "Test Team", IsActive = true, Slug = "test-team" });
+        _teamService.GetTeamAsync(teamId, Arg.Any<CancellationToken>())
+            .Returns(MakeTeamInfo(teamId, "Test Team", "test-team"));
         _googleSyncService.EnsureTeamGroupAsync(teamId, false, Arg.Any<CancellationToken>())
             .Returns(GroupLinkResult.Ok());
 
@@ -861,8 +862,8 @@ public class GoogleAdminServiceTests
         var teamId = Guid.NewGuid();
         _teamService.SetGoogleGroupPrefixAsync(teamId, "new-prefix", Arg.Any<CancellationToken>())
             .Returns((true, "old-prefix"));
-        _teamService.GetTeamByIdAsync(teamId, Arg.Any<CancellationToken>())
-            .Returns(new Team { Id = teamId, Name = "Test Team", IsActive = true, Slug = "test-team" });
+        _teamService.GetTeamAsync(teamId, Arg.Any<CancellationToken>())
+            .Returns(MakeTeamInfo(teamId, "Test Team", "test-team"));
         _googleSyncService.EnsureTeamGroupAsync(teamId, false, Arg.Any<CancellationToken>())
             .Returns(GroupLinkResult.Error("Failed to create group"));
 
@@ -907,4 +908,10 @@ public class GoogleAdminServiceTests
         result[0].Name.Should().Be("Alpha");
         result[1].Name.Should().Be("Zebra");
     }
+
+    private static TeamInfo MakeTeamInfo(Guid id, string name, string slug) =>
+        new(id, name, null, slug, IsActive: true, IsSystemTeam: false,
+            SystemTeamType.None, RequiresApproval: false, IsPublicPage: false, IsHidden: false,
+            IsPromotedToDirectory: false, NodaTime.SystemClock.Instance.GetCurrentInstant(), []);
+
 }

@@ -1,0 +1,351 @@
+// User.DisplayName is Obsolete; SeedUserAsync sets it on the unpersisted User
+// it hands back to callers.
+#pragma warning disable CS0618
+using AwesomeAssertions;
+using Humans.Teams.Tests.Infrastructure;
+using Humans.Domain.Entities;
+using Humans.Teams.Domain;
+using Humans.Domain.Enums;
+using Humans.Infrastructure.Data;
+using Humans.Teams.Data;
+using Microsoft.EntityFrameworkCore;
+using NodaTime;
+using NodaTime.Testing;
+
+namespace Humans.Teams.Tests;
+
+/// <summary>
+/// Repository tests for the Teams section — issue #540a (§15 Part 1 —
+/// TeamService core). Covers the bundled-write paths (which have compound
+/// mutations across TeamMembers / TeamJoinRequests / TeamRoleAssignments /
+/// and the narrow read shapes the service depends on for cross-section
+/// stitching.
+/// </summary>
+public sealed class TeamRepositoryTests : IDisposable
+{
+    private readonly TeamsDbContext _dbContext;
+    private readonly FakeClock _clock;
+    private readonly TeamRepository _repo;
+
+    public TeamRepositoryTests()
+    {
+        var options = new DbContextOptionsBuilder<TeamsDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+        _dbContext = new TeamsDbContext(options);
+        _clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
+        _repo = new TeamRepository(new TestDbContextFactory<TeamsDbContext>(options));
+    }
+
+    public void Dispose()
+    {
+        _dbContext.Dispose();
+    }
+
+    // ==========================================================================
+    // Team reads
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task GetByIdAsync_ReturnsTeam_WhenPresent()
+    {
+        var team = await SeedTeamAsync("Test");
+
+        var result = await _repo.GetByIdAsync(team.Id, Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().NotBeNull();
+        result.Id.Should().Be(team.Id);
+        result.Name.Should().Be("Test");
+    }
+
+    [HumansFact]
+    public async Task GetByIdAsync_ReturnsNull_WhenMissing()
+    {
+        var result = await _repo.GetByIdAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task GetByIdWithRelationsAsync_LoadsActiveMembersAndChildren()
+    {
+        var team = await SeedTeamAsync("Dept");
+        var user = await SeedUserAsync();
+        await SeedActiveMemberAsync(team, user);
+        await SeedTeamAsync("Sub", parentTeamId: team.Id);
+
+        var result = await _repo.GetByIdWithRelationsAsync(team.Id, Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().NotBeNull();
+        result.Members.Should().HaveCount(1);
+        result.ChildTeams.Should().HaveCount(1);
+    }
+
+    [HumansFact]
+    public async Task SlugExistsAsync_ReturnsTrue_WhenSlugMatches()
+    {
+        await SeedTeamAsync("Test", slug: "test");
+
+        var exists = await _repo.SlugExistsAsync("test", excludingTeamId: null, ct: Xunit.TestContext.Current.CancellationToken);
+
+        exists.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task SlugExistsAsync_ReturnsFalse_WhenSlugIsOwnTeam()
+    {
+        var team = await SeedTeamAsync("Test", slug: "test");
+
+        var exists = await _repo.SlugExistsAsync("test", excludingTeamId: team.Id, ct: Xunit.TestContext.Current.CancellationToken);
+
+        exists.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task GetAllActiveAsync_ExcludesInactiveTeams()
+    {
+        await SeedTeamAsync("Active", isActive: true);
+        await SeedTeamAsync("Inactive", isActive: false);
+
+        var all = await _repo.GetAllActiveAsync(Xunit.TestContext.Current.CancellationToken);
+
+        all.Should().ContainSingle(t => t.Name == "Active");
+    }
+
+    // ==========================================================================
+    // Membership writes — compound transactions
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task TryAddMemberAsync_PersistsMember()
+    {
+        var team = await SeedTeamAsync("Test");
+        var user = await SeedUserAsync();
+
+        var member = new TeamMember
+        {
+            Id = Guid.NewGuid(),
+            TeamId = team.Id,
+            UserId = user.Id,
+            Role = TeamMemberRole.Member,
+            JoinedAt = _clock.GetCurrentInstant()
+        };
+        var ok = await _repo.TryAddMemberAsync(member, Xunit.TestContext.Current.CancellationToken);
+
+        ok.Should().BeTrue();
+        (await _dbContext.TeamMembers.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(1);
+    }
+
+    [HumansFact]
+    public async Task MarkMemberLeftAsync_SetsLeftAtAndRemovesAssignments()
+    {
+        var team = await SeedTeamAsync("Test");
+        var user = await SeedUserAsync();
+        var member = await SeedActiveMemberAsync(team, user);
+        var role = await SeedRoleDefinitionAsync(team, isManagement: true);
+        await SeedRoleAssignmentAsync(role, member);
+
+        var now = _clock.GetCurrentInstant();
+        var removed = await _repo.MarkMemberLeftAsync(member.Id, now, Xunit.TestContext.Current.CancellationToken);
+
+        removed.Should().HaveCount(1);
+        _dbContext.ChangeTracker.Clear();
+        var reloaded = await _dbContext.TeamMembers.AsNoTracking().FirstAsync(m => m.Id == member.Id, Xunit.TestContext.Current.CancellationToken);
+        reloaded.LeftAt.Should().Be(now);
+        (await _dbContext.Set<TeamRoleAssignment>().CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+    }
+
+    [HumansFact]
+    public async Task GetActiveMembershipsForGoogleResyncAsync_ReturnsActiveMembershipIds()
+    {
+        var team = await SeedTeamAsync("Test");
+        var inactiveTeam = await SeedTeamAsync("Inactive");
+        var user = await SeedUserAsync();
+        var activeMember = await SeedActiveMemberAsync(team, user);
+        var inactiveMember = await SeedActiveMemberAsync(inactiveTeam, user);
+        inactiveMember.LeftAt = _clock.GetCurrentInstant();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var memberships = await _repo.GetActiveMembershipsForGoogleResyncAsync(user.Id, Xunit.TestContext.Current.CancellationToken);
+
+        memberships.Should().ContainSingle()
+            .Which.Should().Be((activeMember.Id, team.Id));
+    }
+
+    [HumansFact]
+    public async Task WithdrawRequestAsync_ReturnsFalse_WhenRequestNotPending()
+    {
+        var team = await SeedTeamAsync("Test");
+        var user = await SeedUserAsync();
+        var request = new TeamJoinRequest
+        {
+            Id = Guid.NewGuid(),
+            TeamId = team.Id,
+            UserId = user.Id,
+            Status = TeamJoinRequestStatus.Approved,
+            RequestedAt = _clock.GetCurrentInstant()
+        };
+        _dbContext.TeamJoinRequests.Add(request);
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var withdrew = await _repo.WithdrawRequestAsync(request.Id, user.Id, _clock.GetCurrentInstant(), Xunit.TestContext.Current.CancellationToken);
+
+        withdrew.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task WithdrawRequestAsync_SetsStatusAndResolvedAt_WhenPending()
+    {
+        var team = await SeedTeamAsync("Test");
+        var user = await SeedUserAsync();
+        var request = new TeamJoinRequest
+        {
+            Id = Guid.NewGuid(),
+            TeamId = team.Id,
+            UserId = user.Id,
+            Status = TeamJoinRequestStatus.Pending,
+            RequestedAt = _clock.GetCurrentInstant()
+        };
+        _dbContext.TeamJoinRequests.Add(request);
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var now = _clock.GetCurrentInstant();
+        var withdrew = await _repo.WithdrawRequestAsync(request.Id, user.Id, now, Xunit.TestContext.Current.CancellationToken);
+
+        withdrew.Should().BeTrue();
+        _dbContext.ChangeTracker.Clear();
+        var reloaded = await _dbContext.TeamJoinRequests.AsNoTracking().FirstAsync(r => r.Id == request.Id, Xunit.TestContext.Current.CancellationToken);
+        reloaded.Status.Should().Be(TeamJoinRequestStatus.Withdrawn);
+        reloaded.ResolvedAt.Should().Be(now);
+    }
+
+    [HumansFact]
+    public async Task DeactivateTeamAsync_SoftDeletesAndClosesActiveMemberships()
+    {
+        var team = await SeedTeamAsync("Test");
+        var user = await SeedUserAsync();
+        var member = await SeedActiveMemberAsync(team, user);
+
+        var now = _clock.GetCurrentInstant();
+        var count = await _repo.DeactivateTeamAsync(team.Id, now, Xunit.TestContext.Current.CancellationToken);
+
+        count.Should().Be(1);
+        _dbContext.ChangeTracker.Clear();
+        var t = await _dbContext.Teams.AsNoTracking().FirstAsync(x => x.Id == team.Id, Xunit.TestContext.Current.CancellationToken);
+        t.IsActive.Should().BeFalse();
+        var m = await _dbContext.TeamMembers.AsNoTracking().FirstAsync(x => x.Id == member.Id, Xunit.TestContext.Current.CancellationToken);
+        m.LeftAt.Should().Be(now);
+    }
+
+    [HumansFact]
+    public async Task RevokeAllMembershipsAsync_ClosesEveryActiveMembershipAndRemovesAssignments()
+    {
+        var team1 = await SeedTeamAsync("Team A");
+        var team2 = await SeedTeamAsync("Team B");
+        var user = await SeedUserAsync();
+        var m1 = await SeedActiveMemberAsync(team1, user);
+        await SeedActiveMemberAsync(team2, user);
+        var role = await SeedRoleDefinitionAsync(team1, isManagement: true);
+        await SeedRoleAssignmentAsync(role, m1);
+
+        var now = _clock.GetCurrentInstant();
+        var count = await _repo.RevokeAllMembershipsAsync(user.Id, now, Xunit.TestContext.Current.CancellationToken);
+
+        count.Should().Be(2);
+        _dbContext.ChangeTracker.Clear();
+        (await _dbContext.TeamMembers.AsNoTracking().CountAsync(m => m.UserId == user.Id && m.LeftAt == null, Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+        (await _dbContext.Set<TeamRoleAssignment>().AsNoTracking().CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+    }
+
+    // ==========================================================================
+    // Helpers
+    // ==========================================================================
+
+    private async Task<Team> SeedTeamAsync(
+        string name,
+        string? slug = null,
+        bool isActive = true,
+        Guid? parentTeamId = null)
+    {
+        var team = new Team
+        {
+            Id = Guid.NewGuid(),
+            Name = name,
+            Slug = slug ?? name.ToLowerInvariant(),
+            IsActive = isActive,
+            ParentTeamId = parentTeamId,
+            SystemTeamType = SystemTeamType.None,
+            CreatedAt = _clock.GetCurrentInstant(),
+            UpdatedAt = _clock.GetCurrentInstant()
+        };
+        _dbContext.Teams.Add(team);
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        return team;
+    }
+
+    private Task<User> SeedUserAsync()
+    {
+        // Not persisted: users live outside TeamsDbContext, and the repository
+        // only ever sees the bare Guid on TeamMember.UserId.
+        var user = new User
+        {
+            Id = Guid.NewGuid(),
+            UserName = $"user-{Guid.NewGuid():N}@example.com",
+            Email = $"user-{Guid.NewGuid():N}@example.com",
+            DisplayName = "Seeded User",
+            CreatedAt = _clock.GetCurrentInstant(),
+        };
+        return Task.FromResult(user);
+    }
+
+    private async Task<TeamMember> SeedActiveMemberAsync(Team team, User user, TeamMemberRole role = TeamMemberRole.Member)
+    {
+        var member = new TeamMember
+        {
+            Id = Guid.NewGuid(),
+            TeamId = team.Id,
+            UserId = user.Id,
+            Role = role,
+            JoinedAt = _clock.GetCurrentInstant()
+        };
+        _dbContext.TeamMembers.Add(member);
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        return member;
+    }
+
+    private async Task<TeamRoleDefinition> SeedRoleDefinitionAsync(Team team, bool isManagement)
+    {
+        var def = new TeamRoleDefinition
+        {
+            Id = Guid.NewGuid(),
+            TeamId = team.Id,
+            Name = "Coord",
+            SlotCount = 1,
+            Priorities = [SlotPriority.Critical],
+            SortOrder = 0,
+            IsManagement = isManagement,
+            IsPublic = true,
+            Period = RolePeriod.YearRound,
+            CreatedAt = _clock.GetCurrentInstant(),
+            UpdatedAt = _clock.GetCurrentInstant()
+        };
+        _dbContext.Set<TeamRoleDefinition>().Add(def);
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        return def;
+    }
+
+    private async Task SeedRoleAssignmentAsync(TeamRoleDefinition def, TeamMember member)
+    {
+        var assignment = new TeamRoleAssignment
+        {
+            Id = Guid.NewGuid(),
+            TeamRoleDefinitionId = def.Id,
+            TeamMemberId = member.Id,
+            SlotIndex = 0,
+            AssignedAt = _clock.GetCurrentInstant(),
+            AssignedByUserId = member.UserId
+        };
+        _dbContext.Set<TeamRoleAssignment>().Add(assignment);
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+    }
+}

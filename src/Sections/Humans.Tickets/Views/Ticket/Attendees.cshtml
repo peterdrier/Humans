@@ -1,0 +1,87 @@
+@model Humans.Tickets.Models.TicketAttendeesViewModel
+@{
+    ViewData["Title"] = "Ticket Attendees";
+}
+
+<div class="container-fluid px-4">
+    <h1 class="mt-4">Ticket Attendees</h1>
+    <partial name="_TicketNav" />
+
+    @{
+        Func<TicketAttendeeRow, IHtmlContent> priceCell = @<text>
+            @item.Price.ToString("N2", System.Globalization.CultureInfo.CurrentCulture)
+            @if (item.IsVip)
+            {
+                <span class="badge bg-warning text-dark" title="VIP ticket">VIP</span>
+            }
+        </text>;
+        Func<TicketAttendeeRow, IHtmlContent> vipSplitCell = @<text>
+            @if (item.IsVip)
+            {
+                <small>
+                    <span title="Taxable portion">@item.TaxableAmount.ToString("N2", System.Globalization.CultureInfo.CurrentCulture)</span>
+                    + <span class="text-muted" title="VIP donation (VAT-free)">@item.VipDonation.ToString("N2", System.Globalization.CultureInfo.CurrentCulture) donation</span>
+                </small>
+            }
+            else
+            {
+                <span class="text-muted">&mdash;</span>
+            }
+        </text>;
+        Func<TicketAttendeeRow, IHtmlContent> matchedCell = @<text>
+            @if (item.MatchedUserId.HasValue)
+            {
+                <vc:human user-id="@item.MatchedUserId.Value" link="Admin" />
+            }
+            else
+            {
+                <span class="text-muted">&mdash;</span>
+            }
+        </text>;
+        Func<TicketAttendeeRow, IHtmlContent> orderCell = @<text>
+            <small><a asp-action="Orders" asp-route-search="@item.VendorOrderId"><code>@item.VendorOrderId</code></a></small>
+        </text>;
+        Func<object?, IHtmlContent> extraFilters = @<text>
+            <div class="col-md-2">
+                <select name="filterMatched" class="form-select js-auto-submit" aria-label="Filter by matched">
+                    <option value="">All</option>
+                    <option value="true" selected="@(Model.FilterMatched == true ? "selected" : null)">Matched</option>
+                    <option value="false" selected="@(Model.FilterMatched == false ? "selected" : null)">Unmatched</option>
+                </select>
+            </div>
+            <div class="col-md-auto">
+                <div class="form-check mt-2">
+                    <input class="form-check-input" type="checkbox" name="filterMultipleTickets" value="true"
+                           id="filterMultipleTickets" checked="@(Model.FilterMultipleTickets ? "checked" : null)" />
+                    <label class="form-check-label" for="filterMultipleTickets"
+                           title="Buyers (matched human or unmatched email) with more than one ticket">
+                        Buyers with &gt;1 ticket
+                    </label>
+                </div>
+            </div>
+        </text>;
+
+        var table = TableModel.For(Model.Attendees)
+            .Column("Name", a => a.AttendeeName, c => c.Sort("name"))
+            .Column("Email", a => a.AttendeeEmail, c => c.Sort("email").Css("small"))
+            .Column("Ticket Type", a => a.TicketTypeName,
+                c => c.Sort("type").SelectFilter(Model.AvailableTicketTypes, "filterTicketType", Model.FilterTicketType))
+            .Template("Price", priceCell, c => c.Sort("price", descendingFirst: true))
+            .Template("VIP Split", vipSplitCell)
+            .Column("Status", a => a.Status,
+                c => c.EnumBadge().Sort("status").SelectFilter(["Valid", "Void", "CheckedIn"], "filterStatus", Model.FilterStatus))
+            .Template("Matched Human", matchedCell)
+            .Template("Order", orderCell)
+            .SearchBox("search", Model.Search, "Search name, email, or barcode...")
+            .ServerMode(Model.SortBy, Model.SortDesc, new PagerViewModel(Model.TotalPages, Model.Page, "Attendees"))
+            .HiddenField("pageSize", Model.PageSize.ToString(System.Globalization.CultureInfo.InvariantCulture))
+            .HiddenField("filterOrderId", Model.FilterOrderId)
+            .ExtraFilters(extraFilters)
+            .Empty("No attendees found")
+            .Build();
+    }
+
+    <p class="text-muted">@Model.TotalCount attendees found</p>
+
+    <partial name="_Table" model="table" />
+</div>

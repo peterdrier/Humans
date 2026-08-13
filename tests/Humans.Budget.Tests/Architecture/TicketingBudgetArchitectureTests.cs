@@ -1,7 +1,7 @@
 using AwesomeAssertions;
 using Humans.Budget.Contracts;
 using Humans.Budget.Services;
-using Humans.Application.Interfaces.Tickets;
+using Humans.Tickets.Contracts;
 
 namespace Humans.Budget.Tests.Architecture;
 

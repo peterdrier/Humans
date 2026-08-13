@@ -1,3 +1,4 @@
+using Humans.Auth.Contracts;
 using Humans.UI.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -21,9 +22,31 @@ public class AboutController(
     private readonly IUserServiceRead _userService = userService;
 
     [HttpGet("")]
-    public IActionResult Index()
+    public IActionResult Index([FromServices] IWebHostEnvironment env)
     {
-        return View();
+        // Committed snapshot, not a live API: demo must work on playa connectivity.
+        DevStatsViewModel? stats = null;
+        var file = env.WebRootFileProvider.GetFileInfo("data/dev-stats.json");
+        if (file.Exists)
+        {
+            try
+            {
+                using var stream = file.CreateReadStream();
+                stats = System.Text.Json.JsonSerializer.Deserialize<DevStatsViewModel>(
+                    stream, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            }
+            catch (System.Text.Json.JsonException ex)
+            {
+                logger.LogWarning(ex, "Failed to parse dev-stats.json");
+                stats = null;
+            }
+
+            if (stats?.Contributors is null)
+            {
+                stats = null;
+            }
+        }
+        return View(stats);
     }
 
     [Authorize]

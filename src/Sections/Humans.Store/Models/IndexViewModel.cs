@@ -1,4 +1,4 @@
-using Humans.Application.Interfaces.AuditLog;
+using Humans.AuditLog.Contracts;
 using Humans.Store.Services.Dtos;
 
 namespace Humans.Store.Models;

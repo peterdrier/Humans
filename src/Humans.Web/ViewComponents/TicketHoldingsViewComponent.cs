@@ -1,6 +1,6 @@
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.EarlyEntry;
-using Humans.Application.Interfaces.Tickets;
+using Humans.Tickets.Contracts;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Web.ViewComponents;

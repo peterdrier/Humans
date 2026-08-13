@@ -1,6 +1,7 @@
 <!-- freshness:triggers
   src/Humans.Application/Services/Users/**
   src/Humans.Domain/Entities/User.cs
+  src/Humans.Domain/Entities/AccountMergeRequest.cs
   src/Humans.Domain/Entities/UserEmail.cs
   src/Humans.Domain/Entities/EventParticipation.cs
   src/Humans.Infrastructure/Data/Configurations/Users/**
@@ -22,13 +23,13 @@ The User aggregate and its identity surface. Profile-adjacent User properties (G
 - **Unsubscribe** is the one-click email opt-out surface (`/Unsubscribe/{token}`) that updates the user's per-category `CommunicationPreference` via Profile's `ICommunicationPreferenceService`. New category-aware tokens redirect to the comms-preferences page; legacy campaign-only tokens (`CampaignUnsubscribe` Data Protection purpose) show the confirmation page and are treated as `MessageCategory.Marketing`. RFC 8058 one-click POST (`/Unsubscribe/OneClick`) also routes through the same service. No login required.
 - **Event Participation** is a per-user, per-year record (`Ticketed`, `Attended`, `NotAttending`, `NoShow`) derived from ticket sync, user self-declaration, and admin backfill. Owned by Users because the participation key is User + Year, not Ticket or Shift.
 - **Account deletion** is a 30-day grace period: `User.DeletionRequestedAt` + `DeletionScheduledFor` are stamped when a user requests deletion (with optional `DeletionEligibleAfter` for ticket-holder event holds). `ProcessAccountDeletionsJob` runs daily and calls `IUserService.AnonymizeExpiredAccountAsync` for each due user.
-- Identity sub-tables (renamed to `users`, `user_claims`, `user_logins`, `user_tokens`, `roles`, `user_roles` per Postgres convention in `HumansDbContext.OnModelCreating`) are managed by ASP.NET Identity's `UserManager<User>` / `SignInManager<User>`. Controllers may inject those framework services directly (design-rules §2a exception).
+- Identity sub-tables (renamed to `users`, `user_claims`, `user_logins`, `user_tokens`, `roles`, `user_roles` per Postgres convention in `UsersDbContext.OnModelCreating`) are managed by ASP.NET Identity's `UserManager<User>` / `SignInManager<User>`. Controllers may inject those framework services directly (design-rules §2a exception).
 
 ## Data Model
 
 ### User
 
-**Table:** `users` (ASP.NET Identity table, renamed from `AspNetUsers` in `HumansDbContext.OnModelCreating`).
+**Table:** `users` (ASP.NET Identity table, renamed from `AspNetUsers` in `UsersDbContext.OnModelCreating`).
 
 Extends `IdentityUser<Guid>` with project-specific columns.
 
@@ -93,9 +94,32 @@ Per-user, per-year record of event involvement. Derived from ticket sync, user s
 
 On account-merge fold, an `(UserId, Year)` collision between source and target keeps the **highest-precedence status** — `Attended` > `Ticketed` > `NoShow` > `NotAttending` — copying the winning row's `Status`/`Source`/`DeclaredAt` onto the target row and deleting the source row (`UserRepository.ReassignEventParticipationToUserAsync`).
 
+### AccountMergeRequest
+
+Tracks pending and resolved merges between duplicate accounts. `AccountMergeService` orchestrates the merge; `DuplicateAccountService` is the stateless detector that flags candidates.
+
+**Table:** `account_merge_requests`
+
+| Field | Type | Notes |
+|-------|------|-------|
+| Id | Guid | PK |
+| TargetUserId | Guid | FK → User (Cascade) — receives the merged data |
+| SourceUserId | Guid | FK → User (Cascade) — gets archived |
+| Email | string (256) | The address that triggered the request |
+| PendingEmailId | Guid | The unverified `UserEmail` row on the target account |
+| Status | AccountMergeRequestStatus | Stored as string (max 50) |
+| CreatedAt | Instant | When created |
+| ResolvedAt | Instant? | When accepted or rejected |
+| ResolvedByUserId | Guid? | FK → User (SetNull) — admin who resolved |
+| AdminNotes | string? (4000) | Admin notes |
+
+**Indexes:** `Status`, `TargetUserId`, `SourceUserId`.
+
+The entity still carries `TargetUser`, `SourceUser`, and `ResolvedByUser` navigation properties (configured with `HasOne(...).WithMany().HasForeignKey(...)`). They predate the §15i nav-strip work; the merge admin views read them directly today. Strip and route through `IUserServiceRead.GetUserInfosAsync` when this pattern is generalised across the section.
+
 ### Identity framework tables
 
-`HumansDbContext.OnModelCreating` renames every Identity table to a lowercase `snake_case` Postgres-friendly name:
+`UsersDbContext.OnModelCreating` renames every Identity table to a lowercase `snake_case` Postgres-friendly name:
 
 - `user_claims` (was `AspNetUserClaims`)
 - `user_logins` (was `AspNetUserLogins`)
@@ -152,7 +176,7 @@ Two controllers serve this section:
 ## Negative Access Rules
 
 - Controllers (other than `AccountController` / the Development section's `DevLoginController` / the ASP.NET Identity framework surface) **cannot** inject `UserManager<User>` or `SignInManager<User>`. They go through `IUserService`.
-- Application-layer services in `Humans.Application.Services.Users/` **cannot** inject `HumansDbContext` directly — they go through `IUserRepository` / `IUserEmailRepository`. The Application project's reference graph blocks `Microsoft.EntityFrameworkCore`.
+- Application-layer services in `Humans.Application.Services.Users/` **cannot** inject a DbContext directly — they go through `IUserRepository` / `IUserEmailRepository`. The Application project's reference graph blocks `Microsoft.EntityFrameworkCore`.
 - Other Application-layer services **cannot** read or write the `users` / Identity tables directly — they go through `IUserService`.
 - Regular humans **cannot** purge any account.
 - An Admin **cannot** purge their own account — `UsersAdminController.PurgeHuman` returns the user to the admin-detail page with an error when `user.Id == currentUser.Id`.
@@ -217,6 +241,6 @@ Inbound (other sections → Users) — the typical direction:
 ### Touch-and-clean guidance
 
 - After issue #635 (§15i nav strip): `user.Profile` / `user.TeamMemberships` / `user.RoleAssignments` / `user.Applications` / `user.ConsentRecords` / `user.CommunicationPreferences` / `user.GetEffectiveEmail()` no longer exist as User-side navs/method — readers route through `IProfileService` / `ITeamService` / `IRoleAssignmentService` / etc. or use `user.Email` (which still overrides via the surviving `UserEmails` collection). When touching `TeamService` / `GoogleWorkspaceSyncService` / `ProfileController` and the four notification jobs, prefer `IUserEmailRepository.GetByUserIdReadOnlyAsync` / `IUserServiceRead.GetUserInfosAsync` over reaching into the `UserEmails` nav directly.
-- Do **not** inject `HumansDbContext` into any Application-layer service under `Humans.Application.Services.Users/`. Use `IUserRepository` / `IUserEmailRepository`.
+- Do **not** inject a DbContext into any Application-layer service under `Humans.Application.Services.Users/`. Use `IUserRepository` / `IUserEmailRepository`.
 - `/Unsubscribe/{token}` and `/Unsubscribe/OneClick` must stay unauthenticated. If new unsubscribe-adjacent surfaces are added, route them through `IUnsubscribeService` (which delegates token validation to Profile's `ICommunicationPreferenceService` / the legacy `CampaignUnsubscribe` Data Protection purpose) rather than opening additional unauthenticated endpoints.
 - Event-participation writes must all go through one of `IUserService.DeclareNotAttendingAsync`, `UndoNotAttendingAsync`, `SetParticipationFromTicketSyncAsync`, `RemoveTicketSyncParticipationAsync`, or `BackfillParticipationsAsync`. `TicketSyncService` already does this as of nobodies-collective/Humans#545; new writers must follow the same pattern. The repository-level `UpsertParticipationAsync` is internal to the section.

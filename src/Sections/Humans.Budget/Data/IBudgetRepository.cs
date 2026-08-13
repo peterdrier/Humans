@@ -404,7 +404,7 @@ internal sealed record BudgetYearDraft(
 
 /// <summary>
 /// Minimal team reference for budget scaffolding. The Budget section reads
-/// team identities through <see cref="Humans.Application.Interfaces.Teams.ITeamService"/>
+/// team identities through <see cref="Humans.Teams.Contracts.ITeamService"/>
 /// — this record is the in-memory snapshot passed into repository-side mutations
 /// so the repository never has to cross the Teams section's ownership boundary.
 /// </summary>

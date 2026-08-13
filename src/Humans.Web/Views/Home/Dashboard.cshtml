@@ -403,6 +403,18 @@ else if (Model.IsShiftBrowsingOpen && Model.IsVolunteerMember)
                     Compact = true
                 })
             }
+            @* Deliberately English-only, like the /Tour page it opens (spec 2026-08-12):
+               the signed-in nav has no Tour slot, so this tile is the member-facing entry. *@
+            @await Html.PartialAsync("_DashboardActionCard", new DashboardActionCardViewModel
+            {
+                Controller = "Tour",
+                Action = "Index",
+                Title = "Tour",
+                Description = "What Humans does, in plain language — the page to show other burns.",
+                IconCssClass = "fa-solid fa-fire",
+                IconVariant = "info",
+                Compact = true
+            })
         </div>
     </div>
 </div>

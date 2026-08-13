@@ -1,10 +1,10 @@
 using Humans.Application.DTOs;
 using Humans.Application.Configuration;
 using Humans.Application.Helpers;
-using Humans.Application.Interfaces.AuditLog;
+using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Profiles;
-using Humans.Application.Interfaces.Teams;
+using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -585,9 +585,9 @@ public sealed class GoogleGroupSyncService(
 
         var byTeam = await teamResourceService.GetResourcesByTeamIdsAsync(counts.Keys.ToList(), ct);
         var teamIds = byTeam.Keys.ToList();
-        var teamsById = new Dictionary<Guid, Team?>();
+        var teamsById = new Dictionary<Guid, TeamInfo?>();
         foreach (var teamId in teamIds)
-            teamsById[teamId] = await teamService.GetTeamByIdAsync(teamId, ct);
+            teamsById[teamId] = await teamService.GetTeamAsync(teamId, ct);
 
         var resourcesByEmail = byTeam
             .SelectMany(kvp => kvp.Value.Select(resource => (TeamId: kvp.Key, Resource: resource)))

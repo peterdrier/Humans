@@ -4,7 +4,6 @@ using Humans.Application.Interfaces.Shifts;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.UI.Extensions;
-using Humans.Web.Extensions;
 using Humans.Web.Models;
 
 namespace Humans.Web.Helpers;

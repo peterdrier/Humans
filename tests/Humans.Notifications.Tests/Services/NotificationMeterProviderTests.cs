@@ -1,4 +1,5 @@
 using Humans.Domain.Entities;
+using Humans.Tickets.Contracts;
 using Humans.Domain.Enums;
 using Humans.Application;
 using Humans.Notifications.Data;
@@ -8,8 +9,8 @@ using AwesomeAssertions;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Governance.Contracts;
-using Humans.Application.Interfaces.Teams;
-using Humans.Application.Interfaces.Tickets;
+using Humans.Teams.Contracts;
+
 using Humans.Application.Interfaces.Users;
 using static Humans.Notifications.Tests.NotificationTestFixtures;
 using Humans.Domain.Constants;
@@ -20,7 +21,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
 
-
 namespace Humans.Notifications.Tests.Services;
 
 public class NotificationMeterProviderTests : IDisposable
@@ -28,7 +28,7 @@ public class NotificationMeterProviderTests : IDisposable
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IGoogleSyncServiceRead _googleSyncService = Substitute.For<IGoogleSyncServiceRead>();
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
-    private readonly ITicketSyncService _ticketSyncService = Substitute.For<ITicketSyncService>();
+    private readonly ITicketSync _ticketSyncService = Substitute.For<ITicketSync>();
     private readonly IApplicationServiceRead _applicationDecisionService = Substitute.For<IApplicationServiceRead>();
     private readonly ICampServiceRead _campService = Substitute.For<ICampServiceRead>();
     private readonly IMemoryCache _cache;
@@ -60,7 +60,6 @@ public class NotificationMeterProviderTests : IDisposable
         _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(MakeNeedsConsentReview(1)));
         _googleSyncService.GetFailedSyncEventCountAsync(Arg.Any<CancellationToken>()).Returns(0);
-        _teamService.GetTotalPendingJoinRequestCountAsync(Arg.Any<CancellationToken>()).Returns(0);
         _ticketSyncService.IsInErrorStateAsync(Arg.Any<CancellationToken>()).Returns(false);
         _applicationDecisionService.GetUnvotedApplicationCountAsync(
             Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(0);
@@ -78,7 +77,6 @@ public class NotificationMeterProviderTests : IDisposable
         _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(MakeNeedsConsentReview(1)));
         _googleSyncService.GetFailedSyncEventCountAsync(Arg.Any<CancellationToken>()).Returns(0);
-        _teamService.GetTotalPendingJoinRequestCountAsync(Arg.Any<CancellationToken>()).Returns(0);
         _ticketSyncService.IsInErrorStateAsync(Arg.Any<CancellationToken>()).Returns(false);
 
         var meters = await _provider.GetMetersForUserAsync(CreatePrincipal(RoleNames.VolunteerCoordinator), Xunit.TestContext.Current.CancellationToken);
@@ -94,7 +92,6 @@ public class NotificationMeterProviderTests : IDisposable
         _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(MakeNeedsConsentReview(3)));
         _googleSyncService.GetFailedSyncEventCountAsync(Arg.Any<CancellationToken>()).Returns(0);
-        _teamService.GetTotalPendingJoinRequestCountAsync(Arg.Any<CancellationToken>()).Returns(0);
         _ticketSyncService.IsInErrorStateAsync(Arg.Any<CancellationToken>()).Returns(false);
 
         var meters = await _provider.GetMetersForUserAsync(CreatePrincipal(RoleNames.ConsentCoordinator), Xunit.TestContext.Current.CancellationToken);
@@ -144,7 +141,6 @@ public class NotificationMeterProviderTests : IDisposable
         _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyCollection<UserInfo>>([]));
         _googleSyncService.GetFailedSyncEventCountAsync(Arg.Any<CancellationToken>()).Returns(0);
-        _teamService.GetTotalPendingJoinRequestCountAsync(Arg.Any<CancellationToken>()).Returns(0);
         _ticketSyncService.IsInErrorStateAsync(Arg.Any<CancellationToken>()).Returns(false);
         _applicationDecisionService.GetUnvotedApplicationCountAsync(
             boardUserId, Arg.Any<CancellationToken>()).Returns(4);

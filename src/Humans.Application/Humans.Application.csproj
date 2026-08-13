@@ -7,6 +7,8 @@
   <ItemGroup>
     <ProjectReference Include="..\Humans.Domain\Humans.Domain.csproj" />
     <ProjectReference Include="..\Humans.Interfaces\Humans.Interfaces.csproj" />
+    <ProjectReference Include="..\Sections\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
+    <ProjectReference Include="..\Sections\Humans.Auth.Contracts\Humans.Auth.Contracts.csproj" />
     <!--
       SystemSettings' contracts leaf. EmailOutboxService and DriveActivityMonitorService
       call ISystemSettingsService; the leaf references Humans.Interfaces only, so Base
@@ -43,6 +45,19 @@
     -->
     <ProjectReference Include="..\Sections\Humans.Gdpr.Contracts\Humans.Gdpr.Contracts.csproj" />
     <ProjectReference Include="..\Sections\Humans.Onboarding.Contracts\Humans.Onboarding.Contracts.csproj" />
+    <!--
+      Tickets' contracts leaf: DashboardService and AccountDeletionService read a human's
+      holdings, UserEmailService and ShiftManagementService read the order projection, all
+      through ITicketServiceRead.
+    -->
+    <ProjectReference Include="..\Sections\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />
+    <!--
+      Teams' contracts leaf: DashboardService, AuditViewerService, ContactFieldService, the
+      three Shifts services and GoogleIntegration's TeamResourceService / GoogleAdminService /
+      GoogleGroupSyncService / GoogleWorkspaceSyncService read teams through ITeamServiceRead
+      or ITeamService, and AccountDeletionService / DuplicateAccountService write through it.
+    -->
+    <ProjectReference Include="..\Sections\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

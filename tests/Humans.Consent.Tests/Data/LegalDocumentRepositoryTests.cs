@@ -16,7 +16,7 @@ public sealed class LegalDocumentRepositoryTests : IDisposable
     private readonly LegalDbContext _dbContext;
     private readonly FakeClock _clock;
     private readonly LegalDocumentRepository _repo;
-    private readonly Team _team;
+    private readonly Guid _teamId = Guid.NewGuid();
 
     public LegalDocumentRepositoryTests()
     {
@@ -27,18 +27,9 @@ public sealed class LegalDocumentRepositoryTests : IDisposable
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
         _repo = new LegalDocumentRepository(new TestDbContextFactory<LegalDbContext>(options));
 
-        // LegalDocument.TeamId is a bare cross-section Guid — the Team is never
-        // persisted; only its Id is referenced.
-        _team = new Team
-        {
-            Id = Guid.NewGuid(),
-            Name = "Volunteers",
-            Slug = "volunteers",
-            IsActive = true,
-            SystemTeamType = SystemTeamType.None,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
-        };
+        // LegalDocument.TeamId is a bare cross-section Guid — the team row is never
+        // persisted here and the entity is internal to Humans.Teams, so the id is all
+        // this fixture ever needed.
     }
 
     public void Dispose()
@@ -55,7 +46,7 @@ public sealed class LegalDocumentRepositoryTests : IDisposable
         {
             Id = Guid.NewGuid(),
             Name = name,
-            TeamId = _team.Id,
+            TeamId = _teamId,
             IsRequired = isRequired,
             IsActive = isActive,
             GracePeriodDays = 7,
@@ -131,7 +122,7 @@ public sealed class LegalDocumentRepositoryTests : IDisposable
         });
         await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var mine = await _repo.GetDocumentsAsync(_team.Id, Xunit.TestContext.Current.CancellationToken);
+        var mine = await _repo.GetDocumentsAsync(_teamId, Xunit.TestContext.Current.CancellationToken);
         var all = await _repo.GetDocumentsAsync(null, Xunit.TestContext.Current.CancellationToken);
 
         mine.Should().HaveCount(2);
@@ -145,7 +136,7 @@ public sealed class LegalDocumentRepositoryTests : IDisposable
         await SeedDocumentAsync("Archived", isActive: false, isRequired: true);
         await SeedDocumentAsync("Optional", isActive: true, isRequired: false);
 
-        var result = await _repo.GetActiveRequiredDocumentsForTeamAsync(_team.Id, Xunit.TestContext.Current.CancellationToken);
+        var result = await _repo.GetActiveRequiredDocumentsForTeamAsync(_teamId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().ContainSingle()
             .Which.Name.Should().Be("Active");
@@ -173,7 +164,7 @@ public sealed class LegalDocumentRepositoryTests : IDisposable
         {
             Id = Guid.NewGuid(),
             Name = "New",
-            TeamId = _team.Id,
+            TeamId = _teamId,
             IsRequired = true,
             IsActive = true,
             GracePeriodDays = 5,
@@ -194,7 +185,7 @@ public sealed class LegalDocumentRepositoryTests : IDisposable
     {
         var updated = await _repo.UpdateAsync(
             Guid.NewGuid(),
-            "x", _team.Id, true, true, 1, null, Xunit.TestContext.Current.CancellationToken);
+            "x", _teamId, true, true, 1, null, Xunit.TestContext.Current.CancellationToken);
 
         updated.Should().BeFalse();
     }

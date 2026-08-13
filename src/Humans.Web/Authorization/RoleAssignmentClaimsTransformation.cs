@@ -1,3 +1,4 @@
+using Humans.Auth.Contracts;
 using System.Security.Claims;
 using Humans.Application;
 using Humans.Application.Interfaces.Auth;

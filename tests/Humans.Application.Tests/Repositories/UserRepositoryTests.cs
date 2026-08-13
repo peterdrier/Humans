@@ -13,16 +13,16 @@ namespace Humans.Application.Tests.Repositories;
 
 public sealed class UserRepositoryTests : IDisposable
 {
-    private readonly HumansDbContext _dbContext;
+    private readonly UsersDbContext _dbContext;
     private readonly FakeClock _clock;
     private readonly UserRepository _repo;
 
     public UserRepositoryTests()
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
+        var options = new DbContextOptionsBuilder<UsersDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
-        _dbContext = new HumansDbContext(options);
+        _dbContext = new UsersDbContext(options);
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
         _repo = new UserRepository(new TestDbContextFactory(options));
     }

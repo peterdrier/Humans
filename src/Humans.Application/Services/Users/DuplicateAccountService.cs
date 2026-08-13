@@ -1,5 +1,6 @@
+using Humans.Auth.Contracts;
 using Humans.Domain.Helpers;
-using Humans.Application.Interfaces.Teams;
+using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Users;
 
@@ -72,7 +73,7 @@ public sealed class DuplicateAccountService(
         var roleAssignmentCounts = new Dictionary<Guid, int>();
         foreach (var userId in involvedUserIds)
         {
-            var memberships = await teamService.GetUserTeamsAsync(userId, ct);
+            var memberships = await teamService.GetUserTeamMembershipsAsync(userId, ct);
             teamCounts[userId] = memberships.Count;
 
             var roles = await roleAssignmentService.GetByUserIdAsync(userId, ct);

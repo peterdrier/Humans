@@ -20,17 +20,18 @@ using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Authorization;
-using Humans.Web.Extensions;
+using Humans.UI.Extensions;
 using Humans.Web.Models;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using Humans.Application.Interfaces.AuditLog;
+using Humans.AuditLog.Contracts;
 using Humans.Campaigns.Contracts;
 using Humans.Application.Interfaces.Camps;
 using Humans.Email.Contracts;
 using Humans.Application.Interfaces.Shifts;
-using Humans.Application.Interfaces.Teams;
-using Humans.Application.Interfaces.Tickets;
+using Humans.Teams.Contracts;
+using Humans.Tickets.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Onboarding.Contracts;
 using Humans.Governance.Contracts;
@@ -39,7 +40,6 @@ using Humans.Application.Models;
 using Humans.Application.Services.Profiles;
 using Humans.UI;
 using Humans.UI.Authorization;
-using Humans.UI.Extensions;
 
 // RoleAssignment nav props are [Obsolete]; service stitches them in memory. Nav-strip tracked in §15i.
 #pragma warning disable CS0618
@@ -1346,7 +1346,6 @@ public class ProfileController(
             SetInfo($"Email {email} already exists on this user — no change.");
             return;
         }
-
 
         await auditLogService.LogAsync(
             AuditAction.UserEmailAdded,

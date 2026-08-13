@@ -6,7 +6,7 @@ using NodaTime.Testing;
 using NSubstitute;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Application.Interfaces.Teams;
+using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Constants;
@@ -27,7 +27,7 @@ public class ProcessGoogleSyncOutboxJobTests : IDisposable
     /// (nobodies-collective/Humans#858); no test here seeds one, so an empty
     /// context is enough for the display-name stub.
     /// </summary>
-    private readonly HumansDbContext _usersDb;
+    private readonly UsersDbContext _usersDb;
 
     private readonly IGoogleSyncOutboxRepository _outboxRepository;
     private readonly IGoogleResourceRepository _resourceRepository;
@@ -52,8 +52,8 @@ public class ProcessGoogleSyncOutboxJobTests : IDisposable
             .GetActiveByTeamIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns([]);
         _userService = Substitute.For<IUserService>();
-        _usersDb = new HumansDbContext(
-            new DbContextOptionsBuilder<HumansDbContext>()
+        _usersDb = new UsersDbContext(
+            new DbContextOptionsBuilder<UsersDbContext>()
                 .UseInMemoryDatabase(Guid.NewGuid().ToString())
                 .Options);
         _userService.StubGetUserInfosFromContext(_usersDb);

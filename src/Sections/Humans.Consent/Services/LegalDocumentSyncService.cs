@@ -9,7 +9,7 @@ using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Enums;
 using Humans.Consent.Contracts;
 using Humans.Notifications.Contracts;
-using Humans.Application.Interfaces.Teams;
+using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Consent.Data;
 using Humans.Consent.Domain;
@@ -55,7 +55,7 @@ internal sealed partial class LegalDocumentSyncService(
 
         // Stitch team names in memory (no .Include).
         var teamIds = documents.Select(d => d.TeamId).Distinct().ToList();
-        var teams = await teamService.GetByIdsWithParentsAsync(teamIds, cancellationToken);
+        var teams = await teamService.GetTeamsWithParentsAsync(teamIds, cancellationToken);
 
         return documents
             .Select(d =>
@@ -450,7 +450,7 @@ internal sealed partial class LegalDocumentSyncService(
 
         // Team names via ITeamService — no cross-section EF join (memory/architecture/no-cross-section-ef-joins.md).
         var distinctTeamIds = documents.Select(d => d.TeamId).Distinct().ToList();
-        var teams = await teamService.GetByIdsWithParentsAsync(distinctTeamIds, cancellationToken);
+        var teams = await teamService.GetTeamsWithParentsAsync(distinctTeamIds, cancellationToken);
 
         return documents.Select(d =>
         {

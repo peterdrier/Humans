@@ -1,4 +1,5 @@
 using Humans.Budget.Contracts;
+using Humans.Expenses.Contracts;
 using Humans.Expenses.Services;
 using Humans.Finance.Contracts;
 using Humans.Application.Interfaces.Users;
@@ -12,7 +13,6 @@ using Humans.Expenses.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
-using Humans.Expenses.Domain;
 
 namespace Humans.Expenses.Controllers;
 

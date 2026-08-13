@@ -1,7 +1,7 @@
 using AwesomeAssertions;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using NodaTime.Testing;
-using Humans.Application.Interfaces.Teams;
+using Humans.Teams.Contracts;
 using Humans.Domain.Enums;
 using Humans.Application.Interfaces.Users;
 using Humans.Budget.Domain;
@@ -20,9 +20,9 @@ namespace Humans.Budget.Tests.Services;
 /// <summary>
 /// Owns its fixture rather than deriving from <c>Humans.Application.Tests</c>'
 /// <c>ServiceTestHarness</c>: that harness is built around an in-memory
-/// <c>HumansDbContext</c> and this test only ever used two of its members — the clock and
+/// <c>UsersDbContext</c> and this test only ever used two of its members — the clock and
 /// the Budget section context. Inheriting it would have granted a section test project
-/// <c>InternalsVisibleTo</c> on <c>HumansDbContext</c>, which is the boundary the G5 split
+/// <c>InternalsVisibleTo</c> on <c>UsersDbContext</c>, which is the boundary the G5 split
 /// exists to draw (nobodies-collective/Humans#866).
 /// </summary>
 public sealed class BudgetServiceTests

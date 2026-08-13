@@ -1,3 +1,5 @@
+using Humans.Teams.Data;
+using Humans.Teams.Domain;
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;

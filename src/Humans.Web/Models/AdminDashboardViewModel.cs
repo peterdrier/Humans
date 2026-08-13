@@ -20,7 +20,14 @@ public sealed record AdminDashboardViewModel(
     IReadOnlyList<DashboardActivityRow> RecentActivity,
     DashboardApplicationStats AppStats,
     IReadOnlyList<DashboardLanguageCount> LanguageDistribution,
-    UserSetMembership SetMembership);
+    UserSetMembership SetMembership,
+    int TotalTeams,
+    int TotalAuditEvents,
+    int TotalEmails,
+    int? StoreOrders,
+    decimal? StoreTotalEur,
+    int ExpenseReports,
+    decimal ExpenseTotalEur);
 
 public sealed record DepartmentCoverage(string Name, int Filled, int Total)
 {

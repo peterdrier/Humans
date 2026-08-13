@@ -6,12 +6,9 @@ using Microsoft.Extensions.Configuration.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using ProfilesAccountMergeService = Humans.Application.Services.Users.AccountMergeService;
 using UsersUserService = Humans.Application.Services.Users.UserService;
-using AuditLogService = Humans.Application.Services.AuditLog.AuditLogService;
 using CampService = Humans.Application.Services.Camps.CampService;
-using RoleAssignmentService = Humans.Application.Services.Auth.RoleAssignmentService;
 using ShiftSignupService = Humans.Application.Services.Shifts.ShiftSignupService;
-using TicketsTicketQueryService = Humans.Application.Services.Tickets.TicketQueryService;
-using TeamService = Humans.Application.Services.Teams.TeamService;
+using TeamService = Humans.Teams.Services.TeamService;
 
 namespace Humans.Application.Tests.Services.Gdpr;
 
@@ -66,16 +63,16 @@ public class GdprExportDependencyInjectionTests
         SectionType("Humans.Governance.Services.ApplicationDecisionService"),
         SectionType("Humans.Consent.Services.ConsentService"),
         typeof(TeamService),
-        typeof(RoleAssignmentService),
+        SectionType("Humans.Auth.Services.RoleAssignmentService"),
         typeof(ShiftSignupService),
         SectionType("Humans.Feedback.Services.FeedbackService"),
         SectionType("Humans.Issues.Services.IssuesService"),
         SectionType("Humans.Notifications.Services.NotificationInboxService"),
-        typeof(TicketsTicketQueryService),
+        SectionType("Humans.Tickets.Services.TicketQueryService"),
         SectionType("Humans.Campaigns.Services.CampaignService"),
         typeof(CampService),
         SectionType("Humans.Events.Services.EventService"),
-        typeof(AuditLogService),
+        SectionType("Humans.AuditLog.Services.AuditLogService"),
         SectionType("Humans.Budget.Services.BudgetService"),
         SectionType("Humans.Agent.Services.AgentService"),
         SectionType("Humans.Expenses.Services.ExpenseReportService"),
@@ -119,7 +116,7 @@ public class GdprExportDependencyInjectionTests
         // assemblies come from SectionDiscoveryExtensions — the same discovery the
         // runtime uses, so a section that moves cannot silently drop out of this
         // sweep the way it would with a hard-coded assembly list (design §10).
-        var infrastructureAssembly = typeof(Humans.Infrastructure.Data.HumansDbContext).Assembly;
+        var infrastructureAssembly = typeof(Humans.Infrastructure.Data.UsersDbContext).Assembly;
         var applicationAssembly = typeof(Humans.Application.Services.Users.UserService).Assembly;
 
         var foundContributors = new[] { infrastructureAssembly, applicationAssembly }

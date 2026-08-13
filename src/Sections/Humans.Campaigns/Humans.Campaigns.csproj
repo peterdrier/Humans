@@ -29,6 +29,14 @@
     <ProjectReference Include="..\..\Humans.UI\Humans.UI.csproj" />
     <ProjectReference Include="..\Humans.Campaigns.Contracts\Humans.Campaigns.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Gdpr.Contracts\Humans.Gdpr.Contracts.csproj" />
+    <!--
+      Tickets' contracts leaf: CampaignService asks Tickets for discount codes
+      (ITicketDiscountCodes) rather than reaching past it into the Base vendor port, which
+      is what it used to do. Acyclic — the pair goes through leaves in both directions
+      (Humans.Tickets -> Humans.Campaigns.Contracts) and Humans.Campaigns.Contracts names
+      no Tickets type.
+    -->
+    <ProjectReference Include="..\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

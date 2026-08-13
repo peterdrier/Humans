@@ -1,3 +1,4 @@
+using Humans.Auth.Contracts;
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Caching;
@@ -116,4 +117,9 @@ public class IssuesArchitectureTests
         AuditEntityTypes.Issue.Should().Be("Issue");
     }
 
+    // ── IIssuesRepository ────────────────────────────────────────────────────
+
+    // Sealed-repository check covered by HUM0034 (section types are internal) plus
+    // MA0053 (an unsealed internal class is a build error) — not by
+    // IRepositoryImplementationsAreSealedRule, which sweeps Humans.Infrastructure only.
 }

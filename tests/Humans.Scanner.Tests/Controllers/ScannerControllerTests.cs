@@ -5,7 +5,7 @@ using Humans.Application.Interfaces.EarlyEntry;
 using Humans.Events.Contracts;
 using Humans.Application.Interfaces.ICalFeed;
 using Humans.Application.Interfaces.Shifts;
-using Humans.Application.Interfaces.Tickets;
+using Humans.Tickets.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;

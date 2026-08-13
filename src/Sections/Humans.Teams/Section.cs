@@ -1,0 +1,58 @@
+using Humans.Application.Interfaces;
+using Humans.Teams.Authorization;
+using Microsoft.AspNetCore.Authorization;
+using Humans.Application.Interfaces.Caching;
+using Humans.Application.Interfaces.EarlyEntry;
+using Humans.Application.Interfaces.GoogleIntegration;
+using Humans.Application.Interfaces.Users;
+using Humans.Gdpr.Contracts;
+using Humans.Infrastructure.Hosting;
+using Humans.Teams.Contracts;
+using Humans.Teams.Data;
+using Humans.Teams.Services;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace Humans.Teams;
+
+/// <summary>
+/// Teams' DI entry point, at the project root by convention. Discovered by Shell — nothing
+/// names it, so it needs no section prefix. The §15 caching decorator is a Singleton that warms
+/// the whole team graph at startup and mutates it in place on write; the keyed inner service is
+/// Scoped because it owns the repository's unit of work.
+/// </summary>
+public sealed class Section : ISection
+{
+    public void Register(IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddSectionDbContext<TeamsDbContext>(sentinelTable: "teams");
+
+        services.AddSingleton<ITeamRepository, TeamRepository>();
+
+        // Keyed-Scoped inner + Singleton decorator.
+        services.AddKeyedScoped<ITeamManagementService, TeamService>(CachingTeamService.InnerServiceKey);
+        services.AddKeyedScoped<IUserMerge, TeamService>(CachingTeamService.InnerServiceKey);
+        services.AddScoped<TeamService>(sp =>
+            (TeamService)sp.GetRequiredKeyedService<ITeamManagementService>(CachingTeamService.InnerServiceKey));
+        services.AddScoped<IGoogleGroupMembershipSource>(sp => sp.GetRequiredService<TeamService>());
+        services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<TeamService>());
+        services.AddScoped<IEarlyEntryProvider>(sp => sp.GetRequiredService<TeamService>());
+
+        services.AddSingleton<CachingTeamService>();
+        services.AddSingleton<ITeamManagementService>(sp => sp.GetRequiredService<CachingTeamService>());
+        services.AddSingleton<ITeamService>(sp => sp.GetRequiredService<CachingTeamService>());
+        services.AddSingleton<ITeamServiceRead>(sp => sp.GetRequiredService<CachingTeamService>());
+        services.AddSingleton<ITeamSeeding>(sp => sp.GetRequiredService<CachingTeamService>());
+        services.AddSingleton<IUserMerge>(sp => sp.GetRequiredService<CachingTeamService>());
+
+        services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingTeamService>());
+
+        services.AddHostedService(sp => sp.GetRequiredService<CachingTeamService>());
+
+        services.AddScoped<ITeamPageService, TeamPageService>();
+
+        // Resource-based handler; the policies it backs stay in Shell's
+        // AuthorizationPolicyExtensions (design §15 step 6's asymmetry).
+        services.AddScoped<IAuthorizationHandler, TeamAuthorizationHandler>();
+    }
+}

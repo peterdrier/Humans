@@ -1,3 +1,4 @@
+@model Humans.Web.Models.DevStatsViewModel?
 @{
     ViewData["Title"] = "About";
 }
@@ -96,6 +97,89 @@
             </p>
         </div>
     </div>
+</section>
+
+<hr />
+
+@*
+    Engineering story — intentionally hardcoded in English and NOT localized (same rule as
+    the dedication below): its audience is external engineers and burn orgs evaluating the
+    platform, and the wording is deliberate. Do not wire it through @Localizer.
+*@
+<section class="my-5">
+    <h2><i class="fa-solid fa-compass-drafting me-2"></i>How it's built</h2>
+    <p style="max-width: 720px;">
+        Humans is AI-accelerated and engineer-directed: 25+ years of software engineering
+        discipline, encoded as rules the machine enforces on every build. The AI writes a lot
+        of the code; the architecture decides what code is allowed to exist.
+    </p>
+    <div class="row g-4 mt-1">
+        <div class="col-md-6">
+            <h5><i class="fa-solid fa-layer-group me-1"></i> Sections, not spaghetti</h5>
+            <p class="text-muted small mb-0">
+                The app is split into vertical sections — People, Teams, Shifts, Tickets, Store,
+                Governance, and more — each owning its own tables and talking to the others only
+                through narrow read interfaces. @(Model?.SectionCount.ToString() ?? "Dozens of")
+                sections live as separate projects with the compiler enforcing the boundary.
+            </p>
+        </div>
+        <div class="col-md-6">
+            <h5><i class="fa-solid fa-shield-halved me-1"></i> Rules the build enforces</h5>
+            <p class="text-muted small mb-0">
+                A hand-written constitution (layering, table ownership, cross-section access) is
+                enforced by @(Model?.AnalyzerRuleCount.ToString() ?? "dozens of") custom Roslyn
+                analyzer rules — violations fail the build in the editor, not in code review.
+            </p>
+        </div>
+        <div class="col-md-6">
+            <h5><i class="fa-solid fa-vial-circle-check me-1"></i> Tested like it matters</h5>
+            <p class="text-muted small mb-0">
+                Unit, integration, and full-page render tests, plus Stryker mutation testing to
+                test the tests themselves. Every change ships through a pull request with
+                automated review, a preview deployment, and its own cloned database.
+            </p>
+        </div>
+        <div class="col-md-6">
+            <h5><i class="fa-solid fa-clock-rotate-left me-1"></i> Accountable by design</h5>
+            <p class="text-muted small mb-0">
+                Every automated action lands in an append-only audit trail the Board can read.
+                GDPR export and right-to-deletion are first-class features, not afterthoughts.
+            </p>
+        </div>
+    </div>
+
+    @if (Model is not null)
+    {
+        <div class="card mt-4">
+            <div class="card-header">By the numbers <small class="text-muted">snapshot @Model.GeneratedDate</small></div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-6 col-md-2"><div class="fs-4">@Model.TotalCommits.ToString("N0")</div><div class="small text-muted">commits</div></div>
+                    <div class="col-6 col-md-2"><div class="fs-4">@Model.MergedPrs.ToString("N0")</div><div class="small text-muted">PRs merged</div></div>
+                    <div class="col-6 col-md-2"><div class="fs-4">@Model.ClosedIssues.ToString("N0")</div><div class="small text-muted">issues closed</div></div>
+                    <div class="col-6 col-md-2"><div class="fs-4">@Model.TestCount.ToString("N0")</div><div class="small text-muted">tests</div></div>
+                    <div class="col-6 col-md-2"><div class="fs-4">@Model.AnalyzerRuleCount</div><div class="small text-muted">analyzer rules</div></div>
+                    <div class="col-6 col-md-2"><div class="fs-4">@Model.ClaudeCoauthoredCommitPercent%</div><div class="small text-muted">commits with an AI co-author</div></div>
+                </div>
+                <div class="table-responsive mt-3">
+                    <table class="table table-sm mb-0">
+                        <thead><tr><th>Contributor</th><th class="text-end">Commits</th><th class="text-end">Lines added</th><th class="text-end">Lines deleted</th></tr></thead>
+                        <tbody>
+                        @foreach (var c in Model.Contributors)
+                        {
+                            <tr>
+                                <td>@c.Name</td>
+                                <td class="text-end">@c.Commits.ToString("N0")</td>
+                                <td class="text-end">@c.LinesAdded.ToString("N0")</td>
+                                <td class="text-end">@c.LinesDeleted.ToString("N0")</td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
 </section>
 
 <hr />

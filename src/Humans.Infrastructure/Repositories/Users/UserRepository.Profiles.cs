@@ -122,7 +122,7 @@ internal sealed partial class UserRepository
     }
 
     private static async Task UpdateUserStateFromProfileAsync(
-        HumansDbContext ctx, Profile profile, CancellationToken ct)
+        UsersDbContext ctx, Profile profile, CancellationToken ct)
     {
         var user = await ctx.Users.FindAsync([profile.UserId], ct);
         if (user is not null)

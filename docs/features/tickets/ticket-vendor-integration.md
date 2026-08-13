@@ -1,16 +1,13 @@
 <!-- freshness:triggers
-  src/Humans.Application/Services/Tickets/**
-  src/Humans.Web/Controllers/TicketController.cs
+  src/Sections/Humans.Tickets/**
+  src/Sections/Humans.Tickets.Contracts/**
+  src/Sections/Humans.TicketTailor/**
+  src/Humans.Application/Interfaces/TicketVendor/**
   src/Humans.Web/Controllers/WelcomeController.cs
   src/Humans.Web/Views/Welcome/**
-  src/Humans.Domain/Entities/TicketOrder.cs
-  src/Humans.Domain/Entities/TicketAttendee.cs
-  src/Humans.Domain/Entities/TicketSyncState.cs
   src/Sections/Humans.Campaigns/Domain/CampaignGrant.cs
   src/Humans.Domain/Constants/TicketConstants.cs
-  src/Humans.Infrastructure/Data/Configurations/Tickets/**
   src/Humans.Infrastructure/Jobs/TicketSyncJob.cs
-  src/Humans.Infrastructure/Services/TicketTailorService.cs
   src/Humans.Infrastructure/Services/StripeService.cs
 -->
 <!-- freshness:flag-on-change

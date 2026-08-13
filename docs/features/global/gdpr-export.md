@@ -7,8 +7,8 @@
   src/Humans.Application/Services/Profiles/ProfileService.cs
   src/Humans.Application/Services/Users/UserService.cs
   src/Humans.Application/Services/Consent/ConsentService.cs
-  src/Humans.Application/Services/Teams/TeamService.cs
-  src/Humans.Application/Services/Auth/RoleAssignmentService.cs
+  src/Sections/Humans.Teams/**
+  src/Sections/Humans.Auth/Services/RoleAssignmentService.cs
   src/Humans.Application/Services/Shifts/ShiftSignupService.cs
   src/Sections/Humans.Feedback/Services/FeedbackService.cs
   src/Sections/Humans.Notifications/Services/NotificationInboxService.cs

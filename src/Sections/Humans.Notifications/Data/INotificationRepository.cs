@@ -14,7 +14,7 @@ namespace Humans.Notifications.Data;
 /// <para>
 /// Uses <see cref="Microsoft.EntityFrameworkCore.IDbContextFactory{TContext}"/>
 /// so the repository can be registered as Singleton while
-/// <c>HumansDbContext</c> remains Scoped.
+/// <c>NotificationsDbContext</c> remains Scoped.
 /// </para>
 /// <para>
 /// Read methods never <c>.Include</c> cross-domain navigation properties.

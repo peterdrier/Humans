@@ -95,15 +95,10 @@ public class EnumStringStabilityTests
         {
             typeof(SyncAction), ["Preview", "Execute"]
         },
-        {
-            typeof(TicketSyncStatus), ["Idle", "Running", "Error"]
-        },
-        {
-            typeof(TicketPaymentStatus), ["Paid", "Pending", "Refunded"]
-        },
-        {
-            typeof(TicketAttendeeStatus), ["Valid", "Void", "CheckedIn"]
-        },
+        // Tickets' three string-stored enums moved to
+        // tests/Humans.Tickets.Tests/Enums/TicketEnumStringStabilityTests.cs at that
+        // section's G5 move — two are internal to Humans.Tickets and one pair is on its
+        // contracts leaf, so this project can no longer name them (Budget's rule).
         {
             typeof(ShiftPriority), ["Normal", "Important", "Essential"]
         },

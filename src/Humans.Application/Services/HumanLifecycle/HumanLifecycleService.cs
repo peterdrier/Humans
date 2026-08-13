@@ -1,5 +1,5 @@
 using Microsoft.Extensions.Logging;
-using Humans.Application.Interfaces.AuditLog;
+using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.HumanLifecycle;
 using Humans.Notifications.Contracts;
 using Humans.Onboarding.Contracts;

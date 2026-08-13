@@ -55,7 +55,7 @@ internal static class UserInfoStubHelpers
     /// Stubs GetUserInfosAsync to read from the provided DbContext options (new context per call,
     /// includes UserEmails + Profile slice).
     /// </summary>
-    public static IUserService StubGetUserInfosFromDb(this IUserService userService, DbContextOptions<HumansDbContext> options)
+    public static IUserService StubGetUserInfosFromDb(this IUserService userService, DbContextOptions<UsersDbContext> options)
     {
         userService
             .GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
@@ -65,7 +65,7 @@ internal static class UserInfoStubHelpers
                 if (ids.Count == 0)
                     return new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                         new Dictionary<Guid, UserInfo>());
-                using var db = new HumansDbContext(options);
+                using var db = new UsersDbContext(options);
                 var users = db.Users.AsNoTracking()
                     .Include(u => u.UserEmails)
                     .Where(u => ids.Contains(u.Id))
@@ -85,13 +85,13 @@ internal static class UserInfoStubHelpers
     /// Stubs GetAllUserInfosAsync to read from the provided DbContext options
     /// (new context per call, includes UserEmails + Profile slice).
     /// </summary>
-    public static IUserService StubGetAllUserInfosFromDb(this IUserService userService, DbContextOptions<HumansDbContext> options)
+    public static IUserService StubGetAllUserInfosFromDb(this IUserService userService, DbContextOptions<UsersDbContext> options)
     {
         userService
             .GetAllUserInfosAsync(Arg.Any<CancellationToken>())
             .Returns(_ =>
             {
-                using var db = new HumansDbContext(options);
+                using var db = new UsersDbContext(options);
                 var users = db.Users.AsNoTracking()
                     .Include(u => u.UserEmails)
                     .ToList();
@@ -111,7 +111,7 @@ internal static class UserInfoStubHelpers
     /// Stubs GetUserInfosAsync to read from a long-lived DbContext (uses AsNoTracking but reuses
     /// the same instance — fine for in-memory tests that share one ctx).
     /// </summary>
-    public static IUserService StubGetUserInfosFromContext(this IUserService userService, HumansDbContext dbContext)
+    public static IUserService StubGetUserInfosFromContext(this IUserService userService, UsersDbContext dbContext)
     {
         userService
             .GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
@@ -140,7 +140,7 @@ internal static class UserInfoStubHelpers
     /// Stubs the singular GetUserInfoAsync to read from a long-lived DbContext, mirroring
     /// <see cref="StubGetUserInfosFromContext"/>. Returns null for unknown ids.
     /// </summary>
-    public static IUserService StubGetUserInfoFromContext(this IUserService userService, HumansDbContext dbContext)
+    public static IUserService StubGetUserInfoFromContext(this IUserService userService, UsersDbContext dbContext)
     {
         userService
             .GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())

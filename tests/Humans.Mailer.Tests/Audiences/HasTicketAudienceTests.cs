@@ -1,6 +1,6 @@
 using Humans.Application;
 using AwesomeAssertions;
-using Humans.Application.Interfaces.Tickets;
+using Humans.Tickets.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Mailer.Services.Audiences;
 using Humans.Domain.Enums;
@@ -45,7 +45,7 @@ public class HasTicketAudienceTests
 
     private static HasTicketAudience NewAudience(HashSet<Guid> ticketHolders)
     {
-        var tickets = Substitute.For<ITicketService>();
+        var tickets = Substitute.For<ITicketServiceRead>();
         tickets.GetTicketOrdersAsync(Arg.Any<CancellationToken>())
             .Returns(OrdersForTicketHolders(ticketHolders));
 

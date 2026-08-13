@@ -1,6 +1,6 @@
 ---
 name: Every dotnet ef command needs --context since the per-section split
-description: More than one DbContext is in play (HumansDbContext + one per peeled section, nobodies-collective/Humans#858). Every `dotnet ef` invocation MUST pass `--context <C>`, and `--project` is per-context once a section owns its own project (nobodies-collective/Humans#866).
+description: More than one DbContext is in play (one per section, nobodies-collective/Humans#858; there is no main pile since peel 15). Every `dotnet ef` invocation MUST pass `--context <C>`, and `--project` is per-context once a section owns its own project (nobodies-collective/Humans#866).
 ---
 
 Since the per-section DbContext split (nobodies-collective/Humans#858), more than one DbContext
@@ -9,14 +9,11 @@ names its context. Since the section-project split (nobodies-collective/Humans#8
 also varies: a section at G5 owns its migrations, so they are generated into and read from the
 section's own project.
 
-**Main pile (HumansDbContext)** — commands unchanged except the explicit context:
+There is no main pile: `HumansDbContext` and its root chain were deleted at peel 15
+(design doc §10.3). Users/Profiles is a section like any other (`UsersDbContext`,
+`Migrations/Users/`).
 
-```bash
-dotnet ef migrations add <Name> --context HumansDbContext \
-  --project src/Humans.Infrastructure --startup-project src/Humans.Web
-```
-
-**Peeled section, still in Humans.Infrastructure** — context AND output dir (the section's
+**Section still in Humans.Infrastructure** — context AND output dir (the section's
 migrations live in their own folder with their own `<Section>DbContextModelSnapshot.cs`):
 
 ```bash
@@ -51,8 +48,8 @@ dotnet ef migrations has-pending-model-changes --context <C> \
   after. The runtime and design-time `MigrationsAssembly` both derive from the context's own
   assembly, so they cannot disagree with where you generated.
 - A schema change in a peeled section touches ONLY that section's migration folder and snapshot.
-  If `git status` shows `HumansDbContextModelSnapshot.cs` changed after a section migration,
-  something is wrong — stop and investigate ([[diff-snapshot-after-ef-tool]]).
+  If `git status` shows another section's `*DbContextModelSnapshot.cs` changed after a section
+  migration, something is wrong — stop and investigate ([[diff-snapshot-after-ef-tool]]).
 - Section baselines are never edited or removed; rollback of a peel is a PR revert
   ([[no-hand-edited-migrations]] still applies in full — the one-time hand-emptied peel
   removal migrations were a Peter-authorized exception scoped to the #858 stack).

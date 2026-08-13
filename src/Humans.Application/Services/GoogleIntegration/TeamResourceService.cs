@@ -1,10 +1,11 @@
+using Humans.Auth.Contracts;
 using System.Text.RegularExpressions;
 using Humans.Application.DTOs;
-using Humans.Application.Interfaces.AuditLog;
+using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Application.Interfaces.Teams;
+using Humans.Teams.Contracts;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.DependencyInjection;
@@ -93,7 +94,7 @@ public sealed partial class TeamResourceService(
         // In-memory stitch across TeamMember + GoogleResource per design-rules
         // §2c (sibling services own disjoint tables) and §6 (no cross-service
         // EF joins). TeamService owns TeamMembers/Teams; we own GoogleResources.
-        var memberships = await teamService.GetUserTeamsAsync(userId, ct);
+        var memberships = await teamService.GetUserTeamMembershipsAsync(userId, ct);
         if (memberships.Count == 0)
         {
             return [];
@@ -110,13 +111,14 @@ public sealed partial class TeamResourceService(
 
         var resourcesByTeam = await repository.GetActiveByTeamIdsAsync(teamIds, ct);
 
-        // TeamMember → Team lookup (same-section) so we can surface Name/Slug.
+        // The membership rows already carry the team's name and slug (Teams stitches them
+        // on its own side of the boundary), so there is nothing left to look up here.
         var teamByMembership = memberships
             .GroupBy(m => m.TeamId)
-            .ToDictionary(g => g.Key, g => g.First().Team);
+            .ToDictionary(g => g.Key, g => g.First());
 
         var rows = new List<UserTeamGoogleResource>();
-        foreach (var (teamId, team) in teamByMembership.OrderBy(kvp => kvp.Value.Name, StringComparer.Ordinal))
+        foreach (var (teamId, team) in teamByMembership.OrderBy(kvp => kvp.Value.TeamName, StringComparer.Ordinal))
         {
             if (!resourcesByTeam.TryGetValue(teamId, out var resources) || resources.Count == 0)
             {
@@ -124,7 +126,7 @@ public sealed partial class TeamResourceService(
             }
             foreach (var r in resources.OrderBy(r => r.Name, StringComparer.Ordinal))
             {
-                rows.Add(new UserTeamGoogleResource(team.Name, team.Slug, r.Name, r.ResourceType, r.Url));
+                rows.Add(new UserTeamGoogleResource(team.TeamName, team.TeamSlug, r.Name, r.ResourceType, r.Url));
             }
         }
         return rows;

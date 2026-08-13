@@ -6,8 +6,8 @@ using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Application.Interfaces.Profiles;
-using Humans.Application.Interfaces.Teams;
-using Humans.Application.Interfaces.Tickets;
+using Humans.Teams.Contracts;
+using Humans.Tickets.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Campaigns.Contracts;
 using Humans.Campaigns.Data;
@@ -33,7 +33,7 @@ internal sealed class CampaignService(
     ICommunicationPreferenceService commPrefService,
     IEmailService emailService,
     IEmailMessageFactory emailMessages,
-    ITicketVendorService ticketVendorService,
+    ITicketDiscountCodes ticketDiscountCodes,
     IClock clock,
     ILogger<CampaignService> logger) : ICampaignService, IUserDataContributor, IUserMerge
 {
@@ -320,11 +320,14 @@ internal sealed class CampaignService(
         if (count <= 0)
             return new CampaignGenerateCodesResult(false, "InvalidCount");
 
-        if (!Enum.TryParse<DiscountType>(discountType, ignoreCase: true, out var parsedType))
+        if (!Enum.TryParse<TicketDiscountKind>(discountType, ignoreCase: true, out var parsedKind))
             return new CampaignGenerateCodesResult(false, "InvalidDiscountType");
 
-        var spec = new DiscountCodeSpec(count, parsedType, discountValue, ExpiresAt: null);
-        var codes = await ticketVendorService.GenerateDiscountCodesAsync(spec, ct);
+        // Through Tickets, not the vendor port: Tickets is the application's only door to
+        // ticketing, so a second consumer (a low-income concession) costs a leaf reference
+        // rather than a design conversation.
+        var request = new TicketDiscountCodeRequest(count, parsedKind, discountValue, ExpiresAt: null);
+        var codes = await ticketDiscountCodes.GenerateAsync(request, ct);
         await ImportGeneratedCodesAsync(campaignId, codes, ct);
 
         return new CampaignGenerateCodesResult(true, GeneratedCount: codes.Count);

@@ -1,11 +1,11 @@
+using Humans.Domain.Entities;
 using AwesomeAssertions;
-using Humans.Application.Interfaces.AuditLog;
+using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.GoogleIntegration;
-using Humans.Application.Interfaces.Teams;
+using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.AuditLog;
 using Humans.Application.Tests.Infrastructure;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
 using NSubstitute;
@@ -32,7 +32,7 @@ public class AuditViewerServiceTests
 
         var auditLog = Substitute.For<IAuditLogService>();
         auditLog.GetByUserAsync(viewer, 10, Arg.Any<CancellationToken>())
-            .Returns([ToSnapshot(entry)]);
+            .Returns([entry]);
 
         var userService = StubUserService(
             (actor, "Frank"),
@@ -119,7 +119,7 @@ public class AuditViewerServiceTests
             resourceId: resourceId);
 
         var auditLog = Substitute.For<IAuditLogService>();
-        auditLog.GetByResourceAsync(resourceId).Returns([ToSnapshot(entry)]);
+        auditLog.GetByResourceAsync(resourceId).Returns([entry]);
 
         var userService = StubUserService();
 
@@ -156,7 +156,7 @@ public class AuditViewerServiceTests
 
         var auditLog = Substitute.For<IAuditLogService>();
         auditLog.GetFilteredAsync(null, 1, 50, Arg.Any<CancellationToken>())
-            .Returns(([ToSnapshot(entry)], 1, 0));
+            .Returns(([entry], 1, 0));
 
         var userService = StubUserService((actor, "Frank"));
 
@@ -178,11 +178,11 @@ public class AuditViewerServiceTests
     }
 
     private static (IAuditLogService, IUserService, ITeamServiceRead, ITeamResourceService) MakeServices(
-        AuditLogEntry entry, Guid actor, Guid viewer, string actorName, string viewerName)
+        AuditLogEntrySnapshot entry, Guid actor, Guid viewer, string actorName, string viewerName)
     {
         var auditLog = Substitute.For<IAuditLogService>();
         auditLog.GetByUserAsync(viewer, Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns([ToSnapshot(entry)]);
+            .Returns([entry]);
 
         var userService = StubUserService(
             (actor, actorName),
@@ -212,7 +212,7 @@ public class AuditViewerServiceTests
         return userService;
     }
 
-    private static AuditLogEntry MakeEntry(
+    private static AuditLogEntrySnapshot MakeEntry(
         AuditAction action,
         Guid? actorId,
         string entityType,
@@ -226,40 +226,22 @@ public class AuditViewerServiceTests
         GoogleSyncSource? syncSource = null,
         Guid? resourceId = null)
     {
-        return new AuditLogEntry
-        {
-            Id = Guid.NewGuid(),
-            OccurredAt = FixedAt,
-            Action = action,
-            ActorUserId = actorId,
-            EntityType = entityType,
-            EntityId = entityId,
-            RelatedEntityId = relatedEntityId,
-            RelatedEntityType = relatedEntityType,
-            Description = description,
-            Role = role,
-            UserEmail = userEmail,
-            Success = success,
-            SyncSource = syncSource,
-            ResourceId = resourceId
-        };
+        return new AuditLogEntrySnapshot(
+            Guid.NewGuid(),
+            action,
+            entityType,
+            entityId,
+            description,
+            FixedAt,
+            actorId,
+            relatedEntityId,
+            relatedEntityType,
+            resourceId,
+            success,
+            ErrorMessage: null,
+            role,
+            syncSource,
+            userEmail);
     }
 
-    private static AuditLogEntrySnapshot ToSnapshot(AuditLogEntry entry) =>
-        new(
-            entry.Id,
-            entry.Action,
-            entry.EntityType,
-            entry.EntityId,
-            entry.Description,
-            entry.OccurredAt,
-            entry.ActorUserId,
-            entry.RelatedEntityId,
-            entry.RelatedEntityType,
-            entry.ResourceId,
-            entry.Success,
-            entry.ErrorMessage,
-            entry.Role,
-            entry.SyncSource,
-            entry.UserEmail);
 }

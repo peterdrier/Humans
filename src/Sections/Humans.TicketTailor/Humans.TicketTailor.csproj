@@ -1,0 +1,47 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Humans.TicketTailor.Tests" />
+    <!-- The one assembly allowed to see many sections (design §5). -->
+    <InternalsVisibleTo Include="Humans.Integration.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      The adapter section: one implementation of Humans.Application's vendor-agnostic
+      ITicketVendorService port. It owns no tables (no DbContext, no repository, no
+      AddSectionDbContext — the Data steps of G5-SECTION-TEMPLATE.md are skipped
+      wholesale), no controllers and no views, so this is plain Microsoft.NET.Sdk rather
+      than Sdk.Razor (SystemSettings' shape) and takes no Humans.Infrastructure
+      reference (Scanner's shape, reached by a connector that lived in
+      Humans.Infrastructure/Services on the way in — Mailer's case).
+
+      Everything the client needs is either the ASP.NET shared framework
+      (IHttpClientFactory) or Humans.Application (the port, its DTOs and
+      TicketVendorSettings).
+
+      When the 2027 vendor lands, this project is deleted and Humans.<NewVendor> is
+      added. Nothing in Humans.Tickets, in Base or in any consumer changes — which is
+      the entire reason the connector is not inside the section.
+    -->
+    <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
+    <ProjectReference Include="..\..\Humans.Domain\Humans.Domain.csproj" />
+    <ProjectReference Include="..\..\Humans.Application\Humans.Application.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      No AspNetCore package here: those ship with no PackageVersion on purpose and would
+      fail the build with NU1010 under Central Package Management. IHttpClientFactory and
+      friends arrive through the framework reference below (design §15 step 1).
+    -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="NodaTime" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The section owns its documentation (design §7a); keep it visible in Solution Explorer. -->
+    <None Include="**\*.md" />
+  </ItemGroup>
+
+</Project>

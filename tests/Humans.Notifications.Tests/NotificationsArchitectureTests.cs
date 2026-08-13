@@ -1,3 +1,4 @@
+using Humans.Auth.Contracts;
 using System.Reflection;
 using AwesomeAssertions;
 using Humans.Notifications.Data;
@@ -137,4 +138,9 @@ public class NotificationsArchitectureTests
         publicNames.Should().BeEquivalentTo(["NotificationsResource", "Section"]);
     }
 
+    // ── INotificationRepository ──────────────────────────────────────────────
+
+    // Sealed-repository check covered by HUM0034 (section types are internal) plus
+    // MA0053 (an unsealed internal class is a build error) — not by
+    // IRepositoryImplementationsAreSealedRule, which sweeps Humans.Infrastructure only.
 }

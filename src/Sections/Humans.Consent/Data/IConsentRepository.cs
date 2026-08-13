@@ -22,7 +22,7 @@ namespace Humans.Consent.Data;
 /// <para>
 /// Uses <see cref="Microsoft.EntityFrameworkCore.IDbContextFactory{TContext}"/>
 /// so the repository can be registered as Singleton while
-/// <c>HumansDbContext</c> remains Scoped.
+/// <c>LegalDbContext</c> remains Scoped.
 /// </para>
 /// </remarks>
 [Section("Consent")]

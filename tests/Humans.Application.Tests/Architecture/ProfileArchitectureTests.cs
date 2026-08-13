@@ -1,7 +1,7 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Application.Interfaces.Teams;
+using Humans.Teams.Contracts;
 using ProfileService = Humans.Application.Services.Profiles.ProfileService;
 
 namespace Humans.Application.Tests.Architecture;

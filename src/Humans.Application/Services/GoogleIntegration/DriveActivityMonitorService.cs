@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.Extensions;
-using Humans.Application.Interfaces.AuditLog;
+using Humans.AuditLog.Contracts;
 using Humans.SystemSettings.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;

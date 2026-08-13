@@ -1,6 +1,6 @@
 using Humans.Application.Interfaces.Admin;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Application.Interfaces.Tickets;
+using Humans.Tickets.Contracts;
 using Humans.Application.Interfaces.Users;
 using NodaTime;
 

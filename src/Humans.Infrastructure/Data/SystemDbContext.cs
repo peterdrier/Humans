@@ -11,12 +11,12 @@ namespace Humans.Infrastructure.Data;
 /// connection — the split is a code-side partition of the EF model.
 /// </summary>
 /// <remarks>
-/// <para>Internal-sealed like <see cref="HumansDbContext"/> (issue #750).</para>
+/// <para>Internal-sealed like every section context (issue #750).</para>
 /// <para>
 /// Kept under glass (Peter, 2026-08-10 on #858): framework-owned tables only,
 /// nothing a section could plausibly own, and adding a table here is Peter's
 /// call — "it didn't fit anywhere else" is the argument that built the 644k-line
-/// <see cref="HumansDbContext"/> migration history the first time.
+/// <c>HumansDbContext</c> migration history the first time (deleted at #858 peel 15).
 /// </para>
 /// </remarks>
 internal sealed class SystemDbContext(DbContextOptions<SystemDbContext> options)

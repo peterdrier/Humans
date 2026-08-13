@@ -4,8 +4,8 @@ using Humans.Application.DTOs;
 using Humans.Email.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Application.Interfaces.Profiles;
-using Humans.Application.Interfaces.Teams;
-using Humans.Application.Interfaces.Tickets;
+using Humans.Teams.Contracts;
+using Humans.Tickets.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Campaigns.Data;
 using Humans.Campaigns.Domain;
@@ -25,8 +25,8 @@ namespace Humans.Campaigns.Tests.Services;
 /// <summary>
 /// Owns its fixture rather than deriving from <c>Humans.Application.Tests</c>'
 /// <c>ServiceTestHarness</c>: that harness is built around an in-memory
-/// <c>HumansDbContext</c>, and inheriting it would grant a section test project
-/// <c>InternalsVisibleTo</c> on <c>HumansDbContext</c> — the boundary the G5 split exists
+/// <c>UsersDbContext</c>, and inheriting it would grant a section test project
+/// <c>InternalsVisibleTo</c> on <c>UsersDbContext</c> — the boundary the G5 split exists
 /// to draw (nobodies-collective/Humans#866). Campaigns needed more of the harness than
 /// Budget did (users, teams and team members, all read back through DB-backed stubs), so
 /// the replacement is an in-memory people/team registry rather than three inlined members:
@@ -50,7 +50,7 @@ public sealed class CampaignServiceTests
     private readonly CampaignServiceImpl _service;
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
     private readonly IEmailMessageFactory _emailMessages = Substitute.For<IEmailMessageFactory>();
-    private readonly ITicketVendorService _ticketVendorService;
+    private readonly ITicketDiscountCodes _ticketDiscountCodes;
 
     public CampaignServiceTests()
     {
@@ -60,7 +60,7 @@ public sealed class CampaignServiceTests
         var teamService = Substitute.For<ITeamServiceRead>();
         var userEmailService = Substitute.For<IUserEmailService>();
         var userService = Substitute.For<IUserServiceRead>();
-        _ticketVendorService = Substitute.For<ITicketVendorService>();
+        _ticketDiscountCodes = Substitute.For<ITicketDiscountCodes>();
 
         // Stubs read the in-memory registries the Seed* helpers write to, so the existing
         // seed-then-exercise scenarios still drive the service end to end.
@@ -104,7 +104,7 @@ public sealed class CampaignServiceTests
             commPrefService,
             _emailService,
             _emailMessages,
-            _ticketVendorService,
+            _ticketDiscountCodes,
             Clock,
             NullLogger<CampaignServiceImpl>.Instance);
     }
@@ -189,8 +189,8 @@ public sealed class CampaignServiceTests
     public async Task GenerateAndImportDiscountCodesAsync_DraftCampaign_GeneratesAndImportsCodes()
     {
         var campaign = await SeedCampaignAsync();
-        _ticketVendorService
-            .GenerateDiscountCodesAsync(Arg.Any<DiscountCodeSpec>(), Arg.Any<CancellationToken>())
+        _ticketDiscountCodes
+            .GenerateAsync(Arg.Any<TicketDiscountCodeRequest>(), Arg.Any<CancellationToken>())
             .Returns(["CODE-A", "CODE-B"]);
 
         var result = await _service.GenerateAndImportDiscountCodesAsync(
@@ -198,11 +198,11 @@ public sealed class CampaignServiceTests
 
         result.Success.Should().BeTrue();
         result.GeneratedCount.Should().Be(2);
-        await _ticketVendorService.Received(1).GenerateDiscountCodesAsync(
-            Arg.Is<DiscountCodeSpec>(s =>
-                s.Count == 2 &&
-                s.DiscountType == DiscountType.Fixed &&
-                s.DiscountValue == 10m),
+        await _ticketDiscountCodes.Received(1).GenerateAsync(
+            Arg.Is<TicketDiscountCodeRequest>(r =>
+                r.Count == 2 &&
+                r.Kind == TicketDiscountKind.Fixed &&
+                r.Value == 10m),
             Arg.Any<CancellationToken>());
         var codes = await CampaignsDb.CampaignCodes
             .Where(c => c.CampaignId == campaign.Id)
@@ -221,8 +221,8 @@ public sealed class CampaignServiceTests
 
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("NotDraft");
-        await _ticketVendorService.DidNotReceive().GenerateDiscountCodesAsync(
-            Arg.Any<DiscountCodeSpec>(), Arg.Any<CancellationToken>());
+        await _ticketDiscountCodes.DidNotReceive().GenerateAsync(
+            Arg.Any<TicketDiscountCodeRequest>(), Arg.Any<CancellationToken>());
     }
 
     // ==========================================================================
@@ -680,7 +680,7 @@ public sealed class CampaignServiceTests
 
     // ----- People and teams -----------------------------------------------------
     // The pre-G5 versions of these wrote User/Team/TeamMember rows into the harness's
-    // HumansDbContext and read them back through DB-backed ITeamService/IUserService
+    // UsersDbContext and read them back through DB-backed ITeamService/IUserService
     // stubs. A section test project cannot see those tables, so the registry holds the
     // projections the service actually consumes: UserInfo and TeamInfo.
 

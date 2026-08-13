@@ -18,7 +18,7 @@ public class ControllerDbContextInjectionAnalyzerTests
 
         namespace Humans.Infrastructure.Data
         {
-            public class HumansDbContext : Microsoft.EntityFrameworkCore.DbContext { }
+            public class UsersDbContext : Microsoft.EntityFrameworkCore.DbContext { }
             public class SystemSettingsDbContext : Microsoft.EntityFrameworkCore.DbContext { }
             public class QueryStatistics { }
         }
@@ -35,7 +35,7 @@ public class ControllerDbContextInjectionAnalyzerTests
         string.Equals(d.Id, ControllerDbContextInjectionAnalyzer.DiagnosticId, StringComparison.Ordinal);
 
     [HumansFact]
-    public async Task Fires_when_controller_injects_HumansDbContext()
+    public async Task Fires_when_controller_injects_UsersDbContext()
     {
         var source = Stubs + """
 
@@ -43,7 +43,7 @@ public class ControllerDbContextInjectionAnalyzerTests
             {
                 public sealed class ReportsController : Microsoft.AspNetCore.Mvc.Controller
                 {
-                    public ReportsController(Humans.Infrastructure.Data.HumansDbContext dbContext)
+                    public ReportsController(Humans.Infrastructure.Data.UsersDbContext dbContext)
                     {
                     }
                 }
@@ -131,7 +131,7 @@ public class ControllerDbContextInjectionAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Fires_when_controller_injects_nullable_HumansDbContext()
+    public async Task Fires_when_controller_injects_nullable_UsersDbContext()
     {
         var source = Stubs + """
 
@@ -140,7 +140,7 @@ public class ControllerDbContextInjectionAnalyzerTests
             {
                 public sealed class ReportsController : Microsoft.AspNetCore.Mvc.Controller
                 {
-                    public ReportsController(Humans.Infrastructure.Data.HumansDbContext? dbContext)
+                    public ReportsController(Humans.Infrastructure.Data.UsersDbContext? dbContext)
                     {
                     }
                 }
@@ -156,7 +156,7 @@ public class ControllerDbContextInjectionAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Fires_when_controller_base_subclass_injects_HumansDbContext()
+    public async Task Fires_when_controller_base_subclass_injects_UsersDbContext()
     {
         var source = Stubs + """
 
@@ -164,7 +164,7 @@ public class ControllerDbContextInjectionAnalyzerTests
             {
                 public sealed class ApiController : Microsoft.AspNetCore.Mvc.ControllerBase
                 {
-                    public ApiController(Humans.Infrastructure.Data.HumansDbContext dbContext)
+                    public ApiController(Humans.Infrastructure.Data.UsersDbContext dbContext)
                     {
                     }
                 }
@@ -213,7 +213,7 @@ public class ControllerDbContextInjectionAnalyzerTests
     {
         // Detection is structural (any DbContext-derived type), so the message
         // must name the actual context injected rather than a hardcoded
-        // "HumansDbContext" (nobodies-collective/Humans#960).
+        // "UsersDbContext" (nobodies-collective/Humans#960).
         var source = Stubs + """
 
             namespace Humans.Web.Controllers
@@ -245,7 +245,7 @@ public class ControllerDbContextInjectionAnalyzerTests
             {
                 public sealed class ReportsController : Microsoft.AspNetCore.Mvc.Controller
                 {
-                    public ReportsController(Humans.Infrastructure.Data.HumansDbContext dbContext)
+                    public ReportsController(Humans.Infrastructure.Data.UsersDbContext dbContext)
                     {
                     }
                 }

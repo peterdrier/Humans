@@ -129,7 +129,7 @@ public class GateControllerClaimTests
     /// A minimal active UserInfo for the claimant-validation path. Inlined rather than
     /// shared from Humans.Application.Tests' UserInfoStubHelpers: this suite needs one
     /// member of it, and linking the helper into the shared test set would pull
-    /// HumansDbContext into a section test project (design §15 step 8).
+    /// UsersDbContext into a section test project (design §15 step 8).
     /// </summary>
     private static UserInfo MakeUserInfo(Guid userId, string displayName = "User") =>
         UserInfo.Create(

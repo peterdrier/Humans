@@ -566,13 +566,15 @@ No DB access, no cache.
 
 ## Auth
 
-Folder: `src/Humans.Application/Services/Auth/`. **DbContext:**
-`AuthDbContext` — **peeled** (nobodies-collective/Humans#1234, part of
-#858). `RoleAssignmentRepository` injects `IDbContextFactory<AuthDbContext>`
+Folder: `src/Sections/Humans.Auth/Services/` (G5, nobodies-collective/Humans#866);
+`MagicLinkService` stayed in `src/Humans.Application/Services/Auth/` as a
+cross-section orchestrator. **DbContext:** `AuthDbContext` — **peeled**
+(nobodies-collective/Humans#1234, part of #858) and now internal to the
+section. `RoleAssignmentRepository` injects `IDbContextFactory<AuthDbContext>`
 directly. Owns `RoleAssignments`.
 
 The inner `IRoleAssignmentService` is wrapped by
-`Humans.Infrastructure.Services.Auth.CachingRoleAssignmentService`
+`Humans.Auth.Services.CachingRoleAssignmentService`
 (Singleton decorator inheriting `TrackedCache<Guid, RoleAssignmentRow>`,
 issue #749). The full `role_assignments` row set is held in memory so
 cross-section reads (`GetActiveCountsByRoleAsync`, `GetActiveForUserAsync`)
@@ -634,7 +636,7 @@ hot reads can migrate to the cached row set incrementally).
 
 ## Teams
 
-Folder: `src/Humans.Application/Services/Teams/`. **DbContext:**
+Folder: `src/Sections/Humans.Teams/Services/`. **DbContext:**
 `TeamsDbContext` (peeled in nobodies-collective/Humans#1264; `TeamRepository`
 injects `IDbContextFactory<TeamsDbContext>`). Owns `Teams`,
 `TeamMembers`, `TeamJoinRequests`, `TeamJoinRequestStateHistories`,
@@ -663,7 +665,7 @@ table is therefore owned wholly by Google Integration.
 
 The inner `ITeamService`
 registration is wrapped by
-`Humans.Infrastructure.Services.Teams.CachingTeamService` (Singleton
+`Humans.Teams.Services.CachingTeamService` (Singleton
 decorator inheriting `TrackedCache<Guid, TeamInfo>`); it exposes the
 budgeted cross-section read surface as `ITeamServiceRead`.
 

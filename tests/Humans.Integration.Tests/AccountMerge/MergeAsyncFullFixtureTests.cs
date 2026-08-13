@@ -1,3 +1,9 @@
+using Humans.Auth.Data;
+using Humans.Auth.Domain;
+using Humans.AuditLog.Data;
+using Humans.AuditLog.Domain;
+using Humans.Teams.Data;
+using Humans.Teams.Domain;
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Constants;
@@ -68,7 +74,7 @@ public class MergeAsyncFullFixtureTests(HumansTestDatabase database) : Integrati
 
         // Assert — all six post-conditions from the EmailProblems spec case 5.
         await using var assertScope = Factory.Services.CreateAsyncScope();
-        var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var db = assertScope.ServiceProvider.GetRequiredService<UsersDbContext>();
         var teamsDb = assertScope.ServiceProvider.GetRequiredService<TeamsDbContext>();
         var authDb = assertScope.ServiceProvider.GetRequiredService<AuthDbContext>();
         var auditLogDb = assertScope.ServiceProvider.GetRequiredService<AuditLogDbContext>();

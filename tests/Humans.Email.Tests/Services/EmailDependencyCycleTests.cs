@@ -1,18 +1,18 @@
+using Humans.Auth.Contracts;
 using AwesomeAssertions;
 using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.AuditLog;
+using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
-using Humans.Application.Interfaces.Teams;
+using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Auth;
 using Humans.Application.Services.Profiles;
 using Humans.Application.Services.Shifts;
-using Humans.Application.Services.Teams;
 using Humans.Application.Services.Users;
 using Humans.Domain.Entities;
 using Humans.Email.Contracts;
@@ -52,14 +52,12 @@ public sealed class EmailDependencyCycleTests
         services.AddScoped<IUserRepository>(_ => Substitute.For<IUserRepository>());
         services.AddScoped<ICommunicationPreferenceRepository>(_ => Substitute.For<ICommunicationPreferenceRepository>());
         services.AddScoped<IUserInfoInvalidator>(_ => Substitute.For<IUserInfoInvalidator>());
-        services.AddScoped<IRoleAssignmentRepository>(_ => Substitute.For<IRoleAssignmentRepository>());
         services.AddScoped<IShiftManagementRepository>(_ => Substitute.For<IShiftManagementRepository>());
         services.AddScoped<IAuditLogService>(_ => Substitute.For<IAuditLogService>());
         services.AddScoped<INotificationEmitter>(_ => Substitute.For<INotificationEmitter>());
         services.AddScoped<ISystemTeamSync>(_ => Substitute.For<ISystemTeamSync>());
         services.AddScoped<INavBadgeCacheInvalidator>(_ => Substitute.For<INavBadgeCacheInvalidator>());
         services.AddScoped<IRoleAssignmentClaimsCacheInvalidator>(_ => Substitute.For<IRoleAssignmentClaimsCacheInvalidator>());
-        services.AddScoped<ITeamRepository>(_ => Substitute.For<ITeamRepository>());
         services.AddScoped<INotificationMeterCacheInvalidator>(_ => Substitute.For<INotificationMeterCacheInvalidator>());
         services.AddScoped<IShiftAuthorizationInvalidator>(_ => Substitute.For<IShiftAuthorizationInvalidator>());
         services.AddScoped<IAdminAuthorizationService>(_ => Substitute.For<IAdminAuthorizationService>());
@@ -75,8 +73,10 @@ public sealed class EmailDependencyCycleTests
         services.AddScoped<UserService>();
         services.AddScoped<IUserService>(sp => sp.GetRequiredService<UserService>());
 
-        services.AddScoped<RoleAssignmentService>();
-        services.AddScoped<IRoleAssignmentService>(sp => sp.GetRequiredService<RoleAssignmentService>());
+        // Auth is another section; RoleAssignmentService is internal to Humans.Auth and its
+        // own constructor shape is pinned by AuthArchitectureTests. Same call as ITeamService
+        // below — the subject here is the email chain.
+        services.AddScoped<IRoleAssignmentService>(_ => Substitute.For<IRoleAssignmentService>());
 
         services.AddScoped<ShiftManagementService>();
         services.AddScoped<IShiftManagementService>(sp => sp.GetRequiredService<ShiftManagementService>());
@@ -87,13 +87,12 @@ public sealed class EmailDependencyCycleTests
         services.AddScoped<OutboxEmailService>();
         services.AddScoped<IEmailService>(sp => sp.GetRequiredService<OutboxEmailService>());
 
-        services.AddScoped<TeamService>();
-        services.AddScoped<ITeamService>(sp => sp.GetRequiredService<TeamService>());
+        // Teams is another section; its concrete service is internal to Humans.Teams and its
+        // own cycle is pinned by TeamsDependencyCycleTests. The subject here is the email chain.
+        services.AddScoped<ITeamService>(_ => Substitute.For<ITeamService>());
 
         services.AddScoped<Microsoft.Extensions.Logging.ILogger<UserService>>(_ => NullLogger<UserService>.Instance);
-        services.AddScoped<Microsoft.Extensions.Logging.ILogger<RoleAssignmentService>>(_ => NullLogger<RoleAssignmentService>.Instance);
         services.AddScoped<Microsoft.Extensions.Logging.ILogger<ShiftManagementService>>(_ => NullLogger<ShiftManagementService>.Instance);
-        services.AddScoped<Microsoft.Extensions.Logging.ILogger<TeamService>>(_ => NullLogger<TeamService>.Instance);
         services.AddScoped<Microsoft.Extensions.Logging.ILogger<OutboxEmailService>>(_ => NullLogger<OutboxEmailService>.Instance);
         services.AddScoped<Microsoft.Extensions.Logging.ILogger<UserEmailService>>(_ => NullLogger<UserEmailService>.Instance);
 

@@ -68,7 +68,7 @@ HUM0003 | UserManager.FindByEmailAsync / FindByNameAsync called from Application
 HUM0005 | IUserEmailService.ReconcileOAuthIdentityAsync called from outside ExternalLoginService | Error
 HUM0006 | IUserRepository.ApplyUserEmailReconcilePlanAsync called from outside approved user-email services | Error
 HUM0007 | Concurrency-token metadata forbidden in live source | Error
-HUM0008 | Controller constructor injects an application DbContext (`HumansDbContext` or any per-section context) | Error
+HUM0008 | Controller constructor injects an application DbContext (any per-section context) | Error
 HUM0009 | Class uses an application DbContext but does not implement IRepository (`[Grandfathered("HUM0009")]` downgrades to Warning) | Error
 HUM0010 | Reference to a symbol decorated with `[ExpiresOn(date)]` (escalates to Error on/after the date) | Warning
 HUM0011 | Declaration decorated with `[ExpiresOn(date)]` is past its date (escalates to Error after the graceDays window) | Warning
@@ -102,8 +102,8 @@ Authoritative declaration: `src/Humans.Analyzers/AnalyzerReleases.Unshipped.md`
 **"Application DbContext"** (HUM0008 / HUM0009 / HUM0025 / HUM0026) is matched
 **structurally** by `Internal/SectionDbContexts.cs`: any class whose base chain
 reaches `Microsoft.EntityFrameworkCore.DbContext`. Since the per-section split
-(nobodies-collective/Humans#858) that means `HumansDbContext` *and* every
-`<Section>DbContext`. Neither namespace nor assembly is pinned, so moving the
+(nobodies-collective/Humans#858) that means every
+`<Section>DbContext` (`UsersDbContext` included). Neither namespace nor assembly is pinned, so moving the
 contexts cannot silently switch these rules off; production-only scoping comes
 from each analyzer's `AssemblyScope` guard, not from where the context lives.
 

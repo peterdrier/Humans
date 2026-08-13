@@ -1,3 +1,4 @@
+using Humans.Auth.Contracts;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Domain.Enums;
@@ -5,7 +6,7 @@ using Humans.Web.Controllers;
 using Humans.Web.Helpers;
 using Humans.Web.Models;
 using Humans.UI.ViewComponents;
-using Humans.Application.Interfaces.Teams;
+using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Governance.Contracts;
 using Humans.Application.Interfaces.Auth;

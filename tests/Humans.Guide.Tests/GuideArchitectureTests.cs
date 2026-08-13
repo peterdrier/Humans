@@ -1,6 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.Teams;
+using Humans.Teams.Contracts;
 using Humans.Guide.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;

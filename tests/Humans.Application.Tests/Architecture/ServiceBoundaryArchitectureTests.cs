@@ -1,3 +1,4 @@
+using Humans.Teams.Data;
 using System.Reflection;
 using AwesomeAssertions;
 using Humans.Application.Interfaces;
@@ -34,7 +35,7 @@ public class ServiceBoundaryArchitectureTests
             [typeof(IAdminDatabaseDiagnosticsRepository)] = "Admin",
             [SectionRepository("Humans.Agent.Data.IAgentRepository")] = "Agent",
             [SectionRepository("Humans.Governance.Data.IApplicationRepository")] = "Governance",
-            [typeof(IAuditLogRepository)] = "AuditLog",
+            [SectionRepository("Humans.AuditLog.Data.IAuditLogRepository")] = "AuditLog",
             [SectionRepository("Humans.Budget.Data.IBudgetRepository")] = "Budget",
             [SectionRepository("Humans.Calendar.Data.ICalendarRepository")] = "Calendar",
             [SectionRepository("Humans.Campaigns.Data.ICampaignRepository")] = "Campaigns",
@@ -54,13 +55,13 @@ public class ServiceBoundaryArchitectureTests
             [SectionRepository("Humans.Issues.Data.IIssuesRepository")] = "Issues",
             [SectionRepository("Humans.Consent.Data.ILegalDocumentRepository")] = "Legal",
             [SectionRepository("Humans.Notifications.Data.INotificationRepository")] = "Notifications",
-            [typeof(IRoleAssignmentRepository)] = "Auth",
+            [SectionRepository("Humans.Auth.Data.IRoleAssignmentRepository")] = "Auth",
             [typeof(IShiftManagementRepository)] = "Shifts",
             [SectionRepository("Humans.Surveys.Data.ISurveyRepository")] = "Surveys",
             [typeof(ISyncSettingsRepository)] = "GoogleIntegration",
-            [typeof(ITeamRepository)] = "Teams",
-            [typeof(ITicketRepository)] = "Tickets",
-            [typeof(ITicketTransferRepository)] = "Tickets",
+            [SectionRepository("Humans.Teams.Data.ITeamRepository")] = "Teams",
+            [SectionRepository("Humans.Tickets.Data.ITicketRepository")] = "Tickets",
+            [SectionRepository("Humans.Tickets.Data.ITicketTransferRepository")] = "Tickets",
             [typeof(IUserRepository)] = "Humans",
             [typeof(IVolunteerTrackingRepository)] = "Shifts",
         };
@@ -133,7 +134,7 @@ public class ServiceBoundaryArchitectureTests
         // (nobodies-collective/Humans#866). Without the section half, a section that moves
         // takes its entity-returning reads out of this ratchet's sight and the removal
         // reads as "you fixed it" — the exact silent-shrink §10 warns about.
-        var entityTypes = typeof(Humans.Domain.Entities.Team).Assembly
+        var entityTypes = typeof(Humans.Domain.Entities.User).Assembly
             .GetTypes()
             .Where(t => string.Equals(t.Namespace, "Humans.Domain.Entities", StringComparison.Ordinal))
             .Concat(SectionAssemblies()

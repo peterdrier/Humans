@@ -1,16 +1,17 @@
+using Humans.Auth.Contracts;
 using System.Security.Cryptography;
 using System.Text;
 using Humans.Application.DTOs;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Auth;
-using Humans.Application.Interfaces.AuditLog;
+using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.Camps;
 using Humans.Consent.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.HumanLifecycle;
 using Humans.Application.Interfaces.Profiles;
-using Humans.Application.Interfaces.Teams;
+using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Camps;
 using Humans.Application.Configuration;
@@ -27,7 +28,7 @@ namespace Humans.Development.Services;
 
 /// <summary>
 /// Dev-only persona seeding helper. Owns the writes that
-/// <c>DevLoginController</c> used to do directly against <c>HumansDbContext</c>.
+/// <c>DevLoginController</c> used to do directly against the DbContext.
 ///
 /// Cross-section writes (User, Profile, UserEmail) flow through the owning
 /// section's services per design-rules §2c
@@ -45,6 +46,7 @@ internal sealed class DevPersonaSeeder(
     IRoleAssignmentService roleAssignmentService,
     IUserInfoInvalidator userInfoInvalidator,
     ITeamService teamService,
+    ITeamSeeding teamSeeding,
     ISystemTeamSync systemTeamSync,
     IUserService userService,
     IAuditLogService auditLogService,
@@ -564,10 +566,10 @@ internal sealed class DevPersonaSeeder(
         var now = clock.GetCurrentInstant();
         var changed = false;
 
-        var department = await teamService.GetTeamEntityBySlugAsync("dev-test-department");
+        var department = await teamService.GetTeamBySlugAsync("dev-test-department");
         if (department is null)
         {
-            department = await teamService.CreateTeamAsync(
+            department = await teamSeeding.CreateTeamAsync(
                 "Dev Test Department",
                 "Test department for coordinator e2e tests",
                 requiresApproval: true,
@@ -575,10 +577,10 @@ internal sealed class DevPersonaSeeder(
             changed = true;
         }
 
-        var subTeam = await teamService.GetTeamEntityBySlugAsync("dev-test-subteam");
+        var subTeam = await teamService.GetTeamBySlugAsync("dev-test-subteam");
         if (subTeam is null)
         {
-            subTeam = await teamService.CreateTeamAsync(
+            subTeam = await teamSeeding.CreateTeamAsync(
                 "Dev Test SubTeam",
                 "Test sub-team for coordinator e2e tests",
                 requiresApproval: true,
@@ -612,7 +614,7 @@ internal sealed class DevPersonaSeeder(
         var existingMember = team?.Members.FirstOrDefault(m => m.UserId == userId);
         if (existingMember is null)
         {
-            await teamService.AddSeededMemberAsync(teamId, userId, expectedRole, now);
+            await teamSeeding.AddSeededMemberAsync(teamId, userId, expectedRole, now);
             return true;
         }
 
@@ -636,7 +638,7 @@ internal sealed class DevPersonaSeeder(
         }
 
         var changed = false;
-        var team = await teamService.GetTeamEntityBySlugAsync(teamSlug);
+        var team = await teamService.GetTeamBySlugAsync(teamSlug);
         if (team is null)
         {
             if (!string.Equals(teamSlug, "city-planning", StringComparison.OrdinalIgnoreCase))
@@ -647,7 +649,7 @@ internal sealed class DevPersonaSeeder(
                 return;
             }
 
-            team = await teamService.CreateTeamAsync(
+            team = await teamSeeding.CreateTeamAsync(
                 "City Planning",
                 "Dev-seeded city planning team",
                 requiresApproval: false);

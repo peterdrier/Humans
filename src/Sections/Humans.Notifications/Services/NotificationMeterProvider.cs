@@ -6,11 +6,12 @@ using Humans.Notifications.Services.Dtos;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Governance.Contracts;
-using Humans.Application.Interfaces.Teams;
-using Humans.Application.Interfaces.Tickets;
+using Humans.Teams.Contracts;
+
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Constants;
 using Humans.Notifications.Contracts;
+using Humans.Tickets.Contracts;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 
@@ -21,7 +22,7 @@ namespace Humans.Notifications.Services;
 /// are computed by calling into each owning section service
 /// (<see cref="IUserService"/>,
 /// <see cref="IGoogleSyncServiceRead"/>, <see cref="ITeamService"/>,
-/// <see cref="ITicketSyncService"/>, <see cref="IApplicationServiceRead"/>)
+/// <see cref="ITicketSync"/>, <see cref="IApplicationServiceRead"/>)
 /// and cached for ~2 minutes. No direct DB access.
 /// </summary>
 /// <remarks>
@@ -37,7 +38,7 @@ internal sealed class NotificationMeterProvider(
     IUserServiceRead userService,
     IGoogleSyncServiceRead googleSyncService,
     ITeamServiceRead teamService,
-    ITicketSyncService ticketSyncService,
+    ITicketSync ticketSyncService,
     IApplicationServiceRead applicationDecisionService,
     ICampServiceRead campService,
     IMemoryCache cache,

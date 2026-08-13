@@ -1,3 +1,4 @@
+using Humans.Auth.Contracts;
 using AwesomeAssertions;
 using Humans.Application;
 using Humans.Application.DTOs.Shifts;
@@ -5,8 +6,8 @@ using Humans.Application.Interfaces.Auth;
 using Humans.Consent.Contracts;
 using Humans.Feedback.Contracts;
 using Humans.Application.Interfaces.Shifts;
-using Humans.Application.Interfaces.Teams;
-using Humans.Application.Interfaces.Tickets;
+using Humans.Teams.Contracts;
+using Humans.Tickets.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Models;
 using Humans.Domain.Entities;

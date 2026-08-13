@@ -1,11 +1,11 @@
 using Humans.Application.Configuration;
 using Humans.Application.DTOs;
 using Humans.Application.Helpers;
-using Humans.Application.Interfaces.AuditLog;
+using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Application.Interfaces.Teams;
+using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
@@ -88,7 +88,10 @@ public sealed class GoogleWorkspaceSyncService(
             AuditAction.GoogleResourceProvisioned, nameof(GoogleResource), resource.Id,
             $"Provisioned Drive folder '{resource.Name}' for team",
             nameof(GoogleWorkspaceSyncService),
-            relatedEntityId: teamId, relatedEntityType: nameof(Team));
+            // "Team" is a persisted audit discriminator, matched by exact equality when the log is
+            // read back, so it stays a literal now that the entity lives in Humans.Teams and Base
+            // cannot name it (memory/code/type-name-as-persisted-string.md).
+            relatedEntityId: teamId, relatedEntityType: "Team");
 
         return resource;
     }
@@ -1031,7 +1034,7 @@ public sealed class GoogleWorkspaceSyncService(
                     AuditAction.GoogleResourceDeactivated, nameof(GoogleResource), existingGroup.Id,
                     "Deactivated Google Group resource (prefix cleared)",
                     nameof(GoogleWorkspaceSyncService),
-                    relatedEntityId: teamId, relatedEntityType: nameof(Team));
+                    relatedEntityId: teamId, relatedEntityType: "Team");
             }
             else
             {
@@ -1088,7 +1091,7 @@ public sealed class GoogleWorkspaceSyncService(
                 AuditAction.GoogleResourceProvisioned, nameof(GoogleResource), inactiveForTeam.Id,
                 "Reactivated Google Group resource for team",
                 nameof(GoogleWorkspaceSyncService),
-                relatedEntityId: teamId, relatedEntityType: nameof(Team));
+                relatedEntityId: teamId, relatedEntityType: "Team");
 
             return GroupLinkResult.Ok();
         }
@@ -1101,7 +1104,7 @@ public sealed class GoogleWorkspaceSyncService(
                 AuditAction.GoogleResourceDeactivated, nameof(GoogleResource), existingGroup.Id,
                 $"Deactivated Google Group resource (prefix changed to '{team.GoogleGroupPrefix}')",
                 nameof(GoogleWorkspaceSyncService),
-                relatedEntityId: teamId, relatedEntityType: nameof(Team));
+                relatedEntityId: teamId, relatedEntityType: "Team");
         }
 
         // Delegate to the central recon path. ReconcileOneAsync looks up the
@@ -1136,7 +1139,7 @@ public sealed class GoogleWorkspaceSyncService(
             AuditAction.GoogleResourceProvisioned, nameof(GoogleResource), resource.Id,
             $"Linked Google Group '{team.Name}' ({email}) for team",
             nameof(GoogleWorkspaceSyncService),
-            relatedEntityId: teamId, relatedEntityType: nameof(Team));
+            relatedEntityId: teamId, relatedEntityType: "Team");
 
         return GroupLinkResult.Ok();
     }

@@ -1,6 +1,8 @@
+using Humans.Teams.Data;
+using Humans.Teams.Domain;
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Application.Interfaces.Teams;
+using Humans.Teams.Contracts;
 using Humans.Application.Services.Shifts;
 using Humans.Application.Services.Shifts.Workload;
 using Humans.Application.Tests.Infrastructure;

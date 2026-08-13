@@ -1,17 +1,18 @@
 using AwesomeAssertions;
+using Humans.Expenses.Contracts;
 using Humans.Expenses.Domain;
 using Humans.Application.Interfaces;
 using Humans.Budget.Contracts;
 using Humans.Finance.Contracts;
 using Humans.Application.Interfaces.Holded;
 using Humans.Expenses.Data;
-using Humans.Application.Interfaces.Teams;
+using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Expenses.Services;
 using Humans.Expenses.Services.Dtos;
 using Microsoft.Extensions.Options;
 using Humans.Application;
-using Humans.Application.Interfaces.AuditLog;
+using Humans.AuditLog.Contracts;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
@@ -28,9 +29,9 @@ namespace Humans.Expenses.Tests.Services;
 /// <summary>
 /// Owns its three fixtures rather than deriving from <c>ServiceTestHarness</c>, which it did
 /// while it lived in <c>Humans.Application.Tests</c>. That harness is built around an in-memory
-/// <c>HumansDbContext</c> and this test never touched it — only the audit substitute, the clock
+/// <c>UsersDbContext</c> and this test never touched it — only the audit substitute, the clock
 /// and the section-context options below. Inheriting it here would have meant granting a section
-/// test project <c>InternalsVisibleTo</c> on <c>HumansDbContext</c>, which is the boundary the
+/// test project <c>InternalsVisibleTo</c> on <c>UsersDbContext</c>, which is the boundary the
 /// G5 split exists to draw (nobodies-collective/Humans#866).
 /// </summary>
 public sealed class ExpenseReportServiceTests

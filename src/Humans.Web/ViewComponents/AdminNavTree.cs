@@ -183,7 +183,7 @@ internal static class PillCounts
 
     public static async ValueTask<int?> TransferQueue(IServiceProvider sp)
     {
-        var transfers = sp.GetRequiredService<Application.Interfaces.Tickets.ITicketTransferService>();
+        var transfers = sp.GetRequiredService<Tickets.Contracts.ITicketTransferQueue>();
         var count = await transfers.CountPendingAsync();
         return count > 0 ? count : null;
     }

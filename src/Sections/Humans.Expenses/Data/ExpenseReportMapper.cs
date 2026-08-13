@@ -1,4 +1,4 @@
-using Humans.Expenses.Services.Dtos;
+using Humans.Expenses.Contracts;
 using Humans.Domain.Entities;
 using Humans.Expenses.Domain;
 

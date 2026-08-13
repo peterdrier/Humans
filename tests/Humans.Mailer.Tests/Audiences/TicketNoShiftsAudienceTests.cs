@@ -2,7 +2,7 @@ using Humans.Application;
 using AwesomeAssertions;
 using Humans.Application.DTOs.Shifts;
 using Humans.Application.Interfaces.Shifts;
-using Humans.Application.Interfaces.Tickets;
+using Humans.Tickets.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Mailer.Services.Audiences;
 using Humans.Domain.Entities;
@@ -87,7 +87,7 @@ public class TicketNoShiftsAudienceTests
         HashSet<Guid> ticketHolders,
         HashSet<Guid> shiftCommitted)
     {
-        var tickets = Substitute.For<ITicketService>();
+        var tickets = Substitute.For<ITicketServiceRead>();
         tickets.GetTicketOrdersAsync(Arg.Any<CancellationToken>())
             .Returns(OrdersForTicketHolders(ticketHolders));
 

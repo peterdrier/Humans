@@ -1,9 +1,13 @@
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Dashboard;
+using Humans.Email.Contracts;
+using Humans.Expenses.Contracts;
 using Humans.Feedback.Contracts;
 using Humans.Application.Interfaces.Shifts;
+using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
+using Humans.Store.Contracts;
 using Humans.UI.Authorization;
 using Humans.UI.Controllers;
 using Humans.Web.Models;
@@ -26,6 +30,11 @@ public class AdminController(IUserServiceRead userService) : HumansControllerBas
         [FromServices] IAdminDashboardService adminDashboardService,
         [FromServices] IUserServiceRead userService,
         [FromServices] IUserActivityTracker activityTracker,
+        [FromServices] ITeamServiceRead teams,
+        [FromServices] IEmailOutboxServiceRead emailOutbox,
+        [FromServices] IStoreServiceRead storeService,
+        [FromServices] IExpenseReportServiceRead expenseReportService,
+        [FromServices] IAuthorizationService authorizationService,
         CancellationToken ct)
     {
         var firstName = User.Identity?.Name?.Split(' ').FirstOrDefault() ?? "";
@@ -54,6 +63,35 @@ public class AdminController(IUserServiceRead userService) : HumansControllerBas
             .Select(l => new DashboardLanguageCount(l.Language, l.Count))
             .ToArray();
 
+        var teamCount = (await teams.GetTeamsAsync(ct)).Count;
+        // Reuse of the existing page read: page size 1, no filter — TotalCount is the tile.
+        var auditTotal = (await auditViewer.GetPageAsync(null, 1, 1, ct)).TotalCount;
+        var emailStats = await emailOutbox.GetOutboxStatsAsync(0, ct);
+
+        // The Store/Expenses tiles are policy-gated below AnyAdminRole (mirroring their source
+        // pages' own tighter policies), and the computation is skipped along with the tile for
+        // the roles that can't see it — no point pulling the whole store summary or every
+        // expense report for a viewer who will never see the number.
+        var canSeeStoreTile = (await authorizationService.AuthorizeAsync(User, PolicyNames.StoreCatalogAdmin)).Succeeded;
+        int? storeOrders = null;
+        decimal? storeTotalEur = null;
+        if (canSeeStoreTile && activeEvent is { Year: > 0 })
+        {
+            var storeSummary = await storeService.GetStoreSummaryAsync(activeEvent.Year, ct);
+            storeOrders = storeSummary.ByCounterparty.Count;
+            storeTotalEur = storeSummary.ByCounterparty.Sum(o => o.TotalDueEur);
+        }
+
+        var canSeeExpenseTile = (await authorizationService.AuthorizeAsync(User, PolicyNames.FinanceAdminOrAdmin)).Succeeded;
+        var expenseReportCount = 0;
+        var expenseTotalEur = 0m;
+        if (canSeeExpenseTile)
+        {
+            var expenseReports = await expenseReportService.GetAllAsync(ct);
+            expenseReportCount = expenseReports.Count;
+            expenseTotalEur = expenseReports.Sum(r => r.Total);
+        }
+
         var vm = new AdminDashboardViewModel(
             GreetingFirstName: firstName,
             TotalUsers: totalUsers,
@@ -70,7 +108,14 @@ public class AdminController(IUserServiceRead userService) : HumansControllerBas
             RecentActivity: recent,
             AppStats: appStats,
             LanguageDistribution: languages,
-            SetMembership: dashboardData.SetMembership);
+            SetMembership: dashboardData.SetMembership,
+            TotalTeams: teamCount,
+            TotalAuditEvents: auditTotal,
+            TotalEmails: emailStats.TotalCount,
+            StoreOrders: storeOrders,
+            StoreTotalEur: storeTotalEur,
+            ExpenseReports: expenseReportCount,
+            ExpenseTotalEur: expenseTotalEur);
         return View(vm);
     }
 }

@@ -1,7 +1,7 @@
 using Humans.Application.Helpers;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Shifts;
-using Humans.Application.Interfaces.Teams;
+using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -33,6 +33,7 @@ internal sealed class DevelopmentDashboardSeeder(
     IShiftManagementService shiftManagementService,
     IShiftSignupService shiftSignupService,
     ITeamService teamService,
+    ITeamSeeding teamSeeding,
     IUserEmailService userEmailService,
     IUserService userService,
     UserManager<User> userManager,
@@ -115,10 +116,10 @@ internal sealed class DevelopmentDashboardSeeder(
         // Teams: create parents, then subteams. Goes through ITeamService so slug
         // generation, validation, and cache seeding match production.
         var teamsCreated = 0;
-        var parentTeams = new Dictionary<string, Team>(StringComparer.Ordinal);
+        var parentTeams = new Dictionary<string, TeamInfo>(StringComparer.Ordinal);
         foreach (var name in ParentTeamNames)
         {
-            var created = await teamService.CreateTeamAsync(
+            var created = await teamSeeding.CreateTeamAsync(
                 $"{name}{DevTeamNameSuffix}",
                 description: null,
                 requiresApproval: true,
@@ -127,12 +128,12 @@ internal sealed class DevelopmentDashboardSeeder(
             teamsCreated++;
         }
 
-        var subteams = new Dictionary<string, Team>(StringComparer.Ordinal);
+        var subteams = new Dictionary<string, TeamInfo>(StringComparer.Ordinal);
         foreach (var (parentName, subNames) in Subteams)
         {
             foreach (var subName in subNames)
             {
-                var created = await teamService.CreateTeamAsync(
+                var created = await teamSeeding.CreateTeamAsync(
                     $"{subName}{DevTeamNameSuffix}",
                     description: null,
                     requiresApproval: true,
@@ -156,7 +157,7 @@ internal sealed class DevelopmentDashboardSeeder(
             ["Icemakers"] = 0.9,
         };
 
-        var rotaConfigs = new List<(Team Team, RotaPeriod Period, string Label, double ConfirmedRate)>();
+        var rotaConfigs = new List<(TeamInfo Team, RotaPeriod Period, string Label, double ConfirmedRate)>();
         foreach (var parent in parentTeams.Values)
         {
             var isWellStaffed = parent.Name.StartsWith("Gate", StringComparison.Ordinal)
@@ -314,7 +315,7 @@ internal sealed class DevelopmentDashboardSeeder(
 
                 try
                 {
-                    await teamService.AddSeededMemberAsync(
+                    await teamSeeding.AddSeededMemberAsync(
                         parent.Id, coord.Id, TeamMemberRole.Coordinator, now.Minus(Duration.FromDays(60)),
                         cancellationToken);
                 }
@@ -337,7 +338,7 @@ internal sealed class DevelopmentDashboardSeeder(
             UserAssignment assignment;
             if (_rng.NextDouble() < 0.20)
             {
-                Team secondary;
+                TeamInfo secondary;
                 do { secondary = assignableTeams[_rng.Next(assignableTeams.Count)]; } while (secondary.Id == primary.Id);
                 // Switch day chosen from -7 to +4 (Build/Event overlap), biased to mid-range so each block has some days.
                 var switchDayOffset = _rng.Next(-7, 5);
@@ -465,7 +466,7 @@ internal sealed class DevelopmentDashboardSeeder(
         var teamsDeleted = 0;
         foreach (var slug in SeededTeamSlugsForDelete())
         {
-            var team = await teamService.GetTeamEntityBySlugAsync(slug, cancellationToken);
+            var team = await teamService.GetTeamBySlugAsync(slug, cancellationToken);
             if (team is null)
                 continue;
 

@@ -4,54 +4,28 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Npgsql;
 
 namespace Humans.Infrastructure.Hosting;
 
-/// <summary>DI wiring for HumansDbContext, IDbContextFactory, migration runner, Identity stores.</summary>
+/// <summary>DI wiring for the section DbContexts, IDbContextFactory, migration runner, Identity stores.</summary>
 public static class InfrastructureServiceCollectionExtensions
 {
     /// <summary>
-    /// Registers HumansDbContext + factory + migration runner. Caller must register
-    /// NpgsqlDataSource and any interceptors first.
+    /// Registers the per-section contexts + factories + migration runner. Caller must
+    /// register NpgsqlDataSource and any interceptors first.
     /// </summary>
-    public static IServiceCollection AddHumansPersistence(
-        this IServiceCollection services,
-        bool enableDeveloperDiagnostics)
+    public static IServiceCollection AddHumansPersistence(this IServiceCollection services)
     {
-        // optionsLifetime: Singleton so the Singleton IDbContextFactory can consume DbContextOptions.
-        services.AddDbContext<HumansDbContext>((sp, options) =>
-        {
-            ConfigureNpgsql(sp, options, typeof(HumansDbContext));
-            options.AddInterceptors(sp.GetRequiredService<QueryMonitoringInterceptor>());
-            options.AddInterceptors(sp.GetRequiredService<UserInfoSaveChangesInterceptor>());
-            // PK lookups via FirstOrDefaultAsync(e => e.Id == id) are deterministic — suppress warning.
-            options.ConfigureWarnings(w => w.Ignore(CoreEventId.FirstWithoutOrderByAndFilterWarning));
-            if (enableDeveloperDiagnostics)
-            {
-                options.EnableSensitiveDataLogging();
-                options.EnableDetailedErrors();
-            }
-        }, optionsLifetime: ServiceLifetime.Singleton);
-
-        // Singleton-lifetime factory so Singleton repositories can inject it without scope-validation issues.
-        services.AddDbContextFactory<HumansDbContext>((sp, options) =>
-        {
-            ConfigureNpgsql(sp, options, typeof(HumansDbContext));
-            options.AddInterceptors(sp.GetRequiredService<UserInfoSaveChangesInterceptor>());
-            options.ConfigureWarnings(w => w.Ignore(CoreEventId.FirstWithoutOrderByAndFilterWarning));
-        });
-
-        // Per-section contexts (nobodies-collective/Humans#858), migrated after
-        // HumansDbContext by DatabaseMigrationHostedService in registration order.
-        services.AddSectionDbContext<AuthDbContext>(sentinelTable: "role_assignments");
+        // Per-section contexts (nobodies-collective/Humans#858), migrated by
+        // DatabaseMigrationHostedService in registration order. Users carries the
+        // Identity tables; its sentinel is the chain-created users table.
+        services.AddSectionDbContext<UsersDbContext>(sentinelTable: "users");
         services.AddSectionDbContext<GoogleIntegrationDbContext>(sentinelTable: "google_resources");
-        services.AddSectionDbContext<TicketsDbContext>(sentinelTable: "ticket_orders");
         services.AddSectionDbContext<CampsDbContext>(sentinelTable: "camps");
         services.AddSectionDbContext<SystemDbContext>(sentinelTable: "DataProtectionKeys");
-        services.AddSectionDbContext<AuditLogDbContext>(sentinelTable: "audit_log");
         services.AddSectionDbContext<ShiftsDbContext>(sentinelTable: "shifts");
-        services.AddSectionDbContext<TeamsDbContext>(sentinelTable: "teams");
 
         services.AddHostedService<DatabaseMigrationHostedService>();
 
@@ -60,8 +34,8 @@ public static class InfrastructureServiceCollectionExtensions
 
     /// <summary>
     /// Registers a per-section DbContext (nobodies-collective/Humans#858): scoped context +
-    /// singleton factory with the same Npgsql options and interceptors as
-    /// <see cref="HumansDbContext"/>, the section-specific history table from
+    /// singleton factory with shared Npgsql options and interceptors, the
+    /// section-specific history table from
     /// <see cref="SectionMigrationsHistory"/> (the same helper the design-time
     /// factories use, so the two can never disagree), and the
     /// <see cref="SectionDbContextRegistration"/> consumed by
@@ -82,6 +56,11 @@ public static class InfrastructureServiceCollectionExtensions
             options.AddInterceptors(sp.GetRequiredService<QueryMonitoringInterceptor>());
             options.AddInterceptors(sp.GetRequiredService<UserInfoSaveChangesInterceptor>());
             options.ConfigureWarnings(w => w.Ignore(CoreEventId.FirstWithoutOrderByAndFilterWarning));
+            if (sp.GetRequiredService<IHostEnvironment>().IsDevelopment())
+            {
+                options.EnableSensitiveDataLogging();
+                options.EnableDetailedErrors();
+            }
         }, optionsLifetime: ServiceLifetime.Singleton);
 
         services.AddDbContextFactory<TContext>((sp, options) =>
@@ -100,23 +79,20 @@ public static class InfrastructureServiceCollectionExtensions
         IServiceProvider sp,
         DbContextOptionsBuilder options,
         Type contextType,
-        string? migrationsHistoryTable = null)
+        string migrationsHistoryTable)
     {
         options.UseNpgsql(sp.GetRequiredService<NpgsqlDataSource>(), npgsqlOptions =>
         {
             npgsqlOptions.UseNodaTime();
             npgsqlOptions.MigrationsAssembly(contextType.Assembly.GetName().Name!);
             npgsqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
-            if (migrationsHistoryTable is not null)
-            {
-                npgsqlOptions.MigrationsHistoryTable(migrationsHistoryTable);
-            }
+            npgsqlOptions.MigrationsHistoryTable(migrationsHistoryTable);
         });
     }
 
-    /// <summary>Typed wrapper so Web never references HumansDbContext directly.</summary>
+    /// <summary>Typed wrapper so Web never references UsersDbContext directly.</summary>
     public static IdentityBuilder AddHumansEntityFrameworkStores(this IdentityBuilder builder) =>
-        builder.AddEntityFrameworkStores<HumansDbContext>();
+        builder.AddEntityFrameworkStores<UsersDbContext>();
 
     /// <summary>Typed wrapper so Web never references SystemDbContext directly.</summary>
     public static IDataProtectionBuilder PersistKeysToSystemDbContext(this IDataProtectionBuilder builder) =>

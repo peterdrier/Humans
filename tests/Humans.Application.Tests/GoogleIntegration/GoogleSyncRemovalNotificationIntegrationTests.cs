@@ -1,9 +1,10 @@
-using Humans.Application.Interfaces.AuditLog;
+using Humans.Teams.Domain;
+using Humans.AuditLog.Contracts;
 using Humans.Application.Configuration;
 using Humans.Email.Contracts;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Profiles;
-using Humans.Application.Interfaces.Teams;
+using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.GoogleIntegration;
 using Humans.Application.Tests.Infrastructure;
@@ -186,16 +187,12 @@ public sealed class GoogleSyncRemovalNotificationIntegrationTests
                         IsActive: true)
                 ]
             });
-        _teamService.GetTeamByIdAsync(TestTeamId, Arg.Any<CancellationToken>())
-            .Returns(new Team
-            {
-                Id = TestTeamId,
-                Name = TestGroupName,
-                Slug = "qa-team",
-                GoogleGroupPrefix = "qa-team",
-                CreatedAt = _clock.GetCurrentInstant(),
-                UpdatedAt = _clock.GetCurrentInstant()
-            });
+        _teamService.GetTeamAsync(TestTeamId, Arg.Any<CancellationToken>())
+            .Returns(new TeamInfo(
+                TestTeamId, TestGroupName, null, "qa-team",
+                IsActive: true, IsSystemTeam: false, SystemTeamType.None, RequiresApproval: false,
+                IsPublicPage: false, IsHidden: false, IsPromotedToDirectory: false,
+                _clock.GetCurrentInstant(), [], GoogleGroupPrefix: "qa-team"));
     }
 
     private void StageGoogleApiSuccess(string memberEmail)

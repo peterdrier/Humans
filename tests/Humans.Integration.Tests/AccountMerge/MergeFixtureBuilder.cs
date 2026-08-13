@@ -1,3 +1,10 @@
+using Humans.Auth.Data;
+using Humans.Auth.Domain;
+using Humans.Auth.Contracts;
+using Humans.AuditLog.Data;
+using Humans.AuditLog.Domain;
+using Humans.Teams.Data;
+using Humans.Teams.Domain;
 using Humans.Domain.Entities;
 using Humans.Consent.Services;
 using Humans.Consent.Contracts;
@@ -41,7 +48,7 @@ namespace Humans.Integration.Tests.AccountMerge;
 /// </summary>
 public sealed class MergeFixtureBuilder
 {
-    private readonly HumansDbContext _db;
+    private readonly UsersDbContext _db;
 
     // role_assignments and notifications/notification_recipients moved to their
     // own contexts with the Auth and Notifications peels
@@ -59,7 +66,7 @@ public sealed class MergeFixtureBuilder
     private readonly TeamsDbContext _teamsDb;
 
     private readonly Instant _now;
-    private readonly List<Action<HumansDbContext>> _pending = [];
+    private readonly List<Action<UsersDbContext>> _pending = [];
     private readonly List<Action<AuthDbContext>> _pendingAuth = [];
     private readonly List<Action<NotificationsDbContext>> _pendingNotifications = [];
     private readonly List<Action<GovernanceDbContext>> _pendingGovernance = [];
@@ -76,7 +83,7 @@ public sealed class MergeFixtureBuilder
 
     internal MergeFixtureBuilder(IServiceScope scope, Guid sourceUserId, Guid targetUserId)
     {
-        _db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        _db = scope.ServiceProvider.GetRequiredService<UsersDbContext>();
         _authDb = scope.ServiceProvider.GetRequiredService<AuthDbContext>();
         _notificationsDb = scope.ServiceProvider.GetRequiredService<NotificationsDbContext>();
         _governanceDb = scope.ServiceProvider.GetRequiredService<GovernanceDbContext>();

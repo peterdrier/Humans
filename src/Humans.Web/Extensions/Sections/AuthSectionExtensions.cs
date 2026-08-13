@@ -1,59 +1,37 @@
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Caching;
-using Humans.Gdpr.Contracts;
-using Humans.Application.Interfaces.Repositories;
-using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Auth;
+using Humans.Auth.Contracts;
 using Humans.Infrastructure.Caching;
-using Humans.Infrastructure.Repositories.Auth;
 using Humans.Infrastructure.Services.Auth;
 using Humans.Web.Authorization;
 
 namespace Humans.Web.Extensions.Sections;
 
+/// <summary>
+/// Auth's Base half. The role-assignment half — repository, service, §15 decorator,
+/// <see cref="IAdminAuthorizationService"/> and the resource handler — moved to
+/// <c>Humans.Auth</c>'s <c>Section.Register</c> at the section's G5
+/// (nobodies-collective/Humans#866); what is left here is what could not follow it.
+/// </summary>
 internal static class AuthSectionExtensions
 {
     internal static IServiceCollection AddAuthSection(this IServiceCollection services)
     {
-        // Auth section (§15 migration, issue #551) — repository + Application-
-        // layer service. Singleton + IDbContextFactory pattern (§15b) so the
-        // repository owns context lifetime. CachingRoleAssignmentService
-        // (issue #749) caches the row set so cross-section reads such as
-        // GetActiveCountsByRoleAsync derive from RAM. Invalidation is
-        // service-level: RoleAssignmentService's writes call
-        // IRoleAssignmentCacheInvalidator.InvalidateAll() directly. Single
-        // writer (this service) = no EF interceptor needed.
-        services.AddSingleton<IRoleAssignmentRepository, RoleAssignmentRepository>();
+        // Two implementations of section-owned interfaces that live in Shell and cannot
+        // move: HttpCurrentUserContext reads IHttpContextAccessor, and the claims cache
+        // being invalidated belongs to Shell's RoleAssignmentClaimsTransformation.
+        // Governance's rule — the section that owns the file is not always the section that
+        // owns the line — read from the implementation side.
         services.AddScoped<IRoleAssignmentClaimsCacheInvalidator, RoleAssignmentClaimsCacheInvalidator>();
         services.AddScoped<ICurrentUserContext, HttpCurrentUserContext>();
-        services.AddScoped<IAdminAuthorizationService, AdminAuthorizationService>();
 
-        // Issue #749: Inner RoleAssignmentService registered keyed under
-        // CachingRoleAssignmentService.InnerServiceKey; the unkeyed concrete
-        // forwards to the keyed registration via cast so IUserDataContributor
-        // and IUserMerge resolve the same scoped instance the decorator wraps.
-        // Mirrors the ConsentService pattern in LegalAndConsentSectionExtensions.
-        services.AddKeyedScoped<IRoleAssignmentService, RoleAssignmentService>(
-            CachingRoleAssignmentService.InnerServiceKey);
-        services.AddScoped<RoleAssignmentService>(sp =>
-            (RoleAssignmentService)sp.GetRequiredKeyedService<IRoleAssignmentService>(
-                CachingRoleAssignmentService.InnerServiceKey));
-        services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<RoleAssignmentService>());
-        services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<RoleAssignmentService>());
-
-        services.AddSingleton<CachingRoleAssignmentService>();
-        services.AddSingleton<IRoleAssignmentService>(sp =>
-            sp.GetRequiredService<CachingRoleAssignmentService>());
-        services.AddSingleton<IRoleAssignmentCacheInvalidator>(sp =>
-            sp.GetRequiredService<CachingRoleAssignmentService>());
-        services.AddSingleton<ICacheStats>(sp =>
-            sp.GetRequiredService<CachingRoleAssignmentService>());
-        services.AddHostedService(sp => sp.GetRequiredService<CachingRoleAssignmentService>());
-
-        // Auth section (§15 migration, issue #551) — Application-layer
-        // MagicLinkService + Infrastructure-owned token/url builder and
-        // memory-cache-backed rate limiter (same pattern as
-        // CommunicationPreferenceService + UnsubscribeTokenProvider).
+        // The magic-link sign-in path. MagicLinkService calls no repository and injects
+        // Humans.Email.Contracts, so it is a cross-section orchestrator that a *horizontal*
+        // section may not host (peters-hard-rules.md) — it stayed in Humans.Application with
+        // its Infrastructure-owned token/url builder and memory-cache-backed rate limiter,
+        // and AccountController stayed in Shell with it. Same split as AuditLog's
+        // AuditViewerService.
         services.AddScoped<IMagicLinkUrlBuilder, MagicLinkUrlBuilder>();
         services.AddScoped<IMagicLinkRateLimiter, MagicLinkRateLimiter>();
         services.AddScoped<IMagicLinkService, MagicLinkService>();

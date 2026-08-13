@@ -19,7 +19,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// callers that need atomicity with another section's mutation wrap the two
 /// repository calls in an ambient transaction from the application service.
 ///
-/// Registered as Singleton via <c>IDbContextFactory&lt;HumansDbContext&gt;</c>.
+/// Registered as Singleton via <c>IDbContextFactory&lt;GoogleIntegrationDbContext&gt;</c>.
 /// </remarks>
 [Section("GoogleIntegration")]
 public interface IGoogleSyncOutboxRepository : IRepository

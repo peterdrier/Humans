@@ -57,7 +57,7 @@ Database triggers prevent UPDATE and DELETE on the `audit_log` table, matching t
 
 Stored as string in the database. New values can be appended without migration.
 
-The full value catalog lives in [`docs/sections/AuditLog.md`](../../sections/AuditLog.md) and is regenerated from `src/Humans.Domain/Enums/AuditAction.cs` by `/freshness-sweep`. It is not duplicated here — one source of truth.
+The full value catalog lives in [`src/Sections/Humans.AuditLog/Docs/AuditLog.md`](../../../src/Sections/Humans.AuditLog/Docs/AuditLog.md) and is regenerated from `src/Humans.Domain/Enums/AuditAction.cs` by `/freshness-sweep`. It is not duplicated here — one source of truth.
 
 ## Service Design
 

@@ -19,7 +19,7 @@ namespace Humans.Feedback.Data;
 ///
 /// Feedback is admin-review-only and low-traffic. The repository uses the
 /// Singleton + <c>IDbContextFactory</c> pattern so each method owns its own
-/// <c>HumansDbContext</c> lifetime.
+/// <c>FeedbackDbContext</c> lifetime.
 /// </remarks>
 internal interface IFeedbackRepository : IRepository
 {

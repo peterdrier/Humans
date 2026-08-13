@@ -1,0 +1,44 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Tickets' cross-section surface, carved into its own leaf project because six of its
+    consumers are still in Base: DashboardService, UserEmailService, ShiftManagementService
+    and AccountDeletionService read a human's holdings or the order projection through
+    ITicketServiceRead, AdminDatabaseDiagnosticsService does the same, and TicketSyncJob
+    drives ITicketSync. A Contracts/ *folder* inside Humans.Tickets would therefore make
+    Base reference a section and cycle (design §15.5b,
+    memory/architecture/section-project-cycle-fix.md).
+
+    Tickets is the first section shipping both a .Contracts leaf and a Contracts/ folder,
+    and the split is principled: the leaf carries what Base consumers need and must stay
+    framework-free; the folder inside Humans.Tickets carries public surface that needs
+    ASP.NET (TicketStubViewComponent).
+
+    Three of the members here exist so that Tickets is the application's only door to
+    ticketing: ITicketDiscountCodes and ITicketVendorMirror move Campaigns' and
+    GateVendorCheckInJob's calls off the Base vendor port (ITicketVendorService), which
+    after this lane has exactly two injection sites — Humans.Tickets and Shell's
+    TicketVendorHealthCheck. TicketDiscountCodeRequest / TicketDiscountKind are the
+    section's own boundary vocabulary, mapped to the port's DiscountCodeSpec /
+    DiscountType inside the section (Finance's CreditorLedgerLine shape): the leaf must
+    never name the port's types, or the 2027 vendor swap reaches the callers.
+
+    Everything with no consumer outside the section stays internal: the whole
+    TicketDashboardDtos surface (24 types), the transfer wizard and admin DTOs, the
+    contact-import and onsite-roster services, the repositories and the entities.
+
+    References Humans.Interfaces (IApplicationService, SurfaceBudget, ExternalWrite) and
+    NodaTime. Not Humans.Domain: TicketAttendeeStatus and TicketPaymentStatus are named by
+    the DTOs here and moved onto the leaf with them (Budget's rule), and nothing else the
+    leaf names is Base vocabulary.
+  -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NodaTime" />
+  </ItemGroup>
+
+</Project>

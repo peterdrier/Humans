@@ -58,7 +58,7 @@ function Find-ProductionMatches {
 
     $pattern = "$SubjectName.cs"
     return @(Get-ChildItem -Path (Join-Path $Root 'src') -Recurse -Filter $pattern -File -ErrorAction SilentlyContinue |
-        Where-Object { $_.FullName -notmatch '\\bin\\|\\obj\\|\\Migrations\\|\.Designer\.cs$|HumansDbContextModelSnapshot\.cs$' } |
+        Where-Object { $_.FullName -notmatch '\\bin\\|\\obj\\|\\Migrations\\|\.Designer\.cs$|DbContextModelSnapshot\.cs$' } |
         ForEach-Object { Convert-ToRepoPath $_.FullName })
 }
 

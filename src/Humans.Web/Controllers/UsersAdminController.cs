@@ -1,8 +1,9 @@
+using Humans.Auth.Contracts;
 // @e2e: board.spec.ts
 // @e2e: profile.spec.ts
 using Humans.Application.Authorization;
 using Humans.Application.Interfaces.Admin;
-using Humans.Application.Interfaces.AuditLog;
+using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.Auth;
 using Humans.Campaigns.Contracts;
 using Humans.Consent.Contracts;

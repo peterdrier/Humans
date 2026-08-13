@@ -1,9 +1,9 @@
 using Humans.Application.Extensions;
-using Humans.Application.Interfaces.AuditLog;
+using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
-using Humans.Application.Interfaces.Teams;
+using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -137,7 +137,10 @@ public sealed class RotaCoordinatorMessageService(
 
         await auditLogService.LogAsync(
             AuditAction.CoordinatorTeamRotasMessageSent,
-            nameof(Team), teamId,
+            // "Team" is a persisted audit discriminator, matched by exact equality when the log is
+            // read back, so it stays a literal now that the entity lives in Humans.Teams and Base
+            // cannot name it (memory/code/type-name-as-persisted-string.md).
+            "Team", teamId,
             $"Sent team-wide rota message '{Truncate(messageText, 120)}' to {summary.Queued} recipient(s) "
                 + $"across {groups.Count} rota(s) in '{team.Name}'"
                 + auditSuffix,

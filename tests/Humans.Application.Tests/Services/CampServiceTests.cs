@@ -6,7 +6,7 @@ using Humans.Application.Interfaces.Camps;
 using Humans.CityPlanning.Contracts;
 using Humans.Application.Interfaces.EarlyEntry;
 using Humans.Application.Interfaces.GoogleIntegration;
-using Humans.Application.Interfaces.Teams;
+using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Camps;
 using Humans.Application.Tests.Infrastructure;

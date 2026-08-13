@@ -2,12 +2,19 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Humans.Application.Tests" />
+    <!--
+      Teams' section test project: TeamServiceTests and TeamRoleServiceTests build the real
+      TeamService over real Auth / Shifts / GoogleIntegration repositories, and those three
+      contexts are internal here. Granted rather than rewriting ~3,000 lines of real-object
+      tests into substitutes inside a move commit (design §15 step 8).
+    -->
+    <InternalsVisibleTo Include="Humans.Teams.Tests" />
     <InternalsVisibleTo Include="Humans.Web.Tests" />
     <InternalsVisibleTo Include="Humans.Integration.Tests" />
     <!--
       Humans.Web is granted internals access because its section-DI extensions
       register the concrete repository implementations (which take
-      IDbContextFactory<HumansDbContext> in their constructors). HumansDbContext
+      IDbContextFactory<UsersDbContext> in their constructors). UsersDbContext
       itself is no longer referenced in live Web code — see issue #750. A
       follow-up can relocate the repository DI registrations into Infrastructure
       and drop this entry.
@@ -16,7 +23,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Sections\Humans.Auth.Contracts\Humans.Auth.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Application\Humans.Application.csproj" />
+    <ProjectReference Include="..\Sections\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
     <!--
       Expenses' contracts leaf: HoldedExpenseOutboxJob calls IExpenseReportBackgroundProcessor.
       The job stays here because recurring jobs are named by concrete type in Shell's
@@ -36,6 +45,13 @@
     <ProjectReference Include="..\Sections\Humans.Notifications.Contracts\Humans.Notifications.Contracts.csproj" />
     <ProjectReference Include="..\Sections\Humans.Onboarding.Contracts\Humans.Onboarding.Contracts.csproj" />
     <ProjectReference Include="..\Sections\Humans.Surveys.Contracts\Humans.Surveys.Contracts.csproj" />
+    <ProjectReference Include="..\Sections\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
+    <!--
+      Tickets' contracts leaf: AdminDatabaseDiagnosticsService reads the order projection,
+      TicketSyncJob drives ITicketSync, and GateVendorCheckInJob mirrors a gate admission
+      back to the vendor through ITicketVendorMirror rather than naming the vendor port.
+    -->
+    <ProjectReference Include="..\Sections\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>
