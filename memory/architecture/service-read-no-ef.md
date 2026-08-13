@@ -20,6 +20,6 @@ Allowed: primitives, `Guid`, `DateTime*`/NodaTime types, enums (including `Human
 **How to apply:**
 - Enforced by **HUM0029** (`ServiceReadInterfaceDtoOnlyAnalyzer`). Fires at the method declaration that exposes the EF type.
 - Grandfather an existing leak with `[Grandfathered("HUM0029", justification, since, issueRef)]` on the interface — downgrades to a Warning so the build still passes while the projection gap is opened as tech debt. See [[analyzer-exceptions-via-attributes]].
-- Runs in the `Humans.Application` assembly only — the read interfaces all live there.
+- Runs in the `Humans.Application` assembly only. A moved section (#866, G5) publishes reads from a `Humans.<Section>.Contracts` leaf that references neither the section project nor EF Core, so entities and `DbSet` types are unnameable there by construction. **`IQueryable<T>` is not covered by that boundary** — it is a BCL type any Contracts project can name — so the rule still applies as a convention inside moved sections even though nothing enforces it; tracked by nobodies-collective/Humans#1040.
 
 See also: [[section-read-write-split]], [[no-cross-section-ef-joins]], `docs/architecture/code-analysis.md`.

@@ -21,17 +21,27 @@ namespace Humans.Analyzers;
 /// pattern in <c>memory/architecture/section-read-write-split.md</c>.
 /// </para>
 /// <para>
-/// Deliberately <em>not</em> widened to section assemblies: a moved section
-/// publishes its read surface from a <c>Humans.&lt;Section&gt;.Contracts</c> leaf
-/// that cannot reference the section's own project, so no entity, <c>DbSet</c>
-/// or <c>IQueryable</c> is even nameable there — the assembly boundary is the
-/// enforcement. That boundary does not exist for the <c>I*ServiceRead</c>
-/// interfaces still under <c>Humans.Application/Interfaces</c>:
+/// Deliberately <em>not</em> widened to section assemblies, but the assembly
+/// boundary only covers <em>two of the three</em> banned families. A moved
+/// section publishes its read surface from a <c>Humans.&lt;Section&gt;.Contracts</c>
+/// leaf that references neither the section's own project nor EF Core, so an
+/// entity type and a <c>DbSet</c>/change-tracking type are genuinely unnameable
+/// there. <c>IQueryable&lt;T&gt;</c> is <em>not</em>: it is a BCL type in
+/// <c>System.Linq</c>, which <c>ImplicitUsings</c> imports into every project,
+/// so <c>IQueryable&lt;SomeDto&gt;</c> on a moved section's read interface
+/// compiles with nothing to stop it. That gap is tracked, not accepted — see
+/// nobodies-collective/Humans#1040; do not close it by quietly widening this
+/// analyzer, since scoping is Peter's call.
+/// </para>
+/// <para>
+/// For the <c>I*ServiceRead</c> interfaces still under
+/// <c>Humans.Application/Interfaces</c> there is no boundary at all:
 /// <c>Humans.Application.csproj</c> references <c>Humans.Domain</c>, so widening
-/// one of those to return an entity or <c>IQueryable&lt;T&gt;</c> compiles. This
-/// rule is what stops it. The set shrinks with every G5 peel — deliberately not
-/// counted here, because a count in a comment goes stale on the next move.
-/// Retire when the last one leaves (nobodies-collective/Humans#866, G5).
+/// one of those to return an entity <em>or</em> an <c>IQueryable&lt;T&gt;</c>
+/// compiles. This rule is what stops it. The set shrinks with every G5 peel —
+/// deliberately not counted here, because a count in a comment goes stale on the
+/// next move. When the last one leaves, retiring this rule still forfeits the
+/// <c>IQueryable</c> check everywhere, so nobodies-collective/Humans#1040 has to land first.
 /// </para>
 /// <para>
 /// Exposing an entity through the read surface couples the consuming section
