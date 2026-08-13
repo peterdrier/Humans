@@ -1,7 +1,8 @@
+using Humans.GoogleIntegration.Contracts;
 using Humans.Application.Architecture;
 using Humans.Domain.Enums;
 
-namespace Humans.GoogleIntegration.Contracts;
+namespace Humans.Application.Interfaces.GoogleIntegration;
 
 /// <summary>
 /// Orchestrates Google Group membership sync. Unions every registered
