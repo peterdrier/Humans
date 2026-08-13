@@ -32,18 +32,6 @@ public class BaselineSeeder
 
         WriteBaseline(
             repoRoot,
-            "tests/Humans.Application.Tests/Architecture/Baselines/NoLinqAtDbLayer.baseline.txt",
-            NoLinqAtDbLayerRule.Scan(repoRoot),
-            "no LINQ at DB layer in Application services (memory/architecture/no-linq-at-db-layer.md)");
-
-        WriteBaseline(
-            repoRoot,
-            "tests/Humans.Application.Tests/Architecture/Baselines/NoStartupGuards.baseline.txt",
-            NoStartupGuardsRule.Scan(repoRoot),
-            "no startup guards (memory/architecture/no-startup-guards.md)");
-
-        WriteBaseline(
-            repoRoot,
             "tests/Humans.Application.Tests/Architecture/Baselines/DisplaySortInControllers.baseline.txt",
             DisplaySortInControllersRule.Scan(repoRoot),
             "display sort belongs in controllers (memory/architecture/display-sort-in-controllers.md)");
