@@ -25,12 +25,13 @@ namespace Humans.Analyzers;
 /// publishes its read surface from a <c>Humans.&lt;Section&gt;.Contracts</c> leaf
 /// that cannot reference the section's own project, so no entity, <c>DbSet</c>
 /// or <c>IQueryable</c> is even nameable there — the assembly boundary is the
-/// enforcement. That boundary does not exist for the six <c>I*ServiceRead</c>
+/// enforcement. That boundary does not exist for the <c>I*ServiceRead</c>
 /// interfaces still under <c>Humans.Application/Interfaces</c>:
 /// <c>Humans.Application.csproj</c> references <c>Humans.Domain</c>, so widening
 /// one of those to return an entity or <c>IQueryable&lt;T&gt;</c> compiles. This
-/// rule is what stops it. Retire when those six move
-/// (nobodies-collective/Humans#866, G5).
+/// rule is what stops it. The set shrinks with every G5 peel — deliberately not
+/// counted here, because a count in a comment goes stale on the next move.
+/// Retire when the last one leaves (nobodies-collective/Humans#866, G5).
 /// </para>
 /// <para>
 /// Exposing an entity through the read surface couples the consuming section
