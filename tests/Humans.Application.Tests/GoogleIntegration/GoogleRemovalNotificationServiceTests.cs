@@ -1,4 +1,3 @@
-using Humans.GoogleIntegration.Contracts;
 using Humans.Teams.Domain;
 using Humans.Email.Contracts;
 using Humans.Application.Interfaces.GoogleIntegration;

@@ -1,4 +1,3 @@
-using Humans.GoogleIntegration.Contracts;
 using Humans.Teams.Domain;
 using AwesomeAssertions;
 using Humans.Application.Interfaces.GoogleIntegration;

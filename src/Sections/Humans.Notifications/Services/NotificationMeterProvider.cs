@@ -5,7 +5,6 @@ using Humans.Notifications.Data;
 using System.Security.Claims;
 using Humans.Notifications.Services.Dtos;
 using Humans.Camps.Contracts;
-using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Governance.Contracts;
 using Humans.Teams.Contracts;
 

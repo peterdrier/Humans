@@ -2,7 +2,6 @@ using Humans.GoogleIntegration.Contracts;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.EarlyEntry;
-using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Users;
 using Humans.Camps.Authorization;
 using Humans.Camps.Contracts;

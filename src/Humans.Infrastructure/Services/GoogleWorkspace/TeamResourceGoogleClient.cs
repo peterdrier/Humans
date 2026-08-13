@@ -1,4 +1,3 @@
-using Humans.GoogleIntegration.Contracts;
 using System.Text.Json;
 using Google.Apis.Auth.OAuth2;
 using Google.Apis.CloudIdentity.v1;

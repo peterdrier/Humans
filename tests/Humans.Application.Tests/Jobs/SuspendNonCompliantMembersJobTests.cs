@@ -11,7 +11,6 @@ using Humans.Infrastructure.Services;
 using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.Caching;
 using Humans.Email.Contracts;
-using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Teams.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Governance.Contracts;

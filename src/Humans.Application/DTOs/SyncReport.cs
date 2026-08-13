@@ -1,4 +1,3 @@
-using Humans.GoogleIntegration.Contracts;
 namespace Humans.Application.DTOs;
 
 /// <summary>

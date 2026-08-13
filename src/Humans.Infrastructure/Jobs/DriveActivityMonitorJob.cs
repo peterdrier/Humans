@@ -1,4 +1,3 @@
-using Humans.GoogleIntegration.Contracts;
 using Hangfire;
 using Microsoft.Extensions.Logging;
 using NodaTime;

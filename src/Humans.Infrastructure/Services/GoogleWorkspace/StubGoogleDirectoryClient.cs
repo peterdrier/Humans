@@ -1,4 +1,3 @@
-using Humans.GoogleIntegration.Contracts;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Microsoft.Extensions.Logging;
 

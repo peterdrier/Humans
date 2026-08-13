@@ -1,4 +1,3 @@
-using Humans.GoogleIntegration.Contracts;
 using Google.Apis.Drive.v3;
 using Google.Apis.Services;
 using Humans.Application.Extensions;

@@ -1,4 +1,3 @@
-using Humans.GoogleIntegration.Contracts;
 using Google.Apis.Admin.Directory.directory_v1;
 using Google.Apis.Admin.Directory.directory_v1.Data;
 using Google.Apis.Auth.OAuth2;

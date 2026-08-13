@@ -1,4 +1,3 @@
-using Humans.GoogleIntegration.Contracts;
 using System.Transactions;
 using Humans.Application.DTOs;
 using Humans.Application.Extensions;

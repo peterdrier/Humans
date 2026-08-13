@@ -1,5 +1,4 @@
 using Humans.GoogleIntegration.Contracts;
-using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Domain.Entities;
 
 namespace Humans.Application.Helpers;

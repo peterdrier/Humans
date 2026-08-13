@@ -3,7 +3,6 @@ using Hangfire;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;

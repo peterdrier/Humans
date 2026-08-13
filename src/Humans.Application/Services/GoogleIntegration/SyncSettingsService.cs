@@ -1,4 +1,3 @@
-using Humans.GoogleIntegration.Contracts;
 using NodaTime;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Enums;

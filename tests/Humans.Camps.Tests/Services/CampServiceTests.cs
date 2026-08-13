@@ -1,4 +1,3 @@
-using Humans.GoogleIntegration.Contracts;
 using Humans.Notifications.Contracts;
 using AwesomeAssertions;
 using Humans.Application.Configuration;
