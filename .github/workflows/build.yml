@@ -266,9 +266,6 @@ jobs:
     - name: Check formatting
       run: dotnet format Humans.slnx --verify-no-changes --verbosity diagnostic --exclude src/Humans.Infrastructure/Migrations/
 
-    - name: Enforce google_resources ownership
-      run: bash scripts/check-google-resource-ownership.sh
-
     - name: Forbid RS0030 suppressions in test code
       # The BannedApiAnalyzers rule RS0030 enforces "no bare [Fact] / [Theory]
       # in tests — use HumansFact / HumansTheory". The only legitimate

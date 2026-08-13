@@ -878,9 +878,9 @@ Repository: `IGoogleResourceRepository`.
 
 Sole owner of `google_resources`. All consumers call
 `ITeamResourceService` read methods rather than touching
-`DbSet<GoogleResource>`; ownership is enforced by
-`scripts/check-google-resource-ownership.sh` and the
-`Architecture.GoogleResourceOwnership` analyzer. Cross-section calls via
+`DbSet<GoogleResource>`; ownership is enforced by the section's `internal`
+`GoogleIntegrationDbContext` and `IGoogleResourceRepository` plus
+HUM0008/HUM0009/HUM0025. Cross-section calls via
 `ITeamService`, `ITeamResourceGoogleClient`, `IGoogleDrivePermissionsClient`,
 `IAuditLogService`, plus `IServiceProvider` to break a DI cycle. No
 cache.

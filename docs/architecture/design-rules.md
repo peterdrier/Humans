@@ -516,7 +516,7 @@ All Google Drive resources are on **Shared Drives** (never My Drive). Google int
 - `GoogleWorkspaceUserService` — user provisioning
 - `SyncSettingsService` — per-service sync mode (None/AddOnly/AddAndRemove)
 
-**No other service queries Google resources directly.** If a section needs to know about a team's Google resources, it asks `ITeamResourceService`. The guardrail script `scripts/check-google-resource-ownership.sh` enforces this at CI time.
+**No other service queries Google resources directly.** If a section needs to know about a team's Google resources, it asks `ITeamResourceService`. The section's `internal` `GoogleIntegrationDbContext` and `IGoogleResourceRepository` put the table out of reach of other assemblies; HUM0008/HUM0009/HUM0025 cover controllers, services and second repositories inside it.
 
 ## 14. DTO and ViewModel Boundary
 
