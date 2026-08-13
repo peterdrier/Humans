@@ -24,15 +24,19 @@ Deterministic recovery: throw away the in-flight migrations on this branch and l
 
 ## Determine the touched context(s)
 
-Since the per-context DbContext split (nobodies-collective/Humans#858, #866), migrations live under one of three shapes — see `memory/process/ef-multi-context-commands.md` for the full partition:
+Since the per-context DbContext split (nobodies-collective/Humans#858, #866) there is no shared context — `HumansDbContext` was deleted. Migrations live under one of two shapes — see `memory/process/ef-multi-context-commands.md` for the full partition:
 
-| Location | Context | `--project` |
+| Location | `--project` | `--output-dir` |
 |---|---|---|
-| `src/Humans.Infrastructure/Migrations/*.cs` | `HumansDbContext` | `src/Humans.Infrastructure` |
-| `src/Humans.Infrastructure/Migrations/<Section>/*.cs` | `<Section>DbContext` (peeled, not yet moved) | `src/Humans.Infrastructure` |
-| `src/Sections/Humans.<Section>/Data/Migrations/*.cs` | `<Section>DbContext` (moved, G5) | `src/Sections/Humans.<Section>` |
+| `src/Humans.Infrastructure/Migrations/<Area>/*.cs` (peeled, not yet moved) | `src/Humans.Infrastructure` | `Migrations/<Area>` |
+| `src/Sections/Humans.<Section>/Data/Migrations/*.cs` (moved, G5) | `src/Sections/Humans.<Section>` | `Data/Migrations` |
 
-Everything below refers to "the touched context" and "the migrations folder" — resolve them from the branch's in-flight migration files (step 1) before proceeding. If the branch touches more than one context, run steps 2–8 once per context; each context gets its own consolidated migration and its own commit.
+**Do not synthesize the context name from the folder.** A G5 section's project name and its context often differ: `src/Sections/Humans.Consent` is `LegalDbContext`, `src/Sections/Humans.Events` is `EventGuideDbContext`. Resolve the real class from either:
+
+- the snapshot file already in the folder — it is named `<Context>ModelSnapshot.cs`; or
+- the `SECTION_DB_CONTEXTS` map in `.github/workflows/build.yml`, whose entries are `<Context>:<project path>`.
+
+Everything below refers to "the touched context" and "the migrations folder" — resolve them from the branch's in-flight migration files (step 1) before proceeding. If the branch touches more than one context, run steps 2–9 once per context; each context gets its own consolidated migration and its own commit.
 
 ## Hard preconditions
 
@@ -60,7 +64,34 @@ git log --diff-filter=A --name-only origin/main..HEAD \
 
 This includes both `<timestamp>_<Name>.cs` and `<timestamp>_<Name>.Designer.cs` for each migration. Group the results by owning context per the table above. Show the list (grouped by context) to the user and confirm "yes, scrap all of these and consolidate" before proceeding — per context if more than one is touched.
 
-### 2. Delete the migration files
+**A relocated migration is not in-flight work.** If this branch moves a context from `Humans.Infrastructure` into a G5 project, every one of that context's migrations shows up above as an addition at the new path even though it is unchanged history from `origin/main`. Compare basenames against `origin/main` before treating any of them as scrappable:
+
+```bash
+git ls-tree -r --name-only origin/main \
+  | grep -E '/[0-9]{14}_.*\.cs$' | xargs -n1 basename | sort -u
+```
+
+Anything whose basename is already on `origin/main` was relocated, not authored here — leave it alone.
+
+### 2. Resolve the snapshot restore source — BEFORE deleting anything
+
+Step 4 restores the context's snapshot from `origin/main`. That restore has no source in two cases, and step 4 is too late to find out: the migration files are already deleted by then, which strands the branch. Determine now which case you are in:
+
+```bash
+git cat-file -e origin/main:<migrations-folder>/<Context>ModelSnapshot.cs 2>/dev/null \
+  && echo PRESENT || echo ABSENT
+```
+
+- **PRESENT** — ordinary case. Step 4 runs as written.
+- **ABSENT, and the context exists on `origin/main` under a different path** — the branch is relocating the context. The pre-move snapshot is still at `src/Humans.Infrastructure/Migrations/<Area>/<Context>ModelSnapshot.cs`; that path is the restore source. Find it with:
+
+  ```bash
+  git ls-tree -r --name-only origin/main | grep '<Context>ModelSnapshot\.cs$'
+  ```
+
+- **ABSENT everywhere** — this branch introduces the context, so `origin/main` has no cumulative model state for it and there is nothing to restore. The correct baseline is *no snapshot*: delete the branch's snapshot file along with the migration files in step 3, and `migrations add` regenerates it from empty, producing a proper initial migration.
+
+### 3. Delete the migration files
 
 Delete the `.cs` and `.Designer.cs` for every migration in the list, from the touched context's migrations folder:
 
@@ -71,17 +102,38 @@ git rm <migrations-folder>/<timestamp>_<Name>.cs \
 
 Repeat for each in-flight migration in this context. Do NOT delete migrations from `origin/main`.
 
-### 3. Restore the cumulative snapshot from main
+### 4. Reset the cumulative snapshot to main's view
+
+Per the case established in step 2.
+
+**PRESENT** — restore in place:
 
 ```bash
 git checkout origin/main -- <migrations-folder>/<Context>ModelSnapshot.cs
 ```
 
-This puts the snapshot in a known-clean state matching what `origin/main` believes the model looks like — i.e. as if your branch's migrations had never existed. EF will then compute "model has all the new tables/columns; snapshot doesn't" and generate one fresh migration containing everything.
+**Relocating the context** — restore from the pre-move path, into the new one:
 
-This restore is the one sanctioned exception to the "never touch the snapshot" rule in `memory/architecture/no-hand-edited-migrations.md`. It is sanctioned ONLY inside this workflow; never use it as a general escape hatch in other contexts.
+```bash
+git show origin/main:src/Humans.Infrastructure/Migrations/<Area>/<Context>ModelSnapshot.cs \
+  > <migrations-folder>/<Context>ModelSnapshot.cs
+```
 
-### 4. Build to confirm the model loads
+The file carries its pre-move `namespace`. EF locates a snapshot by the `[DbContext(typeof(<Context>))]` attribute rather than by namespace, so this compiles and diffs correctly, and `migrations add` rewrites the file in step 6 — but read the regenerated `namespace` before committing and confirm it matches the new project rather than the old one.
+
+**New context on this branch** — there is no `origin/main` state to restore. Delete the snapshot so EF starts from empty:
+
+```bash
+git rm <migrations-folder>/<Context>ModelSnapshot.cs
+```
+
+`migrations add` then regenerates it, and the consolidated migration is a full initial `CreateTable` set rather than a diff.
+
+In the first two cases this puts the snapshot in a known-clean state matching what `origin/main` believes the model looks like — i.e. as if your branch's migrations had never existed. EF will then compute "model has all the new tables/columns; snapshot doesn't" and generate one fresh migration containing everything.
+
+This reset is the one sanctioned exception to the "never touch the snapshot" rule in `memory/architecture/no-hand-edited-migrations.md`. It is sanctioned ONLY inside this workflow; never use it as a general escape hatch in other contexts.
+
+### 5. Build to confirm the model loads
 
 ```bash
 dotnet build Humans.slnx -v quiet
@@ -89,18 +141,33 @@ dotnet build Humans.slnx -v quiet
 
 If this fails, stop — EF tooling can't run against a model that doesn't compile.
 
-### 5. Generate the consolidated migration
+### 6. Generate the consolidated migration
+
+`--output-dir` is **required**, not optional. Without it EF writes to the project's default `Migrations/` folder, which for both shapes is the wrong place: the replacement lands outside the chain its snapshot belongs to. `.claude/check-ef-output-dir.sh` cannot save you here — it only inspects commands that already carry the flag and exits 0 on any command without it.
+
+Peeled, context still in `Humans.Infrastructure`:
 
 ```bash
 dotnet ef migrations add <MigrationName> \
   --context <Context> \
-  --project <context's project> \
+  --project src/Humans.Infrastructure \
+  --output-dir Migrations/<Area> \
   --startup-project src/Humans.Web
 ```
 
-`--context` and `--project` per the table above (see `memory/process/ef-multi-context-commands.md` for exact flag forms, including `--output-dir` for a peeled-not-moved section). Use the `<MigrationName>` from `$ARGUMENTS`. The new migration gets the current UTC timestamp, which lands at the END of the chain — past all of main's interleaved migrations.
+Section moved to its own project (G5):
 
-### 6. Inspect the generated migration
+```bash
+dotnet ef migrations add <MigrationName> \
+  --context <Context> \
+  --project src/Sections/Humans.<Section> \
+  --output-dir Data/Migrations \
+  --startup-project src/Humans.Web
+```
+
+`<Area>` / `<Section>` and `<Context>` per the table above — `<Context>` resolved from the snapshot filename or `SECTION_DB_CONTEXTS`, never guessed from the folder name. Use the `<MigrationName>` from `$ARGUMENTS`. The new migration gets the current UTC timestamp, which lands at the END of the chain — past all of main's interleaved migrations. See `memory/process/ef-multi-context-commands.md` for the canonical flag forms.
+
+### 7. Inspect the generated migration
 
 Read the new `<timestamp>_<MigrationName>.cs`. Verify:
 
@@ -108,7 +175,7 @@ Read the new `<timestamp>_<MigrationName>.cs`. Verify:
 - Operations match the net intended change. If you expected `CreateTable("widgets")` plus `DropColumn(camp_seasons.OldField)` and got something else, the model isn't in the shape you thought — go back to step 1's preconditions.
 - No surprises (touching tables you didn't expect to change is a sign of model drift; investigate before committing).
 
-### 7. Build and test
+### 8. Build and test
 
 ```bash
 dotnet build Humans.slnx -v quiet
@@ -117,13 +184,13 @@ dotnet test Humans.slnx -v quiet
 
 Both green.
 
-### 8. Commit the regen as ONE standalone commit
+### 9. Commit the regen as ONE standalone commit
 
-The entire regen — deletions of the old migration files, snapshot restore from `origin/main`, the new consolidated migration `.cs` and `.Designer.cs`, and the updated `<Context>ModelSnapshot.cs` — must land as **one single commit**, separate from any other work. If more than one context was touched, one commit per context.
+The entire regen — deletions of the old migration files, the step 4 snapshot reset (restore from `origin/main`, restore from the pre-move path, or delete for a new context), the new consolidated migration `.cs` and `.Designer.cs`, and the regenerated `<Context>ModelSnapshot.cs` — must land as **one single commit**, separate from any other work. If more than one context was touched, one commit per context.
 
 This matters for history: a reviewer or future archaeologist scrolling through `git log` should be able to point at one commit and say "that's where the migration stack was consolidated." If the regen is bundled with unrelated changes (entity refactors, controller edits, test fixes), the audit trail becomes muddy and it stops being obvious which file changes are the regen itself versus the surrounding work.
 
-Workflow: stash or commit any unrelated in-flight edits BEFORE step 2; do the entire regen sequence in a clean working tree; commit the regen alone; then resume other work as separate commits.
+Workflow: stash or commit any unrelated in-flight edits BEFORE step 3; do the entire regen sequence in a clean working tree; commit the regen alone; then resume other work as separate commits.
 
 The commit message should:
 - Summarize what the consolidated migration does (table created, columns added/dropped).

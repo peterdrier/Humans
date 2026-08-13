@@ -8,15 +8,19 @@ Run this agent after generating any EF Core migration, before committing or push
 
 ## 0. Identify the owning context (do this first)
 
-Since the per-section DbContext split (nobodies-collective/Humans#858, #866), ~28 contexts are in play — `HumansDbContext` plus one per peeled section. Every check below is relative to whichever context the migration under review belongs to. Determine it from the migration file's path/namespace:
+Since the per-section DbContext split (nobodies-collective/Humans#858, #866) there is no shared context — `HumansDbContext` was deleted, and 29 per-section contexts are in play. Every check below is relative to whichever context the migration under review belongs to. Its path/namespace tells you where the migration lives:
 
-| Location | Context |
+| Location | Hosting project |
 |---|---|
-| `src/Humans.Infrastructure/Migrations/*.cs`, namespace `Humans.Infrastructure.Migrations` | `HumansDbContext` |
-| `src/Humans.Infrastructure/Migrations/<Section>/*.cs`, namespace `Humans.Infrastructure.Migrations.<Section>` | `<Section>DbContext` (peeled, still hosted in Humans.Infrastructure) |
-| `src/Sections/Humans.<Section>/Data/Migrations/*.cs`, namespace `Humans.<Section>.Data.Migrations` | `<Section>DbContext` (moved to its own project, G5) |
+| `src/Humans.Infrastructure/Migrations/<Area>/*.cs`, namespace `Humans.Infrastructure.Migrations.<Area>` | `src/Humans.Infrastructure` (peeled, not yet moved) |
+| `src/Sections/Humans.<Section>/Data/Migrations/*.cs`, namespace `Humans.<Section>.Data.Migrations` | `src/Sections/Humans.<Section>` (moved to its own project, G5) |
 
-Any `dotnet ef` command run during review must pass `--context <C>` (and, for a G5 section, `--project src/Sections/Humans.<Section>`) — see `memory/process/ef-multi-context-commands.md` for exact flag forms. Never run a bare `dotnet ef migrations ...`.
+**The path does not give you the context name — look it up, never synthesize it.** `<Section>DbContext` is a guess that is wrong for real sections: `Humans.Consent.Data.Migrations` is owned by `LegalDbContext`, and `Humans.Events.Data.Migrations` by `EventGuideDbContext`. Reviewing either with the synthesized name makes every command below fail. Resolve the actual class from either:
+
+- the `<Context>ModelSnapshot.cs` sitting in the same folder — its filename is the context class name; or
+- the `SECTION_DB_CONTEXTS` map in `.github/workflows/build.yml`, whose entries are `<Context>:<project path>` and are the same list CI verifies against.
+
+Any `dotnet ef` command run during review must pass `--context <C>` with that resolved name, plus `--project` per the table above — see `memory/process/ef-multi-context-commands.md` for exact flag forms. Never run a bare `dotnet ef migrations ...`.
 
 ## What to Check
 
@@ -38,7 +42,7 @@ Any `dotnet ef` command run during review must pass `--context <C>` (and, for a 
 - **No empty SET clauses:** Search for `UpdateData` calls. Each must have `column:` and `value:` parameters. If any UpdateData exists without a value, the bool sentinel trap has struck.
 - **New required columns are forbidden without Peter's approval** (`memory/architecture/required-columns-need-approval.md`): a new column on an existing table must be **nullable** unless Peter explicitly approved a required one. Flag ANY `AddColumn` with `nullable: false` on an existing table as a violation unless the PR cites that approval.
 - **AddColumn with defaults:** if a (Peter-approved) non-nullable column is added to a table with existing data it needs a `defaultValue:` to apply — and then the model MUST declare the same default (`HasDefaultValue`/`HasDefaultValueSql`, minding the bool-sentinel rules above), so model and database agree. A scaffolded `defaultValue:` with no matching model declaration is the §5.1 divergence class (31-stray incident, 2026-08-02) and fails `PhysicalDefaultParityTests`.
-- **Correct namespace:** matches the owning project per the table in §0 — `Humans.Infrastructure.Migrations` (or `.Migrations.<Section>` for a peeled-but-not-moved section), or `Humans.<Section>.Data.Migrations` for a G5-moved section. The namespace line is the one sanctioned edit to a migration file, made only when a section moves.
+- **Correct namespace:** matches the owning project per the table in §0 — `Humans.Infrastructure.Migrations.<Area>` for a peeled-but-not-moved section, `Humans.<Section>.Data.Migrations` for a G5-moved one. Note this tracks the *project*, not the context: `LegalDbContext`'s migrations are namespaced `Humans.Consent.Data.Migrations` because they live in `Humans.Consent`. The namespace line is the one sanctioned edit to a migration file, made only when a section moves.
 - **No hand edits:** The migration should be exactly what `dotnet ef migrations add` generated. Never edit Up/Down methods.
 
 ### 3. Seed Data Consistency
@@ -61,12 +65,12 @@ For each new entity:
 
 ### 5. DbContext DbSets
 
-- Every new entity has a `DbSet<T>` in **the owning context identified in §0** — `HumansDbContext.cs`, or `<Section>DbContext.cs` for a peeled/moved section
+- Every new entity has a `DbSet<T>` in **the owning context identified in §0** — that context's own `<Context>.cs`, and no other
 - Pattern: `public DbSet<Entity> Entities => Set<Entity>();`
 
 ### 6. Snapshot Consistency
 
-After migration generation, **the owning context's model snapshot** — `HumansDbContextModelSnapshot.cs`, or `<Section>DbContextModelSnapshot.cs` for a peeled/moved section — should include all new entities and properties. If you deleted and regenerated a migration, verify the snapshot was properly reverted and regenerated (use `dotnet ef migrations remove --context <C>` before `dotnet ef migrations add --context <C>`). A diff touching a *different* context's snapshot than the one you're changing is a sign something ran without `--context` — stop and investigate (`memory/process/diff-snapshot-after-ef-tool.md`).
+After migration generation, **the owning context's model snapshot** — `<Context>ModelSnapshot.cs`, sitting in the same migrations folder and named for the context class resolved in §0 — should include all new entities and properties. If you deleted and regenerated a migration, verify the snapshot was properly reverted and regenerated (use `dotnet ef migrations remove --context <C>` before `dotnet ef migrations add --context <C>`). A diff touching a *different* context's snapshot than the one you're changing is a sign something ran without `--context` — stop and investigate (`memory/process/diff-snapshot-after-ef-tool.md`).
 
 ## Report Format
 

@@ -28,7 +28,7 @@ A section is "aligned" when **all three axes hold**:
 
 ## Section location resolution
 
-Sections progressively move into their own project at `src/Sections/Humans.<Section>/` (nobodies-collective/Humans#866, G5), owning `Services/`, `Data/` (its own DbContext + `Data/Migrations/`), and usually its own `tests/Humans.<Section>.Tests/` project. **Before applying any Axis 2 path reference in this skill, check whether `src/Sections/Humans.<Section>/` exists** — if so, that project's `Services/` and `Data/` are the section's home and everything below resolves relative to it (its own tests project, not `tests/Humans.Application.Tests/<Section>/`; its own DbContext, not `HumansDbContext`; `dotnet ef` commands need `--context <Section>DbContext --project src/Sections/Humans.<Section>`, see `memory/process/ef-multi-context-commands.md`). Otherwise fall back to the legacy paths (`src/Humans.Application/Services/<Section>/`, `src/Humans.Infrastructure/Repositories/<Section>/`) as written throughout.
+Sections progressively move into their own project at `src/Sections/Humans.<Section>/` (nobodies-collective/Humans#866, G5), owning `Services/`, `Data/` (its own DbContext + `Data/Migrations/`), and usually its own `tests/Humans.<Section>.Tests/` project. **Before applying any Axis 2 path reference in this skill, check whether `src/Sections/Humans.<Section>/` exists** — if so, that project's `Services/` and `Data/` are the section's home and everything below resolves relative to it (its own tests project, not `tests/Humans.Application.Tests/<Section>/`; its own DbContext — there is no shared `HumansDbContext` any more, it was deleted in nobodies-collective/Humans#858; `dotnet ef` commands need `--context <Context> --project src/Sections/Humans.<Section> --output-dir Data/Migrations`, where `<Context>` is looked up rather than synthesized — `<Section>DbContext` is wrong for e.g. `Humans.Consent` (`LegalDbContext`) and `Humans.Events` (`EventGuideDbContext`); the `SECTION_DB_CONTEXTS` map in `.github/workflows/build.yml` is authoritative, see `memory/process/ef-multi-context-commands.md`). Otherwise fall back to the legacy paths (`src/Humans.Application/Services/<Section>/`, `src/Humans.Infrastructure/Repositories/<Section>/`) as written throughout.
 
 ## Boundary-fix protocol
 
@@ -155,7 +155,7 @@ git grep -nE '\.Include\([^)]+\)' src/Humans.Infrastructure/Repositories/<Sectio
 
 For each hit: apply the **boundary-fix protocol (consumer side)**. Does the other section expose a public service method that gives us what we need? If yes, switch (Phase 2). If no, document the API gap on their side, leave the current code in place, and flag their section as a follow-up /section-align target. **Do not add a method to their repo or service in this PR.**
 
-**A1.12 Controller → DbContext.** Any controller injecting `HumansDbContext` violates §2a. Hard violation; always Phase 2 fix.
+**A1.12 Controller → DbContext.** Any controller injecting a `DbContext` — or an `IDbContextFactory<>` of one — violates §2a, whichever context it is. Don't grep for `HumansDbContext`; it was deleted in nobodies-collective/Humans#858, so that spelling matches nothing while the violation still happens with a section context. Hard violation; always Phase 2 fix.
 
 **A1.13 Migrations.** Hand-edited body or snapshot violates `architecture_no_hand_edited_migrations`. Intentional `migrationBuilder.Sql(...)` for triggers/seeds is allowed when named in the section doc.
 
@@ -187,16 +187,18 @@ git grep -nE '(IMemoryCache|MemoryCache|IDistributedCache|_cache\b)' src/Humans.
 Caching belongs in the service layer **only** per §15 — either via a `Caching<Section>Service` decorator (Singleton, dict-backed) or service-internal `IMemoryCache` for short-TTL request acceleration. Never in repositories. Never in controllers. ViewComponents per `feedback_viewcomponent_no_cache`.
 
 **A2.3 DI lifetimes.** Read the section's DI registration — `src/Sections/Humans.<Section>/Section.cs` (`ISection.Register`, G5) or `Extensions/Sections/<Section>SectionExtensions.cs` (not yet moved). Verify:
-- Repository: Singleton, depends on `IDbContextFactory<HumansDbContext>`
+- Repository: Singleton, depends on `IDbContextFactory<TContext>` where `TContext` is **the section's own context** — never `HumansDbContext`, which no longer exists (nobodies-collective/Humans#858)
 - Service: Scoped (or Singleton if stateless + factory-based dependencies)
 - Decorator (if present): Singleton
 - Cross-interface re-exports (e.g. `IUserDataContributor` → existing service): bound to the registered concrete
 
-**A2.4 Repository pattern.** `<Section>Repository`:
-- `sealed`
-- uses `IDbContextFactory<HumansDbContext>`
+**A2.4 Repository pattern.** The section's repository:
+- `sealed` (`internal sealed` on G5)
+- uses `IDbContextFactory<TContext>` for the section's own context — resolve `TContext` from the section's `Data/` folder or the `SECTION_DB_CONTEXTS` map in `.github/workflows/build.yml`; **do not assume `<Section>DbContext`**, since e.g. `Humans.Consent` is `LegalDbContext` and `Humans.Events` is `EventGuideDbContext`. A repository taking its own section context is correct and must not be flagged.
 - has no Update/Delete if entity is append-only (§12)
-- lives at `Infrastructure/Repositories/<Section>/`
+- lives at `src/Sections/Humans.<Section>/Data/` (G5) or `src/Humans.Infrastructure/Repositories/<Section>/` (not yet moved)
+
+A handful of G5 repositories inject the context directly rather than a factory (e.g. `AgentRepository(AgentDbContext db, IClock clock)`). Note it, but it is not a §2a violation on its own.
 
 **A2.5 Shared visual components — inventory by type, ViewComponent preferred.** Cross-page UI for this section's data can live as one of three things; this skill is opinionated about which:
 
@@ -565,7 +567,7 @@ Axis 1 items:
 - **Inbound cross-section DB access (producer-side)** — ensure our public API satisfies the need. Add the method if missing (budget bump if interface ≥10, add `InterfaceMethodBudgetTests.Budgets` entry). The caller's section becomes a follow-up /section-align target; do not touch their call site in this PR unless trivial (one or two lines).
 - **Outbound cross-section access (consumer-side)** — if the supplier section has the public API, switch to it. If not, document the gap, leave the code, flag their section as follow-up. Never reach into another section's repository or DbContext.
 - **Controller-DI-DbContext** — extract service+repo layer.
-- **Hand-edited migration** — `dotnet ef migrations remove --context <C>` + redo `dotnet ef migrations add --context <C>` (per `memory/process/ef-multi-context-commands.md`). Verify snapshot is byte-for-byte EF output.
+- **Hand-edited migration** — `dotnet ef migrations remove --context <C> --project <P>` + redo the `add` with the full flag set for that context's shape: `--context <C> --project <P> --output-dir <Data/Migrations | Migrations/<Area>>` (per `memory/process/ef-multi-context-commands.md`). Omitting `--output-dir` silently regenerates into the project's default `Migrations/` folder, away from the snapshot — and the `check-ef-output-dir.sh` guard only inspects commands that already carry the flag. Verify snapshot is byte-for-byte EF output.
 - **URL aliases / cross-section URL exposure** — remove; surface downstream consumer risk.
 - **Prior review threads** — fix or reply with reasoning via `gh api .../comments/<id>/replies`; never top-level.
 

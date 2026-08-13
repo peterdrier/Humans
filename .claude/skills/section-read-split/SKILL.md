@@ -18,7 +18,7 @@ Every cross-section-consumed service has a narrow read interface that returns on
 
 ## Input
 
-- `<SectionName>` — section to split (e.g., `Users`, `Camps`, `Calendar`). Resolves to `docs/sections/<SectionName>.md` + the section's `I<SectionName>Service` interface — `src/Sections/Humans.<SectionName>/Services/I<SectionName>Service.cs` if the section has moved to its own project (nobodies-collective/Humans#866, G5), else `src/Humans.Application/Interfaces/<SectionName>/I<SectionName>Service.cs`.
+- `<SectionName>` — section to split (e.g., `Users`, `Camps`, `Calendar`). Resolves to the section's invariant doc + its `I<SectionName>Service` interface. On G5 (nobodies-collective/Humans#866) that interface is under either `src/Sections/Humans.<SectionName>/Services/` or the section's contracts (`src/Sections/Humans.<SectionName>.Contracts/`); for a not-yet-moved section it is `src/Humans.Application/Interfaces/<SectionName>/I<SectionName>Service.cs`. Phase 0.1 resolves the real path — don't assume one.
 - `<empty>` — ask which section.
 
 ## Phase 0 — Pre-flight (in-session, before worktree)
@@ -27,13 +27,17 @@ Run sequentially. If any check fails or surfaces ambiguity, stop and ask the use
 
 ### 0.1 — Section is real and cross-section-consumed
 
-Check the G5 location first; fall back to legacy if it doesn't exist:
+A G5 section's service interface is not always under `Services/` — a cross-section-consumed one commonly sits in the section's contracts instead (`IHoldedService` is at `src/Sections/Humans.Holded.Contracts/IHoldedService.cs`, with only `IHoldedAdminService` under `Services/`). Search all four locations rather than testing one path, or the skill aborts on exactly the sections it most applies to:
 
 ```
 test -f docs/sections/<Section>.md                 # invariant doc must exist
-test -f src/Sections/Humans.<Section>/Services/I<Section>Service.cs \
-  || test -f src/Humans.Application/Interfaces/<Section>/I<Section>Service.cs
+
+find src/Sections/Humans.<Section> src/Sections/Humans.<Section>.Contracts \
+     src/Humans.Application/Interfaces/<Section> \
+     -name 'I<Section>Service.cs' 2>/dev/null
 ```
+
+That must return exactly one path; note it, since Phase B.3 edits that file. If it returns nothing, the section has no such interface — tell the user and stop. If the invariant doc is missing, check inside the section project too (a G5 section carries its own doc, e.g. `src/Sections/Humans.Store/Docs/Store.md`).
 
 Use the `reforge` skill to count external (non-section) callers of `I<Section>Service`:
 ```
@@ -155,10 +159,19 @@ Commit (or fold into B.2): `refactor(<section>): rename entity-returning <method
 
 #### B.2 — Create the read interface
 
-New file: `src/Sections/Humans.<Section>/Services/I<Section>ServiceRead.cs` (G5) or `src/Humans.Application/Interfaces/<Section>/I<Section>ServiceRead.cs` (not yet moved) — same project as `I<Section>Service` from Phase 0.1.
+A read interface is a cross-section contract, so on G5 it goes with the section's other contracts, **not** under `Services/`. Every existing `*ServiceRead` follows this — `ITeamServiceRead`, `IEventServiceRead`, `ITicketServiceRead` and the rest sit in `Contracts`, none under `Services/`. Match whichever contracts shape the section already uses:
+
+| Section shape | New file | Namespace |
+|---|---|---|
+| G5, sibling contracts project (`Humans.Teams.Contracts`, most sections) | `src/Sections/Humans.<Section>.Contracts/I<Section>ServiceRead.cs` | `Humans.<Section>.Contracts` |
+| G5, in-project contracts folder (`Humans.Store`, `Humans.Feedback`) | `src/Sections/Humans.<Section>/Contracts/I<Section>ServiceRead.cs` | `Humans.<Section>.Contracts` |
+| Not yet moved | `src/Humans.Application/Interfaces/<Section>/I<Section>ServiceRead.cs` | `Humans.Application.Interfaces.<Section>` |
+
+Both G5 shapes use the same namespace, so only the file path differs. If the section has neither a sibling `.Contracts` project nor a `Contracts/` folder, create the folder in-project — that's the lighter of the two and needs no new `.csproj` or reference edits.
 
 ```csharp
-namespace Humans.Application.Interfaces.<Section>;
+namespace Humans.<Section>.Contracts;   // G5 — see table above
+                                        // not yet moved: Humans.Application.Interfaces.<Section>
 
 /// <summary>
 /// Cross-section read surface for the <Section> section. External sections inject
@@ -170,6 +183,8 @@ public interface I<Section>ServiceRead
     // Methods from Phase 0 proposal
 }
 ```
+
+`I<Section>Service` may live in a different project than the read interface — on G5 the full service interface is often under `Services/` while the read interface is in contracts. Make sure the project owning `I<Section>Service` references the contracts project before B.3.
 
 #### B.3 — Modify `I<Section>Service.cs`
 
