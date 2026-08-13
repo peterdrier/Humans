@@ -1599,6 +1599,20 @@ Git Bash.)
       notices. `AdminNavTreeRoutingTests` walks the table against the running app's
       `IActionDescriptorCollectionProvider` (proven: A2's `FinanceController` split shipped the
       Finance entry broken; caught and fixed in A3).
+      - **…and `AdminNavTree` is only the *guarded* instance of that hazard — grep
+        `Url.Action("<Action>", "<Controller>")` too.** The nav tree has a test walking it;
+        a bare `Url.Action` string pair anywhere in Shell has nothing. It returns **null**
+        for an unresolvable pair rather than throwing, so a caller doing
+        `ActionUrl = cond ? Url.Action("X", "Y") : null` keeps compiling, keeps returning
+        200, and silently renders the affordance without a link — indistinguishable in the
+        HTML from the "not applicable" branch it was already able to take. Shifts' case is
+        `ThingsToDoViewComponent`'s link to `("ShiftInfo", "Profile")`, which the lane's
+        controller split rehomes to `ShiftProfileController`. The two searches are
+        different (`AdminNavTree` keys on the controller name alone) and so are their
+        failure surfaces, so run both: `grep -rn 'Url.Action(' src/` filtered to the
+        section's action names, and assert the resulting `href` in the step 12 render test
+        (proven: Shifts lane C, found while splitting a controller under another section's
+        route prefix).
     - **Watch for reflection sweeps keyed on a hard-coded assembly list or a namespace prefix** —
       both fail by finding nothing and reporting success (proven: `EndpointAuthorizationTests`,
       `GdprExportDependencyInjectionTests`, `ApplicationServicesTakeNoMemoryCacheRule`). **Widen
