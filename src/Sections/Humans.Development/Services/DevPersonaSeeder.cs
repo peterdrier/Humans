@@ -23,6 +23,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using NodaTime;
+using Humans.Users.Contracts;
 
 namespace Humans.Development.Services;
 

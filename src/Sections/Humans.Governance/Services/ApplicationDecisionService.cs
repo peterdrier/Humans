@@ -24,6 +24,7 @@ using Humans.Notifications.Contracts;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Profiles;
+using Humans.Users.Contracts;
 
 namespace Humans.Governance.Services;
 

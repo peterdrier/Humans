@@ -18,6 +18,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
 using Xunit;
+using Humans.Users.Contracts;
 
 namespace Humans.Web.Tests.Controllers;
 

@@ -2,6 +2,7 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
 using Humans.Domain.Attributes;
+using Humans.Users.Contracts;
 
 namespace Humans.Application.Interfaces.Repositories;
 

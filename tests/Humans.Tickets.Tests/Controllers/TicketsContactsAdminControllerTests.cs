@@ -15,6 +15,7 @@ using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using NSubstitute;
 using Humans.Tickets.Services;
+using Humans.Users.Contracts;
 
 namespace Humans.Tickets.Tests.Controllers;
 

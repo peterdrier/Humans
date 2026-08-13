@@ -1,7 +1,7 @@
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 
-namespace Humans.Domain;
+namespace Humans.Users.Contracts;
 
 /// <summary>
 /// The single precedence definition for <see cref="UserState"/>. Every write-site mutates the

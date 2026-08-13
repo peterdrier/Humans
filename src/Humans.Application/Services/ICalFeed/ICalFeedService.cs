@@ -4,6 +4,7 @@ using Ical.Net.CalendarComponents;
 using Ical.Net.DataTypes;
 using Ical.Net.Serialization;
 using Microsoft.Extensions.Logging;
+using Humans.Users.Contracts;
 
 namespace Humans.Application.Services.ICalFeed;
 

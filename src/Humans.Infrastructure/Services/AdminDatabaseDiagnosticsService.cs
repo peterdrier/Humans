@@ -3,6 +3,7 @@ using Humans.Application.Interfaces.Repositories;
 using Humans.Tickets.Contracts;
 using Humans.Application.Interfaces.Users;
 using NodaTime;
+using Humans.Users.Contracts;
 
 namespace Humans.Infrastructure.Services;
 

@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Tickets.Domain;
 using Humans.Tickets.Services.Dtos;
+using Humans.Users.Contracts;
 
 namespace Humans.Tickets.Controllers;
 

@@ -3,6 +3,7 @@ using Humans.Application.Interfaces.AuditLog;
 using Humans.AuditLog.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
+using Humans.Users.Contracts;
 
 namespace Humans.Application.Services.AuditLog;
 

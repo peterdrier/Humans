@@ -37,6 +37,7 @@ using Humans.UI.Extensions;
 using Serilog;
 using Serilog.Events;
 using Humans.Web.Infrastructure;
+using Humans.Users.Contracts;
 
 var builder = WebApplication.CreateBuilder(args);
 

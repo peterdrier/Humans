@@ -16,6 +16,7 @@ using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Notifications.Contracts;
 using Humans.Application.Interfaces.Profiles;
+using Humans.Users.Contracts;
 
 namespace Humans.Feedback.Services;
 

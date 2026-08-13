@@ -23,6 +23,7 @@ using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
+using Humans.Users.Contracts;
 
 namespace Humans.Expenses.Tests.Services;
 

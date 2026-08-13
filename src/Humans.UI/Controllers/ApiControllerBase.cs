@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Humans.Application;
 using Humans.Application.Interfaces.Users;
 using Microsoft.AspNetCore.Mvc;
+using Humans.Users.Contracts;
 
 namespace Humans.UI.Controllers;
 

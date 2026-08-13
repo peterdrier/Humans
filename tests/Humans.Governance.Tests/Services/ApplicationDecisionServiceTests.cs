@@ -27,6 +27,7 @@ using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Governance.Tests.Infrastructure;
 using Humans.Governance.Data;
+using Humans.Users.Contracts;
 
 namespace Humans.Governance.Tests.Services;
 

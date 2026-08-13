@@ -1,6 +1,7 @@
 using Humans.Application;
 using Humans.Domain.Enums;
 using NodaTime;
+using Humans.Users.Contracts;
 
 namespace Humans.Web.Models;
 

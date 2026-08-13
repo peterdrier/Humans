@@ -12,6 +12,7 @@ using DashboardDashboardService = Humans.Application.Services.Dashboard.Dashboar
 using UsersUserService = Humans.Application.Services.Users.UserService;
 using UsersAccountMergeService = Humans.Application.Services.Users.AccountMergeService;
 using UsersDuplicateAccountService = Humans.Application.Services.Users.DuplicateAccountService;
+using Humans.Users.Contracts;
 
 namespace Humans.Web.Extensions.Sections;
 

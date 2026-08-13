@@ -6,6 +6,7 @@ using Humans.Domain.Enums;
 using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Interfaces.Profiles;
+using Humans.Users.Contracts;
 
 namespace Humans.Application.Services.Profiles;
 

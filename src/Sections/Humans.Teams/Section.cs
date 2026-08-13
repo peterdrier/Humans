@@ -12,6 +12,7 @@ using Humans.Teams.Data;
 using Humans.Teams.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Humans.Users.Contracts;
 
 namespace Humans.Teams;
 

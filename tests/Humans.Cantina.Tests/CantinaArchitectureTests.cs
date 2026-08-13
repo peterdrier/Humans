@@ -3,6 +3,7 @@ using Humans.Shifts.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Cantina.Services;
 using Microsoft.Extensions.Localization;
+using Humans.Users.Contracts;
 
 namespace Humans.Cantina.Tests;
 

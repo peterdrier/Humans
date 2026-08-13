@@ -9,6 +9,7 @@ using Humans.Issues.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
 using IssuesService = Humans.Issues.Services.IssuesService;
+using Humans.Users.Contracts;
 
 namespace Humans.Issues.Tests.Architecture;
 

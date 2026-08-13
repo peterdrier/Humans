@@ -7,6 +7,7 @@ using Humans.Infrastructure.Configuration;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Humans.Users.Contracts;
 
 namespace Humans.Infrastructure.Services.Profiles;
 

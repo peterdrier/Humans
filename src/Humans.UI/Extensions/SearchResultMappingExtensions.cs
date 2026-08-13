@@ -1,5 +1,6 @@
 using Humans.Application.DTOs;
 using Humans.UI.Models;
+using Humans.Users.Contracts;
 
 namespace Humans.UI.Extensions;
 

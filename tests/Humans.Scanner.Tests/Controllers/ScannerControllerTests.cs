@@ -18,6 +18,7 @@ using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using NSubstitute;
+using Humans.Users.Contracts;
 
 namespace Humans.Scanner.Tests.Controllers;
 

@@ -8,6 +8,7 @@ using Humans.Tickets.Services;
 using Humans.Domain.Enums;
 using NodaTime;
 using NSubstitute;
+using Humans.Users.Contracts;
 
 namespace Humans.Tickets.Tests.Services;
 

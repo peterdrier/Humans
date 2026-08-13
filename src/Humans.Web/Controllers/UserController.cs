@@ -7,6 +7,7 @@ using Humans.Domain.Enums;
 using Humans.UI;
 using Humans.Web.Authorization;
 using Humans.Web.Models;
+using Humans.Users.Contracts;
 
 namespace Humans.Web.Controllers;
 

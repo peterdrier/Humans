@@ -12,6 +12,7 @@ using Humans.Domain.Enums;
 using Humans.Shifts.Models;
 using NodaTime;
 using NSubstitute;
+using Humans.Users.Contracts;
 
 namespace Humans.Shifts.Tests.Models;
 

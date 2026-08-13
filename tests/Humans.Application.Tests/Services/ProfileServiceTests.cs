@@ -15,6 +15,7 @@ using Humans.Application.Tests.Infrastructure;
 using Humans.Infrastructure.Repositories.Users;
 using ProfileEditorService = Humans.Application.Services.Profiles.ProfileEditorService;
 using ProfilePictureStorageKeys = Humans.Application.Services.Profiles.ProfilePictureStorageKeys;
+using Humans.Users.Contracts;
 
 namespace Humans.Application.Tests.Services;
 

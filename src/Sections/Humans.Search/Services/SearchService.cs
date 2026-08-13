@@ -7,6 +7,7 @@ using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Profiles;
 using Humans.Search.Services.Dtos;
 using Microsoft.Extensions.Configuration;
+using Humans.Users.Contracts;
 
 namespace Humans.Search.Services;
 

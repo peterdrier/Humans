@@ -4,6 +4,7 @@ using Humans.Mailer.Services;
 using Humans.Mailer.Services.Dtos;
 using Humans.Application.Interfaces.Users;
 using NodaTime;
+using Humans.Users.Contracts;
 
 namespace Humans.Mailer.Models;
 

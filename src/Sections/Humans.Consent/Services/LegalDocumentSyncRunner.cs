@@ -5,6 +5,7 @@ using Humans.Consent.Data;
 using Humans.Consent.Domain;
 using Humans.Email.Contracts;
 using Microsoft.Extensions.Logging;
+using Humans.Users.Contracts;
 
 namespace Humans.Consent.Services;
 

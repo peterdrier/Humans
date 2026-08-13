@@ -12,6 +12,7 @@ using NodaTime;
 using static Humans.Events.Helpers.EventsLookupHelpers;
 using static Humans.Events.Helpers.EventsTimeHelpers;
 using Humans.Events.Services.Dtos;
+using Humans.Users.Contracts;
 
 namespace Humans.Events.Controllers;
 

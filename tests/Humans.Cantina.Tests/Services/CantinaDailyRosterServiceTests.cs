@@ -9,6 +9,7 @@ using Humans.Domain.Entities;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
+using Humans.Users.Contracts;
 
 namespace Humans.Cantina.Tests.Services;
 

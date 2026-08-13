@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
 using NodaTime;
+using Humans.Users.Contracts;
 
 namespace Humans.Surveys.Controllers;
 

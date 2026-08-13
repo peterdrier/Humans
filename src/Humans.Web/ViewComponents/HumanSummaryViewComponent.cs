@@ -5,6 +5,7 @@ using Humans.Web.Controllers;
 using Humans.Web.Helpers;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Mvc;
+using Humans.Users.Contracts;
 
 namespace Humans.Web.ViewComponents;
 

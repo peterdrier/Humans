@@ -7,6 +7,7 @@ using Humans.Domain.Enums;
 using Humans.Consent.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Governance.Contracts;
+using Humans.Users.Contracts;
 
 namespace Humans.Governance.Services;
 

@@ -7,6 +7,7 @@ using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Humans.Users.Contracts;
 
 namespace Humans.Development.Controllers;
 

@@ -1,6 +1,7 @@
 using Humans.Application.DTOs.EmailProblems;
 using Humans.Application;
 using NodaTime;
+using Humans.Users.Contracts;
 
 namespace Humans.Web.Models.EmailProblems;
 

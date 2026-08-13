@@ -69,6 +69,15 @@
     -->
     <ProjectReference Include="..\Sections\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
     <ProjectReference Include="..\Sections\Humans.GoogleIntegration.Contracts\Humans.GoogleIntegration.Contracts.csproj" />
+    <!--
+      Users + Profiles' contracts leaf, carved ahead of the section move
+      (nobodies-collective/Humans#866, lane 2 PR A). Base is the heaviest consumer there is:
+      UserInfo is the canonical person read model, and the cross-section orchestrators left
+      here — AccountDeletionService, ExternalLoginService, UserParticipationBackfillService,
+      DashboardService, HumanLifecycleService — plus every Infrastructure job read through it.
+      Every other project reaches these types transitively through this reference.
+    -->
+    <ProjectReference Include="..\Sections\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -12,6 +12,7 @@ using Humans.Domain.Enums;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NodaTime;
+using Humans.Users.Contracts;
 
 namespace Humans.Teams.Services;
 

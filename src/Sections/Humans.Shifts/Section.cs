@@ -12,6 +12,7 @@ using Humans.Shifts.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Humans.Application.Interfaces;
+using Humans.Users.Contracts;
 
 namespace Humans.Shifts;
 

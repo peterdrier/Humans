@@ -5,6 +5,7 @@ using Humans.Shifts.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Events.Models;
 using NodaTime;
+using Humans.Users.Contracts;
 
 namespace Humans.Events.Helpers;
 

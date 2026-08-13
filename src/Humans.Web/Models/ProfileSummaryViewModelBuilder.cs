@@ -2,6 +2,7 @@ using Humans.Teams.Contracts;
 using Humans.Application;
 using Humans.Camps.Contracts;
 using Humans.Application.Models;
+using Humans.Users.Contracts;
 
 namespace Humans.Web.Models;
 

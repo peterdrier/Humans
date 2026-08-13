@@ -9,6 +9,7 @@ using Humans.SystemSettings.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Humans.Users.Contracts;
 
 namespace Humans.Monitor.Services;
 

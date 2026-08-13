@@ -18,6 +18,7 @@ using Humans.Application.Interfaces.HumanLifecycle;
 using Humans.Domain.Enums;
 using Humans.Application.Interfaces.Users;
 using Humans.Consent.Data;
+using Humans.Users.Contracts;
 
 namespace Humans.Consent.Tests.Services;
 

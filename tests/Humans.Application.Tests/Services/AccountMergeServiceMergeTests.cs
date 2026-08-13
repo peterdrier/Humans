@@ -14,6 +14,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime.Testing;
 using NSubstitute;
 using Humans.Application.Services.Users;
+using Humans.Users.Contracts;
 
 namespace Humans.Application.Tests.Services;
 

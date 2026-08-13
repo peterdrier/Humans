@@ -1,8 +1,9 @@
+using Humans.Application.Interfaces;
 using Humans.Application.Architecture;
 
 using System.Runtime.CompilerServices;
 
-namespace Humans.Application.Interfaces.Users;
+namespace Humans.Users.Contracts;
 
 /// <summary>
 /// One-way cache-staleness signal for <see cref="UserInfo"/>. Implemented by

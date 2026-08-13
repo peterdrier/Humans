@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc.ViewComponents;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Xunit;
+using Humans.Users.Contracts;
 
 namespace Humans.Application.Tests.ViewComponents;
 

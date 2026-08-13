@@ -21,6 +21,7 @@ using Humans.GoogleIntegration.Services.Workspace;
 using Humans.GoogleIntegration.Data;
 using Humans.Application;
 using Humans.GoogleIntegration.Tests.Infrastructure;
+using Humans.Users.Contracts;
 // UserEmailMatch lives in the Profiles interface namespace, not DTOs.
 
 namespace Humans.GoogleIntegration.Tests;

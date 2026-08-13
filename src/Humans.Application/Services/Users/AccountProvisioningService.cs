@@ -7,6 +7,7 @@ using Humans.Domain.Enums;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
 using NodaTime;
+using Humans.Users.Contracts;
 
 namespace Humans.Application.Services.Users;
 

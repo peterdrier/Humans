@@ -14,6 +14,7 @@ using Humans.Infrastructure.Hosting;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Humans.Users.Contracts;
 
 namespace Humans.Camps;
 

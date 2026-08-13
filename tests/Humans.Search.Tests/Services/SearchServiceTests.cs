@@ -12,6 +12,7 @@ using Microsoft.Extensions.Configuration;
 using NodaTime;
 using NSubstitute;
 using Xunit;
+using Humans.Users.Contracts;
 
 namespace Humans.Search.Tests.Services;
 

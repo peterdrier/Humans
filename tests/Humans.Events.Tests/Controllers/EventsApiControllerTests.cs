@@ -13,6 +13,7 @@ using NodaTime;
 using NSubstitute;
 using Humans.Events.Contracts;
 using Humans.Domain.Entities;
+using Humans.Users.Contracts;
 
 namespace Humans.Events.Tests;
 

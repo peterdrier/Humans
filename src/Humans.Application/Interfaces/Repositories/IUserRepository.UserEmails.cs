@@ -1,6 +1,7 @@
 using Humans.Application.DTOs;
 using Humans.Domain.Entities;
 using NodaTime;
+using Humans.Users.Contracts;
 
 namespace Humans.Application.Interfaces.Repositories;
 

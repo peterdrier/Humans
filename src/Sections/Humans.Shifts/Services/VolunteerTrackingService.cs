@@ -10,6 +10,7 @@ using NodaTime;
 using Humans.Shifts.Data;
 using Humans.Shifts.Services.Dtos;
 using Humans.Application;
+using Humans.Users.Contracts;
 
 namespace Humans.Shifts.Services;
 

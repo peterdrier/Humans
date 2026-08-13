@@ -7,6 +7,7 @@ using Humans.Gdpr.Contracts;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
+using Humans.Users.Contracts;
 
 namespace Humans.Agent.Tests;
 

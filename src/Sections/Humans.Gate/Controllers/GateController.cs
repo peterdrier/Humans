@@ -18,6 +18,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 using NodaTime.Text;
+using Humans.Users.Contracts;
 
 namespace Humans.Gate.Controllers;
 

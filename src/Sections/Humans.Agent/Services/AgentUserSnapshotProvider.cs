@@ -12,6 +12,7 @@ using Humans.Application.Models;
 using Humans.Domain.Enums;
 using NodaTime;
 using Humans.Agent.Models;
+using Humans.Users.Contracts;
 
 namespace Humans.Agent.Services;
 

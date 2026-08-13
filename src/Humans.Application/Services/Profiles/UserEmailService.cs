@@ -12,6 +12,7 @@ using Humans.Domain.Enums;
 using Humans.Domain.Helpers;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Interfaces.Profiles;
+using Humans.Users.Contracts;
 
 namespace Humans.Application.Services.Profiles;
 

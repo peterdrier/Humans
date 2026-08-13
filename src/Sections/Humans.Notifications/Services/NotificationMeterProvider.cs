@@ -14,6 +14,7 @@ using Humans.Notifications.Contracts;
 using Humans.Tickets.Contracts;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
+using Humans.Users.Contracts;
 
 namespace Humans.Notifications.Services;
 

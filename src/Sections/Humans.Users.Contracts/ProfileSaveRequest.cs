@@ -1,4 +1,4 @@
-namespace Humans.Application.DTOs;
+namespace Humans.Users.Contracts;
 
 public record ProfileSaveRequest(
     string BurnerName, string FirstName, string LastName,

@@ -10,6 +10,7 @@ using Humans.Application.Services.Profiles;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Services.Users;
+using Humans.Users.Contracts;
 
 namespace Humans.Application.Tests.Services.Users;
 

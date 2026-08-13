@@ -11,6 +11,7 @@ using Humans.UI.Authorization;
 using Humans.Mailer.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Humans.Users.Contracts;
 
 namespace Humans.Mailer.Controllers;
 

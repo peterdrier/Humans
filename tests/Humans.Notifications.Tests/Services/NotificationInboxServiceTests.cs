@@ -10,6 +10,7 @@ using Microsoft.Extensions.Caching.Memory;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
+using Humans.Users.Contracts;
 
 
 namespace Humans.Notifications.Tests.Services;

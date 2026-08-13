@@ -17,6 +17,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using NSubstitute;
+using Humans.Users.Contracts;
 
 #pragma warning disable CS0618 // Cross-domain navs are intentional in test fixtures.
 

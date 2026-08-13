@@ -9,6 +9,7 @@ using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Enums;
 using NodaTime;
 using NSubstitute;
+using Humans.Users.Contracts;
 
 namespace Humans.Application.Tests.AuditLog;
 

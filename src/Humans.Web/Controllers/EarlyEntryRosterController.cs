@@ -5,6 +5,7 @@ using Humans.UI.Controllers;
 using Humans.Web.Models.EarlyEntry;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Humans.Users.Contracts;
 
 namespace Humans.Web.Controllers;
 

@@ -9,6 +9,7 @@ using Humans.Email.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
+using Humans.Users.Contracts;
 
 namespace Humans.Email.Controllers;
 

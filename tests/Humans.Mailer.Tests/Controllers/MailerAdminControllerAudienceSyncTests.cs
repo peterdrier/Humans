@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
+using Humans.Users.Contracts;
 
 namespace Humans.Mailer.Tests.Controllers;
 

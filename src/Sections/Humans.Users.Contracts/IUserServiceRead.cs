@@ -1,8 +1,7 @@
+using NodaTime;
 using Humans.Application.Architecture;
-using Humans.Application.DTOs;
-using Humans.Application.Services.Profiles;
 
-namespace Humans.Application.Interfaces.Users;
+namespace Humans.Users.Contracts;
 
 /// <summary>
 /// Cross-section read surface for the Users section. External sections inject
@@ -98,3 +97,14 @@ public interface IUserServiceRead
     Task<IReadOnlySet<Guid>> GetMergedSourceIdsAsync(
         Guid targetUserId, CancellationToken ct = default);
 }
+
+/// <summary>
+/// Per-user row returned from <see cref="IUserServiceRead.GetOnsiteUsersAsync"/>.
+/// Names of camps / teams / governance roles are not stitched in here; the Web
+/// layer joins them via the owning section services before rendering. Issue
+/// nobodies-collective/Humans#736.
+/// </summary>
+public sealed record OnsiteUserRow(
+    Guid UserId,
+    string DisplayName,
+    Instant? CheckedInAt);

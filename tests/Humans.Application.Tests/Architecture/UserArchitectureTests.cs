@@ -12,6 +12,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using UserService = Humans.Application.Services.Users.UserService;
+using Humans.Users.Contracts;
 
 namespace Humans.Application.Tests.Architecture;
 

@@ -2,6 +2,7 @@ using Humans.Application.DTOs.EmailProblems;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
 using NodaTime;
+using Humans.Users.Contracts;
 
 namespace Humans.Application.Services.Profiles;
 

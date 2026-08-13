@@ -1,6 +1,6 @@
 using NodaTime;
 
-namespace Humans.Application;
+namespace Humans.Users.Contracts;
 
 /// <summary>
 /// Slim projection of a volunteer-history entry passed to

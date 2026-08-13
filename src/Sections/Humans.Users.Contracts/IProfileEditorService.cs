@@ -1,7 +1,6 @@
-using Humans.Application.DTOs;
-using Humans.Application.Interfaces.Users;
+using Humans.Application.Interfaces;
 
-namespace Humans.Application.Interfaces.Profiles;
+namespace Humans.Users.Contracts;
 
 /// <summary>
 /// Coordinates profile edit form saves around the Users-owned storage mutation.

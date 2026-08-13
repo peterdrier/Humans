@@ -21,6 +21,7 @@ using Microsoft.Extensions.Localization;
 using NodaTime;
 using NodaTime.Text;
 using Humans.Shifts.Services.Dtos;
+using Humans.Users.Contracts;
 
 namespace Humans.Shifts.Controllers;
 

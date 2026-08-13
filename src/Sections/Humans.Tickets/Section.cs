@@ -11,6 +11,7 @@ using Humans.Tickets.Services.Stores;
 using Humans.UI.Models.Tables;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Humans.Users.Contracts;
 
 namespace Humans.Tickets;
 

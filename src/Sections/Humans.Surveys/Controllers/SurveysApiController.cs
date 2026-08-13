@@ -11,6 +11,7 @@ using NodaTime;
 using NodaTime.Text;
 
 using Humans.UI.Controllers;
+using Humans.Users.Contracts;
 
 namespace Humans.Surveys.Controllers;
 

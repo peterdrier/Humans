@@ -12,6 +12,7 @@ using NodaTime.Text;
 
 using Humans.Application.Interfaces.Users;
 using Humans.UI.Authorization;
+using Humans.Users.Contracts;
 
 namespace Humans.Shifts.Controllers;
 

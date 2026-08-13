@@ -16,6 +16,7 @@ using Humans.Campaigns.Services.Dtos;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging;
 using NodaTime;
+using Humans.Users.Contracts;
 
 namespace Humans.Campaigns.Services;
 

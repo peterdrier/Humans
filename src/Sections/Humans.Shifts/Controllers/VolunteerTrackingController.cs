@@ -16,6 +16,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
 using NodaTime;
 using NodaTime.Text;
+using Humans.Users.Contracts;
 
 namespace Humans.Shifts.Controllers;
 

@@ -4,6 +4,7 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
 using Xunit;
+using Humans.Users.Contracts;
 
 namespace Humans.Application.Tests.Services.Users;
 

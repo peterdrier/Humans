@@ -19,6 +19,7 @@ using Humans.Tickets.Domain;
 using Humans.Tickets.Models;
 using Humans.Tickets.Services.Dtos;
 using Humans.Tickets.Services.Stores;
+using Humans.Users.Contracts;
 
 namespace Humans.Tickets.Services;
 

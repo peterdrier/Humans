@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using Humans.Application;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Constants;
+using Humans.Users.Contracts;
 
 namespace Humans.Web.Models;
 

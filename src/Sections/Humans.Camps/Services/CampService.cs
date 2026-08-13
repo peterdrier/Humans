@@ -18,6 +18,7 @@ using Humans.Domain.Enums;
 using Humans.Domain.ValueObjects;
 using Microsoft.Extensions.Logging;
 using NodaTime;
+using Humans.Users.Contracts;
 
 namespace Humans.Camps.Services;
 

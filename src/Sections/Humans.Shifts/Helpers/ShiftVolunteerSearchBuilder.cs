@@ -9,6 +9,7 @@ using Humans.UI.Extensions;
 using Humans.Shifts.Models;
 using Humans.Shifts.Services.Dtos;
 using Humans.Application;
+using Humans.Users.Contracts;
 
 namespace Humans.Shifts.Helpers;
 

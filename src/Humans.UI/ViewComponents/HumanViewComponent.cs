@@ -1,6 +1,7 @@
 using Humans.Application.Interfaces.Users;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
+using Humans.Users.Contracts;
 
 namespace Humans.UI.ViewComponents;
 

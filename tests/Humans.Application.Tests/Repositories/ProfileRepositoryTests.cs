@@ -7,6 +7,7 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.Users;
+using Humans.Users.Contracts;
 
 namespace Humans.Application.Tests.Repositories;
 

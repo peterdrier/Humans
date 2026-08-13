@@ -1,7 +1,7 @@
-using Humans.Application.DTOs;
+using Humans.Application.Interfaces;
 using Humans.Domain.Enums;
 
-namespace Humans.Application.Interfaces.Profiles;
+namespace Humans.Users.Contracts;
 
 /// <summary>
 /// Service for managing contact fields with visibility controls.

@@ -17,6 +17,7 @@ using NSubstitute;
 using Humans.Tickets.Domain;
 using Humans.Tickets.Services.Dtos;
 using Humans.Application;
+using Humans.Users.Contracts;
 
 namespace Humans.Tickets.Tests.Services;
 

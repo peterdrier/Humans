@@ -13,6 +13,7 @@ using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Consent.Data;
 using Humans.Consent.Domain;
+using Humans.Users.Contracts;
 
 namespace Humans.Consent.Services;
 

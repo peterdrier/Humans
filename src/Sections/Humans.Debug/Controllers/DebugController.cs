@@ -16,6 +16,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
 using Serilog.Events;
+using Humans.Users.Contracts;
 
 namespace Humans.Debug.Controllers;
 

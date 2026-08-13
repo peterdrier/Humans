@@ -1,6 +1,6 @@
 using NodaTime;
 
-namespace Humans.Application.Interfaces.Users;
+namespace Humans.Users.Contracts;
 
 /// <summary>
 /// Sections implement this to participate in account merge. Each impl re-FKs

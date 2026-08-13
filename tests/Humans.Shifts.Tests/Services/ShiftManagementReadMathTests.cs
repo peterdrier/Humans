@@ -15,6 +15,7 @@ using Humans.Shifts.Data;
 using NodaTime;
 using NSubstitute;
 using Xunit;
+using Humans.Users.Contracts;
 
 namespace Humans.Shifts.Tests.Services;
 

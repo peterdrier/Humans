@@ -38,7 +38,7 @@ public class EmailMutationPathsAnalyzerTests
                 public class SomeOtherController
                 {
                     public async System.Threading.Tasks.Task Run(
-                        Humans.Application.Interfaces.Profiles.IUserEmailService svc)
+                        Humans.Users.Contracts.IUserEmailService svc)
                     {
                         await svc.ReconcileOAuthIdentityAsync(System.Guid.Empty, "p", "k", "e@x", true);
                     }
@@ -64,7 +64,7 @@ public class EmailMutationPathsAnalyzerTests
                 public class ExternalLoginService
                 {
                     public async System.Threading.Tasks.Task Run(
-                        Humans.Application.Interfaces.Profiles.IUserEmailService svc)
+                        Humans.Users.Contracts.IUserEmailService svc)
                     {
                         await svc.ReconcileOAuthIdentityAsync(System.Guid.Empty, "p", "k", "e@x", true);
                     }
@@ -94,7 +94,7 @@ public class EmailMutationPathsAnalyzerTests
                 public class AccountController
                 {
                     public async System.Threading.Tasks.Task Run(
-                        Humans.Application.Interfaces.Profiles.IUserEmailService svc)
+                        Humans.Users.Contracts.IUserEmailService svc)
                     {
                         await svc.ReconcileOAuthIdentityAsync(System.Guid.Empty, "p", "k", "e@x", true);
                     }
@@ -198,7 +198,7 @@ public class EmailMutationPathsAnalyzerTests
 
             namespace Humans.Application.Services.Profiles
             {
-                public class UserEmailService : Humans.Application.Interfaces.Profiles.IUserEmailService
+                public class UserEmailService : Humans.Users.Contracts.IUserEmailService
                 {
                     public async System.Threading.Tasks.Task<int> ReconcileOAuthIdentityAsync(
                         System.Guid userId, string provider, string providerKey, string email, bool emailVerified)
@@ -282,7 +282,7 @@ public class EmailMutationPathsAnalyzerTests
                 public class SomeBackgroundJob
                 {
                     public async System.Threading.Tasks.Task Run(
-                        Humans.Application.Interfaces.Profiles.IUserEmailService svc)
+                        Humans.Users.Contracts.IUserEmailService svc)
                     {
                         await svc.ReconcileOAuthIdentityAsync(System.Guid.Empty, "p", "k", "e@x", true);
                     }
@@ -338,7 +338,7 @@ public class EmailMutationPathsAnalyzerTests
                 public class Caller
                 {
                     public async System.Threading.Tasks.Task Run(
-                        Humans.Application.Interfaces.Profiles.IUserEmailService svc)
+                        Humans.Users.Contracts.IUserEmailService svc)
                     {
                         await svc.ReconcileOAuthIdentityAsync(System.Guid.Empty, "p", "k", "e@x", true);
                     }

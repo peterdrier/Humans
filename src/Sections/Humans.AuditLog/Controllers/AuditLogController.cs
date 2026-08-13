@@ -5,6 +5,7 @@ using Humans.Application.Interfaces.AuditLog;
 using Humans.AuditLog.Models;
 using Humans.Application.Interfaces.Users;
 using Humans.UI.Authorization;
+using Humans.Users.Contracts;
 
 namespace Humans.AuditLog.Controllers;
 

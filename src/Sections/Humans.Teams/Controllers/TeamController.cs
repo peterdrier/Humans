@@ -19,6 +19,7 @@ using Humans.UI;
 using Humans.UI.Authorization;
 using Humans.UI.Extensions;
 using Humans.UI.Models;
+using Humans.Users.Contracts;
 
 namespace Humans.Teams.Controllers;
 

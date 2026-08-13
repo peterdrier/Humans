@@ -3,6 +3,7 @@ using Humans.Governance.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Application.Extensions;
 using Humans.Domain.Enums;
+using Humans.Users.Contracts;
 
 namespace Humans.Web.Models;
 

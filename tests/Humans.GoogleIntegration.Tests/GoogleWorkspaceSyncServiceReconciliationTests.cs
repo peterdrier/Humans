@@ -19,6 +19,7 @@ using NSubstitute;
 using Xunit;
 using Humans.Application;
 using Humans.GoogleIntegration.Tests.Infrastructure;
+using Humans.Users.Contracts;
 
 namespace Humans.GoogleIntegration.Tests;
 

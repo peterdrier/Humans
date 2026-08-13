@@ -10,6 +10,7 @@ using Humans.Onboarding.Contracts;
 using Humans.Onboarding.Services;
 using Humans.UI;
 using Humans.UI.Authorization;
+using Humans.Users.Contracts;
 
 namespace Humans.Onboarding.Controllers;
 

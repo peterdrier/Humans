@@ -18,6 +18,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Shifts.Data;
+using Humans.Users.Contracts;
 
 namespace Humans.Shifts.Services;
 

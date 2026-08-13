@@ -6,6 +6,7 @@ using Humans.Email.Contracts;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
+using Humans.Users.Contracts;
 
 namespace Humans.Application.Services.Auth;
 

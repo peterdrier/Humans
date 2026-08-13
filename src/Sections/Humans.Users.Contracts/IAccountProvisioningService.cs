@@ -1,7 +1,8 @@
+using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 
-namespace Humans.Application.Interfaces.Users;
+namespace Humans.Users.Contracts;
 
 /// <summary>
 /// Provides idempotent account creation for import jobs (ticket import, MailerLite import).

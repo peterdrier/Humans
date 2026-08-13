@@ -18,6 +18,7 @@ using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using Xunit;
+using Humans.Users.Contracts;
 
 namespace Humans.Gate.Tests;
 

@@ -4,6 +4,7 @@ using Humans.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.SignalR;
+using Humans.Users.Contracts;
 
 namespace Humans.UI.Hubs;
 

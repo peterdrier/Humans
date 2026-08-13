@@ -17,6 +17,7 @@ using Humans.Governance.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Tests.Infrastructure;
+using Humans.Users.Contracts;
 
 namespace Humans.Application.Tests.Jobs;
 

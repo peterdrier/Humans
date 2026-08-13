@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 using Humans.UI.Controllers;
+using Humans.Users.Contracts;
 
 namespace Humans.Web.Controllers;
 

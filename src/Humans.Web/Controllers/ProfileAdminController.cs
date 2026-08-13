@@ -8,6 +8,7 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.UI.Authorization;
 using Humans.Web.Models.EmailProblems;
+using Humans.Users.Contracts;
 
 namespace Humans.Web.Controllers;
 

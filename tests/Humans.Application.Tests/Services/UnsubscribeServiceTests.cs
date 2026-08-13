@@ -8,6 +8,7 @@ using Humans.Domain.Enums;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
+using Humans.Users.Contracts;
 
 namespace Humans.Application.Tests.Services;
 

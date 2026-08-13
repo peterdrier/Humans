@@ -1,5 +1,6 @@
 using Humans.Application.Interfaces.Profiles;
 using Humans.Domain.Enums;
+using Humans.Users.Contracts;
 
 namespace Humans.Application.Interfaces.Users;
 

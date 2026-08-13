@@ -16,6 +16,7 @@ using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Events.Contracts;
 using Humans.Events.Data;
+using Humans.Users.Contracts;
 
 namespace Humans.Events.Services;
 

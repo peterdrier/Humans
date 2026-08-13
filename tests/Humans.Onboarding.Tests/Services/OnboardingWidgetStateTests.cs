@@ -11,6 +11,7 @@ using Humans.Domain.Enums;
 using NodaTime;
 using NSubstitute;
 using Xunit;
+using Humans.Users.Contracts;
 
 namespace Humans.Onboarding.Tests.Services.Onboarding;
 

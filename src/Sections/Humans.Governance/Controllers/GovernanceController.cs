@@ -7,6 +7,7 @@ using Humans.Governance.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.UI.Extensions;
 using Humans.Governance.Models;
+using Humans.Users.Contracts;
 
 namespace Humans.Governance.Controllers;
 

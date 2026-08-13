@@ -1,8 +1,8 @@
-using Humans.Application.Interfaces.Users;
+using Humans.Application.Interfaces;
 using Humans.Domain.Enums;
 using NodaTime;
 
-namespace Humans.Application.Interfaces.Profiles;
+namespace Humans.Users.Contracts;
 
 /// <summary>
 /// Status of a CommunicationPreference token validation attempt.

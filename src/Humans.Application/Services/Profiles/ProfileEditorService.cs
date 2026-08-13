@@ -6,6 +6,7 @@ using Humans.Application.Interfaces.Users;
 using Humans.Application.Threading;
 using Humans.Domain.Constants;
 using Microsoft.Extensions.Logging;
+using Humans.Users.Contracts;
 
 namespace Humans.Application.Services.Profiles;
 

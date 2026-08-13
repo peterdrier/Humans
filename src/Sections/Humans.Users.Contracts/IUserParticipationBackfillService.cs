@@ -1,4 +1,5 @@
-namespace Humans.Application.Interfaces.Users;
+using Humans.Application.Interfaces;
+namespace Humans.Users.Contracts;
 
 public interface IUserParticipationBackfillService : IApplicationService
 {

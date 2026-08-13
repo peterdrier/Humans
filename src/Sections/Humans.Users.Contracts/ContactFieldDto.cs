@@ -1,6 +1,6 @@
 using Humans.Domain.Enums;
 
-namespace Humans.Application.DTOs;
+namespace Humans.Users.Contracts;
 
 /// <summary>
 /// Contact field data for display purposes.

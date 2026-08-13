@@ -15,6 +15,7 @@ using Humans.Domain.Enums;
 using Humans.Shifts.Data;
 using NodaTime;
 using NSubstitute;
+using Humans.Users.Contracts;
 
 namespace Humans.Shifts.Tests.Services;
 

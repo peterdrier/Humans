@@ -17,6 +17,7 @@ using Humans.GoogleIntegration.Services;
 using Humans.GoogleIntegration.Services.Workspace;
 using Humans.GoogleIntegration.Data;
 using Humans.Application;
+using Humans.Users.Contracts;
 
 namespace Humans.GoogleIntegration.Tests;
 

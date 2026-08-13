@@ -13,6 +13,7 @@ using UsersUserEmailProviderBackfillService = Humans.Application.Services.Users.
 using UsersUnsubscribeService = Humans.Application.Services.Users.UnsubscribeService;
 using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Repositories.Profiles;
+using Humans.Users.Contracts;
 
 namespace Humans.Web.Extensions.Sections;
 

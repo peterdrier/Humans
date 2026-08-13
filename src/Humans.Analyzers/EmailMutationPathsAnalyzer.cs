@@ -62,7 +62,7 @@ public sealed class EmailMutationPathsAnalyzer : DiagnosticAnalyzer
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [ServiceCallerRule, RepositoryCallerRule
     ];
 
-    private const string ServiceInterface = "Humans.Application.Interfaces.Profiles.IUserEmailService";
+    private const string ServiceInterface = "Humans.Users.Contracts.IUserEmailService";
     private const string RepositoryInterface = "Humans.Application.Interfaces.Repositories.IUserRepository";
     private const string ServiceMethodName = "ReconcileOAuthIdentityAsync";
     private const string RepositoryMethodName = "ApplyUserEmailReconcilePlanAsync";

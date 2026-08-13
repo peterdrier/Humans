@@ -1,4 +1,5 @@
 using Humans.Application;
+using Humans.Users.Contracts;
 
 namespace Humans.Web.Models;
 

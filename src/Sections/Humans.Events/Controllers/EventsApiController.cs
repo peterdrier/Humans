@@ -14,6 +14,7 @@ using NodaTime.Text;
 using Humans.Events.Contracts;
 using Humans.Events.Services.Dtos;
 using Humans.UI.Controllers;
+using Humans.Users.Contracts;
 
 namespace Humans.Events.Controllers;
 

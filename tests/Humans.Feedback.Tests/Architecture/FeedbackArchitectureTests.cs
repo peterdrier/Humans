@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
 using FeedbackService = Humans.Feedback.Services.FeedbackService;
+using Humans.Users.Contracts;
 
 namespace Humans.Feedback.Tests.Architecture;
 

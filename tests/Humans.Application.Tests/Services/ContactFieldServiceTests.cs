@@ -14,6 +14,7 @@ using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Repositories.Users;
 using Microsoft.Extensions.Logging.Abstractions;
+using Humans.Users.Contracts;
 
 namespace Humans.Application.Tests.Services;
 

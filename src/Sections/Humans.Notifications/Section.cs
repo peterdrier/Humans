@@ -8,6 +8,7 @@ using Humans.Notifications.Data;
 using Humans.Notifications.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Humans.Users.Contracts;
 
 namespace Humans.Notifications;
 

@@ -26,6 +26,7 @@ using NodaTime.Testing;
 using NSubstitute;
 using Xunit;
 using IssuesApplicationService = Humans.Issues.Services.IssuesService;
+using Humans.Users.Contracts;
 
 #pragma warning disable CS0618 // User.DisplayName is the seeder's only way to name a person.
 

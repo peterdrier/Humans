@@ -5,6 +5,7 @@ using Humans.Notifications.Data;
 using Humans.Notifications.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
+using Humans.Users.Contracts;
 
 namespace Humans.Notifications.Tests;
 

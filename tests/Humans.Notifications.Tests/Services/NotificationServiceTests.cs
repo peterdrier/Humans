@@ -17,6 +17,7 @@ using NSubstitute;
 
 
 using Humans.Application.Interfaces.Profiles;
+using Humans.Users.Contracts;
 
 namespace Humans.Notifications.Tests.Services;
 

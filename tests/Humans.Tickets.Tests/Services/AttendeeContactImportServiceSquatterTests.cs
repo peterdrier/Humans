@@ -6,6 +6,7 @@ using Humans.Domain.Enums;
 using NSubstitute;
 using Humans.Tickets.Domain;
 using Humans.Tickets.Contracts;
+using Humans.Users.Contracts;
 
 namespace Humans.Tickets.Tests.Services;
 

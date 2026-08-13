@@ -9,6 +9,7 @@ using Humans.Application.Interfaces.Users;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using NodaTime.Testing;
+using Humans.Users.Contracts;
 
 namespace Humans.Notifications.Tests.Services;
 

@@ -25,6 +25,7 @@ using Humans.Email.Contracts;
 using Humans.Mailer.Services;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Infrastructure.Services;
+using Humans.Users.Contracts;
 
 namespace Humans.Integration.Tests.Infrastructure;
 

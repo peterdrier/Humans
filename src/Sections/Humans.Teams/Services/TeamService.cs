@@ -25,6 +25,7 @@ using Humans.Domain.Entities;
 using Humans.Teams.Domain;
 using Humans.Domain.Enums;
 using Humans.Domain.ValueObjects;
+using Humans.Users.Contracts;
 
 namespace Humans.Teams.Services;
 

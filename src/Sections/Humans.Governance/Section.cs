@@ -10,6 +10,7 @@ using Humans.Infrastructure.Hosting;
 using Humans.UI.Models.Tables;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Humans.Users.Contracts;
 
 namespace Humans.Governance;
 

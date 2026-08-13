@@ -19,6 +19,7 @@ using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Profiles;
 using Humans.UI.Authorization;
 using NodaTime.Text;
+using Humans.Users.Contracts;
 
 namespace Humans.Teams.Controllers;
 

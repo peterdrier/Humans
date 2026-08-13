@@ -17,6 +17,7 @@ using Humans.UI;
 
 
 using Humans.UI.Controllers;
+using Humans.Users.Contracts;
 
 namespace Humans.Camps.Controllers;
 

@@ -16,6 +16,7 @@ using NodaTime;
 using Humans.Application.Interfaces.TicketVendor;
 using Humans.Tickets.Data;
 using Humans.Tickets.Domain;
+using Humans.Users.Contracts;
 
 namespace Humans.Tickets.Services;
 

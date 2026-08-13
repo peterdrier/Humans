@@ -15,6 +15,7 @@ using Humans.Domain.Enums;
 using Humans.Surveys.Domain;
 using Microsoft.Extensions.Logging;
 using NodaTime;
+using Humans.Users.Contracts;
 
 namespace Humans.Surveys.Services;
 

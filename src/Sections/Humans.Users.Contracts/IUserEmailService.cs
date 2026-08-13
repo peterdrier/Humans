@@ -1,10 +1,9 @@
-using Humans.Application.DTOs;
-using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
 
-namespace Humans.Application.Interfaces.Profiles;
+namespace Humans.Users.Contracts;
 
 /// <summary>
 /// Service for managing user email addresses.

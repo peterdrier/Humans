@@ -4,6 +4,7 @@ using Humans.Application.Interfaces.Users;
 using Humans.UI.Constants;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
+using Humans.Users.Contracts;
 
 namespace Humans.UI.Controllers;
 

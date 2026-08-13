@@ -1,6 +1,6 @@
 using Humans.Domain.Enums;
 
-namespace Humans.Application.DTOs;
+namespace Humans.Users.Contracts;
 
 /// <summary>
 /// User email data for display purposes.
@@ -37,7 +37,7 @@ public record UserEmailEditDto(
 /// <param name="EmailId">The new <see cref="Domain.Entities.UserEmail"/> row's
 /// Id. The verification token is bound to this Id via the token's purpose
 /// suffix, so the verification URL must round-trip this Id back to
-/// <see cref="Humans.Application.Interfaces.Profiles.IUserEmailService.VerifyEmailAsync"/>
+/// <see cref="Humans.Users.Contracts.IUserEmailService.VerifyEmailAsync"/>
 /// to disambiguate when the same user has multiple pending plain rows
 /// (issue nobodies-collective/Humans#611).</param>
 /// <param name="Token">Verification token for building the confirmation URL.</param>

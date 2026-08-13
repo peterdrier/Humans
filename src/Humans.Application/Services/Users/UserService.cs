@@ -15,6 +15,7 @@ using Humans.Domain.Enums;
 using Humans.Domain.Helpers;
 using Microsoft.Extensions.Logging;
 using NodaTime;
+using Humans.Users.Contracts;
 
 namespace Humans.Application.Services.Users;
 

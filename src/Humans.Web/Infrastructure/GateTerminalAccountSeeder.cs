@@ -9,6 +9,7 @@ using Humans.Domain.Enums;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Caching.Memory;
 using NodaTime;
+using Humans.Users.Contracts;
 
 namespace Humans.Web.Infrastructure;
 

@@ -13,6 +13,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 using Xunit;
+using Humans.Users.Contracts;
 
 namespace Humans.Search.Tests.Controllers;
 

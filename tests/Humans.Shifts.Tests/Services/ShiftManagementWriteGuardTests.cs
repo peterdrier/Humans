@@ -17,6 +17,7 @@ using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using NSubstitute;
 using Xunit;
+using Humans.Users.Contracts;
 
 namespace Humans.Shifts.Tests.Services;
 

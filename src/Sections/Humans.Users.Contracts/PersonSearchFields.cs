@@ -1,4 +1,4 @@
-namespace Humans.Application.Services.Profiles;
+namespace Humans.Users.Contracts;
 
 /// <summary>
 /// Bit-flags scoping a person-search to specific Profile/User field buckets.

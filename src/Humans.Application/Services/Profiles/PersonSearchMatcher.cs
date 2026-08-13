@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text;
 using Humans.Domain.Enums;
+using Humans.Users.Contracts;
 
 namespace Humans.Application.Services.Profiles;
 

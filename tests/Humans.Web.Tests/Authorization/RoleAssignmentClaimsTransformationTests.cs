@@ -11,6 +11,7 @@ using Microsoft.Extensions.Caching.Memory;
 using NodaTime;
 using NSubstitute;
 using Xunit;
+using Humans.Users.Contracts;
 
 namespace Humans.Web.Tests.Authorization;
 

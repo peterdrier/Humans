@@ -19,6 +19,7 @@ using NodaTime.Testing;
 using NSubstitute;
 using Xunit;
 using CampaignServiceImpl = Humans.Campaigns.Services.CampaignService;
+using Humans.Users.Contracts;
 
 namespace Humans.Campaigns.Tests.Services;
 

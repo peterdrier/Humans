@@ -11,6 +11,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
 using MagicLinkService = Humans.Application.Services.Auth.MagicLinkService;
+using Humans.Users.Contracts;
 
 namespace Humans.Application.Tests.Services;
 

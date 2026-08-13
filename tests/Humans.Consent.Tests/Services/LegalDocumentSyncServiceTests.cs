@@ -17,6 +17,7 @@ using Humans.Domain.Entities;
 using Humans.Consent.Domain;
 using Humans.Domain.Enums;
 using Humans.Consent.Data;
+using Humans.Users.Contracts;
 
 namespace Humans.Consent.Tests.Services;
 

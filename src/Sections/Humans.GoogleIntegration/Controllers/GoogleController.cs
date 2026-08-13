@@ -15,6 +15,7 @@ using Humans.UI.Authorization;
 using Humans.UI.Constants;
 using Humans.GoogleIntegration.Services;
 using Humans.GoogleIntegration.Data;
+using Humans.Users.Contracts;
 
 namespace Humans.GoogleIntegration.Controllers;
 

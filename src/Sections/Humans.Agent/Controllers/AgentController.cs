@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime.Serialization.SystemTextJson;
 using Humans.Agent.Services;
+using Humans.Users.Contracts;
 
 namespace Humans.Agent.Controllers;
 

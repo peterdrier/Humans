@@ -14,6 +14,7 @@ using Microsoft.AspNetCore.Mvc.ViewComponents;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
+using Humans.Users.Contracts;
 
 namespace Humans.Application.Tests.ViewComponents;
 

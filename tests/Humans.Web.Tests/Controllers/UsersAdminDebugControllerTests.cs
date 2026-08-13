@@ -8,6 +8,7 @@ using Humans.Web.Models;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 using NSubstitute;
+using Humans.Users.Contracts;
 
 namespace Humans.Web.Tests.Controllers;
 

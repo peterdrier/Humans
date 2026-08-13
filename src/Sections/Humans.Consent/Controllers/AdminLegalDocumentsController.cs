@@ -9,6 +9,7 @@ using Humans.Application.Interfaces.Users;
 using Humans.UI.Authorization;
 using Humans.Consent.Models;
 using Humans.Consent.Services;
+using Humans.Users.Contracts;
 
 namespace Humans.Consent.Controllers;
 

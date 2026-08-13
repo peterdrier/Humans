@@ -12,6 +12,7 @@ using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using Humans.Monitor.Services;
+using Humans.Users.Contracts;
 
 namespace Humans.Monitor.Tests;
 

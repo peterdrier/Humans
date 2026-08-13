@@ -9,6 +9,7 @@ using NodaTime;
 
 using Humans.Application.Interfaces.Users;
 using Humans.UI.Authorization;
+using Humans.Users.Contracts;
 
 namespace Humans.Camps.Controllers;
 

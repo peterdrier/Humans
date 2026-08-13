@@ -6,6 +6,7 @@ using Humans.GoogleIntegration.Services;
 using Humans.GoogleIntegration.Services.Workspace;
 using Humans.GoogleIntegration.Data;
 using Humans.GoogleIntegration.Tests.Infrastructure;
+using Humans.Users.Contracts;
 
 namespace Humans.GoogleIntegration.Tests.Architecture;
 

@@ -9,6 +9,7 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
 using NSubstitute;
+using Humans.Users.Contracts;
 
 namespace Humans.Application.Tests.Services.Dashboard;
 

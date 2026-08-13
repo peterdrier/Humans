@@ -17,6 +17,7 @@ using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Services;
 using Humans.Web.Extensions.Infrastructure;
 using Humans.Web.Extensions.Sections;
+using Humans.Users.Contracts;
 
 namespace Humans.Web.Extensions;
 

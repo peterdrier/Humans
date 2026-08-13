@@ -1,0 +1,52 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Users + Profiles' cross-section surface, carved into its own leaf project ahead of the
+    section move (nobodies-collective/Humans#866, G5 lane 2, PR A).
+
+    A Contracts/ *folder* inside Humans.Users was never an option here. UserInfo is the
+    canonical "everything-about-a-person" read model and IUserServiceRead is injected by
+    HumansControllerBase, so between them they are named by more than twenty section
+    projects, by Humans.UI, and — decisively — by Humans.Application and
+    Humans.Infrastructure, which the section itself will reference. A folder would cycle at
+    the assembly level in both directions (design §15 step 5b,
+    memory/architecture/section-project-cycle-fix.md).
+
+    It holds exactly what lives outside the section: the UserInfo read model and the eight
+    projections it nests, the cross-section read interface and its result shapes, and the
+    eight service interfaces something outside Humans.Application injects. The section's own
+    write surface — IUserService, IAccountDeletionService, IAccountMergeService,
+    IDuplicateAccountService, IExternalLoginService, IUnsubscribeService,
+    IEmailProblemsService, IProfilePictureService, the six repository interfaces — has no
+    out-of-section production consumer and stays internal to the section.
+
+    Two absences are load-bearing.
+
+    The four Users/Profiles enums (UserState, ProfileState, ContactFieldType,
+    ContactFieldVisibility) are NOT here, contrary to the Camps/Budget "the leaf's own
+    records name them" rule. Humans.Domain's User, Profile, UserEmail and ContactField
+    entities declare columns of those types and Humans.Domain cannot reference this leaf, so
+    moving them now would be a project cycle. They move here in PR B, in the same commit
+    that moves the entities into the section — see the leaf's Users.md notes.
+
+    UserInfo.Create is still here for the same reason: it takes the eight EF entities, which
+    are still Humans.Domain types. PR B splits it into a section-internal factory and leaves
+    the record behind.
+
+    References Humans.Interfaces (IApplicationService, IInvalidator, SurfaceBudgetAttribute,
+    GrandfatheredAttribute) and Humans.Domain (the entities UserInfo.Create consumes and the
+    shared enums its projections name), the same pair Humans.Camps.Contracts and
+    Humans.GoogleIntegration.Contracts take. Acyclic: Humans.Domain names only
+    Humans.Interfaces.
+  -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
+    <ProjectReference Include="..\..\Humans.Domain\Humans.Domain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NodaTime" />
+  </ItemGroup>
+
+</Project>

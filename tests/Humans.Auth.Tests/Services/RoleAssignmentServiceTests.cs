@@ -15,6 +15,7 @@ using Humans.Domain.Constants;
 using NSubstitute;
 
 using Humans.Application.Interfaces.GoogleIntegration;
+using Humans.Users.Contracts;
 
 
 namespace Humans.Auth.Tests.Services;

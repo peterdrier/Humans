@@ -9,6 +9,7 @@ using Humans.Shifts.Domain;
 using Humans.Domain.Enums;
 using NodaTime;
 using Humans.Shifts.Data;
+using Humans.Users.Contracts;
 
 namespace Humans.Shifts.Services;
 

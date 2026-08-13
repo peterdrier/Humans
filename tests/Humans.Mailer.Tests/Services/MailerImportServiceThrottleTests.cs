@@ -10,6 +10,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
+using Humans.Users.Contracts;
 
 namespace Humans.Mailer.Tests.Services;
 

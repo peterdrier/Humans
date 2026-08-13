@@ -4,6 +4,7 @@ using Humans.Shifts.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Enums;
 using NodaTime;
+using Humans.Users.Contracts;
 
 namespace Humans.Application.Services.Users;
 

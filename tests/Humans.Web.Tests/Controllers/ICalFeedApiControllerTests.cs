@@ -5,6 +5,7 @@ using Humans.Web.Controllers.Api;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
+using Humans.Users.Contracts;
 
 namespace Humans.Web.Tests.Controllers;
 

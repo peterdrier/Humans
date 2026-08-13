@@ -7,6 +7,7 @@ using Humans.Application.Services.Users;
 using Humans.Domain.Entities;
 using NodaTime;
 using NSubstitute;
+using Humans.Users.Contracts;
 
 namespace Humans.Application.Tests.Services;
 

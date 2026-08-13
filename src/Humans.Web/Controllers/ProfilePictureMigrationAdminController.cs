@@ -5,6 +5,7 @@ using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
 using Humans.UI.Authorization;
+using Humans.Users.Contracts;
 
 namespace Humans.Web.Controllers;
 

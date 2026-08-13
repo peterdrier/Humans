@@ -3,6 +3,7 @@ using Humans.Application.Interfaces.Dashboard;
 using Humans.Governance.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Application.Interfaces.Users;
+using Humans.Users.Contracts;
 
 namespace Humans.Application.Services.Dashboard;
 

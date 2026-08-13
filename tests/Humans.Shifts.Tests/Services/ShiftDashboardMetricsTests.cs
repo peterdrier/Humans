@@ -22,6 +22,7 @@ using Humans.Shifts.Data;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using NSubstitute;
+using Humans.Users.Contracts;
 
 namespace Humans.Shifts.Tests.Services;
 
@@ -1147,7 +1148,7 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
         }
 
         public Task<IReadOnlyList<HumanSearchResult>> SearchUsersAsync(
-            string query, Humans.Application.Services.Profiles.PersonSearchFields fields,
+            string query, Humans.Users.Contracts.PersonSearchFields fields,
             int limit = 10, CancellationToken ct = default) => throw new NotSupportedException();
 
         public async ValueTask<IReadOnlyDictionary<Guid, UserInfo>> GetUserInfosAsync(

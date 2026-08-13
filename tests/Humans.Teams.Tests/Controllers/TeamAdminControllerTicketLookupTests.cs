@@ -6,6 +6,7 @@ using Humans.Teams.Domain;
 using Humans.Domain.Enums;
 using Humans.Teams.Controllers;
 using NodaTime;
+using Humans.Users.Contracts;
 
 namespace Humans.Teams.Tests;
 

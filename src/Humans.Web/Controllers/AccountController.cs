@@ -11,6 +11,7 @@ using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Users;
 using Humans.UI;
 using Humans.Web.Infrastructure;
+using Humans.Users.Contracts;
 
 namespace Humans.Web.Controllers;
 

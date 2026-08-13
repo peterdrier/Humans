@@ -15,6 +15,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using CommunicationPreferenceService = Humans.Application.Services.Profiles.CommunicationPreferenceService;
+using Humans.Users.Contracts;
 
 namespace Humans.Application.Tests.Services;
 

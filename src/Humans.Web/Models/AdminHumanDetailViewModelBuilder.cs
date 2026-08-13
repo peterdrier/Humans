@@ -7,6 +7,7 @@ using Humans.Campaigns.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Application.Interfaces.Profiles;
 using NodaTime;
+using Humans.Users.Contracts;
 
 namespace Humans.Web.Models;
 

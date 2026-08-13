@@ -19,6 +19,7 @@ using NodaTime;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 using Xunit;
+using Humans.Users.Contracts;
 
 namespace Humans.Mailer.Tests.Controllers;
 

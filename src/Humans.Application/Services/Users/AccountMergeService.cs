@@ -13,6 +13,7 @@ using Humans.Application.Interfaces.Caching;
 using Humans.Consent.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Application.Interfaces.Users;
+using Humans.Users.Contracts;
 
 namespace Humans.Application.Services.Users;
 

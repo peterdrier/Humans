@@ -4,6 +4,7 @@ using Humans.Domain.Entities;
 using Humans.Application;
 using Humans.Domain.Enums;
 using NSubstitute;
+using Humans.Users.Contracts;
 
 namespace Humans.Notifications.Tests;
 

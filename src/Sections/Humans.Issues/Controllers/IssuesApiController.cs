@@ -10,6 +10,7 @@ using Humans.Issues.Filters;
 using Humans.Issues.Models;
 using Humans.Issues.Services;
 using Humans.Issues.Services.Dtos;
+using Humans.Users.Contracts;
 
 namespace Humans.Issues.Controllers;
 

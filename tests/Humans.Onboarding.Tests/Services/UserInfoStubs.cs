@@ -1,6 +1,7 @@
 using Humans.Application;
 using Humans.Domain.Entities;
 using NodaTime;
+using Humans.Users.Contracts;
 
 namespace Humans.Onboarding.Tests.Services;
 

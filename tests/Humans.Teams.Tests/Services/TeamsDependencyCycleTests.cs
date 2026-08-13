@@ -24,6 +24,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
+using Humans.Users.Contracts;
 
 namespace Humans.Teams.Tests;
 

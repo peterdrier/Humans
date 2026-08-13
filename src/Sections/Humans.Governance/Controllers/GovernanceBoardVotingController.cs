@@ -12,6 +12,7 @@ using Humans.Domain.Enums;
 using Humans.UI;
 using Humans.UI.Authorization;
 using Humans.Governance.Models;
+using Humans.Users.Contracts;
 
 namespace Humans.Governance.Controllers;
 

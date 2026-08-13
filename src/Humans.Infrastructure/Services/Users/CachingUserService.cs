@@ -11,6 +11,7 @@ using Humans.Application.Services.Profiles;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Domain.Helpers;
+using Humans.Users.Contracts;
 
 namespace Humans.Infrastructure.Services.Users;
 

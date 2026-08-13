@@ -3,6 +3,7 @@ using Humans.Onboarding.Contracts;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
+using Humans.Users.Contracts;
 
 namespace Humans.Application.Interfaces.Users;
 
@@ -420,17 +421,6 @@ public record AnonymizedAccountSummary(
     string OriginalDisplayName,
     string PreferredLanguage,
     IReadOnlyList<(Guid SignupId, Guid ShiftId)> CancelledSignupIds);
-
-/// <summary>
-/// Per-user row returned from <see cref="IUserServiceRead.GetOnsiteUsersAsync"/>.
-/// Names of camps / teams / governance roles are not stitched in here; the Web
-/// layer joins them via the owning section services before rendering. Issue
-/// nobodies-collective/Humans#736.
-/// </summary>
-public sealed record OnsiteUserRow(
-    Guid UserId,
-    string DisplayName,
-    Instant? CheckedInAt);
 
 /// <summary>
 /// Slim cross-section projection of an <see cref="EventParticipation"/> row for

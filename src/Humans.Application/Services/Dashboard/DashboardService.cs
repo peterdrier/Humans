@@ -10,6 +10,7 @@ using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NodaTime;
+using Humans.Users.Contracts;
 
 namespace Humans.Application.Services.Dashboard;
 

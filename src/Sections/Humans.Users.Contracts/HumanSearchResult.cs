@@ -1,4 +1,4 @@
-namespace Humans.Application.DTOs;
+namespace Humans.Users.Contracts;
 
 /// <summary>
 /// Single canonical person-search result. Returned by

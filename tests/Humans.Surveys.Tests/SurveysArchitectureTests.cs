@@ -7,6 +7,7 @@ using Humans.Surveys.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
+using Humans.Users.Contracts;
 
 namespace Humans.Surveys.Tests;
 

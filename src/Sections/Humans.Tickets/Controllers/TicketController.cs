@@ -11,6 +11,7 @@ using Humans.UI.Extensions;
 using Humans.Tickets.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Humans.Users.Contracts;
 
 namespace Humans.Tickets.Controllers;
 

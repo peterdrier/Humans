@@ -12,6 +12,7 @@ using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Text;
 using System.Text.Json;
+using Humans.Users.Contracts;
 
 namespace Humans.CityPlanning.Services;
 

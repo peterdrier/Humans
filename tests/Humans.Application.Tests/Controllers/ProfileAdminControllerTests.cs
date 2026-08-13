@@ -19,6 +19,7 @@ using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
+using Humans.Users.Contracts;
 
 namespace Humans.Application.Tests.Controllers;
 

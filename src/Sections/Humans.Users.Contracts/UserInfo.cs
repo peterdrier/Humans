@@ -1,9 +1,8 @@
-using Humans.Domain;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
 
-namespace Humans.Application;
+namespace Humans.Users.Contracts;
 
 /// <summary>Compact projection of <see cref="UserEmail"/> carried inside <see cref="UserInfo"/>.</summary>
 public sealed record UserEmailInfo(

@@ -20,6 +20,7 @@ using Microsoft.Extensions.Localization;
 using NodaTime;
 using NSubstitute;
 using Xunit;
+using Humans.Users.Contracts;
 
 namespace Humans.Onboarding.Tests.Controllers;
 

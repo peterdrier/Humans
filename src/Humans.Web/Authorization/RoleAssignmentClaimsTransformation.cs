@@ -7,6 +7,7 @@ using Humans.Domain.Enums;
 using Humans.UI.Authorization;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Caching.Memory;
+using Humans.Users.Contracts;
 
 namespace Humans.Web.Authorization;
 

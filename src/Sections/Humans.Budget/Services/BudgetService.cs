@@ -10,6 +10,7 @@ using Humans.Budget.Domain;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging;
 using NodaTime;
+using Humans.Users.Contracts;
 
 namespace Humans.Budget.Services;
 

@@ -6,6 +6,7 @@ using Humans.UI.Controllers;
 using Humans.Teams.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Humans.Users.Contracts;
 
 namespace Humans.Teams.Contracts;
 

@@ -20,6 +20,7 @@ using Humans.Issues.Contracts;
 using Humans.Issues.Data;
 using Humans.Issues.Domain;
 using Humans.Issues.Services.Dtos;
+using Humans.Users.Contracts;
 
 namespace Humans.Issues.Services;
 
