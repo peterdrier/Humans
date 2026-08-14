@@ -6,7 +6,6 @@ using NodaTime.Testing;
 using NSubstitute;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Services;
 using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.Caching;
@@ -16,12 +15,19 @@ using Humans.Notifications.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Application.Interfaces.Users;
-using Humans.Application.Tests.Infrastructure;
 using Humans.Users.Contracts;
+using Humans.Users.Services;
+using Humans.Users.Tests.Infrastructure;
 
-namespace Humans.Application.Tests.Jobs;
+namespace Humans.Users.Tests.Services;
 
-public class SuspendNonCompliantMembersJobTests : IDisposable
+/// <summary>
+/// The body of the nightly non-compliance sweep, carved out of
+/// <c>SuspendNonCompliantMembersJob</c> into this section at G5 lane 4b-2d. The job class
+/// itself stays in <c>Humans.Infrastructure</c> because Hangfire pins its serialized type
+/// name; what is left of it is a start log, a try/catch and a failure metric.
+/// </summary>
+public class NonCompliantMemberSuspensionTests : IDisposable
 {
     private readonly IUserService _userService;
     private readonly ITeamService _teamService;
@@ -36,11 +42,11 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
     private readonly IActiveTeamsCacheInvalidator _activeTeamsCacheInvalidator;
     private readonly HumansMetricsService _metrics;
     private readonly FakeClock _clock;
-    private readonly SuspendNonCompliantMembersJob _job;
+    private readonly NonCompliantMemberSuspension _sut;
 
     private static readonly Instant Now = Instant.FromUtc(2026, 3, 14, 12, 0);
 
-    public SuspendNonCompliantMembersJobTests()
+    public NonCompliantMemberSuspensionTests()
     {
         _userService = Substitute.For<IUserService>();
         _teamService = Substitute.For<ITeamService>();
@@ -55,14 +61,14 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
         _activeTeamsCacheInvalidator = Substitute.For<IActiveTeamsCacheInvalidator>();
         _clock = new FakeClock(Now);
         _metrics = TestMetrics.Create();
-        var logger = Substitute.For<ILogger<SuspendNonCompliantMembersJob>>();
+        var logger = Substitute.For<ILogger<NonCompliantMemberSuspension>>();
 
         // Default: GetTeamsAsync returns an empty directory so tests that don't
         // care about team fan-out don't need to stub it.
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyDictionary<Guid, TeamInfo>>(new Dictionary<Guid, TeamInfo>()));
 
-        _job = new SuspendNonCompliantMembersJob(
+        _sut = new NonCompliantMemberSuspension(
             _userService, _teamService, _activeTeamsCacheInvalidator, _membershipCalculator,
             _emailService, _emailMessages, _notificationService, _googleSyncService, _auditLogService,
             _roleAssignmentClaimsInvalidator,
@@ -96,7 +102,7 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
             .Returns(new List<Guid> { user.Id });
         StubSuspendSucceeds([user.Id]);
 
-        await _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
+        await _sut.SuspendNonCompliantAsync(Xunit.TestContext.Current.CancellationToken);
 
         await _userService.Received(1).SuspendProfilesForMissingConsentAsync(
             Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(user.Id)),
@@ -110,7 +116,7 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
         _membershipCalculator.GetUsersRequiringStatusUpdateAsync(Arg.Any<CancellationToken>())
             .Returns(new List<Guid>());
 
-        await _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
+        await _sut.SuspendNonCompliantAsync(Xunit.TestContext.Current.CancellationToken);
 
         await _userService.DidNotReceive().SuspendProfilesForMissingConsentAsync(
             Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
@@ -134,7 +140,7 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
             Arg.Any<CancellationToken>())
             .Returns(new HashSet<Guid>());
 
-        await _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
+        await _sut.SuspendNonCompliantAsync(Xunit.TestContext.Current.CancellationToken);
 
         _emailMessages.DidNotReceive().AccessSuspended(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
@@ -161,7 +167,7 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
             Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
 
-        await _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
+        await _sut.SuspendNonCompliantAsync(Xunit.TestContext.Current.CancellationToken);
 
         _emailMessages.DidNotReceive().AccessSuspended(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
@@ -181,7 +187,7 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
             .Returns(new List<Guid> { user.Id });
         StubSuspendSucceeds([user.Id]);
 
-        await _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
+        await _sut.SuspendNonCompliantAsync(Xunit.TestContext.Current.CancellationToken);
 
         _emailMessages.Received(1).AccessSuspended(
             "test@example.com",
@@ -198,7 +204,7 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
             .Returns(new List<Guid> { user.Id });
         StubSuspendSucceeds([user.Id]);
 
-        await _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
+        await _sut.SuspendNonCompliantAsync(Xunit.TestContext.Current.CancellationToken);
 
         await _notificationService.Received(1).SendAsync(
             NotificationSource.AccessSuspended,
@@ -226,7 +232,7 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
             .Returns(new List<Guid> { user.Id });
         StubSuspendSucceeds([user.Id]);
 
-        await _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
+        await _sut.SuspendNonCompliantAsync(Xunit.TestContext.Current.CancellationToken);
 
         await _googleSyncService.Received(1).RemoveUserFromTeamResourcesAsync(
             teamId, user.Id, Arg.Any<CancellationToken>());
@@ -240,14 +246,14 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
             .Returns(new List<Guid> { user.Id });
         StubSuspendSucceeds([user.Id]);
 
-        await _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
+        await _sut.SuspendNonCompliantAsync(Xunit.TestContext.Current.CancellationToken);
 
         await _auditLogService.Received(1).LogAsync(
             AuditAction.MemberSuspended,
             nameof(User),
             user.Id,
             Arg.Is<string>(s => s.Contains("Test User")),
-            nameof(SuspendNonCompliantMembersJob),
+            "SuspendNonCompliantMembersJob",
             Arg.Any<Guid?>(),
             Arg.Any<string?>());
     }
@@ -260,7 +266,7 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
             .Returns(new List<Guid> { user.Id });
         StubSuspendSucceeds([user.Id]);
 
-        await _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
+        await _sut.SuspendNonCompliantAsync(Xunit.TestContext.Current.CancellationToken);
 
         _roleAssignmentClaimsInvalidator.Received(1).Invalidate(user.Id);
         _shiftAuthorizationInvalidator.Received(1).Invalidate(user.Id);
@@ -284,12 +290,12 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
             .Returns(Task.FromException(new InvalidOperationException("Google API error")));
 
         // Should not throw — Google sync failures are caught and logged.
-        await _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
+        await _sut.SuspendNonCompliantAsync(Xunit.TestContext.Current.CancellationToken);
 
         // Audit entry should still be written despite Google failure.
         await _auditLogService.Received(1).LogAsync(
             AuditAction.MemberSuspended, nameof(User), user.Id,
-            Arg.Any<string>(), nameof(SuspendNonCompliantMembersJob),
+            Arg.Any<string>(), "SuspendNonCompliantMembersJob",
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 

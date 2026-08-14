@@ -8,9 +8,7 @@ using Humans.Application.Configuration;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.GoogleIntegration;
-using Humans.Application.Interfaces.HumanLifecycle;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Application.Services.HumanLifecycle;
 using Humans.Infrastructure.Caching;
 using Humans.Infrastructure.Configuration;
 using Humans.Infrastructure.Jobs;
@@ -87,9 +85,11 @@ public static class InfrastructureServiceCollectionExtensions
 
         // Base collaborators that Governance's section file used to register on the way past.
         // The three badge-cache invalidators are Humans.Infrastructure implementations of
-        // Humans.Application interfaces that four sections evict through, and
-        // HumanLifecycleService is the suspend/unsuspend state machine over IProfileService —
-        // none of them is Governance's to own (memory/architecture/governance-scope.md).
+        // Humans.Application interfaces that four sections evict through — none of them is
+        // Governance's to own (memory/architecture/governance-scope.md).
+        // HumanLifecycleService left this list at G5 lane 4b-2d: it is Users' suspend/unsuspend
+        // state machine and now registers from Humans.Users' Section.cs (Peter, 2026-08-14 —
+        // Governance is governance only, never Users machinery).
         // Base's own nav-badge invalidator, sitting beside its siblings in Humans.Infrastructure.
         // Its registration lived in CampsSectionExtensions because Camps is the only consumer;
         // the section that owns the file is not always the section that owns the line
@@ -98,7 +98,6 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<INavBadgeCacheInvalidator, NavBadgeCacheInvalidator>();
         services.AddScoped<INotificationMeterCacheInvalidator, NotificationMeterCacheInvalidator>();
         services.AddScoped<IVotingBadgeCacheInvalidator, VotingBadgeCacheInvalidator>();
-        services.AddScoped<IHumanLifecycleService, HumanLifecycleService>();
 
         // Same call for Guide's section file: IGuideContentSource is a plain GitHub-markdown
         // fetcher (its signatures name only string) and three of its four consumers are not

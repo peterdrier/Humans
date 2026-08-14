@@ -275,7 +275,7 @@ Ownership is now physical as well as conventional: the map below is **per DbCont
 | **Auth** | `RoleAssignmentService` (G5 project `Humans.Auth`, published via `Humans.Auth.Contracts`), `MagicLinkService` (owns no tables; still in `Humans.Application.Services.Auth`) | `role_assignments` |
 | **Governance** | `ApplicationDecisionService` | `applications`, `application_state_history`, `board_votes` |
 | **Consent** | `LegalDocumentService`, `LegalDocumentSyncService`, `ConsentService` (`src/Sections/Humans.Consent`) | `legal_documents`, `document_versions`, `consent_records` |
-| **Onboarding** | `OnboardingService` (intake funnel), `HumanLifecycleService` (suspend/unsuspend state-machine) | *(no owned tables — orchestrator pair over Profiles, Consent, Teams, Governance)* |
+| **Onboarding** | `OnboardingService` (intake funnel). `HumanLifecycleService` (suspend/unsuspend state-machine) moved to **Users** at G5 lane 4b-2d — Peter, 2026-08-14: membership machinery is Users, never Governance — and is published via `Humans.Users.Contracts` | *(no owned tables — orchestrator over Profiles, Consent, Teams, Governance)* |
 | **Camps** | `CampService`, `CampRoleService`, `CampContactService` | `camps`, `camp_seasons`, `camp_members`, `camp_images`, `camp_historical_names`, `camp_settings`, `camp_role_definitions`, `camp_role_assignments` |
 | **Containers** | `IContainerService` (G5 project `Humans.Containers`; implemented by the section-internal `Service`) | `containers`, `container_placements` |
 | **City Planning** | `CityPlanningService` | `city_planning_settings`, `camp_polygons`, `camp_polygon_histories` |

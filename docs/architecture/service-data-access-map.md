@@ -494,7 +494,8 @@ boundary they each own.
 
 ## Human Lifecycle
 
-Folder: `src/Humans.Application/Services/HumanLifecycle/`. Orchestrator —
+Folder: `src/Sections/Humans.Users/Services/` (moved out of `Humans.Application`
+at G5 lane 4b-2d — Peter, 2026-08-14: membership machinery is Users). Orchestrator —
 owns no DB tables. Pairs with `OnboardingService`; the two together
 handle suspend/unsuspend/restore state transitions.
 

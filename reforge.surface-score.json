@@ -411,7 +411,8 @@
     "Users": {
       "paths": [
         "src/Humans.Application/UserInfo.cs",
-        "src/Humans.Application/Interfaces/HumanLifecycle/**",
+        "src/Sections/Humans.Users.Contracts/IHumanLifecycleService.cs",
+        "src/Sections/Humans.Users.Contracts/INonCompliantMemberSuspension.cs",
         "src/Humans.Application/Interfaces/Profiles/**",
         "src/Humans.Application/Interfaces/Repositories/IUserRepository.cs",
         "src/Humans.Application/Interfaces/Users/**",
@@ -421,7 +422,8 @@
         "src/Humans.Application/DTOs/ReviewDetailData.cs",
         "src/Humans.Application/DTOs/ReviewQueueData.cs",
         "src/Humans.Application/DTOs/UserEmailDto.cs",
-        "src/Humans.Application/Services/HumanLifecycle/**",
+        "src/Sections/Humans.Users/Services/HumanLifecycleService.cs",
+        "src/Sections/Humans.Users/Services/NonCompliantMemberSuspension.cs",
         "src/Humans.Application/Services/Profile/**",
         "src/Humans.Application/Services/Profiles/**",
         "src/Humans.Application/Services/Users/**",

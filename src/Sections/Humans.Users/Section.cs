@@ -128,5 +128,13 @@ public sealed class Section : ISection
         // FullProfile cache retired — denormalized reads go through IUserService.GetUserInfoAsync.
         services.AddScoped<ProfileService>();
         services.AddScoped<IProfilePictureService>(sp => sp.GetRequiredService<ProfileService>());
+
+        // The suspend/unsuspend state machine over this section's own IUserService, and the body
+        // of the nightly non-compliance sweep. Both arrived at G5 lane 4b-2d from Base (Peter,
+        // 2026-08-14: membership lifecycle is Users, not Governance). Both are orchestrators by
+        // the hard rules' definition — they inject no I*Repository — but they orchestrate *this*
+        // section, and every outbound edge is another section's leaf.
+        services.AddScoped<IHumanLifecycleService, HumanLifecycleService>();
+        services.AddScoped<INonCompliantMemberSuspension, NonCompliantMemberSuspension>();
     }
 }
