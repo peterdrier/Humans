@@ -8,9 +8,7 @@ using Humans.Application.Configuration;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.GoogleIntegration;
-using Humans.Application.Interfaces.HumanLifecycle;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Application.Services.HumanLifecycle;
 using Humans.Infrastructure.Caching;
 using Humans.Infrastructure.Configuration;
 using Humans.Infrastructure.Jobs;
@@ -38,7 +36,8 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddEmailInfrastructure(configuration, environment);
         services.AddGoogleWorkspaceInfrastructure(configuration, environment);
         services.AddTicketVendorPort(configuration);
-        services.AddStripeInfrastructure(configuration);
+        // Stripe's own registrations moved with it to Humans.Stripe's Section.Register
+        // (nobodies-collective/Humans#866, G5 lane 4b-2a).
 
         // Single key-addressed file storage rooted at wwwroot. Camps,
         // profile pictures, and any future file-bearing section share this
@@ -55,7 +54,6 @@ public static class InfrastructureServiceCollectionExtensions
         // stays in Humans.Application and is registered here — Governance's rule, that the
         // section owning the file is not always the section owning the line.
         services.AddScoped<IAuditViewerService, AuditViewerService>();
-        services.AddICalFeedSection();
         services.AddAdminSection();
         services.AddHoldedConnector(configuration);
 
@@ -86,9 +84,11 @@ public static class InfrastructureServiceCollectionExtensions
 
         // Base collaborators that Governance's section file used to register on the way past.
         // The three badge-cache invalidators are Humans.Infrastructure implementations of
-        // Humans.Application interfaces that four sections evict through, and
-        // HumanLifecycleService is the suspend/unsuspend state machine over IProfileService —
-        // none of them is Governance's to own (memory/architecture/governance-scope.md).
+        // Humans.Application interfaces that four sections evict through — none of them is
+        // Governance's to own (memory/architecture/governance-scope.md).
+        // HumanLifecycleService left this list at G5 lane 4b-2d: it is Users' suspend/unsuspend
+        // state machine and now registers from Humans.Users' Section.cs (Peter, 2026-08-14 —
+        // Governance is governance only, never Users machinery).
         // Base's own nav-badge invalidator, sitting beside its siblings in Humans.Infrastructure.
         // Its registration lived in CampsSectionExtensions because Camps is the only consumer;
         // the section that owns the file is not always the section that owns the line
@@ -97,7 +97,6 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<INavBadgeCacheInvalidator, NavBadgeCacheInvalidator>();
         services.AddScoped<INotificationMeterCacheInvalidator, NotificationMeterCacheInvalidator>();
         services.AddScoped<IVotingBadgeCacheInvalidator, VotingBadgeCacheInvalidator>();
-        services.AddScoped<IHumanLifecycleService, HumanLifecycleService>();
 
         // Same call for Guide's section file: IGuideContentSource is a plain GitHub-markdown
         // fetcher (its signatures name only string) and three of its four consumers are not
@@ -109,8 +108,8 @@ public static class InfrastructureServiceCollectionExtensions
 
         // Shell-resident collaborators of sections that have already moved out. AgentPreloadAugmentor
         // builds the access matrix, glossaries, route map and FAQ blocks of the agent's preload
-        // corpus from Shell-owned help content (AccessMatrixDefinitions, SectionHelpContent), so it
-        // cannot move into Humans.Agent; the section consumes it through the contracts leaf.
+        // corpus from the shared help registries (Humans.UI's AccessMatrixDefinitions and
+        // SectionHelpContent); the section consumes it through the contracts leaf.
         services.AddSingleton<IAgentPreloadAugmentor, Humans.Web.Services.Agent.AgentPreloadAugmentor>();
 
         // Users' CSV participation backfill. Its registration sat in the Tickets section file

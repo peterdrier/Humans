@@ -193,6 +193,48 @@ public class CalendarPageRenderTests(HumansTestDatabase database) : IntegrationT
         html.Should().NotContain("Calendar_");
     }
 
+    [HumansFact(Timeout = 120000)]
+    public async Task Shell_renders_the_sections_user_calendar_component()
+    {
+        // UserCalendarViewComponent moved out of Humans.Web into Humans.Calendar/Contracts/
+        // with the iCal feed (G5 lane 4b-2c). An @using of the namespace does not import the
+        // tag helper — Shell needs its own `@addTagHelper *, Humans.Calendar` in
+        // Views/_ViewImports.cshtml, and the component must stay public. Without either the
+        // element ships as inert literal markup: 200, correct-looking source, no card.
+        //
+        // /WidgetGallery is the probe because it is the only Shell page with a <vc:user-calendar>
+        // element. The "Calendar Feed" assertion is the component's own card header, so it is
+        // absent unless the component actually ran — an empty feed still renders it.
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
+
+        var response = await Client.GetAsync("/WidgetGallery", ct);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var html = await response.Content.ReadAsStringAsync(ct);
+        html.Should().NotContain("<vc:user-calendar",
+            "Shell must import the Calendar tag helper, not just the namespace");
+        html.Should().Contain("Calendar Feed", "the component renders its own card header");
+    }
+
+    [HumansFact(Timeout = 120000)]
+    public async Task Users_admin_detail_resolves_the_component_view_across_the_rcl_boundary()
+    {
+        // Users' AdminDetail invokes the component by name, which resolves across application
+        // parts — but Default.cshtml now lives in the Calendar RCL, so the *view* lookup is the
+        // cross-assembly half and it is what a bad move breaks.
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var userId = await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
+
+        var response = await Client.GetAsync($"/Users/Admin/{userId}", ct);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var html = await response.Content.ReadAsStringAsync(ct);
+        html.Should().Contain("Calendar Feed", "the component renders its own card header");
+        html.Should().Contain("feed not provisioned",
+            "the persona has no ICalToken, and that line comes from the moved view");
+    }
+
     private static string? ExtractAntiForgeryToken(string html)
     {
         var match = System.Text.RegularExpressions.Regex.Match(

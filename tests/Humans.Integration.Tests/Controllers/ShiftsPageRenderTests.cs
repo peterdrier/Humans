@@ -142,6 +142,30 @@ public class ShiftsPageRenderTests(HumansTestDatabase database) : IntegrationTes
         }
     }
 
+    /// <summary>
+    /// AccessMatrixViewComponent moved into <c>Humans.UI</c> (nobodies-collective/Humans#1056),
+    /// so <c>/Shifts</c> carries <c>&lt;vc:access-matrix section="Shifts" /&gt;</c> bound through
+    /// <c>@@addTagHelper *, Humans.UI</c>. The blanket <c>NotContain("&lt;vc:")</c> above cannot
+    /// see a Razor comment being stripped instead of a tag binding, and the page also hard-codes
+    /// <c>data-bs-target="#sectionHelp-Shifts"</c> on its "Learn more" button — so the proof has
+    /// to be the <c>id=</c> attribute only the component emits.
+    /// </summary>
+    [HumansFact(Timeout = 120000)]
+    public async Task The_browse_page_renders_the_access_matrix_widget()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        await SeedActiveBurnAsync();
+        await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
+
+        var response = await Client.GetAsync("/Shifts", ct);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var html = await response.Content.ReadAsStringAsync(ct);
+        html.Should().NotContain("<vc:", "GET /Shifts left a view-component tag unrendered");
+        html.Should().Contain("id=\"sectionHelp-Shifts\"",
+            "the access-matrix modal is what the page's Learn-more button targets");
+    }
+
     [HumansFact(Timeout = 120000)]
     public async Task Shifts_pages_render_spanish_from_the_sections_own_satellite_assemblies()
     {

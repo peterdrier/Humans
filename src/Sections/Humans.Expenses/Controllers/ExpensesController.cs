@@ -177,22 +177,17 @@ internal sealed class ExpensesController(
             // someone else's report would answer "has the *submitter* got payment details" with the
             // viewer's answer — see PayeeName/PayeeIban below for the submitter's own.
             var iban = isSubmitter ? await GetIbanViewAsync(user.Id) : (HasIban: false, MaskedIban: null);
-            var timeline = isSubmitter
-                ? await expenseReadService.GetHoldedTimelineAsync(report)
-                : null;
 
             // Finance admins reviewing a report can bind the submitter to a Holded creditor account
             // before approval, so the push reuses the right 400000xx instead of minting a duplicate.
             var isFinanceAdmin = (await authService.AuthorizeAsync(User, PolicyNames.FinanceAdminOrAdmin)).Succeeded;
-            CreditorContactBinding? submitterBinding = null;
-            IReadOnlyList<HoldedCreditorAccountRow> creditorAccounts = [];
-            if (isFinanceAdmin)
-            {
-                submitterBinding = await holdedFinance.GetCreditorContactByUserAsync(report.SubmitterUserId);
-                creditorAccounts = (await holdedFinance.ListCreditorAccountsAsync()).Accounts
-                    .OrderBy(a => a.SupplierAccountNum)
-                    .ToList();
-            }
+            // The submitter reads the payment half of the timeline; the finance admin reads the push
+            // half — and is the only one who can act on a failed push, so withholding it from them
+            // was backwards (nobodies-collective/Humans#1045).
+            var timeline = isSubmitter || isFinanceAdmin
+                ? await expenseReadService.GetHoldedTimelineAsync(report)
+                : null;
+            var creditor = await GetCreditorBindingViewAsync(report.SubmitterUserId, isFinanceAdmin);
 
             var model = new ExpenseDetailViewModel
             {
@@ -206,12 +201,10 @@ internal sealed class ExpensesController(
                 MaskedIban = iban.MaskedIban,
                 HoldedTimeline = timeline,
                 CanBindCreditor = isFinanceAdmin,
-                BoundAccountNum = submitterBinding?.SupplierAccountNum,
-                BoundAccountName = submitterBinding?.SupplierAccountNum is { } boundNum
-                    ? creditorAccounts.FirstOrDefault(a => a.SupplierAccountNum == boundNum)?.Name
-                    : null,
-                HasCreditorContact = submitterBinding is not null,
-                CreditorAccounts = creditorAccounts,
+                BoundAccountNum = creditor.BoundAccountNum,
+                BoundAccountName = creditor.BoundAccountName,
+                HasCreditorContact = creditor.HasContact,
+                CreditorAccounts = creditor.Accounts,
             };
             return View(model);
         }
@@ -600,7 +593,12 @@ internal sealed class ExpensesController(
         {
             var reports = await expenseReadService.GetReviewQueueAsync();
             var submitterNames = await ResolveSubmitterNamesAsync(reports);
-            return View(new ExpenseReviewViewModel { Reports = reports, SubmitterNames = submitterNames });
+            return View(new ExpenseReviewViewModel
+            {
+                Reports = reports,
+                SubmitterNames = submitterNames,
+                FailedHoldedPushCount = await service.CountFailedHoldedPushesAsync(),
+            });
         }
         catch (Exception ex)
         {
@@ -656,6 +654,52 @@ internal sealed class ExpensesController(
         SetMutationResult(result, "Report rejected.", "Could not reject the report.");
 
         return RedirectToAction(nameof(Review));
+    }
+
+    [HttpPost("{id:guid}/HoldedRetry")]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]
+    public async Task<IActionResult> HoldedRetry(Guid id)
+    {
+        var (errorResult, user) = await RequireCurrentUserAsync();
+        if (errorResult is not null) return errorResult;
+
+        var report = await expenseReadService.GetAsync(id);
+        if (report is null) return NotFound();
+
+        var authResult = await authService.AuthorizeAsync(User, report,
+            new ExpenseReportOperationRequirement(ExpenseReportOperation.RequeueHoldedPush));
+        if (!authResult.Succeeded) return Forbid();
+
+        var result = await service.RequeueHoldedPushWithResultAsync(id, user.Id);
+        SetMutationResult(result,
+            "Holded push re-queued — it runs on the next drain pass.",
+            "Could not re-queue the Holded push.");
+
+        return RedirectToAction(nameof(Detail), new { id });
+    }
+
+    /// <summary>
+    /// Finance admins reviewing a report can bind the submitter to a Holded creditor account before
+    /// approval, so the push reuses the right 400000xx instead of minting a duplicate. Empty for
+    /// everyone else — the binding is not theirs to see.
+    /// </summary>
+    private async Task<(int? BoundAccountNum, string? BoundAccountName, bool HasContact,
+        IReadOnlyList<HoldedCreditorAccountRow> Accounts)> GetCreditorBindingViewAsync(
+        Guid submitterUserId, bool isFinanceAdmin)
+    {
+        if (!isFinanceAdmin) return (null, null, false, []);
+
+        var binding = await holdedFinance.GetCreditorContactByUserAsync(submitterUserId);
+        var accounts = (await holdedFinance.ListCreditorAccountsAsync()).Accounts
+            .OrderBy(a => a.SupplierAccountNum)
+            .ToList();
+
+        var boundName = binding?.SupplierAccountNum is { } boundNum
+            ? accounts.FirstOrDefault(a => a.SupplierAccountNum == boundNum)?.Name
+            : null;
+
+        return (binding?.SupplierAccountNum, boundName, binding is not null, accounts);
     }
 
     private async Task<IReadOnlyDictionary<Guid, string>> ResolveSubmitterNamesAsync(

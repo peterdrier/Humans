@@ -32,3 +32,9 @@
    and WidgetGallery; without this line the element ships as inert literal markup
    (design §15 step 6). *@
 @addTagHelper *, Humans.Shifts
+@* <vc:user-calendar> is the Calendar section's own component, public under
+   Humans.Calendar/Contracts/ so MVC's default provider discovers it and the tag helper is
+   generated. Shell renders it from WidgetGallery; Users' UsersAdmin/AdminDetail invokes it
+   by name instead. Without this line the element ships as inert literal markup
+   (design §15 step 6). *@
+@addTagHelper *, Humans.Calendar

@@ -42,6 +42,11 @@
     <PackageVersion Include="MailKit" Version="4.17.0" />
     <!-- GitHub API -->
     <PackageVersion Include="Octokit" Version="14.0.0" />
+    <!-- Direct pin over Octokit's transitive Newtonsoft.Json 11.0.1 (GHSA-5crp-9r3c-p9vr,
+         NU1903 fails restore). Stripe.net used to float this to 13.x for the whole graph;
+         moving it into Humans.Stripe (nobodies-collective/Humans#866) took that away and
+         exposed the latent Octokit constraint. Drop when Octokit ships without Newtonsoft. -->
+    <PackageVersion Include="Newtonsoft.Json" Version="13.0.4" />
     <!-- Google Workspace APIs -->
     <PackageVersion Include="Google.Apis.Admin.Directory.directory_v1" Version="1.75.0.4227" />
     <PackageVersion Include="Google.Apis.CloudIdentity.v1" Version="1.75.0.4185" />

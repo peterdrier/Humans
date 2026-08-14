@@ -668,7 +668,7 @@ One-off vendor check-in backfill (temp page, remove after use) — recovers gate
 
 ## ICalFeedApiController
 
-(`Controllers/Api/ICalFeedApiController.cs`)
+(`src/Sections/Humans.Calendar/Controllers/ICalFeedApiController.cs`)
 
 | Method | Route | Verb | Purpose | Suggestion |
 |--------|-------|------|---------|------------|

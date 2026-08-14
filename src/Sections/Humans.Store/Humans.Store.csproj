@@ -28,6 +28,14 @@
     <ProjectReference Include="..\..\Humans.Infrastructure\Humans.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Humans.UI\Humans.UI.csproj" />
     <ProjectReference Include="..\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
+    <!--
+      Checkout Session creation, webhook signature verification and payment
+      reconciliation, through Humans.Stripe.Contracts. A direct section reference rather
+      than a .Contracts leaf: Humans.Stripe references no section, so the edge is
+      acyclic (design 2026-08-14 — a section depending on another section's project is
+      sanctioned). Stripe.net does not cross the seam.
+    -->
+    <ProjectReference Include="..\Humans.Stripe\Humans.Stripe.csproj" />
   </ItemGroup>
 
   <ItemGroup>

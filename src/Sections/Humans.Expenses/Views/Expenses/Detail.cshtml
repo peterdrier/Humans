@@ -163,7 +163,9 @@
             </div>
         }
 
-        @if (Model.HoldedTimeline is { RegisteredInHolded: true } tl)
+        @* Submitter-voiced ("owed to you"), so it stays with the submitter even though finance
+           admins now also load the timeline for the sync card below. *@
+        @if (Model.IsSubmitter && Model.HoldedTimeline is { RegisteredInHolded: true } tl)
         {
             <div class="card mb-3">
                 <div class="card-header"><strong>Payment status</strong></div>
@@ -202,6 +204,89 @@
                             </li>
                         }
                     </ul>
+                </div>
+            </div>
+        }
+
+        @* Finance admins are the only people who can act on a failed push, so they are the ones who
+           get told about it. Before this the state was rendered only as the presence or absence of
+           the payment card above, and only for the submitter (nobodies-collective/Humans#1045). *@
+        @if (Model.CanBindCreditor && Model.HoldedTimeline is { } sync)
+        {
+            <div class="card mb-3">
+                <div class="card-header"><strong><i class="fa-solid fa-right-left me-1"></i>Holded sync</strong> <small class="text-muted">(Finance admin only)</small></div>
+                <div class="card-body">
+                    <p class="mb-2">
+                        @switch (sync.SyncState)
+                        {
+                            case ExpenseHoldedSyncState.NotQueued:
+                                <span class="badge text-bg-secondary">Not queued</span>
+                                <span class="small text-muted ms-1">Queued when the report is approved.</span>
+                                break;
+                            case ExpenseHoldedSyncState.Queued:
+                                <span class="badge text-bg-info">Queued</span>
+                                <span class="small text-muted ms-1">Waiting for the next drain pass (runs every minute).</span>
+                                break;
+                            case ExpenseHoldedSyncState.Retrying:
+                                <span class="badge text-bg-warning">Retrying</span>
+                                <span class="small text-muted ms-1">
+                                    Attempt @sync.RetryCount of @sync.MaxRetries failed@(sync.NextRetryAt is { } next ? $"; next try {next.ToDateTime()}" : "").
+                                </span>
+                                break;
+                            case ExpenseHoldedSyncState.Failed:
+                                <span class="badge text-bg-danger">Failed</span>
+                                @* The doc is created before the attachments upload, so a write-off
+                                   partway through leaves a real payable in Holded. Saying "not in
+                                   Holded" there invites a duplicate. *@
+                                <span class="small text-muted ms-1">
+                                    Given up after @sync.RetryCount attempt@(sync.RetryCount == 1 ? "" : "s").
+                                    @if (string.IsNullOrEmpty(Model.Report.HoldedDocId))
+                                    {
+                                        @:This report is not in Holded.
+                                    }
+                                    else
+                                    {
+                                        @:Document @Model.Report.HoldedDocId exists in Holded but the push did not finish — its receipts may be missing. Re-queue rather than creating a second payable.
+                                    }
+                                </span>
+                                break;
+                            case ExpenseHoldedSyncState.Pushed:
+                                <span class="badge text-bg-success">Pushed</span>
+                                <span class="small text-muted ms-1">
+                                    @(sync.SettledAt is { } at ? at.ToDateTime() : "")@(string.IsNullOrEmpty(Model.Report.HoldedDocId) ? "" : $" — document {Model.Report.HoldedDocId}")
+                                </span>
+                                break;
+                            case ExpenseHoldedSyncState.NotConfigured:
+                                <span class="badge text-bg-secondary">Not configured</span>
+                                <span class="small text-muted ms-1">
+                                    Queued, but no Holded API key is set on this environment, so nothing is draining.
+                                </span>
+                                break;
+                        }
+                    </p>
+
+                    @if (sync.QueuedAt is { } queuedAt)
+                    {
+                        <p class="small text-muted mb-2">Queued @queuedAt.ToDateTime().</p>
+                    }
+
+                    @if (!string.IsNullOrWhiteSpace(sync.LastError))
+                    {
+                        <p class="small mb-2">
+                            <span class="text-muted">Last error:</span>
+                            <span class="font-monospace">@sync.LastError</span>
+                        </p>
+                    }
+
+                    @if (sync.CanRetry)
+                    {
+                        <form asp-action="HoldedRetry" asp-route-id="@r.Id" method="post" class="d-inline">
+                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                <i class="fa-solid fa-rotate-right me-1"></i>Re-queue push
+                            </button>
+                        </form>
+                        <div class="form-text">Resets the retry budget and pushes again on the next drain pass. Fix the cause first.</div>
+                    }
                 </div>
             </div>
         }

@@ -80,7 +80,6 @@
     <PackageReference Include="Octokit" />
     <PackageReference Include="Polly" />
     <PackageReference Include="Serilog" />
-    <PackageReference Include="Stripe.net" />
   </ItemGroup>
 
 </Project>

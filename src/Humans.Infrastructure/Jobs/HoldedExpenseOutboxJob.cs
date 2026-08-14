@@ -1,35 +1,23 @@
 using Hangfire;
 using Humans.Application.Interfaces;
 using Humans.Expenses.Contracts;
-using Humans.Infrastructure.Services.Holded;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 namespace Humans.Infrastructure.Jobs;
 
 /// <summary>
 /// Drains the Holded expense outbox: creates or updates purchase documents in Holded
-/// for each approved expense report.
+/// for each approved expense report. Scheduler shim only — the queue semantics (backoff,
+/// retry ceiling, and the skip when no API key is configured) live in the section, next to
+/// the state they read.
 /// </summary>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
 public class HoldedExpenseOutboxJob(
-    IExpenseReportBackgroundProcessor expenses,
-    IOptions<HoldedClientOptions> holdedOptions,
-    ILogger<HoldedExpenseOutboxJob> logger) : IRecurringJob
+    IExpenseReportBackgroundProcessor expenses) : IRecurringJob
 {
     private const int BatchSize = 100;
 
     public async Task ExecuteAsync(CancellationToken cancellationToken = default)
     {
-        // No Holded API key (e.g. PR-preview / local dev envs) → don't drain. A 401 here is a
-        // permanent error that would mark each outbox event FailedPermanently. Debug-level since
-        // this job runs every minute. Skip until a key is configured.
-        if (string.IsNullOrWhiteSpace(holdedOptions.Value.ApiKey))
-        {
-            logger.LogDebug("HOLDED_API_KEY_V2 not configured — skipping Holded expense outbox drain.");
-            return;
-        }
-
         await expenses.DrainHoldedOutboxAsync(BatchSize, cancellationToken);
     }
 }

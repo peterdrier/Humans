@@ -71,6 +71,14 @@
     -->
     <ProjectReference Include="..\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Auth.Contracts\Humans.Auth.Contracts.csproj" />
+    <!--
+      Calendar owns the personal iCal feed; ShiftSignupService implements its
+      ICalendarFeedContributor. Calendar's Contracts/ is a folder, not a leaf, so the
+      reference is to the section project — acyclic because the contributor fan-out
+      inverts the arrow: Calendar names no section but Users.Contracts
+      (nobodies-collective/Humans#866, G5 lane 4b-2c).
+    -->
+    <ProjectReference Include="..\Humans.Calendar\Humans.Calendar.csproj" />
     <ProjectReference Include="..\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Gdpr.Contracts\Humans.Gdpr.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Governance.Contracts\Humans.Governance.Contracts.csproj" />

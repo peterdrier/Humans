@@ -1,8 +1,6 @@
 <!-- freshness:triggers
   src/Sections/Humans.Store/**
-  src/Humans.Application/Interfaces/IStripeService.cs
-  src/Humans.Infrastructure/Services/Stripe*.cs
-  src/Humans.Infrastructure/Services/StoreWebhookRegistrationService.cs
+  src/Sections/Humans.Stripe/**
 -->
 <!-- freshness:flag-on-change
   Store catalog editing, order lifecycle, OrderableUntil gate, Stripe Checkout flow, webhook ingestion, invoice issuance idempotency, treasury sync matching, and resource-based authorization — review when Store services/entities/controllers/auth handlers change.

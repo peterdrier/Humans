@@ -275,7 +275,7 @@ Ownership is now physical as well as conventional: the map below is **per DbCont
 | **Auth** | `RoleAssignmentService` (G5 project `Humans.Auth`, published via `Humans.Auth.Contracts`), `MagicLinkService` (owns no tables; still in `Humans.Application.Services.Auth`) | `role_assignments` |
 | **Governance** | `ApplicationDecisionService` | `applications`, `application_state_history`, `board_votes` |
 | **Consent** | `LegalDocumentService`, `LegalDocumentSyncService`, `ConsentService` (`src/Sections/Humans.Consent`) | `legal_documents`, `document_versions`, `consent_records` |
-| **Onboarding** | `OnboardingService` (intake funnel), `HumanLifecycleService` (suspend/unsuspend state-machine) | *(no owned tables — orchestrator pair over Profiles, Consent, Teams, Governance)* |
+| **Onboarding** | `OnboardingService` (intake funnel). `HumanLifecycleService` (suspend/unsuspend state-machine) moved to **Users** at G5 lane 4b-2d — Peter, 2026-08-14: membership machinery is Users, never Governance — and is published via `Humans.Users.Contracts` | *(no owned tables — orchestrator over Profiles, Consent, Teams, Governance)* |
 | **Camps** | `CampService`, `CampRoleService`, `CampContactService` | `camps`, `camp_seasons`, `camp_members`, `camp_images`, `camp_historical_names`, `camp_settings`, `camp_role_definitions`, `camp_role_assignments` |
 | **Containers** | `IContainerService` (G5 project `Humans.Containers`; implemented by the section-internal `Service`) | `containers`, `container_placements` |
 | **City Planning** | `CityPlanningService` | `city_planning_settings`, `camp_polygons`, `camp_polygon_histories` |
@@ -350,7 +350,7 @@ Three fanouts exist today:
 | Orchestrator | Contributor interface | Sections that opt in | Merged result |
 |--------------|----------------------|----------------------|---------------|
 | `IGdprExportService` | `IUserDataContributor` (`Humans.Gdpr.Contracts`) | every user-scoped §8 section (see §8a) | GDPR Article 15 export document |
-| `IICalFeedService` (`ICalFeedService`) | `ICalendarFeedContributor` (`Humans.Application.Interfaces.ICalFeed`) | `EventService` (Event Guide), `ShiftSignupService` (Shifts) | a user's personal iCal `VCALENDAR` of `CalendarFeedItem` rows |
+| `IICalFeedService` (`ICalFeedService`) | `ICalendarFeedContributor` (`Humans.Calendar.Contracts`) | `EventService` (Event Guide), `ShiftSignupService` (Shifts) | a user's personal iCal `VCALENDAR` of `CalendarFeedItem` rows |
 | `IEarlyEntryService` (`EarlyEntryService`) | `IEarlyEntryProvider` (`Humans.EarlyEntry.Contracts`) | Camps, Shifts, Teams | a user's assembled early-entry grants |
 
 Each contributor wires up with the same forwarding registration as §8a, so one scoped instance serves both the section's primary interface and the contributor interface:
@@ -740,7 +740,7 @@ For the Google Workspace section in particular, the cached projection isn't a ta
     - `CampLead.User` (issue #542) — the whole `CampLead` entity and its `camp_leads` table have since been dropped (nobodies-collective/Humans#787); camp leads are camp role assignments now, and lead display data routes through `IUserServiceRead`.
 
 **External connectors (API bridge pattern).** External SDKs (Google, Stripe, SMTP/IMAP, Octokit, etc.) sit behind Application-layer interfaces so `Humans.Application` never references the SDK assembly. The concrete implementation lives in `Humans.Infrastructure/Services/` (or a subfolder) and is the only code that imports the SDK namespaces. Connectors own no database tables — side-effects that need persistence write through the owning section's repository (e.g., Stripe fee values land on `TicketOrder`, written by `ITicketRepository`).
-- **Stripe** (issue #556, 2026-04-22): `IStripeService` in `Humans.Application.Interfaces`, `StripeService` in `Humans.Infrastructure.Services`. The bridge is structurally enforced (`Humans.Application.csproj` does not reference `Stripe.net`) and additionally covered by `StripeConnectorArchitectureTests` (SDK types cannot leak onto the interface surface).
+- **Stripe** (issue #556, 2026-04-22; moved to its own section by nobodies-collective/Humans#866, 2026-08-14): `IStripeService` in `Humans.Stripe.Contracts`, `StripeService` (internal) in `Humans.Stripe.Services`. The bridge is structurally enforced (only `Humans.Stripe.csproj` references `Stripe.net`) and additionally covered by `StripeConnectorArchitectureTests` (SDK types cannot leak onto the interface surface). Store and Tickets consume it by direct project reference — the connector names no section, so no `.Contracts` leaf is needed.
 - **Google Workspace** (pre-§15): resources are on Shared Drives only; all SDK access goes through the dedicated services listed in §13. Extracted connectors so far:
   - `ITeamResourceGoogleClient` (PR #274) — Teams→Drive linking.
   - `IWorkspaceUserDirectoryClient` (issue #554) — @nobodies.team account lifecycle.

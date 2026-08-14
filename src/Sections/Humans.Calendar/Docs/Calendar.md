@@ -13,6 +13,7 @@ Community calendar: one-off and recurring events per team, with per-occurrence o
 
 - **CalendarEvent** — a single scheduled event or recurring event series belonging to a team. Can be a one-time event or repeat according to an RFC 5545 recurrence rule.
 - **CalendarEventException** — a per-occurrence override or cancellation for a recurring event. Allows changing title, time, or marking a specific occurrence as cancelled without deleting the entire series.
+- **Personal iCal feed** — a per-user subscribable `VCALENDAR` of that user's dated commitments, assembled by `ICalFeedService` fanning out over `ICalendarFeedContributor`. Separate concept from `CalendarEvent`: the feed contains no calendar events at all, only Shifts' signups and Events' favourited entries. Design: [`2026-06-09-ical-feed-design.md`](2026-06-09-ical-feed-design.md).
 
 ## Data Model
 
@@ -71,7 +72,9 @@ Per-occurrence override or cancellation for a recurring `CalendarEvent`. Cascade
 
 ## Routing
 
-All routes are under `[Route("Calendar")]` on `CalendarController`.
+All calendar-event routes are under `[Route("Calendar")]` on `CalendarController`. The personal
+iCal feed is a separate `[Route("api/ical")]` on `ICalFeedApiController`
+(`GET /api/ical/{userId:guid}/{token:guid}.ics`).
 
 | Method | Route | Action |
 |--------|-------|--------|
@@ -115,6 +118,7 @@ The calendar is intentionally open: no resource-based authorization gates edit/d
 ## Negative Access Rules
 
 - Anonymous / unauthenticated visitors **cannot** access the calendar or view events (entire `CalendarController` requires `[Authorize]`).
+- The personal iCal feed is the one `[AllowAnonymous]` surface in the section: the secret is the user's stored `ICalToken` in the URL. A missing user, a merged user and a wrong token all return a plain 404 — no oracle. `UserCalendarViewComponent` renders the same items for an admin but **never** shows the token or the feed URL.
 
 ## Triggers
 
@@ -126,18 +130,21 @@ The calendar is intentionally open: no resource-based authorization gates edit/d
 - **Teams:** `ITeamServiceRead.GetTeamsAsync` — owning-team display names are stitched in-memory (§6b) instead of `.Include(e => e.OwningTeam)`. `ITeamServiceRead.GetTeamsAsync` / `GetTeamAsync` populate the team picker on Create/Edit/Index/Team views. Event-level audit entries reference the owning team as `relatedEntityId` for team-scoped audit filtering.
 - **Users/Identity:** `CreatedByUserId` is persisted on the entity; every subsequent mutation logs the actor via the audit log (no `UpdatedByUserId` column).
 - **Audit Log:** `IAuditLogService` — every mutation writes an entry. The `Event` view embeds the `AuditLog` view component scoped to `entityType = AuditEntityTypes.CalendarEvent` (a literal, not `nameof` — the string is persisted), `entityId = event.Id`.
+- **Users (iCal feed):** `IUserServiceRead.GetUserInfoAsync` — validates the caller's stored `ICalToken` and rejects merged users. Calendar's only outbound section reference.
+- **Inbound (iCal feed):** Shifts (`ShiftSignupService`) and Events (`EventService`) implement `ICalendarFeedContributor`; Scanner reads `IICalFeedService` for the ticket card's shift commitments; Shell's widget gallery and Users' admin detail render `UserCalendarViewComponent`. All four reference `Humans.Calendar`; the fan-out inverts the arrow, so Calendar names none of them.
 
 ## Architecture
 
-**Owning services:** `CalendarService` (keyed inner write/read service), `CachingCalendarService` (decorator exposing `ICalendarService` and `ICalendarServiceRead`)
+**Owning services:** `CalendarService` (keyed inner write/read service), `CachingCalendarService` (decorator exposing `ICalendarService` and `ICalendarServiceRead`), `ICalFeedService` (personal iCal feed orchestrator — owns no tables, injects no repository)
 **Owned tables:** `calendar_events`, `calendar_event_exceptions`
-**Status:** (A) Migrated (peterdrier/Humans PR for issue nobodies-collective/Humans#569, 2026-04-23, design-rules §15i). Caching decorator added 2026-05-16. Per-section `CalendarDbContext` split out of `HumansDbContext` in nobodies-collective/Humans#858 (live in prod 2026-08-02). Moved into its own project `src/Sections/Humans.Calendar` at G5 (nobodies-collective/Humans#866); everything but `Section` and `CalendarResource` is `internal`, and `Contracts/` is empty because nothing outside the section reads a calendar event.
+**Status:** (A) Migrated (peterdrier/Humans PR for issue nobodies-collective/Humans#569, 2026-04-23, design-rules §15i). Caching decorator added 2026-05-16. Per-section `CalendarDbContext` split out of `HumansDbContext` in nobodies-collective/Humans#858 (live in prod 2026-08-02). Moved into its own project `src/Sections/Humans.Calendar` at G5 (nobodies-collective/Humans#866). G5 lane 4b-2c then moved the personal iCal feed in from Base: `ICalendarFeedContributor`, `CalendarFeedItem`, `IICalFeedService` and `UserCalendarViewComponent` are public under `Contracts/` (a folder, not a `.Contracts` leaf — no consumer lives in Base and the fan-out inverts the arrow), the service and `ICalFeedApiController` are `internal`. Nothing outside the section reads a calendar *event*.
 
 - Service lives in `Services/CalendarService.cs` and never touches a `DbContext`. The section assembly holds the repository, so this is no longer a reference-graph property — `CalendarArchitectureTests.CalendarService_ConstructorTakesNoEfTypeAndNoStore` asserts it on the constructor instead.
 - `ICalendarRepository` (impl in `Data/CalendarRepository.cs`) is the only code path that touches `calendar_events` / `calendar_event_exceptions`, via `IDbContextFactory<CalendarDbContext>` (per-section DbContext, nobodies-collective/Humans#858) for per-call scoped contexts. `OwningTeamId` is a bare Guid, so the Teams tables stay in `HumansDbContext` and are deliberately absent from `CalendarDbContext`.
 - **Caching decorator** — `CachingCalendarService` (Singleton, in `Services/`) wraps the keyed Scoped inner `ICalendarService` and owns the `CalendarEventInfo` projection — every non-soft-deleted event row with its `Exceptions` collection embedded, keyed by event id. Load-all warmup uses the normal `ICalendarService.GetAllEventInfosAsync` read method; per-key refresh uses `GetEventInfoAsync`. Window queries (`GetOccurrencesInWindowAsync`) are answered by snapshot-scanning the dict and delegating expansion to `CalendarOccurrenceExpander`. All five mutation paths (`Create`, `Update`, `Delete`, `CancelOccurrence`, `OverrideOccurrence`) flow through the decorator, which delegates to the inner and then reloads the affected event through the same read surface to refresh the single cache entry (or removes it if soft-deleted). **Per-occurrence writes (cancel/override) evict the PARENT event entry** — there is no separate cache row for `CalendarEventException`. Documented at the call site (`CachingCalendarService.InvalidateEventAsync` remarks) and on the projection record (`CalendarEventInfo` `<remarks>`). Surfaced on `/Debug/CacheStats` as `Calendar.Event`. `TrackedCache` owns startup warmup; the decorator is registered as the hosted service.
 - **Cross-domain navs** — `CalendarEvent.OwningTeamId` is a bare Guid column with no FK constraint and no `OwningTeam` nav property (nobodies-collective/Humans#992). Display stitching routes through `ITeamServiceRead.GetTeamsAsync` (§6b in-memory join). Aggregate-local nav `CalendarEvent.Exceptions` is kept and eagerly loaded by the repository.
-- **Cross-section calls** — public interfaces this section consumes: `ITeamServiceRead` (display names, team picker), `IAuditLogService` (mutation audit).
+- **Cross-section calls** — public interfaces this section consumes: `ITeamServiceRead` (display names, team picker), `IAuditLogService` (mutation audit), `IUserServiceRead` (iCal token validation).
+- **iCal feed fan-out** — `ICalFeedService` is an orchestrator: no repository, injects `IEnumerable<ICalendarFeedContributor>` and iterates sequentially, rethrowing any contributor failure rather than silently omitting a section's items. It never reads `calendar_events` — the community calendar and the personal feed share a section, not a data path.
 - **Architecture test** — `tests/Humans.Calendar.Tests/CalendarArchitectureTests.cs` pins the §15 shape and the decorator invariants (`CachingCalendarService` is sealed, implements `ICalendarService`/`ICalendarServiceRead`, surfaces `ICacheStats`, and keeps the read interface DTO-only).
 
 ### Touch-and-clean guidance
