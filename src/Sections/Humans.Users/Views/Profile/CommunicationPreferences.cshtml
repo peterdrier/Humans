@@ -17,7 +17,7 @@
         <p class="text-muted">@Localizer["CommPrefs_Description"]</p>
 
 
-        <vc:communication-preferences-panel user-id="@userId" read-only="false" />
+        @await Component.InvokeAsync("CommunicationPreferencesPanel", new { userId, readOnly = false })
 
         <a asp-action="Index" class="btn btn-outline-secondary">@Localizer["CommPrefs_BackToProfile"]</a>
     </div>

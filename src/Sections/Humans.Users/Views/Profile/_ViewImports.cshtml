@@ -35,3 +35,9 @@
 @addTagHelper *, Humans.UI
 @addTagHelper *, Humans.Users
 @addTagHelper *, Humans.Shifts
+@* No @addTagHelper for Humans.Web (a section RCL cannot reference the Shell) or Humans.Camps
+   (no ProjectReference, and adding one would be a new cross-section coupling). Components
+   those assemblies own — AccessMatrix, EventsCard, TicketHoldings,
+   CommunicationPreferencesPanel, MyCamps — are rendered with @await Component.InvokeAsync
+   by name instead. A <vc:> element for an unimported assembly renders as inert markup with
+   a green build and no runtime error, so never add one without its @addTagHelper. *@
