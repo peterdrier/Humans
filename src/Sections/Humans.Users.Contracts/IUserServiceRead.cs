@@ -10,7 +10,7 @@ namespace Humans.Users.Contracts;
 /// projections and the merge-chain-follow primitive — no EF entities, no writes,
 /// no cache hooks. See memory/architecture/section-read-write-split.md.
 /// </summary>
-[SurfaceBudget(9)]
+[SurfaceBudget(8)]
 public interface IUserServiceRead
 {
     /// <summary>
@@ -97,16 +97,6 @@ public interface IUserServiceRead
     /// </summary>
     Task<IReadOnlySet<Guid>> GetMergedSourceIdsAsync(
         Guid targetUserId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Finds the user whose <c>Email</c> or <c>GoogleEmail</c> matches the given
-    /// address (case-insensitive) and returns the cached <see cref="UserInfo"/>
-    /// read-model for them. Also checks the gmail/googlemail alternate when
-    /// applicable, and falls back to the legacy <c>User.GoogleEmail</c> shadow
-    /// column for pre-issue-687 users whose <c>UserEmail.IsGoogle</c> rows are
-    /// unset. Returns null if no match.
-    /// </summary>
-    Task<UserInfo?> GetByEmailOrAlternateAsync(string email, CancellationToken ct = default);
 
     /// <summary>
     /// Get all participation records for a given year, projected to the slim
