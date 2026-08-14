@@ -5,7 +5,7 @@ using Humans.Users.Contracts;
 using Humans.Domain.Enums;
 using Xunit;
 
-namespace Humans.Domain.Tests.Entities;
+namespace Humans.Users.Tests.Entities;
 
 public class ProfileTests
 {

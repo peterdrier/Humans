@@ -19,7 +19,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 
-namespace Humans.Web.Tests.Controllers;
+namespace Humans.Users.Tests.Controllers;
 
 /// <summary>
 /// Privacy-gate coverage for <see cref="ProfileApiController"/>.

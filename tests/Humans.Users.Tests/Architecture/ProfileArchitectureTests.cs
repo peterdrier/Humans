@@ -6,7 +6,7 @@ using ProfileService = Humans.Users.Services.ProfileService;
 using Humans.Users.Data.Repositories;
 using Humans.Users.Services;
 
-namespace Humans.Application.Tests.Architecture;
+namespace Humans.Users.Tests.Architecture;
 
 /// <summary>
 /// Architecture tests enforcing the repository/store/decorator pattern for the

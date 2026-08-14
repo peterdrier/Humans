@@ -12,7 +12,7 @@ using NodaTime;
 using NSubstitute;
 using Humans.Users.Contracts;
 
-namespace Humans.Web.Tests.Controllers;
+namespace Humans.Users.Tests.Controllers;
 
 public class UsersAdminDebugControllerTests
 {
