@@ -4,13 +4,10 @@ using Humans.UI.Helpers;
 using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Enums;
-using Humans.Web.Controllers;
-using Humans.Web.Helpers;
-using Humans.Web.Models;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Users.Contracts;
 
-namespace Humans.Web.ViewComponents;
+namespace Humans.Users.ViewComponents;
 
 /// <summary>
 /// Renders the same content as the hover popover (<c>_HumanPopover.cshtml</c>)
@@ -19,7 +16,7 @@ namespace Humans.Web.ViewComponents;
 /// (e.g. ticket-transfer detail) where the reviewer needs identity context
 /// without having to hover.
 /// </summary>
-public sealed class HumanSummaryViewComponent(IUserServiceRead userService, ITeamServiceRead teamService) : ViewComponent
+internal sealed class HumanSummaryViewComponent(IUserServiceRead userService, ITeamServiceRead teamService) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync(Guid userId)
     {

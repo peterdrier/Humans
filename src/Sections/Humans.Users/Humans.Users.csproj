@@ -32,17 +32,20 @@
     <InternalsVisibleTo Include="Humans.Shifts.Tests" />
     <InternalsVisibleTo Include="Humans.Teams.Tests" />
     <!--
-      TEMPORARY, and the condition that removes it: lane 2 phase 3c moved ProfileController
-      and its cluster, so six of the ten controllers are here. Shell still holds
-      UsersAdminController (names the internal AdminHumanListAssembler), ProfileAdminController,
-      UsersAdminAccountMergesController and UserController, and Shell's ProfileCardViewModel /
-      ProfileCardViewComponent / Views/Shared/{_ProfileCard,_HumanPopover} and
-      WidgetGalleryController still name the internal Users view models
-      (ProfileSummaryViewModel and the five display view models in Models/ProfileViewModel.cs).
-      Delete this line in the commit that moves those — and in the same commit collapse the
-      folder-level Views/*/_ViewImports.cshtml into one Views/_ViewImports.cshtml, which cannot
-      exist while this grant does (a root _ViewImports in both assemblies generates the same
-      internal Views__ViewImports type and Humans.Web fails with CS0436).
+      TEMPORARY, and down to a single blocker: every Users controller, view model and view
+      component now lives here, so the only Humans.Web file left naming an internal Users type
+      is Controllers/WidgetGalleryController.cs — its WidgetGalleryViewModel holds
+      SampleProfileSummary (ProfileSummaryViewModel) and SampleHumanSearchResults
+      (HumanSearchResultViewModel) to render the _ProfileCard / _HumanPopover /
+      _HumanSearchResults sample cards in the Shell-owned widget catalogue.
+
+      Removing the grant therefore needs a decision, not a move: either the catalogue's
+      Users cards are fed by the section (a "section contributes gallery samples" seam) or
+      those three cards leave the Shell gallery. Whichever lands, delete this line in that
+      commit — and in the same commit collapse the folder-level Views/*/_ViewImports.cshtml
+      into one Views/_ViewImports.cshtml, which cannot exist while this grant does (a root
+      _ViewImports in both assemblies generates the same internal Views__ViewImports type and
+      Humans.Web fails with CS0436).
     -->
     <InternalsVisibleTo Include="Humans.Web" />
   </ItemGroup>
