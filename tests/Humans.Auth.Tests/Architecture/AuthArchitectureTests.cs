@@ -81,51 +81,23 @@ public class AuthArchitectureTests
             because: "Auth has no resource set; a localizer here means copy was added without carving one");
     }
 
-    [HumansFact]
-    public void SectionReferencesNoVerticalSection()
-    {
-        // Kept as an exact list, not as "no vertical leaves". peters-hard-rules.md says a
-        // horizontal is "strictly forbidden from referencing vertical sections ... as that
-        // will cause loops in the call graph", and until 2026-08-14 this test read that as
-        // "the list contains only horizontal leaves". Peter's Base-floor decision of that
-        // date supersedes the reading: a .Contracts leaf is referenceable from anywhere, so
-        // a leaf reference is not the loop the rule is about. That is what let
-        // MagicLinkService — Auth's own sign-in path, parked in Humans.Application purely
-        // because it injects Humans.Email.Contracts — come home at G5 lane 4b-2i, and
-        // Humans.Email.Contracts is the row that arrived with it.
-        //
-        // Enumerating rather than filtering is the whole point: a *section* reference
-        // (Humans.Email, not Humans.Email.Contracts) or a second vertical still fails here,
-        // and adding a name is a deliberate edit with a reason attached. The one absence
-        // still worth naming is Humans.Onboarding.Contracts, which IRoleAssignmentService's
-        // two write members returned (OnboardingResult) until Auth's G5 replaced it with the
-        // section's own RoleAssignmentResult.
-        var sectionRefs = SectionAssembly
-            .GetReferencedAssemblies()
-            .Select(a => a.Name ?? string.Empty)
-            .Where(n => n.StartsWith("Humans.", StringComparison.Ordinal))
-            .Where(n => n is not ("Humans.Interfaces" or "Humans.Domain" or "Humans.Application"
-                                 or "Humans.Infrastructure" or "Humans.UI" or "Humans.Analyzers"
-                                 or "Humans.Auth.Contracts"))
-            .OrderBy(n => n, StringComparer.Ordinal)
-            .ToList();
-
-        // Humans.Users.Contracts is the exception RoleAssignmentService already carries in source:
-        // "Auth (crosscut) references vertical sections — IUserServiceRead for assignee/creator
-        // display stitching". MagicLinkService adds UserManager<User> and IUserEmailService on the
-        // same leaf, so the row's weight grew but its justification did not change. #866 names
-        // User/UserInfo as sanctioned shared contracts; lane 4 decides whether they end up on the
-        // Base floor instead, which would drop this row.
-        sectionRefs.Should().BeEquivalentTo(
-            [
-                "Humans.AuditLog.Contracts",
-                "Humans.Email.Contracts",
-                "Humans.Gdpr.Contracts",
-                "Humans.Notifications.Contracts",
-                "Humans.Users.Contracts"
-            ],
-            because: "Auth references Base, three horizontal leaves, and exactly two vertical leaves — Users (display stitching) and Email (the magic-link send)");
-    }
+    // SectionReferencesNoVerticalSection was retired here at nobodies-collective/Humans#866 G5
+    // lane 4b-2i, the same call and for the same reason lane 4b-2h made in
+    // AuditLogArchitectureTests. It pinned Humans.Auth.GetReferencedAssemblies() to exactly
+    // ["Humans.AuditLog.Contracts", "Humans.Gdpr.Contracts", "Humans.Notifications.Contracts",
+    // "Humans.Users.Contracts"] — three horizontal leaves plus one documented exception —
+    // because peters-hard-rules.md forbade a horizontal from referencing a vertical.
+    //
+    // Peter's Base-floor decision of 2026-08-14 deleted that premise: a .Contracts leaf is
+    // referenceable from anywhere, which is what let MagicLinkService come home from
+    // Humans.Application along with the Humans.Email.Contracts reference it carries. Adding
+    // that fifth string would have kept the test green while asserting nothing beyond the
+    // contents of Humans.Auth.csproj two directories away — a list, not an invariant.
+    //
+    // If "a horizontal may name leaves but never another section's *project*" is wanted as a
+    // rule, it belongs once as a generic rule over every horizontal in
+    // tests/Humans.Application.Tests/Architecture/Rules/, not restated per section. The
+    // reference set itself is documented, with a reason per name, in Humans.Auth.csproj.
 
     [HumansFact]
     public void ContractsLeafNamesNoAspNetType()

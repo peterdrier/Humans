@@ -53,8 +53,9 @@
                         why the orchestrator sat in Humans.Application until now. Peter's
                         Base-floor decision of 2026-08-14 supersedes that reading: leaves are
                         referenceable from anywhere, so hosting a section's own sign-in path in
-                        the hub bought nothing. AuthArchitectureTests.SectionReferencesNoVerticalSection
-                        now pins the list rather than asserting it is empty of verticals.
+                        the hub bought nothing. AuthArchitectureTests.SectionReferencesNoVerticalSection,
+                        which pinned this list on the old premise, was retired in the same lane —
+                        this comment is the record now, so keep a reason beside every name.
 
       There is still deliberately no Humans.Teams.Contracts or Humans.Onboarding.Contracts
       reference: ISystemTeamSync is still a Humans.Application interface, so Teams costs no
