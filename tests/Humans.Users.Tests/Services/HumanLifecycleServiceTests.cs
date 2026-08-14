@@ -4,15 +4,15 @@ using Humans.AuditLog.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Onboarding.Contracts;
 using Humans.Application.Interfaces.Users;
-using Humans.Application.Services.HumanLifecycle;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
 using Humans.Users.Contracts;
+using Humans.Users.Services;
 
-namespace Humans.Application.Tests.Services.HumanLifecycle;
+namespace Humans.Users.Tests.Services;
 
 /// <summary>
 /// Unit tests for the lifecycle state-machine surface extracted from

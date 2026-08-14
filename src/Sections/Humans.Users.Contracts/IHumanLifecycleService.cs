@@ -1,6 +1,7 @@
+using Humans.Application.Interfaces;
 using Humans.Onboarding.Contracts;
 
-namespace Humans.Application.Interfaces.HumanLifecycle;
+namespace Humans.Users.Contracts;
 
 /// <summary>
 /// Owns ongoing-membership state transitions on already-onboarded humans

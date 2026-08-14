@@ -1,6 +1,5 @@
 using Microsoft.Extensions.Logging;
 using Humans.AuditLog.Contracts;
-using Humans.Application.Interfaces.HumanLifecycle;
 using Humans.Notifications.Contracts;
 using Humans.Onboarding.Contracts;
 using Humans.Application.Interfaces;
@@ -9,10 +8,10 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Users.Contracts;
 
-namespace Humans.Application.Services.HumanLifecycle;
+namespace Humans.Users.Services;
 
 // Suspend/unsuspend for onboarded humans. Owns no tables. See nobodies-collective#583 (umbrella #563).
-public sealed class HumanLifecycleService(
+internal sealed class HumanLifecycleService(
     IUserService userService,
     INotificationEmitter notificationService,
     INotificationAutoResolve notificationAutoResolve,

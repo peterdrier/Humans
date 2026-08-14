@@ -1,7 +1,7 @@
 using AwesomeAssertions;
-using HumanLifecycleService = Humans.Application.Services.HumanLifecycle.HumanLifecycleService;
+using Humans.Users.Services;
 
-namespace Humans.Application.Tests.Architecture;
+namespace Humans.Users.Tests.Architecture;
 
 /// <summary>
 /// Architecture invariants for the lifecycle state-machine extracted from

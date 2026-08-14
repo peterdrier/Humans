@@ -3,7 +3,6 @@ using Humans.Application.DTOs;
 using Humans.AuditLog.Contracts;
 using Humans.Consent.Contracts;
 using Humans.Email.Contracts;
-using Humans.Application.Interfaces.HumanLifecycle;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Governance.Contracts;
 using Humans.Notifications.Contracts;
