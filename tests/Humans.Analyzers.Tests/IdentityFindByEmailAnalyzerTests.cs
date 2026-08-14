@@ -5,7 +5,7 @@ namespace Humans.Analyzers.Tests;
 public class IdentityFindByEmailAnalyzerTests
 {
     private const string Stub = """
-        namespace Humans.Domain.Entities
+        namespace Humans.Users.Contracts
         {
             public class User { }
         }
@@ -37,7 +37,7 @@ public class IdentityFindByEmailAnalyzerTests
                 public class Caller
                 {
                     public async System.Threading.Tasks.Task Run(
-                        Microsoft.AspNetCore.Identity.UserManager<Humans.Domain.Entities.User> mgr)
+                        Microsoft.AspNetCore.Identity.UserManager<Humans.Users.Contracts.User> mgr)
                     {
                         var u = await mgr.FindByEmailAsync("x@y");
                     }
@@ -63,7 +63,7 @@ public class IdentityFindByEmailAnalyzerTests
                 public class Caller
                 {
                     public async System.Threading.Tasks.Task Run(
-                        Microsoft.AspNetCore.Identity.UserManager<Humans.Domain.Entities.User> mgr)
+                        Microsoft.AspNetCore.Identity.UserManager<Humans.Users.Contracts.User> mgr)
                     {
                         var u = await mgr.FindByNameAsync("alice");
                     }
@@ -89,7 +89,7 @@ public class IdentityFindByEmailAnalyzerTests
                 public class Caller
                 {
                     public async System.Threading.Tasks.Task Run(
-                        Microsoft.AspNetCore.Identity.UserManager<Humans.Domain.Entities.User> mgr)
+                        Microsoft.AspNetCore.Identity.UserManager<Humans.Users.Contracts.User> mgr)
                     {
                         var u = await mgr.FindByIdAsync("123");
                     }
@@ -115,7 +115,7 @@ public class IdentityFindByEmailAnalyzerTests
                 public class Caller
                 {
                     public async System.Threading.Tasks.Task Run(
-                        Microsoft.AspNetCore.Identity.UserManager<Humans.Domain.Entities.User> mgr)
+                        Microsoft.AspNetCore.Identity.UserManager<Humans.Users.Contracts.User> mgr)
                     {
                         var u = await mgr.FindByEmailAsync("x@y");
                     }

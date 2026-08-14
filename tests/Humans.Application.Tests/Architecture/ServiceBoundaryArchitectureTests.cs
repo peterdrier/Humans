@@ -116,14 +116,6 @@ public class ServiceBoundaryArchitectureTests
     }
 
     [HumansFact]
-    public void Users_and_profiles_share_one_repository_ownership_section()
-    {
-        RepositoryOwners[typeof(IUserRepository)].Should().Be("Humans");
-        ServiceSection(typeof(Humans.Users.Services.UserService)).Should().Be("Humans");
-        ServiceSection(typeof(Humans.Users.Services.ProfileService)).Should().Be("Humans");
-    }
-
-    [HumansFact]
     public void Application_service_read_methods_do_not_add_new_entity_return_types()
     {
         RatchetTestRunner.Run(
@@ -131,6 +123,33 @@ public class ServiceBoundaryArchitectureTests
             EntityReadReturnBaselinePath,
             ScanApplicationServiceEntityReadReturns());
     }
+
+    /// <summary>
+    /// EF entity types that sit on a contracts leaf rather than under a <c>*.Domain</c>
+    /// namespace, so neither half of the sweep above finds them.
+    /// </summary>
+    /// <remarks>
+    /// <c>User : IdentityUser&lt;Guid&gt;</c> is named by <c>Humans.UI</c> and by ~48 files
+    /// across Shell and twenty test projects, and Base cannot reference a section, so the nine
+    /// Users/Profiles entities are public on <c>Humans.Users.Contracts</c>
+    /// (nobodies-collective/Humans#866, G5 lane 2). Without this list the two
+    /// <c>Humans.Domain.Entities.User</c> rows in the baseline read as *fixed* on byte-identical
+    /// code — the silent shrink design §10 warns about, arriving through a third keying (not a
+    /// path, not an assembly: the namespace convention that says "entities live in .Domain").
+    /// The list empties when the entities are internalised; see the lane 2 handoff.
+    /// </remarks>
+    private static readonly Type[] LeafResidentEntities =
+    [
+        typeof(Humans.Users.Contracts.User),
+        typeof(Humans.Users.Contracts.UserEmail),
+        typeof(Humans.Users.Contracts.EventParticipation),
+        typeof(Humans.Users.Contracts.Profile),
+        typeof(Humans.Users.Contracts.ContactField),
+        typeof(Humans.Users.Contracts.ProfileLanguage),
+        typeof(Humans.Users.Contracts.VolunteerHistoryEntry),
+        typeof(Humans.Users.Contracts.CommunicationPreference),
+        typeof(Humans.Users.Contracts.AccountMergeRequest),
+    ];
 
     internal static IEnumerable<string> ScanApplicationServiceEntityReadReturns()
     {
@@ -144,6 +163,7 @@ public class ServiceBoundaryArchitectureTests
             .Concat(SectionAssemblies()
                 .SelectMany(a => a.GetTypes())
                 .Where(t => t.Namespace?.EndsWith(".Domain", StringComparison.Ordinal) == true))
+            .Concat(LeafResidentEntities)
             .ToHashSet();
 
         foreach (var serviceType in ApplicationInterfaceTypes()
@@ -183,8 +203,13 @@ public class ServiceBoundaryArchitectureTests
     // (I<Section>Service : I<Section>ServiceRead, where the deriving half stays behind);
     // Users' IAccountProvisioningService is the whole-interface case and is what surfaced
     // this (nobodies-collective/Humans#866, lane 2 PR A).
+    // …and the anchor itself is load-bearing: it was typeof(IUserRepository) until that
+    // interface moved into Humans.Users with the section (#866, lane 2 PR B), which silently
+    // relocated this whole sweep onto the section assembly and dropped every
+    // Humans.Application.Interfaces.* interface out of it. IFileStorage is the replacement
+    // because peters-hard-rules.md pins one key-addressed storage abstraction to Base.
     private static IEnumerable<Type> ApplicationInterfaceTypes() =>
-        typeof(IUserRepository).Assembly.GetTypes()
+        typeof(Humans.Application.Interfaces.IFileStorage).Assembly.GetTypes()
             .Where(t => t.IsInterface)
             .Where(t => t.Namespace?.StartsWith("Humans.Application.Interfaces", StringComparison.Ordinal) == true)
             .Concat(SectionAssemblies()
@@ -227,12 +252,6 @@ public class ServiceBoundaryArchitectureTests
     private static IEnumerable<Type> RepositoryInterfaceTypes() =>
         ApplicationInterfaceTypes()
             .Where(t => typeof(IRepository).IsAssignableFrom(t));
-
-    private static string ServiceSection(Type serviceType)
-    {
-        var section = serviceType.Namespace!.Split('.')[3];
-        return section is "Users" or "Profile" or "Profiles" ? "Humans" : section;
-    }
 
     private static IEnumerable<(string MemberName, Type ReturnType)> EntityReturnReadMembers(Type serviceType)
     {

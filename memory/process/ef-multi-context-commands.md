@@ -10,8 +10,8 @@ also varies: a section at G5 owns its migrations, so they are generated into and
 section's own project.
 
 There is no main pile: `HumansDbContext` and its root chain were deleted at peel 15
-(design doc §10.3). Users/Profiles is a section like any other (`UsersDbContext`,
-`Migrations/Users/`).
+(design doc §10.3). Users/Profiles is a section project like any other since G5 lane 2
+(`UsersDbContext`, `src/Sections/Humans.Users/Data/Migrations/`).
 
 **Section still in Humans.Infrastructure** — context AND output dir (the section's
 migrations live in their own folder with their own `<Section>DbContextModelSnapshot.cs`):

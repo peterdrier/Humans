@@ -13,7 +13,7 @@ namespace Humans.Users.Data;
 /// <c>volunteer_history_entries</c>, <c>communication_preferences</c>,
 /// <c>account_merge_requests</c>, <c>event_participations</c> and the seven
 /// ASP.NET Identity tables, with its own <c>__EFMigrationsHistory_Users</c>
-/// table and migrations under <c>Migrations/Users/</c>. Same database, same
+/// table and migrations under <c>Data/Migrations/</c>. Same database, same
 /// connection — the split is a code-side partition of the EF model.
 /// </summary>
 /// <remarks>

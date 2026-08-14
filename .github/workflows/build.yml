@@ -25,7 +25,7 @@ env:
   # section adds its pair here and nowhere else in this file; a G5 move
   # edits its pair's project here.
   SECTION_DB_CONTEXTS: >-
-    UsersDbContext:src/Humans.Infrastructure
+    UsersDbContext:src/Sections/Humans.Users
     SystemSettingsDbContext:src/Sections/Humans.SystemSettings
     ContainersDbContext:src/Sections/Humans.Containers
     AgentDbContext:src/Sections/Humans.Agent

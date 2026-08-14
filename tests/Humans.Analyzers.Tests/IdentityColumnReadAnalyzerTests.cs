@@ -5,7 +5,7 @@ namespace Humans.Analyzers.Tests;
 public class IdentityColumnReadAnalyzerTests
 {
     private const string DomainStub = """
-        namespace Humans.Domain.Entities
+        namespace Humans.Users.Contracts
         {
             public class User
             {
@@ -37,7 +37,7 @@ public class IdentityColumnReadAnalyzerTests
             {
                 public class Reader
                 {
-                    public string? Get(Humans.Domain.Entities.User user) => user.Email;
+                    public string? Get(Humans.Users.Contracts.User user) => user.Email;
                 }
             }
             """;
@@ -59,7 +59,7 @@ public class IdentityColumnReadAnalyzerTests
             {
                 public class Reader
                 {
-                    public string? Get(Humans.Domain.Entities.User user) => user.NormalizedEmail;
+                    public string? Get(Humans.Users.Contracts.User user) => user.NormalizedEmail;
                 }
             }
             """;
@@ -81,7 +81,7 @@ public class IdentityColumnReadAnalyzerTests
             {
                 public class Reader
                 {
-                    public void Read(Humans.Domain.Entities.User u)
+                    public void Read(Humans.Users.Contracts.User u)
                     {
                         _ = u.Email;
                         _ = u.NormalizedEmail;
@@ -109,7 +109,7 @@ public class IdentityColumnReadAnalyzerTests
             {
                 public class Reader
                 {
-                    public string? Get(Humans.Domain.Entities.User u) => u.Email;
+                    public string? Get(Humans.Users.Contracts.User u) => u.Email;
                 }
             }
             """;
@@ -133,7 +133,7 @@ public class IdentityColumnReadAnalyzerTests
             {
                 public class Reader
                 {
-                    public string? Get(Humans.Domain.Entities.UserInfo info) => info.Email;
+                    public string? Get(Humans.Users.Contracts.UserInfo info) => info.Email;
                 }
             }
             """;
@@ -155,7 +155,7 @@ public class IdentityColumnReadAnalyzerTests
             {
                 public class Reader
                 {
-                    public string? Get(Humans.Domain.Entities.User u) => u.OtherField;
+                    public string? Get(Humans.Users.Contracts.User u) => u.OtherField;
                 }
             }
             """;
@@ -178,7 +178,7 @@ public class IdentityColumnReadAnalyzerTests
             {
                 public class Writer
                 {
-                    public void Set(Humans.Domain.Entities.User user) => user.Email = "x@y";
+                    public void Set(Humans.Users.Contracts.User user) => user.Email = "x@y";
                 }
             }
             """;
@@ -204,7 +204,7 @@ public class IdentityColumnReadAnalyzerTests
             {
                 public class Reader
                 {
-                    public bool HasEmail(Humans.Domain.Entities.User u) =>
+                    public bool HasEmail(Humans.Users.Contracts.User u) =>
                         u is { Email: not null };
                 }
             }
@@ -229,7 +229,7 @@ public class IdentityColumnReadAnalyzerTests
             {
                 public class Reader
                 {
-                    public string Classify(Humans.Domain.Entities.User u) => u switch
+                    public string Classify(Humans.Users.Contracts.User u) => u switch
                     {
                         { UserName: null } => "anon",
                         _ => "named"
@@ -255,7 +255,7 @@ public class IdentityColumnReadAnalyzerTests
             {
                 public class Reader
                 {
-                    public string Get(Humans.Domain.Entities.User u) => $"{u.UserName}";
+                    public string Get(Humans.Users.Contracts.User u) => $"{u.UserName}";
                 }
             }
             """;

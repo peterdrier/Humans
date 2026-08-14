@@ -6,6 +6,7 @@ using Humans.Application.Interfaces;
 using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Caching;
+using Humans.Application.Interfaces.EarlyEntry;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Shifts.Contracts;
@@ -53,6 +54,7 @@ public sealed class TeamsDependencyCycleTests
         services.AddScoped<ITeamRepository>(_ => Substitute.For<ITeamRepository>());
         services.AddScoped<INotificationMeterCacheInvalidator>(_ => Substitute.For<INotificationMeterCacheInvalidator>());
         services.AddScoped<IShiftAuthorizationInvalidator>(_ => Substitute.For<IShiftAuthorizationInvalidator>());
+        services.AddScoped<IEarlyEntryInvalidator>(_ => Substitute.For<IEarlyEntryInvalidator>());
         services.AddScoped<IAdminAuthorizationService>(_ => Substitute.For<IAdminAuthorizationService>());
         services.AddScoped<NodaTime.IClock>(_ => Substitute.For<NodaTime.IClock>());
 
@@ -67,13 +69,14 @@ public sealed class TeamsDependencyCycleTests
         // subject here is the Teams chain.
         services.AddScoped<IRoleAssignmentService>(_ => Substitute.For<IRoleAssignmentService>());
 
-        services.AddScoped<ShiftManagementService>();
-        services.AddScoped<IShiftManagementService>(sp => sp.GetRequiredService<ShiftManagementService>());
+        // Shifts is another section; its concrete service and repository are internal to
+        // Humans.Shifts and its own graph is pinned by that section's own tests.
+        services.AddScoped<IShiftManagementService>(_ => Substitute.For<IShiftManagementService>());
+        services.AddScoped<IShiftManagementServiceRead>(_ => Substitute.For<IShiftManagementServiceRead>());
 
         services.AddScoped<TeamService>();
         services.AddScoped<ITeamService>(sp => sp.GetRequiredService<TeamService>());
 
-        services.AddScoped<Microsoft.Extensions.Logging.ILogger<ShiftManagementService>>(_ => NullLogger<ShiftManagementService>.Instance);
         services.AddScoped<Microsoft.Extensions.Logging.ILogger<TeamService>>(_ => NullLogger<TeamService>.Instance);
 
         using var provider = services.BuildServiceProvider(validateScopes: true);

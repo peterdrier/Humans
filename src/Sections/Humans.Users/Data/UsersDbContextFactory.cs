@@ -24,7 +24,7 @@ internal sealed class UsersDbContextFactory : IDesignTimeDbContextFactory<UsersD
             npgsqlOptions =>
             {
                 npgsqlOptions.UseNodaTime();
-                npgsqlOptions.MigrationsAssembly("Humans.Infrastructure");
+                npgsqlOptions.MigrationsAssembly("Humans.Users");
                 npgsqlOptions.MigrationsHistoryTable(
                     SectionMigrationsHistory.TableFor<UsersDbContext>());
                 npgsqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);

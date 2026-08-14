@@ -5,7 +5,7 @@ description: After running any EF tool (`migrations add`, `migrations remove`, `
 
 # Always `git diff` the snapshot after running an EF tool
 
-`dotnet ef migrations add --context <C>` rewrites that context's snapshot, named after the context class — `src/Humans.Infrastructure/Migrations/Users/UsersDbContextModelSnapshot.cs` for `UsersDbContext`, `src/Sections/Humans.Holded/Data/Migrations/HoldedDbContextModelSnapshot.cs` for a G5-moved section (see [[ef-multi-context-commands]]) — to reflect EF's view of the current model. The migration **body** (`Up`/`Down` methods) shows the schema diff between the prior snapshot and the new one. The **snapshot file** is a full rewrite of the model state.
+`dotnet ef migrations add --context <C>` rewrites that context's snapshot, named after the context class — `src/Sections/Humans.Users/Data/Migrations/UsersDbContextModelSnapshot.cs` for `UsersDbContext`, `src/Sections/Humans.Holded/Data/Migrations/HoldedDbContextModelSnapshot.cs` for a G5-moved section (see [[ef-multi-context-commands]]) — to reflect EF's view of the current model. The migration **body** (`Up`/`Down` methods) shows the schema diff between the prior snapshot and the new one. The **snapshot file** is a full rewrite of the model state.
 
 These can diverge. EF can produce an empty migration body (no `Up`/`Down` content) while still rewriting the snapshot file substantially. Causes include:
 - Transient model-building soft failures (e.g., a custom `ValueConverter` / `ValueComparer` throws or warns during one specific invocation and the affected entity gets silently skipped from the produced model).
