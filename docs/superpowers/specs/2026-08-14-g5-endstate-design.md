@@ -66,6 +66,31 @@ unless the reference drop is an explicit lane.
   three sections") dissolves once leaf references are legal; the architecture tests
   pinning the old placements retire in the same PRs.
 
+Two constraints on the leaf unwind (Codex P2s on peterdrier/Humans#1293, both confirmed):
+
+- **Analyzer attributes in leaves.** 16 files across the `.Contracts` projects carry
+  `[SurfaceBudget]`, `[ExternalWrite]`, or `[Grandfathered]`, whose definitions move to
+  Base with `Humans.Interfaces`. The analyzers resolve these by hardcoded metadata name
+  (`GetTypeByMetadataName` / namespace string compare — e.g.
+  `RequestScopedCancellationOnExternalWriteAnalyzer.ExternalWriteAttributeFullName`), so
+  naive duplication makes resolution ambiguous → null → **enforcement silently off**, and
+  the Base rename/namespace move breaks the hardcoded constants regardless. Lane rule:
+  update the analyzers' full-name constants in the same PR as the namespace move; for
+  usages inside leaves, prefer retiring `[Grandfathered]` entries outright (they're G6
+  debt), and for the rest use per-assembly `internal` polyfill declarations of the
+  attribute (the `IsExternalInit` pattern — name-matched analyzers still see them) rather
+  than a Base reference. Verify each analyzer still fires after the change; silently
+  losing enforcement is a FAIL, not a trade-off.
+- **`UserInfo`'s object graph.** `UserEmailInfo` names `GoogleEmailStatus`,
+  `CommunicationPreferenceInfo` names `MessageCategory`, `ProfileInfo` names
+  `MembershipTier` and `ConsentCheckStatus` — four enums the inventory assigns to
+  GoogleIntegration, Notifications, Governance, and Consent. A zero-reference
+  `Users.Contracts` cannot compile `UserInfo` unless they come along: **those four enums
+  ride into `Users.Contracts` with `UserInfo`, overriding the appendix dispositions.**
+  Their consuming sections reference the leaf anyway (near-universal). Each enum moves
+  home to its owning section when nobodies-collective/Humans#1044 slices its field out of
+  the `UserInfo`/`ProfileInfo` graph.
+
 ## Humans.UI retirement (a 4b lane)
 
 `Humans.UI` (~71 files) splits three ways — full verification in the infra/UI appendix:
