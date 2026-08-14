@@ -1,12 +1,23 @@
 using Humans.Application.Architecture;
+using Humans.Application.Interfaces;
 using NodaTime;
 
-namespace Humans.Application.Interfaces.TicketVendor;
+namespace Humans.Tickets.Contracts;
 
 /// <summary>
 /// Vendor-agnostic interface for ticket platform operations.
 /// Implementations wrap vendor-specific APIs (e.g. TicketTailor).
 /// </summary>
+/// <remarks>
+/// A deliberate port, not a leftover: it exists so the 2027 vendor swap is one project
+/// deleted and one added. It lives in <c>Humans.Tickets</c> rather than on the
+/// <c>Humans.Tickets.Contracts</c> leaf because no consumer in Base names it — the two
+/// injection sites are this section and Shell's <c>TicketVendorHealthCheck</c>, and the
+/// one adapter section (<c>Humans.TicketTailor</c>) references this project directly
+/// (nobodies-collective/Humans#866, G5 lane 4b-2g). The leaf must keep naming none of the
+/// vocabulary below; sections other than Tickets go through
+/// <see cref="ITicketDiscountCodes"/> / <see cref="ITicketVendorMirror"/> instead.
+/// </remarks>
 public interface ITicketVendorService : IApplicationService
 {
     /// <summary>Fetch orders, optionally since a given timestamp.</summary>

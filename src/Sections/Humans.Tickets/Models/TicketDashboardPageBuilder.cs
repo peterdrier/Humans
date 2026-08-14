@@ -2,7 +2,6 @@ using Humans.Application.Configuration;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Services;
 using Microsoft.Extensions.Options;
-using Humans.Application.Interfaces.TicketVendor;
 using Humans.Tickets.Services.Dtos;
 
 namespace Humans.Tickets.Models;

@@ -1,6 +1,6 @@
 using NodaTime;
 
-namespace Humans.Application.Interfaces.TicketVendor;
+namespace Humans.Tickets.Contracts;
 
 /// <summary>Vendor-agnostic order data returned by ITicketVendorService.</summary>
 public record VendorOrderDto(

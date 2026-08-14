@@ -639,7 +639,6 @@
         "src/Sections/Humans.Tickets/**",
         "src/Sections/Humans.Tickets.Contracts/**",
         "src/Humans.Application/Configuration/TicketVendorSettings.cs",
-        "src/Humans.Application/Interfaces/TicketVendor/**",
         "src/Humans.Web/ViewComponents/MyTicketStubsViewComponent.cs"
       ],
       "symbols": [

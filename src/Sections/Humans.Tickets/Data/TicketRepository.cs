@@ -10,7 +10,6 @@ using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
-using Humans.Application.Interfaces.TicketVendor;
 using Humans.Tickets.Controllers;
 using Humans.Tickets.Domain;
 using Humans.Tickets.Services.Dtos;

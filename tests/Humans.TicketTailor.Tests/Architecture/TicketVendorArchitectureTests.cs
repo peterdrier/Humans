@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces.TicketVendor;
+using Humans.Tickets.Contracts;
 using Humans.TicketTailor.Services;
 
 namespace Humans.TicketTailor.Tests.Architecture;
@@ -7,8 +7,10 @@ namespace Humans.TicketTailor.Tests.Architecture;
 /// <summary>
 /// Architecture tests enforcing the connector boundary for the Ticket Tailor
 /// integration (issue #555 — §15 Part 1). <c>ITicketVendorService</c> is the port and
-/// stays in <c>Humans.Application</c> beside <c>IStripeService</c>; the two adapters live
-/// in this section. The interface must never leak HTTP-client or vendor-SDK types across
+/// lives under <c>Humans.Tickets/Contracts/</c>, the section that owns ticketing; the two
+/// adapters live in this section, which references <c>Humans.Tickets</c> directly
+/// (nobodies-collective/Humans#866, G5 lane 4b-2g — it used to sit in
+/// <c>Humans.Application</c>). The interface must never leak HTTP-client or vendor-SDK types across
 /// the boundary — its entire signature set (parameters, return types) must be expressible
 /// in port terms (the port's own DTOs, primitives, NodaTime, BCL collections).
 ///
@@ -26,6 +28,8 @@ public class TicketVendorArchitectureTests
     // Namespaces that indicate an HTTP-client or vendor-SDK type leaking into
     // the Application-layer interface. Matching is prefix-based; add more
     // here if a new vendor library shows up.
+    private const string PortNamespace = "Humans.Tickets.Contracts";
+
     private static readonly string[] ForbiddenNamespacePrefixes =
     [
         "System.Net.Http",
@@ -34,37 +38,42 @@ public class TicketVendorArchitectureTests
     ];
 
     [HumansFact]
-    public void ITicketVendorService_LivesInApplicationInterfacesNamespace()
+    public void ITicketVendorService_LivesUnderTheTicketsSectionContracts()
     {
         typeof(ITicketVendorService).Namespace
-            .Should().Be("Humans.Application.Interfaces.TicketVendor",
-                because: "the vendor-agnostic port lives in the Application layer, in a folder named for the port rather than for the Tickets section, so nothing reads as an unfinished move (design-rules §1, §15)");
+            .Should().Be(PortNamespace,
+                because: "the vendor-agnostic port is public surface of the section that owns ticketing, so it sits under Humans.Tickets/Contracts/ where HUM0034 expects a section's public types (nobodies-collective/Humans#866, G5 lane 4b-2g)");
     }
 
     [HumansFact]
-    public void ITicketVendorService_IsDeclaredInApplicationAssembly()
+    public void ITicketVendorService_IsDeclaredInTheTicketsAssembly()
     {
         typeof(ITicketVendorService).Assembly.GetName().Name
-            .Should().Be("Humans.Application",
-                because: "the port must be compiled into Humans.Application so Application-layer consumers can reference it without an Infrastructure dependency");
+            .Should().Be("Humans.Tickets",
+                because: "the port is compiled into the owning section, not onto the Humans.Tickets.Contracts leaf — no Base consumer names it, and the leaf must stay free of the vendor's vocabulary");
     }
 
     [HumansFact]
-    public void HumansApplicationAssembly_HasNoReferenceToInfrastructureOrVendorSdk()
+    public void NeitherThePortsAssemblyNorBaseReferencesTheAdapterSection()
     {
-        var applicationAssembly = typeof(ITicketVendorService).Assembly;
+        // Two anchors on purpose. The adapter half follows the port (now Humans.Tickets);
+        // the Humans.Application half is a layering claim about Base that never had
+        // anything to do with where the port lives, so it stays anchored on Base — the
+        // port's own assembly references Humans.Infrastructure by design (G5 lane 4b-2g).
+        var portAssembly = typeof(ITicketVendorService).Assembly;
+        var baseAssembly = typeof(Humans.Application.CacheKeys).Assembly;
 
-        var referenced = applicationAssembly.GetReferencedAssemblies()
+        portAssembly.GetReferencedAssemblies()
             .Select(a => a.Name ?? string.Empty)
-            .ToList();
+            .Should().NotContain(
+                name => name.StartsWith("Humans.TicketTailor", StringComparison.Ordinal),
+                because: "the port's owning section must not reference the adapter section; the dependency runs the other way, which is what lets the adapter be deleted for the 2027 vendor");
 
-        referenced.Should().NotContain(
-            name => name.StartsWith("Humans.Infrastructure", StringComparison.Ordinal),
-            because: "Humans.Application must not depend on Humans.Infrastructure — the connector pattern inverts this dependency");
-
-        referenced.Should().NotContain(
-            name => name.StartsWith("Humans.TicketTailor", StringComparison.Ordinal),
-            because: "Humans.Application must not reference the adapter section; the dependency runs the other way, which is what lets the adapter be deleted for the 2027 vendor");
+        baseAssembly.GetReferencedAssemblies()
+            .Select(a => a.Name ?? string.Empty)
+            .Should().NotContain(
+                name => name.StartsWith("Humans.Infrastructure", StringComparison.Ordinal),
+                because: "Humans.Application must not depend on Humans.Infrastructure — the connector pattern inverts this dependency");
     }
 
     [HumansFact]
@@ -115,13 +124,16 @@ public class TicketVendorArchitectureTests
     }
 
     [HumansFact]
-    public void ITicketVendorService_AllDtoTypesLiveInApplicationDtos()
+    public void ITicketVendorService_AllDtoTypesLiveBesideThePort()
     {
         // Strict allowlist: every type surfaced by the interface must be a
-        // primitive, void/string, System.*, NodaTime.*, or live beside the port in
-        // Humans.Application.Interfaces.TicketVendor. Anything else — Humans.Domain
-        // entities, a section's types, vendor SDKs, etc. — is a boundary leak and an
-        // offender, regardless of which assembly it lives in.
+        // primitive, void/string, System.*, NodaTime.*, or live beside the port —
+        // namespace Humans.Tickets.Contracts *and* declared in the port's own assembly.
+        // The assembly clause matters since the move: the Humans.Tickets.Contracts leaf
+        // shares that namespace, and re-exporting a leaf type here would put Tickets'
+        // boundary vocabulary in front of every future vendor adapter. Anything else —
+        // Humans.Domain entities, a section's types, vendor SDKs — is a boundary leak.
+        var portAssembly = typeof(ITicketVendorService).Assembly;
         var offenders = new List<string>();
 
         foreach (var method in typeof(ITicketVendorService).GetMethods())
@@ -132,7 +144,7 @@ public class TicketVendorArchitectureTests
         }
 
         offenders.Should().BeEmpty(
-            because: "custom types surfaced by ITicketVendorService must live beside the port in Humans.Application.Interfaces.TicketVendor; offenders: "
+            because: $"custom types surfaced by ITicketVendorService must live beside the port in {PortNamespace}, in the port's own assembly; offenders: "
                      + string.Join(", ", offenders));
 
         void Inspect(Type type, string location)
@@ -145,7 +157,8 @@ public class TicketVendorArchitectureTests
                 if (probed == typeof(void) || probed == typeof(string)) continue;
                 if (ns.StartsWith("System", StringComparison.Ordinal)) continue;
                 if (ns.StartsWith("NodaTime", StringComparison.Ordinal)) continue;
-                if (string.Equals(ns, "Humans.Application.Interfaces.TicketVendor", StringComparison.Ordinal)) continue;
+                if (string.Equals(ns, PortNamespace, StringComparison.Ordinal)
+                    && probed.Assembly == portAssembly) continue;
 
                 offenders.Add($"{location}: {probed.FullName} (namespace {ns})");
             }

@@ -873,15 +873,23 @@ Git Bash.)
        reference at all** — Scanner's table-less shape, reached by a section that had code in
        Base's service folder on the way in (proven: Mailer).
      - **…and a third disposition, when the connector is *replaceable*: give it its own
-       section, and leave the port in Base.** Agent's rule takes the connector into the
-       section; Guide's leaves it in Base. Neither fits a vendor that is expected to
-       change: `ITicketVendorService` is shaped in the application's terms (no vendor type
-       in its signatures), the TicketTailor client is one implementation of it, and a 2027
-       vendor swap should be one project deleted and one added. So the port stayed in
-       `Humans.Application/Interfaces/TicketVendor/` beside `IStripeService`, the client and
-       its dev stub went to `src/Sections/Humans.TicketTailor` — plain `Microsoft.NET.Sdk`,
-       no tables, no `Humans.Infrastructure` reference, an empty `Contracts/` — and the
-       owning section (`Humans.Tickets`) became the application's only door to ticketing.
+       section, and give the port to the section that owns the concern.** Agent's rule takes
+       the connector into the section; Guide's leaves it in Base. Neither fits a vendor that is
+       expected to change: `ITicketVendorService` is shaped in the application's terms (no
+       vendor type in its signatures), the TicketTailor client is one implementation of it, and
+       a 2027 vendor swap should be one project deleted and one added. The port went to
+       `src/Sections/Humans.Tickets/Contracts/` and the client and its dev stub to
+       `src/Sections/Humans.TicketTailor` — plain `Microsoft.NET.Sdk`, no tables, an empty
+       `Contracts/`, and a direct `ProjectReference` on `Humans.Tickets` to name the port —
+       and the owning section (`Humans.Tickets`) became the application's only door to
+       ticketing. **The port belongs to the owning section, not to Base and not to the
+       adapter's leaf:** it sat in Base until G5 lane 4b-2g (nobodies-collective/Humans#866)
+       purely because Tickets was not yet a project, and it stays off the
+       `Humans.Tickets.Contracts` leaf because no Base consumer names it and the leaf must keep
+       vendor vocabulary away from other sections. **An adapter section referencing the owning
+       section's project is the sanctioned shape** (Peter, 2026-08-14) — the price is that the
+       adapter picks up the owner's transitive references, which for TicketTailor meant losing
+       its "no `Humans.Infrastructure` reference" property. Nothing in it names them.
        **The load-bearing half is the invariant, not the folder:** an architecture test
        asserts that only the owning section and Shell's health check inject the port, because
        what actually breaks a vendor swap is a second section reaching past the door

@@ -1,4 +1,3 @@
-using Humans.Application.Interfaces.TicketVendor;
 using Humans.Tickets.Contracts;
 using NodaTime;
 

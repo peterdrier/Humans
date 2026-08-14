@@ -1694,9 +1694,10 @@ orchestration, the admin surface — everything `internal sealed`),
 `ITicketServiceRead`, `ITicketSync`, `ITicketTransferQueue`,
 `ITicketDiscountCodes`, `ITicketVendorMirror`), and
 `src/Sections/Humans.TicketTailor` (the vendor adapter — the sole
-implementation of the vendor port; owns no tables, references no
-Infrastructure, publishes nothing). `ITicketVendorService` (the vendor
-port itself) stays in `src/Humans.Application/Interfaces/TicketVendor/`.
+implementation of the vendor port; owns no tables, publishes nothing, and
+references `Humans.Tickets` directly to name the port).
+`ITicketVendorService` (the vendor port itself) lives in
+`src/Sections/Humans.Tickets/Contracts/`.
 No schema change — only `Migrations/Tickets/`'s namespace line moved.
 **DbContext:**
 `TicketsDbContext` — **peeled** (nobodies-collective/Humans#1236, part
@@ -1905,7 +1906,7 @@ no DI dependencies.
 ### TicketVendorGateway (Scoped)
 
 No repository. Thin §15-compliant facade over `ITicketVendorService` (the
-vendor port, `src/Humans.Application/Interfaces/TicketVendor/`) — same
+vendor port, `src/Sections/Humans.Tickets/Contracts/`) — same
 shape as `GoogleTranslationService`. Implements `ITicketDiscountCodes` +
 `ITicketVendorMirror` (`Humans.Tickets.Contracts`) so cross-section callers
 (`CampaignService`'s discount-code grant waves) depend on the section's own
