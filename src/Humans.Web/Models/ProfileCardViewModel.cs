@@ -1,3 +1,5 @@
+using Humans.Users.Models;
+using Humans.UI.Helpers;
 using NodaTime;
 using Humans.Application.Extensions;
 using Humans.Domain.Enums;
@@ -11,7 +13,7 @@ namespace Humans.Web.Models;
 /// <summary>
 /// View model for the ProfileCard ViewComponent.
 /// </summary>
-public class ProfileCardViewModel
+internal sealed class ProfileCardViewModel
 {
     public Guid UserId { get; set; }
     public string DisplayName { get; set; } = string.Empty;

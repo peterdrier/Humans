@@ -8,6 +8,7 @@ using System.Globalization;
 using System.Web;
 using Humans.Users.Authorization;
 using Humans.Application.Configuration;
+using Microsoft.Extensions.Configuration;
 using Humans.Application.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -19,9 +20,8 @@ using Humans.Gdpr.Contracts;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Web.Authorization;
 using Humans.UI.Extensions;
-using Humans.Web.Models;
+using Humans.Users.Models;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using Humans.Application.Interfaces.AuditLog;
@@ -44,11 +44,11 @@ using Humans.Users.Services;
 // RoleAssignment nav props are [Obsolete]; service stitches them in memory. Nav-strip tracked in §15i.
 #pragma warning disable CS0618
 
-namespace Humans.Web.Controllers;
+namespace Humans.Users.Controllers;
 
 [Authorize]
 [Route("Profile")]
-public class ProfileController(
+internal sealed class ProfileController(
     IUserService userService,
     UserManager<User> userManager,
     IProfilePictureService profilePictureService,

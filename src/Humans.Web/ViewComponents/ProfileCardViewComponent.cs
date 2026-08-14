@@ -1,3 +1,6 @@
+using Humans.Users.Controllers;
+using Humans.Users.Models;
+using Humans.UI.Helpers;
 using Humans.Auth.Contracts;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;

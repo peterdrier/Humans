@@ -4,12 +4,12 @@ using Humans.Users.Contracts;
 using Humans.Domain.Enums;
 using NodaTime;
 
-namespace Humans.Web.Models;
+namespace Humans.Users.Models;
 
 /// <summary>
 /// View model for the Manage Emails page.
 /// </summary>
-public class EmailsViewModel
+internal sealed class EmailsViewModel
 {
     /// <summary>
     /// All email addresses for the user.
@@ -129,7 +129,7 @@ public class EmailsViewModel
 /// present) supplies the linked-on timestamp and the row id used by the
 /// unlink endpoint.
 /// </summary>
-public class LinkedOAuthAccountViewModel
+internal sealed class LinkedOAuthAccountViewModel
 {
     public string Provider { get; init; } = string.Empty;
     public string ProviderKey { get; init; } = string.Empty;
@@ -177,7 +177,7 @@ public class LinkedOAuthAccountViewModel
 /// One AspNetUserLogins row for the per-user admin diagnostic (issue
 /// nobodies-collective/Humans#697).
 /// </summary>
-public class ExternalLoginRowViewModel
+internal sealed class ExternalLoginRowViewModel
 {
     public string LoginProvider { get; init; } = string.Empty;
     /// <summary>SHA256 prefix of the OIDC `sub`. Shown rather than the raw
@@ -198,7 +198,7 @@ public class ExternalLoginRowViewModel
 /// <summary>
 /// A single email row in the Manage Emails page.
 /// </summary>
-public class EmailRowViewModel
+internal sealed class EmailRowViewModel
 {
     public Guid Id { get; set; }
     public string Email { get; set; } = string.Empty;

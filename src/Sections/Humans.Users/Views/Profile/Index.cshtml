@@ -5,7 +5,7 @@
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Html
 @inject IAuthorizationService AuthService
-@model Humans.Web.Models.ProfileViewModel
+@model Humans.Users.Models.ProfileViewModel
 @{
     ViewData["Title"] = Model.IsOwnProfile ? Localizer["Profile_Title"].Value : Model.DisplayName;
 }

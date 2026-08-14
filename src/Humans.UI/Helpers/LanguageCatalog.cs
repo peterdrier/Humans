@@ -1,4 +1,4 @@
-namespace Humans.Web.Helpers;
+namespace Humans.UI.Helpers;
 
 /// <summary>
 /// ISO 639-1 language code catalog with English display names.

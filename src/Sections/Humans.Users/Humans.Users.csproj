@@ -32,14 +32,16 @@
     <InternalsVisibleTo Include="Humans.Shifts.Tests" />
     <InternalsVisibleTo Include="Humans.Teams.Tests" />
     <!--
-      TEMPORARY, and the condition that removes it: lane 2 phase 3b moved five of the ten
-      controllers (ProfileApi, ProfileBackfillAdmin, ProfilePictureMigrationAdmin,
-      UsersAdminDebug, Unsubscribe). Shell still holds ProfileController and
-      UsersAdminController, which name the internal UserEmailOperations,
-      ProfilePictureProcessor and AdminHumanListAssembler. Delete this line in the commit
-      that moves those two — and in the same commit collapse the four folder-level
-      Views/*/_ViewImports.cshtml into one Views/_ViewImports.cshtml, which cannot exist
-      while this grant does (a root _ViewImports in both assemblies generates the same
+      TEMPORARY, and the condition that removes it: lane 2 phase 3c moved ProfileController
+      and its cluster, so six of the ten controllers are here. Shell still holds
+      UsersAdminController (names the internal AdminHumanListAssembler), ProfileAdminController,
+      UsersAdminAccountMergesController and UserController, and Shell's ProfileCardViewModel /
+      ProfileCardViewComponent / Views/Shared/{_ProfileCard,_HumanPopover} and
+      WidgetGalleryController still name the internal Users view models
+      (ProfileSummaryViewModel and the five display view models in Models/ProfileViewModel.cs).
+      Delete this line in the commit that moves those — and in the same commit collapse the
+      folder-level Views/*/_ViewImports.cshtml into one Views/_ViewImports.cshtml, which cannot
+      exist while this grant does (a root _ViewImports in both assemblies generates the same
       internal Views__ViewImports type and Humans.Web fails with CS0436).
     -->
     <InternalsVisibleTo Include="Humans.Web" />
@@ -96,6 +98,13 @@
     <ProjectReference Include="..\Humans.Notifications.Contracts\Humans.Notifications.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Onboarding.Contracts\Humans.Onboarding.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
+    <!--
+      Views/Profile/Edit.cshtml injects IStringLocalizer<ShiftsResource> for the two
+      shift-preference strings on the profile edit page; ShiftsResource lives in
+      Humans.Shifts, not its Contracts leaf. Acyclic — Humans.Shifts names nothing in
+      Humans.Users. Drops out when the Users resx carve gives these keys a Users home.
+    -->
+    <ProjectReference Include="..\Humans.Shifts\Humans.Shifts.csproj" />
     <ProjectReference Include="..\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />
   </ItemGroup>

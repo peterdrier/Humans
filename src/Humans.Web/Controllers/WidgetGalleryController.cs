@@ -1,3 +1,5 @@
+using Humans.Users.Models;
+using Humans.UI.Helpers;
 using Humans.Shifts.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Teams.Contracts;
@@ -177,7 +179,7 @@ public sealed class WidgetGalleryController(
     }
 }
 
-public sealed class WidgetGalleryViewModel
+internal sealed class WidgetGalleryViewModel
 {
     public required Guid CurrentUserId { get; init; }
     public required string CurrentUserDisplayName { get; init; }

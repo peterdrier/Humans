@@ -5,9 +5,9 @@ using Humans.Application.Extensions;
 using Humans.Domain.Enums;
 using Humans.Users.Contracts;
 
-namespace Humans.Web.Models;
+namespace Humans.Users.Models;
 
-public static class ProfileEditViewModelBuilder
+internal static class ProfileEditViewModelBuilder
 {
     public static ProfileViewModel Build(
         UserInfo info,

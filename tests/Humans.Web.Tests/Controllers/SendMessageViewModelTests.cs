@@ -1,3 +1,4 @@
+using Humans.Users.Models;
 using System.ComponentModel.DataAnnotations;
 using AwesomeAssertions;
 using Humans.Web.Models;

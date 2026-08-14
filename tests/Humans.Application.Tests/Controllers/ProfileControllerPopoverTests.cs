@@ -1,3 +1,5 @@
+using Humans.Users.Controllers;
+using Humans.Users.Models;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Application.Configuration;

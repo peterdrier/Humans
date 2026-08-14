@@ -1,3 +1,5 @@
+using Humans.Users.Models;
+using Humans.UI.Helpers;
 using Humans.Auth.Contracts;
 using Humans.Application;
 using Humans.Domain.Enums;
@@ -10,7 +12,7 @@ using NodaTime;
 
 namespace Humans.Web.Models;
 
-public static class AdminHumanDetailViewModelBuilder
+internal static class AdminHumanDetailViewModelBuilder
 {
     public static AdminHumanDetailViewModel Build(
         UserInfo info,
@@ -87,7 +89,7 @@ public static class AdminHumanDetailViewModelBuilder
             Languages = (profile?.Languages ?? []).Select(pl => new ProfileLanguageDisplayViewModel
             {
                 LanguageCode = pl.LanguageCode,
-                LanguageName = Helpers.LanguageCatalog.GetDisplayName(pl.LanguageCode),
+                LanguageName = LanguageCatalog.GetDisplayName(pl.LanguageCode),
                 Proficiency = pl.Proficiency
             }).ToList(),
             OAuthEmail = info.Email,

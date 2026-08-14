@@ -1,3 +1,5 @@
+using Humans.Users.Models;
+using Humans.UI.Helpers;
 using Humans.UI.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

@@ -1,9 +1,9 @@
 using Humans.Application;
 using Humans.Users.Contracts;
 
-namespace Humans.Web.Models;
+namespace Humans.Users.Models;
 
-public sealed record FacilitatedMessageRequest(
+internal sealed record FacilitatedMessageRequest(
     string RecipientEmail,
     string RecipientDisplayName,
     string SenderEmail,
@@ -12,7 +12,7 @@ public sealed record FacilitatedMessageRequest(
     bool IncludeContactInfo,
     string? RecipientPreferredLanguage);
 
-public static class FacilitatedMessageRequestBuilder
+internal static class FacilitatedMessageRequestBuilder
 {
     public static FacilitatedMessageRequest? TryBuild(
         UserInfo sender,

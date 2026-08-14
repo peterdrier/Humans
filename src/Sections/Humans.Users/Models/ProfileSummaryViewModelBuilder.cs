@@ -1,12 +1,13 @@
 using Humans.Teams.Contracts;
 using Humans.Application;
+using Humans.UI.Helpers;
 using Humans.Camps.Contracts;
 using Humans.Application.Models;
 using Humans.Users.Contracts;
 
-namespace Humans.Web.Models;
+namespace Humans.Users.Models;
 
-public static class ProfileSummaryViewModelBuilder
+internal static class ProfileSummaryViewModelBuilder
 {
     public static ProfileSummaryViewModel BuildWithoutProfile(UserInfo info)
     {
@@ -58,7 +59,7 @@ public static class ProfileSummaryViewModelBuilder
             Languages = profile.Languages.Select(pl => new ProfileLanguageDisplayViewModel
             {
                 LanguageCode = pl.LanguageCode,
-                LanguageName = Helpers.LanguageCatalog.GetDisplayName(pl.LanguageCode),
+                LanguageName = LanguageCatalog.GetDisplayName(pl.LanguageCode),
                 Proficiency = pl.Proficiency
             }).ToList(),
             CampName = camp?.Season?.Name,

@@ -1,4 +1,4 @@
-namespace Humans.Web.Models;
+namespace Humans.Users.Models;
 
 /// <summary>
 /// Minimal model for the anonymous-viewer popover served on public team pages
@@ -6,7 +6,7 @@ namespace Humans.Web.Models;
 /// tier badge, and suspended badge — only data that is already publicly visible
 /// on the rendering team page is allowed.
 /// </summary>
-public sealed class PublicPopoverViewModel
+internal sealed class PublicPopoverViewModel
 {
     public Guid UserId { get; init; }
     public string DisplayName { get; init; } = string.Empty;

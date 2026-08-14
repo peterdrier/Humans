@@ -4,9 +4,9 @@ using Humans.Application.Interfaces.Users;
 using Humans.Domain.Constants;
 using Humans.Users.Contracts;
 
-namespace Humans.Web.Models;
+namespace Humans.Users.Models;
 
-public class DietaryMedicalViewModel
+internal sealed class DietaryMedicalViewModel
 {
     [Required]
     public string DietaryPreference { get; set; } = string.Empty;

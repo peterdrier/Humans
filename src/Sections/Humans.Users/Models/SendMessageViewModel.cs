@@ -1,8 +1,8 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace Humans.Web.Models;
+namespace Humans.Users.Models;
 
-public class SendMessageViewModel
+internal sealed class SendMessageViewModel
 {
     private string _message = string.Empty;
 

@@ -7,9 +7,9 @@ using Humans.Shifts.Contracts;
 using Humans.Domain.Enums;
 using Humans.Users.Contracts;
 
-namespace Humans.Web.Models;
+namespace Humans.Users.Models;
 
-public class ProfileViewModel
+internal sealed class ProfileViewModel
 {
     public Guid Id { get; set; }
     public Guid UserId { get; set; }
@@ -395,7 +395,7 @@ public class ProfileViewModel
 /// <summary>
 /// Team membership for display purposes.
 /// </summary>
-public class TeamMembershipViewModel
+internal sealed class TeamMembershipViewModel
 {
     public Guid TeamId { get; set; }
     public string TeamName { get; set; } = string.Empty;
@@ -407,7 +407,7 @@ public class TeamMembershipViewModel
 /// <summary>
 /// Contact field for display purposes.
 /// </summary>
-public class ContactFieldViewModel
+internal sealed class ContactFieldViewModel
 {
     public Guid Id { get; set; }
     public ContactFieldType FieldType { get; set; }
@@ -484,7 +484,7 @@ public class ContactFieldViewModel
 /// <summary>
 /// Contact field for editing purposes.
 /// </summary>
-public class ContactFieldEditViewModel
+internal sealed class ContactFieldEditViewModel
 {
     public Guid? Id { get; set; }
 
@@ -508,7 +508,7 @@ public class ContactFieldEditViewModel
 /// <summary>
 /// Volunteer history entry for display purposes.
 /// </summary>
-public class VolunteerHistoryEntryViewModel
+internal sealed class VolunteerHistoryEntryViewModel
 {
     public Guid Id { get; set; }
     public LocalDate Date { get; set; }
@@ -530,7 +530,7 @@ public class VolunteerHistoryEntryViewModel
 /// <summary>
 /// Volunteer history entry for editing purposes.
 /// </summary>
-public class VolunteerHistoryEntryEditViewModel
+internal sealed class VolunteerHistoryEntryEditViewModel
 {
     public Guid? Id { get; set; }
 
@@ -580,7 +580,7 @@ public class VolunteerHistoryEntryEditViewModel
 /// <summary>
 /// User email for display on profile view.
 /// </summary>
-public class UserEmailDisplayViewModel
+internal sealed class UserEmailDisplayViewModel
 {
     public string Email { get; set; } = string.Empty;
     public bool IsPrimary { get; set; }
@@ -601,7 +601,7 @@ public class UserEmailDisplayViewModel
 /// <summary>
 /// Language entry for editing purposes.
 /// </summary>
-public class ProfileLanguageEditViewModel
+internal sealed class ProfileLanguageEditViewModel
 {
     public Guid? Id { get; set; }
 
@@ -616,7 +616,7 @@ public class ProfileLanguageEditViewModel
 /// <summary>
 /// Language entry for display purposes.
 /// </summary>
-public class ProfileLanguageDisplayViewModel
+internal sealed class ProfileLanguageDisplayViewModel
 {
     public string LanguageCode { get; set; } = string.Empty;
     public string LanguageName { get; set; } = string.Empty;
@@ -637,7 +637,7 @@ public class ProfileLanguageDisplayViewModel
 /// <summary>
 /// View model for the privacy/data management page.
 /// </summary>
-public class PrivacyViewModel
+internal sealed class PrivacyViewModel
 {
     public bool IsDeletionPending { get; set; }
     public DateTime? DeletionRequestedAt { get; set; }
@@ -649,7 +649,7 @@ public class PrivacyViewModel
 /// the five strings from <c>IShiftSignups.GetNoShowHistoryAsync</c> and this page is its
 /// only consumer, so it never crosses into Humans.Shifts (nobodies-collective/Humans#866).
 /// </summary>
-public sealed class NoShowHistoryItem
+internal sealed class NoShowHistoryItem
 {
     public string ShiftLabel { get; set; } = string.Empty;
     public string DepartmentName { get; set; } = string.Empty;
