@@ -308,16 +308,6 @@ public interface IUserService : IUserServiceRead, IApplicationService, IUserMerg
     // ---- Methods added for ContactService migration ----
 
     /// <summary>
-    /// Finds the user whose <c>Email</c> or <c>GoogleEmail</c> matches the given
-    /// address (case-insensitive) and returns the cached <see cref="UserInfo"/>
-    /// read-model for them. Also checks the gmail/googlemail alternate when
-    /// applicable, and falls back to the legacy <c>User.GoogleEmail</c> shadow
-    /// column for pre-issue-687 users whose <c>UserEmail.IsGoogle</c> rows are
-    /// unset. Returns null if no match.
-    /// </summary>
-    Task<UserInfo?> GetByEmailOrAlternateAsync(string email, CancellationToken ct = default);
-
-    /// <summary>
     /// Sets <c>User.LastConsentReminderSentAt</c> to <paramref name="sentAt"/>.
     /// No-op if the user does not exist. Used by the re-consent reminder job
     /// so it does not write to the Users table directly (design-rules §2c).
