@@ -235,8 +235,19 @@
                                 break;
                             case ExpenseHoldedSyncState.Failed:
                                 <span class="badge text-bg-danger">Failed</span>
+                                @* The doc is created before the attachments upload, so a write-off
+                                   partway through leaves a real payable in Holded. Saying "not in
+                                   Holded" there invites a duplicate. *@
                                 <span class="small text-muted ms-1">
-                                    Given up after @sync.RetryCount attempt@(sync.RetryCount == 1 ? "" : "s"). This report is not in Holded.
+                                    Given up after @sync.RetryCount attempt@(sync.RetryCount == 1 ? "" : "s").
+                                    @if (string.IsNullOrEmpty(Model.Report.HoldedDocId))
+                                    {
+                                        @:This report is not in Holded.
+                                    }
+                                    else
+                                    {
+                                        @:Document @Model.Report.HoldedDocId exists in Holded but the push did not finish — its receipts may be missing. Re-queue rather than creating a second payable.
+                                    }
                                 </span>
                                 break;
                             case ExpenseHoldedSyncState.Pushed:

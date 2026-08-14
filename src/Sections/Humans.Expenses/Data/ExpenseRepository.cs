@@ -332,8 +332,17 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
     public async Task<int> CountFailedOutboxAsync(CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
+        // Only what a finance admin can actually act on. A report withdrawn after approval leaves
+        // its queued event behind to be written off later; that report is absent from the review
+        // queue and RequeueHoldedPush refuses it, so counting it would leave a banner nobody can
+        // clear. Create events only, for the reason on GetLatestOutboxForReportAsync.
+        var actionable = ctx.ExpenseReports.AsNoTracking()
+            .Where(r => r.Status == ExpenseReportStatus.Approved)
+            .Select(r => r.Id);
         return await ctx.HoldedExpenseOutboxEvents.AsNoTracking()
-            .CountAsync(e => e.FailedPermanently, ct);
+            .CountAsync(e => e.FailedPermanently
+                && e.EventType == HoldedExpenseOutboxEventType.CreateIncomingDoc
+                && actionable.Contains(e.ExpenseReportId), ct);
     }
 
     public async Task<bool> RequeueOutboxForReportAsync(
@@ -418,6 +427,10 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
             .FirstOrDefaultAsync(e => e.Id == outboxEventId, ct);
         if (ev is null) return;
         ev.FailedPermanently = true;
+        // A write-off always follows an attempt that just failed, and that attempt is never counted
+        // by IncrementOutboxRetryAsync — the retry path is the branch we did not take. Without this
+        // the timeline reads "given up after 9 attempts" while the error says 10.
+        ev.RetryCount += 1;
         ev.LastError = error;
         ev.ProcessedAt = processedAt;
         await ctx.SaveChangesAsync(ct);

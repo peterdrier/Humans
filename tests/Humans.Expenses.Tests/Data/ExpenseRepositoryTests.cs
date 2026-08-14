@@ -265,15 +265,57 @@ public class ExpenseRepositoryTests
     [HumansFact]
     public async Task CountFailedOutboxAsync_CountsOnlyWrittenOffEvents()
     {
+        var a = MakeReport(status: ExpenseReportStatus.Approved);
+        var b = MakeReport(status: ExpenseReportStatus.Approved);
+        var c = MakeReport(status: ExpenseReportStatus.Approved);
+        var d = MakeReport(status: ExpenseReportStatus.Approved);
+        await Seed(a, b, c, d);
         await SeedOutbox(
-            NewOutbox(failedPermanently: true),
-            NewOutbox(failedPermanently: true),
-            NewOutbox(retryCount: 2, lastError: "timeout"),
-            NewOutbox(processedAt: Instant.FromUtc(2026, 5, 5, 0, 0)));
+            NewOutbox(a.Id, failedPermanently: true),
+            NewOutbox(b.Id, failedPermanently: true),
+            NewOutbox(c.Id, retryCount: 2, lastError: "timeout"),
+            NewOutbox(d.Id, processedAt: Instant.FromUtc(2026, 5, 5, 0, 0)));
 
         var count = await _sut.CountFailedOutboxAsync(Xunit.TestContext.Current.CancellationToken);
 
         count.Should().Be(2);
+    }
+
+    [HumansFact]
+    public async Task CountFailedOutboxAsync_SkipsReportsFinanceCannotAction()
+    {
+        // Withdrawn after approval: absent from the review queue, and RequeueHoldedPush refuses it.
+        // Counting it would leave a banner nobody can clear.
+        var withdrawn = MakeReport(status: ExpenseReportStatus.Withdrawn);
+        var approved = MakeReport(status: ExpenseReportStatus.Approved);
+        await Seed(withdrawn, approved);
+        await SeedOutbox(
+            NewOutbox(withdrawn.Id, failedPermanently: true),
+            NewOutbox(approved.Id, failedPermanently: true,
+                eventType: HoldedExpenseOutboxEventType.UpdateIncomingDocTag),
+            NewOutbox(approved.Id, failedPermanently: true));
+
+        var count = await _sut.CountFailedOutboxAsync(Xunit.TestContext.Current.CancellationToken);
+
+        count.Should().Be(1);
+    }
+
+    [HumansFact]
+    public async Task MarkOutboxFailedPermanentlyAsync_CountsTheAttemptThatFailed()
+    {
+        // The tenth transient failure takes the write-off branch, not IncrementOutboxRetryAsync, so
+        // the write-off is what has to record it — otherwise the timeline says 9 and the error 10.
+        var reportId = Guid.NewGuid();
+        var ev = NewOutbox(reportId, retryCount: 9);
+        await SeedOutbox(ev);
+
+        await _sut.MarkOutboxFailedPermanentlyAsync(
+            ev.Id, "Gave up after 10 attempts.", Instant.FromUtc(2026, 5, 6, 0, 0),
+            Xunit.TestContext.Current.CancellationToken);
+
+        var reloaded = await _sut.GetLatestOutboxForReportAsync(reportId, Xunit.TestContext.Current.CancellationToken);
+        reloaded!.RetryCount.Should().Be(10);
+        reloaded.FailedPermanently.Should().BeTrue();
     }
 
     [HumansFact]

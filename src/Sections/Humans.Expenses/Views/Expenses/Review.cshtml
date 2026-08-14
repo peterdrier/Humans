@@ -25,9 +25,8 @@
         <i class="fa-solid fa-triangle-exclamation me-2"></i>
         <strong>@Model.FailedHoldedPushCount</strong>
         approved @(Model.FailedHoldedPushCount == 1 ? "report" : "reports")
-        failed to reach Holded and @(Model.FailedHoldedPushCount == 1 ? "is" : "are") not booked as
-        @(Model.FailedHoldedPushCount == 1 ? "a payable" : "payables"). Open the report to see the
-        error and re-queue the push.
+        failed to finish pushing to Holded. Open the report to see the error, whether a payable was
+        created, and to re-queue the push.
     </div>
 }
 
