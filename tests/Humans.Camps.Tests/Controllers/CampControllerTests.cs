@@ -6,7 +6,6 @@ using Humans.Camps.Contracts;
 using Humans.CityPlanning.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Application.Interfaces.Users;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.UI;
 using Microsoft.AspNetCore.Authorization;

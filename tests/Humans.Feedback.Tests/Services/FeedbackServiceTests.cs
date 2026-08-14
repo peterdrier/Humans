@@ -7,7 +7,6 @@ using Humans.Users.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Application;
-using Humans.Domain.Entities;
 using Humans.Feedback.Data;
 using Humans.Feedback.Domain;
 using Microsoft.EntityFrameworkCore;

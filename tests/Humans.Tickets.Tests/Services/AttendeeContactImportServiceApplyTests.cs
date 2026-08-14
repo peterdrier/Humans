@@ -7,7 +7,6 @@ using Humans.Tickets.Contracts;
 using Humans.Tickets.Services.Dtos;
 using Humans.Application.Interfaces.Users;
 using Humans.Tickets.Services;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;

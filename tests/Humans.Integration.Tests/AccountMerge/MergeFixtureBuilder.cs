@@ -10,7 +10,6 @@ using Humans.AuditLog.Data;
 using Humans.AuditLog.Domain;
 using Humans.Teams.Data;
 using Humans.Teams.Domain;
-using Humans.Domain.Entities;
 using Humans.Consent.Services;
 using Humans.Consent.Contracts;
 using Humans.Consent.Domain;

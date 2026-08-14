@@ -1,4 +1,4 @@
-namespace Humans.Domain.Enums;
+namespace Humans.GoogleIntegration.Contracts;
 
 /// <summary>
 /// Controls what automated sync jobs do for a given service.

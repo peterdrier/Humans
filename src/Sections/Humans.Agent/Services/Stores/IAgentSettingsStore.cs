@@ -1,4 +1,3 @@
-using Humans.Domain.Entities;
 using Humans.Agent.Domain;
 
 namespace Humans.Agent.Services.Stores;

@@ -2,7 +2,6 @@ using Humans.Teams.Data;
 using Humans.Teams.Domain;
 using System.Net;
 using AwesomeAssertions;
-using Humans.Domain.Entities;
 using Humans.Infrastructure.Data;
 using Humans.Testing;
 using Microsoft.EntityFrameworkCore;

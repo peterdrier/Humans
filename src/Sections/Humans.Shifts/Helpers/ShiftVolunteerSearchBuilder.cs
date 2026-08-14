@@ -2,7 +2,6 @@ using Humans.Application.Interfaces.Users;
 using Humans.Users.Contracts;
 using Humans.Shifts.Services;
 using Humans.Shifts.Contracts;
-using Humans.Domain.Entities;
 using Humans.Shifts.Domain;
 using Humans.Domain.Enums;
 using Humans.UI.Extensions;

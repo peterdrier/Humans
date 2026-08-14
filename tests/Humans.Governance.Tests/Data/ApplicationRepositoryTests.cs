@@ -3,7 +3,6 @@ using Humans.Governance.Contracts;
 using AwesomeAssertions;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using MemberApplication = Humans.Governance.Domain.Application;
 using Humans.Governance.Data;

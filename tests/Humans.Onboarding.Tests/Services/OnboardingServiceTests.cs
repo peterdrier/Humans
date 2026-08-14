@@ -11,7 +11,6 @@ using Humans.Onboarding.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Onboarding.Services;
 using Humans.Domain.Constants;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;

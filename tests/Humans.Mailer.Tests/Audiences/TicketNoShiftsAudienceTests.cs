@@ -4,7 +4,6 @@ using Humans.Shifts.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Mailer.Services.Audiences;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
 using NSubstitute;

@@ -369,8 +369,6 @@
         "src/Humans.Application/Interfaces/GoogleIntegration/**",
         "src/Humans.Application/DTOs/SyncReport.cs",
         "src/Humans.Application/Configuration/GoogleWorkspaceOptions.cs",
-        "src/Humans.Domain/Entities/Google*",
-        "src/Humans.Domain/Entities/SyncServiceSettings.cs",
         "src/Humans.Web/Health/GoogleWorkspaceHealthCheck.cs"
       ],
       "symbols": [

@@ -5,7 +5,6 @@ using Humans.Users.Contracts;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
 using Humans.Users.Services;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Domain.Helpers;
 using Microsoft.AspNetCore.Identity;

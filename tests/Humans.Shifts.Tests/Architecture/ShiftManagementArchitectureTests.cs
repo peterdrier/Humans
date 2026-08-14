@@ -5,7 +5,6 @@ using System.Reflection;
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Shifts.Contracts;
-using Humans.Domain.Entities;
 using ShiftManagementService = Humans.Shifts.Services.ShiftManagementService;
 using Humans.Users.Contracts;
 

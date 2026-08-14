@@ -1,7 +1,6 @@
 using Humans.GoogleIntegration.Contracts;
 using Microsoft.Extensions.Logging;
 using Humans.Application.DTOs;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Application.Interfaces;
 using Humans.GoogleIntegration.Data;

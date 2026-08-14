@@ -5,7 +5,6 @@ using Humans.Shifts.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Services.Dtos;
 using Humans.Application.Interfaces.Users;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging;
 using NodaTime;

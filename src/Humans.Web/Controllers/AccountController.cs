@@ -6,7 +6,6 @@ using Microsoft.Extensions.Localization;
 using NodaTime;
 using Humans.Application.Extensions;
 using Humans.Domain.Constants;
-using Humans.Domain.Entities;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Users;
 using Humans.UI;

@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Humans.Camps.Tests.Infrastructure;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Humans.Camps.Data;

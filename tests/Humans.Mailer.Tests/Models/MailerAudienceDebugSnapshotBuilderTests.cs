@@ -3,7 +3,6 @@ using Humans.Application;
 using Humans.Mailer.Services;
 using Humans.Mailer.Services.Dtos;
 using Humans.Application.Interfaces.Users;
-using Humans.Domain.Entities;
 using Humans.Mailer.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;

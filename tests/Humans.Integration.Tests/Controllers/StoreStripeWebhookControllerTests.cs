@@ -9,7 +9,6 @@ using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using AwesomeAssertions;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Humans.Integration.Tests.Infrastructure;

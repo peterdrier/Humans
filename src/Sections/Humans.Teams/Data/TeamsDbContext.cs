@@ -1,4 +1,3 @@
-using Humans.Domain.Entities;
 using Humans.Teams.Domain;
 using Humans.Teams.Data.Configurations;
 using Microsoft.EntityFrameworkCore;

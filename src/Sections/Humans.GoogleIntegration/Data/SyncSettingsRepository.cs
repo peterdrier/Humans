@@ -1,7 +1,7 @@
+using Humans.GoogleIntegration.Contracts;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Humans.Application.Interfaces;

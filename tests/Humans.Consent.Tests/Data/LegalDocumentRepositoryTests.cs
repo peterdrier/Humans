@@ -5,7 +5,6 @@ using Humans.Consent.Domain;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using NodaTime.Testing;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Consent.Data;
 

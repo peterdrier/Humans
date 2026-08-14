@@ -5,7 +5,6 @@ using Humans.Shifts.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Cantina.Services;
 using Humans.Domain.Constants;
-using Humans.Domain.Entities;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;

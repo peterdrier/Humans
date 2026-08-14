@@ -7,7 +7,6 @@ using Humans.Mailer.Services;
 using Humans.Mailer.Services.Dtos;
 using Humans.Users.Contracts;
 using Humans.Application.Interfaces.Users;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Mailer.Controllers;
 using Humans.Mailer.Models;

@@ -13,7 +13,6 @@ using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Application.Interfaces.Users;
-using Humans.Domain.Entities;
 using Humans.Tickets.Data;
 using Humans.Tickets.Domain;
 using Humans.Tickets.Models;

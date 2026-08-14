@@ -1,4 +1,4 @@
-namespace Humans.Domain.Enums;
+namespace Humans.GoogleIntegration.Contracts;
 
 /// <summary>
 /// Types of Google resources that can be provisioned for members.

@@ -1,4 +1,4 @@
-namespace Humans.Domain.Enums;
+namespace Humans.GoogleIntegration.Contracts;
 
 /// <summary>
 /// Identifies an external sync service.

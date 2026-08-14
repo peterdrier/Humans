@@ -1,9 +1,9 @@
+using Humans.GoogleIntegration.Contracts;
 using AwesomeAssertions;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using NodaTime.Testing;
 using Humans.GoogleIntegration.Tests.Infrastructure;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Humans.GoogleIntegration.Data;

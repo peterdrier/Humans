@@ -1,3 +1,4 @@
+using Humans.GoogleIntegration.Contracts;
 using Humans.Domain.Enums;
 using NodaTime;
 using Humans.Application.Interfaces;

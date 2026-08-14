@@ -1,5 +1,4 @@
 using Humans.Application.Interfaces.Repositories;
-using Humans.Domain.Entities;
 using Humans.Teams.Domain;
 using Humans.Domain.Enums;
 using NodaTime;

@@ -3,7 +3,6 @@ using Humans.UI.Helpers;
 using Humans.Shifts.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Teams.Contracts;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.UI.Controllers;
 using Humans.Web.Models;

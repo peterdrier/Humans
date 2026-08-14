@@ -14,7 +14,6 @@ using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Auth;
 using Humans.Users.Services;
 using Humans.Application.Tests.Infrastructure;
-using Humans.Domain.Entities;
 using Humans.Infrastructure.Data;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Caching.Memory;

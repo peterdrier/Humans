@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Humans.Tickets.Services;
-using Humans.Domain.Entities;
 using Humans.Tickets.Domain;
 
 namespace Humans.Tickets.Tests.Services;

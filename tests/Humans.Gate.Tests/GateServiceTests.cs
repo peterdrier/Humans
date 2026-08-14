@@ -9,7 +9,6 @@ using Humans.Tickets.Contracts;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Constants;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Gate.Data;
 using Humans.Gate.Domain;

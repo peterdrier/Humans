@@ -1,7 +1,6 @@
 using System.Globalization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Models;
 using Humans.Shifts.Contracts;

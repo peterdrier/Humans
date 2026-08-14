@@ -4,7 +4,6 @@ using Humans.Application.Interfaces.EarlyEntry;
 using Humans.Application.Interfaces.Users;
 using Humans.AuditLog.Contracts;
 using Humans.Auth.Contracts;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Humans.Notifications.Contracts;

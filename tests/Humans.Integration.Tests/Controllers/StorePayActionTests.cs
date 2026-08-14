@@ -7,7 +7,6 @@ using Humans.Store.Domain;
 using System.Net;
 using System.Text.RegularExpressions;
 using AwesomeAssertions;
-using Humans.Domain.Entities;
 using Humans.Infrastructure.Data;
 using Humans.Integration.Tests.Infrastructure;
 using Microsoft.EntityFrameworkCore;

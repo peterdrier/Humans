@@ -1,3 +1,4 @@
+using Humans.GoogleIntegration.Contracts;
 using System.ComponentModel.DataAnnotations;
 using Humans.Domain.Enums;
 

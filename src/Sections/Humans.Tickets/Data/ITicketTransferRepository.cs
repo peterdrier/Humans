@@ -1,4 +1,3 @@
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Domain.Attributes;
 using Humans.Application.Interfaces;

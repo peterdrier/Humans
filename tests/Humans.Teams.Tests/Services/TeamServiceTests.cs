@@ -21,7 +21,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
 using Humans.Domain.Constants;
-using Humans.Domain.Entities;
 using Humans.Shifts.Domain;
 using Humans.Teams.Domain;
 using Humans.Domain.Enums;

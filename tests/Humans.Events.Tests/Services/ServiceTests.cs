@@ -15,7 +15,6 @@ using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using Xunit;
-using Humans.Domain.Entities;
 using Humans.Application;
 using Humans.Users.Contracts;
 

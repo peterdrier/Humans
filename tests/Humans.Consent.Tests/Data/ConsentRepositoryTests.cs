@@ -2,7 +2,6 @@ using AwesomeAssertions;
 using Humans.Consent.Contracts;
 using Humans.Consent.Services;
 using Humans.Consent.Domain;
-using Humans.Domain.Entities;
 using Humans.Consent.Data;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;

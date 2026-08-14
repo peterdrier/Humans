@@ -5,7 +5,6 @@ using Humans.Email.Contracts;
 using Humans.Users.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Tests.Infrastructure;
-using Humans.Domain.Entities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;

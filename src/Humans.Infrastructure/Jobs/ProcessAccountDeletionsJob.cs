@@ -6,7 +6,6 @@ using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Users.Contracts;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 
 namespace Humans.Infrastructure.Jobs;

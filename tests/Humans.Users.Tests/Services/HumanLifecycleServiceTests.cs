@@ -4,7 +4,6 @@ using Humans.AuditLog.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Onboarding.Contracts;
 using Humans.Application.Interfaces.Users;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;

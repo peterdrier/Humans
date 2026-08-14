@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Humans.Teams.Services;
-using Humans.Domain.Entities;
 using Humans.Teams.Domain;
 using NodaTime;
 

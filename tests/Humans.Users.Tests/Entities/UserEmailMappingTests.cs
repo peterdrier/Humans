@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using Humans.Domain.Entities;
 using Humans.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Humans.Users.Contracts;

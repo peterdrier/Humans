@@ -65,6 +65,12 @@ public class TicketQueryArchitectureTests
     [HumansFact]
     public void ITicketServiceRead_ExposesNoEntityTypes()
     {
+        // COVERAGE REDUCED (nobodies-collective/Humans#866, G5 lane 4b-2j): Humans.Domain.Entities
+        // is now empty — lane 2 took the Users entities and 4b-2j took the last three
+        // (GoogleIntegration's) — so the namespace filter below matches nothing and this passes
+        // vacuously. Re-key it onto the real entity homes (src/Sections/*/Domain and the
+        // *.Contracts leaves) when phase 5a deletes Humans.Domain.
+        // Logged in local/g5-batch-4/state.md's "Analyzer coverage reduced" table.
         var offenders = typeof(ITicketServiceRead).GetMethods()
             .SelectMany(m => m.ReturnParameter.ParameterType
                 .GetGenericArguments()

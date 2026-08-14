@@ -1,4 +1,4 @@
-namespace Humans.Domain.Enums;
+namespace Humans.GoogleIntegration.Contracts;
 
 /// <summary>
 /// Whether a sync operation should preview changes or execute them.

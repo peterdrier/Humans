@@ -1,4 +1,4 @@
-namespace Humans.Domain.Constants;
+namespace Humans.GoogleIntegration.Contracts;
 
 /// <summary>
 /// Event type identifiers for Google sync outbox messages.

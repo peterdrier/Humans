@@ -149,6 +149,15 @@ public class ServiceBoundaryArchitectureTests
         typeof(Humans.Users.Contracts.VolunteerHistoryEntry),
         typeof(Humans.Users.Contracts.CommunicationPreference),
         typeof(Humans.Users.Contracts.AccountMergeRequest),
+        // GoogleIntegration's three entities, same shape and same reason
+        // (nobodies-collective/Humans#866, G5 lane 4b-2j): GoogleResource and
+        // GoogleSyncOutboxEvent are public members of IGoogleSyncService /
+        // IGoogleSyncOutboxService on Humans.GoogleIntegration.Contracts, and a leaf
+        // cannot reference its own section project, so they live on the leaf rather
+        // than under Humans.GoogleIntegration.Domain.
+        typeof(Humans.GoogleIntegration.Contracts.GoogleResource),
+        typeof(Humans.GoogleIntegration.Contracts.GoogleSyncOutboxEvent),
+        typeof(Humans.GoogleIntegration.Contracts.SyncServiceSettings),
     ];
 
     internal static IEnumerable<string> ScanApplicationServiceEntityReadReturns()
@@ -157,7 +166,14 @@ public class ServiceBoundaryArchitectureTests
         // (nobodies-collective/Humans#866). Without the section half, a section that moves
         // takes its entity-returning reads out of this ratchet's sight and the removal
         // reads as "you fixed it" — the exact silent-shrink §10 warns about.
-        var entityTypes = typeof(Humans.Domain.Entities.GoogleResource).Assembly
+        // Re-anchored off Humans.Domain.Entities.GoogleResource, which moved to
+        // Humans.GoogleIntegration.Contracts in G5 lane 4b-2j and took the last three
+        // types in Humans.Domain.Entities with it. The namespace filter below now
+        // matches nothing; the clause is kept (anchored on a type still resident in
+        // Humans.Domain) so the sweep re-arms if anything lands back there before
+        // phase 5a deletes the project. Coverage did not shrink — the three entities
+        // are listed in LeafResidentEntities above.
+        var entityTypes = typeof(Humans.Domain.Enums.GoogleSyncSource).Assembly
             .GetTypes()
             .Where(t => string.Equals(t.Namespace, "Humans.Domain.Entities", StringComparison.Ordinal))
             .Concat(SectionAssemblies()

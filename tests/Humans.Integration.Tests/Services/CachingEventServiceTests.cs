@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Humans.Events.Services;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Events.Contracts;
 using Humans.Integration.Tests.Infrastructure;

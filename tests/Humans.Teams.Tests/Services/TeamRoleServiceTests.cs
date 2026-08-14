@@ -10,7 +10,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
 using Humans.Domain.Constants;
-using Humans.Domain.Entities;
 using Humans.Teams.Domain;
 using Humans.Domain.Enums;
 using Humans.Application.Interfaces.Caching;

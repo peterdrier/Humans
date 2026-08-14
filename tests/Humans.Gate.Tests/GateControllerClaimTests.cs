@@ -1,5 +1,4 @@
 using Humans.Application;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Application.DTOs;
 using Humans.Gate.Controllers;

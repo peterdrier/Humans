@@ -5,7 +5,6 @@ using Humans.Onboarding.Contracts;
 using Humans.Users.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Application.Interfaces.Users;
-using Humans.Domain.Entities;
 using Humans.UI.Constants;
 using Humans.Web.Controllers;
 using Microsoft.AspNetCore.Http;

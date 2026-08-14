@@ -4,7 +4,6 @@ using Humans.Shifts.Services;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
-using Humans.Domain.Entities;
 using Humans.Shifts.Domain;
 using Humans.Domain.Enums;
 using NodaTime;

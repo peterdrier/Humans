@@ -1,6 +1,6 @@
+using Humans.GoogleIntegration.Contracts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using Humans.Domain.Entities;
 using Humans.GoogleIntegration.Data;
 
 namespace Humans.GoogleIntegration.Data.Configurations;

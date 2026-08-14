@@ -4,7 +4,6 @@ using Humans.Camps.Contracts;
 using Humans.CityPlanning.Contracts;
 using Humans.CityPlanning.Services;
 using Humans.Containers.Contracts;
-using Humans.Domain.Entities;
 using Humans.UI.Extensions;
 using Humans.UI.Hubs;
 using Microsoft.AspNetCore.Authorization;

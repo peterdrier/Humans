@@ -11,7 +11,6 @@ using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Auth;
-using Humans.Domain.Entities;
 using Humans.Email.Contracts;
 using Humans.Email.Data;
 using Humans.Email.Services;

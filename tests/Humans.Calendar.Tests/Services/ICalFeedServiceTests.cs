@@ -1,7 +1,6 @@
 using AwesomeAssertions;
 using Humans.Calendar.Contracts;
 using Humans.Calendar.Services;
-using Humans.Domain.Entities;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;

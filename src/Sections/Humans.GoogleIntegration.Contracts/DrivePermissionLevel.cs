@@ -1,4 +1,4 @@
-namespace Humans.Domain.Enums;
+namespace Humans.GoogleIntegration.Contracts;
 
 /// <summary>
 /// Google Drive permission role level for resources.

@@ -8,7 +8,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
 using Humans.Application.Interfaces;
-using Humans.Domain.Entities;
 using Humans.Consent.Domain;
 using ConsentService = Humans.Consent.Services.ConsentService;
 using Humans.Consent.Contracts;

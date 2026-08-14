@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Humans.Application.Helpers;
-using Humans.Domain.Entities;
 using NodaTime;
 using Humans.Users.Contracts;
 

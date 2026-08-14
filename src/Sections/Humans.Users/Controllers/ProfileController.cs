@@ -18,7 +18,6 @@ using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Gdpr.Contracts;
 using Humans.Domain.Constants;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.UI.Extensions;
 using Humans.Users.Models;

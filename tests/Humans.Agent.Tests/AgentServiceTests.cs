@@ -5,7 +5,6 @@ using Humans.Application.Interfaces;
 using Humans.Agent.Services.Stores;
 using Humans.Application.Models;
 using Humans.Agent.Services;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Humans.Agent.Data;

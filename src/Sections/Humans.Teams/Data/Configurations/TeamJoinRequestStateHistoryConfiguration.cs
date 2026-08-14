@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using Humans.Domain.Entities;
 using Humans.Teams.Domain;
 
 namespace Humans.Teams.Data.Configurations;

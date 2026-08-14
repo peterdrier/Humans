@@ -7,7 +7,6 @@ using Humans.Gdpr.Contracts;
 using Humans.Agent.Data;
 using Humans.Agent.Services.Stores;
 using Humans.Application.Models;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;

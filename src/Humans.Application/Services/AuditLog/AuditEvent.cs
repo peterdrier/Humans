@@ -1,6 +1,5 @@
 using System.Text;
 using Humans.Application.Extensions;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
 

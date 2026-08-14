@@ -1,5 +1,4 @@
 using Humans.GoogleIntegration.Contracts;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
 

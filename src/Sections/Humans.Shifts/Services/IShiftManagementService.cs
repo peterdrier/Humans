@@ -1,7 +1,6 @@
 using Humans.Application.DTOs;
 using Humans.Shifts.Services.Dtos;
 using Humans.Application.Enums;
-using Humans.Domain.Entities;
 using Humans.Shifts.Domain;
 using Humans.Domain.Enums;
 

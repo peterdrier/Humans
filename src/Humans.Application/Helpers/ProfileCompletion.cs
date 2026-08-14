@@ -1,4 +1,3 @@
-using Humans.Domain.Entities;
 using Humans.Users.Contracts;
 
 namespace Humans.Application.Helpers;

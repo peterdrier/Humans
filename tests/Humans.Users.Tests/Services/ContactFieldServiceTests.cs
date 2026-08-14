@@ -6,7 +6,6 @@ using NodaTime;
 using NSubstitute;
 using Humans.Application.DTOs;
 using Humans.Users.Tests.Infrastructure;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using ContactFieldService = Humans.Users.Services.ContactFieldService;
 using Humans.Teams.Contracts;

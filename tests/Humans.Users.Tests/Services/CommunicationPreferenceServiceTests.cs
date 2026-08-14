@@ -4,7 +4,6 @@ using Humans.Users.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Users.Tests.Infrastructure;
 using NSubstitute;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Configuration;
 using Humans.Users.Data.Repositories;

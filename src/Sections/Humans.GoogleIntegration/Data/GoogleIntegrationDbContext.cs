@@ -1,4 +1,4 @@
-using Humans.Domain.Entities;
+using Humans.GoogleIntegration.Contracts;
 using Humans.GoogleIntegration.Data.Configurations;
 using Microsoft.EntityFrameworkCore;
 using Humans.Application.Interfaces;

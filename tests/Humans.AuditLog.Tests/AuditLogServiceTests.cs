@@ -1,4 +1,3 @@
-using Humans.Domain.Entities;
 using Humans.AuditLog.Data;
 using Humans.AuditLog.Domain;
 using AwesomeAssertions;

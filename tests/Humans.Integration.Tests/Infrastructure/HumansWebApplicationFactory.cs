@@ -6,7 +6,6 @@ using Humans.Consent.Data;
 using System.Security.Cryptography;
 using System.Text;
 using Hangfire;
-using Humans.Domain.Entities;
 using Humans.Infrastructure.Data;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;

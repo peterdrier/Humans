@@ -2,7 +2,6 @@ using AwesomeAssertions;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.TicketVendor;
 using Humans.Tickets.Contracts;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Tickets.Data;
 using Microsoft.EntityFrameworkCore;

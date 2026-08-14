@@ -1,6 +1,6 @@
+using Humans.GoogleIntegration.Contracts;
 using AwesomeAssertions;
 using Humans.Application.Helpers;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.GoogleIntegration.Services;
 using Humans.GoogleIntegration.Services.Workspace;
