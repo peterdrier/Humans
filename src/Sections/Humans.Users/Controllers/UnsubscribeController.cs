@@ -4,9 +4,9 @@ using Microsoft.AspNetCore.Mvc;
 using Humans.Users.Contracts;
 using Humans.Users.Services;
 
-namespace Humans.Web.Controllers;
+namespace Humans.Users.Controllers;
 
-public class UnsubscribeController(IUnsubscribeService unsubscribeService, ILogger<UnsubscribeController> logger)
+internal sealed class UnsubscribeController(IUnsubscribeService unsubscribeService, ILogger<UnsubscribeController> logger)
     : Controller
 {
     [HttpGet("/Unsubscribe/{token:minlength(40)}")]
@@ -23,7 +23,9 @@ public class UnsubscribeController(IUnsubscribeService unsubscribeService, ILogg
         if (!result.IsLegacy)
         {
             return RedirectToAction(
-                nameof(GuestController.CommunicationPreferences), "Guest",
+                // GuestController is Shell; Humans.Users cannot reference Humans.Web, so the action and
+                // controller names are literals here (design §15, Users gotcha 7).
+                "CommunicationPreferences", "Guest",
                 new { utoken = token });
         }
 
@@ -47,7 +49,9 @@ public class UnsubscribeController(IUnsubscribeService unsubscribeService, ILogg
         if (!result.IsLegacy)
         {
             return RedirectToAction(
-                nameof(GuestController.CommunicationPreferences), "Guest",
+                // GuestController is Shell; Humans.Users cannot reference Humans.Web, so the action and
+                // controller names are literals here (design §15, Users gotcha 7).
+                "CommunicationPreferences", "Guest",
                 new { utoken = token });
         }
 

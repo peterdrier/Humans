@@ -7,6 +7,7 @@ using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Controllers;
+using Humans.Users.Controllers;
 using NodaTime;
 using Humans.UI.Models;
 using Humans.Web.Models;

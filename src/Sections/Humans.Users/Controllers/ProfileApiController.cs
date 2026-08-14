@@ -4,18 +4,17 @@ using Humans.Application.Interfaces.Users;
 using Humans.Domain.Enums;
 using Humans.UI.Extensions;
 using Humans.UI.Models;
-using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 using Humans.UI.Controllers;
 
-namespace Humans.Web.Controllers;
+namespace Humans.Users.Controllers;
 
 [Authorize]
 [ApiController]
 [Route("api/profiles")]
-public class ProfileApiController(
+internal sealed class ProfileApiController(
     IUserServiceRead userService,
     IContactFieldService contactFieldService,
     IUserEmailService userEmailService) : ApiControllerBase(userService)

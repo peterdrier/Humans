@@ -7,12 +7,12 @@ using Humans.Application.Interfaces.Users;
 using Humans.UI.Authorization;
 using Humans.Users.Services;
 
-namespace Humans.Web.Controllers;
+namespace Humans.Users.Controllers;
 
 // Profile-picture DB→FS migration verification — see #702. Idempotent; drives migrate-on-read.
 [Authorize(Policy = PolicyNames.AdminOnly)]
 [Route("Profile/Admin/PictureMigration")]
-public sealed class ProfilePictureMigrationAdminController(
+internal sealed class ProfilePictureMigrationAdminController(
     IUserServiceRead userService,
     IProfilePictureService profilePictureService,
     ILogger<ProfilePictureMigrationAdminController> logger) : HumansControllerBase(userService)
@@ -59,4 +59,4 @@ public sealed class ProfilePictureMigrationAdminController(
     }
 }
 
-public sealed record ProfilePictureMigrationViewModel(ProfilePictureMigrationSnapshot Snapshot);
+internal sealed record ProfilePictureMigrationViewModel(ProfilePictureMigrationSnapshot Snapshot);

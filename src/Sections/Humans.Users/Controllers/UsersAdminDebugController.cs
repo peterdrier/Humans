@@ -1,18 +1,18 @@
+using Humans.Users.Models;
 using Humans.Application.Interfaces.Users;
 using Humans.UI.Authorization;
 using Humans.UI.Controllers;
-using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 using Humans.Users.Contracts;
 
-namespace Humans.Web.Controllers;
+namespace Humans.Users.Controllers;
 
 // Diagnostic surface for UserInfo cache — flat sortable table from GetAllUserInfosAsync, no secondary queries.
 [Authorize(Policy = PolicyNames.AdminOnly)]
 [Route("Users/Admin/Debug")]
-public sealed class UsersAdminDebugController(IUserServiceRead userService) : HumansControllerBase(userService)
+internal sealed class UsersAdminDebugController(IUserServiceRead userService) : HumansControllerBase(userService)
 {
     private const int MinPageSize = 10;
     private const int MaxPageSize = 200;

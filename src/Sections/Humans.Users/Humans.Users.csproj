@@ -32,15 +32,15 @@
     <InternalsVisibleTo Include="Humans.Shifts.Tests" />
     <InternalsVisibleTo Include="Humans.Teams.Tests" />
     <!--
-      TEMPORARY, and the condition that removes it: lane 2 phase 3 moves this section's ten
-      controllers, 31 views and seven view models out of Humans.Web. Until it does, Shell
-      holds the section's whole presentation layer — ProfileController alone is 43 actions —
-      and it names the internal Profile/ContactField entities, the view-model builders that
-      project them, and the service interfaces with no cross-section consumer
-      (IEmailProblemsService, IProfilePictureService, IAccountMergeService,
-      IDuplicateAccountService, IUnsubscribeService). The alternative was publishing ~15 types
-      under Contracts/ in phase 2 and un-publishing them in phase 3, which reads as a boundary
-      decision rather than a phase artefact. Delete this line in the phase 3 commit.
+      TEMPORARY, and the condition that removes it: lane 2 phase 3b moved five of the ten
+      controllers (ProfileApi, ProfileBackfillAdmin, ProfilePictureMigrationAdmin,
+      UsersAdminDebug, Unsubscribe). Shell still holds ProfileController and
+      UsersAdminController, which name the internal UserEmailOperations,
+      ProfilePictureProcessor and AdminHumanListAssembler. Delete this line in the commit
+      that moves those two — and in the same commit collapse the four folder-level
+      Views/*/_ViewImports.cshtml into one Views/_ViewImports.cshtml, which cannot exist
+      while this grant does (a root _ViewImports in both assemblies generates the same
+      internal Views__ViewImports type and Humans.Web fails with CS0436).
     -->
     <InternalsVisibleTo Include="Humans.Web" />
   </ItemGroup>

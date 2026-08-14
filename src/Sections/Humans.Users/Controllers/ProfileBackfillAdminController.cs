@@ -7,12 +7,12 @@ using Humans.UI.Authorization;
 using NodaTime;
 using Humans.Users.Contracts;
 
-namespace Humans.Web.Controllers;
+namespace Humans.Users.Controllers;
 
 // Stub Profile backfill admin tool — see #635 (§15i). Idempotent.
 [Authorize(Policy = PolicyNames.AdminOnly)]
 [Route("Profile/Admin/Backfill")]
-public sealed class ProfileBackfillAdminController(
+internal sealed class ProfileBackfillAdminController(
     IUserService userService,
     ILogger<ProfileBackfillAdminController> logger) : HumansControllerBase(userService)
 {
@@ -62,11 +62,11 @@ public sealed class ProfileBackfillAdminController(
     }
 }
 
-public sealed record MissingProfileRow(
+internal sealed record MissingProfileRow(
     Guid UserId,
     string Email,
     string DisplayName,
     Instant CreatedAt,
     ContactSource? ContactSource);
 
-public sealed record ProfileBackfillViewModel(IReadOnlyList<MissingProfileRow> MissingRows);
+internal sealed record ProfileBackfillViewModel(IReadOnlyList<MissingProfileRow> MissingRows);

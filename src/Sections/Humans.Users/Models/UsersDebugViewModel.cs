@@ -3,9 +3,9 @@ using Humans.Domain.Enums;
 using NodaTime;
 using Humans.Users.Contracts;
 
-namespace Humans.Web.Models;
+namespace Humans.Users.Models;
 
-public sealed record UsersDebugViewModel(
+internal sealed record UsersDebugViewModel(
     IReadOnlyList<UserDebugRow> Rows,
     int TotalCount,
     int Page,
@@ -20,7 +20,7 @@ public sealed record UsersDebugViewModel(
     public bool IsAsc => string.Equals(Dir, "asc", StringComparison.OrdinalIgnoreCase);
 }
 
-public sealed record UserDebugRow(
+internal sealed record UserDebugRow(
     Guid UserId,
     bool HasProfile,
     bool HasTicket,

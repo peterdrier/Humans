@@ -4,6 +4,8 @@ using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Controllers;
+using Humans.Users.Controllers;
+using Humans.Users.Models;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
