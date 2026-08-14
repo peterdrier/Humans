@@ -2416,7 +2416,7 @@ Cross-section calls via `IBudgetServiceRead` (migrated to the read-split
 surface — `budget` in the ctor), `IHoldedService` (the Holded section's
 ledger-mirror read surface — `holded` in the ctor; ledger-line /
 account-balance reads for creditor status, ledger, and account listing),
-`IHoldedClient` (Infrastructure — purchase-document / contact / expense-account
+`IHoldedClient` (Holded section leaf — purchase-document / contact / expense-account
 API calls). Implements `IHoldedFinanceService`, `IUserDataContributor`.
 No `IMemoryCache`.
 
@@ -2465,9 +2465,10 @@ Repository: `IHoldedMirrorRepository`.
 | HoldedAccounts | R/W (chart-of-accounts cache, refreshed and reconciled every sync) |
 | HoldedApiCalls | R/W (drained from `IHoldedCallLog` after each sync/overview read) |
 
-No cross-section service calls — `IHoldedClient` (Infrastructure — the
-Holded API connector) and `IHoldedCallLog` (Infrastructure — in-process
-call-log buffer drained into `HoldedApiCalls`) are its only outbound
+No cross-section service calls — `IHoldedClient` (this section's own leaf,
+`Humans.Holded.Contracts` — the Holded API connector) and `IHoldedCallLog`
+(section-internal in-process call-log buffer drained into `HoldedApiCalls`)
+are its only outbound
 dependencies, plus `IOptions<HoldedSectionOptions>` for the monthly
 call-budget display. Implements `IHoldedService` (the ledger-read
 surface consumed cross-section by `HoldedFinanceService` —

@@ -106,7 +106,7 @@ Terse, authoritative invariant docs for each major section: concepts, data model
 | [Google Integration](../src/Sections/Humans.GoogleIntegration/Docs/GoogleIntegration.md) | Shared-Drive-only sync for Drive folders, Groups, and Workspace accounts with reconciliation and Drive-activity monitoring |
 | [Governance](../src/Sections/Humans.Governance/Docs/Governance.md) | Colaborador and Asociado tier applications, Board voting workflow, and term lifecycle (not volunteer onboarding) |
 | [Guide](../src/Sections/Humans.Guide/Docs/Guide.md) | The in-app `/Guide` renderer for `docs/guide/` markdown with role-scoped block filtering |
-| [Holded Connector](sections/Holded.md) | Thin typed-`HttpClient` surface to the Holded accounting API, shared by Expenses (purchase documents) and Finance (ledger reconciliation). Lives in Base; owns no tables |
+| [Holded Connector](../src/Sections/Humans.Holded/Docs/Holded-connector.md) | Thin typed-`HttpClient` surface to the Holded accounting API, shared by Expenses (purchase documents) and Finance (ledger reconciliation). Owned by the Holded section; owns no tables |
 | [Holded](../src/Sections/Humans.Holded/Docs/Holded.md) | The ledger mirror: a local, re-derivable copy of Holded's daybook and chart of accounts, plus the sync that maintains it and the `/Holded` admin screen |
 | [Issues](../src/Sections/Humans.Issues/Docs/Issues.md) | In-app issue tracker (bugs, features, questions) with screenshots, role-routed triage, and a reporter↔handler conversation thread |
 | [Consent](../src/Sections/Humans.Consent/Docs/Consent.md) | GitHub-synced legal documents, per-version append-only consent records, and the Consent Coordinator audit/review queue |

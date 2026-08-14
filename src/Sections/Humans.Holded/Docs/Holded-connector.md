@@ -1,15 +1,16 @@
 <!-- freshness:triggers
-  src/Humans.Application/Interfaces/Holded/**
-  src/Humans.Infrastructure/Services/Holded/**
-  src/Humans.Web/Extensions/Sections/HoldedConnectorExtensions.cs
+  src/Sections/Humans.Holded.Contracts/IHoldedClient.cs
+  src/Sections/Humans.Holded.Contracts/Holded*.cs
+  src/Sections/Humans.Holded/Services/HoldedClient.cs
+  src/Sections/Humans.Holded/Services/HoldedCallLog.cs
 -->
 
 # Holded — Connector Invariants
 
 Thin typed-`HttpClient` surface to the **Holded API v2** (`https://api.holded.com/api/v2`,
-Bearer auth, cursor pagination). This doc covers the *connector* — the shared client in Base.
-The **Holded vertical section** (ledger mirror, sync, `/Holded` admin screen) has its own doc:
-[`src/Sections/Humans.Holded/Docs/Holded.md`](../../src/Sections/Humans.Holded/Docs/Holded.md).
+Bearer auth, cursor pagination). This doc covers the *connector*. The **Holded vertical
+section** it belongs to (ledger mirror, sync, `/Holded` admin screen) has its own doc:
+[`Holded.md`](Holded.md).
 
 ## Concepts
 
@@ -48,12 +49,23 @@ section (ledger/accounts/usage). Outbound: none — the connector owns no tables
 
 ## Architecture
 
-**Owning surface:** `IHoldedClient` (`Humans.Application/Interfaces/Holded/`), impl
-`HoldedClient` (`Humans.Infrastructure/Services/Holded/`), registered by
-`AddHoldedConnector` in `Humans.Web/Extensions/Sections/HoldedConnectorExtensions.cs`
-alongside `HoldedSyncJob` (nightly: Finance doc sync, then the section's ledger sync) and the
-`IHoldedCallLog` singleton. It stays in Base exactly as `IStripeService` does: consumed by
-three sections, owns nothing.
+**Owning surface:** `IHoldedClient`, its DTOs, its typed exceptions and `HoldedClientOptions`
+are public on `Humans.Holded.Contracts`; the impl `HoldedClient` and the `IHoldedCallLog`
+singleton are `internal` in `Humans.Holded/Services/`. All of it is registered by this
+section's `Section.cs` (G5 lane 4b-2f, nobodies-collective/Humans#866) — it used to sit in
+Base behind `Humans.Web`'s `AddHoldedConnector`.
+
+**Why the leaf and not a `Contracts/` folder:** two consumers are outside the section —
+Expenses (`ExpenseReportService`) and Finance (`Service`) — and two more are in Base:
+`HoldedSyncJob` names `IHoldedNightlySync`, and `HoldedExpenseOutboxJob` reads
+`HoldedClientOptions.ApiKey`. A folder inside `Humans.Holded` would make Base reference a
+section and cycle.
+
+**Why the jobs stayed in Base:** Hangfire serializes the declaring type name of a scheduled
+job, so `HoldedSyncJob` and `HoldedExpenseOutboxJob` cannot move without stranding any run
+queued or retry-delayed across a deploy. `HoldedSyncJob` is now a shim; its body is
+`HoldedNightlySync` in this section behind `IHoldedNightlySync`. `HoldedExpenseOutboxJob`'s
+body is Expenses' and was left alone.
 
 **GDPR** — the connector owns no per-user data. Finance's own `Service` (exposed as
 `IHoldedFinanceService`) is the `IUserDataContributor` that exports the member's

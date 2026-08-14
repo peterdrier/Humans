@@ -7,8 +7,9 @@ using Humans.Domain.Attributes;
 // It also carries the section name HUM0017/HUM0018 used to read from a per-type
 // [Section("Finance")] on the repository interface.
 //
-// "Finance", not "Holded": Holded is the external API client that stays in Base, with its
-// own docs/sections/Holded.md. The section named here owns the holded_* tables and the
+// "Finance", not "Holded": Holded is its own section, and since G5 lane 4b-2f it owns the
+// external API client too (Humans.Holded/Docs/Holded-connector.md). The section named here
+// owns this half of the holded_* tables and the
 // FinanceDbContext, which names the live __EFMigrationsHistory_Finance table and must not
 // be renamed. The table-name/section-name mismatch is recorded on
 // nobodies-collective/Humans#1012 and deferred there (design §15 step 10).
