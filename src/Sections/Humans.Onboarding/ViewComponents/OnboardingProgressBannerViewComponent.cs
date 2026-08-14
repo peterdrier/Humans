@@ -6,7 +6,7 @@ namespace Humans.Onboarding.ViewComponents;
 
 internal sealed record OnboardingProgressBannerViewModel(bool Show);
 
-internal sealed class OnboardingProgressBannerViewComponent(
+public sealed class OnboardingProgressBannerViewComponent(
     IOnboardingWidgetState state,
     ILogger<OnboardingProgressBannerViewComponent> logger) : ViewComponent
 {

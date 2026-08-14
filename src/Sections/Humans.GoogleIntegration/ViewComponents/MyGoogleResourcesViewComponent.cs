@@ -5,7 +5,7 @@ using Humans.Domain.Enums;
 
 namespace Humans.GoogleIntegration.ViewComponents;
 
-internal sealed class MyGoogleResourcesViewComponent(
+public sealed class MyGoogleResourcesViewComponent(
     ITeamResourceService teamResourceService,
     ILogger<MyGoogleResourcesViewComponent> logger) : ViewComponent
 {

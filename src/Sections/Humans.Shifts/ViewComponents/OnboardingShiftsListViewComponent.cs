@@ -27,7 +27,7 @@ namespace Humans.Shifts.ViewComponents;
 /// filtered <paramref name="shifts"/> to the selected priority pill.
 /// </para>
 /// </remarks>
-internal sealed class OnboardingShiftsListViewComponent : ViewComponent
+public sealed class OnboardingShiftsListViewComponent : ViewComponent
 {
     public IViewComponentResult Invoke(
         BurnSettingsInfo eventSettings,
