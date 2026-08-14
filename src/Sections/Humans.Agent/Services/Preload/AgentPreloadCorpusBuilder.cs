@@ -27,12 +27,12 @@ internal sealed class AgentPreloadCorpusBuilder(
     IAgentPreloadAugmentor augmentor) : IAgentPreloadCorpusBuilder
 {
     private static readonly IReadOnlyList<string> Tier1Sections =
-        ["Onboarding", "Teams", "Consent", "Governance", "Shifts", "Tickets", "Profiles", "Auth"];
+        ["Onboarding", "Teams", "Consent", "Governance", "Shifts", "Tickets", "Users", "Auth"];
 
     // Keep in step with AgentSectionDocReader.Whitelist — a section the reader can serve but
     // that never appears in this index is one the agent has no reason to ask for.
     private static readonly IReadOnlyList<string> Tier2Sections =
-        ["Onboarding", "Teams", "Consent", "Governance", "Shifts", "Tickets", "Profiles", "Auth",
+        ["Onboarding", "Teams", "Consent", "Governance", "Shifts", "Tickets", "Users", "Auth",
          "Budget", "Camps", "CityPlanning", "Campaigns", "Feedback", "GoogleIntegration",
          "Events", "Guide", "Store", "Scanner", "Gate", "Calendar", "Cantina", "Containers", "Issues"];
 

@@ -19,7 +19,7 @@ public static class AgentSectionKeys
         new(StringComparer.OrdinalIgnoreCase)
         {
             "Onboarding", "Teams", "Consent", "Governance", "Shifts",
-            "Tickets", "Profiles", "Auth", "Budget", "Camps",
+            "Tickets", "Users", "Auth", "Budget", "Camps",
             "CityPlanning", "Campaigns", "Feedback", "GoogleIntegration",
             "Events", "Guide", "Store", "Scanner", "Gate",
             "Calendar", "Cantina", "Containers", "Issues"
@@ -34,7 +34,12 @@ public static class AgentSectionKeys
     private static readonly Dictionary<string, string> Aliases =
         new(StringComparer.OrdinalIgnoreCase)
         {
-            ["Profile"] = "Profiles",
+            // Users and Profiles merged into one project (and one doc) at
+            // nobodies-collective/Humans#866 G5. The canonical key follows the project name
+            // because the reader probes src/Sections/Humans.{key}/Docs — there is no
+            // Humans.Profiles project — but users and the model still say "profile".
+            ["Profiles"] = "Users",
+            ["Profile"] = "Users",
             ["OnboardingReview"] = "Onboarding",
             // Renamed to Consent by the 2026-08-03 inventory freeze. Kept as an alias because
             // the model still meets the old name in its own context: docs/guide/ has not been

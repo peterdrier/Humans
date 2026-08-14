@@ -85,8 +85,8 @@ public class AgentSectionDocReaderTests
     /// (nobodies-collective/Humans#949).
     /// </summary>
     [HumansTheory]
-    [InlineData("Profile", "Profiles")]
-    [InlineData("profile", "Profiles")]
+    [InlineData("Profile", "Users")]
+    [InlineData("profile", "Users")]
     [InlineData("Barrios", "Camps")]
     [InlineData("CityPlanningOverview", "CityPlanning")]
     [InlineData("CityPlanningBarrioMap", "CityPlanning")]

@@ -405,7 +405,7 @@ public class AgentToolDispatcherTests
 
         result.IsError.Should().BeTrue();
         result.Content.Should().Contain("Unknown section: NotASection");
-        result.Content.Should().Contain("Shifts").And.Contain("Profiles").And.Contain("Retry with one of these");
+        result.Content.Should().Contain("Shifts").And.Contain("Users").And.Contain("Retry with one of these");
     }
 
     [HumansFact]

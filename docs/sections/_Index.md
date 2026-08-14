@@ -58,6 +58,7 @@ move recipe is [`G5-SECTION-TEMPLATE.md`](G5-SECTION-TEMPLATE.md).
 | Shifts | `src/Sections/Humans.Shifts` | [Shifts.md](../../src/Sections/Humans.Shifts/Docs/Shifts.md) |
 | Teams | `src/Sections/Humans.Teams` | [Teams.md](../../src/Sections/Humans.Teams/Docs/Teams.md) |
 | Tickets | `src/Sections/Humans.Tickets` | [Tickets.md](../../src/Sections/Humans.Tickets/Docs/Tickets.md) |
+| Users | `src/Sections/Humans.Users` (+ `.Contracts`) | [Users.md](../../src/Sections/Humans.Users/Docs/Users.md) — one doc for two former sections (`Users.md` + `Profiles.md`), merged when the project was carved; the agent tool reaches it under the canonical key `Users`, with `Profiles`/`Profile` as aliases |
 | Tour | `src/Sections/Humans.Tour` | [Tour.md](../../src/Sections/Humans.Tour/Docs/Tour.md) |
 
 **This table is derived from code, not from the section docs — code is authoritative.** Regenerate it when sections move:

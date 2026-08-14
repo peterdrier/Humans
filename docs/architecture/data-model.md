@@ -10,15 +10,15 @@ This file is the **index and cross-cutting rule sheet** for the data model. Per-
 
 | Entity | Owning section | Notes |
 |--------|---------------|-------|
-| User | [Users/Identity](../sections/Users.md) | Profile-adjacent extension fields documented in [`Profiles.md`](../sections/Profiles.md#user-identity-extension). |
-| EventParticipation | [Users/Identity](../sections/Users.md) | Per-user, per-event participation status. |
-| Profile | [Profiles](../sections/Profiles.md) | |
-| UserEmail | [Profiles](../sections/Profiles.md) | |
-| ContactField | [Profiles](../sections/Profiles.md) | |
-| CommunicationPreference | [Profiles](../sections/Profiles.md) | |
-| ProfileLanguage | [Profiles](../sections/Profiles.md) | |
-| VolunteerHistoryEntry | [Profiles](../sections/Profiles.md) | Sub-aggregate of Profile. |
-| AccountMergeRequest | [Users/Identity](../sections/Users.md) | `AccountMergeService` + `DuplicateAccountService` live in `Humans.Application.Services.Users/`. |
+| User | [Users/Identity](../../src/Sections/Humans.Users/Docs/Users.md) | Profile-adjacent extension fields documented in [`Profiles.md`](../../src/Sections/Humans.Users/Docs/Users.md#user-identity-extension). |
+| EventParticipation | [Users/Identity](../../src/Sections/Humans.Users/Docs/Users.md) | Per-user, per-event participation status. |
+| Profile | [Profiles](../../src/Sections/Humans.Users/Docs/Users.md) | |
+| UserEmail | [Profiles](../../src/Sections/Humans.Users/Docs/Users.md) | |
+| ContactField | [Profiles](../../src/Sections/Humans.Users/Docs/Users.md) | |
+| CommunicationPreference | [Profiles](../../src/Sections/Humans.Users/Docs/Users.md) | |
+| ProfileLanguage | [Profiles](../../src/Sections/Humans.Users/Docs/Users.md) | |
+| VolunteerHistoryEntry | [Profiles](../../src/Sections/Humans.Users/Docs/Users.md) | Sub-aggregate of Profile. |
+| AccountMergeRequest | [Users/Identity](../../src/Sections/Humans.Users/Docs/Users.md) | `AccountMergeService` + `DuplicateAccountService` live in `Humans.Application.Services.Users/`. |
 | Application | [Governance](../../src/Sections/Humans.Governance/Docs/Governance.md) | |
 | ApplicationStateHistory | [Governance](../../src/Sections/Humans.Governance/Docs/Governance.md) | Append-only (§12). |
 | BoardVote | [Governance](../../src/Sections/Humans.Governance/Docs/Governance.md) | Transient — deleted on finalization. |

@@ -24,7 +24,7 @@ public class AgentPreloadCorpusBuilderTests
         text.Should().Contain("**Governance**");
         text.Should().Contain("**Shifts**");
         text.Should().Contain("**Tickets**");
-        text.Should().Contain("**Profiles**");
+        text.Should().Contain("**Users**");
         text.Should().Contain("**Auth**");
         text.Should().NotContain("**Budget**");
         text.Should().NotContain("**Camps**");
