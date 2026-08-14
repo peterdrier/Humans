@@ -76,7 +76,10 @@
                     ? ProfileCardViewMode.Admin
                     : ProfileCardViewMode.Public;
         }
-        <vc:profile-card user-id="@Model.UserId" view-mode="@cardViewMode" />
+        @* ProfileCardViewComponent is internal (HUM0034), so Razor generates no
+           <vc:profile-card> tag helper for it — the element would ship as inert markup.
+           SectionViewComponentFeatureProvider registers it for invocation by name. *@
+        @await Component.InvokeAsync("ProfileCard", new { userId = Model.UserId, viewMode = cardViewMode })
 
         @if (Model.IsOwnProfile)
         {
