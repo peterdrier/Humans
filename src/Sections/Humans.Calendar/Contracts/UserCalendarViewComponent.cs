@@ -1,15 +1,20 @@
-using Humans.Application.Interfaces.ICalFeed;
-using Humans.Application.Interfaces.Users;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Users.Contracts;
 
-namespace Humans.Web.ViewComponents;
+namespace Humans.Calendar.Contracts;
 
 /// <summary>
 /// Admin visibility into a user's personal iCal feed: renders the same
 /// aggregated items the /api/ical endpoint serializes (one code path via
 /// IICalFeedService). Never shows the secret token or feed URL.
 /// </summary>
+/// <remarks>
+/// Public, under <c>Contracts/</c>, so MVC's default provider discovers it and the
+/// tag helper is generated — Shell's widget gallery renders it as
+/// <c>&lt;vc:user-calendar&gt;</c> and Users' admin detail invokes it by name. An
+/// internal view component ships the element as inert literal markup with a green
+/// build (design §15 step 6; HUM0034's carve-out is the folder).
+/// </remarks>
 public sealed class UserCalendarViewComponent(
     IICalFeedService feed,
     IUserServiceRead users,

@@ -1,6 +1,6 @@
 using NodaTime;
 
-namespace Humans.Application.Interfaces.ICalFeed;
+namespace Humans.Calendar.Contracts;
 
 /// <summary>
 /// One VEVENT-shaped item in a user's personal iCal feed.

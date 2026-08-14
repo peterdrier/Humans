@@ -2802,9 +2802,11 @@ validation).
 
 ## ICalFeed
 
-Folder: `src/Humans.Application/Services/ICalFeed/`. **New section (#931)** —
-personal iCal feed orchestrator. Owns no DB tables; fans out over
-`IEnumerable<ICalendarFeedContributor>` implementations registered by other
+Folder: `src/Sections/Humans.Calendar/Services/`, with `ICalendarFeedContributor`,
+`CalendarFeedItem` and `IICalFeedService` under `Humans.Calendar/Contracts/`
+(G5 lane 4b-2c, nobodies-collective/Humans#866 — the feed is Calendar-owned, not a
+section of its own). Personal iCal feed orchestrator (#931). Owns no DB tables; fans
+out over `IEnumerable<ICalendarFeedContributor>` implementations registered by other
 sections. Requires a valid `User.ICalToken` stored in the `Users` table (accessed
 read-only through `IUserServiceRead`).
 
@@ -2819,7 +2821,7 @@ reads `UserInfo.ICalToken` from the `CachingUserService` TrackedCache) and
 | _(none — token check via `IUserServiceRead.GetUserInfoAsync`, no direct DB access)_ | — |
 
 Current `ICalendarFeedContributor` implementations (registered by their owning
-sections in `ShiftsSectionExtensions` and `EventsSectionExtensions`):
+sections in each section's own `Section.cs`):
 
 - **`ShiftSignupService`** (Shifts) — the user's Confirmed **and** Pending shift signups (pending get a "(pending)" summary suffix); Cancelled/Bailed/NoShow history is excluded.
 - **`EventService`** (Events) — approved event-guide entries the user has favourited (moderation un-approval drops an event from the feed without touching the favourite row). No hosting/ownership path.

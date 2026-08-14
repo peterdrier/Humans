@@ -1,14 +1,13 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces.ICalFeed;
-using Humans.Application.Interfaces.Users;
-using Humans.Application.Services.ICalFeed;
+using Humans.Calendar.Contracts;
+using Humans.Calendar.Services;
 using Humans.Domain.Entities;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
 using Humans.Users.Contracts;
 
-namespace Humans.Application.Tests.Services.ICalFeed;
+namespace Humans.Calendar.Tests.Services;
 
 public class ICalFeedServiceTests
 {

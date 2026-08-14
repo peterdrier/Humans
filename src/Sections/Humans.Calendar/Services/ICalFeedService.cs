@@ -1,19 +1,18 @@
-using Humans.Application.Interfaces.ICalFeed;
-using Humans.Application.Interfaces.Users;
+using Humans.Calendar.Contracts;
 using Ical.Net.CalendarComponents;
 using Ical.Net.DataTypes;
 using Ical.Net.Serialization;
 using Microsoft.Extensions.Logging;
 using Humans.Users.Contracts;
 
-namespace Humans.Application.Services.ICalFeed;
+namespace Humans.Calendar.Services;
 
 /// <summary>
 /// Orchestrator: fans the personal iCal feed out across <see cref="ICalendarFeedContributor"/>s
 /// into one VCALENDAR. Sequential, not Task.WhenAll: contributors share the
 /// scoped section DbContexts which are not thread-safe (same as GdprExportService).
 /// </summary>
-public sealed class ICalFeedService(
+internal sealed class ICalFeedService(
     IUserServiceRead users,
     IEnumerable<ICalendarFeedContributor> contributors,
     ILogger<ICalFeedService> logger) : IICalFeedService

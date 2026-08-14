@@ -1,13 +1,12 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces.ICalFeed;
-using Humans.Application.Interfaces.Users;
-using Humans.Web.Controllers.Api;
+using Humans.Calendar.Contracts;
+using Humans.Calendar.Controllers;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Humans.Users.Contracts;
 
-namespace Humans.Web.Tests.Controllers;
+namespace Humans.Calendar.Tests.Controllers;
 
 public class ICalFeedApiControllerTests
 {

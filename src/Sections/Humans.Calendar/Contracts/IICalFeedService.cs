@@ -1,4 +1,6 @@
-namespace Humans.Application.Interfaces.ICalFeed;
+using Humans.Application.Interfaces;
+
+namespace Humans.Calendar.Contracts;
 
 /// <summary>
 /// Orchestrator for the personal iCal feed — fans out over every

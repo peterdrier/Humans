@@ -3,6 +3,14 @@
 **Date:** 2026-06-09
 **Issue:** nobodies-collective/Humans#161 (iCal bullet only; CSV exports and stats dashboard stay open)
 
+> **Paths below are as-built in 2026-06 and have moved.** G5 lane 4b-2c
+> (nobodies-collective/Humans#866) moved the whole feed out of Base into this section:
+> `ICalendarFeedContributor`, `CalendarFeedItem`, `IICalFeedService` and
+> `UserCalendarViewComponent` are public under `Humans.Calendar/Contracts/`;
+> `ICalFeedService` and `ICalFeedApiController` are `internal` under `Services/` and
+> `Controllers/`; the DI lives in `Humans.Calendar/Section.cs`, not a Shell extension.
+> Every decision and contract below still holds — only the file locations changed.
+
 ## Summary
 
 A per-user iCal subscription feed at `GET /api/ical/{userId:guid}/{token:guid}.ics`, built by fanning out across sections that contribute calendar items — same shape as the GDPR export fanout (`IUserDataContributor`). First two contributors: Shifts (signups the user is on) and Events (guide events the user has favourited). An admin-facing `<vc:user-calendar>` view component on the user admin detail page renders the same aggregated items the API serializes, for visibility into what the feed emits.

@@ -95,7 +95,8 @@
       ],
       "symbols": [
         "Calendar*",
-        "ICalendar*"
+        "ICalendar*",
+        "IICalFeed*"
       ],
       "repositoryInterfaces": [
         "ICalendarRepository"

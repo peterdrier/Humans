@@ -4,7 +4,7 @@ using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.EarlyEntry;
 using Humans.Gdpr.Contracts;
-using Humans.Application.Interfaces.ICalFeed;
+using Humans.Calendar.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Shifts.Services;

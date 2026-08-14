@@ -56,7 +56,6 @@ public static class InfrastructureServiceCollectionExtensions
         // stays in Humans.Application and is registered here — Governance's rule, that the
         // section owning the file is not always the section owning the line.
         services.AddScoped<IAuditViewerService, AuditViewerService>();
-        services.AddICalFeedSection();
         services.AddAdminSection();
         services.AddHoldedConnector(configuration);
 

@@ -1,5 +1,6 @@
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Caching;
+using Humans.Calendar.Contracts;
 using Humans.Calendar.Data;
 using Humans.Calendar.Services;
 using Humans.Infrastructure.Hosting;
@@ -34,5 +35,11 @@ public sealed class Section : ISection
 
         services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingCalendarService>());
         services.AddHostedService(sp => sp.GetRequiredService<CachingCalendarService>());
+
+        // iCal feed orchestrator — pure fan-out over every ICalendarFeedContributor.
+        // Verbatim from Shell's former ICalFeedSectionExtensions (G5 lane 4b-2c). The
+        // contributors themselves are registered by the sections that implement the
+        // interface (Shifts, Events), so Calendar never names them.
+        services.AddScoped<IICalFeedService, ICalFeedService>();
     }
 }

@@ -1,12 +1,11 @@
-using Humans.Application.Interfaces.ICalFeed;
-using Humans.Application.Interfaces.Users;
+using Humans.Calendar.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 using Humans.UI.Controllers;
 using Humans.Users.Contracts;
 
-namespace Humans.Web.Controllers.Api;
+namespace Humans.Calendar.Controllers;
 
 /// <summary>
 /// Anonymous personal iCal feed. The secret is the user's stored
@@ -16,7 +15,7 @@ namespace Humans.Web.Controllers.Api;
 /// </summary>
 [ApiController]
 [Route("api/ical")]
-public class ICalFeedApiController(
+internal sealed class ICalFeedApiController(
     IICalFeedService feed,
     IUserServiceRead users,
     ILogger<ICalFeedApiController> logger) : ApiControllerBase(users)
