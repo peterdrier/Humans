@@ -76,15 +76,11 @@
                     ? ProfileCardViewMode.Admin
                     : ProfileCardViewMode.Public;
         }
-        @* ProfileCardViewComponent is internal (HUM0034), so Razor generates no
-           <vc:profile-card> tag helper for it — the element would ship as inert markup.
-           SectionViewComponentFeatureProvider registers it for invocation by name. *@
-        @await Component.InvokeAsync("ProfileCard", new { userId = Model.UserId, viewMode = cardViewMode })
+        <vc:profile-card user-id="@Model.UserId" view-mode="@cardViewMode" />
 
         @if (Model.IsOwnProfile)
         {
-            @* MyCamps is Humans.Camps'; invoked by name rather than adding a Users -> Camps ProjectReference. *@
-            @await Component.InvokeAsync("MyCamps")
+            <vc:my-camps />
         }
 
         @* Approved personal (non-camp) events this human submitted this edition (auto-hidden when empty); camp events show on the camp's page *@

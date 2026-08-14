@@ -93,6 +93,14 @@
         Teams         — account merge folds team memberships.
         Tickets       — participation is derived from ticket sync.
     -->
+    <!--
+      Views/Profile/Index.cshtml renders <vc:my-camps />, whose MyCampsViewComponent is
+      public in Humans.Camps/Contracts/ but whose tag helper Razor only generates from
+      the declaring assembly — @addTagHelper needs the assembly, not its Contracts leaf.
+      Same shape as the Humans.Shifts reference below. Acyclic — Humans.Camps names
+      nothing in Humans.Users.
+    -->
+    <ProjectReference Include="..\Humans.Camps\Humans.Camps.csproj" />
     <ProjectReference Include="..\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Auth.Contracts\Humans.Auth.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Consent.Contracts\Humans.Consent.Contracts.csproj" />

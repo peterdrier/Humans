@@ -16,7 +16,7 @@ namespace Humans.Users.ViewComponents;
 /// (e.g. ticket-transfer detail) where the reviewer needs identity context
 /// without having to hover.
 /// </summary>
-internal sealed class HumanSummaryViewComponent(IUserServiceRead userService, ITeamServiceRead teamService) : ViewComponent
+public sealed class HumanSummaryViewComponent(IUserServiceRead userService, ITeamServiceRead teamService) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync(Guid userId)
     {

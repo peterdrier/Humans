@@ -14,7 +14,10 @@ using Humans.Users.Contracts;
 
 namespace Humans.Users.ViewComponents;
 
-internal sealed class ProfileCardViewComponent(
+// Public, not internal: Razor's build-time tag-helper discovery only sees public view
+// components, so an internal one renders <vc:profile-card> as inert markup. HUM0034
+// exempts view components for exactly this reason.
+public sealed class ProfileCardViewComponent(
     IUserServiceRead userService,
     IContactFieldService contactFieldService,
     IUserEmailService userEmailService,

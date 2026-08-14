@@ -11,7 +11,8 @@ namespace Humans.Analyzers;
 /// (nobodies-collective/Humans#866, G5), a <c>public</c> type is an error
 /// unless it is the section's <c>ISection</c> entry point, its
 /// <c>&lt;Section&gt;Resource</c> localization marker, an EF Core migration
-/// or model-snapshot type, or declared under a <c>Contracts/</c> path.
+/// or model-snapshot type, an MVC view component, or declared under a
+/// <c>Contracts/</c> path.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -37,6 +38,21 @@ namespace Humans.Analyzers;
 /// migration would otherwise fail this rule on day one. Matched structurally by base
 /// type, the same way <c>Internal/SectionDbContexts.cs</c> matches "application
 /// DbContext" for HUM0008/09/25/26, so moving migrations cannot silently defeat it.
+/// </para>
+/// <para>
+/// <b>View components are exempt and must stay <c>public</c>.</b> Razor's build-time
+/// tag-helper discovery (<c>ViewComponentTagHelperDescriptorProvider</c>) only sees
+/// <c>public</c> view components, so an <c>internal</c> one generates no
+/// <c>&lt;vc:…&gt;</c> tag helper and the element ships as inert literal markup —
+/// green build, no runtime error, nothing rendered. Making them internal cost the
+/// whole Profile page its <c>&lt;vc:profile-card&gt;</c>. Runtime lookup is not the
+/// same seam: <c>SectionViewComponentFeatureProvider</c> registers internal
+/// components for <c>Component.InvokeAsync("Name")</c>, which is exactly what made
+/// the breakage invisible to the build and the test suite. A view component is
+/// rendering surface — its whole purpose is to be invoked from views in other
+/// assemblies — so it is public by design, not by accident. Matched structurally the
+/// same way MVC's <c>ViewComponentConventions.IsComponent</c> matches it, so the
+/// carve-out cannot disagree with what discovery accepts.
 /// </para>
 /// <para>
 /// <b>Checked on declared accessibility, not effective (externally-reachable)
@@ -78,6 +94,9 @@ public sealed class SectionPublicSurfaceAnalyzer : DiagnosticAnalyzer
     private const string EfMigrationFullName = "Microsoft.EntityFrameworkCore.Migrations.Migration";
     private const string ResourceNameSuffix = "Resource";
     private const string ContractsPathSegment = "/Contracts/";
+    private const string ViewComponentNameSuffix = "ViewComponent";
+    private const string ViewComponentAttributeFullName = "Microsoft.AspNetCore.Mvc.ViewComponentAttribute";
+    private const string NonViewComponentAttributeFullName = "Microsoft.AspNetCore.Mvc.NonViewComponentAttribute";
 
     private static readonly LocalizableString Title =
         "Public type outside a section's public surface";
@@ -118,10 +137,13 @@ public sealed class SectionPublicSurfaceAnalyzer : DiagnosticAnalyzer
 
         var sectionMarker = context.Compilation.GetTypeByMetadataName(ISectionFullName);
         var migrationBase = context.Compilation.GetTypeByMetadataName(EfMigrationFullName);
+        var viewComponentAttr = context.Compilation.GetTypeByMetadataName(ViewComponentAttributeFullName);
+        var nonViewComponentAttr = context.Compilation.GetTypeByMetadataName(NonViewComponentAttributeFullName);
         var grandfatheredAttr = GrandfatheredCheck.Resolve(context.Compilation);
 
         context.RegisterSymbolAction(
-            ctx => AnalyzeNamedType(ctx, sectionMarker, migrationBase, grandfatheredAttr),
+            ctx => AnalyzeNamedType(
+                ctx, sectionMarker, migrationBase, viewComponentAttr, nonViewComponentAttr, grandfatheredAttr),
             SymbolKind.NamedType);
     }
 
@@ -129,6 +151,8 @@ public sealed class SectionPublicSurfaceAnalyzer : DiagnosticAnalyzer
         SymbolAnalysisContext context,
         INamedTypeSymbol? sectionMarker,
         INamedTypeSymbol? migrationBase,
+        INamedTypeSymbol? viewComponentAttr,
+        INamedTypeSymbol? nonViewComponentAttr,
         INamedTypeSymbol? grandfatheredAttr)
     {
         var type = (INamedTypeSymbol)context.Symbol;
@@ -142,6 +166,8 @@ public sealed class SectionPublicSurfaceAnalyzer : DiagnosticAnalyzer
         if (IsResourceMarker(type))
             return;
         if (IsEfMigration(type, migrationBase))
+            return;
+        if (IsViewComponent(type, viewComponentAttr, nonViewComponentAttr))
             return;
         if (IsUnderContracts(type))
             return;
@@ -196,6 +222,32 @@ public sealed class SectionPublicSurfaceAnalyzer : DiagnosticAnalyzer
     /// </summary>
     private static bool IsEfMigration(INamedTypeSymbol type, INamedTypeSymbol? migrationBase) =>
         migrationBase is not null && type.InheritsFromOrEquals(migrationBase.ToDisplayString());
+
+    /// <summary>
+    /// An MVC view component. Matched exactly the way
+    /// <c>ViewComponentConventions.IsComponent</c> matches it — a non-abstract,
+    /// non-generic class whose name ends in "ViewComponent" or which carries
+    /// <c>[ViewComponent]</c>, minus any type marked <c>[NonViewComponent]</c> — so
+    /// the carve-out covers precisely the set MVC and Razor treat as components, and
+    /// nothing that merely looks like one.
+    /// </summary>
+    private static bool IsViewComponent(
+        INamedTypeSymbol type,
+        INamedTypeSymbol? viewComponentAttr,
+        INamedTypeSymbol? nonViewComponentAttr)
+    {
+        if (type.TypeKind != TypeKind.Class || type.IsAbstract || type.IsGenericType)
+            return false;
+        if (HasAttribute(type, nonViewComponentAttr))
+            return false;
+
+        return type.Name.EndsWith(ViewComponentNameSuffix, System.StringComparison.Ordinal)
+            || HasAttribute(type, viewComponentAttr);
+    }
+
+    private static bool HasAttribute(INamedTypeSymbol type, INamedTypeSymbol? attribute) =>
+        attribute is not null
+        && type.GetAttributes().Any(a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, attribute));
 
     /// <summary>
     /// True when <paramref name="type"/> is declared under a <c>Contracts/</c>

@@ -990,9 +990,18 @@ Git Bash.)
      Scanner + Shell each gained one `@addTagHelper *, Humans.<Section>` line. Read Gate's
      rule as "park it in `Humans.UI` until the owning section moves", not as a final home
      (proven: Tickets, correcting Scanner finding 22).
-   - **Whether a section's view component is `public` under `Contracts/` or `internal`
-     behind `SectionViewComponentFeatureProvider` is decided by its *constructor*, not by
-     policy.** HUM0034's carve-out is not the contracts *leaf* — read
+   - **A section's view components are `public`. Settled by Peter 2026-08-14 after an
+     internal `ProfileCardViewComponent` silently emptied the Profile page; HUM0034 now
+     carves out view components structurally, so `public` needs no `Contracts/` folder and
+     no argument.** A view component is rendering surface — being invoked from views in
+     other assemblies is its whole purpose — and Razor generates a `<vc:…>` tag helper only
+     for a *public* component, so `internal` is not a smaller surface, it is a broken one.
+     `SectionViewComponentFeatureProvider` stays for the one case that cannot comply: a
+     public constructor cannot take an internal parameter type (CS0051), so
+     `NotificationBellViewComponent(INotificationInboxService)` is internal until that
+     service has a `Contracts/` interface. **That is a dependency defect to fix, not a
+     choice** — and while it holds, the component must be invoked by name, never with
+     `<vc:…>`. HUM0034's carve-out is not the contracts *leaf* — read
      `src/Humans.Analyzers/SectionPublicSurfaceAnalyzer.cs`, `IsUnderContracts`: it matches a
      namespace segment **or file-path segment** named `Contracts`, so a `Contracts/` folder
      inside the section project qualifies, and the section project is `Sdk.Razor` with the
@@ -1018,9 +1027,11 @@ Git Bash.)
      `IUrlHelperFactory` is framework, so neither constructor blocks it — and nothing changes
      at the call sites.
    - **Fourth case, a rider on City Planning's: invoking by name still needs the component's
-     *argument types* to be nameable from the section.** `ProfileCardViewComponent` stitches
-     contact fields, emails, teams and roles from seven Base services, so it stays in Shell and
-     `<vc:profile-card view-mode="@ProfileCardViewMode.Admin" />` becomes
+     *argument types* to be nameable from the section.** Superseded for `ProfileCardViewComponent`
+     itself, which moved into `Humans.Users` and stayed `public`, keeping `<vc:profile-card />`
+     intact — but the constraint is general and still bites wherever invoke-by-name is genuinely
+     forced. When it was still expected to stay in Shell,
+     `<vc:profile-card view-mode="@ProfileCardViewMode.Admin" />` would have become
      `@await Component.InvokeAsync("ProfileCard", new { userId, viewMode })` — except the enum
      was declared beside the component in `Humans.Web.ViewComponents` and the section cannot
      name it, so the invocation does not compile. The enum moved to `Humans.UI/ViewComponents/`

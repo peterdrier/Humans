@@ -38,6 +38,18 @@ public class SectionPublicSurfaceAnalyzerTests
             public abstract class Migration { }
         }
 
+        namespace Microsoft.AspNetCore.Mvc
+        {
+            [System.AttributeUsage(System.AttributeTargets.Class)]
+            public sealed class ViewComponentAttribute : System.Attribute
+            {
+                public string Name { get; set; }
+            }
+
+            [System.AttributeUsage(System.AttributeTargets.Class)]
+            public sealed class NonViewComponentAttribute : System.Attribute { }
+        }
+
         namespace Humans.Application.Architecture
         {
             [System.AttributeUsage(System.AttributeTargets.Class, AllowMultiple = true)]
@@ -191,6 +203,93 @@ public class SectionPublicSurfaceAnalyzerTests
             ReferencedStubs);
 
         diagnostics.Where(IsHum0034).Should().BeEmpty();
+    }
+
+    // Razor's build-time tag-helper discovery only sees public view components, so an
+    // internal one renders <vc:…> as inert markup — green build, nothing on the page.
+    // The carve-out matches ViewComponentConventions.IsComponent exactly.
+    [HumansFact]
+    public async Task Does_not_fire_on_view_component_named_by_convention()
+    {
+        var source = SectionAssemblyAttribute + """
+
+            namespace Humans.Test.ViewComponents
+            {
+                public sealed class ProfileCardViewComponent { }
+            }
+            """;
+
+        var diagnostics = await AnalyzerTestHarness.RunAsync(
+            new SectionPublicSurfaceAnalyzer(),
+            "Humans.Test",
+            source,
+            ReferencedStubs);
+
+        diagnostics.Where(IsHum0034).Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task Does_not_fire_on_view_component_declared_by_attribute()
+    {
+        var source = SectionAssemblyAttribute + """
+
+            namespace Humans.Test.ViewComponents
+            {
+                [Microsoft.AspNetCore.Mvc.ViewComponent(Name = "ProfileCard")]
+                public sealed class ProfileCardWidget { }
+            }
+            """;
+
+        var diagnostics = await AnalyzerTestHarness.RunAsync(
+            new SectionPublicSurfaceAnalyzer(),
+            "Humans.Test",
+            source,
+            ReferencedStubs);
+
+        diagnostics.Where(IsHum0034).Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task Fires_on_NonViewComponent_despite_the_name()
+    {
+        // [NonViewComponent] opts a conventionally-named class out of being a component,
+        // so it is ordinary section internals again and the carve-out must not cover it.
+        var source = SectionAssemblyAttribute + """
+
+            namespace Humans.Test.ViewComponents
+            {
+                [Microsoft.AspNetCore.Mvc.NonViewComponent]
+                public sealed class HelperViewComponent { }
+            }
+            """;
+
+        var diagnostics = await AnalyzerTestHarness.RunAsync(
+            new SectionPublicSurfaceAnalyzer(),
+            "Humans.Test",
+            source,
+            ReferencedStubs);
+
+        diagnostics.Where(IsHum0034).Should().ContainSingle();
+    }
+
+    [HumansFact]
+    public async Task Fires_on_public_type_whose_name_merely_contains_ViewComponent()
+    {
+        var source = SectionAssemblyAttribute + """
+
+            namespace Humans.Test.ViewComponents
+            {
+                public sealed class ViewComponentRegistry { }
+            }
+            """;
+
+        var diagnostics = await AnalyzerTestHarness.RunAsync(
+            new SectionPublicSurfaceAnalyzer(),
+            "Humans.Test",
+            source,
+            ReferencedStubs);
+
+        diagnostics.Where(IsHum0034).Should().ContainSingle();
     }
 
     [HumansFact]
