@@ -72,9 +72,11 @@
     <!--
       Outbound section references, all through leaves and all acyclic — none of these
       leaves names a Humans.Users type. Note the reverse direction is sanctioned and
-      deliberate: eleven section projects reference *this* project for IUserService's
-      write surface (Peter, 2026-08-14; design §15 step 5b's "reference the section
-      project directly" applied to a Contracts/ folder).
+      deliberate: consumers reference *this* project for IUserService's write surface
+      (Peter, 2026-08-14). IUserService itself sits on Humans.Users.Contracts, not here —
+      seven Base files inject it and Humans.Users references Base, so a section-resident
+      IUserService is a cycle (design §15 step 5b: "a consumer in Base forces
+      Humans.<Section>.Contracts"). No consumer needed a new ProjectReference.
         AuditLog      — every write path records an audit entry.
         Auth          — role assignment on provisioning and merge.
         Consent       — profile completeness gates on the consent state.
@@ -99,6 +101,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Helpers/ProfilePictureProcessor.cs — profile-picture resize/orient on upload. -->
+    <PackageReference Include="Magick.NET-Q8-AnyCPU" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" />
     <PackageReference Include="NodaTime" />

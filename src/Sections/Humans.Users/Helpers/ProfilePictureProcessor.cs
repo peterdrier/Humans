@@ -1,6 +1,6 @@
 using ImageMagick;
 
-namespace Humans.Web.Helpers;
+namespace Humans.Users.Helpers;
 
 internal static class ProfilePictureProcessor
 {

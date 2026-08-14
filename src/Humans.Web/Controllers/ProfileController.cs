@@ -2124,7 +2124,7 @@ public class ProfileController(
     // ─── Helpers ─────────────────────────────────────────────────────
 
     private (byte[] Data, string ContentType)? ResizeProfilePicture(byte[] imageData) =>
-        Helpers.ProfilePictureProcessor.ResizeProfilePicture(imageData, logger);
+        Humans.Users.Helpers.ProfilePictureProcessor.ResizeProfilePicture(imageData, logger);
 
     private async Task<EmailsViewModel> BuildEmailsViewModelAsync(User user, bool isAdminContext = false, CancellationToken ct = default)
     {
