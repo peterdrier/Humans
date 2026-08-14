@@ -292,7 +292,7 @@
                             <span class="wg-card-name">&lt;vc:profile-card&gt;</span>
                             <span class="wg-card-kind kind-vc">ViewComponent</span>
                         </div>
-                        <span class="wg-card-path">src/Humans.Web/ViewComponents/ProfileCardViewComponent.cs</span>
+                        <span class="wg-card-path">src/Sections/Humans.Users/ViewComponents/ProfileCardViewComponent.cs</span>
                     </div>
                     <div class="wg-card-note">
                         Full profile card. The view mode controls which sensitive fields render — legal name, board notes, emergency contacts.
@@ -305,7 +305,7 @@
                     <div class="wg-variants">
                         <div class="wg-variant-label">view-mode="Admin"<span class="wg-variant-sub">current human</span></div>
                         <div class="wg-variant-render" style="display:block;">
-                            <vc:profile-card user-id="@Model.CurrentUserId" view-mode="@ProfileCardViewMode.Admin" />
+                            @await Component.InvokeAsync("ProfileCard", new { userId = Model.CurrentUserId, viewMode = ProfileCardViewMode.Admin })
                         </div>
                     </div>
                 </div>
@@ -316,7 +316,7 @@
                             <span class="wg-card-name">_ProfileCard.cshtml</span>
                             <span class="wg-card-kind kind-pa">Partial</span>
                         </div>
-                        <span class="wg-card-path">src/Humans.Web/Views/Shared/_ProfileCard.cshtml</span>
+                        <span class="wg-card-path">src/Sections/Humans.Users/Views/Shared/_ProfileCard.cshtml</span>
                     </div>
                     <div class="wg-card-note">
                         Compact profile summary line — avatar + name + email + status badges. Used in admin tables.

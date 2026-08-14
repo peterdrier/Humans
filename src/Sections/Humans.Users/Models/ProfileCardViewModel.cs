@@ -1,14 +1,12 @@
-using Humans.Users.Models;
 using Humans.UI.Helpers;
 using NodaTime;
 using Humans.Application.Extensions;
 using Humans.Domain.Enums;
-using Humans.Web.ViewComponents;
 
 using Humans.UI.ViewComponents;
 using Humans.Users.Contracts;
 
-namespace Humans.Web.Models;
+namespace Humans.Users.Models;
 
 /// <summary>
 /// View model for the ProfileCard ViewComponent.

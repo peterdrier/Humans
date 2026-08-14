@@ -1,4 +1,3 @@
-using Humans.Users.Models;
 using Humans.UI.Helpers;
 using Humans.Auth.Contracts;
 using Humans.Application;
@@ -10,7 +9,7 @@ using Humans.Governance.Contracts;
 using Humans.Users.Contracts;
 using NodaTime;
 
-namespace Humans.Web.Models;
+namespace Humans.Users.Models;
 
 internal static class AdminHumanDetailViewModelBuilder
 {

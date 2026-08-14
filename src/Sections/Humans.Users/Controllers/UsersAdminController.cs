@@ -1,3 +1,6 @@
+using Humans.Users.Models;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Hosting;
 using Humans.Auth.Contracts;
 // @e2e: board.spec.ts
 // @e2e: profile.spec.ts
@@ -17,19 +20,17 @@ using Humans.Domain.Enums;
 using Humans.UI.Controllers;
 using Humans.UI;
 using Humans.UI.Authorization;
-using Humans.Web.Authorization;
-using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
 using NodaTime;
 using Humans.Users.Services;
 
-namespace Humans.Web.Controllers;
+namespace Humans.Users.Controllers;
 
 [Authorize(Policy = PolicyNames.HumanAdminBoardOrAdmin)]
 [Route("Users/Admin")]
-public sealed class UsersAdminController(
+internal sealed class UsersAdminController(
     IUserService userService,
     IUserEmailService userEmailService,
     IEmailOutboxServiceRead emailOutboxService,
@@ -391,7 +392,7 @@ public sealed class UsersAdminController(
         {
             logger.LogError(ex, "Error loading audience segmentation data");
             SetError("Failed to load audience segmentation data.");
-            return RedirectToAction(nameof(AdminController.Index), "Admin");
+            return RedirectToAction("Index", "Admin");
         }
     }
 

@@ -3,9 +3,9 @@ using Humans.Domain.Enums;
 using Humans.UI.Models;
 using Humans.Users.Contracts;
 
-namespace Humans.Web.Models;
+namespace Humans.Users.Models;
 
-public static class AdminHumanListViewModelBuilder
+internal static class AdminHumanListViewModelBuilder
 {
     private const int PageSize = 20;
 

@@ -5,7 +5,7 @@
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Html
 @inject IAuthorizationService AuthService
-@model Humans.Web.Models.AdminHumanDetailViewModel
+@model Humans.Users.Models.AdminHumanDetailViewModel
 @{
     ViewData["Title"] = string.Format(Localizer["AdminHumanDetail_Title"].Value, Model.DisplayName);
     Layout = "_AdminLayout";
@@ -232,10 +232,10 @@
         </div>
 
         <vc:shift-signups user-id="@Model.UserId" view-mode="@ShiftSignupsViewMode.Admin" display-name="@Model.DisplayName" />
-        <vc:user-calendar user-id="@Model.UserId" />
+        @await Component.InvokeAsync("UserCalendar", new { userId = Model.UserId })
 
         <h5 class="mt-4 mb-2">@Localizer["CommPrefs_Title"]</h5>
-        <vc:communication-preferences-panel user-id="@Model.UserId" read-only="true" />
+        @await Component.InvokeAsync("CommunicationPreferencesPanel", new { userId = Model.UserId, readOnly = true })
 
         <vc:audit-log user-id="@Model.UserId" limit="50" title="@Localizer["AdminHuman_AuditHistory"].Value" />
 
@@ -281,7 +281,7 @@
     </div>
 
     <div class="col-md-4">
-        <vc:ticket-holdings user-id="@Model.UserId" show-empty="true" />
+        @await Component.InvokeAsync("TicketHoldings", new { userId = Model.UserId, showEmpty = true })
 
         <div class="card mb-4">
             <div class="card-header">@Localizer["AdminHuman_Statistics"]</div>

@@ -5,9 +5,6 @@ using Humans.Auth.Contracts;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Domain.Enums;
-using Humans.Web.Controllers;
-using Humans.Web.Helpers;
-using Humans.Web.Models;
 using Humans.UI.ViewComponents;
 using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
@@ -15,9 +12,9 @@ using Humans.Governance.Contracts;
 using Humans.Application.Interfaces.Auth;
 using Humans.Users.Contracts;
 
-namespace Humans.Web.ViewComponents;
+namespace Humans.Users.ViewComponents;
 
-public class ProfileCardViewComponent(
+internal sealed class ProfileCardViewComponent(
     IUserServiceRead userService,
     IContactFieldService contactFieldService,
     IUserEmailService userEmailService,

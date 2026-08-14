@@ -3,17 +3,16 @@ using Humans.UI.Helpers;
 using Humans.UI.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Humans.Web.Models;
 using Humans.Application.Interfaces.Users;
 using Humans.UI.Authorization;
 using Humans.Users.Contracts;
 using Humans.Users.Services;
 
-namespace Humans.Web.Controllers;
+namespace Humans.Users.Controllers;
 
 [Authorize(Policy = PolicyNames.AdminOnly)]
 [Route("Users/Admin/AccountMerges")]
-public class UsersAdminAccountMergesController(
+internal sealed class UsersAdminAccountMergesController(
     IUserServiceRead userService,
     IAccountMergeService mergeService,
     IDuplicateAccountService duplicateService,

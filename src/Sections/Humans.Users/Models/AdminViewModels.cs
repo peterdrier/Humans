@@ -1,4 +1,3 @@
-using Humans.Users.Models;
 using Humans.UI.Helpers;
 using Humans.Domain.Enums;
 using Humans.Campaigns.Contracts;
@@ -7,9 +6,9 @@ using Humans.UI.Models;
 using Humans.Governance.Contracts;
 using Humans.Users.Contracts;
 
-namespace Humans.Web.Models;
+namespace Humans.Users.Models;
 
-public class AdminHumanListViewModel : PagedListViewModel
+internal sealed class AdminHumanListViewModel : PagedListViewModel
 {
     /// <summary>
     /// Page of admin humans to render via the canonical
@@ -80,7 +79,7 @@ internal sealed class AdminHumanDetailViewModel
     public string? RevealedIban { get; set; }
 }
 
-public class AdminUserEmailViewModel
+internal sealed class AdminUserEmailViewModel
 {
     public string Email { get; set; } = string.Empty;
     public bool IsGoogle { get; set; }
@@ -89,21 +88,21 @@ public class AdminUserEmailViewModel
     public ContactFieldVisibility? Visibility { get; set; }
 }
 
-public class AdminHumanApplicationViewModel
+internal sealed class AdminHumanApplicationViewModel
 {
     public Guid Id { get; set; }
     public ApplicationStatus Status { get; set; }
     public DateTime SubmittedAt { get; set; }
 }
 
-public class AdminRoleAssignmentListViewModel() : PagedListViewModel(50)
+internal sealed class AdminRoleAssignmentListViewModel() : PagedListViewModel(50)
 {
     public List<AdminRoleAssignmentViewModel> RoleAssignments { get; set; } = [];
     public string? RoleFilter { get; set; }
     public bool ShowInactive { get; set; }
 }
 
-public class AdminRoleAssignmentViewModel
+internal sealed class AdminRoleAssignmentViewModel
 {
     public Guid Id { get; set; }
     public Guid UserId { get; set; }
@@ -117,7 +116,7 @@ public class AdminRoleAssignmentViewModel
     public DateTime CreatedAt { get; set; }
 }
 
-public class CreateRoleAssignmentViewModel
+internal sealed class CreateRoleAssignmentViewModel
 {
     public Guid UserId { get; set; }
     public string RoleName { get; set; } = string.Empty;
@@ -125,7 +124,7 @@ public class CreateRoleAssignmentViewModel
     public List<string> AvailableRoles { get; set; } = [];
 }
 
-public class EndRoleAssignmentViewModel
+internal sealed class EndRoleAssignmentViewModel
 {
     public Guid Id { get; set; }
     public Guid UserId { get; set; }
@@ -153,7 +152,7 @@ internal sealed class AccountMergeRowViewModel
 /// Audience segmentation gauges for admin view.
 /// Shows total accounts, accounts with tickets, with profiles, both, or neither.
 /// </summary>
-public class AudienceSegmentationViewModel
+internal sealed class AudienceSegmentationViewModel
 {
     public int TotalAccounts { get; set; }
     public int WithTicket { get; set; }
