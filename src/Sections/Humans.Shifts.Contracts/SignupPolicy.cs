@@ -1,4 +1,4 @@
-namespace Humans.Domain.Enums;
+namespace Humans.Shifts.Contracts;
 
 /// <summary>
 /// Controls whether shift signups require coordinator approval.

@@ -6,7 +6,6 @@ using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Shifts.Contracts;
-using Humans.Application.Models;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Agent.Services.Preload;

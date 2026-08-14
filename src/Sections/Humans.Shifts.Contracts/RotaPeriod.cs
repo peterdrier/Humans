@@ -1,4 +1,4 @@
-namespace Humans.Domain.Enums;
+namespace Humans.Shifts.Contracts;
 
 /// <summary>
 /// Explicit period set on a Rota by the coordinator.

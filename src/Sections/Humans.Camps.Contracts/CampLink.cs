@@ -1,4 +1,4 @@
-namespace Humans.Domain.ValueObjects;
+namespace Humans.Camps.Contracts;
 
 public class CampLink
 {

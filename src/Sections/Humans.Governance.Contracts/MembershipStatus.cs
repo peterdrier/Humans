@@ -1,4 +1,4 @@
-namespace Humans.Domain.Enums;
+namespace Humans.Governance.Contracts;
 
 /// <summary>
 /// Represents the computed membership status of a member.

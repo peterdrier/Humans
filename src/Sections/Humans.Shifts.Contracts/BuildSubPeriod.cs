@@ -1,4 +1,4 @@
-namespace Humans.Domain.Enums;
+namespace Humans.Shifts.Contracts;
 
 /// <summary>
 /// Computed sub-classification of a Build-period shift, narrowed by day-offset

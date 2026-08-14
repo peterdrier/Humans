@@ -7,6 +7,7 @@ using Humans.Domain.Enums;
 using Humans.Shifts.Data;
 using NodaTime;
 
+using Humans.Shifts.Contracts;
 namespace Humans.Shifts.Tests.Services;
 
 /// <summary>

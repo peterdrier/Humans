@@ -1,11 +1,11 @@
 using AwesomeAssertions;
 using Humans.Application.Constants;
-using Humans.Application.Models;
 using NSubstitute;
 using Humans.Agent.Services;
 using Humans.Agent.Services.Anthropic;
 using Humans.Agent.Services.Preload;
 
+using Humans.Shifts.Contracts;
 namespace Humans.Agent.Tests;
 
 public class AgentToolDispatcherTests
@@ -151,7 +151,7 @@ public class AgentToolDispatcherTests
         var ev = MakeEventSettings();
         var rota = new RotaStub("Cantina build", "Meet at gate", "Daily setup support");
         var signups = Enumerable.Range(0, 7)
-            .Select(i => MakeSignup(blockId, MakeShift(rota, dayOffset: -10 + i, isAllDay: true), Humans.Domain.Enums.SignupStatus.Confirmed))
+            .Select(i => MakeSignup(blockId, MakeShift(rota, dayOffset: -10 + i, isAllDay: true), SignupStatus.Confirmed))
             .ToList();
 
         var shiftView = MakeViewFor(viewer, signups);
@@ -183,7 +183,7 @@ public class AgentToolDispatcherTests
         var rota = new RotaStub("Setup crew");
         var signup = MakeSignup(signupBlockId: null,
             MakeShift(rota, dayOffset: 0, isAllDay: false, startTime: new NodaTime.LocalTime(9, 0), durationHours: 4),
-            Humans.Domain.Enums.SignupStatus.Pending);
+            SignupStatus.Pending);
 
         var shiftView = MakeViewFor(viewer, [signup]);
 
@@ -318,7 +318,7 @@ public class AgentToolDispatcherTests
     private static Humans.Shifts.Contracts.ShiftSignupSummary MakeSignup(
         Guid? signupBlockId,
         Humans.Shifts.Contracts.ShiftSignupSummary shift,
-        Humans.Domain.Enums.SignupStatus status) =>
+        SignupStatus status) =>
         shift with { Id = Guid.NewGuid(), SignupBlockId = signupBlockId, Status = status };
 
     [HumansFact]

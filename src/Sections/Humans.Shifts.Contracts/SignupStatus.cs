@@ -1,4 +1,4 @@
-namespace Humans.Domain.Enums;
+namespace Humans.Shifts.Contracts;
 
 /// <summary>
 /// State machine for duty signup lifecycle.

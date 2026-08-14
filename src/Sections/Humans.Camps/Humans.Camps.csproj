@@ -37,7 +37,6 @@
     <Using Include="Humans.Application.Extensions" />
     <Using Include="Humans.Application.Helpers" />
     <Using Include="Humans.Infrastructure.Data" />
-    <Using Include="Humans.Domain.ValueObjects" />
     <Using Include="Humans.UI.Controllers" />
   </ItemGroup>
 

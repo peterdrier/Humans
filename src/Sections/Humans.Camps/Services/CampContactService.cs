@@ -1,7 +1,6 @@
 using System.Text.RegularExpressions;
 using Humans.Application.Extensions;
 using Humans.AuditLog.Contracts;
-using Humans.Camps.Contracts;
 using Humans.Email.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Domain.Entities;

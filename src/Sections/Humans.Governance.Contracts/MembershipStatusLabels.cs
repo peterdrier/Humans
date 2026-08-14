@@ -1,4 +1,4 @@
-namespace Humans.Domain.Constants;
+namespace Humans.Governance.Contracts;
 
 public static class MembershipStatusLabels
 {

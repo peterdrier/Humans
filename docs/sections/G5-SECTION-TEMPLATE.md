@@ -624,17 +624,23 @@ Git Bash.)
      Base, with its resx keys and badge rows; `Humans.Campaigns.Contracts` keeps referencing
      `Humans.Domain` for it (Campaigns finding 47's case, unchanged). The test is *who writes
      it to a table*, not who named it (proven: Email).
-   - **…and a fourth answer, which is forced rather than chosen: the enum stays in
-     `Humans.Domain.Enums` because a `Humans.UI` partial renders it.** Email's rule keeps an
-     enum in Base when another section *persists* it. Teams persists `TeamMemberRole`,
-     `SystemTeamType` and `TeamJoinRequestStatus` alone, so that test says "move" — but
-     `Humans.UI/Views/Shared/_RoleBadge.cshtml` binds `TeamMemberRole` and `Humans.UI` cannot
-     reference a section leaf at any price (that is the registry-inversion rule, step 5b). A
-     Shell renderer can be rebound; a `Humans.UI` one cannot. All three stayed in Base with
-     their `EnumStringStabilityTests` rows, the leaf took `Humans.Domain` alongside
-     `Humans.Interfaces` (Campaigns' reference, here for the section's *own* vocabulary), and
-     ~30 consumer files needed no `using` change at all. **Ask who renders it, not only who
-     writes it** (proven: Teams).
+   - **…and a fourth answer that was asserted, believed for three lanes, and is wrong:
+     "the enum stays in `Humans.Domain.Enums` because a `Humans.UI` partial renders it".**
+     The original claim ran: Email's rule keeps an enum in Base when another section
+     *persists* it; Teams persists `TeamMemberRole`, `SystemTeamType` and
+     `TeamJoinRequestStatus` alone, so that test says "move" — but
+     `Humans.UI/Views/Shared/_RoleBadge.cshtml` binds `TeamMemberRole` and "`Humans.UI` cannot
+     reference a section leaf at any price". **Re-measured by G5 lane 4b-2k and false.**
+     `Humans.UI` references `Humans.Application`, and `Humans.Application` declares direct
+     `ProjectReference`s on `Humans.Camps.Contracts`, `Humans.Governance.Contracts`,
+     `Humans.Shifts.Contracts` and `Humans.Teams.Contracts`. Base *is* allowed to name a leaf —
+     that is the whole reason leaves exist (§15.5b); what it may not name is a section
+     **project**. `TeamMemberRole`, `TeamJoinRequestStatus` and `RolePeriod` moved onto
+     `Humans.Teams.Contracts` with `_RoleBadge.cshtml` needing one `@using` line and nothing
+     else. `SystemTeamType` stayed, for the unrelated reason that it has no single section
+     owner (phase 3a's file). **Ask who renders it and then check the renderer's project
+     graph — a rendering consumer in `Humans.UI` is a `using` line, not a blocker**
+     (proven: Teams, reversed by 4b-2k).
    - **Decide the leaf-vs-`Domain/` question per enum, not per section.** Budget moved both of
      its enums because both appeared in contract signatures. Issues' two split: `IssueCategory`
      is named by `Humans.Agent`'s `route_to_issue` proposal, so it went to the leaf;

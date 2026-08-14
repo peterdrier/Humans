@@ -1,4 +1,4 @@
-namespace Humans.Domain.Enums;
+namespace Humans.Teams.Contracts;
 
 /// <summary>
 /// Roles that a user can have within a team.

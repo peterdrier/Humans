@@ -1,4 +1,4 @@
-namespace Humans.Domain.Enums;
+namespace Humans.Camps.Contracts;
 
 public enum AdultPlayspacePolicy
 {

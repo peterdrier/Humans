@@ -1,4 +1,4 @@
-namespace Humans.Domain.Enums;
+namespace Humans.Teams.Contracts;
 
 /// <summary>
 /// Priority level for a team role slot.

@@ -39,6 +39,8 @@ using Humans.Users.Contracts;
 using Humans.Users.Data;
 using Humans.Users.Services;
 
+using Humans.Teams.Contracts;
+using Humans.Shifts.Contracts;
 namespace Humans.Integration.Tests.AccountMerge;
 
 /// <summary>

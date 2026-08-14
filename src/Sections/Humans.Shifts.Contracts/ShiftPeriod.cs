@@ -1,4 +1,4 @@
-namespace Humans.Domain.Enums;
+namespace Humans.Shifts.Contracts;
 
 /// <summary>
 /// Computed classification of a shift's time period relative to the event.

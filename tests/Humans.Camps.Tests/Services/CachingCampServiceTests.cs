@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using Humans.Camps.Contracts;
 using Humans.Application.Interfaces.EarlyEntry;
 using Humans.Camps.Tests.Infrastructure;
 using Humans.Domain.Entities;

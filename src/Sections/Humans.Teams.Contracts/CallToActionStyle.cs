@@ -1,4 +1,4 @@
-namespace Humans.Domain.Enums;
+namespace Humans.Teams.Contracts;
 
 public enum CallToActionStyle
 {

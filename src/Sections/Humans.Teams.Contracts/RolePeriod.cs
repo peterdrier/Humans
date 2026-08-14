@@ -1,4 +1,4 @@
-namespace Humans.Domain.Enums;
+namespace Humans.Teams.Contracts;
 
 /// <summary>
 /// Period tag on a TeamRoleDefinition indicating when the role is active.

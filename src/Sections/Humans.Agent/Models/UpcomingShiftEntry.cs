@@ -1,7 +1,8 @@
 using Humans.Domain.Enums;
 using NodaTime;
 
-namespace Humans.Application.Models;
+using Humans.Shifts.Contracts;
+namespace Humans.Agent.Models;
 
 /// <summary>
 /// One row in <see cref="AgentUserSnapshot.UpcomingShifts"/>: either a
@@ -21,7 +22,7 @@ namespace Humans.Application.Models;
 /// <param name="EndDate">Latest day in the block.</param>
 /// <param name="DayCount">Number of distinct days spanned (1 for singletons).</param>
 /// <param name="Status">Lifecycle status of the underlying signup(s).</param>
-public sealed record UpcomingShiftEntry(
+internal sealed record UpcomingShiftEntry(
     Guid Key,
     string Label,
     LocalDate StartDate,

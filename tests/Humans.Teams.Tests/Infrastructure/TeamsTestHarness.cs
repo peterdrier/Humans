@@ -24,6 +24,7 @@ using Humans.GoogleIntegration.Data;
 using Humans.Users.Contracts;
 using Humans.Users.Data;
 
+using Humans.Teams.Contracts;
 namespace Humans.Teams.Tests.Infrastructure;
 
 /// <summary>

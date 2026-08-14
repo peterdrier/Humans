@@ -1,7 +1,9 @@
 using AwesomeAssertions;
 using Humans.Domain.Enums;
-using Xunit;
+using Humans.Shifts.Contracts;
+using Humans.Teams.Contracts;
 using Humans.Users.Contracts;
+using Xunit;
 
 namespace Humans.Domain.Tests.Enums;
 
@@ -40,6 +42,16 @@ public class EnumStringStabilityTests
     /// Every enum that uses HasConversion&lt;string&gt;() in EF Core configuration.
     /// Update this list when adding new string-stored enums.
     /// </summary>
+    /// <remarks>
+    /// G5 lane 4b-2k moved seven of these enums out of <c>Humans.Domain.Enums</c> and onto their
+    /// owning sections' contracts leaves — <c>TeamMemberRole</c>, <c>TeamJoinRequestStatus</c> and
+    /// <c>RolePeriod</c> to <c>Humans.Teams.Contracts</c>; <c>ShiftPriority</c>,
+    /// <c>SignupPolicy</c>, <c>SignupStatus</c> and <c>RotaPeriod</c> to
+    /// <c>Humans.Shifts.Contracts</c>. The rows stay here rather than splitting into per-section
+    /// test projects (Tickets' shape, above) because every one of them is still public on a leaf
+    /// this project can name, so the guard keeps working unsplit. Member names are unchanged, so
+    /// no persisted string moved.
+    /// </remarks>
     public static TheoryData<Type, string[]> StringStoredEnumData => new()
     {
         {

@@ -8,6 +8,7 @@ using Humans.Web.Extensions;
 using Microsoft.AspNetCore.Html;
 using NodaTime;
 
+using Humans.Shifts.Contracts;
 namespace Humans.Web.Tests.Models.Tables;
 
 public class TableColumnTests

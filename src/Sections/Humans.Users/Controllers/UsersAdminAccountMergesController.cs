@@ -8,6 +8,7 @@ using Humans.UI.Authorization;
 using Humans.Users.Contracts;
 using Humans.Users.Services;
 
+using Humans.Governance.Contracts;
 namespace Humans.Users.Controllers;
 
 [Authorize(Policy = PolicyNames.AdminOnly)]

@@ -1,8 +1,9 @@
 using AwesomeAssertions;
+using Humans.Governance.Services;
 using NodaTime;
 using Xunit;
 
-namespace Humans.Domain.Tests;
+namespace Humans.Governance.Tests.Services;
 
 public class TermExpiryCalculatorTests
 {

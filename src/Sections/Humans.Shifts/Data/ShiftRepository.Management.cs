@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using Humans.Shifts.Data;
 
+using Humans.Shifts.Contracts;
 namespace Humans.Shifts.Data;
 
 /// <summary>

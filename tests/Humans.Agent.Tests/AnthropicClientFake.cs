@@ -1,7 +1,6 @@
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using Humans.Application.Interfaces;
-using Humans.Application.Models;
 using Humans.Agent.Models;
 using Humans.Agent.Services.Anthropic;
 

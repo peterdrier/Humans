@@ -1,9 +1,9 @@
-namespace Humans.Domain.Enums;
+namespace Humans.Governance.Domain;
 
 /// <summary>
 /// Triggers for application state machine transitions.
 /// </summary>
-public enum ApplicationTrigger
+internal enum ApplicationTrigger
 {
     /// <summary>
     /// Approve the application.

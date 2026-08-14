@@ -5,6 +5,7 @@ using Humans.Domain.Enums;
 using NodaTime;
 using Humans.Domain.Attributes;
 
+using Humans.Teams.Contracts;
 namespace Humans.Teams.Data;
 
 /// <summary>

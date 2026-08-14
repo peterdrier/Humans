@@ -26,11 +26,12 @@
     section), and the review surface stays internal.
 
     References Humans.Interfaces (IApplicationService, IInvalidator, SurfaceBudget,
-    Grandfathered) and Humans.Domain — both below Humans.Application, so this cannot
-    cycle. Humans.Domain is here for one reason: the section's persisted-string enums
-    (SignupStatus, ShiftPeriod, ShiftPriority, RotaPeriod, BuildSubPeriod) are named by
-    Base and by other sections and carry EnumStringStabilityTests rows, so they stay in
-    Humans.Domain.Enums (Teams' rule).
+    Grandfathered) and nothing else. The Humans.Domain reference is gone as of G5 lane
+    4b-2k: it existed for the section's persisted-string enums (SignupStatus, ShiftPeriod,
+    ShiftPriority, RotaPeriod, BuildSubPeriod, SignupPolicy), and those now live here, in
+    Humans.Shifts.Contracts, because this leaf's own signatures name them (Budget's rule).
+    Their EnumStringStabilityTests rows still live in tests/Humans.Domain.Tests — that
+    project reaches them through its existing project graph.
 
     No entity crosses this boundary. Shift / ShiftSignup / Rota / EventSettings /
     VolunteerEventProfile are internal sealed types in Humans.Shifts.Domain, and every
@@ -41,7 +42,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
-    <ProjectReference Include="..\..\Humans.Domain\Humans.Domain.csproj" />
   </ItemGroup>
 
   <ItemGroup>

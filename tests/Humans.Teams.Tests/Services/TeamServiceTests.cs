@@ -25,7 +25,6 @@ using Humans.Domain.Entities;
 using Humans.Shifts.Domain;
 using Humans.Teams.Domain;
 using Humans.Domain.Enums;
-using Humans.Domain.ValueObjects;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Tests.Infrastructure;
 using Humans.Teams.Data;

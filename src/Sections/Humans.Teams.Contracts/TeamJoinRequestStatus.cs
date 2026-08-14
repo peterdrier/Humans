@@ -1,4 +1,4 @@
-namespace Humans.Domain.Enums;
+namespace Humans.Teams.Contracts;
 
 /// <summary>
 /// Status of a team join request.

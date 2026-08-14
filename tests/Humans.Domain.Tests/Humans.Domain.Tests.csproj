@@ -8,6 +8,13 @@
       the 43-file set lane 2 phase 3 moves to tests/Humans.Users.Tests.
     -->
     <ProjectReference Include="..\..\src\Sections\Humans.Users\Humans.Users.csproj" />
+    <!--
+      EnumStringStabilityTests guards seven enums that G5 lane 4b-2k moved onto these two
+      leaves. Declared explicitly rather than left to resolve transitively through
+      Humans.Users, so the guard survives a change to that project's reference set.
+    -->
+    <ProjectReference Include="..\..\src\Sections\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

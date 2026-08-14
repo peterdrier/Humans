@@ -1,6 +1,5 @@
-using Humans.Domain.Enums;
 
-namespace Humans.Domain.ValueObjects;
+namespace Humans.Teams.Contracts;
 
 public class CallToAction
 {

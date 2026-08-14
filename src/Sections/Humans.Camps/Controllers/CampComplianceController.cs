@@ -1,4 +1,3 @@
-using Humans.Camps.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.UI.Authorization;
 using Humans.UI.Controllers;

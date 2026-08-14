@@ -36,7 +36,6 @@ using Humans.Application.Interfaces.Users;
 using Humans.Onboarding.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Users.Contracts;
-using Humans.Application.Models;
 using Humans.UI;
 using Humans.UI.Authorization;
 using Humans.Users.Services;

@@ -12,6 +12,7 @@ using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using Xunit;
 
+using Humans.Shifts.Contracts;
 namespace Humans.Integration.Tests.Repositories.Shifts;
 
 /// <summary>
