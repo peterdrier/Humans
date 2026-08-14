@@ -58,7 +58,6 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IAuditViewerService, AuditViewerService>();
         services.AddICalFeedSection();
         services.AddAdminSection();
-        services.AddHoldedConnector(configuration);
 
         // Recurring jobs for sections that have already moved out. The job types stay in
         // Humans.Infrastructure/Jobs because UseHumansRecurringJobs names them by concrete
@@ -74,6 +73,12 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<SyncLegalDocumentsJob>();
         services.AddScoped<SendReConsentReminderJob>();
         services.AddTransient<MailerAudienceSyncJob>();
+        // Both Holded jobs are Hangfire-serialized by concrete type and so stay in Base; the
+        // connector itself (client, options, call log) is registered by Humans.Holded's Section.cs
+        // since G5 lane 4b-2f. HoldedSyncJob is a shim over IHoldedNightlySync; the expense-outbox
+        // drain is Expenses' body and is unchanged.
+        services.AddScoped<HoldedSyncJob>();
+        services.AddScoped<HoldedExpenseOutboxJob>();
 
         // Base collaborators that Teams' section file used to register on the way past.
         // ActiveTeamsCacheInvalidator is a Humans.Infrastructure implementation of a

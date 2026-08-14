@@ -5,7 +5,7 @@ using Humans.Budget.Contracts;
 using Humans.Expenses.Services;
 using Humans.Finance.Contracts;
 using Humans.Gdpr.Contracts;
-using Humans.Application.Interfaces.Holded;
+using Humans.Holded.Contracts;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;

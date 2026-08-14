@@ -1,6 +1,6 @@
 using NodaTime;
 
-namespace Humans.Application.Interfaces.Holded;
+namespace Humans.Holded.Contracts;
 
 /// <summary>A P&L expense account from Holded (`expensesaccounts` / chart).</summary>
 public sealed record HoldedExpenseAccountDto

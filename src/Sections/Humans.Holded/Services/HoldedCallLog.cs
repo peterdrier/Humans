@@ -1,9 +1,8 @@
 using System.Collections.Concurrent;
-using Humans.Application.Interfaces.Holded;
 
-namespace Humans.Infrastructure.Services.Holded;
+namespace Humans.Holded.Services;
 
-public sealed class HoldedCallLog : IHoldedCallLog
+internal sealed class HoldedCallLog : IHoldedCallLog
 {
     private readonly ConcurrentQueue<HoldedApiCallRecord> _queue = new();
 

@@ -1,4 +1,4 @@
-namespace Humans.Application.Interfaces.Holded;
+namespace Humans.Holded.Contracts;
 
 /// <summary>Create/update payload for a Holded contact (creditor/supplier).</summary>
 public sealed record HoldedContactInput

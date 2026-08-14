@@ -1,4 +1,4 @@
-namespace Humans.Application.Interfaces.Holded;
+namespace Humans.Holded.Contracts;
 
 public abstract class HoldedApiException : Exception
 {

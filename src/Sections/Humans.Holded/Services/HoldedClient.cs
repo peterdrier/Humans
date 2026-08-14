@@ -6,15 +6,15 @@ using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Humans.Application.Extensions;
-using Humans.Application.Interfaces.Holded;
+using Humans.Holded.Contracts;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Text;
 
-namespace Humans.Infrastructure.Services.Holded;
+namespace Humans.Holded.Services;
 
-public sealed class HoldedClient : IHoldedClient
+internal sealed class HoldedClient : IHoldedClient
 {
     private const int DefaultRetryAfterSeconds = 5;
     private const int MaxRetryAfterSeconds = 60;

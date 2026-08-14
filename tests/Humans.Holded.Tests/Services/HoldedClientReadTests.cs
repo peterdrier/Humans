@@ -1,14 +1,14 @@
 using System.Net;
 using System.Text;
 using AwesomeAssertions;
-using Humans.Application.Interfaces.Holded;
-using Humans.Infrastructure.Services.Holded;
+using Humans.Holded.Contracts;
+using Humans.Holded.Services;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Testing;
 
-namespace Humans.Application.Tests.Services.Holded;
+namespace Humans.Holded.Tests.Services;
 
 public class HoldedClientReadTests
 {

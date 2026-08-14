@@ -1,9 +1,11 @@
 using System.Globalization;
 using Humans.Application.Interfaces;
+using Humans.Holded.Contracts;
 using Humans.Holded.Data;
 using Humans.Infrastructure.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace Humans.Holded;
 
@@ -38,9 +40,35 @@ public sealed class Section : ISection
                 opts.MonthlyCallBudget = budget;
         });
 
+        // The Holded API connector — typed HttpClient, its options, and the in-memory call log the
+        // mirror drains into holded_api_calls. Registered here since G5 lane 4b-2f
+        // (nobodies-collective/Humans#866); it was Humans.Web's AddHoldedConnector before that.
+        services.Configure<HoldedClientOptions>(opts =>
+        {
+            // HOLDED_API_KEY_V2, not HOLDED_API_KEY: a v2-generated key is rejected by the v1 API
+            // (probed 2026-08-11: 400 Invalid key), so a same-name cutover would break whichever
+            // build held the wrong key. Distinct names let both keys coexist in the environment
+            // while the old build drains; delete HOLDED_API_KEY once this build is confirmed live.
+            opts.ApiKey = Environment.GetEnvironmentVariable("HOLDED_API_KEY_V2") ?? "";
+            opts.BaseUrl = configuration["Holded:BaseUrl"] ?? "https://api.holded.com";
+        });
+
+        services.AddSingleton<Services.IHoldedCallLog, Services.HoldedCallLog>();
+
+        services.AddHttpClient<IHoldedClient, Services.HoldedClient>((sp, client) =>
+        {
+            var opts = sp.GetRequiredService<IOptions<HoldedClientOptions>>().Value;
+            client.BaseAddress = new Uri(opts.BaseUrl);
+            client.Timeout = TimeSpan.FromSeconds(30);
+        });
+
         services.AddScoped<IHoldedMirrorRepository, Repository>();
         services.AddScoped<Services.Service>();
         services.AddScoped<Contracts.IHoldedService>(sp => sp.GetRequiredService<Services.Service>());
         services.AddScoped<Services.IHoldedAdminService>(sp => sp.GetRequiredService<Services.Service>());
+
+        // The nightly pull's body (G5 step 6b). The Hangfire target HoldedSyncJob stays in
+        // Humans.Infrastructure/Jobs because Hangfire serializes its declaring type name.
+        services.AddScoped<IHoldedNightlySync, Services.HoldedNightlySync>();
     }
 }

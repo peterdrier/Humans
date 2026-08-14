@@ -43,6 +43,11 @@
     -->
     <ProjectReference Include="..\Humans.Finance.Contracts\Humans.Finance.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Gdpr.Contracts\Humans.Gdpr.Contracts.csproj" />
+    <!--
+      The Holded API client (IHoldedClient + its DTOs and typed exceptions) the outbox drain
+      writes purchase documents through. Contracts leaf only; Humans.Holded is never referenced.
+    -->
+    <ProjectReference Include="..\Humans.Holded.Contracts\Humans.Holded.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

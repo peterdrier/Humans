@@ -1,4 +1,4 @@
-namespace Humans.Infrastructure.Services.Holded;
+namespace Humans.Holded.Contracts;
 
 public sealed class HoldedClientOptions
 {

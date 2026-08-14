@@ -1,6 +1,6 @@
 using NodaTime;
 
-namespace Humans.Application.Interfaces.Holded;
+namespace Humans.Holded.Contracts;
 
 public interface IHoldedClient
 {

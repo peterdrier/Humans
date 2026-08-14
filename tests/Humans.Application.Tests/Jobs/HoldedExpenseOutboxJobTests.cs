@@ -1,6 +1,6 @@
 using Humans.Expenses.Contracts;
 using Humans.Infrastructure.Jobs;
-using Humans.Infrastructure.Services.Holded;
+using Humans.Holded.Contracts;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;

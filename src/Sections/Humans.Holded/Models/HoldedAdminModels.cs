@@ -1,4 +1,3 @@
-using Humans.Application.Interfaces.Holded;
 using Humans.Finance.Contracts;
 using Humans.Holded.Contracts;
 using NodaTime;
