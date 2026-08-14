@@ -1,3 +1,4 @@
+using Humans.Auth.Contracts;
 using Humans.Domain.Constants;
 using Humans.UI.Authorization;
 using Humans.Web.Authorization.Requirements;
@@ -149,6 +150,13 @@ public static class AuthorizationPolicyExtensions
 
             options.AddPolicy(PolicyNames.HumanAdminOnly, policy =>
                 policy.AddRequirements(new HumanAdminOnlyRequirement()));
+
+            // Resource-based (the resource is the target role-name string). Naming the
+            // requirement type is policy-registration work and therefore Shell's — it lets
+            // Humans.Users reach the gate through the policy name alone, so Auth's
+            // framework-free Contracts leaf never has to carry an IAuthorizationRequirement.
+            options.AddPolicy(PolicyNames.RoleAssignmentManage, policy =>
+                policy.AddRequirements(RoleAssignmentOperationRequirement.Manage));
         });
 
         return services;

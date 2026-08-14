@@ -303,7 +303,7 @@ internal sealed class UsersAdminController(
         }
 
         var authResult = await authorizationService.AuthorizeAsync(
-            User, model.RoleName, RoleAssignmentOperationRequirement.Manage);
+            User, model.RoleName, PolicyNames.RoleAssignmentManage);
         if (!authResult.Succeeded)
         {
             logger.LogWarning(
@@ -341,7 +341,7 @@ internal sealed class UsersAdminController(
         }
 
         var authResult = await authorizationService.AuthorizeAsync(
-            User, roleAssignment.RoleName, RoleAssignmentOperationRequirement.Manage);
+            User, roleAssignment.RoleName, PolicyNames.RoleAssignmentManage);
         if (!authResult.Succeeded)
         {
             logger.LogWarning(
