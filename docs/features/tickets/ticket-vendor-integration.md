@@ -8,7 +8,7 @@
   src/Sections/Humans.Campaigns/Domain/CampaignGrant.cs
   src/Humans.Domain/Constants/TicketConstants.cs
   src/Humans.Infrastructure/Jobs/TicketSyncJob.cs
-  src/Humans.Infrastructure/Services/StripeService.cs
+  src/Sections/Humans.Stripe/**
 -->
 <!-- freshness:flag-on-change
   Ticket entities, sync logic, VAT/donation accounting, dashboard widgets, or routes/auth may have changed; reconcile docs with TicketController and the sync services.

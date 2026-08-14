@@ -2505,8 +2505,8 @@ Repository: `IStoreRepository`.
 
 Cross-section calls via `IAuditLogService`, `ICampServiceRead`,
 `ITeamServiceRead` (team-order counterparty surface, #816),
-`IShiftManagementService`, `IStripeService` (Infrastructure connector —
-creates Checkout sessions, lists sessions for reconciliation, handles
+`IShiftManagementService`, `IStripeService` (the `Humans.Stripe` connector
+section — creates Checkout sessions, lists sessions for reconciliation, handles
 webhook events including SEPA async-payment transitions), plus `IClock`.
 No `IMemoryCache`.
 
