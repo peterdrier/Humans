@@ -11,7 +11,8 @@ namespace Humans.Analyzers;
 /// (nobodies-collective/Humans#866, G5), a <c>public</c> type is an error
 /// unless it is the section's <c>ISection</c> entry point, its
 /// <c>&lt;Section&gt;Resource</c> localization marker, an EF Core migration
-/// or model-snapshot type, an MVC view component, or declared under a
+/// or model-snapshot type, a type the framework requires to be public in order
+/// to function (view components and tag helpers), or declared under a
 /// <c>Contracts/</c> path.
 /// </summary>
 /// <remarks>
@@ -40,20 +41,54 @@ namespace Humans.Analyzers;
 /// DbContext" for HUM0008/09/25/26, so moving migrations cannot silently defeat it.
 /// </para>
 /// <para>
-/// <b>View components are exempt and must stay <c>public</c>.</b> Razor's build-time
-/// tag-helper discovery (<c>ViewComponentTagHelperDescriptorProvider</c>) only sees
-/// <c>public</c> view components, so an <c>internal</c> one generates no
-/// <c>&lt;vc:…&gt;</c> tag helper and the element ships as inert literal markup —
-/// green build, no runtime error, nothing rendered. Making them internal cost the
-/// whole Profile page its <c>&lt;vc:profile-card&gt;</c>. Runtime lookup is not the
-/// same seam: <c>SectionViewComponentFeatureProvider</c> registers internal
-/// components for <c>Component.InvokeAsync("Name")</c>, which is exactly what made
-/// the breakage invisible to the build and the test suite. A view component is
-/// rendering surface — its whole purpose is to be invoked from views in other
-/// assemblies — so it is public by design, not by accident. Matched structurally the
-/// same way MVC's <c>ViewComponentConventions.IsComponent</c> matches it, so the
-/// carve-out cannot disagree with what discovery accepts.
+/// <b>The rule in one sentence: a section's types are <c>internal</c> by default,
+/// except types the framework requires to be <c>public</c> in order to function.</b>
+/// Those are two different kinds of exception and should not be confused. The
+/// <c>Contracts/</c>, <c>ISection</c> and <c>&lt;Section&gt;Resource</c> carve-outs are
+/// a <i>deliberate surface</i> — someone chose to let other assemblies depend on them.
+/// The framework carve-out is not a choice at all: the type is public because it stops
+/// working otherwise.
 /// </para>
+/// <para>
+/// <b>The membership test for the framework exception: does making the type
+/// <c>internal</c> fail loudly, or silently render nothing?</b> Silent means it
+/// belongs in the exception. Anything Razor/MVC enumerates by reflection <i>at compile
+/// time</i> qualifies, because those discovery passes filter on
+/// <c>DeclaredAccessibility == Public</c> and simply skip what they cannot see — no
+/// error, no warning, no diagnostic of any kind. Runtime resolution does not qualify:
+/// it throws, so one render test catches it.
+/// </para>
+/// <para>
+/// <b>Current membership: view components and tag helpers. That is the whole set
+/// today</b> — a survey of this app's Razor/MVC discovery pipeline found no third
+/// case. Controllers look like a candidate and are not: <c>MVC</c>'s
+/// <c>SectionControllerFeatureProvider</c> makes internal ones route correctly, and a
+/// missing controller 404s loudly. Both members are matched structurally, exactly the
+/// way the corresponding discovery pass matches them, so this rule cannot drift out of
+/// agreement with what actually gets discovered:
+/// </para>
+/// <list type="bullet">
+/// <item><description>
+/// <b>View components</b> — <c>ViewComponentTagHelperDescriptorProvider</c> generates a
+/// <c>&lt;vc:…&gt;</c> tag helper only from a <c>public</c> component, so an
+/// <c>internal</c> one leaves the element to ship as inert literal markup: green build,
+/// HTTP 200, nothing rendered. This is not hypothetical — it cost the whole Profile
+/// page its <c>&lt;vc:profile-card&gt;</c> and no test noticed. Runtime lookup is a
+/// different seam and is what hid it: <c>SectionViewComponentFeatureProvider</c>
+/// registers internal components for <c>Component.InvokeAsync("Name")</c>, so nothing
+/// ever threw. Matched like <c>ViewComponentConventions.IsComponent</c>.
+/// </description></item>
+/// <item><description>
+/// <b>Tag helpers</b> — <c>DefaultTagHelperDescriptorProvider</c> applies the same
+/// <c>public</c> filter, with the same silent outcome for the element. No section
+/// declares one today (the repo's only tag helper is <c>Humans.UI</c>'s
+/// <c>AuthorizeViewTagHelper</c>, already public in a horizontal), so this clause is
+/// written ahead of its first subject rather than in response to a broken page —
+/// deliberately, so the next lane reads a principle instead of inferring one from a
+/// single carve-out. Matched by implementing <c>ITagHelper</c>, which is the whole of
+/// that provider's test.
+/// </description></item>
+/// </list>
 /// <para>
 /// <b>Checked on declared accessibility, not effective (externally-reachable)
 /// accessibility.</b> A <c>public</c> type nested inside an already-<c>internal</c>
@@ -97,15 +132,17 @@ public sealed class SectionPublicSurfaceAnalyzer : DiagnosticAnalyzer
     private const string ViewComponentNameSuffix = "ViewComponent";
     private const string ViewComponentAttributeFullName = "Microsoft.AspNetCore.Mvc.ViewComponentAttribute";
     private const string NonViewComponentAttributeFullName = "Microsoft.AspNetCore.Mvc.NonViewComponentAttribute";
+    private const string TagHelperInterfaceFullName = "Microsoft.AspNetCore.Razor.TagHelpers.ITagHelper";
 
     private static readonly LocalizableString Title =
         "Public type outside a section's public surface";
 
     private static readonly LocalizableString MessageFormat =
-        "'{0}' is public in section assembly '{1}'. A section's only public surface " +
-        "is its Section entry point, its <Section>Resource marker, EF migrations, and " +
-        "types under Contracts/. Make '{0}' internal, or move it under Contracts/ if " +
-        "another section needs it.";
+        "'{0}' is public in section assembly '{1}'. A section is internal by default: " +
+        "its public surface is its Section entry point, its <Section>Resource marker, " +
+        "EF migrations, types the framework requires to be public in order to function " +
+        "(view components, tag helpers), and types under Contracts/. Make '{0}' " +
+        "internal, or move it under Contracts/ if another section needs it.";
 
     public static readonly DiagnosticDescriptor Rule = new(
         id: DiagnosticId,
@@ -116,8 +153,12 @@ public sealed class SectionPublicSurfaceAnalyzer : DiagnosticAnalyzer
         isEnabledByDefault: true,
         description:
             "A section assembly (nobodies-collective/Humans#866, G5) is internal by " +
-            "default: public surface confined to Contracts/ is the boundary other " +
-            "sections and Shell may depend on. Every other public type is either an " +
+            "default, with two kinds of exception: a deliberate surface other sections " +
+            "and Shell may depend on (Contracts/, the Section entry point, the " +
+            "<Section>Resource marker), and types the framework requires to be public " +
+            "in order to function at all (view components, tag helpers — Razor's " +
+            "compile-time discovery enumerates only public types, and an internal one " +
+            "renders nothing rather than failing). Every other public type is either an " +
             "accident waiting to be depended on, or belongs under Contracts/ instead " +
             "(design §10, §6a).");
 
@@ -139,11 +180,13 @@ public sealed class SectionPublicSurfaceAnalyzer : DiagnosticAnalyzer
         var migrationBase = context.Compilation.GetTypeByMetadataName(EfMigrationFullName);
         var viewComponentAttr = context.Compilation.GetTypeByMetadataName(ViewComponentAttributeFullName);
         var nonViewComponentAttr = context.Compilation.GetTypeByMetadataName(NonViewComponentAttributeFullName);
+        var tagHelperInterface = context.Compilation.GetTypeByMetadataName(TagHelperInterfaceFullName);
         var grandfatheredAttr = GrandfatheredCheck.Resolve(context.Compilation);
 
         context.RegisterSymbolAction(
             ctx => AnalyzeNamedType(
-                ctx, sectionMarker, migrationBase, viewComponentAttr, nonViewComponentAttr, grandfatheredAttr),
+                ctx, sectionMarker, migrationBase, viewComponentAttr, nonViewComponentAttr,
+                tagHelperInterface, grandfatheredAttr),
             SymbolKind.NamedType);
     }
 
@@ -153,6 +196,7 @@ public sealed class SectionPublicSurfaceAnalyzer : DiagnosticAnalyzer
         INamedTypeSymbol? migrationBase,
         INamedTypeSymbol? viewComponentAttr,
         INamedTypeSymbol? nonViewComponentAttr,
+        INamedTypeSymbol? tagHelperInterface,
         INamedTypeSymbol? grandfatheredAttr)
     {
         var type = (INamedTypeSymbol)context.Symbol;
@@ -167,7 +211,7 @@ public sealed class SectionPublicSurfaceAnalyzer : DiagnosticAnalyzer
             return;
         if (IsEfMigration(type, migrationBase))
             return;
-        if (IsViewComponent(type, viewComponentAttr, nonViewComponentAttr))
+        if (IsFrameworkRequiredPublic(type, viewComponentAttr, nonViewComponentAttr, tagHelperInterface))
             return;
         if (IsUnderContracts(type))
             return;
@@ -224,6 +268,20 @@ public sealed class SectionPublicSurfaceAnalyzer : DiagnosticAnalyzer
         migrationBase is not null && type.InheritsFromOrEquals(migrationBase.ToDisplayString());
 
     /// <summary>
+    /// A type the framework requires to be <c>public</c> in order to function: Razor's
+    /// compile-time discovery passes filter on public accessibility and silently skip
+    /// what they cannot see, so <c>internal</c> here means "renders nothing", not
+    /// "compile error". See the membership test in the remarks on this class.
+    /// </summary>
+    private static bool IsFrameworkRequiredPublic(
+        INamedTypeSymbol type,
+        INamedTypeSymbol? viewComponentAttr,
+        INamedTypeSymbol? nonViewComponentAttr,
+        INamedTypeSymbol? tagHelperInterface) =>
+        IsViewComponent(type, viewComponentAttr, nonViewComponentAttr)
+        || IsTagHelper(type, tagHelperInterface);
+
+    /// <summary>
     /// An MVC view component. Matched exactly the way
     /// <c>ViewComponentConventions.IsComponent</c> matches it — a non-abstract,
     /// non-generic class whose name ends in "ViewComponent" or which carries
@@ -243,6 +301,30 @@ public sealed class SectionPublicSurfaceAnalyzer : DiagnosticAnalyzer
 
         return type.Name.EndsWith(ViewComponentNameSuffix, System.StringComparison.Ordinal)
             || HasAttribute(type, viewComponentAttr);
+    }
+
+    /// <summary>
+    /// A Razor tag helper. Matched exactly the way
+    /// <c>DefaultTagHelperDescriptorProvider</c> matches it — a non-abstract,
+    /// non-generic class implementing <c>ITagHelper</c>. Implementing the interface is
+    /// the whole of that provider's test, so naming is irrelevant in both directions: a
+    /// class called <c>SomethingTagHelper</c> that does not implement it is ordinary
+    /// section internals and still reported, and a differently-named implementation is
+    /// still carved out.
+    /// </summary>
+    private static bool IsTagHelper(INamedTypeSymbol type, INamedTypeSymbol? tagHelperInterface)
+    {
+        if (tagHelperInterface is null)
+            return false;
+        if (type.TypeKind != TypeKind.Class || type.IsAbstract || type.IsGenericType)
+            return false;
+
+        foreach (var iface in type.AllInterfaces)
+        {
+            if (SymbolEqualityComparer.Default.Equals(iface, tagHelperInterface))
+                return true;
+        }
+        return false;
     }
 
     private static bool HasAttribute(INamedTypeSymbol type, INamedTypeSymbol? attribute) =>

@@ -115,8 +115,8 @@ public class OnboardingArchitectureTests
             .ToList();
 
         exported.Should().BeEquivalentTo(
-            ["OnboardingResource", "Section"],
-            because: "the cross-section surface lives in Humans.Onboarding.Contracts; the section itself exports only its DI entry point and its resource marker");
+            ["OnboardingProgressBannerViewComponent", "OnboardingResource", "Section"],
+            because: "the cross-section surface lives in Humans.Onboarding.Contracts; the section itself exports only its DI entry point, its resource marker, and the types the framework requires to be public to function — Razor's compile-time discovery only sees public view components, so an internal one renders as inert markup (HUM0034)");
     }
 
     /// <summary>

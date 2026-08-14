@@ -50,6 +50,11 @@ public class SectionPublicSurfaceAnalyzerTests
             public sealed class NonViewComponentAttribute : System.Attribute { }
         }
 
+        namespace Microsoft.AspNetCore.Razor.TagHelpers
+        {
+            public interface ITagHelper { }
+        }
+
         namespace Humans.Application.Architecture
         {
             [System.AttributeUsage(System.AttributeTargets.Class, AllowMultiple = true)]
@@ -290,6 +295,73 @@ public class SectionPublicSurfaceAnalyzerTests
             ReferencedStubs);
 
         diagnostics.Where(IsHum0034).Should().ContainSingle();
+    }
+
+    // Razor's DefaultTagHelperDescriptorProvider applies the same public-only filter as
+    // the view-component pass, with the same silent outcome: the element ships as inert
+    // literal markup. No section declares a tag helper yet — the clause is written ahead
+    // of its first subject so the rule states the principle, not one carve-out.
+    [HumansFact]
+    public async Task Does_not_fire_on_tag_helper()
+    {
+        var source = SectionAssemblyAttribute + """
+
+            namespace Humans.Test.TagHelpers
+            {
+                public sealed class BurnDateTagHelper : Microsoft.AspNetCore.Razor.TagHelpers.ITagHelper { }
+            }
+            """;
+
+        var diagnostics = await AnalyzerTestHarness.RunAsync(
+            new SectionPublicSurfaceAnalyzer(),
+            "Humans.Test",
+            source,
+            ReferencedStubs);
+
+        diagnostics.Where(IsHum0034).Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task Fires_on_public_type_named_TagHelper_that_implements_nothing()
+    {
+        // Implementing ITagHelper is the whole of the provider's test, so the name alone
+        // carves nothing out — this one is ordinary section internals.
+        var source = SectionAssemblyAttribute + """
+
+            namespace Humans.Test.TagHelpers
+            {
+                public sealed class BurnDateTagHelper { }
+            }
+            """;
+
+        var diagnostics = await AnalyzerTestHarness.RunAsync(
+            new SectionPublicSurfaceAnalyzer(),
+            "Humans.Test",
+            source,
+            ReferencedStubs);
+
+        diagnostics.Where(IsHum0034).Should().ContainSingle();
+    }
+
+    [HumansFact]
+    public async Task Does_not_fire_on_tag_helper_whose_name_says_nothing()
+    {
+        // ...and conversely, discovery does not care what an implementation is called.
+        var source = SectionAssemblyAttribute + """
+
+            namespace Humans.Test.TagHelpers
+            {
+                public sealed class BurnDateWidget : Microsoft.AspNetCore.Razor.TagHelpers.ITagHelper { }
+            }
+            """;
+
+        var diagnostics = await AnalyzerTestHarness.RunAsync(
+            new SectionPublicSurfaceAnalyzer(),
+            "Humans.Test",
+            source,
+            ReferencedStubs);
+
+        diagnostics.Where(IsHum0034).Should().BeEmpty();
     }
 
     [HumansFact]

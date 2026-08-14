@@ -990,10 +990,18 @@ Git Bash.)
      Scanner + Shell each gained one `@addTagHelper *, Humans.<Section>` line. Read Gate's
      rule as "park it in `Humans.UI` until the owning section moves", not as a final home
      (proven: Tickets, correcting Scanner finding 22).
-   - **A section's view components are `public`. Settled by Peter 2026-08-14 after an
-     internal `ProfileCardViewComponent` silently emptied the Profile page; HUM0034 now
-     carves out view components structurally, so `public` needs no `Contracts/` folder and
-     no argument.** A view component is rendering surface — being invoked from views in
+   - **HUM0034 in one sentence: a section's types are `internal` by default, except types
+     the framework requires to be `public` in order to function.** Settled by Peter
+     2026-08-14 after an internal `ProfileCardViewComponent` silently emptied the Profile
+     page. **The membership test is whether making the type `internal` fails loudly or
+     silently renders nothing** — silent means it belongs in the exception. Razor/MVC
+     discovery that runs at *compile time* filters on public accessibility and skips what
+     it cannot see, with no error, warning or diagnostic; runtime resolution throws, so it
+     does not qualify. **Current membership: view components and tag helpers — the whole
+     set.** Controllers look like a candidate and are not (`SectionControllerFeatureProvider`
+     routes internal ones, and a missing controller 404s loudly). Both are carved out
+     structurally, so `public` on them needs no `Contracts/` folder and no argument.
+     A view component is rendering surface — being invoked from views in
      other assemblies is its whole purpose — and Razor generates a `<vc:…>` tag helper only
      for a *public* component, so `internal` is not a smaller surface, it is a broken one.
      `SectionViewComponentFeatureProvider` stays for the one case that cannot comply: a
