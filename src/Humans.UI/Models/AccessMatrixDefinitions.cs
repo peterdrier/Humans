@@ -1,4 +1,4 @@
-namespace Humans.Web.Models;
+namespace Humans.UI.Models;
 
 public enum AccessLevel
 {

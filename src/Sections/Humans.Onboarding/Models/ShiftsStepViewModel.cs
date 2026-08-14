@@ -14,8 +14,8 @@ namespace Humans.Onboarding.Models;
 /// <c>ShiftBrowseViewModel</c>, <c>RotaShiftGroup</c>, <c>ShiftBrowseMapper</c> and the
 /// <c>_BuildStrikeRotaTable</c>/<c>_EventRotaTable</c> partials all live in Shell and
 /// Shifts has not moved — so the view hands this model's Base-typed contents to Shell's
-/// <c>OnboardingShiftsList</c> view component and invokes it by name (design §15 step 6,
-/// CityPlanning's <c>&lt;vc:access-matrix&gt;</c> case). Everything on this record is a
+/// <c>OnboardingShiftsList</c> view component and invokes it by name (design §15 step 6).
+/// Everything on this record is a
 /// <c>Humans.Domain</c> or <c>Humans.Application</c> type, which is what makes that
 /// invocation compile from a section.
 /// </remarks>

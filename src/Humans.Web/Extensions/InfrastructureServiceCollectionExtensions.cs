@@ -110,8 +110,8 @@ public static class InfrastructureServiceCollectionExtensions
 
         // Shell-resident collaborators of sections that have already moved out. AgentPreloadAugmentor
         // builds the access matrix, glossaries, route map and FAQ blocks of the agent's preload
-        // corpus from Shell-owned help content (AccessMatrixDefinitions, SectionHelpContent), so it
-        // cannot move into Humans.Agent; the section consumes it through the contracts leaf.
+        // corpus from the shared help registries (Humans.UI's AccessMatrixDefinitions and
+        // SectionHelpContent); the section consumes it through the contracts leaf.
         services.AddSingleton<IAgentPreloadAugmentor, Humans.Web.Services.Agent.AgentPreloadAugmentor>();
 
         // Users' CSV participation backfill. Its registration sat in the Tickets section file

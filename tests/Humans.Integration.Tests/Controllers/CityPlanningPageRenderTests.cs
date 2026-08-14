@@ -77,11 +77,12 @@ public class CityPlanningPageRenderTests(HumansTestDatabase database) : Integrat
     }
 
     [HumansFact(Timeout = 120000)]
-    public async Task The_admin_page_renders_the_shell_resident_access_matrix_widget()
+    public async Task The_admin_page_renders_the_access_matrix_widget()
     {
-        // <vc:access-matrix> cannot be used from a section view (AccessMatrixViewComponent is in
-        // Humans.Web and a section _ViewImports cannot @addTagHelper it). Component.InvokeAsync
-        // resolves it by name across application parts instead — this pins that it still lands.
+        // AccessMatrixViewComponent moved into Humans.UI (nobodies-collective/Humans#1056), so
+        // <vc:access-matrix section="CityPlanningBarrioMap" /> binds through the section's
+        // @addTagHelper *, Humans.UI. An unbound <vc:> ships inert with a green build, so the
+        // emitted modal id is what proves it bound.
         var ct = Xunit.TestContext.Current.CancellationToken;
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
 

@@ -10,8 +10,8 @@
   src/Humans.UI/Authorization/PolicyNames.cs
   src/Humans.UI/Authorization/RoleChecks.cs
   src/Humans.Web/Authorization/Requirements/**
-  src/Humans.Web/Models/AccessMatrixDefinitions.cs
-  src/Humans.Web/ViewComponents/AccessMatrixViewComponent.cs
+  src/Humans.UI/Models/AccessMatrixDefinitions.cs
+  src/Humans.UI/ViewComponents/AccessMatrixViewComponent.cs
 -->
 <!-- freshness:flag-on-change
   Role-assignment temporal invariants, magic-link rate-limit/replay rules, role-name constants, and the access-matrix mechanism (§"Access Matrix UI" — AccessMatrixViewComponent over static AccessMatrixDefinitions data, no DB table) — review when Auth services, role constants, claims transformation, or the access-matrix component/source change.
@@ -146,7 +146,7 @@ The auth surface is mid-transition per `docs/plans/2026-04-03-first-class-author
 ## Access Matrix UI (per-section)
 
 
-Each section's landing page exposes an info-icon button (`AccessMatrixViewComponent`, invoked as `<vc:access-matrix section="…" />`) that opens a modal showing which roles can do what in that section. Definitions live in `src/Humans.Web/Models/AccessMatrixDefinitions.cs` as **static data, not DB-driven** — there is intentionally no `access_matrix` table.
+Each section's landing page exposes an info-icon button (`AccessMatrixViewComponent`, invoked as `<vc:access-matrix section="…" />`) that opens a modal showing which roles can do what in that section. Definitions live in `src/Humans.UI/Models/AccessMatrixDefinitions.cs` as **static data, not DB-driven** — there is intentionally no `access_matrix` table.
 
 - **Admin is excluded from every matrix.** Admin can do everything everywhere; including the column would be visual noise.
 - **"Volunteer" is the baseline, not a formal role.** It means "any active member" — the absence of an elevated role, not an entry in `role_assignments`.

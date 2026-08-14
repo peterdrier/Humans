@@ -1,4 +1,4 @@
-namespace Humans.Web.Models;
+namespace Humans.UI.Models;
 
 /// <summary>
 /// Hardcoded markdown content for section help pages (Guide, Glossary).

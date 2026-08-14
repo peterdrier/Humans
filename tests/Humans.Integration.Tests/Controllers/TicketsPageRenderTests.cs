@@ -20,9 +20,9 @@ namespace Humans.Integration.Tests.Controllers;
 /// <c>@@using</c> or <c>@@addTagHelper</c> ships literal markup with a green build, and an
 /// unrendered <c>&lt;vc:…&gt;</c> element is inert text the browser simply drops. Tickets is
 /// the first section to ship a <c>&lt;vc:&gt;</c> component of its <em>own</em> (the ticket
-/// stub, public under <c>Contracts/</c>), alongside two Shell components it now invokes by
-/// name — <c>AccessMatrix</c> and <c>HumanSummary</c>, both of which <b>throw</b> when they
-/// fail to resolve rather than degrading.
+/// stub, public under <c>Contracts/</c>), alongside <c>&lt;vc:access-matrix&gt;</c> bound
+/// through <c>@@addTagHelper *, Humans.UI</c> and <c>HumanSummary</c>, still Shell's and
+/// invoked by name — the latter <b>throws</b> when it fails to resolve rather than degrading.
 /// </description></item>
 /// <item><description>
 /// The resx carve moved the 25 <c>TicketTransfer_*</c> keys out of <c>SharedResource</c>. A
@@ -95,19 +95,18 @@ public class TicketsPageRenderTests(HumansTestDatabase database) : IntegrationTe
     }
 
     [HumansFact(Timeout = 120000)]
-    public async Task The_dashboard_renders_the_shell_owned_access_matrix_invoked_by_name()
+    public async Task The_dashboard_renders_the_access_matrix_tag_helper()
     {
-        // <vc:access-matrix> could not survive the move: AccessMatrixViewComponent reads
-        // Shell-owned registries naming every section, so the call site became
-        // Component.InvokeAsync("AccessMatrix", …). That throws when it fails to resolve
-        // rather than degrading, so a 200 with the modal id on it is the whole proof
-        // (CityPlanning's rule).
+        // AccessMatrixViewComponent moved into Humans.UI (nobodies-collective/Humans#1056),
+        // so the call site is <vc:access-matrix section="Tickets" /> bound through
+        // @addTagHelper *, Humans.UI. An unbound <vc:> ships as inert literal markup with a
+        // green build and no log line, so the emitted modal id is the proof — not the 200.
         var ct = Xunit.TestContext.Current.CancellationToken;
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
 
         var html = await (await Client.GetAsync("/Tickets", ct)).Content.ReadAsStringAsync(ct);
 
-        html.Should().Contain("sectionHelp-Tickets", "the Shell access-matrix widget must render from a section view");
+        html.Should().Contain("sectionHelp-Tickets", "the access-matrix widget must bind and render from a section view");
     }
 
     [HumansFact(Timeout = 120000)]
