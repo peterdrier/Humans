@@ -40,6 +40,7 @@
 @* No @addTagHelper for Humans.Web — a section RCL cannot reference the Shell. The four
    Shell-owned components this page renders (AccessMatrix, EventsCard, TicketHoldings,
    CommunicationPreferencesPanel) are therefore invoked by name until they move to an
-   assembly a section can reference; see nobodies-collective/Humans#866. A <vc:> element
+   assembly a section can reference — tracked with the per-component blocker in
+   nobodies-collective/Humans#1056. A <vc:> element
    for an unimported assembly renders as inert markup with a green build and no runtime
    error, so never add one without its @addTagHelper. *@
