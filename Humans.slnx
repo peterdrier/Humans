@@ -123,6 +123,7 @@
     <Project Path="tests/Humans.TicketTailor.Tests/Humans.TicketTailor.Tests.csproj" />
     <Project Path="tests/Humans.Tickets.Tests/Humans.Tickets.Tests.csproj" />
     <Project Path="tests/Humans.SystemSettings.Tests/Humans.SystemSettings.Tests.csproj" />
+    <Project Path="tests/Humans.Users.Tests/Humans.Users.Tests.csproj" />
     <Project Path="tests/Humans.Web.Tests/Humans.Web.Tests.csproj" />
   </Folder>
   <Folder Name="/build/">

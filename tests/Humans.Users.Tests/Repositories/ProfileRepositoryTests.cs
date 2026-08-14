@@ -1,0 +1,250 @@
+using AwesomeAssertions;
+using Microsoft.EntityFrameworkCore;
+using NodaTime;
+using NodaTime.Testing;
+using Humans.Users.Tests.Infrastructure;
+using Humans.Domain.Entities;
+using Humans.Domain.Enums;
+using Humans.Infrastructure.Data;
+using Humans.Users.Data.Repositories;
+using Humans.Users.Contracts;
+using Humans.Users.Data;
+
+namespace Humans.Users.Tests.Repositories;
+
+public sealed class UserRepositoryProfileTests : IDisposable
+{
+    private readonly UsersDbContext _dbContext;
+    private readonly FakeClock _clock;
+    private readonly UserRepository _repo;
+
+    public UserRepositoryProfileTests()
+    {
+        var options = new DbContextOptionsBuilder<UsersDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+        _dbContext = new UsersDbContext(options);
+        _clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
+        _repo = new UserRepository(new TestDbContextFactory(options), _clock);
+    }
+
+    public void Dispose()
+    {
+        _dbContext.Dispose();
+    }
+
+    [HumansFact]
+    public async Task AddAsync_UpdatesUserStateFromNewProfile()
+    {
+        var user = await SeedUserAsync(UserState.Bare);
+        var profile = NewProfile(user.Id, "Burner", "First", "Last", ProfileState.Active);
+
+        await _repo.AddAsync(profile, Xunit.TestContext.Current.CancellationToken);
+
+        var reloaded = await _dbContext.Users.AsNoTracking().SingleAsync(u => u.Id == user.Id, Xunit.TestContext.Current.CancellationToken);
+        reloaded.State.Should().Be(UserState.Active);
+    }
+
+    [HumansFact]
+    public async Task UpdateAsync_UpdatesUserStateFromChangedProfile()
+    {
+        var user = await SeedUserAsync(UserState.Active);
+        var profile = NewProfile(user.Id, "Burner", "First", "Last", ProfileState.Active);
+        _dbContext.Profiles.Add(profile);
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        _dbContext.ChangeTracker.Clear();
+
+        var detached = await _dbContext.Profiles.AsNoTracking().SingleAsync(p => p.Id == profile.Id, Xunit.TestContext.Current.CancellationToken);
+        detached.FirstName = "";
+        detached.State = ProfileState.Stub;
+        detached.UpdatedAt = _clock.GetCurrentInstant();
+
+        await _repo.UpdateAsync(detached, Xunit.TestContext.Current.CancellationToken);
+
+        var reloaded = await _dbContext.Users.AsNoTracking().SingleAsync(u => u.Id == user.Id, Xunit.TestContext.Current.CancellationToken);
+        reloaded.State.Should().Be(UserState.Bare);
+    }
+
+    [HumansFact(Timeout = 10000)]
+    public async Task ReconcileCVEntriesAsync_AddsUpdatesAndRemovesEntries()
+    {
+        // Arrange: profile with two existing CV entries
+        var profileId = Guid.NewGuid();
+        var keepId = Guid.NewGuid();
+        var removeId = Guid.NewGuid();
+        var now = _clock.GetCurrentInstant();
+
+        await _dbContext.VolunteerHistoryEntries.AddRangeAsync(
+            new VolunteerHistoryEntry
+            {
+                Id = keepId,
+                ProfileId = profileId,
+                Date = new LocalDate(2024, 3, 1),
+                EventName = "Keep me",
+                Description = "Old desc",
+                CreatedAt = now,
+                UpdatedAt = now
+            },
+            new VolunteerHistoryEntry
+            {
+                Id = removeId,
+                ProfileId = profileId,
+                Date = new LocalDate(2024, 4, 1),
+                EventName = "Remove me",
+                Description = null,
+                CreatedAt = now,
+                UpdatedAt = now
+            });
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        // Advance clock so UpdatedAt on the updated entry differs from CreatedAt
+        _clock.AdvanceSeconds(60);
+        var afterAdvance = _clock.GetCurrentInstant();
+
+        // Act: reconcile — keep one (new description), add one, remove "Remove me"
+        var newEntries = new List<CVEntry>
+        {
+            new(keepId, new LocalDate(2024, 3, 1), "Keep me", "New desc"),
+            new(Guid.Empty, new LocalDate(2024, 5, 1), "Add me", null),
+        };
+        await _repo.ReconcileCVEntriesAsync(profileId, newEntries, Xunit.TestContext.Current.CancellationToken);
+
+        // Assert: exactly two rows remain. Use AsNoTracking so the query hits the in-memory
+        // store directly rather than returning stale entities from _dbContext's identity map.
+        var persisted = await _dbContext.VolunteerHistoryEntries
+            .AsNoTracking()
+            .Where(v => v.ProfileId == profileId)
+            .OrderBy(v => v.Date)
+            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
+
+        persisted.Should().HaveCount(2);
+
+        // "Keep me" is updated with new description; "Remove me" is gone.
+        // Id is preserved across the update.
+        persisted[0].Id.Should().Be(keepId);
+        persisted[0].EventName.Should().Be("Keep me");
+        persisted[0].Description.Should().Be("New desc");
+        persisted[0].UpdatedAt.Should().Be(afterAdvance);
+
+        // "Add me" is new — fresh Id, not Guid.Empty
+        persisted[1].Id.Should().NotBe(Guid.Empty);
+        persisted[1].EventName.Should().Be("Add me");
+        persisted[1].Description.Should().BeNull();
+        persisted[1].CreatedAt.Should().Be(afterAdvance);
+        persisted[1].UpdatedAt.Should().Be(afterAdvance);
+    }
+
+    [HumansFact]
+    public async Task ReconcileCVEntriesAsync_DoesNotBumpUpdatedAt_WhenFieldsUnchanged()
+    {
+        var profileId = Guid.NewGuid();
+        var entryId = Guid.NewGuid();
+        var seededAt = _clock.GetCurrentInstant();
+
+        await _dbContext.VolunteerHistoryEntries.AddAsync(new VolunteerHistoryEntry
+        {
+            Id = entryId,
+            ProfileId = profileId,
+            Date = new LocalDate(2024, 3, 1),
+            EventName = "Keep me",
+            Description = "unchanged",
+            CreatedAt = seededAt,
+            UpdatedAt = seededAt,
+        }, Xunit.TestContext.Current.CancellationToken);
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        // Advance the clock — if UpdatedAt were bumped unconditionally, we'd see the new time.
+        _clock.AdvanceSeconds(60);
+
+        var entries = new List<CVEntry>
+        {
+            new(entryId, new LocalDate(2024, 3, 1), "Keep me", "unchanged"),
+        };
+        await _repo.ReconcileCVEntriesAsync(profileId, entries, Xunit.TestContext.Current.CancellationToken);
+
+        var persisted = await _dbContext.VolunteerHistoryEntries
+            .AsNoTracking()
+            .Where(v => v.ProfileId == profileId)
+            .SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        persisted.UpdatedAt.Should().Be(seededAt);
+    }
+
+    [HumansFact]
+    public async Task ReconcileCVEntriesAsync_PreservesIdAndCreatedAt_WhenDateOrEventNameChanges()
+    {
+        // The whole point of Id-keyed reconcile: editing Date or EventName
+        // must update the existing row in place, not delete-and-insert (which
+        // would lose Id and CreatedAt).
+        var profileId = Guid.NewGuid();
+        var entryId = Guid.NewGuid();
+        var createdAt = _clock.GetCurrentInstant();
+
+        await _dbContext.VolunteerHistoryEntries.AddAsync(new VolunteerHistoryEntry
+        {
+            Id = entryId,
+            ProfileId = profileId,
+            Date = new LocalDate(2024, 3, 1),
+            EventName = "Original Name",
+            Description = "desc",
+            CreatedAt = createdAt,
+            UpdatedAt = createdAt,
+        }, Xunit.TestContext.Current.CancellationToken);
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        _clock.AdvanceSeconds(60);
+        var afterAdvance = _clock.GetCurrentInstant();
+
+        // Mutate both Date and EventName but keep Id
+        var entries = new List<CVEntry>
+        {
+            new(entryId, new LocalDate(2024, 6, 15), "Renamed Event", "desc"),
+        };
+        await _repo.ReconcileCVEntriesAsync(profileId, entries, Xunit.TestContext.Current.CancellationToken);
+
+        var persisted = await _dbContext.VolunteerHistoryEntries
+            .AsNoTracking()
+            .Where(v => v.ProfileId == profileId)
+            .SingleAsync(Xunit.TestContext.Current.CancellationToken);
+
+        // Same row — Id and CreatedAt preserved
+        persisted.Id.Should().Be(entryId);
+        persisted.CreatedAt.Should().Be(createdAt);
+        // New field values, UpdatedAt bumped
+        persisted.Date.Should().Be(new LocalDate(2024, 6, 15));
+        persisted.EventName.Should().Be("Renamed Event");
+        persisted.UpdatedAt.Should().Be(afterAdvance);
+    }
+
+    private async Task<User> SeedUserAsync(UserState? state = null)
+    {
+        var user = new User
+        {
+            Id = Guid.NewGuid(),
+            UserName = $"user-{Guid.NewGuid():N}@example.com",
+            Email = $"user-{Guid.NewGuid():N}@example.com",
+            DisplayName = "Seeded User",
+            CreatedAt = _clock.GetCurrentInstant(),
+            State = state,
+        };
+        _dbContext.Users.Add(user);
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        return user;
+    }
+
+    private Profile NewProfile(
+        Guid userId, string burnerName, string firstName, string lastName, ProfileState state)
+    {
+        var now = _clock.GetCurrentInstant();
+        return new Profile
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            BurnerName = burnerName,
+            FirstName = firstName,
+            LastName = lastName,
+            State = state,
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+    }
+}

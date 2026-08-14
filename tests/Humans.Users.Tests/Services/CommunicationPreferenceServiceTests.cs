@@ -1,0 +1,264 @@
+using AwesomeAssertions;
+using Humans.AuditLog.Contracts;
+using Humans.Users.Contracts;
+using Humans.Application.Interfaces.Users;
+using Humans.Users.Tests.Infrastructure;
+using NSubstitute;
+using Humans.Domain.Entities;
+using Humans.Domain.Enums;
+using Humans.Infrastructure.Configuration;
+using Humans.Users.Data.Repositories;
+using Humans.Users.Services;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+using NodaTime;
+using CommunicationPreferenceService = Humans.Users.Services.CommunicationPreferenceService;
+
+namespace Humans.Users.Tests.Services;
+
+file sealed class StubAuditLogService : IAuditLogService
+{
+    public Task LogAsync(AuditAction action, string entityType, Guid entityId,
+        string description, string jobName,
+        Guid? relatedEntityId = null, string? relatedEntityType = null) => Task.CompletedTask;
+
+    public Task LogAsync(AuditAction action, string entityType, Guid entityId,
+        string description, Guid actorUserId,
+        Guid? relatedEntityId = null, string? relatedEntityType = null) => Task.CompletedTask;
+
+    public Task LogGoogleSyncAsync(AuditAction action, Guid resourceId,
+        string description, string jobName,
+        string userEmail, string role, GoogleSyncSource source, bool success,
+        string? errorMessage = null,
+        Guid? relatedEntityId = null, string? relatedEntityType = null) => Task.CompletedTask;
+
+    public Task<IReadOnlyList<AuditLogEntrySnapshot>> GetByResourceAsync(Guid resourceId) =>
+        Task.FromResult<IReadOnlyList<AuditLogEntrySnapshot>>([]);
+
+    public Task<IReadOnlyList<AuditLogEntrySnapshot>> GetGoogleSyncByUserAsync(Guid userId) =>
+        Task.FromResult<IReadOnlyList<AuditLogEntrySnapshot>>([]);
+
+    public Task<IReadOnlyList<AuditLogEntrySnapshot>> GetRecentAsync(int count, CancellationToken ct = default) =>
+        Task.FromResult<IReadOnlyList<AuditLogEntrySnapshot>>([]);
+
+    public Task<(IReadOnlyList<AuditLogEntrySnapshot> Items, int TotalCount, int AnomalyCount)> GetFilteredAsync(
+        string? actionFilter, int page, int pageSize, CancellationToken ct = default) =>
+        Task.FromResult<(IReadOnlyList<AuditLogEntrySnapshot>, int, int)>(([], 0, 0));
+
+    public Task<IReadOnlyList<AuditLogEntrySnapshot>> GetByUserAsync(Guid userId, int count, CancellationToken ct = default) =>
+        Task.FromResult<IReadOnlyList<AuditLogEntrySnapshot>>([]);
+
+    public Task<IReadOnlyList<AuditLogEntrySnapshot>> GetFilteredEntriesAsync(
+        string? entityType = null,
+        Guid? entityId = null,
+        Guid? userId = null,
+        IReadOnlyList<AuditAction>? actions = null,
+        int limit = 20,
+        CancellationToken ct = default) =>
+        Task.FromResult<IReadOnlyList<AuditLogEntrySnapshot>>([]);
+
+    public Task<IReadOnlyList<Guid>> GetEntityIdsForActionInWindowAsync(
+        Instant windowStart, Instant windowEnd, AuditAction action, CancellationToken ct = default) =>
+        Task.FromResult((IReadOnlyList<Guid>)[]);
+
+    public Task<IReadOnlySet<Guid>> GetEntityIdsForEntityTypeActionsAsync(
+        string entityType, IReadOnlyList<AuditAction> actions, CancellationToken ct = default) =>
+        Task.FromResult((IReadOnlySet<Guid>)new HashSet<Guid>());
+}
+
+public sealed class CommunicationPreferenceServiceTests : ServiceTestHarness
+{
+    private readonly CommunicationPreferenceService _service;
+
+    public CommunicationPreferenceServiceTests()
+        : base(Instant.FromUtc(2026, 4, 1, 12, 0))
+    {
+        var dataProtectionProvider = DataProtectionProvider.Create("TestApp");
+
+        var emailSettings = Options.Create(new EmailSettings
+        {
+            BaseUrl = "https://test.example.com"
+        });
+
+        var repository = new CommunicationPreferenceRepository(DbFactory);
+
+        var tokenProvider = new UnsubscribeTokenProvider(
+            dataProtectionProvider, emailSettings,
+            NullLogger<UnsubscribeTokenProvider>.Instance);
+
+        // The service now reads preferences through IUserService.GetUserInfoAsync (the cache layer).
+        // For these tests, project the in-memory db state into UserInfo on each read so the
+        // write-then-read semantics that this suite verifies still hold end-to-end.
+        var userService = Substitute.For<IUserService>();
+        userService.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(ci =>
+            {
+                var userId = ci.Arg<Guid>();
+                var prefs = Db.CommunicationPreferences
+                    .Where(cp => cp.UserId == userId)
+                    .ToList();
+                return new ValueTask<UserInfo?>(BuildStubUserInfo(userId, prefs));
+            });
+
+        _service = new CommunicationPreferenceService(
+            repository,
+            userService,
+            tokenProvider,
+            Clock,
+            new StubAuditLogService(),
+            NullLogger<CommunicationPreferenceService>.Instance);
+    }
+
+    private static UserInfo BuildStubUserInfo(Guid userId, IReadOnlyList<CommunicationPreference> prefs) =>
+        UserInfo.Create(
+            user: new User
+            {
+                Id = userId,
+                DisplayName = "",
+                PreferredLanguage = "en",
+                CreatedAt = Instant.MinValue,
+            },
+            userEmails: [],
+            eventParticipations: [],
+            externalLogins: [],
+            profile: null,
+            contactFields: [],
+            profileLanguages: [],
+            volunteerHistory: [],
+            communicationPreferences: prefs);
+
+    [HumansFact]
+    public async Task GetPreferencesAsync_CreatesDefaultsForActiveCategories()
+    {
+        var userId = Guid.NewGuid();
+
+        var prefs = await _service.GetPreferencesAsync(userId, Xunit.TestContext.Current.CancellationToken);
+
+        // 8 active categories in MessageCategoryExtensions.ActiveCategories
+        prefs.Should().HaveCount(8);
+
+        // Deprecated categories must NOT be created
+        prefs.Should().NotContain(p => p.Category == MessageCategory.EventOperations);
+        prefs.Should().NotContain(p => p.Category == MessageCategory.CommunityUpdates);
+
+        // Rows should be persisted in the database
+        var dbCount = await Db.CommunicationPreferences
+            .Where(cp => cp.UserId == userId)
+            .CountAsync(Xunit.TestContext.Current.CancellationToken);
+        dbCount.Should().Be(8);
+    }
+
+    [HumansFact]
+    public async Task GetPreferencesAsync_MarketingDefaultsToOptedOut()
+    {
+        var userId = Guid.NewGuid();
+
+        var prefs = await _service.GetPreferencesAsync(userId, Xunit.TestContext.Current.CancellationToken);
+
+        var marketing = prefs.Single(p => p.Category == MessageCategory.Marketing);
+        marketing.OptedOut.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task UpdatePreferenceAsync_RejectsAlwaysOnCategories()
+    {
+        var userId = Guid.NewGuid();
+
+        // Attempt to opt out of always-on categories
+        await _service.UpdatePreferenceAsync(userId, MessageCategory.System, optedOut: true, source: "Test", cancellationToken: Xunit.TestContext.Current.CancellationToken);
+        await _service.UpdatePreferenceAsync(userId, MessageCategory.CampaignCodes, optedOut: true, source: "Test", cancellationToken: Xunit.TestContext.Current.CancellationToken);
+
+        // No rows should have been created (update was silently rejected)
+        var systemPref = await Db.CommunicationPreferences
+            .FirstOrDefaultAsync(cp => cp.UserId == userId && cp.Category == MessageCategory.System, Xunit.TestContext.Current.CancellationToken);
+        var campaignPref = await Db.CommunicationPreferences
+            .FirstOrDefaultAsync(cp => cp.UserId == userId && cp.Category == MessageCategory.CampaignCodes, Xunit.TestContext.Current.CancellationToken);
+
+        systemPref.Should().BeNull();
+        campaignPref.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task IsOptedOutAsync_ReturnsFalseForAlwaysOnCategories()
+    {
+        var userId = Guid.NewGuid();
+
+        var systemResult = await _service.IsOptedOutAsync(userId, MessageCategory.System, Xunit.TestContext.Current.CancellationToken);
+        var campaignResult = await _service.IsOptedOutAsync(userId, MessageCategory.CampaignCodes, Xunit.TestContext.Current.CancellationToken);
+
+        systemResult.Should().BeFalse();
+        campaignResult.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task AcceptsFacilitatedMessagesAsync_ReturnsTrueByDefault()
+    {
+        var userId = Guid.NewGuid();
+
+        var result = await _service.AcceptsFacilitatedMessagesAsync(userId, Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeTrue();
+    }
+
+    [HumansFact(Timeout = 10000)]
+    public async Task AcceptsFacilitatedMessagesAsync_ReturnsFalseWhenOptedOut()
+    {
+        var userId = Guid.NewGuid();
+
+        await _service.UpdatePreferenceAsync(
+            userId, MessageCategory.FacilitatedMessages, optedOut: true, source: "Test", cancellationToken: Xunit.TestContext.Current.CancellationToken);
+
+        var result = await _service.AcceptsFacilitatedMessagesAsync(userId, Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public void ValidateUnsubscribeToken_WithValidToken_ReturnsValidStatusAndCorrectPayload()
+    {
+        var userId = Guid.NewGuid();
+        var category = MessageCategory.TeamUpdates;
+
+        var token = _service.GenerateUnsubscribeToken(userId, category);
+        var (status, decodedUserId, decodedCategory) = _service.ValidateUnsubscribeToken(token);
+
+        status.Should().Be(TokenValidationStatus.Valid);
+        decodedUserId.Should().Be(userId);
+        decodedCategory.Should().Be(category);
+    }
+
+    [HumansFact]
+    public void ValidateUnsubscribeToken_WithGarbageString_ReturnsInvalidStatus()
+    {
+        // A random string is not a valid DataProtection payload — simulates a tampered token.
+        // Note: DataProtection throws CryptographicException for both expired and tampered tokens.
+        // The service distinguishes expired from tampered by checking whether "expired" appears in
+        // the exception message. A purely garbage string will not match "expired" and maps to Invalid.
+        var (status, decodedUserId, decodedCategory) = _service.ValidateUnsubscribeToken("this-is-not-a-valid-token");
+
+        status.Should().Be(TokenValidationStatus.Invalid);
+        decodedUserId.Should().Be(Guid.Empty);
+        decodedCategory.Should().Be(default(MessageCategory));
+    }
+
+    [HumansFact]
+    public void ValidateUnsubscribeToken_WithMalformedBase64_ReturnsInvalidStatus()
+    {
+        // Another tamper vector: valid-looking base64 that decrypts to garbage
+        var (status, _, _) = _service.ValidateUnsubscribeToken("aGVsbG8gd29ybGQ=");
+
+        status.Should().Be(TokenValidationStatus.Invalid);
+    }
+
+    // NOTE: Testing TokenValidationStatus.Expired is not straightforward in unit tests because:
+    // - Microsoft.AspNetCore.DataProtection's ITimeLimitedDataProtector uses the real system clock
+    //   to embed expiry in the encrypted payload, and there is no seam to inject a fake clock.
+    // - DataProtectionProvider.Create() used here does not support replacing the clock.
+    // - To produce a genuinely expired token we would need to either (a) use the real system clock
+    //   and Thread.Sleep for 90 days, or (b) use internal/reflection to access the key ring.
+    // The Expired path in ValidateUnsubscribeToken is covered indirectly: the service correctly
+    // checks ex.Message.Contains("expired") before returning TokenValidationStatus.Expired, which
+    // is consistent with how DataProtection surfaces the expiry error in the real runtime.
+}

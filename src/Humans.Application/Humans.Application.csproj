@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Humans.Application.Tests" />
+    <InternalsVisibleTo Include="Humans.Users.Tests" />
   </ItemGroup>
 
   <ItemGroup>

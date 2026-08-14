@@ -8,6 +8,7 @@
   <ItemGroup>
     <InternalsVisibleTo Include="Humans.Teams.Tests" />
     <InternalsVisibleTo Include="Humans.Shifts.Tests" />
+    <InternalsVisibleTo Include="Humans.Users.Tests" />
     <!--
       Humans.Application.Tests holds the tests of sections that have not moved to their own
       project yet; they seed team rows through ServiceTestHarness, which needs Teams
