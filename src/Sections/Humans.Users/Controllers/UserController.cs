@@ -5,11 +5,11 @@ using Microsoft.Extensions.Localization;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Enums;
 using Humans.UI;
-using Humans.Web.Authorization;
-using Humans.Web.Models;
+using Humans.UI.Authorization;
+using Humans.Users.Models;
 using Humans.Users.Contracts;
 
-namespace Humans.Web.Controllers;
+namespace Humans.Users.Controllers;
 
 /// <summary>
 /// Landing pages for non-Active users — the account-status wall (Suspended/Rejected/Deleted/Merged)
@@ -18,7 +18,7 @@ namespace Humans.Web.Controllers;
 /// </summary>
 [Authorize]
 [Route("User")]
-public class UserController(
+internal sealed class UserController(
     IUserServiceRead userService,
     IAccountDeletionService accountDeletionService,
     IStringLocalizer<SharedResource> localizer) : HumansControllerBase(userService)
@@ -26,7 +26,7 @@ public class UserController(
     [HttpGet("Status")]
     public async Task<IActionResult> Status()
     {
-        var state = RoleAssignmentClaimsTransformation.GetUserState(User);
+        var state = RoleChecks.GetUserState(User);
 
         // Only the excluded states see the wall; anyone else belongs in the app/onboarding.
         if (state is not (UserState.Suspended or UserState.AdminSuspended or UserState.Rejected
