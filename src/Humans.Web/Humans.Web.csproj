@@ -42,6 +42,7 @@
     <ProjectReference Include="..\Sections\Humans.Shifts\Humans.Shifts.csproj" />
     <ProjectReference Include="..\Sections\Humans.Holded\Humans.Holded.csproj" />
     <ProjectReference Include="..\Sections\Humans.Store\Humans.Store.csproj" />
+    <ProjectReference Include="..\Sections\Humans.Stripe\Humans.Stripe.csproj" />
     <ProjectReference Include="..\Sections\Humans.Surveys\Humans.Surveys.csproj" />
     <ProjectReference Include="..\Sections\Humans.SystemSettings\Humans.SystemSettings.csproj" />
     <ProjectReference Include="..\Sections\Humans.Teams\Humans.Teams.csproj" />

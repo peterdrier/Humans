@@ -1,11 +1,27 @@
 using Humans.Application.Interfaces;
-using Humans.Infrastructure.Services;
+using Humans.Stripe.Contracts;
+using Humans.Stripe.Services;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 
-namespace Humans.Web.Extensions.Infrastructure;
+namespace Humans.Stripe;
 
-internal static class StripeInfrastructureExtensions
+/// <summary>
+/// The payments connector's DI entry point, moved verbatim from Shell's
+/// <c>StripeInfrastructureExtensions.AddStripeInfrastructure</c>.
+/// </summary>
+/// <remarks>
+/// The whole registration is the section's own: <c>StripeSettings</c> binds only
+/// <c>STRIPE_*</c> environment variables and <c>Stripe:*</c> configuration, and its three
+/// consumers (the service and the two hosted services) are all <c>internal</c> here — so
+/// unlike <c>TicketVendorSettings</c>, no line of it belongs to anyone else (Governance's
+/// rule: the section that owns the file is not always the section that owns the line —
+/// here it is). Shell keeps the <c>ConfigurationRegistry</c> metadata for the same
+/// variables, which is Shell's settings-inventory page, not a binding.
+/// </remarks>
+public sealed class Section : ISection
 {
-    internal static IServiceCollection AddStripeInfrastructure(this IServiceCollection services, IConfiguration configuration)
+    public void Register(IServiceCollection services, IConfiguration configuration)
     {
         // Stripe integration. One key per Stripe account / purpose; production keys must be Restricted API
         // Keys (rk_*) scoped to the minimum permissions used. Refunds/payouts/chargebacks remain dashboard-manual.
@@ -29,7 +45,5 @@ internal static class StripeInfrastructureExtensions
         services.AddScoped<IStripeService, StripeService>();
         services.AddHostedService<StripeStartupSmokeService>();
         services.AddHostedService<StoreWebhookRegistrationService>();
-
-        return services;
     }
 }

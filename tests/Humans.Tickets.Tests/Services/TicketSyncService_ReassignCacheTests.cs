@@ -13,6 +13,7 @@ using NodaTime.Testing;
 using NSubstitute;
 using Humans.Tickets.Domain;
 using Humans.Tickets.Services.Stores;
+using Humans.Stripe.Contracts;
 using Humans.Users.Contracts;
 
 namespace Humans.Tickets.Tests.Services;

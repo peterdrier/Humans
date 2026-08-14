@@ -9,6 +9,7 @@ using Humans.Store.Domain;
 using Humans.Store.Services;
 using Humans.Teams.Contracts;
 using Humans.Store.Services.Dtos;
+using Humans.Stripe.Contracts;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using NodaTime.Text;

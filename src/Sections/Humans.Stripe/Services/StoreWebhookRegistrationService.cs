@@ -5,16 +5,18 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Octokit;
+// See the note in StripeService.cs: `Stripe` binds to the section from inside
+// `Humans.Stripe.Services`, so never qualify SDK types inline in this project.
 using Stripe;
 
-namespace Humans.Infrastructure.Services;
+namespace Humans.Stripe.Services;
 
 /// <summary>
 /// Auto-registers the Store Stripe webhook at boot for ephemeral envs (PR previews, QA).
 /// Self-gated on STRIPE_STORE_WEBHOOK_REGISTRAR_KEY; prod uses a dashboard-configured webhook.
 /// Also sweeps stale endpoints for closed PRs. Failures log warnings and don't block boot.
 /// </summary>
-public class StoreWebhookRegistrationService(
+internal sealed class StoreWebhookRegistrationService(
     IOptions<StripeSettings> settings,
     IOptions<GitHubSettings> githubSettings,
     IConfiguration configuration,

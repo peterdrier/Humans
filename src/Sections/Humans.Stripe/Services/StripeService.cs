@@ -1,14 +1,18 @@
 using Humans.Application.Extensions;
-using Humans.Application.Interfaces;
+using Humans.Stripe.Contracts;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NodaTime;
+// Resolved against the global namespace because the directive sits at compilation-unit
+// level: inside `Humans.Stripe.Services` the bare name `Stripe` would bind to the section
+// itself. Never write an inline `Stripe.Xxx` qualification in this project — use the
+// simple type name, or `global::Stripe.Xxx`.
 using Stripe;
 using Stripe.Checkout;
 
-namespace Humans.Infrastructure.Services;
+namespace Humans.Stripe.Services;
 
-public class StripeSettings
+internal sealed class StripeSettings
 {
     // Convention: one key per Stripe account. Production keys must be Restricted API Keys (rk_*) with
     // the minimum scopes the integration uses; refunds/payouts/chargebacks stay 100% dashboard-manual.
@@ -49,7 +53,7 @@ public class StripeSettings
 
 }
 
-public class StripeService(IOptions<StripeSettings> settings, ILogger<StripeService> logger) : IStripeService
+internal sealed class StripeService(IOptions<StripeSettings> settings, ILogger<StripeService> logger) : IStripeService
 {
     private readonly StripeSettings _settings = settings.Value;
 

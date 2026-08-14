@@ -1,8 +1,8 @@
 using AwesomeAssertions;
-using Humans.Infrastructure.Services;
+using Humans.Stripe.Services;
 using Xunit;
 
-namespace Humans.Application.Tests.Services.Stripe;
+namespace Humans.Stripe.Tests.Services;
 
 /// <summary>
 /// Pure conversion helper for EUR → Stripe minor units (cents) used by Checkout Session creation.

@@ -25,6 +25,8 @@ using Humans.Email.Contracts;
 using Humans.Mailer.Services;
 using Humans.Users.Contracts;
 using Humans.Infrastructure.Services;
+using Humans.Stripe.Contracts;
+using Humans.Stripe.Services;
 using Humans.Users.Data;
 
 namespace Humans.Integration.Tests.Infrastructure;

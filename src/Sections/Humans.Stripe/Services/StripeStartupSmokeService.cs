@@ -1,10 +1,12 @@
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+// See the note in StripeService.cs: `Stripe` binds to the section from inside
+// `Humans.Stripe.Services`, so never qualify SDK types inline in this project.
 using Stripe;
 using Stripe.Checkout;
 
-namespace Humans.Infrastructure.Services;
+namespace Humans.Stripe.Services;
 
 /// <summary>
 /// Boot-time smoke probe: for each configured Stripe account key, makes a single low-risk read
@@ -18,7 +20,7 @@ namespace Humans.Infrastructure.Services;
 /// that the scopes the integration uses ARE present — it cannot prove that no extra scopes are
 /// granted. Refunds/payouts/chargebacks remain dashboard-manual regardless.
 /// </remarks>
-public class StripeStartupSmokeService(IOptions<StripeSettings> settings, ILogger<StripeStartupSmokeService> logger)
+internal sealed class StripeStartupSmokeService(IOptions<StripeSettings> settings, ILogger<StripeStartupSmokeService> logger)
     : IHostedService
 {
     private static readonly TimeSpan ProbeTimeout = TimeSpan.FromSeconds(5);

@@ -1,6 +1,7 @@
+using Humans.Application.Interfaces;
 using NodaTime;
 
-namespace Humans.Application.Interfaces;
+namespace Humans.Stripe.Contracts;
 
 /// <summary>
 /// Stripe connector. Fee/PI reads (Tickets account) and Checkout Session creation (Store account).

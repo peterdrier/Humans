@@ -38,7 +38,8 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddEmailInfrastructure(configuration, environment);
         services.AddGoogleWorkspaceInfrastructure(configuration, environment);
         services.AddTicketVendorPort(configuration);
-        services.AddStripeInfrastructure(configuration);
+        // Stripe's own registrations moved with it to Humans.Stripe's Section.Register
+        // (nobodies-collective/Humans#866, G5 lane 4b-2a).
 
         // Single key-addressed file storage rooted at wwwroot. Camps,
         // profile pictures, and any future file-bearing section share this

@@ -2,9 +2,11 @@ using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using AwesomeAssertions;
+// Compilation-unit level, so this binds to the SDK's global::Stripe rather than to the
+// enclosing Humans.Stripe section namespace. See StripeService.cs.
 using Stripe;
 
-namespace Humans.Application.Tests.Services.Stripe;
+namespace Humans.Stripe.Tests.Services;
 
 /// <summary>
 /// Pure sanity check that our test-side webhook signing helper produces a header
