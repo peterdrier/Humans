@@ -1,7 +1,7 @@
 using Humans.Application.DTOs;
 using Humans.Application.Extensions;
 using Humans.Consent.Contracts;
-using Humans.Application.Interfaces.EarlyEntry;
+using Humans.EarlyEntry.Contracts;
 using Humans.Events.Contracts;
 using Humans.Application.Interfaces.ICalFeed;
 using Humans.Shifts.Contracts;

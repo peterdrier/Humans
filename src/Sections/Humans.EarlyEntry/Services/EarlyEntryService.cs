@@ -1,6 +1,6 @@
-using Humans.Application.Interfaces.EarlyEntry;
+using Humans.EarlyEntry.Contracts;
 
-namespace Humans.Application.Services.EarlyEntry;
+namespace Humans.EarlyEntry.Services;
 
 /// <summary>
 /// Fans out over every <see cref="IEarlyEntryProvider"/> and assembles per-user
@@ -8,7 +8,7 @@ namespace Humans.Application.Services.EarlyEntry;
 /// section DbContexts, which are not thread-safe (same reason GdprExportService is
 /// sequential). Owns no repository.
 /// </summary>
-public sealed class EarlyEntryService(IEnumerable<IEarlyEntryProvider> providers) : IEarlyEntryService
+internal sealed class EarlyEntryService(IEnumerable<IEarlyEntryProvider> providers) : IEarlyEntryService
 {
     public async Task<IReadOnlyList<EarlyEntryRosterRow>> GetRosterAsync(CancellationToken ct)
     {

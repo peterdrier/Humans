@@ -7,7 +7,7 @@
 // seeders are cut; Users stays because the camp tests seed owners.
 using Humans.AuditLog.Contracts;
 using Humans.Auth.Contracts;
-using Humans.Application.Interfaces.EarlyEntry;
+using Humans.EarlyEntry.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Application.Interfaces.Users;

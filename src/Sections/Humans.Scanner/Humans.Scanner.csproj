@@ -43,6 +43,7 @@
     -->
     <ProjectReference Include="..\Humans.Tickets\Humans.Tickets.csproj" />
     <ProjectReference Include="..\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.EarlyEntry\Humans.EarlyEntry.csproj" />
   </ItemGroup>
 
   <ItemGroup>

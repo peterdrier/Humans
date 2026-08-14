@@ -4,7 +4,7 @@ using Humans.Auth.Data;
 using Humans.Auth.Contracts;
 using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.Auth;
-using Humans.Application.Interfaces.EarlyEntry;
+using Humans.EarlyEntry.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Data;

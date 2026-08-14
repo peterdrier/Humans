@@ -1,10 +1,10 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces.EarlyEntry;
-using Humans.Application.Services.EarlyEntry;
+using Humans.EarlyEntry.Contracts;
+using Humans.EarlyEntry.Services;
 using NodaTime;
 using NSubstitute;
 
-namespace Humans.Application.Tests.Services.EarlyEntry;
+namespace Humans.EarlyEntry.Tests.Services;
 
 public class EarlyEntryServiceTests
 {

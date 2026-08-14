@@ -1,5 +1,5 @@
 using Humans.Application.DTOs;
-using Humans.Application.Interfaces.EarlyEntry;
+using Humans.EarlyEntry.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Services;
 using Humans.Application.Interfaces.Users;
