@@ -186,7 +186,7 @@ public class CrossSectionFullServiceInjectionAnalyzerTests
                 }
             }
 
-            namespace Humans.Application.Services.Profiles
+            namespace Humans.Users.Services
             {
                 public sealed class ProfileBadgeService(Humans.Application.Interfaces.Users.IUserService users)
                 {

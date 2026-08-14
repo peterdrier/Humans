@@ -3,16 +3,17 @@ using Humans.Application.Interfaces.Caching;
 using Humans.Gdpr.Contracts;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
-using Humans.Application.Services.Users;
+using Humans.Users.Services;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Repositories.Users;
+using Humans.Users.Data.Repositories;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Xunit;
+using Humans.Users.Contracts;
 
 namespace Humans.Application.Tests.Services.Users;
 

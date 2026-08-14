@@ -1,5 +1,6 @@
 using Humans.Domain.Entities;
 using Microsoft.AspNetCore.Identity;
+using Humans.Users.Contracts;
 
 namespace Humans.Application.Interfaces.Users;
 

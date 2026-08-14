@@ -42,6 +42,7 @@ using Xunit;
 using Humans.Events.Data;
 using Humans.Surveys.Data;
 using Humans.GoogleIntegration.Data;
+using Humans.Users.Data;
 
 namespace Humans.Integration.Tests.Infrastructure;
 

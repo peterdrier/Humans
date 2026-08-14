@@ -2,7 +2,7 @@ using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Tickets.Contracts;
-using Humans.Application.Services.Profiles;
+using Humans.Users.Contracts;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -13,7 +13,8 @@ using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using Humans.Application.Interfaces.Users;
-using Humans.Users.Contracts;
+using Humans.Users.Data.Repositories;
+using Humans.Users.Services;
 
 namespace Humans.Application.Tests.Services;
 

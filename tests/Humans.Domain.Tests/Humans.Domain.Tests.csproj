@@ -2,6 +2,12 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Humans.Domain\Humans.Domain.csproj" />
+    <!--
+      Temporary, and the condition that removes it: ContactFieldTests and ProfileTests
+      exercise entities that moved into Humans.Users at G5 lane 2 PR B. Both files are in
+      the 43-file set lane 2 phase 3 moves to tests/Humans.Users.Tests.
+    -->
+    <ProjectReference Include="..\..\src\Sections\Humans.Users\Humans.Users.csproj" />
   </ItemGroup>
 
   <ItemGroup>

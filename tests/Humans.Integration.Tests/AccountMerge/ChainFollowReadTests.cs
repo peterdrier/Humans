@@ -20,6 +20,8 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using Xunit;
+using Humans.Users.Contracts;
+using Humans.Users.Services;
 
 namespace Humans.Integration.Tests.AccountMerge;
 

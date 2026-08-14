@@ -1,18 +1,17 @@
 using Humans.Shifts.Services;
 using Humans.Auth.Contracts;
-using Humans.Application.Services.Profiles;
+using Humans.Users.Contracts;
 using AwesomeAssertions;
 using Humans.Application.Interfaces;
 using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.GoogleIntegration;
-using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Shifts.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Auth;
-using Humans.Application.Services.Users;
+using Humans.Users.Services;
 using Humans.Email.Contracts;
 using Humans.Infrastructure.Data;
 using Humans.Notifications.Contracts;
@@ -24,7 +23,6 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
-using Humans.Users.Contracts;
 
 namespace Humans.Teams.Tests;
 
@@ -39,18 +37,12 @@ namespace Humans.Teams.Tests;
 public sealed class TeamsDependencyCycleTests
 {
     [HumansFact]
-    public void IUserService_Resolves_WhenTeamServiceAndRoleAssignmentServiceAreRegistered()
+    public void TeamService_Resolves_WhenTheRealTeamsChainIsRegistered()
     {
         var services = new ServiceCollection();
 
-        services.AddScoped(_ => new UsersDbContext(
-            new DbContextOptionsBuilder<UsersDbContext>()
-                .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options));
         services.AddSingleton<IMemoryCache>(_ => new MemoryCache(new MemoryCacheOptions()));
 
-        services.AddScoped<IUserRepository>(_ => Substitute.For<IUserRepository>());
-        services.AddScoped<IUserRepository>(_ => Substitute.For<IUserRepository>());
-        services.AddScoped<ICommunicationPreferenceRepository>(_ => Substitute.For<ICommunicationPreferenceRepository>());
         services.AddScoped<IUserInfoInvalidator>(_ => Substitute.For<IUserInfoInvalidator>());
         services.AddScoped<IAuditLogService>(_ => Substitute.For<IAuditLogService>());
         services.AddScoped<IEmailService>(_ => Substitute.For<IEmailService>());
@@ -64,8 +56,11 @@ public sealed class TeamsDependencyCycleTests
         services.AddScoped<IAdminAuthorizationService>(_ => Substitute.For<IAdminAuthorizationService>());
         services.AddScoped<NodaTime.IClock>(_ => Substitute.For<NodaTime.IClock>());
 
-        services.AddScoped<UserService>();
-        services.AddScoped<IUserService>(sp => sp.GetRequiredService<UserService>());
+        // Users is another section; UserService, its DbContext and its two repository
+        // interfaces are internal to Humans.Users and its own graph is pinned by that
+        // section's own tests. Same call as IRoleAssignmentService below — the subject
+        // here is the Teams chain (#866, G5 lane 2).
+        services.AddScoped<IUserService>(_ => Substitute.For<IUserService>());
 
         // Auth is another section; RoleAssignmentService is internal to Humans.Auth and its
         // own constructor shape is pinned by that section's AuthArchitectureTests. The
@@ -78,17 +73,15 @@ public sealed class TeamsDependencyCycleTests
         services.AddScoped<TeamService>();
         services.AddScoped<ITeamService>(sp => sp.GetRequiredService<TeamService>());
 
-        services.AddScoped<Microsoft.Extensions.Logging.ILogger<UserService>>(_ => NullLogger<UserService>.Instance);
         services.AddScoped<Microsoft.Extensions.Logging.ILogger<ShiftManagementService>>(_ => NullLogger<ShiftManagementService>.Instance);
         services.AddScoped<Microsoft.Extensions.Logging.ILogger<TeamService>>(_ => NullLogger<TeamService>.Instance);
-        services.AddScoped<Microsoft.Extensions.Logging.ILogger<UserEmailService>>(_ => NullLogger<UserEmailService>.Instance);
 
         using var provider = services.BuildServiceProvider(validateScopes: true);
         using var scope = provider.CreateScope();
 
-        var resolve = () => scope.ServiceProvider.GetRequiredService<IUserService>();
+        var resolve = () => scope.ServiceProvider.GetRequiredService<ITeamService>();
 
         resolve.Should().NotThrow();
-        resolve().Should().BeOfType<UserService>();
+        resolve().Should().BeOfType<TeamService>();
     }
 }

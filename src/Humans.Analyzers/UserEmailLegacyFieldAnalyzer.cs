@@ -47,8 +47,8 @@ public sealed class UserEmailLegacyFieldAnalyzer : DiagnosticAnalyzer
 
     // Strings built from segments to keep architecture scans that operate on
     // source text from confusing these metadata-name constants with User navs.
-    private const string UserFullName = "Humans.Domain.Entities" + "." + "User";
-    private const string UserEmailFullName = "Humans.Domain.Entities" + "." + "UserEmail";
+    private const string UserFullName = "Humans.Users.Contracts" + "." + "User";
+    private const string UserEmailFullName = "Humans.Users.Contracts" + "." + "UserEmail";
 
     public override void Initialize(AnalysisContext context)
     {

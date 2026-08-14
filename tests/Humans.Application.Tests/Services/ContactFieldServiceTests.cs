@@ -8,11 +8,11 @@ using Humans.Application.DTOs;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using ContactFieldService = Humans.Application.Services.Profiles.ContactFieldService;
+using ContactFieldService = Humans.Users.Services.ContactFieldService;
 using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Users;
-using Humans.Infrastructure.Repositories.Users;
+using Humans.Users.Data.Repositories;
 using Microsoft.Extensions.Logging.Abstractions;
 using Humans.Users.Contracts;
 

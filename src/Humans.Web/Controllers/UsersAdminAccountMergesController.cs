@@ -5,6 +5,7 @@ using Humans.Web.Models;
 using Humans.Application.Interfaces.Users;
 using Humans.UI.Authorization;
 using Humans.Users.Contracts;
+using Humans.Users.Services;
 
 namespace Humans.Web.Controllers;
 

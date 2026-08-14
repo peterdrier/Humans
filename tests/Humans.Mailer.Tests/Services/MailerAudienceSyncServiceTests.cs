@@ -1,13 +1,12 @@
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Mailer.Services.Dtos;
-using Humans.Application.Interfaces.Profiles;
+using Humans.Users.Contracts;
 using Humans.Mailer.Services;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
-using Humans.Users.Contracts;
 
 namespace Humans.Mailer.Tests.Services;
 

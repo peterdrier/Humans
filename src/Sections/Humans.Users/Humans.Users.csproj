@@ -1,0 +1,114 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <!-- MVC views/controllers, not Blazor components. -->
+    <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Humans.Users.Tests" />
+    <!-- The one assembly allowed to see many sections (design §5). -->
+    <InternalsVisibleTo Include="Humans.Integration.Tests" />
+    <!--
+      Temporary, and the condition that removes it: the Users/Profiles service and
+      repository tests still live in Humans.Application.Tests until lane 2 phase 3 moves
+      them into tests/Humans.Users.Tests, and several unmoved sections' tests seed this
+      section's rows through ServiceTestHarness (Teams' rule, design §15 step 8).
+    -->
+    <InternalsVisibleTo Include="Humans.Application.Tests" />
+    <!-- Same shape, same expiry: Shell-level tests over the moved controllers. -->
+    <InternalsVisibleTo Include="Humans.Web.Tests" />
+    <!--
+      Same shape, same expiry: ContactFieldTests and ProfileTests are two of the 43 test files
+      lane 2 phase 3 moves into tests/Humans.Users.Tests.
+    -->
+    <InternalsVisibleTo Include="Humans.Domain.Tests" />
+    <!--
+      Three unmoved sections' harnesses seed this section's rows through an in-memory
+      UsersDbContext (Teams' two-way pattern, design §15 step 8). Each drops out at the lane
+      that stops its harness building another section's context directly.
+    -->
+    <InternalsVisibleTo Include="Humans.Camps.Tests" />
+    <InternalsVisibleTo Include="Humans.Shifts.Tests" />
+    <InternalsVisibleTo Include="Humans.Teams.Tests" />
+    <!--
+      TEMPORARY, and the condition that removes it: lane 2 phase 3 moves this section's ten
+      controllers, 31 views and seven view models out of Humans.Web. Until it does, Shell
+      holds the section's whole presentation layer — ProfileController alone is 43 actions —
+      and it names the internal Profile/ContactField entities, the view-model builders that
+      project them, and the service interfaces with no cross-section consumer
+      (IEmailProblemsService, IProfilePictureService, IAccountMergeService,
+      IDuplicateAccountService, IUnsubscribeService). The alternative was publishing ~15 types
+      under Contracts/ in phase 2 and un-publishing them in phase 3, which reads as a boundary
+      decision rather than a phase artefact. Delete this line in the phase 3 commit.
+    -->
+    <InternalsVisibleTo Include="Humans.Web" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      Microsoft.NET.Sdk.Web adds these to ImplicitUsings; Microsoft.NET.Sdk.Razor does not.
+      Declaring them keeps the files moved out of Humans.Web byte-identical to their originals.
+    -->
+    <Using Include="Microsoft.AspNetCore.Http" />
+    <Using Include="Microsoft.AspNetCore.Routing" />
+    <Using Include="Microsoft.Extensions.Logging" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
+    <!--
+      Humans.Domain is here for the enums that stay in Humans.Domain.Enums because Base
+      and other sections name or persist them — ContactSource, GoogleEmailStatus,
+      MembershipStatus, MembershipTier, ParticipationSource, ParticipationStatus,
+      MessageCategory, LanguageProficiency (Teams'/Email's rule, design §15 step 5) —
+      plus RoleNames and the shared value objects.
+    -->
+    <ProjectReference Include="..\..\Humans.Domain\Humans.Domain.csproj" />
+    <ProjectReference Include="..\..\Humans.Application\Humans.Application.csproj" />
+    <ProjectReference Include="..\..\Humans.Infrastructure\Humans.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Humans.UI\Humans.UI.csproj" />
+    <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
+    <!--
+      Outbound section references, all through leaves and all acyclic — none of these
+      leaves names a Humans.Users type. Note the reverse direction is sanctioned and
+      deliberate: eleven section projects reference *this* project for IUserService's
+      write surface (Peter, 2026-08-14; design §15 step 5b's "reference the section
+      project directly" applied to a Contracts/ folder).
+        AuditLog      — every write path records an audit entry.
+        Auth          — role assignment on provisioning and merge.
+        Consent       — profile completeness gates on the consent state.
+        Email         — verification, unsubscribe and merge-notification mail.
+        Gdpr          — UserService and AccountMergeService are Article 15 contributors.
+        Notifications — merge requests and email problems notify the human.
+        Onboarding    — profile editing reports onboarding progress.
+        Shifts        — participation backfill reads the burn settings.
+        Teams         — account merge folds team memberships.
+        Tickets       — participation is derived from ticket sync.
+    -->
+    <ProjectReference Include="..\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Auth.Contracts\Humans.Auth.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Consent.Contracts\Humans.Consent.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Gdpr.Contracts\Humans.Gdpr.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Notifications.Contracts\Humans.Notifications.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Onboarding.Contracts\Humans.Onboarding.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="NodaTime" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL.NodaTime" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The section owns its documentation (design §7a); keep it visible in Solution Explorer. -->
+    <None Include="**\*.md" />
+  </ItemGroup>
+
+</Project>

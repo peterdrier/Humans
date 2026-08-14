@@ -8,7 +8,6 @@ using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Auth;
-using Humans.Application.Interfaces.Profiles;
 using Humans.Users.Contracts;
 
 namespace Humans.Notifications.Services;

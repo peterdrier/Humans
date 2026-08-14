@@ -8,6 +8,7 @@ using Humans.Email.Contracts;
 using Humans.Consent.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Application.Interfaces.Users;
+using Humans.Users.Contracts;
 
 namespace Humans.Infrastructure.Jobs;
 

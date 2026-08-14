@@ -9,6 +9,7 @@ using Humans.CityPlanning.Data;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using NSubstitute;
+using Humans.Users.Contracts;
 
 namespace Humans.CityPlanning.Tests;
 

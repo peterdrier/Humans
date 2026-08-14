@@ -20,6 +20,7 @@ using Humans.Application.Interfaces.EarlyEntry;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Data;
 using Xunit;
+using Humans.Users.Contracts;
 
 namespace Humans.Shifts.Tests.Services;
 

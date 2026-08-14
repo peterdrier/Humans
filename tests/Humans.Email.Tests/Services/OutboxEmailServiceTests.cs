@@ -1,7 +1,7 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces;
 using Humans.Email.Contracts;
-using Humans.Application.Interfaces.Profiles;
+using Humans.Users.Contracts;
 using Humans.Email.Services;
 using Humans.Domain.Enums;
 using Humans.Email.Data;
@@ -12,7 +12,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
-using Humans.Users.Contracts;
 
 namespace Humans.Email.Tests.Services;
 

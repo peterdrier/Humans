@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Users;
+using Humans.Users.Contracts;
 
 namespace Humans.Application.Tests.Architecture;
 

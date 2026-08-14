@@ -2,6 +2,8 @@ using AwesomeAssertions;
 using Humans.Domain.Entities;
 using Humans.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using Humans.Users.Contracts;
+using Humans.Users.Data;
 
 namespace Humans.Application.Tests.Entities;
 

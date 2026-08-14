@@ -9,6 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Npgsql;
 using Xunit;
+using Humans.Users.Data;
 
 namespace Humans.Integration.Tests.Infrastructure;
 

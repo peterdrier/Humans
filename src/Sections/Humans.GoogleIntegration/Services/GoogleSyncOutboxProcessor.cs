@@ -7,6 +7,7 @@ using Humans.GoogleIntegration.Data;
 using Humans.Teams.Contracts;
 using NodaTime;
 using Humans.GoogleIntegration.Services.Workspace;
+using Humans.Users.Contracts;
 
 namespace Humans.GoogleIntegration.Services;
 

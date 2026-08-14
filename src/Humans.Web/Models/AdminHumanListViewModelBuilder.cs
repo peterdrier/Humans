@@ -1,6 +1,7 @@
 using Humans.Application.DTOs;
 using Humans.Domain.Enums;
 using Humans.UI.Models;
+using Humans.Users.Contracts;
 
 namespace Humans.Web.Models;
 

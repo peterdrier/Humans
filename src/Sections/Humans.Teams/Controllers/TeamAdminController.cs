@@ -16,10 +16,9 @@ using Humans.UI.Models;
 using Humans.Teams.Models;
 using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
-using Humans.Application.Services.Profiles;
+using Humans.Users.Contracts;
 using Humans.UI.Authorization;
 using NodaTime.Text;
-using Humans.Users.Contracts;
 
 namespace Humans.Teams.Controllers;
 

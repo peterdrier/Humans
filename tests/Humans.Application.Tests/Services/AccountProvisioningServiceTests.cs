@@ -1,10 +1,10 @@
 using AwesomeAssertions;
 using Humans.Application.DTOs;
 using Humans.AuditLog.Contracts;
-using Humans.Application.Interfaces.Profiles;
+using Humans.Users.Contracts;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
-using Humans.Application.Services.Users;
+using Humans.Users.Services;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Domain.Helpers;
@@ -13,7 +13,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
-using Humans.Users.Contracts;
+using Humans.Users.Data.Repositories;
 
 namespace Humans.Application.Tests.Services;
 

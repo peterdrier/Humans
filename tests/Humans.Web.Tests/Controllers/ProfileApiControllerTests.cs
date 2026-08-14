@@ -2,9 +2,8 @@ using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Application;
 using Humans.Application.DTOs;
-using Humans.Application.Interfaces.Profiles;
+using Humans.Users.Contracts;
 using Humans.Application.Interfaces.Users;
-using Humans.Application.Services.Profiles;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Controllers;
@@ -18,7 +17,6 @@ using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
-using Humans.Users.Contracts;
 
 namespace Humans.Web.Tests.Controllers;
 

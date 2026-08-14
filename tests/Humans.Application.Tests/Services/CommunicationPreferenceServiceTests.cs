@@ -1,21 +1,20 @@
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
-using Humans.Application.Interfaces.Profiles;
+using Humans.Users.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Tests.Infrastructure;
 using NSubstitute;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Configuration;
-using Humans.Infrastructure.Repositories.Profiles;
-using Humans.Infrastructure.Services.Profiles;
+using Humans.Users.Data.Repositories;
+using Humans.Users.Services;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NodaTime;
-using CommunicationPreferenceService = Humans.Application.Services.Profiles.CommunicationPreferenceService;
-using Humans.Users.Contracts;
+using CommunicationPreferenceService = Humans.Users.Services.CommunicationPreferenceService;
 
 namespace Humans.Application.Tests.Services;
 

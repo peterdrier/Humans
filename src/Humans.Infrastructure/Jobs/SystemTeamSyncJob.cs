@@ -19,6 +19,7 @@ using Humans.Camps.Contracts;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Humans.Users.Contracts;
 
 namespace Humans.Infrastructure.Jobs;
 
@@ -331,7 +332,7 @@ public class SystemTeamSyncJob(
                 var displayName = downgradeUsersById.TryGetValue(downgradeUserId, out var u)
                     ? u.BurnerName : "Unknown";
                 await auditLogService.LogAsync(
-                    AuditAction.TierDowngraded, nameof(Profile), downgradeUserId,
+                    AuditAction.TierDowngraded, "Profile", downgradeUserId,
                     $"Membership tier changed to {newTier} for {displayName} due to {tier} term expiry",
                     nameof(SystemTeamSyncJob),
                     relatedEntityId: downgradeUserId, relatedEntityType: nameof(User));

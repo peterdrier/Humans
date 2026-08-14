@@ -5,6 +5,9 @@ using AwesomeAssertions;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Tests.Architecture.Ratchet;
+using Humans.Users.Contracts;
+using Humans.Users.Data.Repositories;
+using Humans.Users.Services;
 
 namespace Humans.Application.Tests.Architecture;
 
@@ -116,8 +119,8 @@ public class ServiceBoundaryArchitectureTests
     public void Users_and_profiles_share_one_repository_ownership_section()
     {
         RepositoryOwners[typeof(IUserRepository)].Should().Be("Humans");
-        ServiceSection(typeof(Humans.Application.Services.Users.UserService)).Should().Be("Humans");
-        ServiceSection(typeof(Humans.Application.Services.Profiles.ProfileService)).Should().Be("Humans");
+        ServiceSection(typeof(Humans.Users.Services.UserService)).Should().Be("Humans");
+        ServiceSection(typeof(Humans.Users.Services.ProfileService)).Should().Be("Humans");
     }
 
     [HumansFact]
@@ -135,7 +138,7 @@ public class ServiceBoundaryArchitectureTests
         // (nobodies-collective/Humans#866). Without the section half, a section that moves
         // takes its entity-returning reads out of this ratchet's sight and the removal
         // reads as "you fixed it" — the exact silent-shrink §10 warns about.
-        var entityTypes = typeof(Humans.Domain.Entities.User).Assembly
+        var entityTypes = typeof(Humans.Domain.Entities.GoogleResource).Assembly
             .GetTypes()
             .Where(t => string.Equals(t.Namespace, "Humans.Domain.Entities", StringComparison.Ordinal))
             .Concat(SectionAssemblies()

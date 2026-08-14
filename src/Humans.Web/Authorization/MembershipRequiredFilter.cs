@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Humans.Domain.Enums;
+using Humans.Users.Contracts;
 
 namespace Humans.Web.Authorization;
 

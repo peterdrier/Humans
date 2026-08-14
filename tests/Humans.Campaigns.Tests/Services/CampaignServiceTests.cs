@@ -3,7 +3,7 @@ using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Email.Contracts;
 using Humans.Notifications.Contracts;
-using Humans.Application.Interfaces.Profiles;
+using Humans.Users.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Application.Interfaces.Users;
@@ -19,7 +19,6 @@ using NodaTime.Testing;
 using NSubstitute;
 using Xunit;
 using CampaignServiceImpl = Humans.Campaigns.Services.CampaignService;
-using Humans.Users.Contracts;
 
 namespace Humans.Campaigns.Tests.Services;
 

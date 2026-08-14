@@ -1,3 +1,4 @@
+using Humans.Users.Contracts;
 namespace Humans.Application.DTOs;
 
 using Humans.Domain.Enums;

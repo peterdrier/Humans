@@ -1,5 +1,6 @@
 using Humans.Onboarding.Contracts;
 using NodaTime;
+using Humans.Users.Contracts;
 
 namespace Humans.Application.Interfaces.Users;
 

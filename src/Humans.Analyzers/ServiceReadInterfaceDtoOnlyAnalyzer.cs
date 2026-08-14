@@ -61,6 +61,33 @@ public sealed class ServiceReadInterfaceDtoOnlyAnalyzer : DiagnosticAnalyzer
     public const string DiagnosticId = "HUM0029";
 
     private const string DomainEntitiesNamespace = "Humans.Domain.Entities";
+
+    /// <summary>
+    /// EF entity types that do not live under <see cref="DomainEntitiesNamespace"/> because
+    /// ASP.NET Identity forced them onto a contracts leaf.
+    /// </summary>
+    /// <remarks>
+    /// <c>User : IdentityUser&lt;Guid&gt;</c> is named by <c>Humans.UI</c> and ~48 files across
+    /// Shell and twenty test projects, and Base cannot reference a section, so the nine
+    /// Users/Profiles entities are public on <c>Humans.Users.Contracts</c> rather than internal
+    /// in the section (nobodies-collective/Humans#866, G5 lane 2, PR B). A namespace-keyed
+    /// entity test cannot see that — <c>*.Contracts</c> is where DTOs live — so the rule would
+    /// have gone quiet for exactly the nine entities the read boundary exists to keep off
+    /// <c>IUserServiceRead</c>. Named explicitly instead; the list shrinks to nothing when the
+    /// entities are internalised (recorded in the lane 2 handoff).
+    /// </remarks>
+    private static readonly ImmutableHashSet<string> LeafResidentEntities =
+        ImmutableHashSet.Create(
+            System.StringComparer.Ordinal,
+            "Humans.Users.Contracts.User",
+            "Humans.Users.Contracts.UserEmail",
+            "Humans.Users.Contracts.EventParticipation",
+            "Humans.Users.Contracts.Profile",
+            "Humans.Users.Contracts.ContactField",
+            "Humans.Users.Contracts.ProfileLanguage",
+            "Humans.Users.Contracts.VolunteerHistoryEntry",
+            "Humans.Users.Contracts.CommunicationPreference",
+            "Humans.Users.Contracts.AccountMergeRequest");
     private const string EfCoreNamespace = "Microsoft.EntityFrameworkCore";
     private const string SystemLinqNamespace = "System.Linq";
     private const string QueryableName = "IQueryable";
@@ -193,6 +220,9 @@ public sealed class ServiceReadInterfaceDtoOnlyAnalyzer : DiagnosticAnalyzer
         }
 
         if (IsInOrUnder(ns, DomainEntitiesNamespace))
+            return true;
+
+        if (LeafResidentEntities.Contains(type.ToDisplayString()))
             return true;
 
         if (IsInOrUnder(ns, EfCoreNamespace))

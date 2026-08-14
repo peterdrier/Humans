@@ -35,6 +35,9 @@ using NodaTime;
 // Mirror the DbContext alias: the CLR type is Humans.Domain.Entities.Application
 // but a sibling Humans.Application namespace shadows it inside this project.
 using MemberApplication = Humans.Governance.Domain.Application;
+using Humans.Users.Contracts;
+using Humans.Users.Data;
+using Humans.Users.Services;
 
 namespace Humans.Integration.Tests.AccountMerge;
 

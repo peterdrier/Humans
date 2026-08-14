@@ -1,7 +1,7 @@
 using Humans.Auth.Contracts;
 // @e2e: board.spec.ts
 // @e2e: profile.spec.ts
-using Humans.Application.Authorization;
+using Humans.Users.Authorization;
 using Humans.Application.Interfaces.Admin;
 using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.Auth;
@@ -11,9 +11,8 @@ using Humans.Email.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Application.Interfaces.HumanLifecycle;
 using Humans.Onboarding.Contracts;
-using Humans.Application.Interfaces.Profiles;
+using Humans.Users.Contracts;
 using Humans.Application.Interfaces.Users;
-using Humans.Application.Services.Profiles;
 using Humans.Domain.Enums;
 using Humans.UI.Controllers;
 using Humans.UI;
@@ -24,7 +23,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
 using NodaTime;
-using Humans.Users.Contracts;
+using Humans.Users.Services;
 
 namespace Humans.Web.Controllers;
 

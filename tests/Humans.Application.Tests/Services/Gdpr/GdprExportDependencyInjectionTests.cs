@@ -4,9 +4,11 @@ using Humans.Gdpr.Contracts;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.Memory;
 using Microsoft.Extensions.DependencyInjection;
-using ProfilesAccountMergeService = Humans.Application.Services.Users.AccountMergeService;
-using UsersUserService = Humans.Application.Services.Users.UserService;
+using ProfilesAccountMergeService = Humans.Users.Services.AccountMergeService;
+using UsersUserService = Humans.Users.Services.UserService;
 using TeamService = Humans.Teams.Services.TeamService;
+using Humans.Users.Data;
+using Humans.Users.Services;
 
 namespace Humans.Application.Tests.Services.Gdpr;
 
@@ -114,8 +116,8 @@ public class GdprExportDependencyInjectionTests
         // assemblies come from SectionDiscoveryExtensions — the same discovery the
         // runtime uses, so a section that moves cannot silently drop out of this
         // sweep the way it would with a hard-coded assembly list (design §10).
-        var infrastructureAssembly = typeof(Humans.Infrastructure.Data.UsersDbContext).Assembly;
-        var applicationAssembly = typeof(Humans.Application.Services.Users.UserService).Assembly;
+        var infrastructureAssembly = typeof(Humans.Infrastructure.Data.SystemDbContext).Assembly;
+        var applicationAssembly = typeof(Humans.Users.Services.UserService).Assembly;
 
         var foundContributors = new[] { infrastructureAssembly, applicationAssembly }
             .Concat(Web.Extensions.SectionDiscoveryExtensions.SectionAssemblies())

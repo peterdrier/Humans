@@ -4,7 +4,7 @@ using Humans.Application.Extensions;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
-using Humans.Application.Interfaces.Profiles;
+using Humans.Users.Contracts;
 using Humans.Surveys.Data;
 using Humans.Shifts.Contracts;
 using Humans.Surveys.Contracts;
@@ -15,7 +15,6 @@ using Humans.Domain.Enums;
 using Humans.Surveys.Domain;
 using Microsoft.Extensions.Logging;
 using NodaTime;
-using Humans.Users.Contracts;
 
 namespace Humans.Surveys.Services;
 

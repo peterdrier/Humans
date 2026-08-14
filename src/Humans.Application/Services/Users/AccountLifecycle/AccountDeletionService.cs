@@ -4,18 +4,17 @@ using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Caching;
 using Humans.Email.Contracts;
 using Humans.Onboarding.Contracts;
-using Humans.Application.Interfaces.Profiles;
+using Humans.Users.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Interfaces;
-using Humans.Application.Services.Profiles;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging;
 using NodaTime;
-using Humans.Users.Contracts;
+using Humans.Application.Storage;
 
 namespace Humans.Application.Services.Users.AccountLifecycle;
 

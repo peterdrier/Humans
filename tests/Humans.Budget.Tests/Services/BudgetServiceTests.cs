@@ -14,6 +14,7 @@ using NodaTime;
 using NSubstitute;
 using Xunit;
 using BudgetServiceImpl = Humans.Budget.Services.BudgetService;
+using Humans.Users.Contracts;
 
 namespace Humans.Budget.Tests.Services;
 

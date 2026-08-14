@@ -1,10 +1,10 @@
 using AwesomeAssertions;
-using Humans.Application.Services.Profiles;
+using Humans.Users.Contracts;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
 using Xunit;
-using Humans.Users.Contracts;
+using Humans.Users.Services;
 
 namespace Humans.Application.Tests.Services.Profiles;
 

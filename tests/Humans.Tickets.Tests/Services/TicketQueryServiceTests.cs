@@ -1,7 +1,7 @@
 using AwesomeAssertions;
 using Humans.Budget.Contracts;
 using Humans.Campaigns.Contracts;
-using Humans.Application.Interfaces.Profiles;
+using Humans.Users.Contracts;
 using Humans.Tickets.Data;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
@@ -15,7 +15,6 @@ using NSubstitute;
 using Humans.Tickets.Domain;
 using Humans.Tickets.Contracts;
 using Humans.Application;
-using Humans.Users.Contracts;
 
 namespace Humans.Tickets.Tests.Services;
 

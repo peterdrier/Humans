@@ -19,6 +19,7 @@ using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using Humans.Users.Contracts;
+using Humans.Users.Data;
 
 namespace Humans.Shifts.Tests.Infrastructure;
 

@@ -2,13 +2,13 @@ using Humans.UI.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Humans.AuditLog.Contracts;
-using Humans.Application.Interfaces.Profiles;
+using Humans.Users.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.UI.Authorization;
 using Humans.Web.Models.EmailProblems;
-using Humans.Users.Contracts;
+using Humans.Users.Services;
 
 namespace Humans.Web.Controllers;
 

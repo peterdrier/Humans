@@ -3,7 +3,7 @@ using Humans.Application.Configuration;
 using Humans.AuditLog.Contracts;
 using Humans.Camps.Contracts;
 using Humans.Notifications.Contracts;
-using Humans.Application.Interfaces.Profiles;
+using Humans.Users.Contracts;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
@@ -11,7 +11,6 @@ using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NodaTime;
-using Humans.Users.Contracts;
 
 namespace Humans.Camps.Services;
 

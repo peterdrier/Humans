@@ -5,9 +5,8 @@ using Humans.Domain.Helpers;
 using Humans.Application.Interfaces.Auth;
 using Humans.Campaigns.Contracts;
 using Humans.Governance.Contracts;
-using Humans.Application.Interfaces.Profiles;
-using NodaTime;
 using Humans.Users.Contracts;
+using NodaTime;
 
 namespace Humans.Web.Models;
 

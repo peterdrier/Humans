@@ -246,7 +246,7 @@ public class CrossSectionRepositoryInjectionAnalyzerTests
                 public interface IUserService : Humans.Application.Interfaces.IApplicationService { }
             }
 
-            namespace Humans.Application.Services.Users
+            namespace Humans.Users.Services
             {
                 public sealed class UserService : Humans.Application.Interfaces.Users.IUserService
                 {
@@ -256,7 +256,7 @@ public class CrossSectionRepositoryInjectionAnalyzerTests
                 }
             }
 
-            namespace Humans.Application.Services.Profiles
+            namespace Humans.Users.Services
             {
                 public sealed class ProfileService : Humans.Application.Interfaces.Users.IUserService
                 {
@@ -312,7 +312,7 @@ public class CrossSectionRepositoryInjectionAnalyzerTests
                 public interface IUserService : Humans.Application.Interfaces.IApplicationService { }
             }
 
-            namespace Humans.Application.Services.Users
+            namespace Humans.Users.Services
             {
                 public sealed class UserService : Humans.Application.Interfaces.Users.IUserService
                 {

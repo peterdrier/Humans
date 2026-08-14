@@ -3,7 +3,7 @@ using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Mailer.Services;
 using Humans.Mailer.Services.Dtos;
-using Humans.Application.Interfaces.Profiles;
+using Humans.Users.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Mailer.Controllers;
 using Microsoft.AspNetCore.Http;
@@ -11,7 +11,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
-using Humans.Users.Contracts;
 
 namespace Humans.Mailer.Tests.Controllers;
 

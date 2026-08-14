@@ -2,7 +2,7 @@ using System.Security.Claims;
 using Humans.Application;
 using Humans.Gdpr.Contracts;
 using Humans.Onboarding.Contracts;
-using Humans.Application.Interfaces.Profiles;
+using Humans.Users.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
@@ -18,7 +18,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
 using Xunit;
-using Humans.Users.Contracts;
 
 namespace Humans.Web.Tests.Controllers;
 

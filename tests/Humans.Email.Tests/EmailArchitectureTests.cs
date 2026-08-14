@@ -1,10 +1,9 @@
 using AwesomeAssertions;
 using Humans.Email.Contracts;
-using Humans.Application.Interfaces.Profiles;
+using Humans.Users.Contracts;
 using Humans.Email.Data;
 using Humans.Email.Services;
 using Microsoft.Extensions.Localization;
-using Humans.Users.Contracts;
 
 namespace Humans.Email.Tests;
 

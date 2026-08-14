@@ -1,14 +1,14 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces.Profiles;
+using Humans.Users.Contracts;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
-using Humans.Application.Services.Users;
+using Humans.Users.Services;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
-using Humans.Users.Contracts;
+using Humans.Users.Data.Repositories;
 
 namespace Humans.Application.Tests.Services;
 

@@ -1,7 +1,6 @@
 using Humans.Application.DTOs;
-using Humans.Application.Interfaces.Profiles;
+using Humans.Users.Contracts;
 using Humans.Application.Interfaces.Users;
-using Humans.Application.Services.Profiles;
 using Humans.Domain.Enums;
 using Humans.UI.Extensions;
 using Humans.UI.Models;
@@ -10,7 +9,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 using Humans.UI.Controllers;
-using Humans.Users.Contracts;
 
 namespace Humans.Web.Controllers;
 

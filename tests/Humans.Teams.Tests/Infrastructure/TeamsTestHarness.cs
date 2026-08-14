@@ -21,6 +21,8 @@ using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using Humans.GoogleIntegration.Data;
+using Humans.Users.Contracts;
+using Humans.Users.Data;
 
 namespace Humans.Teams.Tests.Infrastructure;
 

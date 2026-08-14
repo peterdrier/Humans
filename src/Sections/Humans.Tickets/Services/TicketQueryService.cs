@@ -7,7 +7,7 @@ using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Constants;
 using Humans.Domain.Enums;
 using Humans.Budget.Contracts;
-using Humans.Application.Interfaces.Profiles;
+using Humans.Users.Contracts;
 using Humans.Campaigns.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
@@ -19,7 +19,6 @@ using Humans.Tickets.Domain;
 using Humans.Tickets.Models;
 using Humans.Tickets.Services.Dtos;
 using Humans.Tickets.Services.Stores;
-using Humans.Users.Contracts;
 
 namespace Humans.Tickets.Services;
 

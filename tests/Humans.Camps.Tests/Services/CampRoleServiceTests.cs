@@ -3,7 +3,7 @@ using Humans.Notifications.Contracts;
 using AwesomeAssertions;
 using Humans.Application.Configuration;
 using Humans.Camps.Contracts;
-using Humans.Application.Interfaces.Profiles;
+using Humans.Users.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Camps.Services;
 using Humans.Camps.Tests.Infrastructure;
@@ -15,7 +15,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using NSubstitute;
-using Humans.Users.Contracts;
 
 namespace Humans.Camps.Tests.Services;
 

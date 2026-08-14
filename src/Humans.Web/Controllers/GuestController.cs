@@ -10,7 +10,6 @@ using Humans.Domain.Enums;
 using Humans.Web.Models;
 using NodaTime;
 using Humans.Tickets.Contracts;
-using Humans.Application.Interfaces.Profiles;
 using Humans.Users.Contracts;
 
 namespace Humans.Web.Controllers;

@@ -5,14 +5,13 @@ using Humans.Shifts.Services.Dtos;
 using Humans.Shifts.Services;
 using Humans.Shifts.Contracts;
 using Humans.Application.Interfaces.Users;
-using Humans.Application.Services.Profiles;
+using Humans.Users.Contracts;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Shifts.Helpers;
 using NodaTime;
 using NSubstitute;
 using Xunit;
-using Humans.Users.Contracts;
 
 namespace Humans.Shifts.Tests.Models;
 

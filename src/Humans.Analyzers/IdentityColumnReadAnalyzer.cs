@@ -57,7 +57,7 @@ public sealed class IdentityColumnReadAnalyzer : DiagnosticAnalyzer
 
     // String built from segments to keep architecture scans that operate on
     // source text from confusing this metadata-name constant with a User nav.
-    private const string UserFullName = "Humans.Domain.Entities" + "." + "User";
+    private const string UserFullName = "Humans.Users.Contracts" + "." + "User";
 
     public override void Initialize(AnalysisContext context)
     {
@@ -84,6 +84,13 @@ public sealed class IdentityColumnReadAnalyzer : DiagnosticAnalyzer
         var op = (IPropertyReferenceOperation)context.Operation;
         var prop = op.Property;
         if (!ForbiddenGetters.Contains(prop.Name))
+            return;
+
+        // A section's Data/ folder is its Infrastructure layer — the repository and the EF
+        // configuration read these columns by definition. Expressed by folder because a
+        // section assembly holds all three layers at once; see HUM0002 for the same carve-out
+        // and AssemblyScope.IsInSectionDataLayer for why (nobodies-collective/Humans#866).
+        if (context.ContainingSymbol is { } owner && AssemblyScope.IsInSectionDataLayer(owner))
             return;
 
         var declaring = prop.ContainingType;

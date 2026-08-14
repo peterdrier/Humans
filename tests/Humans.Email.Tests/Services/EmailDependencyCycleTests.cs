@@ -5,14 +5,12 @@ using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.GoogleIntegration;
-using Humans.Application.Interfaces.Profiles;
+using Humans.Users.Contracts;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Auth;
-using Humans.Application.Services.Profiles;
-using Humans.Application.Services.Users;
 using Humans.Domain.Entities;
 using Humans.Email.Contracts;
 using Humans.Email.Data;
@@ -23,7 +21,6 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
-using Humans.Users.Contracts;
 
 namespace Humans.Email.Tests.Services;
 
@@ -49,8 +46,6 @@ public sealed class EmailDependencyCycleTests
 
         services.AddSingleton<IMemoryCache>(_ => new MemoryCache(new MemoryCacheOptions()));
 
-        services.AddScoped<IUserRepository>(_ => Substitute.For<IUserRepository>());
-        services.AddScoped<ICommunicationPreferenceRepository>(_ => Substitute.For<ICommunicationPreferenceRepository>());
         services.AddScoped<IUserInfoInvalidator>(_ => Substitute.For<IUserInfoInvalidator>());
         services.AddScoped<IAuditLogService>(_ => Substitute.For<IAuditLogService>());
         services.AddScoped<INotificationEmitter>(_ => Substitute.For<INotificationEmitter>());
@@ -69,8 +64,11 @@ public sealed class EmailDependencyCycleTests
         services.AddScoped<UserManager<User>>(_ =>
             Substitute.For<UserManager<User>>(userStore, null, null, null, null, null, null, null, null));
 
-        services.AddScoped<UserService>();
-        services.AddScoped<IUserService>(sp => sp.GetRequiredService<UserService>());
+        // Users is another section; its concrete UserService and its two repository
+        // interfaces are internal to Humans.Users and its own graph is pinned by the
+        // section's own tests. Same call as ITeamService / IRoleAssignmentService /
+        // IShiftManagementServiceRead below — the subject here is the email chain.
+        services.AddScoped<IUserService>(_ => Substitute.For<IUserService>());
 
         // Auth is another section; RoleAssignmentService is internal to Humans.Auth and its
         // own constructor shape is pinned by AuthArchitectureTests. Same call as ITeamService
@@ -82,8 +80,7 @@ public sealed class EmailDependencyCycleTests
         // IRoleAssignmentService below — the subject here is the email chain.
         services.AddScoped<IShiftManagementServiceRead>(_ => Substitute.For<IShiftManagementServiceRead>());
 
-        services.AddScoped<UserEmailService>();
-        services.AddScoped<IUserEmailService>(sp => sp.GetRequiredService<UserEmailService>());
+        services.AddScoped<IUserEmailService>(_ => Substitute.For<IUserEmailService>());
 
         services.AddScoped<OutboxEmailService>();
         services.AddScoped<IEmailService>(sp => sp.GetRequiredService<OutboxEmailService>());
@@ -92,9 +89,7 @@ public sealed class EmailDependencyCycleTests
         // own cycle is pinned by TeamsDependencyCycleTests. The subject here is the email chain.
         services.AddScoped<ITeamService>(_ => Substitute.For<ITeamService>());
 
-        services.AddScoped<Microsoft.Extensions.Logging.ILogger<UserService>>(_ => NullLogger<UserService>.Instance);
         services.AddScoped<Microsoft.Extensions.Logging.ILogger<OutboxEmailService>>(_ => NullLogger<OutboxEmailService>.Instance);
-        services.AddScoped<Microsoft.Extensions.Logging.ILogger<UserEmailService>>(_ => NullLogger<UserEmailService>.Instance);
 
         using var provider = services.BuildServiceProvider(validateScopes: true);
         using var scope = provider.CreateScope();
@@ -104,7 +99,6 @@ public sealed class EmailDependencyCycleTests
 
         resolveUserService.Should().NotThrow();
         resolveEmailService.Should().NotThrow();
-        resolveUserService().Should().BeOfType<UserService>();
         resolveEmailService().Should().BeOfType<OutboxEmailService>();
     }
 }

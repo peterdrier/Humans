@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.Routing;
 using Xunit;
+using Humans.Users.Contracts;
 
 namespace Humans.Web.Tests.Authorization;
 

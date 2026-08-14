@@ -1,6 +1,5 @@
 using Humans.Infrastructure.Data;
 using Microsoft.AspNetCore.DataProtection;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
@@ -18,10 +17,11 @@ public static class InfrastructureServiceCollectionExtensions
     /// </summary>
     public static IServiceCollection AddHumansPersistence(this IServiceCollection services)
     {
-        // Per-section contexts (nobodies-collective/Humans#858), migrated by
-        // DatabaseMigrationHostedService in registration order. Users carries the
-        // Identity tables; its sentinel is the chain-created users table.
-        services.AddSectionDbContext<UsersDbContext>(sentinelTable: "users");
+        // Base's own context (nobodies-collective/Humans#858), migrated by
+        // DatabaseMigrationHostedService alongside every section's. UsersDbContext used to be
+        // registered here too — it carries the Identity tables and was the last context left
+        // in Base — and it moved into Humans.Users' Section.Register with the section
+        // (#866, G5 lane 2, design §15 step 11).
         services.AddSectionDbContext<SystemDbContext>(sentinelTable: "DataProtectionKeys");
 
         services.AddHostedService<DatabaseMigrationHostedService>();
@@ -51,7 +51,7 @@ public static class InfrastructureServiceCollectionExtensions
         {
             ConfigureNpgsql(sp, options, typeof(TContext), historyTable);
             options.AddInterceptors(sp.GetRequiredService<QueryMonitoringInterceptor>());
-            options.AddInterceptors(sp.GetRequiredService<UserInfoSaveChangesInterceptor>());
+            options.AddInterceptors(sp.GetServices<IInterceptor>());
             options.ConfigureWarnings(w => w.Ignore(CoreEventId.FirstWithoutOrderByAndFilterWarning));
             if (sp.GetRequiredService<IHostEnvironment>().IsDevelopment())
             {
@@ -63,7 +63,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddDbContextFactory<TContext>((sp, options) =>
         {
             ConfigureNpgsql(sp, options, typeof(TContext), historyTable);
-            options.AddInterceptors(sp.GetRequiredService<UserInfoSaveChangesInterceptor>());
+            options.AddInterceptors(sp.GetServices<IInterceptor>());
             options.ConfigureWarnings(w => w.Ignore(CoreEventId.FirstWithoutOrderByAndFilterWarning));
         });
 
@@ -86,10 +86,6 @@ public static class InfrastructureServiceCollectionExtensions
             npgsqlOptions.MigrationsHistoryTable(migrationsHistoryTable);
         });
     }
-
-    /// <summary>Typed wrapper so Web never references UsersDbContext directly.</summary>
-    public static IdentityBuilder AddHumansEntityFrameworkStores(this IdentityBuilder builder) =>
-        builder.AddEntityFrameworkStores<UsersDbContext>();
 
     /// <summary>Typed wrapper so Web never references SystemDbContext directly.</summary>
     public static IDataProtectionBuilder PersistKeysToSystemDbContext(this IDataProtectionBuilder builder) =>

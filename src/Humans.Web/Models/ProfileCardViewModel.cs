@@ -4,6 +4,7 @@ using Humans.Domain.Enums;
 using Humans.Web.ViewComponents;
 
 using Humans.UI.ViewComponents;
+using Humans.Users.Contracts;
 
 namespace Humans.Web.Models;
 

@@ -46,7 +46,7 @@ internal static class UserInfoStubs
                 BurnerName = displayName,
                 CreatedAt = SystemClock.Instance.GetCurrentInstant(),
                 UpdatedAt = SystemClock.Instance.GetCurrentInstant(),
-                State = Humans.Domain.Enums.ProfileState.Active,
+                State = Humans.Users.Contracts.ProfileState.Active,
                 IsApproved = true,
             },
             [],

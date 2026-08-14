@@ -8,7 +8,7 @@ using System.Text;
 using Hangfire;
 using Humans.Application;
 using Humans.Application.Interfaces.Users;
-using Humans.Application.Services.Profiles;
+using Humans.Users.Contracts;
 using Humans.Infrastructure.Jobs;
 using Humans.UI.Authorization;
 using Humans.UI.Extensions;
@@ -18,7 +18,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 using NodaTime.Text;
-using Humans.Users.Contracts;
 
 namespace Humans.Gate.Controllers;
 

@@ -7,6 +7,7 @@ using Humans.Application.Interfaces.Users;
 using Humans.Integration.Tests.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
+using Humans.Users.Contracts;
 
 namespace Humans.Integration.Tests.Controllers;
 

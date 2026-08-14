@@ -1,6 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Caching;
-using Humans.Application.Interfaces.Profiles;
+using Humans.Users.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Feedback.Data;
@@ -8,7 +8,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
 using FeedbackService = Humans.Feedback.Services.FeedbackService;
-using Humans.Users.Contracts;
 
 namespace Humans.Feedback.Tests.Architecture;
 

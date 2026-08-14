@@ -1,5 +1,5 @@
 using Humans.Application.Interfaces.Users;
-using Humans.Application.Services.Profiles;
+using Humans.Users.Contracts;
 using Humans.Shifts.Services;
 using Humans.Shifts.Contracts;
 using Humans.Domain.Entities;
@@ -9,7 +9,6 @@ using Humans.UI.Extensions;
 using Humans.Shifts.Models;
 using Humans.Shifts.Services.Dtos;
 using Humans.Application;
-using Humans.Users.Contracts;
 
 namespace Humans.Shifts.Helpers;
 

@@ -1,13 +1,12 @@
 using System.Text.Json;
 using Humans.Application.Interfaces;
 using Humans.Email.Contracts;
-using Humans.Application.Interfaces.Profiles;
+using Humans.Users.Contracts;
 using Humans.Email.Data;
 using Humans.Email.Domain;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging;
 using NodaTime;
-using Humans.Users.Contracts;
 
 namespace Humans.Email.Services;
 

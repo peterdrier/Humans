@@ -13,8 +13,9 @@ using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime.Testing;
 using NSubstitute;
-using Humans.Application.Services.Users;
+using Humans.Users.Services;
 using Humans.Users.Contracts;
+using Humans.Users.Data.Repositories;
 
 namespace Humans.Application.Tests.Services;
 

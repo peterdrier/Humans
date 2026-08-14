@@ -8,14 +8,13 @@ using Humans.Domain.Enums;
 using Humans.GoogleIntegration.Models;
 using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.GoogleIntegration;
-using Humans.Application.Interfaces.Profiles;
+using Humans.Users.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.UI.Authorization;
 using Humans.UI.Constants;
 using Humans.GoogleIntegration.Services;
 using Humans.GoogleIntegration.Data;
-using Humans.Users.Contracts;
 
 namespace Humans.GoogleIntegration.Controllers;
 

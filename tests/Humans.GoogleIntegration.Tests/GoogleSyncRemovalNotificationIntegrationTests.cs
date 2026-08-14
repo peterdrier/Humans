@@ -2,7 +2,7 @@ using Humans.GoogleIntegration.Contracts;
 using Humans.AuditLog.Contracts;
 using Humans.Application.Configuration;
 using Humans.Email.Contracts;
-using Humans.Application.Interfaces.Profiles;
+using Humans.Users.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.GoogleIntegration.Services;
@@ -17,7 +17,6 @@ using NSubstitute;
 using Humans.GoogleIntegration.Services.Workspace;
 using Humans.GoogleIntegration.Data;
 using Humans.Application;
-using Humans.Users.Contracts;
 
 namespace Humans.GoogleIntegration.Tests;
 

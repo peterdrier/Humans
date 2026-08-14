@@ -46,7 +46,7 @@ public sealed class IdentityColumnWriteAnalyzer : DiagnosticAnalyzer
 
     // String built from segments to keep architecture scans that operate on
     // source text from confusing this metadata-name constant with a User nav.
-    private const string UserFullName = "Humans.Domain.Entities" + "." + "User";
+    private const string UserFullName = "Humans.Users.Contracts" + "." + "User";
 
     public override void Initialize(AnalysisContext context)
     {
@@ -75,6 +75,14 @@ public sealed class IdentityColumnWriteAnalyzer : DiagnosticAnalyzer
 
         var prop = propRef.Property;
         if (!ForbiddenSetters.Contains(prop.Name))
+            return;
+
+        // A section's Data/ folder is its Infrastructure layer, and the repository is the one
+        // place these columns are legitimately written. Before G5 that was expressed by
+        // assembly name — UserRepository lived in Humans.Infrastructure, which this rule never
+        // covered; a section assembly holds all three layers at once, so it has to be
+        // expressed by folder (nobodies-collective/Humans#866, G5 lane 2).
+        if (context.ContainingSymbol is { } owner && AssemblyScope.IsInSectionDataLayer(owner))
             return;
 
         var declaring = prop.ContainingType;

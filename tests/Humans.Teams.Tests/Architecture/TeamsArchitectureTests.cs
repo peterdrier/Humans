@@ -2,7 +2,7 @@ using System.Reflection;
 using AwesomeAssertions;
 using Humans.Application;
 using Humans.Application.Interfaces.Users;
-using Humans.Application.Services.Users;
+using Humans.Application.Interfaces;
 using Humans.Infrastructure.Services;
 using Humans.Teams.Contracts;
 using Humans.Teams.Data;
@@ -75,7 +75,11 @@ public class TeamsArchitectureTests
         {
             typeof(TeamService).Assembly,                                // Humans.Teams
             typeof(HumansMetricsService).Assembly,                       // Humans.Infrastructure
-            typeof(UserService).Assembly,                                // Humans.Application
+            // Anchored on IFileStorage: Base's one key-addressed storage abstraction, which
+            // peters-hard-rules.md pins to Humans.Application. It was typeof(UserService) until
+            // that type moved into Humans.Users (#866, G5 lane 2) — an assembly anchor whose
+            // type leaves relocates the sweep silently onto the section (design §15 step 11).
+            typeof(IFileStorage).Assembly,                                // Humans.Application
         };
 
         var violations = new List<string>();

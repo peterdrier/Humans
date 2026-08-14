@@ -11,6 +11,7 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Services;
+using Humans.Users.Contracts;
 
 namespace Humans.Application.Tests.Jobs;
 

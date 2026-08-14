@@ -5,7 +5,7 @@ using Humans.Application.DTOs;
 using Humans.Consent.Contracts;
 using Humans.Onboarding.Contracts;
 using Humans.Onboarding.Services;
-using Humans.Application.Interfaces.Profiles;
+using Humans.Users.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
@@ -20,7 +20,6 @@ using Microsoft.Extensions.Localization;
 using NodaTime;
 using NSubstitute;
 using Xunit;
-using Humans.Users.Contracts;
 
 namespace Humans.Onboarding.Tests.Controllers;
 

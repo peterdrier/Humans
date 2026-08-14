@@ -6,7 +6,7 @@ using Humans.UI.Controllers;
 using System.ComponentModel.DataAnnotations;
 using System.Globalization;
 using System.Web;
-using Humans.Application.Authorization.UserEmail;
+using Humans.Users.Authorization;
 using Humans.Application.Configuration;
 using Humans.Application.Extensions;
 using Microsoft.AspNetCore.Authorization;
@@ -35,12 +35,11 @@ using Humans.Tickets.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Onboarding.Contracts;
 using Humans.Governance.Contracts;
-using Humans.Application.Interfaces.Profiles;
+using Humans.Users.Contracts;
 using Humans.Application.Models;
-using Humans.Application.Services.Profiles;
 using Humans.UI;
 using Humans.UI.Authorization;
-using Humans.Users.Contracts;
+using Humans.Users.Services;
 
 // RoleAssignment nav props are [Obsolete]; service stitches them in memory. Nav-strip tracked in §15i.
 #pragma warning disable CS0618

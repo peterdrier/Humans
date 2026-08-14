@@ -4,6 +4,7 @@ using Humans.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using NSubstitute;
 using Humans.Users.Contracts;
+using Humans.Users.Data;
 
 namespace Humans.Application.Tests.Infrastructure;
 
@@ -44,7 +45,7 @@ internal static class UserInfoStubHelpers
                 BurnerName = displayName,
                 CreatedAt = NodaTime.SystemClock.Instance.GetCurrentInstant(),
                 UpdatedAt = NodaTime.SystemClock.Instance.GetCurrentInstant(),
-                State = Humans.Domain.Enums.ProfileState.Active,
+                State = Humans.Users.Contracts.ProfileState.Active,
                 IsApproved = true
             },
             [],

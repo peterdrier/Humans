@@ -11,6 +11,8 @@ using Humans.Integration.Tests.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using Xunit;
+using Humans.Users.Contracts;
+using Humans.Users.Data;
 
 namespace Humans.Integration.Tests.Repositories.Shifts;
 

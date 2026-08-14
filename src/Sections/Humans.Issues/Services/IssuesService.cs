@@ -12,7 +12,7 @@ using Humans.Application.Interfaces.Caching;
 using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Notifications.Contracts;
-using Humans.Application.Interfaces.Profiles;
+using Humans.Users.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Constants;
 using Humans.Domain.Enums;
@@ -20,7 +20,6 @@ using Humans.Issues.Contracts;
 using Humans.Issues.Data;
 using Humans.Issues.Domain;
 using Humans.Issues.Services.Dtos;
-using Humans.Users.Contracts;
 
 namespace Humans.Issues.Services;
 

@@ -11,6 +11,7 @@ using Humans.Application.Interfaces.Users;
 using Humans.Onboarding.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Application.Interfaces.GoogleIntegration;
+using Humans.Users.Contracts;
 
 namespace Humans.Onboarding.Services;
 

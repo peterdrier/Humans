@@ -1,6 +1,7 @@
 using AwesomeAssertions;
 using Humans.Domain.Enums;
 using Xunit;
+using Humans.Users.Contracts;
 
 namespace Humans.Domain.Tests.Enums;
 

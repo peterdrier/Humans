@@ -1,11 +1,10 @@
 using Humans.Application.Interfaces.Auth;
-using Humans.Application.Interfaces.Profiles;
+using Humans.Users.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
 using NodaTime;
-using Humans.Users.Contracts;
 
 namespace Humans.Application.Services.Users;
 

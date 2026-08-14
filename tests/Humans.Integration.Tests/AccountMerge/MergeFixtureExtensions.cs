@@ -5,6 +5,9 @@ using Humans.Integration.Tests.Infrastructure;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
+using Humans.Users.Contracts;
+using Humans.Users.Data;
+using Humans.Users.Services;
 
 namespace Humans.Integration.Tests.AccountMerge;
 

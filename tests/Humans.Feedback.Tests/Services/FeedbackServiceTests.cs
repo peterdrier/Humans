@@ -3,7 +3,7 @@ using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.Caching;
 using Humans.Email.Contracts;
 using Humans.Notifications.Contracts;
-using Humans.Application.Interfaces.Profiles;
+using Humans.Users.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Application;
@@ -19,7 +19,6 @@ using NodaTime.Testing;
 using NSubstitute;
 using Xunit;
 using FeedbackServiceImpl = Humans.Feedback.Services.FeedbackService;
-using Humans.Users.Contracts;
 
 namespace Humans.Feedback.Tests.Services;
 

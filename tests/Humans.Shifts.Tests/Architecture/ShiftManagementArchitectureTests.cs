@@ -7,6 +7,7 @@ using Humans.Application.Interfaces.Repositories;
 using Humans.Shifts.Contracts;
 using Humans.Domain.Entities;
 using ShiftManagementService = Humans.Shifts.Services.ShiftManagementService;
+using Humans.Users.Contracts;
 
 namespace Humans.Shifts.Tests.Architecture;
 

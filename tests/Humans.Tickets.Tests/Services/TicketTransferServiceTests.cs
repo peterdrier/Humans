@@ -2,7 +2,7 @@ using AwesomeAssertions;
 using Humans.Application.DTOs;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
-using Humans.Application.Interfaces.Profiles;
+using Humans.Users.Contracts;
 using Humans.Tickets.Data;
 using Humans.Tickets.Contracts;
 using Humans.Application.Interfaces.TicketVendor;
@@ -18,7 +18,6 @@ using NSubstitute.ExceptionExtensions;
 using Humans.Tickets.Domain;
 using Humans.Tickets.Services.Dtos;
 using Humans.Application;
-using Humans.Users.Contracts;
 
 namespace Humans.Tickets.Tests.Services;
 

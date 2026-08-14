@@ -20,6 +20,7 @@ using System.Globalization;
 using Humans.Expenses.Contracts;
 using Humans.Expenses.Data;
 using Humans.Expenses.Domain;
+using Humans.Users.Contracts;
 
 namespace Humans.Expenses.Services;
 

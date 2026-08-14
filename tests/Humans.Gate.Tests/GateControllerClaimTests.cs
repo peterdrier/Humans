@@ -7,7 +7,7 @@ using Humans.Gate.Models;
 using Humans.Gate.Services;
 using Humans.Gate.Services.Stores;
 using Humans.Application.Interfaces.Users;
-using Humans.Application.Services.Profiles;
+using Humans.Users.Contracts;
 using Humans.UI.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -18,7 +18,6 @@ using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using Xunit;
-using Humans.Users.Contracts;
 
 namespace Humans.Gate.Tests;
 

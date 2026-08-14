@@ -2,7 +2,7 @@ using Humans.GoogleIntegration.Contracts;
 using AwesomeAssertions;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.GoogleIntegration;
-using Humans.Application.Interfaces.Profiles;
+using Humans.Users.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Enums;
 using Humans.GoogleIntegration.Controllers;
@@ -16,7 +16,6 @@ using Humans.GoogleIntegration.Services.Workspace;
 using Humans.GoogleIntegration.Data;
 using Humans.Application;
 using Humans.GoogleIntegration.Tests.Infrastructure;
-using Humans.Users.Contracts;
 
 namespace Humans.GoogleIntegration.Tests;
 

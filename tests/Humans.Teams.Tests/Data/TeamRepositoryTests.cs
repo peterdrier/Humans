@@ -1,3 +1,4 @@
+using Humans.Users.Contracts;
 // User.DisplayName is Obsolete; SeedUserAsync sets it on the unpersisted User
 // it hands back to callers.
 #pragma warning disable CS0618

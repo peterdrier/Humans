@@ -18,6 +18,9 @@ using Humans.Infrastructure.Services;
 using Humans.Web.Extensions.Infrastructure;
 using Humans.Web.Extensions.Sections;
 using Humans.Users.Contracts;
+using Humans.Application.Services.Users.AccountLifecycle;
+using Humans.Application.Interfaces.Dashboard;
+using Humans.Application.Services.Dashboard;
 
 namespace Humans.Web.Extensions;
 
@@ -44,8 +47,6 @@ public static class InfrastructureServiceCollectionExtensions
 
         // Section-owned registrations. Each section file registers its own
         // repositories, services, jobs, options, and GDPR contributor forwarding.
-        services.AddProfileSection(configuration);
-        services.AddUsersSection();
         services.AddAuthSection();
         services.AddEarlyEntrySection();
         // AuditLog's read+render owner. It resolves actor/subject/team display names
@@ -120,6 +121,23 @@ public static class InfrastructureServiceCollectionExtensions
         // that owns the line (memory/architecture/governance-scope.md's rule, Governance
         // finding 94).
         services.AddScoped<IUserParticipationBackfillService, UserParticipationBackfillService>();
+
+        // The three Users/Profiles services that stayed behind when the section moved into
+        // its own project (nobodies-collective/Humans#866, G5 lane 2). All three inject no
+        // repository and call across sections, which by peters-hard-rules.md makes them
+        // orchestrators that cannot live inside the section they orchestrate:
+        //   AccountDeletionService  — Teams, RoleAssignments, Shifts, Tickets, AuditLog, Email.
+        //   ExternalLoginService    — IMagicLinkService, Auth's orchestrator, still in Base.
+        // UserParticipationBackfillService is the third and is registered just above.
+        services.AddScoped<IAccountDeletionService, AccountDeletionService>();
+        services.AddScoped<IExternalLoginService, ExternalLoginService>();
+
+        // Dashboard's two aggregators. They were registered inside AddUsersSection and are
+        // not Users' — they read every section's services and own no table — so they stayed
+        // in Base when the section moved (Governance's rule: the section that owns the file
+        // is not always the section that owns the line).
+        services.AddScoped<IDashboardService, DashboardService>();
+        services.AddScoped<IAdminDashboardService, AdminDashboardService>();
 
         // Sections that have moved into their own project (nobodies-collective/Humans#866)
         // register themselves via ISection and are discovered, not named. The roll-call

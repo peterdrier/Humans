@@ -5,6 +5,7 @@ using Humans.Web.Controllers;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Xunit;
+using Humans.Users.Contracts;
 
 namespace Humans.Web.Tests.Controllers;
 

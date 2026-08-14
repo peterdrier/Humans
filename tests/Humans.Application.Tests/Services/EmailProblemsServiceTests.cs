@@ -1,13 +1,11 @@
 using AwesomeAssertions;
-using Humans.Application.DTOs.EmailProblems;
-using Humans.Application.Interfaces.Profiles;
+using Humans.Users.Contracts;
 using Humans.Application.Interfaces.Users;
-using Humans.Application.Services.Profiles;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using NodaTime;
 using NSubstitute;
-using Humans.Users.Contracts;
+using Humans.Users.Services;
 
 namespace Humans.Application.Tests.Services;
 

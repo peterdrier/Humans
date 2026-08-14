@@ -3,7 +3,7 @@ using AwesomeAssertions;
 using Humans.Application.Interfaces.Auth;
 using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
-using Humans.Application.Services.Users;
+using Humans.Users.Services;
 using Humans.Domain.Entities;
 using NodaTime;
 using NSubstitute;

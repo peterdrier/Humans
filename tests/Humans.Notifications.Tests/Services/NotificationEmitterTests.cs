@@ -5,7 +5,7 @@ using Humans.Notifications.Data;
 using Humans.Notifications.Services;
 using AwesomeAssertions;
 using Humans.Notifications.Contracts;
-using Humans.Application.Interfaces.Profiles;
+using Humans.Users.Contracts;
 using Humans.Notifications.Tests;
 using static Humans.Notifications.Tests.NotificationTestFixtures;
 using Humans.Notifications.Domain;
@@ -15,7 +15,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
-using Humans.Users.Contracts;
 
 
 namespace Humans.Notifications.Tests.Services;

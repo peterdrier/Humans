@@ -1,10 +1,9 @@
-using Humans.Application.Interfaces.Profiles;
+using Humans.Users.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Domain.Enums;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
-using Humans.Users.Contracts;
 
 namespace Humans.Web.ViewComponents;
 

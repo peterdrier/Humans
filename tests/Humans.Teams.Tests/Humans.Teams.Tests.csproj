@@ -17,6 +17,12 @@
     -->
     <ProjectReference Include="..\..\src\Sections\Humans.Shifts\Humans.Shifts.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
+    <!--
+      Temporary, and the condition that removes it: this project's harness seeds Users rows
+      through an in-memory UsersDbContext, which moved into Humans.Users at G5 lane 2 PR B.
+      It drops out when the harness stops building the other section's context directly.
+    -->
+    <ProjectReference Include="..\..\src\Sections\Humans.Users\Humans.Users.csproj" />
   </ItemGroup>
 
   <ItemGroup>

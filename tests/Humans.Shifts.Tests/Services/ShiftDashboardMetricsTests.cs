@@ -23,6 +23,7 @@ using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using NSubstitute;
 using Humans.Users.Contracts;
+using Humans.Users.Data;
 
 namespace Humans.Shifts.Tests.Services;
 

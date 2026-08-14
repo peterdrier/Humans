@@ -13,6 +13,7 @@ using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Humans.Users.Contracts;
 
 namespace Humans.Infrastructure.Jobs;
 

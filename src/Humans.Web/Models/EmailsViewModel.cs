@@ -1,9 +1,8 @@
 using System.ComponentModel.DataAnnotations;
 using Humans.Application;
-using Humans.Application.Interfaces.Profiles;
+using Humans.Users.Contracts;
 using Humans.Domain.Enums;
 using NodaTime;
-using Humans.Users.Contracts;
 
 namespace Humans.Web.Models;
 

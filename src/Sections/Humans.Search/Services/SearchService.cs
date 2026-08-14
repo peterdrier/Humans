@@ -4,10 +4,9 @@ using Humans.Events.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
-using Humans.Application.Services.Profiles;
+using Humans.Users.Contracts;
 using Humans.Search.Services.Dtos;
 using Microsoft.Extensions.Configuration;
-using Humans.Users.Contracts;
 
 namespace Humans.Search.Services;
 

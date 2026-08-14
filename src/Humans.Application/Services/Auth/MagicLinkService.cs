@@ -4,9 +4,8 @@ using NodaTime;
 using Humans.Domain.Entities;
 using Humans.Email.Contracts;
 using Humans.Application.Interfaces.Auth;
-using Humans.Application.Interfaces.Profiles;
-using Humans.Application.Interfaces.Users;
 using Humans.Users.Contracts;
+using Humans.Application.Interfaces.Users;
 
 namespace Humans.Application.Services.Auth;
 

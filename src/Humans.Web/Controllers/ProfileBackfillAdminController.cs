@@ -5,6 +5,7 @@ using Humans.Application.Interfaces.Users;
 using Humans.Domain.Enums;
 using Humans.UI.Authorization;
 using NodaTime;
+using Humans.Users.Contracts;
 
 namespace Humans.Web.Controllers;
 

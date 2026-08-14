@@ -2,7 +2,7 @@ using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
-using Humans.Application.Interfaces.Profiles;
+using Humans.Users.Contracts;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Tickets.Contracts;
 using Humans.Application.Interfaces.Users;
@@ -14,7 +14,6 @@ using Humans.Application.Interfaces.TicketVendor;
 using Humans.Tickets.Data;
 using Humans.Tickets.Domain;
 using Humans.Tickets.Services.Dtos;
-using Humans.Users.Contracts;
 
 namespace Humans.Tickets.Services;
 

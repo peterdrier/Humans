@@ -3,14 +3,15 @@ using Humans.Application.Interfaces.Users;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Configuration;
-using Humans.Infrastructure.Repositories.Profiles;
-using Humans.Infrastructure.Services.Profiles;
+using Humans.Users.Data.Repositories;
+using Humans.Users.Services;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using NSubstitute;
-using CommunicationPreferenceService = Humans.Application.Services.Profiles.CommunicationPreferenceService;
+using CommunicationPreferenceService = Humans.Users.Services.CommunicationPreferenceService;
+using Humans.Users.Contracts;
 
 namespace Humans.Application.Tests.Services.Profiles;
 

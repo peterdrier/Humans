@@ -4,7 +4,7 @@ using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Consent;
 using Humans.Consent.Contracts;
-using Humans.Application.Interfaces.Profiles;
+using Humans.Users.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.UI;
@@ -15,7 +15,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
 using NodaTime;
-using Humans.Users.Contracts;
 
 namespace Humans.Onboarding.Controllers;
 

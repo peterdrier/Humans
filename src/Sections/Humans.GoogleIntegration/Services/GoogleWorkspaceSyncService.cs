@@ -4,7 +4,7 @@ using Humans.Application.DTOs;
 using Humans.Application.Helpers;
 using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.GoogleIntegration;
-using Humans.Application.Interfaces.Profiles;
+using Humans.Users.Contracts;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
@@ -19,7 +19,6 @@ using NodaTime;
 using Humans.Application.Interfaces;
 using Humans.GoogleIntegration.Data;
 using Humans.GoogleIntegration.Services.Workspace;
-using Humans.Users.Contracts;
 
 namespace Humans.GoogleIntegration.Services;
 

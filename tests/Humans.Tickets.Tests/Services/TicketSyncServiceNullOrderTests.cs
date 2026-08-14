@@ -17,6 +17,7 @@ using Microsoft.Extensions.Options;
 using NodaTime;
 using NSubstitute;
 using Humans.Tickets.Domain;
+using Humans.Users.Contracts;
 
 namespace Humans.Tickets.Tests.Services;
 

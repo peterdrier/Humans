@@ -1,4 +1,3 @@
-using Humans.Application.Authorization;
 using Humans.Domain.Constants;
 using Humans.UI.Authorization;
 using Humans.Web.Authorization.Requirements;
@@ -24,7 +23,6 @@ public static class AuthorizationPolicyExtensions
         // moved into the section at its G5 and is internal there, while the policies it backs
         // stay here (design §15 step 6's asymmetry).
 
-        services.AddSingleton<IAuthorizationHandler, UserEmailAuthorizationHandler>();
 
         services.AddAuthorization(options =>
         {

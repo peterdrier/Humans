@@ -2,7 +2,7 @@ using AwesomeAssertions;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Auth;
 using Humans.Email.Contracts;
-using Humans.Application.Interfaces.Profiles;
+using Humans.Users.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
@@ -11,7 +11,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
 using MagicLinkService = Humans.Application.Services.Auth.MagicLinkService;
-using Humans.Users.Contracts;
 
 namespace Humans.Application.Tests.Services;
 

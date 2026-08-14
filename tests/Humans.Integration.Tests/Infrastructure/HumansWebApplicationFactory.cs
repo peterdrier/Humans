@@ -23,9 +23,9 @@ using Xunit;
 using Humans.Application.Interfaces;
 using Humans.Email.Contracts;
 using Humans.Mailer.Services;
-using Humans.Application.Interfaces.Profiles;
-using Humans.Infrastructure.Services;
 using Humans.Users.Contracts;
+using Humans.Infrastructure.Services;
+using Humans.Users.Data;
 
 namespace Humans.Integration.Tests.Infrastructure;
 

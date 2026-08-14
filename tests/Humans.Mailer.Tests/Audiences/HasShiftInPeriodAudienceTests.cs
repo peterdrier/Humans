@@ -7,6 +7,7 @@ using Humans.Mailer.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NSubstitute;
+using Humans.Users.Contracts;
 
 namespace Humans.Mailer.Tests.Audiences;
 

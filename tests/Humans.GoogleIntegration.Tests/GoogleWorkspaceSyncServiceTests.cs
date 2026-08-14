@@ -4,7 +4,7 @@ using Humans.Application.Configuration;
 using Humans.Application.DTOs;
 using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.GoogleIntegration;
-using Humans.Application.Interfaces.Profiles;
+using Humans.Users.Contracts;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
@@ -21,7 +21,6 @@ using Humans.GoogleIntegration.Services.Workspace;
 using Humans.GoogleIntegration.Data;
 using Humans.Application;
 using Humans.GoogleIntegration.Tests.Infrastructure;
-using Humans.Users.Contracts;
 // UserEmailMatch lives in the Profiles interface namespace, not DTOs.
 
 namespace Humans.GoogleIntegration.Tests;

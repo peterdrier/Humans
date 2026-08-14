@@ -1,9 +1,8 @@
 using System.Security.Claims;
 using AwesomeAssertions;
-using Humans.Application.DTOs.EmailProblems;
+using Humans.Users.Contracts;
 using Humans.Application.Tests.Infrastructure;
 using Humans.AuditLog.Contracts;
-using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -19,7 +18,6 @@ using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
-using Humans.Users.Contracts;
 
 namespace Humans.Application.Tests.Controllers;
 

@@ -11,7 +11,7 @@ using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Onboarding.Contracts;
-using Humans.Application.Interfaces.Profiles;
+using Humans.Users.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 
@@ -34,7 +34,6 @@ using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
-using Humans.Users.Contracts;
 
 namespace Humans.Application.Tests.Controllers;
 

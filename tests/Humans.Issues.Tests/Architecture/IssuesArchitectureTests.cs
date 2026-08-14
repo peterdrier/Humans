@@ -2,14 +2,13 @@ using Humans.Auth.Contracts;
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Caching;
-using Humans.Application.Interfaces.Profiles;
+using Humans.Users.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Issues.Data;
 using Humans.Issues.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
 using IssuesService = Humans.Issues.Services.IssuesService;
-using Humans.Users.Contracts;
 
 namespace Humans.Issues.Tests.Architecture;
 

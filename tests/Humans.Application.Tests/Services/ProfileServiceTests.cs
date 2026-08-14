@@ -8,13 +8,13 @@ using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using ProfileService = Humans.Application.Services.Profiles.ProfileService;
+using ProfileService = Humans.Users.Services.ProfileService;
 using Humans.Application.Interfaces.Users;
-using Humans.Application.Services.Users;
+using Humans.Users.Services;
 using Humans.Application.Tests.Infrastructure;
-using Humans.Infrastructure.Repositories.Users;
-using ProfileEditorService = Humans.Application.Services.Profiles.ProfileEditorService;
-using ProfilePictureStorageKeys = Humans.Application.Services.Profiles.ProfilePictureStorageKeys;
+using Humans.Users.Data.Repositories;
+using ProfileEditorService = Humans.Users.Services.ProfileEditorService;
+using ProfilePictureStorageKeys = Humans.Application.Storage.ProfilePictureStorageKeys;
 using Humans.Users.Contracts;
 
 namespace Humans.Application.Tests.Services;

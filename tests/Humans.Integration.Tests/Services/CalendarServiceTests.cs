@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using Xunit;
+using Humans.Users.Contracts;
 
 namespace Humans.Integration.Tests.Services;
 

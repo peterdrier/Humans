@@ -12,7 +12,7 @@ using Humans.Governance.Contracts;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.HumanLifecycle;
 using Humans.Onboarding.Contracts;
-using Humans.Application.Interfaces.Profiles;
+using Humans.Users.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
@@ -25,7 +25,6 @@ using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
-using Humans.Users.Contracts;
 
 namespace Humans.Development.Tests;
 
