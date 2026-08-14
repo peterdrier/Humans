@@ -49,7 +49,7 @@ internal sealed class VolunteerBuildStatus
     /// build window where the coord has acknowledged the volunteer is
     /// off-site. Stored as a jsonb collection; one entry per DayOffset by
     /// app-side normalization. See
-    /// <see href="../../docs/superpowers/specs/2026-05-09-day-off-redesign-design.md"/>.
+    /// <see href="../Docs/2026-05-09-day-off-redesign-design.md"/>.
     /// </summary>
     public List<DayOffEntry> DayOffs { get; set; } = [];
 }

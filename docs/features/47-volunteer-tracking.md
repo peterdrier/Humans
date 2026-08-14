@@ -42,7 +42,7 @@ Negative-space rules:
 - A day-off cannot overlap an active camp-setup span; setting/extending camp-setup auto-clears any day-offs that fall on or after the new setup-start date (one `VolunteerDayOffCleared` audit row per cleared offset).
 - Re-marking the same offset replaces the entry (no duplicates); clearing a non-existent entry is a silent no-op.
 
-Audit actions: `VolunteerDayOffMarked`, `VolunteerDayOffCleared`. Full design spec: [`docs/superpowers/specs/2026-05-09-day-off-redesign-design.md`](../superpowers/specs/2026-05-09-day-off-redesign-design.md).
+Audit actions: `VolunteerDayOffMarked`, `VolunteerDayOffCleared`. Full design spec: [`src/Sections/Humans.Shifts/Docs/2026-05-09-day-off-redesign-design.md`](../../src/Sections/Humans.Shifts/Docs/2026-05-09-day-off-redesign-design.md).
 
 ## User Stories
 
