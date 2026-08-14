@@ -51,11 +51,16 @@ unless the reference drop is an explicit lane.
 
 ## The Base floor (decided 2026-08-14)
 
-- **Every `.Contracts` project references NOTHING** (framework only). 4b work item:
-  ~20 leaves reference `Humans.Interfaces` today (mostly `IApplicationService` inheritance
-  on service interfaces — drop it), eight also reference `Humans.Domain`, two reference
-  another leaf (`Email.Contracts → Events.Contracts`, `Teams.Contracts → Auth.Contracts`).
-  Each gets unwound (move or duplicate the shared type).
+- **Every `.Contracts` project references nothing except Base** (amended 2026-08-14 —
+  an earlier draft of this bullet said "NOTHING (framework only)", which was wrong. Base is
+  the floor: referenceable from anywhere, including leaves. The zero-reference rule is
+  about other `Humans.*` assemblies). 4b work item: eight leaves reference `Humans.Domain`
+  and two reference another leaf (`Email.Contracts → Events.Contracts`,
+  `Teams.Contracts → Auth.Contracts`) — each gets unwound (move or duplicate the shared
+  type). The ~20 leaves referencing `Humans.Interfaces` are **not** an unwind: that
+  reference becomes a Base reference and is legal. What remains there is only dropping
+  `IApplicationService` inheritance from leaf service interfaces, which is a separate
+  and much smaller job.
 - **Base may reference `Humans.Users.Contracts` — only that leaf, for now.**
   `UserInfo` + `IUserServiceRead` live there (NOT Base). This keeps
   `HumansControllerBase`/`ApiControllerBase` (typed `IUserServiceRead` dependency,
@@ -70,17 +75,27 @@ Two constraints on the leaf unwind (Codex P2s on peterdrier/Humans#1293, both co
 
 - **Analyzer attributes in leaves.** 16 files across the `.Contracts` projects carry
   `[SurfaceBudget]`, `[ExternalWrite]`, or `[Grandfathered]`, whose definitions move to
-  Base with `Humans.Interfaces`. The analyzers resolve these by hardcoded metadata name
-  (`GetTypeByMetadataName` / namespace string compare — e.g.
-  `RequestScopedCancellationOnExternalWriteAnalyzer.ExternalWriteAttributeFullName`), so
-  naive duplication makes resolution ambiguous → null → **enforcement silently off**, and
-  the Base rename/namespace move breaks the hardcoded constants regardless. Lane rule:
-  update the analyzers' full-name constants in the same PR as the namespace move; for
-  usages inside leaves, prefer retiring `[Grandfathered]` entries outright (they're G6
-  debt), and for the rest use per-assembly `internal` polyfill declarations of the
-  attribute (the `IsExternalInit` pattern — name-matched analyzers still see them) rather
-  than a Base reference. Verify each analyzer still fires after the change; silently
-  losing enforcement is a FAIL, not a trade-off.
+  Base with `Humans.Interfaces`. **Amended 2026-08-14:** the usages are not a problem —
+  leaves may reference Base, so the attributes stay visible and there is no polyfill and
+  no duplication. (An earlier draft prescribed per-assembly `internal` polyfills; that
+  followed from the "framework only" misreading above and is withdrawn.) What remains is
+  the analyzers' side. They resolve these attributes by **hardcoded** metadata name
+  (`GetTypeByMetadataName` — `SurfaceBudgetAnalyzer.SurfaceBudgetAttributeFullName`,
+  `RequestScopedCancellationOnExternalWriteAnalyzer.ExternalWriteAttributeFullName`,
+  `GrandfatheredCheck.AttributeFullName`, all three literals still reading
+  `Humans.Application.Architecture.*`), so the namespace move breaks them — and the
+  failure is silent for HUM0015/0016 and HUM0033, whose `CompilationStart` handlers
+  `return` when resolution yields null, registering no action and emitting nothing.
+  **The constants should not exist.** Fix (tracked as a 4b prerequisite,
+  nobodies-collective/Humans#1057): link the attribute sources into `Humans.Analyzers`
+  with `<Compile Include=… Link=…/>` and derive the names via
+  `typeof(GrandfatheredAttribute).FullName`, so the class is the single source of truth
+  and the rename carries itself. A `ProjectReference` cannot do this — Base already
+  references `Humans.Analyzers` (`src/Directory.Build.props` applies it to every `src/`
+  project), so the reverse edge is a project-graph cycle; the analyzer is also
+  `netstandard2.0` and must keep its load-context closure minimal. Land that before the
+  rename, then verify each analyzer still fires; silently losing enforcement is a FAIL,
+  not a trade-off.
 - **`UserInfo`'s object graph.** `UserEmailInfo` names `GoogleEmailStatus`,
   `CommunicationPreferenceInfo` names `MessageCategory`, `ProfileInfo` names
   `MembershipTier` and `ConsentCheckStatus` — four enums the inventory assigns to
