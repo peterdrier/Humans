@@ -1,17 +1,17 @@
+using Humans.AuditLog.Services;
 using Humans.GoogleIntegration.Contracts;
 using Humans.Domain.Entities;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
-using Humans.Application.Services.AuditLog;
-using Humans.Application.Tests.Infrastructure;
+using Humans.AuditLog.Tests.Infrastructure;
 using Humans.Domain.Enums;
 using NodaTime;
 using NSubstitute;
 using Humans.Users.Contracts;
 
-namespace Humans.Application.Tests.AuditLog;
+namespace Humans.AuditLog.Tests;
 
 public class AuditViewerServiceTests
 {

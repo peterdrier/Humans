@@ -103,9 +103,11 @@ visibility flip in one diff is unreviewable.
       cannot move into the horizontal's project, because a vertical's read interface is on a
       *section leaf* once that section has gone to G5. Grep the section's services for
       `I*ServiceRead` and `Humans.*.Contracts` first — the answer changes what the move
-      *is*. (AuditLog: the append path and the raw queries moved; `AuditViewerService`, which
-      resolves actor/subject/team names through Users, Teams and Google Integration, stayed in
-      `Humans.Application` as the cross-section orchestrator it is.)
+      *is*. (AuditLog: the append path and the raw queries moved first; `AuditViewerService`,
+      which resolves actor/subject/team names through Users, Teams and Google Integration,
+      stayed in `Humans.Application` for one batch and then followed in G5 lane 4b-2h — see
+      step 5b, where the reasoning is corrected. **Read that before applying this paragraph:
+      "stays in Base" is an interim answer during the migration, not the end state.**)
       - **`docs/sections/_Index.md` may already have answered it.** That table's stated rule for
         its **Orchestrators** column is "service classes that inject no `I*Repository`", which is
         the hard rules' own definition — so the column is a pre-computed list of the services
@@ -674,23 +676,28 @@ Git Bash.)
    (Peter, 2026-08-09: splitting read from write happens once every section has moved, not
    per-section). May be empty for a leaf section; ship the folder with a `README.md` saying why
    (proven: Store).
-   - **A *horizontal* section's read+render layer may not be the section's at all, and
-     leaving it in Base is the cheap answer as well as the correct one.** Every other rule
-     here asks where a type's consumers are. This one asks what the type *injects*:
+   - **A horizontal section's read+render layer belongs to the section, and the leaves it
+     needs come with it — this bullet used to say the opposite, and cost a lane to reverse.**
      `AuditViewerService` wraps the section's own `IAuditLogService` with actor, subject and
-     team display names, so it names `IUserServiceRead`, `ITeamServiceRead` (which is
-     `Humans.Teams.Contracts` since Teams' G5) and `ITeamResourceService` — a horizontal
-     referencing three verticals, which `peters-hard-rules.md` forbids at any size. It is an
-     orchestrator by the hard rules' own definition (it calls no repository), so it stayed in
-     `Humans.Application` with its `AuditEvent` DTO and its verb table, registered from
-     Shell. The section kept the append path and the raw entry queries on its leaf. **The
-     move got cheaper, not more expensive, for splitting it**: `Humans.UI`'s
-     `AuditLogViewComponent` injects that interface and binds that DTO, and `Humans.UI`
-     cannot reference a section at any price (Teams' hard floor), so the alternative was
-     dragging a ten-call-site shared widget out of Base to satisfy a file's name. Pin the
-     result with an assembly-level test — `GetReferencedAssemblies()` naming no vertical
-     section — because nothing else stops the next lane from adding the reference
-     (proven: AuditLog).
+     team display names, so it names `IUserServiceRead`, `ITeamServiceRead` and
+     `ITeamResourceService`. That was read as "a horizontal referencing three verticals,
+     forbidden at any size", and the type was parked in `Humans.Application` with its
+     `AuditEvent` DTO and verb table, registered from Shell, pinned by an assembly-level
+     `GetReferencedAssemblies()` test. **Peter reversed it in the Base-floor decision of
+     2026-08-14**: a former Base resident that names another section's read interface moves
+     to its section, and Base gets no `Humans.Teams.Contracts` reference to keep it. A
+     section taking another section's *contracts leaf* is sanctioned at end state; what is
+     forbidden is a cycle, and there is none — Teams references `Humans.AuditLog`, AuditLog
+     references `Humans.Teams.Contracts`, and the leaf reaches nothing. G5 lane 4b-2h moved
+     the interface, the DTO, the verb table and `AuditLogViewComponent` into
+     `src/Sections/Humans.AuditLog`, and **retired the pinning test**, whose premise the
+     decision had inverted.
+     - The widget is the expensive half, not the cheap one: a `<vc:>` component that leaves
+       `Humans.UI` needs `@addTagHelper *, Humans.<Section>` in **every** consuming
+       assembly's `_ViewImports.cshtml` plus a `ProjectReference`, and a missing line is
+       silent — inert literal markup, green build, no log line. Prove each call site with a
+       render test that asserts *seeded content*, never merely `NotContain("<vc:")`
+       (proven: AuditLog, five consumers).
    - **…and the horizontal rule bites a second time at the *type* level, which is not the same
      search as the reference one.** The bullet above asks what a horizontal's services
      *inject*. This asks what its leaf's signatures *name*:

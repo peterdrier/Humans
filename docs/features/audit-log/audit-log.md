@@ -1,5 +1,7 @@
 <!-- freshness:triggers
-  src/Humans.Application/Services/AuditLog/**
+  src/Sections/Humans.AuditLog/Services/**
+  src/Sections/Humans.AuditLog/Contracts/**
+  src/Sections/Humans.AuditLog/ViewComponents/**
   src/Sections/Humans.AuditLog/Controllers/AuditLogController.cs
   src/Sections/Humans.AuditLog/Views/AuditLog/Index.cshtml
   src/Sections/Humans.AuditLog/Domain/AuditLogEntry.cs

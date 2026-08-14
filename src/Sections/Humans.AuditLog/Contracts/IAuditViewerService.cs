@@ -1,7 +1,7 @@
-using Humans.GoogleIntegration.Contracts;
-using Humans.Application.Services.AuditLog;
+using Humans.Application.Interfaces;
+using Humans.AuditLog.Contracts;
 
-namespace Humans.Application.Interfaces.AuditLog;
+namespace Humans.AuditLog.Contracts;
 
 /// <summary>
 /// Single owner of the audit-log <em>read+render</em> path. Wraps
@@ -19,24 +19,23 @@ namespace Humans.Application.Interfaces.AuditLog;
 /// </remarks>
 /// <remarks>
 /// <para>
-/// <b>Why this stays in <c>Humans.Application</c> after the AuditLog G5 move
-/// (nobodies-collective/Humans#866).</b> Resolution needs actor and subject display names
-/// and team/resource names, so the implementation injects <c>IUserServiceRead</c>,
-/// <c>ITeamServiceRead</c> and <c>ITeamResourceService</c> — Users', Teams' and Google
-/// Integration's read surfaces. That makes it a cross-section <em>orchestrator</em>, and
-/// AuditLog is a <em>horizontal</em> section: <c>peters-hard-rules.md</c> forbids a
-/// horizontal from referencing a vertical, so moving this type into
-/// <c>Humans.AuditLog</c> would have put a <c>Humans.Teams.Contracts</c>
-/// <c>ProjectReference</c> on the horizontal. The section keeps the append path and the
-/// raw entry queries (<c>Humans.AuditLog.Contracts.IAuditLogService</c>); this wraps them.
+/// <b>Placement (nobodies-collective/Humans#866, G5 lane 4b-2h).</b> This lives in
+/// <c>Humans.AuditLog</c>, not in the <c>Humans.AuditLog.Contracts</c> leaf and no longer in
+/// <c>Humans.Application</c>. Peter's 2026-08-14 Base-floor decision: a former Base resident
+/// that names another section's read interface moves to its own section, and Base gets no
+/// <c>Humans.Teams.Contracts</c> reference to keep it. Resolution injects
+/// <c>IUserServiceRead</c>, <c>ITeamServiceRead</c> and <c>ITeamResourceService</c>, so
+/// <c>Humans.AuditLog</c> takes those three contracts leaves — legal and normal at end state.
 /// </para>
 /// <para>
-/// Second consequence, and the reason this split is the cheap one:
-/// <c>Humans.UI</c>'s <c>AuditLogViewComponent</c> injects this interface and binds
-/// <see cref="AuditEvent"/>. <c>Humans.UI</c> cannot reference a section at any price, so
-/// had the read path moved, the component and its ~10 call sites would have had to move
-/// with it (Teams' rule: a <c>Humans.UI</c> renderer is a hard floor). Leaving the
-/// orchestrator here left the component and every call site untouched.
+/// This section project's <c>Contracts/</c> folder, not the <c>Humans.AuditLog.Contracts</c>
+/// leaf project: every consumer (Shell's <c>AdminController</c>, the section's own
+/// <c>AuditLogController</c> and <c>AuditLogViewComponent</c>, and the <c>Humans.Agent</c>,
+/// <c>Humans.Monitor</c> and <c>Humans.Users</c> sections) can take a
+/// <c>ProjectReference</c> on <c>Humans.AuditLog</c> directly. A leaf member needs an
+/// out-of-section consumer that cannot — no Base project names this — and the leaf must stay
+/// reachable from Base without a cycle. Both projects share the
+/// <c>Humans.AuditLog.Contracts</c> namespace, as Shifts and Tickets already do.
 /// </para>
 /// </remarks>
 public interface IAuditViewerService : IApplicationService
@@ -68,7 +67,7 @@ public interface IAuditViewerService : IApplicationService
     /// Returns a paged slice of audit events plus aggregate counts (total,
     /// anomalies). Filter is the same string
     /// <see cref="IAuditLogService.GetFilteredAsync"/> takes — case-insensitive
-    /// <see cref="Domain.Enums.AuditAction"/> name match.
+    /// <see cref="Humans.Domain.Enums.AuditAction"/> name match.
     /// </summary>
     Task<AuditEventPage> GetPageAsync(string? actionFilter, int page, int pageSize, CancellationToken ct = default);
 
@@ -82,7 +81,7 @@ public interface IAuditViewerService : IApplicationService
         string? entityType,
         Guid? entityId,
         Guid? userId,
-        IReadOnlyList<Domain.Enums.AuditAction>? actions,
+        IReadOnlyList<Humans.Domain.Enums.AuditAction>? actions,
         int limit,
         CancellationToken ct = default);
 }

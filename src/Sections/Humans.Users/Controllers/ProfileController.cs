@@ -24,7 +24,6 @@ using Humans.UI.Extensions;
 using Humans.Users.Models;
 using Microsoft.Extensions.Options;
 using NodaTime;
-using Humans.Application.Interfaces.AuditLog;
 using Humans.AuditLog.Contracts;
 using Humans.Campaigns.Contracts;
 using Humans.Camps.Contracts;
@@ -1917,7 +1916,7 @@ internal sealed class ProfileController(
     /// under consistent access rules.
     /// Returns <c>(false, null)</c> for own-profile views and non-coordinators.
     /// </summary>
-    private async Task<(bool CanView, IReadOnlyList<Application.Services.AuditLog.AuditEvent>? Messages)>
+    private async Task<(bool CanView, IReadOnlyList<AuditEvent>? Messages)>
         BuildSentMessagesContextAsync(Guid profileUserId, Guid viewerId, bool isOwnProfile, CancellationToken ct)
     {
         if (isOwnProfile)

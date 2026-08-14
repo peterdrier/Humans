@@ -1,8 +1,9 @@
 using AwesomeAssertions;
-using Humans.Application.Services.AuditLog;
+using Humans.AuditLog.Contracts;
+using Humans.AuditLog.Services;
 using Humans.Domain.Enums;
 
-namespace Humans.Application.Tests.AuditLog;
+namespace Humans.AuditLog.Tests;
 
 /// <summary>
 /// Tests for the internal <c>AuditEventTextualizer</c> verb-table class.

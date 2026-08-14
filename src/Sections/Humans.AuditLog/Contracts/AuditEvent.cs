@@ -1,10 +1,11 @@
 using System.Text;
 using Humans.Application.Extensions;
-using Humans.Domain.Entities;
+using Humans.AuditLog.Domain;
+using Humans.AuditLog.Services;
 using Humans.Domain.Enums;
 using NodaTime;
 
-namespace Humans.Application.Services.AuditLog;
+namespace Humans.AuditLog.Contracts;
 
 /// <summary>
 /// Resolved view of an <see cref="AuditLogEntry"/> with pre-resolved actor/subject/team display names.

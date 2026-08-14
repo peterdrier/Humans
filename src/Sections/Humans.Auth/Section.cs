@@ -33,7 +33,10 @@ namespace Humans.Auth;
 /// leaf. Auth is a horizontal section and <c>peters-hard-rules.md</c> forbids one from
 /// referencing a vertical, so the orchestrator, its two Infrastructure collaborators
 /// (<c>MagicLinkUrlBuilder</c>, <c>MagicLinkRateLimiter</c>), <c>AccountController</c> and
-/// its views all stayed in Base. Same call as AuditLog's <c>AuditViewerService</c>.
+/// its views all stayed in Base. AuditLog made the same call for
+/// <c>AuditViewerService</c> and then <em>reversed</em> it in G5 lane 4b-2h under Peter's
+/// 2026-08-14 Base-floor decision, so treat this as interim, not settled: the same question
+/// is open here (nobodies-collective/Humans#866).
 /// </para>
 /// </remarks>
 public sealed class Section : ISection

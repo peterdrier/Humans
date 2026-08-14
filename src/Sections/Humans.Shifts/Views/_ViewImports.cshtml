@@ -34,8 +34,10 @@
 @inject IStringLocalizer<ShiftsResource> Localizer
 @inject IStringLocalizer<SharedResource> SharedLocalizer
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
-@* Everything the section's views open — <vc:human>, <vc:human-search>, <vc:audit-log> —
-   is Humans.UI's. <vc:shift-signups> is this section's own component, public under
-   Contracts/, and the section does not render it. *@
+@* Everything the section's views open — <vc:human>, <vc:human-search> — is Humans.UI's.
+   <vc:shift-signups> is this section's own component, public under Contracts/, and the
+   section does not render it. (The audit-log component was listed here too, but no Shifts
+   view has ever rendered it; it now lives in Humans.AuditLog, and
+   AuditLogPageRenderTests scans for the tag literally — nobodies-collective/Humans#866.) *@
 @addTagHelper *, Humans.UI
 @addTagHelper *, Humans.Shifts

@@ -32,8 +32,7 @@
     "AuditLog": {
       "paths": [
         "src/Sections/Humans.AuditLog/**",
-        "src/Sections/Humans.AuditLog.Contracts/**",
-        "src/Humans.Application/Services/AuditLog/**"
+        "src/Sections/Humans.AuditLog.Contracts/**"
       ],
       "symbols": [
         "AuditLog*",

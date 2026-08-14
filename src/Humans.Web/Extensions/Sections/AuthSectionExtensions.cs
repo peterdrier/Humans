@@ -30,8 +30,9 @@ internal static class AuthSectionExtensions
         // Humans.Email.Contracts, so it is a cross-section orchestrator that a *horizontal*
         // section may not host (peters-hard-rules.md) — it stayed in Humans.Application with
         // its Infrastructure-owned token/url builder and memory-cache-backed rate limiter,
-        // and AccountController stayed in Shell with it. Same split as AuditLog's
-        // AuditViewerService.
+        // and AccountController stayed in Shell with it. AuditLog made the same split for
+        // AuditViewerService and reversed it in G5 lane 4b-2h (nobodies-collective/Humans#866),
+        // so this is interim, not settled.
         services.AddScoped<IMagicLinkUrlBuilder, MagicLinkUrlBuilder>();
         services.AddScoped<IMagicLinkRateLimiter, MagicLinkRateLimiter>();
         services.AddScoped<IMagicLinkService, MagicLinkService>();

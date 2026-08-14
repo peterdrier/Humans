@@ -1,10 +1,9 @@
-using Humans.Teams.Domain;
 using AwesomeAssertions;
-using Humans.Application.Services.AuditLog;
+using Humans.AuditLog.Contracts;
 using Humans.Domain.Enums;
 using NodaTime;
 
-namespace Humans.Application.Tests.AuditLog;
+namespace Humans.AuditLog.Tests;
 
 /// <summary>
 /// Tests for <see cref="AuditEvent"/> — the resolved, display-ready view of

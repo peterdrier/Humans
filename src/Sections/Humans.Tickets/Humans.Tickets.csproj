@@ -30,6 +30,9 @@
     <ProjectReference Include="..\..\Humans.UI\Humans.UI.csproj" />
     <ProjectReference Include="..\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />
     <ProjectReference Include="..\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
+    <!-- TicketTransferAdmin/Detail.cshtml renders <vc:audit-log>, which moved out of Humans.UI
+         into the AuditLog section in G5 lane 4b-2h (nobodies-collective/Humans#866). -->
+    <ProjectReference Include="..\Humans.AuditLog\Humans.AuditLog.csproj" />
     <!--
       Outbound section references, all through leaves and all acyclic — none of these
       leaves names a Tickets type.

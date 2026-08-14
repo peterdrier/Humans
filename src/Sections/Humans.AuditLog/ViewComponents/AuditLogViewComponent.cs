@@ -1,10 +1,15 @@
-using Humans.Application.Interfaces.AuditLog;
-using Humans.Application.Services.AuditLog;
+using Humans.AuditLog.Contracts;
 using Humans.Domain.Enums;
 using Microsoft.AspNetCore.Mvc;
 
-namespace Humans.UI.ViewComponents;
+namespace Humans.AuditLog.ViewComponents;
 
+/// <summary>
+/// <c>&lt;vc:audit-log&gt;</c> — renders audit history on any page. Public, and every
+/// consuming assembly must carry <c>@addTagHelper *, Humans.AuditLog</c> in its
+/// <c>_ViewImports.cshtml</c>: a <c>&lt;vc:&gt;</c> tag with no matching tag helper ships as
+/// inert literal markup with a green build and no runtime error.
+/// </summary>
 public class AuditLogViewComponent(IAuditViewerService auditViewer, ILogger<AuditLogViewComponent> logger)
     : ViewComponent
 {
@@ -49,7 +54,7 @@ public class AuditLogViewComponent(IAuditViewerService auditViewer, ILogger<Audi
     }
 }
 
-public class AuditLogComponentViewModel
+internal sealed class AuditLogComponentViewModel
 {
     public string Title { get; set; } = "Audit History";
     public bool ShowCard { get; set; } = true;

@@ -101,34 +101,19 @@ public class AuditLogArchitectureTests
             because: "only AuditLogRepository may touch AuditLogDbContext (peters-hard-rules.md)");
     }
 
-    [HumansFact]
-    public void SectionReferencesNoVerticalSection()
-    {
-        // AuditLog is a *horizontal* section. peters-hard-rules.md: horizontals "are
-        // strictly forbidden from referencing vertical sections ... as that will cause
-        // loops in the call graph". The referenced-assembly list is where that stops being
-        // a convention: the only section assembly AuditLog may name is Gdpr's leaf, which
-        // is itself horizontal. This is what keeps the name-resolving read path
-        // (AuditViewerService, which injects ITeamServiceRead) in Humans.Application.
-        var sectionRefs = SectionAssembly
-            .GetReferencedAssemblies()
-            .Select(a => a.Name ?? string.Empty)
-            .Where(n => n.StartsWith("Humans.", StringComparison.Ordinal))
-            .Where(n => n is not ("Humans.Interfaces" or "Humans.Domain" or "Humans.Application"
-                                 or "Humans.Infrastructure" or "Humans.UI" or "Humans.Analyzers"
-                                 or "Humans.AuditLog.Contracts"))
-            .OrderBy(n => n, StringComparer.Ordinal)
-            .ToList();
-
-        // Humans.Users.Contracts is the second entry, and it is not new coupling: AuditLogService
-        // has injected IUserServiceRead all along, under the [CrossSectionException] on that class
-        // ("Audit (crosscut) reads merged-account source IDs via IUserServiceRead"). The reference
-        // only became visible here when the interface left Humans.Application for Users' contracts
-        // leaf (nobodies-collective/Humans#866, lane 2 PR A). #866 names User/UserInfo as sanctioned
-        // shared contracts; where they finally live — this leaf or the Base floor — is the lane 4
-        // "what is Base" question. Deleting the injection is the only thing that removes this row.
-        sectionRefs.Should().BeEquivalentTo(
-            ["Humans.Gdpr.Contracts", "Humans.Users.Contracts"],
-            because: "a horizontal section may reference only Base, other horizontals, and the sanctioned User/UserInfo contracts");
-    }
+    // ── Retired: SectionReferencesNoVerticalSection ──────────────────────────
+    //
+    // This test pinned the referenced-assembly list of Humans.AuditLog to
+    // ["Humans.Gdpr.Contracts", "Humans.Users.Contracts"], on the premise that AuditLog is a
+    // horizontal section and therefore may not name a vertical one — which is what kept the
+    // name-resolving read path (AuditViewerService, injecting ITeamServiceRead) in
+    // Humans.Application.
+    //
+    // Peter reversed that premise in the Base-floor decision of 2026-08-14: a former Base
+    // resident that names another section's read interface moves to its own section, and Base
+    // gets no Humans.Teams.Contracts reference to keep it. AuditLog now takes Teams',
+    // GoogleIntegration's and Users' contracts leaves, and the assertion asserts the opposite
+    // of the decision. Retired deliberately rather than re-baselined: re-listing the three new
+    // leaves would restate whatever the csproj happens to say, which is not an invariant.
+    // (nobodies-collective/Humans#866, G5 lane 4b-2h.)
 }

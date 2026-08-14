@@ -93,7 +93,7 @@ public class AgentToolDispatcherTests
         stub.LastLimit.Should().Be(1);
     }
 
-    private static Humans.Application.Services.AuditLog.AuditEvent BuildVoluntoldEvent(Guid actor, Guid subject) =>
+    private static Humans.AuditLog.Contracts.AuditEvent BuildVoluntoldEvent(Guid actor, Guid subject) =>
         new(
             Id: Guid.NewGuid(),
             OccurredAt: NodaTime.Instant.FromUtc(2026, 4, 30, 17, 0),
@@ -118,7 +118,7 @@ public class AgentToolDispatcherTests
             ResourceId: null,
             ResourceName: null);
 
-    private static Humans.Application.Services.AuditLog.AuditEvent BuildUnmappedEvent() =>
+    private static Humans.AuditLog.Contracts.AuditEvent BuildUnmappedEvent() =>
         new(
             Id: Guid.NewGuid(),
             OccurredAt: NodaTime.Instant.FromUtc(2026, 4, 30, 17, 0),
@@ -469,7 +469,7 @@ public class AgentToolDispatcherTests
     }
 
     private static AgentToolDispatcher MakeDispatcher(
-        Humans.Application.Interfaces.AuditLog.IAuditViewerService? auditViewer = null,
+        Humans.AuditLog.Contracts.IAuditViewerService? auditViewer = null,
         Humans.Shifts.Contracts.IShiftView? shiftView = null,
         Humans.Shifts.Contracts.IBurnSettingsService? burnSettings = null,
         Humans.Application.Interfaces.IGuideContentSource? source = null)
@@ -537,25 +537,25 @@ public class AgentToolDispatcherTests
         return view;
     }
 
-    private sealed class StubAuditViewer : Humans.Application.Interfaces.AuditLog.IAuditViewerService
+    private sealed class StubAuditViewer : Humans.AuditLog.Contracts.IAuditViewerService
     {
-        public IReadOnlyList<Humans.Application.Services.AuditLog.AuditEvent> Events { get; init; } =
+        public IReadOnlyList<Humans.AuditLog.Contracts.AuditEvent> Events { get; init; } =
             [];
 
         /// <summary>Captures the limit value passed to <see cref="GetForUserAsync"/> for clamp-behaviour assertions.</summary>
         public int? LastLimit { get; private set; }
 
-        public Task<IReadOnlyList<Humans.Application.Services.AuditLog.AuditEvent>> GetRecentAsync(int count, CancellationToken ct = default) => Task.FromResult(Events);
-        public Task<IReadOnlyList<Humans.Application.Services.AuditLog.AuditEvent>> GetForUserAsync(Guid userId, int count, CancellationToken ct = default)
+        public Task<IReadOnlyList<Humans.AuditLog.Contracts.AuditEvent>> GetRecentAsync(int count, CancellationToken ct = default) => Task.FromResult(Events);
+        public Task<IReadOnlyList<Humans.AuditLog.Contracts.AuditEvent>> GetForUserAsync(Guid userId, int count, CancellationToken ct = default)
         {
             LastLimit = count;
             return Task.FromResult(Events);
         }
-        public Task<IReadOnlyList<Humans.Application.Services.AuditLog.AuditEvent>> GetForResourceAsync(Guid resourceId, CancellationToken ct = default) => Task.FromResult(Events);
-        public Task<IReadOnlyList<Humans.Application.Services.AuditLog.AuditEvent>> GetGoogleSyncForUserAsync(Guid userId, CancellationToken ct = default) => Task.FromResult(Events);
-        public Task<Humans.Application.Interfaces.AuditLog.AuditEventPage> GetPageAsync(string? actionFilter, int page, int pageSize, CancellationToken ct = default) =>
-            Task.FromResult(new Humans.Application.Interfaces.AuditLog.AuditEventPage(Events, Events.Count, 0));
-        public Task<IReadOnlyList<Humans.Application.Services.AuditLog.AuditEvent>> GetFilteredAsync(string? entityType, Guid? entityId, Guid? userId, IReadOnlyList<Humans.Domain.Enums.AuditAction>? actions, int limit, CancellationToken ct = default) => Task.FromResult(Events);
+        public Task<IReadOnlyList<Humans.AuditLog.Contracts.AuditEvent>> GetForResourceAsync(Guid resourceId, CancellationToken ct = default) => Task.FromResult(Events);
+        public Task<IReadOnlyList<Humans.AuditLog.Contracts.AuditEvent>> GetGoogleSyncForUserAsync(Guid userId, CancellationToken ct = default) => Task.FromResult(Events);
+        public Task<Humans.AuditLog.Contracts.AuditEventPage> GetPageAsync(string? actionFilter, int page, int pageSize, CancellationToken ct = default) =>
+            Task.FromResult(new Humans.AuditLog.Contracts.AuditEventPage(Events, Events.Count, 0));
+        public Task<IReadOnlyList<Humans.AuditLog.Contracts.AuditEvent>> GetFilteredAsync(string? entityType, Guid? entityId, Guid? userId, IReadOnlyList<Humans.Domain.Enums.AuditAction>? actions, int limit, CancellationToken ct = default) => Task.FromResult(Events);
     }
 
 }

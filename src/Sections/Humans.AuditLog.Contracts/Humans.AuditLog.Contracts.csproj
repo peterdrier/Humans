@@ -3,21 +3,27 @@
   <!--
     AuditLog's cross-section surface, carved into its own leaf project because almost every
     consumer is in Base: ~20 Humans.Application services (Users, Profiles, Camps, Shifts,
-    GoogleIntegration, Auth, HumanLifecycle), three Humans.Infrastructure jobs, Shell's
-    controllers and seeder, and — the one that settles it — Humans.Application's own
-    AuditViewerService. A Contracts/ *folder* inside Humans.AuditLog would therefore make
+    GoogleIntegration, Auth, HumanLifecycle), three Humans.Infrastructure jobs, and Shell's
+    controllers and seeder. A Contracts/ *folder* inside Humans.AuditLog would therefore make
     Base reference a section and cycle (design §15.5b,
     memory/architecture/section-project-cycle-fix.md).
 
-    The surface is deliberately the whole of IAuditLogService: the append path is called
+    The section project also has a Contracts/ folder, for IAuditViewerService / AuditEvent /
+    AuditEventPage — the read+render surface, whose consumers are all Shell or other sections
+    and can ProjectReference Humans.AuditLog directly (G5 lane 4b-2h). Both share the
+    Humans.AuditLog.Contracts namespace, as Shifts and Tickets already do. The rule that
+    decides which home a type gets: a leaf member needs an out-of-section consumer that
+    cannot reach the section project.
+
+    The surface here is deliberately the whole of IAuditLogService: the append path is called
     from ~130 files across every section, and the read members it also carries are the raw
-    entry queries the Base-resident AuditViewerService wraps. Notifications' "a wide fan-in
-    over a narrow interface is cheap; it is the surface that costs" holds — this is one
-    interface and one record.
+    entry queries AuditViewerService wraps. Notifications' "a wide fan-in over a narrow
+    interface is cheap; it is the surface that costs" holds — this is one interface and one
+    record.
 
     References Humans.Interfaces (IApplicationService) and Humans.Domain: AuditAction and
     GoogleSyncSource are Base vocabulary named in these signatures and stay in
-    Humans.Domain.Enums, because Shell, Humans.UI's audit view component and ~100 files
+    Humans.Domain.Enums, because Shell, the audit view component and ~100 files
     across every section name AuditAction directly (Teams' rule: a Humans.UI renderer is a
     hard floor on how far an enum can move). Campaigns' leaf reference, for the same reason.
   -->

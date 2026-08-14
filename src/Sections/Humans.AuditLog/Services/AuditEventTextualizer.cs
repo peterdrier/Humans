@@ -1,6 +1,6 @@
 using Humans.Domain.Enums;
 
-namespace Humans.Application.Services.AuditLog;
+namespace Humans.AuditLog.Services;
 
 /// <summary>Single source of truth for AuditAction → verb tables (transitive, self-form, description-tail policy). Shared by agent + view components.</summary>
 internal static class AuditEventTextualizer

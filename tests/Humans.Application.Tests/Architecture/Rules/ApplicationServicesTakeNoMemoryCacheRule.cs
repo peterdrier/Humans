@@ -1,6 +1,5 @@
 using Humans.Application.Architecture;
 using AwesomeAssertions;
-using Humans.Application.Services.AuditLog;
 using Humans.Camps.Services;
 using Microsoft.Extensions.Caching.Memory;
 

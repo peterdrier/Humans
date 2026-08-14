@@ -1,14 +1,13 @@
 using Humans.GoogleIntegration.Contracts;
-using Humans.Application.Interfaces.AuditLog;
 using Humans.AuditLog.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Users.Contracts;
 
-namespace Humans.Application.Services.AuditLog;
+namespace Humans.AuditLog.Services;
 
 /// <summary>Read-side wrapper over <see cref="IAuditLogService"/> that resolves actor/subject/team names. No DB or caching.</summary>
-public sealed class AuditViewerService(
+internal sealed class AuditViewerService(
     IAuditLogService auditLog,
     IUserServiceRead userService,
     ITeamServiceRead teamService,
@@ -42,7 +41,7 @@ public sealed class AuditViewerService(
         string? entityType,
         Guid? entityId,
         Guid? userId,
-        IReadOnlyList<Domain.Enums.AuditAction>? actions,
+        IReadOnlyList<Humans.Domain.Enums.AuditAction>? actions,
         int limit,
         CancellationToken ct = default)
     {
