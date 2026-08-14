@@ -7,14 +7,14 @@ using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.UI.Authorization;
-using Humans.Web.Models.EmailProblems;
+using Humans.Users.Models.EmailProblems;
 using Humans.Users.Services;
 
-namespace Humans.Web.Controllers;
+namespace Humans.Users.Controllers;
 
 [Authorize(Policy = PolicyNames.AdminOnly)]
 [Route("Profile/Admin")]
-public class ProfileAdminController(
+internal sealed class ProfileAdminController(
     IUserServiceRead userService,
     IEmailProblemsService emailProblems,
     IUserEmailService userEmails,

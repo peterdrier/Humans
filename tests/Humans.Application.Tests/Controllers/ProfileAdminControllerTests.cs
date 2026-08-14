@@ -1,3 +1,4 @@
+using Humans.Users.Controllers;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Users.Contracts;
@@ -8,7 +9,7 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.UI.Authorization;
 using Humans.Web.Controllers;
-using Humans.Web.Models.EmailProblems;
+using Humans.Users.Models.EmailProblems;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;

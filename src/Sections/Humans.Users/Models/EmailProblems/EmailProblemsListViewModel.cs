@@ -2,9 +2,9 @@ using Humans.Users.Contracts;
 using Humans.Application;
 using NodaTime;
 
-namespace Humans.Web.Models.EmailProblems;
+namespace Humans.Users.Models.EmailProblems;
 
-public sealed class EmailProblemsListViewModel
+internal sealed class EmailProblemsListViewModel
 {
     public Instant ScannedAt { get; init; }
     public int TotalProblems =>
@@ -84,17 +84,17 @@ public sealed class EmailProblemsListViewModel
     }
 }
 
-public sealed record SingleUserIssueRow(
+internal sealed record SingleUserIssueRow(
     Guid UserId, string DisplayName,
     IReadOnlyList<string> ProblemSummaries);
 
-public sealed record SystemLevelIssueRow(
+internal sealed record SystemLevelIssueRow(
     EmailProblemKind Kind,
     Guid? UserEmailId,
     Guid? UserId,
     string Detail);
 
-public sealed record LegacyEmailRow(
+internal sealed record LegacyEmailRow(
     Guid UserId,
     string DisplayName,
     string LegacyEmail);
