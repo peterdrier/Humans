@@ -301,15 +301,74 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
     }
 
     public async Task<IReadOnlyList<HoldedExpenseOutboxEvent>> GetUnprocessedOutboxAsync(
-        int limit, CancellationToken ct = default)
+        Instant now, int limit, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.HoldedExpenseOutboxEvents.AsNoTracking()
-            .Where(e => e.ProcessedAt == null && !e.FailedPermanently)
+            .Where(e => e.ProcessedAt == null
+                && !e.FailedPermanently
+                && (e.NextRetryAt == null || e.NextRetryAt <= now))
             // arch:db-sort-ok identity-ordered outbox drain — FIFO is the protocol requirement
             .OrderBy(e => e.OccurredAt)
             .Take(limit)
             .ToListAsync(ct);
+    }
+
+    public async Task<HoldedExpenseOutboxEvent?> GetLatestOutboxForReportAsync(
+        Guid reportId, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.HoldedExpenseOutboxEvents.AsNoTracking()
+            // The create is the push — "did this report reach Holded?". UpdateIncomingDocTag events
+            // are legacy no-ops that mark themselves processed, so including them would let one
+            // mask a failed create.
+            .Where(e => e.ExpenseReportId == reportId
+                && e.EventType == HoldedExpenseOutboxEventType.CreateIncomingDoc)
+            // arch:db-sort-ok latest-per-report selector (Take)
+            .OrderByDescending(e => e.OccurredAt)
+            .FirstOrDefaultAsync(ct);
+    }
+
+    public async Task<int> CountFailedOutboxAsync(CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.HoldedExpenseOutboxEvents.AsNoTracking()
+            .CountAsync(e => e.FailedPermanently, ct);
+    }
+
+    public async Task<bool> RequeueOutboxForReportAsync(
+        Guid reportId, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        // Both stuck shapes: written off, and unprocessed-with-an-error (waiting out a backoff).
+        // A clean queued event has no error and needs no help.
+        var stuck = await ctx.HoldedExpenseOutboxEvents
+            .Where(e => e.ExpenseReportId == reportId
+                && (e.FailedPermanently || (e.ProcessedAt == null && e.LastError != null)))
+            .ToListAsync(ct);
+        if (stuck.Count == 0) return false;
+
+        foreach (var e in stuck)
+        {
+            e.FailedPermanently = false;
+            e.ProcessedAt = null;
+            e.RetryCount = 0;
+            e.LastError = null;
+            e.NextRetryAt = null;
+        }
+
+        await ctx.SaveChangesAsync(ct);
+        return true;
+    }
+
+    public async Task MarkAttachmentPushedAsync(
+        Guid attachmentId, Instant pushedAt, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var a = await ctx.ExpenseAttachments.FirstOrDefaultAsync(x => x.Id == attachmentId, ct);
+        if (a is null) return;
+        a.HoldedUploadedAt = pushedAt;
+        await ctx.SaveChangesAsync(ct);
     }
 
     public async Task SetHoldedDocIdAsync(
@@ -338,7 +397,7 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
     }
 
     public async Task IncrementOutboxRetryAsync(
-        Guid outboxEventId, string error, CancellationToken ct = default)
+        Guid outboxEventId, string error, Instant nextRetryAt, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         var ev = await ctx.HoldedExpenseOutboxEvents
@@ -346,6 +405,7 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
         if (ev is null) return;
         ev.RetryCount += 1;
         ev.LastError = error;
+        ev.NextRetryAt = nextRetryAt;
         await ctx.SaveChangesAsync(ct);
     }
 

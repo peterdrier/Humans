@@ -46,6 +46,8 @@ public sealed class HoldedClient : IHoldedClient
             _http.BaseAddress = new Uri(_options.BaseUrl);
     }
 
+    public bool IsConfigured => !string.IsNullOrWhiteSpace(_options.ApiKey);
+
     public async Task<string> CreatePurchaseDocumentAsync(
         HoldedPurchaseDocumentInput input, CancellationToken ct = default)
     {

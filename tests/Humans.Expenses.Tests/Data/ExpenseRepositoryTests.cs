@@ -180,9 +180,122 @@ public class ExpenseRepositoryTests
         var ev4 = NewOutbox();
         await SeedOutbox(ev1, ev2, ev3, ev4);
 
-        var got = await _sut.GetUnprocessedOutboxAsync(limit: 10, ct: Xunit.TestContext.Current.CancellationToken);
+        var got = await _sut.GetUnprocessedOutboxAsync(Instant.FromUtc(2026, 5, 10, 0, 0), limit: 10, ct: Xunit.TestContext.Current.CancellationToken);
         got.Should().HaveCount(2);
         got.Select(e => e.Id).Should().BeEquivalentTo([ev1.Id, ev4.Id]);
+    }
+
+    [HumansFact]
+    public async Task GetUnprocessedOutboxAsync_HoldsBackEventsStillInsideTheirBackoff()
+    {
+        var now = Instant.FromUtc(2026, 5, 10, 0, 0);
+        var due = NewOutbox(nextRetryAt: now - Duration.FromMinutes(1), retryCount: 2);
+        var notDue = NewOutbox(nextRetryAt: now + Duration.FromMinutes(1), retryCount: 2);
+        var fresh = NewOutbox();
+        await SeedOutbox(due, notDue, fresh);
+
+        var got = await _sut.GetUnprocessedOutboxAsync(now, limit: 10, ct: Xunit.TestContext.Current.CancellationToken);
+
+        got.Select(e => e.Id).Should().BeEquivalentTo([due.Id, fresh.Id]);
+    }
+
+    [HumansFact]
+    public async Task GetLatestOutboxForReportAsync_IgnoresTagUpdates()
+    {
+        // A tag-update event marks itself processed immediately; if it counted as "the latest
+        // event" it would report a failed create as Pushed.
+        var reportId = Guid.NewGuid();
+        var create = NewOutbox(reportId, failedPermanently: true, lastError: "boom",
+            occurredAt: Instant.FromUtc(2026, 5, 1, 0, 0));
+        var tag = NewOutbox(reportId, processedAt: Instant.FromUtc(2026, 5, 2, 0, 0),
+            eventType: HoldedExpenseOutboxEventType.UpdateIncomingDocTag,
+            occurredAt: Instant.FromUtc(2026, 5, 2, 0, 0));
+        await SeedOutbox(create, tag);
+
+        var got = await _sut.GetLatestOutboxForReportAsync(reportId, Xunit.TestContext.Current.CancellationToken);
+
+        got!.Id.Should().Be(create.Id);
+    }
+
+    [HumansFact]
+    public async Task RequeueOutboxForReportAsync_ClearsWriteOffAndBackoff()
+    {
+        var reportId = Guid.NewGuid();
+        var writtenOff = NewOutbox(reportId, failedPermanently: true, retryCount: 10,
+            lastError: "gave up", processedAt: Instant.FromUtc(2026, 5, 5, 0, 0));
+        await SeedOutbox(writtenOff);
+
+        var ok = await _sut.RequeueOutboxForReportAsync(reportId, Xunit.TestContext.Current.CancellationToken);
+
+        ok.Should().BeTrue();
+        var reloaded = await _sut.GetLatestOutboxForReportAsync(reportId, Xunit.TestContext.Current.CancellationToken);
+        reloaded!.FailedPermanently.Should().BeFalse();
+        reloaded.ProcessedAt.Should().BeNull();
+        reloaded.RetryCount.Should().Be(0);
+        reloaded.LastError.Should().BeNull();
+        reloaded.NextRetryAt.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task RequeueOutboxForReportAsync_AlsoClearsAnEventMerelyWaitingOutABackoff()
+    {
+        var reportId = Guid.NewGuid();
+        await SeedOutbox(NewOutbox(reportId, retryCount: 3, lastError: "timeout",
+            nextRetryAt: Instant.FromUtc(2026, 5, 20, 0, 0)));
+
+        var ok = await _sut.RequeueOutboxForReportAsync(reportId, Xunit.TestContext.Current.CancellationToken);
+
+        ok.Should().BeTrue();
+        var reloaded = await _sut.GetLatestOutboxForReportAsync(reportId, Xunit.TestContext.Current.CancellationToken);
+        reloaded!.NextRetryAt.Should().BeNull();
+        reloaded.RetryCount.Should().Be(0);
+    }
+
+    [HumansFact]
+    public async Task RequeueOutboxForReportAsync_ReturnsFalse_WhenNothingIsStuck()
+    {
+        var reportId = Guid.NewGuid();
+        await SeedOutbox(NewOutbox(reportId, processedAt: Instant.FromUtc(2026, 5, 5, 0, 0)));
+
+        var ok = await _sut.RequeueOutboxForReportAsync(reportId, Xunit.TestContext.Current.CancellationToken);
+
+        ok.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task CountFailedOutboxAsync_CountsOnlyWrittenOffEvents()
+    {
+        await SeedOutbox(
+            NewOutbox(failedPermanently: true),
+            NewOutbox(failedPermanently: true),
+            NewOutbox(retryCount: 2, lastError: "timeout"),
+            NewOutbox(processedAt: Instant.FromUtc(2026, 5, 5, 0, 0)));
+
+        var count = await _sut.CountFailedOutboxAsync(Xunit.TestContext.Current.CancellationToken);
+
+        count.Should().Be(2);
+    }
+
+    [HumansFact]
+    public async Task MarkAttachmentPushedAsync_StampsTheUploadTime()
+    {
+        var attachmentId = await _sut.AddAttachmentAsync(new ExpenseAttachment
+        {
+            Id = Guid.NewGuid(),
+            OriginalFileName = "receipt.pdf",
+            Extension = ".pdf",
+            ContentType = "application/pdf",
+            SizeBytes = 10,
+            UploadedByUserId = Guid.NewGuid(),
+            UploadedAt = Instant.FromUtc(2026, 5, 1, 0, 0),
+        }, Xunit.TestContext.Current.CancellationToken);
+        var pushedAt = Instant.FromUtc(2026, 5, 6, 9, 0);
+
+        await _sut.MarkAttachmentPushedAsync(attachmentId, pushedAt, Xunit.TestContext.Current.CancellationToken);
+
+        await using var ctx = await _factory.CreateDbContextAsync(Xunit.TestContext.Current.CancellationToken);
+        var reloaded = await ctx.ExpenseAttachments.FirstAsync(a => a.Id == attachmentId, Xunit.TestContext.Current.CancellationToken);
+        reloaded.HoldedUploadedAt.Should().Be(pushedAt);
     }
 
     [HumansFact]
@@ -248,13 +361,21 @@ public class ExpenseRepositoryTests
     private static HoldedExpenseOutboxEvent NewOutbox(
         Guid? reportId = null,
         Instant? processedAt = null,
-        bool failedPermanently = false) => new()
+        bool failedPermanently = false,
+        Instant? nextRetryAt = null,
+        int retryCount = 0,
+        string? lastError = null,
+        HoldedExpenseOutboxEventType eventType = HoldedExpenseOutboxEventType.CreateIncomingDoc,
+        Instant? occurredAt = null) => new()
         {
             Id = Guid.NewGuid(),
             ExpenseReportId = reportId ?? Guid.NewGuid(),
-            EventType = HoldedExpenseOutboxEventType.CreateIncomingDoc,
-            OccurredAt = Instant.FromUtc(2026, 5, 1, 0, 0),
+            EventType = eventType,
+            OccurredAt = occurredAt ?? Instant.FromUtc(2026, 5, 1, 0, 0),
             ProcessedAt = processedAt,
-            FailedPermanently = failedPermanently
+            FailedPermanently = failedPermanently,
+            NextRetryAt = nextRetryAt,
+            RetryCount = retryCount,
+            LastError = lastError
         };
 }

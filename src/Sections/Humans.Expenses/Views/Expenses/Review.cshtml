@@ -16,6 +16,21 @@
     <h1>Finance Review</h1>
 </div>
 
+@* Approved reports whose Holded push was written off look identical to healthy ones in every
+   other view, so without this they are only discoverable by reconciling Holded by hand
+   (nobodies-collective/Humans#1045). *@
+@if (Model.FailedHoldedPushCount > 0)
+{
+    <div class="alert alert-danger">
+        <i class="fa-solid fa-triangle-exclamation me-2"></i>
+        <strong>@Model.FailedHoldedPushCount</strong>
+        approved @(Model.FailedHoldedPushCount == 1 ? "report" : "reports")
+        failed to reach Holded and @(Model.FailedHoldedPushCount == 1 ? "is" : "are") not booked as
+        @(Model.FailedHoldedPushCount == 1 ? "a payable" : "payables"). Open the report to see the
+        error and re-queue the push.
+    </div>
+}
+
 
 @if (!Model.Reports.Any())
 {
