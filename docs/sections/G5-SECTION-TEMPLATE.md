@@ -96,30 +96,36 @@ visibility flip in one diff is unreviewable.
       not a list of sections, and a context can ride into another section's project — Legal's
       lane was a no-op for exactly that reason. One line settles it:
       `ls src/Sections | grep -i <section>`, plus a look at `docs/sections/_Index.md`.
-- [ ] **If the section is *horizontal* (Auth, Audit, GDPR, Notifications), ask which of its
-      services are orchestrators before planning the move.** `peters-hard-rules.md` forbids a
-      horizontal from referencing a vertical, and the rule bites at the `ProjectReference`
-      level: a horizontal service that injects another section's `I<Section>ServiceRead`
-      cannot move into the horizontal's project, because a vertical's read interface is on a
-      *section leaf* once that section has gone to G5. Grep the section's services for
-      `I*ServiceRead` and `Humans.*.Contracts` first — the answer changes what the move
-      *is*. (AuditLog: the append path and the raw queries moved; `AuditViewerService`, which
-      resolves actor/subject/team names through Users, Teams and Google Integration, stayed in
-      `Humans.Application` as the cross-section orchestrator it is.)
-      - **`docs/sections/_Index.md` may already have answered it.** That table's stated rule for
-        its **Orchestrators** column is "service classes that inject no `I*Repository`", which is
-        the hard rules' own definition — so the column is a pre-computed list of the services
-        that cannot move into a horizontal. Auth's row had named `MagicLinkService` there since
-        before G5 existed, and that service injects `Humans.Email.Contracts`. Read the row before
-        running the greps (proven: Auth).
-      - **…and the orchestrator can take the section's *controller* with it, leaving a section
-        with no controller, no view and no resource set.** `AccountController` is Auth's by every
-        doc; run the "read the controller" test below and every one of its actions writes Users'
-        or Profiles' tables through their services, injects nothing the move internalises, and
-        reaches Auth only through the orchestrator that stayed behind. It stayed in Shell with
-        its seven views and 35 resource keys, so step 3b stopped at its first question and step
-        12 fell back to Gdpr's DI-registration check. A section that ships only a repository, a
-        service and a leaf is not an incomplete move (proven: Auth).
+- [ ] **A horizontal section (Auth, Audit, GDPR, Notifications) may reference a vertical's
+      `.Contracts` leaf. It may not reference the vertical's *section project*.** This
+      supersedes the rule that stood here until 2026-08-14, which read
+      `peters-hard-rules.md`'s "a horizontal may not reference a vertical" as reaching the
+      leaf too, and therefore concluded that a horizontal service injecting another section's
+      `I<Section>ServiceRead` "cannot move into the horizontal's project". Peter's Base-floor
+      decision makes a leaf referenceable from anywhere, and the two services that reading had
+      stranded in `Humans.Application` — `AuditViewerService` and `MagicLinkService` — moved
+      into AuditLog and Auth on exactly that basis.
+
+      So still grep the section's services for `I*ServiceRead` and `Humans.*.Contracts`, but
+      grep for the *section-project* reference the move would force, not for leaf names. A
+      leaf reference is a line in the csproj with a reason attached; a section reference is
+      the thing that cycles.
+      - **Do not read `docs/sections/_Index.md`'s Orchestrators column as a can't-move list.**
+        It is a list of service classes that inject no `I*Repository`, which is a statement
+        about the hard rules' orchestrator/service split — not about where the class may live.
+        This checklist used to say the column "is a pre-computed list of the services that
+        cannot move into a horizontal", citing Auth's `MagicLinkService` row. That was wrong
+        twice over, and lane 4b-2i moved the service it named. An orchestrator may live in the
+        section it orchestrates for (proven: Auth, AuditLog).
+      - **A controller does not follow its section's service, and a service coming home does
+        not pull its controller in either.** `AccountController` is Auth's by every doc; run
+        the "read the controller" test below and every one of its actions writes Users' or
+        Profiles' tables through their services and injects nothing the move internalises. It
+        stayed in Shell with its seven views and 35 resource keys when `MagicLinkService` was
+        in Base, and it stayed there when `MagicLinkService` moved into `Humans.Auth`, so step
+        3b still stops at its first question and step 12 still falls back to Gdpr's
+        DI-registration check. A section that ships no controller, no view and no resource set
+        is not an incomplete move (proven: Auth, twice).
 - [ ] Fan-in known: run `reforge` for inbound references before starting. A section with many
       inbound section references is a knot, goes later, and may need `<Section>.Contracts`.
       - **A section whose fan-in is measured in three digits gets split into a read-boundary

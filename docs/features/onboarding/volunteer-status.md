@@ -3,7 +3,6 @@
   src/Sections/Humans.Onboarding/**
   src/Sections/Humans.Consent/Services/**
   src/Sections/Humans.Auth/**
-  src/Humans.Application/Services/Auth/**
   src/Humans.Web/Authorization/MembershipRequiredFilter.cs
   src/Humans.Web/Authorization/RoleAssignmentClaimsTransformation.cs
   src/Humans.Web/Controllers/HomeController.cs

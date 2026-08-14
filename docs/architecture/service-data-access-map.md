@@ -577,9 +577,9 @@ No DB access, no cache.
 
 ## Auth
 
-Folder: `src/Sections/Humans.Auth/Services/` (G5, nobodies-collective/Humans#866);
-`MagicLinkService` stayed in `src/Humans.Application/Services/Auth/` as a
-cross-section orchestrator. **DbContext:** `AuthDbContext` — **peeled**
+Folder: `src/Sections/Humans.Auth/Services/` (G5, nobodies-collective/Humans#866) —
+including `MagicLinkService` and its two collaborators, which came in from
+`Humans.Application`/`Humans.Infrastructure` at G5 lane 4b-2i. **DbContext:** `AuthDbContext` — **peeled**
 (nobodies-collective/Humans#1234, part of #858) and now internal to the
 section. `RoleAssignmentRepository` injects `IDbContextFactory<AuthDbContext>`
 directly. Owns `RoleAssignments`.

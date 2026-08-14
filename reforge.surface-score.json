@@ -50,8 +50,6 @@
       "paths": [
         "src/Sections/Humans.Auth/**",
         "src/Sections/Humans.Auth.Contracts/**",
-        "src/Humans.Application/Interfaces/Auth/**",
-        "src/Humans.Application/Services/Auth/**",
         "src/Humans.Web/Authorization/**",
         "src/Humans.UI/Authorization/**"
       ],

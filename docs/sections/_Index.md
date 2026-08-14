@@ -21,7 +21,7 @@ move recipe is [`G5-SECTION-TEMPLATE.md`](G5-SECTION-TEMPLATE.md).
 | Section | Project | Invariants doc |
 |---|---|---|
 | Audit Log | `src/Sections/Humans.AuditLog` | [AuditLog.md](../../src/Sections/Humans.AuditLog/Docs/AuditLog.md) — the append path and the `/AuditLog` pages; the name-resolving read path (`AuditViewerService`, `AuditEvent`) stays in `Humans.Application`, because it injects Users', Teams' and GoogleIntegration's read interfaces and a *horizontal* section may not reference a vertical; the three Google-sync monitoring actions moved to `Humans.Monitor` for the same reason, one level up |
-| Auth | `src/Sections/Humans.Auth` | [Auth.md](../../src/Sections/Humans.Auth/Docs/Auth.md) — `role_assignments`, the role-assignment service and its §15 decorator; the magic-link sign-in path (`MagicLinkService`, `AccountController`, `Views/Account/*`) stays in Base, because that service is an orchestrator injecting `Humans.Email.Contracts` and a *horizontal* section may not reference a vertical |
+| Auth | `src/Sections/Humans.Auth` | [Auth.md](../../src/Sections/Humans.Auth/Docs/Auth.md) — `role_assignments`, the role-assignment service and its §15 decorator, and the magic-link sign-in path (`MagicLinkService` + its url-builder/rate-limiter, published as `Humans.Auth.Contracts.IMagicLinkService`). `AccountController` and `Views/Account/*` stay in Shell |
 | Agent | `src/Sections/Humans.Agent` | [Agent.md](../../src/Sections/Humans.Agent/Docs/Agent.md) |
 | Monitor | `src/Sections/Humans.Monitor` | [Monitor.md](../../src/Sections/Humans.Monitor/Docs/Monitor.md) — Drive-activity anomaly detection and the Google-sync audit trail; carved out of AuditLog because a *horizontal* may not reference a vertical, and `DriveActivityMonitorService` injects five sections while calling no repository |
 | Calendar | `src/Sections/Humans.Calendar` | [Calendar.md](../../src/Sections/Humans.Calendar/Docs/Calendar.md) |
@@ -125,12 +125,12 @@ Cross-check against [`design-rules.md` §8 (Table Ownership Map)](../architectur
 
 ## Cross-cutting concerns
 
-The technical services the business verticals use. Per the hard rules these are horizontal sections and must **not** reference vertical sections.
+The technical services the business verticals use. Per the hard rules these are horizontal sections and must **not** reference a vertical *section project*. A vertical's `.Contracts` **leaf** is a different thing and is legal from anywhere — Peter's Base-floor decision of 2026-08-14 — which is why `Humans.Auth` names `Humans.Users.Contracts` and `Humans.Email.Contracts`.
 
 | Section | Controllers | Orchestrators | Services | Repositories | Tables |
 |---------|-------------|---------------|----------|--------------|--------|
 | **Audit Log** | `AuditLogController` (`Humans.AuditLog.Controllers`) | `AuditViewerService` (`Humans.Application.Services.AuditLog` — a cross-section orchestrator; see below) | `AuditLogService` (`Humans.AuditLog.Services`) | `AuditLogRepository` / `IAuditLogRepository` (`Humans.AuditLog.Data`) | `audit_log` |
-| **Auth** | `AccountController` (Shell) | `MagicLinkService` (`Humans.Application.Services.Auth` — a cross-section orchestrator; see below) | `RoleAssignmentService`, `AdminAuthorizationService`, *`CachingRoleAssignmentService`* (`Humans.Auth.Services`) | `RoleAssignmentRepository` / `IRoleAssignmentRepository` (`Humans.Auth.Data`) | `role_assignments` |
+| **Auth** | `AccountController` (Shell) | `MagicLinkService` (`Humans.Auth.Services` — a cross-section orchestrator that lives in its own section; see below) | `RoleAssignmentService`, `AdminAuthorizationService`, *`CachingRoleAssignmentService`* (`Humans.Auth.Services`) | `RoleAssignmentRepository` / `IRoleAssignmentRepository` (`Humans.Auth.Data`) | `role_assignments` |
 | **Notifications** | `NotificationsController` (`Humans.Notifications.Controllers`) | — | `NotificationService`, `NotificationEmitter`, `NotificationInboxService`, `NotificationMeterProvider` (`Humans.Notifications.Services`) | `NotificationRepository` / `INotificationRepository` (`Humans.Notifications.Data`) | `notifications`, `notification_recipients` |
 | **GDPR** | — (export download via Shell's `ProfileController` / `GuestController`) | `GdprExportService` (`Humans.Gdpr.Services`, internal) | — | — | — (owns no tables; fans out to every `IUserDataContributor` on `Humans.Gdpr.Contracts`) |
 | **Admin Shell** | `AdminController` (`/Admin` dashboard tile only) | — | `AdminNavTree`, `AdminSidebarViewComponent`, `AdminBreadcrumbViewComponent` (Web layer) | — | — (frame only; owns no tables) |

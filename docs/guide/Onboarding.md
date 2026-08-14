@@ -12,7 +12,7 @@
   src/Humans.Web/Controllers/HomeController.cs
   src/Sections/Humans.Onboarding/Controllers/OnboardingReviewController.cs
   src/Sections/Humans.Onboarding/Services/**
-  src/Humans.Application/Services/Auth/MagicLinkService.cs
+  src/Sections/Humans.Auth/Services/MagicLinkService.cs
   src/Sections/Humans.Consent/Services/**
   src/Humans.Web/Authorization/MembershipRequiredFilter.cs
 -->

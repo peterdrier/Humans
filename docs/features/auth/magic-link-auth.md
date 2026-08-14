@@ -1,6 +1,8 @@
 <!-- freshness:triggers
-  src/Humans.Application/Services/Auth/MagicLinkService.cs
-  src/Humans.Infrastructure/Services/Auth/**
+  src/Sections/Humans.Auth/Services/MagicLinkService.cs
+  src/Sections/Humans.Auth/Services/MagicLinkUrlBuilder.cs
+  src/Sections/Humans.Auth/Services/MagicLinkRateLimiter.cs
+  src/Sections/Humans.Auth.Contracts/IMagicLinkService.cs
   src/Humans.Web/Controllers/AccountController.cs
   src/Humans.Web/Views/Account/**
   src/Humans.Application/Services/Profiles/UserEmailService.cs
