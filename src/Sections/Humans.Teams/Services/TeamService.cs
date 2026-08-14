@@ -9,7 +9,6 @@ using Humans.Application.DTOs;
 using Humans.Application.Extensions;
 using Humans.Application.Helpers;
 using Humans.AuditLog.Contracts;
-using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.EarlyEntry;
 using Humans.Email.Contracts;

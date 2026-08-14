@@ -5,7 +5,6 @@ using Humans.Application.Configuration;
 using Humans.CityPlanning.Contracts;
 using Humans.Application.DTOs;
 using Humans.AuditLog.Contracts;
-using Humans.Application.Interfaces.Auth;
 using Humans.Camps.Contracts;
 using Humans.Consent.Contracts;
 using Humans.Governance.Contracts;

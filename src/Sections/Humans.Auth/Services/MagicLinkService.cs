@@ -1,15 +1,19 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
 using NodaTime;
-using Humans.Domain.Entities;
+using Humans.Auth.Contracts;
 using Humans.Email.Contracts;
-using Humans.Application.Interfaces.Auth;
 using Humans.Users.Contracts;
-using Humans.Application.Interfaces.Users;
 
-namespace Humans.Application.Services.Auth;
+namespace Humans.Auth.Services;
 
-public sealed class MagicLinkService(
+/// <summary>
+/// The magic-link sign-in orchestrator. Moved out of <c>Humans.Application</c> at
+/// nobodies-collective/Humans#866 G5 lane 4b-2i: the Base floor ruling of 2026-08-14 makes a
+/// section's leaf reference legal from anywhere, so "it injects Humans.Email.Contracts" stopped
+/// being a reason for Auth's own sign-in path to live in the hub.
+/// </summary>
+internal sealed class MagicLinkService(
     UserManager<User> userManager,
     IUserEmailService userEmailService,
     IUserServiceRead userService,

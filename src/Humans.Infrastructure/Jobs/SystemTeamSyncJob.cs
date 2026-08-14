@@ -7,7 +7,6 @@ using NodaTime;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
 using Humans.AuditLog.Contracts;
-using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Caching;
 using Humans.Email.Contracts;
 using Humans.Application.Interfaces.GoogleIntegration;

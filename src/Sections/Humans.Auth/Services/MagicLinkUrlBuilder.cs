@@ -3,17 +3,16 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Humans.Infrastructure.Configuration;
-using Humans.Application.Interfaces.Auth;
 
-namespace Humans.Infrastructure.Services.Auth;
+namespace Humans.Auth.Services;
 
 /// <summary>
-/// Infrastructure implementation of <see cref="IMagicLinkUrlBuilder"/>. Uses
+/// Implementation of <see cref="IMagicLinkUrlBuilder"/>. Uses
 /// ASP.NET Core <see cref="IDataProtectionProvider"/> for token
 /// protection/validation and <see cref="EmailSettings.BaseUrl"/> for URL
 /// construction. Mirrors <c>UnsubscribeTokenProvider</c>.
 /// </summary>
-public sealed class MagicLinkUrlBuilder(
+internal sealed class MagicLinkUrlBuilder(
     IDataProtectionProvider dataProtection,
     IOptions<EmailSettings> emailSettings,
     ILogger<MagicLinkUrlBuilder> logger) : IMagicLinkUrlBuilder

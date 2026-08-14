@@ -2,7 +2,6 @@ using Humans.Auth.Contracts;
 using Humans.Notifications.Data;
 using Humans.Notifications.Services;
 using AwesomeAssertions;
-using Humans.Application.Interfaces.Auth;
 using NSubstitute;
 
 

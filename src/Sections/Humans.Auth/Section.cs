@@ -26,14 +26,22 @@ namespace Humans.Auth;
 /// resource-based handler that gates who may assign which role.
 /// </para>
 /// <para>
-/// The sign-in half is registered by Shell's <c>AuthSectionExtensions</c>, not here.
-/// <c>MagicLinkService</c> is a cross-section orchestrator by the hard rules' own
-/// definition — it calls no repository, and it injects <c>IEmailService</c> /
-/// <c>IEmailMessageFactory</c> from <c>Humans.Email.Contracts</c>, a *vertical* section's
-/// leaf. Auth is a horizontal section and <c>peters-hard-rules.md</c> forbids one from
-/// referencing a vertical, so the orchestrator, its two Infrastructure collaborators
-/// (<c>MagicLinkUrlBuilder</c>, <c>MagicLinkRateLimiter</c>), <c>AccountController</c> and
-/// its views all stayed in Base. Same call as AuditLog's <c>AuditViewerService</c>.
+/// The sign-in half is registered here too, as of nobodies-collective/Humans#866 G5 lane
+/// 4b-2i: <c>MagicLinkService</c> plus its two collaborators
+/// (<c>MagicLinkUrlBuilder</c>, <c>MagicLinkRateLimiter</c>). It used to live in Base
+/// because it injects <c>IEmailService</c> / <c>IEmailMessageFactory</c> from
+/// <c>Humans.Email.Contracts</c> — a *vertical* section's leaf, which the old reading of
+/// <c>peters-hard-rules.md</c> put out of a horizontal's reach. Peter's Base-floor decision
+/// of 2026-08-14 makes a leaf referenceable from anywhere, so that reason dissolved and
+/// Auth's own sign-in path came home. Behaviour is unchanged: same lifetimes, same
+/// implementations, same order of resolution.
+/// </para>
+/// <para>
+/// <c>AccountController</c> and <c>Views/Account/*</c> did <em>not</em> follow it. They stay
+/// in Shell: every action they expose writes Users'/Profiles' tables through those sections'
+/// services, and the 35 <c>Login_*</c>/<c>MagicLink*</c>/<c>GateLogin_*</c> resource keys
+/// stay in <c>SharedResource</c> with them, so the section still ships no
+/// <c>Resources/</c> folder.
 /// </para>
 /// </remarks>
 public sealed class Section : ISection
@@ -71,5 +79,12 @@ public sealed class Section : ISection
         // Resource-based handler moves into the section; the *policy* registration stays in
         // Shell's AuthorizationPolicyExtensions (template step 6's asymmetry).
         services.AddSingleton<IAuthorizationHandler, RoleAssignmentAuthorizationHandler>();
+
+        // The magic-link sign-in path, lifted verbatim out of Shell's AuthSectionExtensions
+        // (G5 lane 4b-2i). Scoped, in this order, exactly as before — the sign-in path must
+        // resolve identically across the deploy.
+        services.AddScoped<IMagicLinkUrlBuilder, MagicLinkUrlBuilder>();
+        services.AddScoped<IMagicLinkRateLimiter, MagicLinkRateLimiter>();
+        services.AddScoped<IMagicLinkService, MagicLinkService>();
     }
 }

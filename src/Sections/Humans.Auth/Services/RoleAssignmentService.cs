@@ -16,7 +16,6 @@ using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Notifications.Contracts;
 using Humans.Application.Interfaces.GoogleIntegration;
-using Humans.Application.Interfaces.Auth;
 using Humans.Users.Contracts;
 
 namespace Humans.Auth.Services;

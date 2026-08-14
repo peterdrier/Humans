@@ -1,6 +1,7 @@
+using Humans.Auth.Contracts;
+using Humans.Auth.Services;
 using AwesomeAssertions;
 using Humans.Application.DTOs;
-using Humans.Application.Interfaces.Auth;
 using Humans.Email.Contracts;
 using Humans.Users.Contracts;
 using Humans.Application.Interfaces.Users;
@@ -10,7 +11,11 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
-using MagicLinkService = Humans.Application.Services.Auth.MagicLinkService;
+// The subject moved to Humans.Auth (nobodies-collective/Humans#866 G5 lane 4b-2i) and is
+// internal there; this project reaches it through Humans.Auth's InternalsVisibleTo. The file
+// stayed here because it derives from ServiceTestHarness, which lives in this project — the
+// same reason the IVT entry exists. Assertions are unchanged from before the move.
+using MagicLinkService = Humans.Auth.Services.MagicLinkService;
 
 namespace Humans.Application.Tests.Services;
 

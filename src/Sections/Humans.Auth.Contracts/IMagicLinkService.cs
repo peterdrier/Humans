@@ -1,7 +1,7 @@
-using Humans.Domain.Entities;
+using Humans.Application.Interfaces;
 using Humans.Users.Contracts;
 
-namespace Humans.Application.Interfaces.Auth;
+namespace Humans.Auth.Contracts;
 
 /// <summary>
 /// Service for magic link authentication — login via emailed link.
@@ -31,7 +31,7 @@ public interface IMagicLinkService : IApplicationService
     string? VerifySignupToken(string token, string? expectedEmail = null);
 
     /// <summary>
-    /// Finds a user by verified <see cref="Domain.Entities.UserEmail"/>. Used
+    /// Finds a user by verified <see cref="UserEmail"/>. Used
     /// for account linking (OAuth callback) and signup double-click protection.
     /// </summary>
     Task<User?> FindUserByVerifiedEmailAsync(string email, CancellationToken ct = default);

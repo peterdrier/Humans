@@ -1,17 +1,16 @@
 using Microsoft.Extensions.Caching.Memory;
 using Humans.Application;
 using Humans.Application.Extensions;
-using Humans.Application.Interfaces.Auth;
 
-namespace Humans.Infrastructure.Services.Auth;
+namespace Humans.Auth.Services;
 
 /// <summary>
-/// Infrastructure implementation of <see cref="IMagicLinkRateLimiter"/>.
-/// Backed by <see cref="IMemoryCache"/> + the existing
-/// <c>TryReserveAsync</c> extension so Auth's short-TTL replay-protection and
-/// signup-cooldown state can live behind the Application-layer interface.
+/// Implementation of <see cref="IMagicLinkRateLimiter"/>. Backed by
+/// <see cref="IMemoryCache"/> + the existing <c>TryReserveAsync</c> extension so
+/// Auth's short-TTL replay-protection and signup-cooldown state stays behind the
+/// interface.
 /// </summary>
-public sealed class MagicLinkRateLimiter(IMemoryCache cache) : IMagicLinkRateLimiter
+internal sealed class MagicLinkRateLimiter(IMemoryCache cache) : IMagicLinkRateLimiter
 {
     public Task<bool> TryConsumeLoginTokenAsync(string token, TimeSpan lifetime)
     {

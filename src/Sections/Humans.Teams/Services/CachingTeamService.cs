@@ -1,7 +1,6 @@
 using Humans.Auth.Contracts;
 using System.Collections.Concurrent;
 using Humans.Application.DTOs;
-using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Caching;
 using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;

@@ -5,7 +5,6 @@ using Humans.Teams.Data;
 using Humans.Teams.Domain;
 using AwesomeAssertions;
 using Humans.Application.Enums;
-using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Shifts.Services;
 using Humans.Shifts.Contracts;

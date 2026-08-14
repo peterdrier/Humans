@@ -1,7 +1,6 @@
 using Humans.Auth.Contracts;
 using Humans.Domain.Helpers;
 using Humans.Teams.Contracts;
-using Humans.Application.Interfaces.Auth;
 using Humans.Users.Contracts;
 using Humans.Users.Services;
 

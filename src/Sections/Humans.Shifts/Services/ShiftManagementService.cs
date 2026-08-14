@@ -4,7 +4,6 @@ using Humans.Shifts.Services.Dtos;
 using Humans.Application.Enums;
 using Humans.Application.Extensions;
 using Humans.AuditLog.Contracts;
-using Humans.Application.Interfaces.Auth;
 using Humans.Camps.Contracts;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Shifts.Services;

@@ -3,7 +3,6 @@ using Humans.Auth.Contracts;
 using Humans.Application;
 using Humans.Domain.Enums;
 using Humans.Domain.Helpers;
-using Humans.Application.Interfaces.Auth;
 using Humans.Campaigns.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Users.Contracts;

@@ -1,6 +1,6 @@
+using Humans.Auth.Contracts;
 using System.Security.Claims;
 using AwesomeAssertions;
-using Humans.Application.Interfaces.Auth;
 using Humans.Users.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Users.Services;

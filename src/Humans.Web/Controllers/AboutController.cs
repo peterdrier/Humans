@@ -4,7 +4,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 using Humans.Web.Models;
-using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Users;
 using Humans.Users.Contracts;
 

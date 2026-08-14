@@ -1,13 +1,13 @@
-namespace Humans.Application.Interfaces.Auth;
+namespace Humans.Auth.Services;
 
 /// <summary>
 /// Rate-limits magic-link signup sends and tracks single-use consumption of
-/// login tokens. Backed by <c>IMemoryCache</c> in Infrastructure. Kept behind
-/// an interface so <see cref="IMagicLinkService"/> can live in
-/// <c>Humans.Application</c> without directly coupling to the memory-cache
-/// abstraction for cross-cutting auth state.
+/// login tokens. Backed by <c>IMemoryCache</c>. Kept behind an interface so
+/// <see cref="MagicLinkService"/> does not couple directly to the memory-cache
+/// abstraction for cross-cutting auth state. Section-internal: only
+/// <c>MagicLinkService</c> injects it and only <c>Section.Register</c> binds it.
 /// </summary>
-public interface IMagicLinkRateLimiter
+internal interface IMagicLinkRateLimiter
 {
     /// <summary>
     /// Attempts to reserve a login token so it can only be consumed once.

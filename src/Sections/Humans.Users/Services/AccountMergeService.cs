@@ -8,7 +8,6 @@ using Humans.Users.Data.Repositories;
 using Humans.Users.Contracts;
 using Humans.Domain.Enums;
 using Humans.AuditLog.Contracts;
-using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Caching;
 using Humans.Consent.Contracts;
 using Humans.Notifications.Contracts;

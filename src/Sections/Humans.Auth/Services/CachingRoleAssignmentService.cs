@@ -1,7 +1,6 @@
 using Humans.Auth.Domain;
 using Humans.Auth.Data;
 using Humans.Auth.Contracts;
-using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Caching;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
