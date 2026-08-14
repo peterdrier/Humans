@@ -21,11 +21,25 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Users.Contracts;
 
-namespace Humans.Infrastructure.Jobs;
+namespace Humans.Teams.Services;
 
 /// <summary>Background job that syncs membership for system-managed teams.</summary>
+/// <remarks>
+/// Moved here from <c>Humans.Infrastructure/Jobs</c> at G5 lane 4b-2e
+/// (nobodies-collective/Humans#866): system-team membership is a Teams invariant
+/// (Teams.md — "system team membership is managed exclusively by an automated sync job"),
+/// every write it makes lands in Teams' own tables, and three <c>ITeamService</c> members
+/// exist solely to let this job reach in from Base. The other sections it names are
+/// eligibility inputs and downstream effects, consumed through their contracts leaves.
+/// <para>
+/// <c>ISystemTeamSync</c> deliberately did NOT move: it is the type Hangfire serializes for
+/// the <c>system-team-sync</c> recurring job (<c>RecurringJob.AddOrUpdate&lt;ISystemTeamSync&gt;</c>),
+/// so its assembly-qualified name is pinned. The implementation is resolved from DI at
+/// execution time and is free to live here.
+/// </para>
+/// </remarks>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
-public class SystemTeamSyncJob(
+internal sealed class SystemTeamSyncJob(
     ITeamService teamService,
     IUserService userService,
     ICampLeadDirectory campLeadDirectory,

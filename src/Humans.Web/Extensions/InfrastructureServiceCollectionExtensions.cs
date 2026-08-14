@@ -75,15 +75,19 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<SendReConsentReminderJob>();
         services.AddTransient<MailerAudienceSyncJob>();
 
-        // Base collaborators that Teams' section file used to register on the way past.
+        // Base collaborator that Teams' section file used to register on the way past.
         // ActiveTeamsCacheInvalidator is a Humans.Infrastructure implementation of a
         // Humans.Application interface (the IInvalidator family other sections evict Teams'
-        // master cache entry through), and SystemTeamSyncJob is a Humans.Infrastructure job
-        // bound to GoogleIntegration's ISystemTeamSync — neither is Teams' to own
-        // (design §15 step 4, Governance's rule: the section that owns the file is not always
-        // the section that owns the line).
+        // master cache entry through), so it is not Teams' to own (design §15 step 4,
+        // Governance's rule: the section that owns the file is not always the section that
+        // owns the line).
+        //
+        // SystemTeamSyncJob used to be registered here on the same grounds. That claim was
+        // re-measured at G5 lane 4b-2e and was wrong — system-team membership is a Teams
+        // invariant — so the implementation and its registration both moved into
+        // Humans.Teams' Section.cs. Only ISystemTeamSync stayed in Humans.Application,
+        // because Hangfire serializes it as the recurring job's target type.
         services.AddScoped<IActiveTeamsCacheInvalidator, ActiveTeamsCacheInvalidator>();
-        services.AddScoped<ISystemTeamSync, SystemTeamSyncJob>();
 
         // Base collaborators that Governance's section file used to register on the way past.
         // The three badge-cache invalidators are Humans.Infrastructure implementations of

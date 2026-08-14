@@ -6,7 +6,7 @@
   src/Humans.Application/Interfaces/GoogleIntegration/IGoogleGroupMembershipClient.cs
   src/Sections/Humans.Teams/**
   src/Humans.Infrastructure/GoogleIntegration/HangfireGoogleGroupSyncScheduler.cs
-  src/Humans.Infrastructure/Jobs/SystemTeamSyncJob.cs
+  src/Sections/Humans.Teams/Services/SystemTeamSyncJob.cs
   src/Humans.Web/Controllers/GoogleController.cs
 -->
 <!-- freshness:flag-on-change

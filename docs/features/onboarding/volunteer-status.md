@@ -9,7 +9,7 @@
   src/Humans.Web/Controllers/HomeController.cs
   src/Humans.Domain/Constants/SystemTeamIds.cs
   src/Humans.Domain/Constants/RoleNames.cs
-  src/Humans.Infrastructure/Jobs/SystemTeamSyncJob.cs
+  src/Sections/Humans.Teams/Services/SystemTeamSyncJob.cs
 -->
 <!-- freshness:flag-on-change
   UserState access gate and Volunteers-team eligibility (name + consents) — review when team sync, claims transformation, or the access gate changes.
