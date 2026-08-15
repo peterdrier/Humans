@@ -34,6 +34,7 @@ move recipe is [`G5-SECTION-TEMPLATE.md`](G5-SECTION-TEMPLATE.md).
 | Containers | `src/Sections/Humans.Containers` | [Containers.md](../../src/Sections/Humans.Containers/Docs/Containers.md) |
 | Debug | `src/Sections/Humans.Debug` | [Debug.md](../../src/Sections/Humans.Debug/Docs/Debug.md) |
 | Development | `src/Sections/Humans.Development` | [Development.md](../../src/Sections/Humans.Development/Docs/Development.md) |
+| Early Entry | `src/Sections/Humans.EarlyEntry` | [EarlyEntry.md](../../src/Sections/Humans.EarlyEntry/Docs/EarlyEntry.md) |
 | Email | `src/Sections/Humans.Email` | [Email.md](../../src/Sections/Humans.Email/Docs/Email.md) |
 | Feedback | `src/Sections/Humans.Feedback` | [Feedback.md](../../src/Sections/Humans.Feedback/Docs/Feedback.md) |
 | Finance | `src/Sections/Humans.Finance` | [Finance.md](../../src/Sections/Humans.Finance/Docs/Finance.md) |
@@ -112,7 +113,7 @@ Cross-check against [`design-rules.md` §8 (Table Ownership Map)](../architectur
 | **Users / Identity** | `UsersAdminDebugController`, `UnsubscribeController`, `LanguageController` | `AccountDeletionService`, `UserParticipationBackfillService`, `ExternalLoginService` | `UserService`, `AccountProvisioningService`, `UnsubscribeService`, `UserEmailProviderBackfillService`, *`CachingUserService`* | `UserRepository` | `AspNetUsers`, `AspNetUserClaims`, `AspNetUserLogins`, `AspNetUserTokens`, `AspNetRoles` (legacy), `AspNetUserRoles` (legacy) |
 | **Onboarding** | `OnboardingReviewController`, `OnboardingWidgetController` (`Humans.Onboarding.Controllers`), `WelcomeController` (Shell) | `OnboardingService` (`Humans.Onboarding.Services`, internal) | `OnboardingWidgetState` (`Humans.Onboarding.Services`, internal) | — | — (owns no tables; orchestrates Profiles, Consent, Teams and Governance through their service interfaces) |
 | **Human Lifecycle** | — (admin actions via `UsersAdminController`) | `HumanLifecycleService`, `NonCompliantMemberSuspension` (both `Humans.Users.Services`, internal — moved out of Base at G5 lane 4b-2d; published via `IHumanLifecycleService` / `INonCompliantMemberSuspension` on `Humans.Users.Contracts`) | — | — | — (owns no tables) |
-| **Early Entry** | `EarlyEntryRosterController` | `EarlyEntryService` | *`CachingEarlyEntryService`* | — | — |
+| **Early Entry** | `EarlyEntryRosterController` (`Humans.EarlyEntry.Controllers`, internal) | `EarlyEntryService` (`Humans.EarlyEntry.Services`, internal) | *`CachingEarlyEntryService`* (`Humans.EarlyEntry.Services`, internal) | — | — (owns no tables; fans out over every registered `IEarlyEntryProvider` — Camps, Shifts, Teams) |
 | **Cantina** | `CantinaController` (`Humans.Cantina.Controllers`) | — | `CantinaRosterService` (`Humans.Cantina.Services`) | — | — (reads Shifts via `IShiftManagementServiceRead`; owns no tables) |
 | **Dashboard** | — (rendered on Home) | `DashboardService`, `AdminDashboardService` | — | — | — |
 | **Search** | `SearchController` (`Humans.Search.Controllers`, internal) | `SearchService` (`Humans.Search.Services`, internal) | — | — | — (owns no tables; fans out to Users, Teams, Camps, Shifts and Events through their service interfaces) |

@@ -1,6 +1,7 @@
+using Humans.Application.Interfaces;
 using NodaTime;
 
-namespace Humans.Application.Interfaces.EarlyEntry;
+namespace Humans.EarlyEntry.Contracts;
 
 /// <summary>
 /// Cross-source EE read orchestrator. Fans out over every

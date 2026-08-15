@@ -15,7 +15,7 @@ using Humans.Teams.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Auth;
-using Humans.Application.Interfaces.EarlyEntry;
+using Humans.EarlyEntry.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Data;
 

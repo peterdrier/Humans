@@ -1,17 +1,16 @@
-using Humans.Application.Interfaces.EarlyEntry;
-using Humans.Application.Interfaces.Users;
+using Humans.EarlyEntry.Contracts;
+using Humans.EarlyEntry.Models;
 using Humans.UI.Authorization;
 using Humans.UI.Controllers;
-using Humans.Web.Models.EarlyEntry;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Users.Contracts;
 
-namespace Humans.Web.Controllers;
+namespace Humans.EarlyEntry.Controllers;
 
 [Route("Shifts/Admin/EarlyEntry")]
 [Authorize(Policy = PolicyNames.ShiftDashboardAccess)]
-public sealed class EarlyEntryRosterController(
+internal sealed class EarlyEntryRosterController(
     IEarlyEntryService earlyEntryService,
     IUserServiceRead userService) : HumansControllerBase(userService)
 {
