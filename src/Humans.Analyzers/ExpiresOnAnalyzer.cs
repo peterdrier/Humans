@@ -2,6 +2,7 @@ using System;
 using System.Collections.Immutable;
 using System.Globalization;
 using System.Threading;
+using Humans.Domain.Architecture;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Operations;
@@ -31,8 +32,15 @@ public sealed class ExpiresOnAnalyzer : DiagnosticAnalyzer
     public const string UsageDiagnosticId = "HUM0010";
     public const string DeclarationDiagnosticId = "HUM0011";
 
-    private const string ExpiresOnAttributeFullName =
-        "Humans.Domain.Architecture.ExpiresOnAttribute";
+    /// <summary>
+    /// Derived from the attribute class (linked into this project by
+    /// <c>Humans.Analyzers.csproj</c>) rather than spelled as a literal: an
+    /// unresolved lookup makes <see cref="OnCompilationStart"/> register
+    /// nothing, so a stale literal would retire HUM0010/HUM0011 silently.
+    /// See nobodies-collective/Humans#1057.
+    /// </summary>
+    private static readonly string ExpiresOnAttributeFullName =
+        typeof(ExpiresOnAttribute).FullName!;
 
     /// <summary>
     /// Test hook. When non-null, replaces <c>DateTime.UtcNow.Date</c> for

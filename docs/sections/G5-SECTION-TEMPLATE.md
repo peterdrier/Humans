@@ -1126,15 +1126,14 @@ Git Bash.)
      former and lane 3a filled `Humans.Interfaces`) and the controller passes what it already
      fetched — otherwise the component re-queries and the move quietly doubles a page's reads
      (proven: Onboarding).
-   - **A SignalR hub is the health-check shape, and where it goes depends on whose types are in
-     it.** `Program.cs`'s `app.MapHub<TheHub>("/hubs/…")` names the concrete type, so a hub cannot
-     live in the section — HUM0034 fails the build for a public section type, and the section's
-     `IHubContext<TheHub>` injection needs the type visible to it either way. Apply the same test
-     as the filter base: `CityPlanningHub` relays a connection id, a display name and a lat/lng
-     and names no City Planning type at all, so it went to `Humans.UI/Hubs` and both Shell's
-     `MapHub` and the section's `IHubContext<…>` resolve it. A hub whose signatures *do* name
-     section types would stay in Shell with a contract in between, the way a health check does
-     (proven: CityPlanning; nothing has hit the second case yet).
+   - **A SignalR hub goes under the owning section's `Contracts/`.** `Program.cs`'s
+     `app.MapHub<TheHub>("/hubs/…")` names the concrete type, so the hub must be `public`, and the
+     section's own `IHubContext<TheHub>` injection needs it visible too. HUM0034's `Contracts/`
+     carve-out is exactly that split — a deliberate surface Shell and the section both depend on —
+     so `CityPlanningHub` lives at `Humans.CityPlanning/Contracts/CityPlanningHub.cs` (G5 lane
+     4b-ii). It sat in `Humans.UI/Hubs` until then, on the reading that a section type could not be
+     public at all; that was wrong, and Shell is not an option in the other direction because the
+     section names the type and a section may not reference Shell (proven: CityPlanning).
    - **The third case: the component belongs to the section, and moving it in needs a feature
      provider Shell did not have.** Gate's rule moves a section-neutral component *down* to
      `Humans.UI`; City Planning's leaves a registry-reading one in Shell and invokes it by
@@ -1245,17 +1244,42 @@ Git Bash.)
      the sweep is keyed on a Base path" has a mirror — *a move can put code into a sweep as
      easily as out of one* (proven: Guide).
 
-6b. [ ] Recurring Hangfire jobs stay in `Humans.Infrastructure/Jobs` for now: there is no
-   `ISection`-style discovery seam for jobs, and a section-owned job would have to be `public` —
-   the one thing step 5 exists to prevent. **Health checks are the same shape** —
-   `Program.cs`'s `AddHealthChecks()` chain names each `IHealthCheck` by concrete type — so a
-   section's health checks stay in Shell and consume it through `Contracts/` (proven: Agent kept
-   `AgentDocsHealthCheck` and `AnthropicHealthCheck` in Shell, which is what put a one-property
-   `IAgentAvailability` on its leaf).
-   The job consumes the section through `<Section>.Contracts` like any other Base consumer,
-   which also counts toward step 5b's consumer-in-Base test (proven: Finance, `HoldedSyncJob`;
-   Expenses and Tickets are next). The eventual seam — `ISectionRecurringJobs` called after
-   `WebApplication` is built — is not a G5 blocker.
+6b. [ ] **A recurring Hangfire job's *registration* stays in Shell; the job *type* moves with its
+   section.** This step said the opposite until G5 lane 5b-1 re-measured both halves of the old
+   claim and found both false:
+   - *"Hangfire pins a job to its declaring assembly."* It does not. `UseHumansRecurringJobs`
+     registers every job with `RecurringJob.AddOrUpdate<T>(id, …)`; the **id** is the stable key
+     and `AddOrUpdate` rewrites the stored type string at every startup, so a job that changes
+     assembly is re-pointed at boot. The only exposure is an instance in flight during the swap:
+     it fails visibly into Hangfire's Failed list and re-runs on the next tick. Peter's ruling:
+     accepted, jobs are expected to be resilient that way. No shim, no queue drain, no
+     maintenance window, and **no `retired`-array entry** (that list is "stop registering this
+     id", and no id changes when a type moves).
+   - *"A section-owned job would have to be `public` — the thing step 5 prevents."* Being public
+     is right here and step 5 already sanctions it. Shell names the concrete type at both the DI
+     registration and the `AddOrUpdate<T>` line, so the job **is** deliberate Shell-facing
+     surface: put the file under `src/Sections/Humans.<Section>/Contracts/` with namespace
+     `Humans.<Section>.Contracts`, which is HUM0034's `Contracts/` carve-out, exactly as
+     `HumansTeamControllerBase` does. `internal` is not an option — Shell has no
+     `InternalsVisibleTo` from any section — and it would fail the build loudly, not silently.
+
+   What genuinely stays in Shell is only the two registration lines, because there is still no
+   `ISection`-style discovery seam for jobs; Shell references every section, so naming a
+   section's concrete type there costs nothing. The eventual seam — `ISectionRecurringJobs`
+   called after `WebApplication` is built — is not a G5 blocker.
+
+   **A job in Base is *not* a "consumer in Base" for step 5b once it has moved.** Nine csproj
+   comments justified a `.Contracts` **leaf project** on the strength of a job that could have
+   moved all along; lane 5b-1 corrected Email's, Notifications', Issues' and Campaigns'. Check
+   whether the job is the *only* out-of-section consumer before you cite it: if it is, the
+   section wants a `Contracts/` **folder**, not a leaf project.
+
+   **Health checks are the same shape and are unmeasured** — `Program.cs`'s `AddHealthChecks()`
+   chain names each `IHealthCheck` by concrete type, which is the same "Shell names it, so it is
+   Shell-facing surface" argument. Today they stay in Shell and consume the section through
+   `Contracts/` (Agent kept `AgentDocsHealthCheck` and `AnthropicHealthCheck` in Shell, which is
+   what put a one-property `IAgentAvailability` on its leaf). Re-measure before repeating that as
+   a constraint.
    - **A job that orchestrates across the section's repository + service + store is a layer skip,
      and the move is when to fix it.** Carving `IAgentConversationRetention` — one method,
      returning the deleted count — moved the retention rule inside the section and took three

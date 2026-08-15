@@ -35,6 +35,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Hangfire.Core only: CleanupNotificationsJob's [DisableConcurrentExecution]. Hosting stays in Shell. -->
+    <PackageReference Include="Hangfire.Core" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" />
     <PackageReference Include="NodaTime" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />

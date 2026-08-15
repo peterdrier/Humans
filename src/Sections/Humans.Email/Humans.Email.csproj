@@ -38,6 +38,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!--
+      Hangfire.Core only (no server, no storage): the two recurring jobs and the
+      immediate-outbox trigger under Contracts/ need [DisableConcurrentExecution] and
+      IBackgroundJobClient. Hosting stays in Shell.
+    -->
+    <PackageReference Include="Hangfire.Core" />
     <!-- MailKit/MimeKit: the SMTP transport. Every other section's send path stops at the outbox row. -->
     <PackageReference Include="MailKit" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" />

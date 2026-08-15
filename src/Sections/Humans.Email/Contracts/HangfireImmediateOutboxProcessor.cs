@@ -1,8 +1,6 @@
 using Hangfire;
-using Humans.Email.Contracts;
-using Humans.Infrastructure.Jobs;
 
-namespace Humans.Infrastructure.Services;
+namespace Humans.Email.Contracts;
 
 /// <summary>
 /// Hangfire-backed implementation of <see cref="IImmediateOutboxProcessor"/>.
@@ -11,6 +9,12 @@ namespace Humans.Infrastructure.Services;
 /// verification, magic-link, workspace credentials) are delivered
 /// immediately.
 /// </summary>
+/// <remarks>
+/// Followed <see cref="ProcessEmailOutboxJob"/> out of <c>Humans.Infrastructure</c> at
+/// G5 lane 5b-1 (nobodies-collective/Humans#866): it names the job's concrete type, and
+/// Base cannot reference <c>Humans.Email</c> without a cycle. Shell registers it, so it
+/// is public under <c>Contracts/</c> like the job it enqueues.
+/// </remarks>
 public sealed class HangfireImmediateOutboxProcessor(IBackgroundJobClient backgroundJobClient)
     : IImmediateOutboxProcessor
 {

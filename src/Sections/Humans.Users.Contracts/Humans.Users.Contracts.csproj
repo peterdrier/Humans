@@ -19,9 +19,8 @@
     PR B forced, each because a *Base* consumer names it and Base cannot reference a
     section:
 
-      User / UserEmail / EventParticipation.  Humans.UI names the User entity twice
-      (CityPlanningHub's UserManager<User>, _LoginPartial's SignInManager<User>) and 48
-      files across Shell, Humans.UI, CityPlanning, Development and twenty test projects
+      User / UserEmail / EventParticipation.  48
+      files across Shell, CityPlanning, Development and twenty test projects
       spell UserManager<User> / SignInManager<User> / AddIdentity<User, …>. ASP.NET
       Identity's generic surface cannot be hidden, so User is public here rather than
       internal in the section, and its two nav collections drag UserEmail and

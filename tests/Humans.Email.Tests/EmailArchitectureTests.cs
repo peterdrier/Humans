@@ -19,9 +19,10 @@ namespace Humans.Email.Tests;
 /// </para>
 /// <para>
 /// Since the section's G5 move the SMTP transport, the renderer and the outbox drain are
-/// all section-internal; only <c>ProcessEmailOutboxJob</c> / <c>CleanupEmailOutboxJob</c>
-/// stay in <c>Humans.Infrastructure</c>, as scheduler shims over
-/// <c>IEmailOutboxProcessor</c> / <c>IEmailOutboxRetention</c>.
+/// all section-internal. <c>ProcessEmailOutboxJob</c> / <c>CleanupEmailOutboxJob</c> — the
+/// scheduler shims over <c>IEmailOutboxProcessor</c> / <c>IEmailOutboxRetention</c> — and
+/// <c>HangfireImmediateOutboxProcessor</c> joined them at G5 lane 5b-1, under
+/// <c>Contracts/</c> because Shell names each concrete type at registration.
 /// </para>
 /// </summary>
 public class EmailArchitectureTests
@@ -77,9 +78,10 @@ public class EmailArchitectureTests
     [HumansFact]
     public void ConnectorAbstractions_SitOnTheSideTheirImplementationLivesOn()
     {
-        // IImmediateOutboxProcessor is on the contracts leaf because Base implements it —
-        // HangfireImmediateOutboxProcessor enqueues the recurring job. IEmailBodyComposer
-        // is section-internal because both sides of it are.
+        // IImmediateOutboxProcessor is on the contracts leaf because Base used to implement
+        // it; HangfireImmediateOutboxProcessor moved into Humans.Email/Contracts/ at G5 lane
+        // 5b-1, so both sides are now section-side and the interface could go internal in a
+        // later pass. IEmailBodyComposer is section-internal because both sides of it are.
         typeof(IImmediateOutboxProcessor).Namespace
             .Should().Be("Humans.Email.Contracts");
         typeof(IImmediateOutboxProcessor).IsPublic.Should().BeTrue();

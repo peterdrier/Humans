@@ -1,7 +1,7 @@
 <!-- freshness:triggers
   src/Humans.Web/ViewComponents/AdminNavTree.cs
   src/Humans.Web/Controllers/AdminController.cs
-  src/Humans.UI/Views/Shared/_AdminLayout.cshtml
+  src/Humans.Web/Views/Shared/_AdminLayout.cshtml
 -->
 
 # Admin Shell — Section Invariants

@@ -70,14 +70,30 @@ internal static class AnalyzerTestHarness
         return await withAnalyzers.GetAnalyzerDiagnosticsAsync(Xunit.TestContext.Current.CancellationToken).ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// The analyzer assembly must never be a reference of an analyzed
+    /// compilation. It carries linked copies of the architecture attributes
+    /// (its name oracle — see nobodies-collective/Humans#1057), and
+    /// <c>GetTypeByMetadataName</c> returns <c>null</c> when a name is declared
+    /// in more than one place, so leaving it in would make every marker lookup
+    /// ambiguous and quietly disable the rule under test. Production never
+    /// references it either: <c>src/Directory.Build.props</c> attaches it with
+    /// <c>ReferenceOutputAssembly="false"</c>.
+    /// </summary>
     private static ImmutableArray<MetadataReference> BuildBaseReferences()
     {
+        var analyzerAssemblyFileName = Path.GetFileName(typeof(SurfaceBudgetAnalyzer).Assembly.Location);
+
         var builder = ImmutableArray.CreateBuilder<MetadataReference>();
         var trustedAssemblies = (string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!;
         foreach (var path in trustedAssemblies.Split(Path.PathSeparator))
         {
-            if (path.Length > 0)
-                builder.Add(MetadataReference.CreateFromFile(path));
+            if (path.Length == 0)
+                continue;
+            if (string.Equals(Path.GetFileName(path), analyzerAssemblyFileName, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            builder.Add(MetadataReference.CreateFromFile(path));
         }
         return builder.ToImmutable();
     }

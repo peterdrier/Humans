@@ -27,7 +27,7 @@ using Humans.Infrastructure.Hosting;
 using Humans.Infrastructure.Services;
 using Humans.Web.Authorization;
 using Humans.Web.Health;
-using Humans.UI.Hubs;
+using Humans.CityPlanning.Contracts;
 using Humans.Web.Middleware;
 using Microsoft.Extensions.Localization;
 using Npgsql;
