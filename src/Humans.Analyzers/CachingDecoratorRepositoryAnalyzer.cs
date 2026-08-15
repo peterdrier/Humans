@@ -129,6 +129,11 @@ public sealed class CachingDecoratorRepositoryAnalyzer : DiagnosticAnalyzer
         }
     }
 
+    /// <summary>
+    /// Finds the top-level type containing <paramref name="type"/> if it looks like a caching
+    /// decorator (name starts with <c>Caching</c> and ends with <c>Service</c>); otherwise
+    /// <see langword="null"/>.
+    /// </summary>
     /// <remarks>
     /// Matched on the <c>Caching…Service</c> name alone. The rule used to also require the
     /// <c>Humans.Infrastructure.Services</c> namespace, which covered 0 of the 11 decorators once
