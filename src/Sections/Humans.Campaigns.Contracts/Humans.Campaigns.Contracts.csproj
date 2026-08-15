@@ -1,14 +1,17 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    Campaigns' cross-section surface, carved into its own leaf project because three of its
+    Campaigns' cross-section surface, carved into its own leaf project because two of its
     consumers are still in Base: TicketSyncService and TicketQueryService
-    (Humans.Application) mark redeemed discount codes and build the code-tracking dashboard,
-    and ProcessEmailOutboxJob (Humans.Infrastructure/Jobs) records Sent/Failed against a
-    grant — recurring jobs are named by concrete type in Shell's roll-call and there is no
-    discovery seam for them yet (design §15.6b). A Contracts/ *folder* inside Humans.Campaigns
-    would therefore make Base reference a section and cycle (design §15.5b,
-    memory/architecture/section-project-cycle-fix.md).
+    (Humans.Application) mark redeemed discount codes and build the code-tracking dashboard.
+    A Contracts/ *folder* inside Humans.Campaigns would therefore make Base reference a
+    section and cycle (design §15.5b, memory/architecture/section-project-cycle-fix.md).
+
+    The grant Sent/Failed mirror is no longer a Base consumer and was already mis-attributed
+    here: the body moved into Humans.Email's EmailOutboxProcessor at Email's own G5 move, and
+    the ProcessEmailOutboxJob shim that used to name it followed it into
+    Humans.Email/Contracts/ at G5 lane 5b-1. Humans.Email references this leaf directly, and
+    the section-to-leaf edge is what keeps the graph acyclic.
 
     It holds the four members other assemblies actually call — two grant reads for the
     profile and admin-detail pages, and the two writes above — out of ICampaignService's

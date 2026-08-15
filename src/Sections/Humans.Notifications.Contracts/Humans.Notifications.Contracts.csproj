@@ -5,9 +5,15 @@
     its consumers are still in Base: eleven Humans.Application services emit through
     INotificationEmitter, AccountMergeService and GoogleResourceReconciliationJob take
     INotificationService, ConsentService and HumanLifecycleService auto-resolve through
-    INotificationAutoResolve, and CleanupNotificationsJob drives INotificationRetention.
-    A Contracts/ *folder* inside Humans.Notifications would therefore make Base reference a
-    section and cycle (design §15.5b, memory/architecture/section-project-cycle-fix.md).
+    INotificationAutoResolve. A Contracts/ *folder* inside Humans.Notifications would
+    therefore make Base reference a section and cycle (design §15.5b,
+    memory/architecture/section-project-cycle-fix.md).
+
+    INotificationRetention no longer counts towards that: its only consumer,
+    CleanupNotificationsJob, moved into Humans.Notifications/Contracts/ at G5 lane 5b-1 once
+    the "Hangfire pins a job to its assembly" claim was re-measured and found false
+    (AddOrUpdate<T>(id, …) rewrites the stored type string at every startup, so the job id is
+    the stable key). It could follow the job inward; that is a later pass.
 
     It holds exactly what lives outside the section: the four dispatch/auto-resolve/retention
     interfaces, and the three enums those signatures name — NotificationSource,

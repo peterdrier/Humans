@@ -4,15 +4,23 @@
     Email's cross-section surface, carved into its own leaf project because almost all of
     its consumers are still in Base: nine Humans.Application services and six
     Humans.Infrastructure jobs build messages through IEmailMessageFactory and send them
-    through IEmailService, Shell's ProfileController and UsersAdminController read a
-    human's outbox through IEmailOutboxServiceRead, and ProcessEmailOutboxJob /
-    CleanupEmailOutboxJob drive IEmailOutboxProcessor / IEmailOutboxRetention. A
-    Contracts/ *folder* inside Humans.Email would therefore make Base reference a section
-    and cycle (design §15.5b, memory/architecture/section-project-cycle-fix.md).
+    through IEmailService, and Shell's ProfileController and UsersAdminController read a
+    human's outbox through IEmailOutboxServiceRead. A Contracts/ *folder* inside
+    Humans.Email would therefore make Base reference a section and cycle (design §15.5b,
+    memory/architecture/section-project-cycle-fix.md).
 
-    IImmediateOutboxProcessor is here for the opposite reason: Base *implements* it
-    (HangfireImmediateOutboxProcessor enqueues the recurring job), and the section's
-    OutboxEmailService consumes it.
+    IEmailOutboxProcessor / IEmailOutboxRetention no longer count towards that: their only
+    consumers, ProcessEmailOutboxJob and CleanupEmailOutboxJob, moved into
+    Humans.Email/Contracts/ at G5 lane 5b-1 once the "Hangfire pins a job to its assembly"
+    claim was re-measured and found false (AddOrUpdate<T>(id, …) rewrites the stored type
+    string at every startup, so the job id is the stable key). Both interfaces could follow
+    them inward; that is a later pass, not this lane's.
+
+    IImmediateOutboxProcessor was here for the opposite reason — Base *implemented* it.
+    HangfireImmediateOutboxProcessor followed ProcessEmailOutboxJob into
+    Humans.Email/Contracts/ at the same lane (it names the job's concrete type, and Base
+    cannot reference Humans.Email), so both sides of this interface are now section-side
+    and it, too, could go internal in a later pass.
 
     Everything with no consumer outside the section stays internal: the outbox admin
     surface (IEmailOutboxService), the renderer, the body composer, the SMTP transport,

@@ -1,17 +1,21 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    Issues' cross-section surface, carved into its own leaf project because one of its
-    consumers is still in Base: CleanupIssuesJob (Humans.Infrastructure/Jobs) purges
-    terminal issues nightly, and recurring jobs are named by concrete type in Shell's
-    roll-call with no discovery seam yet (design §15.6b). A Contracts/ *folder* inside
-    Humans.Issues would therefore make Base reference a section and cycle
-    (design §15.5b, memory/architecture/section-project-cycle-fix.md).
+    Issues' cross-section surface, carved into its own leaf project because a consumer
+    outside the section names it: IssueCategory is named by Humans.Agent (route_to_issue),
+    so a Contracts/ *folder* inside Humans.Issues would make another section — and, before
+    G5 lane 5b-1, Base — reference Humans.Issues and cycle (design §15.5b,
+    memory/architecture/section-project-cycle-fix.md).
+
+    CleanupIssuesJob used to be the load-bearing reason for this leaf. It is not any more:
+    lane 5b-1 re-measured the "recurring jobs cannot leave Base" claim and found it false —
+    RecurringJob.AddOrUpdate<T>(id, …) rewrites the stored type string at every startup, so
+    the job id, not the assembly, is the stable key — and the job now lives in
+    Humans.Issues/Contracts/ next to the IIssuesRetention it drives. IIssuesRetention has
+    no consumer outside the section today and could follow it in; that is a later pass.
 
     It holds exactly what lives outside the section: the nav-badge count Shell's
-    NavBadgesViewComponent renders, the retention call the job drives, and IssueCategory —
-    the one Issues enum another section names (Humans.Agent's route_to_issue proposal) and
-    which therefore cannot follow the entities into the section's internal Domain/.
+    NavBadgesViewComponent renders, the retention call the job drives, and IssueCategory.
     Everything else Issues does — the triage surface, the thread, the list projection, the
     mutation results — has no consumer outside the section and stays internal.
 

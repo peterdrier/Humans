@@ -11,6 +11,8 @@ using Humans.Infrastructure.Caching;
 using Humans.Infrastructure.Configuration;
 using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Services;
+using Humans.Issues.Contracts;
+using Humans.Notifications.Contracts;
 using Humans.Web.Extensions.Infrastructure;
 using Humans.Web.Extensions.Sections;
 using Humans.Users.Contracts;
@@ -50,16 +52,24 @@ public static class InfrastructureServiceCollectionExtensions
         // (nobodies-collective/Humans#866).
         services.AddAdminSection();
 
-        // Recurring jobs for sections that have already moved out. The job types stay in
-        // Humans.Infrastructure/Jobs because UseHumansRecurringJobs names them by concrete
-        // type and there is no ISection-style discovery seam for jobs yet (design §15.6b);
-        // each reaches its section through that section's contracts leaf.
+        // Recurring jobs for sections that have already moved out. The *registration* stays
+        // here because UseHumansRecurringJobs names each job by concrete type and there is no
+        // ISection-style discovery seam for jobs yet (design §15.6b) — but that never pinned
+        // the job *type* to Humans.Infrastructure, and G5 lane 5b-1 re-measured the "Hangfire
+        // serializes the declaring assembly" claim and found it false: AddOrUpdate<T>(id, …)
+        // rewrites the stored type string at every startup, so the job id is the stable key.
+        // CleanupIssuesJob moved to Humans.Issues/Contracts/ on that finding; the rest still
+        // reach their section through its contracts leaf and are yet to move.
         services.AddScoped<SendSurveyReminderJob>();
         services.AddScoped<GateRetentionJob>();
         services.AddScoped<GateVendorCheckInJob>();
         services.AddScoped<TicketSyncJob>();
         services.AddScoped<TicketingBudgetSyncJob>();
         services.AddScoped<CleanupIssuesJob>();
+        // Added at G5 lane 5b-1: "cleanup-notifications" is in UseHumansRecurringJobs' roll-call
+        // but CleanupNotificationsJob had no DI registration anywhere, so Hangfire's
+        // AspNetCoreJobActivator (GetRequiredService by concrete type) threw on every daily tick.
+        services.AddScoped<CleanupNotificationsJob>();
         services.AddScoped<TermRenewalReminderJob>();
         services.AddScoped<SyncLegalDocumentsJob>();
         services.AddScoped<SendReConsentReminderJob>();

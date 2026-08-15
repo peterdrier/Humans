@@ -8,7 +8,8 @@ namespace Humans.Email.Contracts;
 /// without taking a dependency on the Hangfire runtime.
 /// </summary>
 /// <remarks>
-/// The implementation lives in <c>Humans.Infrastructure</c> and enqueues a
+/// The implementation lives in <c>Humans.Email/Contracts/</c> (it moved out of
+/// <c>Humans.Infrastructure</c> with the job at G5 lane 5b-1) and enqueues a
 /// one-off run of <c>ProcessEmailOutboxJob</c> in addition to the recurring
 /// 1-minute schedule. This is best-effort: if the scheduler is
 /// unreachable, the recurring run still delivers the message within a
