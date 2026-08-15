@@ -1,6 +1,7 @@
+using Humans.Application.Interfaces;
 using NodaTime;
 
-namespace Humans.Application.Interfaces.EarlyEntry;
+namespace Humans.EarlyEntry.Contracts;
 
 /// <summary>
 /// Contributes the Early Entry grants this section owns for the active event.

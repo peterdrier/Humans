@@ -63,6 +63,7 @@
     -->
     <ProjectReference Include="..\Humans.CityPlanning\Humans.CityPlanning.csproj" />
     <ProjectReference Include="..\Humans.Gdpr.Contracts\Humans.Gdpr.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.EarlyEntry\Humans.EarlyEntry.csproj" />
   </ItemGroup>
 
   <ItemGroup>

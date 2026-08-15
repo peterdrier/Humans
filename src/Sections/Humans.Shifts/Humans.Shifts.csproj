@@ -87,6 +87,7 @@
     <ProjectReference Include="..\Humans.Teams\Humans.Teams.csproj" />
     <ProjectReference Include="..\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.EarlyEntry\Humans.EarlyEntry.csproj" />
   </ItemGroup>
 
   <ItemGroup>

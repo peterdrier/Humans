@@ -1,12 +1,12 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces.EarlyEntry;
-using Humans.Infrastructure.Services.EarlyEntry;
+using Humans.EarlyEntry.Contracts;
+using Humans.EarlyEntry.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
 
-namespace Humans.Application.Tests.Services.EarlyEntry;
+namespace Humans.EarlyEntry.Tests.Services;
 
 public class CachingEarlyEntryServiceTests
 {

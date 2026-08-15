@@ -1,12 +1,12 @@
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Application;
-using Humans.Application.Interfaces.EarlyEntry;
+using Humans.EarlyEntry.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Web.Controllers;
-using Humans.Web.Models.EarlyEntry;
+using Humans.EarlyEntry.Controllers;
+using Humans.EarlyEntry.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
@@ -18,7 +18,7 @@ using NodaTime;
 using NSubstitute;
 using Humans.Users.Contracts;
 
-namespace Humans.Web.Tests.Controllers;
+namespace Humans.EarlyEntry.Tests.Controllers;
 
 public class EarlyEntryRosterControllerTests
 {

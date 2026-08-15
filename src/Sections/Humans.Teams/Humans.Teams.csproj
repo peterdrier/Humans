@@ -47,6 +47,7 @@
          AuditLog section in G5 lane 4b-2h (nobodies-collective/Humans#866). AuditLog reaches
          back only to Humans.Teams.Contracts, never to this project — no cycle. -->
     <ProjectReference Include="..\Humans.AuditLog\Humans.AuditLog.csproj" />
+    <ProjectReference Include="..\Humans.EarlyEntry\Humans.EarlyEntry.csproj" />
   </ItemGroup>
 
   <ItemGroup>

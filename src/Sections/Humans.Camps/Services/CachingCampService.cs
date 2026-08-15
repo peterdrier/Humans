@@ -5,7 +5,7 @@ using NodaTime;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Caching;
 using Humans.Camps.Contracts;
-using Humans.Application.Interfaces.EarlyEntry;
+using Humans.EarlyEntry.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Camps.Services;
 using Humans.Domain.Entities;

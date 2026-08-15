@@ -45,7 +45,6 @@ public static class InfrastructureServiceCollectionExtensions
         // Section-owned registrations. Each section file registers its own
         // repositories, services, jobs, options, and GDPR contributor forwarding.
         services.AddAuthSection();
-        services.AddEarlyEntrySection();
         // AuditLog's read+render owner (IAuditViewerService) is registered by
         // Humans.AuditLog's own Section.Register since G5 lane 4b-2h
         // (nobodies-collective/Humans#866).
