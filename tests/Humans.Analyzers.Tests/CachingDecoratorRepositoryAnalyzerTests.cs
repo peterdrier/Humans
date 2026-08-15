@@ -25,6 +25,26 @@ public class CachingDecoratorRepositoryAnalyzerTests
         }
         """;
 
+    // Assembly attributes must precede every namespace/type declaration (CS1730), so this
+    // goes first in any source that needs the compilation to be recognised as a section by
+    // AssemblyScope.IsSection.
+    private const string SectionAssemblyAttribute = """
+        [assembly: Humans.Domain.Attributes.Section("Teams")]
+
+        """;
+
+    private const string SectionAttributeStub = """
+        namespace Humans.Domain.Attributes
+        {
+            [System.AttributeUsage(System.AttributeTargets.Assembly | System.AttributeTargets.Interface | System.AttributeTargets.Class)]
+            public sealed class SectionAttribute : System.Attribute
+            {
+                public SectionAttribute(string name) { Name = name; }
+                public string Name { get; }
+            }
+        }
+        """;
+
     private static bool IsHum0020(Diagnostic d) =>
         string.Equals(d.Id, CachingDecoratorRepositoryAnalyzer.DiagnosticId, StringComparison.Ordinal);
 
@@ -234,6 +254,38 @@ public class CachingDecoratorRepositoryAnalyzerTests
             source);
 
         diagnostics.Where(IsHum0020).Should().BeEmpty();
+    }
+
+    /// <summary>
+    /// The regression test for the namespace filter that silently switched this rule off.
+    /// Every one of the 11 caching decorators lives in a section project
+    /// (nobodies-collective/Humans#866, G5) under <c>Humans.&lt;Section&gt;.Services</c>, so the
+    /// old <c>Humans.Infrastructure.Services</c> namespace requirement matched none of them
+    /// while the assembly gate happily admitted their assemblies. Without this test the rule
+    /// can die the same way again and stay green doing it.
+    /// </summary>
+    [HumansFact]
+    public async Task Fires_on_repository_in_section_project_caching_decorator()
+    {
+        var source = SectionAssemblyAttribute + SectionAttributeStub + Stubs + """
+
+            namespace Humans.Teams.Services
+            {
+                public sealed class CachingTeamService(
+                    Humans.Application.Interfaces.Repositories.ITeamRepository repository)
+                {
+                }
+            }
+            """;
+
+        var diagnostics = await AnalyzerTestHarness.RunAsync(
+            new CachingDecoratorRepositoryAnalyzer(),
+            "Humans.Teams",
+            source);
+
+        var hits = diagnostics.Where(IsHum0020).ToList();
+        hits.Should().ContainSingle();
+        hits[0].Severity.Should().Be(DiagnosticSeverity.Error);
     }
 
     [HumansFact]

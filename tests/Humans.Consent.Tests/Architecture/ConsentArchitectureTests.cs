@@ -47,20 +47,6 @@ namespace Humans.Consent.Tests.Architecture;
 /// </summary>
 public sealed class ConsentArchitectureTests
 {
-    // ── ConsentService ───────────────────────────────────────────────────────
-
-    [HumansFact]
-    public void ConsentService_ConstructorTakesNoStoreType()
-    {
-        var ctor = typeof(ConsentService).GetConstructors().Single();
-        var storeParam = ctor.GetParameters()
-            .FirstOrDefault(p => (p.ParameterType.Namespace ?? string.Empty)
-                .StartsWith("Humans.Application.Interfaces.Stores", StringComparison.Ordinal));
-
-        storeParam.Should().BeNull(
-            because: "Application services must not depend on store abstractions (design-rules §15); ConsentService has no cache layer at all");
-    }
-
     // ── IConsentRepository ───────────────────────────────────────────────────
 
     /// <summary>

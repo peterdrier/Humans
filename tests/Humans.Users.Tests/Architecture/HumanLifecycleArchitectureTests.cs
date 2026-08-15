@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Application.Interfaces.Repositories;
 using Humans.Users.Services;
 
 namespace Humans.Users.Tests.Architecture;
@@ -16,8 +17,7 @@ public class HumanLifecycleArchitectureTests
     {
         var ctor = typeof(HumanLifecycleService).GetConstructors().Single();
         var repositoryParam = ctor.GetParameters()
-            .FirstOrDefault(p => (p.ParameterType.Namespace ?? string.Empty)
-                .StartsWith("Humans.Application.Interfaces.Repositories", StringComparison.Ordinal));
+            .FirstOrDefault(p => typeof(IRepository).IsAssignableFrom(p.ParameterType));
 
         repositoryParam.Should().BeNull(
             because: "lifecycle owns no tables — it must not inject repository interfaces, only section service interfaces (design-rules §9)");

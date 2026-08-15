@@ -1,4 +1,3 @@
-using Humans.Application.Architecture;
 using AwesomeAssertions;
 using Humans.Application.Interfaces;
 using Humans.Infrastructure.Data;
@@ -35,13 +34,12 @@ public class ApplicationServicesTakeNoDbContextRule
         // shape, and the same bug Campaigns found in DisplaySortInControllersRule and Email
         // found in NoDestructiveMigrationOpsRule (nobodies-collective/Humans#866). Widening it
         // surfaced no violation, so the cost of being right here was nothing.
-        // Anchor on a type that cannot leave Humans.Application. AuditLogService was the
-        // anchor until its own G5 move, at which point typeof(...).Assembly silently became
-        // the section assembly and this rule stopped scanning Base at all — the same
-        // silent-drop the widening below exists to prevent, arriving through the anchor
-        // rather than the filter. DontFixAttribute is Base's architecture vocabulary.
-        var assemblies = new[] { typeof(DontFixAttribute).Assembly }
-            .Concat(Web.Extensions.SectionDiscoveryExtensions.SectionAssemblies());
+        // ApplicationSweepScope holds the anchor and asserts its assembly identity — the anchor
+        // has silently drifted out of Humans.Application four times, most recently to
+        // Humans.Interfaces, which meant this rule had never once scanned the project it is
+        // named for. Same silent-drop the widening below exists to prevent, arriving through
+        // the anchor rather than the filter.
+        var assemblies = ApplicationSweepScope.Assemblies();
 
         var violations = assemblies
             .SelectMany(a => a.GetTypes())

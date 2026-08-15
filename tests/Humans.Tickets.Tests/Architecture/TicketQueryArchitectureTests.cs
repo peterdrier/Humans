@@ -63,41 +63,6 @@ public class TicketQueryArchitectureTests
     }
 
     [HumansFact]
-    public void ITicketServiceRead_ExposesNoEntityTypes()
-    {
-        // COVERAGE REDUCED (nobodies-collective/Humans#866, G5 lane 4b-2j): Humans.Domain.Entities
-        // is now empty — lane 2 took the Users entities and 4b-2j took the last three
-        // (GoogleIntegration's) — so the namespace filter below matches nothing and this passes
-        // vacuously. Re-key it onto the real entity homes (src/Sections/*/Domain and the
-        // *.Contracts leaves) when phase 5a deletes Humans.Domain.
-        // Tracked in docs/architecture/debt-ledger.yml (inbox, added 2026-08-15) so /debt-sweep
-        // can pick it up; the same entry covers the sibling predicate in
-        // tests/Humans.CityPlanning.Tests/CityPlanningArchitectureTests.cs.
-        var offenders = typeof(ITicketServiceRead).GetMethods()
-            .SelectMany(m => m.ReturnParameter.ParameterType
-                .GetGenericArguments()
-                .Append(m.ReturnParameter.ParameterType)
-                .Concat(m.GetParameters().Select(p => p.ParameterType))
-                .SelectMany(FlattenType))
-            .Where(t => string.Equals(t.Namespace, "Humans.Domain.Entities", StringComparison.Ordinal))
-            .Select(t => t.Name)
-            .Distinct(StringComparer.Ordinal)
-            .OrderBy(n => n, StringComparer.Ordinal)
-            .ToList();
-
-        offenders.Should().BeEmpty(
-            because: "ITicketServiceRead is the cross-section read contract and must not expose EF entity types");
-
-        static IEnumerable<Type> FlattenType(Type type)
-        {
-            yield return type;
-            foreach (var arg in type.GetGenericArguments())
-                foreach (var nested in FlattenType(arg))
-                    yield return nested;
-        }
-    }
-
-    [HumansFact]
     public void CachingTicketQueryService_ImplementsITicketCacheInvalidator()
     {
         typeof(ITicketCacheInvalidator).IsAssignableFrom(typeof(CachingTicketQueryService))

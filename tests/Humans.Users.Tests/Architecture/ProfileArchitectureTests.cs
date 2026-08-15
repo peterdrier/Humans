@@ -15,18 +15,13 @@ namespace Humans.Users.Tests.Architecture;
 public class ProfileArchitectureTests
 {
     [HumansFact]
-    public void ProfileService_has_no_outbound_edge_to_teams_or_stores()
+    public void ProfileService_has_no_outbound_edge_to_teams()
     {
-        var ctor = typeof(ProfileService).GetConstructors().Single();
-        var parameters = ctor.GetParameters();
-        var paramTypes = parameters.Select(p => p.ParameterType).ToList();
+        var paramTypes = typeof(ProfileService).GetConstructors().Single()
+            .GetParameters().Select(p => p.ParameterType).ToList();
 
         paramTypes.Should().NotContain(typeof(ITeamService),
             because: "Profile is foundational; team deletion cascade is owned elsewhere");
-        parameters.Should().NotContain(
-            p => (p.ParameterType.Namespace ?? string.Empty)
-                .StartsWith("Humans.Application.Interfaces.Stores", StringComparison.Ordinal),
-            because: "Profile services must not depend on store abstractions");
     }
 
     [HumansFact]

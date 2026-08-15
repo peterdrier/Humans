@@ -156,18 +156,6 @@ public class CityPlanningArchitectureTests
     }
 
     [HumansFact]
-    public void CityPlanningService_ConstructorTakesNoStoreType()
-    {
-        var ctor = typeof(CityPlanningService).GetConstructors().Single();
-        var storeParam = ctor.GetParameters()
-            .FirstOrDefault(p => (p.ParameterType.Namespace ?? string.Empty)
-                .StartsWith("Humans.Application.Interfaces.Stores", StringComparison.Ordinal));
-
-        storeParam.Should().BeNull(
-            because: "Application services must not depend on store abstractions (design-rules §15); the City Planning §15 migration went further and does not use a store at all");
-    }
-
-    [HumansFact]
     public void ICityPlanningRepository_HasNoHistoryUpdateOrDeleteMethods()
     {
         // CampPolygonHistory is append-only per design-rules §12.

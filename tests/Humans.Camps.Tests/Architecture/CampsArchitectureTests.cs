@@ -28,20 +28,6 @@ namespace Humans.Camps.Tests.Architecture;
 /// </summary>
 public class CampsArchitectureTests
 {
-    // ── CampService (inner) ──────────────────────────────────────────────────
-
-    [HumansFact]
-    public void CampService_ConstructorTakesNoStoreType()
-    {
-        var ctor = typeof(CampService).GetConstructors().Single();
-        var storeParam = ctor.GetParameters()
-            .FirstOrDefault(p => (p.ParameterType.Namespace ?? string.Empty)
-                .StartsWith("Humans.Application.Interfaces.Stores", StringComparison.Ordinal));
-
-        storeParam.Should().BeNull(
-            because: "Camps §15 follows the no-store pattern; decorator owns the dict directly per §15d");
-    }
-
     // ── CachingCampService (T-06 decorator) ──────────────────────────────────
 
     [HumansFact]

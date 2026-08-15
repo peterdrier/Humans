@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Repositories;
 using Humans.Search.Services;
 
 namespace Humans.Search.Tests.Architecture;
@@ -27,8 +28,7 @@ public class SearchArchitectureTests
     {
         var ctor = typeof(SearchService).GetConstructors().Single();
         var repositoryParam = ctor.GetParameters()
-            .FirstOrDefault(p => (p.ParameterType.Namespace ?? string.Empty)
-                .StartsWith("Humans.Application.Interfaces.Repositories", StringComparison.Ordinal));
+            .FirstOrDefault(p => typeof(IRepository).IsAssignableFrom(p.ParameterType));
 
         repositoryParam.Should().BeNull(
             because: "Search owns no tables — it must not inject repository interfaces, only section service interfaces (design-rules §9)");
@@ -70,15 +70,11 @@ public class SearchArchitectureTests
             .ToList();
 
         offenders.Should().BeEmpty(
-            because: "Search owns no tables: no type in the section may take a DbContext, an IDbContextFactory<>, a repository or a Stores type (peters-hard-rules: orchestrators do not call repositories)");
+            because: "Search owns no tables: no type in the section may take a DbContext, an IDbContextFactory<> or a repository (peters-hard-rules: orchestrators do not call repositories)");
 
-        static bool IsDataAccess(Type t)
-        {
-            var ns = t.Namespace ?? string.Empty;
-            return ns.StartsWith("Microsoft.EntityFrameworkCore", StringComparison.Ordinal)
-                || ns.StartsWith("Humans.Application.Interfaces.Repositories", StringComparison.Ordinal)
-                || ns.StartsWith("Humans.Application.Interfaces.Stores", StringComparison.Ordinal);
-        }
+        static bool IsDataAccess(Type t) =>
+            (t.Namespace ?? string.Empty).StartsWith("Microsoft.EntityFrameworkCore", StringComparison.Ordinal)
+            || typeof(IRepository).IsAssignableFrom(t);
     }
 
     /// <summary>

@@ -16,7 +16,6 @@ public sealed class CachingDecoratorRepositoryAnalyzer : DiagnosticAnalyzer
 {
     public const string DiagnosticId = "HUM0020";
 
-    private const string InfrastructureServicesPrefix = "Humans.Infrastructure.Services";
     private const string IRepositoryFullName = "Humans.Application.Interfaces.Repositories.IRepository";
 
     private static readonly LocalizableString Title =
@@ -130,6 +129,14 @@ public sealed class CachingDecoratorRepositoryAnalyzer : DiagnosticAnalyzer
         }
     }
 
+    /// <remarks>
+    /// Matched on the <c>Caching…Service</c> name alone. The rule used to also require the
+    /// <c>Humans.Infrastructure.Services</c> namespace, which covered 0 of the 11 decorators once
+    /// G5 (nobodies-collective/Humans#866) moved every one of them into a section project — the
+    /// assembly gate already admits sections, so the namespace test alone was switching an
+    /// Error-severity rule off entirely. The §10 silent-drop shape: the rule kept passing while
+    /// covering nothing.
+    /// </remarks>
     private static INamedTypeSymbol? FindContainingCachingDecorator(INamedTypeSymbol type)
     {
         var topLevel = type;
@@ -140,15 +147,7 @@ public sealed class CachingDecoratorRepositoryAnalyzer : DiagnosticAnalyzer
             || !topLevel.Name.EndsWith("Service", System.StringComparison.Ordinal))
             return null;
 
-        var ns = topLevel.ContainingNamespace?.ToDisplayString();
-        if (ns is null)
-            return null;
-
-        if (string.Equals(ns, InfrastructureServicesPrefix, System.StringComparison.Ordinal)
-            || ns.StartsWith(InfrastructureServicesPrefix + ".", System.StringComparison.Ordinal))
-            return topLevel;
-
-        return null;
+        return topLevel;
     }
 
     private static bool ImplementsRepositoryMarker(ITypeSymbol? type, INamedTypeSymbol repositoryMarker)

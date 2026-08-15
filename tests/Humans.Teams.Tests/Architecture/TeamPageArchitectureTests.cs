@@ -1,6 +1,7 @@
 using Humans.GoogleIntegration.Contracts;
 using Humans.Teams.Services;
 using AwesomeAssertions;
+using Humans.Application.Interfaces.Repositories;
 using Humans.Teams.Contracts;
 using TeamPageService = Humans.Teams.Services.TeamPageService;
 
@@ -42,8 +43,7 @@ public class TeamPageArchitectureTests
         // (A2 deferred); HUM0017 only catches cross-section repository injection.
         var ctor = typeof(TeamPageService).GetConstructors().Single();
         var repoParam = ctor.GetParameters()
-            .FirstOrDefault(p => (p.ParameterType.Namespace ?? string.Empty)
-                .StartsWith("Humans.Application.Interfaces.Repositories", StringComparison.Ordinal));
+            .FirstOrDefault(p => typeof(IRepository).IsAssignableFrom(p.ParameterType));
 
         repoParam.Should().BeNull(
             because: "TeamPageService owns no tables — it is a composer that stitches sibling services (design-rules §2c)");

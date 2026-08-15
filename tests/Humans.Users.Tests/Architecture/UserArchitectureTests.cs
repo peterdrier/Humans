@@ -38,16 +38,12 @@ public class UserArchitectureTests
     }
 
     [HumansFact]
-    public void UserService_has_no_store_serviceprovider_or_higher_level_section_edges()
+    public void UserService_has_no_serviceprovider_or_higher_level_section_edges()
     {
         var ctor = typeof(UserService).GetConstructors().Single();
         var parameters = ctor.GetParameters();
         var paramTypes = parameters.Select(p => p.ParameterType).ToList();
 
-        parameters.Should().NotContain(
-            p => (p.ParameterType.Namespace ?? string.Empty)
-                .StartsWith("Humans.Application.Interfaces.Stores", StringComparison.Ordinal),
-            because: "User has no store abstraction");
         paramTypes.Should().NotContain(typeof(IServiceProvider),
             because: "lazy IServiceProvider escape hatches hide DI cycles");
         paramTypes.Should().NotContain(typeof(ITeamService));

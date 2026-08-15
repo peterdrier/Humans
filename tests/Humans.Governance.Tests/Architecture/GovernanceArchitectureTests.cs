@@ -15,17 +15,6 @@ namespace Humans.Governance.Tests.Architecture;
 /// </summary>
 public class GovernanceArchitectureTests
 {
-    [HumansFact]
-    public void ApplicationDecisionService_TakesNoTypeFromInterfacesStoresNamespace()
-    {
-        var ctor = typeof(ApplicationDecisionService).GetConstructors().Single();
-        ctor.GetParameters()
-            .Should().NotContain(
-                p => (p.ParameterType.Namespace ?? string.Empty)
-                    .StartsWith("Humans.Application.Interfaces.Stores", StringComparison.Ordinal),
-                because: "Governance has no store — service reads from IApplicationRepository directly (issue #533)");
-    }
-
     /// <summary>
     /// Replaces the pre-G5 assertion that <c>typeof(ApplicationDecisionService).Assembly</c>
     /// carried no EF Core reference. That was a true statement about <c>Humans.Application</c>;

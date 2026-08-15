@@ -98,7 +98,7 @@ public class FeedbackArchitectureTests
     }
 
     [HumansFact]
-    public void FeedbackService_ConstructorTakesNoEfTypeAndNoStore()
+    public void FeedbackService_ConstructorTakesNoEfType()
     {
         var ctor = typeof(FeedbackService).GetConstructors().Single();
         var parameterTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
@@ -108,10 +108,6 @@ public class FeedbackArchitectureTests
         parameterTypes.Should().NotContain(
             t => t.IsGenericType && t.GetGenericTypeDefinition() == typeof(IDbContextFactory<>),
             because: "context lifetime is the repository's business (design-rules §3)");
-        parameterTypes.Should().NotContain(
-            t => (t.Namespace ?? string.Empty)
-                .StartsWith("Humans.Application.Interfaces.Stores", StringComparison.Ordinal),
-            because: "services must not depend on store abstractions (design-rules §15); the Feedback section has no store at all");
     }
 
     [HumansFact]

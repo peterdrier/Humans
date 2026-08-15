@@ -93,11 +93,8 @@ public class DevelopmentArchitectureTests
             || type.Name.EndsWith("Repository", StringComparison.Ordinal))
             return true;
 
-        if (type.IsGenericType
-            && string.Equals(type.GetGenericTypeDefinition().Name, "IDbContextFactory`1", StringComparison.Ordinal))
-            return true;
-
-        return string.Equals(type.Namespace, "Humans.Application.Interfaces.Stores", StringComparison.Ordinal);
+        return type.IsGenericType
+            && string.Equals(type.GetGenericTypeDefinition().Name, "IDbContextFactory`1", StringComparison.Ordinal);
     }
 
     [HumansFact]

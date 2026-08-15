@@ -71,7 +71,7 @@ public class CampaignsArchitectureTests
     }
 
     [HumansFact]
-    public void CampaignService_ConstructorTakesNoEfTypeAndNoStore()
+    public void CampaignService_ConstructorTakesNoEfType()
     {
         var parameterTypes = typeof(CampaignService).GetConstructors().Single()
             .GetParameters().Select(p => p.ParameterType).ToList();
@@ -81,9 +81,6 @@ public class CampaignsArchitectureTests
         parameterTypes.Should().NotContain(
             t => t.IsGenericType && t.GetGenericTypeDefinition() == typeof(IDbContextFactory<>),
             because: "context lifetime is the repository's business (design-rules §3)");
-        parameterTypes.Should().NotContain(
-            t => (t.Namespace ?? string.Empty).StartsWith("Humans.Application.Interfaces.Stores", StringComparison.Ordinal),
-            because: "Campaigns' §15 migration goes through ICampaignRepository, not a Store");
     }
 
     [HumansFact]

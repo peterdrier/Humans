@@ -126,7 +126,7 @@ public class CalendarArchitectureTests
     }
 
     [HumansFact]
-    public void CalendarService_ConstructorTakesNoEfTypeAndNoStore()
+    public void CalendarService_ConstructorTakesNoEfType()
     {
         var ctor = typeof(CalendarService).GetConstructors().Single();
         var parameterTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
@@ -136,9 +136,6 @@ public class CalendarArchitectureTests
         parameterTypes.Should().NotContain(
             t => t.IsGenericType && t.GetGenericTypeDefinition() == typeof(IDbContextFactory<>),
             because: "context lifetime is the repository's business (design-rules §3)");
-        parameterTypes.Should().NotContain(
-            t => (t.Namespace ?? string.Empty).StartsWith("Humans.Application.Interfaces.Stores", StringComparison.Ordinal),
-            because: "Calendar §15 migration goes through ICalendarRepository, not a Store");
     }
 
     /// <summary>

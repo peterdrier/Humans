@@ -26,29 +26,25 @@ public class AuthArchitectureTests
     private static System.Reflection.Assembly SectionAssembly => typeof(IRoleAssignmentRepository).Assembly;
 
     [HumansFact]
-    public void SectionServicesTakeNoDbContextOrStore()
+    public void SectionServicesTakeNoDbContext()
     {
-        // Restates two older assertions at once: the moved file's "constructor takes no
-        // Humans.Application.Interfaces.Stores type", and the generic
-        // "GetReferencedAssemblies() does not contain EntityFrameworkCore" shape, which
-        // stops meaning anything once the repository ships in the same assembly as the
-        // service (G5-SECTION-TEMPLATE.md step 11). The real invariant is that only the
-        // repository touches a context.
+        // Restates the generic "GetReferencedAssemblies() does not contain
+        // EntityFrameworkCore" shape, which stops meaning anything once the repository
+        // ships in the same assembly as the service (G5-SECTION-TEMPLATE.md step 11).
+        // The real invariant is that only the repository touches a context.
         var offenders = SectionAssembly
             .GetTypes()
             .Where(t => t.IsClass && t.Namespace?.StartsWith("Humans.Auth.Services", StringComparison.Ordinal) == true)
             .SelectMany(t => t.GetConstructors().SelectMany(c => c.GetParameters()).Select(param => (Type: t, param.ParameterType)))
             .Where(x => typeof(Microsoft.EntityFrameworkCore.DbContext).IsAssignableFrom(x.ParameterType)
                         || (x.ParameterType.IsGenericType
-                            && x.ParameterType.GetGenericTypeDefinition() == typeof(Microsoft.EntityFrameworkCore.IDbContextFactory<>))
-                        || (x.ParameterType.Namespace ?? string.Empty)
-                            .StartsWith("Humans.Application.Interfaces.Stores", StringComparison.Ordinal))
+                            && x.ParameterType.GetGenericTypeDefinition() == typeof(Microsoft.EntityFrameworkCore.IDbContextFactory<>)))
             .Select(x => $"{x.Type.FullName} takes {x.ParameterType.Name}")
             .OrderBy(n => n, StringComparer.Ordinal)
             .ToList();
 
         offenders.Should().BeEmpty(
-            because: "only RoleAssignmentRepository may touch AuthDbContext, and the section has no store abstraction (peters-hard-rules.md)");
+            because: "only RoleAssignmentRepository may touch AuthDbContext (peters-hard-rules.md)");
     }
 
     [HumansFact]

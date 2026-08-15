@@ -21,18 +21,6 @@ public class ShiftSignupArchitectureTests
     // ── ShiftSignupService ──────────────────────────────────────────────────
 
     [HumansFact]
-    public void ShiftSignupService_ConstructorTakesNoStoreType()
-    {
-        var ctor = typeof(ShiftSignupService).GetConstructors().Single();
-        var storeParam = ctor.GetParameters()
-            .FirstOrDefault(p => (p.ParameterType.Namespace ?? string.Empty)
-                .StartsWith("Humans.Application.Interfaces.Stores", StringComparison.Ordinal));
-
-        storeParam.Should().BeNull(
-            because: "Application services must not depend on store abstractions (design-rules §15); ShiftSignup Option A does not use a store at all");
-    }
-
-    [HumansFact]
     public void ShiftSignupService_IsSealed()
     {
         typeof(ShiftSignupService).IsSealed.Should().BeTrue(

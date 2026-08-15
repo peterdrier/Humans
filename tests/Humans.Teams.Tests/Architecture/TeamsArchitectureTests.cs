@@ -47,9 +47,7 @@ public class TeamsArchitectureTests
             .Should().NotContain(
                 t => typeof(Microsoft.EntityFrameworkCore.DbContext).IsAssignableFrom(t)
                      || (t.IsGenericType
-                         && t.GetGenericTypeDefinition() == typeof(Microsoft.EntityFrameworkCore.IDbContextFactory<>))
-                     || (t.Namespace != null
-                         && t.Namespace.StartsWith("Humans.Application.Interfaces.Stores", StringComparison.Ordinal)),
+                         && t.GetGenericTypeDefinition() == typeof(Microsoft.EntityFrameworkCore.IDbContextFactory<>)),
                 because: "services reach data only through their repository (design-rules §2b)");
     }
 

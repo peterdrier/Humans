@@ -1,4 +1,3 @@
-using Humans.Application.Architecture;
 using AwesomeAssertions;
 using Humans.Camps.Services;
 using Microsoft.Extensions.Caching.Memory;
@@ -128,13 +127,11 @@ public class ApplicationServicesTakeNoMemoryCacheRule
         // Scan Humans.Application *and* every G5 section assembly. Scoping this to
         // Humans.Application alone would let a section quietly leave the sweep the moment it
         // moved out — the §10 silent-drop shape: the rule keeps passing while covering less.
-        // Anchor on a type that cannot leave Humans.Application. AuditLogService was the
-        // anchor until its own G5 move, at which point typeof(...).Assembly silently became
-        // the section assembly and this rule stopped scanning Base at all — the same
-        // silent-drop the widening below exists to prevent, arriving through the anchor
-        // rather than the filter. DontFixAttribute is Base's architecture vocabulary.
-        var assemblies = new[] { typeof(DontFixAttribute).Assembly }
-            .Concat(Web.Extensions.SectionDiscoveryExtensions.SectionAssemblies());
+        // ApplicationSweepScope holds the anchor and asserts its assembly identity — the anchor
+        // has silently drifted out of Humans.Application four times, most recently to
+        // Humans.Interfaces, which meant this rule had never once scanned the project it is
+        // named for.
+        var assemblies = ApplicationSweepScope.Assemblies();
 
         var violations = assemblies
             .SelectMany(a => a.GetTypes())

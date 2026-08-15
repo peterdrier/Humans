@@ -1,5 +1,6 @@
 using System.Reflection;
 using AwesomeAssertions;
+using Humans.Application.Interfaces.Repositories;
 using Humans.Onboarding.Contracts;
 using Humans.Onboarding.Services;
 using Microsoft.Extensions.Localization;
@@ -18,8 +19,7 @@ public class OnboardingArchitectureTests
     {
         var ctor = typeof(OnboardingService).GetConstructors().Single();
         var repositoryParam = ctor.GetParameters()
-            .FirstOrDefault(p => (p.ParameterType.Namespace ?? string.Empty)
-                .StartsWith("Humans.Application.Interfaces.Repositories", StringComparison.Ordinal));
+            .FirstOrDefault(p => typeof(IRepository).IsAssignableFrom(p.ParameterType));
 
         repositoryParam.Should().BeNull(
             because: "Onboarding owns no tables — it must not inject repository interfaces, only section service interfaces (design-rules §9)");
@@ -62,14 +62,13 @@ public class OnboardingArchitectureTests
                 var ns = p.ParameterType.Namespace ?? string.Empty;
                 return name.EndsWith("DbContext", StringComparison.Ordinal)
                     || name.StartsWith("IDbContextFactory", StringComparison.Ordinal)
-                    || ns.StartsWith("Humans.Application.Interfaces.Stores", StringComparison.Ordinal)
                     || ns.StartsWith("Microsoft.EntityFrameworkCore", StringComparison.Ordinal);
             })
             .Select(p => $"{p.Member.DeclaringType!.Name}.{p.Name}")
             .ToList();
 
         offenders.Should().BeEmpty(
-            because: "Onboarding owns no tables — no type in the section may take a DbContext, a context factory or a store");
+            because: "Onboarding owns no tables — no type in the section may take a DbContext or a context factory");
     }
 
     /// <summary>

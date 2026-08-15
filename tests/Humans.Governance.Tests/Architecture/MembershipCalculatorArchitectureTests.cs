@@ -1,5 +1,6 @@
 using Humans.Auth.Contracts;
 using AwesomeAssertions;
+using Humans.Application.Interfaces.Repositories;
 using Humans.Teams.Contracts;
 using Humans.Governance.Services;
 
@@ -46,8 +47,7 @@ public class MembershipCalculatorArchitectureTests
         var ctor = typeof(MembershipCalculator).GetConstructors().Single();
         ctor.GetParameters()
             .Should().NotContain(
-                p => (p.ParameterType.Namespace ?? string.Empty)
-                    .StartsWith("Humans.Application.Interfaces.Repositories", StringComparison.Ordinal),
+                p => typeof(IRepository).IsAssignableFrom(p.ParameterType),
                 because: "MembershipCalculator owns no data — it must read only through other sections' service interfaces");
     }
 
