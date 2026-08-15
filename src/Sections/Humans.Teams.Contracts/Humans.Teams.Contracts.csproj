@@ -40,10 +40,18 @@
     (Humans.Onboarding.Contracts, which holds none), so the chain terminates in two hops. Note
     that Base references Humans.Users.Contracts, so nothing in that project may ever reference
     this one.
+
+    G5 lane 3c deleted a reference to Humans.Auth.Contracts. It was dead, not unwound: a grep
+    for "Auth" across every file under this project matched only the ProjectReference line
+    itself — no using, no fully-qualified name, no see cref. The 2026-08-14 Base-floor design
+    listed Teams.Contracts -> Auth.Contracts as one of two known leaf-to-leaf edges needing an
+    unwind; it was never an edge, only a stale line. Do not re-add it: Auth.Contracts
+    references Humans.Users.Contracts, so an edge from here would make this leaf's chain
+    Teams -> Auth -> Users -> Onboarding, four hops of graph nobody is watching, for a
+    dependency this project does not have.
   -->
 
   <ItemGroup>
-    <ProjectReference Include="..\Humans.Auth.Contracts\Humans.Auth.Contracts.csproj" />
     <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
     <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
   </ItemGroup>

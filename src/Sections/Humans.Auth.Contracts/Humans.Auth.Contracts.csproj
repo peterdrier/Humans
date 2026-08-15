@@ -9,12 +9,27 @@
     reference a section and cycle (design §15.5b,
     memory/architecture/section-project-cycle-fix.md).
 
-    Framework-free by construction (Microsoft.NET.Sdk; no FrameworkReference): the one
-    piece of Auth's public surface that needs ASP.NET — RoleAssignmentOperationRequirement,
-    an IAuthorizationRequirement Shell's UsersAdminController passes to
-    IAuthorizationService.AuthorizeAsync — sits in Humans.Auth's own Contracts/ *folder*
-    instead. Tickets was the first section to ship both halves; the split is what each may
-    name (template step 5b).
+    RoleAssignmentOperationRequirement — an IAuthorizationRequirement Shell's
+    UsersAdminController passes to IAuthorizationService.AuthorizeAsync — sits in Humans.Auth's
+    own Contracts/ *folder* rather than here. Tickets was the first section to ship both halves;
+    the split is what each may name (template step 5b).
+
+    That placement stands, but its old stated reason does not. This comment used to read
+    "framework-free by construction (Microsoft.NET.Sdk; no FrameworkReference)", i.e. that the
+    leaf *could not* name an ASP.NET type. Measured false, G5 lane 3c, 2026-08-15:
+    Humans.Interfaces has carried FrameworkReference Microsoft.AspNetCore.App since ISection
+    landed, and FrameworkReference flows transitively through ProjectReference, so this leaf
+    resolves Microsoft.AspNetCore.App with IsTransitiveFrameworkReference=true. It could name
+    IAuthorizationRequirement today and the build would not complain.
+
+    The reason to keep the requirement out is therefore a choice, not a constraint: Base
+    consumers of this leaf want Auth's *vocabulary*, not its ASP.NET authorization plumbing, and
+    the one type that is plumbing has exactly one caller, in Shell. The rule that is actually
+    mechanical here is the ProjectReference set below — see Humans.Interfaces.csproj for the
+    single invariant (zero Humans.* ProjectReferences on Base; external packages unrestricted,
+    Peter 2026-08-15). Enforcement of "this leaf names no ASP.NET type" now lives entirely in
+    AuthArchitectureTests.ContractsLeafNamesNoAspNetType, which inspects the emitted assembly's
+    referenced-assembly list. Delete that test and nothing else is watching.
 
     AssignRoleAsync/EndRoleAsync return the section's own RoleAssignmentResult rather than
     Humans.Onboarding.Contracts.OnboardingResult, which they returned in Base.
@@ -24,10 +39,15 @@
     interface's members return Humans.Users.Contracts.User, and its Base consumer
     (Humans.Application's ExternalLoginService, which calls FindUserByVerifiedEmailAsync) cannot
     reference the Humans.Auth *section* project — design §15 step 5b's "a consumer in Base forces
-    Humans.<Section>.Contracts", the same shape that put IUserService on the Users leaf. It is
-    the third instance of the leaf-to-leaf edge the 2026-08-14 Base-floor decision lists for
-    unwinding (Email.Contracts → Events.Contracts, Teams.Contracts → Auth.Contracts); it unwinds
-    when User stops being the return type, not before.
+    Humans.<Section>.Contracts", the same shape that put IUserService on the Users leaf.
+
+    It is NOT an unwind item, and the 2026-08-14 design's "each gets unwound" phrasing was
+    corrected in G5 lane 3c. Humans.Users.Contracts holds exactly one ProjectReference of its own
+    (Humans.Onboarding.Contracts, which holds none), so this chain terminates and cannot cycle.
+    The rule is: a leaf may reference Base and any leaf that itself has zero project references.
+    Of the two edges that design bullet named for unwinding, Teams.Contracts → Auth.Contracts
+    turned out to be a dead line (deleted in 3c) and Email.Contracts → Events.Contracts
+    terminates in a zero-reference leaf. Neither was ever an unwind.
   -->
 
   <ItemGroup>

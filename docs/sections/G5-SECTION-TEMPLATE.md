@@ -18,7 +18,8 @@ one-method contract), Calendar (the first to keep an *internal* `I<Section>Servi
 shipping an empty `Contracts/`, the first whose name collided with a Base concern, and the first
 whose render test had to seed through a §15 caching decorator), Campaigns (the first moved
 section carrying an `Architecture/Baselines` row, and the first whose contracts leaf had to
-reference `Humans.Domain`), Feedback (the first whose `Contracts/` is a folder despite a
+reference `Humans.Domain` — a project deleted in G5 lane 3b; that leaf now takes
+`Humans.Interfaces`, same namespaces), Feedback (the first whose `Contracts/` is a folder despite a
 consumer in another section, and the first to drop `I<Section>Service` entirely — its whole
 DTO surface stayed internal behind two primitive-returning reads), Issues (the first to take a
 block of markup *out* of a Shell view to bring its resource keys home, and the first whose
@@ -236,8 +237,13 @@ Git Bash.)
    (spec §5), `FrameworkReference Microsoft.AspNetCore.App`, the section's own NuGet packages,
    `<None Include="**\*.md" />`, and the three `<Using>` items Sdk.Razor does not inherit from
    Sdk.Web (spec §2): `Microsoft.AspNetCore.Http`, `Microsoft.AspNetCore.Routing`,
-   `Microsoft.Extensions.Logging`. Project references: `Humans.Interfaces`, `Humans.Domain`,
-   `Humans.Application`, `Humans.Infrastructure`, `Humans.UI`. Add to `Humans.slnx` **and add a
+   `Microsoft.Extensions.Logging`. Project references: `Humans.Interfaces`,
+   `Humans.Application`, `Humans.Infrastructure`, `Humans.UI`. (**`Humans.Domain` was on this
+   list until G5 lane 3b deleted the project — 2026-08-15.** Its types are in `Humans.Interfaces`
+   with their namespaces preserved, so `using Humans.Domain.Enums;` and friends still resolve;
+   only the `<ProjectReference>` is gone. Re-verified by lane 3c: zero
+   `<ProjectReference … Humans.Domain.csproj>` and zero `<Using Include="Humans.Domain…" />`
+   remain anywhere outside `docs/`.) Add to `Humans.slnx` **and add a
    `<ProjectReference>` to it from `src/Humans.Web/Humans.Web.csproj`**. No
    `Directory.Build.props` — `src/Directory.Build.props` resolves from `src/Sections/`.
    - **The `Humans.Web` reference is the whole of what makes a section exist at runtime, and
@@ -627,9 +633,13 @@ Git Bash.)
      `campaign_grants` and on Surveys' `survey_invitations`. Moving it onto Email's leaf would
      make two other sections' **domain** depend on Email's contracts, and would drag its
      `Enum_EmailOutboxStatus_*` keys and its `EnumBadgeMap` rows along for nothing. Left in
-     Base, with its resx keys and badge rows; `Humans.Campaigns.Contracts` keeps referencing
-     `Humans.Domain` for it (Campaigns finding 47's case, unchanged). The test is *who writes
-     it to a table*, not who named it (proven: Email).
+     Base, with its resx keys and badge rows. The test is *who writes it to a table*, not who
+     named it (proven: Email). **Amended by G5 lane 3c, 2026-08-15:** the rule stands, the
+     project name in it does not. `src/Humans.Domain` was deleted in lane 3b and
+     `EmailOutboxStatus` went to `Humans.Interfaces` with its `Humans.Domain.Enums` **namespace
+     preserved**, so `Humans.Campaigns.Contracts` now carries the ordinary `Humans.Interfaces`
+     reference every leaf has and its `using Humans.Domain.Enums;` is unchanged. Read "stays in
+     Base" wherever this section says "stays in `Humans.Domain`".
    - **…and a fourth answer that was asserted, believed for three lanes, and is wrong:
      "the enum stays in `Humans.Domain.Enums` because a `Humans.UI` partial renders it".**
      The original claim ran: Email's rule keeps an enum in Base when another section
@@ -666,10 +676,11 @@ Git Bash.)
      section's own discriminators as literals while you are there; that is what makes the rename
      schema-inert. See `memory/code/type-name-as-persisted-string.md`.
      - **"Stops compiling" only holds when the other section has already moved; otherwise the
-       `nameof` survives the move and becomes that section's problem.** `nameof(Team)` in
-       Calendar's audit calls compiles fine today — `Team` is still a public
-       `Humans.Domain.Entities` type — so nothing forces the fix, and the day Teams goes to G5 it
-       breaks in a section nobody is editing. Grep the moved code for `nameof(` over *every* type
+       `nameof` survives the move and becomes that section's problem.** The worked example — that
+       `nameof(Team)` in Calendar's audit calls compiles because `Team` is still a public
+       `Humans.Domain.Entities` type — **has since expired**: Teams went to G5 at 4b-2k and
+       `src/Humans.Domain` was deleted at lane 3b. The rule is what matters and is unchanged; read
+       the example as history. Grep the moved code for `nameof(` over *every* type
        the section does not own, not just the ones the build complains about, and take them all
        into `AuditEntityTypes` (proven: Calendar).
    - **The keystone analyzer (nobodies-collective/Humans#1013) has landed, so this is a build
@@ -849,12 +860,26 @@ Git Bash.)
    - **A section can ship both a `.Contracts` leaf and a `Contracts/` folder, and the split
      is what each half may name.** Five sections ship the folder (Store, Containers, Feedback,
      Calendar, Scanner) and a dozen ship the leaf; Tickets is the first with both, because its
-     `TicketStubViewComponent` is public surface that needs ASP.NET while its six Base
-     consumers need a framework-free leaf. **The leaf carries what Base consumers need and
-     must stay `Microsoft.NET.Sdk`; the folder carries public surface that needs the ASP.NET
-     framework reference the section project already has.** Nothing forbids the pair — say so
-     in both csproj comments so the next reader does not have to re-derive it (proven:
+     `TicketStubViewComponent` is public surface that is ASP.NET plumbing while its six Base
+     consumers want only the section's vocabulary. **The leaf carries what Base consumers need;
+     the folder carries public surface that is ASP.NET plumbing.** Nothing forbids the pair — say
+     so in both csproj comments so the next reader does not have to re-derive it (proven:
      Tickets).
+     - **This rule used to justify itself with "the leaf is framework-free / must stay
+       `Microsoft.NET.Sdk`". That is false and always was — re-measured by G5 lane 3c,
+       2026-08-15.** `Humans.Interfaces` has carried
+       `<FrameworkReference Include="Microsoft.AspNetCore.App" />` since `ISection` landed, and
+       `FrameworkReference` flows transitively through `ProjectReference`. Measured with
+       `dotnet msbuild <leaf>.csproj -t:ResolvePackageAssets -getItem:FrameworkReference`: all 26
+       leaves that reference Base resolve `Microsoft.AspNetCore.App` with
+       `IsTransitiveFrameworkReference=true`. A leaf **can** name `IActionResult` or
+       `ViewComponent`. Only `Humans.Events.Contracts`, `Humans.Onboarding.Contracts` and
+       `Humans.Users.Contracts` — the three with no path to Base — resolve `Microsoft.NETCore.App`
+       alone. **Do not use framework-freeness as a placement oracle.** Decide the split on what
+       cross-section consumers should have to see, and if you want the property enforced, write
+       the test (`AuthArchitectureTests.ContractsLeafNamesNoAspNetType` is the shape: it inspects
+       the emitted assembly's referenced-assembly list). Every placement this oracle previously
+       justified was re-checked in 3c and stands on other grounds; none moved.
    - **Folder vs project is decided by *where the consumer lives*, not how much surface there
      is.** A consumer in Base forces `Humans.<Section>.Contracts` as its own project referencing
      only the bottom of the graph — a folder would cycle
@@ -929,16 +954,19 @@ Git Bash.)
      `InfrastructureServiceCollectionExtensions` (Governance's rule: the section that owns the
      *file* is not always the section that owns the *line*). Calendar's name-collision test,
      applied to the section's own vocabulary rather than a neighbour's (proven: Guide).
-   - **A Base *enum* in a leaf signature is not Budget's case — reference `Humans.Domain` from
-     the leaf.** Budget's rule (step 5) is about enums the *section* owns: they cannot follow the
+   - **A Base *enum* in a leaf signature is not Budget's case — leave it in Base.** (This rule
+     was written as "reference `Humans.Domain` from the leaf". **G5 lane 3b deleted that project**
+     and lane 3c re-audited this line: the enum now lives in `Humans.Interfaces` with its
+     namespace preserved, so the leaf needs only the `Humans.Interfaces` reference it already
+     has. The decision is unchanged; the second `<ProjectReference>` the old wording called for
+     no longer exists and must not be re-created.) Budget's rule (step 5) is about enums the
+     *section* owns: they cannot follow the
      entities into internal `Domain/`, so they move onto the leaf. `EmailOutboxStatus` is the
      opposite — the Email section's enum, Base vocabulary that Campaigns re-exports in
      `CampaignGrantSummary` and `UpdateGrantEmailStatusAsync`. Moving it onto the leaf would
-     steal another section's type; retyping the member to `string` is behavioural. The leaf takes
-     `Humans.Domain` alongside `Humans.Interfaces`, which is acyclic — `Humans.Domain` references
-     only `Humans.Interfaces`, and both sit below `Humans.Application`. Every earlier leaf
-     referenced `Humans.Interfaces` alone, so this reads as a break with the pattern and is not
-     one (proven: Campaigns).
+     steal another section's type; retyping the member to `string` is behavioural. Post-3b the
+     leaf takes `Humans.Interfaces` alone, exactly like every other leaf — the apparent break with
+     the pattern this rule used to warn about has resolved itself (proven: Campaigns).
    - **A DTO the section re-exports from Base forces the project split even when nothing else
      does** — and promoting the connector's DTO downward is the forbidden fix; the section owns a
      boundary type and maps at the edge (proven: Finance, `HoldedLedgerLineDto`). Check every
@@ -966,9 +994,13 @@ Git Bash.)
      because a rota's "department" is a team row. `Humans.UI` would make Base name a section
      leaf; staying in Shell would make the section's own controller name a `Humans.Web` type.
      `Contracts/` takes it, `public abstract`: HUM0034's carve-out is the folder, the section
-     project is `Sdk.Razor`, and its protected members return `IActionResult`, which the
-     framework-free leaf could not have named. Everything the base *body* touches — here the
-     section's `IAuthorizationRequirement` — stays internal (proven: Teams).
+     project is `Sdk.Razor`, and — the binding constraint — the base class derives from
+     `HumansControllerBase`, which lives in `Humans.UI`, a project no leaf may reference.
+     Everything the base *body* touches — here the section's `IAuthorizationRequirement` — stays
+     internal (proven: Teams). (This rule used to end "its protected members return
+     `IActionResult`, which the framework-free leaf could not have named". G5 lane 3c measured
+     that false — the leaf resolves `Microsoft.AspNetCore.App` transitively. The placement is
+     unchanged; only the reason was wrong.)
    - **A Base *registry* keyed by the section's enum is not a `Contracts/` case — invert it.**
      `Humans.UI` holds lookup tables naming ten sections' status enums (`EnumBadgeMap`,
      `StatusBadgeExtensions`); each move breaks one. Referencing the section's contracts leaf
@@ -1089,8 +1121,9 @@ Git Bash.)
      view in Shell splits the moving section's page. So the mapping and the markup became a new
      `Humans.Web` view component and the section's view calls
      `@await Component.InvokeAsync("…", new { … })`. Governance's rider is the constraint that
-     shapes it: **every parameter must be nameable from a section**, so the component takes
-     `Humans.Domain` / `Humans.Application` types only and the controller passes what it already
+     shapes it: **every parameter must be nameable from a section**, so the component takes Base
+     types only (written as "`Humans.Domain` / `Humans.Application`" before lane 3b deleted the
+     former and lane 3a filled `Humans.Interfaces`) and the controller passes what it already
      fetched — otherwise the component re-queries and the move quietly doubles a page's reads
      (proven: Onboarding).
    - **A SignalR hub is the health-check shape, and where it goes depends on whose types are in
@@ -1578,9 +1611,12 @@ Git Bash.)
 
       **Fifth sighting, and the keying is neither a path nor an assembly — it is
       `Type.GetMethods()` not following interface inheritance.** A read split that leaves
-      `I<Section>Service : I<Section>ServiceRead` moves members onto a leaf that carries no
-      `IApplicationService` marker (a framework-free leaf cannot reference the marker's
-      home in a way the scan's filter recognises), and `GetMethods()` on an interface
+      `I<Section>Service : I<Section>ServiceRead` moves members onto a leaf whose read interface
+      carries no `IApplicationService` marker (the parenthetical here used to read "a
+      framework-free leaf cannot reference the marker's home in a way the scan's filter
+      recognises" — **false, corrected by G5 lane 3c**: 26 leaves reference the marker's home,
+      `Humans.Interfaces`, and could inherit it. The read interface simply does not, by
+      convention), and `GetMethods()` on an interface
       returns only *declared* members — so a reflection ratchet that iterates
       `IApplicationService` implementors sees a shorter member list and reports the moved
       violations as **fixed**, on byte-identical code. `ScanApplicationServiceEntityReadReturns`
@@ -1832,14 +1868,13 @@ Git Bash.)
 
 ## Things outside the steps that bit a wave
 
-- **The `Dockerfile`'s `RUN dotnet restore` layer does not work and has not for some time.** It
-  copies five csprojs, but `Humans.Domain.csproj` references `Humans.Interfaces.csproj`, which is
-  never copied — and neither is `Humans.Analyzers` (pulled in by `src/Directory.Build.props`) nor
-  any of the section projects. The image still builds because `COPY src/ src/` and the `dotnet
-  publish` that follows restore everything again; the layer is a dead cache optimisation. Adding
-  your section's two `COPY` lines (as nobodies-collective/Humans#1006 will eventually automate)
-  costs nothing and fixes nothing — do not spend time debugging it, and do not conclude your move
-  broke the image. Found by A4.
+- ~~**The `Dockerfile`'s `RUN dotnet restore` layer does not work and has not for some time.**~~
+  **Obsolete — re-audited by G5 lane 3c, 2026-08-15.** The finding described a restore layer that
+  copied five named csprojs and missed the rest. The `Dockerfile` no longer does that: it does
+  `COPY src/ src/` before `dotnet restore src/Humans.Web/Humans.Web.csproj`, deliberately trading
+  layer-cache granularity for a file that needs no per-project `COPY` line as the project count
+  climbs toward ~40. **A new section needs no `Dockerfile` edit at all.** (The project the old
+  finding named, `Humans.Domain.csproj`, no longer exists either — deleted in lane 3b.)
 
 ## The `<vc:*>` rename hazard
 

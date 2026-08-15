@@ -29,10 +29,14 @@
     <!--
       EventsController derives from Humans.Camps' HumansCampControllerBase so Workshop Leads
       can submit camp events. The base could not stay in Humans.UI once ICampServiceRead moved
-      onto a section leaf (Humans.UI may not reference a section at any price), and it returns
-      IActionResult, which the framework-free leaf cannot name — so it lives under the section's
-      Contracts/ folder and consumers take the section project (Teams' HumansTeamControllerBase
-      shape). Acyclic: Humans.Camps names nothing of Events.
+      onto a section leaf (Humans.UI may not reference a section at any price), and it derives
+      from HumansControllerBase, which lives in Humans.UI — a project no .Contracts leaf may
+      reference. So it lives under the section's Contracts/ folder and consumers take the section
+      project (Teams' HumansTeamControllerBase shape). Acyclic: Humans.Camps names nothing of
+      Events. (This comment previously said "IActionResult, which the framework-free leaf cannot
+      name". G5 lane 3c measured that false — Humans.Camps.Contracts references Humans.Interfaces,
+      which carries FrameworkReference Microsoft.AspNetCore.App, and that flows transitively. The
+      base class's home in Humans.UI is the real constraint; the placement is unchanged.)
     -->
     <ProjectReference Include="..\Humans.Camps\Humans.Camps.csproj" />
     <!--

@@ -13,9 +13,14 @@ namespace Humans.Teams.Contracts;
 /// <summary>
 /// Resolve-a-team-by-slug-then-authorize, shared by this section's admin controller and by
 /// Shell's <c>ShiftAdminController</c> (a rota's "department" is a Teams row). Public under
-/// <c>Contracts/</c> rather than on the leaf because it derives from <c>HumansControllerBase</c>
-/// and returns <c>IActionResult</c> — ASP.NET types the framework-free leaf cannot name, which
-/// is exactly the split HUM0034's <c>Contracts</c> carve-out exists for (design §15 step 5b).
+/// <c>Contracts/</c> rather than on the leaf because it derives from <c>HumansControllerBase</c>,
+/// which lives in <c>Humans.UI</c> — and no <c>.Contracts</c> leaf may reference the UI hub.
+/// That, not the ASP.NET types, is the binding constraint: G5 lane 3c measured
+/// (<c>-t:ResolvePackageAssets -getItem:FrameworkReference</c>) that every leaf referencing
+/// <c>Humans.Interfaces</c> resolves <c>Microsoft.AspNetCore.App</c> transitively, so
+/// <c>Humans.Teams.Contracts</c> could name <c>IActionResult</c> perfectly well. The earlier
+/// "framework-free leaf cannot name" wording here was false. The placement is unchanged and is
+/// exactly the split HUM0034's <c>Contracts</c> carve-out exists for (design §15 step 5b).
 /// </summary>
 public abstract class HumansTeamControllerBase(
     IUserServiceRead userService,

@@ -51,16 +51,46 @@ unless the reference drop is an explicit lane.
 
 ## The Base floor (decided 2026-08-14)
 
-- **Every `.Contracts` project references nothing except Base** (amended 2026-08-14 —
-  an earlier draft of this bullet said "NOTHING (framework only)", which was wrong. Base is
-  the floor: referenceable from anywhere, including leaves. The zero-reference rule is
-  about other `Humans.*` assemblies). 4b work item: eight leaves reference `Humans.Domain`
-  and two reference another leaf (`Email.Contracts → Events.Contracts`,
-  `Teams.Contracts → Auth.Contracts`) — each gets unwound (move or duplicate the shared
-  type). The ~20 leaves referencing `Humans.Interfaces` are **not** an unwind: that
-  reference becomes a Base reference and is legal. What remains there is only dropping
-  `IApplicationService` inheritance from leaf service interfaces, which is a separate
-  and much smaller job.
+- **A leaf may reference Base and any leaf that itself has zero `<ProjectReference>`.**
+  Such a chain terminates and cannot cycle, so leaf→leaf is not per se a violation.
+  (Amended twice. An early draft said leaves reference "NOTHING (framework only)"; the
+  2026-08-14 amendment made it "nothing except Base"; **G5 lane 3c, 2026-08-15**, replaced
+  the count-based phrasing with the rule above, because the flat version is wrong in
+  practice: `Humans.Users.Contracts` legitimately keeps one edge, to
+  `Humans.Onboarding.Contracts`, which itself has zero — `Base → Users.Contracts →
+  Onboarding.Contracts → ∅`. This documents what the merged code already does; it is not a
+  new decision. The literal zero-reference variant is still available, but it costs a
+  public-surface decision on `OnboardingResult`.)
+
+  **The one hard invariant is on Base, not on the leaves:** `Humans.Interfaces` carries zero
+  `<ProjectReference>` to any `Humans.*` project. External dependencies — NuGet or shared
+  framework — are unrestricted (Peter, 2026-08-15).
+
+  4b work item, **discharged**: the eight leaves that referenced `Humans.Domain` are now
+  **zero** — `src/Humans.Domain` was deleted in lane 3b. The two leaf→leaf edges this bullet
+  named for unwinding were both false alarms: `Teams.Contracts → Auth.Contracts` was a dead
+  `<ProjectReference>` (zero "Auth" hits anywhere under that leaf; deleted in 3c), and
+  `Email.Contracts → Events.Contracts` terminates in a zero-reference leaf. **Measured leaf→leaf
+  edge set at the end of phase 3 — six, all terminating, zero cycles:**
+  `Users.Contracts → Onboarding.Contracts`, `Teams.Contracts → Users.Contracts`,
+  `Auth.Contracts → Users.Contracts`, `Email.Contracts → Users.Contracts`,
+  `Email.Contracts → Events.Contracts`, `Governance.Contracts → Users.Contracts`.
+  The 26 leaves referencing `Humans.Interfaces` are **not** an unwind: that reference becomes a
+  Base reference and is legal. Dropping `IApplicationService` inheritance was needed on
+  `Humans.Users.Contracts` only (lane 3b); the other 19 marker-using leaves needed nothing.
+
+- **"Framework-free leaf" is not a real property and never was.** `Humans.Interfaces` has
+  carried `<FrameworkReference Include="Microsoft.AspNetCore.App" />` since `ISection` landed,
+  and `FrameworkReference` flows transitively through `ProjectReference`. Measured in lane 3c
+  with `dotnet msbuild <leaf>.csproj -t:ResolvePackageAssets -getItem:FrameworkReference`: all
+  26 leaves that reference Base resolve `Microsoft.AspNetCore.App` with
+  `IsTransitiveFrameworkReference=true`. Only `Events.Contracts`, `Onboarding.Contracts` and
+  `Users.Contracts` — the three with no path to Base — resolve `Microsoft.NETCore.App` alone.
+  Several csproj comments used framework-freeness as a *placement oracle* ("the leaf cannot
+  name `IActionResult`, so the type goes in the section's `Contracts/` folder"). Those
+  placements all stand on other grounds — usually that the type derives from
+  `HumansControllerBase` in `Humans.UI`, which no leaf may reference — and lane 3c rewrote the
+  justifications in place without moving anything. Do not re-open them.
 - **Base may reference `Humans.Users.Contracts` — only that leaf, for now.**
   `UserInfo` + `IUserServiceRead` live there (NOT Base). This keeps
   `HumansControllerBase`/`ApiControllerBase` (typed `IUserServiceRead` dependency,
@@ -83,19 +113,30 @@ Two constraints on the leaf unwind (Codex P2s on peterdrier/Humans#1293, both co
   (`GetTypeByMetadataName` — `SurfaceBudgetAnalyzer.SurfaceBudgetAttributeFullName`,
   `RequestScopedCancellationOnExternalWriteAnalyzer.ExternalWriteAttributeFullName`,
   `GrandfatheredCheck.AttributeFullName`, all three literals still reading
-  `Humans.Application.Architecture.*`), so the namespace move breaks them — and the
-  failure is silent for HUM0015/0016 and HUM0033, whose `CompilationStart` handlers
-  `return` when resolution yields null, registering no action and emitting nothing.
-  **The constants should not exist.** Fix (tracked as a 4b prerequisite,
-  nobodies-collective/Humans#1057): link the attribute sources into `Humans.Analyzers`
+  `Humans.Application.Architecture.*`).
+
+  **Corrected by G5 lane 3c (2026-08-15) — this bullet's urgency framing was wrong.** All 15 of
+  these constants are **namespace** strings, and `GetTypeByMetadataName` resolves by namespace,
+  not by assembly. **The 4b-iv rename of `Humans.Interfaces` to `Humans.Base` breaks none of
+  them**, because phase 3 preserved every namespace when it filled Base: the attributes still
+  live under `Humans.Application.Architecture.*` regardless of which assembly ships them. Only
+  a *namespace* move would break them, and no lane is planning one.
+
+  #1057 is still worth landing, for a different reason: **two of these analyzers fail
+  silently.** HUM0015/0016 and HUM0033 `return` from `CompilationStart` when resolution yields
+  null, registering no action and emitting nothing — no error, no diagnostic, green build. A
+  hardcoded literal that can turn enforcement off without a symptom is the defect, independent
+  of whether anything is about to move. It is **not** a 4b-iv prerequisite.
+  **The constants should not exist.** Fix (nobodies-collective/Humans#1057):
+  link the attribute sources into `Humans.Analyzers`
   with `<Compile Include=… Link=…/>` and derive the names via
   `typeof(GrandfatheredAttribute).FullName`, so the class is the single source of truth
   and the rename carries itself. A `ProjectReference` cannot do this — Base already
   references `Humans.Analyzers` (`src/Directory.Build.props` applies it to every `src/`
   project), so the reverse edge is a project-graph cycle; the analyzer is also
-  `netstandard2.0` and must keep its load-context closure minimal. Land that before the
-  rename, then verify each analyzer still fires; silently losing enforcement is a FAIL,
-  not a trade-off.
+  `netstandard2.0` and must keep its load-context closure minimal. It does not gate the
+  rename (see the correction above), but verify each analyzer still fires after landing it;
+  silently losing enforcement is a FAIL, not a trade-off.
 - **`UserInfo`'s object graph.** `UserEmailInfo` names `GoogleEmailStatus`,
   `CommunicationPreferenceInfo` names `MessageCategory`, `ProfileInfo` names
   `MembershipTier` and `ConsentCheckStatus` — four enums the inventory assigns to

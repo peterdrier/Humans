@@ -10,9 +10,18 @@
     memory/architecture/section-project-cycle-fix.md).
 
     Tickets is the first section shipping both a .Contracts leaf and a Contracts/ folder,
-    and the split is principled: the leaf carries what Base consumers need and must stay
-    framework-free; the folder inside Humans.Tickets carries public surface that needs
-    ASP.NET (TicketStubViewComponent).
+    and the split is principled: the leaf carries what Base consumers need, the folder inside
+    Humans.Tickets carries public surface that is ASP.NET plumbing (TicketStubViewComponent).
+
+    That split stands; the reason previously given for it — "the leaf must stay framework-free"
+    — was measured false in G5 lane 3c, 2026-08-15. Humans.Interfaces has carried
+    FrameworkReference Microsoft.AspNetCore.App since ISection landed, and FrameworkReference
+    flows transitively through ProjectReference, so this leaf resolves Microsoft.AspNetCore.App
+    with IsTransitiveFrameworkReference=true and could name a ViewComponent today. Keeping the
+    view component out is a judgement about what cross-section consumers should have to see, not
+    a compiler constraint, and nothing enforces it here. See Humans.Interfaces.csproj for the
+    single invariant that IS mechanical: zero Humans.* ProjectReferences on Base; external
+    packages unrestricted (Peter, 2026-08-15).
 
     Three of the members here exist so that Tickets is the application's only door to
     ticketing: ITicketDiscountCodes and ITicketVendorMirror move Campaigns' and

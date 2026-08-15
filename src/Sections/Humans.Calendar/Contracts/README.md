@@ -25,6 +25,12 @@ fan-out), moved in from Base by G5 lane 4b-2c (nobodies-collective/Humans#866):
 contributor fan-out inverts the arrow: the implementers reference Calendar, Calendar
 references none of them. Its only outbound section edge is `Humans.Users.Contracts`
 (`IUserServiceRead`, for the stored `ICalToken` check), and no consumer of this folder lives
-in Base — Shifts, Events, Scanner and Shell are all above it in the graph. The view component
-needs the ASP.NET framework reference the section project already has, which a framework-free
-leaf could not carry anyway.
+in Base — Shifts, Events, Scanner and Shell are all above it in the graph. The view component also
+derives from ASP.NET's `ViewComponent` and lives with the Razor views it renders, which belong to
+the section project.
+
+This paragraph used to end "…which a framework-free leaf could not carry anyway". G5 lane 3c
+measured that false (2026-08-15): a leaf that references `Humans.Interfaces` resolves
+`Microsoft.AspNetCore.App` transitively — `FrameworkReference` flows through `ProjectReference` —
+so a hypothetical `Humans.Calendar.Contracts` could have named `ViewComponent`. The reason to stay
+a folder is the one in the paragraph above: no cycle forces a leaf here.

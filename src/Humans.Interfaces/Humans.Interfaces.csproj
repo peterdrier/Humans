@@ -6,16 +6,24 @@
     shape interfaces may carry default-implemented members when a rule must have a
     single home across both implementers (IBurnSettingsInfo's early-entry clock) —
     so a little behaviour lives here, deliberately, not just declarations.
-    Never a ProjectReference on another Humans.* project — this project stays the
-    bottom of the graph. That is now load-bearing in a way it was not when the rule
-    was written for Humans.Domain (deleted in G5 lane 3b): Base is about to reference
-    Humans.Users.Contracts at 4b-iii, so a reference added here can close an assembly
-    cycle through that leaf. External packages only:
-    NodaTime is allowed because IBurnSettingsInfo's calendar members are LocalDate
-    and Instant, and NodaTime is an external, base-class-like dependency already
-    used by every layer above. Namespaces intentionally remain Humans.Application.*
-    (namespace ≠ assembly) so call sites and the Humans.Analyzers full-name
-    constants are unaffected by the move.
+    THE ONE INVARIANT: never a ProjectReference on another Humans.* project — this
+    project stays the bottom of the graph. That is now load-bearing in a way it was
+    not when the rule was written for Humans.Domain (deleted in G5 lane 3b): Base is
+    about to reference Humans.Users.Contracts at 4b-iii, so a reference added here can
+    close an assembly cycle through that leaf.
+
+    EXTERNAL DEPENDENCIES ARE UNRESTRICTED — Peter's ruling, 2026-08-15. Base may take
+    any NuGet package or shared framework it needs; only Humans.* ProjectReferences are
+    forbidden. Earlier revisions of this comment claimed a "no-NuGet-packages promise"
+    and described Base as framework-free. Both were false when written: this project has
+    carried FrameworkReference Microsoft.AspNetCore.App since ISection landed, long
+    before phase 3, and it now also carries CsvHelper, Serilog, Octokit, EF Core and
+    Npgsql. Do not reason from package count when placing a type here; reason from the
+    ProjectReference rule above and from whether the type is genuinely cross-section.
+
+    NodaTime is here because IBurnSettingsInfo's calendar members are LocalDate and
+    Instant. Namespaces intentionally remain Humans.Application.* (namespace ≠ assembly)
+    so call sites and the Humans.Analyzers full-name constants are unaffected by the move.
 
     G5 lane 3a-1 (nobodies-collective/Humans#866) made this the Base fill: 60 generic files
     arrived from Humans.Application (34), Humans.Domain (16) and Humans.Infrastructure (10) —
@@ -64,10 +72,18 @@
   <ItemGroup>
     <PackageReference Include="NodaTime" />
     <!--
-      ISection names IServiceCollection and IConfiguration. Both live in the
-      shared framework, so this keeps the no-NuGet-packages promise intact.
-      The same FrameworkReference is what lets the G5 lane 3a-1 arrivals below use
-      IMemoryCache, ILogger, IOptions and IHostEnvironment with no extra package.
+      ISection names IServiceCollection and IConfiguration, and the G5 lane 3a-1 arrivals
+      below use IMemoryCache, ILogger, IOptions and IHostEnvironment. All live in the
+      ASP.NET Core shared framework.
+
+      Consequence worth knowing, measured 2026-08-15 with
+      `dotnet msbuild <leaf>.csproj -t:ResolvePackageAssets -getItem:FrameworkReference`:
+      FrameworkReference flows transitively through ProjectReference, so all 26 .Contracts
+      leaves that reference this project resolve Microsoft.AspNetCore.App with
+      IsTransitiveFrameworkReference=true. Those leaves are NOT framework-free and cannot be
+      used as a "cannot name an ASP.NET type" oracle. Only the three leaves with no path here
+      — Humans.Events.Contracts, Humans.Onboarding.Contracts (both zero-ProjectReference) and
+      Humans.Users.Contracts (one edge, to Onboarding) — resolve Microsoft.NETCore.App alone.
     -->
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
 

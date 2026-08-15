@@ -102,10 +102,19 @@ public class AuthArchitectureTests
     [HumansFact]
     public void ContractsLeafNamesNoAspNetType()
     {
-        // The leaf is framework-free by construction so Base consumers can name it without
-        // dragging ASP.NET in; the one piece of Auth's public surface that needs
-        // Microsoft.AspNetCore.Authorization (RoleAssignmentOperationRequirement) lives in
-        // Humans.Auth's own Contracts/ *folder* instead — Tickets' both-halves split.
+        // This test is the ONLY thing enforcing the property. The comment here used to say the
+        // leaf was "framework-free by construction" — that was measured false in G5 lane 3c
+        // (2026-08-15). Humans.Interfaces carries FrameworkReference Microsoft.AspNetCore.App
+        // and FrameworkReference flows transitively through ProjectReference, so
+        // Humans.Auth.Contracts resolves Microsoft.AspNetCore.App
+        // (IsTransitiveFrameworkReference=true) and would compile against ASP.NET types happily.
+        // What keeps them out is this assertion, not the SDK. The one piece of Auth's public
+        // surface that needs Microsoft.AspNetCore.Authorization
+        // (RoleAssignmentOperationRequirement) lives in Humans.Auth's own Contracts/ *folder*
+        // instead — Tickets' both-halves split.
+        //
+        // Note this inspects the EMITTED assembly's referenced-assembly list, i.e. what the leaf
+        // actually names, which is why it still passes and still means something.
         var leafRefs = typeof(Contracts.IRoleAssignmentService).Assembly
             .GetReferencedAssemblies()
             .Select(a => a.Name ?? string.Empty)
@@ -113,7 +122,8 @@ public class AuthArchitectureTests
             .ToList();
 
         leafRefs.Should().BeEmpty(
-            because: "Humans.Auth.Contracts is a framework-free leaf (Microsoft.NET.Sdk)");
+            because: "Humans.Auth.Contracts must name no ASP.NET type — a choice this test " +
+                     "enforces, not a property the SDK gives us (see the comment above)");
     }
 
     // --- The two rules that followed MagicLinkService in from Humans.Application.Tests. ---

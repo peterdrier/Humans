@@ -70,7 +70,7 @@ The goal is to identify cross-section table overlap, duplicated caching, and cac
 > Tickets, Teams, and AuditLog moved from `src/Humans.Application`/
 > `src/Humans.Infrastructure` into their own `src/Sections/Humans.<Section>/`
 > projects. Tickets additionally split into three projects — the section
-> (`src/Sections/Humans.Tickets`), a framework-free contracts leaf
+> (`src/Sections/Humans.Tickets`), a contracts leaf
 > (`src/Sections/Humans.Tickets.Contracts`), and the TicketTailor vendor
 > adapter (`src/Sections/Humans.TicketTailor`, the sole implementation of
 > the vendor port) — see [Tickets](#tickets). AuditLog is the first
@@ -657,8 +657,8 @@ leaf for the cross-section surface. Structure: `Domain/` (7 entities,
 internal sealed), `Data/` (`ITeamRepository`/`TeamRepository`, `TeamsDbContext`
 + factory, EF configurations, migrations), `Services/`, `Controllers/`,
 `Models/`, `Views/`, `Resources/`, `Authorization/`, `Contracts/` (public
-`HumansTeamControllerBase`, needs ASP.NET so it can't live on the
-framework-free leaf). **DbContext:**
+`HumansTeamControllerBase`, derives from `HumansControllerBase` in
+`Humans.UI`, which no leaf may reference). **DbContext:**
 `TeamsDbContext` (peeled in nobodies-collective/Humans#1264; `TeamRepository`
 injects `IDbContextFactory<TeamsDbContext>`). Owns `Teams`,
 `TeamMembers`, `TeamJoinRequests`, `TeamJoinRequestStateHistories`,
@@ -1691,7 +1691,7 @@ nobodies-collective/Humans#866, PR #1280 "G5 batch #3", 2026-08-13). The
 move carved **two projects plus a contracts leaf**:
 `src/Sections/Humans.Tickets` (orders, attendees, transfers, sync
 orchestration, the admin surface — everything `internal sealed`),
-`src/Sections/Humans.Tickets.Contracts` (framework-free leaf:
+`src/Sections/Humans.Tickets.Contracts` (the leaf:
 `ITicketServiceRead`, `ITicketSync`, `ITicketTransferQueue`,
 `ITicketDiscountCodes`, `ITicketVendorMirror`), and
 `src/Sections/Humans.TicketTailor` (the vendor adapter — the sole
@@ -1723,7 +1723,9 @@ of #858). `TicketRepository` and `TicketTransferRepository` both inject
 > port. `TicketVendorPortArchitectureTests` pins that only `Humans.Tickets`
 > and Shell's `TicketVendorHealthCheck` may inject `ITicketVendorService`.
 > `TicketStubViewComponent` moved back into the section's own `Contracts/`
-> folder (needs ASP.NET, so it can't live on the framework-free leaf) —
+> folder (ASP.NET plumbing that cross-section consumers should not have to
+> see — G5 lane 3c measured that a leaf referencing `Humans.Interfaces`
+> *could* name ASP.NET types, so this is a choice, not a constraint) —
 > its model names Tickets DTOs, so it couldn't stay in `Humans.UI` either.
 
 The read path is split: `TicketQueryService` is the **inner** read service,
