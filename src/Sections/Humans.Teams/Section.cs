@@ -3,6 +3,7 @@ using Humans.Application.Interfaces;
 using Humans.Teams.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Humans.Application.Interfaces.Caching;
+using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.EarlyEntry.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Gdpr.Contracts;
@@ -51,6 +52,11 @@ public sealed class Section : ISection
         services.AddHostedService(sp => sp.GetRequiredService<CachingTeamService>());
 
         services.AddScoped<ITeamPageService, TeamPageService>();
+
+        // The system-team reconciler. Its interface stays in Humans.Application because
+        // Hangfire serializes ISystemTeamSync as the "system-team-sync" recurring job's
+        // target type; the implementation is resolved from DI at execution time (lane 4b-2e).
+        services.AddScoped<ISystemTeamSync, SystemTeamSyncJob>();
 
         // Resource-based handler; the policies it backs stay in Shell's
         // AuthorizationPolicyExtensions (design §15 step 6's asymmetry).

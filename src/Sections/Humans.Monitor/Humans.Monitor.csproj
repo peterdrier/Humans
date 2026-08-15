@@ -42,6 +42,10 @@
     <ProjectReference Include="..\..\Humans.UI\Humans.UI.csproj" />
     <ProjectReference Include="..\Humans.Monitor.Contracts\Humans.Monitor.Contracts.csproj" />
     <ProjectReference Include="..\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
+    <!-- MonitorController injects IAuditViewerService and binds AuditEvent, which moved out of
+         Humans.Application into the AuditLog section in G5 lane 4b-2h
+         (nobodies-collective/Humans#866). -->
+    <ProjectReference Include="..\Humans.AuditLog\Humans.AuditLog.csproj" />
     <ProjectReference Include="..\Humans.SystemSettings.Contracts\Humans.SystemSettings.Contracts.csproj" />
   </ItemGroup>
 

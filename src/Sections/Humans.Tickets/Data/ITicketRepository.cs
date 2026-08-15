@@ -6,7 +6,6 @@ using NodaTime;
 using Humans.Domain.Attributes;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Application.Interfaces.TicketVendor;
 using Humans.Tickets.Domain;
 using Humans.Tickets.Services.Dtos;
 

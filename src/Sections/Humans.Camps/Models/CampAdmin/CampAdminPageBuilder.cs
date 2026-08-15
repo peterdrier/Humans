@@ -1,4 +1,3 @@
-using Humans.Camps.Contracts;
 using Humans.CityPlanning.Contracts;
 using Humans.Domain.Enums;
 

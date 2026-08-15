@@ -5,9 +5,10 @@ using Humans.Domain.Attributes;
 // this marker, and HUM0017/HUM0018 read the section name from it.
 //
 // "Holded" is the section that owns the mirror tables (holded_ledger_lines, holded_accounts,
-// holded_api_calls, holded_sync_states) and HoldedDbContext. The Holded *connector*
-// (IHoldedClient) is a separate thing that stays in Base; Finance keeps the business meaning
-// (category map, expense-doc matching, creditor bindings).
+// holded_api_calls, holded_sync_states) and HoldedDbContext, and — since G5 lane 4b-2f
+// (nobodies-collective/Humans#866) — the Holded *connector* (IHoldedClient, HoldedClient,
+// the call log) as well. Finance keeps the business meaning (category map, expense-doc
+// matching, creditor bindings).
 [assembly: Section("Holded")]
 
 // Castle DynamicProxy, behind NSubstitute in Humans.Holded.Tests, needs to see

@@ -1,5 +1,4 @@
 using Humans.Application.Extensions;
-using Humans.Camps.Contracts;
 using Humans.CityPlanning.Contracts;
 using Humans.UI.Controllers;
 

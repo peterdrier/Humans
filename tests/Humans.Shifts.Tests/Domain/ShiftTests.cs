@@ -3,6 +3,7 @@ using AwesomeAssertions;
 using Humans.Domain.Enums;
 using NodaTime;
 
+using Humans.Shifts.Contracts;
 namespace Humans.Shifts.Tests.Domain;
 
 public class ShiftTests

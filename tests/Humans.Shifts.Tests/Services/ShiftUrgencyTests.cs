@@ -3,7 +3,6 @@ using Humans.Shifts.Domain;
 using Humans.Auth.Contracts;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
-using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;

@@ -96,30 +96,36 @@ visibility flip in one diff is unreviewable.
       not a list of sections, and a context can ride into another section's project — Legal's
       lane was a no-op for exactly that reason. One line settles it:
       `ls src/Sections | grep -i <section>`, plus a look at `docs/sections/_Index.md`.
-- [ ] **If the section is *horizontal* (Auth, Audit, GDPR, Notifications), ask which of its
-      services are orchestrators before planning the move.** `peters-hard-rules.md` forbids a
-      horizontal from referencing a vertical, and the rule bites at the `ProjectReference`
-      level: a horizontal service that injects another section's `I<Section>ServiceRead`
-      cannot move into the horizontal's project, because a vertical's read interface is on a
-      *section leaf* once that section has gone to G5. Grep the section's services for
-      `I*ServiceRead` and `Humans.*.Contracts` first — the answer changes what the move
-      *is*. (AuditLog: the append path and the raw queries moved; `AuditViewerService`, which
-      resolves actor/subject/team names through Users, Teams and Google Integration, stayed in
-      `Humans.Application` as the cross-section orchestrator it is.)
-      - **`docs/sections/_Index.md` may already have answered it.** That table's stated rule for
-        its **Orchestrators** column is "service classes that inject no `I*Repository`", which is
-        the hard rules' own definition — so the column is a pre-computed list of the services
-        that cannot move into a horizontal. Auth's row had named `MagicLinkService` there since
-        before G5 existed, and that service injects `Humans.Email.Contracts`. Read the row before
-        running the greps (proven: Auth).
-      - **…and the orchestrator can take the section's *controller* with it, leaving a section
-        with no controller, no view and no resource set.** `AccountController` is Auth's by every
-        doc; run the "read the controller" test below and every one of its actions writes Users'
-        or Profiles' tables through their services, injects nothing the move internalises, and
-        reaches Auth only through the orchestrator that stayed behind. It stayed in Shell with
-        its seven views and 35 resource keys, so step 3b stopped at its first question and step
-        12 fell back to Gdpr's DI-registration check. A section that ships only a repository, a
-        service and a leaf is not an incomplete move (proven: Auth).
+- [ ] **A horizontal section (Auth, Audit, GDPR, Notifications) may reference a vertical's
+      `.Contracts` leaf. It may not reference the vertical's *section project*.** This
+      supersedes the rule that stood here until 2026-08-14, which read
+      `peters-hard-rules.md`'s "a horizontal may not reference a vertical" as reaching the
+      leaf too, and therefore concluded that a horizontal service injecting another section's
+      `I<Section>ServiceRead` "cannot move into the horizontal's project". Peter's Base-floor
+      decision makes a leaf referenceable from anywhere, and the two services that reading had
+      stranded in `Humans.Application` — `AuditViewerService` and `MagicLinkService` — moved
+      into AuditLog and Auth on exactly that basis.
+
+      So still grep the section's services for `I*ServiceRead` and `Humans.*.Contracts`, but
+      grep for the *section-project* reference the move would force, not for leaf names. A
+      leaf reference is a line in the csproj with a reason attached; a section reference is
+      the thing that cycles.
+      - **Do not read `docs/sections/_Index.md`'s Orchestrators column as a can't-move list.**
+        It is a list of service classes that inject no `I*Repository`, which is a statement
+        about the hard rules' orchestrator/service split — not about where the class may live.
+        This checklist used to say the column "is a pre-computed list of the services that
+        cannot move into a horizontal", citing Auth's `MagicLinkService` row. That was wrong
+        twice over, and lane 4b-2i moved the service it named. An orchestrator may live in the
+        section it orchestrates for (proven: Auth, AuditLog).
+      - **A controller does not follow its section's service, and a service coming home does
+        not pull its controller in either.** `AccountController` is Auth's by every doc; run
+        the "read the controller" test below and every one of its actions writes Users' or
+        Profiles' tables through their services and injects nothing the move internalises. It
+        stayed in Shell with its seven views and 35 resource keys when `MagicLinkService` was
+        in Base, and it stayed there when `MagicLinkService` moved into `Humans.Auth`, so step
+        3b still stops at its first question and step 12 still falls back to Gdpr's
+        DI-registration check. A section that ships no controller, no view and no resource set
+        is not an incomplete move (proven: Auth, twice).
 - [ ] Fan-in known: run `reforge` for inbound references before starting. A section with many
       inbound section references is a knot, goes later, and may need `<Section>.Contracts`.
       - **A section whose fan-in is measured in three digits gets split into a read-boundary
@@ -624,17 +630,23 @@ Git Bash.)
      Base, with its resx keys and badge rows; `Humans.Campaigns.Contracts` keeps referencing
      `Humans.Domain` for it (Campaigns finding 47's case, unchanged). The test is *who writes
      it to a table*, not who named it (proven: Email).
-   - **…and a fourth answer, which is forced rather than chosen: the enum stays in
-     `Humans.Domain.Enums` because a `Humans.UI` partial renders it.** Email's rule keeps an
-     enum in Base when another section *persists* it. Teams persists `TeamMemberRole`,
-     `SystemTeamType` and `TeamJoinRequestStatus` alone, so that test says "move" — but
-     `Humans.UI/Views/Shared/_RoleBadge.cshtml` binds `TeamMemberRole` and `Humans.UI` cannot
-     reference a section leaf at any price (that is the registry-inversion rule, step 5b). A
-     Shell renderer can be rebound; a `Humans.UI` one cannot. All three stayed in Base with
-     their `EnumStringStabilityTests` rows, the leaf took `Humans.Domain` alongside
-     `Humans.Interfaces` (Campaigns' reference, here for the section's *own* vocabulary), and
-     ~30 consumer files needed no `using` change at all. **Ask who renders it, not only who
-     writes it** (proven: Teams).
+   - **…and a fourth answer that was asserted, believed for three lanes, and is wrong:
+     "the enum stays in `Humans.Domain.Enums` because a `Humans.UI` partial renders it".**
+     The original claim ran: Email's rule keeps an enum in Base when another section
+     *persists* it; Teams persists `TeamMemberRole`, `SystemTeamType` and
+     `TeamJoinRequestStatus` alone, so that test says "move" — but
+     `Humans.UI/Views/Shared/_RoleBadge.cshtml` binds `TeamMemberRole` and "`Humans.UI` cannot
+     reference a section leaf at any price". **Re-measured by G5 lane 4b-2k and false.**
+     `Humans.UI` references `Humans.Application`, and `Humans.Application` declares direct
+     `ProjectReference`s on `Humans.Camps.Contracts`, `Humans.Governance.Contracts`,
+     `Humans.Shifts.Contracts` and `Humans.Teams.Contracts`. Base *is* allowed to name a leaf —
+     that is the whole reason leaves exist (§15.5b); what it may not name is a section
+     **project**. `TeamMemberRole`, `TeamJoinRequestStatus` and `RolePeriod` moved onto
+     `Humans.Teams.Contracts` with `_RoleBadge.cshtml` needing one `@using` line and nothing
+     else. `SystemTeamType` stayed, for the unrelated reason that it has no single section
+     owner (phase 3a's file). **Ask who renders it and then check the renderer's project
+     graph — a rendering consumer in `Humans.UI` is a `using` line, not a blocker**
+     (proven: Teams, reversed by 4b-2k).
    - **Decide the leaf-vs-`Domain/` question per enum, not per section.** Budget moved both of
      its enums because both appeared in contract signatures. Issues' two split: `IssueCategory`
      is named by `Humans.Agent`'s `route_to_issue` proposal, so it went to the leaf;
@@ -674,23 +686,28 @@ Git Bash.)
    (Peter, 2026-08-09: splitting read from write happens once every section has moved, not
    per-section). May be empty for a leaf section; ship the folder with a `README.md` saying why
    (proven: Store).
-   - **A *horizontal* section's read+render layer may not be the section's at all, and
-     leaving it in Base is the cheap answer as well as the correct one.** Every other rule
-     here asks where a type's consumers are. This one asks what the type *injects*:
+   - **A horizontal section's read+render layer belongs to the section, and the leaves it
+     needs come with it — this bullet used to say the opposite, and cost a lane to reverse.**
      `AuditViewerService` wraps the section's own `IAuditLogService` with actor, subject and
-     team display names, so it names `IUserServiceRead`, `ITeamServiceRead` (which is
-     `Humans.Teams.Contracts` since Teams' G5) and `ITeamResourceService` — a horizontal
-     referencing three verticals, which `peters-hard-rules.md` forbids at any size. It is an
-     orchestrator by the hard rules' own definition (it calls no repository), so it stayed in
-     `Humans.Application` with its `AuditEvent` DTO and its verb table, registered from
-     Shell. The section kept the append path and the raw entry queries on its leaf. **The
-     move got cheaper, not more expensive, for splitting it**: `Humans.UI`'s
-     `AuditLogViewComponent` injects that interface and binds that DTO, and `Humans.UI`
-     cannot reference a section at any price (Teams' hard floor), so the alternative was
-     dragging a ten-call-site shared widget out of Base to satisfy a file's name. Pin the
-     result with an assembly-level test — `GetReferencedAssemblies()` naming no vertical
-     section — because nothing else stops the next lane from adding the reference
-     (proven: AuditLog).
+     team display names, so it names `IUserServiceRead`, `ITeamServiceRead` and
+     `ITeamResourceService`. That was read as "a horizontal referencing three verticals,
+     forbidden at any size", and the type was parked in `Humans.Application` with its
+     `AuditEvent` DTO and verb table, registered from Shell, pinned by an assembly-level
+     `GetReferencedAssemblies()` test. **Peter reversed it in the Base-floor decision of
+     2026-08-14**: a former Base resident that names another section's read interface moves
+     to its section, and Base gets no `Humans.Teams.Contracts` reference to keep it. A
+     section taking another section's *contracts leaf* is sanctioned at end state; what is
+     forbidden is a cycle, and there is none — Teams references `Humans.AuditLog`, AuditLog
+     references `Humans.Teams.Contracts`, and the leaf reaches nothing. G5 lane 4b-2h moved
+     the interface, the DTO, the verb table and `AuditLogViewComponent` into
+     `src/Sections/Humans.AuditLog`, and **retired the pinning test**, whose premise the
+     decision had inverted.
+     - The widget is the expensive half, not the cheap one: a `<vc:>` component that leaves
+       `Humans.UI` needs `@addTagHelper *, Humans.<Section>` in **every** consuming
+       assembly's `_ViewImports.cshtml` plus a `ProjectReference`, and a missing line is
+       silent — inert literal markup, green build, no log line. Prove each call site with a
+       render test that asserts *seeded content*, never merely `NotContain("<vc:")`
+       (proven: AuditLog, five consumers).
    - **…and the horizontal rule bites a second time at the *type* level, which is not the same
      search as the reference one.** The bullet above asks what a horizontal's services
      *inject*. This asks what its leaf's signatures *name*:
@@ -873,15 +890,23 @@ Git Bash.)
        reference at all** — Scanner's table-less shape, reached by a section that had code in
        Base's service folder on the way in (proven: Mailer).
      - **…and a third disposition, when the connector is *replaceable*: give it its own
-       section, and leave the port in Base.** Agent's rule takes the connector into the
-       section; Guide's leaves it in Base. Neither fits a vendor that is expected to
-       change: `ITicketVendorService` is shaped in the application's terms (no vendor type
-       in its signatures), the TicketTailor client is one implementation of it, and a 2027
-       vendor swap should be one project deleted and one added. So the port stayed in
-       `Humans.Application/Interfaces/TicketVendor/` beside `IStripeService`, the client and
-       its dev stub went to `src/Sections/Humans.TicketTailor` — plain `Microsoft.NET.Sdk`,
-       no tables, no `Humans.Infrastructure` reference, an empty `Contracts/` — and the
-       owning section (`Humans.Tickets`) became the application's only door to ticketing.
+       section, and give the port to the section that owns the concern.** Agent's rule takes
+       the connector into the section; Guide's leaves it in Base. Neither fits a vendor that is
+       expected to change: `ITicketVendorService` is shaped in the application's terms (no
+       vendor type in its signatures), the TicketTailor client is one implementation of it, and
+       a 2027 vendor swap should be one project deleted and one added. The port went to
+       `src/Sections/Humans.Tickets/Contracts/` and the client and its dev stub to
+       `src/Sections/Humans.TicketTailor` — plain `Microsoft.NET.Sdk`, no tables, an empty
+       `Contracts/`, and a direct `ProjectReference` on `Humans.Tickets` to name the port —
+       and the owning section (`Humans.Tickets`) became the application's only door to
+       ticketing. **The port belongs to the owning section, not to Base and not to the
+       adapter's leaf:** it sat in Base until G5 lane 4b-2g (nobodies-collective/Humans#866)
+       purely because Tickets was not yet a project, and it stays off the
+       `Humans.Tickets.Contracts` leaf because no Base consumer names it and the leaf must keep
+       vendor vocabulary away from other sections. **An adapter section referencing the owning
+       section's project is the sanctioned shape** (Peter, 2026-08-14) — the price is that the
+       adapter picks up the owner's transitive references, which for TicketTailor meant losing
+       its "no `Humans.Infrastructure` reference" property. Nothing in it names them.
        **The load-bearing half is the invariant, not the folder:** an architecture test
        asserts that only the owning section and Shell's health check inject the port, because
        what actually breaks a vendor swap is a second section reaching past the door

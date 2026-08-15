@@ -2,7 +2,6 @@ using System.Text.Json;
 using Humans.Domain.Enums;
 using AwesomeAssertions;
 using Humans.Budget.Contracts;
-using Humans.Application.Interfaces.Holded;
 using Humans.Finance.Data;
 using Humans.Finance.Services;
 using Humans.Finance.Contracts;

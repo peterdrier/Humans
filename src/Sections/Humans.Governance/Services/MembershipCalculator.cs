@@ -9,6 +9,7 @@ using Humans.Application.Interfaces.Users;
 using Humans.Governance.Contracts;
 using Humans.Users.Contracts;
 
+using Humans.Teams.Contracts;
 namespace Humans.Governance.Services;
 
 internal sealed class MembershipCalculator(

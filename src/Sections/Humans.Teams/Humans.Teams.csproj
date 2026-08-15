@@ -43,7 +43,22 @@
     <ProjectReference Include="..\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Gdpr.Contracts\Humans.Gdpr.Contracts.csproj" />
     <ProjectReference Include="..\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
+    <!-- TeamAdmin/Members.cshtml renders <vc:audit-log>, which moved out of Humans.UI into the
+         AuditLog section in G5 lane 4b-2h (nobodies-collective/Humans#866). AuditLog reaches
+         back only to Humans.Teams.Contracts, never to this project — no cycle. -->
+    <ProjectReference Include="..\Humans.AuditLog\Humans.AuditLog.csproj" />
     <ProjectReference Include="..\Humans.EarlyEntry\Humans.EarlyEntry.csproj" />
+    <!--
+      SystemTeamSyncJob's eligibility inputs (G5 lane 4b-2e). Camps supplies active camp
+      leads, Governance the approved-tier and consent reads, Users the person read model,
+      Email the added-to-team notice. All four are pure leaves (Interfaces + Domain only),
+      so none of these edges cycles back into Humans.Teams. They already arrived
+      transitively through Humans.Application; declared here so they survive its deletion.
+    -->
+    <ProjectReference Include="..\Humans.Camps.Contracts\Humans.Camps.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Governance.Contracts\Humans.Governance.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

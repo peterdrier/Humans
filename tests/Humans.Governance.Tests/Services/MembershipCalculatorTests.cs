@@ -11,6 +11,7 @@ using Humans.Application.Interfaces.Users;
 using Humans.Governance.Contracts;
 using Humans.Users.Contracts;
 
+using Humans.Teams.Contracts;
 namespace Humans.Governance.Tests.Services;
 
 public class MembershipCalculatorTests

@@ -1,8 +1,6 @@
 <!-- freshness:triggers
   src/Sections/Humans.Auth/**
   src/Sections/Humans.Auth.Contracts/**
-  src/Humans.Application/Services/Auth/**
-  src/Humans.Application/Interfaces/Auth/**
   src/Humans.Domain/Constants/RoleNames.cs
   src/Humans.Domain/Constants/RoleGroups.cs
   src/Humans.Web/Controllers/AccountController.cs
@@ -101,7 +99,7 @@ The auth surface is mid-transition per `docs/plans/2026-04-03-first-class-author
 
 ### Magic-link state
 
-`MagicLinkService` owns no tables. Its only persistent state is `User.MagicLinkSentAt` (mutated via `UserManager<User>`). Replay protection and signup rate-limit state sit behind `IMagicLinkRateLimiter` (Infrastructure-side `IMemoryCache`); Data Protection token generation/validation and URL construction sit behind `IMagicLinkUrlBuilder`.
+`MagicLinkService` owns no tables. Its only persistent state is `User.MagicLinkSentAt` (mutated via `UserManager<User>`). Replay protection and signup rate-limit state sit behind `IMagicLinkRateLimiter` (section-internal, `IMemoryCache`-backed); Data Protection token generation/validation and URL construction sit behind `IMagicLinkUrlBuilder`.
 
 ## Actors & Roles
 
@@ -155,27 +153,27 @@ Each section's landing page exposes an info-icon button (`AccessMatrixViewCompon
 
 ## Architecture
 
-**Owning services:** `RoleAssignmentService` (section), `MagicLinkService` (Base orchestrator)
+**Owning services:** `RoleAssignmentService`, `MagicLinkService` (both in the section)
 **Owned tables:** `role_assignments`
 **Status:** (G5) Own project — `src/Sections/Humans.Auth` + `src/Sections/Humans.Auth.Contracts` (nobodies-collective/Humans#866).
 
-### What is in the section and what stayed in Base
+### What is in the section and what stayed in Shell
 
-Auth is a **horizontal** section, and `peters-hard-rules.md` forbids a horizontal from referencing a vertical. That rule decided the split, not the file names:
+Auth is a **horizontal** section. `peters-hard-rules.md` forbids a horizontal from referencing a vertical *section project*; a vertical's `.Contracts` leaf is legal from anywhere (Peter's Base-floor decision of 2026-08-14). That is what decided the split:
 
-- **In `Humans.Auth`:** the `RoleAssignment` entity, `AuthDbContext` + factory + configuration + `Data/Migrations/`, `RoleAssignmentRepository`, `RoleAssignmentService`, `CachingRoleAssignmentService`, `AdminAuthorizationService` and `RoleAssignmentAuthorizationHandler`. Everything except the `Contracts/` folder is `internal`.
-- **On `Humans.Auth.Contracts`** (framework-free leaf; ~30 Base and Shell consumers): `IRoleAssignmentService`, `IAdminAuthorizationService`, `ICurrentUserContext`, `RoleAssignmentRow`, the three snapshots and `RoleAssignmentResult`.
+- **In `Humans.Auth`:** the `RoleAssignment` entity, `AuthDbContext` + factory + configuration + `Data/Migrations/`, `RoleAssignmentRepository`, `RoleAssignmentService`, `CachingRoleAssignmentService`, `AdminAuthorizationService`, `RoleAssignmentAuthorizationHandler`, and — since nobodies-collective/Humans#866 G5 lane 4b-2i — the whole magic-link sign-in path: `MagicLinkService`, `IMagicLinkUrlBuilder` + `MagicLinkUrlBuilder`, `IMagicLinkRateLimiter` + `MagicLinkRateLimiter`. Everything except the `Contracts/` folder is `internal`.
+- **On `Humans.Auth.Contracts`** (framework-free leaf; ~30 Base and Shell consumers): `IRoleAssignmentService`, `IAdminAuthorizationService`, `ICurrentUserContext`, `RoleAssignmentRow`, the three snapshots, `RoleAssignmentResult`, and `IMagicLinkService`. The last is on the leaf rather than in the section's `Contracts/` folder because a *Base* consumer names it — `Humans.Application`'s `ExternalLoginService` calls `FindUserByVerifiedEmailAsync` on the OAuth callback path, and Base cannot reference a section project (design §15 step 5b). It is also why this leaf, alone among the horizontals', references `Humans.Users.Contracts`: two of that interface's members return `User`.
 - **In `Humans.Auth/Contracts/`** (folder, needs ASP.NET): `RoleAssignmentOperationRequirement`, which Shell's `UsersAdminController` passes to `IAuthorizationService.AuthorizeAsync`.
-- **Stayed in Base:** `MagicLinkService` with `IMagicLinkService` / `IMagicLinkUrlBuilder` / `IMagicLinkRateLimiter` and their implementations, `AccountController` and `Views/Account/*`, `HttpCurrentUserContext`, `RoleAssignmentClaimsTransformation` and `RoleAssignmentClaimsCacheInvalidator`. `MagicLinkService` calls no repository and injects `Humans.Email.Contracts` — it is a cross-section orchestrator that a horizontal section may not host, the same call AuditLog made for `AuditViewerService`. `AccountController` follows it: every action it exposes writes Users'/Profiles' tables through their services and none writes `role_assignments`.
+- **Stayed in Shell:** `AccountController` and `Views/Account/*` with their 35 `SharedResource` keys, `HttpCurrentUserContext`, `RoleAssignmentClaimsTransformation` and `RoleAssignmentClaimsCacheInvalidator`. `AccountController` did not follow `MagicLinkService` in: every action it exposes writes Users'/Profiles' tables through their services and none writes `role_assignments`. The section still ships no controller, no view and no `Resources/` folder.
 
-`AuthArchitectureTests.SectionReferencesNoVerticalSection` pins the boundary — the section's `GetReferencedAssemblies()` may name only `Humans.AuditLog.Contracts`, `Humans.Gdpr.Contracts` and `Humans.Notifications.Contracts`, all horizontal.
+The section's outbound reference set is `Humans.AuditLog.Contracts`, `Humans.Gdpr.Contracts`, `Humans.Notifications.Contracts` (horizontal leaves), `Humans.Users.Contracts` (display stitching, `UserManager<User>`, `IUserEmailService`) and `Humans.Email.Contracts` (the magic-link send), each with a reason recorded beside it in `Humans.Auth.csproj`. `AuthArchitectureTests.SectionReferencesNoVerticalSection` used to pin that list; it was **retired** at G5 lane 4b-2i because Peter's Base-floor decision deleted its premise, the same call lane 4b-2h made for AuditLog's copy. A "horizontals may name leaves but never another section's project" rule, if wanted, belongs once as a generic rule over all horizontals — not restated per section.
 
 - `RoleAssignmentService` lives in `Humans.Auth/Services/` and depends only on Application-layer abstractions and other horizontals' leaves. It never imports `Microsoft.EntityFrameworkCore`.
 - `IRoleAssignmentRepository` (impl `Humans.Auth/Data/RoleAssignmentRepository.cs`) owns the SQL surface for `role_assignments`, reading/writing through `IDbContextFactory<AuthDbContext>` so the repository is registered Singleton while `AuthDbContext` itself stays Scoped. Since nobodies-collective/Humans#858, `role_assignments` lives in its own `AuthDbContext` (own `__EFMigrationsHistory_Auth` table) — not `HumansDbContext`. Same database and connection; the split is code-side only.
 - **Decorator decision — no caching decorator.** Role assignments are low-traffic (handful of admin-driven writes per month, few reads per day) and magic links are throwaway; a dict-backed decorator isn't warranted (same rationale as Governance / User / Feedback).
-- **Architecture tests** — `tests/Humans.Auth.Tests/Architecture/AuthArchitectureTests.cs` pins the section boundary (no vertical reference, no `IStringLocalizer`, no `DbContext`/store in `Services/`, framework-free leaf). `tests/Humans.Application.Tests/Architecture/AuthArchitectureTests.cs` keeps the two `MagicLinkService` rules, including the one that says it calls no repository — which is why it is still in Base.
+- **Architecture tests** — `tests/Humans.Auth.Tests/Architecture/AuthArchitectureTests.cs` pins the section boundary: no `IStringLocalizer`, no `DbContext`/store in `Services/`, framework-free leaf, and the two `MagicLinkService` rules (no `EmailSettings`/`IDataProtectionProvider` parameter, no repository parameter) that moved in with their subject. The Base-side `Humans.Application.Tests/Architecture/AuthArchitectureTests.cs` is gone. `MagicLinkServiceTests` stayed in `Humans.Application.Tests` because it derives from that project's `ServiceTestHarness`; it reaches the now-internal service through `Humans.Auth`'s existing `InternalsVisibleTo`.
 - **Cross-domain navs removed, not just `[Obsolete]`-marked:** `RoleAssignment.User`, `RoleAssignment.CreatedByUser` no longer exist as nav properties. The repository does not `.Include()` them; the service stitches display data in memory from `IUserServiceRead.GetUserInfosAsync` (§6b). `AboutController` and `ProfileController` still carry a stale `#pragma warning disable CS0618` (leftover from when they read `ra.User.DisplayName` / `ra.CreatedByUser.DisplayName` directly) but no longer reference either nav — the pragma is now a no-op tracked as cleanup debt, not an active suppression.
-- `MagicLinkService` owns no tables and stayed in `Humans.Application`. Its persistent state is `User.MagicLinkSentAt`, mutated via `UserManager<User>`. Verified-email lookup goes through `IUserEmailService.FindVerifiedEmailWithUserAsync`. Data-Protection token generation/validation and URL construction sit behind `IMagicLinkUrlBuilder`; replay-protection and signup rate-limit state sit behind `IMagicLinkRateLimiter`. That arrangement keeps `MagicLinkService` free of `HumansDbContext`, `EmailSettings`, `IDataProtectionProvider`, and `IMemoryCache`.
+- `MagicLinkService` owns no tables. Its persistent state is `User.MagicLinkSentAt`, mutated via `UserManager<User>`. Verified-email lookup goes through `IUserEmailService.FindVerifiedEmailWithUserAsync`. Data-Protection token generation/validation and URL construction sit behind `IMagicLinkUrlBuilder`; replay-protection and signup rate-limit state sit behind `IMagicLinkRateLimiter`. That arrangement keeps `MagicLinkService` free of `HumansDbContext`, `EmailSettings`, `IDataProtectionProvider`, and `IMemoryCache`.
 - **Cross-cutting invalidation** routes through `INavBadgeCacheInvalidator` (top-nav counters) and `IRoleAssignmentClaimsCacheInvalidator` (per-user claims transform cache) — never raw `IMemoryCache` calls.
 
 ### Touch-and-clean guidance

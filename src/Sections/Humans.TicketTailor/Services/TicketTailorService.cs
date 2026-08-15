@@ -8,7 +8,7 @@ using Humans.Application;
 using Humans.Application.Configuration;
 using Humans.Application.DTOs;
 using Humans.Application.Extensions;
-using Humans.Application.Interfaces.TicketVendor;
+using Humans.Tickets.Contracts;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;

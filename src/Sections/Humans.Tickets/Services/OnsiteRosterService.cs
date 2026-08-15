@@ -1,5 +1,4 @@
 using Humans.Auth.Contracts;
-using Humans.Application.Interfaces.Auth;
 using Humans.Camps.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;

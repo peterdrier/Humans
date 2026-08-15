@@ -1,7 +1,5 @@
 using Humans.GoogleIntegration.Contracts;
 using Humans.Agent.Contracts;
-using Humans.Application.Interfaces.AuditLog;
-using Humans.Application.Services.AuditLog;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Users;
 using Humans.Application.Configuration;
@@ -47,15 +45,10 @@ public static class InfrastructureServiceCollectionExtensions
         // Section-owned registrations. Each section file registers its own
         // repositories, services, jobs, options, and GDPR contributor forwarding.
         services.AddAuthSection();
-        // AuditLog's read+render owner. It resolves actor/subject/team display names
-        // through IUserServiceRead, ITeamServiceRead and ITeamResourceService, which makes
-        // it a cross-section orchestrator rather than part of the horizontal AuditLog
-        // section (peters-hard-rules.md: a horizontal may not reference a vertical), so it
-        // stays in Humans.Application and is registered here — Governance's rule, that the
-        // section owning the file is not always the section owning the line.
-        services.AddScoped<IAuditViewerService, AuditViewerService>();
+        // AuditLog's read+render owner (IAuditViewerService) is registered by
+        // Humans.AuditLog's own Section.Register since G5 lane 4b-2h
+        // (nobodies-collective/Humans#866).
         services.AddAdminSection();
-        services.AddHoldedConnector(configuration);
 
         // Recurring jobs for sections that have already moved out. The job types stay in
         // Humans.Infrastructure/Jobs because UseHumansRecurringJobs names them by concrete
@@ -71,16 +64,26 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<SyncLegalDocumentsJob>();
         services.AddScoped<SendReConsentReminderJob>();
         services.AddTransient<MailerAudienceSyncJob>();
+        // Both Holded jobs are Hangfire-serialized by concrete type and so stay in Base; the
+        // connector itself (client, options, call log) is registered by Humans.Holded's Section.cs
+        // since G5 lane 4b-2f. HoldedSyncJob is a shim over IHoldedNightlySync; the expense-outbox
+        // drain is Expenses' body and is unchanged.
+        services.AddScoped<HoldedSyncJob>();
+        services.AddScoped<HoldedExpenseOutboxJob>();
 
-        // Base collaborators that Teams' section file used to register on the way past.
+        // Base collaborator that Teams' section file used to register on the way past.
         // ActiveTeamsCacheInvalidator is a Humans.Infrastructure implementation of a
         // Humans.Application interface (the IInvalidator family other sections evict Teams'
-        // master cache entry through), and SystemTeamSyncJob is a Humans.Infrastructure job
-        // bound to GoogleIntegration's ISystemTeamSync — neither is Teams' to own
-        // (design §15 step 4, Governance's rule: the section that owns the file is not always
-        // the section that owns the line).
+        // master cache entry through), so it is not Teams' to own (design §15 step 4,
+        // Governance's rule: the section that owns the file is not always the section that
+        // owns the line).
+        //
+        // SystemTeamSyncJob used to be registered here on the same grounds. That claim was
+        // re-measured at G5 lane 4b-2e and was wrong — system-team membership is a Teams
+        // invariant — so the implementation and its registration both moved into
+        // Humans.Teams' Section.cs. Only ISystemTeamSync stayed in Humans.Application,
+        // because Hangfire serializes it as the recurring job's target type.
         services.AddScoped<IActiveTeamsCacheInvalidator, ActiveTeamsCacheInvalidator>();
-        services.AddScoped<ISystemTeamSync, SystemTeamSyncJob>();
 
         // Base collaborators that Governance's section file used to register on the way past.
         // The three badge-cache invalidators are Humans.Infrastructure implementations of

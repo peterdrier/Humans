@@ -46,6 +46,13 @@
     <ProjectReference Include="..\Sections\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
     <ProjectReference Include="..\Sections\Humans.Expenses.Contracts\Humans.Expenses.Contracts.csproj" />
     <ProjectReference Include="..\Sections\Humans.Gate.Contracts\Humans.Gate.Contracts.csproj" />
+    <!--
+      Holded's contracts leaf: HoldedSyncJob is the Hangfire shim over IHoldedNightlySync, and
+      HoldedExpenseOutboxJob reads HoldedClientOptions.ApiKey to decide whether to drain. Both
+      jobs stay here for the same reason as the rest — Hangfire serializes the declaring type
+      name — while the connector itself now lives in Humans.Holded (G5 lane 4b-2f).
+    -->
+    <ProjectReference Include="..\Sections\Humans.Holded.Contracts\Humans.Holded.Contracts.csproj" />
     <ProjectReference Include="..\Sections\Humans.Governance.Contracts\Humans.Governance.Contracts.csproj" />
     <ProjectReference Include="..\Sections\Humans.Issues.Contracts\Humans.Issues.Contracts.csproj" />
     <ProjectReference Include="..\Sections\Humans.Mailer.Contracts\Humans.Mailer.Contracts.csproj" />

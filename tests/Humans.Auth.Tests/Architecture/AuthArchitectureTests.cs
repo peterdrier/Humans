@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using Humans.Auth.Data;
+using Humans.Auth.Services;
 
 namespace Humans.Auth.Tests.Architecture;
 
@@ -8,9 +9,11 @@ namespace Humans.Auth.Tests.Architecture;
 /// </summary>
 /// <remarks>
 /// <para>
-/// The <c>MagicLinkService</c> half of the old <c>Humans.Application.Tests</c> file stayed
-/// there: that service is a cross-section orchestrator and did not move
-/// (see <c>Humans.Auth.Section</c>).
+/// The two <c>MagicLinkService</c> rules that used to live in
+/// <c>Humans.Application.Tests/Architecture/AuthArchitectureTests.cs</c> are at the bottom of
+/// this file: the service moved here at nobodies-collective/Humans#866 G5 lane 4b-2i, so they
+/// followed their subject. That file is gone; its third job — asserting the service was in
+/// Base — was the premise this lane reverses and is not restated anywhere.
 /// </para>
 /// <para>
 /// Generic cross-section invariants (sealed repos, no <c>IMemoryCache</c> unless
@@ -54,8 +57,10 @@ public class AuthArchitectureTests
         // The section deliberately ships no Resources/ folder and no AuthResource: it has
         // no controller and no view. AccountController and its Views/Account/* — and with
         // them every Login_*/MagicLink*/GateLogin_*/CompleteSignup_*/AccessDenied_* key —
-        // stayed in Shell with the magic-link orchestrator, so those keys stayed in
-        // SharedResource (template step 3b's first question, answered "no keys").
+        // stayed in Shell, and stayed there when MagicLinkService came into the section at
+        // G5 lane 4b-2i, so those keys stayed in SharedResource (template step 3b's first
+        // question, answered "no keys"). MagicLinkService renders no copy: the two emails it
+        // sends are built by Email's IEmailMessageFactory against EmailResource.
         var offenders = SectionAssembly
             .GetTypes()
             .SelectMany(t => t.GetConstructors()
@@ -76,39 +81,23 @@ public class AuthArchitectureTests
             because: "Auth has no resource set; a localizer here means copy was added without carving one");
     }
 
-    [HumansFact]
-    public void SectionReferencesNoVerticalSection()
-    {
-        // Auth is a *horizontal* section. peters-hard-rules.md: horizontals "are strictly
-        // forbidden from referencing vertical sections ... as that will cause loops in the
-        // call graph". The referenced-assembly list is where that stops being a convention.
-        //
-        // The three names below are all horizontal leaves. Two absences are the load-bearing
-        // part: Humans.Email.Contracts, which MagicLinkService injects and which is why that
-        // orchestrator stayed in Humans.Application; and Humans.Onboarding.Contracts, which
-        // IRoleAssignmentService's two write members returned (OnboardingResult) until this
-        // move replaced it with the section's own RoleAssignmentResult.
-        var sectionRefs = SectionAssembly
-            .GetReferencedAssemblies()
-            .Select(a => a.Name ?? string.Empty)
-            .Where(n => n.StartsWith("Humans.", StringComparison.Ordinal))
-            .Where(n => n is not ("Humans.Interfaces" or "Humans.Domain" or "Humans.Application"
-                                 or "Humans.Infrastructure" or "Humans.UI" or "Humans.Analyzers"
-                                 or "Humans.Auth.Contracts"))
-            .OrderBy(n => n, StringComparer.Ordinal)
-            .ToList();
-
-        // The fourth name, Humans.Users.Contracts, is the exception RoleAssignmentService already
-        // carries in source: "Auth (crosscut) references vertical sections — IUserServiceRead for
-        // assignee/creator display stitching". Nothing about that coupling changed here; the
-        // interface simply left Humans.Application for Users' contracts leaf
-        // (nobodies-collective/Humans#866, lane 2 PR A), which is the first time it shows up as an
-        // assembly reference. #866 names User/UserInfo as sanctioned shared contracts; lane 4
-        // decides whether they end up on the Base floor instead, which would drop this row.
-        sectionRefs.Should().BeEquivalentTo(
-            ["Humans.AuditLog.Contracts", "Humans.Gdpr.Contracts", "Humans.Notifications.Contracts", "Humans.Users.Contracts"],
-            because: "a horizontal section may reference only Base, other horizontals, and the sanctioned User/UserInfo contracts");
-    }
+    // SectionReferencesNoVerticalSection was retired here at nobodies-collective/Humans#866 G5
+    // lane 4b-2i, the same call and for the same reason lane 4b-2h made in
+    // AuditLogArchitectureTests. It pinned Humans.Auth.GetReferencedAssemblies() to exactly
+    // ["Humans.AuditLog.Contracts", "Humans.Gdpr.Contracts", "Humans.Notifications.Contracts",
+    // "Humans.Users.Contracts"] — three horizontal leaves plus one documented exception —
+    // because peters-hard-rules.md forbade a horizontal from referencing a vertical.
+    //
+    // Peter's Base-floor decision of 2026-08-14 deleted that premise: a .Contracts leaf is
+    // referenceable from anywhere, which is what let MagicLinkService come home from
+    // Humans.Application along with the Humans.Email.Contracts reference it carries. Adding
+    // that fifth string would have kept the test green while asserting nothing beyond the
+    // contents of Humans.Auth.csproj two directories away — a list, not an invariant.
+    //
+    // If "a horizontal may name leaves but never another section's *project*" is wanted as a
+    // rule, it belongs once as a generic rule over every horizontal in
+    // tests/Humans.Application.Tests/Architecture/Rules/, not restated per section. The
+    // reference set itself is documented, with a reason per name, in Humans.Auth.csproj.
 
     [HumansFact]
     public void ContractsLeafNamesNoAspNetType()
@@ -125,5 +114,37 @@ public class AuthArchitectureTests
 
         leafRefs.Should().BeEmpty(
             because: "Humans.Auth.Contracts is a framework-free leaf (Microsoft.NET.Sdk)");
+    }
+
+    // --- The two rules that followed MagicLinkService in from Humans.Application.Tests. ---
+
+    [HumansFact]
+    public void MagicLinkService_has_no_email_settings_or_data_protection_constructor_parameter()
+    {
+        var ctor = typeof(MagicLinkService).GetConstructors().Single();
+        var settingsParam = ctor.GetParameters()
+            .FirstOrDefault(p =>
+                (p.ParameterType.FullName ?? string.Empty)
+                    .Contains("EmailSettings", StringComparison.Ordinal) ||
+                (p.ParameterType.FullName ?? string.Empty)
+                    .Contains("IDataProtectionProvider", StringComparison.Ordinal));
+
+        settingsParam.Should().BeNull(
+            because: "Data-protection and URL construction live behind IMagicLinkUrlBuilder");
+    }
+
+    [HumansFact]
+    public void MagicLinkService_calls_no_repository()
+    {
+        // This used to be the reason it stayed in Base. It is not that any more — an
+        // orchestrator may live in the section it orchestrates for — but the shape is still
+        // worth pinning: if the sign-in path grows a repository it has grown tables, and the
+        // hard rules' orchestrator/service split has to be re-decided rather than drifted into.
+        var ctor = typeof(MagicLinkService).GetConstructors().Single();
+        var repositoryParam = ctor.GetParameters()
+            .FirstOrDefault(p => p.ParameterType.Name.EndsWith("Repository", StringComparison.Ordinal));
+
+        repositoryParam.Should().BeNull(
+            because: "MagicLinkService is an orchestrator; orchestrators do not call repositories (peters-hard-rules.md)");
     }
 }

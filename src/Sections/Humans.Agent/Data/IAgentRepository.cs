@@ -1,4 +1,3 @@
-using Humans.Application.Models;
 using NodaTime;
 using Humans.Domain.Attributes;
 using Humans.Agent;

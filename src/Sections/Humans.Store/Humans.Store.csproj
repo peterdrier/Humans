@@ -28,6 +28,9 @@
     <ProjectReference Include="..\..\Humans.Infrastructure\Humans.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Humans.UI\Humans.UI.csproj" />
     <ProjectReference Include="..\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
+    <!-- StoreAdmin/CatalogEdit.cshtml renders <vc:audit-log>, which moved out of Humans.UI into
+         the AuditLog section in G5 lane 4b-2h (nobodies-collective/Humans#866). -->
+    <ProjectReference Include="..\Humans.AuditLog\Humans.AuditLog.csproj" />
     <!--
       Checkout Session creation, webhook signature verification and payment
       reconciliation, through Humans.Stripe.Contracts. A direct section reference rather

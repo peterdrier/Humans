@@ -193,7 +193,9 @@ public class CityPlanningArchitectureTests
         // (GoogleIntegration's) — so this predicate matches nothing and passes vacuously. The
         // rule it states is still wanted; re-key it onto the real entity homes
         // (src/Sections/*/Domain and the *.Contracts leaves) when phase 5a deletes Humans.Domain.
-        // Logged in local/g5-batch-4/state.md's "Analyzer coverage reduced" table.
+        // Tracked in docs/architecture/debt-ledger.yml (inbox, added 2026-08-15) so /debt-sweep
+        // can pick it up; the same entry covers the sibling predicate in
+        // tests/Humans.Tickets.Tests/Architecture/TicketQueryArchitectureTests.cs.
         var offenders = typeof(Section).Assembly.GetTypes()
             .Where(t => string.Equals(t.Namespace, "Humans.CityPlanning.Domain", StringComparison.Ordinal))
             .SelectMany(t => t.GetProperties()

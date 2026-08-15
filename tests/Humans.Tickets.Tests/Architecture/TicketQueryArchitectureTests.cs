@@ -70,7 +70,9 @@ public class TicketQueryArchitectureTests
         // (GoogleIntegration's) — so the namespace filter below matches nothing and this passes
         // vacuously. Re-key it onto the real entity homes (src/Sections/*/Domain and the
         // *.Contracts leaves) when phase 5a deletes Humans.Domain.
-        // Logged in local/g5-batch-4/state.md's "Analyzer coverage reduced" table.
+        // Tracked in docs/architecture/debt-ledger.yml (inbox, added 2026-08-15) so /debt-sweep
+        // can pick it up; the same entry covers the sibling predicate in
+        // tests/Humans.CityPlanning.Tests/CityPlanningArchitectureTests.cs.
         var offenders = typeof(ITicketServiceRead).GetMethods()
             .SelectMany(m => m.ReturnParameter.ParameterType
                 .GetGenericArguments()

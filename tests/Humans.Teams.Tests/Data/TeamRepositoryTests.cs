@@ -12,6 +12,7 @@ using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using NodaTime.Testing;
 
+using Humans.Teams.Contracts;
 namespace Humans.Teams.Tests;
 
 /// <summary>

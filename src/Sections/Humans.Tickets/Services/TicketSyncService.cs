@@ -12,7 +12,6 @@ using Humans.Domain.Helpers;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NodaTime;
-using Humans.Application.Interfaces.TicketVendor;
 using Humans.Stripe.Contracts;
 using Humans.Tickets.Data;
 using Humans.Tickets.Domain;

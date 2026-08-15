@@ -3,7 +3,6 @@ using Humans.Auth.Contracts;
 using System.Text.RegularExpressions;
 using Humans.Application.DTOs;
 using Humans.AuditLog.Contracts;
-using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Teams.Contracts;

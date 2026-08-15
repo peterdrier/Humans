@@ -1,7 +1,7 @@
 <!-- freshness:triggers
   src/Sections/Humans.Finance/**
   src/Sections/Humans.Finance.Contracts/**
-  src/Humans.Infrastructure/Services/Holded/HoldedClient.cs
+  src/Sections/Humans.Holded/Services/HoldedClient.cs
   src/Humans.Infrastructure/Jobs/HoldedSyncJob.cs
 -->
 <!-- freshness:flag-on-change
@@ -213,13 +213,13 @@ Budget never calls into Finance.
 **Pure matcher:** `HoldedMatcher` (static, no dependencies)
 **Owned repository:** `IHoldedRepository` / `Repository` (`Humans.Finance.Data`)  
 **Owned tables:** `holded_expense_docs`, `holded_category_map`, `holded_doc_sync_state`, `holded_creditor_contacts`  
-**Job:** `HoldedSyncJob` (cron `0 3 * * *`) — **stays in `Humans.Infrastructure/Jobs`.** Recurring jobs are named by concrete type in Shell's `UseHumansRecurringJobs` roll-call and there is no `ISection`-style discovery seam for them, so a job inside the section would have to be public to be scheduled. It reaches Finance through the contracts leaf like any other Base consumer.  
+**Job:** `HoldedSyncJob` (cron `0 3 * * *`) — **stays in `Humans.Infrastructure/Jobs`,** because Hangfire serializes the declaring type name of a scheduled job. Since G5 lane 4b-2f it is only a shim: its body is `HoldedNightlySync` in `Humans.Holded`, which calls this section's `IHoldedFinanceService.SyncAsync` first and then the ledger mirror.  
 **Migrations:** `20260715103643_BaselineFinance` — consolidated onto `FinanceDbContext` (its own history table, `__EFMigrationsHistory_Finance`) when Finance moved off the shared `HumansDbContext` (nobodies-collective/Humans#858); the earlier per-feature migration chain (`HoldedActuals`, `HoldedCreditorData`, `HoldedCreditorContact`, `HoldedLedgerSingleSource`) was squashed into this baseline. Since then: `20260810195350_HoldedExpenseDocIsApproved` (swaps `ApprovedAt` for the nullable `IsApproved` flag) and `20260810204942_HoldedMirrorMovesToHoldedSection` (drops the ledger-mirror tables, which the Holded section now owns)  
 **Architecture tests:** `tests/Humans.Finance.Tests/FinanceArchitectureTests.cs`
 
 **Controllers.** `/Finance` is served by two controllers under one route prefix. `Humans.Finance.Controllers.FinanceController` owns the section's own eight actions — `HoldedAccounts`, `HoldedUnmatched`, `Creditors`, `CreditorStatement`, `Bind`, `Unbind`, `Provision`, `HoldedSync/Run`. The other 23 actions on the pre-G5 `FinanceController` were Budget CRUD (years, groups, categories, line items, ticketing projection, cash flow, audit log) and stayed in Shell as `BudgetAdminController`, keeping `[Route("Finance")]` so no URL moved. Moving them here would have put Budget's whole admin surface inside the Finance section and forced two Budget view models (`BudgetSlice`, `VatProjection`) down into Base to reach it. They reunite — or don't — at Budget's own G5.
 
-**The Holded connector is not this section.** `IHoldedClient`, `HoldedClient`, `HoldedClientOptions`, `HoldedApiException` and the `Interfaces/Holded/*` DTOs stay in Base with their own [`Holded.md`](../../../../docs/sections/Holded.md), exactly as `IStripeService` stayed through Store's move. Consequence for the boundary: `HoldedCreditorLedger.Lines` carries Finance's own `CreditorLedgerLine` rather than the connector's `HoldedLedgerLineDto`, because the contracts leaf may reference only the bottom of the graph and re-exporting another component's wire DTO across a section boundary is the thing the split exists to stop.
+**The Holded connector is not this section.** `IHoldedClient`, `HoldedClient`, `HoldedClientOptions`, `HoldedApiException` and the connector DTOs belong to the **Holded** section — public on `Humans.Holded.Contracts`, implementation `internal` in `Humans.Holded/Services/` — with their own [`Holded-connector.md`](../../Humans.Holded/Docs/Holded-connector.md) (G5 lane 4b-2f, nobodies-collective/Humans#866). Finance consumes them through that leaf. Consequence for the boundary: `HoldedCreditorLedger.Lines` carries Finance's own `CreditorLedgerLine` rather than the connector's `HoldedLedgerLineDto`, because the contracts leaf may reference only the bottom of the graph and re-exporting another component's wire DTO across a section boundary is the thing the split exists to stop.
 
 **Table names.** `holded_*` tables under a section called `Finance`, and a `FinanceDbContext` naming the live `__EFMigrationsHistory_Finance` table. The mismatch is real and deferred wholesale to nobodies-collective/Humans#1012 — a G5 move changes files, never the schema (design §15 step 10).
 
@@ -237,7 +237,7 @@ Budget never calls into Finance.
 > - `../Humans.Finance.Contracts/IHoldedFinanceService.cs`
 > - `Data/IHoldedRepository.cs`
 > - `Data/Repository.cs`
-> - `src/Humans.Infrastructure/Services/Holded/HoldedClient.cs`
+> - `src/Sections/Humans.Holded/Services/HoldedClient.cs`
 > - `src/Humans.Infrastructure/Jobs/HoldedSyncJob.cs`
 > - `tests/Humans.Finance.Tests/FinanceArchitectureTests.cs`
 > - EF migration `20260525163748_HoldedActuals` for all three Feature 1 Finance-owned tables

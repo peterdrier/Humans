@@ -1,10 +1,7 @@
 <!-- freshness:triggers
   src/Sections/Humans.AuditLog/**
   src/Sections/Humans.AuditLog.Contracts/**
-  src/Humans.Application/Services/AuditLog/**
-  src/Humans.Application/Interfaces/AuditLog/IAuditViewerService.cs
   src/Humans.Domain/Enums/AuditAction.cs
-  src/Humans.UI/ViewComponents/AuditLogViewComponent.cs
 -->
 <!-- freshness:flag-on-change
   Audit log append-only invariant, AuditAction enum surface, and self-persisting semantics — review when AuditLog service/repo/entity changes.
@@ -143,7 +140,7 @@ No one reads audit entries anonymously. The `/AuditLog` dashboard is gated to Bo
 Nearly every other section **writes** into this section via `IAuditLogService`. This section depends on almost nothing:
 
 - **Users (display lookup):** `AuditViewerService` calls `IUserServiceRead.GetUserInfosAsync` to batch-resolve actor and subject display names for audit list rendering, using `Profile.BurnerName` per `memory/architecture/burnername-is-the-display-name.md`. Cross-section read-interface call — no direct `ctx.Profiles` / `ctx.Users` access.
-- **Teams (display lookup):** `AuditViewerService` calls `ITeamServiceRead.GetTeamsAsync` (the cached full team list) and filters to the requested ids in memory to batch-resolve team name + slug for entries that reference a team. Cross-section read-interface call, no direct `ctx.Teams` access, no `Team` entities held — this section is horizontal and must not reference vertical sections' entities.
+- **Teams (display lookup):** `AuditViewerService` calls `ITeamServiceRead.GetTeamsAsync` (the cached full team list) and filters to the requested ids in memory to batch-resolve team name + slug for entries that reference a team. Cross-section read-interface call, no direct `ctx.Teams` access, no `Team` entities held — the section takes Teams' *contracts leaf*, never Teams itself.
 - **GoogleIntegration (resource name lookup):** `AuditViewerService` calls `ITeamResourceService.GetResourceNamesByIdsAsync` to batch-resolve resource display names for entries that reference a Google resource. Same pattern as Users/Teams above — service-layer call, no direct `ctx.GoogleResources` access, no nav property, no FK constraint.
 - **GDPR (`IUserDataContributor`):** `AuditLogService` contributes per-user audit slices to the GDPR export orchestrator via `ContributeForUserAsync`.
 - **Users/Identity:** `IUserService.GetMergedSourceIdsAsync` — chain-follow merge tombstones on every per-user audit read so source-attributed entries surface for the fold target.
@@ -152,19 +149,19 @@ No other cross-section writes from this section outward. Audit is a sink.
 
 ## Architecture
 
-**Owning services:** `AuditLogService` (write + raw queries, `Humans.AuditLog.Services`). `AuditViewerService` (read+render) is **not** the section's — see the split below. `AuditEventTextualizer` is the stateless verb-table helper backing both `RenderPlainText` (agent tool output, with viewer-GUID → "You" substitution) and `RenderStructured` (view-component HTML composition).
+**Owning services:** `AuditLogService` (write + raw queries) and `AuditViewerService` (read+render), both `Humans.AuditLog.Services`. `AuditEventTextualizer` is the stateless verb-table helper backing both `RenderPlainText` (agent tool output, with viewer-GUID → "You" substitution) and `RenderStructured` (view-component HTML composition).
 **Owned tables:** `audit_log`
 **Status:** G5 — own project `src/Sections/Humans.AuditLog` + contracts leaf `src/Sections/Humans.AuditLog.Contracts` (nobodies-collective/Humans#866). Original migration: nobodies-collective/Humans#552.
 
-### The horizontal split: what moved and what did not
+### Read+render path and the two Contracts homes
 
-AuditLog is a **horizontal** section, and `peters-hard-rules.md` forbids a horizontal from referencing a vertical. The name-resolving read path cannot obey that rule inside the section: `AuditViewerService` injects `IUserServiceRead`, `ITeamServiceRead` (which is `Humans.Teams.Contracts` since Teams' own G5) and `ITeamResourceService`, so it is a cross-section **orchestrator**. It, `IAuditViewerService`, `AuditEvent`, `AuditEventPage` and `AuditEventTextualizer` therefore stayed in `Humans.Application`, registered from Shell's `InfrastructureServiceCollectionExtensions`.
+`AuditViewerService` wraps the section's own `IAuditLogService` raw queries with actor, subject, team and Google-resource name resolution, so it injects `IUserServiceRead`, `ITeamServiceRead` and `ITeamResourceService`. It lived in `Humans.Application` for one batch on the reading that a horizontal section may not reference a vertical. **Peter reversed that in the Base-floor decision of 2026-08-14**: a former Base resident that names another section's read interface moves to its section, and Base gets no `Humans.Teams.Contracts` reference to keep it. G5 lane 4b-2h moved `IAuditViewerService`, `AuditEvent`, `AuditEventPage`, `AuditEventTextualizer` and `AuditLogViewComponent` into this project, and retired the assembly-level `SectionReferencesNoVerticalSection` test whose premise the decision inverted. The section now takes `Humans.Teams.Contracts`, `Humans.GoogleIntegration.Contracts` and `Humans.Users.Contracts`; none of Teams, GoogleIntegration or Users is reached, so the graph stays acyclic even though four sections reference `Humans.AuditLog` for the widget.
 
-That split is also what kept the move cheap. `Humans.UI/ViewComponents/AuditLogViewComponent` injects `IAuditViewerService` and binds `AuditEvent`, and `Humans.UI` cannot reference a section at any price — had the read path moved, the component and its ~10 `<vc:audit-log>` call sites would have had to move with it. As shipped, neither the component nor a single call site changed.
+**Two Contracts homes, on purpose.** The leaf *project* `Humans.AuditLog.Contracts` carries `IAuditLogService` — the append path, called from ~130 files including Base ones, which cannot reference a section. This project's `Contracts/` *folder* carries `IAuditViewerService` / `AuditEvent` / `AuditEventPage`, whose consumers are all Shell or other sections and can `ProjectReference` `Humans.AuditLog` directly. Both use the namespace `Humans.AuditLog.Contracts`, as Shifts and Tickets already do.
 
-`AuditLogArchitectureTests.SectionReferencesNoVerticalSection` pins the rule at the assembly level: the only section assembly `Humans.AuditLog` may name is `Humans.Gdpr.Contracts`, which is itself horizontal.
+**`<vc:audit-log>` binding.** The component is public in `Humans.AuditLog.ViewComponents`; its views are at `Views/Shared/Components/AuditLog/`. Every consuming assembly — `Humans.Web`, `Humans.Users`, `Humans.Teams`, `Humans.Store`, `Humans.Tickets` — needs both a `ProjectReference` and `@addTagHelper *, Humans.AuditLog` in its `_ViewImports.cshtml`; a missing directive ships inert literal markup with a green build. `AuditLogPageRenderTests` guards this two ways: a seeded-marker render assertion on `/Users/Admin/{id}` and `/WidgetGallery`, and a source scan asserting every `<vc:audit-log>` call site sits under a `_ViewImports` chain that binds it.
 
-- `AuditLogService` (`internal sealed`, `Humans.AuditLog.Services`) depends only on abstractions — no `DbContext`, no `IMemoryCache`; `AuditLogArchitectureTests.SectionServicesTakeNoDbContext` pins it. Its cross-section surface is the whole of `Humans.AuditLog.Contracts.IAuditLogService`, consumed by ~130 files: the leaf is a project rather than a `Contracts/` folder because most of those consumers are in Base, including `AuditViewerService` itself.
+- `AuditLogService` (`internal sealed`, `Humans.AuditLog.Services`) depends only on abstractions — no `DbContext`, no `IMemoryCache`; `AuditLogArchitectureTests.SectionServicesTakeNoDbContext` pins it. Its cross-section surface is the whole of `Humans.AuditLog.Contracts.IAuditLogService`, consumed by ~130 files: that leaf is a project rather than a folder because most of those consumers are in Base.
 - `IAuditLogRepository` (impl `src/Sections/Humans.AuditLog/Data/AuditLogRepository.cs`, `internal sealed`) is the only file that touches `DbContext.AuditLogEntries` — confirmed by source: no other repository references the `AuditLogEntries` DbSet. Uses `IDbContextFactory<AuditLogDbContext>` with short-lived contexts per call.
 - **Decorator decision — no caching decorator (§15 Option A).** Writes are scattered across every section (~96 call sites at migration time); reads are admin-only and already filtered server-side by index. No benefit from a section-owned cache.
 - **Predicate-pushed reads (sanctioned exception to `no-linq-at-db-layer`).** Unlike most sections where in-memory filtering is preferred, `IAuditLogRepository` keeps predicate-pushed query methods (`GetByUserAsync`, `GetGoogleSyncByUserAsync`, `GetFilteredAsync`, `GetByResourceAsync`, etc.) rather than exposing a `GetAll().Where(...)` surface. Reason: `audit_log` is a large append-only table with ~96 writers, indefinite retention, and no ceiling on row count — loading all rows into RAM for in-memory filtering does not scale here. The section doc explicitly justifies this exception.

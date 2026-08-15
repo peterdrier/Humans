@@ -3,7 +3,6 @@ using System.Security.Cryptography;
 using System.Text;
 using Humans.Application.DTOs;
 using Humans.Application.Extensions;
-using Humans.Application.Interfaces.Auth;
 using Humans.AuditLog.Contracts;
 using Humans.Camps.Contracts;
 using Humans.Consent.Contracts;

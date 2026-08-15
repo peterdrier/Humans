@@ -1,6 +1,6 @@
 using Humans.Application.Configuration;
 using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.TicketVendor;
+using Humans.Tickets.Contracts;
 using Humans.TicketTailor.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -10,8 +10,8 @@ namespace Humans.TicketTailor;
 
 /// <summary>
 /// The TicketTailor adapter's DI entry point: binds exactly one implementation of
-/// <see cref="ITicketVendorService"/>, the vendor-agnostic port that stays in
-/// <c>Humans.Application</c>.
+/// <see cref="ITicketVendorService"/>, the vendor-agnostic port owned by
+/// <c>Humans.Tickets</c>.
 /// </summary>
 /// <remarks>
 /// <para>

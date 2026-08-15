@@ -2,7 +2,6 @@ using Humans.GoogleIntegration.Contracts;
 using Humans.Application.Interfaces;
 using Humans.Teams.Contracts;
 using Humans.Domain.Enums;
-using Humans.Domain.ValueObjects;
 using NodaTime;
 
 namespace Humans.Teams.Services;

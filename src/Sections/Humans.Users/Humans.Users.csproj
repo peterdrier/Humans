@@ -102,6 +102,11 @@
     -->
     <ProjectReference Include="..\Humans.Camps\Humans.Camps.csproj" />
     <ProjectReference Include="..\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
+    <!-- ProfileController injects IAuditViewerService and AdminDetail.cshtml renders
+         <vc:audit-log>; both moved out of Humans.Application / Humans.UI into the AuditLog
+         section in G5 lane 4b-2h (nobodies-collective/Humans#866). AuditLog reaches back only
+         to Humans.Users.Contracts, never to this project — no cycle. -->
+    <ProjectReference Include="..\Humans.AuditLog\Humans.AuditLog.csproj" />
     <ProjectReference Include="..\Humans.Auth.Contracts\Humans.Auth.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Consent.Contracts\Humans.Consent.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />

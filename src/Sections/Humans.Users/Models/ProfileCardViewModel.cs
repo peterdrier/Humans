@@ -6,6 +6,7 @@ using Humans.Domain.Enums;
 using Humans.UI.ViewComponents;
 using Humans.Users.Contracts;
 
+using Humans.Governance.Contracts;
 namespace Humans.Users.Models;
 
 /// <summary>

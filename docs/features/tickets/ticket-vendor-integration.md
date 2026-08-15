@@ -2,7 +2,6 @@
   src/Sections/Humans.Tickets/**
   src/Sections/Humans.Tickets.Contracts/**
   src/Sections/Humans.TicketTailor/**
-  src/Humans.Application/Interfaces/TicketVendor/**
   src/Humans.Web/Controllers/WelcomeController.cs
   src/Humans.Web/Views/Welcome/**
   src/Sections/Humans.Campaigns/Domain/CampaignGrant.cs

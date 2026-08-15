@@ -15,7 +15,7 @@
   src/Sections/Humans.Tickets/Services/TicketQueryService.cs
   src/Sections/Humans.Campaigns/Services/CampaignService.cs
   src/Humans.Application/Services/Camps/**
-  src/Humans.Application/Services/AuditLog/**
+  src/Sections/Humans.AuditLog/Services/**
   src/Sections/Humans.Budget/Services/BudgetService.cs
   src/Humans.Application/Services/Users/AccountMergeService.cs
   src/Sections/Humans.Surveys/Services/SurveyService.cs

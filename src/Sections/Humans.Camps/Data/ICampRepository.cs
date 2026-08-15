@@ -1,6 +1,5 @@
 using Humans.Application.Interfaces;
 using Humans.Camps.Domain;
-using Humans.Domain.ValueObjects;
 
 using Humans.Domain.Enums;
 using NodaTime;
@@ -92,7 +91,7 @@ internal partial interface ICampRepository : IRepository
         string contactEmail,
         string contactPhone,
         string? webOrSocialUrl,
-        IReadOnlyList<Humans.Domain.ValueObjects.CampLink>? links,
+        IReadOnlyList<CampLink>? links,
         bool isSwissCamp,
         int timesAtNowhere,
         bool hideHistoricalNames,

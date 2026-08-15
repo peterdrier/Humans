@@ -9,7 +9,7 @@
   src/Humans.Domain/Constants/TicketConstants.cs
   src/Sections/Humans.Tickets/Data/Configurations/**
   src/Sections/Humans.TicketTailor/**
-  src/Humans.Application/Interfaces/TicketVendor/ITicketVendorService.cs
+  src/Sections/Humans.Tickets/Contracts/ITicketVendorService.cs
 -->
 <!-- freshness:flag-on-change
   Ticket dashboard, sales/attendees/orders views, sync triggering, codes/redemption, gate list, and Volunteer Ticket Coverage. Review when ticket views, sync service, or ticket entities change.

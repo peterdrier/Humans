@@ -1,6 +1,5 @@
 using System.Security.Claims;
 using AwesomeAssertions;
-using Humans.Camps.Contracts;
 using Humans.Domain.Constants;
 using Humans.Domain.Enums;
 using Humans.UI.Authorization;

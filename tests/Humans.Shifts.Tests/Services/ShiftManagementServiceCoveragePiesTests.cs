@@ -3,7 +3,6 @@ using Humans.Auth.Contracts;
 using Humans.Teams.Data;
 using Humans.Teams.Domain;
 using AwesomeAssertions;
-using Humans.Application.Interfaces.Auth;
 using Humans.Shifts.Services;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;

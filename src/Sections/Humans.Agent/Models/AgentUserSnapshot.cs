@@ -1,4 +1,3 @@
-using Humans.Application.Models;
 using Humans.Teams.Contracts;
 
 namespace Humans.Agent.Models;

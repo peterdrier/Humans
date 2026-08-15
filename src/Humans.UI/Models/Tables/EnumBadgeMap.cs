@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 
 using Humans.Domain.Enums;
 
+using Humans.Shifts.Contracts;
 namespace Humans.UI.Models.Tables;
 
 /// <summary>

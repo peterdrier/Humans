@@ -12,7 +12,7 @@
   src/Humans.Infrastructure/Jobs/GoogleResourceReconciliationJob.cs
   src/Humans.Infrastructure/Jobs/GoogleResourceProvisionJob.cs
   src/Humans.Infrastructure/Jobs/ProcessGoogleSyncOutboxJob.cs
-  src/Humans.Infrastructure/Jobs/SystemTeamSyncJob.cs
+  src/Sections/Humans.Teams/Services/SystemTeamSyncJob.cs
   src/Sections/Humans.Teams/Controllers/TeamAdminController.cs
   src/Sections/Humans.Teams/Views/TeamAdmin/Resources.cshtml
 -->

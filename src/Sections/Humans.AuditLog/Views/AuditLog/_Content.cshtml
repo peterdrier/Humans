@@ -61,9 +61,9 @@
 }
 else
 {
-    Func<Humans.Application.Services.AuditLog.AuditEvent, IHtmlContent> whenCell =
+    Func<Humans.AuditLog.Contracts.AuditEvent, IHtmlContent> whenCell =
         @<text><span class="text-nowrap">@item.OccurredAt.ToInvariantTimestamp()</span></text>;
-    Func<Humans.Application.Services.AuditLog.AuditEvent, IHtmlContent> actorCell = @<text>
+    Func<Humans.AuditLog.Contracts.AuditEvent, IHtmlContent> actorCell = @<text>
         @if (!item.ActorUserId.HasValue)
         {
             <span class="badge bg-info">System</span>
@@ -73,15 +73,15 @@ else
             <vc:human user-id="@item.ActorUserId.Value" />
         }
     </text>;
-    Func<Humans.Application.Services.AuditLog.AuditEvent, IHtmlContent> actionCell =
+    Func<Humans.AuditLog.Contracts.AuditEvent, IHtmlContent> actionCell =
         @<text><span class="badge @item.Action.ToAuditBadgeClass()">@item.Action.ToAuditBadgeLabel()</span></text>;
-    Func<Humans.Application.Services.AuditLog.AuditEvent, IHtmlContent> subjectCell = @<text>
+    Func<Humans.AuditLog.Contracts.AuditEvent, IHtmlContent> subjectCell = @<text>
         @if (item.SubjectUserId.HasValue)
         {
             <vc:human user-id="@item.SubjectUserId.Value" />
         }
     </text>;
-    Func<Humans.Application.Services.AuditLog.AuditEvent, IHtmlContent> targetCell = @<text>
+    Func<Humans.AuditLog.Contracts.AuditEvent, IHtmlContent> targetCell = @<text>
         @if (item.TargetTeamId.HasValue && !string.IsNullOrEmpty(item.TargetTeamName))
         {
             <a asp-controller="Team" asp-action="Details" asp-route-slug="@item.TargetTeamSlug" class="text-decoration-none">@item.TargetTeamName</a>

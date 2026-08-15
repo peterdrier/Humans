@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using NodaTime.Testing;
 
+using Humans.Shifts.Contracts;
 namespace Humans.Shifts.Tests.Repositories;
 
 /// <summary>

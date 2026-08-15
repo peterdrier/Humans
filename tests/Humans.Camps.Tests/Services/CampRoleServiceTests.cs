@@ -2,7 +2,6 @@ using Humans.GoogleIntegration.Contracts;
 using Humans.Notifications.Contracts;
 using AwesomeAssertions;
 using Humans.Application.Configuration;
-using Humans.Camps.Contracts;
 using Humans.Users.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Camps.Services;

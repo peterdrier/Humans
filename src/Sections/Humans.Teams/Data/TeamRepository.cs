@@ -4,6 +4,7 @@ using Humans.Teams.Data;
 using Humans.Teams.Domain;
 using Humans.Domain.Enums;
 
+using Humans.Teams.Contracts;
 namespace Humans.Teams.Data;
 
 /// <summary>

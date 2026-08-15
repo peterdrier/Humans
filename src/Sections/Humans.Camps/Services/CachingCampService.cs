@@ -9,7 +9,6 @@ using Humans.EarlyEntry.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Camps.Services;
 using Humans.Domain.Enums;
-using Humans.Domain.ValueObjects;
 using Humans.Users.Contracts;
 
 namespace Humans.Camps.Services;

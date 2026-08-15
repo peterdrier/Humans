@@ -1,6 +1,5 @@
 using Humans.GoogleIntegration.Contracts;
 using AwesomeAssertions;
-using Humans.Camps.Contracts;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Repositories;
@@ -110,7 +109,7 @@ public class CampsArchitectureTests
             "Humans.Camps.Services.CachingCampService",
             // Read-only consumer — uses GetActiveLeadUserIdsAsync /
             // IsLeadAnywhereAsync. Never writes through the repo.
-            "Humans.Infrastructure.Jobs.SystemTeamSyncJob",
+            "Humans.Teams.Services.SystemTeamSyncJob",
             // Owns camp_role_definitions + camp_role_assignments through the
             // same repo; camp/season lookups route through
             // ICampRoleCampAccess on the decorator (which invalidates).
