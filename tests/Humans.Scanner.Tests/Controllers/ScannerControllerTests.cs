@@ -1,7 +1,7 @@
 using AwesomeAssertions;
 using Humans.Application;
 using Humans.Consent.Contracts;
-using Humans.Application.Interfaces.EarlyEntry;
+using Humans.EarlyEntry.Contracts;
 using Humans.Events.Contracts;
 using Humans.Calendar.Contracts;
 using Humans.Shifts.Contracts;

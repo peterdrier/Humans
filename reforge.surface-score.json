@@ -333,6 +333,19 @@
         "IHoldedFinanceService"
       ]
     },
+    "EarlyEntry": {
+      "paths": [
+        "src/Sections/Humans.EarlyEntry/**"
+      ],
+      "symbols": [
+        "EarlyEntry*",
+        "IEarlyEntry*",
+        "UserEarlyEntry"
+      ],
+      "serviceInterfaces": [
+        "IEarlyEntryService"
+      ]
+    },
     "Gate": {
       "paths": [
         "src/Sections/Humans.Gate/**",
@@ -551,12 +564,6 @@
       "paths": [
         "src/Sections/Humans.Shifts/**",
         "src/Sections/Humans.Shifts.Contracts/**",
-        "src/Humans.Application/Interfaces/EarlyEntry/**",
-        "src/Humans.Application/Services/EarlyEntry/**",
-        "src/Humans.Infrastructure/Services/EarlyEntry/**",
-        "src/Humans.Infrastructure/Stores/EarlyEntry/**",
-        "src/Humans.Web/Controllers/EarlyEntryRosterController.cs",
-        "src/Humans.Web/Models/EarlyEntry/**",
         "src/Humans.Web/ViewComponents/DietaryMissingBannerViewComponent.cs"
       ],
       "symbols": [

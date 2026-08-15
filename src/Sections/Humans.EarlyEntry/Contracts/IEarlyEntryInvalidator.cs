@@ -1,6 +1,7 @@
 using Humans.Application.Architecture;
+using Humans.Application.Interfaces;
 
-namespace Humans.Application.Interfaces.EarlyEntry;
+namespace Humans.EarlyEntry.Contracts;
 
 /// <summary>
 /// §15e one-way cache-staleness signal for the per-user EE cache. Implemented by

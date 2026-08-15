@@ -1433,10 +1433,10 @@ around food, not medical history.
 
 ## Early Entry
 
-Folder: `src/Humans.Application/Services/EarlyEntry/`. Owns no DB tables —
+Folder: `src/Sections/Humans.EarlyEntry/Services/`. Owns no DB tables —
 fan-out orchestrator over per-section `IEarlyEntryProvider`
 implementations. The inner `IEarlyEntryService` is wrapped by
-`Humans.Infrastructure.Services.EarlyEntry.CachingEarlyEntryService`
+`Humans.EarlyEntry.Services.CachingEarlyEntryService`
 (Singleton decorator inheriting `TrackedCache<Guid, UserEarlyEntry?>`).
 
 ### EarlyEntryService (Scoped, keyed `"early-entry-inner"` — inner of CachingEarlyEntryService)

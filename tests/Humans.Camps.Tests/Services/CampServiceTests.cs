@@ -3,7 +3,7 @@ using AwesomeAssertions;
 using Humans.Application.Configuration;
 using Humans.Application.Interfaces.Caching;
 using Humans.CityPlanning.Contracts;
-using Humans.Application.Interfaces.EarlyEntry;
+using Humans.EarlyEntry.Contracts;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
