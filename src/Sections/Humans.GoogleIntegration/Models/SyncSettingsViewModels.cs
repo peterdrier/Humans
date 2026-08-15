@@ -1,3 +1,4 @@
+using Humans.GoogleIntegration.Contracts;
 using Humans.Domain.Enums;
 
 namespace Humans.GoogleIntegration.Models;

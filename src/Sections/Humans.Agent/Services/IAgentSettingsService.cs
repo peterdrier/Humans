@@ -1,4 +1,3 @@
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
 using Humans.Agent.Domain;

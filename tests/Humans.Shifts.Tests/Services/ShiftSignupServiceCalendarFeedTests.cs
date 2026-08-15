@@ -8,7 +8,6 @@ using NSubstitute;
 using Xunit;
 using Humans.Shifts.Services;
 using Humans.Shifts.Tests.Infrastructure;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.EarlyEntry.Contracts;
 using Humans.Notifications.Contracts;

@@ -2,7 +2,6 @@ using AwesomeAssertions;
 using Humans.Camps.Contracts;
 using Humans.EarlyEntry.Contracts;
 using Humans.Camps.Tests.Infrastructure;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Camps.Data;
 using Humans.Camps.Services;

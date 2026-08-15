@@ -3,7 +3,6 @@ using Humans.Application;
 
 using Humans.Application.Interfaces.Users;
 using Humans.Tickets.Services.Dtos;
-using Humans.Domain.Entities;
 using Humans.UI.Constants;
 using Humans.Tickets.Controllers;
 using Humans.Tickets.Models;

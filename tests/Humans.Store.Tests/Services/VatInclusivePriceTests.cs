@@ -3,7 +3,6 @@ using System.Globalization;
 using AwesomeAssertions;
 using Humans.Store.Services;
 using Humans.Store.Services.Dtos;
-using Humans.Domain.Entities;
 using Xunit;
 
 namespace Humans.Store.Tests.Services;

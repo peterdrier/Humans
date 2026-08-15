@@ -1,5 +1,4 @@
 using Humans.Expenses.Contracts;
-using Humans.Domain.Entities;
 using Humans.Expenses.Domain;
 
 namespace Humans.Expenses.Data;

@@ -2,7 +2,6 @@ using System.Net;
 using System.Text.RegularExpressions;
 using AwesomeAssertions;
 using Humans.Users.Contracts;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Humans.Integration.Tests.Infrastructure;

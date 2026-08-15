@@ -1,4 +1,3 @@
-using Humans.Domain.Entities;
 using Humans.Shifts.Domain;
 using Humans.Shifts.Data.Configurations;
 using Microsoft.EntityFrameworkCore;

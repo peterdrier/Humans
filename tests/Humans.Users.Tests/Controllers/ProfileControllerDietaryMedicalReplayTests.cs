@@ -16,7 +16,6 @@ using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 
 using Humans.Application.Interfaces.Users;
-using Humans.Domain.Entities;
 using Humans.UI;
 using Humans.Web.Controllers;
 using Humans.Web.Models;

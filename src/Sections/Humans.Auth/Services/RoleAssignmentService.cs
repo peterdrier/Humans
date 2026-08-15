@@ -1,4 +1,3 @@
-using Humans.Domain.Entities;
 using Humans.Application;
 using Humans.Auth.Data;
 using Humans.Auth.Contracts;

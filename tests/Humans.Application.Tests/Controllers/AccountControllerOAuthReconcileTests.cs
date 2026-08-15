@@ -4,7 +4,6 @@ using AwesomeAssertions;
 using Humans.Users.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Users.Services;
-using Humans.Domain.Entities;
 using Humans.Web.Controllers;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;

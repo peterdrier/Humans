@@ -6,7 +6,6 @@ using Humans.Users.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Camps.Services;
 using Humans.Camps.Tests.Infrastructure;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Camps.Data;
 using Microsoft.EntityFrameworkCore;

@@ -5,7 +5,6 @@ using Humans.Store.Data;
 using Humans.Store.Domain;
 using System.Net;
 using AwesomeAssertions;
-using Humans.Domain.Entities;
 using Humans.Infrastructure.Data;
 using Humans.Integration.Tests.Infrastructure;
 using Microsoft.EntityFrameworkCore;

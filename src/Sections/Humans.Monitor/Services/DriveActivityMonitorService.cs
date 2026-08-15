@@ -7,7 +7,6 @@ using Humans.Application.Extensions;
 using Humans.AuditLog.Contracts;
 using Humans.SystemSettings.Contracts;
 using Humans.Application.Interfaces.Users;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Users.Contracts;
 

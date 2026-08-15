@@ -1,5 +1,5 @@
+using Humans.GoogleIntegration.Contracts;
 using Humans.Domain.Attributes;
-using Humans.Domain.Entities;
 using NodaTime;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Repositories;

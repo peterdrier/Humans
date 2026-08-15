@@ -18,7 +18,6 @@ using Humans.Teams.Contracts;
 
 using Humans.Application.Interfaces.Users;
 using Humans.Users.Tests.Infrastructure;
-using Humans.Domain.Entities;
 using Humans.UI;
 using Humans.Web.Controllers;
 using Microsoft.AspNetCore.Authentication;

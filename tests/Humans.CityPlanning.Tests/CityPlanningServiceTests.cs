@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Humans.Application;
-using Humans.Domain.Entities;
 using Humans.CityPlanning.Contracts;
 using Humans.Camps.Contracts;
 using Humans.Teams.Contracts;

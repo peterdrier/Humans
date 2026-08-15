@@ -4,7 +4,6 @@ using Humans.Application.Configuration;
 using Humans.Users.Contracts;
 using Humans.Development.Services;
 using Humans.Domain.Constants;
-using Humans.Domain.Entities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 

@@ -3,7 +3,6 @@ using AwesomeAssertions;
 using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Teams.Tests.Infrastructure;
-using Humans.Domain.Entities;
 using Humans.Teams.Domain;
 using Humans.Domain.Enums;
 using Humans.Teams.Services;

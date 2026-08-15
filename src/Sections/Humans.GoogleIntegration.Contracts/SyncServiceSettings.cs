@@ -1,7 +1,6 @@
 using NodaTime;
-using Humans.Domain.Enums;
 
-namespace Humans.Domain.Entities;
+namespace Humans.GoogleIntegration.Contracts;
 
 /// <summary>
 /// Per-service sync mode configuration. Controls what automated sync jobs do.

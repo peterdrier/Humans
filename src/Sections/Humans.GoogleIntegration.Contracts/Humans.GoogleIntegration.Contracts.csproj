@@ -30,11 +30,31 @@
     it from Base, and a Base file cannot reference the section project. If that job ever moves
     into a section, this interface goes back to internal.
 
-    References Humans.Interfaces (IApplicationService, ExternalWriteAttribute) and Humans.Domain
-    (GoogleResourceType, DrivePermissionLevel, SyncAction, and the GoogleResource /
-    GoogleSyncOutboxEvent entities two members still expose — an existing leak recorded on the
-    debt ledger, not introduced here), the same pair Humans.Teams.Contracts and
-    Humans.Campaigns.Contracts take. Acyclic: Humans.Domain names only Humans.Interfaces.
+    G5 lane 4b-2j moved the section's own vocabulary onto this leaf: the three EF entities
+    (GoogleResource, GoogleSyncOutboxEvent, SyncServiceSettings) and five enums/constants
+    (GoogleResourceType, DrivePermissionLevel, SyncMode, SyncServiceType,
+    GoogleSyncOutboxEventTypes). They are here rather than under Humans.GoogleIntegration/Domain/
+    because IGoogleSyncService and IGoogleSyncOutboxService expose the first two as public
+    members and a leaf cannot reference its own section project — the same forcing move that put
+    the nine Users entities on Humans.Users.Contracts. GoogleIntegrationDbContext maps them from
+    the section project, which references this leaf; the tables, columns and migrations are
+    untouched (namespace-only change, verified: has-pending-model-changes reports none).
+
+    SyncAction is the one member of that set that did NOT move — it stays in Humans.Domain.Enums.
+    It is a parameter type of IGoogleGroupSync.ReconcileOneAsync, which HangfireGoogleGroupSyncScheduler
+    enqueues and schedules; Hangfire serializes parameter types as assembly-qualified names, so moving
+    it would break every queued or retry-delayed scoped group-sync job across the deploy. Reverted on
+    the Codex P1 raised against peterdrier/Humans#1310. See the remarks on the enum itself.
+
+    Still references Humans.Interfaces (IApplicationService, ExternalWriteAttribute) and, for
+    exactly two remaining types, Humans.Domain:
+      - GoogleSyncSource — stays in Humans.Domain.Enums because Humans.AuditLog.Contracts names
+        it in IAuditLogService's signature and Base's AuditEvent names it too; Base and another
+        leaf cannot reach this one.
+      - GoogleEmailStatus — one of the four enums the G5 end-state design rides into
+        Humans.Users.Contracts with UserInfo (lane 3d); named here in a <see cref> only.
+    That is the whole of the Humans.Domain edge now, and it dies in lane 3d.
+    Acyclic: Humans.Domain names only Humans.Interfaces.
   -->
 
   <ItemGroup>

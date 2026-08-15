@@ -1,5 +1,4 @@
 using Humans.Camps.Services;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
 

@@ -1,7 +1,6 @@
 using NodaTime;
-using Humans.Domain.Enums;
 
-namespace Humans.Domain.Entities;
+namespace Humans.GoogleIntegration.Contracts;
 
 /// <summary>
 /// Represents a Google resource (Drive folder or Group) provisioned for a team.

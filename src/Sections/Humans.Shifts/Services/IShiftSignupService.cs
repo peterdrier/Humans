@@ -1,4 +1,3 @@
-using Humans.Domain.Entities;
 using Humans.Shifts.Domain;
 using Humans.Domain.Enums;
 

@@ -1,4 +1,3 @@
-using Humans.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Humans.Tickets.Domain;
 

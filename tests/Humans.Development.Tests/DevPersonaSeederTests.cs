@@ -13,7 +13,6 @@ using Humans.Onboarding.Contracts;
 using Humans.Users.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Development.Services;
 using Microsoft.AspNetCore.Identity;

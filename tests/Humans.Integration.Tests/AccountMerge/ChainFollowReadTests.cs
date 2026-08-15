@@ -12,7 +12,6 @@ using Humans.Consent.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Constants;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Humans.Integration.Tests.Infrastructure;

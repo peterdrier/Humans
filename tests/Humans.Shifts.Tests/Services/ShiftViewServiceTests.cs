@@ -3,7 +3,6 @@ using Humans.Shifts.Domain;
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Shifts.Services;
-using Humans.Domain.Entities;
 using NSubstitute;
 
 namespace Humans.Shifts.Tests.Services;

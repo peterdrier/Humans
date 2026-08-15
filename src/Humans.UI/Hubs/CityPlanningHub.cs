@@ -1,6 +1,5 @@
 using System.Collections.Concurrent;
 using Humans.Application.Interfaces.Users;
-using Humans.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.SignalR;

@@ -188,6 +188,14 @@ public class CityPlanningArchitectureTests
     {
         // A polygon's camp season and its editing user are bare Guid references; the Camps and
         // Identity tables stay outside this model (memory/architecture/no-cross-section-ef-joins).
+        // COVERAGE REDUCED (nobodies-collective/Humans#866, G5 lane 4b-2j): Humans.Domain.Entities
+        // is now empty — lane 2 took the Users entities and 4b-2j took the last three
+        // (GoogleIntegration's) — so this predicate matches nothing and passes vacuously. The
+        // rule it states is still wanted; re-key it onto the real entity homes
+        // (src/Sections/*/Domain and the *.Contracts leaves) when phase 5a deletes Humans.Domain.
+        // Tracked in docs/architecture/debt-ledger.yml (inbox, added 2026-08-15) so /debt-sweep
+        // can pick it up; the same entry covers the sibling predicate in
+        // tests/Humans.Tickets.Tests/Architecture/TicketQueryArchitectureTests.cs.
         var offenders = typeof(Section).Assembly.GetTypes()
             .Where(t => string.Equals(t.Namespace, "Humans.CityPlanning.Domain", StringComparison.Ordinal))
             .SelectMany(t => t.GetProperties()

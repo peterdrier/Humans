@@ -1,5 +1,4 @@
 using System.Text.Json;
-using Humans.Domain.Entities;
 using Humans.Shifts.Domain;
 using NodaTime;
 using NodaTime.Text;

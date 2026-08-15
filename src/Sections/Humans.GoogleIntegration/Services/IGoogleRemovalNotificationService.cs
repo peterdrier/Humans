@@ -1,3 +1,4 @@
+using Humans.GoogleIntegration.Contracts;
 using Humans.Domain.Enums;
 using Humans.Application.Interfaces;
 using Humans.GoogleIntegration.Data;

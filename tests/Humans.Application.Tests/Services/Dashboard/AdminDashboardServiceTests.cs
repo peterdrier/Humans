@@ -5,7 +5,6 @@ using Humans.Application.Interfaces.Repositories;
 using Humans.Shifts.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Dashboard;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
 using NSubstitute;

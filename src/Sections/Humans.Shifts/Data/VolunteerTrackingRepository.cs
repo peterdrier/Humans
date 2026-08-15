@@ -1,5 +1,4 @@
 using Humans.Application.Interfaces.Repositories;
-using Humans.Domain.Entities;
 using Humans.Shifts.Domain;
 using Humans.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;

@@ -6,7 +6,6 @@ using Humans.Onboarding.Contracts;
 using Humans.Users.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Application.Interfaces.Users;
-using Humans.Domain.Entities;
 using Humans.UI;
 using Humans.UI.Constants;
 using Humans.Onboarding.Controllers;

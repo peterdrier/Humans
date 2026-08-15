@@ -2,10 +2,6 @@
   src/Sections/Humans.GoogleIntegration/**
   src/Sections/Humans.GoogleIntegration.Contracts/**
   src/Humans.Application/Interfaces/GoogleIntegration/ISystemTeamSync.cs
-  src/Humans.Domain/Entities/SyncServiceSettings.cs
-  src/Humans.Domain/Entities/GoogleSyncOutboxEvent.cs
-  src/Humans.Domain/Entities/GoogleResource.cs
-  src/Humans.Domain/Constants/GoogleSyncOutboxEventTypes.cs
 -->
 <!-- freshness:flag-on-change
   Sync mode invariants, Shared-Drive-only constraint, GoogleEmailStatus rules, and reconciliation gateway operations — review when Google Integration services/entities/controller change.

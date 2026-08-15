@@ -1,3 +1,4 @@
+using Humans.GoogleIntegration.Contracts;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Domain.Enums;

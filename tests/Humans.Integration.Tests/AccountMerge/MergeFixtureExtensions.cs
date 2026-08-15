@@ -1,4 +1,3 @@
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Humans.Integration.Tests.Infrastructure;

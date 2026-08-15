@@ -1,9 +1,9 @@
+using Humans.GoogleIntegration.Contracts;
 using Humans.Email.Contracts;
 using Humans.Users.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.GoogleIntegration.Services;
 using Humans.GoogleIntegration.Tests.Infrastructure;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;

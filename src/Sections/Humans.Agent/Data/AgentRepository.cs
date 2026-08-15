@@ -1,6 +1,5 @@
 using Humans.Application.Constants;
 using Humans.Agent.Data;
-using Humans.Domain.Entities;
 using Humans.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;

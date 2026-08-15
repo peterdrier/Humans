@@ -8,7 +8,6 @@ using Humans.Camps.Contracts;
 using Humans.EarlyEntry.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Camps.Services;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Users.Contracts;
 

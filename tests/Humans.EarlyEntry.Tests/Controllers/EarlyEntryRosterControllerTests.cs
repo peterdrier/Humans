@@ -3,7 +3,6 @@ using AwesomeAssertions;
 using Humans.Application;
 using Humans.EarlyEntry.Contracts;
 using Humans.Application.Interfaces.Users;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.EarlyEntry.Controllers;
 using Humans.EarlyEntry.Models;

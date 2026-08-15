@@ -1,7 +1,6 @@
 using Humans.Application.DTOs;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Services;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
 using Humans.Domain.Attributes;

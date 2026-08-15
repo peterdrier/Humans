@@ -1,6 +1,6 @@
 using NodaTime;
 
-namespace Humans.Domain.Entities;
+namespace Humans.GoogleIntegration.Contracts;
 
 /// <summary>
 /// Outbox message representing a deferred Google sync membership operation.

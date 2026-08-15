@@ -10,7 +10,6 @@ using Humans.Application.Interfaces.Repositories;
 using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Expenses.Services.Dtos;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Domain.Helpers;
 using Microsoft.Extensions.Logging;

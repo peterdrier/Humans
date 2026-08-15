@@ -9,7 +9,6 @@ using Humans.Application.Interfaces.Repositories;
 using Humans.Teams.Contracts;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Constants;
-using Humans.Domain.Entities;
 using Humans.GoogleIntegration.Data;
 using Humans.Infrastructure.Services;
 using Humans.GoogleIntegration.Services;

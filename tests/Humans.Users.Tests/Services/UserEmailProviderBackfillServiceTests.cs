@@ -2,7 +2,6 @@ using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Users.Services;
-using Humans.Domain.Entities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;

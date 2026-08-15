@@ -1,7 +1,6 @@
 using Humans.Shifts.Services;
 using Humans.Shifts.Domain;
 using AwesomeAssertions;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Domain.Helpers;
 using Xunit;

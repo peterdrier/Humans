@@ -3,7 +3,6 @@ using AwesomeAssertions;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Teams.Contracts;
 using Humans.GoogleIntegration.Services;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.GoogleIntegration.Data;
 using Microsoft.EntityFrameworkCore;

@@ -4,7 +4,6 @@ using Humans.Users.Contracts;
 #pragma warning disable CS0618
 using AwesomeAssertions;
 using Humans.Teams.Tests.Infrastructure;
-using Humans.Domain.Entities;
 using Humans.Teams.Domain;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;

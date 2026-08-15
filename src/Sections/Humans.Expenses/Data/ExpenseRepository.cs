@@ -1,7 +1,6 @@
 using Humans.Application.Interfaces.Repositories;
 using Humans.Expenses.Contracts;
 using Humans.Expenses.Services.Dtos;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;

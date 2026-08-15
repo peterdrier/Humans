@@ -14,7 +14,6 @@ using Humans.Notifications.Contracts;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Tests.Infrastructure;
-using Humans.Domain.Entities;
 using Humans.Teams.Domain;
 using TeamService = Humans.Teams.Services.TeamService;
 

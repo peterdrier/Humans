@@ -8,7 +8,6 @@ using Humans.Notifications.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Data;
 using Humans.Application.Interfaces.Users;
-using Humans.Domain.Entities;
 using Humans.Teams.Data;
 using Humans.Teams.Domain;
 using Humans.Domain.Enums;

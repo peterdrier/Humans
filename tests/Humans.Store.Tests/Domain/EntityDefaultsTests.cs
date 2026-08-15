@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Store.Contracts;
 using Humans.Store.Domain;

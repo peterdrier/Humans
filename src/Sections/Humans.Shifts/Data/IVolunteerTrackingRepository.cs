@@ -1,5 +1,4 @@
 using Humans.Domain.Attributes;
-using Humans.Domain.Entities;
 using Humans.Shifts.Domain;
 using NodaTime;
 using Humans.Shifts.Data;

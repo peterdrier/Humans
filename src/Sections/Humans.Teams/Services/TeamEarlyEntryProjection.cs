@@ -1,5 +1,4 @@
 using Humans.EarlyEntry.Contracts;
-using Humans.Domain.Entities;
 using Humans.Teams.Domain;
 
 namespace Humans.Teams.Services;

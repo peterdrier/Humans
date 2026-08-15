@@ -1,4 +1,3 @@
-using Humans.Domain.Entities;
 using Humans.Camps.Data.Configurations;
 using Microsoft.EntityFrameworkCore;
 

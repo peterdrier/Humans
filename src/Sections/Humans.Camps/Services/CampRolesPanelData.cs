@@ -1,4 +1,3 @@
-using Humans.Domain.Entities;
 
 namespace Humans.Camps.Services;
 

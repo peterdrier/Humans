@@ -1,4 +1,3 @@
-using Humans.Domain.Entities;
 using Humans.Teams.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;

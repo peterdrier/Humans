@@ -8,7 +8,6 @@ using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Tickets.Contracts;
 using Humans.Teams.Authorization;
-using Humans.Domain.Entities;
 using Humans.Teams.Domain;
 using Humans.Domain.Enums;
 using Humans.UI.Extensions;

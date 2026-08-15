@@ -1,6 +1,5 @@
 using Humans.Shifts.Domain;
 using AwesomeAssertions;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
 

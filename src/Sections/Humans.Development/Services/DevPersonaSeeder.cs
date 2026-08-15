@@ -15,7 +15,6 @@ using Humans.Application.Interfaces.Users;
 using Humans.Application.Configuration;
 using Humans.CityPlanning.Contracts;
 using Humans.Domain.Constants;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Caching.Memory;
