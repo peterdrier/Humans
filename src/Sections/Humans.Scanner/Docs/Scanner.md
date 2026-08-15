@@ -50,7 +50,7 @@
 ## Triggers
 
 - `/Scanner/Barcode`: no server-side side effects. Camera start/stop and the decoded-value list are managed in `wwwroot/js/scanner/barcode.js`; they produce no audit writes, notifications, or cross-section calls.
-- `/Scanner/Tickets`: reads ticket data via `ITicketServiceRead` and door-context from EarlyEntry, Consents, Users, Events, BurnSettings, and ICalFeed on each card request. No writes, no audit, no cache mutations.
+- `/Scanner/Tickets`: reads ticket data via `ITicketServiceRead` and door-context from EarlyEntry, Consents, Users, Events, BurnSettings, and Calendar (the iCal feed) on each card request. No writes, no audit, no cache mutations.
 
 ## Cross-Section Dependencies
 
@@ -59,7 +59,7 @@
 - **Consent**: `IConsentServiceRead.GetPendingDocumentNamesAsync` — names of unsigned required consent documents for the matched Human.
 - **Users**: `IUserServiceRead.GetUserInfoAsync` — event participations (check-in timestamp for the active event year).
 - **Events**: `IEventServiceRead.GetApprovedEventsAsync` — events the matched Human is offering (filtered by `SubmitterUserId`, non-camp, expanded per occurrence for recurring events).
-- **Shifts / BurnSettings / ICalFeed**: `IBurnSettingsService.GetActiveAsync` for active event year + time zone; `IICalFeedService.GetFeedItemsAsync` for the Human's shift commitments (Shifts source only).
+- **Shifts / BurnSettings / Calendar**: `IBurnSettingsService.GetActiveAsync` for active event year + time zone; `Humans.Calendar.Contracts.IICalFeedService.GetFeedItemsAsync` for the Human's shift commitments (Shifts source only). The feed orchestrator moved from Base into `Humans.Calendar` at G5 lane 4b-2c, so `Humans.Scanner` references `Humans.Calendar`.
 - **Issues**: feedback/issues filed from `/Scanner/*` route to `IssueSectionRouting.Scanner`, visible to TicketAdmin and Board handlers. Scanner does not call `IIssuesService` directly.
 
 ## Architecture

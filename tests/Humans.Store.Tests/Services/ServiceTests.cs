@@ -10,6 +10,7 @@ using Humans.Store.Domain;
 using Humans.Store.Services;
 using Humans.Teams.Contracts;
 using Humans.Store.Services.Dtos;
+using Humans.Stripe.Contracts;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging.Abstractions;

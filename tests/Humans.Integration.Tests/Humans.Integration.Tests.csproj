@@ -4,6 +4,8 @@
     <ProjectReference Include="..\..\src\Humans.Web\Humans.Web.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Users\Humans.Users.csproj" />
+    <!-- The factory stubs IStripeService and builds a real StripeService for webhook parsing. -->
+    <ProjectReference Include="..\..\src\Sections\Humans.Stripe\Humans.Stripe.csproj" />
   </ItemGroup>
 
   <ItemGroup>

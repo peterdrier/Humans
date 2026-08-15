@@ -19,9 +19,8 @@ namespace Humans.Integration.Tests.Controllers;
 /// A section RCL does not inherit the host's <c>Views/_ViewImports.cshtml</c> — a missing
 /// <c>@@using</c> or <c>@@addTagHelper</c> ships literal markup with a green build, and an
 /// unrendered <c>&lt;vc:…&gt;</c> element is inert text the browser simply drops. The section's
-/// views open with four of them (<c>human</c>, <c>human-search</c>, <c>audit-log</c>, and the
-/// Shell-owned <c>access-matrix</c>, which is invoked by name and <b>throws</b> when it fails
-/// to resolve rather than degrading).
+/// views open with four of them (<c>human</c>, <c>human-search</c>, <c>audit-log</c> and
+/// <c>access-matrix</c>), all four bound through <c>@@addTagHelper *, Humans.UI</c>.
 /// </description></item>
 /// <item><description>
 /// The resx carve moved 193 keys across thirteen prefixes out of <c>SharedResource</c>. A key
@@ -97,19 +96,18 @@ public class TeamsPageRenderTests(HumansTestDatabase database) : IntegrationTest
     }
 
     [HumansFact(Timeout = 120000)]
-    public async Task The_directory_renders_the_shell_owned_access_matrix_invoked_by_name()
+    public async Task The_directory_renders_the_access_matrix_tag_helper()
     {
-        // <vc:access-matrix> could not survive the move: AccessMatrixViewComponent reads
-        // Shell-owned registries naming every section, so the call site became
-        // Component.InvokeAsync("AccessMatrix", …). That throws when it fails to resolve
-        // rather than degrading, so a 200 with the modal id on it is the whole proof
-        // (CityPlanning's rule).
+        // AccessMatrixViewComponent moved into Humans.UI (nobodies-collective/Humans#1056),
+        // so the call site is <vc:access-matrix section="Teams" /> bound through
+        // @addTagHelper *, Humans.UI. An unbound <vc:> ships as inert literal markup with a
+        // green build and no log line, so the emitted modal id is the proof — not the 200.
         var ct = Xunit.TestContext.Current.CancellationToken;
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
 
         var html = await (await Client.GetAsync("/Teams", ct)).Content.ReadAsStringAsync(ct);
 
-        html.Should().Contain("sectionHelp-Teams", "the Shell access-matrix widget must render from a section view");
+        html.Should().Contain("sectionHelp-Teams", "the access-matrix widget must bind and render from a section view");
     }
 
     [HumansFact(Timeout = 120000)]

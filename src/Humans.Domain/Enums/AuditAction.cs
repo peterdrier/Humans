@@ -200,4 +200,10 @@ public enum AuditAction
     SurveyClosed,
     SurveyInvitesSent,
     SurveyReminderSent,
+    // Holded expense push outcomes (nobodies-collective/Humans#1045). Written by the outbox
+    // drain so the per-report history survives outbox-row cleanup, which the outbox columns
+    // themselves do not.
+    ExpenseHoldedPushed,
+    ExpenseHoldedFailed,
+    ExpenseHoldedRequeued,
 }

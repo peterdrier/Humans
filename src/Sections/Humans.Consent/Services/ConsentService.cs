@@ -5,7 +5,6 @@ using Humans.Application.Interfaces;
 using Humans.Consent.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Governance.Contracts;
-using Humans.Application.Interfaces.HumanLifecycle;
 using Humans.Notifications.Contracts;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;

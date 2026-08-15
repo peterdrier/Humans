@@ -78,6 +78,16 @@ internal interface IExpenseReportService : IExpenseReportServiceRead, IApplicati
         PerDiemKind kind, int days, string? note,
         CancellationToken ct = default);
 
+    /// <summary>
+    /// Puts a stuck Holded push back in the queue — written off, or waiting out a backoff a finance
+    /// admin no longer wants to wait for. Resets the retry budget; the next drain pass picks it up.
+    /// Fails when the report has no push in either state.
+    /// </summary>
+    Task<ExpenseMutationResult> RequeueHoldedPushWithResultAsync(
+        Guid reportId, Guid actorUserId, CancellationToken ct = default);
+
+    /// <summary>Written-off Holded pushes across all reports — the /Expenses/Review banner count.</summary>
+    Task<int> CountFailedHoldedPushesAsync(CancellationToken ct = default);
 }
 
 internal sealed record ExpenseMutationResult(bool Succeeded, string? ErrorMessage)

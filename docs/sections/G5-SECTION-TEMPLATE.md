@@ -726,17 +726,24 @@ Git Bash.)
        path, and it belongs in `Services/` beside `I<Section>Service`. Promoting it to
        `Contracts/` because it is named `…Read` publishes a boundary nobody crosses — the same
        mistake as carrying the empty one, one step later. Decide from the *consumer list*, never
-       from the name (proven: Calendar, whose `Contracts/` is empty while both interfaces live on
-       internal).
+       from the name (proven: Calendar, whose calendar-event half has no cross-section surface at
+       all — both its interfaces are internal under `Services/`, and the only thing under
+       `Contracts/` arrived later, from Base).
    - **A Base type that shares the section's name prefix may belong to an entirely different
-     concern — read the signatures before adopting it.** `Humans.Application.Interfaces.ICalFeed`
-     holds `ICalendarFeedContributor`, `CalendarFeedItem` and `IICalFeedService`: a Base-owned
-     fan-out that assembles a user's personal iCal feed from Shifts and Events. It names nothing
-     the Calendar section owns and Calendar does not implement it, so it stayed in Base along with
-     Shell's `UserCalendarViewComponent` and `ICalFeedApiController`. A recon pass keyed on the
-     string "Calendar" pulls all of it in; a pass keyed on *whose types are in the signatures*
-     does not — the same test as step 5b's connector case, applied to a name collision instead of
-     a vendor (proven: Calendar).
+     concern — read the signatures before adopting it, and say which way it went.**
+     `Humans.Application.Interfaces.ICalFeed` held `ICalendarFeedContributor`, `CalendarFeedItem`
+     and `IICalFeedService`: a Base-owned fan-out assembling a user's personal iCal feed from
+     Shifts and Events. It names nothing the Calendar section owns and Calendar does not implement
+     it, so Calendar's own move left it in Base — correctly, on the evidence available then. The
+     4a end-state design (2026-08-14) then placed it *in* Calendar anyway, because "who is named in
+     the signatures" answers **may this move**, not **where does the concern live**: a feed of a
+     user's dated commitments is calendar work no matter whose rows fill it, and Base is not a home
+     for an orchestrator once every consumer is a section. Lane 4b-2c moved the three types to
+     `Humans.Calendar/Contracts/` and the service, `ICalFeedApiController` and
+     `UserCalendarViewComponent` into the section. The lesson survives in a narrower form: a
+     recon pass keyed on the string "Calendar" would have pulled it in for the wrong reason, and
+     the signature test is what stops that — but the signature test alone does not decide
+     ownership (proven: Calendar, twice).
    - **Carve the leaf from the *call sites*, not the interface.** Notifications' inbox service
      has twelve members and three consumers outside the section, which between them call three
      of them — two auto-resolve calls and, before the bell moved in, the badge count. Moving

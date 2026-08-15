@@ -49,7 +49,15 @@ public class CalendarArchitectureTests
 
         publicTypes.Should().BeEquivalentTo(
         [
+            // The personal iCal feed's cross-section surface (G5 lane 4b-2c): Shifts and
+            // Events implement the contributor, Scanner and Shell consume the orchestrator,
+            // and <vc:user-calendar> needs a public component or it ships as inert markup.
             "Humans.Calendar.CalendarResource",
+            "Humans.Calendar.Contracts.CalendarFeedItem",
+            "Humans.Calendar.Contracts.ICalendarFeedContributor",
+            "Humans.Calendar.Contracts.IICalFeedService",
+            "Humans.Calendar.Contracts.UserCalendarViewComponent",
+            "Humans.Calendar.Contracts.UserCalendarViewModel",
             "Humans.Calendar.Section",
         ]);
     }
@@ -61,8 +69,35 @@ public class CalendarArchitectureTests
             .Where(t => t.Name.EndsWith("Controller", StringComparison.Ordinal))
             .ToList();
 
-        controllers.Should().ContainSingle();
+        // CalendarController (/Calendar) and ICalFeedApiController (/api/ical).
+        controllers.Should().HaveCount(2);
         controllers.Should().OnlyContain(t => !t.IsPublic);
+    }
+
+    [HumansFact]
+    public void ICalFeedApiControllerKeepsItsRoutePrefix()
+    {
+        // /api/ical/{userId}/{token}.ics is a URL calendar clients have already
+        // subscribed to — a G5 move changes files, never routes.
+        var type = typeof(Section).Assembly
+            .GetType("Humans.Calendar.Controllers.ICalFeedApiController", throwOnError: true)!;
+
+        type.GetCustomAttributes(typeof(Microsoft.AspNetCore.Mvc.RouteAttribute), inherit: false)
+            .Cast<Microsoft.AspNetCore.Mvc.RouteAttribute>()
+            .Single().Template
+            .Should().Be("api/ical");
+    }
+
+    [HumansFact]
+    public void SectionRegistersTheICalFeedOrchestrator()
+    {
+        var services = new ServiceCollection();
+        new Section().Register(services, new ConfigurationBuilder().Build());
+
+        var descriptor = services.Single(d => d.ServiceType == typeof(Contracts.IICalFeedService));
+        descriptor.Lifetime.Should().Be(ServiceLifetime.Scoped,
+            because: "contributors share the scoped section DbContexts the fan-out reads through");
+        descriptor.ImplementationType.Should().Be(typeof(ICalFeedService));
     }
 
     [HumansFact]

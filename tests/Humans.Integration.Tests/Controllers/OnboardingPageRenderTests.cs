@@ -24,10 +24,10 @@ namespace Humans.Integration.Tests.Controllers;
 /// now).
 /// </description></item>
 /// <item><description>
-/// The review pages' <c>&lt;vc:access-matrix&gt;</c> and <c>&lt;vc:profile-card&gt;</c> became
-/// <c>Component.InvokeAsync</c> calls, because both components read Shell-owned registries. An
-/// unresolvable invocation throws; a stray <c>&lt;vc:&gt;</c> renders as inert markup and only the
-/// <c>NotContain</c> assertion catches it.
+/// The review pages' <c>&lt;vc:access-matrix&gt;</c> binds through <c>@@addTagHelper *, Humans.UI</c>
+/// since the component moved there; <c>&lt;vc:profile-card&gt;</c> still reads a Shell-owned registry
+/// and is a <c>Component.InvokeAsync</c> call. An unresolvable invocation throws; a stray
+/// <c>&lt;vc:&gt;</c> renders as inert markup and only the <c>NotContain</c> assertion catches it.
 /// </description></item>
 /// <item><description>
 /// The progress banner moved <i>into</i> the section, so it is an <c>internal</c> view component
@@ -67,9 +67,12 @@ public class OnboardingPageRenderTests(HumansTestDatabase database) : Integratio
 
         html.Should().Contain("Onboarding Review Queue");           // OnboardingReview_Title
         html.Should().Contain("No humans are waiting for review.");  // OnboardingReview_NoPending
-        // AccessMatrix stayed in Shell and is invoked by name; the modal id it emits is built
-        // from the section key, so its presence proves the cross-application-part lookup.
-        html.Should().Contain("OnboardingReview", "the access-matrix modal keys off the section name");
+        // AccessMatrix moved into Humans.UI (nobodies-collective/Humans#1056), so the call site
+        // is <vc:access-matrix section="OnboardingReview" />. An unbound <vc:> ships as inert
+        // literal markup with a green build, so assert the modal id the component emits — the
+        // bare section key would also match the page title and prove nothing.
+        html.Should().Contain("sectionHelp-OnboardingReview",
+            "<vc:access-matrix> must bind through @addTagHelper *, Humans.UI");
     }
 
     [HumansFact(Timeout = 120000)]

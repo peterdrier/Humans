@@ -19,6 +19,7 @@
     <Project Path="src/Sections/Humans.Budget/Humans.Budget.csproj" />
     <Project Path="src/Sections/Humans.Budget.Contracts/Humans.Budget.Contracts.csproj" />
     <Project Path="src/Sections/Humans.Calendar/Humans.Calendar.csproj" />
+    <Project Path="src/Sections/Humans.EarlyEntry/Humans.EarlyEntry.csproj" />
     <Project Path="src/Sections/Humans.Camps/Humans.Camps.csproj" />
     <Project Path="src/Sections/Humans.Camps.Contracts/Humans.Camps.Contracts.csproj" />
     <Project Path="src/Sections/Humans.Campaigns/Humans.Campaigns.csproj" />
@@ -65,6 +66,7 @@
     <Project Path="src/Sections/Humans.Search/Humans.Search.csproj" />
     <Project Path="src/Sections/Humans.Shifts.Contracts/Humans.Shifts.Contracts.csproj" />
     <Project Path="src/Sections/Humans.Store/Humans.Store.csproj" />
+    <Project Path="src/Sections/Humans.Stripe/Humans.Stripe.csproj" />
     <Project Path="src/Sections/Humans.Surveys/Humans.Surveys.csproj" />
     <Project Path="src/Sections/Humans.Surveys.Contracts/Humans.Surveys.Contracts.csproj" />
     <Project Path="src/Sections/Humans.SystemSettings/Humans.SystemSettings.csproj" />
@@ -90,6 +92,7 @@
     <Project Path="tests/Humans.Auth.Tests/Humans.Auth.Tests.csproj" />
     <Project Path="tests/Humans.Budget.Tests/Humans.Budget.Tests.csproj" />
     <Project Path="tests/Humans.Calendar.Tests/Humans.Calendar.Tests.csproj" />
+    <Project Path="tests/Humans.EarlyEntry.Tests/Humans.EarlyEntry.Tests.csproj" />
     <Project Path="tests/Humans.Campaigns.Tests/Humans.Campaigns.Tests.csproj" />
     <Project Path="tests/Humans.Cantina.Tests/Humans.Cantina.Tests.csproj" />
     <Project Path="tests/Humans.Camps.Tests/Humans.Camps.Tests.csproj" />
@@ -117,6 +120,7 @@
     <Project Path="tests/Humans.Scanner.Tests/Humans.Scanner.Tests.csproj" />
     <Project Path="tests/Humans.Search.Tests/Humans.Search.Tests.csproj" />
     <Project Path="tests/Humans.Store.Tests/Humans.Store.Tests.csproj" />
+    <Project Path="tests/Humans.Stripe.Tests/Humans.Stripe.Tests.csproj" />
     <Project Path="tests/Humans.Surveys.Tests/Humans.Surveys.Tests.csproj" />
     <Project Path="tests/Humans.Shifts.Tests/Humans.Shifts.Tests.csproj" />
     <Project Path="tests/Humans.Teams.Tests/Humans.Teams.Tests.csproj" />

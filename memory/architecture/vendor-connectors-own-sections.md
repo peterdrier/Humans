@@ -21,7 +21,10 @@ rollout.
   (peterdrier/Humans#1239) left `IHoldedClient`, `HoldedClient`, `HoldedClientOptions` and the
   `Interfaces/Holded/*` DTOs in Base rather than pulling them into `Humans.Finance`, so they can be
   lifted into `Humans.Holded` later without unpicking anything. Store did the same with
-  `IStripeService`.
+  `IStripeService`, which has since been lifted: **Stripe is `src/Sections/Humans.Stripe`**
+  (nobodies-collective/Humans#866, 2026-08-14) — `IStripeService` under its `Contracts/` folder,
+  the SDK and both hosted services `internal` behind it, consumed by Store and Tickets through
+  a direct project reference.
 - **Never re-export a vendor's wire DTO across a section boundary.** It makes every downstream
   consumer a consumer of the vendor's API shape, and it cycles the section's contracts leaf besides
   (see [`section-project-cycle-fix`](section-project-cycle-fix.md)). Own a boundary type and map at

@@ -95,7 +95,8 @@
       ],
       "symbols": [
         "Calendar*",
-        "ICalendar*"
+        "ICalendar*",
+        "IICalFeed*"
       ],
       "repositoryInterfaces": [
         "ICalendarRepository"
@@ -332,6 +333,19 @@
         "IHoldedFinanceService"
       ]
     },
+    "EarlyEntry": {
+      "paths": [
+        "src/Sections/Humans.EarlyEntry/**"
+      ],
+      "symbols": [
+        "EarlyEntry*",
+        "IEarlyEntry*",
+        "UserEarlyEntry"
+      ],
+      "serviceInterfaces": [
+        "IEarlyEntryService"
+      ]
+    },
     "Gate": {
       "paths": [
         "src/Sections/Humans.Gate/**",
@@ -411,7 +425,8 @@
     "Users": {
       "paths": [
         "src/Humans.Application/UserInfo.cs",
-        "src/Humans.Application/Interfaces/HumanLifecycle/**",
+        "src/Sections/Humans.Users.Contracts/IHumanLifecycleService.cs",
+        "src/Sections/Humans.Users.Contracts/INonCompliantMemberSuspension.cs",
         "src/Humans.Application/Interfaces/Profiles/**",
         "src/Humans.Application/Interfaces/Repositories/IUserRepository.cs",
         "src/Humans.Application/Interfaces/Users/**",
@@ -421,7 +436,8 @@
         "src/Humans.Application/DTOs/ReviewDetailData.cs",
         "src/Humans.Application/DTOs/ReviewQueueData.cs",
         "src/Humans.Application/DTOs/UserEmailDto.cs",
-        "src/Humans.Application/Services/HumanLifecycle/**",
+        "src/Sections/Humans.Users/Services/HumanLifecycleService.cs",
+        "src/Sections/Humans.Users/Services/NonCompliantMemberSuspension.cs",
         "src/Humans.Application/Services/Profile/**",
         "src/Humans.Application/Services/Profiles/**",
         "src/Humans.Application/Services/Users/**",
@@ -548,13 +564,7 @@
       "paths": [
         "src/Sections/Humans.Shifts/**",
         "src/Sections/Humans.Shifts.Contracts/**",
-        "src/Humans.Application/Interfaces/EarlyEntry/**",
         "src/Humans.Application/Models/UpcomingShiftEntry.cs",
-        "src/Humans.Application/Services/EarlyEntry/**",
-        "src/Humans.Infrastructure/Services/EarlyEntry/**",
-        "src/Humans.Infrastructure/Stores/EarlyEntry/**",
-        "src/Humans.Web/Controllers/EarlyEntryRosterController.cs",
-        "src/Humans.Web/Models/EarlyEntry/**",
         "src/Humans.Web/ViewComponents/DietaryMissingBannerViewComponent.cs"
       ],
       "symbols": [
@@ -703,7 +713,6 @@
         "src/Humans.Application/Interfaces/IHumansMetrics.cs",
         "src/Humans.Application/Interfaces/IOrchestrator.cs",
         "src/Humans.Application/Interfaces/IRecurringJob.cs",
-        "src/Humans.Application/Interfaces/IStripeService.cs",
         "src/Humans.Application/Interfaces/Repositories/IRepository.cs",
         "src/Humans.Application/Models/Api*",
         "src/Humans.Application/Models/Claude*",
@@ -725,12 +734,13 @@
         "src/Humans.Infrastructure/Jobs/**",
         "src/Humans.Infrastructure/Services/HttpStatusTracker.cs",
         "src/Humans.Infrastructure/Services/Metering/**",
-        "src/Humans.Infrastructure/Services/StripeService.cs",
-        "src/Humans.Infrastructure/Services/StripeStartupSmokeService.cs",
         "src/Humans.Infrastructure/Stores/**",
         "src/Humans.Web/Controllers/ColorPaletteController.cs",
         "src/Sections/Humans.Debug/**",
         "src/Sections/Humans.Development/**",
+        "src/Sections/Humans.Stripe/Contracts/IStripeService.cs",
+        "src/Sections/Humans.Stripe/Services/StripeService.cs",
+        "src/Sections/Humans.Stripe/Services/StripeStartupSmokeService.cs",
         "src/Humans.Web/Controllers/LogApiController.cs",
         "src/Humans.Web/Controllers/ApiControllerBase.cs",
         "src/Sections/Humans.Scanner/**",
@@ -747,13 +757,13 @@
         "src/Humans.Web/Health/GitHubHealthCheck.cs",
         "src/Humans.Web/Infrastructure/**",
         "src/Humans.Web/Middleware/**",
-        "src/Humans.Web/Models/AccessMatrixDefinitions.cs",
+        "src/Humans.UI/Models/AccessMatrixDefinitions.cs",
         "src/Humans.Web/Models/ClientStatsViewModel.cs",
         "src/Humans.Web/ViewComponents/NavBadgesViewComponent.cs",
         "src/Humans.Web/Models/PagedListViewModel.cs",
         "src/Humans.UI/Models/PagerViewModel.cs",
         "src/Humans.Web/Models/PublicPopoverViewModel.cs",
-        "src/Humans.Web/Models/SectionHelpViewModel.cs",
+        "src/Humans.UI/Models/SectionHelpViewModel.cs",
         "src/Humans.Web/Models/StaffViewModels.cs"
       ],
       "symbols": [

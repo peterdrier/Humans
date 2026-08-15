@@ -4,6 +4,13 @@ namespace Humans.Application.Interfaces.Holded;
 
 public interface IHoldedClient
 {
+    /// <summary>
+    /// False when no <c>HOLDED_API_KEY_V2</c> is configured (PR previews, local dev). Every call
+    /// would 401 — a permanent error — so callers skip the work instead of writing off their
+    /// queues, and can tell "not configured" apart from "queued" when reporting state.
+    /// </summary>
+    bool IsConfigured { get; }
+
     /// <summary>Creates a purchase document and returns the new doc id.</summary>
     Task<string> CreatePurchaseDocumentAsync(
         HoldedPurchaseDocumentInput input,

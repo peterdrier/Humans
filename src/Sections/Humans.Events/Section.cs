@@ -1,7 +1,7 @@
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Caching;
 using Humans.Gdpr.Contracts;
-using Humans.Application.Interfaces.ICalFeed;
+using Humans.Calendar.Contracts;
 using Humans.Events.Contracts;
 using Humans.Events.Data;
 using Humans.Events.Filters;

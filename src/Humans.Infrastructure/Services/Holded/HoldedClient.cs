@@ -7,6 +7,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Holded;
+using Humans.Domain.Helpers;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NodaTime;
@@ -45,6 +46,8 @@ public sealed class HoldedClient : IHoldedClient
         if (_http.BaseAddress is null && !string.IsNullOrEmpty(_options.BaseUrl))
             _http.BaseAddress = new Uri(_options.BaseUrl);
     }
+
+    public bool IsConfigured => !string.IsNullOrWhiteSpace(_options.ApiKey);
 
     public async Task<string> CreatePurchaseDocumentAsync(
         HoldedPurchaseDocumentInput input, CancellationToken ct = default)
@@ -542,8 +545,13 @@ public sealed class HoldedClient : IHoldedClient
             if ((int)resp.StatusCode >= 500)
                 throw new HoldedTransientException(
                     $"Holded {(int)resp.StatusCode} {resp.ReasonPhrase}");
+            // The message is the diagnostic that reaches logs, the outbox row's LastError, the audit
+            // trail and the finance-admin UI. A 4xx on a contact upsert can echo the IBAN we just
+            // sent straight back in the body, so mask before it leaves the client
+            // (memory/code/iban-mask-in-logs.md). ResponseBody keeps the untouched body for any
+            // caller that deliberately needs it.
             throw new HoldedPermanentException((int)resp.StatusCode, body,
-                $"Holded {(int)resp.StatusCode} {resp.ReasonPhrase}: {body}");
+                $"Holded {(int)resp.StatusCode} {resp.ReasonPhrase}: {IbanFormatter.MaskAllIn(body)}");
         }
     }
 

@@ -37,7 +37,10 @@ internal sealed class ExpenseReportAuthorizationHandler(IBudgetServiceRead budge
                     or ExpenseReportOperation.FinanceReject
                     or ExpenseReportOperation.CategoryOverride
                 || (op is ExpenseReportOperation.Endorse or ExpenseReportOperation.CoordinatorReject
-                    && resource.Status == ExpenseReportStatus.Submitted)))
+                    && resource.Status == ExpenseReportStatus.Submitted)
+                // The push is queued at approval, so there is nothing to re-queue before it.
+                || (op is ExpenseReportOperation.RequeueHoldedPush
+                    && resource.Status == ExpenseReportStatus.Approved)))
         {
             context.Succeed(requirement);
             return;

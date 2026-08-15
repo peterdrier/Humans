@@ -138,9 +138,10 @@ Mirrors `GoogleSyncOutboxEvent`'s shape:
 | EventType | string | `CreateIncomingDoc` or `UpdateIncomingDocTag`. |
 | OccurredAt | Instant | |
 | ProcessedAt | Instant? | Null = unprocessed. |
-| RetryCount | int | |
+| RetryCount | int | Failed attempts so far. Ten spends the budget. |
 | LastError | string? | |
-| FailedPermanently | bool | True after a 4xx response from Holded. Surfaced as a banner in `/Expenses/Review`. |
+| NextRetryAt | Instant? | Earliest instant the drain may retry. Null on a fresh event. |
+| FailedPermanently | bool | True after a 4xx response from Holded, or once the retry budget is spent. Surfaced as a banner in `/Expenses/Review` and as the Holded sync card on `/Expenses/{id}`, where a finance admin can re-queue it. |
 
 Indexes: `(ProcessedAt, FailedPermanently)` for the job's polling query.
 
@@ -327,7 +328,7 @@ Budget, Teams, Users, and Holded never call into Expenses.
 - `IExpenseAttachmentStorageService` (impl `Humans.Infrastructure/Services/ExpenseAttachmentFilesystemStorage.cs`) handles filesystem reads/writes under a configured root (`ExpenseAttachments:Root`). API: `Task<Guid> StoreAsync(Stream, string ext, string contentType)`, `Task<Stream> OpenReadAsync(Guid id, string ext)`, `Task DeleteAsync(Guid id, string ext)`. No DB access.
 - `ISepaPaymentFileBuilder` (impl in `Humans.Application` — pure XML composition, no IO) — generates pain.001.001.09 XML from a list of approved reports plus org-level config (creditor IBAN, BIC, name, NIF). Unit-testable in isolation.
 - `IHoldedClient` is **owned by the new `Holded` sibling section**, not by Expenses (see "Sibling section: Holded" below). Expenses is the first consumer; future Finance/Holded sync work extends the same surface. Interface lives at `Humans.Application/Interfaces/Holded/IHoldedClient.cs`; impl at `Humans.Infrastructure/Services/Holded/HoldedClient.cs` (typed `HttpClient`). API key from `HOLDED_API_KEY` env var only; never logged.
-- `HoldedExpenseOutboxJob` is a Hangfire recurring job at `*/1 * * * *` (every minute, 5-field cron). Idempotent: processes only `ProcessedAt IS NULL AND FailedPermanently = false` rows; bounded retry with `RetryCount`-driven exponential backoff. Lives in Expenses (`Humans.Infrastructure/Jobs/HoldedExpenseOutboxJob.cs`) since the outbox table is owned by Expenses; the job consumes the Holded section's `IHoldedClient` like any other caller.
+- `HoldedExpenseOutboxJob` is a Hangfire recurring job at `*/1 * * * *` (every minute, 5-field cron). It is a scheduler shim only — the queue semantics live in `ExpenseReportService.DrainHoldedOutboxAsync`: processes `ProcessedAt IS NULL AND FailedPermanently = false AND (NextRetryAt IS NULL OR NextRetryAt <= now)`; a transient failure backs off `2^(RetryCount+1)` minutes (Email's curve), and the tenth failure writes the event off rather than dropping it silently out of the drain. The drain skips entirely when `IHoldedClient.IsConfigured` is false, since every call would 401 and write off the queue. Lives in Expenses (`Humans.Infrastructure/Jobs/HoldedExpenseOutboxJob.cs`) since the outbox table is owned by Expenses; the job consumes the Holded section's `IHoldedClient` like any other caller.
 - `ExpensePaidPollingJob` is a Hangfire recurring job at `*/15 * * * *`. Pulls all `SepaSent` reports, polls Holded per-report via `IHoldedClient.GetPurchaseDocumentAsync`, transitions to `Paid`. Bounded by a per-run cap (50 reports) to keep API load reasonable. Lives in Expenses for the same reason as the outbox job.
 - `IbanFormatter` (`Humans.Application.Helpers.IbanFormatter`) — static helper with `Mask(string iban)` returning `NL75****123` format. Centralizes the masking pattern for logs/error/audit. A code-review rule (project-rule atom) forbids logging raw IBANs.
 - **Decorator decision — no caching decorator.** Member-facing routes are scoped to one user's own reports (cheap query). Coordinator and FinanceAdmin queues are admin-only, low-traffic. Same rationale as Budget / Finance / Governance.
