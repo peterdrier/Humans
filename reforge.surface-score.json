@@ -3,10 +3,8 @@
     "Admin": {
       "paths": [
         "src/Humans.Application/Interfaces/Admin/**",
-        "src/Humans.Application/Services/Admin/**",
         "src/Humans.Infrastructure/Repositories/Admin/**",
-        "src/Humans.Web/Controllers/Admin*/**",
-        "src/Humans.Web/Models/AdminViewModels.cs"
+        "src/Humans.Web/Controllers/Admin*"
       ],
       "symbols": [
         "Admin*",
@@ -198,12 +196,7 @@
     },
     "Containers": {
       "paths": [
-        "src/Humans.Application/Interfaces/Containers/**",
-        "src/Humans.Application/Services/Containers/**",
-        "src/Humans.Domain/Entities/Container*",
-        "src/Humans.Infrastructure/Repositories/Containers/**",
-        "src/Humans.Web/Controllers/ContainerController.cs",
-        "src/Humans.Web/Models/ContainerViewModels.cs"
+        "src/Sections/Humans.Containers/**"
       ],
       "symbols": [
         "Container*",
@@ -248,10 +241,7 @@
         "src/Sections/Humans.Email.Contracts/**",
         "src/Sections/Humans.Mailer/**",
         "src/Sections/Humans.Mailer.Contracts/**",
-        "src/Humans.Web/Controllers/UnsubscribeController.cs",
-        "src/Humans.Web/Health/SmtpHealthCheck.cs",
-        "src/Humans.Web/Models/Email*.cs",
-        "src/Humans.Web/Models/EmailProblems/**"
+        "src/Humans.Web/Health/SmtpHealthCheck.cs"
       ],
       "symbols": [
         "Email*",
@@ -411,49 +401,27 @@
     },
     "Users": {
       "paths": [
-        "src/Humans.Application/UserInfo.cs",
+        "src/Sections/Humans.Users/**",
+        "src/Sections/Humans.Users.Contracts/**",
         "src/Sections/Humans.Users.Contracts/IHumanLifecycleService.cs",
         "src/Sections/Humans.Users.Contracts/INonCompliantMemberSuspension.cs",
-        "src/Humans.Application/Interfaces/Profiles/**",
-        "src/Humans.Application/Interfaces/Repositories/IUserRepository.cs",
         "src/Humans.Application/Interfaces/Users/**",
         "src/Humans.Application/DTOs/BirthdayProfileInfo.cs",
         "src/Humans.Application/DTOs/LocationProfileInfo.cs",
         "src/Humans.Application/DTOs/MemberSummary.cs",
-        "src/Humans.Application/DTOs/ReviewDetailData.cs",
-        "src/Humans.Application/DTOs/ReviewQueueData.cs",
-        "src/Humans.Application/DTOs/UserEmailDto.cs",
         "src/Sections/Humans.Users/Services/HumanLifecycleService.cs",
         "src/Sections/Humans.Users/Services/NonCompliantMemberSuspension.cs",
-        "src/Humans.Application/Services/Profile/**",
-        "src/Humans.Application/Services/Profiles/**",
         "src/Humans.Application/Services/Users/**",
-        "src/Humans.Domain/Entities/Profile*",
-        "src/Humans.Domain/Entities/AccountMerge*",
-        "src/Humans.Domain/Entities/CommunicationPreference*",
-        "src/Humans.Domain/Entities/ContactField*",
-        "src/Humans.Domain/Entities/User*",
-        "src/Humans.Infrastructure/Repositories/Users/**",
-        "src/Humans.Infrastructure/Repositories/Profiles/**",
-        "src/Humans.Infrastructure/Services/Users/**",
-        "src/Humans.Web/Controllers/Profile*",
-        "src/Humans.Web/Controllers/User*",
         "src/Humans.Web/Controllers/AboutController.cs",
         "src/Humans.Web/Controllers/AccountController.cs",
         "src/Humans.Web/Controllers/GuestController.cs",
         "src/Humans.Web/Controllers/HomeController.cs",
         "src/Humans.Web/Controllers/LanguageController.cs",
-        "src/Humans.Web/Controllers/AdminDuplicateAccountsController.cs",
-        "src/Humans.Web/Controllers/AdminMergeController.cs",
         "src/Humans.Web/Models/CommunicationPreferenceViewModels.cs",
         "src/Humans.Web/Models/GuestViewModels.cs",
         "src/Sections/Humans.Onboarding/**",
         "src/Sections/Humans.Onboarding.Contracts/**",
-        "src/Humans.Web/Models/ProfileViewModel.cs",
-        "src/Humans.Web/Models/SendMessageViewModel.cs",
-        "src/Humans.Web/Models/FacilitatedMessageRequestBuilder.cs",
-        "src/Humans.Web/ViewComponents/NobodiesEmailBadgeViewComponent.cs",
-        "src/Humans.Infrastructure/Services/Profiles/UnsubscribeTokenProvider.cs"
+        "src/Humans.Web/ViewComponents/NobodiesEmailBadgeViewComponent.cs"
       ],
       "symbols": [
         "Profile*",
@@ -531,8 +499,7 @@
     },
     "Search": {
       "paths": [
-        "src/Sections/Humans.Search/**",
-        "src/Humans.Application/DTOs/SectionSearchHits.cs"
+        "src/Sections/Humans.Search/**"
       ],
       "symbols": [
         "Search*",
@@ -555,7 +522,6 @@
         "src/Humans.Application/Models/UpcomingShiftEntry.cs",
         "src/Humans.Application/Services/EarlyEntry/**",
         "src/Humans.Infrastructure/Services/EarlyEntry/**",
-        "src/Humans.Infrastructure/Stores/EarlyEntry/**",
         "src/Humans.Web/Controllers/EarlyEntryRosterController.cs",
         "src/Humans.Web/Models/EarlyEntry/**",
         "src/Humans.Web/ViewComponents/DietaryMissingBannerViewComponent.cs"
@@ -697,21 +663,16 @@
         "src/Humans.Application/Extensions/**",
         "src/Humans.Application/Helpers/**",
         "src/Humans.Application/Interfaces/Caching/**",
-        "src/Humans.Application/Interfaces/IApplicationService.cs",
+        "src/Humans.Interfaces/Interfaces/IApplicationService.cs",
         "src/Humans.Application/Interfaces/ICacheStatsProvider.cs",
         "src/Humans.Application/Interfaces/IClientStatsTracker.cs",
         "src/Humans.Application/Interfaces/IFileStorage.cs",
         "src/Humans.Application/Interfaces/IGuideContentSource.cs",
         "src/Humans.Application/Interfaces/IHttpStatusTracker.cs",
         "src/Humans.Application/Interfaces/IHumansMetrics.cs",
-        "src/Humans.Application/Interfaces/IOrchestrator.cs",
+        "src/Humans.Interfaces/Interfaces/IOrchestrator.cs",
         "src/Humans.Application/Interfaces/IRecurringJob.cs",
-        "src/Humans.Application/Interfaces/Repositories/IRepository.cs",
-        "src/Humans.Application/Models/Api*",
-        "src/Humans.Application/Models/Claude*",
-        "src/Humans.Application/Models/Mistral*",
-        "src/Humans.Application/Models/OpenRouter*",
-        "src/Humans.Application/Models/Platform*",
+        "src/Humans.Interfaces/Interfaces/Repositories/IRepository.cs",
         "src/Humans.Domain/Attributes/**",
         "src/Humans.Domain/Constants/**",
         "src/Humans.Domain/Helpers/**",
@@ -727,7 +688,6 @@
         "src/Humans.Infrastructure/Jobs/**",
         "src/Humans.Infrastructure/Services/HttpStatusTracker.cs",
         "src/Humans.Infrastructure/Services/Metering/**",
-        "src/Humans.Infrastructure/Stores/**",
         "src/Humans.Web/Controllers/ColorPaletteController.cs",
         "src/Sections/Humans.Debug/**",
         "src/Sections/Humans.Development/**",
@@ -735,7 +695,7 @@
         "src/Sections/Humans.Stripe/Services/StripeService.cs",
         "src/Sections/Humans.Stripe/Services/StripeStartupSmokeService.cs",
         "src/Humans.Web/Controllers/LogApiController.cs",
-        "src/Humans.Web/Controllers/ApiControllerBase.cs",
+        "src/Humans.UI/Controllers/ApiControllerBase.cs",
         "src/Sections/Humans.Scanner/**",
         "src/Sections/Humans.Guide/**",
         "src/Humans.Web/Controllers/TimezoneApiController.cs",
@@ -751,11 +711,9 @@
         "src/Humans.Web/Infrastructure/**",
         "src/Humans.Web/Middleware/**",
         "src/Humans.UI/Models/AccessMatrixDefinitions.cs",
-        "src/Humans.Web/Models/ClientStatsViewModel.cs",
         "src/Humans.Web/ViewComponents/NavBadgesViewComponent.cs",
-        "src/Humans.Web/Models/PagedListViewModel.cs",
+        "src/Humans.UI/Models/PagedListViewModel.cs",
         "src/Humans.UI/Models/PagerViewModel.cs",
-        "src/Humans.Web/Models/PublicPopoverViewModel.cs",
         "src/Humans.UI/Models/SectionHelpViewModel.cs",
         "src/Humans.Web/Models/StaffViewModels.cs"
       ],
