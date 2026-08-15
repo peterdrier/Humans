@@ -18,6 +18,7 @@ using Microsoft.Extensions.Options;
 using NodaTime;
 using NSubstitute;
 using Humans.Users.Contracts;
+using Humans.AuditLog.Contracts;
 
 namespace Humans.Camps.Tests.Services;
 

@@ -10,11 +10,13 @@
     <ProjectReference Include="..\..\src\Sections\Humans.Users\Humans.Users.csproj" />
     <!--
       EnumStringStabilityTests guards seven enums that G5 lane 4b-2k moved onto these two
-      leaves. Declared explicitly rather than left to resolve transitively through
-      Humans.Users, so the guard survives a change to that project's reference set.
+      leaves, and AuditAction, which 4b-2l moved onto the third. Declared explicitly rather
+      than left to resolve transitively through Humans.Users, so the guard survives a change
+      to that project's reference set.
     -->
     <ProjectReference Include="..\..\src\Sections\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.AuditLog.Contracts\Humans.AuditLog.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

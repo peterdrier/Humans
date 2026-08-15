@@ -1,6 +1,6 @@
-namespace Humans.Application.DTOs;
+namespace Humans.Teams.Models;
 
-public record BirthdayProfileInfo(
+internal sealed record BirthdayProfileInfo(
     Guid UserId,
     string DisplayName,
     string? ProfilePictureUrl,

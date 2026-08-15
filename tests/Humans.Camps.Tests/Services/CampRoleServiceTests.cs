@@ -14,6 +14,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using NSubstitute;
+using Humans.AuditLog.Contracts;
 
 namespace Humans.Camps.Tests.Services;
 

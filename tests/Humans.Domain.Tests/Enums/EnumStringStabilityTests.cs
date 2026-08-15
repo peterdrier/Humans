@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.AuditLog.Contracts;
 using Humans.Domain.Enums;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
@@ -51,6 +52,11 @@ public class EnumStringStabilityTests
     /// test projects (Tickets' shape, above) because every one of them is still public on a leaf
     /// this project can name, so the guard keeps working unsplit. Member names are unchanged, so
     /// no persisted string moved.
+    ///
+    /// G5 lane 4b-2l moved an eighth — <c>AuditAction</c> to <c>Humans.AuditLog.Contracts</c> —
+    /// on the same terms. <c>EmailOutboxStatus</c> deliberately stayed in <c>Humans.Domain.Enums</c>:
+    /// Campaigns' <c>campaign_grants</c> and Surveys' <c>survey_invitations</c> persist it too, so
+    /// it fails the "who writes it to a table" test for a single owner (design §15 step 5, Email).
     /// </remarks>
     public static TheoryData<Type, string[]> StringStoredEnumData => new()
     {

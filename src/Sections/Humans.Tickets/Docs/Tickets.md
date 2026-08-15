@@ -2,7 +2,7 @@
   src/Sections/Humans.Tickets/**
   src/Sections/Humans.Tickets.Contracts/**
   src/Sections/Humans.TicketTailor/**
-  src/Humans.Domain/Constants/TicketConstants.cs
+  src/Sections/Humans.Tickets.Contracts/TicketConstants.cs
 -->
 <!-- freshness:flag-on-change
   Vendor sync flow, Stripe-fee enrichment, auto-matching to humans by email, and EventParticipation derivation rules — review when Tickets services/entities/controller change.

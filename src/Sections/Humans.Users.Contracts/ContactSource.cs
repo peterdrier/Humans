@@ -1,4 +1,4 @@
-namespace Humans.Domain.Enums;
+namespace Humans.Users.Contracts;
 
 /// <summary>
 /// Where an external contact was imported from.

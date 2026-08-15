@@ -4,6 +4,7 @@ using AwesomeAssertions;
 using Humans.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
+using Humans.AuditLog.Contracts;
 
 namespace Humans.AuditLog.Tests;
 

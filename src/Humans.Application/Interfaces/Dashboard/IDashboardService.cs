@@ -2,6 +2,7 @@ using Humans.Governance.Contracts;
 using Humans.Application.DTOs;
 using Humans.Domain.Enums;
 using NodaTime;
+using Humans.Users.Contracts;
 
 namespace Humans.Application.Interfaces.Dashboard;
 

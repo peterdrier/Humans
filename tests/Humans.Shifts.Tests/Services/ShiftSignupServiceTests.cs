@@ -20,6 +20,7 @@ using Humans.Shifts.Contracts;
 using Humans.Shifts.Data;
 using Xunit;
 using Humans.Users.Contracts;
+using Humans.AuditLog.Contracts;
 
 namespace Humans.Shifts.Tests.Services;
 

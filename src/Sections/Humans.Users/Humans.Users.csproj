@@ -64,10 +64,12 @@
     <ProjectReference Include="..\..\Humans.Interfaces\Humans.Interfaces.csproj" />
     <!--
       Humans.Domain is here for the enums that stay in Humans.Domain.Enums because Base
-      and other sections name or persist them — ContactSource, GoogleEmailStatus,
-      MembershipStatus, MembershipTier, ParticipationSource, ParticipationStatus,
-      MessageCategory, LanguageProficiency (Teams'/Email's rule, design §15 step 5) —
-      plus RoleNames and the shared value objects.
+      and other sections name or persist them — GoogleEmailStatus, MembershipStatus,
+      MembershipTier, MessageCategory (Teams'/Email's rule, design §15 step 5) — plus
+      RoleNames and the shared value objects. ContactSource, LanguageProficiency,
+      ParticipationSource and ParticipationStatus left for Humans.Users.Contracts in G5
+      lane 4b-2l: each is named by a public leaf type (UserInfo, User, ProfileLanguage,
+      EventParticipation), so the leaf could not have referenced them anywhere else.
     -->
     <ProjectReference Include="..\..\Humans.Domain\Humans.Domain.csproj" />
     <ProjectReference Include="..\..\Humans.Application\Humans.Application.csproj" />

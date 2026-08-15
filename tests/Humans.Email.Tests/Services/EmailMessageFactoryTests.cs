@@ -6,6 +6,7 @@ using Humans.Domain.Enums;
 using NSubstitute;
 using NSubstitute.Extensions;
 using Humans.Events.Contracts;
+using Humans.Tickets.Contracts;
 
 namespace Humans.Email.Tests.Services;
 

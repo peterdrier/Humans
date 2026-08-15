@@ -1,12 +1,12 @@
-namespace Humans.Domain.Constants;
+namespace Humans.Users.Contracts;
 
 /// <summary>
 /// Canonical option lists for the dietary/medical profile section.
 /// Single source of truth for the chips/checkboxes rendered on the
 /// volunteer's DietaryMedical form and the labels used by the Cantina
-/// daily-roster roll-up. Keeping the lists here (Domain) lets the
-/// Application layer reference them without taking a dependency on
-/// the Web layer's view models.
+/// daily-roster roll-up. Users owns them because Users' profile-edit path
+/// is what filters a submission against these lists before persisting it;
+/// Cantina only reads and aggregates.
 /// </summary>
 public static class DietaryOptions
 {
@@ -14,8 +14,7 @@ public static class DietaryOptions
     /// Sentinel value used in <see cref="AllergyOptions"/> and
     /// <see cref="IntoleranceOptions"/> to flag a free-text follow-up.
     /// When selected, the corresponding "*OtherText" field on
-    /// <see cref="Humans.Domain.Entities.VolunteerEventProfile"/>
-    /// carries the user-supplied detail.
+    /// <c>VolunteerEventProfile</c> carries the user-supplied detail.
     /// </summary>
     public const string OtherOption = "Other";
 

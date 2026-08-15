@@ -41,7 +41,7 @@ internal sealed class AuditViewerService(
         string? entityType,
         Guid? entityId,
         Guid? userId,
-        IReadOnlyList<Humans.Domain.Enums.AuditAction>? actions,
+        IReadOnlyList<Humans.AuditLog.Contracts.AuditAction>? actions,
         int limit,
         CancellationToken ct = default)
     {

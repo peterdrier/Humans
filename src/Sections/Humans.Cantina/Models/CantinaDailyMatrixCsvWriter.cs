@@ -4,6 +4,7 @@ using Humans.Application.Extensions;
 using Humans.Cantina.Services.Dtos;
 using Humans.Domain.Constants;
 using NodaTime;
+using Humans.Users.Contracts;
 
 namespace Humans.Cantina.Models;
 

@@ -33,6 +33,7 @@ using Xunit;
 using Humans.Users.Contracts;
 using Humans.Users.Data;
 using Humans.Users.Services;
+using Humans.AuditLog.Contracts;
 
 namespace Humans.Integration.Tests.AccountMerge;
 

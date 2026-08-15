@@ -1,10 +1,8 @@
 using AwesomeAssertions;
-using Humans.Application.Helpers;
-using Humans.Domain.Entities;
-using NodaTime;
 using Humans.Users.Contracts;
+using NodaTime;
 
-namespace Humans.Application.Tests.Helpers;
+namespace Humans.Users.Tests.Helpers;
 
 public class ProfileCompletionTests
 {

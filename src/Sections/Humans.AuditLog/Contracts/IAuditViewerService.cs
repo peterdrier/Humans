@@ -67,7 +67,7 @@ public interface IAuditViewerService : IApplicationService
     /// Returns a paged slice of audit events plus aggregate counts (total,
     /// anomalies). Filter is the same string
     /// <see cref="IAuditLogService.GetFilteredAsync"/> takes — case-insensitive
-    /// <see cref="Humans.Domain.Enums.AuditAction"/> name match.
+    /// <see cref="Humans.AuditLog.Contracts.AuditAction"/> name match.
     /// </summary>
     Task<AuditEventPage> GetPageAsync(string? actionFilter, int page, int pageSize, CancellationToken ct = default);
 
@@ -81,7 +81,7 @@ public interface IAuditViewerService : IApplicationService
         string? entityType,
         Guid? entityId,
         Guid? userId,
-        IReadOnlyList<Humans.Domain.Enums.AuditAction>? actions,
+        IReadOnlyList<Humans.AuditLog.Contracts.AuditAction>? actions,
         int limit,
         CancellationToken ct = default);
 }

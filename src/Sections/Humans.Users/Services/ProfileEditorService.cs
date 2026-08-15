@@ -6,7 +6,6 @@ using Humans.Users.Contracts;
 using Humans.Application.Threading;
 using Humans.Domain.Constants;
 using Microsoft.Extensions.Logging;
-using Humans.Application.Storage;
 
 namespace Humans.Users.Services;
 

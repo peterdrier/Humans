@@ -1,7 +1,7 @@
 <!-- freshness:triggers
   src/Sections/Humans.AuditLog/**
   src/Sections/Humans.AuditLog.Contracts/**
-  src/Humans.Domain/Enums/AuditAction.cs
+  src/Sections/Humans.AuditLog.Contracts/AuditAction.cs
 -->
 <!-- freshness:flag-on-change
   Audit log append-only invariant, AuditAction enum surface, and self-persisting semantics — review when AuditLog service/repo/entity changes.
@@ -14,7 +14,7 @@ Append-only system audit trail: who did what, when, to which entity. Used by eve
 ## Concepts
 
 - An **Audit Log Entry** is an append-only record of a single user-initiated or job-initiated action. Captures actor, action, entity type + id, free-text description, and timestamp; Google sync entries also carry resource id, role, sync source, success/error, and the user email at the time of the call.
-- **AuditAction** is the cross-section enum (`Humans.Domain.Enums.AuditAction`) of action names, stored as string in the DB via `HasConversion<string>()`. Every action name is a contract — sections use the shared enum so reviewers can grep "who writes TierApplicationApproved" across the whole codebase.
+- **AuditAction** is the cross-section enum (`Humans.AuditLog.Contracts.AuditAction`) of action names, stored as string in the DB via `HasConversion<string>()`. Every action name is a contract — sections use the shared enum so reviewers can grep "who writes TierApplicationApproved" across the whole codebase.
 - **Self-persisting audit** (design-rules §7a): `IAuditLogService.LogAsync` saves each entry immediately via `IAuditLogRepository.AddAsync`, which uses `IDbContextFactory<AuditLogDbContext>` to open a fresh per-call context and `SaveChangesAsync`. Callers do not need to `SaveChanges` to flush audit, and must not expect audit to roll back if a later business step fails.
 - **Best-effort** — audit save failures are logged at Error and swallowed inside `AuditLogService.PersistAsync`. An audit hiccup never fails the business operation that called it.
 
@@ -48,9 +48,9 @@ Append-only per design-rules §12. Enforced at two layers: the architecture test
 
 ### AuditAction (cross-section enum)
 
-`AuditAction` (`Humans.Domain.Enums.AuditAction`) is the shared contract across all writers. Stored as string via `HasConversion<string>()`. Full surface as of this sweep:
+`AuditAction` (`Humans.AuditLog.Contracts.AuditAction`) is the shared contract across all writers. Stored as string via `HasConversion<string>()`. Full surface as of this sweep:
 
-<!-- freshness:auto id="auditaction-catalog" prompt="Regenerate this catalog from src/Humans.Domain/Enums/AuditAction.cs: every enum value must appear exactly once, grouped by section, one line each; preserve prose outside this block." -->
+<!-- freshness:auto id="auditaction-catalog" prompt="Regenerate this catalog from src/Sections/Humans.AuditLog.Contracts/AuditAction.cs: every enum value must appear exactly once, grouped by section, one line each; preserve prose outside this block." -->
 - **Onboarding / Profile / Users:** `ConsentCheckCleared`, `ConsentCheckFlagged`, `SignupRejected`, `VolunteerApproved`, `MemberSuspended`, `MemberUnsuspended`, `AccountAnonymized`, `MembershipsRevokedOnDeletionRequest`, `AccountMergeRequested`, `AccountMergeAccepted`, `AccountMergeRejected`, `AccountPurged`, `CommunicationPreferenceChanged`, `ContactCreated`.
 - **User emails:** `UserEmailProviderBackfilled`, `UserEmailGoogleSet`, `UserEmailGoogleCleared`, `UserEmailLinked`, `UserEmailUnlinked`, `UserEmailPrimarySet`, `UserEmailPrimaryCleared`, `UserEmailDeleted`, `UserEmailVisibilityChanged`, `UserEmailAdded`, `UserEmailManuallyVerified`, `OrphanUserEmailDeleted`, `GhostExternalLoginsDeleted`, `LegacyIdentityEmailBackfilled`, `OAuthRenameCollision`, `OAuthRenameCollisionBlocked`, `UserEmailDisplacedByOAuthRename` (the last three are the OAuth-callback reconcile audits from nobodies-collective/Humans#697, written by `UserEmailService`).
 - **Governance (tier applications + roles):** `TierApplicationApproved`, `TierApplicationRejected`, `TierDowngraded`, `RoleAssigned`, `RoleEnded`.

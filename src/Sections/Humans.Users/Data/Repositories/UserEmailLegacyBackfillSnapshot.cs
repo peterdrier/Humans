@@ -1,4 +1,4 @@
-namespace Humans.Application.DTOs;
+namespace Humans.Users.Data.Repositories;
 
 /// <summary>
 /// Snapshot of a <c>user_emails</c> row including the legacy <c>IsOAuth</c>
@@ -8,7 +8,7 @@ namespace Humans.Application.DTOs;
 /// <c>EF.Property&lt;bool&gt;(e, "IsOAuth")</c> so the legacy column stays
 /// readable until it is dropped in a deferred PR.
 /// </summary>
-public sealed record UserEmailLegacyBackfillSnapshot(
+internal sealed record UserEmailLegacyBackfillSnapshot(
     Guid Id,
     Guid UserId,
     string Email,

@@ -1,4 +1,4 @@
-namespace Humans.Domain.Enums;
+namespace Humans.AuditLog.Contracts;
 
 /// <summary>
 /// Actions that can be recorded in the audit log.

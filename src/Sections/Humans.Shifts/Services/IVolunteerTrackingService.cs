@@ -36,7 +36,7 @@ internal interface IVolunteerTrackingService : IApplicationService, IVolunteerTr
     /// camp-setup span newly covers existing day-off entries, those entries
     /// are silently auto-cleared in the same transaction; the cleared
     /// offsets are returned so the controller can emit one
-    /// <see cref="Humans.Domain.Enums.AuditAction.VolunteerDayOffCleared"/>
+    /// <see cref="Humans.AuditLog.Contracts.AuditAction.VolunteerDayOffCleared"/>
     /// row per offset alongside the camp-setup audit row.
     /// </summary>
     Task<SetCampSetupResult> SetCampSetupAsync(

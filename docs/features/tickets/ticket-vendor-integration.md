@@ -5,7 +5,7 @@
   src/Humans.Web/Controllers/WelcomeController.cs
   src/Humans.Web/Views/Welcome/**
   src/Sections/Humans.Campaigns/Domain/CampaignGrant.cs
-  src/Humans.Domain/Constants/TicketConstants.cs
+  src/Sections/Humans.Tickets.Contracts/TicketConstants.cs
   src/Humans.Infrastructure/Jobs/TicketSyncJob.cs
   src/Sections/Humans.Stripe/**
 -->

@@ -1,5 +1,6 @@
 using Humans.Cantina.Services.Dtos;
 using Humans.Domain.Constants;
+using Humans.Users.Contracts;
 
 namespace Humans.Cantina.Models;
 

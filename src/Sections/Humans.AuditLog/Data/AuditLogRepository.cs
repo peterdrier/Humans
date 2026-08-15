@@ -1,6 +1,7 @@
 using Humans.AuditLog.Domain;
 using Humans.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
+using Humans.AuditLog.Contracts;
 
 namespace Humans.AuditLog.Data;
 

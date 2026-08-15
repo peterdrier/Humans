@@ -1,4 +1,4 @@
-namespace Humans.Domain.Constants;
+namespace Humans.Tickets.Contracts;
 
 /// <summary>
 /// Constants for ticket VAT and donation calculations.

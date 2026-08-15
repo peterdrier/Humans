@@ -6,7 +6,7 @@
   src/Sections/Humans.Tickets/Domain/TicketOrder.cs
   src/Sections/Humans.Tickets/Domain/TicketSyncState.cs
   src/Sections/Humans.Budget/Domain/TicketingProjection.cs
-  src/Humans.Domain/Constants/TicketConstants.cs
+  src/Sections/Humans.Tickets.Contracts/TicketConstants.cs
   src/Sections/Humans.Tickets/Data/Configurations/**
   src/Sections/Humans.TicketTailor/**
   src/Sections/Humans.Tickets/Contracts/ITicketVendorService.cs

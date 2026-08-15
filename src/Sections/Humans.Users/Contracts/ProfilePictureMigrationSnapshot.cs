@@ -1,6 +1,6 @@
 using NodaTime;
 
-namespace Humans.Application.DTOs;
+namespace Humans.Users.Contracts;
 
 /// <summary>
 /// Issue nobodies-collective/Humans#702: snapshot for the profile-picture

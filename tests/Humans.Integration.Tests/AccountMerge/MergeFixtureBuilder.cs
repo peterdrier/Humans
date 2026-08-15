@@ -41,6 +41,8 @@ using Humans.Users.Services;
 
 using Humans.Teams.Contracts;
 using Humans.Shifts.Contracts;
+using Humans.AuditLog.Contracts;
+
 namespace Humans.Integration.Tests.AccountMerge;
 
 /// <summary>

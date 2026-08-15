@@ -21,11 +21,16 @@
     interface is cheap; it is the surface that costs" holds — this is one interface and one
     record.
 
-    References Humans.Interfaces (IApplicationService) and Humans.Domain: AuditAction and
-    GoogleSyncSource are Base vocabulary named in these signatures and stay in
-    Humans.Domain.Enums, because Shell, the audit view component and ~100 files
-    across every section name AuditAction directly (Teams' rule: a Humans.UI renderer is a
-    hard floor on how far an enum can move). Campaigns' leaf reference, for the same reason.
+    AuditAction lives here. G5 lane 4b-2l re-measured the claim that stood in this comment
+    — that it was Base vocabulary pinned by "a Humans.UI renderer is a hard floor on how far
+    an enum can move" — and both halves are false: no Humans.UI file names AuditAction, and
+    4b-2k had already reversed that rule (Humans.UI reaches every leaf through
+    Humans.Application). AuditLog is the only section that writes it to a table, so it is
+    this section's vocabulary; its ~120 consumers all reach this leaf already, because they
+    reach it to call IAuditLogService.
+
+    References Humans.Interfaces (IApplicationService) and Humans.Domain: GoogleSyncSource is
+    still Base vocabulary named in these signatures and stays in Humans.Domain.Enums.
   -->
 
   <ItemGroup>

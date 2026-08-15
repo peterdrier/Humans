@@ -85,7 +85,7 @@
         <div class="card-header">DB-only profile pictures</div>
         @{
             var dbOnlyRows = snapshot.DbOnlyRows.OrderByDescending(r => r.UpdatedAt).ToList();
-            Func<Humans.Application.DTOs.ProfilePictureMigrationRow, Microsoft.AspNetCore.Html.IHtmlContent> profileIdCell =
+            Func<Humans.Users.Contracts.ProfilePictureMigrationRow, Microsoft.AspNetCore.Html.IHtmlContent> profileIdCell =
                 @<text><code>@item.ProfileId</code></text>;
             var migrationTable = TableModel.For(dbOnlyRows)
                 .Template("Profile id", profileIdCell, c => c.NoSort())

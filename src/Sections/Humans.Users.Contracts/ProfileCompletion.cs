@@ -1,7 +1,4 @@
-using Humans.Domain.Entities;
-using Humans.Users.Contracts;
-
-namespace Humans.Application.Helpers;
+namespace Humans.Users.Contracts;
 
 /// <summary>
 /// Computes a 0–100 completion percentage for a member profile, used as a

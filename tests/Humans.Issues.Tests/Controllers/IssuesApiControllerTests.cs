@@ -21,6 +21,8 @@ using Humans.Users.Contracts;
 
 #pragma warning disable CS0618 // Cross-domain navs are intentional in test fixtures.
 
+using Humans.AuditLog.Contracts;
+
 namespace Humans.Issues.Tests.Controllers;
 
 /// <summary>

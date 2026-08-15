@@ -1,6 +1,6 @@
-namespace Humans.Application.DTOs;
+namespace Humans.Teams.Models;
 
-public record LocationProfileInfo(
+internal sealed record LocationProfileInfo(
     Guid UserId,
     string DisplayName,
     string? ProfilePictureUrl,
