@@ -16,10 +16,10 @@ namespace Humans.Analyzers;
 /// <remarks>
 /// Runs in <c>Humans.Application</c> and in every section project. The repository's section is
 /// declared with <see cref="Humans.Domain.Attributes.SectionAttribute"/>
-/// because repo interfaces sit in the flat
-/// <c>Humans.Application.Interfaces.Repositories</c> namespace (HUM0013) and
-/// the implementations in <c>Humans.Infrastructure</c> are not visible to
-/// this compilation.
+/// because a repo interface carries no section in its own namespace — the
+/// <c>Humans.Application</c> ones sit flat under
+/// <c>Humans.Application.Interfaces.Repositories</c>, and the implementations in
+/// <c>Humans.Infrastructure</c> are not visible to this compilation.
 /// </remarks>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class CrossSectionRepositoryInjectionAnalyzer : DiagnosticAnalyzer
@@ -110,10 +110,10 @@ public sealed class CrossSectionRepositoryInjectionAnalyzer : DiagnosticAnalyzer
         if (!ImplementsMarker(type, applicationServiceMarker))
             return;
 
-        // If the service's own section is undetermined, HUM0012 (services must be
-        // declared under Humans.Application.Services.<Section>) is already the
-        // right diagnostic — don't pile on with a HUM0018 here. Just exit; HUM0017
-        // cannot be applied to this class until HUM0012 is satisfied.
+        // A service whose section cannot be resolved — neither from a
+        // Humans.Application.Services.<Section> namespace nor from its assembly's
+        // [assembly: Section("…")] — carries no section to compare against, so
+        // HUM0017 cannot be applied to it. Exit rather than pile on a HUM0018.
         var serviceSection = ExtractServiceSection(type, sectionAttr);
         if (serviceSection is null)
             return;

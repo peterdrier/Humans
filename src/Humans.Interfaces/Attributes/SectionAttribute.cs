@@ -8,9 +8,10 @@ namespace Humans.Domain.Attributes;
 /// when X != Y.
 /// </summary>
 /// <remarks>
-/// Repository interfaces live flat under
-/// <c>Humans.Application.Interfaces.Repositories</c> (enforced by HUM0013),
-/// so the interface namespace carries no section information. The
+/// The remaining <c>Humans.Application</c> repository interfaces live flat under
+/// <c>Humans.Application.Interfaces.Repositories</c>, and a section's own live in
+/// its <c>Data/</c> namespace, so neither interface namespace carries section
+/// information. The
 /// implementation's namespace is the source of truth; this attribute mirrors
 /// that section onto the interface so the Application-layer analyzer can read
 /// it without referencing Humans.Infrastructure.

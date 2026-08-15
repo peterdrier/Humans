@@ -17,8 +17,7 @@ namespace Humans.Application.Tests.Architecture.Rules;
 /// by construction — the assembly boundary is the location rule there, and asserting
 /// a <c>Humans.Infrastructure.*</c> prefix over section assemblies would be actively
 /// wrong. Nothing else covers the nine repositories still in
-/// <c>src/Humans.Infrastructure/Repositories/</c>: HUM0013 constrains repository
-/// <i>interfaces</i> in <c>Humans.Application</c>, and HUM0034 does not run outside a
+/// <c>src/Humans.Infrastructure/Repositories/</c>: HUM0034 does not run outside a
 /// section assembly.
 /// </para>
 /// <para>

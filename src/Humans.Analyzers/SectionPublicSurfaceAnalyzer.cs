@@ -337,10 +337,9 @@ public sealed class SectionPublicSurfaceAnalyzer : DiagnosticAnalyzer
     /// interface under <c>Contracts/</c> looks like any other DTO or interface).
     /// </summary>
     /// <remarks>
-    /// Namespace first, same as HUM0012/HUM0013: folder <c>Contracts/</c> maps to
-    /// a namespace segment named <c>Contracts</c> by the same convention those
-    /// rules already lean on, and it needs no file path to check (real code or
-    /// test). Falls back to the declaring file's path for the case that
+    /// Namespace first: folder <c>Contracts/</c> maps to a namespace segment named
+    /// <c>Contracts</c> by convention, and it needs no file path to check (real code
+    /// or test). Falls back to the declaring file's path for the case that
     /// convention misses — the same dual check <c>ConcurrencyTokenAnalyzer</c>'s
     /// <c>IsInMigration</c> uses for its own folder carve-out.
     /// </remarks>

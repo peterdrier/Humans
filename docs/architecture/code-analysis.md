@@ -72,8 +72,6 @@ HUM0008 | Controller constructor injects an application DbContext (any per-secti
 HUM0009 | Class uses an application DbContext but does not implement IRepository (`[Grandfathered("HUM0009")]` downgrades to Warning) | Error
 HUM0010 | Reference to a symbol decorated with `[ExpiresOn(date)]` (escalates to Error on/after the date) | Warning
 HUM0011 | Declaration decorated with `[ExpiresOn(date)]` is past its date (escalates to Error after the graceDays window) | Warning
-HUM0012 | Application service (IApplicationService implementer) declared outside `Humans.Application.Services.*`. **`Humans.Application` only** — a moved section carries its own assembly boundary, so the rule is neither widened nor retired until `Humans.Application/Services` is empty. Also gates HUM0017, which derives a service's section from this namespace and goes quiet when it cannot | Error
-HUM0013 | Repository interface (IRepository extender) declared outside `Humans.Application.Interfaces.Repositories`. **`Humans.Application` only** — retire when that folder is empty; `ServiceBoundaryArchitectureTests` covers repository markers and ownership-map membership but not this location invariant | Error
 HUM0014 | Class in `Humans.Web` injects a repository directly (must go through an application service) | Error
 HUM0015 | Type decorated with `[SurfaceBudget(N)]` declares more than N public-instance methods | Error
 HUM0016 | Type decorated with `[SurfaceBudget(N)]` declares fewer than N public-instance methods (slack — decrement budget) | Error
@@ -92,7 +90,7 @@ HUM0032 | Cross-section caller in `Humans.Application.Services.*` injects a full
 HUM0033 | State-changing controller action (`[HttpPost]`/`[HttpPut]`/`[HttpDelete]`/`[HttpPatch]`) passes a request-scoped cancellation token (`HttpContext.RequestAborted` or the action's own `CancellationToken` parameter) to a method marked `[ExternalWrite]` — pass `CancellationToken.None` or enqueue through Hangfire (`[Grandfathered("HUM0033")]` on the action downgrades to Warning) | Error
 HUM0034 | Public type in a `[assembly: Section("…")]` assembly (nobodies-collective/Humans#866, G5) that is not the section's `ISection` entry point, its `<Section>Resource` localization marker, an EF Core migration, a type the framework requires to be public in order to function (view components, tag helpers), or declared under `Contracts/` — the #866 keystone, making "internal by default" load-bearing instead of convention-only (`[Grandfathered("HUM0034")]` downgrades to Warning) | Error
 
-> The next free id is **HUM0035** (0004, 0021, 0022-0023, 0024 unused — all retired, not reassigned: 0004 with the `Profile.IsSuspended` column drop in #1217, 0022-0023 subsumed by the universal HUM0025, 0021/0024 in #1278). Always confirm against `AnalyzerReleases.Unshipped.md` before assigning a new id.
+> The next free id is **HUM0035** (0004, 0012-0013, 0021, 0022-0023, 0024 unused — all retired, not reassigned: 0004 with the `Profile.IsSuspended` column drop in #1217, 0012-0013 with the G5 section split (nobodies-collective/Humans#866) — both asserted a `Humans.Application.*` namespace layout the section assemblies replaced, 0022-0023 subsumed by the universal HUM0025, 0021/0024 in #1278). Always confirm against `AnalyzerReleases.Unshipped.md` before assigning a new id.
 
 Authoritative declaration: `src/Humans.Analyzers/AnalyzerReleases.Unshipped.md`
 (plus `AnalyzerReleases.Shipped.md` once we cut a 1.0).
