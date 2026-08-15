@@ -1,5 +1,20 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <!--
+    Nearly empty after G5 lane 3a-1 (nobodies-collective/Humans#866). Five enums remain:
+      ConsentCheckStatus, GoogleEmailStatus, MembershipTier, MessageCategory — all four ride
+        into Humans.Users.Contracts in lane 3d.
+      SyncAction — deliberately pinned here. It is a parameter type of
+        IGoogleGroupSync.ReconcileOneAsync, which Hangfire serializes by assembly-qualified
+        name; moving the *assembly* orphans every queued or retry-delayed scoped group-sync
+        job across a deploy. See the remarks on the enum and the note in
+        Humans.GoogleIntegration.Contracts.csproj. It survived one revert already (Codex P1 on
+        peterdrier/Humans#1310) — deleting this project needs a queue drain or a different home
+        for SyncAction, and that decision belongs to lane 3c, not to a tidy-up.
+    Everything else — the constants, the four generic enums, the helpers and the three
+    attributes — is in Humans.Interfaces now, with its namespace unchanged.
+  -->
+
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" />
     <PackageReference Include="NodaTime" />

@@ -71,19 +71,15 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<HoldedSyncJob>();
         services.AddScoped<HoldedExpenseOutboxJob>();
 
-        // Base collaborator that Teams' section file used to register on the way past.
-        // ActiveTeamsCacheInvalidator is a Humans.Infrastructure implementation of a
-        // Humans.Application interface (the IInvalidator family other sections evict Teams'
-        // master cache entry through), so it is not Teams' to own (design §15 step 4,
-        // Governance's rule: the section that owns the file is not always the section that
-        // owns the line).
+        // ActiveTeamsCacheInvalidator used to be registered here as a Base collaborator Teams'
+        // section file registered on the way past. G5 lane 3a-1 re-measured that: its six
+        // IMemoryCache-backed siblings moved to Base, but this one injects ITeamService and so
+        // had to land in Humans.Teams — where HUM0034 makes it internal and therefore
+        // unreachable from Web. Both the type and its registration are now Teams' (Section.cs).
         //
-        // SystemTeamSyncJob used to be registered here on the same grounds. That claim was
-        // re-measured at G5 lane 4b-2e and was wrong — system-team membership is a Teams
-        // invariant — so the implementation and its registration both moved into
-        // Humans.Teams' Section.cs. Only ISystemTeamSync stayed in Humans.Application,
+        // SystemTeamSyncJob left this list the same way at G5 lane 4b-2e — system-team
+        // membership is a Teams invariant. Only ISystemTeamSync stayed in Humans.Application,
         // because Hangfire serializes it as the recurring job's target type.
-        services.AddScoped<IActiveTeamsCacheInvalidator, ActiveTeamsCacheInvalidator>();
 
         // Base collaborators that Governance's section file used to register on the way past.
         // The three badge-cache invalidators are Humans.Infrastructure implementations of

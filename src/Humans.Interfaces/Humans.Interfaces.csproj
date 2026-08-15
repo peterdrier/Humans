@@ -13,15 +13,51 @@
     used by every layer above. Namespaces intentionally remain Humans.Application.*
     (namespace ≠ assembly) so call sites and the Humans.Analyzers full-name
     constants are unaffected by the move.
+
+    G5 lane 3a-1 (nobodies-collective/Humans#866) made this the Base fill: 60 generic files
+    arrived from Humans.Application (34), Humans.Domain (16) and Humans.Infrastructure (10) —
+    the configuration registry, CacheKeys, the CSV seam, the formatting/timing extensions,
+    the cross-cutting cache interfaces and their six IMemoryCache implementations, the
+    metering trio, the Serilog enrichers/sink, the GitHub markdown connectors, the role and
+    team constants, and four enums. Every one kept its original namespace, so no `using`,
+    `_ViewImports`, `<Using Include>` or analyzer full-name constant changed anywhere in the
+    repo. The rename of this project to Humans.Base is a later lane. Still zero
+    ProjectReference elements — check that before adding one.
   -->
+
+  <!--
+    Followed the G5 lane 3a-1 arrivals out of Humans.Application: TrackedCache's
+    MarkWarmedForTesting, LoggerTimingExtensions.SelectLogLevel and TrackedLock.WaitToLogLevel
+    are internal and were already visible to these two test assemblies from there.
+  -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="Humans.Application.Tests" />
+    <InternalsVisibleTo Include="Humans.Users.Tests" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="NodaTime" />
     <!--
       ISection names IServiceCollection and IConfiguration. Both live in the
       shared framework, so this keeps the no-NuGet-packages promise intact.
+      The same FrameworkReference is what lets the G5 lane 3a-1 arrivals below use
+      IMemoryCache, ILogger, IOptions and IHostEnvironment with no extra package.
     -->
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
+
+    <!--
+      Added by G5 lane 3a-1 (nobodies-collective/Humans#866), each forced by exactly one
+      arrival. Keep this list minimal — 26 .Contracts leaves reference this project and
+      inherit whatever lands here.
+        CsvHelper — Csv/HumansCsv.cs, the single CSV seam (memory/code/csv-use-csvhelper.md).
+        Serilog   — Logging/{CurrentUserEnricher,PiiRedactionEnricher,InMemoryLogSink}.cs,
+                    which implement Serilog.Core.ILogEventEnricher / ILogEventSink.
+        Octokit   — Services/GitHub{Guide,CommunityKb}ContentSource.cs, the Guide and
+                    community-KB markdown readers.
+    -->
+    <PackageReference Include="CsvHelper" />
+    <PackageReference Include="Serilog" />
+    <PackageReference Include="Octokit" />
   </ItemGroup>
 
 </Project>

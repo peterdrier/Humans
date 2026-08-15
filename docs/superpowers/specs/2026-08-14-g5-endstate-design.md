@@ -152,11 +152,11 @@ Public surface is measured and judged, not policed.
 | `SystemTeamSyncJob` / `ISystemTeamSync` | **Teams** (probable) | verify at lane-scope time |
 | EarlyEntry (service/provider/invalidator + caching decorator) | **own section `Humans.EarlyEntry`** | an orchestrator in its own land: sources from Teams/Camps/…, Gate queries it; small is fine |
 | `AdminDatabaseDiagnostics`, `HumansMetricsService`, `SystemDbContext` + `Migrations/System` | **Web** | platform-wide operational/host services |
-| `MemoryCacheInvalidators.cs` | **split** | 6 classes → Base; `ActiveTeamsCacheInvalidator` → Teams |
+| `MemoryCacheInvalidators.cs` | **split** ✅ 3a-1 | 6 classes → Base; `ActiveTeamsCacheInvalidator` → Teams (internal, per HUM0034 — its DI registration moved from Web to Teams' `Section.cs`); the *interface* `IActiveTeamsCacheInvalidator` → **`Humans.Teams.Contracts`**, not the section, because `Humans.Users` injects it |
 | `InfrastructureServiceCollectionExtensions.cs` | **split** | `AddSectionDbContext<T>` → Base; UsersDbContext/SystemDbContext-naming members → Web roll-call |
 | `ITicketVendorService` + DTOs | **Tickets** | TicketTailor references Tickets directly — no new leaf |
 | ~110 remaining section-owned files | per appendix tables | entities/enums/DTOs to owners; one recurring job per section |
-| ~65 generic files | **Base** | incl. ConfigurationRegistry cluster, `SystemTeamType`, GitHub content connectors, generic-helper tail (re-verify at move time) |
+| 60 generic files | **Base** — 60 landed by 3a-1, EF/hosting cluster still owed by 3a-2 | Measured, not estimated. 34 from `Humans.Application` (ConfigurationRegistry cluster + `GitHubSettings` + `CacheKeys`), 16 from `Humans.Domain` (`SystemTeamType`, `YesNoMaybe`, `GoogleSyncSource`, `EmailOutboxStatus`, the constants, the `Iban*`/`EmailNormalization`/`PlatformDetector` helpers, `SectionAttribute`, `MarkdownContentAttribute`, `ExpiresOnAttribute`), 10 from `Humans.Infrastructure` (GitHub content connectors, Serilog `Logging/*`, `MetersService`, `HtmlPlainTextConverter`, the settings pair, `MemoryCacheInvalidators`). Every namespace preserved. `AuditAction`, `DietaryOptions`, `TicketConstants`, `ProfileCompletion`, `ProfilePictureStorageKeys` were on earlier drafts of this row and had already gone to section leaves by #1310/#1313. |
 
 Zero dead files found — the hub is thin but fully load-bearing.
 

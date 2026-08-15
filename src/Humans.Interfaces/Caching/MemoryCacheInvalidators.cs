@@ -1,7 +1,6 @@
 using Microsoft.Extensions.Caching.Memory;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Caching;
-using Humans.Teams.Contracts;
 
 namespace Humans.Infrastructure.Caching;
 
@@ -48,7 +47,6 @@ public sealed class RoleAssignmentClaimsCacheInvalidator(IMemoryCache cache) : I
     public void Invalidate(Guid userId) => cache.InvalidateRoleAssignmentClaims(userId);
 }
 
-public sealed class ActiveTeamsCacheInvalidator(ITeamService teamService) : IActiveTeamsCacheInvalidator
-{
-    public void Invalidate() => teamService.InvalidateActiveTeamsCache();
-}
+// ActiveTeamsCacheInvalidator is deliberately NOT here: it injects ITeamService, so it
+// cannot live in Base. It moved to Humans.Teams/Services/ActiveTeamsCacheInvalidator.cs
+// with its namespace preserved (nobodies-collective/Humans#866, G5 lane 3a-1).

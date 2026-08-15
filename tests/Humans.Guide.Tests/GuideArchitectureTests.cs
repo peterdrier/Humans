@@ -106,10 +106,15 @@ public class GuideArchitectureTests
         // IGuideContentSource carries the section's name and is not the section's: its
         // signatures name only string, and three of its four consumers are elsewhere (the
         // Agent section's three preload readers, Shell's AgentDocsHealthCheck, and Base's
-        // GitHubCommunityKbContentSource). Pinning the namespace here is what stops a later
-        // pass "tidying" it into Humans.Guide and forcing Base to reference a section.
+        // GitHubCommunityKbContentSource). Pinning the assembly here is what stops a later
+        // pass "tidying" it into Humans.Guide and forcing Base to reference a section — the
+        // second assertion below is the real teeth and is unchanged.
+        // The expected assembly was "Humans.Application" until G5 lane 3a-1
+        // (nobodies-collective/Humans#866) moved the interface into Humans.Interfaces, the
+        // project that becomes Humans.Base. That is the move this pin was written to permit;
+        // its namespace is unchanged, so every call site is untouched.
         typeof(IGuideContentSource).Assembly.GetName().Name
-            .Should().Be("Humans.Application");
+            .Should().Be("Humans.Interfaces");
 
         typeof(Section).Assembly.GetTypes()
             .Should().NotContain(t => t.Name == "IGuideContentSource");

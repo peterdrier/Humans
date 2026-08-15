@@ -53,6 +53,13 @@ public sealed class Section : ISection
 
         services.AddScoped<ITeamPageService, TeamPageService>();
 
+        // The one invalidator in the MemoryCacheInvalidators family that is Teams' own: its six
+        // siblings wrap IMemoryCache and moved to Base at G5 lane 3a-1, but this one injects
+        // ITeamService, so the implementation lives here (and HUM0034 makes it internal, which
+        // is why Web can no longer register it). The interface stays on Humans.Teams.Contracts
+        // because Humans.Users evicts through it.
+        services.AddScoped<IActiveTeamsCacheInvalidator, ActiveTeamsCacheInvalidator>();
+
         // The system-team reconciler. Its interface stays in Humans.Application because
         // Hangfire serializes ISystemTeamSync as the "system-team-sync" recurring job's
         // target type; the implementation is resolved from DI at execution time (lane 4b-2e).

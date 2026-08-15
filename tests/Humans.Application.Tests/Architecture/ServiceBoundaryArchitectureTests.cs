@@ -222,10 +222,17 @@ public class ServiceBoundaryArchitectureTests
     // …and the anchor itself is load-bearing: it was typeof(IUserRepository) until that
     // interface moved into Humans.Users with the section (#866, lane 2 PR B), which silently
     // relocated this whole sweep onto the section assembly and dropped every
-    // Humans.Application.Interfaces.* interface out of it. IFileStorage is the replacement
-    // because peters-hard-rules.md pins one key-addressed storage abstraction to Base.
+    // Humans.Application.Interfaces.* interface out of it. It was typeof(IFileStorage) until
+    // G5 lane 3a-1 (nobodies-collective/Humans#866) moved that interface into the
+    // Humans.Interfaces (Base) assembly — namespace preserved, so the compile was green and
+    // the retarget would have been silent. DashboardService is the replacement because it is
+    // a concrete Humans.Application service with no scheduled move in phase 3.
+    // COVERAGE NOTE: the marker/infra interfaces that now live in Humans.Interfaces under
+    // Humans.Application.Interfaces.* (IFileStorage, IGuideContentSource, IHumansMetrics,
+    // the cache invalidators, …) are no longer scanned. They cannot regress this rule —
+    // Humans.Interfaces has no EF reference, so it declares no entity type to expose.
     private static IEnumerable<Type> ApplicationInterfaceTypes() =>
-        typeof(Humans.Application.Interfaces.IFileStorage).Assembly.GetTypes()
+        typeof(Humans.Application.Services.Dashboard.DashboardService).Assembly.GetTypes()
             .Where(t => t.IsInterface)
             .Where(t => t.Namespace?.StartsWith("Humans.Application.Interfaces", StringComparison.Ordinal) == true)
             .Concat(SectionAssemblies()

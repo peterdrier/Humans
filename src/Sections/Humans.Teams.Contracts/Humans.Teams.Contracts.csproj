@@ -22,11 +22,17 @@
     them (Budget's rule). Measured, not assumed: CallToAction/CallToActionStyle/SlotPriority
     were filed under Camps and Shifts in the #866 appendix and have no consumer outside Teams.
 
+    G5 lane 3a-1 added one non-Teams type on purpose: IActiveTeamsCacheInvalidator, still in
+    namespace Humans.Application.Interfaces.Caching. Its six IMemoryCache-backed siblings went
+    to Base, but this one's implementation injects ITeamService and had to land in the section,
+    where HUM0034 makes it internal. Humans.Users injects the interface (AccountMergeService,
+    NonCompliantMemberSuspension) and already referenced this leaf, so it costs zero csproj
+    edits here or there; putting it on Humans.Teams would have forced a new Users → Teams edge.
+
     References Humans.Interfaces (IApplicationService, SurfaceBudgetAttribute) and
-    Humans.Domain, the latter now for three types only — SystemTeamType, GoogleEmailStatus and
-    DomainConstants, none of them Teams' to move (SystemTeamType is phase 3a's, GoogleEmailStatus
-    rides to Humans.Users.Contracts in lane 3d). Same pair Humans.Campaigns.Contracts and
-    Humans.Governance.Contracts take. Acyclic: Humans.Domain names only Humans.Interfaces.
+    Humans.Domain — the latter for GoogleEmailStatus alone since lane 3a-1 took SystemTeamType
+    and DomainConstants to Base. GoogleEmailStatus rides to Humans.Users.Contracts in lane 3d,
+    and this ProjectReference dies with it. Acyclic: Humans.Domain names only Humans.Interfaces.
   -->
 
   <ItemGroup>
